@@ -49,6 +49,10 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
       std::function<skity::Vec2(skity::Vec2)> calculator,
       bool force_use_original_size);
   const std::string& GetUrl() const { return url_; }
+  const std::string& GetCacheIdentifier() const { return cache_identifier_; }
+  void SetCacheIdentifier(const std::string& cache_identifier) {
+    cache_identifier_ = cache_identifier;
+  }
 
   bool IsSVG() const { return type_ == ImageType::kSVG; }
 
@@ -60,6 +64,9 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
   fml::WeakPtr<ImageFetcher> image_fetcher_;
   std::unordered_set<BaseImageInstance*> instances_;
   std::string url_;
+  // For Data images, this is the MD5 of the Data content. For other images,
+  // this is the trimmed URL.
+  std::string cache_identifier_;
   ImageType type_ = ImageType::kStatic;
   std::shared_ptr<PlatformImage> image_;
   GPUObject<GraphicsImage> gpu_image_;

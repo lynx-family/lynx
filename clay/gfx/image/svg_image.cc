@@ -21,8 +21,6 @@ std::shared_ptr<SVGImage> SVGImage::Make(
 }
 
 SVGImage::SVGImage(const std::string& content) : content_(content) {
-  content_hash_ = std::hash<std::string>{}(content_);
-  content_md5_ = lynx::base::md5(content_);
   svg_dom_ = SVGDom::Create(
       GrData::MakeWithProc(content_.data(), content_.size(), nullptr, nullptr),
       [](std::string url) { return nullptr; });

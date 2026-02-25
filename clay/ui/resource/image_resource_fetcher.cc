@@ -5,6 +5,7 @@
 #include "clay/ui/resource/image_resource_fetcher.h"
 
 #include "base/include/fml/time/time_point.h"
+#include "base/include/md5.h"
 #include "clay/gfx/image/image_descriptor.h"
 #include "clay/net/loader/resource_loader.h"
 #include "clay/net/loader/resource_loader_factory.h"
@@ -76,10 +77,12 @@ ImageFetchID ImageResourceFetcher::FetchImageAsync(
   }
 
   auto begin = fml::TimePoint::Now();
-
+  std::string cache_identifier = trimmed_url.compare(0, 5, "data:") == 0
+                                     ? lynx::base::md5(trimmed_url)
+                                     : trimmed_url;
   // check if image is already cached.
   if (image_manager_->GetImageResource(
-          trimmed_url,
+          trimmed_url, cache_identifier,
           [callback, begin, trimmed_url,
            ui_task_runner = task_runners_.GetUITaskRunner()](
               std::unique_ptr<ImageResource> image_resource, bool hit_cache) {
@@ -97,17 +100,17 @@ ImageFetchID ImageResourceFetcher::FetchImageAsync(
     return kDefaultImageFetchID;
   }
 
-  return FetchImageAsyncInternal(trimmed_url, callback, use_texture_backend,
-                                 is_deferred, decode_with_priority,
-                                 need_redirect, enable_low_quality_image,
-                                 is_promise, is_svg);
+  return FetchImageAsyncInternal(trimmed_url, cache_identifier, callback,
+                                 use_texture_backend, is_deferred,
+                                 decode_with_priority, need_redirect,
+                                 enable_low_quality_image, is_promise, is_svg);
 }
 
 ImageFetchID ImageResourceFetcher::FetchImageAsyncInternal(
-    const std::string& trimmed_url, const ImageResourceCallback& callback,
-    bool use_texture_backend, bool is_deferred, bool decode_with_priority,
-    bool need_redirect, bool enable_low_quality_image, bool is_promise,
-    bool is_svg) {
+    const std::string& trimmed_url, const std::string& cache_identifier,
+    const ImageResourceCallback& callback, bool use_texture_backend,
+    bool is_deferred, bool decode_with_priority, bool need_redirect,
+    bool enable_low_quality_image, bool is_promise, bool is_svg) {
   auto begin = fml::TimePoint::Now();
   ImageFetchID current_fetch_id = GenerateFetchID();
   auto it = url_loader_map_.find(trimmed_url);
@@ -120,9 +123,9 @@ ImageFetchID ImageResourceFetcher::FetchImageAsyncInternal(
       return kDefaultImageFetchID;
     }
     // task will be executed in ui_task_runner.
-    auto task = [self = weak_factory_.GetWeakPtr(), trimmed_url, begin, is_svg,
-                 use_texture_backend, enable_low_quality_image, is_deferred,
-                 decode_with_priority,
+    auto task = [self = weak_factory_.GetWeakPtr(), trimmed_url,
+                 cache_identifier, begin, is_svg, use_texture_backend,
+                 enable_low_quality_image, is_deferred, decode_with_priority,
                  is_promise](const uint8_t* image, size_t len) {
       auto end = fml::TimePoint::Now();
       FML_DLOG(INFO) << "ImageResourceFetcher: fetch image finish; url = "
@@ -138,7 +141,7 @@ ImageFetchID ImageResourceFetcher::FetchImageAsyncInternal(
       } else {
         data = GrData::MakeEmpty();
       }
-      self->OnDownloadEnd(success, trimmed_url, data, is_svg,
+      self->OnDownloadEnd(success, trimmed_url, cache_identifier, data, is_svg,
                           use_texture_backend, enable_low_quality_image,
                           is_deferred, decode_with_priority, is_promise);
     };
@@ -169,29 +172,34 @@ std::unique_ptr<ImageResource> ImageResourceFetcher::FetchPromiseImage(
     use_promise = false;
   }
 
-  auto image_resource = image_manager_->GetImageResourceFromCache(trimmed_url);
+  std::string cache_identifier = trimmed_url.compare(0, 5, "data:") == 0
+                                     ? lynx::base::md5(trimmed_url)
+                                     : trimmed_url;
+  auto image_resource =
+      image_manager_->GetImageResourceFromCache(cache_identifier);
   if (image_resource) {
     // if image has been cached, there is no need to invoke callback
     return image_resource;
   }
 
   image_resource = image_manager_->CreateImageResourceFromCachedData(
-      trimmed_url, false, use_texture_backend, use_promise, false, false,
-      false);
+      trimmed_url, cache_identifier, false, use_texture_backend, use_promise,
+      false, false, false);
   if (image_resource) {
     // if image data has been downloaded, there is no need to invoke callback
     return image_resource;
   }
 
   // image data is not prepared and initiate an asynchronous load request
-  FetchImageAsyncInternal(trimmed_url, callback, use_texture_backend, false,
-                          false, need_redirect, false, use_promise, false);
+  FetchImageAsyncInternal(trimmed_url, cache_identifier, callback,
+                          use_texture_backend, false, false, need_redirect,
+                          false, use_promise, false);
 
   // create a clay::Image without actual data in it, when download finished,
   // put the download data to the image.
   auto image = image_manager_->CreateAndCacheImage(
-      trimmed_url, nullptr, false, use_texture_backend, use_promise, false,
-      false, false);
+      trimmed_url, cache_identifier, nullptr, false, use_texture_backend,
+      use_promise, false, false, false);
   return image->GetAccessor();
 }
 
@@ -203,9 +211,12 @@ void ImageResourceFetcher::GetImageResource(
   FML_DCHECK(task_runners_.GetUITaskRunner()->RunsTasksOnCurrentThread());
 
   std::string trimmed_url = url::TrimUrl(original_url);
+  std::string cache_identifier = trimmed_url.compare(0, 5, "data:") == 0
+                                     ? lynx::base::md5(trimmed_url)
+                                     : trimmed_url;
   image_manager_->GetImageResource(
-      trimmed_url, callback, source, len, use_texture_backend, is_deferred,
-      decode_with_priority, enable_low_quality_image);
+      trimmed_url, cache_identifier, callback, source, len, use_texture_backend,
+      is_deferred, decode_with_priority, enable_low_quality_image);
 }
 
 #if defined(ENABLE_SVG)
@@ -261,7 +272,8 @@ void ImageResourceFetcher::ClearCache() {
 }
 
 void ImageResourceFetcher::OnDownloadEnd(
-    bool success, const std::string& trimmed_url, GrDataPtr data, bool is_svg,
+    bool success, const std::string& trimmed_url,
+    const std::string& cache_identifier, GrDataPtr data, bool is_svg,
     bool use_texture_backend, bool enable_low_quality_image, bool is_deferred,
     bool decode_with_priority, bool is_promise) {
   FML_DCHECK(task_runners_.GetUITaskRunner()->RunsTasksOnCurrentThread());
@@ -272,27 +284,28 @@ void ImageResourceFetcher::OnDownloadEnd(
   }
 
   if (!success) {
-    RunImageResourceCallback(trimmed_url);
+    RunImageResourceCallback(trimmed_url, cache_identifier);
     return;
   }
 
-  if (!image_manager_->UpdateCachedImageData(trimmed_url, data)) {
+  if (!image_manager_->UpdateCachedImageData(cache_identifier, data)) {
     // If the image is not cached, create a new image and cache it.
-    image_manager_->CreateAndCacheImage(
-        trimmed_url, data, is_svg, use_texture_backend, is_promise,
-        enable_low_quality_image, is_deferred, decode_with_priority);
-    RunImageResourceCallback(trimmed_url);
+    image_manager_->CreateAndCacheImage(trimmed_url, cache_identifier, data,
+                                        is_svg, use_texture_backend, is_promise,
+                                        enable_low_quality_image, is_deferred,
+                                        decode_with_priority);
+    RunImageResourceCallback(trimmed_url, cache_identifier);
   } else {
-    RunImageResourceCallback(trimmed_url);
+    RunImageResourceCallback(trimmed_url, cache_identifier);
   }
 }
 
 void ImageResourceFetcher::RunImageResourceCallback(
-    const std::string& trimmed_url) {
+    const std::string& trimmed_url, const std::string& cache_identifier) {
   auto range = image_resource_callback_map_.equal_range(trimmed_url);
   for (auto it = range.first; it != range.second; ++it) {
-    it->second.second(image_manager_->GetImageResourceFromCache(trimmed_url),
-                      false);
+    it->second.second(
+        image_manager_->GetImageResourceFromCache(cache_identifier), false);
   }
   image_resource_callback_map_.erase(trimmed_url);
 }

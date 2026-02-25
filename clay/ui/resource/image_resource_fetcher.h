@@ -82,17 +82,19 @@ class ImageResourceFetcher
  private:
   ImageFetchID GenerateFetchID();
   ImageFetchID FetchImageAsyncInternal(
-      const std::string& trimmed_url, const ImageResourceCallback& callback,
-      bool use_texture_backend, bool is_deferred, bool decode_with_priority,
-      bool need_redirect, bool enable_low_quality_image, bool is_promise,
-      bool is_svg);
+      const std::string& trimmed_url, const std::string& cache_identifier,
+      const ImageResourceCallback& callback, bool use_texture_backend,
+      bool is_deferred, bool decode_with_priority, bool need_redirect,
+      bool enable_low_quality_image, bool is_promise, bool is_svg);
   void OnDownloadEnd(bool success, const std::string& trimmed_url,
-                     GrDataPtr data, bool is_svg, bool use_texture_backend,
+                     const std::string& cache_identifier, GrDataPtr data,
+                     bool is_svg, bool use_texture_backend,
                      bool enable_low_quality_image = false,
                      bool is_deferred = false,
                      bool decode_with_priority = false,
                      bool is_promise = false);
-  void RunImageResourceCallback(const std::string& trimmed_url);
+  void RunImageResourceCallback(const std::string& trimmed_url,
+                                const std::string& cache_identifier);
 
   std::shared_ptr<ResourceLoaderIntercept> resource_loader_intercept_;
   std::shared_ptr<ServiceManager> service_manager_;

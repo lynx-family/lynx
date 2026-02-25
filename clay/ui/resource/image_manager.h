@@ -46,6 +46,7 @@ class ImageManager : public Image::Notifier,
   void ClearCache();
 
   bool GetImageResource(const std::string& url,
+                        const std::string& cache_identifier,
                         const ImageResourceCallback& callback,
                         bool use_texture_backend, bool is_deferred,
                         bool decode_with_priority,
@@ -53,6 +54,7 @@ class ImageManager : public Image::Notifier,
                         bool is_svg);
 
   void GetImageResource(const std::string& url,
+                        const std::string& cache_identifier,
                         const ImageResourceCallback& callback,
                         const uint8_t* source, const int len,
                         bool use_texture_backend, bool is_deferred,
@@ -60,9 +62,10 @@ class ImageManager : public Image::Notifier,
                         bool enable_low_quality_image);
 
   std::unique_ptr<ImageResource> GetImageResourceFromCache(
-      const std::string& url);
+      const std::string& cache_identifier);
 
-  bool UpdateCachedImageData(const std::string& url, GrDataPtr data);
+  bool UpdateCachedImageData(const std::string& cache_identifier,
+                             GrDataPtr data);
 
 #if defined(ENABLE_SVG)
   std::unique_ptr<ImageResource> GetImageResourceFromSVGContent(
@@ -71,14 +74,15 @@ class ImageManager : public Image::Notifier,
 #endif
 
   std::shared_ptr<Image> CreateAndCacheImage(
-      const std::string& url, GrDataPtr data, bool is_svg,
-      bool use_texture_backend, bool is_promise, bool enable_low_quality_image,
-      bool is_deferred, bool decode_with_priority);
+      const std::string& url, const std::string& cache_identifier,
+      GrDataPtr data, bool is_svg, bool use_texture_backend, bool is_promise,
+      bool enable_low_quality_image, bool is_deferred,
+      bool decode_with_priority);
 
   std::unique_ptr<ImageResource> CreateImageResourceFromCachedData(
-      const std::string& url, bool is_svg, bool use_texture_backend,
-      bool is_promise, bool enable_low_quality_image, bool is_deferred,
-      bool decode_with_priority);
+      const std::string& url, const std::string& cache_identifier, bool is_svg,
+      bool use_texture_backend, bool is_promise, bool enable_low_quality_image,
+      bool is_deferred, bool decode_with_priority);
 
   // impelementation of Image::Notifier
   void ImageHasNoAccessor(const Image* image) override;
@@ -89,8 +93,8 @@ class ImageManager : public Image::Notifier,
 
  private:
   std::unique_ptr<ImageResource> GetImageResourceFromCache(
-      size_t content_hash, const std::string& url);
-  void MoveToInactiveCacheIfNeeded(size_t content_hash,
+      size_t key_hash, const std::string& cache_identifier);
+  void MoveToInactiveCacheIfNeeded(size_t key_hash,
                                    const std::string& identifier,
                                    const Image* image);
 

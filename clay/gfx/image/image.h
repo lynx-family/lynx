@@ -49,7 +49,11 @@ class Image : public std::enable_shared_from_this<Image> {
 
   ~Image();
 
-  std::string GetUrl() const { return url_; }
+  const std::string& GetUrl() const { return url_; }
+  const std::string& GetCacheIdentifier() const { return cache_identifier_; }
+  void SetCacheIdentifier(const std::string& cache_identifier) {
+    cache_identifier_ = cache_identifier;
+  }
   void SetRawData(GrDataPtr data);
 
   int GetWidth();
@@ -65,10 +69,10 @@ class Image : public std::enable_shared_from_this<Image> {
   size_t GetUIAccessorCount() const { return ui_accessors_.size(); }
 
 #if defined(ENABLE_SVG)
-  void SetContentHash(size_t hash_string) {
-    content_hash_ = std::move(hash_string);
+  void SetCacheKeyHash(size_t hash_string) {
+    cache_key_hash_ = std::move(hash_string);
   }
-  size_t GetContentHash() const { return content_hash_; }
+  size_t GetCacheKeyHash() const { return cache_key_hash_; }
 
   void SetContentMD5(std::string md5_string) {
     content_md5_ = std::move(md5_string);
@@ -176,14 +180,16 @@ class Image : public std::enable_shared_from_this<Image> {
   // Support SVG.
   const bool is_svg_ = false;
 #if defined(ENABLE_SVG)
-  // For SVG images, this is the hash of the SVG content.
-  // This hash is primarily used to cache images within the ImageCache.
-  size_t content_hash_ = 0;
   // For SVG images, this is the MD5 of the SVG content.
-  // This MD5 is primarily used to cache images within both the ImageManager and
-  // ImageCache.
+  // This MD5 is primarily used to cache images within ImageCache.
   std::string content_md5_;
+  // For SVG images, this is the hash of the SVG content or its MD5.
+  // This hash is primarily used to cache images within the ImageCache.
+  size_t cache_key_hash_ = 0;
 #endif
+  // For Data images, this is the MD5 of the Data content. For other images,
+  // this is the trimmed URL.
+  std::string cache_identifier_;
   const bool is_promise_ = false;
   std::weak_ptr<Notifier> weak_notifier_;
   std::unique_ptr<fml::OneshotTimer> frame_timer_;

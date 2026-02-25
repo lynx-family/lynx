@@ -26,8 +26,14 @@ class SVGImage : public BaseImage {
 
   explicit SVGImage(const std::string& content);
 
-  size_t GetContentHash() const { return content_hash_; }
+  void SetCacheKeyHash(size_t cache_key_hash) {
+    cache_key_hash_ = cache_key_hash;
+  }
+  size_t GetCacheKeyHash() const { return cache_key_hash_; }
 
+  void SetContentMD5(const std::string& content_md5) {
+    content_md5_ = content_md5;
+  }
   const std::string& GetContentMD5() const { return content_md5_; }
 
   int GetWidth() const override {
@@ -43,13 +49,12 @@ class SVGImage : public BaseImage {
 
  private:
   std::string content_;
-  // For SVG images, this is the hash of the SVG content.
-  // This hash is primarily used to cache images within the ImageCache.
-  size_t content_hash_ = 0;
   // For SVG images, this is the MD5 of the SVG content.
-  // This MD5 is primarily used to cache images within both the ImageManager and
-  // ImageCache.
+  // This MD5 is primarily used to cache images within ImageCache.
   std::string content_md5_;
+  // For SVG images, this is the hash of the SVG content MD5.
+  // This hash is primarily used to cache images within the ImageCache.
+  size_t cache_key_hash_ = 0;
   std::shared_ptr<SVGDom> svg_dom_;
 };
 

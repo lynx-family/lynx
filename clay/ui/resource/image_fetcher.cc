@@ -80,8 +80,11 @@ uint64_t ImageFetcher::FetchImage(const std::string& original_url, bool is_svg,
     return fetchID;
   }
 
-  size_t content_hash = std::hash<std::string>{}(trimmed_url);
-  auto image = FindImageFromCache(content_hash, trimmed_url);
+  std::string identifier = trimmed_url.compare(0, 5, "data:") == 0
+                               ? lynx::base::md5(trimmed_url)
+                               : trimmed_url;
+  size_t cache_key_hash = std::hash<std::string>{}(identifier);
+  auto image = FindImageFromCache(cache_key_hash, identifier);
   if (image) {
     callback(image->NewInstance(), true);
     return fetchID;
@@ -98,8 +101,8 @@ uint64_t ImageFetcher::FetchImage(const std::string& original_url, bool is_svg,
         return fetchID;
       }
       url_loader_map_.insert({trimmed_url, loader});
-      loader->Load(trimmed_url, [self = GetWeakPtr(), trimmed_url, callback](
-                                    const uint8_t* data, size_t size) {
+      loader->Load(trimmed_url, [self = GetWeakPtr(), trimmed_url, identifier,
+                                 callback](const uint8_t* data, size_t size) {
         if (!self) {
           callback(nullptr, false);
           return;
@@ -112,13 +115,14 @@ uint64_t ImageFetcher::FetchImage(const std::string& original_url, bool is_svg,
         auto image = SVGImage::Make(
             self->weak_factory_.GetWeakPtr(), trimmed_url,
             std::string(reinterpret_cast<const char*>(data), size));
-        self->active_image_map_.insert({trimmed_url, image});
+        image->SetCacheIdentifier(identifier);
+        self->active_image_map_.insert({identifier, image});
         self->OnFetchFinish(trimmed_url, image);
       });
     } else {
       url_loader_map_.insert({trimmed_url, nullptr});
       FetchImage(trimmed_url,
-                 [self = GetWeakPtr(), trimmed_url,
+                 [self = GetWeakPtr(), trimmed_url, identifier,
                   callback](std::shared_ptr<PlatformImage> platform_image) {
                    if (!self) {
                      callback(nullptr, false);
@@ -137,7 +141,8 @@ uint64_t ImageFetcher::FetchImage(const std::string& original_url, bool is_svg,
                      image = StaticImage::Make(self->weak_factory_.GetWeakPtr(),
                                                trimmed_url, platform_image);
                    }
-                   self->active_image_map_.insert({trimmed_url, image});
+                   image->SetCacheIdentifier(identifier);
+                   self->active_image_map_.insert({identifier, image});
                    self->OnFetchFinish(trimmed_url, image);
                  });
     }
@@ -149,16 +154,18 @@ uint64_t ImageFetcher::FetchSVGImageWithContent(const std::string& content,
                                                 const ImageCallback& callback) {
   auto fetchID = NextUniqueID();
 
-  size_t content_hash = std::hash<std::string>()(content);
   auto content_md5 = lynx::base::md5(content);
-  auto image = FindImageFromCache(content_hash, content_md5);
+  size_t cache_key_hash = std::hash<std::string>{}(content_md5);
+  auto image = FindImageFromCache(cache_key_hash, content_md5);
   if (image) {
     callback(image->NewInstance(), true);
     return fetchID;
   }
-  image = SVGImage::Make(weak_factory_.GetWeakPtr(), "", content);
-  active_image_map_.insert({content_md5, image});
-  callback(image->NewInstance(), false);
+  auto svg_image = SVGImage::Make(weak_factory_.GetWeakPtr(), "", content);
+  svg_image->SetCacheKeyHash(cache_key_hash);
+  svg_image->SetContentMD5(content_md5);
+  active_image_map_.insert({content_md5, svg_image});
+  callback(svg_image->NewInstance(), false);
   return fetchID;
 }
 
@@ -194,13 +201,13 @@ void ImageFetcher::TryCancelAsyncFetch(const std::string& original_url,
 }
 
 std::shared_ptr<BaseImage> ImageFetcher::FindImageFromCache(
-    size_t content_hash, const std::string& identifier) {
+    size_t cache_key_hash, const std::string& identifier) {
   auto it = active_image_map_.find(identifier);
   if (it != active_image_map_.end()) {
     return it->second;
   }
 
-  auto image = inactive_image_cache_->TakeImage(content_hash, identifier);
+  auto image = inactive_image_cache_->TakeImage(cache_key_hash, identifier);
   if (image) {
     active_image_map_.insert({identifier, image});
     return image;
@@ -209,9 +216,11 @@ std::shared_ptr<BaseImage> ImageFetcher::FindImageFromCache(
 }
 
 void ImageFetcher::OnImageHasNoAccessor(BaseImage* image) {
-  if (!image->GetUrl().empty()) {
-    MoveToInactiveCacheIfNeeded(std::hash<std::string>()(image->GetUrl()),
-                                image->GetUrl(), image);
+  if (!image->GetCacheIdentifier().empty()) {
+    size_t cache_key_hash =
+        std::hash<std::string>{}(image->GetCacheIdentifier());
+    MoveToInactiveCacheIfNeeded(cache_key_hash, image->GetCacheIdentifier(),
+                                image);
     return;
   }
 
@@ -220,12 +229,12 @@ void ImageFetcher::OnImageHasNoAccessor(BaseImage* image) {
     if (svg_image->GetContentMD5().empty()) {
       return;
     }
-    MoveToInactiveCacheIfNeeded(svg_image->GetContentHash(),
+    MoveToInactiveCacheIfNeeded(svg_image->GetCacheKeyHash(),
                                 svg_image->GetContentMD5(), svg_image);
   }
 }
 
-void ImageFetcher::MoveToInactiveCacheIfNeeded(size_t content_hash,
+void ImageFetcher::MoveToInactiveCacheIfNeeded(size_t cache_key_hash,
                                                const std::string& identifier,
                                                const BaseImage* image) {
   // Remove the image from the active_image_map_.
@@ -233,7 +242,7 @@ void ImageFetcher::MoveToInactiveCacheIfNeeded(size_t content_hash,
   size_t count = std::distance(range.first, range.second);
   if (count == 1) {
     // If there is only one image, then move it to inactive image cache.
-    inactive_image_cache_->StoreImage(content_hash, identifier,
+    inactive_image_cache_->StoreImage(cache_key_hash, identifier,
                                       range.first->second);
     active_image_map_.erase(range.first);
   } else {

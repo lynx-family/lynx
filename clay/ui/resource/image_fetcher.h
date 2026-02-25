@@ -54,9 +54,9 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
   void OnFetchFinish(const std::string& trimmed_url,
                      std::shared_ptr<BaseImage> image);
 
-  std::shared_ptr<BaseImage> FindImageFromCache(size_t content_hash,
+  std::shared_ptr<BaseImage> FindImageFromCache(size_t cache_key_hash,
                                                 const std::string& identifier);
-  void MoveToInactiveCacheIfNeeded(size_t content_hash,
+  void MoveToInactiveCacheIfNeeded(size_t cache_key_hash,
                                    const std::string& identifier,
                                    const BaseImage* image);
 
