@@ -544,18 +544,22 @@ ScreenshotData Rasterizer::ScreenshotLastLayerTree(
                                   background_color);
 }
 
-void Rasterizer::SetNextFrameCallback(const fml::closure& callback) {
-  next_frame_callback_ = callback;
+void Rasterizer::AddNextFrameCallback(const fml::closure& callback) {
+  next_frame_callbacks_.push_back(callback);
 }
 
 void Rasterizer::FireNextFrameCallbackIfPresent() {
-  if (!next_frame_callback_) {
+  if (next_frame_callbacks_.empty()) {
     return;
   }
-  // It is safe for the callback to set a new callback.
-  auto callback = next_frame_callback_;
-  next_frame_callback_ = nullptr;
-  callback();
+  // It is safe for callbacks to register new callbacks.
+  std::vector<fml::closure> callbacks;
+  callbacks.swap(next_frame_callbacks_);
+  for (auto& cb : callbacks) {
+    if (cb) {
+      cb();
+    }
+  }
 }
 
 void Rasterizer::SetResourceCacheMaxBytes(size_t max_bytes, bool from_user) {

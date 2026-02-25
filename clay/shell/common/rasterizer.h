@@ -233,7 +233,7 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   /// @param[in]  callback  The callback to execute when the next layer tree is
   ///                       rendered on-screen.
   ///
-  void SetNextFrameCallback(const fml::closure& callback);
+  void AddNextFrameCallback(const fml::closure& callback);
 
   //----------------------------------------------------------------------------
   /// @brief      Returns a pointer to the compositor context used by this
@@ -337,7 +337,7 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   std::unique_ptr<clay::CompositorContext> compositor_context_;
   // This is the last successfully rasterized layer tree.
   std::shared_ptr<clay::LayerTree> last_layer_tree_;
-  fml::closure next_frame_callback_;
+  std::vector<fml::closure> next_frame_callbacks_;
   bool user_override_resource_cache_bytes_;
   std::optional<size_t> max_cache_bytes_;
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
