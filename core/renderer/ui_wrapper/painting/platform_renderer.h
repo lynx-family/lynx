@@ -30,7 +30,6 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
   // provided in PlatformRendererImpl.
   virtual void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                                 bool tends_to_flatten) = 0;
-
   // Add a child renderer
   virtual void AddChild(fml::RefPtr<PlatformRenderer> child) = 0;
 

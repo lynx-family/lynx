@@ -27,9 +27,7 @@ TEST_F(DisplayListTest, EmptyDisplayList) {
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 0u);
   EXPECT_EQ(display_list_->GetContentIntDataSize(), 0u);
   EXPECT_EQ(display_list_->GetContentFloatDataSize(), 0u);
-  EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 0u);
-  EXPECT_EQ(display_list_->GetSubtreePropertyIntDataSize(), 0u);
-  EXPECT_EQ(display_list_->GetSubtreePropertyFloatDataSize(), 0u);
+  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
 }
 
 TEST_F(DisplayListTest, AddSingleOperation) {
@@ -147,14 +145,23 @@ TEST_F(DisplayListTest, ClearDisplayList) {
                               static_cast<int32_t>(0xFF0000FF));
   display_list_->AddOperation(DisplayListOpType::kDrawView, 123);
 
+  SubtreeProperty transform_prop;
+  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
+  memset(transform_prop.data.transform, 0,
+         sizeof(transform_prop.data.transform));
+  display_list_->AddSubtreeProperty(transform_prop);
+
+  SubtreeProperty opacity_prop;
+  opacity_prop.type = DisplayListSubtreePropertyOpType::kOpacity;
+  opacity_prop.data.opacity = 0.5f;
+  display_list_->AddSubtreeProperty(opacity_prop);
+
   display_list_->Clear();
 
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 0u);
   EXPECT_EQ(display_list_->GetContentIntDataSize(), 0u);
   EXPECT_EQ(display_list_->GetContentFloatDataSize(), 0u);
-  EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 0u);
-  EXPECT_EQ(display_list_->GetSubtreePropertyIntDataSize(), 0u);
-  EXPECT_EQ(display_list_->GetSubtreePropertyFloatDataSize(), 0u);
+  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
 }
 
 TEST_F(DisplayListTest, DirectArrayAccess) {
@@ -235,10 +242,13 @@ TEST_F(DisplayListTest, LargeDataOperations) {
 
 TEST_F(DisplayListTest, MixedOperationTypes) {
   display_list_->AddOperation(DisplayListOpType::kBegin, 0);
-  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kTransform,
-                              0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                              0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kClip, 1, 0.0f);
+
+  SubtreeProperty transform_prop;
+  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
+  memset(transform_prop.data.transform, 0,
+         sizeof(transform_prop.data.transform));
+  display_list_->AddSubtreeProperty(transform_prop);
+
   display_list_->AddOperation(DisplayListOpType::kText, 2, 0.0f);
   display_list_->AddOperation(DisplayListOpType::kImage, 3, 0.0f);
   display_list_->AddOperation(DisplayListOpType::kCustom, 4, 0.0f);
@@ -246,8 +256,8 @@ TEST_F(DisplayListTest, MixedOperationTypes) {
 
   // Content operations: kBegin, kText, kImage, kCustom, kEnd (5 operations)
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 5u);
-  // Subtree property operations: kTransform, kClip (2 operations)
-  EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 2u);
+  // Subtree property operations: kTransform (1 operation)
+  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
 
   // Verify content operations are correctly stored
   const int32_t* content_op_types_data = display_list_->GetContentOpTypesData();
@@ -264,13 +274,11 @@ TEST_F(DisplayListTest, MixedOperationTypes) {
             static_cast<int32_t>(DisplayListOpType::kEnd));
 
   // Verify subtree property operations are correctly stored
-  const int32_t* subtree_op_types_data =
-      display_list_->GetSubtreePropertyOpTypesData();
-  EXPECT_NE(subtree_op_types_data, nullptr);
-  EXPECT_EQ(subtree_op_types_data[0],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kTransform));
-  EXPECT_EQ(subtree_op_types_data[1],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kClip));
+  const SubtreeProperty* subtree_properties_data =
+      display_list_->GetSubtreePropertiesData();
+  EXPECT_NE(subtree_properties_data, nullptr);
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kTransform);
 }
 
 TEST_F(DisplayListTest, SubtreePropertySeparation) {
@@ -281,15 +289,15 @@ TEST_F(DisplayListTest, SubtreePropertySeparation) {
   display_list_->AddOperation(DisplayListOpType::kEnd, 0);
 
   // Add subtree property operations
-  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kTransform,
-                              1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
-                              9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f,
-                              16.0f);
-  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kClip,
-                              static_cast<int32_t>(4), 5.0f, 6.0f, 7.0f, 8.0f);
+  SubtreeProperty transform_prop;
+  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
+  for (int i = 0; i < 16; ++i) {
+    transform_prop.data.transform[i] = static_cast<float>(i + 1);
+  }
+  display_list_->AddSubtreeProperty(transform_prop);
 
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 3u);
-  EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 2u);
+  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
 
   // Verify content operations
   const int32_t* content_op_types_data = display_list_->GetContentOpTypesData();
@@ -302,29 +310,40 @@ TEST_F(DisplayListTest, SubtreePropertySeparation) {
             static_cast<int32_t>(DisplayListOpType::kEnd));
 
   // Verify subtree property operations
-  const int32_t* subtree_op_types_data =
-      display_list_->GetSubtreePropertyOpTypesData();
-  EXPECT_NE(subtree_op_types_data, nullptr);
-  EXPECT_EQ(subtree_op_types_data[0],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kTransform));
-  EXPECT_EQ(subtree_op_types_data[1],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kClip));
+  const SubtreeProperty* subtree_properties_data =
+      display_list_->GetSubtreePropertiesData();
+  EXPECT_NE(subtree_properties_data, nullptr);
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kTransform);
+
+  // Verify transform matrix values
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_FLOAT_EQ(subtree_properties_data[0].data.transform[i],
+                    static_cast<float>(i + 1));
+  }
 
   // Test fast update of subtree properties by clearing and re-adding
   display_list_->ClearSubtreeProperties();
-  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kTransform,
-                              1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
-                              9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f,
-                              16.0f);
 
-  EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 1u);
-  const int32_t* new_subtree_op_types_data =
-      display_list_->GetSubtreePropertyOpTypesData();
-  EXPECT_NE(new_subtree_op_types_data, nullptr);
-  EXPECT_EQ(new_subtree_op_types_data[0],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kTransform));
-  EXPECT_EQ(display_list_->GetSubtreePropertyIntDataSize(), 2u);
-  EXPECT_EQ(display_list_->GetSubtreePropertyFloatDataSize(), 16u);
+  SubtreeProperty new_transform_prop;
+  new_transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
+  for (int i = 0; i < 16; ++i) {
+    new_transform_prop.data.transform[i] = static_cast<float>(i + 1);
+  }
+  display_list_->AddSubtreeProperty(new_transform_prop);
+
+  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
+  const SubtreeProperty* new_subtree_properties_data =
+      display_list_->GetSubtreePropertiesData();
+  EXPECT_NE(new_subtree_properties_data, nullptr);
+  EXPECT_EQ(new_subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kTransform);
+
+  // Verify new transform matrix values
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_FLOAT_EQ(new_subtree_properties_data[0].data.transform[i],
+                    static_cast<float>(i + 1));
+  }
 
   // Content operations should remain unchanged
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 3u);
@@ -333,19 +352,22 @@ TEST_F(DisplayListTest, SubtreePropertySeparation) {
 TEST_F(DisplayListTest, ClearSubtreeProperties) {
   // Add mixed operations
   display_list_->AddOperation(DisplayListOpType::kBegin, 0);
-  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kTransform,
-                              static_cast<int32_t>(1), 2.0f);
-  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kClip,
-                              static_cast<int32_t>(3), 4.0f);
+
+  SubtreeProperty transform_prop;
+  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
+  memset(transform_prop.data.transform, 0,
+         sizeof(transform_prop.data.transform));
+  display_list_->AddSubtreeProperty(transform_prop);
+
   display_list_->AddOperation(DisplayListOpType::kEnd, 0);
 
-  EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 2u);
+  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
 
   // Clear only subtree properties
   display_list_->ClearSubtreeProperties();
 
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 2u);
-  EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 0u);
+  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
 
   // Verify content operations are preserved
   const int32_t* content_op_types_data = display_list_->GetContentOpTypesData();
@@ -360,16 +382,18 @@ TEST_F(DisplayListTest, TemplateCategorySelection) {
   // Test explicit template category specification
   display_list_->AddOperation(DisplayListOpType::kFill,
                               static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kTransform,
-                              1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
-                              9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f,
-                              16.0f);
+
+  SubtreeProperty transform_prop;
+  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
+  for (int i = 0; i < 16; ++i) {
+    transform_prop.data.transform[i] = static_cast<float>(i + 1);
+  }
+  display_list_->AddSubtreeProperty(transform_prop);
+
   display_list_->AddOperation(DisplayListOpType::kDrawView, 123);
-  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kClip, 10.0f,
-                              20.0f, 30.0f, 40.0f);
 
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 2u);
-  EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 2u);
+  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
 
   // Verify content operations
   const int32_t* content_op_types_data = display_list_->GetContentOpTypesData();
@@ -380,19 +404,15 @@ TEST_F(DisplayListTest, TemplateCategorySelection) {
             static_cast<int32_t>(DisplayListOpType::kDrawView));
 
   // Verify subtree property operations
-  const int32_t* subtree_op_types_data =
-      display_list_->GetSubtreePropertyOpTypesData();
-  EXPECT_NE(subtree_op_types_data, nullptr);
-  EXPECT_EQ(subtree_op_types_data[0],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kTransform));
-  EXPECT_EQ(subtree_op_types_data[1],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kClip));
+  const SubtreeProperty* subtree_properties_data =
+      display_list_->GetSubtreePropertiesData();
+  EXPECT_NE(subtree_properties_data, nullptr);
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kTransform);
 
   // Verify data integrity
   const int32_t* content_int_data = display_list_->GetContentIntData();
-  const int32_t* subtree_int_data = display_list_->GetSubtreePropertyIntData();
   EXPECT_NE(content_int_data, nullptr);
-  EXPECT_NE(subtree_int_data, nullptr);
 
   EXPECT_EQ(content_int_data[0], 1);  // int_count for Fill
   EXPECT_EQ(content_int_data[1], 0);  // float_count for Fill
@@ -403,13 +423,11 @@ TEST_F(DisplayListTest, TemplateCategorySelection) {
   EXPECT_EQ(content_int_data[4], 0);    // float_count for DrawView
   EXPECT_EQ(content_int_data[5], 123);  // view_id param
 
-  // Transform has 16 float parameters, no int parameters
-  EXPECT_EQ(subtree_int_data[0], 0);   // int_count for Transform
-  EXPECT_EQ(subtree_int_data[1], 16);  // float_count for Transform
-
-  // Clip has 4 float parameters, no int parameters
-  EXPECT_EQ(subtree_int_data[2], 0);  // int_count for Clip
-  EXPECT_EQ(subtree_int_data[3], 4);  // float_count for Clip
+  // Verify transform matrix values
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_FLOAT_EQ(subtree_properties_data[0].data.transform[i],
+                    static_cast<float>(i + 1));
+  }
 }
 
 TEST_F(DisplayListTest, TestMarkRootNeedClipBounds) {
@@ -418,6 +436,58 @@ TEST_F(DisplayListTest, TestMarkRootNeedClipBounds) {
   display_list_->MarkRootNeedClipBounds();
 
   EXPECT_TRUE(display_list_->RootNeedClipBounds());
+}
+
+TEST_F(DisplayListTest, AddOpacitySubtreeProperty) {
+  // Add opacity property
+  SubtreeProperty opacity_prop;
+  opacity_prop.type = DisplayListSubtreePropertyOpType::kOpacity;
+  opacity_prop.data.opacity = 0.75f;
+  display_list_->AddSubtreeProperty(opacity_prop);
+
+  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
+
+  const SubtreeProperty* subtree_properties_data =
+      display_list_->GetSubtreePropertiesData();
+  EXPECT_NE(subtree_properties_data, nullptr);
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kOpacity);
+  EXPECT_FLOAT_EQ(subtree_properties_data[0].data.opacity, 0.75f);
+}
+
+TEST_F(DisplayListTest, AddMultipleSubtreeProperties) {
+  // Add transform property
+  SubtreeProperty transform_prop;
+  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
+  for (int i = 0; i < 16; ++i) {
+    transform_prop.data.transform[i] = static_cast<float>(i);
+  }
+  display_list_->AddSubtreeProperty(transform_prop);
+
+  // Add opacity property
+  SubtreeProperty opacity_prop;
+  opacity_prop.type = DisplayListSubtreePropertyOpType::kOpacity;
+  opacity_prop.data.opacity = 0.5f;
+  display_list_->AddSubtreeProperty(opacity_prop);
+
+  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 2u);
+
+  const SubtreeProperty* subtree_properties_data =
+      display_list_->GetSubtreePropertiesData();
+  EXPECT_NE(subtree_properties_data, nullptr);
+
+  // Verify first property (transform)
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kTransform);
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_FLOAT_EQ(subtree_properties_data[0].data.transform[i],
+                    static_cast<float>(i));
+  }
+
+  // Verify second property (opacity)
+  EXPECT_EQ(subtree_properties_data[1].type,
+            DisplayListSubtreePropertyOpType::kOpacity);
+  EXPECT_FLOAT_EQ(subtree_properties_data[1].data.opacity, 0.5f);
 }
 
 }  // namespace tasm
