@@ -124,6 +124,9 @@ void PlatformRendererContext::UpdateTextBundle(int32_t id,
 }
 
 void PlatformRendererContext::DestroyTextBundle(int32_t id) {
+  if (java_ref_.IsNull()) {
+    return;
+  }
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
