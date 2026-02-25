@@ -63,6 +63,7 @@ class BASE_EXPORT NodeManager {
   LYNX_EXPORT bool SetAttribute(ArkUI_NodeHandle node,
                                 ArkUI_NodeAttributeType type,
                                 const ArkUI_AttributeItem* item);
+  LYNX_EXPORT int InvalidateAttributes(ArkUI_NodeHandle node);
   LYNX_EXPORT const ArkUI_AttributeItem* GetAttribute(
       ArkUI_NodeHandle node, ArkUI_NodeAttributeType type);
 

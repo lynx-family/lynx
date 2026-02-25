@@ -72,6 +72,7 @@ export enum LynxTrailKey {
   TRY_TO_FIX_NATIVE_WINDOW_LEAK_HARMONY_CANVAS = 'try_to_fix_native_window_leak_harmony_canvas',
   FIX_LIST_CALLBACK_LEAK_BUG = 'fix_list_callback_leak',
   ENABLE_HARMONY_NEW_IMAGE = 'enable_harmony_new_image',
+  ENABLE_HARMONY_INVALIDATE_ATTRIBUTES = 'enable_harmony_invalidate_attributes',
 }
 
 /**

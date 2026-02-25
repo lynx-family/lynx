@@ -117,6 +117,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_LIST_CALLBACK_LEAK_BUG,
     // FIXME(zhouzhitao): remove this config in the next version(remove in 3.9)
     FIX_NEW_FIXED_REMOVAL_BUG,
+    ENABLE_HARMONY_INVALIDATE_ATTRIBUTES,
     ENABLE_GLOBAL_FONT_COLLECTION,
     ENABLE_GC_ONCE_ON_IDLE,
     ENABLE_CSS_INLINE_VARIABLES,
@@ -284,6 +285,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_FETCH_API_STANDARD_STREAMING,
              "enable_fetch_api_standard_streaming"},
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
+            {Key::ENABLE_HARMONY_INVALIDATE_ATTRIBUTES,
+             "enable_harmony_invalidate_attributes"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -437,6 +440,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixRadonInlineConvertBug();
   bool FixDynamicUpdateTransitionConsumeBug();
   bool EnableFetchAPIStreamingStandard();
+  bool EnableHarmonyInvalidateAttributes();
   bool FixNewFixedRemovalBug();
 
   LynxEnv(const LynxEnv&) = delete;
