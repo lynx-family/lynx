@@ -137,7 +137,7 @@ bool LynxBinaryReader::DecodeStyleObjects() {
     DECODE_STDSTR(name);
     CSSKeyframesToken* token = new CSSKeyframesToken(parser_config);
     ERROR_UNLESS(DecodeCSSKeyframesToken(token));
-    keyframes->emplace(std::move(name), token);
+    keyframes->emplace(std::move(name), fml::AdoptRef(token));
     stream_->Seek(style_objects_section_range_.start + range.end);
   }
   // Decode fontfaces section
