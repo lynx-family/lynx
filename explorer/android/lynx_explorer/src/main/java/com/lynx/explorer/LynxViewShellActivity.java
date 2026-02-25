@@ -26,6 +26,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import com.google.android.material.appbar.AppBarLayout;
 import com.lynx.explorer.input.LynxExplorerInput;
 import com.lynx.explorer.modules.LynxSettingManager;
 import com.lynx.explorer.provider.DemoGenericResourceFetcher;
@@ -38,6 +39,7 @@ import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.TimingHandler;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
@@ -74,7 +76,10 @@ public class LynxViewShellActivity extends AppCompatActivity {
     if (url == null) {
       url = HOME_PAGE_URL;
     }
-
+    AppBarLayout appBarLayout = new AppBarLayout(this);
+    if (appBarLayout != null) {
+      LLog.d("xxx", "onCreate");
+    }
     setTopBarAppearance(url);
     mLynxContainer = findViewById(R.id.lynx_container);
 
