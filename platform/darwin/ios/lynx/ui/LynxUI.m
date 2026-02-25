@@ -1116,7 +1116,12 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 - (CGRect)getBoundingClientRectToScreen {
   if (_context.enableiOSAnimationLayerForExposure) {
     CALayer* layer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
-    return [layer convertRect:layer.bounds toLayer:nil];
+    CGRect layerBounds = layer.bounds;
+    if (isnan(layerBounds.origin.x) || isnan(layerBounds.origin.y) ||
+        isnan(layerBounds.size.width) || isnan(layerBounds.size.height)) {
+      layerBounds = self.view.bounds;
+    }
+    return [layer convertRect:layerBounds toLayer:nil];
   }
   return [self.view convertRect:self.view.bounds toView:nil];
 }
