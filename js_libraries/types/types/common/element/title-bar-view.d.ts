@@ -7,15 +7,15 @@ import { StandardProps } from '../props';
 /**
  * The title-bar-view element is similar to the app-region style in the web,
  * allowing developers to customize the window dragging area.
- * @clay_windows
- * @clay_macOS
+ * @ClayWindows
+ * @ClayMacOS
  */
 export interface TitleBarViewProps extends StandardProps {
   /**
    * When set to true, the title bar view is able to move the window when dragged.
    * @defaultValue false
-   * @clay_windows
-   * @clay_macOS
+   * @ClayWindows
+   * @ClayMacOS
    */
   'moveable'?: boolean;
 }
