@@ -87,7 +87,7 @@ ext.getFlavorNamesAndBuildTypes = { Project project ->
     // To reduce the generation of cmake scripts, the following types that will
     // not be used are excluded.
     // Notice: We can't exclude flavorNames because not all the flavors are the same in all projects.
-    if (!(runTasks.contains("release") || runTasks.contains("publish"))) {
+    if (!(runTasks.contains("release") || runTasks.contains("publish") || runTasks.contains("e2e"))) {
         buildTypes -= "release"
     }
     if (!runTasks.contains("debug")) {

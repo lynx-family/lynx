@@ -286,6 +286,7 @@ jobs:
         with:
           abi-list: x86,arm64-v8a
           build-params: -PIntegrationTest
+          build-type: e2e
 
   windows-explorer-build:
     # Disable temporarily due to flakiness
@@ -428,7 +429,7 @@ jobs:
               exit 1
           fi
           APK_PATH=${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build_temp
-          java -jar $ANDROID_HOME/build-tools/$LATEST_VERSION/lib/apksigner.jar sign --key $ESPRESSO_SIGN_KEYS_DIR/testkey.pk8 --cert $ESPRESSO_SIGN_KEYS_DIR/testkey.x509.pem  --out $APK_PATH/LynxExplorer-noasan-release-signed.apk $APK_PATH/LynxExplorer-noasan-release.apk
+          java -jar $ANDROID_HOME/build-tools/$LATEST_VERSION/lib/apksigner.jar sign --key $ESPRESSO_SIGN_KEYS_DIR/testkey.pk8 --cert $ESPRESSO_SIGN_KEYS_DIR/testkey.x509.pem  --out $APK_PATH/LynxExplorer-noasan-release-signed.apk $APK_PATH/LynxExplorer-noasan-e2e.apk
           adb install $APK_PATH/LynxExplorer-noasan-release-signed.apk
       - name: Start Appium server
         run: |
