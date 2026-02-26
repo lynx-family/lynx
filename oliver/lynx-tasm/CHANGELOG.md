@@ -1,6 +1,6 @@
 # CHANGELOG
 
-# 0.0.25
+# 0.0.26
 * fix `Module.__malloc` not found issue. #5150
 
 # 0.0.24
