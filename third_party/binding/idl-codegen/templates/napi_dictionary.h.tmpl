@@ -21,7 +21,7 @@ namespace {{member.impl_namespace}} {
 namespace lynx {
 {% if has_remote %}
 namespace binding {
-class RemoteDictionaryBuffer;
+class DictionaryBuffer;
 }  // namespace binding
 {% endif %}
 namespace {{component}} {
@@ -53,7 +53,7 @@ class {{cpp_class}}{{' : public ' + parent_cpp_class if parent_cpp_class}} {
 
   static std::unique_ptr<{{cpp_class}}> ToImpl(const Napi::Value&);
   {% if has_remote %}
-  static std::unique_ptr<{{cpp_class}}> FromRemote(binding::RemoteDictionaryBuffer& buffer);
+  static std::unique_ptr<{{cpp_class}}> From(binding::DictionaryBuffer& buffer);
   {% endif %}
 
   Napi::Object ToJsObject(Napi::Env);
