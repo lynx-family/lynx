@@ -449,6 +449,14 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     mDestroyed = true;
     mNativePtr = 0; // Clear native pointer to indicate context is destroyed
     mViewHolder.clear();
+
+    for (Object value : mExtraDatas.values()) {
+      if (value instanceof Page) {
+        ((Page) value).destroy();
+      }
+    }
+    mExtraDatas.clear();
+
     mTextMeasurer = null;
     mTextLayout = null;
     UIBody.UIBodyView root = mRootView.get();

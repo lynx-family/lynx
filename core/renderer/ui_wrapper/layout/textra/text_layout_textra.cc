@@ -53,18 +53,17 @@ TextLayoutTextra::TextLayoutTextra(intptr_t api)
 void TextLayoutTextra::ApplyTextStyle(TextElement* text_element) {
   const CSSIDBitset& property_bits = text_element->property_bits();
 
+  // process font-size by default
+  float font_size =
+      static_cast<float>(text_element->computed_css_style()->GetFontSize());
+  paragraph_builder_->SetTextStyle(kTextPropFontSize, &(font_size),
+                                   sizeof(float));
+
   auto& text_attributes =
       text_element->computed_css_style()->GetTextAttributes();
   if (text_attributes.has_value()) {
     for (CSSPropertyID id : property_bits) {
       switch (id) {
-        case kPropertyIDFontSize: {
-          float font_size = static_cast<float>(
-              text_element->computed_css_style()->GetFontSize());
-          paragraph_builder_->SetTextStyle(kTextPropFontSize, &(font_size),
-                                           sizeof(float));
-          break;
-        }
         case kPropertyIDFontWeight: {
           int fontWeight = static_cast<int>(text_attributes->font_weight);
           paragraph_builder_->SetTextStyle(kTextPropFontWeight, &(fontWeight),
@@ -141,33 +140,33 @@ void TextLayoutTextra::ApplyParagraphStyle(TextElement* text_element) {
   if (text_props) {
     if (text_props->text_max_line) {
       auto text_max_line = *text_props->text_max_line;
-      paragraph_builder_->SetTextStyle(kTextPropTextMaxLine, &(text_max_line),
-                                       sizeof(int));
+      paragraph_builder_->SetParagraphStyle(kTextPropTextMaxLine,
+                                            &(text_max_line), sizeof(int));
     }
   }
   if (props_set.Has(kPropertyIDTextOverflow)) {
     auto text_overflow = static_cast<int>(
         computed_css_style->GetTextAttributes()->text_overflow);
-    paragraph_builder_->SetTextStyle(kTextPropTextOverflow, &(text_overflow),
-                                     sizeof(int));
+    paragraph_builder_->SetParagraphStyle(kTextPropTextOverflow,
+                                          &(text_overflow), sizeof(int));
   }
   if (props_set.Has(kPropertyIDLineHeight)) {
     float line_height =
         computed_css_style->GetTextAttributes()->computed_line_height;
-    paragraph_builder_->SetTextStyle(kTextPropLineHeight, &(line_height),
-                                     sizeof(float));
+    paragraph_builder_->SetParagraphStyle(kTextPropLineHeight, &(line_height),
+                                          sizeof(float));
   }
   if (props_set.Has(kPropertyIDWhiteSpace)) {
     auto white_space =
         static_cast<int>(computed_css_style->GetTextAttributes()->white_space);
-    paragraph_builder_->SetTextStyle(kTextPropWhiteSpace, &(white_space),
-                                     sizeof(int));
+    paragraph_builder_->SetParagraphStyle(kTextPropWhiteSpace, &(white_space),
+                                          sizeof(int));
   }
   if (props_set.Has(kPropertyIDTextAlign)) {
     auto text_align =
         static_cast<int>(computed_css_style->GetTextAttributes()->text_align);
-    paragraph_builder_->SetTextStyle(kTextPropTextAlign, &(text_align),
-                                     sizeof(int));
+    paragraph_builder_->SetParagraphStyle(kTextPropTextAlign, &(text_align),
+                                          sizeof(int));
   }
 }
 
@@ -175,6 +174,7 @@ void TextLayoutTextra::BuildParagraphRecursively(Element* element) {
   if (element->is_text()) {
     // no raw-text case
     TextElement* text_element = static_cast<TextElement*>(element);
+    ApplyTextStyle(text_element);
     auto element_content = text_element->content();
     if (!element_content.empty()) {
       paragraph_builder_->AddText(element_content.c_str(),
@@ -369,11 +369,12 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
   paragraph_builder_ = api_->CreateParagraphBuilder();
 
   // Apply paragraph element's styles & props
-  ApplyTextStyle(text_element);
   ApplyParagraphStyle(text_element);
 
   // Apply inline element's styles
+  paragraph_builder_->PushTextStyle();
   BuildParagraphRecursively(text_element);
+  paragraph_builder_->PopTextStyle();
 
   auto paragraph = paragraph_builder_->BuildParagraph();
   paragraphs_.emplace(element->impl_id(), paragraph);
