@@ -7,6 +7,7 @@
 #include <stack>
 
 #include "base/include/float_comparison.h"
+#include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 
 namespace lynx {
@@ -20,6 +21,8 @@ PlatformEventTargetHelper::GetRootEventTarget() {
 fml::RefPtr<PlatformEventTarget>
 PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
     fml::RefPtr<PlatformRendererImpl> page_renderer) {
+  // TODO(hexionghui): reconstruct the event target tree only when the
+  // display list is changed.
   if (page_renderer == nullptr) {
     return nullptr;
   }
@@ -67,7 +70,9 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
           event_target->SetRendererOffsetX(renderer_offset[0]);
           event_target->SetRendererOffsetY(renderer_offset[1]);
           event_target_tree_ = event_target;
+          event_targets_.clear();
         }
+        event_targets_[sign] = event_target;
         target_stack.push(event_target);
         break;
       }
@@ -368,6 +373,46 @@ void PlatformEventTargetHelper::OffsetRect(float rect[4], float offset[2]) {
   rect[1] += offset[1];
   rect[2] += offset[0];
   rect[3] += offset[1];
+}
+
+void PlatformEventTargetHelper::InvokeMethod(
+    int32_t id, const std::string& method, const lepus::Value& params,
+    base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) {
+  if (method == "boundingClientRect") {
+    if (auto it = event_targets_.find(id); it != event_targets_.end()) {
+      auto event_target = it->second;
+      float result[4] = {0, 0, event_target->Width(), event_target->Height()};
+      ConvertRectFromTargetToRootTarget(result, event_target, result);
+
+      BASE_STATIC_STRING_DECL(kId, "id");
+      BASE_STATIC_STRING_DECL(kDataset, "dataset");
+      BASE_STATIC_STRING_DECL(kLeft, "left");
+      BASE_STATIC_STRING_DECL(kTop, "top");
+      BASE_STATIC_STRING_DECL(kRight, "right");
+      BASE_STATIC_STRING_DECL(kBottom, "bottom");
+      BASE_STATIC_STRING_DECL(kWidth, "width");
+      BASE_STATIC_STRING_DECL(kHeight, "height");
+
+      auto ret = lepus::Dictionary::Create();
+      // TODO(hexionghui): add id selector and dataset.
+      ret->SetValue(kId, base::String());
+      ret->SetValue(kDataset, lepus::Dictionary::Create());
+      ret->SetValue(kLeft, result[0]);
+      ret->SetValue(kTop, result[1]);
+      ret->SetValue(kRight, result[2]);
+      ret->SetValue(kBottom, result[3]);
+      ret->SetValue(kWidth, result[2] - result[0]);
+      ret->SetValue(kHeight, result[3] - result[1]);
+      callback(LynxGetUIResult::SUCCESS, lepus::Value(ret));
+    } else {
+      callback(LynxGetUIResult::NODE_NOT_FOUND,
+               lepus::Value("node not found: " + std::to_string(id)));
+    }
+    return;
+  }
+
+  callback(LynxGetUIResult::UNKNOWN,
+           lepus::Value("method not supported: " + method));
 }
 
 }  // namespace tasm

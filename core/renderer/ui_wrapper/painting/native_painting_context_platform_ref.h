@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_PLATFORM_REF_H_
 
 #include <memory>
+#include <string>
 
 #include "base/include/value/base_string.h"
 #include "core/public/painting_ctx_platform_impl.h"
@@ -68,6 +69,12 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   PlatformEventEmitter *GetEventEmitter();
   // Get PlatformEventTargetHelper instance.
   PlatformEventTargetHelper *GetEventTargetHelper();
+  // Reconstruct the event target tree recursively.
+  fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively();
+  // Invoke the method of the ui element.
+  void InvokeUIMethod(
+      int32_t id, const std::string &method, const lepus::Value &params,
+      base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback);
 
   bool IsNativePaintingCtxPlatformRef() override { return true; }
 
