@@ -11,6 +11,10 @@ inputs:
     description: Set project properties for gradle when building explorer
     required: false
     default: ''
+  build-type:
+    description: The build type of the explorer apk
+    required: false
+    default: 'release'
 
 runs:
   using: composite
@@ -27,11 +31,13 @@ runs:
         cd $GITHUB_WORKSPACE/lynx
         source tools/envsetup.sh
         pushd explorer/android
-        ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=perfetto -PabiList=${{ inputs.abi-list }} -no-daemon ${{ inputs.build-params }}
+        build_type='${{ inputs.build-type }}'
+        build_type_capitalized="${build_type^}"
+        ./gradlew :LynxExplorer:assembleNoasan${build_type_capitalized} -Penable_trace=perfetto -PabiList=${{ inputs.abi-list }} -no-daemon ${{ inputs.build-params }}
         popd
     - name: upload artifact
       uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
       continue-on-error: true
       with:
         name: android-lynx-explorer
-        path: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
+        path: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/${{ inputs.build-type }}/LynxExplorer-noasan-${{ inputs.build-type }}.apk'

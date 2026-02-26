@@ -42,6 +42,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
+        e2e {
+            initWith release
+            minifyEnabled false
+            signingConfig signingConfigs.release
+            matchingFallbacks = ["release"]
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
