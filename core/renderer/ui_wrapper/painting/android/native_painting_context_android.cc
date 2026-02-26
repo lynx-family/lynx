@@ -244,7 +244,22 @@ std::vector<float> NativePaintingCtxAndroid::ScrollBy(int64_t id, float width,
 
 void NativePaintingCtxAndroid::Invoke(
     int64_t id, const std::string &method, const pub::Value &params,
-    const std::function<void(int32_t, const pub::Value &)> &callback) {}
+    const std::function<void(int32_t, const pub::Value &)> &callback) {
+  const auto &lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
+  base::MoveOnlyClosure<void, int32_t, const pub::Value &> cb =
+      [callback](int32_t code, const pub::Value &data) {
+        callback(code, data);
+      };
+  // Since invokeUIMethod may not necessarily trigger the pipeline, we will
+  // temporarily use TaskRunner to throw the UI thread for execution instead of
+  // Enqueue.
+  base::UIThread::GetRunner()->PostTask([ref = platform_ref_, id, method,
+                                         params = std::move(lepus_params),
+                                         cb = std::move(cb)]() mutable {
+    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)->InvokeUIMethod(
+        id, method, params, std::move(cb));
+  });
+}
 
 int32_t NativePaintingCtxAndroid::GetTagInfo(const std::string &tag_name) {
   return view_manager_->GetTagInfo(tag_name);
