@@ -27,8 +27,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_H_
-#define SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_H_
+#ifndef THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_H_
+#define THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_H_
 
 #include <math.h>
 #include <stdint.h>
@@ -664,7 +664,7 @@ typedef void LEPUS_MarkFunc(LEPUSRuntime *rt, LEPUSValueConst val,
                             uint64_t trace_tool);
 
 typedef struct LEPUSLepusRefCallbacks {
-  LEPUSValue (*free_value)(LEPUSRuntime *rt, LEPUSValue val);
+  void (*free_value)(void *p);
   LEPUSValue (*get_property)(LEPUSContext *ctx, LEPUSValue thisObj, JSAtom prop,
                              int idx);
   size_t (*get_length)(LEPUSContext *ctx, LEPUSValue val);
@@ -685,6 +685,7 @@ typedef struct LEPUSLepusRef {
   int tag;               // lepus value tag
   void *p;               // lepus value reference
   LEPUSValue lepus_val;  // convert to lepusvalue cache, default is undefined
+  struct list_head link;
 } LEPUSLepusRef;
 
 void RegisterLepusType(LEPUSRuntime *rt, int32_t array_typeid,
@@ -1629,4 +1630,4 @@ void *LEPUS_GetGCObserver(LEPUSRuntime *rt);
 #undef lepus_unlikely
 #undef lepus_force_inline
 
-#endif  // SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_H_
+#endif  // THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_H_

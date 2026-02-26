@@ -84,7 +84,7 @@ Devtool_Native_includes =
 
 PrimJS_Qjs_Dep = [
   "PrimJS/quickjs",
-  "3.6.0-rc.0",
+  "3.8.0-alpha.0",
 ]
 Lepus_deps = [ PrimJS_Qjs_Dep ]
 

@@ -112,7 +112,6 @@ source_set("quickjs_source") {
     "src/src/inspector/debugger/debugger_breakpoint.cc",
     "src/src/inspector/debugger/debugger_callframe.cc",
     "src/src/inspector/debugger/debugger_properties.cc",
-    "src/src/inspector/debugger/debugger_queue.cc",
     "src/src/inspector/heapprofiler/edge.cc",
     "src/src/inspector/heapprofiler/entry.cc",
     "src/src/inspector/heapprofiler/gen.cc",
