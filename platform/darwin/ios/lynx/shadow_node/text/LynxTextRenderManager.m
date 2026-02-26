@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxEvent.h>
+#import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxTextLayoutSpec.h>
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxTextRenderer.h>
@@ -237,6 +239,48 @@
     [hiddenAttachments addObject:info];
   }
   renderer.attachments = hiddenAttachments;
+}
+
+- (void)dispatchLayoutEventWithRenderer:(LynxTextRenderer *)renderer
+                                   sign:(NSInteger)sign
+                           eventEmitter:(LynxEventEmitter *)eventEmitter {
+  if (!renderer || !eventEmitter) {
+    return;
+  }
+
+  LynxAttributedTextBundle *textBundle = [_attributedTextBundleDic objectForKey:@(sign)];
+  if (!textBundle || !textBundle.attributedString) {
+    return;
+  }
+
+  [self dispatchLayoutEventWithRenderer:renderer
+                             textBundle:textBundle
+                                   sign:sign
+                           eventEmitter:eventEmitter];
+}
+
+- (void)dispatchLayoutEventWithRenderer:(LynxTextRenderer *)renderer
+                             textBundle:(LynxAttributedTextBundle *)textBundle
+                                   sign:(NSInteger)sign
+                           eventEmitter:(LynxEventEmitter *)eventEmitter {
+  if (!renderer || !textBundle || !textBundle.attributedString || !eventEmitter) {
+    return;
+  }
+
+  NSDictionary *layoutInfo =
+      [LynxTextUtils computeLayoutEventInfoWithRenderer:renderer
+                                       attributedString:textBundle.attributedString
+                                             maxLineNum:textBundle.maxLineNum];
+  if (!layoutInfo) {
+    return;
+  }
+
+  LynxDetailEvent *event = [[LynxDetailEvent alloc] initWithName:@"layout"
+                                                      targetSign:sign
+                                                          detail:layoutInfo];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [eventEmitter sendCustomEvent:event];
+  });
 }
 
 @end

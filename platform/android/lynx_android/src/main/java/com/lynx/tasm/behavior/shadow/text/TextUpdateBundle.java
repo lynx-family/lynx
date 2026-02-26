@@ -20,6 +20,15 @@ public class TextUpdateBundle {
   private boolean mNeedDrawStroke;
   private CharSequence mOriginText;
 
+  // Layout event related fields for new text pipeline
+  private int mLayoutEventLineCount;
+  private int mLayoutEventEllipsisCount;
+  private int mLayoutEventTextOverflow;
+  private int mLayoutEventSpannableStringLength;
+  private float mLayoutEventTextLayoutWidth;
+  private boolean mLayoutEventContainTextSize;
+  private boolean mLayoutEventDispatched;
+
   public TextUpdateBundle(
       Layout layout, boolean containsImages, Set viewTruncatedSet, boolean isJustify) {
     mTextLayout = layout;
@@ -70,5 +79,53 @@ public class TextUpdateBundle {
 
   public void setViewTruncatedSet(Set viewTruncatedSet) {
     mViewTruncatedSet = viewTruncatedSet;
+  }
+
+  // -------- Layout event helpers (new text pipeline) --------
+
+  public void setLayoutEventParams(int textOverflow, int lineCount, int ellipsisCount,
+      int spannableStringLength, float textLayoutWidth, boolean containTextSize) {
+    mLayoutEventTextOverflow = textOverflow;
+    mLayoutEventLineCount = lineCount;
+    mLayoutEventEllipsisCount = ellipsisCount;
+    mLayoutEventSpannableStringLength = spannableStringLength;
+    mLayoutEventTextLayoutWidth = textLayoutWidth;
+    mLayoutEventContainTextSize = containTextSize;
+  }
+
+  public int getLayoutEventLineCount() {
+    return mLayoutEventLineCount;
+  }
+
+  public int getLayoutEventEllipsisCount() {
+    return mLayoutEventEllipsisCount;
+  }
+
+  public int getLayoutEventTextOverflow() {
+    return mLayoutEventTextOverflow;
+  }
+
+  public int getLayoutEventSpannableStringLength() {
+    return mLayoutEventSpannableStringLength;
+  }
+
+  public float getLayoutEventTextLayoutWidth() {
+    return mLayoutEventTextLayoutWidth;
+  }
+
+  public boolean isLayoutEventContainTextSize() {
+    return mLayoutEventContainTextSize;
+  }
+
+  public boolean hasLayoutEventParams() {
+    return mLayoutEventLineCount > 0 && mTextLayout != null;
+  }
+
+  public boolean hasDispatchedLayoutEvent() {
+    return mLayoutEventDispatched;
+  }
+
+  public void markLayoutEventDispatched() {
+    mLayoutEventDispatched = true;
   }
 }
