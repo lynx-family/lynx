@@ -1970,6 +1970,7 @@ public class com::lynx::tasm::fontface::FontFaceManager :  {
   public static FontFaceManager com.lynx.tasm.fontface.FontFaceManager.getInstance();
   public Typeface com.lynx.tasm.fontface.FontFaceManager.getFontWithSettings(FontSettingsKey key);
   public void com.lynx.tasm.fontface.FontFaceManager.putFontWithSettings(FontSettingsKey key, Typeface tf);
+  public void com.lynx.tasm.fontface.FontFaceManager.prefetchFont(final LynxContext context, final String url, @Nullable final ReadableMap params);
   public Typeface com.lynx.tasm.fontface.FontFaceManager.getTypeface(final LynxContext context, final String fontFamily, final int style, final TypefaceCache.TypefaceListener listener);
 }
 
@@ -6234,6 +6235,7 @@ public class com::lynx::jsbridge::LynxResourceModule : com.lynx.jsbridge.LynxCon
   public final String com.lynx.jsbridge.LynxResourceModule.IMAGE_TYPE IMAGE_TYPE;
   public final String com.lynx.jsbridge.LynxResourceModule.VIDEO_TYPE VIDEO_TYPE;
   public final String com.lynx.jsbridge.LynxResourceModule.AUDIO_TYPE AUDIO_TYPE;
+  public final String com.lynx.jsbridge.LynxResourceModule.FONT_TYPE FONT_TYPE;
   public final long com.lynx.jsbridge.LynxResourceModule.DEFAULT_MEDIA_SIZE DEFAULT_MEDIA_SIZE;
   public com.lynx.jsbridge.LynxResourceModule.LynxResourceModule(LynxContext context);
   public void com.lynx.jsbridge.LynxResourceModule.requestResourcePrefetchImage(final ReadableMap data, final Callback callback);

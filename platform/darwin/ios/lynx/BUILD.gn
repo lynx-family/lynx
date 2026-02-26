@@ -453,6 +453,7 @@ subspec_target("UnitTests") {
     "module/LynxExposureModuleUnitTest.h",
     "module/LynxExposureModuleUnitTest.m",
     "module/LynxHttpStreamingDelegateUnitTest.m",
+    "module/LynxResourceModuleUnitTest.m",
     "renderer/LynxContainerViewUnitTest.mm",
     "renderer/LynxDisplayListApplierUnitTest.mm",
     "renderer/LynxRendererContextUnitTest.mm",

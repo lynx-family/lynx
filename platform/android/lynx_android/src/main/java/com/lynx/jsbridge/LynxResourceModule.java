@@ -20,6 +20,7 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.fontface.FontFaceManager;
 import com.lynx.tasm.image.ImageContent;
 import com.lynx.tasm.image.model.ImageInfo;
 import com.lynx.tasm.image.model.ImageLoadListener;
@@ -43,6 +44,7 @@ public class LynxResourceModule extends LynxContextModule {
   public static final String IMAGE_TYPE = "image";
   public static final String VIDEO_TYPE = "video";
   public static final String AUDIO_TYPE = "audio";
+  public static final String FONT_TYPE = "font";
 
   public static final long DEFAULT_MEDIA_SIZE = 500 * 1024;
 
@@ -244,6 +246,10 @@ public class LynxResourceModule extends LynxContextModule {
         }
         mImagePrefetchHelper.prefetchImage(
             uri, mLynxContext.getFrescoCallerContext(), (Map<String, Object>) params);
+        break;
+      }
+      case FONT_TYPE: {
+        FontFaceManager.getInstance().prefetchFont(mLynxContext, uri, params);
         break;
       }
       case AUDIO_TYPE:

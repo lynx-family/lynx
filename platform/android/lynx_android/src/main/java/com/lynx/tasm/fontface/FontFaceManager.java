@@ -13,6 +13,7 @@ import android.util.Base64;
 import android.util.Pair;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.LynxError;
@@ -87,6 +88,95 @@ public class FontFaceManager {
     if (tf != null) {
       mFontSettingsCache.put(key, tf);
     }
+  }
+
+  /**
+   * Prefetch font with url.
+   *
+   * @param context
+   * @param url
+   * @param params
+   */
+  public void prefetchFont(
+      final LynxContext context, final String url, @Nullable final ReadableMap params) {
+    if (TextUtils.isEmpty(url)) {
+      return;
+    }
+    LynxThreadPool.getBriefIOExecutor().execute(new Runnable() {
+      @Override
+      public void run() {
+        // 1. Try Base64
+        if (url.startsWith(BASE64_SRC_PREFIX)) {
+          try {
+            Typeface typeface = loadFromBase64(context, FontFace.TYPE.URL, url);
+            if (typeface != null) {
+              cachePrefetchedTypeface(url, typeface);
+            }
+          } catch (Exception e) {
+            LLog.e(TAG, "prefetchFont base64 failed: " + e.getMessage());
+          }
+          return;
+        }
+
+        // 2. Try Generic Resource Fetcher for HTTP/HTTPS
+        if (url.startsWith(URL_HTTP_SRC_PREFIX)) {
+          com.lynx.tasm.resourceprovider.LynxResourceRequest request =
+              new com.lynx.tasm.resourceprovider.LynxResourceRequest(url,
+                  com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType
+                      .LynxResourceTypeFont);
+          LynxGenericResourceFetcher genericResourceFetcher = context.getGenericResourceFetcher();
+          if (genericResourceFetcher != null) {
+            genericResourceFetcher.fetchResource(
+                request, new com.lynx.tasm.resourceprovider.LynxResourceCallback<byte[]>() {
+                  @Override
+                  public void onResponse(
+                      com.lynx.tasm.resourceprovider.LynxResourceResponse<byte[]> response) {
+                    if (response.getState()
+                            == com.lynx.tasm.resourceprovider.LynxResourceResponse.ResponseState
+                                   .SUCCESS
+                        && null != response.getData()) {
+                      Typeface typeface =
+                          TypefaceUtils.createFromBytes(context, response.getData());
+                      if (typeface != null) {
+                        cachePrefetchedTypeface(url, typeface);
+                      }
+                    } else {
+                      // Fallback to Loader
+                      prefetchFontWithLoader(context, url);
+                    }
+                  }
+                });
+            return;
+          }
+        }
+
+        // 3. Fallback to default loader
+        prefetchFontWithLoader(context, url);
+      }
+    });
+  }
+
+  private void prefetchFontWithLoader(final LynxContext context, final String url) {
+    // Avoid running on BriefIOExecutor again if we are already there, but prefetchFont ensures it.
+    // However, LynxFontFaceLoader might do its own threading or sync IO.
+    try {
+      Typeface typeface =
+          LynxFontFaceLoader.getLoader(context).loadFontFace(context, FontFace.TYPE.URL, url);
+      if (typeface != null) {
+        cachePrefetchedTypeface(url, typeface);
+      }
+    } catch (Exception e) {
+      LLog.e(TAG, "prefetchFont with loader failed: " + e.getMessage());
+    }
+  }
+
+  private void cachePrefetchedTypeface(String url, Typeface typeface) {
+    StyledTypeface styledTypeface = new StyledTypeface(typeface);
+    String key = FontFace.TYPE.URL.name() + url;
+    synchronized (FontFaceManager.this) {
+      mCacheTypeface.put(key, styledTypeface);
+    }
+    LLog.i(TAG, "prefetchFont success: " + url);
   }
 
   public Typeface getTypeface(final LynxContext context, final String fontFamily, final int style,

@@ -4,16 +4,21 @@
 
 #import "LynxResourceModule.h"
 
+#import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceImageProtocol.h>
 #import <Lynx/LynxServiceResourceProtocol.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventWrapper.h>
+#import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxView+Internal.h>
 #import "LynxContext+Internal.h"
 #import "LynxTemplateRender+Internal.h"
 #import "LynxTraceEventDef.h"
+
+@interface LynxResourceModule () <LynxFontFaceObserver>
+@end
 
 static NSString* kDataKey = @"data";
 static NSString* kUriKey = @"uri";
@@ -26,6 +31,7 @@ static NSString* kDetailKey = @"details";
 static NSString* kImageType = @"image";
 static NSString* kAudioType = @"audio";
 static NSString* kVideoType = @"video";
+static NSString* kFontType = @"font";
 
 static NSInteger kDefaultMediaSize = 500 * 1024;
 
@@ -204,6 +210,35 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
       code = ECLynxResourceModuleImgPrefetchHelperNotExist;
       msg = @"Image prefetch service do not exist!";
     }
+  } else if ([type isEqualToString:kFontType]) {
+    NSString* fontFamily = params[@"font-family"];
+    if ([fontFamily length] == 0) {
+      fontFamily = uri;
+    }
+    LynxUIOwner* uiOwner = context_.uiOwner;
+    LynxFontFaceContext* fontFaceContext = uiOwner.fontFaceContext;
+    if (fontFaceContext) {
+      // Create a temporary context to avoid modifying the page's existing font context
+      // and to avoid potential thread-safety issues.
+      LynxFontFaceContext* tempContext = [[LynxFontFaceContext alloc] init];
+      tempContext.rootView = fontFaceContext.rootView;
+      tempContext.resourceFetcher = fontFaceContext.resourceFetcher;
+      tempContext.resourceProvider = fontFaceContext.resourceProvider;
+      tempContext.genericResourceServiceFetcher = fontFaceContext.genericResourceServiceFetcher;
+      tempContext.builderRegistedAliasFontMap = fontFaceContext.builderRegistedAliasFontMap;
+
+      NSString* src = [NSString stringWithFormat:@"url('%@')", uri];
+      LynxFontFace* fontFace = [[LynxFontFace alloc] initWithFamilyName:fontFamily
+                                                                 andSrc:src
+                                                        withLynxContext:context_];
+      [tempContext addFontFace:fontFace];
+      [[LynxFontFaceManager sharedManager] generateFontWithSize:12
+                                                         weight:UIFontWeightRegular
+                                                          style:LynxFontStyleNormal
+                                                 fontFamilyName:fontFamily
+                                                fontFaceContext:tempContext
+                                               fontFaceObserver:self];
+    }
   } else if ([type isEqualToString:kAudioType] || [type isEqualToString:kVideoType]) {
     NSString* preloadKey = params[@"preloadKey"];
     NSString* videoID = params[@"videoID"];
@@ -307,6 +342,9 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
       };
 
   [service prefetchImage:lynxUri params:params completed:requestBlock];
+}
+
+- (void)onFontFaceLoad {
 }
 
 @end
