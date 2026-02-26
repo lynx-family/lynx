@@ -292,15 +292,21 @@ void NativePaintingCtxAndroid::UpdateDisplayList(int id,
 void NativePaintingCtxAndroid::CreateImage(int id, base::String src,
                                            float width, float height,
                                            int32_t event_mask) {
-  view_manager_->CreateImage(id, src, width, height, event_mask);
+  if (view_manager_) {
+    view_manager_->CreateImage(id, src, width, height, event_mask);
+  }
 }
 
 void NativePaintingCtxAndroid::UpdateTextBundle(int id, intptr_t bundle) {
-  view_manager_->UpdateTextBundle(id, bundle);
+  if (view_manager_) {
+    view_manager_->UpdateTextBundle(id, bundle);
+  }
 }
 
 void NativePaintingCtxAndroid::DestroyTextBundle(int id) {
-  view_manager_->DestroyTextBundle(id);
+  if (view_manager_) {
+    view_manager_->DestroyTextBundle(id);
+  }
 }
 
 }  // namespace tasm
