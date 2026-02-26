@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
 
 public class TextHelper {
   static final String TAG = "TextHelper";
-  static final String EVENT_LAYOUT = "layout";
+  public static final String EVENT_LAYOUT = "layout";
   public static TextPaint newTextPaint(
       LynxContext context, TextAttributes attributes, TypefaceCache.TypefaceListener listener) {
     Typeface typefaceCache = getTypeFaceFromCache(context, attributes, listener);
@@ -594,6 +594,25 @@ public class TextHelper {
     }
 
     return event;
+  }
+
+  // New public API for Android text layout event dispatch in element layout mode.
+  // This API assumes that event binding has been checked by the caller and focuses on
+  // computing layout details and dispatching the event on the main thread.
+  public static void dispatchLayoutEvent(LynxContext context, int sign, TextUpdateBundle bundle) {
+    if (context == null || bundle == null || bundle.getTextLayout() == null
+        || bundle.hasDispatchedLayoutEvent() || !bundle.hasLayoutEventParams()) {
+      return;
+    }
+
+    LynxDetailEvent event = getTextLayoutEvent(sign, bundle.getTextLayout(),
+        bundle.getLayoutEventTextOverflow(), bundle.getLayoutEventLineCount(),
+        bundle.getLayoutEventEllipsisCount(), bundle.getLayoutEventSpannableStringLength(),
+        bundle.getLayoutEventTextLayoutWidth(), bundle.isLayoutEventContainTextSize());
+
+    bundle.markLayoutEventDispatched();
+
+    UIThreadUtils.runOnUiThread(() -> context.getEventEmitter().sendCustomEvent(event));
   }
 
   public static void dispatchLayoutEvent(TextShadowNode textShadowNode) {

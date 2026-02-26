@@ -582,98 +582,16 @@ LYNX_REGISTER_SHADOW_NODE("text")
  }
  */
 - (void)dispatchLayoutEvent {
-  if ([self.eventSet objectForKey:@"layout"] == nil || self.textRenderer.layoutManager == nil) {
+  if ([self.eventSet objectForKey:@"layout"] == nil) {
     return;
   }
-  NSLayoutManager *layoutManager = self.textRenderer.layoutManager;
-  NSMutableDictionary *layoutInfo = [NSMutableDictionary new];
-  NSMutableArray *lineInfo = [NSMutableArray new];
-  NSRange layoutGlyphRange =
-      [layoutManager glyphRangeForTextContainer:layoutManager.textContainers[0]];
 
-  __block NSInteger lineCount = 0;
-  __block NSRange lastLineGlyphRange;
-  [layoutManager enumerateLineFragmentsForGlyphRange:layoutGlyphRange
-                                          usingBlock:^(CGRect rect, CGRect usedRect,
-                                                       NSTextContainer *_Nonnull textContainer,
-                                                       NSRange glyphRange, BOOL *_Nonnull stop) {
-                                            lineCount++;
-                                            lastLineGlyphRange = glyphRange;
-                                          }];
-
-  // If the last character is a newline character, the real number of lines needs to be incremented
-  // by one.
-  if ([layoutManager truncatedGlyphRangeInLineFragmentForGlyphAtIndex:lastLineGlyphRange.location]
-          .location == NSNotFound) {
-    NSString *string = self.attrString.string;
-    if (string.length > 0 && [string characterAtIndex:string.length - 1] == '\n') {
-      lineCount++;
-    }
+  NSDictionary *layoutInfo = [LynxTextUtils computeLayoutEventInfoWithRenderer:self.textRenderer
+                                                              attributedString:self.attrString
+                                                                    maxLineNum:self.maxLineNum];
+  if (!layoutInfo) {
+    return;
   }
-
-  NSInteger actualLineCount = lineCount;
-  if (self.maxLineNum != LynxNumberNotSet && self.maxLineNum < lineCount) {
-    actualLineCount = self.maxLineNum;
-  }
-
-  __block NSInteger index = 0;
-  [layoutManager
-      enumerateLineFragmentsForGlyphRange:layoutGlyphRange
-                               usingBlock:^(CGRect rect, CGRect usedRect,
-                                            NSTextContainer *_Nonnull textContainer,
-                                            NSRange glyphRange, BOOL *_Nonnull stop) {
-                                 NSRange characterRange =
-                                     [layoutManager characterRangeForGlyphRange:glyphRange
-                                                               actualGlyphRange:nil];
-                                 NSMutableDictionary *info = [NSMutableDictionary new];
-                                 [info setObject:@(characterRange.location) forKey:@"start"];
-                                 NSInteger end = characterRange.location + characterRange.length;
-                                 NSInteger ellipsisCount = 0;
-                                 if (index == lineCount - 1) {
-                                   if (self.textRenderer.ellipsisCount != 0) {
-                                     ellipsisCount = self.textRenderer.ellipsisCount;
-                                     end = self.attrString.length;
-                                   } else {
-                                     NSRange truncatedRange = [layoutManager
-                                         truncatedGlyphRangeInLineFragmentForGlyphAtIndex:
-                                             glyphRange.location];
-                                     ellipsisCount =
-                                         [layoutManager characterRangeForGlyphRange:truncatedRange
-                                                                   actualGlyphRange:nil]
-                                             .length;
-                                   }
-                                 }
-
-                                 if (index == actualLineCount - 1 && actualLineCount < lineCount) {
-                                   ellipsisCount = self.attrString.length -
-                                                   characterRange.location - characterRange.length;
-                                   end = self.attrString.length;
-                                   *stop = YES;
-                                 }
-                                 [info setObject:@(end) forKey:@"end"];
-                                 [info setObject:@(ellipsisCount) forKey:@"ellipsisCount"];
-                                 [lineInfo addObject:info];
-
-                                 index++;
-                               }];
-
-  // Add newline info.
-  if ((NSInteger)lineInfo.count < actualLineCount) {
-    NSMutableDictionary *lastLineInfo = [NSMutableDictionary new];
-    [lastLineInfo setObject:@(self.attrString.length) forKey:@"start"];
-    [lastLineInfo setObject:@(self.attrString.length) forKey:@"end"];
-    [lastLineInfo setObject:@(0) forKey:@"ellipsisCount"];
-    [lineInfo addObject:lastLineInfo];
-  }
-
-  [layoutInfo setObject:@(actualLineCount) forKey:@"lineCount"];
-  [layoutInfo setObject:lineInfo forKey:@"lines"];
-
-  CGSize layoutSize = [self.textRenderer size];
-  NSMutableDictionary *rect = [[NSMutableDictionary alloc] init];
-  [rect setObject:@(layoutSize.width) forKey:@"width"];
-  [rect setObject:@(layoutSize.height) forKey:@"height"];
-  [layoutInfo setObject:rect forKey:@"size"];
 
   LynxDetailEvent *event = [[LynxDetailEvent alloc] initWithName:@"layout"
                                                       targetSign:[self sign]

@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxTextRenderer.h>
 #import <Lynx/LynxTextUtils.h>
 #import <NaturalLanguage/NaturalLanguage.h>
 
@@ -300,6 +301,135 @@ NSString *const RTL_MARK = @"\u200F";
       textStyle.textGradient = [[LynxConicGradient alloc] initWithArray:args];
     }
   }
+}
+
++ (NSDictionary *)computeLayoutEventInfoWithRenderer:(LynxTextRenderer *)renderer
+                                    attributedString:(NSAttributedString *)attributedString
+                                          maxLineNum:(NSInteger)maxLineNum {
+  if (!renderer || !attributedString) {
+    return nil;
+  }
+
+  NSTextStorage *textStorage = renderer.textStorage;
+  if (!textStorage) {
+    return nil;
+  }
+
+  NSLayoutManager *layoutManager = textStorage.layoutManagers.firstObject;
+  NSTextContainer *textContainer = layoutManager.textContainers.firstObject;
+  if (!layoutManager || !textContainer) {
+    return nil;
+  }
+
+  NSRange layoutGlyphRange =
+      [layoutManager glyphRangeForCharacterRange:NSMakeRange(0, textStorage.length)
+                            actualCharacterRange:nil];
+
+  __block NSInteger lineCount = 0;
+  __block NSRange lastLineGlyphRange = {0, 0};
+  [layoutManager enumerateLineFragmentsForGlyphRange:layoutGlyphRange
+                                          usingBlock:^(CGRect rect, CGRect usedRect,
+                                                       NSTextContainer *_Nonnull container,
+                                                       NSRange glyphRange, BOOL *_Nonnull stop) {
+                                            lineCount++;
+                                            lastLineGlyphRange = glyphRange;
+                                          }];
+
+  NSMutableDictionary *layoutInfo = [NSMutableDictionary new];
+
+  if (lineCount == 0) {
+    layoutInfo[@"lineCount"] = @(0);
+    layoutInfo[@"lines"] = @[];
+
+    CGSize layoutSize = renderer.size;
+    NSMutableDictionary *sizeDict = [NSMutableDictionary new];
+    sizeDict[@"width"] = @(layoutSize.width);
+    sizeDict[@"height"] = @(layoutSize.height);
+    layoutInfo[@"size"] = sizeDict;
+
+    return layoutInfo;
+  }
+
+  NSRange truncatedRangeForLastLine =
+      [layoutManager truncatedGlyphRangeInLineFragmentForGlyphAtIndex:lastLineGlyphRange.location];
+  if (truncatedRangeForLastLine.location == NSNotFound) {
+    NSString *string = attributedString.string;
+    if (string.length > 0 && [string characterAtIndex:string.length - 1] == '\n') {
+      lineCount++;
+    }
+  }
+
+  NSInteger actualLineCount = lineCount;
+  if (maxLineNum > 0 && maxLineNum < lineCount) {
+    actualLineCount = maxLineNum;
+  }
+
+  NSMutableArray *lineInfo = [NSMutableArray new];
+  __block NSInteger index = 0;
+  [layoutManager
+      enumerateLineFragmentsForGlyphRange:layoutGlyphRange
+                               usingBlock:^(CGRect rect, CGRect usedRect,
+                                            NSTextContainer *_Nonnull container, NSRange glyphRange,
+                                            BOOL *_Nonnull stop) {
+                                 NSRange characterRange =
+                                     [layoutManager characterRangeForGlyphRange:glyphRange
+                                                               actualGlyphRange:nil];
+                                 NSMutableDictionary *info = [NSMutableDictionary new];
+                                 NSInteger start = characterRange.location;
+                                 NSInteger end = characterRange.location + characterRange.length;
+                                 NSInteger ellipsisCount = 0;
+
+                                 if (index == lineCount - 1) {
+                                   if (renderer.ellipsisCount != 0) {
+                                     ellipsisCount = renderer.ellipsisCount;
+                                     end = attributedString.length;
+                                   } else {
+                                     NSRange truncatedRange = [layoutManager
+                                         truncatedGlyphRangeInLineFragmentForGlyphAtIndex:
+                                             glyphRange.location];
+                                     if (truncatedRange.location != NSNotFound) {
+                                       ellipsisCount =
+                                           [layoutManager characterRangeForGlyphRange:truncatedRange
+                                                                     actualGlyphRange:nil]
+                                               .length;
+                                     }
+                                   }
+                                 }
+
+                                 if (index == actualLineCount - 1 && actualLineCount < lineCount) {
+                                   ellipsisCount = attributedString.length -
+                                                   characterRange.location - characterRange.length;
+                                   end = attributedString.length;
+                                   *stop = YES;
+                                 }
+
+                                 info[@"start"] = @(start);
+                                 info[@"end"] = @(end);
+                                 info[@"ellipsisCount"] = @(ellipsisCount);
+                                 [lineInfo addObject:info];
+
+                                 index++;
+                               }];
+
+  if ((NSInteger)lineInfo.count < actualLineCount) {
+    NSMutableDictionary *lastLineInfo = [NSMutableDictionary new];
+    NSInteger length = attributedString.length;
+    lastLineInfo[@"start"] = @(length);
+    lastLineInfo[@"end"] = @(length);
+    lastLineInfo[@"ellipsisCount"] = @(0);
+    [lineInfo addObject:lastLineInfo];
+  }
+
+  layoutInfo[@"lineCount"] = @(actualLineCount);
+  layoutInfo[@"lines"] = lineInfo;
+
+  CGSize layoutSize = renderer.size;
+  NSMutableDictionary *sizeDict = [NSMutableDictionary new];
+  sizeDict[@"width"] = @(layoutSize.width);
+  sizeDict[@"height"] = @(layoutSize.height);
+  layoutInfo[@"size"] = sizeDict;
+
+  return layoutInfo;
 }
 
 @end

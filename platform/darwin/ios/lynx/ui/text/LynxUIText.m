@@ -45,6 +45,7 @@
   BOOL _isHasSubSpan;
   BOOL _isDirty;
   BOOL _textGradientOptExperiment;
+  BOOL _didDispatchLayoutEvent;
 }
 
 #if LYNX_LAZY_LOAD
@@ -118,7 +119,16 @@ LYNX_PROPS_GROUP_DECLARE(
                  margin:(UIEdgeInsets)margin
     withLayoutAnimation:(BOOL)with {
   if ([self.context.uiOwner isLayoutInElementModeOn]) {
-    [self onReceiveUIOperation:[self.context.uiOwner.textRenderManager takeTextRender:self.sign]];
+    LynxTextRenderer *renderer = [self.context.uiOwner.textRenderManager takeTextRender:self.sign];
+    [self onReceiveUIOperation:renderer];
+    if (renderer && !_didDispatchLayoutEvent && [self.eventSet objectForKey:@"layout"] &&
+        self.context.eventEmitter) {
+      [self.context.uiOwner.textRenderManager
+          dispatchLayoutEventWithRenderer:renderer
+                                     sign:self.sign
+                             eventEmitter:self.context.eventEmitter];
+      _didDispatchLayoutEvent = YES;
+    }
   }
   [super updateFrame:frame
               withPadding:padding
@@ -165,9 +175,13 @@ LYNX_PROPS_GROUP_DECLARE(
 
 - (void)onReceiveUIOperation:(id)value {
   if (value && [value isKindOfClass:LynxTextRenderer.class]) {
+    LynxTextRenderer *renderer = (LynxTextRenderer *)value;
+    if (renderer != _renderer) {
+      _didDispatchLayoutEvent = NO;
+    }
     _isHasSubSpan = false;
     _isDirty = true;
-    _renderer = value;
+    _renderer = renderer;
     // TODO: remove this config after experiment on stability.
     _renderer.isGradientOpt = _textGradientOptExperiment;
 

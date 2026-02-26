@@ -3932,6 +3932,7 @@ public class LynxTextRenderManager : NSObject {
   public void LynxTextRenderManager::putAttributedTextBundle:textBundle:(NSInteger sign,[textBundle] LynxAttributedTextBundle *textBundle);
   public NSDictionary * LynxTextRenderManager::getInlineElementOffsetDic:(NSInteger sign);
   public void LynxTextRenderManager::releaseTextRender:(NSInteger sign);
+  public void LynxTextRenderManager::dispatchLayoutEventWithRenderer:sign:eventEmitter:(LynxTextRenderer *renderer,[sign] NSInteger sign,[eventEmitter] LynxEventEmitter *eventEmitter);
 }
 
 public class LynxTextShadowNode : LynxBaseTextShadowNode, <LynxCustomMeasureDelegate> {
@@ -3999,6 +4000,7 @@ public class LynxTextUtils : NSObject {
   public CGFloat LynxTextUtils::alignInlineNodeInVertical:withLineHeight:withAttachmentHeight:withAttachmentYPosition:(LynxVerticalAlign verticalAlign,[withLineHeight] CGFloat lineFragmentHeight,[withAttachmentHeight] CGFloat attachmentHeight,[withAttachmentYPosition] CGFloat attachmentYPosition);
   public NSInteger LynxTextUtils::convertLynxTextDecorationStyle:(NSInteger decorationStyle);
   public void LynxTextUtils::setLynxTextGradient:withGradient:(LynxTextStyle *_Nonnull textStyle,[withGradient] NSArray *_Nullable value);
+  public NSDictionary *_Nullable LynxTextUtils::computeLayoutEventInfoWithRenderer:attributedString:maxLineNum:(LynxTextRenderer *_Nonnull renderer,[attributedString] NSAttributedString *_Nonnull attributedString,[maxLineNum] NSInteger maxLineNum);
 }
 
 public class LynxTextView : UIView {
