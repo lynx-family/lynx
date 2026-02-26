@@ -739,9 +739,9 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
     return contain;
   }
 
-  CGPoint offset = self.frame.origin;
-  CGPoint newPoint = CGPointMake(point.x + self.contentOffset.x - offset.x - [self getTransationX],
-                                 point.y + self.contentOffset.y - offset.y - [self getTransationY]);
+  CGPoint offset = [self getHitTestFrame].origin;
+  CGPoint newPoint = CGPointMake(point.x + self.contentOffset.x - offset.x,
+                                 point.y + self.contentOffset.y - offset.y);
   for (LynxUI* ui in self.children) {
     if ([ui shouldHitTest:newPoint withEvent:nil]) {
       contain = contain || [ui containsPoint:newPoint];
@@ -751,8 +751,9 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 }
 
 - (CGPoint)getHitTestPoint:(CGPoint)inPoint {
-  return CGPointMake(inPoint.x + self.contentOffset.x - self.getTransationX - self.frame.origin.x,
-                     inPoint.y + self.contentOffset.y - self.getTransationY - self.frame.origin.y);
+  CGPoint offset = [self getHitTestFrame].origin;
+  return CGPointMake(inPoint.x + self.contentOffset.x - offset.x,
+                     inPoint.y + self.contentOffset.y - offset.y);
 }
 
 - (CGRect)getHitTestFrameWithFrame:(CGRect)frame {
@@ -778,6 +779,20 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 }
 
 - (CGRect)getHitTestFrame {
+  CGRect frame = CGRectZero;
+
+  if (_context.enableEventRefactor) {
+    frame = self.view.bounds;
+    if (frame.size.width + _hitSlopLeft + _hitSlopRight >= CGFLOAT_EPSILON &&
+        frame.size.height + _hitSlopTop + _hitSlopBottom >= CGFLOAT_EPSILON) {
+      frame.origin.x -= _hitSlopLeft;
+      frame.origin.y -= _hitSlopTop;
+      frame.size.width += _hitSlopLeft + _hitSlopRight;
+      frame.size.height += _hitSlopTop + _hitSlopBottom;
+    }
+    return frame;
+  }
+
   return [self getHitTestFrameWithFrame:self.frame];
 }
 
@@ -3635,20 +3650,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 }
 
 - (BOOL)containsPoint:(CGPoint)point {
-  CGRect frame = CGRectZero;
-  if (_context.enableEventRefactor) {
-    frame = self.view.bounds;
-    if (frame.size.width + _hitSlopLeft + _hitSlopRight >= CGFLOAT_EPSILON &&
-        frame.size.height + _hitSlopTop + _hitSlopBottom >= CGFLOAT_EPSILON) {
-      frame.origin.x -= _hitSlopLeft;
-      frame.origin.y -= _hitSlopTop;
-      frame.size.width += _hitSlopLeft + _hitSlopRight;
-      frame.size.height += _hitSlopTop + _hitSlopBottom;
-    }
-  } else {
-    frame = [self getHitTestFrame];
-  }
-  return [self containsPoint:point inHitTestFrame:frame];
+  return [self containsPoint:point inHitTestFrame:[self getHitTestFrame]];
 }
 
 - (nullable NSDictionary<NSString*, LynxEventSpec*>*)eventSet {
