@@ -129,7 +129,8 @@ void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
   // TBD
 }
 
-void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height) {
+void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height,
+                                          int32_t event_mask) {
   // TODO: impl this function later.
 }
 

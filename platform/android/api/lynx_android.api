@@ -5567,6 +5567,8 @@ public class com::lynx::tasm::service::LynxImageInfo :  {
 
 public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.Callback {
   public final String com.lynx.tasm.behavior.ui.image.LynxImageManager.TAG TAG;
+  public final int com.lynx.tasm.behavior.ui.image.LynxImageManager.kFlagImageLoadEvent kFlagImageLoadEvent;
+  public final int com.lynx.tasm.behavior.ui.image.LynxImageManager.kFlagImageErrorEvent kFlagImageErrorEvent;
   public final String com.lynx.tasm.behavior.ui.image.LynxImageManager.EVENT_LOAD EVENT_LOAD;
   public final String com.lynx.tasm.behavior.ui.image.LynxImageManager.EVENT_ERROR EVENT_ERROR;
   public com.lynx.tasm.behavior.ui.image.LynxImageManager.LynxImageManager(LynxContext context);
@@ -5596,6 +5598,8 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setLynxBaseUI(LynxBaseUI ui);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setViewInfo(ViewInfo viewInfo);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setView(View view);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setEventMask(int eventMask);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setFallbackSign(int sign);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.updatePropertiesInterval(ReadableMap props);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.pauseAnimation(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.resumeAnimation(ReadableMap params, Callback callback);
@@ -8314,7 +8318,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererAttributes(int sign, PropBundle propBundle);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformExtraData(int sign, Object extraData);
   public LynxImageManager com.lynx.tasm.behavior.render.PlatformRendererContext.getImage(int sign);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height, int eventMask);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updateTextBundle(int sign, long textBundle);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyTextBundle(final int sign);
