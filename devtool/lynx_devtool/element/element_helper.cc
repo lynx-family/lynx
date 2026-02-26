@@ -625,10 +625,12 @@ Json::Value ElementHelper::GetInheritedCSSRulesOfNode(Element* ptr) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(ptr, "ptr is null", res);
   Json::Value content(Json::ValueType::objectValue);
   Element* parent_ptr = ptr->parent();
-  while (parent_ptr != nullptr && ElementInspector::HasDataModel(parent_ptr)) {
-    content["inlineStyle"] = GetInlineStyleOfNode(parent_ptr);
-    content["matchedCSSRules"] = GetMatchedCSSRulesOfNode(parent_ptr);
-    res.append(content);
+  while (parent_ptr != nullptr) {
+    if (ElementInspector::HasDataModel(parent_ptr)) {
+      content["inlineStyle"] = GetInlineStyleOfNode(parent_ptr);
+      content["matchedCSSRules"] = GetMatchedCSSRulesOfNode(parent_ptr);
+      res.append(content);
+    }
     parent_ptr = parent_ptr->parent();
   }
   return res;
