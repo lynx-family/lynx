@@ -52,7 +52,8 @@ class PlatformRendererContext {
   // Register/unregister PlatformRendererAndroid instances
   void RegisterPlatformRenderer(int32_t id, PlatformRendererAndroid* renderer);
   void UnregisterPlatformRenderer(int32_t id);
-  void CreateImage(int32_t id, base::String src, float width, float height);
+  void CreateImage(int32_t id, base::String src, float width, float height,
+                   int32_t event_mask = 0);
   void DestroyImage(int32_t id);
 
   void UpdateTextBundle(int32_t id, intptr_t text_bundle);

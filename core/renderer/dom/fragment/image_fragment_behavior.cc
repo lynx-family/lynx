@@ -1,15 +1,42 @@
 // Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
 
+#include "base/include/value/base_string.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/starlight/types/layout_result.h"
 
 namespace lynx::tasm {
+
+int32_t ImageFragmentBehavior::ComputeEventMask() const {
+  int32_t event_mask = 0;
+  auto* element = fragment_->element();
+  if (!element) {
+    return event_mask;
+  }
+
+  // Check for "load" event in static_events and lepus_events
+  const auto& static_events = element->event_map();
+  const auto& lepus_events = element->lepus_event_map();
+
+  BASE_STATIC_STRING_DECL(kLoadEvent, "load");
+  BASE_STATIC_STRING_DECL(kErrorEvent, "error");
+
+  if (static_events.find(kLoadEvent) != static_events.end() ||
+      lepus_events.find(kLoadEvent) != lepus_events.end()) {
+    event_mask |= kFlagImageLoadEvent;
+  }
+
+  if (static_events.find(kErrorEvent) != static_events.end() ||
+      lepus_events.find(kErrorEvent) != lepus_events.end()) {
+    event_mask |= kFlagImageErrorEvent;
+  }
+
+  return event_mask;
+}
 
 void ImageFragmentBehavior::OnUpdateLayout(
     const LayoutInfoForDraw& layout_info) {
@@ -18,9 +45,13 @@ void ImageFragmentBehavior::OnUpdateLayout(
 
   if (image_url_ != current_src) {
     image_url_ = current_src;
-    painting_context_->CreateImage(fragment_->id(), image_url_,
-                                   layout_info.GetContentBoxWidth(),
-                                   layout_info.GetContentBoxHeight());
+    // Lazily compute event mask on first use, then cache it.
+    if (event_mask_ < 0) {
+      event_mask_ = ComputeEventMask();
+    }
+    painting_context_->CreateImage(
+        fragment_->id(), image_url_, layout_info.GetContentBoxWidth(),
+        layout_info.GetContentBoxHeight(), event_mask_);
   }
 }
 
