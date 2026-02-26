@@ -41,12 +41,17 @@ void ElementManagerDelegateImpl::DidFrameBundleLoaded(
   auto frame_element_data = std::make_shared<FrameElementData>(
       callback_info.component_url, std::move(bundle), callback_info.error_code,
       callback_info.error_msg);
-  for (FrameElement *element : frame_element_set_) {
-    if (element->DidBundleLoaded(frame_element_data)) {
-      frame_element_set_.erase(element);
-      break;
+
+  for (auto it = frame_element_set_.begin(); it != frame_element_set_.end();) {
+    FrameElement *element = *it;
+    if (element->GetSrc() == frame_element_data->src &&
+        element->DidBundleLoaded(frame_element_data)) {
+      it = frame_element_set_.erase(it);
+    } else {
+      ++it;
     }
   }
+
   if (callback_info.Success() && callback_info.bundle) {
     frame_bundles_.try_emplace(frame_element_data->src,
                                std::move(frame_element_data));
