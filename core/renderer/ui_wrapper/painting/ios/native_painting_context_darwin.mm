@@ -135,7 +135,8 @@ void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
   // TBD
 }
 
-void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height) {
+void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height,
+                                          int32_t event_mask) {
   LynxURL *sourceUrl = [[LynxURL alloc] init];
   sourceUrl.url = [[NSURL alloc] initWithString:[[NSString alloc] initWithUTF8String:src.c_str()]];
   sourceUrl.imageSize = CGSizeMake(width, height);

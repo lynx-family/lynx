@@ -22,8 +22,8 @@ class NativePaintingContext {
       int id, const base::String& tag_name,
       const fml::RefPtr<PropBundle>& init_data) = 0;
   virtual void UpdateDisplayList(int id, DisplayList list) = 0;
-  virtual void CreateImage(int id, base::String src, float width,
-                           float height) = 0;
+  virtual void CreateImage(int id, base::String src, float width, float height,
+                           int32_t event_mask = 0) = 0;
   virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
   virtual void DestroyTextBundle(int id) = 0;
 };

@@ -72,6 +72,9 @@ import org.json.JSONObject;
 public class LynxImageManager implements Drawable.Callback {
   public static final String TAG = "LynxImageManager";
 
+  public static final int kFlagImageLoadEvent = 1;
+  public static final int kFlagImageErrorEvent = 1 << 1;
+
   private long dirtyFlags = 0;
 
   private static final long SRC_CHANGED = 1 << 1;
@@ -203,6 +206,9 @@ public class LynxImageManager implements Drawable.Callback {
   private boolean mEnableOnLoad;
 
   private boolean mEnableOnError;
+
+  private int mEventMask = -1;
+  private int mFallbackSign = -1;
 
   private OptionalBool mSrcRedirectCheckResult = OptionalBool.UNDEFINED;
   private OptionalBool mPlaceHolderRedirectCheckResult = OptionalBool.UNDEFINED;
@@ -585,6 +591,35 @@ public class LynxImageManager implements Drawable.Callback {
 
   public void setView(View view) {
     mView = view;
+  }
+
+  public void setEventMask(int eventMask) {
+    mEventMask = eventMask;
+  }
+
+  public void setFallbackSign(int sign) {
+    mFallbackSign = sign;
+  }
+
+  private int getEventSign() {
+    if (mUI != null) {
+      return mUI.getSign();
+    }
+    return mFallbackSign;
+  }
+
+  private boolean shouldEmitLoadEvent() {
+    if (mEventMask >= 0) {
+      return (mEventMask & kFlagImageLoadEvent) != 0;
+    }
+    return mEnableOnLoad;
+  }
+
+  private boolean shouldEmitErrorEvent() {
+    if (mEventMask >= 0) {
+      return (mEventMask & kFlagImageErrorEvent) != 0;
+    }
+    return mEnableOnError;
   }
 
   void setIsPixelated(boolean isPixelated) {
@@ -1253,14 +1288,15 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   private void sendCustomEvent(String eventName) {
-    if (mContext != null && mUI != null) {
-      LynxDetailEvent event = new LynxDetailEvent(mUI.getSign(), eventName);
+    int sign = getEventSign();
+    if (mContext != null && sign >= 0) {
+      LynxDetailEvent event = new LynxDetailEvent(sign, eventName);
       mContext.getEventEmitter().sendCustomEvent(event);
     }
   }
 
   protected void onImageLoadSuccess(int width, int height) {
-    if (mEnableOnLoad) {
+    if (shouldEmitLoadEvent()) {
       sendLoadEvent(width, height);
     }
   }
@@ -1270,8 +1306,9 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   private void sendLoadEvent(int width, int height) {
-    if (mContext != null && mUI != null && !mEnableReportInfo) {
-      LynxDetailEvent event = new LynxDetailEvent(mUI.getSign(), EVENT_LOAD);
+    int sign = getEventSign();
+    if (mContext != null && sign >= 0 && !mEnableReportInfo) {
+      LynxDetailEvent event = new LynxDetailEvent(sign, EVENT_LOAD);
       event.addDetail("height", height);
       event.addDetail("width", width);
       mContext.getEventEmitter().sendCustomEvent(event);
@@ -1279,8 +1316,9 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   private void sendLoadWithReportInfo(JSONObject monitorInfo) {
-    if (mContext != null && mUI != null && mEnableReportInfo && monitorInfo != null) {
-      LynxDetailEvent event = new LynxDetailEvent(mUI.getSign(), EVENT_LOAD);
+    int sign = getEventSign();
+    if (mContext != null && sign >= 0 && mEnableReportInfo && monitorInfo != null) {
+      LynxDetailEvent event = new LynxDetailEvent(sign, EVENT_LOAD);
       Iterator<String> keys = monitorInfo.keys();
       while (keys.hasNext()) {
         String key = keys.next();
@@ -1306,15 +1344,24 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   private void handlerFailure(LynxError lynxError, int categorizedCode, int imageErrorCode) {
-    if (mContext != null && mUI != null) {
+    int sign = getEventSign();
+    if (mContext == null || sign < 0) {
+      return;
+    }
+
+    if (mUI != null) {
       lynxError.addCustomInfo("node_index", Integer.toString(mUI.getNodeIndex()));
-      if (mEnableOnError) {
-        LynxDetailEvent event = new LynxDetailEvent(mUI.getSign(), EVENT_ERROR);
-        event.addDetail("errMsg", lynxError.getSummaryMessage() + ": " + lynxError.getRootCause());
-        event.addDetail(ImageErrorCodeUtils.LYNX_IMAGE_CATEGORIZED_CODE_KEY, categorizedCode);
-        event.addDetail(ImageErrorCodeUtils.LYNX_IMAGE_ERROR_CODE_KEY, imageErrorCode);
-        mContext.getEventEmitter().sendCustomEvent(event);
-      }
+    }
+
+    if (shouldEmitErrorEvent()) {
+      LynxDetailEvent event = new LynxDetailEvent(sign, EVENT_ERROR);
+      event.addDetail("errMsg", lynxError.getSummaryMessage() + ": " + lynxError.getRootCause());
+      event.addDetail(ImageErrorCodeUtils.LYNX_IMAGE_CATEGORIZED_CODE_KEY, categorizedCode);
+      event.addDetail(ImageErrorCodeUtils.LYNX_IMAGE_ERROR_CODE_KEY, imageErrorCode);
+      mContext.getEventEmitter().sendCustomEvent(event);
+    }
+
+    if (mUI != null) {
       lynxError.addCustomInfo(
           LynxError.LYNX_ERROR_KEY_IMAGE_CATEGORIZED_CODE, String.valueOf(categorizedCode));
       mContext.reportResourceError(mSrc, "image", lynxError);
