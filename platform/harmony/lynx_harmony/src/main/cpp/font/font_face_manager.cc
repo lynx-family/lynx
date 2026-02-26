@@ -89,13 +89,14 @@ void FontFaceManager::LoadFontWithUrl(int sign, const std::string& font_family,
   } else if (type == FontFace::Type::URL) {
     const auto& font_face_cache = GetFontFaceCache();
     std::vector<uint8_t> cached_data;
-    if (!node_owner_ ||
-        font_face_cache.GetFontCache(font_family, cached_data)) {
+    bool is_data_uri = base::DataURIUtil::IsDataURI(src);
+    if (!is_data_uri &&
+        (!node_owner_ || font_face_cache.GetFontCache(src, cached_data))) {
       font_callback(font_family, 0, cached_data, cached_data.size());
       return;
     }
 
-    if (base::DataURIUtil::IsDataURI(src)) {
+    if (is_data_uri) {
       // FIXME(linxs): to be determined later, is it necessary to post decode
       // to async thread?
       std::vector<uint8_t> font_data;
@@ -105,7 +106,6 @@ void FontFaceManager::LoadFontWithUrl(int sign, const std::string& font_family,
             return reinterpret_cast<char*>(font_data.data());
           });
       font_callback(font_family, 0, font_data, decoded_bas64_length);
-      GetFontFaceCache().CacheFont(font_family, std::move(font_data));
       return;
     }
 
@@ -122,7 +122,7 @@ void FontFaceManager::LoadFontWithUrl(int sign, const std::string& font_family,
     auto request = pub::LynxResourceRequest{src, pub::LynxResourceType::kFont};
     resource_loader->LoadResource(
         request,
-        [sign, font_family, font_callback = std::move(font_callback),
+        [sign, font_family, src, font_callback = std::move(font_callback),
          weak_self = std::weak_ptr<FontFaceManager>(shared_from_this())](
             pub::LynxResourceResponse& response) mutable {
           auto shared_self = weak_self.lock();
@@ -131,7 +131,7 @@ void FontFaceManager::LoadFontWithUrl(int sign, const std::string& font_family,
             return;
           }
 
-          auto task = [shared_self, sign, font_family,
+          auto task = [shared_self, sign, font_family, src,
                        font_callback = std::move(font_callback),
                        response]() mutable {
             if (response.Success() && !response.data.empty()) {
@@ -140,7 +140,7 @@ void FontFaceManager::LoadFontWithUrl(int sign, const std::string& font_family,
                               response.data.size());
               }
               auto& font_face_cache = shared_self->GetFontFaceCache();
-              font_face_cache.CacheFont(font_family, std::move(response.data));
+              font_face_cache.CacheFont(src, std::move(response.data));
               // mark other shadowNodes dirty
               const auto& it =
                   shared_self->font_family_pending_shadow_node_.find(
