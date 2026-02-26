@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_DOM_FRAGMENT_EVENT_PLATFORM_EVENT_TARGET_HELPER_H_
 #define CORE_RENDERER_DOM_FRAGMENT_EVENT_PLATFORM_EVENT_TARGET_HELPER_H_
 
+#include <string>
+
 #include "core/renderer/dom/fragment/event/platform_event_target.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
@@ -67,9 +69,16 @@ class PlatformEventTargetHelper {
 
   void OffsetRect(float rect[4], float offset[2]);
 
+  void InvokeMethod(
+      int32_t id, const std::string& method, const lepus::Value& params,
+      base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+
  private:
   // the root node of the EventTarget Tree reconstructed from the DisplayList.
   fml::RefPtr<PlatformEventTarget> event_target_tree_{nullptr};
+  // map from id to the EventTarget.
+  base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformEventTarget>, 64>
+      event_targets_;
 };
 
 }  // namespace tasm

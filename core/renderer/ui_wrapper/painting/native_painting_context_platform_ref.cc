@@ -125,14 +125,10 @@ void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
 
 bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
     int int_event_data[], float float_event_data[]) {
-  auto page_renderer = renderers_.find(kRootId);
-  if (page_renderer == renderers_.end() || page_renderer->second == nullptr) {
+  auto event_target_tree = ReconstructEventTargetTreeRecursively();
+  if (event_target_tree == nullptr) {
     return false;
   }
-  auto event_target_tree =
-      event_target_helper_->ReconstructEventTargetTreeRecursively(
-          fml::RefPtr<PlatformRendererImpl>(static_cast<PlatformRendererImpl *>(
-              page_renderer->second.get())));
   return event_handler_->OnInputEvent(event_target_tree, int_event_data,
                                       float_event_data);
 }
@@ -171,6 +167,17 @@ NativePaintingCtxPlatformRef::GetEventTargetHelper() {
   return event_target_helper_.get();
 }
 
+fml::RefPtr<PlatformEventTarget>
+NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively() {
+  auto page_renderer = renderers_.find(kRootId);
+  if (page_renderer == renderers_.end() || page_renderer->second == nullptr) {
+    return nullptr;
+  }
+  return event_target_helper_->ReconstructEventTargetTreeRecursively(
+      fml::RefPtr<PlatformRendererImpl>(
+          static_cast<PlatformRendererImpl *>(page_renderer->second.get())));
+}
+
 void NativePaintingCtxPlatformRef::UpdateAttributes(
     int id, const fml::RefPtr<PropBundle> &attributes, bool tend_to_flatten) {
   auto it = renderers_.find(id);
@@ -178,6 +185,35 @@ void NativePaintingCtxPlatformRef::UpdateAttributes(
     return;
   }
   it->second->UpdateAttributes(attributes, tend_to_flatten);
+}
+
+void NativePaintingCtxPlatformRef::InvokeUIMethod(
+    int32_t id, const std::string &method, const lepus::Value &params,
+    base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback) {
+  base::MoveOnlyClosure<void, int32_t, const lepus::Value &> cb =
+      [callback = std::move(callback)](int32_t code, const lepus::Value &data) {
+        callback(code, PubLepusValue(data));
+      };
+
+  // Invoke ui method on the event target.
+  if (method == "boundingClientRect") {
+    if (ReconstructEventTargetTreeRecursively() == nullptr) {
+      cb(LynxGetUIResult::UNKNOWN,
+         lepus::Value("failed to reconstruct event target tree"));
+      return;
+    }
+    if (params.IsJSValue()) {
+      event_target_helper_->InvokeMethod(id, method, params.ToLepusValue(),
+                                         std::move(cb));
+    } else {
+      event_target_helper_->InvokeMethod(id, method, params, std::move(cb));
+    }
+  }
+  // Invoke ui method on the platform renderer.
+  else {
+    cb(LynxGetUIResult::UNKNOWN,
+       lepus::Value("method not supported: " + method));
+  }
 }
 
 }  // namespace lynx::tasm
