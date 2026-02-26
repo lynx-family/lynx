@@ -1327,7 +1327,9 @@ public class com::lynx::tasm::DefaultLogicExecutor : com.lynx.tasm.ILynxLogicExe
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_LOAD LIFECYCLE_EVENT_ON_LOAD;
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DATA_CHANGED LIFECYCLE_EVENT_ON_DATA_CHANGED;
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DESTROY LIFECYCLE_EVENT_ON_DESTROY;
-  public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor(TemplateBundle bundle, LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context, ILynxViewGroup lynxViewGroup);
+  public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor();
+  public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor(ILynxViewGroup lynxViewGroup);
+  public void com.lynx.tasm.DefaultLogicExecutor.init(ILynxViewGroup viewGroup);
   public void com.lynx.tasm.DefaultLogicExecutor.onLynxEvent(LynxView lynxView, ReadableMap event);
   public void com.lynx.tasm.DefaultLogicExecutor.destroy();
 }
@@ -2412,6 +2414,8 @@ public interface com::lynx::tasm::group::ILynxViewGroup {
   public String com.lynx.tasm.group.ILynxViewGroup.getUrl();
   public TemplateData com.lynx.tasm.group.ILynxViewGroup.getGlobalProps();
   public TemplateBundle com.lynx.tasm.group.ILynxViewGroup.getTemplateBundle();
+  public TemplateBundle com.lynx.tasm.group.ILynxViewGroup.getTemplateBundleNonBlocking();
+  public void com.lynx.tasm.group.ILynxViewGroup.fetchTemplateBundle(LynxResourceCallback< TemplateBundle > callback);
   public boolean com.lynx.tasm.group.ILynxViewGroup.isTemplateBundleReady();
 }
 
@@ -4296,11 +4300,13 @@ public class com::lynx::devtoolwrapper::LynxDevToolUtils :  {
 public class abstract com::lynx::tasm::behavior::ui::utils::LynxDrawableManager< T extends LayerDrawable :  {
 }
 
-public class com::lynx::jsbridge::LynxEmbeddedModule : com.lynx.jsbridge.LynxModule {
+public class com::lynx::jsbridge::LynxEmbeddedModule : com.lynx.jsbridge.LynxContextModule {
   public final String com.lynx.jsbridge.LynxEmbeddedModule.NAME NAME;
-  public com.lynx.jsbridge.LynxEmbeddedModule.LynxEmbeddedModule(Context context, Object param);
+  public com.lynx.jsbridge.LynxEmbeddedModule.LynxEmbeddedModule(LynxContext context, Object param);
   public void com.lynx.jsbridge.LynxEmbeddedModule.updateData(final int lynxViewId, final ReadableMap params, final Callback resolve, final Callback reject);
   public void com.lynx.jsbridge.LynxEmbeddedModule.getData(final int lynxViewId, final Callback resolve, final Callback reject);
+  public void com.lynx.jsbridge.LynxEmbeddedModule.setDataV2(final ReadableMap params, final Callback resolve, final Callback reject);
+  public void com.lynx.jsbridge.LynxEmbeddedModule.getDataV2(final Callback resolve, final Callback reject);
 }
 
 public class com::lynx::tasm::LynxEngineBuilder : com.lynx.tasm.LynxViewBuilder {
@@ -5185,6 +5191,7 @@ public class com::lynx::tasm::LynxLoadMeta :  {
   public TemplateBundle com.lynx.tasm.LynxLoadMeta.getTemplateBundle();
   public TemplateData com.lynx.tasm.LynxLoadMeta.getInitialData();
   public TemplateData com.lynx.tasm.LynxLoadMeta.getGlobalProps();
+  public boolean com.lynx.tasm.LynxLoadMeta.isGlobalPropsValid();
   public Map< String, String > com.lynx.tasm.LynxLoadMeta.getLynxViewConfig();
   public LynxLoadMode com.lynx.tasm.LynxLoadMeta.getLoadMode();
   public EnumSet< LynxLoadOption > com.lynx.tasm.LynxLoadMeta.getLoadOption();
@@ -6555,7 +6562,6 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxViewConfig(Map< String, String > map);
   public Map< String, String > com.lynx.tasm.LynxViewBuilder.getLynxViewConfig();
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxBackgroundRuntime(LynxBackgroundRuntime runtime);
-  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setTemplateBundle(TemplateBundle templateBundle);
   public BehaviorRegistry com.lynx.tasm.LynxViewBuilder.getBehaviorRegistry();
   public boolean com.lynx.tasm.LynxViewBuilder.isEnableAutoExpose();
   public Float com.lynx.tasm.LynxViewBuilder.getDensity();
