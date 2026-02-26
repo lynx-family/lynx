@@ -5,6 +5,7 @@
 #include "devtool/js_inspect/quickjs/quickjs_inspector_client_impl.h"
 
 #include <atomic>
+#include <utility>
 
 #include "base/include/no_destructor.h"
 #include "devtool/fundamentals/js_inspect/inspector_client_delegate.h"
@@ -192,6 +193,7 @@ void QJSInspectorClientImpl::DestroyInspector(const std::string &group_id) {
   inspectors_.erase(group_id);
   auto it = contexts_.find(group_id);
   if (it != contexts_.end()) {
+    interrupts_.erase(group_id);
     int context_id = GetExecutionContextId(it->second);
     contexts_.erase(it);
     auto sp = delegate_wp_.lock();
@@ -228,6 +230,13 @@ void QJSInspectorClientImpl::SetContext(LEPUSContext *context,
   if (it == contexts_.end()) {
     contexts_.emplace(group_id, context);
   }
+  auto *runtime = context != nullptr ? LEPUS_GetRuntime(context) : nullptr;
+  if (context != nullptr) {
+    if (interrupts_.find(group_id) == interrupts_.end()) {
+      interrupts_[group_id] =
+          std::make_unique<InspectorPrimjsInterruptHelper>(runtime);
+    }
+  }
 }
 
 void QJSInspectorClientImpl::CreateQJSInspector(LEPUSContext *context,
@@ -245,6 +254,19 @@ std::string QJSInspectorClientImpl::MapGroupId(const std::string &group_id) {
     return kSingleGroupPrefix + std::to_string(GenerateGroupId());
   } else {
     return group_id;
+  }
+}
+
+void QJSInspectorClientImpl::RequestInterrupt(base::closure &&closure) {
+  auto shared = std::make_shared<base::closure>(std::move(closure));
+  for (auto &it : interrupts_) {
+    if (it.second) {
+      it.second->Request([shared]() {
+        if (*shared) {
+          (*shared)();
+        }
+      });
+    }
   }
 }
 // QJSInspectorClientImpl ends.

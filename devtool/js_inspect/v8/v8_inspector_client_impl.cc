@@ -4,6 +4,9 @@
 
 #include "devtool/js_inspect/v8/v8_inspector_client_impl.h"
 
+#include <utility>
+
+#include "base/include/closure.h"
 #include "base/include/compiler_specific.h"
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
@@ -103,6 +106,7 @@ void V8ChannelImpl::SendResponseToClient(
 // V8ChannelImpl ends.
 
 // V8InspectorClientImpl begins.
+
 void V8InspectorClientImpl::runMessageLoopOnPause(int contextGroupId) {
   auto sp = delegate_wp_.lock();
   if (sp != nullptr) {
@@ -178,6 +182,7 @@ int V8InspectorClientImpl::InitInspector(v8::Isolate* isolate,
                                          const std::string& group_id,
                                          const std::string& name) {
   LOGI("js debug: V8InspectorClientImpl::InitInspector, this: " << this);
+  alive_ = std::make_shared<char>(0);
   isolate_ = isolate;
   int group_num = MapGroupStrToNum(group_id);
   CreateV8Inspector();
@@ -225,6 +230,39 @@ void V8InspectorClientImpl::DestroyInspector() {
   DestroyAllSessions();
   inspector_.reset();
   isolate_ = nullptr;
+  alive_.reset();
+}
+
+void V8InspectorClientImpl::RequestInterrupt(base::closure&& closure) {
+  if (!isolate_) {
+    return;
+  }
+
+  struct InterruptTask {
+    base::closure closure;
+  };
+
+  auto alive_wp = std::weak_ptr<void>(alive_);
+  base::closure wrapped = [alive_wp, closure = std::move(closure)]() mutable {
+    if (alive_wp.lock() == nullptr) {
+      return;
+    }
+    if (closure) {
+      closure();
+    }
+  };
+
+  auto* task = new InterruptTask{std::move(wrapped)};
+  isolate_->RequestInterrupt(
+      [](v8::Isolate* isolate, void* data) {
+        std::unique_ptr<InterruptTask> task(static_cast<InterruptTask*>(data));
+        if (!task->closure) {
+          return;
+        }
+        v8::HandleScope handle_scope(isolate);
+        task->closure();
+      },
+      task);
 }
 
 void V8InspectorClientImpl::CreateV8Inspector() {

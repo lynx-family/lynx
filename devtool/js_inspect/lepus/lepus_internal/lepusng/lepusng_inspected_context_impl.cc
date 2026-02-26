@@ -4,6 +4,8 @@
 
 #include "devtool/js_inspect/lepus/lepus_internal/lepusng/lepusng_inspected_context_impl.h"
 
+#include <utility>
+
 #include "devtool/js_inspect/lepus/lepus_internal/lepusng/lepusng_inspected_context_callbacks.h"
 
 namespace lepus_inspector {
@@ -12,6 +14,16 @@ LepusNGInspectedContextImpl::LepusNGInspectedContextImpl(
     LepusInspectorNGImpl* inspector, lynx::lepus::Context* context,
     const std::string& name) {
   context_ = static_cast<lynx::lepus::QuickContext*>(context);
+  runtime_ = nullptr;
+  interrupt_.reset();
+  if (context_ != nullptr && context_->context() != nullptr) {
+    runtime_ = LEPUS_GetRuntime(context_->context());
+  }
+  if (runtime_ != nullptr) {
+    interrupt_ =
+        std::make_unique<lynx::devtool::InspectorPrimjsInterruptHelper>(
+            runtime_);
+  }
   debugger_ =
       std::make_unique<lynx::debug::LepusNGDebugger>(this, inspector, name);
   RegisterCallbacks();
@@ -37,10 +49,19 @@ void LepusNGInspectedContextImpl::OnTopLevelFunctionReady() {
   debugger_->PrepareDebugInfo();
 }
 
+void LepusNGInspectedContextImpl::RequestInterrupt(
+    lynx::base::closure&& closure) {
+  if (runtime_ == nullptr) {
+    return;
+  }
+  if (interrupt_ != nullptr) {
+    interrupt_->Request(std::move(closure));
+  }
+}
+
 void LepusNGInspectedContextImpl::RegisterCallbacks() {
   auto& funcs = GetDebuggerCallbackFuncs();
-  RegisterQJSDebuggerCallbacks(LEPUS_GetRuntime(GetLepusContext()),
-                               funcs.data(), funcs.size());
+  RegisterQJSDebuggerCallbacks(runtime_, funcs.data(), funcs.size());
 }
 
 }  // namespace lepus_inspector

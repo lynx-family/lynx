@@ -128,7 +128,21 @@ void InspectorLepusDebuggerImpl::RunOnTargetThread(base::closure &&closure,
                                                    bool run_now) {
   auto sp = devtool_mediator_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(sp, "lepus debug: devtool_mediator_ is null");
-  sp->RunOnTASMThread(std::move(closure), run_now);
+
+  auto shared = std::make_shared<base::closure>(std::move(closure));
+  auto try_run = [shared]() {
+    if (*shared) {
+      (*shared)();
+      *shared = nullptr;
+    }
+  };
+  sp->RunOnTASMThread([try_run]() mutable { try_run(); }, run_now);
+
+  for (const auto &it : delegates_) {
+    if (it.second) {
+      it.second->RequestInterrupt([try_run]() mutable { try_run(); });
+    }
+  }
 }
 
 void InspectorLepusDebuggerImpl::UpdateTarget() {

@@ -4,6 +4,8 @@
 
 #include "devtool/js_inspect/lepus/lepus_inspector_client_impl.h"
 
+#include <utility>
+
 #include "devtool/fundamentals/js_inspect/inspector_client_delegate.h"
 #include "devtool/js_inspect/inspector_const.h"
 
@@ -101,6 +103,12 @@ void LepusInspectorClientImpl::ConnectSession() {
 void LepusInspectorClientImpl::DisconnectSession() { channel_.reset(); }
 
 void LepusInspectorClientImpl::DestroyInspector() { inspector_.reset(); }
+
+void LepusInspectorClientImpl::RequestInterrupt(base::closure &&closure) {
+  if (inspector_ != nullptr) {
+    inspector_->RequestInterrupt(std::move(closure));
+  }
+}
 // LepusInspectorClientImpl ends.
 
 }  // namespace devtool

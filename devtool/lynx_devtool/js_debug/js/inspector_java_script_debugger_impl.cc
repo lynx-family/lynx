@@ -4,6 +4,8 @@
 
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 
+#include <memory>
+
 #include "base/include/no_destructor.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -188,7 +190,17 @@ void InspectorJavaScriptDebuggerImpl::RunOnTargetThread(base::closure&& closure,
                                                         bool run_now) {
   auto sp = devtool_mediator_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(sp, "js debug: devtool_mediator_ is null");
-  sp->RunOnJSThread(std::move(closure), run_now);
+  auto shared = std::make_shared<base::closure>(std::move(closure));
+  auto try_run = [shared]() {
+    if (*shared) {
+      (*shared)();
+      *shared = nullptr;
+    }
+  };
+  sp->RunOnJSThread([try_run]() mutable { try_run(); }, run_now);
+  if (delegate_ != nullptr) {
+    delegate_->RequestInterrupt([try_run]() mutable { try_run(); });
+  }
 }
 
 void InspectorJavaScriptDebuggerImpl::WhiteBoardEnable(

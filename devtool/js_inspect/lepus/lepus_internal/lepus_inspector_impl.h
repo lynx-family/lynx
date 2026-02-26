@@ -43,6 +43,8 @@ class LepusInspectorNGImpl : public LepusInspectorNG {
   std::unique_ptr<LepusInspectorSessionNG> Connect(
       LepusChannel* channel) override;
 
+  void RequestInterrupt(lynx::base::closure&& closure) override;
+
   LepusInspectorClientNG* GetClient() { return client_; }
   const std::shared_ptr<LepusInspectedContext>& GetContext() {
     return context_;

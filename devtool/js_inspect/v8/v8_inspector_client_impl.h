@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "base/include/closure.h"
 #include "devtool/fundamentals/js_inspect/inspector_client_ng.h"
 #include "v8-inspector.h"
 
@@ -83,6 +84,8 @@ class V8InspectorClientImpl : public v8_inspector::V8InspectorClient,
   // Only be called when preparing to destroy v8::Isolate.
   void DestroyInspector();
 
+  void RequestInterrupt(base::closure&& closure) override;
+
  private:
   void CreateV8Inspector();
   void ContextCreated(v8::Local<v8::Context> context, int group_id,
@@ -101,6 +104,8 @@ class V8InspectorClientImpl : public v8_inspector::V8InspectorClient,
 
   std::unordered_map<std::string, int> group_string_to_number_;
   std::unordered_map<int, std::string> group_number_to_string_;
+
+  std::shared_ptr<void> alive_;
 };
 
 }  // namespace devtool

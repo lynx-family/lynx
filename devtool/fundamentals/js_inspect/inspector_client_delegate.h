@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "devtool/fundamentals/js_inspect/inspector_client_ng.h"
 #include "devtool/fundamentals/js_inspect/inspector_client_quickjs_delegate.h"
@@ -56,6 +57,13 @@ class InspectorClientDelegate : public InspectorClientV8Delegate,
   // Called when a breakpoint is triggered or exited.
   virtual void RunMessageLoopOnPause(const std::string& group_id) = 0;
   virtual void QuitMessageLoopOnPause() = 0;
+
+  void RequestInterrupt(base::closure&& closure) {
+    auto sp = client_wp_.lock();
+    if (sp != nullptr) {
+      sp->RequestInterrupt(std::move(closure));
+    }
+  }
 
  protected:
   std::weak_ptr<InspectorClientNG> client_wp_;

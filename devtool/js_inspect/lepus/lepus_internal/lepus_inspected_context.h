@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+#include "base/include/closure.h"
+
 namespace lepus_inspector {
 
 class LepusInspectedContext
@@ -22,6 +24,7 @@ class LepusInspectedContext
                             const std::string& debug_info, int debug_info_id,
                             const std::string& debug_info_url) = 0;
   virtual void ProcessMessage(const std::string& message) = 0;
+  virtual void RequestInterrupt(lynx::base::closure&& closure) {}
 };
 
 }  // namespace lepus_inspector

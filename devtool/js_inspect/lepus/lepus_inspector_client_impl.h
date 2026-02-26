@@ -56,6 +56,7 @@ class LepusInspectorClientImpl : public lepus_inspector::LepusInspectorClientNG,
   void ConnectSession();
   void DisconnectSession();
   void DestroyInspector();
+  void RequestInterrupt(base::closure&& closure) override;
 
  private:
   std::shared_ptr<LepusChannelImplNG> channel_;

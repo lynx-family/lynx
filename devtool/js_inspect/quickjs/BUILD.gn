@@ -8,6 +8,8 @@ quickjs_debug_source = [
   "quickjs_inspector_client_provider.cc",
   "quickjs_inspector_client_provider.h",
   "quickjs_internal/interface.h",
+  "quickjs_internal/inspector_primjs_interrupt_helper.cc",
+  "quickjs_internal/inspector_primjs_interrupt_helper.h",
   "quickjs_internal/quickjs_debugger_ng.cc",
   "quickjs_internal/quickjs_debugger_ng.h",
   "quickjs_internal/quickjs_inspected_context.cc",

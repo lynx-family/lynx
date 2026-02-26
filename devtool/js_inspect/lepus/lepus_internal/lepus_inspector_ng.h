@@ -9,6 +9,8 @@
 #include <queue>
 #include <string>
 
+#include "base/include/closure.h"
+
 namespace lynx {
 namespace lepus {
 class Context;
@@ -49,6 +51,7 @@ class LepusInspectorNG {
   virtual void SetDebugInfo(const std::string& filename,
                             const std::string& debug_info, int debug_info_id,
                             const std::string& debug_info_url) = 0;
+  virtual void RequestInterrupt(lynx::base::closure&& closure) {}
 };
 
 }  // namespace lepus_inspector

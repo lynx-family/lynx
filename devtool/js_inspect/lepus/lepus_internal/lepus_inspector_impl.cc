@@ -4,6 +4,8 @@
 
 #include "devtool/js_inspect/lepus/lepus_internal/lepus_inspector_impl.h"
 
+#include <utility>
+
 #include "core/runtime/lepus/context.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepus_inspected_context_provider.h"
 
@@ -82,6 +84,12 @@ std::unique_ptr<LepusInspectorSessionNG> LepusInspectorNGImpl::Connect(
       LepusInspectorSessionNGImpl::Create(this, channel);
   session_ = session.get();
   return session;
+}
+
+void LepusInspectorNGImpl::RequestInterrupt(lynx::base::closure&& closure) {
+  if (context_ != nullptr) {
+    context_->RequestInterrupt(std::move(closure));
+  }
 }
 
 void LepusInspectorNGImpl::SetDebugInfo(const std::string& filename,

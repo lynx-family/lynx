@@ -9,6 +9,7 @@
 #include <mutex>
 #include <queue>
 #include <string>
+#include <vector>
 
 #include "base/include/closure.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"

@@ -9,6 +9,8 @@
 #include <memory>
 #include <string>
 
+#include "base/include/closure.h"
+
 namespace lynx {
 namespace devtool {
 class InspectorClientDelegate;
@@ -42,6 +44,8 @@ class InspectorClientNG
       const std::string& object_id, const std::string& group_id,
       std::function<void(const std::string&)> callback) {}
   // Only worked on Quickjs ends.
+
+  virtual void RequestInterrupt(base::closure&& closure){};
 
  protected:
   std::weak_ptr<InspectorClientDelegate> delegate_wp_;

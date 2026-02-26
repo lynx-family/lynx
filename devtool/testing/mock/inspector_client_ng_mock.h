@@ -26,6 +26,12 @@ class InspectorClientNGMock : public devtool::InspectorClientNG {
     message_queue_.push(message);
   }
 
+  void RequestInterrupt(base::closure&& closure) override {
+    if (closure) {
+      closure();
+    }
+  }
+
  private:
   bool stop_at_entry_{false};
   std::queue<std::string> message_queue_;

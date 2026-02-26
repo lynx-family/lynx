@@ -10,6 +10,7 @@
 #include <unordered_map>
 
 #include "devtool/fundamentals/js_inspect/inspector_client_ng.h"
+#include "devtool/js_inspect/quickjs/quickjs_internal/inspector_primjs_interrupt_helper.h"
 #include "devtool/js_inspect/quickjs/quickjs_internal/quickjs_inspector.h"
 
 namespace lynx {
@@ -90,6 +91,8 @@ class QJSInspectorClientImpl : public quickjs_inspector::QJSInspectorClient,
   void RemoveScript(const std::string& group_id, const std::string& url);
   void RemoveConsole(const std::string& group_id, const std::string& url);
 
+  void RequestInterrupt(base::closure&& closure) override;
+
  private:
   void SetContext(LEPUSContext* context, const std::string& group_id);
   void CreateQJSInspector(LEPUSContext* context, const std::string& group_id,
@@ -106,6 +109,9 @@ class QJSInspectorClientImpl : public quickjs_inspector::QJSInspectorClient,
       inspectors_;  // group_id -> QJSInspector
 
   std::function<bool()> full_func_enable_callback_;
+  std::unordered_map<std::string,
+                     std::unique_ptr<InspectorPrimjsInterruptHelper>>
+      interrupts_;
 };
 
 }  // namespace devtool

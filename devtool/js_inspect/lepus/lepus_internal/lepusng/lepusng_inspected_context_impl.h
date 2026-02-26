@@ -12,6 +12,7 @@
 #include "devtool/js_inspect/lepus/lepus_internal/lepus_inspected_context.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepus_inspector_impl.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepusng/lepusng_debugger.h"
+#include "devtool/js_inspect/quickjs/quickjs_internal/inspector_primjs_interrupt_helper.h"
 
 namespace lepus_inspector {
 
@@ -32,6 +33,7 @@ class LepusNGInspectedContextImpl
   void ProcessMessage(const std::string& message) override;
 
   void OnTopLevelFunctionReady() override;
+  void RequestInterrupt(lynx::base::closure&& closure) override;
 
   lynx::lepus::QuickContext* GetContext() { return context_; }
   LEPUSContext* GetLepusContext() { return context_->context(); }
@@ -44,6 +46,8 @@ class LepusNGInspectedContextImpl
 
   lynx::lepus::QuickContext* context_;
   std::unique_ptr<lynx::debug::LepusNGDebugger> debugger_;
+  LEPUSRuntime* runtime_{nullptr};
+  std::unique_ptr<lynx::devtool::InspectorPrimjsInterruptHelper> interrupt_;
 };
 
 }  // namespace lepus_inspector
