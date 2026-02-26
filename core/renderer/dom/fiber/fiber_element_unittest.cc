@@ -24,6 +24,7 @@
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/for_element.h"
@@ -60,6 +61,15 @@
 namespace lynx {
 namespace tasm {
 namespace testing {
+
+namespace {
+CSSValue parseTransformStringValue(const lepus::Value& value_str,
+                                   const CSSParserConfigs& configs) {
+  CSSStringParser parser = CSSStringParser::FromLepusString(value_str, configs);
+  return parser.ParseTransform();
+}
+}  // namespace
+
 static std::unordered_map<std::string, uint32_t> kTestColorMap = {
     {"red", 4294901760},
     {"green", 4278222848},
@@ -5545,6 +5555,54 @@ TEST_P(FiberElementTest,
   EXPECT_FALSE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDWidth,
       CSSValue(0.f, CSSValuePattern::VH), 1));
+}
+
+TEST_P(FiberElementTest, TestFiberNewAnimatorWithDynamicStyleUpdate) {
+  CSSParserConfigs configs;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                    lepus::Value("scale(0,0) translateX(100px)"));
+  element->enable_new_animator_ = true;
+  page->InsertNode(element);
+
+  page->FlushActionsAsRoot();
+  auto original_transform_value = element->GetComputedStyleByKey("transform");
+
+  element->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                    lepus::Value("scale(1,1) translateX(100px)"));
+  page->FlushActionsAsRoot();
+  auto forwards_transform_value = element->GetComputedStyleByKey("transform");
+
+  EXPECT_TRUE(original_transform_value != forwards_transform_value);
+  element->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                    lepus::Value("scale(0,0) translateX(100px)"));
+  page->FlushActionsAsRoot();
+
+  auto forwards_state_css_value = parseTransformStringValue(
+      lepus::Value("scale(1,1) translateX(100px)"), configs);
+  tasm::StyleMap fill_styles;
+  fill_styles.emplace_or_assign(CSSPropertyID::kPropertyIDTransform,
+                                forwards_state_css_value);
+  element->PersistAnimationFillStyles(fill_styles);
+  element->final_animator_map_->emplace_or_assign(
+      CSSPropertyID::kPropertyIDTransform, forwards_state_css_value);
+
+  // Flush animated styles to computed style
+  element->FlushAnimatedStyle();
+  EXPECT_TRUE(element->GetComputedStyleByKey("transform") ==
+              forwards_transform_value);
+  EXPECT_TRUE((element->dynamic_style_flags_ &
+               DynamicCSSStylesManager::kUpdateViewport) > 0);
+  EXPECT_TRUE((element->dynamic_style_flags_ &
+               DynamicCSSStylesManager::kUpdateScreenMetrics) > 0);
+
+  manager->UpdateScreenMetrics(100.0f, 300.0f);
+  EXPECT_TRUE(element->GetComputedStyleByKey("transform") ==
+              forwards_transform_value);
+  EXPECT_TRUE(element->GetComputedStyleByKey("transform") !=
+              original_transform_value);
 }
 
 TEST_P(FiberElementTest,

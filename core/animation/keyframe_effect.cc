@@ -49,12 +49,26 @@ void KeyframeEffect::TickKeyframeModel(fml::TimePoint monotonic_time) {
   tasm::StyleMap style_map;
   bool should_send_start_event = false;
   bool should_send_end_event = false;
+  bool should_persist_fill_styles = false;
+  bool should_clear_fill_styles = false;
   bool has_checked_over_time = false;
   style_map.reserve(keyframe_models_.size());
+  const bool is_transition_effect =
+      animation_ != nullptr && animation_->GetTransitionFlag();
   for (auto& keyframe_model : keyframe_models_) {
     // #1. Update the model state and collect animation event information.
     std::tie(should_send_start_event, should_send_end_event) =
         keyframe_model->UpdateState(monotonic_time);
+    if (!is_transition_effect && should_send_end_event &&
+        keyframe_model->is_finished()) {
+      const auto data = keyframe_model->get_animation_data();
+      if (data.fill_mode == starlight::AnimationFillModeType::kForwards ||
+          data.fill_mode == starlight::AnimationFillModeType::kBoth) {
+        should_persist_fill_styles = true;
+      } else {
+        should_clear_fill_styles = true;
+      }
+    }
 
     // #2. Collect animation styles
     if (!keyframe_model->InEffect(monotonic_time)) {
@@ -88,6 +102,16 @@ void KeyframeEffect::TickKeyframeModel(fml::TimePoint monotonic_time) {
   // #3. Flush all animation styles to element.
   if (animation_delegate_ != nullptr && !style_map.empty()) {
     animation_delegate_->UpdateFinalStyleMap(style_map);
+  }
+  if (!is_transition_effect && should_persist_fill_styles &&
+      element_ != nullptr && !style_map.empty()) {
+    element_->PersistAnimationFillStyles(style_map);
+  }
+  if (!is_transition_effect && should_clear_fill_styles &&
+      element_ != nullptr && animation_ != nullptr) {
+    for (const auto& id : animation_->GetRawStyleSet()) {
+      element_->ClearPersistedAnimationFillStyle(id);
+    }
   }
 
   // #4. Send animation event.

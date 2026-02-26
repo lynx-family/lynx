@@ -348,6 +348,9 @@ void CSSKeyframeManager::SetNeedsAnimationStyleRecalc(
       const auto& raw_style_set = animation->GetRawStyleSet();
       reset_origin_css_styles.reserve(raw_style_set.size());
       for (tasm::CSSPropertyID key : raw_style_set) {
+        if (!animation->GetTransitionFlag()) {
+          element_->ClearPersistedAnimationFillStyle(key);
+        }
         std::optional<tasm::CSSValue> value_opt =
             element_->GetElementStyle(key);
         if (!value_opt) {

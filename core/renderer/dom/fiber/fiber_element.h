@@ -812,6 +812,8 @@ class FiberElement : public Element {
 
   virtual size_t CountInlineStyles() override;
   bool MergeInlineStyles(StyleMap& new_styles) final;
+  void PersistAnimationFillStyles(const StyleMap& styles) override;
+  void ClearPersistedAnimationFillStyle(CSSPropertyID id) override;
 
   virtual bool WillResolveStyle(StyleMap& merged_styles,
                                 CSSVariableMap* changed_css_vars) override;

@@ -94,6 +94,8 @@ ElementManager::ElementManager(
   fix_dynamic_update_transition_consume_bug_ =
       LynxEnv::GetInstance().FixDynamicUpdateTransitionConsumeBug();
   fix_new_fixed_removal_bug_ = LynxEnv::GetInstance().FixNewFixedRemovalBug();
+  fix_animation_forward_dynamic_update_overwrite_ =
+      LynxEnv::GetInstance().FixAnimationForwardDynamicUpdateOverwrite();
   disable_list_callback_if_detached_ =
       LynxEnv::GetInstance().DisableListCallbackIfDetached();
   if (platform_layout_context_) {

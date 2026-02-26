@@ -599,5 +599,9 @@ bool LynxEnv::EnableFetchAPIStreamingStandard() {
 bool LynxEnv::FixNewFixedRemovalBug() {
   return GetBoolEnv(Key::FIX_NEW_FIXED_REMOVAL_BUG, true);
 }
+
+bool LynxEnv::FixAnimationForwardDynamicUpdateOverwrite() {
+  return GetBoolEnv(Key::FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE, true);
+}
 }  // namespace tasm
 }  // namespace lynx

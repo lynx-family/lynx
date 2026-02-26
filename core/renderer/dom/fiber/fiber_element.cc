@@ -453,6 +453,23 @@ bool FiberElement::MergeInlineStyles(StyleMap &new_styles) {
   return res;
 }
 
+void FiberElement::PersistAnimationFillStyles(const StyleMap &styles) {
+  if (!element_manager()->FixAnimationForwardDynamicUpdateOverwrite() ||
+      !enable_new_animator() || styles.empty()) {
+    return;
+  }
+  for (const auto &[id, value] : styles) {
+    animation_override_styles_map_->insert_or_assign(id, value);
+  }
+}
+
+void FiberElement::ClearPersistedAnimationFillStyle(CSSPropertyID id) {
+  if (!animation_override_styles_map_.has_value()) {
+    return;
+  }
+  animation_override_styles_map_->erase(id);
+}
+
 void FiberElement::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
   // If self has raw inline styles, parse to current_raw_inline_styles_ but do
   // not process to final style map. Inline styles will be merged finally by
@@ -2313,6 +2330,20 @@ void FiberElement::ConsumeStyle(const StyleMap &styles,
         return false;
       });
 
+  if (element_manager()->FixAnimationForwardDynamicUpdateOverwrite() &&
+      animation_override_styles_map_.has_value() &&
+      !animation_override_styles_map_->empty()) {
+    ConsumeStyleInternal(
+        *animation_override_styles_map_, nullptr,
+        [should_consume_trans_styles_in_advance](auto id, const auto &value) {
+          if (should_consume_trans_styles_in_advance &&
+              CSSProperty::IsTransitionProps(id)) {
+            return true;
+          }
+          return false;
+        });
+  }
+
   DidConsumeStyle();
 }
 
@@ -3983,6 +4014,19 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
 
             return false;
           });
+
+      if (element_manager()->FixAnimationForwardDynamicUpdateOverwrite() &&
+          animation_override_styles_map_.has_value() &&
+          !animation_override_styles_map_->empty()) {
+        ConsumeStyleInternal(*animation_override_styles_map_, nullptr,
+                             [](auto id, const auto &value) {
+                               if (CSSProperty::IsTransitionProps(id) ||
+                                   CSSProperty::IsKeyframeProps(id)) {
+                                 return true;
+                               }
+                               return false;
+                             });
+      }
 
       if (inherited_styles_.has_value() && !inherited_styles_->empty()) {
         inner_force_update |= true;

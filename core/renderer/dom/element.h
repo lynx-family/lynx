@@ -799,7 +799,8 @@ class Element : public lepus::RefCounted,
 
   // Returns true if CSS variables were merged and need to be resolved.
   virtual bool MergeInlineStyles(StyleMap& merged_styles) = 0;
-
+  virtual void PersistAnimationFillStyles(const StyleMap& styles) {}
+  virtual void ClearPersistedAnimationFillStyle(CSSPropertyID id) {}
   virtual int32_t GetMemoryUsage() const { return sizeof(*this); }
 
   virtual bool is_page() const { return false; }
@@ -1063,6 +1064,7 @@ class Element : public lepus::RefCounted,
   base::auto_create_optional<StyleMap> extreme_parsed_styles_;
   base::auto_create_optional<StyleMap> inherited_styles_;
   base::auto_create_optional<StyleMap> updated_inherited_styles_;
+  base::auto_create_optional<StyleMap> animation_override_styles_map_;
   base::auto_create_optional<base::Vector<tasm::CSSPropertyID>>
       reset_inherited_ids_;
 
