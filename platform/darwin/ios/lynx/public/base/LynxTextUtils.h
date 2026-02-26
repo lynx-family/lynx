@@ -8,6 +8,8 @@
 #import <Lynx/LynxCSSType.h>
 #import <Lynx/LynxTextStyle.h>
 
+@class LynxTextRenderer;
+
 @interface LynxTextUtils : NSObject
 /*
  * Resolve NSTextAlignNatural to physical alignment according to the inferred languange of given
@@ -54,4 +56,9 @@
 
 + (void)setLynxTextGradient:(LynxTextStyle *_Nonnull)textStyle
                withGradient:(NSArray *_Nullable)value;
+
++ (NSDictionary *_Nullable)computeLayoutEventInfoWithRenderer:(LynxTextRenderer *_Nonnull)renderer
+                                             attributedString:
+                                                 (NSAttributedString *_Nonnull)attributedString
+                                                   maxLineNum:(NSInteger)maxLineNum;
 @end

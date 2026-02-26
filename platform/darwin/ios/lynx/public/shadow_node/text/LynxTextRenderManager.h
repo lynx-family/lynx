@@ -9,7 +9,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class LynxUIOwner;
+@class LynxTextRenderer;
+@class LynxEventEmitter;
 
 @interface LynxAttributedTextBundle : NSObject
 @property(nonatomic, strong) NSAttributedString* attributedString;
@@ -38,6 +39,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSDictionary*)getInlineElementOffsetDic:(NSInteger)sign;
 
 - (void)releaseTextRender:(NSInteger)sign;
+
+- (void)dispatchLayoutEventWithRenderer:(LynxTextRenderer*)renderer
+                                   sign:(NSInteger)sign
+                           eventEmitter:(LynxEventEmitter*)eventEmitter;
 
 @end
 

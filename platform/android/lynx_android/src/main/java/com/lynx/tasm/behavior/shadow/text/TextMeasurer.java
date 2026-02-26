@@ -544,12 +544,14 @@ public class TextMeasurer {
                 && attributedTextBundle.getTextAttributes().getTextAlign()
                     == StyleConstants.TEXTALIGN_JUSTIFY));
     bundle.setTextTranslateOffset(renderer.getTextTranslateOffset());
-
     bundle.setOriginText(attributedTextBundle.getSpan());
 
-    if (bundle != null) {
-      mExtraDatas.put(sign, bundle);
-    }
+    bundle.setLayoutEventParams(attributedTextBundle.getTextAttributes().getTextOverflow(),
+        renderer.getLineCount(), renderer.getEllipsisCount(),
+        attributedTextBundle.getSpan().length(), renderer.calculateMaxWidth(), true);
+
+    mExtraDatas.put(sign, bundle);
+
     return result;
   }
 

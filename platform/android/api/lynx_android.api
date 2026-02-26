@@ -9893,6 +9893,7 @@ public class com::lynx::tasm::behavior::shadow::text::TextDecorationSpan : Chara
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextHelper :  {
+  public final String com.lynx.tasm.behavior.shadow.text.TextHelper.EVENT_LAYOUT EVENT_LAYOUT;
   public static TextPaint com.lynx.tasm.behavior.shadow.text.TextHelper.newTextPaint(LynxContext context, TextAttributes attributes, TypefaceCache.TypefaceListener listener);
   public static TextPaint com.lynx.tasm.behavior.shadow.text.TextHelper.newTextPaint(TextAttributes attributes, Typeface typefaceCache);
   public static Typeface com.lynx.tasm.behavior.shadow.text.TextHelper.getTypeFaceFromCache(LynxContext context, TextAttributes attributes, TypefaceCache.TypefaceListener listener);
@@ -9907,6 +9908,7 @@ public class com::lynx::tasm::behavior::shadow::text::TextHelper :  {
   public static void com.lynx.tasm.behavior.shadow.text.TextHelper.drawText(Canvas canvas, Layout textLayout, float width);
   public static ArrayList< CharSequence > com.lynx.tasm.behavior.shadow.text.TextHelper.splitLineToWords(CharSequence line, boolean isRtl);
   public static LynxDetailEvent com.lynx.tasm.behavior.shadow.text.TextHelper.getTextLayoutEvent(int sign, Layout layout, int textOverflow, int lineCount, int ellipsisCount, int spannableStringLength, float textLayoutWidth, boolean containTextSize);
+  public static void com.lynx.tasm.behavior.shadow.text.TextHelper.dispatchLayoutEvent(LynxContext context, int sign, TextUpdateBundle bundle);
   public static void com.lynx.tasm.behavior.shadow.text.TextHelper.dispatchLayoutEvent(TextShadowNode textShadowNode);
   public static TextPaint com.lynx.tasm.behavior.shadow.text.TextHelper.newTextPaint(float fontSize, String fontFamily);
   public static double com.lynx.tasm.behavior.shadow.text.TextHelper.getTextWidth(String text, String fontSize, @Nullable String fontFamily);
@@ -10019,6 +10021,16 @@ public class com::lynx::tasm::behavior::shadow::text::TextUpdateBundle :  {
   public void com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.setOriginText(CharSequence string);
   public CharSequence com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.getOriginText();
   public void com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.setViewTruncatedSet(Set viewTruncatedSet);
+  public void com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.setLayoutEventParams(int textOverflow, int lineCount, int ellipsisCount, int spannableStringLength, float textLayoutWidth, boolean containTextSize);
+  public int com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.getLayoutEventLineCount();
+  public int com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.getLayoutEventEllipsisCount();
+  public int com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.getLayoutEventTextOverflow();
+  public int com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.getLayoutEventSpannableStringLength();
+  public float com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.getLayoutEventTextLayoutWidth();
+  public boolean com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.isLayoutEventContainTextSize();
+  public boolean com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.hasLayoutEventParams();
+  public boolean com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.hasDispatchedLayoutEvent();
+  public void com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.markLayoutEventDispatched();
 }
 
 public interface com::lynx::tasm::provider::ThemeResourceProvider {
