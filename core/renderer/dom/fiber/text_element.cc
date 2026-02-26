@@ -270,6 +270,9 @@ void TextElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
                                            double root_node_font_size) {
   if (EnableLayoutInElementMode()) {
     property_bits_.Set(kPropertyIDFontSize);
+    computed_css_style()->SetValue(
+        kPropertyIDFontSize,
+        CSSValue(cur_node_font_size, CSSValuePattern::NUMBER));
   } else {
     FiberElement::UpdateLayoutNodeFontSize(cur_node_font_size,
                                            root_node_font_size);
