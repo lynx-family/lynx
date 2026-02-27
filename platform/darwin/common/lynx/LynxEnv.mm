@@ -6,8 +6,10 @@
 
 #import <objc/message.h>
 
+#import <Lynx/DevToolSettings.h>
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxConfig.h>
+#import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnvKey.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxLazyRegister.h>
@@ -18,7 +20,6 @@
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxViewClient.h>
 #import <LynxBase/LynxLog.h>
-#import "LynxEnv+Internal.h"
 #import "LynxTraceEventDef.h"
 #if ENABLE_TRACE_PERFETTO
 #import <Lynx/LynxTraceController.h>
@@ -229,11 +230,11 @@
 
 - (void)setDevtoolEnabled:(BOOL)enableDevtool {
   _LogI(@"Turn on devtool");
-  [self setDevtoolEnv:enableDevtool forKey:SP_KEY_ENABLE_DEVTOOL];
+  [DevToolSettings sharedInstance].devToolEnabled = enableDevtool;
 }
 
 - (BOOL)devtoolEnabled {
-  return [self getDevtoolEnv:SP_KEY_ENABLE_DEVTOOL withDefaultValue:NO];
+  return [DevToolSettings sharedInstance].devToolEnabled;
 }
 
 - (BOOL)fspScreenshotEnabled {

@@ -6,6 +6,7 @@
 #import <BaseDevTool/DevToolToast.h>
 #import <DebugRouter/DebugRouter.h>
 #import <DebugRouter/DebugRouterSlot.h>
+#import <Lynx/DevToolSettings.h>
 #import <Lynx/LynxBackgroundRuntime.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEnvKey.h>

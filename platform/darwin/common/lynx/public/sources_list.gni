@@ -40,6 +40,7 @@ common_lynx_public_headers =
                     "utils/LynxSizeValue.h",
                     "utils/LynxColorUtils.h",
                     "LynxContext.h",
+                    "devtool_wrapper/DevToolSettings.h",
                     "devtool_wrapper/LynxBaseInspectorOwnerNG.h",
                     "devtool_wrapper/LynxBaseInspectorOwner.h",
                     "devtool_wrapper/LynxInspectorConsoleDelegate.h",

@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/DevToolSettings.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEnvKey.h>
 #import <Lynx/LynxError.h>
@@ -16,7 +17,6 @@
 
 NSString *const ERROR_CODE_KEY_PREFIX = @"error_code";
 NSString *const CDP_DOMAIN_KEY_PREFIX = @"enable_cdp_domain";
-static NSString *const ENABLE_PERF_METRICS = @"enable_perf_metrics";
 
 enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
 
@@ -90,7 +90,7 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
 #endif
     SP_KEY_ENABLE_QUICKJS_DEBUG : @[ @YES, @YES, @YES ],
     SP_KEY_ENABLE_DOM_TREE : @[ @YES, @YES, @YES ],
-    ENABLE_PERF_METRICS : @[ @NO, @NO, @NO ]
+    SP_KEY_ENABLE_PERF_METRICS : @[ @NO, @NO, @NO ]
   };
 }
 
@@ -440,11 +440,11 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
 }
 
 - (void)setPerfMetricsEnabled:(BOOL)enable {
-  [self set:enable forKey:ENABLE_PERF_METRICS];
+  [self set:enable forKey:SP_KEY_ENABLE_PERF_METRICS];
 }
 
 - (BOOL)perfMetricsEnabled {
-  return [self get:ENABLE_PERF_METRICS withDefaultValue:NO];
+  return [self get:SP_KEY_ENABLE_PERF_METRICS withDefaultValue:NO];
 }
 
 @end

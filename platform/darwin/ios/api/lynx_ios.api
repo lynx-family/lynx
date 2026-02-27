@@ -73,6 +73,20 @@ public class DevToolOverlayDelegate : NSObject {
   public void DevToolOverlayDelegate::initWithService:(id< OverlayService > service);
 }
 
+public class DevToolSettings : NSObject {
+  public BOOL DevToolSettings::devToolEnabled devToolEnabled;
+  public BOOL DevToolSettings::logBoxEnabled logBoxEnabled;
+  public BOOL DevToolSettings::launchRecordEnabled launchRecordEnabled;
+  public BOOL DevToolSettings::quickjsDebugEnabled quickjsDebugEnabled;
+  public BOOL DevToolSettings::domTreeEnabled domTreeEnabled;
+  public BOOL DevToolSettings::longPressMenuEnabled longPressMenuEnabled;
+  public BOOL DevToolSettings::highlightTouchEnabled highlightTouchEnabled;
+  public BOOL DevToolSettings::previewScreenShotEnabled previewScreenShotEnabled;
+  public BOOL DevToolSettings::fspScreenshotEnabled fspScreenshotEnabled;
+  public BOOL DevToolSettings::perfMetricsEnabled perfMetricsEnabled;
+  public instancetype DevToolSettings::sharedInstance();
+}
+
 public protocol GlobalPropsUpdatedObserver-p : <NSObject> {
   public void GlobalPropsUpdatedObserver-p::onGlobalPropsUpdated:(NSDictionary *props);
 }
@@ -6070,6 +6084,17 @@ public enum LynxFetchResType {
 
   public const NSString* LYNX_TARGET_SDK_VERSION_1_5 LYNX_TARGET_SDK_VERSION_1_5;
 
+  public NS_ASSUME_NONNULL_BEGIN NSString* const SP_KEY_ENABLE_DEVTOOL SP_KEY_ENABLE_DEVTOOL;
+  public NSString* const SP_KEY_ENABLE_LOGBOX SP_KEY_ENABLE_LOGBOX;
+  public NSString* const SP_KEY_ENABLE_LAUNCH_RECORD SP_KEY_ENABLE_LAUNCH_RECORD;
+  public NSString* const SP_KEY_ENABLE_QUICKJS_DEBUG SP_KEY_ENABLE_QUICKJS_DEBUG;
+  public NSString* const SP_KEY_ENABLE_DOM_TREE SP_KEY_ENABLE_DOM_TREE;
+  public NSString* const SP_KEY_ENABLE_LONG_PRESS_MENU SP_KEY_ENABLE_LONG_PRESS_MENU;
+  public NSString* const SP_KEY_ENABLE_HIGHLIGHT_TOUCH SP_KEY_ENABLE_HIGHLIGHT_TOUCH;
+  public NSString* const SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT;
+  public NSString* const SP_KEY_ENABLE_FSP_SCREENSHOT SP_KEY_ENABLE_FSP_SCREENSHOT;
+  public NSString* const SP_KEY_ENABLE_PERF_METRICS SP_KEY_ENABLE_PERF_METRICS;
+
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ CDPResultCallback) (NSString *result) CDPResultCallback;
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxOpenCardCallback) (NSString *) LynxOpenCardCallback;
@@ -6182,21 +6207,12 @@ public enum LynxEnvKey {
 }
 
   public NSString* const SP_KEY_ENABLE_AUTOMATION SP_KEY_ENABLE_AUTOMATION;
-  public NSString* const SP_KEY_ENABLE_DEVTOOL SP_KEY_ENABLE_DEVTOOL;
-  public NSString* const SP_KEY_ENABLE_LOGBOX SP_KEY_ENABLE_LOGBOX;
-  public NSString* const SP_KEY_ENABLE_HIGHLIGHT_TOUCH SP_KEY_ENABLE_HIGHLIGHT_TOUCH;
-  public NSString* const SP_KEY_ENABLE_LAUNCH_RECORD SP_KEY_ENABLE_LAUNCH_RECORD;
-  public NSString* const SP_KEY_ENABLE_DOM_TREE SP_KEY_ENABLE_DOM_TREE;
-  public NSString* const SP_KEY_ENABLE_LONG_PRESS_MENU SP_KEY_ENABLE_LONG_PRESS_MENU;
   public NSString* const SP_KEY_IGNORE_ERROR_TYPES SP_KEY_IGNORE_ERROR_TYPES;
   public NSString* const SP_KEY_ENABLE_IGNORE_ERROR_CSS SP_KEY_ENABLE_IGNORE_ERROR_CSS;
-  public NSString* const SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT;
   public NSString* const SP_KEY_ACTIVATED_CDP_DOMAINS SP_KEY_ACTIVATED_CDP_DOMAINS;
   public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_DOM SP_KEY_ENABLE_CDP_DOMAIN_DOM;
   public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_CSS SP_KEY_ENABLE_CDP_DOMAIN_CSS;
   public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_PAGE SP_KEY_ENABLE_CDP_DOMAIN_PAGE;
-  public NSString* const SP_KEY_ENABLE_QUICKJS_DEBUG SP_KEY_ENABLE_QUICKJS_DEBUG;
-  public NSString* const SP_KEY_ENABLE_FSP_SCREENSHOT SP_KEY_ENABLE_FSP_SCREENSHOT;
   public NSString* const SP_KEY_SHOW_DEVTOOL_BADGE SP_KEY_SHOW_DEVTOOL_BADGE;
 
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT NSString* const LynxErrorDomain LynxErrorDomain;

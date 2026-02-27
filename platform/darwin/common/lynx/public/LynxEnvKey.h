@@ -6,25 +6,17 @@
 #define DARWIN_COMMON_LYNX_LYNXENVKEY_H_
 
 #import <Foundation/Foundation.h>
+#import <Lynx/DevToolSettings.h>
 
 static NSString *const SP_KEY_ENABLE_AUTOMATION = @"enable_automation";
 
 // Keys for devtool.
-static NSString *const SP_KEY_ENABLE_DEVTOOL = @"enable_devtool";
-static NSString *const SP_KEY_ENABLE_LOGBOX = @"enable_logbox";
-static NSString *const SP_KEY_ENABLE_HIGHLIGHT_TOUCH = @"enable_highlight_touch";
-static NSString *const SP_KEY_ENABLE_LAUNCH_RECORD = @"enable_launch_record";
-static NSString *const SP_KEY_ENABLE_DOM_TREE = @"enable_dom_tree";
-static NSString *const SP_KEY_ENABLE_LONG_PRESS_MENU = @"enable_long_press_menu";
 static NSString *const SP_KEY_IGNORE_ERROR_TYPES = @"ignore_error_types";
 static NSString *const SP_KEY_ENABLE_IGNORE_ERROR_CSS = @"error_code_css";
-static NSString *const SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT = @"enable_preview_screen_shot";
 static NSString *const SP_KEY_ACTIVATED_CDP_DOMAINS = @"activated_cdp_domains";
 static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_DOM = @"enable_cdp_domain_dom";
 static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_CSS = @"enable_cdp_domain_css";
 static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_PAGE = @"enable_cdp_domain_page";
-static NSString *const SP_KEY_ENABLE_QUICKJS_DEBUG = @"enable_quickjs_debug";
-static NSString *const SP_KEY_ENABLE_FSP_SCREENSHOT = @"enable_fsp_screenshot";
 
 // deprecated after Lynx2.9
 static NSString *const SP_KEY_SHOW_DEVTOOL_BADGE = @"show_devtool_badge";

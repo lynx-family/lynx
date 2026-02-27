@@ -63,6 +63,7 @@ common_lynx_shared_sources = [
   "devtool_wrapper/DevToolLogLevel.h",
   "devtool_wrapper/DevToolOverlayDelegate.h",
   "devtool_wrapper/DevToolOverlayDelegate.mm",
+  "devtool_wrapper/DevToolSettings.mm",
   "devtool_wrapper/LynxBaseInspectorController.h",
   "devtool_wrapper/LynxDebugger+Internal.h",
   "devtool_wrapper/LynxDebugger.m",
