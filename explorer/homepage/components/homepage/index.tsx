@@ -19,6 +19,7 @@ interface HomePageProps {
   currentTheme: string;
   withTheme: (className: string) => string;
   withNotchScreen: (className: string) => string;
+  safeAreaBottom: number;
 }
 
 export default function HomePage(props: HomePageProps) {
@@ -96,9 +97,19 @@ export default function HomePage(props: HomePageProps) {
     return <></>;
   }
 
+  const safeAreaTop = lynx.__globalProps.safeAreaTop || 0;
+  const navigatorHeight = 48 + props.safeAreaBottom;
+
   return (
-    <view clip-radius="true" className={withTheme('page')}>
-      <view className={withNotchScreen('page-header')}>
+    <view
+      clip-radius="true"
+      className={withTheme('page')}
+      style={{ height: `calc(100% - ${navigatorHeight}px)` }}
+    >
+      <view
+        className="page-header"
+        style={{ marginTop: `${Math.max(safeAreaTop, 10)}px` }}
+      >
         <image src={getIcon('Explorer')} className="logo" mode="aspectFit" />
         <text className={withTheme('home-title')}>Lynx Explorer</text>
         <view className="scan">

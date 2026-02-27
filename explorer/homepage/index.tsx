@@ -70,6 +70,8 @@ export default function Explorer() {
     return lynx.__globalProps.isNotchScreen ? `${className}__notch` : className;
   };
 
+  const safeAreaBottom = lynx.__globalProps.safeAreaBottom || 0;
+
   return (
     <view clip-radius="true" style={{ height: '100%' }}>
       <HomePage
@@ -77,6 +79,7 @@ export default function Explorer() {
         withNotchScreen={withNotchScreen}
         withTheme={withTheme}
         showPage={state.showHomePage}
+        safeAreaBottom={safeAreaBottom}
       />
       <SettingsPage
         themes={state.themes}
@@ -85,12 +88,14 @@ export default function Explorer() {
         withTheme={withTheme}
         setTheme={setTheme}
         showPage={state.showSettingsPage}
+        safeAreaBottom={safeAreaBottom}
       />
       <Navigator
         {...state}
         withTheme={withTheme}
         openHomePage={openHomePage}
         openSettingsPage={openSettingsPage}
+        safeAreaBottom={safeAreaBottom}
       />
     </view>
   );
