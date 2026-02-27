@@ -1112,6 +1112,7 @@ public class LynxContext : NSObject {
   public BOOL LynxContext::hasCustomGenericFetcher hasCustomGenericFetcher;
   public BOOL LynxContext::hasCustomMediaFetcher hasCustomMediaFetcher;
   public BOOL LynxContext::hasCustomTemplateFetcher hasCustomTemplateFetcher;
+  public BOOL LynxContext::hasLynxViewDestroyed hasLynxViewDestroyed;
   public LynxUIOwner* _Nullable LynxContext()::uiOwner uiOwner;
   public LynxUIIntersectionObserverManager* _Nullable LynxContext()::intersectionManager intersectionManager;
   public id<LUIBodyView> _Nullable LynxContext()::containerView containerView;

@@ -119,7 +119,7 @@
   if (_dispatchingIntrinsicContentSizeChange) {
     _LogI(@"Warning!!!! you possibly call clearForDestroy inside of layoutDidFinish call stack");
   }
-
+  [[self getLynxContext] setHasLynxViewDestroyed:YES];
   // forbidden clearForDestroy not on ui thread
   if (![NSThread isMainThread]) {
     NSString* stack =
