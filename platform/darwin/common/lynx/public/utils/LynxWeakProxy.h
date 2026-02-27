@@ -9,7 +9,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxWeakProxy : NSObject
+@interface LynxWeakProxy : NSProxy
 
 @property(nonatomic, weak, readonly, nullable) id target;
 

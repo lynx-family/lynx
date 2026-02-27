@@ -65,10 +65,6 @@
   return [_target conformsToProtocol:aProtocol];
 }
 
-- (BOOL)isProxy {
-  return YES;
-}
-
 - (NSString *)description {
   return [_target description];
 }

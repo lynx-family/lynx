@@ -5407,7 +5407,7 @@ public class LynxWasmFuncRegistry : NSObject {
   public void LynxWasmFuncRegistry::registerWasmFunc:(void *func);
 }
 
-public class LynxWeakProxy : NSObject {
+public class LynxWeakProxy : NSProxy {
   public id LynxWeakProxy::target target;
   public instancetype LynxWeakProxy::proxyWithTarget:(id target);
 }
