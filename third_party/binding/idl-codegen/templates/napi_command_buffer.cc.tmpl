@@ -17,6 +17,12 @@
 namespace lynx {
 namespace {{component}} {
 
+{% if component == 'canvas' %}
+constexpr unsigned kCanvasGradientTypeId = 3100;
+constexpr unsigned kCanvasPatternTypeId = 3101;
+constexpr unsigned kDOMStringTypeId = 3102;
+{% endif %}
+
 {% macro decode_argument_struct(argument) %}
 {% if argument.is_boolean_type %}
 uint32_t {{argument.name}};
@@ -32,6 +38,9 @@ uint32_t {{argument.name}};
 {% endif %}
 {% elif argument['enum_type'] %}
 uint32_t {{argument.name}};
+{% elif argument['union_types'] %}
+uint32_t {{argument.name}}UnionType;
+uint32_t idOrLength;
 {% elif argument.is_string_type %}
 uint32_t {{argument.name}}StringLengthGen;
 {% elif argument.is_wrapper_type %}
@@ -46,13 +55,52 @@ uint32_t {{argument.name}}ByteLengthGen;
 {% elif argument['idl_type'] == 'ArrayBufferView' %}
 uint32_t {{argument.name}}ViewTypeGen;
 uint32_t {{argument.name}}ByteLengthGen;
+{% elif argument.is_dictionary %}
+uint32_t has_{{argument.name}};
 {% endif %}
+{% endmacro %}
+
+{% macro method_call_content(method) %}
+if (type_safe) {
+  {% if method.is_raises_exception %} 
+  binding::ExceptionState exception_state(env);
+  {% endif %}
+  {{'auto&& result = ' if method.idl_type != 'void'}}pointer.{{method.ptr_name}}->{{method.camel_case_name}}({{'exception_state, ' if method.is_raises_exception}}{{method.arguments | map ('command_argument_literal') | join(', ')}});
+  {% if method.is_raises_exception %} 
+  if (exception_state.HadException()) {
+    *success = false;
+    return Napi::Value();
+  }
+  {% endif %}
+  {% if method.return_async %}
+  FromAsyncId(command.id)->Init(std::unique_ptr<ImplBase>(result));
+  {% endif %}
+  {% if method.is_sync %}
+  {{ update_return_value(method) | trim | indent(2) }}
+  // Sync calls should be at the end of buffer.
+  {{macro_prefix}}DCHECK(current == length);
+  if (current != length) {
+    Napi::Error::New(env, "Command out of order. Are you using native Promise instead of Lynx mock on iOS < 15?").ThrowAsJavaScriptException();
+    return Napi::Value();
+  }
+  {% endif %}
+}
 {% endmacro %}
 
 {% macro method_case(method) %}
 case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{method.overload_index}}()
   struct __attribute__ ((__packed__)) {{method.camel_case_name}}Command {
     {% set ns.count = 0 %}
+    {% set ns.has_optional_argument = False %}
+    {% for argument in method.arguments %}
+    {% if argument.is_optional %}
+    {% set ns.has_optional_argument = True %}
+    {% endif %}
+    {% endfor %}
+    {% if ns.has_optional_argument %}
+    uint32_t argument_count;
+    {% set ns.count = ns.count + 1 %}
+    {% endif %}
     {% for argument in method.arguments %}
     {% if argument.is_numeric_type or argument.is_boolean_type %}
     {% if argument.idl_type == 'long long' or argument.idl_type == 'unsigned long long' or argument.idl_type == 'unrestricted double' or argument.idl_type == 'double' %}
@@ -75,6 +123,10 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
     {% set ns.count = ns.count + 2 %}
     {% elif argument['enum_type'] %}
     {% set ns.count = ns.count + 1 %}
+    {% elif argument.is_dictionary %}
+    {% set ns.count = ns.count + 1 %}
+    {% elif argument['union_types'] %}
+    {% set ns.count = ns.count + 2 %}
     {% endif %}
     {{ decode_argument_struct(argument) | trim | indent(4) }}
     {% endfor %}
@@ -89,6 +141,7 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
   {% endif %}
 {#                                                                            #}
   {% for argument in method.arguments %}
+  {% set ns.union_argument = False %}
   {% if argument.is_typed_array %}
   {% if argument.idl_type == 'Float32Array' %}
   SharedVector<float> {{argument.name}}((float*)buffer + current, command.{{argument.name}}ArrayLengthGen);
@@ -138,32 +191,40 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
   {% elif argument.idl_type == 'ArrayBufferView' %}
   ArrayBufferView {{argument.name}}(buffer + current, (ArrayBufferView::ViewType)command.{{argument.name}}ViewTypeGen, command.{{argument.name}}ByteLengthGen);
 {#                                                                            #}
+ {% elif argument.is_dictionary %}
+  std::unique_ptr<{{argument.idl_type}}> {{argument.name}};
+  if (command.has_{{argument.name}}) {
+    binding::DictionaryBuffer dict(buffer + current, binding::NapiEnvImpl::From(env));
+    {{argument.name}} = {{argument.idl_type}}::From(dict);
+    current += dict.ParsedLength();
+  }
+  {% elif argument['union_types'] %}
+  {% set ns.union_argument = True %}
+  switch (command.{{argument['name']}}UnionType) {
+  {% for union_arg in argument['union_types'] %}
+    case k{{union_arg['idl_type']}}TypeId: {
+      {% if union_arg['is_interface_type'] %}
+      auto* napi_interface = FromId<Napi{{union_arg['idl_type']}}>(command.idOrLength);
+      {{union_arg['idl_type']}}* {{argument['name']}} = napi_interface->ToImplUnsafe();
+      {% else %}
+      uint32_t strLength = command.idOrLength;
+      auto {{argument['name']}} = binding::Utf16LeToUtf8((char16_t*)(buffer + current), strLength);
+      current += (strLength + 1) / 2;
+      {% endif %}
+      {{ method_call_content(method) | trim | indent(6) }}
+      break;
+    }
+  {% endfor %}
+    default: {
+      KRYPTON_LOGE("{{method.class_name}}.{{method.name}}{{method.overload_index}}: unknown union type: " << command.{{argument['name']}}UnionType);
+      break;
+    }
+  }
   {% endif %}
   {% endfor %}
-  if (type_safe) {
-    {% if method.is_raises_exception %} 
-    binding::ExceptionState exception_state(env);
-    {% endif %}
-    {{'auto&& result = ' if method.idl_type != 'void'}}pointer.{{method.ptr_name}}->{{method.camel_case_name}}({{'exception_state, ' if method.is_raises_exception}}{{method.arguments | map ('command_argument_literal') | join(', ')}});
-    {% if method.is_raises_exception %} 
-    if (exception_state.HadException()) {
-      *success = false;
-      return Napi::Value();
-    }
-    {% endif %}
-    {% if method.return_async %}
-    FromAsyncId(command.id)->Init(std::unique_ptr<ImplBase>(result));
-    {% endif %}
-    {% if method.is_sync %}
-    {{ update_return_value(method) | trim | indent(2) }}
-    // Sync calls should be at the end of buffer.
-    {{macro_prefix}}DCHECK(current == length);
-    if (current != length) {
-      Napi::Error::New(env, "Command out of order. Are you using native Promise instead of Lynx mock on iOS < 15?").ThrowAsJavaScriptException();
-      return Napi::Value();
-    }
-    {% endif %}
-  }
+  {% if ns.union_argument != True %}
+  {{ method_call_content(method) | trim | indent(2) }}
+  {% endif %}
   {% for argument in method.arguments %}
   {% if argument.idl_type == 'ArrayBuffer' or argument['idl_type'] == 'ArrayBufferView' %}
   current += (command.{{argument.name}}ByteLengthGen + 3) / 4;

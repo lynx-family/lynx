@@ -270,7 +270,7 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 'overloads_child_only': js_class['overloads_child_only'],
                 'async_classes': template_context.get('async_classes', []),
                 'partial_data_opt_prefix': self.hardcoded_includes.get(template_context['component'], {}).get('partial_data_opt_prefix', '0'),
-                'overload_resolvers_prefix': self.hardcoded_includes.get(template_context['component'], {}).get('overload_resolvers_prefix', '0'),
+                'overload_resolvers_prefix': self.hardcoded_includes.get(template_context['component'], {}).get('overload_resolvers_prefix', []),
                 'remote_type_id': js_class['remote_type_id'],
                 'remote_constructor_num': js_class['remote_constructor_num'],
                 'remote_ids_filename': template_context['remote_ids_filename'],
