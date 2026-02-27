@@ -78,6 +78,9 @@ static constexpr const char* const FSP_TOTAL_PRESENTED_CONTENT_AREA =
     "totalPresentedContentArea";
 static constexpr const char* const FSP_LAST_CHANGE_TIMESTAMP_US =
     "lastChangeTimestampUs";
+
+inline constexpr const char* const TIMING_PIPELINE_START =
+    "Timing::OnPipelineStart";
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 #endif  // CORE_SERVICES_TRACE_SERVICE_TRACE_EVENT_DEF_H_

@@ -185,6 +185,15 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 - (void)onPipelineStart:(NSString*)pipelineId
          pipelineOrigin:(NSString*)pipelineOrigin
               timestamp:(uint64_t)timestamp {
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, TIMING_PIPELINE_START,
+      [pipeline_id = pipelineId ? std::string([pipelineId UTF8String]) : std::string(),
+       pipeline_origin = pipelineOrigin ? std::string([pipelineOrigin UTF8String]) : std::string(),
+       timestamp, actorPtr = _nativeWeakActorPtr.lock()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("pipeline_origin", pipeline_origin);
+        ctx.event()->add_debug_annotations("pipeline_id", pipeline_id);
+        ctx.event()->add_debug_annotations("timestamp", std::to_string(timestamp));
+      });
   if (_embeddedModeEnabled) {
     return;
   }
