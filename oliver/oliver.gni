@@ -10,6 +10,9 @@ declare_args() {
 
   # Whether need NodeJS headers
   is_nodejs = false
+
+  # Whether disable internal log
+  oliver_disable_internal_log = false
 }
 
 if (oliver_type == "ssr") {
@@ -148,6 +151,12 @@ template("build_kernel_js") {
       "--dev_output",
       rebase_path(outputs[1]),
     ]
+    if (oliver_disable_internal_log) {
+      args += [
+        "--disable_internal_log",
+        "true",
+      ]
+    }
     if (need_header) {
       args += [
         "--gen_h_header",
