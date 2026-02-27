@@ -18,34 +18,48 @@ ListAnchorManager::ListAnchorManager(ListLayoutManager* list_layout_manager)
 // Update anchor info when layout children.
 void ListAnchorManager::RetrieveAnchorInfoBeforeLayout(
     AnchorInfo& anchor_info, int finishing_binding_index) {
-  if (IsValidInitialScrollIndex()) {
-    // initial-scroll-index
-    //      Use initial-scroll-index as anchor and fill a screen size area
-    // Since item_holders' layout not finished, do not set coordinate here.
-    ItemHolder* item_holder =
-        list_adapter_->GetItemHolderForIndex(initial_scroll_index_);
-    if (!item_holder) {
-      return;
-    }
-    anchor_info.valid_ = true;
-    anchor_info.index_ = initial_scroll_index_;
-    anchor_info.item_holder_ = item_holder;
-    anchor_info.start_alignment_delta_ = 0;
-  } else if (scrolling_info_.IsValidNonSmoothScrollTarget()) {
-    ItemHolder* item_holder =
-        list_adapter_->GetItemHolderForIndex(scrolling_info_.scrolling_target_);
-    if (!item_holder) {
-      return;
-    }
-    anchor_info.valid_ = true;
-    anchor_info.index_ = scrolling_info_.scrolling_target_;
-    anchor_info.item_holder_ = item_holder;
-    anchor_info.start_alignment_delta_ = 0;
-  } else {
-    FindAnchor(anchor_info, !anchor_priority_from_begin_,
-               finishing_binding_index);
-    ClearDiffReference();
+  // 1. Try find anchor from pending data, include initial-scroll-index or
+  // non-smooth scroll target.
+  if (FindAnchorFromPendingData(anchor_info)) {
+    DLIST_LOGI("[" << list_container_
+                   << "] Find anchor info from pending data.");
+    return;
   }
+  // 2. Try find anchor from children.
+  DLIST_LOGI("[" << list_container_
+                 << "] Find anchor info from existing children.");
+  FindAnchorFromChildren(anchor_info, finishing_binding_index);
+}
+
+bool ListAnchorManager::FindAnchorFromPendingData(AnchorInfo& anchor_info) {
+  int anchor_index = kInvalidIndex;
+  bool valid_init_scroll_index = IsValidInitialScrollIndex();
+  bool valid_non_smooth_scroll_target =
+      scrolling_info_.IsValidNonSmoothScrollTarget();
+  if (valid_init_scroll_index) {
+    anchor_index = initial_scroll_index_;
+  } else if (valid_non_smooth_scroll_target) {
+    anchor_index = scrolling_info_.scrolling_target_;
+  }
+  ItemHolder* item_holder = list_adapter_->GetItemHolderForIndex(anchor_index);
+  if (item_holder) {
+    // Note: Use initial-scroll-index or no-smooth scroll target as anchor and
+    // fill a screen size area, and since item_holders' layout not finished, do
+    // not set coordinate here.
+    anchor_info.valid_ = true;
+    anchor_info.index_ = anchor_index;
+    anchor_info.item_holder_ = item_holder;
+    anchor_info.start_alignment_delta_ = 0;
+  }
+  return valid_init_scroll_index || valid_non_smooth_scroll_target;
+}
+
+void ListAnchorManager::FindAnchorFromChildren(AnchorInfo& anchor_info,
+                                               int finishing_binding_index) {
+  // TODO(dingwang.wxx): impl another find anchor logic for layout from end.
+  FindAnchor(anchor_info, !anchor_priority_from_begin_,
+             finishing_binding_index);
+  ClearDiffReference();
 }
 
 void ListAnchorManager::AdjustAnchorInfoAfterLayout(AnchorInfo& anchor_info) {
@@ -103,10 +117,10 @@ void ListAnchorManager::AdjustContentOffsetWithAnchor(
 }
 
 void ListAnchorManager::UpdateAnchorWithItemHolder(AnchorInfo& anchor_info,
-                                                   ItemHolder& item_holder) {
-  anchor_info.index_ = item_holder.index();
+                                                   ItemHolder* item_holder) {
   anchor_info.valid_ = true;
-  anchor_info.item_holder_ = &item_holder;
+  anchor_info.index_ = item_holder->index();
+  anchor_info.item_holder_ = item_holder;
   AdjustAnchorAlignment(anchor_info);
 }
 
@@ -116,65 +130,18 @@ void ListAnchorManager::FindAnchor(AnchorInfo& anchor_info, bool from_end,
     anchor_info.Reset();
     return;
   }
-  // The priority level is:
-  // 1. No dirty item_holder
-  // 2. No dirty but binding item_holder(multi-thread)
-  // 3. The item_holder finishing binding which cause this layout
-  // 4. Updated item_holder (Not removed or newly inserted)
-  // 5. Closest outside screen item_holder (above or below screen)
-  // Find these item_holders can be chosen from.
-  ItemHolder* updated_item_holder = nullptr;
-  ItemHolder* binding_item_holder = nullptr;
-  ItemHolder* finishing_binding_item_holder = nullptr;
-  const auto& on_screen_children = list_children_helper_->on_screen_children();
-  list_children_helper_->ForEachChild(
-      on_screen_children,
-      [this, &updated_item_holder, &binding_item_holder, &anchor_info,
-       finishing_binding_index,
-       &finishing_binding_item_holder](ItemHolder* item_holder) {
-        // Sticky item_holder can not be choosen as anchor
-        if (!list_layout_manager_->IsItemHolderNotAtStickyPosition(
-                item_holder)) {
-          return false;
-        }
-        int index = item_holder->index();
-        if ((list_adapter_->IsFinishedBinding(item_holder) ||
-             list_adapter_->IsRecycled(item_holder)) &&
-            index != finishing_binding_index) {
-          UpdateAnchorWithItemHolder(anchor_info, *item_holder);
-          return true;
-        } else if (!list_adapter_->IsDirty(item_holder) &&
-                   list_adapter_->IsBinding(item_holder) &&
-                   !binding_item_holder) {
-          binding_item_holder = item_holder;
-        } else if (!list_adapter_->IsDirty(item_holder) &&
-                   index == finishing_binding_index) {
-          // Only when this finishing_binding_item_holder is in
-          // on_screen_children can it be anchor.
-          finishing_binding_item_holder = item_holder;
-        } else if (list_adapter_->IsDirty(item_holder) &&
-                   list_adapter_->IsUpdated(item_holder) &&
-                   !updated_item_holder) {
-          updated_item_holder = item_holder;
-        }
-        return false;
-      },
-      from_end);
-  // Find Updated binding_item_holder as the second-best anchor.
-  if (!anchor_info.valid_ && binding_item_holder) {
-    UpdateAnchorWithItemHolder(anchor_info, *binding_item_holder);
-    return;
+  // 1. Get anchor candidates from children.
+  const auto& anchor_candidates =
+      GetAnchorCandidates(finishing_binding_index, from_end);
+  // The priority of all anchor candidates:
+  //   no_dirty_item_holder > updated_item_holder >
+  //   binding_item_holder > finishing_binding_item_holder
+  auto it = std::find_if(anchor_candidates.begin(), anchor_candidates.end(),
+                         [](ItemHolder* item_holder) { return item_holder; });
+  if (!anchor_info.valid_ && it != anchor_candidates.end()) {
+    UpdateAnchorWithItemHolder(anchor_info, *it);
   }
-  // Find finishing_binding_item_holder as the third-best anchor.
-  if (!anchor_info.valid_ && finishing_binding_item_holder) {
-    UpdateAnchorWithItemHolder(anchor_info, *finishing_binding_item_holder);
-    return;
-  }
-  // Find Updated item_holders as the forth-best anchor.
-  if (!anchor_info.valid_ && updated_item_holder) {
-    UpdateAnchorWithItemHolder(anchor_info, *updated_item_holder);
-    return;
-  }
+  // 2. Get anchor from outside children.
   if (!anchor_info.valid_) {
     if (list_container_->ShouldSearchRefAnchor()) {
       FindAnchorFromRef(anchor_info);
@@ -193,7 +160,8 @@ void ListAnchorManager::FindAnchor(AnchorInfo& anchor_info, bool from_end,
       }
     }
   }
-  // no anchor found. layout from list padding top
+  // 3. No anchor found. layout from list padding top
+  DLIST_LOGI("[" << list_container_ << "] Find anchor info from begin or end.");
   if (!anchor_info.valid_) {
     anchor_info.valid_ = true;
     anchor_info.index_ = 0;
@@ -277,6 +245,57 @@ void ListAnchorManager::FindAnchorFromRef(AnchorInfo& anchor_info) {
     anchor_info.item_holder_ =
         list_container_->GetItemHolderForIndex(anchor_info.index_);
   }
+}
+
+base::InlineVector<ItemHolder*, kAnchorCandidateSize>
+ListAnchorManager::GetAnchorCandidates(int finishing_binding_index,
+                                       bool from_end) {
+  // The priority level is:
+  // 1. No dirty item_holder
+  // 2. No dirty but binding item_holder(multi-thread)
+  // 3. The item_holder finishing binding which cause this layout
+  // 4. Updated item_holder (Not removed or newly inserted)
+  // Find these item_holders can be chosen from.
+  ItemHolder* no_dirty_item_holder = nullptr;
+  ItemHolder* updated_item_holder = nullptr;
+  ItemHolder* binding_item_holder = nullptr;
+  ItemHolder* finishing_binding_item_holder = nullptr;
+  const auto& on_screen_children = list_children_helper_->on_screen_children();
+  list_children_helper_->ForEachChild(
+      on_screen_children,
+      [this, &no_dirty_item_holder, &updated_item_holder, &binding_item_holder,
+       &finishing_binding_item_holder,
+       finishing_binding_index](ItemHolder* item_holder) {
+        // Sticky item_holder can not be choosen as anchor
+        if (!list_layout_manager_->IsItemHolderNotAtStickyPosition(
+                item_holder)) {
+          return false;
+        }
+        int index = item_holder->index();
+        if ((list_adapter_->IsFinishedBinding(item_holder) ||
+             list_adapter_->IsRecycled(item_holder)) &&
+            index != finishing_binding_index) {
+          no_dirty_item_holder = item_holder;
+          return true;
+        } else if (!list_adapter_->IsDirty(item_holder) &&
+                   list_adapter_->IsBinding(item_holder) &&
+                   !binding_item_holder) {
+          binding_item_holder = item_holder;
+        } else if (!list_adapter_->IsDirty(item_holder) &&
+                   index == finishing_binding_index) {
+          // Only when this finishing_binding_item_holder is in
+          // on_screen_children can it be anchor.
+          finishing_binding_item_holder = item_holder;
+        } else if (list_adapter_->IsDirty(item_holder) &&
+                   list_adapter_->IsUpdated(item_holder) &&
+                   !updated_item_holder) {
+          updated_item_holder = item_holder;
+        }
+        return false;
+      },
+      from_end);
+  return {no_dirty_item_holder, updated_item_holder, binding_item_holder,
+          finishing_binding_item_holder};
 }
 
 void ListAnchorManager::InitScrollToPositionParam(ItemHolder* item_holder,

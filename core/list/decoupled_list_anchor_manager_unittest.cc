@@ -249,5 +249,78 @@ TEST_F(ListAnchorManagerTest, FindAnchor3) {
        .item_holder_ = first_valid_item_holder});
 }
 
+TEST_F(ListAnchorManagerTest, GetAnchorCandidates) {
+  int data_count = 100;
+  InitLayoutAttrs("single", 1, "vertical", 0.f, 0.f, 2000.f, 500.f);
+  InitRadonDataSource(data_count);
+  OnLayoutChildren();
+
+  // case1. No update
+  {
+    testing::RadonDataSource radon_data_source;
+    for (int i = 0; i < data_count; ++i) {
+      radon_data_source.item_keys_.emplace_back(
+          base::FormatString("list-item-%d", i));
+      radon_data_source.estimated_main_axis_size_pxs_.emplace_back(100);
+    }
+    LIST_CONTAINER_DEFINE_PROP_LEPUS_VALUE(
+        RadonListPlatformInfo,
+        lepus::Value(radon_data_source.GenerateDataSource()));
+    list_container_impl_->ResolveAttribute(*key, value);
+    list_container_impl_->PropsUpdateFinish();
+
+    const auto& anchor_candidates =
+        list_anchor_manager_->GetAnchorCandidates(kInvalidIndex, false);
+    EXPECT_EQ(anchor_candidates.size(), kAnchorCandidateSize);
+    EXPECT_TRUE(anchor_candidates[0] != nullptr);
+    EXPECT_TRUE(anchor_candidates[1] == nullptr);
+    EXPECT_TRUE(anchor_candidates[2] == nullptr);
+    EXPECT_TRUE(anchor_candidates[3] == nullptr);
+  }
+
+  // case2. Update
+  {
+    testing::RadonDataSource radon_data_source;
+    for (int i = 0; i < data_count; ++i) {
+      radon_data_source.item_keys_.emplace_back(
+          base::FormatString("list-item-%d", i));
+      radon_data_source.estimated_main_axis_size_pxs_.emplace_back(100);
+    }
+    // remove: [0 - 9]
+    // insert: [0 - 9]
+    // update: [10 - 99]
+    int first_updated_index = 10;
+    ItemHolder* first_updated_item_holder =
+        list_container_impl_->GetItemHolderForIndex(first_updated_index);
+    for (int i = 0; i < data_count; ++i) {
+      if (i < first_updated_index) {
+        radon_data_source.removal_.emplace_back(i);
+        radon_data_source.insertion_.emplace_back(i);
+        radon_data_source.item_keys_.emplace_back(
+            base::FormatString("new-list-item-%d", i));
+      } else {
+        radon_data_source.update_from_.emplace_back(i);
+        radon_data_source.update_to_.emplace_back(i);
+        radon_data_source.item_keys_.emplace_back(
+            base::FormatString("list-item-%d", i));
+        radon_data_source.estimated_main_axis_size_pxs_.emplace_back(100);
+      }
+    }
+    LIST_CONTAINER_DEFINE_PROP_LEPUS_VALUE(
+        RadonListPlatformInfo,
+        lepus::Value(radon_data_source.GenerateDataSource()));
+    list_container_impl_->ResolveAttribute(*key, value);
+    list_container_impl_->PropsUpdateFinish();
+
+    const auto& anchor_candidates =
+        list_anchor_manager_->GetAnchorCandidates(kInvalidIndex, false);
+    EXPECT_EQ(anchor_candidates.size(), kAnchorCandidateSize);
+    EXPECT_TRUE(anchor_candidates[0] == nullptr);
+    EXPECT_TRUE(anchor_candidates[1] == first_updated_item_holder);
+    EXPECT_TRUE(anchor_candidates[2] == nullptr);
+    EXPECT_TRUE(anchor_candidates[3] == nullptr);
+  }
+}
+
 }  // namespace list
 }  // namespace lynx

@@ -5,6 +5,7 @@
 #ifndef CORE_LIST_DECOUPLED_LIST_ANCHOR_MANAGER_H_
 #define CORE_LIST_DECOUPLED_LIST_ANCHOR_MANAGER_H_
 
+#include "base/include/vector.h"
 #include "core/list/decoupled_list_adapter.h"
 #include "core/list/decoupled_list_children_helper.h"
 #include "core/list/decoupled_list_orientation_helper.h"
@@ -126,8 +127,13 @@ class ListAnchorManager {
   void FindAnchor(AnchorInfo& anchor_info, bool from_begin,
                   int finishing_binding_index);
   void FindAnchorFromRef(AnchorInfo& anchor_info);
+  bool FindAnchorFromPendingData(AnchorInfo& anchor_info);
+  void FindAnchorFromChildren(AnchorInfo& anchor_info,
+                              int finishing_binding_index);
+  base::InlineVector<ItemHolder*, kAnchorCandidateSize> GetAnchorCandidates(
+      int finishing_binding_index, bool from_end);
   void UpdateAnchorWithItemHolder(AnchorInfo& anchor_info,
-                                  ItemHolder& item_holder);
+                                  ItemHolder* item_holder);
   void AdjustAnchorAlignment(AnchorInfo& anchor_info);
 
  private:

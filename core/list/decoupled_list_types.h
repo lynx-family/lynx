@@ -242,6 +242,7 @@ static constexpr int kInvalidDimensionSize = -1.f;
 static constexpr int kStickyItemSetCapacityForSyncMode = 1;
 static constexpr int kStickyItemSetCapacityForASyncMode = 2;
 static constexpr int kDefaultMainAxisItemSize = 200;
+static constexpr int kAnchorCandidateSize = 4;
 
 enum class LayoutDirection : int32_t {
   kLayoutToStart = -1,
