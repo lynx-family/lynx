@@ -6,12 +6,14 @@
 
 #include <utility>
 
+#include "base/include/fml/make_copyable.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/common/bindings/event/context_proxy.h"
 #include "core/runtime/common/bindings/event/message_event.h"
@@ -704,11 +706,57 @@ void TasmMediator::InvokeUIMethod(tasm::LynxGetUIResult ui_result,
                                   const std::string& method,
                                   fml::RefPtr<tasm::PropBundle> params,
                                   runtime::js::ApiCallBack callback) {
+  if (IsFragmentLayerRenderModeOn()) {
+    const auto& ui_impl_ids = ui_result.UiImplIds();
+    if (ui_impl_ids.empty()) {
+      CallJSApiCallbackWithValue(
+          std::move(callback),
+          tasm::LynxGetUIResult(
+              std::move(const_cast<std::vector<int32_t>&>(ui_impl_ids)),
+              tasm::LynxGetUIResult::UNKNOWN, "No node in the input parameter")
+              .StatusAsLepusValue());
+      return;
+    }
+
+    int32_t ui_impl_id = ui_impl_ids[0];
+    auto painting_context = engine_actor_->Impl()
+                                ->GetTasm()
+                                ->page_proxy()
+                                ->element_manager()
+                                ->painting_context();
+
+    auto map = lepus::Dictionary::Create();
+    if (params != nullptr && params->IsNative()) {
+      auto* native_bundle = static_cast<tasm::NativePropBundle*>(params.get());
+      if (native_bundle != nullptr) {
+        for (const auto& p : native_bundle->GetProps()) {
+          map->SetValue(p.first, p.second);
+        }
+      }
+    }
+    pub::ValueImplLepus invoke_params(lepus::Value(std::move(map)));
+
+    painting_context->Invoke(
+        ui_impl_id, method, std::move(invoke_params),
+        fml::MakeCopyable([this, cb = std::move(callback)](
+                              int32_t code, const pub::Value& data) {
+          auto result_dict = lepus::Dictionary::Create();
+          BASE_STATIC_STRING_DECL(kCode, "code");
+          BASE_STATIC_STRING_DECL(kData, "data");
+          result_dict->SetValue(kCode, code);
+          result_dict->SetValue(
+              kData, pub::ValueUtils::ConvertValueToLepusValue(data));
+          CallJSApiCallbackWithValue(cb, lepus::Value(result_dict));
+        }));
+    return;
+  }
+
   if (invoke_ui_method_func_ != nullptr) {
     invoke_ui_method_func_(std::move(ui_result), method, std::move(params),
                            std::move(callback));
     return;
   }
+
   facade_actor_->Act([ui_result = std::move(ui_result), method,
                       params = std::move(params),
                       callback = std::move(callback)](auto& facade) mutable {
