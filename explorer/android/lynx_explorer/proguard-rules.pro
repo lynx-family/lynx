@@ -27,3 +27,8 @@
 -keepclasseswithmembers class * {
     @com.lynx.base.CalledByNative <methods>;
 }
+
+-keep class androidx.activity.** { *; }
+-keep class androidx.fragment.** { *; }
+-keep class androidx.lifecycle.** { *; }
+-keep class androidx.savedstate.** { *; }
