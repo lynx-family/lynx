@@ -2696,6 +2696,9 @@ bool BaseView::HandleCommonAttribute(const char* attr,
     case KeywordID::kIdselector:
       id_selector_ = utils::GetCString(value);
       break;
+    case KeywordID::kReactRef:
+      ref_id_selector_ = utils::GetCString(value);
+      break;
     case KeywordID::kItemKey:
       item_key_ = utils::GetCString(value);
       break;

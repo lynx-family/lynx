@@ -153,6 +153,7 @@ scroll-direction
 scroll-orientation
 vertical-orientation
 idSelector
+react-ref
 needs-visible-cells
 need-visible-item-info
 item-key

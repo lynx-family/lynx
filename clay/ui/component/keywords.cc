@@ -46,7 +46,7 @@ struct TokenValue {
   short id;
 };
 
-#define TOTAL_KEYWORDS 258
+#define TOTAL_KEYWORDS 259
 #define MIN_WORD_LENGTH 3
 #define MAX_WORD_LENGTH 37
 #define MIN_HASH_VALUE 39
@@ -257,6 +257,7 @@ struct StringPool_t {
   char StringPool_str276[sizeof("text-overflow")];
   char StringPool_str277[sizeof("scroll-event-throttle")];
   char StringPool_str278[sizeof("drop-shadow")];
+  char StringPool_str279[sizeof("react-ref")];
   char StringPool_str280[sizeof("background-origin")];
   char StringPool_str282[sizeof("enable-report-info")];
   char StringPool_str284[sizeof("item-key")];
@@ -517,6 +518,7 @@ static const struct StringPool_t StringPool_contents = {
     "text-overflow",
     "scroll-event-throttle",
     "drop-shadow",
+    "react-ref",
     "background-origin",
     "enable-report-info",
     "item-key",
@@ -1051,7 +1053,8 @@ static const struct TokenValue wordlist[] = {
      (short)KeywordID::kScrollEventThrottle},
     {offsetof(struct StringPool_t, StringPool_str278),
      (short)KeywordID::kDropShadow},
-    {-1},
+    {offsetof(struct StringPool_t, StringPool_str279),
+     (short)KeywordID::kReactRef},
     {offsetof(struct StringPool_t, StringPool_str280),
      (short)KeywordID::kBackgroundOrigin},
     {-1},

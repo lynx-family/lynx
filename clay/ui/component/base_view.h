@@ -164,6 +164,8 @@ class BaseView : public TypeIdentifiable<BaseView>,
     id_selector_ = std::move(selector);
   }
 
+  const std::string& GetRefIdSelector() const { return ref_id_selector_; }
+
   BaseView* Parent() const { return parent_; }
 
   // Check if `a_view` is descendant of the current node.
@@ -662,6 +664,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   int id_ = -1;
   std::string id_selector_;
+  std::string ref_id_selector_;
   std::string name_;
   std::string app_region_;
   bool can_draggable_ = false;

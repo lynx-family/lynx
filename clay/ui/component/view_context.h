@@ -80,6 +80,9 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   // The '#' in `id_selector` should not by passed.
   static BaseView* FindViewByIdSelector(std::string_view id_selector,
                                         BaseView* root);
+  // Find view by react ref id (prop: `react-ref`).
+  static BaseView* FindViewByRefIdSelector(std::string_view ref_id_selector,
+                                           BaseView* root);
   ViewContext(PageView* root, ShadowNodeOwner* shadow_node_owner);
   virtual ~ViewContext();
 

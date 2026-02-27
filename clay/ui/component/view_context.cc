@@ -861,6 +861,25 @@ BaseView* ViewContext::FindViewByIdSelector(std::string_view id_selector,
   return res;
 }
 
+BaseView* ViewContext::FindViewByRefIdSelector(std::string_view ref_id_selector,
+                                               BaseView* from) {
+  FML_DCHECK(from);
+
+  if (from->GetRefIdSelector() == ref_id_selector) {
+    return from;
+  }
+
+  // DFS
+  BaseView* res = nullptr;
+  for (BaseView* child : from->GetChildren()) {
+    res = FindViewByRefIdSelector(ref_id_selector, child);
+    if (res) {
+      break;
+    }
+  }
+  return res;
+}
+
 void ViewContext::SetFontFace(const char* font_family, const char* src[],
                               int size) {
   if (size < 1) {

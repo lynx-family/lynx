@@ -128,37 +128,45 @@ void LynxUIMethodModule::InvokeUIMethod(
   }
 
   clay::BaseView* root = view_context->FindViewByComponentId(component_id);
-  if (root == nullptr || nodes.size() != 1) {
+  if (root == nullptr) {
     FML_DLOG(ERROR) << "Cannot find view with component id:" << component_id;
     callback(clay::LynxUIMethodResult::kNodeNotFound,
              clay::Value("component not found"));
     return;
   }
-
-  bool is_called_by_ref =
-      clay::attribute_utils::GetBool(args.Get(kStrIsCalledByRefId), false);
-  if (is_called_by_ref) {
+  if (nodes.empty()) {
     callback(clay::LynxUIMethodResult::kParamInvalid,
-             clay::Value("called by ref is not supported"));
+             clay::Value("nodes is empty"));
     return;
   }
 
-  const std::string& node_str = nodes[0];
-  if (node_str.length() > 0 && node_str[0] == '#') {
-    auto node =
-        clay::ViewContext::FindViewByIdSelector(node_str.substr(1), root);
-    if (node != nullptr) {
-      clay::LynxUIMethodRegistrar::Instance().Invoke(method_name, node, args,
-                                                     callback);
+  bool is_called_by_ref =
+      clay::attribute_utils::GetBool(args.Get(kStrIsCalledByRefId), false);
+  clay::BaseView* target = root;
+  for (const auto& node_str : nodes) {
+    if (is_called_by_ref) {
+      target = clay::ViewContext::FindViewByRefIdSelector(node_str, target);
     } else {
-      callback(clay::LynxUIMethodResult::kNodeNotFound,
-               clay::Value("node not found"));
+      if (node_str.empty() || node_str[0] != '#') {
+        callback(
+            clay::LynxUIMethodResult::kSelectorNotSupported,
+            clay::Value(node_str +
+                        " not support, only support id selector currently"));
+        return;
+      }
+
+      std::string_view id_selector(node_str);
+      id_selector.remove_prefix(1);
+      target = clay::ViewContext::FindViewByIdSelector(id_selector, target);
     }
-  } else {
-    callback(clay::LynxUIMethodResult::kSelectorNotSupported,
-             clay::Value(
-                 "selector not support, only support id selector currently"));
+    if (target == nullptr) {
+      callback(clay::LynxUIMethodResult::kNodeNotFound,
+               clay::Value("not found " + node_str));
+      return;
+    }
   }
+  clay::LynxUIMethodRegistrar::Instance().Invoke(method_name, target, args,
+                                                 callback);
 }
 
 void LynxUIMethodModule::EnsureInvokeAfterLayout(

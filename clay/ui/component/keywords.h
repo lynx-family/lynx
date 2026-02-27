@@ -170,6 +170,7 @@ enum class KeywordID {
   kScrollOrientation,
   kVerticalOrientation,
   kIdselector,
+  kReactRef,
   kNeedsVisibleCells,
   kNeedVisibleItemInfo,
   kItemKey,
