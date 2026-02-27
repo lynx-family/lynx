@@ -2205,6 +2205,13 @@ void TemplateAssembler::UpdateDataByPreParsedData(
        << " loadTemplate enablePreUpdateData:"
        << this->enable_pre_update_data_);
 
+  // pre-painting means to invoke js lifecycle in updateData.
+  // we should consider engine reuse the same.
+  // TODO(nihao.royal): maybe we should rename this flag to a more meaningful
+  // flag, eg: delay_js_lifetime_
+  if (pipeline_options->is_reuse_engine) {
+    pre_painting_ = pipeline_options->is_reuse_engine;
+  }
   if (template_loaded_ && !page_proxy_.IsWaitingSSRHydrate()) {
     uint64_t update_data_trigger = base::CurrentSystemTimeMicroseconds();
 

@@ -236,6 +236,7 @@ public class LynxTemplateRender
 
   private int mEmbeddedMode;
   private boolean mEnableReuseEngine;
+  private boolean mEnableCacheEngine;
   private boolean mIsEngineFromReuse;
   private boolean mMarkEngineInUseFlag;
   private WeakReference<TasmPlatformInvoker> mTasmPlatformInvoker;
@@ -331,7 +332,12 @@ public class LynxTemplateRender
 
     mThreadStrategyForRendering = mLynxViewConfigProvider.getThreadStrategy();
 
-    if (mEnableReuseEngine) {
+    // try to get engine from LynxViewGroup;
+    if (mCacheManager != null && mCacheManager.isEngineCacheEnabled()) {
+      mLynxEngineRef = mCacheManager.getLynxEngine();
+      ensureLynxEngine();
+      mEnableCacheEngine = true;
+    } else if (mEnableReuseEngine) {
       reuseLynxEngine();
     } else {
       mLynxUIRender = lynxUIRenderer();
@@ -418,8 +424,7 @@ public class LynxTemplateRender
     mTemplateAssembler.setLynxContext(mLynxContext);
 
     mLynxContext.setEmbeddedMode(mEmbeddedMode);
-    mLynxContext.setEnableReuseEngine(EmbeddedMode.isEnginePoolEnable(mEmbeddedMode)
-        || (mCacheManager != null && mCacheManager.isEngineCacheEnabled()));
+    mLynxContext.setEnableReuseEngine(mEnableReuseEngine || mEnableCacheEngine);
     mLynxContext.setPerfController(mPerformanceController);
     mLynxContext.setTapSlop(builder.getTapSlop());
 
@@ -508,6 +513,9 @@ public class LynxTemplateRender
       // Cache the platform-level reuse object.
       mLynxEngineRef.setLynxUIRenderer(mLynxUIRender);
       mLynxEngineRef.attachCurrentTemplateRender(this);
+    } else {
+      // successfully retrieved an engine; detach from previous lynxView.
+      setupReusedLynxEngine();
     }
   }
 
@@ -625,19 +633,23 @@ public class LynxTemplateRender
     if (mLynxEngineRef != null) {
       // Successfully retrieved an engine from the pool.
       // detach from previous lynxView.
-      mLynxEngineRef.updateLynxEngineState(LynxEngine.LynxEngineState.ON_REUSING);
-      mLynxEngineRef.detachFromLynxView();
-      mLynxUIRender = mLynxEngineRef.getLynxUIRenderer();
-      mLynxUIRender.attachBodyView(mBodyView, mLynxContext, mContext);
-      mLynxEngineRef.attachCurrentTemplateRender(this);
-      mTasmPlatformInvoker = new WeakReference<>(mLynxEngineRef.getTasmPlatformInvoker());
-      if (mTasmPlatformInvoker.get() != null) {
-        mTasmPlatformInvoker.get().setNativeFacade(mNativeFacade);
-      }
-      setupReusedEngineConfig();
+      setupReusedLynxEngine();
       mIsEngineFromReuse = true;
     }
     onTraceEventEnd(TraceEventDef.TEMPLATE_RENDER_TRY_REUSE_ENGINE);
+  }
+
+  private void setupReusedLynxEngine() {
+    mLynxEngineRef.updateLynxEngineState(LynxEngine.LynxEngineState.ON_REUSING);
+    mLynxEngineRef.detachFromLynxView();
+    mLynxUIRender = mLynxEngineRef.getLynxUIRenderer();
+    mLynxUIRender.attachBodyView(mBodyView, mLynxContext, mContext);
+    mLynxEngineRef.attachCurrentTemplateRender(this);
+    mTasmPlatformInvoker = new WeakReference<>(mLynxEngineRef.getTasmPlatformInvoker());
+    if (mTasmPlatformInvoker.get() != null) {
+      mTasmPlatformInvoker.get().setNativeFacade(mNativeFacade);
+    }
+    setupReusedEngineConfig();
   }
 
   private void setupReusedEngineConfig() {
@@ -1666,8 +1678,10 @@ public class LynxTemplateRender
       mTemplateData.updateWithTemplateData(metaData.getInitialData());
     }
 
-    if (mEnableReuseEngine && tryRenderByReuseLynxRender(metaData.initialData)) {
-      return;
+    if (mEnableReuseEngine || mEnableCacheEngine) {
+      if (tryRenderByReuseLynxRender(metaData.initialData)) {
+        return;
+      }
     }
 
     if (mLynxContext.isEmbeddedModeOn() && getLynxView() != null
@@ -3881,13 +3895,7 @@ public class LynxTemplateRender
       return;
     }
 
-    if (mEnableReuseEngine && mLynxEngineRef != null
-        && (mLynxEngineRef.tryBeReusing() || !mLynxEngineRef.hasLoaded())) {
-      mLynxEngineRef.destroy();
-      if (mLynxUIRender != null) {
-        mLynxUIRender.onDestroyTemplateRenderer();
-      }
-    } else if (mLynxUIRender != null) {
+    if (mLynxUIRender != null) {
       mLynxUIRender.onDestroyTemplateRenderer();
     }
 
@@ -3898,6 +3906,21 @@ public class LynxTemplateRender
     // need ensure destroy native on ui thread
     UIThreadUtils.runOnUiThreadImmediately(
         new DestroyTask(mNativePtr, mNativeLifecycle, this, mNativeFacade));
+
+    if (mEnableCacheEngine) {
+      if (mLynxEngineRef != null && mLynxEngineRef.hasLoaded()) {
+        mCacheManager.setLynxEngine(mLynxEngineRef);
+        mLynxEngineRef.detachFromLynxView();
+      }
+    } else if (mEnableReuseEngine && mLynxEngineRef != null
+        && (mLynxEngineRef.tryBeReusing() || !mLynxEngineRef.hasLoaded())) {
+      UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+        @Override
+        public void run() {
+          mLynxEngineRef.destroy();
+        }
+      });
+    }
 
     if (platformCallBackMap != null) {
       platformCallBackMap.clear();
