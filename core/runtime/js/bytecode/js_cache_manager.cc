@@ -193,11 +193,14 @@ std::string JsCacheManager::MakePath(const std::string &filename) {
 }
 
 bool JsCacheManager::IsCacheEnabled() {
-  // TODO(zhenziqi) consider rename `IsQuickjsCacheEnabled` later
-  // as this switch should also control the cache of v8 in the future
-  return !(tasm::LynxEnv::GetInstance().IsDevToolEnabled()) &&
-         tasm::LynxEnv::GetInstance().IsQuickjsCacheEnabled() &&
-         can_create_cache_;
+  auto is_devtool_enable = tasm::LynxEnv::GetInstance().IsDevToolEnabled();
+  auto is_bytecode_enabled = tasm::LynxEnv::GetInstance().IsBytecodeEnabled();
+  auto ret = !is_devtool_enable && is_bytecode_enabled && can_create_cache_;
+  LOGI("bytecode enable status: is_devtool_enable:"
+       << is_devtool_enable << " is_bytecode_enabled:" << is_bytecode_enabled
+       << " can_create_cache_:" << can_create_cache_
+       << " final result:" << ret);
+  return ret;
 }
 
 // JsCacheManager
@@ -213,7 +216,7 @@ std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
     return nullptr;
   }
   auto cost_start = base::CurrentTimeMilliseconds();
-  if (!IsCacheEnabledForTemplate(template_url)) {
+  if (!IsCacheEnabled()) {
     JsCacheTracker::OnGetBytecodeDisable(runtime_id, engine_type_, source_url,
                                          true, false);
     return nullptr;
@@ -299,8 +302,7 @@ void JsCacheManager::RequestCacheGeneration(
     std::vector<std::unique_ptr<CacheGenerator>> &&generators, bool force,
     std::unique_ptr<BytecodeGenerateCallback> callback) {
   LOGI("RequestCacheGeneration template_url: '" << template_url);
-  if (!IsCacheEnabledForTemplate(template_url)) {
-    LOGI("bytecode disabled");
+  if (!IsCacheEnabled()) {
     if (callback) {
       (*callback)("disabled", {});
     }
@@ -706,15 +708,6 @@ JsFileIdentifier JsCacheManager::BuildIdentifier(
   identifier.template_url = template_url;
   identifier.category = GetSourceCategory(source_url);
   return identifier;
-}
-
-bool JsCacheManager::IsCacheEnabledForTemplate(
-    const std::string &template_url) {
-  if (!IsCacheEnabled()) {
-    LOGI("bytecode disabled by switch");
-    return false;
-  }
-  return true;
 }
 
 std::string JsCacheManager::CacheDirName() {

@@ -366,7 +366,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool IsLynxDebugEnabled();
   bool IsDevToolEnabled();
   bool IsLogBoxEnabled();
-  bool IsQuickjsCacheEnabled();
+  bool IsBytecodeEnabled();
   bool IsDisableTracingGC();
   bool IsLayoutPerformanceEnabled();
   long GetV8Enabled(bool debuggable);

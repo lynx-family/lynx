@@ -228,7 +228,7 @@ bool LynxEnv::IsLogBoxEnabled() {
          GetBoolEnv(Key::ENABLE_LOGBOX, true, EnvType::LOCAL);
 }
 
-bool LynxEnv::IsQuickjsCacheEnabled() {
+bool LynxEnv::IsBytecodeEnabled() {
   bool enable_quickjs_cache = GetBoolEnv(
       Key::ANDROID_DISABLE_QUICKJS_CODE_CACHE, true, EnvType::EXTERNAL);
   if (!enable_quickjs_cache) {

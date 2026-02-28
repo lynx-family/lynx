@@ -246,8 +246,6 @@ UNITTEST_PUBLIC:
     cache_[source_url] = std::move(cache);
   }
 
-  bool IsCacheEnabledForTemplate(const std::string &source_url);
-
   JsFileIdentifier BuildIdentifier(const std::string &source_url,
                                    const std::string &template_url);
 
