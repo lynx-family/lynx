@@ -14,8 +14,6 @@
 #import <Lynx/LynxUIContext.h>
 
 @interface LynxUIFrame ()
-@property(nonatomic, strong, nullable) LynxTemplateData* data;
-@property(nonatomic, strong, nullable) LynxTemplateData* globalProps;
 @end
 
 @implementation LynxUIFrame
@@ -30,9 +28,15 @@ LYNX_REGISTER_UI("frame")
   return [[LynxFrameView alloc] init];
 }
 
+- (void)setSign:(NSInteger)sign {
+  [super setSign:sign];
+  [[self view] setSign:sign];
+}
+
 - (void)setContext:(LynxUIContext*)context {
   [super setContext:context];
   [[self view] initWithRootView:context.rootView];
+  [[self view] setContext:self.context];
 }
 
 - (void)onReceiveAppBundle:(LynxTemplateBundle*)bundle {
@@ -52,7 +56,12 @@ LYNX_REGISTER_UI("frame")
                    border:border
                    margin:margin
       withLayoutAnimation:with];
-  [[self view] setFrame:frame];
+
+  UIEdgeInsets inset =
+      UIEdgeInsetsMake(padding.top + border.top, padding.left + border.left,
+                       padding.bottom + border.bottom, padding.right + border.right);
+  CGRect contentFrame = UIEdgeInsetsInsetRect(frame, inset);
+  [[self view] updateFrame:frame contentFrame:contentFrame];
 }
 
 - (void)attachPageUICallback {
@@ -74,15 +83,14 @@ LYNX_REGISTER_UI("frame")
 
 - (void)propsDidUpdate {
   [super propsDidUpdate];
-  [[self view] updateMetaData:self.data globalProps:self.globalProps];
-  self.data = nil;
-  self.globalProps = nil;
+  [[self view] propsDidUpdate];
 }
 
 // TODO(zhoupeng.z): pass data on native directly
 LYNX_PROP_SETTER("data", updateData, NSDictionary*) {
   if (value != nil) {
-    [self setData:[[LynxTemplateData alloc] initWithDictionary:value useBoolLiterals:YES]];
+    [[self view] setInitData:[[LynxTemplateData alloc] initWithDictionary:value
+                                                          useBoolLiterals:YES]];
   }
 }
 
@@ -90,7 +98,8 @@ LYNX_PROP_SETTER("src", setUrl, NSString*) { [[self view] setUrl:value]; }
 
 LYNX_PROP_SETTER("global-props", updateGlobalProps, NSDictionary*) {
   if (value != nil) {
-    [self setGlobalProps:[[LynxTemplateData alloc] initWithDictionary:value useBoolLiterals:YES]];
+    [[self view] setGlobalProps:[[LynxTemplateData alloc] initWithDictionary:value
+                                                             useBoolLiterals:YES]];
   }
 }
 @end
