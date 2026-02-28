@@ -19,16 +19,3 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
-
--keepclasseswithmembers class * {
-    @com.lynx.trace.CalledByNative <methods>;
-}
-
--keepclasseswithmembers class * {
-    @com.lynx.base.CalledByNative <methods>;
-}
-
--keep class androidx.activity.** { *; }
--keep class androidx.fragment.** { *; }
--keep class androidx.lifecycle.** { *; }
--keep class androidx.savedstate.** { *; }

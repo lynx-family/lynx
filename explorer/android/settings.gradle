@@ -36,9 +36,10 @@ include ':LynxXElement:Input'
 project(":LynxXElement:Input").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_input')
 include ':LynxXElement:Overlay'
 project(":LynxXElement:Overlay").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_overlay')
-
 include ':LynxXElement:SVG'
 project(":LynxXElement:SVG").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_svg')
+include ':LynxXElement:Refresh'
+project(":LynxXElement:Refresh").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_refresh')
 
 include ':ServiceAPI'
 project(':ServiceAPI').projectDir = new File(rootProject.projectDir, '../../platform/android/service_api')
