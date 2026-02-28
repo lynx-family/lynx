@@ -12,41 +12,13 @@
 #include "core/renderer/utils/base/base_def.h"
 
 namespace lynx {
+namespace tasm {
+class AttributeHolder;
+}
+
 namespace css {
 
-class StyleNode {
- public:
-  StyleNode() = default;
-  virtual ~StyleNode() = default;
-
-  virtual void OnStyleChange() = 0;
-
-  virtual const base::String& tag() const = 0;
-
-  virtual const base::String& idSelector() const = 0;
-
-  virtual tasm::PseudoState GetPseudoState() const = 0;
-
-  virtual bool HasPseudoState(tasm::PseudoState type) const = 0;
-
-  virtual const tasm::ClassList& classes() const = 0;
-
-  virtual css::StyleNode* SelectorMatchingParent() const = 0;
-
-  virtual css::StyleNode* HolderParent() const = 0;
-
-  virtual css::StyleNode* NextSibling() const = 0;
-
-  virtual css::StyleNode* PreviousSibling() const = 0;
-
-  virtual css::StyleNode* PseudoElementOwner() const = 0;
-
-  virtual bool ContainsIdSelector(const std::string& selector) const = 0;
-
-  virtual bool ContainsClassSelector(const std::string& selector) const = 0;
-
-  virtual bool ContainsTagSelector(const std::string& selector) const = 0;
-};
+using StyleNode = tasm::AttributeHolder;
 
 }  // namespace css
 }  // namespace lynx
