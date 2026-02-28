@@ -40,6 +40,7 @@ import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.frame.LynxFrameView;
 import com.lynx.tasm.core.JSProxy;
 import com.lynx.tasm.core.LynxLayoutProxy;
+import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.fluency.FluencyTraceHelper;
 import com.lynx.tasm.fontface.FontFace;
 import com.lynx.tasm.group.ILynxViewRuntimeCacheManager;
@@ -89,6 +90,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private String mJSGroupThreadName = null;
   private Map<String, Object> mSharedData;
   private LynxViewClient mLynxViewClient = null;
+  private WeakReference<LynxViewClientV2> mLynxViewClientV2 = null;
   private WeakReference<UIBodyView> mBodyView = null;
   private WeakReference<ShadowNodeOwner> mShadowNodeOwnerRef;
   private DisplayMetrics mVirtualScreenMetrics;
@@ -567,6 +569,26 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   public LynxViewClient getLynxViewClient() {
     return mLynxViewClient;
+  }
+
+  public void setLynxViewClientV2(LynxViewClientV2 lynxViewClientV2) {
+    this.mLynxViewClientV2 = new WeakReference<>(lynxViewClientV2);
+  }
+
+  public void notifyResourceLoaded(@NonNull LynxViewClientV2.LynxResourceLoadInfo info) {
+    final WeakReference<LynxViewClientV2> weakLynxViewClientV2 = mLynxViewClientV2;
+    if (weakLynxViewClientV2 == null) {
+      return;
+    }
+    LynxEventReporter.runOnReportThread(new Runnable() {
+      @Override
+      public void run() {
+        LynxViewClientV2 lynxViewClientV2 = weakLynxViewClientV2.get();
+        if (lynxViewClientV2 != null) {
+          lynxViewClientV2.onResourceLoaded(info);
+        }
+      }
+    });
   }
 
   /**

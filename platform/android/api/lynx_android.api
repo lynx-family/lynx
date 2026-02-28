@@ -4713,6 +4713,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public void com.lynx.tasm.behavior.LynxContext.setForceImageAsyncRequest(boolean enable);
   public void com.lynx.tasm.behavior.LynxContext.setLynxViewClient(LynxViewClient lynxViewClient);
   public LynxViewClient com.lynx.tasm.behavior.LynxContext.getLynxViewClient();
+  public void com.lynx.tasm.behavior.LynxContext.setLynxViewClientV2(LynxViewClientV2 lynxViewClientV2);
+  public void com.lynx.tasm.behavior.LynxContext.notifyResourceLoaded(@NonNull LynxViewClientV2.LynxResourceLoadInfo info);
   public void com.lynx.tasm.behavior.LynxContext.setLynxView(LynxView lynxview);
   public void com.lynx.tasm.behavior.LynxContext.setUIBodyView(UIBodyView bodyView);
   public String com.lynx.tasm.behavior.LynxContext.getLynxSessionID();
@@ -5658,6 +5660,8 @@ public class com::lynx::tasm::image::LynxImageConfig :  {
   public void com.lynx.tasm.image.LynxImageConfig.setEnableProgressiveRendering(boolean enableProgressiveRendering);
   public void com.lynx.tasm.image.LynxImageConfig.setImageCustomParam(Map< String, String > imageCustomParam);
   public Map< String, String > com.lynx.tasm.image.LynxImageConfig.getImageCustomParam();
+  public void com.lynx.tasm.image.LynxImageConfig.setEnableImageLoadCallback(boolean enableImageLoadCallback);
+  public boolean com.lynx.tasm.image.LynxImageConfig.getEnableImageLoadCallback();
 }
 
 public interface com::lynx::tasm::image::model::LynxImageFetcher {
@@ -5674,6 +5678,26 @@ public class com::lynx::tasm::service::LynxImageInfo :  {
   public int com.lynx.tasm.service.LynxImageInfo.getErrorCode();
   public LynxView com.lynx.tasm.service.LynxImageInfo.getLynxView();
   public boolean com.lynx.tasm.service.LynxImageInfo.getHitMemoryCache();
+}
+
+public class com::lynx::tasm::image::LynxImageLoadInfo : com.lynx.tasm.LynxViewClientV2.LynxResourceLoadInfo {
+  public com.lynx.tasm.image.LynxImageLoadInfo.LynxImageLoadInfo(LynxResourceRequest.LynxResourceType type, int errCode, @Nullable String errMsg);
+  public LynxImageLoadInfo com.lynx.tasm.image.LynxImageLoadInfo.setSrc(String src);
+  public String com.lynx.tasm.image.LynxImageLoadInfo.getSrc();
+  public LynxImageLoadInfo com.lynx.tasm.image.LynxImageLoadInfo.setWidth(int width);
+  public int com.lynx.tasm.image.LynxImageLoadInfo.getWidth();
+  public LynxImageLoadInfo com.lynx.tasm.image.LynxImageLoadInfo.setHeight(int height);
+  public int com.lynx.tasm.image.LynxImageLoadInfo.getHeight();
+  public LynxImageLoadInfo com.lynx.tasm.image.LynxImageLoadInfo.setViewWidth(int viewWidth);
+  public int com.lynx.tasm.image.LynxImageLoadInfo.getViewWidth();
+  public LynxImageLoadInfo com.lynx.tasm.image.LynxImageLoadInfo.setViewHeight(int viewHeight);
+  public int com.lynx.tasm.image.LynxImageLoadInfo.getViewHeight();
+  public LynxImageLoadInfo com.lynx.tasm.image.LynxImageLoadInfo.setLoadStart(long loadStart);
+  public long com.lynx.tasm.image.LynxImageLoadInfo.getLoadStart();
+  public LynxImageLoadInfo com.lynx.tasm.image.LynxImageLoadInfo.setLoadFinish(long loadFinish);
+  public long com.lynx.tasm.image.LynxImageLoadInfo.getLoadFinish();
+  public LynxImageLoadInfo com.lynx.tasm.image.LynxImageLoadInfo.setOrigin(int origin);
+  public int com.lynx.tasm.image.LynxImageLoadInfo.getOrigin();
 }
 
 public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.Callback {
@@ -6215,6 +6239,13 @@ public class abstract com::lynx::tasm::provider::LynxResourceFetcher :  {
 public class com::lynx::tasm::core::resource::LynxResourceLoader :  {
   public com.lynx.tasm.core.resource.LynxResourceLoader.LynxResourceLoader(LynxBackgroundRuntimeOptions runtimeOptions, DynamicComponentFetcher fetcher, ILynxErrorReceiver errorReceiver, LynxTemplateResourceFetcher templateFetcher, LynxGenericResourceFetcher genericResourceFetcher);
   public byte[] com.lynx.tasm.core.resource.LynxResourceLoader.loadLynxJSAsset(String name);
+}
+
+public class com::lynx::tasm::LynxViewClientV2::LynxResourceLoadInfo :  {
+  public com.lynx.tasm.LynxViewClientV2.LynxResourceLoadInfo.LynxResourceLoadInfo(LynxResourceRequest.LynxResourceType type, int errCode, @Nullable String errMsg);
+  public LynxResourceRequest.LynxResourceType com.lynx.tasm.LynxViewClientV2.LynxResourceLoadInfo.getResourceType();
+  public int com.lynx.tasm.LynxViewClientV2.LynxResourceLoadInfo.getErrCode();
+  public String com.lynx.tasm.LynxViewClientV2.LynxResourceLoadInfo.getErrMsg();
 }
 
 public class com::lynx::jsbridge::LynxResourceModule : com.lynx.jsbridge.LynxContextModule {
@@ -7506,11 +7537,13 @@ public class com::lynx::tasm::LynxViewClientGroupV2 : com.lynx.tasm.LynxViewClie
   public void com.lynx.tasm.LynxViewClientGroupV2.removeClient(LynxViewClientV2 client);
   public void com.lynx.tasm.LynxViewClientGroupV2.onPageStarted(@Nullable LynxView lynxView, @NonNull LynxPipelineInfo info);
   public void com.lynx.tasm.LynxViewClientGroupV2.onPerformanceEvent(@NonNull PerformanceEntry entry);
+  public void com.lynx.tasm.LynxViewClientGroupV2.onResourceLoaded(@NonNull LynxResourceLoadInfo info);
 }
 
 public class com::lynx::tasm::LynxViewClientV2 : com.lynx.tasm.performance.IPerformanceObserver {
   public void com.lynx.tasm.LynxViewClientV2.onPageStarted(@Nullable LynxView lynxView, @NonNull LynxPipelineInfo info);
   public void com.lynx.tasm.LynxViewClientV2.onPerformanceEvent(@NonNull PerformanceEntry entry);
+  public void com.lynx.tasm.LynxViewClientV2.onResourceLoaded(@NonNull LynxResourceLoadInfo info);
 }
 
 public interface com::lynx::tasm::navigator::LynxViewCreationListener {

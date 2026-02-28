@@ -34,6 +34,12 @@ public class LynxImageConfig {
    */
   private Map<String, String> mImageCustomParams;
 
+  /**
+   * Whether to enable image load callback (`onResourceLoaded`).
+   * When enabled, LynxViewLifecycleV2 clients receive image load events.
+   */
+  private boolean mEnableImageLoadCallback = false;
+
   public boolean getEnableImageResourceHint() {
     return mEnableImageResourceHint;
   }
@@ -64,5 +70,13 @@ public class LynxImageConfig {
 
   public Map<String, String> getImageCustomParam() {
     return mImageCustomParams;
+  }
+
+  public void setEnableImageLoadCallback(boolean enableImageLoadCallback) {
+    mEnableImageLoadCallback = enableImageLoadCallback;
+  }
+
+  public boolean getEnableImageLoadCallback() {
+    return mEnableImageLoadCallback;
   }
 }

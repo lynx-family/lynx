@@ -1101,6 +1101,7 @@ public class LynxTemplateRender
     // TODO(zhoupeng.z): Currently the LynxViewClient in LynxContext is only used to report errors,
     // make it compatible with LynxViewClientV2
     mLynxContext.setLynxViewClient(mClient);
+    mLynxContext.setLynxViewClientV2(mClientV2);
 
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
     lynxUIRenderer.onInitLynxTemplateRender(mLynxContext,

@@ -43,4 +43,11 @@ public class LynxViewClientGroupV2 extends LynxViewClientV2 {
       client.onPerformanceEvent(entry);
     }
   }
+
+  @Override
+  public void onResourceLoaded(@NonNull LynxResourceLoadInfo info) {
+    for (LynxViewClientV2 client : mClients) {
+      client.onResourceLoaded(info);
+    }
+  }
 }

@@ -8,6 +8,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.performance.IPerformanceObserver;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
+import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import java.util.Set;
 
 /**
@@ -96,4 +97,59 @@ public class LynxViewClientV2 implements IPerformanceObserver {
    */
   @Override
   public void onPerformanceEvent(@NonNull PerformanceEntry entry) {}
+
+  /**
+   * Provide information about the loaded resource.
+   */
+  public static class LynxResourceLoadInfo {
+    private final LynxResourceRequest.LynxResourceType mResourceType;
+    private final int mErrCode;
+    @Nullable private final String mErrMsg;
+
+    /**
+     * Create a new LynxResourceLoadInfo.
+     *
+     * @param type the type of the resource
+     * @param errCode the error code of the load result, 0 means success
+     * @param errMsg the error message of the load result, if any
+     */
+    public LynxResourceLoadInfo(
+        LynxResourceRequest.LynxResourceType type, int errCode, @Nullable String errMsg) {
+      mResourceType = type;
+      mErrCode = errCode;
+      mErrMsg = errMsg;
+    }
+
+    /**
+     * @return the type of the resource
+     */
+    public LynxResourceRequest.LynxResourceType getResourceType() {
+      return mResourceType;
+    }
+
+    /**
+     * @return the error code of the load result, 0 means success
+     */
+    public int getErrCode() {
+      return mErrCode;
+    }
+
+    /**
+     * @return the error message of the load result, or {@code null} if not available
+     */
+    @Nullable
+    public String getErrMsg() {
+      return mErrMsg;
+    }
+  }
+
+  /**
+   * Notify the client that a resource has finished loading.
+   *
+   * Note: This method is for performance events and will be executed on the reporter thread, so do
+   * not execute complex logic or UI modification logic in this method.
+   *
+   * @param info information about the resource load result
+   */
+  public void onResourceLoaded(@NonNull LynxResourceLoadInfo info) {}
 }
