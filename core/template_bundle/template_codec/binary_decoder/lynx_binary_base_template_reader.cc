@@ -603,7 +603,7 @@ bool LynxBinaryBaseTemplateReader::DeserializeJSSourceSection() {
   DECODE_U32(count);
   for (size_t i = 0; i < count; i++) {
     DECODE_STDSTR(path);
-    DECODE_STDSTR(content);
+    DECODE_STR(content);
     js_bundle_.AddJsContent(
         path, {std::move(content), runtime::js::JsContent::Type::SOURCE});
   }
