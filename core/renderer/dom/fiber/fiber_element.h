@@ -334,57 +334,12 @@ class FiberElement : public Element {
   virtual void ReserveForAttribute(size_t count) override;
 
   /**
-   * Element API for adding js event
-   * @param name the binding event's name
-   * @param type the binding event's type
-   * @param callback the binding event's corresponding js function name
-   */
-  void SetJSEventHandler(const base::String& name, const base::String& type,
-                         const base::String& callback);
-
-  /**
    * Element API for setNativeProps
    *  @param native_props the props that updated from js.
    */
   virtual void SetNativeProps(
       const lepus::Value& native_props,
       std::shared_ptr<PipelineOptions>& pipeline_options) override;
-
-  /**
-   * Element API for adding lepus event
-   * @param name the binding event's name
-   * @param type the binding event's type
-   * @param script the binding event's corresponding lepus script
-   * @param callback the binding event's corresponding lepus function
-   */
-  void SetLepusEventHandler(const base::String& name, const base::String& type,
-                            const lepus::Value& script,
-                            const lepus::Value& callback);
-
-  /**
-   * Element API for adding worklet event
-   * @param name the binding worklet event's name
-   * @param type the binding worklet event's type
-   * @param worklet_info the binding worklet info, passed to the front-end
-   * @param ctx the context of Lepus / LepusNg
-   * framework
-   */
-  void SetWorkletEventHandler(const base::String& name,
-                              const base::String& type,
-                              const lepus::Value& worklet_info,
-                              lepus::Context* ctx);
-
-  /**
-   * Element API for removing specific event
-   * @param name the removed event's name
-   * @param type the removed event's type
-   */
-  void RemoveEvent(const base::String& name, const base::String& type);
-
-  /**
-   * Element API for removing all events
-   */
-  void RemoveAllEvents();
 
   /**
    * Element API for adding gesture detector
@@ -407,30 +362,6 @@ class FiberElement : public Element {
                        const lepus::Value& config);
 
   void SetParsedStyles(StyleMap&& parsed_styles, CSSVariableMap&& css_var);
-
-  /**
-   * Element API for adding config.
-   * @param key the config key,
-   * @param value the config value.
-   */
-  void AddConfig(const base::String& key, const lepus::Value& value);
-
-  /**
-   * Element API for setting config.
-   * @param config the config will be setted,
-   */
-  void SetConfig(const lepus::Value& config);
-
-  /**
-   * A key function to get element's config.
-   * The returned value is constant. You should not get Table() from
-   * the value and change configs. Use AddConfig() instead which will
-   * guarantee this element creates a writable config table.
-   */
-  const lepus::Value config() const {
-    return lepus::Value(
-        config_ ?: fml::RefPtr<lepus::Dictionary>(lepus::Value::DummyTable()));
-  }
 
   virtual StyleMap GetStylesForWorklet() override;
 

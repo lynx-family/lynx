@@ -792,6 +792,76 @@ void Element::SetDataSet(const tasm::DataMap& data) {
   prop_bundle_->SetProps("dataset", pub::ValueImplLepus(datas_val));
 }
 
+void Element::SetJSEventHandler(const base::String& name,
+                                const base::String& type,
+                                const base::String& callback) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_JS_EVENT_HANDLER);
+
+  data_model_->SetStaticEvent(type, name, callback);
+  MarkDirty(kDirtyEvent);
+}
+
+void Element::SetLepusEventHandler(const base::String& name,
+                                   const base::String& type,
+                                   const lepus::Value& script,
+                                   const lepus::Value& callback) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_LEPUS_EVENT_HANDLER);
+
+  data_model_->SetLepusEvent(type, name, script, callback);
+  MarkDirty(kDirtyEvent);
+}
+
+void Element::SetWorkletEventHandler(const base::String& name,
+                                     const base::String& type,
+                                     const lepus::Value& worklet_info,
+                                     lepus::Context* ctx) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_WORKLET_EVENT_HANDLER);
+
+  data_model_->SetWorkletEvent(type, name, worklet_info, ctx);
+  MarkDirty(kDirtyEvent);
+}
+
+void Element::RemoveEvent(const base::String& name, const base::String& type) {
+  data_model_->RemoveEvent(name, type);
+  MarkDirty(kDirtyEvent);
+}
+
+void Element::RemoveAllEvents() {
+  data_model_->RemoveAllEvents();
+  MarkDirty(kDirtyEvent);
+}
+
+void Element::AddConfig(const base::String& key, const lepus::Value& value) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_ADD_CONFIG);
+  if (config_ == nullptr) {
+    config_ = lepus::Dictionary::Create();
+  } else if (config_->IsConst()) {
+    config_ = lepus::Value::ShallowCopy(lepus::Value(config_)).Table();
+  }
+  config_->SetValue(key, value);
+}
+
+void Element::SetConfig(const lepus::Value& config) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_CONFIG);
+
+  // To improve performance, ensure that the isObject check is performed before
+  // calling SetConfig, and the check and LOGW in SetConfig are no longer
+  // performed.
+  if (config.IsTable()) {
+    config_ = config.Table();
+  } else if (config.IsJSTable()) {
+    config_ = config.ToLepusValue().Table();
+  } else {
+    DCHECK(false);
+  }
+}
+
+const lepus::Value Element::config() const {
+  return lepus::Value(
+      config_ ? config_
+              : fml::RefPtr<lepus::Dictionary>(lepus::Value::DummyTable()));
+}
+
 void Element::SetKeyframesByNames(const lepus::Value& names,
                                   const CSSKeyframesTokenMap& keyframes,
                                   bool force_flush) {

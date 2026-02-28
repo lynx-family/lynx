@@ -2516,35 +2516,6 @@ void FiberElement::SetDataset(const lepus::Value &data_set) {
   MarkDirty(kDirtyDataset);
 }
 
-void FiberElement::SetJSEventHandler(const base::String &name,
-                                     const base::String &type,
-                                     const base::String &callback) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_JS_EVENT_HANDLER);
-
-  data_model_->SetStaticEvent(type, name, callback);
-  MarkDirty(kDirtyEvent);
-}
-
-void FiberElement::SetLepusEventHandler(const base::String &name,
-                                        const base::String &type,
-                                        const lepus::Value &script,
-                                        const lepus::Value &callback) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_LEPUS_EVENT_HANDLER);
-
-  data_model_->SetLepusEvent(type, name, script, callback);
-  MarkDirty(kDirtyEvent);
-}
-
-void FiberElement::SetWorkletEventHandler(const base::String &name,
-                                          const base::String &type,
-                                          const lepus::Value &worklet_info,
-                                          lepus::Context *ctx) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_WORKLET_EVENT_HANDLER);
-
-  data_model_->SetWorkletEvent(type, name, worklet_info, ctx);
-  MarkDirty(kDirtyEvent);
-}
-
 void FiberElement::SetNativeProps(
     const lepus::Value &native_props,
     std::shared_ptr<PipelineOptions> &pipeline_options) {
@@ -2595,12 +2566,6 @@ void FiberElement::SetNativeProps(
   }
 }
 
-void FiberElement::RemoveEvent(const base::String &name,
-                               const base::String &type) {
-  data_model_->RemoveEvent(name, type);
-  MarkDirty(kDirtyEvent);
-}
-
 void FiberElement::SetGestureDetector(const uint32_t gesture_id,
                                       GestureDetector gesture_detector) {
   data_model_->SetGestureDetector(gesture_id, gesture_detector);
@@ -2610,11 +2575,6 @@ void FiberElement::SetGestureDetector(const uint32_t gesture_id,
 void FiberElement::RemoveGestureDetector(const uint32_t gesture_id) {
   data_model_->RemoveGestureDetector(gesture_id);
   MarkDirty(kDirtyGesture);
-}
-
-void FiberElement::RemoveAllEvents() {
-  data_model_->RemoveAllEvents();
-  MarkDirty(kDirtyEvent);
 }
 
 void FiberElement::SetParsedStyles(const ParsedStyles &parsed_styles,
@@ -2642,32 +2602,6 @@ void FiberElement::SetParsedStyles(StyleMap &&parsed_styles,
   *extreme_parsed_styles_ = std::move(parsed_styles);
   data_model()->set_css_variables_map(std::move(css_var));
   MarkDirty(kDirtyStyle);
-}
-
-void FiberElement::AddConfig(const base::String &key,
-                             const lepus::Value &value) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_ADD_CONFIG);
-  if (config_ == nullptr) {
-    config_ = lepus::Dictionary::Create();
-  } else if (config_->IsConst()) {
-    config_ = lepus::Value::ShallowCopy(lepus::Value(config_)).Table();
-  }
-  config_->SetValue(key, value);
-}
-
-void FiberElement::SetConfig(const lepus::Value &config) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_CONFIG);
-
-  // To improve performance, ensure that the isObject check is performed before
-  // calling SetConfig, and the check and LOGW in SetConfig are no longer
-  // performed.
-  if (config.IsTable()) {
-    config_ = config.Table();
-  } else if (config.IsJSTable()) {
-    config_ = config.ToLepusValue().Table();
-  } else {
-    DCHECK(false);
-  }
 }
 
 void FiberElement::MarkFontSizeInvalidateRecursively() {

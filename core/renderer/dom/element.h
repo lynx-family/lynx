@@ -308,6 +308,24 @@ class Element : public lepus::RefCounted,
   virtual void SetEventHandler(const base::String& name, EventHandler* handler);
   virtual void ResetEventHandlers();
 
+  // For js/lepus/worklet event handlers
+  void SetJSEventHandler(const base::String& name, const base::String& type,
+                         const base::String& callback);
+  void SetLepusEventHandler(const base::String& name, const base::String& type,
+                            const lepus::Value& script,
+                            const lepus::Value& callback);
+  void SetWorkletEventHandler(const base::String& name,
+                              const base::String& type,
+                              const lepus::Value& worklet_info,
+                              lepus::Context* ctx);
+  void RemoveEvent(const base::String& name, const base::String& type);
+  void RemoveAllEvents();
+
+  // For config op
+  void AddConfig(const base::String& key, const lepus::Value& value);
+  void SetConfig(const lepus::Value& config);
+  const lepus::Value config() const;
+
   // For gesture handler
   void SetGestureDetectorState(int32_t gesture_id, int32_t state);
   void SetGestureDetector(const uint32_t key, GestureDetector* detector);
