@@ -20,5 +20,6 @@ lynx_core_source_set("common") {
   deps = [
     "../../../../clay/ui:ui",
     "../../../../third_party/rapidjson",
+    "../../../embedder:embedder",
   ]
 }

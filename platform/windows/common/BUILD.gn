@@ -15,5 +15,6 @@ lynx_core_source_set("common") {
   deps = [
     "../../../clay/shell/platform/windows:flutter_windows_source",
     "../../../clay/ui:ui",
+    "../../embedder:embedder",
   ]
 }

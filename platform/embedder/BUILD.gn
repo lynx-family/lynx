@@ -23,10 +23,12 @@ config("config") {
       "-Wno-vla-cxx-extension",
     ]
   }
+  if (is_headless) {
+    defines += [ "ENABLE_WINDOWLESS" ]
+  }
 }
 
 lynx_core_source_set("embedder") {
-  defines = []
   sources = [
     "lynx_env.cc",
     "lynx_group.cc",
@@ -71,7 +73,6 @@ lynx_core_source_set("embedder") {
   }
   if (is_headless) {
     deps += [ "./windowless:windowless" ]
-    defines += [ "ENABLE_WINDOWLESS" ]
   }
 
   public_configs = [

@@ -16,5 +16,4 @@ lynx_core_source_set("windowless") {
     "../../../clay/shell/platform/headless:headless",
     "../../../clay/ui:ui",
   ]
-  defines = [ "ENABLE_WINDOWLESS" ]
 }
