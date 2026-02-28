@@ -1387,6 +1387,16 @@ PaintingContext* Element::painting_context() {
 
 void Element::MarkLayoutDirty() { element_manager_->MarkLayoutDirty(id_); }
 
+void Element::RequireFlush() {
+  if (flush_required_) {
+    return;
+  }
+  MarkRequireFlush();
+  if (parent_ && !parent_->flush_required_) {
+    parent_->RequireFlush();
+  }
+}
+
 PropertiesResolvingStatus Element::GenerateRootPropertyStatus() const {
   PropertiesResolvingStatus status;
   const auto& env_config = element_manager_->GetLynxEnvConfig();

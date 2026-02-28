@@ -468,7 +468,6 @@ class Element : public lepus::RefCounted,
   virtual void HandleDelayTask(base::MoveOnlyClosure<void> operation) {
     operation();
   }
-
   void set_parent(Element* parent) { parent_ = parent; }
   bool EnableTriggerGlobalEvent() const { return trigger_global_event_; }
 
@@ -479,6 +478,27 @@ class Element : public lepus::RefCounted,
   virtual void MarkLayoutDirty();
 
   virtual void MarkLayoutDirtyLite(){};
+
+  // Dirty flag primitives
+  int32_t dirty() const { return dirty_; }
+
+  void MarkDirty(const uint32_t flag) {
+    dirty_ |= flag;
+    RequireFlush();
+  }
+
+  virtual void MarkDirtyLite(const uint32_t flag) {
+    dirty_ |= flag;
+    MarkRequireFlush();
+  }
+
+  void ResetAllDirtyBits() { dirty_ = 0; }
+
+  bool StyleDirty() const { return dirty_ & kDirtyStyle; }
+
+  bool AttrDirty() const { return dirty_ & kDirtyAttr; }
+
+  void MarkPropsDirty() { MarkDirty(kDirtyForceUpdate); }
 
   // In RadonDiff Mode, worklets require the following two APIs. In RL3.0 or
   // TTML NoDiff, the implementation of worklets no longer relies on these
@@ -740,6 +760,12 @@ class Element : public lepus::RefCounted,
 
   virtual bool is_wrapper() const { return false; }
 
+  virtual bool is_component() const { return false; }
+
+  virtual bool is_scroll_view() const { return false; }
+
+  virtual bool is_raw_text() const { return false; }
+
   virtual void MarkAsListItem() { is_list_item_ = true; }
 
   virtual int32_t GetBuiltInNodeInfo() const { return 0; }
@@ -853,6 +879,11 @@ class Element : public lepus::RefCounted,
       bool keep_element_id);
 
   virtual void PushStyleToBundle();
+
+  void RequireFlush();
+
+  // Mark flush_required without recursively mark parent element
+  inline void MarkRequireFlush() { flush_required_ = true; }
 
   base::String tag_;
 

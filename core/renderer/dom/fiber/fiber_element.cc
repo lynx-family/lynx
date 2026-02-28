@@ -273,17 +273,6 @@ void FiberElement::SetDefaultOverflow(bool visible) {
   computed_css_style()->SetOverflowDefaultVisible(visible);
 }
 
-void FiberElement::RequireFlush() {
-  if (flush_required_) {
-    return;
-  }
-  MarkRequireFlush();
-  auto *parent = static_cast<FiberElement *>(parent_);
-  if (parent && !parent->flush_required_) {
-    parent->RequireFlush();
-  }
-}
-
 const FiberElement::InheritedProperty FiberElement::GetInheritedProperty() {
   return {
       children_propagate_inherited_styles_flag_, inherited_styles_.get(),

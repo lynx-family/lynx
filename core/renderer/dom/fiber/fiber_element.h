@@ -127,9 +127,6 @@ class FiberElement : public Element {
   };
 
   // for Fiber specific
-  virtual bool is_component() const { return false; }
-  virtual bool is_scroll_view() const { return false; }
-  virtual bool is_raw_text() const { return false; }
 
   bool is_wrapper() const override { return false; }
   virtual bool is_none() const { return false; }
@@ -141,8 +138,6 @@ class FiberElement : public Element {
   bool is_inline_element() const { return is_inline_element_; }
 
   bool is_list_item() const { return is_list_item_; }
-
-  int32_t dirty() const { return dirty_; }
 
   virtual const InheritedProperty GetInheritedProperty();
 
@@ -531,24 +526,6 @@ class FiberElement : public Element {
   }
 
   void SetRawInlineStyles(base::String value);
-
-  void MarkDirty(const uint32_t flag) {
-    dirty_ |= flag;
-    RequireFlush();
-  }
-
-  virtual void MarkDirtyLite(const uint32_t flag) {
-    dirty_ |= flag;
-    MarkRequireFlush();
-  }
-
-  void ResetAllDirtyBits() { dirty_ = 0; }
-
-  bool StyleDirty() const { return dirty_ & kDirtyStyle; }
-
-  bool AttrDirty() const { return dirty_ & kDirtyAttr; }
-
-  void MarkPropsDirty() { MarkDirty(kDirtyForceUpdate); }
 
   void TraversalInsertFixedElementOfTree();
 
@@ -942,11 +919,6 @@ class FiberElement : public Element {
 
   virtual void SetAttributeInternal(const base::String& key,
                                     const lepus::Value& value);
-
-  void RequireFlush();
-
-  // Mark flush_required without recursively mark parent element
-  inline void MarkRequireFlush() { flush_required_ = true; }
 
   virtual CSSFragment* GetRelatedCSSFragment() override;
 
