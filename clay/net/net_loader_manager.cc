@@ -50,6 +50,28 @@ void NetLoaderManager::EnsureSetup(fml::RefPtr<fml::TaskRunner> task_runner,
 
 NetLoaderManager::~NetLoaderManager() = default;
 
+std::string NetLoaderManager::TakeLastResponse(const std::string& uri) {
+  std::scoped_lock lock(response_mutex_);
+  auto it = response_by_uri_.find(uri);
+  if (it == response_by_uri_.end()) {
+    return {};
+  }
+  std::string response = std::move(it->second);
+  response_by_uri_.erase(it);
+  return response;
+}
+
+void NetLoaderManager::SetResponse(const std::string& uri,
+                                   std::string&& response) {
+  std::scoped_lock lock(response_mutex_);
+  const size_t max_response_size = 128;
+  if (response_by_uri_.size() >= max_response_size &&
+      response_by_uri_.find(uri) == response_by_uri_.end()) {
+    response_by_uri_.erase(response_by_uri_.begin());
+  }
+  response_by_uri_[uri] = std::move(response);
+}
+
 void NetLoaderManager::UnsetCache() {
   std::scoped_lock lock(disk_cache_mutex_);
   if (!disk_cache_) {
@@ -201,18 +223,26 @@ void NetLoaderManager::NotifyLowMemory() {
 }
 
 void NetLoaderManager::Clear() {
-  std::scoped_lock lock(waiters_mutex_);
-  waiters_.clear();
+  {
+    std::scoped_lock lock(waiters_mutex_);
+    waiters_.clear();
+  }
+  {
+    std::scoped_lock lock(response_mutex_);
+    response_by_uri_.clear();
+  }
 }
 
 void NetLoaderManager::CancelBySeq(size_t seq) {
   // Iterate all pending entry.
-  std::scoped_lock lock(waiters_mutex_);
+  std::unique_lock lock(waiters_mutex_);
 
   auto runner_iter = running_fetchers_.find(seq);
+  std::string url;
   if (runner_iter != running_fetchers_.end()) {
     // Cancel should trigger OnFailed callback
     runner_iter->second->Cancel();
+    url = runner_iter->second->Url();
   }
 
   auto it = waiters_.begin();
@@ -233,6 +263,12 @@ void NetLoaderManager::CancelBySeq(size_t seq) {
     } else {
       ++it;
     }
+  }
+
+  lock.unlock();
+  std::unique_lock response_lock(response_mutex_);
+  if (!url.empty() && response_by_uri_.find(url) != response_by_uri_.end()) {
+    response_by_uri_.erase(url);
   }
 }
 

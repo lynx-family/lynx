@@ -37,6 +37,8 @@ class HttpResourceFetcher {
   void SetMethod(const std::string& method);
   void SetBody(std::string&& body);
 
+  std::string Url() const { return uri_.Spec(); }
+
  protected:
   // seconds
   static constexpr int kDefaultConnectionTimeout = 15;

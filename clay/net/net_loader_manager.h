@@ -81,6 +81,9 @@ class NetLoaderManager {
     host_net_loader_ = std::move(host_net_loader);
   }
 
+  std::string TakeLastResponse(const std::string& uri);
+  void SetResponse(const std::string& uri, std::string&& response);
+
  private:
   FRIEND_TEST(NetLoaderManagerTest, Cache);
   FRIEND_TEST(NetLoaderManagerTest, TrimCacheWhileAccess);
@@ -102,6 +105,9 @@ class NetLoaderManager {
       running_fetchers_;
 
   HostNetLoader host_net_loader_ = nullptr;
+
+  std::unordered_map<std::string, std::string> response_by_uri_;
+  std::mutex response_mutex_;
 
   std::mutex disk_cache_mutex_;
   std::mutex waiters_mutex_;

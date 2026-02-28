@@ -20,6 +20,7 @@
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/value_animator.h"
 #include "clay/gfx/style/length.h"
+#include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/net/url/url_helper.h"
 #include "clay/public/value.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -35,6 +36,10 @@
 
 #ifdef ENABLE_SKITY
 #include "clay/gfx/image/base_image.h"
+#endif
+
+#ifdef ENABLE_NET_LOADER
+#include "clay/net/net_loader_manager.h"
 #endif
 
 namespace clay {
@@ -491,7 +496,26 @@ void BaseImageView::FetchSource() {
         }
         self->source_fetch_id_ = kDefaultImageFetchID;
         if (!resource) {
-          self->NotifyLoadError("resource fetch fail");
+          std::string error_msg = "{\"error\":\"failed to fetch resource\"";
+#if ENABLE_NET_LOADER && (OS_WIN || OS_MAC || OS_LINUX)
+          std::string lookup_url = url::TrimUrl(self->GetSource());
+          if (self->should_redirect_url_ && self->page_view()) {
+            auto intercept = self->page_view()->GetResourceLoaderIntercept();
+            if (intercept) {
+              lookup_url =
+                  intercept->ShouldInterceptUrl(self->GetSource(), false);
+            }
+          }
+
+          std::string response =
+              NetLoaderManager::Instance().TakeLastResponse(lookup_url);
+          if (!response.empty()) {
+            error_msg += ",\"response\":";
+            error_msg += response;
+          }
+#endif
+          error_msg += "}";
+          self->NotifyLoadError(error_msg);
           return;
         }
 
