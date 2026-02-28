@@ -92,6 +92,7 @@ public class LynxUIOwnerTest {
       assertEquals(uiOwner.getTagInfo("raw-text"), ShadowNodeType.CUSTOM | ShadowNodeType.VIRTUAL);
       assertEquals(
           uiOwner.getTagInfo("inline-text"), ShadowNodeType.CUSTOM | ShadowNodeType.VIRTUAL);
+      assertEquals(uiOwner.getTagInfo("frame"), ShadowNodeType.CUSTOM);
       assertEquals(uiOwner.getTagInfo("xxxx"), 0);
     } catch (Throwable e) {
       e.printStackTrace();

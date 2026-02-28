@@ -28,6 +28,14 @@ public final class LynxFrameView extends UIBodyView {
   private String mUrl;
   private WeakReference<LynxView> mRootView = null;
   private boolean mDestroyed = false;
+  private int mSign;
+  private LynxContext mContext;
+  private boolean mIsBundleLoaded = false;
+  private boolean mIsIntrinsicSizeConsumed = false;
+  private int mContentWidth = 0;
+  private int mContentHeight = 0;
+  private TemplateData mInitData = null;
+  private TemplateData mGlobalProps = null;
 
   public LynxFrameView(Context context) {
     super(context);
@@ -40,7 +48,8 @@ public final class LynxFrameView extends UIBodyView {
   }
 
   private void init(Context context) {
-    UIBodyView bodyView = ((LynxContext) context).getUIBodyView();
+    mContext = (LynxContext) context;
+    UIBodyView bodyView = mContext.getUIBodyView();
     if (bodyView != null) {
       if (bodyView instanceof LynxView) {
         mRootView = new WeakReference<>((LynxView) bodyView);
@@ -48,9 +57,14 @@ public final class LynxFrameView extends UIBodyView {
         mRootView = new WeakReference<>(((LynxFrameView) bodyView).getRootView());
       }
       LynxViewBuilder builder = bodyView.getLynxViewBuilder();
+      builder.setEnablePreUpdateData(true);
       mLynxUIRender = builder.createLynxUIRenderer();
       mRender = new LynxTemplateRender(context, this, builder);
     }
+  }
+
+  public void setSign(int sign) {
+    mSign = sign;
   }
 
   /**
@@ -65,23 +79,48 @@ public final class LynxFrameView extends UIBodyView {
     LynxLoadMeta.Builder builder = new LynxLoadMeta.Builder();
     builder.setUrl(mUrl);
     builder.setTemplateBundle(bundle);
+    if (mInitData != null) {
+      builder.setInitialData(mInitData);
+      mInitData = null;
+    }
+    if (mGlobalProps != null) {
+      builder.setGlobalProps(mGlobalProps);
+      mGlobalProps = null;
+    }
     mRender.loadTemplate(builder.build());
+    mIsBundleLoaded = true;
   }
 
-  public void updateViewport(int widthMeasureSpec, int heightMeasureSpec) {
-    mRender.updateViewport(widthMeasureSpec, heightMeasureSpec);
+  public void updateLayout(int width, int height) {
+    mContentWidth = width;
+    mContentHeight = height;
   }
 
-  public void updateMetaData(TemplateData initData, TemplateData globalProps) {
-    if (initData == null && globalProps == null) {
+  void setInitData(TemplateData data) {
+    mInitData = data;
+  }
+
+  void setGlobalProps(TemplateData data) {
+    mGlobalProps = data;
+  }
+
+  void onPropsUpdated() {
+    if (!mIsBundleLoaded) {
       return;
     }
+    if (mInitData == null && mGlobalProps == null) {
+      return;
+    }
+
     LynxUpdateMeta meta =
         new LynxUpdateMeta.Builder()
-            .setUpdatedData(initData == null ? TemplateData.empty() : initData)
-            .setUpdatedGlobalProps(globalProps == null ? TemplateData.empty() : globalProps)
+            .setUpdatedData(mInitData == null ? TemplateData.empty() : mInitData)
+            .setUpdatedGlobalProps(mGlobalProps == null ? TemplateData.empty() : mGlobalProps)
             .build();
     mRender.updateMetaData(meta);
+
+    mInitData = null;
+    mGlobalProps = null;
   }
 
   public void setUrl(String url) {
@@ -95,12 +134,42 @@ public final class LynxFrameView extends UIBodyView {
 
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    mRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    if (!mIsBundleLoaded) {
+      super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+      return;
+    }
+
+    int targetWidth = mContentWidth;
+    int targetHeight = mContentHeight;
+    if (!mIsIntrinsicSizeConsumed) {
+      targetWidth = getIntrinsicWidth();
+      targetHeight = getIntrinsicHeight();
+      mIsIntrinsicSizeConsumed = true;
+    }
+
+    mRender.onMeasure(MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
+        MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
   }
 
   @Override
   protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     mRender.onLayout(changed, left, top, right, bottom);
+  }
+
+  @Override
+  public void setIntrinsicContentSize(int width, int height) {
+    if (width == getIntrinsicWidth() && height == getIntrinsicHeight()) {
+      return;
+    }
+    LLog.i(TAG, "LynxFrameView::setIntrinsicContentSize width:" + width + " height:" + height);
+
+    mContext.findShadowNodeAndRunTask(mSign, (node) -> {
+      if (node instanceof FrameShadowNode) {
+        ((FrameShadowNode) node).updateIntrinsicContentSize(width, height);
+      }
+    });
+    mIsIntrinsicSizeConsumed = false;
+    super.setIntrinsicContentSize(width, height);
   }
 
   @Override
