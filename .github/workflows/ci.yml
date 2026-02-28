@@ -363,15 +363,28 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+          run_install: false
       - name: Install Appium
+        working-directory: lynx/testing/integration_test/test_script
+        env:
+          APPIUM_HOME: ${{ github.workspace }}/.appium_home
         run: |
-          pushd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pnpm install appium@2.11.2 -w
-          pnpm install appium-espresso-driver@4.0.0 -w
-          popd
+          echo "Upgrading appium in sub-package..."
+          pnpm up appium@3.2.0
+
+          echo "Installing espresso driver..."
+          pnpm exec appium driver install espresso
+
+          echo "Verifying installed drivers..."
+          pnpm exec appium driver list --installed
       - name: Setup Java SDK
         uses: actions/setup-java@v3
         with:
@@ -431,20 +444,29 @@ jobs:
           java -jar $ANDROID_HOME/build-tools/$LATEST_VERSION/lib/apksigner.jar sign --key $ESPRESSO_SIGN_KEYS_DIR/testkey.pk8 --cert $ESPRESSO_SIGN_KEYS_DIR/testkey.x509.pem  --out $APK_PATH/LynxExplorer-noasan-release-signed.apk $APK_PATH/LynxExplorer-noasan-release.apk
           adb install $APK_PATH/LynxExplorer-noasan-release-signed.apk
       - name: Start Appium server
+        working-directory: lynx/testing/integration_test/test_script
+        env:
+          APPIUM_HOME: ${{ github.workspace }}/.appium_home
         run: |
-          pushd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pushd node_modules/appium/node_modules/.bin
-          ls
-          nohup ./appium server \
-            --port=$APPIUM_TEST_SERVER_PORT \
-            --address=$APPIUM_TEST_SERVER_HOST \
+          node -v
+          pnpm -v
+          pnpm exec appium --version
+
+          nohup pnpm exec appium server \
+            --port="$APPIUM_TEST_SERVER_PORT" \
+            --address="$APPIUM_TEST_SERVER_HOST" \
             --log-no-colors \
             --log-timestamp \
-            2>&1 > "$GITHUB_WORKSPACE/lynx/appium.log" &
+            > "$GITHUB_WORKSPACE/lynx/appium.log" 2>&1 &
+
+          APPIUM_PID=$!
+          echo "Appium server started with PID: $APPIUM_PID"
+          echo "$APPIUM_PID" > "$GITHUB_WORKSPACE/lynx/appium.pid"
+
           adb logcat > "$GITHUB_WORKSPACE/lynx/device.log" 2>&1 &
-          popd
-          popd
+          ADB_PID=$!
+          echo "ADB logcat started with PID: $ADB_PID"
+          echo "$ADB_PID" > "$GITHUB_WORKSPACE/lynx/adb.pid"
       - name: Check if Appium Server is running
         run: |
           max_attempts=10
@@ -456,7 +478,7 @@ jobs:
             else
               attempt=$((attempt + 1))
               echo "Attempt $attempt: Appium Server is not yet running. Retrying in 2 seconds..."
-              sleep 2
+              sleep 5
             fi
           done
           if [ $attempt -eq $max_attempts ]; then
@@ -471,7 +493,6 @@ jobs:
           timeout_minutes: 20
           command: |
             set -e
-            source $GITHUB_WORKSPACE/lynx/tools/envsetup.sh
             pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
             export server_port=$APPIUM_TEST_SERVER_PORT
             export platform=android
