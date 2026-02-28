@@ -282,30 +282,12 @@ class FiberElement : public Element {
                        FiberElement* ref_node);
 
   /**
-   * Element API for setting class name to Element
-   * @param clazz the name of class selector
-   */
-  void SetClass(const base::String& clazz);
-
-  /**
-   * Element API for setting class names to Element
-   * @param classes the vector contains the name of class selector
-   */
-  void SetClasses(ClassList&& classes);
-
-  /**
-   * Element API for removing all classes of
-   */
-  LYNX_EXPORT_FOR_DEVTOOL void RemoveAllClass();
-
-  /**
    * Element API for InsertingNodeBefore reference child
    * @param child the child Element need to be inserted
    * @param reference_child the reference child
    */
   void InsertNodeBefore(const fml::RefPtr<FiberElement>& child,
                         const fml::RefPtr<FiberElement>& reference_child);
-
   /**
    * Element API for removing the specific child Element
    * @param child the Element to be removed
@@ -350,22 +332,6 @@ class FiberElement : public Element {
    * Before SetAttribute(), reserve array size.
    */
   virtual void ReserveForAttribute(size_t count) override;
-
-  /**
-   * Element API for appending single attribute to element
-   * @param key the attribute String type name
-   * @param value the attribute value
-   */
-  virtual void SetAttribute(const base::String& key, const lepus::Value& value,
-                            bool need_update_data_model = true) override;
-
-  virtual void SetBuiltinAttribute(ElementBuiltInAttributeEnum key,
-                                   const lepus::Value& value);
-  /**
-   * Element API for setting id for element
-   * @param idSelector the id of the element
-   */
-  void SetIdSelector(const base::String& idSelector);
 
   /**
    * Element API for adding js event
@@ -539,8 +505,6 @@ class FiberElement : public Element {
 
   void ResetStyleSheet() { style_sheet_ = nullptr; };
 
-  void MarkStyleDirty(bool recursive = false);
-
   void MarkFontSizeInvalidateRecursively();
 
   // if child's related css variable is updated, invalidate child's style.
@@ -555,14 +519,9 @@ class FiberElement : public Element {
   void AddDataset(const base::String& key, const lepus::Value& value);
   void SetDataset(const lepus::Value& data_set);
 
-  bool NeedForceClassChangeTransmit() const {
-    return enable_class_change_transmit_ && !(dirty_ & kDirtyCreated);
-  }
-
   // Flush style and attribute to platform shadow node, platform painting node
   // will be created if has not been created,
   void FlushProps() override;
-
   const EventMap& event_map() const override {
     if (data_model_) {
       return data_model_->static_events();
@@ -759,13 +718,7 @@ class FiberElement : public Element {
 
   bool flush_required() { return flush_required_; }
 
-  void MarkTemplateElement() { is_template_ = true; }
-
   bool IsTemplateElement() const { return is_template_; }
-
-  void MarkPartElement(base::String&& part_id) {
-    part_id_ = std::move(part_id);
-  }
 
   bool IsPartElement() const { return !part_id_.empty(); }
 
@@ -973,7 +926,7 @@ class FiberElement : public Element {
   void ResetTextAlign(StyleMap& update_map, bool direction_reset);
 
   bool CheckHasInvalidationForId(const std::string& old_id,
-                                 const std::string& new_id);
+                                 const std::string& new_id) override;
 
   bool CheckHasInvalidationForClass(const ClassList& old_classes,
                                     const ClassList& new_classes);

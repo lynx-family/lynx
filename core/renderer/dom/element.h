@@ -34,6 +34,7 @@
 #include "core/renderer/css/ng/invalidation/invalidation_set.h"
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/base_element_container.h"
+#include "core/renderer/dom/element_property.h"
 #include "core/renderer/dom/selector/selector_item.h"
 #include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/events/events.h"
@@ -262,17 +263,47 @@ class Element : public lepus::RefCounted,
   LYNX_EXPORT_FOR_DEVTOOL virtual void ResetStyle(
       const base::Vector<CSSPropertyID>& style_names);
 
-  // For attr op
   virtual void ReserveForAttribute(size_t count) {}
+
+  /**
+   * Element API for appending single attribute to element
+   * @param key the attribute String type name
+   * @param value the attribute value
+   */
   LYNX_EXPORT_FOR_DEVTOOL virtual void SetAttribute(
       const base::String& key, const lepus::Value& value,
-      bool need_update_data_model = true) = 0;
+      bool need_update_data_model = true);
   virtual void ResetAttribute(const base::String& key);
   void WillConsumeAttribute(const base::String& key, const lepus::Value& value);
 
+  /**
+   * Element API for setting class name to Element
+   * @param clazz the name of class selector
+   */
+  void SetClass(const base::String& clazz);
+
+  /**
+   * Element API for setting class names to Element
+   * @param classes the vector contains the name of class selector
+   */
+  void SetClasses(ClassList&& classes);
+
+  /**
+   * Element API for removing all classes of
+   */
+  LYNX_EXPORT_FOR_DEVTOOL void RemoveAllClass();
+
+  virtual void SetBuiltinAttribute(ElementBuiltInAttributeEnum key,
+                                   const lepus::Value& value);
+
+  /**
+   * Element API for setting id for element
+   * @param idSelector the id of the element
+   */
+  void SetIdSelector(const base::String& idSelector);
+
   // For dataset op
   void SetDataSet(const tasm::DataMap& data);
-
   // For event handler
   virtual void SetEventHandler(const base::String& name, EventHandler* handler);
   virtual void ResetEventHandlers();
@@ -867,6 +898,21 @@ class Element : public lepus::RefCounted,
   virtual bool IsDetached() const { return state_ == State::kDetached; }
   virtual void SetupFragmentBehavior(Fragment* fragment) {}
 
+  // Mark style dirty, optionally recursively for children
+  void MarkStyleDirty(bool recursive = false);
+
+  void MarkTemplateElement() { is_template_ = true; }
+
+  void MarkPartElement(base::String&& part_id) {
+    part_id_ = std::move(part_id);
+  }
+
+  bool IsTemplateElement() const { return is_template_; }
+
+  bool IsPartElement() const { return !part_id_.empty(); }
+
+  const base::String& GetPartID() const { return part_id_; }
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 
@@ -884,6 +930,18 @@ class Element : public lepus::RefCounted,
 
   // Mark flush_required without recursively mark parent element
   inline void MarkRequireFlush() { flush_required_ = true; }
+
+  // Check if class change should be transmitted
+  bool NeedForceClassChangeTransmit() const {
+    return enable_class_change_transmit_ && !(dirty_ & kDirtyCreated);
+  }
+
+  // Check if there's invalidation for id selector change. Override in
+  // FiberElement.
+  virtual bool CheckHasInvalidationForId(const std::string& old_id,
+                                         const std::string& new_id) {
+    return false;
+  }
 
   base::String tag_;
 

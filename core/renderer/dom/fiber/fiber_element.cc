@@ -779,32 +779,6 @@ void FiberElement::DestroyPlatformNode() {
   MarkPlatformNodeDestroyed();
 }
 
-// TODO(wujintian) : Perhaps we can provide an rvalue version of the API to
-// achieve better performance. However, this would result in the need to
-// maintain two versions of the code: one for lvalues and one for rvalues.
-void FiberElement::SetClass(const base::String &clazz) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_CLASS);
-  data_model_->SetClass(clazz);
-  MarkStyleDirty(NeedForceClassChangeTransmit());
-}
-
-void FiberElement::SetClasses(ClassList &&classes) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_CLASSES);
-  data_model_->SetClasses(std::move(classes));
-  MarkStyleDirty(NeedForceClassChangeTransmit());
-
-  // clear ssr parsed style
-  if (has_extreme_parsed_styles_) {
-    extreme_parsed_styles_.reset();
-    has_extreme_parsed_styles_ = false;
-  }
-}
-
-void FiberElement::RemoveAllClass() {
-  data_model_->RemoveAllClass();
-  MarkStyleDirty(NeedForceClassChangeTransmit());
-}
-
 void FiberElement::SetStyle(CSSPropertyID id, const lepus::Value &value) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_STYLE);
 
@@ -899,93 +873,8 @@ void FiberElement::RemoveAllInlineStyles() {
   MarkDirty(kDirtyStyle);
 }
 
-void FiberElement::SetBuiltinAttribute(ElementBuiltInAttributeEnum key,
-                                       const lepus::Value &value) {
-  bool key_is_legal = true;
-  switch (key) {
-    case ElementBuiltInAttributeEnum::NODE_INDEX:
-      node_index_ = static_cast<uint32_t>(value.Number());
-      break;
-    case ElementBuiltInAttributeEnum::CSS_ID:
-      css_id_ = static_cast<int32_t>(value.Number());
-      break;
-    case ElementBuiltInAttributeEnum::DIRTY_ID:
-      MarkPartElement(value.String());
-      break;
-    case ElementBuiltInAttributeEnum::CONFIG:
-      if (value.IsTable()) {
-        config_ = value.Table();
-      } else if (value.IsJSTable()) {
-        config_ = value.ToLepusValue().Table();
-      } else {
-        DCHECK(false);
-      }
-      break;
-    case ElementBuiltInAttributeEnum::IS_TEMPLATE_PART:
-      if (value.Bool()) {
-        MarkTemplateElement();
-      }
-      break;
-    default:
-      key_is_legal = false;
-      break;
-  }
-  if (key_is_legal) {
-    builtin_attr_map_->try_emplace(static_cast<uint32_t>(key), value);
-  }
-}
-
 void FiberElement::ReserveForAttribute(size_t count) {
   updated_attr_map_.reserve(count);
-}
-
-void FiberElement::SetAttribute(const base::String &key,
-                                const lepus::Value &value,
-                                bool need_update_data_model) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_ATTRIBUTE);
-
-  CheckClassChangeTransmitAttribute(key, value);
-
-  if (!value.IsEmpty()) {
-    updated_attr_map_[key] = value;
-    // In the RadonNode-driven Fiber architecture, the attribute
-    // used for diffing is already stored in the data_model,
-    //  so there is no need to update this attribute in the data_model again.
-    if (need_update_data_model) {
-      data_model_->SetStaticAttribute(key, value);
-    }
-  } else {
-    reset_attr_vec_->emplace_back(key);
-    if (need_update_data_model) {
-      data_model_->RemoveAttribute(key);
-    }
-  }
-  MarkDirty(kDirtyAttr);
-}
-
-void FiberElement::SetIdSelector(const base::String &idSelector) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_ID_SELECTOR);
-  if (element_manager() && element_manager()->GetEnableStandardCSSSelector()) {
-    if (element_manager()->CSSFragmentParsingOnTASMWorkerMTSRender()) {
-      element_manager()->GetTasmWorkerTaskRunner()->PostTask(
-          [this, old_id = data_model_->idSelector().str(),
-           new_id = idSelector.str()]() {
-            CheckHasInvalidationForId(old_id, new_id);
-          });
-    } else {
-      CheckHasInvalidationForId(data_model_->idSelector().str(),
-                                idSelector.str());
-    }
-  }
-
-  updated_attr_map_[BASE_STATIC_STRING(AttributeHolder::kIdSelectorAttrName)]
-      .SetString(idSelector);
-  data_model_->SetIdSelector(idSelector);
-  if (element_manager() && element_manager()->EnableSimpleStyle()) {
-    MarkDirty(kDirtyAttr);
-  } else {
-    MarkDirty(kDirtyStyle | kDirtyAttr);
-  }
 }
 
 bool FiberElement::CheckHasIdMapInCSSFragment() {
@@ -2778,15 +2667,6 @@ void FiberElement::SetConfig(const lepus::Value &config) {
     config_ = config.ToLepusValue().Table();
   } else {
     DCHECK(false);
-  }
-}
-
-void FiberElement::MarkStyleDirty(bool recursive) {
-  MarkDirty(kDirtyStyle);
-  if (recursive) {
-    for (const auto &child : scoped_children_) {
-      static_cast<FiberElement *>(child.get())->MarkStyleDirty(recursive);
-    }
   }
 }
 
