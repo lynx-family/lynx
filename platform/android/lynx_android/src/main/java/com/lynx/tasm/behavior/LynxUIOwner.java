@@ -1149,6 +1149,18 @@ public class LynxUIOwner {
     if (mUIBody.getLynxAccessibilityWrapper() != null) {
       mUIBody.getLynxAccessibilityWrapper().onLayoutFinish();
     }
+
+    UIBodyView rootView = mUIBody.getBodyView();
+    if (rootView != null) {
+      int rootWidth = mUIBody.getWidth();
+      int rootHeight = mUIBody.getHeight();
+      if (rootWidth != rootView.getIntrinsicWidth()
+          || rootHeight != rootView.getIntrinsicHeight()) {
+        // Notify rootView the size of LynxUI tree has changed
+        rootView.setIntrinsicContentSize(rootWidth, rootHeight);
+      }
+    }
+
     if (operationId == 0) {
       return;
     }

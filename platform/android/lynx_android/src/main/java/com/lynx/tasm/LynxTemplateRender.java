@@ -4134,6 +4134,7 @@ public class LynxTemplateRender
         .setImageFetcher(mLynxViewBuilder.imageFetcher)
         .setFontScale(mLynxViewBuilder.getFontScale())
         .setEnablePreUpdateData(true)
+        .setLynxGroup(mLynxViewBuilder.getLynxGroup())
         .setDynamicComponentFetcher(mLynxViewBuilder.fetcher)
         .setEnableUnifiedPipeline(mLynxViewBuilder.isEnableUnifiedPipeline())
         .setEnableGenericResourceFetcher(
@@ -4143,6 +4144,10 @@ public class LynxTemplateRender
         .setScreenSize(mLynxViewBuilder.getScreenWidth(), mLynxViewBuilder.getScreenHeight())
         .setThreadStrategyForRendering(mLynxViewBuilder.getThreadStrategy());
     builder.setCustomBehaviorRegistry(mLynxViewBuilder.getBehaviorRegistry());
+    Float density = mLynxViewBuilder.getDensity();
+    if (density != null) {
+      builder.setDensity(density);
+    }
     return builder;
   }
 

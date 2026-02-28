@@ -10,6 +10,10 @@
 #import "LynxTraceEventDef.h"
 #import "LynxUIRendererProtocol.h"
 
+#import <Lynx/LynxFrameShadowNode.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxTemplateRender.h>
+#import <Lynx/LynxUIContext.h>
 #include "base/trace/native/trace_defines.h"
 #include "base/trace/native/trace_event.h"
 
@@ -20,6 +24,20 @@
   __weak UIView<LUIBodyView> *_rootView;
   NSString *_url;
   BOOL _isChildLynxPage;
+  CGSize _intrinsicContentSize;
+  BOOL _isBundleLoad;
+  CGRect _contentRect;
+  BOOL _isIntrinsicSizeConsumed;
+  LynxTemplateData *_initData;
+  LynxTemplateData *_globalProps;
+}
+
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _isIntrinsicSizeConsumed = YES;
+  }
+  return self;
 }
 
 - (void)initWithRootView:(UIView<LUIBodyView> *)rootView {
@@ -36,23 +54,49 @@
   LynxLoadMeta *loadMeta = [[LynxLoadMeta alloc] init];
   loadMeta.url = _url;
   loadMeta.templateBundle = bundle;
+  if (_initData) {
+    loadMeta.initialData = _initData;
+    _initData = nil;
+  }
+  if (_globalProps) {
+    loadMeta.globalProps = _globalProps;
+    _globalProps = nil;
+  }
   [_render loadTemplate:loadMeta];
+  _isBundleLoad = YES;
 }
 
-- (void)setFrame:(CGRect)frame {
+- (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame {
   [super setFrame:frame];
-  [_render updateFrame:frame];
+  if (!CGRectEqualToRect(contentFrame, _contentRect)) {
+    _contentRect = contentFrame;
+    [self setNeedsLayout];
+  }
 }
 
-- (void)updateMetaData:(nullable LynxTemplateData *)initData
-           globalProps:(nullable LynxTemplateData *)globalProps {
-  if (initData == nil && globalProps == nil) {
+- (void)setInitData:(nullable LynxTemplateData *)initData {
+  _initData = initData;
+}
+
+- (void)setGlobalProps:(nullable LynxTemplateData *)globalProps {
+  _globalProps = globalProps;
+}
+
+- (void)propsDidUpdate {
+  if (!_isBundleLoad) {
     return;
   }
+  if (!_initData && !_globalProps) {
+    return;
+  }
+
   LynxUpdateMeta *updateMeta = [[LynxUpdateMeta alloc] init];
-  [updateMeta setData:initData];
-  [updateMeta setGlobalProps:globalProps];
+  [updateMeta setData:_initData];
+  [updateMeta setGlobalProps:_globalProps];
   [_render updateMetaData:updateMeta];
+
+  _initData = nil;
+  _globalProps = nil;
 }
 
 - (void)setUrl:(NSString *)url {
@@ -109,6 +153,32 @@
 }
 
 - (void)setIntrinsicContentSize:(CGSize)size {
+  if (!CGSizeEqualToSize(_intrinsicContentSize, size)) {
+    _intrinsicContentSize = size;
+    _isIntrinsicSizeConsumed = NO;
+    [self.context
+        findShadowNodeAndRunTask:self.sign
+                            task:^(LynxShadowNode *node) {
+                              [(LynxFrameShadowNode *)node updateIntrinsicContentSize:size];
+                            }];
+    [self setNeedsLayout];
+  }
+}
+
+- (void)layoutSubviews {
+  if (!_isBundleLoad) {
+    [super layoutSubviews];
+    return;
+  }
+  CGRect targetRect = _contentRect;
+  if (!_isIntrinsicSizeConsumed) {
+    targetRect = CGRectMake(0.f, 0.f, _intrinsicContentSize.width, _intrinsicContentSize.height);
+    _isIntrinsicSizeConsumed = YES;
+  }
+
+  [_render updateFrame:targetRect];
+  [super layoutSubviews];
+  [_render triggerLayoutInTick];
 }
 
 - (BOOL)enableTextNonContiguousLayout {

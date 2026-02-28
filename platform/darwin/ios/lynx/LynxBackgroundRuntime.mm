@@ -80,6 +80,7 @@
   _bytecodeUrl = other.bytecodeUrl;
   _pendingCoreJsLoad = other.pendingCoreJsLoad;
   _globalProps = other.globalProps;
+  _moduleWrapperContainer->addWrappers([other moduleWrappers]);
 
   // Merge these Fetchers only if they are unset:
   // This part of configurations are shared between runtime and platform-level of LynxView.
