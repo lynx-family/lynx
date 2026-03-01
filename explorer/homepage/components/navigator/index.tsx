@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import './index.scss';
+import { useTheme, useSafeArea } from '@explorer/lib';
 
 import homeIconDark from '@assets/images/home-dark.png?inline';
 import selectedHomeIconDark from '@assets/images/home-selected-dark.png?inline';
@@ -14,73 +15,57 @@ import selectedSettingsIcon from '@assets/images/settings-selected.png?inline';
 import settingsIcon from '@assets/images/settings.png?inline';
 
 interface NavigatorProps {
-  showHomePage: boolean;
-  showSettingsPage: boolean;
-  currentTheme: string;
-  withTheme: (className: string) => string;
-  openHomePage: () => void;
-  openSettingsPage: () => void;
+  activePage: 'home' | 'settings';
+  onNavigate: (page: 'home' | 'settings') => void;
 }
 
 type IconName = 'home' | 'settings';
-type ThemeType = 'Dark' | 'Light';
 
 export default function Navigator(props: NavigatorProps) {
+  const { resolved, withTheme } = useTheme();
+  const safeArea = useSafeArea();
+
   const icons = {
     home: {
-      selected: {
-        Dark: selectedHomeIconDark,
-        Light: selectedHomeIcon,
-      },
-      unselected: {
-        Dark: homeIconDark,
-        Light: homeIcon,
-      },
+      selected: { dark: selectedHomeIconDark, light: selectedHomeIcon },
+      unselected: { dark: homeIconDark, light: homeIcon },
     },
     settings: {
-      selected: {
-        Dark: selectedSettingsIconDark,
-        Light: selectedSettingsIcon,
-      },
-      unselected: {
-        Dark: settingsIconDark,
-        Light: settingsIcon,
-      },
+      selected: { dark: selectedSettingsIconDark, light: selectedSettingsIcon },
+      unselected: { dark: settingsIconDark, light: settingsIcon },
     },
   } as const;
 
-  const getIcon = (name: IconName, selected: boolean) => {
-    const { currentTheme } = props;
-    if (currentTheme !== 'Auto') {
-      return icons[name][selected ? 'selected' : 'unselected'][
-        currentTheme as ThemeType
-      ];
-    }
-    return icons[name][selected ? 'selected' : 'unselected'][
-      lynx.__globalProps.theme as ThemeType
-    ];
-  };
+  const getIcon = (name: IconName, selected: boolean) =>
+    icons[name][selected ? 'selected' : 'unselected'][resolved];
 
   return (
-    <view clip-radius="true" className={props.withTheme('navigator')}>
+    <view
+      clip-radius="true"
+      className={withTheme('navigator')}
+      style={{ paddingBottom: `${safeArea.bottom}px` }}
+    >
       <view
         className="button"
-        bindtap={props.openHomePage}
+        bindtap={() => props.onNavigate('home')}
         accessibility-element={true}
         accessibility-label="Show Home Page"
         accessibility-traits="button"
       >
-        <image src={getIcon('home', props.showHomePage)} className="icon" />
+        <image
+          src={getIcon('home', props.activePage === 'home')}
+          className="icon"
+        />
       </view>
       <view
         className="button"
-        bindtap={props.openSettingsPage}
+        bindtap={() => props.onNavigate('settings')}
         accessibility-element={true}
         accessibility-label="Show Settings Page"
         accessibility-traits="button"
       >
         <image
-          src={getIcon('settings', props.showSettingsPage)}
+          src={getIcon('settings', props.activePage === 'settings')}
           className="icon"
         />
       </view>

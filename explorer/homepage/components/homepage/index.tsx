@@ -13,60 +13,43 @@ import ScanIconDark from '@assets/images/scan-dark.png?inline';
 import ScanIcon from '@assets/images/scan.png?inline';
 import ShowcaseIcon from '@assets/images/showcase.png?inline';
 import type { InputEvent } from '../../typing';
+import { openSchema, navigateTo, useTheme, useSafeArea } from '@explorer/lib';
 
 interface HomePageProps {
   showPage: boolean;
-  currentTheme: string;
-  withTheme: (className: string) => string;
-  withNotchScreen: (className: string) => string;
 }
 
 export default function HomePage(props: HomePageProps) {
+  const { resolved, withTheme } = useTheme();
+  const safeArea = useSafeArea();
   const [inputValue, setInputValue] = useState('');
 
   const icons = {
-    Scan: {
-      Dark: ScanIconDark,
-      Light: ScanIcon,
-    },
-    Forward: {
-      Dark: ForwardIconDark,
-      Light: ForwardIcon,
-    },
-    Explorer: {
-      Dark: ExplorerIconDark,
-      Light: ExplorerIcon,
-    },
+    Scan: { dark: ScanIconDark, light: ScanIcon },
+    Forward: { dark: ForwardIconDark, light: ForwardIcon },
+    Explorer: { dark: ExplorerIconDark, light: ExplorerIcon },
   } as const;
-
-  type Theme = 'Dark' | 'Light';
 
   const openScan = () => {
     'background only';
     NativeModules.ExplorerModule.openScan();
   };
 
-  const openSchema = () => {
+  const openSchemaHandler = () => {
     'background only';
     if (inputValue && inputValue.length > 0) {
-      NativeModules.ExplorerModule.openSchema(inputValue);
+      openSchema(inputValue);
     }
   };
 
   const openShowcasePage = () => {
     'background only';
-    const theme =
-      props.currentTheme === 'Auto'
-        ? lynx.__globalProps.theme
-        : props.currentTheme;
-    const titleColor = theme === 'Dark' ? 'FFFFFF' : '000000';
-    const barColor = theme === 'Dark' ? '181D25' : 'F0F2F5';
-    const backButtonStyle = theme.toLowerCase();
-
-    const query = `title=Showcase&title_color=${titleColor}&bar_color=${barColor}&back_button_style=${backButtonStyle}`;
-    NativeModules.ExplorerModule.openSchema(
-      `file://lynx?local://showcase/menu/main.lynx.bundle?${query}`
-    );
+    navigateTo('showcase/menu/main.lynx.bundle', {
+      title: 'Showcase',
+      title_color: resolved === 'dark' ? 'FFFFFF' : '000000',
+      bar_color: resolved === 'dark' ? '181D25' : 'F0F2F5',
+      back_button_style: resolved,
+    });
   };
 
   const handleInput = (event: InputEvent) => {
@@ -75,30 +58,25 @@ export default function HomePage(props: HomePageProps) {
     setInputValue(currentValue);
   };
 
-  const getIcon = (name: keyof typeof icons) => {
-    const { currentTheme } = props;
-    if (currentTheme !== 'Auto') {
-      return icons[name][currentTheme as Theme];
-    }
-    return icons[name][lynx.__globalProps.theme as Theme];
-  };
+  const getIcon = (name: keyof typeof icons) => icons[name][resolved];
+  const getTextColor = () => (resolved === 'dark' ? '#FFFFFF' : '#000000');
 
-  const getTextColor = () => {
-    const { currentTheme } = props;
-    if (currentTheme !== 'Auto') {
-      return currentTheme === 'Dark' ? '#FFFFFF' : '#000000';
-    }
-    return lynx.__globalProps.theme === 'Dark' ? '#FFFFFF' : '#000000';
-  };
-
-  const { showPage, withTheme, withNotchScreen } = props;
-  if (!showPage) {
+  if (!props.showPage) {
     return <></>;
   }
 
+  const navigatorHeight = 48 + safeArea.bottom;
+
   return (
-    <view clip-radius="true" className={withTheme('page')}>
-      <view className={withNotchScreen('page-header')}>
+    <view
+      clip-radius="true"
+      className={withTheme('page')}
+      style={{ height: `calc(100% - ${navigatorHeight}px)` }}
+    >
+      <view
+        className="page-header"
+        style={{ marginTop: `${Math.max(safeArea.top, 10)}px` }}
+      >
         <image src={getIcon('Explorer')} className="logo" mode="aspectFit" />
         <text className={withTheme('home-title')}>Lynx Explorer</text>
         <view className="scan">
@@ -130,16 +108,16 @@ export default function HomePage(props: HomePageProps) {
               : '28%',
         }}
       >
-        <text className={withTheme('bold-text')}>Card URL</text>
+        <text className={withTheme('bold-text')}>Bundle URL</text>
         <input
-          className="input-box"
+          className={withTheme('input-box')}
           bindinput={handleInput}
-          placeholder="Enter Card URL"
+          placeholder="Enter Bundle URL"
           text-color={getTextColor()}
         />
         <view
           className={withTheme('connect-button')}
-          bindtap={openSchema}
+          bindtap={openSchemaHandler}
           accessibility-element={true}
           accessibility-label="Open Schema"
           accessibility-traits="button"

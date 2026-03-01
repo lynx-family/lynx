@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { root } from '@lynx-js/react';
+import { AppContextProvider } from '@explorer/lib';
 import { ItemProps } from '@components/menu-item';
 import { Menu } from '@components/menu';
 
@@ -49,4 +50,8 @@ const ITEMS: ItemProps[] = [
   },
 ];
 
-root.render(<Menu items={ITEMS} />);
+root.render(
+  <AppContextProvider>
+    <Menu items={ITEMS} />
+  </AppContextProvider>
+);

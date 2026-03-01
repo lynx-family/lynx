@@ -8,6 +8,7 @@
     "dev": "rspeedy dev"
   },
   "dependencies": {
+    "@explorer/lib": "workspace:*",
     "@lynx-js/react": "0.107.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "6",

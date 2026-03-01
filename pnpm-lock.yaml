@@ -108,6 +108,7 @@ importers:
 
   explorer/homepage:
     specifiers:
+      '@explorer/lib': workspace:*
       '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
       '@lynx-js/react': 0.107.0
       '@lynx-js/react-rsbuild-plugin': 0.9.8
@@ -118,6 +119,7 @@ importers:
       '@types/react': 18.3.18
       prettier: 3.4.2
     dependencies:
+      '@explorer/lib': link:../lib
       '@lynx-js/react': 0.107.0_smdqjdvvdjbjwyrr673xzocrfm
     devDependencies:
       '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
@@ -128,6 +130,15 @@ importers:
       '@rsbuild/plugin-sass': 1.3.1_@rsbuild+core@1.3.11
       '@types/react': 18.3.18
       prettier: 3.4.2
+
+  explorer/lib:
+    specifiers:
+      '@lynx-js/react': 0.107.0
+      '@lynx-js/types': 3.3.0
+    dependencies:
+      '@lynx-js/react': 0.107.0_@lynx-js+types@3.3.0
+    devDependencies:
+      '@lynx-js/types': 3.3.0
 
   explorer/showcase:
     specifiers:
@@ -158,6 +169,7 @@ importers:
 
   explorer/showcase/menu:
     specifiers:
+      '@explorer/lib': workspace:*
       '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
       '@lynx-js/react': 0.107.0
       '@lynx-js/react-rsbuild-plugin': 0.9.8
@@ -170,6 +182,7 @@ importers:
       react-router-dom: '6'
       zustand: ^5.0.3
     dependencies:
+      '@explorer/lib': link:../../lib
       '@lynx-js/react': 0.107.0_smdqjdvvdjbjwyrr673xzocrfm
       react-dom: 19.1.0
       react-router-dom: 6.30.1_react-dom@19.1.0
@@ -1830,6 +1843,19 @@ packages:
       '@lynx-js/types': link:js_libraries/types
       '@types/react': 18.3.18
       preact: /@hongzhiyuan/preact/10.24.0-319c684e
+
+  /@lynx-js/react/0.107.0_@lynx-js+types@3.3.0:
+    resolution: {integrity: sha512-nheLQcObZ1cjHo4OTiejJ2+0ceAlhxm3qeEDkFXgG81DnAqApxKkqCCSz43r7oAZ1qx0XHVIufb9PnMxoGv0eQ==}
+    peerDependencies:
+      '@lynx-js/types': '*'
+      '@types/react': ^18
+    peerDependenciesMeta:
+      '@lynx-js/types':
+        optional: true
+    dependencies:
+      '@lynx-js/types': 3.3.0
+      preact: /@hongzhiyuan/preact/10.24.0-319c684e
+    dev: false
 
   /@lynx-js/react/0.107.0_smdqjdvvdjbjwyrr673xzocrfm:
     resolution: {integrity: sha512-nheLQcObZ1cjHo4OTiejJ2+0ceAlhxm3qeEDkFXgG81DnAqApxKkqCCSz43r7oAZ1qx0XHVIufb9PnMxoGv0eQ==}
