@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import './index.scss';
+import { openSchema, useTheme } from '@explorer/lib';
 
 export interface ItemProps {
   title: string;
@@ -11,26 +12,20 @@ export interface ItemProps {
   icon?: string;
 }
 
-export function withTheme(className: string): string {
-  return lynx.__globalProps.frontendTheme == 'dark'
-    ? `${className}__dark`
-    : className;
-}
-
-const theme = lynx.__globalProps.frontendTheme;
-
-function withQuery(item: ItemProps): string {
+function withQuery(item: ItemProps, resolved: string): string {
   const title = item.title;
-  const titleColor = theme == 'dark' ? 'FFFFFF' : '000000';
-  const barColor = theme == 'dark' ? '181D25' : 'F0F2F5';
-  const backButtonStyle = theme;
+  const titleColor = resolved == 'dark' ? 'FFFFFF' : '000000';
+  const barColor = resolved == 'dark' ? '181D25' : 'F0F2F5';
+  const backButtonStyle = resolved;
 
   return `title=${title}&title_color=${titleColor}&bar_color=${barColor}&back_button_style=${backButtonStyle}`;
 }
 
 export function MenuItem(props: ItemProps) {
+  const { resolved, withTheme } = useTheme();
+
   const openCard = (url: string) => {
-    NativeModules.ExplorerModule.openSchema(`${url}?${withQuery(props)}`);
+    openSchema(`${url}?${withQuery(props, resolved)}`);
   };
 
   const onClick = (item) => {
@@ -46,8 +41,8 @@ export function MenuItem(props: ItemProps) {
       accessibility-traits="button"
     >
       {(() => {
-        if (props.icon && props.icon[theme] != undefined) {
-          return <image src={props.icon[theme]} className="icon" />;
+        if (props.icon && props.icon[resolved] != undefined) {
+          return <image src={props.icon[resolved]} className="icon" />;
         }
         return (
           <view className={withTheme('circle')}>

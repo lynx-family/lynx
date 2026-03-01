@@ -20,11 +20,8 @@ declare global {
       openSchema(url: string): void;
       getSettingInfo(): Record<string, unknown>;
       setThreadMode(index: number): void;
-      /**
-       * @deprecated Use `openSchema()` instead.
-       */
-      openDevtoolSwitchPage(): void;
       saveThemePreferences(key: string, value: string): void;
+      navigateBack?(): void;
     };
   };
 }
@@ -32,8 +29,11 @@ declare global {
 declare module '@lynx-js/types' {
   interface GlobalProps {
     preferredTheme?: string;
+    frontendTheme?: string;
     theme: string;
     isNotchScreen: boolean;
+    safeAreaTop?: number;
+    safeAreaBottom?: number;
   }
 
   interface IntrinsicElements extends Lynx.IntrinsicElements {

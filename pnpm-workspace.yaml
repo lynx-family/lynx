@@ -6,6 +6,7 @@ packages:
   - devtool/lynx_devtool/resources/devtool-switch
   - devtool/lynx_devtool/resources/lynx-error-parser
   - explorer
+  - explorer/lib
   - explorer/homepage
   - explorer/showcase
   - explorer/showcase/menu
