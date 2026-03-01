@@ -4,14 +4,10 @@
 
 #import "ExplorerModule.h"
 #import <Lynx/LynxLog.h>
-#import "AppDelegate.h"
 #import "LynxSettingManager.h"
 #import "ScanViewController.h"
 #import "TasmDispatcher.h"
 #import "UIHelper.h"
-
-NSString *const DEVTOOL_SWITCH_URL __attribute__((deprecated)) =
-    @"file://lynx?local://switchPage/devtoolSwitch.lynx.bundle";
 
 @implementation ExplorerModule
 
@@ -37,8 +33,6 @@ NSString *const DEVTOOL_SWITCH_URL __attribute__((deprecated)) =
     @"setThreadMode" : NSStringFromSelector(@selector(setThreadMode:)),
     @"switchPreSize" : NSStringFromSelector(@selector(switchPreSize:)),
     @"getSettingInfo" : NSStringFromSelector(@selector(getSettingInfo)),
-    @"openDevtoolSwitchPage" : NSStringFromSelector(@selector(openDevToolSwitchPage)),
-    @"navigateBack" : NSStringFromSelector(@selector(navigateBack)),
     @"saveThemePreferences" : NSStringFromSelector(@selector(saveThemePreferences:value:)),
     @"saveToLocalStorage" : NSStringFromSelector(@selector(saveToLocalStorage:value:)),
     @"readFromLocalStorage" : NSStringFromSelector(@selector(readFromLocalStorage:)),
@@ -79,20 +73,6 @@ NSString *const DEVTOOL_SWITCH_URL __attribute__((deprecated)) =
     @"preSize" : @(manager.isPresetWidthAndHeightOn),
     @"enableRenderNode" : @(NO),
   };
-}
-
-- (void)openDevToolSwitchPage __attribute__((deprecated)) {
-  [[TasmDispatcher sharedInstance] openTargetUrl:DEVTOOL_SWITCH_URL];
-}
-
-- (void)navigateBack {
-  dispatch_async(dispatch_get_main_queue(), ^() {
-    UINavigationController *vc =
-        ((AppDelegate *)([UIApplication sharedApplication].delegate)).navigationController;
-    if (vc != nil && [vc isKindOfClass:[UINavigationController class]]) {
-      [vc popViewControllerAnimated:YES];
-    }
-  });
 }
 
 - (void)saveThemePreferences:(NSString *)theme value:(NSString *)value {

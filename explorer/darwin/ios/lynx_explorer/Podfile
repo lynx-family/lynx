@@ -1,7 +1,7 @@
 source 'https://cdn.cocoapods.org/'
 project './LynxExplorer.xcodeproj'
 
-platform :ios, '10.0'
+platform :ios, '12.0'
 
 install!'cocoapods',:deterministic_uuids=>false,
                     :lock_pod_sources=>false,
@@ -56,6 +56,16 @@ target 'LynxExplorer' do
   pod 'DebugRouter', '5.0.15'
   pod 'DebugRouter/MessageTransceiverEnable', '5.0.15'
   pod 'MJRefresh', '3.6.1'
+
+  # Sparkling SDK — local pods included only when the SDK is present locally.
+  # In CI environments where Sparkling is unavailable, the app builds without
+  # Sparkling support (all Sparkling code is guarded by HAS_SPARKLING / canImport).
+  sparkling_root = '/tmp/sparkling-2.0.1'
+  if File.exist?("#{sparkling_root}/packages/sparkling-sdk/ios")
+    pod 'Sparkling', :path => "#{sparkling_root}/packages/sparkling-sdk/ios"
+    pod 'SparklingMethod', :path => "#{sparkling_root}/packages/sparkling-method/ios", :subspecs => ['Lynx', 'DIProvider', 'Debug']
+    pod 'Sparkling-Router', :path => "#{sparkling_root}/packages/methods/sparkling-navigation/ios"
+  end
 end
 
 target 'LynxExplorerTests' do
