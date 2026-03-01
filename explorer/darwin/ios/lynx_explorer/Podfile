@@ -1,7 +1,7 @@
 source 'https://cdn.cocoapods.org/'
 project './LynxExplorer.xcodeproj'
 
-platform :ios, '10.0'
+platform :ios, '12.0'
 
 install!'cocoapods',:deterministic_uuids=>false,
                     :lock_pod_sources=>false,
@@ -56,6 +56,41 @@ target 'LynxExplorer' do
   pod 'DebugRouter', '5.0.15'
   pod 'DebugRouter/MessageTransceiverEnable', '5.0.15'
   pod 'MJRefresh', '3.6.1'
+
+  # Sparkling SDK — pods sourced from npm packages in node_modules.
+  # Requires Swift 5.10+ (Xcode 15.3+). Skipped on GitHub Actions OSS CI which
+  # uses Xcode 15.1. All Sparkling ObjC/Swift code is guarded by
+  # #if HAS_SPARKLING / #if canImport(SparklingMethod).
+  lynx_root = File.expand_path('../../../..', __dir__)
+  node_modules = File.join(lynx_root, 'node_modules')
+
+  sparkling_pods = {
+    'Sparkling'        => File.join(node_modules, '@sparklingjs', 'runtime', 'ios'),
+    'SparklingMethod'  => File.join(node_modules, 'sparkling-method', 'ios'),
+    'Sparkling-Router' => File.join(node_modules, 'sparkling-navigation', 'ios'),
+  }
+
+  sparkling_available = File.exist?(File.join(sparkling_pods['SparklingMethod'], 'SparklingMethod.podspec'))
+  sparkling_available = false if ENV['GITHUB_ACTIONS'] # OSS CI uses Xcode 15.1 / Swift 5.9
+
+  if sparkling_available
+    # The Sparkling podspecs pin Lynx/Framework to a released version (e.g. 3.6.0),
+    # but LynxExplorer builds Lynx from local source (version 0.0.1). We strip
+    # Lynx/LynxBase/LynxServiceAPI version pins from podspecs before resolution.
+    sparkling_pods.each_value do |pod_dir|
+      Dir.glob(File.join(pod_dir, '*.podspec')).each do |spec|
+        content = File.read(spec)
+        patched = content
+          .gsub(/(dependency\s+['"](?:Lynx|LynxBase|LynxServiceAPI)(?:\/\w+)?['"])\s*,\s*['"][^'"]+['"]/, '\1')
+        File.write(spec, patched) if patched != content
+      end
+    end
+
+    pod 'Sparkling', :path => sparkling_pods['Sparkling']
+    pod 'SparklingMethod', :path => sparkling_pods['SparklingMethod'],
+        :subspecs => ['Lynx', 'DIProvider', 'Debug']
+    pod 'Sparkling-Router', :path => sparkling_pods['Sparkling-Router']
+  end
 end
 
 target 'LynxExplorerTests' do

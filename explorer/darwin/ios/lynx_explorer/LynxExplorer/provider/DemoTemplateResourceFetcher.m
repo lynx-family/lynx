@@ -54,6 +54,25 @@
     return;
   }
 
+  // Handle absolute file paths (e.g. from Sparkling's resolved bundle path)
+  if ([request.url hasPrefix:@"/"]) {
+    NSData *data = [NSData dataWithContentsOfFile:request.url];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (data) {
+        callback([[LynxTemplateResource alloc] initWithNSData:data], nil);
+      } else {
+        NSError *error = [NSError errorWithDomain:@"com.lynx"
+                                             code:404
+                                         userInfo:@{
+                                           NSLocalizedDescriptionKey : [NSString
+                                               stringWithFormat:@"File not found: %@", request.url]
+                                         }];
+        callback(nil, error);
+      }
+    });
+    return;
+  }
+
   NSURL *url = [NSURL URLWithString:request.url];
   NSURLRequest *urlRequest = [NSURLRequest requestWithURL:url
                                               cachePolicy:NSURLRequestReloadIgnoringCacheData
