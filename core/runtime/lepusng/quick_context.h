@@ -68,6 +68,9 @@ class QuickContext : private LEPUSRuntimeData,
   virtual void UpdateGCTiming(bool is_start) override;
 
   virtual const std::string& name() const override;
+
+  void SetDebugSourceCode(const std::string& source) { debug_source_ = source; }
+  const std::string& GetDebugSourceCode() const { return debug_source_; }
   virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
                                             const lepus::Value& val) override;
   virtual bool CheckTableShadowUpdatedWithTopLevelVariable(
@@ -137,7 +140,7 @@ class QuickContext : private LEPUSRuntimeData,
   inline void set_napi_env(void* env) { napi_env_ = env; }
   inline void* napi_env() { return napi_env_; }
 
-  virtual void RegisterLepusVerion() override;
+  void RegisterLepusVerion();
   void SetDebuggerSourceAndEndLine(const std::string& source);
 
   LEPUSValue ReportSetConstValueError(const LEPUSValue&, LEPUSValue);
@@ -255,6 +258,9 @@ class QuickContext : private LEPUSRuntimeData,
   std::weak_ptr<DebugDelegate> debug_delegate_;
   bool debuginfo_outside_;
   bool gc_flag_;
+
+  // debugger source code
+  std::string debug_source_;
 
   LEPUSValue current_this_;
   char* gc_info_start_;

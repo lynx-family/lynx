@@ -1675,9 +1675,7 @@ void VMContext::RegisterLepusVerion() {
   builtin_.Set(kLepusVersion, Value(BASE_STATIC_STRING(kLepusVersionValue)));
 }
 
-void VMContext::CleanClosuresInCycleReference() {
-  closures_.CleanUpClosuresCreatedAfterExecuted();
-}
+void VMContext::OnReload() { closures_.CleanUpClosuresCreatedAfterExecuted(); }
 
 bool VMContext::DeSerialize(const ContextBundle& bundle, bool, Value* ret,
                             const char* file_name) {

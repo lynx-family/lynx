@@ -68,7 +68,9 @@ std::string BytecodeGenerator::GenerateBytecodeForQuickContext(
   int eval_flags;
   LEPUSValue obj;
 
-  context->SetDebugSourceCode(source);
+  if (context->IsLepusNGContext()) {
+    lepus::QuickContext::Cast(context)->SetDebugSourceCode(source);
+  }
 
   eval_flags = LEPUS_EVAL_FLAG_COMPILE_ONLY | LEPUS_EVAL_TYPE_GLOBAL;
   obj = LEPUS_Eval(context->context(), source.data(), source.length(),

@@ -184,7 +184,7 @@ class Context {
   virtual void AddReporterCustomInfo(
       const std::unordered_map<std::string, std::string>& info){};
 
-  virtual void CleanClosuresInCycleReference() {}
+  virtual void OnReload() {}
 
   void InitInspector(const std::shared_ptr<InspectorLepusObserver>& observer,
                      const std::string& context_name);
@@ -212,16 +212,11 @@ class Context {
 
   void OnBTSConsoleEvent(const std::string& func_name, const std::string& args);
 
-  virtual void RegisterLepusVerion() = 0;
-
   void SetSdkVersion(std::string sdk_version) {
     sdk_version_ = std::move(sdk_version);
   }
 
   const std::string& GetSdkVersion() const { return sdk_version_; }
-
-  void SetDebugSourceCode(const std::string& source) { debug_source_ = source; }
-  const std::string& GetDebugSourceCode() const { return debug_source_; }
 
   const std::shared_ptr<tasm::LepusCallbackManager>& GetCallbackManager() const;
   const std::shared_ptr<tasm::AnimationFrameManager>& GetAnimationFrameManager()
@@ -293,8 +288,6 @@ class Context {
   base::StringTable string_table_;
 
   std::string sdk_version_{"null"};
-  // debugger source code
-  std::string debug_source_;
   bool has_pre_execute_success_{false};
 
   std::unique_ptr<LepusInspectorManager> inspector_manager_;

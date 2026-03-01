@@ -74,7 +74,7 @@ class VMContext : public Context {
     return current_frame_->register_ + index;
   }
 
-  void CleanClosuresInCycleReference() override;
+  void OnReload() override;
   int32_t CallFunction(RestrictedValue* function, size_t argc,
                        RestrictedValue* ret);
 
@@ -136,7 +136,7 @@ class VMContext : public Context {
     return static_cast<VMContext*>(context);
   }
 
-  virtual void RegisterLepusVerion() override;
+  void RegisterLepusVerion();
 
   bool DeSerialize(const ContextBundle& bundle, bool, Value* ret,
                    const char* file_name = nullptr) override;

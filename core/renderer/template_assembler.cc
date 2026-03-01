@@ -1137,7 +1137,7 @@ void TemplateAssembler::ReloadTemplate(
   UpdateGlobalPropsWithDefaultProps(pipeline_options);
   auto card = FindEntry(DEFAULT_ENTRY_NAME);
   if (card && card->GetVm()) {
-    card->GetVm()->CleanClosuresInCycleReference();
+    card->GetVm()->OnReload();
   }
   if (card && card->GetVm()) {
     card->GetVm()->UpdateGCTiming(true);
@@ -1238,7 +1238,7 @@ void TemplateAssembler::ReloadFromJS(
     // get default entry
     const auto& card = FindEntry(tasm::DEFAULT_ENTRY_NAME);
     if (card && card->GetVm()) {
-      card->GetVm()->CleanClosuresInCycleReference();
+      card->GetVm()->OnReload();
     }
 
     // destroy old components
