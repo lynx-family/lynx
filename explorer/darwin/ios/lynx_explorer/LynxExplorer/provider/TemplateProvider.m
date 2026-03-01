@@ -7,6 +7,25 @@
 @implementation TemplateProvider
 
 - (void)loadTemplateWithUrl:(NSString*)url onComplete:(LynxTemplateLoadBlock)callback {
+  // Try loading as a local bundle from the Resource directory first.
+  // Sparkling passes bare bundle names like "homepage.lynx.bundle".
+  if ([url hasSuffix:@".bundle"]) {
+    NSString* bundleName = [url stringByDeletingPathExtension];
+    NSString* bundlePath = [[NSBundle mainBundle] pathForResource:bundleName
+                                                           ofType:@"bundle"
+                                                      inDirectory:@"Resource"];
+    if (bundlePath) {
+      NSData* data = [NSData dataWithContentsOfFile:bundlePath];
+      if (data) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          callback(data, nil);
+        });
+        return;
+      }
+    }
+  }
+
+  // Fallback: load from network URL
   NSString* encodeUrl =
       [url stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet
                                                                   URLFragmentAllowedCharacterSet]];
