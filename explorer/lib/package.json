@@ -1,0 +1,13 @@
+{
+  "name": "@explorer/lib",
+  "version": "0.0.1",
+  "license": "Apache-2.0",
+  "private": true,
+  "main": "index.ts",
+  "dependencies": {
+    "@lynx-js/react": "0.107.0"
+  },
+  "devDependencies": {
+    "@lynx-js/types": "3.3.0"
+  }
+}

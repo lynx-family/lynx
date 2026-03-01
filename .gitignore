@@ -137,6 +137,11 @@ js_libraries/lynx-core/src/common/feature.ts
 *.sublime-workspace
 .idea
 
+# AI agent tool directories
+**/.agents/
+**/.claude/
+**/.trae/
+
 # ignore Gradle files
 **/.gradle/
 

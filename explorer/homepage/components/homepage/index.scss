@@ -52,14 +52,26 @@
   background: var(--box-dark);
 }
 
-.input-box {
+.input-box__light {
   display: flex;
   align-items: flex-start;
   margin: 0% 5% 5% 5%;
   border-width: 0px 0px 1px;
-  border-color: #0000000a;
+  border-color: #0000001a;
   height: 20%;
   width: 90%;
+  color: var(--text-light);
+}
+
+.input-box__dark {
+  display: flex;
+  align-items: flex-start;
+  margin: 0% 5% 5% 5%;
+  border-width: 0px 0px 1px;
+  border-color: #ffffff1a;
+  height: 20%;
+  width: 90%;
+  color: var(--text-dark);
 }
 
 .bold-text__light {
