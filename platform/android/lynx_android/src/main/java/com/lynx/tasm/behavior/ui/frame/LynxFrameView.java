@@ -36,6 +36,8 @@ public final class LynxFrameView extends UIBodyView {
   private boolean mDestroyed = false;
   private TemplateData mInitData = null;
   private TemplateData mGlobalProps = null;
+  private int mWidthMode = MeasureSpec.UNSPECIFIED;
+  private int mHeightMode = MeasureSpec.UNSPECIFIED;
 
   public LynxFrameView(Context context) {
     super(context);
@@ -135,6 +137,14 @@ public final class LynxFrameView extends UIBodyView {
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
     if (!mIsBundleLoaded) {
+      int width = MeasureSpec.getSize(widthMeasureSpec);
+      if (width > 0) {
+        mWidthMode = MeasureSpec.EXACTLY;
+      }
+      int height = MeasureSpec.getSize(heightMeasureSpec);
+      if (height > 0) {
+        mHeightMode = MeasureSpec.EXACTLY;
+      }
       super.onMeasure(widthMeasureSpec, heightMeasureSpec);
       return;
     }
@@ -142,13 +152,17 @@ public final class LynxFrameView extends UIBodyView {
     int targetWidth = mContentWidth;
     int targetHeight = mContentHeight;
     if (!mIsIntrinsicSizeConsumed) {
-      targetWidth = getIntrinsicWidth();
-      targetHeight = getIntrinsicHeight();
+      if (mWidthMode != MeasureSpec.EXACTLY) {
+        targetWidth = getIntrinsicWidth();
+      }
+      if (mHeightMode != MeasureSpec.EXACTLY) {
+        targetHeight = getIntrinsicHeight();
+      }
       mIsIntrinsicSizeConsumed = true;
     }
 
-    mRender.onMeasure(MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
-        MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
+    mRender.onMeasure(MeasureSpec.makeMeasureSpec(targetWidth, mWidthMode),
+        MeasureSpec.makeMeasureSpec(targetHeight, mHeightMode));
   }
 
   @Override
