@@ -3,9 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "AppDelegate.h"
+#if __has_include("Sparkling-umbrella.h")
+#import "Sparkling-umbrella.h"
+#define HAS_SPARKLING 1
+#endif
 #import "LynxDebugger.h"
+#import "LynxExplorer-Swift.h"
 #import "LynxInitProcessor.h"
-#import "LynxViewShellViewController.h"
 #import "TasmDispatcher.h"
 
 NSString *const LOCAL_URL_PREFIX = @"file://lynx?local://";
@@ -21,6 +25,12 @@ NSString *const HOMEPAGE_URL =
 - (BOOL)application:(UIApplication *)application
     didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
   [[LynxInitProcessor sharedInstance] setupEnvironment];
+
+#if HAS_SPARKLING
+  // Register DI services before boot tasks
+  [SPKServiceRegistrar registerAll];
+  SPKExecuteAllPrepareBootTask();
+#endif
 
   self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
   self.navigationController = [[UINavigationController alloc] init];
@@ -54,11 +64,7 @@ NSString *const HOMEPAGE_URL =
     [[TasmDispatcher sharedInstance] openTargetUrlSingleTop:url];
   } else {
     [self.navigationController popToRootViewControllerAnimated:YES];
-    LynxViewShellViewController *shellVC = [LynxViewShellViewController new];
-    shellVC.url = url;
-    shellVC.hiddenNav = NO;
-    shellVC.navigationController = self.navigationController;
-    [self.navigationController pushViewController:shellVC animated:YES];
+    [[TasmDispatcher sharedInstance] openTargetUrl:url];
   }
 }
 

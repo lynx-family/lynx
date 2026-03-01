@@ -4,10 +4,16 @@ importers:
 
   .:
     specifiers:
+      '@sparklingjs/runtime': 2.1.0-rc.12
       prettier: 2.2.1
+      sparkling-method: 2.1.0-rc.12
+      sparkling-navigation: 2.1.0-rc.12
       typescript: 4.9.4
     devDependencies:
+      '@sparklingjs/runtime': 2.1.0-rc.12
       prettier: 2.2.1
+      sparkling-method: 2.1.0-rc.12
+      sparkling-navigation: 2.1.0-rc.12
       typescript: 4.9.4
 
   devtool/base_devtool/js_libraries/logbox:
@@ -118,9 +124,11 @@ importers:
       '@rsbuild/plugin-sass': ^1.1.2
       '@types/react': 18.3.18
       prettier: 3.4.2
+      sparkling-method: 2.1.0-rc.12
     dependencies:
       '@explorer/lib': link:../lib
       '@lynx-js/react': 0.107.0_smdqjdvvdjbjwyrr673xzocrfm
+      sparkling-method: 2.1.0-rc.12
     devDependencies:
       '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
       '@lynx-js/react-rsbuild-plugin': 0.9.8_@lynx-js+react@0.107.0
@@ -135,10 +143,10 @@ importers:
     specifiers:
       '@lynx-js/react': 0.107.0
       '@lynx-js/types': 3.3.0
-      sparkling-navigation: ^2.0.1
+      sparkling-navigation: 2.1.0-rc.12
     dependencies:
       '@lynx-js/react': 0.107.0_@lynx-js+types@3.3.0
-      sparkling-navigation: 2.0.1
+      sparkling-navigation: 2.1.0-rc.12
     devDependencies:
       '@lynx-js/types': 3.3.0
 
@@ -182,12 +190,14 @@ importers:
       prettier: 3.4.2
       react-dom: ^19.0.0
       react-router-dom: '6'
+      sparkling-method: 2.1.0-rc.12
       zustand: ^5.0.3
     dependencies:
       '@explorer/lib': link:../../lib
       '@lynx-js/react': 0.107.0_smdqjdvvdjbjwyrr673xzocrfm
       react-dom: 19.1.0
       react-router-dom: 6.30.1_react-dom@19.1.0
+      sparkling-method: 2.1.0-rc.12
       zustand: 5.0.5_@types+react@18.3.18
     devDependencies:
       '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
@@ -2727,6 +2737,10 @@ packages:
 
   /@socket.io/component-emitter/3.1.2:
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
+    dev: true
+
+  /@sparklingjs/runtime/2.1.0-rc.12:
+    resolution: {integrity: sha512-IcvE39n6A2mHOLAIMGN1kLjRO3PXCJxuB+zauzF7KQEYtXoDrkBYkNQ8m/QxereOLpU2qbkzLBRdPP33bCpYbQ==}
     dev: true
 
   /@swc/helpers/0.5.17:
@@ -8984,15 +8998,13 @@ packages:
     resolution: {integrity: sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==}
     engines: {node: '>= 8'}
 
-  /sparkling-method/2.0.1:
-    resolution: {integrity: sha512-TXbCs5RhPB6Qz62jxrm3TvFMxWROFvpe8DmYDi1UcLMTKvJ5tTPZy2o8V/sQJ7FwhVevcDf51gvVIAuXUMVuzA==}
-    dev: false
+  /sparkling-method/2.1.0-rc.12:
+    resolution: {integrity: sha512-TfSMzFS66MYJWZG4Drn5gNCMtDqkJIvVNHhVu6DIyVxjFhIgdRiXqYsDwLh8VIQlHnTQnuNmONVEtHPzsEWaFw==}
 
-  /sparkling-navigation/2.0.1:
-    resolution: {integrity: sha512-W8Dgn/Om30wwqO1LMzXjJAW2Got437UM0+5gdQ8veEFnGlfQHuHcgCLd+PjyGIglLV20fvmUdnQulRZ8NhNUUQ==}
+  /sparkling-navigation/2.1.0-rc.12:
+    resolution: {integrity: sha512-kAQ5jZsjAixrQuoCBiiojY4jNxyilrhP/ZAjg9DvCmqdOQME73rC1+BR8zax1cyxLeAaa0fxcztAS6exA78qnA==}
     dependencies:
-      sparkling-method: 2.0.1
-    dev: false
+      sparkling-method: 2.1.0-rc.12
 
   /spdx-correct/3.2.0:
     resolution: {integrity: sha512-kN9dJbvnySHULIluDHy32WHRUu3Og7B9sbY7tsFLctQkIqnMh3hErYgdMjTYuqmcXX+lK5T1lnUt3G7zNswmZA==}

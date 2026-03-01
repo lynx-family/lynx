@@ -3,12 +3,18 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxViewShellViewController.h"
+#if __has_include("Sparkling-umbrella.h")
+#import "Sparkling-umbrella.h"
+#define HAS_SPARKLING 1
+#endif
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxProviderRegistry.h>
+#import <Lynx/LynxView+Identify.h>
 #import <Lynx/LynxView.h>
 #import "DemoGenericResourceFetcher.h"
 #import "DemoMediaResourceFetcher.h"
 #import "DemoTemplateResourceFetcher.h"
+#import "LynxExplorer-Swift.h"
 #import "LynxExplorerInput.h"
 #import "LynxSettingManager.h"
 #import "UIHelper.h"
@@ -128,6 +134,9 @@ NSString *const kBackButtonImageDark = @"back_dark";
   LynxThreadStrategyForRender threadStrategy =
       [LynxSettingManager sharedDataHandler].threadStrategy;
 
+#if HAS_SPARKLING
+  NSString *containerID = [[NSUUID UUID] UUIDString];
+#endif
   LynxView *lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
     builder.config =
         [[LynxConfig alloc] initWithProvider:[LynxEnv sharedInstance].config.templateProvider];
@@ -136,6 +145,10 @@ NSString *const kBackButtonImageDark = @"back_dark";
     builder.fetcher = nil;
     // for homepage only
     [builder.config registerUI:LynxExplorerInput.class withName:@"explorer-input"];
+#if HAS_SPARKLING
+    // Register Sparkling spkPipe module with pre-generated containerID
+    [SPKServiceRegistrar setupLynxPipeWithConfig:builder.config containerID:containerID];
+#endif
     // Add fetchers
     builder.enableGenericResourceFetcher = true;
     builder.genericResourceFetcher = [[DemoGenericResourceFetcher alloc] init];
@@ -143,8 +156,15 @@ NSString *const kBackButtonImageDark = @"back_dark";
     builder.mediaResourceFetcher = [[DemoMediaResourceFetcher alloc] init];
     [builder setThreadStrategyForRender:threadStrategy];
   }];
+#if HAS_SPARKLING
+  lynxView.containerID = containerID;
+#endif
   lynxView.preferredLayoutWidth = screenSize.width;
   [lynxView setExtraTiming:extraTiming];
+#if HAS_SPARKLING
+  // Connect Sparkling MethodPipe execution engine to this LynxView
+  [SPKServiceRegistrar connectPipeTo:lynxView];
+#endif
 
   if (self.fullScreen) {
     lynxView.preferredLayoutHeight = screenSize.height;
@@ -165,6 +185,15 @@ NSString *const kBackButtonImageDark = @"back_dark";
   [globalProps updateBool:[self isNotchScreen] forKey:@"isNotchScreen"];
   [globalProps updateDouble:screenHeight forKey:@"screenHeight"];
   [globalProps updateDouble:screenWidth forKey:@"screenWidth"];
+  if (@available(iOS 11.0, *)) {
+    UIWindow *window = UIApplication.sharedApplication.keyWindow;
+    UIEdgeInsets safeAreaInsets = window.safeAreaInsets;
+    [globalProps updateDouble:safeAreaInsets.top forKey:@"safeAreaTop"];
+    [globalProps updateDouble:safeAreaInsets.bottom forKey:@"safeAreaBottom"];
+  } else {
+    [globalProps updateDouble:0 forKey:@"safeAreaTop"];
+    [globalProps updateDouble:0 forKey:@"safeAreaBottom"];
+  }
   NSString *theme = @"Light";
   if ([UIScreen mainScreen].traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
     theme = @"Dark";
