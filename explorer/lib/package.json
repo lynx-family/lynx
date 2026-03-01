@@ -6,7 +6,7 @@
   "main": "index.ts",
   "dependencies": {
     "@lynx-js/react": "0.107.0",
-    "sparkling-navigation": "^2.0.1"
+    "sparkling-navigation": "2.1.0-rc.12"
   },
   "devDependencies": {
     "@lynx-js/types": "3.3.0"

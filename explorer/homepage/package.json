@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@explorer/lib": "workspace:*",
-    "@lynx-js/react": "0.107.0"
+    "@lynx-js/react": "0.107.0",
+    "sparkling-method": "2.1.0-rc.12"
   },
   "devDependencies": {
     "@lynx-js/qrcode-rsbuild-plugin": "0.3.6",
