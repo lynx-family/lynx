@@ -10,6 +10,7 @@
     "dev": "rspeedy dev"
   },
   "dependencies": {
+    "@explorer/lib": "workspace:*",
     "@lynx-js/react": "0.107.0"
   },
   "devDependencies": {

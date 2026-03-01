@@ -13,62 +13,49 @@ import ForwardDarkIcon from '@assets/images/forward-dark.png?inline';
 import ForwardIcon from '@assets/images/forward.png?inline';
 import LightDarkIcon from '@assets/images/light-dark.png?inline';
 import LightLightIcon from '@assets/images/light.png?inline';
+import { navigateTo, useTheme, useSafeArea } from '@explorer/lib';
+import type { ThemePreference } from '@explorer/lib';
+
+const THEMES: ThemePreference[] = ['Auto', 'Light', 'Dark'];
 
 interface SettingsPageProps {
   showPage: boolean;
-  themes: string[];
-  currentTheme: string;
-  setTheme: (theme: string) => void;
-  withTheme: (className: string) => string;
-  withNotchScreen: (className: string) => string;
 }
 
 export default function SettingsPage(props: SettingsPageProps) {
+  const { preference, resolved, setPreference, withTheme } = useTheme();
+  const safeArea = useSafeArea();
   const [listAsyncRender, setListAsyncRender] = useState(false);
 
   const icons = {
-    Auto: {
-      Dark: AutoDarkIcon,
-      Light: AutoLightIcon,
-    },
-    Dark: {
-      Dark: DarkDarkIcon,
-      Light: DarkLightIcon,
-    },
-    Light: {
-      Dark: LightDarkIcon,
-      Light: LightLightIcon,
-    },
-    Forward: {
-      Dark: ForwardDarkIcon,
-      Light: ForwardIcon,
-    },
+    Auto: { dark: AutoDarkIcon, light: AutoLightIcon },
+    Dark: { dark: DarkDarkIcon, light: DarkLightIcon },
+    Light: { dark: LightDarkIcon, light: LightLightIcon },
+    Forward: { dark: ForwardDarkIcon, light: ForwardIcon },
   } as const;
 
-  type Theme = 'Dark' | 'Light';
-
   const openDevtoolSwitchPage = () => {
-    NativeModules.ExplorerModule.openSchema(
-      'file://lynx?local://switchPage/devtoolSwitch.lynx.bundle'
-    );
+    navigateTo('switchPage/devtoolSwitch.lynx.bundle');
   };
 
-  const getIcon = (name: keyof typeof icons) => {
-    const { currentTheme } = props;
-    if (currentTheme !== 'Auto') {
-      return icons[name][currentTheme as Theme];
-    }
-    return icons[name][lynx.__globalProps.theme as Theme];
-  };
+  const getIcon = (name: keyof typeof icons) => icons[name][resolved];
 
-  const { showPage, themes, currentTheme, withTheme, withNotchScreen } = props;
-  if (!showPage) {
+  if (!props.showPage) {
     return <></>;
   }
 
+  const navigatorHeight = 48 + safeArea.bottom;
+
   return (
-    <view clip-radius="true" className={withTheme('page')}>
-      <view className={withNotchScreen('page-header')}>
+    <view
+      clip-radius="true"
+      className={withTheme('page')}
+      style={{ height: `calc(100% - ${navigatorHeight}px)` }}
+    >
+      <view
+        className="page-header"
+        style={{ marginTop: `${Math.max(safeArea.top, 10)}px` }}
+      >
         <text className={withTheme('title')}>Settings</text>
       </view>
 
@@ -76,12 +63,12 @@ export default function SettingsPage(props: SettingsPageProps) {
         <text className={withTheme('sub-title')}>Theme</text>
       </view>
       <view className={withTheme('theme')}>
-        {themes.map((theme) => {
+        {THEMES.map((theme) => {
           return (
             <view
               key={theme}
               className="option-item"
-              bindtap={() => props.setTheme(theme)}
+              bindtap={() => setPreference(theme)}
               accessibility-element={true}
               accessibility-label={`Set Theme ${theme}`}
               accessibility-traits="button"
@@ -93,12 +80,12 @@ export default function SettingsPage(props: SettingsPageProps) {
               <text className={withTheme('text')}>{theme}</text>
               <view
                 className={
-                  currentTheme === theme
+                  preference === theme
                     ? withTheme('radio-button-container-active')
                     : withTheme('radio-button-container-inactive')
                 }
               >
-                {currentTheme === theme ? (
+                {preference === theme ? (
                   <view className={withTheme('radio-button-active')} />
                 ) : (
                   <view className={withTheme('radio-button')} />
@@ -162,6 +149,18 @@ export default function SettingsPage(props: SettingsPageProps) {
               <view className={withTheme('radio-button')} />
             )}
           </view>
+        </view>
+      </view>
+
+      <view style="margin: 3% 5% 0px 5%; height: 5%">
+        <text className={withTheme('sub-title')}>System Info</text>
+      </view>
+      <view className={withTheme('info-section')}>
+        <view className="info-row">
+          <text className={withTheme('text')}>Lynx Engine</text>
+          <text className={withTheme('info-value')}>
+            {SystemInfo.engineVersion}
+          </text>
         </view>
       </view>
     </view>
