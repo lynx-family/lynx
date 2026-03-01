@@ -148,7 +148,7 @@ public final class LynxFrameView extends UIBodyView {
     }
 
     mRender.onMeasure(MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
-        MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
+        MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.UNSPECIFIED));
   }
 
   @Override
