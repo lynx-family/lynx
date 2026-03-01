@@ -24,6 +24,9 @@ android {
             pickFirst 'lib/*/liblynx.so'
             pickFirst 'lib/*/liblynxtrace.so'
             pickFirst '**/libnapi.so'
+            // Sparkling's transitive deps can include Kotlin module files that
+            // duplicate those produced by Lynx's own modules.
+            pickFirst 'META-INF/*.kotlin_module'
         }
     }
 
@@ -46,6 +49,19 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        // Sparkling SDK is compiled with a newer Kotlin than this project;
+        // suppress the metadata version check to avoid compilation errors.
+        freeCompilerArgs += ['-Xskip-metadata-version-check']
+    }
+
+    lintOptions {
+        // Sparkling's lint check JARs reference com.android.tools.lint.client.api.Vendor
+        // which is only available in AGP 7+. Suppress lint on release builds to avoid
+        // ClassNotFoundException with this project's AGP 4.1.0.
+        checkReleaseBuilds false
     }
 
     flavorDimensions "lynx"
@@ -73,6 +89,13 @@ android {
 }
 
 dependencies {
+    // Sparkling SDK — exclude Lynx Maven artifacts that Sparkling depends on transitively;
+    // this project already includes them as local source modules (:lynx_service_log,
+    // :LynxAndroid, etc.), so without this exclusion R8 sees duplicate class definitions.
+    implementation('com.tiktok.sparkling:sparkling:2.1.0-rc.12') {
+        exclude group: 'org.lynxsdk.lynx'
+    }
+
     implementation 'androidx.appcompat:appcompat:1.0.0'
     implementation 'androidx.core:core:1.6.0'
     implementation 'com.facebook.fresco:fresco:2.3.0'
