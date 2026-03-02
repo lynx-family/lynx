@@ -46,7 +46,9 @@ public enum LynxEnvKey {
   ENABLE_DATA_LIST_FIX("enable_data_list_fix"),
   FSP_ENABLE("enable_fsp"),
   FSP_CONFIG_JSON_STRING("fsp_config_json_string"),
-  INIT_DISPLAY_METRICS_IN_ENV("init_display_metrics_in_env");
+  INIT_DISPLAY_METRICS_IN_ENV("init_display_metrics_in_env"),
+  // Internal-only Lynx settings key. Do not mention graphics backend details in the key.
+  SETUP_CANVAS_SURFACE_EARLIER("setup_canvas_surface_earlier");
 
   private final String description;
 

@@ -744,7 +744,8 @@
     @(LynxEnvEnableTextGradientOpt) : @"lynx_text_gradient_opt",
     @(LynxEnvGlobalMemoryReportThresholdMB) : @"global_memory_report_threshold_mb",
     @(LynxEnvFSPEnable) : @"enable_fsp",
-    @(LynxEnvFSPConfigJsonString) : @"fsp_config_json_string"
+    @(LynxEnvFSPConfigJsonString) : @"fsp_config_json_string",
+    @(LynxEnvSetupCanvasSurfaceEarlier) : @"setup_canvas_surface_earlier"
   };
   NSString *keyString = envKeyBinding[@(key)];
   NSAssert(keyString.length > 0, @"LynxEnv key string should not be nill.");
