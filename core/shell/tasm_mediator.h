@@ -13,6 +13,7 @@
 
 #include "base/include/closure.h"
 #include "base/include/lynx_actor.h"
+#include "core/public/pub_value.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/services/performance/performance_controller.h"
@@ -220,6 +221,9 @@ class TasmMediator : public LynxEngine::Delegate {
   void InvokeUIMethod(tasm::LynxGetUIResult ui_result,
                       const std::string& method,
                       fml::RefPtr<tasm::PropBundle> params,
+                      piper::ApiCallBack callback) override;
+  void InvokeUIMethod(tasm::LynxGetUIResult ui_result,
+                      const std::string& method, const pub::Value& params,
                       piper::ApiCallBack callback) override;
 
   void SetPageConfigForLayoutThread(
