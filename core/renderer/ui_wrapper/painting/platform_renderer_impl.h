@@ -13,6 +13,8 @@
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 #include "core/renderer/utils/base/base_def.h"
 
+constexpr const static int32_t kRootId = 10;
+
 namespace lynx::tasm {
 
 class DisplayList;

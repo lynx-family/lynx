@@ -121,6 +121,11 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
 void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
     std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor) {
   engine_actor_ = engine_actor;
+  float device_pixel_ratio =
+      engine_actor_ != nullptr
+          ? engine_actor_->Impl()->GetTasm()->GetDevicePixelRatio()
+          : 1.0f;
+  event_target_helper_->SetDevicePixelRatio(device_pixel_ratio);
 }
 
 bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
