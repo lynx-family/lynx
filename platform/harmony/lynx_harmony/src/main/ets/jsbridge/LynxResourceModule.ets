@@ -8,6 +8,7 @@ import { LynxGenericResourceFetcher } from '../provider/LynxGenericResourceFetch
 import { LynxResourceRequest, LynxResourceType } from '../provider/LynxResourceRequest';
 import { LynxSubErrorCode } from '../tasm/gen/LynxSubErrorCode';
 import { LLog } from '../base/LLog';
+import { LynxContext } from '../tasm/LynxContext';
 
 const TAG = 'LynxResourceModule';
 
@@ -59,6 +60,13 @@ export class LynxResourceModule extends LynxModule {
   private static readonly IMAGE_TYPE = 'image';
   private static readonly VIDEO_TYPE = 'video';
   private static readonly AUDIO_TYPE = 'audio';
+  private static readonly FONT_TYPE = 'font';
+
+  private prefetchFont(uri: string): void {
+    if (this.context instanceof LynxContext) {
+      (this.context as LynxContext).prefetchFont(uri);
+    }
+  }
 
   private requestResourcePrefetchInternal(genericFetcher: LynxGenericResourceFetcher, uri: string, type: string,
     params?: ResourcePrefetchParams): [number, string] {
@@ -73,6 +81,10 @@ export class LynxResourceModule extends LynxModule {
       case LynxResourceModule.IMAGE_TYPE: {
         let request: LynxResourceRequest = new LynxResourceRequest(uri, LynxResourceType.LYNX_RESOURCE_TYPE_IMAGE);
         genericFetcher.fetchResourcePath(request, callback);
+        break;
+      }
+      case LynxResourceModule.FONT_TYPE: {
+        this.prefetchFont(uri);
         break;
       }
       case LynxResourceModule.AUDIO_TYPE:

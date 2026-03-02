@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.8.4
+
+- Add `font` type for `requestResourcePrefetch`.
+
 ## 3.8.3
 
 - Add `refresh` element types.

@@ -100,6 +100,8 @@ class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
     return false;
   }
 
+  void PrefetchFont(const std::string& src);
+
   void LoadFontWithUrl(int sign, const std::string& custom_font_family,
                        const std::string& src, const FontFace::Type type,
                        FontResourceCallback callback);

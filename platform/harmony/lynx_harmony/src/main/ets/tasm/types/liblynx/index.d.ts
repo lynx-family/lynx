@@ -61,6 +61,12 @@ export class ShadowNodeOwner {
   alignNativeNode(sign: number, top: number, left: number): void;
 
   /**
+   * Prefetch font resource.
+   * @param {string} uri - The uri of the font resource.
+   */
+  prefetchFont(uri: string): void;
+
+  /**
    * Destroy the native instance immediately.
    */
   destroy(): void;

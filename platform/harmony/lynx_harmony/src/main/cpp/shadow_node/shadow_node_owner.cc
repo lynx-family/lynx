@@ -57,6 +57,7 @@ napi_value ShadowNodeOwner::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("findJSShadowNodeBySign", FindJSShadowNodeBySign),
       DECLARE_NAPI_FUNCTION("measureNativeNode", MeasureLayoutNode),
       DECLARE_NAPI_FUNCTION("alignNativeNode", AlignLayoutNode),
+      DECLARE_NAPI_FUNCTION("prefetchFont", PrefetchFont),
       DECLARE_NAPI_FUNCTION("destroy", Destroy),
   };
 #undef DECLARE_NAPI_FUNCTION
@@ -447,6 +448,28 @@ napi_value ShadowNodeOwner::AlignLayoutNode(napi_env env,
   napi_get_value_double(env, argv[INDEX_TOP], &top);
   napi_get_value_double(env, argv[INDEX_LEFT], &left);
   node->AlignLayoutNode(static_cast<float>(top), static_cast<float>(left));
+  return nullptr;
+}
+
+napi_value ShadowNodeOwner::PrefetchFont(napi_env env,
+                                         napi_callback_info info) {
+  size_t argc = 1;
+  napi_value argv[argc];
+  napi_value js_this;
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+  ShadowNodeOwner* node_owner = nullptr;
+  napi_unwrap(env, js_this, reinterpret_cast<void**>(&node_owner));
+
+  if (!node_owner) {
+    return nullptr;
+  }
+
+  size_t len = 0;
+  napi_get_value_string_utf8(env, argv[0], nullptr, 0, &len);
+  std::string uri(len + 1, '\0');
+  napi_get_value_string_utf8(env, argv[0], uri.data(), len + 1, &len);
+  uri.resize(len);
+  node_owner->GetFontFaceManager()->PrefetchFont(uri);
   return nullptr;
 }
 

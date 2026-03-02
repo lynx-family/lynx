@@ -41,6 +41,15 @@ describe('Global Variable Type Test ', () => {
     expectTypeOf(lynx.requestResourcePrefetch).parameter(1).toEqualTypeOf<(res: ResourcePrefetchResult) => void>();
     expectTypeOf(lynx.requestResourcePrefetch).returns.toBeVoid();
     expectTypeOf(lynx.cancelResourcePrefetch).toEqualTypeOf<(data: ResourcePrefetchData, callback: (res: ResourcePrefetchResult) => void) => void>();
+
+    assertType<ResourcePrefetchData>({
+      data: [
+        {
+          uri: 'http://example.com/font.ttf',
+          type: 'font',
+        },
+      ],
+    });
     //SelectorQuery
     expectTypeOf(lynx.createSelectorQuery).toEqualTypeOf<() => SelectorQuery>();
     //JS Module Method

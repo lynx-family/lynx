@@ -67,6 +67,13 @@ export class ShadowNodeOwner {
     this.native.alignNativeNode(sign, top, left);
   }
 
+  prefetchFont(uri: string) {
+    if (this.isDestroyed) {
+      return;
+    }
+    this.native.prefetchFont(uri);
+  }
+
   destroy() {
     if (this.isDestroyed) {
       return;

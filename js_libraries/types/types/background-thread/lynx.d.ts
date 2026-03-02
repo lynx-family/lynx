@@ -49,7 +49,7 @@ export type CreateIntersectionObserverFunc = (
 export interface ResourcePrefetchData {
   data: {
     uri: string;
-    type: 'image' | 'video';
+    type: 'image' | 'video' | 'font';
     param?: {
       priority?: 'high' | 'medium' | 'low';
       cacheTarget?: 'disk' | 'bitmap';

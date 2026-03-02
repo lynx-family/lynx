@@ -110,6 +110,7 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
   static napi_value MeasureLayoutNode(napi_env env, napi_callback_info info);
   static napi_value AlignLayoutNode(napi_env env, napi_callback_info info);
   static napi_value Destroy(napi_env env, napi_callback_info info);
+  static napi_value PrefetchFont(napi_env env, napi_callback_info info);
   const std::shared_ptr<LayoutVSyncProxy>& GetLayoutVSyncProxy();
   napi_ref js_{nullptr};
   napi_ref create_{nullptr};

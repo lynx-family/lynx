@@ -57,6 +57,10 @@ export class LynxContext implements IContext {
     return this.shadowNodeOwner?.findJSShadowNodeBySign(sign);
   }
 
+  public prefetchFont(uri: string) {
+    this.shadowNodeOwner?.prefetchFont(uri);
+  }
+
   public setShadowNodeOwner(nodeOwner?: ShadowNodeOwner) {
     this.shadowNodeOwner = nodeOwner;
   }
