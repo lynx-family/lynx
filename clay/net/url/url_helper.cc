@@ -67,6 +67,10 @@ UriSchemeType ParseUriScheme(std::string_view uri) {
   } else if (scheme_str.compare(kResScheme) == 0) {
     return UriSchemeType::kRes;
   } else {
+#elif OS_WIN
+  } else if (scheme_str.size() == 1 && std::isalpha(scheme_str[0])) {
+    return UriSchemeType::kLocalFile;
+  } else {
 #else
   } else {
 #endif

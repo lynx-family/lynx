@@ -141,7 +141,7 @@ std::string CreateTemporaryDirectory() {
   // Join the two and create a path to the new temporary directory.
 
   std::wstringstream stream;
-  stream << temp_dir_container << "\\" << uuid_str;
+  stream << temp_dir_container << uuid_str;
   auto temp_dir = stream.str();
 
   auto dir_fd = OpenDirectory(WideStringToUtf8(temp_dir).c_str(), true,
