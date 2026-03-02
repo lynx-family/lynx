@@ -292,6 +292,17 @@ class Element : public lepus::RefCounted,
   LYNX_EXPORT_FOR_DEVTOOL virtual void ConsumeStyle(
       const StyleMap& styles, const StyleMap* inherit_styles = nullptr) = 0;
 
+  void CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value);
+  void CacheStyleFromAttributes(CSSPropertyID id, const lepus::Value& value);
+  void DidConsumeStyle();
+
+  virtual void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) {}
+  virtual void ConsumeStyleInternal(
+      const StyleMap& styles, const StyleMap* inherit_styles,
+      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip) {
+    ConsumeStyle(styles, inherit_styles);
+  }
+
   virtual void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value);
 
   LYNX_EXPORT_FOR_DEVTOOL virtual void ResetStyle(
@@ -343,6 +354,8 @@ class Element : public lepus::RefCounted,
 
   // For dataset op
   void SetDataSet(const tasm::DataMap& data);
+  void AddDataset(const base::String& key, const lepus::Value& value);
+  void SetDataset(const lepus::Value& data_set);
   // For event handler
   virtual void SetEventHandler(const base::String& name, EventHandler* handler);
   virtual void ResetEventHandlers();
@@ -540,7 +553,6 @@ class Element : public lepus::RefCounted,
           is_page() || is_component() ? impl_id() : id);
     }
   }
-
   /**
    * A function to resolve parent component element CSSFragment
    */
@@ -785,7 +797,7 @@ class Element : public lepus::RefCounted,
   // capabilities. After the 2.0 worklet services are phased out, the following
   // two APIs will also be removed.
   virtual StyleMap GetStylesForWorklet() = 0;
-  virtual const AttrMap& GetAttributesForWorklet() = 0;
+  virtual const AttrMap& GetAttributesForWorklet();
 
   inline const auto& GlobalBindTarget() { return global_bind_target_set_; }
   virtual bool CanBeLayoutOnly() const = 0;
@@ -797,8 +809,8 @@ class Element : public lepus::RefCounted,
   //{need_request_layout,has_pending_bundle}
   std::tuple<bool, bool> FlushAnimatedStyle();
   void FlushAnimatedStyle(tasm::CSSPropertyID id, tasm::CSSValue value);
-  virtual void FlushAnimatedStyleInternal(tasm::CSSPropertyID,
-                                          const tasm::CSSValue&) = 0;
+  virtual void FlushAnimatedStyleInternal(tasm::CSSPropertyID id,
+                                          const tasm::CSSValue& value);
 
   starlight::LayoutResultForRendering layout_result();
 
@@ -868,6 +880,11 @@ class Element : public lepus::RefCounted,
     is_inline_element_ = true;
     has_layout_only_props_ = false;
   }
+
+  // The text element can call this function to convert child fiber elements
+  // into inline elements. Currently, only view, text, image and wrapper
+  // elements may be converted into inline elements.
+  virtual void ConvertToInlineElement();
 
   void ResetPropBundle();
 
@@ -954,10 +971,14 @@ class Element : public lepus::RefCounted,
 
   virtual bool ResetCSSValue(CSSPropertyID id);
   virtual void ConsumeTransitionStylesInAdvanceInternal(
-      CSSPropertyID css_id, const tasm::CSSValue& value) = 0;
+      CSSPropertyID css_id, const tasm::CSSValue& value) {
+    SetStyleInternal(css_id, value);
+  }
   bool ResetTransitionStylesInAdvance(
       const base::Vector<CSSPropertyID>& css_names);
-  virtual void ResetTransitionStylesInAdvanceInternal(CSSPropertyID css_id) = 0;
+  virtual void ResetTransitionStylesInAdvanceInternal(CSSPropertyID css_id) {
+    ResetStyleInternal(css_id);
+  }
 
   void ResolveAndFlushKeyframes();
 
@@ -967,8 +988,7 @@ class Element : public lepus::RefCounted,
 
   std::optional<CSSValue> GetElementPreviousStyle(tasm::CSSPropertyID css_id);
 
-  virtual std::optional<CSSValue> GetElementStyle(
-      tasm::CSSPropertyID css_id) = 0;
+  virtual std::optional<CSSValue> GetElementStyle(tasm::CSSPropertyID css_id);
 
   CSSKeyframesToken* GetCSSKeyframesToken(const base::String& animation_name);
 
@@ -995,9 +1015,11 @@ class Element : public lepus::RefCounted,
 
   void UpdateFinalStyleMap(const StyleMap& styles);
 
-  virtual void OnPatchFinish(std::shared_ptr<PipelineOptions>& option) = 0;
+  virtual void OnPatchFinish(std::shared_ptr<PipelineOptions>& option);
 
   virtual int32_t GetCSSID() const = 0;
+
+  virtual void SetCSSID(int32_t id);
 
   bool IsExtendedLayoutOnlyProps(CSSPropertyID css_id);
 
@@ -1016,6 +1038,9 @@ class Element : public lepus::RefCounted,
   // information.
   virtual void OnListElementUpdated(
       const std::shared_ptr<PipelineOptions>& options) {}
+
+  // Called when the layout object is created
+  virtual void OnLayoutObjectCreated() {}
 
   // When the rendering of the list's child node is complete, this method will
   // be invoked. In this method, we can accurately obtain the layout
@@ -1048,7 +1073,7 @@ class Element : public lepus::RefCounted,
   // Whether list uses platform component.
   virtual bool DisableListPlatformImplementation() const { return false; }
 
-  virtual bool NeedFullFlushPath(CSSPropertyID id, const CSSValue& value) = 0;
+  virtual bool NeedFullFlushPath(CSSPropertyID id, const CSSValue& value);
 
   virtual bool is_view() const { return false; }
 
@@ -1114,6 +1139,7 @@ class Element : public lepus::RefCounted,
   // Callback before style resolving. Return false to skip style resolving.
   virtual bool WillResolveStyle(StyleMap& merged_styles,
                                 CSSVariableMap* changed_css_vars) {
+    ProcessFullRawInlineStyle(changed_css_vars);
     return true;
   }
 
@@ -1127,6 +1153,49 @@ class Element : public lepus::RefCounted,
                      *current_raw_inline_styles_)
                : 0;
   }
+
+  // Check has_value() before usage to avoid unintentional construction.
+  const auto& GetCurrentRawInlineStyles() const {
+    return current_raw_inline_styles_;
+  }
+
+  LYNX_EXPORT_FOR_DEVTOOL const base::String& GetRawInlineStyles();
+  void SetRawInlineStyles(base::String value);
+
+  /**
+   * Element API for appending css style to element
+   * @param id the css property id
+   * @param value the css property lepus type vale
+   */
+  LYNX_EXPORT_FOR_DEVTOOL void SetStyle(CSSPropertyID id,
+                                        const lepus::Value& value);
+
+  /**
+   * Element API for removing all inline styles.
+   */
+  LYNX_EXPORT_FOR_DEVTOOL void RemoveAllInlineStyles();
+
+  /**
+   * Element API for setting compile stage parsed style
+   * @param parsed_styles the parsed styles
+   * @param config parsed styles' config
+   */
+  void SetParsedStyles(const ParsedStyles& parsed_styles,
+                       const lepus::Value& config);
+
+  void SetParsedStyles(StyleMap&& parsed_styles, CSSVariableMap&& css_var);
+
+  /**
+   * Element API for adding gesture detector
+   */
+  void SetGestureDetector(const uint32_t gesture_id,
+                          GestureDetector gesture_detector);
+
+  /**
+   * Element API for removing specific gesture detector
+   * @param gesture_id the removed gesture' id
+   */
+  void RemoveGestureDetector(const uint32_t gesture_id);
 
   // Returns true if CSS variables were merged and need to be resolved.
   virtual bool MergeInlineStyles(StyleMap& merged_styles) = 0;
@@ -1159,6 +1228,13 @@ class Element : public lepus::RefCounted,
 
   virtual float GetLayoutsUnitPerPx() override;
 
+  /**
+   * Get computed style value by property key.
+   * @param key the CSS property name
+   * @return the computed style value as lepus::Value
+   */
+  lepus::Value GetComputedStyleByKey(const base::String& key);
+
   fml::WeakPtr<EventTarget> GetWeakTarget() override { return WeakFromThis(); }
 
   virtual std::string GetUniqueID() override {
@@ -1171,6 +1247,14 @@ class Element : public lepus::RefCounted,
   virtual void MarkDetached() { state_ = State::kDetached; }
   virtual bool IsDetached() const { return state_ == State::kDetached; }
   virtual void SetupFragmentBehavior(Fragment* fragment) {}
+
+  void SetDefaultOverflow(bool visible);
+
+  /**
+   * Destroy the related platform node of this element
+   */
+  void DestroyPlatformNode();
+  virtual void MarkPlatformNodeDestroyed();
 
   // Mark style dirty, optionally recursively for children
   void MarkStyleDirty(bool recursive = false);

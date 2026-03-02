@@ -350,6 +350,7 @@ inline constexpr const char* const ELEMENT_UPDATE_LAYOUT =
     "Element::UpdateLayout";
 inline constexpr const char* const ELEMENT_SET_STYLE_INTERNAL =
     "Element::SetStyleInternal";
+inline constexpr const char* const ELEMENT_SET_STYLE = "Element::SetStyle";
 inline constexpr const char* const ELEMENT_CONSUME_ATTRIBUTE =
     "Element::WillConsumeAttribute";
 inline constexpr const char* const ELEMENT_SET_KEYFRAMES_BY_NAMES =
@@ -366,6 +367,8 @@ inline constexpr const char* const ELEMENT_FLUSH_ANIMATED_STYLE =
     "Element::FlushAnimatedStyle";
 inline constexpr const char* const ELEMENT_RESOLVE_AND_FLUSH_KEYFRAMES =
     "Element::ResolveAndFlushKeyframes";
+inline constexpr const char* const ELEMENT_SET_PARSED_STYLES =
+    "Element::SetParsedStyles";
 inline constexpr const char* const DEVTOOL_FIBER_ATTACH_TO_INSPECTOR =
     "Devtool::FiberAttachToInspectorRecursively";
 inline constexpr const char* const DEVTOOL_PREPARE_NODE_FOR_INSPECTOR =

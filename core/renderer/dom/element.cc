@@ -17,6 +17,7 @@
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_delegate.h"
+#include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_keyframes_token.h"
@@ -831,6 +832,20 @@ void Element::SetDataSet(const tasm::DataMap& data) {
     datas_val.SetProperty(pair.first, pair.second);
   }
   prop_bundle_->SetProps("dataset", pub::ValueImplLepus(datas_val));
+}
+
+void Element::AddDataset(const base::String& key, const lepus::Value& value) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_ADD_DATA_SET);
+
+  data_model_->SetDataSet(key, value);
+  MarkDirty(kDirtyDataset);
+}
+
+void Element::SetDataset(const lepus::Value& data_set) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_DATA_SET);
+
+  data_model_->SetDataSet(data_set);
+  MarkDirty(kDirtyDataset);
 }
 
 void Element::SetJSEventHandler(const base::String& name,
@@ -2504,6 +2519,247 @@ void Element::LogNodeInfo() {
 }
 
 void Element::ResetStyleSheet() { style_sheet_ = nullptr; }
+
+const base::String& Element::GetRawInlineStyles() {
+  return full_raw_inline_style_;
+}
+
+void Element::SetRawInlineStyles(base::String value) {
+  full_raw_inline_style_ = std::move(value);
+  MarkDirty(kDirtyStyle);
+}
+
+void Element::SetDefaultOverflow(bool visible) {
+  computed_css_style()->SetOverflowDefaultVisible(visible);
+}
+
+void Element::DestroyPlatformNode() {
+  if (element_container() && has_painting_node_) {
+    element_container()->Destroy();
+  }
+  has_painting_node_ = false;
+  MarkPlatformNodeDestroyed();
+}
+
+void Element::MarkPlatformNodeDestroyed() {
+  for (size_t i = 0; i < GetChildCount(); ++i) {
+    auto* child = GetChildAt(i);
+    // Element may be referenced by JS engine. Just clear the parent-child
+    // relationship.
+    if (child->parent_ == this) {
+      child->parent_ = nullptr;
+    }
+    if (child->render_parent_ == this) {
+      child->render_parent_ = nullptr;
+    }
+  }
+  if (scoped_virtual_children_.has_value()) {
+    for (size_t i = 0; i < scoped_virtual_children_->size(); ++i) {
+      auto* virtual_child = (*scoped_virtual_children_)[i].get();
+      if (virtual_child->parent_ == this) {
+        virtual_child->parent_ = nullptr;
+      }
+    }
+  }
+  // clear element's children only in radon or radon compatible mode.
+  scoped_children_.clear();
+  scoped_virtual_children_.reset();
+}
+
+void Element::ConvertToInlineElement() {
+  MarkAsInline();
+  for (auto& child : scoped_children_) {
+    child->ConvertToInlineElement();
+  }
+}
+
+void Element::SetStyle(CSSPropertyID id, const lepus::Value& value) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_SET_STYLE);
+
+  // When the `SetStyle` API is called, the `SetRawInlineStyles` API might
+  // already have been invoked. In this case, it is necessary to call
+  // `ProcessFullRawInlineStyle` first to ensure that `full_raw_inline_style_`
+  // is set into `current_raw_inline_styles_`. Otherwise, `SetRawInlineStyles`
+  // might override the `SetStyle` call, leading to unexpected behavior.
+  ProcessFullRawInlineStyle(nullptr);
+
+  if (!value.IsEmpty()) {
+    current_raw_inline_styles_->insert_or_assign(id, value);
+  } else if (current_raw_inline_styles_.has_value()) {
+    current_raw_inline_styles_->erase(id);
+  }
+
+  MarkDirty(kDirtyStyle);
+
+  if (has_extreme_parsed_styles_ && !only_selector_extreme_parsed_styles_) {
+    has_extreme_parsed_styles_ = false;
+    extreme_parsed_styles_.reset();
+  }
+
+  // Only exec the following expr when ENABLE_INSPECTOR, such that devtool can
+  // get element's inline style.
+  EXEC_EXPR_FOR_INSPECTOR({
+    if (element_manager_ && element_manager_->IsDomTreeEnabled()) {
+      if (value.IsEmpty()) {
+        data_model()->ResetInlineStyle(id);
+      } else {
+        data_model()->SetInlineStyle(id,
+                                     value.IsNumber()
+                                         ? std::to_string(value.Number())
+                                         : value.ToString(),
+                                     element_manager_->GetCSSParserConfigs());
+      }
+    }
+  });
+}
+
+void Element::RemoveAllInlineStyles() {
+  // Only exec the following expr when ENABLE_INSPECTOR, such that devtool can
+  // get element's inline style.
+  EXEC_EXPR_FOR_INSPECTOR({
+    if (element_manager_->IsDomTreeEnabled() &&
+        current_raw_inline_styles_.has_value()) {
+      for (const auto& pair : *current_raw_inline_styles_) {
+        const static base::String kNull;
+        data_model()->SetInlineStyle(pair.first, kNull,
+                                     element_manager_->GetCSSParserConfigs());
+      }
+    }
+  });
+
+  full_raw_inline_style_ = base::String();
+  current_raw_inline_styles_.reset();
+
+  MarkDirty(kDirtyStyle);
+}
+
+void Element::CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value) {
+  styles_from_attributes_->insert_or_assign(id, std::move(value));
+}
+
+void Element::CacheStyleFromAttributes(CSSPropertyID id,
+                                       const lepus::Value& value) {
+  UnitHandler::Process(id, value, *styles_from_attributes_,
+                       element_manager()->GetCSSParserConfigs());
+}
+
+void Element::DidConsumeStyle() {
+  if (!styles_from_attributes_.has_value()) {
+    return;
+  }
+  if (styles_from_attributes_->empty()) {
+    return;
+  }
+
+  ConsumeStyleInternal(*styles_from_attributes_, nullptr,
+                       [](auto id, const auto& value) {
+                         // Do not skip any style here.
+                         return false;
+                       });
+  styles_from_attributes_.reset();
+}
+
+void Element::SetParsedStyles(const ParsedStyles& parsed_styles,
+                              const lepus::Value& config) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_SET_PARSED_STYLES);
+
+  constexpr const static char kOnlySelector[] = "selectorParsedStyles";
+  const auto& only_selector_prop =
+      config.GetProperty(BASE_STATIC_STRING(kOnlySelector));
+  if (only_selector_prop.IsBool()) {
+    only_selector_extreme_parsed_styles_ = only_selector_prop.Bool();
+  }
+
+  has_extreme_parsed_styles_ = true;
+  *extreme_parsed_styles_ = parsed_styles.first;
+  data_model()->set_css_variables_map(parsed_styles.second);
+  MarkDirty(kDirtyStyle);
+}
+
+void Element::SetParsedStyles(StyleMap&& parsed_styles,
+                              CSSVariableMap&& css_var) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_SET_PARSED_STYLES);
+  has_extreme_parsed_styles_ = true;
+  only_selector_extreme_parsed_styles_ = false;
+  *extreme_parsed_styles_ = std::move(parsed_styles);
+  data_model()->set_css_variables_map(std::move(css_var));
+  MarkDirty(kDirtyStyle);
+}
+
+void Element::SetGestureDetector(const uint32_t gesture_id,
+                                 GestureDetector gesture_detector) {
+  data_model_->SetGestureDetector(gesture_id, gesture_detector);
+  MarkDirty(kDirtyGesture);
+}
+
+void Element::RemoveGestureDetector(const uint32_t gesture_id) {
+  data_model_->RemoveGestureDetector(gesture_id);
+  MarkDirty(kDirtyGesture);
+}
+
+lepus::Value Element::GetComputedStyleByKey(const base::String& key) {
+  auto property_id = CSSProperty::GetPropertyID(key);
+  if (property_id == tasm::CSSPropertyID::kPropertyEnd) {
+    return lepus::Value("");
+  }
+
+  return lepus::Value(
+      ComputedCSSStyleCssTextHelper().GetComputedStyleByPropertyID(
+          property_id, computed_css_style(), layout_result()));
+}
+
+bool Element::NeedFullFlushPath(CSSPropertyID id, const CSSValue& value) {
+  return value.IsEmpty() || LayoutProperty::IsLayoutOnly(id) ||
+         LayoutProperty::IsLayoutWanted(id) ||
+         starlight::CSSStyleUtils::IsLayoutRelatedTransform(id, value) ||
+         id == kPropertyIDColor || id == kPropertyIDFilter ||
+         id == kPropertyIDBackgroundPosition;
+}
+
+void Element::OnPatchFinish(std::shared_ptr<PipelineOptions>& option) {
+  element_manager_->OnPatchFinish(option, this);
+}
+
+void Element::FlushAnimatedStyleInternal(tasm::CSSPropertyID id,
+                                         const tasm::CSSValue& value) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_FLUSH_ANIMATED_STYLE);
+  auto trans_id = ConvertRtlCSSPropertyID(id).second;
+  if (value != CSSValue()) {
+    SetStyleInternal(trans_id, value);
+  } else {
+    ResetStyleInternal(trans_id);
+  }
+}
+
+std::optional<CSSValue> Element::GetElementStyle(tasm::CSSPropertyID css_id) {
+  auto iter = parsed_styles_map_.find(css_id);
+  if (iter != parsed_styles_map_.end()) {
+    return iter->second;
+  }
+  if (updated_inherited_styles_.has_value()) {
+    iter = updated_inherited_styles_->find(css_id);
+    if (iter != updated_inherited_styles_->end()) {
+      return iter->second;
+    }
+  }
+  return {};
+}
+
+const AttrMap& Element::GetAttributesForWorklet() {
+  if (data_model() == nullptr) {
+    static base::NoDestructor<AttrMap> kEmptyMap =
+        base::NoDestructor<AttrMap>{};
+    return *kEmptyMap;
+  }
+  return data_model()->attributes();
+}
+
+void Element::SetCSSID(int32_t id) {
+  if (css_id_ != id) {
+    ResetStyleSheet();
+    css_id_ = id;
+  }
+}
 
 }  // namespace tasm
 }  // namespace lynx

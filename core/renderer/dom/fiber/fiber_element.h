@@ -117,9 +117,6 @@ class FiberElement : public Element {
 
   const InheritedProperty GetParentInheritedProperty();
 
-  virtual bool NeedFullFlushPath(CSSPropertyID id,
-                                 const CSSValue& value) override;
-
   /**
    * A key function to GetListNode
    */
@@ -214,14 +211,6 @@ class FiberElement : public Element {
                           int32_t index) override;
 
   /**
-   * Element API for appending css style to element
-   * @param id the css property id
-   * @param value the css property lepus type vale
-   */
-  LYNX_EXPORT_FOR_DEVTOOL void SetStyle(CSSPropertyID id,
-                                        const lepus::Value& value);
-
-  /**
    * Element API for updating css variables
    * @param variables the css variables to be updated from JS.
    */
@@ -229,48 +218,14 @@ class FiberElement : public Element {
                          std::shared_ptr<PipelineOptions>& pipeline_option);
 
   /**
-   * Element API for removing all inline styles.
-   */
-  LYNX_EXPORT_FOR_DEVTOOL void RemoveAllInlineStyles();
-
-  /**
-   * Destroy the related platform node of this element
-   */
-  void DestroyPlatformNode();
-
-  /**
    * Element API for setNativeProps
    *  @param native_props the props that updated from js.
    */
-  virtual void SetNativeProps(
+  void SetNativeProps(
       const lepus::Value& native_props,
       std::shared_ptr<PipelineOptions>& pipeline_options) override;
 
-  /**
-   * Element API for adding gesture detector
-   */
-  void SetGestureDetector(const uint32_t gesture_id,
-                          GestureDetector gesture_detector);
-
-  /**
-   * Element API for removing specific gesture detector
-   * @param gesture_id the removed gesture' id
-   */
-  void RemoveGestureDetector(const uint32_t gesture_id);
-
-  /**
-   * Element API for setting compile stage parsed style
-   * @param parsed_styles the parsed styles
-   * @param config parsed styles' config
-   */
-  void SetParsedStyles(const ParsedStyles& parsed_styles,
-                       const lepus::Value& config);
-
-  void SetParsedStyles(StyleMap&& parsed_styles, CSSVariableMap&& css_var);
-
   virtual StyleMap GetStylesForWorklet() override;
-
-  virtual const AttrMap& GetAttributesForWorklet() override;
 
   /**
    * @brief Set the style objects for the current element.
@@ -320,15 +275,6 @@ class FiberElement : public Element {
                         bool& force_use_current_parsed_style_map);
   void ResolveSimpleStyles();
 
-  const base::String& GetRawInlineStyles();
-
-  // Check has_value() before usage to avoid unintentional construction.
-  const auto& GetCurrentRawInlineStyles() const {
-    return current_raw_inline_styles_;
-  }
-
-  void SetRawInlineStyles(base::String value);
-
   void TraversalInsertFixedElementOfTree();
 
   template <typename F>
@@ -347,9 +293,6 @@ class FiberElement : public Element {
 
   void ConsumeStyle(const StyleMap& styles,
                     const StyleMap* inherit_styles) override;
-
-  void AddDataset(const base::String& key, const lepus::Value& value);
-  void SetDataset(const lepus::Value& data_set);
 
   // Flush style and attribute to platform shadow node, platform painting node
   // will be created if has not been created,
@@ -424,8 +367,6 @@ class FiberElement : public Element {
   void ResetSheetRecursively(
       const std::shared_ptr<CSSStyleSheetManager>& manager);
 
-  virtual void SetCSSID(int32_t id);
-
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
   void InsertLayoutNode(FiberElement* child, FiberElement* ref);
@@ -447,20 +388,6 @@ class FiberElement : public Element {
   void OnClassChanged(const ClassList& old_classes,
                       const ClassList& new_classes);
 
-  void OnPatchFinish(std::shared_ptr<PipelineOptions>& option) override;
-
-  void FlushAnimatedStyleInternal(tasm::CSSPropertyID,
-                                  const tasm::CSSValue&) override;
-
-  virtual void ConsumeTransitionStylesInAdvanceInternal(
-      CSSPropertyID css_id, const tasm::CSSValue& value) override;
-
-  virtual void ResetTransitionStylesInAdvanceInternal(
-      CSSPropertyID css_id) override;
-
-  virtual std::optional<CSSValue> GetElementStyle(
-      tasm::CSSPropertyID css_id) override;
-
   void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
 
   void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
@@ -475,7 +402,6 @@ class FiberElement : public Element {
   // The text element can call this function to convert child fiber elements
   // into inline elements. Currently, only view, text, image and wrapper
   // elements may be converted into inline elements.
-  virtual void ConvertToInlineElement();
 
   // current element is inserted to DOM tree
   virtual void InsertedInto(FiberElement* insertion_point);
@@ -496,9 +422,6 @@ class FiberElement : public Element {
   bool MergeInlineStyles(StyleMap& new_styles) final;
   void PersistAnimationFillStyles(const StyleMap& styles) override;
   void ClearPersistedAnimationFillStyle(CSSPropertyID id) override;
-
-  virtual bool WillResolveStyle(StyleMap& merged_styles,
-                                CSSVariableMap* changed_css_vars) override;
 
   void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
 
@@ -522,8 +445,6 @@ class FiberElement : public Element {
 
   void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
 
-  lepus::Value GetComputedStyleByKey(const base::String& key);
-
   bool CollectCustomProperties(AttributeHolder* holder);
 
   void PrepareSelfForThreadedElementResolution();
@@ -537,19 +458,16 @@ class FiberElement : public Element {
 
   void ConsumeStyleInternal(
       const StyleMap& styles, const StyleMap* inherit_styles,
-      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip);
+      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip)
+      override;
+
+  void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) override;
 
   bool ConsumeAllAttributes();
 
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
 
   ParallelFlushReturn CreateParallelTaskHandler();
-
-  void CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value);
-  void CacheStyleFromAttributes(CSSPropertyID id, const lepus::Value& value);
-  void DidConsumeStyle();
-
-  void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars);
 
   /**
    * This function will be called before add node.
@@ -559,9 +477,6 @@ class FiberElement : public Element {
 
   // called when a child element is removed
   virtual void OnNodeRemoved(FiberElement* child) {}
-
-  // handle default overflow logic
-  void SetDefaultOverflow(bool visible);
 
   virtual void SetAttributeInternal(const base::String& key,
                                     const lepus::Value& value);
@@ -579,13 +494,9 @@ class FiberElement : public Element {
   void SetAlignmentFunc(void* context,
                         starlight::SLAlignmentFunc alignment_func);
 
-  virtual void OnLayoutObjectCreated();
-
  private:
   friend class WrapperElement;
   friend class ComponentElement;
-
-  inline void MarkPlatformNodeDestroyed();
 
   bool CheckHasIdMapInCSSFragment();
 
