@@ -7,7 +7,6 @@
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
-#include "core/renderer/starlight/types/layout_result.h"
 
 namespace lynx::tasm {
 
@@ -18,20 +17,14 @@ int32_t ImageFragmentBehavior::ComputeEventMask() const {
     return event_mask;
   }
 
-  // Check for "load" event in static_events and lepus_events
-  const auto& static_events = element->event_map();
-  const auto& lepus_events = element->lepus_event_map();
-
   BASE_STATIC_STRING_DECL(kLoadEvent, "load");
   BASE_STATIC_STRING_DECL(kErrorEvent, "error");
 
-  if (static_events.find(kLoadEvent) != static_events.end() ||
-      lepus_events.find(kLoadEvent) != lepus_events.end()) {
+  if (element->HasEventListener(kLoadEvent.str())) {
     event_mask |= kFlagImageLoadEvent;
   }
 
-  if (static_events.find(kErrorEvent) != static_events.end() ||
-      lepus_events.find(kErrorEvent) != lepus_events.end()) {
+  if (element->HasEventListener(kErrorEvent.str())) {
     event_mask |= kFlagImageErrorEvent;
   }
 

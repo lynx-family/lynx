@@ -517,6 +517,7 @@ public class TextMeasurer {
 
   private float[] measureTextInternal(int sign, float width, MeasureMode widthMode, float height,
       MeasureMode heightMode, TextMeasurer.TypefaceListener typefaceListener) {
+    // Default result with just width, height, baseline
     float[] result = new float[3];
 
     AttributedTextBundle attributedTextBundle =
@@ -532,12 +533,51 @@ public class TextMeasurer {
     float measuredHeight = renderer.getTextLayoutHeight();
     float measuredWidth = renderer.getLayoutWidth();
 
-    int baseline = renderer.getTextLayout().getLineBaseline(0);
+    Layout textLayout = renderer.getTextLayout();
+    int baseline = textLayout.getLineBaseline(0);
+
+    // Build result with line information for layout event
+    // Format: [width, height, baseline, lineCount, line1_start, line1_end, line1_ellipsisCount,
+    // ...]
+    int lineCount = renderer.getLineCount();
+    result = new float[4 + lineCount * 3];
     result[0] = measuredWidth;
     result[1] = measuredHeight;
     result[2] = baseline;
+    result[3] = lineCount;
 
-    TextUpdateBundle bundle = new TextUpdateBundle(renderer.getTextLayout(),
+    for (int i = 0; i < lineCount; i++) {
+      int lineStart = textLayout.getLineStart(i);
+      int lineEnd = textLayout.getLineEnd(i);
+      int ellipsisCount = textLayout.getEllipsisCount(i);
+
+      result[4 + i * 3] = lineStart;
+      result[4 + i * 3 + 1] = lineEnd;
+      result[4 + i * 3 + 2] = ellipsisCount;
+    }
+
+    if (lineCount > 0) {
+      int lastLineIndex = lineCount - 1;
+      int spannableStringLength = attributedTextBundle.getSpan().length();
+      int lastLineEndIndex = 4 + lastLineIndex * 3 + 1;
+      int lastLineEllipsisCountIndex = 4 + lastLineIndex * 3 + 2;
+      int lastLineEnd = (int) result[lastLineEndIndex];
+      int lastLineEllipsisCount = (int) result[lastLineEllipsisCountIndex];
+      int rendererEllipsisCount = renderer.getEllipsisCount();
+
+      if (rendererEllipsisCount > 0) {
+        lastLineEllipsisCount = rendererEllipsisCount;
+      } else if (lineCount < textLayout.getLineCount()
+          || attributedTextBundle.getTextAttributes().getTextOverflow()
+              == StyleConstants.TEXTOVERFLOW_CLIP) {
+        lastLineEllipsisCount = spannableStringLength - lastLineEnd;
+      }
+
+      result[lastLineEllipsisCountIndex] = lastLineEllipsisCount;
+      result[lastLineEndIndex] = spannableStringLength;
+    }
+
+    TextUpdateBundle bundle = new TextUpdateBundle(textLayout,
         attributedTextBundle.getTextAttributes().hasImageSpan(), null,
         false
             && (attributedTextBundle.getTextAttributes() != null

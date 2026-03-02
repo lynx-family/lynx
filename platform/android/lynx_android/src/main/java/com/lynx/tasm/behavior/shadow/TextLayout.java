@@ -54,6 +54,7 @@ public class TextLayout {
     TraceEvent.endSection(TraceEventDef.TEXT_LAYOUT_MEASURE_TEXT);
     return result;
   }
+
   @CalledByNative
   public void dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer) {
     TraceEvent.beginSection(TraceEventDef.TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE);
