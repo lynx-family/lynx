@@ -132,6 +132,12 @@ typedef NS_ENUM(NSInteger, LynxImageOrigin) {
 
 @end
 
+@interface LynxImageShadowNode () <LynxMeasureDelegate>
+
+@property(nonatomic, assign) CGSize imageSize;
+
+@end
+
 @implementation LynxImageShadowNode
 
 #if LYNX_LAZY_LOAD
@@ -139,6 +145,70 @@ LYNX_LAZY_REGISTER_SHADOW_NODE("image")
 #else
 LYNX_REGISTER_SHADOW_NODE("image")
 #endif
+
+- (instancetype)initWithSign:(NSInteger)sign tagName:(NSString*)tagName {
+  self = [super initWithSign:sign tagName:tagName];
+  if (self) {
+    _imageSize = CGSizeZero;
+  }
+  return self;
+}
+
+- (void)setImageSize:(CGSize)size {
+  if (!CGSizeEqualToSize(_imageSize, size)) {
+    _imageSize = size;
+    [self setNeedsLayout];
+  }
+}
+
+- (CGSize)measureNode:(LynxLayoutNode*)node
+            withWidth:(CGFloat)width
+            widthMode:(LynxMeasureMode)widthMode
+               height:(CGFloat)height
+           heightMode:(LynxMeasureMode)heightMode {
+  if (CGSizeEqualToSize(_imageSize, CGSizeZero)) {
+    return CGSizeMake(width, height);
+  }
+  CGFloat tmpWidth = 0;
+  CGFloat tmpHeight = 0;
+  CGFloat imgWidth = _imageSize.width;
+  CGFloat imgHeight = _imageSize.height;
+
+  if (widthMode == LynxMeasureModeIndefinite || widthMode == LynxMeasureModeAtMost) {
+    tmpWidth = INFINITY;
+  } else if (widthMode == LynxMeasureModeDefinite) {
+    tmpWidth = width;
+  }
+
+  if (heightMode == LynxMeasureModeIndefinite || heightMode == LynxMeasureModeAtMost) {
+    tmpHeight = INFINITY;
+  } else if (heightMode == LynxMeasureModeDefinite) {
+    tmpHeight = height;
+  }
+
+  if (tmpWidth == INFINITY && tmpHeight == INFINITY) {
+    tmpWidth = imgWidth;
+    tmpHeight = imgHeight;
+  } else if (tmpWidth == INFINITY && tmpHeight != INFINITY) {
+    tmpWidth = imgWidth * (tmpHeight / imgHeight);
+  } else if (tmpWidth != INFINITY && tmpHeight == INFINITY) {
+    tmpHeight = imgHeight * (tmpWidth / imgWidth);
+  }
+
+  if (widthMode == LynxMeasureModeAtMost) {
+    tmpWidth = MIN(tmpWidth, width);
+  }
+  if (heightMode == LynxMeasureModeAtMost) {
+    tmpHeight = MIN(tmpHeight, height);
+  }
+
+  return CGSizeMake(tmpWidth, tmpHeight);
+}
+
+- (void)adoptNativeLayoutNode:(int64_t)ptr {
+  [self setMeasureDelegate:self];
+  [super adoptNativeLayoutNode:ptr];
+}
 
 @end
 
@@ -374,16 +444,14 @@ LYNX_REGISTER_UI("image")
     if (strongSelf.autoSize &&
         UIEdgeInsetsEqualToEdgeInsets(strongSelf.capInsets, UIEdgeInsetsZero)) {
       if (strongSelf.enableImageAsyncLayout) {
-        __weak typeof(strongSelf) layoutWeakSelf = strongSelf;
-        [strongSelf.context findShadowNodeAndRunTask:strongSelf.sign
-                                                task:^(LynxShadowNode* node) {
-                                                  typeof(layoutWeakSelf) layoutStrongSelf =
-                                                      layoutWeakSelf;
-                                                  if (!layoutStrongSelf) {
-                                                    return;
-                                                  }
-                                                  [layoutStrongSelf justShadowNodeSize:node];
-                                                }];
+        CGSize size = requestURL.imageSize;
+        if (![strongSelf isLayoutFlick:strongSelf.prevSize withAnotherSize:strongSelf.frame.size]) {
+          strongSelf.prevSize = strongSelf.frame.size;
+          [strongSelf.context findShadowNodeAndRunTask:strongSelf.sign
+                                                  task:^(LynxShadowNode* node) {
+                                                    [(LynxImageShadowNode*)node setImageSize:size];
+                                                  }];
+        }
       } else {
         LynxShadowNodeOwner* owner = strongSelf.context.nodeOwner;
         if (!owner) {
