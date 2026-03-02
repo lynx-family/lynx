@@ -204,7 +204,7 @@ deps = {
         "patches": os.path.join(root_dir, 'patches', 'xhook', '*.patch'),
         "ignore_in_git": True,
     },
-    'third_party/perfetto': {
+    '../third_party/perfetto': {
         'type': 'git',
         'url': 'https://github.com/lynx-family/lynx-trace.git',
         'commit': 'ea35ecb68fdacd889df642fc2eb578c5c58e1c7a',

@@ -9,7 +9,7 @@ import("platform/platform.gni")
 
 config("trace_public_config") {
   include_dirs = [
-    "../../../third_party/perfetto",
+    "//third_party/perfetto",
     "$root_gen_dir/lynx",
   ]
   defines = []
@@ -139,8 +139,8 @@ source_set("trace") {
 
   if (enable_trace == "perfetto") {
     public_deps += [
-      "../../../third_party/perfetto/sdk:perfetto",
       "../../../third_party/rapidjson:rapidjson",
+      "//third_party/perfetto/sdk:perfetto",
     ]
   }
 

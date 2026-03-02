@@ -901,7 +901,7 @@ subspec_target("Trace") {
   flatten_deps = [ "../../../../base/trace/darwin:LynxTrace_subspec" ]
   deps = [ "../../../../base/trace/native:trace" ]
   if (enable_trace == "perfetto") {
-    deps += [ "../../../../third_party/perfetto/sdk:perfetto" ]
+    deps += [ "//third_party/perfetto/sdk:perfetto" ]
   }
 }
 
