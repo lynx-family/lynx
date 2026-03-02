@@ -24,8 +24,9 @@ class TextFragmentBehavior : public FragmentBehavior {
 
  private:
   intptr_t text_bundle_{0};
-};
 
+  void DispatchLayoutEvent(const LayoutInfoForDraw& layout_result);
+};
 }  // namespace lynx::tasm
 
 #endif  // CORE_RENDERER_DOM_FRAGMENT_TEXT_FRAGMENT_BEHAVIOR_H_
