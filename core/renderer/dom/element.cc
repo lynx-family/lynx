@@ -2202,5 +2202,56 @@ Element* Element::root_virtual_parent() {
   return root_virtual;
 }
 
+Element* Element::FindFirstNonVirtualRenderAncestor() {
+  auto* current = this;
+  while (current && current->is_virtual()) {
+    current = current->render_parent();
+  }
+  return current;
+}
+
+Element* Element::FindFirstNonVirtualRenderSibling() {
+  auto* current = this;
+  while (current && current->is_virtual()) {
+    current = current->next_render_sibling();
+  }
+  return current;
+}
+
+Element* Element::FindFirstNonWrapperRenderAncestor() {
+  auto* current = this;
+  while (current && current->is_wrapper()) {
+    auto* parent = current->render_parent();
+    if (!parent) {
+      break;
+    }
+    current = parent;
+  }
+  return current;
+}
+
+Element* Element::FindFirstNonWrapperChildOrSibling() {
+  auto* current = this;
+  while (current) {
+    if (!current->is_wrapper()) {
+      return current;
+    }
+
+    auto* first_child = current->first_render_child();
+    if (first_child) {
+      if (!first_child->is_wrapper()) {
+        return first_child;
+      }
+      auto* candidate = first_child->FindFirstNonWrapperChildOrSibling();
+      if (candidate && !candidate->is_wrapper()) {
+        return candidate;
+      }
+    }
+
+    current = current->next_render_sibling();
+  }
+  return current;
+}
+
 }  // namespace tasm
 }  // namespace lynx

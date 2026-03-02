@@ -63,7 +63,9 @@ void TreeResolver::NotifyNodeRemoved(FiberElement* insertion_point,
 
 FiberElement* TreeResolver::FindFirstChildOrSiblingAsRefNode(
     FiberElement* ref) {
-  return ref ? ref->FindFirstNonWrapperChildOrSibling() : nullptr;
+  return ref ? static_cast<FiberElement*>(
+                   ref->FindFirstNonWrapperChildOrSibling())
+             : nullptr;
 }
 
 void TreeResolver::AttachChildToTargetParentForWrapper(FiberElement* parent,
@@ -85,8 +87,8 @@ void TreeResolver::AttachChildToTargetParentForWrapper(FiberElement* parent,
       // If ref_node is virtual in element-mode, try to find the next
       // non-virtual sibling (virtual nodes are not inserted into the layout
       // tree for unknown reasons).
-      ref_node =
-          ref_node ? ref_node->FindFirstNonVirtualRenderSibling() : nullptr;
+      ref_node = static_cast<FiberElement*>(
+          ref_node->FindFirstNonVirtualRenderSibling());
     }
 
     if (ref_node && ref_node->is_wrapper()) {
@@ -102,7 +104,8 @@ void TreeResolver::AttachChildToTargetParentForWrapper(FiberElement* parent,
     temp_parent = static_cast<FiberElement*>(temp_parent->render_parent());
   }
 
-  FiberElement* real_parent = parent->FindFirstNonWrapperRenderAncestor();
+  FiberElement* real_parent =
+      static_cast<FiberElement*>(parent->FindFirstNonWrapperRenderAncestor());
 
   AttachChildToTargetContainerRecursive(real_parent, child, ref_node);
 }
@@ -197,7 +200,9 @@ void TreeResolver::AttachChildToTargetContainerRecursive(FiberElement* parent,
 }
 
 FiberElement* TreeResolver::FindTheRealParent(FiberElement* node) {
-  return node ? node->FindFirstNonWrapperRenderAncestor() : nullptr;
+  return node ? static_cast<FiberElement*>(
+                    node->FindFirstNonWrapperRenderAncestor())
+              : nullptr;
 }
 
 // for layout node

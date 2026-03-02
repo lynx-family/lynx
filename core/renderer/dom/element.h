@@ -252,6 +252,13 @@ class Element : public lepus::RefCounted,
   virtual Element* last_child() const { return nullptr; }
   virtual Element* next_render_sibling() { return nullptr; }
 
+  // Helpers for finding non-virtual / non-wrapper nodes in the render tree
+  // starting from the current element.
+  Element* FindFirstNonVirtualRenderAncestor();
+  Element* FindFirstNonVirtualRenderSibling();
+  Element* FindFirstNonWrapperRenderAncestor();
+  Element* FindFirstNonWrapperChildOrSibling();
+
   virtual ~Element();
 
   // For style op
