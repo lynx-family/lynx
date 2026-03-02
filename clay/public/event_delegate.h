@@ -5,6 +5,8 @@
 #ifndef CLAY_PUBLIC_EVENT_DELEGATE_H_
 #define CLAY_PUBLIC_EVENT_DELEGATE_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <memory>
 #include <string>
@@ -29,6 +31,11 @@ class EventDelegate {
                             float delta_y) = 0;
   virtual void OnKeyEvent(const std::string& event_name, int view_id,
                           const char* key, bool repeat) = 0;
+  virtual void OnGestureHandlerEvent(const std::string& event_name, int view_id,
+                                     uint32_t gesture_id, float x, float y,
+                                     float page_x, float page_y,
+                                     int64_t timestamp,
+                                     Value& additional_params) = 0;
   virtual void OnAnimationEvent(const std::string& event_name,
                                 const char* animation_name, int view_id) = 0;
   virtual void OnTransitionEvent(const std::string& event_name,

@@ -144,7 +144,7 @@ TEST_F(AttributeHolderTest, CheckGestureDetector) {
   // Create a GestureDetector with ID 1, default GestureType, an empty vector of
   // GestureCallback, and an empty map of event names to associated vector of
   // gesture IDs
-  GestureDetector gestureDetector(
+  GestureDetectorImpl gestureDetector(
       1, GestureType::DEFAULT, std::vector<GestureCallback>(),
       std::unordered_map<std::string, std::vector<uint32_t>>());
 

@@ -43,6 +43,8 @@ class PaintingContextClayRef : public PaintingCtxPlatformRef {
                                            bool is_init_scroll_offset,
                                            bool from_layout) override;
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
+  void SetGestureDetectorState(int64_t id, int32_t gesture_id,
+                               int32_t state) override;
   void SetPerfController(const std::shared_ptr<PerfControllerClay>& collector);
 
  private:
@@ -132,6 +134,8 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   void UpdatePlatformExtraBundle(int32_t id,
                                  PlatformExtraBundle* bundle) override;
 
+  void ConsumeGesture(int64_t id, int32_t gesture_id,
+                      const pub::Value& params) override;
   void Enqueue(base::closure&& op);
 
  private:

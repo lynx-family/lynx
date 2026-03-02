@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/include/value/base_value.h"
+#include "core/public/gesture_handler.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -46,18 +47,6 @@ struct GestureCallback {
       : name_(name), lepus_object_(lepus_object), ctx_(ctx) {}
 };
 
-// Enum class for representing different types of gestures.
-enum class GestureType : unsigned int {
-  PAN = 0,         // Pan gesture
-  FLING = 1,       // Fling gesture
-  DEFAULT = 2,     // Default gesture
-  TAP = 3,         // Tap gesture
-  LONG_PRESS = 4,  // Long press gesture
-  ROTATION = 5,    // Rotation gesture
-  PINCH = 6,       // Pinch gesture
-  NATIVE = 7       // Native gesture
-};
-
 enum class LynxInterceptGestureStatus : unsigned int {
   LynxInterceptGestureStateUnset = 0,
   LynxInterceptGestureStateFalse = 1,
@@ -69,58 +58,72 @@ static constexpr const char kGestureSimultaneous[] = "simultaneous";
 static constexpr const char kGestureWaitFor[] = "waitFor";
 static constexpr const char kGestureContinueWith[] = "continueWith";
 
-// Class representing a GestureDetector.
-class GestureDetector {
+class GestureDetectorImpl : public GestureDetector {
  public:
-  // Constructor for GestureDetector.
-  GestureDetector(
+  ~GestureDetectorImpl() override = default;
+  // Constructor for GestureDetectorImpl.
+  GestureDetectorImpl(
       const uint32_t gesture_id, const GestureType gesture_type,
       const std::vector<GestureCallback> gesture_callback_vec,
       const std::unordered_map<std::string, std::vector<uint32_t>> relation_map)
       : gesture_id_(gesture_id),
         gesture_type_(gesture_type),
         gesture_callback_vec_(gesture_callback_vec),
-        relation_map_(relation_map){};
+        relation_map_(relation_map),
+        gesture_config_(PubLepusValue(lepus::Value())) {}
 
-  // Constructor for GestureDetector.
-  GestureDetector(
+  // Constructor for GestureDetectorImpl.
+  GestureDetectorImpl(
       const uint32_t gesture_id, const GestureType gesture_type,
       const std::vector<GestureCallback> gesture_callback_vec,
       const std::unordered_map<std::string, std::vector<uint32_t>> relation_map,
-      const lepus::Value& gesture_config)
+      const lepus::Value&& gesture_config)
       : gesture_id_(gesture_id),
         gesture_type_(gesture_type),
         gesture_callback_vec_(gesture_callback_vec),
         relation_map_(relation_map),
-        gesture_config_(gesture_config){};
+        gesture_config_(PubLepusValue(gesture_config)) {}
 
-  // Getter method for retrieving the gesture_id of GestureDetector.
-  uint32_t gesture_id() const { return gesture_id_; }
+  // Getter method for retrieving the gesture_id of GestureDetectorImpl.
+  uint32_t gesture_id() const override { return gesture_id_; }
 
-  // Getter method for retrieving the gesture_type of GestureDetector.
-  GestureType gesture_type() const { return gesture_type_; }
+  // Getter method for retrieving the gesture_type of GestureDetectorImpl.
+  GestureType gesture_type() const override { return gesture_type_; }
 
-  const lepus::Value& gesture_config() const { return gesture_config_; }
+  const lepus::Value& gesture_config_in_lepus_value() const {
+    return gesture_config_.backend_value();
+  }
 
   // Getter method for retrieving the vector of gesture callbacks in
-  // GestureDetector.
+  // GestureDetectorImpl.
   const std::vector<GestureCallback>& gesture_callbacks() const {
     return gesture_callback_vec_;
   }
 
-  // Getter method for retrieving the relation map of GestureDetector.
+  // Getter method for retrieving the relation map of GestureDetectorImpl.
   const std::unordered_map<std::string, std::vector<uint32_t>>& relation_map()
-      const {
+      const override {
     return relation_map_;
   }
 
+  const pub::Value& gesture_config() const override { return gesture_config_; }
+
+  // Getter method for retrieving the vector of gesture callbacks in
+  // GestureDetectorImpl.
+  std::vector<std::string> gesture_callback_names() const override {
+    std::vector<std::string> res;
+    for (auto& cb : gesture_callback_vec_) {
+      res.push_back(cb.name_.str());
+    }
+    return res;
+  }
+
  private:
-  // Private member variables of GestureDetector.
   uint32_t gesture_id_ = 0;
   GestureType gesture_type_ = GestureType::PAN;
   std::vector<GestureCallback> gesture_callback_vec_;
   std::unordered_map<std::string, std::vector<uint32_t>> relation_map_;
-  lepus::Value gesture_config_;
+  PubLepusValue gesture_config_;
 };
 
 }  // namespace tasm

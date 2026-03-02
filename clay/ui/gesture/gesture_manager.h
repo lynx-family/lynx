@@ -22,10 +22,12 @@
 #include "clay/ui/gesture/hit_test_responsive_result.h"
 #include "clay/ui/gesture/mouse_wheel_phase_handler.h"
 #include "clay/ui/gesture/pointer_router.h"
+#include "clay/ui/gesture_handler/gesture_handler_dispatcher.h"
 #include "third_party/googletest/googletest/include/gtest/gtest_prod.h"  // nogncheck
 
 namespace clay {
 
+class GestureHandlerDispatcher;
 struct PointerEvent;
 using SignalEventRoute = std::function<void(const PointerEvent&)>;
 
@@ -46,6 +48,8 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
   GestureManager(const GestureManager&) = delete;
   GestureManager& operator=(const GestureManager&) = delete;
 
+  void SetGestureHandlerDispatcher(
+      GestureHandlerDispatcher* gesture_handler_dispatcher);
   bool HandlePointerEvents(HitTestable* root,
                            std::vector<PointerEvent>& events);
 
@@ -75,6 +79,10 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
   void SendSyntheticWheelEventWithPhaseEnd(const PointerEvent&) override;
 
   void EndMouseWheelTransactionByForce();
+
+  GestureHandlerDispatcher* gesture_handler_dispatcher() {
+    return gesture_handler_dispatcher_;
+  }
 
  private:
   bool HandlePointerEvent(HitTestable* root, PointerEvent& event);
@@ -108,7 +116,7 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
   HitTestResponsiveResult hit_test_responsive_result_;
   Puppet<Owner::kUI, GestureMediateService> gesture_mediate_puppet_;
   MouseWheelPhaseHandler mouse_wheel_phase_handler_;
-
+  GestureHandlerDispatcher* gesture_handler_dispatcher_{nullptr};
   FRIEND_TEST(ScrollViewTest, NestedScrollGestureOnPC);
 };
 

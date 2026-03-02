@@ -299,7 +299,7 @@ const GestureMap& Element::gesture_map() {
 //   key: The identifier for the GestureDetector.
 //   detector: Pointer to the GestureDetector to set.
 void Element::SetGestureDetector(const uint32_t key,
-                                 GestureDetector* detector) {
+                                 GestureDetectorImpl* detector) {
   // Prepare the property bundle if needed before setting the GestureDetector.
   PreparePropBundleIfNeed();
   prop_bundle_->SetGestureDetector(*detector);
@@ -2777,7 +2777,7 @@ void Element::SetParsedStyles(StyleMap&& parsed_styles,
 }
 
 void Element::SetGestureDetector(const uint32_t gesture_id,
-                                 GestureDetector gesture_detector) {
+                                 GestureDetectorImpl gesture_detector) {
   data_model_->SetGestureDetector(gesture_id, gesture_detector);
   MarkDirty(kDirtyGesture);
 }

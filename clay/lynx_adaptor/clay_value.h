@@ -16,12 +16,12 @@
 
 namespace lynx {
 
-#define DeclarationTypeList(V) \
-  V(Bool, bool)                \
-  V(Double, double)            \
-  V(Int32, int32_t)            \
-  V(UInt32, uint32_t)          \
-  V(Int64, int64_t)            \
+#define ClayDeclarationTypeList(V) \
+  V(Bool, bool)                    \
+  V(Double, double)                \
+  V(Int32, int32_t)                \
+  V(UInt32, uint32_t)              \
+  V(Int64, int64_t)                \
   V(String, const std::string&)
 
 class ClayValueWrapper : public pub::Value {
@@ -100,7 +100,7 @@ class ClayValueWrapper : public pub::Value {
 
 #define NormalTypePushArrayImpl(name, type) \
   bool Push##name##ToArray(type value) override;
-  DeclarationTypeList(NormalTypePushArrayImpl)
+  ClayDeclarationTypeList(NormalTypePushArrayImpl)
 #undef NormalTypePushArrayImpl
 
       bool PushValueToMap(const std::string& key, const Value& value) override;
@@ -115,7 +115,7 @@ class ClayValueWrapper : public pub::Value {
 
 #define NormalTypePushMapImpl(name, type) \
   bool Push##name##ToMap(const std::string& key, type value) override;
-  DeclarationTypeList(NormalTypePushMapImpl)
+  ClayDeclarationTypeList(NormalTypePushMapImpl)
 #undef NormalTypePushMapImpl
 
       const clay::Value& backend_value() const {

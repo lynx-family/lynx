@@ -28,7 +28,7 @@ class TouchEvent;
 class DefaultGestureHandler : public BaseGestureHandler {
  public:
   DefaultGestureHandler(int sign, LynxContext* lynx_context,
-                        std::shared_ptr<GestureDetector> gesture_detector,
+                        std::shared_ptr<GestureDetectorImpl> gesture_detector,
                         std::weak_ptr<GestureArenaMember> gesture_arena_member);
 
   void HandleConfigMap(const lepus::Value& config);

@@ -207,7 +207,7 @@ class PubValueFactory {
   virtual std::unique_ptr<Value> CreateArrayBuffer(
       std::unique_ptr<uint8_t[]> value, size_t length) = 0;
   virtual FactoryType GetFactoryType() const { return FactoryType::kDefault; };
-  virtual ~PubValueFactory() {}
+  virtual ~PubValueFactory() = default;
 };
 
 class ScopedCircleChecker {
@@ -249,6 +249,7 @@ class ScopedCircleChecker {
  private:
   std::vector<std::unique_ptr<pub::Value>>* scoped_value_vector_ = nullptr;
 };
+
 }  // namespace pub
 }  // namespace lynx
 

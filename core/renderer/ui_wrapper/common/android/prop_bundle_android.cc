@@ -382,13 +382,12 @@ void PropBundleAndroid::SetGestureDetector(const GestureDetector& detector) {
 
   // Add the gesture callback names to an array and add the array to the map.
   auto jni_callback_names = std::make_unique<base::android::JavaOnlyArray>();
-  for (const auto& callback : detector.gesture_callbacks()) {
-    jni_callback_names->PushString(callback.name_.str());
+  for (const auto& callback_name : detector.gesture_callback_names()) {
+    jni_callback_names->PushString(callback_name);
   }
   jni_map->PushArray(kCallbackNames, std::move(jni_callback_names.get()));
 
-  AssembleMap(jni_map.get(), kConfigMap,
-              pub::ValueImplLepus(detector.gesture_config()));
+  AssembleMap(jni_map.get(), kConfigMap, detector.gesture_config());
 
   // Create a new map for gesture relations.
   auto jni_relation_map = std::make_unique<base::android::JavaOnlyMap>();

@@ -9,6 +9,7 @@ import("component/build.gni")
 import("compositing/build.gni")
 import("event/build.gni")
 import("gesture/build.gni")
+import("gesture_handler/build.gni")
 import("lynx_module/build.gni")
 import("painter/build.gni")
 import("platform/build.gni")
@@ -52,6 +53,7 @@ source_set("ui") {
   sources += rebase_path(ui_resource_sources, "", "resource")
   sources += rebase_path(ui_shadow_sources, "", "shadow")
   sources += rebase_path(ui_window_sources, "", "window")
+  sources += rebase_path(gesture_handler_sources, "", "gesture_handler")
 
   configs += [ ":ui_defines" ]
 
@@ -177,6 +179,15 @@ if (enable_unittests) {
       "gesture/gesture_manager_unittests.cc",
       "gesture/mouse_region_manager_unittests.cc",
       "gesture/velocity_tracker_unittests.cc",
+      "gesture_handler/handler/base_gesture_handler_unittests.cc",
+      "gesture_handler/handler/default_gesture_handler_unittests.cc",
+      "gesture_handler/handler/fling_gesture_handler_unittests.cc",
+      "gesture_handler/handler/fling_scroller_unittests.cc",
+      "gesture_handler/handler/gesture_handler_trigger_unittests.cc",
+      "gesture_handler/handler/longpress_gesture_handler_unittests.cc",
+      "gesture_handler/handler/native_gesture_handler_unittests.cc",
+      "gesture_handler/handler/pan_gesture_handler_unittests.cc",
+      "gesture_handler/handler/tap_gesture_handler_unittests.cc",
       "lynx_module/lynx_module_unittests.cc",
       "lynx_module/lynx_ui_method_unittests.cc",
       "painter/box_painter_unittests.cc",

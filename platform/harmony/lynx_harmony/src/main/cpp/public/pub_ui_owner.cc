@@ -271,7 +271,7 @@ void PubUIOwner::SetGestures(int id, const pub::Value& gesture_array) {
           relation_map[key.str()] = std::move(relation_ids);
         });
 
-    gesture_map[gesture_id] = std::make_shared<GestureDetector>(
+    gesture_map[gesture_id] = std::make_shared<GestureDetectorImpl>(
         gesture_id, static_cast<GestureType>(gesture_type),
         std::move(gesture_callback), std::move(relation_map),
         pub::ValueUtils::ConvertValueToLepusValue(*config_map));

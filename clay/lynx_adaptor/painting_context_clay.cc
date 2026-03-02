@@ -109,6 +109,12 @@ void PaintingContextClayRef::SetNeedMarkPaintEndTiming(
   }
 }
 
+void PaintingContextClayRef::SetGestureDetectorState(int64_t id,
+                                                     int32_t gesture_id,
+                                                     int32_t state) {
+  view_context_->SetGestureDetectorState(id, gesture_id, state);
+}
+
 PaintingContextClay::PaintingContextClay(clay::ViewContext* view_context)
     : view_context_(view_context) {
   FML_DCHECK(view_context);
@@ -381,6 +387,11 @@ void PaintingContextClay::SetAttribute(clay::ViewContext* view_context,
     view_context->SetAttribute(sign, kPropertyNameAnimation,
                                animation_property);
   }
+
+  const auto& gesture_detector_map = pda->GestureDetectorMap();
+  if (gesture_detector_map && gesture_detector_map->size() > 0) {
+    view_context->SetGestureDetectorMap(sign, gesture_detector_map.value());
+  }
   view_context->DidUpdateAttributes(sign);
 }
 
@@ -455,6 +466,12 @@ void PaintingContextClay::ResumeExposure() {}
 
 std::list<int32_t> PaintingContextClay::GetAncestorElements(int32_t tag) {
   return engine_proxy_->GetAncestorElements(tag);
+}
+
+void PaintingContextClay::ConsumeGesture(int64_t id, int32_t gesture_id,
+                                         const pub::Value& params) {
+  auto clay_params = ValueConverter::CreateClayValue(params);
+  view_context_->ConsumeGesture(id, gesture_id, clay_params);
 }
 
 void PaintingContextClay::Enqueue(base::closure&& op) {

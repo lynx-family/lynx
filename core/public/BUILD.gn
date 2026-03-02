@@ -9,6 +9,7 @@ lynx_core_source_set("public") {
     "box_model.h",
     "devtool/lynx_devtool_proxy.h",
     "devtool/lynx_inspector_owner.h",
+    "gesture_handler.h",
     "jsb/extension_module_factory.h",
     "jsb/lynx_extension_module.h",
     "jsb/lynx_module_callback.h",

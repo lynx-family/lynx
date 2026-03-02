@@ -259,7 +259,8 @@ class RadonNode : public RadonBase {
   const GestureMap& gesture_detectors() const {
     return attribute_holder_->gesture_detectors();
   }
-  void SetGestureDetector(const uint32_t key, const GestureDetector& detector) {
+  void SetGestureDetector(const uint32_t key,
+                          const GestureDetectorImpl& detector) {
     attribute_holder_->SetGestureDetector(key, detector);
   }
   void RemoveGestureDetector(const uint32_t key) {

@@ -21,7 +21,7 @@ namespace base {
 class TimedTaskManager;
 }
 namespace tasm {
-class GestureDetector;
+class GestureDetectorImpl;
 struct GestureCallback;
 
 namespace harmony {

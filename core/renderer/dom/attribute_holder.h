@@ -175,9 +175,10 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
   }
 
   // set gesture detector to map
-  void SetGestureDetector(const uint32_t key, const GestureDetector& detector) {
+  void SetGestureDetector(const uint32_t key,
+                          const GestureDetectorImpl& detector) {
     gesture_detectors_->insert_or_assign(
-        key, std::make_unique<GestureDetector>(detector));
+        key, std::make_unique<GestureDetectorImpl>(detector));
   }
 
   // remove gesture detector from map

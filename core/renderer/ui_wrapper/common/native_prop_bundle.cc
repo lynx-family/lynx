@@ -89,8 +89,10 @@ void NativePropBundle::SetGestureDetector(const GestureDetector& detector) {
   if (!gesture_detector_map_) {
     gesture_detector_map_ = GestureMap();
   }
-  gesture_detector_map_->emplace(detector.gesture_id(),
-                                 std::make_shared<GestureDetector>(detector));
+  gesture_detector_map_->emplace(
+      detector.gesture_id(),
+      std::make_shared<GestureDetectorImpl>(
+          static_cast<const GestureDetectorImpl&>(detector)));
 }
 
 void NativePropBundle::ResetEventHandler() {}

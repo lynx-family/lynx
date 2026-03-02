@@ -14,7 +14,7 @@ namespace tasm {
 namespace harmony {
 PanGestureHandler::PanGestureHandler(
     int sign, LynxContext* lynx_context,
-    std::shared_ptr<GestureDetector> gesture_detector,
+    std::shared_ptr<GestureDetectorImpl> gesture_detector,
     std::weak_ptr<GestureArenaMember> gesture_arena_member)
     : BaseGestureHandler(sign, lynx_context, gesture_detector,
                          gesture_arena_member),
@@ -26,7 +26,7 @@ PanGestureHandler::PanGestureHandler(
       is_invoked_begin_(false),
       is_invoked_start_(false),
       is_invoked_end_(false) {
-  HandleConfigMap(gesture_detector->gesture_config());
+  HandleConfigMap(gesture_detector->gesture_config_in_lepus_value());
 }
 
 void PanGestureHandler::HandleConfigMap(const lepus::Value& config) {

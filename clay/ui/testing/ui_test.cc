@@ -82,6 +82,10 @@ class MockEventDelegate : public clay::EventDelegate {
                     float delta_y) override {}
   void OnKeyEvent(const std::string& event_name, int view_id, const char* key,
                   bool repeat) override {}
+  void OnGestureHandlerEvent(const std::string& event_name, int view_id,
+                             uint32_t gesture_id, float x, float y,
+                             float page_x, float page_y, int64_t timestamp,
+                             clay::Value& additional_params) override {}
   void OnAnimationEvent(const std::string& event_name,
                         const char* animation_name, int view_id) override {}
   void OnTransitionEvent(const std::string& event_name,

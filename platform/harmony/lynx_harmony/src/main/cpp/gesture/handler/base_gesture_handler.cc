@@ -23,7 +23,7 @@ namespace harmony {
 
 BaseGestureHandler::BaseGestureHandler(
     int sign, LynxContext* lynx_context,
-    std::shared_ptr<GestureDetector> gesture_detector,
+    std::shared_ptr<GestureDetectorImpl> gesture_detector,
     std::weak_ptr<GestureArenaMember> gesture_arena_member)
     : sign_(sign),
       status_(GestureConstants::LYNX_STATE_INIT),
@@ -250,7 +250,7 @@ void BaseGestureHandler::OnTouchesCancel(
   }
 }
 
-std::shared_ptr<GestureDetector> BaseGestureHandler::GetGestureDetector()
+std::shared_ptr<GestureDetectorImpl> BaseGestureHandler::GetGestureDetector()
     const {
   return gesture_detector_;
 }

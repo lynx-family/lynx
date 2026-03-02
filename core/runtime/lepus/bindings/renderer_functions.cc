@@ -404,11 +404,11 @@ lepus::Value InnerTranslateResourceForTheme(runtime::MTSContext* ctx,
   return lepus::Value(std::move(ret));
 }
 
-GestureDetector InnerCreateGestureDetector(double gesture_id,
-                                           double gesture_type,
-                                           lepus::Value* callback_config,
-                                           lepus::Value* relation_map_value,
-                                           runtime::MTSRuntime* ctx) {
+GestureDetectorImpl InnerCreateGestureDetector(double gesture_id,
+                                               double gesture_type,
+                                               lepus::Value* callback_config,
+                                               lepus::Value* relation_map_value,
+                                               runtime::MTSRuntime* ctx) {
   // Extract the "callbacks" property from the input "callbacksConfigs"
   // argument.
   BASE_STATIC_STRING_DECL(kCallbacks, "callbacks");
@@ -510,8 +510,9 @@ GestureDetector InnerCreateGestureDetector(double gesture_id,
   relation_map.emplace(kGestureContinueWith, continue_with_vector);
 
   // Create a GestureDetector object using the extracted data.
-  GestureDetector detector(gesture_id, static_cast<GestureType>((gesture_type)),
-                           gesture_callback_vector, relation_map, config);
+  GestureDetectorImpl detector(
+      gesture_id, static_cast<GestureType>((gesture_type)),
+      gesture_callback_vector, relation_map, std::move(config));
 
   return detector;
 }
@@ -4202,7 +4203,7 @@ RENDERER_FUNCTION_CC(CreateGestureDetector) {
   }
 
   // Create a GestureDetector object using the extracted data.
-  GestureDetector detector = InnerCreateGestureDetector(
+  GestureDetectorImpl detector = InnerCreateGestureDetector(
       (*arg1).Number(), (*arg2).Number(), callbacksConfigs, relationMap,
       LEPUS_CONTEXT());
 
@@ -4254,7 +4255,7 @@ RENDERER_FUNCTION_CC(FiberSetGestureDetector) {
   }
 
   // Create a GestureDetector object using the extracted data.
-  GestureDetector detector = InnerCreateGestureDetector(
+  GestureDetectorImpl detector = InnerCreateGestureDetector(
       (*arg1).Number(), (*arg2).Number(), callbacksConfigs, relationMap,
       LEPUS_CONTEXT());
 

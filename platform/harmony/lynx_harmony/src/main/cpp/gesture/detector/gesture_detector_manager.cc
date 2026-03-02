@@ -44,7 +44,7 @@ void GestureDetectorManager::UnregisterGestureIdWithMemberId(int gesture_id,
 }
 
 void GestureDetectorManager::RegisterGestureDetector(
-    int member_id, std::shared_ptr<GestureDetector> gesture_detector) {
+    int member_id, std::shared_ptr<GestureDetectorImpl> gesture_detector) {
   if (!gesture_detector) {
     return;
   }
@@ -52,7 +52,7 @@ void GestureDetectorManager::RegisterGestureDetector(
 }
 
 void GestureDetectorManager::UnregisterGestureDetector(
-    int member_id, std::shared_ptr<GestureDetector> gesture_detector) {
+    int member_id, std::shared_ptr<GestureDetectorImpl> gesture_detector) {
   if (!gesture_detector) {
     return;
   }
@@ -81,8 +81,8 @@ GestureDetectorManager::ConvertResponseChainToCompeteChain(
     std::vector<uint32_t> wait_for_list;
     std::vector<uint32_t> continue_with_list;
 
-    std::map<int, std::shared_ptr<GestureDetector>> sorted_map(map.begin(),
-                                                               map.end());
+    std::map<int, std::shared_ptr<GestureDetectorImpl>> sorted_map(map.begin(),
+                                                                   map.end());
 
     for (const auto& entry : sorted_map) {
       const auto& relation_map = entry.second->relation_map();

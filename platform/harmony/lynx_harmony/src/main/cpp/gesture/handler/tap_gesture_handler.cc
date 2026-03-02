@@ -15,7 +15,7 @@ namespace tasm {
 namespace harmony {
 TapGestureHandler::TapGestureHandler(
     int sign, LynxContext* lynx_context,
-    std::shared_ptr<GestureDetector> gesture_detector,
+    std::shared_ptr<GestureDetectorImpl> gesture_detector,
     std::weak_ptr<GestureArenaMember> gesture_arena_member)
     : BaseGestureHandler(sign, lynx_context, gesture_detector,
                          gesture_arena_member),
@@ -28,7 +28,7 @@ TapGestureHandler::TapGestureHandler(
       is_invoked_end_(false),
       is_tap_active_(false),
       timer_task_manager_(std::make_unique<base::TimedTaskManager>()) {
-  HandleConfigMap(gesture_detector->gesture_config());
+  HandleConfigMap(gesture_detector->gesture_config_in_lepus_value());
 }
 
 void TapGestureHandler::HandleConfigMap(const lepus::Value& config) {

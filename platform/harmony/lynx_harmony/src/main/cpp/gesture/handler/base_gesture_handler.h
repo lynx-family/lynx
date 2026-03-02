@@ -95,7 +95,7 @@ using GestureHandlerMap =
 class BaseGestureHandler {
  public:
   BaseGestureHandler(int sign, LynxContext* lynx_context,
-                     std::shared_ptr<GestureDetector> gesture_detector,
+                     std::shared_ptr<GestureDetectorImpl> gesture_detector,
                      std::weak_ptr<GestureArenaMember> gesture_arena_member);
 
   virtual ~BaseGestureHandler() = default;
@@ -143,7 +143,7 @@ class BaseGestureHandler {
   void OnTouchesUp(const std::shared_ptr<TouchEvent>& touch_event);
   void OnTouchesCancel(const std::shared_ptr<TouchEvent>& touch_event);
 
-  std::shared_ptr<GestureDetector> GetGestureDetector() const;
+  std::shared_ptr<GestureDetectorImpl> GetGestureDetector() const;
 
  protected:
   int sign_;
@@ -151,7 +151,7 @@ class BaseGestureHandler {
 
   LynxContext* lynx_context_;
   std::unordered_map<std::string, bool> enable_flags_;
-  std::shared_ptr<GestureDetector> gesture_detector_;
+  std::shared_ptr<GestureDetectorImpl> gesture_detector_;
   std::weak_ptr<GestureArenaMember> gesture_arena_member_;
 
   virtual void OnHandle(

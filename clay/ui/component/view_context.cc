@@ -49,6 +49,16 @@
 #define CTX_LOG FML_EAT_STREAM_PARAMETERS(true)
 #endif
 
+#ifndef FIND_VIEW_WITH_ID_OR_RET
+#define FIND_VIEW_WITH_ID_OR_RET                             \
+  auto target = view_map_.find(id);                          \
+  if (target == view_map_.end()) {                           \
+    FML_LOG(ERROR) << "target view: " << id << " not found"; \
+    return;                                                  \
+  }                                                          \
+  auto view = target->second
+#endif
+
 namespace clay {
 
 ViewContext::ViewContext(PageView* root, ShadowNodeOwner* shadow_node_owner)
@@ -189,16 +199,11 @@ void ViewContext::RemoveView(int id, int parent_id,
                              bool is_temporarily_removed) {
   CTX_LOG << "RemoveView id:" << id;
 
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
+  FIND_VIEW_WITH_ID_OR_RET;
 
-  BaseView* child = target->second;
   BaseView* parent;
   if (parent_id < 0) {
-    parent = child->Parent();
+    parent = view->Parent();
   } else {
     auto it = view_map_.find(parent_id);
     if (it == view_map_.end()) {
@@ -210,9 +215,9 @@ void ViewContext::RemoveView(int id, int parent_id,
 
   if (parent) {
     if (is_temporarily_removed) {
-      parent->RemoveChildTemporarily(child);
+      parent->RemoveChildTemporarily(view);
     } else {
-      parent->RemoveChild(child);
+      parent->RemoveChild(view);
     }
   }
 }
@@ -426,13 +431,7 @@ void ViewContext::SetBounds(int id, float left, float top, float width,
   CTX_LOG << "SetBounds id:" << id << " " << left << "," << top << " " << width
           << "," << height;
 
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetBound(
       GetPageView()->RoundPixels(left), GetPageView()->RoundPixels(top),
       GetPageView()->RoundPixels(width), GetPageView()->RoundPixels(height));
@@ -440,13 +439,7 @@ void ViewContext::SetBounds(int id, float left, float top, float width,
 
 void ViewContext::SetPaddings(int id, float padding_left, float padding_top,
                               float padding_right, float padding_bottom) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetPaddings(GetPageView()->RoundPixels(padding_left),
                     GetPageView()->RoundPixels(padding_top),
                     GetPageView()->RoundPixels(padding_right),
@@ -455,12 +448,7 @@ void ViewContext::SetPaddings(int id, float padding_left, float padding_top,
 
 void ViewContext::SetMargins(int id, float margin_left, float margin_top,
                              float margin_right, float margin_bottom) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetMargins(GetPageView()->RoundPixels(margin_left),
                    GetPageView()->RoundPixels(margin_top),
                    GetPageView()->RoundPixels(margin_right),
@@ -468,50 +456,26 @@ void ViewContext::SetMargins(int id, float margin_left, float margin_top,
 }
 
 void ViewContext::SetOpacity(int id, float opacity) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetOpacity(opacity);
 }
 
 void ViewContext::SetOverflow(int id, int overflow) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetOverflow(overflow);
 }
 
 void ViewContext::SetBorderStyle(int id, BorderStyleType left,
                                  BorderStyleType top, BorderStyleType right,
                                  BorderStyleType bottom) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetBorderStyle({Side::kLeft, Side::kTop, Side::kRight, Side::kBottom},
                        {left, top, right, bottom});
 }
 
 void ViewContext::SetBorderWidth(int id, int left_width, int top_width,
                                  int right_width, int bottom_width) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetBorderWidth({Side::kLeft, Side::kTop, Side::kRight, Side::kBottom},
                        {GetPageView()->RoundPixels(left_width),
                         GetPageView()->RoundPixels(top_width),
@@ -523,13 +487,7 @@ void ViewContext::SetBorderColor(int id, unsigned int left_color,
                                  unsigned int top_color,
                                  unsigned int right_color,
                                  unsigned int bottom_color) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetBorderColor({Side::kLeft, Side::kTop, Side::kRight, Side::kBottom},
                        {left_color, top_color, right_color, bottom_color});
 }
@@ -538,13 +496,7 @@ void ViewContext::SetBorderRadius(int id, const FloatSize& left_top,
                                   const FloatSize& right_top,
                                   const FloatSize& right_bottom,
                                   const FloatSize& left_bottom) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   FloatSize scale_left_top = left_top;
   FloatSize scale_right_top = right_top;
   FloatSize scale_right_bottom = right_bottom;
@@ -554,35 +506,17 @@ void ViewContext::SetBorderRadius(int id, const FloatSize& left_top,
 }
 
 void ViewContext::SetOutlineStyle(int id, BorderStyleType style) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetOutlineStyle(style);
 }
 
 void ViewContext::SetOutlineWidth(int id, int width) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetOutlineWidth(width);
 }
 
 void ViewContext::SetOutlineColor(int id, unsigned int color) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetOutlineColor(color);
 }
 
@@ -599,76 +533,37 @@ void ViewContext::SetCursor(int id, const char* src[], int size) {
 }
 
 void ViewContext::SetBackgroundColor(int id, unsigned int color) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
+  FIND_VIEW_WITH_ID_OR_RET;
   CTX_LOG << "SetBackgroundColor. id:" << id << " color:" << color;
-
-  auto view = target->second;
   view->SetBackgroundColor(Color(color));
 }
 
 void ViewContext::SetBackground(int id, const BackgroundData& background) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
+  FIND_VIEW_WITH_ID_OR_RET;
   CTX_LOG << "SetBackground. id:" << id;
-
-  auto view = target->second;
   view->SetBackground(background);
 }
 
 void ViewContext::AppendShadow(int id, const Shadow& shadow) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
-
+  FIND_VIEW_WITH_ID_OR_RET;
   view->AppendShadow(shadow);
 }
 
 void ViewContext::SetTransform(int id, const TransformOperations& ops,
                                const FloatPoint& origin) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetTransform(ops, origin);
 }
 
 void ViewContext::SetTransition(
     int id, const std::vector<TransitionData>& transition_data) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetTransition(transition_data);
 }
 
 void ViewContext::SetAnimation(
     int id, const std::vector<AnimationData>& animation_data) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetAnimation(animation_data);
 }
 
@@ -678,13 +573,7 @@ void ViewContext::SetKeyframes(const clay::Value& keyframes_value) {
 
 void ViewContext::SetAttribute(int id, const char* attr,
                                const clay::Value& value) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->SetAttribute(attr, value);
 
   if (view->Is<Component>() && strcmp(attr, "ComponentID") == 0) {
@@ -705,24 +594,34 @@ const clay::ViewportMetrics& ViewContext::GetViewportMetrics() const {
 }
 
 void ViewContext::DidUpdateAttributes(int id) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   CTX_LOG << "id:" << id << " " << view->GetName() << " DidUpdateAttributes.";
   view->DidUpdateAttributes();
 }
 
 void ViewContext::AddEventProp(int id, const char* event) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   view->AddEventCallback(event);
+}
+
+void ViewContext::SetGestureDetectorMap(
+    int id,
+    const std::unordered_map<uint32_t, std::shared_ptr<GestureDetector>>&
+        gesture_detector_map) {
+  FIND_VIEW_WITH_ID_OR_RET;
+  view->SetGestureDetectorMap(gesture_detector_map);
+}
+
+void ViewContext::SetGestureDetectorState(int id, int32_t gesture_id,
+                                          int32_t state) {
+  FIND_VIEW_WITH_ID_OR_RET;
+  view->SetGestureDetectorState(gesture_id, state);
+}
+
+void ViewContext::ConsumeGesture(int id, int32_t gesture_id,
+                                 const Value& params) {
+  FIND_VIEW_WITH_ID_OR_RET;
+  view->ConsumeGesture(gesture_id, params);
 }
 
 void ViewContext::AddShadowNodeEventProp(int id, const char* event) {
@@ -733,13 +632,7 @@ void ViewContext::AddShadowNodeEventProp(int id, const char* event) {
 }
 
 void ViewContext::SetRepaintBoundary(int id, bool repaint_boundary) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   CTX_LOG << "id:" << id << " " << view->GetName() << " SetRepaintBoundary.";
   view->SetRepaintBoundary(repaint_boundary);
 }
@@ -905,12 +798,7 @@ void ViewContext::ShowToast(const char* message, const char* type,
 }
 
 void ViewContext::GetAbsolutePosition(int id, float& top, float& left) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-  auto view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   auto position = view->AbsoluteLocationWithScroll();
   left = position.x();
   top = position.y();
@@ -975,12 +863,7 @@ void ViewContext::GetTransformValue(int id,
                                     const float* pad_border_margin_layout,
                                     int size, float* res) {
   // res is std::vector<float>(32 ,0) passed by lynx
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-  BaseView* current_view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   std::vector<float> vec;
   for (int i = 0; i < size; i++) {
     vec.push_back(pad_border_margin_layout[i]);
@@ -996,7 +879,7 @@ void ViewContext::GetTransformValue(int id,
   // - margin-box: border-box plus margin box
   for (int i = 0; i < 4; i++) {
     if (i == 0) {
-      current_view->GetTransformValue(
+      view->GetTransformValue(
           pad_border_margin_layout[BoxModelOffset::PAD_LEFT] +
               pad_border_margin_layout[BoxModelOffset::BORDER_LEFT] +
               pad_border_margin_layout[BoxModelOffset::LAYOUT_LEFT],
@@ -1011,7 +894,7 @@ void ViewContext::GetTransformValue(int id,
               pad_border_margin_layout[BoxModelOffset::LAYOUT_BOTTOM],
           arr);
     } else if (i == 1) {
-      current_view->GetTransformValue(
+      view->GetTransformValue(
           pad_border_margin_layout[BoxModelOffset::BORDER_LEFT] +
               pad_border_margin_layout[BoxModelOffset::LAYOUT_LEFT],
           -pad_border_margin_layout[BoxModelOffset::BORDER_RIGHT] -
@@ -1022,13 +905,13 @@ void ViewContext::GetTransformValue(int id,
               pad_border_margin_layout[BoxModelOffset::LAYOUT_BOTTOM],
           arr);
     } else if (i == 2) {
-      current_view->GetTransformValue(
+      view->GetTransformValue(
           pad_border_margin_layout[BoxModelOffset::LAYOUT_LEFT],
           -pad_border_margin_layout[BoxModelOffset::LAYOUT_RIGHT],
           pad_border_margin_layout[BoxModelOffset::LAYOUT_TOP],
           -pad_border_margin_layout[BoxModelOffset::LAYOUT_BOTTOM], arr);
     } else {
-      current_view->GetTransformValue(
+      view->GetTransformValue(
           -pad_border_margin_layout[BoxModelOffset::MARGIN_LEFT] +
               pad_border_margin_layout[BoxModelOffset::LAYOUT_LEFT],
           pad_border_margin_layout[BoxModelOffset::MARGIN_RIGHT] -
@@ -1051,12 +934,7 @@ void ViewContext::GetTransformValue(int id,
 }
 
 void ViewContext::UpdateSticky(int id, const float* sticky) {
-  auto target = view_map_.find(id);
-  if (target == view_map_.end()) {
-    FML_LOG(ERROR) << "target view: " << id << " not found";
-    return;
-  }
-  BaseView* view = target->second;
+  FIND_VIEW_WITH_ID_OR_RET;
   if (sticky == nullptr) {
     view->UpdateSticky(std::nullopt);
     return;

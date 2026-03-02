@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "clay/gfx/scroll_direction.h"
 #include "clay/ui/component/bounce_view/bounce_view.h"
@@ -120,6 +121,13 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
 
   FloatPoint DoScroll(FloatPoint delta, bool by_user_input = true,
                       bool ignore_repaint = false) override;
+
+  std::vector<float> GestureScrollBy(float delta_x, float delta_y) override;
+  bool CanConsumeGesture(float delta_x, float delta_y) override;
+  float ScrollX() override;
+  int8_t GetScrollContainerDirection() override;
+  bool IsAtBorder(bool is_start) override;
+  float ScrollY() override;
 
  protected:
   virtual void CalculateOverFlow();

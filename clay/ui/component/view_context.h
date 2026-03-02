@@ -5,6 +5,8 @@
 #ifndef CLAY_UI_COMPONENT_VIEW_CONTEXT_H_
 #define CLAY_UI_COMPONENT_VIEW_CONTEXT_H_
 
+#include <stdint.h>
+
 #include <memory>
 #include <optional>
 #include <set>
@@ -32,6 +34,8 @@
 #include "clay/ui/window/viewport_metrics.h"
 
 namespace clay {
+
+class GestureDetector;
 
 enum BoxModelOffset {
   PAD_LEFT,
@@ -202,6 +206,12 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   void DidUpdateAttributes(int id);
 
   void AddEventProp(int id, const char* event);
+  void SetGestureDetectorMap(
+      int id,
+      const std::unordered_map<uint32_t, std::shared_ptr<GestureDetector>>&
+          gesture_detector_map);
+  void SetGestureDetectorState(int id, int32_t gesture_id, int32_t state);
+  void ConsumeGesture(int id, int32_t gesture_id, const Value& params);
 
   void AddShadowNodeEventProp(int id, const char* event);
 

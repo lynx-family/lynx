@@ -428,7 +428,7 @@ class Element : public lepus::RefCounted,
 
   // For gesture handler
   void SetGestureDetectorState(int32_t gesture_id, int32_t state);
-  void SetGestureDetector(const uint32_t key, GestureDetector* detector);
+  void SetGestureDetector(const uint32_t key, GestureDetectorImpl* detector);
   void ConsumeGesture(int32_t gesture_id, const lepus::Value& params);
 
   // For prop op
@@ -1189,7 +1189,7 @@ class Element : public lepus::RefCounted,
    * Element API for adding gesture detector
    */
   void SetGestureDetector(const uint32_t gesture_id,
-                          GestureDetector gesture_detector);
+                          GestureDetectorImpl gesture_detector);
 
   /**
    * Element API for removing specific gesture detector

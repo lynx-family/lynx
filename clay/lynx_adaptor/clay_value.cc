@@ -241,7 +241,7 @@ bool ClayValueWrapper::PushUInt64ToArray(uint64_t value) {
     array.push_back(clay::Value(value));                                      \
     return true;                                                              \
   }
-DeclarationTypeList(NormalTypePushArrayImpl)
+ClayDeclarationTypeList(NormalTypePushArrayImpl)
 #undef NormalTypePushArrayImpl
 
     bool ClayValueWrapper::PushValueToMap(const std::string& key,
@@ -299,7 +299,7 @@ bool ClayValueWrapper::PushUInt64ToMap(const std::string& key, uint64_t value) {
     map[key] = clay::Value(value);                                      \
     return true;                                                        \
   }
-DeclarationTypeList(NormalTypePushMapImpl)
+ClayDeclarationTypeList(NormalTypePushMapImpl)
 #undef NormalTypePushMapImpl
 
     // static

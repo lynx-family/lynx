@@ -99,6 +99,8 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
     return GetRenderScroll()->GetScrollableDirection();
   }
 
+  void GestureDetectorDidSet() override;
+
  protected:
   void SetScrollStatus(ScrollStatus status);
 

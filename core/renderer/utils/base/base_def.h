@@ -33,7 +33,7 @@ using DataMap = base::LinearFlatMap<base::String, lepus::Value>;
 using EventMap =
     base::LinearFlatMap<base::String, std::unique_ptr<EventHandler>>;
 using GestureMap =
-    base::LinearFlatMap<uint32_t, std::shared_ptr<GestureDetector>>;
+    base::LinearFlatMap<uint32_t, std::shared_ptr<GestureDetectorImpl>>;
 
 using AttrUMap = AttrMap;
 

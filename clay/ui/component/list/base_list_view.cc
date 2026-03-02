@@ -1425,4 +1425,15 @@ void BaseListView::PrintChildren() {
 #endif
 }
 
+std::vector<float> BaseListView::GestureScrollBy(float delta_x, float delta_y) {
+  FloatPoint unconsumed_offset = DoScroll({delta_x, delta_y}, false);
+  std::vector<float> res(4, 0);
+  bool is_horizontal = (scroll_orientation_ == ScrollDirection::kHorizontal);
+  res[0] = is_horizontal ? unconsumed_offset.x() : 0;
+  res[1] = is_horizontal ? 0 : unconsumed_offset.y();
+  res[2] = is_horizontal ? (delta_x - unconsumed_offset.x()) : delta_x;
+  res[3] = is_horizontal ? delta_y : (delta_y - unconsumed_offset.y());
+  return res;
+}
+
 }  // namespace clay

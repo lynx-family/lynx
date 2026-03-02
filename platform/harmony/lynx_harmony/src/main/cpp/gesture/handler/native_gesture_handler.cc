@@ -14,7 +14,7 @@ namespace tasm {
 namespace harmony {
 NativeGestureHandler::NativeGestureHandler(
     int sign, LynxContext* lynx_context,
-    std::shared_ptr<GestureDetector> gesture_detector,
+    std::shared_ptr<GestureDetectorImpl> gesture_detector,
     std::weak_ptr<GestureArenaMember> gesture_arena_member)
     : PanGestureHandler(sign, lynx_context, gesture_detector,
                         gesture_arena_member){

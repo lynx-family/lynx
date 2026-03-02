@@ -42,6 +42,8 @@
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/event/event_utils.h"
 #include "clay/ui/gesture/mouse_region_manager.h"
+#include "clay/ui/gesture_handler/gesture_detector.h"
+#include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/painter/gradient.h"
 #include "clay/ui/resource/image_resource_fetcher.h"
@@ -2884,6 +2886,64 @@ void BaseView::AddEventCallback(const char* event_c) {
     }
   }
   events_->emplace_back(event);
+}
+
+void BaseView::SetGestureDetectorMap(const GestureMap& gesture_detector_map) {
+  if (gesture_detector_map.size() == 0) {
+    return;
+  }
+  gesture_detector_map_ = gesture_detector_map;
+  GestureDetectorDidSet();
+}
+
+void BaseView::GestureDetectorDidSet() {
+  auto* gesture_arena_manager =
+      page_view_->GetGestureHandlerDispatcher()->gesture_arena_manager();
+  if (!gesture_arena_manager) return;
+  if (!gesture_arena_manager->IsMemberExist(gesture_arena_member_id_)) {
+    gesture_arena_member_id_ = gesture_arena_manager->AddMember(GetWeakPtr());
+  }
+  if (gesture_handler_map_.empty() && gesture_arena_member_id_ > 0) {
+    gesture_handler_map_ = BaseGestureHandler::ConvertToGestureHandler(
+        id_, page_view_, GetWeakPtr(), gesture_detector_map_);
+  }
+}
+
+std::vector<float> BaseView::GestureScrollBy(float delta_x, float delta_y) {
+  return std::vector<float>{0, 0, delta_x, delta_y};
+}
+
+void BaseView::SetGestureDetectorState(int gesture_id, int state) {
+  auto* gesture_arena_manager =
+      page_view_->GetGestureHandlerDispatcher()->gesture_arena_manager();
+  if (!gesture_arena_manager ||
+      !gesture_arena_manager->IsMemberExist(gesture_arena_member_id_))
+    return;
+  gesture_arena_manager->SetGestureDetectorState(gesture_arena_member_id_,
+                                                 gesture_id, state);
+}
+
+void BaseView::ConsumeGesture(int gesture_id, const Value& params) {
+  if (!params.IsMap()) return;
+  const Value::Map& map = params.GetMap();
+  bool inner = false;
+  bool consume = false;
+  if (map.find("inner") != map.end()) {
+    inner = map.at("inner").GetBool();
+  }
+  if (map.find("consume") != map.end()) {
+    consume = map.at("consume").GetBool();
+  }
+  if (inner) {
+    enable_builtin_gesture_recognizer_ = consume;
+  } else {
+    intercept_gesture_status_ =
+        consume ? InterceptGestureStatus::True : InterceptGestureStatus::False;
+  }
+}
+
+std::vector<float> BaseView::ScrollBy(float delta_x, float delta_y) {
+  return GestureScrollBy(delta_x, delta_y);
 }
 
 #ifndef NDEBUG

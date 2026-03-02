@@ -939,4 +939,45 @@ FloatPoint ScrollView::DoScroll(FloatPoint delta, bool by_user_input,
   return point;
 }
 
+std::vector<float> ScrollView::GestureScrollBy(float delta_x, float delta_y) {
+  std::vector<float> res(4, 0);
+  FloatPoint prev_scroll_offset = scroll_offset_;
+  bool is_horizontal = scroll_direction_ == ScrollDirection::kHorizontal;
+  ScrollWithDelta(false, is_horizontal ? delta_x : delta_y);
+  FloatPoint delta = scroll_offset_ - prev_scroll_offset;
+  res[0] = is_horizontal ? delta.x() : 0;
+  res[1] = is_horizontal ? 0 : delta.y();
+  res[2] = is_horizontal ? (delta_x - delta.x()) : delta_x;
+  res[3] = is_horizontal ? delta_y : (delta_y - delta.y());
+  return res;
+}
+
+bool ScrollView::CanConsumeGesture(float delta_x, float delta_y) {
+  if (CanScrollX()) {
+    return CanScrollBy(delta_x, 0);
+  } else {
+    return CanScrollBy(0, delta_y);
+  }
+}
+
+float ScrollView::ScrollX() { return scroll_offset_.x(); }
+
+int8_t ScrollView::GetScrollContainerDirection() {
+  return CanScrollX() ? GestureConstants::DIRECTION_HORIZONTAL
+                      : GestureConstants::DIRECTION_VERTICAL;
+}
+
+bool ScrollView::IsAtBorder(bool is_start) {
+  if (is_start) {
+    return CanScrollX() ? (scroll_offset_.x() <= 0) : (scroll_offset_.y() <= 0);
+  } else {
+    auto render_scroll = GetRenderScroll();
+    return CanScrollX()
+               ? (scroll_offset_.x() >= render_scroll->MaxScrollWidth())
+               : (scroll_offset_.y() >= render_scroll->MaxScrollHeight());
+  }
+}
+
+float ScrollView::ScrollY() { return scroll_offset_.y(); }
+
 }  // namespace clay

@@ -16,13 +16,11 @@
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
+#include "core/public/gesture_handler.h"
 #include "core/public/pub_value.h"
 
 namespace lynx {
 namespace tasm {
-
-// TODO(chenyouhui): Remove GestureDetector from prop_bundle completely
-class GestureDetector;
 
 enum CSSPropertyID : int32_t;
 

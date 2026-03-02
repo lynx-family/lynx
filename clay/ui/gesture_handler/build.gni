@@ -1,0 +1,35 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+gesture_handler_sources = [
+  "arena/gesture_arena_manager.cc",
+  "arena/gesture_arena_manager.h",
+  "common/gesture_extra_bundle.cc",
+  "common/gesture_extra_bundle.h",
+  "detector/gesture_detector_manager.cc",
+  "detector/gesture_detector_manager.h",
+  "gesture_arena_member.h",
+  "gesture_detector.h",
+  "gesture_handler_delegate.h",
+  "gesture_handler_dispatcher.cc",
+  "gesture_handler_dispatcher.h",
+  "handler/base_gesture_handler.cc",
+  "handler/base_gesture_handler.h",
+  "handler/default_gesture_handler.cc",
+  "handler/default_gesture_handler.h",
+  "handler/fling_gesture_handler.cc",
+  "handler/fling_gesture_handler.h",
+  "handler/fling_scroller.cc",
+  "handler/fling_scroller.h",
+  "handler/gesture_handler_trigger.cc",
+  "handler/gesture_handler_trigger.h",
+  "handler/longpress_gesture_handler.cc",
+  "handler/longpress_gesture_handler.h",
+  "handler/native_gesture_handler.cc",
+  "handler/native_gesture_handler.h",
+  "handler/pan_gesture_handler.cc",
+  "handler/pan_gesture_handler.h",
+  "handler/tap_gesture_handler.cc",
+  "handler/tap_gesture_handler.h",
+]

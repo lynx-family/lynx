@@ -9,10 +9,12 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "clay/public/value.h"
+#include "clay/ui/gesture_handler/gesture_detector.h"
 #include "core/public/prop_bundle.h"
 
 namespace lynx {
@@ -20,7 +22,7 @@ namespace lynx {
 class PropBundleImpl : public tasm::PropBundle {
  public:
   PropBundleImpl() = default;
-  ~PropBundleImpl();
+  ~PropBundleImpl() override;
   void SetNullProps(const char* key) override;
   void SetProps(const char* key, unsigned int value) override;
   void SetProps(const char* key, int value) override;
@@ -56,9 +58,14 @@ class PropBundleImpl : public tasm::PropBundle {
     return event_handlers_;
   }
 
+  const std::optional<clay::GestureMap>& GestureDetectorMap() const {
+    return gesture_detector_map_;
+  }
+
  private:
   clay::Value::Map map_;
   std::vector<std::string> event_handlers_;
+  std::optional<clay::GestureMap> gesture_detector_map_;
 };
 
 class PropBundleCreatorClay : public tasm::PropBundleCreator {

@@ -223,6 +223,8 @@ class BaseListView : public WithTypeInfo<BaseListView, NestedScrollable>,
 
   ScrollableDirection GetScrollableDirection() const override;
 
+  std::vector<float> GestureScrollBy(float delta_x, float delta_y) override;
+
  protected:
   // Create a view and added to the end of children list.
   // Assume item's position has been set.

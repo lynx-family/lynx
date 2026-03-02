@@ -205,6 +205,33 @@ void LynxEventDispatcher::OnKeyEvent(const std::string& event_name, int view_id,
   engine_proxy_->SendBubbleEvent(event_name, view_id, params);
 }
 
+void LynxEventDispatcher::OnGestureHandlerEvent(const std::string& event_name,
+                                                int view_id,
+                                                uint32_t gesture_id, float x,
+                                                float y, float page_x,
+                                                float page_y, int64_t timestamp,
+                                                Value& additional_params) {
+  if (!engine_proxy_) {
+    return;
+  }
+  clay::Value::Map dict;
+  dict["type"] = clay::Value(event_name.c_str());
+  dict["timestamp"] = clay::Value(timestamp);
+  float density = engine_proxy_->GetDensity();
+  dict["x"] = clay::Value(x / density);
+  dict["y"] = clay::Value(y / density);
+  dict["pageX"] = clay::Value(page_x / density);
+  dict["pageY"] = clay::Value(page_y / density);
+  dict["clientX"] = clay::Value(page_x / density);
+  dict["clientY"] = clay::Value(page_y / density);
+  if (additional_params.IsMap()) {
+    dict.merge(additional_params.GetMap());
+  }
+
+  auto params = lynx::ClayValue(clay::Value(std::move(dict)));
+  engine_proxy_->SendGestureEvent(view_id, gesture_id, event_name, params);
+}
+
 void LynxEventDispatcher::OnAnimationEvent(const std::string& event_name,
                                            const char* animation_name,
                                            int view_id) {

@@ -19,7 +19,7 @@
 namespace lynx {
 namespace tasm {
 
-class GestureDetector;
+class GestureDetectorImpl;
 
 namespace harmony {
 
@@ -58,9 +58,9 @@ class GestureDetectorManager {
   void RegisterGestureIdWithMemberId(int gesture_id, int member_id);
   void UnregisterGestureIdWithMemberId(int gesture_id, int member_id);
   void RegisterGestureDetector(
-      int member_id, std::shared_ptr<GestureDetector> gesture_detector);
+      int member_id, std::shared_ptr<GestureDetectorImpl> gesture_detector);
   void UnregisterGestureDetector(
-      int member_id, std::shared_ptr<GestureDetector> gesture_detector);
+      int member_id, std::shared_ptr<GestureDetectorImpl> gesture_detector);
 
   std::vector<std::weak_ptr<GestureArenaMember>>
   ConvertResponseChainToCompeteChain(

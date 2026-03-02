@@ -42,6 +42,10 @@
 #include "clay/ui/gesture/gesture_manager.h"
 #include "clay/ui/gesture/gesture_recognizer.h"
 #include "clay/ui/gesture/hit_test.h"
+#include "clay/ui/gesture_handler/gesture_arena_member.h"
+#include "clay/ui/gesture_handler/gesture_detector.h"
+#include "clay/ui/gesture_handler/gesture_handler_delegate.h"
+#include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
 #ifdef ENABLE_ACCESSIBILITY
 #include "clay/ui/semantics/semantics_node.h"
@@ -72,7 +76,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
                  public HitTestTarget,
                  public KeyEventHandler,
                  public FocusEventHandler,
-                 public FocusNode {
+                 public FocusNode,
+                 public GestureArenaMember,
+                 public GestureHandlerDelegate {
  public:
   BaseView(std::unique_ptr<RenderObject> render_object, PageView* page_view);
 
@@ -305,6 +311,31 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   virtual void SetAttribute(const char* attr, const clay::Value& value);
   virtual void AddEventCallback(const char* event);
+
+  // Gesture handler methods
+  virtual void SetGestureDetectorMap(const GestureMap& gesture_detector_map);
+  std::vector<float> GestureScrollBy(float delta_x, float delta_y) override;
+  bool CanConsumeGesture(float delta_x, float delta_y) override {
+    return false;
+  }
+  int Sign() const override { return id_; }
+  int GestureArenaMemberId() override { return gesture_arena_member_id_; }
+  float ScrollX() override { return 0; }
+  int8_t GetScrollContainerDirection() override { return 0; }
+  bool IsAtBorder(bool is_start) override { return false; }
+  float ScrollY() override { return 0; }
+  const GestureMap& GetGestureDetectorMap() override {
+    return gesture_detector_map_;
+  }
+  const GestureHandlerMap& GetGestureHandlers() override {
+    return gesture_handler_map_;
+  }
+  virtual void GestureDetectorDidSet();
+
+  // Gesture Handler Delegate
+  void SetGestureDetectorState(int gesture_id, int state) override;
+  void ConsumeGesture(int gesture_id, const Value& params) override;
+  std::vector<float> ScrollBy(float delta_x, float delta_y) override;
 
   // Indicate whether all children should be restricted in this view.
   virtual bool CanChildrenEscape() const {
@@ -735,6 +766,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   std::optional<OffsetPathData> offset_path_data_;
   bool delay_destroy_ = false;
   std::unique_ptr<BaseViewAnimationMutator> animation_mutator_;
+  bool enable_builtin_gesture_recognizer_{true};
 
  private:
   template <typename... Args>
@@ -749,6 +781,12 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   std::vector<BaseView*> sorted_children_;
   bool ignore_size_change_checks_ = false;
+  // gesture handler
+  GestureMap gesture_detector_map_;
+  GestureHandlerMap gesture_handler_map_;
+  int gesture_arena_member_id_{0};
+  InterceptGestureStatus intercept_gesture_status_{
+      InterceptGestureStatus::Unset};
 };
 
 }  // namespace clay

@@ -123,11 +123,11 @@ void PropBundleDarwin::SetGestureDetector(const GestureDetector& gestureDetector
   }
 
   // Extract the gesture callback names into a plain C array, which can be used to create an NSArray
-  const auto& gestureCallbacks = gestureDetector.gesture_callbacks();
+  const auto& gestureCallbacks = gestureDetector.gesture_callback_names();
   NSString* callbackNames[gestureCallbacks.size()];
   int i = 0;
   for (const auto& callback : gestureCallbacks) {
-    callbackNames[i++] = [NSString stringWithUTF8String:callback.name_.c_str()];
+    callbackNames[i++] = [NSString stringWithUTF8String:callback.c_str()];
   }
   NSArray<NSString*>* gestureCallbackArray = [NSArray arrayWithObjects:callbackNames
                                                                  count:gestureCallbacks.size()];
@@ -148,7 +148,7 @@ void PropBundleDarwin::SetGestureDetector(const GestureDetector& gestureDetector
   }
 
   NSMutableDictionary* configMap = [NSMutableDictionary dictionary];
-  AssembleMap(configMap, "config", pub::ValueImplLepus(gestureDetector.gesture_config()));
+  AssembleMap(configMap, "config", gestureDetector.gesture_config());
 
   // Use the optimized NSArray and NSDictionary objects to create the detector object
   LynxGestureDetectorDarwin* detectorDarwin = [[LynxGestureDetectorDarwin alloc]

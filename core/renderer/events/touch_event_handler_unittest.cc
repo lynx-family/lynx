@@ -184,7 +184,7 @@ TEST_F(TouchEventHandlerTest, TestHandlerTriggerGestureEvent) {
       tasm_->page_proxy()->element_manager()->CreateFiberComponent(
           component_id, css_id, entry_name, component_name, path);
   fiber_component->SetGestureDetector(
-      1, GestureDetector(
+      1, GestureDetectorImpl(
              1, GestureType::PAN,
              {GestureCallback("xxxx", lepus::Value(), lepus::Value())}, {}));
   touch_event_handler_->HandleGestureEvent(tasm_.get(), "xxxx", 10, 1, obj);

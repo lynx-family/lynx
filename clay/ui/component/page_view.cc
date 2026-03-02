@@ -155,7 +155,9 @@ PageView::PageView(uint32_t id, std::shared_ptr<ServiceManager> service_manager,
       ,
       overlay_manager_(std::make_unique<OverlayManager>(this))
 #endif
-{
+      ,
+      gesture_handler_dispatcher_(
+          std::make_unique<GestureHandlerDispatcher>(this)) {
   SetupIsolatedGestures();
   frame_builder_ = std::make_unique<FrameBuilder>(
       skity::Vec2{static_cast<int32_t>(metrics_.physical_width),
@@ -230,6 +232,8 @@ void PageView::InitManagers() {
           focus_node->ClearFocus();
         }
       });
+  gesture_manager_->SetGestureHandlerDispatcher(
+      gesture_handler_dispatcher_.get());
 
 #if defined(ENABLE_MOUSE_TRACKING)
   // init mouse region manager, mouse cursor manager
@@ -1997,6 +2001,31 @@ void PageView::SetExternalScreenshotCallback(
           service_manager_->GetService<clay::ScreenshotService>();
   screenshot_service->SetExternalScreenshotCallback(std::move(callback));
 #endif
+}
+
+void PageView::OnGestureRecognizedWithSign(int sign) {
+  gesture_handler_dispatcher_->OnGestureRecognizedWithSign(sign);
+}
+
+void PageView::HandleGestureEvent(int sign, uint32_t gesture_id,
+                                  const std::string& event_name,
+                                  const PointerEvent* pointer_event,
+                                  Value& additional_params) {
+  if (event_delegate_) {
+    FloatPoint local_point;
+    FloatPoint global_point;
+    uint64_t timestamp =
+        pointer_event ? pointer_event->timestamp
+                      : fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+    if (pointer_event) {
+      global_point = pointer_event->position;
+      [[maybe_unused]] BaseView* top_view =
+          GetTopViewToAcceptEvent(global_point, &local_point);
+    }
+    event_delegate_->OnGestureHandlerEvent(
+        event_name, sign, gesture_id, local_point.x(), local_point.y(),
+        global_point.x(), global_point.y(), timestamp, additional_params);
+  }
 }
 
 ClayEventType ToClayEventType(PointerEvent::EventType event_type,

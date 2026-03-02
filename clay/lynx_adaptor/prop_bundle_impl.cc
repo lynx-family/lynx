@@ -4,7 +4,10 @@
 
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
 
+#include <stdint.h>
+
 #include <array>
+#include <unordered_map>
 #include <utility>
 
 #include "clay/lynx_adaptor/value_converter.h"
@@ -26,7 +29,7 @@ static const char* GetPropertyName(tasm::CSSPropertyID id) {
   return kLynxCSSPropertyNames[0];  // Empty string
 }
 
-PropBundleImpl::~PropBundleImpl() {}
+PropBundleImpl::~PropBundleImpl() = default;
 
 void PropBundleImpl::SetNullProps(const char* key) {
   map_[key] = clay::Value::Null();
@@ -127,7 +130,16 @@ void PropBundleImpl::SetEventHandler(const pub::Value& event) {
 void PropBundleImpl::ResetEventHandler() { event_handlers_.clear(); }
 
 void PropBundleImpl::SetGestureDetector(const tasm::GestureDetector& detector) {
-  // TODO(luochangan.adrian): need to implement set gesture detector in Clay.
+  if (!gesture_detector_map_) {
+    gesture_detector_map_ = clay::GestureMap();
+  }
+  gesture_detector_map_->emplace(
+      detector.gesture_id(),
+      std::make_shared<clay::GestureDetector>(
+          detector.gesture_id(),
+          static_cast<clay::GestureHandlerType>(detector.gesture_type()),
+          detector.gesture_callback_names(), detector.relation_map(),
+          ValueConverter::CreateClayValue(detector.gesture_config())));
 }
 
 fml::RefPtr<tasm::PropBundle> PropBundleCreatorClay::CreatePropBundle() {

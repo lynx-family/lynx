@@ -291,8 +291,10 @@ class PubValueFactoryDefault : public PubValueFactory {
   std::unique_ptr<Value> CreateString(const std::string& value) override;
   std::unique_ptr<Value> CreateArrayBuffer(std::unique_ptr<uint8_t[]> value,
                                            size_t length) override;
-  ~PubValueFactoryDefault() {}
+  ~PubValueFactoryDefault() override = default;
 };
+
+#undef DeclarationTypeList
 
 }  // namespace pub
 }  // namespace lynx

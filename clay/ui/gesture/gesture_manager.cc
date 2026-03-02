@@ -13,6 +13,7 @@
 #include "clay/ui/event/gesture_event.h"
 #include "clay/ui/gesture/gesture_recognizer.h"
 #include "clay/ui/gesture/macros.h"
+#include "clay/ui/gesture_handler/gesture_handler_dispatcher.h"
 
 namespace clay {
 namespace {
@@ -34,6 +35,11 @@ GestureManager::GestureManager(fml::RefPtr<fml::TaskRunner> task_runner,
     gesture_mediate_puppet_ =
         service_manager->GetService<GestureMediateService>();
   }
+}
+
+void GestureManager::SetGestureHandlerDispatcher(
+    GestureHandlerDispatcher* gesture_handler_dispatcher) {
+  gesture_handler_dispatcher_ = gesture_handler_dispatcher;
 }
 
 bool GestureManager::HandlePointerEvents(HitTestable* root,
@@ -114,15 +120,34 @@ bool GestureManager::HandlePointerEvent(HitTestable* root,
       consumed = false;
     }
     DispatchEvent(event, &hit_test_result);
+    if (gesture_handler_dispatcher_ &&
+        event.type == PointerEvent::EventType::kDownEvent) {
+      gesture_handler_dispatcher_->HandlePointerDown(
+          event, hit_tests_[event.pointer_id]);
+    }
   } else if (event.type == PointerEvent::EventType::kMoveEvent ||
              event.type == PointerEvent::EventType::kPanZoomUpdateEvent) {
     DispatchEvent(event, &hit_tests_[event.pointer_id]);
+    if (gesture_handler_dispatcher_ &&
+        event.type == PointerEvent::EventType::kMoveEvent) {
+      gesture_handler_dispatcher_->HandlePointerMove(
+          event, hit_tests_[event.pointer_id]);
+    }
   } else if (event.type == PointerEvent::EventType::kUpEvent ||
              event.type == PointerEvent::EventType::kCancel ||
              event.type == PointerEvent::EventType::kPanZoomEndEvent) {
     auto iter = hit_tests_.find(event.pointer_id);
     if (iter != hit_tests_.end()) {
       DispatchEvent(event, &iter->second);
+      if (gesture_handler_dispatcher_) {
+        if (event.type == PointerEvent::EventType::kUpEvent) {
+          gesture_handler_dispatcher_->HandlePointerUp(
+              event, hit_tests_[event.pointer_id]);
+        } else if (event.type == PointerEvent::EventType::kCancel) {
+          gesture_handler_dispatcher_->HandlePointerCancel(
+              event, hit_tests_[event.pointer_id]);
+        }
+      }
       hit_tests_.erase(iter);
       gesture_accepted_map_.erase(event.pointer_id);
     } else {

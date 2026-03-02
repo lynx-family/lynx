@@ -17,7 +17,7 @@ namespace harmony {
 class NativeGestureHandler : public PanGestureHandler {
  public:
   NativeGestureHandler(int sign, LynxContext* lynx_context,
-                       std::shared_ptr<GestureDetector> gesture_detector,
+                       std::shared_ptr<GestureDetectorImpl> gesture_detector,
                        std::weak_ptr<GestureArenaMember> gesture_arena_member);
 
   ~NativeGestureHandler() override = default;

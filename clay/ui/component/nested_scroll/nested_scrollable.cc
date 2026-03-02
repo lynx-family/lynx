@@ -509,6 +509,9 @@ void NestedScrollable::DispatchMouseWheelEvent(const PointerEvent& event) {
 
 bool NestedScrollable::IsPointerAllowed(
     const GestureRecognizer& gesture_recognizer, const PointerEvent& event) {
+  if (GestureArenaMemberId() > 0 && !enable_builtin_gesture_recognizer_) {
+    return false;
+  }
   return event.device == PointerEvent::DeviceType::kTouch ||
          event.device == PointerEvent::DeviceType::kTrackpad
 #if defined(ENABLE_HEADLESS)

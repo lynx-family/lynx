@@ -190,4 +190,18 @@ ScrollDirection Scrollable::GetScrollDirection() const {
   return scroll_direction_;
 }
 
+void Scrollable::GestureDetectorDidSet() {
+  BaseView::GestureDetectorDidSet();
+  if (GestureArenaMemberId() > 0) {
+    SetScrollEnabled(false);
+    const auto& gesture_detector_map = GetGestureDetectorMap();
+    for (auto& pair : gesture_detector_map) {
+      if (pair.second->gesture_type() == GestureHandlerType::Native) {
+        SetScrollEnabled(true);
+        break;
+      }
+    }
+  }
+}
+
 }  // namespace clay

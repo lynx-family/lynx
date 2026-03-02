@@ -41,9 +41,11 @@
 #include "clay/ui/component/view_tree_observer.h"
 #include "clay/ui/compositing/frame_builder.h"
 #include "clay/ui/event/focus_manager.h"
+#include "clay/ui/event/gesture_event.h"
 #include "clay/ui/event/key_event.h"
 #include "clay/ui/gesture/gesture_manager.h"
 #include "clay/ui/gesture/mouse_region_manager.h"
+#include "clay/ui/gesture_handler/gesture_handler_dispatcher.h"
 #include "clay/ui/platform/keyboard_bridge.h"
 #include "clay/ui/render_delegate.h"
 #include "clay/ui/rendering/renderer.h"
@@ -460,6 +462,15 @@ class PageView : public BaseView,
                            const std::string& scroll_monitor_tag);
   void EndFluencyMonitor(uintptr_t id);
 
+  void OnGestureRecognizedWithSign(int sign);
+  void HandleGestureEvent(int sign, uint32_t gesture_id,
+                          const std::string& event_name,
+                          const PointerEvent* pointer_event,
+                          Value& additional_params);
+  GestureHandlerDispatcher* GetGestureHandlerDispatcher() const {
+    return gesture_handler_dispatcher_.get();
+  }
+
  protected:
   void OnDestroy() override;
 
@@ -598,6 +609,7 @@ class PageView : public BaseView,
 #if !defined(ENABLE_CLAY_LITE)
   std::unique_ptr<OverlayManager> overlay_manager_;
 #endif
+  std::unique_ptr<GestureHandlerDispatcher> gesture_handler_dispatcher_;
 };
 
 }  // namespace clay

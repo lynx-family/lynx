@@ -20,7 +20,7 @@ namespace base {
 class TimedTaskManager;
 }
 namespace tasm {
-class GestureDetector;
+class GestureDetectorImpl;
 struct GestureCallback;
 
 namespace harmony {
@@ -31,7 +31,7 @@ class TouchEvent;
 class TapGestureHandler : public BaseGestureHandler {
  public:
   TapGestureHandler(int sign, LynxContext* lynx_context,
-                    std::shared_ptr<GestureDetector> gesture_detector,
+                    std::shared_ptr<GestureDetectorImpl> gesture_detector,
                     std::weak_ptr<GestureArenaMember> gesture_arena_member);
 
   void HandleConfigMap(const lepus::Value& config);
