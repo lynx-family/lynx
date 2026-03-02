@@ -286,6 +286,7 @@ LynxShell* LynxShellBuilder::build() {
   if (lynx_engine_wrapper_) {
     // After creating the EngineWrapper for the first time or reusing it, the
     // internal objects need to be updated.
+    shell->SetBindWithEngineWrapper(true);
     lynx_engine_wrapper_->SetupCore(shell->engine_actor_, shell->layout_actor_,
                                     shell->tasm_mediator_,
                                     shell->layout_mediator_);
@@ -295,6 +296,7 @@ LynxShell* LynxShellBuilder::build() {
 
 void LynxShellBuilder::AttachLynxEngine(LynxShell* shell) {
   if (lynx_engine_wrapper_ && lynx_engine_wrapper_->HasInit()) {
+    shell->SetBindWithEngineWrapper(true);
     lynx_engine_wrapper_->BindShell(shell);
   }
 }

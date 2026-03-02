@@ -26,5 +26,8 @@ jlong DetachEngine(JNIEnv* env, jobject jcaller, jlong nativePtr) {
 }
 
 void DestroyEngine(JNIEnv* env, jobject jcaller, jlong nativePtr) {
-  delete reinterpret_cast<lynx::shell::LynxEngineWrapper*>(nativePtr);
+  lynx::shell::LynxEngineWrapper* engine_wrapper =
+      reinterpret_cast<lynx::shell::LynxEngineWrapper*>(nativePtr);
+  engine_wrapper->DestroyEngine();
+  delete engine_wrapper;
 }

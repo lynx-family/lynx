@@ -45,7 +45,15 @@ void LynxEngineWrapper::BindShell(lynx::shell::LynxShell *shell) {
 
 void LynxEngineWrapper::DetachEngine() {}
 
-void LynxEngineWrapper::DestroyEngine() {}
+void LynxEngineWrapper::DestroyEngine() {
+  if (engine_actor_) {
+    engine_actor_->Act([](auto &engine) { engine = nullptr; });
+  }
+
+  if (layout_actor_) {
+    layout_actor_->Act([](auto &layout) { layout = nullptr; });
+  }
+}
 
 }  // namespace shell
 }  // namespace lynx

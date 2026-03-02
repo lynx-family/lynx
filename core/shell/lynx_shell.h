@@ -194,6 +194,8 @@ class LynxShell {
 
   void SetPlatformConfig(std::string platform_config_json_string);
 
+  void SetBindWithEngineWrapper(bool bind) { bind_with_engine_wrapper_ = bind; }
+
   void UpdateViewport(float width, int32_t width_mode, float height,
                       int32_t height_mode, bool need_layout = true);
 
@@ -440,6 +442,7 @@ class LynxShell {
   // A ssr page will be further hydrated when a load template is called.
   bool hydration_pending_{false};
   bool enable_async_hydration_{false};
+  bool bind_with_engine_wrapper_{false};
 
   base::ThreadStrategyForRendering current_strategy_;
 
