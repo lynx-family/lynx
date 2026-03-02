@@ -83,15 +83,37 @@ bool GestureManager::HandlePointerEvent(HitTestable* root,
                                            GestureRecognizerType::kNone);
     root->HitTest(event, hit_tests_[event.pointer_id]);
 
-    if ((!hit_tests_[event.pointer_id].empty()) &&
-        hit_tests_[event.pointer_id].front().get()->ShouldPassEventToNative()) {
-      // clicked in a event pass node , clay should not handle this event;
-      // we achive this by clear hit test result, since the following gesture
-      // should not be handled as well.
-      hit_tests_[event.pointer_id].clear();
+    auto& hit_test_result = hit_tests_[event.pointer_id];
+    auto iter = hit_test_result.begin();
+    while (iter != hit_test_result.end()) {
+      while (iter != hit_test_result.end() && !(*iter)) {
+        iter = hit_test_result.erase(iter);
+      }
+      if (iter == hit_test_result.end()) {
+        break;
+      }
+
+      auto segment_start = iter;
+      bool should_pass_event_to_native =
+          segment_start->get() &&
+          segment_start->get()->ShouldPassEventToNative();
+
+      auto segment_end = segment_start;
+      while (segment_end != hit_test_result.end() && (*segment_end)) {
+        ++segment_end;
+      }
+
+      if (should_pass_event_to_native) {
+        iter = hit_test_result.erase(segment_start, segment_end);
+      } else {
+        iter = segment_end;
+      }
+    }
+
+    if (hit_test_result.empty()) {
       consumed = false;
     }
-    DispatchEvent(event, &hit_tests_[event.pointer_id]);
+    DispatchEvent(event, &hit_test_result);
   } else if (event.type == PointerEvent::EventType::kMoveEvent ||
              event.type == PointerEvent::EventType::kPanZoomUpdateEvent) {
     DispatchEvent(event, &hit_tests_[event.pointer_id]);
