@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "base/include/sorted_for_each.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
@@ -13,6 +14,7 @@
 #include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
+#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/lepus_date.h"
 #include "core/runtime/lepus/vm_context.h"
 #include "core/runtime/lepusng/quick_context.h"
@@ -42,7 +44,7 @@ ContextBinaryWriter::~ContextBinaryWriter() = default;
 
 void ContextBinaryWriter::encode() {
   if (context_->IsLepusNGContext()) {
-    auto* qctx = QuickContext::Cast(context_);
+    auto* qctx = Context::ToQuickContext(context_);
 
     LEPUSContext* ctx = qctx->context();
     size_t out_buf_len;
@@ -61,13 +63,13 @@ void ContextBinaryWriter::encode() {
   // for VmContext
   SerializeGlobal();
 
-  SerializeFunction(lepus::VMContext::Cast(context_)->GetRootFunction());
+  SerializeFunction(lepus::Context::ToVMContext(context_)->GetRootFunction());
 
   SerializeTopVariables();
 }
 
 void ContextBinaryWriter::SerializeGlobal() {
-  Global* global = VMContext::Cast(context_)->global();
+  Global* global = Context::ToVMContext(context_)->global();
   if (global == nullptr) return;
 
   size_t size = 0;
@@ -180,7 +182,7 @@ void ContextBinaryWriter::EncodeExpr() {}
 
 void ContextBinaryWriter::SerializeTopVariables() {
   // encode top_level_variables_
-  lepus::VMContext* ctx = lepus::VMContext::Cast(context_);
+  lepus::VMContext* ctx = lepus::Context::ToVMContext(context_);
   size_t size = ctx->top_level_variables_.size();
   WriteCompactU32(size);
   base::sorted_for_each(ctx->top_level_variables_.begin(),

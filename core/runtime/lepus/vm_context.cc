@@ -70,23 +70,17 @@ namespace lepus {
 
 using UnsafeOp = RestrictedValue::Unsafe;
 
-VMContext::~VMContext() { DestroyInspector(); }
-
 void VMContext::Initialize() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, VM_CONTEXT_INIT);
   RegisterBuiltin(this);
   RegisterLepusVerion();
 }
 
-bool VMContext::Execute() {
-  if (HasPreExecuteSuccess()) {
-    return true;
-  }
-  ScriptingScope scope(this);
-  return ExecuteBinaryInternal(nullptr);
-}
+bool VMContext::Execute() { return ExecuteBinaryWithBundle(nullptr, nullptr); }
 
-bool VMContext::ExecuteBinaryInternal(RestrictedValue* ret_val) {
+bool VMContext::ExecuteBinaryWithBundle(const ContextBundle* bundle,
+                                        Value* ret_val) {
+  (void)bundle;
   if (root_function_.get() == nullptr) {
     LOGE(
         "lepus-Execute: root_function_ is nullptr, template.lepus may be "
@@ -95,7 +89,6 @@ bool VMContext::ExecuteBinaryInternal(RestrictedValue* ret_val) {
   }
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, VM_CONTEXT_EXECUTE);
-  EnsureLynx();
 
   auto* top = heap().top_++;
   top->SetRefCounted(
@@ -115,9 +108,11 @@ bool VMContext::ExecuteBinaryInternal(RestrictedValue* ret_val) {
     current_frame_ = nullptr;
   }
   executed_ = true;
-  if (ret_val) {
-    *ret_val = ret;
-  }
+
+  // TODO(wangboyong): check ret type
+  // if (ret_val) {
+  //   *ret_val = ret;
+  // }
   return true;
 }
 
@@ -158,7 +153,6 @@ Value VMContext::CallArgs(const base::String& name, const Value* args[],
               [&](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("name", name.str());
               });
-  ScriptingScope scope(this);
 
   if (auto function = CallPrologue(name); function != nullptr) {
     for (size_t i = 0; i < args_count; ++i) {
@@ -172,7 +166,6 @@ Value VMContext::CallArgs(const base::String& name, const Value* args[],
 Value VMContext::CallClosureArgs(const Value& closure, const Value* args[],
                                  size_t args_count) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, VM_CONTEXT_CALL_CLOSURE);
-  ScriptingScope scope(this);
 
   Value ret;
   auto* function = heap_.top_;
@@ -486,7 +479,9 @@ void VMContext::ReportLogBox(const std::string& exception_info, int& pc) {
   exception_info_ = "lepus exception:\n\n" + exception_info_;
   LOGE("lepus-ReportException: exception happened without catch "
        << this->exception_info_);
-  ReportError(exception_info_);
+  if (mts_context_delegate_) {
+    mts_context_delegate_->ReportError(exception_info_);
+  }
 }
 
 void VMContext::ReportException(const std::string& exception_info, int& pc,
@@ -562,8 +557,8 @@ void VMContext::ReportException(const std::string& exception_info, int& pc,
     exception_info_ = "lepus exception:\n\n" + exception_info_;
     LOGE("lepus-ReportException: exception happened without catch "
          << this->exception_info_);
-    if (report_logbox) {
-      ReportError(exception_info_, err_code);
+    if (report_logbox && mts_context_delegate_) {
+      mts_context_delegate_->ReportError(exception_info_, err_code);
     }
     return;
   } else {
@@ -619,7 +614,7 @@ std::string VMContext::BuildBackTrace(const base::Vector<int>& pc,
 void VMContext::SetDebugInfoURL(const std::string& url,
                                 const std::string& file_name) {
   debug_info_url_ = url;
-  Context::SetDebugInfoURL(url, file_name);
+  // Context::SetDebugInfoURL(url, file_name);
 }
 
 LEPUS_NOT_INLINE void VMContext::RunFrame_Op_Neg_UnlikelyPath(
@@ -1730,10 +1725,6 @@ lepus::Value VMContext::ReportFatalError(const std::string& error_message,
 
 lepus::Value VMContext::GetCurrentThis(lepus::Value* argv, int32_t offset) {
   return *(argv + offset);
-}
-
-void VMContext::EnableRuntimeLeakCheck(bool enable) {
-  // VMContext does not support `SetObjectCtxCheckStatus`;
 }
 
 }  // namespace lepus

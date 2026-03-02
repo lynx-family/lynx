@@ -11,7 +11,7 @@ namespace lepus_inspector {
 
 std::shared_ptr<LepusInspectedContext>
 LepusInspectedContextProvider::GetInspectedContext(
-    lynx::lepus::Context* context, LepusInspectorNGImpl* inspector,
+    lynx::lepus::MTSContext* context, LepusInspectorNGImpl* inspector,
     const std::string& name) {
   auto inspected_context =
       std::make_shared<LepusNGInspectedContextImpl>(inspector, context, name);

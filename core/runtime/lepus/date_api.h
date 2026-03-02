@@ -25,7 +25,7 @@ RestrictedValue Now(VMContext* context) {
   return RestrictedValue((uint64_t)current_time);
 }
 
-void RegisterDateAPI(Context* ctx) {
+void RegisterDateAPI(VMContext* ctx) {
   static BuiltinFunctionTable apis(BuiltinFunctionTable::Date,
                                    {
                                        {"now", &Now},

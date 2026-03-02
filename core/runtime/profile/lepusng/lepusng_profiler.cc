@@ -29,7 +29,7 @@ namespace profile {
 
 LepusNGProfiler::LepusNGProfiler(std::shared_ptr<lepus::Context> context) {
   if (context->IsLepusNGContext()) {
-    weak_context_ = std::static_pointer_cast<lepus::QuickContext>(context);
+    weak_context_ = context;
   }
 }
 
@@ -41,8 +41,10 @@ LepusNGProfiler::~LepusNGProfiler() {
 void LepusNGProfiler::StartProfiling(bool is_create) {
   auto task = [weak_context = weak_context_] {
     auto context = weak_context.lock();
-    if (context != nullptr && context->context()) {
-      StartCpuProfiler(context->context());
+    if (context != nullptr &&
+        lepus::Context::ToQuickContext(context.get())->context()) {
+      StartCpuProfiler(
+          lepus::Context::ToQuickContext(context.get())->context());
     }
   };
   RuntimeProfiler::StartProfiling(std::move(task), is_create);
@@ -53,12 +55,14 @@ std::unique_ptr<RuntimeProfile> LepusNGProfiler::StopProfiling(
   std::string runtime_profile = "";
   auto task = [&runtime_profile, weak_context = weak_context_] {
     auto context = weak_context.lock();
-    if (context != nullptr && context->context()) {
-      auto result = StopCpuProfiler(context->context());
-      runtime_profile =
-          lepus::LEPUSValueHelper::ToStdString(context->context(), result);
-      LEPUS_FreeValue(context->context(), result);
-      QJSDebuggerFree(context->context());
+    if (context != nullptr &&
+        lepus::Context::ToQuickContext(context.get())->context()) {
+      auto quick_context = lepus::Context::ToQuickContext(context.get());
+      auto result = StopCpuProfiler(quick_context->context());
+      runtime_profile = lepus::LEPUSValueHelper::ToStdString(
+          quick_context->context(), result);
+      LEPUS_FreeValue(quick_context->context(), result);
+      QJSDebuggerFree(quick_context->context());
     }
   };
 
@@ -73,9 +77,13 @@ std::unique_ptr<RuntimeProfile> LepusNGProfiler::StopProfiling(
 void LepusNGProfiler::SetupProfiling(int32_t sampling_interval) {
   auto task = [weak_context = weak_context_, sampling_interval] {
     auto context = weak_context.lock();
-    if (context != nullptr && context->context()) {
-      QJSDebuggerInitialize(context->context());
-      SetCpuProfilerInterval(context->context(), sampling_interval);
+    if (context != nullptr &&
+        lepus::Context::ToQuickContext(context.get())->context()) {
+      QJSDebuggerInitialize(
+          lepus::Context::ToQuickContext(context.get())->context());
+      SetCpuProfilerInterval(
+          lepus::Context::ToQuickContext(context.get())->context(),
+          sampling_interval);
     }
   };
 

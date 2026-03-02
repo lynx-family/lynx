@@ -334,12 +334,12 @@ static RestrictedValue DecodeURIComponent(VMContext* context) {
   return RestrictedValue(std::move(result));
 }
 
-void RegisterFunctionAPI(Context* ctx) {
-  RegisterBuiltinFunction(ctx, "parseInt", &ParseInt);
-  RegisterBuiltinFunction(ctx, "parseFloat", &ParseFloat);
-  RegisterBuiltinFunction(ctx, "isNaN", &IsNan);
-  RegisterBuiltinFunction(ctx, "encodeURIComponent", &EncodeURIComponent);
-  RegisterBuiltinFunction(ctx, "decodeURIComponent", &DecodeURIComponent);
+void RegisterFunctionAPI(VMContext* context) {
+  RegisterBuiltinFunction(context, "parseInt", &ParseInt);
+  RegisterBuiltinFunction(context, "parseFloat", &ParseFloat);
+  RegisterBuiltinFunction(context, "isNaN", &IsNan);
+  RegisterBuiltinFunction(context, "encodeURIComponent", &EncodeURIComponent);
+  RegisterBuiltinFunction(context, "decodeURIComponent", &DecodeURIComponent);
 }
 }  // namespace lepus
 }  // namespace lynx

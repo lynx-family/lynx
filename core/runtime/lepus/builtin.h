@@ -14,45 +14,45 @@
 
 namespace lynx {
 namespace lepus {
-void RegisterBuiltin(Context* context);
-void RegisterCFunction(Context* context, const char* name, CFunction function);
-void RegisterBuiltinFunction(Context* context, const char* name,
+void RegisterBuiltin(VMContext* context);
+void RegisterCFunction(VMContext* context, const char* name,
+                       CFunction function);
+void RegisterBuiltinFunction(VMContext* context, const char* name,
                              CFunction function);
-void RegisterBuiltinFunction(Context* context, const char* name,
+void RegisterBuiltinFunction(VMContext* context, const char* name,
                              CFunctionBuiltin function);
-void RegisterBuiltinFunctionTable(Context* context, const char* name,
+void RegisterBuiltinFunctionTable(VMContext* context, const char* name,
                                   BuiltinFunctionTable* function_table);
 
-void RegisterFunctionTable(Context* context, const char* name,
+void RegisterFunctionTable(VMContext* context, const char* name,
                            fml::RefPtr<Dictionary> function);
 
-void RegisterFunctionTable(Context* context, const char* name,
+void RegisterFunctionTable(VMContext* context, const char* name,
                            BuiltinFunctionTable* function_table);
 
-void RegisterTableFunction(Context* context,
+void RegisterTableFunction(VMContext* context,
                            const fml::RefPtr<Dictionary>& table,
                            const char* name, CFunction function);
-void RegisterTableFunction(Context* context,
+void RegisterTableFunction(VMContext* context,
                            const fml::RefPtr<Dictionary>& table,
                            const char* name, CFunctionBuiltin function);
-inline void RegisterNGCFunction(Context* ctx, const char* name,
+inline void RegisterNGCFunction(QuickContext* quick_ctx, const char* name,
                                 LEPUSCFunction* function) {
-  QuickContext* quick_ctx = QuickContext::Cast(ctx);
   quick_ctx->RegisterGlobalFunction(name, function);
   return;
 }
 
-inline void RegisterNGCFunction(Context* ctx,
+inline void RegisterNGCFunction(QuickContext* ctx,
                                 const RenderBindingFunction* funcs,
                                 size_t size) {
-  lepus::QuickContext::Cast(ctx)->RegisterGlobalFunction(funcs, size);
+  ctx->RegisterGlobalFunction(funcs, size);
   return;
 }
 
 inline void RegisterObjectNGCFunction(Context* ctx, lepus::Value& obj,
                                       const RenderBindingFunction* funcs,
                                       size_t size) {
-  auto* qctx = lepus::QuickContext::Cast(ctx);
+  auto* qctx = lepus::Context::ToQuickContext(ctx);
   qctx->RegisterObjectFunction(obj, funcs, size);
   return;
 }

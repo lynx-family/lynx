@@ -77,7 +77,8 @@ class WorkletAPITest : public ::testing::Test {
 
   void TearDown() override {}
 
-  std::shared_ptr<lepus::QuickContext> ctx_{new lepus::QuickContext()};
+  std::shared_ptr<lepus::Context> ctx_{
+      lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType)};
   runtime::js::NapiRuntimeProxy* napi_proxy_;
 
   lynx::tasm::ElementManager* manager_;  // Not Owned
@@ -91,7 +92,8 @@ TEST_F(WorkletAPITest, TestLepusLynxTriggerLepusBridge) {
         lepusLynx.triggerLepusBridge("xxx", {}, ()=>{});
     )";
 
-  lepus::BytecodeGenerator::GenerateBytecode(ctx_.get(), js_source, "");
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
   ctx_->Execute();
 
   EXPECT_EQ(delegate_->DumpDelegate(), "TriggerLepusMethodAsync\n");
@@ -111,7 +113,8 @@ TEST_F(WorkletAPITest, TestLepusLynxSetTimeoutCrash) {
             }, 1);
       )";
 
-  lepus::BytecodeGenerator::GenerateBytecode(ctx_.get(), js_source, "");
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
   ctx_->Execute();
 
   // sleep one second such that when exec loop.RunExpiredTasksNow(), the
@@ -131,7 +134,8 @@ TEST_F(WorkletAPITest, TestLepusLynxTriggerLepusBridgeSync) {
         lepusLynx.triggerLepusBridgeSync("xxx", {});
     )";
 
-  lepus::BytecodeGenerator::GenerateBytecode(ctx_.get(), js_source, "");
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
   ctx_->Execute();
 
   EXPECT_EQ(delegate_->DumpDelegate(), "TriggerLepusMethod\n");
@@ -145,9 +149,10 @@ TEST_F(WorkletAPITest, TestLepusGestureAPI) {
   auto lepus_gesture = std::unique_ptr<worklet::LepusGesture>(
       worklet::LepusGesture::Create(element->impl_id(), tasm_.get()));
 
+  auto lepus_context = lepus::Context::ToQuickContext(ctx_.get())->context();
   // Create and convert a Lepus value (integer 1) to a Napi value
-  auto js_1 = LEPUS_NewInt32(ctx_->context(), 1);
-  lepus::Value value_1 = MK_JS_LEPUS_VALUE(ctx_->context(), js_1);
+  auto js_1 = LEPUS_NewInt32(lepus_context, 1);
+  lepus::Value value_1 = MK_JS_LEPUS_VALUE(lepus_context, js_1);
   auto napi_value_1 = worklet::ValueConverter::ConvertLepusValueToNapiValue(
       tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
           ->napi_environment_.get()
@@ -156,8 +161,8 @@ TEST_F(WorkletAPITest, TestLepusGestureAPI) {
       value_1);
 
   // Create and convert another Lepus value (integer 2) to a Napi value
-  auto js_2 = LEPUS_NewInt32(ctx_->context(), 2);
-  lepus::Value value_2 = MK_JS_LEPUS_VALUE(ctx_->context(), js_2);
+  auto js_2 = LEPUS_NewInt32(lepus_context, 2);
+  lepus::Value value_2 = MK_JS_LEPUS_VALUE(lepus_context, js_2);
   auto napi_value_2 = worklet::ValueConverter::ConvertLepusValueToNapiValue(
       tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
           ->napi_environment_.get()
@@ -166,8 +171,8 @@ TEST_F(WorkletAPITest, TestLepusGestureAPI) {
       value_2);
 
   // Create and convert yet another Lepus value (integer 3) to a Napi value
-  auto js_3 = LEPUS_NewInt32(ctx_->context(), 3);
-  lepus::Value value_3 = MK_JS_LEPUS_VALUE(ctx_->context(), js_3);
+  auto js_3 = LEPUS_NewInt32(lepus_context, 3);
+  lepus::Value value_3 = MK_JS_LEPUS_VALUE(lepus_context, js_3);
   auto napi_value_3 = worklet::ValueConverter::ConvertLepusValueToNapiValue(
       tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
           ->napi_environment_.get()
@@ -195,7 +200,8 @@ TEST_F(WorkletAPITest, TestLepusLynxSetTimeout) {
   )";
 
   lynx::fml::MessageLoop::EnsureInitializedForCurrentThread();
-  lepus::BytecodeGenerator::GenerateBytecode(ctx_.get(), js_source, "");
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
   ctx_->Execute();
 
   auto* lynx = static_cast<worklet::NapiLoaderUI*>(
@@ -227,7 +233,8 @@ TEST_F(WorkletAPITest, TestLepusLynxClearTimeout) {
   )";
 
   lynx::fml::MessageLoop::EnsureInitializedForCurrentThread();
-  lepus::BytecodeGenerator::GenerateBytecode(ctx_.get(), js_source, "");
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
   ctx_->Execute();
 
   auto* lynx = static_cast<worklet::NapiLoaderUI*>(
@@ -243,7 +250,8 @@ TEST_F(WorkletAPITest, TestLepusLynxSetInterval) {
   )";
 
   lynx::fml::MessageLoop::EnsureInitializedForCurrentThread();
-  lepus::BytecodeGenerator::GenerateBytecode(ctx_.get(), js_source, "");
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
   ctx_->Execute();
 
   auto* lynx = static_cast<worklet::NapiLoaderUI*>(
@@ -260,7 +268,8 @@ TEST_F(WorkletAPITest, TestLepusLynxClearInterval) {
   )";
 
   lynx::fml::MessageLoop::EnsureInitializedForCurrentThread();
-  lepus::BytecodeGenerator::GenerateBytecode(ctx_.get(), js_source, "");
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
   ctx_->Execute();
 
   auto* lynx = static_cast<worklet::NapiLoaderUI*>(

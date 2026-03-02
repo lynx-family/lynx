@@ -28,7 +28,7 @@ TEST_F(LepusStackMethods, TestDefaultStackSize) {
   lepus::QuickContext qctx;
   std::string src = "function entry(){let a=1;let b=1;return a+b;}";
   lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
-  qctx.Execute();
+  qctx.ExecuteBinaryWithBundle(nullptr, nullptr);
   LEPUSValue res = qctx.GetAndCall("entry", nullptr, 0);
   LEPUSValue expected_res = LEPUS_MKVAL(LEPUS_TAG_INT, 2);
   EXPECT_EQ(LEPUS_VALUE_GET_TAG(res), LEPUS_VALUE_GET_TAG(expected_res));
@@ -40,7 +40,7 @@ TEST_F(LepusStackMethods, TestSetNormalStackSize) {
   qctx.SetStackSize(1024 * 1024);
   std::string src = "function sayHello(){let a=1;let b=1;return a+b;}";
   lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
-  qctx.Execute();
+  qctx.ExecuteBinaryWithBundle(nullptr, nullptr);
   LEPUSValue res = qctx.GetAndCall("sayHello", nullptr, 0);
   LEPUSValue expected_res = LEPUS_MKVAL(LEPUS_TAG_INT, 2);
   EXPECT_EQ(LEPUS_VALUE_GET_TAG(res), LEPUS_VALUE_GET_TAG(expected_res));
@@ -52,7 +52,7 @@ TEST_F(LepusStackMethods, TestStackOverflow) {
   if (LEPUS_IsGCMode(qctx.context())) {
     std::string src = "function sayHello(){let a=1;let b=1;return a+b;}";
     lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
-    qctx.Execute();
+    qctx.ExecuteBinaryWithBundle(nullptr, nullptr);
     qctx.SetStackSize(1);
     LEPUSAtom name_atom =
         LEPUS_NewAtom(qctx.context(), std::string("sayHello").c_str());
@@ -72,7 +72,7 @@ TEST_F(LepusStackMethods, TestStackOverflow) {
   } else {
     std::string src = "function sayHello(){let a=1;let b=1;return a+b;}";
     lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
-    qctx.Execute();
+    qctx.ExecuteBinaryWithBundle(nullptr, nullptr);
     qctx.SetStackSize(1);
     LEPUSAtom name_atom =
         LEPUS_NewAtom(qctx.context(), std::string("sayHello").c_str());

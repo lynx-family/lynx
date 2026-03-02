@@ -13,6 +13,7 @@
 #include "core/runtime/lepus/binary_input_stream.h"
 #include "core/runtime/lepus/builtin.h"
 #include "core/runtime/lepus/bytecode_generator.h"
+#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/context_binary_writer.h"
 #include "core/runtime/lepus/exception.h"
 #include "core/runtime/lepus/js_object.h"
@@ -69,7 +70,7 @@ static int count = 0;
 
 #pragma clang diagnostic pop
 
-static lepus::Value EmptyFunc(lepus::Context* context, lepus::Value*, int) {
+static lepus::Value EmptyFunc(lepus::MTSContext* context, lepus::Value*, int) {
   ++count;
   // std::cout << count << std::endl;
   return lepus::Value();
@@ -169,10 +170,10 @@ static void Print_Value(const lepus::Value* val, std::ostream& output) {
   }
 }
 
-lepus::Value Print(lepus::Context* context, lepus::Value* argv, int argc) {
+lepus::Value Print(lepus::MTSContext* context, lepus::Value* argv, int argc) {
   long params_count = argc;
   for (long i = 0; i < params_count; i++) {
-    lepus::Value v(*lepus::VMContext::Cast(context)->GetParam(i));
+    lepus::Value v(static_cast<lepus::VMContext*>(context)->GetParam(i));
     std::ostringstream s;
     Print_Value(&v, s);
     LOGE(s.str());
@@ -180,7 +181,7 @@ lepus::Value Print(lepus::Context* context, lepus::Value* argv, int argc) {
   return lepus::Value();
 }
 
-static lepus::Value Assert(lepus::Context* context, lepus::Value* argv,
+static lepus::Value Assert(lepus::MTSContext* context, lepus::Value* argv,
                            int argc) {
   if (argv->IsTrue()) {
     return lepus::Value();
@@ -190,7 +191,7 @@ static lepus::Value Assert(lepus::Context* context, lepus::Value* argv,
   }
 }
 
-static lepus::Value Typeof(lepus::Context* context, lepus::Value* val,
+static lepus::Value Typeof(lepus::MTSContext* context, lepus::Value* val,
                            int argc) {
   switch (val->Type()) {
     case lepus::ValueType::Value_Nil:
@@ -227,16 +228,16 @@ static lepus::Value Typeof(lepus::Context* context, lepus::Value* val,
   return *val;
 }
 
-static lepus::Value SetFlag(lepus::Context* context, lepus::Value* parm1,
+static lepus::Value SetFlag(lepus::MTSContext* context, lepus::Value* parm1,
                             int argc) {
   if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
-    lepus::VMContext::Cast(context)->SetNullPropAsUndef(
-        lepus::VMContext::Cast(context)->GetParam(1)->Bool());
+    static_cast<lepus::VMContext*>(context)->SetNullPropAsUndef(
+        static_cast<lepus::VMContext*>(context)->GetParam(1)->Bool());
   }
   return lepus::Value();
 }
 
-static lepus::Value CheckArgs(lepus::Context* context, lepus::Value* param1,
+static lepus::Value CheckArgs(lepus::MTSContext* context, lepus::Value* param1,
                               int argc) {
   if (!param1->IsString()) {
     return context->ReportFatalError("arg is not string", false,
@@ -245,7 +246,7 @@ static lepus::Value CheckArgs(lepus::Context* context, lepus::Value* param1,
   return *param1;
 }
 
-void RegisterBuiltin(lepus::VMContext* context) {
+void RegisterBuiltinTest(lepus::VMContext* context) {
   lepus::RegisterCFunction(context, kCFuncCreatePage, &EmptyFunc);
   lepus::RegisterCFunction(context, kCFuncAttachPage, &EmptyFunc);
   lepus::RegisterCFunction(context, kCFuncCreateVirtualComponent, &EmptyFunc);
@@ -281,7 +282,10 @@ void RegisterBuiltin(lepus::VMContext* context) {
 
 class TestLepus : public lynx::lepus::ContextBinaryWriter {
  public:
-  TestLepus() : lynx::lepus::ContextBinaryWriter(new lynx::lepus::VMContext) {}
+  TestLepus()
+      : lynx::lepus::ContextBinaryWriter(
+            new lynx::lepus::Context(lynx::lepus::ContextType::VMContextType,
+                                     false, 0, lynx::tasm::PageOptions())) {}
   ~TestLepus() { delete context_; }
 
   static const char* input;
@@ -291,10 +295,10 @@ class TestLepus : public lynx::lepus::ContextBinaryWriter {
       lepus_resource = lepus::readFile(TestLepus::input);
     }
     context_->Initialize();
-    RegisterBuiltin(lynx::lepus::VMContext::Cast(context_));
-    lynx::lepus::VMContext::Cast(context_)->SetClosureFix(true);
+    RegisterBuiltinTest(lynx::lepus::Context::ToVMContext(context_));
+    lynx::lepus::Context::ToVMContext(context_)->SetClosureFix(true);
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
-        context_, lepus_resource, "2.6");
+        context_->GetMTSContext(), lepus_resource, "2.6");
 
     if (!error.empty()) {
       LOGE("error: compile  failed:" << error << "\n");
@@ -463,19 +467,21 @@ void RegisterQuickBuiltins(lepus::QuickContext* ctx) {
 class TestLepusNG : public lynx::lepus::ContextBinaryWriter {
  public:
   TestLepusNG()
-      : lynx::lepus::ContextBinaryWriter(new lynx::lepus::QuickContext) {}
+      : lynx::lepus::ContextBinaryWriter(new lynx::lepus::Context(
+            lynx::lepus::ContextType::LepusNGContextType, false, 0,
+            lynx::tasm::PageOptions())) {}
   void Run(const char* input, const char* source) {
     std::string lepus_resource = source;
     if (strcmp(source, "") == 0) {
       lepus_resource = lepus::readFile(input);
     }
 
-    lepus::QuickContext ctx;
-    RegisterQuickBuiltins(&ctx);
-    ctx.Initialize();
+    lepus::QuickContext* ctx = lynx::lepus::Context::ToQuickContext(context_);
+    RegisterQuickBuiltins(ctx);
+    ctx->Initialize();
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
-        &ctx, lepus_resource, "");
-    ctx.Execute();
+        context_->GetMTSContext(), lepus_resource, "");
+    context_->Execute();
   }
 };
 

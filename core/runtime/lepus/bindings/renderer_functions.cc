@@ -145,32 +145,38 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
 
 }  // namespace
 
-#define RENDERER_FUNCTION_CC(name)                          \
-  lepus::Value RendererFunctions::name(lepus::Context* ctx, \
+#define LEPUS_MTS_CONTEXT() ctx
+#define LEPUS_CONTEXT() lepus::Context::ToContext(ctx)
+
+#define RENDERER_FUNCTION_CC(name)                             \
+  lepus::Value RendererFunctions::name(lepus::MTSContext* ctx, \
                                        lepus::Value* argv, int argc)
 
 #define CONVERT_ARG(name, index) lepus::Value* name = argv + index;
 
-#define CHECK_ARGC_EQ(name, count)                                    \
-  do {                                                                \
-    if (argc != (count)) {                                            \
-      return RenderFatal(ctx, #name " param size should be " #count); \
-    }                                                                 \
+#define CHECK_ARGC_EQ(name, count)                               \
+  do {                                                           \
+    if (argc != (count)) {                                       \
+      return RenderFatal(LEPUS_CONTEXT(),                        \
+                         #name " param size should be " #count); \
+    }                                                            \
   } while (0)
 
-#define CONVERT_ARG_AND_CHECK(name, index, Type, FunName)                     \
-  lepus::Value* name = argv + (index);                                        \
-  do {                                                                        \
-    if (!name->Is##Type()) {                                                  \
-      return RenderFatal(ctx, #FunName " param " #index " should be " #Type); \
-    }                                                                         \
-  } while (0)
-
-#define CHECK_ARGC_GE(name, now_argc)                                    \
+#define CONVERT_ARG_AND_CHECK(name, index, Type, FunName)                \
+  lepus::Value* name = argv + (index);                                   \
   do {                                                                   \
-    if (argc < (now_argc)) {                                             \
-      return RenderFatal(ctx, #name " param size should >= " #now_argc); \
+    if (!name->Is##Type()) {                                             \
+      return RenderFatal(LEPUS_CONTEXT(),                                \
+                         #FunName " param " #index " should be " #Type); \
     }                                                                    \
+  } while (0)
+
+#define CHECK_ARGC_GE(name, now_argc)                               \
+  do {                                                              \
+    if (argc < (now_argc)) {                                        \
+      return RenderFatal(LEPUS_CONTEXT(),                           \
+                         #name " param size should >= " #now_argc); \
+    }                                                               \
   } while (0)
 
 #define ARGC() argc
@@ -182,7 +188,6 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
 #define RETURN(v) return (v)
 #define RETURN_UNDEFINED() return lepus::Value();
 
-#define LEPUS_CONTEXT() ctx
 #define GET_TASM_POINTER() \
   static_cast<TemplateAssembler*>(LEPUS_CONTEXT()->GetDelegate())
 
@@ -328,7 +333,7 @@ RadonComponent* GetRadonComponent(lepus::Context* context, lepus::Value* arg) {
   return nullptr;
 }
 
-void InnerThemeReplaceParams(lepus::Context* ctx, std::string& retStr,
+void InnerThemeReplaceParams(lepus::MTSContext* ctx, std::string& retStr,
                              lepus::Value* argv, int argc,
                              int paramStartIndex) {
   const int params_size = argc;
@@ -359,7 +364,7 @@ void InnerThemeReplaceParams(lepus::Context* ctx, std::string& retStr,
   } while (static_cast<size_t>(startPos) < retStr.size());
 }
 
-lepus::Value InnerTranslateResourceForTheme(lepus::Context* ctx,
+lepus::Value InnerTranslateResourceForTheme(lepus::MTSContext* ctx,
                                             lepus::Value* argv, int argc,
                                             const char* keyIn) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, INNER_TRANSLATE_RESOURCE_FOR_THEME);
@@ -1411,7 +1416,7 @@ RENDERER_FUNCTION_CC(SetValueToMap) {
 
 RENDERER_FUNCTION_CC(AttachPage) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ATTACH_PAGE);
-  LOGI("AttachPage" << ctx);
+  LOGI("AttachPage" << LEPUS_CONTEXT());
   CHECK_ARGC_EQ(AttachPage, 2);
   CONVERT_ARG_AND_CHECK(arg0, 0, CPointer, AttachPage);
   CONVERT_ARG_AND_CHECK(arg1, 1, CPointer, AttachPage);
@@ -1511,7 +1516,7 @@ RENDERER_FUNCTION_CC(CreateVirtualComponent) {
     component_instance_id = static_cast<int>(arg4->Number());
   }
 
-  lepus::Context* context = ctx;
+  lepus::Context* context = LEPUS_CONTEXT();
   auto* self = GET_TASM_POINTER();
   auto cm_pair = self->FindComponentMould(context->name(), component_name, tid);
   ComponentMould* mould = cm_pair.first;
@@ -1694,9 +1699,8 @@ RENDERER_FUNCTION_CC(SetScriptEventTo) {
   RETURN_UNDEFINED();
 }
 
-std::unique_ptr<ListComponentInfo> ComponentInfoFromContext(lepus::Context* ctx,
-                                                            lepus::Value* argv,
-                                                            int argc) {
+std::unique_ptr<ListComponentInfo> ComponentInfoFromContext(
+    lepus::Context* context, lepus::Value* argv, int argc) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, COMPONENT_INFO_FROM_CONTEXT);
   CONVERT_ARG(name, 1);
   CONVERT_ARG(data, 2);
@@ -1717,7 +1721,7 @@ std::unique_ptr<ListComponentInfo> ComponentInfoFromContext(lepus::Context* ctx,
   }
 
   return std::make_unique<ListComponentInfo>(
-      name->StdString(), LEPUS_CONTEXT()->name(), CONVERT(data), CONVERT(props),
+      name->StdString(), context->name(), CONVERT(data), CONVERT(props),
       CONVERT(ids), CONVERT(style), CONVERT(clazz), CONVERT(event),
       CONVERT(dataset), CONVERT(&comp_type));
 }
@@ -1730,7 +1734,7 @@ RENDERER_FUNCTION_CC(AppendListComponentInfo) {
       static_cast<RadonListBase*>(reinterpret_cast<RadonBase*>(arg0->CPoint()));
   ListNode* list = static_cast<ListNode*>(radon_list);
 
-  auto info = ComponentInfoFromContext(ctx, argv, argc);
+  auto info = ComponentInfoFromContext(LEPUS_CONTEXT(), argv, argc);
   list->AppendComponentInfo(std::move(info));
   RETURN_UNDEFINED();
 }
@@ -1792,7 +1796,7 @@ RENDERER_FUNCTION_CC(SetStyleTo) {
   CONVERT_ARG(arg2, 2);
 
   if (!arg1->IsString() && !arg1->IsNumber()) {
-    RenderFatal(ctx, "SetStyleTo Params1 type error:%d",
+    RenderFatal(LEPUS_CONTEXT(), "SetStyleTo Params1 type error:%d",
                 static_cast<int>(arg1->Type()));
   }
 
@@ -1981,18 +1985,18 @@ RENDERER_FUNCTION_CC(UpdateComponentInfo) {
   // CONVERT_ARG_AND_CHECK(arg2, 2, Array, UpdateComponentInfo);
   CONVERT_ARG(arg2, 2);
   CONVERT_ARG_AND_CHECK(arg3, 3, String, UpdateComponentInfo);
-  auto* component_info_storage = GetRadonComponent(ctx, arg0);
+  auto* component_info_storage = GetRadonComponent(LEPUS_CONTEXT(), arg0);
   lepus::Value slot1 = DCONVERT(arg2);
   lepus::Value slot2 = DCONVERT(arg3);
   if (!slot1.IsArrayOrJSArray()) {
-    RenderFatal(ctx, "UpdateComponentInfo: arg2 should be array");
+    RenderFatal(LEPUS_CONTEXT(), "UpdateComponentInfo: arg2 should be array");
   }
 
   if (component_info_storage) {
     auto key = arg1->String();
-    component_info_storage->GetComponentInfoMap(ctx->name())
+    component_info_storage->GetComponentInfoMap(LEPUS_CONTEXT()->name())
         .SetProperty(key, slot1);
-    component_info_storage->GetComponentPathMap(ctx->name())
+    component_info_storage->GetComponentPathMap(LEPUS_CONTEXT()->name())
         .SetProperty(key, slot2);
   }
   RETURN_UNDEFINED();
@@ -2002,11 +2006,12 @@ RENDERER_FUNCTION_CC(GetComponentInfo) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, GET_COMPONENT_INFO);
   CHECK_ARGC_EQ(GetComponentInfo, 1);
   CONVERT_ARG_AND_CHECK(arg0, 0, CPointer, GetComponentInfo);
-  auto* component_info_storage = GetRadonComponent(ctx, arg0);
+  auto* component_info_storage = GetRadonComponent(LEPUS_CONTEXT(), arg0);
   if (!component_info_storage) {
     RETURN_UNDEFINED();
   }
-  lepus::Value ret(component_info_storage->GetComponentInfoMap(ctx->name()));
+  lepus::Value ret(
+      component_info_storage->GetComponentInfoMap(LEPUS_CONTEXT()->name()));
   RETURN(ret);
 }
 
@@ -2441,7 +2446,8 @@ RENDERER_FUNCTION_CC(CreateVirtualListNode) {
 }
 
 RENDERER_FUNCTION_CC(ThemedTranslation) {
-  lepus::Value val = InnerTranslateResourceForTheme(ctx, argv, argc, nullptr);
+  lepus::Value val =
+      InnerTranslateResourceForTheme(LEPUS_MTS_CONTEXT(), argv, argc, nullptr);
   RETURN(val);
 }
 
@@ -2454,14 +2460,14 @@ RENDERER_FUNCTION_CC(ThemedTranslationLegacy) {
   CHECK_ARGC_GE(GetLazyLoadCount, 2);
   CONVERT_ARG(arg1, 1);
   if (arg1->IsString()) {
-    return ThemedTranslation(ctx, argv, argc);
+    return ThemedTranslation(LEPUS_MTS_CONTEXT(), argv, argc);
   }
   RETURN_UNDEFINED();
 }
 
 RENDERER_FUNCTION_CC(ThemedLanguageTranslation) {
-  lepus::Value val =
-      InnerTranslateResourceForTheme(ctx, argv, argc, "language");
+  lepus::Value val = InnerTranslateResourceForTheme(LEPUS_MTS_CONTEXT(), argv,
+                                                    argc, "language");
   RETURN(lepus::Value(val));
 }
 
@@ -4354,8 +4360,8 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
   }
 
   ForEachLepusValue(
-      *callbacks, [&element, LEPUS_CONTEXT()](const lepus::Value& index,
-                                              const lepus::Value& value) {
+      *callbacks, [&element, LEPUS_MTS_CONTEXT()](const lepus::Value& index,
+                                                  const lepus::Value& value) {
         BASE_STATIC_STRING_DECL(kName, "name");
         BASE_STATIC_STRING_DECL(kType, "type");
         BASE_STATIC_STRING_DECL(kFunction, "function");
@@ -5583,7 +5589,7 @@ RENDERER_FUNCTION_CC(FiberCreateElementWithProperties) {
         auto callbacks = param_3;
         element->RemoveAllEvents();
 
-        ForEachLepusValue(callbacks, [element, LEPUS_CONTEXT()](
+        ForEachLepusValue(callbacks, [element, LEPUS_MTS_CONTEXT()](
                                          const lepus::Value& index,
                                          const lepus::Value& value) {
           BASE_STATIC_STRING_DECL(kName, "name");
@@ -6061,7 +6067,7 @@ RENDERER_FUNCTION_CC(TriggerLepusBridge) {
           [](LEPUSContext* context, LEPUSValue value, int argc,
              LEPUSValue* argv) -> LEPUSValue { return LEPUS_UNDEFINED; };
       constexpr const static char* kCallback = "callback";
-      auto context = lepus::QuickContext::Cast(LEPUS_CONTEXT())->context();
+      auto context = lepus::Context::ToQuickContext(LEPUS_CONTEXT())->context();
       callback_closure = lepus::LepusValueFactory(context).CreatePtr(
           LEPUS_NewCFunction(context, default_callback, kCallback, 0));
     } else {
@@ -6287,7 +6293,7 @@ RENDERER_FUNCTION_CC(ProfileStart) {
   TRACE_EVENT_BEGIN(
       LYNX_TRACE_CATEGORY_JAVASCRIPT, nullptr,
       [&argc, &argv, &ctx](lynx::perfetto::EventContext event_context) {
-        HandleProfileNameAndOption(argc, argv, ctx, event_context);
+        HandleProfileNameAndOption(argc, argv, LEPUS_CONTEXT(), event_context);
       });
   RETURN_UNDEFINED();
 }
@@ -6304,7 +6310,7 @@ RENDERER_FUNCTION_CC(ProfileMark) {
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY_JAVASCRIPT, nullptr,
       [&argc, &argv, &ctx](lynx::perfetto::EventContext event_context) {
-        HandleProfileNameAndOption(argc, argv, ctx, event_context);
+        HandleProfileNameAndOption(argc, argv, LEPUS_CONTEXT(), event_context);
       });
   RETURN_UNDEFINED();
 }

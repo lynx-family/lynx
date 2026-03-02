@@ -2,30 +2,34 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
-lynx_lepus_common_sources = [
-  "../lepusng/lynx_api_context_lepusng.h",
-  "//${lynx_dir}/core/runtime/lepus/base_binary_reader.cc",
-  "//${lynx_dir}/core/runtime/lepus/binary_input_stream.cc",
-  "base_api.h",
-  "base_binary_reader.h",
-  "binary_input_stream.h",
-  "binary_reader.cc",
-  "binary_reader.h",
-  "builtin.cc",
-  "builtin.h",
-  "builtin_function_table.h",
-  "context.cc",
-  "context.h",
-  "js_object.cc",
-  "js_object.h",
-  "json_api.h",
-  "json_parser.cc",
-  "json_parser.h",
-  "lepus_context_cell.h",
-  "lepus_error_helper.cc",
-  "lepus_error_helper.h",
-  "lynx_value_extended.cc",
-]
+# Select OSS/non-OSS implementation for runtime isolation.
+import("//${lynx_dir}/build_overrides/lepus_context_factory_files.gni")
+lynx_lepus_common_sources =
+    [
+      "../lepusng/lynx_api_context_lepusng.h",
+      "//${lynx_dir}/core/runtime/lepus/base_binary_reader.cc",
+      "//${lynx_dir}/core/runtime/lepus/binary_input_stream.cc",
+      "base_api.h",
+      "base_binary_reader.h",
+      "binary_input_stream.h",
+      "binary_reader.cc",
+      "binary_reader.h",
+      "builtin.cc",
+      "builtin.h",
+      "builtin_function_table.h",
+      "context.cc",
+      "context.h",
+      "js_object.cc",
+      "js_object.h",
+      "json_api.h",
+      "json_parser.cc",
+      "json_parser.h",
+      "lepus_context_cell.h",
+      "lepus_error_helper.cc",
+      "lepus_error_helper.h",
+      "lynx_value_extended.cc",
+      "mts_context_factory.h",
+    ] + mts_context_factory_sources
 
 lynx_lepus_common_sources_path =
     get_path_info(lynx_lepus_common_sources, "abspath")
@@ -58,6 +62,7 @@ lynx_lepus_core_sources = [
   "lepus_utils.h",
   "marco.h",
   "math_api.h",
+  "mts_context.h",
   "op_code.h",
   "output_stream.h",
   "regexp.h",

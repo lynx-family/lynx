@@ -207,7 +207,9 @@ bool LynxBinaryReader::GreedyDecodeLepusChunk(
   for (auto it = start_offsets.begin(); it != start_offsets.end(); ++it) {
     stream_->Seek(lepus_chunk_route_.descriptor_offset_ + it->second);
 
-    chunk_map[it->first] = lepus::ContextBundle::Create(is_lepusng_binary_);
+    chunk_map[it->first] = lepus::ContextBundle::Create(
+        is_lepusng_binary_ ? lepus::ContextType::LepusNGContextType
+                           : lepus::ContextType::VMContextType);
 
     ERROR_UNLESS(chunk_map[it->first]);
     ERROR_UNLESS(DecodeContextBundle(chunk_map[it->first].get()));
@@ -239,7 +241,9 @@ bool LynxBinaryReader::DecodeLepusChunkRoute() {
 bool LynxBinaryReader::DecodeContext() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, BINARY_READER_DECODE_CONTEXT);
   auto& tb = template_bundle();
-  tb.context_bundle_ = lepus::ContextBundle::Create(is_lepusng_binary_);
+  tb.context_bundle_ = lepus::ContextBundle::Create(
+      is_lepusng_binary_ ? lepus::ContextType::LepusNGContextType
+                         : lepus::ContextType::VMContextType);
 
   ERROR_UNLESS(tb.context_bundle_);
   ERROR_UNLESS(DecodeContextBundle(tb.context_bundle_.get()));

@@ -11,7 +11,7 @@
 namespace lepus_inspector {
 
 LepusNGInspectedContextImpl::LepusNGInspectedContextImpl(
-    LepusInspectorNGImpl* inspector, lynx::lepus::Context* context,
+    LepusInspectorNGImpl* inspector, lynx::lepus::MTSContext* context,
     const std::string& name) {
   context_ = static_cast<lynx::lepus::QuickContext*>(context);
   runtime_ = nullptr;

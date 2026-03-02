@@ -12,7 +12,7 @@
 namespace lynx {
 namespace lepus {
 
-void RegisterLepusDateAPI(Context* ctx);
+void RegisterLepusDateAPI(VMContext* ctx);
 
 const RestrictedValue& GetDatePrototypeAPI(const base::String& key);
 

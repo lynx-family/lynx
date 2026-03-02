@@ -1275,13 +1275,13 @@ void TemplateAssembler::AddFont(const lepus::Value& font) {
   page_proxy()->element_manager()->AddFontFace(font);
 }
 
-void TemplateAssembler::PushRuntimeValidTid() {
+void TemplateAssembler::BindMTSRuntimeThread() {
   auto default_entry = FindEntry(tasm::DEFAULT_ENTRY_NAME);
   if (default_entry) {
     auto vm = default_entry->GetVm();
     if (vm) {
-      LOGE("PushRuntimeValidTid: " << this);
-      vm->PushContextValidTid();
+      LOGE("BindMTSRuntimeThread: " << this);
+      vm->BindCurrentThread();
     }
   }
 }
@@ -2356,10 +2356,8 @@ bool TemplateAssembler::FromBinary(const std::shared_ptr<TemplateEntry>& entry,
 
   auto input_stream =
       std::make_unique<lepus::ByteArrayInputStream>(std::move(source));
-
   auto reader = std::make_unique<TemplateBinaryReader>(this, entry.get(),
                                                        std::move(input_stream));
-
   reader->SetIsCardType(is_card);
   reader->SetTemplateUrl(url_.substr(0, url_.find("?")));
 

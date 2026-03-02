@@ -83,7 +83,7 @@ static RestrictedValue Assign(VMContext* context) {
   return *target;
 }
 
-void RegisterTableAPI(Context* ctx) {
+void RegisterTableAPI(VMContext* ctx) {
   static BuiltinFunctionTable apis(BuiltinFunctionTable::Object,
                                    {
                                        {"assign", &Assign},

@@ -61,13 +61,13 @@ void LepusInspectorSessionNGImpl::SendProtocolNotification(
 
 // LepusInspectorNGImpl begins.
 std::unique_ptr<LepusInspectorNG> LepusInspectorNG::Create(
-    lynx::lepus::Context* context, LepusInspectorClientNG* client,
+    lynx::lepus::MTSContext* context, LepusInspectorClientNG* client,
     const std::string& name) {
   return std::unique_ptr<LepusInspectorNG>(std::unique_ptr<LepusInspectorNG>(
       new LepusInspectorNGImpl(context, client, name)));
 }
 
-LepusInspectorNGImpl::LepusInspectorNGImpl(lynx::lepus::Context* context,
+LepusInspectorNGImpl::LepusInspectorNGImpl(lynx::lepus::MTSContext* context,
                                            LepusInspectorClientNG* client,
                                            const std::string& name)
     : client_(client) {

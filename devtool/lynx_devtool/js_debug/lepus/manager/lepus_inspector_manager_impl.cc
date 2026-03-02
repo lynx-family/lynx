@@ -12,10 +12,11 @@ namespace lynx {
 namespace lepus {
 
 void LepusInspectorManagerImpl::InitInspector(
-    Context* context, const std::shared_ptr<InspectorLepusObserver>& observer,
+    MTSContext* context,
+    const std::shared_ptr<InspectorLepusObserver>& observer,
     const std::string& context_name) {
   // Do not support debugging lazy components of non-LepusNG.
-  if (!context->IsLepusNGContext() &&
+  if (context->Type() != ContextType::LepusNGContextType &&
       (!observer->ShouldFetchDebugInfo() ||
        context_name != devtool::kLepusDefaultContextName)) {
     return;

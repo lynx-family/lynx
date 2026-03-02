@@ -14,6 +14,7 @@ namespace lynx {
 
 namespace lepus {
 class Context;
+class MTSContext;
 class Value;
 struct RenderBindingFunction;
 }  // namespace lepus
@@ -314,8 +315,8 @@ class Renderer {
   static void RegisterBuiltin(lepus::Context* context, ArchOption option);
 
  private:
-  static lepus::Value SlotFunction(lepus::Context* context, lepus::Value* args,
-                                   int size);
+  static lepus::Value SlotFunction(lepus::MTSContext* context,
+                                   lepus::Value* args, int size);
   static const lepus::RenderBindingFunction* GetBuiltinFunctionsForRadon(
       int32_t& size);
   static const lepus::RenderBindingFunction* GetBuiltinFunctionsForFiber(

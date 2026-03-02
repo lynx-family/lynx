@@ -7,8 +7,8 @@
 namespace lynx {
 namespace tasm {
 
-#define RENDERER_FUNCTION_CC(name)                          \
-  lepus::Value RendererFunctions::name(lepus::Context* ctx, \
+#define RENDERER_FUNCTION_CC(name)                             \
+  lepus::Value RendererFunctions::name(lepus::MTSContext* ctx, \
                                        lepus::Value* argv, int argc)
 
 #define RETURN_UNDEFINED() return lepus::Value();

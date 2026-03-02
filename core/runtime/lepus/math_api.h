@@ -153,7 +153,7 @@ RestrictedValue Tan(VMContext* context) {
   return RestrictedValue(tan(arg->Number()));
 }
 
-void RegisterMathAPI(Context* ctx) {
+void RegisterMathAPI(VMContext* ctx) {
   static BuiltinFunctionTable apis(BuiltinFunctionTable::Math,
                                    {
                                        {"sin", &Sin},

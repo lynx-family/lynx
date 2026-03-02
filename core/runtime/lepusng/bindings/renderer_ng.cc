@@ -167,7 +167,7 @@ lepus::Value Utils::CreateLepusModule(lepus::Context* context,
   return obj;
 }
 
-lepus::Value Renderer::SlotFunction(lepus::Context* context, lepus::Value*,
+lepus::Value Renderer::SlotFunction(lepus::MTSContext* context, lepus::Value*,
                                     int size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, SLOT_FUNCTION);
   return lepus::Value();

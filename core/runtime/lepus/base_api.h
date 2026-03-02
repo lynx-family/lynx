@@ -9,7 +9,7 @@
 namespace lynx {
 namespace lepus {
 
-void RegisterBaseAPI(Context* ctx);
+void RegisterBaseAPI(VMContext* ctx);
 const RestrictedValue& GetNumberPrototypeAPI(const base::String& key);
 
 }  // namespace lepus

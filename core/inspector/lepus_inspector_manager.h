@@ -11,14 +11,15 @@
 namespace lynx {
 namespace lepus {
 class InspectorLepusObserver;
-class Context;
+class MTSContext;
 
 class LepusInspectorManager {
  public:
   virtual ~LepusInspectorManager() = default;
 
   virtual void InitInspector(
-      Context* context, const std::shared_ptr<InspectorLepusObserver>& observer,
+      MTSContext* context,
+      const std::shared_ptr<InspectorLepusObserver>& observer,
       const std::string& context_name) = 0;
   virtual void SetDebugInfo(const std::string& debug_info_url,
                             const std::string& file_name) = 0;
