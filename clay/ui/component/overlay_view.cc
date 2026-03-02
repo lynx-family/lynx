@@ -115,7 +115,17 @@ bool OverlayView::HitTest(const PointerEvent& event, HitTestResult& result,
     // overlay itself.
     is_pass_through = true;
     result.pop_back();
+    if (!result.empty()) {
+      // Insert a null elememt as a boundary symbol. It will be checked
+      // in gesture_manager after hittest.
+      result.emplace_back();
+    }
     return !result.empty();
+  }
+  if (!result.empty()) {
+    // Insert a null elememt as a boundary symbol. It will be checked
+    // in gesture_manager after hittest.
+    result.emplace_back();
   }
   return ret;
 }
