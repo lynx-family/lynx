@@ -3869,14 +3869,6 @@ void FiberElement::SetCSSID(int32_t id) {
   }
 }
 
-FiberElement *FiberElement::root_virtual_parent() {
-  FiberElement *root_virtual = static_cast<FiberElement *>(virtual_parent_);
-  while (root_virtual && root_virtual->virtual_parent() != nullptr) {
-    root_virtual = root_virtual->virtual_parent();
-  }
-  return root_virtual;
-}
-
 void FiberElement::ResetSheetRecursively(
     const std::shared_ptr<CSSStyleSheetManager> &manager) {
   if (is_page() || is_component() || css_id_ != kInvalidCssId) {

@@ -2194,5 +2194,13 @@ void Element::UpdateGlobalInsertionOrder() {
   global_insertion_order_ = element_manager()->GenerateGlobalInsertionOrder();
 }
 
+Element* Element::root_virtual_parent() {
+  Element* root_virtual = virtual_parent_;
+  while (root_virtual && root_virtual->virtual_parent() != nullptr) {
+    root_virtual = root_virtual->virtual_parent();
+  }
+  return root_virtual;
+}
+
 }  // namespace tasm
 }  // namespace lynx

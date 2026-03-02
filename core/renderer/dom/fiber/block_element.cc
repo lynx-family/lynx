@@ -54,7 +54,8 @@ void BlockElement::RemoveAllBlockNodes() {
 
 size_t BlockElement::FindInsertIndex(const fml::RefPtr<FiberElement> &child) {
   size_t offset = 0;
-  FiberElement *virtual_parent = this->virtual_parent();
+  FiberElement *virtual_parent =
+      static_cast<FiberElement *>(this->virtual_parent());
   FiberElement *current = this;
 
   // If there are multiple virtual nodes from child to the parent node, it is
@@ -77,7 +78,8 @@ size_t BlockElement::FindInsertIndex(const fml::RefPtr<FiberElement> &child) {
       }
     }
     current = virtual_parent;
-    virtual_parent = virtual_parent->virtual_parent();
+    virtual_parent =
+        static_cast<FiberElement *>(virtual_parent->virtual_parent());
     offset = offset + idx;
   }
 

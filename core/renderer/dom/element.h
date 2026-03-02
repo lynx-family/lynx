@@ -308,22 +308,70 @@ class Element : public lepus::RefCounted,
   virtual void SetEventHandler(const base::String& name, EventHandler* handler);
   virtual void ResetEventHandlers();
 
-  // For js/lepus/worklet event handlers
+  /**
+   * Element API for adding js event
+   * @param name the binding event's name
+   * @param type the binding event's type
+   * @param callback the binding event's corresponding js function name
+   */
   void SetJSEventHandler(const base::String& name, const base::String& type,
                          const base::String& callback);
+
+  /**
+   * Element API for adding lepus event
+   * @param name the binding event's name
+   * @param type the binding event's type
+   * @param script the binding event's corresponding lepus script
+   * @param callback the binding event's corresponding lepus function
+   */
   void SetLepusEventHandler(const base::String& name, const base::String& type,
                             const lepus::Value& script,
                             const lepus::Value& callback);
+
+  /**
+   * Element API for adding worklet event
+   * @param name the binding worklet event's name
+   * @param type the binding worklet event's type
+   * @param worklet_info the binding worklet info, passed to the front-end
+   * @param ctx the context of Lepus / LepusNg
+   * framework
+   */
   void SetWorkletEventHandler(const base::String& name,
                               const base::String& type,
                               const lepus::Value& worklet_info,
                               lepus::Context* ctx);
+
+  /**
+   * Element API for removing specific event
+   * @param name the removed event's name
+   * @param type the removed event's type
+   */
   void RemoveEvent(const base::String& name, const base::String& type);
+
+  /**
+   * Element API for removing all events
+   */
   void RemoveAllEvents();
 
-  // For config op
+  /**
+   * Element API for adding config.
+   * @param key the config key,
+   * @param value the config value.
+   */
   void AddConfig(const base::String& key, const lepus::Value& value);
+
+  /**
+   * Element API for setting config.
+   * @param config the config will be setted,
+   */
   void SetConfig(const lepus::Value& config);
+
+  /**
+   * A key function to get element's config.
+   * The returned value is constant. You should not get Table() from
+   * the value and change configs. Use AddConfig() instead which will
+   * guarantee this element creates a writable config table.
+   */
   const lepus::Value config() const;
 
   // For gesture handler
@@ -413,6 +461,115 @@ class Element : public lepus::RefCounted,
 
   bool IsRadonArch() const { return arch_type_ == RadonArch; }
   bool IsFiberArch() const { return arch_type_ == FiberArch; }
+
+  // Element type checking methods
+  virtual bool is_none() const { return false; }
+  virtual bool is_block() const { return false; }
+  virtual bool is_if() const { return false; }
+  virtual bool is_for() const { return false; }
+  bool is_inline_element() const { return is_inline_element_; }
+
+  // Virtual parent node access methods (for AirModeFiber)
+  void set_virtual_parent(Element* virtual_parent) {
+    virtual_parent_ = virtual_parent;
+  }
+  Element* virtual_parent() { return virtual_parent_; }
+  Element* root_virtual_parent();
+
+  // Parent component unique ID access methods
+  int64_t GetParentComponentUniqueIdForFiber() {
+    return parent_component_unique_id_;
+  }
+
+  void SetParentComponentUniqueIdForFiber(int64_t id) {
+    if (id != parent_component_unique_id_) {
+      parent_component_element_ = nullptr;
+    }
+    parent_component_unique_id_ = id;
+  }
+
+  bool IsInSameCSSScope(Element* element) {
+    return css_id_ == element->css_id_;
+  }
+
+  // This interface is currently only used by the inspector. The inspector
+  // determines whether an element is created by the itself by checking whether
+  // element has a data model. Since the data model of a fiber element is not
+  // empty by default, this interface is provided to the inspector to reset the
+  // data model and mark the element as created by the inspector.
+  void ResetDataModel() { data_model_ = nullptr; }
+
+  void MarkCanBeLayoutOnly(bool flag) { can_be_layout_only_ = flag; }
+
+  // Async resolve status query methods
+  void UpdateResolveStatus(AsyncResolveStatus value) {
+    resolve_status_ = value;
+  }
+
+  bool IsAsyncResolveInvoked() {
+    return resolve_status_ != AsyncResolveStatus::kCreated &&
+           resolve_status_ != AsyncResolveStatus::kUpdated;
+  }
+
+  bool IsAsyncResolveResolving() {
+    return resolve_status_ == AsyncResolveStatus::kResolving ||
+           resolve_status_ == AsyncResolveStatus::kResolved ||
+           resolve_status_ == AsyncResolveStatus::kPreparing ||
+           resolve_status_ == AsyncResolveStatus::kSyncResolving;
+  }
+
+  bool flush_required() { return flush_required_; }
+
+  inline bool ShouldProcessParallelTasks() {
+    return is_parallel_flush() ||
+           resolve_status_ == AsyncResolveStatus::kSyncResolving;
+  }
+
+  inline bool ShouldResolveStyle() {
+    return !IsAsyncResolveResolving() && ((dirty_ & ~kDirtyTree) != 0);
+  }
+
+  inline void EnqueueReduceTask(base::MoveOnlyClosure<void> operation) {
+    parallel_reduce_tasks_->emplace_back(std::move(operation));
+  }
+
+  inline bool IsAsyncFlushRoot() const { return is_async_flush_root_; }
+  inline void MarkAsyncFlushRoot(bool value) { is_async_flush_root_ = value; }
+
+  // Data model accessor methods
+  const ClassList& classes() { return data_model_->classes(); }
+
+  ClassList ReleaseClasses() { return data_model_->ReleaseClasses(); }
+
+  const base::String& GetIdSelector() { return data_model_->idSelector(); }
+
+  const DataMap& dataset() { return data_model_->dataset(); }
+
+  // Check has_value() before usage to avoid unintentional construction.
+  const auto& builtin_attr_map() const { return builtin_attr_map_; }
+
+  // Check has_value() before usage to avoid unintentional construction.
+  const auto& updated_attr_map() const { return updated_attr_map_; }
+
+  void set_style_sheet_manager(
+      const std::shared_ptr<CSSStyleSheetManager>& manager) {
+    css_style_sheet_manager_ = manager;
+  }
+
+  const std::shared_ptr<CSSStyleSheetManager>& style_sheet_manager() {
+    return css_style_sheet_manager_;
+  }
+
+  void set_attached_to_layout_parent(bool has) {
+    attached_to_layout_parent_ = has;
+  }
+  bool attached_to_layout_parent() const { return attached_to_layout_parent_; }
+
+  void UpdateAttrMap(const base::String& key, const lepus::Value& value) {
+    updated_attr_map_[key] = value;
+  }
+
+  void MarkAttrDirtyForPseudoElement() { dirty_ |= kDirtyAttr; }
 
   void UpdateLayout(float left, float top, float width, float height,
                     const std::array<float, 4>& paddings,

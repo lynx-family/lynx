@@ -129,13 +129,6 @@ class FiberElement : public Element {
   // for Fiber specific
 
   bool is_wrapper() const override { return false; }
-  virtual bool is_none() const { return false; }
-
-  virtual bool is_block() const { return false; }
-  virtual bool is_if() const { return false; }
-  virtual bool is_for() const { return false; }
-
-  bool is_inline_element() const { return is_inline_element_; }
 
   bool is_list_item() const { return is_list_item_; }
 
@@ -170,16 +163,7 @@ class FiberElement : public Element {
    */
   virtual void FlushActionsAsRoot();
 
-  // This interface is currently only used by the inspector. The inspector
-  // determines whether an element is created by the itself by checking whether
-  // element has a data model. Since the data model of a fiber element is not
-  // empty by default, this interface is provided to the inspector to reset the
-  // data model and mark the element as created by the inspector.
-  void ResetDataModel() { data_model_ = nullptr; }
-
   virtual bool CanBeLayoutOnly() const override;
-
-  void MarkCanBeLayoutOnly(bool flag) { can_be_layout_only_ = flag; }
 
   /**
    * A key function for flush all pending actions for current Element
@@ -213,22 +197,6 @@ class FiberElement : public Element {
 
   void AsyncPostResolveTaskToThreadPool();
 
-  void UpdateResolveStatus(AsyncResolveStatus value) {
-    resolve_status_ = value;
-  }
-
-  bool IsAsyncResolveInvoked() {
-    return resolve_status_ != AsyncResolveStatus::kCreated &&
-           resolve_status_ != AsyncResolveStatus::kUpdated;
-  }
-
-  bool IsAsyncResolveResolving() {
-    return resolve_status_ == AsyncResolveStatus::kResolving ||
-           resolve_status_ == AsyncResolveStatus::kResolved ||
-           resolve_status_ == AsyncResolveStatus::kPreparing ||
-           resolve_status_ == AsyncResolveStatus::kSyncResolving;
-  }
-
   /**
    * A key function for generating children's actions.
    */
@@ -240,17 +208,6 @@ class FiberElement : public Element {
 
   void HandleRemoveSelf(FiberElement* removal_point,
                         FiberElement* render_parent);
-
-  int64_t GetParentComponentUniqueIdForFiber() {
-    return parent_component_unique_id_;
-  }
-
-  void SetParentComponentUniqueIdForFiber(int64_t id) {
-    if (id != parent_component_unique_id_) {
-      parent_component_element_ = nullptr;
-    }
-    parent_component_unique_id_ = id;
-  }
 
   void SetParentComponentUniqueIdRecursively(int64_t id) {
     if (is_page()) {
@@ -534,25 +491,10 @@ class FiberElement : public Element {
   bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
                                    const lepus::Value changing_css_variables);
 
-  bool HasElementContainer() { return element_container_ != nullptr; }
-
-  void set_style_sheet_manager(
-      const std::shared_ptr<CSSStyleSheetManager>& manager) {
-    css_style_sheet_manager_ = manager;
-  }
-
-  const std::shared_ptr<CSSStyleSheetManager>& style_sheet_manager() {
-    return css_style_sheet_manager_;
-  }
-
   void ResetSheetRecursively(
       const std::shared_ptr<CSSStyleSheetManager>& manager);
 
   virtual void SetCSSID(int32_t id);
-
-  bool IsInSameCSSScope(FiberElement* element) {
-    return css_id_ == element->css_id_;
-  }
 
   const auto& children() const { return scoped_children_; }
 
@@ -567,29 +509,7 @@ class FiberElement : public Element {
     return scoped_children_.empty() ? nullptr : scoped_children_.back().get();
   };
 
-  // set/get virtual parent node in AirModeFiber
-  void set_virtual_parent(FiberElement* virtual_parent) {
-    virtual_parent_ = virtual_parent;
-  }
-  FiberElement* virtual_parent() {
-    return static_cast<FiberElement*>(virtual_parent_);
-  }
-  FiberElement* root_virtual_parent();
-
-  const ClassList& classes() { return data_model_->classes(); }
-
-  ClassList ReleaseClasses() { return data_model_->ReleaseClasses(); }
-
-  const base::String& GetIdSelector() { return data_model_->idSelector(); }
-
-  const DataMap& dataset() { return data_model_->dataset(); }
-
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
-
-  void set_attached_to_layout_parent(bool has) {
-    attached_to_layout_parent_ = has;
-  }
-  bool attached_to_layout_parent() const { return attached_to_layout_parent_; }
 
   // Helpers for finding non-virtual / non-wrapper nodes in the render tree
   // starting from the current element.
@@ -647,8 +567,6 @@ class FiberElement : public Element {
   // elements may be converted into inline elements.
   virtual void ConvertToInlineElement();
 
-  bool flush_required() { return flush_required_; }
-
   bool IsTemplateElement() const { return is_template_; }
 
   bool IsPartElement() const { return !part_id_.empty(); }
@@ -679,19 +597,7 @@ class FiberElement : public Element {
   virtual bool WillResolveStyle(StyleMap& merged_styles,
                                 CSSVariableMap* changed_css_vars) override;
 
-  // Check has_value() before usage to avoid unintentional construction.
-  const auto& builtin_attr_map() const { return builtin_attr_map_; }
-
-  // Check has_value() before usage to avoid unintentional construction.
-  const auto& updated_attr_map() const { return updated_attr_map_; }
-
   void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
-
-  void UpdateAttrMap(const base::String& key, const lepus::Value& value) {
-    updated_attr_map_[key] = value;
-  }
-
-  void MarkAttrDirtyForPseudoElement() { dirty_ |= kDirtyAttr; }
 
   void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
                                ElementContextDelegate* parent_context,
@@ -720,19 +626,6 @@ class FiberElement : public Element {
     return nullptr;
   }
 
-  inline bool ShouldProcessParallelTasks() {
-    return is_parallel_flush() ||
-           resolve_status_ == AsyncResolveStatus::kSyncResolving;
-  }
-
-  inline bool ShouldResolveStyle() {
-    return !IsAsyncResolveResolving() && ((dirty_ & ~kDirtyTree) != 0);
-  }
-
-  inline void EnqueueReduceTask(base::MoveOnlyClosure<void> operation) {
-    parallel_reduce_tasks_->emplace_back(std::move(operation));
-  }
-
   virtual int32_t GetMemoryUsage() const override { return sizeof(*this); }
 
   SLNode* GetLayoutObject() const override { return sl_node_.get(); }
@@ -744,8 +637,6 @@ class FiberElement : public Element {
 
     return nullptr;
   }
-  inline bool IsAsyncFlushRoot() const { return is_async_flush_root_; }
-  inline void MarkAsyncFlushRoot(bool value) { is_async_flush_root_ = value; }
 
   bool IsEventPathCatch(event::EventTarget* target,
                         event::Event* event) override;
