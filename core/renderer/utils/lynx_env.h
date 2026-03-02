@@ -138,6 +138,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
     ENABLE_LIST_NEW_ARCHITECTURE,
     ENABLE_FETCH_API_STANDARD_STREAMING,
+    ENABLE_ASYNC_EVAL_LEPUS_PENDING_TASK,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -287,6 +288,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
             {Key::FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE,
              "fix_animation_forward_dynamic_update_overwrite"},
+            {Key::ENABLE_ASYNC_EVAL_LEPUS_PENDING_TASK,
+             "enable_async_eval_lepus_pending_task"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -321,6 +324,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
 
   constexpr static const char* const kLyneEnableJSVMRuntime =
       "enable_jsvm_runtime";
+  constexpr static const char* const kEnableAsyncEvalLepusPendingTask =
+      "enable_async_eval_lepus_pending_task";
 
   static LynxEnv& GetInstance();
   static void onPiperInvoked(const std::string& module_name,
@@ -442,6 +447,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableFetchAPIStreamingStandard();
   bool FixNewFixedRemovalBug();
   bool FixAnimationForwardDynamicUpdateOverwrite();
+  bool EnableAsyncEvalLepusPendingTask();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

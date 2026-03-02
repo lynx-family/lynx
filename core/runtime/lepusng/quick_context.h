@@ -242,7 +242,7 @@ class QuickContext : private LEPUSRuntimeData,
 
   LEPUSValue GetProperty(const std::string& name, LEPUSValue this_obj);
 
-  void EvalLepusPendingTask();
+  void EvalLepusPendingTask(bool async = false);
   LEPUSValue top_level_function_;
   GCPersistent p_val_;
 

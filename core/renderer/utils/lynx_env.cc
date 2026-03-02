@@ -603,5 +603,9 @@ bool LynxEnv::FixNewFixedRemovalBug() {
 bool LynxEnv::FixAnimationForwardDynamicUpdateOverwrite() {
   return GetBoolEnv(Key::FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE, true);
 }
+
+bool LynxEnv::EnableAsyncEvalLepusPendingTask() {
+  return GetBoolEnv(Key::ENABLE_ASYNC_EVAL_LEPUS_PENDING_TASK, true);
+}
 }  // namespace tasm
 }  // namespace lynx
