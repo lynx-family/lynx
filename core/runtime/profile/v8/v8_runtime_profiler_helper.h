@@ -6,13 +6,16 @@
 
 #include <memory>
 
+#include "core/runtime/profile/v8/v8_runtime_profiler_wrapper.h"
+
 namespace lynx {
 namespace runtime {
 namespace profile {
 
 void AddSingleLynxTraceV8RuntimeProfiler(
     std::shared_ptr<lynx::runtime::profile::V8RuntimeProfilerWrapper>
-        runtime_profiler_wrapper);
+        runtime_profiler_wrapper,
+    bool is_main_thread = false);
 
 void RemoveSingleLynxTraceV8RuntimeProfiler();
 }  // namespace profile

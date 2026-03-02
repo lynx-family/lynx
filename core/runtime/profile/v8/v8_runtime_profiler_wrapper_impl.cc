@@ -61,7 +61,7 @@ void V8RuntimeProfilerWrapperImpl::StartProfiling() {
   }
 }
 
-std::unique_ptr<V8CpuProfile> V8RuntimeProfilerWrapperImpl::StopProfiling() {
+std::shared_ptr<V8CpuProfile> V8RuntimeProfilerWrapperImpl::StopProfiling() {
   if (cpu_profiler_ == nullptr || profiling_count_ <= 0) {
     // CpuProfiler hasn't Inited or Doesn't have JSContext is profiling
     return nullptr;
@@ -74,8 +74,8 @@ std::unique_ptr<V8CpuProfile> V8RuntimeProfilerWrapperImpl::StopProfiling() {
   }
   v8::CpuProfile* cpu_profile = cpu_profiler_->StopProfiling(title_);
   if (cpu_profile) {
-    std::unique_ptr<V8CpuProfile> runtime_profile =
-        std::make_unique<V8CpuProfile>();
+    std::shared_ptr<V8CpuProfile> runtime_profile =
+        std::make_shared<V8CpuProfile>();
     uint64_t last_timestamp = cpu_profile->GetStartTime();
     runtime_profile->start_timestamp = last_timestamp;
     runtime_profile->end_timestamp = cpu_profile->GetEndTime();

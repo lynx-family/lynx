@@ -23,7 +23,7 @@ class V8RuntimeProfilerWrapperImpl : public V8RuntimeProfilerWrapper {
   ~V8RuntimeProfilerWrapperImpl();
   void Initialize(std::shared_ptr<runtime::js::V8IsolateInstance> vm);
   virtual void StartProfiling() override;
-  virtual std::unique_ptr<V8CpuProfile> StopProfiling() override;
+  virtual std::shared_ptr<V8CpuProfile> StopProfiling() override;
   virtual void SetupProfiling(int32_t sampling_interval) override;
 
  private:

@@ -29,7 +29,7 @@ struct LYNX_EXPORT RuntimeProfile {
 class LYNX_EXPORT RuntimeProfiler
     : public std::enable_shared_from_this<RuntimeProfiler> {
  public:
-  RuntimeProfiler();
+  explicit RuntimeProfiler(bool is_main_thread = false);
   virtual ~RuntimeProfiler() = default;
 
   virtual void StartProfiling(bool is_create) = 0;
@@ -48,6 +48,9 @@ class LYNX_EXPORT RuntimeProfiler
   uint64_t track_id_;
   bool is_single_profiler_{false};
   fml::RefPtr<fml::TaskRunner> task_runner_{};
+#ifdef OS_WIN
+  bool is_main_thread_running_{false};
+#endif
 };
 
 }  // namespace profile

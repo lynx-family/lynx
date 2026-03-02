@@ -16,7 +16,8 @@ namespace profile {
 
 class V8RuntimeProfiler : public RuntimeProfiler {
  public:
-  explicit V8RuntimeProfiler(const std::shared_ptr<V8RuntimeProfilerWrapper>&);
+  explicit V8RuntimeProfiler(const std::shared_ptr<V8RuntimeProfilerWrapper>&,
+                             bool is_main_thread = false);
   ~V8RuntimeProfiler() override;
   virtual void StartProfiling(bool is_create) override;
   virtual std::unique_ptr<RuntimeProfile> StopProfiling(

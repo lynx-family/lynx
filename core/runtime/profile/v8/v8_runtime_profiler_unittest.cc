@@ -20,7 +20,7 @@ class V8RuntimeProfilerTest : public V8RuntimeProfilerWrapper {
   V8RuntimeProfilerTest() : profiling_count_(0) {}
   virtual ~V8RuntimeProfilerTest() = default;
   virtual void StartProfiling() override;
-  virtual std::unique_ptr<V8CpuProfile> StopProfiling() override;
+  virtual std::shared_ptr<V8CpuProfile> StopProfiling() override;
   virtual void SetupProfiling(int32_t sampling_interval) override;
   uint32_t profiling_count_;
 };
@@ -34,15 +34,15 @@ void V8RuntimeProfilerTest::SetupProfiling(int32_t sampling_interval) {
   printf("SetupProfiling: %d\n", sampling_interval);
 }
 
-std::unique_ptr<V8CpuProfile> V8RuntimeProfilerTest::StopProfiling() {
+std::shared_ptr<V8CpuProfile> V8RuntimeProfilerTest::StopProfiling() {
   if (profiling_count_ <= 0) {
     return nullptr;
   }
   profiling_count_--;
   printf("StopProfiling: %d\n", profiling_count_);
   if (profiling_count_ == 0) {
-    std::unique_ptr<V8CpuProfile> runtime_profile =
-        std::make_unique<V8CpuProfile>();
+    std::shared_ptr<V8CpuProfile> runtime_profile =
+        std::make_shared<V8CpuProfile>();
     runtime_profile->start_timestamp = 0;
     runtime_profile->end_timestamp = 1000;
     runtime_profile->samples.push_back(1);

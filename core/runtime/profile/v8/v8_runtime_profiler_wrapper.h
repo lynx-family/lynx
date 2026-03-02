@@ -54,7 +54,7 @@ class V8RuntimeProfilerWrapper {
   V8RuntimeProfilerWrapper() = default;
   virtual ~V8RuntimeProfilerWrapper() = default;
   virtual void StartProfiling() = 0;
-  virtual std::unique_ptr<V8CpuProfile> StopProfiling() = 0;
+  virtual std::shared_ptr<V8CpuProfile> StopProfiling() = 0;
   virtual void SetupProfiling(int32_t sampling_interval) = 0;
 };
 

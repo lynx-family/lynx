@@ -17,8 +17,8 @@ namespace runtime {
 namespace profile {
 
 V8RuntimeProfiler::V8RuntimeProfiler(
-    const std::shared_ptr<V8RuntimeProfilerWrapper>& impl)
-    : impl_(impl) {}
+    const std::shared_ptr<V8RuntimeProfilerWrapper>& impl, bool is_main_thread)
+    : RuntimeProfiler(is_main_thread), impl_(impl) {}
 
 V8RuntimeProfiler::~V8RuntimeProfiler() { impl_ = nullptr; }
 

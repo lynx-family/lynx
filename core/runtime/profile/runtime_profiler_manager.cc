@@ -39,8 +39,8 @@ void RuntimeProfilerManager::AddRuntimeProfiler(
     // corrupt profiling data or even crash the process. Enabling
     // RuntimeProfiler::EnableSingleInstancePerType(true) prevents duplicate v8
     // RuntimeProfiler registration.
-    std::lock_guard<std::mutex> lock(lock_);
     if (type == trace::RuntimeProfilerType::v8) {
+      std::lock_guard<std::mutex> inner_lock(lock_);
       if (add_single_v8_profiler_already_) {
         return;
       }
@@ -59,6 +59,7 @@ void RuntimeProfilerManager::AddRuntimeProfiler(
 
     auto track_id = lynx::perfetto::ThreadTrack::Current();
     runtime_profiler->SetTrackId(track_id);
+    std::lock_guard<std::mutex> lock(lock_);
     runtime_profilers_.emplace_back(runtime_profiler);
     if (is_started_ && type == js_profiler_type_) {
       runtime_profiler->SetupProfiling(js_profile_interval_);

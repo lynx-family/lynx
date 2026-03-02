@@ -19,7 +19,8 @@ static std::shared_ptr<lynx::runtime::profile::V8RuntimeProfiler>
 
 LYNX_EXPORT void AddSingleLynxTraceV8RuntimeProfiler(
     std::shared_ptr<lynx::runtime::profile::V8RuntimeProfilerWrapper>
-        runtime_profiler_wrapper) {
+        runtime_profiler_wrapper,
+    bool is_main_thread) {
 #if ENABLE_TRACE_PERFETTO
   if (runtime_profiler_wrapper == nullptr) {
     return;
@@ -32,7 +33,7 @@ LYNX_EXPORT void AddSingleLynxTraceV8RuntimeProfiler(
   }
   v8_runtime_profiler =
       std::make_shared<lynx::runtime::profile::V8RuntimeProfiler>(
-          runtime_profiler_wrapper);
+          runtime_profiler_wrapper, is_main_thread);
   v8_runtime_profiler->EnableSingleProfiler();
   lynx::runtime::profile::RuntimeProfilerManager::GetInstance()
       ->AddRuntimeProfiler(v8_runtime_profiler);
