@@ -69,6 +69,12 @@ class PlatformEventTargetHelper {
 
   void OffsetRect(float rect[4], float offset[2]);
 
+  void SetDevicePixelRatio(float device_pixel_ratio) {
+    device_pixel_ratio_ = device_pixel_ratio;
+  }
+
+  float GetDevicePixelRatio() { return device_pixel_ratio_; }
+
   void InvokeMethod(
       int32_t id, const std::string& method, const lepus::Value& params,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
@@ -79,6 +85,8 @@ class PlatformEventTargetHelper {
   // map from id to the EventTarget.
   base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformEventTarget>, 64>
       event_targets_;
+  // device pixel ratio of the current display.
+  float device_pixel_ratio_{1.0f};
 };
 
 }  // namespace tasm

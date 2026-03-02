@@ -43,7 +43,9 @@
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/services/timing_handler/timing_utils.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 #include "core/value_wrapper/value_impl_piper.h"
+#include "core/value_wrapper/value_wrapper_utils.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
 #include "third_party/rapidjson/reader.h"
@@ -3287,12 +3289,21 @@ void App::InvokeUIMethod(tasm::NodeSelectRoot root,
   auto rt = rt_.lock();
   if (rt) {
     Scope scope(*rt);
-    auto piper_value = std::make_unique<pub::ValueImplPiper>(*rt, *params);
-    auto prop_bundle = delegate_->CreatePropBundle();
-    prop_bundle->SetProps(*piper_value);
-    delegate_->InvokeUIMethod(std::move(root), std::move(options),
-                              std::move(method), std::move(prop_bundle),
-                              callback);
+    if (page_options_.IsFragmentLayerRender()) {
+      auto piper_value = std::make_unique<pub::ValueImplPiper>(*rt, *params);
+      auto lepus_value =
+          pub::ValueUtils::ConvertValueToLepusValue(*piper_value);
+      pub::ValueImplLepus invoke_params(std::move(lepus_value));
+      delegate_->InvokeUIMethod(std::move(root), std::move(options),
+                                std::move(method), invoke_params, callback);
+    } else {
+      auto piper_value = std::make_unique<pub::ValueImplPiper>(*rt, *params);
+      auto prop_bundle = delegate_->CreatePropBundle();
+      prop_bundle->SetProps(*piper_value);
+      delegate_->InvokeUIMethod(std::move(root), std::move(options),
+                                std::move(method), std::move(prop_bundle),
+                                callback);
+    }
   }
 }
 

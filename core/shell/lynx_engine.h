@@ -15,6 +15,7 @@
 #include "base/include/no_destructor.h"
 #include "core/event/event_dispatch_result.h"
 #include "core/public/prop_bundle.h"
+#include "core/public/pub_value.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/layout_scheduler/layout_scheduler.h"
@@ -39,6 +40,8 @@ class LynxEngine {
     Delegate() = default;
     ~Delegate() override = default;
 
+    using tasm::TemplateAssembler::Delegate::InvokeUIMethod;
+
     virtual void NotifyJSUpdatePageData() = 0;
     virtual void BindPipelineIDWithTimingFlag(
         const tasm::PipelineID& pipeline_id,
@@ -47,6 +50,11 @@ class LynxEngine {
         const tasm::PipelineID& pipeline_id,
         const tasm::PipelineOrigin& pipeline_origin,
         tasm::timing::TimestampUs pipeline_start_timestamp) override = 0;
+
+    virtual void InvokeUIMethod(tasm::LynxGetUIResult ui_result,
+                                const std::string& method,
+                                const pub::Value& params,
+                                runtime::js::ApiCallBack callback) = 0;
   };
 
   explicit LynxEngine(
@@ -263,6 +271,10 @@ class LynxEngine {
                       const tasm::NodeSelectOptions& options,
                       const std::string& method,
                       fml::RefPtr<tasm::PropBundle> params,
+                      runtime::js::ApiCallBack callback);
+  void InvokeUIMethod(const tasm::NodeSelectRoot& root,
+                      const tasm::NodeSelectOptions& options,
+                      const std::string& method, const pub::Value& params,
                       runtime::js::ApiCallBack callback);
 
   void GetPathInfo(const tasm::NodeSelectRoot& root,

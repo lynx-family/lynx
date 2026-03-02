@@ -251,6 +251,24 @@ void BTSRuntimeMediator::InvokeUIMethod(tasm::NodeSelectRoot root,
   });
 }
 
+void BTSRuntimeMediator::InvokeUIMethod(tasm::NodeSelectRoot root,
+                                        tasm::NodeSelectOptions options,
+                                        std::string method,
+                                        const pub::ValueImplLepus& params,
+                                        runtime::js::ApiCallBack callback) {
+  if (runtime_standalone_mode_) {
+    REPORT_JSI_NATIVE_EXCEPTION(
+        "InvokeUIMethod not supported on runtime standalone mode");
+    return;
+  }
+  engine_actor_->ActAsync([root = std::move(root), options = std::move(options),
+                           method = std::move(method),
+                           invoke_params = std::move(params),
+                           callback](auto& engine) mutable {
+    engine->InvokeUIMethod(root, options, method, invoke_params, callback);
+  });
+}
+
 void BTSRuntimeMediator::GetPathInfo(tasm::NodeSelectRoot root,
                                      tasm::NodeSelectOptions options,
                                      runtime::js::ApiCallBack call_back) {

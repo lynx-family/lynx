@@ -107,6 +107,10 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
                       tasm::NodeSelectOptions options, std::string method,
                       fml::RefPtr<tasm::PropBundle> params,
                       runtime::js::ApiCallBack callback) override;
+  void InvokeUIMethod(tasm::NodeSelectRoot root,
+                      tasm::NodeSelectOptions options, std::string method,
+                      const pub::ValueImplLepus& params,
+                      runtime::js::ApiCallBack callback) override;
   void GetPathInfo(tasm::NodeSelectRoot root, tasm::NodeSelectOptions options,
                    runtime::js::ApiCallBack call_back) override;
   void GetFields(tasm::NodeSelectRoot root, tasm::NodeSelectOptions options,

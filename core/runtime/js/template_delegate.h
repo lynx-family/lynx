@@ -38,6 +38,10 @@ namespace tasm {
 class WhiteBoardDelegate;
 }
 
+namespace pub {
+class ValueImplLepus;
+}  // namespace pub
+
 namespace runtime {
 
 // just constructor and move
@@ -128,6 +132,11 @@ class TemplateDelegate : public ContextProxy::Delegate,
                               tasm::NodeSelectOptions options,
                               std::string method,
                               fml::RefPtr<tasm::PropBundle> params,
+                              runtime::js::ApiCallBack call_back) = 0;
+  virtual void InvokeUIMethod(tasm::NodeSelectRoot root,
+                              tasm::NodeSelectOptions options,
+                              std::string method,
+                              const pub::ValueImplLepus& params,
                               runtime::js::ApiCallBack call_back) = 0;
   virtual void GetPathInfo(tasm::NodeSelectRoot root,
                            tasm::NodeSelectOptions options,

@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/include/fml/make_copyable.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/table.h"
@@ -720,6 +721,42 @@ void TasmMediator::InvokeUIMethod(tasm::LynxGetUIResult ui_result,
     facade->InvokeUIMethod(ui_result, method, std::move(params),
                            std::move(callback));
   });
+}
+
+void TasmMediator::InvokeUIMethod(tasm::LynxGetUIResult ui_result,
+                                  const std::string& method,
+                                  const pub::Value& params,
+                                  runtime::js::ApiCallBack callback) {
+  const auto& ui_impl_ids = ui_result.UiImplIds();
+  if (ui_impl_ids.empty()) {
+    CallJSApiCallbackWithValue(
+        std::move(callback),
+        tasm::LynxGetUIResult(
+            std::move(const_cast<std::vector<int32_t>&>(ui_impl_ids)),
+            tasm::LynxGetUIResult::UNKNOWN, "No node in the input parameter")
+            .StatusAsLepusValue());
+    return;
+  }
+
+  int32_t ui_impl_id = ui_impl_ids[0];
+  auto painting_context = engine_actor_->Impl()
+                              ->GetTasm()
+                              ->page_proxy()
+                              ->element_manager()
+                              ->painting_context();
+
+  painting_context->Invoke(
+      ui_impl_id, method, params,
+      fml::MakeCopyable([this, cb = std::move(callback)](
+                            int32_t code, const pub::Value& data) {
+        auto result_dict = lepus::Dictionary::Create();
+        BASE_STATIC_STRING_DECL(kCode, "code");
+        BASE_STATIC_STRING_DECL(kData, "data");
+        result_dict->SetValue(kCode, code);
+        result_dict->SetValue(kData,
+                              pub::ValueUtils::ConvertValueToLepusValue(data));
+        CallJSApiCallbackWithValue(cb, lepus::Value(result_dict));
+      }));
 }
 
 void TasmMediator::SetPageConfigForLayoutThread(

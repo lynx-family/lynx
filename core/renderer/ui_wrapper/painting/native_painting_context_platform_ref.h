@@ -16,8 +16,6 @@
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 
-constexpr const static int32_t kRootId = 10;
-
 namespace lynx {
 
 namespace shell {

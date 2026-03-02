@@ -665,6 +665,26 @@ void LynxEngine::InvokeUIMethod(const tasm::NodeSelectRoot& root,
                             callback);
 }
 
+void LynxEngine::InvokeUIMethod(const tasm::NodeSelectRoot& root,
+                                const tasm::NodeSelectOptions& options,
+                                const std::string& method,
+                                const pub::Value& params,
+                                runtime::js::ApiCallBack callback) {
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, ENGINE_INVOKE_UI_METHOD,
+      [flow_id = callback.trace_flow_id()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(flow_id);
+      });
+  auto result = tasm_->page_proxy()->GetLynxUI(root, options);
+  if (!result.Success()) {
+    delegate_->CallJSApiCallbackWithValue(callback,
+                                          result.StatusAsLepusValue());
+    return;
+  }
+
+  delegate_->InvokeUIMethod(std::move(result), method, params, callback);
+}
+
 void LynxEngine::GetPathInfo(const tasm::NodeSelectRoot& root,
                              const tasm::NodeSelectOptions& options,
                              runtime::js::ApiCallBack call_back) {

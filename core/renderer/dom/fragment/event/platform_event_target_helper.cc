@@ -66,7 +66,7 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
             this, sign, left, top, width, height);
         // the root event target.
-        if (ops_idx == 1) {
+        if (sign == kRootId) {
           event_target->SetRendererOffsetX(renderer_offset[0]);
           event_target->SetRendererOffsetY(renderer_offset[1]);
           event_target_tree_ = event_target;
@@ -397,12 +397,12 @@ void PlatformEventTargetHelper::InvokeMethod(
       // TODO(hexionghui): add id selector and dataset.
       ret->SetValue(kId, base::String());
       ret->SetValue(kDataset, lepus::Dictionary::Create());
-      ret->SetValue(kLeft, result[0]);
-      ret->SetValue(kTop, result[1]);
-      ret->SetValue(kRight, result[2]);
-      ret->SetValue(kBottom, result[3]);
-      ret->SetValue(kWidth, result[2] - result[0]);
-      ret->SetValue(kHeight, result[3] - result[1]);
+      ret->SetValue(kLeft, result[0] / device_pixel_ratio_);
+      ret->SetValue(kTop, result[1] / device_pixel_ratio_);
+      ret->SetValue(kRight, result[2] / device_pixel_ratio_);
+      ret->SetValue(kBottom, result[3] / device_pixel_ratio_);
+      ret->SetValue(kWidth, (result[2] - result[0]) / device_pixel_ratio_);
+      ret->SetValue(kHeight, (result[3] - result[1]) / device_pixel_ratio_);
       callback(LynxGetUIResult::SUCCESS, lepus::Value(ret));
     } else {
       callback(LynxGetUIResult::NODE_NOT_FOUND,
