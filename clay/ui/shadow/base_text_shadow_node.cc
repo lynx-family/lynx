@@ -264,6 +264,18 @@ void BaseTextShadowNode::CreateRawTextNodeIfNeed(std::string text) {
 }
 
 void BaseTextShadowNode::SetFontSize(float font_size) {
+  auto context = owner_->GetViewContext();
+  double device_pixel_ratio = 1.0;
+  if (context) {
+    device_pixel_ratio = owner_->GetViewContext()
+                             ->GetPageView()
+                             ->GetViewportMetrics()
+                             .device_pixel_ratio;
+  }
+  font_size = std::roundf(font_size * device_pixel_ratio) / device_pixel_ratio;
+#if OS_MAC || OS_WIN
+  font_size = std::roundf(font_size);
+#endif
   EnsureDefaultStyle();
   if (text_style_->font_size != font_size) {
     text_style_->font_size = font_size;
@@ -272,6 +284,9 @@ void BaseTextShadowNode::SetFontSize(float font_size) {
 }
 
 void BaseTextShadowNode::SetLineHeight(float line_height) {
+#if OS_MAC || OS_WIN
+  line_height = std::roundf(line_height);
+#endif
   EnsureDefaultStyle();
 #ifndef CLAY_ENABLE_TTTEXT
   if (line_height_.has_value() && line_height == *line_height_) {

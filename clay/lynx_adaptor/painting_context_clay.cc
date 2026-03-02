@@ -254,6 +254,7 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
     auto margins = margins_ptr.get();
     auto paddings = paddings_ptr.get();
     auto sticky = sticky_ptr.get();
+#if OS_MAC || OS_WIN
     view_context->SetMargins(tag, std::roundf(margins[0]),
                              std::roundf(margins[1]), std::roundf(margins[2]),
                              std::roundf(margins[3]));
@@ -262,6 +263,13 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
     view_context->SetPaddings(
         tag, std::roundf(paddings[0]), std::roundf(paddings[1]),
         std::roundf(paddings[2]), std::roundf(paddings[3]));
+#else
+    view_context->SetMargins(tag, margins[0], margins[1], margins[2],
+                             margins[3]);
+    view_context->SetBounds(tag, x, y, width, height);
+    view_context->SetPaddings(tag, paddings[0], paddings[1], paddings[2],
+                              paddings[3]);
+#endif
     view_context->UpdateSticky(tag, sticky);
   });
 }

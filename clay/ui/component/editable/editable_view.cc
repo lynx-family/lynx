@@ -1491,11 +1491,7 @@ void EditableView::UpdateEditingState(std::string text, TextSelection selection,
   MarkNeedsLayout();
 }
 
-void EditableView::PerformAction() {
-  if (!IsMultiline()) {
-    OnPerformAction(keyboard_action_);
-  }
-}
+void EditableView::PerformAction() { OnPerformAction(keyboard_action_); }
 
 Transform EditableView::ToGlobalTransform() const {
   return BaseView::LocalToGlobalTransform();
