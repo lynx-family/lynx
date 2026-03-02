@@ -4717,6 +4717,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public void com.lynx.tasm.behavior.LynxContext.setUIBodyView(UIBodyView bodyView);
   public String com.lynx.tasm.behavior.LynxContext.getLynxSessionID();
   public LynxView com.lynx.tasm.behavior.LynxContext.getLynxView();
+  public UIBodyView com.lynx.tasm.behavior.LynxContext.getBodyView();
   public UIBodyView com.lynx.tasm.behavior.LynxContext.getUIBodyView();
   public void com.lynx.tasm.behavior.LynxContext.reportResourceError(String errMsg);
   public void com.lynx.tasm.behavior.LynxContext.reportResourceError(String src, String type, String error_msg);
@@ -5578,6 +5579,7 @@ public class com::lynx::tasm::behavior::ui::frame::LynxFrameView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setIntrinsicContentSize(int width, int height);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setAttachLynxPageUICallback(attachLynxPageUICallback callback);
   public LynxViewBuilder com.lynx.tasm.behavior.ui.frame.LynxFrameView.getLynxViewBuilder();
+  public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.sendGlobalEvent(String name, JavaOnlyArray params);
 }
 
 public interface com::lynx::tasm::behavior::LynxGeneratorName {
@@ -10580,6 +10582,7 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public Renderer com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getRenderer();
   public ViewGroup com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getView();
   public Renderer com.lynx.tasm.behavior.ui.UIBody.UIBodyView.createRenderer(PlatformRendererContext context, int sign);
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.sendGlobalEvent(String name, JavaOnlyArray params);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context, AttributeSet attrs);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.cacheLayoutInfo(int width, int height);

@@ -605,6 +605,10 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return null;
   }
 
+  public UIBodyView getBodyView() {
+    return getUIBodyView();
+  }
+
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   public UIBodyView getUIBodyView() {
     return mBodyView != null ? mBodyView.get() : null;

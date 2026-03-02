@@ -535,6 +535,7 @@ public class LynxView extends UIBodyView {
    * @param name Global event name.
    * @param params Parameters carried by global events.
    */
+  @Override
   public void sendGlobalEvent(String name, JavaOnlyArray params) {
     if (LynxEnv.inst().isHighlightTouchEnabled()) {
       showMessageOnConsole(TAG + ": send global event " + name + " for lynx " + hashCode(),

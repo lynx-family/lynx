@@ -19,6 +19,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.core.util.Consumer;
+import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.PageConfig;
@@ -480,6 +481,8 @@ public class UIBody extends UIGroup<UIBodyView> {
     public interface attachLynxPageUICallback {
       void attachLynxPageUI(@NonNull WeakReference<Object> ui);
     }
+
+    public void sendGlobalEvent(String name, JavaOnlyArray params) {}
 
     public UIBodyView(Context context) {
       super(context);

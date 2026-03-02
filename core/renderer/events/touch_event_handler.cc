@@ -1549,10 +1549,15 @@ void TouchEventHandler::StartEventGenerate(TemplateAssembler *tasm,
       }
     }
 
-    EventInfo event_info =
-        is_multi_finger ? EventInfo(ui_touch_map, event_timestamp)
-                        : EventInfo(target_sign, view_x, view_y, client_x,
-                                    client_y, page_x, page_y, event_timestamp);
+    std::shared_ptr<EventInfo> event_info;
+    if (is_multi_finger) {
+      event_info = std::make_shared<EventInfo>(ui_touch_map, event_timestamp);
+    } else {
+      event_info = std::make_shared<EventInfo>(target_sign, view_x, view_y,
+                                               client_x, client_y, page_x,
+                                               page_y, event_timestamp);
+    }
+
     EventContext event_context = {
         .event_type = event_type,
         .event_name = event_name,
@@ -1563,17 +1568,17 @@ void TouchEventHandler::StartEventGenerate(TemplateAssembler *tasm,
                    .lepus_event_ = false,
                    .from_frontend_ = false},
         .get_event_params =
-            [this, &event_name, &event_info](
+            [this, event_name, event_info](
                 Element *target, Element *current_target, bool is_js_event) {
               return GetTouchEventParam(event_name, target, current_target,
-                                        event_info, is_js_event);
+                                        *event_info, is_js_event);
             },
         .target_sign = target_sign,
         .event_timestamp = event_timestamp,
         .event_id = event_id};
 
     if (is_multi_finger) {
-      for (auto &event : *event_info.params.Table()) {
+      for (auto &event : *event_info->params.Table()) {
         int target_sign = std::stoi(event.first.str());
         const auto &event_chain =
             GenerateResponseChain(tasm ? tasm->page_proxy() : nullptr,
