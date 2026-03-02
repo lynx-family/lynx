@@ -67,9 +67,9 @@ public class UIExposure extends LynxObserverManager {
         LLog.e("UIExposure", "sendGlobalEvent failed since can not get LynxContext.");
         return;
       }
-      LynxView view = context.getLynxView();
+      UIBody.UIBodyView view = context.getBodyView();
       if (view == null) {
-        LLog.e("UIExposure", "sendGlobalEvent failed since can not get LynxView.");
+        LLog.e("UIExposure", "sendGlobalEvent failed since can not get UIBodyView.");
         return;
       }
       view.sendGlobalEvent(name, params);
