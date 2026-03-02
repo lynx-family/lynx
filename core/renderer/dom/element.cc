@@ -28,6 +28,7 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/element_property.h"
+#include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
@@ -41,6 +42,7 @@
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
 #include "core/renderer/starlight/types/layout_result.h"
+#include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
@@ -2287,6 +2289,81 @@ bool Element::InComponent() const {
     return !(p->is_page());
   }
   return false;
+}
+
+/**
+ * A key function to get parent component's element
+ */
+Element* Element::GetParentComponentElement() const {
+  if (IsDetached()) {
+    // if the Element is not attached, it is meaningless to return parent
+    // component, and more important, the parent component may be destroyed!
+    return nullptr;
+  }
+  ResolveParentComponentElement();
+  return parent_component_element_;
+}
+
+std::string Element::ParentComponentIdString() const {
+  auto* p = GetParentComponentElement();
+  if (p) {
+    return static_cast<ComponentElement*>(p)->component_id().str();
+  }
+  return "";
+}
+
+const std::string& Element::ParentComponentEntryName() const {
+  auto* p = GetParentComponentElement();
+  if (p) {
+    return static_cast<ComponentElement*>(p)->GetEntryName();
+  }
+  static const std::string kDefaultEntryName(DEFAULT_ENTRY_NAME);
+  return kDefaultEntryName;
+}
+
+/**
+ * A function to resolve parent component element CSSFragment
+ */
+void Element::ResolveParentComponentElement() const {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_PARENT_COMPONENT);
+  // parent_component_unique_id_ less than page element element id is invalid.
+  if (!parent_component_element_ &&
+      parent_component_unique_id_ >= kInitialImplId) {
+    if (element_manager()->GetPageElement() != nullptr &&
+        parent_component_unique_id_ ==
+            element_manager()->GetPageElement()->impl_id()) {
+      // fast path: if parent_component_unique_id is page element's id, set
+      // parent_component_element to page_element
+      parent_component_element_ = element_manager()->GetPageElement();
+    } else {
+      ResolveParentComponentElementImpl();
+    }
+  }
+}
+
+void Element::ResolveParentComponentElementImpl() const {
+  if (this->parent() == nullptr) {
+    return;
+  }
+
+  Element* anchor = this->parent();
+  while (anchor != nullptr) {
+    if (anchor->parent_component_unique_id_ == parent_component_unique_id_ &&
+        anchor->parent_component_element_ != nullptr) {
+      // anchor element has identical parent_component_element with current
+      // element, reuse anchor element's parent component element
+      parent_component_element_ = anchor->parent_component_element_;
+      return;
+    }
+
+    if (anchor->impl_id() == parent_component_unique_id_) {
+      // anchor element is current element's parent component element
+      parent_component_element_ = anchor;
+      return;
+    }
+
+    anchor = anchor->parent();
+  }
 }
 
 bool Element::IsInheritable(CSSPropertyID id) const {

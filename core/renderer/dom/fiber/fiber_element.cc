@@ -307,58 +307,6 @@ bool FiberElement::NeedFullFlushPath(CSSPropertyID id, const CSSValue &value) {
          id == kPropertyIDBackgroundPosition;
 }
 
-void FiberElement::ResolveParentComponentElement() const {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_PARENT_COMPONENT);
-  // parent_component_unique_id_ less than page element element id is invalid.
-  if (!parent_component_element_ &&
-      parent_component_unique_id_ >= kInitialImplId) {
-    if (element_manager()->GetPageElement() != nullptr &&
-        parent_component_unique_id_ ==
-            element_manager()->GetPageElement()->impl_id()) {
-      // fast path: if parent_component_unique_id is page element's id, set
-      // parent_component_element to page_element
-      parent_component_element_ = element_manager()->GetPageElement();
-    } else {
-      ResolveParentComponentElementImpl();
-    }
-  }
-}
-
-void FiberElement::ResolveParentComponentElementImpl() const {
-  if (this->parent() == nullptr) {
-    return;
-  }
-
-  FiberElement *anchor = static_cast<FiberElement *>(this->parent());
-  while (anchor != nullptr) {
-    if (anchor->parent_component_unique_id_ == parent_component_unique_id_ &&
-        anchor->parent_component_element_ != nullptr) {
-      // anchor element has identical parent_component_element with current
-      // element, reuse anchor element's parent component element
-      parent_component_element_ = anchor->parent_component_element_;
-      return;
-    }
-
-    if (anchor->impl_id() == parent_component_unique_id_) {
-      // anchor element is current element's parent component element
-      parent_component_element_ = anchor;
-      return;
-    }
-
-    anchor = static_cast<FiberElement *>(anchor->parent());
-  }
-}
-
-Element *FiberElement::GetParentComponentElement() const {
-  if (IsDetached()) {
-    // if the Element is not attached, it is meaningless to return parent
-    // component, and more important, the parent component may be destroyed!
-    return nullptr;
-  }
-  ResolveParentComponentElement();
-  return parent_component_element_;
-}
-
 CSSFragment *FiberElement::GetRelatedCSSFragment() {
   if (css_id_ != kInvalidCssId) {
     if (!style_sheet_) {
@@ -2084,23 +2032,6 @@ void FiberElement::MarkPlatformNodeDestroyed() {
   // clear element's children only in radon or radon compatible mode.
   scoped_children_.clear();
   scoped_virtual_children_.reset();
-}
-
-std::string FiberElement::ParentComponentIdString() const {
-  auto *p = static_cast<FiberElement *>(GetParentComponentElement());
-  if (p) {
-    return static_cast<ComponentElement *>(p)->component_id().str();
-  }
-  return "";
-}
-
-const std::string &FiberElement::ParentComponentEntryName() const {
-  auto *p = static_cast<FiberElement *>(GetParentComponentElement());
-  if (p) {
-    return static_cast<ComponentElement *>(p)->GetEntryName();
-  }
-  static std::string kDefaultEntryName(tasm::DEFAULT_ENTRY_NAME);
-  return kDefaultEntryName;
 }
 
 void FiberElement::AddChildAt(fml::RefPtr<FiberElement> child, int index) {

@@ -128,18 +128,6 @@ class FiberElement : public Element {
   virtual ListNode* GetListNode() override { return nullptr; };
 
   /**
-   * A key function to get parent component's element
-   */
-  virtual Element* GetParentComponentElement() const override;
-
-  /**
-   * A function to resolve parent component element CSSFragment
-   */
-  void ResolveParentComponentElement() const;
-
-  void ResolveParentComponentElementImpl() const;
-
-  /**
    * A key function to flush the tree with the current element as the root node.
    */
   virtual void FlushActionsAsRoot();
@@ -403,9 +391,6 @@ class FiberElement : public Element {
     }
     return AttributeHolder::EventBundle::DefaultEmptyEventMap();
   }
-
-  std::string ParentComponentIdString() const override;
-  const std::string& ParentComponentEntryName() const override;
 
   // TODO(linxs): to check if this APIs can be deleted
   void InsertNodeBeforeInternal(const fml::RefPtr<FiberElement>& child,

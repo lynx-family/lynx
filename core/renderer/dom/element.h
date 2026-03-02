@@ -449,9 +449,10 @@ class Element : public lepus::RefCounted,
   // Get List Node
   virtual ListNode* GetListNode() = 0;
 
-  // Get Parent Component's Element
-  LYNX_EXPORT_FOR_DEVTOOL virtual Element* GetParentComponentElement()
-      const = 0;
+  /**
+   * A key function to get parent component's element
+   */
+  LYNX_EXPORT_FOR_DEVTOOL virtual Element* GetParentComponentElement() const;
 
   Catalyzer* GetCaCatalyzer() { return catalyzer_; }
 
@@ -463,8 +464,8 @@ class Element : public lepus::RefCounted,
 
   virtual bool InComponent() const;
   virtual int ParentComponentId() const { return 0; }
-  virtual std::string ParentComponentIdString() const = 0;
-  virtual const std::string& ParentComponentEntryName() const = 0;
+  virtual std::string ParentComponentIdString() const;
+  virtual const std::string& ParentComponentEntryName() const;
 
   inline bool IsLayoutOnly() { return is_layout_only_; }
   // Check if this element is a fixed element using the new fixed positioning
@@ -521,6 +522,12 @@ class Element : public lepus::RefCounted,
     }
     parent_component_unique_id_ = id;
   }
+
+  /**
+   * A function to resolve parent component element CSSFragment
+   */
+  void ResolveParentComponentElement() const;
+  void ResolveParentComponentElementImpl() const;
 
   bool IsInSameCSSScope(Element* element) {
     return css_id_ == element->css_id_;
