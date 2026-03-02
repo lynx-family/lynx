@@ -5,8 +5,10 @@
 package com.lynx.tasm.behavior.ui.frame;
 
 import android.content.Context;
+import android.graphics.Canvas;
 import android.util.AttributeSet;
 import androidx.annotation.RestrictTo;
+import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.tasm.LynxLoadMeta;
 import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.LynxUpdateMeta;
@@ -212,5 +214,20 @@ public final class LynxFrameView extends UIBodyView {
       mRender = null;
     }
     TraceEvent.endSection(TraceEventDef.DESTORY_LYNXFRAMEVIEW);
+  }
+
+  @Override
+  protected void dispatchDraw(Canvas canvas) {
+    super.dispatchDraw(canvas);
+    if (mRender != null) {
+      mRender.onRootViewDraw(canvas);
+    }
+  }
+
+  @Override
+  public void sendGlobalEvent(String name, JavaOnlyArray params) {
+    if (mRender != null) {
+      mRender.sendGlobalEvent(name, params);
+    }
   }
 }
