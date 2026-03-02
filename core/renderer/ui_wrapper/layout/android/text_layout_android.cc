@@ -68,12 +68,45 @@ LayoutResult TextLayoutAndroid::Measure(Element* element, float width,
                                   layout_result_array);
   env->DeleteLocalRef(layout_result_array);
   if (!result_array.Get()) {
+    text_element->ClearTextLineLayoutInfo();
     return LayoutResult{0.f, 0.f, 0.f};
   }
+
+  jsize array_length = env->GetArrayLength(result_array.Get());
+  if (array_length < 3) {
+    text_element->ClearTextLineLayoutInfo();
+    return LayoutResult{0.f, 0.f, 0.f};
+  }
+
   jfloat* result = env->GetFloatArrayElements(result_array.Get(), JNI_FALSE);
   float measured_width = result[0];
   float measured_height = result[1];
   float base_line = result[2];
+
+  // Parse line layout information if available
+  // Format: [width, height, baseline, lineCount, line1_start, line1_end,
+  // line1_ellipsisCount, ...]
+  if (array_length > 3 && text_element) {
+    int line_count = static_cast<int>(result[3]);
+    if (line_count > 0 &&
+        array_length >= static_cast<jsize>(4 + line_count * 3)) {
+      // Allocate array for line layout info
+      TextLineInfoArray line_infos(new TextLineInfo[line_count]);
+
+      for (int i = 0; i < line_count; i++) {
+        line_infos[i].start = static_cast<int>(result[4 + i * 3]);
+        line_infos[i].end = static_cast<int>(result[4 + i * 3 + 1]);
+        line_infos[i].ellipsis_count = static_cast<int>(result[4 + i * 3 + 2]);
+      }
+
+      // Store line layout info in TextElement
+      text_element->SetTextLineLayoutInfo(std::move(line_infos), line_count);
+    } else {
+      text_element->ClearTextLineLayoutInfo();
+    }
+  } else {
+    text_element->ClearTextLineLayoutInfo();
+  }
 
   env->ReleaseFloatArrayElements(result_array.Get(), result, JNI_ABORT);
   return LayoutResult{measured_width, measured_height, base_line};

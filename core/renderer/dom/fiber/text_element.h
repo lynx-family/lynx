@@ -6,6 +6,7 @@
 #define CORE_RENDERER_DOM_FIBER_TEXT_ELEMENT_H_
 
 #include <memory>
+#include <utility>
 
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/css_property_bitset.h"
@@ -17,6 +18,15 @@ namespace tasm {
 
 class Fragment;
 
+// Line layout information for text layout event
+struct TextLineInfo {
+  int start{0};
+  int end{0};
+  int ellipsis_count{0};
+};
+
+// Type alias for TextLineInfo array (using unique_ptr with count)
+using TextLineInfoArray = std::unique_ptr<TextLineInfo[]>;
 class TextElement : public FiberElement {
  public:
   TextElement(ElementManager* manager, const base::String& tag);
@@ -79,6 +89,22 @@ class TextElement : public FiberElement {
 
   void SetTextBundle(intptr_t text_bundle);
 
+  void SetTextLineLayoutInfo(TextLineInfoArray line_infos, int line_count) {
+    line_layout_info_ = std::move(line_infos);
+    line_layout_count_ = line_count;
+  }
+
+  const TextLineInfo* GetTextLineLayoutInfo() const {
+    return line_layout_info_.get();
+  }
+
+  int GetTextLineLayoutCount() const { return line_layout_count_; }
+
+  void ClearTextLineLayoutInfo() {
+    line_layout_info_.reset();
+    line_layout_count_ = 0;
+  }
+
  protected:
   void OnNodeAdded(FiberElement* child) override;
   void SetAttributeInternal(const base::String& key,
@@ -113,6 +139,10 @@ class TextElement : public FiberElement {
   CSSIDBitset property_bits_;
   bool has_inline_child_{false};
   bool need_layout_children_{false};
+
+  // Line layout information from text measurement (null-terminated array)
+  TextLineInfoArray line_layout_info_;
+  int line_layout_count_{0};
 };
 
 }  // namespace tasm
