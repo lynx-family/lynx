@@ -28,6 +28,7 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/element_property.h"
+#include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
