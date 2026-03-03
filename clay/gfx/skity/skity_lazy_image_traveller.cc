@@ -40,7 +40,6 @@ class TraversalHelper : public skity::Canvas {
   void OnFlush() override {}
   uint32_t OnGetWidth() const override { return 0; }
   uint32_t OnGetHeight() const override { return 0; }
-  void OnUpdateViewport(uint32_t width, uint32_t height) override {}
 
   void OnDrawImageRect(std::shared_ptr<skity::Image> image,
                        const skity::Rect& src, const skity::Rect& dst,

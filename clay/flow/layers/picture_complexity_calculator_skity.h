@@ -31,7 +31,6 @@ class PictureComplexityCalculatorSkity : public PictureComplexityCalculator {
     void OnFlush() override {}
     uint32_t OnGetWidth() const override { return 0; }
     uint32_t OnGetHeight() const override { return 0; };
-    void OnUpdateViewport(uint32_t width, uint32_t height) override{};
 
     void OnDrawGlyphs(uint32_t count, const skity::GlyphID glyphs[],
                       const float position_x[], const float position_y[],
