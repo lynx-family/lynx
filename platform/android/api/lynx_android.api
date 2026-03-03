@@ -11439,6 +11439,15 @@ public class com::lynx::tasm::core::VSyncMonitor :  {
   public static void com.lynx.tasm.core.VSyncMonitor.requestOnUIThread(final long nativePtr);
 }
 
+public class com::lynx::jsbridge::WebAssemblyBridge :  {
+  public static void com.lynx.jsbridge.WebAssemblyBridge.initWasmRegisterFunc(long funcPtr);
+  public static boolean com.lynx.jsbridge.WebAssemblyBridge.initWasm();
+}
+
+public class com::lynx::jsbridge::WebAssemblyReflect :  {
+  public static long com.lynx.jsbridge.WebAssemblyReflect.getWasmRegister();
+}
+
 public interface com::lynx::react::bridge::WritableArray {
   public void com.lynx.react.bridge.WritableArray.pushNull();
   public void com.lynx.react.bridge.WritableArray.pushBoolean(boolean value);

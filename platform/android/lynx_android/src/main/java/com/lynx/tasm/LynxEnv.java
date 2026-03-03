@@ -30,6 +30,7 @@ import com.lynx.devtoolwrapper.LynxDevToolEnvUtils;
 import com.lynx.jsbridge.LynxBytecodeCallback;
 import com.lynx.jsbridge.LynxModule;
 import com.lynx.jsbridge.LynxModuleFactory;
+import com.lynx.jsbridge.WebAssemblyBridge;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.GlobalRefQueue;
 import com.lynx.tasm.base.JNINamespace;
@@ -289,6 +290,9 @@ public class LynxEnv {
 
     // settings update
     postUpdateSettings();
+
+    // load wasm library
+    WebAssemblyBridge.initWasm();
 
     // ensure init ui thread native loop
     initNativeUIThread();
