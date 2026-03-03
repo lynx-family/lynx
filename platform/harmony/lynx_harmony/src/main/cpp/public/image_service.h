@@ -81,6 +81,7 @@ struct ImageNode {
   virtual void ResumeAnimation() = 0;
   virtual void UpdateAutoPlay(bool autoplay) = 0;
   virtual void UpdateLoopCount(int count) = 0;
+  virtual void Clear() = 0;
 };
 
 class ImageService {

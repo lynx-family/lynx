@@ -205,5 +205,11 @@ void ImageServiceNode::UpdateLoopCount(int count) {
   image_knife_node_->UpdateAnimatorOption(image_knife_animator_option_);
 }
 
+void ImageServiceNode::Clear() {
+  image_knife_node_->Clear();
+  ImageKnifePro::ImageKnife::GetInstance().CancelRequest(
+      image_knife_node_->GetImageKnifeRequest());
+}
+
 }  // namespace service
 }  // namespace lynx
