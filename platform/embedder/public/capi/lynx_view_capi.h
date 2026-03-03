@@ -138,6 +138,23 @@ LYNX_CAPI_EXPORT void lynx_view_set_custom_vsync_monitor(
 // longer needed.
 LYNX_CAPI_EXPORT void lynx_view_release(lynx_view_t* view);
 
+// Callback type for event simulation (devtool).
+typedef void (*lynx_emulate_touch_fn)(void* context, const char* event_type,
+                                      int x, int y, const char* button,
+                                      float delta_x, float delta_y,
+                                      int modifiers, int click_count);
+
+// Set event simulation proxy for devtool. The callback will be invoked to
+// emulate touch/mouse events. Pass NULL callback to clear the proxy.
+LYNX_CAPI_EXPORT void lynx_view_set_event_simulation_proxy(
+    lynx_view_t* view, lynx_emulate_touch_fn callback, void* context);
+
+LYNX_CAPI_EXPORT void lynx_view_send_touch_event(lynx_view_t* view,
+                                                 const char* name, int32_t id,
+                                                 float x, float y,
+                                                 float client_x, float client_y,
+                                                 float page_x, float page_y);
+
 LYNX_EXTERN_C_END
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_CAPI_H_

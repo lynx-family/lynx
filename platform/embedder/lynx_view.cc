@@ -314,3 +314,46 @@ LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
   view->lynx_ui_renderer.reset();
   delete view;
 }
+
+namespace {
+class CallbackEventSimulationProxy
+    : public lynx::pub::LynxEventSimulationProxy {
+ public:
+  CallbackEventSimulationProxy(lynx_emulate_touch_fn cb, void* ctx)
+      : callback_(cb), context_(ctx) {}
+
+  void EmulateTouch(const std::string& event_type, int x, int y,
+                    const std::string& button, float delta_x, float delta_y,
+                    int modifiers, int click_count) override {
+    if (callback_) {
+      callback_(context_, event_type.c_str(), x, y, button.c_str(), delta_x,
+                delta_y, modifiers, click_count);
+    }
+  }
+
+ private:
+  lynx_emulate_touch_fn callback_;
+  void* context_;
+};
+}  // namespace
+
+LYNX_EXTERN_C void lynx_view_set_event_simulation_proxy(
+    lynx_view_t* view, lynx_emulate_touch_fn callback, void* context) {
+  if (callback) {
+    view->event_simulation_proxy =
+        std::make_unique<CallbackEventSimulationProxy>(callback, context);
+  } else {
+    view->event_simulation_proxy.reset();
+  }
+  view->lynx_template_renderer->SetTemplateRendererEventSimulationProxy(
+      view->event_simulation_proxy.get());
+}
+
+LYNX_EXTERN_C void lynx_view_send_touch_event(lynx_view_t* view,
+                                              const char* name, int32_t id,
+                                              float x, float y, float client_x,
+                                              float client_y, float page_x,
+                                              float page_y) {
+  view->lynx_template_renderer->SendTouchEvent(name, id, x, y, client_x,
+                                               client_y, page_x, page_y);
+}

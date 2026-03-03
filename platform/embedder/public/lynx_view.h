@@ -13,6 +13,7 @@
 
 #include "capi/lynx_view_builder_capi.h"
 #include "capi/lynx_view_capi.h"
+#include "lynx_event_simulation_proxy.h"
 #include "lynx_generic_resource_fetcher.h"
 #include "lynx_group.h"
 #include "lynx_load_meta.h"
@@ -21,6 +22,9 @@
 #include "lynx_update_meta.h"
 #include "lynx_view_client.h"
 #include "lynx_windowless_renderer.h"
+
+// Forward declaration of internal struct
+struct lynx_view_t;
 
 namespace lynx {
 namespace pub {
@@ -235,6 +239,13 @@ class LynxView {
     lynx_view_send_global_event(lynx_view_, name.c_str(), json.c_str());
   }
 
+  void SendTouchEvent(const std::string& name, int32_t id, float x, float y,
+                      float client_x, float client_y, float page_x,
+                      float page_y) {
+    lynx_view_send_touch_event(lynx_view_, name.c_str(), id, x, y, client_x,
+                               client_y, page_x, page_y);
+  }
+
   /**
    * @apidoc
    * @brief Update the screen metrics of the `LynxView`.
@@ -297,6 +308,25 @@ class LynxView {
     lynx_view_inject_bubble_event(lynx_view_, params.c_str());
   }
 
+  void SetEventSimulationProxy(
+      std::shared_ptr<LynxEventSimulationProxy> proxy) {
+    event_proxy_ = std::move(proxy);
+    if (event_proxy_) {
+      lynx_view_set_event_simulation_proxy(
+          lynx_view_,
+          [](void* ctx, const char* event_type, int x, int y,
+             const char* button, float delta_x, float delta_y, int modifiers,
+             int click_count) {
+            static_cast<LynxEventSimulationProxy*>(ctx)->EmulateTouch(
+                event_type, x, y, button, delta_x, delta_y, modifiers,
+                click_count);
+          },
+          event_proxy_.get());
+    } else {
+      lynx_view_set_event_simulation_proxy(lynx_view_, nullptr, nullptr);
+    }
+  }
+
   lynx_view_t* Impl() { return lynx_view_; }
 
   LynxView(const LynxView&) = delete;
@@ -308,6 +338,7 @@ class LynxView {
   std::vector<std::shared_ptr<LynxViewClient>> lynx_view_clients_;
   std::shared_ptr<LynxWindowlessRenderer> windowless_renderer_;
   std::shared_ptr<LynxRuntimeLifecycleObserver> runtime_lifecycle_observer_;
+  std::shared_ptr<LynxEventSimulationProxy> event_proxy_;
 };
 
 }  // namespace pub

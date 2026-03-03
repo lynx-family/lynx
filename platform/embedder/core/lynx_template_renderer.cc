@@ -33,19 +33,6 @@ void PrepareEnvWidthScreenSize(int width, int height, float density,
 }
 }  // namespace
 
-const std::string TemplateRendererEventSimulationProxy::kMousePressed =
-    "mousePressed";
-const std::string TemplateRendererEventSimulationProxy::kMouseMoved =
-    "mouseMoved";
-const std::string TemplateRendererEventSimulationProxy::kMouseReleased =
-    "mouseReleased";
-const std::string TemplateRendererEventSimulationProxy::kMouseWheel =
-    "mouseWheel";
-const std::string TemplateRendererEventSimulationProxy::kMouseLeftButton =
-    "left";
-const std::string TemplateRendererEventSimulationProxy::kMouseRightButton =
-    "right";
-
 LynxTemplateRenderer::LynxTemplateRenderer(
     const LynxTemplateRenderer::Settings& settings,
     tasm::UIDelegate* ui_delegate,

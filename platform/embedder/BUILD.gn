@@ -159,6 +159,7 @@ copy("lynx_embedder_cxxapi") {
   sources = [
     "./public/lynx_env.h",
     "./public/lynx_event_reporter_service.h",
+    "./public/lynx_event_simulation_proxy.h",
     "./public/lynx_extension_module.h",
     "./public/lynx_generic_resource_fetcher.h",
     "./public/lynx_group.h",

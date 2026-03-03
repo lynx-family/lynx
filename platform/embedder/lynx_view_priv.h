@@ -14,8 +14,11 @@
 #include "platform/embedder/module/lynx_module_manager_napi.h"
 #include "platform/embedder/public/capi/lynx_view_capi.h"
 #include "platform/embedder/public/capi/lynx_vsync_monitor_capi.h"
+#include "platform/embedder/public/lynx_event_simulation_proxy.h"
 
 struct lynx_view_t {
+  std::unique_ptr<lynx::pub::LynxEventSimulationProxy> event_simulation_proxy =
+      nullptr;
   std::unique_ptr<lynx::embedder::LynxTemplateRenderer> lynx_template_renderer =
       nullptr;
   std::unique_ptr<lynx::embedder::LynxViewClients> lynx_view_clients = nullptr;
