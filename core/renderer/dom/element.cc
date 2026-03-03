@@ -2253,5 +2253,84 @@ Element* Element::FindFirstNonWrapperChildOrSibling() {
   return current;
 }
 
+// TODO: Place logic in Element for now. If other module need to apply
+// same logic, move it to css_property
+Element::DirectionMapping Element::CheckDirectionMapping(CSSPropertyID css_id) {
+  static const base::NoDestructor<
+      std::array<Element::DirectionMapping, kPropertyEnd>>
+      kDirectionMappingProperty([]() {
+        std::array<Element::DirectionMapping, kPropertyEnd>
+            property_mapping_array;
+        std::fill(property_mapping_array.begin(), property_mapping_array.end(),
+                  Element::DirectionMapping());
+#define DECLARE_DIRECTION_MAPPING(name, is_logic, ltr_value, rtl_value) \
+  property_mapping_array[kPropertyID##name] =                           \
+      Element::DirectionMapping(is_logic, ltr_value, rtl_value);
+        FOREACH_DIRECTION_MAPPING_PROPERTY(DECLARE_DIRECTION_MAPPING)
+#undef DECLARE_DIRECTION_MAPPING
+        return property_mapping_array;
+      }());
+
+  return (*kDirectionMappingProperty)[css_id];
+}
+
+Element* Element::Sibling(int offset) const {
+  if (!parent_) return nullptr;
+  auto index = parent_->IndexOf(this);
+  // We know the index can't be -1
+  return parent_->GetChildAt(index + offset);
+}
+
+bool Element::InComponent() const {
+  auto* p = GetParentComponentElement();
+  if (p) {
+    return !(p->is_page());
+  }
+  return false;
+}
+
+bool Element::IsInheritable(CSSPropertyID id) const {
+  if (!IsCSSInheritanceEnabled()) {
+    return false;
+  }
+
+  if (!element_manager_->GetDynamicCSSConfigs().custom_inherit_list_.empty()) {
+    return element_manager_->GetDynamicCSSConfigs().custom_inherit_list_.count(
+        id);
+  }
+
+  return DynamicCSSStylesManager::GetInheritableProps().count(id);
+}
+
+bool Element::IsDirectionChangedEnabled() const {
+  // FIXME(linxs): we just use enable_css_inheritance_ to indicate is enable
+  // direction temporarily
+  // DirectionChange is enabled by default in RadonArch mode.
+  // TODO(kechenglong): Avoid using IsRadonArch() & IsFiberArch() in Dom layer.
+  return IsRadonArch() || element_manager_->GetCSSInheritance();
+}
+
+std::pair<bool, CSSPropertyID> Element::ConvertRtlCSSPropertyID(
+    CSSPropertyID id) {
+  auto direction_mapping = CheckDirectionMapping(id);
+  bool is_logic_property = direction_mapping.is_logic_;
+
+  // default ltr_property/rtl_property for CSSProperty is kPropertyStart.
+  bool is_direction_aware_property =
+      direction_mapping.ltr_property_ != kPropertyStart ||
+      direction_mapping.rtl_property_ != kPropertyStart;
+  if (is_direction_aware_property) {
+    // When in LynxRTL mode or RTL mode with current property is a logic
+    // property, use RTL CSSPropertyID, other wise use LTR CSSPropertyID
+    auto current_direction = computed_css_style()->GetDirection();
+    bool use_rtl_value = (IsRTL(current_direction) && is_logic_property) ||
+                         IsLynxRTL(current_direction);
+    return std::make_pair(true, use_rtl_value
+                                    ? direction_mapping.rtl_property_
+                                    : direction_mapping.ltr_property_);
+  }
+  return std::make_pair(false, id);
+}
+
 }  // namespace tasm
 }  // namespace lynx

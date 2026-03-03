@@ -168,6 +168,22 @@ class Element : public lepus::RefCounted,
     bool has_z_index_;
   };
 
+  // Direction mapping support for RTL/LTR layout
+  struct DirectionMapping {
+    DirectionMapping()
+        : is_logic_(false),
+          ltr_property_(kPropertyStart),
+          rtl_property_(kPropertyStart) {}
+    DirectionMapping(bool is_logic, CSSPropertyID ltr_property,
+                     CSSPropertyID rtl_property)
+        : is_logic_(is_logic),
+          ltr_property_(ltr_property),
+          rtl_property_(rtl_property) {}
+    bool is_logic_{false};
+    CSSPropertyID ltr_property_{CSSPropertyID::kPropertyStart};
+    CSSPropertyID rtl_property_{CSSPropertyID::kPropertyStart};
+  };
+
   static const uint32_t kDirtyCreated;
   static const uint32_t kDirtyTree;
   static const uint32_t kDirtyStyle;
@@ -243,7 +259,7 @@ class Element : public lepus::RefCounted,
   Element* parent() const { return parent_; }
   Element* next_sibling() const { return Sibling(1); }
   Element* previous_sibling() const { return Sibling(-1); }
-  virtual Element* Sibling(int offset) const = 0;
+  virtual Element* Sibling(int offset) const;
 
   // only for fiber arch, indicate current real render tree hierarchy
   virtual Element* render_parent() { return nullptr; }
@@ -258,6 +274,13 @@ class Element : public lepus::RefCounted,
   Element* FindFirstNonVirtualRenderSibling();
   Element* FindFirstNonWrapperRenderAncestor();
   Element* FindFirstNonWrapperChildOrSibling();
+
+  DirectionMapping CheckDirectionMapping(CSSPropertyID css_id);
+
+  // CSS inheritance and direction-related helpers
+  bool IsInheritable(CSSPropertyID id) const;
+  bool IsDirectionChangedEnabled() const;
+  std::pair<bool, CSSPropertyID> ConvertRtlCSSPropertyID(CSSPropertyID id);
 
   virtual ~Element();
 
@@ -434,7 +457,7 @@ class Element : public lepus::RefCounted,
   // GestureMap key - gesture id / value - GestureDetector
   virtual const GestureMap& gesture_map();
 
-  virtual bool InComponent() const { return false; }
+  virtual bool InComponent() const;
   virtual int ParentComponentId() const { return 0; }
   virtual std::string ParentComponentIdString() const = 0;
   virtual const std::string& ParentComponentEntryName() const = 0;

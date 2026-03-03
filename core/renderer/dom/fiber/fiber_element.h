@@ -111,21 +111,6 @@ class FiberElement : public Element {
     uint64_t total_waiting_time_{0};
   };
 
-  struct DirectionMapping {
-    DirectionMapping()
-        : is_logic_(false),
-          ltr_property_(kPropertyStart),
-          rtl_property_(kPropertyStart) {}
-    DirectionMapping(bool is_logic, CSSPropertyID ltr_property,
-                     CSSPropertyID rtl_property)
-        : is_logic_(is_logic),
-          ltr_property_(ltr_property),
-          rtl_property_(rtl_property) {}
-    bool is_logic_{false};
-    CSSPropertyID ltr_property_{CSSPropertyID::kPropertyStart};
-    CSSPropertyID rtl_property_{CSSPropertyID::kPropertyStart};
-  };
-
   // for Fiber specific
 
   bool is_wrapper() const override { return false; }
@@ -423,8 +408,6 @@ class FiberElement : public Element {
     return AttributeHolder::EventBundle::DefaultEmptyEventMap();
   }
 
-  bool InComponent() const override;
-
   std::string ParentComponentIdString() const override;
   const std::string& ParentComponentEntryName() const override;
 
@@ -498,7 +481,6 @@ class FiberElement : public Element {
 
   const auto& children() const { return scoped_children_; }
 
-  Element* Sibling(int offset) const override;
   Element* render_parent() override { return render_parent_; }
   Element* first_render_child() override { return first_render_child_; }
   Element* next_render_sibling() override { return next_render_sibling_; }
@@ -719,10 +701,6 @@ class FiberElement : public Element {
   void HandleContainerInsertion(FiberElement* parent, FiberElement* child,
                                 FiberElement* ref);
 
-  bool IsInheritable(CSSPropertyID id) const;
-
-  bool IsDirectionChangedEnabled() const;
-
   void ResetDirectionAwareProperty(const CSSPropertyID& id,
                                    const CSSValue& value);
 
@@ -731,8 +709,6 @@ class FiberElement : public Element {
 
   bool TryResolveLogicStyleAndSaveDirectionRelatedStyle(CSSPropertyID id,
                                                         const CSSValue& value);
-
-  std::pair<bool, CSSPropertyID> ConvertRtlCSSPropertyID(CSSPropertyID id);
 
   void HandleSelfFixedChange();
   void InsertFixedElement(FiberElement* child, FiberElement* ref_node);
@@ -749,8 +725,6 @@ class FiberElement : public Element {
   void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
 
   void LogNodeInfo();
-
-  DirectionMapping CheckDirectionMapping(CSSPropertyID css_id);
 
   PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
 

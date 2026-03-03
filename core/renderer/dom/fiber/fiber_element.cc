@@ -919,28 +919,6 @@ static bool DiffStyleImpl(StyleMap &old_map, StyleMap &new_map,
   return need_update;
 }
 
-// TODO: Place logic in FiberElement only for now. If other module need to apply
-// same logic, move it to css_property
-FiberElement::DirectionMapping FiberElement::CheckDirectionMapping(
-    CSSPropertyID css_id) {
-  static const base::NoDestructor<
-      std::array<FiberElement::DirectionMapping, kPropertyEnd>>
-      kDirectionMappingProperty([]() {
-        std::array<FiberElement::DirectionMapping, kPropertyEnd>
-            property_mapping_array;
-        std::fill(property_mapping_array.begin(), property_mapping_array.end(),
-                  FiberElement::DirectionMapping());
-#define DECLARE_DIRECTION_MAPPING(name, is_logic, ltr_value, rtl_value) \
-  property_mapping_array[kPropertyID##name] =                           \
-      FiberElement::DirectionMapping(is_logic, ltr_value, rtl_value);
-        FOREACH_DIRECTION_MAPPING_PROPERTY(DECLARE_DIRECTION_MAPPING)
-#undef DECLARE_DIRECTION_MAPPING
-        return property_mapping_array;
-      }());
-
-  return (*kDirectionMappingProperty)[css_id];
-}
-
 void FiberElement::ResetDirectionAwareProperty(const CSSPropertyID &id,
                                                const CSSValue &value) {
   auto css_id = id;
@@ -2108,14 +2086,6 @@ void FiberElement::MarkPlatformNodeDestroyed() {
   scoped_virtual_children_.reset();
 }
 
-bool FiberElement::InComponent() const {
-  auto p = static_cast<FiberElement *>(GetParentComponentElement());
-  if (p) {
-    return !(p->is_page());
-  }
-  return false;
-}
-
 std::string FiberElement::ParentComponentIdString() const {
   auto *p = static_cast<FiberElement *>(GetParentComponentElement());
   if (p) {
@@ -3060,13 +3030,6 @@ void FiberElement::ResetFontSize() {
   }
 }
 
-Element *FiberElement::Sibling(int offset) const {
-  if (!parent_) return nullptr;
-  auto index = static_cast<FiberElement *>(parent_)->IndexOf(this);
-  // We know the index can't be -1
-  return parent_->GetChildAt(index + offset);
-}
-
 void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
   DCHECK(!ref || !ref->is_wrapper());
   if (EnableLayoutInElementMode()) {
@@ -3375,28 +3338,6 @@ void FiberElement::OnPseudoStatusChanged(PseudoState prev_status,
   element_manager_->RequestResolve(pipeline_options);
 }
 
-bool FiberElement::IsInheritable(CSSPropertyID id) const {
-  if (!IsCSSInheritanceEnabled()) {
-    return false;
-  }
-
-  if (!element_manager_->GetDynamicCSSConfigs().custom_inherit_list_.empty()) {
-    return element_manager_->GetDynamicCSSConfigs().custom_inherit_list_.count(
-        id);
-  }
-
-  return DynamicCSSStylesManager::GetInheritableProps().count(id);
-}
-
-bool FiberElement::IsDirectionChangedEnabled() const {
-  // FIXME(linxs): we just use enable_css_inheritance_ to indicate is enable
-  // direction temporarily
-  // DirectionChange is enabled by default in RadonArch mode.
-  // TODO(kechenglong): Avoid using IsRadonArch() & IsFiberArch() in Dom layer.
-  return IsRadonArch() || element_manager_->GetCSSInheritance();
-}
-
-// return ture means the style has already been processed
 bool FiberElement::TryResolveLogicStyleAndSaveDirectionRelatedStyle(
     CSSPropertyID id, const CSSValue &value) {
   if (!IsDirectionChangedEnabled()) {
@@ -3421,28 +3362,6 @@ bool FiberElement::TryResolveLogicStyleAndSaveDirectionRelatedStyle(
     return true;
   }
   return false;
-}
-
-std::pair<bool, CSSPropertyID> FiberElement::ConvertRtlCSSPropertyID(
-    CSSPropertyID id) {
-  auto direction_mapping = CheckDirectionMapping(id);
-  bool is_logic_property = direction_mapping.is_logic_;
-
-  // default ltr_property/rtl_property for CSSProperty is kPropertyStart.
-  bool is_direction_aware_property =
-      direction_mapping.ltr_property_ != kPropertyStart ||
-      direction_mapping.rtl_property_ != kPropertyStart;
-  if (is_direction_aware_property) {
-    // When in LynxRTL mode or RTL mode with current property is a logic
-    // property, use RTL CSSPropertyID, other wise use LTR CSSPropertyID
-    auto current_direction = computed_css_style()->GetDirection();
-    bool use_rtl_value = (IsRTL(current_direction) && is_logic_property) ||
-                         IsLynxRTL(current_direction);
-    return std::make_pair(true, use_rtl_value
-                                    ? direction_mapping.rtl_property_
-                                    : direction_mapping.ltr_property_);
-  }
-  return std::make_pair(false, id);
 }
 
 // try to Resolve Direction css
