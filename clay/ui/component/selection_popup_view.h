@@ -61,6 +61,8 @@ class SelectionPopupView : public WithTypeInfo<SelectionPopupView, BaseView> {
 
   void UpdatePosWithScroll(FloatPoint scroll_offset, FloatRect bounding_rect);
 
+  std::vector<Shadow> CreateShadow();
+
  private:
   InternalTextView* CreateTextViewByText(const std::string& text, int left,
                                          int top, MenuIndex index) const;

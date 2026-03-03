@@ -6,7 +6,10 @@
 
 #include <algorithm>
 #include <memory>
+#include <utility>
 
+#include "clay/gfx/style/color.h"
+#include "clay/gfx/style/shadow.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/text/internal_text_view.h"
@@ -19,15 +22,18 @@ namespace clay {
 
 namespace {
 
-constexpr double kDefaultBorderWidth = 1.0;
-constexpr double kDefaultRadius = 10.0;
-constexpr double kDefaultEndPadding = 14.5;
-constexpr double kDefaultMidPadding = 9.5;
-constexpr double kDefaultAbovePadding = 20.0;
-constexpr double kDefaultFontSize = 15.0;
+constexpr double kDefaultBorderWidth = 0.0;
+constexpr double kDefaultRadius = 12.0;
+constexpr double kDefaultLeftPadding = 10.0;
+constexpr double kDefaultMidPadding = 6.0;
+constexpr double kDefaultRightPadding = 10.0;
+constexpr double kDefaultTopPadding = 6.0;
+constexpr double kDefaultBottomPadding = 6.0;
+constexpr double kDefaultFontSize = 14.0;
+constexpr double kDefaultLineHeight = 22.0;
 constexpr double kPopupContentDistance = 8.0;
 
-const Size kDefaultMenuItemSize = Size(110, 25);
+const Size kDefaultMenuItemSize = Size(28, 22);
 
 }  // namespace
 
@@ -47,7 +53,7 @@ void SelectionPopupView::BuildSelectionPopup(
   FloatSize radius(FromLogical(kDefaultRadius), FromLogical(kDefaultRadius));
   this->SetBorderRadius(radius, radius, radius, radius);
   this->SetBorderColor({Side::kAll}, {Color::kBlack()});
-  auto border_width = FromLogical(kDefaultBorderWidth);
+  float border_width = kDefaultBorderWidth;
   this->SetBorderWidth({Side::kAll}, {border_width});
   this->SetBorderStyle({Side::kAll}, {BorderStyleType::kSolid});
   this->SetBackgroundColor(Color::kWhite());
@@ -55,7 +61,8 @@ void SelectionPopupView::BuildSelectionPopup(
   float menu_height = 0;
   for (auto type : types) {
     if (type == ActionType::kCopy) {
-      auto text_view = CreateTextViewByText("Copy", 0, 0, MenuIndex::kLeft);
+      auto text_view = CreateTextViewByText("\xE5\xA4\x8D\xE5\x88\xB6", 0, 0,
+                                            MenuIndex::kLeft);
       menu_width += text_view->Width();
       menu_height = std::max(menu_height, text_view->Height());
       text_view->AddTapUpListener([this](const PointerEvent&) {
@@ -69,8 +76,8 @@ void SelectionPopupView::BuildSelectionPopup(
       // these function needed by editable view
     } else if (type == ActionType::kCut) {
     } else if (type == ActionType::kSelectAll) {
-      auto text_view =
-          CreateTextViewByText("SelectAll", menu_width, 0, MenuIndex::kRight);
+      auto text_view = CreateTextViewByText("\xE5\x85\xA8\xE9\x80\x89",
+                                            menu_width, 0, MenuIndex::kRight);
       menu_width += text_view->Width();
       menu_height = std::max(menu_height, text_view->Height());
       text_view->AddTapUpListener([this](const PointerEvent&) {
@@ -83,14 +90,36 @@ void SelectionPopupView::BuildSelectionPopup(
   }
   FloatPoint offset =
       GetPositionForChild(FloatSize(bounds_width_, bounds_height_),
-                          FloatSize(menu_width + kPopupContentDistance,
-                                    menu_height + kPopupContentDistance));
+                          FloatSize(menu_width, menu_height));
   this->SetX(offset.x());
   this->SetY(offset.y());
   origin_top_ = Top();
   origin_left_ = Left();
   this->SetContentWidth(menu_width);
   this->SetContentHeight(menu_height);
+  auto shadows = CreateShadow();
+  render_object()->SetShadows(std::move(shadows));
+}
+
+std::vector<Shadow> SelectionPopupView::CreateShadow() {
+  std::vector<Shadow> shadows;
+  Shadow shadow1;
+  shadow1.inset = false;
+  shadow1.offset_x = 0;
+  shadow1.offset_y = 4;
+  shadow1.blur_radius = 20;
+  shadow1.spread_radius = 0;
+  shadow1.color = Color::ARGBColor(round(0.08 * 255), 0, 0, 0);
+  shadows.emplace_back(shadow1);
+  Shadow shadow2;
+  shadow2.inset = false;
+  shadow2.offset_x = 0;
+  shadow2.offset_y = 2;
+  shadow2.blur_radius = 4;
+  shadow2.spread_radius = 0;
+  shadow2.color = Color::ARGBColor(round(0.06 * 255), 0, 0, 0);
+  shadows.emplace_back(shadow2);
+  return shadows;
 }
 
 InternalTextView* SelectionPopupView::CreateTextViewByText(
@@ -101,21 +130,25 @@ InternalTextView* SelectionPopupView::CreateTextViewByText(
   text_view->SetY(top);
   text_view->SetText(text);
   text_view->SetFontSize(FromLogical(kDefaultFontSize));
+  text_view->SetLineHeight(FromLogical(kDefaultLineHeight));
+  if (index == MenuIndex::kLeft) {
+    text_view->SetPaddings(
+        FromLogical(kDefaultLeftPadding), FromLogical(kDefaultTopPadding),
+        FromLogical(kDefaultMidPadding), FromLogical(kDefaultBottomPadding));
+  } else if (index == MenuIndex::kMid) {
+    text_view->SetPaddings(
+        FromLogical(kDefaultMidPadding), FromLogical(kDefaultTopPadding),
+        FromLogical(kDefaultMidPadding), FromLogical(kDefaultBottomPadding));
+  } else if (index == MenuIndex::kRight) {
+    text_view->SetPaddings(
+        FromLogical(kDefaultMidPadding), FromLogical(kDefaultTopPadding),
+        FromLogical(kDefaultRightPadding), FromLogical(kDefaultBottomPadding));
+  }
   MeasureResult result;
   text_view->Measure(
       {FromLogical(kDefaultMenuItemSize.width()), TextMeasureMode::kAtMost,
        FromLogical(kDefaultMenuItemSize.height()), TextMeasureMode::kAtMost},
       result);
-  if (index == MenuIndex::kLeft) {
-    text_view->SetPaddings(kDefaultEndPadding, kDefaultAbovePadding,
-                           kDefaultMidPadding, kDefaultAbovePadding);
-  } else if (index == MenuIndex::kMid) {
-    text_view->SetPaddings(kDefaultMidPadding, kDefaultAbovePadding,
-                           kDefaultMidPadding, kDefaultAbovePadding);
-  } else if (index == MenuIndex::kRight) {
-    text_view->SetPaddings(kDefaultMidPadding, kDefaultAbovePadding,
-                           kDefaultEndPadding, kDefaultAbovePadding);
-  }
   text_view->SetContentWidth(result.width);
   text_view->SetContentHeight(result.height);
   return text_view;
