@@ -148,6 +148,7 @@
 }
 
 - (void)sendGlobalEvent:(nonnull NSString *)name withParams:(nullable NSArray *)params {
+  [_render sendGlobalEvent:name withParams:params];
 }
 
 - (void)setIntrinsicContentSize:(CGSize)size {
