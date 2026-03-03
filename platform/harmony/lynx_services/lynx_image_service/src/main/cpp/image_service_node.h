@@ -34,6 +34,7 @@ class ImageServiceNode : public tasm::harmony::ImageNode {
   void ResumeAnimation() override;
   void UpdateAutoPlay(bool autoplay) override;
   void UpdateLoopCount(int count) override;
+  void Clear() override;
 
  private:
   void UpdateImageSource(const std::string& url,
