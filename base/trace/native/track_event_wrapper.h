@@ -166,6 +166,7 @@ class TRACE_EXPORT LynxDebugAnnotation {
   void set_double_value(double value);
   void set_string_value(const char* data, size_t size);
   void set_string_value(const std::string& value);
+  void set_pointer_value(uint64_t value);
 
   void set_legacy_json_value(const std::string& value);
 

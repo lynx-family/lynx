@@ -21,6 +21,7 @@
 
 #include <cstring>
 #include <functional>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -189,6 +190,56 @@ struct TraceFormatTraits<std::string> {
   inline static void WriteIntoTrace(lynx::perfetto::LynxDebugAnnotation* debug,
                                     const std::string& value) {
     debug->set_string_value(value);
+  }
+};
+
+// Specialisation for (const) void*, which writes the pointer value.
+template <>
+struct TraceFormatTraits<void*> {
+  inline static void WriteIntoTrace(lynx::perfetto::LynxDebugAnnotation* debug,
+                                    void* value) {
+    debug->set_pointer_value(reinterpret_cast<uint64_t>(value));
+  }
+};
+
+template <>
+struct TraceFormatTraits<const void*> {
+  inline static void WriteIntoTrace(lynx::perfetto::LynxDebugAnnotation* debug,
+                                    const void* value) {
+    debug->set_pointer_value(reinterpret_cast<uint64_t>(value));
+  }
+};
+
+// Specialisation for std::unique_ptr<>, which writes either nullptr or the
+// object it points to.
+template <typename T>
+struct TraceFormatTraits<std::unique_ptr<T>> {
+  inline static void WriteIntoTrace(lynx::perfetto::LynxDebugAnnotation* debug,
+                                    const std::unique_ptr<T>& value) {
+    debug->set_pointer_value(reinterpret_cast<uint64_t>(value.get()));
+  }
+};
+
+// Specialisation for raw pointer, which writes either nullptr or the object it
+// points to.
+template <typename T>
+struct TraceFormatTraits<T*> {
+  inline static void WriteIntoTrace(lynx::perfetto::LynxDebugAnnotation* debug,
+                                    T* value) {
+    if (!value) {
+      debug->set_pointer_value(0);
+      return;
+    }
+    debug->set_pointer_value(reinterpret_cast<uint64_t>(value));
+  }
+};
+
+// Specialisation for nullptr.
+template <>
+struct TraceFormatTraits<std::nullptr_t> {
+  inline static void WriteIntoTrace(lynx::perfetto::LynxDebugAnnotation* debug,
+                                    std::nullptr_t) {
+    debug->set_pointer_value(0);
   }
 };
 

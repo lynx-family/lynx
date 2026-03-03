@@ -176,7 +176,7 @@ lepus::Value RadonPage::GetPageDataByKey(const std::vector<std::string> &keys) {
                 debug->set_name("keys");
                 std::string str =
                     std::accumulate(keys.begin(), keys.end(), std::string{},
-                                    [](std::string &s1, const std::string &s2) {
+                                    [](std::string s1, const std::string &s2) {
                                       return s1.append(",").append(s2);
                                     });
                 debug->set_string_value(str);
