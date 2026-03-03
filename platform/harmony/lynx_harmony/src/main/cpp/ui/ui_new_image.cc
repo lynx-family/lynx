@@ -420,7 +420,7 @@ void UINewImage::OnNodeReady() {
       (effect_flags_ != 0 &&
        (dirty_flags_ & image::kFlagFrameSizeChanged) != 0)) {
     if (!defer_src_invalidation_) {
-      NodeManager::Instance().ResetAttribute(Node(), NODE_IMAGE_SRC);
+      image_node_->Clear();
     }
     LoadImage();
   }
@@ -481,7 +481,6 @@ void UINewImage::UpdatePlaceholder(const lepus::Value& value) {
   const auto& value_str = value.StdString();
   if (placeholder_ != value_str) {
     placeholder_ = value_str;
-    NodeManager::Instance().ResetAttribute(Node(), NODE_IMAGE_ALT);
     dirty_flags_ |= image::kFlagPlaceholderChanged;
   }
 }
@@ -551,7 +550,7 @@ void UINewImage::LoadImageFromService(const std::string& url,
     processors.emplace_back(std::make_unique<LynxImageEffectProcessor>(
         ImageEffect::kDropShadow, shadow_params));
   }
-  info.downsampling = downsampling_;
+  info.downsampling = downsampling_ && !auto_size_;
   info.mode = ConvertMode(mode_);
   info.processors = std::move(processors);
   image_node_->FetchImage(std::move(info));
