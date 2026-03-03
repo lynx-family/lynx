@@ -37,7 +37,6 @@ class ComplexityCalculatorHelperSkity : public skity::Canvas {
   void OnFlush() override {}
   uint32_t OnGetWidth() const override { return 0; }
   uint32_t OnGetHeight() const override { return 0; };
-  void OnUpdateViewport(uint32_t width, uint32_t height) override{};
 
   // This method finalizes the complexity score calculation and returns it
   unsigned int ComplexityScore() {
