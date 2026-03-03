@@ -253,7 +253,9 @@ class Element : public lepus::RefCounted,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback);
 
-  virtual SLNode* GetLayoutObject() const { return nullptr; }
+  SLNode* GetLayoutObject() const { return sl_node_.get(); }
+
+  SLNode* slnode() const { return sl_node_.get(); }
 
   ElementManager* element_manager() const { return element_manager_; }
   Element* parent() const { return parent_; }
@@ -262,11 +264,13 @@ class Element : public lepus::RefCounted,
   virtual Element* Sibling(int offset) const;
 
   // only for fiber arch, indicate current real render tree hierarchy
-  virtual Element* render_parent() { return nullptr; }
-  virtual Element* first_render_child() { return nullptr; }
-  virtual Element* first_child() const { return nullptr; }
-  virtual Element* last_child() const { return nullptr; }
-  virtual Element* next_render_sibling() { return nullptr; }
+  Element* render_parent() { return render_parent_; }
+  Element* first_render_child() { return first_render_child_; }
+  virtual Element* first_child() const;
+  virtual Element* last_child() const;
+  Element* next_render_sibling() { return next_render_sibling_; }
+
+  const auto& children() const { return scoped_children_; }
 
   // Helpers for finding non-virtual / non-wrapper nodes in the render tree
   // starting from the current element.
@@ -612,15 +616,15 @@ class Element : public lepus::RefCounted,
   // but if the element is list's child, the left and top's value are always 0.
   void UpdateLayout(float left, float top);
 
-  virtual Element* GetChildAt(size_t index) { return nullptr; }
+  virtual Element* GetChildAt(size_t index);
 
-  virtual size_t GetChildCount() { return 0; }
+  virtual size_t GetChildCount();
 
-  virtual ElementChildrenArray GetChildren() { return {}; }
+  virtual ElementChildrenArray GetChildren();
 
   virtual size_t GetUIIndexForChild(Element* child) { return 0; }
 
-  virtual int32_t IndexOf(const Element* child) const = 0;
+  virtual int32_t IndexOf(const Element* child) const;
 
   virtual void InsertNode(const fml::RefPtr<Element>& child) = 0;
   virtual void InsertNode(const fml::RefPtr<Element>& child, int32_t index) = 0;

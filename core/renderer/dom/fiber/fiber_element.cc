@@ -2114,32 +2114,6 @@ void FiberElement::AddChildAt(fml::RefPtr<FiberElement> child, int index) {
   child->set_parent(this);
 }
 
-int32_t FiberElement::IndexOf(const Element *child) const {
-  const auto fiber_child = static_cast<const FiberElement *>(child);
-  for (auto it = scoped_children_.begin(); it != scoped_children_.end(); ++it) {
-    if (it->get() == fiber_child) {
-      return static_cast<int>(std::distance(scoped_children_.begin(), it));
-    }
-  }
-  return -1;
-}
-
-Element *FiberElement::GetChildAt(size_t index) {
-  if (index >= scoped_children_.size()) {
-    return nullptr;
-  }
-  return scoped_children_[index].get();
-}
-
-ElementChildrenArray FiberElement::GetChildren() {
-  ElementChildrenArray ret;
-  ret.reserve(scoped_children_.size());
-  for (const auto &child : scoped_children_) {
-    ret.push_back(child.get());
-  }
-  return ret;
-}
-
 // If new animator is enabled and this element has been created before, we
 // should consume transition styles in advance. Also transition manager needs to
 // verify every property to determine whether to intercept this update.

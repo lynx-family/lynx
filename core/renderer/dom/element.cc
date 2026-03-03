@@ -2332,5 +2332,40 @@ std::pair<bool, CSSPropertyID> Element::ConvertRtlCSSPropertyID(
   return std::make_pair(false, id);
 }
 
+int32_t Element::IndexOf(const Element* child) const {
+  for (auto it = scoped_children_.begin(); it != scoped_children_.end(); ++it) {
+    if (it->get() == child) {
+      return static_cast<int>(std::distance(scoped_children_.begin(), it));
+    }
+  }
+  return -1;
+}
+
+Element* Element::GetChildAt(size_t index) {
+  if (index >= scoped_children_.size()) {
+    return nullptr;
+  }
+  return scoped_children_[index].get();
+}
+
+size_t Element::GetChildCount() { return scoped_children_.size(); }
+
+ElementChildrenArray Element::GetChildren() {
+  ElementChildrenArray ret;
+  ret.reserve(scoped_children_.size());
+  for (const auto& child : scoped_children_) {
+    ret.push_back(child.get());
+  }
+  return ret;
+}
+
+Element* Element::first_child() const {
+  return scoped_children_.empty() ? nullptr : scoped_children_.front().get();
+}
+
+Element* Element::last_child() const {
+  return scoped_children_.empty() ? nullptr : scoped_children_.back().get();
+}
+
 }  // namespace tasm
 }  // namespace lynx

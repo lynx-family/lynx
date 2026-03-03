@@ -113,10 +113,6 @@ class FiberElement : public Element {
 
   // for Fiber specific
 
-  bool is_wrapper() const override { return false; }
-
-  bool is_list_item() const { return is_list_item_; }
-
   virtual const InheritedProperty GetInheritedProperty();
 
   const InheritedProperty GetParentInheritedProperty();
@@ -416,12 +412,6 @@ class FiberElement : public Element {
                                 FiberElement* ref_node);
   void AddChildAt(fml::RefPtr<FiberElement> child, int index);
 
-  virtual int32_t IndexOf(const Element* child) const override;
-
-  Element* GetChildAt(size_t index) override;
-  size_t GetChildCount() override { return scoped_children_.size(); }
-  ElementChildrenArray GetChildren() override;
-
   /**
    * Special API for processing Font size
    * font size should be handled at the beginning
@@ -479,18 +469,6 @@ class FiberElement : public Element {
 
   virtual void SetCSSID(int32_t id);
 
-  const auto& children() const { return scoped_children_; }
-
-  Element* render_parent() override { return render_parent_; }
-  Element* first_render_child() override { return first_render_child_; }
-  Element* next_render_sibling() override { return next_render_sibling_; }
-  virtual Element* first_child() const override {
-    return scoped_children_.empty() ? nullptr : scoped_children_.front().get();
-  };
-  virtual Element* last_child() const override {
-    return scoped_children_.empty() ? nullptr : scoped_children_.back().get();
-  };
-
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
   void InsertLayoutNode(FiberElement* child, FiberElement* ref);
@@ -542,12 +520,6 @@ class FiberElement : public Element {
   // elements may be converted into inline elements.
   virtual void ConvertToInlineElement();
 
-  bool IsTemplateElement() const { return is_template_; }
-
-  bool IsPartElement() const { return !part_id_.empty(); }
-
-  const base::String& GetPartID() const { return part_id_; }
-
   // current element is inserted to DOM tree
   virtual void InsertedInto(FiberElement* insertion_point);
 
@@ -598,18 +570,6 @@ class FiberElement : public Element {
     if (scheduler_adapter_) {
       return scheduler_adapter_.get();
     }
-    return nullptr;
-  }
-
-  virtual int32_t GetMemoryUsage() const override { return sizeof(*this); }
-
-  SLNode* GetLayoutObject() const override { return sl_node_.get(); }
-
-  inline SLNode* slnode() const {
-    if (sl_node_ != nullptr) {
-      return sl_node_.get();
-    }
-
     return nullptr;
   }
 
