@@ -1901,6 +1901,7 @@ public class LynxFrameView : UIView, <LUIBodyView> {
   public void LynxFrameView::setUrl:(NSString *url);
   public UIView< LUIBodyView > *_Nullable LynxFrameView::getRootView();
   public void LynxFrameView::updateFrame:contentFrame:(CGRect frame,[contentFrame] CGRect contentFrame);
+  public void LynxFrameView::setEmbeddedMode:(LynxEmbeddedMode embeddedMode);
 }
 
 public class LynxFSPTracer : NSObject, <LynxPerformanceObserverProtocol> {

@@ -102,4 +102,8 @@ LYNX_PROP_SETTER("global-props", updateGlobalProps, NSDictionary*) {
                                                              useBoolLiterals:YES]];
   }
 }
+
+LYNX_PROP_SETTER("embedded-mode", setEmbeddedMode, NSNumber*) {
+  [[self view] setEmbeddedMode:value.intValue];
+}
 @end

@@ -9,6 +9,8 @@
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxViewBuilder.h>
+#import <Lynx/LynxViewEnum.h>
 #import "LynxTraceEventDef.h"
 #import "LynxUIRendererProtocol.h"
 
@@ -28,12 +30,14 @@
   BOOL _isIntrinsicSizeConsumed;
   LynxTemplateData *_initData;
   LynxTemplateData *_globalProps;
+  LynxEmbeddedMode _embeddedMode;
 }
 
 - (instancetype)init {
   self = [super init];
   if (self) {
     _isIntrinsicSizeConsumed = YES;
+    _embeddedMode = LynxEmbeddedModeUnset;
   }
   return self;
 }
@@ -44,24 +48,47 @@
   } else if ([rootView isKindOfClass:[LynxFrameView class]]) {
     _rootView = [(LynxFrameView *)rootView getRootView];
   }
-  _render = [[LynxTemplateRender alloc] initWithBuilderBlock:[rootView getLynxViewBuilderBlock]
-                                               containerView:self];
 }
 
 - (void)setAppBundle:(LynxTemplateBundle *)bundle {
+  [self ensureRenderCreated];
+
+  LynxLoadMeta *loadMeta = [self buildLoadMetaWithBundle:bundle];
+  [_render loadTemplate:loadMeta];
+  _isBundleLoad = YES;
+}
+
+- (void)ensureRenderCreated {
+  if (_render) {
+    return;
+  }
+
+  __weak typeof(self) weakSelf = self;
+  UIView<LUIBodyView> *rootView = _rootView;
+  LynxViewBuilderBlock originalBlock = [rootView getLynxViewBuilderBlock];
+  _render = [[LynxTemplateRender alloc]
+      initWithBuilderBlock:^(LynxViewBuilder *builder) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (originalBlock) {
+          originalBlock(builder);
+        }
+        [builder setEnablePreUpdateData:YES];
+        if (strongSelf) {
+          [builder setEmbeddedMode:strongSelf->_embeddedMode];
+        }
+      }
+             containerView:self];
+}
+
+- (LynxLoadMeta *)buildLoadMetaWithBundle:(LynxTemplateBundle *)bundle {
   LynxLoadMeta *loadMeta = [[LynxLoadMeta alloc] init];
   loadMeta.url = _url;
   loadMeta.templateBundle = bundle;
-  if (_initData) {
-    loadMeta.initialData = _initData;
-    _initData = nil;
-  }
-  if (_globalProps) {
-    loadMeta.globalProps = _globalProps;
-    _globalProps = nil;
-  }
-  [_render loadTemplate:loadMeta];
-  _isBundleLoad = YES;
+  loadMeta.initialData = _initData;
+  loadMeta.globalProps = _globalProps;
+  _initData = nil;
+  _globalProps = nil;
+  return loadMeta;
 }
 
 - (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame {
@@ -81,7 +108,7 @@
 }
 
 - (void)propsDidUpdate {
-  if (!_isBundleLoad) {
+  if (!_isBundleLoad || !_render) {
     return;
   }
   if (!_initData && !_globalProps) {
@@ -99,6 +126,12 @@
 
 - (void)setUrl:(NSString *)url {
   _url = url;
+}
+
+- (void)setEmbeddedMode:(LynxEmbeddedMode)embeddedMode {
+  if (_embeddedMode == LynxEmbeddedModeUnset) {
+    _embeddedMode = embeddedMode;
+  }
 }
 
 - (UIView<LUIBodyView> *_Nullable)getRootView {
@@ -165,7 +198,7 @@
 }
 
 - (void)layoutSubviews {
-  if (!_isBundleLoad) {
+  if (!_isBundleLoad || !_render) {
     [super layoutSubviews];
     return;
   }
@@ -193,6 +226,10 @@
 }
 
 - (void)setAttachLynxPageUICallback:(attachLynxPageUI _Nonnull)callback {
+  if (!_render) {
+    return;
+  }
+
   [_render setAttachLynxPageUICallback:callback];
 }
 
@@ -205,6 +242,10 @@
 }
 
 - (LynxViewBuilderBlock)getLynxViewBuilderBlock {
+  if (!_render) {
+    return nil;
+  }
+
   return [_render getLynxViewBuilderBlock];
 }
 
