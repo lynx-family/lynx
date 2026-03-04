@@ -6,19 +6,23 @@ package com.lynx.tasm.fontface;
 import android.util.Pair;
 import com.lynx.tasm.behavior.shadow.text.TypefaceCache;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 class FontFaceGroup {
-  private List<Pair<TypefaceCache.TypefaceListener, Integer>> mListeners = new ArrayList<>();
-  private Set<FontFace> mFontFaces = new HashSet<>();
+  private final ConcurrentLinkedQueue<Pair<TypefaceCache.TypefaceListener, Integer>> mListeners =
+      new ConcurrentLinkedQueue<>();
+  private final Set<FontFace> mFontFaces =
+      Collections.newSetFromMap(new ConcurrentHashMap<FontFace, Boolean>());
 
   void addListener(Pair<TypefaceCache.TypefaceListener, Integer> listener) {
     if (listener == null) {
       return;
     }
-    mListeners.add(listener);
+    mListeners.offer(listener);
   }
 
   Set<FontFace> getFontFaces() {
@@ -26,7 +30,16 @@ class FontFaceGroup {
   }
 
   List<Pair<TypefaceCache.TypefaceListener, Integer>> getListeners() {
-    return mListeners;
+    return new ArrayList<>(mListeners);
+  }
+
+  List<Pair<TypefaceCache.TypefaceListener, Integer>> drainListeners() {
+    List<Pair<TypefaceCache.TypefaceListener, Integer>> drained = new ArrayList<>();
+    Pair<TypefaceCache.TypefaceListener, Integer> item;
+    while ((item = mListeners.poll()) != null) {
+      drained.add(item);
+    }
+    return drained;
   }
 
   void addFontFace(FontFace fontFace) {

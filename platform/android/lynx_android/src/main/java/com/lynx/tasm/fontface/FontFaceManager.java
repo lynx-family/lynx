@@ -44,6 +44,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -69,8 +70,9 @@ public class FontFaceManager {
   /**
    * key: font face  url/local src
    */
-  private Map<String, StyledTypeface> mCacheTypeface = new HashMap<>();
-  private List<FontFaceGroup> mLoadingFontFace = new ArrayList<>();
+  private final Map<String, StyledTypeface> mCacheTypeface = new ConcurrentHashMap<>();
+  private final Object mLoadingLock = new Object();
+  private final Map<String, FontFaceGroup> mLoadingFontFaceBySrc = new HashMap<>();
 
   private static final int MAX_FONT_SETTINGS_CACHE_SIZE = 50;
   private final Map<FontSettingsKey, Typeface> mFontSettingsCache =
@@ -172,10 +174,7 @@ public class FontFaceManager {
 
   private void cachePrefetchedTypeface(String url, Typeface typeface) {
     StyledTypeface styledTypeface = new StyledTypeface(typeface);
-    String key = FontFace.TYPE.URL.name() + url;
-    synchronized (FontFaceManager.this) {
-      mCacheTypeface.put(key, styledTypeface);
-    }
+    mCacheTypeface.put(srcKey(FontFace.TYPE.URL, url), styledTypeface);
     LLog.i(TAG, "prefetchFont success: " + url);
   }
 
@@ -187,14 +186,9 @@ public class FontFaceManager {
       return null;
     }
 
-    synchronized (this) {
-      // try to check if the StyledTypeface has been cached, key is : type+url
-      final StyledTypeface cached_typeface = getCacheTypeface(fontFace);
-      if (cached_typeface != null && cached_typeface.checkTypefaceHasCreated(style)) {
-        // before Android 8.1, we need to create Typeface in Main thread, just fallback to do
-        // findOrLoadFontFace process if Typeface not created
-        return cached_typeface.getStyledTypeFace(style);
-      }
+    final StyledTypeface cachedTypeface = getCacheTypeface(fontFace);
+    if (cachedTypeface != null && cachedTypeface.checkTypefaceHasCreated(style)) {
+      return cachedTypeface.getStyledTypeFace(style);
     }
 
     final StyledTypeface typeface = fontFace.getTypeface();
@@ -232,23 +226,39 @@ public class FontFaceManager {
 
   private void findOrLoadFontFace(LynxContext lynxContext, final FontFace fontFace, final int style,
       final TypefaceCache.TypefaceListener listener, final Handler handler) {
-    FontFaceGroup group;
-    Iterator<Pair<FontFace.TYPE, String>> iterator;
-    Iterator<Pair<FontFace.TYPE, String>> iteratorForRetry;
-    synchronized (this) {
-      // second: get typeface from cached url or local
-      final StyledTypeface typeface = getCacheTypeface(fontFace);
-      if (typeface != null) {
-        // find cache, set to fontFace, we can get typeface directly next time
-        fontFace.setStyledTypeface(typeface);
-        // cache url or local
-        cacheSrc(fontFace, typeface);
-        // get styled typeface in this thread
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-          final Typeface font = typeface.getStyledTypeFace(style);
-          if (listener == null) {
-            return;
+    final StyledTypeface cachedTypeface = getCacheTypeface(fontFace);
+    if (cachedTypeface != null) {
+      fontFace.setStyledTypeface(cachedTypeface);
+      cacheSrc(fontFace, cachedTypeface);
+      if (listener == null) {
+        return;
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        final Typeface font = cachedTypeface.getStyledTypeFace(style);
+        handler.post(new Runnable() {
+          @Override
+          public void run() {
+            LLog.i("Lynx", "load font success");
+            listener.onTypefaceUpdate(font, style);
           }
+        });
+      } else {
+        invokeTypefaceListenerOnUIThread(handler, listener, cachedTypeface, style);
+      }
+      return;
+    }
+
+    FontFaceGroup group;
+    synchronized (mLoadingLock) {
+      final StyledTypeface cachedTypefaceInLock = getCacheTypeface(fontFace);
+      if (cachedTypefaceInLock != null) {
+        fontFace.setStyledTypeface(cachedTypefaceInLock);
+        cacheSrc(fontFace, cachedTypefaceInLock);
+        if (listener == null) {
+          return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+          final Typeface font = cachedTypefaceInLock.getStyledTypeFace(style);
           handler.post(new Runnable() {
             @Override
             public void run() {
@@ -257,34 +267,26 @@ public class FontFaceManager {
             }
           });
         } else {
-          if (listener == null) {
-            return;
-          }
-          invokeTypefaceListenerOnUIThread(handler, listener, typeface, style);
+          invokeTypefaceListenerOnUIThread(handler, listener, cachedTypefaceInLock, style);
         }
         return;
       }
 
-      // third: load typeface
-      // did not find cache, we should load typeface
-      for (FontFaceGroup faceGroup : mLoadingFontFace) {
-        if (faceGroup.isSameFontFace(fontFace)) {
-          // the same typeface is loading
-          faceGroup.addFontFace(fontFace);
-          faceGroup.addListener(new Pair<>(listener, style));
-          return;
-        }
+      group = findLoadingGroupLocked(fontFace);
+      if (group != null) {
+        group.addFontFace(fontFace);
+        group.addListener(new Pair<>(listener, style));
+        return;
       }
-      // never load
+
       group = new FontFaceGroup();
       group.addListener(new Pair<>(listener, style));
       group.addFontFace(fontFace);
-      mLoadingFontFace.add(group);
-      iterator = fontFace.getSrc().iterator();
-      // TODO: Existing for new load link testing, no need to use the old link for backing after the
-      // new link is stabilized.
-      iteratorForRetry = fontFace.getSrc().iterator();
+      registerLoadingGroupLocked(fontFace, group);
     }
+
+    Iterator<Pair<FontFace.TYPE, String>> iterator = fontFace.getSrc().iterator();
+    Iterator<Pair<FontFace.TYPE, String>> iteratorForRetry = fontFace.getSrc().iterator();
 
     if (lynxContext.getGenericResourceFetcher() != null) {
       TraceEvent.beginSection(
@@ -301,10 +303,12 @@ public class FontFaceManager {
     }
   }
 
-  private synchronized void cacheSrc(FontFace fontFace, StyledTypeface typeface) {
+  private void cacheSrc(FontFace fontFace, StyledTypeface typeface) {
     for (Pair<FontFace.TYPE, String> pair : fontFace.getSrc()) {
-      String key = pair.first.name() + pair.second;
-      mCacheTypeface.put(key, typeface);
+      if (pair == null || pair.first == null || pair.second == null) {
+        continue;
+      }
+      mCacheTypeface.put(srcKey(pair.first, pair.second), typeface);
     }
   }
 
@@ -334,7 +338,7 @@ public class FontFaceManager {
   private void loadTypeface(LynxContext context, final FontFaceGroup fontFaceGroup,
       final Iterator<Pair<FontFace.TYPE, String>> iterator, final Handler handler) {
     if (!iterator.hasNext()) {
-      // after all src fails to load, the code will run here.
+      onLoadTypefaceFailed(fontFaceGroup);
       return;
     }
     Pair<FontFace.TYPE, String> next = iterator.next();
@@ -377,12 +381,12 @@ public class FontFaceManager {
     }
     // typeface load success
     final StyledTypeface styledTypeface = new StyledTypeface(typeface);
-    synchronized (this) {
+    synchronized (mLoadingLock) {
       for (FontFace fontFace : fontFaceGroup.getFontFaces()) {
         fontFace.setStyledTypeface(styledTypeface);
         cacheSrc(fontFace, styledTypeface);
       }
-      mLoadingFontFace.remove(fontFaceGroup);
+      unregisterLoadingGroupLocked(fontFaceGroup);
     }
     // Android 8.1 and earlier need to call Typeface.create(mOriginTypeface, style) in the main
     // thread.
@@ -397,11 +401,9 @@ public class FontFaceManager {
     handler.post(new Runnable() {
       @Override
       public void run() {
-        Iterator<Pair<TypefaceCache.TypefaceListener, Integer>> iterator =
-            fontFaceGroup.getListeners().iterator();
-        while (iterator.hasNext()) {
-          final Pair<TypefaceCache.TypefaceListener, Integer> listener = iterator.next();
-          iterator.remove();
+        List<Pair<TypefaceCache.TypefaceListener, Integer>> drained =
+            fontFaceGroup.drainListeners();
+        for (final Pair<TypefaceCache.TypefaceListener, Integer> listener : drained) {
           if (listener.first == null) {
             continue;
           }
@@ -463,12 +465,12 @@ public class FontFaceManager {
     // typeface load success
     LLog.i(TAG, "Lynx load typeface with GenericLynxResourceFetcher success.");
     final StyledTypeface styledTypeface = new StyledTypeface(typeface);
-    synchronized (this) {
+    synchronized (mLoadingLock) {
       for (FontFace fontFace : fontFaceGroup.getFontFaces()) {
         fontFace.setStyledTypeface(styledTypeface);
         cacheSrc(fontFace, styledTypeface);
       }
-      mLoadingFontFace.remove(fontFaceGroup);
+      unregisterLoadingGroupLocked(fontFaceGroup);
     }
     // Android 8.1 and earlier need to call Typeface.create(mOriginTypeface, style) in the main
     // thread.
@@ -483,11 +485,9 @@ public class FontFaceManager {
     handler.post(new Runnable() {
       @Override
       public void run() {
-        Iterator<Pair<TypefaceCache.TypefaceListener, Integer>> iterator =
-            fontFaceGroup.getListeners().iterator();
-        while (iterator.hasNext()) {
-          final Pair<TypefaceCache.TypefaceListener, Integer> listener = iterator.next();
-          iterator.remove();
+        List<Pair<TypefaceCache.TypefaceListener, Integer>> drained =
+            fontFaceGroup.drainListeners();
+        for (final Pair<TypefaceCache.TypefaceListener, Integer> listener : drained) {
           if (listener.first == null) {
             continue;
           }
@@ -559,12 +559,61 @@ public class FontFaceManager {
    * @param fontFace
    * @return
    */
-  private synchronized StyledTypeface getCacheTypeface(FontFace fontFace) {
+  private StyledTypeface getCacheTypeface(FontFace fontFace) {
     for (Pair<FontFace.TYPE, String> pair : fontFace.getSrc()) {
-      String key = pair.first.name() + pair.second;
-      return mCacheTypeface.get(key);
+      if (pair == null || pair.first == null || pair.second == null) {
+        continue;
+      }
+      StyledTypeface cached = mCacheTypeface.get(srcKey(pair.first, pair.second));
+      if (cached != null) {
+        return cached;
+      }
     }
     return null;
+  }
+
+  private static String srcKey(@NonNull FontFace.TYPE type, @NonNull String src) {
+    return type.name() + src;
+  }
+
+  @Nullable
+  private FontFaceGroup findLoadingGroupLocked(@NonNull FontFace fontFace) {
+    for (Pair<FontFace.TYPE, String> pair : fontFace.getSrc()) {
+      if (pair == null || pair.first == null || pair.second == null) {
+        continue;
+      }
+      FontFaceGroup group = mLoadingFontFaceBySrc.get(srcKey(pair.first, pair.second));
+      if (group != null) {
+        return group;
+      }
+    }
+    return null;
+  }
+
+  private void registerLoadingGroupLocked(
+      @NonNull FontFace fontFace, @NonNull FontFaceGroup group) {
+    for (Pair<FontFace.TYPE, String> pair : fontFace.getSrc()) {
+      if (pair == null || pair.first == null || pair.second == null) {
+        continue;
+      }
+      mLoadingFontFaceBySrc.put(srcKey(pair.first, pair.second), group);
+    }
+  }
+
+  private void unregisterLoadingGroupLocked(@NonNull FontFaceGroup group) {
+    Iterator<Map.Entry<String, FontFaceGroup>> it = mLoadingFontFaceBySrc.entrySet().iterator();
+    while (it.hasNext()) {
+      Map.Entry<String, FontFaceGroup> entry = it.next();
+      if (entry.getValue() == group) {
+        it.remove();
+      }
+    }
+  }
+
+  private void onLoadTypefaceFailed(@NonNull FontFaceGroup fontFaceGroup) {
+    synchronized (mLoadingLock) {
+      unregisterLoadingGroupLocked(fontFaceGroup);
+    }
   }
 
   // This method is executed synchronously.
