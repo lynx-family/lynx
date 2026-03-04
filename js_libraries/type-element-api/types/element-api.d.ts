@@ -300,7 +300,7 @@ declare global {
 
   function __SetConfig(ele: ElementRef, config: Record<string, any>): void;
 
-  function __GetElementConfig(ele: ElementRef): Record<string, unknown>;
+  function __GetConfig(ele: ElementRef): Record<string, unknown>;
 
   function __QueryComponent(source: string, callback?: (evalResult: DynamicComponentResult) => void): { evalResult: unknown };
 
