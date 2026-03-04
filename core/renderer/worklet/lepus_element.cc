@@ -111,6 +111,22 @@ static void WrapEventTarget(
   if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeValue(ctx, target);
 }
 
+static lepus::QuickContext* GetQuickContextWithNapiEnv(
+    tasm::TemplateAssembler* tasm, const std::string& entry_name) {
+  if (tasm == nullptr) {
+    return nullptr;
+  }
+  const auto& context = tasm->GetLepusContext(entry_name);
+  if (!context || !context->IsLepusNGContext()) {
+    return nullptr;
+  }
+  auto* quick_context = static_cast<lepus::QuickContext*>(context.get());
+  if (quick_context == nullptr || quick_context->napi_env() == nullptr) {
+    return nullptr;
+  }
+  return quick_context;
+}
+
 LepusElement::LepusElement(
     int32_t element_id, tasm::TemplateAssembler* tasm,
     const std::shared_ptr<worklet::LepusApiHandler>& task_handler)
@@ -163,14 +179,16 @@ tasm::EventResult LepusElement::FireElementWorklet(
     return tasm::EventResult::kDefault;
   }
 
+  auto* quick_context = GetQuickContextWithNapiEnv(tasm, entry_name);
+  if (quick_context == nullptr) {
+    LOGE("FireElementWorklet skipped: worklet context or napi_env is null.");
+    return tasm::EventResult::kDefault;
+  }
+
 #ifdef USE_PRIMJS_NAPI
-  Napi::Env env(reinterpret_cast<napi_env_primjs>(
-      static_cast<lepus::QuickContext*>(tasm->GetLepusContext(entry_name).get())
-          ->napi_env()));
+  Napi::Env env(reinterpret_cast<napi_env_primjs>(quick_context->napi_env()));
 #else
-  Napi::Env env(reinterpret_cast<napi_env>(
-      static_cast<lepus::QuickContext*>(tasm->GetLepusContext(entry_name).get())
-          ->napi_env()));
+  Napi::Env env(reinterpret_cast<napi_env>(quick_context->napi_env()));
 #endif  // USE_PRIMJS_NAPI
 
   auto lepus_component = worklet::LepusComponent::Create(
@@ -288,14 +306,17 @@ std::optional<lepus::Value> LepusElement::TriggerWorkletFunction(
     entry_name = tasm::DEFAULT_ENTRY_NAME;
   }
 
+  auto* quick_context = GetQuickContextWithNapiEnv(tasm, entry_name);
+  if (quick_context == nullptr) {
+    LOGE(
+        "TriggerWorkletFunction skipped: worklet context or napi_env is null.");
+    return std::nullopt;
+  }
+
 #ifdef USE_PRIMJS_NAPI
-  Napi::Env env(reinterpret_cast<napi_env_primjs>(
-      static_cast<lepus::QuickContext*>(tasm->GetLepusContext(entry_name).get())
-          ->napi_env()));
+  Napi::Env env(reinterpret_cast<napi_env_primjs>(quick_context->napi_env()));
 #else
-  Napi::Env env(reinterpret_cast<napi_env>(
-      static_cast<lepus::QuickContext*>(tasm->GetLepusContext(entry_name).get())
-          ->napi_env()));
+  Napi::Env env(reinterpret_cast<napi_env>(quick_context->napi_env()));
 #endif  // USE_PRIMJS_NAPI
 
   auto component_ins = worklet::NapiLepusComponent::Wrap(
