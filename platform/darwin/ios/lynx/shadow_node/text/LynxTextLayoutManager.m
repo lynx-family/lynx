@@ -63,6 +63,11 @@
               matrix:(CGAffineTransform)textMatrix
           attributes:(NSDictionary<NSAttributedStringKey, id> *)attributes
            inContext:(CGContextRef)graphicsContext {
+  BOOL isFirstCallbackInCurrentDraw = (self.glyphCount == 0);
+  if (isFirstCallbackInCurrentDraw && glyphCount > 0) {
+    self.preEndPosition = positions[0];
+  }
+  self.glyphCount += glyphCount;
   if ([attributes objectForKey:LynxTextColorGradientKey] != nil &&
       // iOS unicode emoji use System AppleColorEmojiUI font
       // So here can use font name to check if sub glyphs is emoji
@@ -94,8 +99,8 @@
     // part of this text contains gradient
     LynxGradient *gradient = [mutableAttr objectForKey:LynxTextColorGradientKey];
     CGRect rect = [self usedRectForTextContainer:self.textContainers[0]];
-    // if positions[0] != rect.origin this means there are offsetX outside NSLayoutManager
-    CGSize size = CGSizeMake(MAX(rect.origin.x, positions[0].x) + self.textBoundingRectSize.width,
+    CGFloat stableStartX = MAX(rect.origin.x, self.preEndPosition.x);
+    CGSize size = CGSizeMake(stableStartX + self.textBoundingRectSize.width,
                              rect.origin.y + self.textBoundingRectSize.height);
 
     // It's necessary to add some extra size to `maskImage`; otherwise, there could be scenarios
