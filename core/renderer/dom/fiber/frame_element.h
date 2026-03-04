@@ -57,6 +57,7 @@ class FrameElement : public FiberElement {
 
   std::shared_ptr<FrameElementData> bundle_data_{nullptr};
   std::string src_{};
+  bool is_props_flushed_{false};
 };
 }  // namespace tasm
 }  // namespace lynx
