@@ -40,6 +40,7 @@ FrameElement::~FrameElement() {
 void FrameElement::SetAttribute(const base::String& key,
                                 const lepus::Value& value,
                                 bool need_update_data_model) {
+  is_props_flushed_ = false;
   OnSetSrc(key, value);
   FiberElement::SetAttribute(key, value, need_update_data_model);
 }
@@ -71,7 +72,7 @@ bool FrameElement::DidBundleLoaded(
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FRAME_ELEMENT_DID_BUNDLED_LOADED, "src",
               src_);
-  if (HasPaintingNode()) {
+  if (HasPaintingNode() && is_props_flushed_) {
     if (data->error_code == error::E_SUCCESS && data->bundle) {
       element_container()->SetFrameAppBundle(data->bundle);
     } else {
@@ -97,6 +98,7 @@ void FrameElement::FlushProps() {
     SendLoadEvent(bundle_data_);
     bundle_data_ = nullptr;
   }
+  is_props_flushed_ = true;
 }
 
 void FrameElement::SendLoadEvent(

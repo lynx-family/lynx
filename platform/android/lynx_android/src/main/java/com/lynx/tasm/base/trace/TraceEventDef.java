@@ -243,5 +243,33 @@ public class TraceEventDef {
   public static final String FSP_TIMING_MARK_FSP_END = "Timing::Mark.fspEnd";
 
   // frame
-  public static final String DESTORY_LYNXFRAMEVIEW = "DestroyLynxFrameView";
+  /**
+   * @trace_description: Destroy LynxFrameView.
+   */
+  public static final String DESTORY_LYNXFRAMEVIEW = "LynxFrameView.destroy";
+  /**
+   * @trace_description: Set LynxFrameView's init data.
+   */
+  public static final String LYNX_FRAME_VIEW_SET_INIT_DATA = "LynxFrameView.setInitData";
+  /**
+   * @trace_description: Set LynxFrameView's global props.
+   */
+  public static final String LYNX_FRAME_VIEW_SET_GLOBAL_PROPS = "LynxFrameView.setGlobalProps";
+  /**
+   * @trace_description: Measure LynxFrameView.
+   */
+  public static final String LYNX_FRAME_VIEW_ON_MEASURE = "LynxFrameView.onMeasure";
+  /**
+   * @trace_description: Measure LynxFrameView with target result.
+   */
+  public static final String LYNX_FRAME_VIEW_ON_MEASURE_TARGET = "LynxFrameView.onMeasureTarget";
+  /**
+   * @trace_description: Set LynxFrameView's intrinsic content size.
+   */
+  public static final String LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE =
+      "LynxFrameView.setIntrinsicContentSize";
+  /**
+   * @trace_description: Update LynxFrameView's layout.
+   */
+  public static final String LYNX_FRAME_VIEW_UPDATE_LAYOUT = "LynxFrameView.updateLayout";
 }
