@@ -143,7 +143,7 @@ void QuickjsDebugger::ProcessPausedMessages(const std::string &message,
   LEPUSDebuggerInfo *info = GetDebuggerInfo(context_->GetContext());
   if (!info) return;
   if (message != "") {
-    PushBackQueue(GetDebuggerMessageQueue(info), message.c_str());
+    PushBackQueue(context_->GetContext(), message.c_str());
   }
   ProcessProtocolMessagesWithViewID(info, session_id);
 }

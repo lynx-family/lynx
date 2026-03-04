@@ -124,6 +124,8 @@ lynx_core_source_set("build") {
     "gen/TextUtils_register_jni.h",
     "gen/VSyncMonitor_jni.h",
     "gen/VSyncMonitor_register_jni.h",
+    "gen/WebAssemblyBridge_jni.h",
+    "gen/WebAssemblyBridge_register_jni.h",
     "gen/lynx_so_load.cc",
   ]
 }
