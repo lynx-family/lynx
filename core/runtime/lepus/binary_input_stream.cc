@@ -17,6 +17,7 @@ bool ByteArrayInputStream::ReadFromFile(const char* file) {
   long size = ftell(pf);
   // FIXME, unnecessary resize value initialization.
   buf_->data.resize(size);
+  Initialize();
   uint8_t* text = &buf_->data[0];
   if (text != nullptr) {
     rewind(pf);
