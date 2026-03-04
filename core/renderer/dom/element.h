@@ -297,7 +297,12 @@ class Element : public lepus::RefCounted,
   LYNX_EXPORT_FOR_DEVTOOL virtual void ResetStyle(
       const base::Vector<CSSPropertyID>& style_names);
 
-  virtual void ReserveForAttribute(size_t count) {}
+  /**
+   * Before SetAttribute(), reserve array size.
+   */
+  virtual void ReserveForAttribute(size_t count) {
+    updated_attr_map_.reserve(count);
+  }
 
   /**
    * Element API for appending single attribute to element
@@ -523,11 +528,35 @@ class Element : public lepus::RefCounted,
     parent_component_unique_id_ = id;
   }
 
+  void SetParentComponentUniqueIdRecursively(int64_t id) {
+    if (is_page()) {
+      SetParentComponentUniqueIdForFiber(impl_id());
+    } else {
+      SetParentComponentUniqueIdForFiber(id);
+    }
+
+    for (const auto& child : scoped_children_) {
+      child->SetParentComponentUniqueIdRecursively(
+          is_page() || is_component() ? impl_id() : id);
+    }
+  }
+
   /**
    * A function to resolve parent component element CSSFragment
    */
   void ResolveParentComponentElement() const;
   void ResolveParentComponentElementImpl() const;
+
+  void ClearExtremeParsedStyles() {
+    if (has_extreme_parsed_styles_) {
+      extreme_parsed_styles_.reset();
+      has_extreme_parsed_styles_ = false;
+    }
+  }
+
+  // Exported for accessing private field from Element Manager to handle legacy
+  // logic
+  inline Element* GetRenderRootElement() { return render_root_element_; }
 
   bool IsInSameCSSScope(Element* element) {
     return css_id_ == element->css_id_;
@@ -600,6 +629,8 @@ class Element : public lepus::RefCounted,
   const std::shared_ptr<CSSStyleSheetManager>& style_sheet_manager() {
     return css_style_sheet_manager_;
   }
+
+  void ResetStyleSheet();
 
   void set_attached_to_layout_parent(bool has) {
     attached_to_layout_parent_ = has;
@@ -747,6 +778,8 @@ class Element : public lepus::RefCounted,
 
   void MarkPropsDirty() { MarkDirty(kDirtyForceUpdate); }
 
+  void MarkRefreshCSSStyles() { MarkDirty(kDirtyRefreshCSSVariables); }
+
   // In RadonDiff Mode, worklets require the following two APIs. In RL3.0 or
   // TTML NoDiff, the implementation of worklets no longer relies on these
   // capabilities. After the 2.0 worklet services are phased out, the following
@@ -828,6 +861,14 @@ class Element : public lepus::RefCounted,
   bool NeedCreateNodeAsync() { return create_node_async_; }
 
   bool HasPaintingNode() { return has_painting_node_; }
+
+  bool IsNewlyCreated() const { return dirty_ & kDirtyCreated; }
+
+  void MarkAsInline() {
+    is_inline_element_ = true;
+    has_layout_only_props_ = false;
+  }
+
   void ResetPropBundle();
 
   void CheckFlattenRelatedProp(const base::String& key,
@@ -895,6 +936,16 @@ class Element : public lepus::RefCounted,
 
   bool EnableLayoutInElementMode() const;
 
+  void EnsureLayoutBundle();
+
+  void InitLayoutBundle();
+
+  void UpdateTagToLayoutBundle();
+
+  void MarkCustomPropertiesDirty() { custom_properties_ = nullptr; }
+
+  const StyleMap& GetParsedStylesMap() const { return parsed_styles_map_; }
+
   bool UsingTextService() const;
 
   bool EnableFragmentLayerRender() const;
@@ -928,6 +979,8 @@ class Element : public lepus::RefCounted,
   virtual void set_will_destroy(bool destroy) { will_destroy_ = destroy; }
 
   bool will_destroy() { return will_destroy_; }
+
+  bool ShouldDestroy() const { return !will_destroy_ && element_manager(); }
 
   virtual void TickElement(fml::TimePoint& time) {}
 
@@ -1068,7 +1121,12 @@ class Element : public lepus::RefCounted,
   // of inline styles to be merged. Then it will merge styles from CSS
   // selectors and finally calls `MergeInlineStyles` to merge the inline
   // styles.
-  virtual size_t CountInlineStyles() = 0;
+  size_t CountInlineStyles() {
+    return current_raw_inline_styles_.has_value()
+               ? CSSProperty::GetTotalParsedStyleCountFromMap(
+                     *current_raw_inline_styles_)
+               : 0;
+  }
 
   // Returns true if CSS variables were merged and need to be resolved.
   virtual bool MergeInlineStyles(StyleMap& merged_styles) = 0;
@@ -1128,6 +1186,8 @@ class Element : public lepus::RefCounted,
   bool IsPartElement() const { return !part_id_.empty(); }
 
   const base::String& GetPartID() const { return part_id_; }
+
+  void LogNodeInfo();
 
  protected:
   Element(const Element&, bool clone_resolved_props);

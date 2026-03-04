@@ -500,6 +500,35 @@ bool Element::EnableLayoutInElementMode() const {
   return element_manager() && element_manager()->IsLayoutInElementModeOn();
 }
 
+void Element::EnsureLayoutBundle() {
+  if (EnableLayoutInElementMode()) {
+    return;
+  }
+
+  if (layout_bundle_ == nullptr) {
+    layout_bundle_ = std::make_unique<LayoutBundle>();
+  }
+}
+
+void Element::InitLayoutBundle() {
+  if (EnableLayoutInElementMode()) {
+    return;
+  }
+
+  EnsureLayoutBundle();
+  layout_bundle_->tag = tag_;
+  layout_bundle_->is_create_bundle = true;
+}
+
+void Element::UpdateTagToLayoutBundle() {
+  if (EnableLayoutInElementMode()) {
+    return;
+  }
+
+  EnsureLayoutBundle();
+  layout_bundle_->tag = tag_;
+}
+
 bool Element::UsingTextService() const {
   return element_manager() && element_manager()->IsUsingTextService();
 }
@@ -2443,6 +2472,18 @@ Element* Element::first_child() const {
 Element* Element::last_child() const {
   return scoped_children_.empty() ? nullptr : scoped_children_.back().get();
 }
+
+void Element::LogNodeInfo() {
+  LOGE("FiberElement node ,this:"
+       << this << ", tag:" << tag_.str() << ",id:" << id_
+       << (!data_model_->idSelector().empty() ? data_model_->idSelector().str()
+                                              : "")
+       << ", first class:"
+       << (data_model_->classes().size() > 0 ? data_model_->classes()[0].str()
+                                             : ""));
+}
+
+void Element::ResetStyleSheet() { style_sheet_ = nullptr; }
 
 }  // namespace tasm
 }  // namespace lynx

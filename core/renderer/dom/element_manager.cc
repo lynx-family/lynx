@@ -1454,11 +1454,12 @@ void ElementManager::LegacyHandleLayoutTask(
   // Dispatch operation according to batch rendering state
   auto *parent = target;
   if (parent->GetRenderRootElement() != nullptr &&
-      parent->GetRenderRootElement()->GetSchedulerAdapter() &&
-      parent->GetRenderRootElement()
+      static_cast<FiberElement *>(parent->GetRenderRootElement())
+          ->GetSchedulerAdapter() &&
+      static_cast<FiberElement *>(parent->GetRenderRootElement())
           ->GetSchedulerAdapter()
           ->IsBatchResolvingTree()) {
-    parent->GetRenderRootElement()
+    static_cast<FiberElement *>(parent->GetRenderRootElement())
         ->GetSchedulerAdapter()
         ->resolve_element_tree_queue()
         .emplace_back(std::move(operation));

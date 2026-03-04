@@ -120,8 +120,6 @@ class FiberElement : public Element {
   virtual bool NeedFullFlushPath(CSSPropertyID id,
                                  const CSSValue& value) override;
 
-  const StyleMap& GetParsedStylesMap() const { return parsed_styles_map_; }
-
   /**
    * A key function to GetListNode
    */
@@ -177,20 +175,6 @@ class FiberElement : public Element {
 
   void HandleRemoveSelf(FiberElement* removal_point,
                         FiberElement* render_parent);
-
-  void SetParentComponentUniqueIdRecursively(int64_t id) {
-    if (is_page()) {
-      SetParentComponentUniqueIdForFiber(impl_id());
-    } else {
-      SetParentComponentUniqueIdForFiber(id);
-    }
-
-    for (const auto& child : scoped_children_) {
-      static_cast<FiberElement*>(child.get())
-          ->SetParentComponentUniqueIdRecursively(
-              is_page() || is_component() ? impl_id() : id);
-    }
-  }
 
   /**
    * Element API for inserting child
@@ -253,11 +237,6 @@ class FiberElement : public Element {
    * Destroy the related platform node of this element
    */
   void DestroyPlatformNode();
-
-  /**
-   * Before SetAttribute(), reserve array size.
-   */
-  virtual void ReserveForAttribute(size_t count) override;
 
   /**
    * Element API for setNativeProps
@@ -360,15 +339,11 @@ class FiberElement : public Element {
     }
   }
 
-  void ResetStyleSheet() { style_sheet_ = nullptr; };
-
   void MarkFontSizeInvalidateRecursively();
 
   // if child's related css variable is updated, invalidate child's style.
   void RecursivelyMarkChildrenCSSVariableDirty(
       const lepus::Value& css_variable_updated);
-
-  void MarkRefreshCSSStyles() { MarkDirty(kDirtyRefreshCSSVariables); }
 
   void ConsumeStyle(const StyleMap& styles,
                     const StyleMap* inherit_styles) override;
@@ -407,9 +382,6 @@ class FiberElement : public Element {
 
   void UpdateFiberElement();
 
-  inline void EnsureLayoutBundle();
-  void InitLayoutBundle();
-  void UpdateTagToLayoutBundle();
   virtual void MarkAsLayoutRoot() override;
   virtual void MarkLayoutDirty() override;
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
@@ -521,7 +493,6 @@ class FiberElement : public Element {
 
   int32_t GetCSSID() const override;
 
-  virtual size_t CountInlineStyles() override;
   bool MergeInlineStyles(StyleMap& new_styles) final;
   void PersistAnimationFillStyles(const StyleMap& styles) override;
   void ClearPersistedAnimationFillStyle(CSSPropertyID id) override;
@@ -539,18 +510,6 @@ class FiberElement : public Element {
 
   void UpdateRenderRootElementIfNecessary(FiberElement* child);
 
-  void ClearExtremeParsedStyles() {
-    if (has_extreme_parsed_styles_) {
-      extreme_parsed_styles_.reset();
-      has_extreme_parsed_styles_ = false;
-    }
-  }
-
-  // Exported for accessing private field from Element Manager to handle legacy
-  // logic
-  inline FiberElement* GetRenderRootElement() {
-    return static_cast<FiberElement*>(render_root_element_);
-  }
   ListItemSchedulerAdapter* GetSchedulerAdapter() {
     if (scheduler_adapter_) {
       return scheduler_adapter_.get();
@@ -566,7 +525,6 @@ class FiberElement : public Element {
   lepus::Value GetComputedStyleByKey(const base::String& key);
 
   bool CollectCustomProperties(AttributeHolder* holder);
-  void MarkCustomPropertiesDirty();
 
   void PrepareSelfForThreadedElementResolution();
 
@@ -585,18 +543,11 @@ class FiberElement : public Element {
 
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
 
-  bool IsNewlyCreated() const { return dirty_ & kDirtyCreated; }
-
   ParallelFlushReturn CreateParallelTaskHandler();
 
   void CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value);
   void CacheStyleFromAttributes(CSSPropertyID id, const lepus::Value& value);
   void DidConsumeStyle();
-
-  void MarkAsInline() {
-    is_inline_element_ = true;
-    has_layout_only_props_ = false;
-  }
 
   void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars);
 
@@ -619,8 +570,6 @@ class FiberElement : public Element {
 
   virtual void MarkHasLayoutOnlyPropsIfNecessary(
       const base::String& attribute_key);
-
-  bool ShouldDestroy() const;
 
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
 
@@ -668,8 +617,6 @@ class FiberElement : public Element {
                                     const ClassList& new_classes);
   void InvalidateChildren(css::InvalidationSet* invalidation_set);
   void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
-
-  void LogNodeInfo();
 
   PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
 

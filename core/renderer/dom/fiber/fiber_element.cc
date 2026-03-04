@@ -234,10 +234,6 @@ void FiberElement::OnNodeAdded(FiberElement *child) {
   UpdateRenderRootElementIfNecessary(child);
 }
 
-bool FiberElement::ShouldDestroy() const {
-  return !will_destroy_ && element_manager();
-}
-
 FiberElement::~FiberElement() {
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_DESTRUCTOR, "id", id_);
   if (ShouldDestroy()) {
@@ -355,13 +351,6 @@ int32_t FiberElement::GetCSSID() const {
       return kInvalidCssId;
     }
   }
-}
-
-size_t FiberElement::CountInlineStyles() {
-  return current_raw_inline_styles_.has_value()
-             ? CSSProperty::GetTotalParsedStyleCountFromMap(
-                   *current_raw_inline_styles_)
-             : 0;
 }
 
 bool FiberElement::MergeInlineStyles(StyleMap &new_styles) {
@@ -819,10 +808,6 @@ void FiberElement::RemoveAllInlineStyles() {
   current_raw_inline_styles_.reset();
 
   MarkDirty(kDirtyStyle);
-}
-
-void FiberElement::ReserveForAttribute(size_t count) {
-  updated_attr_map_.reserve(count);
 }
 
 bool FiberElement::CheckHasIdMapInCSSFragment() {
@@ -2590,39 +2575,10 @@ void FiberElement::EnsureSLNode() {
 
 void FiberElement::OnLayoutObjectCreated() {}
 
-void FiberElement::EnsureLayoutBundle() {
-  if (EnableLayoutInElementMode()) {
-    return;
-  }
-
-  if (layout_bundle_ == nullptr) {
-    layout_bundle_ = std::make_unique<LayoutBundle>();
-  }
-}
-
 void FiberElement::SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func) {
   if (customized_layout_node_ != nullptr) {
     customized_layout_node_->SetMeasureFunc(std::move(measure_func));
   }
-}
-
-void FiberElement::UpdateTagToLayoutBundle() {
-  if (EnableLayoutInElementMode()) {
-    return;
-  }
-
-  EnsureLayoutBundle();
-  layout_bundle_->tag = tag_;
-}
-
-void FiberElement::InitLayoutBundle() {
-  if (EnableLayoutInElementMode()) {
-    return;
-  }
-
-  EnsureLayoutBundle();
-  layout_bundle_->tag = tag_;
-  layout_bundle_->is_create_bundle = true;
 }
 
 void FiberElement::MarkAsLayoutRoot() {
@@ -3461,16 +3417,6 @@ void FiberElement::VisitChildren(
   }
 }
 
-void FiberElement::LogNodeInfo() {
-  LOGE("FiberElement node ,this:"
-       << this << ", tag:" << tag_.str() << ",id:" << id_
-       << (!data_model_->idSelector().empty() ? data_model_->idSelector().str()
-                                              : "")
-       << ", first class:"
-       << (data_model_->classes().size() > 0 ? data_model_->classes()[0].str()
-                                             : ""));
-}
-
 void FiberElement::ConsumeTransitionStylesInAdvanceInternal(
     CSSPropertyID css_id, const tasm::CSSValue &value) {
   SetStyleInternal(css_id, value);
@@ -4094,8 +4040,6 @@ bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
   CSSValue::SubstituteAll(*map);
   return true;
 }
-
-void FiberElement::MarkCustomPropertiesDirty() { custom_properties_ = nullptr; }
 
 bool FiberElement::NeedPropagateInheritedDirtyFlag(bool force_propagate) {
   // When level order traversing is enabled, mark kDirtyPropagateInherited is
