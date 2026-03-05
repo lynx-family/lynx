@@ -158,6 +158,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)onLynxEventWithDictionary:(NSDictionary *)detail;
 
+#if TARGET_OS_OSX
+
+- (void)sendSyntheticMouseEventWithType:(NSEventType)type atPoint:(NSPoint)point;
+
+#endif
+
 @end
 
 NS_ASSUME_NONNULL_END
