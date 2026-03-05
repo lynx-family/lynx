@@ -955,5 +955,53 @@ TEST_F(DisplayListBuilderTest, LinearGradientOperation) {
   EXPECT_FLOAT_EQ(float_data_data[3], 1.0f);
 }
 
+TEST_F(DisplayListBuilderTest, EventBundleOperation) {
+  PlatformEventPropMap event_props;
+  event_props.insert_or_assign(PlatformEventPropName::kExposureArea,
+                               lepus::Value(false));
+  event_props.insert_or_assign(PlatformEventPropName::kUserInteractionEnabled,
+                               lepus::Value(true));
+
+  base::Vector<PlatformEventName> event_names;
+  event_names.push_back(PlatformEventName::kTouchStart);
+  event_names.push_back(PlatformEventName::kClick);
+
+  builder_->EventBundle(event_props, event_names);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* int_data_data = display_list.GetContentIntData();
+  const float* float_data_data = display_list.GetContentFloatData();
+
+  EXPECT_NE(op_types_data, nullptr);
+  EXPECT_NE(int_data_data, nullptr);
+  EXPECT_NE(float_data_data, nullptr);
+
+  EXPECT_EQ(op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kEventBundle));
+
+  // int_data layout: [int_count, float_count, event_count, events...,
+  // prop_count, props...] float_data layout: [props_value...]
+
+  EXPECT_EQ(int_data_data[0], 1 + 2 + 1 + 2);
+  EXPECT_EQ(int_data_data[1], 2);
+
+  EXPECT_EQ(int_data_data[2], 2);
+  EXPECT_EQ(int_data_data[3],
+            static_cast<int32_t>(PlatformEventName::kTouchStart));
+  EXPECT_EQ(int_data_data[4], static_cast<int32_t>(PlatformEventName::kClick));
+
+  EXPECT_EQ(int_data_data[5], 2);
+  EXPECT_EQ(
+      int_data_data[6],
+      static_cast<int32_t>(PlatformEventPropName::kUserInteractionEnabled));
+  EXPECT_EQ(int_data_data[7],
+            static_cast<int32_t>(PlatformEventPropName::kExposureArea));
+
+  EXPECT_FLOAT_EQ(float_data_data[0], 1.0f);
+  EXPECT_FLOAT_EQ(float_data_data[1], 0.0f);
+}
+
 }  // namespace tasm
 }  // namespace lynx

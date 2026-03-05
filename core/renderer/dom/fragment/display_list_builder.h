@@ -70,6 +70,11 @@ class DisplayListBuilder {
                                      int32_t tiling_index, int32_t clip_index,
                                      int32_t repeat_x, int32_t repeat_y);
 
+  // Record event bundle, include event props and event names
+  DisplayListBuilder& EventBundle(
+      const PlatformEventPropMap& event_props,
+      const base::Vector<PlatformEventName>& event_names);
+
   DisplayListBuilder& MarkRootNeedClipBounds();
 
   // Build the final display list

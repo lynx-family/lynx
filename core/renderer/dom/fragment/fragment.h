@@ -85,6 +85,20 @@ class Fragment : public BaseElementContainer {
 
   void OnDraw(DisplayListBuilder& display_list_builder);
 
+  void SetEventProp(PlatformEventPropName name, const lepus::Value& value);
+
+  void ClearEventProps();
+
+  void AddEventName(PlatformEventName name);
+
+  void ClearEventNames();
+
+  const PlatformEventPropMap& EventProps() const { return event_props_; }
+
+  const base::Vector<PlatformEventName>& EventNames() const {
+    return event_names_;
+  }
+
   void DrawChildren(DisplayListBuilder& display_list_builder);
 
   void AddChildBefore(Fragment* child, Fragment* sibling);
@@ -128,6 +142,10 @@ class Fragment : public BaseElementContainer {
 
   void MoveDirectStackingChildren(Fragment* parent, Fragment* child);
 
+  void MarkHasExposureEventIfNeeded() const;
+
+  void ReconstructEventTargetTreeForExposure() const;
+
   bool has_platform_renderer_{false};
 
   // If the fragment has positon fixed or z-index != 0, store the fragment from
@@ -156,6 +174,9 @@ class Fragment : public BaseElementContainer {
   BoxModelRecorder box_recorder_;
 
   std::unique_ptr<FragmentBehavior> behavior_;
+
+  PlatformEventPropMap event_props_;
+  base::Vector<PlatformEventName> event_names_;
 
   float render_offset_[2] = {0, 0};
 

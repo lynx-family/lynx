@@ -5,6 +5,7 @@
 #include "core/renderer/dom/fragment/fragment.h"
 
 #include <algorithm>
+#include <atomic>
 #include <memory>
 #include <utility>
 
@@ -14,13 +15,17 @@
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
+#include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/style/transform/matrix44.h"
 
 namespace lynx {
 namespace tasm {
+
+std::atomic_bool g_any_exposure_event{false};
 
 // Init value for the draw node capacity.
 const int32_t Fragment::kDefaultDrawNodeCapacity = 1;
@@ -596,7 +601,56 @@ bool Fragment::IsReliableSibling() const {
          fragment_from_element_parent() == nullptr;
 }
 
+void Fragment::SetEventProp(PlatformEventPropName name,
+                            const lepus::Value& value) {
+  if (name == PlatformEventPropName::kUnknown) {
+    return;
+  }
+  event_props_.insert_or_assign(name, value);
+}
+
+void Fragment::ClearEventProps() {
+  if (event_props_.empty()) {
+    return;
+  }
+  event_props_.clear();
+}
+
+void Fragment::AddEventName(PlatformEventName name) {
+  if (name == PlatformEventName::kUnknown) {
+    return;
+  }
+  for (const auto& item : event_names_) {
+    if (item == name) {
+      return;
+    }
+  }
+  event_names_.push_back(name);
+}
+
+void Fragment::ClearEventNames() {
+  if (event_names_.empty()) {
+    return;
+  }
+  event_names_.clear();
+}
+
+void Fragment::MarkHasExposureEventIfNeeded() const {
+  if (g_any_exposure_event.load(std::memory_order_relaxed)) {
+    return;
+  }
+  for (const auto& name : event_names_) {
+    if (name == PlatformEventName::kUIAppear ||
+        name == PlatformEventName::kUIDisappear) {
+      g_any_exposure_event.store(true, std::memory_order_relaxed);
+      return;
+    }
+  }
+}
+
 void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
+  MarkHasExposureEventIfNeeded();
+
   if (element()->IsShadowNodeVirtual()) {
     // No contents to be rendererd.
     return;
@@ -613,6 +667,10 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
                              layout_info_.layout_result.offset_.Y(),
                              layout_info_.layout_result.size_.width_,
                              layout_info_.layout_result.size_.height_);
+
+  if (!event_props_.empty() || !event_names_.empty()) {
+    display_list_builder.EventBundle(event_props_, event_names_);
+  }
 
   DrawBackground(display_list_builder);
   DrawBorder(display_list_builder);
@@ -635,6 +693,20 @@ void Fragment::DrawChildren(DisplayListBuilder& display_list_builder) {
   }
 }
 
+void Fragment::ReconstructEventTargetTreeForExposure() const {
+  if (id() != kRootId) {
+    return;
+  }
+
+  bool need_reconstruct = g_any_exposure_event.load(std::memory_order_relaxed);
+
+  // TODO(hexionghui): It shouldn't be rebuilt only once; it may need to be
+  // rebuilt again later.
+  static std::atomic_bool reconstructed{false};
+  if (need_reconstruct && !reconstructed.exchange(true)) {
+  }
+}
+
 void Fragment::Draw() {
   // XXX: Maybe this part could run parallely with parent displayList
   // generation. The shared totally different context.
@@ -652,6 +724,8 @@ void Fragment::Draw() {
 
   painting_context()->impl()->CastToNativeCtx()->UpdateDisplayList(
       id(), builder.Build());
+
+  ReconstructEventTargetTreeForExposure();
 }
 
 void Fragment::Draw(DisplayListBuilder& display_list_builder) {

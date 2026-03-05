@@ -43,6 +43,7 @@
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
+#include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/list_item_fragment_behavior.h"
 #include "core/renderer/dom/fragment/platform_extended_fragment_behavior.h"
@@ -2177,6 +2178,11 @@ bool FiberElement::ConsumeAllAttributes() {
                 [this](lynx::perfetto::EventContext ctx) {
                   UpdateTraceDebugInfo(ctx.event());
                 });
+    if (EnableFragmentLayerRender()) {
+      if (auto fragment = fragment_impl()) {
+        fragment->ClearEventProps();
+      }
+    }
     for (const auto &attr : updated_attr_map_) {
       SetAttributeInternal(attr.first, attr.second);
       need_update = true;
@@ -2301,6 +2307,15 @@ void FiberElement::SetAttributeInternal(const base::String &key,
   MarkHasLayoutOnlyPropsIfNecessary(key);
 
   prop_bundle_->SetProps(key.c_str(), pub::ValueImplLepus(value));
+
+  if (EnableFragmentLayerRender()) {
+    if (auto name = PlatformEventPropNameFromString(key.str());
+        name != PlatformEventPropName::kUnknown) {
+      if (auto fragment = fragment_impl()) {
+        fragment->SetEventProp(name, value);
+      }
+    }
+  }
 
   // If the current node is a list child node, it is necessary to convert
   // kFullSpan's value to ListComponentInfo::Type and synchronize it to

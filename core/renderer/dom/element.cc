@@ -32,6 +32,7 @@
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
+#include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/layout_bundle.h"
 #include "core/renderer/dom/list_component_info.h"
@@ -666,6 +667,15 @@ void Element::ResetAttribute(const base::String& key) {
 
   PreparePropBundleIfNeed();
   prop_bundle_->SetNullProps(key.c_str());
+
+  if (EnableFragmentLayerRender()) {
+    if (auto name = PlatformEventPropNameFromString(key.str());
+        name != PlatformEventPropName::kUnknown) {
+      if (auto fragment = fragment_impl()) {
+        fragment->SetEventProp(name, lepus::Value(0));
+      }
+    }
+  }
 }
 
 void Element::WillConsumeAttribute(const base::String& key,
@@ -957,6 +967,16 @@ void Element::SetEventHandler(const base::String& name, EventHandler* handler) {
   if (handler->name().IsEquals("attach") ||
       handler->name().IsEquals("detach")) {
     has_event_listener_ = true;
+  }
+  if (EnableFragmentLayerRender()) {
+    // TODO(hexionghui): This also needs to be set when the event is cleared.
+    if (auto fragment = fragment_impl();
+        fragment && !handler->IsGlobalBindEvent()) {
+      auto event_name = PlatformEventNameFromString(name.str());
+      if (event_name != PlatformEventName::kUnknown) {
+        fragment->AddEventName(event_name);
+      }
+    }
   }
   has_layout_only_props_ = false;
 }

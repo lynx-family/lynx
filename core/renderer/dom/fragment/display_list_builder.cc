@@ -137,6 +137,13 @@ DisplayListBuilder& DisplayListBuilder::LinearGradient(
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::EventBundle(
+    const PlatformEventPropMap& event_props,
+    const base::Vector<PlatformEventName>& event_names) {
+  display_list_.AddEventBundle(event_props, event_names);
+  return *this;
+}
+
 DisplayListBuilder& DisplayListBuilder::MarkRootNeedClipBounds() {
   display_list_.MarkRootNeedClipBounds();
   return *this;
