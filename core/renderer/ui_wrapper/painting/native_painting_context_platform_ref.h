@@ -69,10 +69,30 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   PlatformEventTargetHelper *GetEventTargetHelper();
   // Reconstruct the event target tree recursively.
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively();
+  // did_reconstruct is set to true if the event target tree is reconstructed.
+  fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
+      bool *did_reconstruct);
+  // Add the target element to the exposure target map.
+  void AddPlatformEventTargetToExposure(int32_t id,
+                                        const std::string &unique_id,
+                                        const std::string &exposure_id,
+                                        const std::string &exposure_scene,
+                                        const lepus::Value &dataset);
+  // Remove the target element from the exposure target map.
+  void RemovePlatformEventTargetFromExposure(int32_t id,
+                                             const std::string &unique_id,
+                                             const std::string &exposure_id,
+                                             const std::string &exposure_scene);
   // Invoke the method of the ui element.
   void InvokeUIMethod(
       int32_t id, const std::string &method, const lepus::Value &params,
       base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback);
+
+  // Get the location of the root view on the screen.
+  virtual void GetRootViewLocationOnScreen(float location[2]) {}
+
+  // Get the size of the screen.
+  virtual void GetScreenSize(float size[2]) {}
 
   bool IsNativePaintingCtxPlatformRef() override { return true; }
 
@@ -89,7 +109,8 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   std::unique_ptr<PlatformEventEmitter> event_emitter_ =
       std::make_unique<PlatformEventEmitter>(this);
   std::unique_ptr<PlatformEventTargetHelper> event_target_helper_ =
-      std::make_unique<PlatformEventTargetHelper>();
+      std::make_unique<PlatformEventTargetHelper>(this);
+  bool need_reconstruct_event_target_tree_{false};
 };
 
 }  // namespace tasm

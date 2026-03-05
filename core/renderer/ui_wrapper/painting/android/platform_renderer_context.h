@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/platform/android/scoped_java_ref.h"
@@ -61,6 +62,9 @@ class PlatformRendererContext {
   void DestroyTextBundle(int32_t id);
 
   int32_t GetTagInfo(const std::string& tag_name);
+
+  std::vector<float> GetRootViewLocationOnScreen();
+  std::vector<float> GetScreenSize();
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;

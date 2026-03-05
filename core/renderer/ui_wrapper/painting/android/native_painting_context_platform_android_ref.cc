@@ -13,5 +13,24 @@ NativePaintingCtxAndroidRef::NativePaintingCtxAndroidRef(
     std::unique_ptr<PlatformRendererFactory> view_factory)
     : NativePaintingCtxPlatformRef(std::move(view_factory)) {}
 
+void NativePaintingCtxAndroidRef::GetRootViewLocationOnScreen(
+    float location[2]) {
+  const auto res =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get())
+          ->GetContext()
+          ->GetRootViewLocationOnScreen();
+  location[0] = res[0];
+  location[1] = res[1];
+}
+
+void NativePaintingCtxAndroidRef::GetScreenSize(float size[2]) {
+  const auto res =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get())
+          ->GetContext()
+          ->GetScreenSize();
+  size[0] = res[0];
+  size[1] = res[1];
+}
+
 }  // namespace tasm
 }  // namespace lynx

@@ -111,6 +111,8 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
   void UpdateTextBundle(int id, intptr_t bundle) override;
 
   void DestroyTextBundle(int id) override;
+
+  void ReconstructEventTargetTreeRecursively() override;
 #pragma endregion  // NativePaintingContext
 
  private:

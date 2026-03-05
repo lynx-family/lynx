@@ -26,6 +26,7 @@ class NativePaintingContext {
                            int32_t event_mask = 0) = 0;
   virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
   virtual void DestroyTextBundle(int id) = 0;
+  virtual void ReconstructEventTargetTreeRecursively() = 0;
 };
 
 }  // namespace lynx::tasm

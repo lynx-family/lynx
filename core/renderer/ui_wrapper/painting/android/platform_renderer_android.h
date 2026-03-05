@@ -54,6 +54,8 @@ class PlatformRendererAndroidFactory : public PlatformRendererFactory {
       : context_(context) {}
   ~PlatformRendererAndroidFactory() override = default;
 
+  PlatformRendererContext* GetContext() const { return context_; }
+
   fml::RefPtr<PlatformRenderer> CreateRenderer(
       int id, PlatformRendererType type,
       const fml::RefPtr<PropBundle>& init_data) override;
