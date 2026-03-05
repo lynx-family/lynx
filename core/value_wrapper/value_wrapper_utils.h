@@ -12,6 +12,7 @@
 
 #include "core/base/lynx_export.h"
 #include "core/public/pub_value.h"
+#include "core/runtime/common/utils.h"
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
@@ -54,10 +55,12 @@ class ValueUtils {
       piper::Runtime& rt, const piper::Object& o, size_t& length);
   static std::unique_ptr<Value> ConvertPiperArrayToPubValue(
       piper::Runtime& rt, const piper::Array& arr,
-      const std::shared_ptr<PubValueFactory>& factory);
+      const std::shared_ptr<PubValueFactory>& factory,
+      lynx::piper::JSValueCircularArray& pre_object_vector, int depth = 0);
   static std::unique_ptr<Value> ConvertPiperObjectToPubValue(
       piper::Runtime& rt, const piper::Object& obj,
-      const std::shared_ptr<PubValueFactory>& factory);
+      const std::shared_ptr<PubValueFactory>& factory,
+      lynx::piper::JSValueCircularArray& pre_object_vector, int depth = 0);
 
   // Some tricky logic for BigInt, such as { "id" : 8913891381287328398 }
   // will exist on js { "id" : { "__lynx_val__" : "8913891381287328398" }},
