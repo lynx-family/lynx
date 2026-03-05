@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #include "platform/embedder/lynx_runtime_lifecycle_observer_priv.h"
-#include "third_party/napi/include/napi.h"
+#include "third_party/weak-node-api/vendor/headers/napi.h"
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
 #endif
 
 LYNX_EXTERN_C lynx_runtime_lifecycle_observer_t*
@@ -116,6 +116,6 @@ void LynxRuntimeLifecycleListenerDelegate::OnRuntimeDetach() {
 }  // namespace embedder
 }  // namespace lynx
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
 #endif

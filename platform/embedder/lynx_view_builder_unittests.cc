@@ -4,6 +4,11 @@
 
 #include "platform/embedder/lynx_view_builder_priv.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+#include "third_party/weak-node-api/vendor/headers/node_api.h"
+
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#endif
 
 TEST(LynxViewBuilder, Create) {
   lynx_view_builder_t* builder = lynx_view_builder_create();

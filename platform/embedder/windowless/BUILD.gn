@@ -11,7 +11,10 @@ lynx_core_source_set("windowless") {
     "lynx_windowless_renderer.cc",
     "lynx_windowless_renderer_priv.h",
   ]
-  configs = [ "../:config" ]
+  configs = [
+    "../:config",
+    "../../../platform/embedder:public_api",
+  ]
   deps = [
     "../../../clay/shell/platform/headless:headless",
     "../../../clay/ui:ui",

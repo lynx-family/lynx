@@ -28,7 +28,7 @@ ExtensionModuleFactoryImpl::CreateModule(const std::string& name) {
             std::get<2>(extension_module_creator->second));
     auto module = std::make_shared<ExtensionModuleImpl>(ret);
     module->SetRuntimeInitState(task_runner_);
-    module->SetRuntimeAttachedState(env_, vsync_observer_);
+    module->SetRuntimeAttachedState(opaque_env_, vsync_observer_);
     module->SetupNapiModule();
     // The module will be cached in LynxNativeModuleManager.
     return module;

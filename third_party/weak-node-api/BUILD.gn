@@ -1,0 +1,132 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+import("../../core/Lynx.gni")
+if (is_win) {
+  import("//build/config/win/win.gni")
+}
+
+weak_node_api_pkg_root = "./vendor"
+
+weak_node_api_public_headers = [
+  "${weak_node_api_pkg_root}/headers/js_native_api_types.h",
+  "${weak_node_api_pkg_root}/headers/js_native_api.h",
+  "${weak_node_api_pkg_root}/headers/napi-inl.deprecated.h",
+  "${weak_node_api_pkg_root}/headers/napi-inl.h",
+  "${weak_node_api_pkg_root}/headers/napi.h",
+  "${weak_node_api_pkg_root}/headers/node_api_types.h",
+  "${weak_node_api_pkg_root}/headers/node_api.h",
+  "${weak_node_api_pkg_root}/headers/weak_napi_defines.h",
+  "${weak_node_api_pkg_root}/headers/weak_napi_undefs.h",
+  "${weak_node_api_pkg_root}/generated/NodeApiHost.hpp",
+  "${weak_node_api_pkg_root}/generated/weak_node_api.hpp",
+]
+
+weak_node_api_sources =
+    [ "${weak_node_api_pkg_root}/generated/weak_node_api.cpp" ]
+
+weak_node_api_include_dirs = [ "${weak_node_api_pkg_root}" ]
+
+weak_node_api_mac_lib_dir = ""
+weak_node_api_win_lib_dir = ""
+
+if (use_weak_suffix_napi) {
+  weak_node_api_mac_lib_dir =
+      "${weak_node_api_pkg_root}/prebuilt/macos/weak_suffix"
+  weak_node_api_win_lib_dir =
+      "${weak_node_api_pkg_root}/prebuilt/win/weak_suffix/x64"
+} else {
+  weak_node_api_mac_lib_dir = "${weak_node_api_pkg_root}/prebuilt/macos"
+  weak_node_api_win_lib_dir =
+      "${weak_node_api_pkg_root}/prebuilt/win/weak_suffix/x64"
+}
+
+if (is_debug) {
+  weak_node_api_mac_lib_dir = "${weak_node_api_mac_lib_dir}/debug"
+  weak_node_api_win_lib_dir = "${weak_node_api_win_lib_dir}/Debug"
+} else {
+  weak_node_api_mac_lib_dir = "${weak_node_api_mac_lib_dir}/release"
+  weak_node_api_win_lib_dir = "${weak_node_api_win_lib_dir}/Release"
+}
+
+config("weak_node_api_config") {
+  defines = [
+    "NAPI_DISABLE_CPP_EXCEPTIONS",
+    "NAPI_DISABLE_CPP_RTTI",
+  ]
+  if (use_primjs_napi) {
+    defines += [ "USE_PRIMJS_NAPI" ]
+  }
+  if (use_weak_suffix_napi) {
+    defines += [ "USE_WEAK_SUFFIX_NAPI=1" ]
+  }
+  include_dirs = weak_node_api_include_dirs
+}
+
+config("private_config") {
+  cflags = [
+    "-Wno-sign-compare",
+    "-Wno-unused-function",
+  ]
+  if (is_win) {
+    defines = [ "OS_WIN" ]
+    cflags += [ "-Wno-c99-designator" ]
+  }
+}
+group("setup_napi_deps") {
+  outputs = exec_script("./setup_deps.py",
+                        [],
+                        "list lines",
+                        [
+                          "./package.json",
+                          "./setup_deps.py",
+                        ])
+  foreach(line, outputs) {
+    print(line)
+  }
+}
+
+# Source set for direct source code reference
+source_set("weak_node_api_source") {
+  deps = [ ":setup_napi_deps" ]
+  sources = weak_node_api_sources
+  public_configs = [ ":weak_node_api_config" ]
+  public = weak_node_api_public_headers
+  if (is_win) {
+    defines = [
+      "WIN32_LEAN_AND_MEAN",
+      "NOMINMAX",
+    ]
+  }
+  cflags_cc = [ "-std=c++17" ]
+  if (is_mac) {
+    cflags = [ "-fPIC" ]
+  }
+}
+
+copy("copy_mac_dylib") {
+  deps = [ ":setup_napi_deps" ]
+  sources = [ "$weak_node_api_mac_lib_dir/libweak-node-api.dylib" ]
+  outputs = [ "$root_build_dir/{{source_file_part}}" ]
+}
+
+copy("copy_win_dll") {
+  deps = [ ":setup_napi_deps" ]
+  sources = [ "$weak_node_api_win_lib_dir/WeakNodeAPI.dll" ]
+  outputs = [ "$root_build_dir/{{source_file_part}}" ]
+}
+
+source_set("weak_node_api_prebuilt") {
+  deps = [ ":setup_napi_deps" ]
+  public_configs = [ ":weak_node_api_config" ]
+  public = weak_node_api_public_headers
+
+  if (is_mac) {
+    lib_dirs = [ weak_node_api_mac_lib_dir ]
+    libs = [ "weak-node-api" ]
+  } else if (is_win) {
+    lib_dirs = [ weak_node_api_win_lib_dir ]
+    libs = [ "WeakNodeAPI.lib" ]
+  }
+}

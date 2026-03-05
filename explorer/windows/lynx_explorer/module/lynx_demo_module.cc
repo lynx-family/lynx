@@ -10,17 +10,21 @@
 
 #include "lynx_window_manager.h"
 
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#endif
+
 // LynxTestModule, prefer to use C++ Wrapper.
 napi_value openSchema(napi_env env, napi_callback_info info) {
   // unwrap the url param.
   size_t argc = 1;
   napi_value argv[1];
-  env->napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+  napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
   if (argc < 1) {
     return 0;
   }
   char c_url[512] = {0};
-  env->napi_get_value_string_utf8(env, argv[0], c_url, sizeof(c_url), nullptr);
+  napi_get_value_string_utf8(env, argv[0], c_url, sizeof(c_url), nullptr);
   auto* window = lynx::LynxWindowManager::GetInstance().GetFirstWindow();
   if (window) {
     std::string* url_ptr = new std::string(c_url);
@@ -33,7 +37,7 @@ napi_value openSchema(napi_env env, napi_callback_info info) {
 napi_value ExplorerModuleCreator(napi_env env, napi_value exports,
                                  const char* module_name, void* opaque) {
   napi_value func;
-  env->napi_create_function(env, "openSchema", 1, &openSchema, 0, &func);
-  env->napi_set_named_property(env, exports, "openSchema", func);
+  napi_create_function(env, "openSchema", 1, &openSchema, 0, &func);
+  napi_set_named_property(env, exports, "openSchema", func);
   return exports;
 }

@@ -4,14 +4,15 @@
 #include "platform/embedder/module/lynx_fetch_module.h"
 
 #include <string>
+#include <utility>
 
 #include "base/include/log/logging.h"
 #include "platform/embedder/lynx_service/lynx_http_service_priv.h"
 #include "platform/embedder/lynx_service/lynx_service_center_priv.h"
-#include "third_party/napi/include/napi.h"
+#include "third_party/weak-node-api/vendor/headers/napi.h"
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -26,7 +27,8 @@ class FetchCallbackContext {
   Napi::Reference<Napi::Function> reject;
 };
 
-void InvokeJSCallback(Napi::Env env, FetchCallbackContext* context,
+void InvokeJSCallback(Napi::Env env, Napi::Function func,
+                      FetchCallbackContext* context,
                       lynx_http_response_t* response) {
   LOGD("LynxFetchModule::InvokeJSCallback");
   if (response->status_code <= 0) {
@@ -107,23 +109,24 @@ Napi::Value Fetch(const Napi::CallbackInfo& info) {
     uint8_t* data = (uint8_t*)body.Data();
     request->body.assign(data, data + body.ByteLength());
   }
-  auto* tsf = Napi::ThreadSafeFunction<
-      FetchCallbackContext, lynx_http_response_t*,
-      InvokeJSCallback>::New(env, new FetchCallbackContext(resolve, reject),
+  auto tsf = Napi::TypedThreadSafeFunction<
+      FetchCallbackContext, lynx_http_response_t,
+      InvokeJSCallback>::New(env, "", 10, 1,
+                             new FetchCallbackContext(resolve, reject),
                              ThreadSafeFunctionFinalizer);
   lynx_http_response_t* response = lynx_http_response_create(
-      [tsf](lynx_http_response_t* origin_response) mutable {
+      [tsf = std::move(tsf)](lynx_http_response_t* origin_response) mutable {
         // The origin response will be released after this callback, create a
         // wrapped response to keep the content, should be released after js
         // callback.
         lynx_http_response_t* response = lynx_http_response_create(nullptr);
         lynx_http_response_wrap(origin_response, response);
-        if (tsf->NonBlockingCall(response) != napi_ok) {
+        if (tsf.NonBlockingCall(response) != napi_ok) {
           LOGW("LynxFetchModule::NonBlockingCall failed");
           // Release response if tsf failed.
           lynx_http_response_release(response);
         }
-        delete tsf;
+        tsf.Release();
       });
   lynx_http_service_request(http_service, request, response);
   return env.Undefined();
@@ -141,6 +144,6 @@ napi_value LynxFetchModuleCreator(napi_env c_env, napi_value c_exports,
 }  // namespace embedder
 }  // namespace lynx
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
 #endif

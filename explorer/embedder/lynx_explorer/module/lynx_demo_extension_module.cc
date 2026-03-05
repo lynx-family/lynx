@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "explorer/embedder/lynx_explorer/module/lynx_demo_extension_module.h"
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -23,14 +23,14 @@ napi_value EXTestMethod(napi_env env, napi_callback_info info) {
 
   size_t argc = 1;
   napi_value argv[1];
-  env->napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+  napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
   if (argc < 1) {
     return nullptr;
   }
   int32_t arg1;
-  env->napi_get_value_int32(env, argv[0], &arg1);
+  napi_get_value_int32(env, argv[0], &arg1);
   napi_value result;
-  env->napi_get_boolean(env, arg1 > 0, &result);
+  napi_get_boolean(env, arg1 > 0, &result);
   return result;
 }
 
@@ -38,8 +38,8 @@ napi_value LynxDemoExtensionModuleCreator(napi_env env, napi_value exports,
                                           const char* module_name,
                                           void* opaque) {
   napi_value func;
-  env->napi_create_function(env, "exTestMethod", 1, &EXTestMethod, 0, &func);
-  env->napi_set_named_property(env, exports, "exTestMethod", func);
+  napi_create_function(env, "exTestMethod", 1, &EXTestMethod, 0, &func);
+  napi_set_named_property(env, exports, "exTestMethod", func);
   return exports;
 }
 

@@ -6,8 +6,8 @@
 #define EXPLORER_DARWIN_MACOS_EXAMPLE_RUNTIME_LIFECYCLE_OBSERVER_H_
 
 #include "lynx_runtime_lifecycle_observer.h"
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -20,8 +20,8 @@ class ExampleLynxRuntimeLifecycleObserver
 };
 }  // namespace example
 }  // namespace lynx
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // EXPLORER_DARWIN_MACOS_EXAMPLE_RUNTIME_LIFECYCLE_OBSERVER_H_

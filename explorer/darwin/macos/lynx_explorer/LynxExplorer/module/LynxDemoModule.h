@@ -5,16 +5,16 @@
 #define EXPLORER_DARWIN_MACOS_LYNX_EXPLORER_MODULE_LYNX_DEMO_MODULE_H_
 
 #include "lynx_native_module.h"
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
 #endif
 
 // TODO: Prefer to use the C++ Wrapper. Use c-napi now because of the
 // compatibility.
 napi_value ExplorerModuleCreator(napi_env env, napi_value exports,
                                  const char* module_name, void* opaque);
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // EXPLORER_DARWIN_MACOS_LYNX_EXPLORER_MODULE_LYNX_DEMO_MODULE_H_

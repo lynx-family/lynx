@@ -1,0 +1,7 @@
+{
+  "name": "weak-node-api",
+  "version": "1.0.0",
+  "dependencies": {
+    "@lynx-js/weak-node-api": "0.0.3"
+  }
+}

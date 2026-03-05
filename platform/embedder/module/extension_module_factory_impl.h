@@ -13,8 +13,8 @@
 
 #include "core/public/jsb/extension_module_factory.h"
 #include "platform/embedder/public/capi/lynx_extension_module_capi.h"
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -43,8 +43,8 @@ class ExtensionModuleFactoryImpl : public runtime::ExtensionModuleFactory {
 }  // namespace embedder
 }  // namespace lynx
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // PLATFORM_EMBEDDER_MODULE_EXTENSION_MODULE_FACTORY_IMPL_H_

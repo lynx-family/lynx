@@ -21,6 +21,13 @@ void CallbackHelper::ReportException(Napi::Object error_obj) {
   }
 }
 
+// This function erases the types of env and exception, allowing the new NAPI
+// (weak-node-api) to be compatible with the old NAPI.
+void ReportRawException(void* raw_env, void* raw_exception) {
+  CallbackHelper::ReportException(Napi::Object(
+      static_cast<napi_env>(raw_env), static_cast<napi_value>(raw_exception)));
+}
+
 // static
 void CallbackHelper::Invoke(const Napi::FunctionReference& cb,
                             Napi::Value& result,

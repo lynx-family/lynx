@@ -6,9 +6,10 @@
 
 #include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
+#include "third_party/weak-node-api/vendor/headers/napi.h"
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -61,8 +62,8 @@ void LynxModuleManagerNAPI::SetupRuntimeLifecycleListener(
 }
 
 void LynxModuleManagerNAPI::OnRuntimeAttach(Napi::Env env) {
-  env.SetInstanceData(LYNX_NAPI_ENV_LYNX_VIEW_TAG, view_context_, nullptr,
-                      nullptr);
+  lynx_napi_set_instance_data(env, LYNX_NAPI_ENV_LYNX_VIEW_TAG, view_context_,
+                              nullptr, nullptr);
   auto module_factory =
       std::make_unique<LynxModuleFactoryNAPI>(env, std::move(module_creators_));
   module_factory_ = module_factory.get();

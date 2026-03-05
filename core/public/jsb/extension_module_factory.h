@@ -13,10 +13,6 @@
 #include "core/public/jsb/lynx_extension_module.h"
 #include "core/public/jsb/native_module_factory.h"
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
-#endif
-
 namespace lynx {
 namespace runtime {
 using ExtensionModuleCreator =
@@ -30,7 +26,7 @@ struct ModuleCreatorInfo {
 class ExtensionModuleFactory : public NativeModuleFactory {
  public:
   ExtensionModuleFactory()
-      : env_(nullptr),
+      : opaque_env_(nullptr),
         vsync_observer_(nullptr),
         task_runner_(nullptr),
         ui_delegate_(nullptr) {}
@@ -61,18 +57,16 @@ class ExtensionModuleFactory : public NativeModuleFactory {
   void OnRuntimeAttach(void* opaque_env,
                        const std::shared_ptr<IVSyncObserver>& vsync_observer) {
     for (const auto& pair : module_map_) {
-      pair.second->SetRuntimeAttachedState(static_cast<napi_env>(opaque_env),
-                                           vsync_observer);
+      pair.second->SetRuntimeAttachedState(opaque_env, vsync_observer);
     }
-    env_ = static_cast<napi_env>(opaque_env);
+    opaque_env_ = opaque_env;
     vsync_observer_ = vsync_observer;
   }
 
   // Called on the BTS thread
   void OnRuntimeReady(void* env, void* lynx, const std::string& url) {
     for (const auto& pair : module_map_) {
-      pair.second->SetRuntimeReadyState(static_cast<napi_env>(env),
-                                        static_cast<napi_value>(lynx), url);
+      pair.second->SetRuntimeReadyState(env, lynx, url);
     }
   }
 
@@ -112,8 +106,8 @@ class ExtensionModuleFactory : public NativeModuleFactory {
   std::unordered_map<std::string, std::shared_ptr<LynxExtensionModule>>
       module_map_;
   std::unordered_map<std::string, ModuleCreatorInfo> module_creators_;
-  // The env_ Only accessible in BTS thread
-  napi_env env_;
+  // The opaque_env_ Only accessible in BTS thread
+  void* opaque_env_;
   std::shared_ptr<IVSyncObserver> vsync_observer_;
   fml::RefPtr<fml::TaskRunner> task_runner_;
   tasm::UIDelegate* ui_delegate_;
@@ -121,9 +115,5 @@ class ExtensionModuleFactory : public NativeModuleFactory {
 
 }  // namespace runtime
 }  // namespace lynx
-
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
-#endif
 
 #endif  // CORE_PUBLIC_JSB_EXTENSION_MODULE_FACTORY_H_

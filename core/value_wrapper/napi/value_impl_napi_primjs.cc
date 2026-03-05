@@ -7,6 +7,7 @@
 #include "base/include/log/logging.h"
 #include "core/base/js_constants.h"
 #include "core/value_wrapper/napi/napi_util_primjs.h"
+#include "core/value_wrapper/napi/value_impl_opaque_napi_primjs.h"
 
 #ifdef USE_PRIMJS_NAPI
 #include <cstring>
@@ -789,6 +790,19 @@ napi_value ValueUtilsNapiPrimJS::ConvertPubValueToNapiObject(
                            ConvertPubValueToNapiValue(env, value));
   });
   return result;
+}
+
+void* ValueUtilsOpaqueNapiPrimJS::ConvertPubValueToOpaqueNapiValue(
+    void* opaque_env, const Value& value) {
+  return static_cast<void*>(ValueUtilsNapiPrimJS::ConvertPubValueToNapiValue(
+      static_cast<napi_env>(opaque_env), value));
+}
+
+std::unique_ptr<Value>
+ValueUtilsOpaqueNapiPrimJS::CreateValueWithOpaqueNapiArgs(void* opaque_env,
+                                                          void* opaque_value) {
+  return std::make_unique<ValueImplNapiPrimJS>(
+      static_cast<napi_env>(opaque_env), static_cast<napi_value>(opaque_value));
 }
 
 }  // namespace pub

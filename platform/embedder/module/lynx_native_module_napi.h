@@ -13,9 +13,9 @@
 #include "core/public/jsb/lynx_native_module.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/embedder/public/capi/lynx_native_module_capi.h"
-#include "third_party/binding/napi/shim/shim_napi.h"
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#include "third_party/weak-node-api/vendor/headers/napi.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -46,8 +46,8 @@ class LynxNativeModuleNAPI : public runtime::LynxNativeModule {
   std::unordered_map<std::string, napi_ref> field_refs_;
 };
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
 #endif
 
 }  // namespace embedder

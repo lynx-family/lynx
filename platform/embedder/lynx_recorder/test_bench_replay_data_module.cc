@@ -11,8 +11,8 @@
 #include "platform/embedder/lynx_recorder/test_bench_utils.h"
 #include "platform/embedder/public/capi/lynx_native_module_capi.h"
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -61,19 +61,18 @@ napi_value GetData(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   napi_value argv[1];
   napi_value thiz = nullptr;
-  env->napi_get_cb_info(env, info, &argc, argv, &thiz, nullptr);
+  napi_get_cb_info(env, info, &argc, argv, &thiz, nullptr);
   if (argc < 1) {
     return nullptr;
   }
   void* context = nullptr;
-  env->napi_get_instance_data(env, LYNX_NAPI_ENV_LYNX_VIEW_TAG, &context);
+  lynx_napi_get_instance_data(env, LYNX_NAPI_ENV_LYNX_VIEW_TAG, &context);
   std::shared_ptr<TestBenchReplayDataModule> m =
       ReplayDataModulesHolder::GetInstance().GetDataModule(context);
   if (m) {
     napi_value data = nullptr;
-    env->napi_create_string_utf8(env, m->GetData().c_str(), NAPI_AUTO_LENGTH,
-                                 &data);
-    env->napi_call_function(env, thiz, argv[0], 1, &data, nullptr);
+    napi_create_string_utf8(env, m->GetData().c_str(), NAPI_AUTO_LENGTH, &data);
+    napi_call_function(env, thiz, argv[0], 1, &data, nullptr);
   }
   return nullptr;
 }
@@ -82,8 +81,8 @@ napi_value TestBenchReplayDataModuleCreator(napi_env env, napi_value exports,
                                             const char* module_name,
                                             void* opaque) {
   napi_value func;
-  env->napi_create_function(env, "getData", 1, &GetData, 0, &func);
-  env->napi_set_named_property(env, exports, "getData", func);
+  napi_create_function(env, "getData", 1, &GetData, 0, &func);
+  napi_set_named_property(env, exports, "getData", func);
   return exports;
 }
 
@@ -244,6 +243,6 @@ std::string TestBenchReplayDataModule::GetData() {
 }  // namespace embedder
 }  // namespace lynx
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
 #endif

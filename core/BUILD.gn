@@ -72,6 +72,9 @@ config("lynx_public_config") {
   if (use_primjs_napi) {
     defines += [ "USE_PRIMJS_NAPI" ]
   }
+  if (use_weak_suffix_napi) {
+    defines += [ "USE_WEAK_SUFFIX_NAPI=1" ]
+  }
 
   if (enable_trace == "perfetto") {
     defines += [ "ENABLE_TRACE_PERFETTO=1" ]

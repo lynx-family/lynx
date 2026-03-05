@@ -3,8 +3,9 @@
 # LICENSE file in the root directory of this source tree.
 #
 
-import("../../config.gni")
 import("//${lynx_dir}/build_overrides/windows.gni")
+import("//build_overrides/build.gni")
+import("../../config.gni")
 
 if (is_win) {
   import("//build/config/win/win.gni")
@@ -141,4 +142,22 @@ source_set("jsc") {
     ":common",
     ":env",
   ]
+}
+
+source_set("weak_node_api_host") {
+  sources = [
+    "../quickjs/src/src/napi/adapter/weak_napi_host_generator.cc",
+    "../quickjs/src/src/napi/adapter/weak_napi_host_injector.cc",
+  ]
+  public_deps = [
+    ":adapter",
+    ":env",
+  ]
+  include_dirs = [ "include" ]
+
+  if (use_weak_node_api_source) {
+    public_deps += [ "../weak-node-api:weak_node_api_source" ]
+  } else {
+    public_deps += [ "../weak-node-api:weak_node_api_prebuilt" ]
+  }
 }

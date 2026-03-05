@@ -6,6 +6,7 @@ import("//build/apple/templates/darwin_general_bundle.gni")
 import("//build/apple/templates/xib.gni")
 import("//build/config/mac/mac_sdk.gni")
 import("//build/config/mac/templates/mac_app_bundle.gni")
+import("//config.gni")
 import("../../../../core/Lynx.gni")
 import("../../../../oliver/oliver.gni")
 
@@ -79,8 +80,9 @@ mac_app_bundle("lynx_explorer") {
     "LynxExplorer/service/LynxHttpService.h",
     "LynxExplorer/service/LynxHttpService.mm",
   ]
-
-  defines = []
+  if (use_weak_suffix_napi) {
+    defines = [ "USE_WEAK_SUFFIX_NAPI=1" ]
+  }
 
   cflags_objc = [
     "-fobjc-arc",
@@ -115,6 +117,7 @@ mac_app_bundle("lynx_explorer") {
   public_deps += [
     ":copy_dylib",
     "../../../../platform/darwin/macos:lynx_shared_library",
+    "../../../../third_party/weak-node-api:weak_node_api_prebuilt",
     "../../../embedder/lynx_explorer:lynx_explorer_embedder",
   ]
   if (enable_testbench_replay) {
@@ -123,8 +126,14 @@ mac_app_bundle("lynx_explorer") {
 }
 
 copy("copy_dylib") {
-  deps = [ "../../../../platform/darwin/macos:lynx_shared_library" ]
-  sources = [ "$root_build_dir/libLynx.dylib" ]
+  deps = [
+    "../../../../platform/darwin/macos:lynx_shared_library",
+    "../../../../third_party/weak-node-api:copy_mac_dylib",
+  ]
+  sources = [
+    "$root_build_dir/libLynx.dylib",
+    "$root_build_dir/libweak-node-api.dylib",
+  ]
   outputs = [
     "$root_build_dir/LynxExplorer.app/Contents/Frameworks/{{source_file_part}}",
   ]
