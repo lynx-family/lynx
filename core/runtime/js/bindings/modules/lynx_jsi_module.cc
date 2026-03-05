@@ -114,8 +114,13 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
       Object o = arg->getObject(*rt);
       if (o.isArray(*rt)) {
         auto sub_arr = o.getArray(*rt);
+        JSValueCircularArray pre_object_vector;
         auto sub_arr_result = pub::ValueUtils::ConvertPiperArrayToPubValue(
-            *rt, sub_arr, value_factory_);
+            *rt, sub_arr, value_factory_, pre_object_vector);
+        if (!sub_arr_result) {
+          return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+              "ConvertPiperArrayToPubValue failed, find circular reference"));
+        }
         args_array->PushValueToArray(std::move(sub_arr_result));
       } else if (o.isArrayBuffer(*rt)) {
         size_t length;
@@ -145,8 +150,13 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
           args_array->PushBigIntToArray(r);
           continue;
         }
+        JSValueCircularArray pre_object_vector;
         auto dict = pub::ValueUtils::ConvertPiperObjectToPubValue(
-            *rt, o, value_factory_);
+            *rt, o, value_factory_, pre_object_vector);
+        if (!dict) {
+          return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+              "ConvertPiperObjectToPubValue failed, find circular reference"));
+        }
         args_array->PushValueToArray(std::move(dict));
       }
     }

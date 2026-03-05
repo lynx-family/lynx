@@ -489,8 +489,11 @@ TEST_P(PiperValueTests, ValueUtilsTest) {
 
   std::shared_ptr<PubValueFactory> factory =
       std::make_shared<PubValueFactoryDefault>();
+  runtime::js::JSValueCircularArray pre_object_vector;
   std::unique_ptr<pub::Value> pub_lepus_value0 =
-      ValueUtils::ConvertPiperObjectToPubValue(rt, test_data, factory);
+      ValueUtils::ConvertPiperObjectToPubValue(rt, test_data, factory,
+                                               pre_object_vector);
+  EXPECT_TRUE(pub_lepus_value0);
   EXPECT_EQ(pub_lepus_value0->Length(), 5);
   EXPECT_TRUE(pub_lepus_value0->IsMap());
 

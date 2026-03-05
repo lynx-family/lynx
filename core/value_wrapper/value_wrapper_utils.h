@@ -13,6 +13,7 @@
 #include "core/base/lynx_export.h"
 #include "core/public/pub_value.h"
 #include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/utils.h"
 
 namespace lynx {
 namespace lepus {
@@ -57,10 +58,14 @@ class ValueUtils {
       runtime::js::Runtime& rt, const runtime::js::Object& o, size_t& length);
   static std::unique_ptr<Value> ConvertPiperArrayToPubValue(
       runtime::js::Runtime& rt, const runtime::js::Array& arr,
-      const std::shared_ptr<PubValueFactory>& factory);
+      const std::shared_ptr<PubValueFactory>& factory,
+      lynx::runtime::js::JSValueCircularArray& pre_object_vector,
+      int depth = 0);
   static std::unique_ptr<Value> ConvertPiperObjectToPubValue(
       runtime::js::Runtime& rt, const runtime::js::Object& obj,
-      const std::shared_ptr<PubValueFactory>& factory);
+      const std::shared_ptr<PubValueFactory>& factory,
+      lynx::runtime::js::JSValueCircularArray& pre_object_vector,
+      int depth = 0);
 
   // Some tricky logic for BigInt, such as { "id" : 8913891381287328398 }
   // will exist on js { "id" : { "__lynx_val__" : "8913891381287328398" }},
