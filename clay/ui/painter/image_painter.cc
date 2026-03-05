@@ -312,6 +312,7 @@ void ImagePainter::PaintImage(GraphicsContext* context,
     } else {
       Paint work_paint = paint;
       work_paint.setDrawStyle(DrawStyle::kFill);
+      work_paint.setAntiAlias(true);
       skity::Matrix local_matrix =
           skity::Matrix::Translate(dst_rect.Left(), dst_rect.Top()) *
           skity::Matrix::Scale(dst_rect.Width() / src_rect.Width(),
@@ -331,7 +332,7 @@ void ImagePainter::PaintImage(GraphicsContext* context,
     if (round_rect.IsEmpty() || round_rect.IsRect()) {
       context->ClipRect(output_rect, GrClipOp::kIntersect, false);
     } else {
-      context->ClipRRect(round_rect, GrClipOp::kIntersect, false);
+      context->ClipRRect(round_rect, GrClipOp::kIntersect, true);
     }
     std::vector<skity::Rect> tiles =
         GenerateImageTileRects(output_rect, dst_rect, repeat);
@@ -528,6 +529,7 @@ void ImagePainter::PaintBackgroundImage(GraphicsContext* context,
             : ImageSampling::kNearestNeighbor,
         &local_matrix);
     paint.setColorSource(shader);
+    paint.setAntiAlias(true);
     context->DrawRRect(dst_rrect, paint);
   } else {
     auto color_source = GradientFactory::CreateShader(bg_image.GetGradient(),
@@ -535,6 +537,7 @@ void ImagePainter::PaintBackgroundImage(GraphicsContext* context,
     Paint paint;
     paint.setDither(true);
     paint.setColorSource(color_source);
+    paint.setAntiAlias(true);
     context->DrawRRect(dst_rrect, paint);
   }
 }
