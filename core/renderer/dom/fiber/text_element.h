@@ -30,6 +30,7 @@ using TextLineInfoArray = std::unique_ptr<TextLineInfo[]>;
 class TextElement : public FiberElement {
  public:
   TextElement(ElementManager* manager, const base::String& tag);
+  ~TextElement() override;
 
   fml::RefPtr<FiberElement> CloneElement(
       bool clone_resolved_props) const override {

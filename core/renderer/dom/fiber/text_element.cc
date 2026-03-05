@@ -37,6 +37,12 @@ TextElement::TextElement(ElementManager* manager, const base::String& tag)
   element_manager_->IncreaseTextElementCount();
 }
 
+TextElement::~TextElement() {
+  if (ShouldDestroy()) {
+    element_manager_->DestroyText(this);
+  }
+}
+
 void TextElement::AttachToElementManager(
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,

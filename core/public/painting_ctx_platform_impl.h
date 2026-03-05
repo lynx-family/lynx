@@ -199,6 +199,12 @@ class PaintingCtxPlatformImpl {
     text_layout_impl_->Align(element);
   }
 
+  virtual void DestroyText(Element* element) {
+    if (text_layout_impl_) {
+      text_layout_impl_->Destroy(element);
+    }
+  }
+
   virtual NativePaintingContext* CastToNativeCtx() { return nullptr; }
 
   void MarkUIOperationQueueFlushForRecreateEngine(bool enable);
