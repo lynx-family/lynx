@@ -5,24 +5,190 @@
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 
 #include <stack>
+#include <unordered_map>
 
 #include "base/include/float_comparison.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 
 namespace lynx {
 namespace tasm {
+
+struct PlatformEventPropNameHash {
+  size_t operator()(PlatformEventPropName name) const {
+    return static_cast<size_t>(name);
+  }
+};
+
+using EventPropSetter = void (*)(PlatformEventTarget*, float);
+
+void SetUserInteractionEnabled(PlatformEventTarget* target, float value) {
+  target->SetUserInteractionEnabled(!base::IsZero(value));
+}
+
+void SetNativeInteractionEnabled(PlatformEventTarget* target, float value) {
+  target->SetNativeInteractionEnabled(!base::IsZero(value));
+}
+
+void SetExposureScreenMarginLeft(PlatformEventTarget* target, float value) {
+  target->SetExposureScreenMarginLeft(value);
+}
+
+void SetExposureScreenMarginRight(PlatformEventTarget* target, float value) {
+  target->SetExposureScreenMarginRight(value);
+}
+
+void SetExposureScreenMarginTop(PlatformEventTarget* target, float value) {
+  target->SetExposureScreenMarginTop(value);
+}
+
+void SetExposureScreenMarginBottom(PlatformEventTarget* target, float value) {
+  target->SetExposureScreenMarginBottom(value);
+}
+
+void SetExposureUIMarginLeft(PlatformEventTarget* target, float value) {
+  target->SetExposureUIMarginLeft(value);
+}
+
+void SetExposureUIMarginRight(PlatformEventTarget* target, float value) {
+  target->SetExposureUIMarginRight(value);
+}
+
+void SetExposureUIMarginTop(PlatformEventTarget* target, float value) {
+  target->SetExposureUIMarginTop(value);
+}
+
+void SetExposureUIMarginBottom(PlatformEventTarget* target, float value) {
+  target->SetExposureUIMarginBottom(value);
+}
+
+void SetExposureArea(PlatformEventTarget* target, float value) {
+  target->SetExposureArea(value);
+}
+
+void SetEnableExposureUIClip(PlatformEventTarget* target, float value) {
+  target->SetEnableExposureUIClip(base::IsZero(value)
+                                      ? LynxEventPropStatus::kDisable
+                                      : LynxEventPropStatus::kEnable);
+}
+
+const std::unordered_map<PlatformEventPropName, EventPropSetter,
+                         PlatformEventPropNameHash>&
+GetEventPropSetterMap() {
+  static const std::unordered_map<PlatformEventPropName, EventPropSetter,
+                                  PlatformEventPropNameHash>
+      map = {
+          {PlatformEventPropName::kUserInteractionEnabled,
+           &SetUserInteractionEnabled},
+          {PlatformEventPropName::kNativeInteractionEnabled,
+           &SetNativeInteractionEnabled},
+          {PlatformEventPropName::kExposureScreenMarginLeft,
+           &SetExposureScreenMarginLeft},
+          {PlatformEventPropName::kExposureScreenMarginRight,
+           &SetExposureScreenMarginRight},
+          {PlatformEventPropName::kExposureScreenMarginTop,
+           &SetExposureScreenMarginTop},
+          {PlatformEventPropName::kExposureScreenMarginBottom,
+           &SetExposureScreenMarginBottom},
+          {PlatformEventPropName::kExposureUIMarginLeft,
+           &SetExposureUIMarginLeft},
+          {PlatformEventPropName::kExposureUIMarginRight,
+           &SetExposureUIMarginRight},
+          {PlatformEventPropName::kExposureUIMarginTop,
+           &SetExposureUIMarginTop},
+          {PlatformEventPropName::kExposureUIMarginBottom,
+           &SetExposureUIMarginBottom},
+          {PlatformEventPropName::kExposureArea, &SetExposureArea},
+          {PlatformEventPropName::kEnableExposureUIClip,
+           &SetEnableExposureUIClip},
+      };
+  return map;
+}
+
+base::Vector<PlatformEventName> PlatformEventTargetHelper::ParseEventSet(
+    PlatformEventTarget* target, const int32_t* int_data, size_t& int_data_idx,
+    size_t int_param_end, int32_t event_count) {
+  base::Vector<PlatformEventName> event_set;
+  for (int32_t i = 0; i < event_count && int_data_idx < int_param_end; i++) {
+    auto name = static_cast<PlatformEventName>(int_data[int_data_idx++]);
+    if (name != PlatformEventName::kUnknown) {
+      event_set.push_back(name);
+    }
+    if (name == PlatformEventName::kUIAppear ||
+        name == PlatformEventName::kUIDisappear) {
+      int32_t sign = target->Sign();
+      platform_ref_->AddPlatformEventTargetToExposure(
+          sign, std::to_string(sign), "", "",
+          lepus::Value(lepus::Dictionary::Create()));
+    }
+  }
+  return event_set;
+}
+
+void PlatformEventTargetHelper::ApplyEventProps(
+    PlatformEventTarget* target, const int32_t* int_data, size_t& int_data_idx,
+    size_t int_param_end, const float* float_data, size_t& float_data_idx,
+    size_t float_param_end, int32_t prop_count) {
+  const auto& setter_map = GetEventPropSetterMap();
+  for (int32_t i = 0; i < prop_count && int_data_idx < int_param_end &&
+                      float_data_idx < float_param_end;
+       i++) {
+    auto prop_name =
+        static_cast<PlatformEventPropName>(int_data[int_data_idx++]);
+    if (prop_name == PlatformEventPropName::kUnknown) {
+      continue;
+    }
+
+    // TODO(hexionghui): handle exposure props.
+
+    float value = float_data[float_data_idx++];
+    auto it = setter_map.find(prop_name);
+    if (it != setter_map.end()) {
+      it->second(target, value);
+    }
+  }
+}
+
+void PlatformEventTargetHelper::ApplyEventBundle(
+    PlatformEventTarget* target, const int32_t* int_data, size_t& int_data_idx,
+    size_t int_param_end, const float* float_data, size_t& float_data_idx,
+    size_t float_param_end) {
+  if (target == nullptr) {
+    return;
+  }
+
+  if (int_data_idx >= int_param_end) {
+    return;
+  }
+  const int32_t event_count = int_data[int_data_idx++];
+  target->SetEventSet(ParseEventSet(target, int_data, int_data_idx,
+                                    int_param_end, event_count));
+
+  if (int_data_idx >= int_param_end) {
+    return;
+  }
+  const int32_t prop_count = int_data[int_data_idx++];
+  ApplyEventProps(target, int_data, int_data_idx, int_param_end, float_data,
+                  float_data_idx, float_param_end, prop_count);
+}
 
 fml::RefPtr<PlatformEventTarget>
 PlatformEventTargetHelper::GetRootEventTarget() {
   return event_target_tree_;
 }
 
+fml::RefPtr<PlatformEventTarget> PlatformEventTargetHelper::GetEventTarget(
+    int32_t id) {
+  if (auto it = event_targets_.find(id); it != event_targets_.end()) {
+    return it->second;
+  }
+  return nullptr;
+}
+
 fml::RefPtr<PlatformEventTarget>
 PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
     fml::RefPtr<PlatformRendererImpl> page_renderer) {
-  // TODO(hexionghui): reconstruct the event target tree only when the
-  // display list is changed.
   if (page_renderer == nullptr) {
     return nullptr;
   }
@@ -83,6 +249,9 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
               children_renderer[child_renderer_idx++]);
           auto child_target =
               ReconstructEventTargetTreeRecursively(child_renderer);
+          if (target_stack.empty() || child_target == nullptr) {
+            break;
+          }
           auto parent_target = target_stack.top();
           parent_target->AddChildTarget(child_target);
         }
@@ -96,6 +265,16 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
           auto parent_target = target_stack.top();
           parent_target->AddChildTarget(child_target);
         }
+        break;
+      }
+      // add event set and props to the event target.
+      case static_cast<int>(DisplayListOpType::kEventBundle): {
+        if (target_stack.empty()) {
+          break;
+        }
+        ApplyEventBundle(target_stack.top().get(), int_data, int_data_idx,
+                         int_param_end, float_data, float_data_idx,
+                         float_param_end);
         break;
       }
       default:
@@ -224,7 +403,10 @@ void PlatformEventTargetHelper::ConvertPointFromTargetToScreen(
   }
   ConvertPointFromTargetToRootTarget(res, target, point);
 
-  // TODO(hexionghui): add root offset.
+  float origin[2] = {0, 0};
+  GetRootViewLocationOnScreen(origin);
+  res[0] += origin[0];
+  res[1] += origin[1];
 }
 
 void PlatformEventTargetHelper::ConvertRectFromAncestorToDescendant(
@@ -349,7 +531,9 @@ void PlatformEventTargetHelper::ConvertRectFromTargetToScreen(
   }
   ConvertRectFromDescendantToAncestor(res, target, root, rect);
 
-  // TODO(hexionghui): add root offset.
+  float origin[2] = {0, 0};
+  GetRootViewLocationOnScreen(origin);
+  OffsetRect(res, origin);
 }
 
 bool PlatformEventTargetHelper::CheckViewportIntersectWithRatio(
@@ -373,6 +557,14 @@ void PlatformEventTargetHelper::OffsetRect(float rect[4], float offset[2]) {
   rect[1] += offset[1];
   rect[2] += offset[0];
   rect[3] += offset[1];
+}
+
+void PlatformEventTargetHelper::GetScreenSize(float size[2]) {
+  platform_ref_->GetScreenSize(size);
+}
+
+void PlatformEventTargetHelper::GetRootViewLocationOnScreen(float location[2]) {
+  platform_ref_->GetRootViewLocationOnScreen(location);
 }
 
 void PlatformEventTargetHelper::InvokeMethod(

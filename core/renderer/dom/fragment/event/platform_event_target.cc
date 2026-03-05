@@ -97,10 +97,6 @@ LynxPseudoStatus PlatformEventTarget::GetPseudoStatus() const {
 
 bool PlatformEventTarget::TouchPseudoPropagation() const { return true; }
 
-const std::vector<std::string>& PlatformEventTarget::EventSet() const {
-  return event_set_;
-}
-
 bool PlatformEventTarget::EventThrough(float point[2]) const { return false; }
 
 bool PlatformEventTarget::IgnoreFocus() const { return false; }

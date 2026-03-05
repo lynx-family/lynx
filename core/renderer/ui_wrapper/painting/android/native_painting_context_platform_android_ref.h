@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 
 namespace lynx {
@@ -19,6 +20,9 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
   explicit NativePaintingCtxAndroidRef(
       std::unique_ptr<PlatformRendererFactory> view_factory);
   ~NativePaintingCtxAndroidRef() override = default;
+
+  void GetRootViewLocationOnScreen(float location[2]) override;
+  void GetScreenSize(float size[2]) override;
 };
 
 }  // namespace tasm

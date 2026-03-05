@@ -42,6 +42,7 @@ void NativePaintingCtxPlatformRef::UpdateDisplayList(
     return;
   }
 
+  need_reconstruct_event_target_tree_ = true;
   const auto &layer = it->second;
   // Rebuild the sublayers according to the new SubLayers in the display list
   // with MyersDiff. And generate actual addChild and removeChild actions for
@@ -174,14 +175,43 @@ NativePaintingCtxPlatformRef::GetEventTargetHelper() {
 
 fml::RefPtr<PlatformEventTarget>
 NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively() {
+  return ReconstructEventTargetTreeRecursively(nullptr);
+}
+
+fml::RefPtr<PlatformEventTarget>
+NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively(
+    bool *did_reconstruct) {
   auto page_renderer = renderers_.find(kRootId);
   if (page_renderer == renderers_.end() || page_renderer->second == nullptr) {
+    if (did_reconstruct != nullptr) {
+      *did_reconstruct = false;
+    }
     return nullptr;
+  }
+  auto event_target_tree = event_target_helper_->GetRootEventTarget();
+  if (need_reconstruct_event_target_tree_ == false &&
+      event_target_tree != nullptr) {
+    if (did_reconstruct != nullptr) {
+      *did_reconstruct = false;
+    }
+    return event_target_tree;
+  }
+  need_reconstruct_event_target_tree_ = false;
+  if (did_reconstruct != nullptr) {
+    *did_reconstruct = true;
   }
   return event_target_helper_->ReconstructEventTargetTreeRecursively(
       fml::RefPtr<PlatformRendererImpl>(
           static_cast<PlatformRendererImpl *>(page_renderer->second.get())));
 }
+
+void NativePaintingCtxPlatformRef::AddPlatformEventTargetToExposure(
+    int32_t id, const std::string &unique_id, const std::string &exposure_id,
+    const std::string &exposure_scene, const lepus::Value &dataset) {}
+
+void NativePaintingCtxPlatformRef::RemovePlatformEventTargetFromExposure(
+    int32_t id, const std::string &unique_id, const std::string &exposure_id,
+    const std::string &exposure_scene) {}
 
 void NativePaintingCtxPlatformRef::UpdateAttributes(
     int id, const fml::RefPtr<PropBundle> &attributes, bool tend_to_flatten) {
