@@ -16,7 +16,7 @@
 }
 
 - (nonnull instancetype)initWithUrl:(nullable NSString *)url {
-  self = [super self];
+  self = [super init];
   if (self) {
     _url = url;
   }
