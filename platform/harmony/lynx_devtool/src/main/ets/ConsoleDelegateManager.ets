@@ -24,7 +24,9 @@ export class ConsoleDelegateManager {
     if (!this.consoleObjectCallback) {
       this.consoleObjectCallback = new Map();
     }
-    let callbackId = ConsoleDelegateManager.nextCallbackId--;
+    // The `callbackId` will be passed to the C++ implementation (see `inspector_client_delegate_impl.cc`), 
+    // and `OnConsoleObject` is only invoked when this `callbackId` is a negative value.
+    let callbackId = --ConsoleDelegateManager.nextCallbackId;
     this.consoleObjectCallback.set(callbackId, callback);
     nativeOwner.getConsoleObject(objectId, needStringify, callbackId);
   }
