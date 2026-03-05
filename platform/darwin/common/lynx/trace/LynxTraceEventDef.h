@@ -190,7 +190,36 @@ static const char* const EVALUATE_SCRIPT_STANDALONE = "EvaluateScriptStandalone"
 static const char* const EVALUATE_SCRIPT_STANDALONE_FROM_BUNDLE =
     "EvaluateScriptStandaloneFromBundle";
 
-static const char* const LYNX_FRAME_VIEW_DESTROY = "LynxFrameView::destroy";
+// frame
+/**
+ * @trace_description: Destroy LynxFrameView.
+ */
+static const char* const LYNX_FRAME_VIEW_DESTROY = "LynxFrameView.destroy";
+/**
+ * @trace_description: Set LynxFrameView's init data.
+ */
+static const char* const LYNX_FRAME_VIEW_SET_INIT_DATA = "LynxFrameView.setInitData";
+/**
+ * @trace_description: Set LynxFrameView's global props.
+ */
+static const char* const LYNX_FRAME_VIEW_SET_GLOBAL_PROPS = "LynxFrameView.setGlobalProps";
+/**
+ * @trace_description: Update LynxFrameView's layout.
+ */
+static const char* const LYNX_FRAME_VIEW_UPDATE_LAYOUT = "LynxFrameView.updateLayout";
+/**
+ * @trace_description: Set LynxFrameView's intrinsic content size.
+ */
+static const char* const LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE =
+    "LynxFrameView.setIntrinsicContentSize";
+/**
+ * @trace_description: Measure LynxFrameView.
+ */
+static const char* const LYNX_FRAME_VIEW_ON_MEASURE = "LynxFrameView.onMeasure";
+/**
+ * @trace_description: Measure LynxFrameView's target.
+ */
+static const char* const LYNX_FRAME_VIEW_ON_MEASURE_TARGET = "LynxFrameView.onMeasureTarget";
 #endif
 
 NS_ASSUME_NONNULL_END
