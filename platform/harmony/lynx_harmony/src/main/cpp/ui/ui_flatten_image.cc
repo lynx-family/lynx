@@ -241,7 +241,7 @@ void UIFlattenImage::LoadImageFromURL(bool is_src) {
   std::string redirect_url = resource_loader->ShouldRedirectUrl(request);
   if (redirect_url != url) {
     // local resource
-    SetImageAttribute(url, false, is_src);
+    SetImageAttribute(redirect_url, false, is_src);
   } else {
     LoadImageResource(url,
                       is_src ? &UIFlattenImage::HandleImageSrcResponse
