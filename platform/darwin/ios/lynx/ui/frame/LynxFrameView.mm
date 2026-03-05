@@ -9,11 +9,14 @@
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxViewEnum.h>
 #import "LynxTraceEventDef.h"
 #import "LynxUIRendererProtocol.h"
 
 #include "base/trace/native/trace_defines.h"
 #include "base/trace/native/trace_event.h"
+
+#define IS_ZERO(num) ((num) < 1e-5)
 
 #pragma mark - LynxFrameView
 
@@ -28,12 +31,15 @@
   BOOL _isIntrinsicSizeConsumed;
   LynxTemplateData *_initData;
   LynxTemplateData *_globalProps;
+  LynxViewSizeMode _widthMode;
+  LynxViewSizeMode _heightMode;
 }
 
 - (instancetype)init {
   self = [super init];
   if (self) {
     _isIntrinsicSizeConsumed = YES;
+    _contentRect = CGRectNull;
   }
   return self;
 }
@@ -49,6 +55,8 @@
 }
 
 - (void)setAppBundle:(LynxTemplateBundle *)bundle {
+  [_render updateViewport];
+
   LynxLoadMeta *loadMeta = [[LynxLoadMeta alloc] init];
   loadMeta.url = _url;
   loadMeta.templateBundle = bundle;
@@ -67,16 +75,31 @@
 - (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame {
   [super setFrame:frame];
   if (!CGRectEqualToRect(contentFrame, _contentRect)) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_UPDATE_LAYOUT, "widthMeasureSpec",
+                std::to_string(contentFrame.size.width).c_str(), "heightMeasureSpec",
+                std::to_string(contentFrame.size.height).c_str());
+    if (!_isBundleLoad || CGRectIsNull(_contentRect)) {
+      _widthMode =
+          IS_ZERO(contentFrame.size.width) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
+      _heightMode =
+          IS_ZERO(contentFrame.size.height) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
+      [_render setLayoutWidthMode:_widthMode];
+      [_render setLayoutHeightMode:_heightMode];
+    }
+    [_render setPreferredLayoutWidth:contentFrame.size.width];
+    [_render setPreferredLayoutHeight:contentFrame.size.height];
     _contentRect = contentFrame;
     [self setNeedsLayout];
   }
 }
 
 - (void)setInitData:(nullable LynxTemplateData *)initData {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_SET_INIT_DATA);
   _initData = initData;
 }
 
 - (void)setGlobalProps:(nullable LynxTemplateData *)globalProps {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_SET_GLOBAL_PROPS);
   _globalProps = globalProps;
 }
 
@@ -153,6 +176,8 @@
 
 - (void)setIntrinsicContentSize:(CGSize)size {
   if (!CGSizeEqualToSize(_intrinsicContentSize, size)) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE, "width",
+                std::to_string(size.width).c_str(), "height", std::to_string(size.height).c_str());
     _intrinsicContentSize = size;
     _isIntrinsicSizeConsumed = NO;
     [self.context
@@ -171,11 +196,21 @@
   }
   CGRect targetRect = _contentRect;
   if (!_isIntrinsicSizeConsumed) {
-    targetRect = CGRectMake(0.f, 0.f, _intrinsicContentSize.width, _intrinsicContentSize.height);
+    if (_widthMode != LynxViewSizeModeExact) {
+      targetRect.size.width = _intrinsicContentSize.width;
+    }
+    if (_heightMode != LynxViewSizeModeExact) {
+      targetRect.size.height = _intrinsicContentSize.height;
+    }
     _isIntrinsicSizeConsumed = YES;
   }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_ON_MEASURE_TARGET, "widthMeasureSpec",
+              std::to_string(targetRect.size.width).c_str(), "heightMeasureSpec",
+              std::to_string(targetRect.size.height).c_str());
 
-  [_render updateFrame:targetRect];
+  [_render setPreferredLayoutWidth:targetRect.size.width];
+  [_render setPreferredLayoutHeight:targetRect.size.height];
+  [_render updateViewport];
   [super layoutSubviews];
   [_render triggerLayoutInTick];
 }
