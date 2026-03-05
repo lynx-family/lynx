@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.27
+* Update supported lynx version to 3.7
+
 # 0.0.26
 * fix `Module.__malloc` not found issue. #5150
 

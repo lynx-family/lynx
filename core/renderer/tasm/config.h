@@ -26,7 +26,7 @@
 
 #define LYNX_VERSION tasm::V_3_8  // need updated when release lynx
 #define LYNX_TASM_MAX_SUPPORTED_VERSION \
-  tasm::V_3_5  // need updated when release @lynx-js/tasm
+  tasm::V_3_7  // need updated when release @lynx-js/tasm
 #define MIN_SUPPORTED_LYNX_VERSION tasm::V_1_0  // updated when break change
 // control features developed between release
 // use this version to avoid break change
