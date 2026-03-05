@@ -7,6 +7,7 @@ import("../../../Lynx.gni")
 
 lynx_core_source_set("fragment") {
   sources = [
+    "event/platform_event_bundle.h",
     "event/platform_event_emitter.cc",
     "event/platform_event_emitter.h",
     "event/platform_event_handler.cc",
@@ -74,6 +75,8 @@ unittest_set("display_list_testset") {
   ]
   public_deps = [
     ":display_list",
+    "../../../../base/src:base_values",
+    "../../../../base/src:base_values_extended",
     "../../starlight:starlight",
   ]
 }
