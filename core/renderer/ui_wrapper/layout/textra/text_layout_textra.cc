@@ -45,10 +45,37 @@ class TextraInlineView : public text::InlineView {
   FiberElement* child_;
 };
 
+class TextraParagraphListener : public text::ParagraphListener {
+ public:
+  explicit TextraParagraphListener(Element* element) : element_(element) {}
+  ~TextraParagraphListener() override = default;
+  void MarkParagraphDirty() override {
+    if (element_) {
+      element_->MarkLayoutDirty();
+    }
+  }
+
+ private:
+  Element* element_;
+};
+
 }  // namespace
 
 TextLayoutTextra::TextLayoutTextra(intptr_t api)
     : api_(reinterpret_cast<text::TextLayoutAPI*>(api)) {}
+
+TextLayoutTextra::~TextLayoutTextra() {
+  if (!paragraphs_.empty()) {
+    // If paragraphs_ is not empty, it means some TextElements were leaked or
+    // not properly destroyed before TextLayoutTextra destruction. Calling
+    // api_->DestroyParagraph here might cause a crash if the underlying text
+    // engine is already shut down. So we just log a warning and skip
+    // destruction.
+    // LOGE("TextLayoutTextra::~TextLayoutTextra: paragraphs_ is not empty!
+    // Count: "
+    //      << paragraphs_.size());
+  }
+}
 
 void TextLayoutTextra::ApplyTextStyle(TextElement* text_element) {
   const CSSIDBitset& property_bits = text_element->property_bits();
@@ -84,6 +111,14 @@ void TextLayoutTextra::ApplyTextStyle(TextElement* text_element) {
           }
           break;
         }
+        case kPropertyIDBackgroundColor: {
+          // TODO: background color
+          break;
+        }
+        case kPropertyIDTextShadow: {
+          // TODO: text shadow
+          break;
+        }
         case kPropertyIDFontStyle: {
           int font_style = static_cast<int>(text_attributes->font_style);
           paragraph_builder_->SetTextStyle(kTextPropFontStyle, &(font_style),
@@ -95,6 +130,7 @@ void TextLayoutTextra::ApplyTextStyle(TextElement* text_element) {
           paragraph_builder_->SetTextStyle(kTextPropFontFamily,
                                            const_cast<char*>(family.c_str()),
                                            family.length());
+          EnsureParagraphListener(text_element);
           break;
         }
         case kPropertyIDLetterSpacing: {
@@ -359,6 +395,25 @@ void TextLayoutTextra::Align(Element* element) {
   api_->AlignParagraph(paragraph, 0, 0);
 }
 
+void TextLayoutTextra::EnsureParagraphListener(Element* element) {
+  if (!element || !paragraph_builder_) {
+    return;
+  }
+
+  int32_t id = element->impl_id();
+  auto it = paragraph_listeners_.find(id);
+  text::ParagraphListener* listener = nullptr;
+  if (it == paragraph_listeners_.end()) {
+    auto new_listener = std::make_unique<TextraParagraphListener>(element);
+    listener = new_listener.get();
+    paragraph_listeners_.emplace(id, std::move(new_listener));
+  } else {
+    listener = it->second.get();
+  }
+
+  paragraph_builder_->SetParagraphListener(listener);
+}
+
 void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
   if (!element->is_text()) {
     return;
@@ -377,12 +432,31 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
   paragraph_builder_->PopTextStyle();
 
   auto paragraph = paragraph_builder_->BuildParagraph();
-  paragraphs_.emplace(element->impl_id(), paragraph);
+  auto it_para = paragraphs_.find(element->impl_id());
+  if (it_para != paragraphs_.end()) {
+    api_->DestroyParagraph(it_para->second);
+    it_para->second = paragraph;
+  } else {
+    paragraphs_.emplace(element->impl_id(), paragraph);
+  }
 
   // release build builder in the end
   if (paragraph_builder_ != nullptr) {
     api_->DestroyParagraphBuilder(paragraph_builder_);
     paragraph_builder_ = nullptr;
+  }
+}
+
+void TextLayoutTextra::Destroy(Element* element) {
+  auto it_para = paragraphs_.find(element->impl_id());
+  if (it_para != paragraphs_.end()) {
+    api_->DestroyParagraph(it_para->second);
+    paragraphs_.erase(it_para);
+  }
+
+  auto it_listener = paragraph_listeners_.find(element->impl_id());
+  if (it_listener != paragraph_listeners_.end()) {
+    paragraph_listeners_.erase(it_listener);
   }
 }
 

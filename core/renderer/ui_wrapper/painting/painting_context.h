@@ -249,6 +249,8 @@ class PaintingContext {
 
   void AlignText(Element* element) { platform_impl_->AlignText(element); };
 
+  void DestroyText(Element* element) { platform_impl_->DestroyText(element); }
+
  private:
   void Enqueue(shell::UIOperation op, bool high_priority = false);
   void EnqueueHighPriorityUIOperation(shell::UIOperation op) {

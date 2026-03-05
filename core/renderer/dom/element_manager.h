@@ -352,6 +352,7 @@ class ElementManager : public ElementContextDelegate,
                            float height, int height_mode);
   void DispatchLayoutBefore(Element *element);
   void AlignText(Element *element);
+  void DestroyText(Element *element);
 
   void MarkLayoutDirty(int32_t id);
   void AttachLayoutNodeType(int32_t id, const base::String &tag,
