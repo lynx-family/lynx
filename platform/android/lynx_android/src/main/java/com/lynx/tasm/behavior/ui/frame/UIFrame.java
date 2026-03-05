@@ -29,6 +29,9 @@ import java.util.HashMap;
 @LynxBehavior(tagName = "frame", isCreateAsync = true)
 public final class UIFrame extends LynxUI<LynxFrameView> {
   private static final String TAG = "UIFrame";
+  private TemplateBundle mPendingBundle;
+  private boolean mIsPropsUpdated = false;
+  private boolean mIsUrlChanged = false;
 
   public UIFrame(LynxContext context) {
     this(context, null);
@@ -55,14 +58,27 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
   @Override
   public void updateExtraData(Object data) {
     if (data instanceof TemplateBundle) {
-      LynxFrameView view = getView();
-      if (view != null) {
-        // need to establish the parent-child UI relationship before loadBundle currently
-        // TODO(hexionghui): fix it later
-        attachPageUICallback();
-        view.loadBundle((TemplateBundle) data);
+      TemplateBundle bundle = (TemplateBundle) data;
+      if (mIsUrlChanged && mIsPropsUpdated && loadBundle(bundle)) {
+        mPendingBundle = null;
+        mIsUrlChanged = false;
+        mIsPropsUpdated = false;
+      } else {
+        mPendingBundle = bundle;
       }
     }
+  }
+
+  private boolean loadBundle(TemplateBundle bundle) {
+    LynxFrameView view = getView();
+    if (view == null) {
+      return false;
+    }
+    // need to establish the parent-child UI relationship before loadBundle currently
+    // TODO(hexionghui): fix it later
+    attachPageUICallback();
+    view.loadBundle(bundle);
+    return true;
   }
 
   private void attachPageUICallback() {
@@ -146,6 +162,8 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
 
   @LynxProp(name = "src")
   public void setSrc(String value) {
+    mIsUrlChanged = true;
+    mIsPropsUpdated = false;
     LynxFrameView view = getView();
     if (view == null) {
       return;
@@ -168,6 +186,14 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
   @Override
   public void onPropsUpdated() {
     super.onPropsUpdated();
+    if (mIsUrlChanged) {
+      if (mPendingBundle != null && loadBundle(mPendingBundle)) {
+        mPendingBundle = null;
+        mIsUrlChanged = false;
+      }
+    }
+    mIsPropsUpdated = true;
+
     LynxFrameView view = getView();
     if (view != null) {
       view.onPropsUpdated();
