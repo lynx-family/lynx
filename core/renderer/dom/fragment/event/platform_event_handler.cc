@@ -208,7 +208,7 @@ void PlatformEventHandler::InitClickEnv() {
     }
     bool has_click_event = false;
     for (const auto& event : last_target->EventSet()) {
-      if (event == "click") {
+      if (event == PlatformEventName::kClick) {
         // the click_target_chain is constructed using the first node in the
         // event response chain that registers the click event.
         has_click_event = true;

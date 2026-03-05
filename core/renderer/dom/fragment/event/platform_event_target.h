@@ -5,9 +5,17 @@
 #ifndef CORE_RENDERER_DOM_FRAGMENT_EVENT_PLATFORM_EVENT_TARGET_H_
 #define CORE_RENDERER_DOM_FRAGMENT_EVENT_PLATFORM_EVENT_TARGET_H_
 
+#include <cstdint>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "base/include/fml/memory/ref_counted.h"
+#include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/vector.h"
+#include "core/renderer/dom/fragment/event/platform_event_bundle.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -85,13 +93,31 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float ScrollOffsetY() const { return scroll_offset_y_; }
   float OffsetXForCalcPosition() const { return offset_x_for_calc_position_; }
   float OffsetYForCalcPosition() const { return offset_y_for_calc_position_; }
-
-  void SetRendererOffsetX(float renderer_offset_x) {
-    renderer_offset_x_ = renderer_offset_x;
+  bool IsVisible() const { return true; }
+  bool IsOverlayContent() const { return false; }
+  LynxEventPropStatus EnableExposureUIClip() const {
+    return enable_exposure_ui_clip_;
   }
-  void SetRendererOffsetY(float renderer_offset_y) {
-    renderer_offset_y_ = renderer_offset_y;
+  bool IsScrollable() const { return is_scroll_container_; }
+  bool IsRoot() const { return sign_ == kRootId; }
+  const base::Vector<PlatformEventName>& EventSet() const { return event_set_; }
+  bool UserInteractionEnabled() const { return user_interaction_enabled_; }
+  bool NativeInteractionEnabled() const { return native_interaction_enabled_; }
+  float ExposureScreenMarginLeft() const {
+    return exposure_screen_margin_left_;
   }
+  float ExposureScreenMarginRight() const {
+    return exposure_screen_margin_right_;
+  }
+  float ExposureScreenMarginTop() const { return exposure_screen_margin_top_; }
+  float ExposureScreenMarginBottom() const {
+    return exposure_screen_margin_bottom_;
+  }
+  float ExposureUIMarginLeft() const { return exposure_ui_margin_left_; }
+  float ExposureUIMarginRight() const { return exposure_ui_margin_right_; }
+  float ExposureUIMarginTop() const { return exposure_ui_margin_top_; }
+  float ExposureUIMarginBottom() const { return exposure_ui_margin_bottom_; }
+  float ExposureAreaRatio() const { return exposure_area_ratio_; }
 
   fml::RefPtr<PlatformEventTarget> ParentTarget() { return parent_; }
   void SetParentTarget(fml::RefPtr<PlatformEventTarget> parent) {
@@ -122,13 +148,56 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
                              LynxPseudoStatus current_status);
   LynxPseudoStatus GetPseudoStatus() const;
   bool TouchPseudoPropagation() const;
-  const std::vector<std::string>& EventSet() const;
 
   bool EventThrough(float point[2]) const;
   bool IgnoreFocus() const;
   LynxPointerEventsValue PointerEvents() const;
   bool BlockNativeEvent(float point[2]) const;
   LynxConsumeSlideDirection ConsumeSlideEvent() const;
+
+  void SetEventSet(base::Vector<PlatformEventName> event_set) {
+    event_set_ = std::move(event_set);
+  }
+
+  void SetRendererOffsetX(float renderer_offset_x) {
+    renderer_offset_x_ = renderer_offset_x;
+  }
+  void SetRendererOffsetY(float renderer_offset_y) {
+    renderer_offset_y_ = renderer_offset_y;
+  }
+
+  void SetUserInteractionEnabled(bool enabled) {
+    user_interaction_enabled_ = enabled;
+  }
+  void SetNativeInteractionEnabled(bool enabled) {
+    native_interaction_enabled_ = enabled;
+  }
+  void SetExposureScreenMarginLeft(float value) {
+    exposure_screen_margin_left_ = value;
+  }
+  void SetExposureScreenMarginRight(float value) {
+    exposure_screen_margin_right_ = value;
+  }
+  void SetExposureScreenMarginTop(float value) {
+    exposure_screen_margin_top_ = value;
+  }
+  void SetExposureScreenMarginBottom(float value) {
+    exposure_screen_margin_bottom_ = value;
+  }
+  void SetExposureUIMarginLeft(float value) {
+    exposure_ui_margin_left_ = value;
+  }
+  void SetExposureUIMarginRight(float value) {
+    exposure_ui_margin_right_ = value;
+  }
+  void SetExposureUIMarginTop(float value) { exposure_ui_margin_top_ = value; }
+  void SetExposureUIMarginBottom(float value) {
+    exposure_ui_margin_bottom_ = value;
+  }
+  void SetExposureArea(float value) { exposure_area_ratio_ = value; }
+  void SetEnableExposureUIClip(LynxEventPropStatus value) {
+    enable_exposure_ui_clip_ = value;
+  }
 
  private:
   // target props
@@ -144,7 +213,19 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float scroll_offset_y_{0.f};
   float offset_x_for_calc_position_{0.f};
   float offset_y_for_calc_position_{0.f};
-  std::vector<std::string> event_set_;
+  base::Vector<PlatformEventName> event_set_;
+  bool user_interaction_enabled_{true};
+  bool native_interaction_enabled_{true};
+  float exposure_screen_margin_left_{0.f};
+  float exposure_screen_margin_right_{0.f};
+  float exposure_screen_margin_top_{0.f};
+  float exposure_screen_margin_bottom_{0.f};
+  float exposure_ui_margin_left_{0.f};
+  float exposure_ui_margin_right_{0.f};
+  float exposure_ui_margin_top_{0.f};
+  float exposure_ui_margin_bottom_{0.f};
+  float exposure_area_ratio_{0.f};
+  LynxEventPropStatus enable_exposure_ui_clip_{LynxEventPropStatus::kUndefined};
 
   // event/expose target tree
   fml::RefPtr<PlatformEventTarget> parent_{nullptr};

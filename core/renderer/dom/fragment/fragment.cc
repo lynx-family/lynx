@@ -698,12 +698,14 @@ void Fragment::ReconstructEventTargetTreeForExposure() const {
     return;
   }
 
+  auto* native_ctx = painting_context()->impl()->CastToNativeCtx();
   bool need_reconstruct = g_any_exposure_event.load(std::memory_order_relaxed);
 
   // TODO(hexionghui): It shouldn't be rebuilt only once; it may need to be
   // rebuilt again later.
   static std::atomic_bool reconstructed{false};
   if (need_reconstruct && !reconstructed.exchange(true)) {
+    native_ctx->ReconstructEventTargetTreeRecursively();
   }
 }
 

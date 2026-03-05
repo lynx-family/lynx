@@ -135,6 +135,13 @@ void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
   // TBD
 }
 
+void NativePaintingCtxDarwin::ReconstructEventTargetTreeRecursively() {
+  Enqueue([ref = platform_ref_]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)
+        ->ReconstructEventTargetTreeRecursively();
+  });
+}
+
 void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height,
                                           int32_t event_mask) {
   LynxURL *sourceUrl = [[LynxURL alloc] init];

@@ -187,6 +187,55 @@ int32_t PlatformRendererContext::GetTagInfo(const std::string& tag_name) {
                                                  tag_ref.Get());
 }
 
+std::vector<float> PlatformRendererContext::GetRootViewLocationOnScreen() {
+  std::vector<float> res;
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return res;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto arr = Java_PlatformRendererContext_getRootViewLocationOnScreen(
+      env, local_ref.Get());
+  if (arr.IsNull()) {
+    return res;
+  }
+
+  const jsize size = env->GetArrayLength(arr.Get());
+  jfloat* data = env->GetFloatArrayElements(arr.Get(), nullptr);
+  if (data != nullptr && size > 0) {
+    res.assign(data, data + size);
+  }
+  if (data != nullptr) {
+    env->ReleaseFloatArrayElements(arr.Get(), data, 0);
+  }
+  return res;
+}
+
+std::vector<float> PlatformRendererContext::GetScreenSize() {
+  std::vector<float> res;
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return res;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto arr = Java_PlatformRendererContext_getScreenSize(env, local_ref.Get());
+  if (arr.IsNull()) {
+    return res;
+  }
+
+  const jsize size = env->GetArrayLength(arr.Get());
+  jfloat* data = env->GetFloatArrayElements(arr.Get(), nullptr);
+  if (data != nullptr && size > 0) {
+    res.assign(data, data + size);
+  }
+  if (data != nullptr) {
+    env->ReleaseFloatArrayElements(arr.Get(), data, 0);
+  }
+  return res;
+}
+
 void PlatformRendererContext::UpdatePlatformRendererSubtreeProperties(
     int32_t id, const SubtreeProperty* properties, size_t count) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);

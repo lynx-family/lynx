@@ -8433,6 +8433,8 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.setRootView(@NonNull UIBody.UIBodyView rootView);
   public LynxContext com.lynx.tasm.behavior.render.PlatformRendererContext.getLynxContext();
   public long com.lynx.tasm.behavior.render.PlatformRendererContext.getNativePtr();
+  public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.getRootViewLocationOnScreen();
+  public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.getScreenSize();
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetWidth(int sign);
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformRenderer(int sign, int type);

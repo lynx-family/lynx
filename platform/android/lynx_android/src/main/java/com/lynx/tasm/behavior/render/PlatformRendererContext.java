@@ -4,6 +4,7 @@
 package com.lynx.tasm.behavior.render;
 
 import android.graphics.PointF;
+import android.util.DisplayMetrics;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -23,6 +24,7 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.service.ILynxTextService.Page;
+import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
@@ -92,6 +94,30 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   public long getNativePtr() {
     return mNativePtr;
+  }
+
+  @CalledByNative
+  public float[] getRootViewLocationOnScreen() {
+    float[] res = new float[] {0, 0};
+    UIBody.UIBodyView view = mRootView != null ? mRootView.get() : null;
+    if (view != null) {
+      int[] location = new int[2];
+      view.getLocationOnScreen(location);
+      res[0] = location[0];
+      res[1] = location[1];
+    }
+    return res;
+  }
+
+  @CalledByNative
+  public float[] getScreenSize() {
+    float[] res = new float[] {0, 0};
+    if (mContext != null) {
+      DisplayMetrics metrics = DisplayMetricsHolder.getRealScreenDisplayMetrics(mContext);
+      res[0] = metrics.widthPixels;
+      res[1] = metrics.heightPixels;
+    }
+    return res;
   }
 
   PointF convertPointInViewToScreen(int sign, PointF point) {

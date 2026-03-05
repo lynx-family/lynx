@@ -105,6 +105,8 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 
   void DestroyTextBundle(int id) override;
 
+  void ReconstructEventTargetTreeRecursively() override;
+
   void CreateImage(int id, base::String src, float width, float height,
                    int32_t event_mask = 0) override;
 

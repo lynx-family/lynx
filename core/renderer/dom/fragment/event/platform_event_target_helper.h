@@ -13,10 +13,15 @@
 namespace lynx {
 namespace tasm {
 class PlatformRendererImpl;
+class NativePaintingCtxPlatformRef;
 
 class PlatformEventTargetHelper {
  public:
+  explicit PlatformEventTargetHelper(NativePaintingCtxPlatformRef* platform_ref)
+      : platform_ref_(platform_ref) {}
+
   fml::RefPtr<PlatformEventTarget> GetRootEventTarget();
+  fml::RefPtr<PlatformEventTarget> GetEventTarget(int32_t id);
 
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
       fml::RefPtr<PlatformRendererImpl> page_renderer);
@@ -75,11 +80,30 @@ class PlatformEventTargetHelper {
 
   float GetDevicePixelRatio() { return device_pixel_ratio_; }
 
+  void GetRootViewLocationOnScreen(float location[2]);
+  void GetScreenSize(float size[2]);
+
   void InvokeMethod(
       int32_t id, const std::string& method, const lepus::Value& params,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
 
  private:
+  base::Vector<PlatformEventName> ParseEventSet(PlatformEventTarget* target,
+                                                const int32_t* int_data,
+                                                size_t& int_data_idx,
+                                                size_t int_param_end,
+                                                int32_t event_count);
+  void ApplyEventProps(PlatformEventTarget* target, const int32_t* int_data,
+                       size_t& int_data_idx, size_t int_param_end,
+                       const float* float_data, size_t& float_data_idx,
+                       size_t float_param_end, int32_t prop_count);
+  void ApplyEventBundle(PlatformEventTarget* target, const int32_t* int_data,
+                        size_t& int_data_idx, size_t int_param_end,
+                        const float* float_data, size_t& float_data_idx,
+                        size_t float_param_end);
+
+  // owned by NativePaintingCtxPlatformRef
+  NativePaintingCtxPlatformRef* platform_ref_{nullptr};
   // the root node of the EventTarget Tree reconstructed from the DisplayList.
   fml::RefPtr<PlatformEventTarget> event_target_tree_{nullptr};
   // map from id to the EventTarget.

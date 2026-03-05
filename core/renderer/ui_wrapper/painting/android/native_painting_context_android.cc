@@ -289,6 +289,13 @@ void NativePaintingCtxAndroid::UpdateDisplayList(int id,
   });
 }
 
+void NativePaintingCtxAndroid::ReconstructEventTargetTreeRecursively() {
+  Enqueue([ref = platform_ref_]() mutable {
+    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
+        ->ReconstructEventTargetTreeRecursively();
+  });
+}
+
 void NativePaintingCtxAndroid::CreateImage(int id, base::String src,
                                            float width, float height,
                                            int32_t event_mask) {

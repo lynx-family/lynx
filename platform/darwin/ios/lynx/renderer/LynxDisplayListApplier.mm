@@ -77,6 +77,9 @@ using namespace lynx::tasm;
     auto int_count = list_->GetIntAtIndex(content_int_index_++);
     auto float_count = list_->GetIntAtIndex(content_int_index_++);
 
+    size_t next_int_index = content_int_index_ + int_count;
+    size_t next_float_index = content_float_index_ + float_count;
+
     switch (op) {
       case DisplayListOpType::kBegin: {
         bool record_offset = false;
@@ -231,6 +234,10 @@ using namespace lynx::tasm;
       default:
         break;
     }
+
+    // Ensure alignment
+    content_int_index_ = next_int_index;
+    content_float_index_ = next_float_index;
   }
 }
 
