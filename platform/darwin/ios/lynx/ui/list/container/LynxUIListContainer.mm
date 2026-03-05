@@ -1464,8 +1464,8 @@ LYNX_UI_METHOD(getVisibleCells) {
         self.verticalOrientation ? scrollView.contentOffset.y : scrollView.contentOffset.x;
 
     if (self.maxFlingDistanceRatio == kLynxListAutomaticMaxFlingRatio) {
-      forwardFlingOffset = [self getAvailableScrollOffsetFromSubviews:YES];
-      backwardFlingOffset = [self getAvailableScrollOffsetFromSubviews:NO];
+      forwardFlingOffset = [self getAvailableScrollOffsetFromSubviews:YES offset:currentOffset];
+      backwardFlingOffset = [self getAvailableScrollOffsetFromSubviews:NO offset:currentOffset];
     } else {
       CGFloat maxFlingDistanceInPoint =
           self.maxFlingDistanceRatio *
@@ -1509,27 +1509,38 @@ LYNX_UI_METHOD(getVisibleCells) {
   return offset;
 }
 
-- (CGFloat)getAvailableScrollOffsetFromSubviews:(BOOL)forward {
+- (CGFloat)getAvailableScrollOffsetFromSubviews:(BOOL)forward offset:(CGFloat)offset {
+  if (self.view.subviews.count == 0) {
+    return offset;
+  }
   __block CGFloat max = CGFLOAT_MIN;
   __block CGFloat min = CGFLOAT_MAX;
   BOOL vertical = self.verticalOrientation;
   if (forward) {
+    CGFloat contentSize = vertical ? self.view.contentSize.height : self.view.contentSize.width;
+    CGFloat paddingEnd = vertical ? self.padding.bottom : self.padding.right;
     [self.view.subviews enumerateObjectsUsingBlock:^(__kindof UIView *_Nonnull obj, NSUInteger idx,
                                                      BOOL *_Nonnull stop) {
       if ([obj isKindOfClass:LynxListContainerComponentWrapper.class]) {
         max = MAX(max, vertical ? CGRectGetMaxY(obj.frame) : CGRectGetMaxX(obj.frame));
       }
     }];
+    if (fabs(max + paddingEnd - contentSize) < CGFLOAT_EPSILON) {
+      max = contentSize;
+    }
     max = max - (vertical ? self.view.frame.size.height : self.view.frame.size.width);
   } else {
+    CGFloat paddingStart = vertical ? self.padding.top : self.padding.left;
     [self.view.subviews enumerateObjectsUsingBlock:^(__kindof UIView *_Nonnull obj, NSUInteger idx,
                                                      BOOL *_Nonnull stop) {
       if ([obj isKindOfClass:LynxListContainerComponentWrapper.class]) {
         min = MIN(min, vertical ? CGRectGetMinY(obj.frame) : CGRectGetMinX(obj.frame));
       }
     }];
+    if (fabs(min - paddingStart) < CGFLOAT_EPSILON) {
+      min = 0.f;
+    }
   }
-
   return forward ? max : min;
 }
 

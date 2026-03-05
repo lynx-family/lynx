@@ -3531,6 +3531,8 @@ public class com::lynx::tasm::behavior::ui::list::container::ListContainerView :
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setPanInterceptSelf(boolean panInterceptSelf);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setPanInterceptAncestors(boolean panInterceptAncestors);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setPanInterceptDescendants(boolean panInterceptDescendants);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setMaxFlingDistanceRatio(float ratio);
+  public float[] com.lynx.tasm.behavior.ui.list.container.ListContainerView.getLimitedFlingDistance(int lastScrollX, int lastScrollY);
 }
 
 public class com::lynx::tasm::behavior::ui::list::ListEventManager : RecyclerView.OnScrollListener {
@@ -7935,6 +7937,7 @@ public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContain
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.onTouchEvent(MotionEvent event);
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.smoothScrollTo(int scrollX, int scrollY);
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.stopFling();
+  public float[] com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.getLimitedFlingDistance(int lastScrollX, int lastScrollY);
   public int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.getScrollRange();
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.canScrollBy(int delta);
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.setIsVertical(boolean isVertical);
@@ -7944,7 +7947,6 @@ public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContain
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.removeOnScrollStateChangeListener(OnScrollStateChangeListener listener);
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.addOnScrollListener(NestedScrollContainerView.OnScrollListener listener);
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.removeOnScrollListener(NestedScrollContainerView.OnScrollListener listener);
-  public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.setMaxFlingDistanceRatio(float ratio);
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.setEnableScroll(boolean enableScroll);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.canScrollHorizontally(int direction);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.canScrollVertically(int direction);

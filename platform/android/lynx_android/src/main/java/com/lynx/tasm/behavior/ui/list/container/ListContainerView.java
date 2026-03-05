@@ -18,6 +18,7 @@ import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
+import com.lynx.tasm.utils.FloatUtils;
 
 public class ListContainerView
     extends NestedScrollContainerView implements IDrawChildHook.IDrawChildHookBinding {
@@ -37,6 +38,10 @@ public class ListContainerView
   private boolean mIsVertical = true;
   int mMeasuredWidth = 0;
   int mMeasuredHeight = 0;
+  int mPaddingLeft = 0;
+  int mPaddingRight = 0;
+  int mPaddingTop = 0;
+  int mPaddingBottom = 0;
   private boolean mShouldBlockScrollByListContainer = false;
   private int mPreviousOffsetX;
   private int mPreviousOffsetY;
@@ -44,6 +49,7 @@ public class ListContainerView
   private boolean mPanInterceptSelf = false;
   private boolean mPanInterceptAncestors = false;
   private boolean mPanInterceptDescendants = false;
+  private float mMaxFlingDistanceRatio = -1;
 
   public ListContainerView(@NonNull Context context, UIListContainer uiListContainer) {
     super(context);
@@ -211,6 +217,13 @@ public class ListContainerView
         mCustomLinearLayout.requestLayout();
       }
     }
+  }
+
+  void setPaddings(int paddingLeft, int paddingRight, int paddingTop, int paddingBottom) {
+    mPaddingLeft = paddingLeft;
+    mPaddingRight = paddingRight;
+    mPaddingTop = paddingTop;
+    mPaddingBottom = paddingBottom;
   }
 
   public void setForceCanScroll(boolean forceCanScroll) {
@@ -414,6 +427,72 @@ public class ListContainerView
 
   public void setPanInterceptDescendants(boolean panInterceptDescendants) {
     mPanInterceptDescendants = panInterceptDescendants;
+  }
+
+  public void setMaxFlingDistanceRatio(float ratio) {
+    mMaxFlingDistanceRatio = ratio;
+  }
+
+  public float[] getLimitedFlingDistance(int lastScrollX, int lastScrollY) {
+    if (mMaxFlingDistanceRatio > 0.f) {
+      float forwardFlingDistance = 0.f;
+      float backwardFlingDistance = 0.f;
+      float currentOffset = mIsVertical ? lastScrollY : lastScrollX;
+      if (mMaxFlingDistanceRatio == LIST_AUTOMATIC_MAX_FLING_RATIO) {
+        forwardFlingDistance =
+            getAvailableScrollOffsetIfNeeded(true, currentOffset) - currentOffset;
+        backwardFlingDistance =
+            currentOffset - getAvailableScrollOffsetIfNeeded(false, currentOffset);
+      } else {
+        float maxFlingDistance = mMaxFlingDistanceRatio * (mIsVertical ? getHeight() : getWidth());
+        forwardFlingDistance = maxFlingDistance;
+        backwardFlingDistance = maxFlingDistance;
+      }
+      return new float[] {forwardFlingDistance, backwardFlingDistance};
+    } else {
+      return super.getLimitedFlingDistance(lastScrollX, lastScrollY);
+    }
+  }
+
+  private float getAvailableScrollOffsetIfNeeded(boolean forward, float currentOffset) {
+    float min = Float.MAX_VALUE;
+    float max = Float.MIN_VALUE;
+    // TODO:(dingwang.wxx) Define a interface and explicitly obtain the LinearLayout within the
+    // ScrollView.
+    if (getChildCount() > 0 && getChildAt(0) instanceof ViewGroup) {
+      ViewGroup linearLayout = (ViewGroup) getChildAt(0);
+      if (forward) {
+        int paddingEnd = mIsVertical ? mPaddingBottom : mPaddingRight;
+        int linearLayoutSize = mIsVertical ? linearLayout.getHeight() : linearLayout.getWidth();
+        int containerSize = mIsVertical ? getHeight() : getWidth();
+        for (int i = 0; i < linearLayout.getChildCount(); i++) {
+          View childView = linearLayout.getChildAt(i);
+          float offset = mIsVertical ? (childView.getY() + childView.getHeight())
+                                     : (childView.getX() + childView.getWidth());
+          if (max < offset) {
+            max = offset;
+          }
+        }
+        if (FloatUtils.floatsEqual(max + paddingEnd, linearLayoutSize)) {
+          max = linearLayoutSize;
+        }
+        max = max - containerSize;
+      } else {
+        int paddingStart = mIsVertical ? mPaddingTop : mPaddingLeft;
+        for (int i = 0; i < linearLayout.getChildCount(); i++) {
+          View childView = linearLayout.getChildAt(i);
+          float offset = mIsVertical ? childView.getY() : childView.getX();
+          if (min > offset) {
+            min = offset;
+          }
+        }
+        if (FloatUtils.floatsEqual(min - paddingStart, 0.f)) {
+          min = 0.f;
+        }
+      }
+      return forward ? max : min;
+    }
+    return currentOffset;
   }
 
   private class CustomLinearLayout extends LinearLayout {

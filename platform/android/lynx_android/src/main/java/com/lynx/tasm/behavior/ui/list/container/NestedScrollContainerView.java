@@ -77,7 +77,6 @@ public class NestedScrollContainerView
 
   private final NestedScrollingParentHelper mParentHelper;
   private final NestedScrollingChildHelper mChildHelper;
-  private float mMaxFlingDistanceRatio = -1;
   public boolean mIsDuringAutoScroll = false;
 
   /**
@@ -502,6 +501,10 @@ public class NestedScrollContainerView
     mScrollHelper.stopFling();
   }
 
+  public float[] getLimitedFlingDistance(int lastScrollX, int lastScrollY) {
+    return new float[] {Integer.MAX_VALUE, Integer.MAX_VALUE};
+  }
+
   class ScrollHelper implements Runnable {
     private int mLastScrollX;
     private int mLastScrollY;
@@ -515,37 +518,6 @@ public class NestedScrollContainerView
       mScroller = new ListCustomScroller(getContext(), sQuinticInterpolator);
     }
 
-    private float getAvailableScrollOffsetFromSubviews(boolean forward) {
-      float min = Float.MAX_VALUE;
-      float max = Float.MIN_VALUE;
-      boolean vertical = mIsVertical;
-      // TODO:(dingwang.wxx) Define a interface and explicitly obtain the LinearLayout within the
-      // ScrollView.
-      if (getChildCount() > 0 && getChildAt(0) instanceof ViewGroup) {
-        ViewGroup container = (ViewGroup) getChildAt(0);
-        if (forward) {
-          for (int i = 0; i < container.getChildCount(); i++) {
-            View view = container.getChildAt(i);
-            float offset =
-                vertical ? (view.getY() + view.getHeight()) : (view.getX() + view.getWidth());
-            if (max < offset) {
-              max = offset;
-            }
-          }
-          max = max - (vertical ? getHeight() : getWidth());
-        } else {
-          for (int i = 0; i < container.getChildCount(); i++) {
-            View view = container.getChildAt(i);
-            float offset = vertical ? view.getY() : view.getX();
-            if (min > offset) {
-              min = offset;
-            }
-          }
-        }
-      }
-      return forward ? max : min;
-    }
-
     public void fling(int velocityX, int velocityY) {
       setScrollState(SCROLL_STATE_FLING);
       mCustomScrollHook = null;
@@ -554,28 +526,10 @@ public class NestedScrollContainerView
       mTotalDeltaX = 0;
       mTotalDeltaY = 0;
       if (mSnapHelper == null) {
-        if (mMaxFlingDistanceRatio > 0) {
-          float limitedDistance = 0;
-          float forwardFlingDistance = 0;
-          float backwardFlingDistance = 0;
-          float currentOffset = mIsVertical ? mLastScrollY : mLastScrollX;
-
-          if (mMaxFlingDistanceRatio == LIST_AUTOMATIC_MAX_FLING_RATIO) {
-            forwardFlingDistance = getAvailableScrollOffsetFromSubviews(true) - currentOffset;
-            backwardFlingDistance = currentOffset - getAvailableScrollOffsetFromSubviews(false);
-          } else {
-            float maxFlingDistance =
-                mMaxFlingDistanceRatio * (mIsVertical ? getHeight() : getWidth());
-            forwardFlingDistance = maxFlingDistance;
-            backwardFlingDistance = maxFlingDistance;
-          }
-          mScroller.fling(mLastScrollX, mLastScrollY, velocityX, velocityY, Integer.MIN_VALUE,
-              Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 0,
-              (int) forwardFlingDistance, (int) backwardFlingDistance);
-        } else {
-          mScroller.fling(mLastScrollX, mLastScrollY, velocityX, velocityY, Integer.MIN_VALUE,
-              Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE);
-        }
+        float[] limitedFlingDistance = getLimitedFlingDistance(mLastScrollX, mLastScrollY);
+        mScroller.fling(mLastScrollX, mLastScrollY, velocityX, velocityY, Integer.MIN_VALUE,
+            Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 0,
+            (int) limitedFlingDistance[0], (int) limitedFlingDistance[1]);
       } else {
         pagingInternal(velocityX, velocityY);
       }
@@ -840,10 +794,6 @@ public class NestedScrollContainerView
 
   protected void clearOnScrollStateChangeListeners() {
     mOnScrollStateChangeListeners.clear();
-  }
-
-  public void setMaxFlingDistanceRatio(float ratio) {
-    mMaxFlingDistanceRatio = ratio;
   }
 
   public void setEnableScroll(boolean enableScroll) {

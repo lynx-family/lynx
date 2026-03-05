@@ -435,6 +435,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     } else if (!mIsVertical && mView.mMeasuredHeight != getHeight()) {
       mView.setMeasuredSize(mView.mMeasuredWidth, getHeight());
     }
+    mView.setPaddings(mPaddingLeft, mPaddingRight, mPaddingTop, mPaddingBottom);
   }
 
   @Override
