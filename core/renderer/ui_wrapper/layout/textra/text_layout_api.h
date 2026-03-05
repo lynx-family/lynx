@@ -63,7 +63,7 @@ struct ImageProps {
 
 class ParagraphListener {
  public:
-  virtual ~ParagraphListener() = 0;
+  virtual ~ParagraphListener() = default;
   virtual void MarkParagraphDirty() = 0;
 };
 

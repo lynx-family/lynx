@@ -819,6 +819,10 @@ void ElementManager::AlignText(Element *element) {
   painting_context()->AlignText(element);
 }
 
+void ElementManager::DestroyText(Element *element) {
+  painting_context()->DestroyText(element);
+}
+
 void ElementManager::MarkLayoutDirty(int32_t id) {
   delegate_->MarkLayoutDirty(id);
 }

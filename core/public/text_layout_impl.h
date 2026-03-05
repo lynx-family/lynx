@@ -18,6 +18,8 @@ class TextLayoutImpl {
 
   virtual void DispatchLayoutBefore(Element* element) = 0;
 
+  virtual void Destroy(Element* element) {}
+
   virtual LayoutResult Measure(Element* element, float width, int width_mode,
                                float height, int height_mode) = 0;
 

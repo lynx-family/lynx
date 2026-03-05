@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_LAYOUT_TEXTRA_TEXT_LAYOUT_TEXTRA_H_
 
 #include <cstdint>
+#include <memory>
 #include <unordered_map>
 
 #include "core/public/text_layout_impl.h"
@@ -19,12 +20,13 @@ namespace text {
 class TextLayoutAPI;
 class ParagraphBuilder;
 class Paragraph;
+class ParagraphListener;
 }  // namespace text
 
 class TextLayoutTextra : public TextLayoutImpl {
  public:
   explicit TextLayoutTextra(intptr_t textra);
-  ~TextLayoutTextra() override = default;
+  ~TextLayoutTextra() override;
 
   LayoutResult Measure(Element* element, float width, int width_mode,
                        float height, int height_mode) override;
@@ -32,6 +34,8 @@ class TextLayoutTextra : public TextLayoutImpl {
   void Align(Element* element) override;
 
   void DispatchLayoutBefore(Element* element) override;
+
+  void Destroy(Element* element) override;
 
   void BuildParagraphRecursively(Element* element);
 
@@ -41,12 +45,15 @@ class TextLayoutTextra : public TextLayoutImpl {
   void ProcessChildStyleAndProps(Element* child);
   void HandleInlineImageProps(Element* child);
   void HandleInlineViewProps(Element* child);
+  void EnsureParagraphListener(Element* element);
   //  void MeasureChildrenRecursively(Element* element,starlight::Constraints&
   //  constraints);
 
   text::TextLayoutAPI* api_{nullptr};
   text::ParagraphBuilder* paragraph_builder_{nullptr};
   std::unordered_map<int32_t, text::Paragraph*> paragraphs_;
+  std::unordered_map<int32_t, std::unique_ptr<text::ParagraphListener>>
+      paragraph_listeners_;
 };
 
 }  // namespace tasm
