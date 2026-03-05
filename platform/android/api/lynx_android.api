@@ -10446,6 +10446,12 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.FSP_TRACER_SNAPSHOT_STABLE FSP_TRACER_SNAPSHOT_STABLE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.FSP_TIMING_MARK_FSP_END FSP_TIMING_MARK_FSP_END;
   public final String com.lynx.tasm.base.trace.TraceEventDef.DESTORY_LYNXFRAMEVIEW DESTORY_LYNXFRAMEVIEW;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_SET_INIT_DATA LYNX_FRAME_VIEW_SET_INIT_DATA;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_SET_GLOBAL_PROPS LYNX_FRAME_VIEW_SET_GLOBAL_PROPS;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_ON_MEASURE LYNX_FRAME_VIEW_ON_MEASURE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_ON_MEASURE_TARGET LYNX_FRAME_VIEW_ON_MEASURE_TARGET;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_UPDATE_LAYOUT LYNX_FRAME_VIEW_UPDATE_LAYOUT;
 }
 
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {
