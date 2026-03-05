@@ -21,8 +21,30 @@ void JSVMRuntimeInstance::InitInstance() {
   static std::once_flag flag;
   std::call_once(flag, [this]() {
     LOGI("lynx JSVMRuntimeInstance::InitInstance");
+    enum class JSVMInitMode {
+      kDefault,
+      kMemorySensitive,
+    };
+
+    JSVMInitMode init_mode = JSVMInitMode::kDefault;
     JSVM_InitOptions initOptions;
-    memset(&initOptions, 0, sizeof(initOptions));
+    int argc = 0;
+    const char* argv[2];
+
+    switch (init_mode) {
+      case JSVMInitMode::kMemorySensitive:
+        argc = 2;
+        argv[0] = "--jsvm";
+        argv[1] = "--optimize-for-size";
+        initOptions.argc = &argc;
+        initOptions.argv = const_cast<char**>(argv);
+        break;
+      case JSVMInitMode::kDefault:
+      default:
+        memset(&initOptions, 0, sizeof(initOptions));
+        break;
+    }
+
     JSVM_CALL_NO_ENV(OH_JSVM_Init, &initOptions);
 
     JSVM_CreateVMOptions options;
