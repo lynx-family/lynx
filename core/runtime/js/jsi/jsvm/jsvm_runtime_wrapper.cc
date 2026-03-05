@@ -34,6 +34,7 @@ void JSVMRuntimeInstance::InitInstance() {
     switch (init_mode) {
       case JSVMInitMode::kMemorySensitive:
         argc = 2;
+        argv[0] = "-jsvm";
         argv[1] = "--optimize-for-size";
         initOptions.argc = &argc;
         initOptions.argv = const_cast<char**>(argv);
