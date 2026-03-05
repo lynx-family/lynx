@@ -29,5 +29,5 @@ export interface ILynxDevToolService extends IServiceProvider {
 
   registerWebSocketModule(moduleManager: LynxModuleManager): void;
 
-  setOpenCardCallback(callback: (url: string) => void): void;
+  addOpenCardCallback(callback: (url: string) => void): void;
 }

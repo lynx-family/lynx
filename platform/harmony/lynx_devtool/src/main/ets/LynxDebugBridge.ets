@@ -25,7 +25,7 @@ export class LynxDebugBridge {
       Array.from(appInfo.values()));
   }
 
-  public setOpenCardCallback(callback: (url: string) => void): void {
+  public addOpenCardCallback(callback: (url: string) => void): void {
     DebugRouter.addGlobalHandler({
       onOpenCard: callback,
       onMessage: () => {

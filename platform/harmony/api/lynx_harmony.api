@@ -1001,7 +1001,7 @@ export class LynxDebugger {
   public static setSwitch(key: string, value: boolean): void;
   public static getSwitch(key: string): boolean;
   public static setAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
-  public static setOpenCardCallback(callback: (url: string) => void): void;
+  public static addOpenCardCallback(callback: (url: string) => void): void;
 }
 
 export interface LynxBaseInspectorOwner {
@@ -1086,7 +1086,7 @@ export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspe
 export class LynxDebugBridge {
   public static getInstance(): LynxDebugBridge;
   public connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean;
-  public setOpenCardCallback(callback: (url: string) => void): void;
+  public addOpenCardCallback(callback: (url: string) => void): void;
 }
 
 export interface HarmonyGlobalHandler {
@@ -1154,7 +1154,7 @@ export class LynxDevToolService implements ILynxDevToolService {
   public createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
   public createLogBoxComponent(logBox: ILogBox, title: string): NodeController | null;
   public registerWebSocketModule(moduleManager: LynxModuleManager): void;
-  public setOpenCardCallback(callback: (url: string) => void): void;
+  public addOpenCardCallback(callback: (url: string) => void): void;
   static instance: any; = new LynxDevToolService()
 }
 
@@ -1231,7 +1231,7 @@ export interface ILynxDevToolService {
   createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
   createLogBoxComponent(logbox: ILogBox, title: string): NodeController | null;
   registerWebSocketModule(moduleManager: LynxModuleManager): void;
-  setOpenCardCallback(callback: (url: string) => void): void;
+  addOpenCardCallback(callback: (url: string) => void): void;
 }
 
 export interface ILynxImageService {

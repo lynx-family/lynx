@@ -70,6 +70,9 @@ public class LynxGlobalDebugBridge
   }
 
   public boolean prepareRemoteDebug(String scheme) {
+    if (!shouldPrepareRemoteDebug(scheme)) {
+      return false;
+    }
     return DebugRouter.getInstance().handleSchema(scheme);
   }
 

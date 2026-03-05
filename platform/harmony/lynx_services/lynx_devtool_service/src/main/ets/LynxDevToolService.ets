@@ -113,12 +113,12 @@ export class LynxDevToolService implements ILynxDevToolService {
     }
   }
 
-  public setOpenCardCallback(callback: (url: string) => void): void {
+  public addOpenCardCallback(callback: (url: string) => void): void {
     let lynxDebugBridgeInst: ESObject = LynxDevToolService.devtoolModule?.LynxDebugBridge?.getInstance();
     if (lynxDebugBridgeInst) {
-      lynxDebugBridgeInst.setOpenCardCallback(callback);
+      lynxDebugBridgeInst.addOpenCardCallback(callback);
     } else {
-      LLog.i(LynxDevToolService.TAG, "setOpenCardCallback failed, lynxDebugBridgeInst is null");
+      LLog.i(LynxDevToolService.TAG, "addOpenCardCallback failed, lynxDebugBridgeInst is null");
     }
   }
 }
