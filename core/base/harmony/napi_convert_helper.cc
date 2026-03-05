@@ -17,8 +17,11 @@
 
 namespace lynx {
 namespace base {
+
+static constexpr int kMaxDepth = 100;
+
 void create_lepus_value_from_js_object(napi_env env, napi_value obj,
-                                       lepus_value& result) {
+                                       lepus_value& result, int depth) {
   napi_valuetype type;
   napi_typeof(env, obj, &type);
   switch (type) {
@@ -57,38 +60,56 @@ void create_lepus_value_from_js_object(napi_env env, napi_value obj,
           LOGE("Fail to convert array buffer");
           result.SetUndefined();
         }
-      } else if (base::NapiUtil::IsArray(env, obj)) {
-        auto arr = lepus::CArray::Create();
-        uint32_t length;
-        napi_get_array_length(env, obj, &length);
-        for (uint32_t i = 0; i < length; i++) {
-          napi_value item;
-          napi_get_element(env, obj, i, &item);
-          lepus_value value;
-          create_lepus_value_from_js_object(env, item, value);
-          arr->push_back(value);
-        }
-        result = lepus_value(arr);
       } else {
-        auto dict = lepus::Dictionary::Create();
-        napi_value object_keys;
-        napi_get_all_property_names(env, obj, napi_key_own_only,
-                                    napi_key_enumerable,
-                                    napi_key_numbers_to_strings, &object_keys);
-        uint32_t length;
-        napi_get_array_length(env, object_keys, &length);
-        dict->reserve(length);
-        for (uint32_t i = 0; i < length; i++) {
-          napi_value k;
-          napi_get_element(env, object_keys, i, &k);
-          napi_value v;
-          napi_get_property(env, obj, k, &v);
-          std::string key = NapiUtil::ConvertToString(env, k);
-          lepus_value value;
-          create_lepus_value_from_js_object(env, v, value);
-          dict->SetValue(key, value);
+        if (depth >= kMaxDepth) {
+          napi_value object_keys;
+          napi_get_all_property_names(
+              env, obj, napi_key_own_only, napi_key_enumerable,
+              napi_key_numbers_to_strings, &object_keys);
+          std::vector<std::string> array_string;
+          NapiUtil::ConvertToArrayString(env, object_keys, array_string);
+          std::string output;
+          for (const auto& item : array_string) {
+            output.append(item + ", ");
+          }
+          LOGE("Maybe circular structure: " << output);
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+          abort();
+#endif
         }
-        result = lepus_value(dict);
+        if (base::NapiUtil::IsArray(env, obj)) {
+          auto arr = lepus::CArray::Create();
+          uint32_t length;
+          napi_get_array_length(env, obj, &length);
+          for (uint32_t i = 0; i < length; i++) {
+            napi_value item;
+            napi_get_element(env, obj, i, &item);
+            lepus_value value;
+            create_lepus_value_from_js_object(env, item, value, depth + 1);
+            arr->push_back(value);
+          }
+          result = lepus_value(arr);
+        } else {
+          auto dict = lepus::Dictionary::Create();
+          napi_value object_keys;
+          napi_get_all_property_names(
+              env, obj, napi_key_own_only, napi_key_enumerable,
+              napi_key_numbers_to_strings, &object_keys);
+          uint32_t length;
+          napi_get_array_length(env, object_keys, &length);
+          dict->reserve(length);
+          for (uint32_t i = 0; i < length; i++) {
+            napi_value k;
+            napi_get_element(env, object_keys, i, &k);
+            napi_value v;
+            napi_get_property(env, obj, k, &v);
+            std::string key = NapiUtil::ConvertToString(env, k);
+            lepus_value value;
+            create_lepus_value_from_js_object(env, v, value, depth + 1);
+            dict->SetValue(key, value);
+          }
+          result = lepus_value(dict);
+        }
       }
     } break;
     default:
@@ -106,7 +127,7 @@ lepus_value NapiConvertHelper::JSONToLepusValue(napi_env env, napi_value obj) {
     return lepus::jsonValueTolepusValue(s.c_str());
   } else if (type == napi_valuetype::napi_object) {
     lepus_value result;
-    create_lepus_value_from_js_object(env, obj, result);
+    create_lepus_value_from_js_object(env, obj, result, 0);
     return result;
   } else {
     LOGD("JSONToLepusValue:: type should be string or object");
@@ -117,7 +138,7 @@ lepus_value NapiConvertHelper::JSONToLepusValue(napi_env env, napi_value obj) {
 lepus_value NapiConvertHelper::ConvertToLepusValue(napi_env env,
                                                    napi_value obj) {
   lepus_value result;
-  create_lepus_value_from_js_object(env, obj, result);
+  create_lepus_value_from_js_object(env, obj, result, 0);
   return result;
 }
 
