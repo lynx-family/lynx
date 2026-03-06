@@ -8,9 +8,11 @@
 
 #include <cstdlib>
 #include <deque>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -6347,11 +6349,88 @@ RENDERER_FUNCTION_CC(ElementAnimate) {
   RETURN_UNDEFINED();
 }
 
+namespace {
+
+[[maybe_unused]] inline bool IsAsciiDigit(char c) {
+  return c >= '0' && c <= '9';
+}
+
+#ifndef NDEBUG
+[[maybe_unused]] void ValidateStyleObjectIdsStringProtocol(
+    std::string_view ids_view) {
+  DCHECK(ids_view.front() != ' ');
+  DCHECK(ids_view.back() != ' ');
+
+  bool previous_was_space = false;
+  for (char c : ids_view) {
+    DCHECK(c == ' ' || IsAsciiDigit(c));
+    DCHECK(!(previous_was_space && c == ' '));
+    previous_was_space = (c == ' ');
+  }
+}
+#endif
+
+std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
+CreateStyleObjectListFromIdsString(std::string_view ids_view,
+                                   TemplateAssembler* tasm) {
+  // Internal protocol: empty string means reset (nullptr list).
+  if (ids_view.empty()) {
+    return nullptr;
+  }
+
+#ifndef NDEBUG
+  // Internal compiler protocol fast path: release builds trust the ids string,
+  // while debug builds validate token shape to catch malformed output early.
+  ValidateStyleObjectIdsStringProtocol(ids_view);
+#endif
+
+  style::StyleObject** global_style_objects =
+      tasm->StyleObjectList(DEFAULT_ENTRY_NAME).get();
+  DCHECK(global_style_objects);
+
+  size_t ids_count = 1;
+  for (char c : ids_view) {
+    ids_count += (c == ' ');
+  }
+
+  auto style_object_list =
+      style::CreateStyleObjectArray(static_cast<int>(ids_count + 1));
+  auto* style_object_raw_array = style_object_list.get();
+  int idx = 0;
+
+  uint32_t current_id = 0;
+  for (char c : ids_view) {
+    if (c == ' ') {
+      auto* obj = global_style_objects[current_id];
+      DCHECK(obj != nullptr);
+      obj->AddRef();
+      style_object_raw_array[idx++] = obj;
+      current_id = 0;
+      continue;
+    }
+    current_id = current_id * 10u + static_cast<uint32_t>(c - '0');
+  }
+  {
+    auto* obj = global_style_objects[current_id];
+    DCHECK(obj != nullptr);
+    obj->AddRef();
+    style_object_raw_array[idx++] = obj;
+  }
+  style_object_raw_array[idx] = nullptr;
+  return style_object_list;
+}
+
+}  // namespace
+
 static void ParseSimpleStyleValueToMap(const lepus::Value& key,
                                        const lepus::Value& value, StyleMap& map,
                                        TemplateAssembler* tasm) {
   CSSPropertyID id = kPropertyEnd;
-  id = static_cast<CSSPropertyID>(atoi(key.CString()));
+  if (key.IsString()) {
+    id = static_cast<CSSPropertyID>(atoi(key.CString()));
+  } else {
+    id = static_cast<CSSPropertyID>(key.Int32());
+  }
   if (id > kPropertyStart && id < kPropertyEnd) {
     if (value.IsJsNull() || value.IsNil()) {
       map[id] = CSSValue();
@@ -6360,6 +6439,53 @@ static void ParseSimpleStyleValueToMap(const lepus::Value& key,
                            tasm->GetPageConfig()->GetCSSParserConfigs());
     }
   }
+}
+
+static bool ParseSimpleStyleValue(const CSSPropertyID id,
+                                  const lepus::Value& value,
+                                  const CSSParserConfigs& configs,
+                                  StyleMap* out_styles) {
+  if (!out_styles) {
+    return false;
+  }
+  out_styles->clear();
+  if (!UnitHandler::Process(id, value, *out_styles, configs)) {
+    return false;
+  }
+  return !out_styles->empty();
+}
+
+static style::DynamicStyleObjectRef CreateDynamicStyleObjectRef(
+    StyleMap style_map) {
+  if (style_map.empty()) {
+    return nullptr;
+  }
+  return style::DynamicStyleObjectRef(
+      new style::DynamicStyleObject(std::move(style_map)));
+}
+
+static style::DynamicStyleObjectRef CreateDynamicStyleObjectFromValue(
+    const lepus::Value& value, lynx::tasm::TemplateAssembler* tasm) {
+  if (value.IsRefCounted() &&
+      value.RefCounted()->GetRefType() == lepus::RefType::kStyleObject) {
+    auto* style_object =
+        static_cast<style::StyleObject*>(value.RefCounted().get());
+    style_object->FromBinary();
+    // Internalize the incoming style object into a private dynamic carrier.
+    // The dynamic path may mutate this source later, so it must not reuse the
+    // original StyleObject instance or its historical element bindings.
+    return CreateDynamicStyleObjectRef(style_object->Properties());
+  }
+  if (!value.IsObject()) {
+    return nullptr;
+  }
+
+  StyleMap style_map;
+  ForEachLepusValue(value, [&style_map, tasm](const lepus::Value& key,
+                                              const lepus::Value& item_value) {
+    ParseSimpleStyleValueToMap(key, item_value, style_map, tasm);
+  });
+  return CreateDynamicStyleObjectRef(std::move(style_map));
 }
 
 RENDERER_FUNCTION_CC(CreateStyleObject) {
@@ -6449,6 +6575,9 @@ RENDERER_FUNCTION_CC(SetStyleObject) {
     style_object_list.release();
     style_object_list.reset(style_object_raw_array);
     (style_object_list.get())[idx] = nullptr;
+  } else if (arg1->IsString()) {
+    style_object_list =
+        CreateStyleObjectListFromIdsString(arg1->StringView(), tasm);
   }
 
   if (const auto element_ref = arg0->RefCounted();
@@ -6463,6 +6592,92 @@ RENDERER_FUNCTION_CC(SetStyleObject) {
                                 ->OnElementNodeSetForInspector(element_ptr););
   }
 
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(SetDynamicStyleObject) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "SimpleStyling::SetDynamicStyleObject");
+  CHECK_ARGC_GE(SetDynamicStyleObject, 2);
+  CONVERT_ARG_AND_CHECK(arg0, 0, RefCounted, SetDynamicStyleObject);
+  const auto* arg1 = argv + 1;
+
+  const auto element_ref = arg0->RefCounted();
+  if (!element_ref || element_ref->GetRefType() != lepus::RefType::kElement) {
+    RETURN_UNDEFINED();
+  }
+  if (!(arg1->IsObject() ||
+        (arg1->IsRefCounted() &&
+         arg1->RefCounted()->GetRefType() == lepus::RefType::kStyleObject))) {
+    RETURN_UNDEFINED();
+  }
+  auto* element_ptr = static_cast<FiberElement*>(element_ref.get());
+  auto* tasm = GET_TASM_POINTER();
+  element_ptr->ReplaceDynamicSimpleStyles(
+      CreateDynamicStyleObjectFromValue(*arg1, tasm));
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(SetDynamicStyleObjectKV) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "SimpleStyling::SetDynamicStyleObjectKV");
+  CHECK_ARGC_GE(SetDynamicStyleObjectKV, 3);
+  CONVERT_ARG_AND_CHECK(arg0, 0, RefCounted, SetDynamicStyleObjectKV);
+  CONVERT_ARG_AND_CHECK(arg1, 1, Number, SetDynamicStyleObjectKV);
+  const auto* arg2 = argv + 2;
+
+  const auto element_ref = arg0->RefCounted();
+  if (!element_ref || element_ref->GetRefType() != lepus::RefType::kElement) {
+    RETURN_UNDEFINED();
+  }
+  auto* element_ptr = static_cast<FiberElement*>(element_ref.get());
+
+  const CSSPropertyID css_id = static_cast<CSSPropertyID>(arg1->Int32());
+  if (css_id <= kPropertyStart || css_id >= kPropertyEnd) {
+    RETURN_UNDEFINED();
+  }
+  if (arg2->IsNil()) {
+    // Dynamic KV nil keeps a reset tombstone in the dynamic carrier instead of
+    // deleting the entry. This path intentionally does not reuse
+    // UnitHandler::Process(...): UnitHandler only expands shorthand when it is
+    // parsing a concrete input value, while nil here means "emit dynamic reset
+    // tombstones". Shorthand ids must therefore be expanded eagerly so the
+    // carrier stays in canonical longhand form.
+    size_t count = 0;
+    if (const auto* property_ids =
+            CSSProperty::GetExpandedLonghands(css_id, &count);
+        property_ids != nullptr) {
+      StyleMap reset_styles;
+      reset_styles.reserve(count);
+      for (size_t index = 0; index < count; ++index) {
+        reset_styles.insert_or_assign(property_ids[index], CSSValue());
+      }
+      element_ptr->AddDynamicSimpleStyles(std::move(reset_styles));
+    } else {
+      element_ptr->AddDynamicSimpleStyleKV(css_id, CSSValue());
+    }
+    RETURN_UNDEFINED();
+  }
+
+  auto* tasm = GET_TASM_POINTER();
+  const auto& configs = tasm->GetPageConfig()->GetCSSParserConfigs();
+
+  StyleMap parsed_styles;
+  if (!ParseSimpleStyleValue(css_id, arg2->ToLepusValue(), configs,
+                             &parsed_styles)) {
+    RETURN_UNDEFINED();
+  }
+  size_t count = 0;
+  if (const auto* property_ids =
+          CSSProperty::GetExpandedLonghands(css_id, &count);
+      property_ids == nullptr) {
+    auto it = parsed_styles.find(css_id);
+    // Longhand fast path: avoid rebuilding/merging a full map when parsing
+    // produced exactly one canonical property.
+    if (parsed_styles.size() == 1 && it != parsed_styles.end()) {
+      element_ptr->AddDynamicSimpleStyleKV(css_id, std::move(it->second));
+      RETURN_UNDEFINED();
+    }
+  }
+  element_ptr->AddDynamicSimpleStyles(std::move(parsed_styles));
   RETURN_UNDEFINED();
 }
 

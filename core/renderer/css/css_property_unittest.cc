@@ -104,6 +104,32 @@ TEST(CSSProperty, IsShorthandProperty) {
   }
 }
 
+TEST(CSSProperty, GetExpandedLonghands) {
+  size_t count = 0;
+  const auto* margin_longhands =
+      CSSProperty::GetExpandedLonghands(kPropertyIDMargin, &count);
+  ASSERT_NE(margin_longhands, nullptr);
+  ASSERT_EQ(count, 4u);
+  EXPECT_EQ(margin_longhands[0], kPropertyIDMarginTop);
+  EXPECT_EQ(margin_longhands[1], kPropertyIDMarginRight);
+  EXPECT_EQ(margin_longhands[2], kPropertyIDMarginBottom);
+  EXPECT_EQ(margin_longhands[3], kPropertyIDMarginLeft);
+
+  const auto* transition_longhands =
+      CSSProperty::GetExpandedLonghands(kPropertyIDTransition, &count);
+  ASSERT_NE(transition_longhands, nullptr);
+  ASSERT_EQ(count, 4u);
+  EXPECT_EQ(transition_longhands[0], kPropertyIDTransitionProperty);
+  EXPECT_EQ(transition_longhands[1], kPropertyIDTransitionDuration);
+  EXPECT_EQ(transition_longhands[2], kPropertyIDTransitionDelay);
+  EXPECT_EQ(transition_longhands[3], kPropertyIDTransitionTimingFunction);
+
+  const auto* width_longhands =
+      CSSProperty::GetExpandedLonghands(kPropertyIDWidth, &count);
+  EXPECT_EQ(width_longhands, nullptr);
+  EXPECT_EQ(count, 0u);
+}
+
 TEST(CSSProperty, IsCustomProperty) {
   EXPECT_FALSE(CSSProperty::IsCustomProperty("", 0));
   EXPECT_FALSE(CSSProperty::IsCustomProperty("--", 2));

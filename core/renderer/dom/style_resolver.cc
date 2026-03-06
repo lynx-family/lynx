@@ -108,6 +108,119 @@ static bool IsNewObjectInOldArrayLater(style::StyleObject** old_ptr,
   return false;
 }
 
+static bool HasStyleObjects(style::StyleObject** style_objects) {
+  return style_objects != nullptr && *style_objects != nullptr;
+}
+
+static bool HasStyleObject(style::StyleObject* style_object) {
+  return style_object != nullptr;
+}
+
+static tasm::StyleMap ResolveStyleObjectProperties(
+    style::StyleObject** style_objects) {
+  tasm::StyleMap resolved_property;
+  if (!HasStyleObjects(style_objects)) {
+    return resolved_property;
+  }
+
+  for (auto** it = style_objects; *it; ++it) {
+    (*it)->FromBinary();
+    resolved_property.merge((*it)->Properties());
+  }
+  return resolved_property;
+}
+
+static tasm::StyleMap ResolveDynamicStyleObjectProperties(
+    style::StyleObject* style_object) {
+  tasm::StyleMap resolved_property;
+  if (!HasStyleObject(style_object)) {
+    return resolved_property;
+  }
+
+  style_object->FromBinary();
+  for (const auto& [property_id, value] : style_object->Properties()) {
+    if (!value.IsEmpty()) {
+      resolved_property.insert_or_assign(property_id, value);
+      continue;
+    }
+
+    // Non-empty shorthand values have already been expanded during parse. An
+    // empty value reaches here only as a dynamic reset tombstone, so shorthand
+    // ids must be expanded now to keep the resolved dynamic map canonical.
+    size_t count = 0;
+    if (const auto* property_ids =
+            CSSProperty::GetExpandedLonghands(property_id, &count);
+        property_ids != nullptr) {
+      for (size_t index = 0; index < count; ++index) {
+        resolved_property.insert_or_assign(property_ids[index], CSSValue());
+      }
+      continue;
+    }
+
+    resolved_property.insert_or_assign(property_id, CSSValue());
+  }
+  return resolved_property;
+}
+
+static bool ContainsResolvedProperty(const tasm::StyleMap& static_styles,
+                                     const tasm::StyleMap& dynamic_styles,
+                                     tasm::CSSPropertyID property_id) {
+  return dynamic_styles.contains(property_id) ||
+         static_styles.contains(property_id);
+}
+
+static void ResetRemovedEffectiveProperties(
+    const tasm::StyleMap& old_static_styles,
+    const tasm::StyleMap* old_dynamic_styles,
+    const tasm::StyleMap& new_static_styles,
+    const tasm::StyleMap& new_dynamic_styles, style::SimpleStyleNode* target) {
+  // Handle static reset(to default value)
+  for (const auto& [property_id, value] : old_static_styles) {
+    if (!ContainsResolvedProperty(new_static_styles, new_dynamic_styles,
+                                  property_id)) {
+      target->ResetSimpleStyle(property_id);
+    }
+  }
+
+  if (!old_dynamic_styles) {
+    return;
+  }
+  // Handle dynamic reset(to default value)
+  for (const auto& [property_id, value] : *old_dynamic_styles) {
+    // Skip reset again because we have done this.
+    if (old_static_styles.contains(property_id)) {
+      continue;
+    }
+    if (!ContainsResolvedProperty(new_static_styles, new_dynamic_styles,
+                                  property_id)) {
+      target->ResetSimpleStyle(property_id);
+    }
+  }
+}
+
+static void ResetRemovedDynamicProperties(
+    const tasm::StyleMap* old_dynamic_styles,
+    const tasm::StyleMap& new_dynamic_styles,
+    const tasm::StyleMap& base_static_styles, style::SimpleStyleNode* target) {
+  if (!old_dynamic_styles) {
+    return;
+  }
+
+  for (const auto& [property_id, value] : *old_dynamic_styles) {
+    if (new_dynamic_styles.contains(property_id)) {
+      continue;
+    }
+
+    // Check if we need to reset dynamic value to base value or default value.
+    const auto it = base_static_styles.find(property_id);
+    if (it != base_static_styles.end()) {
+      target->ResetSimpleStyle(property_id, it->second);
+    } else {
+      target->ResetSimpleStyle(property_id);
+    }
+  }
+}
+
 void StyleResolver::ResolveStyleObjects(style::StyleObject** old_ptr,
                                         style::StyleObject** new_ptr,
                                         style::SimpleStyleNode* target) {
@@ -181,7 +294,70 @@ void StyleResolver::ResolveStyleObjectsBasedOnExistingMap(
     for (const auto& [property_id, value] : old_dcl_style) {
       target->ResetSimpleStyle(property_id);
     }
+    // Keep this empty update so the reset-only path still goes through the
+    // normal flush/prop-bundle tail in UpdateSimpleStyles(...).
+    target->UpdateSimpleStyles(tasm::StyleMap{});
   }
+}
+
+void StyleResolver::ResolveStyleObjectsBasedOnExistingMap(
+    const tasm::StyleMap& old_static_style, style::StyleObject** new_static_ptr,
+    const tasm::StyleMap* old_dynamic_style,
+    style::StyleObject* new_dynamic_obj, bool static_dirty, bool dynamic_dirty,
+    style::SimpleStyleNode* target) {
+  const bool has_dynamic_layer =
+      (old_dynamic_style != nullptr && !old_dynamic_style->empty()) ||
+      HasStyleObject(new_dynamic_obj);
+
+  if (static_dirty && !dynamic_dirty && !has_dynamic_layer) {
+    // Exact old fast path: no dynamic layer exists, so keep the historical
+    // static-only behavior untouched.
+    ResolveStyleObjectsBasedOnExistingMap(old_static_style, new_static_ptr,
+                                          target);
+    return;
+  }
+
+  if (static_dirty) {
+    // Static changed => resolve both layers. Dynamic may be unchanged, but it
+    // still needs to be re-applied on top of the new static/base result.
+    tasm::StyleMap new_static_styles =
+        ResolveStyleObjectProperties(new_static_ptr);
+    tasm::StyleMap new_dynamic_styles =
+        ResolveDynamicStyleObjectProperties(new_dynamic_obj);
+
+    if (!dynamic_dirty && new_dynamic_styles.empty() && old_dynamic_style &&
+        !old_dynamic_style->empty()) {
+      // No new dynamic style change, old_dynamic_style == new_dynamic_styles
+      new_dynamic_styles = *old_dynamic_style;
+    }
+
+    ResetRemovedEffectiveProperties(old_static_style, old_dynamic_style,
+                                    new_static_styles, new_dynamic_styles,
+                                    target);
+    target->UpdateStaticAndDynamicSimpleStyles(std::move(new_static_styles),
+                                               std::move(new_dynamic_styles));
+    return;
+  }
+
+  if (!dynamic_dirty) {
+    return;
+  }
+
+  // Static is unchanged here, so only resolve/diff the dynamic layer and let
+  // removals fall back to the committed static/base map.
+  tasm::StyleMap new_dynamic_styles =
+      ResolveDynamicStyleObjectProperties(new_dynamic_obj);
+  if ((old_dynamic_style == nullptr || old_dynamic_style->empty()) &&
+      new_dynamic_styles.empty()) {
+    return;
+  }
+  if (old_dynamic_style != nullptr &&
+      *old_dynamic_style == new_dynamic_styles) {
+    return;
+  }
+  ResetRemovedDynamicProperties(old_dynamic_style, new_dynamic_styles,
+                                old_static_style, target);
+  target->UpdateDynamicSimpleStyles(std::move(new_dynamic_styles));
 }
 
 ElementManager* StyleResolver::manager() const {

@@ -49,6 +49,21 @@ void DynamicStyleObject::UpdateStyleMap(const tasm::StyleMap& style_map) {
   }
 }
 
+void DynamicStyleObject::UpdateStyleMap(tasm::CSSPropertyID id,
+                                        tasm::CSSValue&& value) {
+  style_map_.insert_or_assign(id, std::move(value));
+}
+
+void DynamicStyleObject::MergeStyleMap(tasm::StyleMap&& style_map) {
+  for (auto& [property_id, value] : style_map) {
+    style_map_.insert_or_assign(property_id, std::move(value));
+  }
+}
+
+bool DynamicStyleObject::RemoveStyleValue(tasm::CSSPropertyID id) {
+  return style_map_.erase(id) > 0;
+}
+
 void DynamicStyleObject::BindToElement(SimpleStyleNode* element) {
   elements_.emplace_back(element);
 }
