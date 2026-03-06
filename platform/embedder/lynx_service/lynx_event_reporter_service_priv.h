@@ -14,6 +14,7 @@ struct lynx_event_reporter_service_t : public lynx::embedder::LynxServiceBase {
   void* user_data = nullptr;
   void (*finalizer)(lynx_event_reporter_service_t*, void*) = nullptr;
   lynx_event_report_func report_func = nullptr;
+  lynx_performance_event_report_func performance_report_func = nullptr;
 };
 
 #endif  // PLATFORM_EMBEDDER_LYNX_SERVICE_LYNX_EVENT_REPORTER_SERVICE_PRIV_H_

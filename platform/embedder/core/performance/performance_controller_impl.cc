@@ -7,6 +7,8 @@
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/performance_controller.h"
 #include "platform/embedder/core/performance/lynx_event_reporter.h"
+#include "platform/embedder/public/capi/lynx_event_reporter_service_capi.h"
+#include "platform/embedder/public/capi/lynx_service_center_capi.h"
 
 namespace lynx {
 namespace embedder {
@@ -14,7 +16,22 @@ namespace embedder {
 void PerformanceControllerImpl::OnPerformanceEvent(
     const std::unique_ptr<pub::Value>& entry_map) {
   auto entry = PreparePerformanceData(entry_map);
-  SendPerformanceData(std::move(entry));
+  lynx_service_center_t* service_center = lynx_service_get_center_instance();
+  bool has_reported = false;
+  if (service_center) {
+    lynx_event_reporter_service_t* reporter_service =
+        reinterpret_cast<lynx_event_reporter_service_t*>(
+            lynx_service_get_service(service_center,
+                                     kServiceTypeEventReporter));
+    if (reporter_service) {
+      has_reported = true;
+      lynx_event_reporter_service_on_performance_event(reporter_service,
+                                                       entry.value());
+    }
+  }
+  if (!has_reported) {
+    SendPerformanceData(std::move(entry));
+  }
 }
 
 lepus::Value PerformanceControllerImpl::PreparePerformanceData(

@@ -20,6 +20,10 @@ typedef void (*lynx_event_report_func)(lynx_event_reporter_service_t*,
                                        const char* event_name,
                                        const lynx_value& params);
 
+// Define a function pointer type for performance event reporter handling.
+typedef void (*lynx_performance_event_report_func)(
+    lynx_event_reporter_service_t*, const lynx_value& params);
+
 // Creates a new event reporter service instance.
 LYNX_CAPI_EXPORT lynx_event_reporter_service_t*
 lynx_event_reporter_service_create(void* user_data);
@@ -35,6 +39,10 @@ lynx_event_reporter_service_create_with_finalizer(
 LYNX_CAPI_EXPORT void lynx_event_reporter_service_bind(
     lynx_event_reporter_service_t*, lynx_event_report_func f);
 
+// Binds a performance report function to the event reporter service.
+LYNX_CAPI_EXPORT void lynx_event_reporter_service_bind_performance_report_func(
+    lynx_event_reporter_service_t*, lynx_performance_event_report_func f);
+
 // Retrieves the user data associated with the event reporter service.
 LYNX_CAPI_EXPORT void* lynx_event_reporter_service_get_user_data(
     lynx_event_reporter_service_t* event_report_service);
@@ -44,8 +52,14 @@ LYNX_CAPI_EXPORT void lynx_event_reporter_service_release(
     lynx_event_reporter_service_t*);
 
 // Call the event reporter handler associated with the event reporter service.
-LYNX_CAPI_EXPORT int lynx_event_reporter_service_on_event(
+LYNX_CAPI_EXPORT void lynx_event_reporter_service_on_event(
     lynx_event_reporter_service_t* event_report_service, const char* event_name,
+    const lynx_value& params);
+
+// Call the event reporter handler associated with the performance event
+// reporter service.
+LYNX_CAPI_EXPORT void lynx_event_reporter_service_on_performance_event(
+    lynx_event_reporter_service_t* event_report_service,
     const lynx_value& params);
 
 LYNX_EXTERN_C_END

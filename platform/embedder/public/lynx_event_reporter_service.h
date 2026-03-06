@@ -46,10 +46,23 @@ class LynxEventReporterService
               reinterpret_cast<std::weak_ptr<LynxEventReporterService>*>(
                   lynx_event_reporter_service_get_user_data(
                       event_reporter_service));
-          std::shared_ptr<LynxEventReporterService>
-              shared_event_reporter_service = weak_ptr->lock();
+          auto shared_event_reporter_service = weak_ptr->lock();
           if (shared_event_reporter_service) {
             shared_event_reporter_service->OnEvent(event_name, params);
+          }
+        });
+
+    lynx_event_reporter_service_bind_performance_report_func(
+        event_reporter_service_,
+        [](lynx_event_reporter_service_t* event_reporter_service,
+           const lynx_value& params) {
+          std::weak_ptr<LynxEventReporterService>* weak_ptr =
+              reinterpret_cast<std::weak_ptr<LynxEventReporterService>*>(
+                  lynx_event_reporter_service_get_user_data(
+                      event_reporter_service));
+          auto shared_event_reporter_service = weak_ptr->lock();
+          if (shared_event_reporter_service) {
+            shared_event_reporter_service->OnPerformanceEvent(params);
           }
         });
   }
@@ -67,6 +80,12 @@ class LynxEventReporterService
    */
   virtual void OnEvent(const std::string& event_name,
                        const lynx_value& params) = 0;
+
+  /**
+   * @brief Interface to receive reported performance events
+   * @param params Content of reported event in key-value format
+   */
+  virtual void OnPerformanceEvent(const lynx_value& params) {}
 
  private:
   lynx_event_reporter_service_t* event_reporter_service_ = nullptr;
