@@ -8152,7 +8152,7 @@ public interface com::lynx::devtoolwrapper::OverlayService {
 }
 
 public interface com::lynx::tasm::service::ILynxTextService::Page {
-  public void com.lynx.tasm.service.ILynxTextService.Page.drawPageCanvas(Canvas canvas);
+  public void com.lynx.tasm.service.ILynxTextService.Page.drawPageCanvas(Canvas canvas, Drawable.Callback callback);
   public int com.lynx.tasm.service.ILynxTextService.Page.getSelectionCharIndex(float touchX, float touchY);
   public float[] com.lynx.tasm.service.ILynxTextService.Page.getSelectionRects(int start, int end);
   public void com.lynx.tasm.service.ILynxTextService.Page.destroy();

@@ -144,7 +144,7 @@ public class DisplayListApplier implements Drawable.Callback {
     if (page == null) {
       return;
     }
-    page.drawPageCanvas(canvas);
+    page.drawPageCanvas(canvas, this);
   }
 
   private void updateInlineImageSpans(TextUpdateBundle textBundle) {
