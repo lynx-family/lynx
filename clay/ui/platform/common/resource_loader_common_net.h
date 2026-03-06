@@ -53,6 +53,7 @@ class ResourceLoaderCommon
                   const std::string& src,
                   const std::function<void(const uint8_t*, size_t)>& callback);
   void OnLoadFinished(size_t request_seq);
+  RawResource GetResource(std::string src, const RawResource& raw_resource);
 
   std::set<size_t> pending_requests_;
   std::mutex pending_requests_mutex_;
