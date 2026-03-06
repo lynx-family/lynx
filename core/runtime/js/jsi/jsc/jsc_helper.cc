@@ -284,8 +284,11 @@ bool JSCHelper::smellsLikeES6Symbol(JSGlobalContextRef ctx, JSValueRef ref) {
   if (__builtin_available(iOS 13.0, macOS 10.15, *)) {
     return JSValueIsSymbol(ctx, ref);
   } else {
-    return (!JSValueIsObject(ctx, ref) &&
-            JSValueGetType(ctx, ref) == kJSTypeObject);
+    static constexpr int kJSTypeSymbolCompat = 6;
+    const auto type = JSValueGetType(ctx, ref);
+    const bool smells_like_symbol =
+        !JSValueIsObject(ctx, ref) && type == kJSTypeObject;
+    return smells_like_symbol || static_cast<int>(type) == kJSTypeSymbolCompat;
   }
 }
 
