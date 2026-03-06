@@ -141,6 +141,29 @@ void AttributeHolder::UpdateCSSVariableFromSetProperty(
   OnStyleChange();
 }
 
+void AttributeHolder::UpdateCSSVariable(CSSVariableMap new_matched_vars,
+                                        CSSVariableMap* changed_css_vars) {
+  auto& current_map = css_variables_->css_variables_;
+  if (changed_css_vars != nullptr) {
+    // First, find removed variables by checking current against new
+    for (const auto& [key, value] : current_map) {
+      if (new_matched_vars.find(key) == new_matched_vars.end()) {
+        // Variable no longer matched - track removal with empty value
+        changed_css_vars->insert_or_assign(key, base::String());
+      }
+    }
+    // Then, apply updates/additions from new_matched_vars
+    for (const auto& [key, value] : new_matched_vars) {
+      auto it = current_map.find(key);
+      if (it == current_map.end() || !it->second.IsEqual(value)) {
+        changed_css_vars->insert_or_assign(key, value);
+      }
+    }
+  }
+  // Replace current_map with new_matched_vars (handles both update and removal)
+  current_map = std::move(new_matched_vars);
+}
+
 void AttributeHolder::MergeWithCSSVariables(
     lepus::Value& css_variable_updated) {
   if (css_variables_.has_value() && css_variable_updated.IsTable()) {

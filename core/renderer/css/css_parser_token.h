@@ -40,7 +40,11 @@ class CSSParseToken : public fml::RefCountedThreadSafeStorage {
   }
 
   auto& style_variables() { return style_variables_; }
-  const auto& GetStyleVariables() { return style_variables_; }
+  const auto& GetStyleVariables() const { return style_variables_; }
+
+  void SetStyleVariables(CSSVariableMap&& vars) {
+    style_variables_ = std::move(vars);
+  }
 
   void SetAttribute(CSSPropertyID id, const CSSValue& value) {
     attributes_[id] = value;

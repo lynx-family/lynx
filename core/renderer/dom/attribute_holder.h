@@ -148,6 +148,11 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
       }
     }
   }
+  // Update CSSVariable from Render with full map diff.
+  // This method efficiently updates css_variables_ by comparing with the new
+  // matched variable map. It detects additions, modifications, and removals.
+  void UpdateCSSVariable(CSSVariableMap new_matched_vars,
+                         CSSVariableMap* changed_css_vars = nullptr);
 
   // Update CSSVariable From JS SetProperty.
   void UpdateCSSVariableFromSetProperty(const base::String& key,

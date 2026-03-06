@@ -7,6 +7,7 @@
 
 #include "core/renderer/dom/style_resolver.h"
 
+#include "base/include/auto_reset.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/shared_css_fragment.h"
@@ -829,6 +830,344 @@ TEST_F(CSSPatchingTest, GetCSSStyleNew_AdoptedStylesheetDisabledSelector) {
   // Should still get regular styles since adopted stylesheet has disabled
   // selector
   EXPECT_TRUE(result.find(CSSPropertyID::kPropertyIDFontSize) != result.end());
+}
+
+TEST_F(CSSPatchingTest, DidCollectMatchedRules_BulkCSSVariableUpdate) {
+  // Test that CSS variables from multiple matched rules are correctly merged
+  // and passed to AttributeHolder using bulk UpdateCSSVariable.
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("test-class");
+
+  CSSParserConfigs configs;
+  CSSParserTokenMap css_map;
+
+  // Create a CSS parse token with CSS variables
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+
+  // Add CSS variable: --primary-color: blue
+  CSSVariableMap style_vars1;
+  style_vars1.insert_or_assign(base::String("--primary-color"),
+                               base::String("blue"));
+  tokens->SetStyleVariables(std::move(style_vars1));
+
+  // Add style attribute
+  tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("16px");
+
+  std::string key = ".test-class";
+  auto& sheets = tokens->sheets();
+  auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+  sheets.emplace_back(shared_css_sheet);
+  css_map.insert_or_assign(key, tokens);
+
+  // Create second rule with additional CSS variables
+  auto tokens2 = fml::MakeRefCounted<CSSParseToken>(configs);
+  CSSVariableMap style_vars2;
+  style_vars2.insert_or_assign(base::String("--secondary-color"),
+                               base::String("red"));
+  tokens2->SetStyleVariables(std::move(style_vars2));
+
+  std::string key2 = "view";
+  auto& sheets2 = tokens2->sheets();
+  auto shared_css_sheet2 = std::make_shared<CSSSheet>(key2);
+  sheets2.emplace_back(shared_css_sheet2);
+  css_map.insert_or_assign(key2, tokens2);
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  SharedCSSFragment fragment(1, dependent_ids, css_map, keyframes, fontfaces);
+
+  // First resolution - both variables should be in changed_css_vars
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, &fragment,
+                                              &changed_css_vars);
+
+  // Verify both CSS variables are tracked as changed
+  EXPECT_EQ(changed_css_vars.size(), 2u);
+  EXPECT_TRUE(changed_css_vars.find(base::String("--primary-color")) !=
+              changed_css_vars.end());
+  EXPECT_TRUE(changed_css_vars.find(base::String("--secondary-color")) !=
+              changed_css_vars.end());
+  EXPECT_EQ(changed_css_vars[base::String("--primary-color")].str(), "blue");
+  EXPECT_EQ(changed_css_vars[base::String("--secondary-color")].str(), "red");
+
+  // Verify variables are stored in attribute_holder
+  const auto& stored_vars = attribute_holder->css_variables_map();
+  EXPECT_EQ(stored_vars.size(), 2u);
+  EXPECT_EQ(stored_vars.find(base::String("--primary-color"))->second.str(),
+            "blue");
+  EXPECT_EQ(stored_vars.find(base::String("--secondary-color"))->second.str(),
+            "red");
+
+  // Second resolution with modified variable
+  auto tokens3 = fml::MakeRefCounted<CSSParseToken>(configs);
+  CSSVariableMap style_vars3;
+  style_vars3.insert_or_assign(base::String("--primary-color"),
+                               base::String("green"));
+  tokens3->SetStyleVariables(std::move(style_vars3));
+
+  CSSParserTokenMap css_map2;
+  auto& sheets3 = tokens3->sheets();
+  sheets3.emplace_back(shared_css_sheet);
+  css_map2.insert_or_assign(key, tokens3);
+
+  // Keep the view selector with same value
+  css_map2.insert_or_assign(key2, tokens2);
+
+  SharedCSSFragment fragment2(1, dependent_ids, css_map2, keyframes, fontfaces);
+
+  CSSVariableMap changed_css_vars2;
+  fiber_element->style_resolver_.ResolveStyle(result, &fragment2,
+                                              &changed_css_vars2);
+
+  // Only --primary-color should be marked as changed (from blue to green)
+  EXPECT_EQ(changed_css_vars2.size(), 1u);
+  EXPECT_TRUE(changed_css_vars2.find(base::String("--primary-color")) !=
+              changed_css_vars2.end());
+  EXPECT_EQ(changed_css_vars2[base::String("--primary-color")].str(), "green");
+
+  // Verify updated value is stored
+  const auto& stored_vars2 = attribute_holder->css_variables_map();
+  EXPECT_EQ(stored_vars2.find(base::String("--primary-color"))->second.str(),
+            "green");
+  EXPECT_EQ(stored_vars2.find(base::String("--secondary-color"))->second.str(),
+            "red");
+}
+
+TEST_F(CSSPatchingTest, DidCollectMatchedRules_CSSVariableRemoval) {
+  // Test that CSS variables are correctly tracked when removed
+  // Note: This test requires CSS inline variables to be enabled for the
+  // bulk update path that properly handles variable removal.
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("test-class");
+
+  CSSParserConfigs configs;
+  CSSParserTokenMap css_map;
+
+  // Create a CSS parse token with CSS variables
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  CSSVariableMap style_vars;
+  style_vars.insert_or_assign(base::String("--primary-color"),
+                              base::String("blue"));
+  style_vars.insert_or_assign(base::String("--secondary-color"),
+                              base::String("red"));
+  tokens->SetStyleVariables(std::move(style_vars));
+
+  tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("16px");
+
+  std::string key = ".test-class";
+  auto& sheets = tokens->sheets();
+  auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+  sheets.emplace_back(shared_css_sheet);
+  css_map.insert_or_assign(key, tokens);
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  SharedCSSFragment fragment(1, dependent_ids, css_map, keyframes, fontfaces);
+
+  // First resolution
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, &fragment,
+                                              &changed_css_vars);
+
+  EXPECT_EQ(changed_css_vars.size(), 2u);
+
+  // Second resolution without CSS variables (simulating removal)
+  auto tokens2 = fml::MakeRefCounted<CSSParseToken>(configs);
+  tokens2.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("18px");
+
+  CSSParserTokenMap css_map2;
+  auto& sheets2 = tokens2->sheets();
+  sheets2.emplace_back(shared_css_sheet);
+  css_map2.insert_or_assign(key, tokens2);
+
+  SharedCSSFragment fragment2(1, dependent_ids, css_map2, keyframes, fontfaces);
+
+  CSSVariableMap changed_css_vars2;
+  fiber_element->style_resolver_.ResolveStyle(result, &fragment2,
+                                              &changed_css_vars2);
+
+  // Both variables should be marked as removed (empty value)
+  EXPECT_EQ(changed_css_vars2.size(), 2u);
+  EXPECT_EQ(changed_css_vars2[base::String("--primary-color")].str(), "");
+  EXPECT_EQ(changed_css_vars2[base::String("--secondary-color")].str(), "");
+
+  // Verify variables are removed from attribute_holder
+  const auto& stored_vars = attribute_holder->css_variables_map();
+  EXPECT_TRUE(stored_vars.empty());
+}
+
+TEST_F(CSSPatchingTest, DidCollectMatchedRules_DuplicateKeyPrecedence) {
+  // Test that when the same CSS variable is defined in multiple matched rules,
+  // the later rule's value takes precedence (last-match-wins semantics).
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("test-class");
+
+  CSSParserConfigs configs;
+  CSSParserTokenMap css_map;
+
+  // First rule: --primary-color: blue
+  auto tokens1 = fml::MakeRefCounted<CSSParseToken>(configs);
+  CSSVariableMap style_vars1;
+  style_vars1.insert_or_assign(base::String("--primary-color"),
+                               base::String("blue"));
+  tokens1->SetStyleVariables(std::move(style_vars1));
+
+  std::string key1 = "view";
+  auto& sheets1 = tokens1->sheets();
+  auto shared_css_sheet1 = std::make_shared<CSSSheet>(key1);
+  sheets1.emplace_back(shared_css_sheet1);
+  css_map.insert_or_assign(key1, tokens1);
+
+  // Second rule (higher precedence): --primary-color: red
+  auto tokens2 = fml::MakeRefCounted<CSSParseToken>(configs);
+  CSSVariableMap style_vars2;
+  style_vars2.insert_or_assign(base::String("--primary-color"),
+                               base::String("red"));
+  tokens2->SetStyleVariables(std::move(style_vars2));
+
+  std::string key2 = ".test-class";
+  auto& sheets2 = tokens2->sheets();
+  auto shared_css_sheet2 = std::make_shared<CSSSheet>(key2);
+  sheets2.emplace_back(shared_css_sheet2);
+  css_map.insert_or_assign(key2, tokens2);
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  SharedCSSFragment fragment(1, dependent_ids, css_map, keyframes, fontfaces);
+
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, &fragment,
+                                              &changed_css_vars);
+
+  // The later rule (.test-class) should win
+  EXPECT_EQ(changed_css_vars.size(), 1u);
+  EXPECT_EQ(changed_css_vars[base::String("--primary-color")].str(), "red");
+
+  const auto& stored_vars = attribute_holder->css_variables_map();
+  EXPECT_EQ(stored_vars.size(), 1u);
+  EXPECT_EQ(stored_vars.find(base::String("--primary-color"))->second.str(),
+            "red");
+}
+
+TEST_F(CSSPatchingTest, DidCollectMatchedRules_NoChangeDiff) {
+  // Test that resolving with the same CSS variables produces empty
+  // changed_css_vars (no invalidation needed).
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("test-class");
+
+  CSSParserConfigs configs;
+  CSSParserTokenMap css_map;
+
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  CSSVariableMap style_vars;
+  style_vars.insert_or_assign(base::String("--primary-color"),
+                              base::String("blue"));
+  style_vars.insert_or_assign(base::String("--secondary-color"),
+                              base::String("red"));
+  tokens->SetStyleVariables(std::move(style_vars));
+
+  tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("16px");
+
+  std::string key = ".test-class";
+  auto& sheets = tokens->sheets();
+  auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+  sheets.emplace_back(shared_css_sheet);
+  css_map.insert_or_assign(key, tokens);
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  SharedCSSFragment fragment(1, dependent_ids, css_map, keyframes, fontfaces);
+
+  // First resolution
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, &fragment,
+                                              &changed_css_vars);
+  EXPECT_EQ(changed_css_vars.size(), 2u);
+
+  // Second resolution with identical variables
+  CSSVariableMap changed_css_vars2;
+  fiber_element->style_resolver_.ResolveStyle(result, &fragment,
+                                              &changed_css_vars2);
+
+  // No changes should be detected
+  EXPECT_TRUE(changed_css_vars2.empty());
+
+  // Verify variables are still stored correctly
+  const auto& stored_vars = attribute_holder->css_variables_map();
+  EXPECT_EQ(stored_vars.size(), 2u);
+  EXPECT_EQ(stored_vars.find(base::String("--primary-color"))->second.str(),
+            "blue");
+  EXPECT_EQ(stored_vars.find(base::String("--secondary-color"))->second.str(),
+            "red");
+}
+
+TEST_F(CSSPatchingTest, DidCollectMatchedRules_NullChangedCssVars) {
+  // Test that ResolveStyle works correctly when changed_css_vars is nullptr.
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("test-class");
+
+  CSSParserConfigs configs;
+  CSSParserTokenMap css_map;
+
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  CSSVariableMap style_vars;
+  style_vars.insert_or_assign(base::String("--primary-color"),
+                              base::String("blue"));
+  tokens->SetStyleVariables(std::move(style_vars));
+
+  tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("16px");
+
+  std::string key = ".test-class";
+  auto& sheets = tokens->sheets();
+  auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+  sheets.emplace_back(shared_css_sheet);
+  css_map.insert_or_assign(key, tokens);
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  SharedCSSFragment fragment(1, dependent_ids, css_map, keyframes, fontfaces);
+
+  // Resolve with nullptr for changed_css_vars (should not crash)
+  StyleMap result;
+  fiber_element->style_resolver_.ResolveStyle(result, &fragment, nullptr);
+
+  // Verify variables are still stored correctly
+  const auto& stored_vars = attribute_holder->css_variables_map();
+  EXPECT_EQ(stored_vars.size(), 1u);
+  EXPECT_EQ(stored_vars.find(base::String("--primary-color"))->second.str(),
+            "blue");
 }
 
 }  // namespace testing

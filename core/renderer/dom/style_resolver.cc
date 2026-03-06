@@ -293,12 +293,39 @@ void StyleResolver::DidCollectMatchedRules(AttributeHolder* holder,
 
   {
     auto& tls_matched_variable_map = matched_variable_map;
-    if (tls_matched_variable_map.empty()) {
+    // Early return if both matched_variable_map and holder's css_variable_map
+    // are empty, no difference check is needed.
+    if (tls_matched_variable_map.empty() &&
+        holder->css_variables_map().empty()) {
       return;
     }
-    for (auto variable_ptr : tls_matched_variable_map) {
-      for (const auto& [key, value] : *variable_ptr) {
-        holder->UpdateCSSVariable(key, value, changed_css_vars);
+
+    // When CSSInlineVariables is enabled, use bulk update for better
+    // performance and proper invalidation handling.
+    if (element()->IsCSSInlineVariablesEnabled()) {
+      // Merge all matched CSS variables into a single map
+      // and let AttributeHolder handle the diff computation.
+      size_t reserve_count = 0;
+      for (auto variable_ptr : tls_matched_variable_map) {
+        reserve_count += variable_ptr->size();
+      }
+      CSSVariableMap merged_vars;
+      merged_vars.reserve(reserve_count);
+      for (auto variable_ptr : tls_matched_variable_map) {
+        for (const auto& [key, value] : *variable_ptr) {
+          merged_vars.insert_or_assign(key, value);
+        }
+      }
+      holder->UpdateCSSVariable(std::move(merged_vars), changed_css_vars);
+    } else {
+      // Legacy path: update variables one at a time
+      // Note: Removal handling is only properly supported in the new bulk
+      // update path with CSSInlineVariablesEnabled(). Legacy mode will be
+      // deprecated.
+      for (auto variable_ptr : tls_matched_variable_map) {
+        for (const auto& [key, value] : *variable_ptr) {
+          holder->UpdateCSSVariable(key, value, changed_css_vars);
+        }
       }
     }
     tls_matched_variable_map.clear();
