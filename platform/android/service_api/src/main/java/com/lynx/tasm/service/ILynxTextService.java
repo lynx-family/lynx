@@ -4,6 +4,7 @@
 package com.lynx.tasm.service;
 
 import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 
@@ -42,8 +43,9 @@ public interface ILynxTextService extends IServiceProvider {
      * Draw page on a canvas
      *
      * @param canvas Android canvas
+     * @param callback Drawable.Callback
      */
-    void drawPageCanvas(Canvas canvas);
+    void drawPageCanvas(Canvas canvas, Drawable.Callback callback);
     /**
      * Get char index from touch position
      *
