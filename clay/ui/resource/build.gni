@@ -19,6 +19,13 @@ ui_resource_sources = [
   "image_resource_fetcher.h",
 ]
 
+if (is_win || is_mac) {
+  ui_resource_sources += [
+    "zip_resource_helper.cc",
+    "zip_resource_helper.h",
+  ]
+}
+
 if (enable_skity) {
   ui_resource_sources += [
     "asset_manager_font_provider_skity.cc",
