@@ -12,12 +12,17 @@
 #include <Shlwapi.h>
 #endif
 
+#include "base/include/string/string_utils.h"
 #include "clay/fml/mapping.h"
 #include "clay/fml/paths.h"
 #include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/net/net_loader_callback.h"
 #include "clay/net/url/url_helper.h"
 #include "clay/ui/common/isolate.h"
+
+#if defined(OS_WIN)
+#include "clay/ui/resource/zip_resource_helper.h"
+#endif
 
 namespace clay {
 
@@ -75,8 +80,8 @@ void ResourceLoaderCommon::LoadOnNet(
     const std::function<void(const uint8_t*, size_t)>& callback) {
   NetLoaderCallback loader_callback;
   loader_callback.set_succeeded_func(
-      [weak_ref, callback, ui_task_runner](size_t request_seq,
-                                           RawResource&& raw_resource) {
+      [weak_ref, callback, ui_task_runner, src](size_t request_seq,
+                                                RawResource&& raw_resource) {
         auto self = weak_ref.lock();
         if (!self) {
           FML_LOG(ERROR) << "load resource fail: ResourceLoaderCommon is null";
@@ -86,8 +91,10 @@ void ResourceLoaderCommon::LoadOnNet(
           return;
         }
         self->OnLoadFinished(request_seq);
+        RawResource resource = self->GetResource(src, raw_resource);
+
         ui_task_runner->PostTask(
-            [callback, resource = std::move(raw_resource)]() mutable {
+            [callback, resource = std::move(resource)]() mutable {
               if (callback) {
                 callback(resource.data.get(), resource.length);
               }
@@ -132,6 +139,59 @@ void ResourceLoaderCommon::LoadByFile(
       callback(nullptr, 0);
     }
   });
+}
+
+RawResource ResourceLoaderCommon::GetResource(std::string src,
+                                              const RawResource& raw_resource) {
+  RawResource resource;
+#if defined(OS_WIN)
+  static constexpr const char* kClayResourceDir0 = "clay";
+  static constexpr const char* kClayResourceDir1 = "resource";
+  static const std::string temp_path = fml::CreateTemporaryDirectory();
+  std::string output_filename =
+      std::to_string(std::hash<std::string>{}(src)) + ".zip";
+  if (temp_path.empty()) {
+    return resource;
+  }
+  std::string output_dir_path =
+      fml::paths::JoinPaths({temp_path, kClayResourceDir0, kClayResourceDir1});
+  if (lynx::base::EndsWith(src, ".zip")) {
+    auto output_path =
+        fml::paths::JoinPaths({output_dir_path, output_filename});
+    fml::NonOwnedMapping mapping(raw_resource.data.get(), raw_resource.length);
+
+    auto temp_dir = fml::OpenDirectory(temp_path.c_str(), true,
+                                       fml::FilePermission::kReadWrite);
+    if (!temp_dir.is_valid()) {
+      return resource;
+    }
+
+    auto output_dir =
+        fml::CreateDirectory(temp_dir, {kClayResourceDir0, kClayResourceDir1},
+                             fml::FilePermission::kReadWrite);
+    if (!fml::WriteAtomically(output_dir, output_filename.c_str(), mapping)) {
+      output_dir.reset();
+      FML_LOG(ERROR) << "Failed to write file: " << output_path;
+      resource = {0, nullptr};
+    } else {
+      output_dir.reset();
+      if (ZipResourceHelper::UnzipToPath(output_path, output_dir_path)) {
+        std::string file_path = "file:///" + output_dir_path;
+        resource = RawResource::MakeWithCopy(
+            reinterpret_cast<const uint8_t*>(file_path.c_str()),
+            file_path.length());
+      } else {
+        resource = {0, nullptr};
+      }
+    }
+
+  } else {
+    resource = raw_resource;
+  }
+#else
+  resource = raw_resource;
+#endif
+  return resource;
 }
 
 void ResourceLoaderCommon::OnLoadFinished(size_t request_seq) {
