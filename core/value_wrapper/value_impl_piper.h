@@ -361,9 +361,7 @@ class ValueImplPiper : public Value {
     if (prev_value_vector == nullptr || prev_value_vector->empty()) {
       return false;
     }
-    static constexpr int kMaxDepth = 50;
-    if (!rt_.IsEnableCircularDataCheck() || !rt_.IsCircularDataCheckUnset() ||
-        depth < kMaxDepth) {
+    if (!rt_.IsEnableCircularDataCheck() && !rt_.IsCircularDataCheckUnset()) {
       return false;
     }
 
