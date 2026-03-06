@@ -212,7 +212,6 @@ deps = {
               os.path.join(root_dir, 'patches', 'perfetto', '*.patch')
          ],
          "ignore_in_git": True,
-         "paths": [ "sdk" ],
     },
     "../third_party/benchmark": {
         'type': 'git',
