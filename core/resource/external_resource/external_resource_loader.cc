@@ -26,16 +26,21 @@ ExternalResourceInfo ExternalResourceLoader::LoadScript(const std::string& url,
         error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
         std::move(error_msg));
   }
-  std::promise<ExternalResourceInfo> promise;
-  std::future<ExternalResourceInfo> future = promise.get_future();
+  auto promise = std::make_shared<std::promise<ExternalResourceInfo>>();
+  std::future<ExternalResourceInfo> future = promise->get_future();
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalJs};
   resource_loader_->LoadResource(
-      request, [promise = std::move(promise)](
-                   pub::LynxResourceResponse& response) mutable {
-        promise.set_value(ExternalResourceInfo(std::move(response.data),
-                                               response.err_code,
-                                               std::move(response.err_msg)));
+      request,
+      [promise_weak = std::weak_ptr<std::promise<ExternalResourceInfo>>(
+           promise)](pub::LynxResourceResponse& response) mutable {
+        auto p = promise_weak.lock();
+        if (!p) {
+          return;
+        }
+        p->set_value(ExternalResourceInfo(std::move(response.data),
+                                          response.err_code,
+                                          std::move(response.err_msg)));
       });
   timeout = timeout > 0 ? timeout : 5;
   if (future.wait_for(std::chrono::seconds(timeout)) !=
@@ -88,16 +93,21 @@ ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
         std::move(error_msg));
   }
 
-  std::promise<ExternalResourceInfo> promise;
-  std::future<ExternalResourceInfo> future = promise.get_future();
+  auto promise = std::make_shared<std::promise<ExternalResourceInfo>>();
+  std::future<ExternalResourceInfo> future = promise->get_future();
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalByteCode};
   resource_loader_->LoadBytecode(
-      request, [promise = std::move(promise)](
-                   pub::LynxResourceResponse& response) mutable {
-        promise.set_value(ExternalResourceInfo(std::move(response.data),
-                                               response.err_code,
-                                               std::move(response.err_msg)));
+      request,
+      [promise_weak = std::weak_ptr<std::promise<ExternalResourceInfo>>(
+           promise)](pub::LynxResourceResponse& response) mutable {
+        auto p = promise_weak.lock();
+        if (!p) {
+          return;
+        }
+        p->set_value(ExternalResourceInfo(std::move(response.data),
+                                          response.err_code,
+                                          std::move(response.err_msg)));
       });
 
   timeout = timeout > 0 ? timeout : 5;
@@ -192,14 +202,19 @@ void ExternalResourceLoader::LoadLazyBundle(
 
 std::vector<uint8_t> ExternalResourceLoader::LoadJSSource(
     const std::string& url) {
-  std::promise<std::vector<uint8_t>> promise;
-  std::future<std::vector<uint8_t>> future = promise.get_future();
+  auto promise = std::make_shared<std::promise<std::vector<uint8_t>>>();
+  std::future<std::vector<uint8_t>> future = promise->get_future();
   auto request = pub::LynxResourceRequest{
       .url = url, .type = pub::LynxResourceType::kAssets};
   resource_loader_->LoadResource(
-      request, [promise = std::move(promise)](
-                   pub::LynxResourceResponse& response) mutable {
-        promise.set_value(std::move(response.data));
+      request,
+      [promise_weak = std::weak_ptr<std::promise<std::vector<uint8_t>>>(
+           promise)](pub::LynxResourceResponse& response) mutable {
+        auto p = promise_weak.lock();
+        if (!p) {
+          return;
+        }
+        p->set_value(std::move(response.data));
       });
   return future.get();
 }
