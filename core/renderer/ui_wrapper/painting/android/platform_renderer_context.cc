@@ -197,16 +197,16 @@ void PlatformRendererContext::UpdatePlatformRendererSubtreeProperties(
   // Count total size
   const size_t total_bytes = count * sizeof(SubtreeProperty);
 
-  // 创建 DirectByteBuffer（零拷贝）
+  // Create DirectByteBuffer (zero-copy)
   void* buffer_data = const_cast<void*>(static_cast<const void*>(properties));
   jobject direct_buffer = env->NewDirectByteBuffer(buffer_data, total_bytes);
 
   if (direct_buffer != nullptr) {
-    // 调用 Java 方法
+    // Call Java method
     Java_PlatformRendererContext_updatePlatformRendererSubtreeProperties(
         env, local_ref.Get(), id, direct_buffer, static_cast<jint>(count));
 
-    // 释放本地引用（DirectByteBuffer 是局部引用）
+    // Release local reference (DirectByteBuffer is a local reference)
     env->DeleteLocalRef(direct_buffer);
   }
 }
