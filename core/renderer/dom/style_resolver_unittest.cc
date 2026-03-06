@@ -45,16 +45,44 @@ class MockSimpleStyleNode : public lynx::style::SimpleStyleNode {
   }
 
   void UpdateSimpleStyles(const tasm::StyleMap& style_map) override {
-    current_styles_ = style_map;
+    ++update_calls_;
+    static_styles_ = style_map;
+    dynamic_styles_.clear();
+    current_styles_ = static_styles_;
   }
 
   void UpdateSimpleStyles(tasm::StyleMap&& style_map) override {
-    current_styles_ = std::move(style_map);
+    ++update_calls_;
+    static_styles_ = std::move(style_map);
+    dynamic_styles_.clear();
+    current_styles_ = static_styles_;
+  }
+
+  void UpdateStaticAndDynamicSimpleStyles(
+      tasm::StyleMap&& style_map, tasm::StyleMap&& dynamic_style_map) override {
+    ++update_calls_;
+    static_styles_ = std::move(style_map);
+    dynamic_styles_ = std::move(dynamic_style_map);
+    RebuildCurrentStyles();
+  }
+
+  void UpdateDynamicSimpleStyles(tasm::StyleMap&& style_map) override {
+    ++update_calls_;
+    dynamic_styles_ = std::move(style_map);
+    RebuildCurrentStyles();
+  }
+
+  void ResetSimpleStyle(tasm::CSSPropertyID id,
+                        const tasm::CSSValue& value) override {
+    current_styles_.insert_or_assign(id, value);
   }
 
   void ResetSimpleStyle(tasm::CSSPropertyID id) override {
     current_styles_.erase(id);
   }
+
+  void ResetUpdateCalls() { update_calls_ = 0; }
+  int update_calls() const { return update_calls_; }
 
   // Helper method to get current styles for verification
   const tasm::StyleMap& GetCurrentStyles() const { return current_styles_; }
@@ -65,6 +93,25 @@ class MockSimpleStyleNode : public lynx::style::SimpleStyleNode {
   }
 
  private:
+  void RebuildCurrentStyles() {
+    current_styles_ = static_styles_;
+    for (const auto& [property_id, value] : dynamic_styles_) {
+      if (value.IsEmpty()) {
+        if (const auto it = static_styles_.find(property_id);
+            it != static_styles_.end()) {
+          current_styles_.insert_or_assign(property_id, it->second);
+        } else {
+          current_styles_.erase(property_id);
+        }
+        continue;
+      }
+      current_styles_.insert_or_assign(property_id, value);
+    }
+  }
+
+  int update_calls_{0};
+  tasm::StyleMap static_styles_;
+  tasm::StyleMap dynamic_styles_;
   tasm::StyleMap current_styles_;
 };
 
@@ -457,6 +504,7 @@ TEST_F(CSSPatchingTest, ResolveStyleObjectsBasedOnExistingMap_OnlyOldStyles) {
 
   MockSimpleStyleNode target;
   target.UpdateSimpleStyles(old_dcl_style);
+  target.ResetUpdateCalls();
 
   StyleResolver resolver;
   resolver.ResolveStyleObjectsBasedOnExistingMap(old_dcl_style, nullptr,
@@ -464,6 +512,31 @@ TEST_F(CSSPatchingTest, ResolveStyleObjectsBasedOnExistingMap_OnlyOldStyles) {
 
   // All old styles should be reset since new styles are null
   EXPECT_TRUE(target.GetCurrentStyles().empty());
+  EXPECT_EQ(target.update_calls(), 1);
+}
+
+TEST_F(CSSPatchingTest,
+       ResolveStyleObjectsBasedOnExistingMap_EmptyNewStyles_ShouldClearMap) {
+  // Test case: Old styles exist, but new styles array is empty (not null)
+  tasm::StyleMap old_dcl_style;
+  old_dcl_style[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("16px");
+  old_dcl_style[CSSPropertyID::kPropertyIDColor] =
+      CSSValue::MakePlainString("red");
+
+  // Empty new styles array (nullptr terminated)
+  lynx::style::StyleObject* new_ptr[] = {nullptr};
+
+  MockSimpleStyleNode target;
+  target.UpdateSimpleStyles(old_dcl_style);
+  target.ResetUpdateCalls();
+
+  StyleResolver resolver;
+  resolver.ResolveStyleObjectsBasedOnExistingMap(old_dcl_style, new_ptr,
+                                                 &target);
+
+  EXPECT_TRUE(target.GetCurrentStyles().empty());
+  EXPECT_EQ(target.update_calls(), 1);
 }
 
 TEST_F(CSSPatchingTest, ResolveStyleObjectsBasedOnExistingMap_OnlyNewStyles) {
@@ -571,6 +644,34 @@ TEST_F(CSSPatchingTest, ResolveStyleObjectsBasedOnExistingMap_EmptyNewStyles) {
 
   // All old styles should be reset since new styles are empty
   EXPECT_TRUE(target.GetCurrentStyles().empty());
+}
+
+TEST_F(CSSPatchingTest,
+       ResolveStyleObjectsBasedOnExistingMap_DynamicOnlyNoOpSkipsUpdate) {
+  tasm::StyleMap old_static_style;
+  tasm::StyleMap old_dynamic_style;
+  old_dynamic_style[CSSPropertyID::kPropertyIDOpacity] =
+      CSSValue(0.5, CSSValuePattern::NUMBER);
+
+  auto dynamic_object =
+      fml::MakeRefCounted<lynx::style::DynamicStyleObject>(old_dynamic_style);
+
+  MockSimpleStyleNode target;
+  tasm::StyleMap initial_dynamic_style = old_dynamic_style;
+  target.UpdateStaticAndDynamicSimpleStyles({},
+                                            std::move(initial_dynamic_style));
+  target.ResetUpdateCalls();
+
+  StyleResolver resolver;
+  resolver.ResolveStyleObjectsBasedOnExistingMap(
+      old_static_style, nullptr, &old_dynamic_style, dynamic_object.get(),
+      /*static_dirty=*/false, /*dynamic_dirty=*/true, &target);
+
+  EXPECT_EQ(target.update_calls(), 0);
+  const auto& current_styles = target.GetCurrentStyles();
+  auto it = current_styles.find(CSSPropertyID::kPropertyIDOpacity);
+  ASSERT_TRUE(it != current_styles.end());
+  EXPECT_DOUBLE_EQ(it->second.GetNumber(), 0.5);
 }
 // Mock SharedCSSFragmentWrapper for testing adopted stylesheets
 class MockSharedCSSFragmentWrapper : public tasm::SharedCSSFragmentWrapper {

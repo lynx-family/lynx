@@ -196,8 +196,9 @@ class Element : public lepus::RefCounted,
   static const uint32_t kDirtyGesture;
   static const uint32_t kDirtyFontSize;
   static const uint32_t kDirtyRefreshCSSVariables;
-  static constexpr uint32_t kDirtyStyleObjects = 0x01 << 13;
+  static const uint32_t kDirtyStyleObjects;
   static constexpr uint32_t kDirtyCloned = 0x01 << 14;
+  static constexpr uint32_t kDirtyDynamicStyleObjects = 0x01 << 15;
 
   enum class AsyncResolveStatus : uint8_t {
     kCreated = 0,
@@ -1538,9 +1539,9 @@ class Element : public lepus::RefCounted,
   bool flush_required_{true};
   bool is_first_created_{true};
   bool is_async_flush_root_{false};
-
   base::String full_raw_inline_style_;
   StyleMap parsed_styles_map_;
+  base::auto_create_optional<StyleMap> parsed_dynamic_styles_map_;
   base::auto_create_optional<StyleMap> styles_from_attributes_;
   base::auto_create_optional<RawLepusStyleMap> current_raw_inline_styles_;
   base::auto_create_optional<StyleMap> extreme_parsed_styles_;
@@ -1582,6 +1583,7 @@ class Element : public lepus::RefCounted,
       style_objects_{nullptr};
   std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
       last_style_objects_{nullptr};
+  style::DynamicStyleObjectRef dynamic_simple_object_{nullptr};
 
   ElementContextDelegate* element_context_delegate_{nullptr};
 

@@ -47,8 +47,10 @@
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
 #include "core/renderer/utils/test/text_utils_mock.h"
+#include "core/runtime/lepus/bindings/renderer_functions.h"
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepus/js_object.h"
+#include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/shell/lynx_ui_operation_queue.h"
@@ -69,6 +71,14 @@ CSSValue parseTransformStringValue(const lepus::Value& value_str,
                                    const CSSParserConfigs& configs) {
   CSSStringParser parser = CSSStringParser::FromLepusString(value_str, configs);
   return parser.ParseTransform();
+}
+
+style::DynamicStyleObjectRef MakeDynamicStyleObjectRef(StyleMap style_map) {
+  if (style_map.empty()) {
+    return nullptr;
+  }
+  return style::DynamicStyleObjectRef(
+      new style::DynamicStyleObject(std::move(style_map)));
 }
 }  // namespace
 
@@ -265,6 +275,675 @@ TEST_P(FiberElementTest, TestSetOverflow) {
   EXPECT_FALSE(page->computed_css_style()->IsOverflowHidden());
   EXPECT_FALSE(page->computed_css_style()->IsOverflowX());
   EXPECT_TRUE(page->computed_css_style()->IsOverflowY());
+}
+
+TEST_P(FiberElementTest, DynamicSimpleStyleLayer_KVOrderingAndNilRestoresBase) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  const std::string z_index_key =
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDZIndex);
+  const std::string opacity_key =
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity);
+
+  auto make_style_object_list = [](double z_index, double opacity) {
+    StyleMap style_map;
+    style_map.insert_or_assign(CSSPropertyID::kPropertyIDZIndex,
+                               CSSValue(z_index, CSSValuePattern::NUMBER));
+    style_map.insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                               CSSValue(opacity, CSSValuePattern::NUMBER));
+
+    auto* style_object = new lynx::style::StyleObject(std::move(style_map));
+    style_object->AddRef();
+
+    auto list = lynx::style::CreateStyleObjectArray(2);
+    list.get()[0] = style_object;
+    list.get()[1] = nullptr;
+    return list;
+  };
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    platform_impl_->Flush();
+    ASSERT_TRUE(platform_impl_->node_map_.find(view->impl_id()) !=
+                platform_impl_->node_map_.end());
+  };
+
+  auto props = [&]() -> std::map<std::string, lepus::Value>& {
+    return platform_impl_->node_map_.at(view->impl_id())->props_;
+  };
+
+  view->SetStyleObjects(make_style_object_list(1, 0.5));
+  flush();
+  EXPECT_EQ(props()[z_index_key].Number(), 1);
+  EXPECT_EQ(props()[opacity_key].Number(), 0.5);
+
+  // KV before replace should be overwritten by the later full-replace object.
+  view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDZIndex,
+                                CSSValue(8, CSSValuePattern::NUMBER));
+  StyleMap dynamic_styles;
+  dynamic_styles.insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                                  CSSValue(0.7, CSSValuePattern::NUMBER));
+  view->ReplaceDynamicSimpleStyles(
+      MakeDynamicStyleObjectRef(std::move(dynamic_styles)));
+  flush();
+  EXPECT_EQ(props()[z_index_key].Number(), 1);
+  EXPECT_NEAR(props()[opacity_key].Number(), 0.7, 1e-6);
+
+  // Replace then KV in the same flush should append onto the pending replace.
+  dynamic_styles.clear();
+  dynamic_styles.insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                                  CSSValue(0.8, CSSValuePattern::NUMBER));
+  view->ReplaceDynamicSimpleStyles(
+      MakeDynamicStyleObjectRef(std::move(dynamic_styles)));
+  view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDZIndex,
+                                CSSValue(2, CSSValuePattern::NUMBER));
+  flush();
+  EXPECT_EQ(props()[z_index_key].Number(), 2);
+  EXPECT_NEAR(props()[opacity_key].Number(), 0.8, 1e-6);
+
+  view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDZIndex, CSSValue());
+  flush();
+  EXPECT_EQ(props()[z_index_key].Number(), 1);
+  EXPECT_NEAR(props()[opacity_key].Number(), 0.8, 1e-6);
+}
+
+TEST_P(FiberElementTest,
+       DynamicSimpleStyleLayer_CloneResolvedPropsRebuildsDynamicSourceOnWrite) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    platform_impl_->Flush();
+  };
+
+  view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDZIndex,
+                                CSSValue(2, CSSValuePattern::NUMBER));
+  flush();
+
+  ASSERT_TRUE(view->parsed_dynamic_styles_map_.has_value());
+  ASSERT_FALSE(view->parsed_dynamic_styles_map_->empty());
+
+  auto cloned = view->CloneElement(true);
+  ASSERT_TRUE(cloned);
+  EXPECT_FALSE(cloned->dynamic_simple_object_);
+  ASSERT_TRUE(cloned->parsed_dynamic_styles_map_.has_value());
+  EXPECT_EQ(cloned->parsed_dynamic_styles_map_->size(), 1u);
+
+  cloned->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDOpacity,
+                                  CSSValue(0.5, CSSValuePattern::NUMBER));
+  ASSERT_TRUE(cloned->dynamic_simple_object_);
+  const auto& cloned_dynamic = cloned->dynamic_simple_object_->Properties();
+  auto z_index_it = cloned_dynamic.find(CSSPropertyID::kPropertyIDZIndex);
+  ASSERT_TRUE(z_index_it != cloned_dynamic.end());
+  EXPECT_EQ(z_index_it->second.GetNumber(), 2);
+  auto opacity_it = cloned_dynamic.find(CSSPropertyID::kPropertyIDOpacity);
+  ASSERT_TRUE(opacity_it != cloned_dynamic.end());
+  EXPECT_NEAR(opacity_it->second.GetNumber(), 0.5, 1e-6);
+}
+
+TEST_P(
+    FiberElementTest,
+    RendererFunctions_SetDynamicStyleObject_AcceptsMapAndStyleObjectResetCarrier) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  const std::string z_index_key =
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDZIndex);
+  const std::string opacity_key =
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity);
+
+  auto make_style_object_list = [](double z_index, double opacity) {
+    StyleMap style_map;
+    style_map.insert_or_assign(CSSPropertyID::kPropertyIDZIndex,
+                               CSSValue(z_index, CSSValuePattern::NUMBER));
+    style_map.insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                               CSSValue(opacity, CSSValuePattern::NUMBER));
+
+    auto* style_object = new lynx::style::StyleObject(std::move(style_map));
+    style_object->AddRef();
+
+    auto list = lynx::style::CreateStyleObjectArray(2);
+    list.get()[0] = style_object;
+    list.get()[1] = nullptr;
+    return list;
+  };
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    platform_impl_->Flush();
+    ASSERT_TRUE(platform_impl_->node_map_.find(view->impl_id()) !=
+                platform_impl_->node_map_.end());
+  };
+
+  auto props = [&]() -> std::map<std::string, lepus::Value>& {
+    return platform_impl_->node_map_.at(view->impl_id())->props_;
+  };
+
+  auto expect_dynamic_style = [&](CSSPropertyID id, bool is_empty) {
+    ASSERT_TRUE(view->parsed_dynamic_styles_map_.has_value());
+    auto it = view->parsed_dynamic_styles_map_->find(id);
+    ASSERT_TRUE(it != view->parsed_dynamic_styles_map_->end())
+        << "missing dynamic style id: " << static_cast<int>(id);
+    EXPECT_EQ(it->second.IsEmpty(), is_empty)
+        << "unexpected empty state for id: " << static_cast<int>(id);
+  };
+
+  view->SetStyleObjects(make_style_object_list(1, 0.5));
+  flush();
+
+  const std::string z_index_id =
+      std::to_string(static_cast<int32_t>(CSSPropertyID::kPropertyIDZIndex));
+  const std::string opacity_id =
+      std::to_string(static_cast<int32_t>(CSSPropertyID::kPropertyIDOpacity));
+
+  {
+    auto js_null = MK_JS_LEPUS_VALUE(mts_ctx->context(), LEPUS_NULL);
+    auto dynamic_map = lepus::LEPUSValueHelper::CreateObject(nullptr);
+    dynamic_map.SetProperty(z_index_id.c_str(), std::move(js_null));
+    dynamic_map.SetProperty(opacity_id.c_str(), lepus::Value(0.8));
+
+    lepus::Value argv[] = {lepus::Value(view), std::move(dynamic_map)};
+    ::lynx::tasm::RendererFunctions::SetDynamicStyleObject(
+        mts_ctx, argv, static_cast<int>(std::size(argv)));
+    flush();
+
+    EXPECT_EQ(props()[z_index_key].Number(), 1);
+    EXPECT_NEAR(props()[opacity_key].Number(), 0.8, 1e-6);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDZIndex, true);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDOpacity, false);
+  }
+
+  {
+    auto js_null = MK_JS_LEPUS_VALUE(mts_ctx->context(), LEPUS_NULL);
+    auto dynamic_map = lepus::LEPUSValueHelper::CreateObject(nullptr);
+    dynamic_map.SetProperty(z_index_id.c_str(), std::move(js_null));
+    dynamic_map.SetProperty(opacity_id.c_str(), lepus::Value(0.9));
+
+    lepus::Value create_argv[] = {std::move(dynamic_map)};
+    auto dynamic_style_object =
+        ::lynx::tasm::RendererFunctions::CreateStyleObject(
+            mts_ctx, create_argv, static_cast<int>(std::size(create_argv)));
+
+    lepus::Value argv[] = {lepus::Value(view), std::move(dynamic_style_object)};
+    ::lynx::tasm::RendererFunctions::SetDynamicStyleObject(
+        mts_ctx, argv, static_cast<int>(std::size(argv)));
+    flush();
+
+    EXPECT_EQ(props()[z_index_key].Number(), 1);
+    EXPECT_NEAR(props()[opacity_key].Number(), 0.9, 1e-6);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDZIndex, true);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDOpacity, false);
+  }
+}
+
+TEST_P(FiberElementTest, DynamicSimpleStyleLayer_BehaviorMatrix) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  const std::string z_index_key =
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDZIndex);
+  const std::string opacity_key =
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity);
+
+  auto make_style_object_list = [](double z_index, double opacity) {
+    StyleMap style_map;
+    style_map.insert_or_assign(CSSPropertyID::kPropertyIDZIndex,
+                               CSSValue(z_index, CSSValuePattern::NUMBER));
+    style_map.insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                               CSSValue(opacity, CSSValuePattern::NUMBER));
+
+    auto* style_object = new lynx::style::StyleObject(std::move(style_map));
+    style_object->AddRef();
+
+    auto list = lynx::style::CreateStyleObjectArray(2);
+    list.get()[0] = style_object;
+    list.get()[1] = nullptr;
+    return list;
+  };
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    platform_impl_->Flush();
+    ASSERT_TRUE(platform_impl_->node_map_.find(view->impl_id()) !=
+                platform_impl_->node_map_.end());
+  };
+
+  auto props = [&]() -> std::map<std::string, lepus::Value>& {
+    return platform_impl_->node_map_.at(view->impl_id())->props_;
+  };
+
+  auto expect_number = [&](const std::string& key, double expected) {
+    auto it = props().find(key);
+    ASSERT_TRUE(it != props().end()) << "missing prop: " << key;
+    ASSERT_FALSE(it->second.IsEmpty()) << "prop is empty: " << key;
+    EXPECT_NEAR(it->second.Number(), expected, 1e-6) << "prop: " << key;
+  };
+
+  auto expect_default = [&](const std::string& key) {
+    auto it = props().find(key);
+    if (it == props().end()) {
+      return;
+    }
+    EXPECT_TRUE(it->second.IsEmpty()) << "prop not reset: " << key;
+  };
+
+  auto set_dynamic_map = [&](bool set_z, double z, bool set_opacity,
+                             double op) {
+    StyleMap style_map;
+    if (set_z) {
+      style_map.insert_or_assign(CSSPropertyID::kPropertyIDZIndex,
+                                 CSSValue(z, CSSValuePattern::NUMBER));
+    }
+    if (set_opacity) {
+      style_map.insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                                 CSSValue(op, CSSValuePattern::NUMBER));
+    }
+    view->ReplaceDynamicSimpleStyles(
+        MakeDynamicStyleObjectRef(std::move(style_map)));
+  };
+
+  // A) only static: set -> update -> clear.
+  {
+    SCOPED_TRACE("A_only_static_set_update_clear");
+    view->SetStyleObjects(make_style_object_list(1, 0.5));
+    flush();
+    expect_number(z_index_key, 1);
+    expect_number(opacity_key, 0.5);
+
+    view->SetStyleObjects(make_style_object_list(3, 0.6));
+    flush();
+    expect_number(z_index_key, 3);
+    expect_number(opacity_key, 0.6);
+
+    view->SetStyleObjects(nullptr);
+    flush();
+    expect_default(z_index_key);
+    expect_default(opacity_key);
+  }
+
+  // B) only dynamic: set -> replace (partial removal) -> clear.
+  {
+    SCOPED_TRACE("B_only_dynamic_set_replace_clear");
+    set_dynamic_map(true, 2, true, 0.7);
+    flush();
+    expect_number(z_index_key, 2);
+    expect_number(opacity_key, 0.7);
+
+    // Replace to {z-index: 4} => opacity removed -> reset to default.
+    set_dynamic_map(true, 4, false, 0);
+    flush();
+    expect_number(z_index_key, 4);
+    expect_default(opacity_key);
+
+    // Clear => all default.
+    view->ReplaceDynamicSimpleStyles(nullptr);
+    flush();
+    expect_default(z_index_key);
+    expect_default(opacity_key);
+  }
+
+  // C) static + dynamic: override; dynamic partial removal restores base;
+  //    static update won't override dynamic; clear dynamic restores base.
+  {
+    SCOPED_TRACE("C_static_and_dynamic_override_update_restore");
+    view->SetStyleObjects(make_style_object_list(1, 0.5));
+    set_dynamic_map(true, 2, true, 0.7);
+    flush();
+    expect_number(z_index_key, 2);
+    expect_number(opacity_key, 0.7);
+
+    // Dynamic replace to {z-index: 3} => opacity removed -> restore base 0.5.
+    set_dynamic_map(true, 3, false, 0);
+    flush();
+    expect_number(z_index_key, 3);
+    expect_number(opacity_key, 0.5);
+
+    // Static update => z-index still dynamic; opacity follows new base.
+    view->SetStyleObjects(make_style_object_list(4, 0.6));
+    flush();
+    expect_number(z_index_key, 3);
+    expect_number(opacity_key, 0.6);
+
+    // Update static and dynamic in the same flush: dynamic wins for overlap.
+    view->SetStyleObjects(make_style_object_list(6, 0.9));
+    view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDZIndex,
+                                  CSSValue(7, CSSValuePattern::NUMBER));
+    flush();
+    expect_number(z_index_key, 7);
+    expect_number(opacity_key, 0.9);
+
+    // Clear dynamic => restore base.
+    view->ReplaceDynamicSimpleStyles(nullptr);
+    flush();
+    expect_number(z_index_key, 6);
+    expect_number(opacity_key, 0.9);
+  }
+
+  // D) static removed then dynamic cleared should not restore stale base.
+  {
+    SCOPED_TRACE("D_static_removed_then_dynamic_clear_no_stale_restore");
+    view->SetStyleObjects(make_style_object_list(10, 0.4));
+    flush();
+    expect_number(z_index_key, 10);
+
+    view->SetStyleObjects(nullptr);
+    flush();
+    expect_default(z_index_key);
+    expect_default(opacity_key);
+
+    view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDZIndex,
+                                  CSSValue(11, CSSValuePattern::NUMBER));
+    flush();
+    expect_number(z_index_key, 11);
+
+    view->ReplaceDynamicSimpleStyles(nullptr);
+    flush();
+    expect_default(z_index_key);
+    expect_default(opacity_key);
+  }
+}
+
+TEST_P(FiberElementTest, RendererFunctions_SetStyleObject_IdsStringOrder) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  // Prepare global style object list used by SetStyleObject(ids_string).
+  auto entry = tasm->FindEntry(DEFAULT_ENTRY_NAME);
+  constexpr size_t kStyleObjectListSize = 8;
+  auto& list_ref =
+      entry->template_bundle().InitStyleObjectList(kStyleObjectListSize);
+  auto* global_style_objects = list_ref.get();
+
+  // InitStyleObjectList does not guarantee zero-initialized entries.
+  // Only clear within the declared allocation size to avoid OOB writes.
+  for (size_t i = 0; i < kStyleObjectListSize; ++i) {
+    global_style_objects[i] = nullptr;
+  }
+
+  auto make_style_object = [](CSSPropertyID id, double number) {
+    StyleMap style_map;
+    style_map.insert_or_assign(id, CSSValue(number, CSSValuePattern::NUMBER));
+    auto* obj = new lynx::style::StyleObject(std::move(style_map));
+    obj->AddRef();
+    return obj;
+  };
+  // id=1 => z-index: 1, id=2 => z-index: 2
+  global_style_objects[1] =
+      make_style_object(CSSPropertyID::kPropertyIDZIndex, 1);
+  global_style_objects[2] =
+      make_style_object(CSSPropertyID::kPropertyIDZIndex, 2);
+
+  // Create a lepus context whose delegate is our TemplateAssembler.
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  const std::string z_index_key =
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDZIndex);
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    platform_impl_->Flush();
+    ASSERT_TRUE(platform_impl_->node_map_.find(view->impl_id()) !=
+                platform_impl_->node_map_.end());
+  };
+
+  auto props = [&]() -> std::map<std::string, lepus::Value>& {
+    return platform_impl_->node_map_.at(view->impl_id())->props_;
+  };
+
+  // "1 2" => later style object should override earlier.
+  {
+    lepus::Value argv[] = {lepus::Value(view), lepus::Value("1 2")};
+    ::lynx::tasm::RendererFunctions::SetStyleObject(
+        mts_ctx, argv, static_cast<int>(std::size(argv)));
+    flush();
+    EXPECT_EQ(props()[z_index_key].Number(), 2);
+  }
+
+  // "2 1" => override in reverse.
+  {
+    lepus::Value argv[] = {lepus::Value(view), lepus::Value("2 1")};
+    ::lynx::tasm::RendererFunctions::SetStyleObject(
+        mts_ctx, argv, static_cast<int>(std::size(argv)));
+    flush();
+    EXPECT_EQ(props()[z_index_key].Number(), 1);
+  }
+
+  // "" (empty string) => reset style objects (nullptr list).
+  {
+    auto before_it = props().find(z_index_key);
+    ASSERT_TRUE(before_it != props().end());
+    ASSERT_FALSE(before_it->second.IsEmpty());
+
+    lepus::Value argv[] = {lepus::Value(view), lepus::Value("")};
+    ::lynx::tasm::RendererFunctions::SetStyleObject(
+        mts_ctx, argv, static_cast<int>(std::size(argv)));
+    flush();
+    auto it = props().find(z_index_key);
+    if (it != props().end()) {
+      EXPECT_TRUE(it->second.IsEmpty());
+    }
+  }
+}
+
+TEST_P(
+    FiberElementTest,
+    RendererFunctions_SetDynamicStyleObjectKV_ShorthandNilKeepsExpandedLonghandsAsEmpty) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    platform_impl_->Flush();
+    ASSERT_TRUE(platform_impl_->node_map_.find(view->impl_id()) !=
+                platform_impl_->node_map_.end());
+  };
+
+  auto expect_dynamic_style = [&](CSSPropertyID id, bool is_empty) {
+    ASSERT_TRUE(view->parsed_dynamic_styles_map_.has_value());
+    auto it = view->parsed_dynamic_styles_map_->find(id);
+    ASSERT_TRUE(it != view->parsed_dynamic_styles_map_->end())
+        << "missing dynamic style id: " << static_cast<int>(id);
+    EXPECT_EQ(it->second.IsEmpty(), is_empty)
+        << "unexpected empty state for id: " << static_cast<int>(id);
+  };
+  {
+    view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDZIndex,
+                                  CSSValue(9, CSSValuePattern::NUMBER));
+    lepus::Value argv[] = {
+        lepus::Value(view),
+        lepus::Value(static_cast<int32_t>(CSSPropertyID::kPropertyIDMargin)),
+        lepus::Value("1px 2px 3px 4px")};
+    ::lynx::tasm::RendererFunctions::SetDynamicStyleObjectKV(
+        mts_ctx, argv, static_cast<int>(std::size(argv)));
+    flush();
+    expect_dynamic_style(CSSPropertyID::kPropertyIDMarginTop, false);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDMarginRight, false);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDMarginBottom, false);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDMarginLeft, false);
+  }
+
+  {
+    auto js_null = MK_JS_LEPUS_VALUE(mts_ctx->context(), LEPUS_NULL);
+    lepus::Value argv[] = {
+        lepus::Value(view),
+        lepus::Value(static_cast<int32_t>(CSSPropertyID::kPropertyIDMargin)),
+        std::move(js_null)};
+    ::lynx::tasm::RendererFunctions::SetDynamicStyleObjectKV(
+        mts_ctx, argv, static_cast<int>(std::size(argv)));
+    flush();
+    expect_dynamic_style(CSSPropertyID::kPropertyIDZIndex, false);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDMarginTop, true);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDMarginRight, true);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDMarginBottom, true);
+    expect_dynamic_style(CSSPropertyID::kPropertyIDMarginLeft, true);
+  }
+}
+
+TEST_P(FiberElementTest,
+       RendererFunctions_SetDynamicStyleObjectKV_InvalidIdIsIgnored) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    platform_impl_->Flush();
+    ASSERT_TRUE(platform_impl_->node_map_.find(view->impl_id()) !=
+                platform_impl_->node_map_.end());
+  };
+
+  view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDOpacity,
+                                CSSValue(0.8, CSSValuePattern::NUMBER));
+  flush();
+
+  ASSERT_TRUE(view->parsed_dynamic_styles_map_.has_value());
+  EXPECT_EQ(view->parsed_dynamic_styles_map_->size(), 1u);
+  EXPECT_TRUE(view->parsed_dynamic_styles_map_->contains(
+      CSSPropertyID::kPropertyIDOpacity));
+
+  auto js_null = MK_JS_LEPUS_VALUE(mts_ctx->context(), LEPUS_NULL);
+  lepus::Value argv[] = {
+      lepus::Value(view),
+      lepus::Value(static_cast<int32_t>(CSSPropertyID::kPropertyEnd)),
+      std::move(js_null)};
+  ::lynx::tasm::RendererFunctions::SetDynamicStyleObjectKV(
+      mts_ctx, argv, static_cast<int>(std::size(argv)));
+  flush();
+
+  ASSERT_TRUE(view->parsed_dynamic_styles_map_.has_value());
+  EXPECT_EQ(view->parsed_dynamic_styles_map_->size(), 1u);
+  auto it =
+      view->parsed_dynamic_styles_map_->find(CSSPropertyID::kPropertyIDOpacity);
+  ASSERT_TRUE(it != view->parsed_dynamic_styles_map_->end());
+  EXPECT_DOUBLE_EQ(it->second.GetNumber(), 0.8);
+}
+
+TEST_P(FiberElementTest,
+       DynamicSimpleStyleLayer_LonghandKVNilKeepsEmptyResetInMap) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDZIndex,
+                                CSSValue(2, CSSValuePattern::NUMBER));
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  ASSERT_TRUE(view->parsed_dynamic_styles_map_.has_value());
+  auto it =
+      view->parsed_dynamic_styles_map_->find(CSSPropertyID::kPropertyIDZIndex);
+  ASSERT_TRUE(it != view->parsed_dynamic_styles_map_->end());
+  EXPECT_FALSE(it->second.IsEmpty());
+
+  view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDOpacity,
+                                CSSValue(0.8, CSSValuePattern::NUMBER));
+
+  view->AddDynamicSimpleStyleKV(CSSPropertyID::kPropertyIDZIndex, CSSValue());
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  ASSERT_TRUE(view->parsed_dynamic_styles_map_.has_value());
+  it = view->parsed_dynamic_styles_map_->find(CSSPropertyID::kPropertyIDZIndex);
+  ASSERT_TRUE(it != view->parsed_dynamic_styles_map_->end());
+  EXPECT_TRUE(it->second.IsEmpty());
+  auto opacity_it =
+      view->parsed_dynamic_styles_map_->find(CSSPropertyID::kPropertyIDOpacity);
+  ASSERT_TRUE(opacity_it != view->parsed_dynamic_styles_map_->end());
+  EXPECT_FALSE(opacity_it->second.IsEmpty());
 }
 
 TEST_P(FiberElementTest, TestSetComputedFontSize0) {

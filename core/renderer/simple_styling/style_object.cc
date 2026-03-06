@@ -49,6 +49,21 @@ void DynamicStyleObject::UpdateStyleMap(const tasm::StyleMap& style_map) {
   }
 }
 
+void DynamicStyleObject::UpdateStyleMap(tasm::CSSPropertyID id,
+                                        tasm::CSSValue&& value) {
+  style_map_.insert_or_assign(id, std::move(value));
+}
+
+void DynamicStyleObject::MergeStyleMap(tasm::StyleMap&& style_map) {
+  for (auto& [property_id, value] : style_map) {
+    style_map_.insert_or_assign(property_id, std::move(value));
+  }
+}
+
+bool DynamicStyleObject::RemoveStyleValue(tasm::CSSPropertyID id) {
+  return style_map_.erase(id) > 0;
+}
+
 void DynamicStyleObject::BindToElement(SimpleStyleNode* element) {
   elements_.emplace_back(element);
 }
@@ -71,6 +86,16 @@ std::unique_ptr<StyleObject*, StyleObjectArrayDeleter> CreateStyleObjectArray(
   auto* array =
       static_cast<StyleObject**>(malloc(capacity * sizeof(StyleObject*)));
   return std::unique_ptr<StyleObject*, StyleObjectArrayDeleter>(array);
+}
+
+fml::RefPtr<DynamicStyleObject> CreateDynamicStyleObjectRef(
+    tasm::StyleMap style_map) {
+  if (style_map.empty()) {
+    return nullptr;
+  }
+
+  return fml::RefPtr<DynamicStyleObject>(
+      new DynamicStyleObject(std::move(style_map)));
 }
 
 }  // namespace lynx::style

@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/ref_counted_class.h"
 #include "base/include/vector.h"
 #include "core/renderer/simple_styling/style_object_decoder.h"
@@ -97,10 +98,20 @@ class DynamicStyleObject : public StyleObject {
       : StyleObject(std::move(style_map)) {}
   void BindToElement(SimpleStyleNode* element) override;
   void UnbindFromElement(SimpleStyleNode* element) override;
+  // Deprecated API kept for the historical notify-on-update path.
   void UpdateStyleMap(const tasm::StyleMap& style_map);
+  // Mutate the carrier only. The new dynamic simple style pipeline resolves
+  // and applies through StyleResolver/FiberElement later, so these KV helpers
+  // must not notify bound elements directly.
+  void UpdateStyleMap(tasm::CSSPropertyID id, tasm::CSSValue&& value);
+  void MergeStyleMap(tasm::StyleMap&& style_map);
+  bool RemoveStyleValue(tasm::CSSPropertyID id);
   void Reset();
 
  private:
+  // Historical observer list used by the deprecated notify-on-update path.
+  // The new dynamic simple style pipeline treats DynamicStyleObject as a
+  // source carrier only and does not rely on these bindings for updates.
   base::InlineVector<SimpleStyleNode*, 1> elements_;
 };
 struct StyleObjectArrayDeleter {
@@ -117,6 +128,8 @@ struct StyleObjectArrayDeleter {
 
 std::unique_ptr<StyleObject*, StyleObjectArrayDeleter> CreateStyleObjectArray(
     int capacity);
+fml::RefPtr<DynamicStyleObject> CreateDynamicStyleObjectRef(
+    tasm::StyleMap style_map);
 
 }  // namespace lynx::style
 

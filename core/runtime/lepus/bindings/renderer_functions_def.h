@@ -212,6 +212,8 @@
   V(ElementAnimate)                   \
   V(CreateStyleObject)                \
   V(SetStyleObject)                   \
+  V(SetDynamicStyleObject)            \
+  V(SetDynamicStyleObjectKV)          \
   V(UpdateStyleObject)                \
   V(FiberAsyncResolveSubtreeProperty) \
   V(FiberMarkAsyncResolveRoot)        \
