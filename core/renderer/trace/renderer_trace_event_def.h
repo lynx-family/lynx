@@ -476,6 +476,8 @@ inline constexpr const char* const FIBER_ELEMENT_PREPARE_FOR_CRATE_OR_UPDATE =
     "FiberElement::PrepareForCreateOrUpdate";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_STYLE =
     "FiberElement::HandleStyle";
+inline constexpr const char* const FIBER_ELEMENT_HANDLE_STYLE_OBJECTS =
+    "FiberElement::HandleStyleObjects";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_PROPAGATE_INHERITED =
     "FiberElement::HandlePropagateInherited";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_DIRECTION_CHANGED =

@@ -68,6 +68,13 @@ class StyleResolver {
       const tasm::StyleMap& old_dcl_style, style::StyleObject** new_ptr,
       style::SimpleStyleNode* target);
 
+  static void ResolveStyleObjectsBasedOnExistingMap(
+      const tasm::StyleMap& old_static_style,
+      style::StyleObject** new_static_ptr,
+      const tasm::StyleMap* old_dynamic_style,
+      style::StyleObject* new_dynamic_object, bool static_dirty,
+      bool dynamic_dirty, style::SimpleStyleNode* target);
+
  private:
   enum class PseudoClassType { kFocus, kHover, kActive };
 

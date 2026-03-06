@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_CSS_CSS_PROPERTY_H_
 #define CORE_RENDERER_CSS_CSS_PROPERTY_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -238,6 +239,11 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSProperty {
 
   // Determine whether [id] is a shorthand property.
   static bool IsShorthandProperty(CSSPropertyID id);
+
+  // Return the expanded longhand property list for [id] if [id] is a
+  // shorthand property. Returns nullptr and writes 0 to [count] otherwise.
+  static const CSSPropertyID* GetExpandedLonghands(CSSPropertyID id,
+                                                   size_t* count);
 
   // Input map may contain shorthand properties. This function calculates total
   // count of properties after parsing the whole map.

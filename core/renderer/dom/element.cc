@@ -70,6 +70,7 @@ const uint32_t Element::kDirtyDataset = 0x01 << 8;
 const uint32_t Element::kDirtyGesture = 0x01 << 9;
 const uint32_t Element::kDirtyFontSize = 0x01 << 11;
 const uint32_t Element::kDirtyRefreshCSSVariables = 0x01 << 12;
+const uint32_t Element::kDirtyStyleObjects = 0x01 << 13;
 
 namespace {
 constexpr std::array<starlight::Direction,

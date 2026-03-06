@@ -15,6 +15,75 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+
+constexpr CSSPropertyID kMarginLonghands[] = {
+    kPropertyIDMarginTop, kPropertyIDMarginRight, kPropertyIDMarginBottom,
+    kPropertyIDMarginLeft};
+constexpr CSSPropertyID kPaddingLonghands[] = {
+    kPropertyIDPaddingTop, kPropertyIDPaddingRight, kPropertyIDPaddingBottom,
+    kPropertyIDPaddingLeft};
+constexpr CSSPropertyID kBorderWidthLonghands[] = {
+    kPropertyIDBorderTopWidth, kPropertyIDBorderRightWidth,
+    kPropertyIDBorderBottomWidth, kPropertyIDBorderLeftWidth};
+constexpr CSSPropertyID kBorderColorLonghands[] = {
+    kPropertyIDBorderTopColor, kPropertyIDBorderRightColor,
+    kPropertyIDBorderBottomColor, kPropertyIDBorderLeftColor};
+constexpr CSSPropertyID kBorderStyleLonghands[] = {
+    kPropertyIDBorderTopStyle, kPropertyIDBorderRightStyle,
+    kPropertyIDBorderBottomStyle, kPropertyIDBorderLeftStyle};
+constexpr CSSPropertyID kBorderLonghands[] = {
+    kPropertyIDBorderTopWidth,    kPropertyIDBorderRightWidth,
+    kPropertyIDBorderBottomWidth, kPropertyIDBorderLeftWidth,
+    kPropertyIDBorderTopColor,    kPropertyIDBorderRightColor,
+    kPropertyIDBorderBottomColor, kPropertyIDBorderLeftColor,
+    kPropertyIDBorderTopStyle,    kPropertyIDBorderRightStyle,
+    kPropertyIDBorderBottomStyle, kPropertyIDBorderLeftStyle};
+constexpr CSSPropertyID kBorderRadiusLonghands[] = {
+    kPropertyIDBorderTopLeftRadius, kPropertyIDBorderTopRightRadius,
+    kPropertyIDBorderBottomRightRadius, kPropertyIDBorderBottomLeftRadius};
+constexpr CSSPropertyID kBorderTopLonghands[] = {kPropertyIDBorderTopWidth,
+                                                 kPropertyIDBorderTopColor,
+                                                 kPropertyIDBorderTopStyle};
+constexpr CSSPropertyID kBorderRightLonghands[] = {kPropertyIDBorderRightWidth,
+                                                   kPropertyIDBorderRightColor,
+                                                   kPropertyIDBorderRightStyle};
+constexpr CSSPropertyID kBorderBottomLonghands[] = {
+    kPropertyIDBorderBottomWidth, kPropertyIDBorderBottomColor,
+    kPropertyIDBorderBottomStyle};
+constexpr CSSPropertyID kBorderLeftLonghands[] = {kPropertyIDBorderLeftWidth,
+                                                  kPropertyIDBorderLeftColor,
+                                                  kPropertyIDBorderLeftStyle};
+constexpr CSSPropertyID kOutlineLonghands[] = {
+    kPropertyIDOutlineWidth, kPropertyIDOutlineColor, kPropertyIDOutlineStyle};
+constexpr CSSPropertyID kBackgroundLonghands[] = {
+    kPropertyIDBackgroundColor,    kPropertyIDBackgroundImage,
+    kPropertyIDBackgroundPosition, kPropertyIDBackgroundSize,
+    kPropertyIDBackgroundRepeat,   kPropertyIDBackgroundOrigin,
+    kPropertyIDBackgroundClip};
+constexpr CSSPropertyID kFlexLonghands[] = {
+    kPropertyIDFlexGrow, kPropertyIDFlexShrink, kPropertyIDFlexBasis};
+constexpr CSSPropertyID kFlexFlowLonghands[] = {kPropertyIDFlexDirection,
+                                                kPropertyIDFlexWrap};
+constexpr CSSPropertyID kTransitionLonghands[] = {
+    kPropertyIDTransitionProperty, kPropertyIDTransitionDuration,
+    kPropertyIDTransitionDelay, kPropertyIDTransitionTimingFunction};
+constexpr CSSPropertyID kMaskLonghands[] = {
+    kPropertyIDMaskImage,  kPropertyIDMaskPosition, kPropertyIDMaskSize,
+    kPropertyIDMaskRepeat, kPropertyIDMaskOrigin,   kPropertyIDMaskClip};
+constexpr CSSPropertyID kAnimationLonghands[] = {
+    kPropertyIDAnimationName,           kPropertyIDAnimationDuration,
+    kPropertyIDAnimationDelay,          kPropertyIDAnimationTimingFunction,
+    kPropertyIDAnimationIterationCount, kPropertyIDAnimationDirection,
+    kPropertyIDAnimationFillMode,       kPropertyIDAnimationPlayState};
+
+struct ExpandedLonghands {
+  const CSSPropertyID* ids;
+  size_t count;
+};
+
+}  // namespace
+
 const char* GetPropertyNameCStr(CSSPropertyID id) {
   return CSSProperty::GetPropertyNameCStr(id);
 }
@@ -136,6 +205,117 @@ const std::unordered_set<CSSPropertyID> shorthandCSSProperties{
 
 bool CSSProperty::IsShorthandProperty(CSSPropertyID id) {
   return shorthandCSSProperties.find(id) != shorthandCSSProperties.end();
+}
+
+const CSSPropertyID* CSSProperty::GetExpandedLonghands(CSSPropertyID id,
+                                                       size_t* count) {
+  if (count != nullptr) {
+    *count = 0;
+  }
+
+  const ExpandedLonghands* expanded = nullptr;
+  switch (id) {
+    case kPropertyIDMargin:
+      static constexpr ExpandedLonghands kMargin = {
+          kMarginLonghands, std::size(kMarginLonghands)};
+      expanded = &kMargin;
+      break;
+    case kPropertyIDPadding:
+      static constexpr ExpandedLonghands kPadding = {
+          kPaddingLonghands, std::size(kPaddingLonghands)};
+      expanded = &kPadding;
+      break;
+    case kPropertyIDBorderWidth:
+      static constexpr ExpandedLonghands kBorderWidth = {
+          kBorderWidthLonghands, std::size(kBorderWidthLonghands)};
+      expanded = &kBorderWidth;
+      break;
+    case kPropertyIDBorderColor:
+      static constexpr ExpandedLonghands kBorderColor = {
+          kBorderColorLonghands, std::size(kBorderColorLonghands)};
+      expanded = &kBorderColor;
+      break;
+    case kPropertyIDBorderStyle:
+      static constexpr ExpandedLonghands kBorderStyle = {
+          kBorderStyleLonghands, std::size(kBorderStyleLonghands)};
+      expanded = &kBorderStyle;
+      break;
+    case kPropertyIDBorder:
+      static constexpr ExpandedLonghands kBorder = {
+          kBorderLonghands, std::size(kBorderLonghands)};
+      expanded = &kBorder;
+      break;
+    case kPropertyIDBorderRadius:
+      static constexpr ExpandedLonghands kBorderRadius = {
+          kBorderRadiusLonghands, std::size(kBorderRadiusLonghands)};
+      expanded = &kBorderRadius;
+      break;
+    case kPropertyIDBorderTop:
+      static constexpr ExpandedLonghands kBorderTop = {
+          kBorderTopLonghands, std::size(kBorderTopLonghands)};
+      expanded = &kBorderTop;
+      break;
+    case kPropertyIDBorderRight:
+      static constexpr ExpandedLonghands kBorderRight = {
+          kBorderRightLonghands, std::size(kBorderRightLonghands)};
+      expanded = &kBorderRight;
+      break;
+    case kPropertyIDBorderBottom:
+      static constexpr ExpandedLonghands kBorderBottom = {
+          kBorderBottomLonghands, std::size(kBorderBottomLonghands)};
+      expanded = &kBorderBottom;
+      break;
+    case kPropertyIDBorderLeft:
+      static constexpr ExpandedLonghands kBorderLeft = {
+          kBorderLeftLonghands, std::size(kBorderLeftLonghands)};
+      expanded = &kBorderLeft;
+      break;
+    case kPropertyIDOutline:
+      static constexpr ExpandedLonghands kOutline = {
+          kOutlineLonghands, std::size(kOutlineLonghands)};
+      expanded = &kOutline;
+      break;
+    case kPropertyIDBackground:
+      static constexpr ExpandedLonghands kBackground = {
+          kBackgroundLonghands, std::size(kBackgroundLonghands)};
+      expanded = &kBackground;
+      break;
+    case kPropertyIDFlex:
+      static constexpr ExpandedLonghands kFlex = {kFlexLonghands,
+                                                  std::size(kFlexLonghands)};
+      expanded = &kFlex;
+      break;
+    case kPropertyIDFlexFlow:
+      static constexpr ExpandedLonghands kFlexFlow = {
+          kFlexFlowLonghands, std::size(kFlexFlowLonghands)};
+      expanded = &kFlexFlow;
+      break;
+    case kPropertyIDTransition:
+      static constexpr ExpandedLonghands kTransition = {
+          kTransitionLonghands, std::size(kTransitionLonghands)};
+      expanded = &kTransition;
+      break;
+    case kPropertyIDMask:
+      static constexpr ExpandedLonghands kMask = {kMaskLonghands,
+                                                  std::size(kMaskLonghands)};
+      expanded = &kMask;
+      break;
+    case kPropertyIDAnimation:
+      static constexpr ExpandedLonghands kAnimation = {
+          kAnimationLonghands, std::size(kAnimationLonghands)};
+      expanded = &kAnimation;
+      break;
+    default:
+      break;
+  }
+
+  if (!expanded) {
+    return nullptr;
+  }
+  if (count != nullptr) {
+    *count = expanded->count;
+  }
+  return expanded->ids;
 }
 
 CSSPropertyID CSSProperty::GetTimingOptionsPropertyID(

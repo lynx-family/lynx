@@ -139,6 +139,11 @@ FiberElement::FiberElement(const FiberElement &element,
     parsed_styles_map_ = element.parsed_styles_map_;
     updated_inherited_styles_ = element.updated_inherited_styles_;
     layout_styles_ = element.layout_styles_;
+    // clone_resolved_props only carries committed resolved state. The dynamic
+    // source object is treated as a mutation carrier and will be rebuilt lazily
+    // from parsed_dynamic_styles_map_ when a post-clone incremental update
+    // happens.
+    parsed_dynamic_styles_map_ = element.parsed_dynamic_styles_map_;
 
     // FIXME(wujintian): The prop bundle stores the style of incremental
     // updates. If the element flush props has been executed multiple times
@@ -418,36 +423,144 @@ void FiberElement::SetStyleObjects(
   MarkDirty(kDirtyForceUpdate | kDirtyStyleObjects);
 }
 
-void FiberElement::UpdateSimpleStyles(tasm::StyleMap &&style_map) {
-  parsed_styles_map_ = std::move(style_map);
-  UpdateSimpleStyles(parsed_styles_map_);
+void FiberElement::ReplaceDynamicSimpleStyles(
+    style::DynamicStyleObjectRef new_style_object) {
+  const bool has_committed_dynamic = parsed_dynamic_styles_map_.has_value() &&
+                                     !parsed_dynamic_styles_map_->empty();
+  // Pure no-op: no incoming source, no current source, and no committed
+  // dynamic state to clear.
+  if (!new_style_object && !dynamic_simple_object_ && !has_committed_dynamic) {
+    return;
+  }
+
+  dynamic_simple_object_ = std::move(new_style_object);
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
 }
 
-void FiberElement::UpdateSimpleStyles(const tasm::StyleMap &style_map) {
-  std::for_each(
-      style_map.begin(), style_map.end(), [this](const auto &pair) -> void {
-        EXEC_EXPR_FOR_INSPECTOR(
-            if (element_manager_ && element_manager_->IsDomTreeEnabled()) {
-              if (pair.second.IsEmpty()) {
-                data_model()->ResetInlineStyle(pair.first);
-              } else {
-                data_model()->SetInlineStyle(pair.first, pair.second);
-              }
-            });
-        if (pair.second.IsEmpty()) {
-          ResetSimpleStyle(pair.first);
+void FiberElement::AddDynamicSimpleStyles(tasm::StyleMap &&new_styles) {
+  if (new_styles.empty()) {
+    return;
+  }
+
+  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
+      !parsed_dynamic_styles_map_->empty()) {
+    // A resolved-only clone does not keep the dynamic mutation carrier.
+    // Rebuild it from the committed resolved dynamic map on the first
+    // post-clone mutation so incremental updates keep previous dynamic state.
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
+  }
+
+  if (!dynamic_simple_object_) {
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(std::move(new_styles));
+    MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+    return;
+  }
+
+  dynamic_simple_object_->MergeStyleMap(std::move(new_styles));
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+}
+
+void FiberElement::RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id) {
+  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
+      !parsed_dynamic_styles_map_->empty()) {
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
+  }
+  if (!dynamic_simple_object_) {
+    return;
+  }
+
+  if (!dynamic_simple_object_->RemoveStyleValue(id)) {
+    return;
+  }
+
+  if (dynamic_simple_object_->Properties().empty()) {
+    dynamic_simple_object_ = nullptr;
+  }
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+}
+
+void FiberElement::AddDynamicSimpleStyleKV(tasm::CSSPropertyID id,
+                                           tasm::CSSValue &&value) {
+  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
+      !parsed_dynamic_styles_map_->empty()) {
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
+  }
+
+  if (!dynamic_simple_object_) {
+    StyleMap dynamic_styles;
+    dynamic_styles.insert_or_assign(id, std::move(value));
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(std::move(dynamic_styles));
+    MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+    return;
+  }
+
+  dynamic_simple_object_->UpdateStyleMap(id, std::move(value));
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+}
+
+void FiberElement::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
+                                               const tasm::CSSValue &value) {
+  EXEC_EXPR_FOR_INSPECTOR(
+      if (element_manager_ && element_manager_->IsDomTreeEnabled()) {
+        if (value.IsEmpty()) {
+          data_model()->ResetInlineStyle(id);
         } else {
-          if (pair.first == kPropertyIDFontSize) {
-            SetFontSize(pair.second);
-            // FIXME(linxs): to be determined if we need to align with the
-            // process of kDirtyFontSize
-            dirty_ &= ~kDirtyFontSize;
-          } else {
-            this->SetStyleInternal(pair.first, pair.second);
-          }
+          data_model()->SetInlineStyle(id, value);
         }
       });
 
+  if (value.IsEmpty()) {
+    if (id == kPropertyIDFontSize) {
+      ResetFontSize();
+    }
+    ResetStyleInternal(id);
+    return;
+  }
+
+  if (id == kPropertyIDFontSize) {
+    SetFontSize(value);
+    dirty_ &= ~kDirtyFontSize;
+  } else {
+    SetStyleInternal(id, value);
+  }
+}
+
+void FiberElement::ApplySimpleStylesWithoutTail(
+    const tasm::StyleMap &style_map) {
+  std::for_each(style_map.begin(), style_map.end(),
+                [this](const auto &pair) -> void {
+                  ApplySimpleStyleWithoutTail(pair.first, pair.second);
+                });
+}
+
+void FiberElement::ApplyDynamicSimpleStylesWithoutTail(
+    const tasm::StyleMap &dynamic_style_map,
+    const tasm::StyleMap &base_style_map) {
+  std::for_each(dynamic_style_map.begin(), dynamic_style_map.end(),
+                [this, &base_style_map](const auto &pair) -> void {
+                  if (!pair.second.IsEmpty()) {
+                    ApplySimpleStyleWithoutTail(pair.first, pair.second);
+                    return;
+                  }
+
+                  // Empty values in the dynamic layer are tombstones: they stop
+                  // the dynamic override and reveal the current static/base
+                  // value, or fall back to default when base doesn't have it.
+                  if (const auto it = base_style_map.find(pair.first);
+                      it != base_style_map.end()) {
+                    ApplySimpleStyleWithoutTail(pair.first, it->second);
+                  } else {
+                    ApplySimpleStyleWithoutTail(pair.first, CSSValue());
+                  }
+                });
+}
+
+void FiberElement::FinalizeSimpleStyleUpdate() {
   if (has_keyframe_props_changed_) {
     HandleDelayTask([this]() { HandleKeyframePropsChange(); });
     if (!enable_new_animator()) {
@@ -472,16 +585,55 @@ void FiberElement::UpdateSimpleStyles(const tasm::StyleMap &style_map) {
   MarkDirty(kDirtyForceUpdate);
 }
 
-void FiberElement::ResetSimpleStyle(const tasm::CSSPropertyID id) {
-  if (id == kPropertyIDFontSize) {
-    ResetFontSize();
+void FiberElement::UpdateSimpleStyles(tasm::StyleMap &&style_map) {
+  parsed_styles_map_ = std::move(style_map);
+  ApplySimpleStylesWithoutTail(parsed_styles_map_);
+  FinalizeSimpleStyleUpdate();
+}
+
+void FiberElement::UpdateStaticAndDynamicSimpleStyles(
+    tasm::StyleMap &&style_map, tasm::StyleMap &&dynamic_style_map) {
+  parsed_styles_map_ = std::move(style_map);
+  if (dynamic_style_map.empty()) {
+    parsed_dynamic_styles_map_.reset();
+  } else {
+    *parsed_dynamic_styles_map_ = std::move(dynamic_style_map);
   }
-  ResetStyleInternal(id);
-  EXEC_EXPR_FOR_INSPECTOR({
-    if (element_manager_ && element_manager_->IsDomTreeEnabled()) {
-      data_model()->ResetInlineStyle(id);
-    }
-  });
+
+  ApplySimpleStylesWithoutTail(parsed_styles_map_);
+  if (parsed_dynamic_styles_map_.has_value()) {
+    ApplyDynamicSimpleStylesWithoutTail(*parsed_dynamic_styles_map_,
+                                        parsed_styles_map_);
+  }
+  FinalizeSimpleStyleUpdate();
+}
+
+void FiberElement::UpdateDynamicSimpleStyles(tasm::StyleMap &&style_map) {
+  if (style_map.empty()) {
+    parsed_dynamic_styles_map_.reset();
+  } else {
+    *parsed_dynamic_styles_map_ = std::move(style_map);
+  }
+
+  if (parsed_dynamic_styles_map_.has_value()) {
+    ApplyDynamicSimpleStylesWithoutTail(*parsed_dynamic_styles_map_,
+                                        parsed_styles_map_);
+  }
+  FinalizeSimpleStyleUpdate();
+}
+
+void FiberElement::UpdateSimpleStyles(const tasm::StyleMap &style_map) {
+  ApplySimpleStylesWithoutTail(style_map);
+  FinalizeSimpleStyleUpdate();
+}
+
+void FiberElement::ResetSimpleStyle(const tasm::CSSPropertyID id,
+                                    const tasm::CSSValue &value) {
+  ApplySimpleStyleWithoutTail(id, value);
+}
+
+void FiberElement::ResetSimpleStyle(const tasm::CSSPropertyID id) {
+  ApplySimpleStyleWithoutTail(id, CSSValue());
 }
 
 #pragma endregion  // simple styling
@@ -781,25 +933,30 @@ void FiberElement::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
 }
 
 void FiberElement::ResolveSimpleStyles() {
-  if (dirty_ & kDirtyStyleObjects) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, "FiberElement::HandleStyleObjects");
-    if (element_manager_->EnablePropertyBasedSimpleStyle()) {
-      StyleResolver::ResolveStyleObjectsBasedOnExistingMap(
-          parsed_styles_map_, style_objects_ ? style_objects_.get() : nullptr,
-          this);
-    } else {
-      StyleResolver::ResolveStyleObjects(
-          last_style_objects_ ? last_style_objects_.get() : nullptr,
-          style_objects_ ? style_objects_.get() : nullptr, this);
-    }
-
-    if (has_keyframe_props_changed_) {
-      HandleDelayTask([this]() { HandleKeyframePropsChange(); });
-    }
-
-    // Animation and Direction should be handled here
-    dirty_ &= ~kDirtyStyleObjects;
+  const bool static_dirty = (dirty_ & kDirtyStyleObjects) != 0;
+  const bool dynamic_dirty = (dirty_ & kDirtyDynamicStyleObjects) != 0;
+  if (!static_dirty && !dynamic_dirty) {
+    return;
   }
+
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_STYLE_OBJECTS);
+  if (element_manager_->EnablePropertyBasedSimpleStyle()) {
+    StyleResolver::ResolveStyleObjectsBasedOnExistingMap(
+        parsed_styles_map_, style_objects_ ? style_objects_.get() : nullptr,
+        parsed_dynamic_styles_map_.has_value() ? &*parsed_dynamic_styles_map_
+                                               : nullptr,
+        dynamic_simple_object_.get(), static_dirty, dynamic_dirty, this);
+  } else if (static_dirty) {
+    DCHECK(!dynamic_dirty)
+        << "dynamic simple style requires property-based simple style";
+    StyleResolver::ResolveStyleObjects(
+        last_style_objects_ ? last_style_objects_.get() : nullptr,
+        style_objects_ ? style_objects_.get() : nullptr, this);
+  }
+  if (has_keyframe_props_changed_) {
+    HandleDelayTask([this]() { HandleKeyframePropsChange(); });
+  }
+  dirty_ &= ~(kDirtyStyleObjects | kDirtyDynamicStyleObjects);
 }
 
 void FiberElement::ResolveCSSStyles(

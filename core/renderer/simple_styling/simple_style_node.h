@@ -9,11 +9,14 @@
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_value.h"
 
 namespace lynx::style {
 class StyleObject;
+class DynamicStyleObject;
 struct StyleObjectArrayDeleter;
 using StyleObjectRef = fml::RefPtr<StyleObject>;
+using DynamicStyleObjectRef = fml::RefPtr<DynamicStyleObject>;
 
 class SimpleStyleNode {
  public:
@@ -21,8 +24,19 @@ class SimpleStyleNode {
   virtual ~SimpleStyleNode() = default;
   virtual void SetStyleObjects(
       std::unique_ptr<StyleObject*, StyleObjectArrayDeleter> style_object) = 0;
+  // Apply a resolved delta and run the normal single tail.
   virtual void UpdateSimpleStyles(const tasm::StyleMap& style_map) = 0;
+  // Commit and apply resolved static styles.
   virtual void UpdateSimpleStyles(tasm::StyleMap&& style_map) = 0;
+  // Commit resolved static and dynamic styles, then apply the final result.
+  virtual void UpdateStaticAndDynamicSimpleStyles(
+      tasm::StyleMap&& style_map, tasm::StyleMap&& dynamic_style_map) = 0;
+  // Commit resolved dynamic styles, then apply the final result.
+  virtual void UpdateDynamicSimpleStyles(tasm::StyleMap&& style_map) = 0;
+  // Restore to a specific resolved value without triggering the final tail.
+  virtual void ResetSimpleStyle(tasm::CSSPropertyID id,
+                                const tasm::CSSValue& value) = 0;
+  // Restore to the default value without triggering the final tail.
   virtual void ResetSimpleStyle(tasm::CSSPropertyID id) = 0;
 };
 }  // namespace lynx::style

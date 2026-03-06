@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "base/include/value/base_value.h"
-#include "core/renderer/dom/air/testing/air_lepus_context_mock.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -16,13 +16,28 @@ namespace lynx {
 namespace air {
 namespace testing {
 
+class MockRuntime final : public runtime::MTSRuntime {
+ public:
+  MockRuntime()
+      : runtime::MTSRuntime(runtime::ContextType::LepusNGContextType) {}
+
+  lepus::Value CallClosureArgs(
+      const lepus::Value& /*closure*/,
+      const std::vector<lepus::Value>& /*args*/) override {
+    invoked_ = true;
+    return lepus::Value(1);
+  }
+
+  bool invoked_{false};
+};
+
 class LepusCallbackManagerTest : public ::testing::Test {
  public:
   LepusCallbackManagerTest() {}
   ~LepusCallbackManagerTest() override {}
 
   std::unique_ptr<tasm::LepusCallbackManager> lepus_callback_manager;
-  AirMockLepusContext context;
+  MockRuntime context;
 
   void SetUp() override {
     lepus_callback_manager = std::make_unique<tasm::LepusCallbackManager>();
@@ -48,6 +63,7 @@ TEST_F(LepusCallbackManagerTest, InvokeTask) {
   std::vector<lepus::Value> args;
   args.emplace_back(lepus::Value(1));
   lepus_callback_manager->InvokeTask(id_1, args);
+  EXPECT_TRUE(context.invoked_);
   EXPECT_TRUE(lepus_callback_manager->task_map_.empty());
   int64_t id_2 = lepus_callback_manager->CacheTask(
       &context, std::make_unique<lepus::Value>("task2"));
