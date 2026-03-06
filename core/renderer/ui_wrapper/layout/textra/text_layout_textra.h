@@ -37,12 +37,12 @@ class TextLayoutTextra : public TextLayoutImpl {
 
   void Destroy(Element* element) override;
 
-  void BuildParagraphRecursively(Element* element);
+  void BuildParagraphRecursively(Element* element, bool& has_inline_view);
 
  private:
   void ApplyTextStyle(TextElement* element);
   void ApplyParagraphStyle(TextElement* element);
-  void ProcessChildStyleAndProps(Element* child);
+  void ProcessChildStyleAndProps(Element* child, bool& has_inline_view);
   void HandleInlineImageProps(Element* child);
   void HandleInlineViewProps(Element* child);
   void EnsureParagraphListener(Element* element);

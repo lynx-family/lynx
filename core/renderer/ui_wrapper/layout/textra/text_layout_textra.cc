@@ -38,7 +38,7 @@ class TextraInlineView : public text::InlineView {
     return {size.width_, size.height_, size.baseline_};
   }
   void Align(float x, float y) override {
-    child_->slnode()->AlignmentByPlatform(x, y);
+    child_->slnode()->AlignmentByPlatform(y, x);
   }
 
  private:
@@ -206,7 +206,8 @@ void TextLayoutTextra::ApplyParagraphStyle(TextElement* text_element) {
   }
 }
 
-void TextLayoutTextra::BuildParagraphRecursively(Element* element) {
+void TextLayoutTextra::BuildParagraphRecursively(Element* element,
+                                                 bool& has_inline_view) {
   if (element->is_text()) {
     // no raw-text case
     TextElement* text_element = static_cast<TextElement*>(element);
@@ -220,7 +221,7 @@ void TextLayoutTextra::BuildParagraphRecursively(Element* element) {
 
   for (auto* child = element->first_render_child(); child;
        child = child->next_render_sibling()) {
-    ProcessChildStyleAndProps(child);
+    ProcessChildStyleAndProps(child, has_inline_view);
   }
 }
 
@@ -333,7 +334,8 @@ void TextLayoutTextra::HandleInlineViewProps(Element* element) {
   paragraph_builder_->AddInlineView(std::move(inline_view));
 }
 
-void TextLayoutTextra::ProcessChildStyleAndProps(Element* element) {
+void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
+                                                 bool& has_inline_view) {
   auto* child = static_cast<FiberElement*>(element);
   if (child->is_raw_text()) {
     RawTextElement* rawText = static_cast<RawTextElement*>(child);
@@ -342,7 +344,7 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element) {
   } else if (child->is_text()) {
     // inline text
     paragraph_builder_->PushTextStyle();
-    BuildParagraphRecursively(child);
+    BuildParagraphRecursively(child, has_inline_view);
     paragraph_builder_->PopTextStyle();
 
   } else if (child->is_image()) {
@@ -353,10 +355,11 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element) {
     paragraph_builder_->PushTextStyle();
     HandleInlineViewProps(child);
     paragraph_builder_->PopTextStyle();
+    has_inline_view = true;
   } else if (child->is_wrapper()) {
     for (auto* wrap_child = child->first_render_child(); wrap_child;
          wrap_child = wrap_child->next_render_sibling()) {
-      ProcessChildStyleAndProps(wrap_child);
+      ProcessChildStyleAndProps(wrap_child, has_inline_view);
     }
   }
 }
@@ -428,8 +431,10 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
 
   // Apply inline element's styles
   paragraph_builder_->PushTextStyle();
-  BuildParagraphRecursively(text_element);
+  bool has_inline_view = false;
+  BuildParagraphRecursively(text_element, has_inline_view);
   paragraph_builder_->PopTextStyle();
+  text_element->set_need_layout_children(has_inline_view);
 
   auto paragraph = paragraph_builder_->BuildParagraph();
   auto it_para = paragraphs_.find(element->impl_id());
