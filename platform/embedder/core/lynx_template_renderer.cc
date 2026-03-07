@@ -358,9 +358,11 @@ void LynxTemplateRenderer::SendGlobalEvent(const std::string& name,
   if (!runtime_proxy_) {
     return;
   }
+  auto params_array = lepus::CArray::Create();
+  params_array->push_back(params);
   auto args = lepus::CArray::Create();
   args->emplace_back(name);
-  args->push_back(params);
+  args->emplace_back(std::move(params_array));
   runtime_proxy_->CallJSFunction(
       "GlobalEventEmitter", "emit",
       std::make_unique<pub::ValueImplLepus>(lepus_value(args)));
