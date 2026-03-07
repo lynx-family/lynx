@@ -20,14 +20,14 @@ namespace lepus {
 namespace test {
 
 namespace {
-static lepus::Value TestCFunction(lepus::Context* ctx, lepus::Value*, int) {
+static lepus::Value TestCFunction(lepus::MTSContext* ctx, lepus::Value*, int) {
   return lepus::Value("test");
 }
 }  // namespace
 
 class LepusValueTest : public ::testing::Test {
  protected:
-  LepusValueTest() : quick_ctx_(QuickContext(false)) {}
+  LepusValueTest() : quick_ctx_(QuickContext()) {}
   ~LepusValueTest() = default;
 
   QuickContext quick_ctx_;

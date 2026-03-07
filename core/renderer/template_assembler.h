@@ -289,7 +289,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void AddFont(const lepus::Value& font);
 
   // Invoked if engine thread switched;
-  void PushRuntimeValidTid();
+  void BindMTSRuntimeThread();
 
   // Render page with page data that rendered on server side.
   void RenderPageWithSSRData(

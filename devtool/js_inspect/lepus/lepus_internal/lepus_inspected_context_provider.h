@@ -18,7 +18,7 @@ class LepusInspectedContext;
 class LepusInspectedContextProvider {
  public:
   static std::shared_ptr<LepusInspectedContext> GetInspectedContext(
-      lynx::lepus::Context* context, LepusInspectorNGImpl* inspector,
+      lynx::lepus::MTSContext* context, LepusInspectorNGImpl* inspector,
       const std::string& name);
 };
 

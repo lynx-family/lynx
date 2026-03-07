@@ -71,14 +71,6 @@ bool RepackBinaryReader::DecodeHeader() {
   }
   compile_options_.target_sdk_version_ = target_sdk_version;
 
-  if (is_lepusng) {
-    std::shared_ptr<lepus::Context> ctx = lepus::Context::CreateContext(true);
-    context_ = ctx.get();
-    if (!context_) {
-      error_message_ = "Cannot create correct lepus context";
-      return false;
-    }
-  }
   return true;
 }
 

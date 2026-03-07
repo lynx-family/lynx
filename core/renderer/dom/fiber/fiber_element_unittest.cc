@@ -1618,7 +1618,8 @@ TEST_P(FiberElementTest,
   auto default_entry = std::make_shared<TemplateEntry>();
   tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
 
-  auto ctx = std::make_shared<lepus::QuickContext>();
+  auto ctx =
+      lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
   tasm->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(ctx);
 
   std::string js_source = R"(
@@ -1628,7 +1629,7 @@ TEST_P(FiberElementTest,
     }
   )";
 
-  lepus::BytecodeGenerator::GenerateBytecode(ctx.get(), js_source,
+  lepus::BytecodeGenerator::GenerateBytecode(ctx->GetMTSContext(), js_source,
                                              ctx->GetSdkVersion(), "");
   ctx->Execute();
 

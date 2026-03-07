@@ -5,6 +5,8 @@
 
 #include "core/runtime/lepus/tasks/lepus_callback_manager.h"
 
+#include <vector>
+
 #include "base/include/value/base_value.h"
 #include "core/renderer/dom/air/testing/air_lepus_context_mock.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
@@ -43,7 +45,9 @@ TEST_F(LepusCallbackManagerTest, InvokeTask) {
   int64_t id_1 = lepus_callback_manager->CacheTask(
       &context, std::make_unique<lepus::Value>("task1"));
   EXPECT_TRUE(id_1 == 1);
-  lepus_callback_manager->InvokeTask(id_1, lepus::Value(1));
+  std::vector<lepus::Value> args;
+  args.emplace_back(lepus::Value(1));
+  lepus_callback_manager->InvokeTask(id_1, args);
   EXPECT_TRUE(lepus_callback_manager->task_map_.empty());
   int64_t id_2 = lepus_callback_manager->CacheTask(
       &context, std::make_unique<lepus::Value>("task2"));

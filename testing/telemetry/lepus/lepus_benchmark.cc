@@ -55,7 +55,7 @@ static const char* kCFuncEmptyFunc = "_EmptyFunc";
 static const char* emptyFuncRetVal = "empty";
 
 #define NORMAL_FUNCTION(name) \
-  static lepus::Value name(lepus::Context* ctx, lepus::Value* argv, int argc)
+  static lepus::Value name(lepus::MTSContext* ctx, lepus::Value* argv, int argc)
 
 class BenchmarkRendererFunctions {
  public:
@@ -89,7 +89,7 @@ static LEPUSValue emptyFuncNG(LEPUSContext* ctx, LEPUSValueConst this_val,
                lepus::QuickContext::GetFromJsContext(ctx), largv, argc));
 }
 
-static void RegisterNGEmptyFunction(lepus::Context* ctx) {
+static void RegisterNGEmptyFunction(lepus::QuickContext* ctx) {
   lepus::RegisterNGCFunction(ctx, kCFuncEmptyFunc, emptyFuncNG);
 }
 

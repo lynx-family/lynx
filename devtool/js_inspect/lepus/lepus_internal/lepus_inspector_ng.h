@@ -13,7 +13,7 @@
 
 namespace lynx {
 namespace lepus {
-class Context;
+class MTSContext;
 }  // namespace lepus
 }  // namespace lynx
 
@@ -37,7 +37,7 @@ class LepusInspectorClientNG {
 class LepusInspectorNG {
  public:
   static std::unique_ptr<LepusInspectorNG> Create(
-      lynx::lepus::Context* context, LepusInspectorClientNG* client,
+      lynx::lepus::MTSContext* context, LepusInspectorClientNG* client,
       const std::string& name);
   virtual ~LepusInspectorNG() = default;
   class LepusChannel {

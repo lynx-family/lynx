@@ -40,7 +40,7 @@ RestrictedValue Parse(VMContext* context) {
   return RestrictedValue(res);
 }
 
-void RegisterJSONAPI(Context* ctx) {
+void RegisterJSONAPI(VMContext* ctx) {
   static BuiltinFunctionTable apis(BuiltinFunctionTable::Json,
                                    {
                                        {"stringify", &Stringify},

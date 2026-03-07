@@ -1004,7 +1004,7 @@ static RestrictedValue Split(VMContext* context) {
   return res;
 }
 
-void RegisterStringAPI(Context* ctx) {
+void RegisterStringAPI(VMContext* ctx) {
   static BuiltinFunctionTable apis(BuiltinFunctionTable::String,
                                    {
                                        {"indexOf", &IndexOf},

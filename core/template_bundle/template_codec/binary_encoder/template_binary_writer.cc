@@ -635,9 +635,9 @@ LepusDebugInfo TemplateBinaryWriter::GetDebugInfo() const {
 
   if (context_->IsLepusNGContext()) {
     info.debug_info_.source_code =
-        lepus::QuickContext::Cast(context_)->GetDebugSourceCode();
+        lepus::Context::ToQuickContext(context_)->GetDebugSourceCode();
     info.debug_info_.top_level_function =
-        lepus::QuickContext::Cast(context_)->GetTopLevelFunction();
+        lepus::Context::ToQuickContext(context_)->GetTopLevelFunction();
   } else {
     info.lepus_funcs_ = GetContextFunc();
   }
@@ -707,7 +707,7 @@ void TemplateBinaryWriter::EncodeCustomSection() {
             break;
           case CustomSectionEncodingType::JS_BYTECODE: {
             auto error = lepus::BytecodeGenerator::GenerateBytecode(
-                context_, content_iter->second.StdString(),
+                context_->GetMTSContext(), content_iter->second.StdString(),
                 compile_options_.target_sdk_version_);
             if (!error.empty()) {
               throw lepus::CompileException(error.c_str());
@@ -716,7 +716,7 @@ void TemplateBinaryWriter::EncodeCustomSection() {
               auto debug_info = GetDebugInfo();
               lepus_debug_info_.AddDebugInfo(
                   it.name.GetString(), debug_info,
-                  static_cast<lepus::QuickContext*>(context_));
+                  lepus::Context::ToQuickContext(context_));
             }
             ContextBinaryWriter::encode();
             break;
@@ -848,16 +848,15 @@ void TemplateBinaryWriter::EncodeLepusSection() {
         stream_.get(), binary_info_, offset_map_, section_size_info_);
 
     auto error = lepus::BytecodeGenerator::GenerateBytecode(
-        context_, lepus_code_, compile_options_.target_sdk_version_,
-        lepus_code_filename_);
+        context_->GetMTSContext(), lepus_code_,
+        compile_options_.target_sdk_version_, lepus_code_filename_);
 
     if (context_->IsLepusNGContext()) {
       auto debug_info = GetDebugInfo();
       // "lepusNG_debug_info" is hardcoded in various places in lynx sdk, tasm &
       // oliver. Use this name for now.
-      lepus_debug_info_.AddDebugInfo(
-          "lepusNG_debug_info", debug_info,
-          static_cast<lepus::QuickContext*>(context_));
+      lepus_debug_info_.AddDebugInfo("lepusNG_debug_info", debug_info,
+                                     lepus::Context::ToQuickContext(context_));
     }
 
     // if error occurred in Compile, terminate the encode process.
@@ -886,7 +885,8 @@ void TemplateBinaryWriter::EncodeLepusChunkSection() {
         auto& chunk = it.second;
 
         auto error = lepus::BytecodeGenerator::GenerateBytecode(
-            context_, chunk, compile_options_.target_sdk_version_, path);
+            context_->GetMTSContext(), chunk,
+            compile_options_.target_sdk_version_, path);
 
         // if error occurred in Compile, terminate the encode process.
         if (!error.empty()) {
@@ -896,7 +896,7 @@ void TemplateBinaryWriter::EncodeLepusChunkSection() {
         if (context_->IsLepusNGContext()) {
           auto debug_info = GetDebugInfo();
           lepus_debug_info_.AddDebugInfo(
-              path, debug_info, static_cast<lepus::QuickContext*>(context_));
+              path, debug_info, lepus::Context::ToQuickContext(context_));
         }
 
         ContextBinaryWriter::encode();

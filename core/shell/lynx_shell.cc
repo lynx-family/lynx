@@ -448,6 +448,7 @@ void LynxShell::InitRuntime(
                 ctx.event()->add_debug_annotations(kTaskName,
                                                    kJSTaskInitRuntime);
               });
+
 #if ENABLE_TESTBENCH_RECORDER
   int64_t record_id = reinterpret_cast<int64_t>(this);
   engine_actor_->ActLite(
@@ -469,6 +470,7 @@ void LynxShell::InitRuntime(
     InitRuntimeWithRuntimeDisabled(vsync_monitor);
     return;
   }
+
   fml::RefPtr<fml::TaskRunner> js_task_runner;
   js_task_runner = runners_.GetJSTaskRunner();
   auto external_resource_loader =
@@ -1274,6 +1276,13 @@ void LynxShell::OnEnterForeground() {
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value()));
   tasm_mediator_->DispatchMessageEvent(std::move(event));
+
+  auto lepus_event = fml::MakeRefCounted<runtime::MessageEvent>(
+      runtime::kMessageEventTypeOnAppEnterForeground,
+      runtime::ContextProxy::Type::kNative,
+      runtime::ContextProxy::Type::kCoreContext,
+      std::make_unique<pub::ValueImplLepus>(lepus::Value()));
+  DispatchMessageEvent(std::move(lepus_event));
 }
 
 void LynxShell::OnEnterBackground() {
@@ -1290,6 +1299,12 @@ void LynxShell::OnEnterBackground() {
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value()));
   tasm_mediator_->DispatchMessageEvent(std::move(event));
+  auto lepus_event = fml::MakeRefCounted<runtime::MessageEvent>(
+      runtime::kMessageEventTypeOnAppEnterBackground,
+      runtime::ContextProxy::Type::kNative,
+      runtime::ContextProxy::Type::kCoreContext,
+      std::make_unique<pub::ValueImplLepus>(lepus::Value()));
+  DispatchMessageEvent(std::move(lepus_event));
 }
 
 void LynxShell::UpdateI18nResource(const std::string& key,
@@ -1326,7 +1341,7 @@ void LynxShell::AttachEngineToUIThread() {
   if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
     engine_actor_->ActEmergency([](auto& engine) {
       // To enable MTS runtime tid check;
-      engine->GetTasm()->PushRuntimeValidTid();
+      engine->GetTasm()->BindMTSRuntimeThread();
     });
   }
   if (engine_thread_switch_) {
@@ -1354,7 +1369,7 @@ void LynxShell::DetachEngineFromUIThread() {
   if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
     engine_actor_->Act([](auto& engine) {
       // To enable MTS runtime tid check;
-      engine->GetTasm()->PushRuntimeValidTid();
+      engine->GetTasm()->BindMTSRuntimeThread();
     });
   }
   if (engine_thread_switch_) {

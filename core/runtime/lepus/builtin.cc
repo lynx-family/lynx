@@ -21,60 +21,61 @@
 namespace lynx {
 namespace lepus {
 
-void RegisterCFunction(Context* context, const char* name, CFunction function) {
-  VMContext::Cast(context)->SetGlobalData(name, lepus::Value(function));
+void RegisterCFunction(lepus::VMContext* context, const char* name,
+                       CFunction function) {
+  context->SetGlobalData(name, lepus::Value(function));
 }
 
-void RegisterBuiltinFunction(Context* context, const char* name,
+void RegisterBuiltinFunction(lepus::VMContext* context, const char* name,
                              CFunction function) {
-  VMContext::Cast(context)->SetBuiltinData(name, lepus::Value(function));
+  context->SetBuiltinData(name, lepus::Value(function));
 }
 
-void RegisterBuiltinFunction(Context* context, const char* name,
+void RegisterBuiltinFunction(lepus::VMContext* context, const char* name,
                              CFunctionBuiltin function) {
-  VMContext::Cast(context)->SetBuiltinData(name, lepus::Value(function));
+  context->SetBuiltinData(name, lepus::Value(function));
 }
 
-void RegisterBuiltinFunctionTable(Context* context, const char* name,
+void RegisterBuiltinFunctionTable(lepus::VMContext* context, const char* name,
                                   BuiltinFunctionTable* function_table) {
-  VMContext::Cast(context)->builtin()->Set(name, lepus::Value(function_table));
+  context->builtin()->Set(name, lepus::Value(function_table));
 }
 
-void RegisterFunctionTable(Context* context, const char* name,
+void RegisterFunctionTable(lepus::VMContext* context, const char* name,
                            fml::RefPtr<Dictionary> table) {
-  VMContext::Cast(context)->global()->Set(name, lepus::Value(std::move(table)));
+  context->global()->Set(name, lepus::Value(std::move(table)));
 }
 
-void RegisterFunctionTable(Context* context, const char* name,
+void RegisterFunctionTable(lepus::VMContext* context, const char* name,
                            BuiltinFunctionTable* function_table) {
-  VMContext::Cast(context)->global()->Set(name, lepus::Value(function_table));
+  context->global()->Set(name, lepus::Value(function_table));
 }
 
-void RegisterTableFunction(Context* context,
+void RegisterTableFunction(VMContext* context,
                            const fml::RefPtr<Dictionary>& table,
                            const char* name, CFunction function) {
   table->SetValue(name, function);
 }
 
-void RegisterTableFunction(Context* context,
+void RegisterTableFunction(VMContext* context,
                            const fml::RefPtr<Dictionary>& table,
                            const char* name, CFunctionBuiltin function) {
   table->SetValue(name, function);
 }
 
-void RegisterBuiltin(Context* ctx) {
+void RegisterBuiltin(lepus::VMContext* context) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, REGISTER_BUILD_IN);
-  RegisterBaseAPI(ctx);
-  RegisterStringAPI(ctx);
-  RegisterMathAPI(ctx);
-  RegisterDateAPI(ctx);
-  RegisterJSONAPI(ctx);
+  RegisterBaseAPI(context);
+  RegisterStringAPI(context);
+  RegisterMathAPI(context);
+  RegisterDateAPI(context);
+  RegisterJSONAPI(context);
   if (lynx::tasm::Config::IsHigherOrEqual(
-          reinterpret_cast<VMContext*>(ctx)->GetSdkVersion(),
+          reinterpret_cast<VMContext*>(context)->GetSdkVersion(),
           FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION)) {
-    RegisterLepusDateAPI(ctx);
-    RegisterFunctionAPI(ctx);
-    RegisterTableAPI(ctx);
+    RegisterLepusDateAPI(context);
+    RegisterFunctionAPI(context);
+    RegisterTableAPI(context);
   }
 }
 

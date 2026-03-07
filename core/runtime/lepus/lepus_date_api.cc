@@ -205,7 +205,7 @@ static RestrictedValue GetTimeZoneOffset(VMContext* context) {
   return CDate::GetTimeZoneOffset();
 }
 
-void RegisterLepusDateAPI(Context* ctx) {
+void RegisterLepusDateAPI(VMContext* ctx) {
   static BuiltinFunctionTable apis(
       BuiltinFunctionTable::LepusDate,
       {

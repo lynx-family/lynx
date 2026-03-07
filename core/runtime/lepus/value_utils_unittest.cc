@@ -13,6 +13,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/runtime/lepus/builtin.h"
 #include "core/runtime/lepus/bytecode_generator.h"
+#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/runtime/lepus/lepus_error_helper.h"
 #include "core/runtime/lepus/vm_context.h"
@@ -599,13 +600,16 @@ TEST_F(LepusValueMethods, TestLepusRefConstructGC) {
 }
 
 TEST_F(LepusValueMethods, TestIteratorJsValue) {
+  auto context =
+      lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
+  auto quick_context = context->ToQuickContext(context.get());
   LEPUSContext* ctx = ctx_.context();
 
   std::string js_source =
       "let obj = { prop1: [1, 2, 'Lynx', { prop1_1: 'hello world' }, "
       "['nihaozhongguo', undefined, null,]], prop2: 'lepus' };";
   lepus::BytecodeGenerator::GenerateBytecode(&ctx_, js_source, "");
-  ctx_.Execute();
+  quick_context->Execute();
 
   lepus::Value js_object = MK_JS_LEPUS_VALUE(ctx, ctx_.SearchGlobalData("obj"));
   lepus::Value lepus_object = js_object.ToLepusValue();
@@ -629,14 +633,15 @@ TEST_F(LepusValueMethods, TestIteratorJsValue) {
   lepus::Value lepus_nested_jsobject(lepus::Dictionary::Create());
   lepus_nested_jsobject.SetProperty("jsvalue", js_object);
 
-  lepus::Value js_nested_jsobject(lepus::LEPUSValueHelper::CreateObject(&ctx_));
+  lepus::Value js_nested_jsobject(
+      lepus::LEPUSValueHelper::CreateObject(context.get()));
 
   js_nested_jsobject.SetProperty("jsvalue", js_object);
 
   ASSERT_TRUE(lepus_nested_jsobject == js_nested_jsobject);
 
   LEPUSValue lepusref = lepus::LEPUSValueHelper::ToJsValue(ctx, v1_);
-  if (LEPUS_IsGCMode(ctx_.context())) {
+  if (LEPUS_IsGCMode(quick_context->context())) {
     HandleScope func_scope(ctx, &lepusref, HANDLE_TYPE_LEPUS_VALUE);
     lepus::LEPUSValueHelper::SetProperty(
         ctx, WRAP_AS_JS_VALUE(js_nested_jsobject.value()), "lepusref",
@@ -678,10 +683,13 @@ TEST_F(LepusValueMethods, TestIteratorJsValue) {
 }
 
 TEST_F(LepusValueMethods, CreateJsObject) {
-  lepus::Value jsobject = lepus::LEPUSValueHelper::CreateObject(&ctx_);
+  auto quick_context =
+      lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
+  lepus::Value jsobject =
+      lepus::LEPUSValueHelper::CreateObject(quick_context.get());
 
-  jsobject.SetProperty("child_object",
-                       lepus::LEPUSValueHelper::CreateObject(&ctx_));
+  jsobject.SetProperty("child_object", lepus::LEPUSValueHelper::CreateObject(
+                                           quick_context.get()));
 
   ASSERT_TRUE(jsobject.IsObject());
 }
@@ -1136,18 +1144,20 @@ TEST_F(LepusValueMethods, ToLepusValueNested) {
 }
 
 TEST_F(LepusValueMethods, UpdateTopLevelVariable) {
-  lepus::Value gobj(lepus::Dictionary::Create());
-  gobj.SetProperty("prop1", lepus::Value("hello world"));
+  lepus::Value obj(lepus::Dictionary::Create());
+  obj.SetProperty("prop1", lepus::Value("hello world"));
 
-  ctx_.UpdateTopLevelVariable("obj", gobj);
+  auto path = lepus::ParseValuePath("obj");
+  ctx_.UpdateTopLevelVariableByPath(path, obj);
 
   lepus::Value arr(lepus::CArray::Create());
 
   arr.SetProperty(0, lepus::Value("Lynx"));
 
-  ctx_.UpdateTopLevelVariable("obj.array", arr);
+  path = lepus::ParseValuePath("obj.array");
+  ctx_.UpdateTopLevelVariableByPath(path, arr);
 
-  ASSERT_TRUE(gobj.GetProperty("array") == arr);
+  ASSERT_TRUE(obj.GetProperty("array") == arr);
 }
 
 static void LepusGetIdxFromAtom(LEPUSAtom prop, int32_t& idx) {
@@ -2899,7 +2909,7 @@ TEST_F(LepusValueMethods, TestRefCountedValueConvertToJSValue) {
   ctx_.RegisterGlobalProperty("array",
                               lepus::LEPUSValueHelper::ToJsValue(ctx, array));
 
-  static auto lepus_func = [&](lepus::Context* ctx, lepus::Value* argv,
+  static auto lepus_func = [&](lepus::MTSContext* ctx, lepus::Value* argv,
                                int32_t argc) {
     auto idx = argv[1].Number();
     if (array.GetProperty(idx) != argv[0]) {
@@ -3091,7 +3101,7 @@ TEST_F(LepusValueMethods, DeleteObjectProperty) {
 }
 
 TEST(ReportFatalError, VMContextTest) {
-  auto report_fatal_error = [](lepus::Context* ctx, lepus::Value* arg,
+  auto report_fatal_error = [](lepus::MTSContext* ctx, lepus::Value* arg,
                                int argc) {
     if (!arg->IsString()) {
       ctx->ReportFatalError("args is not string", false,
@@ -3154,7 +3164,7 @@ TEST(ReportFatalError, VMContextTest) {
 }
 
 TEST(ReportFatalError, VMContextTest2) {
-  auto report_fatal_error = [](lepus::Context* ctx, lepus::Value* arg,
+  auto report_fatal_error = [](lepus::MTSContext* ctx, lepus::Value* arg,
                                int argc) {
     if (!arg->IsString()) {
       return ctx->ReportFatalError("args is not string", false,

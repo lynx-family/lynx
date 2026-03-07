@@ -50,19 +50,21 @@ class TestUtils {
 
   static void RegisterBuiltin(lepus::Context* ctx) {
     if (ctx->IsVMContext()) {
-      ctx->Initialize();
-      static_cast<lepus::VMContext*>(ctx)->SetClosureFix(true);
-      lepus::RegisterCFunction(ctx, "Assert", Assert);
-      lepus::RegisterCFunction(ctx, "print", Print);
-      lepus::RegisterCFunction(ctx, "setFlag", SetFlag);
-      lepus::RegisterCFunction(ctx, "typeof", Typeof);
+      lepus::VMContext* vm_ctx = lepus::Context::ToVMContext(ctx);
+      vm_ctx->Initialize();
+      vm_ctx->SetClosureFix(true);
+      lepus::RegisterCFunction(vm_ctx, "Assert", Assert);
+      lepus::RegisterCFunction(vm_ctx, "print", Print);
+      lepus::RegisterCFunction(vm_ctx, "setFlag", SetFlag);
+      lepus::RegisterCFunction(vm_ctx, "typeof", Typeof);
     } else {
-      lepus::RegisterNGCFunction(ctx, "Assert", Assert);
+      lepus::RegisterNGCFunction(lepus::Context::ToQuickContext(ctx), "Assert",
+                                 Assert);
     }
   }
 
  private:
-  static lepus::Value Assert(lepus::Context* context, lepus::Value* val,
+  static lepus::Value Assert(lepus::MTSContext* context, lepus::Value* val,
                              int argc) {
     if (val->IsTrue()) {
       return lepus::Value();
@@ -71,16 +73,16 @@ class TestUtils {
       abort();
     }
   }
-  static lepus::Value Print(lepus::Context* context, lepus::Value* val,
+  static lepus::Value Print(lepus::MTSContext* context, lepus::Value* val,
                             int params_count) {
     for (long i = 0; i < params_count; i++) {
-      lepus::Value v(*lepus::VMContext::Cast(context)->GetParam(i));
+      lepus::Value v(*static_cast<lepus::VMContext*>(context)->GetParam(i));
       v.Print();
     }
     return lepus::Value();
   }
 
-  static lepus::Value Typeof(lepus::Context* context, lepus::Value* val,
+  static lepus::Value Typeof(lepus::MTSContext* context, lepus::Value* val,
                              int argc) {
     switch (val->Type()) {
       case lepus::ValueType::Value_Nil:
@@ -119,11 +121,11 @@ class TestUtils {
     return *val;
   }
 
-  static lepus::Value SetFlag(lepus::Context* context, lepus::Value* parm1,
+  static lepus::Value SetFlag(lepus::MTSContext* context, lepus::Value* parm1,
                               int argc) {
     if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
-      lepus::VMContext::Cast(context)->SetNullPropAsUndef(
-          lepus::VMContext::Cast(context)->GetParam(1)->Bool());
+      static_cast<lepus::VMContext*>(context)->SetNullPropAsUndef(
+          static_cast<lepus::VMContext*>(context)->GetParam(1)->Bool());
     }
     return lepus::Value();
   }
@@ -207,7 +209,10 @@ class TemplateBinaryReaderTest : public test::DataBindingShell,
  public:
   TemplateBinaryReaderTest(std::unique_ptr<lepus::InputStream> stream,
                            bool is_lepusng_binary)
-      : TemplateEntry{lepus::Context::CreateContext(is_lepusng_binary),
+      : TemplateEntry{lepus::Context::CreateContext(
+                          is_lepusng_binary
+                              ? lepus::ContextType::LepusNGContextType
+                              : lepus::ContextType::VMContextType),
                       target_sdk_version},
         TemplateBinaryReader(test::DataBindingShell::tasm_,
                              static_cast<TemplateEntry*>(this),
@@ -236,11 +241,12 @@ TEST_F(ContextBinaryReaderTest, LynxBinaryReaderLepus) {
   for (const auto& test_file : all_test_file) {
     std::cout << "[ContextDecoderTest] test file: " << test_file << std::endl;
     auto src = TestUtils::ReadFileFromPath(test_file);
-    auto vm_ctx = lepus::VMContext();
-    TestUtils::RegisterBuiltin(&vm_ctx);
-    lepus::BytecodeGenerator::GenerateBytecode(&vm_ctx, src,
+    auto vm_ctx =
+        lepus::Context::CreateContext(lepus::ContextType::VMContextType);
+    TestUtils::RegisterBuiltin(vm_ctx.get());
+    lepus::BytecodeGenerator::GenerateBytecode(vm_ctx->GetMTSContext(), src,
                                                target_sdk_version);
-    auto binary_writer = ContextBinaryWriterTest(&vm_ctx);
+    auto binary_writer = ContextBinaryWriterTest(vm_ctx.get());
     binary_writer.encode();
     auto byte_array =
         const_cast<lepus::OutputStream*>(binary_writer.stream())->byte_array();
@@ -250,7 +256,7 @@ TEST_F(ContextBinaryReaderTest, LynxBinaryReaderLepus) {
         false);
     ASSERT_TRUE(binary_reader.DecodeContextTest());
     std::shared_ptr<lepus::Context> decode_ctx =
-        std::make_shared<lepus::VMContext>();
+        lepus::Context::CreateContext(lepus::ContextType::VMContextType);
     auto entry = TemplateEntry(decode_ctx, target_sdk_version);
     TestUtils::RegisterBuiltin(decode_ctx.get());
     ASSERT_TRUE(decode_ctx->DeSerialize(
@@ -266,10 +272,11 @@ TEST_F(ContextBinaryReaderTest, LynxBinaryReaderLepusNG) {
   for (const auto& test_file : all_test_file) {
     std::cout << "[ContextDecoderTest] test file: " << test_file << std::endl;
     auto src = TestUtils::ReadFileFromPath(test_file);
-    auto vm_ctx = lepus::QuickContext();
-    lepus::BytecodeGenerator::GenerateBytecode(&vm_ctx, src,
+    auto vm_ctx =
+        lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
+    lepus::BytecodeGenerator::GenerateBytecode(vm_ctx->GetMTSContext(), src,
                                                target_sdk_version);
-    auto binary_writer = ContextBinaryWriterTest(&vm_ctx);
+    auto binary_writer = ContextBinaryWriterTest(vm_ctx.get());
     binary_writer.encode();
     auto byte_array =
         const_cast<lepus::OutputStream*>(binary_writer.stream())->byte_array();
@@ -279,7 +286,7 @@ TEST_F(ContextBinaryReaderTest, LynxBinaryReaderLepusNG) {
         true);
     ASSERT_TRUE(binary_reader.DecodeContextTest());
     std::shared_ptr<lepus::Context> decode_ctx =
-        std::make_shared<lepus::QuickContext>();
+        lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
     TestUtils::RegisterBuiltin(decode_ctx.get());
     auto entry = TemplateEntry(decode_ctx, target_sdk_version);
     ASSERT_TRUE(entry.GetVm()->DeSerialize(
@@ -297,11 +304,12 @@ TEST_F(ContextBinaryReaderTest, DISABLED_TemplateBinaryReaderLepus) {
   for (const auto& test_file : all_test_file) {
     std::cout << "[ContextDecoderTest] test file: " << test_file << std::endl;
     auto src = TestUtils::ReadFileFromPath(test_file);
-    auto vm_ctx = lepus::VMContext();
-    TestUtils::RegisterBuiltin(&vm_ctx);
-    lepus::BytecodeGenerator::GenerateBytecode(&vm_ctx, src,
+    auto vm_ctx =
+        lepus::Context::CreateContext(lepus::ContextType::VMContextType);
+    TestUtils::RegisterBuiltin(vm_ctx.get());
+    lepus::BytecodeGenerator::GenerateBytecode(vm_ctx->GetMTSContext(), src,
                                                target_sdk_version);
-    auto binary_writer = ContextBinaryWriterTest(&vm_ctx);
+    auto binary_writer = ContextBinaryWriterTest(vm_ctx.get());
     binary_writer.encode();
     auto byte_array =
         const_cast<lepus::OutputStream*>(binary_writer.stream())->byte_array();
@@ -322,11 +330,12 @@ TEST_F(ContextBinaryReaderTest, DISABLED_TemplateBinaryReaderLepusNG) {
   for (const auto& test_file : all_test_file) {
     std::cout << "[ContextDecoderTest] test file: " << test_file << std::endl;
     auto src = TestUtils::ReadFileFromPath(test_file);
-    auto vm_ctx = lepus::QuickContext();
-    TestUtils::RegisterBuiltin(&vm_ctx);
-    lepus::BytecodeGenerator::GenerateBytecode(&vm_ctx, src,
+    auto vm_ctx =
+        lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
+    TestUtils::RegisterBuiltin(vm_ctx.get());
+    lepus::BytecodeGenerator::GenerateBytecode(vm_ctx->GetMTSContext(), src,
                                                target_sdk_version);
-    auto binary_writer = ContextBinaryWriterTest(&vm_ctx);
+    auto binary_writer = ContextBinaryWriterTest(vm_ctx.get());
     binary_writer.encode();
     auto byte_array =
         const_cast<lepus::OutputStream*>(binary_writer.stream())->byte_array();

@@ -12,6 +12,7 @@
 #include "core/public/page_options.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/lepus/context.h"
+#include "core/runtime/lepus/mts_context.h"
 #include "core/runtime/profile/runtime_profiler.h"
 
 #ifdef __cplusplus
@@ -54,23 +55,25 @@ class LEPUSRuntimeData {
 
 // use quickjs enginer as lepus context
 class QuickContext : private LEPUSRuntimeData,
-                     public Context,
+                     public MTSContext,
                      public GCObserver {
  public:
-  static QuickContext* Cast(Context* context);
-  QuickContext(bool disable_tracing_gc = false, int runtime_mode = 0,
+  QuickContext(std::shared_ptr<MTSContextDelegate> mts_context_delegate,
+               void* runtime, bool disable_tracing_gc = false,
+               int runtime_mode = 0,
                const tasm::PageOptions& page_options = tasm::PageOptions());
+  QuickContext() : QuickContext(nullptr, nullptr) {}
+
   virtual ~QuickContext() override;
   virtual void Initialize() override;
-  virtual bool Execute() override;
+
+  virtual ContextType Type() const override {
+    return ContextType::LepusNGContextType;
+  }
 
   virtual void TriggerVmGC() override;
   virtual void UpdateGCTiming(bool is_start) override;
 
-  virtual const std::string& name() const override;
-
-  void SetDebugSourceCode(const std::string& source) { debug_source_ = source; }
-  const std::string& GetDebugSourceCode() const { return debug_source_; }
   virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
                                             const lepus::Value& val) override;
   virtual bool CheckTableShadowUpdatedWithTopLevelVariable(
@@ -86,8 +89,8 @@ class QuickContext : private LEPUSRuntimeData,
   bool GetTopLevelVariableByName(const base::String& name,
                                  lepus::Value* ret) override;
 
-  void SetGlobalData(const base::String& name, Value value) override;
-  void ResetGlobalData(const base::String& name, Value value) override;
+  virtual void SetGlobalData(const base::String& name, Value value) override;
+  virtual void ResetGlobalData(const base::String& name, Value value) override;
   virtual lepus::Value GetGlobalData(const base::String& name) override;
 
   virtual void SetGCThreshold(int64_t threshold) override;
@@ -101,6 +104,12 @@ class QuickContext : private LEPUSRuntimeData,
   void RegisterObjectFunction(lepus::Value& obj,
                               const RenderBindingFunction* funcs,
                               size_t size) override;
+
+  virtual Value CallArgs(const base::String& name, const Value* args[],
+                         size_t args_count,
+                         bool pause_suppression_mode) override;
+  virtual Value CallClosureArgs(const Value& closure, const Value* args[],
+                                size_t args_count) override;
 
   LEPUSValue NewBindingFunction(CFunction func);
 
@@ -140,24 +149,12 @@ class QuickContext : private LEPUSRuntimeData,
   inline void set_napi_env(void* env) { napi_env_ = env; }
   inline void* napi_env() { return napi_env_; }
 
-  void RegisterLepusVerion();
   void SetDebuggerSourceAndEndLine(const std::string& source);
 
   LEPUSValue ReportSetConstValueError(const LEPUSValue&, LEPUSValue);
 
   void set_debuginfo_outside(bool val);
-  bool debuginfo_outside() const;
-
-  void SetSourceMapRelease(const lepus::Value& source_map_release) override;
-  void ReportErrorWithMsg(
-      const std::string& msg, int32_t error_code,
-      int32_t level = static_cast<int>(base::LynxErrorLevel::Error)) override;
-  void ReportErrorWithMsg(
-      const std::string& msg, const std::string& stack, int32_t error_code,
-      int32_t level = static_cast<int>(base::LynxErrorLevel::Error)) override;
-  void AddReporterCustomInfo(
-      const std::unordered_map<std::string, std::string>& info) override;
-  void BeforeReportError(base::LynxError& error) override;
+  bool debuginfo_outside() const override;
 
   void ApplyConfig(const std::shared_ptr<tasm::PageConfig>&,
                    const tasm::CompileOptions&) override;
@@ -174,6 +171,10 @@ class QuickContext : private LEPUSRuntimeData,
   lepus::Value ReportFatalError(const std::string& error_message, bool exit,
                                 int32_t code) override;
 
+  std::string FormatExceptionMessage(const std::string& message,
+                                     const std::string& stack,
+                                     const std::string& prefix) override;
+
   virtual lepus::Value GetCurrentThis(lepus::Value* argv,
                                       int32_t offset) override;
 
@@ -189,6 +190,11 @@ class QuickContext : private LEPUSRuntimeData,
                                   int32_t* err_code = nullptr);
 
   LEPUSValue& GetTopLevelFunction() { return top_level_function_; }
+
+  // TODO(wangboyong): refact this
+  bool Execute();
+  bool ExecuteBinaryWithBundle(const ContextBundle* bundle,
+                               Value* ret_val) override;
 
   bool GetGCFlag() { return gc_flag_; }
 
@@ -210,13 +216,14 @@ class QuickContext : private LEPUSRuntimeData,
   void RemoveRuntimeProfiler();
 #endif
 
-  virtual void EnableRuntimeLeakCheck(bool enable) override;
-
-  virtual void PushContextValidTid() override;
-
   virtual void UpdateVMOuterObjSize(int size) override;
 
   virtual bool IsTracingGCEnabled() override;
+
+  virtual void BindCurrentThread() override;
+
+  void SetDebugSourceCode(const std::string& source) { debug_source_ = source; }
+  const std::string& GetDebugSourceCode() const { return debug_source_; }
 
   static inline ContextCell* GetContextCellFromCtx(LEPUSContext* ctx) {
     return ctx ? reinterpret_cast<ContextCell*>(LEPUS_GetContextOpaque(ctx))
@@ -228,19 +235,12 @@ class QuickContext : private LEPUSRuntimeData,
   static CellManager& GetContextCells();
   static ContextCell* RegisterContextCell(lepus::QuickContext* qctx);
 
-  virtual Value CallArgs(const base::String& name, const Value* args[],
-                         size_t args_count,
-                         bool pause_suppression_mode) override;
-  virtual Value CallClosureArgs(const Value& closure, const Value* args[],
-                                size_t args_count) override;
-
   bool ExecuteBinaryInternal(Value* ret);
 
-  std::string FormatExceptionMessage(const std::string& message,
-                                     const std::string& stack,
-                                     const std::string& prefix);
-
   LEPUSValue GetProperty(const std::string& name, LEPUSValue this_obj);
+
+  void RegisterLepusVerion();
+  void EnableRuntimeLeakCheck(bool enable);
 
   void EvalLepusPendingTask();
   LEPUSValue top_level_function_;
@@ -259,13 +259,12 @@ class QuickContext : private LEPUSRuntimeData,
   bool debuginfo_outside_;
   bool gc_flag_;
 
-  // debugger source code
-  std::string debug_source_;
-
   LEPUSValue current_this_;
   char* gc_info_start_;
 
-  runtime::JSErrorReporter js_error_reporter_;
+  // debugger source code
+  std::string debug_source_;
+
 #if ENABLE_TRACE_PERFETTO
   std::shared_ptr<runtime::profile::RuntimeProfiler> runtime_profiler_;
 #endif

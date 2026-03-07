@@ -7,7 +7,7 @@
 #include "core/runtime/lepus/builtin.h"
 namespace lynx {
 namespace lepus {
-void RegisterFunctionAPI(Context* ctx);
+void RegisterFunctionAPI(VMContext* ctx);
 }  // namespace lepus
 }  // namespace lynx
 #endif  // CORE_RUNTIME_LEPUS_FUNCTION_API_H_
