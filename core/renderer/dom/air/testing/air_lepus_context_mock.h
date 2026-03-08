@@ -7,17 +7,18 @@
 
 #include <vector>
 
-#include "core/runtime/lepusng/quick_context.h"
+#include "core/runtime/lepus/context.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 
 namespace lynx {
 namespace air {
 namespace testing {
-class AirMockLepusContext : public lepus::QuickContext {
+class AirMockLepusContext : public lepus::Context {
  public:
-  virtual lepus::Value CallClosureArgs(const lepus::Value& closure,
-                                       const lepus::Value* args[],
-                                       size_t args_count) override {
+  AirMockLepusContext() : lepus::Context(lepus::LepusNGContextType) {}
+
+  lepus::Value CallClosureArgs(const lepus::Value& closure,
+                               const std::vector<lepus::Value>& args) override {
     return lepus::Value(1);
   }
 };

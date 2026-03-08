@@ -82,7 +82,7 @@ void LepusInspectorClientImpl::DispatchMessage(const std::string &message,
   }
 }
 
-void LepusInspectorClientImpl::InitInspector(lepus::Context *context,
+void LepusInspectorClientImpl::InitInspector(lepus::MTSContext *context,
                                              const std::string &name) {
   inspector_ = lepus_inspector::LepusInspectorNG::Create(context, this, name);
 }

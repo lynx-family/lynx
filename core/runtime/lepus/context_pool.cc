@@ -51,8 +51,10 @@ void LynxContextPool::AddContextSafely(int32_t count) {
   decltype(contexts_) temp_contexts;
   uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
   for (; count > 0; --count) {
-    std::shared_ptr<Context> context =
-        Context::CreateContext(is_lepus_ng_, disable_tracing_gc_, mode);
+    std::shared_ptr<Context> context = Context::CreateContext(
+        is_lepus_ng_ ? lepus::ContextType::LepusNGContextType
+                     : lepus::ContextType::VMContextType,
+        disable_tracing_gc_, mode);
     if (context_bundle_) {
       context->SetSdkVersion(target_sdk_version_);
       context->Initialize();

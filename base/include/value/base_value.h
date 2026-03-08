@@ -86,6 +86,7 @@ enum ValueType {
 };
 
 class Context;
+class MTSContext;
 class VMContext;
 class CArray;
 class Dictionary;
@@ -98,7 +99,7 @@ enum CFunctionType {
   CFunctionType_Builtin,
 };
 
-typedef Value (*CFunction)(Context*, lepus::Value*, int);
+typedef Value (*CFunction)(MTSContext*, lepus::Value*, int);
 typedef RestrictedValue (*CFunctionBuiltin)(VMContext*);
 
 class BASE_EXPORT Value {

@@ -87,9 +87,10 @@ class WorkletEventTest : public ::testing::Test {
 
   fml::RefPtr<tasm::Element> CreateElement(const std::string& js_var_name,
                                            int32_t tag) {
-    LEPUSValue node_raw_value = ctx_->SearchGlobalData(js_var_name);
+    auto quick_context = lepus::Context::ToQuickContext(ctx_.get());
+    LEPUSValue node_raw_value = quick_context->SearchGlobalData(js_var_name);
     lepus::Value node_value =
-        MK_JS_LEPUS_VALUE(ctx_->context(), node_raw_value);
+        MK_JS_LEPUS_VALUE(quick_context->context(), node_raw_value);
     auto node = reinterpret_cast<tasm::RadonNode*>(node_value.CPoint());
     auto view = manager_->CreateFiberElement("view");
     view->SetAttributeHolder(node->attribute_holder());
@@ -105,7 +106,8 @@ class WorkletEventTest : public ::testing::Test {
 
   void TearDown() override {}
 
-  std::shared_ptr<lepus::QuickContext> ctx_{new lepus::QuickContext()};
+  std::shared_ptr<lepus::Context> ctx_{
+      lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType)};
   runtime::js::NapiRuntimeProxy* napi_proxy_;
 
   lynx::tasm::TouchEventHandler* touch_event_handler_;
@@ -119,8 +121,9 @@ class WorkletEventTest : public ::testing::Test {
 TEST_F(WorkletEventTest, TestPropagation) {
   auto* comp = new lynx::tasm::RadonComponent(tasm_->page_proxy(), 0, nullptr,
                                               nullptr, nullptr, ctx_.get(), 0);
-  ctx_->RegisterGlobalProperty("$comp",
-                               LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, comp));
+  auto quick_context = lepus::Context::ToQuickContext(ctx_.get());
+  quick_context->RegisterGlobalProperty(
+      "$comp", LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, comp));
 
   auto page = manager_->CreateFiberElement("page");
   manager_->SetRoot(page.get());
@@ -140,7 +143,8 @@ TEST_F(WorkletEventTest, TestPropagation) {
       "_SetScriptEventTo(view3, 'bindEvent', 'tap', $comp, (e,lepusComp) => { "
       "counter3++; });";
 
-  lepus::BytecodeGenerator::GenerateBytecode(ctx_.get(), js_source, "");
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
   ctx_->Execute();
   tasm_->template_loaded_ = true;
 
@@ -156,15 +160,15 @@ TEST_F(WorkletEventTest, TestPropagation) {
   SendTouchEvent("tap", 2);  // counter2++; counter1++
   SendTouchEvent("tap", 3);  // counter3++; counter2++; counter1++
 
-  LEPUSValue counter1 = ctx_->SearchGlobalData("counter1");
+  LEPUSValue counter1 = quick_context->SearchGlobalData("counter1");
   ASSERT_TRUE(LEPUS_IsNumber(counter1));
   EXPECT_EQ(LEPUS_VALUE_GET_INT(counter1), 3);
 
-  LEPUSValue counter2 = ctx_->SearchGlobalData("counter2");
+  LEPUSValue counter2 = quick_context->SearchGlobalData("counter2");
   ASSERT_TRUE(LEPUS_IsNumber(counter2));
   EXPECT_EQ(LEPUS_VALUE_GET_INT(counter2), 2);
 
-  LEPUSValue counter3 = ctx_->SearchGlobalData("counter3");
+  LEPUSValue counter3 = quick_context->SearchGlobalData("counter3");
   ASSERT_TRUE(LEPUS_IsNumber(counter3));
   EXPECT_EQ(LEPUS_VALUE_GET_INT(counter3), 1);
 }
@@ -172,8 +176,9 @@ TEST_F(WorkletEventTest, TestPropagation) {
 TEST_F(WorkletEventTest, TestStopPropagation) {
   auto* comp = new lynx::tasm::RadonComponent(tasm_->page_proxy(), 0, nullptr,
                                               nullptr, nullptr, ctx_.get(), 0);
-  ctx_->RegisterGlobalProperty("$comp",
-                               LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, comp));
+  auto quick_context = lepus::Context::ToQuickContext(ctx_.get());
+  quick_context->RegisterGlobalProperty(
+      "$comp", LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, comp));
 
   auto page = manager_->CreateFiberElement("page");
   manager_->SetRoot(page.get());
@@ -193,7 +198,7 @@ TEST_F(WorkletEventTest, TestStopPropagation) {
       "_SetScriptEventTo(view3, 'bindEvent', 'tap', $comp, (e,lepusComp) => { "
       "counter3++; });";
 
-  lepus::BytecodeGenerator::GenerateBytecode(ctx_.get(), js_source, "");
+  lepus::BytecodeGenerator::GenerateBytecode(quick_context, js_source, "");
   ctx_->Execute();
   tasm_->template_loaded_ = true;
 
@@ -209,15 +214,15 @@ TEST_F(WorkletEventTest, TestStopPropagation) {
   SendTouchEvent("tap", 2);  // counter2++;
   SendTouchEvent("tap", 3);  // counter3++; counter2++
 
-  LEPUSValue counter1 = ctx_->SearchGlobalData("counter1");
+  LEPUSValue counter1 = quick_context->SearchGlobalData("counter1");
   ASSERT_TRUE(LEPUS_IsNumber(counter1));
   EXPECT_EQ(LEPUS_VALUE_GET_INT(counter1), 1);
 
-  LEPUSValue counter2 = ctx_->SearchGlobalData("counter2");
+  LEPUSValue counter2 = quick_context->SearchGlobalData("counter2");
   ASSERT_TRUE(LEPUS_IsNumber(counter2));
   EXPECT_EQ(LEPUS_VALUE_GET_INT(counter2), 2);
 
-  LEPUSValue counter3 = ctx_->SearchGlobalData("counter3");
+  LEPUSValue counter3 = quick_context->SearchGlobalData("counter3");
   ASSERT_TRUE(LEPUS_IsNumber(counter3));
   EXPECT_EQ(LEPUS_VALUE_GET_INT(counter3), 1);
 }

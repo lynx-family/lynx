@@ -14,6 +14,7 @@
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/js_error_reporter.h"
+#include "core/runtime/lepus/mts_context_factory.h"
 #include "core/runtime/lepus/tasks/lepus_callback_manager.h"
 #include "core/runtime/lepus/tasks/lepus_raf_manager.h"
 #include "core/runtime/lepus/vm_context.h"
@@ -24,7 +25,85 @@
 namespace lynx {
 namespace lepus {
 
-Context::Context(ContextType type) : type_(type) {}
+class MTSContextDelegateImpl : public MTSContextDelegate {
+ public:
+  explicit MTSContextDelegateImpl(Context* runtime) : runtime_(runtime) {}
+  ~MTSContextDelegateImpl() override = default;
+
+  void ReportErrorWithMsg(
+      const std::string& msg, int32_t error_code,
+      int32_t level = static_cast<int>(base::LynxErrorLevel::Error)) override {
+    // JSI exception from native should be sent to JSSDK formatting.
+    // If there has any JSI exception in this process, those exception will be
+    // sent to here too, then sent to JSSDK, then more exception will be
+    // thrown... finally you will get endless loop. So we use this flag to avoid
+    // endless loop.
+    if (is_handling_exception_) {
+      return;
+    }
+    // TODO: Use scoped flag to optimize here to ensure this flag can be reset
+    // even if exception thrown during this period.
+    is_handling_exception_ = true;
+    // avoid call by global runtime and caush dangling pointer...
+    if (!destroyed_) {
+      runtime_->ReportErrorWithMsg(msg, error_code, level);
+    }
+    is_handling_exception_ = false;
+  }
+
+  void OnBTSConsoleEvent(const std::string& func_name,
+                         const std::string& args) override {
+    runtime_->OnBTSConsoleEvent(func_name, args);
+  }
+
+  void OnGC(std::string mem_info) override { runtime_->OnGC(mem_info); }
+
+  void ReportGCTimingEvent(const char* start, const char* end) override {
+    runtime_->ReportGCTimingEvent(start, end);
+  }
+
+  void ReportError(
+      const std::string& exception_info,
+      int32_t err_code = error::E_MTS_RUNTIME_ERROR,
+      base::LynxErrorLevel error_level = base::LynxErrorLevel::Error) override {
+    runtime_->ReportError(exception_info, err_code, error_level);
+  }
+
+  void Destroy() override { destroyed_ = true; }
+
+ private:
+  bool destroyed_ = false;
+  bool is_handling_exception_ = false;
+
+  Context* const runtime_;
+};
+
+// Context::Context(ContextType type) : type_(type) {
+//   if (type == ContextType::VMContextType) {
+//     mts_context_ = std::make_unique<VMContext>();
+//   } else if (type == ContextType::LepusNGContextType) {
+//     mts_context_ = std::make_unique<QuickContext>();
+//   }
+// }
+
+Context::~Context() { DestroyInspector(); }
+
+VMContext* Context::ToVMContext(Context* context) {
+  DCHECK(context->IsVMContext());
+
+  return static_cast<VMContext*>(context->mts_context_.get());
+}
+
+QuickContext* Context::ToQuickContext(Context* context) {
+  DCHECK(context->IsLepusNGContext());
+  return static_cast<QuickContext*>(context->mts_context_.get());
+}
+
+Context* Context::ToContext(MTSContext* mts_context) {
+  return reinterpret_cast<Context*>(mts_context->GetRuntimePrivate());
+}
+
+void Context::Initialize() { mts_context_->Initialize(); }
 
 void Context::EnsureDelegate() {
   if (delegate_ != nullptr) {
@@ -81,22 +160,35 @@ Context::Delegate* Context::GetDelegate() {
 }
 
 std::shared_ptr<Context> Context::CreateContext(
-    bool use_lepusng, bool disable_tracing_gc, int runtime_mode,
+    ContextType type, bool disable_tracing_gc, int runtime_mode,
     const tasm::PageOptions& page_options) {
-  if (use_lepusng) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_CREATE_QUICK_CONTEXT);
-    return std::make_shared<QuickContext>(disable_tracing_gc, runtime_mode,
-                                          page_options);
-  } else {
+  if (type == ContextType::VMContextType) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_CREATE_VM_CONTEXT);
 #if !ENABLE_JUST_LEPUSNG
-    return std::make_shared<VMContext>();
+    return std::make_shared<Context>(ContextType::VMContextType,
+                                     disable_tracing_gc, runtime_mode,
+                                     page_options);
 #else
     LOGE("lepusng sdk do not support vm context");
     assert(false);
     return NULL;
 #endif
+  } else {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_CREATE_QUICK_CONTEXT);
+    return std::make_shared<Context>(type, disable_tracing_gc, runtime_mode,
+                                     page_options);
   }
+}
+
+bool Context::Execute() {
+  if (HasPreExecuteSuccess()) {
+    return true;
+  }
+  ScriptingScope scope(this);
+
+  EnsureLynx();
+  return mts_context_->ExecuteBinaryWithBundle(/*bundle=*/nullptr,
+                                               /*ret_val=*/nullptr);
 }
 
 void Context::EnsureLynx() {
@@ -149,6 +241,22 @@ void Context::RegisterLynx(bool enable_signal_api) {
   SetPropertyToLynx(kEnableOnLayoutReadyHook, lepus::Value(true));
 }
 
+void Context::UpdateGCTiming(bool is_start) {
+  mts_context_->UpdateGCTiming(is_start);
+}
+
+void Context::TriggerVmGC() { mts_context_->TriggerVmGC(); }
+
+void Context::RegisterGlobalFunction(const RenderBindingFunction* funcs,
+                                     size_t size) {
+  mts_context_->RegisterGlobalFunction(funcs, size);
+}
+void Context::RegisterObjectFunction(lepus::Value& obj,
+                                     const RenderBindingFunction* funcs,
+                                     size_t size) {
+  mts_context_->RegisterObjectFunction(obj, funcs, size);
+}
+
 void Context::ReportError(const std::string& exception_info, int32_t err_code,
                           base::LynxErrorLevel error_level) {
 #ifndef LEPUS_PC
@@ -180,19 +288,88 @@ void Context::OnBTSConsoleEvent(const std::string& func_name,
   delegate_->OnBTSConsoleEvent(func_name, args);
 }
 
+void Context::SetSourceMapRelease(const lepus::Value& source_map_release) {
+  BASE_STATIC_STRING_DECL(kStack, "stack");
+  if (!(source_map_release.GetProperty(kStack).IsString())) {
+    LOGI(
+        "Context::SetSourceMapRelease, can't found Error, stack is "
+        "undefined");
+    return;
+  }
+  BASE_STATIC_STRING_DECL(kMessage, "message");
+  if (!(source_map_release.GetProperty(kMessage).IsString())) {
+    LOGI(
+        "Context::SetSourceMapRelease, can't found Error, message is "
+        "undefined");
+    return;
+  }
+
+  runtime::JSErrorInfo args;
+  args.message = source_map_release.GetProperty(kMessage).StdString();
+  args.stack = source_map_release.GetProperty(kStack).StdString();
+  OnBTSConsoleEvent("info", "SetSourceMapRelease.message:" + args.message);
+  OnBTSConsoleEvent("info", "SetSourceMapRelease.stack:" + args.stack);
+  js_error_reporter_.SetSourceMapRelease(std::move(args));
+}
+
+void Context::ReportErrorWithMsg(const std::string& msg,
+                                 const std::string& stack, int32_t error_code,
+                                 int32_t error_level) {
+  auto formatted_message = mts_context_->FormatExceptionMessage(msg, stack, "");
+  ReportErrorWithMsg(formatted_message, error_code, error_level);
+}
+
+void Context::ReportErrorWithMsg(const std::string& msg, int32_t error_code,
+                                 int32_t error_level) {
+  EnsureDelegate();
+
+  // enable outside debug information only when engine version is bigger than
+  // "2.7" and "debuginfo_outside_" is true when encode
+  if (!delegate_) {
+    return;
+  }
+
+  const auto& target_sdk_version = delegate_->TargetSdkVersion();
+  OnBTSConsoleEvent("info",
+                    "ReportErrorWithMsg.engine version:" + target_sdk_version);
+  if (tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_7) &&
+      mts_context_->debuginfo_outside()) {
+    auto error = js_error_reporter_.SendMTError(msg, error_code, error_level);
+    if (error) {
+      delegate_->ReportError(std::move(*error));
+    }
+  } else {
+    ReportError(msg, error_code,
+                static_cast<base::LynxErrorLevel>(error_level));
+  }
+  OnBTSConsoleEvent("error", msg);
+}
+
+void Context::BeforeReportError(base::LynxError& error) {
+  js_error_reporter_.AppendCustomInfo(error);
+}
+
+void Context::AddReporterCustomInfo(
+    const std::unordered_map<std::string, std::string>& info) {
+  js_error_reporter_.AddCustomInfoToError(info);
+}
+
 void Context::InitInspector(
     const std::shared_ptr<InspectorLepusObserver>& observer,
     const std::string& context_name) {
   if (observer != nullptr) {
     inspector_manager_ = observer->CreateLepusInspectorManager();
     if (inspector_manager_ != nullptr) {
-      inspector_manager_->InitInspector(this, observer, context_name);
+      mts_context_->set_is_debug_enabled(true);
+      inspector_manager_->InitInspector(mts_context_.get(), observer,
+                                        context_name);
     }
   }
 }
 
 void Context::DestroyInspector() {
   if (inspector_manager_ != nullptr) {
+    mts_context_->set_is_debug_enabled(false);
     inspector_manager_->DestroyInspector();
   }
 }
@@ -202,6 +379,8 @@ void Context::SetDebugInfoURL(const std::string& url,
   if (inspector_manager_ != nullptr) {
     inspector_manager_->SetDebugInfo(url, file_name);
   }
+
+  mts_context_->SetDebugInfoURL(url, file_name);
 }
 
 CellManager::~CellManager() {
@@ -223,6 +402,81 @@ bool Context::UpdateTopLevelVariable(const std::string& name,
   return UpdateTopLevelVariableByPath(path, val);
 }
 
+bool Context::UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
+                                           const Value& val) {
+  return mts_context_->UpdateTopLevelVariableByPath(path, val);
+}
+
+// shadow equal for table
+bool Context::CheckTableShadowUpdatedWithTopLevelVariable(
+    const lepus::Value& update) {
+  return mts_context_->CheckTableShadowUpdatedWithTopLevelVariable(update);
+}
+
+void Context::ResetTopLevelVariable() { mts_context_->ResetTopLevelVariable(); }
+void Context::ResetTopLevelVariableByVal(const Value& val) {
+  mts_context_->ResetTopLevelVariableByVal(val);
+}
+
+lepus::Value Context::GetTopLevelVariable(bool ignore_callable) {
+  return mts_context_->GetTopLevelVariable(ignore_callable);
+}
+bool Context::GetTopLevelVariableByName(const base::String& name,
+                                        lepus::Value* ret) {
+  return mts_context_->GetTopLevelVariableByName(name, ret);
+}
+
+void Context::SetGlobalData(const base::String& name, Value value) {
+  mts_context_->SetGlobalData(name, value);
+}
+
+/**
+ * This value will overwrite the origin value
+ */
+void Context::ResetGlobalData(const base::String& name, Value value) {
+  mts_context_->ResetGlobalData(name, value);
+}
+lepus::Value Context::GetGlobalData(const base::String& name) {
+  return mts_context_->GetGlobalData(name);
+}
+
+void Context::SetGCThreshold(int64_t threshold) {
+  mts_context_->SetGCThreshold(threshold);
+}
+
+inline constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";
+
+void Context::OnGC(std::string mem_info) {
+  if (!delegate_) {
+    return;
+  }
+  delegate_->OnRuntimeGC({{kRawRuntimeMemoryInfo, std::move(mem_info)}});
+}
+
+void Context::ReportGCTimingEvent(const char* start, const char* end) {
+  if (!delegate_) {
+    return;
+  }
+  delegate_->ReportGCTimingEvent(start, end);
+}
+
+void Context::OnReload() { mts_context_->OnReload(); }
+
+bool Context::DeSerialize(const ContextBundle& bundle, bool is_lepusng_binary,
+                          Value* ret, const char* file_name) {
+  return mts_context_->DeSerialize(bundle, is_lepusng_binary, ret, file_name);
+}
+
+void Context::ApplyConfig(const std::shared_ptr<tasm::PageConfig>& config,
+                          const tasm::CompileOptions& options) {
+  mts_context_->ApplyConfig(config, options);
+}
+
+lepus::Value Context::ReportFatalError(const std::string& error_message,
+                                       bool exit, int32_t code) {
+  return mts_context_->ReportFatalError(error_message, exit, code);
+}
+
 Value Context::CallArgs(const base::String& name,
                         const std::vector<Value>& args,
                         bool pause_suppression_mode) {
@@ -230,7 +484,10 @@ Value Context::CallArgs(const base::String& name,
   for (size_t i = 0; i < args.size(); ++i) {
     p_args[i] = &args[i];
   }
-  return CallArgs(name, p_args, args.size(), pause_suppression_mode);
+
+  ScriptingScope scope(this);
+  return mts_context_->CallArgs(name, p_args, args.size(),
+                                pause_suppression_mode);
 }
 
 Value Context::CallClosureArgs(const Value& closure,
@@ -239,7 +496,9 @@ Value Context::CallClosureArgs(const Value& closure,
   for (size_t i = 0; i < args.size(); ++i) {
     p_args[i] = &args[i];
   }
-  return CallClosureArgs(closure, p_args, args.size());
+
+  ScriptingScope scope(this);
+  return mts_context_->CallClosureArgs(closure, p_args, args.size());
 }
 
 bool Context::TryExecute() {
@@ -257,15 +516,16 @@ bool Context::HasPreExecuteSuccess() {
   return false;
 }
 
-std::unique_ptr<ContextBundle> ContextBundle::Create(bool is_lepusng_binary) {
-  if (is_lepusng_binary) {
-    return std::make_unique<QuickContextBundle>();
-  }
-#if !ENABLE_JUST_LEPUSNG
-  return std::make_unique<VMContextBundle>();
-#else
-  return nullptr;
-#endif
+std::unique_ptr<ContextBundle> ContextBundle::Create(ContextType context_type) {
+  return ContextBundleFactory::Create(context_type);
+}
+
+Context::Context(ContextType type, bool disable_tracing_gc, int runtime_mode,
+                 const tasm::PageOptions& page_options)
+    : type_(type) {
+  auto delegate = std::make_shared<MTSContextDelegateImpl>(this);
+  mts_context_ = MTSContextFactory::Create(
+      type, delegate, this, disable_tracing_gc, runtime_mode, page_options);
 }
 
 }  // namespace lepus

@@ -63,8 +63,7 @@ static void RefCountedObjVisitor(LEPUSRuntime* rt, void* p, uint64_t trace_tool,
 static LEPUSValue LepusReportSetConstValueError(LEPUSContext* ctx,
                                                 const LEPUSValue& obj,
                                                 LEPUSValue prop) {
-  lepus::QuickContext* qctx =
-      QuickContext::Cast(QuickContext::GetFromJsContext(ctx));
+  lepus::QuickContext* qctx = QuickContext::GetFromJsContext(ctx);
   return qctx->ReportSetConstValueError(obj, prop);
 }
 
@@ -241,7 +240,11 @@ static LEPUSValue LepusConvertToObjectCallBack(LEPUSContext* ctx,
         return LEPUSValueHelper::ToJsValue(ctx, *(ref_ptr->js_object_cache));
       }
       result = LEPUSValueHelper::RefCountedToJSValue(ctx, *ref_ptr);
-      ref_ptr->js_object_cache = LepusValueFactory(ctx).CreatePtr(result);
+      // Keep an extra reference in `js_object_cache` to avoid double-free.
+      // `result` is returned to QuickJS as-is; cache must own its own ref.
+      LEPUSValue cached = LEPUS_DupValue(ctx, result);
+      ref_ptr->js_object_cache =
+          LepusValueFactory(ctx).CreatePtr(std::move(cached));
     } break;
     default:
       return LEPUS_UNDEFINED;
@@ -284,8 +287,6 @@ static LEPUSValue LepusrefToString(LEPUSContext* ctx, LEPUSValue val) {
 
 }  // namespace
 
-inline constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";
-
 #define PRIM_CFUNCTION(name)                                          \
   static LEPUSValue name(LEPUSContext* ctx, LEPUSValueConst this_val, \
                          int argc, LEPUSValueConst* argv)
@@ -303,7 +304,7 @@ static std::string GetPrintStr(LEPUSContext* ctx, int32_t argc,
 }
 
 PRIM_CFUNCTION(Console_Log) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("log", "[main-thread.js] " + result);
 
@@ -336,21 +337,21 @@ PRIM_CFUNCTION(Console_ProfileEnd) {
 }
 
 PRIM_CFUNCTION(Console_ALog) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("alog", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_Report) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("report", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_Error) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("error", "[main-thread.js] " + result);
   const std::string result_msg = "console.error: \n\n" + result;
@@ -359,84 +360,84 @@ PRIM_CFUNCTION(Console_Error) {
 }
 
 PRIM_CFUNCTION(Console_Warn) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("warn", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_Debug) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("debug", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_Info) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("info", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_Count) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("count", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_CountReset) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("countReset", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_Group) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("group", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_GroupCollapsed) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("groupCollapsed", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_GroupEnd) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("groupEnd", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_Time) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("time", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_TimeLog) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("timeLog", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_TimeEnd) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("timeEnd", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
 }
 
 PRIM_CFUNCTION(Console_Table) {
-  lepus::Context* lctx = lepus::QuickContext::GetFromJsContext(ctx);
+  lepus::QuickContext* lctx = lepus::QuickContext::GetFromJsContext(ctx);
   std::string result = GetPrintStr(ctx, argc, argv);
   lctx->OnBTSConsoleEvent("table", "[main-thread.js] " + result);
   return LEPUS_UNDEFINED;
@@ -518,10 +519,12 @@ LEPUSRuntimeData::~LEPUSRuntimeData() {
   cell->DetachEnv();
 }
 
-QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode,
-                           const tasm::PageOptions& page_options)
+QuickContext::QuickContext(
+    std::shared_ptr<MTSContextDelegate> mts_context_delegate, void* runtime,
+    bool disable_tracing_gc, int runtime_mode,
+    const tasm::PageOptions& page_options)
     : LEPUSRuntimeData(disable_tracing_gc, runtime_mode),
-      Context(ContextType::LepusNGContextType),
+      MTSContext(mts_context_delegate, runtime),
       top_level_function_(LEPUS_UNDEFINED),
       use_lepus_strict_mode_(false),
       debuginfo_outside_(false),
@@ -531,7 +534,7 @@ QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode,
   bool debuggable = page_options.GetDebuggable();
   if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker() || debuggable) {
     EnableRuntimeLeakCheck(true);
-    PushContextValidTid();
+    BindCurrentThread();
   }
   LEPUSLepusRefCallbacks callbacks = GetLepusRefCall();
   RegisterLepusRefCallbacks(runtime_, &callbacks);
@@ -555,86 +558,9 @@ QuickContext::~QuickContext() {
       LEPUS_FreeValue(context(), top_level_function_);
     }
   }
-  DestroyInspector();
 }
 
-void QuickContext::OnGC(std::string mem_info) {
-  if (!delegate_) {
-    return;
-  }
-  delegate_->OnRuntimeGC({{kRawRuntimeMemoryInfo, std::move(mem_info)}});
-}
-
-void QuickContext::ReportErrorWithMsg(const std::string& msg,
-                                      const std::string& stack,
-                                      int32_t error_code, int32_t error_level) {
-  auto formatted_message = FormatExceptionMessage(msg, stack, "");
-  ReportErrorWithMsg(formatted_message, error_code, error_level);
-}
-
-void QuickContext::SetSourceMapRelease(const lepus::Value& source_map_release) {
-  BASE_STATIC_STRING_DECL(kStack, "stack");
-  if (!(source_map_release.GetProperty(kStack).IsString())) {
-    LOGI(
-        "QuickContext::SetSourceMapRelease, can't found Error, stack is "
-        "undefined");
-    return;
-  }
-  BASE_STATIC_STRING_DECL(kMessage, "message");
-  if (!(source_map_release.GetProperty(kMessage).IsString())) {
-    LOGI(
-        "QuickContext::SetSourceMapRelease, can't found Error, message is "
-        "undefined");
-    return;
-  }
-
-  runtime::JSErrorInfo args;
-  args.message = source_map_release.GetProperty(kMessage).StdString();
-  args.stack = source_map_release.GetProperty(kStack).StdString();
-  OnBTSConsoleEvent("info", "SetSourceMapRelease.message:" + args.message);
-  OnBTSConsoleEvent("info", "SetSourceMapRelease.stack:" + args.stack);
-  js_error_reporter_.SetSourceMapRelease(std::move(args));
-}
-
-void QuickContext::ReportErrorWithMsg(const std::string& msg,
-                                      int32_t error_code, int32_t error_level) {
-  EnsureDelegate();
-
-  // enable outside debug information only when engine version is bigger than
-  // "2.7" and "debuginfo_outside_" is true when encode
-  if (!delegate_) {
-    return;
-  }
-
-  const auto& target_sdk_version = delegate_->TargetSdkVersion();
-  OnBTSConsoleEvent("info",
-                    "ReportErrorWithMsg.engine version:" + target_sdk_version);
-  if (tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_7) &&
-      debuginfo_outside_) {
-    auto error = js_error_reporter_.SendMTError(msg, error_code, error_level);
-    if (error) {
-      delegate_->ReportError(std::move(*error));
-    }
-  } else {
-    ReportError(msg, error_code,
-                static_cast<base::LynxErrorLevel>(error_level));
-  }
-  OnBTSConsoleEvent("error", msg);
-}
-
-void QuickContext::BeforeReportError(base::LynxError& error) {
-  js_error_reporter_.AppendCustomInfo(error);
-}
-
-void QuickContext::AddReporterCustomInfo(
-    const std::unordered_map<std::string, std::string>& info) {
-  js_error_reporter_.AddCustomInfoToError(info);
-}
-
-QuickContext* QuickContext::Cast(Context* context) {
-  assert(context->IsLepusNGContext());
-  return static_cast<QuickContext*>(context);
-}
+void QuickContext::OnGC(std::string mem_info) { OnContextGC(mem_info); }
 
 void QuickContext::Initialize() {
   // If Lepus debug is on, console object will be reset by debugger.
@@ -693,12 +619,13 @@ void QuickContext::SetStackSize(uint32_t stack_size) {
 }
 
 bool QuickContext::Execute() {
-  if (HasPreExecuteSuccess()) {
-    return true;
-  }
-  ScriptingScope scope(this);
+  return ExecuteBinaryWithBundle(nullptr, nullptr);
+}
 
-  return ExecuteBinaryInternal(nullptr);
+bool QuickContext::ExecuteBinaryWithBundle(const ContextBundle* bundle,
+                                           Value* ret_val) {
+  (void)bundle;
+  return ExecuteBinaryInternal(ret_val);
 }
 
 bool QuickContext::ExecuteBinaryInternal(Value* ret_val) {
@@ -707,8 +634,6 @@ bool QuickContext::ExecuteBinaryInternal(Value* ret_val) {
     return false;
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_EXECUTE);
-
-  EnsureLynx();
 
   if (!use_lepus_strict_mode_) {
     LEPUS_SetNoStrictMode(context());
@@ -752,7 +677,7 @@ void QuickContext::UpdateGCTiming(bool is_start) {
     gc_info_start_ = LEPUS_GetGCTimingInfo(context(), is_start);
   } else {
     char* gc_info_end_ = LEPUS_GetGCTimingInfo(context(), is_start);
-    delegate_->ReportGCTimingEvent(gc_info_start_, gc_info_end_);
+    mts_context_delegate_->ReportGCTimingEvent(gc_info_start_, gc_info_end_);
   }
 }
 
@@ -773,8 +698,6 @@ class GCPauseSuppressionMode {
 
 Value QuickContext::CallArgs(const base::String& name, const Value* args[],
                              size_t args_count, bool pause_suppression_mode) {
-  ScriptingScope scope(this);
-
   if (pause_suppression_mode) {
     GCPauseSuppressionMode mode(LEPUS_GetRuntime(lepus_context_));
     return CallArgs(name, args, args_count, false);
@@ -803,8 +726,6 @@ Value QuickContext::CallArgs(const base::String& name, const Value* args[],
 
 Value QuickContext::CallClosureArgs(const Value& closure, const Value* args[],
                                     size_t args_count) {
-  ScriptingScope scope(this);
-
   LEPUSValue lepus_closure =
       LEPUSValueHelper::ToJsValue(lepus_context_, closure);
   HandleScope func_scope(lepus_context_, &lepus_closure,
@@ -826,8 +747,6 @@ Value QuickContext::CallClosureArgs(const Value& closure, const Value* args[],
   }
   return ret;
 }
-
-const std::string& QuickContext::name() const { return name_; }
 
 bool QuickContext::CheckTableShadowUpdatedWithTopLevelVariable(
     const lepus::Value& update) {
@@ -1174,9 +1093,8 @@ bool QuickContext::DeSerialize(const ContextBundle& bundle, bool reuse_context,
     return false;
   }
   SetTopLevelFunction(val);
-  if (inspector_manager_ &&
-      (tasm::LynxEnv::GetInstance().IsDevToolConnected() ||
-       tasm::LynxEnv::GetInstance().IsLogBoxEnabled())) {
+  if (is_debug_enabled_ && (tasm::LynxEnv::GetInstance().IsDevToolConnected() ||
+                            tasm::LynxEnv::GetInstance().IsLogBoxEnabled())) {
     SetFunctionFileName(val, file_name);
   }
   return true;
@@ -1185,7 +1103,6 @@ bool QuickContext::DeSerialize(const ContextBundle& bundle, bool reuse_context,
 bool QuickContext::EvalBinary(const uint8_t* buf, uint64_t size, Value& ret,
                               const char* file_name) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_EVAL_BINARY);
-  ScriptingScope scope(this);
 
   LEPUSValue val = LEPUS_EvalBinary(context(), buf, static_cast<size_t>(size),
                                     LEPUS_EVAL_BINARY_LOAD_ONLY);
@@ -1213,9 +1130,6 @@ bool QuickContext::EvalBuf(const char* buf, uint64_t size, Value& ret,
                 ctx.event()->add_debug_annotations("file_size",
                                                    std::to_string(size));
               });
-  ScriptingScope scope(this);
-
-  EnsureLynx();
   if (!use_lepus_strict_mode_) {
     LEPUS_SetNoStrictMode(context());
   }
@@ -1372,9 +1286,7 @@ void QuickContext::EnableRuntimeLeakCheck(bool enable) {
   SetObjectCtxCheckStatus(context(), enable);
 }
 
-void QuickContext::PushContextValidTid() {
-  LEPUS_PushObjectCheckTid(context());
-}
+void QuickContext::BindCurrentThread() { LEPUS_PushObjectCheckTid(context()); }
 
 void QuickContext::UpdateVMOuterObjSize(int size) {
   auto lepus_context = context();

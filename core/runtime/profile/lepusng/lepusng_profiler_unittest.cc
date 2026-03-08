@@ -34,19 +34,22 @@ class ContextDelegateTest : public lepus::Context::Delegate {
 };
 
 TEST(LepusNGProfilerTest, LepusNGProfilerTotalTest) {
-  auto context = lynx::lepus::Context::CreateContext(true);
+  auto context = lynx::lepus::Context::CreateContext(
+      lepus::ContextType::LepusNGContextType);
   context->Initialize();
   void* assembler = new ContextDelegateTest();
-  lepus::QuickContext* quick_ctx = lepus::QuickContext::Cast(context.get());
+  lepus::QuickContext* quick_ctx =
+      lepus::Context::ToQuickContext(context.get());
   LEPUSValue self = LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, assembler);
   quick_ctx->RegisterGlobalProperty("$kTemplateAssembler", self);
   auto lepusng_profiler = std::make_shared<LepusNGProfiler>(context);
   quick_ctx->SetRuntimeProfiler(lepusng_profiler);
   std::string codeStr = "var b = 1;";
-  lepus::BytecodeGenerator::GenerateBytecode(context.get(), codeStr, "3.1");
+  lepus::BytecodeGenerator::GenerateBytecode(context->GetMTSContext(), codeStr,
+                                             "3.1");
   lepusng_profiler->SetupProfiling(100);
   lepusng_profiler->StartProfiling(true);
-  quick_ctx->Execute();
+  context->Execute();
   auto runtime_profile = lepusng_profiler->StopProfiling(true);
   ASSERT_NE(runtime_profile, nullptr);
   ASSERT_NE(runtime_profile->runtime_profile_, "");

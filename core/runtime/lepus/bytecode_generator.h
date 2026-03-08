@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "core/runtime/lepus/context.h"
+#include "core/runtime/lepus/mts_context.h"
 #include "core/runtime/lepus/vm_context.h"
 #include "core/runtime/lepusng/quick_context.h"
 
@@ -16,7 +16,7 @@ namespace lepus {
 
 class BytecodeGenerator {
  public:
-  static std::string GenerateBytecode(Context* context,
+  static std::string GenerateBytecode(MTSContext* context,
                                       const std::string& source,
                                       const std::string& sdk_version,
                                       const std::string& file_name = "");

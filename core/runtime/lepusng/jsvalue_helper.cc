@@ -13,6 +13,7 @@
 #include "base/include/value/base_value.h"
 #include "base/include/value/ref_counted_class.h"
 #include "base/include/value/table.h"
+#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepusng/quick_context.h"
 
 namespace lynx {
@@ -442,7 +443,7 @@ lynx_value LEPUSValueHelper::ConstructLepusRefToLynxValue(
 
 Value LEPUSValueHelper::CreateObject(Context* ctx) {
   if (ctx && ctx->IsLepusNGContext()) {
-    LEPUSContext* lctx = QuickContext::Cast(ctx)->context();
+    LEPUSContext* lctx = Context::ToQuickContext(ctx)->context();
     return MK_JS_LEPUS_VALUE(lctx, LEPUS_NewObject(lctx));
   }
   return Value(lepus::Dictionary::Create());
@@ -450,7 +451,7 @@ Value LEPUSValueHelper::CreateObject(Context* ctx) {
 
 Value LEPUSValueHelper::CreateArray(Context* ctx) {
   if (ctx && ctx->IsLepusNGContext()) {
-    auto* lctx = QuickContext::Cast(ctx)->context();
+    auto* lctx = Context::ToQuickContext(ctx)->context();
     return MK_JS_LEPUS_VALUE(lctx, LEPUS_NewArray(lctx));
   }
   return Value(lepus::CArray::Create());

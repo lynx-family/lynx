@@ -35,7 +35,7 @@ TEST_F(LepusPromiseMethods, TestPromiseReject) {
     }
   )--";
   lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
-  qctx.Execute();
+  qctx.ExecuteBinaryWithBundle(nullptr, nullptr);
   LEPUSValue res = qctx.GetAndCall("result", nullptr, 0);
   LEPUSValue expected_res = LEPUS_MKVAL(LEPUS_TAG_INT, 1);
   EXPECT_EQ(LEPUS_VALUE_GET_TAG(res), LEPUS_VALUE_GET_TAG(expected_res));

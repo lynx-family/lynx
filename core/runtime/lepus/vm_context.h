@@ -20,22 +20,24 @@
 #include "core/runtime/lepus/function.h"
 #include "core/runtime/lepus/heap.h"
 #include "core/runtime/lepus/marco.h"
+#include "core/runtime/lepus/mts_context.h"
 #include "core/runtime/lepus/restricted_value.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 
 namespace lynx {
 namespace tasm {
-class TemplateBinaryReader;
 class TemplateEntry;
+class TemplateBinaryReader;
 }  // namespace tasm
 
 namespace lepus {
 class OutputStream;
 class VMContextBundle;
-class VMContext : public Context {
+class VMContext : public MTSContext {
  public:
-  VMContext()
-      : Context(VMContextType),
+  VMContext(std::shared_ptr<MTSContextDelegate> mts_context_delegate,
+            void* runtime)
+      : MTSContext(mts_context_delegate, runtime),
         current_frame_(nullptr),
         enable_strict_check_(false),
         enable_top_var_strict_mode_(true),
@@ -43,9 +45,15 @@ class VMContext : public Context {
         block_context_() {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, VM_CONTEXT_CONSTRUCTION);
   }
-  ~VMContext() override;
+
+  // for encoder
+  VMContext() : VMContext(nullptr, nullptr) { Initialize(); }
+
+  ~VMContext() = default;
   virtual void Initialize() override;
-  virtual bool Execute() override;
+  virtual ContextType Type() const override {
+    return ContextType::VMContextType;
+  }
 
   void RegisterGlobalFunction(const RenderBindingFunction* funcs,
                               size_t size) override;
@@ -131,13 +139,6 @@ class VMContext : public Context {
     return global_.Find(name);
   }
 
-  static VMContext* Cast(Context* context) {
-    DCHECK(context->IsVMContext());
-    return static_cast<VMContext*>(context);
-  }
-
-  void RegisterLepusVerion();
-
   bool DeSerialize(const ContextBundle& bundle, bool, Value* ret,
                    const char* file_name = nullptr) override;
   bool MoveContextBundle(VMContextBundle& bundle);
@@ -151,7 +152,18 @@ class VMContext : public Context {
   virtual lepus::Value GetCurrentThis(lepus::Value* argv,
                                       int32_t offset) override;
 
-  virtual void EnableRuntimeLeakCheck(bool enable) override;
+  virtual Value CallArgs(const base::String& name, const Value* args[],
+                         size_t args_count,
+                         bool pause_suppression_mode) override;
+  virtual Value CallClosureArgs(const Value& closure, const Value* args[],
+                                size_t args_count) override;
+
+  // TODO(wangboyong): refact this
+  bool Execute();
+  bool ExecuteBinaryWithBundle(const ContextBundle* bundle,
+                               Value* ret_val) override;
+
+  void BindCurrentThread() override{};
 
   class DebugDelegate {
    public:
@@ -197,20 +209,14 @@ class VMContext : public Context {
 
   Heap& heap() { return heap_; }
 
-  bool ExecuteBinaryInternal(RestrictedValue* ret_val);
   RestrictedValue* CallPrologue(const base::String& name);
   RestrictedValue CallEpilogue(RestrictedValue* function, size_t arg_count);
-
-  virtual Value CallArgs(const base::String& name, const Value* args[],
-                         size_t args_count,
-                         bool pause_suppression_mode) override;
-  virtual Value CallClosureArgs(const Value& closure, const Value* args[],
-                                size_t args_count) override;
 
   void RunFrame();
   void GenerateClosure(RestrictedValue* value, long index);
   RestrictedValue PrepareClosureContext(const fml::RefPtr<lepus::Closure>& clo);
-  void ReportException(const std::string& exception_info, int& pc,
+  // Returns true if the exception is caught by a `catch` label.
+  bool ReportException(const std::string& exception_info, int& pc,
                        int& instruction_length,
                        fml::RefPtr<Closure>& current_frame_closure,
                        Function*& current_frame_function,
@@ -224,6 +230,8 @@ class VMContext : public Context {
 
   void SetDebugInfoURL(const std::string& url,
                        const std::string& file_name) override;
+
+  void RegisterLepusVerion();
 
   Heap heap_;
   Frame* current_frame_;

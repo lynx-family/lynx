@@ -18,7 +18,7 @@ class LepusInspectorManagerImpl : public LepusInspectorManager {
   LepusInspectorManagerImpl() = default;
   ~LepusInspectorManagerImpl() override = default;
 
-  void InitInspector(Context* entry,
+  void InitInspector(MTSContext* entry,
                      const std::shared_ptr<InspectorLepusObserver>& observer,
                      const std::string& context_name) override;
   void SetDebugInfo(const std::string& debug_info_url,

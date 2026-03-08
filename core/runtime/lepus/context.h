@@ -22,9 +22,11 @@
 #include "core/inspector/lepus_inspector_manager.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
 #include "core/public/page_options.h"
+#include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/lepus_context_cell.h"
 #include "core/runtime/lepus/lepus_global.h"
+#include "core/runtime/lepus/mts_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 
@@ -36,18 +38,6 @@ class LepusCallbackManager;
 
 namespace lepus {
 class ContextBundle;
-
-enum ContextType {
-  VMContextType,       // Run low level version lepus with VmContext
-  LepusNGContextType,  // Run lepusNG with qucikjs code
-};
-
-struct RenderBindingFunction {
-  const char* name;
-  CFunction function;
-  bool for_lepus = true;
-  bool for_lepusng = true;
-};
 
 #define LEPUS_DEFAULT_CONTEXT_NAME "__Card__"
 
@@ -81,13 +71,29 @@ class Context {
     Context* ctx_;
   };
 
-  virtual ~Context() {}
-  Context(ContextType type);
+  virtual ~Context();
+
+  Context(ContextType type, bool disable_tracing_gc = false,
+          int runtime_mode = 0,
+          const tasm::PageOptions& page_options = tasm::PageOptions());
+
+  static VMContext* ToVMContext(Context* context);
+
+  static QuickContext* ToQuickContext(Context* context);
+
+  static Context* ToContext(MTSContext* mts_context);
+
+  static std::shared_ptr<Context> CreateContext(
+      ContextType type, bool disable_tracing_gc = false, int runtime_mode = 0,
+      const tasm::PageOptions& page_options = tasm::PageOptions());
 
   Delegate* GetDelegate();
 
   // virtual interface
-  virtual void Initialize() = 0;
+  void Initialize();
+
+  // TODO(wangboyong): Remove this method after the integration is complete.
+  MTSContext* GetMTSContext() { return mts_context_.get(); }
 
   // TODO(songshourui.null): For the Context class, only the following
   // interfaces need to be exposed: EvalBuf, EvalBinary CallArgs, CallClosure.
@@ -96,34 +102,37 @@ class Context {
   // temporarily refactored this into a shared ExecuteBinaryInternal function.
   // Once the Execute API is removed, only EvalBinary will remain as the unified
   // entry point.
-  virtual bool Execute() = 0;
+  // Execute main bundle.
+  // NOTE: Keep it parameterless for MR1; bundle-specific execution is handled
+  // by MTSContext internally.
+  bool Execute();
 
+  // only for main bundle
   bool TryExecute();
+
   bool HasPreExecuteSuccess();
 
-  virtual void UpdateGCTiming(bool is_start){};
+  void UpdateGCTiming(bool is_start);
 
-  virtual void TriggerVmGC(){};
+  void TriggerVmGC();
 
   virtual void RegisterGlobalFunction(const RenderBindingFunction* funcs,
-                                      size_t size) = 0;
+                                      size_t size);
   virtual void RegisterObjectFunction(lepus::Value& obj,
                                       const RenderBindingFunction* funcs,
-                                      size_t size) = 0;
+                                      size_t size);
 
   bool UpdateTopLevelVariable(const std::string& name, const Value& val);
-  virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
-                                            const Value& val) = 0;
+  bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
+                                    const Value& val);
   // shadow equal for table
-  virtual bool CheckTableShadowUpdatedWithTopLevelVariable(
-      const lepus::Value& update) = 0;
+  bool CheckTableShadowUpdatedWithTopLevelVariable(const lepus::Value& update);
 
-  virtual void ResetTopLevelVariable() = 0;
-  virtual void ResetTopLevelVariableByVal(const Value& val) = 0;
+  void ResetTopLevelVariable();
+  void ResetTopLevelVariableByVal(const Value& val);
 
   Value CallArgs(const base::String& name, const std::vector<Value>& args,
                  bool pause_suppression_mode = false);
-  Value CallClosureArgs(const Value& closure, const std::vector<Value>& args);
 
   template <class... Args,
             class = std::enable_if_t<
@@ -133,7 +142,9 @@ class Context {
   Value Call(const base::String& name, const Args&... args) {
     constexpr auto n_args = sizeof...(args);
     const Value* p_args[n_args] = {&args...};
-    return CallArgs(name, p_args, n_args, false);
+
+    ScriptingScope scope(this);
+    return mts_context_->CallArgs(name, p_args, n_args, false);
   }
 
   template <class... Args,
@@ -144,8 +155,11 @@ class Context {
   Value CallInPauseSuppressionMode(const base::String& name, Args&&... args) {
     constexpr auto n_args = sizeof...(args);
     const Value* p_args[n_args] = {&args...};
-    return CallArgs(name, p_args, n_args, true);
+    return mts_context_->CallArgs(name, p_args, n_args, true);
   }
+
+  virtual Value CallClosureArgs(const Value& closure,
+                                const std::vector<Value>& args);
 
   template <class... Args,
             class = std::enable_if_t<
@@ -155,36 +169,38 @@ class Context {
   Value CallClosure(const Value& closure, Args&&... args) {
     constexpr auto n_args = sizeof...(args);
     const Value* p_args[n_args] = {&args...};
-    return CallClosureArgs(closure, p_args, n_args);
+
+    ScriptingScope scope(this);
+    return mts_context_->CallClosureArgs(closure, p_args, n_args);
   }
 
-  virtual lepus::Value GetTopLevelVariable(bool ignore_callable = false) = 0;
-  virtual bool GetTopLevelVariableByName(const base::String& name,
-                                         lepus::Value* ret) = 0;
+  lepus::Value GetTopLevelVariable(bool ignore_callable = false);
+  bool GetTopLevelVariableByName(const base::String& name, lepus::Value* ret);
 
-  virtual void SetGlobalData(const base::String& name, Value value) = 0;
+  virtual void SetGlobalData(const base::String& name, Value value);
   /**
    * This value will overwrite the origin value
    */
-  virtual void ResetGlobalData(const base::String& name, Value value) = 0;
-  virtual lepus::Value GetGlobalData(const base::String& name) = 0;
+  virtual void ResetGlobalData(const base::String& name, Value value);
+  virtual lepus::Value GetGlobalData(const base::String& name);
 
-  virtual void SetGCThreshold(int64_t threshold){};
+  void SetGCThreshold(int64_t threshold);
 
-  virtual const std::string& name() const { return name_; }
+  const std::string& name() const { return name_; }
 
-  virtual void SetSourceMapRelease(const lepus::Value& source_map_release){};
-  virtual void ReportErrorWithMsg(
+  void SetSourceMapRelease(const lepus::Value& source_map_release);
+  void ReportErrorWithMsg(
       const std::string& msg, int32_t error_code,
-      int32_t level = static_cast<int>(base::LynxErrorLevel::Error)){};
-  virtual void ReportErrorWithMsg(
+      int32_t level = static_cast<int>(base::LynxErrorLevel::Error));
+  void ReportErrorWithMsg(
       const std::string& msg, const std::string& stack, int32_t error_code,
-      int32_t level = static_cast<int>(base::LynxErrorLevel::Error)){};
-  virtual void BeforeReportError(base::LynxError& error) {}
-  virtual void AddReporterCustomInfo(
-      const std::unordered_map<std::string, std::string>& info){};
+      int32_t level = static_cast<int>(base::LynxErrorLevel::Error));
+  void BeforeReportError(base::LynxError& error);
+  void AddReporterCustomInfo(
+      const std::unordered_map<std::string, std::string>& info);
 
-  virtual void OnReload() {}
+  // virtual void CleanClosuresInCycleReference() {}
+  void OnReload();
 
   void InitInspector(const std::shared_ptr<InspectorLepusObserver>& observer,
                      const std::string& context_name);
@@ -192,11 +208,6 @@ class Context {
 
   base::StringTable* string_table() { return &string_table_; }
   void set_name(const std::string& name) { name_ = name; }
-
-  static std::shared_ptr<Context> CreateContext(
-      bool use_lepusng = false, bool disable_tracing_gc = false,
-      int runtime_mode = 0,
-      const tasm::PageOptions& page_options = tasm::PageOptions());
 
   // check context type
   bool IsVMContext() const { return type_ == VMContextType; }
@@ -214,7 +225,12 @@ class Context {
 
   void SetSdkVersion(std::string sdk_version) {
     sdk_version_ = std::move(sdk_version);
+    mts_context_->SetSdkVersion(sdk_version_);
   }
+
+  // Keep old API name for MR1.
+  // The actual tid binding is implemented by MTSContext (e.g. QuickContext).
+  void PushContextValidTid() { mts_context_->BindCurrentThread(); }
 
   const std::string& GetSdkVersion() const { return sdk_version_; }
 
@@ -224,14 +240,14 @@ class Context {
 
   void RegisterLynx(bool enable_signal_api);
 
-  virtual bool DeSerialize(const ContextBundle&, bool, Value* ret,
-                           const char* file_name = nullptr) = 0;
+  bool DeSerialize(const ContextBundle&, bool, Value* ret,
+                   const char* file_name = nullptr);
 
-  virtual void ApplyConfig(const std::shared_ptr<tasm::PageConfig>&,
-                           const tasm::CompileOptions&) = 0;
+  void ApplyConfig(const std::shared_ptr<tasm::PageConfig>&,
+                   const tasm::CompileOptions&);
 
-  virtual lepus::Value ReportFatalError(const std::string& error_message,
-                                        bool exit, int32_t code) = 0;
+  lepus::Value ReportFatalError(const std::string& error_message, bool exit,
+                                int32_t code);
 
   // TODO(songshourui.null): Later, consider pushing the 'this' of LepusNG to
   // the stack, which is to avoid adding the following function on the Context
@@ -239,40 +255,41 @@ class Context {
   // degradation. If the performance test proves that pushing 'this' to the
   // stack does not cause performance degradation, then this function will be
   // deleted.
-  virtual lepus::Value GetCurrentThis(lepus::Value* argv, int32_t offset) {
-    return lepus::Value();
-  };
+  lepus::Value GetCurrentThis(lepus::Value* argv, int32_t offset) {
+    return mts_context_->GetCurrentThis(argv, offset);
+  }
 
-  virtual void SetDebugInfoURL(const std::string& url,
-                               const std::string& file_name);
+  void SetDebugInfoURL(const std::string& url, const std::string& file_name);
 
-  virtual void EnableRuntimeLeakCheck(bool enable){};
+  bool IsTracingGCEnabled() { return mts_context_->IsTracingGCEnabled(); }
 
-  virtual void PushContextValidTid(){};
+  void UpdateVMOuterObjSize(int size) {
+    return mts_context_->UpdateVMOuterObjSize(size);
+  }
 
-  virtual void UpdateVMOuterObjSize(int size){};
+  bool EvalBinary(const uint8_t* buf, uint64_t size, Value& ret,
+                  const char* file_name = nullptr) {
+    ScriptingScope scope(this);
 
-  virtual bool IsTracingGCEnabled() { return false; }
-
-  virtual bool EvalBinary(const uint8_t* buf, uint64_t size, Value& ret,
-                          const char* file_name = nullptr) {
-    return false;
+    EnsureLynx();
+    return mts_context_->EvalBinary(buf, size, ret, file_name);
   }
 
   // Execute for plain script.
-  virtual bool EvalBuf(const char* buf, uint64_t size, Value& ret,
-                       const char* file_name) {
-    return false;
+  bool EvalBuf(const char* buf, uint64_t size, Value& ret,
+               const char* file_name) {
+    ScriptingScope scope(this);
+
+    EnsureLynx();
+    return mts_context_->EvalBuf(buf, size, ret, file_name);
   }
+
+  void OnGC(std::string mem_info);
+  void ReportGCTimingEvent(const char* start, const char* end);
 
  protected:
   void PushScriptingScope(ScriptingScope* scope);
   void PopScriptingScope();
-
-  virtual Value CallArgs(const base::String& name, const Value* args[],
-                         size_t args_count, bool pause_suppression_mode) = 0;
-  virtual Value CallClosureArgs(const Value& closure, const Value* args[],
-                                size_t args_count) = 0;
 
   void EnsureDelegate();
 
@@ -288,20 +305,16 @@ class Context {
   base::StringTable string_table_;
 
   std::string sdk_version_{"null"};
+
   bool has_pre_execute_success_{false};
 
   std::unique_ptr<LepusInspectorManager> inspector_manager_;
 
   base::InlineStack<ScriptingScope*, 16> scripting_scope_stack_;
-};
 
-class ContextBundle {
- public:
-  ContextBundle() = default;
-  virtual ~ContextBundle() = default;
-  virtual bool IsLepusNG() const = 0;
+  runtime::JSErrorReporter js_error_reporter_;
 
-  static std::unique_ptr<ContextBundle> Create(bool is_lepusng_binary);
+  std::unique_ptr<MTSContext> mts_context_;
 };
 
 }  // namespace lepus

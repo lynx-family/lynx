@@ -137,7 +137,7 @@ static RestrictedValue Console_Table(VMContext* context) {
   return RestrictedValue();
 }
 
-void RegisterBaseAPI(Context* ctx) {
+void RegisterBaseAPI(VMContext* ctx) {
 #if 1
   fml::RefPtr<Dictionary> table = Dictionary::Create();
   RegisterTableFunction(ctx, table, "log", &Console_Log);

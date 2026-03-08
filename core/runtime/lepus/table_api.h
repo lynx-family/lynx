@@ -9,7 +9,7 @@
 namespace lynx {
 namespace lepus {
 
-void RegisterTableAPI(Context* ctx);
+void RegisterTableAPI(VMContext* ctx);
 
 }  // namespace lepus
 }  // namespace lynx

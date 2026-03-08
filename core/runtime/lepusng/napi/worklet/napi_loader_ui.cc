@@ -16,7 +16,7 @@
 namespace lynx {
 namespace worklet {
 
-NapiLoaderUI::NapiLoaderUI(lepus::QuickContext* context) : context_(context) {}
+NapiLoaderUI::NapiLoaderUI(lepus::Context* context) : context_(context) {}
 
 void NapiLoaderUI::OnAttach(Napi::Env env) {
   SetNapiEnvToLEPUSContext(env);
@@ -70,8 +70,13 @@ NapiLoaderUI::NapiEnvToContextMap() {
 }
 
 void NapiLoaderUI::SetNapiEnvToLEPUSContext(Napi::Env env) {
-  context_->set_napi_env(reinterpret_cast<void*>(static_cast<napi_env>(env)));
-  NapiEnvToContextMap()[static_cast<napi_env>(env)] = context_;
+  auto quick_context = lepus::Context::ToQuickContext(context_);
+  if (quick_context == nullptr) {
+    return;
+  }
+  quick_context->set_napi_env(
+      reinterpret_cast<void*>(static_cast<napi_env>(env)));
+  NapiEnvToContextMap()[static_cast<napi_env>(env)] = quick_context;
 }
 
 }  // namespace worklet

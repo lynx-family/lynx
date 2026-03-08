@@ -120,7 +120,7 @@ static lepus::QuickContext* GetQuickContextWithNapiEnv(
   if (!context || !context->IsLepusNGContext()) {
     return nullptr;
   }
-  auto* quick_context = static_cast<lepus::QuickContext*>(context.get());
+  auto* quick_context = lepus::Context::ToQuickContext(context.get());
   if (quick_context == nullptr || quick_context->napi_env() == nullptr) {
     return nullptr;
   }

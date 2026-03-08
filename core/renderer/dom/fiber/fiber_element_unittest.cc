@@ -47,6 +47,7 @@
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
 #include "core/renderer/utils/test/text_utils_mock.h"
 #include "core/runtime/lepus/bytecode_generator.h"
+#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/js_object.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/services/event_report/event_tracker.h"
@@ -1618,7 +1619,7 @@ TEST_P(FiberElementTest,
   auto default_entry = std::make_shared<TemplateEntry>();
   tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
 
-  auto ctx = std::make_shared<lepus::QuickContext>();
+  auto ctx = lepus::Context::CreateContext(lepus::LepusNGContextType);
   tasm->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(ctx);
 
   std::string js_source = R"(
@@ -1628,7 +1629,7 @@ TEST_P(FiberElementTest,
     }
   )";
 
-  lepus::BytecodeGenerator::GenerateBytecode(ctx.get(), js_source,
+  lepus::BytecodeGenerator::GenerateBytecode(ctx->GetMTSContext(), js_source,
                                              ctx->GetSdkVersion(), "");
   ctx->Execute();
 

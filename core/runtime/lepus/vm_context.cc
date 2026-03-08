@@ -70,23 +70,17 @@ namespace lepus {
 
 using UnsafeOp = RestrictedValue::Unsafe;
 
-VMContext::~VMContext() { DestroyInspector(); }
-
 void VMContext::Initialize() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, VM_CONTEXT_INIT);
   RegisterBuiltin(this);
   RegisterLepusVerion();
 }
 
-bool VMContext::Execute() {
-  if (HasPreExecuteSuccess()) {
-    return true;
-  }
-  ScriptingScope scope(this);
-  return ExecuteBinaryInternal(nullptr);
-}
+bool VMContext::Execute() { return ExecuteBinaryWithBundle(nullptr, nullptr); }
 
-bool VMContext::ExecuteBinaryInternal(RestrictedValue* ret_val) {
+bool VMContext::ExecuteBinaryWithBundle(const ContextBundle* bundle,
+                                        Value* ret_val) {
+  (void)bundle;
   if (root_function_.get() == nullptr) {
     LOGE(
         "lepus-Execute: root_function_ is nullptr, template.lepus may be "
@@ -95,7 +89,6 @@ bool VMContext::ExecuteBinaryInternal(RestrictedValue* ret_val) {
   }
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, VM_CONTEXT_EXECUTE);
-  EnsureLynx();
 
   auto* top = heap().top_++;
   top->SetRefCounted(
@@ -115,9 +108,11 @@ bool VMContext::ExecuteBinaryInternal(RestrictedValue* ret_val) {
     current_frame_ = nullptr;
   }
   executed_ = true;
-  if (ret_val) {
-    *ret_val = ret;
-  }
+
+  // TODO(wangboyong): check ret type
+  // if (ret_val) {
+  //   *ret_val = ret;
+  // }
   return true;
 }
 
@@ -158,7 +153,6 @@ Value VMContext::CallArgs(const base::String& name, const Value* args[],
               [&](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("name", name.str());
               });
-  ScriptingScope scope(this);
 
   if (auto function = CallPrologue(name); function != nullptr) {
     for (size_t i = 0; i < args_count; ++i) {
@@ -172,7 +166,6 @@ Value VMContext::CallArgs(const base::String& name, const Value* args[],
 Value VMContext::CallClosureArgs(const Value& closure, const Value* args[],
                                  size_t args_count) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, VM_CONTEXT_CALL_CLOSURE);
-  ScriptingScope scope(this);
 
   Value ret;
   auto* function = heap_.top_;
@@ -486,10 +479,12 @@ void VMContext::ReportLogBox(const std::string& exception_info, int& pc) {
   exception_info_ = "lepus exception:\n\n" + exception_info_;
   LOGE("lepus-ReportException: exception happened without catch "
        << this->exception_info_);
-  ReportError(exception_info_);
+  if (mts_context_delegate_) {
+    mts_context_delegate_->ReportError(exception_info_);
+  }
 }
 
-void VMContext::ReportException(const std::string& exception_info, int& pc,
+bool VMContext::ReportException(const std::string& exception_info, int& pc,
                                 int& instruction_length,
                                 fml::RefPtr<Closure>& current_frame_closure,
                                 Function*& current_frame_function,
@@ -562,13 +557,15 @@ void VMContext::ReportException(const std::string& exception_info, int& pc,
     exception_info_ = "lepus exception:\n\n" + exception_info_;
     LOGE("lepus-ReportException: exception happened without catch "
          << this->exception_info_);
-    if (report_logbox) {
-      ReportError(exception_info_, err_code);
+    if (report_logbox && mts_context_delegate_) {
+      mts_context_delegate_->ReportError(exception_info_, err_code);
     }
-    return;
+    return false;
   } else {
     LOGE("lepus-CatchException: " << this->exception_info_);
   }
+
+  return true;
 }
 
 std::string VMContext::BuildBackTrace(const base::Vector<int>& pc,
@@ -619,7 +616,7 @@ std::string VMContext::BuildBackTrace(const base::Vector<int>& pc,
 void VMContext::SetDebugInfoURL(const std::string& url,
                                 const std::string& file_name) {
   debug_info_url_ = url;
-  Context::SetDebugInfoURL(url, file_name);
+  // Context::SetDebugInfoURL(url, file_name);
 }
 
 LEPUS_NOT_INLINE void VMContext::RunFrame_Op_Neg_UnlikelyPath(
@@ -989,16 +986,21 @@ void VMContext::RunFrame() {
         }
         int32_t result = CallFunction(a, argc, c);
         if (unlikely(result <= 0)) {
+          bool caught = false;
           if (result < 0) {
             // exception
-            ReportException(
+            caught = ReportException(
                 *std::exchange(current_exception_, std::nullopt), pc, length,
                 closure, function, base, regs, true,
                 std::exchange(err_code_, error::E_MTS_RUNTIME_ERROR));
           } else {
             // failed: not a function
-            ReportException(std::string(TYPEERROR) + ", not a function.", pc,
-                            length, closure, function, base, regs, true);
+            caught = ReportException(
+                std::string(TYPEERROR) + ", not a function.", pc, length,
+                closure, function, base, regs, true);
+          }
+          if (caught) {
+            continue;
           }
           return;
         } else if (pc < current_frame_->current_pc_) {
@@ -1032,8 +1034,12 @@ void VMContext::RunFrame() {
           {
             std::ostringstream msg;
             msg << a;
-            ReportException(msg.str(), pc, length, closure, function, base,
-                            regs, false);
+            bool caught = ReportException(msg.str(), pc, length, closure,
+                                          function, base, regs, false);
+            if (caught) {
+              continue;
+            }
+            return;
           }
         }
         BREAK;
@@ -1466,9 +1472,13 @@ void VMContext::RunFrame() {
               if (c->IsString()) {
                 key = c->StdString();
               }
-              ReportException("Cannot read " + key + " of null ", pc, length,
-                              closure, function, base, regs,
-                              enable_strict_check_);
+              bool caught = ReportException("Cannot read " + key + " of null ",
+                                            pc, length, closure, function, base,
+                                            regs, enable_strict_check_);
+              if (caught) {
+                continue;
+              }
+              return;
             }
           } else {
 #ifdef LEPUS_LOG
@@ -1730,10 +1740,6 @@ lepus::Value VMContext::ReportFatalError(const std::string& error_message,
 
 lepus::Value VMContext::GetCurrentThis(lepus::Value* argv, int32_t offset) {
   return *(argv + offset);
-}
-
-void VMContext::EnableRuntimeLeakCheck(bool enable) {
-  // VMContext does not support `SetObjectCtxCheckStatus`;
 }
 
 }  // namespace lepus

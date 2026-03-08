@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepusng/lepusng_inspected_context_impl.h"
 
@@ -27,14 +28,12 @@ namespace lepus_inspector {
 
 static std::shared_ptr<LepusNGInspectedContextImpl> GetLepusNGInspectedContext(
     LEPUSContext* lepus_context) {
-  lynx::lepus::Context* context =
+  lynx::lepus::QuickContext* quick_context =
       lynx::lepus::QuickContext::GetFromJsContext(lepus_context);
-  if (context == nullptr) {
+  if (quick_context == nullptr) {
     return nullptr;
   }
-  auto debug_delegate = static_cast<lynx::lepus::QuickContext*>(context)
-                            ->GetDebugDelegate()
-                            .lock();
+  auto debug_delegate = quick_context->GetDebugDelegate().lock();
   return std::static_pointer_cast<LepusNGInspectedContextImpl>(debug_delegate);
 }
 

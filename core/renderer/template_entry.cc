@@ -4,6 +4,10 @@
 
 #include "core/renderer/template_entry.h"
 
+#include <cctype>
+#include <string>
+
+#include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/lynx_global_pool.h"
@@ -89,8 +93,11 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
   // 3. construct a context at runtime
   if (!vm_context_) {
     uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
+
     vm_context_ = lepus::Context::CreateContext(
-        is_lepusng_binary, disable_tracing_gc, mode, page_options);
+        is_lepusng_binary ? lepus::ContextType::LepusNGContextType
+                          : lepus::ContextType::VMContextType,
+        disable_tracing_gc, mode, page_options);
   }
 
   if (!vm_context_) {
@@ -103,10 +110,9 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
   }
 #if ENABLE_TRACE_PERFETTO
   if (is_lepusng_binary) {
-    std::shared_ptr<lepus::QuickContext> context =
-        std::static_pointer_cast<lepus::QuickContext>(vm_context_);
+    auto context = lepus::Context::ToQuickContext(vm_context_.get());
     auto profiler =
-        std::make_shared<runtime::profile::LepusNGProfiler>(context);
+        std::make_shared<runtime::profile::LepusNGProfiler>(vm_context_);
     context->SetRuntimeProfiler(profiler);
   }
 #endif
@@ -126,7 +132,6 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
                              is_card_ ? DEFAULT_ENTRY_NAME : name_);
   vm_context_->SetDebugInfoURL(compile_options().template_debug_url_,
                                file_name);
-
   // the context from local pool has no need to DeSerialize
   return source_type == LepusContextSourceType::kFromLocalPool ||
          vm_context_->DeSerialize(context_bundle, false, nullptr,
@@ -316,10 +321,10 @@ lepus::Value TemplateEntry::ProcessBinaryEvalResult() {
     // for lazy bundle 3.0, we need to process the evalResult, handled by
     // fe `globalThis.processEvalResult`
     BASE_STATIC_STRING_DECL(kProcessEvalResult, "processEvalResult");
-    auto* context = static_cast<lepus::QuickContext*>(vm_context_.get());
+    auto* context = lepus::Context::ToQuickContext(vm_context_.get());
     if (!context->GetGlobalData(kProcessEvalResult).IsEmpty()) {
-      return context->Call(kProcessEvalResult, binary_eval_result_,
-                           lepus::Value(GetName()));
+      return vm_context_->Call(kProcessEvalResult, binary_eval_result_,
+                               lepus::Value(GetName()));
     }
   }
   return binary_eval_result_;
@@ -356,7 +361,7 @@ TemplateEntry::~TemplateEntry() {
   template_bundle_.lepus_chunk_manager_->SetThreadStopFlag(true);
 #if ENABLE_TRACE_PERFETTO
   if (vm_context_ && vm_context_->IsLepusNGContext()) {
-    auto context = std::static_pointer_cast<lepus::QuickContext>(vm_context_);
+    auto context = lepus::Context::ToQuickContext(vm_context_.get());
     context->RemoveRuntimeProfiler();
   }
 #endif
@@ -475,9 +480,10 @@ void TemplateEntry::InvokeLepusBridge(const int32_t callback_id,
 void TemplateEntry::AttachNapiEnvironment() {
 #if ENABLE_LEPUSNG_WORKLET
   if (vm_context_->IsLepusNGContext() && !napi_environment_) {
-    lepus::QuickContext* qctx = lepus::QuickContext::Cast(vm_context_.get());
+    lepus::QuickContext* qctx =
+        lepus::Context::ToQuickContext(vm_context_.get());
     napi_environment_ = std::make_unique<lynx::runtime::js::NapiEnvironment>(
-        std::make_unique<lynx::worklet::NapiLoaderUI>(qctx));
+        std::make_unique<lynx::worklet::NapiLoaderUI>(vm_context_.get()));
     auto proxy =
         lynx::runtime::js::NapiRuntimeProxyQuickjs::Create(qctx->context());
     auto napi_proxy = std::unique_ptr<runtime::js::NapiRuntimeProxy>(

@@ -86,23 +86,21 @@ BaseSignalTest::BaseSignalTest() {
 
 void BaseSignalTest::SetUp() {
   if (enable_ng_) {
-    ctx_ = std::make_shared<lepus::QuickContext>();
-    ctx_->Initialize();
+    ctx_ =
+        lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
   } else {
-    ctx_ = std::make_shared<lepus::VMContext>();
-    ctx_->Initialize();
+    ctx_ = lepus::Context::CreateContext(lepus::ContextType::VMContextType);
   }
+  ctx_->Initialize();
 
   tasm_->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(ctx_);
   tasm_->page_config_ = std::make_shared<PageConfig>();
   tasm_->SetPageConfigClient();
 
   if (enable_ng_) {
-    auto qctx = static_cast<lepus::QuickContext*>(ctx_.get());
-    Renderer::RegisterBuiltin(qctx, ArchOption::FIBER_ARCH);
+    Renderer::RegisterBuiltin(ctx_.get(), ArchOption::FIBER_ARCH);
   } else {
-    auto vm_ctx = static_cast<lepus::VMContext*>(ctx_.get());
-    Renderer::RegisterBuiltin(vm_ctx, ArchOption::FIBER_ARCH);
+    Renderer::RegisterBuiltin(ctx_.get(), ArchOption::FIBER_ARCH);
   }
 
   ctx_->SetGlobalData(
@@ -116,7 +114,8 @@ void BaseSignalTest::Compile(const std::string& source, lepus::Context* ctx) {
     ctx = ctx_.get();
   }
 
-  lepus::BytecodeGenerator::GenerateBytecode(ctx, source, ctx->GetSdkVersion());
+  lepus::BytecodeGenerator::GenerateBytecode(ctx->GetMTSContext(), source,
+                                             ctx->GetSdkVersion());
 }
 
 bool BaseSignalTest::Execute(lepus::Context* ctx) {
@@ -125,10 +124,9 @@ bool BaseSignalTest::Execute(lepus::Context* ctx) {
   }
 
   if (ctx->IsLepusNGContext()) {
-    auto qctx = static_cast<lepus::QuickContext*>(ctx);
-    return qctx->Execute();
+    return ctx->Execute();
   } else {
-    auto vm_ctx = static_cast<lepus::VMContext*>(ctx);
+    auto vm_ctx = lepus::Context::ToVMContext(ctx);
     vm_ctx->heap_ = lepus::Heap();
     return vm_ctx->Execute();
   }

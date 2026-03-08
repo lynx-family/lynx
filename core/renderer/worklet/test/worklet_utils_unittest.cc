@@ -11,6 +11,7 @@
 #include "core/renderer/worklet/base/worklet_utils.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
+#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/lepus_context_cell.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
@@ -22,8 +23,7 @@ namespace base {
 
 class TestNapiLoaderUI : public worklet::NapiLoaderUI {
  public:
-  TestNapiLoaderUI(lepus::QuickContext* context)
-      : worklet::NapiLoaderUI(context){};
+  TestNapiLoaderUI(lepus::Context* context) : worklet::NapiLoaderUI(context){};
 
   void OnAttach(Napi::Env env) override { SetNapiEnvToLEPUSContext(env); }
 };
@@ -34,11 +34,14 @@ class WorkletValueConverterMethods : public ::testing::Test {
   ~WorkletValueConverterMethods() override { napi_environment_->Detach(); };
 
   void SetUp() override {
-    ctx_.Initialize();
+    context_ =
+        lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
+    ctx_ = lepus::Context::ToQuickContext(context_.get());
+    ctx_->Initialize();
 
     napi_environment_ = std::make_unique<runtime::js::NapiEnvironment>(
-        std::make_unique<TestNapiLoaderUI>(&ctx_));
-    auto proxy = runtime::js::NapiRuntimeProxyQuickjs::Create(ctx_.context());
+        std::make_unique<TestNapiLoaderUI>(context_.get()));
+    auto proxy = runtime::js::NapiRuntimeProxyQuickjs::Create(ctx_->context());
     auto napi_proxy = std::unique_ptr<runtime::js::NapiRuntimeProxy>(
         static_cast<runtime::js::NapiRuntimeProxy*>(proxy.release()));
     napi_proxy_ = napi_proxy.get();
@@ -48,7 +51,8 @@ class WorkletValueConverterMethods : public ::testing::Test {
 
   void TearDown() override{};
 
-  lepus::QuickContext ctx_;
+  std::shared_ptr<lepus::Context> context_;
+  lepus::QuickContext* ctx_;
   std::unique_ptr<runtime::js::NapiEnvironment> napi_environment_;
   runtime::js::NapiRuntimeProxy* napi_proxy_;
 };
@@ -128,35 +132,35 @@ TEST_F(WorkletValueConverterMethods, IsLepusEqual) {
 
 TEST_F(WorkletValueConverterMethods, IsJSValueEqual) {
   // BOOL
-  auto js_0 = LEPUS_NewBool(ctx_.context(), false);
-  auto js_1 = LEPUS_NewBool(ctx_.context(), true);
-  auto js_2 = LEPUS_NewInt32(ctx_.context(), 1);
-  auto js_3 = LEPUS_NewInt64(ctx_.context(), 1);
-  auto js_4 = LEPUS_NewFloat64(ctx_.context(), 1);
+  auto js_0 = LEPUS_NewBool(ctx_->context(), false);
+  auto js_1 = LEPUS_NewBool(ctx_->context(), true);
+  auto js_2 = LEPUS_NewInt32(ctx_->context(), 1);
+  auto js_3 = LEPUS_NewInt64(ctx_->context(), 1);
+  auto js_4 = LEPUS_NewFloat64(ctx_->context(), 1);
 
-  lepus::Value value_0 = MK_JS_LEPUS_VALUE(ctx_.context(), js_0);
-  lepus::Value value_1 = MK_JS_LEPUS_VALUE(ctx_.context(), js_1);
+  lepus::Value value_0 = MK_JS_LEPUS_VALUE(ctx_->context(), js_0);
+  lepus::Value value_1 = MK_JS_LEPUS_VALUE(ctx_->context(), js_1);
 
   // Number
-  lepus::Value value_2 = MK_JS_LEPUS_VALUE(ctx_.context(), js_2);
-  lepus::Value value_3 = MK_JS_LEPUS_VALUE(ctx_.context(), js_3);
-  lepus::Value value_4 = MK_JS_LEPUS_VALUE(ctx_.context(), js_4);
+  lepus::Value value_2 = MK_JS_LEPUS_VALUE(ctx_->context(), js_2);
+  lepus::Value value_3 = MK_JS_LEPUS_VALUE(ctx_->context(), js_3);
+  lepus::Value value_4 = MK_JS_LEPUS_VALUE(ctx_->context(), js_4);
 
   // Array
-  auto js_5 = LEPUS_NewArray(ctx_.context());
-  lepus::Value ary_0 = MK_JS_LEPUS_VALUE(ctx_.context(), js_5);
-  auto js_6 = LEPUS_NewArray(ctx_.context());
-  lepus::Value ary_1 = MK_JS_LEPUS_VALUE(ctx_.context(), js_6);
-  auto js_7 = LEPUS_NewArray(ctx_.context());
-  lepus::Value ary_2 = MK_JS_LEPUS_VALUE(ctx_.context(), js_7);
+  auto js_5 = LEPUS_NewArray(ctx_->context());
+  lepus::Value ary_0 = MK_JS_LEPUS_VALUE(ctx_->context(), js_5);
+  auto js_6 = LEPUS_NewArray(ctx_->context());
+  lepus::Value ary_1 = MK_JS_LEPUS_VALUE(ctx_->context(), js_6);
+  auto js_7 = LEPUS_NewArray(ctx_->context());
+  lepus::Value ary_2 = MK_JS_LEPUS_VALUE(ctx_->context(), js_7);
 
   // Object
-  auto js_8 = LEPUS_NewObject(ctx_.context());
-  lepus::Value obj_0 = MK_JS_LEPUS_VALUE(ctx_.context(), js_8);
-  auto js_9 = LEPUS_NewObject(ctx_.context());
-  lepus::Value obj_1 = MK_JS_LEPUS_VALUE(ctx_.context(), js_9);
-  auto js_10 = LEPUS_NewObject(ctx_.context());
-  lepus::Value obj_2 = MK_JS_LEPUS_VALUE(ctx_.context(), js_10);
+  auto js_8 = LEPUS_NewObject(ctx_->context());
+  lepus::Value obj_0 = MK_JS_LEPUS_VALUE(ctx_->context(), js_8);
+  auto js_9 = LEPUS_NewObject(ctx_->context());
+  lepus::Value obj_1 = MK_JS_LEPUS_VALUE(ctx_->context(), js_9);
+  auto js_10 = LEPUS_NewObject(ctx_->context());
+  lepus::Value obj_2 = MK_JS_LEPUS_VALUE(ctx_->context(), js_10);
 
   ary_0.SetProperty(0, value_0);
   ary_0.SetProperty(1, value_1);
@@ -210,18 +214,18 @@ TEST_F(WorkletValueConverterMethods, IsJSValueEqual) {
   f_check(obj_1);
   f_check(obj_2);
 
-  if (!LEPUS_IsGCMode(ctx_.context())) {
-    LEPUS_FreeValue(ctx_.context(), js_0);
-    LEPUS_FreeValue(ctx_.context(), js_1);
-    LEPUS_FreeValue(ctx_.context(), js_2);
-    LEPUS_FreeValue(ctx_.context(), js_3);
-    LEPUS_FreeValue(ctx_.context(), js_4);
-    LEPUS_FreeValue(ctx_.context(), js_5);
-    LEPUS_FreeValue(ctx_.context(), js_6);
-    LEPUS_FreeValue(ctx_.context(), js_7);
-    LEPUS_FreeValue(ctx_.context(), js_8);
-    LEPUS_FreeValue(ctx_.context(), js_9);
-    LEPUS_FreeValue(ctx_.context(), js_10);
+  if (!LEPUS_IsGCMode(ctx_->context())) {
+    LEPUS_FreeValue(ctx_->context(), js_0);
+    LEPUS_FreeValue(ctx_->context(), js_1);
+    LEPUS_FreeValue(ctx_->context(), js_2);
+    LEPUS_FreeValue(ctx_->context(), js_3);
+    LEPUS_FreeValue(ctx_->context(), js_4);
+    LEPUS_FreeValue(ctx_->context(), js_5);
+    LEPUS_FreeValue(ctx_->context(), js_6);
+    LEPUS_FreeValue(ctx_->context(), js_7);
+    LEPUS_FreeValue(ctx_->context(), js_8);
+    LEPUS_FreeValue(ctx_->context(), js_9);
+    LEPUS_FreeValue(ctx_->context(), js_10);
   }
 }
 

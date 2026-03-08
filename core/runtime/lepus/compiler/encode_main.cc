@@ -67,7 +67,7 @@ static int32_t kTestErrorCode = 106;
 
 #pragma clang diagnostic pop
 
-static lepus::Value EmptyFunc(lepus::Context* context) {
+static lepus::Value EmptyFunc(lepus::MTSContext* context, lepus::Value*, int) {
   ++count;
   // std::cout << count << std::endl;
   return lepus::Value();
@@ -150,18 +150,18 @@ static void Print_Value(lepus::Value* val, std::ostream& output) {
   }
 }
 
-lepus::Value Print(lepus::Context* context) {
-  long params_count = context->GetParamsSize();
+lepus::Value Print(lepus::MTSContext* context) {
+  long params_count = static_cast<lepus::VMContext*>(context)->GetParamsSize();
   for (long i = 0; i < params_count; i++) {
-    lepus::Value* v = context->GetParam(i);
+    lepus::Value* v = static_cast<lepus::VMContext*>(context)->GetParam(i);
     std::ostringstream s;
     Print_Value(v, s);
     LOGE(s.str());
   }
   return lepus::Value();
 }
-static lepus::Value Assert(lepus::Context* context) {
-  lepus::Value* val = context->GetParam(0);
+static lepus::Value Assert(lepus::MTSContext* context) {
+  lepus::Value* val = static_cast<lepus::VMContext*>(context)->GetParam(0);
   if (val->IsTrue()) {
     return lepus::Value();
   } else {
@@ -169,8 +169,8 @@ static lepus::Value Assert(lepus::Context* context) {
     abort();
   }
 }
-static lepus::Value Typeof(lepus::Context* context) {
-  lepus::Value* val = context->GetParam(0);
+static lepus::Value Typeof(lepus::MTSContext* context) {
+  lepus::Value* val = static_cast<lepus::VMContext*>(context)->GetParam(0);
   switch (val->Type()) {
     case lepus::ValueType::Value_Nil:
       val->SetString("null");
@@ -206,17 +206,17 @@ static lepus::Value Typeof(lepus::Context* context) {
   return *val;
 }
 
-static lepus::Value SetFlag(lepus::Context* context) {
-  lepus::Value* parm1 = context->GetParam(0);
+static lepus::Value SetFlag(lepus::MTSContext* context) {
+  lepus::Value* parm1 = static_cast<lepus::VMContext*>(context)->GetParam(0);
   if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
-    lepus::VMContext::Cast(context)->SetNullPropAsUndef(
-        context->GetParam(1)->Bool());
+    static_cast<lepus::VMContext*>(context)->SetNullPropAsUndef(
+        static_cast<lepus::VMContext*>(context)->GetParam(1)->Bool());
   }
   return lepus::Value();
 }
 
-static lepus::Value CheckArgs(lepus::Context* context) {
-  lepus::Value* param1 = context->GetParam(0);
+static lepus::Value CheckArgs(lepus::MTSContext* context) {
+  lepus::Value* param1 = static_cast<lepus::VMContext*>(context)->GetParam(0);
 
   if (!param1->IsString()) {
     return context->ReportFatalError("arg is not string", false,
@@ -259,20 +259,21 @@ void RegisterBuiltin(lepus::VMContext* context) {
   // lepus::RegisterCFunction(context, kCFuncSetData, &ProcessComponentData);
 }
 
-class TestLepus : public lynx::lepus::ContextBinaryWriter {
+class TestLepus {
  public:
-  TestLepus() : lynx::lepus::ContextBinaryWriter(new lynx::lepus::VMContext) {}
-  ~TestLepus() { delete context_; }
+  TestLepus() {}
+  ~TestLepus() {}
   void Run(const char* input, const char* source) {
     std::string lepus_resource = source;
     if (lepus_resource == "") {
       lepus_resource = lepus::readFile(input);
     }
-    context_->Initialize();
-    RegisterBuiltin(lynx::lepus::VMContext::Cast(context_));
-    lynx::lepus::VMContext::Cast(context_)->SetClosureFix(true);
+    lepus::VMContext context;
+    context.Initialize();
+    RegisterBuiltin(&context);
+    context.SetClosureFix(true);
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
-        context_, lepus_resource, "2.6");
+        &context, lepus_resource, "2.6");
 
     if (!error.empty()) {
       LOGE("error: compile  failed:" << error << "\n");
@@ -287,7 +288,7 @@ class TestLepus : public lynx::lepus::ContextBinaryWriter {
       long long start = std::chrono::duration_cast<std::chrono::microseconds>(
                             std::chrono::system_clock::now().time_since_epoch())
                             .count();
-      context_->Execute();
+      context.Execute();
       long long end = std::chrono::duration_cast<std::chrono::microseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
@@ -435,10 +436,9 @@ void RegisteQuickBuiltins(lepus::QuickContext* ctx) {
   ctx->RegisterGlobalFunction("TestReportFatal", TestArgcNG);
 }
 
-class TestLepusNG : public lynx::lepus::ContextBinaryWriter {
+class TestLepusNG {
  public:
-  TestLepusNG()
-      : lynx::lepus::ContextBinaryWriter(new lynx::lepus::QuickContext) {}
+  TestLepusNG() {}
   void Run(const char* input, const char* source) {
     std::string lepus_resource = source;
     if (strcmp(source, "") == 0) {

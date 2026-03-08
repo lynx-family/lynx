@@ -25,6 +25,8 @@ lynx_lepus_common_sources = [
   "lepus_error_helper.cc",
   "lepus_error_helper.h",
   "lynx_value_extended.cc",
+  "mts_context_factory.h",
+  "mts_context_factory_impl.cc",
 ]
 
 lynx_lepus_common_sources_path =
@@ -58,6 +60,7 @@ lynx_lepus_core_sources = [
   "lepus_utils.h",
   "marco.h",
   "math_api.h",
+  "mts_context.h",
   "op_code.h",
   "output_stream.h",
   "regexp.h",
