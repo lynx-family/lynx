@@ -8,6 +8,9 @@
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/template_assembler.h"
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
+#include "core/resource/lazy_bundle/lazy_bundle_request.h"
+#include "core/runtime/js/js_bundle_holder.h"
 #include "core/services/timing_handler/timing_mediator.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/shell/common/shell_trace_event_def.h"
@@ -168,13 +171,23 @@ void BTSRuntimeMediator::FetchBundle(
     const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
         response_promise) {
   if (runtime_standalone_mode_) {
-    // TODO(nihao.royal): to support `fetchBundle` in runtime standalone mode.
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "FetchBundle not supported on runtime standalone mode.");
-    response_promise->SetValue(
-        {.url = std::move(bundle_url),
-         .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED,
-         .error_msg = "FetchBundle not supported on runtime standalone mode."});
+    if (!lazy_bundle_loader_) {
+      response_promise->SetValue(
+          {.url = bundle_url,
+           .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED,
+           .error_msg =
+               "fetchBundle not supported: lazy bundle loader is null"});
+      return;
+    }
+    if (lazy_bundle_loader_->GetTemplateBundle(bundle_url)) {
+      response_promise->SetValue(
+          {.url = bundle_url, .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
+      return;
+    }
+    lazy_bundle_loader_->FetchBundle(tasm::lazy_bundle::LynxLazyBundleRequest{
+        .url = bundle_url,
+        .resource_type = pub::LynxResourceType::kLazyBundle,
+        .response_promise = response_promise});
     return;
   }
   engine_actor_->ActAsync(
