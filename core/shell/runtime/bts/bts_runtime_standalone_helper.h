@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
@@ -14,8 +15,11 @@
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/page_options.h"
+#include "core/renderer/js_bundle_holder_impl.h"
 #include "core/resource/external_resource/external_resource_loader.h"
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
+#include "core/runtime/js/js_bundle_holder.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/shared_data/white_board_runtime_delegate.h"
 #include "core/shell/native_facade.h"
@@ -25,6 +29,25 @@ namespace shell {
 
 class BTSRuntimeStandalone {
  public:
+  class StandaloneBundleProxy : public tasm::JsBundleHolderImpl::BundleProxy {
+   public:
+    explicit StandaloneBundleProxy(
+        const std::shared_ptr<tasm::LazyBundleLoader>& lazy_bundle_loader)
+        : lazy_bundle_loader_(lazy_bundle_loader) {}
+    ~StandaloneBundleProxy() override = default;
+
+    lepus::Value GetCustomSection(const std::string& url) override {
+      if (!lazy_bundle_loader_) {
+        return lepus::Value();
+      }
+      auto bundle = lazy_bundle_loader_->GetTemplateBundle(url);
+      return bundle ? bundle->GetCustomSections() : lepus::Value();
+    }
+
+   private:
+    std::shared_ptr<tasm::LazyBundleLoader> lazy_bundle_loader_;
+  };
+
   static std::unique_ptr<BTSRuntimeStandalone> InitRuntimeStandalone(
       const std::string& group_name, const std::string& group_id,
       std::unique_ptr<NativeFacade> native_facade_runtime,
@@ -90,12 +113,18 @@ class BTSRuntimeStandalone {
       std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
           perf_controller_actor,
       std::shared_ptr<LynxActor<NativeFacade>> native_runtime_facade,
-      std::shared_ptr<tasm::WhiteBoardRuntimeDelegate> white_board_delegate)
+      std::shared_ptr<tasm::WhiteBoardRuntimeDelegate> white_board_delegate,
+      std::shared_ptr<tasm::LazyBundleLoader> lazy_bundle_loader,
+      std::unique_ptr<StandaloneBundleProxy> js_bundle_proxy,
+      std::shared_ptr<tasm::JsBundleHolderImpl> js_bundle_holder)
       : runtime_id_(runtime_id),
         runtime_actor_(runtime_actor),
         perf_controller_actor_(perf_controller_actor),
         native_runtime_facade_(native_runtime_facade),
-        white_board_delegate_(white_board_delegate) {}
+        white_board_delegate_(white_board_delegate),
+        lazy_bundle_loader_(std::move(lazy_bundle_loader)),
+        js_bundle_proxy_(std::move(js_bundle_proxy)),
+        js_bundle_holder_(std::move(js_bundle_holder)) {}
 
   std::string group_name_;
   int32_t runtime_id_;
@@ -107,6 +136,9 @@ class BTSRuntimeStandalone {
   // will be released by LynxBackgroundRuntime if not attached to LynxView
   std::shared_ptr<LynxActor<NativeFacade>> native_runtime_facade_;
   std::shared_ptr<tasm::WhiteBoardRuntimeDelegate> white_board_delegate_;
+  std::shared_ptr<tasm::LazyBundleLoader> lazy_bundle_loader_;
+  std::unique_ptr<StandaloneBundleProxy> js_bundle_proxy_;
+  std::shared_ptr<tasm::JsBundleHolderImpl> js_bundle_holder_;
 };
 
 }  // namespace shell
