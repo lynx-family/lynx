@@ -76,6 +76,15 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
   auto delegate = std::make_unique<BTSRuntimeMediator>(
       native_runtime_facade, nullptr, performance_actor, nullptr,
       js_task_runner, std::move(external_resource_loader));
+  auto lazy_bundle_loader =
+      std::make_shared<tasm::LazyBundleLoader>(resource_loader);
+  auto js_bundle_proxy =
+      std::make_unique<BTSRuntimeStandalone::StandaloneBundleProxy>(
+          lazy_bundle_loader);
+  auto js_bundle_holder =
+      std::make_shared<tasm::JsBundleHolderImpl>(*js_bundle_proxy);
+  delegate->SetLazyBundleLoader(lazy_bundle_loader);
+  delegate->SetJsBundleHolder(js_bundle_holder);
   delegate->SetPropBundleCreator(prop_bundle_creator);
   delegate->SetWhiteBoardDelegate(white_board_delegate);
   auto* delegate_raw_ptr = delegate.get();
@@ -92,9 +101,15 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
   delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor);
   perf_mediator_raw_ptr->SetRuntimeActor(runtime_actor);
   timing_mediator_raw_ptr->SetRuntimeActor(runtime_actor);
+  lazy_bundle_loader->SetEngineActor(nullptr);
 
   on_runtime_actor_created(runtime_actor, native_runtime_facade);
   external_resource_loader_ptr->SetRuntimeActor(runtime_actor);
+  runtime_actor->ActAsync(
+      [weak_js_bundle_holder = std::weak_ptr<runtime::js::JsBundleHolder>(
+           js_bundle_holder)](auto& runtime) {
+        runtime->SetJsBundleHolder(weak_js_bundle_holder);
+      });
   white_board_delegate->SetRuntimeActor(runtime_actor);
   white_board_delegate->SetRuntimeFacadeActor(native_runtime_facade);
   const auto global_props_value = global_props
@@ -112,7 +127,8 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
       });
   return std::unique_ptr<BTSRuntimeStandalone>(new BTSRuntimeStandalone(
       group_name, instance_id, runtime_actor, performance_actor,
-      native_runtime_facade, white_board_delegate));
+      native_runtime_facade, white_board_delegate, lazy_bundle_loader,
+      std::move(js_bundle_proxy), js_bundle_holder));
 }
 
 void BTSRuntimeStandalone::EvaluateScript(std::string url, std::string script) {
