@@ -28,6 +28,15 @@
 #include "core/shell/vsync_observer_impl.h"
 
 namespace lynx {
+
+namespace piper {
+class JsBundleHolder;
+}  // namespace piper
+
+namespace tasm {
+class LazyBundleLoader;
+}  // namespace tasm
+
 namespace shell {
 
 // ensure run on js thread, lifecycle manage by LynxRuntime
@@ -145,6 +154,15 @@ class RuntimeMediator : public runtime::TemplateDelegate {
     return vsync_observer_;
   }
 
+  void SetJsBundleHolder(const std::weak_ptr<piper::JsBundleHolder>& holder) {
+    weak_js_bundle_holder_ = holder;
+  }
+
+  void SetLazyBundleLoader(
+      const std::shared_ptr<tasm::LazyBundleLoader>& lazy_bundle_loader) {
+    lazy_bundle_loader_ = lazy_bundle_loader;
+  }
+
   void SetCSSVariables(
       const std::string& component_id, const std::string& id_selector,
       const lepus::Value& properties,
@@ -237,6 +255,8 @@ class RuntimeMediator : public runtime::TemplateDelegate {
 
   // ExternalResourceLoader will use weak_from_this() internally
   std::shared_ptr<ExternalResourceLoader> external_resource_loader_;
+  std::weak_ptr<piper::JsBundleHolder> weak_js_bundle_holder_;
+  std::shared_ptr<tasm::LazyBundleLoader> lazy_bundle_loader_;
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_;
   bool runtime_standalone_mode_;
   std::shared_ptr<tasm::WhiteBoardDelegate> white_board_delegate_;

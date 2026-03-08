@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
@@ -14,14 +15,35 @@
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/page_options.h"
+#include "core/renderer/js_bundle_holder_impl.h"
 #include "core/resource/external_resource/external_resource_loader.h"
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
+#include "core/runtime/piper/js/js_bundle_holder.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/shared_data/white_board_runtime_delegate.h"
 #include "core/shell/native_facade.h"
 
 namespace lynx {
 namespace shell {
+
+class StandaloneBundleProxy : public tasm::JsBundleHolderImpl::BundleProxy {
+ public:
+  explicit StandaloneBundleProxy(
+      const std::shared_ptr<tasm::LazyBundleLoader>& lazy_bundle_loader)
+      : lazy_bundle_loader_(lazy_bundle_loader) {}
+  ~StandaloneBundleProxy() override = default;
+  lepus::Value GetCustomSection(const std::string& url) override {
+    if (!lazy_bundle_loader_) {
+      return lepus::Value();
+    }
+    auto bundle = lazy_bundle_loader_->GetTemplateBundle(url);
+    return bundle ? bundle->GetCustomSections() : lepus::Value();
+  }
+
+ private:
+  std::shared_ptr<tasm::LazyBundleLoader> lazy_bundle_loader_;
+};
 
 struct InitRuntimeStandaloneResult {
   std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
@@ -32,6 +54,9 @@ struct InitRuntimeStandaloneResult {
   // will be released by LynxBackgroundRuntime if not attached to LynxView
   std::shared_ptr<LynxActor<NativeFacade>> native_runtime_facade_;
   std::shared_ptr<tasm::WhiteBoardRuntimeDelegate> white_board_delegate_;
+  std::shared_ptr<tasm::LazyBundleLoader> lazy_bundle_loader_;
+  std::unique_ptr<StandaloneBundleProxy> js_bundle_proxy_;
+  std::shared_ptr<tasm::JsBundleHolderImpl> js_bundle_holder_;
 };
 
 InitRuntimeStandaloneResult InitRuntimeStandalone(
