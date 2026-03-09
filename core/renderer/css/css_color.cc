@@ -25,12 +25,12 @@ namespace tasm {
 template <typename T>
 uint8_t clamp_css_byte(T i) {  // Clamp to integer 0 .. 255.
   i = round(i);
-  return i < 0 ? 0 : i > 255 ? 255 : i;
+  return i < 0 ? 0 : i > 255 ? 255 : static_cast<uint8_t>(i);
 }
 
 template <typename T>
 float clamp_css_float(T f) {  // Clamp to float 0.0 .. 1.0.
-  return f < 0 ? 0 : f > 1 ? 1 : f;
+  return f < 0 ? 0 : f > 1 ? 1 : static_cast<float>(f);
 }
 bool parse_css_int(const std::string& str,
                    uint8_t& output) {  // int or percentage.
@@ -70,10 +70,11 @@ bool parse_css_float(const std::string& str,
 }
 
 float css_hue_to_rgb(float m1, float m2, float h) {
+  // Wrap hue to [0, 1] range using fmod for efficiency with large values.
+  // Using fmodf for float precision and handling negative values correctly.
+  h = fmodf(h, 1.0f);
   if (h < 0.0f) {
     h += 1.0f;
-  } else if (h > 1.0f) {
-    h -= 1.0f;
   }
 
   if (h * 6.0f < 1.0f) {
@@ -253,8 +254,7 @@ CSSColor CSSColor::CreateFromHSLA(float h, float s, float l, float a) {
   h /= 360.0f;
   s /= 100.0f;
   l /= 100.0f;
-  while (h < 0.0f) h++;
-  while (h > 1.0f) h--;
+  // Note: hue wrapping is handled efficiently in css_hue_to_rgb using fmodf
 
   float m2 = l <= 0.5f ? l * (s + 1.0f) : l + s - l * s;
   float m1 = l * 2.0f - m2;

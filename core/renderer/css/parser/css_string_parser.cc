@@ -2406,13 +2406,16 @@ CSSStringParser::StackValue CSSStringParser::MakeColorValue(
       break;
     case TokenType::HSLA:
       color = CSSColor::CreateFromHSLA(
-          TokenToInt(token_list[1]), TokenToInt(token_list[2]),
-          TokenToInt(token_list[3]), TokenToDouble(token_list[4]));
+          static_cast<float>(TokenToDouble(token_list[1])),
+          static_cast<float>(TokenToDouble(token_list[2])),
+          static_cast<float>(TokenToDouble(token_list[3])),
+          static_cast<float>(TokenToDouble(token_list[4])));
       break;
     case TokenType::HSL:
-      color = CSSColor::CreateFromHSLA(TokenToInt(token_list[1]),
-                                       TokenToInt(token_list[2]),
-                                       TokenToInt(token_list[3]), 1.f);
+      color = CSSColor::CreateFromHSLA(
+          static_cast<float>(TokenToDouble(token_list[1])),
+          static_cast<float>(TokenToDouble(token_list[2])),
+          static_cast<float>(TokenToDouble(token_list[3])), 1.f);
       break;
     case TokenType::HEX: {
       std::string str = "#";
@@ -2429,7 +2432,7 @@ CSSStringParser::StackValue CSSStringParser::MakeColorValue(
 }
 
 int64_t CSSStringParser::TokenToInt(const Token &token) {
-  int64_t ret;
+  int64_t ret = 0;
   base::StringToInt(std::string(token.start, token.length), ret, 10);
   return ret;
 }

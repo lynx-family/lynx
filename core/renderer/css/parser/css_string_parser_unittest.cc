@@ -7,7 +7,9 @@
 #undef private
 
 #include <array>
+#include <cmath>
 #include <cstring>
+#include <limits>
 #include <map>
 #include <string>
 #include <tuple>
@@ -1542,6 +1544,57 @@ TEST(CSSStringParser, parse_variable_compact) {
     ASSERT_FALSE(ref.fallback.empty());
     EXPECT_EQ(ref.fallback.str(), "var(--b)");
   }
+}
+
+// Split HSL edge case tests to identify which one hangs
+TEST(CSSStringParser, ParseHSLColor_Basic) {
+  CSSParserConfigs configs;
+  std::string hsl = "hsl(240, 100%, 50%)";
+  CSSStringParser parser{hsl.c_str(), static_cast<uint32_t>(hsl.size()),
+                         configs};
+  CSSValue result;
+  parser.ParseCSSColorTo(result);
+  EXPECT_FALSE(result.IsEmpty());
+}
+
+TEST(CSSStringParser, ParseHSLColor_Hue480) {
+  CSSParserConfigs configs;
+  std::string hsl = "hsl(480, 100%, 50%)";
+  CSSStringParser parser{hsl.c_str(), static_cast<uint32_t>(hsl.size()),
+                         configs};
+  CSSValue result;
+  parser.ParseCSSColorTo(result);
+  EXPECT_FALSE(result.IsEmpty());
+}
+
+TEST(CSSStringParser, ParseHSLColor_NegativeHue) {
+  CSSParserConfigs configs;
+  std::string hsl = "hsl(-120, 100%, 50%)";
+  CSSStringParser parser{hsl.c_str(), static_cast<uint32_t>(hsl.size()),
+                         configs};
+  CSSValue result;
+  parser.ParseCSSColorTo(result);
+  EXPECT_FALSE(result.IsEmpty());
+}
+
+TEST(CSSStringParser, ParseHSLColor_LargeHue1000000) {
+  CSSParserConfigs configs;
+  std::string hsl = "hsl(1000000, 1000%, 1000%)";
+  CSSStringParser parser{hsl.c_str(), static_cast<uint32_t>(hsl.size()),
+                         configs};
+  CSSValue result;
+  parser.ParseCSSColorTo(result);
+  EXPECT_FALSE(result.IsEmpty());
+}
+
+TEST(CSSStringParser, ParseHSLColor_SmallValues) {
+  CSSParserConfigs configs;
+  std::string hsl = "hsl(0.0001, 0.0001%, 0.0001%)";
+  CSSStringParser parser{hsl.c_str(), static_cast<uint32_t>(hsl.size()),
+                         configs};
+  CSSValue result;
+  parser.ParseCSSColorTo(result);
+  EXPECT_FALSE(result.IsEmpty());
 }
 
 }  // namespace test
