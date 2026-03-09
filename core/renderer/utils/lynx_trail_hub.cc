@@ -9,15 +9,16 @@
 namespace lynx {
 namespace tasm {
 
-LynxTrailHub& LynxTrailHub::GetInstance() {
+__attribute__((visibility("default"))) LynxTrailHub&
+LynxTrailHub::GetInstance() {
   static base::NoDestructor<LynxTrailHub> instance;
   return *instance;
 }
 
 LynxTrailHub::LynxTrailHub() { impl_ = TrailImpl::Create(); }
 
-std::optional<std::string> LynxTrailHub::GetStringForTrailKey(
-    const std::string& key) {
+__attribute__((visibility("default"))) std::optional<std::string>
+LynxTrailHub::GetStringForTrailKey(const std::string& key) {
   return impl_ ? impl_->GetStringForTrailKey(key) : std::nullopt;
 }
 
