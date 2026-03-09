@@ -780,16 +780,6 @@ void FiberElement::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
   }
 }
 
-void FiberElement::HandleBeforeFlushActionsTask(
-    base::MoveOnlyClosure<void> operation,
-    int32_t predicate_parallel_flush_flag) {
-  if ((this->parallel_flush_ & predicate_parallel_flush_flag) > 0) {
-    parallel_before_flush_action_tasks_->emplace_back(std::move(operation));
-  } else {
-    operation();
-  }
-}
-
 void FiberElement::ResolveSimpleStyles() {
   if (dirty_ & kDirtyStyleObjects) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, "FiberElement::HandleStyleObjects");
@@ -1312,15 +1302,6 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
   VerifyKeyframePropsChangedHandling();
 
   return []() {};
-}
-
-void FiberElement::VerifyKeyframePropsChangedHandling() {
-  if (has_keyframe_props_changed_) {
-    // Throw exception on purpose in debug mode or UT to indicate that
-    // keyframe_props is not handled properly in this flow
-    DCHECK(!has_keyframe_props_changed_);
-    has_keyframe_props_changed_ = false;
-  }
 }
 
 void FiberElement::FlushActionsAsRoot() {

@@ -1286,6 +1286,20 @@ class Element : public lepus::RefCounted,
    */
   bool CheckHasIdMapInCSSFragment();
 
+  /**
+   * Handle task that needs to be executed before flush actions.
+   * @param operation the operation to execute
+   * @param predicate_parallel_flush_flag flag to check for parallel flush
+   */
+  void HandleBeforeFlushActionsTask(base::MoveOnlyClosure<void> operation,
+                                    int32_t predicate_parallel_flush_flag);
+
+  /**
+   * Verify that keyframe property changes have been properly handled.
+   * Throws DCHECK in debug mode if keyframe_props_changed_ is still set.
+   */
+  void VerifyKeyframePropsChangedHandling();
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 

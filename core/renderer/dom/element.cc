@@ -2536,6 +2536,25 @@ bool Element::CheckHasIdMapInCSSFragment() {
   return false;
 }
 
+void Element::HandleBeforeFlushActionsTask(
+    base::MoveOnlyClosure<void> operation,
+    int32_t predicate_parallel_flush_flag) {
+  if ((this->parallel_flush_ & predicate_parallel_flush_flag) > 0) {
+    parallel_before_flush_action_tasks_->emplace_back(std::move(operation));
+  } else {
+    operation();
+  }
+}
+
+void Element::VerifyKeyframePropsChangedHandling() {
+  if (has_keyframe_props_changed_) {
+    // Throw exception on purpose in debug mode or UT to indicate that
+    // keyframe_props is not handled properly in this flow
+    DCHECK(!has_keyframe_props_changed_);
+    has_keyframe_props_changed_ = false;
+  }
+}
+
 void Element::ResetStyleSheet() { style_sheet_ = nullptr; }
 
 const base::String& Element::GetRawInlineStyles() {

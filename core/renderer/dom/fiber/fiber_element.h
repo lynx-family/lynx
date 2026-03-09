@@ -350,12 +350,7 @@ class FiberElement : public Element {
 
   void HandleDelayTask(base::MoveOnlyClosure<void> operation) override;
 
-  void HandleBeforeFlushActionsTask(base::MoveOnlyClosure<void> operation,
-                                    int32_t predicate_parallel_flush_bitset);
-
   void HandleKeyframePropsChange();
-
-  void VerifyKeyframePropsChangedHandling();
 
   void RequestLayout() override;
 
