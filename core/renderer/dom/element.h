@@ -1300,6 +1300,12 @@ class Element : public lepus::RefCounted,
    */
   void VerifyKeyframePropsChangedHandling();
 
+  /**
+   * Check if this element needs to update layout info.
+   * @return true if layout info needs update
+   */
+  bool IfNeedsUpdateLayoutInfo();
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 

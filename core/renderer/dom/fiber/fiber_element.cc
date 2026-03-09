@@ -3545,17 +3545,6 @@ void FiberElement::MarkLayoutDirtyLite() {
 }
 
 /**
- * Reference {@link LayoutContext#IfNeedsUpdateLayoutInfo }
- */
-bool FiberElement::IfNeedsUpdateLayoutInfo() {
-  if (sl_node_ == nullptr) {
-    return false;
-  }
-
-  return sl_node_->GetHasNewLayout();
-}
-
-/**
  * Reference {@link LayoutContext#LayoutRecursively }
  */
 void FiberElement::UpdateLayoutInfoRecursively(PipelineOptions *options) {

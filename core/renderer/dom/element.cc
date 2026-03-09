@@ -2563,6 +2563,13 @@ void Element::VerifyKeyframePropsChangedHandling() {
   }
 }
 
+bool Element::IfNeedsUpdateLayoutInfo() {
+  if (sl_node_ == nullptr) {
+    return false;
+  }
+  return sl_node_->GetHasNewLayout();
+}
+
 void Element::ResetStyleSheet() { style_sheet_ = nullptr; }
 
 const base::String& Element::GetRawInlineStyles() {

@@ -539,8 +539,6 @@ class FiberElement : public Element {
 
   void MarkLayoutDirtyLite() override;
 
-  bool IfNeedsUpdateLayoutInfo();
-
   void EnsureSLNode();
 
   virtual void DispatchLayoutBefore();
