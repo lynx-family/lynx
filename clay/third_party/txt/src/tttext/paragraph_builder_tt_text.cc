@@ -8,6 +8,7 @@
 #include "clay/fml/logging.h"
 #include "textra/layout_definition.h"
 #include "tttext/tttext_headers.h"
+#include "txt/text_decoration.h"
 
 namespace txt {
 ParagraphBuilderTTText::ParagraphBuilderTTText(
@@ -44,6 +45,23 @@ std::unique_ptr<Paragraph> ParagraphBuilderTTText::Build() {
 void ParagraphBuilderTTText::AddText(const char* text, size_t len) {
   CreateParagraph();
   paragraph_->AddTextRun(run_style_stack_.back(), std::string(text, len));
+}
+
+tttext::LineType ParagraphBuilderTTText::ToTTLineType(
+    TextDecorationStyle decoration_style) {
+  if (decoration_style == TextDecorationStyle::kDashed) {
+    return tttext::LineType::kDashed;
+  } else if (decoration_style == TextDecorationStyle::kDotted) {
+    return tttext::LineType::kDotted;
+  } else if (decoration_style == TextDecorationStyle::kDouble) {
+    return tttext::LineType::kDouble;
+  } else if (decoration_style == TextDecorationStyle::kSolid) {
+    return tttext::LineType::kSolid;
+  } else if (decoration_style == TextDecorationStyle::kWavy) {
+    return tttext::LineType::kWavy;
+  } else {
+    return tttext::LineType::kNone;
+  }
 }
 
 tttext::Style ParagraphBuilderTTText::ToTTStyle(const TextStyle& text_style) {
@@ -108,8 +126,7 @@ tttext::Style ParagraphBuilderTTText::ToTTStyle(const TextStyle& text_style) {
   style.SetDecorationColor(tttext::TTColor(text_style.decoration_color
                                                ? text_style.decoration_color
                                                : text_style.color));
-  style.SetDecorationStyle(
-      static_cast<tttext::LineType>(text_style.decoration_style));
+  style.SetDecorationStyle(ToTTLineType(text_style.decoration_style));
   style.SetDecorationThicknessMultiplier(
       text_style.decoration_thickness_multiplier);
   style.SetWordSpacing(text_style.word_spacing);
