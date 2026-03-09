@@ -141,6 +141,7 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"dataset", &UIBase::SetDataset},
     {"clip-path", &UIBase::SetClipPath},
     {"perspective", &UIBase::SetPerspective},
+    {"block-list-event", &UIBase::SetBlockListEvent},
     {"accessibility-element", &UIBase::SetAccessibilityElement},
     {"accessibility-label", &UIBase::SetAccessibilityLabel},
     {"accessibility-traits", &UIBase::SetAccessibilityTraits},
@@ -2521,6 +2522,43 @@ void UIBase::SetClipPath(const lepus::Value& value) {
 void UIBase::SetPerspective(const lepus::Value& value) {
   perspective_ = std::move(value);
   dirty_flags_ |= kFlagTransformChanged;
+}
+
+void UIBase::SetBlockListEvent(const lepus::Value& value) {
+  if (value.IsBool()) {
+    block_list_event_ = value.Bool();
+  } else if (value.IsNil()) {
+    block_list_event_ = false;
+  }
+}
+
+void UIBase::OnListCellAppear(const std::string& item_key, UIBase* ui_list) {
+  if (block_list_event_) {
+    return;
+  }
+  for (UIBase* child : children_) {
+    child->OnListCellAppear(item_key, ui_list);
+  }
+}
+
+void UIBase::OnListCellDisAppear(const std::string& item_key, UIBase* ui_list,
+                                 bool is_exist) {
+  if (block_list_event_) {
+    return;
+  }
+  for (UIBase* child : children_) {
+    child->OnListCellDisAppear(item_key, ui_list, is_exist);
+  }
+}
+
+void UIBase::OnListCellPrepareForReuse(const std::string& item_key,
+                                       UIBase* ui_list) {
+  if (block_list_event_) {
+    return;
+  }
+  for (UIBase* child : children_) {
+    child->OnListCellPrepareForReuse(item_key, ui_list);
+  }
 }
 
 float UIBase::GetPerspectiveValue() {
