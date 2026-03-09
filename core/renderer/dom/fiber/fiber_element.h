@@ -449,8 +449,6 @@ class FiberElement : public Element {
 
   void PrepareSelfForThreadedElementResolution();
 
-  bool NeedPropagateInheritedDirtyFlag(bool force_propagate);
-
   void InvalidateChildrenIfNeeded();
 
  protected:
@@ -497,8 +495,6 @@ class FiberElement : public Element {
  private:
   friend class WrapperElement;
   friend class ComponentElement;
-
-  bool CheckHasIdMapInCSSFragment();
 
   FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
                                          FiberElement* node);

@@ -707,16 +707,6 @@ StyleMap FiberElement::GetStylesForWorklet() {
   return result;
 }
 
-bool FiberElement::CheckHasIdMapInCSSFragment() {
-  auto *css_fragment = GetRelatedCSSFragment();
-  // resolve styles from css fragment
-  if (css_fragment && css_fragment->HasIdSelector()) {
-    return true;
-  }
-
-  return false;
-}
-
 static bool DiffStyleImpl(StyleMap &old_map, StyleMap &new_map,
                           StyleMap &update_styles) {
   if (new_map.empty()) {
@@ -3777,15 +3767,6 @@ bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
 
   CSSValue::SubstituteAll(*map);
   return true;
-}
-
-bool FiberElement::NeedPropagateInheritedDirtyFlag(bool force_propagate) {
-  // When level order traversing is enabled, mark kDirtyPropagateInherited is
-  // performed before FlushActions.
-  return children_propagate_inherited_styles_flag_ &&
-         (force_propagate ||
-          (!element_manager()->GetEnableParallelElement() ||
-           !element_manager()->EnableLevelOrderTraversing()));
 }
 
 void FiberElement::InvalidateChildrenIfNeeded() {

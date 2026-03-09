@@ -1273,6 +1273,19 @@ class Element : public lepus::RefCounted,
 
   void LogNodeInfo();
 
+  /**
+   * Check if this element needs to propagate inherited dirty flag to children.
+   * @param force_propagate whether to force propagation
+   * @return true if propagation is needed
+   */
+  bool NeedPropagateInheritedDirtyFlag(bool force_propagate);
+
+  /**
+   * Check if the CSS fragment has id selector map.
+   * @return true if id selector map exists
+   */
+  bool CheckHasIdMapInCSSFragment();
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 

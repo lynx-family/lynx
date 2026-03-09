@@ -2518,6 +2518,24 @@ void Element::LogNodeInfo() {
                                              : ""));
 }
 
+bool Element::NeedPropagateInheritedDirtyFlag(bool force_propagate) {
+  // When level order traversing is enabled, mark kDirtyPropagateInherited is
+  // performed before FlushActions.
+  return children_propagate_inherited_styles_flag_ &&
+         (force_propagate ||
+          (!element_manager()->GetEnableParallelElement() ||
+           !element_manager()->EnableLevelOrderTraversing()));
+}
+
+bool Element::CheckHasIdMapInCSSFragment() {
+  auto* css_fragment = GetRelatedCSSFragment();
+  // resolve styles from css fragment
+  if (css_fragment && css_fragment->HasIdSelector()) {
+    return true;
+  }
+  return false;
+}
+
 void Element::ResetStyleSheet() { style_sheet_ = nullptr; }
 
 const base::String& Element::GetRawInlineStyles() {
