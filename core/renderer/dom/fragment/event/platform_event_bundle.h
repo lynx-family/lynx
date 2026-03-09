@@ -181,6 +181,8 @@ enum class PlatformEventPropName : int32_t {
   kExposureUIMarginBottom = 9,
   kExposureArea = 10,
   kEnableExposureUIClip = 11,
+  kExposureId = 12,
+  kExposureScene = 13,
 };
 
 inline PlatformEventPropName PlatformEventPropNameFromString(
@@ -220,6 +222,12 @@ inline PlatformEventPropName PlatformEventPropNameFromString(
   }
   if (name == "enable-exposure-ui-clip") {
     return PlatformEventPropName::kEnableExposureUIClip;
+  }
+  if (name == "exposure-id") {
+    return PlatformEventPropName::kExposureId;
+  }
+  if (name == "exposure-scene") {
+    return PlatformEventPropName::kExposureScene;
   }
   return PlatformEventPropName::kUnknown;
 }
@@ -261,6 +269,12 @@ inline std::string_view PlatformEventPropNameToString(
   }
   if (name == PlatformEventPropName::kEnableExposureUIClip) {
     return "enable-exposure-ui-clip";
+  }
+  if (name == PlatformEventPropName::kExposureId) {
+    return "exposure-id";
+  }
+  if (name == PlatformEventPropName::kExposureScene) {
+    return "exposure-scene";
   }
   return "";
 }

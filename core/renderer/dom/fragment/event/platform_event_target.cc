@@ -4,6 +4,9 @@
 
 #include "core/renderer/dom/fragment/event/platform_event_target.h"
 
+#include <cstring>
+#include <utility>
+
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 
 namespace lynx {
@@ -58,7 +61,9 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(float point[2]) {
   return hit_target ? hit_target : fml::RefPtr<PlatformEventTarget>(this);
 }
 
-bool PlatformEventTarget::ShouldHitTest() const { return true; }
+bool PlatformEventTarget::ShouldHitTest() const {
+  return user_interaction_enabled_;
+}
 
 void PlatformEventTarget::GetPointInTarget(
     float target_point[2], fml::RefPtr<PlatformEventTarget> parent_target,
@@ -75,6 +80,119 @@ bool PlatformEventTarget::ContainsPoint(float point[2]) const {
     return true;
   }
   return false;
+}
+
+void PlatformEventTarget::GetOrUpdateTargetScreenRect(
+    std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
+    const fml::RefPtr<PlatformEventTarget>& target, float out_rect[4],
+    float root_view_origin_on_screen[2]) const {
+  out_rect[0] = 0;
+  out_rect[1] = 0;
+  out_rect[2] = target->Width();
+  out_rect[3] = target->Height();
+
+  const int32_t sign = target->Sign();
+  auto it = common_ancestor_rect_map.find(sign);
+  if (it != common_ancestor_rect_map.end()) {
+    if (it->second.rect_updated) {
+      std::memcpy(out_rect, it->second.rect, sizeof(float) * 4);
+      return;
+    }
+    target_helper_->ConvertRectFromTargetToRootTarget(out_rect, target,
+                                                      out_rect);
+    target_helper_->OffsetRect(out_rect, root_view_origin_on_screen);
+    std::memcpy(it->second.rect, out_rect, sizeof(float) * 4);
+    it->second.rect_updated = true;
+    return;
+  }
+
+  target_helper_->ConvertRectFromTargetToRootTarget(out_rect, target, out_rect);
+  target_helper_->OffsetRect(out_rect, root_view_origin_on_screen);
+  CommonAncestorRect rect;
+  rect.target_count = 1;
+  rect.rect_updated = true;
+  std::memcpy(rect.rect, out_rect, sizeof(float) * 4);
+  common_ancestor_rect_map.emplace(sign, std::move(rect));
+}
+
+bool PlatformEventTarget::IsVisibleForExposure(
+    std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
+    float root_view_origin_on_screen[2], const float window_rect[4]) const {
+  if (Width() == 0.f || Height() == 0.f) {
+    return false;
+  }
+
+  auto self =
+      fml::RefPtr<PlatformEventTarget>(const_cast<PlatformEventTarget*>(this));
+
+  float parent_rect[4] = {0};
+  std::vector<fml::RefPtr<PlatformEventTarget>> parent_array;
+  auto current = self;
+  while (current != nullptr && current->ParentTarget() != current) {
+    if (!current->IsVisible()) {
+      return false;
+    }
+    if (current->IsOverlayContent()) {
+      break;
+    }
+    if (current->EnableExposureUIClip() == LynxEventPropStatus::kEnable ||
+        (current->EnableExposureUIClip() == LynxEventPropStatus::kUndefined &&
+         current->IsScrollable()) ||
+        current->IsRoot()) {
+      parent_array.push_back(current);
+      GetOrUpdateTargetScreenRect(common_ancestor_rect_map, current,
+                                  parent_rect, root_view_origin_on_screen);
+    }
+    current = current->ParentTarget();
+  }
+
+  float root_rect[4] = {0};
+  std::memcpy(root_rect, parent_rect, sizeof(float) * 4);
+
+  float target_rect[4] = {0, 0, Width(), Height()};
+  bool target_rect_calculated = false;
+  for (const auto& parent : parent_array) {
+    GetOrUpdateTargetScreenRect(common_ancestor_rect_map, parent, parent_rect,
+                                root_view_origin_on_screen);
+
+    if (!target_rect_calculated) {
+      target_helper_->ConvertRectFromDescendantToAncestor(target_rect, self,
+                                                          parent, target_rect);
+      target_helper_->OffsetRect(target_rect, parent_rect);
+      GetExposureTargetRect(target_rect);
+      target_rect_calculated = true;
+    }
+
+    if (!target_helper_->CheckViewportIntersectWithRatio(
+            target_rect, parent_rect, exposure_area_ratio_)) {
+      return false;
+    }
+  }
+
+  float window_rect_local[4] = {window_rect[0], window_rect[1], window_rect[2],
+                                window_rect[3]};
+  GetExposureWindowRect(window_rect_local);
+  bool is_root_intersect_with_window =
+      target_helper_->CheckViewportIntersectWithRatio(root_rect,
+                                                      window_rect_local, 0);
+  bool is_target_intersect_with_window =
+      target_helper_->CheckViewportIntersectWithRatio(
+          target_rect, window_rect_local, exposure_area_ratio_);
+  return is_target_intersect_with_window && is_root_intersect_with_window;
+}
+
+void PlatformEventTarget::GetExposureTargetRect(float rect[4]) const {
+  rect[0] -= exposure_ui_margin_left_;
+  rect[1] -= exposure_ui_margin_top_;
+  rect[2] += exposure_ui_margin_right_;
+  rect[3] += exposure_ui_margin_bottom_;
+}
+
+void PlatformEventTarget::GetExposureWindowRect(float rect[4]) const {
+  rect[0] -= exposure_screen_margin_left_;
+  rect[1] -= exposure_screen_margin_top_;
+  rect[2] += exposure_screen_margin_right_;
+  rect[3] += exposure_screen_margin_bottom_;
 }
 
 void PlatformEventTarget::OnResponseChain() {}

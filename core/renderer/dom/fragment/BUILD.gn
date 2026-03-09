@@ -14,6 +14,8 @@ lynx_core_source_set("fragment") {
     "event/platform_event_handler.h",
     "event/platform_event_target.cc",
     "event/platform_event_target.h",
+    "event/platform_event_target_exposure.cc",
+    "event/platform_event_target_exposure.h",
     "event/platform_event_target_helper.cc",
     "event/platform_event_target_helper.h",
     "event/platform_input_event.cc",

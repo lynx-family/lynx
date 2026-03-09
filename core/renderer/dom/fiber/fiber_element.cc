@@ -2409,11 +2409,6 @@ bool FiberElement::ConsumeAllAttributes() {
                 [this](lynx::perfetto::EventContext ctx) {
                   UpdateTraceDebugInfo(ctx.event());
                 });
-    if (EnableFragmentLayerRender()) {
-      if (auto fragment = fragment_impl()) {
-        fragment->ClearEventProps();
-      }
-    }
     for (const auto &attr : updated_attr_map_) {
       SetAttributeInternal(attr.first, attr.second);
       need_update = true;
