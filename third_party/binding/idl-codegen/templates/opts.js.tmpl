@@ -14,6 +14,14 @@ function str2view(str, view, start) {
   }
 }
 
+function Object2TypeId(appendTarget, obj) {
+  if (obj instanceof appendTarget.CanvasGradient) {
+    return 3100;
+  } else if (obj instanceof appendTarget.CanvasPattern) {
+    return 3101;
+  }
+}
+
 function getViewType(view) {
   const viewType = view.constructor.name;
   switch (view.BYTES_PER_ELEMENT) {
@@ -135,10 +143,35 @@ const commandBufferCreator = function(appendTarget, idGen) {
     uint32View[$end + 1] = this.__id;
     {% endif %}
 
+    {% set ns.has_optional_argument = False %}
+    {% for argument in method.arguments %}
+    {% if argument.is_optional %}
+    {% set ns.has_optional_argument = True %}
+    {% endif %}
+    {% endfor %}
+    {% if ns.has_optional_argument %}
+    {% set ns.count = ns.count + 1 %}
+    uint32View[$end + 2] = arguments.length;
+    {% endif %} 
     {% for argument in method.arguments %}
     {% if argument.is_boolean_type %}
     uint32View[$end + {{ns.count}}] = {{argument.name}};
     {% set ns.count = ns.count + 1 %}
+    {% elif argument.is_dictionary %}{# has_dict #}
+    uint32View[$end + {{ns.count}}] = {{argument.name}} ? 1 : 0;
+    {% set ns.count = ns.count + 1 %}
+    {% elif argument.union_types %}
+    let {{argument.name}}Len = 0;
+    if (typeof {{argument.name}} === 'string') {
+      uint32View[$end + {{ns.count}}] = 3102; // string type
+      uint32View[$end + {{ns.count}} + 1] = {{argument.name}}.length;
+      {{argument.name}}Len = {{argument.name}}.length;
+    } else {
+      // wrapper type
+      uint32View[$end + {{ns.count}}] = Object2TypeId(appendTarget, {{argument.name}});
+      uint32View[$end + {{ns.count}} + 1] = {{argument.name}}.__id;
+    }
+    {% set ns.count = ns.count + 2 %}
     {% elif argument.enum_type %}
     uint32View[$end + {{ns.count}}] = {{argument.idl_type}}[{{argument.name}}];
     {% set ns.count = ns.count + 1 %}
@@ -228,6 +261,9 @@ const commandBufferCreator = function(appendTarget, idGen) {
     uint32View[$end + {{ns.count}}] = {{argument.name}}BufferView.byteLength;
     {% set ns.count = ns.count + 1 %}
     {% endif %}
+    {% elif argument.is_dictionary %}{# has_dict #}
+    uint32View[$end + {{ns.count}}] = {{argument.name}} ? 1 : 0;
+    {% set ns.count = ns.count + 1 %}
     {% endif %}
 {#                                                                            #}
     {% endfor %}
@@ -266,10 +302,22 @@ const commandBufferCreator = function(appendTarget, idGen) {
     str2view({{argument.name}}, dataView, $end);
     $end += Math.ceil({{argument.name}}Len / 2);
     {% endfor %}
+    {% for argument in method.arguments if argument.union_types %}
+    if (typeof {{argument.name}}.$typeID === 'undefined') {
+      str2view({{argument.name}}, dataView, $end);
+      $end += Math.ceil({{argument.name}}Len / 2);
+    }
+    {% endfor %}
 {#                                                                            #}
     {% for argument in method.arguments if argument.idl_type == 'ArrayBuffer' or argument.idl_type == 'ArrayBufferView' %}
     uint8View.set({{argument.name}}BufferView, $end * 4);
     $end += Math.ceil({{argument.name}}BufferView.byteLength / 4);
+    {% endfor %}
+
+    {% for argument in method.arguments if argument.is_dictionary %}
+    if ({{argument.name}}) {
+      $end += cb.reg.encode('{{argument.idl_type}}', buffer, {{argument.name}}, $end);
+    }
     {% endfor %}
 
     uint32View[0] = $end;
@@ -314,9 +362,11 @@ const commandBufferCreator = function(appendTarget, idGen) {
 
   {% endfor %}{# for method in methods #}
 {#                                                                            #}
-  {% if interface_name.startswith(overload_resolvers_prefix) %}
+  {% for prefix in overload_resolvers_prefix %} 
+  {% if interface_name.startswith(prefix) %}
   {{ overload_resolvers(interface_name, methods, overloads_child_only) }}
   {% endif %}
+  {% endfor %}
 {#                                                                            #}
   {{interface_name}}CB = {
     {% for method in methods %}

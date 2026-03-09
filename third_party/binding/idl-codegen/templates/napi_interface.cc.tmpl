@@ -442,7 +442,7 @@ Value {{napi_class}}::{{method.camel_case_name}}Method{{'Overload' + method.over
   binding::ExceptionState exception_state(info.Env());
   {% endif %}
 
-  {% if buffer_commands %}
+  {% if buffer_commands or napi_class == 'NapiCanvasGradient' or napi_class == 'NapiCanvasPattern' %}
   bool res = {{command_buffer_class}}::FlushCommandBuffer(info.Env());
   if (!res) return Napi::Value();
   {% endif %}

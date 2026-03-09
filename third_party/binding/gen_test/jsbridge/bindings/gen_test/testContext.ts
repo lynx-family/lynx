@@ -18,6 +18,14 @@ function str2view(str, view, start) {
   }
 }
 
+function Object2TypeId(appendTarget, obj) {
+  if (obj instanceof appendTarget.CanvasGradient) {
+    return 3100;
+  } else if (obj instanceof appendTarget.CanvasPattern) {
+    return 3101;
+  }
+}
+
 function getViewType(view) {
   const viewType = view.constructor.name;
   switch (view.BYTES_PER_ELEMENT) {
