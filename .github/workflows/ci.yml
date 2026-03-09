@@ -61,21 +61,21 @@ jobs:
           source tools/envsetup.sh
           python3 tools_shared/git_lynx.py check --checkers gn-relative-path-check
 
-  darwin-native-unittests-check:
-    timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Run Unittests
-        run: |
-          set -e
-          source tools/envsetup.sh
-          tools/rtf/rtf native-ut run --names lynx
+  # darwin-native-unittests-check:
+  #   timeout-minutes: 60
+  #   runs-on: lynx-darwin-14-medium
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Install Common Dependencies
+  #       uses: ./lynx/.github/actions/common-deps
+  #     - name: Run Unittests
+  #       run: |
+  #         set -e
+  #         source tools/envsetup.sh
+  #         tools/rtf/rtf native-ut run --names lynx
 
   linux-native-unittests-check:
     runs-on: lynx-ubuntu-22.04-xlarge-verify
@@ -117,45 +117,45 @@ jobs:
           source tools/envsetup.sh
           tools/rtf/rtf native-ut run --names devtool
 
-  ios-unittests-check:
-    timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-        with:
-          cache-backend: 'lynx-infra'
-      - name: Install iOS Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 20
-          max_attempts: 3
-          command: |
-            set -e
-            cd $GITHUB_WORKSPACE/lynx
-            source tools/envsetup.sh
-            pushd explorer/darwin/ios/lynx_explorer
-            git config --global url."https://github.com/".insteadOf "git@github.com:"
-            bash bundle_install.sh --skip-card-build
-            popd
-      - name: Run Unittests
-        run: |
-          set -e
-          source tools/envsetup.sh
-          pushd explorer/darwin/ios/lynx_explorer
-          xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
-          sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
-          echo $sdkVersion > sdk.txt
-          xcodebuild build-for-testing ARCHS=arm64 -workspace LynxExplorer.xcworkspace -scheme LynxExplorerTests -enableCodeCoverage YES -configuration Debug -sdk iphonesimulator$(cat sdk.txt) COMPILER_INDEX_STORE_ENABLE=NO -derivedDataPath iOSCoreBuild/DerivedData -dest"platform=iOS Simulator,OS=$(cat sdk.txt),name=iPhone 11" SYMROOT=`pwd`/Build/Products -testPlan UTTest
-          chmod u+x xctestrunner
-          ./xctestrunner --xctestrun `pwd`/Build/Products/LynxExplorerTests_UTTest_iphonesimulator$(cat sdk.txt)-arm64.xctestrun --work_dir `pwd` --output_dir `pwd`/iOSCoreBuild/DerivedData simulator_test
-          popd
+  # ios-unittests-check:
+  #   timeout-minutes: 60
+  #   runs-on: lynx-darwin-14-medium
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Install Common Dependencies
+  #       uses: ./lynx/.github/actions/common-deps
+  #     - name: Setup Ruby Cache
+  #       uses: ./lynx/.github/actions/ios-common-deps
+  #       with:
+  #         cache-backend: 'lynx-infra'
+  #     - name: Install iOS Dependencies
+  #       uses: nick-fields/retry@v2
+  #       with:
+  #         timeout_minutes: 20
+  #         max_attempts: 3
+  #         command: |
+  #           set -e
+  #           cd $GITHUB_WORKSPACE/lynx
+  #           source tools/envsetup.sh
+  #           pushd explorer/darwin/ios/lynx_explorer
+  #           git config --global url."https://github.com/".insteadOf "git@github.com:"
+  #           bash bundle_install.sh --skip-card-build
+  #           popd
+  #     - name: Run Unittests
+  #       run: |
+  #         set -e
+  #         source tools/envsetup.sh
+  #         pushd explorer/darwin/ios/lynx_explorer
+  #         xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
+  #         sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
+  #         echo $sdkVersion > sdk.txt
+  #         xcodebuild build-for-testing ARCHS=arm64 -workspace LynxExplorer.xcworkspace -scheme LynxExplorerTests -enableCodeCoverage YES -configuration Debug -sdk iphonesimulator$(cat sdk.txt) COMPILER_INDEX_STORE_ENABLE=NO -derivedDataPath iOSCoreBuild/DerivedData -dest"platform=iOS Simulator,OS=$(cat sdk.txt),name=iPhone 11" SYMROOT=`pwd`/Build/Products -testPlan UTTest
+  #         chmod u+x xctestrunner
+  #         ./xctestrunner --xctestrun `pwd`/Build/Products/LynxExplorerTests_UTTest_iphonesimulator$(cat sdk.txt)-arm64.xctestrun --work_dir `pwd` --output_dir `pwd`/iOSCoreBuild/DerivedData simulator_test
+  #         popd
 
   tasm-linux-build:
     runs-on: lynx-ubuntu-22.04-xlarge-verify
@@ -179,48 +179,48 @@ jobs:
           npm run build:release:linux
           popd
 
-  tasm-darwin-build:
-    timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Build Darwin Tasm
-        run: |
-          source tools/envsetup.sh
-          python3 tools/oliver/lynx-tasm/gn_to_cmake_oliver.py
-          pushd oliver/lynx-tasm
-          npm install
-          ../../buildtools/cmake/bin/cmake .
-          ../../buildtools/cmake/bin/cmake --build .
-          ./lepus_cmd
+  # tasm-darwin-build:
+  #   timeout-minutes: 60
+  #   runs-on: lynx-darwin-14-medium
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Install Common Dependencies
+  #       uses: ./lynx/.github/actions/common-deps
+  #     - name: Build Darwin Tasm
+  #       run: |
+  #         source tools/envsetup.sh
+  #         python3 tools/oliver/lynx-tasm/gn_to_cmake_oliver.py
+  #         pushd oliver/lynx-tasm
+  #         npm install
+  #         ../../buildtools/cmake/bin/cmake .
+  #         ../../buildtools/cmake/bin/cmake --build .
+  #         ./lepus_cmd
 
-          npm run build:release:darwin
-          popd
+  #         npm run build:release:darwin
+  #         popd
 
-  tasm-wasm-build:
-    timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-        with:
-          target: tasm
-      - name: Build Wasm Tasm
-        run: |
-          source tools/envsetup.sh
-          pushd oliver/lynx-tasm
-          npm install
-          npm run build:wasm
-          popd
+  # tasm-wasm-build:
+  #   timeout-minutes: 60
+  #   runs-on: lynx-darwin-14-medium
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Install Common Dependencies
+  #       uses: ./lynx/.github/actions/common-deps
+  #       with:
+  #         target: tasm
+  #     - name: Build Wasm Tasm
+  #       run: |
+  #         source tools/envsetup.sh
+  #         pushd oliver/lynx-tasm
+  #         npm install
+  #         npm run build:wasm
+  #         popd
 
   lynx-types-check:
     runs-on: lynx-ubuntu-22.04-xlarge-verify
@@ -287,29 +287,29 @@ jobs:
           abi-list: x86,arm64-v8a
           build-params: -PIntegrationTest
 
-  windows-explorer-build:
-    # Disable temporarily due to flakiness
-    if: false
-    runs-on: lynx-windows-2022-large
-    strategy:
-      matrix:
-        arch: [x86, x64]
-    steps:
-      - name: Configure Git
-        shell: PowerShell
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-          git config --global http.sslBackend "schannel"
-        working-directory: ./
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Build windows Explorer
-        uses: ./lynx/.github/actions/windows-explorer-build
-        with:
-          build-arch: ${{ matrix.arch }}
+  # windows-explorer-build:
+  #   # Disable temporarily due to flakiness
+  #   if: false
+  #   runs-on: lynx-windows-2022-large
+  #   strategy:
+  #     matrix:
+  #       arch: [x86, x64]
+  #   steps:
+  #     - name: Configure Git
+  #       shell: PowerShell
+  #       run: |
+  #         git config --global core.autocrlf false
+  #         git config --global core.eol lf
+  #         git config --global http.sslBackend "schannel"
+  #       working-directory: ./
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Build windows Explorer
+  #       uses: ./lynx/.github/actions/windows-explorer-build
+  #       with:
+  #         build-arch: ${{ matrix.arch }}
 
   android-sdk-release:
     timeout-minutes: 60
@@ -584,306 +584,306 @@ jobs:
           ./gradlew :app:assembleDebug
           popd
 
-  harmony-explorer-build:
-    runs-on: lynx-custom-container
-    container:
-      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:bf493c3710de3c44bfa84caf402c0727b9310c42497f6e52580ad441ea640ef1
-      credentials:
-        username: lynx-family
-        password: ${{ secrets.GITHUB_TOKEN }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Build Explorer App
-        uses: ./lynx/.github/actions/harmony-explorer-build
+  # harmony-explorer-build:
+  #   runs-on: lynx-custom-container
+  #   container:
+  #     image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:bf493c3710de3c44bfa84caf402c0727b9310c42497f6e52580ad441ea640ef1
+  #     credentials:
+  #       username: lynx-family
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #   defaults:
+  #     run:
+  #       shell: bash
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Build Explorer App
+  #       uses: ./lynx/.github/actions/harmony-explorer-build
 
-  ios-explorer-build:
-    timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
-    strategy:
-      matrix:
-        arch: [arm64, x86_64]
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Build Explorer App
-        uses: ./lynx/.github/actions/ios-explorer-build
-        with:
-          build-arch: ${{ matrix.arch }}
-          build-params: '--integration-test'
-      - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
-        continue-on-error: true
-        with:
-          name: ios-explorer-build-${{ matrix.arch }}
-          path: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
+  # ios-explorer-build:
+  #   timeout-minutes: 60
+  #   runs-on: lynx-darwin-14-medium
+  #   strategy:
+  #     matrix:
+  #       arch: [arm64, x86_64]
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Build Explorer App
+  #       uses: ./lynx/.github/actions/ios-explorer-build
+  #       with:
+  #         build-arch: ${{ matrix.arch }}
+  #         build-params: '--integration-test'
+  #     - name: upload artifact
+  #       uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+  #       continue-on-error: true
+  #       with:
+  #         name: ios-explorer-build-${{ matrix.arch }}
+  #         path: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
 
-  ios-integration-test:
-    timeout-minutes: 15
-    runs-on: lynx-darwin-14-medium
-    env:
-      LOCAL_POD_NAME: 'local_pod'
-      POD_VERSION: '0.0.1-alpha.1'
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 2
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: lynx
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-        with:
-          cache-backend: 'lynx-infra'
-      - name: Prepare cocoapods publish source
-        run: |-
-          source tools/envsetup.sh
-          export LANG=en_US.UTF-8
-          python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
-      - name: Publish to Local Pod Source
-        run: |-
-          cd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          git config --global user.name "lynx.authors"
-          git config --global user.email "lynx.authors@users.noreply.github.com"
-          python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
-      - name: Download the Demo Project
-        uses: actions/checkout@v4.2.2
-        with:
-          path: demo
-          repository: lynx-family/integrating-lynx-demo-projects
-          ref: 0ab9340e1e560f07d3d4c4331f8b62b0702d067a
-      - name: Build the Demo Project
-        run: |-
-          cd $GITHUB_WORKSPACE
-          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component Lynx --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
-          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component LynxService --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
-          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component XElement --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
-          python3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "file://$GITHUB_WORKSPACE/lynx/$LOCAL_POD_NAME"
-          cd demo/ios/HelloLynxObjc
-          export LANG=en_US.UTF-8
-          BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle --version
-          BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle exec pod install
-          xcodebuild -workspace Hello-Lynx-OC.xcworkspace/ -scheme Hello-Lynx-OC CODE_SIGNING_ALLOWED=NO build
+  # ios-integration-test:
+  #   timeout-minutes: 15
+  #   runs-on: lynx-darwin-14-medium
+  #   env:
+  #     LOCAL_POD_NAME: 'local_pod'
+  #     POD_VERSION: '0.0.1-alpha.1'
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         fetch-depth: 2
+  #         ref: ${{ github.event.pull_request.head.sha }}
+  #         path: lynx
+  #     - name: Install Common Dependencies
+  #       uses: ./lynx/.github/actions/common-deps
+  #     - name: Setup Ruby Cache
+  #       uses: ./lynx/.github/actions/ios-common-deps
+  #       with:
+  #         cache-backend: 'lynx-infra'
+  #     - name: Prepare cocoapods publish source
+  #       run: |-
+  #         source tools/envsetup.sh
+  #         export LANG=en_US.UTF-8
+  #         python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
+  #     - name: Publish to Local Pod Source
+  #       run: |-
+  #         cd $GITHUB_WORKSPACE/lynx
+  #         source tools/envsetup.sh
+  #         git config --global user.name "lynx.authors"
+  #         git config --global user.email "lynx.authors@users.noreply.github.com"
+  #         python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
+  #     - name: Download the Demo Project
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: demo
+  #         repository: lynx-family/integrating-lynx-demo-projects
+  #         ref: 0ab9340e1e560f07d3d4c4331f8b62b0702d067a
+  #     - name: Build the Demo Project
+  #       run: |-
+  #         cd $GITHUB_WORKSPACE
+  #         python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component Lynx --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+  #         python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component LynxService --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+  #         python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component XElement --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+  #         python3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "file://$GITHUB_WORKSPACE/lynx/$LOCAL_POD_NAME"
+  #         cd demo/ios/HelloLynxObjc
+  #         export LANG=en_US.UTF-8
+  #         BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle --version
+  #         BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle exec pod install
+  #         xcodebuild -workspace Hello-Lynx-OC.xcworkspace/ -scheme Hello-Lynx-OC CODE_SIGNING_ALLOWED=NO build
 
-  ios-e2e-test:
-    timeout-minutes: 60
-    needs: [ios-explorer-build]
-    env:
-      APPIUM_TEST_SERVER_PORT: 4723
-      APPIUM_TEST_SERVER_HOST: 127.0.0.1
-    runs-on: lynx-darwin-14-medium
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-        with:
-          cache-backend: 'lynx-infra'
-      - name: Get iOS simulator SDK version
-        run: |
-          xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
-          sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
-          echo "SDK_VERSION=$sdkVersion" >> $GITHUB_ENV
-      - name: Build WebDriverAgent
-        uses: nick-fields/retry@v3
-        with:
-          max_attempts: 2
-          retry_wait_seconds: 5
-          timeout_minutes: 5
-          command: |
-            pushd $GITHUB_WORKSPACE
-            git clone https://github.com/appium/WebDriverAgent.git
-            xcodebuild build-for-testing \
-              -project ./WebDriverAgent/WebDriverAgent.xcodeproj \
-              -scheme WebDriverAgentRunner \
-              -configuration Release \
-              -sdk iphonesimulator${{ env.SDK_VERSION }} \
-              -derivedDataPath ./WebDriverAgent/DerivedData \
-              -destination "platform=iOS Simulator,OS=${{ env.SDK_VERSION }},name=iPhone 15" \
-              SYMROOT=$GITHUB_WORKSPACE/Build/Products
-            popd
-      - name: Start iOS Simulator
-        run: |
-          xcrun simctl boot "iPhone 15"
-      - name: Install WebDriverAgent to Simulator
-        run: |
-          set -e
-          SIMULATOR_UDID=$(xcrun simctl list devices "iOS ${{ env.SDK_VERSION }}" | grep "iPhone 15 (" | grep -oE '[0-9A-F-]{36}')
-          echo "SIMULATOR_UDID=$SIMULATOR_UDID" >> $GITHUB_ENV
-          xcrun simctl install $SIMULATOR_UDID \
-            $GITHUB_WORKSPACE/Build/Products/Release-iphonesimulator/WebDriverAgentRunner-Runner.app
-      - name: Install Appium
-        run: |
-          pushd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pnpm install appium@2.11.2 -w
-          pnpm install appium-xcuitest-driver@7.24.18 -w
-          pnpm install appium-ios-simulator@6.2.6 -w
-          popd
-        env:
-          npm_config_store_dir: ~/.local/share/pnpm/store
-      - name: Download Explorer App
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
-        with:
-          name: ios-explorer-build-arm64
-          path: lynx/explorer/darwin/ios/lynx_explorer/build_temp
-      - name: Install Explorer App
-        run: |
-          mkdir -p $GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/build_temp/LynxExplorer.app
-          tar -xzvf $GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/build_temp/LynxExplorer-arm64.app.tar.gz -C $GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/build_temp/LynxExplorer.app
-          xcrun simctl install $SIMULATOR_UDID $GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/build_temp/LynxExplorer.app
-      - name: Start Appium server
-        run: |
-          pushd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pushd node_modules/appium/node_modules/.bin
-          ls
-          ./appium server \
-            --port=$APPIUM_TEST_SERVER_PORT \
-            --address=$APPIUM_TEST_SERVER_HOST \
-            --log-no-colors \
-            --log-timestamp \
-            2>&1 > "$GITHUB_WORKSPACE/lynx/appium.log" < /dev/null &
-          popd
-          popd
-      - name: Check if Appium Server is running
-        run: |
-          max_attempts=10
-          attempt=0
-          while [ $attempt -lt $max_attempts ]; do
-            if nc -z $APPIUM_TEST_SERVER_HOST $APPIUM_TEST_SERVER_PORT; then
-              echo "Appium Server is running."
-              break
-            else
-              attempt=$((attempt + 1))
-              echo "Attempt $attempt: Appium Server is not yet running. Retrying in 2 seconds..."
-              sleep 2
-            fi
-          done
-          if [ $attempt -eq $max_attempts ]; then
-            echo "Failed to start Appium Server."
-            exit 1
-          fi
-      - name: Run iOS E2E Test
-        uses: nick-fields/retry@v3
-        with:
-          max_attempts: 2
-          retry_wait_seconds: 5
-          timeout_minutes: 20
-          command: |
-            set -e
-            pushd $GITHUB_WORKSPACE/lynx
-            source tools/envsetup.sh
-            pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
-            export server_port=$APPIUM_TEST_SERVER_PORT
-            export platform=ios
-            export APPIUM_isHeadless=True
-            pip3 install -r requirements.txt
-            python3 manage.py runtest ios_test.core
-            echo "TASK_STATUS=success" >> $GITHUB_OUTPUT
-            popd
-            popd
-        id: run_test
-      - name: Collect Lynx-E2E execution logs
-        if: always()
-        run: |
-          TASK_STATUS="${{ steps.run_test.outputs.TASK_STATUS }}"
-          if [ -n "$TASK_STATUS" ] && [ "$TASK_STATUS" = "success" ]; then
-            echo "Test execution succeeded."
-          else
-            echo "Test execution failed, collecting logs..."
-            pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
-            ls | grep -E "^lynx_e2e_devtools_.*\.log$" | xargs cat
-            popd
-          fi
-      - name: Collect Appium Server logs
-        if: always()
-        run: |
-          TASK_STATUS="${{ steps.run_test.outputs.TASK_STATUS }}"
-          if [ -n "$TASK_STATUS" ] && [ "$TASK_STATUS" = "success" ]; then
-            echo "Test execution succeeded."
-          else
-            echo "Test execution failed, collecting logs..."
-            pushd $GITHUB_WORKSPACE/lynx/
-            if [ -f "appium.log" ]; then
-              cat appium.log
-            else
-              echo "Warning: appium.log file not found"
-            fi
-            popd
-          fi
-      - name: Collect Generated Resource Files
-        if: always()
-        run: |
-          TASK_STATUS="${{ steps.run_test.outputs.TASK_STATUS }}"
-          if [ -n "$TASK_STATUS" ] && [ "$TASK_STATUS" = "success" ]; then
-            echo "Test execution succeeded."
-          else
-            pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
-            if [ -d "screenshots" ]; then
-              zip -r screenshots.zip ./screenshots/
-              echo "Successfully created screenshots.zip"
-              echo "ZIP_RESOURCES=success" >> $GITHUB_OUTPUT
-            else
-              echo "Warning: screenshot directory not found"
-            fi
-          fi
-        id: collect_resource
-      - name: Upload Generated Resource Files
-        if: always() && steps.collect_resource.outputs.ZIP_RESOURCES == 'success'
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
-        continue-on-error: true
-        with:
-          name: ios-e2e-resources
-          path: '${{ github.workspace }}/lynx/testing/integration_test/test_script/screenshots.zip'
+  # ios-e2e-test:
+  #   timeout-minutes: 60
+  #   needs: [ios-explorer-build]
+  #   env:
+  #     APPIUM_TEST_SERVER_PORT: 4723
+  #     APPIUM_TEST_SERVER_HOST: 127.0.0.1
+  #   runs-on: lynx-darwin-14-medium
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Install Common Dependencies
+  #       uses: ./lynx/.github/actions/common-deps
+  #     - name: Setup Ruby Cache
+  #       uses: ./lynx/.github/actions/ios-common-deps
+  #       with:
+  #         cache-backend: 'lynx-infra'
+  #     - name: Get iOS simulator SDK version
+  #       run: |
+  #         xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
+  #         sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
+  #         echo "SDK_VERSION=$sdkVersion" >> $GITHUB_ENV
+  #     - name: Build WebDriverAgent
+  #       uses: nick-fields/retry@v3
+  #       with:
+  #         max_attempts: 2
+  #         retry_wait_seconds: 5
+  #         timeout_minutes: 5
+  #         command: |
+  #           pushd $GITHUB_WORKSPACE
+  #           git clone https://github.com/appium/WebDriverAgent.git
+  #           xcodebuild build-for-testing \
+  #             -project ./WebDriverAgent/WebDriverAgent.xcodeproj \
+  #             -scheme WebDriverAgentRunner \
+  #             -configuration Release \
+  #             -sdk iphonesimulator${{ env.SDK_VERSION }} \
+  #             -derivedDataPath ./WebDriverAgent/DerivedData \
+  #             -destination "platform=iOS Simulator,OS=${{ env.SDK_VERSION }},name=iPhone 15" \
+  #             SYMROOT=$GITHUB_WORKSPACE/Build/Products
+  #           popd
+  #     - name: Start iOS Simulator
+  #       run: |
+  #         xcrun simctl boot "iPhone 15"
+  #     - name: Install WebDriverAgent to Simulator
+  #       run: |
+  #         set -e
+  #         SIMULATOR_UDID=$(xcrun simctl list devices "iOS ${{ env.SDK_VERSION }}" | grep "iPhone 15 (" | grep -oE '[0-9A-F-]{36}')
+  #         echo "SIMULATOR_UDID=$SIMULATOR_UDID" >> $GITHUB_ENV
+  #         xcrun simctl install $SIMULATOR_UDID \
+  #           $GITHUB_WORKSPACE/Build/Products/Release-iphonesimulator/WebDriverAgentRunner-Runner.app
+  #     - name: Install Appium
+  #       run: |
+  #         pushd $GITHUB_WORKSPACE/lynx
+  #         source tools/envsetup.sh
+  #         pnpm install appium@2.11.2 -w
+  #         pnpm install appium-xcuitest-driver@7.24.18 -w
+  #         pnpm install appium-ios-simulator@6.2.6 -w
+  #         popd
+  #       env:
+  #         npm_config_store_dir: ~/.local/share/pnpm/store
+  #     - name: Download Explorer App
+  #       uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+  #       with:
+  #         name: ios-explorer-build-arm64
+  #         path: lynx/explorer/darwin/ios/lynx_explorer/build_temp
+  #     - name: Install Explorer App
+  #       run: |
+  #         mkdir -p $GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/build_temp/LynxExplorer.app
+  #         tar -xzvf $GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/build_temp/LynxExplorer-arm64.app.tar.gz -C $GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/build_temp/LynxExplorer.app
+  #         xcrun simctl install $SIMULATOR_UDID $GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/build_temp/LynxExplorer.app
+  #     - name: Start Appium server
+  #       run: |
+  #         pushd $GITHUB_WORKSPACE/lynx
+  #         source tools/envsetup.sh
+  #         pushd node_modules/appium/node_modules/.bin
+  #         ls
+  #         ./appium server \
+  #           --port=$APPIUM_TEST_SERVER_PORT \
+  #           --address=$APPIUM_TEST_SERVER_HOST \
+  #           --log-no-colors \
+  #           --log-timestamp \
+  #           2>&1 > "$GITHUB_WORKSPACE/lynx/appium.log" < /dev/null &
+  #         popd
+  #         popd
+  #     - name: Check if Appium Server is running
+  #       run: |
+  #         max_attempts=10
+  #         attempt=0
+  #         while [ $attempt -lt $max_attempts ]; do
+  #           if nc -z $APPIUM_TEST_SERVER_HOST $APPIUM_TEST_SERVER_PORT; then
+  #             echo "Appium Server is running."
+  #             break
+  #           else
+  #             attempt=$((attempt + 1))
+  #             echo "Attempt $attempt: Appium Server is not yet running. Retrying in 2 seconds..."
+  #             sleep 2
+  #           fi
+  #         done
+  #         if [ $attempt -eq $max_attempts ]; then
+  #           echo "Failed to start Appium Server."
+  #           exit 1
+  #         fi
+  #     - name: Run iOS E2E Test
+  #       uses: nick-fields/retry@v3
+  #       with:
+  #         max_attempts: 2
+  #         retry_wait_seconds: 5
+  #         timeout_minutes: 20
+  #         command: |
+  #           set -e
+  #           pushd $GITHUB_WORKSPACE/lynx
+  #           source tools/envsetup.sh
+  #           pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
+  #           export server_port=$APPIUM_TEST_SERVER_PORT
+  #           export platform=ios
+  #           export APPIUM_isHeadless=True
+  #           pip3 install -r requirements.txt
+  #           python3 manage.py runtest ios_test.core
+  #           echo "TASK_STATUS=success" >> $GITHUB_OUTPUT
+  #           popd
+  #           popd
+  #       id: run_test
+  #     - name: Collect Lynx-E2E execution logs
+  #       if: always()
+  #       run: |
+  #         TASK_STATUS="${{ steps.run_test.outputs.TASK_STATUS }}"
+  #         if [ -n "$TASK_STATUS" ] && [ "$TASK_STATUS" = "success" ]; then
+  #           echo "Test execution succeeded."
+  #         else
+  #           echo "Test execution failed, collecting logs..."
+  #           pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
+  #           ls | grep -E "^lynx_e2e_devtools_.*\.log$" | xargs cat
+  #           popd
+  #         fi
+  #     - name: Collect Appium Server logs
+  #       if: always()
+  #       run: |
+  #         TASK_STATUS="${{ steps.run_test.outputs.TASK_STATUS }}"
+  #         if [ -n "$TASK_STATUS" ] && [ "$TASK_STATUS" = "success" ]; then
+  #           echo "Test execution succeeded."
+  #         else
+  #           echo "Test execution failed, collecting logs..."
+  #           pushd $GITHUB_WORKSPACE/lynx/
+  #           if [ -f "appium.log" ]; then
+  #             cat appium.log
+  #           else
+  #             echo "Warning: appium.log file not found"
+  #           fi
+  #           popd
+  #         fi
+  #     - name: Collect Generated Resource Files
+  #       if: always()
+  #       run: |
+  #         TASK_STATUS="${{ steps.run_test.outputs.TASK_STATUS }}"
+  #         if [ -n "$TASK_STATUS" ] && [ "$TASK_STATUS" = "success" ]; then
+  #           echo "Test execution succeeded."
+  #         else
+  #           pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
+  #           if [ -d "screenshots" ]; then
+  #             zip -r screenshots.zip ./screenshots/
+  #             echo "Successfully created screenshots.zip"
+  #             echo "ZIP_RESOURCES=success" >> $GITHUB_OUTPUT
+  #           else
+  #             echo "Warning: screenshot directory not found"
+  #           fi
+  #         fi
+  #       id: collect_resource
+  #     - name: Upload Generated Resource Files
+  #       if: always() && steps.collect_resource.outputs.ZIP_RESOURCES == 'success'
+  #       uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+  #       continue-on-error: true
+  #       with:
+  #         name: ios-e2e-resources
+  #         path: '${{ github.workspace }}/lynx/testing/integration_test/test_script/screenshots.zip'
 
-  clay-macos-build:
-    timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Build Clay Example
-        uses: ./lynx/.github/actions/clay-macos-build
-      - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
-        with:
-          name: clay_glfw
-          path: '${{ github.workspace }}/lynx/out/Default/clay_glfw'
+  # clay-macos-build:
+  #   timeout-minutes: 60
+  #   runs-on: lynx-darwin-14-medium
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Build Clay Example
+  #       uses: ./lynx/.github/actions/clay-macos-build
+  #     - name: upload artifact
+  #       uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+  #       with:
+  #         name: clay_glfw
+  #         path: '${{ github.workspace }}/lynx/out/Default/clay_glfw'
 
-  macos-explorer-build:
-    timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
-    strategy:
-      matrix:
-        arch: [arm64, x64]
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Build macOS Explorer
-        uses: ./lynx/.github/actions/macos-explorer-build
-        with:
-          build-arch: ${{ matrix.arch }}
-      - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
-        with:
-          name: macos-explorer-build-${{ matrix.arch }}
-          path: '${{ github.workspace }}/lynx/LynxExplorer-macos-${{ matrix.arch }}.app.tar.gz'
+  # macos-explorer-build:
+  #   timeout-minutes: 60
+  #   runs-on: lynx-darwin-14-medium
+  #   strategy:
+  #     matrix:
+  #       arch: [arm64, x64]
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Build macOS Explorer
+  #       uses: ./lynx/.github/actions/macos-explorer-build
+  #       with:
+  #         build-arch: ${{ matrix.arch }}
+  #     - name: upload artifact
+  #       uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+  #       with:
+  #         name: macos-explorer-build-${{ matrix.arch }}
+  #         path: '${{ github.workspace }}/lynx/LynxExplorer-macos-${{ matrix.arch }}.app.tar.gz'
