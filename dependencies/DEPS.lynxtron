@@ -143,7 +143,7 @@ deps = {
     "third_party/quickjs/src": {
         "type": "git",
         "url": "https://github.com/lynx-family/primjs.git",
-        "commit": "faddf2de461adee94840c912195334ad0b1bdf0f",
+        "commit": "572f55190b38a3b329e123623d30118b798c8d66",
         "ignore_in_git": True,
     },
     '../third_party/libpng': {
@@ -189,10 +189,7 @@ deps = {
     '../third_party/perfetto': {
         'type': 'git',
         'url': 'https://github.com/lynx-family/lynx-trace.git',
-        'commit': 'ea35ecb68fdacd889df642fc2eb578c5c58e1c7a',
-        "patches": [
-              os.path.join(root_dir, 'patches', 'perfetto', '*.patch')
-         ],
+        'commit': 'e1e87aa784b8deee451a095324b9843c684cbd8e',
          "ignore_in_git": True,
     },
     "../third_party/benchmark": {

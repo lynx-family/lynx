@@ -1,0 +1,22 @@
+From 9cc0e63c1b122a0137b61715eb970fd15dee9ee9 Mon Sep 17 00:00:00 2001
+From: KananSu <149131467+KananSu@users.noreply.github.com>
+Date: Wed, 16 Jul 2025 15:32:14 +0800
+Subject: [PATCH] [Infra] Add zlib dependency for perfetto
+
+---
+ sdk/BUILD.gn | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/sdk/BUILD.gn b/sdk/BUILD.gn
+index fd0ea8d7a8..1f6ee3fe0b 100644
+--- a/sdk/BUILD.gn
++++ b/sdk/BUILD.gn
+@@ -16,4 +16,5 @@ source_set("perfetto") {
+   # On some platfoms, cmsg = CMSG_NXTHDR(&msg_hdr, cmsg)) will cause build break:
+   #  comparison of integers of different signs: 'unsigned long' and 'long'
+   configs += [ ":allow_sign_compare" ]
++  deps = [ "//third_party/zlib" ]
+ }
+-- 
+2.39.3 (Apple Git-145)
+
