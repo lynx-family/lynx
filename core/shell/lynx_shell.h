@@ -122,8 +122,6 @@ class LynxShell {
   // This method attaches a pre-created LynxRuntime to the LynxShell:
   // so only one of `AttachRuntime` and `InitRuntime` will be called
   virtual void AttachRuntime();
-  void InitRuntimeWithRuntimeDisabled(
-      std::shared_ptr<base::VSyncMonitor> vsync_monitor);
 
   void StartJsRuntime();
 

@@ -420,21 +420,6 @@ void LynxShell::Destroy() {
   tasm::report::GlobalFeatureCounter::ClearAndReport(instance_id_);
 }
 
-void LynxShell::InitRuntimeWithRuntimeDisabled(
-    std::shared_ptr<base::VSyncMonitor> vsync_monitor) {
-  DCHECK(!enable_runtime_);
-  runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
-      nullptr, nullptr, instance_id_, enable_runtime_);
-  tasm_mediator_->SetRuntimeActor(runtime_actor_);
-  layout_mediator_->SetRuntimeActor(runtime_actor_);
-  if (timing_mediator_ != nullptr) {
-    timing_mediator_->SetRuntimeActor(runtime_actor_);
-  }
-  if (perf_mediator_) {
-    perf_mediator_->SetRuntimeActor(runtime_actor_);
-  }
-}
-
 void LynxShell::InitRuntime(
     const std::string& group_id,
     const std::shared_ptr<lynx::pub::LynxResourceLoader>& resource_loader,
@@ -471,11 +456,6 @@ void LynxShell::InitRuntime(
   } else {
     vsync_monitor = base::VSyncMonitor::Create();
   }
-  if (!enable_runtime_) {
-    InitRuntimeWithRuntimeDisabled(vsync_monitor);
-    return;
-  }
-
   fml::RefPtr<fml::TaskRunner> js_task_runner;
   js_task_runner = runners_.GetJSTaskRunner();
   auto external_resource_loader =
