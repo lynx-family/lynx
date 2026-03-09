@@ -258,6 +258,15 @@ class ElementManager : public ElementContextDelegate,
       Element *node, std::shared_ptr<PipelineOptions> &options);
 
   void PatchEventRelatedInfo();
+  void MarkNeedReconstructEventTargetTreeForExposure() {
+    need_reconstruct_event_target_tree_for_exposure_ = true;
+  }
+  bool NeedReconstructEventTargetTreeForExposure() const {
+    return need_reconstruct_event_target_tree_for_exposure_;
+  }
+  void ResetNeedReconstructEventTargetTreeForExposure() {
+    need_reconstruct_event_target_tree_for_exposure_ = false;
+  }
 
   bool GetDevToolFlag() { return devtool_flag_; }
 
@@ -1330,6 +1339,7 @@ class ElementManager : public ElementContextDelegate,
   bool enable_simple_style_{false};
 
   bool disable_list_callback_if_detached_{false};
+  bool need_reconstruct_event_target_tree_for_exposure_{false};
 
   LynxEnvConfig lynx_env_config_;
   std::shared_ptr<PageConfig> config_;

@@ -8,8 +8,11 @@
 #include <functional>
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
 #include "core/event/event.h"
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/diff_algorithm.h"
 #include "core/shell/lynx_engine.h"
@@ -127,6 +130,10 @@ void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
           ? engine_actor_->Impl()->GetTasm()->GetDevicePixelRatio()
           : 1.0f;
   event_target_helper_->SetDevicePixelRatio(device_pixel_ratio);
+  if (event_target_exposure_ != nullptr && engine_actor_ != nullptr) {
+    event_target_exposure_->SetTaskRunner(
+        engine_actor_->Impl()->GetTasm()->GetLepusTimedTaskRunner());
+  }
 }
 
 bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
@@ -200,6 +207,8 @@ NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively(
   if (did_reconstruct != nullptr) {
     *did_reconstruct = true;
   }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              NATIVE_PAINTING_CONTEXT_RECONSTRUCT_EVENT_TARGET_TREE);
   return event_target_helper_->ReconstructEventTargetTreeRecursively(
       fml::RefPtr<PlatformRendererImpl>(
           static_cast<PlatformRendererImpl *>(page_renderer->second.get())));
@@ -207,11 +216,25 @@ NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively(
 
 void NativePaintingCtxPlatformRef::AddPlatformEventTargetToExposure(
     int32_t id, const std::string &unique_id, const std::string &exposure_id,
-    const std::string &exposure_scene, const lepus::Value &dataset) {}
+    const std::string &exposure_scene, const lepus::Value &dataset) {
+  if (event_target_exposure_ == nullptr ||
+      (unique_id.empty() && exposure_id.empty())) {
+    return;
+  }
+  event_target_exposure_->AddExposureTarget(id, unique_id, exposure_id,
+                                            exposure_scene, dataset);
+}
 
 void NativePaintingCtxPlatformRef::RemovePlatformEventTargetFromExposure(
     int32_t id, const std::string &unique_id, const std::string &exposure_id,
-    const std::string &exposure_scene) {}
+    const std::string &exposure_scene) {
+  if (event_target_exposure_ == nullptr ||
+      (unique_id.empty() && exposure_id.empty())) {
+    return;
+  }
+  event_target_exposure_->RemoveExposureTarget(id, unique_id, exposure_id,
+                                               exposure_scene);
+}
 
 void NativePaintingCtxPlatformRef::UpdateAttributes(
     int id, const fml::RefPtr<PropBundle> &attributes, bool tend_to_flatten) {

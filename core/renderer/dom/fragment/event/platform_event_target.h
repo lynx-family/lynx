@@ -15,6 +15,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
+#include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
@@ -119,6 +120,9 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float ExposureUIMarginBottom() const { return exposure_ui_margin_bottom_; }
   float ExposureAreaRatio() const { return exposure_area_ratio_; }
 
+  void GetExposureTargetRect(float rect[4]) const;
+  void GetExposureWindowRect(float rect[4]) const;
+
   fml::RefPtr<PlatformEventTarget> ParentTarget() { return parent_; }
   void SetParentTarget(fml::RefPtr<PlatformEventTarget> parent) {
     parent_ = parent;
@@ -138,6 +142,9 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
                         fml::RefPtr<PlatformEventTarget> parent_target,
                         float point[2]);
   bool ContainsPoint(float point[2]) const;
+  bool IsVisibleForExposure(
+      std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
+      float root_view_origin_on_screen[2], const float window_rect[4]) const;
   void OnResponseChain();
   void OffResponseChain();
   bool IsOnResponseChain() const;
@@ -200,6 +207,11 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   }
 
  private:
+  void GetOrUpdateTargetScreenRect(
+      std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
+      const fml::RefPtr<PlatformEventTarget>& target, float out_rect[4],
+      float root_view_origin_on_screen[2]) const;
+
   // target props
   int32_t sign_;
   float left_{0.f};

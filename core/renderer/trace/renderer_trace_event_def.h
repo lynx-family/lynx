@@ -1057,6 +1057,20 @@ inline constexpr const char* const PAINTING_CONTEXT_FINISH_TASM_OPERATION =
     "FinishTasmOperation";
 inline constexpr const char* const PAINTING_CONTEXT_CLEAN_OPTIONS_FOR_TIMING =
     "CleanOptionsForTiming";
+/**
+ * @trace_description: Reconstruct platform event target tree recursively, which
+ * is used for platform event target exposure check, hit-test and execute ui
+ * method.
+ */
+inline constexpr const char* const
+    NATIVE_PAINTING_CONTEXT_RECONSTRUCT_EVENT_TARGET_TREE =
+        "NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively";
+/**
+ * @trace_description: Do exposure check for platform event target. The main
+ * function is to detect viewport intersections between targets.
+ */
+inline constexpr const char* const EXPOSURE_DO_EXPOSURE_CHECK =
+    "PlatformEventTargetExposure::DoExposureCheck";
 inline constexpr const char* const UI_OPERATION_QUEUE_INSERT_PAINTING_TASK =
     "UIOperationQueue::InsertPaintingNodeTask";
 inline constexpr const char* const UI_OPERATION_QUEUE_REMOVE_PAINTING_TASK =

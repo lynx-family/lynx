@@ -5,7 +5,6 @@
 #include "core/renderer/dom/fragment/fragment.h"
 
 #include <algorithm>
-#include <atomic>
 #include <memory>
 #include <utility>
 
@@ -24,8 +23,6 @@
 
 namespace lynx {
 namespace tasm {
-
-std::atomic_bool g_any_exposure_event{false};
 
 // Init value for the draw node capacity.
 const int32_t Fragment::kDefaultDrawNodeCapacity = 1;
@@ -636,15 +633,33 @@ void Fragment::ClearEventNames() {
 }
 
 void Fragment::MarkHasExposureEventIfNeeded() const {
-  if (g_any_exposure_event.load(std::memory_order_relaxed)) {
+  auto* manager = element_manager();
+  if (manager->NeedReconstructEventTargetTreeForExposure()) {
     return;
   }
+  bool need_mark = false;
   for (const auto& name : event_names_) {
     if (name == PlatformEventName::kUIAppear ||
         name == PlatformEventName::kUIDisappear) {
-      g_any_exposure_event.store(true, std::memory_order_relaxed);
-      return;
+      need_mark = true;
+      break;
     }
+  }
+  if (!need_mark) {
+    for (const auto& it : event_props_) {
+      const auto prop_name = it.first;
+      const auto& prop_value = it.second;
+      if (prop_name == PlatformEventPropName::kExposureId) {
+        if (prop_value.IsString() && !prop_value.StdString().empty()) {
+          need_mark = true;
+          break;
+        }
+        continue;
+      }
+    }
+  }
+  if (need_mark) {
+    manager->MarkNeedReconstructEventTargetTreeForExposure();
   }
 }
 
@@ -697,16 +712,14 @@ void Fragment::ReconstructEventTargetTreeForExposure() const {
   if (id() != kRootId) {
     return;
   }
+  auto* manager = element_manager();
+  if (!manager->NeedReconstructEventTargetTreeForExposure()) {
+    return;
+  }
 
   auto* native_ctx = painting_context()->impl()->CastToNativeCtx();
-  bool need_reconstruct = g_any_exposure_event.load(std::memory_order_relaxed);
-
-  // TODO(hexionghui): It shouldn't be rebuilt only once; it may need to be
-  // rebuilt again later.
-  static std::atomic_bool reconstructed{false};
-  if (need_reconstruct && !reconstructed.exchange(true)) {
-    native_ctx->ReconstructEventTargetTreeRecursively();
-  }
+  native_ctx->ReconstructEventTargetTreeRecursively();
+  manager->ResetNeedReconstructEventTargetTreeForExposure();
 }
 
 void Fragment::Draw() {

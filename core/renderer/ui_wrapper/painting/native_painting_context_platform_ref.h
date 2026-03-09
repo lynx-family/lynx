@@ -29,6 +29,7 @@ class Event;
 namespace tasm {
 
 class DisplayList;
+class PlatformEventTargetExposure;
 
 class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
  public:
@@ -110,6 +111,8 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
       std::make_unique<PlatformEventEmitter>(this);
   std::unique_ptr<PlatformEventTargetHelper> event_target_helper_ =
       std::make_unique<PlatformEventTargetHelper>(this);
+  std::shared_ptr<PlatformEventTargetExposure> event_target_exposure_ =
+      std::make_shared<PlatformEventTargetExposure>(this);
   bool need_reconstruct_event_target_tree_{false};
 };
 
