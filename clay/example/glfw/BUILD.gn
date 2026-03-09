@@ -42,6 +42,7 @@ executable("clay_glfw") {
     "../../fml:fml",
     "../../fml:icu_util",
     "../../shell/common",
+    "../../shell/common:compositor_service_fallback",
     "../../shell/gpu:gpu_surface_gl",
     "../../ui",
     "//build/secondary/third_party/glfw",

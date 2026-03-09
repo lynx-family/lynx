@@ -7,6 +7,8 @@
 
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterRenderer.h"
 
+#include <memory>
+
 #include "clay/fml/logging.h"
 
 #ifndef ENABLE_SKITY

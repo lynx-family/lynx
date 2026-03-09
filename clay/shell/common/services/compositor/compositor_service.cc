@@ -22,6 +22,53 @@ namespace clay {
 
 namespace {
 constexpr int64_t kPlatformPresentWaitTimeoutMs = 3000;
+
+using SurfaceSubmitInfo =
+    std::pair<SurfaceFrame::SubmitCallback, SurfaceFrame::SubmitInfo>;
+
+struct BackgroundSubmit {
+  bool did_encode = false;
+  SurfaceSubmitInfo submit_info;
+};
+
+BackgroundSubmit PrepareBackgroundSubmit(
+    SurfaceFrame& background_frame,
+    std::vector<SurfaceSubmitInfo>& submit_infos) {
+#if OS_MAC
+  // macOS background submit starts from the raster thread, so it must not be
+  // wrapped in a CATransaction. Overlay submits still stay in PresenterService
+  // on the platform thread.
+  background_frame.set_submit_info({.present_with_transaction = false});
+  bool did_encode = background_frame.Encode();
+  return {.did_encode = did_encode,
+          .submit_info = background_frame.PrepareSubmit()};
+#else
+  background_frame.set_submit_info({.present_with_transaction = true});
+  bool did_encode = background_frame.Encode();
+  submit_infos.push_back(background_frame.PrepareSubmit());
+  return {.did_encode = did_encode};
+#endif
+}
+
+// TODO(wangchen.wc.yusei): Revisit macOS background sync after
+// FlutterThreadSynchronizer avoids raster/main-thread waits during resize and
+// commit.
+bool SubmitBackgroundOnRasterIfNeeded(bool did_encode,
+                                      const SurfaceSubmitInfo& submit_info) {
+#if OS_MAC
+  if (!did_encode) {
+    return false;
+  }
+  const auto& [submit_callback, frame_submit_info] = submit_info;
+  if (!submit_callback) {
+    return false;
+  }
+  return submit_callback(frame_submit_info);
+#else
+  return did_encode;
+#endif
+}
+
 }  // namespace
 
 bool CompositorService::SubmitFrame(
@@ -29,8 +76,9 @@ bool CompositorService::SubmitFrame(
     std::unique_ptr<CompositorState> compositor_state) {
   TRACE_EVENT("clay", "CompositorService::SubmitFrame");
 
-  if (compositor_state->GetCompositionOrder().empty() &&
-      !had_hybrid_composited_) {
+  const bool has_composition_order =
+      !compositor_state->GetCompositionOrder().empty();
+  if (!has_composition_order && !had_hybrid_composited_) {
     had_hybrid_composited_ = false;
     return background_frame->Submit();
   }
@@ -47,10 +95,10 @@ bool CompositorService::SubmitFrame(
       background_frame->GetCanvas(), compositor_state->GetCompositionOrder(),
       compositor_state->GetSlices(), compositor_state->GetViewParams());
 
-  // background frame must come first since it's the "current" surface
-  background_frame->set_submit_info({.present_with_transaction = true});
-  did_encode &= background_frame->Encode();
-  submit_infos.push_back(background_frame->PrepareSubmit());
+  // Prepare the background first since it owns the current surface.
+  auto background_submit =
+      PrepareBackgroundSubmit(*background_frame, submit_infos);
+  did_encode &= background_submit.did_encode;
 
   CreateMissingSurfaces(overlay_render_requests.size(), context);
 
@@ -68,6 +116,9 @@ bool CompositorService::SubmitFrame(
 
     // If frame is null, AcquireFrame already printed out an error message.
     if (!frame) {
+      // This surface was not rendered this frame. Make it available for
+      // cleanup so a stale overlay layer is not kept visible.
+      available_layer_index_--;
       continue;
     }
     frame->Prepare(std::make_optional<skity::Rect>(
@@ -86,6 +137,9 @@ bool CompositorService::SubmitFrame(
     }
     CANVAS_RESTORE_TO_COUNT(overlay_canvas, restore_count);
 
+    // Overlay submits stay in PresenterService on the platform thread. On
+    // macOS, PresenterServiceMac batches them with CALayer mutations in one
+    // CATransaction.
     frame->set_submit_info({.present_with_transaction = true});
     did_encode &= frame->Encode();
 
@@ -104,6 +158,9 @@ bool CompositorService::SubmitFrame(
       .unused_overlays = std::move(unused_overlays),
       .submit_infos = std::move(submit_infos),
   };
+
+  did_encode = SubmitBackgroundOnRasterIfNeeded(did_encode,
+                                                background_submit.submit_info);
 
 #if OS_IOS
   const bool needs_platform_present_sync =

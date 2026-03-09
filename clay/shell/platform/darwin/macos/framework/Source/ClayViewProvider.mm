@@ -7,6 +7,7 @@
 #include <cctype>
 #include "base/include/fml/memory/weak_ptr.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/ClayMouseCursorPlugin.h"
+#include "clay/shell/platform/darwin/macos/framework/Source/ClayOverlayView.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/ClayViewProvider_Internal.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterEmbedderKeyResponder.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterEngine_Internal.h"
@@ -314,6 +315,9 @@ static void CommonInit(ClayViewProvider* controller) {
 
   flutterView.provider = self;
   self.view = flutterView;
+  ClayOverlayView* overlay = [[ClayOverlayView alloc] initWithFrame:self.view.bounds];
+  overlay.eventDelegate = self;
+  self.overlayView = overlay;
   _viewDidLoad = YES;
   // As viewWillAppear not be called, put it here.
   [self listenForMetaModifiedKeyUpEvents];
@@ -363,6 +367,42 @@ static void CommonInit(ClayViewProvider* controller) {
     // Set the synchronizer's visibility to avoid blocking when resizing.
     [[_view threadSynchronizer] setVisible:visible];
   }
+}
+
+- (void)setFrame:(CGRect)frame {
+  _view.frame = frame;
+  _overlayView.frame = frame;
+}
+
+- (void)setParent:(nullable NSView*)parent {
+  if (_view.superview != parent) {
+    [_view removeFromSuperview];
+  }
+  if (_overlayView.superview != parent) {
+    [_overlayView removeFromSuperview];
+  }
+  if (!parent) {
+    return;
+  }
+  if (!_view.superview) {
+    [parent addSubview:_view];
+  }
+  [self ensureOverlayOnTopmost:parent];
+}
+
+// Keep the overlay above views mounted under |parent|. Views mounted outside
+// this parent are not covered by this overlay view.
+- (void)ensureOverlayOnTopmost:(nullable NSView*)parent {
+  NSView* targetParent = parent ?: self.overlayView.superview;
+  if (!targetParent || !self.overlayView) {
+    return;
+  }
+  [self.overlayView removeFromSuperview];
+  [targetParent addSubview:self.overlayView];
+}
+
+- (void)detachOverlay {
+  [self.overlayView removeFromSuperview];
 }
 
 - (void)setInterceptUrlCallback:(FlutterViewShouldInterceptUrlCallback _Nullable)callback {

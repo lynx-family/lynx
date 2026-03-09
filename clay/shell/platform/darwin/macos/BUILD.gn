@@ -33,6 +33,7 @@ source_set("flutter_framework_source") {
   sources = [
     "framework/Source/ClayMouseCursorPlugin.h",
     "framework/Source/ClayMouseCursorPlugin.mm",
+    "framework/Source/ClayOverlayView.mm",
     "framework/Source/ClayViewProvider.mm",
     "framework/Source/ClayViewProvider_Internal.h",
     "framework/Source/FlutterAppDelegate.mm",
@@ -64,6 +65,12 @@ source_set("flutter_framework_source") {
     "framework/Source/FlutterViewEngineProvider.mm",
     "framework/Source/FlutterViewProvider.h",
     "framework/Source/KeyCodeMap.g.mm",
+    "framework/Source/overlay_view_controller_service.h",
+    "framework/Source/overlay_view_controller_service.mm",
+    "framework/Source/platform_overlay_service_mac.h",
+    "framework/Source/platform_overlay_service_mac.mm",
+    "framework/Source/presenter_service_mac.h",
+    "framework/Source/presenter_service_mac.mm",
   ]
 
   sources += _flutter_framework_headers

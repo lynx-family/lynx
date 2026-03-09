@@ -110,13 +110,6 @@ source_set("common") {
     frameworks = [ "QuartzCore.framework" ]
   }
 
-  if (!(is_android || is_ios || is_win) || (!is_win && is_headless)) {
-    sources += [
-      "services/compositor/platform_overlay_service_fallback.cc",
-      "services/compositor/presenter_service_fallback.cc",
-    ]
-  }
-
   if (enable_screenshot_service) {
     sources += [
       "services/screenshot_encoder.cc",
@@ -164,5 +157,21 @@ source_set("common") {
       "skia_event_tracer_impl.h",
     ]
     public_deps += [ "//third_party/skia" ]
+  }
+}
+
+# Headless embedders and platforms without compositor service implementations
+# should depend on this target explicitly. Platform window targets that provide
+# their own PlatformOverlayService/PresenterService must not link it.
+source_set("compositor_service_fallback") {
+  sources = [
+    "services/compositor/platform_overlay_service_fallback.cc",
+    "services/compositor/presenter_service_fallback.cc",
+  ]
+
+  public_configs = [ "../../:config" ]
+
+  if (!enable_skity) {
+    public_deps = [ "//third_party/skia" ]
   }
 }

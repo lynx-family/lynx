@@ -56,6 +56,9 @@ static void ReleaseSurface(void* surface) {
 }
 
 + (FlutterSurface*)fromGPUMTLTextureInfo:(const clay::GPUMTLTextureInfo*)textureInfo {
+  if (textureInfo == nullptr || textureInfo->destruction_context == nullptr) {
+    return nil;
+  }
   return (__bridge FlutterSurface*)textureInfo->destruction_context;
 }
 

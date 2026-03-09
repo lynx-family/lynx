@@ -10,6 +10,7 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
 
+#include <memory>
 #include <utility>
 
 #include "base/include/fml/make_copyable.h"
@@ -36,6 +37,33 @@ static_assert(__has_feature(objc_arc), "ARC must be enabled.");
 namespace clay {
 
 namespace {
+class ScopedMTLTextureInfo {
+ public:
+  explicit ScopedMTLTextureInfo(GPUMTLTextureInfo texture) : texture_(texture) {}
+
+  ScopedMTLTextureInfo(const ScopedMTLTextureInfo&) = delete;
+  ScopedMTLTextureInfo& operator=(const ScopedMTLTextureInfo&) = delete;
+
+  ~ScopedMTLTextureInfo() {
+    if (texture_.destruction_callback) {
+      texture_.destruction_callback(texture_.destruction_context);
+    }
+  }
+
+  const GPUMTLTextureInfo& texture_info() const { return texture_; }
+
+  int64_t texture_id() const { return texture_.texture_id; }
+
+  id<MTLTexture> texture() const { return (__bridge id<MTLTexture>)(texture_.texture); }
+
+ private:
+  GPUMTLTextureInfo texture_;
+};
+
+void ReleaseTextureLifetime(void* context) {
+  delete static_cast<std::shared_ptr<ScopedMTLTextureInfo>*>(context);
+}
+
 sk_sp<SkSurface> CreateSurfaceFromMetalTexture(GrDirectContext* context, id<MTLTexture> texture,
                                                GrSurfaceOrigin origin, MsaaSampleCount sample_cnt,
                                                SkColorType color_type,
@@ -200,26 +228,29 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromCAMetalLayer(
 
 std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromMTLTexture(
     const skity::Vec2& frame_info) {
-  GPUMTLTextureInfo texture = delegate_->GetMTLTexture(frame_info);
-  id<MTLTexture> mtl_texture = (__bridge id<MTLTexture>)(texture.texture);
+  auto texture_lifetime =
+      std::make_shared<ScopedMTLTextureInfo>(delegate_->GetMTLTexture(frame_info));
+  id<MTLTexture> mtl_texture = texture_lifetime->texture();
 
   if (!mtl_texture) {
     FML_LOG(ERROR) << "Invalid MTLTexture given by the embedder.";
     return nullptr;
   }
 
+  auto* surface_texture_lifetime = new std::shared_ptr<ScopedMTLTextureInfo>(texture_lifetime);
   sk_sp<SkSurface> surface = CreateSurfaceFromMetalTexture(
       context_.get(), mtl_texture, kTopLeft_GrSurfaceOrigin, msaa_samples_, kBGRA_8888_SkColorType,
-      nullptr, nullptr, static_cast<SkSurface::TextureReleaseProc>(texture.destruction_callback),
-      texture.destruction_context);
+      nullptr, nullptr, ReleaseTextureLifetime, surface_texture_lifetime);
 
   if (!surface) {
+    ReleaseTextureLifetime(surface_texture_lifetime);
     FML_LOG(ERROR) << "Could not create the SkSurface from the metal texture.";
     return nullptr;
   }
 
-  SurfaceFrame::EncodeCallback encode_callback = [this, texture](const SurfaceFrame& surface_frame,
-                                                                 SkCanvas* canvas) -> bool {
+  int64_t texture_id = texture_lifetime->texture_id();
+  SurfaceFrame::EncodeCallback encode_callback =
+      [this, texture_id](const SurfaceFrame& surface_frame, SkCanvas* canvas) -> bool {
     if (canvas == nullptr) {
       FML_DLOG(ERROR) << "Canvas not available.";
       return false;
@@ -231,8 +262,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromMTLTexture(
     }
 
     if (delegate_->EnablePartialRepaint()) {
-      for (auto& [texture_id, damage] : damage_) {
-        if (texture_id != texture.texture_id) {
+      for (auto& [current_texture_id, damage] : damage_) {
+        if (current_texture_id != texture_id) {
           // Accumulate damage for other framebuffers
           if (surface_frame.submit_info().frame_damage) {
             damage.Join(*surface_frame.submit_info().frame_damage);
@@ -240,17 +271,17 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromMTLTexture(
         }
       }
       // Reset accumulated damage for current framebuffer
-      damage_[texture.texture_id] = skity::Rect::MakeEmpty();
+      damage_[texture_id] = skity::Rect::MakeEmpty();
     }
 
     return true;
   };
 
   // This code path is only used on Mac platform, which ensures rasterizer teardown before shell,
-  // thus safe to cauptre this
-  auto submit_callback = [this, texture](const SurfaceFrame::SubmitInfo&) -> bool {
+  // thus safe to capture this. Keep the texture owner alive until the platform submit finishes.
+  auto submit_callback = [this, texture_lifetime](const SurfaceFrame::SubmitInfo&) -> bool {
     TRACE_EVENT("clay", "GPUSurfaceMetal::PresentTexture");
-    return delegate_->PresentTexture(texture);
+    return delegate_->PresentTexture(texture_lifetime->texture_info());
   };
 
   SurfaceFrame::FramebufferInfo framebuffer_info;
@@ -264,7 +295,7 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromMTLTexture(
   if (delegate_->EnablePartialRepaint()) {
     // Provide accumulated damage to rasterizer (area in current framebuffer that lags behind
     // front buffer)
-    auto i = damage_.find(texture.texture_id);
+    auto i = damage_.find(texture_id);
     if (i != damage_.end()) {
       framebuffer_info.existing_damage = i->second;
     }

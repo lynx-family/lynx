@@ -10,7 +10,7 @@
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
 #include "clay/net/loader/resource_loader_creator_service.h"
 #include "clay/shell/common/services/instrumentation_service.h"
-#include "clay/shell/platform/darwin/macos/framework/Headers/ClayViewProvider.h"
+#include "clay/shell/platform/darwin/macos/framework/Source/ClayViewProvider_Internal.h"
 #include "clay/ui/component/view_context.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "platform/embedder/lynx_view_clients.h"
@@ -52,15 +52,14 @@
 }
 
 - (void)setFrame:(CGRect)frame {
-  _clayViewProvider.flutterView.frame = frame;
+  [self.clayViewProvider setFrame:frame];
 }
 
 - (void)setParent:(NativeWindow)parent {
   if (!parent) {
     return;
   }
-  NSView* view = (__bridge NSView*)parent;
-  [view addSubview:_clayViewProvider.flutterView];
+  [self.clayViewProvider setParent:(__bridge NSView*)parent];
 }
 
 - (void)RegisterIMEHandler:(void*)handler arg:(void*)arg {
@@ -380,6 +379,10 @@ void LynxUIRendererImpl::RegisterNativeView(const char* name, lynx_native_view_c
   auto* view_context =
       reinterpret_cast<clay::ViewContext*>(lynx_ui_renderer.clayViewProvider.clayViewContext);
   clay::NativeViewServiceDesktop::AddViewFactory(view_context, name, creator, opaque);
+  // A native view factory was registered.  If the overlay already exists,
+  // re-insert it on top so that a new factory whose view is created later
+  // does not end up above the overlay (corner case C2).
+  [lynx_ui_renderer.clayViewProvider ensureOverlayOnTopmost:nil];
 }
 
 lynx::tasm::UIDelegate* LynxUIRendererImpl::GetUIDelegate() { return ui_delegate_.get(); }

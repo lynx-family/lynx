@@ -6,6 +6,7 @@
 #define FLUTTER_CLAYVIEWPROVIDER_H_
 
 #import <Cocoa/Cocoa.h>
+#include <CoreFoundation/CFCGTypes.h>
 #include <objc/objc.h>
 
 #import "ClayServiceManager.h"
@@ -53,6 +54,7 @@ FLUTTER_DARWIN_EXPORT
 - (void)onEnterForeground;
 - (void)onEnterBackground;
 - (void)setVisible:(BOOL)visible;
+- (void)setFrame:(CGRect)frame;
 /**
  * Returns YES if provided event is being currently redispatched by keyboard manager.
  */

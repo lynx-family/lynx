@@ -19,6 +19,7 @@ lynx_core_source_set("windowless") {
   ]
   deps = [
     "../../../clay/lynx_adaptor:resource_loader_embedder",
+    "../../../clay/shell/common:compositor_service_fallback",
     "../../../clay/shell/platform/headless:headless",
     "../../../clay/ui:ui",
   ]

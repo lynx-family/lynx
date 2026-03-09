@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 
+#include "clay/common/service/service_manager.h"
 #include "clay/flow/compositor/compositor_state.h"
 #include "clay/flow/surface_frame.h"
 #include "clay/gfx/rendering_backend.h"
