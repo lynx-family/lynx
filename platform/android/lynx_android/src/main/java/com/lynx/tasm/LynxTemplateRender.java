@@ -196,6 +196,7 @@ public class LynxTemplateRender
   @Retention(RetentionPolicy.SOURCE)
   @StringDef({RENDER_PHASE_SETUP, RENDER_PHASE_UPDATE})
   public @interface RenderPhaseName {}
+
   public static final String RENDER_PHASE_SETUP = "setup";
   public static final String RENDER_PHASE_UPDATE = "update";
 
@@ -240,7 +241,8 @@ public class LynxTemplateRender
   private boolean mIsEngineFromReuse;
   private boolean mMarkEngineInUseFlag;
   private WeakReference<TasmPlatformInvoker> mTasmPlatformInvoker;
-  // Used to adapt to the reusable judgment of multiple entries into the Pipeline in the MostOnTASM
+  // Used to adapt to the reusable judgment of multiple entries into the Pipeline
+  // in the MostOnTASM
   // thread mode.
   private AtomicInteger mEmbeddedPipelineCounter = new AtomicInteger(0);
 
@@ -266,7 +268,8 @@ public class LynxTemplateRender
 
   /**
    * Cast BodyView to LynxView because DevTool and SecurityService still need it.
-   * TODO(zhoupeng.z): review this methde after decoupling LynxView from DevTool and SecurityService
+   * TODO(zhoupeng.z): review this methde after decoupling LynxView from DevTool
+   * and SecurityService
    */
   private LynxView getLynxView() {
     if (mBodyView instanceof LynxView) {
@@ -278,7 +281,8 @@ public class LynxTemplateRender
   }
 
   private String formatLynxMessage(String action) {
-    // $timestamp create/renderTemplate/reset/reload/update/destory LynxView $sessionid
+    // $timestamp create/renderTemplate/reset/reload/update/destory LynxView
+    // $sessionid
     // <$schema(optional for create lynxview without schema)>
     long timestamp = System.currentTimeMillis();
     StringBuilder builder = new StringBuilder();
@@ -375,8 +379,10 @@ public class LynxTemplateRender
     mOriginLynxViewConfig = builder.lynxViewConfig;
     mEnablePendingJsTask = mLynxViewConfigProvider.isEnablePendingJsTask();
 
-    // Caller may to set up virtual screen metrics, so we have to get screen_metrics with
-    // lynxcontent.mVirtualScreenMetric(). The Global screen_metrics cannot be deleted for
+    // Caller may to set up virtual screen metrics, so we have to get screen_metrics
+    // with
+    // lynxcontent.mVirtualScreenMetric(). The Global screen_metrics cannot be
+    // deleted for
     // compatibility, some caller still using its related interface.
     DisplayMetricsHolder.updateOrInitDisplayMetrics(context, mLynxViewConfigProvider.getDensity());
     DisplayMetrics screenMetrics = DisplayMetricsHolder.getScreenDisplayMetrics();
@@ -463,13 +469,15 @@ public class LynxTemplateRender
     boolean isNeedUpdateViewportOnInit = true;
 
     if (mEnableReuseEngine && mIsEngineFromReuse) {
-      // When the Engine is successfully reused, it is unnecessary to update the viewport during the
+      // When the Engine is successfully reused, it is unnecessary to update the
+      // viewport during the
       // LynxView initialization process.
       isNeedUpdateViewportOnInit = false;
     } else if ((mEmbeddedMode & EmbeddedMode.LAYOUT_IN_ELEMENT) > 0) {
       isNeedUpdateViewportOnInit = false;
       if (mLynxViewConfigProvider.hasPresetMeasureSpec()) {
-        // Only init the viewport while the measure spec is pre defined. Or the viewport is
+        // Only init the viewport while the measure spec is pre defined. Or the viewport
+        // is
         // meaningless.
         isNeedUpdateViewportOnInit = true;
       }
@@ -496,7 +504,8 @@ public class LynxTemplateRender
 
     if (mLynxEngineRef == null) {
       // Failed to get from the pool, create a new one.
-      // This wrapper won't be cached because it doesn't have the Element/UI Tree context yet.
+      // This wrapper won't be cached because it doesn't have the Element/UI Tree
+      // context yet.
       ensureLynxEngine();
       mIsEngineFromReuse = false;
     }
@@ -543,6 +552,7 @@ public class LynxTemplateRender
     // bind common module creator
     IContextFinder contextFinder = new IContextFinder() {
       private WeakReference<Context> mContext = new WeakReference<>(mLynxContext);
+
       @NonNull
       @Override
       public WeakReference<Context> findContext(@Nullable String instanceId) {
@@ -561,7 +571,8 @@ public class LynxTemplateRender
   }
 
   private void setUpBackgroundThreadModuleFactory() {
-    // Only use shared module factory when enableSharedModule is true in LynxViewGroup.
+    // Only use shared module factory when enableSharedModule is true in
+    // LynxViewGroup.
     if (mLynxViewGroup != null && mLynxViewGroup.getSharedModuleFactory() != null) {
       LLog.v(TAG,
           "NativeModule:LynxTemplateRender setUpBackgroundThreadModuleFactory mLynxViewGroup: "
@@ -771,6 +782,7 @@ public class LynxTemplateRender
           mNativePtr, mNativeLifecycle, enabled == LynxBooleanOption.FALSE);
     }
   }
+
   public void putExtraParamsForReportingEvents(final Map<String, Object> params) {
     String eventName = "LynxTemplateRender.putExtraParamsForReportEvents";
     onTraceEventBegin(eventName);
@@ -790,6 +802,7 @@ public class LynxTemplateRender
 
   /**
    * Get render phase of current LynxView
+   *
    * @return render phase of current LynxView
    */
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
@@ -821,7 +834,8 @@ public class LynxTemplateRender
       mSSRHelper = null;
       mRenderPhase = RENDER_PHASE_SETUP;
 
-      // When reload the page, we need send disexposure events before JSRuntime destroyed to ensure
+      // When reload the page, we need send disexposure events before JSRuntime
+      // destroyed to ensure
       // the front end can receive events.
       if (mLynxContext != null) {
         mLynxContext.clearExposure();
@@ -874,7 +888,8 @@ public class LynxTemplateRender
   }
 
   /**
-   * Get template's version. Should be called after loadTemplate, return empty string otherwise.
+   * Get template's version. Should be called after loadTemplate, return empty
+   * string otherwise.
    */
   public String getPageVersion() {
     return mLynxContext == null ? "" : mLynxContext.getPageVersion();
@@ -885,6 +900,7 @@ public class LynxTemplateRender
       mLynxUIRender.pauseRootLayoutAnimation();
     }
   }
+
   public void resumeRootLayoutAnimation() {
     if (mLynxUIRender != null) {
       mLynxUIRender.resumeRootLayoutAnimation();
@@ -1018,11 +1034,13 @@ public class LynxTemplateRender
       if (mRuntime != null) {
         // In LynxbakcgroundRuntime Standalone, we create and init a LynxRuntime without
         // LynxShell. During LynxTemplateRender creation, this runtime is used to create
-        // LynxShell. Here we don't need to init the LynxRuntime which is already inited, but we
+        // LynxShell. Here we don't need to init the LynxRuntime which is already
+        // inited, but we
         // we need to bind it to LynxShell.
         attachPiper(mRuntime, mModuleFactory);
 
-        // Destruction of Runtime inside wrapper will be handled by LynxShell. Since after
+        // Destruction of Runtime inside wrapper will be handled by LynxShell. Since
+        // after
         // attachement, user cannot use LynxBackgroundRuntime, we can safely release its
         // reference.
         mRuntime = null;
@@ -1098,7 +1116,8 @@ public class LynxTemplateRender
     mHasDestroy = false;
     mDestroying = false;
     mLynxContext.setImageInterceptor(mClient); // for compatible with the old ImageInterceptor
-    // TODO(zhoupeng.z): Currently the LynxViewClient in LynxContext is only used to report errors,
+    // TODO(zhoupeng.z): Currently the LynxViewClient in LynxContext is only used to
+    // report errors,
     // make it compatible with LynxViewClientV2
     mLynxContext.setLynxViewClient(mClient);
     mLynxContext.setLynxViewClientV2(mClientV2);
@@ -1186,8 +1205,10 @@ public class LynxTemplateRender
   }
 
   public void sendGlobalEvent(String name, JavaOnlyArray params) {
-    // When SSR hydrate status is pending、beginning or failed, a global event will be sent to SSR
-    // runtime to be consumed. But this global event will also be cached so that when runtimeReady
+    // When SSR hydrate status is pending、beginning or failed, a global event will
+    // be sent to SSR
+    // runtime to be consumed. But this global event will also be cached so that
+    // when runtimeReady
     // it behaves as normal global event.
     JavaOnlyArray finalParams = params;
     if (mSSRHelper != null && mSSRHelper.shouldSendEventToSSR()) {
@@ -1447,7 +1468,8 @@ public class LynxTemplateRender
     // client will return perf
     reloadAndInit();
 
-    // Update the url info to generic info after the shell is rebuilt, because the rebuilt shell
+    // Update the url info to generic info after the shell is rebuilt, because the
+    // rebuilt shell
     // generates a new instance ID.
     updateGenericInfoURL(mUrl);
     if (mNativeFacade != null) {
@@ -1916,8 +1938,10 @@ public class LynxTemplateRender
     TemplateData updatedGlobalProps = null;
     if (meta.getUpdatedGlobalProps() != null) {
       // globalProps in merged in platform.
-      // if passing globalProps is nil means globalProps should not be updated, pass nil downwards.
-      // if passing globalProps is not nil means globalProps should be updated, pass merged
+      // if passing globalProps is nil means globalProps should not be updated, pass
+      // nil downwards.
+      // if passing globalProps is not nil means globalProps should be updated, pass
+      // merged
       // globalProps downwards.
       internalMergeGlobalPropsSafely(meta.getUpdatedGlobalProps());
       updatedGlobalProps = globalProps;
@@ -1929,9 +1953,12 @@ public class LynxTemplateRender
   }
 
   /**
-   * The business logic may call loadTemplate in the sub-thread, and the Merge and Recycle methods
-   * of GlobalProps will be triggered in different threads, leading to thread-safe issues. The
-   * design of TemplateData itself is not thread-safe, so we only protect the operations of internal
+   * The business logic may call loadTemplate in the sub-thread, and the Merge and
+   * Recycle methods
+   * of GlobalProps will be triggered in different threads, leading to thread-safe
+   * issues. The
+   * design of TemplateData itself is not thread-safe, so we only protect the
+   * operations of internal
    * GlobalProps here.
    */
   private synchronized void internalMergeGlobalPropsSafely(TemplateData newGlobalProps) {
@@ -1945,9 +1972,12 @@ public class LynxTemplateRender
   }
 
   /**
-   * The business logic may call loadTemplate in the sub-thread, and the Merge and Recycle methods
-   * of GlobalProps will be triggered in different threads, leading to thread-safe issues. The
-   * design of TemplateData itself is not thread-safe, so we only protect the operations of internal
+   * The business logic may call loadTemplate in the sub-thread, and the Merge and
+   * Recycle methods
+   * of GlobalProps will be triggered in different threads, leading to thread-safe
+   * issues. The
+   * design of TemplateData itself is not thread-safe, so we only protect the
+   * operations of internal
    * GlobalProps here.
    */
   private synchronized void recycleGlobalPropsSafely() {
@@ -2066,8 +2096,10 @@ public class LynxTemplateRender
         mLynxContext.resumeExposure();
       }
       /**
-       * Empty props should overwrite the original global props and null props should do nothing,
-       * but these two kinds of props' nativePtr are both 0. So have to pass the object to let
+       * Empty props should overwrite the original global props and null props should
+       * do nothing,
+       * but these two kinds of props' nativePtr are both 0. So have to pass the
+       * object to let
        * native know what kind of props Java is passing
        */
       timingOption.markTiming(TimingConstants.FFI_START);
@@ -2306,7 +2338,8 @@ public class LynxTemplateRender
     String eventName = "LynxTemplateRender.destroy";
     onTraceEventBegin(eventName);
 
-    // When destroy the page, we need send disexposure events before JSRuntime destroyed to ensure
+    // When destroy the page, we need send disexposure events before JSRuntime
+    // destroyed to ensure
     // the front end can receive events.
     if (mLynxContext != null) {
       mLynxContext.clearExposure();
@@ -2492,8 +2525,10 @@ public class LynxTemplateRender
 
     WeakReference<LynxTemplateRender> weakThis = new WeakReference<>(this);
     long delayMs = PerformanceController.getMemoryAcquisitionDelaySec() * 1000;
-    // Since resources are usually loaded asynchronously, such as images downloaded asynchronously
-    // from the network, it is necessary to delay the collection of memory so as to collect as much
+    // Since resources are usually loaded asynchronously, such as images downloaded
+    // asynchronously
+    // from the network, it is necessary to delay the collection of memory so as to
+    // collect as much
     // resource memory as possible.
     UIThreadUtils.runOnUiThread(new Runnable() {
       @Override
@@ -2844,7 +2879,8 @@ public class LynxTemplateRender
   public void onAttachedToWindow() {
     if (mEnableReuseEngine && mLynxEngineRef != null
         && mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM) {
-      // Once the Engine in MostOnTASM mode is attached on the window, it is not allowed to be
+      // Once the Engine in MostOnTASM mode is attached on the window, it is not
+      // allowed to be
       // reused.
       disableEngineBeReused();
     }
@@ -3785,19 +3821,19 @@ public class LynxTemplateRender
       LLog.i(TAG, "useQuickJSEngine is false");
     }
 
-    nativeInitRuntime(mNativePtr, mResourceLoader, mModuleFactory, getGroupID(), getPreloadJSPath(),
-        mLynxRuntimeOptions.getBytecodeSourceUrl(),
-        mLynxRuntimeOptions.calcRuntimeFlags(false, mEnablePendingJsTask),
-        lynxUIRenderer().getUIDelegatePtr());
-    String jsGroupThreadName = getJSGroupThreadNameIfNeed();
-    WeakReference<LynxContext> weakContext = mNativeFacade.getLynxContext();
-    if (mNativeFacade.getEnableJSRuntime()) {
+    if (enableJSRuntime()) {
+      nativeInitRuntime(mNativePtr, mResourceLoader, mModuleFactory, getGroupID(),
+          getPreloadJSPath(), mLynxRuntimeOptions.getBytecodeSourceUrl(),
+          mLynxRuntimeOptions.calcRuntimeFlags(false, mEnablePendingJsTask),
+          lynxUIRenderer().getUIDelegatePtr());
+      String jsGroupThreadName = getJSGroupThreadNameIfNeed();
+      WeakReference<LynxContext> weakContext = mNativeFacade.getLynxContext();
       mJSProxy = new JSProxy(mNativePtr, weakContext, jsGroupThreadName);
-    }
-    mNativeFacade.setJSProxy(mJSProxy);
-    if (weakContext.get() != null) {
-      LLog.i(TAG, "set JSGroupThreadName to lynx context: " + jsGroupThreadName);
-      weakContext.get().setJSGroupThreadName(jsGroupThreadName);
+      mNativeFacade.setJSProxy(mJSProxy);
+      if (weakContext.get() != null) {
+        LLog.i(TAG, "set JSGroupThreadName to lynx context: " + jsGroupThreadName);
+        weakContext.get().setJSGroupThreadName(jsGroupThreadName);
+      }
     }
   }
 
@@ -3812,7 +3848,8 @@ public class LynxTemplateRender
     }
   }
 
-  // TODO(hexionghui): This interface will be deleted later. Since LynxSendCustomEventRunnable
+  // TODO(hexionghui): This interface will be deleted later. Since
+  // LynxSendCustomEventRunnable
   // relies on this interface, it cannot be deleted temporarily.
   public void sendCustomEvent(@NonNull LynxCustomEvent event) {
     LynxContext context = mLynxContext;
@@ -4085,7 +4122,8 @@ public class LynxTemplateRender
     }
 
     if (mLynxEngineRef != null) {
-      // When registering into the cache, we do not remove the reference or actively detach it to
+      // When registering into the cache, we do not remove the reference or actively
+      // detach it to
       // support on-demand processing.
       int currentEmbeddedPipelineCounter = mEmbeddedPipelineCounter.decrementAndGet();
       if (currentEmbeddedPipelineCounter == 0) {
@@ -4249,6 +4287,7 @@ public class LynxTemplateRender
       String bytecodeSourceUrl, int runtimeFlags, long uiDelegate);
 
   private static native void nativeOnLynxEngineCreated(long ptr, long uiDelegatePtr);
+
   private static native void nativeStartRuntime(long ptr, long lifecycle);
 
   private static native void nativeProcessRender(long ptr, long lifecycle);
