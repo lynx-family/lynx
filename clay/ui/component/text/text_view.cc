@@ -930,6 +930,11 @@ std::u16string TextView::GetAccessibilityLabel() const {
 
 bool TextView::IsPointerAllowed(const GestureRecognizer& gesture_recognizer,
                                 const PointerEvent& event) {
+  // PanZoom events are trackpad two-finger scrolls. They should not be
+  // captured by text-selection drag; let the enclosing scroll-view handle them.
+  if (event.type == PointerEvent::EventType::kPanZoomStartEvent) {
+    return false;
+  }
   if (event.device == PointerEvent::DeviceType::kMouse) {
     return event.buttons == PointerEvent::MouseButton::kPrimary;
   } else {
