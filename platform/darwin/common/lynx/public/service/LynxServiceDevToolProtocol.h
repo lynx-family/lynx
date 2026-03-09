@@ -11,7 +11,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class LynxView;
-
+@class LynxConfig;
 @protocol LynxLogBoxProtocol;
 @protocol LynxBaseInspectorController;
 @protocol LynxBasePerfMonitor;
