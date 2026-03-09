@@ -10,6 +10,7 @@
 #include <string>
 
 #include "base/include/no_destructor.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace tasm {
@@ -33,12 +34,13 @@ class LynxTrailHub {
   };
 
  public:
-  static LynxTrailHub& GetInstance();
+  LYNX_EXPORT static LynxTrailHub& GetInstance();
 
   /**
    * Get trail value by key
    */
-  std::optional<std::string> GetStringForTrailKey(const std::string& key);
+  LYNX_EXPORT std::optional<std::string> GetStringForTrailKey(
+      const std::string& key);
 
   ~LynxTrailHub() = default;
   LynxTrailHub(const LynxTrailHub&) = delete;
