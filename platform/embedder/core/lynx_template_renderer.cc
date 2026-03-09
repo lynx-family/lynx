@@ -185,13 +185,15 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
     shell_->UpdateGlobalProps(*settings_.global_props);
   }
 
-  auto runtime_flags = shell::CalcRuntimeFlags(
-      false, settings_.use_quickjs, false, settings_.enable_bytecode);
-  shell_->InitRuntime(settings_.group_id, settings_.resource_loader,
-                      module_manager_, std::move(on_runtime_actor_created),
-                      std::move(settings_.preload_js_paths), runtime_flags,
-                      settings_.bytecode_source_url,
-                      settings_.vsync_monitor_platform_impl);
+  if (settings_.enable_js) {
+    auto runtime_flags = shell::CalcRuntimeFlags(
+        false, settings_.use_quickjs, false, settings_.enable_bytecode);
+    shell_->InitRuntime(settings_.group_id, settings_.resource_loader,
+                        module_manager_, std::move(on_runtime_actor_created),
+                        std::move(settings_.preload_js_paths), runtime_flags,
+                        settings_.bytecode_source_url,
+                        settings_.vsync_monitor_platform_impl);
+  }
 
   ui_delegate_->OnLynxCreate(
       shell_->GetListEngineProxy(), engine_proxy_, runtime_proxy_,
