@@ -8,10 +8,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "quickjs.h"
+#include "quickjs/include/quickjs.h"
 #ifdef __cplusplus
 }
 #endif
+
+size_t allocate_usable_size(void *mem);
+void set_heap_obj_len(void *ptr, int len);
+int32_t get_heap_obj_len(void *ptr);
 
 struct LEPUSRuntime;
 
@@ -153,13 +157,12 @@ class GCObserver {
   virtual void OnGC(std::string mem_info) = 0;
 };
 
-
-void HeapObjStore(LEPUSContext *ctx, void *fieldAddr, LEPUSValue value);
-void HeapObjStore(LEPUSContext *ctx, void *fieldAddr, void *value);
-void WriteBarrierNoStore(LEPUSRuntime *rt, void *value);
-void WriteBarrierNoStore(LEPUSContext *ctx, LEPUSValue value);
-void WriteBarrierNoStore(LEPUSContext *ctx, void *value);
-void HeapObjStoreNoCtx(void *fieldAddr, LEPUSValue value);
-void HeapObjStoreNoCtx(void *fieldAddr, void *value);
+void LEPUS_HeapObjStore(LEPUSContext *ctx, void *fieldAddr, LEPUSValue value);
+void LEPUS_HeapObjStore(LEPUSContext *ctx, void *fieldAddr, void *value);
+void LEPUS_WriteBarrierNoStore(LEPUSRuntime *rt, void *value);
+void LEPUS_WriteBarrierNoStore(LEPUSContext *ctx, LEPUSValue value);
+void LEPUS_WriteBarrierNoStore(LEPUSContext *ctx, void *value);
+void LEPUS_HeapObjStoreNoCtx(void *fieldAddr, LEPUSValue value);
+void LEPUS_HeapObjStoreNoCtx(void *fieldAddr, void *value);
 
 #endif  // SRC_GC_TRACE_GC_H_

@@ -104,6 +104,7 @@ static void FillFunctionBytecodeDebugInfo(LEPUSContext* ctx,
     uint8_t* buf = static_cast<uint8_t*>(lepus_malloc(
         ctx, sizeof(uint8_t) * pc2line_len, ALLOC_TAG_WITHOUT_PTR));
     LepusNGDebugger::Scope scope(ctx, buf);
+    HandleScope handle_scope(ctx, buf, HANDLE_TYPE_DIR_HEAP_OBJ);
     if (buf) {
       for (int32_t i = 0; i < pc2line_len; i++) {
         buf[i] = func_info[kKeyPc2LineBuf][i].GetUint();
@@ -159,6 +160,7 @@ void LepusNGDebugger::ParseDebugInfo(const LEPUSValue& top_level_function,
   }
 
   Scope scope(ctx, function_list);
+  HandleScope handle_scope(ctx, function_list, HANDLE_TYPE_DIR_HEAP_OBJ);
   rapidjson::Value debug_info_entry;
   bool has_function_info = false;
   std::string error_message;
@@ -200,6 +202,7 @@ void LepusNGDebugger::ParseDebugInfo(const LEPUSValue& top_level_function,
       if (has_function_info) {
         FillFunctionBytecodeDebugInfo(ctx, b, debug_info_entry);
       }
+      LEPUS_WriteBarrierNoStore(ctx, script);
       SetFunctionScript(b, script);
     }
   }
