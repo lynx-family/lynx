@@ -74,6 +74,10 @@ void adjustInsets(UIImage* image, CALayer* layer, UIEdgeInsets insets);
 CGRect LynxGetRectWithEdgeInsets(CGRect bounds, UIEdgeInsets border);
 BOOL LynxBorderInsetsNotLargeThan(UIEdgeInsets borderInsets, float val);
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 bool LynxUpdateOutlineLayer(CALayer* layer, CGSize viewSize, LynxBorderStyle style, UIColor* color,
                             float width);
 void LynxUpdateLayerWithImage(CALayer* layer, UIImage* image);
@@ -99,4 +103,9 @@ void LynxUpdateBorderLayerWithPath(CAShapeLayer* borderLayer, CGPathRef path,
 BOOL internalHasSameBorderRadius(LynxBorderRadii radii);
 void LBRGetBorderValueOrLength(NSArray* valArray, int index, LynxBorderUnitValue* value,
                                LynxPlatformLength** length);
+
+#if defined(__cplusplus)
+}
+#endif
+
 @end  // LynxBackgroundUtils
