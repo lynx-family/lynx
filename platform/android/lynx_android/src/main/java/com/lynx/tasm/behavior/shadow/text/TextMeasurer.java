@@ -279,6 +279,9 @@ public class TextMeasurer {
             continue;
           }
           textAttributes = ensureTextAttributes(textAttributes);
+          if (Float.isNaN(lineHeight) || lineHeight < 0) {
+            lineHeight = MeasureUtils.UNDEFINED;
+          }
           textAttributes.setLineHeight(lineHeight);
 
           break;
