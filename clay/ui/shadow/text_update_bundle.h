@@ -16,6 +16,7 @@
 #include "clay/public/style_types.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/text/text_view.h"
+#include "clay/ui/shadow/bundle.h"
 namespace clay {
 struct TextInfo {
   int id = -1;
@@ -31,7 +32,7 @@ struct TextInfo {
   std::optional<std::list<TextRange>> range_;
 };
 
-class TextUpdateBundle {
+class TextUpdateBundle : public Bundle {
  public:
   TextUpdateBundle() = default;
   ~TextUpdateBundle();
@@ -51,7 +52,7 @@ class TextUpdateBundle {
   }
   void SetLineSpacingOffset(double offset) { line_spacing_offset_ = offset; }
   void PushTextInfo(TextInfo& info) { info_.emplace_back(info); }
-  void UpdateExtraData(BaseView* view);
+  void UpdateExtraData(BaseView* view) override;
 
  private:
   std::unique_ptr<txt::Paragraph> paragraph_ = nullptr;

@@ -6,6 +6,7 @@ import("../../common/config.gni")
 ui_shadow_sources = [
   "base_text_shadow_node.cc",
   "base_text_shadow_node.h",
+  "bundle.h",
   "icu_substitute.h",
   "image_shadow_node.cc",
   "image_shadow_node.h",

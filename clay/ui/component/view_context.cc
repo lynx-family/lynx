@@ -24,6 +24,7 @@
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
+#include "clay/ui/shadow/bundle.h"
 #ifdef ENABLE_NET_LOADER
 #include "clay/net/net_loader_manager.h"
 #endif
@@ -1070,16 +1071,16 @@ void ViewContext::UpdateSticky(int id, const float* sticky) {
   view->UpdateSticky(sticky_info);
 }
 
-TextUpdateBundle* ViewContext::GetTextBundle(int32_t id) {
+Bundle* ViewContext::GetTextBundle(int32_t id) {
   auto node = shadow_node_owner_->GetNode(id);
-  if (node && node->IsTextShadowNode()) {
-    return static_cast<TextShadowNode*>(node)->MoveTextBundle();
+  if (node) {
+    return node->MoveBundle();
   } else {
     return nullptr;
   }
 }
 
-void ViewContext::UpdateExtraData(int id, TextUpdateBundle* bundle) {
+void ViewContext::UpdateExtraData(int id, Bundle* bundle) {
   auto view = FindViewByViewId(id);
   if (view && bundle) {
     bundle->UpdateExtraData(view);

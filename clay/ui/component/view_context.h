@@ -26,6 +26,7 @@
 #include "clay/public/ui_component_delegate.h"
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
+#include "clay/ui/shadow/bundle.h"
 #include "clay/ui/shadow/shadow_node.h"
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/window/viewport_metrics.h"
@@ -283,8 +284,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
     return default_overflow_always_visible;
   }
 
-  TextUpdateBundle* GetTextBundle(int32_t id);
-  void UpdateExtraData(int id, TextUpdateBundle* bundle);
+  Bundle* GetTextBundle(int32_t id);
+  void UpdateExtraData(int id, Bundle* bundle);
 
   bool UsesLogicalPixels() const {
     return clay::kPixelTypeFramework == clay::kPixelTypeLogical;

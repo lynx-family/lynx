@@ -107,22 +107,23 @@ void TextShadowNode::UpdateBundleData() {
   // Traverse the tree structure to create textinfo
   CreateTextInfo(paragraph);
 
-  bundle_->SetParagraph(text_render_->MoveParagraph());
-  bundle_->SetText(GetRawText());
-  bundle_->SetTextPaintAlign(text_paint_align_);
+  auto bundle = static_cast<TextUpdateBundle*>(bundle_.get());
+  bundle->SetParagraph(text_render_->MoveParagraph());
+  bundle->SetText(GetRawText());
+  bundle->SetTextPaintAlign(text_paint_align_);
   if (text_style_) {
     std::map<int, std::shared_ptr<ColorSource>> gradient_shader_map;
     std::map<int, std::pair<size_t, size_t>> gradient_shader_range_map;
     CreateGradientShaderMap(this, paragraph, gradient_shader_map,
                             gradient_shader_range_map);
     if (gradient_shader_map.size() > 0) {
-      bundle_->SetGradientShaderMap(gradient_shader_map,
-                                    gradient_shader_range_map);
+      bundle->SetGradientShaderMap(gradient_shader_map,
+                                   gradient_shader_range_map);
     }
     std::unordered_map<int, TextStroke> text_stroke_map;
     CreateTextStrokeMap(this, text_stroke_map);
     if (text_stroke_map.size() > 0) {
-      bundle_->SetTextStrokeMap(text_stroke_map);
+      bundle->SetTextStrokeMap(text_stroke_map);
     }
   }
 }
@@ -221,7 +222,8 @@ void TextShadowNode::ProcessParagraph(
                  ? line_metrics.begin()->ascent - line_metrics.begin()->descent
                  : 0),
         0.0);
-    bundle_->SetLineSpacingOffset(-line_spacing / 2);
+    static_cast<TextUpdateBundle*>(bundle_.get())
+        ->SetLineSpacingOffset(-line_spacing / 2);
 #endif
   }
 }

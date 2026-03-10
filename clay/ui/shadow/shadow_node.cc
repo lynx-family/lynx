@@ -238,7 +238,7 @@ void ShadowNode::ResetEndIndex() {
 }
 
 void ShadowNode::CreateTextInfo(txt::Paragraph* paragraph) {
-  auto bundle = FindTextBundle();
+  auto bundle = static_cast<TextUpdateBundle*>(FindTextBundle());
   if (!bundle) {
     return;
   }
@@ -312,7 +312,7 @@ void ShadowNode::CreateTextInfo(txt::Paragraph* paragraph) {
   }
 }
 
-TextUpdateBundle* ShadowNode::FindTextBundle() {
+Bundle* ShadowNode::FindTextBundle() {
   auto parent = this;
   while (!parent->IsTextShadowNode()) {
     if (parent->Parent()) {

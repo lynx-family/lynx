@@ -608,8 +608,7 @@ void BaseTextShadowNode::MeasureInlineView(
 void BaseTextShadowNode::AlignNativeNode(txt::Paragraph* paragraph) {
   for (auto* child : children_) {
     if (child->IsInlineViewShadowNode()) {
-      auto inline_view_shadow_node = std::make_shared<InlineViewShadowNode>(
-          *static_cast<InlineViewShadowNode*>(child));
+      auto* inline_view_shadow_node = static_cast<InlineViewShadowNode*>(child);
       auto text_box =
           paragraph->GetRectsForRange(inline_view_shadow_node->StartGlyph(),
                                       inline_view_shadow_node->EndGlyph(),

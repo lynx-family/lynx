@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <limits>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,7 @@
 #include "clay/ui/component/keywords.h"
 #include "clay/ui/component/layout_controller.h"
 #include "clay/ui/component/text/text_style.h"
+#include "clay/ui/shadow/bundle.h"
 #include "clay/ui/shadow/measure_utils.h"
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/shadow/vertical_align_style.h"
@@ -40,6 +42,7 @@ class ShadowNode {
   virtual bool IsEditableShadowNode() { return false; }
   virtual bool IsInlineTruncationShadowNode() { return false; }
   virtual bool IsImageShadowNode() { return false; }
+  virtual bool IsMarkDownShadowNode() { return false; }
 
   virtual Measurable* GetMeasurable() { return nullptr; }
   virtual CustomMeasurable* GetCustomMeasurable() { return nullptr; }
@@ -60,6 +63,8 @@ class ShadowNode {
   virtual bool IsVirtual() { return false; }
 
   virtual void SetAttribute(const char* attr_c, const clay::Value& value);
+
+  Bundle* MoveBundle() { return bundle_.release(); }
 
   std::string GetName() { return tag_; }
 
@@ -140,7 +145,7 @@ class ShadowNode {
   void ResetEndIndex();
 
   void CreateTextInfo(txt::Paragraph* paragraph);
-  TextUpdateBundle* FindTextBundle();
+  Bundle* FindTextBundle();
   virtual void SetAttribute(KeywordID attr, const char* attr_c,
                             const clay::Value&){};
 
@@ -162,6 +167,7 @@ class ShadowNode {
   // This value will be used to limit the display area of ​raw-​text and
   // inline-images and inline-view
   size_t truncated_index_ = std::numeric_limits<size_t>::max();
+  std::unique_ptr<Bundle> bundle_ = nullptr;
 };
 
 }  // namespace clay

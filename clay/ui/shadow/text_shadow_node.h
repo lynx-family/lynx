@@ -95,8 +95,7 @@ class TextShadowNode : public BaseTextShadowNode, public CustomMeasurable {
   }
 
   void CreateTextBundle() { bundle_ = std::make_unique<TextUpdateBundle>(); }
-  TextUpdateBundle* MoveTextBundle() { return bundle_.release(); }
-  TextUpdateBundle* GetTextBundle() { return bundle_.get(); }
+  Bundle* GetTextBundle() { return bundle_.get(); }
 
  protected:
   txt::Paragraph* GetCacheParagraph();
@@ -108,7 +107,6 @@ class TextShadowNode : public BaseTextShadowNode, public CustomMeasurable {
   std::vector<InlineImageShadowNode*> inline_images_;
   std::vector<InlineViewShadowNode*> inline_views_;
   TextAlignment text_paint_align_ = TextAlignment::kLeft;
-  std::unique_ptr<TextUpdateBundle> bundle_ = nullptr;
 };
 
 }  // namespace clay

@@ -8,7 +8,7 @@
 #include <memory>
 #include <utility>
 
-#include "clay/ui/shadow/text_update_bundle.h"
+#include "clay/ui/shadow/bundle.h"
 #include "core/public/platform_extra_bundle.h"
 
 namespace lynx {
@@ -17,15 +17,15 @@ namespace tasm {
 class PlatformExtraBundleClay final : public PlatformExtraBundle {
  public:
   PlatformExtraBundleClay(int32_t sign, PlatformExtraBundleHolder* holder,
-                          clay::TextUpdateBundle* bundle)
+                          clay::Bundle* bundle)
       : PlatformExtraBundle(sign, holder), bundle_(bundle) {}
 
-  std::shared_ptr<clay::TextUpdateBundle> const& GetBundle() const {
+  std::shared_ptr<clay::Bundle> const& GetBundle() const {
     return this->bundle_;
   }
 
  private:
-  std::shared_ptr<clay::TextUpdateBundle> bundle_;
+  std::shared_ptr<clay::Bundle> bundle_;
 };
 
 }  // namespace tasm
