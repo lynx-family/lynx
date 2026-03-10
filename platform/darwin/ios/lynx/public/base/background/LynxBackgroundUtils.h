@@ -56,6 +56,10 @@ typedef NS_ENUM(NSInteger, LynxBorderPathId) {
                                  borderRadii:(LynxBorderRadii)borderRadii
                                   edgeInsets:(UIEdgeInsets)edgeInsets;
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 void LynxPathAddEllipticArc(CGMutablePathRef path, CGPoint origin, CGFloat width, CGFloat height,
                             CGFloat startAngle, CGFloat endAngle, BOOL clockwise);
 void LynxPathAddRect(CGMutablePathRef path, CGRect bounds, bool reverse);
@@ -99,4 +103,9 @@ void LynxUpdateBorderLayerWithPath(CAShapeLayer* borderLayer, CGPathRef path,
 BOOL internalHasSameBorderRadius(LynxBorderRadii radii);
 void LBRGetBorderValueOrLength(NSArray* valArray, int index, LynxBorderUnitValue* value,
                                LynxPlatformLength** length);
+
+#if defined(__cplusplus)
+}
+#endif
+
 @end  // LynxBackgroundUtils

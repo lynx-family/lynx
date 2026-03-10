@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBackgroundUtils.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
@@ -172,20 +173,50 @@ using namespace lynx::tasm;
       }
       case DisplayListOpType::kBorder: {
         if (int_count >= 10) {
-          [[maybe_unused]] int out_box_index = [self nextContentInt];
-          [[maybe_unused]] int inner_box_index = [self nextContentInt];
+          int out_box_index = [self nextContentInt];
+          int inner_box_index = [self nextContentInt];
 
-          [[maybe_unused]] int top_color = [self nextContentInt];
-          [[maybe_unused]] int right_color = [self nextContentInt];
-          [[maybe_unused]] int bottom_color = [self nextContentInt];
-          [[maybe_unused]] int left_color = [self nextContentInt];
+          // 4 colors: Top, Right, Bottom, Left (ARGB int)
+          UIColor *topColor = [self colorFromARGB:[self nextContentInt]];
+          UIColor *rightColor = [self colorFromARGB:[self nextContentInt]];
+          UIColor *bottomColor = [self colorFromARGB:[self nextContentInt]];
+          UIColor *leftColor = [self colorFromARGB:[self nextContentInt]];
 
-          [[maybe_unused]] int top_style = [self nextContentInt];
-          [[maybe_unused]] int right_style = [self nextContentInt];
-          [[maybe_unused]] int bottom_style = [self nextContentInt];
-          [[maybe_unused]] int left_style = [self nextContentInt];
+          // 4 styles: Top, Right, Bottom, Left (0=none, 1=solid, 2=dashed, 3=dotted)
+          int topStyle = [self nextContentInt];
+          int rightStyle = [self nextContentInt];
+          int bottomStyle = [self nextContentInt];
+          int leftStyle = [self nextContentInt];
 
-          // TODO(songshourui.null): implement the kBorder action later.
+          // Validate box indices
+          if (out_box_index < 0 || static_cast<size_t>(out_box_index) >= box_array_.size() ||
+              inner_box_index < 0 || static_cast<size_t>(inner_box_index) >= box_array_.size()) {
+            break;
+          }
+
+          const RoundedRectangle &outBox = box_array_[out_box_index];
+          const RoundedRectangle &innerBox = box_array_[inner_box_index];
+
+          // Create border image
+          UIImage *borderImage =
+              [self createBorderImageWithOutBox:outBox
+                                          inner:innerBox
+                                         colors:@[ topColor, rightColor, bottomColor, leftColor ]
+                                         styles:@[
+                                           @(topStyle), @(rightStyle), @(bottomStyle), @(leftStyle)
+                                         ]];
+
+          if (borderImage) {
+            CALayer *borderLayer = [CALayer layer];
+            borderLayer.contents = (id)borderImage.CGImage;
+
+            // Set frame with offset
+            CGRect frame = CGRectMake(outBox.GetX() + left_offset_, outBox.GetY() + top_offset_,
+                                      outBox.GetWidth(), outBox.GetHeight());
+            borderLayer.frame = frame;
+
+            [self insertLayer:borderLayer];
+          }
         }
         break;
       }
@@ -310,6 +341,122 @@ using namespace lynx::tasm;
     }
   }
   return imageManager;
+}
+
+#pragma mark - Border Helpers
+
+- (UIColor *)colorFromARGB:(int)argb {
+  CGFloat a = ((argb >> 24) & 0xFF) / 255.0;
+  CGFloat r = ((argb >> 16) & 0xFF) / 255.0;
+  CGFloat g = ((argb >> 8) & 0xFF) / 255.0;
+  CGFloat b = (argb & 0xFF) / 255.0;
+  return [UIColor colorWithRed:r green:g blue:b alpha:a];
+}
+
+- (LynxBorderStyle)lynxBorderStyleFromInt:(int)style {
+  switch (style) {
+    case 0:
+      return LynxBorderStyleNone;
+    case 1:
+      return LynxBorderStyleSolid;
+    case 2:
+      return LynxBorderStyleDashed;
+    case 3:
+      return LynxBorderStyleDotted;
+    case 4:
+      return LynxBorderStyleDouble;
+    case 5:
+      return LynxBorderStyleGroove;
+    case 6:
+      return LynxBorderStyleRidge;
+    case 7:
+      return LynxBorderStyleInset;
+    case 8:
+      return LynxBorderStyleOutset;
+    case 9:
+      return LynxBorderStyleHidden;
+    default:
+      return LynxBorderStyleNone;
+  }
+}
+
+- (LynxBorderRadii)convertToLynxBorderRadii:(const RoundedRectangle &)rect {
+  LynxBorderRadii radii;
+
+  // Top-Left
+  radii.topLeftX.val = rect.GetRadiusXTopLeft();
+  radii.topLeftX.unit = LynxBorderValueUnitDefault;
+  radii.topLeftY.val = rect.GetRadiusYTopLeft();
+  radii.topLeftY.unit = LynxBorderValueUnitDefault;
+
+  // Top-Right
+  radii.topRightX.val = rect.GetRadiusXTopRight();
+  radii.topRightX.unit = LynxBorderValueUnitDefault;
+  radii.topRightY.val = rect.GetRadiusYTopRight();
+  radii.topRightY.unit = LynxBorderValueUnitDefault;
+
+  // Bottom-Right
+  radii.bottomRightX.val = rect.GetRadiusXBottomRight();
+  radii.bottomRightX.unit = LynxBorderValueUnitDefault;
+  radii.bottomRightY.val = rect.GetRadiusYBottomRight();
+  radii.bottomRightY.unit = LynxBorderValueUnitDefault;
+
+  // Bottom-Left
+  radii.bottomLeftX.val = rect.GetRadiusXBottomLeft();
+  radii.bottomLeftX.unit = LynxBorderValueUnitDefault;
+  radii.bottomLeftY.val = rect.GetRadiusYBottomLeft();
+  radii.bottomLeftY.unit = LynxBorderValueUnitDefault;
+
+  return radii;
+}
+
+- (UIImage *)createBorderImageWithOutBox:(const RoundedRectangle &)outBox
+                                   inner:(const RoundedRectangle &)innerBox
+                                  colors:(NSArray<UIColor *> *)colors
+                                  styles:(NSArray<NSNumber *> *)styles {
+  // Validate output box dimensions
+  const CGFloat width = outBox.GetWidth();
+  const CGFloat height = outBox.GetHeight();
+  if (width <= 0 || height <= 0) {
+    return nil;
+  }
+  CGSize size = CGSizeMake(width, height);
+
+  // Calculate border insets with non-negative constraint: {top, left, bottom, right}
+  const CGFloat topInset = MAX(0.0f, innerBox.GetY() - outBox.GetY());
+  const CGFloat leftInset = MAX(0.0f, innerBox.GetX() - outBox.GetX());
+  const CGFloat bottomInset =
+      MAX(0.0f, outBox.GetY() + outBox.GetHeight() - innerBox.GetY() - innerBox.GetHeight());
+  const CGFloat rightInset =
+      MAX(0.0f, outBox.GetX() + outBox.GetWidth() - innerBox.GetX() - innerBox.GetWidth());
+
+  UIEdgeInsets borderInsets = UIEdgeInsetsMake(topInset, leftInset, bottomInset, rightInset);
+
+  // Check if there's any valid border width
+  if (borderInsets.top == 0 && borderInsets.left == 0 && borderInsets.bottom == 0 &&
+      borderInsets.right == 0) {
+    return nil;
+  }
+
+  // Convert to LynxBorderColors (order: top, left, bottom, right)
+  LynxBorderColors borderColors;
+  borderColors.top = colors[0].CGColor;
+  borderColors.left = colors[3].CGColor;
+  borderColors.bottom = colors[2].CGColor;
+  borderColors.right = colors[1].CGColor;
+
+  // Convert to LynxBorderStyles (order: top, left, bottom, right)
+  LynxBorderStyles borderStyles;
+  borderStyles.top = [self lynxBorderStyleFromInt:styles[0].intValue];
+  borderStyles.left = [self lynxBorderStyleFromInt:styles[3].intValue];
+  borderStyles.bottom = [self lynxBorderStyleFromInt:styles[2].intValue];
+  borderStyles.right = [self lynxBorderStyleFromInt:styles[1].intValue];
+
+  // Get corner radii
+  LynxBorderRadii cornerRadii = [self convertToLynxBorderRadii:outBox];
+
+  // Generate border image using existing utility
+  return LynxGetBorderLayerImage(borderStyles, size, cornerRadii, borderInsets, borderColors, NO);
 }
 
 @end

@@ -365,4 +365,89 @@ using namespace lynx::tasm;
   [mockLayer verify];
 }
 
+- (void)testProcessContentOperationsWithBorder {
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+
+  // 1. Record outer box (100x100 at 0,0)
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 100.0f, 100.0f);
+
+  // 2. Record inner box (80x80 at 10,10) - creates 10px border
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 10.0f, 80.0f, 80.0f);
+
+  // 3. kBorder with 10 int params
+  // int_count=10 (out_box_index=0, inner_box_index=1, 4 colors, 4 styles)
+  // Colors: Top=0xFFFF0000(Red), Right=0xFF00FF00(Green), Bottom=0xFF0000FF(Blue),
+  // Left=0xFFFFFF00(Yellow) Styles: Top=1(Solid), Right=2(Dashed), Bottom=3(Dotted), Left=1(Solid)
+  list.AddOperation(DisplayListOpType::kBorder, 0, 1,          // box indices
+                    (int32_t)0xFFFF0000, (int32_t)0xFF00FF00,  // top, right colors
+                    (int32_t)0xFF0000FF, (int32_t)0xFFFFFF00,  // bottom, left colors
+                    1, 2, 3, 1);                               // top, right, bottom, left styles
+
+  // Expectation: A layer should be added with border image
+  [[mockLayer expect] addSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
+                        // Verify it's a CALayer with contents (border image)
+                        return [layer isKindOfClass:[CALayer class]] && layer.contents != nil;
+                      }]];
+
+  [applier applyDisplayList:&list];
+
+  [mockLayer verify];
+}
+
+- (void)testProcessContentOperationsWithBorderInvalidIndices {
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+
+  // kBorder with invalid box indices (no boxes recorded)
+  // int_count=10 but box indices are invalid
+  list.AddOperation(DisplayListOpType::kBorder, 0, 0,  // invalid box indices
+                    (int32_t)0xFFFF0000, (int32_t)0xFF00FF00, (int32_t)0xFF0000FF,
+                    (int32_t)0xFFFFFF00, 1, 1, 1, 1);
+
+  // Should not crash, just skip processing
+  [applier applyDisplayList:&list];
+}
+
+- (void)testProcessContentOperationsWithBorderZeroWidth {
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+
+  // Record two identical boxes (zero border width)
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 100.0f, 100.0f);
+
+  // kBorder with identical boxes (zero width)
+  list.AddOperation(DisplayListOpType::kBorder, 0, 1, (int32_t)0xFFFF0000, (int32_t)0xFF00FF00,
+                    (int32_t)0xFF0000FF, (int32_t)0xFFFFFF00, 1, 1, 1, 1);
+
+  // No layer should be added since border width is zero
+  OCMReject([mockLayer addSublayer:[OCMArg any]]);
+
+  [applier applyDisplayList:&list];
+
+  [mockLayer verify];
+}
+
 @end
