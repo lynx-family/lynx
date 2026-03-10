@@ -56,7 +56,7 @@ std::string AES::EncryptECB(const std::string& plain,
     temp = Encrypt(temp, round_key);
     out.append(temp.begin(), temp.end());
   }
-  modp_b64_encode(out);
+  lynx_modp_b64_encode(out);
   return out;
 }
 
@@ -89,7 +89,7 @@ std::array<AES::u_char, 16> AES::Encrypt(const std::array<u_char, 16>& plain,
 }
 
 std::string AES::DecryptECB(std::string cipher, const std::string& key_temp) {
-  modp_b64_decode(cipher);
+  lynx_modp_b64_decode(cipher);
   std::string out;
   out.reserve(cipher.size());
   uint32_t key_size = 4 * nb_ * (nr_ + 1);

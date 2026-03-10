@@ -21,10 +21,10 @@ bool DataURIUtil::IsDataURI(const std::string_view &uri) {
 int32_t DataURIUtil::DecodeBase64(
     const std::string_view &base64_str,
     lynx::base::DataURIUtil::BufferFactory factory) {
-  size_t buffer_size = modp_b64_decode_len(base64_str.length());
+  size_t buffer_size = lynx_modp_b64_decode_len(base64_str.length());
   auto buffer = factory(buffer_size);
   size_t actual_buffer_size =
-      modp_b64_decode(buffer, base64_str.data(), base64_str.length());
+      lynx_modp_b64_decode(buffer, base64_str.data(), base64_str.length());
   if (actual_buffer_size == static_cast<size_t>(-1)) {
     return 0;
   }
