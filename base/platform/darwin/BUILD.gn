@@ -83,7 +83,6 @@ subspec_target("Framework") {
     "-Wno-unused-parameter",
     "-Wno-missing-field-initializers",
     "-Wno-documentation",
-    "-Werror",
   ]
   public_header_files = base_darwin_public_headers
   deps = [
