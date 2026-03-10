@@ -849,29 +849,12 @@ subspec_target("template_bundle") {
 
 subspec_target("third_party") {
   if (use_flatten_deps) {
-    flatten_deps = [
-      ":modp64",
-      ":rapidjson",
-      ":zlib",
-    ]
+    flatten_deps = [ ":zlib" ]
   } else {
     header_mappings_dir = "."
-    deps = [
-      ":modp64",
-      ":rapidjson",
-      ":zlib",
-    ]
+    deps = [ ":zlib" ]
   }
   libraries = [ "stdc++" ]
-}
-
-subspec_target("modp64") {
-  deps = [ "//third_party/modp_b64" ]
-  libraries = [ "stdc++" ]
-}
-
-subspec_target("rapidjson") {
-  deps = [ "../../../../third_party/rapidjson" ]
 }
 
 subspec_target("ReleaseResource") {

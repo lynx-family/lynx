@@ -34,7 +34,7 @@ TEST_P(QuickjsRuntimeTest, PrepareJavaScriptTest) {
         "ACAAANAaABAAAAOMsAAACROcsAAADKKJgDARgAAICAgJCAgICAgAEAC4CAgDAAAYCAgB"
         "A"
         "=";
-    modp_b64_decode(bytecode);
+    lynx_modp_b64_decode(bytecode);
     auto prep = rt.prepareJavaScript(
         std::make_shared<StringBuffer>(std::move(bytecode)), "bytecode.js");
     auto res = rt.evaluatePreparedJavaScript(prep);
@@ -52,7 +52,7 @@ TEST_P(QuickjsRuntimeTest, PrepareJavaScriptTest) {
         "ACAAANAaABAAAAOMsAAACROcsAAADKKJgDARgAAICAgJCAgICAgAEAC4CAgDAAAYCAgB"
         "A"
         "=";
-    modp_b64_decode(bytecode);
+    lynx_modp_b64_decode(bytecode);
     auto prep = rt.prepareJavaScript(
         std::make_shared<StringBuffer>(std::move(bytecode)), "bytecode.js");
     EXPECT_EQ(prep, nullptr);

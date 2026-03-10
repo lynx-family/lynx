@@ -100,7 +100,7 @@ void MockReplayerComponentLoader::InitWithActionList(
         EXPECT_TRUE(params_val[DataUpdateReplayer::kParaSource].IsString());
         std::string source =
             params_val[DataUpdateReplayer::kParaSource].GetString();
-        const auto& src = modp_b64_decode(source);
+        const auto& src = lynx_modp_b64_decode(source);
         std::vector<uint8_t> input_source(src.begin(), src.end());
 
         EXPECT_TRUE(params_val.HasMember(DataUpdateReplayer::kCallbackId));

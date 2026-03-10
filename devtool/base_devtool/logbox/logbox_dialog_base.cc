@@ -254,7 +254,7 @@ void LogBoxDialogBase::SetJsSources(
 void LogBoxDialogBase::LoadMappingsWasm() {
   std::string mappings_wasm;
   GetFileContent("mappings.wasm", mappings_wasm);
-  std::string& base64_data = modp_b64_encode(mappings_wasm);
+  std::string& base64_data = lynx_modp_b64_encode(mappings_wasm);
 
   rapidjson::Document dom;
   auto& allocator = dom.GetAllocator();

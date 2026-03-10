@@ -2829,8 +2829,8 @@ void UIBase::Base64EncodeTask(
           return;
         }
         std::unique_ptr<char[]> base64_buf =
-            std::make_unique<char[]>(modp_b64_encode_len(buffer_size));
-        size_t base64_len = modp_b64_encode(
+            std::make_unique<char[]>(lynx_modp_b64_encode_len(buffer_size));
+        size_t base64_len = lynx_modp_b64_encode(
             base64_buf.get(), reinterpret_cast<const char*>(buffer.get()),
             buffer_size);
         if (base64_len == static_cast<size_t>(-1)) {

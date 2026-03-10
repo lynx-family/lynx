@@ -1334,7 +1334,7 @@ RENDERER_FUNCTION_CC(ReplaceStyleSheetByIdWithBase64) {
   }
 
   auto base64_buffer = arg1->StdString();
-  modp_b64_decode(base64_buffer);
+  lynx_modp_b64_decode(base64_buffer);
   auto input_stream = std::make_unique<lepus::ByteArrayInputStream>(
       std::vector<uint8_t>(base64_buffer.begin(), base64_buffer.end()));
   auto reader = TemplateBinaryReader(self, nullptr, std::move(input_stream));

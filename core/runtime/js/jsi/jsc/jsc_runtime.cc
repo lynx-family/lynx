@@ -484,10 +484,10 @@ size_t JSCRuntime::copyData(const ArrayBuffer& obj, uint8_t* dest_buf,
     std::string base64_stl_str = JSCHelper::JSStringToSTLString(base64_str);
     JSStringRelease(base64_str);
     size_t base64_len = base64_stl_str.length();
-    if (dest_len < modp_b64_decode_len(base64_len)) {
+    if (dest_len < lynx_modp_b64_decode_len(base64_len)) {
       return 0;
     }
-    size_t decode_len = modp_b64_decode(
+    size_t decode_len = lynx_modp_b64_decode(
         (char*)dest_buf, (const char*)base64_stl_str.c_str(), base64_len);
     return decode_len > 0 ? decode_len : 0;
   }
