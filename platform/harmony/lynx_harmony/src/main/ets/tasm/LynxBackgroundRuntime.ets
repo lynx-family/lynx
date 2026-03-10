@@ -129,29 +129,28 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
     if (!key || !value) {
       return;
     }
-    // TODO(nihao.royal): call native C++ sessionStorage setter after NAPI is ready.
+    this.nativeSetSessionStorageItem(key, value.data);
   }
 
   getSessionStorageItem(key: string, callback: SessionStorageCallback): void {
     if (!key || !callback) {
       return;
     }
-    // TODO(nihao.royal): call native C++ sessionStorage getter after NAPI is ready.
+    this.nativeGetSessionStorageItem(key, callback);
   }
 
   subscribeSessionStorage(key: string, callback: SessionStorageCallback): number {
     if (!key || !callback) {
       return INVALID_SESSION_STORAGE_LISTENER_ID;
     }
-    // TODO(nihao.royal): call native C++ sessionStorage subscribe after NAPI is ready.
-    return INVALID_SESSION_STORAGE_LISTENER_ID;
+    return this.nativeSubscribeSessionStorage(key, callback);
   }
 
   unsubscribeSessionStorage(key: string, listenerId: number): void {
     if (!key || listenerId < 0) {
       return;
     }
-    // TODO(nihao.royal): call native C++ sessionStorage unsubscribe after NAPI is ready.
+    this.nativeUnsubscribeSessionStorage(key, listenerId);
   }
 
   addRuntimeLifecycleListener(listener: RuntimeLifecycleListener) {

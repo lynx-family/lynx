@@ -144,6 +144,14 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   static napi_value NativeCallJSFunction(napi_env env, napi_callback_info info);
   static napi_value NativeAddRuntimeLifecycleListener(napi_env env,
                                                       napi_callback_info info);
+  static napi_value NativeSetSessionStorageItem(napi_env env,
+                                                napi_callback_info info);
+  static napi_value NativeGetSessionStorageItem(napi_env env,
+                                                napi_callback_info info);
+  static napi_value NativeSubscribeSessionStorage(napi_env env,
+                                                  napi_callback_info info);
+  static napi_value NativeUnsubscribeSessionStorage(napi_env env,
+                                                    napi_callback_info info);
 
   napi_env env_;
   napi_ref runtime_wrapper_ref_;
@@ -156,6 +164,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   std::shared_ptr<runtime::js::LynxModuleManager> module_manager_;
   bool is_attached_{false};
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
+  std::unordered_map<int32_t, napi_ref> session_storage_callback_refs_;
 };
 
 }  // namespace harmony

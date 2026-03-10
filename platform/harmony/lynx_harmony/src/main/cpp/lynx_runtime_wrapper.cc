@@ -16,6 +16,7 @@
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 #include "core/resource/lynx_resource_loader_harmony.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
+#include "core/shell/common/platform_call_back.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
 
 namespace lynx {
@@ -178,9 +179,13 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
 LynxRuntimeWrapper::~LynxRuntimeWrapper() { DestroyRuntime(); }
 
 void LynxRuntimeWrapper::DestroyRuntime() {
+  for (auto& it : session_storage_callback_refs_) {
+    napi_delete_reference(env_, it.second);
+  }
   if (is_attached_) {
     return;
   }
+  session_storage_callback_refs_.clear();
   runtime_standalone_->DestroyRuntime();
 }
 
@@ -207,6 +212,14 @@ napi_value LynxRuntimeWrapper::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("nativeCallJSFunction", NativeCallJSFunction),
       DECLARE_NAPI_FUNCTION("nativeAddRuntimeLifecycleListener",
                             NativeAddRuntimeLifecycleListener),
+      DECLARE_NAPI_FUNCTION("nativeSetSessionStorageItem",
+                            NativeSetSessionStorageItem),
+      DECLARE_NAPI_FUNCTION("nativeGetSessionStorageItem",
+                            NativeGetSessionStorageItem),
+      DECLARE_NAPI_FUNCTION("nativeSubscribeSessionStorage",
+                            NativeSubscribeSessionStorage),
+      DECLARE_NAPI_FUNCTION("nativeUnsubscribeSessionStorage",
+                            NativeUnsubscribeSessionStorage),
   };
 #undef DECLARE_NAPI_FUNCTION
   napi_value cons;
@@ -393,6 +406,172 @@ napi_value LynxRuntimeWrapper::NativeAddRuntimeLifecycleListener(
     return nullptr;
   }
   obj->AddRuntimeLifecycleListener(env, listener_ref);
+  return nullptr;
+}
+
+napi_value LynxRuntimeWrapper::NativeSetSessionStorageItem(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  LynxRuntimeWrapper* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj,
+                             "NativeSetSessionStorageItem failed")) {
+    return nullptr;
+  }
+
+  std::string key = base::NapiUtil::ConvertToShortString(env, args[0]);
+  if (key.empty()) {
+    return nullptr;
+  }
+  napi_value undefined_value = nullptr;
+  napi_get_undefined(env, &undefined_value);
+  auto template_data = tasm::TemplateDataHarmony::GenerateTemplateData(
+      env, args[1], undefined_value, undefined_value);
+  if (!template_data) {
+    return nullptr;
+  }
+  obj->RuntimeStandalone().SetSessionStorageItem(std::move(key), template_data);
+  return nullptr;
+}
+
+napi_value LynxRuntimeWrapper::NativeGetSessionStorageItem(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  LynxRuntimeWrapper* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj,
+                             "NativeGetSessionStorageItem failed")) {
+    return nullptr;
+  }
+
+  std::string key = base::NapiUtil::ConvertToShortString(env, args[0]);
+  if (key.empty()) {
+    return nullptr;
+  }
+  napi_valuetype callback_type;
+  napi_typeof(env, args[1], &callback_type);
+  if (callback_type != napi_function) {
+    return nullptr;
+  }
+
+  napi_ref callback_ref = nullptr;
+  napi_create_reference(env, args[1], 1, &callback_ref);
+  auto callback = std::make_unique<shell::PlatformCallBack>(
+      [env, callback_ref](const lepus::Value& value) {
+        base::NapiHandleScope scope(env);
+        napi_value callback_fn = nullptr;
+        napi_get_reference_value(env, callback_ref, &callback_fn);
+        if (callback_fn == nullptr) {
+          napi_delete_reference(env, callback_ref);
+          return;
+        }
+        napi_value js_this = nullptr;
+        napi_get_undefined(env, &js_this);
+        napi_value arg = base::NapiConvertHelper::CreateNapiValue(env, value);
+        napi_call_function(env, js_this, callback_fn, 1, &arg, nullptr);
+        napi_delete_reference(env, callback_ref);
+      });
+  obj->RuntimeStandalone().GetSessionStorageItem(std::move(key),
+                                                 std::move(callback));
+  return nullptr;
+}
+
+napi_value LynxRuntimeWrapper::NativeSubscribeSessionStorage(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  LynxRuntimeWrapper* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj,
+                             "NativeSubscribeSessionStorage failed")) {
+    napi_value invalid_id;
+    napi_create_int32(env, -1, &invalid_id);
+    return invalid_id;
+  }
+
+  std::string key = base::NapiUtil::ConvertToShortString(env, args[0]);
+  if (key.empty()) {
+    napi_value invalid_id;
+    napi_create_int32(env, -1, &invalid_id);
+    return invalid_id;
+  }
+
+  napi_valuetype callback_type;
+  napi_typeof(env, args[1], &callback_type);
+  if (callback_type != napi_function) {
+    napi_value invalid_id;
+    napi_create_int32(env, -1, &invalid_id);
+    return invalid_id;
+  }
+
+  napi_ref callback_ref = nullptr;
+  napi_create_reference(env, args[1], 1, &callback_ref);
+  auto callback = std::make_unique<shell::PlatformCallBack>(
+      [env, callback_ref](const lepus::Value& value) {
+        base::NapiHandleScope scope(env);
+        napi_value callback_fn = nullptr;
+        napi_get_reference_value(env, callback_ref, &callback_fn);
+        if (callback_fn == nullptr) {
+          return;
+        }
+        napi_value js_this = nullptr;
+        napi_get_undefined(env, &js_this);
+        napi_value arg = base::NapiConvertHelper::CreateNapiValue(env, value);
+        napi_call_function(env, js_this, callback_fn, 1, &arg, nullptr);
+      });
+  int32_t callback_id = obj->RuntimeStandalone().SubscribeSessionStorage(
+      std::move(key), std::move(callback));
+  if (callback_id < 0) {
+    napi_delete_reference(env, callback_ref);
+  } else {
+    obj->session_storage_callback_refs_[callback_id] = callback_ref;
+  }
+  napi_value listener_id;
+  napi_create_int32(env, callback_id, &listener_id);
+  return listener_id;
+}
+
+napi_value LynxRuntimeWrapper::NativeUnsubscribeSessionStorage(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  LynxRuntimeWrapper* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj,
+                             "NativeUnsubscribeSessionStorage failed")) {
+    return nullptr;
+  }
+
+  std::string key = base::NapiUtil::ConvertToShortString(env, args[0]);
+  int32_t callback_id = base::NapiUtil::ConvertToInt32(env, args[1]);
+  if (key.empty() || callback_id < 0) {
+    return nullptr;
+  }
+  obj->RuntimeStandalone().UnSubscribeSessionStorage(std::move(key),
+                                                     callback_id);
+  auto it = obj->session_storage_callback_refs_.find(callback_id);
+  if (it != obj->session_storage_callback_refs_.end()) {
+    napi_delete_reference(env, it->second);
+    obj->session_storage_callback_refs_.erase(it);
+  }
   return nullptr;
 }
 

@@ -196,6 +196,14 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                                            napi_callback_info info);
   static napi_value OnEnterForeground(napi_env env, napi_callback_info info);
   static napi_value OnEnterBackground(napi_env env, napi_callback_info info);
+  static napi_value SetSessionStorageItem(napi_env env,
+                                          napi_callback_info info);
+  static napi_value GetSessionStorageItem(napi_env env,
+                                          napi_callback_info info);
+  static napi_value SubscribeSessionStorage(napi_env env,
+                                            napi_callback_info info);
+  static napi_value UnsubscribeSessionStorage(napi_env env,
+                                              napi_callback_info info);
 
   static napi_value GetAllJsSource(napi_env env, napi_callback_info info);
   static napi_value InvokeLepusCallback(napi_env env, napi_callback_info info);
@@ -230,6 +238,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::shared_ptr<LynxResourceLoaderHarmony> resource_loader_;
   std::shared_ptr<WeakFlag> weak_flag_;
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
+  std::unordered_map<int32_t, napi_ref> session_storage_callback_refs_;
 };
 
 }  // namespace harmony

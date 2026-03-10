@@ -213,29 +213,28 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     if (!key || !value) {
       return;
     }
-    // TODO(nihao.royal): call native C++ sessionStorage setter after NAPI is ready.
+    this.nativeSetSessionStorageItem(key, value.data);
   }
 
   getSessionStorageItem(key: string, callback: SessionStorageCallback) {
     if (!key || !callback) {
       return;
     }
-    // TODO(nihao.royal): call native C++ sessionStorage getter after NAPI is ready.
+    this.nativeGetSessionStorageItem(key, callback);
   }
 
   subscribeSessionStorage(key: string, callback: SessionStorageCallback): number {
     if (!key || !callback) {
       return -1;
     }
-    // TODO(nihao.royal): call native C++ sessionStorage subscribe after NAPI is ready.
-    return -1;
+    return this.nativeSubscribeSessionStorage(key, callback);
   }
 
   unsubscribeSessionStorage(key: string, listenerId: number) {
     if (!key || listenerId < 0) {
       return;
     }
-    // TODO(nihao.royal): call native C++ sessionStorage unsubscribe after NAPI is ready.
+    this.nativeUnsubscribeSessionStorage(key, listenerId);
   }
 
   triggerLepusMethod(name: string, args: Record<string, Object>): Object | undefined {
