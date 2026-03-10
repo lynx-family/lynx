@@ -82,8 +82,6 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   static bool IsSingleJSContext(const std::string& group_id);
 
   std::shared_ptr<runtime::js::Runtime> CreateJSRuntime(
-      const std::string& group_id,
-      std::shared_ptr<runtime::js::JSIExceptionHandler> exception_handler,
       base::MoveOnlyClosure<std::vector<
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
           js_pre_sources_getter,
@@ -108,7 +106,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
  private:
   RuntimeManager();
   std::shared_ptr<runtime::js::Runtime> CreateRuntime(
-      const std::string& group_id, bool force_use_lightweight_js_engine,
+      bool force_use_lightweight_js_engine,
       const tasm::PageOptions& page_options, bool use_shared_context,
       runtime::js::JSRuntimeExternalParams external_params = {});
 

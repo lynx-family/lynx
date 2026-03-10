@@ -17,7 +17,7 @@ namespace runtime {
 namespace profile {
 namespace testing {
 
-class MockHandler : public runtime::js::JSIExceptionHandler {
+class MockHandler : public runtime::js::JSRuntimeDelegate {
  public:
   void beginFailingTest() {
     did_failed_ = false;
@@ -29,7 +29,7 @@ class MockHandler : public runtime::js::JSIExceptionHandler {
     expect_fail_ = false;
   }
 
-  void onJSIException(const runtime::js::JSIException &exception) override {
+  void OnJSIException(const runtime::js::JSIException &exception) override {
     EXPECT_TRUE(expect_fail_);
     did_failed_ = true;
   };

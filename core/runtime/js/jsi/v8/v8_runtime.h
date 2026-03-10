@@ -31,8 +31,7 @@ class V8Runtime : public Runtime {
 
   JSRuntimeType type() override { return JSRuntimeType::v8; }
 
-  void InitRuntime(std::shared_ptr<JSIContext> sharedContext,
-                   std::shared_ptr<JSIExceptionHandler> handler) override;
+  void InitRuntime(std::shared_ptr<JSIContext> sharedContext) override;
   std::shared_ptr<VMInstance> createVM(const StartupData*) const override;
   std::shared_ptr<VMInstance> getSharedVM() override;
   std::shared_ptr<JSIContext> createContext(

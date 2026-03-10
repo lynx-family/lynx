@@ -32,8 +32,7 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
   ~QuickjsRuntime() override;
   JSRuntimeType type() override { return JSRuntimeType::quickjs; }
 
-  void InitRuntime(std::shared_ptr<JSIContext> sharedContext,
-                   std::shared_ptr<JSIExceptionHandler> handler) override;
+  void InitRuntime(std::shared_ptr<JSIContext> sharedContext) override;
   // Supress gc pause when the mode is true.
   void SetGCPauseSuppressionMode(bool mode) override;
   bool GetGCPauseSuppressionMode() override;

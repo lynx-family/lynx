@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <memory>
 
@@ -34,6 +35,22 @@ using namespace lynx::tasm::report;
 using namespace lynx::tasm::report::test;
 constexpr static char k_source_url[] = "/app-service.js";
 constexpr static char k_template_url[] = "template.js";
+
+class ExternalRuntimeDelegate : public JSRuntimeDelegate {
+ public:
+  explicit ExternalRuntimeDelegate(
+      std::function<std::shared_ptr<Buffer>(const std::string &)> getter)
+      : getter_(std::move(getter)) {}
+
+  std::shared_ptr<Buffer> GetBytecode(const std::string &url) override {
+    return getter_(url);
+  }
+
+  void OnJSIException(const JSIException &) override {}
+
+ private:
+  std::function<std::shared_ptr<Buffer>(const std::string &)> getter_;
+};
 
 static tasm::report::EventTracker::EventBuilder s_current_builder;
 void SetTestInterceptEvent(
@@ -411,7 +428,7 @@ TEST_F(JsCacheManagerTest, TryGetCacheForExternal) {
   {
     // dynamic url
     const std::string dynamic_url = "http://from_external.js";
-    auto bytecode_getter = std::make_unique<BytecodeGetter>(
+    auto runtime_delegate = std::make_shared<ExternalRuntimeDelegate>(
         [&dynamic_url](const std::string &url) {
           EXPECT_EQ(url, dynamic_url);
           return std::make_shared<StringBuffer>("from_external");
@@ -419,7 +436,7 @@ TEST_F(JsCacheManagerTest, TryGetCacheForExternal) {
     auto buffer = instance.TryGetCache(dynamic_url, k_template_url, 0,
                                        std::make_unique<TestingCacheGenerator>(
                                            dynamic_url, js_file_buffer, ""),
-                                       bytecode_getter.get());
+                                       runtime_delegate);
     WaitNormalTaskFinish();
     EXPECT_TRUE(buffer);
     CheckOnGetBytecodeEvent(JSRuntimeType::quickjs, dynamic_url,
@@ -427,8 +444,8 @@ TEST_F(JsCacheManagerTest, TryGetCacheForExternal) {
   }
   {
     // packaged url for app-service.js
-    auto bytecode_getter =
-        std::make_unique<BytecodeGetter>([](const std::string &url) {
+    auto runtime_delegate =
+        std::make_shared<ExternalRuntimeDelegate>([](const std::string &url) {
           EXPECT_EQ(url, std::string(k_template_url) + std::string("##") +
                              std::string(k_source_url));
           return std::make_shared<StringBuffer>("from_package");
@@ -436,7 +453,7 @@ TEST_F(JsCacheManagerTest, TryGetCacheForExternal) {
     auto buffer = instance.TryGetCache(k_source_url, k_template_url, 0,
                                        std::make_unique<TestingCacheGenerator>(
                                            k_source_url, js_file_buffer, ""),
-                                       bytecode_getter.get());
+                                       runtime_delegate);
     WaitNormalTaskFinish();
     EXPECT_TRUE(buffer);
     CheckOnGetBytecodeEvent(JSRuntimeType::quickjs, k_source_url,
@@ -445,7 +462,7 @@ TEST_F(JsCacheManagerTest, TryGetCacheForExternal) {
   {
     // packaged url for lynx://
     const std::string package_url = "lynx://package.js";
-    auto bytecode_getter = std::make_unique<BytecodeGetter>(
+    auto runtime_delegate = std::make_shared<ExternalRuntimeDelegate>(
         [&package_url](const std::string &url) {
           EXPECT_EQ(url, std::string(k_template_url) + std::string("##") +
                              package_url);
@@ -454,7 +471,7 @@ TEST_F(JsCacheManagerTest, TryGetCacheForExternal) {
     auto buffer = instance.TryGetCache(package_url, k_template_url, 0,
                                        std::make_unique<TestingCacheGenerator>(
                                            package_url, js_file_buffer, ""),
-                                       bytecode_getter.get());
+                                       runtime_delegate);
     WaitNormalTaskFinish();
     EXPECT_TRUE(buffer);
     CheckOnGetBytecodeEvent(JSRuntimeType::quickjs, package_url,

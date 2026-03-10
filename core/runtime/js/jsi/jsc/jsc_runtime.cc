@@ -60,13 +60,10 @@ JSCRuntime::~JSCRuntime() {
   LOGI("lynx ~JSCRuntime " << ctx_.use_count());
 }
 
-void JSCRuntime::InitRuntime(std::shared_ptr<JSIContext> sharedContext,
-                             std::shared_ptr<JSIExceptionHandler> handler) {
-  exception_handler_ = handler;
+void JSCRuntime::InitRuntime(std::shared_ptr<JSIContext> sharedContext) {
   ctx_group_ =
       std::static_pointer_cast<JSCContextGroupWrapper>(sharedContext->getVM());
   ctx_ = std::static_pointer_cast<JSCContextWrapper>(sharedContext);
-  ;
 }
 
 std::shared_ptr<VMInstance> JSCRuntime::createVM(const StartupData*) const {

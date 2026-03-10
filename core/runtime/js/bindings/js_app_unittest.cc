@@ -629,7 +629,7 @@ function getEnv(nativeApp) {
 )--");
 
   EXPECT_CALL(*exception_handler_,
-              onJSIException(HasMessage("getEnv args count must be 1")))
+              OnJSIException(HasMessage("getEnv args count must be 1")))
       .Times(1);
 
   std::optional<Value> result = js_function.call(rt, {native_app});
@@ -652,7 +652,7 @@ function getEnv(nativeApp, key) {
       base::to_underlying(tasm::LynxEnv::Key::END_MARK);
 
   EXPECT_CALL(*exception_handler_,
-              onJSIException(HasMessage("unknown env key " +
+              OnJSIException(HasMessage("unknown env key " +
                                         std::to_string(non_exist_key))))
       .Times(1);
 
@@ -770,13 +770,13 @@ function readScript(nativeApp, url, params) {
 
   EXPECT_CALL(
       *exception_handler_,
-      onJSIException(HasMessage("readScript args[0] must be a string.")))
+      OnJSIException(HasMessage("readScript args[0] must be a string.")))
       .Times(1);
   read_script.call(
       rt, {Object::createFromHostObject(rt, app_proxy), Value::null()});
 
   EXPECT_CALL(*exception_handler_,
-              onJSIException(HasMessage("readScript arg count must > 0")))
+              OnJSIException(HasMessage("readScript arg count must > 0")))
       .Times(1);
   auto read_script_without_args = function(R"--(
 function readScriptWithoutArgs(nativeApp) {
@@ -795,7 +795,7 @@ function readScriptWithoutArgs(nativeApp) {
           JsContent("file is not exist.", JsContent::Type::ERROR)));
   EXPECT_CALL(
       *exception_handler_,
-      onJSIException(HasMessage(
+      OnJSIException(HasMessage(
           "readScript http://example.com/bar.js error:file is not exist.")))
       .Times(1);
   result = read_script.call(
@@ -810,7 +810,7 @@ function readScriptWithoutArgs(nativeApp) {
       .WillRepeatedly(
           ::testing::Return(JsContent("timeout", JsContent::Type::ERROR)));
   EXPECT_CALL(*exception_handler_,
-              onJSIException(HasMessage(
+              OnJSIException(HasMessage(
                   "readScript http://example.com/bar.js error:timeout")))
       .Times(1);
   result = read_script.call(
@@ -850,7 +850,7 @@ function reportException(nativeApp) {
 )--");
 
   EXPECT_CALL(*exception_handler_,
-              onJSIException(HasMessage(
+              OnJSIException(HasMessage(
                   "the arg count of reportException must be equal to 2")))
       .Times(1);
 
@@ -989,7 +989,7 @@ function requestAnimationFrameError(nativeApp, arg) {
 
   EXPECT_CALL(
       *exception_handler_,
-      onJSIException(HasMessage("requestAnimationFrame arg count must be 1")))
+      OnJSIException(HasMessage("requestAnimationFrame arg count must be 1")))
       .Times(1);
   auto result = js_function.call(rt, {native_app});
   EXPECT_TRUE(result->isUndefined());
@@ -997,7 +997,7 @@ function requestAnimationFrameError(nativeApp, arg) {
   native_app = Object::createFromHostObject(
       rt, std::make_shared<AppProxy>(runtime, app));
   EXPECT_CALL(*exception_handler_,
-              onJSIException(HasMessage("Args[0] must be a function.")))
+              OnJSIException(HasMessage("Args[0] must be a function.")))
       .Times(0);
   result = js_function.call(rt, {native_app, 1});
   EXPECT_TRUE(result->isUndefined());
@@ -1005,7 +1005,7 @@ function requestAnimationFrameError(nativeApp, arg) {
   native_app = Object::createFromHostObject(
       rt, std::make_shared<AppProxy>(runtime, app));
   EXPECT_CALL(*exception_handler_,
-              onJSIException(HasMessage("Args[0] must be a function.")))
+              OnJSIException(HasMessage("Args[0] must be a function.")))
       .Times(1);
   result = js_function.call(rt, {native_app, 2});
   EXPECT_TRUE(result->isUndefined());
@@ -1032,7 +1032,7 @@ function cancelAnimationFrameError(nativeApp, arg) {
 
   EXPECT_CALL(
       *exception_handler_,
-      onJSIException(HasMessage("cancelAnimationFrame arg count must be 1")))
+      OnJSIException(HasMessage("cancelAnimationFrame arg count must be 1")))
       .Times(1);
   auto result = js_function.call(rt, {native_app});
   EXPECT_TRUE(result->isUndefined());
@@ -1385,7 +1385,7 @@ TEST_P(AppTest, LoadCustomSectionScriptTest) {
   // lynx.loadScript(): args count error
   {
     EXPECT_CALL(*exception_handler_,
-                onJSIException(
+                OnJSIException(
                     HasMessage("loadScript's args must has 'key' argument.")))
         .Times(1);
     auto res = load_script(R"(())");
@@ -1396,7 +1396,7 @@ TEST_P(AppTest, LoadCustomSectionScriptTest) {
   {
     EXPECT_CALL(
         *exception_handler_,
-        onJSIException(HasMessage("loadScript's first param must be string.")))
+        OnJSIException(HasMessage("loadScript's first param must be string.")))
         .Times(1);
     auto res = load_script(R"((1))");
     EXPECT_TRUE(res->isUndefined());
@@ -1405,7 +1405,7 @@ TEST_P(AppTest, LoadCustomSectionScriptTest) {
   // lynx.loadScript("not_exist"): script is not exist.
   {
     EXPECT_CALL(*exception_handler_,
-                onJSIException(
+                OnJSIException(
                     HasMessage("lynx.loadScript's script is empty. key: "
                                "not_exist bundleName: __Card__ scriptType: 0")))
         .Times(1);
@@ -1417,7 +1417,7 @@ TEST_P(AppTest, LoadCustomSectionScriptTest) {
   {
     EXPECT_CALL(
         *exception_handler_,
-        onJSIException(HasMessage("lynx.loadScript's script is empty. key: "
+        OnJSIException(HasMessage("lynx.loadScript's script is empty. key: "
                                   "empty bundleName: __Card__ scriptType: 3")))
         .Times(1);
     auto res = load_script(R"(("empty"))");
@@ -1427,7 +1427,7 @@ TEST_P(AppTest, LoadCustomSectionScriptTest) {
   // lynx.loadScript("not_string", {bundleName: "s1_entry"}): not string
   {
     EXPECT_CALL(*exception_handler_,
-                onJSIException(HasMessage(
+                OnJSIException(HasMessage(
                     "lynx.loadScript's script is not string. key: not_string "
                     "bundleName: s1_entry scriptType: 9")))
         .Times(1);
@@ -1439,7 +1439,7 @@ TEST_P(AppTest, LoadCustomSectionScriptTest) {
   {
     EXPECT_CALL(
         *exception_handler_,
-        onJSIException(HasMessage("lynx.loadScript's script is empty. key: foo "
+        OnJSIException(HasMessage("lynx.loadScript's script is empty. key: foo "
                                   "bundleName: not_exist scriptType: 0")))
         .Times(1);
     auto res = load_script(R"(("foo", {bundleName: "not_exist"}))");

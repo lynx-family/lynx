@@ -15,13 +15,11 @@ namespace lynx {
 namespace runtime {
 namespace js {
 JSExecutor::JSExecutor(
-    const std::shared_ptr<JSIExceptionHandler>& handler,
     const std::string& group_id,
     const std::shared_ptr<LynxModuleManager>& module_manager,
     const std::shared_ptr<InspectorRuntimeObserverNG>& runtime_observer,
     bool force_use_light_weight_js_engine)
-    : exception_handler_(handler),
-      group_id_(group_id),
+    : group_id_(group_id),
       runtime_observer_ng_(runtime_observer),
       module_manager_(module_manager),
       force_use_light_weight_js_engine_(force_use_light_weight_js_engine) {
@@ -68,9 +66,8 @@ void JSExecutor::loadPreJSBundle(
     const tasm::PageOptions& page_options) {
   const int64_t runtime_id = create_params.runtime_id;
   js_runtime_ = runtimeManagerInstance()->CreateJSRuntime(
-      group_id_, exception_handler_, std::move(js_pre_sources_getter),
-      force_use_light_weight_js_engine_, ensure_console, *this,
-      std::move(create_params), page_options);
+      std::move(js_pre_sources_getter), force_use_light_weight_js_engine_,
+      ensure_console, *this, std::move(create_params), page_options);
   if (runtime_observer_ng_ != nullptr) {
     runtime_observer_ng_->OnRuntimeCreated(js_runtime_->type());
   }
@@ -94,6 +91,7 @@ void JSExecutor::invokeCallback(std::shared_ptr<ModuleCallback> callback,
 
 std::shared_ptr<App> JSExecutor::createNativeAppInstance(
     int64_t rt_id, runtime::TemplateDelegate* delegate,
+    std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
     std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
     const tasm::PageOptions& page_options) {
   Scope scope(*js_runtime_);
@@ -115,7 +113,7 @@ std::shared_ptr<App> JSExecutor::createNativeAppInstance(
         *js_runtime_, module_manager_testBench_.get()->bindingPtr);
   }
 #endif
-  return App::Create(rt_id, js_runtime_, delegate, exception_handler_,
+  return App::Create(rt_id, js_runtime_, delegate, runtime_delegate,
                      std::move(nativeModuleProxy), std::move(api_handler),
                      group_id_, page_options);
 }

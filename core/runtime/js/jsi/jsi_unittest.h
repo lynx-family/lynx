@@ -33,19 +33,22 @@ namespace js {
 class Runtime;
 namespace test {
 
-using RuntimeFactory = std::function<std::unique_ptr<Runtime>(
-    std::shared_ptr<JSIExceptionHandler>)>;
+using RuntimeFactory =
+    std::function<std::unique_ptr<Runtime>(std::shared_ptr<JSRuntimeDelegate>)>;
 
 template <typename T,
           typename = std::enable_if_t<std::is_base_of_v<Runtime, T>>>
 std::unique_ptr<Runtime> MakeRuntimeFactory(
-    std::shared_ptr<JSIExceptionHandler> exception_handler) {
+    std::shared_ptr<JSRuntimeDelegate> runtime_delegate) {
   auto rt = std::make_unique<T>();
 
   auto vm = rt->createVM(nullptr);
   auto context = rt->createContext(vm);
 
-  rt->InitRuntime(context, std::move(exception_handler));
+  runtime::js::JSRuntimeExternalParams external_params;
+  external_params.delegate = runtime_delegate;
+  rt->SetExternalParams(std::move(external_params));
+  rt->InitRuntime(context);
   return rt;
 }
 
@@ -68,15 +71,15 @@ MATCHER_P(HasMessage, message, "") {
   return message == arg.message();
 }
 
-// A mocked JSIExceptionHandler that using gmock
+// A mocked JSRuntimeDelegate that using gmock
 // An example usage:
-//   EXPECT_CALL(*exception_handler_, onJSIException).Times(1)
+//   EXPECT_CALL(*exception_handler_, OnJSIException).Times(1)
 // An example usage with HasMessage matcher:
 //   EXPECT_CALL(*exception_handler_,
-//     onJSIException(HasMessage("foo"))).Times(1);
-class MockExceptionHandler : public JSIExceptionHandler {
+//     OnJSIException(HasMessage("foo"))).Times(1);
+class MockExceptionHandler : public JSRuntimeDelegate {
  public:
-  MOCK_METHOD(void, onJSIException, (const JSIException&), (override));
+  MOCK_METHOD(void, OnJSIException, (const JSIException&), (override));
 };
 
 class JSITestBase : public ::testing::TestWithParam<RuntimeFactory> {

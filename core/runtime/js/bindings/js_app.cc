@@ -1960,7 +1960,7 @@ void App::destroy() {
     }
   }
 
-  exception_handler_->Destroy();
+  runtime_delegate_->Destroy();
 }
 
 void App::CallDestroyLifetimeFun() {

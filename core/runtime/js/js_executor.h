@@ -37,7 +37,6 @@ namespace js {
 class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
  public:
   JSExecutor(
-      const std::shared_ptr<JSIExceptionHandler>& handler,
       const std::string& group_id,
       const std::shared_ptr<LynxModuleManager>& module_manager,
       const std::shared_ptr<InspectorRuntimeObserverNG>& runtime_observer,
@@ -64,6 +63,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
   std::shared_ptr<App> createNativeAppInstance(
       int64_t rt_id, runtime::TemplateDelegate*,
+      std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const tasm::PageOptions& page_options);
 
@@ -91,7 +91,6 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   }
 
  private:
-  std::shared_ptr<JSIExceptionHandler> exception_handler_;
   std::string group_id_;
   std::shared_ptr<InspectorRuntimeObserverNG> runtime_observer_ng_;
   std::shared_ptr<LynxModuleManager> module_manager_;

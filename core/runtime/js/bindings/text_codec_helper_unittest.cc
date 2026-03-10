@@ -12,7 +12,7 @@ namespace runtime {
 namespace js {
 namespace test {
 
-class MockHandler : public JSIExceptionHandler {
+class MockHandler : public JSRuntimeDelegate {
  public:
   void beginFailingTest() {
     did_failed_ = false;
@@ -24,7 +24,7 @@ class MockHandler : public JSIExceptionHandler {
     expect_fail_ = false;
   }
 
-  void onJSIException(const JSIException& exception) override {
+  void OnJSIException(const JSIException& exception) override {
     EXPECT_TRUE(expect_fail_);
     did_failed_ = true;
   };

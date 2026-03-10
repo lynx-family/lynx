@@ -14,7 +14,7 @@ namespace testing {
 namespace utils {
 
 std::unique_ptr<lynx::runtime::js::Runtime> makeJSRuntime(
-    std::shared_ptr<lynx::runtime::js::JSIExceptionHandler> handler = nullptr);
+    std::shared_ptr<lynx::runtime::js::JSRuntimeDelegate> delegate = nullptr);
 
 }
 }  // namespace testing

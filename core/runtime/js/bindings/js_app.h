@@ -68,12 +68,12 @@ class App : public std::enable_shared_from_this<App> {
   static std::shared_ptr<App> Create(
       int64_t rt_id, std::weak_ptr<Runtime> rt,
       runtime::TemplateDelegate* delegate,
-      std::shared_ptr<JSIExceptionHandler> exception_handler,
+      std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
       Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const std::string& group_id, const tasm::PageOptions& page_options) {
     auto app = std::shared_ptr<App>(new App(
-        rt_id, rt, delegate, exception_handler, std::move(nativeModuleProxy),
+        rt_id, rt, delegate, runtime_delegate, std::move(nativeModuleProxy),
         std::move(api_handler), group_id, page_options));
     app->Init();
     return app;
@@ -288,7 +288,7 @@ class App : public std::enable_shared_from_this<App> {
  private:
   App(int64_t rt_id, std::weak_ptr<Runtime> rt,
       runtime::TemplateDelegate* delegate,
-      std::shared_ptr<JSIExceptionHandler> exception_handler,
+      std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
       Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const std::string& group_id, const tasm::PageOptions& page_options)
@@ -296,7 +296,7 @@ class App : public std::enable_shared_from_this<App> {
         rt_(rt),
         js_app_(),
         delegate_(delegate),
-        exception_handler_(exception_handler),
+        runtime_delegate_(std::move(runtime_delegate)),
         js_task_adapter_(std::make_unique<JsTaskAdapter>(rt, page_options)),
         nativeModuleProxy_(std::move(nativeModuleProxy)),
         api_handler_(std::move(api_handler)),
@@ -335,7 +335,7 @@ class App : public std::enable_shared_from_this<App> {
   std::string i18_resource_;
   Value js_app_;
   runtime::TemplateDelegate* const delegate_;
-  std::shared_ptr<JSIExceptionHandler> exception_handler_;
+  std::shared_ptr<JSRuntimeDelegate> runtime_delegate_;
   std::unique_ptr<JsTaskAdapter> js_task_adapter_;
   Object nativeModuleProxy_;
   ApiCallBackManager api_callback_manager_;

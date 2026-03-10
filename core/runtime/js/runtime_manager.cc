@@ -169,8 +169,6 @@ bool RuntimeManager::IsSingleJSContext(const std::string& group_id) {
 }
 
 std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
-    const std::string& group_id,
-    std::shared_ptr<runtime::js::JSIExceptionHandler> exception_handler,
     base::MoveOnlyClosure<std::vector<
         std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
         js_pre_sources_getter,
@@ -178,6 +176,7 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
     runtime::js::JSExecutor& executor,
     runtime::js::JSRuntimeExternalParams create_params,
     const tasm::PageOptions& page_options) {
+  const std::string group_id = create_params.group_id;
   // call inspect's prepare
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
     runtime_manager_delegate_->BeforeRuntimeCreate(
@@ -190,8 +189,8 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   // and the context is being shared.
   bool need_create_context_wrapper = true;
   if (is_single_context) {
-    js_runtime = CreateRuntime(group_id, force_use_lightweight_js_engine,
-                               page_options, false, std::move(create_params));
+    js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
+                               false, std::move(create_params));
     js_context = CreateJSIContext(js_runtime, group_id);
     LOGI("create single_context:" << js_context.get());
   } else {
@@ -230,16 +229,16 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
         }
       }
       need_create_context_wrapper = false;
-      js_runtime = CreateRuntime(group_id, force_use_lightweight_js_engine,
-                                 page_options, true, std::move(create_params));
+      js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
+                                 true, std::move(create_params));
       js_runtime->setCreatedType(
           runtime::js::JSRuntimeCreatedType::none_vm_none_context);
       LOGI("get shared_context success, context:" << js_context.get()
                                                   << ", group:" << group_id);
     } else {
       // share context first create.
-      js_runtime = CreateRuntime(group_id, force_use_lightweight_js_engine,
-                                 page_options, false, std::move(create_params));
+      js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
+                                 false, std::move(create_params));
       js_context = CreateJSIContext(js_runtime, group_id);
       LOGI("get shared_context failed, create context:"
            << js_context.get() << ", group:" << group_id);
@@ -247,8 +246,7 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   }
   EnsureConsolePostMan(js_context, executor, force_use_lightweight_js_engine,
                        page_options);
-  js_runtime->InitRuntime(js_context, exception_handler);
-  js_runtime->setGroupId(group_id);
+  js_runtime->InitRuntime(js_context);
 
   // none share context and first create share context.
   if (need_create_context_wrapper) {
@@ -269,10 +267,10 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
       global_runtime =
           MakeRuntime(js_runtime->type() == runtime::js::JSRuntimeType::quickjs,
                       false, page_options);
-      // FIXME(heshan):now set exception_handler to global runtime, not
-      // correct...
-      global_runtime->InitRuntime(js_context, exception_handler);
-      global_runtime->setGroupId(group_id);
+      runtime::js::JSRuntimeExternalParams global_external_params{};
+      global_external_params.group_id = group_id;
+      global_runtime->SetExternalParams(std::move(global_external_params));
+      global_runtime->InitRuntime(js_context);
     }
 #if ENABLE_TRACE_PERFETTO
     auto runtime_profiler = MakeRuntimeProfiler(
@@ -308,8 +306,8 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
 }
 
 std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
-    const std::string& group_id, bool force_use_lightweight_js_engine,
-    const tasm::PageOptions& page_options, bool use_shared_context,
+    bool force_use_lightweight_js_engine, const tasm::PageOptions& page_options,
+    bool use_shared_context,
     runtime::js::JSRuntimeExternalParams external_params) {
   auto js_runtime = MakeRuntime(force_use_lightweight_js_engine,
                                 use_shared_context, page_options);

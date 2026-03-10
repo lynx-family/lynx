@@ -35,8 +35,8 @@ void HostObject::set(Runtime* rt, const PropNameID& name, const Value&) {
 // std::atomic<intptr_t> Runtime::g_counter_ = 0;
 
 void Runtime::reportJSIException(const JSIException& exception) {
-  if (auto handler = GetExceptionHandler()) {
-    handler->onJSIException(exception);
+  if (auto delegate = GetRuntimeDelegate()) {
+    delegate->OnJSIException(exception);
   }
 }
 
@@ -46,10 +46,10 @@ Runtime::CreateJSCallTimeoutGuardIfEnabled() {
       external_params_.js_call_timeout_ms == 0) {
     return nullptr;
   }
-  auto exception_handler = GetExceptionHandler();
+  auto runtime_delegate = GetRuntimeDelegate();
   return std::make_unique<shell::WatchDog::JSCallTimeoutGuard>(
-      [weak_exception_handler =
-           std::weak_ptr<JSIExceptionHandler>(std::move(exception_handler))](
+      [weak_runtime_delegate =
+           std::weak_ptr<JSRuntimeDelegate>(std::move(runtime_delegate))](
           std::string message,
           std::unordered_map<std::string, std::string> info) mutable {
         std::string info_str;
@@ -66,12 +66,12 @@ Runtime::CreateJSCallTimeoutGuardIfEnabled() {
           info_str.push_back('}');
         }
         LOGE("js call timeout. message: " << message << ", info: " << info_str);
-        auto handler = weak_exception_handler.lock();
-        if (!handler) {
-          LOGE("js call timeout without handler.");
+        auto delegate = weak_runtime_delegate.lock();
+        if (!delegate) {
+          LOGE("js call timeout without delegate.");
           return;
         }
-        handler->OnTimeoutException(std::move(message), std::move(info));
+        delegate->OnTimeoutException(std::move(message), std::move(info));
       },
       external_params_.js_call_timeout_ms, GetPageUrl());
 }

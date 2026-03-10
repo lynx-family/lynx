@@ -55,9 +55,7 @@ JSVMRuntime::~JSVMRuntime() {
   LOGI("LYNX free jsvm context");
 }
 
-void JSVMRuntime::InitRuntime(std::shared_ptr<JSIContext> sharedContext,
-                              std::shared_ptr<JSIExceptionHandler> handler) {
-  exception_handler_ = handler;
+void JSVMRuntime::InitRuntime(std::shared_ptr<JSIContext> sharedContext) {
   runtime_wrapper_ =
       std::static_pointer_cast<JSVMRuntimeInstance>(sharedContext->getVM());
   context_ = std::static_pointer_cast<JSVMContextWrapper>(sharedContext);

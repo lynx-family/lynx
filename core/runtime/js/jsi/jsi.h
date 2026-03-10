@@ -109,18 +109,16 @@ class ByteBuffer : public Buffer {
   std::vector<uint8_t> data_;
 };
 
-using BytecodeGetter =
-    base::MoveOnlyClosure<std::shared_ptr<Buffer>, const std::string&>;
-
-class JSIExceptionHandler;
+class JSRuntimeDelegate;
 
 struct JSRuntimeExternalParams {
   int64_t runtime_id = 0;
+  std::string group_id;
   bool enable_user_bytecode = false;
   bool enable_js_call_timeout_guard = false;
   uint32_t js_call_timeout_ms = 0;
   std::string bytecode_source_url;
-  std::unique_ptr<BytecodeGetter> bytecode_getter;
+  std::weak_ptr<JSRuntimeDelegate> delegate;
 };
 
 /// PreparedJavaScript is a base class repesenting JavaScript which is in a form
@@ -156,7 +154,6 @@ class JSIException;
 class JSINativeException;
 class JSError;
 class Global;
-class JSIExceptionHandler;
 class VMInstance;
 class JSIContext;
 class JSIObserver;
@@ -283,8 +280,7 @@ enum class JSRuntimeType { v8 = 0, jsc, quickjs, jsvm };
 /// you will probably need to do use your own locks.
 class LYNX_EXPORT Runtime {
  public:
-  virtual void InitRuntime(std::shared_ptr<JSIContext> sharedContext,
-                           std::shared_ptr<JSIExceptionHandler> handler) = 0;
+  virtual void InitRuntime(std::shared_ptr<JSIContext> sharedContext) = 0;
   virtual JSRuntimeType type() = 0;
   virtual void SetGCPauseSuppressionMode(bool mode){};
   virtual bool GetGCPauseSuppressionMode() { return false; };
@@ -296,9 +292,9 @@ class LYNX_EXPORT Runtime {
     page_options_ = options;
   }
   const tasm::PageOptions& GetPageOptions() { return page_options_; }
-  const std::string& getGroupId() { return group_id_; }
+  const std::string& getGroupId() { return external_params_.group_id; }
   LYNX_EXPORT_FOR_DEVTOOL void setGroupId(const std::string& group_id) {
-    group_id_ = group_id;
+    external_params_.group_id = group_id;
   }
   // will override in quickjsruntime, this version just works as a sentinel
   virtual bool setPropertyValueGC(Object& object, const char* name,
@@ -435,21 +431,12 @@ class LYNX_EXPORT Runtime {
   void SetPageUrl(const std::string& url) { page_url_ = url; }
   const std::string& GetPageUrl() const { return page_url_; }
 
-  void SetBytecodeGetter(BytecodeGetter getter) {
-    if (getter) {
-      external_params_.bytecode_getter =
-          std::make_unique<BytecodeGetter>(std::move(getter));
-    } else {
-      external_params_.bytecode_getter.reset();
-    }
+  void SetRuntimeDelegate(std::shared_ptr<JSRuntimeDelegate> delegate) {
+    external_params_.delegate = std::move(delegate);
   }
 
-  BytecodeGetter* GetBytecodeGetter() const {
-    return external_params_.bytecode_getter.get();
-  }
-
-  std::shared_ptr<JSIExceptionHandler> GetExceptionHandler() const {
-    return exception_handler_;
+  std::shared_ptr<JSRuntimeDelegate> GetRuntimeDelegate() const {
+    return external_params_.delegate.lock();
   }
 
   void SetExternalParams(JSRuntimeExternalParams external_params) {
@@ -659,10 +646,7 @@ class LYNX_EXPORT Runtime {
     ENABLE = 2,
   };
   JSRuntimeCreatedType created_type_;
-  std::string group_id_;
   std::shared_ptr<bool> is_runtime_destroyed_ = std::make_shared<bool>(false);
-  // This field is protected since it is written in InitRuntime
-  std::shared_ptr<JSIExceptionHandler> exception_handler_;
   // Whether is in JSError construction processing. If another JSError happen
   // when construct a JSError, it may enter a dead loop. Using the flag to avoid
   // dead loop.
@@ -1728,11 +1712,15 @@ class LYNX_EXPORT JSError : public JSIException {
   static constexpr const char* kDefaultName = "Error";
 };
 
-class JSIExceptionHandler {
+class JSRuntimeDelegate {
  public:
-  virtual ~JSIExceptionHandler() = default;
+  virtual ~JSRuntimeDelegate() = default;
 
-  virtual void onJSIException(const JSIException& exception) = 0;
+  virtual std::shared_ptr<Buffer> GetBytecode(const std::string& url) {
+    return nullptr;
+  }
+
+  virtual void OnJSIException(const JSIException& exception) = 0;
   virtual void OnTimeoutException(
       std::string message, std::unordered_map<std::string, std::string> info) {}
   virtual void Destroy() {}

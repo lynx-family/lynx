@@ -80,13 +80,13 @@ class JsCacheManager {
    * @param source_url url of js file.
    * @param template_url url of the template.
    * @param cache_generator function to generate cache.
-   * @param bytecode_getter function provide bytecode from outside.
+   * @param runtime_delegate function provide bytecode from outside.
    * @return cache buffer; or nullptr if no cache existed.
    */
   std::shared_ptr<Buffer> TryGetCache(
       const std::string &source_url, const std::string &template_url,
       int64_t runtime_id, std::unique_ptr<CacheGenerator> cache_generator,
-      BytecodeGetter *bytecode_getter = nullptr);
+      std::shared_ptr<JSRuntimeDelegate> runtime_delegate = nullptr);
 
   /**
    * Request to generate a new cache file if it's not already existed. It's not

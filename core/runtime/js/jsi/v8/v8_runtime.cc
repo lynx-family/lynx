@@ -70,9 +70,7 @@ V8Runtime::~V8Runtime() {
   context_.reset();
 }
 
-void V8Runtime::InitRuntime(std::shared_ptr<JSIContext> sharedContext,
-                            std::shared_ptr<JSIExceptionHandler> handler) {
-  exception_handler_ = handler;
+void V8Runtime::InitRuntime(std::shared_ptr<JSIContext> sharedContext) {
   isolate_wrapper_ =
       std::static_pointer_cast<V8IsolateInstance>(sharedContext->getVM());
   context_ = std::static_pointer_cast<V8ContextWrapper>(sharedContext);

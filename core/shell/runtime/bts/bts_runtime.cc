@@ -88,12 +88,18 @@ namespace {
 
 constexpr uint32_t LynxRuntimeFlagsMask = 0xFFFFFFFF;
 
-class JSIExceptionHandlerImpl : public runtime::js::JSIExceptionHandler {
+class JSRuntimeDelegateImpl : public runtime::js::JSRuntimeDelegate {
  public:
-  explicit JSIExceptionHandlerImpl(BTSRuntime* runtime) : runtime_(runtime) {}
-  ~JSIExceptionHandlerImpl() override = default;
+  explicit JSRuntimeDelegateImpl(BTSRuntime* runtime) : runtime_(runtime) {}
+  ~JSRuntimeDelegateImpl() override = default;
 
-  void onJSIException(const runtime::js::JSIException& exception) override {
+  std::shared_ptr<runtime::js::Buffer> GetBytecode(
+      const std::string& url) override {
+    auto* delegate = runtime_->GetDelegate();
+    return delegate ? delegate->LoadBytecode(url) : nullptr;
+  }
+
+  void OnJSIException(const runtime::js::JSIException& exception) override {
     if (is_handling_exception_) {
       return;
     }
@@ -193,9 +199,9 @@ void BTSRuntime::Init(
     }
     cached_native_factories_.clear();
   }
+  runtime_delegate_ = std::make_shared<JSRuntimeDelegateImpl>(this);
   js_executor_ = std::make_unique<lynx::runtime::js::JSExecutor>(
-      std::make_shared<JSIExceptionHandlerImpl>(this), group_id_,
-      module_manager, runtime_observer,
+      group_id_, module_manager, runtime_observer,
       runtime_flags_ & LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
 
   InitExecutor(!(runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD),
@@ -213,7 +219,7 @@ void BTSRuntime::Init(
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, CREATE_AND_LOAD_APP);
   app_ = js_executor_->createNativeAppInstance(
-      GetRuntimeId(), delegate_.get(),
+      GetRuntimeId(), delegate_.get(), runtime_delegate_,
       std::make_unique<runtime::LynxApiHandler>(), page_options_);
 #if ENABLE_TESTBENCH_RECORDER
   app_->SetRecordId(record_id_);
@@ -244,21 +250,19 @@ void BTSRuntime::InitExecutor(bool is_full_runtime,
   };
   runtime::js::JSRuntimeExternalParams create_params{};
   create_params.runtime_id = GetRuntimeId();
+  create_params.group_id = group_id_;
   const auto js_call_timeout_cfg =
       tasm::LynxEnv::GetInstance().GetJSCallTimeoutConfig();
   create_params.enable_js_call_timeout_guard = js_call_timeout_cfg.enable;
   create_params.js_call_timeout_ms = js_call_timeout_cfg.timeout_ms;
-  // FIXME(wangboyong):invoke before decode...in fact in 1.4
-  // here NeedGlobalConsole always return true...
-  // bool need_console = delegate_->NeedGlobalConsole();
   create_params.enable_user_bytecode =
       (runtime_flags_ & LynxRuntimeFlags::ENABLE_USER_BYTECODE);
   create_params.bytecode_source_url = bytecode_source_url_;
-  create_params.bytecode_getter = std::make_unique<runtime::js::BytecodeGetter>(
-      [delegate_ptr = delegate_.get()](const std::string& url) {
-        return delegate_ptr->LoadBytecode(url);
-      });
+  create_params.delegate = runtime_delegate_;
 
+  // FIXME(wangboyong):invoke before decode...in fact in 1.4
+  // here NeedGlobalConsole always return true...
+  // bool need_console = delegate_->NeedGlobalConsole();
   js_executor_->loadPreJSBundle(std::move(preload_js_sources_getter), true,
                                 std::move(create_params), page_options_);
   js_executor_->SetObserver(delegate_.get());
@@ -801,8 +805,7 @@ void BTSRuntime::TryToDestroy() {
     } else {
       app_->CallDestroyLifetimeFun();
     }
-    // clear bytecode getter
-    js_runtime->SetBytecodeGetter(nullptr);
+    js_runtime->SetRuntimeDelegate(nullptr);
     // After reloading, the old LynxRuntime may be destroyed later than the new
     // LynxRuntime is created, and the inspector-related object
     // InspectorClientNG is a thread-local singleton, in this case, the members

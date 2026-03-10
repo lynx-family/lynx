@@ -84,9 +84,7 @@ QuickjsRuntime::~QuickjsRuntime() {
   LOGI("LYNX free quickjs context");
 }
 
-void QuickjsRuntime::InitRuntime(std::shared_ptr<JSIContext> sharedContext,
-                                 std::shared_ptr<JSIExceptionHandler> handler) {
-  exception_handler_ = handler;
+void QuickjsRuntime::InitRuntime(std::shared_ptr<JSIContext> sharedContext) {
   quickjs_runtime_wrapper_ =
       std::static_pointer_cast<QuickjsRuntimeInstance>(sharedContext->getVM());
   context_ = std::static_pointer_cast<QuickjsContextWrapper>(sharedContext);
@@ -150,7 +148,7 @@ void QuickjsRuntime::OnRuntimeGC(
                    tasm::performance::kCategoryBTSEngine);
   mem_info.emplace(tasm::performance::kRuntimeId,
                    std::to_string(getRuntimeId()));
-  mem_info.emplace(tasm::performance::kRuntimeGroupId, group_id_);
+  mem_info.emplace(tasm::performance::kRuntimeGroupId, getGroupId());
   observer_->OnRuntimeGC(std::move(mem_info));
 }
 
@@ -876,9 +874,10 @@ std::shared_ptr<Buffer> QuickjsRuntime::GetBytecode(
     auto &instance = cache::JsCacheManager::GetQuickjsInstance();
     auto generator =
         std::make_unique<cache::QuickjsCacheGenerator>(source_url, buffer);
+    auto runtime_delegate = GetRuntimeDelegate();
     cache =
         instance.TryGetCache(source_url, GetBytecodeSourceUrl(), getRuntimeId(),
-                             std::move(generator), GetBytecodeGetter());
+                             std::move(generator), runtime_delegate);
   } else if (!GetEnableUserBytecode()) {
     cache::JsCacheTracker::OnGetBytecodeDisable(
         getRuntimeId(), JSRuntimeType::quickjs, source_url, false, false);

@@ -284,6 +284,7 @@ class BTSRuntime final {
   base::InlineVector<std::unique_ptr<runtime::NativeModuleFactory>, 4>
       cached_native_factories_;
   std::string template_url_;
+  std::shared_ptr<runtime::js::JSRuntimeDelegate> runtime_delegate_;
 #if OS_IOS
   std::shared_ptr<bool> is_running_foreground_;
 #endif  // OS_IOS
