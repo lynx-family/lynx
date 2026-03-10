@@ -138,4 +138,6 @@ public class Renderer {
 
   public void updateAttributes(PropBundle props) {}
   public void updateExtraData(Object extraData) {}
+
+  public void onDestroy() {}
 }
