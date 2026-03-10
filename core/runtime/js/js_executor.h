@@ -52,8 +52,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
       base::MoveOnlyClosure<
           std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>>
           js_pre_sources_getter,
-      bool ensure_console, int64_t rt_id, bool enable_user_bytecode,
-      const std::string& bytecode_source_url, BytecodeGetter bytecode_getter,
+      bool ensure_console, JSRuntimeExternalParams create_params,
       const tasm::PageOptions& page_options);
 
   void SetObserver(JSIObserver* observer);
@@ -91,7 +90,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
     }
   }
 
- protected:
+ private:
   std::shared_ptr<JSIExceptionHandler> exception_handler_;
   std::string group_id_;
   std::shared_ptr<InspectorRuntimeObserverNG> runtime_observer_ng_;

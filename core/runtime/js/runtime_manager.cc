@@ -174,10 +174,9 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
     base::MoveOnlyClosure<std::vector<
         std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
         js_pre_sources_getter,
-    bool force_use_lightweight_js_engine, runtime::js::JSExecutor& executor,
-    int64_t rt_id, bool ensure_console, bool enable_bytecode,
-    const std::string& bytecode_source_url,
-    runtime::js::BytecodeGetter bytecode_getter,
+    bool force_use_lightweight_js_engine, bool ensure_console,
+    runtime::js::JSExecutor& executor,
+    runtime::js::JSRuntimeExternalParams create_params,
     const tasm::PageOptions& page_options) {
   // call inspect's prepare
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
@@ -191,10 +190,8 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   // and the context is being shared.
   bool need_create_context_wrapper = true;
   if (is_single_context) {
-    js_runtime = CreateRuntime(group_id, exception_handler,
-                               force_use_lightweight_js_engine, rt_id,
-                               enable_bytecode, bytecode_source_url,
-                               std::move(bytecode_getter), page_options);
+    js_runtime = CreateRuntime(group_id, force_use_lightweight_js_engine,
+                               page_options, false, std::move(create_params));
     js_context = CreateJSIContext(js_runtime, group_id);
     LOGI("create single_context:" << js_context.get());
   } else {
@@ -233,20 +230,16 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
         }
       }
       need_create_context_wrapper = false;
-      js_runtime = CreateRuntime(
-          group_id, exception_handler, force_use_lightweight_js_engine, rt_id,
-          enable_bytecode, bytecode_source_url, std::move(bytecode_getter),
-          page_options, true);
+      js_runtime = CreateRuntime(group_id, force_use_lightweight_js_engine,
+                                 page_options, true, std::move(create_params));
       js_runtime->setCreatedType(
           runtime::js::JSRuntimeCreatedType::none_vm_none_context);
       LOGI("get shared_context success, context:" << js_context.get()
                                                   << ", group:" << group_id);
     } else {
       // share context first create.
-      js_runtime = CreateRuntime(group_id, exception_handler,
-                                 force_use_lightweight_js_engine, rt_id,
-                                 enable_bytecode, bytecode_source_url,
-                                 std::move(bytecode_getter), page_options);
+      js_runtime = CreateRuntime(group_id, force_use_lightweight_js_engine,
+                                 page_options, false, std::move(create_params));
       js_context = CreateJSIContext(js_runtime, group_id);
       LOGI("get shared_context failed, create context:"
            << js_context.get() << ", group:" << group_id);
@@ -315,23 +308,17 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
 }
 
 std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
-    const std::string& group_id,
-    std::shared_ptr<runtime::js::JSIExceptionHandler> exception_handler,
-    bool force_use_lightweight_js_engine, int64_t rt_id, bool enable_bytecode,
-    const std::string& bytecode_source_url,
-    runtime::js::BytecodeGetter bytecode_getter,
-    const tasm::PageOptions& page_options, bool use_shared_context) {
+    const std::string& group_id, bool force_use_lightweight_js_engine,
+    const tasm::PageOptions& page_options, bool use_shared_context,
+    runtime::js::JSRuntimeExternalParams external_params) {
   auto js_runtime = MakeRuntime(force_use_lightweight_js_engine,
                                 use_shared_context, page_options);
   if (!memory_task_runner_) {
     memory_task_runner_ = fml::MessageLoop::GetCurrent().GetTaskRunner();
   }
   TrackRuntimeForMemoryPressure(js_runtime);
-  js_runtime->setRuntimeId(rt_id);
   js_runtime->SetPageOptions(page_options);
-  js_runtime->SetEnableUserBytecode(enable_bytecode);
-  js_runtime->SetBytecodeSourceUrl(bytecode_source_url);
-  js_runtime->SetBytecodeGetter(std::move(bytecode_getter));
+  js_runtime->SetExternalParams(std::move(external_params));
   return js_runtime;
 }
 

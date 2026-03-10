@@ -35,9 +35,45 @@ void HostObject::set(Runtime* rt, const PropNameID& name, const Value&) {
 // std::atomic<intptr_t> Runtime::g_counter_ = 0;
 
 void Runtime::reportJSIException(const JSIException& exception) {
-  if (exception_handler_) {
-    exception_handler_->onJSIException(exception);
+  if (auto handler = GetExceptionHandler()) {
+    handler->onJSIException(exception);
   }
+}
+
+std::unique_ptr<shell::WatchDog::JSCallTimeoutGuard>
+Runtime::CreateJSCallTimeoutGuardIfEnabled() {
+  if (!external_params_.enable_js_call_timeout_guard ||
+      external_params_.js_call_timeout_ms == 0) {
+    return nullptr;
+  }
+  auto exception_handler = GetExceptionHandler();
+  return std::make_unique<shell::WatchDog::JSCallTimeoutGuard>(
+      [weak_exception_handler =
+           std::weak_ptr<JSIExceptionHandler>(std::move(exception_handler))](
+          std::string message,
+          std::unordered_map<std::string, std::string> info) mutable {
+        std::string info_str;
+        if (!info.empty()) {
+          info_str.push_back('{');
+          for (auto it = info.begin(); it != info.end(); ++it) {
+            if (it != info.begin()) {
+              info_str.append(", ");
+            }
+            info_str.append(it->first);
+            info_str.append(": ");
+            info_str.append(it->second);
+          }
+          info_str.push_back('}');
+        }
+        LOGE("js call timeout. message: " << message << ", info: " << info_str);
+        auto handler = weak_exception_handler.lock();
+        if (!handler) {
+          LOGE("js call timeout without handler.");
+          return;
+        }
+        handler->OnTimeoutException(std::move(message), std::move(info));
+      },
+      external_params_.js_call_timeout_ms, GetPageUrl());
 }
 
 Instrumentation& Runtime::instrumentation() {

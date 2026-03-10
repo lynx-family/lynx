@@ -296,6 +296,18 @@ uint32_t LynxEnv::GetJSBlockingReportIntervalMs() {
       GetLongEnv(Key::JS_BLOCKING_REPORT_INTERVAL_MS, 5000));
 }
 
+LynxEnv::JSCallTimeoutConfig LynxEnv::GetJSCallTimeoutConfig() {
+  static constexpr int default_timeout_ms = 20000;
+  const bool enable = IsLynxDebugEnabled() ||
+                      GetBoolEnv(Key::ENABLE_JS_CALL_TIMEOUT_GUARD, false);
+  const long timeout_ms_raw =
+      GetLongEnv(Key::JS_CALL_TIMEOUT_MS, default_timeout_ms);
+  const uint32_t timeout_ms = timeout_ms_raw > 0
+                                  ? static_cast<uint32_t>(timeout_ms_raw)
+                                  : default_timeout_ms;
+  return {.enable = enable, .timeout_ms = timeout_ms};
+}
+
 uint32_t LynxEnv::TimingMapExceededSize() {
   return static_cast<uint32_t>(GetLongEnv(Key::TIMING_MAP_EXCEEDED_SIZE, 1000));
 }

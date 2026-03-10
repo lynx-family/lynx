@@ -113,6 +113,11 @@ sections:
             level: error
             description: 'JavaScript binding API call errors.'
             fix-suggestion: 'Please check the error message and fix binding API call.'
+          - name: ExecuteTimeoutError
+            low-code: 4
+            level: warn
+            description: 'The script may execute timeout.'
+            fix-suggestion: 'Please check the error message and fix the script.'
       - name: PlatformCallJSFunction
         mid-code: 2
         description: 'Error occurred while calling JS function from platform.'

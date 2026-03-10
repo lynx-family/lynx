@@ -509,6 +509,7 @@ export class LynxSubErrorCode {
   public static readonly E_BTS_RUNTIME_ERROR_SCRIPT_ERROR: number; = 20101
   public static readonly E_BTS_RUNTIME_ERROR_BYTECODE_SCRIPT_ERROR: number; = 20102
   public static readonly E_BTS_RUNTIME_ERROR_BINDINGS_ERROR: number; = 20103
+  public static readonly E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR: number; = 20104
   public static readonly E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY: number; = 20201
   public static readonly E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION: number; = 20301
   public static readonly E_RESOURCE_IMAGE_BIG_IMAGE: number; = 30101

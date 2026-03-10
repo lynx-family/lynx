@@ -21,6 +21,7 @@
 #include "core/runtime/js/jsi/v8/v8_isolate_wrapper_impl.h"
 #include "core/runtime/profile/v8/v8_runtime_profiler_wrapper_impl.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/services/watch_dog/watch_dog.h"
 #include "libplatform/libplatform.h"
 #if V8_MAJOR_VERSION >= 9
 #include "v8-proxy.h"
@@ -138,11 +139,11 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
 #endif
   v8::MaybeLocal<v8::Script> maybe_local_script;
 #if defined(OS_ANDROID)
-  if (enable_user_bytecode_) {
+  if (GetEnableUserBytecode()) {
     LOGI("using v8 bytecode");
     auto generator =
         std::make_unique<cache::V8CacheGenerator>(origin_url, buffer);
-    auto cache = cache::TryGetCacheV8(source_url, bytecode_source_url_,
+    auto cache = cache::TryGetCacheV8(source_url, GetBytecodeSourceUrl(),
                                       getRuntimeId(), std::move(generator));
     if (cache) {
       auto* cached_data =
@@ -155,7 +156,7 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
       if (cached_data->rejected) {
         // regenerate cache file
         cache::RequestCacheGenerationV8(
-            source_url, bytecode_source_url_, buffer,
+            source_url, GetBytecodeSourceUrl(), buffer,
             std::make_unique<cache::V8CacheGenerator>(origin_url, buffer),
             true);
       }
@@ -724,16 +725,19 @@ Function V8Runtime::createFunctionFromHostFunction(const PropNameID& name,
 
 std::optional<Value> V8Runtime::call(const Function& f, const Value& jsThis,
                                      const Value* args, size_t count) {
+  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
   auto converter = ArgsConverter<v8::Local<v8::Value>>(
       count, args, [this](const Value& value) { return valueRef(value); });
-  return V8Helper::call(
+  auto aa = V8Helper::call(
       this, f, jsThis.isUndefined() ? Object(*this) : jsThis.getObject(*this),
       converter, count);
+  return aa;
 }
 
 std::optional<Value> V8Runtime::callAsConstructor(const Function& f,
                                                   const Value* args,
                                                   size_t count) {
+  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
   auto converter = ArgsConverter<v8::Local<v8::Value>>(
       count, args, [this](const Value& value) { return valueRef(value); });
   return V8Helper::callAsConstructor(this, V8Helper::objectRef(f), converter,

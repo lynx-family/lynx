@@ -27,6 +27,7 @@
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
+#include "core/services/watch_dog/watch_dog.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -147,7 +148,8 @@ void QuickjsRuntime::OnRuntimeGC(
   }
   mem_info.emplace(tasm::performance::kCategory,
                    tasm::performance::kCategoryBTSEngine);
-  mem_info.emplace(tasm::performance::kRuntimeId, std::to_string(runtime_id_));
+  mem_info.emplace(tasm::performance::kRuntimeId,
+                   std::to_string(getRuntimeId()));
   mem_info.emplace(tasm::performance::kRuntimeGroupId, group_id_);
   observer_->OnRuntimeGC(std::move(mem_info));
 }
@@ -201,7 +203,7 @@ std::shared_ptr<const PreparedJavaScript> QuickjsRuntime::prepareJavaScript(
 #if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
     defined(QUICKJS_CACHE_UNITTEST)
   const auto cost_start = base::CurrentTimeMilliseconds();
-  cache::JsCacheErrorCode error_code = cache::JsCacheErrorCode::NO_ERROR;
+  auto error_code = cache::JsCacheErrorCode::NO_ERROR;
   if (IsJavaScriptBytecode(buffer)) {
     auto ret = PrepareJavaScriptBytecode(buffer, source_url, error_code);
     cache::JsCacheTracker::OnPrepareJS(
@@ -246,12 +248,12 @@ QuickjsRuntime::evaluatePreparedJavaScript(
 #if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
     defined(QUICKJS_CACHE_UNITTEST)
     const auto source = preparation->Source();
-    if (enable_user_bytecode_ && source) {
+    if (GetEnableUserBytecode() && source) {
       std::vector<std::unique_ptr<cache::CacheGenerator>> generators;
       generators.push_back(std::make_unique<cache::QuickjsCacheGenerator>(
           preparation->source_url, source));
       cache::JsCacheManager::GetQuickjsInstance().RequestCacheGeneration(
-          bytecode_source_url_, std::move(generators), true);
+          GetBytecodeSourceUrl(), std::move(generators), true);
     }
 #endif
   }
@@ -774,6 +776,7 @@ Function QuickjsRuntime::createFunctionFromHostFunction(const PropNameID &name,
 std::optional<Value> QuickjsRuntime::call(const Function &function,
                                           const Value &jsThis,
                                           const Value *args, size_t count) {
+  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
   auto converter = ArgsConverter<LEPUSValue>(
       count, args, [this](const auto &value) { return valueRef(value); });
   return QuickjsHelper::call(
@@ -787,6 +790,7 @@ std::optional<Value> QuickjsRuntime::call(const Function &function,
 std::optional<Value> QuickjsRuntime::callAsConstructor(const Function &function,
                                                        const Value *args,
                                                        size_t count) {
+  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
   auto converter = ArgsConverter<LEPUSValue>(
       count, args, [this](const auto &value) { return valueRef(value); });
   return QuickjsHelper::callAsConstructor(this,
@@ -867,15 +871,15 @@ std::shared_ptr<Buffer> QuickjsRuntime::GetBytecode(
   std::shared_ptr<Buffer> cache;
 #if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
     defined(QUICKJS_CACHE_UNITTEST)
-  if (runtime::IsKernelJs(source_url) || enable_user_bytecode_) {
+  if (runtime::IsKernelJs(source_url) || GetEnableUserBytecode()) {
     LOGI("using new bytecode");
     auto &instance = cache::JsCacheManager::GetQuickjsInstance();
     auto generator =
         std::make_unique<cache::QuickjsCacheGenerator>(source_url, buffer);
     cache =
-        instance.TryGetCache(source_url, bytecode_source_url_, getRuntimeId(),
-                             std::move(generator), bytecode_getter_.get());
-  } else if (!enable_user_bytecode_) {
+        instance.TryGetCache(source_url, GetBytecodeSourceUrl(), getRuntimeId(),
+                             std::move(generator), GetBytecodeGetter());
+  } else if (!GetEnableUserBytecode()) {
     cache::JsCacheTracker::OnGetBytecodeDisable(
         getRuntimeId(), JSRuntimeType::quickjs, source_url, false, false);
   }

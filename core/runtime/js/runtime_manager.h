@@ -87,10 +87,9 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
       base::MoveOnlyClosure<std::vector<
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
           js_pre_sources_getter,
-      bool forceUseLightweightJSEngine, runtime::js::JSExecutor& executor,
-      int64_t rt_id, bool ensure_console, bool enable_bytecode,
-      const std::string& bytecode_source_url,
-      runtime::js::BytecodeGetter bytecode_getter,
+      bool forceUseLightweightJSEngine, bool ensure_console,
+      runtime::js::JSExecutor& executor,
+      runtime::js::JSRuntimeExternalParams create_params,
       const tasm::PageOptions& page_options);
 
   void OnRelease(const std::string& group_id) override;
@@ -109,12 +108,9 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
  private:
   RuntimeManager();
   std::shared_ptr<runtime::js::Runtime> CreateRuntime(
-      const std::string& group_id,
-      std::shared_ptr<runtime::js::JSIExceptionHandler> exception_handler,
-      bool force_use_lightweight_js_engine, int64_t rt_id, bool enable_bytecode,
-      const std::string& bytecode_source_url,
-      runtime::js::BytecodeGetter bytecode_getter,
-      const tasm::PageOptions& page_options, bool use_shared_context = false);
+      const std::string& group_id, bool force_use_lightweight_js_engine,
+      const tasm::PageOptions& page_options, bool use_shared_context,
+      runtime::js::JSRuntimeExternalParams external_params = {});
 
   std::shared_ptr<runtime::js::JSIContext> GetSharedJSContext(
       const std::string& group_id);

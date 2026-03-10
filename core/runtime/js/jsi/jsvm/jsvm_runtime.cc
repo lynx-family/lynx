@@ -720,6 +720,7 @@ Function JSVMRuntime::createFunctionFromHostFunction(const PropNameID& name,
 
 std::optional<Value> JSVMRuntime::call(const Function& f, const Value& jsThis,
                                        const Value* args, size_t count) {
+  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
   HandleScopeWrapper scope(getEnv());
   EnvHandleWrapper env_scope(getEnv());
   auto converter =
@@ -736,6 +737,7 @@ std::optional<Value> JSVMRuntime::call(const Function& f, const Value& jsThis,
 std::optional<Value> JSVMRuntime::callAsConstructor(const Function& f,
                                                     const Value* args,
                                                     size_t count) {
+  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
   HandleScopeWrapper scope(getEnv());
   EnvHandleWrapper env_scope(getEnv());
   auto converter =

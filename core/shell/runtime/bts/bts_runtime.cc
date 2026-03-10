@@ -3,12 +3,16 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/shell/runtime/bts/bts_runtime.h"
 
+#include <cstdint>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/fml/make_copyable.h"
 #include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
+#include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/public/jsb/extension_module_factory.h"
@@ -100,11 +104,32 @@ class JSIExceptionHandlerImpl : public runtime::js::JSIExceptionHandler {
     is_handling_exception_ = false;
   }
 
+  void OnTimeoutException(
+      std::string message,
+      std::unordered_map<std::string, std::string> info) override {
+    constexpr uint64_t kTimeoutErrorReportIntervalMs = 3 * 60 * 1000;
+    const uint64_t now_ms = base::CurrentSystemTimeMilliseconds();
+    if (last_timeout_error_report_ms_ != 0 &&
+        now_ms - last_timeout_error_report_ms_ <
+            kTimeoutErrorReportIntervalMs) {
+      return;
+    }
+    last_timeout_error_report_ms_ = now_ms;
+
+    base::LynxError error(error::E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR,
+                          std::move(message), "", base::LynxErrorLevel::Warn);
+    for (auto& it : info) {
+      error.AddContextInfo(it.first, it.second);
+    }
+    runtime_->OnErrorOccurred(std::move(error));
+  }
+
   void Destroy() override { destroyed_ = true; }
 
  private:
   bool destroyed_ = false;
   bool is_handling_exception_ = false;
+  uint64_t last_timeout_error_report_ms_ = 0;
 
   BTSRuntime* const runtime_;
 };
@@ -217,17 +242,25 @@ void BTSRuntime::InitExecutor(bool is_full_runtime,
     ReadPreloadJSSource(std::move(preload_js_paths), preload_js_sources);
     return preload_js_sources;
   };
+  runtime::js::JSRuntimeExternalParams create_params{};
+  create_params.runtime_id = GetRuntimeId();
+  const auto js_call_timeout_cfg =
+      tasm::LynxEnv::GetInstance().GetJSCallTimeoutConfig();
+  create_params.enable_js_call_timeout_guard = js_call_timeout_cfg.enable;
+  create_params.js_call_timeout_ms = js_call_timeout_cfg.timeout_ms;
   // FIXME(wangboyong):invoke before decode...in fact in 1.4
   // here NeedGlobalConsole always return true...
   // bool need_console = delegate_->NeedGlobalConsole();
-  js_executor_->loadPreJSBundle(
-      std::move(preload_js_sources_getter), true, GetRuntimeId(),
-      runtime_flags_ & LynxRuntimeFlags::ENABLE_USER_BYTECODE,
-      bytecode_source_url_,
+  create_params.enable_user_bytecode =
+      (runtime_flags_ & LynxRuntimeFlags::ENABLE_USER_BYTECODE);
+  create_params.bytecode_source_url = bytecode_source_url_;
+  create_params.bytecode_getter = std::make_unique<runtime::js::BytecodeGetter>(
       [delegate_ptr = delegate_.get()](const std::string& url) {
         return delegate_ptr->LoadBytecode(url);
-      },
-      page_options_);
+      });
+
+  js_executor_->loadPreJSBundle(std::move(preload_js_sources_getter), true,
+                                std::move(create_params), page_options_);
   js_executor_->SetObserver(delegate_.get());
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadCoreEnd);

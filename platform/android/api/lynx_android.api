@@ -6547,6 +6547,7 @@ public class com::lynx::tasm::LynxSubErrorCode :  {
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_SCRIPT_ERROR E_BTS_RUNTIME_ERROR_SCRIPT_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_BYTECODE_SCRIPT_ERROR E_BTS_RUNTIME_ERROR_BYTECODE_SCRIPT_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_BINDINGS_ERROR E_BTS_RUNTIME_ERROR_BINDINGS_ERROR;
+  public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_IMAGE_BIG_IMAGE E_RESOURCE_IMAGE_BIG_IMAGE;

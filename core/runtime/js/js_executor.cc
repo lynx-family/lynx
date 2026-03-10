@@ -64,20 +64,19 @@ void JSExecutor::loadPreJSBundle(
     base::MoveOnlyClosure<
         std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>>
         js_pre_sources_getter,
-    bool ensure_console, int64_t rt_id, bool enable_user_bytecode,
-    const std::string& bytecode_source_url, BytecodeGetter bytecode_getter,
+    bool ensure_console, JSRuntimeExternalParams create_params,
     const tasm::PageOptions& page_options) {
+  const int64_t runtime_id = create_params.runtime_id;
   js_runtime_ = runtimeManagerInstance()->CreateJSRuntime(
       group_id_, exception_handler_, std::move(js_pre_sources_getter),
-      force_use_light_weight_js_engine_, *this, rt_id, ensure_console,
-      enable_user_bytecode, bytecode_source_url, std::move(bytecode_getter),
-      page_options);
+      force_use_light_weight_js_engine_, ensure_console, *this,
+      std::move(create_params), page_options);
   if (runtime_observer_ng_ != nullptr) {
     runtime_observer_ng_->OnRuntimeCreated(js_runtime_->type());
   }
 
   tasm::report::EventTracker::UpdateGenericInfo(
-      static_cast<int32_t>(rt_id), "js_runtime_type",
+      static_cast<int32_t>(runtime_id), "js_runtime_type",
       static_cast<int64_t>(js_runtime_->type()));
 }
 
@@ -132,6 +131,9 @@ std::shared_ptr<Runtime> JSExecutor::GetJSRuntime() { return js_runtime_; }
 
 void JSExecutor::SetUrl(const std::string& url) {
   module_manager_->SetTemplateUrl(url);
+  if (js_runtime_) {
+    js_runtime_->SetPageUrl(url);
+  }
 }
 
 std::shared_ptr<ConsoleMessagePostMan>

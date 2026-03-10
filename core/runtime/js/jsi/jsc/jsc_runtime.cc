@@ -25,6 +25,7 @@
 #include "core/runtime/js/jsi/jsc/jsc_exception.h"
 #include "core/runtime/js/jsi/jsc/jsc_host_function.h"
 #include "core/runtime/js/jsi/jsc/jsc_host_object.h"
+#include "core/services/watch_dog/watch_dog.h"
 #include "third_party/modp_b64/modp_b64.h"
 
 namespace lynx {
@@ -723,12 +724,14 @@ Function JSCRuntime::createFunctionFromHostFunction(const PropNameID& name,
 
 std::optional<Value> JSCRuntime::call(const Function& f, const Value& jsThis,
                                       const Value* args, size_t count) {
+  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
   return JSCHelper::call(ctx_->getContext(), *this, f, jsThis, args, count);
 }
 
 std::optional<Value> JSCRuntime::callAsConstructor(const Function& f,
                                                    const Value* args,
                                                    size_t count) {
+  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
   return JSCHelper::callAsConstructor(ctx_->getContext(), *this, f, args,
                                       count);
 }

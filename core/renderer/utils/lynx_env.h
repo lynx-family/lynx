@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_UTILS_LYNX_ENV_H_
 #define CORE_RENDERER_UTILS_LYNX_ENV_H_
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -138,6 +139,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
     ENABLE_LIST_NEW_ARCHITECTURE,
     ENABLE_FETCH_API_STANDARD_STREAMING,
+    ENABLE_JS_CALL_TIMEOUT_GUARD,
+    JS_CALL_TIMEOUT_MS,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -284,6 +287,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_LIST_NEW_ARCHITECTURE, "enable_list_new_architecture"},
             {Key::ENABLE_FETCH_API_STANDARD_STREAMING,
              "enable_fetch_api_standard_streaming"},
+            {Key::ENABLE_JS_CALL_TIMEOUT_GUARD, "enable_js_call_timeout_guard"},
+            {Key::JS_CALL_TIMEOUT_MS, "js_call_timeout_ms"},
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
             {Key::FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE,
              "fix_animation_forward_dynamic_update_overwrite"},
@@ -387,6 +392,11 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableJSBlockingMonitor();
   uint32_t GetJSBlockingThresholdMs();
   uint32_t GetJSBlockingReportIntervalMs();
+  struct JSCallTimeoutConfig {
+    bool enable;
+    uint32_t timeout_ms;
+  };
+  JSCallTimeoutConfig GetJSCallTimeoutConfig();
   uint32_t TimingMapExceededSize();
   uint32_t GetMemoryChangeThresholdMb();
   uint32_t GetMemoryAcquisitionDelaySec();

@@ -13,6 +13,7 @@
 #define CORE_RUNTIME_JS_JSI_JSI_H_
 
 #include <cassert>
+#include <cstdint>
 #include <cstring>
 #include <exception>
 #include <functional>
@@ -25,6 +26,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
+#include "base/include/compiler_specific.h"
 #include "base/include/expected.h"
 #include "base/include/fml/macros.h"
 #include "base/include/log/logging.h"
@@ -35,6 +37,7 @@
 #include "core/inspector/console_message_postman.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/public/page_options.h"
+#include "core/services/watch_dog/watch_dog.h"
 
 #define BUILD_JSI_NATIVE_EXCEPTION(message) \
   runtime::js::JSINativeException(message, __FUNCTION__, __FILE__, __LINE__)
@@ -108,6 +111,17 @@ class ByteBuffer : public Buffer {
 
 using BytecodeGetter =
     base::MoveOnlyClosure<std::shared_ptr<Buffer>, const std::string&>;
+
+class JSIExceptionHandler;
+
+struct JSRuntimeExternalParams {
+  int64_t runtime_id = 0;
+  bool enable_user_bytecode = false;
+  bool enable_js_call_timeout_guard = false;
+  uint32_t js_call_timeout_ms = 0;
+  std::string bytecode_source_url;
+  std::unique_ptr<BytecodeGetter> bytecode_getter;
+};
 
 /// PreparedJavaScript is a base class repesenting JavaScript which is in a form
 /// optimized for execution, in a runtime-specific way. Construct one via
@@ -275,9 +289,9 @@ class LYNX_EXPORT Runtime {
   virtual void SetGCPauseSuppressionMode(bool mode){};
   virtual bool GetGCPauseSuppressionMode() { return false; };
   virtual void SetObserver(JSIObserver* observer){};
-  int64_t getRuntimeId() const { return runtime_id_; }
+  int64_t getRuntimeId() const { return external_params_.runtime_id; }
   bool getGCFlag() { return gc_flag_; }
-  void setRuntimeId(int64_t rt_id) { runtime_id_ = rt_id; }
+  void setRuntimeId(int64_t rt_id) { external_params_.runtime_id = rt_id; }
   void SetPageOptions(const tasm::PageOptions& options) {
     page_options_ = options;
   }
@@ -324,6 +338,8 @@ class LYNX_EXPORT Runtime {
   }
 
   void reportJSIException(const JSIException& exception);
+  std::unique_ptr<shell::WatchDog::JSCallTimeoutGuard>
+  CreateJSCallTimeoutGuardIfEnabled();
   virtual std::shared_ptr<VMInstance> createVM(
       const StartupData* data) const = 0;
   virtual std::shared_ptr<VMInstance> getSharedVM() = 0;
@@ -400,18 +416,44 @@ class LYNX_EXPORT Runtime {
   /// which returns no metrics.
   virtual Instrumentation& instrumentation();
 
-  void SetEnableUserBytecode(bool enable) { enable_user_bytecode_ = enable; }
+  void SetEnableUserBytecode(bool enable) {
+    external_params_.enable_user_bytecode = enable;
+  }
+
+  bool GetEnableUserBytecode() const {
+    return external_params_.enable_user_bytecode;
+  }
 
   void SetBytecodeSourceUrl(const std::string& url) {
-    bytecode_source_url_ = url;
+    external_params_.bytecode_source_url = url;
   }
+
+  const std::string& GetBytecodeSourceUrl() const {
+    return external_params_.bytecode_source_url;
+  }
+
+  void SetPageUrl(const std::string& url) { page_url_ = url; }
+  const std::string& GetPageUrl() const { return page_url_; }
 
   void SetBytecodeGetter(BytecodeGetter getter) {
     if (getter) {
-      bytecode_getter_ = std::make_unique<BytecodeGetter>(std::move(getter));
+      external_params_.bytecode_getter =
+          std::make_unique<BytecodeGetter>(std::move(getter));
     } else {
-      bytecode_getter_.reset();
+      external_params_.bytecode_getter.reset();
     }
+  }
+
+  BytecodeGetter* GetBytecodeGetter() const {
+    return external_params_.bytecode_getter.get();
+  }
+
+  std::shared_ptr<JSIExceptionHandler> GetExceptionHandler() const {
+    return exception_handler_;
+  }
+
+  void SetExternalParams(JSRuntimeExternalParams external_params) {
+    external_params_ = std::move(external_params);
   }
 
   // Post a GC request.
@@ -617,7 +659,6 @@ class LYNX_EXPORT Runtime {
     ENABLE = 2,
   };
   JSRuntimeCreatedType created_type_;
-  int64_t runtime_id_;
   std::string group_id_;
   std::shared_ptr<bool> is_runtime_destroyed_ = std::make_shared<bool>(false);
   // This field is protected since it is written in InitRuntime
@@ -629,11 +670,8 @@ class LYNX_EXPORT Runtime {
 
   CircularCheckFlags circular_data_check_flag_{CircularCheckFlags::UNSET};
 
-  bool enable_user_bytecode_ = false;
-  std::string bytecode_source_url_;  // url of template.js file
   bool enable_js_binding_api_throw_exception_{false};
   bool gc_flag_{false};
-  std::unique_ptr<BytecodeGetter> bytecode_getter_;
 
  private:
   std::unordered_map<HostObject*, std::shared_ptr<HostObject>>
@@ -642,6 +680,8 @@ class LYNX_EXPORT Runtime {
       host_function_containers_;
   tasm::PageOptions page_options_;
   std::string url_prefix_;
+  std::string page_url_;
+  JSRuntimeExternalParams external_params_;
 };
 
 // GCPauseSuppressionMode is used for performance. In GCPauseSuppressionMode
@@ -1693,6 +1733,8 @@ class JSIExceptionHandler {
   virtual ~JSIExceptionHandler() = default;
 
   virtual void onJSIException(const JSIException& exception) = 0;
+  virtual void OnTimeoutException(
+      std::string message, std::unordered_map<std::string, std::string> info) {}
   virtual void Destroy() {}
 };
 
