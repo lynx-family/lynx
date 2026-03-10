@@ -15,8 +15,11 @@ import { LynxTemplateResourceFetcher } from '../provider/LynxTemplateResourceFet
 import { ModuleClassWrapper, SendableModuleClassWrapper } from '../jsbridge/LynxModule';
 import { LLog, LynxEnv, MetaData, TemplateBundle } from '../Index';
 import { RuntimeLifecycleListener } from '../jsbridge/RuntimeLifecycleListener';
+import { TemplateData } from './MetaData';
+import { SessionStorageCallback } from './SessionStorage';
 
 const TAG = 'LynxBackgroundRuntime';
+const INVALID_SESSION_STORAGE_LISTENER_ID = -1;
 
 export abstract class LynxBackgroundRuntimeClient {
   public onReceivedError(error: LynxError) : void {}
@@ -120,6 +123,35 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   
   transitionToFullRuntime(): void {
     this.nativeTransitionToFullRuntime();
+  }
+
+  setSessionStorageItem(key: string, value: TemplateData): void {
+    if (!key || !value) {
+      return;
+    }
+    // TODO(nihao.royal): call native C++ sessionStorage setter after NAPI is ready.
+  }
+
+  getSessionStorageItem(key: string, callback: SessionStorageCallback): void {
+    if (!key || !callback) {
+      return;
+    }
+    // TODO(nihao.royal): call native C++ sessionStorage getter after NAPI is ready.
+  }
+
+  subscribeSessionStorage(key: string, callback: SessionStorageCallback): number {
+    if (!key || !callback) {
+      return INVALID_SESSION_STORAGE_LISTENER_ID;
+    }
+    // TODO(nihao.royal): call native C++ sessionStorage subscribe after NAPI is ready.
+    return INVALID_SESSION_STORAGE_LISTENER_ID;
+  }
+
+  unsubscribeSessionStorage(key: string, listenerId: number): void {
+    if (!key || listenerId < 0) {
+      return;
+    }
+    // TODO(nihao.royal): call native C++ sessionStorage unsubscribe after NAPI is ready.
   }
 
   addRuntimeLifecycleListener(listener: RuntimeLifecycleListener) {

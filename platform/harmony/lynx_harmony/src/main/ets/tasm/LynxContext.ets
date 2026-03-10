@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { LynxTemplateRenderer } from './LynxTemplateRenderer';
-import { MetaData } from './MetaData';
+import { MetaData, TemplateData } from './MetaData';
 import { LynxScreenMetrics } from './behavior/LynxScreenMetrics';
 import { ShadowNodeOwner } from './behavior/ShadowNodeOwner';
 import { UIOwner } from './behavior/UIOwner';
@@ -30,8 +30,10 @@ import { TimingConstants } from './performance/timing/TimingConstants';
 import { LynxBaseInspectorOwner } from '../devtool_wrapper/LynxBaseInspectorOwner'
 import { NativeContent } from '../Index';
 import { LynxImageConfig } from './image/LynxImageConfig';
+import { SessionStorageCallback } from './SessionStorage';
 
 const TAG = 'LynxContext'
+const INVALID_SESSION_STORAGE_LISTENER_ID = -1;
 
 /**
  * LynxContext is a LynxView's core context, managing templates, data, and events. It connects the
@@ -107,6 +109,58 @@ export class LynxContext implements IContext {
     this.renderer?.callJSFunction(moduleName, method, params);
   }
 
+  /**
+   * Set a value to session storage.
+   * @apidoc
+   * @param key Session storage key.
+   * @param value Session storage value wrapped by TemplateData.
+   */
+  public setSessionStorageItem(key: string, value: TemplateData): void {
+    if (!key || !value) {
+      return;
+    }
+    this.renderer?.setSessionStorageItem(key, value);
+  }
+
+  /**
+   * Get a value from session storage asynchronously.
+   * @apidoc
+   * @param key Session storage key.
+   * @param callback Callback invoked with the current value.
+   */
+  public getSessionStorageItem(key: string, callback: SessionStorageCallback): void {
+    if (!key || !callback) {
+      return;
+    }
+    this.renderer?.getSessionStorageItem(key, callback);
+  }
+
+  /**
+   * Subscribe to session storage updates for the specified key.
+   * @apidoc
+   * @param key Session storage key.
+   * @param callback Callback invoked when the key value changes.
+   * @returns Listener id for unsubscribe, returns -1 if subscribe fails.
+   */
+  public subscribeSessionStorage(key: string, callback: SessionStorageCallback): number {
+    if (!key || !callback || !this.renderer) {
+      return INVALID_SESSION_STORAGE_LISTENER_ID;
+    }
+    return this.renderer.subscribeSessionStorage(key, callback);
+  }
+
+  /**
+   * Unsubscribe a session storage listener by key and listener id.
+   * @apidoc
+   * @param key Session storage key.
+   * @param listenerId Listener id returned by subscribeSessionStorage.
+   */
+  public unsubscribeSessionStorage(key: string, listenerId: number): void {
+    if (!key || listenerId < 0) {
+      return;
+    }
+    this.renderer?.unsubscribeSessionStorage(key, listenerId);
+  }
 
   sendCustomEvent(name: string, id: number, params: Object, paramName?: string) {
     this.renderer?.sendCustomEvent(name, id, params, paramName ? paramName : 'params');

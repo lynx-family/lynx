@@ -7,6 +7,7 @@ export { TemplateData, MetaData } from './tasm/MetaData';
 export { LynxNodeController, LynxView, ThreadStrategyForRendering, MeasureMode } from './tasm/LynxView'
 
 export { LynxContext } from './tasm/LynxContext'
+export { SessionStorageCallback } from './tasm/SessionStorage'
 
 export { LynxModule, ModuleClassWrapper, SendableLynxModule, SendableModuleClassWrapper } from './jsbridge/LynxModule'
 

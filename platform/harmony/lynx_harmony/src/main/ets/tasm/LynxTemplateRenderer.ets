@@ -12,6 +12,8 @@ import { LynxView, ThreadStrategyForRendering } from './LynxView';
 import { LynxBackgroundRuntimeOptions } from '../jsbridge/LynxBackgroundRuntimeOptions';
 import { LynxEnv } from './LynxEnv';
 import { TemplateBundle } from './TemplateBundle';
+import { TemplateData } from './MetaData';
+import { SessionStorageCallback } from './SessionStorage';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { PerformanceController } from './performance/PerformanceController';
 import { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
@@ -205,6 +207,35 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
 
   setPlatformConfig(config: string) {
     this.nativeSetPlatformConfig(config);
+  }
+
+  setSessionStorageItem(key: string, value: TemplateData): void {
+    if (!key || !value) {
+      return;
+    }
+    // TODO(nihao.royal): call native C++ sessionStorage setter after NAPI is ready.
+  }
+
+  getSessionStorageItem(key: string, callback: SessionStorageCallback) {
+    if (!key || !callback) {
+      return;
+    }
+    // TODO(nihao.royal): call native C++ sessionStorage getter after NAPI is ready.
+  }
+
+  subscribeSessionStorage(key: string, callback: SessionStorageCallback): number {
+    if (!key || !callback) {
+      return -1;
+    }
+    // TODO(nihao.royal): call native C++ sessionStorage subscribe after NAPI is ready.
+    return -1;
+  }
+
+  unsubscribeSessionStorage(key: string, listenerId: number) {
+    if (!key || listenerId < 0) {
+      return;
+    }
+    // TODO(nihao.royal): call native C++ sessionStorage unsubscribe after NAPI is ready.
   }
 
   triggerLepusMethod(name: string, args: Record<string, Object>): Object | undefined {

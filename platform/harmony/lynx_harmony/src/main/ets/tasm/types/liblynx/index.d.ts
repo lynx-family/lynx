@@ -169,6 +169,14 @@ export class LynxTemplateRenderer {
 
   nativeGetAllJsSource(): Record<string, string>;
 
+  nativeSetSessionStorageItem(key: string, data?: Object | string): void;
+
+  nativeGetSessionStorageItem(key: string, callback: Function): void;
+
+  nativeSubscribeSessionStorage(key: string, callback: Function): number;
+
+  nativeUnsubscribeSessionStorage(key: string, listenerId: number): void;
+
   invokeLepusCallback(id: number, entryName: string, args: Object): void;
 }
 
@@ -329,5 +337,9 @@ export class LynxRuntimeWrapper {
   protected nativeTransitionToFullRuntime(): void;
   protected nativeCallJSFunction(module: string, method: string, params: Object[]): void;
   protected nativeAddRuntimeLifecycleListener(listener: Object);
+  protected nativeSetSessionStorageItem(key: string, data?: Object | string): void;
+  protected nativeGetSessionStorageItem(key: string, callback: Function): void;
+  protected nativeSubscribeSessionStorage(key: string, callback: Function): number;
+  protected nativeUnsubscribeSessionStorage(key: string, listenerId: number): void;
   
 }

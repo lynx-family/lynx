@@ -106,6 +106,10 @@ export class LynxContext implements IContext {
   setLynxView(lynxView: LynxView): void;
   sendGlobalEvent(name: string, params: Object[]): void;
   public callJSFunction(moduleName: string, method: string, params: Object[]): void;
+  public setSessionStorageItem(key: string, value: TemplateData): void;
+  public getSessionStorageItem(key: string, callback: SessionStorageCallback): void;
+  public subscribeSessionStorage(key: string, callback: SessionStorageCallback): number;
+  public unsubscribeSessionStorage(key: string, listenerId: number): void;
   sendCustomEvent(name: string, id: number, params: Object, paramName: string): void;
   updateMetaData(data: MetaData): void;
   scrollByListContainer(containerSign: number, x: number, y: number): void;
@@ -140,6 +144,9 @@ export class LynxContext implements IContext {
   public getLynxViewClient(): LynxViewClient[] | undefined;
   aboutToDisappear(): void;
   screenMetrics(): LynxScreenMetrics;
+}
+
+export type SessionStorageCallback = (value: Object | undefined) => void {
 }
 
 export class LynxModule {
@@ -1040,6 +1047,10 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   callJSFunction(module: string, method: string, params: Object[]): void;
   sendGlobalEvent(name: string, params: object[]): void;
   transitionToFullRuntime(): void;
+  setSessionStorageItem(key: string, value: TemplateData): void;
+  getSessionStorageItem(key: string, callback: SessionStorageCallback): void;
+  subscribeSessionStorage(key: string, callback: SessionStorageCallback): number;
+  unsubscribeSessionStorage(key: string, listenerId: number): void;
   addRuntimeLifecycleListener(listener: RuntimeLifecycleListener): void;
   getLastScriptUrl(): string | undefined;
   moduleFactory(): LynxModuleManager;
