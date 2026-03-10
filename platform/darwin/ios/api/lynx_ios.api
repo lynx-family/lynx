@@ -3160,6 +3160,9 @@ public class LynxRenderer : NSObject {
   public int32_t LynxRenderer::getSign();
   public void LynxRenderer()::updateDisplayList:(lynx::tasm::DisplayList *list);
   public lynx::tasm::DisplayList * LynxRenderer()::getDisplayList();
+  public void LynxRenderer()::applySubtreeProperties:count:(const lynx::tasm::SubtreeProperty *properties, [count] size_t count);
+  public void LynxRenderer()::applyTransform:(const float *transform);
+  public void LynxRenderer()::applyOpacity:(float opacity);
 }
 
 public class LynxRendererContext : NSObject {

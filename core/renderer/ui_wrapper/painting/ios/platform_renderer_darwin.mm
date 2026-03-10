@@ -76,7 +76,22 @@ void PlatformRendererDarwin::OnRemoveFromParent() {
 }
 
 void PlatformRendererDarwin::OnUpdateSubtreeProperties(const DisplayList& subtree_properties) {
-  // TODO: impl this function later.
+  size_t count = subtree_properties.GetSubtreePropertiesSize();
+  if (count == 0 || _view == nil) {
+    return;
+  }
+
+  const SubtreeProperty* props = subtree_properties.GetSubtreePropertiesData();
+  if (props == nullptr) {
+    return;
+  }
+
+  LynxRenderer* renderer = [_view getRenderer];
+  if (renderer == nil) {
+    return;
+  }
+
+  [renderer applySubtreeProperties:props count:count];
 }
 
 void PlatformRendererDarwin::InitializeUIView() {

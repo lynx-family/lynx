@@ -11,4 +11,9 @@
 
 - (lynx::tasm::DisplayList *)getDisplayList;
 
+// SubtreeProperties support
+- (void)applySubtreeProperties:(const lynx::tasm::SubtreeProperty *)properties count:(size_t)count;
+- (void)applyTransform:(const float *)transform;
+- (void)applyOpacity:(float)opacity;
+
 @end
