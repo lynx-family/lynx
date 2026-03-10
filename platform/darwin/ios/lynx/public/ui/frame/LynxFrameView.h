@@ -8,6 +8,7 @@
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxTemplateBundle.h>
 #import <Lynx/LynxUpdateMeta.h>
+#import <Lynx/LynxViewEnum.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -20,7 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)initWithRootView:(UIView<LUIBodyView> *)rootView;
 
-- (void)setAppBundle:(LynxTemplateBundle *)bundle;
+- (BOOL)setAppBundle:(LynxTemplateBundle *)bundle;
 
 - (void)setInitData:(nullable LynxTemplateData *)initData;
 
@@ -33,6 +34,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (UIView<LUIBodyView> *_Nullable)getRootView;
 
 - (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame;
+
+- (void)setEmbeddedMode:(LynxEmbeddedMode)embeddedMode;
 
 @end
 
