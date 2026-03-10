@@ -43,6 +43,14 @@ describe('Test Element API Types', () => {
     expectTypeOf<typeof __CreateView>().toBeFunction();
     expectTypeOf<typeof __CreateText>().toBeFunction();
     expectTypeOf<typeof __ElementAnimate>().toBeFunction();
+    expectTypeOf<typeof __GetComputedStyleByKey>().toBeFunction();
+  });
+
+  it('should test __GetComputedStyleByKey function signature', () => {
+    const element = __CreateView(0);
+
+    expectTypeOf<typeof __GetComputedStyleByKey>().toBeCallableWith(element, 'width');
+    expectTypeOf(__GetComputedStyleByKey(element, 'width')).toBeString();
   });
 
   it('should test __ElementAnimate function signature', () => {
