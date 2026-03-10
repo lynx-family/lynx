@@ -189,10 +189,7 @@ class SkityCanvasDelegate : public LayerStateStack::Delegate {
   }
   void clipRRect(const skity::RRect& rrect, clay::GrClipOp op,
                  bool is_aa) override {
-    auto skity_rrect = rrect;
-    skity::Path path;
-    path.AddRRect(skity_rrect);
-    canvas_->ClipPath(path, op);
+    canvas_->ClipRRect(rrect, op);
   }
 
   void clipPath(const skity::Path& path, clay::GrClipOp op,

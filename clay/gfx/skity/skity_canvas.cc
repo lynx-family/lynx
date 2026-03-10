@@ -56,9 +56,7 @@ void SkityCanvas::ClipRect(const skity::Rect& rect, skity::Canvas::ClipOp op,
 
 void SkityCanvas::ClipRRect(const skity::RRect& rrect, skity::Canvas::ClipOp op,
                             bool do_anti_alias) {
-  skity::Path skity_path;
-  skity_path.AddRRect(rrect);
-  canvas_->ClipPath(skity_path, op);
+  canvas_->ClipRRect(rrect, op);
 }
 
 void SkityCanvas::ClipPath(const skity::Path& path, skity::Canvas::ClipOp op,
@@ -113,17 +111,10 @@ void SkityCanvas::DrawDRRect(const skity::RRect& outer,
     this->DrawRRect(outer, paint);
     return;
   }
-
   if (!outer.GetBounds().Contains(inner.GetBounds())) {
     return;
   }
-
-  skity::Path skity_path;
-  skity_path.AddRRect(outer);
-  skity_path.AddRRect(inner);
-  skity_path.SetFillType(skity::Path::PathFillType::kEvenOdd);
-
-  canvas_->DrawPath(skity_path, paint.gr_object());
+  canvas_->DrawDRRect(outer, inner, paint.gr_object());
   RecordDynamicOpOffset(paint);
 }
 
