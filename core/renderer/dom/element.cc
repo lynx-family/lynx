@@ -2570,7 +2570,132 @@ bool Element::IfNeedsUpdateLayoutInfo() {
   return sl_node_->GetHasNewLayout();
 }
 
+void Element::EnsureSLNode() {
+  if (EnableLayoutInElementMode() && sl_node_ == nullptr) {
+    sl_node_ = std::make_unique<SLNode>(
+        element_manager()->GetLayoutConfigs(),
+        computed_css_style()->GetLayoutComputedStyle());
+    if (is_page()) {
+      MarkAsLayoutRoot();
+    }
+    OnLayoutObjectCreated();
+  }
+}
+
+void Element::DispatchLayoutBefore() {
+  if (customized_layout_node_) {
+    customized_layout_node_->OnLayoutBefore();
+  }
+}
+
+void Element::MarkLayoutDirtyLite() {
+  if (!is_virtual_) {
+    EnsureSLNode();
+    sl_node_->MarkDirtyAndRequestLayout();
+  } else {
+    auto* parent = static_cast<Element*>(render_parent_);
+    while (parent) {
+      if (!parent->is_virtual_) {
+        parent->MarkLayoutDirtyLite();
+        break;
+      }
+      parent = static_cast<Element*>(parent->render_parent_);
+    }
+  }
+}
+
+void Element::UpdateLayoutInfoRecursively(PipelineOptions* options) {
+  if (!is_wrapper()) {
+    if (sl_node_ == nullptr || !(sl_node_->IsDirty())) {
+      return;
+    }
+
+    if (IfNeedsUpdateLayoutInfo()) {
+      if (is_list()) {
+        // TODO(songshourui.null): emplace_back element later
+        options->updated_list_elements_.emplace_back(impl_id());
+      }
+      UpdateLayoutInfo();
+    }
+
+    sl_node_->MarkUpdated();
+  }
+
+  for (auto& child : scoped_children_) {
+    static_cast<Element*>(child.get())->UpdateLayoutInfoRecursively(options);
+  }
+}
+
+void Element::UpdateLayoutInfo() {
+  const auto& layout_result = sl_node_->GetLayoutResult();
+  width_ = layout_result.size_.width_;
+  height_ = layout_result.size_.height_;
+  top_ = layout_result.offset_.Y();
+  left_ = layout_result.offset_.X();
+  // paddings
+  paddings_[0] = layout_result.padding_[starlight::kLeft];
+  paddings_[1] = layout_result.padding_[starlight::kTop];
+  paddings_[2] = layout_result.padding_[starlight::kRight];
+  paddings_[3] = layout_result.padding_[starlight::kBottom];
+  // margins
+  margins_[0] = layout_result.margin_[starlight::kLeft];
+  margins_[1] = layout_result.margin_[starlight::kTop];
+  margins_[2] = layout_result.margin_[starlight::kRight];
+  margins_[3] = layout_result.margin_[starlight::kBottom];
+  // borders
+  borders_[0] = layout_result.border_[starlight::kLeft];
+  borders_[1] = layout_result.border_[starlight::kTop];
+  borders_[2] = layout_result.border_[starlight::kRight];
+  borders_[3] = layout_result.border_[starlight::kBottom];
+
+  if (IsShadowNodeCustom()) {
+    customized_layout_node_->OnLayoutAfter();
+  }
+}
+
 void Element::ResetStyleSheet() { style_sheet_ = nullptr; }
+
+bool Element::CanBeLayoutOnly() const {
+  return can_be_layout_only_ && element_manager()->GetEnableLayoutOnly() &&
+         has_layout_only_props_ && computed_css_style()->IsOverflowXY();
+}
+
+void Element::PersistAnimationFillStyles(const StyleMap& styles) {
+  if (!element_manager()->FixAnimationForwardDynamicUpdateOverwrite() ||
+      !enable_new_animator() || styles.empty()) {
+    return;
+  }
+  for (const auto& [id, value] : styles) {
+    animation_override_styles_map_->insert_or_assign(id, value);
+  }
+}
+
+void Element::ClearPersistedAnimationFillStyle(CSSPropertyID id) {
+  if (!animation_override_styles_map_.has_value()) {
+    return;
+  }
+  animation_override_styles_map_->erase(id);
+}
+
+void Element::ResetDirectionAwareProperty(const CSSPropertyID& id,
+                                          const CSSValue& value) {
+  auto css_id = id;
+  auto direction_mapping = CheckDirectionMapping(css_id);
+  auto is_direction_aware_property =
+      direction_mapping.rtl_property_ != kPropertyStart ||
+      direction_mapping.ltr_property_ != kPropertyStart;
+  if (is_direction_aware_property) {
+    auto current_direction = computed_css_style()->GetDirection();
+    auto tran_css_id =
+        (IsRTL(current_direction) && direction_mapping.is_logic_) ||
+                IsLynxRTL(current_direction)
+            ? direction_mapping.rtl_property_
+            : direction_mapping.ltr_property_;
+    ResetCSSValue(tran_css_id);
+    (*pending_updated_direction_related_styles_)[css_id] = {
+        value, direction_mapping.is_logic_};
+  }
+}
 
 const base::String& Element::GetRawInlineStyles() {
   return full_raw_inline_style_;

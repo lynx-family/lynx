@@ -127,8 +127,6 @@ class FiberElement : public Element {
    */
   virtual void FlushActionsAsRoot();
 
-  virtual bool CanBeLayoutOnly() const override;
-
   /**
    * A key function for flush all pending actions for current Element
    */
@@ -415,8 +413,6 @@ class FiberElement : public Element {
   int32_t GetCSSID() const override;
 
   bool MergeInlineStyles(StyleMap& new_styles) final;
-  void PersistAnimationFillStyles(const StyleMap& styles) override;
-  void ClearPersistedAnimationFillStyle(CSSPropertyID id) override;
 
   void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
 
@@ -479,8 +475,6 @@ class FiberElement : public Element {
   virtual void MarkHasLayoutOnlyPropsIfNecessary(
       const base::String& attribute_key);
 
-  void UpdateLayoutInfoRecursively(PipelineOptions* options);
-
   void DispatchLayoutBeforeRecursively();
 
   void SetMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
@@ -496,9 +490,6 @@ class FiberElement : public Element {
 
   void HandleContainerInsertion(FiberElement* parent, FiberElement* child,
                                 FiberElement* ref);
-
-  void ResetDirectionAwareProperty(const CSSPropertyID& id,
-                                   const CSSValue& value);
 
   void TryDoDirectionRelatedCSSChange(CSSPropertyID id, const CSSValue& value,
                                       IsLogic is_logic_style);
@@ -534,14 +525,6 @@ class FiberElement : public Element {
   void DoFullCSSResolving();
   const tasm::CSSValue& ResolveCurrentStyleValue(
       const CSSPropertyID& key, const tasm::CSSValue& default_value);
-
-  void UpdateLayoutInfo();
-
-  void MarkLayoutDirtyLite() override;
-
-  void EnsureSLNode();
-
-  virtual void DispatchLayoutBefore();
 };
 
 }  // namespace tasm

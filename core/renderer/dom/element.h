@@ -767,8 +767,6 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkLayoutDirty();
 
-  virtual void MarkLayoutDirtyLite(){};
-
   // Dirty flag primitives
   int32_t dirty() const { return dirty_; }
 
@@ -800,7 +798,6 @@ class Element : public lepus::RefCounted,
   virtual const AttrMap& GetAttributesForWorklet();
 
   inline const auto& GlobalBindTarget() { return global_bind_target_set_; }
-  virtual bool CanBeLayoutOnly() const = 0;
 
   LYNX_EXPORT_FOR_DEVTOOL bool HasUIPrimitive() const;
 
@@ -1199,8 +1196,6 @@ class Element : public lepus::RefCounted,
 
   // Returns true if CSS variables were merged and need to be resolved.
   virtual bool MergeInlineStyles(StyleMap& merged_styles) = 0;
-  virtual void PersistAnimationFillStyles(const StyleMap& styles) {}
-  virtual void ClearPersistedAnimationFillStyle(CSSPropertyID id) {}
   virtual int32_t GetMemoryUsage() const { return sizeof(*this); }
 
   virtual bool is_page() const { return false; }
@@ -1305,6 +1300,58 @@ class Element : public lepus::RefCounted,
    * @return true if layout info needs update
    */
   bool IfNeedsUpdateLayoutInfo();
+
+  /**
+   * Ensure the SLNode is created for layout in element mode.
+   */
+  void EnsureSLNode();
+
+  /**
+   * Dispatch layout before callback to customized layout node.
+   */
+  virtual void DispatchLayoutBefore();
+
+  /**
+   * Mark the layout as dirty and request layout.
+   */
+  void MarkLayoutDirtyLite();
+
+  /**
+   * Update layout info recursively for all children.
+   * @param options pipeline options
+   */
+  void UpdateLayoutInfoRecursively(PipelineOptions* options);
+
+  /**
+   * Update layout info from SLNode layout result.
+   */
+  void UpdateLayoutInfo();
+
+  /**
+   * Check if this element can be layout only.
+   * @return true if element can be layout only
+   */
+  virtual bool CanBeLayoutOnly() const;
+
+  /**
+   * Persist animation fill styles.
+   * @param styles the styles to persist
+   */
+  virtual void PersistAnimationFillStyles(const StyleMap& styles);
+
+  /**
+   * Clear persisted animation fill style.
+   * @param id the CSS property id to clear
+   */
+  virtual void ClearPersistedAnimationFillStyle(CSSPropertyID id);
+
+  /**
+   * Reset direction aware property.
+   * @param id the CSS property id
+   * @param value the CSS value
+   */
+  void ResetDirectionAwareProperty(const CSSPropertyID& id,
+                                   const CSSValue& value);
 
  protected:
   Element(const Element&, bool clone_resolved_props);
