@@ -9,6 +9,7 @@ import android.graphics.Canvas;
 import android.util.AttributeSet;
 import androidx.annotation.RestrictTo;
 import com.lynx.react.bridge.JavaOnlyArray;
+import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.LynxLoadMeta;
 import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.LynxUpdateMeta;
@@ -41,6 +42,7 @@ public final class LynxFrameView extends UIBodyView {
   private TemplateData mGlobalProps = null;
   private int mWidthMode = MeasureSpec.UNSPECIFIED;
   private int mHeightMode = MeasureSpec.UNSPECIFIED;
+  private int mEmbeddedMode = EmbeddedMode.UNSET;
 
   public LynxFrameView(Context context) {
     super(context);
@@ -61,11 +63,24 @@ public final class LynxFrameView extends UIBodyView {
       } else if (bodyView instanceof LynxFrameView) {
         mRootView = new WeakReference<>(((LynxFrameView) bodyView).getRootView());
       }
+    }
+  }
+
+  private boolean ensureRenderCreated() {
+    if (mRender != null && mLynxUIRender != null) {
+      return true;
+    }
+
+    UIBodyView bodyView = mContext.getUIBodyView();
+    if (bodyView != null) {
       LynxViewBuilder builder = bodyView.getLynxViewBuilder();
       builder.setEnablePreUpdateData(true);
+      builder.setEmbeddedMode(mEmbeddedMode);
       mLynxUIRender = builder.createLynxUIRenderer();
-      mRender = new LynxTemplateRender(context, this, builder);
+      mRender = new LynxTemplateRender(mContext, this, builder);
+      return true;
     }
+    return false;
   }
 
   public void setSign(int sign) {
@@ -80,7 +95,12 @@ public final class LynxFrameView extends UIBodyView {
     return mRootView == null ? null : mRootView.get();
   }
 
-  void loadBundle(TemplateBundle bundle) {
+  boolean loadBundle(TemplateBundle bundle) {
+    if (!ensureRenderCreated()) {
+      LLog.e(TAG, "create render failed");
+      return false;
+    }
+
     mRender.updateViewport(MeasureSpec.makeMeasureSpec(mContentWidth, mWidthMode),
         MeasureSpec.makeMeasureSpec(mContentHeight, mHeightMode));
     LynxLoadMeta.Builder builder = new LynxLoadMeta.Builder();
@@ -96,6 +116,7 @@ public final class LynxFrameView extends UIBodyView {
     }
     mRender.loadTemplate(builder.build());
     mIsBundleLoaded = true;
+    return true;
   }
 
   public void updateLayout(int width, int height) {
@@ -128,9 +149,11 @@ public final class LynxFrameView extends UIBodyView {
   }
 
   void onPropsUpdated() {
-    if (!mIsBundleLoaded) {
+    if (!mIsBundleLoaded || mRender == null) {
+      LLog.e(TAG, "onPropsUpdated failed, bundle not loaded or render is null");
       return;
     }
+
     if (mInitData == null && mGlobalProps == null) {
       return;
     }
@@ -152,7 +175,17 @@ public final class LynxFrameView extends UIBodyView {
 
   @Override
   public void runOnTasmThread(Runnable runnable) {
-    mRender.runOnTasmThread(runnable);
+    if (mRender != null) {
+      mRender.runOnTasmThread(runnable);
+    }
+  }
+
+  public void setEmbeddedMode(@EmbeddedMode.Mode int mode) {
+    if (mEmbeddedMode != EmbeddedMode.UNSET) {
+      LLog.e(TAG, "setEmbeddedMode failed, embeddedMode is already set");
+      return;
+    }
+    mEmbeddedMode = mode;
   }
 
   @Override
@@ -199,7 +232,9 @@ public final class LynxFrameView extends UIBodyView {
 
   @Override
   protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-    mRender.onLayout(changed, left, top, right, bottom);
+    if (mRender != null) {
+      mRender.onLayout(changed, left, top, right, bottom);
+    }
   }
 
   @Override

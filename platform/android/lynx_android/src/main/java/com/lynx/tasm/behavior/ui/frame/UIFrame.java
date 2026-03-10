@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.LynxUpdateMeta;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
@@ -77,8 +78,7 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     // need to establish the parent-child UI relationship before loadBundle currently
     // TODO(hexionghui): fix it later
     attachPageUICallback();
-    view.loadBundle(bundle);
-    return true;
+    return view.loadBundle(bundle);
   }
 
   private void attachPageUICallback() {
@@ -180,6 +180,14 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     LynxFrameView view = getView();
     if (view != null) {
       view.setGlobalProps(TemplateData.fromMap((JavaOnlyMap) value));
+    }
+  }
+
+  @LynxProp(name = "embedded-mode")
+  public void setEmbeddedMode(@EmbeddedMode.Mode int mode) {
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.setEmbeddedMode(mode);
     }
   }
 

@@ -9,6 +9,7 @@
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxViewBuilder.h>
 #import <Lynx/LynxViewEnum.h>
 #import "LynxTraceEventDef.h"
 #import "LynxUIRendererProtocol.h"
@@ -33,6 +34,7 @@
   LynxTemplateData *_globalProps;
   LynxViewSizeMode _widthMode;
   LynxViewSizeMode _heightMode;
+  LynxEmbeddedMode _embeddedMode;
 }
 
 - (instancetype)init {
@@ -40,6 +42,7 @@
   if (self) {
     _isIntrinsicSizeConsumed = YES;
     _contentRect = CGRectNull;
+    _embeddedMode = LynxEmbeddedModeUnset;
   }
   return self;
 }
@@ -50,26 +53,58 @@
   } else if ([rootView isKindOfClass:[LynxFrameView class]]) {
     _rootView = [(LynxFrameView *)rootView getRootView];
   }
-  _render = [[LynxTemplateRender alloc] initWithBuilderBlock:[rootView getLynxViewBuilderBlock]
-                                               containerView:self];
 }
 
-- (void)setAppBundle:(LynxTemplateBundle *)bundle {
-  [_render updateViewport];
+- (BOOL)setAppBundle:(LynxTemplateBundle *)bundle {
+  if (![self ensureRenderCreated]) {
+    _LogE(@"LynxFrameView %p: create render failed in setAppBundle", self);
+    return NO;
+  }
 
+  [_render updateViewport];
+  LynxLoadMeta *loadMeta = [self buildLoadMetaWithBundle:bundle];
+  [_render loadTemplate:loadMeta];
+  _isBundleLoad = YES;
+  return YES;
+}
+
+- (BOOL)ensureRenderCreated {
+  if (_render) {
+    return YES;
+  }
+
+  __weak typeof(self) weakSelf = self;
+  UIView<LUIBodyView> *rootView = _rootView;
+  if (!rootView) {
+    _LogE(@"LynxFrameView %p: ensureRenderCreated failed, rootView is null", self);
+    return NO;
+  }
+
+  LynxViewBuilderBlock originalBlock = [rootView getLynxViewBuilderBlock];
+  _render = [[LynxTemplateRender alloc]
+      initWithBuilderBlock:^(LynxViewBuilder *builder) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (originalBlock) {
+          originalBlock(builder);
+        }
+        [builder setEnablePreUpdateData:YES];
+        if (strongSelf) {
+          [builder setEmbeddedMode:strongSelf->_embeddedMode];
+        }
+      }
+             containerView:self];
+  return YES;
+}
+
+- (LynxLoadMeta *)buildLoadMetaWithBundle:(LynxTemplateBundle *)bundle {
   LynxLoadMeta *loadMeta = [[LynxLoadMeta alloc] init];
   loadMeta.url = _url;
   loadMeta.templateBundle = bundle;
-  if (_initData) {
-    loadMeta.initialData = _initData;
-    _initData = nil;
-  }
-  if (_globalProps) {
-    loadMeta.globalProps = _globalProps;
-    _globalProps = nil;
-  }
-  [_render loadTemplate:loadMeta];
-  _isBundleLoad = YES;
+  loadMeta.initialData = _initData;
+  loadMeta.globalProps = _globalProps;
+  _initData = nil;
+  _globalProps = nil;
+  return loadMeta;
 }
 
 - (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame {
@@ -104,9 +139,11 @@
 }
 
 - (void)propsDidUpdate {
-  if (!_isBundleLoad) {
+  if (!_isBundleLoad || !_render) {
+    _LogE(@"LynxFrameView %p: propsDidUpdate failed, bundle not loaded or render is null", self);
     return;
   }
+
   if (!_initData && !_globalProps) {
     return;
   }
@@ -122,6 +159,14 @@
 
 - (void)setUrl:(NSString *)url {
   _url = url;
+}
+
+- (void)setEmbeddedMode:(LynxEmbeddedMode)embeddedMode {
+  if (_embeddedMode != LynxEmbeddedModeUnset) {
+    _LogE(@"LynxFrameView %p: setEmbeddedMode failed, embeddedMode is already set", self);
+    return;
+  }
+  _embeddedMode = embeddedMode;
 }
 
 - (UIView<LUIBodyView> *_Nullable)getRootView {
@@ -190,7 +235,7 @@
 }
 
 - (void)layoutSubviews {
-  if (!_isBundleLoad) {
+  if (!_isBundleLoad || !_render) {
     [super layoutSubviews];
     return;
   }
@@ -228,6 +273,10 @@
 }
 
 - (void)setAttachLynxPageUICallback:(attachLynxPageUI _Nonnull)callback {
+  if (!_render) {
+    return;
+  }
+
   [_render setAttachLynxPageUICallback:callback];
 }
 
@@ -240,6 +289,10 @@
 }
 
 - (LynxViewBuilderBlock)getLynxViewBuilderBlock {
+  if (!_render) {
+    return nil;
+  }
+
   return [_render getLynxViewBuilderBlock];
 }
 

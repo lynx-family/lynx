@@ -1894,13 +1894,14 @@ public class LynxFrameView : UIView, <LUIBodyView> {
   public NSInteger LynxFrameView::sign sign;
   public LynxUIContext* LynxFrameView::context context;
   public void LynxFrameView::initWithRootView:(UIView< LUIBodyView > *rootView);
-  public void LynxFrameView::setAppBundle:(LynxTemplateBundle *bundle);
+  public BOOL LynxFrameView::setAppBundle:(LynxTemplateBundle *bundle);
   public void LynxFrameView::setInitData:(nullable LynxTemplateData *initData);
   public void LynxFrameView::setGlobalProps:(nullable LynxTemplateData *globalProps);
   public void LynxFrameView::propsDidUpdate();
   public void LynxFrameView::setUrl:(NSString *url);
   public UIView< LUIBodyView > *_Nullable LynxFrameView::getRootView();
   public void LynxFrameView::updateFrame:contentFrame:(CGRect frame,[contentFrame] CGRect contentFrame);
+  public void LynxFrameView::setEmbeddedMode:(LynxEmbeddedMode embeddedMode);
 }
 
 public class LynxFSPTracer : NSObject, <LynxPerformanceObserverProtocol> {

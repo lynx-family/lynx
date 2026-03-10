@@ -63,8 +63,7 @@ LYNX_REGISTER_UI("frame")
   // need to establish the parent-child UI relationship before loadBundle currently
   // TODO(hexionghui): fix it later
   [self attachPageUICallback];
-  [view setAppBundle:bundle];
-  return YES;
+  return [view setAppBundle:bundle];
 }
 
 - (void)updateFrame:(CGRect)frame
@@ -134,5 +133,9 @@ LYNX_PROP_SETTER("global-props", updateGlobalProps, NSDictionary*) {
     [[self view] setGlobalProps:[[LynxTemplateData alloc] initWithDictionary:value
                                                              useBoolLiterals:YES]];
   }
+}
+
+LYNX_PROP_SETTER("embedded-mode", setEmbeddedMode, NSNumber*) {
+  [[self view] setEmbeddedMode:value.intValue];
 }
 @end
