@@ -401,6 +401,11 @@ subspec_target("lynx") {
     "public/LynxView.h",
     "public/LynxView+Internal.h",
     "public/LynxServiceProtocol.h",
+
+    # Extension module headers (pure Objective-C only)
+    "LynxTemplateRender+Internal.h",
+    "event/LynxEventHandler+Internal.h",
+    "ui/LynxUI+Private.h",
   ]
 }
 
