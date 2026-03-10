@@ -242,7 +242,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void destroyPlatformRenderer(int sign) {
-    mViewHolder.remove(sign);
+    IRendererHost host = mViewHolder.get(sign);
+    try {
+      if (host != null) {
+        Renderer renderer = host.getRenderer();
+        if (renderer != null) {
+          renderer.onDestroy();
+        }
+      }
+    } finally {
+      mViewHolder.remove(sign);
+    }
   }
 
   @CalledByNative

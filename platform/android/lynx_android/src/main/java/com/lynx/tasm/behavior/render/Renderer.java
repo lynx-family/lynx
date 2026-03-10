@@ -150,6 +150,7 @@ public class Renderer {
 
   public void updateAttributes(PropBundle props) {}
   public void updateExtraData(Object extraData) {}
+  public void onDestroy() {}
 
   public void applySubtreeProperties(java.nio.ByteBuffer buffer, int count) {
     if (buffer == null || count <= 0 || getRendererHost() == null
