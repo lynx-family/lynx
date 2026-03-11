@@ -18,17 +18,18 @@ import android.view.animation.Interpolator;
 import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.view.NestedScrollingChild2;
+import androidx.core.view.NestedScrollingChild3;
 import androidx.core.view.NestedScrollingChildHelper;
-import androidx.core.view.NestedScrollingParent2;
+import androidx.core.view.NestedScrollingParent3;
 import androidx.core.view.NestedScrollingParentHelper;
+import androidx.core.view.ScrollingView;
 import androidx.core.view.ViewCompat;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
 import java.util.ArrayList;
 
 public class NestedScrollContainerView
-    extends FrameLayout implements NestedScrollingParent2, NestedScrollingChild2 {
+    extends FrameLayout implements NestedScrollingParent3, NestedScrollingChild3, ScrollingView {
   private static final String TAG = "UIListContainer.NestedScrollContainerView";
   private static final boolean DEBUG = false;
   public LynxSnapHelper mSnapHelper = null;
@@ -62,9 +63,19 @@ public class NestedScrollContainerView
   private int mLastMotionY;
   private int mScrollState = SCROLL_STATE_IDLE;
   private int mActivePointerId = INVALID_POINTER;
-  private final int[] mScrollOffset = new int[2];
+  /**
+   * The window offset produced by the current nested scroll dispatch. This is a per-dispatch
+   * result; mNestedOffsets stores the accumulated offset.
+   */
+  private final int[] mOffsetInWindow = new int[2];
+  /** The scroll distance consumed by the nested scrolling parent. */
   private final int[] mScrollConsumed = new int[2];
+  /**
+   * The accumulated window offset during the current touch gesture, used to adjust coordinates for
+   * VelocityTracker.
+   */
   private final int[] mNestedOffsets = new int[2];
+  /** The scroll distance consumed by this view. */
   private final int[] mScrollStepConsumed = new int[2];
   private final int[] mTargetScrollOffset = new int[2];
   private VelocityTracker mVelocityTracker;
@@ -192,8 +203,11 @@ public class NestedScrollContainerView
         mInitialMotionX = mLastMotionX = (int) (event.getX() + 0.5f);
         mInitialMotionY = mLastMotionY = (int) (event.getY() + 0.5f);
         if (mScrollState == SCROLL_STATE_FLING || mScrollState == SCROLL_STATE_SCROLL_ANIMATION) {
-          getParent().requestDisallowInterceptTouchEvent(true);
+          if (getParent() != null) {
+            getParent().requestDisallowInterceptTouchEvent(true);
+          }
           setScrollState(SCROLL_STATE_DRAGGING);
+          stopNestedScroll(TYPE_NON_TOUCH);
         }
         // Clear the nested offsets
         mNestedOffsets[0] = mNestedOffsets[1] = 0;
@@ -220,15 +234,14 @@ public class NestedScrollContainerView
         if (mScrollState != SCROLL_STATE_DRAGGING) {
           final int dx = x - mInitialMotionX;
           final int dy = y - mInitialMotionY;
-          // In the nested scroll scenario, the parent view will satisfy yDiff > mTouchSlop first,
-          // but since (this.getNestedScrollAxes() & ViewCompat.SCROLL_AXIS_VERTICAL) == 0
-          // is not satisfied, the parent view cannot intercept the ACTION_MOVE, which guarantees
-          // that the ACTION_MOVE will be consumed by the child view first.
-          // When the child view satisfy yDiff > mTouchSlop, it calls the
-          // requestDisallowInterceptTouchEvent method to ensure that it handles all subsequent
-          // ACTION_MOVE.
-          // Note: The mNestedScrollAxes value will be modified in
-          // NestedScrollingParent#onNestedScrollAccepted()
+          // In a nested scrolling scenario, the outer parent may detect that the pointer movement
+          // has exceeded touchSlop before the child does. However, if the current nested scroll
+          // axes already include the relevant axis, a child view is participating in the nested
+          // scroll. The parent must not intercept this ACTION_MOVE before the child can consume it.
+          //
+          // Once the child also detects movement beyond touchSlop, it calls
+          // requestDisallowInterceptTouchEvent(true) to prevent the parent from intercepting
+          // subsequent MOVE events, ensuring that the child continues handling the gesture.
           final boolean isVerticalDragging = mIsVertical && Math.abs(dy) > mTouchSlop
               && (this.getNestedScrollAxes() & ViewCompat.SCROLL_AXIS_VERTICAL) == 0;
           final boolean isHorizontalDragging = !mIsVertical && Math.abs(dx) > mTouchSlop
@@ -237,6 +250,9 @@ public class NestedScrollContainerView
             mLastMotionX = x;
             mLastMotionY = y;
             setScrollState(SCROLL_STATE_DRAGGING);
+            if (getParent() != null) {
+              getParent().requestDisallowInterceptTouchEvent(true);
+            }
           }
         }
         break;
@@ -269,14 +285,16 @@ public class NestedScrollContainerView
     }
     boolean eventAddedToVelocityTracker = false;
 
+    final int action = event.getActionMasked();
+    if (action == MotionEvent.ACTION_DOWN) {
+      // Reset nested offsets.
+      mNestedOffsets[0] = mNestedOffsets[1] = 0;
+    }
     // Note: In the nested scroll scenario, an additional MotionEvent tempEv need to be created to
     // properly calculate the fling velocity.
     final MotionEvent tempEv = MotionEvent.obtain(event);
-    final int action = event.getActionMasked();
-    if (action == MotionEvent.ACTION_DOWN) {
-      mNestedOffsets[0] = mNestedOffsets[1] = 0;
-    }
     tempEv.offsetLocation(mNestedOffsets[0], mNestedOffsets[1]);
+
     switch (action) {
       case MotionEvent.ACTION_DOWN: {
         mActivePointerId = event.getPointerId(0);
@@ -300,24 +318,12 @@ public class NestedScrollContainerView
         if (pointerIndex < 0) {
           return false;
         }
+
         final int x = (int) (event.getX(pointerIndex) + 0.5f);
         final int y = (int) (event.getY(pointerIndex) + 0.5f);
         int deltaX = mLastMotionX - x;
         int deltaY = mLastMotionY - y;
-        if (dispatchNestedPreScroll(deltaX, deltaY, mScrollConsumed, mScrollOffset, TYPE_TOUCH)) {
-          if (DEBUG) {
-            LLog.i(TAG,
-                "onTouchEvent->dispatchNestedPreScroll: delta = " + (mIsVertical ? deltaY : deltaX)
-                    + ", consumed = " + (mIsVertical ? mScrollConsumed[1] : mScrollConsumed[0])
-                    + ", offset = " + (mIsVertical ? mScrollOffset[1] : mScrollOffset[0]));
-          }
-          deltaX -= mScrollConsumed[0];
-          deltaY -= mScrollConsumed[1];
-          tempEv.offsetLocation(mScrollOffset[0], mScrollOffset[1]);
-          // Accumulate the offset in local view.
-          mNestedOffsets[0] += mScrollOffset[0];
-          mNestedOffsets[1] += mScrollOffset[1];
-        }
+
         if (mScrollState != SCROLL_STATE_DRAGGING) {
           // Math.abs(deltaX) > mTouchSlop means the scroll distance exceeds the touch threshold and
           // current view should consume ACTION_MOVE event which cannot be intercepted by parent
@@ -340,12 +346,43 @@ public class NestedScrollContainerView
             setScrollState(SCROLL_STATE_DRAGGING);
           }
         }
+
         if (mScrollState == SCROLL_STATE_DRAGGING) {
+          mOffsetInWindow[0] = 0;
+          mOffsetInWindow[1] = 0;
+          mScrollConsumed[0] = 0;
+          mScrollConsumed[1] = 0;
+          if (dispatchNestedPreScroll(
+                  deltaX, deltaY, mScrollConsumed, mOffsetInWindow, TYPE_TOUCH)) {
+            if (DEBUG) {
+              LLog.i(TAG,
+                  "onTouchEvent->dispatchNestedPreScroll: delta = "
+                      + (mIsVertical ? deltaY : deltaX)
+                      + ", consumed = " + (mIsVertical ? mScrollConsumed[1] : mScrollConsumed[0])
+                      + ", offset = " + (mIsVertical ? mOffsetInWindow[1] : mOffsetInWindow[0]));
+            }
+            deltaX -= mScrollConsumed[0];
+            deltaY -= mScrollConsumed[1];
+            // Accumulate the offset in local view.
+            // Follow RecyclerView's handling: tempEv already includes the mNestedOffsets
+            // accumulated before this onTouchEvent call. The mOffsetInWindow produced by the
+            // current nested pre-scroll should only be added to mNestedOffsets for subsequent
+            // MotionEvents, rather than applied again to the current tempEv, like:
+            // tempEv.offsetLocation(mOffsetInWindow[0], mOffsetInWindow[1]);
+            mNestedOffsets[0] += mOffsetInWindow[0];
+            mNestedOffsets[1] += mOffsetInWindow[1];
+            // Scroll has initiated, prevent parents from intercepting
+            if (getParent() != null) {
+              getParent().requestDisallowInterceptTouchEvent(true);
+            }
+          }
+
           // recalculate the last motion X and Y due to nested scroll parent may consume scroll
           // distance.
-          mLastMotionX = x - mScrollOffset[0];
-          mLastMotionY = y - mScrollOffset[1];
-          if (scrollByInternal(mIsVertical ? 0 : deltaX, mIsVertical ? deltaY : 0, tempEv)) {
+          mLastMotionX = x - mOffsetInWindow[0];
+          mLastMotionY = y - mOffsetInWindow[1];
+          if (scrollByInternal(mIsVertical ? 0 : deltaX, mIsVertical ? deltaY : 0)
+              && getParent() != null) {
             getParent().requestDisallowInterceptTouchEvent(true);
           }
         }
@@ -386,7 +423,8 @@ public class NestedScrollContainerView
     return true;
   }
 
-  private boolean scrollByInternal(int deltaX, int deltaY, MotionEvent event) {
+  private boolean scrollByInternal(int deltaX, int deltaY) {
+    // Consume the scroll distance first.
     int unconsumedX = 0;
     int unconsumedY = 0;
     mScrollStepConsumed[0] = 0;
@@ -394,18 +432,27 @@ public class NestedScrollContainerView
     scrollStep(deltaX, deltaY, mScrollStepConsumed);
     unconsumedX = deltaX - mScrollStepConsumed[0];
     unconsumedY = deltaY - mScrollStepConsumed[1];
-
-    if (dispatchNestedScroll(mScrollStepConsumed[0], mScrollStepConsumed[1], unconsumedX,
-            unconsumedY, mScrollOffset, TYPE_TOUCH)) {
-      mLastMotionX -= mScrollOffset[0];
-      mLastMotionY -= mScrollOffset[1];
-      if (event != null) {
-        event.offsetLocation(mScrollOffset[0], mScrollOffset[1]);
-      }
-      mNestedOffsets[0] += mScrollOffset[0];
-      mNestedOffsets[1] += mScrollOffset[1];
-    }
-    return mScrollStepConsumed[0] != 0 || mScrollStepConsumed[1] != 0;
+    // mScrollStepConsumed: self consumed.
+    // mScrollConsumed: nested parent consumed.
+    mOffsetInWindow[0] = 0;
+    mOffsetInWindow[1] = 0;
+    mScrollConsumed[0] = 0;
+    mScrollConsumed[1] = 0;
+    dispatchNestedScroll(mScrollStepConsumed[0], mScrollStepConsumed[1], unconsumedX, unconsumedY,
+        mOffsetInWindow, TYPE_TOUCH, mScrollConsumed);
+    boolean nestedParentConsumed = mScrollConsumed[0] != 0 || mScrollConsumed[1] != 0;
+    unconsumedX -= mScrollConsumed[0];
+    unconsumedY -= mScrollConsumed[1];
+    // Scrolling by the nested parent changes this view's position on screen, so accumulate the
+    // offset in mNestedOffsets.
+    mNestedOffsets[0] += mOffsetInWindow[0];
+    mNestedOffsets[1] += mOffsetInWindow[1];
+    mLastMotionX -= mOffsetInWindow[0];
+    mLastMotionY -= mOffsetInWindow[1];
+    // Follow RecyclerView's handling: add the mOffsetInWindow produced by dispatchNestedScroll only
+    // to mNestedOffsets for subsequent MotionEvents. Adjusting mLastMotionX/Y keeps later deltas
+    // consistent within the current gesture, so do not additionally offset the current MotionEvent.
+    return nestedParentConsumed || mScrollStepConsumed[0] != 0 || mScrollStepConsumed[1] != 0;
   }
 
   private void scrollStep(int deltaX, int deltaY, int[] consumed) {
@@ -659,10 +706,8 @@ public class NestedScrollContainerView
     public void run() {
       // Note: Keep a local reference so that if it is changed during onAnimation method, it won't
       // cause unexpected behaviors.
-
       final ListCustomScroller scroller = mScroller;
       if (scroller.computeScrollOffset()) {
-        final int[] scrollConsumed = mScrollConsumed;
         int x = scroller.getCurrX();
         int y = scroller.getCurrY();
         if (DEBUG) {
@@ -686,10 +731,16 @@ public class NestedScrollContainerView
               "ScrollHelper: modified offset = " + (mIsVertical ? y : x)
                   + ", delta = " + (mIsVertical ? deltaY : deltaX));
         }
-        if (dispatchNestedPreScroll(deltaX, deltaY, scrollConsumed, null, TYPE_NON_TOUCH)) {
-          deltaX -= scrollConsumed[0];
-          deltaY -= scrollConsumed[1];
+
+        // Dispatch pre nested scroll to parent.
+        mScrollConsumed[0] = 0;
+        mScrollConsumed[1] = 0;
+        if (dispatchNestedPreScroll(deltaX, deltaY, mScrollConsumed, null, TYPE_NON_TOUCH)) {
+          deltaX -= mScrollConsumed[0];
+          deltaY -= mScrollConsumed[1];
         }
+
+        // Self consume scroll distance.
         mScrollStepConsumed[0] = 0;
         mScrollStepConsumed[1] = 0;
         scrollStep(deltaX, deltaY, mScrollStepConsumed);
@@ -698,13 +749,28 @@ public class NestedScrollContainerView
         int unconsumedX = deltaX - consumedX;
         int unconsumedY = deltaY - consumedY;
 
-        dispatchNestedScroll(consumedX, consumedY, unconsumedX, unconsumedY, null, TYPE_NON_TOUCH);
+        // Dispatch nested scroll to parent.
+        mScrollConsumed[0] = 0;
+        mScrollConsumed[1] = 0;
+        // mScrollConsumed reports the scroll distance consumed by the current nested scrolling
+        // parent and all of its ancestors.
+        dispatchNestedScroll(
+            consumedX, consumedY, unconsumedX, unconsumedY, null, TYPE_NON_TOUCH, mScrollConsumed);
+        unconsumedX -= mScrollConsumed[0];
+        unconsumedY -= mScrollConsumed[1];
+
         final boolean fullyConsumedVertical =
             mIsVertical && (deltaY == 0 || (deltaY != 0 && unconsumedY == 0));
         final boolean fullyConsumedHorizontal =
             !mIsVertical && (deltaX == 0 || (deltaX != 0 && unconsumedX == 0));
+        // Check whether this view or its parent fully consumed the scroller delta along the main
+        // axis. If so, keep the animation running and post the next frame.
         final boolean fullyConsumedAny = fullyConsumedHorizontal || fullyConsumedVertical;
-        if (!fullyConsumedAny && !hasNestedScrollingParent(TYPE_NON_TOUCH)) {
+
+        // NestedScrollingChild3 reports the distance actually consumed by nested parents, so the
+        // remaining unconsumed distance is sufficient to determine whether scrolling can continue.
+        // There is no need to call hasNestedScrollingParent(TYPE_NON_TOUCH).
+        if (!fullyConsumedAny) {
           // setting state to idle will stop this.
           setScrollState(SCROLL_STATE_IDLE);
         }
@@ -872,7 +938,7 @@ public class NestedScrollContainerView
 
   // Override to compute the horizontal range that the horizontal scrollbar represents.
   @Override
-  protected int computeHorizontalScrollRange() {
+  public int computeHorizontalScrollRange() {
     if (mIsVertical) {
       return 0;
     }
@@ -892,7 +958,7 @@ public class NestedScrollContainerView
 
   // Override to compute the vertical range that the vertical scrollbar represents.
   @Override
-  protected int computeVerticalScrollRange() {
+  public int computeVerticalScrollRange() {
     if (!mIsVertical) {
       return 0;
     }
@@ -911,13 +977,54 @@ public class NestedScrollContainerView
   }
 
   @Override
-  protected int computeHorizontalScrollOffset() {
+  public int computeHorizontalScrollOffset() {
     return !mIsVertical ? Math.max(0, super.computeHorizontalScrollOffset()) : 0;
   }
 
   @Override
-  protected int computeVerticalScrollOffset() {
+  public int computeHorizontalScrollExtent() {
+    return super.computeHorizontalScrollExtent();
+  }
+
+  @Override
+  public int computeVerticalScrollOffset() {
     return mIsVertical ? Math.max(0, super.computeVerticalScrollOffset()) : 0;
+  }
+
+  @Override
+  public int computeVerticalScrollExtent() {
+    return super.computeVerticalScrollExtent();
+  }
+
+  private void onNestedScrollInternal(@NonNull View target, int dxConsumed, int dyConsumed,
+      int dxUnconsumed, int dyUnconsumed, int type, @Nullable int[] consumed) {
+    int consumedX;
+    int consumedY;
+    int unconsumedX;
+    int unconsumedY;
+    if (mIsVertical) {
+      final int oldScrollY = getScrollY();
+      scrollBy(0, dyUnconsumed);
+      consumedX = 0;
+      consumedY = getScrollY() - oldScrollY;
+      unconsumedX = 0;
+      unconsumedY = dyUnconsumed - consumedY;
+    } else {
+      final int oldScrollX = getScrollX();
+      scrollBy(dxUnconsumed, 0);
+      consumedX = getScrollX() - oldScrollX;
+      consumedY = 0;
+      unconsumedX = dxUnconsumed - consumedX;
+      unconsumedY = 0;
+    }
+
+    if (consumed != null) {
+      consumed[0] += consumedX;
+      consumed[1] += consumedY;
+      dispatchNestedScroll(consumedX, consumedY, unconsumedX, unconsumedY, null, type, consumed);
+    } else {
+      dispatchNestedScroll(consumedX, consumedY, unconsumedX, unconsumedY, null, type);
+    }
   }
 
   /********* NestedScrollingChild2 begin *********/
@@ -1006,6 +1113,17 @@ public class NestedScrollContainerView
 
   /********* NestedScrollingChild2 end *********/
 
+  /********* NestedScrollingChild3 begin *********/
+
+  @Override
+  public void dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed,
+      int dyUnconsumed, @Nullable int[] offsetInWindow, int type, @NonNull int[] consumed) {
+    mChildHelper.dispatchNestedScroll(
+        dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, offsetInWindow, type, consumed);
+  }
+
+  /********* NestedScrollingChild3 end *********/
+
   /********* NestedScrollingParent2 begin *********/
   @Override
   public boolean onStartNestedScroll(
@@ -1063,19 +1181,8 @@ public class NestedScrollContainerView
   @Override
   public void onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed,
       int dyUnconsumed, int type) {
-    if (mIsVertical) {
-      final int oldScrollY = getScrollY();
-      scrollBy(0, dyUnconsumed);
-      final int myConsumed = getScrollY() - oldScrollY;
-      final int myUnconsumed = dyUnconsumed - myConsumed;
-      this.dispatchNestedScroll(0, myConsumed, 0, myUnconsumed, null, type);
-    } else {
-      final int oldScrollX = getScrollX();
-      scrollBy(dxUnconsumed, 0);
-      final int myConsumed = getScrollX() - oldScrollX;
-      final int myUnconsumed = dxUnconsumed - myConsumed;
-      this.dispatchNestedScroll(myConsumed, 0, myUnconsumed, 0, null, type);
-    }
+    this.onNestedScrollInternal(
+        target, dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, type, null);
   }
 
   @Override
@@ -1103,4 +1210,15 @@ public class NestedScrollContainerView
   }
 
   /********* NestedScrollingParent2 end *********/
+
+  /********* NestedScrollingParent3 start *********/
+
+  @Override
+  public void onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed,
+      int dyUnconsumed, int type, @NonNull int[] consumed) {
+    this.onNestedScrollInternal(
+        target, dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, type, consumed);
+  }
+
+  /********* NestedScrollingParent3 end *********/
 }
