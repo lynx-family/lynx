@@ -5619,6 +5619,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.tryHandleResult();
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.updateInnerClipPathForBorderRadius(RoundedRectangle rect);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.onDraw(Canvas canvas);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.updateDrawableBounds(Rect bounds);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.invalidate();
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setEvents(Map< String, EventsListener > events);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.onLayoutUpdated(int width, int height, int paddingLeft, int paddingRight, int paddingTop, int paddingBottom);
