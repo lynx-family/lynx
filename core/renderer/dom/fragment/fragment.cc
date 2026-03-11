@@ -599,9 +599,8 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
                              layout_info_.layout_result.size_.width_,
                              layout_info_.layout_result.size_.height_);
 
-  if (!event_props_.empty() || !event_names_.empty()) {
-    display_list_builder.EventBundle(event_props_, event_names_);
-  }
+  painting_context()->impl()->CastToNativeCtx()->UpdatePlatformEventBundle(
+      id(), PlatformEventBundle(event_props_, event_names_));
 
   DrawBackground(display_list_builder);
   DrawBorder(display_list_builder);
@@ -632,8 +631,10 @@ void Fragment::ReconstructEventTargetTreeForExposure() const {
     return;
   }
 
-  auto* native_ctx = painting_context()->impl()->CastToNativeCtx();
-  native_ctx->ReconstructEventTargetTreeRecursively();
+  painting_context()
+      ->impl()
+      ->CastToNativeCtx()
+      ->ReconstructEventTargetTreeRecursively();
   manager->ResetNeedReconstructEventTargetTreeForExposure();
 }
 

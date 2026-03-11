@@ -22,40 +22,35 @@
 namespace lynx::tasm {
 
 PlatformEventTargetExposure::ExposureTargetDetail::ExposureTargetDetail(
-    int32_t id, std::string unique_id, std::string exposure_id,
-    std::string exposure_scene, lepus::Value dataset)
-    : id_(id),
+    const fml::RefPtr<PlatformEventTarget>& target, std::string unique_id,
+    bool is_custom_event, bool is_global_event, bool intercept_global_event)
+    : target_(target),
       unique_id_(std::move(unique_id)),
-      exposure_id_(std::move(exposure_id)),
-      exposure_scene_(std::move(exposure_scene)),
-      dataset_(std::move(dataset)) {}
-
-int32_t PlatformEventTargetExposure::ExposureTargetDetail::ID() const {
-  return id_;
-}
+      is_custom_event_(is_custom_event),
+      is_global_event_(is_global_event),
+      intercept_global_event_(intercept_global_event) {}
 
 lepus::Value PlatformEventTargetExposure::ExposureTargetDetail::ExposedParams()
     const {
   BASE_STATIC_STRING_DECL(kSign, "sign");
-  BASE_STATIC_STRING_DECL(kUniqueID, "unique-id");
   BASE_STATIC_STRING_DECL(kExposureID, "exposure-id");
   BASE_STATIC_STRING_DECL(kExposureScene, "exposure-scene");
   BASE_STATIC_STRING_DECL(kDataset, "dataset");
 
   auto dict = lepus::Dictionary::Create();
-  dict->SetValue(kSign, id_);
-  dict->SetValue(kUniqueID, unique_id_);
-  dict->SetValue(kExposureID, exposure_id_);
-  dict->SetValue(kExposureScene, exposure_scene_);
-  dict->SetValue(kDataset, dataset_);
+  dict->SetValue(kSign, target_->Sign());
+  dict->SetValue(kExposureID, target_->ExposureId());
+  dict->SetValue(kExposureScene, target_->ExposureScene());
+  auto dataset = target_->Dataset();
+  dict->SetValue(kDataset, dataset.IsEmpty()
+                               ? lepus::Value(lepus::Dictionary::Create())
+                               : dataset);
   return lepus::Value(dict);
 }
 
 bool PlatformEventTargetExposure::ExposureTargetDetail::operator==(
     const ExposureTargetDetail& other) const {
-  return unique_id_ == other.unique_id_ && id_ == other.id_ &&
-         exposure_scene_ == other.exposure_scene_ &&
-         exposure_id_ == other.exposure_id_;
+  return unique_id_ == other.UniqueId();
 }
 
 bool PlatformEventTargetExposure::ExposureTargetDetail::operator!=(
@@ -65,13 +60,7 @@ bool PlatformEventTargetExposure::ExposureTargetDetail::operator!=(
 
 bool PlatformEventTargetExposure::ExposureTargetDetail::operator<(
     const ExposureTargetDetail& other) const {
-  return (unique_id_ < other.unique_id_) ||
-         (unique_id_ == other.unique_id_ && id_ < other.id_) ||
-         (unique_id_ == other.unique_id_ && id_ == other.id_ &&
-          exposure_scene_ < other.exposure_scene_) ||
-         (unique_id_ == other.unique_id_ && id_ == other.id_ &&
-          exposure_scene_ == other.exposure_scene_ &&
-          exposure_id_ < other.exposure_id_);
+  return unique_id_ < other.UniqueId();
 }
 
 void PlatformEventTargetExposure::SetTaskRunner(
@@ -90,30 +79,55 @@ void PlatformEventTargetExposure::SetIntervalMs(int interval_ms) {
 }
 
 void PlatformEventTargetExposure::AddExposureTarget(
-    int32_t id, const std::string& unique_id, const std::string& exposure_id,
-    const std::string& exposure_scene, const lepus::Value& dataset) {
-  AddCommonAncestorRectMap(id);
-  const auto key =
-      BuildExposureUniqueKey(id, unique_id, exposure_id, exposure_scene);
-  exposure_target_map_[key] =
-      ExposureTargetDetail(id, unique_id, exposure_id, exposure_scene, dataset);
+    const fml::RefPtr<PlatformEventTarget>& target,
+    const lepus::Value& option) {
+  if (target == nullptr) {
+    return;
+  }
+  const auto meta = ParseExposureTargetMeta(option);
+  auto it = exposure_target_map_.find(meta.unique_id);
+  if (it != exposure_target_map_.end()) {
+    return;
+  }
+  AddCommonAncestorRectMap(target.get());
+  exposure_target_map_.insert_or_assign(
+      meta.unique_id,
+      ExposureTargetDetail(target, meta.unique_id, meta.is_custom_event,
+                           meta.is_global_event, meta.intercept_global_event));
   if (exposure_target_map_.size() == 1) {
     StartExposureCheck();
   }
 }
 
 void PlatformEventTargetExposure::RemoveExposureTarget(
-    int32_t id, const std::string& unique_id, const std::string& exposure_id,
-    const std::string& exposure_scene) {
-  if (exposure_target_map_.empty()) {
+    const fml::RefPtr<PlatformEventTarget>& target,
+    const lepus::Value& option) {
+  if (target == nullptr || exposure_target_map_.empty()) {
     return;
   }
-  RemoveCommonAncestorRectMap(id);
-  exposure_target_map_.erase(
-      BuildExposureUniqueKey(id, unique_id, exposure_id, exposure_scene));
+  const auto meta = ParseExposureTargetMeta(option);
+  auto it = exposure_target_map_.find(meta.unique_id);
+  if (it == exposure_target_map_.end()) {
+    return;
+  }
+  if (meta.is_custom_event) {
+    it->second.SetIsCustomEvent(false);
+  }
+  if (meta.is_global_event) {
+    it->second.SetIsGlobalEvent(false);
+  }
+  if (!it->second.IsCustomEvent() && !it->second.IsGlobalEvent()) {
+    RemoveCommonAncestorRectMap(target.get());
+    exposure_target_map_.erase(it);
+  }
   if (exposure_target_map_.empty()) {
     StopExposureCheck();
   }
+}
+
+void PlatformEventTargetExposure::ClearExposureTargetMap() {
+  exposure_target_map_.clear();
+  common_ancestor_rect_map_.clear();
 }
 
 void PlatformEventTargetExposure::StartExposureCheck() {
@@ -135,14 +149,9 @@ void PlatformEventTargetExposure::StopExposureCheck() {
   window_rect_valid_ = false;
 }
 
-void PlatformEventTargetExposure::AddCommonAncestorRectMap(int32_t id) {
-  auto* helper =
-      platform_ref_ ? platform_ref_->GetEventTargetHelper() : nullptr;
-  if (!helper) {
-    return;
-  }
-  auto target = helper->GetEventTarget(id);
-  if (!target) {
+void PlatformEventTargetExposure::AddCommonAncestorRectMap(
+    PlatformEventTarget* target) {
+  if (target == nullptr) {
     return;
   }
   auto current = target->ParentTarget();
@@ -163,14 +172,9 @@ void PlatformEventTargetExposure::AddCommonAncestorRectMap(int32_t id) {
   }
 }
 
-void PlatformEventTargetExposure::RemoveCommonAncestorRectMap(int32_t id) {
-  auto* helper =
-      platform_ref_ ? platform_ref_->GetEventTargetHelper() : nullptr;
-  if (!helper) {
-    return;
-  }
-  auto target = helper->GetEventTarget(id);
-  if (!target) {
+void PlatformEventTargetExposure::RemoveCommonAncestorRectMap(
+    PlatformEventTarget* target) {
+  if (target == nullptr) {
     return;
   }
   auto current = target->ParentTarget();
@@ -249,7 +253,7 @@ void PlatformEventTargetExposure::DoExposureCheck() {
 
   for (const auto& it : exposure_target_map_) {
     const auto& detail = it.second;
-    auto target = helper ? helper->GetEventTarget(detail.ID()) : nullptr;
+    const auto& target = detail.Target();
     if (target && target->IsVisibleForExposure(common_ancestor_rect_map_,
                                                root_view_origin_on_screen,
                                                window_rect_)) {
@@ -273,54 +277,82 @@ void PlatformEventTargetExposure::DoExposureCheck() {
 }
 
 void PlatformEventTargetExposure::SendEvent(
-    const std::set<ExposureTargetDetail>& targets,
+    const std::set<ExposureTargetDetail>& details,
     const std::string& event_name) const {
-  if (targets.empty()) {
+  if (details.empty()) {
     return;
   }
 
-  for (const auto& detail : targets) {
-    auto* helper = platform_ref_->GetEventTargetHelper();
-    auto target = helper ? helper->GetEventTarget(detail.ID()) : nullptr;
-    static const base::Vector<PlatformEventName> empty_event_set;
-    const auto& event_set = target ? target->EventSet() : empty_event_set;
+  for (const auto& detail : details) {
+    if (detail.IsCustomEvent()) {
+      const auto& target = detail.Target();
+      if (!target) {
+        continue;
+      }
+      const char* event_type = nullptr;
+      PlatformEventName required_event = PlatformEventName::kUnknown;
+      if (event_name == "exposure") {
+        required_event = PlatformEventName::kUIAppear;
+        event_type = "uiappear";
+      }
+      if (event_name == "disexposure") {
+        required_event = PlatformEventName::kUIDisappear;
+        event_type = "uidisappear";
+      }
 
-    PlatformEventName required_event = PlatformEventName::kUnknown;
-    const char* event_type = nullptr;
-    if (event_name == "exposure") {
-      required_event = PlatformEventName::kUIAppear;
-      event_type = "uiappear";
-    }
-    if (event_name == "disexposure") {
-      required_event = PlatformEventName::kUIDisappear;
-      event_type = "uidisappear";
-    }
+      const auto& event_set = target->EventSet();
+      auto has_event = [&event_set](PlatformEventName name) -> bool {
+        return std::find(event_set.begin(), event_set.end(), name) !=
+               event_set.end();
+      };
 
-    auto has_event = [&event_set](PlatformEventName name) -> bool {
-      return std::find(event_set.begin(), event_set.end(), name) !=
-             event_set.end();
-    };
-
-    if (event_name == "exposure" && has_event(required_event)) {
-      auto event = fml::MakeRefCounted<event::CustomEvent>(
-          event_type, detail.ExposedParams(), "detail");
-      platform_ref_->SendEvent(detail.ID(), event);
-    }
-    if (event_name == "disexposure" && has_event(required_event)) {
-      auto event = fml::MakeRefCounted<event::CustomEvent>(
-          event_type, detail.ExposedParams(), "detail");
-      platform_ref_->SendEvent(detail.ID(), event);
+      if (event_name == "exposure" && has_event(required_event)) {
+        auto event = fml::MakeRefCounted<event::CustomEvent>(
+            event_type, detail.ExposedParams(), "detail");
+        platform_ref_->SendEvent(target->Sign(), event);
+      }
+      if (event_name == "disexposure" && has_event(required_event)) {
+        auto event = fml::MakeRefCounted<event::CustomEvent>(
+            event_type, detail.ExposedParams(), "detail");
+        platform_ref_->SendEvent(target->Sign(), event);
+      }
     }
   }
 }
 
-std::string PlatformEventTargetExposure::BuildExposureUniqueKey(
-    int32_t id, const std::string& unique_id, const std::string& exposure_id,
-    const std::string& exposure_scene) const {
-  if (!unique_id.empty()) {
-    return unique_id + "_" + exposure_scene + "_" + exposure_id;
+ExposureTargetMeta PlatformEventTargetExposure::ParseExposureTargetMeta(
+    const lepus::Value& option) {
+  ExposureTargetMeta meta;
+  if (!option.IsObject()) {
+    return meta;
   }
-  return exposure_scene + "_" + exposure_id + "_" + std::to_string(id);
+
+  BASE_STATIC_STRING_DECL(kUniqueId, "unique-id");
+  BASE_STATIC_STRING_DECL(kIsCustomEvent, "is-custom-event");
+  BASE_STATIC_STRING_DECL(kIsGlobalEvent, "is-global-event");
+  BASE_STATIC_STRING_DECL(kInterceptGlobalEvent, "intercept-global-event");
+
+  auto v_unique_id = option.GetProperty(kUniqueId);
+  if (v_unique_id.IsString()) {
+    meta.unique_id = v_unique_id.StdString();
+  }
+
+  auto v_is_custom_event = option.GetProperty(kIsCustomEvent);
+  if (v_is_custom_event.IsBool()) {
+    meta.is_custom_event = v_is_custom_event.Bool();
+  }
+
+  auto v_is_global_event = option.GetProperty(kIsGlobalEvent);
+  if (v_is_global_event.IsBool()) {
+    meta.is_global_event = v_is_global_event.Bool();
+  }
+
+  auto v_intercept_global_event = option.GetProperty(kInterceptGlobalEvent);
+  if (v_intercept_global_event.IsBool()) {
+    meta.intercept_global_event = v_intercept_global_event.Bool();
+  }
+
+  return meta;
 }
 
 }  // namespace lynx::tasm

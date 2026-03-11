@@ -23,9 +23,6 @@ struct OpData {
   base::InlineVector<float, 16> float_data;
 };
 
-using PlatformEventPropMap =
-    base::InlineOrderedFlatMap<PlatformEventPropName, lepus::Value, 12>;
-
 enum class DisplayListOpType : int32_t {
   kBegin = 0,
   kEnd = 1,
@@ -38,7 +35,6 @@ enum class DisplayListOpType : int32_t {
   kClipRect = 10,
   kRecordBox = 11,
   kLinearGradient = 12,
-  kEventBundle = 13,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
@@ -177,9 +173,6 @@ class DisplayList {
   void AddLinearGradient(float angle, const base::Vector<uint32_t>& colors,
                          const base::Vector<float>& stops, int32_t tiling_index,
                          int32_t clip_index);
-
-  void AddEventBundle(const PlatformEventPropMap& event_props,
-                      const base::Vector<PlatformEventName>& event_names);
 
   template <typename OpType, typename... Args>
   auto AddOperation(OpType type, Args... args) -> std::enable_if_t<

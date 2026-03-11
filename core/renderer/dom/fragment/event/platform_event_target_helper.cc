@@ -21,62 +21,107 @@ struct PlatformEventPropNameHash {
   }
 };
 
-using EventPropSetter = void (*)(PlatformEventTarget*, float);
+using EventPropValueSetter = void (*)(PlatformEventTarget*,
+                                      const lepus::Value&);
 
-void SetUserInteractionEnabled(PlatformEventTarget* target, float value) {
-  target->SetUserInteractionEnabled(!base::IsZero(value));
+void SetUserInteractionEnabled(PlatformEventTarget* target,
+                               const lepus::Value& value) {
+  target->SetUserInteractionEnabled(
+      !base::IsZero(EventPropValueToFloat(value)));
 }
 
-void SetNativeInteractionEnabled(PlatformEventTarget* target, float value) {
-  target->SetNativeInteractionEnabled(!base::IsZero(value));
+void SetNativeInteractionEnabled(PlatformEventTarget* target,
+                                 const lepus::Value& value) {
+  target->SetNativeInteractionEnabled(
+      !base::IsZero(EventPropValueToFloat(value)));
 }
 
-void SetExposureScreenMarginLeft(PlatformEventTarget* target, float value) {
-  target->SetExposureScreenMarginLeft(value);
+void SetExposureScreenMarginLeft(PlatformEventTarget* target,
+                                 const lepus::Value& value) {
+  target->SetExposureScreenMarginLeft(EventPropValueToFloat(value));
 }
 
-void SetExposureScreenMarginRight(PlatformEventTarget* target, float value) {
-  target->SetExposureScreenMarginRight(value);
+void SetExposureScreenMarginRight(PlatformEventTarget* target,
+                                  const lepus::Value& value) {
+  target->SetExposureScreenMarginRight(EventPropValueToFloat(value));
 }
 
-void SetExposureScreenMarginTop(PlatformEventTarget* target, float value) {
-  target->SetExposureScreenMarginTop(value);
+void SetExposureScreenMarginTop(PlatformEventTarget* target,
+                                const lepus::Value& value) {
+  target->SetExposureScreenMarginTop(EventPropValueToFloat(value));
 }
 
-void SetExposureScreenMarginBottom(PlatformEventTarget* target, float value) {
-  target->SetExposureScreenMarginBottom(value);
+void SetExposureScreenMarginBottom(PlatformEventTarget* target,
+                                   const lepus::Value& value) {
+  target->SetExposureScreenMarginBottom(EventPropValueToFloat(value));
 }
 
-void SetExposureUIMarginLeft(PlatformEventTarget* target, float value) {
-  target->SetExposureUIMarginLeft(value);
+void SetExposureUIMarginLeft(PlatformEventTarget* target,
+                             const lepus::Value& value) {
+  target->SetExposureUIMarginLeft(EventPropValueToFloat(value));
 }
 
-void SetExposureUIMarginRight(PlatformEventTarget* target, float value) {
-  target->SetExposureUIMarginRight(value);
+void SetExposureUIMarginRight(PlatformEventTarget* target,
+                              const lepus::Value& value) {
+  target->SetExposureUIMarginRight(EventPropValueToFloat(value));
 }
 
-void SetExposureUIMarginTop(PlatformEventTarget* target, float value) {
-  target->SetExposureUIMarginTop(value);
+void SetExposureUIMarginTop(PlatformEventTarget* target,
+                            const lepus::Value& value) {
+  target->SetExposureUIMarginTop(EventPropValueToFloat(value));
 }
 
-void SetExposureUIMarginBottom(PlatformEventTarget* target, float value) {
-  target->SetExposureUIMarginBottom(value);
+void SetExposureUIMarginBottom(PlatformEventTarget* target,
+                               const lepus::Value& value) {
+  target->SetExposureUIMarginBottom(EventPropValueToFloat(value));
 }
 
-void SetExposureArea(PlatformEventTarget* target, float value) {
-  target->SetExposureArea(value);
+void SetExposureArea(PlatformEventTarget* target, const lepus::Value& value) {
+  target->SetExposureArea(EventPropValueToFloat(value));
 }
 
-void SetEnableExposureUIClip(PlatformEventTarget* target, float value) {
-  target->SetEnableExposureUIClip(base::IsZero(value)
+void SetEnableExposureUIClip(PlatformEventTarget* target,
+                             const lepus::Value& value) {
+  target->SetEnableExposureUIClip(base::IsZero(EventPropValueToFloat(value))
                                       ? LynxEventPropStatus::kDisable
                                       : LynxEventPropStatus::kEnable);
 }
 
-const std::unordered_map<PlatformEventPropName, EventPropSetter,
+void SetId(PlatformEventTarget* target, const lepus::Value& value) {
+  if (value.IsString()) {
+    target->SetId(value.StdString());
+  }
+}
+
+void SetExposureId(PlatformEventTarget* target, const lepus::Value& value) {
+  bool has_valid_value = false;
+  std::string exposure_id_value;
+  if (value.IsString()) {
+    exposure_id_value = value.StdString();
+    has_valid_value = true;
+  } else if (value.IsNumber()) {
+    exposure_id_value = std::to_string(value.Number());
+    has_valid_value = true;
+  }
+  if (has_valid_value) {
+    target->SetExposureId(exposure_id_value);
+  }
+}
+
+void SetExposureScene(PlatformEventTarget* target, const lepus::Value& value) {
+  if (value.IsString()) {
+    target->SetExposureScene(value.StdString());
+  }
+}
+
+void SetDataset(PlatformEventTarget* target, const lepus::Value& value) {
+  target->SetDataset(value);
+}
+
+const std::unordered_map<PlatformEventPropName, EventPropValueSetter,
                          PlatformEventPropNameHash>&
 GetEventPropSetterMap() {
-  static const std::unordered_map<PlatformEventPropName, EventPropSetter,
+  static const std::unordered_map<PlatformEventPropName, EventPropValueSetter,
                                   PlatformEventPropNameHash>
       map = {
           {PlatformEventPropName::kUserInteractionEnabled,
@@ -102,75 +147,72 @@ GetEventPropSetterMap() {
           {PlatformEventPropName::kExposureArea, &SetExposureArea},
           {PlatformEventPropName::kEnableExposureUIClip,
            &SetEnableExposureUIClip},
+          {PlatformEventPropName::kId, &SetId},
+          {PlatformEventPropName::kExposureId, &SetExposureId},
+          {PlatformEventPropName::kExposureScene, &SetExposureScene},
+          {PlatformEventPropName::kDataset, &SetDataset},
       };
   return map;
 }
 
-base::Vector<PlatformEventName> PlatformEventTargetHelper::ParseEventSet(
-    PlatformEventTarget* target, const int32_t* int_data, size_t& int_data_idx,
-    size_t int_param_end, int32_t event_count) {
-  base::Vector<PlatformEventName> event_set;
-  for (int32_t i = 0; i < event_count && int_data_idx < int_param_end; i++) {
-    auto name = static_cast<PlatformEventName>(int_data[int_data_idx++]);
-    if (name != PlatformEventName::kUnknown) {
-      event_set.push_back(name);
-    }
-    if (name == PlatformEventName::kUIAppear ||
-        name == PlatformEventName::kUIDisappear) {
-      int32_t sign = target->Sign();
-      platform_ref_->AddPlatformEventTargetToExposure(
-          sign, std::to_string(sign), "", "",
-          lepus::Value(lepus::Dictionary::Create()));
-    }
+void PlatformEventTargetHelper::ApplyEventBundle(
+    const fml::RefPtr<PlatformEventTarget>& target,
+    const PlatformEventBundle* bundle) {
+  if (target == nullptr || bundle == nullptr) {
+    return;
   }
-  return event_set;
-}
 
-void PlatformEventTargetHelper::ApplyEventProps(
-    PlatformEventTarget* target, const int32_t* int_data, size_t& int_data_idx,
-    size_t int_param_end, const float* float_data, size_t& float_data_idx,
-    size_t float_param_end, int32_t prop_count) {
+  target->SetEventSet(bundle->EventNames());
+
   const auto& setter_map = GetEventPropSetterMap();
-  for (int32_t i = 0; i < prop_count && int_data_idx < int_param_end &&
-                      float_data_idx < float_param_end;
-       i++) {
-    auto prop_name =
-        static_cast<PlatformEventPropName>(int_data[int_data_idx++]);
+  for (const auto& it : bundle->EventProps()) {
+    const auto prop_name = it.first;
+    const auto& value = it.second;
     if (prop_name == PlatformEventPropName::kUnknown) {
       continue;
     }
-
-    // TODO(hexionghui): handle exposure props.
-
-    float value = float_data[float_data_idx++];
-    auto it = setter_map.find(prop_name);
-    if (it != setter_map.end()) {
-      it->second(target, value);
+    auto setter_it = setter_map.find(prop_name);
+    if (setter_it != setter_map.end()) {
+      setter_it->second(target.get(), value);
     }
   }
+
+  bool has_custom_event = false;
+  for (const auto& name : bundle->EventNames()) {
+    if (name == PlatformEventName::kUIAppear ||
+        name == PlatformEventName::kUIDisappear) {
+      has_custom_event = true;
+      break;
+    }
+  }
+  bool has_global_event = !target->ExposureId().empty();
+  UpdateExposureTargetRegistration(target, has_custom_event, has_global_event);
 }
 
-void PlatformEventTargetHelper::ApplyEventBundle(
-    PlatformEventTarget* target, const int32_t* int_data, size_t& int_data_idx,
-    size_t int_param_end, const float* float_data, size_t& float_data_idx,
-    size_t float_param_end) {
-  if (target == nullptr) {
+void PlatformEventTargetHelper::UpdateExposureTargetRegistration(
+    const fml::RefPtr<PlatformEventTarget>& target, bool has_custom_event,
+    bool has_global_event) {
+  if (platform_ref_ == nullptr || target == nullptr) {
+    return;
+  }
+  if (!has_custom_event && !has_global_event) {
     return;
   }
 
-  if (int_data_idx >= int_param_end) {
-    return;
-  }
-  const int32_t event_count = int_data[int_data_idx++];
-  target->SetEventSet(ParseEventSet(target, int_data, int_data_idx,
-                                    int_param_end, event_count));
+  BASE_STATIC_STRING_DECL(kUniqueId, "unique-id");
+  BASE_STATIC_STRING_DECL(kIsCustomEvent, "is-custom-event");
+  BASE_STATIC_STRING_DECL(kIsGlobalEvent, "is-global-event");
+  BASE_STATIC_STRING_DECL(kInterceptGlobalEvent, "intercept-global-event");
 
-  if (int_data_idx >= int_param_end) {
-    return;
-  }
-  const int32_t prop_count = int_data[int_data_idx++];
-  ApplyEventProps(target, int_data, int_data_idx, int_param_end, float_data,
-                  float_data_idx, float_param_end, prop_count);
+  const auto unique_id = std::to_string(target->Sign()) + "_" +
+                         target->ExposureId() + "_" + target->ExposureScene();
+  auto option = lepus::Dictionary::Create();
+  option->SetValue(kUniqueId, unique_id);
+  option->SetValue(kIsCustomEvent, has_custom_event);
+  option->SetValue(kIsGlobalEvent, has_global_event);
+  option->SetValue(kInterceptGlobalEvent, false);
+
+  platform_ref_->AddPlatformEventTargetToExposure(target, lepus::Value(option));
 }
 
 fml::RefPtr<PlatformEventTarget>
@@ -196,7 +238,6 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
   auto children_renderer = page_renderer->Children();
   size_t child_renderer_idx = 0, child_renderer_size = children_renderer.size();
   const auto& display_list = page_renderer->GetDisplayList();
-  auto renderer_offset = display_list.GetRenderOffset();
   auto ops = display_list.GetContentOpTypesData();
   auto int_data = display_list.GetContentIntData();
   auto float_data = display_list.GetContentFloatData();
@@ -209,6 +250,7 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
 
   // the top of the stack is always the parent event target.
   std::stack<fml::RefPtr<PlatformEventTarget>> target_stack;
+  fml::RefPtr<PlatformEventTarget> root_event_target = nullptr;
   while (ops_idx < ops_size) {
     int op = ops[ops_idx++];
     int int_param_cnt = int_data[int_data_idx++];
@@ -233,12 +275,16 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
             this, sign, left, top, width, height);
         // the root event target.
         if (sign == kRootId) {
-          event_target->SetRendererOffsetX(renderer_offset[0]);
-          event_target->SetRendererOffsetY(renderer_offset[1]);
           event_target_tree_ = event_target;
           event_targets_.clear();
+          platform_ref_->ClearExposureTargetMap();
         }
+        ApplyEventBundle(event_target,
+                         platform_ref_->GetPlatformEventBundle(sign));
         event_targets_[sign] = event_target;
+        if (root_event_target == nullptr) {
+          root_event_target = event_target;
+        }
         target_stack.push(event_target);
         break;
       }
@@ -267,16 +313,6 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         }
         break;
       }
-      // add event set and props to the event target.
-      case static_cast<int>(DisplayListOpType::kEventBundle): {
-        if (target_stack.empty()) {
-          break;
-        }
-        ApplyEventBundle(target_stack.top().get(), int_data, int_data_idx,
-                         int_param_end, float_data, float_data_idx,
-                         float_param_end);
-        break;
-      }
       default:
         break;
     }
@@ -284,28 +320,29 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
     float_data_idx = float_param_end;
   }
 
-  return event_target_tree_;
+  return root_event_target;
 }
 
 bool PlatformEventTargetHelper::TargetIsParentOfAnotherTarget(
-    fml::RefPtr<PlatformEventTarget> target,
-    fml::RefPtr<PlatformEventTarget> another) {
+    const fml::RefPtr<PlatformEventTarget>& target,
+    const fml::RefPtr<PlatformEventTarget>& another) {
   if (!target || !another || target == another) {
     return false;
   }
 
-  while (another != nullptr && another->ParentTarget() != nullptr) {
-    if (target == another->ParentTarget()) {
+  auto current = another;
+  while (current != nullptr && current->ParentTarget() != nullptr) {
+    if (target == current->ParentTarget()) {
       return true;
     }
-    another = another->ParentTarget();
+    current = current->ParentTarget();
   }
   return false;
 }
 
 void PlatformEventTargetHelper::ConvertPointFromAncestorToDescendant(
-    float res[2], fml::RefPtr<PlatformEventTarget> ancestor,
-    fml::RefPtr<PlatformEventTarget> descendant, float point[2]) {
+    float res[2], const fml::RefPtr<PlatformEventTarget>& ancestor,
+    const fml::RefPtr<PlatformEventTarget>& descendant, float point[2]) {
   if (!descendant || !ancestor || descendant == ancestor) {
     memcpy(res, point, sizeof(float) * 2);
     return;
@@ -313,7 +350,8 @@ void PlatformEventTargetHelper::ConvertPointFromAncestorToDescendant(
 
   base::InlineVector<fml::RefPtr<PlatformEventTarget>, 3> target_chain;
   fml::RefPtr<PlatformEventTarget> current_target = descendant;
-  while (current_target != nullptr && current_target != ancestor) {
+  fml::RefPtr<PlatformEventTarget> current_ancestor = ancestor;
+  while (current_target != nullptr && current_target != current_ancestor) {
     target_chain.push_back(current_target);
     current_target = current_target->ParentTarget();
   }
@@ -322,22 +360,20 @@ void PlatformEventTargetHelper::ConvertPointFromAncestorToDescendant(
   int size = static_cast<int>(target_chain.size());
   for (int i = size - 1; i >= 0; --i) {
     current_target = target_chain[i];
-    res[0] += ancestor->ScrollOffsetX();
-    res[1] += ancestor->ScrollOffsetY();
-    res[0] -= current_target->RendererOffsetX();
-    res[1] -= current_target->RendererOffsetY();
+    res[0] += current_ancestor->ScrollOffsetX();
+    res[1] += current_ancestor->ScrollOffsetY();
     res[0] -= current_target->Left();
     res[1] -= current_target->Top();
     res[0] += current_target->OffsetXForCalcPosition();
     res[1] += current_target->OffsetYForCalcPosition();
     // TODO(hexionghui): add transform support.
-    ancestor = current_target;
+    current_ancestor = current_target;
   }
 }
 
 void PlatformEventTargetHelper::ConvertPointFromDescendantToAncestor(
-    float res[2], fml::RefPtr<PlatformEventTarget> descendant,
-    fml::RefPtr<PlatformEventTarget> ancestor, float point[2]) {
+    float res[2], const fml::RefPtr<PlatformEventTarget>& descendant,
+    const fml::RefPtr<PlatformEventTarget>& ancestor, float point[2]) {
   if (!descendant || !ancestor || descendant == ancestor) {
     memcpy(res, point, sizeof(float) * 2);
     return;
@@ -346,24 +382,25 @@ void PlatformEventTargetHelper::ConvertPointFromDescendantToAncestor(
   memcpy(res, point, sizeof(float) * 2);
   // TODO(hexionghui): add transform support for descendant.
 
-  while (descendant != nullptr && descendant->ParentTarget() &&
-         descendant != ancestor) {
-    res[0] += descendant->ScrollOffsetX();
-    res[1] += descendant->ScrollOffsetY();
-    res[0] += descendant->Left();
-    res[1] += descendant->Top();
-    res[0] -= descendant->OffsetXForCalcPosition();
-    res[1] -= descendant->OffsetYForCalcPosition();
-    descendant = descendant->ParentTarget();
-    res[0] -= descendant->ScrollOffsetX();
-    res[1] -= descendant->ScrollOffsetY();
+  auto current_descendant = descendant;
+  while (current_descendant != nullptr && current_descendant->ParentTarget() &&
+         current_descendant != ancestor) {
+    res[0] += current_descendant->ScrollOffsetX();
+    res[1] += current_descendant->ScrollOffsetY();
+    res[0] += current_descendant->Left();
+    res[1] += current_descendant->Top();
+    res[0] -= current_descendant->OffsetXForCalcPosition();
+    res[1] -= current_descendant->OffsetYForCalcPosition();
+    current_descendant = current_descendant->ParentTarget();
+    res[0] -= current_descendant->ScrollOffsetX();
+    res[1] -= current_descendant->ScrollOffsetY();
     // TODO(hexionghui): add transform support.
   }
 }
 
 void PlatformEventTargetHelper::ConvertPointFromTargetToAnotherTarget(
-    float res[2], fml::RefPtr<PlatformEventTarget> target,
-    fml::RefPtr<PlatformEventTarget> another, float point[2]) {
+    float res[2], const fml::RefPtr<PlatformEventTarget>& target,
+    const fml::RefPtr<PlatformEventTarget>& another, float point[2]) {
   memcpy(res, point, sizeof(float) * 2);
   if (!target || !another || target == another) {
     return;
@@ -385,7 +422,8 @@ void PlatformEventTargetHelper::ConvertPointFromTargetToAnotherTarget(
 }
 
 void PlatformEventTargetHelper::ConvertPointFromTargetToRootTarget(
-    float res[2], fml::RefPtr<PlatformEventTarget> target, float point[2]) {
+    float res[2], const fml::RefPtr<PlatformEventTarget>& target,
+    float point[2]) {
   fml::RefPtr<PlatformEventTarget> root = event_target_tree_;
   if (!root || !target || target == root) {
     memcpy(res, point, sizeof(float) * 2);
@@ -395,7 +433,8 @@ void PlatformEventTargetHelper::ConvertPointFromTargetToRootTarget(
 }
 
 void PlatformEventTargetHelper::ConvertPointFromTargetToScreen(
-    float res[2], fml::RefPtr<PlatformEventTarget> target, float point[2]) {
+    float res[2], const fml::RefPtr<PlatformEventTarget>& target,
+    float point[2]) {
   fml::RefPtr<PlatformEventTarget> root = event_target_tree_;
   if (!root || !target) {
     memcpy(res, point, sizeof(float) * 2);
@@ -410,8 +449,8 @@ void PlatformEventTargetHelper::ConvertPointFromTargetToScreen(
 }
 
 void PlatformEventTargetHelper::ConvertRectFromAncestorToDescendant(
-    float res[4], fml::RefPtr<PlatformEventTarget> ancestor,
-    fml::RefPtr<PlatformEventTarget> descendant, float rect[4]) {
+    float res[4], const fml::RefPtr<PlatformEventTarget>& ancestor,
+    const fml::RefPtr<PlatformEventTarget>& descendant, float rect[4]) {
   if (!descendant || !ancestor || descendant == ancestor) {
     memcpy(res, rect, sizeof(float) * 4);
     return;
@@ -450,8 +489,8 @@ void PlatformEventTargetHelper::ConvertRectFromAncestorToDescendant(
 }
 
 void PlatformEventTargetHelper::ConvertRectFromDescendantToAncestor(
-    float res[4], fml::RefPtr<PlatformEventTarget> descendant,
-    fml::RefPtr<PlatformEventTarget> ancestor, float rect[4]) {
+    float res[4], const fml::RefPtr<PlatformEventTarget>& descendant,
+    const fml::RefPtr<PlatformEventTarget>& ancestor, float rect[4]) {
   if (!descendant || !ancestor || descendant == ancestor) {
     memcpy(res, rect, sizeof(float) * 4);
     return;
@@ -490,8 +529,8 @@ void PlatformEventTargetHelper::ConvertRectFromDescendantToAncestor(
 }
 
 void PlatformEventTargetHelper::ConvertRectFromTargetToAnotherTarget(
-    float res[4], fml::RefPtr<PlatformEventTarget> target,
-    fml::RefPtr<PlatformEventTarget> another, float rect[4]) {
+    float res[4], const fml::RefPtr<PlatformEventTarget>& target,
+    const fml::RefPtr<PlatformEventTarget>& another, float rect[4]) {
   memcpy(res, rect, sizeof(float) * 4);
   if (!target || !another || target == another) {
     return;
@@ -513,7 +552,8 @@ void PlatformEventTargetHelper::ConvertRectFromTargetToAnotherTarget(
 }
 
 void PlatformEventTargetHelper::ConvertRectFromTargetToRootTarget(
-    float res[4], fml::RefPtr<PlatformEventTarget> target, float rect[4]) {
+    float res[4], const fml::RefPtr<PlatformEventTarget>& target,
+    float rect[4]) {
   fml::RefPtr<PlatformEventTarget> root = event_target_tree_;
   if (!root) {
     memcpy(res, rect, sizeof(float) * 4);
@@ -523,7 +563,8 @@ void PlatformEventTargetHelper::ConvertRectFromTargetToRootTarget(
 }
 
 void PlatformEventTargetHelper::ConvertRectFromTargetToScreen(
-    float res[4], fml::RefPtr<PlatformEventTarget> target, float rect[4]) {
+    float res[4], const fml::RefPtr<PlatformEventTarget>& target,
+    float rect[4]) {
   fml::RefPtr<PlatformEventTarget> root = event_target_tree_;
   if (!root) {
     memcpy(res, rect, sizeof(float) * 4);
@@ -586,9 +627,11 @@ void PlatformEventTargetHelper::InvokeMethod(
       BASE_STATIC_STRING_DECL(kHeight, "height");
 
       auto ret = lepus::Dictionary::Create();
-      // TODO(hexionghui): add id selector and dataset.
-      ret->SetValue(kId, base::String());
-      ret->SetValue(kDataset, lepus::Dictionary::Create());
+      ret->SetValue(kId, event_target->Id());
+      auto dataset = event_target->Dataset();
+      ret->SetValue(kDataset, dataset.IsEmpty()
+                                  ? lepus::Value(lepus::Dictionary::Create())
+                                  : dataset);
       ret->SetValue(kLeft, result[0] / device_pixel_ratio_);
       ret->SetValue(kTop, result[1] / device_pixel_ratio_);
       ret->SetValue(kRight, result[2] / device_pixel_ratio_);

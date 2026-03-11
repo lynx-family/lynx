@@ -289,6 +289,14 @@ void NativePaintingCtxAndroid::UpdateDisplayList(int id,
   });
 }
 
+void NativePaintingCtxAndroid::UpdatePlatformEventBundle(
+    int32_t id, PlatformEventBundle bundle) {
+  Enqueue([ref = platform_ref_, id, bundle = std::move(bundle)]() mutable {
+    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
+        ->UpdatePlatformEventBundle(id, std::move(bundle));
+  });
+}
+
 void NativePaintingCtxAndroid::ReconstructEventTargetTreeRecursively() {
   Enqueue([ref = platform_ref_]() mutable {
     std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)

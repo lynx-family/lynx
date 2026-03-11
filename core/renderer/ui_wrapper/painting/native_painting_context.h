@@ -11,6 +11,7 @@
 
 namespace lynx::tasm {
 class DisplayList;
+class PlatformEventBundle;
 class NativePaintingContext {
  public:
   NativePaintingContext() = default;
@@ -27,6 +28,8 @@ class NativePaintingContext {
   virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
   virtual void DestroyTextBundle(int id) = 0;
   virtual void ReconstructEventTargetTreeRecursively() = 0;
+  virtual void UpdatePlatformEventBundle(int id,
+                                         PlatformEventBundle bundle) = 0;
 };
 
 }  // namespace lynx::tasm
