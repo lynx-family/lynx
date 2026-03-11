@@ -82,48 +82,5 @@ void DisplayList::AddLinearGradient(float angle,
   }
 }
 
-void DisplayList::AddEventBundle(
-    const PlatformEventPropMap& event_props,
-    const base::Vector<PlatformEventName>& event_names) {
-  OpData& op_data = *content_data_;
-  op_data.ops.push_back(static_cast<int32_t>(DisplayListOpType::kEventBundle));
-
-  // int_data layout: [int_count, float_count, event_count, events...,
-  // prop_count, props...] float_data layout: [props_value...]
-
-  const int32_t event_count = static_cast<int32_t>(event_names.size());
-  const int32_t prop_count = static_cast<int32_t>(event_props.size());
-
-  const int32_t int_count = 1 + event_count + 1 + prop_count;
-  const int32_t float_count = prop_count;
-
-  op_data.int_data.reserve(op_data.int_data.size() + 2 + int_count);
-  op_data.int_data.push_back(int_count);
-  op_data.int_data.push_back(float_count);
-
-  op_data.int_data.push_back(event_count);
-  if (event_count > 0) {
-    op_data.int_data.append(event_names.data(),
-                            event_names.size() * sizeof(int32_t));
-  }
-
-  // TODO(hexionghui): Handle the string types exposure-id and exposure-scene.
-
-  op_data.int_data.push_back(prop_count);
-  if (prop_count > 0) {
-    for (const auto& it : event_props) {
-      op_data.int_data.push_back(static_cast<int32_t>(it.first));
-    }
-  }
-
-  op_data.float_data.reserve(op_data.float_data.size() + float_count);
-  if (prop_count > 0) {
-    for (const auto& it : event_props) {
-      const auto& value = it.second;
-      op_data.float_data.push_back(EventPropValueToFloat(value));
-    }
-  }
-}
-
 }  // namespace tasm
 }  // namespace lynx

@@ -142,6 +142,13 @@ void NativePaintingCtxDarwin::ReconstructEventTargetTreeRecursively() {
   });
 }
 
+void NativePaintingCtxDarwin::UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle) {
+  Enqueue([ref = platform_ref_, id, bundle = std::move(bundle)]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)->UpdatePlatformEventBundle(
+        id, std::move(bundle));
+  });
+}
+
 void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height,
                                           int32_t event_mask) {
   LynxURL *sourceUrl = [[LynxURL alloc] init];

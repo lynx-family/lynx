@@ -15,6 +15,7 @@
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/platform_renderer_type.h"
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 
@@ -104,6 +105,9 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
       const fml::RefPtr<PropBundle> &init_data) override;
 
   void UpdateDisplayList(int id, DisplayList display_list) override;
+
+  void UpdatePlatformEventBundle(int32_t id,
+                                 PlatformEventBundle bundle) override;
 
   void CreateImage(int id, base::String src, float width, float height,
                    int32_t event_mask = 0) override;

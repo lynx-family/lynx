@@ -9,6 +9,7 @@
 #include <limits>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "base/include/value/base_value.h"
 
@@ -181,8 +182,10 @@ enum class PlatformEventPropName : int32_t {
   kExposureUIMarginBottom = 9,
   kExposureArea = 10,
   kEnableExposureUIClip = 11,
-  kExposureId = 12,
-  kExposureScene = 13,
+  kId = 12,
+  kExposureId = 13,
+  kExposureScene = 14,
+  kDataset = 15,
 };
 
 inline PlatformEventPropName PlatformEventPropNameFromString(
@@ -223,11 +226,17 @@ inline PlatformEventPropName PlatformEventPropNameFromString(
   if (name == "enable-exposure-ui-clip") {
     return PlatformEventPropName::kEnableExposureUIClip;
   }
+  if (name == "id") {
+    return PlatformEventPropName::kId;
+  }
   if (name == "exposure-id") {
     return PlatformEventPropName::kExposureId;
   }
   if (name == "exposure-scene") {
     return PlatformEventPropName::kExposureScene;
+  }
+  if (name == "dataset") {
+    return PlatformEventPropName::kDataset;
   }
   return PlatformEventPropName::kUnknown;
 }
@@ -270,14 +279,50 @@ inline std::string_view PlatformEventPropNameToString(
   if (name == PlatformEventPropName::kEnableExposureUIClip) {
     return "enable-exposure-ui-clip";
   }
+  if (name == PlatformEventPropName::kId) {
+    return "id";
+  }
   if (name == PlatformEventPropName::kExposureId) {
     return "exposure-id";
   }
   if (name == PlatformEventPropName::kExposureScene) {
     return "exposure-scene";
   }
+  if (name == PlatformEventPropName::kDataset) {
+    return "dataset";
+  }
   return "";
 }
+
+using PlatformEventPropMap =
+    base::InlineOrderedFlatMap<PlatformEventPropName, lepus::Value, 12>;
+
+class PlatformEventBundle {
+ public:
+  PlatformEventBundle() = default;
+  PlatformEventBundle(PlatformEventPropMap event_props,
+                      base::Vector<PlatformEventName> event_names)
+      : event_props_(std::move(event_props)),
+        event_names_(std::move(event_names)) {}
+
+  bool Empty() const { return event_props_.empty() && event_names_.empty(); }
+
+  const PlatformEventPropMap& EventProps() const { return event_props_; }
+  const base::Vector<PlatformEventName>& EventNames() const {
+    return event_names_;
+  }
+
+  void SetEventProps(PlatformEventPropMap event_props) {
+    event_props_ = std::move(event_props);
+  }
+  void SetEventNames(base::Vector<PlatformEventName> event_names) {
+    event_names_ = std::move(event_names);
+  }
+
+ private:
+  PlatformEventPropMap event_props_;
+  base::Vector<PlatformEventName> event_names_;
+};
 
 }  // namespace tasm
 }  // namespace lynx

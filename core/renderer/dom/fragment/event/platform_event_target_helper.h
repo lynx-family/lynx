@@ -26,48 +26,51 @@ class PlatformEventTargetHelper {
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
       fml::RefPtr<PlatformRendererImpl> page_renderer);
 
-  bool TargetIsParentOfAnotherTarget(fml::RefPtr<PlatformEventTarget> target,
-                                     fml::RefPtr<PlatformEventTarget> another);
+  bool TargetIsParentOfAnotherTarget(
+      const fml::RefPtr<PlatformEventTarget>& target,
+      const fml::RefPtr<PlatformEventTarget>& another);
 
   // point: [x, y]
   void ConvertPointFromAncestorToDescendant(
-      float res[2], fml::RefPtr<PlatformEventTarget> ancestor,
-      fml::RefPtr<PlatformEventTarget> descendant, float point[2]);
+      float res[2], const fml::RefPtr<PlatformEventTarget>& ancestor,
+      const fml::RefPtr<PlatformEventTarget>& descendant, float point[2]);
 
   void ConvertPointFromDescendantToAncestor(
-      float res[2], fml::RefPtr<PlatformEventTarget> descendant,
-      fml::RefPtr<PlatformEventTarget> ancestor, float point[2]);
+      float res[2], const fml::RefPtr<PlatformEventTarget>& descendant,
+      const fml::RefPtr<PlatformEventTarget>& ancestor, float point[2]);
 
   void ConvertPointFromTargetToAnotherTarget(
-      float res[2], fml::RefPtr<PlatformEventTarget> target,
-      fml::RefPtr<PlatformEventTarget> another, float point[2]);
+      float res[2], const fml::RefPtr<PlatformEventTarget>& target,
+      const fml::RefPtr<PlatformEventTarget>& another, float point[2]);
 
   void ConvertPointFromTargetToRootTarget(
-      float res[2], fml::RefPtr<PlatformEventTarget> target, float point[2]);
+      float res[2], const fml::RefPtr<PlatformEventTarget>& target,
+      float point[2]);
 
-  void ConvertPointFromTargetToScreen(float res[2],
-                                      fml::RefPtr<PlatformEventTarget> target,
-                                      float point[2]);
+  void ConvertPointFromTargetToScreen(
+      float res[2], const fml::RefPtr<PlatformEventTarget>& target,
+      float point[2]);
 
   // rect: [left, top, right, bottom]
   void ConvertRectFromAncestorToDescendant(
-      float res[4], fml::RefPtr<PlatformEventTarget> ancestor,
-      fml::RefPtr<PlatformEventTarget> descendant, float rect[4]);
+      float res[4], const fml::RefPtr<PlatformEventTarget>& ancestor,
+      const fml::RefPtr<PlatformEventTarget>& descendant, float rect[4]);
 
   void ConvertRectFromDescendantToAncestor(
-      float res[4], fml::RefPtr<PlatformEventTarget> descendant,
-      fml::RefPtr<PlatformEventTarget> ancestor, float rect[4]);
+      float res[4], const fml::RefPtr<PlatformEventTarget>& descendant,
+      const fml::RefPtr<PlatformEventTarget>& ancestor, float rect[4]);
 
   void ConvertRectFromTargetToAnotherTarget(
-      float res[4], fml::RefPtr<PlatformEventTarget> target,
-      fml::RefPtr<PlatformEventTarget> another, float rect[4]);
+      float res[4], const fml::RefPtr<PlatformEventTarget>& target,
+      const fml::RefPtr<PlatformEventTarget>& another, float rect[4]);
 
   void ConvertRectFromTargetToRootTarget(
-      float res[4], fml::RefPtr<PlatformEventTarget> target, float rect[4]);
+      float res[4], const fml::RefPtr<PlatformEventTarget>& target,
+      float rect[4]);
 
-  void ConvertRectFromTargetToScreen(float res[4],
-                                     fml::RefPtr<PlatformEventTarget> target,
-                                     float rect[4]);
+  void ConvertRectFromTargetToScreen(
+      float res[4], const fml::RefPtr<PlatformEventTarget>& target,
+      float rect[4]);
 
   bool CheckViewportIntersectWithRatio(float rect[4], float another[4],
                                        float ratio);
@@ -88,19 +91,11 @@ class PlatformEventTargetHelper {
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
 
  private:
-  base::Vector<PlatformEventName> ParseEventSet(PlatformEventTarget* target,
-                                                const int32_t* int_data,
-                                                size_t& int_data_idx,
-                                                size_t int_param_end,
-                                                int32_t event_count);
-  void ApplyEventProps(PlatformEventTarget* target, const int32_t* int_data,
-                       size_t& int_data_idx, size_t int_param_end,
-                       const float* float_data, size_t& float_data_idx,
-                       size_t float_param_end, int32_t prop_count);
-  void ApplyEventBundle(PlatformEventTarget* target, const int32_t* int_data,
-                        size_t& int_data_idx, size_t int_param_end,
-                        const float* float_data, size_t& float_data_idx,
-                        size_t float_param_end);
+  void ApplyEventBundle(const fml::RefPtr<PlatformEventTarget>& target,
+                        const PlatformEventBundle* bundle);
+  void UpdateExposureTargetRegistration(
+      const fml::RefPtr<PlatformEventTarget>& target, bool has_custom_event,
+      bool has_global_event);
 
   // owned by NativePaintingCtxPlatformRef
   NativePaintingCtxPlatformRef* platform_ref_{nullptr};

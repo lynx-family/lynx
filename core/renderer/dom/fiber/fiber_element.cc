@@ -1278,6 +1278,11 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
     for (const auto &pair : data_model()->dataset()) {
       dataset_val.SetProperty(pair.first, pair.second);
     }
+    if (EnableFragmentLayerRender()) {
+      if (auto fragment = fragment_impl()) {
+        fragment->SetEventProp(PlatformEventPropName::kDataset, dataset_val);
+      }
+    }
     prop_bundle_->SetProps("dataset", pub::ValueImplLepus(dataset_val));
     dirty_ &= ~kDirtyDataset;
     need_update = true;

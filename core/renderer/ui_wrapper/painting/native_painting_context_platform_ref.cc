@@ -68,6 +68,7 @@ void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
     it_child->second->RemoveFromParent();
     renderers_.erase(child);
   }
+  platform_event_bundles_.erase(child);
 }
 
 void NativePaintingCtxPlatformRef::RebuildSubLayers(
@@ -180,6 +181,24 @@ NativePaintingCtxPlatformRef::GetEventTargetHelper() {
   return event_target_helper_.get();
 }
 
+void NativePaintingCtxPlatformRef::UpdatePlatformEventBundle(
+    int32_t id, PlatformEventBundle bundle) {
+  if (bundle.Empty()) {
+    platform_event_bundles_.erase(id);
+    return;
+  }
+  platform_event_bundles_.insert_or_assign(id, std::move(bundle));
+}
+
+const PlatformEventBundle *NativePaintingCtxPlatformRef::GetPlatformEventBundle(
+    int32_t id) const {
+  auto it = platform_event_bundles_.find(id);
+  if (it == platform_event_bundles_.end()) {
+    return nullptr;
+  }
+  return &it->second;
+}
+
 fml::RefPtr<PlatformEventTarget>
 NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively() {
   return ReconstructEventTargetTreeRecursively(nullptr);
@@ -215,25 +234,25 @@ NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively(
 }
 
 void NativePaintingCtxPlatformRef::AddPlatformEventTargetToExposure(
-    int32_t id, const std::string &unique_id, const std::string &exposure_id,
-    const std::string &exposure_scene, const lepus::Value &dataset) {
-  if (event_target_exposure_ == nullptr ||
-      (unique_id.empty() && exposure_id.empty())) {
+    const fml::RefPtr<PlatformEventTarget> &target,
+    const lepus::Value &detail) {
+  if (target == nullptr) {
     return;
   }
-  event_target_exposure_->AddExposureTarget(id, unique_id, exposure_id,
-                                            exposure_scene, dataset);
+  event_target_exposure_->AddExposureTarget(target, detail);
 }
 
 void NativePaintingCtxPlatformRef::RemovePlatformEventTargetFromExposure(
-    int32_t id, const std::string &unique_id, const std::string &exposure_id,
-    const std::string &exposure_scene) {
-  if (event_target_exposure_ == nullptr ||
-      (unique_id.empty() && exposure_id.empty())) {
+    const fml::RefPtr<PlatformEventTarget> &target,
+    const lepus::Value &detail) {
+  if (target == nullptr) {
     return;
   }
-  event_target_exposure_->RemoveExposureTarget(id, unique_id, exposure_id,
-                                               exposure_scene);
+  event_target_exposure_->RemoveExposureTarget(target, detail);
+}
+
+void NativePaintingCtxPlatformRef::ClearExposureTargetMap() {
+  event_target_exposure_->ClearExposureTargetMap();
 }
 
 void NativePaintingCtxPlatformRef::UpdateAttributes(

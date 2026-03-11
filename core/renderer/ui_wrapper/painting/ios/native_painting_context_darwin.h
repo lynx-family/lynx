@@ -12,6 +12,7 @@
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 
@@ -106,6 +107,8 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
   void DestroyTextBundle(int id) override;
 
   void ReconstructEventTargetTreeRecursively() override;
+
+  void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle) override;
 
   void CreateImage(int id, base::String src, float width, float height,
                    int32_t event_mask = 0) override;

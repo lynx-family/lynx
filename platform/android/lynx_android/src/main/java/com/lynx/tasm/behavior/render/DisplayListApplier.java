@@ -83,6 +83,13 @@ public class DisplayListApplier implements Drawable.Callback {
     mTextMeasurer = platformRendererContext.getTextMeasurer();
     mContext = platformRendererContext;
     mHostLayer = new WeakReference<>(hostLayer);
+
+    // The drawing position on Android is affected by the frame layout and the
+    // frame in OP_BEGIN togather. For a indepent layer, its position is already
+    // shifted by the layers layout frame, and avoid doing it again in OP_BEGIN.
+    if (displayList != null && displayList.fArgv != null && displayList.fArgv.length >= 2) {
+      displayList.fArgv[0] = displayList.fArgv[1] = 0.f;
+    }
   }
 
   public void reset() {
@@ -478,6 +485,9 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   public void setDisplayList(DisplayList displayList) {
+    if (displayList != null && displayList.fArgv != null && displayList.fArgv.length >= 2) {
+      displayList.fArgv[0] = displayList.fArgv[1] = 0.f;
+    }
     mDisplayList = displayList;
     reset();
   }

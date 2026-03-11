@@ -205,7 +205,7 @@ public class DisplayListApplierTest {
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
-    verify(mockCanvas).translate(10f, 20f);
+    verify(mockCanvas).translate(0f, 0f);
   }
 
   /**
@@ -528,7 +528,7 @@ public class DisplayListApplierTest {
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
-    verify(mockCanvas).translate(10f, 20f);
+    verify(mockCanvas).translate(0f, 0f);
     verify(mockCanvas).drawRect(any(RectF.class), any(Paint.class)); // OP_FILL creates rect
     verify(mockTextMeasurer).takeTextLayout(999);
     verify(mockCanvas).restore();

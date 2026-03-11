@@ -50,12 +50,6 @@ void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
     context_->UpdatePlatformRendererFrame(
         PlatformRendererImpl::GetId(), display_list_.RootNeedClipBounds(),
         frame, display_list_.GetRenderOffset());
-
-    // The drawing position on Android is affected by the frame layout and the
-    // frame in OP_BEGIN togather. For a indepent layer, its position is already
-    // shifted by the layers layout frame, and avoid doing it again in OP_BEGIN.
-    float* offset = const_cast<float*>(display_list_.GetContentFloatData());
-    memset(offset, 0, sizeof(float) * 2);
   }
 }
 

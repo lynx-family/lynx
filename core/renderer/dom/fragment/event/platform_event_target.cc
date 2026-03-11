@@ -182,17 +182,19 @@ bool PlatformEventTarget::IsVisibleForExposure(
 }
 
 void PlatformEventTarget::GetExposureTargetRect(float rect[4]) const {
-  rect[0] -= exposure_ui_margin_left_;
-  rect[1] -= exposure_ui_margin_top_;
-  rect[2] += exposure_ui_margin_right_;
-  rect[3] += exposure_ui_margin_bottom_;
+  float device_pixel_ratio = target_helper_->GetDevicePixelRatio();
+  rect[0] -= exposure_ui_margin_left_ * device_pixel_ratio;
+  rect[1] -= exposure_ui_margin_top_ * device_pixel_ratio;
+  rect[2] += exposure_ui_margin_right_ * device_pixel_ratio;
+  rect[3] += exposure_ui_margin_bottom_ * device_pixel_ratio;
 }
 
 void PlatformEventTarget::GetExposureWindowRect(float rect[4]) const {
-  rect[0] -= exposure_screen_margin_left_;
-  rect[1] -= exposure_screen_margin_top_;
-  rect[2] += exposure_screen_margin_right_;
-  rect[3] += exposure_screen_margin_bottom_;
+  float device_pixel_ratio = target_helper_->GetDevicePixelRatio();
+  rect[0] -= exposure_screen_margin_left_ * device_pixel_ratio;
+  rect[1] -= exposure_screen_margin_top_ * device_pixel_ratio;
+  rect[2] += exposure_screen_margin_right_ * device_pixel_ratio;
+  rect[3] += exposure_screen_margin_bottom_ * device_pixel_ratio;
 }
 
 void PlatformEventTarget::OnResponseChain() {}
