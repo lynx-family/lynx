@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 
 #include <cstddef>
+#include <future>
 #include <memory>
 
 #include "core/renderer/dom/element.h"
@@ -251,6 +252,68 @@ TEST_F(InspectorTasmExecutorTest, GetLayerContentFromElementCase) {
   layer["height"] = layout["height"];
 
   EXPECT_EQ(layer, res);
+}
+
+TEST_F(InspectorTasmExecutorTest, SendDOMEventMsgCase) {
+  auto element = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  element->CreateElementContainer(false);
+  int node_id = devtool::ElementInspector::NodeId(element.get());
+  element_executor_->element_root_ = element.get();
+  devtool_mediator_->default_task_runner_ = ui_thread_->GetTaskRunner();
+
+  auto flush_devtool_tasks = [this]() {
+    std::promise<void> p;
+    auto f = p.get_future();
+    devtool_mediator_->RunOnDevToolThread([&p]() { p.set_value(); }, true);
+    f.wait();
+  };
+
+  element_executor_->SendDOMEventMsg(
+      devtool::InspectorTasmExecutor::DomCdpEvent::ATTRIBUTE_MODIFIED, node_id,
+      "style", -1);
+  flush_devtool_tasks();
+
+  Json::Value res;
+  Json::Reader reader;
+  bool is_valid = reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res);
+  EXPECT_TRUE(is_valid);
+  EXPECT_EQ(res["method"], "DOM.attributeModified");
+  EXPECT_EQ(res["params"]["nodeId"], node_id);
+  EXPECT_EQ(res["params"]["name"], "style");
+  EXPECT_TRUE(res["params"]["value"].isString());
+
+  std::string prev =
+      devtool::MockReceiver::GetInstance().received_message_.second;
+  element_executor_->SendDOMEventMsg(
+      devtool::InspectorTasmExecutor::DomCdpEvent::ATTRIBUTE_MODIFIED, -1,
+      "style", -1);
+  flush_devtool_tasks();
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            prev);
+
+  element_executor_->SendDOMEventMsg(
+      devtool::InspectorTasmExecutor::DomCdpEvent::CHILD_NODE_REMOVED, node_id,
+      "", node_id);
+  flush_devtool_tasks();
+  is_valid = reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res);
+  EXPECT_TRUE(is_valid);
+  EXPECT_EQ(res["method"], "DOM.childNodeRemoved");
+  EXPECT_EQ(res["params"]["nodeId"], node_id);
+  EXPECT_EQ(res["params"]["parentNodeId"], node_id);
+
+  element_executor_->SendDOMEventMsg(
+      devtool::InspectorTasmExecutor::DomCdpEvent::DOCUMENT_UPDATED, -1, "",
+      -1);
+  flush_devtool_tasks();
+  is_valid = reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res);
+  EXPECT_TRUE(is_valid);
+  EXPECT_EQ(res["method"], "DOM.documentUpdated");
+  EXPECT_TRUE(res["params"].isObject());
 }
 
 }  // namespace testing

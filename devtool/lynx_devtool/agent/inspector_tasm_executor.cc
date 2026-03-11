@@ -97,7 +97,12 @@ void InspectorTasmExecutor::SendDOMEventMsg(const DomCdpEvent& event_name,
   } else {
     msg["method"] = "ERROR method";
   }
-  devtool_mediator->SendCDPEvent(msg);
+
+  devtool_mediator->RunOnDevToolThread(
+      [devtool_mediator, msg]() mutable {
+        devtool_mediator->SendCDPEvent(msg);
+      },
+      true);
 }
 
 void InspectorTasmExecutor::OnDocumentUpdated() {
