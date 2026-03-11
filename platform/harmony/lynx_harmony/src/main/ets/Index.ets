@@ -55,7 +55,12 @@ export { NativeContent,
   UIOwner as NativeUIOwner,
   ShadowNodeOwner as NativeShadowNodeOwner,
   UIBase as NativeUIBase,
-  ShadowNode as NativeShadowNode } from 'liblynx.so'
+  ShadowNode as NativeShadowNode,
+  RendererFunctionNG,
+  FiberEventListenerOption,
+  CommonCallbackNG,
+  registerStaticTask,
+  unregisterStaticTask } from 'liblynx.so'
 
 export {
   EventHandler, EventHandlerArray } from './tasm/behavior/ui/EventHandler'

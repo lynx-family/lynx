@@ -1389,4 +1389,6 @@
   [inspectorController showMessageOnConsole:msg withLevel:level];
 }
 
+// Static task registry implementation has been moved to LynxStaticTaskRegistry class
+
 @end

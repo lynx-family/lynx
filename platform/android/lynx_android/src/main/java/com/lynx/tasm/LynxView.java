@@ -1276,6 +1276,7 @@ public class LynxView extends UIBodyView {
 
     if (mLynxTemplateRender != null) {
       HeroTransitionManager.inst().onLynxViewDestroy(this);
+
       mLynxTemplateRender.onDetachedFromWindow();
       mLynxTemplateRender.destroy();
       mLynxTemplateRender = null;

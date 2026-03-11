@@ -173,7 +173,10 @@
   [_devTool onTemplateAssemblerCreated:(intptr_t)shell_.get()];
 
   // Runtime
-  if (_lynxViewGroup.logicExecutor == nil) {
+  // Align with Android `LynxTemplateRender#isPiperNeeded`:
+  // - If LogicExecutor is provided, do NOT set up runtime here.
+  // - If JSRuntime is disabled, do NOT set up runtime here.
+  if (_lynxViewGroup.logicExecutor == nil && _enableJSRuntime) {
     [self setUpRuntimeWithLastInstanceId:lastInstanceId];
   }
 

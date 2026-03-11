@@ -57,6 +57,7 @@
 #import "PaintingContextProxy.h"
 
 #include <functional>
+#include <string>
 
 #include "base/include/debug/backtrace.h"
 #include "core/base/darwin/lynx_env_darwin.h"
@@ -73,7 +74,9 @@
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
 #include "core/runtime/lepus/json_parser.h"
-#include "core/services/performance/darwin/performance_controller_darwin.h"
+// NOTE(OSS): RTS NativeContext is not available in OSS build.
+// Keep static-task bridge API (`long native_context_ptr`) but don't depend on
+// non-OSS headers.
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/ios/data_utils.h"
 #include "core/shell/ios/lynx_layout_proxy_darwin.h"
