@@ -66,6 +66,7 @@ constexpr uint32_t kFlagRenderGroup = 1 << 15;
 // This value (~2.236068) is accurate enough for current use cases.
 static constexpr float kCameraDistanceNormalizationMultiplier = 2.236068;
 static constexpr int kDrawBehindVersion = 20;
+static constexpr size_t kImageBufferMargin = 2048;
 
 std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"idSelector", &UIBase::SetIdSelector},
@@ -2814,17 +2815,34 @@ void UIBase::Base64EncodeTask(
         OH_PackingOptions_SetMimeType(pack_option, &mime_type);
         OH_PackingOptions_SetQuality(pack_option, 100);
 
-        size_t buffer_size = encode_context->width * encode_context->height;
+        // To optimize memory usage, we start with 0.5 * raw size (2 bytes per
+        // pixel). This should be enough for most cases.
+        // We also add a constant margin (2KB) to cover image headers/metadata,
+        // which is significant for very small images.
+        size_t buffer_size = static_cast<size_t>(encode_context->width) *
+                                 encode_context->height * 2 +
+                             kImageBufferMargin;
         std::unique_ptr<uint8_t[]> buffer =
             std::make_unique<uint8_t[]>(buffer_size);
         int32_t res = OH_ImagePackerNative_PackToDataFromPixelmap(
             image_packer, pack_option, encode_context->pixel_map, buffer.get(),
             &buffer_size);
+
+        if (res == IMAGE_ENCODE_FAILED) {
+          // Retry with max safe size: raw RGBA size + margin
+          buffer_size = static_cast<size_t>(encode_context->width) *
+                            encode_context->height * 4 +
+                        kImageBufferMargin;
+          buffer = std::make_unique<uint8_t[]>(buffer_size);
+          res = OH_ImagePackerNative_PackToDataFromPixelmap(
+              image_packer, pack_option, encode_context->pixel_map,
+              buffer.get(), &buffer_size);
+        }
         OH_PixelmapNative_Release(encode_context->pixel_map);
         OH_PackingOptions_Release(pack_option);
         OH_ImagePackerNative_Release(image_packer);
-        if (res != 0) {
-          encode_context->data = "pack image failed";
+        if (res != IMAGE_SUCCESS) {
+          encode_context->data = "pack image failed: " + std::to_string(res);
           encode_context->res = false;
           return;
         }
