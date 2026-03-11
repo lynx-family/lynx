@@ -583,10 +583,9 @@ public class LynxTemplateRender
         public void run() {
           if (client != null) {
             if (mDestroying || mHasDestroy) {
-              return;
+              LLog.i("LynxModuleFactory", "lynx invoke onLynxViewAndJSRuntimeDestroy");
+              client.onLynxViewAndJSRuntimeDestroy();
             }
-            LLog.i("LynxModuleFactory", "lynx invoke onLynxViewAndJSRuntimeDestroy");
-            client.onLynxViewAndJSRuntimeDestroy();
           }
         }
       };
