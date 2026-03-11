@@ -252,11 +252,7 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
     }
     LOGI("EventDispatcher InitTouchEnv hit target: "
          << best_hittest_target->Sign())
-    if (OH_ArkUI_PointerEvent_GetPointerId(event, i) == 0 ||
-        OH_ArkUI_UIInputEvent_GetSourceType(event) ==
-            UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
-        OH_ArkUI_UIInputEvent_GetSourceType(event) ==
-            UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
+    if (IsPrimaryInput(event, OH_ArkUI_PointerEvent_GetPointerId(event, i))) {
       first_finger_down_point_[0] = 0;
       first_finger_down_point_[1] = 0;
       first_active_target_ = best_hittest_target->WeakTarget();
@@ -340,11 +336,7 @@ void EventDispatcher::ResetClickEnv() {
 void EventDispatcher::OnTouchDown(const ArkUI_UIInputEvent* event) {
   size_t num = OH_ArkUI_PointerEvent_GetPointerCount(event);
   for (size_t i = 0; i < num; ++i) {
-    if (OH_ArkUI_PointerEvent_GetPointerId(event, i) == 0 ||
-        OH_ArkUI_UIInputEvent_GetSourceType(event) ==
-            UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
-        OH_ArkUI_UIInputEvent_GetSourceType(event) ==
-            UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
+    if (IsPrimaryInput(event, OH_ArkUI_PointerEvent_GetPointerId(event, i))) {
       first_touch_moved_ = false;
       first_touch_outside_ = false;
       gesture_recognized_target_set_.clear();
@@ -375,12 +367,7 @@ void EventDispatcher::OnTouchMove(const ArkUI_UIInputEvent* event) {
           base::FloatsNotEqual(page_point[1], pre_page_point[1])) {
         has_touch_moved_ = true;
         touch_target->second.SetPrePoint(page_point);
-        if (!first_touch_moved_ &&
-            (pointer_id == 0 ||
-             OH_ArkUI_UIInputEvent_GetSourceType(event) ==
-                 UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
-             OH_ArkUI_UIInputEvent_GetSourceType(event) ==
-                 UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN)) {
+        if (!first_touch_moved_ && IsPrimaryInput(event, pointer_id)) {
           first_touch_changed = true;
           float down_page_point[2] = {0.f};
           touch_target->second.GetDownPoint(down_page_point);
@@ -423,11 +410,7 @@ void EventDispatcher::OnTouchUp(const ArkUI_UIInputEvent* event) {
     if (!IsActiveFinger(event, i)) {
       continue;
     }
-    if (OH_ArkUI_PointerEvent_GetPointerId(event, i) == 0 ||
-        OH_ArkUI_UIInputEvent_GetSourceType(event) ==
-            UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
-        OH_ArkUI_UIInputEvent_GetSourceType(event) ==
-            UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
+    if (IsPrimaryInput(event, OH_ArkUI_PointerEvent_GetPointerId(event, i))) {
       if (!enable_multi_touch_) {
         DispatchSingleTouchEvent(TouchEvent::UP, event);
       }
@@ -443,11 +426,7 @@ void EventDispatcher::OnTouchUp(const ArkUI_UIInputEvent* event) {
 void EventDispatcher::OnTouchCancel(const ArkUI_UIInputEvent* event) {
   size_t num = OH_ArkUI_PointerEvent_GetPointerCount(event);
   for (size_t i = 0; i < num; ++i) {
-    if (OH_ArkUI_PointerEvent_GetPointerId(event, i) == 0 ||
-        OH_ArkUI_UIInputEvent_GetSourceType(event) ==
-            UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
-        OH_ArkUI_UIInputEvent_GetSourceType(event) ==
-            UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
+    if (IsPrimaryInput(event, OH_ArkUI_PointerEvent_GetPointerId(event, i))) {
       ResetClickEnv();
       UpdateFocusedTarget();
       DeactivatePseudoStatus(PseudoStatus::kAll);
@@ -761,6 +740,15 @@ bool EventDispatcher::IsActiveFinger(const ArkUI_UIInputEvent* event,
   float finger_y = OH_ArkUI_PointerEvent_GetYByIndex(event, index);
   return base::FloatsEqual(active_x, finger_x) &&
          base::FloatsEqual(active_y, finger_y);
+}
+
+bool EventDispatcher::IsPrimaryInput(const ArkUI_UIInputEvent* event,
+                                     int pointer_id) {
+  return pointer_id == 0 ||
+         OH_ArkUI_UIInputEvent_GetToolType(event) ==
+             UI_INPUT_EVENT_TOOL_TYPE_MOUSE ||
+         OH_ArkUI_UIInputEvent_GetToolType(event) ==
+             UI_INPUT_EVENT_TOOL_TYPE_PEN;
 }
 
 void EventDispatcher::EventDispatcher::OnTouchEvent(
