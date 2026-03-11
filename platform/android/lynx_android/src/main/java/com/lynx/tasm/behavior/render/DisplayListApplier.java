@@ -113,8 +113,13 @@ public class DisplayListApplier implements Drawable.Callback {
     if (imageManager == null) {
       return;
     }
-    imageManager.updateInnerClipPathForBorderRadius(
-        boxIndex >= 0 ? mRoundedRectangleArray.get(boxIndex) : null);
+    RoundedRectangle rect = boxIndex >= 0 && boxIndex < mRoundedRectangleArray.size()
+        ? mRoundedRectangleArray.get(boxIndex)
+        : null;
+    if (rect != null) {
+      imageManager.updateDrawableBounds(rect.getRect());
+    }
+    imageManager.updateInnerClipPathForBorderRadius(rect);
     imageManager.setView(mHostLayer.get());
     imageManager.onDraw(canvas);
   }

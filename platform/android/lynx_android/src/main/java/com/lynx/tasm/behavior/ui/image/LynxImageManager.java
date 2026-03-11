@@ -1117,6 +1117,12 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
+  public void updateDrawableBounds(Rect bounds) {
+    if (mImageDrawable != null && !bounds.equals(mImageDrawable.getBounds())) {
+      mImageDrawable.setBounds(bounds);
+    }
+  }
+
   public void invalidate() {
     if (mUI != null) {
       mUI.invalidateMeaningfulPaintingArea();
