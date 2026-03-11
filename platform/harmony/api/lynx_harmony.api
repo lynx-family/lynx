@@ -21,6 +21,16 @@ export class MetaData {
   globalProps?: TemplateData;
 }
 
+export class LynxUpdateMeta extends MetaData {
+  mode: LynxUpdateMode; = LynxUpdateMode.UPDATE
+}
+
+export enum LynxUpdateMode {
+  UPDATE = 0
+  RESET = 1
+  RELOAD = 2
+}
+
 export abstract class LynxNodeController extends NodeController {
   updateNode(renderer: LynxUIRenderer, fitContentHeight: boolean): void;
   dispose(): void;

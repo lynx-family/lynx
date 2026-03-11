@@ -70,7 +70,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       const std::shared_ptr<lynx::tasm::TemplateData>& template_data,
       bool enable_dump_element_tree);
   void UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
-                      lepus::Value global_props);
+                      lepus::Value global_props, bool reset);
   void UpdateViewport(float width, int width_mode, float height,
                       int height_mode);
   void OnEnterForeground();

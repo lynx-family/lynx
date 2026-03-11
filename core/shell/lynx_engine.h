@@ -94,7 +94,7 @@ class LynxEngine {
       std::shared_ptr<tasm::PipelineOptions> pipeline_options);
 
   void UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
-                      const lepus::Value& global_props,
+                      const lepus::Value& global_props, bool reset,
                       uint32_t native_update_data_order,
                       std::shared_ptr<tasm::PipelineOptions> pipeline_options);
 

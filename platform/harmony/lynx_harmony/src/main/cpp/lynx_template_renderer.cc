@@ -291,10 +291,10 @@ void LynxTemplateRenderer::UpdateGlobalProps(lepus::Value value) {
 }
 
 void LynxTemplateRenderer::UpdateMetaData(
-    const std::shared_ptr<tasm::TemplateData>& data,
-    lepus::Value global_props) {
+    const std::shared_ptr<tasm::TemplateData>& data, lepus::Value global_props,
+    bool reset) {
   MergeGlobalProps(std::move(global_props));
-  shell_->UpdateMetaData(data, global_props_);
+  shell_->UpdateMetaData(data, global_props_, reset);
 }
 
 void LynxTemplateRenderer::LoadTemplate(
@@ -1022,8 +1022,8 @@ napi_value LynxTemplateRenderer::UpdateGlobalProps(napi_env env,
 napi_value LynxTemplateRenderer::UpdateMetaData(napi_env env,
                                                 napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 4;
-  napi_value args[4] = {nullptr};
+  size_t argc = 5;
+  napi_value args[5] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   LynxTemplateRenderer* obj = nullptr;
@@ -1038,7 +1038,9 @@ napi_value LynxTemplateRenderer::UpdateMetaData(napi_env env,
 
   lepus_value global_props =
       base::NapiConvertHelper::JSONToLepusValue(env, args[3]);
-  obj->UpdateMetaData(template_data, std::move(global_props));
+
+  bool reset = base::NapiUtil::ConvertToBoolean(env, args[4]);
+  obj->UpdateMetaData(template_data, std::move(global_props), reset);
   return nullptr;
 }
 

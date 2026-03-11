@@ -184,7 +184,7 @@ class LynxShell {
   void UpdateGlobalProps(const lepus::Value& global_props);
 
   void UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
-                      const lepus::Value& global_props);
+                      const lepus::Value& global_props, bool reset = false);
 
   void UpdateScreenMetrics(float width, float height, float device_pixel_ratio);
 

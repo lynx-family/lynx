@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { LynxTemplateRenderer } from './LynxTemplateRenderer';
-import { MetaData } from './MetaData';
+import { LynxUpdateMeta, LynxUpdateMode, MetaData } from './MetaData';
 import { LynxScreenMetrics } from './behavior/LynxScreenMetrics';
 import { ShadowNodeOwner } from './behavior/ShadowNodeOwner';
 import { UIOwner } from './behavior/UIOwner';
@@ -119,9 +119,14 @@ export class LynxContext implements IContext {
    * @param data Lynx template update metadata, developers use this data structure to specify the optional data content of the update template.
    */
   updateMetaData(data: MetaData) {
+    let reset: boolean = false;
+    if (data instanceof LynxUpdateMeta) {
+      reset = data.mode == LynxUpdateMode.RESET;
+    }
+    
     if (this.lynxView?.templateLoaded) {
       this.renderer?.updateMetaData(data.templateData?.processor, data.templateData?.data, data.templateData?.readOnly,
-        data.globalProps?.data);
+        data.globalProps?.data, reset);
     } else {
       this.lynxView?.metaData.merge(data);
     }
