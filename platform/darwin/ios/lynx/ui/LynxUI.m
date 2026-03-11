@@ -1968,8 +1968,7 @@ LYNX_PROP_DEFINE("visibility", setVisibility, LynxVisibilityType) {
 
   [self.nodeReadyBlockArray addObject:^(LynxUI* ui) {
     if (ui.transitionAnimationManager &&
-        ([ui.transitionAnimationManager isTransitionVisibility:self.view.hidden
-                                                      newState:isHidden])) {
+        ([ui.transitionAnimationManager isTransitionVisibility:ui.view.hidden newState:isHidden])) {
       __weak LynxUI* weakSelf = ui;
       [ui.transitionAnimationManager
           performTransitionAnimationsWithVisibility:isHidden
@@ -4279,6 +4278,7 @@ LYNX_PROP_DEFINE("copyable", copyable, BOOL) { _copyable = value; }
 
 - (void)dealloc {
   [self clearExclusiveAccessibilityElements:self.accessibilityBeingExclusiveFocusedNodes];
+  _nodeReadyBlockArray = nil;
 }
 
 /**
