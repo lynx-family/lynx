@@ -221,23 +221,73 @@ using namespace lynx::tasm;
         break;
       }
       case DisplayListOpType::kClipRect: {
-        [[maybe_unused]] auto left = [self nextContentFloat];
-        [[maybe_unused]] auto top = [self nextContentFloat];
-        [[maybe_unused]] auto width = [self nextContentFloat];
-        [[maybe_unused]] auto height = [self nextContentFloat];
+        // Clear previous clip state to avoid state leakage when multiple kClipRect in same frame
+        _view.layer.mask = nil;
+        _view.layer.cornerRadius = 0;
+        _view.layer.masksToBounds = NO;
 
-        [[maybe_unused]] std::array<float, 8> arr = {};
-        if (float_count > 4) {
-          arr[0] = [self nextContentFloat];
-          arr[1] = [self nextContentFloat];
-          arr[2] = [self nextContentFloat];
-          arr[3] = [self nextContentFloat];
-          arr[4] = [self nextContentFloat];
-          arr[5] = [self nextContentFloat];
-          arr[6] = [self nextContentFloat];
-          arr[7] = [self nextContentFloat];
+        float left = [self nextContentFloat];
+        float top = [self nextContentFloat];
+        float width = [self nextContentFloat];
+        float height = [self nextContentFloat];
+
+        CGRect rect = CGRectMake(left + left_offset_, top + top_offset_, width, height);
+
+        if (float_count >= 12) {
+          CGFloat tlX = [self nextContentFloat];
+          CGFloat tlY = [self nextContentFloat];
+          CGFloat trX = [self nextContentFloat];
+          CGFloat trY = [self nextContentFloat];
+          CGFloat brX = [self nextContentFloat];
+          CGFloat brY = [self nextContentFloat];
+          CGFloat blX = [self nextContentFloat];
+          CGFloat blY = [self nextContentFloat];
+
+          CGRect viewBounds = _view.bounds;
+          BOOL isFullView = CGRectEqualToRect(rect, viewBounds);
+          BOOL isUniformRadius = (tlX == tlY && tlX == trX && tlX == trY && tlX == brX &&
+                                  tlX == brY && tlX == blX && tlX == blY && tlX > 0);
+
+          if (isFullView && isUniformRadius) {
+            _view.layer.cornerRadius = tlX;
+            _view.layer.masksToBounds = YES;
+          } else {
+            LynxBorderRadii radii;
+            radii.topLeftX.val = tlX;
+            radii.topLeftX.unit = LynxBorderValueUnitDefault;
+            radii.topLeftY.val = tlY;
+            radii.topLeftY.unit = LynxBorderValueUnitDefault;
+            radii.topRightX.val = trX;
+            radii.topRightX.unit = LynxBorderValueUnitDefault;
+            radii.topRightY.val = trY;
+            radii.topRightY.unit = LynxBorderValueUnitDefault;
+            radii.bottomRightX.val = brX;
+            radii.bottomRightX.unit = LynxBorderValueUnitDefault;
+            radii.bottomRightY.val = brY;
+            radii.bottomRightY.unit = LynxBorderValueUnitDefault;
+            radii.bottomLeftX.val = blX;
+            radii.bottomLeftX.unit = LynxBorderValueUnitDefault;
+            radii.bottomLeftY.val = blY;
+            radii.bottomLeftY.unit = LynxBorderValueUnitDefault;
+
+            CAShapeLayer *maskLayer = [CAShapeLayer layer];
+            maskLayer.frame = _view.bounds;
+            CGPathRef path = [LynxBackgroundUtils createBezierPathWithRoundedRect:rect
+                                                                      borderRadii:radii];
+            maskLayer.path = path;
+            CGPathRelease(path);
+            _view.layer.mask = maskLayer;
+          }
+        } else {
+          if (CGRectEqualToRect(rect, _view.bounds)) {
+            _view.layer.masksToBounds = YES;
+          } else {
+            CAShapeLayer *maskLayer = [CAShapeLayer layer];
+            maskLayer.frame = _view.bounds;
+            maskLayer.path = [UIBezierPath bezierPathWithRect:rect].CGPath;
+            _view.layer.mask = maskLayer;
+          }
         }
-        // TODO(songshourui.null): implement the kClipRect action later.
         break;
       }
       case DisplayListOpType::kRecordBox: {
@@ -295,6 +345,13 @@ using namespace lynx::tasm;
   top_offset_ = 0;
   left_offset_ = 0;
   box_array_.clear();
+
+  // Clear previous clip state
+  if (_view) {
+    _view.layer.mask = nil;
+    _view.layer.cornerRadius = 0;
+    _view.layer.masksToBounds = NO;
+  }
 }
 
 - (void)applyRectToLayer:(CALayer *)layer withBoxIndex:(int32_t)index {

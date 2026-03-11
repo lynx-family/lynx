@@ -209,21 +209,132 @@ using namespace lynx::tasm;
   // Verify no crash
 }
 
-- (void)testProcessContentOperationsWithClipRect {
+- (void)testProcessContentOperationsWithClipRectPartial {
+  // Clip rect not equal to view bounds, should use mask
   id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
   id mockContext = OCMClassMock([LynxRendererContext class]);
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+  // maskLayer.frame is set to _view.bounds
+  [[[mockUIView stub] andReturnValue:OCMOCK_VALUE(CGRectMake(0, 0, 200, 200))] bounds];
+
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
                                                                       andContext:mockContext];
 
   DisplayList list;
-  // kClipRect with standard 4 floats
+  // kClipRect with standard 4 floats (partial rect)
   list.AddOperation(DisplayListOpType::kClipRect, 10.0f, 10.0f, 100.0f, 100.0f);
 
-  // kClipRect with 8 additional floats (rounded corners) -> total 12 floats
-  list.AddOperation(DisplayListOpType::kClipRect, 10.0f, 10.0f, 100.0f, 100.0f,  // 4 base
-                    5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f);             // 8 radii
+  // First call: clear previous state; Second call: set new mask
+  [[mockLayer expect] setMask:nil];
+  [[mockLayer expect] setMask:[OCMArg checkWithBlock:^BOOL(CAShapeLayer *mask) {
+                        return [mask isKindOfClass:[CAShapeLayer class]] &&
+                               CGRectEqualToRect(mask.frame, CGRectMake(0, 0, 200, 200));
+                      }]];
 
   [applier applyDisplayList:&list];
+  [mockLayer verify];
+}
+
+- (void)testProcessContentOperationsWithClipRectFullView {
+  // Clip rect equals view bounds, should use masksToBounds
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+  [[[mockUIView stub] andReturnValue:OCMOCK_VALUE(CGRectMake(0, 0, 100, 100))] bounds];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  // kClipRect with standard 4 floats (full view rect)
+  list.AddOperation(DisplayListOpType::kClipRect, 0.0f, 0.0f, 100.0f, 100.0f);
+
+  [[mockLayer expect] setMasksToBounds:YES];
+
+  [applier applyDisplayList:&list];
+  [mockLayer verify];
+}
+
+- (void)testProcessContentOperationsWithClipRectRoundedUniform {
+  // Rounded rect with full view and uniform radius, should use cornerRadius
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+  [[[mockUIView stub] andReturnValue:OCMOCK_VALUE(CGRectMake(0, 0, 100, 100))] bounds];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  // kClipRect with 12 floats (full view + uniform radii)
+  list.AddOperation(DisplayListOpType::kClipRect, 0.0f, 0.0f, 100.0f, 100.0f,  // rect
+                    5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f);           // uniform radii
+
+  [[mockLayer expect] setCornerRadius:5.0f];
+  [[mockLayer expect] setMasksToBounds:YES];
+
+  [applier applyDisplayList:&list];
+  [mockLayer verify];
+}
+
+- (void)testProcessContentOperationsWithClipRectRoundedPartial {
+  // Rounded rect with non-uniform radii should use mask (not cornerRadius optimization)
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+  // maskLayer.frame is set to _view.bounds
+  [[[mockUIView stub] andReturnValue:OCMOCK_VALUE(CGRectMake(0, 0, 100, 100))] bounds];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  // kClipRect with 12 floats (full view + non-uniform radii)
+  list.AddOperation(DisplayListOpType::kClipRect, 0.0f, 0.0f, 100.0f, 100.0f,  // rect
+                    5.0f, 5.0f, 10.0f, 10.0f, 2.0f, 2.0f, 8.0f, 8.0f);         // non-uniform radii
+
+  // First call: clear previous state; Second call: set new mask
+  [[mockLayer expect] setMask:nil];
+  [[mockLayer expect] setMask:[OCMArg checkWithBlock:^BOOL(CAShapeLayer *mask) {
+                        return [mask isKindOfClass:[CAShapeLayer class]] &&
+                               CGRectEqualToRect(mask.frame, CGRectMake(0, 0, 100, 100)) &&
+                               mask.path != nil;
+                      }]];
+
+  [applier applyDisplayList:&list];
+  [mockLayer verify];
+}
+
+- (void)testResetClearsClip {
+  // Verify reset clears mask and cornerRadius
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  // First draw with clip - kClipRect will clear state first, then set mask
+  DisplayList list1;
+  list1.AddOperation(DisplayListOpType::kClipRect, 10.0f, 10.0f, 100.0f, 100.0f);
+  // Expect setMask:nil for clearing, then setMask:[OCMArg any] for setting
+  [[mockLayer expect] setMask:nil];
+  [[mockLayer expect] setMask:[OCMArg any]];
+  [applier applyDisplayList:&list1];
+
+  // Verify mask/cornerRadius/masksToBounds is cleared on next applyDisplayList (via reset)
+  [[mockLayer expect] setMask:nil];
+  [[mockLayer expect] setCornerRadius:0.0f];
+  [[mockLayer expect] setMasksToBounds:NO];
+
+  DisplayList list2;
+  [applier applyDisplayList:&list2];
+  [mockLayer verify];
 }
 
 - (void)testProcessContentOperationsWithRecordBoxRadii {
