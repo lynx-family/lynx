@@ -7955,7 +7955,7 @@ public class com::lynx::tasm::behavior::ui::scroll::NestedHorizontalScrollView :
   public int com.lynx.tasm.behavior.ui.scroll.NestedHorizontalScrollView.getNestedScrollAxes();
 }
 
-public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContainerView : FrameLayout, NestedScrollingParent2, NestedScrollingChild2 {
+public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContainerView : FrameLayout, NestedScrollingParent2, NestedScrollingChild2, ScrollingView {
   public LynxSnapHelper com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.mSnapHelper mSnapHelper;
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.mIsDuringAutoScroll mIsDuringAutoScroll;
   public final float com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.LIST_AUTOMATIC_MAX_FLING_RATIO LIST_AUTOMATIC_MAX_FLING_RATIO;
@@ -7983,6 +7983,12 @@ public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContain
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.setEnableScroll(boolean enableScroll);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.canScrollHorizontally(int direction);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.canScrollVertically(int direction);
+  public int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.computeHorizontalScrollRange();
+  public int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.computeVerticalScrollRange();
+  public int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.computeHorizontalScrollOffset();
+  public int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.computeHorizontalScrollExtent();
+  public int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.computeVerticalScrollOffset();
+  public int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.computeVerticalScrollExtent();
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.setNestedScrollingEnabled(boolean enabled);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.isNestedScrollingEnabled();
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.hasNestedScrollingParent(int type);

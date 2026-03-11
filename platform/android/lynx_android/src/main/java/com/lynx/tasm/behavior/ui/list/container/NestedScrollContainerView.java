@@ -23,13 +23,14 @@ import androidx.core.view.NestedScrollingChild2;
 import androidx.core.view.NestedScrollingChildHelper;
 import androidx.core.view.NestedScrollingParent2;
 import androidx.core.view.NestedScrollingParentHelper;
+import androidx.core.view.ScrollingView;
 import androidx.core.view.ViewCompat;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
 import java.util.ArrayList;
 
 public class NestedScrollContainerView
-    extends FrameLayout implements NestedScrollingParent2, NestedScrollingChild2 {
+    extends FrameLayout implements NestedScrollingParent2, NestedScrollingChild2, ScrollingView {
   private static final String TAG = "UIListContainer.NestedScrollContainerView";
   private static final boolean DEBUG = false;
   public LynxSnapHelper mSnapHelper = null;
@@ -823,7 +824,7 @@ public class NestedScrollContainerView
 
   // Override to compute the horizontal range that the horizontal scrollbar represents.
   @Override
-  protected int computeHorizontalScrollRange() {
+  public int computeHorizontalScrollRange() {
     if (mIsVertical) {
       return 0;
     }
@@ -843,7 +844,7 @@ public class NestedScrollContainerView
 
   // Override to compute the vertical range that the vertical scrollbar represents.
   @Override
-  protected int computeVerticalScrollRange() {
+  public int computeVerticalScrollRange() {
     if (!mIsVertical) {
       return 0;
     }
@@ -862,13 +863,23 @@ public class NestedScrollContainerView
   }
 
   @Override
-  protected int computeHorizontalScrollOffset() {
+  public int computeHorizontalScrollOffset() {
     return !mIsVertical ? Math.max(0, super.computeHorizontalScrollOffset()) : 0;
   }
 
   @Override
-  protected int computeVerticalScrollOffset() {
+  public int computeHorizontalScrollExtent() {
+    return super.computeHorizontalScrollExtent();
+  }
+
+  @Override
+  public int computeVerticalScrollOffset() {
     return mIsVertical ? Math.max(0, super.computeVerticalScrollOffset()) : 0;
+  }
+
+  @Override
+  public int computeVerticalScrollExtent() {
+    return super.computeVerticalScrollExtent();
   }
 
   /********* NestedScrollingChild2 begin *********/
