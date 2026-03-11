@@ -561,4 +561,166 @@ using namespace lynx::tasm;
   [mockLayer verify];
 }
 
+- (void)testProcessContentOperationsWithLinearGradient {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 5.0f, 40.0f, 20.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 80.0f, 50.0f);
+
+  lynx::base::Vector<uint32_t> colors = {0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops = {0.0f, 1.0f};
+  list.AddLinearGradient(45.0f, colors, stops, 0, 1, 1, 1);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, (NSUInteger)1);
+  CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
+  XCTAssertTrue([vertical isKindOfClass:[CAReplicatorLayer class]]);
+  XCTAssertTrue(CGRectEqualToRect(vertical.frame, CGRectMake(0, 0, 80, 50)));
+  XCTAssertTrue(vertical.masksToBounds);
+  XCTAssertNil(vertical.mask);
+  XCTAssertEqual(vertical.sublayers.count, (NSUInteger)1);
+
+  CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
+  XCTAssertTrue([horizontal isKindOfClass:[CAReplicatorLayer class]]);
+  XCTAssertEqual(horizontal.sublayers.count, (NSUInteger)1);
+
+  CAGradientLayer *gradient = (CAGradientLayer *)horizontal.sublayers.firstObject;
+  XCTAssertTrue([gradient isKindOfClass:[CAGradientLayer class]]);
+  XCTAssertTrue(CGRectEqualToRect(gradient.frame, CGRectMake(10, 5, 40, 20)));
+  XCTAssertEqual(gradient.colors.count, (NSUInteger)2);
+  XCTAssertEqual(gradient.locations.count, (NSUInteger)2);
+  XCTAssertLessThan(gradient.startPoint.x, gradient.endPoint.x);
+  XCTAssertGreaterThan(gradient.startPoint.y, gradient.endPoint.y);
+}
+
+- (void)testProcessContentOperationsWithLinearGradientRepeatX {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 0.0f, 50.0f, 40.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 120.0f, 40.0f);
+
+  lynx::base::Vector<uint32_t> colors = {0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops = {0.0f, 1.0f};
+  list.AddLinearGradient(90.0f, colors, stops, 0, 1, 0, 1);
+
+  [applier applyDisplayList:&list];
+
+  CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
+  CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
+  XCTAssertTrue([horizontal isKindOfClass:[CAReplicatorLayer class]]);
+  XCTAssertEqual(horizontal.instanceCount, 4);
+  XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m41, 50.0, 0.001);
+  XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m42, 0.0, 0.001);
+
+  CAGradientLayer *gradient = (CAGradientLayer *)horizontal.sublayers.firstObject;
+  XCTAssertTrue([gradient isKindOfClass:[CAGradientLayer class]]);
+  XCTAssertTrue(CGRectEqualToRect(gradient.frame, CGRectMake(-40, 0, 50, 40)));
+}
+
+- (void)testProcessContentOperationsWithLinearGradientRepeatY {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 10.0f, 60.0f, 25.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 60.0f, 90.0f);
+
+  lynx::base::Vector<uint32_t> colors = {0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops = {0.0f, 1.0f};
+  list.AddLinearGradient(0.0f, colors, stops, 0, 1, 1, 0);
+
+  [applier applyDisplayList:&list];
+
+  CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
+  XCTAssertTrue([vertical isKindOfClass:[CAReplicatorLayer class]]);
+  XCTAssertEqual(vertical.instanceCount, 5);
+  XCTAssertEqualWithAccuracy(vertical.instanceTransform.m41, 0.0, 0.001);
+  XCTAssertEqualWithAccuracy(vertical.instanceTransform.m42, 25.0, 0.001);
+
+  CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
+  CAGradientLayer *gradient = (CAGradientLayer *)horizontal.sublayers.firstObject;
+  XCTAssertTrue([gradient isKindOfClass:[CAGradientLayer class]]);
+  XCTAssertTrue(CGRectEqualToRect(gradient.frame, CGRectMake(0, -15, 60, 25)));
+}
+
+- (void)testProcessContentOperationsWithLinearGradientRepeatXY {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 10.0f, 50.0f, 25.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 120.0f, 90.0f);
+
+  lynx::base::Vector<uint32_t> colors = {0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops = {0.0f, 1.0f};
+  list.AddLinearGradient(30.0f, colors, stops, 0, 1, 0, 0);
+
+  [applier applyDisplayList:&list];
+
+  CAReplicatorLayer *replicatorY = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
+  XCTAssertTrue([replicatorY isKindOfClass:[CAReplicatorLayer class]]);
+  XCTAssertEqual(replicatorY.instanceCount, 5);
+  XCTAssertEqualWithAccuracy(replicatorY.instanceTransform.m42, 25.0, 0.001);
+
+  CAReplicatorLayer *replicatorX = (CAReplicatorLayer *)replicatorY.sublayers.firstObject;
+  XCTAssertTrue([replicatorX isKindOfClass:[CAReplicatorLayer class]]);
+  XCTAssertEqual(replicatorX.instanceCount, 4);
+  XCTAssertEqualWithAccuracy(replicatorX.instanceTransform.m41, 50.0, 0.001);
+
+  CAGradientLayer *gradient = (CAGradientLayer *)replicatorX.sublayers.firstObject;
+  XCTAssertTrue([gradient isKindOfClass:[CAGradientLayer class]]);
+  XCTAssertTrue(CGRectEqualToRect(gradient.frame, CGRectMake(-40, -15, 50, 25)));
+}
+
+- (void)testProcessContentOperationsWithLinearGradientRoundedClip {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 10.0f, 40.0f, 20.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 80.0f, 50.0f, 6.0f, 6.0f, 6.0f, 6.0f,
+                    6.0f, 6.0f, 6.0f, 6.0f);
+
+  lynx::base::Vector<uint32_t> colors = {0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops = {0.0f, 1.0f};
+  list.AddLinearGradient(45.0f, colors, stops, 0, 1, 1, 1);
+
+  [applier applyDisplayList:&list];
+
+  CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
+  XCTAssertTrue(vertical.masksToBounds);
+  XCTAssertTrue([vertical.mask isKindOfClass:[CAShapeLayer class]]);
+}
+
+- (void)testProcessContentOperationsWithLinearGradientInvalidBoxIndex {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  lynx::base::Vector<uint32_t> colors = {0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops = {0.0f, 1.0f};
+  list.AddLinearGradient(45.0f, colors, stops, 0, 1, 1, 1);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, (NSUInteger)0);
+}
+
 @end

@@ -2,7 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBackgroundDrawable.h>
 #import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxGradient.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
@@ -15,6 +17,16 @@
 
 using namespace lynx;
 using namespace lynx::tasm;
+
+namespace {
+
+constexpr int32_t kBackgroundNoRepeat = 1;
+
+static CGRect RectFromRoundedRectangle(const RoundedRectangle &box) {
+  return CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
+}
+
+}  // namespace
 
 @implementation LynxDisplayListApplier {
   __weak UIView<LynxRendererHost> *_view;
@@ -312,6 +324,10 @@ using namespace lynx::tasm;
         box_array_.emplace_back(std::move(rect));
         break;
       }
+      case DisplayListOpType::kLinearGradient: {
+        [self processLinearGradient];
+        break;
+      }
       default:
         break;
     }
@@ -320,6 +336,82 @@ using namespace lynx::tasm;
     content_int_index_ = next_int_index;
     content_float_index_ = next_float_index;
   }
+}
+
+- (void)processLinearGradient {
+  int32_t color_count = [self nextContentInt];
+  if (color_count <= 0) {
+    return;
+  }
+
+  NSMutableArray *colors = [NSMutableArray arrayWithCapacity:color_count];
+  for (int32_t i = 0; i < color_count; ++i) {
+    [colors addObject:(id)[self colorFromARGB:[self nextContentInt]].CGColor];
+  }
+
+  int32_t stop_count = [self nextContentInt];
+  int32_t tiling_index = [self nextContentInt];
+  int32_t clip_index = [self nextContentInt];
+  int32_t repeat_x = [self nextContentInt];
+  int32_t repeat_y = [self nextContentInt];
+
+  float angle = [self nextContentFloat];
+
+  NSMutableArray<NSNumber *> *stops = [NSMutableArray arrayWithCapacity:MAX(stop_count, 0)];
+  for (int32_t i = 0; i < stop_count; ++i) {
+    [stops addObject:@([self nextContentFloat])];
+  }
+
+  if (tiling_index < 0 || static_cast<size_t>(tiling_index) >= box_array_.size() ||
+      clip_index < 0 || static_cast<size_t>(clip_index) >= box_array_.size()) {
+    return;
+  }
+
+  const RoundedRectangle &tiling_box = box_array_[tiling_index];
+  const RoundedRectangle &clip_box = box_array_[clip_index];
+
+  CGRect tiling_rect = RectFromRoundedRectangle(tiling_box);
+  CGRect clip_rect = RectFromRoundedRectangle(clip_box);
+  if (tiling_rect.size.width <= 0 || tiling_rect.size.height <= 0 || clip_rect.size.width <= 0 ||
+      clip_rect.size.height <= 0) {
+    return;
+  }
+
+  LynxLinearGradient *gradient = [self linearGradientWithAngle:angle colors:colors stops:stops];
+  LynxBackgroundLinearGradientDrawable *drawable = [LynxBackgroundLinearGradientDrawable new];
+  drawable.gradient = gradient;
+  drawable.repeatX = [self backgroundRepeatTypeForDisplayListRepeat:repeat_x];
+  drawable.repeatY = [self backgroundRepeatTypeForDisplayListRepeat:repeat_y];
+
+  CGRect local_clip_rect = CGRectMake(0.0, 0.0, clip_rect.size.width, clip_rect.size.height);
+  CGRect local_tiling_rect = CGRectMake(tiling_rect.origin.x - clip_rect.origin.x,
+                                        tiling_rect.origin.y - clip_rect.origin.y,
+                                        tiling_rect.size.width, tiling_rect.size.height);
+
+  [drawable prepareGradientWithBorderBox:local_clip_rect
+                             andPaintBox:local_tiling_rect
+                             andClipRect:local_clip_rect];
+
+  CALayer *gradient_root = drawable.verticalRepeatLayer;
+  if (gradient_root == nil) {
+    return;
+  }
+
+  gradient_root.frame = CGRectOffset(gradient_root.frame, clip_rect.origin.x + left_offset_,
+                                     clip_rect.origin.y + top_offset_);
+
+  if (clip_box.HasRadius()) {
+    CAShapeLayer *mask_layer = [CAShapeLayer layer];
+    mask_layer.frame = gradient_root.bounds;
+    CGPathRef path = [LynxBackgroundUtils
+        createBezierPathWithRoundedRect:gradient_root.bounds
+                            borderRadii:[self convertToLynxBorderRadii:clip_box]];
+    mask_layer.path = path;
+    CGPathRelease(path);
+    gradient_root.mask = mask_layer;
+  }
+
+  [self insertLayer:gradient_root];
 }
 
 - (void)applyDisplayList:(lynx::tasm::DisplayList *)list {
@@ -408,6 +500,34 @@ using namespace lynx::tasm;
   CGFloat g = ((argb >> 8) & 0xFF) / 255.0;
   CGFloat b = (argb & 0xFF) / 255.0;
   return [UIColor colorWithRed:r green:g blue:b alpha:a];
+}
+
+- (LynxLinearGradient *)linearGradientWithAngle:(float)angle
+                                         colors:(NSArray<id> *)colors
+                                          stops:(NSArray<NSNumber *> *)stops {
+  LynxLinearGradient *gradient = [LynxLinearGradient new];
+  NSMutableArray<UIColor *> *ui_colors = [NSMutableArray arrayWithCapacity:colors.count];
+  for (id color in colors) {
+    [ui_colors addObject:[UIColor colorWithCGColor:(__bridge CGColorRef)color]];
+  }
+  gradient.colors = ui_colors;
+  gradient.directionType = LynxLinearGradientDirectionAngle;
+  gradient.angle = angle * M_PI / 180.0;
+  gradient.positionCount = stops.count == colors.count ? stops.count : 0;
+  if (gradient.positionCount > 0) {
+    gradient.positions = static_cast<CGFloat *>(malloc(sizeof(CGFloat) * gradient.positionCount));
+    CGFloat last_stop = 0.0;
+    for (NSUInteger i = 0; i < gradient.positionCount; ++i) {
+      CGFloat stop = MAX(stops[i].doubleValue, last_stop);
+      gradient.positions[i] = stop;
+      last_stop = stop;
+    }
+  }
+  return gradient;
+}
+
+- (LynxBackgroundRepeatType)backgroundRepeatTypeForDisplayListRepeat:(int32_t)repeat {
+  return repeat == kBackgroundNoRepeat ? LynxBackgroundRepeatNoRepeat : LynxBackgroundRepeatRepeat;
 }
 
 - (LynxBorderStyle)lynxBorderStyleFromInt:(int)style {
