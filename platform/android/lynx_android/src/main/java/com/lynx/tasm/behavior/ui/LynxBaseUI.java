@@ -212,6 +212,8 @@ public abstract class LynxBaseUI
   protected int mBorderRightWidth;
   protected int mBorderBottomWidth;
   protected float mFontSize;
+  protected ArrayList<Runnable> mNodeReadyBlockArray = new ArrayList<>();
+
   private boolean mHasRadius = false;
   // this will be updated by layout change.Not affected by animation.
   // x is width, y is height.
@@ -2364,6 +2366,12 @@ public abstract class LynxBaseUI
     return mIsDetachedWithView;
   }
 
+  public void addNodeReadyBlock(Runnable runnable) {
+    if (runnable != null) {
+      mNodeReadyBlockArray.add(runnable);
+    }
+  }
+
   public int getWidth() {
     return mWidth;
   }
@@ -2779,6 +2787,11 @@ public abstract class LynxBaseUI
   public void onNodeReady() {
     onAnimationNodeReady();
     afterAnimationNodeReady();
+
+    for (Runnable runnable : mNodeReadyBlockArray) {
+      runnable.run();
+    }
+    mNodeReadyBlockArray.clear();
   }
 
   public void onNodeReload() {}

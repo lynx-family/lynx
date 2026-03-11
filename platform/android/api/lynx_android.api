@@ -4241,6 +4241,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBound(Rect bound);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.markDetachWithViewRecursively(boolean detached);
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isDetachedWithView();
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.addNodeReadyBlock(Runnable runnable);
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getWidth();
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getHeight();
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getTop();
