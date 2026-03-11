@@ -22,6 +22,13 @@ struct CommonAncestorRect {
   float rect[4] = {0, 0, 0, 0};
 };
 
+struct ExposureTargetMeta {
+  std::string unique_id;
+  bool is_custom_event{false};
+  bool is_global_event{false};
+  bool intercept_global_event{false};
+};
+
 namespace lynx::tasm {
 
 class NativePaintingCtxPlatformRef;
@@ -34,22 +41,32 @@ class PlatformEventTargetExposure
   class ExposureTargetDetail {
    public:
     ExposureTargetDetail() = default;
-    ExposureTargetDetail(int32_t id, std::string unique_id,
-                         std::string exposure_id, std::string exposure_scene,
-                         lepus::Value dataset);
+    ExposureTargetDetail(const fml::RefPtr<PlatformEventTarget>& target,
+                         std::string unique_id, bool is_custom_event,
+                         bool is_global_event, bool intercept_global_event);
 
-    int32_t ID() const;
+    const fml::RefPtr<PlatformEventTarget>& Target() const { return target_; }
+    const std::string& UniqueId() const { return unique_id_; }
+    bool IsCustomEvent() const { return is_custom_event_; }
+    void SetIsCustomEvent(bool is_custom_event) {
+      is_custom_event_ = is_custom_event;
+    }
+    bool IsGlobalEvent() const { return is_global_event_; }
+    void SetIsGlobalEvent(bool is_global_event) {
+      is_global_event_ = is_global_event;
+    }
+    bool InterceptGlobalEvent() const { return intercept_global_event_; }
     lepus::Value ExposedParams() const;
     bool operator==(const ExposureTargetDetail& other) const;
     bool operator!=(const ExposureTargetDetail& other) const;
     bool operator<(const ExposureTargetDetail& other) const;
 
    private:
-    int32_t id_{0};
+    fml::RefPtr<PlatformEventTarget> target_;
     std::string unique_id_;
-    std::string exposure_id_;
-    std::string exposure_scene_;
-    lepus::Value dataset_;
+    bool is_custom_event_{false};
+    bool is_global_event_{false};
+    bool intercept_global_event_{false};
   };
 
   explicit PlatformEventTargetExposure(
@@ -58,27 +75,23 @@ class PlatformEventTargetExposure
 
   void SetTaskRunner(const fml::RefPtr<fml::TaskRunner>& task_runner);
   void SetIntervalMs(int interval_ms);
-  void AddExposureTarget(int32_t id, const std::string& unique_id,
-                         const std::string& exposure_id,
-                         const std::string& exposure_scene,
-                         const lepus::Value& dataset);
-  void RemoveExposureTarget(int32_t id, const std::string& unique_id,
-                            const std::string& exposure_id,
-                            const std::string& exposure_scene);
+  void AddExposureTarget(const fml::RefPtr<PlatformEventTarget>& target,
+                         const lepus::Value& option);
+  void RemoveExposureTarget(const fml::RefPtr<PlatformEventTarget>& target,
+                            const lepus::Value& option);
+  void ClearExposureTargetMap();
   void StartExposureCheck();
   void StopExposureCheck();
 
  private:
-  void AddCommonAncestorRectMap(int32_t id);
-  void RemoveCommonAncestorRectMap(int32_t id);
+  void AddCommonAncestorRectMap(PlatformEventTarget* target);
+  void RemoveCommonAncestorRectMap(PlatformEventTarget* target);
   void ResetCommonAncestorRectMap();
   void ScheduleNextExposureCheck();
   void DoExposureCheck();
   void SendEvent(const std::set<ExposureTargetDetail>& targets,
                  const std::string& event_name) const;
-  std::string BuildExposureUniqueKey(int32_t id, const std::string& unique_id,
-                                     const std::string& exposure_id,
-                                     const std::string& exposure_scene) const;
+  ExposureTargetMeta ParseExposureTargetMeta(const lepus::Value& detail);
 
   NativePaintingCtxPlatformRef* platform_ref_{nullptr};
   fml::RefPtr<fml::TaskRunner> task_runner_;

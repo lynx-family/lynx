@@ -9,8 +9,10 @@
 #include <string>
 
 #include "base/include/value/base_string.h"
+#include "base/include/vector.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/prop_bundle.h"
+#include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/event/platform_event_emitter.h"
 #include "core/renderer/dom/fragment/event/platform_event_handler.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
@@ -68,22 +70,25 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   PlatformEventEmitter *GetEventEmitter();
   // Get PlatformEventTargetHelper instance.
   PlatformEventTargetHelper *GetEventTargetHelper();
+  // Update the platform event bundle of the target element.
+  void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle);
+  // Get the platform event bundle of the target element.
+  const PlatformEventBundle *GetPlatformEventBundle(int32_t id) const;
   // Reconstruct the event target tree recursively.
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively();
   // did_reconstruct is set to true if the event target tree is reconstructed.
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
       bool *did_reconstruct);
   // Add the target element to the exposure target map.
-  void AddPlatformEventTargetToExposure(int32_t id,
-                                        const std::string &unique_id,
-                                        const std::string &exposure_id,
-                                        const std::string &exposure_scene,
-                                        const lepus::Value &dataset);
+  void AddPlatformEventTargetToExposure(
+      const fml::RefPtr<PlatformEventTarget> &target,
+      const lepus::Value &option);
   // Remove the target element from the exposure target map.
-  void RemovePlatformEventTargetFromExposure(int32_t id,
-                                             const std::string &unique_id,
-                                             const std::string &exposure_id,
-                                             const std::string &exposure_scene);
+  void RemovePlatformEventTargetFromExposure(
+      const fml::RefPtr<PlatformEventTarget> &target,
+      const lepus::Value &option);
+  // Clear the exposure target map.
+  void ClearExposureTargetMap();
   // Invoke the method of the ui element.
   void InvokeUIMethod(
       int32_t id, const std::string &method, const lepus::Value &params,
@@ -113,6 +118,8 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
       std::make_unique<PlatformEventTargetHelper>(this);
   std::shared_ptr<PlatformEventTargetExposure> event_target_exposure_ =
       std::make_shared<PlatformEventTargetExposure>(this);
+  base::InlineOrderedFlatMap<int32_t, PlatformEventBundle, 64>
+      platform_event_bundles_;
   bool need_reconstruct_event_target_tree_{false};
 };
 

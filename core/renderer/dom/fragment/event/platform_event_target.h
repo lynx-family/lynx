@@ -87,8 +87,6 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float Top() const { return top_; }
   float Width() const { return width_; }
   float Height() const { return height_; }
-  float RendererOffsetX() const { return renderer_offset_x_; }
-  float RendererOffsetY() const { return renderer_offset_y_; }
   bool IsScrollContainer() const { return is_scroll_container_; }
   float ScrollOffsetX() const { return scroll_offset_x_; }
   float ScrollOffsetY() const { return scroll_offset_y_; }
@@ -119,6 +117,10 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float ExposureUIMarginTop() const { return exposure_ui_margin_top_; }
   float ExposureUIMarginBottom() const { return exposure_ui_margin_bottom_; }
   float ExposureAreaRatio() const { return exposure_area_ratio_; }
+  const std::string& Id() const { return id_; }
+  const std::string& ExposureId() const { return exposure_id_; }
+  const std::string& ExposureScene() const { return exposure_scene_; }
+  const lepus::Value& Dataset() const { return dataset_; }
 
   void GetExposureTargetRect(float rect[4]) const;
   void GetExposureWindowRect(float rect[4]) const;
@@ -166,13 +168,6 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
     event_set_ = std::move(event_set);
   }
 
-  void SetRendererOffsetX(float renderer_offset_x) {
-    renderer_offset_x_ = renderer_offset_x;
-  }
-  void SetRendererOffsetY(float renderer_offset_y) {
-    renderer_offset_y_ = renderer_offset_y;
-  }
-
   void SetUserInteractionEnabled(bool enabled) {
     user_interaction_enabled_ = enabled;
   }
@@ -205,6 +200,12 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   void SetEnableExposureUIClip(LynxEventPropStatus value) {
     enable_exposure_ui_clip_ = value;
   }
+  void SetId(std::string value) { id_ = std::move(value); }
+  void SetExposureId(std::string value) { exposure_id_ = std::move(value); }
+  void SetExposureScene(std::string value) {
+    exposure_scene_ = std::move(value);
+  }
+  void SetDataset(lepus::Value dataset) { dataset_ = std::move(dataset); }
 
  private:
   void GetOrUpdateTargetScreenRect(
@@ -218,8 +219,6 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float top_{0.f};
   float width_{0.f};
   float height_{0.f};
-  float renderer_offset_x_{0.f};
-  float renderer_offset_y_{0.f};
   bool is_scroll_container_{false};
   float scroll_offset_x_{0.f};
   float scroll_offset_y_{0.f};
@@ -238,6 +237,10 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float exposure_ui_margin_bottom_{0.f};
   float exposure_area_ratio_{0.f};
   LynxEventPropStatus enable_exposure_ui_clip_{LynxEventPropStatus::kUndefined};
+  std::string id_;
+  std::string exposure_id_;
+  std::string exposure_scene_;
+  lepus::Value dataset_;
 
   // event/expose target tree
   fml::RefPtr<PlatformEventTarget> parent_{nullptr};
