@@ -260,12 +260,10 @@ std::string TrimString(std::string_view str) {
   uint32_t total_space_count = 0;
   while (front_space_count < length && str[front_space_count] == ' ') {
     front_space_count++;
-    break;
   }
   while (front_space_count + back_space_count < length &&
          str[length - back_space_count - 1] == ' ') {
     back_space_count++;
-    break;
   }
   total_space_count = front_space_count + back_space_count;
   return std::string(str.substr(front_space_count, length - total_space_count));

@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.28
+* Support parsing comma-separated keyframe key lists in CSS keyframes (e.g., "0%,50%,100%" or "from, to"), which are flattened into multiple keyframe entries sharing the same style properties.
+
 # 0.0.27
 * Update supported lynx version to 3.7
 

@@ -5,7 +5,9 @@
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_keyframes_token.h"
 
 #include <utility>
+#include <vector>
 
+#include "base/include/string/string_utils.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/lepus/exception.h"
@@ -88,8 +90,17 @@ void CSSKeyframesToken::ParseStyles(const rapidjson::Value& value) {
     std::string key_text = (*itr)[kKeyText][kValue].GetString();
     std::shared_ptr<tasm::StyleMap> css_map(new tasm::StyleMap());
     ConvertToCSSAttrsMap((*itr)[kStyle], *css_map);
-    styles_.insert(std::pair<std::string, std::shared_ptr<tasm::StyleMap>>(
-        key_text, css_map));
+
+    // Handle comma-separated percentage lists like "0%,10%,20%" or "from, to"
+    std::vector<std::string> keys;
+    base::SplitString(key_text, ',', keys);
+    for (const std::string& key_raw : keys) {
+      // Trim whitespace from each key
+      std::string key = base::TrimString(key_raw);
+      if (!key.empty()) {
+        styles_.insert_or_assign(key, css_map);
+      }
+    }
   }
 }
 
