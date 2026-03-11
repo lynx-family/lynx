@@ -23,6 +23,20 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/js_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/js_ui_base.h"
 
+#if __has_include(                                                                 \
+    "core/runtime/rts/binding/napi/harmony_napi.h") &&                             \
+    __has_include(                                                                 \
+        "platform/harmony/lynx_harmony/src/main/cpp/static_task_napi_bridge.h") && \
+        __has_include(                                                             \
+            "relax_ng/core/runtime/rts/binding/idl/napi_renderer_function_ng.h")
+#define LYNX_HARMONY_HAS_RELAX2NATIVE_INIT 1
+#include "core/runtime/rts/binding/napi/harmony_napi.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/static_task_napi_bridge.h"
+#include "relax_ng/core/runtime/rts/binding/idl/napi_renderer_function_ng.h"
+#else
+#define LYNX_HARMONY_HAS_RELAX2NATIVE_INIT 0
+#endif
+
 void LynxNapiInit(napi_env env, napi_value exports) {
   lynx::harmony::LynxTemplateRenderer::Init(env, exports);
   lynx::harmony::LynxWhiteBoard::Init(env, exports);
@@ -41,6 +55,12 @@ void LynxNapiInit(napi_env env, napi_value exports) {
   lynx::harmony::LynxInfoReporterHelper::Init(env, exports);
   lynx::harmony::LynxTemplateBundleHarmony::Init(env, exports);
   lynx::harmony::LynxRuntimeWrapper::Init(env, exports);
+#if LYNX_HARMONY_HAS_RELAX2NATIVE_INIT
+  lynx::harmony::StaticTaskNapiBridge::Init(env, exports);
+  lynx::runtime::rts::Env rts_env(env);
+  lynx::runtime::rts::Object rts_exports(env, exports);
+  relax_ng::NapiRendererFunctionNG::Install(rts_env, rts_exports);
+#endif
 }
 
 #endif  // PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_LYNX_NAPI_EXPORT_H_

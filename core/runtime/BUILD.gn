@@ -4,6 +4,7 @@
 
 import("//${lynx_dir}/build_overrides/bindings_files.gni")
 import("//${lynx_dir}/build_overrides/lepus_context_factory_files.gni")
+import("//${lynx_dir}/build_overrides/runtime_extend.gni")
 import("../../testing/test.gni")
 import("../Lynx.gni")
 declare_args() {
@@ -35,17 +36,22 @@ lynx_core_source_set("runtime") {
     "//third_party/modp_b64",
   ]
 
+  deps += runtime_extend_deps
+
   if (is_android || is_ios || is_win || is_mac || enable_unittests) {
     deps += [ "profile/v8:v8_profile" ]
   }
-
+  defines = []
+  if (enable_unittests) {
+    defines += [ "LYNX_HAS_RTS_RUNTIME=0" ]
+  }
   public_deps = [ "js/jsi/quickjs" ]
   if (enable_napi_binding) {
     public_deps += [ "common/napi:napi_binding_core" ]
     deps += [ "js/napi:napi_loader_js" ]
   }
   if (is_android || is_ios) {
-    defines = [
+    defines += [
       "JS_SHARED_LIBRARY",
       "EMSCRIPTEN",
       "CONFIG_VERSION=\"2019-07-09\"",
