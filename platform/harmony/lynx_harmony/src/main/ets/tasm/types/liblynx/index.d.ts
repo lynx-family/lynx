@@ -90,6 +90,11 @@ export interface DevtoolResult {
 }
 
 
+
+export class LynxWhiteBoard {
+  constructor();
+}
+
 export class LynxTemplateRenderer {
   constructor();
 
@@ -99,7 +104,8 @@ export class LynxTemplateRenderer {
     isHostRenderer: boolean, perfController: PerformanceCollector, threadMode: number, groupId: string,
     useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, enableJSRuntime: boolean, moduleManagerArgs: Object[],
-    sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime): void;
+    sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime,
+    whiteBoard?: LynxWhiteBoard): void;
 
   nativeDetach(): void;
 
@@ -307,6 +313,7 @@ export class TemplateBundle {
 
   nativePostJsCacheGenerationTask(bytecodeSourceUrl: string, useV8: boolean): void;
 }
+
 
 export class LynxInfoReporterHelper {
   static nativeRegister(infoReporter: Object): void;

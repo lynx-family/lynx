@@ -735,6 +735,7 @@ export class LynxGroup {
   static createSharedLynxGroup(): LynxGroup;
   public isSingleGroup(): boolean;
   public getGroupID(): string;
+  public getWhiteBoard(): lynx.LynxWhiteBoard | undefined;
   public static SINGLE_GROUP: string; = "-1"
   public preloadJSPaths: string[]; = []
   public enableDynamicV8: boolean; = false

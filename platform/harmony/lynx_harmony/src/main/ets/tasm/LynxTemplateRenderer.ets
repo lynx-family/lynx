@@ -69,6 +69,10 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
 
   reset(uiDelegate: number[], perfController: PerformanceController) {
     this.perfController = perfController;
+    let whiteBoard: lynx.LynxWhiteBoard | undefined = undefined;
+    if (this.backgroundRuntimeOptions.lynxGroup) {
+      whiteBoard = this.backgroundRuntimeOptions.lynxGroup.getWhiteBoard();
+    }
     this.nativeReset(uiDelegate, this.providers, this.displayInfo.screenWidth, this.displayInfo.screenHeight,
       this.isHostRenderer, this.perfController.native, this.threadMode,
       this.backgroundRuntimeOptions.getGroupID(),
@@ -78,7 +82,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.backgroundRuntimeOptions.enableBytecode, this.backgroundRuntimeOptions.bytecodeSourceUrl,
       this.enableJSRuntime,
       convertModuleArgs(this.moduleManager),
-      convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime);
+      convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime, whiteBoard);
   }
 
   aboutToDisappear() {

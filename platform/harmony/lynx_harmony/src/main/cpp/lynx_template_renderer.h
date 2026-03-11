@@ -24,8 +24,8 @@
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
 #include "core/shell/lynx_shell.h"
-#include "core/template_bundle/lynx_template_bundle.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_runtime_wrapper.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
 
 namespace lynx {
 
@@ -146,7 +146,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
       bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
       std::unique_ptr<ModuleFactoryHarmony> module_factory,
-      LynxRuntimeWrapper* runtime_wrapper);
+      LynxRuntimeWrapper* runtime_wrapper,
+      LynxWhiteBoard* white_board = nullptr);
 
   static napi_value Init(napi_env env, napi_value exports);
   static napi_value GetBaseTraceBackend(napi_env env, napi_callback_info info);

@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+import lynx from 'liblynx.so';
+
 export class LynxGroup {
   public static SINGLE_GROUP: string = "-1";
   private static sNextID: number = 0;
@@ -13,6 +15,7 @@ export class LynxGroup {
   public enableHarmonyJSVM: boolean = false;
   public enableJSGroupThread: boolean = false;
   private id: string;
+  private whiteBoard: lynx.LynxWhiteBoard | undefined = undefined;
 
   // id used for copy.
   private constructor(isSingle: boolean, id?: string) {
@@ -21,6 +24,7 @@ export class LynxGroup {
     } else {
       this.id = isSingle ? LynxGroup.SINGLE_GROUP : LynxGroup.generateID();
     }
+    this.whiteBoard = new lynx.LynxWhiteBoard();
   }
 
   public static copy(other?: LynxGroup): LynxGroup | undefined {
@@ -31,6 +35,7 @@ export class LynxGroup {
       group.enableDynamicV8 = other.enableDynamicV8;
       group.enableHarmonyJSVM = other.enableHarmonyJSVM;
       group.enableJSGroupThread = other.enableJSGroupThread;
+      group.whiteBoard = other.whiteBoard;
     }
     return group;
   }
@@ -56,4 +61,10 @@ export class LynxGroup {
   public getGroupID(): string {
     return this.id;
   }
+
+  /** @internal */
+  public getWhiteBoard(): lynx.LynxWhiteBoard | undefined {
+    return this.whiteBoard;
+  }
 }
+

@@ -35,6 +35,7 @@
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/base/base_trace_backend.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/font/system_font_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
 
 #if ENABLE_TESTBENCH_REPLAY
@@ -114,7 +115,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
     bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
     bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
     std::unique_ptr<ModuleFactoryHarmony> module_factory,
-    LynxRuntimeWrapper* runtime_wrapper) {
+    LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board) {
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
 
@@ -171,6 +172,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
                                       ? runtime_wrapper->RuntimeStandalone()
                                             .GetPerfControllerActor()
                                       : nullptr)
+          .SetWhiteBoard(white_board ? white_board->GetWhiteBoard() : nullptr)
           .build());
   invoker_ptr->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
 
@@ -739,8 +741,8 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
 napi_value LynxTemplateRenderer::NativeReset(napi_env env,
                                              napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 17;
-  napi_value args[17] = {nullptr};
+  size_t argc = 18;
+  napi_value args[18] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // UIDelegate
@@ -803,6 +805,11 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
   LynxRuntimeWrapper* runtime_wrapper = nullptr;
   napi_unwrap(env, args[16], reinterpret_cast<void**>(&runtime_wrapper));
 
+  LynxWhiteBoard* white_board = nullptr;
+  if (argc > 17) {
+    napi_unwrap(env, args[17], reinterpret_cast<void**>(&white_board));
+  }
+
   LynxTemplateRenderer* obj = nullptr;
   napi_status status =
       napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
@@ -816,7 +823,7 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
       js_perf_controller_wrapper, thread_mode, std::move(group_id), use_quickjs,
       enable_js_group_thread, std::move(preload_js_paths), enable_bytecode,
       std::move(bytecode_source_url), enable_js, std::move(module_factory),
-      runtime_wrapper);
+      runtime_wrapper, white_board);
   return nullptr;
 }
 
