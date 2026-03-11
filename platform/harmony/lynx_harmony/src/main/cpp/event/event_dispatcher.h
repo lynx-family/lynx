@@ -164,6 +164,8 @@ class EventDispatcher {
 
   bool IsActiveFinger(const ArkUI_UIInputEvent* event, size_t index);
 
+  bool IsPrimaryInput(const ArkUI_UIInputEvent* event, int pointer_id);
+
   void TraverseAndUpdateHitTestBehavior(UIBase* node,
                                         bool has_disabled_ancestor);
 
