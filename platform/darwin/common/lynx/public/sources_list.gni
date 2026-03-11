@@ -26,6 +26,7 @@ common_lynx_public_headers =
                     "LynxTemplateBundle.h",
                     "LynxGlobalObserver.h",
                     "LynxViewClient.h",
+                    "LynxStaticTask.h",
                     "module/LynxModule.h",
                     "module/JSModule.h",
                     "module/LynxSetModule.h",
