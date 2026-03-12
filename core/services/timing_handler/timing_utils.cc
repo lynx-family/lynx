@@ -152,7 +152,7 @@ TimestampMsFraction CalculateDuration(TimestampUs start_time,
     return kErrorStartTimeGreaterThanEndTime;
   }
   // Normal case: both times are valid and start is before end.
-  return ConvertUsToDouble(end_time - start_time);
+  return static_cast<double>(end_time - start_time);
 };
 
 }  // namespace timing

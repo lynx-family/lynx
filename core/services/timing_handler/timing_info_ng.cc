@@ -265,8 +265,8 @@ void TimingInfoNg::PushMetricToPubMap(
   metric_map->PushDoubleToMap(kStartTimestamp, ConvertUsToDouble(start_time));
   metric_map->PushStringToMap(kEndTimestampName, end_name);
   metric_map->PushDoubleToMap(kEndTimestamp, ConvertUsToDouble(end_time));
-  metric_map->PushDoubleToMap(kDuration,
-                              CalculateDuration(start_time, end_time));
+  metric_map->PushDoubleToMap(
+      kDuration, ConvertUsToDouble(CalculateDuration(start_time, end_time)));
   entry_map->PushValueToMap(metric_name, std::move(metric_map));
 }
 
