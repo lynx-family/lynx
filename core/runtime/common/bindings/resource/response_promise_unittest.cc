@@ -79,6 +79,19 @@ TEST_F(ResponsePromiseTest, TestResponsePromiseAddCallbackAfterSetValue) {
   response_promise.AddCallback([](int32_t value) { EXPECT_EQ(value, 42); });
 }
 
+TEST_F(ResponsePromiseTest, TestResponsePromiseWaitReadyTwice) {
+  ResponsePromise<int32_t> response_promise;
+  response_promise.SetValue(42);
+
+  auto first = response_promise.Wait(1);
+  auto second = response_promise.Wait(1);
+
+  ASSERT_TRUE(first.has_value());
+  ASSERT_TRUE(second.has_value());
+  EXPECT_EQ(first.value(), 42);
+  EXPECT_EQ(second.value(), 42);
+}
+
 }  // namespace test
 }  // namespace runtime
 }  // namespace lynx
