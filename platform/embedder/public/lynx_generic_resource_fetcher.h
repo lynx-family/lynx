@@ -39,8 +39,9 @@ class LynxGenericResourceFetcher
         fetcher_, [](lynx_generic_resource_fetcher_t* fetcher,
                      lynx_resource_request_t* request,
                      lynx_resource_response_t* response) {
-          auto req = std::make_shared<LynxResourceRequest>(request);
-          auto resp = std::make_shared<LynxResourceResponse>(response);
+          auto req = std::make_shared<resource::LynxResourceRequest>(request);
+          auto resp =
+              std::make_shared<resource::LynxResourceResponse>(response);
           std::weak_ptr<LynxGenericResourceFetcher>* weak_ptr =
               reinterpret_cast<std::weak_ptr<LynxGenericResourceFetcher>*>(
                   lynx_generic_resource_fetcher_get_user_data(fetcher));
@@ -57,8 +58,9 @@ class LynxGenericResourceFetcher
         fetcher_, [](lynx_generic_resource_fetcher_t* fetcher,
                      lynx_resource_request_t* request,
                      lynx_resource_response_t* response) {
-          auto req = std::make_shared<LynxResourceRequest>(request);
-          auto resp = std::make_shared<LynxResourceResponse>(response);
+          auto req = std::make_shared<resource::LynxResourceRequest>(request);
+          auto resp =
+              std::make_shared<resource::LynxResourceResponse>(response);
           std::weak_ptr<LynxGenericResourceFetcher>* weak_ptr =
               reinterpret_cast<std::weak_ptr<LynxGenericResourceFetcher>*>(
                   lynx_generic_resource_fetcher_get_user_data(fetcher));
@@ -100,8 +102,9 @@ class LynxGenericResourceFetcher
    * @param request The resource request object.
    * @param response The resource response object.
    */
-  virtual void FetchResource(std::shared_ptr<LynxResourceRequest> request,
-                             std::shared_ptr<LynxResourceResponse> response) {}
+  virtual void FetchResource(
+      std::shared_ptr<resource::LynxResourceRequest> request,
+      std::shared_ptr<resource::LynxResourceResponse> response) {}
 
   /**
    * @apidoc
@@ -113,8 +116,8 @@ class LynxGenericResourceFetcher
    * @param response The resource response object.
    */
   virtual void FetchResourcePath(
-      std::shared_ptr<LynxResourceRequest> request,
-      std::shared_ptr<LynxResourceResponse> response) {}
+      std::shared_ptr<resource::LynxResourceRequest> request,
+      std::shared_ptr<resource::LynxResourceResponse> response) {}
 
   /**
    * @apidoc

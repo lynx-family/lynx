@@ -8,6 +8,9 @@
 #include <utility>
 
 #include "base/include/fml/make_copyable.h"
+#include "clay/fml/mapping.h"
+#include "clay/fml/paths.h"
+#include "clay/net/url/url_helper.h"
 
 namespace {
 
@@ -59,7 +62,31 @@ void ResourceLoaderEmbedder::Load(
   if (need_redirect && intercept_) {
     url = intercept_->ShouldInterceptUrl(src, false);
   }
+  url::UriSchemeType scheme_type = url::ParseUriScheme(url);
+  if (scheme_type == url::UriSchemeType::kNet) {
+    LoadByNet(url, callback, resource_type);
+  } else if (scheme_type == url::UriSchemeType::kLocalFile) {
+    ui_task_runner_->PostTask(
+        [url = std::move(url), callback = std::move(callback)]() {
+          std::string file_path =
+              fml::paths::AbsolutePath(fml::paths::FromURI(url));
+          auto mapping = fml::FileMapping::CreateReadOnly(file_path);
+          if (mapping && mapping->IsValid()) {
+            callback(mapping->GetMapping(), mapping->GetSize());
+          } else {
+            callback(nullptr, 0);
+          }
+        });
+  } else {
+    ui_task_runner_->PostTask(
+        [callback = std::move(callback)]() { callback(nullptr, 0); });
+  }
+}
 
+void ResourceLoaderEmbedder::LoadByNet(
+    const std::string& url,
+    const std::function<void(const uint8_t*, size_t)>& callback,
+    const ResourceType resource_type) {
   lynx_resource_request_t* fetcher_request =
       lynx_resource_request_create_internal(
           url, ConvertToLynxResourceType(resource_type));

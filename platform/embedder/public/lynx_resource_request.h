@@ -8,7 +8,7 @@
 
 namespace lynx {
 namespace pub {
-
+namespace resource {
 /**
  * @apidoc
  * @brief `LynxResourceRequest` is a class that represents a resource request.
@@ -48,6 +48,8 @@ class LynxResourceRequest {
  private:
   lynx_resource_request_t* request_;
 };
+
+}  // namespace resource
 }  // namespace pub
 }  // namespace lynx
 

@@ -7,19 +7,19 @@
 
 #include <memory>
 
-#include "lynx_generic_resource_fetcher.h"
+#include "platform/embedder/public/lynx_generic_resource_fetcher.h"
 
 namespace lynx {
 namespace example {
 class ExampleGenericResourceFetcher : public pub::LynxGenericResourceFetcher {
  public:
   void FetchResource(
-      std::shared_ptr<pub::LynxResourceRequest> request,
-      std::shared_ptr<pub::LynxResourceResponse> response) override;
+      std::shared_ptr<pub::resource::LynxResourceRequest> request,
+      std::shared_ptr<pub::resource::LynxResourceResponse> response) override;
 
   void FetchResourcePath(
-      std::shared_ptr<pub::LynxResourceRequest> request,
-      std::shared_ptr<pub::LynxResourceResponse> response) override;
+      std::shared_ptr<pub::resource::LynxResourceRequest> request,
+      std::shared_ptr<pub::resource::LynxResourceResponse> response) override;
 };
 }  // namespace example
 }  // namespace lynx

@@ -8,6 +8,7 @@
 
 namespace lynx {
 namespace pub {
+namespace resource {
 
 /**
  * @apidoc
@@ -55,6 +56,7 @@ class LynxResourceResponse {
  private:
   lynx_resource_response_t* response_;
 };
+}  // namespace resource
 }  // namespace pub
 }  // namespace lynx
 

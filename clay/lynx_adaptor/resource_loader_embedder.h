@@ -33,6 +33,9 @@ class ResourceLoaderEmbedder : public ResourceLoader {
                        bool need_redirect = false) override;
 
  private:
+  void LoadByNet(const std::string& url,
+                 const std::function<void(const uint8_t*, size_t)>& callback,
+                 const ResourceType resource_type);
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
   std::shared_ptr<ResourceLoaderIntercept> intercept_;
   std::shared_ptr<lynx::embedder::LynxResourceFetcherHolder> fetcher_holder_;

@@ -15,8 +15,8 @@ namespace lynx {
 namespace example {
 
 void ExampleGenericResourceFetcher::FetchResource(
-    std::shared_ptr<pub::LynxResourceRequest> fetcher_equest,
-    std::shared_ptr<pub::LynxResourceResponse> fetcher_response) {
+    std::shared_ptr<pub::resource::LynxResourceRequest> fetcher_equest,
+    std::shared_ptr<pub::resource::LynxResourceResponse> fetcher_response) {
   std::thread t([fetcher_equest, fetcher_response]() {
     const char* url_str = fetcher_equest->GetUrl();
     std::string url(url_str ? url_str : "");
@@ -35,8 +35,8 @@ void ExampleGenericResourceFetcher::FetchResource(
 }
 
 void ExampleGenericResourceFetcher::FetchResourcePath(
-    std::shared_ptr<pub::LynxResourceRequest> request,
-    std::shared_ptr<pub::LynxResourceResponse> response) {}
+    std::shared_ptr<pub::resource::LynxResourceRequest> request,
+    std::shared_ptr<pub::resource::LynxResourceResponse> response) {}
 
 }  // namespace example
 }  // namespace lynx
