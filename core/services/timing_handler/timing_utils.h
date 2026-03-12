@@ -23,8 +23,11 @@ enum DurationError {
   kErrorStartTimeGreaterThanEndTime = -4
 };
 
-TimestampMsFraction CalculateDuration(TimestampUs start_time,
-                                      TimestampUs end_time);
+TimestampMsFraction CalculateDuration(TimestampMs start_time,
+                                      TimestampMs end_time);
+
+TimestampMsFraction CalculateMsDuration(TimestampUs start_time,
+                                        TimestampUs end_time);
 
 // Helper function to get ms_timestamp from us_timestamp
 constexpr TimestampUs ConvertUsToMS(TimestampUs us_timestamp) {
