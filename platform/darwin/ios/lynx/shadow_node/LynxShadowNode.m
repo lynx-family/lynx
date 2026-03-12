@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxContext.h>
 #import <Lynx/LynxConverter+LynxCSSType.h>
 #import <Lynx/LynxDefines.h>
 #import <Lynx/LynxPropsProcessor.h>
@@ -61,6 +62,17 @@ LYNX_PROPS_GROUP_DECLARE(LYNX_PROP_DECLARE("event-through", setEventThrough, BOO
   // TODO(huangweiwu): The judgment method may be modified due to thread model switching
   if ([_uiOwner getThreadStrategyForRender] != LynxThreadStrategyForRenderAllOnUI &&
       [NSThread isMainThread]) {
+    LynxContext *lynxContext = _uiOwner.uiContext.lynxContext;
+    if (lynxContext) {
+      __weak __typeof(self) weakSelf = self;
+      [lynxContext runOnLayoutThread:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) {
+          [strongSelf setNeedsLayoutWithThreadCheckFinished];
+        }
+      }];
+      return;
+    }
     if (@available(iOS 10.0, *)) {
       __weak __typeof(self) weakSelf = self;
       [_currentLayoutLooper performBlock:^{
