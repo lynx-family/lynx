@@ -2117,15 +2117,15 @@ std::string UIBase::ExposureUIKey(const std::string& unique_id,
 }
 
 void UIBase::GetExposureUIRect(float rect[4]) {
-  rect[0] += exposure_ui_margin_left_;
-  rect[1] += exposure_ui_margin_top_;
+  rect[0] -= exposure_ui_margin_left_;
+  rect[1] -= exposure_ui_margin_top_;
   rect[2] += exposure_ui_margin_right_;
   rect[3] += exposure_ui_margin_bottom_;
 }
 
 void UIBase::GetExposureWindowRect(float rect[4]) {
-  rect[0] += exposure_screen_margin_left_;
-  rect[1] += exposure_screen_margin_top_;
+  rect[0] -= exposure_screen_margin_left_;
+  rect[1] -= exposure_screen_margin_top_;
   rect[2] += exposure_screen_margin_right_;
   rect[3] += exposure_screen_margin_bottom_;
 }
@@ -2238,7 +2238,6 @@ bool UIBase::IsVisibleForExposure(
       context_->ScreenSize(size);
       window_rect[2] = size[0];
       window_rect[3] = size[1];
-      GetExposureWindowRect(window_rect);
       auto& rect = it->second.ui_rect;
       rect[0] = window_rect[0];
       rect[1] = window_rect[1];
@@ -2251,7 +2250,6 @@ bool UIBase::IsVisibleForExposure(
     context_->ScreenSize(size);
     window_rect[2] = size[0];
     window_rect[3] = size[1];
-    GetExposureWindowRect(window_rect);
     UIExposure::CommonAncestorUIRect rect = {.ui_count = 1,
                                              .ui_rect_updated = true,
                                              .ui_rect[0] = window_rect[0],
@@ -2260,6 +2258,7 @@ bool UIBase::IsVisibleForExposure(
                                              .ui_rect[3] = window_rect[3]};
     common_ancestor_ui_rect_map.emplace(-10, std::move(rect));
   }
+  GetExposureWindowRect(window_rect);
 
   bool is_root_intersect_with_window =
       LynxUIHelper::CheckViewportIntersectWithRatio(root_rect, window_rect, 0);
