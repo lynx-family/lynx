@@ -4,10 +4,14 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_dispatcher.h"
 
+#include <deviceinfo.h>
+#include <dlfcn.h>
+
 #include <memory>
 #include <utility>
 
 #include "base/include/float_comparison.h"
+#include "core/base/harmony/harmony_function_loader.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_emitter.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
@@ -20,6 +24,25 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+namespace {
+static void* GetGestureInterrupterGetUserDataFunc() {
+  if (OH_GetSdkApiVersion() < kGestureInterrupterUserDataSupportVersion) {
+    return nullptr;
+  }
+  void* handle =
+      base::harmony::GetSharedObjectHandler(base::harmony::kAceNdkSoName);
+  if (handle == nullptr) {
+    return nullptr;
+  }
+  return dlsym(handle, "OH_ArkUI_GestureInterrupter_GetUserData");
+}
+
+static void* GestureInterrupterGetUserDataFuncHandle() {
+  static void* handle = GetGestureInterrupterGetUserDataFunc();
+  return handle;
+}
+}  // namespace
+
 GestureReceiver EventDispatcher::long_press_receiver_callback_ =
     [](ArkUI_GestureEvent* event, void* user_data) {
       if (!user_data) {
@@ -51,7 +74,19 @@ GestureReceiver EventDispatcher::velocity_tracker_pan_receiver_callback_ =
 
 GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
     [](ArkUI_GestureInterruptInfo* info) -> ArkUI_GestureInterruptResult {
-  auto event_dispatcher = NodeManager::Instance().GetEventDispatcher();
+  EventDispatcher* event_dispatcher = nullptr;
+  if (OH_GetSdkApiVersion() < kGestureInterrupterUserDataSupportVersion) {
+    event_dispatcher = NodeManager::Instance().GetEventDispatcher();
+  } else {
+    void* func = GestureInterrupterGetUserDataFuncHandle();
+    if (func != nullptr) {
+      using OhGetUserData = void* (*)(ArkUI_GestureInterruptInfo*);
+      event_dispatcher = static_cast<EventDispatcher*>(
+          reinterpret_cast<OhGetUserData>(func)(info));
+    } else {
+      event_dispatcher = NodeManager::Instance().GetEventDispatcher();
+    }
+  }
   if (!event_dispatcher) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
@@ -234,7 +269,8 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
                                            PARALLEL, NORMAL_GESTURE_MASK);
 
   NodeManager::Instance().SetGestureInterrupterToNode(
-      root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_);
+      root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_,
+      this);
 }
 
 void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
