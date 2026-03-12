@@ -13,7 +13,6 @@ common_lynx_public_headers =
                     "LynxBytecodeResponseBlock.h",
                     "LynxEngineProxy.h",
                     "LynxEnvKey.h",
-                    "../LynxEnv+Internal.h",
                     "base/LynxLog.h",
                     "LynxViewInternal.h",
                     "LynxTheme.h",
