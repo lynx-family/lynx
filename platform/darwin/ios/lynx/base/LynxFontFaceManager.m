@@ -14,10 +14,10 @@
 #import <Lynx/LynxResourceResponseDataInfoProtocol.h>
 #import <Lynx/LynxServiceResourceRequestParameters.h>
 #import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxView+Internal.h>
-#import "LynxTemplateRender+Internal.h"
 #import "LynxTraceEventDef.h"
 
 typedef struct _LynxInnerFontInfo {
@@ -153,7 +153,10 @@ typedef struct _LynxInnerFontInfo {
   if (_dic == nil) {
     _dic = [NSMutableDictionary new];
   }
-  [_dic setObject:fontFace forKey:[fontFace getKey]];
+  NSString *key = [fontFace getKey];
+  BOOL existed = (_dic[key] != nil);
+  [_dic setObject:fontFace forKey:key];
+  LLogInfo(@"addFontFace font-family=%@ existed=%d", key, existed ? 1 : 0);
 }
 
 - (LynxFontFace *)getFontFaceWithFamilyName:(NSString *)familyName {
