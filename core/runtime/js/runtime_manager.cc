@@ -12,12 +12,14 @@
 #include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
+#include "base/trace/native/trace_event.h"
 #include "core/base/memory/memory_pressure_callback.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/js/bindings/global.h"
 #include "core/runtime/js/js_executor.h"
 #include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/trace/runtime_trace_event_def.h"
 
 #ifndef JS_ENGINE_TYPE
 // Default set JS_ENGINE_TYPE if not provided.
@@ -177,6 +179,8 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
     runtime::js::JSRuntimeExternalParams create_params,
     const tasm::PageOptions& page_options) {
   const std::string group_id = create_params.group_id;
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RUNTIME_MANAGER_CREATE_JS_RUNTIME,
+              "group_id", group_id);
   // call inspect's prepare
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
     runtime_manager_delegate_->BeforeRuntimeCreate(
@@ -189,11 +193,15 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   // and the context is being shared.
   bool need_create_context_wrapper = true;
   if (is_single_context) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
+                RUNTIME_MANAGER_CREATE_SINGLE_CONTEXT_RUNTIME);
     js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
                                false, std::move(create_params));
     js_context = CreateJSIContext(js_runtime, group_id);
     LOGI("create single_context:" << js_context.get());
   } else {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
+                RUNTIME_MANAGER_GET_SHARED_JS_CONTEXT);
     js_context = GetSharedJSContext(group_id);
     if (js_context) {
       // Decide whether the engine type is determined by the
@@ -228,6 +236,8 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
           }
         }
       }
+      TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
+                  RUNTIME_MANAGER_SHARED_CONTEXT_REUSED);
       need_create_context_wrapper = false;
       js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
                                  true, std::move(create_params));
@@ -236,6 +246,8 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
       LOGI("get shared_context success, context:" << js_context.get()
                                                   << ", group:" << group_id);
     } else {
+      TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
+                  RUNTIME_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME);
       // share context first create.
       js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
                                  false, std::move(create_params));
@@ -282,6 +294,8 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
     if (!IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
       post_man = js_context->GetPostMan();
     }
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
+                RUNTIME_MANAGER_CONTEXT_WRAPPER_INIT_GLOBAL);
     context_wrapper->initGlobal(global_runtime, post_man, page_options);
     if (ensure_console) {
       context_wrapper->EnsureConsole(post_man, page_options);
@@ -294,6 +308,8 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
 
     runtime::js::GCPauseSuppressionMode mode(global_runtime.get());
     auto js_pre_sources = js_pre_sources_getter();
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
+                RUNTIME_MANAGER_CONTEXT_WRAPPER_PREPARE_JS_ENV);
     context_wrapper->prepareJSEnv(js_runtime, js_pre_sources);
   } else {
     // share context also need call this, because lynx_runtime is different.
@@ -309,6 +325,7 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
     bool force_use_lightweight_js_engine, const tasm::PageOptions& page_options,
     bool use_shared_context,
     runtime::js::JSRuntimeExternalParams external_params) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RUNTIME_MANAGER_CREATE_RUNTIME);
   auto js_runtime = MakeRuntime(force_use_lightweight_js_engine,
                                 use_shared_context, page_options);
   if (!memory_task_runner_) {
@@ -430,6 +447,7 @@ void RuntimeManager::EnsureConsolePostMan(
 std::shared_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
     bool force_use_lightweight_js_engine, bool use_shared_context,
     const tasm::PageOptions& page_options) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RUNTIME_MANAGER_MAKE_RUNTIME);
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
     return runtime_manager_delegate_->MakeRuntime(
         force_use_lightweight_js_engine, use_shared_context, page_options);

@@ -242,6 +242,9 @@ void BTSRuntime::InitExecutor(bool is_full_runtime,
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>> {
     std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>
         preload_js_sources;
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
+                BTS_RUNTIME_PRELOAD_JS_SOURCES_GETTER, "is_full_runtime",
+                is_full_runtime);
     if (is_full_runtime) {
       ReadCoreJS(preload_js_sources);
     }

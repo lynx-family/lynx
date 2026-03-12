@@ -157,8 +157,8 @@ base::expected<Value, JSINativeException> QuickjsRuntime::evaluateJavaScript(
     int start_line_offset) {
   LOGI("QuickjsRuntime::evaluateJavaScript: " << source_url);
   std::string filename = AddPrefixToUrlIfNeeded(source_url);
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, EVALUATE_JAVA_SCRIPT, "source_url",
-                      filename, "runtime_id", getRuntimeId());
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, EVALUATE_JAVA_SCRIPT, "url", filename,
+              "runtime_id", getRuntimeId());
   auto eval_res = QuickjsHelper::evalBuf(
       this, context_->getContext(),
       reinterpret_cast<const char *>(buffer->data()), buffer->size(),
@@ -178,8 +178,8 @@ QuickjsRuntime::evaluateJavaScriptBytecode(
     const std::string &source_url) {
   LOGI("QuickjsRuntime::evaluateJavaScriptBytecode: " << source_url);
   std::string filename = AddPrefixToUrlIfNeeded(source_url);
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, EVALUATE_JAVA_SCRIPT_BYTECODE,
-                      "source_url", filename, "runtime_id", getRuntimeId());
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, EVALUATE_JAVA_SCRIPT_BYTECODE, "source_url",
+              filename, "runtime_id", getRuntimeId());
   auto eval_res = QuickjsHelper::evalBin(
       this, context_->getContext(),
       reinterpret_cast<const char *>(buffer->data()), buffer->size(),

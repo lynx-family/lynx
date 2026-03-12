@@ -4,10 +4,12 @@
 #include "core/runtime/js/js_executor.h"
 
 #include "base/include/log/logging.h"
+#include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bindings/console.h"
 #include "core/runtime/js/runtime_manager.h"
 #include "core/runtime/js/utils.h"
+#include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 
 // BINARY_KEEP_SOURCE_FILE
@@ -64,6 +66,7 @@ void JSExecutor::loadPreJSBundle(
         js_pre_sources_getter,
     bool ensure_console, JSRuntimeExternalParams create_params,
     const tasm::PageOptions& page_options) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_EXECUTOR_LOAD_PRE_JS_BUNDLE);
   const int64_t runtime_id = create_params.runtime_id;
   js_runtime_ = runtimeManagerInstance()->CreateJSRuntime(
       std::move(js_pre_sources_getter), force_use_light_weight_js_engine_,

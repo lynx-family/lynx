@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "base/include/log/logging.h"
+#include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/runtime/js/jsi/jsc/jsc_api.h"
 #include "core/runtime/js/jsi/jsc/jsc_context_group_wrapper.h"
@@ -25,6 +26,7 @@
 #include "core/runtime/js/jsi/jsc/jsc_exception.h"
 #include "core/runtime/js/jsi/jsc/jsc_host_function.h"
 #include "core/runtime/js/jsi/jsc/jsc_host_object.h"
+#include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/watch_dog/watch_dog.h"
 #include "third_party/modp_b64/modp_b64.h"
 
@@ -111,10 +113,13 @@ base::expected<Value, JSINativeException> JSCRuntime::evaluateJavaScript(
   JSStringRef sourceRef = JSStringCreateWithUTF8CString(
       reinterpret_cast<const char*>(buffer->data()));
   JSStringRef sourceURLRef = nullptr;
+  std::string origin_url;
   if (!source_url.empty()) {
-    sourceURLRef = JSStringCreateWithUTF8CString(
-        AddPrefixToUrlIfNeeded(source_url).c_str());
+    origin_url = AddPrefixToUrlIfNeeded(source_url);
+    sourceURLRef = JSStringCreateWithUTF8CString(origin_url.c_str());
   }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, EVALUATE_JAVA_SCRIPT, "url", origin_url,
+              "runtime_id", getRuntimeId());
   JSValueRef exc = nullptr;
   JSValueRef res = JSEvaluateScript(
       ctx_->getContext(), sourceRef, nullptr, sourceURLRef,

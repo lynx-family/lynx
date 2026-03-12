@@ -32,6 +32,7 @@ void JSContextWrapper::prepareJSEnv(
   }
 
   // load the lynx_core.js
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_CONTEXT_WRAPPER_PREPARE_JS_ENV);
   runtime::js::Scope scope(*rt);
   for (auto& [url, buffer] : js_preload) {
     auto prep = rt->prepareJavaScript(buffer, url);
