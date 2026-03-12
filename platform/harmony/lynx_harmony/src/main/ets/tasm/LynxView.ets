@@ -235,6 +235,16 @@ export struct LynxView {
     this.loadTemplate();
   }
 
+  onEnterForeground() {
+    this.uiRenderer?.onEnterForeground();
+    this.templateRenderer.onEnterForeground();
+  }
+
+  onEnterBackground() {
+    this.uiRenderer?.onEnterBackground();
+    this.templateRenderer.onEnterBackground();
+  }
+
   prepareForLoadTemplate() {
     if (this.perfController) {
       this.perfController.destroy()

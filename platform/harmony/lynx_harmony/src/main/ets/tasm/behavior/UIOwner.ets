@@ -135,4 +135,12 @@ export class UIOwner {
   updateRootTarget(content: NativeContent): void {
     this.native.updateRootTarget(content);
   }
+
+  public onEnterForeground(): void {
+    this.native.onEnterForeground();
+  }
+
+  public onEnterBackground(): void {
+    this.native.onEnterBackground();
+  }
 }

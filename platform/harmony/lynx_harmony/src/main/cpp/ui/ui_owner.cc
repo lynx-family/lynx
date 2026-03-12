@@ -48,6 +48,8 @@ napi_value UIOwner::Init(napi_env env, napi_value exports) {
 
       DECLARE_NAPI_FUNCTION("canConsumeTouchEvent", CanConsumeTouchEvent),
       DECLARE_NAPI_FUNCTION("updateRootTarget", UpdateRootTarget),
+      DECLARE_NAPI_FUNCTION("onEnterForeground", OnEnterForeground),
+      DECLARE_NAPI_FUNCTION("onEnterBackground", OnEnterBackground),
       DECLARE_NAPI_FUNCTION("setLynxImageConfig", SetLynxImageConfig),
   };
 #undef DECLARE_NAPI_FUNCTION
@@ -121,6 +123,9 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   }
 
   ui_holder_[sign] = ui->IsRoot() ? root_ : std::shared_ptr<UIBase>(ui);
+  if (ui->NeedWindowStateChangeEvent()) {
+    window_state_listeners_.insert(ui);
+  }
   UpdateComponentIdMap(ui, painting_data);
   ui->UpdateProps(painting_data);
   const auto& events = painting_data->GetEvents();
@@ -211,6 +216,9 @@ void UIOwner::DestroySubTree(UIBase* root) {
   root->RemoveFromParent();
   AddOrRemoveUIFromExclusiveSet(root->Sign(), false);
   keyboard_event_observers_.erase(root->Sign());
+  if (root->NeedWindowStateChangeEvent()) {
+    window_state_listeners_.erase(root);
+  }
   ui_holder_.erase(root->Sign());
 }
 
@@ -511,6 +519,7 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->ui_holder_.clear();
   obj->layout_changed_nodes_.clear();
   obj->keyboard_event_observers_.clear();
+  obj->window_state_listeners_.clear();
   obj->root_ = nullptr;
   napi_delete_reference(env, obj->js_create_);
   napi_delete_reference(env, obj->js_create_node_content_);
@@ -576,6 +585,34 @@ napi_value UIOwner::UpdateRootTarget(napi_env env, napi_callback_info info) {
   return nullptr;
 }
 
+napi_value UIOwner::OnEnterForeground(napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 0;
+  napi_get_cb_info(env, info, &argc, nullptr, &js_this, nullptr);
+
+  UIOwner* obj = nullptr;
+  napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!obj) {
+    return nullptr;
+  }
+  obj->OnEnterForeground();
+  return nullptr;
+}
+
+napi_value UIOwner::OnEnterBackground(napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 0;
+  napi_get_cb_info(env, info, &argc, nullptr, &js_this, nullptr);
+
+  UIOwner* obj = nullptr;
+  napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!obj) {
+    return nullptr;
+  }
+  obj->OnEnterBackground();
+  return nullptr;
+}
+
 napi_value UIOwner::SetLynxImageConfig(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   napi_value argv[argc];
@@ -609,7 +646,19 @@ bool UIOwner::CanConsumeTouchEvent(float point[2]) {
 
 void UIOwner::UpdateRootTarget(UIBase* root) {
   event_dispatcher_->UpdateRootTarget(root);
-};
+}
+
+void UIOwner::OnEnterForeground() {
+  for (const auto& it : window_state_listeners_) {
+    it->OnEnterForeground();
+  }
+}
+
+void UIOwner::OnEnterBackground() {
+  for (const auto& it : window_state_listeners_) {
+    it->OnEnterBackground();
+  }
+}
 
 void UIOwner::InvokeUIMethod(int32_t id, const std::string& method,
                              PropBundleHarmony* args, int32_t callback_id) {

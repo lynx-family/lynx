@@ -34,6 +34,12 @@ export abstract class UIBase {
   onCreate() {
   }
 
+  onEnterForeground() {
+  }
+
+  onEnterBackground() {
+  }
+
   setSign(sign: number, tag: string) {
     this.sign = sign;
     this.tag = tag;
@@ -62,6 +68,10 @@ export abstract class UIBase {
     return null;
   }
 
+  protected needWindowStateChangeEvent() {
+    return false;
+  }
+
   attachToNative(uiContext: UIContext, context: number[]): void {
     this.logicalPixels = true;
     this.uiContext = uiContext;
@@ -69,7 +79,9 @@ export abstract class UIBase {
     this.nativeUI =
       new lynx.UIBase(this, context, null, this.sign!, this.tag!, this.update, this.layout, this.invokeMethod,
         this.dispose,
-        this.focusChange, this.focusable, this.onNodeReady, this.hasCustomizedLayout(), this.updateExtraData);
+        this.focusChange, this.focusable, this.onNodeReady, this.hasCustomizedLayout(), this.updateExtraData,
+        this.needWindowStateChangeEvent(),
+        this.onEnterForeground, this.onEnterBackground);
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.UIBASE_CREATE_NATIVE_UI);
     this.nativeUI.setFrameNode(this.getFrameNode(this.uiContext!));
   }

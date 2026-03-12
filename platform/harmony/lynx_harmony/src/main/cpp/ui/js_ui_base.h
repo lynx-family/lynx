@@ -39,8 +39,10 @@ class JSUIBase : public UIBase {
   bool Focusable() override;
   void OnFocusChange(bool has_focus, bool is_focus_transition) override;
   JSUIBase(LynxContext* context, ArkUI_NodeHandle node, int sign,
-           const std::string& tag, bool has_customized_layout)
-      : UIBase(context, ARKUI_NODE_CUSTOM, sign, tag, has_customized_layout) {
+           const std::string& tag, bool has_customized_layout,
+           const bool need_window_state_change_event)
+      : UIBase(context, ARKUI_NODE_CUSTOM, sign, tag, has_customized_layout),
+        need_window_state_change_event_(need_window_state_change_event) {
     if (node) {
       frame_node_ = node;
       NodeManager::Instance().InsertNode(node_, node, 0);
@@ -54,6 +56,11 @@ class JSUIBase : public UIBase {
   bool HasJSObject() override { return true; }
   void UpdateExtraData(
       const fml::RefPtr<fml::RefCountedThreadSafeStorage>& extra_data) override;
+  bool NeedWindowStateChangeEvent() const override {
+    return need_window_state_change_event_;
+  }
+  void OnEnterForeground() override;
+  void OnEnterBackground() override;
 
  private:
   static napi_value Constructor(napi_env env, napi_callback_info info);
@@ -83,7 +90,10 @@ class JSUIBase : public UIBase {
   napi_ref js_insert_child_{nullptr};
   napi_ref js_remove_child_{nullptr};
   napi_ref js_update_extra_data_{nullptr};
+  napi_ref js_on_enter_foreground_{nullptr};
+  napi_ref js_on_enter_background_{nullptr};
   ArkUI_NodeHandle frame_node_{nullptr};
+  const bool need_window_state_change_event_{false};
 };
 
 }  // namespace harmony

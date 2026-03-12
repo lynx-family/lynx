@@ -119,7 +119,14 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
   setAvoidKeyboardListener(avoidKeyboardListener?: (translateY: number) => void): void {
     this.uiOwner.setAvoidKeyboardListener(avoidKeyboardListener);
   }
-  
+
+  onEnterForeground(): void {
+    this.uiOwner.onEnterForeground();
+  }
+
+  onEnterBackground(): void {
+    this.uiOwner.onEnterBackground();
+  }
 }
 
 

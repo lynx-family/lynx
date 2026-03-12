@@ -84,7 +84,7 @@ void JSUIBase::SetFrameNode(ArkUI_NodeHandle frame_node) {
 }
 
 napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
-  size_t argc = 14;
+  size_t argc = 17;
   /** 0 - js ref
    *  1 - context ptr array
    *  2 - FrameNode napi_value
@@ -99,6 +99,9 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
    *  11 - nodeReady func ref
    *  12 - layout children via arkts arkui
    *  13 - updateExtraData func ref
+   *  14 - need_window_state_change_event bool
+   *  15 - onEnterForeground func ref
+   *  16 - onEnterBackground func ref
    */
   napi_value argv[argc];
   napi_value js_this;
@@ -115,7 +118,10 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
   std::string tag = base::NapiUtil::ConvertToShortString(env, argv[4]);
   bool has_customized_layout = false;
   napi_get_value_bool(env, argv[12], &has_customized_layout);
-  auto* ui = new JSUIBase(context, node, sign, tag, has_customized_layout);
+  bool need_window_state_change_event = false;
+  napi_get_value_bool(env, argv[14], &need_window_state_change_event);
+  auto* ui = new JSUIBase(context, node, sign, tag, has_customized_layout,
+                          need_window_state_change_event);
   ui->env_ = env;
   napi_create_reference(env, argv[0], 1, &ui->js_ref_);
   napi_create_reference(env, argv[5], 1, &ui->js_update_);
@@ -126,6 +132,8 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
   napi_create_reference(env, argv[10], 1, &ui->js_focusable_);
   napi_create_reference(env, argv[11], 1, &ui->js_node_ready_);
   napi_create_reference(env, argv[13], 1, &ui->js_update_extra_data_);
+  napi_create_reference(env, argv[15], 1, &ui->js_on_enter_foreground_);
+  napi_create_reference(env, argv[16], 1, &ui->js_on_enter_background_);
 
   napi_wrap(
       env, js_this, ui, [](napi_env env, void* data, void*) {}, nullptr,
@@ -297,6 +305,8 @@ JSUIBase::~JSUIBase() {
     napi_delete_reference(env_, js_remove_child_);
   }
   napi_delete_reference(env_, js_update_extra_data_);
+  napi_delete_reference(env_, js_on_enter_foreground_);
+  napi_delete_reference(env_, js_on_enter_background_);
   napi_value js_object = base::NapiUtil::GetReferenceNapiValue(env_, js_ref_);
   if (js_object) {
     napi_remove_wrap(env_, js_object, nullptr);
@@ -541,6 +551,28 @@ void JSUIBase::UpdateExtraData(
       return;
     }
   }
+}
+
+void JSUIBase::OnEnterForeground() {
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_ref_);
+  napi_value on_enter_foreground =
+      base::NapiUtil::GetReferenceNapiValue(env_, js_on_enter_foreground_);
+  if (!js_recv || !on_enter_foreground) {
+    return;
+  }
+  napi_call_function(env_, js_recv, on_enter_foreground, 0, nullptr, nullptr);
+}
+
+void JSUIBase::OnEnterBackground() {
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_ref_);
+  napi_value on_enter_background =
+      base::NapiUtil::GetReferenceNapiValue(env_, js_on_enter_background_);
+  if (!js_recv || !on_enter_background) {
+    return;
+  }
+  napi_call_function(env_, js_recv, on_enter_background, 0, nullptr, nullptr);
 }
 
 }  // namespace harmony

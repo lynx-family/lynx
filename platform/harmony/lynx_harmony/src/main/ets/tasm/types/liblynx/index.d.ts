@@ -229,13 +229,18 @@ export class UIOwner {
   updateRootTarget(node: NativeContent): void;
   
   setLynxImageConfig(config?: Object): void;
+
+  onEnterForeground() : void;
+
+  onEnterBackground() : void;
 }
 
 export class UIBase {
   constructor(ref: Object, context: number[], node: FrameNode | null, sign: number, tag: string, update: Function,
     layout: Function, invokeUIMethod: Function, dispose: Function, focusChange: Function, focusable: Function,
     onNodeReady: Function,
-    customLayout: boolean, updateExtraData: Function);
+    customLayout: boolean, updateExtraData: Function,
+    needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function);
 
   static getUIFromNativeContent(nativeContent: NativeContent): Object | undefined;
 

@@ -165,6 +165,9 @@ class UIOwner {
       const tasm::PipelineID& pipeline_id) const;
   void OnAvoidKeyboardCallback(float translate_y) const;
 
+  void OnEnterForeground();
+  void OnEnterBackground();
+
   bool Destroyed() const { return destroyed_; }
 
   const std::string& Id() { return id_; }
@@ -190,6 +193,8 @@ class UIOwner {
   static napi_value KeyboardStatusChanged(napi_env env,
                                           napi_callback_info info);
   static napi_value UpdateRootTarget(napi_env env, napi_callback_info info);
+  static napi_value OnEnterForeground(napi_env env, napi_callback_info info);
+  static napi_value OnEnterBackground(napi_env env, napi_callback_info info);
   static napi_value SetLynxImageConfig(napi_env env, napi_callback_info info);
 
   void DestroySubTree(UIBase* root);
@@ -205,6 +210,7 @@ class UIOwner {
   std::unordered_map<std::string, int32_t> component_map_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> layout_changed_nodes_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> keyboard_event_observers_;
+  std::unordered_set<UIBase*> window_state_listeners_;
 
   napi_env env_{nullptr};
   napi_ref js_this_{nullptr};

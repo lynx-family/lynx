@@ -99,6 +99,9 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual void OnListCellPrepareForReuse(const std::string& item_key,
                                          UIBase* ui_list);
   virtual void WillRemoveFromUIParent();
+  virtual void OnEnterForeground() {}
+  virtual void OnEnterBackground() {}
+  virtual bool NeedWindowStateChangeEvent() const { return false; }
   bool CheckStickyOnParentScroll(float scroll_left, float scroll_top);
   void RemoveFromParent();
   void RequestLayout();

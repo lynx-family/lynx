@@ -31,6 +31,8 @@ export abstract class LynxNodeController extends NodeController {
 
 @Component export class LynxView {
   reInitTemplateRenderer(): void;
+  onEnterForeground(): void;
+  onEnterBackground(): void;
   prepareForLoadTemplate(): void;
   aboutToAppear(): void;
   aboutToDisappear(): void;
@@ -312,6 +314,8 @@ export type BehaviorRegistryMap = Map<string, Behavior> {
 export abstract class UIBase {
   constructor(context: IContext, param: Object);
   onCreate(): void;
+  onEnterForeground(): void;
+  onEnterBackground(): void;
   setSign(sign: number, tag: string): void;
   hasCustomizedLayout(): boolean;
   focusable(): boolean;
@@ -406,10 +410,12 @@ export class UIOwner {
   canConsumeTouchEvent(x: number, y: number): boolean;
   updateRootTarget(node: NativeContent): void;
   setLynxImageConfig(config: Object): void;
+  onEnterForeground(): void;
+  onEnterBackground(): void;
 }
 
 export class UIBase {
-  constructor(ref: Object, context: number[], node: FrameNode | null, sign: number, tag: string, update: Function, layout: Function, invokeUIMethod: Function, dispose: Function, focusChange: Function, focusable: Function, onNodeReady: Function, customLayout: boolean, updateExtraData: Function);
+  constructor(ref: Object, context: number[], node: FrameNode | null, sign: number, tag: string, update: Function, layout: Function, invokeUIMethod: Function, dispose: Function, focusChange: Function, focusable: Function, onNodeReady: Function, customLayout: boolean, updateExtraData: Function, needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function);
   static getUIFromNativeContent(nativeContent: NativeContent): Object | undefined;
   static getContentSize(nativeContent: NativeContent): [number, number];
   getChildren(): ArrayBuffer;
@@ -984,6 +990,8 @@ export interface LynxUIRenderer {
   requestLayout(): void;
   keyboardStatusChanged(height: number): void;
   setAvoidKeyboardListener(avoidKeyboardListener: (translateY: number) => void): void;
+  onEnterForeground(): void;
+  onEnterBackground(): void;
 }
 
 export abstract class LynxUIRendererCreator {

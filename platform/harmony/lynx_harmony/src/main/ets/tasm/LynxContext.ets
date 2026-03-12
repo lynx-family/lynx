@@ -210,11 +210,13 @@ export class LynxContext implements IContext {
   }
 
   public onEnterForeground() {
-    this.renderer?.onEnterForeground();
+    LLog.i(TAG, 'onEnterForeground, url: ' + this.lynxView?.url);
+    this.lynxView?.onEnterForeground();
   }
 
   public onEnterBackground() {
-    this.renderer?.onEnterBackground();
+    LLog.i(TAG, 'onEnterBackground, url: ' + this.lynxView?.url);
+    this.lynxView?.onEnterBackground();
   }
 
   public updateScreenMetrics(width: number, height: number) {
