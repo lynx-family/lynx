@@ -421,7 +421,10 @@ void ElementManager::RequestLayout(
   TickListIfNeeded(options);
 
   if (root()->EnableFragmentLayerRender()) {
-    static_cast<Fragment *>(root()->element_container())->Draw();
+    {
+      TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
+      static_cast<Fragment *>(root()->element_container())->Draw();
+    }
     root()->element_container()->Flush();
   }
 }

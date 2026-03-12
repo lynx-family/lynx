@@ -231,7 +231,7 @@ void Fragment::UpdateZIndexList() {
   };
 
   std::stable_sort(children_.begin(), children_.end(), comparator);
-  MarkDirtyState(kNeedRedraw);
+  InvalidateForRedraw();
 
   ResetDirtyState(kNeedSortZChild);
   ResetDirtyState(kNeedSortFixedChild);
@@ -242,14 +242,13 @@ void Fragment::CreatePaintingNode(
   set_old_z_index(element()->ZIndex());
   set_was_stacking_context(element()->IsStackingContextNode());
   set_was_position_fixed(element()->is_fixed());
-  MarkDirtyState(kNeedRedraw);
+  InvalidateForRedraw();
   element()->SetupFragmentBehavior(this);
   CreateLayerIfNeeded(painting_data);
 }
 
 void Fragment::UpdatePaintingNode(
     bool tend_to_flatten, const fml::RefPtr<PropBundle>& painting_data) {
-  MarkDirtyState(kNeedRedraw);
   if (behavior_) {
     behavior_->OnAttributeUpdate(painting_data);
   }
@@ -292,7 +291,7 @@ void Fragment::UpdateContentOffsetForListContainer(float content_size,
 
 void Fragment::UpdateLayout(
     LayoutResultForRendering layout_result_for_rendering) {
-  MarkDirtyState(kNeedRedraw);
+  InvalidateForRedraw();
   layout_info_.layout_result = std::move(layout_result_for_rendering);
   UpdateBorderRadiusAccordingToLayoutInfo();
 }
@@ -666,8 +665,23 @@ void Fragment::MarkHasExposureEventIfNeeded() const {
 void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
   MarkHasExposureEventIfNeeded();
 
+  if (NeedRedraw()) {
+    DrawFull(display_list_builder);
+  } else {
+    DispatchUpdateDisplayList();
+  }
+
+  if (NeedUpdateSubtreeProperty()) {
+    DrawTransform(display_list_builder);
+    DrawOpacity(display_list_builder);
+  }
+
+  ClearPaintDirtyState();
+}
+
+void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
   if (element()->IsShadowNodeVirtual()) {
-    // No contents to be rendererd.
+    // No contents to be rendered for virtual shadow nodes.
     return;
   }
 
@@ -677,7 +691,6 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
   }
 
   box_recorder_.Reset();
-
   display_list_builder.Begin(id(), layout_info_.layout_result.offset_.X(),
                              layout_info_.layout_result.offset_.Y(),
                              layout_info_.layout_result.size_.width_,
@@ -688,8 +701,6 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
 
   DrawBackground(display_list_builder);
   DrawBorder(display_list_builder);
-  DrawTransform(display_list_builder);
-  DrawOpacity(display_list_builder);
   DrawClip(display_list_builder);
 
   if (behavior_) {
@@ -818,8 +829,7 @@ void Fragment::AddChildBefore(Fragment* child, Fragment* sibling) {
     child->fragment_parent()->RemoveChild(child);
   }
 
-  // Mark self need redraw when insert child.
-  MarkDirtyState(kNeedRedraw);
+  InvalidateForRedraw();
 
   if (child->was_position_fixed()) {
     // Mark need resort children.
@@ -873,7 +883,7 @@ void Fragment::RemoveChild(Fragment* child) {
     children_.erase(it);
 
     // Mark self need redraw when remove child.
-    MarkDirtyState(kNeedRedraw);
+    InvalidateForRedraw();
   }
 }
 
@@ -1043,6 +1053,16 @@ void Fragment::UpdateRenderOffsetRecursively(float left, float top,
   for (auto* child : children_) {
     child->UpdateRenderOffsetRecursively(child_offset_x, child_offset_y,
                                          has_platform_renderer_ ? this : root);
+  }
+}
+
+void Fragment::DispatchUpdateDisplayList() {
+  for (auto* child : children_) {
+    if (child->has_platform_renderer_) {
+      child->Draw();
+    } else {
+      child->DispatchUpdateDisplayList();
+    }
   }
 }
 

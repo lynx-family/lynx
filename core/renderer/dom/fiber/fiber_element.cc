@@ -793,6 +793,10 @@ void FiberElement::ResolveSimpleStyles() {
           style_objects_ ? style_objects_.get() : nullptr, this);
     }
 
+    if (has_keyframe_props_changed_) {
+      HandleDelayTask([this]() { HandleKeyframePropsChange(); });
+    }
+
     // Animation and Direction should be handled here
     dirty_ &= ~kDirtyStyleObjects;
   }

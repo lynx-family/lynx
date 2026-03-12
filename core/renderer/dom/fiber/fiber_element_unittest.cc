@@ -42,6 +42,7 @@
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/dom/testing/fiber_mock_painting_context.h"
+#include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/starlight/types/layout_attribute.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
@@ -5475,6 +5476,32 @@ TEST_P(FiberElementTest, CheckFlattenRelatedFlags) {
   page->InsertNode(text);
   page->FlushActionsAsRoot();
   EXPECT_TRUE(text->TendToFlatten() == true);
+}
+
+TEST_P(FiberElementTest,
+       ResolveSimpleStylesHandlesPendingKeyframeChangesFromStyleRemoval) {
+  manager->SetEnableSimpleStyle(true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  auto style_objects = style::CreateStyleObjectArray(2);
+  auto style_map = tasm::StyleMap{};
+  style_map.emplace(CSSPropertyID::kPropertyIDAnimationName,
+                    CSSValue::MakePlainString("move"));
+  auto* style_object = new style::StyleObject(std::move(style_map));
+  style_object->AddRef();
+  style_objects.get()[0] = style_object;
+  style_objects.get()[1] = nullptr;
+
+  element->SetStyleObjects(std::move(style_objects));
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(element->has_keyframe_props_changed_);
+
+  element->SetStyleObjects(nullptr);
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(element->has_keyframe_props_changed_);
 }
 
 TEST_P(FiberElementTest, DynamicViewportUpdate) {

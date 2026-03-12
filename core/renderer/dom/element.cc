@@ -434,9 +434,15 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
         computed_css_style()->SetValue(css_id, value)) {
       RequestLayout();
     }
+    element_container()->InvalidateForRedraw();
     return;
   }
 
+  if (css_id == kPropertyIDOpacity || css_id == kPropertyIDTransform) {
+    element_container()->InvalidateForSubtreeProperty();
+  } else {
+    element_container()->InvalidateForRedraw();
+  }
   // resolve style and push to prop_bundle
   ResolveStyleValue(css_id, value);
 
@@ -1453,7 +1459,8 @@ void Element::CheckFlattenRelatedProp(const base::String& key,
     return false;
   };
 
-  if (check_key(key) || check_key_and_value(key, value) ||
+  if (check_key(key) ||
+      (!EnableFragmentLayerRender() && check_key_and_value(key, value)) ||
       check_clip_radius(key, value)) {
     has_non_flatten_attrs_ = true;
   }
@@ -1864,7 +1871,8 @@ std::tuple<bool, bool> Element::FlushAnimatedStyle() {
   bool need_dispatch =
       prop_bundle_ == nullptr && computed_css_style()->IsClean();
   bool has_pending_bundle = false;
-  bool should_do_full_flush = has_layout_style || !has_painting_node_;
+  bool should_do_full_flush =
+      has_layout_style || !has_painting_node_ || EnableFragmentLayerRender();
 
   for (const auto& style : *final_animator_map_) {
     // Record previous before rtl-converter for transition.
@@ -1974,8 +1982,25 @@ std::optional<CSSValue> Element::GetElementPreviousStyle(
   return iter->second;
 }
 
+CSSKeyframesToken* Element::GetSimpleStyleKeyframesToken(
+    const base::String& animation_name) {
+  const auto& keyframes = element_manager()->GetSimpleStyleKeyframes();
+  if (!keyframes) {
+    return nullptr;
+  }
+
+  if (auto it = keyframes->find(animation_name); it != keyframes->end()) {
+    return it->second.get();
+  }
+  return nullptr;
+}
+
 CSSKeyframesToken* Element::GetCSSKeyframesToken(
     const base::String& animation_name) {
+  auto* manager = element_manager();
+  if (manager && manager->EnableSimpleStyle()) {
+    return GetSimpleStyleKeyframesToken(animation_name);
+  }
   tasm::CSSFragment* style_sheet = GetRelatedCSSFragment();
   if (style_sheet) {
     return style_sheet->GetKeyframesRule(animation_name);

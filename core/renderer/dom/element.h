@@ -1596,6 +1596,9 @@ class Element : public lepus::RefCounted,
   bool WriteRenderStyleToBundle(tasm::CSSPropertyID id,
                                 const tasm::CSSValue& value);
   void DispatchBundleToPaintingNode(fml::RefPtr<PropBundle> bundle);
+
+  CSSKeyframesToken* GetSimpleStyleKeyframesToken(
+      const base::String& animation_name);
 };
 
 }  // namespace tasm

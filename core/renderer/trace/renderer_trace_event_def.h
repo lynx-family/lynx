@@ -327,6 +327,8 @@ inline constexpr const char* const ELEMENT_MANAGER_CREATE_NODE =
     "ElementManager::CreateNode";
 inline constexpr const char* const ELEMENT_MANAGER_REQUEST_LAYOUT =
     "ElementManager::RequestLayout";
+inline constexpr const char* const ELEMENT_MANAGER_REPAINT =
+    "ElementManager::Repaint";
 inline constexpr const char* const ELEMENT_MANAGER_ON_PATCH_FINISH_INNER =
     "ElementManager::OnPatchFinishInner";
 inline constexpr const char* const ELEMENT_MANAGER_ON_PATCH_FINISH_FOR_AIR =
