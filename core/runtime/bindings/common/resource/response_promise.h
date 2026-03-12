@@ -53,7 +53,7 @@ class ResponsePromise {
  public:
   using ResponsePromiseCallback = base::MoveOnlyClosure<void, T>;
 
-  ResponsePromise() : future_(promise_.get_future()) {}
+  ResponsePromise() : future_(promise_.get_future().share()) {}
 
   void AddCallback(ResponsePromiseCallback callback) {
     LOGI("ResponsePromise: AddCallback. " << this);
@@ -68,9 +68,21 @@ class ResponsePromise {
 
   std::optional<T> Wait(double timeout) {
     LOGI("ResponsePromise: Wait " << timeout << " " << this);
+    {
+      std::lock_guard<std::mutex> locker(mutex_);
+      if (result_.has_value()) {
+        return result_;
+      }
+    }
+
     if (future_.wait_for(std::chrono::duration<double>(timeout)) ==
         std::future_status::ready) {
-      return future_.get();
+      auto value = future_.get();
+      std::lock_guard<std::mutex> locker(mutex_);
+      if (!result_.has_value()) {
+        result_ = value;
+      }
+      return result_;
     }
     return std::nullopt;
   }
@@ -92,7 +104,7 @@ class ResponsePromise {
 
  private:
   std::promise<T> promise_;
-  std::future<T> future_;
+  std::shared_future<T> future_;
   std::mutex mutex_;
   std::optional<T> result_{std::nullopt};
 
