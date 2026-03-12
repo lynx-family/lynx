@@ -24,6 +24,7 @@
 @implementation LynxFrameView {
   LynxTemplateRender *_render;
   __weak UIView<LUIBodyView> *_rootView;
+  attachLynxPageUI _attachLynxPageUICallback;
   NSString *_url;
   BOOL _isChildLynxPage;
   CGSize _intrinsicContentSize;
@@ -93,6 +94,11 @@
         }
       }
              containerView:self];
+
+  if (_attachLynxPageUICallback) {
+    [_render setAttachLynxPageUICallback:_attachLynxPageUICallback];
+    _attachLynxPageUICallback = nil;
+  }
   return YES;
 }
 
@@ -274,6 +280,7 @@
 
 - (void)setAttachLynxPageUICallback:(attachLynxPageUI _Nonnull)callback {
   if (!_render) {
+    _attachLynxPageUICallback = [callback copy];
     return;
   }
 
