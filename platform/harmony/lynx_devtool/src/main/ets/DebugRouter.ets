@@ -2,12 +2,34 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import type { HarmonyGlobalHandler, HarmonySessionHandler } from 'liblynxdevtool.so';
+import util from '@ohos.util';
+import type { HarmonyGlobalHandler, HarmonySessionHandler, HarmonyStateListener } from 'liblynxdevtool.so';
 import { DebugRouterWrapper } from 'liblynxdevtool.so';
-import { LynxView } from '@lynx/lynx';
+import { LynxView, LynxEnv } from '@lynx/lynx';
 
 export class DebugRouter {
   private static viewMap: Map<LynxView, number> = new Map<LynxView, number>();
+  private static initialized: boolean = false;
+
+  static {
+    DebugRouter.init();
+  }
+
+  public static init(): void {
+    if (DebugRouter.initialized) {
+      return;
+    }
+    let debugRouterId: string = DebugRouter.generateUUID();
+    let options = new Map<string, string>();
+    options.set('debugRouterId', debugRouterId);
+    LynxEnv.setAppInfo(options);
+    DebugRouter.initialized = true;
+  }
+
+  private static generateUUID(): string {
+    let uuid: string = util.generateRandomUUID(true);
+    return uuid;
+  }
 
   public static getSessionIdByView(view: LynxView): number {
     let sessionId = DebugRouter.viewMap.get(view);
@@ -50,5 +72,13 @@ export class DebugRouter {
 
   public static handleSchema(url: string): boolean {
     return DebugRouterWrapper.handleSchema(url);
+  }
+
+  public static getAppInfoByKey(key: string): string {
+    return DebugRouterWrapper.getAppInfoByKey(key);
+  }
+
+  public static addStateListener(listener: HarmonyStateListener): void {
+    DebugRouterWrapper.addStateListener(listener);
   }
 }

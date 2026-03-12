@@ -36,6 +36,8 @@ class DebugRouterWrapper {
   static napi_value SendDataAsync(napi_env env, napi_callback_info info);
   static napi_value AddSessionHandler(napi_env env, napi_callback_info info);
   static napi_value HandleSchema(napi_env env, napi_callback_info info);
+  static napi_value GetAppInfoByKey(napi_env env, napi_callback_info info);
+  static napi_value AddStateListener(napi_env env, napi_callback_info info);
 
   static std::map<napi_value, std::shared_ptr<HarmonyGlobalHandler>,
                   NapiValueCompare>

@@ -7,6 +7,7 @@
 #include "base/include/fml/message_loop.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "napi/native_api.h"
+#include "platform/harmony/lynx_devtool/src/main/cpp/harmony_state_listener.h"
 
 namespace lynx {
 namespace devtool {
@@ -27,6 +28,10 @@ napi_value DebugRouterWrapper::Init(napi_env env, napi_value exports) {
       {"addSessionHandler", 0, DebugRouterWrapper::AddSessionHandler, 0, 0, 0,
        napi_static, 0},
       {"handleSchema", 0, DebugRouterWrapper::HandleSchema, 0, 0, 0,
+       napi_static, 0},
+      {"getAppInfoByKey", 0, DebugRouterWrapper::GetAppInfoByKey, 0, 0, 0,
+       napi_static, 0},
+      {"addStateListener", 0, DebugRouterWrapper::AddStateListener, 0, 0, 0,
        napi_static, 0},
   };
   constexpr size_t size = std::size(properties);
@@ -115,6 +120,32 @@ napi_value DebugRouterWrapper::HandleSchema(napi_env env,
     return nullptr;
   }
   return result;
+}
+
+napi_value DebugRouterWrapper::GetAppInfoByKey(napi_env env,
+                                               napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 1;
+  napi_value argv[1];
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+  std::string key = base::NapiUtil::ConvertToString(env, argv[0]);
+  std::string value =
+      debugrouter::common::DebugRouter::GetInstance().GetAppInfoByKey(key);
+  napi_value result;
+  napi_create_string_utf8(env, value.c_str(), value.size(), &result);
+  return result;
+}
+
+napi_value DebugRouterWrapper::AddStateListener(napi_env env,
+                                                napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 1;
+  napi_value argv[1];
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+  auto stateListener = std::make_shared<HarmonyStateListener>(env, argv[0]);
+  debugrouter::common::DebugRouter::GetInstance().AddStateListener(
+      stateListener);
+  return nullptr;
 }
 
 napi_value DebugRouterWrapper::Constructor(napi_env env,

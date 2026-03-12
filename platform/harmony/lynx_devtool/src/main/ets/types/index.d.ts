@@ -36,10 +36,19 @@ export interface HarmonySessionHandler {
   onMessage: (message: string, type: string, session_id: number) => void;
 }
 
+export interface HarmonyStateListener {
+  onOpen: (connectionType: string) => void;
+  onClose: (code: number, reason: string) => void;
+  onMessage: (message: string) => void;
+  onError: (error: string) => void;
+}
+
 export declare class DebugRouterWrapper {
   static addGlobalHandler: (handler: HarmonyGlobalHandler) => void;
   static removeGlobalHandler: (handler: HarmonyGlobalHandler) => void;
   static sendDataAsync: (type: string, session: number, data: string) => void;
   static addSessionHandler: (handler: HarmonySessionHandler) => void;
   static handleSchema: (url: string) => boolean;
+  static getAppInfoByKey: (key:string) => string;
+  static addStateListener: (listener: HarmonyStateListener) => void;
 }
