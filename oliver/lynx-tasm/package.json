@@ -1,8 +1,11 @@
 {
   "name": "@lynx-js/tasm",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "description": "",
   "main": "index.js",
+  "bin": {
+    "lynx-tasm": "./cli.js"
+  },
   "types": "index.d.ts",
   "repository": {
     "type": "git",
@@ -11,6 +14,7 @@
   "files": [
     "build/**/*.node",
     "build-dll/liblepus.dylib",
+    "cli.js",
     "index.js",
     "index.d.ts",
     "lepus.js",
