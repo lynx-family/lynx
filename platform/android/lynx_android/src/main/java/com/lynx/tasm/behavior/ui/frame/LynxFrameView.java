@@ -43,6 +43,7 @@ public final class LynxFrameView extends UIBodyView {
   private int mWidthMode = MeasureSpec.UNSPECIFIED;
   private int mHeightMode = MeasureSpec.UNSPECIFIED;
   private int mEmbeddedMode = EmbeddedMode.UNSET;
+  private UIBodyView.attachLynxPageUICallback mAttachLynxPageUICallback;
 
   public LynxFrameView(Context context) {
     super(context);
@@ -78,6 +79,10 @@ public final class LynxFrameView extends UIBodyView {
       builder.setEmbeddedMode(mEmbeddedMode);
       mLynxUIRender = builder.createLynxUIRenderer();
       mRender = new LynxTemplateRender(mContext, this, builder);
+      if (mAttachLynxPageUICallback != null) {
+        mRender.setAttachLynxPageUICallback(mAttachLynxPageUICallback);
+        mAttachLynxPageUICallback = null;
+      }
       return true;
     }
     return false;
@@ -265,6 +270,8 @@ public final class LynxFrameView extends UIBodyView {
   public void setAttachLynxPageUICallback(attachLynxPageUICallback callback) {
     if (mRender != null) {
       mRender.setAttachLynxPageUICallback(callback);
+    } else {
+      mAttachLynxPageUICallback = callback;
     }
   }
 
