@@ -2056,6 +2056,7 @@ public class LynxGradient : NSObject {
 public class LynxGradientUtils : NSObject {
   public CGPoint LynxGradientUtils::getRadialRadiusWithShape:shapeSize:centerX:centerY:sizeX:sizeY:(LynxRadialGradientShapeType shape,[shapeSize] LynxRadialGradientSizeType shapeSize,[centerX] CGFloat cx,[centerY] CGFloat cy,[sizeX] CGFloat sx,[sizeY] CGFloat sy);
   public NSArray *_Nullable LynxGradientUtils::getGradientArrayFromString:withLengthContext:(NSString *_Nonnull gradientDef,[withLengthContext] struct LynxLengthContext context);
+  public void LynxGradientUtils::calculateGradientLineWithAngle:width:height:startPoint:endPoint:(CGFloat angleDegrees,[width] CGFloat width,[height] CGFloat height,[startPoint] CGPoint *startPoint,[endPoint] CGPoint *endPoint);
 }
 
 public class LynxGroup : NSObject {

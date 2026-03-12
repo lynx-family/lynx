@@ -24,6 +24,7 @@ import com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
 import com.lynx.tasm.service.ILynxTextService.Page;
+import com.lynx.tasm.utils.GradientUtils;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Stack;
@@ -43,6 +44,10 @@ public class DisplayListApplier implements Drawable.Callback {
   private static final int OP_CLIP_RECT = 10;
   private static final int OP_RECORD_BOX = 11;
   private static final int OP_LINEAR_GRADIENT = 12;
+
+  // BackgroundRepeatType constants (match C++ BackgroundRepeatType)
+  private static final int BACKGROUND_REPEAT = 0;
+  private static final int BACKGROUND_NO_REPEAT = 1;
 
   // Subtree property operation types (matching C++ DisplayListSubtreePropertyOpType)
   static final int SUBTREE_OP_TRANSFORM = 0;
@@ -336,6 +341,16 @@ public class DisplayListApplier implements Drawable.Callback {
         }
         case OP_LINEAR_GRADIENT: {
           int colorCount = nextContentInt();
+          // Validate color count to prevent crashes or excessive memory allocation
+          if (colorCount < 2 || colorCount > 256) {
+            LLog.e(TAG, "Invalid color count for linear gradient: " + colorCount);
+            break;
+          }
+          // Check bounds before array copy
+          if (mContentIntIndex + colorCount > iArgv.length) {
+            LLog.e(TAG, "Insufficient data for gradient colors");
+            break;
+          }
           if (mReusableGradientColors == null || mReusableGradientColors.length != colorCount) {
             mReusableGradientColors = new int[colorCount];
           }
@@ -348,6 +363,19 @@ public class DisplayListApplier implements Drawable.Callback {
           int clipIndex = nextContentInt();
           int repeatX = nextContentInt();
           int repeatY = nextContentInt();
+
+          // Validate stop count matches color count
+          if (stopCount != 0 && stopCount != colorCount) {
+            LLog.e(TAG,
+                "Stop count (" + stopCount + ") doesn't match color count (" + colorCount + ")");
+            break;
+          }
+
+          // Validate float data bounds
+          if (mContentFloatIndex + 1 + stopCount > fArgv.length) {
+            LLog.e(TAG, "Insufficient float data for gradient");
+            break;
+          }
 
           float angle = nextContentFloat();
           float[] stops = null;
@@ -376,7 +404,7 @@ public class DisplayListApplier implements Drawable.Callback {
 
   private void drawLinearGradient(Canvas canvas, float angle, int[] colors, float[] stops,
       int tilingIndex, int clipIndex, int repeatX, int repeatY) {
-    if (colors == null) {
+    if (colors == null || colors.length < 2) {
       return;
     }
 
@@ -388,59 +416,122 @@ public class DisplayListApplier implements Drawable.Callback {
       return;
     }
 
-    float width = tilingBox.getRectF().width();
-    float height = tilingBox.getRectF().height();
-    float left = tilingBox.getRectF().left;
-    float top = tilingBox.getRectF().top;
-
-    PointF center = mReusablePointF1;
-    center.set(left + width / 2.f, top + height / 2.f);
-    double radial = Math.toRadians(angle);
-    float sin = (float) Math.sin(radial);
-    float cos = (float) Math.cos(radial);
-    float tan = (float) Math.tan(radial);
-
-    PointF m = mReusablePointF2;
-    if (sin >= 0 && cos >= 0) { // Bottom left to top right
-      m.set(left + width, top);
-    } else if (sin >= 0 && cos < 0) { // Top left to bottom right
-      m.set(left + width, top + height);
-    } else if (sin < 0 && cos < 0) { // Top right to bottom left
-      m.set(left, top + height);
-    } else { // Bottom right to top left
-      m.set(left, top);
+    // Get clip box for clipping
+    RoundedRectangle clipBox = null;
+    if (clipIndex >= 0 && clipIndex < mRoundedRectangleArray.size()) {
+      clipBox = mRoundedRectangleArray.get(clipIndex);
     }
 
-    // Reference logic from BackgroundLinearGradientLayer.java
-    float tmp = (center.y - m.y - tan * center.x + tan * m.x);
-    float endX = center.x + sin * tmp / (sin * tan + cos);
-    float endY = center.y - tmp / (tan * tan + 1);
-    float startX = 2 * center.x - endX;
-    float startY = 2 * center.y - endY;
+    // Calculate gradient start and end points based on angle
+    RectF tilingRect = tilingBox.getRectF();
+    float width = tilingRect.width();
+    float height = tilingRect.height();
+
+    // Center point of the tiling box
+    float centerX = tilingRect.centerX();
+    float centerY = tilingRect.centerY();
+
+    // Calculate gradient line based on angle
+    // The gradient line should span the entire box at the given angle
+    PointF start = mReusablePointF1;
+    PointF end = mReusablePointF2;
+    calculateGradientLine(centerX, centerY, width, height, angle, start, end);
+
+    // For gradients, we use CLAMP for the gradient direction itself
+    // and handle repeat by drawing multiple tiles
+    LinearGradient gradient =
+        new LinearGradient(start.x, start.y, end.x, end.y, colors, stops, Shader.TileMode.CLAMP);
 
     mPaint.reset();
     mPaint.setAntiAlias(true);
+    mPaint.setShader(gradient);
 
-    Shader.TileMode tileMode = Shader.TileMode.CLAMP;
-    // BackgroundRepeatType: kRepeat = 0, kNoRepeat = 1, kRepeatX = 2, kRepeatY = 3, kRound = 4,
-    // kSpace = 5 For LinearGradient, if either axis repeats, we use REPEAT tile mode.
-    if (repeatX != 1 || repeatY != 1) {
-      tileMode = Shader.TileMode.REPEAT;
-    }
+    int saveCount = canvas.save();
 
-    mPaint.setShader(new LinearGradient(startX, startY, endX, endY, colors, stops, tileMode));
-
-    if (clipIndex >= 0 && clipIndex < mRoundedRectangleArray.size()) {
-      RoundedRectangle clipBox = mRoundedRectangleArray.get(clipIndex);
+    // Apply clip if specified
+    if (clipBox != null) {
+      RectF clipRect = clipBox.getRectF();
       if (clipBox.hasBorderRadius()) {
         mReusablePath.reset();
-        mReusablePath.addRoundRect(clipBox.getRectF(), clipBox.getBorderRadii(), Path.Direction.CW);
-        canvas.drawPath(mReusablePath, mPaint);
+        mReusablePath.addRoundRect(clipRect, clipBox.getBorderRadii(), Path.Direction.CW);
+        canvas.clipPath(mReusablePath);
       } else {
-        canvas.drawRect(clipBox.getRectF(), mPaint);
+        canvas.clipRect(clipRect);
       }
     }
-    mPaint.setShader(null);
+
+    // Draw the gradient
+    // If repeat is enabled, we need to tile the gradient
+    boolean repeatXEnabled = (repeatX == BACKGROUND_REPEAT);
+    boolean repeatYEnabled = (repeatY == BACKGROUND_REPEAT);
+
+    if (!repeatXEnabled && !repeatYEnabled) {
+      // No repeat - draw gradient once within tiling box
+      canvas.drawRect(tilingRect, mPaint);
+    } else {
+      // Handle repeat by tiling
+      // Calculate the bounds for tiling (use clip box or canvas bounds)
+      float left = (clipBox != null) ? clipBox.getRectF().left : tilingRect.left;
+      float top = (clipBox != null) ? clipBox.getRectF().top : tilingRect.top;
+      float right = (clipBox != null) ? clipBox.getRectF().right : tilingRect.right;
+      float bottom = (clipBox != null) ? clipBox.getRectF().bottom : tilingRect.bottom;
+
+      // Extend bounds for repeating
+      if (repeatXEnabled && repeatYEnabled) {
+        // Both X and Y repeat
+        float startX = tilingRect.left;
+        while (startX > left) {
+          startX -= width;
+        }
+        float startY = tilingRect.top;
+        while (startY > top) {
+          startY -= height;
+        }
+        for (float x = startX; x < right; x += width) {
+          for (float y = startY; y < bottom; y += height) {
+            canvas.drawRect(x, y, x + width, y + height, mPaint);
+          }
+        }
+      } else if (repeatXEnabled) {
+        // Only X repeat
+        float startX = tilingRect.left;
+        while (startX > left) {
+          startX -= width;
+        }
+        for (float x = startX; x < right; x += width) {
+          canvas.drawRect(x, tilingRect.top, x + width, tilingRect.bottom, mPaint);
+        }
+      } else if (repeatYEnabled) {
+        // Only Y repeat
+        float startY = tilingRect.top;
+        while (startY > top) {
+          startY -= height;
+        }
+        for (float y = startY; y < bottom; y += height) {
+          canvas.drawRect(tilingRect.left, y, tilingRect.right, y + height, mPaint);
+        }
+      }
+    }
+
+    canvas.restoreToCount(saveCount);
+  }
+
+  /**
+   * Calculates the start and end points for a linear gradient line.
+   * The gradient line passes through the center of the box and extends
+   * to the edges based on the given angle.
+   */
+  private void calculateGradientLine(float centerX, float centerY, float width, float height,
+      float angle, PointF start, PointF end) {
+    // Use shared utility for consistent cross-platform gradient calculation
+    GradientUtils.calculateGradientLine(angle, width, height, start, end);
+    // Convert from local box coordinates (origin at center) to absolute coordinates
+    float halfWidth = width / 2.0f;
+    float halfHeight = height / 2.0f;
+    start.x += centerX - halfWidth;
+    start.y += centerY - halfHeight;
+    end.x += centerX - halfWidth;
+    end.y += centerY - halfHeight;
   }
 
   /**

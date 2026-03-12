@@ -15,6 +15,7 @@ import com.lynx.react.bridge.ReadableArray;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.utils.GradientUtils;
 
 public class BackgroundLinearGradientLayer extends BackgroundGradientLayer {
   private double mAngle;
@@ -110,30 +111,13 @@ public class BackgroundLinearGradientLayer extends BackgroundGradientLayer {
           end.x = left + mWidth - mHeight * mul;
           end.y = top + mWidth * mul;
         } else {
-          PointF center = new PointF(mWidth / 2.f, mHeight / 2.f), m;
-          final double radial = Math.toRadians(mAngle);
-          float sin = (float) Math.sin(radial), cos = (float) Math.cos(radial),
-                tan = (float) Math.tan(radial);
-          if (sin >= 0 && cos >= 0) { // Bottom left to top right
-            m = new PointF(mWidth, 0);
-          } else if (sin >= 0 && cos < 0) { // Top left to bottom right
-            m = new PointF(mWidth, mHeight);
-          } else if (sin < 0 && cos < 0) { // Top right to bottom left
-            m = new PointF(0, mHeight);
-          } else { // Bottom right to top left
-            m = new PointF(0, 0);
-          }
-          start.offset(left, top);
-          end.offset(left, top);
-          center.offset(left, top);
-          m.offset(left, top);
-          // reference: https://developer.mozilla.org/zh-CN/docs/Web/CSS/linear-gradient
-          // It can be solved using pen and paper.
-          float tmp = (center.y - m.y - tan * center.x + tan * m.x);
-          end.x = center.x + sin * tmp / (sin * tan + cos);
-          end.y = center.y - tmp / (tan * tan + 1);
-          start.x = 2 * center.x - end.x;
-          start.y = 2 * center.y - end.y;
+          // Use shared utility for consistent cross-platform gradient calculation
+          GradientUtils.calculateGradientLine((float) mAngle, mWidth, mHeight, start, end);
+          // Convert from local box coordinates to absolute coordinates
+          start.x += left;
+          start.y += top;
+          end.x += left;
+          end.y += top;
         }
         // The version number should lower than 9.0
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P && mEnableBitmapGradient) {

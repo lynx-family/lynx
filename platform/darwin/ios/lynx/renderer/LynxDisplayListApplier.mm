@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxGradient.h>
+#import <Lynx/LynxGradientUtils.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
@@ -10,6 +12,7 @@
 #import "LynxDisplayListApplier+Internal.h"
 
 #include <stack>
+#include <vector>
 #include "base/include/vector.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 
@@ -312,6 +315,10 @@ using namespace lynx::tasm;
         box_array_.emplace_back(std::move(rect));
         break;
       }
+      case DisplayListOpType::kLinearGradient: {
+        [self drawLinearGradientWithIntCount:int_count floatCount:float_count];
+        break;
+      }
       default:
         break;
     }
@@ -514,6 +521,271 @@ using namespace lynx::tasm;
 
   // Generate border image using existing utility
   return LynxGetBorderLayerImage(borderStyles, size, cornerRadii, borderInsets, borderColors, NO);
+}
+
+#pragma mark - Linear Gradient
+
+- (void)drawLinearGradientWithIntCount:(int32_t)int_count floatCount:(int32_t)float_count {
+  // Parse linear gradient data
+  // Data layout: [color_count, colors..., stop_count, tiling_index, clip_index, repeat_x, repeat_y,
+  //               angle, stops...]
+
+  if (int_count < 6) {
+    return;
+  }
+
+  int color_count = [self nextContentInt];
+  if (color_count < 2 || color_count > 256) {
+    return;
+  }
+
+  // Read colors
+  NSMutableArray *colors = [NSMutableArray arrayWithCapacity:color_count];
+  for (int i = 0; i < color_count; i++) {
+    int argb = [self nextContentInt];
+    UIColor *color = [self colorFromARGB:argb];
+    [colors addObject:(id)color.CGColor];
+  }
+
+  int stop_count = [self nextContentInt];
+  int tiling_index = [self nextContentInt];
+  int clip_index = [self nextContentInt];
+  int repeat_x = [self nextContentInt];
+  int repeat_y = [self nextContentInt];
+
+  // Validate stop count matches color count
+  if (stop_count != 0 && stop_count != color_count) {
+    return;
+  }
+
+  if (float_count < 1 + stop_count) {
+    return;
+  }
+
+  float angle = [self nextContentFloat];
+
+  // Read stops using std::vector for automatic memory management
+  std::vector<CGFloat> positions;
+  if (stop_count > 0) {
+    positions.resize(stop_count);
+    for (int i = 0; i < stop_count; i++) {
+      positions[i] = [self nextContentFloat];
+    }
+  }
+
+  // Get tiling and clip boxes
+  CGRect tilingRect, clipRect;
+  BOOL hasClip = NO;
+  if (![self getGradientBoxes:tiling_index
+                    clipIndex:clip_index
+                   tilingRect:&tilingRect
+                     clipRect:&clipRect
+                      hasClip:&hasClip]) {
+    return;
+  }
+
+  // Calculate gradient points
+  CGPoint startPoint, endPoint;
+  [self calculateGradientStartPoint:&startPoint endPoint:&endPoint angle:angle rect:tilingRect];
+
+  // Determine repeat modes
+  BOOL repeatX = (repeat_x == LynxBackgroundRepeatRepeat);
+  BOOL repeatY = (repeat_y == LynxBackgroundRepeatRepeat);
+
+  // Create and configure gradient layer
+  CAGradientLayer *gradientLayer = [self createGradientLayerWithColors:colors
+                                                             positions:positions
+                                                             stopCount:stop_count
+                                                                 angle:angle
+                                                            tilingRect:tilingRect];
+
+  // Apply gradient with tiling if needed
+  [self applyGradientLayer:gradientLayer
+                tilingRect:tilingRect
+                  clipRect:clipRect
+                   hasClip:hasClip
+                 clipIndex:clip_index
+                   repeatX:repeatX
+                   repeatY:repeatY];
+}
+
+- (BOOL)getGradientBoxes:(int)tiling_index
+               clipIndex:(int)clip_index
+              tilingRect:(CGRect *)tilingRect
+                clipRect:(CGRect *)clipRect
+                 hasClip:(BOOL *)hasClip {
+  // Get tiling box
+  if (tiling_index < 0 || static_cast<size_t>(tiling_index) >= box_array_.size()) {
+    return NO;
+  }
+
+  const RoundedRectangle &tilingBox = box_array_[tiling_index];
+  *tilingRect = CGRectMake(tilingBox.GetX() + left_offset_, tilingBox.GetY() + top_offset_,
+                           tilingBox.GetWidth(), tilingBox.GetHeight());
+
+  // Get clip box if available
+  *clipRect = CGRectNull;
+  *hasClip = NO;
+  if (clip_index >= 0 && static_cast<size_t>(clip_index) < box_array_.size()) {
+    const RoundedRectangle &clipBox = box_array_[clip_index];
+    *clipRect = CGRectMake(clipBox.GetX() + left_offset_, clipBox.GetY() + top_offset_,
+                           clipBox.GetWidth(), clipBox.GetHeight());
+    *hasClip = YES;
+  }
+
+  return YES;
+}
+
+- (CAGradientLayer *)createGradientLayerWithColors:(NSArray *)colors
+                                         positions:(const std::vector<CGFloat> &)positions
+                                         stopCount:(int)stop_count
+                                             angle:(float)angle
+                                        tilingRect:(CGRect)tilingRect {
+  CAGradientLayer *gradientLayer = [CAGradientLayer layer];
+  gradientLayer.frame = tilingRect;
+  gradientLayer.colors = colors;
+
+  if (!positions.empty() && stop_count > 0) {
+    NSMutableArray *locations = [NSMutableArray arrayWithCapacity:stop_count];
+    for (int i = 0; i < stop_count; i++) {
+      [locations addObject:@(positions[i])];
+    }
+    gradientLayer.locations = locations;
+  }
+
+  // Calculate gradient points
+  CGPoint startPoint, endPoint;
+  [self calculateGradientStartPoint:&startPoint endPoint:&endPoint angle:angle rect:tilingRect];
+
+  gradientLayer.startPoint =
+      CGPointMake((startPoint.x - tilingRect.origin.x) / tilingRect.size.width,
+                  (startPoint.y - tilingRect.origin.y) / tilingRect.size.height);
+  gradientLayer.endPoint = CGPointMake((endPoint.x - tilingRect.origin.x) / tilingRect.size.width,
+                                       (endPoint.y - tilingRect.origin.y) / tilingRect.size.height);
+
+  return gradientLayer;
+}
+
+- (void)applyGradientLayer:(CAGradientLayer *)gradientLayer
+                tilingRect:(CGRect)tilingRect
+                  clipRect:(CGRect)clipRect
+                   hasClip:(BOOL)hasClip
+                 clipIndex:(int)clip_index
+                   repeatX:(BOOL)repeatX
+                   repeatY:(BOOL)repeatY {
+  if (!repeatX && !repeatY) {
+    // No repeat - add single gradient layer
+    [self applyClipToLayer:gradientLayer clipRect:clipRect hasClip:hasClip];
+    [self insertLayer:gradientLayer];
+    return;
+  }
+
+  // Handle repeat by creating tiled layers
+  CGRect bounds = hasClip ? clipRect : tilingRect;
+  CGFloat tileWidth = tilingRect.size.width;
+  CGFloat tileHeight = tilingRect.size.height;
+
+  // Create container layer for tiling
+  CALayer *containerLayer = [CALayer layer];
+  containerLayer.frame = bounds;
+
+  // Apply clip to container if needed
+  if (hasClip) {
+    [self applyClipToContainer:containerLayer clipRect:clipRect clipIndex:clip_index];
+  }
+
+  // Calculate tile range
+  CGFloat startX = tilingRect.origin.x;
+  CGFloat startY = tilingRect.origin.y;
+  CGFloat endX = bounds.origin.x + bounds.size.width;
+  CGFloat endY = bounds.origin.y + bounds.size.height;
+
+  // Extend start position for negative bounds
+  if (repeatX) {
+    while (startX > bounds.origin.x) {
+      startX -= tileWidth;
+    }
+  }
+  if (repeatY) {
+    while (startY > bounds.origin.y) {
+      startY -= tileHeight;
+    }
+  }
+
+  // Create tiled gradient layers
+  for (CGFloat x = startX; x < endX; x += tileWidth) {
+    if (!repeatX && fabs(x - tilingRect.origin.x) > FLT_EPSILON) continue;
+
+    for (CGFloat y = startY; y < endY; y += tileHeight) {
+      if (!repeatY && fabs(y - tilingRect.origin.y) > FLT_EPSILON) continue;
+
+      CAGradientLayer *tileLayer = [CAGradientLayer layer];
+      tileLayer.frame = CGRectMake(x, y, tileWidth, tileHeight);
+      tileLayer.colors = gradientLayer.colors;
+      tileLayer.locations = gradientLayer.locations;
+      tileLayer.startPoint = gradientLayer.startPoint;
+      tileLayer.endPoint = gradientLayer.endPoint;
+      [containerLayer addSublayer:tileLayer];
+    }
+  }
+
+  [self insertLayer:containerLayer];
+}
+
+- (void)applyClipToContainer:(CALayer *)containerLayer
+                    clipRect:(CGRect)clipRect
+                   clipIndex:(int)clip_index {
+  CAShapeLayer *maskLayer = [CAShapeLayer layer];
+  maskLayer.frame = clipRect;
+  CGPathRef path = [self createClipPathForRect:clipRect boxIndex:clip_index];
+  if (path) {
+    maskLayer.path = path;
+    CGPathRelease(path);
+    containerLayer.mask = maskLayer;
+  }
+}
+
+- (void)calculateGradientStartPoint:(CGPoint *)startPoint
+                           endPoint:(CGPoint *)endPoint
+                              angle:(float)angle_degrees
+                               rect:(CGRect)rect {
+  // Use shared utility for consistent cross-platform gradient calculation
+  [LynxGradientUtils calculateGradientLineWithAngle:angle_degrees
+                                              width:rect.size.width
+                                             height:rect.size.height
+                                         startPoint:startPoint
+                                           endPoint:endPoint];
+
+  // Convert from local box coordinates to rect coordinates
+  CGFloat offsetX = CGRectGetMinX(rect);
+  CGFloat offsetY = CGRectGetMinY(rect);
+  startPoint->x += offsetX;
+  startPoint->y += offsetY;
+  endPoint->x += offsetX;
+  endPoint->y += offsetY;
+}
+
+- (void)applyClipToLayer:(CALayer *)layer clipRect:(CGRect)clipRect hasClip:(BOOL)hasClip {
+  if (!hasClip) return;
+
+  CAShapeLayer *maskLayer = [CAShapeLayer layer];
+  maskLayer.frame = clipRect;
+  maskLayer.path = [UIBezierPath bezierPathWithRect:clipRect].CGPath;
+  layer.mask = maskLayer;
+}
+
+- (CGPathRef)createClipPathForRect:(CGRect)rect boxIndex:(int)boxIndex {
+  if (boxIndex < 0 || static_cast<size_t>(boxIndex) >= box_array_.size()) {
+    return CGPathCreateWithRect(rect, NULL);
+  }
+
+  const RoundedRectangle &box = box_array_[boxIndex];
+  if (!box.HasRadius()) {
+    return CGPathCreateWithRect(rect, NULL);
+  }
+
+  LynxBorderRadii radii = [self convertToLynxBorderRadii:box];
+  return [LynxBackgroundUtils createBezierPathWithRoundedRect:rect borderRadii:radii];
 }
 
 @end

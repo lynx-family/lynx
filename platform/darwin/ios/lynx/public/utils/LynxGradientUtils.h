@@ -8,6 +8,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 #pragma once
+
 struct LynxLengthContext {
   float screen_width;
   float layouts_unit_per_px;
@@ -31,6 +32,22 @@ struct LynxLengthContext {
 
 + (NSArray* _Nullable)getGradientArrayFromString:(NSString* _Nonnull)gradientDef
                                withLengthContext:(struct LynxLengthContext)context;
+
+/**
+ * Calculates the start and end points for a linear gradient line using a CSS angle.
+ * This method implements the distance-based algorithm for consistent cross-platform behavior.
+ *
+ * @param angleDegrees The CSS gradient angle in degrees (0deg = to top, 90deg = to right)
+ * @param width The width of the gradient box
+ * @param height The height of the gradient box
+ * @param startPoint Output parameter for the calculated start point (in box coordinates)
+ * @param endPoint Output parameter for the calculated end point (in box coordinates)
+ */
++ (void)calculateGradientLineWithAngle:(CGFloat)angleDegrees
+                                 width:(CGFloat)width
+                                height:(CGFloat)height
+                            startPoint:(CGPoint*)startPoint
+                              endPoint:(CGPoint*)endPoint;
 
 @end
 

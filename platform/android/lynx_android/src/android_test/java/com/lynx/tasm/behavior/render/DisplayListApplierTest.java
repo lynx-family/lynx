@@ -701,8 +701,11 @@ public class DisplayListApplierTest {
         1, 4, 0, // OP_BEGIN: 1 int, 4 float
         0, 4, // OP_RECORD_BOX (tiling): 0 int, 4 float
         0, 4, // OP_RECORD_BOX (clip): 0 int, 4 float
-        8, 3, // OP_LINEAR_GRADIENT: 8 ints, 3 floats
-        2, 0xFFFF0000, 0xFF0000FF, 2, 0, 1, 1, 1, 0, 0 // OP_END
+        9, 3, // OP_LINEAR_GRADIENT: 9 ints (1 color_count + 2 colors + 1 stop_count + 5 params), 3
+              // floats
+        2, 0xFFFF0000, 0xFF0000FF, // color_count=2, colors
+        2, 0, 1, 1, // stop_count=2, tiling_index=0, clip_index=1, bounds_index=1
+        0, 0 // repeatX=REPEAT, repeatY=REPEAT
     };
 
     testDisplayList.fArgv = new float[] {

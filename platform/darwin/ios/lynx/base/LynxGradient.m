@@ -123,25 +123,17 @@
       *startPoint = CGPointMake(w, 0);
       *endPoint = CGPointMake(w - h * mul, w * mul);
       break;
-    case LynxLinearGradientDirectionAngle:
-      center = CGPointMake(w / 2, h / 2);
-      s = sin(_angle);
-      c = cos(_angle);
-      t = tan(_angle);
-      if (s >= 0 && c >= 0) {
-        m = CGPointMake(w, 0);
-      } else if (s >= 0 && c < 0) {
-        m = CGPointMake(w, h);
-      } else if (s < 0 && c < 0) {
-        m = CGPointMake(0, h);
-      } else {
-        m = CGPointMake(0, 0);
-      }
-      *endPoint =
-          CGPointMake(center.x + s * (center.y - m.y - t * center.x + t * m.x) / (s * t + c),
-                      center.y - (center.y - m.y - t * center.x + t * m.x) / (t * t + 1));
-      *startPoint = CGPointMake(2 * center.x - endPoint->x, 2 * center.y - endPoint->y);
+    case LynxLinearGradientDirectionAngle: {
+      // Use shared utility for consistent cross-platform gradient calculation
+      // Convert angle from radians (stored in _angle) to degrees for the utility
+      CGFloat angleDegrees = _angle * 180.0 / M_PI;
+      [LynxGradientUtils calculateGradientLineWithAngle:angleDegrees
+                                                  width:w
+                                                 height:h
+                                             startPoint:startPoint
+                                               endPoint:endPoint];
       break;
+    }
   }
 }
 

@@ -5,6 +5,7 @@
 #include "core/renderer/dom/fragment/fragment.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <utility>
 
@@ -18,6 +19,7 @@
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "core/renderer/starlight/types/nlength.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/style/transform/matrix44.h"
 
@@ -374,29 +376,29 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
   if (background_data->image_data) {
     const auto& image_data = background_data->image_data;
     if (image_data->image.IsArray()) {
-      starlight::BackgroundOriginType origin_type =
-          starlight::BackgroundOriginType::kPaddingBox;
-      if (!image_data->origin.empty()) {
-        origin_type = image_data->origin.back();
-      }
-      int32_t origin_index = -1;
-      switch (origin_type) {
-        case starlight::BackgroundOriginType::kPaddingBox:
-          origin_index = DefinePaddingBox(display_list_builder);
-          break;
-        case starlight::BackgroundOriginType::kBorderBox:
-          origin_index = DefineBorderBox(display_list_builder);
-          break;
-        case starlight::BackgroundOriginType::kContentBox:
-          origin_index = DefineContentBox(display_list_builder);
-          break;
-        default:
-          origin_index = DefinePaddingBox(display_list_builder);
-          break;
-      }
-
       auto array = image_data->image.Array();
       for (size_t i = 0; i + 1 < array->size(); i += 2) {
+        starlight::BackgroundOriginType origin_type =
+            starlight::BackgroundOriginType::kPaddingBox;
+        if (!image_data->origin.empty()) {
+          origin_type = image_data->origin.back();
+        }
+        int32_t origin_index = -1;
+        switch (origin_type) {
+          case starlight::BackgroundOriginType::kPaddingBox:
+            origin_index = DefinePaddingBox(display_list_builder);
+            break;
+          case starlight::BackgroundOriginType::kBorderBox:
+            origin_index = DefineBorderBox(display_list_builder);
+            break;
+          case starlight::BackgroundOriginType::kContentBox:
+            origin_index = DefineContentBox(display_list_builder);
+            break;
+          default:
+            origin_index = DefinePaddingBox(display_list_builder);
+            break;
+        }
+
         size_t image_index = i / 2;
         auto type =
             static_cast<starlight::BackgroundImageType>(array->get(i).Number());
@@ -432,8 +434,78 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
             repeat_y = image_data->repeat[image_index * 2 + 1];
           }
 
+          // Per W3C CSS specification:
+          // 1. Tiling box: determined by background-origin for position and
+          //    background-size for size. This is where the gradient is drawn.
+          //    If background-size is not set (auto), the tiling box uses the
+          //    origin box size (no tiling needed for gradients).
+          // 2. Clip box: determined by background-clip - the gradient fills
+          //    this entire area by repeating the tiling box based on
+          //    background-repeat.
+          int32_t tiling_index = origin_index;
+
+          // Handle background-size if explicitly set.
+          // Background-size is at image_index * 2 in the size array (x, y
+          // pair).
+          if (image_index * 2 + 1 < image_data->size.size()) {
+            const auto& size_x = image_data->size[image_index * 2];
+            const auto& size_y = image_data->size[image_index * 2 + 1];
+
+            // Get origin box dimensions for percentage calculation
+            float origin_width = 0.f;
+            float origin_height = 0.f;
+            switch (origin_type) {
+              case starlight::BackgroundOriginType::kPaddingBox:
+                origin_width = layout_info_.GetPaddingBoxWidth();
+                origin_height = layout_info_.GetPaddingBoxHeight();
+                break;
+              case starlight::BackgroundOriginType::kBorderBox:
+                origin_width = layout_info_.GetBorderBoxWidth();
+                origin_height = layout_info_.GetBorderBoxHeight();
+                break;
+              case starlight::BackgroundOriginType::kContentBox:
+                origin_width = layout_info_.GetContentBoxWidth();
+                origin_height = layout_info_.GetContentBoxHeight();
+                break;
+              default:
+                origin_width = layout_info_.GetPaddingBoxWidth();
+                origin_height = layout_info_.GetPaddingBoxHeight();
+                break;
+            }
+
+            // Calculate tiling box size based on background-size
+            float tiling_width = origin_width;
+            float tiling_height = origin_height;
+
+            if (!size_x.IsAuto()) {
+              tiling_width = starlight::NLengthToLayoutUnit(
+                                 size_x, starlight::LayoutUnit(origin_width))
+                                 .ToFloat();
+            }
+
+            if (!size_y.IsAuto()) {
+              tiling_height = starlight::NLengthToLayoutUnit(
+                                  size_y, starlight::LayoutUnit(origin_height))
+                                  .ToFloat();
+            }
+
+            // Record a new box for the tiling area if size differs from origin
+            constexpr float kEpsilon = 1e-6f;
+            if (std::abs(tiling_width - origin_width) > kEpsilon ||
+                std::abs(tiling_height - origin_height) > kEpsilon) {
+              RoundedRectangle tiling_rect;
+              tiling_rect.SetX(0);
+              tiling_rect.SetY(0);
+              tiling_rect.SetWidth(tiling_width);
+              tiling_rect.SetHeight(tiling_height);
+              display_list_builder.RecordBoxModel(tiling_rect, tiling_index);
+            }
+          }
+
+          // The clip box defines where the gradient should fill to.
+          // The gradient tiling box is repeated to fill the entire clip box.
           display_list_builder.LinearGradient(
-              angle, colors, stops, origin_index, clip_index,
+              angle, colors, stops, tiling_index, clip_index,
               static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y));
         }
       }

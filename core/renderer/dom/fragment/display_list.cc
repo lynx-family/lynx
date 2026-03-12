@@ -56,11 +56,14 @@ void DisplayList::AddLinearGradient(float angle,
   // stop_count, tiling_index, clip_index, repeat_x, repeat_y]
   // float_data layout: [angle, stops...]
 
-  int32_t int_count = 1 + color_count + 1 + 4;
-  int32_t float_count = 1 + stop_count;
+  int32_t int_count = 1 /* color count */ + color_count /* colors */ +
+                      1 /* stop count */ +
+                      4 /* tiling, clip, repeat-x, repeat-y */;
+  int32_t float_count = 1 /* angle */ + stop_count /* stops */;
 
   // Pre-calculate and reserve space to avoid multiple reallocations
-  op_data.int_data.reserve(op_data.int_data.size() + 2 + int_count);
+  op_data.int_data.reserve(op_data.int_data.size() + 2 /* iArgc and fArgc */ +
+                           int_count);
   op_data.int_data.push_back(int_count);
   op_data.int_data.push_back(float_count);
 
