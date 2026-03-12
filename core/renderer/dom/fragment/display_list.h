@@ -141,6 +141,7 @@ class DisplayList {
   size_t GetContentOpTypesSize() const {
     return content_data_.has_value() ? content_data_->ops.size() : 0;
   }
+  bool HasContent() const { return GetContentOpTypesSize() != 0; }
   size_t GetContentIntDataSize() const {
     return content_data_.has_value() ? content_data_->int_data.size() : 0;
   }

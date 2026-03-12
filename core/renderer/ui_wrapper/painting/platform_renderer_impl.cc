@@ -12,14 +12,14 @@ namespace lynx::tasm {
 
 PlatformRendererImpl::PlatformRendererImpl(int id, PlatformRendererType type,
                                            const base::String& tag)
-    : id_(id), type_(type), tag_name_(tag) {
+    : id_(id), type_(type), tag_name_(tag), opacity_{} {
   is_platform_extended_renderer_ =
       (type_ == PlatformRendererType::kUnknown && !tag_name_.empty());
 }
 
 void PlatformRendererImpl::UpdateDisplayList(DisplayList display_list) {
   // Call platform-specific implementation
-  OnUpdateSubtreeProperties(display_list);
+  UpdateSubtreeProperty(display_list);
   OnUpdateDisplayList(std::move(display_list));
 }
 
@@ -73,5 +73,21 @@ void PlatformRendererImpl::RemoveFromParent() {
 }
 
 void PlatformRendererImpl::ReleaseSelf() const { delete this; }
+
+void PlatformRendererImpl::UpdateSubtreeProperty(
+    const DisplayList& display_list) {
+  for (size_t i = 0; i < display_list.GetSubtreePropertiesSize(); i++) {
+    const SubtreeProperty* p = display_list.GetSubtreePropertiesData() + i;
+    switch (p->type) {
+      case DisplayListSubtreePropertyOpType::kOpacity:
+        opacity_ = *p;
+        break;
+      case DisplayListSubtreePropertyOpType::kTransform:
+        *transform_ = *p;
+        break;
+    }
+  }
+  OnUpdateSubtreeProperties(display_list);
+}
 
 }  // namespace lynx::tasm
