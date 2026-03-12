@@ -58,6 +58,9 @@ class PlatformRendererImpl : public PlatformRenderer {
 
   PlatformRendererType GetPlatformRendererType() const { return type_; }
 
+ private:
+  void UpdateSubtreeProperty(const DisplayList& display_list);
+
  protected:
   // Platform-specific operations to be implemented by derived classes
   virtual void OnUpdateDisplayList(DisplayList display_list) = 0;
@@ -74,6 +77,9 @@ class PlatformRendererImpl : public PlatformRenderer {
   int id_;
   PlatformRendererType type_;
   base::String tag_name_;
+
+  SubtreeProperty opacity_;
+  base::auto_create_optional<SubtreeProperty> transform_;
 
   PlatformRendererImpl* parent_ = nullptr;
 

@@ -50,7 +50,11 @@ void NativePaintingCtxPlatformRef::UpdateDisplayList(
   // Rebuild the sublayers according to the new SubLayers in the display list
   // with MyersDiff. And generate actual addChild and removeChild actions for
   // PlatformRenderer here.
-  RebuildSubLayers(layer, display_list.SubLayers());
+  if (display_list.HasContent()) {
+    // When it has no content op, it's a shortcut just update subtree properties
+    // without a entire draw pass.
+    RebuildSubLayers(layer, display_list.SubLayers());
+  }
 
   layer->UpdateDisplayList(std::move(display_list));
 }

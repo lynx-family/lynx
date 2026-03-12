@@ -136,6 +136,10 @@ class Fragment : public BaseElementContainer {
   void DrawTransform(DisplayListBuilder& display_list_builder);
   void DrawOpacity(DisplayListBuilder& display_list_builder);
 
+  // Performs a full redraw of this fragment including background, border,
+  // children, etc. Called by OnDraw when NeedRedraw() is true.
+  void DrawFull(DisplayListBuilder& display_list_builder);
+
   void ReinsertDescendantsToCorrectParent();
 
   void RemoveDescendantsFromCurrentParent();
@@ -145,6 +149,8 @@ class Fragment : public BaseElementContainer {
   void MarkHasExposureEventIfNeeded() const;
 
   void ReconstructEventTargetTreeForExposure() const;
+
+  void DispatchUpdateDisplayList();
 
   bool has_platform_renderer_{false};
 

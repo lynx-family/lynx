@@ -176,7 +176,7 @@ void BaseElementContainer::MarkDirtyState(DirtyState state) {
     element_manager()->InsertDirtyContext(this);
   }
 
-  if (state == kNeedRedraw) {
+  if (state == kNeedRedraw || state == kNeedUpdateSubtreeProperty) {
     dirty_state_ = static_cast<DirtyState>(dirty_state_ | state);
   }
 }

@@ -38,18 +38,21 @@ PlatformRendererAndroid::PlatformRendererAndroid(
 }
 
 void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
-  display_list_ = std::move(display_list);
-  constexpr int kFrameValueCount = 4;
-  if (context_ && display_list_.GetContentFloatData() &&
-      display_list_.GetContentFloatDataSize() >= kFrameValueCount) {
-    float frame[4];
-    // The first four float values in the display list are the frame of the
-    // layer's OP_BEGIN.
-    memcpy(frame, display_list_.GetContentFloatData(), 4 * sizeof(float));
+  if (display_list.HasContent()) {
+    display_list_ = std::move(display_list);
 
-    context_->UpdatePlatformRendererFrame(
-        PlatformRendererImpl::GetId(), display_list_.RootNeedClipBounds(),
-        frame, display_list_.GetRenderOffset());
+    constexpr int kFrameValueCount = 4;
+    if (context_ && display_list_.GetContentFloatData() &&
+        display_list_.GetContentFloatDataSize() >= kFrameValueCount) {
+      float frame[4];
+      // The first four float values in the display list are the frame of the
+      // layer's OP_BEGIN.
+      memcpy(frame, display_list_.GetContentFloatData(), 4 * sizeof(float));
+
+      context_->UpdatePlatformRendererFrame(
+          PlatformRendererImpl::GetId(), display_list_.RootNeedClipBounds(),
+          frame, display_list_.GetRenderOffset());
+    }
   }
 }
 

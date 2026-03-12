@@ -28,6 +28,7 @@ class BaseElementContainer {
     kNeedSortZChild = 1 << 0,
     kNeedSortFixedChild = 1 << 1,
     kNeedRedraw = 1 << 2,
+    kNeedUpdateSubtreeProperty = 1 << 3
   };
 
   explicit BaseElementContainer(Element* element);
@@ -60,6 +61,23 @@ class BaseElementContainer {
   }
 
   void MarkDirtyState(DirtyState state);
+
+  // Marks this container as needing a full redraw, propagating to ancestors.
+  void InvalidateForRedraw() {
+    if (NeedRedraw()) {
+      return;
+    }
+    MarkDirtyState(kNeedRedraw);
+    if (parent()) {
+      parent()->InvalidateForRedraw();
+    }
+  }
+
+  // Marks this container as needing subtree property update (e.g., transform,
+  // opacity). This is a lighter-weight invalidation than full redraw.
+  void InvalidateForSubtreeProperty() {
+    MarkDirtyState(kNeedUpdateSubtreeProperty);
+  }
 
   /**
    * Add element container to correct parent(if layout_only contained)
@@ -155,6 +173,15 @@ class BaseElementContainer {
     return dirty_state_ & DirtyState::kNeedSortFixedChild;
   }
   bool NeedRedraw() const { return dirty_state_ & DirtyState::kNeedRedraw; }
+  bool NeedUpdateSubtreeProperty() const {
+    return dirty_state_ & DirtyState::kNeedUpdateSubtreeProperty;
+  }
+
+  void ClearPaintDirtyState() {
+    dirty_state_ = static_cast<DirtyState>(
+        dirty_state_ &
+        (~(DirtyState::kNeedRedraw | DirtyState::kNeedUpdateSubtreeProperty)));
+  }
 
   BaseElementContainer* EnclosingStackingContextNode();
 
