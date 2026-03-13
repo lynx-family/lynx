@@ -117,7 +117,7 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float ExposureUIMarginTop() const { return exposure_ui_margin_top_; }
   float ExposureUIMarginBottom() const { return exposure_ui_margin_bottom_; }
   float ExposureAreaRatio() const { return exposure_area_ratio_; }
-  const std::string& Id() const { return id_; }
+  const std::string& IDSelector() const { return id_selector_; }
   const std::string& ExposureId() const { return exposure_id_; }
   const std::string& ExposureScene() const { return exposure_scene_; }
   const lepus::Value& Dataset() const { return dataset_; }
@@ -200,7 +200,7 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   void SetEnableExposureUIClip(LynxEventPropStatus value) {
     enable_exposure_ui_clip_ = value;
   }
-  void SetId(std::string value) { id_ = std::move(value); }
+  void SetIDSelector(std::string value) { id_selector_ = std::move(value); }
   void SetExposureId(std::string value) { exposure_id_ = std::move(value); }
   void SetExposureScene(std::string value) {
     exposure_scene_ = std::move(value);
@@ -237,7 +237,7 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float exposure_ui_margin_bottom_{0.f};
   float exposure_area_ratio_{0.f};
   LynxEventPropStatus enable_exposure_ui_clip_{LynxEventPropStatus::kUndefined};
-  std::string id_;
+  std::string id_selector_;
   std::string exposure_id_;
   std::string exposure_scene_;
   lepus::Value dataset_;

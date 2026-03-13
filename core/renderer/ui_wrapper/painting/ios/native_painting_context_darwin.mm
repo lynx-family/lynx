@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_darwin.h"
 #include "base/include/debug/lynx_error.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
@@ -12,6 +13,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
+#include "core/value_wrapper/value_wrapper_utils.h"
 
 #import <Foundation/Foundation.h>
 #import <Lynx/LUIBodyView.h>
@@ -78,15 +80,47 @@ bool NativePaintingCtxDarwin::NeedAnimationProps() { return false; }
 void NativePaintingCtxDarwin::Invoke(
     int64_t id, const std::string &method, const pub::Value &params,
     const std::function<void(int32_t, const pub::Value &)> &callback) {
-  // TODO: impl this function later.
+  auto runner = base::UIThread::GetRunner();
+  if (!runner) {
+    return;
+  }
+  const auto &lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
+  base::MoveOnlyClosure<void, int32_t, const pub::Value &> cb =
+      [callback](int32_t code, const pub::Value &data) { callback(code, data); };
+  runner->PostTask([ref = platform_ref_, id, method, params = std::move(lepus_params),
+                    cb = std::move(cb)]() mutable {
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
+    if (darwin_ref) {
+      darwin_ref->InvokeUIMethod(static_cast<int32_t>(id), method, params, std::move(cb));
+    }
+  });
 }
 
 void NativePaintingCtxDarwin::StopExposure(const pub::Value &options) {
-  // TODO: impl this function later.
+  auto runner = base::UIThread::GetRunner();
+  if (!runner) {
+    return;
+  }
+  auto lepus_options = pub::ValueUtils::ConvertValueToLepusValue(options);
+  runner->PostTask([ref = platform_ref_, options = std::move(lepus_options)]() mutable {
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
+    if (darwin_ref) {
+      darwin_ref->StopExposure(options);
+    }
+  });
 }
 
 void NativePaintingCtxDarwin::ResumeExposure() {
-  // TODO: impl this function later.
+  auto runner = base::UIThread::GetRunner();
+  if (!runner) {
+    return;
+  }
+  runner->PostTask([ref = platform_ref_]() mutable {
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
+    if (darwin_ref) {
+      darwin_ref->ResumeExposure();
+    }
+  });
 }
 
 void NativePaintingCtxDarwin::UpdatePlatformExtraBundle(int32_t id, PlatformExtraBundle *bundle) {
@@ -137,15 +171,19 @@ void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
 
 void NativePaintingCtxDarwin::ReconstructEventTargetTreeRecursively() {
   Enqueue([ref = platform_ref_]() {
-    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)
-        ->ReconstructEventTargetTreeRecursively();
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
+    if (darwin_ref) {
+      darwin_ref->ReconstructEventTargetTreeRecursively();
+    }
   });
 }
 
 void NativePaintingCtxDarwin::UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle) {
   Enqueue([ref = platform_ref_, id, bundle = std::move(bundle)]() {
-    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)->UpdatePlatformEventBundle(
-        id, std::move(bundle));
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
+    if (darwin_ref) {
+      darwin_ref->UpdatePlatformEventBundle(id, std::move(bundle));
+    }
   });
 }
 

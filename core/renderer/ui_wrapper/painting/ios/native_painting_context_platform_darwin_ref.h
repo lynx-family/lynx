@@ -9,6 +9,7 @@
 
 #include <memory>
 
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 
 namespace lynx {
@@ -21,6 +22,9 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   explicit NativePaintingCtxPlatformDarwinRef(
       std::unique_ptr<PlatformRendererFactory> view_factory);
   ~NativePaintingCtxPlatformDarwinRef() override = default;
+
+  void GetRootViewLocationOnScreen(float location[2]) override;
+  void GetScreenSize(float size[2]) override;
 
   void SetPerformanceController(LynxPerformanceController* controller) {
     perf_controller_ = controller;

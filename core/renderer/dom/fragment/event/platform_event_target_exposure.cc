@@ -132,19 +132,31 @@ void PlatformEventTargetExposure::ClearExposureTargetMap() {
 
 void PlatformEventTargetExposure::StartExposureCheck() {
   if (scheduled_exposure_check_) {
+    ScheduleNextExposureCheck();
     return;
   }
   scheduled_exposure_check_ = true;
   ScheduleNextExposureCheck();
 }
 
-void PlatformEventTargetExposure::StopExposureCheck() {
+void PlatformEventTargetExposure::StopExposureCheck(
+    const lepus::Value& options) {
   if (!scheduled_exposure_check_) {
     return;
   }
   scheduled_exposure_check_ = false;
-  SendEvent(visible_target_before_, "disexposure");
-  visible_target_before_.clear();
+  bool send_event = true;
+  if (options.IsObject()) {
+    BASE_STATIC_STRING_DECL(kSendEvent, "sendEvent");
+    auto send_event_value = options.GetProperty(kSendEvent);
+    if (send_event_value.IsBool()) {
+      send_event = send_event_value.Bool();
+    }
+  }
+  if (send_event) {
+    SendEvent(visible_target_before_, "disexposure");
+    visible_target_before_.clear();
+  }
   common_ancestor_rect_map_.clear();
   window_rect_valid_ = false;
 }

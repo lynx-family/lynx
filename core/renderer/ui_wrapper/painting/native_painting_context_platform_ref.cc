@@ -15,6 +15,7 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/diff_algorithm.h"
+#include "core/renderer/utils/value_utils.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/lynx_shell.h"
 
@@ -130,6 +131,10 @@ void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
       engine_actor_ != nullptr
           ? engine_actor_->Impl()->GetTasm()->GetDevicePixelRatio()
           : 1.0f;
+// Since iOS consumes logical pixels, device_pixel_ratio needs to be reset to 1.
+#if defined(OS_IOS)
+  device_pixel_ratio = 1.0f;
+#endif
   event_target_helper_->SetDevicePixelRatio(device_pixel_ratio);
   if (event_target_exposure_ != nullptr && engine_actor_ != nullptr) {
     event_target_exposure_->SetTaskRunner(
@@ -183,6 +188,8 @@ NativePaintingCtxPlatformRef::GetEventTargetHelper() {
 
 void NativePaintingCtxPlatformRef::UpdatePlatformEventBundle(
     int32_t id, PlatformEventBundle bundle) {
+  // TODO(hexionghui): When an Attribute does not trigger a rebuild, the
+  // ApplyEventBundle needs to be executed actively for the PlatformEventTarget.
   if (bundle.Empty()) {
     platform_event_bundles_.erase(id);
     return;
@@ -253,6 +260,14 @@ void NativePaintingCtxPlatformRef::RemovePlatformEventTargetFromExposure(
 
 void NativePaintingCtxPlatformRef::ClearExposureTargetMap() {
   event_target_exposure_->ClearExposureTargetMap();
+}
+
+void NativePaintingCtxPlatformRef::StopExposure(const lepus::Value &options) {
+  event_target_exposure_->StopExposureCheck(options);
+}
+
+void NativePaintingCtxPlatformRef::ResumeExposure() {
+  event_target_exposure_->StartExposureCheck();
 }
 
 void NativePaintingCtxPlatformRef::UpdateAttributes(

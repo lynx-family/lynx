@@ -11,6 +11,7 @@
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
@@ -19,6 +20,7 @@
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 #include "core/shell/lynx_shell.h"
+#include "core/value_wrapper/value_wrapper_utils.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_register_jni.h"
 
@@ -171,11 +173,34 @@ std::unique_ptr<pub::Value> NativePaintingCtxAndroid::GetTextInfo(
 }
 
 void NativePaintingCtxAndroid::StopExposure(const pub::Value &options) {
-  // TODO: impl this function later.
+  auto runner = base::UIThread::GetRunner();
+  if (!runner) {
+    return;
+  }
+
+  auto lepus_options = pub::ValueUtils::ConvertValueToLepusValue(options);
+  runner->PostTask(
+      [ref = platform_ref_, options = std::move(lepus_options)]() mutable {
+        auto android_ref =
+            std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);
+        if (android_ref) {
+          android_ref->StopExposure(options);
+        }
+      });
 }
 
 void NativePaintingCtxAndroid::ResumeExposure() {
-  // TODO: impl this function later.
+  auto runner = base::UIThread::GetRunner();
+  if (!runner) {
+    return;
+  }
+  runner->PostTask([ref = platform_ref_]() mutable {
+    auto android_ref =
+        std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);
+    if (android_ref) {
+      android_ref->ResumeExposure();
+    }
+  });
 }
 
 void NativePaintingCtxAndroid::CreatePlatformExtendedRenderer(
@@ -245,6 +270,10 @@ std::vector<float> NativePaintingCtxAndroid::ScrollBy(int64_t id, float width,
 void NativePaintingCtxAndroid::Invoke(
     int64_t id, const std::string &method, const pub::Value &params,
     const std::function<void(int32_t, const pub::Value &)> &callback) {
+  auto runner = base::UIThread::GetRunner();
+  if (!runner) {
+    return;
+  }
   const auto &lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
   base::MoveOnlyClosure<void, int32_t, const pub::Value &> cb =
       [callback](int32_t code, const pub::Value &data) {
@@ -253,11 +282,14 @@ void NativePaintingCtxAndroid::Invoke(
   // Since invokeUIMethod may not necessarily trigger the pipeline, we will
   // temporarily use TaskRunner to throw the UI thread for execution instead of
   // Enqueue.
-  base::UIThread::GetRunner()->PostTask([ref = platform_ref_, id, method,
-                                         params = std::move(lepus_params),
-                                         cb = std::move(cb)]() mutable {
-    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)->InvokeUIMethod(
-        id, method, params, std::move(cb));
+  runner->PostTask([ref = platform_ref_, id, method,
+                    params = std::move(lepus_params),
+                    cb = std::move(cb)]() mutable {
+    auto android_ref =
+        std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);
+    if (android_ref) {
+      android_ref->InvokeUIMethod(id, method, params, std::move(cb));
+    }
   });
 }
 
@@ -292,15 +324,21 @@ void NativePaintingCtxAndroid::UpdateDisplayList(int id,
 void NativePaintingCtxAndroid::UpdatePlatformEventBundle(
     int32_t id, PlatformEventBundle bundle) {
   Enqueue([ref = platform_ref_, id, bundle = std::move(bundle)]() mutable {
-    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
-        ->UpdatePlatformEventBundle(id, std::move(bundle));
+    auto android_ref =
+        std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);
+    if (android_ref) {
+      android_ref->UpdatePlatformEventBundle(id, std::move(bundle));
+    }
   });
 }
 
 void NativePaintingCtxAndroid::ReconstructEventTargetTreeRecursively() {
   Enqueue([ref = platform_ref_]() mutable {
-    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
-        ->ReconstructEventTargetTreeRecursively();
+    auto android_ref =
+        std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);
+    if (android_ref) {
+      android_ref->ReconstructEventTargetTreeRecursively();
+    }
   });
 }
 

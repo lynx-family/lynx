@@ -14,5 +14,18 @@ PlatformRendererContextDarwin::PlatformRendererContextDarwin(UIView<LUIBodyView>
 }
 
 PlatformRendererContextDarwin::~PlatformRendererContextDarwin() { _renderer_context = nil; }
+
+CGPoint PlatformRendererContextDarwin::GetRootViewLocationOnScreen() {
+  UIView<LUIBodyView>* view = GetContainerView();
+  if (view == nil) {
+    return CGPointZero;
+  }
+  return [view convertPoint:CGPointZero toView:nil];
+}
+
+CGSize PlatformRendererContextDarwin::GetScreenSize() {
+  CGSize size = UIScreen.mainScreen.bounds.size;
+  return size;
+}
 }  // namespace tasm
 }  // namespace lynx

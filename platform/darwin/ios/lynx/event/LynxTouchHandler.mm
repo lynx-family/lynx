@@ -11,6 +11,7 @@
 #import <Lynx/LynxBaseInspectorOwner.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventEmitter.h>
+#import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
@@ -19,7 +20,6 @@
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxWeakProxy.h>
-#import "LynxEventHandler+Internal.h"
 #import "LynxGestureArenaManager.h"
 #import "LynxGestureFlingTrigger.h"
 #import "LynxGestureHandlerTrigger.h"
@@ -377,7 +377,7 @@
     for (NSUInteger i = 0; i < pointerCount; i++) {
       UITouch* touch = touchArray[i];
       NSString* key = [NSString stringWithFormat:@"%ld", touch.hash];
-      CGPoint point = [touch locationInView:touch.view];
+      CGPoint point = [touch locationInView:_eventHandler.rootView];
       [fEventData addObject:[_touchesIDMap valueForKey:key]];
       [fEventData addObject:@(point.x)];
       [fEventData addObject:@(point.y)];

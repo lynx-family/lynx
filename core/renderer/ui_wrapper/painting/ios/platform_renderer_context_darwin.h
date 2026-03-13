@@ -22,6 +22,9 @@ class PlatformRendererContextDarwin {
 
   LynxRendererContext* GetRendererContext() { return _renderer_context; }
 
+  CGPoint GetRootViewLocationOnScreen();
+  CGSize GetScreenSize();
+
  private:
   LynxRendererContext* _renderer_context;
 };

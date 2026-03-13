@@ -81,7 +81,7 @@ class PlatformEventTargetExposure
                             const lepus::Value& option);
   void ClearExposureTargetMap();
   void StartExposureCheck();
-  void StopExposureCheck();
+  void StopExposureCheck(const lepus::Value& options = lepus::Value());
 
  private:
   void AddCommonAncestorRectMap(PlatformEventTarget* target);

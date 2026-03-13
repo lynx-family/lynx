@@ -19,6 +19,8 @@ class PlatformRendererDarwinFactory : public PlatformRendererFactory {
   PlatformRendererDarwinFactory(PlatformRendererContextDarwin* context);
   ~PlatformRendererDarwinFactory() override = default;
 
+  PlatformRendererContextDarwin* GetContext() const { return context_; }
+
   fml::RefPtr<PlatformRenderer> CreateRenderer(
       int id, PlatformRendererType type,
       const fml::RefPtr<PropBundle>& init_data) override;

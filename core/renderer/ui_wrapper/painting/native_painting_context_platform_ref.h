@@ -89,6 +89,8 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
       const lepus::Value &option);
   // Clear the exposure target map.
   void ClearExposureTargetMap();
+  void StopExposure(const lepus::Value &options);
+  void ResumeExposure();
   // Invoke the method of the ui element.
   void InvokeUIMethod(
       int32_t id, const std::string &method, const lepus::Value &params,

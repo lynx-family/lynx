@@ -87,9 +87,9 @@ void SetEnableExposureUIClip(PlatformEventTarget* target,
                                       : LynxEventPropStatus::kEnable);
 }
 
-void SetId(PlatformEventTarget* target, const lepus::Value& value) {
+void SetIDSelector(PlatformEventTarget* target, const lepus::Value& value) {
   if (value.IsString()) {
-    target->SetId(value.StdString());
+    target->SetIDSelector(value.StdString());
   }
 }
 
@@ -147,7 +147,7 @@ GetEventPropSetterMap() {
           {PlatformEventPropName::kExposureArea, &SetExposureArea},
           {PlatformEventPropName::kEnableExposureUIClip,
            &SetEnableExposureUIClip},
-          {PlatformEventPropName::kId, &SetId},
+          {PlatformEventPropName::kIDSelector, &SetIDSelector},
           {PlatformEventPropName::kExposureId, &SetExposureId},
           {PlatformEventPropName::kExposureScene, &SetExposureScene},
           {PlatformEventPropName::kDataset, &SetDataset},
@@ -627,7 +627,7 @@ void PlatformEventTargetHelper::InvokeMethod(
       BASE_STATIC_STRING_DECL(kHeight, "height");
 
       auto ret = lepus::Dictionary::Create();
-      ret->SetValue(kId, event_target->Id());
+      ret->SetValue(kId, event_target->IDSelector());
       auto dataset = event_target->Dataset();
       ret->SetValue(kDataset, dataset.IsEmpty()
                                   ? lepus::Value(lepus::Dictionary::Create())
