@@ -393,48 +393,48 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
 
 - (void)setLongPressMenuEnabled:(BOOL)enableLongPressMenu {
 #if OS_IOS
-  [self set:enableLongPressMenu forKey:SP_KEY_ENABLE_LONG_PRESS_MENU];
+  [DevToolSettings sharedInstance].longPressMenuEnabled = enableLongPressMenu;
 #endif
 }
 
 - (BOOL)longPressMenuEnabled {
 #if OS_IOS
-  return [self get:SP_KEY_ENABLE_LONG_PRESS_MENU withDefaultValue:YES];
+  return [DevToolSettings sharedInstance].longPressMenuEnabled;
 #else
   return NO;
 #endif
 }
 
 - (void)setDomTreeEnabled:(BOOL)enableDomTree {
-  [self set:enableDomTree forKey:SP_KEY_ENABLE_DOM_TREE];
+  [DevToolSettings sharedInstance].domTreeEnabled = enableDomTree;
 }
 
 - (BOOL)domTreeEnabled {
-  return [self get:SP_KEY_ENABLE_DOM_TREE withDefaultValue:YES];
+  return [DevToolSettings sharedInstance].domTreeEnabled;
 }
 
 - (BOOL)previewScreenshotEnabled {
 #if OS_IOS
-  return [self get:SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT withDefaultValue:YES];
+  return [DevToolSettings sharedInstance].previewScreenShotEnabled;
 #else
   return NO;
 #endif
 }
 
 - (void)setQuickjsDebugEnabled:(BOOL)quickjsDebugEnabled {
-  [self set:quickjsDebugEnabled forKey:SP_KEY_ENABLE_QUICKJS_DEBUG];
+  [DevToolSettings sharedInstance].quickjsDebugEnabled = quickjsDebugEnabled;
 }
 
 - (BOOL)quickjsDebugEnabled {
-  return [self get:SP_KEY_ENABLE_QUICKJS_DEBUG withDefaultValue:YES];
+  return [DevToolSettings sharedInstance].quickjsDebugEnabled;
 }
 
 - (void)setPerfMetricsEnabled:(BOOL)enable {
-  [self set:enable forKey:SP_KEY_ENABLE_PERF_METRICS];
+  [DevToolSettings sharedInstance].perfMetricsEnabled = enable;
 }
 
 - (BOOL)perfMetricsEnabled {
-  return [self get:SP_KEY_ENABLE_PERF_METRICS withDefaultValue:NO];
+  return [DevToolSettings sharedInstance].perfMetricsEnabled;
 }
 
 @end

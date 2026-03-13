@@ -111,11 +111,11 @@
 }
 
 - (BOOL)isFspScreenshotEnabled {
-  return [LynxDevtoolEnv.sharedInstance get:SP_KEY_ENABLE_FSP_SCREENSHOT withDefaultValue:NO];
+  return [DevToolSettings sharedInstance].fspScreenshotEnabled;
 }
 
 - (void)switchFspScreenshot:(BOOL)arg {
-  [LynxDevtoolEnv.sharedInstance set:arg forKey:SP_KEY_ENABLE_FSP_SCREENSHOT];
+  [DevToolSettings sharedInstance].fspScreenshotEnabled = arg;
 }
 
 #if OS_IOS

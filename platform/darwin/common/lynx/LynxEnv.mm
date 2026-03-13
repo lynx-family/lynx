@@ -63,8 +63,6 @@
   std::unique_ptr<fml::SharedMutex> external_env_mutex_;
 }
 
-@synthesize highlightTouchEnabled = _highlightTouchEnabled;
-
 + (instancetype)sharedInstance {
   static LynxEnv *_instance = nil;
   static dispatch_once_t onceToken;
@@ -93,7 +91,6 @@
     _autoResumeAnimation = YES;
     _enableNewTransformOrigin = YES;
     _recordEnable = NO;
-    _highlightTouchEnabled = NO;
     [LynxLazyRegister loadLynxInitTask];
     [self initLynxBase];
     lynx::tasm::LynxEnvDarwin::initNativeUIThread();
@@ -244,11 +241,17 @@
 }
 
 - (BOOL)fspScreenshotEnabled {
-  return [self getDevtoolEnv:SP_KEY_ENABLE_FSP_SCREENSHOT withDefaultValue:NO];
+  if (!lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+    return NO;
+  }
+  return [DevToolSettings sharedInstance].fspScreenshotEnabled;
 }
 
 - (void)setFspScreenshotEnabled:(BOOL)fspEnabled {
-  [self setDevtoolEnv:fspEnabled forKey:SP_KEY_ENABLE_FSP_SCREENSHOT];
+  if (!lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+    return;
+  }
+  [DevToolSettings sharedInstance].fspScreenshotEnabled = fspEnabled;
 }
 
 - (BOOL)getEnableRadonCompatible
@@ -269,36 +272,46 @@
 }
 
 - (void)setLogBoxEnabled:(BOOL)enableLogBox {
-  [self setDevtoolEnv:enableLogBox forKey:SP_KEY_ENABLE_LOGBOX];
+  if (!lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+    return;
+  }
+  [DevToolSettings sharedInstance].logBoxEnabled = enableLogBox;
 }
 
 // Returns true only if all the following conditions are met:
 // 1. The DevTool component is attached.
-// 2. The environment flag 'SP_KEY_ENABLE_LOGBOX' is true (defaults to true if not set).
+// 2. logBoxEnabled in setting is true.
 // 3. The `logBoxPresetValue` is true (this value can be changed via LynxDevToolService).
 - (BOOL)logBoxEnabled {
-  return [self lynxDebugEnabled] &&
-         [self getDevtoolEnv:SP_KEY_ENABLE_LOGBOX withDefaultValue:YES] &&
+  return [self lynxDebugEnabled] && [DevToolSettings sharedInstance].logBoxEnabled &&
          [LynxService(LynxServiceDevToolProtocol) logBoxPresetValue];
 }
 
 // This interface is used by TestBench and is only used to debug.
 - (void)setLaunchRecordEnabled:(BOOL)launchRecord {
-  [self setDevtoolEnv:launchRecord forKey:SP_KEY_ENABLE_LAUNCH_RECORD];
+  if (!lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+    return;
+  }
+  [DevToolSettings sharedInstance].launchRecordEnabled = launchRecord;
 }
 
 // This interface is used by TestBench and is only used to debug.
 - (BOOL)launchRecordEnabled {
-  return [self getDevtoolEnv:SP_KEY_ENABLE_LAUNCH_RECORD withDefaultValue:NO];
+  if (!lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+    return NO;
+  }
+  return [DevToolSettings sharedInstance].launchRecordEnabled;
 }
 
 - (void)setHighlightTouchEnabled:(BOOL)enableHighlightTouch {
-  [self setDevtoolEnv:enableHighlightTouch forKey:SP_KEY_ENABLE_HIGHLIGHT_TOUCH];
-  _highlightTouchEnabled = enableHighlightTouch;
+  if (!lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+    return;
+  }
+  [DevToolSettings sharedInstance].highlightTouchEnabled = enableHighlightTouch;
 }
 
 - (BOOL)highlightTouchEnabled {
-  return _highlightTouchEnabled && self.lynxDebugEnabled;
+  return [DevToolSettings sharedInstance].highlightTouchEnabled && self.lynxDebugEnabled;
 }
 
 - (void)setAutomationEnabled:(BOOL)enableAutomation {
