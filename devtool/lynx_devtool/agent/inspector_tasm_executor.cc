@@ -789,7 +789,7 @@ void InspectorTasmExecutor::PerformSearch(
   Json::Value content(Json::ValueType::objectValue);
   Json::Value params = message["params"];
   std::string query = params["query"].asString();
-  uint64_t searchId = lynx::base::CurrentTimeMilliseconds();
+  std::string searchId = std::to_string(lynx::base::CurrentTimeMilliseconds());
   std::vector<int> searchResults;
   ElementHelper::PerformSearchFromNode(element_root_, query, searchResults);
   search_results_[searchId] = searchResults;
@@ -806,7 +806,7 @@ void InspectorTasmExecutor::GetSearchResults(
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content(Json::ValueType::objectValue);
   Json::Value params = message["params"];
-  uint64_t searchId = params["searchId"].asUInt64();
+  std::string searchId = params["searchId"].asString();
   int fromIndex = params["fromIndex"].asInt();
   int toIndex = params["toIndex"].asInt();
   Json::Value nodeIds(Json::ValueType::arrayValue);
@@ -837,7 +837,7 @@ void InspectorTasmExecutor::DiscardSearchResults(
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content(Json::ValueType::objectValue);
   Json::Value params = message["params"];
-  uint64_t searchId = params["searchId"].asUInt64();
+  std::string searchId = params["searchId"].asString();
   if (search_results_.find(searchId) != search_results_.end()) {
     search_results_.erase(searchId);
     response["result"] = content;

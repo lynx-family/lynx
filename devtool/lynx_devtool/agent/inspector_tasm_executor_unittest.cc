@@ -316,5 +316,68 @@ TEST_F(InspectorTasmExecutorTest, SendDOMEventMsgCase) {
   EXPECT_TRUE(res["params"].isObject());
 }
 
+TEST_F(InspectorTasmExecutorTest, SearchProtocolUsesStringSearchIdCase) {
+  auto element = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  element_executor_->element_root_ = element.get();
+
+  Json::Value perform_search_message(Json::ValueType::objectValue);
+  perform_search_message["id"] = 1;
+  perform_search_message["params"]["query"] = "view";
+  element_executor_->PerformSearch(message_sender_, perform_search_message);
+
+  Json::Reader reader;
+  Json::Value perform_search_response;
+  bool is_valid = reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second,
+      perform_search_response);
+  EXPECT_TRUE(is_valid);
+  EXPECT_TRUE(perform_search_response["result"]["searchId"].isString());
+  std::string search_id =
+      perform_search_response["result"]["searchId"].asString();
+  EXPECT_FALSE(search_id.empty());
+
+  Json::Value get_search_results_message(Json::ValueType::objectValue);
+  get_search_results_message["id"] = 2;
+  get_search_results_message["params"]["searchId"] = search_id;
+  get_search_results_message["params"]["fromIndex"] = 0;
+  get_search_results_message["params"]["toIndex"] = 1;
+  element_executor_->GetSearchResults(message_sender_,
+                                      get_search_results_message);
+
+  Json::Value get_search_results_response;
+  is_valid = reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second,
+      get_search_results_response);
+  EXPECT_TRUE(is_valid);
+  EXPECT_TRUE(get_search_results_response.isMember("result"));
+  EXPECT_TRUE(get_search_results_response["result"]["nodeIds"].isArray());
+
+  Json::Value discard_search_results_message(Json::ValueType::objectValue);
+  discard_search_results_message["id"] = 3;
+  discard_search_results_message["params"]["searchId"] = search_id;
+  element_executor_->DiscardSearchResults(message_sender_,
+                                          discard_search_results_message);
+
+  Json::Value discard_search_results_response;
+  is_valid = reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second,
+      discard_search_results_response);
+  EXPECT_TRUE(is_valid);
+  EXPECT_TRUE(discard_search_results_response.isMember("result"));
+
+  get_search_results_message["id"] = 4;
+  element_executor_->GetSearchResults(message_sender_,
+                                      get_search_results_message);
+  Json::Value get_after_discard_response;
+  is_valid = reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second,
+      get_after_discard_response);
+  EXPECT_TRUE(is_valid);
+  EXPECT_TRUE(get_after_discard_response.isMember("error"));
+  EXPECT_EQ(get_after_discard_response["error"]["code"], 32000);
+}
+
 }  // namespace testing
 }  // namespace lynx

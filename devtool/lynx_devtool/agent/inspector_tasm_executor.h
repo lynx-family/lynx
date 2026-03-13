@@ -206,7 +206,7 @@ class InspectorTasmExecutor
   tasm::TemplateAssembler* tasm_;
   std::unordered_map<int32_t, lynx::tasm::LayoutNode*> layout_nodes_;
   std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
-  std::unordered_map<uint64_t, std::vector<int>> search_results_;
+  std::unordered_map<std::string, std::vector<int>> search_results_;
   lynx::devtool::InspectorStyleSheet origin_inline_style_;
   std::shared_ptr<DevToolPlatformFacade> devtool_platform_facade_;
 
