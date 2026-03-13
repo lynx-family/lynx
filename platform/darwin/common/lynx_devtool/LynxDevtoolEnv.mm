@@ -48,7 +48,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     _switchNotPersist = [[NSMutableDictionary alloc] init];
 
     [self initSwitchAttribute];
-    [self initSyncToNative];
     /**
      * [self setDefaultAppInfo]
      *   -> [LynxDebugBridge singleton]
@@ -92,15 +91,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     SP_KEY_ENABLE_DOM_TREE : @[ @YES, @YES, @YES ],
     SP_KEY_ENABLE_PERF_METRICS : @[ @NO, @NO, @NO ]
   };
-}
-
-- (void)initSyncToNative {
-  [self syncToNative:[self get:SP_KEY_ENABLE_DEVTOOL withDefaultValue:NO]
-              forKey:SP_KEY_ENABLE_DEVTOOL];
-  [self syncToNative:[self domTreeEnabled] forKey:SP_KEY_ENABLE_DOM_TREE];
-  [self syncToNative:[self get:SP_KEY_ENABLE_LOGBOX withDefaultValue:YES]
-              forKey:SP_KEY_ENABLE_LOGBOX];
-  [self syncToNative:[self quickjsDebugEnabled] forKey:SP_KEY_ENABLE_QUICKJS_DEBUG];
 }
 
 - (void)setDefaultAppInfo {
