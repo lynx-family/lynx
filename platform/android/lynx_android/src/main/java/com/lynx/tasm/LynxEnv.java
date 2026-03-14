@@ -845,6 +845,9 @@ public class LynxEnv {
   }
 
   public void enableHighlightTouch(boolean enableHighlightTouch) {
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      return;
+    }
     LLog.i(TAG, enableHighlightTouch ? "Turn on highlighttouch" : "Turn off highlighttouch");
     DevToolSettings.inst().setHighlightTouchEnabled(enableHighlightTouch);
   }
