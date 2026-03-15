@@ -229,11 +229,17 @@
 }
 
 - (void)setDevtoolEnabled:(BOOL)enableDevtool {
-  _LogI(@"Turn on devtool");
+  if (!lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+    return;
+  }
+  _LogI(@"Turn %@ devtool", enableDevtool ? @"on" : @"off");
   [DevToolSettings sharedInstance].devToolEnabled = enableDevtool;
 }
 
 - (BOOL)devtoolEnabled {
+  if (!lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+    return NO;
+  }
   return [DevToolSettings sharedInstance].devToolEnabled;
 }
 
