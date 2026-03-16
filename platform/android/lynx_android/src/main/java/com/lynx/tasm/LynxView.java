@@ -1532,10 +1532,14 @@ public class LynxView extends UIBodyView {
         JavaOnlyMap event = new JavaOnlyMap();
         event.put(DefaultLogicExecutor.EVENT_METHOD, name);
         if (needData) {
-          TemplateData templateData = mLynxTemplateRender.getTemplateData();
-          event.put(DefaultLogicExecutor.EVENT_ARGS, templateData);
+          if (mLynxTemplateRender != null) {
+            TemplateData templateData = mLynxTemplateRender.getTemplateData();
+            event.put(DefaultLogicExecutor.EVENT_ARGS, templateData);
+          }
         }
-        mLynxTemplateRender.onLynxEvent(event);
+        if (mLynxTemplateRender != null) {
+          mLynxTemplateRender.onLynxEvent(event);
+        }
         if (TraceEvent.isTracingStarted()) {
           TraceEvent.endSection(TraceEventDef.TRIGGER_EMBEDDED_MODE_LIFECYCLE);
         }
