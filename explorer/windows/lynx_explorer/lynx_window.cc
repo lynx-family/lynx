@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "lynx_window.h"
+#include "explorer/windows/lynx_explorer/lynx_window.h"
 
 #include <cmath>
 #include <cstdint>
@@ -17,7 +17,7 @@
 #include "explorer/windows/lynx_explorer/httplib/httplib_client.h"
 #include "explorer/windows/lynx_explorer/lynx_window_manager.h"
 #include "explorer/windows/lynx_explorer/runtime/example_lynx_runtime_lifecycle_observer.h"
-#include "lynx_native_view.h"
+#include "platform/embedder/public/lynx_native_view.h"
 
 namespace lynx {
 
@@ -274,11 +274,6 @@ LynxWindow::MessageHandler(HWND hwnd, UINT const message, WPARAM const wparam,
                                         (rect.bottom - rect.top) / dpi, dpi);
         lynx_view_->SetFrame(0, 0, (rect.right - rect.left) / dpi,
                              (rect.bottom - rect.top) / dpi);
-      }
-      if (child_content_ != nullptr) {
-        // Size and position the child window.
-        MoveWindow(child_content_, rect.left, rect.top, rect.right - rect.left,
-                   rect.bottom - rect.top, TRUE);
       }
       return 0;
     }

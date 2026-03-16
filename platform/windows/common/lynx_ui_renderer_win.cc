@@ -112,8 +112,19 @@ NativeWindow LynxUIRendererWin::GetNativeWindow() {
   return native_window;
 }
 
+void LynxUIRendererWin::SetPixelRatio(float pixel_ratio) {
+  if (pixel_ratio_ != pixel_ratio) {
+    pixel_ratio_ = pixel_ratio;
+    AdjustWindowRect();
+  }
+}
+
 void LynxUIRendererWin::SetFrame(float x, float y, float width, float height) {
-  LynxUIRenderer::SetFrame(x, y, width, height);
+  if (width_ != width || height_ != height) {
+    width_ = width;
+    height_ = height;
+    AdjustWindowRect();
+  }
 }
 
 void LynxUIRendererWin::OnEnterForeground() { engine_->OnEnterForeground(); }
@@ -201,6 +212,14 @@ void LynxUIRendererWin::RegisterIMEHandler(void* handler, void* opaque) {
   HWND native_window = std::get<HWND>(*flutter_view_->GetRenderTarget());
   PostMessageW(native_window, kRequestIME, reinterpret_cast<WPARAM>(handler),
                reinterpret_cast<LPARAM>(opaque));
+}
+
+void LynxUIRendererWin::AdjustWindowRect() {
+  HWND hwnd = reinterpret_cast<HWND>(GetNativeWindow());
+  if (hwnd) {
+    // Size and position the child window.
+    MoveWindow(hwnd, 0, 0, width_ * pixel_ratio_, height_ * pixel_ratio_, TRUE);
+  }
 }
 
 }  // namespace embedder

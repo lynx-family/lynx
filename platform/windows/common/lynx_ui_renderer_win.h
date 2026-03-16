@@ -24,6 +24,7 @@ class LynxUIRendererWin : public LynxUIRenderer {
 
   NativeWindow GetNativeWindow() override;
 
+  void SetPixelRatio(float pixel_ratio) override;
   void SetFrame(float x, float y, float width, float height) override;
 
   void OnEnterForeground() override;
@@ -40,6 +41,8 @@ class LynxUIRendererWin : public LynxUIRenderer {
   void RegisterIMEHandler(void* handler, void* opaque) override;
 
  private:
+  void AdjustWindowRect();
+
   std::unique_ptr<clay::FlutterWindowsEngine> engine_;
   std::unique_ptr<clay::FlutterWindowsView> flutter_view_;
   std::unique_ptr<lynx::tasm::UIDelegateClay> ui_delegate_;
