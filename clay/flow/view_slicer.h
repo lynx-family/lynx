@@ -23,7 +23,8 @@ std::unordered_map<int64_t, skity::Rect> SliceViews(
     const std::vector<int64_t>& composition_order,
     const std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
         slices,
-    const std::unordered_map<int64_t, skity::Rect>& view_rects);
+    const std::unordered_map<int64_t, skity::Rect>& view_rects,
+    bool search_intersection = true);
 
 }  // namespace clay
 

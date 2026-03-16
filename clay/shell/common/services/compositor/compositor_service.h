@@ -6,6 +6,7 @@
 #define CLAY_SHELL_COMMON_SERVICES_COMPOSITOR_COMPOSITOR_SERVICE_H_
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "clay/flow/compositor/compositor_state.h"
@@ -37,8 +38,15 @@ class CompositorService
   // |clay::Service|
   void OnDestroy() override;
 
-  void CreateMissingSurfaces(size_t required_surfaces,
+  void CreateMissingSurfaces(const std::vector<int64_t>& view_ids,
                              clay::GrContext* context);
+  std::unordered_map<int64_t, skity::Rect> ComputeSliceViews(
+      CompositorState* compositor_state, SurfaceFrame* frame,
+      std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>>& params,
+      std::unordered_map<int64_t, skity::Rect> view_rects,
+      const std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
+          slices,
+      bool search_intersection = true);
 
   CompositorSurface& GetCompositorSurface();
 

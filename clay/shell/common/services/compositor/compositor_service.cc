@@ -30,41 +30,52 @@ bool CompositorService::SubmitFrame(
     return background_frame->Submit();
   }
 
-  had_hybrid_composited_ = true;
-
-  // TODO(haoyoufeng.aji) support external overlay views
+  // // TODO(haoyoufeng.aji) support external overlay views
   bool did_encode = true;
   std::unordered_map<int64_t, OverlayData> platform_overlays;
   std::vector<std::pair<SurfaceFrame::SubmitCallback, SurfaceFrame::SubmitInfo>>
       submit_infos;
   submit_infos.reserve(compositor_state->GetCompositionOrder().size() + 1);
   std::unordered_map<int64_t, skity::Rect> view_rects;
-
-  for (int64_t view_id : compositor_state->GetCompositionOrder()) {
-    view_rects[view_id] =
-        compositor_state->GetViewParams()[view_id]->finalBoundingRect();
+  std::unordered_map<int64_t, skity::Rect> overlay_layers;
+  auto& view_params = compositor_state->GetViewParams();
+  auto& view_slices = compositor_state->GetSlices();
+  auto& overlay_view_params = compositor_state->GetOverlayViewParams();
+  auto& overlay_slices = compositor_state->GetOverlaySlices();
+  if (!view_params.empty()) {
+    overlay_layers.merge(ComputeSliceViews(compositor_state.get(),
+                                           background_frame.get(), view_params,
+                                           view_rects, view_slices));
   }
-
-  std::unordered_map<int64_t, skity::Rect> overlay_layers = SliceViews(
-      background_frame->GetCanvas(), compositor_state->GetCompositionOrder(),
-      compositor_state->GetSlices(), view_rects);
+  if (!overlay_view_params.empty()) {
+    overlay_layers.merge(ComputeSliceViews(
+        compositor_state.get(), background_frame.get(), overlay_view_params,
+        view_rects, overlay_slices, false));
+  }
 
   // background frame must come first since it's the "current" surface
   background_frame->set_submit_info({.present_with_transaction = true});
   did_encode &= background_frame->Encode();
   submit_infos.push_back(background_frame->PrepareSubmit());
 
-  size_t required_overlay_layers = 0;
+  std::vector<int64_t> required_overlay_layers_ids;
   for (int64_t view_id : compositor_state->GetCompositionOrder()) {
     std::unordered_map<int64_t, skity::Rect>::const_iterator overlay =
         overlay_layers.find(view_id);
     if (overlay == overlay_layers.end()) {
       continue;
     }
-    required_overlay_layers++;
+    auto it =
+        std::find_if(compositor_surfaces_.begin(), compositor_surfaces_.end(),
+                     [&view_id](const CompositorSurface& s) {
+                       return s.platform_overlay->GetId() == view_id;
+                     });
+    if (it == compositor_surfaces_.end()) {
+      required_overlay_layers_ids.emplace_back(view_id);
+    }
   }
 
-  CreateMissingSurfaces(required_overlay_layers, context);
+  CreateMissingSurfaces(required_overlay_layers_ids, context);
 
   int64_t overlay_id = 0;
   for (int64_t view_id : compositor_state->GetCompositionOrder()) {
@@ -75,10 +86,9 @@ bool CompositorService::SubmitFrame(
     }
     auto& [_, overlay_rect] = *it;
     CompositorSurface& compositor_surface = GetCompositorSurface();
-
     std::unique_ptr<SurfaceFrame> frame =
         compositor_surface.surface->AcquireFrame(
-            compositor_state->GetFrameSize());
+            {overlay_rect.Width(), overlay_rect.Height()});
 
     // If frame is null, AcquireFrame already printed out an error message.
     if (!frame) {
@@ -90,7 +100,11 @@ bool CompositorService::SubmitFrame(
     CANVAS_CLIP_RECT(overlay_canvas, overlay_rect);
     CANVAS_CLEAR(overlay_canvas, clay::Color::kTransparent());
     CANVAS_TRANSLATE(overlay_canvas, -overlay_rect.X(), -overlay_rect.Y());
-    compositor_state->GetSlices()[view_id]->render_into(overlay_canvas);
+    if (had_hybrid_composited_) {
+      view_slices[view_id]->render_into(overlay_canvas);
+    } else {
+      overlay_slices[view_id]->render_into(overlay_canvas);
+    }
     CANVAS_RESTORE_TO_COUNT(overlay_canvas, restore_count);
 
     frame->set_submit_info({.present_with_transaction = true});
@@ -146,20 +160,35 @@ void CompositorService::OnDestroy() {
   compositor_surfaces_.clear();
 }
 
-void CompositorService::CreateMissingSurfaces(size_t required_surfaces,
-                                              clay::GrContext* context) {
-  if (required_surfaces <= compositor_surfaces_.size()) {
-    return;
-  }
-
-  compositor_surfaces_.reserve(required_surfaces);
-  auto created_surfaces = overlay_service_->CreatePlatformOverlay(
-      required_surfaces - compositor_surfaces_.size());
+void CompositorService::CreateMissingSurfaces(
+    const std::vector<int64_t>& view_ids, clay::GrContext* context) {
+  compositor_surfaces_.reserve(compositor_surfaces_.size() + view_ids.size());
+  auto created_surfaces =
+      overlay_service_->CreatePlatformOverlay(view_ids.size());
+  int available_surface_index = 0;
   for (auto& surface : created_surfaces) {
+    surface->SetId(view_ids[available_surface_index++]);
     compositor_surfaces_.emplace_back(CompositorSurface{
         .platform_overlay = surface,
-        .surface = surface->GetOutputSurface()->CreateGPUSurface(context)});
+        .surface = surface->GetOutputSurface()
+                       ? surface->GetOutputSurface()->CreateGPUSurface(context)
+                       : nullptr});
   }
+}
+
+std::unordered_map<int64_t, skity::Rect> CompositorService::ComputeSliceViews(
+    CompositorState* compositor_state, SurfaceFrame* frame,
+    std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>>& params,
+    std::unordered_map<int64_t, skity::Rect> view_rects,
+    const std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
+        slices,
+    bool search_intersection) {
+  for (int64_t view_id : compositor_state->GetCompositionOrder()) {
+    view_rects[view_id] = params[view_id]->finalBoundingRect();
+  }
+
+  return SliceViews(frame->GetCanvas(), compositor_state->GetCompositionOrder(),
+                    slices, view_rects, search_intersection);
 }
 
 CompositorSurface& CompositorService::GetCompositorSurface() {
@@ -178,7 +207,8 @@ CompositorService::RemoveUnusedSurfaces() {
   // Leave at least one overlay layer, to work around cases where scrolling
   // platform views under an app bar continually adds and removes an
   // overlay layer. This logic could be removed if
-  // https://github.com/flutter/flutter/issues/150646 is fixed.
+  // iOS embedder creates overlay layer based on platform view bounds but does
+  // not take clip bounds into  is fixed.
   static constexpr size_t kLeakLayerCount = 1;
   size_t erase_offset = std::max(available_layer_index_, kLeakLayerCount);
   if (erase_offset < compositor_surfaces_.size()) {

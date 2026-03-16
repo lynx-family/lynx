@@ -29,6 +29,9 @@ namespace clay {
 // ID for the window frame buffer.
 inline constexpr uint32_t kWindowFrameBufferID = 0;
 
+// A unique identifier for a view.
+using FlutterViewId = int64_t;
+
 // An OS-windowing neutral abstration for flutter
 // view that works with win32 hwnds and Windows::UI::Composition visuals.
 class FlutterWindowsView : public WindowBindingHandlerDelegate,
@@ -40,8 +43,13 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   // In order for object to render Flutter content the SetEngine method must
   // be called with a valid FlutterWindowsEngine instance.
   FlutterWindowsView(std::unique_ptr<WindowBindingHandler> window_binding);
+  FlutterWindowsView(FlutterViewId view_id,
+                     std::unique_ptr<WindowBindingHandler> window_binding);
 
   virtual ~FlutterWindowsView();
+
+  // Get the view's unique identifier.
+  FlutterViewId view_id() const;
 
   // Configures the window instance with an instance of a running Flutter
   // engine.
@@ -55,7 +63,7 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   WindowsRenderTarget* GetRenderTarget() const;
 
   // Return the currently configured PlatformWindow.
-  PlatformWindow GetPlatformWindow() const;
+  HWND GetWindowHandle() const;
 
   // Returns the engine backing this view.
   FlutterWindowsEngine* GetEngine();
@@ -228,7 +236,8 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
 
   // Sends a window metrics update to the Flutter engine using current window
   // dimensions in physical
-  void SendWindowMetrics(size_t width, size_t height, double dpi_scale) const;
+  virtual void SendWindowMetrics(size_t width, size_t height,
+                                 double dpi_scale) const;
 
   // Reports a mouse movement to Flutter engine.
   void SendPointerMove(double x, double y, PointerState* state);
@@ -307,6 +316,9 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   // needed before passing on to engine.
   void SendPointerEventWithData(const ClayPointerEvent& event_data,
                                 PointerState* state);
+
+  // The view's unique identifier.
+  FlutterViewId view_id_ = kImplicitViewId;
 
   // Currently configured WindowsRenderTarget for this view used by
   // surface_manager for creation of render surfaces and bound to the physical

@@ -94,7 +94,12 @@ void DestroyWindowSurface(const FlutterWindowsEngine& engine,
 }  // namespace
 
 FlutterWindowsView::FlutterWindowsView(
-    std::unique_ptr<WindowBindingHandler> window_binding) {
+    std::unique_ptr<WindowBindingHandler> window_binding)
+    : FlutterWindowsView(kImplicitViewId, std::move(window_binding)) {}
+
+FlutterWindowsView::FlutterWindowsView(
+    FlutterViewId view_id, std::unique_ptr<WindowBindingHandler> window_binding)
+    : view_id_(view_id) {
   // Take the binding handler, and give it a pointer back to self.
   binding_handler_ = std::move(window_binding);
   binding_handler_->SetView(this);
@@ -104,19 +109,19 @@ FlutterWindowsView::FlutterWindowsView(
 }
 
 FlutterWindowsView::~FlutterWindowsView() {
-  // stop draw texture in raster thread before destroy window view avoid crash
-  engine_->Stop();
-  engine_->SetView(nullptr);
   binding_handler_.reset();
+  if (view_id_ == kImplicitViewId) {
+    engine_->SetView(nullptr);
+  }
   if (surface_) {
     DestroyWindowSurface(*engine_, std::move(surface_));
   }
 }
 
+FlutterViewId FlutterWindowsView::view_id() const { return view_id_; }
+
 void FlutterWindowsView::SetEngine(FlutterWindowsEngine* engine) {
   engine_ = engine;
-
-  engine_->SetView(this);
 
   move_handle_ =
       std::make_unique<clay::WindowMoveHandle>(binding_handler_.get());
@@ -543,6 +548,7 @@ void FlutterWindowsView::SendPointerEventWithData(
   event.device_kind = state->device_kind;
   event.device = state->pointer_id;
   event.buttons = state->buttons;
+  event.view_id = view_id_;
 
   // Set metadata that's always the same regardless of the event.
   event.struct_size = sizeof(event);
@@ -623,8 +629,8 @@ void FlutterWindowsView::CreateRenderSurface() {
     PhysicalWindowBounds bounds = binding_handler_->GetPhysicalWindowBounds();
     bool enable_vsync = binding_handler_->NeedsVSync();
     surface_ = engine_->egl_manager()->CreateWindowSurface(
-        egl::GLImplementationType::kAngleEGL,
-        std::get<HWND>(*GetRenderTarget()), bounds.width, bounds.height);
+        egl::GLImplementationType::kAngleEGL, GetWindowHandle(), bounds.width,
+        bounds.height);
     UpdateVsync(engine_, surface_.get(), enable_vsync);
     resize_target_width_ = bounds.width;
     resize_target_height_ = bounds.height;
@@ -640,7 +646,6 @@ bool FlutterWindowsView::ResizeRenderSurface(size_t width, size_t height) {
   }
 
   return surface_->Resize(width, height);
-  ;
 }
 
 void FlutterWindowsView::UpdateHighContrastEnabled(bool enabled) {
@@ -651,8 +656,8 @@ WindowsRenderTarget* FlutterWindowsView::GetRenderTarget() const {
   return render_target_.get();
 }
 
-PlatformWindow FlutterWindowsView::GetPlatformWindow() const {
-  return binding_handler_->GetPlatformWindow();
+HWND FlutterWindowsView::GetWindowHandle() const {
+  return binding_handler_->GetWindowHandle();
 }
 
 FlutterWindowsEngine* FlutterWindowsView::GetEngine() { return engine_; }

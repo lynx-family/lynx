@@ -20,7 +20,8 @@ std::unordered_map<int64_t, skity::Rect> SliceViews(
     const std::vector<int64_t>& composition_order,
     const std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
         slices,
-    const std::unordered_map<int64_t, skity::Rect>& view_rects) {
+    const std::unordered_map<int64_t, skity::Rect>& view_rects,
+    bool search_intersection) {
   std::unordered_map<int64_t, skity::Rect> overlay_layers;
 
   auto current_frame_view_count = composition_order.size();
@@ -60,8 +61,13 @@ std::unordered_map<int64_t, skity::Rect> SliceViews(
       rounded_in_platform_view_rect.RoundIn();
 
       // Each rect corresponds to a native view that renders Flutter UI.
-      std::list<skity::Rect> intersection_rects =
-          slice->searchNonOverlappingDrawnRects(current_view_rect);
+      std::list<skity::Rect> intersection_rects;
+      if (search_intersection) {
+        intersection_rects =
+            slice->searchNonOverlappingDrawnRects(current_view_rect);
+      } else {
+        intersection_rects.emplace_back(current_view_rect);
+      }
 
       // Ignore intersections of single width/height on the edge of the platform
       // view.

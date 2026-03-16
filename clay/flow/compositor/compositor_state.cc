@@ -45,14 +45,16 @@ void CompositorState::PushFilterToVisitedPlatformViews(
 }
 
 void CompositorState::PrerollOverlayView(
-    int view_id, std::unique_ptr<OverlayViewParams> params) {
+    int view_id, std::unique_ptr<EmbeddedViewParams> params) {
   TRACE_EVENT("clay", "CompositorState::PrerollCompositeEmbeddedView");
 
   std::unique_ptr<EmbedderViewSlice> view;
 #ifndef ENABLE_SKITY
-  view = std::make_unique<SkPictureEmbedderViewSlice>(params->bounds());
+  view =
+      std::make_unique<SkPictureEmbedderViewSlice>(params->finalBoundingRect());
 #else
-  view = std::make_unique<SkityPictureEmbedderViewSlice>(params->bounds());
+  view = std::make_unique<SkityPictureEmbedderViewSlice>(
+      params->finalBoundingRect());
 #endif  // ENABLE_SKITY
   composition_order_.push_back(view_id);
   overlay_slices_.insert_or_assign(view_id, std::move(view));

@@ -27,6 +27,8 @@
 #include "clay/shell/common/switches.h"
 #include "clay/shell/platform/common/path_utils.h"
 #include "clay/shell/platform/windows/flutter_windows_view.h"
+#include "clay/shell/platform/windows/overlay_view_manager_service.h"
+#include "clay/shell/platform/windows/overlay_windows_view.h"
 #include "clay/shell/platform/windows/task_runner.h"
 #include "clay/shell/platform/windows/text_input_plugin.h"
 #include "clay/ui/common/isolate.h"
@@ -261,6 +263,13 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     FML_LOG(ERROR) << "Failed to get clay service manager";
     return false;
   }
+
+  overlay_view_manager_service_ =
+      std::make_shared<OverlayViewManagerService>(this);
+  view_->GetEngine()
+      ->GetServiceManager()
+      ->RegisterService<OverlayViewManagerService>(
+          overlay_view_manager_service_);
 
   // Configure device frame rate displayed via devtools.
   std::vector<std::unique_ptr<clay::Display>> displays;
@@ -553,7 +562,14 @@ FlutterWindowsEngine::GetResourceLoaderIntercept() {
 }
 
 void FlutterWindowsEngine::OnDwmCompositionChanged() {
-  view_->OnDwmCompositionChanged();
+  std::shared_lock read_lock(views_mutex_);
+  if (view_) {
+    view_->OnDwmCompositionChanged();
+  }
+  for (auto iterator = overlay_views_.begin(); iterator != overlay_views_.end();
+       iterator++) {
+    iterator->second->OnDwmCompositionChanged();
+  }
 }
 
 void FlutterWindowsEngine::UpdateEditState(
@@ -683,6 +699,42 @@ bool FlutterWindowsEngine::OnPresentBackingStore(const void* allocation,
     return view_->PresentSoftwareBitmap(allocation, row_bytes, height);
   }
   return false;
+}
+
+std::unique_ptr<FlutterWindowsView> FlutterWindowsEngine::CreateOverlayView(
+    std::unique_ptr<WindowBindingHandler> window) {
+  std::lock_guard<std::shared_mutex> write_lock(views_mutex_);
+  auto view_id = ++next_view_id_;
+  std::unique_ptr<FlutterWindowsView> view =
+      std::make_unique<OverlayWindowsView>(view_id, std::move(window));
+  view->SetEngine(this);
+  view->CreateRenderSurface();
+  if (!view->GetEngine()->running()) {
+    if (!view->GetEngine()->Run()) {
+      NOTREACHED();
+    }
+  }
+
+  overlay_views_[view_id] = view.get();
+  return view;
+}
+
+void FlutterWindowsEngine::RemoveOverlayView(FlutterViewId view_id) {
+  std::unique_lock write_lock(views_mutex_);
+  if (overlay_views_.find(view_id) != overlay_views_.end()) {
+    overlay_views_.erase(view_id);
+  }
+}
+
+FlutterWindowsView* FlutterWindowsEngine::GetOverlayView(
+    FlutterViewId view_id) {
+  std::shared_lock read_lock(views_mutex_);
+  auto iterator = overlay_views_.find(view_id);
+  if (iterator == overlay_views_.end()) {
+    return nullptr;
+  }
+
+  return iterator->second;
 }
 
 }  // namespace clay

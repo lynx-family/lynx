@@ -19,9 +19,15 @@ class PlatformOverlay {
  public:
   virtual ~PlatformOverlay() = default;
 
+  virtual void SetId(int64_t id) { id_ = id; }
+  virtual int64_t GetId() { return id_; }
+
   virtual fml::RefPtr<OutputSurface> GetOutputSurface() const = 0;
 
   virtual void OnSurfaceUpdated() {}
+
+ private:
+  int64_t id_;
 };
 
 struct OverlayData {

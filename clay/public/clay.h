@@ -512,6 +512,8 @@ typedef struct ClayPointerEvent {
   double rotation;
   /// Whether the event is triggered by the touchpad
   size_t is_precise_scroll;
+  /// The view that this event is describing.
+  int64_t view_id;
 } ClayPointerEvent;
 
 /// A structure to represent a key event.

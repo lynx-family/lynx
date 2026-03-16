@@ -34,9 +34,6 @@ struct PointerLocation {
   size_t y;
 };
 
-// Type representing an underlying platform window.
-using PlatformWindow = HWND;
-
 // Type representing a platform object that can be accepted by the Angle
 // rendering layer to bind to and render pixels into.
 using WindowsRenderTarget = std::variant<HWND>;
@@ -54,9 +51,8 @@ class WindowBindingHandler {
   // rendering can be bound to by ANGLE rendering backend.
   virtual WindowsRenderTarget GetRenderTarget() = 0;
 
-  // Returns a valid PlatformWindow representing the backing
-  // window.
-  virtual PlatformWindow GetPlatformWindow() = 0;
+  // Returns the underlying HWND backing the window.
+  virtual HWND GetWindowHandle() = 0;
 
   // Returns the scale factor for the backing window.
   virtual float GetDpiScale() = 0;

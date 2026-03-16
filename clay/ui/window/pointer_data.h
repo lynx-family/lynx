@@ -14,7 +14,7 @@ namespace clay {
 
 // If this value changes, update the pointer data unpacking code in
 // platform_dispatcher.dart.
-static constexpr int kPointerDataFieldCount = 37;
+static constexpr int kPointerDataFieldCount = 38;
 static constexpr int kBytesPerField = sizeof(int64_t);
 // Must match the button constants in events.dart.
 enum PointerButtonMouse : int64_t {
@@ -104,6 +104,7 @@ struct alignas(8) PointerData {
   double scale;
   double rotation;
   int64_t source;
+  int64_t view_id;
   int64_t is_precise_scroll = 1;
 
   void Clear();

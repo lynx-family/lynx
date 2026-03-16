@@ -28,7 +28,7 @@ class CompositorState {
   clay::GrCanvas* CompositeEmbeddedView(int view_id);
 
   void PrerollOverlayView(int view_id,
-                          std::unique_ptr<OverlayViewParams> params);
+                          std::unique_ptr<EmbeddedViewParams> params);
 
   clay::GrCanvas* CompositeOverlayView(int view_id);
 
@@ -44,9 +44,19 @@ class CompositorState {
     return slices_;
   }
 
+  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
+  GetOverlaySlices() {
+    return overlay_slices_;
+  }
+
   std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>>&
   GetViewParams() {
     return view_params_;
+  }
+
+  std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>>&
+  GetOverlayViewParams() {
+    return overlay_view_params_;
   }
 
  private:
@@ -70,7 +80,7 @@ class CompositorState {
       overlay_slices_;
 
   // The params for a overlay view, which contains the bounds rect.
-  std::unordered_map<int64_t, std::unique_ptr<OverlayViewParams>>
+  std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>>
       overlay_view_params_;
 };
 
