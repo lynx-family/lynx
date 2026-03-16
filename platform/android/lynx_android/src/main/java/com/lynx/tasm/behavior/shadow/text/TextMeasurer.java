@@ -167,10 +167,11 @@ public class TextMeasurer {
           } else if (mWordBreakStyle == StyleConstants.WORDBREAK_KEEPALL) {
             wordBreakStyle = UnicodeFontUtils.DECODE_CJK_INSERT_WORD_JOINER;
           }
-          spannableString.append(UnicodeFontUtils.decode(text, wordBreakStyle));
+          String decodedText = UnicodeFontUtils.decode(text, wordBreakStyle);
+          spannableString.append(decodedText);
 
           buildStyledSpanIfNeeded(
-              0, text.length(), ops, textAttributes, new TypefaceListener(sign, this), true);
+              0, decodedText.length(), ops, textAttributes, new TypefaceListener(sign, this), true);
           break;
         case kTextPropFontSize:
           textAttributes = ensureTextAttributes(textAttributes);
