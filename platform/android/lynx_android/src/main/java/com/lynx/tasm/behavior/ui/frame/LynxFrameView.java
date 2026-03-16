@@ -73,19 +73,27 @@ public final class LynxFrameView extends UIBodyView {
     }
 
     UIBodyView bodyView = mContext.getUIBodyView();
-    if (bodyView != null) {
-      LynxViewBuilder builder = bodyView.getLynxViewBuilder();
-      builder.setEnablePreUpdateData(true);
-      builder.setEmbeddedMode(mEmbeddedMode);
-      mLynxUIRender = builder.createLynxUIRenderer();
-      mRender = new LynxTemplateRender(mContext, this, builder);
-      if (mAttachLynxPageUICallback != null) {
-        mRender.setAttachLynxPageUICallback(mAttachLynxPageUICallback);
-        mAttachLynxPageUICallback = null;
-      }
-      return true;
+    if (bodyView == null) {
+      LLog.e(TAG, "ensureRenderCreated failed, bodyView is null");
+      return false;
     }
-    return false;
+
+    LynxViewBuilder builder = bodyView.getLynxViewBuilder();
+    builder.setEnablePreUpdateData(true);
+    builder.setEmbeddedMode(mEmbeddedMode);
+    mLynxUIRender = builder.createLynxUIRenderer();
+    mRender = new LynxTemplateRender(mContext, this, builder);
+
+    if (mRender == null || mLynxUIRender == null) {
+      LLog.e(TAG, "ensureRenderCreated failed, render or ui renderer creation returned null");
+      return false;
+    }
+
+    if (mAttachLynxPageUICallback != null) {
+      mRender.setAttachLynxPageUICallback(mAttachLynxPageUICallback);
+      mAttachLynxPageUICallback = null;
+    }
+    return true;
   }
 
   public void setSign(int sign) {

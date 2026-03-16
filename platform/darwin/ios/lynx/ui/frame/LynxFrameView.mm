@@ -69,6 +69,17 @@
   return YES;
 }
 
+- (void)applyCachedLayoutToRender {
+  if (!_render || CGRectIsNull(_contentRect)) {
+    return;
+  }
+
+  [_render setLayoutWidthMode:_widthMode];
+  [_render setLayoutHeightMode:_heightMode];
+  [_render setPreferredLayoutWidth:_contentRect.size.width];
+  [_render setPreferredLayoutHeight:_contentRect.size.height];
+}
+
 - (BOOL)ensureRenderCreated {
   if (_render) {
     return YES;
@@ -94,6 +105,14 @@
         }
       }
              containerView:self];
+
+  if (!_render) {
+    _LogE(@"LynxFrameView %p: ensureRenderCreated failed, init LynxTemplateRender returned nil",
+          self);
+    return NO;
+  }
+
+  [self applyCachedLayoutToRender];
 
   if (_attachLynxPageUICallback) {
     [_render setAttachLynxPageUICallback:_attachLynxPageUICallback];
