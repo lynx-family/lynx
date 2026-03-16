@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-export { TemplateData, MetaData } from './tasm/MetaData';
+export { TemplateData, MetaData, LynxUpdateMeta, LynxUpdateMode } from './tasm/MetaData';
 
 export { LynxNodeController, LynxView, ThreadStrategyForRendering, MeasureMode } from './tasm/LynxView'
 

@@ -298,10 +298,10 @@ void LynxTemplateRenderer::UpdateGlobalProps(lepus::Value value) {
 }
 
 void LynxTemplateRenderer::UpdateMetaData(
-    const std::shared_ptr<tasm::TemplateData>& data,
-    lepus::Value global_props) {
+    const std::shared_ptr<tasm::TemplateData>& data, lepus::Value global_props,
+    shell::LynxUpdateMode update_mode) {
   MergeGlobalProps(std::move(global_props));
-  shell_->UpdateMetaData(data, global_props_);
+  shell_->UpdateMetaData(data, global_props_, update_mode);
 }
 
 void LynxTemplateRenderer::LoadTemplate(
@@ -1040,8 +1040,8 @@ napi_value LynxTemplateRenderer::UpdateGlobalProps(napi_env env,
 napi_value LynxTemplateRenderer::UpdateMetaData(napi_env env,
                                                 napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 4;
-  napi_value args[4] = {nullptr};
+  size_t argc = 5;
+  napi_value args[5] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   LynxTemplateRenderer* obj = nullptr;
@@ -1056,7 +1056,23 @@ napi_value LynxTemplateRenderer::UpdateMetaData(napi_env env,
 
   lepus_value global_props =
       base::NapiConvertHelper::JSONToLepusValue(env, args[3]);
-  obj->UpdateMetaData(template_data, std::move(global_props));
+  shell::LynxUpdateMode update_mode = shell::LynxUpdateMode::UPDATE;
+  if (argc >= 5) {
+    napi_valuetype type;
+    napi_typeof(env, args[4], &type);
+    if (type == napi_number) {
+      int32_t mode = 0;
+      napi_get_value_int32(env, args[4], &mode);
+      update_mode = static_cast<shell::LynxUpdateMode>(mode);
+    } else if (type == napi_boolean) {
+      // Backward compatibility: legacy boolean means RESET/UPDATE.
+      update_mode = base::NapiUtil::ConvertToBoolean(env, args[4])
+                        ? shell::LynxUpdateMode::RESET
+                        : shell::LynxUpdateMode::UPDATE;
+    }
+  }
+
+  obj->UpdateMetaData(template_data, std::move(global_props), update_mode);
   return nullptr;
 }
 

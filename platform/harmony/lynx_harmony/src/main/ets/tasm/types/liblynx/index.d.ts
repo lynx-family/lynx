@@ -124,7 +124,8 @@ export class LynxTemplateRenderer {
 
   updateGlobalProps(props?: Object | string): void;
 
-  updateMetaData(processor?: string, data?: Object | string, readonly?: boolean, props?: Object | string): void;
+  updateMetaData(processor?: string, data?: Object | string, readonly?: boolean, props?: Object | string,
+    updateMode?: number): void;
 
   callJSFunction(module: string, method: string, params: Array<Object>): void;
 

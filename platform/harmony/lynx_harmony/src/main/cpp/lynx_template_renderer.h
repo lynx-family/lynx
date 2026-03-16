@@ -24,6 +24,7 @@
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
 #include "core/shell/lynx_shell.h"
+#include "core/shell/update_mode.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_runtime_wrapper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
 
@@ -70,7 +71,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       const std::shared_ptr<lynx::tasm::TemplateData>& template_data,
       bool enable_dump_element_tree);
   void UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
-                      lepus::Value global_props);
+                      lepus::Value global_props,
+                      shell::LynxUpdateMode update_mode);
   void UpdateViewport(float width, int width_mode, float height,
                       int height_mode);
   void OnEnterForeground();

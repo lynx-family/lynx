@@ -21,6 +21,18 @@ export class MetaData {
   globalProps?: TemplateData;
 }
 
+export class LynxUpdateMeta extends MetaData {
+  constructor(templateData: TemplateData, globalProps: TemplateData, updateMode: LynxUpdateMode);
+  merge(data: LynxUpdateMeta): void;
+  updateMode: LynxUpdateMode; = LynxUpdateMode.UPDATE
+}
+
+export enum LynxUpdateMode {
+  UPDATE = 0
+  RESET = 1
+  RELOAD = 2
+}
+
 export abstract class LynxNodeController extends NodeController {
   updateNode(renderer: LynxUIRenderer, fitContentHeight: boolean): void;
   dispose(): void;
@@ -113,7 +125,7 @@ export class LynxContext implements IContext {
   public subscribeSessionStorage(key: string, callback: SessionStorageCallback): number;
   public unsubscribeSessionStorage(key: string, listenerId: number): void;
   sendCustomEvent(name: string, id: number, params: Object, paramName: string): void;
-  updateMetaData(data: MetaData): void;
+  updateMetaData(data: LynxUpdateMeta | MetaData): void;
   scrollByListContainer(containerSign: number, x: number, y: number): void;
   scrollToPosition(containerSign: number, position: number, offset: number, align: number, smooth: boolean): void;
   scrollStopped(containerSign: number): void;
