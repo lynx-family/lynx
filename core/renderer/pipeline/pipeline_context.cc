@@ -4,7 +4,6 @@
 
 #include "core/renderer/pipeline/pipeline_context.h"
 
-#include <algorithm>
 #include <memory>
 
 #include "base/include/fml/hash_combine.h"
@@ -137,74 +136,41 @@ void PipelineContext::ResetFlushUIOperationRequested() {
 }
 
 bool PipelineContext::AdvanceLifecycleTo(LifecycleState state) {
-  LifecycleState cur_state = lifecycle_.GetState();
   bool result = lifecycle_.AdvanceTo(state);
   if (!result) {
     LOGE("Failed to advance lifecycle to " << static_cast<uint32_t>(state));
     return result;
   }
 
-  switch (state) {
-    case LifecycleState::kInStyleResolve:
-    case LifecycleState::kAfterStyleResolve: {
-      observer_data_.is_state_executed = IsResolveRequested();
-      break;
-    }
-    case LifecycleState::kInPerformLayout:
-    case LifecycleState::kAfterPerformLayout: {
-      observer_data_.is_state_executed = IsLayoutRequested();
-      break;
-    }
-    case LifecycleState::kUIOpFlush: {
-      observer_data_.is_state_executed = IsFlushUIOperationRequested();
-      break;
-    }
-    case LifecycleState::kStopped: {
-      observer_data_.is_state_executed = true;
-      break;
-    }
-    default:
-      break;
-  }
-  NotifyLifecycleChanged(cur_state, state);
   return result;
 }
 
-void PipelineContext::AddObserver(PipelineLifecycleObserver* observer) {
-  if (!observer) {
-    LOGE("observer is nullptr");
-    return;
-  }
-  observers_.emplace_back(observer->WeakFromThis());
-}
+PipelineLifecycleObserver::Data PipelineContext::BuildLifecycleObserverData(
+    LifecycleState prev_state, LifecycleState cur_state) const {
+  auto observer_data = observer_data_;
+  observer_data.prev_state = prev_state;
+  observer_data.cur_state = cur_state;
 
-void PipelineContext::RemoveObserver(PipelineLifecycleObserver* observer) {
-  if (!observer) {
-    LOGE("observer is nullptr");
-    return;
+  switch (cur_state) {
+    case LifecycleState::kInStyleResolve:
+    case LifecycleState::kAfterStyleResolve:
+      observer_data.is_state_executed = IsResolveRequested();
+      break;
+    case LifecycleState::kInPerformLayout:
+    case LifecycleState::kAfterPerformLayout:
+      observer_data.is_state_executed = IsLayoutRequested();
+      break;
+    case LifecycleState::kUIOpFlush:
+      observer_data.is_state_executed = IsFlushUIOperationRequested();
+      break;
+    case LifecycleState::kStopped:
+      observer_data.is_state_executed = true;
+      break;
+    default:
+      break;
   }
-  auto it = std::find_if(
-      observers_.begin(), observers_.end(),
-      [observer](const fml::WeakPtr<PipelineLifecycleObserver>& weak_observer) {
-        return weak_observer.get() == observer;
-      });
-  if (it != observers_.end()) {
-    it->reset();
-    observers_.erase(it);
-  }
-}
 
-void PipelineContext::NotifyLifecycleChanged(LifecycleState prev_state,
-                                             LifecycleState cur_state) {
-  observer_data_.prev_state = prev_state;
-  observer_data_.cur_state = cur_state;
-
-  for (auto observer : observers_) {
-    if (!observer) {
-      continue;
-    }
-    observer->OnLifecycleChanged(observer_data_);
-  }
+  return observer_data;
 }
 
 }  // namespace tasm

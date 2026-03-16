@@ -77,5 +77,81 @@ void PipelineContextManager::RemovePipelineContextByVersion(
     pipeline_contexts_.erase(it);
   }
 }
+
+void PipelineContextManager::AddObserver(PipelineLifecycleObserver* observer) {
+  if (!observer) {
+    LOGE("observer is nullptr");
+    return;
+  }
+
+  bool has_observer = false;
+  for (auto it = observers_.begin(); it != observers_.end();) {
+    if (!(*it)) {
+      it = observers_.erase(it);
+      continue;
+    }
+    if (it->get() == observer) {
+      has_observer = true;
+    }
+    ++it;
+  }
+  if (has_observer) {
+    return;
+  }
+  observers_.emplace_back(observer->WeakFromThis());
+}
+
+void PipelineContextManager::RemoveObserver(
+    PipelineLifecycleObserver* observer) {
+  if (!observer) {
+    LOGE("observer is nullptr");
+    return;
+  }
+
+  for (auto it = observers_.begin(); it != observers_.end();) {
+    if (!(*it) || it->get() == observer) {
+      it = observers_.erase(it);
+      continue;
+    }
+    ++it;
+  }
+}
+
+bool PipelineContextManager::AdvanceLifecycleTo(PipelineContext* context,
+                                                LifecycleState state) {
+  if (!context) {
+    LOGE("pipeline context is nullptr");
+    return false;
+  }
+
+  const auto prev_state = context->GetLifecycleState();
+  const bool result = context->AdvanceLifecycleTo(state);
+  if (!result) {
+    return false;
+  }
+  NotifyLifecycleChanged(
+      context->BuildLifecycleObserverData(prev_state, state));
+  return true;
+}
+
+void PipelineContextManager::NotifyLifecycleChanged(
+    const PipelineLifecycleObserver::Data& observer_data) {
+  std::list<fml::WeakPtr<PipelineLifecycleObserver>> copied_observers;
+  for (auto it = observers_.begin(); it != observers_.end();) {
+    if (!(*it)) {
+      it = observers_.erase(it);
+      continue;
+    }
+    copied_observers.emplace_back(*it);
+    ++it;
+  }
+
+  for (auto observer : copied_observers) {
+    if (!observer) {
+      continue;
+    }
+    observer->OnLifecycleChanged(observer_data);
+  }
+}
 }  // namespace tasm
 }  // namespace lynx

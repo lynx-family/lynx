@@ -9,12 +9,24 @@
 
 #include <memory>
 
+#include "core/renderer/pipeline/pipeline_lifecycle_observer.h"
 #include "core/renderer/pipeline/pipeline_scope_unittest.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 
 namespace lynx {
 namespace tasm {
 namespace test {
+class TestScopeLifecycleObserver : public PipelineLifecycleObserver {
+ public:
+  void OnLifecycleChanged(const Data& data) override {
+    ++on_changed_count;
+    last_data = data;
+  }
+
+  int on_changed_count = 0;
+  Data last_data;
+};
+
 PipelineScopeTest::PipelineScopeTest() {
   static constexpr int32_t kWidth = 1024;
   static constexpr int32_t kHeight = 768;
@@ -77,6 +89,34 @@ TEST_F(PipelineScopeTest, TestPipelineContextConstructor03) {
   auto* current_context = tasm_->GetCurrentPipelineContext();
   EXPECT_EQ(current_context, nullptr);
   EXPECT_EQ(options->HeldByContext(), false);
+}
+
+TEST_F(PipelineScopeTest, TestTemplateAssemblerPipelineObserver) {
+  auto observer = std::make_unique<TestScopeLifecycleObserver>();
+  tasm_->AddPipelineObserver(observer.get());
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->pipeline_id = "scope-observer";
+  options->pipeline_origin = "TestTemplateAssemblerPipelineObserver";
+  {
+    PipelineScope scope(tasm_.get(), options);
+    auto* context = tasm_->GetCurrentPipelineContext();
+    ASSERT_NE(context, nullptr);
+    context->RequestResolve();
+  }
+  EXPECT_GT(observer->on_changed_count, 0);
+  EXPECT_EQ(observer->last_data.pipeline_id, "scope-observer");
+
+  auto count_before_remove = observer->on_changed_count;
+  tasm_->RemovePipelineObserver(observer.get());
+  auto next_options = std::make_shared<PipelineOptions>();
+  {
+    PipelineScope scope(tasm_.get(), next_options);
+    auto* context = tasm_->GetCurrentPipelineContext();
+    ASSERT_NE(context, nullptr);
+    context->RequestResolve();
+  }
+  EXPECT_EQ(observer->on_changed_count, count_before_remove);
 }
 }  // namespace test
 }  // namespace tasm

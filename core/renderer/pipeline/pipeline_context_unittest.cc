@@ -13,20 +13,11 @@
 #include "base/include/fml/hash_combine.h"
 #include "core/public/pipeline_option.h"
 #include "core/renderer/pipeline/pipeline_context_unittest.h"
-#include "core/renderer/pipeline/pipeline_lifecycle_observer.h"
 #include "core/renderer/pipeline/pipeline_version.h"
 
 namespace lynx {
 namespace tasm {
 namespace test {
-class TestLifecycleObserver : public PipelineLifecycleObserver {
- public:
-  TestLifecycleObserver() = default;
-  ~TestLifecycleObserver() override = default;
-  void OnLifecycleChanged(const Data& data) override { data_ = data; }
-  Data data_;
-};
-
 PipelineContextTest::PipelineContextTest()
     : options_(std::make_shared<PipelineOptions>()) {}
 
@@ -142,48 +133,64 @@ TEST_F(PipelineContextTest, TestPipelineContextAdvanceLifecycle) {
 
   context->RequestResolve();
   EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kInStyleResolve));
-  EXPECT_TRUE(context->observer_data_.is_state_executed);
+  EXPECT_TRUE(context
+                  ->BuildLifecycleObserverData(LifecycleState::kInactive,
+                                               LifecycleState::kInStyleResolve)
+                  .is_state_executed);
 
   EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kAfterStyleResolve));
-  EXPECT_TRUE(context->observer_data_.is_state_executed);
+  EXPECT_TRUE(
+      context
+          ->BuildLifecycleObserverData(LifecycleState::kInStyleResolve,
+                                       LifecycleState::kAfterStyleResolve)
+          .is_state_executed);
 
   EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kInPerformLayout));
-  EXPECT_FALSE(context->observer_data_.is_state_executed);
+  EXPECT_FALSE(
+      context
+          ->BuildLifecycleObserverData(LifecycleState::kAfterStyleResolve,
+                                       LifecycleState::kInPerformLayout)
+          .is_state_executed);
 
   EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kAfterPerformLayout));
-  EXPECT_FALSE(context->observer_data_.is_state_executed);
+  EXPECT_FALSE(
+      context
+          ->BuildLifecycleObserverData(LifecycleState::kInPerformLayout,
+                                       LifecycleState::kAfterPerformLayout)
+          .is_state_executed);
 
   context->RequestFlushUIOperation();
   EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kUIOpFlush));
-  EXPECT_TRUE(context->observer_data_.is_state_executed);
+  EXPECT_TRUE(
+      context
+          ->BuildLifecycleObserverData(LifecycleState::kAfterPerformLayout,
+                                       LifecycleState::kUIOpFlush)
+          .is_state_executed);
 
   EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kStopped));
-  EXPECT_TRUE(context->observer_data_.is_state_executed);
+  EXPECT_TRUE(context
+                  ->BuildLifecycleObserverData(LifecycleState::kUIOpFlush,
+                                               LifecycleState::kStopped)
+                  .is_state_executed);
 }
 
-TEST_F(PipelineContextTest, TestPipelineContextObserver) {
+TEST_F(PipelineContextTest, TestPipelineContextBuildLifecycleObserverData) {
   auto context = PipelineContext::Create(PipelineVersion::Create(), true);
-  EXPECT_NE(context, nullptr);
+  ASSERT_NE(context, nullptr);
   options_->pipeline_id = "test";
-  options_->pipeline_origin = "TestPipelineContextObserver";
+  options_->pipeline_origin = "TestPipelineContextBuildLifecycleObserverData";
   context->SetOptions(options_);
-
-  auto observer = std::make_unique<TestLifecycleObserver>();
-  context->AddObserver(observer.get());
-
   context->RequestResolve();
   EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kInStyleResolve));
-  EXPECT_EQ(observer->data_.prev_state, LifecycleState::kInactive);
-  EXPECT_EQ(observer->data_.cur_state, LifecycleState::kInStyleResolve);
-  EXPECT_EQ(observer->data_.is_state_executed, true);
-  EXPECT_EQ(observer->data_.pipeline_version, context->version_);
-  EXPECT_EQ(observer->data_.pipeline_id, options_->pipeline_id);
-  EXPECT_EQ(observer->data_.pipeline_origin, options_->pipeline_origin);
+  auto observer_data = context->BuildLifecycleObserverData(
+      LifecycleState::kInactive, LifecycleState::kInStyleResolve);
 
-  context->RemoveObserver(observer.get());
-  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kAfterStyleResolve));
-  EXPECT_NE(observer->data_.prev_state, LifecycleState::kInStyleResolve);
-  EXPECT_NE(observer->data_.cur_state, LifecycleState::kAfterStyleResolve);
+  EXPECT_EQ(observer_data.prev_state, LifecycleState::kInactive);
+  EXPECT_EQ(observer_data.cur_state, LifecycleState::kInStyleResolve);
+  EXPECT_TRUE(observer_data.is_state_executed);
+  EXPECT_EQ(observer_data.pipeline_version, context->GetVersion());
+  EXPECT_EQ(observer_data.pipeline_id, options_->pipeline_id);
+  EXPECT_EQ(observer_data.pipeline_origin, options_->pipeline_origin);
 }
 }  // namespace test
 }  // namespace tasm

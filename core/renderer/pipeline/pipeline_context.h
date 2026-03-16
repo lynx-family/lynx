@@ -5,11 +5,9 @@
 #ifndef CORE_RENDERER_PIPELINE_PIPELINE_CONTEXT_H_
 #define CORE_RENDERER_PIPELINE_PIPELINE_CONTEXT_H_
 
-#include <list>
 #include <memory>
 #include <utility>
 
-#include "base/include/fml/memory/weak_ptr.h"
 #include "core/public/pipeline_option.h"
 #include "core/renderer/pipeline/pipeline_lifecycle.h"
 #include "core/renderer/pipeline/pipeline_lifecycle_observer.h"
@@ -54,22 +52,19 @@ class PipelineContext {
   void ResetFlushUIOperationRequested();
 
   // Pipeline lifecycle management.
-  bool AdvanceLifecycleTo(LifecycleState state);
   LifecycleState GetLifecycleState() const { return lifecycle_.GetState(); };
-
-  void AddObserver(PipelineLifecycleObserver* observer);
-  void RemoveObserver(PipelineLifecycleObserver* observer);
-  void NotifyLifecycleChanged(LifecycleState prev_state,
-                              LifecycleState cur_state);
+  PipelineLifecycleObserver::Data BuildLifecycleObserverData(
+      LifecycleState prev_state, LifecycleState cur_state) const;
 
  private:
+  friend class PipelineContextManager;
   explicit PipelineContext(const PipelineVersion& version);
+  bool AdvanceLifecycleTo(LifecycleState state);
 
   std::shared_ptr<PipelineOptions> options_{nullptr};
   PipelineVersion version_;
   std::size_t hash_{0};
   PipelineLifecycle lifecycle_{};
-  std::list<fml::WeakPtr<PipelineLifecycleObserver>> observers_{};
   PipelineLifecycleObserver::Data observer_data_{};
 };
 }  // namespace tasm
