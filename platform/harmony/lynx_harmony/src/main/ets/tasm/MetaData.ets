@@ -7,6 +7,27 @@ import { LLog } from '../base/LLog';
 const TAG = 'TemplateData';
 
 /**
+ * The mode used by `MetaData` update.
+ * @apidoc
+ */
+export enum LynxUpdateMode {
+  /**
+   * UPDATE MODE identifies an incremental action, data will be incrementally modified with previous data.
+   */
+  UPDATE = 0,
+  
+  /**
+   * RESET MODE identifies an reset action, data will be cleared before and the update with the in-coming data.
+   */
+  RESET = 1,
+  
+  /**
+   * RELOAD MODE identifies an reload action, it mostly behaves the same as `RESET` and will trigger the destroy & recreate of js lifecycle.
+   */
+  RELOAD = 2,
+}
+
+/**
  * TemplateData is a data structure provided by Lynx.
  * It is used to store the data types accepted by Lynx at runtime
  * and can be constructed using either a string or a map type.
@@ -103,5 +124,24 @@ export class MetaData {
     } else {
       this.templateData = data.templateData;
     }
+  }
+}
+
+/**
+ * LynxUpdateMeta is the metadata structure used by LynxView to update template data.
+ * It extends MetaData with update mode, and should only be used by update APIs.
+ * @apidoc
+ */
+export class LynxUpdateMeta extends MetaData {
+  updateMode: LynxUpdateMode = LynxUpdateMode.UPDATE;
+
+  constructor(templateData?: TemplateData, globalProps?: TemplateData, updateMode: LynxUpdateMode = LynxUpdateMode.UPDATE) {
+    super(templateData, globalProps);
+    this.updateMode = updateMode;
+  }
+
+  merge(data: LynxUpdateMeta) {
+    super.merge(data);
+    this.updateMode = data.updateMode;
   }
 }

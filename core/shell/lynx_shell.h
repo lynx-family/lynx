@@ -42,6 +42,7 @@
 #include "core/shell/runtime/bts/bts_runtime.h"
 #include "core/shell/tasm_mediator.h"
 #include "core/shell/tasm_operation_queue.h"
+#include "core/shell/update_mode.h"
 
 namespace lynx {
 
@@ -176,7 +177,8 @@ class LynxShell {
   void UpdateGlobalProps(const lepus::Value& global_props);
 
   void UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
-                      const lepus::Value& global_props);
+                      const lepus::Value& global_props,
+                      LynxUpdateMode update_mode = LynxUpdateMode::UPDATE);
 
   void UpdateScreenMetrics(float width, float height, float device_pixel_ratio);
 

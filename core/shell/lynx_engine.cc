@@ -131,9 +131,11 @@ void LynxEngine::UpdateDataByParsedData(
 void LynxEngine::UpdateMetaData(
     const std::shared_ptr<tasm::TemplateData>& data,
     const lepus::Value& global_props, uint32_t native_update_data_order,
+    LynxUpdateMode update_mode,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options) {
   tasm::UpdatePageOption update_page_option;
   update_page_option.from_native = true;
+  update_page_option.reset_page_data = (update_mode == LynxUpdateMode::RESET);
   update_page_option.native_update_data_order_ = native_update_data_order;
   tasm_->UpdateMetaData(data, global_props, update_page_option,
                         pipeline_options);
