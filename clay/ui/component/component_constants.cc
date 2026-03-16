@@ -93,10 +93,8 @@ const char* kEventIntersection = "intersection";
 
 const char* kEventVideoPlay = "play";
 const char* kEventVideoPause = "pause";
-const char* kEventVideoResume = "resume";
 const char* kEventVideoEnded = "ended";
 const char* kEventVideoError = "error";
-const char* kEventVideoStop = "stop";
 const char* kEventVideoTimeUpdate = "timeupdate";
 const char* kEventVideoBufferingChange = "bufferingchange";
 const char* kEventVideoSeek = "seek";
