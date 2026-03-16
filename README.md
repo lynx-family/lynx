@@ -21,6 +21,7 @@ Empower the web community and invite more to build across platforms
 - [About Lynx](#About-Lynx)
 - [Documentation](#Documentation)
 - [How to Use Lynx](#How-to-Use-Lynx)
+- [Lynx Explorer](#Lynx-Explorer)
 - [How to Contribute](#How-to-Contribute)
 - [Discussions](#Discussions)
 - [Credits](#Credits)
@@ -48,6 +49,11 @@ We recommend using macOS as the development operating system. Windows and Linux 
 ### Getting Started guide
 - Trying out Lynx with [hello world](https://lynxjs.org/guide/start/quick-start.html)
 - [Integrating Lynx with an Existing Application](https://lynxjs.org/guide/start/integrate-with-existing-apps.html)
+
+## Lynx Explorer
+Lynx Explorer is the official app for testing and exploring Lynx. It provides native runtime environments (Android/iOS/Harmony/Windows/macOS) and bundles ReactLynx-based screens.
+
+- Build and run Lynx Explorer: see [lynx/explorer/README.md](explorer/README.md)
 
 ## How to Contribute
 ### [Code of Conduct][coc]
