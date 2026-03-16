@@ -73,6 +73,7 @@ class I18n;
 class LynxGetUIResult;
 class WhiteBoard;
 class WhiteBoardDelegate;
+class PipelineLifecycleObserver;
 
 namespace layout {
 struct CalculatedViewport;
@@ -638,6 +639,14 @@ class TemplateAssembler final : public TemplateEntryHolder,
       bool is_major_updated = false) {
     return pipeline_context_manager_->CreateAndUpdateCurrentPipelineContext(
         pipeline_options, is_major_updated);
+  }
+
+  void AddPipelineObserver(PipelineLifecycleObserver* observer) {
+    pipeline_context_manager_->AddObserver(observer);
+  }
+
+  void RemovePipelineObserver(PipelineLifecycleObserver* observer) {
+    pipeline_context_manager_->RemoveObserver(observer);
   }
 
   std::string TranslateResourceForTheme(const std::string& res_id,

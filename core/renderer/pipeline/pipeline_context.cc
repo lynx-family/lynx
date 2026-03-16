@@ -15,6 +15,19 @@
 
 namespace lynx {
 namespace tasm {
+namespace {
+bool ContainsObserver(
+    const std::list<fml::WeakPtr<PipelineLifecycleObserver>>& observers,
+    PipelineLifecycleObserver* observer) {
+  return std::find_if(
+             observers.begin(), observers.end(),
+             [observer](
+                 const fml::WeakPtr<PipelineLifecycleObserver>& weak_observer) {
+               return weak_observer.get() == observer;
+             }) != observers.end();
+}
+}  // namespace
+
 PipelineContext::PipelineContext(const PipelineVersion& version)
     : version_(version) {
   lifecycle_.AdvanceTo(LifecycleState::kInactive);
@@ -175,7 +188,16 @@ void PipelineContext::AddObserver(PipelineLifecycleObserver* observer) {
     LOGE("observer is nullptr");
     return;
   }
-  observers_.emplace_back(observer->WeakFromThis());
+  for (auto it = observers_.begin(); it != observers_.end();) {
+    if (!(*it)) {
+      it = observers_.erase(it);
+      continue;
+    }
+    ++it;
+  }
+  if (!ContainsObserver(observers_, observer)) {
+    observers_.emplace_back(observer->WeakFromThis());
+  }
 }
 
 void PipelineContext::RemoveObserver(PipelineLifecycleObserver* observer) {
@@ -183,14 +205,12 @@ void PipelineContext::RemoveObserver(PipelineLifecycleObserver* observer) {
     LOGE("observer is nullptr");
     return;
   }
-  auto it = std::find_if(
-      observers_.begin(), observers_.end(),
-      [observer](const fml::WeakPtr<PipelineLifecycleObserver>& weak_observer) {
-        return weak_observer.get() == observer;
-      });
-  if (it != observers_.end()) {
-    it->reset();
-    observers_.erase(it);
+  for (auto it = observers_.begin(); it != observers_.end();) {
+    if (!(*it) || it->get() == observer) {
+      it = observers_.erase(it);
+      continue;
+    }
+    ++it;
   }
 }
 
@@ -199,11 +219,21 @@ void PipelineContext::NotifyLifecycleChanged(LifecycleState prev_state,
   observer_data_.prev_state = prev_state;
   observer_data_.cur_state = cur_state;
 
-  for (auto observer : observers_) {
+  for (auto it = observers_.begin(); it != observers_.end();) {
+    if (!(*it)) {
+      it = observers_.erase(it);
+      continue;
+    }
+    ++it;
+  }
+
+  const auto observer_data = observer_data_;
+  auto copied_observers = observers_;
+  for (auto observer : copied_observers) {
     if (!observer) {
       continue;
     }
-    observer->OnLifecycleChanged(observer_data_);
+    observer->OnLifecycleChanged(observer_data);
   }
 }
 

@@ -12,6 +12,7 @@
 
 #include "base/include/fml/hash_combine.h"
 #include "core/public/pipeline_option.h"
+#include "core/renderer/pipeline/pipeline_context_manager.h"
 #include "core/renderer/pipeline/pipeline_context_unittest.h"
 #include "core/renderer/pipeline/pipeline_lifecycle_observer.h"
 #include "core/renderer/pipeline/pipeline_version.h"
@@ -23,8 +24,74 @@ class TestLifecycleObserver : public PipelineLifecycleObserver {
  public:
   TestLifecycleObserver() = default;
   ~TestLifecycleObserver() override = default;
-  void OnLifecycleChanged(const Data& data) override { data_ = data; }
+  void OnLifecycleChanged(const Data& data) override {
+    ++on_changed_count;
+    data_ = data;
+  }
+  int on_changed_count = 0;
   Data data_;
+};
+
+class SelfRemovingObserver : public PipelineLifecycleObserver {
+ public:
+  explicit SelfRemovingObserver(PipelineContext* context) : context_(context) {}
+  ~SelfRemovingObserver() override = default;
+
+  void OnLifecycleChanged(const Data&) override {
+    ++on_changed_count;
+    context_->RemoveObserver(this);
+  }
+
+  int on_changed_count = 0;
+
+ private:
+  PipelineContext* context_ = nullptr;
+};
+
+class RemoveOtherObserver : public PipelineLifecycleObserver {
+ public:
+  RemoveOtherObserver(PipelineContext* context,
+                      PipelineLifecycleObserver* target)
+      : context_(context), target_(target) {}
+  ~RemoveOtherObserver() override = default;
+
+  void OnLifecycleChanged(const Data&) override {
+    ++on_changed_count;
+    context_->RemoveObserver(target_);
+  }
+
+  int on_changed_count = 0;
+
+ private:
+  PipelineContext* context_ = nullptr;
+  PipelineLifecycleObserver* target_ = nullptr;
+};
+
+class RecordingObserver : public PipelineLifecycleObserver {
+ public:
+  void OnLifecycleChanged(const Data& data) override { events.push_back(data); }
+
+  std::vector<Data> events;
+};
+
+class ReentrantAdvanceObserver : public PipelineLifecycleObserver {
+ public:
+  explicit ReentrantAdvanceObserver(PipelineContext* context)
+      : context_(context) {}
+
+  void OnLifecycleChanged(const Data& data) override {
+    events.push_back(data);
+    if (!reentered_ && data.cur_state == LifecycleState::kInStyleResolve) {
+      reentered_ = true;
+      context_->AdvanceLifecycleTo(LifecycleState::kAfterStyleResolve);
+    }
+  }
+
+  std::vector<Data> events;
+
+ private:
+  PipelineContext* context_ = nullptr;
+  bool reentered_ = false;
 };
 
 PipelineContextTest::PipelineContextTest()
@@ -162,28 +229,93 @@ TEST_F(PipelineContextTest, TestPipelineContextAdvanceLifecycle) {
 }
 
 TEST_F(PipelineContextTest, TestPipelineContextObserver) {
-  auto context = PipelineContext::Create(PipelineVersion::Create(), true);
-  EXPECT_NE(context, nullptr);
+  auto manager = std::make_unique<PipelineContextManager>(true);
   options_->pipeline_id = "test";
   options_->pipeline_origin = "TestPipelineContextObserver";
-  context->SetOptions(options_);
-
   auto observer = std::make_unique<TestLifecycleObserver>();
-  context->AddObserver(observer.get());
+  manager->AddObserver(observer.get());
+  auto* context = manager->CreateAndUpdateCurrentPipelineContext(options_);
+  EXPECT_NE(context, nullptr);
+  EXPECT_EQ(context->observers_.size(), 1);
+
+  manager->RemoveObserver(observer.get());
+  EXPECT_EQ(context->observers_.size(), 0);
+}
+
+TEST_F(PipelineContextTest, TestPipelineContextObserverSelfRemoveInCallback) {
+  auto context = PipelineContext::Create(PipelineVersion::Create(), true);
+  ASSERT_NE(context, nullptr);
+  context->SetOptions(options_);
+  auto self_removing_observer =
+      std::make_unique<SelfRemovingObserver>(context.get());
+  auto normal_observer = std::make_unique<TestLifecycleObserver>();
+  context->AddObserver(self_removing_observer.get());
+  context->AddObserver(normal_observer.get());
 
   context->RequestResolve();
   EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kInStyleResolve));
-  EXPECT_EQ(observer->data_.prev_state, LifecycleState::kInactive);
-  EXPECT_EQ(observer->data_.cur_state, LifecycleState::kInStyleResolve);
-  EXPECT_EQ(observer->data_.is_state_executed, true);
-  EXPECT_EQ(observer->data_.pipeline_version, context->version_);
-  EXPECT_EQ(observer->data_.pipeline_id, options_->pipeline_id);
-  EXPECT_EQ(observer->data_.pipeline_origin, options_->pipeline_origin);
+  EXPECT_EQ(self_removing_observer->on_changed_count, 1);
+  EXPECT_LE(context->observers_.size(), 1);
+}
 
-  context->RemoveObserver(observer.get());
+TEST_F(PipelineContextTest, TestPipelineContextObserverCleanupExpiredWeakPtr) {
+  auto context = PipelineContext::Create(PipelineVersion::Create(), true);
+  ASSERT_NE(context, nullptr);
+  context->SetOptions(options_);
+  {
+    auto observer = std::make_unique<TestLifecycleObserver>();
+    context->AddObserver(observer.get());
+  }
+  EXPECT_EQ(context->observers_.size(), 1);
+
+  context->RequestResolve();
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kInStyleResolve));
+  EXPECT_EQ(context->observers_.size(), 0);
+}
+
+TEST_F(PipelineContextTest, TestPipelineContextObserverRemoveOtherInCallback) {
+  auto context = PipelineContext::Create(PipelineVersion::Create(), true);
+  ASSERT_NE(context, nullptr);
+  context->SetOptions(options_);
+  auto target_observer = std::make_unique<TestLifecycleObserver>();
+  auto remover_observer = std::make_unique<RemoveOtherObserver>(
+      context.get(), target_observer.get());
+  context->AddObserver(remover_observer.get());
+  context->AddObserver(target_observer.get());
+
+  context->RequestResolve();
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kInStyleResolve));
+  EXPECT_EQ(remover_observer->on_changed_count, 1);
+  EXPECT_EQ(context->observers_.size(), 1);
+  auto target_count_after_first = target_observer->on_changed_count;
+
   EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kAfterStyleResolve));
-  EXPECT_NE(observer->data_.prev_state, LifecycleState::kInStyleResolve);
-  EXPECT_NE(observer->data_.cur_state, LifecycleState::kAfterStyleResolve);
+  EXPECT_EQ(target_observer->on_changed_count, target_count_after_first);
+}
+
+TEST_F(PipelineContextTest,
+       TestPipelineContextObserverReentrantAdvancePreservesOuterData) {
+  auto context = PipelineContext::Create(PipelineVersion::Create(), true);
+  ASSERT_NE(context, nullptr);
+  context->SetOptions(options_);
+  auto reentrant_observer =
+      std::make_unique<ReentrantAdvanceObserver>(context.get());
+  auto recording_observer = std::make_unique<RecordingObserver>();
+  context->AddObserver(reentrant_observer.get());
+  context->AddObserver(recording_observer.get());
+
+  context->RequestResolve();
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kInStyleResolve));
+
+  ASSERT_EQ(recording_observer->events.size(), 2u);
+  EXPECT_EQ(recording_observer->events[0].prev_state,
+            LifecycleState::kInStyleResolve);
+  EXPECT_EQ(recording_observer->events[0].cur_state,
+            LifecycleState::kAfterStyleResolve);
+  EXPECT_EQ(recording_observer->events[1].prev_state,
+            LifecycleState::kInactive);
+  EXPECT_EQ(recording_observer->events[1].cur_state,
+            LifecycleState::kInStyleResolve);
 }
 }  // namespace test
 }  // namespace tasm

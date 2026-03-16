@@ -5,12 +5,15 @@
 #ifndef CORE_RENDERER_PIPELINE_PIPELINE_CONTEXT_MANAGER_H_
 #define CORE_RENDERER_PIPELINE_PIPELINE_CONTEXT_MANAGER_H_
 
+#include <list>
 #include <map>
 #include <memory>
 #include <utility>
 
 #include "base/include/closure.h"
+#include "base/include/fml/memory/weak_ptr.h"
 #include "core/renderer/pipeline/pipeline_context.h"
+#include "core/renderer/pipeline/pipeline_lifecycle_observer.h"
 #include "core/renderer/pipeline/pipeline_version.h"
 
 namespace lynx {
@@ -29,6 +32,8 @@ class PipelineContextManager {
   PipelineContext* GetPipelineContextByVersion(
       const PipelineVersion& version) const;
   void RemovePipelineContextByVersion(const PipelineVersion& version);
+  void AddObserver(PipelineLifecycleObserver* observer);
+  void RemoveObserver(PipelineLifecycleObserver* observer);
 
   void ResetCurrentPipelineContext() { current_pipeline_context_ = nullptr; }
 
@@ -46,6 +51,7 @@ class PipelineContextManager {
   PipelineContext* current_pipeline_context_{nullptr};
   bool enable_unified_pixel_pipeline_{false};
   PipelineVersion current_version_;
+  std::list<fml::WeakPtr<PipelineLifecycleObserver>> observers_{};
 
   base::closure on_create_hook_;
 };

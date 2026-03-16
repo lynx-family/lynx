@@ -4,6 +4,7 @@
 
 #include "core/renderer/pipeline/pipeline_context_manager.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -11,6 +12,19 @@
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+bool ContainsObserver(
+    const std::list<fml::WeakPtr<PipelineLifecycleObserver>>& observers,
+    PipelineLifecycleObserver* observer) {
+  return std::find_if(
+             observers.begin(), observers.end(),
+             [observer](
+                 const fml::WeakPtr<PipelineLifecycleObserver>& weak_observer) {
+               return weak_observer.get() == observer;
+             }) != observers.end();
+}
+}  // namespace
 
 PipelineContextManager::PipelineContextManager(
     bool enable_unified_pixel_pipeline)
@@ -47,6 +61,14 @@ PipelineContext* PipelineContextManager::CreateAndUpdateCurrentPipelineContext(
   // Set pipeline options to pipeline context, and mark options as held by
   // context.
   pipeline_context->SetOptions(pipeline_options);
+  for (auto it = observers_.begin(); it != observers_.end();) {
+    if (!(*it)) {
+      it = observers_.erase(it);
+      continue;
+    }
+    pipeline_context->AddObserver(it->get());
+    ++it;
+  }
   pipeline_options->version = &(pipeline_context->GetVersion());
 
   current_pipeline_context_ = pipeline_context.get();
@@ -75,6 +97,52 @@ void PipelineContextManager::RemovePipelineContextByVersion(
       it != pipeline_contexts_.end()) {
     it->second->GetOptions()->version = nullptr;
     pipeline_contexts_.erase(it);
+  }
+}
+
+void PipelineContextManager::AddObserver(PipelineLifecycleObserver* observer) {
+  if (!observer) {
+    LOGE("observer is nullptr");
+    return;
+  }
+
+  for (auto it = observers_.begin(); it != observers_.end();) {
+    if (!(*it)) {
+      it = observers_.erase(it);
+      continue;
+    }
+    ++it;
+  }
+  if (ContainsObserver(observers_, observer)) {
+    return;
+  } else {
+    observers_.emplace_back(observer->WeakFromThis());
+  }
+
+  for (auto& [version, context] : pipeline_contexts_) {
+    (void)version;
+    context->AddObserver(observer);
+  }
+}
+
+void PipelineContextManager::RemoveObserver(
+    PipelineLifecycleObserver* observer) {
+  if (!observer) {
+    LOGE("observer is nullptr");
+    return;
+  }
+
+  for (auto it = observers_.begin(); it != observers_.end();) {
+    if (!(*it) || it->get() == observer) {
+      it = observers_.erase(it);
+      continue;
+    }
+    ++it;
+  }
+
+  for (auto& [version, context] : pipeline_contexts_) {
+    (void)version;
+    context->RemoveObserver(observer);
   }
 }
 }  // namespace tasm

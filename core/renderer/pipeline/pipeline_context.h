@@ -56,14 +56,14 @@ class PipelineContext {
   // Pipeline lifecycle management.
   bool AdvanceLifecycleTo(LifecycleState state);
   LifecycleState GetLifecycleState() const { return lifecycle_.GetState(); };
-
-  void AddObserver(PipelineLifecycleObserver* observer);
-  void RemoveObserver(PipelineLifecycleObserver* observer);
   void NotifyLifecycleChanged(LifecycleState prev_state,
                               LifecycleState cur_state);
 
  private:
+  friend class PipelineContextManager;
   explicit PipelineContext(const PipelineVersion& version);
+  void AddObserver(PipelineLifecycleObserver* observer);
+  void RemoveObserver(PipelineLifecycleObserver* observer);
 
   std::shared_ptr<PipelineOptions> options_{nullptr};
   PipelineVersion version_;
