@@ -14,6 +14,12 @@ FragmentBehavior::FragmentBehavior(Fragment* fragment)
       painting_context_(
           fragment->painting_context()->impl()->CastToNativeCtx()) {}
 
+void FragmentBehavior::Destroy() {
+  OnElementDestroying();
+  fragment_ = nullptr;
+  painting_context_ = nullptr;
+}
+
 void FragmentBehavior::CreatePlatformRenderer(
     const fml::RefPtr<PropBundle>& attributes) {
   if (!painting_context_) {

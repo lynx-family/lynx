@@ -49,7 +49,15 @@ class Fragment : public BaseElementContainer {
 
   void RemoveElementContainerAccordingToElement(Element* child,
                                                 bool destroy) override;
-  void Destroy() override{};
+  void Destroy() override {
+    if (behavior_) {
+      behavior_->Destroy();
+    }
+    if (has_platform_renderer_) {
+      painting_context()->DestroyPaintingNode(
+          parent()->id(), id(), -1 /* will be ignored when remove*/);
+    }
+  };
 
   void UpdateLayout(float left, float top,
                     bool transition_view = false) override;
@@ -78,6 +86,10 @@ class Fragment : public BaseElementContainer {
   void UpdateLayout(LayoutResultForRendering layout_result_for_rendering);
 
   void SetBehavior(std::unique_ptr<FragmentBehavior> behavior);
+
+  // Called when the element is being destroyed. Notifies the behavior to
+  // release platform resources while they are still accessible.
+  void OnElementDestroying();
 
   void Draw();
 
