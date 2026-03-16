@@ -13,7 +13,6 @@ namespace tasm {
 class ListFragmentBehavior : public FragmentBehavior {
  public:
   ListFragmentBehavior(Fragment* fragment);
-  ~ListFragmentBehavior() override = default;
 
   void CreatePlatformRenderer(
       const fml::RefPtr<PropBundle>& attributes) override;

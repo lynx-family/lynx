@@ -300,6 +300,12 @@ void Fragment::SetBehavior(std::unique_ptr<FragmentBehavior> behavior) {
   behavior_ = std::move(behavior);
 }
 
+void Fragment::OnElementDestroying() {
+  if (behavior_) {
+    behavior_->OnElementDestroying();
+  }
+}
+
 int32_t Fragment::DefineBorderBox(DisplayListBuilder& display_list_builder) {
   return box_recorder_.GetIndexOfBoxModel(BoxModelType::kBoxModelTypeBorder,
                                           LayoutResult(), display_list_builder);

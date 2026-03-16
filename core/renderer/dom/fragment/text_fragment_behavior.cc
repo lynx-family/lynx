@@ -25,17 +25,22 @@ BASE_STATIC_STRING_DECL(kStart, "start");
 BASE_STATIC_STRING_DECL(kEnd, "end");
 BASE_STATIC_STRING_DECL(kEllipsisCount, "ellipsisCount");
 
+TextFragmentBehavior::TextFragmentBehavior(Fragment* fragment)
+    : FragmentBehavior(fragment) {}
+
+void TextFragmentBehavior::OnElementDestroying() {
+  // Release platform resources while element is still accessible
+  if (painting_context_ && text_bundle_ != 0) {
+    painting_context_->DestroyTextBundle(fragment_->id());
+    text_bundle_ = 0;
+  }
+}
+
 void TextFragmentBehavior::CreatePlatformRenderer(
     const fml::RefPtr<PropBundle>& attributes) {
   if (painting_context_ && fragment_) {
     painting_context_->CreatePlatformRenderer(
         fragment_->id(), PlatformRendererType::kText, attributes);
-  }
-}
-
-TextFragmentBehavior::~TextFragmentBehavior() {
-  if (painting_context_ && fragment_) {
-    painting_context_->DestroyTextBundle(fragment_->id());
   }
 }
 
