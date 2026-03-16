@@ -160,7 +160,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 #if TARGET_OS_OSX
 
-- (void)sendSyntheticMouseEventWithType:(NSEventType)type atPoint:(NSPoint)point;
+- (void)sendSyntheticMouseEventWithType:(NSEventType)type
+                                atPoint:(NSPoint)point
+                                 deltaX:(CGFloat)deltaX
+                                 deltaY:(CGFloat)deltaY;
 
 #endif
 
