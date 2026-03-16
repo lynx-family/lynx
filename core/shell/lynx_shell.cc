@@ -815,7 +815,8 @@ void LynxShell::UpdateDataByParsedData(
 }
 
 void LynxShell::UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
-                               const lepus::Value& global_props) {
+                               const lepus::Value& global_props,
+                               LynxUpdateMode update_mode) {
 #if ENABLE_TESTBENCH_RECORDER
   tasm::recorder::TemplateAssemblerRecorder::RecordUpdateMetaData(
       data, global_props, reinterpret_cast<int64_t>(this));
@@ -829,10 +830,10 @@ void LynxShell::UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
   auto global_props_thread_safe = EnsureGlobalPropsThreadSafe(global_props);
   auto order = ui_operation_queue_->UpdateNativeUpdateDataOrder();
   engine_actor_->Act(
-      [data, global_props_thread_safe, order,
+      [data, global_props_thread_safe, order, update_mode,
        pipeline_options = std::move(pipeline_options)](auto& engine) {
         engine->UpdateMetaData(data, global_props_thread_safe, order,
-                               std::move(pipeline_options));
+                               update_mode, std::move(pipeline_options));
       });
 }
 

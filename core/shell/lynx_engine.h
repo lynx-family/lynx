@@ -26,6 +26,7 @@
 #include "core/shell/common/platform_call_back.h"
 #include "core/shell/lynx_card_cache_data_manager.h"
 #include "core/shell/tasm_operation_queue.h"
+#include "core/shell/update_mode.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
@@ -96,6 +97,7 @@ class LynxEngine {
   void UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
                       const lepus::Value& global_props,
                       uint32_t native_update_data_order,
+                      LynxUpdateMode update_mode,
                       std::shared_ptr<tasm::PipelineOptions> pipeline_options);
 
   void ReloadTemplate(const std::shared_ptr<tasm::TemplateData>& data,
