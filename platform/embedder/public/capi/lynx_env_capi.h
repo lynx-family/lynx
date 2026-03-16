@@ -13,6 +13,12 @@ LYNX_EXTERN_C_BEGIN
 // Retrieves the SDK version of Lynx sdk.
 LYNX_CAPI_EXPORT const char* lynx_env_get_sdk_version();
 
+// Sets the ICU data path for the LynxEnv.
+LYNX_CAPI_EXPORT void lynx_env_set_icu_data_path(const char* icu_data_path);
+
+// Retrieves the ICU data path for the LynxEnv.
+LYNX_CAPI_EXPORT const char* lynx_env_get_icu_data_path();
+
 // Lynx devtools
 LYNX_CAPI_EXPORT void lynx_env_set_devtool_app_info(const char* name,
                                                     const char* value);

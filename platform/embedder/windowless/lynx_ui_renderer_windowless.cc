@@ -64,8 +64,19 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
   };
   description_.identifier = ++sTaskRunnerIdentifiers;
 
+  const char* icu_data_path = builder->GetICUDataPath();
+  if (icu_data_path == nullptr || icu_data_path[0] == '\0') {
+#if OS_WIN
+    icu_data_path = "data\\icudtl.dat";
+#elif OS_MAC
+    icu_data_path = "../Resources/data/icudtl.dat";
+#else
+    // other platforms not supported yet.
+#endif
+  }
+
   headless_engine_ = std::make_unique<clay::ClayHeadlessEngine>(
-      nullptr, windowless_renderer_->GetRendererConfig(), &description_,
+      icu_data_path, windowless_renderer_->GetRendererConfig(), &description_,
       windowless_renderer_.get());
   headless_engine_->SetHeadlessDelegate(this);
 

@@ -10,9 +10,21 @@
 #include "platform/embedder/module/global_module_registry.h"
 #include "platform/embedder/public/capi/lynx_env_capi.h"
 
+namespace {
+static std::string g_icu_data_path;
+}
+
 LYNX_EXTERN_C const char* lynx_env_get_sdk_version() {
   // Refer to a version number when building lynx sdk.
   return lynx::tasm::Config::GetCurrentLynxVersion().c_str();
+}
+
+LYNX_EXTERN_C void lynx_env_set_icu_data_path(const char* icu_data_path) {
+  g_icu_data_path = icu_data_path ? icu_data_path : "";
+}
+
+LYNX_EXTERN_C const char* lynx_env_get_icu_data_path() {
+  return g_icu_data_path.c_str();
 }
 
 LYNX_EXTERN_C void lynx_env_set_devtool_app_info(const char* name,

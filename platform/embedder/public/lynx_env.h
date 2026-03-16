@@ -17,6 +17,9 @@ class LynxEnv {
  public:
   static LynxEnv& GetInstance();
   const char* GetVersion();
+  void SetICUDataPath(const char* icu_data_path);
+  const char* GetICUDataPath() const;
+
   void SetDevtoolAppInfo(const char* name, const char* value);
   void SetDevtoolEnabled(bool enable);
   bool IsDevtoolEnabled();
@@ -43,6 +46,14 @@ inline LynxEnv& LynxEnv::GetInstance() {
 }
 
 inline const char* LynxEnv::GetVersion() { return lynx_env_get_sdk_version(); }
+
+inline void LynxEnv::SetICUDataPath(const char* icu_data_path) {
+  lynx_env_set_icu_data_path(icu_data_path);
+}
+
+inline const char* LynxEnv::GetICUDataPath() const {
+  return lynx_env_get_icu_data_path();
+}
 
 inline void LynxEnv::SetDevtoolAppInfo(const char* name, const char* value) {
   lynx_env_set_devtool_app_info(name, value);

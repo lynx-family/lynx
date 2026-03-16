@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "platform/embedder/public/capi/lynx_env_capi.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_group_capi.h"
 #include "platform/embedder/public/capi/lynx_view_builder_capi.h"
@@ -29,6 +30,7 @@ struct lynx_view_builder_t {
     float height = 0;
   } frame;
   float font_scale = 1.0;
+  std::string icu_data_path;
   lynx_group_t* group = nullptr;
   NativeWindow parent = nullptr;
 #if defined(ENABLE_WINDOWLESS)
@@ -44,6 +46,11 @@ struct lynx_view_builder_t {
       extension_modules_;
   std::unordered_map<std::string, std::pair<lynx_native_view_creator, void*>>
       native_view_creators;
+
+  const char* GetICUDataPath() const {
+    return !icu_data_path.empty() ? icu_data_path.c_str()
+                                  : lynx_env_get_icu_data_path();
+  }
 };
 
 #endif  // PLATFORM_EMBEDDER_LYNX_VIEW_BUILDER_PRIV_H_

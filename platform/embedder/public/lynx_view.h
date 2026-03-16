@@ -53,6 +53,11 @@ class LynxView {
       return *this;
     }
 
+    Builder& SetICUDataPath(const std::string& icu_data_path) {
+      lynx_view_builder_set_icu_data_path(builder_, icu_data_path.c_str());
+      return *this;
+    }
+
     Builder& SetLynxGroup(std::shared_ptr<LynxGroup> group) {
       group_ = std::move(group);
       lynx_view_builder_set_lynx_group(builder_, group_->Impl());

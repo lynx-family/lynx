@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/string/string_conversion_win.h"
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
 #include "clay/lynx_adaptor/native_view_service_desktop.h"
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
@@ -40,7 +41,14 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
     : LynxUIRenderer(builder) {
   clay::FlutterDesktopEngineProperties properties = {};
 
-  properties.icu_data_path = L"data\\icudtl.dat";
+  const char* icu_data_path = builder->GetICUDataPath();
+  std::wstring icu_wstr;
+  if (icu_data_path && icu_data_path[0] != '\0') {
+    icu_wstr = base::Utf16FromUtf8(icu_data_path, strlen(icu_data_path));
+  } else {
+    icu_wstr = L"data\\icudtl.dat";
+  }
+  properties.icu_data_path = icu_wstr.c_str();
 
   HWND parent_hwnd = reinterpret_cast<HWND>(builder->parent);
   float pixel_ratio = builder->screen_size.pixel_ratio;

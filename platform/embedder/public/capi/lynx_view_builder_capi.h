@@ -46,6 +46,14 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_frame(lynx_view_builder_t*,
 LYNX_CAPI_EXPORT void lynx_view_builder_set_font_scale(lynx_view_builder_t*,
                                                        const float& scale);
 
+// Sets the ICU data path for the LynxView being built. This function allows you
+// to specify the path to the ICU (International Components for Unicode) data
+// file that the LynxView will use for Unicode-related operations such as text
+// processing, collation, and formatting. The ICU data is essential for proper
+// handling of international text and multilingual support in the LynxView.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_icu_data_path(
+    lynx_view_builder_t*, const char* icu_data_path);
+
 // Associates a Lynx group with the LynxView being built. This function allows
 // you to assign a specific Lynx group to the LynxView that is currently under
 // construction using the provided builder. The Lynx group can contain shared
