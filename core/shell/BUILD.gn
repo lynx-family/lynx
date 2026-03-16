@@ -61,6 +61,7 @@ shell_shared_sources = [
   "tasm_operation_queue_async.cc",
   "tasm_operation_queue_async.h",
   "tasm_platform_invoker.h",
+  "update_mode.h",
   "vsync_observer_impl.cc",
   "vsync_observer_impl.h",
 ]
