@@ -173,6 +173,9 @@ class ListElement : public FiberElement, public tasm::ListNode {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
+  void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
+                                 const lepus::Value& value) override;
+
   void FlushListContainerInfo(const base::String& key,
                               const lepus::Value& value);
 
