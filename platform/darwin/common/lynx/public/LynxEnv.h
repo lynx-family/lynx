@@ -116,9 +116,6 @@ typedef NS_ENUM(NSInteger, LynxMemoryPressureLevel) {
 
 - (void)setLocalEnv:(NSString *)value forKey:(NSString *)key;
 
-- (void)setDevtoolEnv:(BOOL)value forKey:(NSString *)key;
-- (BOOL)getDevtoolEnv:(NSString *)key withDefaultValue:(BOOL)value;
-
 - (void)setDevtoolEnv:(NSSet *)newGroupValues forGroup:(NSString *)groupKey;
 - (NSSet *)getDevtoolEnvWithGroupName:(NSString *)groupKey;
 

@@ -25,8 +25,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
   NSMutableDictionary *_switchMasks;
   NSMutableDictionary *_groupDics;
   NSDictionary *_errorCodeDic;
-  NSMutableDictionary *_switchNotPersist;
-  NSDictionary *_switchAttrDic;
 }
 
 + (instancetype)sharedInstance {
@@ -45,9 +43,7 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     _read_write_queue =
         dispatch_queue_create("DevtoolEnv.read_write_queue", DISPATCH_QUEUE_CONCURRENT);
     _switchMasks = [[NSMutableDictionary alloc] init];
-    _switchNotPersist = [[NSMutableDictionary alloc] init];
 
-    [self initSwitchAttribute];
     /**
      * [self setDefaultAppInfo]
      *   -> [LynxDebugBridge singleton]
@@ -65,32 +61,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     lynx::tasm::DevToolLifecycle::GetInstance().OnInitialized();
   }
   return self;
-}
-
-- (void)initSwitchAttribute {
-  /**
-   _switchAttrDic: A dictionary indicating all switches' attributes.
-   key: switch name.
-   value: an array of bool values indicating attributes of current switch.
-      The meaning of each value in array is as follows:
-        whether needs to be persisted
-        whether needs to be synchronized to native
-        default value
-   */
-  _switchAttrDic = @{
-    SP_KEY_ENABLE_DEVTOOL : @[ @YES, @YES, @NO ],
-    SP_KEY_ENABLE_LOGBOX : @[ @YES, @YES, @YES ],
-    SP_KEY_ENABLE_HIGHLIGHT_TOUCH : @[ @NO, @NO, @NO ],
-    SP_KEY_ENABLE_FSP_SCREENSHOT : @[ @YES, @NO, @NO ],
-    SP_KEY_ENABLE_LAUNCH_RECORD : @[ @YES, @NO, @NO ],
-#if OS_IOS
-    SP_KEY_ENABLE_LONG_PRESS_MENU : @[ @YES, @NO, @YES ],
-    SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT : @[ @NO, @NO, @YES ],
-#endif
-    SP_KEY_ENABLE_QUICKJS_DEBUG : @[ @YES, @YES, @YES ],
-    SP_KEY_ENABLE_DOM_TREE : @[ @YES, @YES, @YES ],
-    SP_KEY_ENABLE_PERF_METRICS : @[ @NO, @NO, @NO ]
-  };
 }
 
 - (void)setDefaultAppInfo {
@@ -125,10 +95,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
   BOOL sync = [self needSyncToNative:key];
   KeyType keyType = [self keyType:key];
   switch (keyType) {
-    case NORMAL_KEY: {
-      [self setSwitch:value forKey:key needPersist:persist syncToNative:sync];
-      break;
-    }
     case CDP_DOMAIN_KEY: {
       [self setSwitch:value
           forSwitchKey:key
@@ -149,6 +115,7 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
       break;
     }
     default:
+      LLogWarn(@"setDevtoolEnv unsupported key: %@", key);
       break;
   }
 }
@@ -156,9 +123,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
 - (BOOL)get:(NSString *)key withDefaultValue:(BOOL)value {
   KeyType keyType = [self keyType:key];
   switch (keyType) {
-    case NORMAL_KEY: {
-      return [self getSwitch:key withDefaultValue:value];
-    }
     case CDP_DOMAIN_KEY: {
       return [self getSwitch:key withDefaultValue:value groupName:SP_KEY_ACTIVATED_CDP_DOMAINS];
     }
@@ -172,7 +136,8 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
       return NO;
     }
     default:
-      return NO;
+      LLogWarn(@"getDevtoolEnv unsupported key: %@", key);
+      return value;
   }
 }
 
@@ -215,33 +180,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     retSet = [[NSSet alloc] initWithArray:[dic allKeys]];
   }
   return retSet;
-}
-
-- (void)setSwitch:(BOOL)value
-           forKey:(NSString *)key
-      needPersist:(BOOL)persist
-     syncToNative:(BOOL)sync {
-  if (persist) {
-    NSUserDefaults *preference = [NSUserDefaults standardUserDefaults];
-    [preference setBool:value forKey:key];
-    [preference synchronize];
-  } else {
-    [_switchNotPersist setValue:[NSNumber numberWithBool:value] forKey:key];
-  }
-  if (sync) {
-    [self syncToNative:value forKey:key];
-  }
-}
-
-- (BOOL)getSwitch:(NSString *)key withDefaultValue:(BOOL)value {
-  NSUserDefaults *preference = [NSUserDefaults standardUserDefaults];
-  BOOL retValue = value;
-  if ([preference objectForKey:key]) {
-    retValue = [preference boolForKey:key];
-  } else if ([_switchNotPersist objectForKey:key]) {
-    retValue = [[_switchNotPersist objectForKey:key] boolValue];
-  }
-  return retValue && [self getSwitchMask:key];
 }
 
 - (void)setSwitchMask:(BOOL)value forKey:(NSString *)key {
@@ -342,12 +280,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
   switch (keyType) {
     case ERROR_KEY:
       return YES;
-    case NORMAL_KEY: {
-      NSArray *arr = [_switchAttrDic objectForKey:key];
-      if (arr && [arr objectAtIndex:0]) {
-        return [[arr objectAtIndex:0] boolValue];
-      }
-    }
     default:
       return NO;
   }
@@ -358,23 +290,9 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
   switch (keyType) {
     case CDP_DOMAIN_KEY:
       return YES;
-    case NORMAL_KEY: {
-      NSArray *arr = [_switchAttrDic objectForKey:key];
-      if (arr && [arr objectAtIndex:1]) {
-        return [[arr objectAtIndex:1] boolValue];
-      }
-    }
     default:
       return NO;
   }
-}
-
-- (BOOL)getDefaultValue:(NSString *)key {
-  NSArray *arr = [_switchAttrDic objectForKey:key];
-  if (arr && [arr objectAtIndex:2]) {
-    return [[arr objectAtIndex:2] boolValue];
-  }
-  return NO;
 }
 
 - (void)setShowDevtoolBadge:(BOOL)show __attribute__((deprecated("Deprecated after Lynx2.9"))) {

@@ -9,6 +9,7 @@
 #include <memory>
 #include <unordered_map>
 
+#import <Lynx/DevToolSettings.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxLog.h>
@@ -142,6 +143,59 @@ using ClientInfo = std::unordered_map<std::string, std::string>;
   }
 }
 
+- (void)handleSetGlobalSwitch:(NSString *)key value:(BOOL)value {
+  DevToolSettings *settings = [DevToolSettings sharedInstance];
+  // Support limited switches here for limited scenarios. Currently only supports:
+  // - DevToolSettings.SP_KEY_ENABLE_DEVTOOL
+  // - DevToolSettings.SP_KEY_ENABLE_LOGBOX
+  // - DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG
+  // - DevToolSettings.SP_KEY_ENABLE_DOM_TREE
+  // - DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU
+  // - DevToolSettings.SP_KEY_ENABLE_PERF_METRICS
+  if ([key isEqualToString:SP_KEY_ENABLE_DEVTOOL]) {
+    settings.devToolEnabled = value;
+  } else if ([key isEqualToString:SP_KEY_ENABLE_LOGBOX]) {
+    settings.logBoxEnabled = value;
+  } else if ([key isEqualToString:SP_KEY_ENABLE_QUICKJS_DEBUG]) {
+    settings.quickjsDebugEnabled = value;
+  } else if ([key isEqualToString:SP_KEY_ENABLE_DOM_TREE]) {
+    settings.domTreeEnabled = value;
+  } else if ([key isEqualToString:SP_KEY_ENABLE_LONG_PRESS_MENU]) {
+    settings.longPressMenuEnabled = value;
+  } else if ([key isEqualToString:SP_KEY_ENABLE_PERF_METRICS]) {
+    settings.perfMetricsEnabled = value;
+  } else {
+    LLogWarn(@"SetGlobalSwitch unsupported key: %@", key);
+  }
+}
+
+- (BOOL)handleGetGlobalSwitch:(NSString *)key {
+  DevToolSettings *settings = [DevToolSettings sharedInstance];
+  // Support limited switches here for limited scenarios. Currently only supports:
+  // - DevToolSettings.SP_KEY_ENABLE_DEVTOOL
+  // - DevToolSettings.SP_KEY_ENABLE_LOGBOX
+  // - DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG
+  // - DevToolSettings.SP_KEY_ENABLE_DOM_TREE
+  // - DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU
+  // - DevToolSettings.SP_KEY_ENABLE_PERF_METRICS
+  if ([key isEqualToString:SP_KEY_ENABLE_DEVTOOL]) {
+    return settings.devToolEnabled;
+  } else if ([key isEqualToString:SP_KEY_ENABLE_LOGBOX]) {
+    return settings.logBoxEnabled;
+  } else if ([key isEqualToString:SP_KEY_ENABLE_QUICKJS_DEBUG]) {
+    return settings.quickjsDebugEnabled;
+  } else if ([key isEqualToString:SP_KEY_ENABLE_DOM_TREE]) {
+    return settings.domTreeEnabled;
+  } else if ([key isEqualToString:SP_KEY_ENABLE_LONG_PRESS_MENU]) {
+    return settings.longPressMenuEnabled;
+  } else if ([key isEqualToString:SP_KEY_ENABLE_PERF_METRICS]) {
+    return settings.perfMetricsEnabled;
+  } else {
+    LLogWarn(@"GetGlobalSwitch unsupported key: %@", key);
+    return NO;
+  }
+}
+
 - (void)onMessage:(NSString *)message withType:(NSString *)type {
   if ([type isEqualToString:@"SetGlobalSwitch"]) {
     NSData *messageObj = [message dataUsingEncoding:NSUTF8StringEncoding];
@@ -150,7 +204,7 @@ using ClientInfo = std::unordered_map<std::string, std::string>;
                                         options:NSJSONReadingMutableContainers
                                           error:0];
     BOOL globalValue = [[messageDict objectForKey:@"global_value"] boolValue];
-    [LynxDevtoolEnv.sharedInstance set:globalValue forKey:messageDict[@"global_key"]];
+    [self handleSetGlobalSwitch:messageDict[@"global_key"] value:globalValue];
     [[DebugRouter instance] sendDataAsync:message WithType:@"SetGlobalSwitch" ForSession:-1];
   } else if ([type isEqualToString:@"GetGlobalSwitch"]) {
     NSData *messageObj = [message dataUsingEncoding:NSUTF8StringEncoding];
@@ -159,9 +213,7 @@ using ClientInfo = std::unordered_map<std::string, std::string>;
                                         options:NSJSONReadingMutableContainers
                                           error:0];
     NSString *key = messageDict[@"global_key"];
-    BOOL result =
-        [LynxDevtoolEnv.sharedInstance get:key
-                          withDefaultValue:[LynxDevtoolEnv.sharedInstance getDefaultValue:key]];
+    BOOL result = [self handleGetGlobalSwitch:key];
     [[DebugRouter instance] sendDataAsync:((result) ? @"true" : @"false")
                                  WithType:@"GetGlobalSwitch"
                                ForSession:-1];
