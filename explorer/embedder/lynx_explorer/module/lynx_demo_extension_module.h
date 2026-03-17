@@ -23,7 +23,7 @@ class LynxDemoExtensionModule : public pub::LynxExtensionModule {
   LynxDemoExtensionModule() = default;
 
   void OnRuntimeAttach(
-      napi_env env,
+      Napi::Env env,
       std::unique_ptr<pub::VSyncObserver> vsync_observer) override;
 
   void Destroy() override;

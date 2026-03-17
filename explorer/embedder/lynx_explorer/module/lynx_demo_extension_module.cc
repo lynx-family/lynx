@@ -34,12 +34,16 @@ napi_value EXTestMethod(napi_env env, napi_callback_info info) {
   return result;
 }
 
-napi_value LynxDemoExtensionModuleCreator(napi_env env, napi_value exports,
-                                          const char* module_name,
-                                          void* opaque) {
+Napi::Value LynxDemoExtensionModuleCreator(Napi::Env env, Napi::Value exports,
+                                           const char* module_name,
+                                           LynxDemoExtensionModule& module) {
   napi_value func;
-  napi_create_function(env, "exTestMethod", 1, &EXTestMethod, 0, &func);
-  napi_set_named_property(env, exports, "exTestMethod", func);
+  // TODO(wujintian): Replace all NAPI C APIs in the module with C++ APIs
+  napi_create_function(static_cast<napi_env>(env), "exTestMethod", 1,
+                       &EXTestMethod, 0, &func);
+  napi_set_named_property(static_cast<napi_env>(env),
+                          static_cast<napi_value>(exports), "exTestMethod",
+                          func);
   return exports;
 }
 
@@ -62,9 +66,9 @@ lynx_extension_module_t* LynxDemoExtensionModule::CreateCModule(void* opaque) {
 }
 
 void LynxDemoExtensionModule::OnRuntimeAttach(
-    napi_env env, std::unique_ptr<pub::VSyncObserver> vsync_observer) {
-  lynx_napi_set_instance_data(env, kDemoExtensionModuleID, this, nullptr,
-                              nullptr);
+    Napi::Env env, std::unique_ptr<pub::VSyncObserver> vsync_observer) {
+  lynx_napi_set_instance_data(static_cast<napi_env>(env),
+                              kDemoExtensionModuleID, this, nullptr, nullptr);
 }
 
 void LynxDemoExtensionModule::Destroy() {

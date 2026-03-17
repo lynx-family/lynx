@@ -11,6 +11,9 @@
 #include <vector>
 
 #include "capi/lynx_extension_module_capi.h"
+#include "capi/lynx_native_module_capi.h"
+#include "headers/napi.h"
+#include "lynx_view.h"
 #ifdef USE_WEAK_SUFFIX_NAPI
 #include "headers/weak_napi_defines.h"
 #endif
@@ -194,7 +197,7 @@ class LynxExtensionModule {
    * @param vsync_observer The VSyncObserver instance. It will be invalid when
    * LynxExtensionModule is Destroyed.
    */
-  virtual void OnRuntimeAttach(napi_env env,
+  virtual void OnRuntimeAttach(Napi::Env env,
                                std::unique_ptr<VSyncObserver> vsync_observer) {}
   /**
    * @apidoc
@@ -204,7 +207,8 @@ class LynxExtensionModule {
    * @param lynx The lynx object in BTS.
    * @param url The url of the current LynxView.
    */
-  virtual void OnRuntimeReady(napi_env env, napi_value lynx, const char* url) {}
+  virtual void OnRuntimeReady(Napi::Env env, Napi::Value lynx,
+                              const char* url) {}
   /**
    * @apidoc
    * @brief Called when BTS Runtime is detached. It is always called on the
@@ -263,19 +267,137 @@ class LynxExtensionModule {
   /**
    * @apidoc
    * @brief Set a napi_module creator to bind custom native methods.
-   * @param creator napi module creator.
+   *
+   * The module type T is automatically deduced from the creator function's
+   * fourth argument.
+   *
+   * @param creator The creator function/functor with signature:
+   *                Napi::Value(Napi::Env, Napi::Value, const char*, T&)
+   *                - env: The Napi environment
+   *                - exports: The exports object to populate
+   *                - module_name: The name of the module
+   *                - module: The LynxExtensionModule instance (of type T)
+   * @return The modified exports object
    */
-  inline void SetNapiModuleCreator(napi_module_creator creator) {
-    lynx_extension_module_set_napi_module_creator(c_module_, creator);
+  template <typename Creator>
+  inline void SetNapiModuleCreator(Creator&& creator) {
+    using ModuleType = typename std::remove_reference<
+        typename ArgumentTypeDeducer<std::decay_t<Creator>>::ModuleType>::type;
+    static_assert(std::is_base_of<LynxExtensionModule, ModuleType>::value,
+                  "Module type must inherit from LynxExtensionModule");
+
+    napi_module_creator_ =
+        [creator_holder = std::forward<Creator>(creator)](
+            Napi::Env env, Napi::Value exports, const char* module_name,
+            LynxExtensionModule& module) mutable -> Napi::Value {
+      return creator_holder(env, exports, module_name,
+                            static_cast<ModuleType&>(module));
+    };
+    lynx_extension_module_set_napi_module_creator(c_module_,
+                                                  &NapiModuleCreatorCallback);
+  }
+
+  /**
+   * @apidoc
+   * @brief Stores a data with key to the global map with C++ finalizer.
+   * @param env The Napi environment.
+   * @param key The key to identify the data.
+   * @param data The data to store.
+   * @param finalize_cb The C++ finalizer callback. It must be a callable object
+   *                    (e.g., function pointer, lambda, functor) with the
+   *                    signature: void(Napi::Env, void* data, void* hint).
+   * @param finalize_hint The hint for the finalizer.
+   */
+  template <typename Finalizer>
+  inline static void SetNapiInstanceData(Napi::Env env, uint64_t key,
+                                         void* data, Finalizer finalize_cb,
+                                         void* finalize_hint) {
+    auto* wrapper =
+        new FinalizerWrapper<Finalizer>{std::move(finalize_cb), finalize_hint};
+    lynx_napi_set_instance_data(static_cast<napi_env>(env), key, data,
+                                &FinalizerWrapper<Finalizer>::Finalize,
+                                wrapper);
+  }
+
+  /**
+   * @apidoc
+   * @brief Gets the data with key from the global map.
+   * @param env The Napi environment.
+   * @param key The key to identify the data.
+   * @param data The pointer to receive the data.
+   */
+  inline static void GetNapiInstanceData(Napi::Env env, uint64_t key,
+                                         void** data) {
+    lynx_napi_get_instance_data(static_cast<napi_env>(env), key, data);
   }
 
   inline void Retain() { lynx_extension_module_ref(c_module_); }
   inline void Release() { lynx_extension_module_unref(c_module_); }
 
  protected:
+  using NapiModuleCreator = std::function<Napi::Value(
+      Napi::Env, Napi::Value, const char*, LynxExtensionModule&)>;
+
   lynx_extension_module_t* c_module_ = nullptr;
+  NapiModuleCreator napi_module_creator_ = nullptr;
 
  private:
+  template <typename T>
+  struct ArgumentTypeDeducer;
+
+  // Specialization for function pointers
+  template <typename Ret, typename Arg1, typename Arg2, typename Arg3,
+            typename Arg4>
+  struct ArgumentTypeDeducer<Ret (*)(Arg1, Arg2, Arg3, Arg4)> {
+    using ModuleType = Arg4;
+  };
+
+  // Specialization for functors/lambdas (via operator())
+  template <typename T>
+  struct ArgumentTypeDeducer : ArgumentTypeDeducer<decltype(&T::operator())> {};
+
+  // Specialization for const member functions (lambdas)
+  template <typename C, typename Ret, typename Arg1, typename Arg2,
+            typename Arg3, typename Arg4>
+  struct ArgumentTypeDeducer<Ret (C::*)(Arg1, Arg2, Arg3, Arg4) const> {
+    using ModuleType = Arg4;
+  };
+
+  // Specialization for mutable member functions (mutable lambdas)
+  template <typename C, typename Ret, typename Arg1, typename Arg2,
+            typename Arg3, typename Arg4>
+  struct ArgumentTypeDeducer<Ret (C::*)(Arg1, Arg2, Arg3, Arg4)> {
+    using ModuleType = Arg4;
+  };
+
+  template <typename Finalizer>
+  struct FinalizerWrapper {
+    Finalizer finalizer;
+    void* hint;
+
+    FinalizerWrapper(Finalizer fin, void* h)
+        : finalizer(std::move(fin)), hint(h) {}
+
+    static void Finalize(napi_env env, void* finalize_data,
+                         void* finalize_hint) {
+      auto* wrapper = static_cast<FinalizerWrapper*>(finalize_hint);
+      wrapper->finalizer(Napi::Env(env), finalize_data, wrapper->hint);
+      delete wrapper;
+    }
+  };
+
+  static napi_value NapiModuleCreatorCallback(napi_env env, napi_value exports,
+                                              const char* module_name,
+                                              void* opaque) {
+    auto* extension_module = reinterpret_cast<LynxExtensionModule*>(opaque);
+    if (extension_module->napi_module_creator_) {
+      return extension_module->napi_module_creator_(
+          Napi::Env(env), Napi::Value(env, exports), module_name,
+          *extension_module);
+    }
+    return exports;
+  }
+
   void BindFunction() {
     // on lynx_view create
     lynx_extension_module_bind_lynx_view_create(
@@ -334,7 +456,7 @@ class LynxExtensionModule {
           }
           auto* extension_module =
               reinterpret_cast<LynxExtensionModule*>(user_data);
-          extension_module->OnRuntimeReady(env, lynx, url);
+          extension_module->OnRuntimeReady(env, Napi::Value(env, lynx), url);
         });
     // on runtime detach
     lynx_extension_module_bind_runtime_detach(
