@@ -520,11 +520,11 @@ LEPUSRuntimeData::~LEPUSRuntimeData() {
 }
 
 QuickContext::QuickContext(
-    std::shared_ptr<MTSContextDelegate> mts_context_delegate, void* runtime,
+    std::shared_ptr<MTSContextDelegate> mts_context_delegate,
     bool disable_tracing_gc, int runtime_mode,
     const tasm::PageOptions& page_options)
     : LEPUSRuntimeData(disable_tracing_gc, runtime_mode),
-      MTSContext(mts_context_delegate, runtime),
+      MTSContext(std::move(mts_context_delegate)),
       top_level_function_(LEPUS_UNDEFINED),
       use_lepus_strict_mode_(false),
       debuginfo_outside_(false),

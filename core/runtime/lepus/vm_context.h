@@ -35,9 +35,8 @@ class OutputStream;
 class VMContextBundle;
 class VMContext : public MTSContext {
  public:
-  VMContext(std::shared_ptr<MTSContextDelegate> mts_context_delegate,
-            void* runtime)
-      : MTSContext(mts_context_delegate, runtime),
+  explicit VMContext(std::shared_ptr<MTSContextDelegate> mts_context_delegate)
+      : MTSContext(std::move(mts_context_delegate)),
         current_frame_(nullptr),
         enable_strict_check_(false),
         enable_top_var_strict_mode_(true),
@@ -47,7 +46,7 @@ class VMContext : public MTSContext {
   }
 
   // for encoder
-  VMContext() : VMContext(nullptr, nullptr) { Initialize(); }
+  VMContext() : VMContext(nullptr) { Initialize(); }
 
   ~VMContext() = default;
   virtual void Initialize() override;

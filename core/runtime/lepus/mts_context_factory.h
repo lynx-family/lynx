@@ -21,7 +21,7 @@ class MTSContextFactory {
  public:
   static std::unique_ptr<MTSContext> Create(
       ContextType type, const std::shared_ptr<MTSContextDelegate>& delegate,
-      void* runtime, bool disable_tracing_gc, int runtime_mode,
+      bool disable_tracing_gc, int runtime_mode,
       const tasm::PageOptions& page_options);
 };
 

@@ -30,6 +30,8 @@ class MTSContextDelegateImpl : public MTSContextDelegate {
   explicit MTSContextDelegateImpl(Context* runtime) : runtime_(runtime) {}
   ~MTSContextDelegateImpl() override = default;
 
+  void* GetRuntimePrivate() const override { return runtime_; }
+
   void ReportErrorWithMsg(
       const std::string& msg, int32_t error_code,
       int32_t level = static_cast<int>(base::LynxErrorLevel::Error)) override {
@@ -518,7 +520,7 @@ std::unique_ptr<ContextBundle> ContextBundle::Create(ContextType context_type) {
 Context::Context(ContextType type, bool disable_tracing_gc, int runtime_mode,
                  const tasm::PageOptions& page_options)
     : MTSContextHolder(MTSContextFactory::Create(
-          type, std::make_shared<MTSContextDelegateImpl>(this), this,
+          type, std::make_shared<MTSContextDelegateImpl>(this),
           disable_tracing_gc, runtime_mode, page_options)),
       type_(type) {}
 

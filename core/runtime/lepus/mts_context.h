@@ -41,6 +41,8 @@ class MTSContextDelegate {
  public:
   virtual ~MTSContextDelegate() = default;
 
+  virtual void* GetRuntimePrivate() const = 0;
+
   virtual void ReportErrorWithMsg(
       const std::string& msg, int32_t error_code,
       int32_t level = static_cast<int>(base::LynxErrorLevel::Error)) = 0;
@@ -79,10 +81,8 @@ class ContextBundle {
 class MTSContext {
  public:
   virtual ~MTSContext() {}
-  MTSContext(std::shared_ptr<MTSContextDelegate> mts_context_delegate,
-             void* runtime)
-      : mts_context_delegate_(mts_context_delegate),
-        runtime_private_(runtime){};
+  explicit MTSContext(std::shared_ptr<MTSContextDelegate> mts_context_delegate)
+      : mts_context_delegate_(std::move(mts_context_delegate)){};
 
   // virtual interface
   virtual void Initialize() = 0;
@@ -209,7 +209,10 @@ class MTSContext {
   }
   const std::string& GetSdkVersion() const { return sdk_version_; }
 
-  inline void* GetRuntimePrivate() const { return runtime_private_; }
+  inline void* GetRuntimePrivate() const {
+    return mts_context_delegate_ ? mts_context_delegate_->GetRuntimePrivate()
+                                 : nullptr;
+  }
 
   void OnBTSConsoleEvent(const std::string& func_name,
                          const std::string& args) {
@@ -253,7 +256,6 @@ class MTSContext {
   std::string sdk_version_{"null"};
   bool is_debug_enabled_{false};
   std::shared_ptr<MTSContextDelegate> mts_context_delegate_;
-  void* runtime_private_{nullptr};
 };
 
 }  // namespace lepus
