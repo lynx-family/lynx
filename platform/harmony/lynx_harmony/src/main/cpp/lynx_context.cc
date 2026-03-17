@@ -506,6 +506,22 @@ void LynxContext::UpdateNativeInteractionEnabledForTree(UIBase* root) {
   ui_owner_->UpdateNativeInteractionEnabledForTree(root);
 }
 
+void LynxContext::SetKeyframes(const lepus::Value& value) {
+  if (keyframes_) {
+    lepus::Value::MergeValue(*keyframes_, value);
+  } else {
+    keyframes_ = value;
+  }
+}
+
+const lepus::Value& LynxContext::GetKeyframes(const std::string& name) {
+  if (!keyframes_) {
+    static lepus::Value nil;
+    return nil;
+  }
+  return keyframes_->Table()->GetValue(name);
+}
+
 void LynxContext::SetFocusedTarget(
     const std::weak_ptr<EventTarget>& focused_target) {
   if (!ui_owner_) {

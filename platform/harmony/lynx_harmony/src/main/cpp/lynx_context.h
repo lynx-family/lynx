@@ -288,6 +288,8 @@ class LynxContext {
   void OnGestureRecognized(UIBase* ui);
   void OnGestureRecognizedWithSign(int sign);
   void UpdateNativeInteractionEnabledForTree(UIBase* root);
+  void SetKeyframes(const lepus::Value& value);
+  const lepus::Value& GetKeyframes(const std::string& name);
 
   using UICreatorFunc = UIBase* (*)(LynxContext*, int, const std::string&);
   using LayoutNodeCreatorFuc = ShadowNode* (*)(int, const std::string&);
@@ -341,6 +343,7 @@ class LynxContext {
   pub::LynxExtensionDelegate* extension_delegate_{nullptr};
   napi_env env_;
 
+  std::optional<lepus::Value> keyframes_;
   bool enable_event_through_{false};
   bool enable_harmony_visible_area_change_for_exposure_{false};
   bool enable_exposure_when_reload_{false};

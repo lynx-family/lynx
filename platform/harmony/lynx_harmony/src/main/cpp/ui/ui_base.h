@@ -22,6 +22,8 @@
 #include "core/base/lynx_export.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/ui_wrapper/common/harmony/platform_extra_bundle_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/animation/keyframe_animator.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/animation/keyframe_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/gesture_arena_member.h"
@@ -274,6 +276,11 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   }
   virtual bool HasContent() { return false; }
   void OnResourceLoadCallback(const lepus::Value& value);
+  void SetAnimation(const lepus::Value& value);
+  const lepus::Value& GetKeyframes(const std::string& name);
+  float GetArkUIProperty(AnimationProperty type) const;
+  void SetAnimationProperty(AnimationProperty type, float value);
+  void SendAnimationEvent(const char* event, const std::string& name);
 
  protected:
   static void EventReceiver(ArkUI_NodeEvent* event);
@@ -535,6 +542,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
         base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback)
         : pixel_map(pixel_map), format(format), callback(std::move(callback)) {}
   };
+  std::unique_ptr<KeyframeManager> keyframe_manager_;
 };
 
 }  // namespace harmony

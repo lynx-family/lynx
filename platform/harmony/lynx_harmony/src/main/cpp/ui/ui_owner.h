@@ -89,6 +89,8 @@ class UIOwner {
       int32_t id, const std::string& method, const lepus::Value& args,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
 
+  void SetKeyframes(PropBundleHarmony* prop_bundle);
+
   static constexpr int32_t kLynxRootSign = -1;
   static constexpr const char* kDefaultComponentId = "-1";
 

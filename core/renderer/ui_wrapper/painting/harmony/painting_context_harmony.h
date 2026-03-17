@@ -69,7 +69,7 @@ class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
   void InvokeUIMethod(
       int32_t id, const std::string& method, const lepus::Value& params,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
-
+  void SetKeyframes(PropBundleHarmony* prop_bundle);
   harmony::UIOwner* GetUIOwner() { return ui_owner_.get(); }
 
  private:

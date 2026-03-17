@@ -28,6 +28,9 @@
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 #include "core/runtime/lepus/lepus_date.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/animation/animation_info.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/animation/keyframe_animator.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/animation/keyframe_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/base_gesture_handler.h"
@@ -221,6 +224,23 @@ bool UIBase::CanDrawBehind() {
       OH_GetSdkApiVersion() >= kDrawBehindVersion &&
       LynxEnv::GetInstance().EnableHarmonyDrawBehind();
   return can_draw_behind;
+}
+
+void UIBase::SetAnimation(const lepus::Value& value) {
+  if (!keyframe_manager_) {
+    keyframe_manager_ = std::make_unique<KeyframeManager>(this);
+  }
+  int size = value.Array()->size();
+  std::vector<AnimationInfo> animations;
+  for (int i = 0; i < size; ++i) {
+    animations.emplace_back(
+        AnimationInfo::ToAnimationInfo(value.Array()->get(i)));
+  }
+  keyframe_manager_->SetAnimations(std::move(animations));
+}
+
+const lepus::Value& UIBase::GetKeyframes(const std::string& name) {
+  return context_->GetKeyframes(name);
 }
 
 void UIBase::EventReceiver(ArkUI_NodeEvent* event) {
@@ -2943,6 +2963,104 @@ void UIBase::OnResourceLoadCallback(const lepus::Value& value) {
     context_->GetUIOwner()->OnResourceLoadCallback(value);
   }
 }
+
+float UIBase::GetArkUIProperty(AnimationProperty type) const {
+  switch (type) {
+    case AnimationProperty::kOpacity: {
+      float opacity{1.f};
+      NodeManager::Instance().GetAttributeValues(DrawNode(), NODE_OPACITY,
+                                                 &opacity);
+      return opacity;
+    }
+    case AnimationProperty::kTranslateX:
+    case AnimationProperty::kTranslateY:
+    case AnimationProperty::kTranslateZ: {
+      float trans[3];
+      NodeManager::Instance().GetAttributeValues(
+          DrawNode(), NODE_TRANSLATE, &trans[0], &trans[1], &trans[2]);
+      return trans[static_cast<int>(type) -
+                   static_cast<int>(AnimationProperty::kTranslateX)];
+    }
+    case AnimationProperty::kRotateX:
+    case AnimationProperty::kRotateY:
+    case AnimationProperty::kRotateZ: {
+      float angles[4];
+      NodeManager::Instance().GetAttributeValues(DrawNode(), NODE_ROTATE_ANGLE,
+                                                 &angles[0], &angles[1],
+                                                 &angles[2], &angles[3]);
+      return angles[static_cast<int>(type) -
+                    static_cast<int>(AnimationProperty::kRotateX)];
+    }
+    case AnimationProperty::kScaleX:
+    case AnimationProperty::kScaleY: {
+      float scales[2];
+      NodeManager::Instance().GetAttributeValues(DrawNode(), NODE_SCALE,
+                                                 &scales[0], &scales[1]);
+      return scales[static_cast<int>(type) -
+                    static_cast<int>(AnimationProperty::kScaleX)];
+    }
+    default:
+      return 0.f;
+  }
+}
+
+void UIBase::SetAnimationProperty(AnimationProperty type, float value) {
+  switch (type) {
+    case AnimationProperty::kOpacity:
+      NodeManager::Instance().SetAttributeWithNumberValue(DrawNode(),
+                                                          NODE_OPACITY, value);
+      break;
+    case AnimationProperty::kTranslateX:
+    case AnimationProperty::kTranslateY:
+    case AnimationProperty::kTranslateZ: {
+      float trans[3] = {0.f};
+      NodeManager::Instance().GetAttributeValues(
+          DrawNode(), NODE_TRANSLATE_WITH_PERCENT, &trans[0], &trans[1],
+          &trans[2]);
+      trans[static_cast<int>(type) -
+            static_cast<int>(AnimationProperty::kTranslateX)] = value;
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          DrawNode(), NODE_TRANSLATE, trans[0], trans[1], trans[2]);
+    } break;
+    case AnimationProperty::kRotateX:
+    case AnimationProperty::kRotateY:
+    case AnimationProperty::kRotateZ: {
+      float angles[4] = {0.f, 0.f, 0.f, 0.f};
+      NodeManager::Instance().GetAttributeValues(DrawNode(), NODE_ROTATE_ANGLE,
+                                                 &angles[0], &angles[1],
+                                                 &angles[2], &angles[3]);
+      angles[static_cast<int>(type) -
+             static_cast<int>(AnimationProperty::kRotateX)] = value;
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          DrawNode(), NODE_ROTATE_ANGLE, angles[0], angles[1], angles[2],
+          angles[3]);
+    } break;
+    case AnimationProperty::kScaleX:
+    case AnimationProperty::kScaleY: {
+      float scales[2] = {1.f, 1.f};
+      NodeManager::Instance().GetAttributeValues(DrawNode(), NODE_SCALE,
+                                                 &scales[0], &scales[1]);
+      scales[static_cast<int>(type) -
+             static_cast<int>(AnimationProperty::kScaleX)] = value;
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          DrawNode(), NODE_SCALE, scales[0], scales[1]);
+    }
+    default:
+      break;
+  }
+}
+
+void UIBase::SendAnimationEvent(const char* event, const std::string& name) {
+  if (std::find(events_.begin(), events_.end(), event) == events_.end()) {
+    return;
+  }
+  auto ret = lepus::Dictionary::Create();
+  ret->SetValue("animation_type", "keyframe-animation");
+  ret->SetValue("animation_name", name);
+  CustomEvent custom_event = {sign_, event, "detail", lepus_value(ret)};
+  context_->SendEvent(custom_event);
+}
+
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

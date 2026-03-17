@@ -154,6 +154,10 @@ void PaintingContextHarmonyRef::InvokeUIMethod(
   ui_owner_->InvokeUIMethod(id, method, params, std::move(callback));
 }
 
+void PaintingContextHarmonyRef::SetKeyframes(PropBundleHarmony* prop_bundle) {
+  ui_owner_->SetKeyframes(prop_bundle);
+}
+
 PaintingContextHarmony::PaintingContextHarmony(harmony::UIOwner* ui_owner) {
   platform_ref_ = std::make_shared<PaintingContextHarmonyRef>(ui_owner);
 }
@@ -225,7 +229,14 @@ void PaintingContextHarmony::UpdateLayout(
 }
 
 void PaintingContextHarmony::SetKeyframes(
-    fml::RefPtr<PropBundle> keyframes_data) {}
+    fml::RefPtr<PropBundle> keyframes_data) {
+  Enqueue([platform_ref = platform_ref_, data = std::move(keyframes_data)]() {
+    auto harmony_ref =
+        std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
+    auto* prop_bundle = reinterpret_cast<PropBundleHarmony*>(data.get());
+    harmony_ref->SetKeyframes(prop_bundle);
+  });
+}
 
 void PaintingContextHarmony::Flush() { queue_->Flush(); }
 void PaintingContextHarmony::HandleValidate(int tag) {}

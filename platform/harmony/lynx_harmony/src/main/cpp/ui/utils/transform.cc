@@ -26,16 +26,15 @@ Transform::Transform(const lepus::Value& value) {
       raw_.emplace_back((TransformRaw){
           .func_type = static_cast<starlight::TransformType>(
               transform_array->get(0).Number()),
-          .params_ = {
-              (PlatformLength){transform_array->get(1),
-                               static_cast<PlatformLengthType>(
-                                   transform_array->get(2).Number())},
-              (PlatformLength){transform_array->get(3),
-                               static_cast<PlatformLengthType>(
-                                   transform_array->get(4).Number())},
-              (PlatformLength){transform_array->get(5),
-                               static_cast<PlatformLengthType>(
-                                   transform_array->get(6).Number())}}});
+          .params = {(PlatformLength){transform_array->get(1),
+                                      static_cast<PlatformLengthType>(
+                                          transform_array->get(2).Number())},
+                     (PlatformLength){transform_array->get(3),
+                                      static_cast<PlatformLengthType>(
+                                          transform_array->get(4).Number())},
+                     (PlatformLength){transform_array->get(5),
+                                      static_cast<PlatformLengthType>(
+                                          transform_array->get(6).Number())}}});
     }
   }
 }

@@ -7,6 +7,12 @@ import("../../../../../../core/base_targets.gni")
 
 lynx_core_source_set("cpp") {
   sources = [
+    "animation/animation_info.cc",
+    "animation/animation_info.h",
+    "animation/keyframe_animator.cc",
+    "animation/keyframe_animator.h",
+    "animation/keyframe_manager.cc",
+    "animation/keyframe_manager.h",
     "base/base_trace_backend.cc",
     "base/base_trace_backend.h",
     "event/custom_event.h",

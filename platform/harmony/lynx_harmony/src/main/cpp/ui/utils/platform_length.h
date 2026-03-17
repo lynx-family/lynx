@@ -30,6 +30,8 @@ class PlatformLength {
     return type_ == PlatformLengthType::kNumber ? val_ : .0f;
   }
 
+  bool IsRelative() const { return type_ != PlatformLengthType::kNumber; }
+
  private:
   PlatformLengthType type_ = PlatformLengthType::kNumber;
   float val_ = .0f;
