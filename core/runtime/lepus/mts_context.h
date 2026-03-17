@@ -89,6 +89,14 @@ class MTSContext {
 
   virtual ContextType Type() const = 0;
 
+  bool IsVMContext() const { return Type() == ContextType::VMContextType; }
+  bool IsLepusNGContext() const {
+    return Type() == ContextType::LepusNGContextType;
+  }
+
+  base::StringTable* string_table() { return &string_table_; }
+  const base::StringTable* string_table() const { return &string_table_; }
+
   void set_is_debug_enabled(bool is_debug_enabled) {
     is_debug_enabled_ = is_debug_enabled;
   }
@@ -251,6 +259,7 @@ class MTSContext {
   }
 
  protected:
+  base::StringTable string_table_;
   std::string sdk_version_{"null"};
   bool is_debug_enabled_{false};
   std::shared_ptr<MTSContextDelegate> mts_context_delegate_;

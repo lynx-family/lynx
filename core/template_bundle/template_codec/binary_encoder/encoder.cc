@@ -259,7 +259,8 @@ std::unique_ptr<TemplateBinaryWriter> EncodeTemplate(
   }
 
   auto encoder = std::make_unique<TemplateBinaryWriter>(
-      vm_context, encoder_options.compile_options_.enable_lepus_ng_,
+      vm_context->GetMTSContext(),
+      encoder_options.compile_options_.enable_lepus_ng_,
       encoder_options.generator_options_.silence_, ttml_parser, css_parser,
       style_object_parser,
       &encoder_options.generator_options_.air_parsed_styles_,
@@ -453,7 +454,8 @@ lynx::tasm::EncodeResult encode_ssr_inner(const uint8_t* ptr, size_t buf_len,
                                 "Mix Data Empty");
   }
 
-  RepackBinaryWriter writer(reader.context(), reader.compile_options());
+  RepackBinaryWriter writer(reader.context()->GetMTSContext(),
+                            reader.compile_options());
   writer.EncodeValue(&page_value);
   writer.EncodeString();
 
@@ -525,7 +527,7 @@ const char* reencode_template_debug_inner(const uint8_t* ptr, uint32_t len,
 
   compile_options.template_debug_url_ = std::string(template_debug_url);
 
-  RepackBinaryWriter writer(reader.context(), compile_options);
+  RepackBinaryWriter writer(reader.context()->GetMTSContext(), compile_options);
   writer.EncodeHeaderInfo(compile_options);
 
   std::vector<uint8_t> new_template;

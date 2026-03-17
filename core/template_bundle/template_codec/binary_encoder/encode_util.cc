@@ -257,8 +257,7 @@ lynx::tasm::EncodeResult CreateSuccessResult(const std::vector<uint8_t>& buffer,
   rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
   rapidjson::Value template_debug_data(rapidjson::kObjectType);
   if (writer) {
-    auto* context = writer->context();
-    if (!context->IsLepusNGContext()) {
+    if (!writer->IsLepusNGContext()) {
       auto info = writer->GetDebugInfo();
       GetDebugInfo(info.lepus_funcs_, template_debug_data, allocator);
     } else {

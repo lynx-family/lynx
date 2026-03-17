@@ -14,7 +14,6 @@
 #include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/lepus_date.h"
 #include "core/runtime/lepus/vm_context.h"
 #include "core/runtime/lepusng/quick_context.h"
@@ -30,9 +29,9 @@ namespace lynx {
 namespace lepus {
 
 ContextBinaryWriter::ContextBinaryWriter(
-    Context* context, const tasm::CompileOptions& compile_options,
+    MTSContext* context, const tasm::CompileOptions& compile_options,
     const lepus::Value& trial_options, bool enableDebugInfo)
-    : context_(context),
+    : mts_context_(context),
       compile_options_(compile_options),
       trial_options_(trial_options),
       need_lepus_debug_info_(enableDebugInfo) {
@@ -42,9 +41,25 @@ ContextBinaryWriter::ContextBinaryWriter(
 
 ContextBinaryWriter::~ContextBinaryWriter() = default;
 
+bool ContextBinaryWriter::IsVMContext() const {
+  return mts_context_->IsVMContext();
+}
+
+bool ContextBinaryWriter::IsLepusNGContext() const {
+  return mts_context_->IsLepusNGContext();
+}
+
+VMContext* ContextBinaryWriter::vm_context() const {
+  return static_cast<VMContext*>(mts_context_);
+}
+
+QuickContext* ContextBinaryWriter::quick_context() const {
+  return static_cast<QuickContext*>(mts_context_);
+}
+
 void ContextBinaryWriter::encode() {
-  if (context_->IsLepusNGContext()) {
-    auto* qctx = Context::ToQuickContext(context_);
+  if (IsLepusNGContext()) {
+    auto* qctx = quick_context();
 
     LEPUSContext* ctx = qctx->context();
     size_t out_buf_len;
@@ -63,13 +78,13 @@ void ContextBinaryWriter::encode() {
   // for VmContext
   SerializeGlobal();
 
-  SerializeFunction(lepus::Context::ToVMContext(context_)->GetRootFunction());
+  SerializeFunction(vm_context()->GetRootFunction());
 
   SerializeTopVariables();
 }
 
 void ContextBinaryWriter::SerializeGlobal() {
-  Global* global = Context::ToVMContext(context_)->global();
+  Global* global = vm_context()->global();
   if (global == nullptr) return;
 
   size_t size = 0;
@@ -182,7 +197,7 @@ void ContextBinaryWriter::EncodeExpr() {}
 
 void ContextBinaryWriter::SerializeTopVariables() {
   // encode top_level_variables_
-  lepus::VMContext* ctx = lepus::Context::ToVMContext(context_);
+  lepus::VMContext* ctx = vm_context();
   size_t size = ctx->top_level_variables_.size();
   WriteCompactU32(size);
   base::sorted_for_each(ctx->top_level_variables_.begin(),

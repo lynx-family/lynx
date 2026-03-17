@@ -633,11 +633,10 @@ bool TemplateBinaryWriter::EncodeCSSKeyframesMap(
 LepusDebugInfo TemplateBinaryWriter::GetDebugInfo() const {
   LepusDebugInfo info;
 
-  if (context_->IsLepusNGContext()) {
-    info.debug_info_.source_code =
-        lepus::Context::ToQuickContext(context_)->GetDebugSourceCode();
+  if (IsLepusNGContext()) {
+    info.debug_info_.source_code = quick_context()->GetDebugSourceCode();
     info.debug_info_.top_level_function =
-        lepus::Context::ToQuickContext(context_)->GetTopLevelFunction();
+        quick_context()->GetTopLevelFunction();
   } else {
     info.lepus_funcs_ = GetContextFunc();
   }
@@ -690,7 +689,7 @@ void TemplateBinaryWriter::EncodeCustomSection() {
               encoding_iter->second.StdString() == "JsBytecode") {
             encoding_type = CustomSectionEncodingType::JS_BYTECODE;
             // currently only support lepusng
-            if (!context_->IsLepusNGContext()) {
+            if (!IsLepusNGContext()) {
               throw lepus::CompileException(
                   "CustomSections's encoding:JS_BYTECODE only support "
                   "LepusNG!");
@@ -707,16 +706,15 @@ void TemplateBinaryWriter::EncodeCustomSection() {
             break;
           case CustomSectionEncodingType::JS_BYTECODE: {
             auto error = lepus::BytecodeGenerator::GenerateBytecode(
-                context_->GetMTSContext(), content_iter->second.StdString(),
+                mts_context(), content_iter->second.StdString(),
                 compile_options_.target_sdk_version_);
             if (!error.empty()) {
               throw lepus::CompileException(error.c_str());
             }
-            if (context_->IsLepusNGContext()) {
+            if (IsLepusNGContext()) {
               auto debug_info = GetDebugInfo();
-              lepus_debug_info_.AddDebugInfo(
-                  it.name.GetString(), debug_info,
-                  lepus::Context::ToQuickContext(context_));
+              lepus_debug_info_.AddDebugInfo(it.name.GetString(), debug_info,
+                                             quick_context());
             }
             ContextBinaryWriter::encode();
             break;
@@ -848,15 +846,15 @@ void TemplateBinaryWriter::EncodeLepusSection() {
         stream_.get(), binary_info_, offset_map_, section_size_info_);
 
     auto error = lepus::BytecodeGenerator::GenerateBytecode(
-        context_->GetMTSContext(), lepus_code_,
-        compile_options_.target_sdk_version_, lepus_code_filename_);
+        mts_context(), lepus_code_, compile_options_.target_sdk_version_,
+        lepus_code_filename_);
 
-    if (context_->IsLepusNGContext()) {
+    if (IsLepusNGContext()) {
       auto debug_info = GetDebugInfo();
       // "lepusNG_debug_info" is hardcoded in various places in lynx sdk, tasm &
       // oliver. Use this name for now.
       lepus_debug_info_.AddDebugInfo("lepusNG_debug_info", debug_info,
-                                     lepus::Context::ToQuickContext(context_));
+                                     quick_context());
     }
 
     // if error occurred in Compile, terminate the encode process.
@@ -885,18 +883,16 @@ void TemplateBinaryWriter::EncodeLepusChunkSection() {
         auto& chunk = it.second;
 
         auto error = lepus::BytecodeGenerator::GenerateBytecode(
-            context_->GetMTSContext(), chunk,
-            compile_options_.target_sdk_version_, path);
+            mts_context(), chunk, compile_options_.target_sdk_version_, path);
 
         // if error occurred in Compile, terminate the encode process.
         if (!error.empty()) {
           throw lepus::CompileException(error.c_str());
         }
 
-        if (context_->IsLepusNGContext()) {
+        if (IsLepusNGContext()) {
           auto debug_info = GetDebugInfo();
-          lepus_debug_info_.AddDebugInfo(
-              path, debug_info, lepus::Context::ToQuickContext(context_));
+          lepus_debug_info_.AddDebugInfo(path, debug_info, quick_context());
         }
 
         ContextBinaryWriter::encode();

@@ -214,7 +214,6 @@ class Context : private MTSContextHolder {
                      const std::string& context_name);
   void DestroyInspector();
 
-  base::StringTable* string_table() { return &string_table_; }
   void set_name(const std::string& name) { name_ = name; }
 
   // check context type
@@ -310,7 +309,6 @@ class Context : private MTSContextHolder {
 
   ContextType type_;
   std::string name_;
-  base::StringTable string_table_;
 
   std::string sdk_version_{"null"};
 

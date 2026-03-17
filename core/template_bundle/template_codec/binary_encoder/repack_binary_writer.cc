@@ -7,7 +7,7 @@
 #include <list>
 #include <string>
 
-#include "core/runtime/lepus/context.h"
+#include "core/runtime/lepus/mts_context.h"
 
 namespace lynx {
 namespace tasm {
@@ -15,12 +15,12 @@ namespace tasm {
 void RepackBinaryWriter::EncodeString() {
   // Just change the string count and append the encoded string of mixin data to
   // the end of original string section.
+  auto* string_table = mts_context()->string_table();
   stream_.reset(new lepus::ByteArrayOutputStream());
-  WriteCompactU32(context_->string_table()->string_list.size());
+  WriteCompactU32(string_table->string_list.size());
   string_count_vec_ = stream_->byte_array();
 
   stream_.reset(new lepus::ByteArrayOutputStream());
-  base::StringTable* string_table = context_->string_table();
   size_t start_pos =
       string_table->string_list.size() - string_table->string_map_.size();
   for (size_t i = start_pos; i < string_table->string_list.size(); i++) {

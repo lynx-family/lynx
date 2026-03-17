@@ -280,13 +280,24 @@ void RegisterBuiltinTest(lepus::VMContext* context) {
   // lepus::RegisterCFunction(context, kCFuncSetData, &ProcessComponentData);
 }
 
-class TestLepus : public lynx::lepus::ContextBinaryWriter {
+class TestLepusContextHolder {
+ protected:
+  explicit TestLepusContextHolder(lynx::lepus::ContextType type)
+      : owned_context_(new lynx::lepus::Context(type, false, 0,
+                                                lynx::tasm::PageOptions())) {}
+
+  lynx::lepus::Context* context() const { return owned_context_.get(); }
+
+ private:
+  std::unique_ptr<lynx::lepus::Context> owned_context_;
+};
+
+class TestLepus : private TestLepusContextHolder,
+                  public lynx::lepus::ContextBinaryWriter {
  public:
   TestLepus()
-      : lynx::lepus::ContextBinaryWriter(
-            new lynx::lepus::Context(lynx::lepus::ContextType::VMContextType,
-                                     false, 0, lynx::tasm::PageOptions())) {}
-  ~TestLepus() { delete context_; }
+      : TestLepusContextHolder(lynx::lepus::ContextType::VMContextType),
+        lynx::lepus::ContextBinaryWriter(context()->GetMTSContext()) {}
 
   static const char* input;
   void Run(const char* source) {
@@ -294,11 +305,11 @@ class TestLepus : public lynx::lepus::ContextBinaryWriter {
     if (lepus_resource == "") {
       lepus_resource = lepus::readFile(TestLepus::input);
     }
-    context_->Initialize();
-    RegisterBuiltinTest(lynx::lepus::Context::ToVMContext(context_));
-    lynx::lepus::Context::ToVMContext(context_)->SetClosureFix(true);
+    context()->Initialize();
+    RegisterBuiltinTest(lynx::lepus::Context::ToVMContext(context()));
+    lynx::lepus::Context::ToVMContext(context())->SetClosureFix(true);
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
-        context_->GetMTSContext(), lepus_resource, "2.6");
+        context()->GetMTSContext(), lepus_resource, "2.6");
 
     if (!error.empty()) {
       LOGE("error: compile  failed:" << error << "\n");
@@ -313,7 +324,7 @@ class TestLepus : public lynx::lepus::ContextBinaryWriter {
       long long start = std::chrono::duration_cast<std::chrono::microseconds>(
                             std::chrono::system_clock::now().time_since_epoch())
                             .count();
-      context_->Execute();
+      context()->Execute();
       long long end = std::chrono::duration_cast<std::chrono::microseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
@@ -464,24 +475,24 @@ void RegisterQuickBuiltins(lepus::QuickContext* ctx) {
   ctx->RegisterGlobalFunction("TestReportFatal", TestArgcNG);
 }
 
-class TestLepusNG : public lynx::lepus::ContextBinaryWriter {
+class TestLepusNG : private TestLepusContextHolder,
+                    public lynx::lepus::ContextBinaryWriter {
  public:
   TestLepusNG()
-      : lynx::lepus::ContextBinaryWriter(new lynx::lepus::Context(
-            lynx::lepus::ContextType::LepusNGContextType, false, 0,
-            lynx::tasm::PageOptions())) {}
+      : TestLepusContextHolder(lynx::lepus::ContextType::LepusNGContextType),
+        lynx::lepus::ContextBinaryWriter(context()->GetMTSContext()) {}
   void Run(const char* input, const char* source) {
     std::string lepus_resource = source;
     if (strcmp(source, "") == 0) {
       lepus_resource = lepus::readFile(input);
     }
 
-    lepus::QuickContext* ctx = lynx::lepus::Context::ToQuickContext(context_);
+    lepus::QuickContext* ctx = lynx::lepus::Context::ToQuickContext(context());
     RegisterQuickBuiltins(ctx);
     ctx->Initialize();
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
-        context_->GetMTSContext(), lepus_resource, "");
-    context_->Execute();
+        context()->GetMTSContext(), lepus_resource, "");
+    context()->Execute();
   }
 };
 

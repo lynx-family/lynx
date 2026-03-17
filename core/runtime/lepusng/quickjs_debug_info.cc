@@ -103,7 +103,8 @@ rapidjson::Value QuickjsDebugInfoBuilder::BuildFunctionInfo(
   const char* debug_filename = GetFunctionDebugFileName(ctx, bytecode);
   if (debug_filename) {
     function_info.AddMember(
-        "file_name", rapidjson::Value(debug_filename, strlen(debug_filename)),
+        "file_name",
+        rapidjson::Value(debug_filename, strlen(debug_filename), allocator),
         allocator);
     LEPUS_FreeCString(ctx, debug_filename);
   }

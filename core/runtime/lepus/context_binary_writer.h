@@ -24,11 +24,13 @@ class CArray;
 class CDate;
 class Value;
 class Function;
-class Context;
+class MTSContext;
+class VMContext;
+class QuickContext;
 
 class ContextBinaryWriter : public BinaryWriter {
  public:
-  ContextBinaryWriter(Context* context,
+  ContextBinaryWriter(MTSContext* context,
                       const tasm::CompileOptions& compile_options = {},
                       const lepus::Value& trial_options = lepus::Value{},
                       bool enableDebugInfo = false);
@@ -55,11 +57,16 @@ class ContextBinaryWriter : public BinaryWriter {
   void EncodeCSSValue(const tasm::CSSValue& css_value, bool enable_css_parser,
                       bool enable_css_variable);
 
-  inline const Context* context() const { return context_; }
+  inline MTSContext* mts_context() const { return mts_context_; }
+  bool IsVMContext() const;
+  bool IsLepusNGContext() const;
   bool NeedLepusDebugInfo() { return need_lepus_debug_info_; }
 
  protected:
-  Context* context_;
+  VMContext* vm_context() const;
+  QuickContext* quick_context() const;
+
+  MTSContext* mts_context_;
   const tasm::CompileOptions compile_options_;
   const lepus_value trial_options_;
   bool need_lepus_debug_info_;

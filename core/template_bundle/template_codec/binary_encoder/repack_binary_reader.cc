@@ -141,7 +141,7 @@ bool RepackBinaryReader::DecodeString() {
   stream_->Seek(type_offset_map_[BinaryOffsetType::TYPE_STRING].start);
   DECODE_COMPACT_U32(count);
   string_offset_ = stream_->offset();
-  base::StringTable *string_table = context_->string_table();
+  base::StringTable *string_table = context_->GetMTSContext()->string_table();
   string_table->string_list.resize(count);
   return true;
 }

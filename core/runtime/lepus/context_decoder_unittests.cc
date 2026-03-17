@@ -155,18 +155,20 @@ class ContextBinaryWriterTest : public lepus::ContextBinaryWriter {
  public:
   explicit ContextBinaryWriterTest(lepus::Context* ctx)
       : lepus::ContextBinaryWriter(
-            ctx, CompileOptions{.target_sdk_version_ = target_sdk_version}) {}
+            ctx->GetMTSContext(),
+            CompileOptions{.target_sdk_version_ = target_sdk_version}) {}
 
   void encode() {
     lepus::ContextBinaryWriter::encode();
-    if (context_->IsVMContext()) {
+    if (IsVMContext()) {
+      auto* string_table = mts_context()->string_table();
       size_t str_sec_offset = Offset();
-      WriteByte(context_->string_table()->string_list.size() ? true : false);
+      WriteByte(string_table->string_list.size() ? true : false);
 
-      if (context_->string_table()->string_list.size()) {
-        WriteCompactU32(context_->string_table()->string_list.size());
+      if (string_table->string_list.size()) {
+        WriteCompactU32(string_table->string_list.size());
 
-        for (const auto& i : context_->string_table()->string_list) {
+        for (const auto& i : string_table->string_list) {
           auto str = i.str();
           size_t length = str.length();
           WriteCompactU32(length);
