@@ -123,7 +123,7 @@ jobs:
   android-sdk-release:
     runs-on: ubuntu-22.04
     needs: get-version
-    timeout-minutes: 60
+    timeout-minutes: 240
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -163,7 +163,7 @@ jobs:
           popd
         id: build_artifact
       - name: Publish artifact to maven
-        uses: lynx-infra/maven-publish-action@c48e3067642c7ceccf807cd52e6644a257cd8ded
+        uses: lynx-infra/maven-publish-action@53b4da2f23f9cfc4e905b135eda2724fcf5a0f0e
         with:
           portal_api_token: ${{ secrets.PORTAL_API_TOKEN }}
           artifact_path_list: ${{ steps.build_artifact.outputs.artifact_list }}
@@ -218,7 +218,7 @@ jobs:
     name: Publish Harmony SDK (${{ matrix.label }})
     runs-on: lynx-custom-container
     container:
-      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:bf493c3710de3c44bfa84caf402c0727b9310c42497f6e52580ad441ea640ef1
+      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:25913874dad0557526b44f9c9ab30b9873080009db85bb569d718d2bb5f0e074
       credentials:
         username: lynx-family
         password: ${{ secrets.GITHUB_TOKEN }}
