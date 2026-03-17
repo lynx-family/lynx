@@ -4,6 +4,7 @@
 
 #include "core/renderer/dom/fragment/display_list_builder.h"
 
+#include <cstdint>
 #include <cstring>
 #include <utility>
 
