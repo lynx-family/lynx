@@ -193,22 +193,6 @@
   lynx::tasm::LynxEnv::GetInstance().SetLocalEnv(key.UTF8String, value.UTF8String);
 }
 
-- (void)setDevtoolEnv:(BOOL)value forKey:(NSString *)key {
-  if (![self lynxDebugEnabled]) {
-    _LogI(@"setDevtoolEnv, lynxDebugEnabled is NO");
-    return;
-  }
-  [LynxDevToolEnvUtils setDevtoolEnv:value forKey:key];
-}
-
-- (BOOL)getDevtoolEnv:(NSString *)key withDefaultValue:(BOOL)value {
-  if (![self lynxDebugEnabled]) {
-    _LogI(@"getDevtoolEnv, lynxDebugEnabled is NO, defaultValue is %@", value ? @"YES" : @"NO");
-    return value;
-  }
-  return [LynxDevToolEnvUtils getDevtoolEnv:key withDefaultValue:value];
-}
-
 - (void)setDevtoolEnv:(NSSet *)newGroupValues forGroup:(NSString *)groupKey {
   if (![self lynxDebugEnabled]) {
     _LogI(@"setDevtoolEnv group %@, lynxDebugEnabled is NO", groupKey);

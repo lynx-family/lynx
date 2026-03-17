@@ -341,6 +341,7 @@ subspec_target("zlib") {
 subspec_target("UnitTests") {
   test_subspec = true
   sources = [
+    "../../common/lynx_devtool/LynxDebugBridgeUnitTest.mm",
     "ConsoleDelegateManagerUnitTest.mm",
     "Helper/LepusDebugInfoHelperUnitTest.mm",
     "Helper/LynxUITreeHelperUnitTest.m",

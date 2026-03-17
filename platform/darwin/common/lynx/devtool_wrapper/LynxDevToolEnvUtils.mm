@@ -10,14 +10,6 @@
 
 @implementation LynxDevToolEnvUtils
 
-+ (void)setDevtoolEnv:(BOOL)value forKey:(NSString *)key {
-  [LynxService(LynxServiceDevToolProtocol) devtoolEnvSetValue:value forKey:key];
-}
-
-+ (BOOL)getDevtoolEnv:(NSString *)key withDefaultValue:(BOOL)value {
-  return [LynxService(LynxServiceDevToolProtocol) devtoolEnvGetValue:key withDefaultValue:value];
-}
-
 + (void)setDevtoolEnv:(NSSet *)newGroupValues forGroup:(NSString *)groupKey {
   [LynxService(LynxServiceDevToolProtocol) devtoolEnvSet:newGroupValues forGroup:groupKey];
 }

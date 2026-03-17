@@ -28,6 +28,10 @@ typedef void (^LynxOpenCardCallback)(NSString *);
                   withData:(NSDictionary<NSString *, NSObject *> *_Nonnull)data
                 instanceId:(int32_t)instanceId;
 
+// For testing
+- (void)handleSetGlobalSwitch:(NSString *)key value:(BOOL)value;
+- (BOOL)handleGetGlobalSwitch:(NSString *)key;
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -1347,8 +1347,6 @@ public class LynxDevtool : NSObject {
 }
 
 public class LynxDevToolEnvUtils : NSObject {
-  public void LynxDevToolEnvUtils::setDevtoolEnv:forKey:(BOOL value,[forKey] NSString *key);
-  public BOOL LynxDevToolEnvUtils::getDevtoolEnv:withDefaultValue:(NSString *key,[withDefaultValue] BOOL value);
   public void LynxDevToolEnvUtils::setDevtoolEnv:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
   public NSSet * LynxDevToolEnvUtils::getDevtoolEnvWithGroupName:(NSString *groupKey);
 }
@@ -1451,8 +1449,6 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::boolFromExternalEnv:defaultValue:(LynxEnvKey key,[defaultValue] BOOL defaultValue);
   public NSString * LynxEnv::stringFromExternalEnv:(LynxEnvKey key);
   public void LynxEnv::setLocalEnv:forKey:(NSString *value,[forKey] NSString *key);
-  public void LynxEnv::setDevtoolEnv:forKey:(BOOL value,[forKey] NSString *key);
-  public BOOL LynxEnv::getDevtoolEnv:withDefaultValue:(NSString *key,[withDefaultValue] BOOL value);
   public void LynxEnv::setDevtoolEnv:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
   public NSSet * LynxEnv::getDevtoolEnvWithGroupName:(NSString *groupKey);
   public void LynxEnv::setEnableRadonCompatible:((deprecated("Radon diff mode can't be close after lynx 2.3.")) __attribute__);

@@ -6,10 +6,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxDevToolEnvUtils : NSObject
 
-+ (void)setDevtoolEnv:(BOOL)value forKey:(NSString *)key;
-
-+ (BOOL)getDevtoolEnv:(NSString *)key withDefaultValue:(BOOL)value;
-
 + (void)setDevtoolEnv:(NSSet *)newGroupValues forGroup:(NSString *)groupKey;
 
 + (NSSet *)getDevtoolEnvWithGroupName:(NSString *)groupKey;
