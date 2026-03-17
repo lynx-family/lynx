@@ -88,7 +88,12 @@ void PubUIOwner::UpdateExtraData(
 void PubUIOwner::InvokeUIMethod(
     int32_t id, const std::string& method, const pub::Value& args,
     base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback) const {
-  ui_owner_->InvokeUIMethod(id, method, args, std::move(callback));
+  base::MoveOnlyClosure<void, int32_t, const lepus::Value&> cb =
+      [callback = std::move(callback)](int32_t code, const lepus::Value& data) {
+        callback(code, PubLepusValue(data));
+      };
+  auto lepus_params = pub::ValueUtils::ConvertValueToLepusValue(args);
+  ui_owner_->InvokeUIMethod(id, method, lepus_params, std::move(cb));
 }
 
 int PubUIOwner::IndexOf(int child_id) const {
