@@ -11,6 +11,35 @@
 #include "base/include/log/logging.h"
 #include "platform/embedder/public/capi/lynx_log_capi.h"
 
+namespace {
+static lynx_log_callback_t g_lynx_log_callback = nullptr;
+static lynx_log_level_e g_min_log_level = LYNX_LOG_VERBOSE;
+
+void lynx_log_write(unsigned int level, const char* tag, const char* msg) {
+  if (!g_lynx_log_callback || level < g_min_log_level) {
+    return;
+  }
+  g_lynx_log_callback(static_cast<lynx_log_level_e>(level), tag, msg);
+}
+}  // namespace
+
+LYNX_EXTERN_C void lynx_log_init(lynx_log_callback_t callback) {
+  g_lynx_log_callback = callback;
+  auto get_log_callback = []() -> lynx::base::alog_write_func_ptr {
+    return lynx_log_write;
+  };
+  lynx::base::logging::InitLynxLogging(get_log_callback, nullptr, true);
+}
+
+LYNX_EXTERN_C void lynx_log_set_minimum_level(lynx_log_level_e min_log_level) {
+  g_min_log_level = min_log_level;
+  lynx::base::logging::SetMinLogLevel(static_cast<int>(min_log_level));
+}
+
+LYNX_EXTERN_C lynx_log_level_e lynx_log_get_minimum_level() {
+  return static_cast<lynx_log_level_e>(lynx::base::logging::GetMinLogLevel());
+}
+
 LYNX_EXTERN_C void lynx_log_write_detailed(lynx_log_level_e level,
                                            const char* tag, const char* file,
                                            int line, const char* format, ...) {

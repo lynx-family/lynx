@@ -19,6 +19,27 @@ typedef enum lynx_log_level_e {
   LYNX_LOG_FATAL,
 } lynx_log_level_e;
 
+// Callback function type for receiving Lynx log messages.
+// @param level The severity level of the log message.
+// @param tag A string identifying the source or context of the log message.
+// @param msg The actual log message content.
+typedef void (*lynx_log_callback_t)(lynx_log_level_e level, const char* tag,
+                                    const char* msg);
+
+// Initializes the Lynx logging system with a custom callback.
+// @param callback The function pointer to be invoked for logging.
+LYNX_CAPI_EXPORT void lynx_log_init(lynx_log_callback_t callback);
+
+// Sets the minimum severity level for logs to be output.
+// Logs with a level lower than this will be ignored.
+// @param min_log_level The minimum log level to set.
+LYNX_CAPI_EXPORT void lynx_log_set_minimum_level(
+    lynx_log_level_e min_log_level);
+
+// Retrieves the current minimum log level.
+// @return The current minimum log level.
+LYNX_CAPI_EXPORT lynx_log_level_e lynx_log_get_minimum_level();
+
 // Writes a log message to the Lynx logging system.
 // This function supports printf-style formatting.
 // @param level The log level for the message.
