@@ -204,8 +204,10 @@ void TextRender::Measure(const MeasureConstraint& constraint,
     measure_node_->SetNeedSecondLayout(true);
   }
 
-  HandleAutoSize(constraint, context);
-  HandleInlineTruncation(constraint, context);
+  if (cache_paragraph_) {
+    HandleAutoSize(constraint, context);
+    HandleInlineTruncation(constraint, context);
+  }
 }
 
 std::vector<LineInfo> TextRender::GetLineInfo() {
