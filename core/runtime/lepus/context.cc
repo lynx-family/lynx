@@ -78,13 +78,8 @@ class MTSContextDelegateImpl : public MTSContextDelegate {
   Context* const runtime_;
 };
 
-// Context::Context(ContextType type) : type_(type) {
-//   if (type == ContextType::VMContextType) {
-//     mts_context_ = std::make_unique<VMContext>();
-//   } else if (type == ContextType::LepusNGContextType) {
-//     mts_context_ = std::make_unique<QuickContext>();
-//   }
-// }
+MTSContextHolder::MTSContextHolder(std::unique_ptr<MTSContext> mts_context)
+    : mts_context_(std::move(mts_context)) {}
 
 Context::~Context() { DestroyInspector(); }
 
@@ -522,11 +517,10 @@ std::unique_ptr<ContextBundle> ContextBundle::Create(ContextType context_type) {
 
 Context::Context(ContextType type, bool disable_tracing_gc, int runtime_mode,
                  const tasm::PageOptions& page_options)
-    : type_(type) {
-  auto delegate = std::make_shared<MTSContextDelegateImpl>(this);
-  mts_context_ = MTSContextFactory::Create(
-      type, delegate, this, disable_tracing_gc, runtime_mode, page_options);
-}
+    : MTSContextHolder(MTSContextFactory::Create(
+          type, std::make_shared<MTSContextDelegateImpl>(this), this,
+          disable_tracing_gc, runtime_mode, page_options)),
+      type_(type) {}
 
 }  // namespace lepus
 }  // namespace lynx

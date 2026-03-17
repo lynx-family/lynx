@@ -41,7 +41,15 @@ class ContextBundle;
 
 #define LEPUS_DEFAULT_CONTEXT_NAME "__Card__"
 
-class Context {
+class MTSContextHolder {
+ protected:
+  explicit MTSContextHolder(std::unique_ptr<MTSContext> mts_context);
+  ~MTSContextHolder() = default;
+
+  std::unique_ptr<MTSContext> mts_context_;
+};
+
+class Context : private MTSContextHolder {
  public:
   class Delegate {
    public:
@@ -313,8 +321,6 @@ class Context {
   base::InlineStack<ScriptingScope*, 16> scripting_scope_stack_;
 
   runtime::JSErrorReporter js_error_reporter_;
-
-  std::unique_ptr<MTSContext> mts_context_;
 };
 
 }  // namespace lepus
