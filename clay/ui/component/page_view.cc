@@ -916,10 +916,12 @@ void PageView::SetupIsolatedGestures() {
 bool PageView::HitTest(const PointerEvent& event, HitTestResult& result) {
   PointerEvent converted_event = event;
   bool is_pass_through_from_overlay = false;
-  bool overlay_result = false;
 #if !defined(ENABLE_CLAY_LITE)
-  overlay_result = overlay_manager_->HitTest(
+  auto overlay_result = overlay_manager_->HitTest(
       event, result, is_pass_through_from_overlay, converted_event);
+  if (overlay_result) {
+    return true;
+  }
 #endif
   bool base_view_result = false;
   if (is_pass_through_from_overlay) {
@@ -927,7 +929,7 @@ bool PageView::HitTest(const PointerEvent& event, HitTestResult& result) {
   } else {
     base_view_result = BaseView::HitTest(event, result);
   }
-  return overlay_result || base_view_result;
+  return base_view_result;
 }
 
 BaseView* PageView::GetTopViewToAcceptEvent(const FloatPoint& position,
