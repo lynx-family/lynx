@@ -20,7 +20,7 @@ namespace tasm {
 class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
  public:
   explicit PaintingContextHarmonyRef(harmony::UIOwner* ui_owner)
-      : ui_owner_(ui_owner) {}
+      : ui_owner_(std::unique_ptr<harmony::UIOwner>(ui_owner)) {}
   ~PaintingContextHarmonyRef() override = default;
 
   void InsertPaintingNode(int parent, int child, int index) override;
@@ -50,16 +50,35 @@ class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
 
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
 
+  void CreateUI(int id, const std::string& tag, PropBundleHarmony* props,
+                uint32_t node_index);
+  void UpdateUI(int id, PropBundleHarmony* props);
+  void ConsumeGesture(int64_t id, int32_t gesture_id, const lepus::Value& map);
+  void UpdateLayout(int tag, float x, float y, float width, float height,
+                    const float* paddings, const float* margins,
+                    const float* borders, const float* sticky, float max_height,
+                    uint32_t node_index);
+  void OnLayoutFinish(int32_t list_comp_id, int32_t operation_id);
+  void StopExposure(const lepus::Value& options);
+  void ResumeExposure();
+  void UpdateExtraData(
+      int32_t id,
+      const fml::RefPtr<fml::RefCountedThreadSafeStorage>& platform_bundle);
+  void InvokeUIMethod(int32_t id, const std::string& method,
+                      tasm::PropBundleHarmony* args, int32_t callback_id);
+  void InvokeUIMethod(
+      int32_t id, const std::string& method, const lepus::Value& params,
+      base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+
+  harmony::UIOwner* GetUIOwner() { return ui_owner_.get(); }
+
  private:
-  harmony::UIOwner* ui_owner_;
+  std::unique_ptr<harmony::UIOwner> ui_owner_;
 };
 
 class PaintingContextHarmony : public PaintingCtxPlatformImpl {
  public:
-  explicit PaintingContextHarmony(harmony::UIOwner* ui_owner)
-      : ui_owner_{ui_owner} {
-    platform_ref_ = std::make_shared<PaintingContextHarmonyRef>(ui_owner);
-  }
+  explicit PaintingContextHarmony(harmony::UIOwner* ui_owner);
   ~PaintingContextHarmony() override;
   void CreatePaintingNode(int id, const std::string& tag,
                           const fml::RefPtr<PropBundle>& painting_data,
@@ -117,8 +136,12 @@ class PaintingContextHarmony : public PaintingCtxPlatformImpl {
 
   bool EnableUIOperationQueue() override { return true; }
 
+  harmony::UIOwner* GetUIOwner() {
+    return std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref_)
+        ->GetUIOwner();
+  }
+
  private:
-  std::unique_ptr<harmony::UIOwner> ui_owner_;
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
   void Enqueue(shell::UIOperation&& op);
 };

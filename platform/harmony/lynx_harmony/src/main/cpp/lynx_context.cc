@@ -619,6 +619,13 @@ void LynxContext::RunOnUIThread(base::closure task) const {
   fml::TaskRunner::RunNowOrPostTask(ui_task_runner_, std::move(task));
 }
 
+void LynxContext::RunOnTASMThread(base::closure task) const {
+  if (!engine_proxy_) {
+    return;
+  }
+  engine_proxy_->DispatchTaskToLynxEngine(std::move(task));
+}
+
 void LynxContext::RunOnLayoutThread(base::closure task) const {
   if (!layout_task_runner_) {
     return;

@@ -88,8 +88,12 @@ class LynxContext {
 
   const std::shared_ptr<base::VSyncMonitor> VSyncMonitor();
 
-  const std::shared_ptr<shell::ListEngineProxy> GetListEngineProxy() {
+  const std::shared_ptr<shell::ListEngineProxy>& GetListEngineProxy() {
     return list_engine_proxy_;
+  }
+
+  const std::shared_ptr<shell::LynxEngineProxy>& GetEngineProxy() {
+    return engine_proxy_;
   }
 
   void ResetNodeOwner() {
@@ -263,6 +267,8 @@ class LynxContext {
   // The task will run immediately if on main thread, or it will post to ui task
   // runner.
   LYNX_EXPORT void RunOnUIThread(base::closure task) const;
+
+  LYNX_EXPORT void RunOnTASMThread(base::closure task) const;
 
   // The task will run immediately if on layout thread, or it will post to
   // layout task runner.

@@ -76,16 +76,18 @@ class UIOwner {
   UIBase* FindUIBySign(int sign) const;
   UIBase* FindUIByIdSelector(const std::string& id_selector) const;
   UIBase* FindLynxUIByComponentId(const std::string& component_id);
+  // SelectQuery
   void InvokeUIMethod(int32_t id, const std::string& method,
                       PropBundleHarmony* args, int32_t callback_id);
+  // getNodeRef
   void InvokeUIMethod(
       const std::string& component_id, const std::string& node,
       const std::string& method, const lepus::Value& args,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
-
+  // MTS
   void InvokeUIMethod(
-      int32_t id, const std::string& method, const pub::Value& args,
-      base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback);
+      int32_t id, const std::string& method, const lepus::Value& args,
+      base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
 
   static constexpr int32_t kLynxRootSign = -1;
   static constexpr const char* kDefaultComponentId = "-1";
@@ -154,6 +156,8 @@ class UIOwner {
 
   void SendGlobalEvent(lepus::Value params) const;
   void PostTaskOnUIThread(base::closure task) const;
+  void RunTaskOnUIThread(base::closure task) const;
+  void RunTaskOnTASMThread(base::closure task) const;
   const fml::RefPtr<fml::TaskRunner>& GetUITaskRunner() const;
   const std::shared_ptr<base::VSyncMonitor>& VSyncMonitor();
 

@@ -662,25 +662,30 @@ void UIOwner::OnEnterBackground() {
 
 void UIOwner::InvokeUIMethod(int32_t id, const std::string& method,
                              PropBundleHarmony* args, int32_t callback_id) {
-  if (const auto it = ui_holder_.find(id); it != ui_holder_.end()) {
-    auto map = lepus::Dictionary::Create();
-    for (const auto& p : args->GetProps()) {
-      map->SetValue(p.first, p.second);
-    }
-    base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback =
-        [context = std::weak_ptr(context_), callback_id](
-            int32_t code, const lepus::Value& data) {
-          auto ctx = context.lock();
-          if (!ctx) {
-            return;
-          }
-          auto ret = lepus::Dictionary::Create();
-          ret->SetValue("code", code);
-          ret->SetValue("data", data);
-          ctx->CallJSApiCallbackWithValue(callback_id, lepus::Value(ret));
-        };
-    it->second->InvokeMethod(method, lepus::Value(map), std::move(callback));
+  base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback =
+      [context = std::weak_ptr(context_), callback_id](
+          int32_t code, const lepus::Value& data) {
+        auto ctx = context.lock();
+        if (!ctx) {
+          return;
+        }
+        auto ret = lepus::Dictionary::Create();
+        ret->SetValue("code", code);
+        ret->SetValue("data", data);
+        ctx->CallJSApiCallbackWithValue(callback_id, lepus::Value(ret));
+      };
+  const auto it = ui_holder_.find(id);
+  if (it == ui_holder_.end()) {
+    callback(LynxGetUIResult::NODE_NOT_FOUND,
+             lepus::Value("ui not found for id: " + std::to_string(id)));
+    return;
   }
+
+  auto map = lepus::Dictionary::Create();
+  for (const auto& p : args->GetProps()) {
+    map->SetValue(p.first, p.second);
+  }
+  it->second->InvokeMethod(method, lepus::Value(map), std::move(callback));
 }
 
 UIBase* UIOwner::FindLynxUIByComponentId(const std::string& component_id) {
@@ -722,21 +727,18 @@ void UIOwner::InvokeUIMethod(
 }
 
 void UIOwner::InvokeUIMethod(
-    int32_t id, const std::string& method, const pub::Value& args,
-    base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback) {
-  if (const auto it = ui_holder_.find(id); it != ui_holder_.end()) {
-    const auto& map = pub::ValueUtils::ConvertValueToLepusValue(args);
-    base::MoveOnlyClosure<void, int32_t, const lepus::Value&> cb =
-        [callback = std::move(callback)](int32_t code,
-                                         const lepus::Value& data) {
-          callback(code, PubLepusValue(data));
-        };
-
-    if (map.IsJSValue()) {
-      it->second->InvokeMethod(method, map.ToLepusValue(), std::move(cb));
-    } else {
-      it->second->InvokeMethod(method, map, std::move(cb));
-    }
+    int32_t id, const std::string& method, const lepus::Value& args,
+    base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) {
+  const auto it = ui_holder_.find(id);
+  if (it == ui_holder_.end()) {
+    callback(LynxGetUIResult::NODE_NOT_FOUND,
+             lepus::Value("ui not found for id: " + std::to_string(id)));
+    return;
+  }
+  if (args.IsJSValue()) {
+    it->second->InvokeMethod(method, args.ToLepusValue(), std::move(callback));
+  } else {
+    it->second->InvokeMethod(method, args, std::move(callback));
   }
 }
 
@@ -899,6 +901,14 @@ void UIOwner::InitGestureArenaManager(LynxContext* context) {
 
 void UIOwner::PostTaskOnUIThread(base::closure task) const {
   context_->PostTaskOnUIThread(std::move(task));
+}
+
+void UIOwner::RunTaskOnUIThread(base::closure task) const {
+  context_->RunOnUIThread(std::move(task));
+}
+
+void UIOwner::RunTaskOnTASMThread(base::closure task) const {
+  context_->RunOnTASMThread(std::move(task));
 }
 
 const fml::RefPtr<fml::TaskRunner>& UIOwner::GetUITaskRunner() const {
