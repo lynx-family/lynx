@@ -40,7 +40,7 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
   companion object Companion { 
     const val TAG: String = "LynxUISVG";
     private const val sSvgBase64Scheme: String = "data:image/svg+xml;base64";
-    const val EVENT_SVG: String = "load";
+    const val SVG_LOAD_EVENT: String = "load";
    }
 
   private var mSrc: String? = null
@@ -101,12 +101,12 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
                 resourceRequest,
                 object : LynxResourceCallback<ByteArray?> {
                   override fun onResponse(response: LynxResourceResponse<ByteArray?>) {
-                    if (response.getState() == LynxResourceResponse.ResponseState.SUCCESS) {
-                      val data = response.getData()
+                    if (response.state == LynxResourceResponse.ResponseState.SUCCESS) {
+                      val data = response.data
                       if (data == null) {
                         Log.e(TAG, "data is empty!")
                       } else {
-                        setServalSVGDrawable(String(data as ByteArray, StandardCharsets.UTF_8), true)
+                        setServalSVGDrawable(String(data, StandardCharsets.UTF_8), true)
                       }
                     } else {
                       Log.e(TAG, "requestSrc error! the src is " + mSrc + " error message is" + response.error)
@@ -228,13 +228,13 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
       }
 
       private fun onLoadSuccess() {
-        if (mEvents != null && mEvents.containsKey("load")) {
-          val event: LynxDetailEvent = LynxDetailEvent(getSign(), EVENT_SVG)
-          event.addDetail("height", getHeight().toFloat() )
-          event.addDetail("width", getWidth().toFloat() )
-          getLynxContext().getEventEmitter().sendCustomEvent(event)
-        }
-      }
+    if (mEvents != null && mEvents.containsKey(SVG_LOAD_EVENT)) {
+      val event: LynxDetailEvent = LynxDetailEvent(sign, SVG_LOAD_EVENT)
+      event.addDetail("height", height.toFloat())
+      event.addDetail("width", width.toFloat())
+      lynxContext.eventEmitter.sendCustomEvent(event)
+    }
+  }
 
       override fun destroy() {
         super.destroy()

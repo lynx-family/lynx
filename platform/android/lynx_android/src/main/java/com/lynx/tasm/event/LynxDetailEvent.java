@@ -8,9 +8,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @deprecated Use {@link LynxCustomEvent} instead.
+ * Detail event.
  */
-@Deprecated
 public class LynxDetailEvent extends LynxCustomEvent {
   public LynxDetailEvent(int tag, String type) {
     super(tag, type);
