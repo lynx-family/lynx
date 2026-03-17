@@ -2224,6 +2224,7 @@ public class com::lynx::tasm::base::GlobalRefQueue :  {
 public class com::lynx::tasm::utils::GradientUtils :  {
   public static PointF com.lynx.tasm.utils.GradientUtils.getRadius(int shape, int shapeSize, float cx, float cy, float sx, float sy);
   public static ReadableArray com.lynx.tasm.utils.GradientUtils.getGradientArray(String gradientDef, float screen_width, float layouts_unit_per_px, float physical_pixels_per_layout_unit, float root_node_font_size, float cur_node_font_size, float font_scale, float viewport_width, float viewport_height);
+  public static void com.lynx.tasm.utils.GradientUtils.calculateGradientLine(float angleDegrees, float width, float height, PointF start, PointF end);
 }
 
 public class com::lynx::tasm::behavior::herotransition::HeroAnimOwner :  {
