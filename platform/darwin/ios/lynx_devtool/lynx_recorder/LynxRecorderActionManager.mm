@@ -955,28 +955,6 @@ static const int kVirtual = 1 << 2;
                                               options:NSDataBase64DecodingIgnoreUnknownCharacters];
     }
 
-    LynxLoadMeta* loadMeta = [LynxLoadMeta new];
-    loadMeta.lynxViewConfig = [NSMutableDictionary new];
-    NSMutableDictionary* nativeConfig = [NSMutableDictionary new];
-    if ([[self replayConfig] disableOptPushStyleToBundle]) {
-      [nativeConfig setObject:@NO forKey:@"enableOptPushStyleToBundle"];
-    }
-    if ([[self replayConfig] enableTextGradientOpt]) {
-      [nativeConfig setObject:@YES forKey:@"enableTextGradientOpt"];
-    }
-    if ([[self replayConfig] enableUnifyFixedBehavior]) {
-      [nativeConfig setObject:@YES forKey:@"enableUnifyFixedBehavior"];
-    }
-    if ([[self replayConfig] enableBatchLayoutTaskWithSyncLayout]) {
-      [nativeConfig setObject:@YES forKey:@"enableBatchLayoutTaskWithSyncLayout"];
-    }
-    [loadMeta.lynxViewConfig setObject:[self convertNSDictToJsonString:nativeConfig]
-                                forKey:@"platform_config"];
-    loadMeta.templateBundle = [[LynxTemplateBundle alloc] initWithTemplate:[self source]
-                                                                    option:_templateBundleOption];
-    loadMeta.url = url;
-    loadMeta.initialData = initData;
-
     [_lynxView
         loadTemplateBundle:[[LynxTemplateBundle alloc] initWithTemplate:[self source]
                                                                  option:_templateBundleOption]
