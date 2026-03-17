@@ -215,6 +215,9 @@ Paragraph::PositionWithAffinity ParagraphTTText::GetGlyphPositionAtCoordinate(
     auto* text_line = region_->GetLine(k);
     float rect[4] = {0};
     text_line->GetBoundingRectForLine(rect);
+    if (k == region_->GetLineCount() - 1 && dy > rect[1] + rect[3]) {
+      dy = rect[1] + rect[3];
+    }
     if (rect[2] != 0 && rect[3] != 0 && dy <= rect[1] + rect[3]) {
       if ((k != 0 && dy < rect[1])) {
         break;
