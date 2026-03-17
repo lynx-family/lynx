@@ -248,8 +248,6 @@ class MTSContext {
   }
 
  protected:
-  // Inject this lynx as the global Lynx object to the Lepus runtime.
-  lepus::Value lynx_;
   std::string sdk_version_{"null"};
   bool is_debug_enabled_{false};
   std::shared_ptr<MTSContextDelegate> mts_context_delegate_;
