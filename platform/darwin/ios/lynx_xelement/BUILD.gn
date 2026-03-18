@@ -39,6 +39,7 @@ podspec_target("XElement_podspec") {
     default_subspecs = [
       "Input",
       "Overlay",
+      "ViewPager",
       "SVG",
       "Refresh",
       "Behavior",
@@ -51,6 +52,7 @@ podspec_target("XElement_podspec") {
     ":Overlay",
     ":Refresh",
     ":SVG",
+    ":ViewPager",
   ]
 }
 
@@ -103,6 +105,20 @@ subspec_target("Overlay") {
     "overlay/LynxOverlayContainer.h",
     "overlay/LynxOverlayGlobalManager.h",
     "overlay/LynxUIOverlay.h",
+  ]
+  dependency = lynx_dependency
+}
+
+subspec_target("ViewPager") {
+  sources = [
+    "viewpager/LynxUIViewPager.h",
+    "viewpager/LynxUIViewPager.m",
+    "viewpager/LynxUIViewPagerItem.h",
+    "viewpager/LynxUIViewPagerItem.m",
+  ]
+  public_header_files = [
+    "viewpager/LynxUIViewPager.h",
+    "viewpager/LynxUIViewPagerItem.h",
   ]
   dependency = lynx_dependency
 }
@@ -162,11 +178,14 @@ subspec_target("Behavior") {
     "behavior/LynxUISVGAutoRegistry.m",
     "behavior/LynxUITextAreaAutoRegistry.h",
     "behavior/LynxUITextAreaAutoRegistry.m",
+    "behavior/LynxUIViewPagerAutoRegistry.h",
+    "behavior/LynxUIViewPagerAutoRegistry.m",
   ]
   public_header_files = [
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.h",
     "behavior/LynxUIRefreshAutoRegistry.h",
+    "behavior/LynxUIViewPagerAutoRegistry.h",
     "behavior/LynxUISVGAutoRegistry.h",
     "behavior/LynxUITextAreaAutoRegistry.h",
   ]
@@ -175,6 +194,7 @@ subspec_target("Behavior") {
   dependency += [
     "XElement/Input",
     "XElement/Overlay",
+    "XElement/ViewPager",
     "XElement/SVG",
     "XElement/Refresh",
   ]
