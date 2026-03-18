@@ -16,6 +16,7 @@ namespace lynx {
 
 namespace piper {
 class Runtime;
+class Object;
 class Value;
 }  // namespace piper
 
@@ -62,8 +63,29 @@ class NativeModuleRecorder {
   ~NativeModuleRecorder() = default;
   NativeModuleRecorder(const NativeModuleRecorder&) = delete;
   NativeModuleRecorder& operator=(const NativeModuleRecorder&) = delete;
-  static rapidjson::Value ParsePiperValueToJsonValue(const piper::Value& res,
-                                                     piper::Runtime* rt);
+
+  struct VisitedGuard {
+    std::vector<const piper::Object*>* collection;
+    const piper::Object* current_val;
+
+    VisitedGuard(std::vector<const piper::Object*>* c,
+                 const piper::Object* current)
+        : collection(c), current_val(current) {
+      if (collection && current_val) {
+        collection->push_back(current_val);
+      }
+    }
+    ~VisitedGuard() {
+      if (collection && !collection->empty()) {
+        // Remove the last element (which should be current_val)
+        collection->pop_back();
+      }
+    }
+  };
+
+  static rapidjson::Value ParsePiperValueToJsonValue(
+      const piper::Value& res, piper::Runtime* rt,
+      std::vector<const piper::Object*>* visited_objs);
 };
 
 }  // namespace recorder
