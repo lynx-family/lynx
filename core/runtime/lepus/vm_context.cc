@@ -1725,6 +1725,8 @@ void VMContext::ApplyConfig(
 }
 
 bool VMContextBundle::IsLepusNG() const { return false; }
+bool VMContextBundle::IsRTS() const { return false; }
+bool VMContextBundle::IsRTSNative() const { return false; }
 
 lepus::Value VMContext::ReportFatalError(const std::string& error_message,
                                          bool exit, int32_t code) {

@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>

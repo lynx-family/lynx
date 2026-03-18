@@ -8,6 +8,7 @@ import("build.gni")
 
 lynx_core_source_set("lepus") {
   sources = lynx_lepus_common_sources_path + lynx_context_pool_sources_path
+  include_dirs = [ "//third_party/PrimTS/src" ]
   if (is_android) {
     if (!enable_just_lepusng) {
       sources += lynx_lepus_core_sources_path

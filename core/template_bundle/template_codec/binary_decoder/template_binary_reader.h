@@ -76,7 +76,15 @@ class TemplateBinaryReader : public LynxBinaryReader,
   // Decode result
   const CompileOptions& GetCompileOptions() { return compile_options_; }
   bool EnableCSSParser() { return enable_css_parser_; }
-  bool IsLepusngBinary() { return is_lepusng_binary_; }
+  bool IsLepusngBinary() {
+    return context_type_ == runtime::ContextType::LepusNGContextType;
+  }
+  bool IsRTSBinary() {
+    return context_type_ == runtime::ContextType::RTSContextType;
+  }
+  bool IsRTSNativeBinary() {
+    return context_type_ == runtime::ContextType::RTSNativeContextType;
+  }
 
   LynxTemplateBundle& template_bundle() override;
 

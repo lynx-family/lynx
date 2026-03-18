@@ -35,8 +35,10 @@ using lepus::CFunction;
 using lepus::Value;
 
 enum ContextType {
-  VMContextType,       // Run low level version lepus with VmContext
-  LepusNGContextType,  // Run lepusNG with qucikjs code
+  VMContextType,         // Run low level version lepus with VmContext
+  LepusNGContextType,    // Run lepusNG with qucikjs code
+  RTSContextType,        // Run RTS with VmContext
+  RTSNativeContextType,  // Run RTS with NativeContext
 };
 
 class MTSContextDelegate {
@@ -76,6 +78,10 @@ class ContextBundle {
   ContextBundle() = default;
   virtual ~ContextBundle() = default;
   virtual bool IsLepusNG() const = 0;
+  virtual bool IsRTS() const = 0;
+  virtual bool IsRTSNative() const = 0;
+  virtual void OnCustomSectionDecoded(const std::string& key,
+                                      const Value& value) {}
 
   static std::unique_ptr<ContextBundle> Create(ContextType context_type);
 };
@@ -105,6 +111,8 @@ class MTSContext {
 
   virtual void UpdateGCTiming(bool is_start){};
   virtual void TriggerVmGC(){};
+
+  virtual bool EnableSendEventToMainThread() const { return false; }
 
   virtual void RegisterGlobalFunction(const RenderBindingFunction* funcs,
                                       size_t size) = 0;

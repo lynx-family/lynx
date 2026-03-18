@@ -20,12 +20,12 @@ namespace lepus {
 
 class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
  public:
-  static std::shared_ptr<LynxContextPool> Create(bool is_lepus_ng,
-                                                 bool disable_tracing_gc);
+  static std::shared_ptr<LynxContextPool> Create(
+      runtime::ContextType context_type, bool disable_tracing_gc);
   // ContextPool must check its own life cycle asynchronously when
   // replenishing the cache, so it can only exist in the form of shared_ptr
   static std::shared_ptr<LynxContextPool> Create(
-      bool is_lepus_ng, bool disable_tracing_gc,
+      runtime::ContextType context_type, bool disable_tracing_gc,
       const std::shared_ptr<runtime::ContextBundle>& context_bundle,
       const tasm::CompileOptions& compile_options,
       tasm::PageConfig* page_configs);
@@ -49,14 +49,14 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
   // determine its size.
   // The local pool in TemplateBundle hold context_bundle_ and have no need to
   // check settings.
-  LynxContextPool(bool is_lepus_ng, bool disable_tracing_gc)
-      : is_lepus_ng_(is_lepus_ng), disable_tracing_gc_(disable_tracing_gc) {}
+  LynxContextPool(runtime::ContextType context_type, bool disable_tracing_gc)
+      : context_type_(context_type), disable_tracing_gc_(disable_tracing_gc) {}
 
-  LynxContextPool(bool is_lepus_ng, bool disable_tracing_gc,
+  LynxContextPool(runtime::ContextType context_type, bool disable_tracing_gc,
                   const std::shared_ptr<runtime::ContextBundle>& context_bundle,
                   const tasm::CompileOptions& compile_options,
                   tasm::PageConfig* page_configs)
-      : is_lepus_ng_(is_lepus_ng),
+      : context_type_(context_type),
         disable_tracing_gc_(disable_tracing_gc),
         enable_signal_api_(
             page_configs ? page_configs->GetEnableSignalAPIBoolValue() : false),
@@ -70,7 +70,8 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
 
   bool enable_auto_generate_{true};
 
-  const bool is_lepus_ng_{true};
+  const runtime::ContextType context_type_{
+      runtime::ContextType::LepusNGContextType};
   const bool disable_tracing_gc_{false};
   const bool enable_signal_api_{false};
   const std::string target_sdk_version_;

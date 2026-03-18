@@ -2,6 +2,8 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("//${lynx_dir}/build_overrides/bindings_files.gni")
+import("//${lynx_dir}/build_overrides/lepus_context_factory_files.gni")
 import("../../testing/test.gni")
 import("../Lynx.gni")
 declare_args() {
@@ -11,10 +13,9 @@ declare_args() {
 
 lynx_core_source_set("runtime") {
   sources = [
-    "mts_context.h",
-    "mts_context_factory.cc",
-    "mts_context_factory.h",
-  ]
+              "mts_context.h",
+              "mts_context_factory.h",
+            ] + mts_context_factory_sources
 
   deps = [
     "../../third_party/rapidjson",

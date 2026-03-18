@@ -289,7 +289,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void AddFont(const lepus::Value& font);
 
   // Invoked if engine thread switched;
-  void PushRuntimeValidTid();
+  void BindMTSRuntimeThread();
 
   // Render page with page data that rendered on server side.
   void RenderPageWithSSRData(
@@ -553,6 +553,19 @@ class TemplateAssembler final : public TemplateEntryHolder,
                             CompileOptionAirMode::AIR_MODE_STRICT);
   }
 
+  bool ShouldSendEventToMainThread() {
+    auto& entry = FindEntry(DEFAULT_ENTRY_NAME);
+    if (!entry) {
+      return false;
+    }
+    auto& context = entry->GetVm();
+    if (!context) {
+      return false;
+    }
+    auto* mts_context = context->GetMTSContext();
+    return mts_context && mts_context->EnableSendEventToMainThread();
+  }
+
   bool ShouldPostDataToJs() const {
     // currently, only air&air_fiber mode should not post data to js
     // Or EmbeddedMode is On, but logic executor has not been set.
@@ -767,7 +780,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void SyncAndroidPackageExternalPath(const std::string& path);
 
   bool EnableFiberArch() {
-    return page_config_ && page_config_->GetEnableFiberArch();
+    return (page_config_ && page_config_->GetEnableFiberArch());
   }
 
   void OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event);

@@ -42,6 +42,7 @@ bool LynxBinaryReader::DidDecodeHeader() {
   auto& tb = template_bundle();
   tb.total_size_ = total_size_;
   tb.is_lepusng_binary_ = is_lepusng_binary_;
+  tb.context_type_ = context_type_;
   tb.target_sdk_version_ = compile_options_.target_sdk_version_;
   tb.compile_options_ = compile_options_;
   tb.template_info_ = template_info_;
@@ -207,9 +208,7 @@ bool LynxBinaryReader::GreedyDecodeLepusChunk(
   for (auto it = start_offsets.begin(); it != start_offsets.end(); ++it) {
     stream_->Seek(lepus_chunk_route_.descriptor_offset_ + it->second);
 
-    chunk_map[it->first] = runtime::ContextBundle::Create(
-        is_lepusng_binary_ ? runtime::ContextType::LepusNGContextType
-                           : runtime::ContextType::VMContextType);
+    chunk_map[it->first] = runtime::ContextBundle::Create(context_type_);
 
     ERROR_UNLESS(chunk_map[it->first]);
     ERROR_UNLESS(DecodeContextBundle(chunk_map[it->first].get()));
@@ -241,10 +240,7 @@ bool LynxBinaryReader::DecodeLepusChunkRoute() {
 bool LynxBinaryReader::DecodeContext() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, BINARY_READER_DECODE_CONTEXT);
   auto& tb = template_bundle();
-  tb.context_bundle_ = runtime::ContextBundle::Create(
-      is_lepusng_binary_ ? runtime::ContextType::LepusNGContextType
-                         : runtime::ContextType::VMContextType);
-
+  tb.context_bundle_ = runtime::ContextBundle::Create(context_type_);
   ERROR_UNLESS(tb.context_bundle_);
   ERROR_UNLESS(DecodeContextBundle(tb.context_bundle_.get()));
   return true;
@@ -332,6 +328,10 @@ bool LynxBinaryReader::DecodeCustomSectionsByRoute(
         content.SetByteArray(
             lepus::ByteArray::Create(std::move(data), code_len));
         break;
+    }
+
+    if (tb.context_bundle_) {
+      tb.context_bundle_->OnCustomSectionDecoded(key, content);
     }
     tb.AddCustomSection(key, content);
   }

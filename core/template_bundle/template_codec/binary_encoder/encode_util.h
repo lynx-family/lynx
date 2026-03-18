@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/include/value/base_value.h"
+#include "core/runtime/mts_context.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "core/template_bundle/template_codec/generator/ttml_holder.h"
 #include "core/template_bundle/template_codec/template_binary.h"
@@ -96,6 +97,8 @@ lynx::tasm::EncodeResult CreateSSRErrorResult(int status,
 std::string BinarySectionTypeToString(BinarySection section);
 
 bool writefile(const std::string& filename, const std::string& src);
+
+runtime::ContextType GetContextType(const EncoderOptions& encoder_options);
 
 }  // namespace tasm
 }  // namespace lynx

@@ -34,7 +34,8 @@ class LynxGlobalPool {
 
  private:
   LynxGlobalPool()
-      : quick_context_pool_(lepus::LynxContextPool::Create(true, false)){};
+      : quick_context_pool_(lepus::LynxContextPool::Create(
+            runtime::ContextType::LepusNGContextType, false)){};
 
   std::shared_ptr<lepus::LynxContextPool> quick_context_pool_;
 

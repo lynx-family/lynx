@@ -13,6 +13,8 @@ namespace template_codec {
 // Define constants
 extern const uint32_t kQuickBinaryMagic;
 extern const uint32_t kLepusBinaryMagic;
+extern const uint32_t kRTSBinaryMagic;
+extern const uint32_t kRTSNativeBinaryMagic;
 extern const uint32_t kTasmSsrSuffixMagic;
 extern const uint32_t kLepusBinaryVersion;
 

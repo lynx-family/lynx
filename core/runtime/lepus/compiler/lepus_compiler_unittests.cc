@@ -325,7 +325,7 @@ class TestLepus : private TestLepusContextHolder,
       long long start = std::chrono::duration_cast<std::chrono::microseconds>(
                             std::chrono::system_clock::now().time_since_epoch())
                             .count();
-      context()->Execute();
+      context()->Execute(nullptr);
       long long end = std::chrono::duration_cast<std::chrono::microseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
@@ -507,7 +507,7 @@ class TestLepusNG : private TestLepusNGContextHolder,
     ctx->Initialize();
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
         context()->GetMTSContext(), lepus_resource, "");
-    context()->Execute();
+    context()->Execute(nullptr);
   }
 };
 

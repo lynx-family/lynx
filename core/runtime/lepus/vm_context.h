@@ -303,6 +303,8 @@ class VMContextBundle final : public runtime::ContextBundle {
   VMContextBundle() = default;
   virtual ~VMContextBundle() override = default;
   virtual bool IsLepusNG() const override;
+  virtual bool IsRTS() const override;
+  virtual bool IsRTSNative() const override;
 
   std::unordered_map<base::String, lepus::Value>& lepus_root_global() {
     return lepus_root_global_;

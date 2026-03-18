@@ -57,8 +57,8 @@ void LynxTemplateBundle::PrepareVMByConfigs() {
       page_configs_ && page_configs_->GetDisableQuickTracingGC();
 
   context_pool_ = lepus::LynxContextPool::Create(
-      is_lepusng_binary(), disable_tracing_gc, context_bundle_,
-      compile_options_, page_configs_.get());
+      context_type_, disable_tracing_gc, context_bundle_, compile_options_,
+      page_configs_.get());
 
   // if FE disables it in card, do not pre-create contexts. However, we reserve
   // the ability for the client to force pre-creation

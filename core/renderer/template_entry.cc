@@ -54,6 +54,9 @@ bool TemplateEntry::ConstructContext(
     TemplateAssembler* assembler, bool is_lepusng_binary,
     const runtime::ContextBundle& context_bundle, bool use_context_pool,
     bool disable_tracing_gc, const PageOptions& page_options) {
+  // Get enable_rts flag from TemplateAssembler
+  bool enable_rts = context_bundle.IsRTS();
+  bool enable_rts_native = context_bundle.IsRTSNative();
   auto source_type = LepusContextSourceType::kFromRuntime;
   bool enable_use_context_pool =
       use_context_pool || template_bundle().EnableUseContextPool();
@@ -93,10 +96,19 @@ bool TemplateEntry::ConstructContext(
   if (!vm_context_) {
     uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
 
+    runtime::ContextType vm_context_type;
+    if (enable_rts_native) {
+      vm_context_type = runtime::ContextType::RTSNativeContextType;
+    } else if (enable_rts) {
+      vm_context_type = runtime::ContextType::RTSContextType;
+    } else {
+      vm_context_type = is_lepusng_binary
+                            ? runtime::ContextType::LepusNGContextType
+                            : runtime::ContextType::VMContextType;
+    }
+
     vm_context_ = runtime::MTSRuntime::CreateContext(
-        is_lepusng_binary ? runtime::ContextType::LepusNGContextType
-                          : runtime::ContextType::VMContextType,
-        disable_tracing_gc, mode, page_options);
+        vm_context_type, disable_tracing_gc, mode, page_options);
   }
 
   if (!vm_context_) {
@@ -347,7 +359,8 @@ void TemplateEntry::ApplyConfigsToLepusContext(
 
 bool TemplateEntry::Execute() {
   if (is_card_ || !EnableReuseContext()) {
-    return GetVm()->Execute();
+    const auto& bundle = template_bundle_.GetContextBundle();
+    return GetVm()->Execute(bundle.get());
   }
   binary_eval_result_ = ProcessBinaryEvalResult();
   // Binary is already executed while EvalBinary.

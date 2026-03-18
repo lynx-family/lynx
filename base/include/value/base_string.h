@@ -588,6 +588,24 @@ class StringTable {
     return index;
   }
 
+  // Support strings containing embedded '\n' and '\0' characters
+  size_t NewString(const char* str, size_t length) {
+    if (!str) {
+      str = "";
+      length = 0;
+    }
+    std::string std_str(str, length);
+    auto iter = string_map_.find(std_str);
+    if (iter != string_map_.end()) {
+      return iter->second;
+    }
+
+    string_list.push_back(std_str);
+    size_t index = string_list.size() - 1;
+    string_map_.insert(std::make_pair(std_str, index));
+    return index;
+  }
+
  public:
   std::unordered_map<std::string, size_t> string_map_;
   std::vector<base::String> string_list;

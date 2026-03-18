@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/include/value/base_string.h"
 #include "core/renderer/css/css_value.h"
 #include "core/runtime/lepus/binary_writer.h"
 #include "core/runtime/lepus/function.h"
@@ -67,6 +68,8 @@ class ContextBinaryWriter : public BinaryWriter {
  protected:
   VMContext* vm_context() const;
   QuickContext* quick_context() const;
+  base::StringTable* GetStringTable();
+  const base::StringTable* GetStringTable() const;
 
   runtime::MTSContext* mts_context_;
   const tasm::CompileOptions compile_options_;
@@ -78,6 +81,12 @@ class ContextBinaryWriter : public BinaryWriter {
 
   // functions inside the list will not be serialized (reduce output file size)
   std::vector<std::string> ignored_funcs_;
+
+  // String table for optimizing string storage
+  base::StringTable string_table_;
+
+  // Load string table from encoded data
+  // void LoadStringTable(const uint8_t* data, size_t size, size_t& offset);
 
  private:
   // if target_sdk_version > FEATURE_CONTROL_VERSION;

@@ -45,7 +45,7 @@ struct StyleObjectRoute;
 class TemplateBinaryWriter : public CSRElementBinaryWriter {
  public:
   TemplateBinaryWriter(
-      runtime::MTSContext* context, bool use_lepusng, bool silence,
+      runtime::MTSContext* context, runtime::ContextType ctx_type, bool silence,
       SourceGenerator* parser, CSSParser* css_parser,
       StyleObjectParser* style_object_parser, rapidjson::Value* air_styles,
       rapidjson::Value* element_template_parsed_styles,
@@ -60,7 +60,7 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
       rapidjson::Value* custom_sections, bool enableDebugInfo = false)
       : CSRElementBinaryWriter(context, compile_options, trial_options,
                                enableDebugInfo),
-        use_lepusng_(use_lepusng),
+        ctx_type_(ctx_type),
         parser_(parser),
         css_parser_(css_parser),
         air_styles_(air_styles),
@@ -175,7 +175,7 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
   static bool IsDir(const char* path);
 
  protected:
-  bool use_lepusng_;
+  runtime::ContextType ctx_type_;
   SourceGenerator* parser_;
   CSSParser* css_parser_;
 

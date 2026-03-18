@@ -49,7 +49,7 @@ TEST(LepusNGProfilerTest, LepusNGProfilerTotalTest) {
                                              "3.1");
   lepusng_profiler->SetupProfiling(100);
   lepusng_profiler->StartProfiling(true);
-  context->Execute();
+  context->Execute(nullptr);
   auto runtime_profile = lepusng_profiler->StopProfiling(true);
   ASSERT_NE(runtime_profile, nullptr);
   ASSERT_NE(runtime_profile->runtime_profile_, "");

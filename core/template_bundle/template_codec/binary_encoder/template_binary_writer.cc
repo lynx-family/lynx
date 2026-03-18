@@ -792,7 +792,7 @@ void TemplateBinaryWriter::EncodeHeader() {
   const char* android_version = ios_version;
 
   uint32_t magic = template_codec::kLepusBinaryMagic;
-  if (use_lepusng_) {
+  if (ctx_type_ == runtime::ContextType::LepusNGContextType) {
     magic = template_codec::kQuickBinaryMagic;
   }
   WriteU32(magic);

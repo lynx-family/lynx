@@ -31,6 +31,12 @@ std::unique_ptr<MTSContext> MTSContextFactory::Create(
       return nullptr;
 #endif
 
+    case ContextType::RTSContextType:
+    case ContextType::RTSNativeContextType:
+      // RTS/NativeContext are non-open-source implementation.
+      LOGE("RTS/NativeContext is not available in OSS build");
+      return nullptr;
+
     default:
       LOGE("Unknown ContextType.");
       return nullptr;
@@ -49,6 +55,11 @@ std::unique_ptr<ContextBundle> ContextBundleFactory::Create(
 #else
       return nullptr;
 #endif
+
+    case ContextType::RTSContextType:
+    case ContextType::RTSNativeContextType:
+      // RTS bundles are non-open-source implementation.
+      return nullptr;
 
     default:
       return nullptr;

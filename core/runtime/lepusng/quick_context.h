@@ -274,6 +274,8 @@ class QuickContextBundle final : public runtime::ContextBundle {
   QuickContextBundle() = default;
   virtual ~QuickContextBundle() override = default;
   virtual bool IsLepusNG() const override;
+  virtual bool IsRTS() const override;
+  virtual bool IsRTSNative() const override;
 
   std::vector<uint8_t>& lepus_code() { return lepusng_code_; }
   uint64_t& lepusng_code_len() { return lepusng_code_len_; }

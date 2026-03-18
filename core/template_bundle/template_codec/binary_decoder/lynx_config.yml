@@ -251,6 +251,13 @@ compilerOptions:
     codeGen:
       - NONE
     export: false
+  contextType:
+    description: Runtime context type used for template execution.
+    defaultValue: '0'
+    valueType: uint8_t
+    jsValueType: number
+    since: '3.8'
+    export: false
 # compiler options end here
 
 # PageConfig start here

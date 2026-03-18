@@ -335,10 +335,7 @@ bool TemplateBinaryReader::DecodeContextBundleInRender(const std::string& key) {
     return false;
   }
   std::shared_ptr<runtime::ContextBundle> bundle =
-      runtime::ContextBundle::Create(
-          compile_options_.enable_lepus_ng_
-              ? runtime::ContextType::LepusNGContextType
-              : runtime::ContextType::VMContextType);
+      runtime::ContextBundle::Create(context_type_);
   const auto& lepus_chunk_manager = template_bundle().GetLepusChunkManager();
   stream_->Seek(lepus_chunk_route_.descriptor_offset_ + iter->second);
   ERROR_UNLESS(DecodeContextBundle(bundle.get()));
@@ -421,10 +418,7 @@ bool TemplateBinaryReader::DecodeLepusChunkAsync(
     }
     stream_->Seek(descriptor_start + it->second);
     std::shared_ptr<runtime::ContextBundle> bundle =
-        runtime::ContextBundle::Create(
-            compile_options_.enable_lepus_ng_
-                ? runtime::ContextType::LepusNGContextType
-                : runtime::ContextType::VMContextType);
+        runtime::ContextBundle::Create(context_type_);
     ERROR_UNLESS(DecodeContextBundle(bundle.get()));
     manager->AddLepusChunk(it->first, std::move(bundle));
   }

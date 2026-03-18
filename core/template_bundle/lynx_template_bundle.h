@@ -21,7 +21,6 @@
 #include "core/renderer/utils/base/element_template_info.h"
 #include "core/runtime/js/js_bundle.h"
 #include "core/runtime/lepus/context_pool.h"
-#include "core/runtime/lepus/function.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/binary_decoder/parallel_parse_task_scheduler.h"
 #include "core/template_bundle/template_codec/compile_options.h"
@@ -42,9 +41,9 @@ class LepusChunkManager {
       std::unordered_map<std::string, std::shared_ptr<runtime::ContextBundle>>;
 
   std::optional<std::shared_ptr<runtime::ContextBundle>> GetLepusChunk(
-      const std::string &chunk_key);
-  bool IsLepusChunkDecoded(const std::string &chunk_path);
-  void AddLepusChunk(const std::string &chunk_key,
+      const std::string& chunk_key);
+  bool IsLepusChunkDecoded(const std::string& chunk_path);
+  void AddLepusChunk(const std::string& chunk_key,
                      std::shared_ptr<runtime::ContextBundle> bundle);
 
   std::atomic_bool GetStopThread() const { return stop_thread_; }
@@ -71,13 +70,17 @@ class LynxTemplateBundle final {
         string_list_(std::make_shared<std::vector<base::String>>()),
         lepus_chunk_manager_(std::make_shared<LepusChunkManager>()){};
 
-  const runtime::js::JsBundle &GetJsBundle() const { return js_bundle_; }
-  runtime::js::JsBundle &GetJsBundle() { return js_bundle_; }
+  const runtime::js::JsBundle& GetJsBundle() const { return js_bundle_; }
+  runtime::js::JsBundle& GetJsBundle() { return js_bundle_; }
 
   lepus::Value GetCustomSections() const { return custom_sections_; }
 
+  const std::shared_ptr<runtime::ContextBundle>& GetContextBundle() const {
+    return context_bundle_;
+  }
+
   inline std::optional<std::shared_ptr<runtime::ContextBundle>> GetLepusChunk(
-      const std::string &chunk_key) const {
+      const std::string& chunk_key) const {
     return lepus_chunk_manager_->GetLepusChunk(chunk_key);
   }
 
@@ -88,7 +91,7 @@ class LynxTemplateBundle final {
     css_style_manager_ = std::move(manager);
   }
 
-  const std::shared_ptr<CSSStyleSheetManager> &GetCSSStyleManager() const {
+  const std::shared_ptr<CSSStyleSheetManager>& GetCSSStyleManager() const {
     return css_style_manager_;
   }
 
@@ -106,17 +109,17 @@ class LynxTemplateBundle final {
    * @return A reference to the shared pointer of the style object list. The
    * array is null` ended.
    */
-  std::shared_ptr<style::StyleObject *> &InitStyleObjectList(size_t size);
+  std::shared_ptr<style::StyleObject*>& InitStyleObjectList(size_t size);
 
-  std::shared_ptr<CSSKeyframesTokenMap> &InitKeyframesMap(size_t size);
+  std::shared_ptr<CSSKeyframesTokenMap>& InitKeyframesMap(size_t size);
 
-  CSSFontFaceRuleMap &InitFontFacesMap(size_t size);
+  CSSFontFaceRuleMap& InitFontFacesMap(size_t size);
 
   void SetLepusChunkManager(std::shared_ptr<LepusChunkManager> manager) {
     lepus_chunk_manager_ = std::move(manager);
   }
 
-  const std::shared_ptr<LepusChunkManager> &GetLepusChunkManager() const {
+  const std::shared_ptr<LepusChunkManager>& GetLepusChunkManager() const {
     return lepus_chunk_manager_;
   }
 
@@ -124,23 +127,29 @@ class LynxTemplateBundle final {
     element_bundle_ = std::move(element_bundle);
   }
 
-  const ElementBundle &GetElementBundle() const { return element_bundle_; }
+  const ElementBundle& GetElementBundle() const { return element_bundle_; }
 
-  std::shared_ptr<std::vector<base::String>> &GetStringList() {
+  std::shared_ptr<std::vector<base::String>>& GetStringList() {
     return string_list_;
   }
 
   void SetStringList(
-      const std::shared_ptr<std::vector<base::String>> &string_list) {
+      const std::shared_ptr<std::vector<base::String>>& string_list) {
     string_list_ = string_list;
   }
 
-  const std::vector<uint8_t> &GetBinary() const { return binary_; }
+  const std::vector<uint8_t>& GetBinary() const { return binary_; }
   void SetBinary(std::vector<uint8_t> binary) { binary_ = std::move(binary); }
 
   uint32_t Size() const { return total_size_; }
 
   bool is_lepusng_binary() { return is_lepusng_binary_; }
+  bool is_rts_vm_binary() {
+    return context_type_ == runtime::ContextType::RTSContextType;
+  }
+  bool is_rts_native_binary() {
+    return context_type_ == runtime::ContextType::RTSNativeContextType;
+  }
 
   bool ShouldReuseLepusContext() const;
 
@@ -155,21 +164,21 @@ class LynxTemplateBundle final {
 
   void SetEnableVMAutoGenerate(bool enable);
 
-  void AddCustomSection(const std::string &key, const lepus::Value &value);
+  void AddCustomSection(const std::string& key, const lepus::Value& value);
 
-  lepus::Value GetCustomSection(const std::string &key);
+  lepus::Value GetCustomSection(const std::string& key);
 
   void GreedyConstructElements();
 
   bool EnableFiberArch() const { return compile_options_.enable_fiber_arch_; }
 
-  std::optional<Elements> TryGetElements(const std::string &key);
+  std::optional<Elements> TryGetElements(const std::string& key);
 
-  const std::shared_ptr<lynx::tasm::PageConfig> &GetPageConfig() {
+  const std::shared_ptr<lynx::tasm::PageConfig>& GetPageConfig() {
     return page_configs_;
   };
 
-  const CompileOptions &GetCompileOptions() const { return compile_options_; }
+  const CompileOptions& GetCompileOptions() const { return compile_options_; }
 
  private:
   void EnsureParseTaskScheduler();
@@ -177,6 +186,7 @@ class LynxTemplateBundle final {
   // header info.
   uint32_t total_size_{0};
   bool is_lepusng_binary_{false};
+  runtime::ContextType context_type_{runtime::ContextType::VMContextType};
   std::string lepus_version_{};
   std::string target_sdk_version_{};
   CompileOptions compile_options_{};
@@ -193,7 +203,7 @@ class LynxTemplateBundle final {
 
   // body - StyleObjects
 
-  std::shared_ptr<style::StyleObject *> style_object_list_{nullptr};
+  std::shared_ptr<style::StyleObject*> style_object_list_{nullptr};
 
   std::shared_ptr<CSSKeyframesTokenMap> keyframes_;
 

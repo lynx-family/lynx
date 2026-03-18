@@ -16,18 +16,18 @@ namespace lynx {
 namespace lepus {
 
 std::shared_ptr<LynxContextPool> LynxContextPool::Create(
-    bool is_lepus_ng, bool disable_tracing_gc) {
+    runtime::ContextType context_type, bool disable_tracing_gc) {
   return std::shared_ptr<LynxContextPool>(
-      new LynxContextPool(is_lepus_ng, disable_tracing_gc));
+      new LynxContextPool(context_type, disable_tracing_gc));
 }
 
 std::shared_ptr<LynxContextPool> LynxContextPool::Create(
-    bool is_lepus_ng, bool disable_tracing_gc,
+    runtime::ContextType context_type, bool disable_tracing_gc,
     const std::shared_ptr<runtime::ContextBundle>& context_bundle,
     const tasm::CompileOptions& compile_options,
     tasm::PageConfig* page_configs) {
   return std::shared_ptr<LynxContextPool>(
-      new LynxContextPool(is_lepus_ng, disable_tracing_gc, context_bundle,
+      new LynxContextPool(context_type, disable_tracing_gc, context_bundle,
                           compile_options, page_configs));
 }
 
@@ -52,14 +52,15 @@ void LynxContextPool::AddContextSafely(int32_t count) {
   uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
   for (; count > 0; --count) {
     std::shared_ptr<runtime::MTSRuntime> context =
-        runtime::MTSRuntime::CreateContext(
-            is_lepus_ng_ ? runtime::ContextType::LepusNGContextType
-                         : runtime::ContextType::VMContextType,
-            disable_tracing_gc_, mode);
+        runtime::MTSRuntime::CreateContext(context_type_, disable_tracing_gc_,
+                                           mode);
+    if (!context) {
+      continue;
+    }
     if (context_bundle_) {
       context->SetSdkVersion(target_sdk_version_);
       context->Initialize();
-      if (!is_lepus_ng_) {
+      if (context_type_ == runtime::ContextType::VMContextType) {
         // For lepus context, kTemplateAssembler needs to maintain a placeholder
         // to ensure the function index remains unchanged; otherwise, the
         // context cannot run correctly. It will be reset to the pointer of tasm

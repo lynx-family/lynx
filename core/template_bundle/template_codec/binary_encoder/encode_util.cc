@@ -256,7 +256,7 @@ lynx::tasm::EncodeResult CreateSuccessResult(const std::vector<uint8_t>& buffer,
   rapidjson::Document document;
   rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
   rapidjson::Value template_debug_data(rapidjson::kObjectType);
-  if (writer) {
+  if (writer && writer->mts_context()) {
     if (!writer->IsLepusNGContext()) {
       auto info = writer->GetDebugInfo();
       GetDebugInfo(info.lepus_funcs_, template_debug_data, allocator);
@@ -379,6 +379,22 @@ bool writefile(const std::string& filename, const std::string& src) {
   fclose(pf);
 
   return true;
+}
+
+runtime::ContextType GetContextType(const EncoderOptions& encoder_options) {
+  if (encoder_options.compile_options_.enable_lepus_ng_ ||
+      encoder_options.compile_options_.context_type_ ==
+          ContextType::CONTEXT_TYPE_LEPUS_NG) {
+    return runtime::ContextType::LepusNGContextType;
+  } else if (encoder_options.compile_options_.context_type_ ==
+             ContextType::CONTEXT_TYPE_RTS_VM) {
+    return runtime::ContextType::RTSContextType;
+  } else if (encoder_options.compile_options_.context_type_ ==
+             ContextType::CONTEXT_TYPE_RTS_NATIVE) {
+    return runtime::ContextType::RTSNativeContextType;
+  } else {
+    return runtime::ContextType::VMContextType;
+  }
 }
 
 }  // namespace tasm

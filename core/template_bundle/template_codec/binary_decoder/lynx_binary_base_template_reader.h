@@ -16,6 +16,8 @@
 #include "core/renderer/template_themed.h"
 #include "core/renderer/utils/base/element_template_info.h"
 #include "core/runtime/js/js_bundle.h"
+#include "core/runtime/lepus/binary_input_stream.h"
+#include "core/runtime/mts_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/element_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_config_decoder.h"
 #include "core/template_bundle/template_codec/header_ext_info.h"
@@ -152,6 +154,7 @@ class LynxBinaryBaseTemplateReader : public ElementBinaryReader {
   bool support_component_js_;
   VersionComponentArray lepus_version_;
   bool is_lepusng_binary_ = false;
+  runtime::ContextType context_type_ = runtime::ContextType::VMContextType;
   HeaderExtInfo header_ext_info_;
   std::unordered_map<uint32_t, HeaderExtInfoByteArray> header_info_map_;
   lepus::Value template_info_{};

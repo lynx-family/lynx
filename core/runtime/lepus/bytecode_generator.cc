@@ -7,8 +7,11 @@
 #include <memory>
 
 #include "core/parser/input_stream.h"
+// NOTE(OSS): RTS runtime headers are non-open-source. This file only needs
+// lepus/quickjs compilation paths, so avoid including RTS headers.
 #include "core/runtime/lepus/code_generator.h"
 #include "core/runtime/lepus/parser.h"
+#include "third_party/modp_b64/modp_b64.h"
 
 namespace lynx {
 namespace lepus {
@@ -56,6 +59,18 @@ std::string BytecodeGenerator::GenerateBytecodeForVMContext(
   }
 
   return std::string();
+}
+
+std::string BytecodeGenerator::GenerateBytecodeForRTSContext(
+    const std::string& source, const std::string& sdk_version) {
+  // Decode base64 source to binary
+  std::string decoded = source;
+  lynx_modp_b64_decode(decoded);
+  if (decoded.empty()) {
+    return "Compile error: failed to decode base64 source.";
+  }
+
+  return decoded;
 }
 
 std::string BytecodeGenerator::GenerateBytecodeForQuickContext(

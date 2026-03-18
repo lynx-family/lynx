@@ -179,15 +179,14 @@ std::shared_ptr<MTSRuntime> MTSRuntime::CreateContext(
   }
 }
 
-bool MTSRuntime::Execute() {
+bool MTSRuntime::Execute(const ContextBundle* bundle) {
   if (HasPreExecuteSuccess()) {
     return true;
   }
   ScriptingScope scope(this);
 
   EnsureLynx();
-  return mts_context_->ExecuteBinaryWithBundle(/*bundle=*/nullptr,
-                                               /*ret_val=*/nullptr);
+  return mts_context_->ExecuteBinaryWithBundle(bundle, nullptr);
 }
 
 void MTSRuntime::EnsureLynx() {
@@ -493,7 +492,7 @@ Value MTSRuntime::CallClosureArgs(const Value& closure,
 
 bool MTSRuntime::TryExecute() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_TRY_EXECUTE);
-  has_pre_execute_success_ = Execute();
+  has_pre_execute_success_ = Execute(nullptr);
   return has_pre_execute_success_;
 }
 

@@ -115,10 +115,8 @@ class MTSRuntime : private MTSContextHolder {
   // temporarily refactored this into a shared ExecuteBinaryInternal function.
   // Once the Execute API is removed, only EvalBinary will remain as the unified
   // entry point.
-  // Execute main bundle.
-  // NOTE: Keep it parameterless for MR1; bundle-specific execution is handled
-  // by MTSContext internally.
-  bool Execute();
+  // Execute with optional bundle info (e.g. bundleId for RTSNative).
+  bool Execute(const ContextBundle* bundle);
 
   // only for main bundle
   bool TryExecute();
@@ -225,6 +223,8 @@ class MTSRuntime : private MTSContextHolder {
   // check context type
   bool IsVMContext() const { return type_ == VMContextType; }
   bool IsLepusNGContext() const { return type_ == LepusNGContextType; }
+  bool IsRTSContext() const { return type_ == RTSContextType; }
+  bool IsRTSNativeContext() const { return type_ == RTSNativeContextType; }
 
   void EnsureLynx();
   void SetPropertyToLynx(const base::String& key, const lepus::Value& value);
@@ -241,9 +241,11 @@ class MTSRuntime : private MTSContextHolder {
     mts_context_->SetSdkVersion(sdk_version_);
   }
 
+  void BindCurrentThread() { mts_context_->BindCurrentThread(); }
+
   // Keep old API name for MR1.
   // The actual tid binding is implemented by MTSContext (e.g. QuickContext).
-  void PushContextValidTid() { mts_context_->BindCurrentThread(); }
+  void PushContextValidTid() { BindCurrentThread(); }
 
   const std::string& GetSdkVersion() const { return sdk_version_; }
 

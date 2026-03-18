@@ -133,6 +133,8 @@ LynxTemplateBundleConverter::ConvertTemplateBundleToSerializedString(
   main_document.AddMember("total-size", template_bundle.total_size_, allocator);
   main_document.AddMember("is-lepusng-binary",
                           template_bundle.is_lepusng_binary_, allocator);
+  main_document.AddMember("context-type", template_bundle.context_type_,
+                          allocator);
   main_document.AddMember("engine-version", template_bundle.target_sdk_version_,
                           allocator);
   main_document.AddMember("app-type", template_bundle.app_type_, allocator);

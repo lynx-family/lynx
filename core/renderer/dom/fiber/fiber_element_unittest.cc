@@ -1626,14 +1626,14 @@ TEST_P(FiberElementTest,
 
   std::string js_source = R"(
     let count = 0;
-    let callback = ()=> { 
+    let callback = ()=> {
       count = count + 1;
     }
   )";
 
   lepus::BytecodeGenerator::GenerateBytecode(ctx->GetMTSContext(), js_source,
                                              ctx->GetSdkVersion(), "");
-  ctx->Execute();
+  ctx->Execute(nullptr);
 
   auto callback = ctx->GetGlobalData("callback");
 

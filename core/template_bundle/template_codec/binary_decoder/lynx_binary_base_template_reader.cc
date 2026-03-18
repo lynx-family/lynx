@@ -68,8 +68,10 @@ bool LynxBinaryBaseTemplateReader::DecodeHeader() {
 
   DECODE_U32(magic_word);
   if (magic_word == template_codec::kQuickBinaryMagic) {
+    context_type_ = lynx::runtime::ContextType::LepusNGContextType;
     is_lepusng_binary_ = true;
   } else if (magic_word == template_codec::kLepusBinaryMagic) {
+    context_type_ = lynx::runtime::ContextType::VMContextType;
     is_lepusng_binary_ = false;
 #if ENABLE_JUST_LEPUSNG
     error_message_ =

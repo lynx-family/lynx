@@ -85,6 +85,7 @@ constexpr const char* kEnableConcurrentElement = "enableConcurrentElement";
 constexpr const char* kCustomSections = "customSections";
 constexpr const char* kEnableLepusChunkAsyncDecode =
     "enableLepusChunkAsyncDecode";
+constexpr const char* kContextType = "contextType";
 
 #define GET_VALUE_FROM_JSON(Doc, Key, Type, Var)   \
   if (Doc.HasMember(Key) && Doc[Key].Is##Type()) { \
@@ -669,6 +670,9 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
   GET_VALUE_FROM_JSON(options, kUseLepusNG, Bool, use_lepusng)
   GET_VALUE_FROM_JSON(options, kDebugInfoOutside, Bool, debuginfo_outside);
 
+  uint8_t context_type = CONTEXT_TYPE_VM;
+  GET_VALUE_FROM_JSON(options, kContextType, Uint, context_type)
+
   bool lepus_closure_fix = Config::IsHigherOrEqual(
       encoder_options.compile_options_.target_sdk_version_, LYNX_VERSION_1_6);
   GET_VALUE_FROM_JSON(options, kClosureFix, Bool, lepus_closure_fix)
@@ -804,7 +808,8 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
       enable_air_raw_css,
       encode_quickjs_bytecode,
       enable_async_lepus_chunk,
-      enable_simple_styling};
+      enable_simple_styling,
+      context_type};
 
   // Set compile_options_
   encoder_options.compile_options_ = compile_options;

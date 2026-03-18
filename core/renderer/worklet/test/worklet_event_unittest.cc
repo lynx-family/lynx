@@ -145,7 +145,7 @@ TEST_F(WorkletEventTest, TestPropagation) {
 
   lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
                                              "");
-  ctx_->Execute();
+  ctx_->Execute(nullptr);
   tasm_->template_loaded_ = true;
 
   auto view1 = CreateElement("view1", 1);
@@ -199,7 +199,7 @@ TEST_F(WorkletEventTest, TestStopPropagation) {
       "counter3++; });";
 
   lepus::BytecodeGenerator::GenerateBytecode(quick_context, js_source, "");
-  ctx_->Execute();
+  ctx_->Execute(nullptr);
   tasm_->template_loaded_ = true;
 
   auto view1 = CreateElement("view1", 1);

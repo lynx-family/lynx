@@ -6339,7 +6339,8 @@ RENDERER_FUNCTION_CC(ElementAnimate) {
   CHECK_ARGC_GE(ElementAnimate, 2);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, ElementAnimate);
   auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, Object, ElementAnimate);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, ArrayOrJSArray,
+                                        ElementAnimate);
   auto pipeline_option = std::make_shared<PipelineOptions>();
   element->AnimateV2(arg1->ToLepusValue(), pipeline_option);
   RETURN_UNDEFINED();

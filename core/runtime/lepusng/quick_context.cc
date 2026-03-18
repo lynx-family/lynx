@@ -1257,6 +1257,8 @@ void QuickContext::ApplyConfig(
 }
 
 bool QuickContextBundle::IsLepusNG() const { return true; }
+bool QuickContextBundle::IsRTS() const { return false; }
+bool QuickContextBundle::IsRTSNative() const { return false; }
 
 lepus::Value QuickContext::ReportFatalError(const std::string& error_message,
                                             bool exit, int32_t code) {

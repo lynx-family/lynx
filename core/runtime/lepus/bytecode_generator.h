@@ -21,6 +21,9 @@ class BytecodeGenerator {
                                       const std::string& sdk_version,
                                       const std::string& file_name = "");
 
+  static std::string GenerateBytecodeForRTSContext(
+      const std::string& source, const std::string& sdk_version);
+
  private:
   static std::string GenerateBytecodeForVMContext(
       VMContext* context, const std::string& source,

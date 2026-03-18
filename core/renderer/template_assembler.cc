@@ -1034,7 +1034,8 @@ void TemplateAssembler::LoadTemplateInternal(
     OnVMExecute();
 
     // Get VM & exec VM.
-    if (!card->GetVm()->Execute()) {
+    if (!card->GetVm()->Execute(
+            card->template_bundle().GetContextBundle().get())) {
       base::LynxError error{error::E_APP_BUNDLE_LOAD_RENDER_FAILED,
                             "vm execute failed"};
       ReportError(std::move(error));
@@ -1275,13 +1276,13 @@ void TemplateAssembler::AddFont(const lepus::Value& font) {
   page_proxy()->element_manager()->AddFontFace(font);
 }
 
-void TemplateAssembler::PushRuntimeValidTid() {
+void TemplateAssembler::BindMTSRuntimeThread() {
   auto default_entry = FindEntry(tasm::DEFAULT_ENTRY_NAME);
   if (default_entry) {
     auto vm = default_entry->GetVm();
     if (vm) {
-      LOGE("PushRuntimeValidTid: " << this);
-      vm->PushContextValidTid();
+      LOGE("BindMTSRuntimeThread: " << this);
+      vm->BindCurrentThread();
     }
   }
 }
@@ -2356,10 +2357,8 @@ bool TemplateAssembler::FromBinary(const std::shared_ptr<TemplateEntry>& entry,
 
   auto input_stream =
       std::make_unique<lepus::ByteArrayInputStream>(std::move(source));
-
   auto reader = std::make_unique<TemplateBinaryReader>(this, entry.get(),
                                                        std::move(input_stream));
-
   reader->SetIsCardType(is_card);
   reader->SetTemplateUrl(url_.substr(0, url_.find("?")));
 
@@ -2438,8 +2437,19 @@ void TemplateAssembler::SendFontScaleChanged(float scale) {
   arguments->emplace_back(kOnFontScaleChanged);
   // params
   arguments->emplace_back(std::move(params));
-  delegate_.CallJSFunction("GlobalEventEmitter", "emit",
-                           lepus_value(std::move(arguments)));
+  auto lepus_args = lepus_value(arguments);
+  delegate_.CallJSFunction("GlobalEventEmitter", "emit", lepus_args);
+  if (!ShouldSendEventToMainThread()) {
+    return;
+  }
+  auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
+  if (context == nullptr) {
+    LOGE("TemplateAssembler::SendFontScaleChanged since the context is null!!");
+    return;
+  }
+  std::string str_event_name = kOnFontScaleChanged.c_str();
+  DispatchEventFromEngineToCoreContext(context, str_event_name, str_event_name,
+                                       lepus_args);
 }
 
 void TemplateAssembler::SendGlobalEvent(const std::string& name,
@@ -2454,6 +2464,15 @@ void TemplateAssembler::SendGlobalEvent(const std::string& name,
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
   delegate_.DispatchMessageEvent(std::move(event));
+  if (!ShouldSendEventToMainThread()) {
+    return;
+  }
+  auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
+  if (context == nullptr) {
+    LOGE("TemplateAssembler::SendGlobalEvent since the context is null!!");
+    return;
+  }
+  DispatchEventFromEngineToCoreContext(context, name, name, info);
 }
 
 void TemplateAssembler::SetFontScale(float scale) {
@@ -2868,8 +2887,20 @@ void TemplateAssembler::OnI18nResourceChanged(const std::string& new_data) {
   arguments->emplace_back(kOnI18nResourceReady);
   // params
   arguments->emplace_back(std::move(params));
-  delegate_.CallJSFunction("GlobalEventEmitter", "emit",
-                           lepus_value(std::move(arguments)));
+  auto lepus_args = lepus_value(std::move(arguments));
+  delegate_.CallJSFunction("GlobalEventEmitter", "emit", lepus_args);
+  if (!ShouldSendEventToMainThread()) {
+    return;
+  }
+  auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
+  if (context == nullptr) {
+    LOGE(
+        "TemplateAssembler::OnI18nResourceChanged since the context is null!!");
+    return;
+  }
+  std::string str_event_name = kOnI18nResourceReady.c_str();
+  DispatchEventFromEngineToCoreContext(context, str_event_name, str_event_name,
+                                       lepus_args);
 }
 
 void TemplateAssembler::OnI18nResourceFailed() {
@@ -2882,8 +2913,19 @@ void TemplateAssembler::OnI18nResourceFailed() {
   arguments->emplace_back(kOnI18nResourceFailed);
   // params
   arguments->emplace_back(std::move(params));
-  delegate_.CallJSFunction("GlobalEventEmitter", "emit",
-                           lepus_value(std::move(arguments)));
+  auto lepus_args = lepus_value(std::move(arguments));
+  delegate_.CallJSFunction("GlobalEventEmitter", "emit", lepus_args);
+  if (!ShouldSendEventToMainThread()) {
+    return;
+  }
+  auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
+  if (context == nullptr) {
+    LOGE("TemplateAssembler::OnI18nResourceFailed since the context is null!!");
+    return;
+  }
+  std::string str_event_name = kOnI18nResourceFailed.c_str();
+  DispatchEventFromEngineToCoreContext(context, str_event_name, str_event_name,
+                                       lepus_args);
 }
 
 void TemplateAssembler::UpdateI18nResource(const std::string& key,
