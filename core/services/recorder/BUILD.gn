@@ -52,11 +52,13 @@ unittest_set("record_testset") {
   configs = [ "../../:lynx_public_config" ]
 
   sources = [
+    "native_module_recorder_unittest.cc",
     "template_assembler_recorder_unittest.cc",
     "testbench_base_recorder_unittest.cc",
   ]
   deps = [
     ":recorder",
+    "../../../testing/utils:testing_utils",
     "../../../third_party/rapidjson:rapidjson",
   ]
 }
