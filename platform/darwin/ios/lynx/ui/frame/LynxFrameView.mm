@@ -66,22 +66,27 @@
     return NO;
   }
 
-  [_render updateViewport];
   LynxLoadMeta *loadMeta = [self buildLoadMetaWithBundle:bundle];
   [_render loadTemplate:loadMeta];
   _isBundleLoad = YES;
   return YES;
 }
 
-- (void)applyCachedLayoutToRender {
-  if (!_render || CGRectIsNull(_contentRect)) {
+- (void)applyRenderLayoutWithRect:(CGRect)targetRect
+                  layoutWidthMode:(LynxViewSizeMode)widthMode
+                 layoutHeightMode:(LynxViewSizeMode)heightMode {
+  if (!_render || CGRectIsNull(targetRect)) {
     return;
   }
 
-  [_render setLayoutWidthMode:_widthMode];
-  [_render setLayoutHeightMode:_heightMode];
-  [_render setPreferredLayoutWidth:_contentRect.size.width];
-  [_render setPreferredLayoutHeight:_contentRect.size.height];
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_SET_LAYOUT_MODE, "width", targetRect.size.width,
+              "widthMode", std::to_string(widthMode), "height", targetRect.size.height,
+              "heightMode", std::to_string(heightMode));
+  [_render setLayoutWidthMode:widthMode];
+  [_render setLayoutHeightMode:heightMode];
+  [_render setPreferredLayoutWidth:targetRect.size.width];
+  [_render setPreferredLayoutHeight:targetRect.size.height];
+  [_render updateViewport];
 }
 
 - (BOOL)ensureRenderCreated {
@@ -116,7 +121,9 @@
     return NO;
   }
 
-  [self applyCachedLayoutToRender];
+  [self applyRenderLayoutWithRect:_contentRect
+                  layoutWidthMode:_widthMode
+                 layoutHeightMode:_heightMode];
 
   if (_attachLynxPageUICallback) {
     [_render setAttachLynxPageUICallback:_attachLynxPageUICallback];
@@ -152,13 +159,12 @@
         IS_ZERO(contentFrame.size.width) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
     _heightMode =
         IS_ZERO(contentFrame.size.height) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
-    [_render setLayoutWidthMode:_widthMode];
-    [_render setLayoutHeightMode:_heightMode];
   }
 
-  [_render setPreferredLayoutWidth:contentFrame.size.width];
-  [_render setPreferredLayoutHeight:contentFrame.size.height];
   _contentRect = contentFrame;
+  [self applyRenderLayoutWithRect:_contentRect
+                  layoutWidthMode:_widthMode
+                 layoutHeightMode:_heightMode];
   [self setNeedsLayout];
 }
 
@@ -256,7 +262,7 @@
 - (void)setIntrinsicContentSize:(CGSize)size {
   if (!CGSizeEqualToSize(_intrinsicContentSize, size)) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE, "width",
-                std::to_string(size.width).c_str(), "height", std::to_string(size.height).c_str());
+                std::to_string(size.width), "height", std::to_string(size.height));
     _intrinsicContentSize = size;
     _isIntrinsicSizeConsumed = NO;
     [self.context
@@ -288,12 +294,12 @@
     _isIntrinsicSizeConsumed = YES;
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_ON_MEASURE_TARGET, "widthMeasureSpec",
-              std::to_string(targetRect.size.width).c_str(), "heightMeasureSpec",
-              std::to_string(targetRect.size.height).c_str());
+              std::to_string(targetRect.size.width), "heightMeasureSpec",
+              std::to_string(targetRect.size.height));
 
-  [_render setPreferredLayoutWidth:targetRect.size.width];
-  [_render setPreferredLayoutHeight:targetRect.size.height];
-  [_render updateViewport];
+  [self applyRenderLayoutWithRect:targetRect
+                  layoutWidthMode:_widthMode
+                 layoutHeightMode:_heightMode];
   [super layoutSubviews];
   [_render triggerLayoutInTick];
 }
