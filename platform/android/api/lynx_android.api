@@ -4672,6 +4672,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public void com.lynx.tasm.behavior.LynxContext.setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode);
   public void com.lynx.tasm.behavior.LynxContext.setTapSlop(String tapSlop);
   public String com.lynx.tasm.behavior.LynxContext.getTapSlop();
+  public void com.lynx.tasm.behavior.LynxContext.setLynxFrameViewProvider(LynxFrameViewProvider provider);
+  public LynxFrameViewProvider com.lynx.tasm.behavior.LynxContext.getLynxFrameViewProvider();
   public void com.lynx.tasm.behavior.LynxContext.setRuntimeCacheManager(ILynxViewRuntimeCacheManager cacheManager);
   public ILynxViewRuntimeCacheManager com.lynx.tasm.behavior.LynxContext.getRuntimeCacheManager();
   public ILynxTextService com.lynx.tasm.behavior.LynxContext.getTextService();
@@ -5587,6 +5589,10 @@ public class com::lynx::tasm::behavior::ui::frame::LynxFrameView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setAttachLynxPageUICallback(attachLynxPageUICallback callback);
   public LynxViewBuilder com.lynx.tasm.behavior.ui.frame.LynxFrameView.getLynxViewBuilder();
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.sendGlobalEvent(String name, JavaOnlyArray params);
+}
+
+public interface com::lynx::tasm::behavior::LynxFrameViewProvider {
+  public LynxFrameView com.lynx.tasm.behavior.LynxFrameViewProvider.getLynxFrameView(@NonNull LynxContext context);
 }
 
 public interface com::lynx::tasm::behavior::LynxGeneratorName {

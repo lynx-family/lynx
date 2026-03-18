@@ -47,16 +47,14 @@ public final class LynxFrameView extends UIBodyView {
 
   public LynxFrameView(Context context) {
     super(context);
-    init(context);
   }
 
   public LynxFrameView(Context context, AttributeSet attrs) {
     super(context, attrs);
-    init(context);
   }
 
-  private void init(Context context) {
-    mContext = (LynxContext) context;
+  void init(LynxContext context) {
+    mContext = context;
     UIBodyView bodyView = mContext.getUIBodyView();
     if (bodyView != null) {
       if (bodyView instanceof LynxView) {

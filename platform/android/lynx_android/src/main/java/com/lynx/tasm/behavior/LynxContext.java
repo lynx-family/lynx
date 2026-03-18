@@ -170,6 +170,8 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   private String tapSlop = TouchEventDispatcher.mTapSlopDefault;
 
+  private LynxFrameViewProvider mLynxFrameViewProvider;
+
   public LynxContext(Context base, DisplayMetrics screenMetrics) {
     super(base);
     mVirtualScreenMetrics = new DisplayMetrics();
@@ -297,6 +299,24 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public String getTapSlop() {
     return this.tapSlop;
+  }
+
+  /**
+   * Sets a custom provider for creating LynxFrameView instances.
+   * When set, the provider will be used instead of the default LynxFrameView constructor.
+   * @param provider The LynxFrameViewProvider to use for creating LynxFrameView instances
+   */
+  public void setLynxFrameViewProvider(LynxFrameViewProvider provider) {
+    this.mLynxFrameViewProvider = provider;
+  }
+
+  /**
+   * Gets the custom provider for creating LynxFrameView instances.
+   * @return The current LynxFrameViewProvider, or null if not set
+   */
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public LynxFrameViewProvider getLynxFrameViewProvider() {
+    return this.mLynxFrameViewProvider;
   }
 
   /**
