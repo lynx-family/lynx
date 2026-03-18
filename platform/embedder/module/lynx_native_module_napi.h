@@ -32,6 +32,9 @@ class LynxNativeModuleNAPI : public runtime::LynxNativeModule {
 
   runtime::NativeModuleMethods AdoptMethods() { return methods_; }
 
+  std::unique_ptr<pub::Value> GetAttributeValue(
+      const std::string& attribute_name) override;
+
  private:
   void ExtractMethods();
   void ReleaseMemberRefs();

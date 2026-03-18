@@ -296,6 +296,16 @@ void LynxJSIModule::OnErrorOccurred(const std::string& module_name,
   }
 }
 
+Value LynxJSIModule::getAttributeValue(Runtime* rt, std::string propName) {
+  if (native_module_) {
+    auto pub_attr = native_module_->GetAttributeValue(propName);
+    if (pub_attr) {
+      return pub::ValueUtils::ConvertValueToPiperValue(*rt, *pub_attr);
+    }
+  }
+  return Value::undefined();
+}
+
 // private
 void LynxJSIModule::SetMethodMetadata() {
   if (!native_module_) {

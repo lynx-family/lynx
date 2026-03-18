@@ -103,6 +103,11 @@ Value LynxModule::get(Runtime* runtime, const PropNameID& prop) {
           return lock_module->invokeMethod(*(meta.get()), &rt, args, count);
         });
   } else {
+    auto attr = this->getAttributeValue(runtime, propNameUtf8);
+    if (!attr.isUndefined()) {
+      return attr;
+    }
+
     // AllowList For Special Methods
     // see issue: #1979
     if (!MethodAllowList().count(propNameUtf8)) {
@@ -114,10 +119,6 @@ Value LynxModule::get(Runtime* runtime, const PropNameID& prop) {
     }
     return Value::undefined();
   }
-
-  // TODO: All these code related to LynxAttribute are dead code, can be
-  // removed.
-  return this->getAttributeValue(runtime, propNameUtf8);
 }
 }  // namespace js
 }  // namespace runtime

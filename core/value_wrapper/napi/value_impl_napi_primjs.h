@@ -108,6 +108,10 @@ class ValueImplNapiPrimJS : public Value {
     return ret;
   }
 
+  // Attach the NAPI value to global object using a temporary key
+  // for transferring to Piper value.
+  void AttachToGlobal() const;
+
  private:
   bool PushNapiValueToArray(napi_value array, napi_value value);
 

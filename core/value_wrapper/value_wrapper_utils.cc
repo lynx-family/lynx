@@ -11,6 +11,9 @@
 #include "core/runtime/js/utils.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "core/value_wrapper/value_impl_piper.h"
+#if ENABLE_NAPI_BINDING
+#include "core/value_wrapper/napi/value_impl_napi_primjs.h"
+#endif
 
 namespace lynx {
 namespace pub {
@@ -119,6 +122,25 @@ runtime::js::Value ValueUtils::ConvertValueToPiperValue(
     if (result.has_value()) {
       return std::move(*result);
     }
+  } else if (value.backend_type() ==
+             ValueBackendType::ValueBackendTypeNapiPrimJS) {
+#if ENABLE_NAPI_BINDING
+    // Fast path: If the pub value is already a NAPI value and they share the
+    // same JS context, we can avoid recursive conversion by using the global
+    // object as a temporary bridge between NAPI and Piper.
+    const auto& napi_value = static_cast<const ValueImplNapiPrimJS&>(value);
+    napi_value.AttachToGlobal();
+    // Get the value back from global object as Piper value
+    auto global = rt.global();
+    auto temp_value = global.getProperty(
+        rt, runtime::js::kLynxNapiValueToPiperValueTempObject);
+    // Clean up by setting the temporary property to undefined
+    global.setProperty(rt, runtime::js::kLynxNapiValueToPiperValueTempObject,
+                       runtime::js::Value::undefined());
+    if (temp_value) {
+      return std::move(*temp_value);
+    }
+#endif
   } else {
     if (value.IsString()) {
       auto result = runtime::js::String::createFromUtf8(rt, value.str());

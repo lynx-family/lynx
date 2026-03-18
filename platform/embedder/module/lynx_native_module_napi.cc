@@ -288,5 +288,21 @@ void LynxNativeModuleNAPI::CleanupSelf() {
   field_refs_.clear();
 }
 
+std::unique_ptr<pub::Value> LynxNativeModuleNAPI::GetAttributeValue(
+    const std::string& attribute_name) {
+  napi_handle_scope scope;
+  napi_open_handle_scope(env_, &scope);
+  auto iter = field_refs_.find(attribute_name);
+  if (iter == field_refs_.end()) {
+    return nullptr;
+  }
+  napi_value member;
+  napi_get_reference_value(env_, iter->second, &member);
+  auto ret = pub::ValueUtilsOpaqueNapiPrimJS::CreateValueWithOpaqueNapiArgs(
+      static_cast<void*>(env_), static_cast<void*>(member));
+  napi_close_handle_scope(env_, scope);
+  return ret;
+}
+
 }  // namespace embedder
 }  // namespace lynx

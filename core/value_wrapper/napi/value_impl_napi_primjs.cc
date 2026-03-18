@@ -805,5 +805,14 @@ ValueUtilsOpaqueNapiPrimJS::CreateValueWithOpaqueNapiArgs(void* opaque_env,
       static_cast<napi_env>(opaque_env), static_cast<napi_value>(opaque_value));
 }
 
+void ValueImplNapiPrimJS::AttachToGlobal() const {
+  napi_value global;
+  env_->napi_get_global(env_, &global);
+  napi_value value = backend_value();
+  // Set the value on global object with a temporary key
+  env_->napi_set_named_property(
+      env_, global, runtime::js::kLynxNapiValueToPiperValueTempObject, value);
+}
+
 }  // namespace pub
 }  // namespace lynx

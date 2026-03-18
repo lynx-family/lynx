@@ -70,6 +70,11 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
       const std::string& method_name, std::unique_ptr<pub::Value> args,
       size_t count, const CallbackMap& callbacks) = 0;
 
+  virtual std::unique_ptr<pub::Value> GetAttributeValue(
+      const std::string& attribute_name) {
+    return nullptr;
+  }
+
   // Returns a list of NativeModuleMethod you registered
   virtual const NativeModuleMethods& GetMethodList() const { return methods_; }
 

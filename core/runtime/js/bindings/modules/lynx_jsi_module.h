@@ -54,6 +54,8 @@ class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
   std::shared_ptr<LynxNativeModule> GetNativeModule() { return native_module_; }
 #endif
 
+  Value getAttributeValue(Runtime* rt, std::string propName) override;
+
  private:
   void SetMethodMetadata();
   InvokeInfo* CurrentInvokeInfo();

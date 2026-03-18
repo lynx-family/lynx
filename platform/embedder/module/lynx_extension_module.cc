@@ -308,5 +308,13 @@ void ExtensionModuleImpl::Destroy() {
   c_module_->on_destroy_func(c_module_);
 }
 
+std::unique_ptr<pub::Value> ExtensionModuleImpl::GetAttributeValue(
+    const std::string& attribute_name) {
+  if (!napi_module_) {
+    return std::unique_ptr<pub::Value>(nullptr);
+  }
+  return napi_module_->GetAttributeValue(attribute_name);
+}
+
 }  // namespace embedder
 }  // namespace lynx

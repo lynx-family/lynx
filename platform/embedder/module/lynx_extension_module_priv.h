@@ -84,6 +84,9 @@ class ExtensionModuleImpl : public runtime::LynxExtensionModule {
 
   runtime::IVSyncObserver* VSyncObserver() { return vsync_observer_.get(); }
 
+  std::unique_ptr<pub::Value> GetAttributeValue(
+      const std::string& attribute_name) override;
+
   void Destroy() override;
 
  private:

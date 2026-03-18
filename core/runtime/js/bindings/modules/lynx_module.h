@@ -64,8 +64,6 @@ class LynxModule : public HostObject,
       const MethodMetadata& method, Runtime* rt, const Value* args,
       size_t count) = 0;
 
-  // TODO(chenyouhui): It is dead code. Add a default implementation and remove
-  // it later.
   virtual Value getAttributeValue(Runtime* rt, std::string propName) {
     return Value::undefined();
   }

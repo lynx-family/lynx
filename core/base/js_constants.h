@@ -33,6 +33,10 @@ static constexpr const int BIG_INT_OBJ_PARAMS_COUNT = 4;
 static constexpr const int64_t kMaxJavaScriptNumber = 9007199254740991;
 static constexpr const int64_t kMinJavaScriptNumber = -9007199254740991;
 
+// Temporary key for transferring NAPI value to Piper value via global object
+static constexpr const char* const kLynxNapiValueToPiperValueTempObject =
+    "__lynx_napi_value_to_piper_value_temp_object__";
+
 // TODO: add more
 
 }  // namespace js
