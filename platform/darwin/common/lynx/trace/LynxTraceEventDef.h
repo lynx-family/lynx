@@ -220,6 +220,10 @@ static const char* const LYNX_FRAME_VIEW_ON_MEASURE = "LynxFrameView.onMeasure";
  * @trace_description: Measure LynxFrameView's target.
  */
 static const char* const LYNX_FRAME_VIEW_ON_MEASURE_TARGET = "LynxFrameView.onMeasureTarget";
+/**
+ * @trace_description: Set LynxFrameView's layout mode.
+ */
+static const char* const LYNX_FRAME_VIEW_SET_LAYOUT_MODE = "LynxFrameView.setLayoutMode";
 #endif
 
 NS_ASSUME_NONNULL_END
