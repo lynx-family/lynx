@@ -146,33 +146,30 @@ void BTSRuntimeStandalone::EvaluateScript(
     std::string url, lynx::tasm::LynxTemplateBundle* bundle,
     std::string js_file) {
   auto js_content = bundle->GetJsBundle().GetJsContent(js_file);
-  if (!js_content.has_value()) {
+  if (js_content.has_value()) {
+    auto js_content_val = js_content->get();
+    if (!js_content_val.IsError()) {
+      auto buffer = js_content_val.GetBuffer();
+      if (buffer && buffer->data()) {
+        EvaluateScript(
+            std::move(url),
+            std::string(reinterpret_cast<const char*>(buffer->data()),
+                        buffer->size()));
+        return;
+      }
+    }
+  }
+
+  auto custom_section = bundle->GetCustomSection(js_file);
+  if (!custom_section.IsString()) {
     return;
   }
-  auto js_content_val = js_content->get();
-  if (js_content_val.IsError()) {
-    return;
-  }
-  auto buffer = js_content_val.GetBuffer();
-
-  if (!buffer || !buffer->data()) {
+  auto script = custom_section.StdString();
+  if (script.empty()) {
     return;
   }
 
-  const auto length = buffer->size();
-  const auto* data = reinterpret_cast<const char*>(buffer->data());
-
-  uint64_t trace_flow_id = TRACE_FLOW_ID();
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
-              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("url", url);
-                ctx.event()->add_flow_ids(trace_flow_id);
-              });
-  runtime_actor_->Act([url = std::move(url), script = std::string(data, length),
-                       trace_flow_id](auto& runtime) mutable {
-    runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
-                                      trace_flow_id);
-  });
+  EvaluateScript(std::move(url), std::move(script));
 }
 
 void BTSRuntimeStandalone::SetPresetData(lepus::Value data) {
