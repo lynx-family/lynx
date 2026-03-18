@@ -124,25 +124,30 @@ typedef struct LEPUSRefCountHeader {
 
 #if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
 
-static const int64_t LEPUS_FLOAT64_NAN_BITS = 0x7ff8000000000000;
+#define LEPUS_FLOAT64_NAN_BITS UINT64_C(0x7ff8000000000000)
 
-static inline double pure_nan() { return (*(double *)&LEPUS_FLOAT64_NAN_BITS); }
+static inline double pure_nan() {
+  double d;
+  uint64_t bits = LEPUS_FLOAT64_NAN_BITS;
+  __builtin_memcpy(&d, &bits, sizeof(d));
+  return d;
+}
 #define LEPUS_FLOAT64_NAN (pure_nan())
 
-static const int DOUBLE_ENCODE_OFFSET_BIT = 49;
-static const int64_t DOUBLE_ENCODE_OFFSET = (1ll << DOUBLE_ENCODE_OFFSET_BIT);
-static const int64_t NUMBER_TAG = 0xfffe000000000000;
-static const int64_t LEPUS_TAG_Atom = 0xfffc000000000000;
-static const int64_t NOT_NUMBER_MASK = 0xffff000000000000;
-static const int64_t OTHER_TAG = 0x2;
+#define DOUBLE_ENCODE_OFFSET_BIT 49
+#define DOUBLE_ENCODE_OFFSET (INT64_C(1) << DOUBLE_ENCODE_OFFSET_BIT)
+#define NUMBER_TAG ((int64_t)UINT64_C(0xfffe000000000000))
+#define LEPUS_TAG_Atom ((int64_t)UINT64_C(0xfffc000000000000))
+#define NOT_NUMBER_MASK ((int64_t)UINT64_C(0xffff000000000000))
+#define OTHER_TAG INT64_C(0x2)
 
-static const int64_t BOOL_TAG = 0x4;
-static const int64_t BOOL_TRUE_TAG = (OTHER_TAG | BOOL_TAG | 0x1);
-static const int64_t BOOL_FALSE_TAG = (OTHER_TAG | BOOL_TAG);
-static const int64_t UNDEFINED_TAG = (OTHER_TAG | 0x10);
-static const int64_t UNINITIALIZED_TAG = (OTHER_TAG | 0x20);
-static const int64_t CATCH_OFFSET_TAG = (OTHER_TAG | 0x40);
-static const int64_t EXCEPTION_TAG = (OTHER_TAG | 0x80);
+#define BOOL_TAG INT64_C(0x4)
+#define BOOL_TRUE_TAG (OTHER_TAG | BOOL_TAG | INT64_C(0x1))
+#define BOOL_FALSE_TAG (OTHER_TAG | BOOL_TAG)
+#define UNDEFINED_TAG (OTHER_TAG | INT64_C(0x10))
+#define UNINITIALIZED_TAG (OTHER_TAG | INT64_C(0x20))
+#define CATCH_OFFSET_TAG (OTHER_TAG | INT64_C(0x40))
+#define EXCEPTION_TAG (OTHER_TAG | INT64_C(0x80))
 
 #define VALUE_FALSE ((LEPUSValue){.as_int64 = BOOL_FALSE_TAG})
 #define VALUE_TRUE ((LEPUSValue){.as_int64 = BOOL_TRUE_TAG})
@@ -151,51 +156,49 @@ static const int64_t EXCEPTION_TAG = (OTHER_TAG | 0x80);
 #define VALUE_EXCEPTION ((LEPUSValue){.as_int64 = EXCEPTION_TAG})
 #define VALUE_UNINITIALIZED ((LEPUSValue){.as_int64 = UNINITIALIZED_TAG})
 
-static const int64_t OTHER_PTR_TAG = 0x0001000000000000ll;
-static const int64_t SYMBOL_TAG = (0x1 | OTHER_PTR_TAG);
-static const int64_t STRING_TAG = (0x2 | OTHER_PTR_TAG);
-static const int64_t MODULE_TAG = (0x3 | OTHER_PTR_TAG);
-static const int64_t FUNCTION_BYTECODE_TAG = (0x0 | OTHER_PTR_TAG);
-static const int64_t OTHER_PTR_MASK = 0x0000fffffffffffc;
-static const int64_t NOT_OTHER_PTR_MASK = 0xffff000000000003;
-static const int64_t NOT_CELL_MASK = (OTHER_TAG | NUMBER_TAG);
-static const int64_t NOT_CELL_OTHER_PTR_MASK =
-    (OTHER_TAG | NUMBER_TAG | OTHER_PTR_TAG);
-static const int64_t LEPUS_PTR_TAG = 0xffff000000000000ll;
-static const int64_t LEPUS_REF_TAG = (0x0 | LEPUS_PTR_TAG);
-static const int64_t LEPUS_CPOINTER_TAG = (0x1 | LEPUS_PTR_TAG);
-static const int64_t LEPUS_BIG_INT_TAG = (0x2 | LEPUS_PTR_TAG);
-static const int64_t SEPARABLE_STRING_TAG = (0x3 | LEPUS_PTR_TAG);
-static const int64_t LEPUS_PTR_MASK = 0x0000fffffffffffc;
-static const int64_t NOT_LEPUS_PTR_MASK = 0xffff000000000003;
-static const int64_t INTERNAL_GC_TAG = 0xfffd000000000000ll;
+#define OTHER_PTR_TAG ((int64_t)UINT64_C(0x0001000000000000))
+#define SYMBOL_TAG (INT64_C(0x1) | OTHER_PTR_TAG)
+#define STRING_TAG (INT64_C(0x2) | OTHER_PTR_TAG)
+#define MODULE_TAG (INT64_C(0x3) | OTHER_PTR_TAG)
+#define FUNCTION_BYTECODE_TAG (INT64_C(0x0) | OTHER_PTR_TAG)
+#define OTHER_PTR_MASK INT64_C(0x0000fffffffffffc)
+#define NOT_OTHER_PTR_MASK ((int64_t)UINT64_C(0xffff000000000003))
+#define NOT_CELL_MASK (OTHER_TAG | NUMBER_TAG)
+#define NOT_CELL_OTHER_PTR_MASK (OTHER_TAG | NUMBER_TAG | OTHER_PTR_TAG)
+#define LEPUS_PTR_TAG ((int64_t)UINT64_C(0xffff000000000000))
+#define LEPUS_REF_TAG (INT64_C(0x0) | LEPUS_PTR_TAG)
+#define LEPUS_CPOINTER_TAG (INT64_C(0x1) | LEPUS_PTR_TAG)
+#define LEPUS_BIG_INT_TAG (INT64_C(0x2) | LEPUS_PTR_TAG)
+#define SEPARABLE_STRING_TAG (INT64_C(0x3) | LEPUS_PTR_TAG)
+#define LEPUS_PTR_MASK INT64_C(0x0000fffffffffffc)
+#define NOT_LEPUS_PTR_MASK ((int64_t)UINT64_C(0xffff000000000003))
+#define INTERNAL_GC_TAG ((int64_t)UINT64_C(0xfffd000000000000))
 // #define NOT_OTHER_MASK (NUMBER_TAG | OTHER_PTR_TAG)
 
 // <Primjs begin>
-static const int64_t LEPUS_TAG_LEPUS_REF =
-    LEPUS_REF_TAG; /* Primjs add for lepus */
-static const int64_t LEPUS_TAG_LEPUS_CPOINTER = LEPUS_CPOINTER_TAG;
-static const int64_t LEPUS_TAG_BIG_INT = LEPUS_BIG_INT_TAG;
-static const int64_t LEPUS_TAG_SYMBOL = SYMBOL_TAG;
-static const int64_t LEPUS_TAG_STRING = STRING_TAG;
-static const int64_t LEPUS_TAG_MODULE = MODULE_TAG;
-static const int64_t LEPUS_TAG_FUNCTION_BYTECODE = FUNCTION_BYTECODE_TAG;
-static const int64_t LEPUS_TAG_OBJECT = 0;
-static const int64_t LEPUS_TAG_INT = NUMBER_TAG;
-static const int64_t LEPUS_TAG_BOOL = BOOL_TAG | OTHER_TAG;
-static const int64_t LEPUS_TAG_NULL = OTHER_TAG;
-static const int64_t LEPUS_TAG_UNDEFINED = UNDEFINED_TAG | OTHER_TAG;
-static const int64_t LEPUS_TAG_UNINITIALIZED = UNINITIALIZED_TAG;
-static const int64_t LEPUS_TAG_CATCH_OFFSET = CATCH_OFFSET_TAG;
-static const int64_t LEPUS_TAG_EXCEPTION = EXCEPTION_TAG;
-static const int64_t LEPUS_TAG_SHAPE =
-    (0x0 | INTERNAL_GC_TAG); /* used internally during GC */
-static const int64_t LEPUS_TAG_ASYNC_FUNCTION =
-    (0x1 | INTERNAL_GC_TAG); /* used internally during GC */
-static const int64_t LEPUS_TAG_VAR_REF =
-    (0x2 | INTERNAL_GC_TAG); /* used internally during GC */
-static const int64_t LEPUS_TAG_FLOAT64 = 1;
-static const int64_t LEPUS_TAG_SEPARABLE_STRING = SEPARABLE_STRING_TAG;
+#define LEPUS_TAG_LEPUS_REF LEPUS_REF_TAG /* Primjs add for lepus */
+#define LEPUS_TAG_LEPUS_CPOINTER LEPUS_CPOINTER_TAG
+#define LEPUS_TAG_BIG_INT LEPUS_BIG_INT_TAG
+#define LEPUS_TAG_SYMBOL SYMBOL_TAG
+#define LEPUS_TAG_STRING STRING_TAG
+#define LEPUS_TAG_MODULE MODULE_TAG
+#define LEPUS_TAG_FUNCTION_BYTECODE FUNCTION_BYTECODE_TAG
+#define LEPUS_TAG_OBJECT INT64_C(0)
+#define LEPUS_TAG_INT NUMBER_TAG
+#define LEPUS_TAG_BOOL (BOOL_TAG | OTHER_TAG)
+#define LEPUS_TAG_NULL OTHER_TAG
+#define LEPUS_TAG_UNDEFINED (UNDEFINED_TAG | OTHER_TAG)
+#define LEPUS_TAG_UNINITIALIZED UNINITIALIZED_TAG
+#define LEPUS_TAG_CATCH_OFFSET CATCH_OFFSET_TAG
+#define LEPUS_TAG_EXCEPTION EXCEPTION_TAG
+#define LEPUS_TAG_SHAPE \
+  (INT64_C(0x0) | INTERNAL_GC_TAG) /* used internally during GC */
+#define LEPUS_TAG_ASYNC_FUNCTION \
+  (INT64_C(0x1) | INTERNAL_GC_TAG) /* used internally during GC */
+#define LEPUS_TAG_VAR_REF \
+  (INT64_C(0x2) | INTERNAL_GC_TAG) /* used internally during GC */
+#define LEPUS_TAG_FLOAT64 INT64_C(1)
+#define LEPUS_TAG_SEPARABLE_STRING SEPARABLE_STRING_TAG
 
 typedef union LEPUSValue {
   int64_t as_int64;

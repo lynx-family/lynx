@@ -202,7 +202,6 @@ void LepusNGDebugger::ParseDebugInfo(const LEPUSValue& top_level_function,
       if (has_function_info) {
         FillFunctionBytecodeDebugInfo(ctx, b, debug_info_entry);
       }
-      LEPUS_WriteBarrierNoStore(ctx, script);
       SetFunctionScript(b, script);
     }
   }
