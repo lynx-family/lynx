@@ -1353,7 +1353,25 @@ bool Element::TendToFlatten() {
   return config_flatten_ && !has_event_listener_ && !has_non_flatten_attrs_ &&
          !DisableFlattenWithOpacity() &&
          !(has_z_props() && !is_image() && !is_text()) && !is_inline_element_ &&
-         !ShouldAvoidFlattenForView();
+         !ShouldAvoidFlattenForView()
+#if OS_IOS
+         // On iOS, the current CUI platform-rendering flatten path does not
+         // preserve clip/overflow scope or subtree transform semantics the
+         // same way as Android's platform renderer. To avoid clipping
+         // previously replayed border/image/text contents, and to keep
+         // transforms from mutating the flattened host geometry directly,
+         // only allow flatten when overflow stays visible and transform is
+         // absent.
+         //
+         // TODO(songshourui.null): Revisit this once iOS supports both CUI
+         // platform rendering and self rendering with separate clip semantics.
+         // Non-visible overflow or transformed nodes may become flattenable
+         // again once clip and transform are scoped to rendering content
+         // instead of the host view subtree.
+         && computed_css_style()->IsOverflowXY() &&
+         !computed_css_style()->HasTransform()
+#endif
+      ;
 }
 
 double Element::GetFontSize() { return computed_css_style()->GetFontSize(); }

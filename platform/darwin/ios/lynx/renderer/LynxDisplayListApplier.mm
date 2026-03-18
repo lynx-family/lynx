@@ -36,6 +36,8 @@ using namespace lynx::tasm;
   CALayer *_refLayer;
 
   NSMutableDictionary<NSNumber *, LynxImageManager *> *_imageManagers;
+  NSMutableArray<UIImageView *> *_contentImageViews;
+  NSMutableArray<CALayer *> *_contentLayers;
 }
 
 - (instancetype)initWithView:(UIView<LynxRendererHost> *)view
@@ -53,6 +55,8 @@ using namespace lynx::tasm;
     top_offset_ = 0;
 
     _refLayer = nil;
+    _contentImageViews = [NSMutableArray new];
+    _contentLayers = [NSMutableArray new];
   }
   return self;
 }
@@ -70,6 +74,7 @@ using namespace lynx::tasm;
     return;
   }
 
+  NSArray<UIView *> *hostSubviewsSnapshot = [_view.subviews copy];
   int32_t view_index = 0;
   UIView *refView = nil;
 
@@ -127,8 +132,13 @@ using namespace lynx::tasm;
         if (int_count == 1) {
           [[maybe_unused]] auto view_id = [self nextContentInt];
         }
-        refView = [_view subviews][view_index++];
-        _refLayer = refView.layer;
+        if (static_cast<NSUInteger>(view_index) < hostSubviewsSnapshot.count) {
+          refView = hostSubviewsSnapshot[view_index++];
+          _refLayer = refView.layer;
+        } else {
+          refView = nil;
+          _refLayer = nil;
+        }
         break;
       }
       case DisplayListOpType::kText: {
@@ -166,6 +176,7 @@ using namespace lynx::tasm;
           } else {
             [_view insertSubview:imageView aboveSubview:refView];
           }
+          [_contentImageViews addObject:imageView];
 
           view_index++;
         }
@@ -345,6 +356,7 @@ using namespace lynx::tasm;
   top_offset_ = 0;
   left_offset_ = 0;
   box_array_.clear();
+  _refLayer = nil;
 
   // Clear previous clip state
   if (_view) {
@@ -352,6 +364,16 @@ using namespace lynx::tasm;
     _view.layer.cornerRadius = 0;
     _view.layer.masksToBounds = NO;
   }
+
+  for (UIImageView *imageView in _contentImageViews) {
+    [imageView removeFromSuperview];
+  }
+  [_contentImageViews removeAllObjects];
+
+  for (CALayer *layer in _contentLayers) {
+    [layer removeFromSuperlayer];
+  }
+  [_contentLayers removeAllObjects];
 }
 
 - (void)applyRectToLayer:(CALayer *)layer withBoxIndex:(int32_t)index {
@@ -368,6 +390,7 @@ using namespace lynx::tasm;
   } else {
     [_view.layer insertSublayer:layer above:_refLayer];
   }
+  [_contentLayers addObject:layer];
   _refLayer = layer;
 }
 
@@ -413,25 +436,25 @@ using namespace lynx::tasm;
 - (LynxBorderStyle)lynxBorderStyleFromInt:(int)style {
   switch (style) {
     case 0:
-      return LynxBorderStyleNone;
-    case 1:
       return LynxBorderStyleSolid;
-    case 2:
+    case 1:
       return LynxBorderStyleDashed;
-    case 3:
+    case 2:
       return LynxBorderStyleDotted;
-    case 4:
+    case 3:
       return LynxBorderStyleDouble;
-    case 5:
+    case 4:
       return LynxBorderStyleGroove;
-    case 6:
+    case 5:
       return LynxBorderStyleRidge;
-    case 7:
+    case 6:
       return LynxBorderStyleInset;
-    case 8:
+    case 7:
       return LynxBorderStyleOutset;
-    case 9:
+    case 8:
       return LynxBorderStyleHidden;
+    case 9:
+      return LynxBorderStyleNone;
     default:
       return LynxBorderStyleNone;
   }

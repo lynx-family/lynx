@@ -29,28 +29,30 @@ PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* co
 }
 
 void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
-  display_list_ = std::move(display_list);
+  if (display_list.HasContent()) {
+    display_list_ = std::move(display_list);
 
-  if (_view != nil) {
-    constexpr int kFrameValueCount = 4;
-    if (display_list_.GetContentFloatData() &&
-        display_list_.GetContentFloatDataSize() >= kFrameValueCount) {
-      float frame[4];
-      // The first four float values in the display list are the frame of the
-      // layer's OP_BEGIN.
-      memcpy(frame, display_list_.GetContentFloatData(), 4 * sizeof(float));
+    if (_view != nil) {
+      constexpr int kFrameValueCount = 4;
+      if (display_list_.GetContentFloatData() &&
+          display_list_.GetContentFloatDataSize() >= kFrameValueCount) {
+        float frame[4];
+        // The first four float values in the display list are the frame of the
+        // layer's OP_BEGIN.
+        memcpy(frame, display_list_.GetContentFloatData(), 4 * sizeof(float));
 
-      [_view
-          setFrame:CGRectMake(frame[0] + display_list_.GetRenderOffset()[0],
-                              frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3])];
+        [_view
+            setFrame:CGRectMake(frame[0] + display_list_.GetRenderOffset()[0],
+                                frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3])];
 
-      if ([_view conformsToProtocol:@protocol(LUIBodyView)]) {
-        ((UIView<LUIBodyView>*)_view).intrinsicContentSize = CGSizeMake(frame[2], frame[3]);
+        if ([_view conformsToProtocol:@protocol(LUIBodyView)]) {
+          ((UIView<LUIBodyView>*)_view).intrinsicContentSize = CGSizeMake(frame[2], frame[3]);
+        }
       }
-    }
 
-    [[_view getRenderer] updateDisplayList:&display_list_];
-    [_view setNeedsDisplay];
+      [[_view getRenderer] updateDisplayList:&display_list_];
+      [_view setNeedsDisplay];
+    }
   }
 }
 
@@ -97,6 +99,7 @@ void PlatformRendererDarwin::OnUpdateSubtreeProperties(const DisplayList& subtre
 void PlatformRendererDarwin::InitializeUIView() {
   if (IsPlatformExtendedRenderer()) {
     // TODO: impl this function later.
+    _view = [[LynxContainerView alloc] init];
     return;
   }
 
