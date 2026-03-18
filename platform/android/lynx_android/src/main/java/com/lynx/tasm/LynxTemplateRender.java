@@ -3723,7 +3723,7 @@ public class LynxTemplateRender
       originCause = bundle.getErrorMessage();
     } else if (!nativeRegisterLazyBundle(
                    mNativePtr, mNativeLifecycle, url, bundle.getNativePtr())) {
-      errorMsg = "input bundle is not from a dynamic component template";
+      errorMsg = "input bundle is not from a valid template bundle.";
     }
     if (errorMsg != null) {
       LynxError lynxError = new LynxError(LynxSubErrorCode.E_LAZY_BUNDLE_LOAD_BAD_BUNDLE, errorMsg);

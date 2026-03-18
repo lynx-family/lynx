@@ -4,6 +4,7 @@
 
 #import <Lynx/JSModule.h>
 #import <Lynx/LynxDebugger+Internal.h>
+#import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxFontFaceManager.h>
@@ -34,7 +35,6 @@
 #import "LynxEngine.h"
 #import "LynxEnginePool.h"
 #import "LynxEngineProxy+Native.h"
-#import "LynxEnv+Internal.h"
 #import "LynxEventReporterUtils.h"
 #import "LynxExposureModule.h"
 #import "LynxFetchModule.h"
@@ -2381,12 +2381,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     rootCause = [bundle errorMsg];
   } else {
     auto shared_raw_bundle = LynxGetRawTemplateBundle(bundle);
-    if (shared_raw_bundle && !shared_raw_bundle->IsCard()) {
+    if (shared_raw_bundle) {
       // only valid bundles from lazy bundle templates will be passed to the shell
       self->shell_->RegisterLazyBundle(lynx::base::SafeStringConvert([url UTF8String]),
                                        *shared_raw_bundle);
-    } else {
-      errorMsg = @"input bundle is not from a lazy bundle template";
     }
   }
   if (errorMsg != nil) {

@@ -99,13 +99,27 @@ bool LazyBundleLoader::RequireTemplateCollected(RadonLazyComponent* lazy_bundle,
 }
 
 void LazyBundleLoader::LoadFrameBundle(const std::string& src) {
-  if (!resource_loader_) {
-    LOGE("failed to query bundle, resource_loader is null, src: " << src);
-    return;
-  }
   auto requiring_res = requiring_urls_.emplace(src);
   // request with the same src will only be sent once
   if (!requiring_res.second) {
+    return;
+  }
+
+  // Check if the bundle was pre-registered via registerDynamicComponent
+  auto preloaded_bundle = GetTemplateBundle(src);
+  if (preloaded_bundle.has_value()) {
+    // Hit cache, dispatch directly without network request
+    LazyBundleLoader::CallBackInfo callback_info(
+        src, std::vector<uint8_t>(), std::move(preloaded_bundle), std::nullopt);
+    lazy_bundle::LynxLazyBundleRequest request{
+        .url = src, .resource_type = pub::LynxResourceType::kFrame};
+    callback_info.request = std::move(request);
+    DidFetchBundle(std::move(callback_info));
+    return;
+  }
+
+  if (!resource_loader_) {
+    LOGE("failed to query bundle, resource_loader is null, src: " << src);
     return;
   }
   lazy_bundle::LynxLazyBundleRequest request{

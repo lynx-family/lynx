@@ -655,11 +655,6 @@ jboolean RegisterLazyBundle(JNIEnv* env, jclass jcaller, jlong ptr,
                             jlong lifecycle, jstring url, jlong bundle_ptr) {
   const auto& bundle =
       *reinterpret_cast<lynx::tasm::LynxTemplateBundle*>(bundle_ptr);
-  // only valid bundles from dynamic component templates will be passed to the
-  // shell
-  if (bundle.IsCard()) {
-    return false;
-  }
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
   if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
