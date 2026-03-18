@@ -11,6 +11,8 @@
 #include "platform/harmony/lynx_xelement/overlay/ui_overlay.h"
 #include "platform/harmony/lynx_xelement/refresh/refresh_shadow_node.h"
 #include "platform/harmony/lynx_xelement/refresh/ui_refresh.h"
+#include "platform/harmony/lynx_xelement/viewpager/ui_viewpager.h"
+#include "platform/harmony/lynx_xelement/viewpager/ui_viewpager_item.h"
 
 namespace lynx {
 namespace tasm {
@@ -26,6 +28,8 @@ void XElementRegistry::Initialize() {
   map["refresh"] = {UIRefresh::Make, RefreshShadowNode::Make,
                     LayoutNodeType::CUSTOM};
   map["refresh-header"] = {UIRefreshHeader::Make};
+  map["viewpager"] = {UIViewPager::Make};
+  map["viewpager-item"] = {UIViewPagerItem::Make};
 }
 }  // namespace harmony
 }  // namespace tasm

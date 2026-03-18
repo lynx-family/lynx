@@ -25,6 +25,10 @@ lynx_core_source_set("lynx_xelement") {
     "refresh/ui_refresh.h",
     "registry.cc",
     "registry.h",
+    "viewpager/ui_viewpager.cc",
+    "viewpager/ui_viewpager.h",
+    "viewpager/ui_viewpager_item.cc",
+    "viewpager/ui_viewpager_item.h",
   ]
   deps = [ "../lynx_harmony:native" ]
 }
