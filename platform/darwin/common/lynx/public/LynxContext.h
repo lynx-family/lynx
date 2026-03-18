@@ -11,6 +11,7 @@
 #import <Lynx/LynxView.h>
 
 @protocol LynxExtensionModule;
+@protocol LynxFrameViewProvider;
 
 NS_ASSUME_NONNULL_BEGIN
 
