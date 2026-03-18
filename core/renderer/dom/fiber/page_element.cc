@@ -174,6 +174,10 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
 
   element_container()->UpdateNodeReadyPatching();
 
+  // Must be set before FinishLayoutOperation so downstream painting/lifecycle
+  // can emit layout-finished callbacks for this pipeline.
+  options->has_layout = true;
+
   element_container()->FinishLayoutOperation(options);
 
   if (!options->enable_unified_pixel_pipeline) {

@@ -26,7 +26,6 @@
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxWeakProxy.h>
 #import "LynxFeatureCounter.h"
-#import "LynxTemplateRender+Internal.h"
 #import "LynxTraceEventDef.h"
 #import "LynxUIRendererProtocol.h"
 #import "LynxView+Protected.h"
@@ -707,7 +706,8 @@
   _intrinsicContentSize = size;
 
   _dispatchingIntrinsicContentSizeChange = YES;
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_VIEW_LIFECYCLE_CHANGE_CONTENT_SIZE);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_VIEW_LIFECYCLE_CHANGE_CONTENT_SIZE, "width",
+              std::to_string(size.width), "height", std::to_string(size.height));
   [_lifecycleDispatcher lynxViewDidChangeIntrinsicContentSize:self];
   _dispatchingIntrinsicContentSizeChange = NO;
 }
