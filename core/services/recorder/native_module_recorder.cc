@@ -5,6 +5,7 @@
 #include "core/services/recorder/native_module_recorder.h"
 
 #include <cmath>
+#include <vector>
 
 #include "core/runtime/js/jsi/jsi.h"
 
@@ -21,7 +22,9 @@ void NativeModuleRecorder::RecordSharedData(const piper::Value* args,
 
   piper::Scope scope(*rt);
 
-  rapidjson::Value value = ParsePiperValueToJsonValue(args[1], rt);
+  std::vector<const piper::Object*> visited_objs;
+  rapidjson::Value value =
+      ParsePiperValueToJsonValue(args[1], rt, &visited_objs);
 
   std::string key = args[0].getString(*rt).utf8(*rt);
   TestBenchBaseRecorder::GetInstance().RecordSharedData(key, value, record_id);
@@ -43,13 +46,16 @@ void NativeModuleRecorder::RecordFunctionCall(
 
   params_val.AddMember(rapidjson::StringRef(kParamArgc), argc, allocator);
 
+  std::vector<const piper::Object*> visited_objs;
   rapidjson::Value args_val(rapidjson::kArrayType);
   for (uint32_t index = 0; index < argc; index++) {
-    args_val.PushBack(ParsePiperValueToJsonValue(args[index], rt), allocator);
+    args_val.PushBack(
+        ParsePiperValueToJsonValue(args[index], rt, &visited_objs), allocator);
   }
   params_val.AddMember(rapidjson::StringRef(kParamArgs), args_val, allocator);
 
-  rapidjson::Value return_val = ParsePiperValueToJsonValue(res, rt);
+  rapidjson::Value return_val =
+      ParsePiperValueToJsonValue(res, rt, &visited_objs);
   params_val.AddMember(rapidjson::StringRef(kParamReturnValue), return_val,
                        allocator);
 
@@ -80,8 +86,10 @@ void NativeModuleRecorder::RecordCallback(const char* module_name,
   rapidjson::Document::AllocatorType& allocator =
       TestBenchBaseRecorder::GetInstance().GetAllocator();
 
+  std::vector<const piper::Object*> visited_objs;
   rapidjson::Value params_val(rapidjson::kObjectType);
-  rapidjson::Value return_value = ParsePiperValueToJsonValue(args, rt);
+  rapidjson::Value return_value =
+      ParsePiperValueToJsonValue(args, rt, &visited_objs);
   params_val.AddMember(rapidjson::StringRef(kParamReturnValue), return_value,
                        allocator);
 
@@ -104,8 +112,10 @@ void NativeModuleRecorder::RecordCallback(const char* module_name,
   rapidjson::Value params_val(rapidjson::kObjectType);
   rapidjson::Value return_val(rapidjson::kArrayType);
 
+  std::vector<const piper::Object*> visited_objs;
   for (uint32_t index = 0; index < count; ++index) {
-    rapidjson::Value value = ParsePiperValueToJsonValue(args[index], rt);
+    rapidjson::Value value =
+        ParsePiperValueToJsonValue(args[index], rt, &visited_objs);
     return_val.PushBack(value, allocator);
   }
   params_val.AddMember(rapidjson::StringRef(kParamReturnValue), return_val,
@@ -132,8 +142,10 @@ void NativeModuleRecorder::RecordGlobalEvent(std::string module_id,
 
   rapidjson::Value return_val(rapidjson::kArrayType);
 
+  std::vector<const piper::Object*> visited_objs;
   for (uint32_t index = 0; index < count; ++index) {
-    rapidjson::Value value = ParsePiperValueToJsonValue(args[index], rt);
+    rapidjson::Value value =
+        ParsePiperValueToJsonValue(args[index], rt, &visited_objs);
     return_val.PushBack(value, allocator);
   }
 
@@ -179,7 +191,8 @@ void NativeModuleRecorder::RecordEventAndroid(
 }
 
 rapidjson::Value NativeModuleRecorder::ParsePiperValueToJsonValue(
-    const piper::Value& res, piper::Runtime* rt) {
+    const piper::Value& res, piper::Runtime* rt,
+    std::vector<const piper::Object*>* visited_objs) {
   piper::Scope scope(*rt);
   rapidjson::Document::AllocatorType& allocator =
       TestBenchBaseRecorder::GetInstance().GetAllocator();
@@ -202,6 +215,30 @@ rapidjson::Value NativeModuleRecorder::ParsePiperValueToJsonValue(
   } else if (res.isObject()) {
     piper::Object piper_obj = res.getObject(*rt);
 
+    // Circular reference detection: prevents infinite recursion and stack
+    // overflow
+    //
+    // - Add visited object tracking using vector<const Object*> and
+    // VisitedGuard RAII
+    // - Use Object::strictEquals() official API for reliable object identity
+    // check
+    // - Return "[Circular Reference]" placeholder when circular reference is
+    // detected
+    if (visited_objs != nullptr) {
+      for (const auto* obj : *visited_objs) {
+        if (obj && piper::Object::strictEquals(*rt, *obj, piper_obj)) {
+          LOGD(
+              "NativeModuleRecorder::ParsePiperValueToJsonValue: Circular "
+              "reference detected when serializing JS object.");
+          return_val.SetString("[Circular Reference]", allocator);
+          return return_val;
+        }
+      }
+    }
+
+    // Add current Object to visited set
+    VisitedGuard guard(visited_objs, &piper_obj);
+
     if (piper_obj.isArray(*rt)) {
       // Parse Array
       return_val.SetArray();
@@ -213,8 +250,9 @@ rapidjson::Value NativeModuleRecorder::ParsePiperValueToJsonValue(
           if (!val_opt) {
             return return_val;
           }
-          return_val.PushBack(ParsePiperValueToJsonValue(*val_opt, rt),
-                              allocator);
+          return_val.PushBack(
+              ParsePiperValueToJsonValue(*val_opt, rt, visited_objs),
+              allocator);
         }
       }
     } else if (piper_obj.isArrayBuffer(*rt)) {
@@ -239,7 +277,8 @@ rapidjson::Value NativeModuleRecorder::ParsePiperValueToJsonValue(
         rapidjson::Value key(rapidjson::kStringType);
         key.SetString(property_name.utf8(*rt).c_str(), allocator);
         piper::Value piper_val = host_obj->get(rt, property_name);
-        rapidjson::Value val = ParsePiperValueToJsonValue(piper_val, rt);
+        rapidjson::Value val =
+            ParsePiperValueToJsonValue(piper_val, rt, visited_objs);
         return_val.AddMember(key, val, allocator);
       }
 
@@ -260,12 +299,14 @@ rapidjson::Value NativeModuleRecorder::ParsePiperValueToJsonValue(
         if (!property_name) {
           return return_val;
         }
-        rapidjson::Value key = ParsePiperValueToJsonValue(*property_name, rt);
+        rapidjson::Value key =
+            ParsePiperValueToJsonValue(*property_name, rt, visited_objs);
         auto piper_val = piper_obj.getProperty(*rt, key.GetString());
         if (!piper_val) {
           return return_val;
         }
-        rapidjson::Value val = ParsePiperValueToJsonValue(*piper_val, rt);
+        rapidjson::Value val =
+            ParsePiperValueToJsonValue(*piper_val, rt, visited_objs);
         return_val.AddMember(key, val, allocator);
       }
     }
