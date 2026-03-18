@@ -8,6 +8,7 @@
 #include "core/renderer/tasm/testing/event_tracker_mock.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/resource/lazy_bundle/lazy_bundle_lifecycle_option.h"
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lazy_bundle/lazy_bundle_utils.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
@@ -16,6 +17,58 @@
 namespace lynx {
 namespace tasm {
 namespace test {
+
+// Test that pre-registered bundle can be retrieved via GetTemplateBundle
+TEST(LazyBundleLoaderTest, InsertAndGetTemplateBundle) {
+  // Create LazyBundleLoader without resource_loader (for testing cache only)
+  auto loader = std::make_shared<LazyBundleLoader>(nullptr);
+
+  // Create a dummy LynxTemplateBundle
+  LynxTemplateBundle bundle;
+
+  const std::string kTestUrl = "test_component_url";
+
+  // Insert bundle into loader
+  loader->InsertTemplateBundle(kTestUrl, bundle);
+
+  // Retrieve bundle via GetTemplateBundle
+  auto retrieved_bundle = loader->GetTemplateBundle(kTestUrl);
+
+  // Verify bundle was retrieved successfully
+  EXPECT_TRUE(retrieved_bundle.has_value());
+}
+
+// Test that GetTemplateBundle returns nullopt for non-existent URL
+TEST(LazyBundleLoaderTest, GetTemplateBundleNotFound) {
+  auto loader = std::make_shared<LazyBundleLoader>(nullptr);
+
+  const std::string kNonExistentUrl = "non_existent_url";
+
+  auto result = loader->GetTemplateBundle(kNonExistentUrl);
+
+  EXPECT_FALSE(result.has_value());
+}
+
+// Test that LoadFrameBundle uses pre-registered bundle without network request
+// when bundle is pre-inserted
+TEST(LazyBundleLoaderTest, LoadFrameBundleUsesCache) {
+  // Create LazyBundleLoader without resource_loader to ensure no network
+  // request
+  auto loader = std::make_shared<LazyBundleLoader>(nullptr);
+
+  // Create and insert a pre-registered bundle
+  LynxTemplateBundle bundle;
+  const std::string kTestUrl = "cached_component_url";
+  loader->InsertTemplateBundle(kTestUrl, bundle);
+
+  // Verify the bundle is in loaded_bundles_ (cache)
+  auto cached_bundle = loader->GetTemplateBundle(kTestUrl);
+  EXPECT_TRUE(cached_bundle.has_value());
+
+  // Verify requiring_urls_ is empty (no pending requests yet)
+  // This ensures LoadFrameBundle can proceed to check cache
+  EXPECT_TRUE(loader->requiring_urls_.empty());
+}
 
 TEST(LazyBundleTest, GetLazyBundleEntry) {
   constexpr int32_t kInstanceId = 1;

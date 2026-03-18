@@ -17,6 +17,7 @@ import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxBehavior;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxFrameViewProvider;
 import com.lynx.tasm.behavior.LynxGeneratorName;
 import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -44,7 +45,18 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
 
   @Override
   protected LynxFrameView createView(Context context) {
-    return new LynxFrameView(mContext);
+    LynxFrameView frameView = null;
+    LynxContext lynxContext = (LynxContext) mContext;
+    LynxFrameViewProvider provider = lynxContext.getLynxFrameViewProvider();
+    if (provider != null) {
+      frameView = provider.getLynxFrameView(lynxContext);
+    }
+
+    if (frameView == null) {
+      frameView = new LynxFrameView(mContext);
+    }
+    frameView.init(lynxContext);
+    return frameView;
   }
 
   @Override
