@@ -36,6 +36,8 @@
   LynxViewSizeMode _widthMode;
   LynxViewSizeMode _heightMode;
   LynxEmbeddedMode _embeddedMode;
+  LynxViewSizeMode _rootViewWidthMode;
+  LynxViewSizeMode _rootViewHeightMode;
 }
 
 - (instancetype)init {
@@ -54,6 +56,8 @@
   } else if ([rootView isKindOfClass:[LynxFrameView class]]) {
     _rootView = [(LynxFrameView *)rootView getRootView];
   }
+  _rootViewWidthMode = ((LynxView *)_rootView).layoutWidthMode;
+  _rootViewHeightMode = ((LynxView *)_rootView).layoutHeightMode;
 }
 
 - (BOOL)setAppBundle:(LynxTemplateBundle *)bundle {
@@ -134,23 +138,28 @@
 
 - (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame {
   [super setFrame:frame];
-  if (!CGRectEqualToRect(contentFrame, _contentRect)) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_UPDATE_LAYOUT, "widthMeasureSpec",
-                std::to_string(contentFrame.size.width).c_str(), "heightMeasureSpec",
-                std::to_string(contentFrame.size.height).c_str());
-    if (!_isBundleLoad || CGRectIsNull(_contentRect)) {
-      _widthMode =
-          IS_ZERO(contentFrame.size.width) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
-      _heightMode =
-          IS_ZERO(contentFrame.size.height) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
-      [_render setLayoutWidthMode:_widthMode];
-      [_render setLayoutHeightMode:_heightMode];
-    }
-    [_render setPreferredLayoutWidth:contentFrame.size.width];
-    [_render setPreferredLayoutHeight:contentFrame.size.height];
-    _contentRect = contentFrame;
-    [self setNeedsLayout];
+  if (CGRectEqualToRect(contentFrame, _contentRect)) {
+    return;
   }
+
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_UPDATE_LAYOUT, "widthMeasureSpec",
+              std::to_string(contentFrame.size.width), "heightMeasureSpec",
+              std::to_string(contentFrame.size.height));
+
+  const BOOL shouldResetSizeMode = !_isBundleLoad || CGRectIsNull(_contentRect);
+  if (shouldResetSizeMode) {
+    _widthMode =
+        IS_ZERO(contentFrame.size.width) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
+    _heightMode =
+        IS_ZERO(contentFrame.size.height) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
+    [_render setLayoutWidthMode:_widthMode];
+    [_render setLayoutHeightMode:_heightMode];
+  }
+
+  [_render setPreferredLayoutWidth:contentFrame.size.width];
+  [_render setPreferredLayoutHeight:contentFrame.size.height];
+  _contentRect = contentFrame;
+  [self setNeedsLayout];
 }
 
 - (void)setInitData:(nullable LynxTemplateData *)initData {
@@ -255,6 +264,10 @@
                             task:^(LynxShadowNode *node) {
                               [(LynxFrameShadowNode *)node updateIntrinsicContentSize:size];
                             }];
+    // Restore root LynxView size modes so host layout policy remains unchanged
+    // after this frame view consumes intrinsic size.
+    ((LynxView *)_rootView).layoutWidthMode = _rootViewWidthMode;
+    ((LynxView *)_rootView).layoutHeightMode = _rootViewHeightMode;
     [self setNeedsLayout];
   }
 }
