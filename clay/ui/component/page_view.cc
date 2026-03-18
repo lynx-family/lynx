@@ -1099,7 +1099,8 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
 }
 
 void PageView::ReportTopViewEvent(const PointerEvent& event) {
-  ReportTopViewEvent(event, ToClayEventType(event));
+  ReportTopViewEvent(event,
+                     ToClayEventType(event, align_mouse_event_with_w3c_));
 }
 
 void PageView::ReportKeyEvent(const KeyEvent& event) {
@@ -2029,7 +2030,8 @@ void PageView::HandleGestureEvent(int sign, uint32_t gesture_id,
 }
 
 ClayEventType ToClayEventType(PointerEvent::EventType event_type,
-                              PointerEvent::DeviceType device) {
+                              PointerEvent::DeviceType device,
+                              bool align_mouse_event_with_w3c) {
   if (device == PointerEvent::DeviceType::kTouch) {
     switch (event_type) {
       case PointerEvent::EventType::kSignalEvent:
@@ -2067,19 +2069,15 @@ ClayEventType ToClayEventType(PointerEvent::EventType event_type,
     switch (event_type) {
       case PointerEvent::EventType::kSignalEvent:
         return kClayEventTypeWheel;
-      case PointerEvent::EventType::kUnkownEvent:
-        return kClayEventTypeUnknown;
       case PointerEvent::EventType::kDownEvent:
         return kClayEventTypeMouseDown;
       case PointerEvent::EventType::kUpEvent:
         return kClayEventTypeMouseUp;
       case PointerEvent::EventType::kMoveEvent:
         return kClayEventTypeMouseMove;
-      case PointerEvent::EventType::kCancel:
-        return kClayEventTypeUnknown;
       case PointerEvent::EventType::kHoverEvent:
-        // TODO(yangliu): report hover event to lynx
-        return kClayEventTypeUnknown;
+        return align_mouse_event_with_w3c ? kClayEventTypeMouseMove
+                                          : kClayEventTypeUnknown;
       default:
         return kClayEventTypeUnknown;
     }
@@ -2087,8 +2085,9 @@ ClayEventType ToClayEventType(PointerEvent::EventType event_type,
   return kClayEventTypeUnknown;
 }
 
-ClayEventType ToClayEventType(const PointerEvent& event) {
-  return ToClayEventType(event.type, event.device);
+ClayEventType ToClayEventType(const PointerEvent& event,
+                              bool align_mouse_event_with_w3c) {
+  return ToClayEventType(event.type, event.device, align_mouse_event_with_w3c);
 }
 
 ClayEventType ToClayEventType(KeyEventType type) {

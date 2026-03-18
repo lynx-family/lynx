@@ -72,9 +72,11 @@ class ScrollFluencyMonitorDelegate;
 class PipelineTimingDelegate;
 
 ClayEventType ToClayEventType(PointerEvent::EventType event_type,
-                              PointerEvent::DeviceType device);
+                              PointerEvent::DeviceType device,
+                              bool align_mouse_event_with_w3c);
 
-ClayEventType ToClayEventType(const PointerEvent& event);
+ClayEventType ToClayEventType(const PointerEvent& event,
+                              bool align_mouse_event_with_w3c);
 
 ClayEventType ToClayEventType(KeyEventType type);
 
@@ -471,6 +473,11 @@ class PageView : public BaseView,
     return gesture_handler_dispatcher_.get();
   }
 
+  bool AlignMouseEventWithW3C() const { return align_mouse_event_with_w3c_; }
+  void SetAlignMouseEventWithW3C(bool is_aligned) {
+    align_mouse_event_with_w3c_ = is_aligned;
+  }
+
  protected:
   void OnDestroy() override;
 
@@ -610,6 +617,7 @@ class PageView : public BaseView,
   std::unique_ptr<OverlayManager> overlay_manager_;
 #endif
   std::unique_ptr<GestureHandlerDispatcher> gesture_handler_dispatcher_;
+  bool align_mouse_event_with_w3c_ = false;
 };
 
 }  // namespace clay

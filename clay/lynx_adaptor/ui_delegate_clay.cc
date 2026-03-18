@@ -14,7 +14,7 @@
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
-#include "core/services/timing_handler/timing.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
 namespace tasm {
@@ -211,6 +211,13 @@ std::vector<float> UIDelegateClay::GetTransformValue(
   }
 
   return res;
+}
+
+void UIDelegateClay::OnPageConfigDecoded(
+    const std::shared_ptr<PageConfig>& config) {
+  if (auto* page_view = view_context_->GetPageView()) {
+    page_view->SetAlignMouseEventWithW3C(config->GetAlignMouseEventWithW3C());
+  }
 }
 
 }  // namespace tasm

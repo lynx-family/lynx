@@ -34,6 +34,7 @@ const compilerOptionsKeys = [
 
 const configKeys = [
   'absoluteInContentBound',
+  'alignMouseEventWithW3C',
   'asyncRedirect',
   'autoExpose',
   'CSSAlignWithLegacyW3C',

@@ -12,6 +12,7 @@ describe('Test Config Types', () => {
   it('should have correct Config type', () => {
     expectTypeOf<Config>().toBeObject();
     expectTypeOf<Config>().toHaveProperty('absoluteInContentBound').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('alignMouseEventWithW3C').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('asyncRedirect').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('autoExpose').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('CSSAlignWithLegacyW3C').toEqualTypeOf<boolean | undefined>();

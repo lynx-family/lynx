@@ -267,7 +267,6 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   float GetBaseline(int id) const;
 
   void SetDefaultOverflowVisible(bool value);
-  void SetExposureProps(int freq, bool exposure_ui_margin_enabled);
   void SetEventDelegate(EventDelegate* delegate);
   void SetUIComponentDelegate(UIComponentDelegate* delegate);
   void SetLayoutDelegate(LayoutDelegate* delegate);

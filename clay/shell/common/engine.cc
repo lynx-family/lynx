@@ -210,7 +210,7 @@ void Engine::SetDefaultOverflowVisible(bool visible) {
 }
 
 void Engine::SetExposureProps(int freq, bool enable_exposure_ui_margin) {
-  view_context_->SetExposureProps(freq, enable_exposure_ui_margin);
+  page_view_->SetExposureProps(freq, enable_exposure_ui_margin);
 }
 
 void Engine::MakeRasterSnapshot(

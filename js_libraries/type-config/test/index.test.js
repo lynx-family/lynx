@@ -46,9 +46,10 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(126);
+    expect(configKeys.length).toBe(127);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
+      'alignMouseEventWithW3C',
       'asyncRedirect',
       'autoExpose',
       'CSSAlignWithLegacyW3C',

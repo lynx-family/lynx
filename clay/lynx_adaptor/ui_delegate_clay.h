@@ -60,6 +60,8 @@ class UIDelegateClay : public UIDelegate {
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
 
+  void OnPageConfigDecoded(const std::shared_ptr<PageConfig>& config) override;
+
   clay::ViewContext* GetViewContext() const { return view_context_; }
 
  private:

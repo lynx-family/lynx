@@ -21,6 +21,17 @@ export interface Config {
   absoluteInContentBound?: boolean;
 
   /**
+   * Let mouse events have the same semantic with W3C standard
+   *
+   * Supported platform: macOS, Windows
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue false
+   */
+  alignMouseEventWithW3C?: boolean;
+
+  /**
    * Enable Android Lynx Image URL asynchronous redirect
    *
    * Supported platform: Android

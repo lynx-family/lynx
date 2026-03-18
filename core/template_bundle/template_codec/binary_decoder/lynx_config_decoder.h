@@ -853,6 +853,12 @@ class LynxConfigDecoder final {
               ? TernaryBool::TRUE_VALUE
               : TernaryBool::FALSE_VALUE);
     }
+
+    if (doc.HasMember(config::kAlignMouseEventWithW3C) &&
+        doc[config::kAlignMouseEventWithW3C].IsBool()) {
+      page_config->SetAlignMouseEventWithW3C(
+          doc[config::kAlignMouseEventWithW3C].GetBool());
+    }
   };
 };
 }  // namespace tasm

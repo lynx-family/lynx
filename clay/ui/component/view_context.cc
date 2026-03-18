@@ -977,10 +977,6 @@ void ViewContext::SetDefaultOverflowVisible(bool value) {
   RenderObject::ChangeDefaultOverflowValue(value);
 }
 
-void ViewContext::SetExposureProps(int freq, bool exposure_ui_margin_enabled) {
-  page_view_->SetExposureProps(freq, exposure_ui_margin_enabled);
-}
-
 void ViewContext::SetExternalScreenshotCallback(
     ExternalScreenshotCallback callback) {
   page_view_->SetExternalScreenshotCallback(std::move(callback));

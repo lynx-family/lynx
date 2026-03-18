@@ -176,7 +176,7 @@ class Config:
         return True
 
     def _check_support_platform(self) -> bool:
-        _support_platform_set = {"iOS", "Android", "HarmonyOS"}
+        _support_platform_set = {"iOS", "Android", "HarmonyOS", "macOS", "Windows"}
         if not self.support_platform:
             return True
         for platform in self.support_platform:

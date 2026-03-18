@@ -124,13 +124,13 @@ BaseView::BaseView(int id, std::string tag_name,
     if (mouse_region_manager) {
       mouse_region_manager->RegisterEnterCallback(
           this,
-          std::bind(&BaseView::OnMouseEnter, this, std::placeholders::_1));
+          [this](const PointerEvent& event) { this->OnMouseEnter(event); });
       mouse_region_manager->RegisterLeaveCallback(
           this,
-          std::bind(&BaseView::OnMouseLeave, this, std::placeholders::_1));
+          [this](const PointerEvent& event) { this->OnMouseLeave(event); });
       mouse_region_manager->RegisterHoverCallback(
           this,
-          std::bind(&BaseView::OnMouseHover, this, std::placeholders::_1));
+          [this](const PointerEvent& event) { this->OnMouseHover(event); });
     }
     // set default cursor for every base view
     SetCursor({"default"});

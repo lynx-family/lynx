@@ -74,14 +74,16 @@ void MouseRegionManager::HandleEvent(BaseView* root,
 
   if (prev_chain_ == view_chain) {
     // stay in the same mouse region
-    auto target_iter = view_chain.begin();
-    while (target_iter != view_chain.end()) {
-      auto route_iter = mouse_region_routes_.find(target_iter->get());
-      if (route_iter != mouse_region_routes_.end() &&
-          route_iter->second.on_hover) {
-        route_iter->second.on_hover(event);
+    if (!root->page_view()->AlignMouseEventWithW3C()) {
+      auto target_iter = view_chain.begin();
+      while (target_iter != view_chain.end()) {
+        auto route_iter = mouse_region_routes_.find(target_iter->get());
+        if (route_iter != mouse_region_routes_.end() &&
+            route_iter->second.on_hover) {
+          route_iter->second.on_hover(event);
+        }
+        ++target_iter;
       }
-      ++target_iter;
     }
     return;
   }

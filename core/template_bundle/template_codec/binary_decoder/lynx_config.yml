@@ -1851,3 +1851,12 @@ enableFetchAPIStandardStreaming:
   supportPlatform:
     - Android
     - iOS
+alignMouseEventWithW3C:
+  description: Let mouse events have the same semantic with W3C standard
+  defaultValue: 'false'
+  valueType: bool
+  author: panchenfeng
+  since: '3.8'
+  supportPlatform:
+    - macOS
+    - Windows
