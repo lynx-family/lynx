@@ -109,7 +109,7 @@ class BackgroundDrawable {
   bool HasBorder() { return has_border_; }
   bool HasImage();
   bool UseClipPath() {
-    return has_border_ || has_image_ || !border_radius_->IsZero();
+    return has_border_ || HasImageLayers() || !border_radius_->IsZero();
   }
   const std::string& GetClipPath();
   OH_Drawing_Path* GetInnerClipPath();
@@ -153,7 +153,6 @@ class BackgroundDrawable {
   float left_{0};
   float top_{0};
   bool has_border_{false};
-  bool has_image_{false};
   std::unique_ptr<LayerManager> layer_manager_{nullptr};
   uint32_t background_color_{};
   float padding_left_{0};
@@ -238,6 +237,7 @@ class BackgroundDrawable {
   void DrawClipBorderPath(OH_Drawing_Path* path, uint32_t color,
                           OH_Drawing_Pen* pen, OH_Drawing_Canvas* canvas);
   void InitLayerManager();
+  bool HasImageLayers();
 };
 
 }  // namespace harmony

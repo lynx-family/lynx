@@ -60,6 +60,9 @@ void BackgroundDrawable::Render(OH_Drawing_Canvas* canvas) {
   if (base::FloatsLarger(view_width_, 0) &&
       base::FloatsLarger(view_height_, 0)) {
     if (blend_brush_) {  // draw mask
+      if (!HasImageLayers()) {
+        return;
+      }
       OH_Drawing_CanvasSaveLayer(canvas, border_box_draw_rect_, blend_brush_);
       DrawBackground(canvas);
       OH_Drawing_CanvasRestore(canvas);
@@ -236,7 +239,7 @@ void BackgroundDrawable::DrawBackground(OH_Drawing_Canvas* canvas) {
     OH_Drawing_CanvasDetachBrush(canvas);
   }
 
-  if (layer_manager_ && layer_manager_->HasImageLayers()) {
+  if (HasImageLayers()) {
     OH_Drawing_CanvasSave(canvas);
     OH_Drawing_Path* outer_path = nullptr;
     OH_Drawing_Path* inner_path = nullptr;
@@ -1067,9 +1070,6 @@ void BackgroundDrawable::AdjustBorder() {
     is_simple_style_ = IsSimpleBorderStyle(border_info_->border_left_style);
   }
   UpdateContentBox();
-  if (layer_manager_) {
-    has_image_ = layer_manager_->HasImageLayers();
-  }
 
   if (border_radius_) {
     border_radius_->Compute(view_width_ / scale_density_,
@@ -1154,7 +1154,7 @@ float BackgroundDrawable::GetBorderBottomWidth() {
 }
 
 bool BackgroundDrawable::HasImage() {
-  return has_image_ || Alpha(background_color_) != 0;
+  return HasImageLayers() || Alpha(background_color_) != 0;
 }
 
 bool BackgroundDrawable::HasShadow() {
@@ -1332,6 +1332,10 @@ void BackgroundDrawable::InitLayerManager() {
       OH_Drawing_BrushSetBlendMode(blend_brush_, BLEND_MODE_DST_IN);
     }
   }
+}
+
+bool BackgroundDrawable::HasImageLayers() {
+  return layer_manager_ && layer_manager_->HasImageLayers();
 }
 }  // namespace harmony
 }  // namespace tasm
