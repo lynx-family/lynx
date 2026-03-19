@@ -464,6 +464,10 @@ void PaintingContextClay::StopExposure(const pub::Value& options) {}
 
 void PaintingContextClay::ResumeExposure() {}
 
+std::vector<float> PaintingContextClay::GetRectToLynxView(int64_t id) {
+  return view_context_->GetRectToLynxView(id);
+}
+
 std::list<int32_t> PaintingContextClay::GetAncestorElements(int32_t tag) {
   return engine_proxy_->GetAncestorElements(tag);
 }

@@ -311,6 +311,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
 
   FrameObserver* GetFrameObserver() const { return frame_observer_; }
 
+  std::vector<float> GetRectToLynxView(int64_t id);
+
  protected:
   // FIXME(Xietong):
   // In Lynx, the initial properties are passed during view creation. That's
