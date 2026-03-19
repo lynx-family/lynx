@@ -671,11 +671,12 @@ void Fragment::MarkHasExposureEventIfNeeded() const {
 void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
   MarkHasExposureEventIfNeeded();
 
-  if (NeedRedraw()) {
-    DrawFull(display_list_builder);
-  } else {
-    DispatchUpdateDisplayList();
-  }
+  // FIXME(zhongyr): find a way to avoid this redraw issue
+  // if (NeedRedraw()) {
+  DrawFull(display_list_builder);
+  //} else {
+  //  DispatchUpdateDisplayList();
+  //}
 
   if (NeedUpdateSubtreeProperty()) {
     DrawTransform(display_list_builder);
