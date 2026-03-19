@@ -15,6 +15,7 @@ InspectorDOMAgentNG::InspectorDOMAgentNG(
   functions_map_["DOM.enableDomTree"] = &InspectorDOMAgentNG::EnableDomTree;
   functions_map_["DOM.disableDomTree"] = &InspectorDOMAgentNG::DisableDomTree;
   functions_map_["DOM.getDocument"] = &InspectorDOMAgentNG::GetDocument;
+  functions_map_["DOM.describeNode"] = &InspectorDOMAgentNG::DescribeNode;
   functions_map_["DOM.getDocumentWithBoxModel"] =
       &InspectorDOMAgentNG::GetDocumentWithBoxModel;
   functions_map_["DOM.requestChildNodes"] =
@@ -96,6 +97,11 @@ void InspectorDOMAgentNG::DisableDomTree(
 void InspectorDOMAgentNG::GetDocument(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   devtool_mediator_->GetDocument(sender, message);
+}
+
+void InspectorDOMAgentNG::DescribeNode(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->DescribeNode(sender, message);
 }
 
 void InspectorDOMAgentNG::GetDocumentWithBoxModel(

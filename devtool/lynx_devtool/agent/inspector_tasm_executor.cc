@@ -547,10 +547,7 @@ void InspectorTasmExecutor::GetDocument(
   Json::Value params = message["params"];
   int depth = -1;
   if (params.isMember("depth")) {
-    depth = params["depth"].asInt();
-  }
-  if (depth < -1) {
-    depth = -1;
+    depth = params["depth"].asInt() < -1 ? -1 : params["depth"].asInt();
   }
   if (element_root_ == nullptr) {
     response["result"] = content;
@@ -575,6 +572,51 @@ void InspectorTasmExecutor::GetDocument(
             root_str.size() >
                 static_cast<size_t>(self->dom_compression_threshold_)) {
           InspectorUtil::CompressData("getDocument", root_str, content, "root");
+        }
+        response["result"] = content;
+        sender->SendMessage("CDP", response);
+      },
+      true);
+}
+
+void InspectorTasmExecutor::DescribeNode(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  const Json::Value params = message["params"];
+  int depth = 1;
+  if (params.isMember("depth")) {
+    depth = params["depth"].asInt() < -1 ? 1 : params["depth"].asInt();
+  }
+
+  Element* target = nullptr;
+  if (params.isMember("nodeId")) {
+    target = GetElementById(params["nodeId"].asInt());
+  } else if (params.isMember("backendNodeId")) {
+    target = GetElementById(params["backendNodeId"].asInt());
+  }
+
+  Json::Value response(Json::ValueType::objectValue);
+  Json::Value content(Json::ValueType::objectValue);
+  content["compress"] = false;
+  response["id"] = message["id"].asInt64();
+  if (target == nullptr) {
+    response["result"] = content;
+    sender->SendMessage("CDP", response);
+    return;
+  }
+
+  content["node"] = ElementHelper::GetDocumentBodyFromNode(target, depth);
+
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
+  devtool_mediator->RunOnDevToolThread(
+      [sender, self = shared_from_this(), content, response]() mutable {
+        std::string node_str = content["node"].toStyledString();
+        if (self->dom_use_compression_ &&
+            node_str.size() >
+                static_cast<size_t>(self->dom_compression_threshold_)) {
+          InspectorUtil::CompressData("describeNode", node_str, content,
+                                      "node");
         }
         response["result"] = content;
         sender->SendMessage("CDP", response);

@@ -38,6 +38,8 @@ class InspectorDOMAgentNG : public CDPDomainAgentBase {
                       const Json::Value& message);
   void GetDocument(const std::shared_ptr<MessageSender>& sender,
                    const Json::Value& message);
+  void DescribeNode(const std::shared_ptr<MessageSender>& sender,
+                    const Json::Value& message);
   void GetDocumentWithBoxModel(const std::shared_ptr<MessageSender>& sender,
                                const Json::Value& message);
   void RequestChildNodes(const std::shared_ptr<MessageSender>& sender,

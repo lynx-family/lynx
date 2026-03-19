@@ -332,6 +332,133 @@ TEST_F(InspectorTasmExecutorTest, GetDocumentDefaultDepthReturnsFullTreeCase) {
             devtool::ElementInspector::NodeId(grandchild.get()));
 }
 
+TEST_F(InspectorTasmExecutorTest, DescribeNodeByNodeIdCase) {
+  auto root = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(root.get()));
+  root->SetAttribute("id", lepus::Value("root"));
+
+  auto child = manager_->CreateFiberElement("text");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(child.get()));
+  child->SetAttribute("text", lepus::Value("hello"));
+  root->AddChildAt(child, 0);
+  element_executor_->element_root_ = root.get();
+
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 1;
+  message["params"]["nodeId"] = devtool::ElementInspector::NodeId(root.get());
+  element_executor_->DescribeNode(message_sender_, message);
+  FlushDevtoolTasks();
+
+  Json::Value res;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["id"], 1);
+  EXPECT_TRUE(res["error"].isNull());
+  EXPECT_EQ(res["result"]["node"]["nodeId"],
+            devtool::ElementInspector::NodeId(root.get()));
+  EXPECT_EQ(res["result"]["node"]["backendNodeId"],
+            devtool::ElementInspector::NodeId(root.get()));
+  EXPECT_EQ(res["result"]["node"]["childNodeCount"], 1);
+  ASSERT_TRUE(res["result"]["node"]["children"].isArray());
+  ASSERT_EQ(res["result"]["node"]["children"].size(), 1U);
+  EXPECT_EQ(res["result"]["node"]["children"][0]["nodeId"],
+            devtool::ElementInspector::NodeId(child.get()));
+}
+
+TEST_F(InspectorTasmExecutorTest, DescribeNodeDepthZeroCase) {
+  auto root = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(root.get()));
+
+  auto child = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(child.get()));
+  root->AddChildAt(child, 0);
+  element_executor_->element_root_ = root.get();
+
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 2;
+  message["params"]["nodeId"] = devtool::ElementInspector::NodeId(root.get());
+  message["params"]["depth"] = 0;
+  element_executor_->DescribeNode(message_sender_, message);
+  FlushDevtoolTasks();
+
+  Json::Value res;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["result"]["node"]["childNodeCount"], 1);
+  EXPECT_TRUE(res["result"]["node"]["children"].isNull());
+}
+
+TEST_F(InspectorTasmExecutorTest, DescribeNodeWithFullDepthCase) {
+  auto root = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(root.get()));
+
+  auto child = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(child.get()));
+  auto grandchild = manager_->CreateFiberElement("text");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(grandchild.get()));
+
+  root->AddChildAt(child, 0);
+  child->AddChildAt(grandchild, 0);
+  element_executor_->element_root_ = root.get();
+
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 3;
+  message["params"]["backendNodeId"] =
+      devtool::ElementInspector::NodeId(child.get());
+  message["params"]["depth"] = -1;
+  element_executor_->DescribeNode(message_sender_, message);
+  FlushDevtoolTasks();
+
+  Json::Value res;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["result"]["node"]["nodeId"],
+            devtool::ElementInspector::NodeId(child.get()));
+  ASSERT_TRUE(res["result"]["node"]["children"].isArray());
+  ASSERT_EQ(res["result"]["node"]["children"].size(), 1U);
+  EXPECT_EQ(res["result"]["node"]["children"][0]["nodeId"],
+            devtool::ElementInspector::NodeId(grandchild.get()));
+}
+
+TEST_F(InspectorTasmExecutorTest, DescribeNodeMissingNodeCase) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 4;
+  message["params"]["nodeId"] = 99999;
+  element_executor_->DescribeNode(message_sender_, message);
+
+  Json::Value res;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["id"], 4);
+  EXPECT_TRUE(res["error"].isNull());
+  EXPECT_TRUE(res["result"]["node"].isNull());
+}
+
+TEST_F(InspectorTasmExecutorTest, DescribeNodeUnsupportedObjectIdCase) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 5;
+  message["params"]["objectId"] = "remote-object-id";
+  element_executor_->DescribeNode(message_sender_, message);
+
+  Json::Value res;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["id"], 5);
+  EXPECT_TRUE(res["error"].isNull());
+  EXPECT_TRUE(res["result"]["node"].isNull());
+}
 TEST_F(InspectorTasmExecutorTest, SendDOMEventMsgCase) {
   auto element = manager_->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(
