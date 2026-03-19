@@ -155,6 +155,55 @@ TEST_F(ElementHelperTest, GetDocumentBodyFromNodeTest) {
   child_container->RemoveSelf(true);
 }
 
+TEST_F(ElementHelperTest, GetDocumentBodyFromNodeWithDepthTest) {
+  auto root = manager->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(root.get()));
+  root->CreateElementContainer(false);
+
+  auto child = manager->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(child.get()));
+  root->AddChildAt(child, 0);
+  child->CreateElementContainer(false);
+  child->element_container_impl()->InsertSelf();
+
+  auto grandchild = manager->CreateFiberElement("text");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(grandchild.get()));
+  child->AddChildAt(grandchild, 0);
+  grandchild->CreateElementContainer(false);
+  grandchild->element_container_impl()->InsertSelf();
+
+  auto depth_zero =
+      lynx::devtool::ElementHelper::GetDocumentBodyFromNode(root.get(), 0);
+  EXPECT_EQ(depth_zero["nodeId"],
+            lynx::devtool::ElementInspector::NodeId(root.get()));
+  EXPECT_EQ(depth_zero["childNodeCount"], 1);
+  EXPECT_TRUE(depth_zero["children"].isNull());
+
+  auto depth_one =
+      lynx::devtool::ElementHelper::GetDocumentBodyFromNode(root.get(), 1);
+  ASSERT_TRUE(depth_one["children"].isArray());
+  ASSERT_EQ(depth_one["children"].size(), 1U);
+  EXPECT_EQ(depth_one["children"][0]["nodeId"],
+            lynx::devtool::ElementInspector::NodeId(child.get()));
+  EXPECT_EQ(depth_one["children"][0]["childNodeCount"], 1);
+  EXPECT_TRUE(depth_one["children"][0]["children"].isNull());
+
+  auto full_depth =
+      lynx::devtool::ElementHelper::GetDocumentBodyFromNode(root.get(), -1);
+  ASSERT_TRUE(full_depth["children"].isArray());
+  ASSERT_EQ(full_depth["children"].size(), 1U);
+  ASSERT_TRUE(full_depth["children"][0]["children"].isArray());
+  ASSERT_EQ(full_depth["children"][0]["children"].size(), 1U);
+  EXPECT_EQ(full_depth["children"][0]["children"][0]["nodeId"],
+            lynx::devtool::ElementInspector::NodeId(grandchild.get()));
+
+  grandchild->element_container_impl()->RemoveSelf(true);
+  child->element_container_impl()->RemoveSelf(true);
+}
+
 TEST_F(ElementHelperTest, GetElementContentTest) {
   auto element = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));

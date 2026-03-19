@@ -83,18 +83,32 @@ Element* ElementHelper::GetPreviousNode(Element* ptr) {
   return nullptr;
 }
 
-Json::Value ElementHelper::GetDocumentBodyFromNode(Element* ptr) {
+namespace {
+
+void SetDocumentChildren(Json::Value& res, Element* ptr, int depth) {
+  res["childNodeCount"] = static_cast<int>(ptr->GetChildren().size());
+  if (depth == 0) {
+    return;
+  }
+
+  int next_depth = depth == -1 ? -1 : depth - 1;
+  res["children"] = Json::Value(Json::ValueType::arrayValue);
+  for (Element* child : ptr->GetChildren()) {
+    res["children"].append(
+        ElementHelper::GetDocumentBodyFromNode(child, next_depth));
+  }
+}
+
+}  // namespace
+
+Json::Value ElementHelper::GetDocumentBodyFromNode(Element* ptr, int depth) {
   Json::Value res = Json::Value(Json::ValueType::objectValue);
 
   CHECK_NULL_AND_LOG_RETURN_VALUE(ptr, "ptr is null", res);
 
-  auto set_node_func = [](Json::Value& res, Element* ptr) {
+  auto set_node_func = [depth](Json::Value& res, Element* ptr) {
     SetJsonValueOfNode(ptr, res);
-    res["childNodeCount"] = static_cast<int>(ptr->GetChildren().size());
-    res["children"] = Json::Value(Json::ValueType::arrayValue);
-    for (Element* child : ptr->GetChildren()) {
-      res["children"].append(GetDocumentBodyFromNode(child));
-    }
+    SetDocumentChildren(res, ptr, depth);
   };
 
   Element* comp_ptr =

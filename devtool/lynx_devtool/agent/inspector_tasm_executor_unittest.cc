@@ -60,6 +60,13 @@ class InspectorTasmExecutorTest : public ::testing::Test {
     devtool_mediator_->ui_task_runner_ = ui_thread_->GetTaskRunner();
   }
 
+  void FlushDevtoolTasks() {
+    std::promise<void> p;
+    auto f = p.get_future();
+    devtool_mediator_->RunOnDevToolThread([&p]() { p.set_value(); }, true);
+    f.wait();
+  }
+
  private:
   std::shared_ptr<devtool::InspectorTasmExecutor> element_executor_;
   std::shared_ptr<devtool::LynxDevToolMediator> devtool_mediator_;
@@ -254,6 +261,77 @@ TEST_F(InspectorTasmExecutorTest, GetLayerContentFromElementCase) {
   EXPECT_EQ(layer, res);
 }
 
+TEST_F(InspectorTasmExecutorTest, GetDocumentWithDepthCase) {
+  auto root = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(root.get()));
+
+  auto child = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(child.get()));
+  auto grandchild = manager_->CreateFiberElement("text");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(grandchild.get()));
+
+  root->AddChildAt(child, 0);
+  child->AddChildAt(grandchild, 0);
+  element_executor_->element_root_ = root.get();
+
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 7;
+  message["params"]["depth"] = 1;
+  element_executor_->GetDocument(message_sender_, message);
+  FlushDevtoolTasks();
+
+  Json::Value res;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["id"], 7);
+  EXPECT_TRUE(res["error"].isNull());
+  EXPECT_EQ(res["result"]["root"]["nodeId"],
+            devtool::ElementInspector::NodeId(root.get()));
+  ASSERT_TRUE(res["result"]["root"]["children"].isArray());
+  ASSERT_EQ(res["result"]["root"]["children"].size(), 1U);
+  EXPECT_EQ(res["result"]["root"]["children"][0]["nodeId"],
+            devtool::ElementInspector::NodeId(child.get()));
+  EXPECT_TRUE(res["result"]["root"]["children"][0]["children"].isNull());
+}
+
+TEST_F(InspectorTasmExecutorTest, GetDocumentDefaultDepthReturnsFullTreeCase) {
+  auto root = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(root.get()));
+
+  auto child = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(child.get()));
+  auto grandchild = manager_->CreateFiberElement("text");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(grandchild.get()));
+
+  root->AddChildAt(child, 0);
+  child->AddChildAt(grandchild, 0);
+  element_executor_->element_root_ = root.get();
+
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 8;
+  element_executor_->GetDocument(message_sender_, message);
+  FlushDevtoolTasks();
+
+  Json::Value res;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["id"], 8);
+  ASSERT_TRUE(res["result"]["root"]["children"].isArray());
+  ASSERT_EQ(res["result"]["root"]["children"].size(), 1U);
+  ASSERT_TRUE(res["result"]["root"]["children"][0]["children"].isArray());
+  ASSERT_EQ(res["result"]["root"]["children"][0]["children"].size(), 1U);
+  EXPECT_EQ(res["result"]["root"]["children"][0]["children"][0]["nodeId"],
+            devtool::ElementInspector::NodeId(grandchild.get()));
+}
+
 TEST_F(InspectorTasmExecutorTest, SendDOMEventMsgCase) {
   auto element = manager_->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(
@@ -263,17 +341,10 @@ TEST_F(InspectorTasmExecutorTest, SendDOMEventMsgCase) {
   element_executor_->element_root_ = element.get();
   devtool_mediator_->default_task_runner_ = ui_thread_->GetTaskRunner();
 
-  auto flush_devtool_tasks = [this]() {
-    std::promise<void> p;
-    auto f = p.get_future();
-    devtool_mediator_->RunOnDevToolThread([&p]() { p.set_value(); }, true);
-    f.wait();
-  };
-
   element_executor_->SendDOMEventMsg(
       devtool::InspectorTasmExecutor::DomCdpEvent::ATTRIBUTE_MODIFIED, node_id,
       "style", -1);
-  flush_devtool_tasks();
+  FlushDevtoolTasks();
 
   Json::Value res;
   Json::Reader reader;
@@ -290,14 +361,14 @@ TEST_F(InspectorTasmExecutorTest, SendDOMEventMsgCase) {
   element_executor_->SendDOMEventMsg(
       devtool::InspectorTasmExecutor::DomCdpEvent::ATTRIBUTE_MODIFIED, -1,
       "style", -1);
-  flush_devtool_tasks();
+  FlushDevtoolTasks();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             prev);
 
   element_executor_->SendDOMEventMsg(
       devtool::InspectorTasmExecutor::DomCdpEvent::CHILD_NODE_REMOVED, node_id,
       "", node_id);
-  flush_devtool_tasks();
+  FlushDevtoolTasks();
   is_valid = reader.parse(
       devtool::MockReceiver::GetInstance().received_message_.second, res);
   EXPECT_TRUE(is_valid);
@@ -308,7 +379,7 @@ TEST_F(InspectorTasmExecutorTest, SendDOMEventMsgCase) {
   element_executor_->SendDOMEventMsg(
       devtool::InspectorTasmExecutor::DomCdpEvent::DOCUMENT_UPDATED, -1, "",
       -1);
-  flush_devtool_tasks();
+  FlushDevtoolTasks();
   is_valid = reader.parse(
       devtool::MockReceiver::GetInstance().received_message_.second, res);
   EXPECT_TRUE(is_valid);

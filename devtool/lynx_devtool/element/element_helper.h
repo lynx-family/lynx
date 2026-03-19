@@ -29,7 +29,7 @@ class ElementHelper {
  public:
   static Element* GetPreviousNode(Element* ptr);
 
-  static Json::Value GetDocumentBodyFromNode(Element* ptr);
+  static Json::Value GetDocumentBodyFromNode(Element* ptr, int depth = -1);
   static void SetJsonValueOfNode(Element* ptr, Json::Value& value);
   static Json::Value GetMatchedStylesForNode(Element* ptr);
   static Json::Value GetKeyframesRulesForNode(Element* ptr);

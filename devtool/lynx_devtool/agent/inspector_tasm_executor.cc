@@ -544,6 +544,14 @@ void InspectorTasmExecutor::GetDocument(
     const Json::Value& message) {
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content = Json::Value(Json::ValueType::objectValue);
+  Json::Value params = message["params"];
+  int depth = -1;
+  if (params.isMember("depth")) {
+    depth = params["depth"].asInt();
+  }
+  if (depth < -1) {
+    depth = -1;
+  }
   if (element_root_ == nullptr) {
     response["result"] = content;
     response["id"] = message["id"].asInt64();
@@ -551,7 +559,8 @@ void InspectorTasmExecutor::GetDocument(
     return;
   }
 
-  content["root"] = ElementHelper::GetDocumentBodyFromNode(element_root_);
+  content["root"] =
+      ElementHelper::GetDocumentBodyFromNode(element_root_, depth);
   content["compress"] = false;
 
   response["result"] = content;
