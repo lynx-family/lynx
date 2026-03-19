@@ -660,6 +660,89 @@ TEST_F(CSSPatchingTest, AdoptedStylesheets_MergeLogic) {
   EXPECT_EQ(it->second.AsNumber(), 30.0);
 }
 
+TEST_F(CSSPatchingTest, Specificity_Prioritize_Cascade_Order) {
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetIdSelector("view-id");
+  base::String class_name("view-class");
+  ClassList class_list;
+  class_list.emplace_back(class_name);
+  attribute_holder->SetClasses(std::move(class_list));
+
+  // 1. Create a stylesheet with multiple selectors matching the element
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(true);
+
+  CSSParserConfigs configs;
+
+  // Rule 1: "view" (specificity: 0,0,1)
+  auto rule1_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule1_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(10.0), CSSValuePattern::PX);
+  auto rule1_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule1_selector[0].SetMatch(css::LynxCSSSelector::kTag);
+  rule1_selector[0].SetValue("view");
+  rule1_selector[0].SetLastInTagHistory(true);
+  rule1_selector[0].SetLastInSelectorList(true);
+  mock_fragment->AddStyleRule(std::move(rule1_selector), rule1_tokens);
+
+  // Rule 2: ".view-class" (specificity: 0,1,0)
+  auto rule2_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule2_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(20.0), CSSValuePattern::PX);
+  auto rule2_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule2_selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  rule2_selector[0].SetValue("view-class");
+  rule2_selector[0].SetLastInTagHistory(true);
+  rule2_selector[0].SetLastInSelectorList(true);
+  mock_fragment->AddStyleRule(std::move(rule2_selector), rule2_tokens);
+
+  // Rule 3: "#view-id" (specificity: 1,0,0)
+  auto rule3_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule3_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(30.0), CSSValuePattern::PX);
+  auto rule3_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule3_selector[0].SetMatch(css::LynxCSSSelector::kId);
+  rule3_selector[0].SetValue("view-id");
+  rule3_selector[0].SetLastInTagHistory(true);
+  rule3_selector[0].SetLastInSelectorList(true);
+  mock_fragment->AddStyleRule(std::move(rule3_selector), rule3_tokens);
+
+  // 2. Resolve style
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, mock_fragment.get(),
+                                              &changed_css_vars);
+
+  // 3. Verify that the highest specificity rule (#view-id) wins
+  auto it = result.find(CSSPropertyID::kPropertyIDFontSize);
+  ASSERT_TRUE(it != result.end());
+  EXPECT_EQ(it->second.AsNumber(), 30.0);
+
+  // 4. Now add another rule with same specificity but later in the cascade
+  auto rule4_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule4_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(40.0), CSSValuePattern::PX);
+  auto rule4_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule4_selector[0].SetMatch(css::LynxCSSSelector::kId);
+  rule4_selector[0].SetValue("view-id");
+  rule4_selector[0].SetLastInTagHistory(true);
+  rule4_selector[0].SetLastInSelectorList(true);
+  mock_fragment->AddStyleRule(std::move(rule4_selector), rule4_tokens);
+
+  StyleMap result2;
+  CSSVariableMap changed_css_vars2;
+  fiber_element->style_resolver_.ResolveStyle(result2, mock_fragment.get(),
+                                              &changed_css_vars2);
+
+  // 5. Verify that the later rule with the same specificity wins
+  auto it2 = result2.find(CSSPropertyID::kPropertyIDFontSize);
+  ASSERT_TRUE(it2 != result2.end());
+  EXPECT_EQ(it2->second.AsNumber(), 40.0);
+}
+
 TEST_F(CSSPatchingTest, AdoptedStylesheets_BasicIntegration) {
   auto fiber_element =
       fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
@@ -725,6 +808,71 @@ TEST_F(CSSPatchingTest, AdoptedStylesheets_DisabledSelector) {
                                               &changed_css_vars);
 
   SUCCEED();
+}
+
+TEST_F(CSSPatchingTest,
+       AdoptedStylesheets_CascadePriorityWithEqualSpecificity) {
+  // Test that adopted stylesheets have higher cascade priority than base
+  // stylesheets when specificity is equal. This verifies the fix where adopted
+  // stylesheets now share the same level counter as base stylesheets.
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("test-class");
+
+  // 1. Create base stylesheet with a class selector (.test-class)
+  // Specificity: 0,1,0
+  CSSParserConfigs configs;
+  auto base_fragment = std::make_unique<MockCSSFragment>();
+  base_fragment->SetEnableCSSSelector(true);
+
+  auto base_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  base_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(10.0), CSSValuePattern::PX);
+
+  auto base_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  base_selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  base_selector[0].SetValue("test-class");
+  base_selector[0].SetLastInTagHistory(true);
+  base_selector[0].SetLastInSelectorList(true);
+  base_fragment->AddStyleRule(std::move(base_selector), base_tokens);
+
+  // 2. Create adopted stylesheet with the same class selector (.test-class)
+  // Specificity: 0,1,0 (equal to base)
+  auto adopted_css_fragment = std::make_unique<MockCSSFragment>();
+  adopted_css_fragment->SetEnableCSSSelector(true);
+
+  auto adopted_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  adopted_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(20.0), CSSValuePattern::PX);
+
+  auto adopted_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  adopted_selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  adopted_selector[0].SetValue("test-class");
+  adopted_selector[0].SetLastInTagHistory(true);
+  adopted_selector[0].SetLastInSelectorList(true);
+  adopted_css_fragment->AddStyleRule(std::move(adopted_selector),
+                                     adopted_tokens);
+
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  wrapper->fragment_ = std::move(adopted_css_fragment);
+  manager->AdoptStyleSheet(wrapper);
+
+  // 3. Resolve style
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, base_fragment.get(),
+                                              &changed_css_vars);
+
+  // 4. Verify cascade priority: adopted stylesheet should win because it has
+  // higher cascade priority (higher position value due to shared level counter)
+  auto it = result.find(CSSPropertyID::kPropertyIDFontSize);
+  ASSERT_TRUE(it != result.end());
+  EXPECT_EQ(it->second.AsNumber(), 20.0)
+      << "Adopted stylesheet should override base stylesheet when specificity "
+         "is equal";
 }
 
 TEST_F(CSSPatchingTest, GetCSSStyleNew_NoAdoptedStylesheets) {

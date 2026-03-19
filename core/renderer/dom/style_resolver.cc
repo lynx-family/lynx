@@ -5,6 +5,7 @@
 #include "core/renderer/dom/style_resolver.h"
 
 #include <utility>
+#include <vector>
 
 #include "base/include/algorithm.h"
 #include "base/include/log/logging.h"
@@ -391,12 +392,31 @@ static bool CompareRules(const css::MatchedRule& matched_rule1,
 }
 
 StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
-    AttributeHolder* node, CSSFragment* style_sheet) {
+    AttributeHolder* node, CSSFragment* style_sheet,
+    const std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>* adopted_sheets) {
   MatchedVector<css::MatchedRule> matched_rules;
+  unsigned level = 0;
   if (style_sheet && style_sheet->rule_set()) {
-    unsigned level = 0;
     style_sheet->rule_set()->MatchStyles(node, level, matched_rules);
   }
+
+  // Check for adopted stylesheets with higher cascade priority
+  // The priority is ensured by the level. In the MatchStyles methods,
+  // each rule set will internally increase it. Thus the later rule_set that
+  // execute the match will have higher priority than the former ones.
+  if (adopted_sheets) {
+    for (const auto& wrapper : *adopted_sheets) {
+      if (wrapper && wrapper->fragment_ &&
+          wrapper->fragment_->enable_css_selector()) {
+        auto* adopted_style_sheet = wrapper->fragment_.get();
+        if (adopted_style_sheet->rule_set()) {
+          adopted_style_sheet->rule_set()->MatchStyles(node, level,
+                                                       matched_rules);
+        }
+      }
+    }
+  }
+
   base::InsertionSort(matched_rules.data(), matched_rules.size(), CompareRules);
   return matched_rules;
 }
@@ -404,7 +424,10 @@ StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
 void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
                                    CSSFragment* style_sheet) {
   // Then process regular styles
-  auto matched_rules = GetCSSMatchedRule(node, style_sheet);
+  ElementManager* element_manager = manager();
+  const std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>* adopted_sheets =
+      element_manager ? &element_manager->GetAdoptedStyleSheets() : nullptr;
+  auto matched_rules = GetCSSMatchedRule(node, style_sheet, adopted_sheets);
 
   for (const auto& matched : matched_rules) {
     if (matched.Data()->Rule()->Token() != nullptr) {
@@ -412,28 +435,6 @@ void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
           matched.Data()->Rule()->Token().get()->GetAttributes());
       SetCSSVariableToNode(
           matched.Data()->Rule()->Token().get()->GetStyleVariables());
-    }
-  }
-
-  // check for adopted stylesheets with highest cascade priority
-  ElementManager* element_manager = manager();
-  if (!element_manager) {
-    return;
-  }
-  const auto& adopted_sheets = element_manager->GetAdoptedStyleSheets();
-
-  for (const auto& wrapper : adopted_sheets) {
-    if (wrapper && wrapper->fragment_ &&
-        wrapper->fragment_->enable_css_selector()) {
-      auto adopted_rules = GetCSSMatchedRule(node, wrapper->fragment_.get());
-      for (const auto& matched : adopted_rules) {
-        if (matched.Data()->Rule()->Token() != nullptr) {
-          MergeHigherPriorityCSSStyle(
-              matched.Data()->Rule()->Token().get()->GetAttributes());
-          SetCSSVariableToNode(
-              matched.Data()->Rule()->Token().get()->GetStyleVariables());
-        }
-      }
     }
   }
 }

@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "base/include/value/base_value.h"
 #include "base/include/vector.h"
@@ -18,6 +19,7 @@
 #include "core/renderer/css/css_variable_handler.h"
 #include "core/renderer/css/dynamic_css_styles_manager.h"
 #include "core/renderer/dom/attribute_holder.h"
+#include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 
 namespace lynx {
 namespace style {
@@ -36,7 +38,10 @@ class StyleResolver {
   using MatchedVector = base::InlineVector<T, kDefaultMatchedSize>;
 
   LYNX_EXPORT_FOR_DEVTOOL static MatchedVector<css::MatchedRule>
-  GetCSSMatchedRule(AttributeHolder* node, CSSFragment* style_sheet);
+  GetCSSMatchedRule(
+      AttributeHolder* node, CSSFragment* style_sheet,
+      const std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>>*
+          adopted_sheets = nullptr);
 
   void ResolveStyle(StyleMap& result, CSSFragment* fragment,
                     CSSVariableMap* changed_css_vars = nullptr);
