@@ -5,6 +5,7 @@
 #import <Lynx/LynxExtensionModule.h>
 #if TARGET_OS_IPHONE
 #import <Lynx/LynxFrameView.h>
+#import <Lynx/LynxFrameViewProvider.h>
 #import <Lynx/LynxKeyboardEventDispatcher.h>
 #endif
 #import <Lynx/LynxLog.h>
