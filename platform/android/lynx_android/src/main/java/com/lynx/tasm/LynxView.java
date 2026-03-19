@@ -53,6 +53,7 @@ import com.lynx.tasm.core.VSyncMonitor;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.featurecount.LynxFeatureCounter;
 import com.lynx.tasm.group.ILynxViewGroup;
+import com.lynx.tasm.service.security.ILynxSecurityTarget;
 import com.lynx.tasm.theme.LynxTheme;
 import com.lynx.tasm.utils.CallStackUtil;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
@@ -69,7 +70,7 @@ import java.util.concurrent.Callable;
  * @brief Similar to WebView in native developing. Renders bundle within host application’s context.
  */
 @Keep
-public class LynxView extends UIBodyView {
+public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   protected LynxTemplateRender mLynxTemplateRender;
   private boolean mCanDispatchTouchEvent;
   protected boolean mDispatchTouchEventToDev = true;

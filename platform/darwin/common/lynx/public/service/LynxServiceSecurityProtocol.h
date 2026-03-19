@@ -24,17 +24,20 @@ typedef NS_ENUM(NSInteger, LynxTASMType) {
   LynxTASMTypeDynamicComponent = 1 << 0,
 };
 
-@class LynxView;
+@protocol LynxSecurityTarget <NSObject>
+@end
+
 @protocol LynxServiceSecurityProtocol <LynxServiceProtocol>
 
 /**
  * use specified verify logic to check the template consistency.
  *
+ * target: the input verification target, such as LynxView or LynxTemplateBundle.
  * template: the input tasm binary
  * @return result of the verification
  */
 - (LynxVerificationResult*)verifyTASM:(NSData*)data
-                                 view:(nullable LynxView*)lynxView
+                               target:(nullable id<LynxSecurityTarget>)target
                                   url:(nullable NSString*)url
                                  type:(LynxTASMType)type;
 
