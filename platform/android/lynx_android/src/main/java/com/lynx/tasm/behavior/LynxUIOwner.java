@@ -1120,6 +1120,7 @@ public class LynxUIOwner {
     if (mGestureArenaManager != null) {
       mGestureArenaManager.onDestroy();
     }
+    mUIHolder.clear();
     mCreateNodeAsyncTasks.clear();
     TraceEvent.endSection(TraceEventDef.UI_OWNER_DESTORY);
   }
