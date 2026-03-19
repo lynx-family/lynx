@@ -3672,10 +3672,12 @@ public class LynxTemplateData : NSObject {
   public void LynxTemplateData::markReadOnly();
   public BOOL LynxTemplateData::isReadOnly();
   public LynxTemplateData * LynxTemplateData::deepClone();
+  public instancetype LynxTemplateData()::initWithTemplateData:(std::shared_ptr< lynx::tasm::TemplateData > templateData);
   public NSArray * LynxTemplateData()::obtainUpdateActions();
   public NSArray * LynxTemplateData()::copyUpdateActions();
   public lynx::lepus::Value LynxTemplateData()::getDataForJSThread();
   public LynxTemplateData * LynxTemplateData()::getTemplateDataForJSThread();
+  public std::shared_ptr< lynx::tasm::TemplateData > LynxTemplateData()::nativeTemplateData();
   public NSString* LynxTemplateData()::processorName processorName;
 }
 

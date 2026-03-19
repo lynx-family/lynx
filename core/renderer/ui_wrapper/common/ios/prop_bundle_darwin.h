@@ -7,11 +7,14 @@
 #import <Foundation/Foundation.h>
 
 #include <memory>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "core/public/prop_bundle.h"
 #include "core/public/pub_value.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/data/template_data.h"
 
 namespace lynx {
 namespace tasm {
@@ -31,6 +34,7 @@ class PropBundleDarwin : public PropBundle {
   void SetProps(const char* key, double value) override;
   void SetProps(const char* key, const pub::Value& value) override;
   void SetProps(const pub::Value& value) override;
+  void SetNativeTemplateData(const char* key, const std::shared_ptr<TemplateData>& value) override;
   void SetEventHandler(const pub::Value& event) override;
   void SetGestureDetector(const GestureDetector& detector) override;
   bool Contains(const char* key) const override;
@@ -76,7 +80,7 @@ class PropBundleDarwin : public PropBundle {
   void ResetEventHandler() override;
   fml::RefPtr<PropBundle> ShallowCopy() override;
 
-  inline NSDictionary* dictionary() { return [propMap copy]; }
+  NSDictionary* dictionary();
   inline NSSet* event_set() { return eventSet; }
   inline NSSet* lepus_event_set() { return lepusEventSet; }
   inline NSSet* gesture_detector_set() { return gestureDetectorSet; }
@@ -94,6 +98,7 @@ class PropBundleDarwin : public PropBundle {
   NSMutableSet* eventSet;
   NSMutableSet* lepusEventSet;
   NSMutableSet* gestureDetectorSet;
+  std::unordered_map<std::string, std::shared_ptr<TemplateData>> native_template_data_map_;
 };
 
 }  // namespace tasm

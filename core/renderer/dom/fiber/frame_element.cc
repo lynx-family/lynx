@@ -22,6 +22,10 @@ constexpr char kLoad[] = "load";
 constexpr char kURL[] = "url";
 constexpr char kStatusCode[] = "statusCode";
 constexpr char kStatusMessage[] = "statusMessage";
+#if OS_IOS
+constexpr char kFrameData[] = "data";
+constexpr char kFrameGlobalProps[] = "global-props";
+#endif
 }  // namespace
 
 FrameElement::FrameElement(ElementManager* element_manager)
@@ -41,8 +45,55 @@ void FrameElement::SetAttribute(const base::String& key,
                                 const lepus::Value& value,
                                 bool need_update_data_model) {
   OnSetSrc(key, value);
+#if OS_IOS
+  if (key.IsEquals(kFrameData) || key.IsEquals(kFrameGlobalProps)) {
+    SetTemplateDataAttribute(key, value, need_update_data_model);
+    return;
+  }
+#endif
   FiberElement::SetAttribute(key, value, need_update_data_model);
 }
+
+#if OS_IOS
+void FrameElement::SetTemplateDataAttribute(const base::String& key,
+                                            const lepus::Value& value,
+                                            bool need_update_data_model) {
+  if (need_update_data_model) {
+    if (!value.IsEmpty()) {
+      data_model_->SetStaticAttribute(key, value);
+    } else {
+      data_model_->RemoveAttribute(key);
+    }
+  }
+
+  if (value.IsEmpty()) {
+    if (key.IsEquals(kFrameData)) {
+      pending_init_data_ = nullptr;
+    } else {
+      pending_global_props_ = nullptr;
+    }
+    if (prop_bundle_ != nullptr) {
+      prop_bundle_->SetNativeTemplateData(key.c_str(), nullptr);
+    }
+    return;
+  }
+
+  auto template_data =
+      std::make_shared<TemplateData>(value, false, std::string());
+  if (key.IsEquals(kFrameData)) {
+    pending_init_data_ = template_data;
+  } else {
+    pending_global_props_ = template_data;
+  }
+
+  PreparePropBundleIfNeed();
+  if (prop_bundle_ == nullptr) {
+    return;
+  }
+  prop_bundle_->SetNativeTemplateData(key.c_str(), template_data);
+  MarkPropsDirty();
+}
+#endif
 
 void FrameElement::OnSetSrc(const base::String& key,
                             const lepus::Value& value) {

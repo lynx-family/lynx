@@ -114,11 +114,9 @@ LYNX_REGISTER_UI("frame")
   [[self view] propsDidUpdate];
 }
 
-// TODO(zhoupeng.z): pass data on native directly
-LYNX_PROP_SETTER("data", updateData, NSDictionary*) {
+LYNX_PROP_SETTER("data", updateData, LynxTemplateData*) {
   if (value != nil) {
-    [[self view] setInitData:[[LynxTemplateData alloc] initWithDictionary:value
-                                                          useBoolLiterals:YES]];
+    [[self view] setInitData:value];
   }
 }
 
@@ -128,10 +126,9 @@ LYNX_PROP_SETTER("src", setUrl, NSString*) {
   [[self view] setUrl:value];
 }
 
-LYNX_PROP_SETTER("global-props", updateGlobalProps, NSDictionary*) {
+LYNX_PROP_SETTER("global-props", updateGlobalProps, LynxTemplateData*) {
   if (value != nil) {
-    [[self view] setGlobalProps:[[LynxTemplateData alloc] initWithDictionary:value
-                                                             useBoolLiterals:YES]];
+    [[self view] setGlobalProps:value];
   }
 }
 

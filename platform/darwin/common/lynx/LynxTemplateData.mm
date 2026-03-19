@@ -36,7 +36,8 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
 @implementation LynxTemplateData {
   lynx::lepus::Value value_;
   lynx::lepus::Value value_for_js_;
-  NSString* _processerName;
+  std::shared_ptr<lynx::tasm::TemplateData> native_template_data_;
+  NSString* _processorsName;
   BOOL _readOnly;
   NSMutableArray<LynxTemplateDataUpdateAction*>* _updateActions;
   BOOL _useBoolLiterals;
@@ -44,7 +45,7 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
 
 - (instancetype)init {
   if (self = [super init]) {
-    _processerName = nil;
+    _processorsName = nil;
     _readOnly = false;
 
     _updateActions = [[NSMutableArray alloc] init];
@@ -164,8 +165,33 @@ lepus_value RecursiveLynxConvertToLepusValue(id data, NSMutableSet* allObjects,
   return lepus_value();
 }
 
+namespace {
+
+const lynx::lepus::Value& CurrentLepusValue(LynxTemplateData* data) {
+  if (data->native_template_data_ != nullptr) {
+    return data->native_template_data_->GetValue();
+  }
+  return data->value_;
+}
+
+void EnsureOwnedLepusValue(LynxTemplateData* data) {
+  if (data->native_template_data_ != nullptr) {
+    data->value_ = lynx::lepus::Value::Clone(data->native_template_data_->GetValue());
+    data->native_template_data_ = nullptr;
+    return;
+  }
+  if (data->value_.IsTable() && data->value_.Table()->IsConst()) {
+    data->value_ = lynx::lepus::Value::Clone(data->value_);
+  }
+}
+
+}  // namespace
+
 lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   if (data == nil) return nullptr;
+  if (data->native_template_data_ != nullptr) {
+    return const_cast<lynx::lepus::Value*>(&data->native_template_data_->GetValue());
+  }
   return &data->value_;
 }
 
@@ -181,6 +207,21 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   return self;
 }
 
+- (instancetype)initWithTemplateData:(std::shared_ptr<lynx::tasm::TemplateData>)templateData {
+  self = [self init];
+  if (self) {
+    native_template_data_ = std::move(templateData);
+    if (native_template_data_ != nullptr) {
+      _readOnly = native_template_data_->IsReadOnly();
+      const auto& processor_name = native_template_data_->PreprocessorName();
+      if (!processor_name.empty()) {
+        _processorsName = [NSString stringWithUTF8String:processor_name.c_str()];
+      }
+    }
+  }
+  return self;
+}
+
 - (instancetype)initWithDictionary:(NSDictionary*)dictionary {
   return [self initWithDictionary:dictionary useBoolLiterals:DEFAULT_USE_BOOL_LITERALS];
 }
@@ -191,7 +232,10 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   }
 
   [self addObjectToUpdateActions:[inputData copyUpdateActions]];
-  [self updateWithLepusValue:inputData->value_];
+  auto* value = LynxGetLepusValueFromTemplateData(inputData);
+  if (value != nullptr) {
+    [self updateWithLepusValue:*value];
+  }
 }
 
 - (void)updateWithLepusValue:(const lynx::lepus::Value&)inputValue {
@@ -199,9 +243,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     NSLog(@"can not update readOnly TemplateData");
     return;
   }
-  if (value_.IsTable() && value_.Table()->IsConst()) {
-    value_ = lynx::lepus::Value::Clone(value_);
-  }
+  EnsureOwnedLepusValue(self);
   LynxViewDataManager::UpdateData(value_, inputValue);
 }
 
@@ -219,8 +261,9 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
 }
 
 - (BOOL)checkIsLegalData {
-  return !(value_.IsNil() || (value_.IsTable() && value_.Table()->size() == 0) ||
-           (value_.IsArray() && value_.Array()->size() == 0));
+  const auto& value = CurrentLepusValue(self);
+  return !(value.IsNil() || (value.IsTable() && value.Table()->size() == 0) ||
+           (value.IsArray() && value.Array()->size() == 0));
 }
 
 - (void)updateWithJson:(NSString*)json {
@@ -254,6 +297,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     NSLog(@"can not update readOnly TemplateData");
     return;
   }
+  EnsureOwnedLepusValue(self);
 
   LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
   action.type = LynxTemplateDataActionTypeAppend;
@@ -269,6 +313,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     NSLog(@"can not update readOnly TemplateData");
     return;
   }
+  EnsureOwnedLepusValue(self);
 
   LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
   action.type = LynxTemplateDataActionTypeAppend;
@@ -283,6 +328,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     NSLog(@"can not update readOnly TemplateData");
     return;
   }
+  EnsureOwnedLepusValue(self);
 
   LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
   action.type = LynxTemplateDataActionTypeAppend;
@@ -297,6 +343,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     NSLog(@"can not update readOnly TemplateData");
     return;
   }
+  EnsureOwnedLepusValue(self);
 
   LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
   action.type = LynxTemplateDataActionTypeAppend;
@@ -311,6 +358,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     NSLog(@"can not update readOnly TemplateData");
     return;
   }
+  EnsureOwnedLepusValue(self);
 
   LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
   action.type = LynxTemplateDataActionTypeRemove;
@@ -324,7 +372,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   auto base_value = *LynxGetLepusValueFromTemplateData(self);
   LynxTemplateData* data = [[LynxTemplateData alloc] init];
   data->value_ = lynx::lepus::Value::Clone(base_value);
-  data->_processerName = self.processorName;
+  data->_processorsName = self.processorName;
   data->_readOnly = self.isReadOnly;
   data->value_for_js_ = lynx::lepus::Value::Clone(value_for_js_);
   [data addObjectToUpdateActions:[self copyUpdateActions]];
@@ -332,22 +380,32 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
 }
 
 - (void)markState:(NSString*)name {
-  _processerName = name;
+  _processorsName = name;
+  if (native_template_data_ != nullptr) {
+    native_template_data_->SetPreprocessorName(name != nil ? name.UTF8String : "");
+  }
 }
 
 - (NSString*)processorName {
-  return _processerName;
+  return _processorsName;
 }
 
 // GetTemplateDataForJSThread just needs to copy the updateActions.
 - (LynxTemplateData*)getTemplateDataForJSThread {
   LynxTemplateData* data = [[LynxTemplateData alloc] init];
-  data->value_for_js_ = lynx::lepus::Value::Clone(value_for_js_);
+  if (!value_for_js_.IsEmpty()) {
+    data->value_for_js_ = lynx::lepus::Value::Clone(value_for_js_);
+  } else if (native_template_data_ != nullptr) {
+    data->value_for_js_ = lynx::lepus::Value::Clone(native_template_data_->GetValue());
+  }
   [data addObjectToUpdateActions:[self copyUpdateActions]];
   return data;
 }
 
 - (lynx::lepus::Value)getDataForJSThread {
+  if (value_for_js_.IsEmpty() && native_template_data_ != nullptr) {
+    value_for_js_ = lynx::lepus::Value::Clone(native_template_data_->GetValue());
+  }
   NSArray* array = [self obtainUpdateActions];
 
   // Init value_for_js_ or update _updateActions to value_for_js_.
@@ -388,6 +446,9 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
 
 - (void)markReadOnly {
   _readOnly = true;
+  if (native_template_data_ != nullptr) {
+    native_template_data_->SetReadOnly(true);
+  }
 }
 
 - (BOOL)isReadOnly {
@@ -395,7 +456,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
 }
 
 - (NSDictionary*)dictionary {
-  id dict = convertLepusValueToNSObject(value_);
+  id dict = convertLepusValueToNSObject(CurrentLepusValue(self));
 
   if ([dict isKindOfClass:[NSDictionary class]]) {
     return dict;
@@ -404,10 +465,17 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   }
 }
 
+- (std::shared_ptr<lynx::tasm::TemplateData>)nativeTemplateData {
+  return native_template_data_;
+}
+
 std::shared_ptr<lynx::tasm::TemplateData> ConvertLynxTemplateDataToTemplateData(
     LynxTemplateData* data) {
   if (!data) {
     return nullptr;
+  }
+  if (data->native_template_data_ != nullptr) {
+    return data->native_template_data_;
   }
   return std::make_shared<lynx::tasm::TemplateData>(
       *LynxGetLepusValueFromTemplateData(data), data.isReadOnly,

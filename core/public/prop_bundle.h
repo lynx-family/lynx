@@ -23,6 +23,7 @@ namespace tasm {
 
 // TODO(chenyouhui): Remove GestureDetector from prop_bundle completely
 class GestureDetector;
+class TemplateData;
 
 enum CSSPropertyID : int32_t;
 
@@ -39,6 +40,8 @@ class PropBundle : public fml::RefCountedThreadSafeStorage {
   virtual void SetProps(const char* key, double value) = 0;
   virtual void SetProps(const char* key, const pub::Value& value) = 0;
   virtual void SetProps(const pub::Value& value) = 0;
+  virtual void SetNativeTemplateData(
+      const char* key, const std::shared_ptr<TemplateData>& value) {}
   virtual void SetEventHandler(const pub::Value& event) = 0;
   virtual void SetGestureDetector(const GestureDetector& detector) = 0;
   virtual void ResetEventHandler() = 0;

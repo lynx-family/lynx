@@ -5,10 +5,12 @@
 #import <Lynx/LynxFrameView.h>
 
 #import <Lynx/LynxFrameShadowNode.h>
+#import <Lynx/LynxLoadMeta.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUpdateMeta.h>
 #import <Lynx/LynxViewBuilder.h>
 #import <Lynx/LynxViewEnum.h>
 #import "LynxTraceEventDef.h"

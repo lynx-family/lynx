@@ -9,6 +9,7 @@
 #include "core/renderer/utils/value_utils.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
+#import <Lynx/LynxTemplateData+Converter.h>
 #import "core/runtime/js/bindings/modules/ios/lynx_module_darwin.h"
 #include "third_party/modp_b64/modp_b64.h"
 
@@ -77,6 +78,18 @@ void PropBundleDarwin::SetProps(const pub::Value& value) {
   value.ForeachMap([this, &prev_value_vector](const pub::Value& k, const pub::Value& v) {
     AssembleMap(propMap, k.str().c_str(), v, prev_value_vector.get(), 0, false);
   });
+}
+
+void PropBundleDarwin::SetNativeTemplateData(const char* key,
+                                             const std::shared_ptr<TemplateData>& value) {
+  if (key == nullptr) {
+    return;
+  }
+  if (value == nullptr) {
+    native_template_data_map_.erase(key);
+    return;
+  }
+  native_template_data_map_[key] = value;
 }
 
 bool PropBundleDarwin::Contains(const char* key) const {
@@ -317,7 +330,28 @@ fml::RefPtr<PropBundle> PropBundleDarwin::ShallowCopy() {
   if (lepusEventSet) {
     pda->lepusEventSet = [lepusEventSet mutableCopy];
   }
+  pda->native_template_data_map_ = native_template_data_map_;
   return pda;
+}
+
+NSDictionary* PropBundleDarwin::dictionary() {
+  if (native_template_data_map_.empty()) {
+    return propMap;
+  }
+
+  NSMutableDictionary* dictionary = [propMap mutableCopy];
+  for (const auto& [key, value] : native_template_data_map_) {
+    if (value == nullptr) {
+      [dictionary removeObjectForKey:[NSString stringWithUTF8String:key.c_str()]];
+      continue;
+    }
+    NSString* prop_key = [NSString stringWithUTF8String:key.c_str()];
+    if (prop_key == nil) {
+      continue;
+    }
+    [dictionary setObject:[[LynxTemplateData alloc] initWithTemplateData:value] forKey:prop_key];
+  }
+  return dictionary;
 }
 
 fml::RefPtr<PropBundle> PropBundleCreatorDarwin::CreatePropBundle() {

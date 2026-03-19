@@ -31,12 +31,14 @@ std::shared_ptr<lynx::tasm::TemplateData> ConvertLynxTemplateDataToTemplateData(
 
 @property(readonly) NSString *processorName;
 
+- (instancetype)initWithTemplateData:(std::shared_ptr<lynx::tasm::TemplateData>)templateData;
 - (NSArray *)obtainUpdateActions;
 - (NSArray *)copyUpdateActions;
 
 - (lynx::lepus::Value)getDataForJSThread;
 
 - (LynxTemplateData *)getTemplateDataForJSThread;
+- (std::shared_ptr<lynx::tasm::TemplateData>)nativeTemplateData;
 
 @end
 

@@ -667,14 +667,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [self
       executeNativeOpSafely:^() {
         [self prepareForLoadTemplateWithUrl:url initData:data];
-        lynx::lepus::Value value;
-        std::shared_ptr<lynx::tasm::TemplateData> ptr(nullptr);
+        std::shared_ptr<lynx::tasm::TemplateData> ptr = nullptr;
         if (data != nil) {
           TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_CREATE_TEMPLATE_DATA);
-          value = *LynxGetLepusValueFromTemplateData(data);
-          ptr = std::make_shared<lynx::tasm::TemplateData>(
-              value, data.isReadOnly, data.processorName ? data.processorName.UTF8String : "");
-          ptr->SetPlatformData(std::make_unique<lynx::tasm::PlatformDataDarwin>(data));
+          ptr = ConvertLynxTemplateDataToTemplateData(data);
         }
 
         lynx::tasm::LynxTemplateBundle copied_bundle = *template_bundle;
@@ -721,14 +717,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [self
       executeNativeOpSafely:^() {
         [self prepareForLoadTemplateWithUrl:url initData:data];
-        lynx::lepus::Value value;
-        std::shared_ptr<lynx::tasm::TemplateData> ptr(nullptr);
+        std::shared_ptr<lynx::tasm::TemplateData> ptr = nullptr;
         if (data != nil) {
           TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_CREATE_TEMPLATE_DATA);
-          value = *LynxGetLepusValueFromTemplateData(data);
-          ptr = std::make_shared<lynx::tasm::TemplateData>(
-              value, data.isReadOnly, data.processorName ? data.processorName.UTF8String : "");
-          ptr->SetPlatformData(std::make_unique<lynx::tasm::PlatformDataDarwin>(data));
+          ptr = ConvertLynxTemplateDataToTemplateData(data);
         }
         auto securityService = LynxService(LynxServiceSecurityProtocol);
         if (securityService == nil) {
@@ -869,12 +861,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
             if (_logicExecutor) {
               [_templateData updateWithTemplateData:meta.data];
             }
-            lynx::lepus::Value value = *LynxGetLepusValueFromTemplateData(meta.data);
-            updated_data = std::make_shared<lynx::tasm::TemplateData>(
-                value, meta.data.isReadOnly,
-                meta.data.processorName ? meta.data.processorName.UTF8String : "");
-            updated_data->SetPlatformData(
-                std::make_unique<lynx::tasm::PlatformDataDarwin>(meta.data));
+            updated_data = ConvertLynxTemplateDataToTemplateData(meta.data);
           }
           [self resetLayoutStatus];
           [self markDirty];
@@ -911,10 +898,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (data) {
     [_devTool onUpdateDataWithTemplateData:data];
     [self executeUpdateDataSafely:^() {
-      lynx::lepus::Value value = *LynxGetLepusValueFromTemplateData(data);
-      std::shared_ptr<lynx::tasm::TemplateData> ptr = std::make_shared<lynx::tasm::TemplateData>(
-          value, data.isReadOnly, data.processorName ? data.processorName.UTF8String : "");
-      ptr->SetPlatformData(std::make_unique<lynx::tasm::PlatformDataDarwin>(data));
+      std::shared_ptr<lynx::tasm::TemplateData> ptr = ConvertLynxTemplateDataToTemplateData(data);
       [self resetLayoutStatus];
       [self markDirty];
       self->shell_->UpdateDataByParsedData(ptr);
@@ -928,10 +912,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (data) {
     [_devTool onResetDataWithTemplateData:data];
     [self executeUpdateDataSafely:^() {
-      lynx::lepus::Value value = *LynxGetLepusValueFromTemplateData(data);
-      std::shared_ptr<lynx::tasm::TemplateData> ptr = std::make_shared<lynx::tasm::TemplateData>(
-          value, data.isReadOnly, data.processorName ? data.processorName.UTF8String : "");
-      ptr->SetPlatformData(std::make_unique<lynx::tasm::PlatformDataDarwin>(data));
+      std::shared_ptr<lynx::tasm::TemplateData> ptr = ConvertLynxTemplateDataToTemplateData(data);
       [self resetLayoutStatus];
       [self markDirty];
       self->shell_->ResetDataByParsedData(ptr);
@@ -1035,15 +1016,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
         _lynxSSRHelper = [[LynxSSRHelper alloc] init];
         [_lynxSSRHelper onLoadSSRDataStart];
         auto data = ConvertNSBinary(tem);
-        std::shared_ptr<lynx::tasm::TemplateData> ptr(nullptr);
-        lynx::lepus::Value value;
-        if (initData != nil) {
-          value = *LynxGetLepusValueFromTemplateData(initData);
-          ptr = std::make_shared<lynx::tasm::TemplateData>(
-              value, initData.isReadOnly,
-              initData.processorName ? initData.processorName.UTF8String : "");
-          ptr->SetPlatformData(std::make_unique<lynx::tasm::PlatformDataDarwin>(initData));
-        }
+        std::shared_ptr<lynx::tasm::TemplateData> ptr =
+            initData != nil ? ConvertLynxTemplateDataToTemplateData(initData) : nullptr;
 
         std::string urlStr = url ? std::string([url UTF8String]) : std::string();
         strongSelf->shell_->SetSSRTimingData(std::move(urlStr), tem.length);
@@ -1165,10 +1139,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (data) {
     [self
         executeNativeOpSafely:^() {
-          lynx::lepus::Value value = *LynxGetLepusValueFromTemplateData(data);
-          self->shell_->SetSessionStorageItem(
-              [key UTF8String],
-              std::make_shared<lynx::tasm::TemplateData>(value, data.isReadOnly, ""));
+          self->shell_->SetSessionStorageItem([key UTF8String],
+                                              ConvertLynxTemplateDataToTemplateData(data));
         }
             withErrorCallback:nil];
   }

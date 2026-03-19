@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
@@ -52,11 +53,21 @@ class FrameElement : public FiberElement {
   // load bundle if src is set
   void OnSetSrc(const base::String& key, const lepus::Value& value);
 
+#if OS_IOS
+  void SetTemplateDataAttribute(const base::String& key,
+                                const lepus::Value& value,
+                                bool need_update_data_model);
+#endif
+
   // send load event for `bindload` callback
   void SendLoadEvent(const std::shared_ptr<FrameElementData>& data);
 
   std::shared_ptr<FrameElementData> bundle_data_{nullptr};
   std::string src_{};
+#if OS_IOS
+  std::shared_ptr<TemplateData> pending_init_data_{nullptr};
+  std::shared_ptr<TemplateData> pending_global_props_{nullptr};
+#endif
 };
 }  // namespace tasm
 }  // namespace lynx
