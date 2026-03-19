@@ -41,6 +41,16 @@ class TextraInlineView : public text::InlineView {
     child_->slnode()->AlignmentByPlatform(y, x);
   }
 
+  void HideView() override {
+    // FIXME(linxs): need a better way to hide the view
+    starlight::Constraints constraints;
+    constraints[starlight::kHorizontal] =
+        starlight::OneSideConstraint(0, SLMeasureMode::SLMeasureModeDefinite);
+    constraints[starlight::kVertical] =
+        starlight::OneSideConstraint(0, SLMeasureMode::SLMeasureModeDefinite);
+    child_->slnode()->UpdateMeasureByPlatform(constraints, true);
+  }
+
  private:
   FiberElement* child_;
 };
@@ -306,7 +316,8 @@ void TextLayoutTextra::HandleInlineImageProps(Element* element) {
     text::VerticalAlign align;
     align.vertical_align = static_cast<int>(text_attributes->vertical_align);
     align.vertical_align_length = text_attributes->vertical_align_length;
-    props.vertical_align = align;
+    paragraph_builder_->SetPlaceHolderStyle(kTextPropVerticalAlign, &align,
+                                            sizeof(text::VerticalAlign));
   }
 
   paragraph_builder_->SetPlaceHolderStyle(kPropImageProps, &props,

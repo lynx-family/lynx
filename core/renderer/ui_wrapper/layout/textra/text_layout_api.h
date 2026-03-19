@@ -32,6 +32,7 @@ class InlineView {
   virtual ~InlineView() = default;
   virtual MeasureResult Measure(const MeasureParams &params) = 0;
   virtual void Align(float x, float y) = 0;
+  virtual void HideView() = 0;
 };
 
 struct Radius {
@@ -58,7 +59,6 @@ struct ImageProps {
   int margin_right;
   int margin_bottom;
   Radius radius;
-  VerticalAlign vertical_align;
 };
 
 class ParagraphListener {
