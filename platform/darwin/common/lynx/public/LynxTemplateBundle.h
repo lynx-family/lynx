@@ -5,6 +5,7 @@
 #ifndef DARWIN_COMMON_LYNX_LYNX_TEMPLATE_BUNDLE_H_
 #define DARWIN_COMMON_LYNX_LYNX_TEMPLATE_BUNDLE_H_
 
+#import <Lynx/LynxServiceSecurityProtocol.h>
 #import <Lynx/LynxTemplateBundleOption.h>
 
 /**
@@ -24,7 +25,7 @@ typedef void (^LynxBytecodeResponseBlock)(NSString* _Nullable errorMsg,
  * provided by the Lynx SDK. Client developers can parse the Lynx App Bundle product
  * in advance to obtain the `TemplateBundle` object and consume the App Bundle product.
  */
-@interface LynxTemplateBundle : NSObject
+@interface LynxTemplateBundle : NSObject <LynxSecurityTarget>
 
 @property(nonatomic, readonly, nullable) NSString* url;
 
