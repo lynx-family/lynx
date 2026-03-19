@@ -24,9 +24,6 @@ ios:
     - platform/darwin/ios/lynx/public/LynxView.h
 harmony:
   metadata_path:
-    - platform/harmony/lynx_harmony/src/main/ets/Index.ets
-    - platform/harmony/lynx_devtool/src/main/ets/Index.ets
-    - platform/harmony/lynx_services/lynx_devtool_service/Index.ets
-    - platform/harmony/lynx_services/lynx_log_service/Index.ets
+    - platform/harmony
   lynx_so_index_file: platform/harmony/lynx_harmony/src/main/ets/tasm/types/liblynx/index.d.ts
   lynx_devtool_so_index_file: platform/harmony/lynx_devtool/src/main/ets/types/index.d.ts

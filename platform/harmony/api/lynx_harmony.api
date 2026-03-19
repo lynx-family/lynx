@@ -6,6 +6,120 @@
  *
  */
 
+export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspectorController {
+  constructor(embedderProxy: number[]);
+  public onLoaded(lynxView: LynxView): void;
+  public destroy(lynxView: LynxView): void;
+  public setLynxInspectorConsoleDelegate(delegate: LynxInspectorConsoleDelegate): void;
+  public getConsoleObject(objectId: string, needStringify: boolean, callback: (detail: string) => void): void;
+  public onConsoleMessage(msg: string): void;
+  public onConsoleObject(detail: string, callbackId: number): void;
+  public subscribeMessage(type: string, handler: MessageHandler): void;
+  public unsubscribeMessage(type: string): void;
+  public sendMessage(type: string, message: string): void;
+}
+
+export class LynxDebugBridge {
+  public static getInstance(): LynxDebugBridge;
+  public connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean;
+  public addOpenCardCallback(callback: (url: string) => void): void;
+}
+
+export interface HarmonyGlobalHandler {
+  onOpenCard: (url: string) => void;
+  onMessage: (message: string, type: string) => void;
+}
+
+export interface HarmonySessionHandler {
+  onSessionCreate: (session_id: number, url: string) => void;
+  onSessionDestroy: (session_id: number) => void;
+  onMessage: (message: string, type: string, session_id: number) => void;
+}
+
+export class LynxDevToolEnv {
+  public static setSwitch(key: string, value: boolean): void;
+  public static getSwitch(key: string): boolean;
+  public static setAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
+  public static initDevToolSetModule(moduleManager: number[]): void;
+}
+
+export class DebugRouter {
+  public static getSessionIdByView(view: LynxView): number;
+  public static getViewBySessionId(sessionId: number): LynxView | null;
+  public static setSessionIdOfView(view: LynxView, sessionId: number): void;
+  public static removeView(view: LynxView): void;
+  public static addGlobalHandler(handler: HarmonyGlobalHandler): void;
+  public static removeGlobalHandler(handler: HarmonyGlobalHandler): void;
+  public static sendDataAsync(type: string, session: number, data: string): void;
+  public static addSessionHandler(handler: HarmonySessionHandler): void;
+  public static handleSchema(url: string): boolean;
+}
+
+export class LynxWebSocketModule extends LynxModule {
+  constructor(context: LynxContext, param: Object);
+  public connect(url: string, protocols: Object[], options: Object[], id: number): void;
+  public close(code: number, reason: string, id: number): void;
+  public send(message: string, id: number): void;
+  public ping(id: number): void;
+  public sendEvent(name: string, data: Object): void;
+}
+
+export class LogBox implements ILogBox {
+  constructor(onError: OnErrorCallback, getJsSource: GetJSSourceCallback);
+  public reportError(err: LynxError): void;
+  public cleanError(): void;
+  public onLoaded(url: string): void;
+  onError: (msg: string) => void;
+  getJsSource: () => Record<string, string>;
+  nativeBridge: NativeBridge; = new NativeBridge()
+}
+
+export class LogBoxNodeController extends NodeController {
+  constructor(logBox: ILogBox, title: string);
+  makeNode(uiContext: UIContext): FrameNode | null;
+}
+
+export class LynxDevToolService implements ILynxDevToolService {
+  public isDevToolModuleLoaded(): boolean;
+  public connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean;
+  public initDevToolSetModule(moduleManager: number[]): void;
+  public devtoolEnvSetSwitch(key: string, value: boolean): void;
+  public devtoolEnvGetSwitch(key: string): boolean;
+  public devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
+  public createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null;
+  public createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
+  public createLogBoxComponent(logBox: ILogBox, title: string): NodeController | null;
+  public registerWebSocketModule(moduleManager: LynxModuleManager): void;
+  public addOpenCardCallback(callback: (url: string) => void): void;
+  static instance: any; = new LynxDevToolService()
+}
+
+export class LynxHttpService implements ILynxHttpService {
+  request(request: LynxHttpRequest, callback: (resp: LynxHttpResponse) => void): void;
+  static SDK_ERROR_STATUS_CODE: any; = 499
+  static instance: any; = new LynxHttpService()
+}
+
+export class LynxImageService implements ILynxImageService {
+  initNativeService(resourceManager: Object): number[];
+  static instance: any; = new LynxImageService()
+}
+
+export class LynxLogService implements ILynxBaseLogService {
+  logByPlatform(level: number, tag: string, message: string): void;
+  isLogOutputByPlatform(): boolean;
+  getDefaultWriteFunction(): number;
+  static instance: any; = new LynxLogService()
+  static logOutputChannel: LogOutputChannelType; = LogOutputChannelType.Platform
+}
+
+export class UISVG extends UIBase {
+  layout(x: number, y: number, width: number, height: number, paddingLeft: number, paddingTop: number, paddingRight: number, paddingBottom: number, marginLeft: number, marginTop: number, marginRight: number, marginBottom: number, sticky: number[] | undefined): void;
+  override onCreate(): void;
+  update(prop: Record<string, Object>, events: EventHandlerArray[]): void;
+  onNodeReady(): void;
+}
+
 export class TemplateData {
   constructor(input: string | Record<string, Object> | Object, processor: string);
   merge(data: string | Record<string, Object> | Object): void;
@@ -1101,102 +1215,6 @@ export interface LynxImageLoadInfo {
   loadFinish?: number;
   cost?: number;
   origin?: number;
-}
-
-export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspectorController {
-  constructor(embedderProxy: number[]);
-  public onLoaded(lynxView: LynxView): void;
-  public destroy(lynxView: LynxView): void;
-  public setLynxInspectorConsoleDelegate(delegate: LynxInspectorConsoleDelegate): void;
-  public getConsoleObject(objectId: string, needStringify: boolean, callback: (detail: string) => void): void;
-  public onConsoleMessage(msg: string): void;
-  public onConsoleObject(detail: string, callbackId: number): void;
-  public subscribeMessage(type: string, handler: MessageHandler): void;
-  public unsubscribeMessage(type: string): void;
-  public sendMessage(type: string, message: string): void;
-}
-
-export class LynxDebugBridge {
-  public static getInstance(): LynxDebugBridge;
-  public connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean;
-  public addOpenCardCallback(callback: (url: string) => void): void;
-}
-
-export interface HarmonyGlobalHandler {
-  onOpenCard: (url: string) => void;
-  onMessage: (message: string, type: string) => void;
-}
-
-export interface HarmonySessionHandler {
-  onSessionCreate: (session_id: number, url: string) => void;
-  onSessionDestroy: (session_id: number) => void;
-  onMessage: (message: string, type: string, session_id: number) => void;
-}
-
-export class LynxDevToolEnv {
-  public static setSwitch(key: string, value: boolean): void;
-  public static getSwitch(key: string): boolean;
-  public static setAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
-  public static initDevToolSetModule(moduleManager: number[]): void;
-}
-
-export class DebugRouter {
-  public static getSessionIdByView(view: LynxView): number;
-  public static getViewBySessionId(sessionId: number): LynxView | null;
-  public static setSessionIdOfView(view: LynxView, sessionId: number): void;
-  public static removeView(view: LynxView): void;
-  public static addGlobalHandler(handler: HarmonyGlobalHandler): void;
-  public static removeGlobalHandler(handler: HarmonyGlobalHandler): void;
-  public static sendDataAsync(type: string, session: number, data: string): void;
-  public static addSessionHandler(handler: HarmonySessionHandler): void;
-  public static handleSchema(url: string): boolean;
-}
-
-export class LynxWebSocketModule extends LynxModule {
-  constructor(context: LynxContext, param: Object);
-  public connect(url: string, protocols: Object[], options: Object[], id: number): void;
-  public close(code: number, reason: string, id: number): void;
-  public send(message: string, id: number): void;
-  public ping(id: number): void;
-  public sendEvent(name: string, data: Object): void;
-}
-
-export class LogBox implements ILogBox {
-  constructor(onError: OnErrorCallback, getJsSource: GetJSSourceCallback);
-  public reportError(err: LynxError): void;
-  public cleanError(): void;
-  public onLoaded(url: string): void;
-  onError: (msg: string) => void;
-  getJsSource: () => Record<string, string>;
-  nativeBridge: NativeBridge; = new NativeBridge()
-}
-
-export class LogBoxNodeController extends NodeController {
-  constructor(logBox: ILogBox, title: string);
-  makeNode(uiContext: UIContext): FrameNode | null;
-}
-
-export class LynxDevToolService implements ILynxDevToolService {
-  public isDevToolModuleLoaded(): boolean;
-  public connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean;
-  public initDevToolSetModule(moduleManager: number[]): void;
-  public devtoolEnvSetSwitch(key: string, value: boolean): void;
-  public devtoolEnvGetSwitch(key: string): boolean;
-  public devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
-  public createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null;
-  public createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
-  public createLogBoxComponent(logBox: ILogBox, title: string): NodeController | null;
-  public registerWebSocketModule(moduleManager: LynxModuleManager): void;
-  public addOpenCardCallback(callback: (url: string) => void): void;
-  static instance: any; = new LynxDevToolService()
-}
-
-export class LynxLogService implements ILynxBaseLogService {
-  logByPlatform(level: number, tag: string, message: string): void;
-  isLogOutputByPlatform(): boolean;
-  getDefaultWriteFunction(): number;
-  static instance: any; = new LynxLogService()
-  static logOutputChannel: LogOutputChannelType; = LogOutputChannelType.Platform
 }
 
 export enum LynxServiceType {

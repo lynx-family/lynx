@@ -79,8 +79,10 @@ class DoxygenConfig:
             print("prepare config failed")
             return False
         command = [DOXYGEN_PATH, target_config_path]
-        remove_dirs(os.path.join(api_path, platform, "xml"))
-        remove_dirs(os.path.join(api_path, platform, "html"))
+        if self.enable_generate_xml:
+            remove_dirs(os.path.join(api_path, platform, "xml"))
+        if self.enable_generate_html:
+            remove_dirs(os.path.join(api_path, platform, "html"))
 
         try:
             result = subprocess.run(

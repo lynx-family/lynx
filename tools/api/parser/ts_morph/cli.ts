@@ -22,7 +22,13 @@ function main() {
     const allMetadata: BaseObject[] = [];
 
     metadatObjectList.forEach((metadataObject) => {
-      const fileContent = fs.readFileSync(metadataObject.path, 'utf-8');
+      let fileContent: string;
+      try {
+        fileContent = fs.readFileSync(metadataObject.path, 'utf-8');
+      } catch (e) {
+        console.error(`Skipping unreadable file: ${metadataObject.path}`);
+        return;
+      }
       const modifiedContent = fileContent.replace(/\bstruct\b/g, 'class');
 
       const sourceFile = project.createSourceFile(
