@@ -1,8 +1,8 @@
 // Copyright 2019 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_RUNTIME_LEPUS_MTS_CONTEXT_H_
-#define CORE_RUNTIME_LEPUS_MTS_CONTEXT_H_
+#ifndef CORE_RUNTIME_MTS_CONTEXT_H_
+#define CORE_RUNTIME_MTS_CONTEXT_H_
 
 #include <memory>
 #include <mutex>
@@ -29,8 +29,10 @@
 #include "core/template_bundle/template_codec/compile_options.h"
 
 namespace lynx {
+namespace runtime {
 
-namespace lepus {
+using lepus::CFunction;
+using lepus::Value;
 
 enum ContextType {
   VMContextType,       // Run low level version lepus with VmContext
@@ -82,7 +84,7 @@ class MTSContext {
  public:
   virtual ~MTSContext() {}
   explicit MTSContext(std::shared_ptr<MTSContextDelegate> mts_context_delegate)
-      : mts_context_delegate_(std::move(mts_context_delegate)){};
+      : mts_context_delegate_(std::move(mts_context_delegate)) {}
 
   // virtual interface
   virtual void Initialize() = 0;
@@ -259,13 +261,15 @@ class MTSContext {
   }
 
  protected:
+  // Inject this lynx as the global Lynx object to the Lepus runtime.
+  lepus::Value lynx_;
   base::StringTable string_table_;
   std::string sdk_version_{"null"};
   bool is_debug_enabled_{false};
   std::shared_ptr<MTSContextDelegate> mts_context_delegate_;
 };
 
-}  // namespace lepus
+}  // namespace runtime
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_LEPUS_MTS_CONTEXT_H_
+#endif  // CORE_RUNTIME_MTS_CONTEXT_H_

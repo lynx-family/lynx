@@ -28,7 +28,7 @@ struct GestureCallback {
   lepus::Value lepus_object_;
 
   // The Context of lepus / lepusNG
-  lepus::Context* ctx_ = nullptr;
+  runtime::MTSRuntime* ctx_ = nullptr;
 
   // Default constructor for GestureCallback.
   GestureCallback() = default;
@@ -42,7 +42,7 @@ struct GestureCallback {
 
   // constructor with lepus object
   GestureCallback(const base::String& name, const lepus::Value& lepus_object,
-                  lepus::Context* ctx)
+                  runtime::MTSRuntime* ctx)
       : name_(name), lepus_object_(lepus_object), ctx_(ctx) {}
 };
 

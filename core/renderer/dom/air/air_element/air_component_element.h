@@ -17,7 +17,7 @@ namespace tasm {
 class AirComponentElement : public AirElement {
  public:
   AirComponentElement(ElementManager* manager, int tid, uint32_t lepus_id,
-                      int32_t id, lepus::Context* context);
+                      int32_t id, runtime::MTSRuntime* context);
   void DeriveFromMould(ComponentMould* mould);
 
   bool is_component() const override { return true; }
@@ -47,7 +47,7 @@ class AirComponentElement : public AirElement {
   base::String name_;
   base::String path_;
   int32_t tid_;
-  lepus::Context* context_;
+  runtime::MTSRuntime* context_;
 };
 
 }  // namespace tasm

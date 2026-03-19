@@ -80,7 +80,7 @@ void SerializeBTSBundle(const runtime::js::JsBundle &js_bundle,
 }
 
 void SerializeMTSBundle(
-    const std::shared_ptr<lepus::ContextBundle> &context_bundle,
+    const std::shared_ptr<runtime::ContextBundle> &context_bundle,
     rapidjson::Document &document) {
   // serialize just support lepusng
   if (context_bundle->IsLepusNG()) {

@@ -11,12 +11,14 @@
 #include "core/template_bundle/template_codec/compile_options.h"
 
 namespace lynx {
+namespace runtime {
+class MTSContext;
+class MTSRuntime;
+struct RenderBindingFunction;
+}  // namespace runtime
 
 namespace lepus {
-class Context;
-class MTSContext;
 class Value;
-struct RenderBindingFunction;
 }  // namespace lepus
 
 namespace tasm {
@@ -297,29 +299,30 @@ constexpr static const char* kCFunctionElementAnimate = "__ElementAnimate";
 
 class Utils {
  public:
-  static lepus::Value CreateLynx(lepus::Context* context,
+  static lepus::Value CreateLynx(runtime::MTSRuntime* mts_runtime,
                                  const std::string& version);
-  static lepus::Value CreateLynxPerformance(lepus::Context* context);
-  static lepus::Value CreateResponseHandler(lepus::Context* context,
+  static lepus::Value CreateLynxPerformance(runtime::MTSRuntime* mts_runtime);
+  static lepus::Value CreateResponseHandler(runtime::MTSRuntime* mts_runtime,
                                             const lepus::Value& handler_impl);
-  static lepus::Value CreateContextProxy(lepus::Context* context,
+  static lepus::Value CreateContextProxy(runtime::MTSRuntime* mts_runtime,
                                          runtime::ContextProxy::Type type,
                                          const lepus::Value& proxy_impl);
-  static lepus::Value CreateGestureManager(lepus::Context* context);
-  static lepus::Value CreateLepusModule(lepus::Context* context,
+  static lepus::Value CreateGestureManager(runtime::MTSRuntime* mts_runtime);
+  static lepus::Value CreateLepusModule(runtime::MTSRuntime* mts_runtime,
                                         const lepus::Value& module_impl);
 };
 
 class Renderer {
  public:
-  static void RegisterBuiltin(lepus::Context* context, ArchOption option);
+  static void RegisterBuiltin(runtime::MTSRuntime* mts_runtime,
+                              ArchOption option);
 
  private:
-  static lepus::Value SlotFunction(lepus::MTSContext* context,
+  static lepus::Value SlotFunction(runtime::MTSContext* context,
                                    lepus::Value* args, int size);
-  static const lepus::RenderBindingFunction* GetBuiltinFunctionsForRadon(
+  static const runtime::RenderBindingFunction* GetBuiltinFunctionsForRadon(
       int32_t& size);
-  static const lepus::RenderBindingFunction* GetBuiltinFunctionsForFiber(
+  static const runtime::RenderBindingFunction* GetBuiltinFunctionsForFiber(
       int32_t& size);
 };
 }  // namespace tasm

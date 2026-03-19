@@ -13,13 +13,13 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/runtime/lepus/builtin.h"
 #include "core/runtime/lepus/bytecode_generator.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/runtime/lepus/lepus_error_helper.h"
 #include "core/runtime/lepus/vm_context.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/qjs_callback.h"
 #include "core/runtime/lepusng/quick_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 constexpr char foo[] = "foo";
@@ -600,8 +600,8 @@ TEST_F(LepusValueMethods, TestLepusRefConstructGC) {
 }
 
 TEST_F(LepusValueMethods, TestIteratorJsValue) {
-  auto context =
-      lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
+  auto context = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
   auto* quick_context =
       static_cast<lepus::QuickContext*>(context->GetMTSContext());
   LEPUSContext* ctx = quick_context->context();
@@ -685,8 +685,8 @@ TEST_F(LepusValueMethods, TestIteratorJsValue) {
 }
 
 TEST_F(LepusValueMethods, CreateJsObject) {
-  auto quick_context =
-      lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
+  auto quick_context = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
   lepus::Value jsobject =
       lepus::LEPUSValueHelper::CreateObject(quick_context.get());
 
@@ -2933,7 +2933,7 @@ TEST_F(LepusValueMethods, TestRefCountedValueConvertToJSValue) {
   ctx_.RegisterGlobalProperty("array",
                               lepus::LEPUSValueHelper::ToJsValue(ctx, array));
 
-  static auto lepus_func = [&](lepus::MTSContext* ctx, lepus::Value* argv,
+  static auto lepus_func = [&](runtime::MTSContext* ctx, lepus::Value* argv,
                                int32_t argc) {
     auto idx = argv[1].Number();
     if (array.GetProperty(idx) != argv[0]) {
@@ -3125,7 +3125,7 @@ TEST_F(LepusValueMethods, DeleteObjectProperty) {
 }
 
 TEST(ReportFatalError, VMContextTest) {
-  auto report_fatal_error = [](lepus::MTSContext* ctx, lepus::Value* arg,
+  auto report_fatal_error = [](runtime::MTSContext* ctx, lepus::Value* arg,
                                int argc) {
     if (!arg->IsString()) {
       ctx->ReportFatalError("args is not string", false,
@@ -3188,7 +3188,7 @@ TEST(ReportFatalError, VMContextTest) {
 }
 
 TEST(ReportFatalError, VMContextTest2) {
-  auto report_fatal_error = [](lepus::MTSContext* ctx, lepus::Value* arg,
+  auto report_fatal_error = [](runtime::MTSContext* ctx, lepus::Value* arg,
                                int argc) {
     if (!arg->IsString()) {
       return ctx->ReportFatalError("args is not string", false,

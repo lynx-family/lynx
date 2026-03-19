@@ -13,8 +13,8 @@
 #include "base/include/value/base_value.h"
 #include "base/include/value/ref_counted_class.h"
 #include "base/include/value/table.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepusng/quick_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace lepus {
@@ -441,17 +441,17 @@ lynx_value LEPUSValueHelper::ConstructLepusRefToLynxValue(
           .tag = tag};
 }
 
-Value LEPUSValueHelper::CreateObject(Context* ctx) {
+Value LEPUSValueHelper::CreateObject(runtime::MTSRuntime* ctx) {
   if (ctx && ctx->IsLepusNGContext()) {
-    LEPUSContext* lctx = Context::ToQuickContext(ctx)->context();
+    LEPUSContext* lctx = runtime::MTSRuntime::ToQuickContext(ctx)->context();
     return MK_JS_LEPUS_VALUE(lctx, LEPUS_NewObject(lctx));
   }
   return Value(lepus::Dictionary::Create());
 }
 
-Value LEPUSValueHelper::CreateArray(Context* ctx) {
+Value LEPUSValueHelper::CreateArray(runtime::MTSRuntime* ctx) {
   if (ctx && ctx->IsLepusNGContext()) {
-    auto* lctx = Context::ToQuickContext(ctx)->context();
+    auto* lctx = runtime::MTSRuntime::ToQuickContext(ctx)->context();
     return MK_JS_LEPUS_VALUE(lctx, LEPUS_NewArray(lctx));
   }
   return Value(lepus::CArray::Create());

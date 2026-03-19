@@ -17,7 +17,7 @@ namespace lynx {
 namespace tasm {
 
 LepusClosureEventListener::LepusClosureEventListener(
-    lepus::Context* context, lepus::Value closure,
+    runtime::MTSRuntime* context, lepus::Value closure,
     const EventListener::Options& options)
     : event::EventListener(
           event::EventListener::Type::kLepusClosureEventListener, options),

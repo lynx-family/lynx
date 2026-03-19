@@ -42,8 +42,9 @@ RadonListBase::RadonListBase(const RadonListBase& node, PtrLookupMap& map)
 }
 
 // TODO: 1. check component name valid.  2. read diffable attribute.
-RadonListBase::RadonListBase(lepus::Context* context, PageProxy* page_proxy,
-                             TemplateAssembler* tasm, uint32_t node_index)
+RadonListBase::RadonListBase(runtime::MTSRuntime* context,
+                             PageProxy* page_proxy, TemplateAssembler* tasm,
+                             uint32_t node_index)
     : RadonNode{page_proxy, BASE_STATIC_STRING(kListNodeTag), node_index},
       context_{context} {
   SetTasm(tasm);

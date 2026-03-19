@@ -1399,7 +1399,7 @@ void TouchEventHandler::TriggerLepusBridgesAsync(
   }
 }
 
-void TouchEventHandler::EnsureGestureManager(lepus::Context *context) {
+void TouchEventHandler::EnsureGestureManager(runtime::MTSRuntime *context) {
   // Ensure that the context is valid and the gesture_manager_ is empty
   if (context && gesture_manager_.IsEmpty()) {
     // Create a new object for gesture_manager_ using the provided context
@@ -1412,7 +1412,7 @@ void TouchEventHandler::EnsureGestureManager(lepus::Context *context) {
 std::optional<lepus::Value> TouchEventHandler::TriggerFiberElementWorklet(
     tasm::TemplateAssembler *tasm, const lepus::Value &worklet_info,
     const lepus::Value &event_param, int element_id, tasm::EventType type,
-    lepus::Context *context) const {
+    runtime::MTSRuntime *context) const {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_TRIGGER_FIBER_ELEMENT_WORKLET);
 
   if (tasm == nullptr) {
@@ -1911,7 +1911,7 @@ FindEventHandler TouchEventHandler::find_event_f_ =
   return (it->second).get();
 };
 
-lepus::Value TouchEventHandler::StopPropagation(lepus::Context *ctx,
+lepus::Value TouchEventHandler::StopPropagation(runtime::MTSRuntime *ctx,
                                                 lepus::Value *argv, int argc,
                                                 lepus::Value &eventObj,
                                                 EventResult &magic) {

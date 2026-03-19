@@ -1611,7 +1611,7 @@ void TemplateAssembler::OnScriptingEnd() {
   }
 }
 
-lepus::Value TemplateAssembler::GetModule(lepus::Context* context,
+lepus::Value TemplateAssembler::GetModule(runtime::MTSRuntime* context,
                                           const std::string& module_name) {
   if (lepus_module_manager_ != nullptr) {
     return lepus_module_manager_->GetModule(context, module_name);
@@ -1817,7 +1817,7 @@ void TemplateAssembler::InvokeLepusComponentCallback(
 
 void TemplateAssembler::LepusInvokeUIMethod(
     std::vector<int32_t> ui_impl_ids, const std::string& method,
-    const lepus::Value& params, lepus::Context* context,
+    const lepus::Value& params, runtime::MTSRuntime* context,
     std::unique_ptr<lepus::Value> callback_closure) {
   if (ui_impl_ids.empty()) {
     if (callback_closure && callback_closure->IsJSFunction()) {

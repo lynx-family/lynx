@@ -7,16 +7,16 @@
 
 #include <string>
 
-#include "core/runtime/lepus/mts_context.h"
 #include "core/runtime/lepus/vm_context.h"
 #include "core/runtime/lepusng/quick_context.h"
+#include "core/runtime/mts_context.h"
 
 namespace lynx {
 namespace lepus {
 
 class BytecodeGenerator {
  public:
-  static std::string GenerateBytecode(MTSContext* context,
+  static std::string GenerateBytecode(runtime::MTSContext* context,
                                       const std::string& source,
                                       const std::string& sdk_version,
                                       const std::string& file_name = "");

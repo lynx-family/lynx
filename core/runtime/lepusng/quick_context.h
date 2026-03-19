@@ -11,8 +11,7 @@
 
 #include "core/public/page_options.h"
 #include "core/runtime/common/js_error_reporter.h"
-#include "core/runtime/lepus/context.h"
-#include "core/runtime/lepus/mts_context.h"
+#include "core/runtime/mts_context.h"
 #include "core/runtime/profile/runtime_profiler.h"
 
 #ifdef __cplusplus
@@ -55,19 +54,20 @@ class LEPUSRuntimeData {
 
 // use quickjs enginer as lepus context
 class QuickContext : private LEPUSRuntimeData,
-                     public MTSContext,
+                     public runtime::MTSContext,
                      public GCObserver {
  public:
-  QuickContext(std::shared_ptr<MTSContextDelegate> mts_context_delegate,
-               bool disable_tracing_gc = false, int runtime_mode = 0,
-               const tasm::PageOptions& page_options = tasm::PageOptions());
+  QuickContext(
+      std::shared_ptr<runtime::MTSContextDelegate> mts_context_delegate,
+      bool disable_tracing_gc = false, int runtime_mode = 0,
+      const tasm::PageOptions& page_options = tasm::PageOptions());
   QuickContext() : QuickContext(nullptr) {}
 
   virtual ~QuickContext() override;
   virtual void Initialize() override;
 
-  virtual ContextType Type() const override {
-    return ContextType::LepusNGContextType;
+  virtual runtime::ContextType Type() const override {
+    return runtime::ContextType::LepusNGContextType;
   }
 
   virtual void TriggerVmGC() override;
@@ -98,10 +98,10 @@ class QuickContext : private LEPUSRuntimeData,
   void SetStackSize(uint32_t stack_size);
   void RegisterGlobalFunction(const char* name, LEPUSCFunction* func,
                               int argc = 0);
-  void RegisterGlobalFunction(const RenderBindingFunction* funcs,
+  void RegisterGlobalFunction(const runtime::RenderBindingFunction* funcs,
                               size_t size) override;
   void RegisterObjectFunction(lepus::Value& obj,
-                              const RenderBindingFunction* funcs,
+                              const runtime::RenderBindingFunction* funcs,
                               size_t size) override;
 
   virtual Value CallArgs(const base::String& name, const Value* args[],
@@ -130,7 +130,7 @@ class QuickContext : private LEPUSRuntimeData,
   LEPUSValue SearchGlobalData(const std::string& name);
 
   // deserialize
-  bool DeSerialize(const ContextBundle&, bool, Value* ret,
+  bool DeSerialize(const runtime::ContextBundle&, bool, Value* ret,
                    const char* file_name = nullptr) override;
 
   // DeSerialize & Execute
@@ -192,7 +192,7 @@ class QuickContext : private LEPUSRuntimeData,
 
   // TODO(wangboyong): refact this
   bool Execute();
-  bool ExecuteBinaryWithBundle(const ContextBundle* bundle,
+  bool ExecuteBinaryWithBundle(const runtime::ContextBundle* bundle,
                                Value* ret_val) override;
 
   bool GetGCFlag() { return gc_flag_; }
@@ -269,7 +269,7 @@ class QuickContext : private LEPUSRuntimeData,
 #endif
 };
 
-class QuickContextBundle final : public ContextBundle {
+class QuickContextBundle final : public runtime::ContextBundle {
  public:
   QuickContextBundle() = default;
   virtual ~QuickContextBundle() override = default;

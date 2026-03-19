@@ -16,12 +16,11 @@
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_export.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/function.h"
 #include "core/runtime/lepus/heap.h"
 #include "core/runtime/lepus/marco.h"
-#include "core/runtime/lepus/mts_context.h"
 #include "core/runtime/lepus/restricted_value.h"
+#include "core/runtime/mts_context.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 
 namespace lynx {
@@ -33,10 +32,11 @@ class TemplateBinaryReader;
 namespace lepus {
 class OutputStream;
 class VMContextBundle;
-class VMContext : public MTSContext {
+class VMContext : public runtime::MTSContext {
  public:
-  explicit VMContext(std::shared_ptr<MTSContextDelegate> mts_context_delegate)
-      : MTSContext(std::move(mts_context_delegate)),
+  explicit VMContext(
+      std::shared_ptr<runtime::MTSContextDelegate> mts_context_delegate)
+      : runtime::MTSContext(std::move(mts_context_delegate)),
         current_frame_(nullptr),
         enable_strict_check_(false),
         enable_top_var_strict_mode_(true),
@@ -50,14 +50,14 @@ class VMContext : public MTSContext {
 
   ~VMContext() = default;
   virtual void Initialize() override;
-  virtual ContextType Type() const override {
-    return ContextType::VMContextType;
+  virtual runtime::ContextType Type() const override {
+    return runtime::ContextType::VMContextType;
   }
 
-  void RegisterGlobalFunction(const RenderBindingFunction* funcs,
+  void RegisterGlobalFunction(const runtime::RenderBindingFunction* funcs,
                               size_t size) override;
   void RegisterObjectFunction(lepus::Value& obj,
-                              const RenderBindingFunction* funcs,
+                              const runtime::RenderBindingFunction* funcs,
                               size_t size) override;
 
   virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
@@ -138,7 +138,7 @@ class VMContext : public MTSContext {
     return global_.Find(name);
   }
 
-  bool DeSerialize(const ContextBundle& bundle, bool, Value* ret,
+  bool DeSerialize(const runtime::ContextBundle& bundle, bool, Value* ret,
                    const char* file_name = nullptr) override;
   bool MoveContextBundle(VMContextBundle& bundle);
 
@@ -159,7 +159,7 @@ class VMContext : public MTSContext {
 
   // TODO(wangboyong): refact this
   bool Execute();
-  bool ExecuteBinaryWithBundle(const ContextBundle* bundle,
+  bool ExecuteBinaryWithBundle(const runtime::ContextBundle* bundle,
                                Value* ret_val) override;
 
   void BindCurrentThread() override{};
@@ -298,7 +298,7 @@ class VMContext : public MTSContext {
   void RunFrame_Label_LeaveBlock();
 };
 
-class VMContextBundle final : public ContextBundle {
+class VMContextBundle final : public runtime::ContextBundle {
  public:
   VMContextBundle() = default;
   virtual ~VMContextBundle() override = default;

@@ -48,11 +48,11 @@
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
 #include "core/renderer/utils/test/text_utils_mock.h"
 #include "core/runtime/lepus/bytecode_generator.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/js_object.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/shell/lynx_ui_operation_queue.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/shared_css_fragment.h"
@@ -1620,7 +1620,8 @@ TEST_P(FiberElementTest,
   auto default_entry = std::make_shared<TemplateEntry>();
   tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
 
-  auto ctx = lepus::Context::CreateContext(lepus::LepusNGContextType);
+  auto ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
   tasm->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(ctx);
 
   std::string js_source = R"(

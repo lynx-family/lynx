@@ -4,7 +4,7 @@
 
 #include "devtool/lynx_devtool/js_debug/lepus/manager/lepus_inspector_manager_impl.h"
 
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "devtool/js_inspect/lepus/lepus_inspector_client_provider.h"
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
 
@@ -12,11 +12,11 @@ namespace lynx {
 namespace lepus {
 
 void LepusInspectorManagerImpl::InitInspector(
-    MTSContext* context,
+    runtime::MTSContext* context,
     const std::shared_ptr<InspectorLepusObserver>& observer,
     const std::string& context_name) {
   // Do not support debugging lazy components of non-LepusNG.
-  if (context->Type() != ContextType::LepusNGContextType &&
+  if (context->Type() != runtime::ContextType::LepusNGContextType &&
       (!observer->ShouldFetchDebugInfo() ||
        context_name != devtool::kLepusDefaultContextName)) {
     return;

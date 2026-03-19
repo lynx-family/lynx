@@ -7,10 +7,10 @@
 #include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/lepus/builtin_function_table.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/vm_context.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/quick_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace lepus {
@@ -43,16 +43,16 @@ inline void RegisterNGCFunction(QuickContext* quick_ctx, const char* name,
 }
 
 inline void RegisterNGCFunction(QuickContext* ctx,
-                                const RenderBindingFunction* funcs,
+                                const runtime::RenderBindingFunction* funcs,
                                 size_t size) {
   ctx->RegisterGlobalFunction(funcs, size);
   return;
 }
 
-inline void RegisterObjectNGCFunction(Context* ctx, lepus::Value& obj,
-                                      const RenderBindingFunction* funcs,
-                                      size_t size) {
-  auto* qctx = lepus::Context::ToQuickContext(ctx);
+inline void RegisterObjectNGCFunction(
+    runtime::MTSRuntime* ctx, lepus::Value& obj,
+    const runtime::RenderBindingFunction* funcs, size_t size) {
+  auto* qctx = runtime::MTSRuntime::ToQuickContext(ctx);
   qctx->RegisterObjectFunction(obj, funcs, size);
   return;
 }

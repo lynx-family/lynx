@@ -14,10 +14,6 @@
 
 namespace lynx {
 
-namespace lepus {
-class Context;
-}
-
 namespace tasm {
 
 class SignalContext;
@@ -26,7 +22,7 @@ class Memo;
 
 class Computation : public BaseScope {
  public:
-  Computation(SignalContext* signal_context, lepus::Context* vm_context,
+  Computation(SignalContext* signal_context, runtime::MTSRuntime* vm_context,
               const lepus::Value& closure, const lepus::Value& value,
               bool pure_computation, Memo* memo);
   virtual ~Computation();

@@ -274,10 +274,10 @@ class TouchEventHandler {
   std::optional<lepus::Value> TriggerFiberElementWorklet(
       tasm::TemplateAssembler *tasm, const lepus::Value &worklet_info,
       const lepus::Value &event_param, int element_id, tasm::EventType type,
-      lepus::Context *context) const;
+      runtime::MTSRuntime *context) const;
 
   // Register method to the gesture manager using utility function
-  void EnsureGestureManager(lepus::Context *context);
+  void EnsureGestureManager(runtime::MTSRuntime *context);
 
   NodeManager *node_manager_;
 
@@ -296,8 +296,9 @@ class TouchEventHandler {
 
   std::unordered_map<int64_t, EventContext> event_queue_;
 
-  static lepus::Value StopPropagation(lepus::Context *ctx, lepus::Value *argv,
-                                      int argc, lepus::Value &eventObj,
+  static lepus::Value StopPropagation(runtime::MTSRuntime *ctx,
+                                      lepus::Value *argv, int argc,
+                                      lepus::Value &eventObj,
                                       EventResult &magic);
   static FindEventHandler find_event_f_;
   static GetEventHandlers get_handlers_f_;

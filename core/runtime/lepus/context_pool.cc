@@ -9,8 +9,8 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/lepus/context.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace lepus {
@@ -23,7 +23,7 @@ std::shared_ptr<LynxContextPool> LynxContextPool::Create(
 
 std::shared_ptr<LynxContextPool> LynxContextPool::Create(
     bool is_lepus_ng, bool disable_tracing_gc,
-    const std::shared_ptr<ContextBundle>& context_bundle,
+    const std::shared_ptr<runtime::ContextBundle>& context_bundle,
     const tasm::CompileOptions& compile_options,
     tasm::PageConfig* page_configs) {
   return std::shared_ptr<LynxContextPool>(
@@ -51,10 +51,11 @@ void LynxContextPool::AddContextSafely(int32_t count) {
   decltype(contexts_) temp_contexts;
   uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
   for (; count > 0; --count) {
-    std::shared_ptr<Context> context = Context::CreateContext(
-        is_lepus_ng_ ? lepus::ContextType::LepusNGContextType
-                     : lepus::ContextType::VMContextType,
-        disable_tracing_gc_, mode);
+    std::shared_ptr<runtime::MTSRuntime> context =
+        runtime::MTSRuntime::CreateContext(
+            is_lepus_ng_ ? runtime::ContextType::LepusNGContextType
+                         : runtime::ContextType::VMContextType,
+            disable_tracing_gc_, mode);
     if (context_bundle_) {
       context->SetSdkVersion(target_sdk_version_);
       context->Initialize();
@@ -88,8 +89,8 @@ void LynxContextPool::AddContextSafely(int32_t count) {
   }
 }
 
-std::shared_ptr<lepus::Context> LynxContextPool::TakeContextSafely() {
-  std::shared_ptr<lepus::Context> context = nullptr;
+std::shared_ptr<runtime::MTSRuntime> LynxContextPool::TakeContextSafely() {
+  std::shared_ptr<runtime::MTSRuntime> context = nullptr;
   {
     // lock to take context safely
     std::unique_lock<std::mutex> lock(mtx_, std::try_to_lock);

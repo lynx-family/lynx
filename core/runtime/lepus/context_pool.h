@@ -11,7 +11,7 @@
 #include <utility>
 
 #include "base/include/vector.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 
@@ -26,7 +26,7 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
   // replenishing the cache, so it can only exist in the form of shared_ptr
   static std::shared_ptr<LynxContextPool> Create(
       bool is_lepus_ng, bool disable_tracing_gc,
-      const std::shared_ptr<ContextBundle>& context_bundle,
+      const std::shared_ptr<runtime::ContextBundle>& context_bundle,
       const tasm::CompileOptions& compile_options,
       tasm::PageConfig* page_configs);
 
@@ -40,7 +40,7 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
 
   void FillPool(int32_t count);
 
-  std::shared_ptr<lepus::Context> TakeContextSafely();
+  std::shared_ptr<runtime::MTSRuntime> TakeContextSafely();
 
   void SetEnableAutoGenerate(bool enable);
 
@@ -53,7 +53,7 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
       : is_lepus_ng_(is_lepus_ng), disable_tracing_gc_(disable_tracing_gc) {}
 
   LynxContextPool(bool is_lepus_ng, bool disable_tracing_gc,
-                  const std::shared_ptr<ContextBundle>& context_bundle,
+                  const std::shared_ptr<runtime::ContextBundle>& context_bundle,
                   const tasm::CompileOptions& compile_options,
                   tasm::PageConfig* page_configs)
       : is_lepus_ng_(is_lepus_ng),
@@ -74,12 +74,12 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
   const bool disable_tracing_gc_{false};
   const bool enable_signal_api_{false};
   const std::string target_sdk_version_;
-  const std::shared_ptr<ContextBundle> context_bundle_{nullptr};
+  const std::shared_ptr<runtime::ContextBundle> context_bundle_{nullptr};
   const tasm::ArchOption arch_option_{tasm::RADON_ARCH};
   const bool enable_mts_pre_execute_{false};
 
   std::mutex mtx_;
-  base::InlineVector<std::shared_ptr<lepus::Context>, 8> contexts_;
+  base::InlineVector<std::shared_ptr<runtime::MTSRuntime>, 8> contexts_;
 };
 
 }  // namespace lepus

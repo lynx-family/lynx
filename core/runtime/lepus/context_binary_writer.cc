@@ -29,7 +29,7 @@ namespace lynx {
 namespace lepus {
 
 ContextBinaryWriter::ContextBinaryWriter(
-    MTSContext* context, const tasm::CompileOptions& compile_options,
+    runtime::MTSContext* context, const tasm::CompileOptions& compile_options,
     const lepus::Value& trial_options, bool enableDebugInfo)
     : mts_context_(context),
       compile_options_(compile_options),

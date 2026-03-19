@@ -87,7 +87,7 @@ class WorkletEventTest : public ::testing::Test {
 
   fml::RefPtr<tasm::Element> CreateElement(const std::string& js_var_name,
                                            int32_t tag) {
-    auto quick_context = lepus::Context::ToQuickContext(ctx_.get());
+    auto quick_context = runtime::MTSRuntime::ToQuickContext(ctx_.get());
     LEPUSValue node_raw_value = quick_context->SearchGlobalData(js_var_name);
     lepus::Value node_value =
         MK_JS_LEPUS_VALUE(quick_context->context(), node_raw_value);
@@ -106,8 +106,8 @@ class WorkletEventTest : public ::testing::Test {
 
   void TearDown() override {}
 
-  std::shared_ptr<lepus::Context> ctx_{
-      lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType)};
+  std::shared_ptr<runtime::MTSRuntime> ctx_{runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType)};
   runtime::js::NapiRuntimeProxy* napi_proxy_;
 
   lynx::tasm::TouchEventHandler* touch_event_handler_;
@@ -121,7 +121,7 @@ class WorkletEventTest : public ::testing::Test {
 TEST_F(WorkletEventTest, TestPropagation) {
   auto* comp = new lynx::tasm::RadonComponent(tasm_->page_proxy(), 0, nullptr,
                                               nullptr, nullptr, ctx_.get(), 0);
-  auto quick_context = lepus::Context::ToQuickContext(ctx_.get());
+  auto quick_context = runtime::MTSRuntime::ToQuickContext(ctx_.get());
   quick_context->RegisterGlobalProperty(
       "$comp", LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, comp));
 
@@ -176,7 +176,7 @@ TEST_F(WorkletEventTest, TestPropagation) {
 TEST_F(WorkletEventTest, TestStopPropagation) {
   auto* comp = new lynx::tasm::RadonComponent(tasm_->page_proxy(), 0, nullptr,
                                               nullptr, nullptr, ctx_.get(), 0);
-  auto quick_context = lepus::Context::ToQuickContext(ctx_.get());
+  auto quick_context = runtime::MTSRuntime::ToQuickContext(ctx_.get());
   quick_context->RegisterGlobalProperty(
       "$comp", LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, comp));
 

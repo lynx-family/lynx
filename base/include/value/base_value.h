@@ -31,6 +31,11 @@ extern "C" {
 #endif
 
 namespace lynx {
+namespace runtime {
+class MTSContext;
+class MTSRuntime;
+}  // namespace runtime
+
 namespace lepus {
 
 class Value;
@@ -85,8 +90,7 @@ enum ValueType {
   Value_TypeCount,
 };
 
-class Context;
-class MTSContext;
+using MTSContext = runtime::MTSContext;
 class VMContext;
 class CArray;
 class Dictionary;

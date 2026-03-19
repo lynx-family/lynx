@@ -21,7 +21,7 @@ class RadonPage : public RadonComponent {
  public:
   RadonPage(PageProxy *proxy, int tid, CSSFragment *style_sheet,
             std::shared_ptr<CSSStyleSheetManager> style_sheet_manager,
-            PageMould *mould, lepus::Context *context);
+            PageMould *mould, runtime::MTSRuntime *context);
   virtual ~RadonPage();
 
   void UpdateComponentData(const std::string &id, const lepus::Value &table,

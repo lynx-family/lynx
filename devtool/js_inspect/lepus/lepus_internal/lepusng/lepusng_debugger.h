@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "third_party/rapidjson/document.h"
 
 #ifdef __cplusplus
@@ -29,7 +29,6 @@ class LepusInspectorNGImpl;
 namespace lynx {
 namespace lepus {
 class QuickContext;
-class Context;
 };  // namespace lepus
 
 namespace debug {  // TODO(lqy): change namespace to lepus_inspector

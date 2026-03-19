@@ -10,10 +10,9 @@
 #include "core/base/lynx_export.h"
 
 namespace lynx {
-namespace lepus {
-class Context;
-}
-
+namespace runtime {
+class MTSRuntime;
+}  // namespace runtime
 }  // namespace lynx
 namespace lepus_inspector {
 class LepusInspectorSession {
@@ -38,7 +37,7 @@ class LepusInspectorClient {
 class LepusInspector {
  public:
   static LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<LepusInspector> create(
-      lynx::lepus::Context* ctx, LepusInspectorClient*);
+      lynx::runtime::MTSRuntime* mts_runtime, LepusInspectorClient*);
   virtual ~LepusInspector() = default;
   class LepusChannel {
    public:

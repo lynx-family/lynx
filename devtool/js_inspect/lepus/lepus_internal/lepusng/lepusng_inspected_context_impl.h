@@ -21,7 +21,7 @@ class LepusNGInspectedContextImpl
       public lynx::lepus::QuickContext::DebugDelegate {
  public:
   LepusNGInspectedContextImpl(LepusInspectorNGImpl* inspector,
-                              lynx::lepus::MTSContext* context,
+                              lynx::runtime::MTSContext* context,
                               const std::string& name);
   ~LepusNGInspectedContextImpl() override = default;
 

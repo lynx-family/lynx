@@ -32,12 +32,12 @@ SOFTWARE.
 #include "core/renderer/signal/computation.h"
 #include "core/renderer/signal/memo.h"
 #include "core/renderer/signal/signal_context.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
 
-Signal::Signal(SignalContext* context, lepus::Context* vm_context,
+Signal::Signal(SignalContext* context, runtime::MTSRuntime* vm_context,
                const lepus::Value& init_value)
     : signal_context_(context),
       vm_context_(vm_context),

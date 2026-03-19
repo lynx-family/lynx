@@ -50,7 +50,8 @@ class LepusInspectorClientImpl : public lepus_inspector::LepusInspectorClientNG,
   void SetStopAtEntry(bool stop_at_entry, int instance_id) override;
   void DispatchMessage(const std::string& message, int instance_id) override;
 
-  void InitInspector(lepus::MTSContext* context, const std::string& name = "");
+  void InitInspector(runtime::MTSContext* context,
+                     const std::string& name = "");
   void SetDebugInfo(const std::string& filename, const std::string& debug_info,
                     int debug_info_id, const std::string& debug_info_url);
   void ConnectSession();

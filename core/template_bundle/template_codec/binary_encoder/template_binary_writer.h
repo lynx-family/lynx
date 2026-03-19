@@ -45,7 +45,7 @@ struct StyleObjectRoute;
 class TemplateBinaryWriter : public CSRElementBinaryWriter {
  public:
   TemplateBinaryWriter(
-      lepus::MTSContext* context, bool use_lepusng, bool silence,
+      runtime::MTSContext* context, bool use_lepusng, bool silence,
       SourceGenerator* parser, CSSParser* css_parser,
       StyleObjectParser* style_object_parser, rapidjson::Value* air_styles,
       rapidjson::Value* element_template_parsed_styles,

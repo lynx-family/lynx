@@ -110,7 +110,8 @@ namespace tasm {
 namespace {
 
 template <class... Args>
-lepus::Value RenderFatal(lepus::Context* ctx, const char* fmt, Args&&... a) {
+lepus::Value RenderFatal(runtime::MTSRuntime* ctx, const char* fmt,
+                         Args&&... a) {
   auto err_msg =
       std::string("\nerror code: ")
           .append(std::to_string(error::E_MTS_RENDERER_FUNCTION_FATAL))
@@ -146,10 +147,10 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
 }  // namespace
 
 #define LEPUS_MTS_CONTEXT() ctx
-#define LEPUS_CONTEXT() lepus::Context::ToContext(ctx)
+#define LEPUS_CONTEXT() runtime::MTSRuntime::ToContext(ctx)
 
-#define RENDERER_FUNCTION_CC(name)                             \
-  lepus::Value RendererFunctions::name(lepus::MTSContext* ctx, \
+#define RENDERER_FUNCTION_CC(name)                               \
+  lepus::Value RendererFunctions::name(runtime::MTSContext* ctx, \
                                        lepus::Value* argv, int argc)
 
 #define CONVERT_ARG(name, index) lepus::Value* name = argv + index;
@@ -322,7 +323,8 @@ void UpdateComponentConfig(TemplateAssembler* tasm, RadonComponent* component) {
   component->UpdateSystemInfo(GetSystemInfoFromTasm(tasm));
 }
 
-RadonComponent* GetRadonComponent(lepus::Context* context, lepus::Value* arg) {
+RadonComponent* GetRadonComponent(runtime::MTSRuntime* context,
+                                  lepus::Value* arg) {
   auto* tasm = static_cast<TemplateAssembler*>(context->GetDelegate());
   if (tasm->page_proxy()->HasRadonPage()) {
     RadonBase* base = reinterpret_cast<RadonBase*>(arg->CPoint());
@@ -333,7 +335,7 @@ RadonComponent* GetRadonComponent(lepus::Context* context, lepus::Value* arg) {
   return nullptr;
 }
 
-void InnerThemeReplaceParams(lepus::MTSContext* ctx, std::string& retStr,
+void InnerThemeReplaceParams(runtime::MTSContext* ctx, std::string& retStr,
                              lepus::Value* argv, int argc,
                              int paramStartIndex) {
   const int params_size = argc;
@@ -364,7 +366,7 @@ void InnerThemeReplaceParams(lepus::MTSContext* ctx, std::string& retStr,
   } while (static_cast<size_t>(startPos) < retStr.size());
 }
 
-lepus::Value InnerTranslateResourceForTheme(lepus::MTSContext* ctx,
+lepus::Value InnerTranslateResourceForTheme(runtime::MTSContext* ctx,
                                             lepus::Value* argv, int argc,
                                             const char* keyIn) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, INNER_TRANSLATE_RESOURCE_FOR_THEME);
@@ -406,7 +408,7 @@ GestureDetector InnerCreateGestureDetector(double gesture_id,
                                            double gesture_type,
                                            lepus::Value* callback_config,
                                            lepus::Value* relation_map_value,
-                                           lepus::Context* ctx) {
+                                           runtime::MTSRuntime* ctx) {
   // Extract the "callbacks" property from the input "callbacksConfigs"
   // argument.
   BASE_STATIC_STRING_DECL(kCallbacks, "callbacks");
@@ -1516,7 +1518,7 @@ RENDERER_FUNCTION_CC(CreateVirtualComponent) {
     component_instance_id = static_cast<int>(arg4->Number());
   }
 
-  lepus::Context* context = LEPUS_CONTEXT();
+  runtime::MTSRuntime* context = LEPUS_CONTEXT();
   auto* self = GET_TASM_POINTER();
   auto cm_pair = self->FindComponentMould(context->name(), component_name, tid);
   ComponentMould* mould = cm_pair.first;
@@ -1700,7 +1702,7 @@ RENDERER_FUNCTION_CC(SetScriptEventTo) {
 }
 
 std::unique_ptr<ListComponentInfo> ComponentInfoFromContext(
-    lepus::Context* context, lepus::Value* argv, int argc) {
+    runtime::MTSRuntime* context, lepus::Value* argv, int argc) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, COMPONENT_INFO_FROM_CONTEXT);
   CONVERT_ARG(name, 1);
   CONVERT_ARG(data, 2);
@@ -2146,7 +2148,7 @@ RENDERER_FUNCTION_CC(CreateComponentByName) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, CREATE_COMPONENT_BY_NAME, "componentName",
               component_name);
   int component_instance_id = static_cast<int>(arg2->Number());
-  lepus::Context* context = LEPUS_CONTEXT();
+  runtime::MTSRuntime* context = LEPUS_CONTEXT();
   auto* self = GET_TASM_POINTER();
   auto iter = self->FindEntry(context->name())
                   ->component_name_to_id()
@@ -2205,7 +2207,7 @@ RENDERER_FUNCTION_CC(CreateDynamicVirtualComponent) {
   int component_instance_id = static_cast<int>(arg3->Number());
   int tid = static_cast<int>(arg0->Number());
   auto* self = GET_TASM_POINTER();
-  lepus::Context* context = LEPUS_CONTEXT();
+  runtime::MTSRuntime* context = LEPUS_CONTEXT();
 
   std::unique_ptr<RadonLazyComponent> comp = nullptr;
   std::shared_ptr<TemplateEntry> entry = nullptr;
@@ -2328,9 +2330,9 @@ RENDERER_FUNCTION_CC(RenderDynamicComponent) {
 
   auto* self = GET_TASM_POINTER();
 
-  lepus::Context* context = LEPUS_CONTEXT();
+  runtime::MTSRuntime* context = LEPUS_CONTEXT();
   std::string url = self->GetTargetUrl(context->name(), entry_name);
-  lepus::Context* target_context = self->GetLepusContext(url).get();
+  runtime::MTSRuntime* target_context = self->GetLepusContext(url).get();
   BASE_STATIC_STRING_DECL(kRenderEntranceDynamicComponent,
                           "$renderEntranceDynamicComponent");
   if (target_context->IsVMContext()) {
@@ -2430,7 +2432,7 @@ RENDERER_FUNCTION_CC(CreateVirtualListNode) {
   CONVERT_ARG_AND_CHECK(arg0, 0, CPointer, CreateVirtualListNode);
   CONVERT_ARG_AND_CHECK(arg1, 1, Number, CreateVirtualListNode);
   auto* self = GET_TASM_POINTER();
-  lepus::Context* context = LEPUS_CONTEXT();
+  runtime::MTSRuntime* context = LEPUS_CONTEXT();
   uint32_t eid = static_cast<uint32_t>(arg1->Number());
   auto page_proxy = self->page_proxy();
   auto& manager = page_proxy->element_manager();
@@ -6067,7 +6069,8 @@ RENDERER_FUNCTION_CC(TriggerLepusBridge) {
           [](LEPUSContext* context, LEPUSValue value, int argc,
              LEPUSValue* argv) -> LEPUSValue { return LEPUS_UNDEFINED; };
       constexpr const static char* kCallback = "callback";
-      auto context = lepus::Context::ToQuickContext(LEPUS_CONTEXT())->context();
+      auto context =
+          runtime::MTSRuntime::ToQuickContext(LEPUS_CONTEXT())->context();
       callback_closure = lepus::LepusValueFactory(context).CreatePtr(
           LEPUS_NewCFunction(context, default_callback, kCallback, 0));
     } else {
@@ -6241,7 +6244,7 @@ RENDERER_FUNCTION_CC(InvokeUIMethod) {
 
 #if ENABLE_TRACE_PERFETTO
 static void HandleProfileNameAndOption(
-    int argc, lepus::Value* argv, lepus::Context* ctx,
+    int argc, lepus::Value* argv, runtime::MTSRuntime* ctx,
     lynx::perfetto::EventContext& event_context) {
   if (argc < 1) {
     return;
