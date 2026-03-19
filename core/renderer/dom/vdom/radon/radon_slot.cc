@@ -12,7 +12,7 @@
 #include "core/renderer/dom/vdom/radon/radon_page.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {

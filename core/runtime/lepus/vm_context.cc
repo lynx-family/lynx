@@ -78,7 +78,7 @@ void VMContext::Initialize() {
 
 bool VMContext::Execute() { return ExecuteBinaryWithBundle(nullptr, nullptr); }
 
-bool VMContext::ExecuteBinaryWithBundle(const ContextBundle* bundle,
+bool VMContext::ExecuteBinaryWithBundle(const runtime::ContextBundle* bundle,
                                         Value* ret_val) {
   (void)bundle;
   if (root_function_.get() == nullptr) {
@@ -192,8 +192,8 @@ void VMContext::Dump() {
 }
 #endif
 
-void VMContext::RegisterGlobalFunction(const RenderBindingFunction* funcs,
-                                       size_t size) {
+void VMContext::RegisterGlobalFunction(
+    const runtime::RenderBindingFunction* funcs, size_t size) {
   for (size_t i = 0; i < size; ++i) {
     if (!funcs->for_lepus) {
       continue;
@@ -202,9 +202,9 @@ void VMContext::RegisterGlobalFunction(const RenderBindingFunction* funcs,
   }
 }
 
-void VMContext::RegisterObjectFunction(lepus::Value& obj,
-                                       const RenderBindingFunction* funcs,
-                                       size_t size) {
+void VMContext::RegisterObjectFunction(
+    lepus::Value& obj, const runtime::RenderBindingFunction* funcs,
+    size_t size) {
   if (!obj.IsTable()) {
     return;
   }
@@ -1687,8 +1687,8 @@ void VMContext::RegisterLepusVerion() {
 
 void VMContext::OnReload() { closures_.CleanUpClosuresCreatedAfterExecuted(); }
 
-bool VMContext::DeSerialize(const ContextBundle& bundle, bool, Value* ret,
-                            const char* file_name) {
+bool VMContext::DeSerialize(const runtime::ContextBundle& bundle, bool,
+                            Value* ret, const char* file_name) {
   auto bundle_copy = static_cast<const VMContextBundle&>(bundle);
   return MoveContextBundle(bundle_copy);
 }

@@ -12,7 +12,7 @@
 namespace lynx {
 namespace tasm {
 
-std::optional<std::shared_ptr<lepus::ContextBundle>>
+std::optional<std::shared_ptr<runtime::ContextBundle>>
 LepusChunkManager::GetLepusChunk(const std::string &chunk_key) {
   std::lock_guard<std::mutex> g_lock(lepus_chunk_mutex_);
   decoded_lepus_chunks_.emplace(chunk_key);
@@ -34,7 +34,7 @@ bool LepusChunkManager::IsLepusChunkDecoded(const std::string &chunk_path) {
 
 void LepusChunkManager::AddLepusChunk(
     const std::string &chunk_key,
-    std::shared_ptr<lepus::ContextBundle> bundle) {
+    std::shared_ptr<runtime::ContextBundle> bundle) {
   std::lock_guard<std::mutex> g_lock(lepus_chunk_mutex_);
   lepus_chunk_map_.emplace(chunk_key, std::move(bundle));
 }

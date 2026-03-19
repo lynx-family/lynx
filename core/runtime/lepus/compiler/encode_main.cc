@@ -67,7 +67,8 @@ static int32_t kTestErrorCode = 106;
 
 #pragma clang diagnostic pop
 
-static lepus::Value EmptyFunc(lepus::MTSContext* context, lepus::Value*, int) {
+static lepus::Value EmptyFunc(runtime::MTSContext* context, lepus::Value*,
+                              int) {
   ++count;
   // std::cout << count << std::endl;
   return lepus::Value();
@@ -150,7 +151,7 @@ static void Print_Value(lepus::Value* val, std::ostream& output) {
   }
 }
 
-lepus::Value Print(lepus::MTSContext* context) {
+lepus::Value Print(runtime::MTSContext* context) {
   long params_count = static_cast<lepus::VMContext*>(context)->GetParamsSize();
   for (long i = 0; i < params_count; i++) {
     lepus::Value* v = static_cast<lepus::VMContext*>(context)->GetParam(i);
@@ -160,7 +161,7 @@ lepus::Value Print(lepus::MTSContext* context) {
   }
   return lepus::Value();
 }
-static lepus::Value Assert(lepus::MTSContext* context) {
+static lepus::Value Assert(runtime::MTSContext* context) {
   lepus::Value* val = static_cast<lepus::VMContext*>(context)->GetParam(0);
   if (val->IsTrue()) {
     return lepus::Value();
@@ -169,7 +170,7 @@ static lepus::Value Assert(lepus::MTSContext* context) {
     abort();
   }
 }
-static lepus::Value Typeof(lepus::MTSContext* context) {
+static lepus::Value Typeof(runtime::MTSContext* context) {
   lepus::Value* val = static_cast<lepus::VMContext*>(context)->GetParam(0);
   switch (val->Type()) {
     case lepus::ValueType::Value_Nil:
@@ -206,7 +207,7 @@ static lepus::Value Typeof(lepus::MTSContext* context) {
   return *val;
 }
 
-static lepus::Value SetFlag(lepus::MTSContext* context) {
+static lepus::Value SetFlag(runtime::MTSContext* context) {
   lepus::Value* parm1 = static_cast<lepus::VMContext*>(context)->GetParam(0);
   if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
     static_cast<lepus::VMContext*>(context)->SetNullPropAsUndef(
@@ -215,7 +216,7 @@ static lepus::Value SetFlag(lepus::MTSContext* context) {
   return lepus::Value();
 }
 
-static lepus::Value CheckArgs(lepus::MTSContext* context) {
+static lepus::Value CheckArgs(runtime::MTSContext* context) {
   lepus::Value* param1 = static_cast<lepus::VMContext*>(context)->GetParam(0);
 
   if (!param1->IsString()) {

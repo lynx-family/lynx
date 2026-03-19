@@ -25,7 +25,7 @@ namespace lepusbenchmark {
 
 static const std::string sdk_version = "2.0";
 
-class MockContextDelegate : public lepus::Context::Delegate {
+class MockContextDelegate : public runtime::MTSRuntime::Delegate {
  public:
   const std::string& TargetSdkVersion() override { return sdk_version; }
   void ReportError(base::LynxError error) override {

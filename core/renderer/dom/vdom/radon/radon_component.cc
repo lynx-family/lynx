@@ -19,10 +19,10 @@
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/lepus/context.h"
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
@@ -30,7 +30,7 @@ namespace tasm {
 RadonComponent::RadonComponent(
     PageProxy* page_proxy, int tid, CSSFragment* style_sheet,
     std::shared_ptr<CSSStyleSheetManager> style_sheet_manager,
-    ComponentMould* mould, lepus::Context* context, uint32_t node_index,
+    ComponentMould* mould, runtime::MTSRuntime* context, uint32_t node_index,
     const base::String& tag_name)
     : RadonNode(page_proxy, tag_name, node_index),
       tid_(tid),
@@ -1633,7 +1633,7 @@ void RadonComponent::SetComponentId() {
 RadonListComponent::RadonListComponent(
     PageProxy* page_proxy, int tid, CSSFragment* style_sheet,
     std::shared_ptr<CSSStyleSheetManager> style_sheet_manager,
-    ComponentMould* mould, lepus::Context* context, uint32_t node_index,
+    ComponentMould* mould, runtime::MTSRuntime* context, uint32_t node_index,
     int distance_from_root, const base::String& tag_name)
     : RadonComponent(page_proxy, tid, style_sheet, style_sheet_manager, mould,
                      context, node_index, tag_name),

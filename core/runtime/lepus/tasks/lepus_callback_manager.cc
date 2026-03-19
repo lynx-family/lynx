@@ -6,11 +6,11 @@
 
 #include <utility>
 
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
-LepusCallbackManager::FuncTask::FuncTask(lepus::Context* context,
+LepusCallbackManager::FuncTask::FuncTask(runtime::MTSRuntime* context,
                                          std::unique_ptr<lepus::Value> closure)
     : closure_(std::move(closure)), context_(context) {}
 
@@ -23,7 +23,8 @@ void LepusCallbackManager::FuncTask::Execute(
 }
 
 int64_t LepusCallbackManager::CacheTask(
-    lepus::Context* context, std::unique_ptr<lepus::Value> callback_closure) {
+    runtime::MTSRuntime* context,
+    std::unique_ptr<lepus::Value> callback_closure) {
   task_map_.emplace(std::make_pair(
       ++current_task_id_,
       std::make_unique<FuncTask>(context, std::move(callback_closure))));
@@ -49,14 +50,14 @@ void LepusCallbackManager::InvokeTask(int64_t id,
   }
 }
 
-uint32_t LepusCallbackManager::SetTimeOut(lepus::Context* context,
+uint32_t LepusCallbackManager::SetTimeOut(runtime::MTSRuntime* context,
                                           std::unique_ptr<lepus::Value> closure,
                                           int64_t delay_time) {
   return SetTimeTask(context, std::move(closure), delay_time, false);
 }
 
 uint32_t LepusCallbackManager::SetInterval(
-    lepus::Context* context, std::unique_ptr<lepus::Value> closure,
+    runtime::MTSRuntime* context, std::unique_ptr<lepus::Value> closure,
     int64_t interval_time) {
   return SetTimeTask(context, std::move(closure), interval_time, true);
 }
@@ -68,7 +69,7 @@ void LepusCallbackManager::RemoveTimeTask(uint32_t task_id) {
 }
 
 uint32_t LepusCallbackManager::SetTimeTask(
-    lepus::Context* context, std::unique_ptr<lepus::Value> closure,
+    runtime::MTSRuntime* context, std::unique_ptr<lepus::Value> closure,
     int64_t delay_time, bool is_interval) {
   EnsureTimerTaskInvokerInited(context);
   auto task = [func =
@@ -85,7 +86,7 @@ uint32_t LepusCallbackManager::SetTimeTask(
 LepusCallbackManager::~LepusCallbackManager() { Destroy(); }
 
 void LepusCallbackManager::EnsureTimerTaskInvokerInited(
-    lepus::Context* context) {
+    runtime::MTSRuntime* context) {
   if (!timer_task_manager_) {
     timer_task_manager_ = std::make_unique<base::TimedTaskManager>(
         true, context->GetDelegate()

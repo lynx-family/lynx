@@ -37,10 +37,6 @@ SOFTWARE.
 
 namespace lynx {
 
-namespace lepus {
-class Context;
-}
-
 namespace tasm {
 
 enum class ScopeType : int32_t {
@@ -60,11 +56,11 @@ class Computation;
 
 class BaseScope : public lepus::RefCounted {
  public:
-  BaseScope(SignalContext* context, lepus::Context* vm_context);
+  BaseScope(SignalContext* context, runtime::MTSRuntime* vm_context);
   virtual ~BaseScope();
 
   SignalContext* signal_context() const { return signal_context_; }
-  lepus::Context* vm_context() const { return vm_context_; }
+  runtime::MTSRuntime* vm_context() const { return vm_context_; }
 
   void SetScopeType(ScopeType type) { scope_type_ = type; }
   ScopeType GetScopeType() { return scope_type_; };
@@ -90,7 +86,7 @@ class BaseScope : public lepus::RefCounted {
   int32_t updated_time_{-1};
 
   SignalContext* signal_context_{nullptr};
-  lepus::Context* vm_context_{nullptr};
+  runtime::MTSRuntime* vm_context_{nullptr};
 
   BaseScope* owner_{nullptr};
 
@@ -101,7 +97,7 @@ class BaseScope : public lepus::RefCounted {
 
 class Scope : public BaseScope {
  public:
-  Scope(SignalContext* signal_context, lepus::Context* vm_context,
+  Scope(SignalContext* signal_context, runtime::MTSRuntime* vm_context,
         const lepus::Value& closure);
   virtual ~Scope();
 

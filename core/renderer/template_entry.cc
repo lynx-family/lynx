@@ -39,8 +39,9 @@ TemplateEntry::TemplateEntry() : VmContextHolder(nullptr) {
       std::make_shared<CSSStyleSheetManager>(this);
 }
 
-TemplateEntry::TemplateEntry(const std::shared_ptr<lepus::Context>& context,
-                             const std::string& targetSdkVersion)
+TemplateEntry::TemplateEntry(
+    const std::shared_ptr<runtime::MTSRuntime>& context,
+    const std::string& targetSdkVersion)
     : VmContextHolder(context) {
   template_bundle_.css_style_manager_ =
       std::make_shared<CSSStyleSheetManager>(this);
@@ -49,12 +50,10 @@ TemplateEntry::TemplateEntry(const std::shared_ptr<lepus::Context>& context,
   vm_context_->Initialize();
 }
 
-bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
-                                     bool is_lepusng_binary,
-                                     const lepus::ContextBundle& context_bundle,
-                                     bool use_context_pool,
-                                     bool disable_tracing_gc,
-                                     const PageOptions& page_options) {
+bool TemplateEntry::ConstructContext(
+    TemplateAssembler* assembler, bool is_lepusng_binary,
+    const runtime::ContextBundle& context_bundle, bool use_context_pool,
+    bool disable_tracing_gc, const PageOptions& page_options) {
   auto source_type = LepusContextSourceType::kFromRuntime;
   bool enable_use_context_pool =
       use_context_pool || template_bundle().EnableUseContextPool();
@@ -94,9 +93,9 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
   if (!vm_context_) {
     uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
 
-    vm_context_ = lepus::Context::CreateContext(
-        is_lepusng_binary ? lepus::ContextType::LepusNGContextType
-                          : lepus::ContextType::VMContextType,
+    vm_context_ = runtime::MTSRuntime::CreateContext(
+        is_lepusng_binary ? runtime::ContextType::LepusNGContextType
+                          : runtime::ContextType::VMContextType,
         disable_tracing_gc, mode, page_options);
   }
 
@@ -110,7 +109,7 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
   }
 #if ENABLE_TRACE_PERFETTO
   if (is_lepusng_binary) {
-    auto context = lepus::Context::ToQuickContext(vm_context_.get());
+    auto context = runtime::MTSRuntime::ToQuickContext(vm_context_.get());
     auto profiler =
         std::make_shared<runtime::profile::LepusNGProfiler>(vm_context_);
     context->SetRuntimeProfiler(profiler);
@@ -140,7 +139,7 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
 
 std::unique_ptr<TemplateEntry>
 TemplateEntry::ConstructEntryWithNoTemplateAssembler(
-    std::shared_ptr<lepus::Context> context,
+    std::shared_ptr<runtime::MTSRuntime> context,
     const std::string& targetSdkVersion) {
   return std::make_unique<TemplateEntry>(context, targetSdkVersion);
 }
@@ -321,7 +320,7 @@ lepus::Value TemplateEntry::ProcessBinaryEvalResult() {
     // for lazy bundle 3.0, we need to process the evalResult, handled by
     // fe `globalThis.processEvalResult`
     BASE_STATIC_STRING_DECL(kProcessEvalResult, "processEvalResult");
-    auto* context = lepus::Context::ToQuickContext(vm_context_.get());
+    auto* context = runtime::MTSRuntime::ToQuickContext(vm_context_.get());
     if (!context->GetGlobalData(kProcessEvalResult).IsEmpty()) {
       return vm_context_->Call(kProcessEvalResult, binary_eval_result_,
                                lepus::Value(GetName()));
@@ -361,7 +360,7 @@ TemplateEntry::~TemplateEntry() {
   template_bundle_.lepus_chunk_manager_->SetThreadStopFlag(true);
 #if ENABLE_TRACE_PERFETTO
   if (vm_context_ && vm_context_->IsLepusNGContext()) {
-    auto context = lepus::Context::ToQuickContext(vm_context_.get());
+    auto context = runtime::MTSRuntime::ToQuickContext(vm_context_.get());
     context->RemoveRuntimeProfiler();
   }
 #endif
@@ -378,7 +377,7 @@ void TemplateEntry::SetTemplateAssembler(TemplateAssembler* assembler) {
   // kTemplateAssembler may has been set by context pool, reset it here
   vm_context_->ResetGlobalData(
       BASE_STATIC_STRING(tasm::kTemplateAssembler),
-      lepus::Value(static_cast<lepus::Context::Delegate*>(assembler)));
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(assembler)));
 }
 
 lepus::Value TemplateEntry::ElementFromBinary(const std::string& key,
@@ -481,7 +480,7 @@ void TemplateEntry::AttachNapiEnvironment() {
 #if ENABLE_LEPUSNG_WORKLET
   if (vm_context_->IsLepusNGContext() && !napi_environment_) {
     lepus::QuickContext* qctx =
-        lepus::Context::ToQuickContext(vm_context_.get());
+        runtime::MTSRuntime::ToQuickContext(vm_context_.get());
     napi_environment_ = std::make_unique<lynx::runtime::js::NapiEnvironment>(
         std::make_unique<lynx::worklet::NapiLoaderUI>(vm_context_.get()));
     auto proxy =

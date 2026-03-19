@@ -15,7 +15,7 @@
 namespace lynx {
 namespace lepus {
 
-Value LynxLepusModule::InvokeMethod(Context* context,
+Value LynxLepusModule::InvokeMethod(runtime::MTSRuntime* context,
                                     const std::string& method_name,
                                     const lepus::Value* args, size_t count) {
   LOGI("NativeModules"
@@ -67,7 +67,7 @@ Value LynxLepusModule::InvokeMethod(Context* context,
   return Value();
 }
 
-Value LynxLepusModule::ToLepusValue(Context* context) {
+Value LynxLepusModule::ToLepusValue(runtime::MTSRuntime* context) {
   return tasm::Utils::CreateLepusModule(context, lepus::Value(fml::Ref(this)));
 }
 

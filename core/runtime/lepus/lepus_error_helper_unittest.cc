@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/runtime/lepus/lepus_error_helper.h"
 
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #ifdef OS_IOS
 #include "trace-gc.h"

@@ -400,7 +400,7 @@ bool BaseBinaryReader::DecodeRawLynxValue(lynx_value& result) {
   return true;
 }
 
-bool BaseBinaryReader::DecodeContextBundle(ContextBundle* bundle) {
+bool BaseBinaryReader::DecodeContextBundle(runtime::ContextBundle* bundle) {
   if (bundle->IsLepusNG()) {
     auto quick_bundle = static_cast<QuickContextBundle*>(bundle);
     do {

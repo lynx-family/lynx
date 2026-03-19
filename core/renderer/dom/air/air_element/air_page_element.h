@@ -39,7 +39,7 @@ class AirPageElement : public AirElement {
                       const UpdatePageOption& update_page_option,
                       std::shared_ptr<PipelineOptions>& pipeline_options);
 
-  void SetContext(lepus::Context* context) { context_ = context; }
+  void SetContext(runtime::MTSRuntime* context) { context_ = context; }
 
   void SetRadon(bool is_radon) { is_radon_ = is_radon; }
   bool IsRadon() const { return is_radon_; }
@@ -99,7 +99,7 @@ class AirPageElement : public AirElement {
 
  private:
   std::unordered_map<std::string, bool> component_fontfaces_map_{};
-  lepus::Context* context_;
+  runtime::MTSRuntime* context_;
   std::vector<AirForElement*> for_stack_;
   std::vector<AirComponentElement*> component_stack_;
   std::unique_ptr<lepus::Value> current_page_data_;

@@ -29,7 +29,7 @@ static uint64_t kAnonymousItemCount = 0;
 namespace lynx {
 namespace tasm {
 
-RadonDiffListNode2::RadonDiffListNode2(lepus::Context* context,
+RadonDiffListNode2::RadonDiffListNode2(runtime::MTSRuntime* context,
                                        PageProxy* page_proxy,
                                        TemplateAssembler* tasm,
                                        uint32_t node_index)

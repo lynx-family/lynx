@@ -39,13 +39,13 @@ namespace tasm {
 class LepusChunkManager {
  public:
   using LepusChunkMap =
-      std::unordered_map<std::string, std::shared_ptr<lepus::ContextBundle>>;
+      std::unordered_map<std::string, std::shared_ptr<runtime::ContextBundle>>;
 
-  std::optional<std::shared_ptr<lepus::ContextBundle>> GetLepusChunk(
+  std::optional<std::shared_ptr<runtime::ContextBundle>> GetLepusChunk(
       const std::string &chunk_key);
   bool IsLepusChunkDecoded(const std::string &chunk_path);
   void AddLepusChunk(const std::string &chunk_key,
-                     std::shared_ptr<lepus::ContextBundle> bundle);
+                     std::shared_ptr<runtime::ContextBundle> bundle);
 
   std::atomic_bool GetStopThread() const { return stop_thread_; }
   void SetThreadStopFlag(bool stop_signal) { stop_thread_ = stop_signal; }
@@ -76,7 +76,7 @@ class LynxTemplateBundle final {
 
   lepus::Value GetCustomSections() const { return custom_sections_; }
 
-  inline std::optional<std::shared_ptr<lepus::ContextBundle>> GetLepusChunk(
+  inline std::optional<std::shared_ptr<runtime::ContextBundle>> GetLepusChunk(
       const std::string &chunk_key) const {
     return lepus_chunk_manager_->GetLepusChunk(chunk_key);
   }
@@ -231,7 +231,7 @@ class LynxTemplateBundle final {
       dynamic_component_declarations_{};
 
   // body - lepus context binary
-  std::shared_ptr<lepus::ContextBundle> context_bundle_{nullptr};
+  std::shared_ptr<runtime::ContextBundle> context_bundle_{nullptr};
   std::shared_ptr<lepus::LynxContextPool> context_pool_{nullptr};
 
   // fiber - lepus chunk binary

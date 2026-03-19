@@ -17,7 +17,7 @@ class TemplateAssembler;
 class RadonDiffListNode : public RadonListBase {
  public:
   // called by lepus function _CreateVirtualListNode
-  RadonDiffListNode(lepus::Context* context, PageProxy* page_proxy,
+  RadonDiffListNode(runtime::MTSRuntime* context, PageProxy* page_proxy,
                     TemplateAssembler* tasm, uint32_t node_index);
 
  protected:

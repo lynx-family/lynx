@@ -2,16 +2,16 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_LEPUS_MTS_CONTEXT_FACTORY_H_
-#define CORE_RUNTIME_LEPUS_MTS_CONTEXT_FACTORY_H_
+#ifndef CORE_RUNTIME_MTS_CONTEXT_FACTORY_H_
+#define CORE_RUNTIME_MTS_CONTEXT_FACTORY_H_
 
 #include <memory>
 
 #include "core/public/page_options.h"
-#include "core/runtime/lepus/mts_context.h"
+#include "core/runtime/mts_context.h"
 
 namespace lynx {
-namespace lepus {
+namespace runtime {
 
 // Factory for creating MTSContext and its corresponding ContextBundle.
 //
@@ -30,7 +30,7 @@ class ContextBundleFactory {
   static std::unique_ptr<ContextBundle> Create(ContextType context_type);
 };
 
-}  // namespace lepus
+}  // namespace runtime
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_LEPUS_MTS_CONTEXT_FACTORY_H_
+#endif  // CORE_RUNTIME_MTS_CONTEXT_FACTORY_H_

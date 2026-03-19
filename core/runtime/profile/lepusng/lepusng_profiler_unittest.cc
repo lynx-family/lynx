@@ -5,8 +5,8 @@
 #include "core/runtime/profile/lepusng/lepusng_profiler.h"
 
 #include "core/runtime/lepus/bytecode_generator.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepusng/quick_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -14,7 +14,7 @@ namespace runtime {
 namespace profile {
 namespace test {
 
-class ContextDelegateTest : public lepus::Context::Delegate {
+class ContextDelegateTest : public runtime::MTSRuntime::Delegate {
  public:
   virtual const std::string& TargetSdkVersion() override {
     static const std::string sdk_version = "3.1";
@@ -34,12 +34,12 @@ class ContextDelegateTest : public lepus::Context::Delegate {
 };
 
 TEST(LepusNGProfilerTest, LepusNGProfilerTotalTest) {
-  auto context = lynx::lepus::Context::CreateContext(
-      lepus::ContextType::LepusNGContextType);
+  auto context = lynx::runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
   context->Initialize();
   void* assembler = new ContextDelegateTest();
   lepus::QuickContext* quick_ctx =
-      lepus::Context::ToQuickContext(context.get());
+      runtime::MTSRuntime::ToQuickContext(context.get());
   LEPUSValue self = LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, assembler);
   quick_ctx->RegisterGlobalProperty("$kTemplateAssembler", self);
   auto lepusng_profiler = std::make_shared<LepusNGProfiler>(context);

@@ -11,10 +11,10 @@
 #include "core/renderer/worklet/base/worklet_utils.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/lepus_context_cell.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -23,7 +23,8 @@ namespace base {
 
 class TestNapiLoaderUI : public worklet::NapiLoaderUI {
  public:
-  TestNapiLoaderUI(lepus::Context* context) : worklet::NapiLoaderUI(context){};
+  TestNapiLoaderUI(runtime::MTSRuntime* context)
+      : worklet::NapiLoaderUI(context){};
 
   void OnAttach(Napi::Env env) override { SetNapiEnvToLEPUSContext(env); }
 };
@@ -34,9 +35,9 @@ class WorkletValueConverterMethods : public ::testing::Test {
   ~WorkletValueConverterMethods() override { napi_environment_->Detach(); };
 
   void SetUp() override {
-    context_ =
-        lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
-    ctx_ = lepus::Context::ToQuickContext(context_.get());
+    context_ = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    ctx_ = runtime::MTSRuntime::ToQuickContext(context_.get());
     ctx_->Initialize();
 
     napi_environment_ = std::make_unique<runtime::js::NapiEnvironment>(
@@ -51,7 +52,7 @@ class WorkletValueConverterMethods : public ::testing::Test {
 
   void TearDown() override{};
 
-  std::shared_ptr<lepus::Context> context_;
+  std::shared_ptr<runtime::MTSRuntime> context_;
   lepus::QuickContext* ctx_;
   std::unique_ptr<runtime::js::NapiEnvironment> napi_environment_;
   runtime::js::NapiRuntimeProxy* napi_proxy_;

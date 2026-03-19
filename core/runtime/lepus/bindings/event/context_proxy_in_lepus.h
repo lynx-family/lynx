@@ -8,7 +8,7 @@
 #include "base/include/value/base_value.h"
 #include "core/runtime/common/bindings/event/context_proxy.h"
 #include "core/runtime/common/bindings/event/message_event.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
@@ -25,7 +25,7 @@ class ContextProxyInLepus : public runtime::ContextProxy {
   fml::RefPtr<runtime::MessageEvent> CreateMessageEvent(
       const lepus::Value& event);
 
-  lepus::Value GetBinding(lepus::Context* context);
+  lepus::Value GetBinding(runtime::MTSRuntime* context);
 
   virtual void PostMessage(const lepus::Value& message) override;
 
@@ -35,7 +35,7 @@ class ContextProxyInLepus : public runtime::ContextProxy {
  protected:
   void EnsureListenerBeforePublishEvent();
 
-  lepus::Context* context_;
+  runtime::MTSRuntime* context_;
   lepus::Value proxy_binding_;
   lepus::Value on_trigger_event_;
 };

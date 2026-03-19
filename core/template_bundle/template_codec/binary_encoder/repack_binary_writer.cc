@@ -7,24 +7,25 @@
 #include <list>
 #include <string>
 
-#include "core/runtime/lepus/mts_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
 
 void RepackBinaryWriter::EncodeString() {
+  auto* string_table = mts_context()->string_table();
   // Just change the string count and append the encoded string of mixin data to
   // the end of original string section.
-  auto* string_table = mts_context()->string_table();
   stream_.reset(new lepus::ByteArrayOutputStream());
   WriteCompactU32(string_table->string_list.size());
   string_count_vec_ = stream_->byte_array();
 
   stream_.reset(new lepus::ByteArrayOutputStream());
-  size_t start_pos =
-      string_table->string_list.size() - string_table->string_map_.size();
-  for (size_t i = start_pos; i < string_table->string_list.size(); i++) {
-    std::string str = string_table->string_list[i].str();
+  base::StringTable* writer_string_table = string_table;
+  size_t start_pos = writer_string_table->string_list.size() -
+                     writer_string_table->string_map_.size();
+  for (size_t i = start_pos; i < writer_string_table->string_list.size(); i++) {
+    std::string str = writer_string_table->string_list[i].str();
     size_t length = str.length();
     WriteCompactU32(length);
 

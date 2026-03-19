@@ -44,7 +44,7 @@ class Computation;
 
 class Memo : public Signal {
  public:
-  Memo(SignalContext* signal_context, lepus::Context* vm_context,
+  Memo(SignalContext* signal_context, runtime::MTSRuntime* vm_context,
        const lepus::Value& value);
 
   virtual ~Memo();

@@ -12,9 +12,9 @@
 #include "base/include/closure.h"
 
 namespace lynx {
-namespace lepus {
+namespace runtime {
 class MTSContext;
-}  // namespace lepus
+}  // namespace runtime
 }  // namespace lynx
 
 namespace lepus_inspector {
@@ -37,7 +37,7 @@ class LepusInspectorClientNG {
 class LepusInspectorNG {
  public:
   static std::unique_ptr<LepusInspectorNG> Create(
-      lynx::lepus::MTSContext* context, LepusInspectorClientNG* client,
+      lynx::runtime::MTSContext* context, LepusInspectorClientNG* client,
       const std::string& name);
   virtual ~LepusInspectorNG() = default;
   class LepusChannel {

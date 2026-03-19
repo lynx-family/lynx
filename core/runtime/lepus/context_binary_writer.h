@@ -16,6 +16,10 @@
 #include "core/template_bundle/template_codec/version.h"
 
 namespace lynx {
+namespace runtime {
+class MTSContext;
+}  // namespace runtime
+
 namespace lepus {
 
 class Closure;
@@ -24,13 +28,11 @@ class CArray;
 class CDate;
 class Value;
 class Function;
-class MTSContext;
 class VMContext;
 class QuickContext;
-
 class ContextBinaryWriter : public BinaryWriter {
  public:
-  ContextBinaryWriter(MTSContext* context,
+  ContextBinaryWriter(runtime::MTSContext* context,
                       const tasm::CompileOptions& compile_options = {},
                       const lepus::Value& trial_options = lepus::Value{},
                       bool enableDebugInfo = false);
@@ -57,7 +59,7 @@ class ContextBinaryWriter : public BinaryWriter {
   void EncodeCSSValue(const tasm::CSSValue& css_value, bool enable_css_parser,
                       bool enable_css_variable);
 
-  inline MTSContext* mts_context() const { return mts_context_; }
+  inline runtime::MTSContext* mts_context() const { return mts_context_; }
   bool IsVMContext() const;
   bool IsLepusNGContext() const;
   bool NeedLepusDebugInfo() { return need_lepus_debug_info_; }
@@ -66,7 +68,7 @@ class ContextBinaryWriter : public BinaryWriter {
   VMContext* vm_context() const;
   QuickContext* quick_context() const;
 
-  MTSContext* mts_context_;
+  runtime::MTSContext* mts_context_;
   const tasm::CompileOptions compile_options_;
   const lepus_value trial_options_;
   bool need_lepus_debug_info_;

@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include "core/runtime/lepus/mts_context.h"
+#include "core/runtime/mts_context.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepus_inspected_context_provider.h"
 
 namespace lepus_inspector {
@@ -61,13 +61,13 @@ void LepusInspectorSessionNGImpl::SendProtocolNotification(
 
 // LepusInspectorNGImpl begins.
 std::unique_ptr<LepusInspectorNG> LepusInspectorNG::Create(
-    lynx::lepus::MTSContext* context, LepusInspectorClientNG* client,
+    lynx::runtime::MTSContext* context, LepusInspectorClientNG* client,
     const std::string& name) {
   return std::unique_ptr<LepusInspectorNG>(std::unique_ptr<LepusInspectorNG>(
       new LepusInspectorNGImpl(context, client, name)));
 }
 
-LepusInspectorNGImpl::LepusInspectorNGImpl(lynx::lepus::MTSContext* context,
+LepusInspectorNGImpl::LepusInspectorNGImpl(lynx::runtime::MTSContext* context,
                                            LepusInspectorClientNG* client,
                                            const std::string& name)
     : client_(client) {

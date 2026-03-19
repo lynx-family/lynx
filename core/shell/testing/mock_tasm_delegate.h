@@ -223,7 +223,7 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
 
   void LepusInvokeUIMethod(
       std::vector<int32_t> ui_impl_ids, const std::string& method,
-      const lepus::Value& params, lepus::Context* context,
+      const lepus::Value& params, runtime::MTSRuntime* context,
       std::unique_ptr<lepus::Value> callback_closure) override{};
 
   void InvokeResponsePromiseCallback(base::closure closure) override{};

@@ -17,7 +17,7 @@ namespace tasm {
 
 class RepackBinaryWriter : public lepus::ContextBinaryWriter {
  public:
-  RepackBinaryWriter(lepus::MTSContext* context,
+  RepackBinaryWriter(runtime::MTSContext* context,
                      const tasm::CompileOptions& compile_options = {})
       : ContextBinaryWriter(context, compile_options) {}
 

@@ -23,7 +23,7 @@ RadonLazyComponent::RadonLazyComponent(
     TemplateAssembler* tasm, const std::string& entry_name,
     PageProxy* page_proxy, int tid, CSSFragment* style_sheet,
     std::shared_ptr<CSSStyleSheetManager> style_sheet_manager,
-    ComponentMould* mould, lepus::Context* context, uint32_t node_index,
+    ComponentMould* mould, runtime::MTSRuntime* context, uint32_t node_index,
     const lepus::Value& global_props, const base::String& tag_name)
     : RadonComponent(page_proxy, tid, style_sheet, style_sheet_manager, mould,
                      context, node_index, tag_name),
@@ -61,7 +61,7 @@ RadonLazyComponent::RadonLazyComponent(const RadonLazyComponent& node,
 void RadonLazyComponent::InitLazyComponent(
     CSSFragment* style_sheet,
     std::shared_ptr<CSSStyleSheetManager> style_sheet_manager,
-    ComponentMould* mould, lepus::Context* context) {
+    ComponentMould* mould, runtime::MTSRuntime* context) {
   context_ = context;
   mould_ = mould;
   style_sheet_manager_ = std::move(style_sheet_manager);

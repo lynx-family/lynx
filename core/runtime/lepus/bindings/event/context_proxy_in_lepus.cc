@@ -49,7 +49,7 @@ ContextProxyInLepus* ContextProxyInLepus::GetContextProxyFromLepusValue(
   return context_proxy;
 }
 
-lepus::Value ContextProxyInLepus::GetBinding(lepus::Context* context) {
+lepus::Value ContextProxyInLepus::GetBinding(runtime::MTSRuntime* context) {
   if (proxy_binding_.IsEmpty()) {
     proxy_binding_ =
         Utils::CreateContextProxy(context, target_type_, lepus::Value(this));

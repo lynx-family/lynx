@@ -20,10 +20,10 @@
 namespace lynx {
 namespace tasm {
 
-lepus::Value Utils::CreateLynx(lepus::Context* context,
+lepus::Value Utils::CreateLynx(runtime::MTSRuntime* context,
                                const std::string& version) {
   // clang-format off
-  constexpr const static lepus::RenderBindingFunction funcs[] = {
+  constexpr const static runtime::RenderBindingFunction funcs[] = {
       {tasm::kGetTextInfo, &RendererFunctions::GetTextInfo, true, true},
       {kSetTimeout, &RendererFunctions::SetTimeout, true, true},
       {kClearTimeout, &RendererFunctions::ClearTimeout, true, true},
@@ -71,9 +71,9 @@ lepus::Value Utils::CreateLynx(lepus::Context* context,
   return lynx;
 }
 
-lepus::Value Utils::CreateLynxPerformance(lepus::Context* context) {
+lepus::Value Utils::CreateLynxPerformance(runtime::MTSRuntime* context) {
   // clang-format off
-  constexpr const static lepus::RenderBindingFunction funcs[] = {
+  constexpr const static runtime::RenderBindingFunction funcs[] = {
       {runtime::kGeneratePipelineOptions, &RendererFunctions::GeneratePipelineOptions, true, true},
       {runtime::kOnPipelineStart, &RendererFunctions::OnPipelineStart, true, true},
       {runtime::kMarkTiming, &RendererFunctions::MarkTiming, true, true},
@@ -93,10 +93,10 @@ lepus::Value Utils::CreateLynxPerformance(lepus::Context* context) {
   return perf;
 }
 
-lepus::Value Utils::CreateResponseHandler(lepus::Context* context,
+lepus::Value Utils::CreateResponseHandler(runtime::MTSRuntime* context,
                                           const lepus::Value& handler_impl) {
   // clang-format off
-  constexpr const static lepus::RenderBindingFunction funcs[] = {
+  constexpr const static runtime::RenderBindingFunction funcs[] = {
       {runtime::kWait, &RendererFunctions::WaitingForResponse, true, true},
       {runtime::kThen, &RendererFunctions::AddListenerForResponse, true, true},
   };
@@ -110,18 +110,18 @@ lepus::Value Utils::CreateResponseHandler(lepus::Context* context,
   return handler;
 }
 
-lepus::Value Utils::CreateContextProxy(lepus::Context* context,
+lepus::Value Utils::CreateContextProxy(runtime::MTSRuntime* context,
                                        runtime::ContextProxy::Type type,
                                        const lepus::Value& proxy_impl) {
   // clang-format off
-  constexpr const static lepus::RenderBindingFunction funcs[] = {
+  constexpr const static runtime::RenderBindingFunction funcs[] = {
       {runtime::kPostMessage, &RendererFunctions::PostMessage, true, true},
       {runtime::kDispatchEvent, &RendererFunctions::DispatchEvent, true, true},
       {runtime::kAddEventListener, &RendererFunctions::RuntimeAddEventListener, true, true},
       {runtime::kRemoveEventListener, &RendererFunctions::RuntimeRemoveEventListener, true, true},
   };
 
-  constexpr const static lepus::RenderBindingFunction devtool_funcs[] = {
+  constexpr const static runtime::RenderBindingFunction devtool_funcs[] = {
       {runtime::kReplaceStyleSheetByIdWithBase64, &RendererFunctions::ReplaceStyleSheetByIdWithBase64, true, true},
       {runtime::kRemoveStyleSheetById, &RendererFunctions::RemoveStyleSheetById, true, true},
   };
@@ -139,9 +139,9 @@ lepus::Value Utils::CreateContextProxy(lepus::Context* context,
   return proxy;
 }
 
-lepus::Value Utils::CreateGestureManager(lepus::Context* context) {
+lepus::Value Utils::CreateGestureManager(runtime::MTSRuntime* context) {
   // clang-format off
-  constexpr const static lepus::RenderBindingFunction funcs[] = {
+  constexpr const static runtime::RenderBindingFunction funcs[] = {
       {tasm::kCFuncSetGestureState, &RendererFunctions::FiberSetGestureState, true, true},
       {tasm::kCFuncConsumeGesture, &RendererFunctions::FiberConsumeGesture, true, true},
   };
@@ -153,10 +153,10 @@ lepus::Value Utils::CreateGestureManager(lepus::Context* context) {
   return manager;
 }
 
-lepus::Value Utils::CreateLepusModule(lepus::Context* context,
+lepus::Value Utils::CreateLepusModule(runtime::MTSRuntime* context,
                                       const lepus::Value& module_impl) {
   // clang-format off
-  constexpr const static lepus::RenderBindingFunction funcs[] = {
+  constexpr const static runtime::RenderBindingFunction funcs[] = {
       {runtime::kInvoke, &RendererFunctions::InvokeModuleMethod, true, true},
   };
   // clang-format on
@@ -167,15 +167,16 @@ lepus::Value Utils::CreateLepusModule(lepus::Context* context,
   return obj;
 }
 
-lepus::Value Renderer::SlotFunction(lepus::MTSContext* context, lepus::Value*,
+lepus::Value Renderer::SlotFunction(runtime::MTSContext* context, lepus::Value*,
                                     int size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, SLOT_FUNCTION);
   return lepus::Value();
 }
 
-void Renderer::RegisterBuiltin(lepus::Context* context, ArchOption option) {
+void Renderer::RegisterBuiltin(runtime::MTSRuntime* context,
+                               ArchOption option) {
   int32_t size = 0;
-  const lepus::RenderBindingFunction* funcs = nullptr;
+  const runtime::RenderBindingFunction* funcs = nullptr;
   switch (option) {
     case ArchOption::FIBER_ARCH:
       funcs = GetBuiltinFunctionsForFiber(size);
@@ -186,12 +187,12 @@ void Renderer::RegisterBuiltin(lepus::Context* context, ArchOption option) {
   context->RegisterGlobalFunction(funcs, size);
 }
 
-const lepus::RenderBindingFunction* Renderer::GetBuiltinFunctionsForRadon(
+const runtime::RenderBindingFunction* Renderer::GetBuiltinFunctionsForRadon(
     int32_t& size) {
   // To add a RenderFunction, it needs to be registered first to avoid conflicts
   // across different branches.
   // clang-format off
-  constexpr const static lepus::RenderBindingFunction kFuncs[] = {
+  constexpr const static runtime::RenderBindingFunction kFuncs[] = {
       /* NO-ID */ {kCFuncIndexOf, &RendererFunctions::IndexOf, true, true},
       /* NO-ID */ {kCFuncGetLength, &RendererFunctions::GetLength, true, true},
       /* NO-ID */ {kCFuncSetValueToMap, &RendererFunctions::SetValueToMap, true, true},
@@ -312,12 +313,12 @@ const lepus::RenderBindingFunction* Renderer::GetBuiltinFunctionsForRadon(
   return kFuncs;
 }
 
-const lepus::RenderBindingFunction* Renderer::GetBuiltinFunctionsForFiber(
+const runtime::RenderBindingFunction* Renderer::GetBuiltinFunctionsForFiber(
     int32_t& size) {
   // To add a RenderFunction, it needs to be registered first to avoid conflicts
   // across different branches.
   // clang-format off
-  constexpr const static lepus::RenderBindingFunction kFuncs[] = {
+  constexpr const static runtime::RenderBindingFunction kFuncs[] = {
     /* NO-ID */ {kCFuncIndexOf, &RendererFunctions::IndexOf, true, true},
     /* NO-ID */ {kCFuncGetLength, &RendererFunctions::GetLength, true, true},
     /* NO-ID */ {kCFuncSetValueToMap, &RendererFunctions::SetValueToMap, true, true},

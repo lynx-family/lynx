@@ -43,12 +43,13 @@ class FiberElement;
 // ensure vm context released after lepus value
 class VmContextHolder {
  public:
-  explicit VmContextHolder(const std::shared_ptr<lepus::Context> vm_context)
+  explicit VmContextHolder(
+      const std::shared_ptr<runtime::MTSRuntime> vm_context)
       : vm_context_(vm_context) {}
   virtual ~VmContextHolder() = default;
 
  protected:
-  std::shared_ptr<lepus::Context> vm_context_;
+  std::shared_ptr<runtime::MTSRuntime> vm_context_;
 };
 
 class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
@@ -57,7 +58,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   // Caller have to take the ownership for constructed object.
   static std::unique_ptr<TemplateEntry> ConstructEntryWithNoTemplateAssembler(
-      std::shared_ptr<lepus::Context> context,
+      std::shared_ptr<runtime::MTSRuntime> context,
       const std::string& targetSdkVersion);
 
   bool InitWithTemplateBundle(
@@ -70,7 +71,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
       const PageOptions& page_options = PageOptions());
 
   bool ConstructContext(TemplateAssembler* assembler, bool is_lepusng_binary,
-                        const lepus::ContextBundle& context_bundle,
+                        const runtime::ContextBundle& context_bundle,
                         bool use_context_pool = false,
                         bool disable_tracing_gc = false,
                         const PageOptions& page_options = PageOptions());
@@ -82,7 +83,9 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   void UpdateGlobalPropsToContext(const lepus::Value& props);
 
   // Get, Only for use, Can't be stored.
-  const std::shared_ptr<lepus::Context>& GetVm() const { return vm_context_; }
+  const std::shared_ptr<runtime::MTSRuntime>& GetVm() const {
+    return vm_context_;
+  }
   const std::shared_ptr<CSSStyleSheetManager>& GetStyleSheetManager() {
     return template_bundle_.css_style_manager_;
   }
@@ -167,7 +170,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   void SetJSBundle(runtime::js::JsBundle bundle) {
     template_bundle_.js_bundle_ = std::move(bundle);
   }
-  void SetVm(std::shared_ptr<lepus::Context> vm) { vm_context_ = vm; }
+  void SetVm(std::shared_ptr<runtime::MTSRuntime> vm) { vm_context_ = vm; }
   void SetName(const std::string& name);
 
   void AddLazyBundleDeclaration(const std::string& name,
@@ -259,7 +262,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   lepus::Value GetCustomSection(const std::string& key);
 
-  explicit TemplateEntry(const std::shared_ptr<lepus::Context>& context,
+  explicit TemplateEntry(const std::shared_ptr<runtime::MTSRuntime>& context,
                          const std::string& targetSdkVersion);
 
   fml::RefPtr<FiberElement> TryToGetElementCache();

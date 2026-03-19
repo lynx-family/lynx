@@ -33,12 +33,12 @@ SOFTWARE.
 
 #include "core/renderer/signal/computation.h"
 #include "core/renderer/signal/signal_context.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
 
-BaseScope::BaseScope(SignalContext* context, lepus::Context* vm_context)
+BaseScope::BaseScope(SignalContext* context, runtime::MTSRuntime* vm_context)
     : signal_context_(context), vm_context_(vm_context) {}
 
 BaseScope::~BaseScope() {}
@@ -66,8 +66,8 @@ void BaseScope::AdoptComputation(fml::RefPtr<Computation>&& computation) {
 
 BaseScope* BaseScope::GetOwner() { return owner_; }
 
-Scope::Scope(SignalContext* signal_context_ptr, lepus::Context* vm_context_ptr,
-             const lepus::Value& closure)
+Scope::Scope(SignalContext* signal_context_ptr,
+             runtime::MTSRuntime* vm_context_ptr, const lepus::Value& closure)
     : BaseScope(signal_context_ptr, vm_context_ptr) {
   signal_context()->PushScope(this);
   signal_context()->PushComputation(nullptr);

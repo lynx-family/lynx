@@ -20,7 +20,7 @@ class RadonComponent;
 class TemplateAssembler;
 class RadonListBase : public ListNode, public RadonNode {
  public:
-  RadonListBase(lepus::Context* context, PageProxy* page_proxy,
+  RadonListBase(runtime::MTSRuntime* context, PageProxy* page_proxy,
                 TemplateAssembler* tasm, uint32_t node_index);
   RadonListBase(const RadonListBase& node, PtrLookupMap& map);
   // called by lepus function _AppendRadonListComponentInfo
@@ -32,7 +32,7 @@ class RadonListBase : public ListNode, public RadonNode {
   virtual bool DisablePlatformImplementation() { return false; }
 
  protected:
-  lepus::Context* context_;
+  runtime::MTSRuntime* context_;
   std::vector<std::unique_ptr<ListComponentInfo>> new_components_;
   void DispatchFirstTime() override;
   bool DiffListComponents();

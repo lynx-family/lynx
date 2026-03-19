@@ -27,7 +27,7 @@ namespace lynx {
 namespace runtime {
 namespace profile {
 
-LepusNGProfiler::LepusNGProfiler(std::shared_ptr<lepus::Context> context) {
+LepusNGProfiler::LepusNGProfiler(std::shared_ptr<runtime::MTSRuntime> context) {
   if (context->IsLepusNGContext()) {
     weak_context_ = context;
   }
@@ -42,9 +42,9 @@ void LepusNGProfiler::StartProfiling(bool is_create) {
   auto task = [weak_context = weak_context_] {
     auto context = weak_context.lock();
     if (context != nullptr &&
-        lepus::Context::ToQuickContext(context.get())->context()) {
+        runtime::MTSRuntime::ToQuickContext(context.get())->context()) {
       StartCpuProfiler(
-          lepus::Context::ToQuickContext(context.get())->context());
+          runtime::MTSRuntime::ToQuickContext(context.get())->context());
     }
   };
   RuntimeProfiler::StartProfiling(std::move(task), is_create);
@@ -56,8 +56,8 @@ std::unique_ptr<RuntimeProfile> LepusNGProfiler::StopProfiling(
   auto task = [&runtime_profile, weak_context = weak_context_] {
     auto context = weak_context.lock();
     if (context != nullptr &&
-        lepus::Context::ToQuickContext(context.get())->context()) {
-      auto quick_context = lepus::Context::ToQuickContext(context.get());
+        runtime::MTSRuntime::ToQuickContext(context.get())->context()) {
+      auto quick_context = runtime::MTSRuntime::ToQuickContext(context.get());
       auto result = StopCpuProfiler(quick_context->context());
       runtime_profile = lepus::LEPUSValueHelper::ToStdString(
           quick_context->context(), result);
@@ -78,11 +78,11 @@ void LepusNGProfiler::SetupProfiling(int32_t sampling_interval) {
   auto task = [weak_context = weak_context_, sampling_interval] {
     auto context = weak_context.lock();
     if (context != nullptr &&
-        lepus::Context::ToQuickContext(context.get())->context()) {
+        runtime::MTSRuntime::ToQuickContext(context.get())->context()) {
       QJSDebuggerInitialize(
-          lepus::Context::ToQuickContext(context.get())->context());
+          runtime::MTSRuntime::ToQuickContext(context.get())->context());
       SetCpuProfilerInterval(
-          lepus::Context::ToQuickContext(context.get())->context(),
+          runtime::MTSRuntime::ToQuickContext(context.get())->context(),
           sampling_interval);
     }
   };

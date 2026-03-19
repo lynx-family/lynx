@@ -74,7 +74,7 @@ class RadonLazyComponent : public RadonComponent {
       TemplateAssembler* tasm, const std::string& entry_name,
       PageProxy* page_proxy, int tid, CSSFragment* style_sheet,
       std::shared_ptr<CSSStyleSheetManager> style_sheet_manager,
-      ComponentMould* mould, lepus::Context* context, uint32_t node_index,
+      ComponentMould* mould, runtime::MTSRuntime* context, uint32_t node_index,
       const lepus::Value& global_props,
       const base::String& tag_name = BASE_STATIC_STRING(kRadonComponentTag));
 
@@ -91,7 +91,7 @@ class RadonLazyComponent : public RadonComponent {
   void InitLazyComponent(
       CSSFragment* style_sheet,
       std::shared_ptr<CSSStyleSheetManager> style_sheet_manager,
-      ComponentMould* mould, lepus::Context* context);
+      ComponentMould* mould, runtime::MTSRuntime* context);
 
   void SetGlobalProps(const lepus::Value& global_props);
   void DeriveFromMould(ComponentMould* data) override;

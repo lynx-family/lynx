@@ -31,10 +31,11 @@ class LynxLepusModule : public lepus::RefCounted {
   virtual ~LynxLepusModule() = default;
 
   // Invoke method of LynxModule, which is a method of NativeModule
-  Value InvokeMethod(Context* context, const std::string& method_name,
-                     const lepus::Value* args, size_t count);
+  Value InvokeMethod(runtime::MTSRuntime* context,
+                     const std::string& method_name, const lepus::Value* args,
+                     size_t count);
   // Convert LepusModule to LepusValue
-  Value ToLepusValue(Context* context);
+  Value ToLepusValue(runtime::MTSRuntime* context);
   // Convert LepusValue to LepusModule
   static LynxLepusModule* ToRuntimeValue(const lepus::Value& lepus_value);
 

@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "core/runtime/lepus/mts_context.h"
+#include "core/runtime/mts_context.h"
 
 namespace lepus_inspector {
 
@@ -18,7 +18,7 @@ class LepusInspectedContext;
 class LepusInspectedContextProvider {
  public:
   static std::shared_ptr<LepusInspectedContext> GetInspectedContext(
-      lynx::lepus::MTSContext* context, LepusInspectorNGImpl* inspector,
+      lynx::runtime::MTSContext* context, LepusInspectorNGImpl* inspector,
       const std::string& name);
 };
 

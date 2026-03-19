@@ -58,7 +58,7 @@ class LepusInspectorNGImpl : public LepusInspectorNG {
 
  private:
   friend class LepusInspectorNG;
-  LepusInspectorNGImpl(lynx::lepus::MTSContext* context,
+  LepusInspectorNGImpl(lynx::runtime::MTSContext* context,
                        LepusInspectorClientNG* client, const std::string& name);
 
   LepusInspectorClientNG* client_;

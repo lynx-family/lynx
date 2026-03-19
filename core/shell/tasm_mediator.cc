@@ -216,7 +216,7 @@ void TasmMediator::TriggerLepusMethodAsync(const std::string& method_name,
 
 void TasmMediator::LepusInvokeUIMethod(
     std::vector<int32_t> ui_impl_ids, const std::string& method,
-    const lepus::Value& params, lepus::Context* context,
+    const lepus::Value& params, runtime::MTSRuntime* context,
     std::unique_ptr<lepus::Value> callback_closure) {
   auto callback_manager = context->GetCallbackManager();
   auto task_id =

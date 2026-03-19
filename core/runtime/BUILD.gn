@@ -4,13 +4,18 @@
 
 import("../../testing/test.gni")
 import("../Lynx.gni")
-
 declare_args() {
   # Enable javascript debug.
   use_js_debug = false
 }
 
 lynx_core_source_set("runtime") {
+  sources = [
+    "mts_context.h",
+    "mts_context_factory.cc",
+    "mts_context_factory.h",
+  ]
+
   deps = [
     "../../third_party/rapidjson",
     "common:reporter",
@@ -21,6 +26,8 @@ lynx_core_source_set("runtime") {
     "js/bindings",
     "js/bindings/interceptor:interceptor_factory",
     "js/jsi",
+    "lepus:lepus",
+    "lepusng:lepus_ng",
     "profile",
     "profile/lepusng:lepusng_profile",
     "profile/quickjs:quickjs_profile",

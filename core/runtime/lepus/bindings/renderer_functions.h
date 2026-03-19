@@ -12,8 +12,8 @@
 
 namespace lynx {
 namespace tasm {
-#define NORMAL_FUNCTION_DEF(name)                                      \
-  static lepus::Value name(lepus::MTSContext* ctx, lepus::Value* argv, \
+#define NORMAL_FUNCTION_DEF(name)                                        \
+  static lepus::Value name(runtime::MTSContext* ctx, lepus::Value* argv, \
                            int argc);
 
 class RendererFunctions {

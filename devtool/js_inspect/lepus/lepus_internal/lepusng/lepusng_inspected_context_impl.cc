@@ -6,13 +6,13 @@
 
 #include <utility>
 
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepusng/lepusng_inspected_context_callbacks.h"
 
 namespace lepus_inspector {
 
 LepusNGInspectedContextImpl::LepusNGInspectedContextImpl(
-    LepusInspectorNGImpl* inspector, lynx::lepus::MTSContext* context,
+    LepusInspectorNGImpl* inspector, lynx::runtime::MTSContext* context,
     const std::string& name) {
   context_ = static_cast<lynx::lepus::QuickContext*>(context);
   runtime_ = nullptr;

@@ -23,7 +23,7 @@ class ListReusePool;
 class RadonDiffListNode2 : public RadonListBase {
  public:
   // called by lepus function _CreateVirtualListNode
-  RadonDiffListNode2(lepus::Context* context, PageProxy* page_proxy,
+  RadonDiffListNode2(runtime::MTSRuntime* context, PageProxy* page_proxy,
                      TemplateAssembler* tasm, uint32_t node_index);
 
   int32_t ComponentAtIndex(uint32_t index, int64_t operationId,

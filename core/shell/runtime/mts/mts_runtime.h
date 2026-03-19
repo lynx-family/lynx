@@ -1,8 +1,8 @@
 // Copyright 2019 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_RUNTIME_LEPUS_CONTEXT_H_
-#define CORE_RUNTIME_LEPUS_CONTEXT_H_
+#ifndef CORE_SHELL_RUNTIME_MTS_MTS_RUNTIME_H_
+#define CORE_SHELL_RUNTIME_MTS_MTS_RUNTIME_H_
 
 #include <memory>
 #include <mutex>
@@ -26,7 +26,7 @@
 #include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/lepus_context_cell.h"
 #include "core/runtime/lepus/lepus_global.h"
-#include "core/runtime/lepus/mts_context.h"
+#include "core/runtime/mts_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 
@@ -37,6 +37,11 @@ class LepusCallbackManager;
 }  // namespace tasm
 
 namespace lepus {
+class QuickContext;
+class VMContext;
+}  // namespace lepus
+
+namespace runtime {
 class ContextBundle;
 
 #define LEPUS_DEFAULT_CONTEXT_NAME "__Card__"
@@ -49,7 +54,7 @@ class MTSContextHolder {
   std::unique_ptr<MTSContext> mts_context_;
 };
 
-class Context : private MTSContextHolder {
+class MTSRuntime : private MTSContextHolder {
  public:
   class Delegate {
    public:
@@ -69,29 +74,29 @@ class Context : private MTSContextHolder {
 
   class ScriptingScope {
    public:
-    ScriptingScope(Context* context);
+    ScriptingScope(MTSRuntime* context);
     ~ScriptingScope();
 
    private:
     void CheckOnScriptingStart();
     void CheckOnScriptingEnd();
 
-    Context* ctx_;
+    MTSRuntime* ctx_;
   };
 
-  virtual ~Context();
+  virtual ~MTSRuntime();
 
-  Context(ContextType type, bool disable_tracing_gc = false,
-          int runtime_mode = 0,
-          const tasm::PageOptions& page_options = tasm::PageOptions());
+  MTSRuntime(ContextType type, bool disable_tracing_gc = false,
+             int runtime_mode = 0,
+             const tasm::PageOptions& page_options = tasm::PageOptions());
 
-  static VMContext* ToVMContext(Context* context);
+  static lepus::VMContext* ToVMContext(MTSRuntime* context);
 
-  static QuickContext* ToQuickContext(Context* context);
+  static lepus::QuickContext* ToQuickContext(MTSRuntime* context);
 
-  static Context* ToContext(MTSContext* mts_context);
+  static MTSRuntime* ToContext(MTSContext* mts_context);
 
-  static std::shared_ptr<Context> CreateContext(
+  static std::shared_ptr<MTSRuntime> CreateContext(
       ContextType type, bool disable_tracing_gc = false, int runtime_mode = 0,
       const tasm::PageOptions& page_options = tasm::PageOptions());
 
@@ -103,7 +108,7 @@ class Context : private MTSContextHolder {
   // TODO(wangboyong): Remove this method after the integration is complete.
   MTSContext* GetMTSContext() { return mts_context_.get(); }
 
-  // TODO(songshourui.null): For the Context class, only the following
+  // TODO(songshourui.null): For the MTSRuntime class, only the following
   // interfaces need to be exposed: EvalBuf, EvalBinary CallArgs, CallClosure.
   // The Execute API should not be exposed and will be deprecated in future
   // updates. Currently, EvalBinary and Execute share overlapping logic. We have
@@ -210,8 +215,9 @@ class Context : private MTSContextHolder {
   // virtual void CleanClosuresInCycleReference() {}
   void OnReload();
 
-  void InitInspector(const std::shared_ptr<InspectorLepusObserver>& observer,
-                     const std::string& context_name);
+  void InitInspector(
+      const std::shared_ptr<lepus::InspectorLepusObserver>& observer,
+      const std::string& context_name);
   void DestroyInspector();
 
   void set_name(const std::string& name) { name_ = name; }
@@ -257,11 +263,11 @@ class Context : private MTSContextHolder {
                                 int32_t code);
 
   // TODO(songshourui.null): Later, consider pushing the 'this' of LepusNG to
-  // the stack, which is to avoid adding the following function on the Context
-  // class. However, pushing 'this' to the stack may lead to performance
-  // degradation. If the performance test proves that pushing 'this' to the
-  // stack does not cause performance degradation, then this function will be
-  // deleted.
+  // the stack, which is to avoid adding the following function on the
+  // MTSRuntime class. However, pushing 'this' to the stack may lead to
+  // performance degradation. If the performance test proves that pushing 'this'
+  // to the stack does not cause performance degradation, then this function
+  // will be deleted.
   lepus::Value GetCurrentThis(lepus::Value* argv, int32_t offset) {
     return mts_context_->GetCurrentThis(argv, offset);
   }
@@ -314,14 +320,14 @@ class Context : private MTSContextHolder {
 
   bool has_pre_execute_success_{false};
 
-  std::unique_ptr<LepusInspectorManager> inspector_manager_;
+  std::unique_ptr<lepus::LepusInspectorManager> inspector_manager_;
 
   base::InlineStack<ScriptingScope*, 16> scripting_scope_stack_;
 
-  runtime::JSErrorReporter js_error_reporter_;
+  JSErrorReporter js_error_reporter_;
 };
 
-}  // namespace lepus
+}  // namespace runtime
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_LEPUS_CONTEXT_H_
+#endif  // CORE_SHELL_RUNTIME_MTS_MTS_RUNTIME_H_

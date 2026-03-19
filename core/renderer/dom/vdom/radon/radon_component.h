@@ -18,8 +18,8 @@
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/dom/vdom/radon/radon_slot.h"
 #include "core/renderer/dom/vdom/radon/set_css_variable_op.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/vm_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 
 namespace lynx {
@@ -50,7 +50,7 @@ class RadonComponent : public RadonNode, public BaseComponent {
   RadonComponent(
       PageProxy* client, int tid, CSSFragment* style_sheet,
       std::shared_ptr<CSSStyleSheetManager> style_sheet_manager,
-      ComponentMould* mould, lepus::Context* context, uint32_t node_index,
+      ComponentMould* mould, runtime::MTSRuntime* context, uint32_t node_index,
       const base::String& tag_name = BASE_STATIC_STRING(kRadonComponentTag));
   RadonComponent(const RadonComponent& node, PtrLookupMap& map);
 
@@ -120,7 +120,7 @@ class RadonComponent : public RadonNode, public BaseComponent {
   // Only when a lazy bundle is loaded async, it could be empty.
   bool IsEmpty() const { return context_ == nullptr; }
 
-  lepus::Context* GetContext() { return context_; }
+  runtime::MTSRuntime* GetContext() { return context_; }
 
   std::shared_ptr<ComponentConfig> GetComponentConfig() const {
     if (mould_) {
@@ -412,7 +412,7 @@ class RadonComponent : public RadonNode, public BaseComponent {
   mutable std::string entry_name_{};
 
   ComponentMould* mould_{nullptr};
-  lepus::Context* context_{nullptr};
+  runtime::MTSRuntime* context_{nullptr};
 
   // The style sheet containing only the corresponding css file's content.
   CSSFragment* intrinsic_style_sheet_ = nullptr;
@@ -473,7 +473,7 @@ class RadonListComponent : public RadonComponent {
   RadonListComponent(
       PageProxy* page_proxy, int tid, CSSFragment* style_sheet,
       std::shared_ptr<CSSStyleSheetManager> style_sheet_manager,
-      ComponentMould* mould, lepus::Context* context, uint32_t node_index,
+      ComponentMould* mould, runtime::MTSRuntime* context, uint32_t node_index,
       int distance_from_root,
       const base::String& tag_name = BASE_STATIC_STRING(kRadonComponentTag));
 

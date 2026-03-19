@@ -29,7 +29,7 @@ namespace lepusbenchmark {
 
 static const std::string sdk_version = "2.0";
 
-class MockContextDelegate : public lepus::Context::Delegate {
+class MockContextDelegate : public runtime::MTSRuntime::Delegate {
  public:
   const std::string& TargetSdkVersion() override { return sdk_version; }
   void ReportError(base::LynxError error) override {
@@ -54,8 +54,9 @@ static MockContextDelegate mock_delegate_instance;
 static const char* kCFuncEmptyFunc = "_EmptyFunc";
 static const char* emptyFuncRetVal = "empty";
 
-#define NORMAL_FUNCTION(name) \
-  static lepus::Value name(lepus::MTSContext* ctx, lepus::Value* argv, int argc)
+#define NORMAL_FUNCTION(name)                                            \
+  static lepus::Value name(runtime::MTSContext* ctx, lepus::Value* argv, \
+                           int argc)
 
 class BenchmarkRendererFunctions {
  public:

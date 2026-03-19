@@ -23,13 +23,13 @@
 #include "core/renderer/worklet/lepus_gesture.h"
 #include "core/renderer/worklet/lepus_lynx.h"
 #include "core/runtime/common/napi/napi_environment.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/lepus_error_helper.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/napi/worklet/napi_lepus_component.h"
 #include "core/runtime/lepusng/napi/worklet/napi_lepus_element.h"
 #include "core/runtime/lepusng/napi/worklet/napi_lepus_gesture.h"
 #include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #if OS_IOS
 #include "gc/trace-gc.h"
@@ -120,7 +120,7 @@ static lepus::QuickContext* GetQuickContextWithNapiEnv(
   if (!context || !context->IsLepusNGContext()) {
     return nullptr;
   }
-  auto* quick_context = lepus::Context::ToQuickContext(context.get());
+  auto* quick_context = runtime::MTSRuntime::ToQuickContext(context.get());
   if (quick_context == nullptr || quick_context->napi_env() == nullptr) {
     return nullptr;
   }
