@@ -741,7 +741,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
           [self markTiming:lynx::tasm::timing::kVerifyTasmStart
                 pipelineID:pipeline_options->pipeline_id.c_str()];
           LynxVerificationResult* verification = [securityService verifyTASM:tem
-                                                                        view:[self getLynxView]
+                                                                      target:[self getLynxView]
                                                                          url:url
                                                                         type:LynxTASMTypeTemplate];
           [self markTiming:lynx::tasm::timing::kVerifyTasmEnd

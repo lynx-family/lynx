@@ -2604,7 +2604,10 @@ public interface com::lynx::tasm::service::ILynxResourceServiceResponse {
 
 public interface com::lynx::tasm::service::security::ILynxSecurityService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.security.ILynxSecurityService.getServiceClass();
-  public SecurityResult com.lynx.tasm.service.security.ILynxSecurityService.verifyTASM(LynxView lynxView, byte[] template, ByteBuffer buffer, String url, LynxTasmType type);
+  public SecurityResult com.lynx.tasm.service.security.ILynxSecurityService.verifyTASM(ILynxSecurityTarget target, byte[] template, ByteBuffer buffer, String url, LynxTasmType type);
+}
+
+public interface com::lynx::tasm::service::security::ILynxSecurityTarget {
 }
 
 public interface com::lynx::tasm::service::ILynxSystemInvokeService {
@@ -7262,7 +7265,7 @@ public class com::lynx::tasm::LynxUpdateMeta :  {
   public TemplateData com.lynx.tasm.LynxUpdateMeta.getUpdatedGlobalProps();
 }
 
-public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBodyView {
+public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBodyView, com.lynx.tasm.service.security.ILynxSecurityTarget {
   public com.lynx.tasm.LynxView.LynxView(Context context);
   public com.lynx.tasm.LynxView.LynxView(Context context, AttributeSet attrs);
   public com.lynx.tasm.LynxView.LynxView(Context context, LynxViewBuilder builder);
@@ -9933,15 +9936,22 @@ public class com::lynx::tasm::TemplateAssembler :  {
   public void com.lynx.tasm.TemplateAssembler.setLynxContext(LynxContext context);
 }
 
-public class com::lynx::tasm::TemplateBundle :  {
+public class com::lynx::tasm::TemplateBundle : com.lynx.tasm.service.security.ILynxSecurityTarget {
   public final String com.lynx.tasm.TemplateBundle.TAG TAG;
+  public com.lynx.tasm.TemplateBundle.TemplateBundle();
   public boolean com.lynx.tasm.TemplateBundle.equals(Object o);
+  public int com.lynx.tasm.TemplateBundle.hashCode();
+  public boolean com.lynx.tasm.TemplateBundle.initWithTemplate(ByteBuffer buffer, TemplateBundleOption option);
+  public boolean com.lynx.tasm.TemplateBundle.initWithTemplate(ByteBuffer buffer);
+  public boolean com.lynx.tasm.TemplateBundle.initWithTemplate(byte[] template, TemplateBundleOption option);
+  public boolean com.lynx.tasm.TemplateBundle.initWithTemplate(byte[] template);
   public Map< String, Object > com.lynx.tasm.TemplateBundle.getExtraInfo();
   public boolean com.lynx.tasm.TemplateBundle.isElementBundleValid();
   public int com.lynx.tasm.TemplateBundle.getTemplateSize();
   public long com.lynx.tasm.TemplateBundle.getNativePtr();
   public void com.lynx.tasm.TemplateBundle.release();
   public boolean com.lynx.tasm.TemplateBundle.isValid();
+  public boolean com.lynx.tasm.TemplateBundle.isInitialized();
   public void com.lynx.tasm.TemplateBundle.postJsCacheGenerationTask(String bytecodeSourceUrl, boolean useV8, @Nullable LynxBytecodeCallback callback);
   public void com.lynx.tasm.TemplateBundle.postJsCacheGenerationTask(String bytecodeSourceUrl, boolean useV8);
   public String com.lynx.tasm.TemplateBundle.getErrorMessage();

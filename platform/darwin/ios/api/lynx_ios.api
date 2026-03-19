@@ -3397,6 +3397,9 @@ public protocol LynxScrollViewUIDelegate-p : <NSObject> {
   public UIView< LynxBounceView > * LynxScrollViewUIDelegate-p::LynxBounceView:(UIScrollView *scrollView);
 }
 
+public protocol LynxSecurityTarget-p : <NSObjectNSObject> {
+}
+
 public protocol LynxServiceContainerProtocol-p : <NSObject> {
   public __kindof LynxView * LynxServiceContainerProtocol-p::getLynxView();
 }
@@ -3512,8 +3515,8 @@ public protocol LynxServiceResourceResponseProtocol-p : <LynxResourceResponseDat
   public BOOL LynxServiceResourceResponseProtocol-p::isSuccess();
 }
 
-public protocol LynxServiceSecurityProtocol-p : <NSObjectLynxServiceProtocol> {
-  public LynxVerificationResult * LynxServiceSecurityProtocol-p::verifyTASM:view:url:type:(NSData *data,[view] nullable LynxView *lynxView,[url] nullable NSString *url,[type] LynxTASMType type);
+public protocol LynxServiceSecurityProtocol-p : <LynxServiceProtocol> {
+  public LynxVerificationResult * LynxServiceSecurityProtocol-p::verifyTASM:target:url:type:(NSData *data,[target] nullable id< LynxSecurityTarget > target,[url] nullable NSString *url,[type] LynxTASMType type);
   public BOOL LynxServiceSecurityProtocol-p::onPiperInvoked:method:param:url:(NSString *module,[method] NSString *method,[param] NSString *param,[url] NSString *url);
 }
 
@@ -3660,7 +3663,7 @@ public class LynxSubErrorCodeUtils : NSObject {
 public class LynxTapGestureHandler : LynxBaseGestureHandler {
 }
 
-public class LynxTemplateBundle : NSObject {
+public class LynxTemplateBundle : NSObject, <LynxSecurityTarget> {
   public NSString* LynxTemplateBundle::url url;
   public instancetype _Nullable LynxTemplateBundle::initWithTemplate:(nonnull NSData *tem);
   public instancetype _Nullable LynxTemplateBundle::initWithTemplate:option:(nonnull NSData *tem,[option] nullable LynxTemplateBundleOption *option);
@@ -5265,7 +5268,7 @@ public protocol LynxVerticalScrollProtocol-p : <NSObject> {
   public BOOL LynxVerticalScrollProtocol-p::canScrollBackwardsVertically();
 }
 
-public class LynxView : UIView, <LUIBodyView>, <LynxRendererHost> {
+public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRendererHost> {
   public NSString* LynxView::url url;
   public NSInteger LynxView::lynxViewId lynxViewId;
   public BOOL LynxView::enableAsyncDisplay enableAsyncDisplay;

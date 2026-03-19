@@ -18,6 +18,7 @@
 #import <Lynx/LynxMediaResourceFetcher.h>
 #import <Lynx/LynxPerformance.h>
 #import <Lynx/LynxScrollListener.h>
+#import <Lynx/LynxServiceSecurityProtocol.h>
 #import <Lynx/LynxTemplateData.h>
 #import <Lynx/LynxTheme.h>
 #import <Lynx/LynxTouchEvent.h>
@@ -36,7 +37,7 @@
  * @apidoc
  * @brief Similar to WebView in native developing. Renders bundle within host application’s context.
  */
-@interface LynxView : UIView <LUIBodyView>
+@interface LynxView : UIView <LUIBodyView, LynxSecurityTarget>
 
 #pragma mark - Property
 

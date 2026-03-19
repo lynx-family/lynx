@@ -31,7 +31,7 @@
     auto securityService = LynxService(LynxServiceSecurityProtocol);
     if (securityService != nil) {
       LynxVerificationResult* verification = [securityService verifyTASM:tem
-                                                                    view:nil
+                                                                  target:self
                                                                      url:url
                                                                     type:LynxTASMTypeTemplate];
       if (!verification.verified) {
