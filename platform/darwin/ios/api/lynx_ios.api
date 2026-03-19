@@ -1637,6 +1637,7 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler()::setDisableLongpressAfterScroll:(bool value);
   public void LynxEventHandler()::setTapSlop:(NSString *tapSlop);
   public void LynxEventHandler()::setEnablePlatformGesture:(BOOL enablePlatformGesture);
+  public void LynxEventHandler()::setUpPlatformGesture();
   public void LynxEventHandler()::removePlatformGesture();
   public void LynxEventHandler()::setLongPressDuration:(int32_t value);
   public void LynxEventHandler()::dispatchPanEvent:(UIPanGestureRecognizer *sender);

@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setDisableLongpressAfterScroll:(bool)value;
 - (void)setTapSlop:(NSString *)tapSlop;
 - (void)setEnablePlatformGesture:(BOOL)enablePlatformGesture;
+- (void)setUpPlatformGesture;
 - (void)removePlatformGesture;
 - (void)setLongPressDuration:(int32_t)value;
 - (void)dispatchPanEvent:(UIPanGestureRecognizer *)sender;
