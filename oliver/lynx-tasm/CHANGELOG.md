@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.30
+* enlarge wasm MAXIMUM_MEMORY to 4G;
+
 # 0.0.29
 * Introducing cli command for `@lynx-js/tasm`;
 

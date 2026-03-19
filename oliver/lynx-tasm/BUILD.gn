@@ -75,6 +75,7 @@ if (build_lynx_lepus_node) {
               "-s DISABLE_EXCEPTION_CATCHING=0",
               "-s SINGLE_FILE=1",
               "--bind",
+              "-s MAXIMUM_MEMORY=4294967296",
               "-s ALLOW_MEMORY_GROWTH=1",
               "-s MODULARIZE=1",
               "-s EXPORTED_RUNTIME_METHODS=\"['cwrap','ccall', 'allocateUTF8','UTF8ToString','HEAPU8']\"",
