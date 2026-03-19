@@ -828,6 +828,14 @@ export interface Properties {
    */
   pointerEvents?: 'auto' | 'none' | undefined;
   /**
+   * The `-x-auto-font-size-line-ranges` property specifies the line ranges and corresponding min/max font sizes.
+   *
+   * **Syntax**: `line-range( <number [1,∞]> [ to ( <number [1,∞]> | infinity ) ]? , <length-percentage> [ , <length-percentage> ]? )#`
+   *
+   * @see https://lynxjs.org/api/css/properties/-x-auto-font-size-line-ranges
+   */
+  XAutoFontSizeLineRanges?: 'line-range' | 'to' | (number & {}) | (string & {}) | 0 | infinity | undefined;
+  /**
    * The opacity CSS property sets the opacity of an element.
    *
    * **Syntax**: `<number>`

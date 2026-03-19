@@ -77,6 +77,8 @@ lynx_css_core_sources = [
   "parser/aspect_ratio_handler.h",
   "parser/auto_font_size_handler.cc",
   "parser/auto_font_size_handler.h",
+  "parser/auto_font_size_line_ranges_handler.cc",
+  "parser/auto_font_size_line_ranges_handler.h",
   "parser/auto_font_size_preset_sizes_handler.cc",
   "parser/auto_font_size_preset_sizes_handler.h",
   "parser/background_box_handler.cc",

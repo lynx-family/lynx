@@ -41,6 +41,7 @@ enum class TokenType {
   URL,              // url
   NONE,             // none
   TO,               // to
+  LINE_RANGE,       // line-range
   CENTER,           // center
   PX,               // px
   RPX,              // rpx
@@ -374,6 +375,7 @@ enum class TokenType {
   BOTH,
 
   INFINITE,
+  INFINITY_TOKEN,
 
   PAUSED,
   RUNNING,

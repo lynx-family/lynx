@@ -599,6 +599,7 @@ class ComputedCSSStyle {
   V(TextStrokeColor)                     \
   V(XAutoFontSize)                       \
   V(XAutoFontSizePresetSizes)            \
+  V(XAutoFontSizeLineRanges)             \
   V(Hyphens)                             \
   V(XAppRegion)                          \
   V(XHandleSize)                         \

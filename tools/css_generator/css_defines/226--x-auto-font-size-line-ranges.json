@@ -1,0 +1,12 @@
+{
+  "name": "-x-auto-font-size-line-ranges",
+  "id": 226,
+  "type": "complex",
+  "default_value": "",
+  "version": "3.8",
+  "author": "zhouzhuangzhuang",
+  "consumption_status": "skip",
+  "desc": "The `-x-auto-font-size-line-ranges` property specifies the line ranges and corresponding min/max font sizes.",
+  "formal_syntax": "line-range( <number [1,∞]> [ to ( <number [1,∞]> | infinity ) ]? , <length-percentage> [ , <length-percentage> ]? )#",
+  "is_shorthand": false
+}

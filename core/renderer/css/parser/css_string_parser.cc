@@ -12,6 +12,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -3488,6 +3489,109 @@ bool CSSStringParser::ParseAutoFontSizePresetSize(
       return false;
     }
   }
+  return true;
+}
+
+bool CSSStringParser::ParseAutoFontSizeLineRanges(
+    fml::RefPtr<lepus::CArray> &arr) {
+  Advance();
+  if (Check(TokenType::TOKEN_EOF)) {
+    return true;
+  }
+
+  auto parse_positive_int = [](const Token &token, int &out) -> bool {
+    int64_t value = 0;
+    if (!base::StringToInt(std::string(token.start, token.length), value, 10)) {
+      return false;
+    }
+    if (value <= 0 || value > std::numeric_limits<int>::max()) {
+      return false;
+    }
+    out = static_cast<int>(value);
+    return true;
+  };
+
+  auto parse_line_range = [&](const Token &function_token,
+                              fml::RefPtr<lepus::CArray> &out) -> bool {
+    CSSStringParser params_parser{function_token.start, function_token.length,
+                                  parser_configs_};
+    params_parser.Advance();
+
+    Token start_token;
+    if (!params_parser.NumberValue(start_token)) {
+      return false;
+    }
+    int start_line = 0;
+    if (!parse_positive_int(start_token, start_line)) {
+      return false;
+    }
+    int end_line = start_line;
+
+    if (params_parser.Consume(TokenType::TO)) {
+      if (params_parser.Consume(TokenType::INFINITY_TOKEN)) {
+        end_line = std::numeric_limits<int>::max();
+      } else {
+        Token end_token;
+        if (!params_parser.NumberValue(end_token)) {
+          return false;
+        }
+        if (!parse_positive_int(end_token, end_line)) {
+          return false;
+        }
+      }
+    }
+
+    if (end_line < start_line) {
+      return false;
+    }
+
+    if (!params_parser.Consume(TokenType::COMMA)) {
+      return false;
+    }
+
+    out->reserve(6);
+    out->emplace_back(static_cast<int32_t>(start_line));
+    out->emplace_back(static_cast<int32_t>(end_line));
+
+    if (!params_parser.ConsumeLengthAndSetValue(out)) {
+      return false;
+    }
+
+    if (params_parser.Consume(TokenType::COMMA)) {
+      if (!params_parser.ConsumeLengthAndSetValue(out)) {
+        return false;
+      }
+    } else {
+      auto min_value = out->get(2);
+      auto min_pattern = out->get(3);
+      out->emplace_back(min_value);
+      out->emplace_back(min_pattern);
+    }
+
+    return params_parser.Check(TokenType::TOKEN_EOF);
+  };
+
+  while (!Check(TokenType::TOKEN_EOF)) {
+    Token function_token;
+    if (!ConsumeAndSave(TokenType::LINE_RANGE, function_token)) {
+      return false;
+    }
+
+    auto range = lepus::CArray::Create();
+    if (!parse_line_range(function_token, range)) {
+      return false;
+    }
+
+    arr->emplace_back(std::move(range));
+
+    if (Consume(TokenType::COMMA)) {
+      continue;
+    }
+    if (!Check(TokenType::TOKEN_EOF)) {
+      return false;
+    }
+  }
+
   return true;
 }
 

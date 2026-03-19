@@ -4,10 +4,12 @@
 
 #include "core/renderer/css/css_decoder.h"
 
+#include <limits>
 #include <sstream>
 #include <utility>
 
 #include "base/include/debug/lynx_assert.h"
+#include "base/include/string/string_utils.h"
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "core/build/gen/lynx_sub_error_code.h"
@@ -748,6 +750,43 @@ std::string ToXAutoFontSizePresetSizesProperty(
                      preset_sizes_array->get(i + 1).Int32())));
     if (i != preset_sizes_array->size() - 2) {
       res += " ";
+    }
+  }
+  return res;
+}
+
+std::string ToXAutoFontSizeLineRangesProperty(
+    const lynx::tasm::CSSValue &value) {
+  std::string res;
+  auto ranges = value.GetArray();
+  for (size_t i = 0; i < ranges->size(); ++i) {
+    const auto &range_value = ranges->get(i);
+    if (!range_value.IsArray()) {
+      continue;
+    }
+    auto range = range_value.Array();
+    if (!range || range->size() < 6) {
+      continue;
+    }
+    int32_t start_line = range->get(0).Int32();
+    int32_t end_line = range->get(1).Int32();
+    res += "line-range(";
+    if (start_line == end_line) {
+      res += base::AppendString(start_line);
+    } else if (end_line == std::numeric_limits<int32_t>::max()) {
+      res += base::AppendString(start_line, " to infinity");
+    } else {
+      res += base::AppendString(start_line, " to ", end_line);
+    }
+    res += ", ";
+    res += ToLengthWithUnit(
+        range->get(2), static_cast<CSSValuePattern>(range->get(3).Int32()));
+    res += ", ";
+    res += ToLengthWithUnit(
+        range->get(4), static_cast<CSSValuePattern>(range->get(5).Int32()));
+    res += ")";
+    if (i + 1 < ranges->size()) {
+      res += ", ";
     }
   }
   return res;
@@ -1564,6 +1603,8 @@ std::string CSSDecoder::CSSValueArrayToString(
       return ToXAutoFontSizeProperty(value);
     case kPropertyIDXAutoFontSizePresetSizes:
       return ToXAutoFontSizePresetSizesProperty(value);
+    case kPropertyIDXAutoFontSizeLineRanges:
+      return ToXAutoFontSizeLineRangesProperty(value);
     case kPropertyIDFontVariationSettings:
       return value.AsJsonString();
     case kPropertyIDFontFeatureSettings:

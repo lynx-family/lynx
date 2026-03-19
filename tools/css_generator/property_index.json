@@ -1,6 +1,6 @@
 [
     {
-        "count": 225
+        "count": 226
     },
     {
         "id": 1,
@@ -901,5 +901,9 @@
     {
         "id": 225,
         "name": "pointer-events"
+    },
+    {
+        "id": 226,
+        "name": "-x-auto-font-size-line-ranges"
     }
 ]

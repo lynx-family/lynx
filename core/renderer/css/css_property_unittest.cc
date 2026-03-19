@@ -15,7 +15,7 @@ namespace test {
 
 TEST(CSSProperty, GetComputeStyleMap) {
   auto map = CSSProperty::GetComputeStyleMap();
-  EXPECT_EQ(map.size(), 226);
+  EXPECT_EQ(map.size(), 227);
 }
 
 TEST(CSSProperty, GetPropertyID) {

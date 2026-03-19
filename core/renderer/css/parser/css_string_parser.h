@@ -214,6 +214,7 @@ class CSSStringParser final {
                          CSSValue& auto_font_size_max_size,
                          CSSValue& auto_font_size_step_granularity);
   bool ParseAutoFontSizePresetSize(fml::RefPtr<lepus::CArray>& arr);
+  bool ParseAutoFontSizeLineRanges(fml::RefPtr<lepus::CArray>& arr);
   bool ParseTransformParams(const Token& function_token,
                             fml::RefPtr<lepus::CArray>& arr);
   bool ConsumeMatrixNumbers(fml::RefPtr<lepus::CArray>& arr, int count);

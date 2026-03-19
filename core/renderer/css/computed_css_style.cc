@@ -1747,6 +1747,90 @@ bool ComputedCSSStyle::SetXAutoFontSizePresetSizes(const tasm::CSSValue& value,
               : DefaultComputedStyle::DEFAULT_AUTO_FONT_SIZE_PRESET_SIZES());
 }
 
+bool ComputedCSSStyle::SetXAutoFontSizeLineRanges(const tasm::CSSValue& value,
+                                                  const bool reset) {
+  PrepareOptionalForTextAttributes();
+
+  auto old_value = text_attributes_->auto_font_size_line_ranges
+                       ? *text_attributes_->auto_font_size_line_ranges
+                       : std::vector<starlight::AutoFontSizeLineRange>();
+  if (reset) {
+    text_attributes_->auto_font_size_line_ranges.reset();
+  } else {
+    CSS_HANDLER_FAIL_IF_NOT(value.IsArray(),
+                            parser_configs_.enable_css_strict_mode,
+                            tasm::TYPE_MUST_BE,
+                            tasm::CSSProperty::GetPropertyName(
+                                tasm::kPropertyIDXAutoFontSizeLineRanges)
+                                .c_str(),
+                            tasm::ARRAY_TYPE)
+
+    auto arr = value.GetArray();
+    std::vector<starlight::AutoFontSizeLineRange> dest;
+    dest.reserve(arr->size());
+    for (size_t i = 0; i < arr->size(); ++i) {
+      CSS_HANDLER_FAIL_IF_NOT(arr->get(i).IsArray(),
+                              parser_configs_.enable_css_strict_mode,
+                              tasm::TYPE_MUST_BE,
+                              tasm::CSSProperty::GetPropertyName(
+                                  tasm::kPropertyIDXAutoFontSizeLineRanges)
+                                  .c_str(),
+                              tasm::ARRAY_TYPE)
+
+      auto range = arr->get(i).Array();
+      CSS_HANDLER_FAIL_IF_NOT(range && range->size() == 6,
+                              parser_configs_.enable_css_strict_mode,
+                              tasm::SIZE_ERROR,
+                              tasm::CSSProperty::GetPropertyName(
+                                  tasm::kPropertyIDXAutoFontSizeLineRanges)
+                                  .c_str(),
+                              range ? range->size() : 0)
+
+      int32_t start_line = range->get(0).Int32();
+      int32_t end_line = range->get(1).Int32();
+      CSS_HANDLER_FAIL_IF_NOT(start_line > 0 && end_line >= start_line,
+                              parser_configs_.enable_css_strict_mode,
+                              tasm::TYPE_ERROR,
+                              tasm::CSSProperty::GetPropertyName(
+                                  tasm::kPropertyIDXAutoFontSizeLineRanges)
+                                  .c_str())
+
+      float min_size;
+      if (UNLIKELY(!CalculateCSSValueToFloat(
+              tasm::CSSValue(range->get(2), static_cast<tasm::CSSValuePattern>(
+                                                range->get(3).Int32())),
+              min_size, length_context_, parser_configs_, true))) {
+        return false;
+      }
+
+      float max_size;
+      if (UNLIKELY(!CalculateCSSValueToFloat(
+              tasm::CSSValue(range->get(4), static_cast<tasm::CSSValuePattern>(
+                                                range->get(5).Int32())),
+              max_size, length_context_, parser_configs_, true))) {
+        return false;
+      }
+
+      if (min_size > max_size) {
+        std::swap(min_size, max_size);
+      }
+
+      dest.push_back(starlight::AutoFontSizeLineRange{start_line, end_line,
+                                                      min_size, max_size});
+    }
+    if (!dest.empty()) {
+      text_attributes_->auto_font_size_line_ranges = std::move(dest);
+    } else {
+      text_attributes_->auto_font_size_line_ranges.reset();
+    }
+  }
+
+  auto new_value = text_attributes_->auto_font_size_line_ranges
+                       ? *text_attributes_->auto_font_size_line_ranges
+                       : std::vector<starlight::AutoFontSizeLineRange>();
+  return old_value != new_value;
+}
+
 bool ComputedCSSStyle::SetPerspective(const tasm::CSSValue& value,
                                       const bool reset) {
   CSSStyleUtils::PrepareOptional(perspective_data_);
@@ -3229,6 +3313,22 @@ lepus_value ComputedCSSStyle::XAutoFontSizePresetSizesToLepus() {
   } else {
     return lepus_value();
   }
+}
+
+lepus_value ComputedCSSStyle::XAutoFontSizeLineRangesToLepus() {
+  if (text_attributes_ && text_attributes_->auto_font_size_line_ranges) {
+    auto arr = lepus::CArray::Create();
+    for (const auto& range : *text_attributes_->auto_font_size_line_ranges) {
+      auto range_arr = lepus::CArray::Create();
+      range_arr->emplace_back(range.start_line);
+      range_arr->emplace_back(range.end_line);
+      range_arr->emplace_back(range.min_size);
+      range_arr->emplace_back(range.max_size);
+      arr->emplace_back(std::move(range_arr));
+    }
+    return lepus::Value(std::move(arr));
+  }
+  return lepus_value();
 }
 
 lepus_value ComputedCSSStyle::PerspectiveToLepus() {

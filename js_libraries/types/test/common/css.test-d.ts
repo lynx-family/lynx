@@ -17,6 +17,7 @@ describe('CSSProperty Type Test', () => {
       // typography
       outline: '1px solid red',
       textDecoration: '1px',
+      XAutoFontSizeLineRanges: 'line-range(1 to infinity, 12px, 18px)',
       // visual
       border: '1px',
       borderRight: '1px',
@@ -58,6 +59,7 @@ describe('CSSProperty Type Test', () => {
       paddingInlineEnd: '1px',
       // typography
       outlineColor: 'red',
+      XAutoFontSizeLineRanges: 'line-range(1 to infinity, 12px, 18px)',
       // visual
       borderBottomLeftRadius: '1px',
       // animation

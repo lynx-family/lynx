@@ -104,6 +104,7 @@ void PropBundleStyleWriter::PushStyleToBundle(
   V(TextIndent)                          \
   V(XAutoFontSize)                       \
   V(XAutoFontSizePresetSizes)            \
+  V(XAutoFontSizeLineRanges)             \
   V(FontVariationSettings)               \
   V(FontFeatureSettings)
 

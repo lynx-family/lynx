@@ -1,4 +1,7 @@
 # CHANGELOG
+## 3.8.5
+
+- Add `-x-auto-font-size-line-ranges` CSS property.
 
 ## 3.8.4
 

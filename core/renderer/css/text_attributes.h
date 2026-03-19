@@ -54,12 +54,26 @@ enum class TextPropertyID : uint8_t {
   kTextProperIDEnd = 0xFF,
 };
 
+struct AutoFontSizeLineRange {
+  int32_t start_line;
+  int32_t end_line;
+  float min_size;
+  float max_size;
+
+  bool operator==(const AutoFontSizeLineRange& rhs) const {
+    return start_line == rhs.start_line && end_line == rhs.end_line &&
+           min_size == rhs.min_size && max_size == rhs.max_size;
+  }
+};
+
 class TextAttributes {
  public:
   TextAttributes(float default_font_size) : font_size{default_font_size} {}
 
   base::flex_optional<base::InlineVector<ShadowData, 1>> text_shadow;
   base::flex_optional<base::InlineVector<float, 6>> auto_font_size_preset_sizes;
+  base::flex_optional<std::vector<AutoFontSizeLineRange>>
+      auto_font_size_line_ranges;
   NLength text_indent{DefaultLayoutStyle::SL_DEFAULT_ZEROLENGTH()};
   base::String font_family;
 
@@ -117,7 +131,8 @@ class TextAttributes {
                  text_decoration_color, text_decoration_style, text_indent,
                  is_auto_font_size, auto_font_size_min_size,
                  auto_font_size_max_size, auto_font_size_step_granularity,
-                 auto_font_size_preset_sizes, hyphens, font_optical_sizing) ==
+                 auto_font_size_preset_sizes, auto_font_size_line_ranges,
+                 hyphens, font_optical_sizing) ==
         std::tie(
             rhs.font_size, rhs.color, rhs.decoration_color, rhs.white_space,
             rhs.text_overflow, rhs.font_weight, rhs.font_style, rhs.font_family,
@@ -128,8 +143,8 @@ class TextAttributes {
             rhs.text_decoration_color, rhs.text_decoration_style,
             rhs.text_indent, rhs.is_auto_font_size, rhs.auto_font_size_min_size,
             rhs.auto_font_size_max_size, rhs.auto_font_size_step_granularity,
-            rhs.auto_font_size_preset_sizes, rhs.hyphens,
-            rhs.font_optical_sizing);
+            rhs.auto_font_size_preset_sizes, rhs.auto_font_size_line_ranges,
+            rhs.hyphens, rhs.font_optical_sizing);
     if (!base_equal) {
       return false;
     }

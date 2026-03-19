@@ -18,6 +18,7 @@ unittest_set("css_parser_testset") {
     "animation_shorthand_handler_unittest.cc",
     "aspect_ratio_handler_unittest.cc",
     "auto_font_size_handler_unittest.cc",
+    "auto_font_size_line_ranges_handler_unittest.cc",
     "auto_font_size_preset_sizes_handler_unittest.cc",
     "background_box_handler_unittest.cc",
     "background_clip_handler_unittest.cc",

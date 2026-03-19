@@ -1597,6 +1597,67 @@ TEST(CSSStringParser, ParseHSLColor_SmallValues) {
   EXPECT_FALSE(result.IsEmpty());
 }
 
+TEST(CSSStringParser, ParseAutoFontSizeLineRanges) {
+  CSSParserConfigs configs;
+  {
+    std::string raw = "";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    auto arr = lepus::CArray::Create();
+    EXPECT_TRUE(parser.ParseAutoFontSizeLineRanges(arr));
+    EXPECT_EQ(arr->size(), 0u);
+  }
+
+  {
+    std::string raw =
+        "line-range(1, 18px, 22px), line-range(2 to 3, 16px, 18px), "
+        "line-range(4 to infinity, 14px)";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    auto arr = lepus::CArray::Create();
+    EXPECT_TRUE(parser.ParseAutoFontSizeLineRanges(arr));
+    EXPECT_EQ(arr->size(), 3u);
+
+    auto r0 = arr->get(0).Array();
+    ASSERT_TRUE(r0);
+    EXPECT_EQ(r0->size(), 6u);
+    EXPECT_EQ(r0->get(0).Int32(), 1);
+    EXPECT_EQ(r0->get(1).Int32(), 1);
+    EXPECT_FLOAT_EQ(r0->get(2).Number(), 18.f);
+    EXPECT_EQ(static_cast<CSSValuePattern>(r0->get(3).Number()),
+              CSSValuePattern::PX);
+    EXPECT_FLOAT_EQ(r0->get(4).Number(), 22.f);
+    EXPECT_EQ(static_cast<CSSValuePattern>(r0->get(5).Number()),
+              CSSValuePattern::PX);
+
+    auto r1 = arr->get(1).Array();
+    ASSERT_TRUE(r1);
+    EXPECT_EQ(r1->size(), 6u);
+    EXPECT_EQ(r1->get(0).Int32(), 2);
+    EXPECT_EQ(r1->get(1).Int32(), 3);
+
+    auto r2 = arr->get(2).Array();
+    ASSERT_TRUE(r2);
+    EXPECT_EQ(r2->size(), 6u);
+    EXPECT_EQ(r2->get(0).Int32(), 4);
+    EXPECT_EQ(r2->get(1).Int32(), std::numeric_limits<int>::max());
+    EXPECT_FLOAT_EQ(r2->get(2).Number(), 14.f);
+    EXPECT_EQ(static_cast<CSSValuePattern>(r2->get(3).Number()),
+              CSSValuePattern::PX);
+    EXPECT_FLOAT_EQ(r2->get(4).Number(), 14.f);
+    EXPECT_EQ(static_cast<CSSValuePattern>(r2->get(5).Number()),
+              CSSValuePattern::PX);
+  }
+
+  {
+    std::string raw = "line_range(1, 12px)";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    auto arr = lepus::CArray::Create();
+    EXPECT_FALSE(parser.ParseAutoFontSizeLineRanges(arr));
+  }
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

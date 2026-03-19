@@ -175,7 +175,8 @@ Token Scanner::FunctionExpression(TokenType type) {
   Advance();
   // TODO(renzhongyue): all function type token should begin with the char next
   // to '('
-  if (TokenType::BLUR <= type && type <= TokenType::VAR) {
+  if (type == TokenType::LINE_RANGE ||
+      (TokenType::BLUR <= type && type <= TokenType::VAR)) {
     if (TokenType::VAR == type) {
       met_var_ = true;
     }
@@ -257,7 +258,8 @@ Token Scanner::IdentLikeToken() {
   ToLower(content_ + start_, len, s);
   auto* it = GetTokenValue(s, len);
   if (it != nullptr /* got token keywords */) {
-    if (TokenType::CALC <= it->type && it->type <= TokenType::VAR) {
+    if (it->type == TokenType::LINE_RANGE ||
+        (TokenType::CALC <= it->type && it->type <= TokenType::VAR)) {
       // maybe function
       return FunctionExpression(it->type);
     }

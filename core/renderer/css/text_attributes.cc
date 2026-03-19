@@ -43,6 +43,9 @@ void TextAttributes::Apply(const TextAttributes& rhs) {
   auto_font_size_preset_sizes = rhs.auto_font_size_preset_sizes
                                     ? *rhs.auto_font_size_preset_sizes
                                     : auto_font_size_preset_sizes;
+  auto_font_size_line_ranges = rhs.auto_font_size_line_ranges
+                                   ? *rhs.auto_font_size_line_ranges
+                                   : auto_font_size_line_ranges;
   hyphens = rhs.hyphens;
   font_variation_settings = rhs.font_variation_settings;
   font_feature_settings = rhs.font_feature_settings;

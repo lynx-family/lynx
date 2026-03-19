@@ -21,6 +21,7 @@
 #include "core/renderer/css/parser/animation_shorthand_handler.h"
 #include "core/renderer/css/parser/aspect_ratio_handler.h"
 #include "core/renderer/css/parser/auto_font_size_handler.h"
+#include "core/renderer/css/parser/auto_font_size_line_ranges_handler.h"
 #include "core/renderer/css/parser/auto_font_size_preset_sizes_handler.h"
 #include "core/renderer/css/parser/background_box_handler.h"
 #include "core/renderer/css/parser/background_clip_handler.h"
@@ -241,6 +242,7 @@ UnitHandler::UnitHandler() {
   CursorHandler::Register(interceptors_);
   ClipPathHandler::Register(interceptors_);
   AutoFontSizeHandler::Register(interceptors_);
+  AutoFontSizeLineRangesHandler::Register(interceptors_);
   AutoFontSizePresetSizesHandler::Register(interceptors_);
   GapHandler::Register(interceptors_);
   OffsetRotateHandler::Register(interceptors_);

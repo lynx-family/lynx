@@ -1,3 +1,6 @@
+## 0.0.8
+- Add `-x-auto-font-size-line-ranges` CSS property.
+
 ## 0.0.7
 - Add the `pointer-events` CSS property.
 
