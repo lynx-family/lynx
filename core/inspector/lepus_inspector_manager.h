@@ -9,16 +9,19 @@
 #include <string>
 
 namespace lynx {
+namespace runtime {
+class MTSContext;
+}  // namespace runtime
+
 namespace lepus {
 class InspectorLepusObserver;
-class MTSContext;
 
 class LepusInspectorManager {
  public:
   virtual ~LepusInspectorManager() = default;
 
   virtual void InitInspector(
-      MTSContext* context,
+      runtime::MTSContext* context,
       const std::shared_ptr<InspectorLepusObserver>& observer,
       const std::string& context_name) = 0;
   virtual void SetDebugInfo(const std::string& debug_info_url,

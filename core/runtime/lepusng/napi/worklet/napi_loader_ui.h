@@ -22,7 +22,7 @@ class LepusLynx;
 
 class NapiLoaderUI : public runtime::js::NapiEnvironment::Delegate {
  public:
-  NapiLoaderUI(lepus::Context* context);
+  NapiLoaderUI(runtime::MTSRuntime* context);
 
   void OnAttach(Napi::Env env) override;
   void OnDetach(Napi::Env env) override;
@@ -37,7 +37,7 @@ class NapiLoaderUI : public runtime::js::NapiEnvironment::Delegate {
   void SetNapiEnvToLEPUSContext(Napi::Env env);
 
   lynx::worklet::LepusLynx* lynx_ = nullptr;
-  lepus::Context* context_ = nullptr;
+  runtime::MTSRuntime* context_ = nullptr;
 };
 
 }  // namespace worklet

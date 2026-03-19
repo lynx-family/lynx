@@ -391,7 +391,7 @@ class Element : public lepus::RefCounted,
   void SetWorkletEventHandler(const base::String& name,
                               const base::String& type,
                               const lepus::Value& worklet_info,
-                              lepus::Context* ctx);
+                              runtime::MTSRuntime* ctx);
 
   /**
    * Element API for removing specific event

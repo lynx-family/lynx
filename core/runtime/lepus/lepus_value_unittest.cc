@@ -20,7 +20,8 @@ namespace lepus {
 namespace test {
 
 namespace {
-static lepus::Value TestCFunction(lepus::MTSContext* ctx, lepus::Value*, int) {
+static lepus::Value TestCFunction(runtime::MTSContext* ctx, lepus::Value*,
+                                  int) {
   return lepus::Value("test");
 }
 }  // namespace

@@ -16,7 +16,7 @@ namespace tasm {
 class CSRElementBinaryWriter : public lepus::ContextBinaryWriter {
  public:
   explicit CSRElementBinaryWriter(
-      lepus::MTSContext* context,
+      runtime::MTSContext* context,
       const tasm::CompileOptions& compile_options = {},
       const lepus::Value& trial_options = lepus::Value{},
       bool enableDebugInfo = false)

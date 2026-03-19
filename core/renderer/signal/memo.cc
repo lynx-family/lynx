@@ -35,7 +35,7 @@ SOFTWARE.
 namespace lynx {
 namespace tasm {
 
-Memo::Memo(SignalContext* signal_context, lepus::Context* vm_context,
+Memo::Memo(SignalContext* signal_context, runtime::MTSRuntime* vm_context,
            const lepus::Value& value)
     : Signal(signal_context, vm_context, value) {}
 

@@ -9,7 +9,7 @@
 
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_base_css_reader.h"
 #include "core/template_bundle/template_codec/template_binary.h"
@@ -207,9 +207,9 @@ bool LynxBinaryReader::GreedyDecodeLepusChunk(
   for (auto it = start_offsets.begin(); it != start_offsets.end(); ++it) {
     stream_->Seek(lepus_chunk_route_.descriptor_offset_ + it->second);
 
-    chunk_map[it->first] = lepus::ContextBundle::Create(
-        is_lepusng_binary_ ? lepus::ContextType::LepusNGContextType
-                           : lepus::ContextType::VMContextType);
+    chunk_map[it->first] = runtime::ContextBundle::Create(
+        is_lepusng_binary_ ? runtime::ContextType::LepusNGContextType
+                           : runtime::ContextType::VMContextType);
 
     ERROR_UNLESS(chunk_map[it->first]);
     ERROR_UNLESS(DecodeContextBundle(chunk_map[it->first].get()));
@@ -241,9 +241,9 @@ bool LynxBinaryReader::DecodeLepusChunkRoute() {
 bool LynxBinaryReader::DecodeContext() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, BINARY_READER_DECODE_CONTEXT);
   auto& tb = template_bundle();
-  tb.context_bundle_ = lepus::ContextBundle::Create(
-      is_lepusng_binary_ ? lepus::ContextType::LepusNGContextType
-                         : lepus::ContextType::VMContextType);
+  tb.context_bundle_ = runtime::ContextBundle::Create(
+      is_lepusng_binary_ ? runtime::ContextType::LepusNGContextType
+                         : runtime::ContextType::VMContextType);
 
   ERROR_UNLESS(tb.context_bundle_);
   ERROR_UNLESS(DecodeContextBundle(tb.context_bundle_.get()));

@@ -216,7 +216,8 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
   }
 
   void SetWorkletEvent(const base::String& type, const base::String& name,
-                       const lepus::Value& worklet_info, lepus::Context* ctx) {
+                       const lepus::Value& worklet_info,
+                       runtime::MTSRuntime* ctx) {
     // TODO(luochangan.adrian): Add UI Worklet Event
     (type == kGlobalBind ? events_->global_bind_events_
                          : events_->lepus_events_)

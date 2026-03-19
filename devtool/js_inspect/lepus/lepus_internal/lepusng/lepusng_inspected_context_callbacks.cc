@@ -6,8 +6,8 @@
 
 #include <memory>
 
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepusng/quick_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepusng/lepusng_inspected_context_impl.h"
 
 namespace lepus_inspector {

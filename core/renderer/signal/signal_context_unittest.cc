@@ -86,10 +86,11 @@ BaseSignalTest::BaseSignalTest() {
 
 void BaseSignalTest::SetUp() {
   if (enable_ng_) {
-    ctx_ =
-        lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType);
+    ctx_ = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
   } else {
-    ctx_ = lepus::Context::CreateContext(lepus::ContextType::VMContextType);
+    ctx_ =
+        runtime::MTSRuntime::CreateContext(runtime::ContextType::VMContextType);
   }
   ctx_->Initialize();
 
@@ -105,11 +106,12 @@ void BaseSignalTest::SetUp() {
 
   ctx_->SetGlobalData(
       "$kTemplateAssembler",
-      lepus::Value(static_cast<lepus::Context::Delegate*>(tasm_.get())));
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm_.get())));
   tasm_->page_config_->enable_fiber_arch_ = true;
 }
 
-void BaseSignalTest::Compile(const std::string& source, lepus::Context* ctx) {
+void BaseSignalTest::Compile(const std::string& source,
+                             runtime::MTSRuntime* ctx) {
   if (ctx == nullptr) {
     ctx = ctx_.get();
   }
@@ -118,7 +120,7 @@ void BaseSignalTest::Compile(const std::string& source, lepus::Context* ctx) {
                                              ctx->GetSdkVersion());
 }
 
-bool BaseSignalTest::Execute(lepus::Context* ctx) {
+bool BaseSignalTest::Execute(runtime::MTSRuntime* ctx) {
   if (ctx == nullptr) {
     ctx = ctx_.get();
   }
@@ -126,7 +128,7 @@ bool BaseSignalTest::Execute(lepus::Context* ctx) {
   if (ctx->IsLepusNGContext()) {
     return ctx->Execute();
   } else {
-    auto vm_ctx = lepus::Context::ToVMContext(ctx);
+    auto vm_ctx = runtime::MTSRuntime::ToVMContext(ctx);
     vm_ctx->heap_ = lepus::Heap();
     return vm_ctx->Execute();
   }

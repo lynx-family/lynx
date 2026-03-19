@@ -20,7 +20,7 @@ namespace tasm {
 
 AirComponentElement::AirComponentElement(ElementManager *manager, int tid,
                                          uint32_t lepus_id, int32_t id,
-                                         lepus::Context *context)
+                                         runtime::MTSRuntime *context)
     : AirElement(kAirComponent, manager, BASE_STATIC_STRING(kAirComponentTag),
                  lepus_id, id),
       tid_(tid),

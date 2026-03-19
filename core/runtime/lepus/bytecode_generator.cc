@@ -13,7 +13,7 @@
 namespace lynx {
 namespace lepus {
 
-std::string BytecodeGenerator::GenerateBytecode(MTSContext* context,
+std::string BytecodeGenerator::GenerateBytecode(runtime::MTSContext* context,
                                                 const std::string& source,
                                                 const std::string& sdk_version,
                                                 const std::string& file_name) {
@@ -21,7 +21,7 @@ std::string BytecodeGenerator::GenerateBytecode(MTSContext* context,
     return "Compile error: the context is nullptr.";
   }
   context->SetSdkVersion(sdk_version);
-  if (context->Type() == ContextType::VMContextType) {
+  if (context->Type() == runtime::ContextType::VMContextType) {
     return GenerateBytecodeForVMContext(static_cast<VMContext*>(context),
                                         source, sdk_version);
   }

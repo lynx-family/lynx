@@ -18,13 +18,13 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/lepus/context.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 namespace lynx {
 namespace tasm {
 
@@ -51,7 +51,7 @@ void ReportNoPatch(bool has_patch, uint64_t start_time,
 
 RadonPage::RadonPage(PageProxy *proxy, int tid, CSSFragment *style_sheet,
                      std::shared_ptr<CSSStyleSheetManager> style_sheet_manager,
-                     PageMould *mould, lepus::Context *context)
+                     PageMould *mould, runtime::MTSRuntime *context)
     : RadonComponent(proxy, tid, style_sheet, style_sheet_manager, mould,
                      context, kRadonInvalidNodeIndex,
                      BASE_STATIC_STRING(kRadonPageTag)),

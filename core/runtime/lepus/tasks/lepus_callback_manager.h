@@ -20,17 +20,17 @@ class LepusCallbackManager {
   LepusCallbackManager() = default;
   ~LepusCallbackManager();
   // common method : cache , invoke and clear
-  int64_t CacheTask(lepus::Context* context,
+  int64_t CacheTask(runtime::MTSRuntime* context,
                     std::unique_ptr<lepus::Value> callback_closure);
   void InvokeTask(int64_t id, const lepus::Value& data);
   void InvokeTask(int64_t id, const std::vector<lepus::Value>& data);
   // timed task methods:setTime , setInterval , clear and invoke
   // The return type depends on TimedTaskManager。
-  uint32_t SetTimeOut(lepus::Context* context,
+  uint32_t SetTimeOut(runtime::MTSRuntime* context,
                       std::unique_ptr<lepus::Value> closure,
                       int64_t delay_time);
   // The return type depends on TimedTaskManager。
-  uint32_t SetInterval(lepus::Context* context,
+  uint32_t SetInterval(runtime::MTSRuntime* context,
                        std::unique_ptr<lepus::Value> closure,
                        int64_t interval_time);
   void RemoveTimeTask(uint32_t task_id);
@@ -39,14 +39,15 @@ class LepusCallbackManager {
   // FuncTask cached in TaskMap , it has execute method
   class FuncTask {
    public:
-    FuncTask(lepus::Context* context, std::unique_ptr<lepus::Value> closure);
+    FuncTask(runtime::MTSRuntime* context,
+             std::unique_ptr<lepus::Value> closure);
     void Execute(const lepus::Value& args);
     void Execute(const std::vector<lepus::Value>& args);
 
    private:
     // real closure callBack , operate by Execute method
     std::unique_ptr<lepus::Value> closure_;
-    lepus::Context* context_;
+    runtime::MTSRuntime* context_;
   };
 
   using TaskMap = std::unordered_map<int64_t, std::unique_ptr<FuncTask>>;
@@ -58,11 +59,11 @@ class LepusCallbackManager {
   // time task for _SetTimeout , _SetTimeInterval
   std::unique_ptr<base::TimedTaskManager> timer_task_manager_{nullptr};
   // The return type depends on TimedTaskManager。
-  uint32_t SetTimeTask(lepus::Context* context,
+  uint32_t SetTimeTask(runtime::MTSRuntime* context,
                        std::unique_ptr<lepus::Value> closure,
                        int64_t delay_time, bool is_interval);
 
-  void EnsureTimerTaskInvokerInited(lepus::Context* context);
+  void EnsureTimerTaskInvokerInited(runtime::MTSRuntime* context);
   void Destroy();
 };
 }  // namespace tasm

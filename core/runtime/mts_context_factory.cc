@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/lepus/mts_context_factory.h"
+#include "core/runtime/mts_context_factory.h"
 
 #include <cassert>
 
@@ -11,7 +11,7 @@
 #include "core/runtime/lepusng/quick_context.h"
 
 namespace lynx {
-namespace lepus {
+namespace runtime {
 
 std::unique_ptr<MTSContext> MTSContextFactory::Create(
     ContextType type, const std::shared_ptr<MTSContextDelegate>& delegate,
@@ -19,12 +19,12 @@ std::unique_ptr<MTSContext> MTSContextFactory::Create(
     const tasm::PageOptions& page_options) {
   switch (type) {
     case ContextType::LepusNGContextType:
-      return std::make_unique<QuickContext>(delegate, disable_tracing_gc,
-                                            runtime_mode, page_options);
+      return std::make_unique<lepus::QuickContext>(delegate, disable_tracing_gc,
+                                                   runtime_mode, page_options);
 
     case ContextType::VMContextType:
 #if !ENABLE_JUST_LEPUSNG
-      return std::make_unique<VMContext>(delegate);
+      return std::make_unique<lepus::VMContext>(delegate);
 #else
       LOGE("lepusng sdk do not support vm context");
       assert(false);
@@ -41,11 +41,11 @@ std::unique_ptr<ContextBundle> ContextBundleFactory::Create(
     ContextType context_type) {
   switch (context_type) {
     case ContextType::LepusNGContextType:
-      return std::make_unique<QuickContextBundle>();
+      return std::make_unique<lepus::QuickContextBundle>();
 
     case ContextType::VMContextType:
 #if !ENABLE_JUST_LEPUSNG
-      return std::make_unique<VMContextBundle>();
+      return std::make_unique<lepus::VMContextBundle>();
 #else
       return nullptr;
 #endif
@@ -55,5 +55,5 @@ std::unique_ptr<ContextBundle> ContextBundleFactory::Create(
   }
 }
 
-}  // namespace lepus
+}  // namespace runtime
 }  // namespace lynx

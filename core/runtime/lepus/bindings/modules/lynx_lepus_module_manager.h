@@ -15,7 +15,7 @@
 #include "core/runtime/common/bindings/modules/lynx_native_module_manager.h"
 #include "core/runtime/lepus/bindings/modules/lepus_module_callback.h"
 #include "core/runtime/lepus/bindings/modules/lynx_lepus_module.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace lepus {
@@ -36,7 +36,8 @@ class LynxLepusModuleManager : public pub::LynxNativeModuleManager {
 
   // Get the LepusModule object, which inherits LynxNativeModule implemented by
   // Android(LynxModuleAndroid) or iOS(LynxModuleDarwin).
-  virtual Value GetModule(Context* context, const std::string& module_name);
+  virtual Value GetModule(runtime::MTSRuntime* context,
+                          const std::string& module_name);
 
  private:
   // Module cache

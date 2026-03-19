@@ -13,7 +13,7 @@
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/base_value.h"
 #include "core/runtime/common/bindings/resource/response_handler_proxy.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
@@ -31,7 +31,7 @@ class ResponseHandlerInLepus
   virtual ~ResponseHandlerInLepus() override = default;
 
   static lepus::Value GetBindingObject(
-      lepus::Context* context,
+      runtime::MTSRuntime* context,
       fml::RefPtr<tasm::ResponseHandlerInLepus>& handler);
 
   static ResponseHandlerInLepus* GetResponseHandlerFromLepusValue(

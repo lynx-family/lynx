@@ -520,11 +520,11 @@ LEPUSRuntimeData::~LEPUSRuntimeData() {
 }
 
 QuickContext::QuickContext(
-    std::shared_ptr<MTSContextDelegate> mts_context_delegate,
+    std::shared_ptr<runtime::MTSContextDelegate> mts_context_delegate,
     bool disable_tracing_gc, int runtime_mode,
     const tasm::PageOptions& page_options)
     : LEPUSRuntimeData(disable_tracing_gc, runtime_mode),
-      MTSContext(std::move(mts_context_delegate)),
+      runtime::MTSContext(std::move(mts_context_delegate)),
       top_level_function_(LEPUS_UNDEFINED),
       use_lepus_strict_mode_(false),
       debuginfo_outside_(false),
@@ -622,7 +622,7 @@ bool QuickContext::Execute() {
   return ExecuteBinaryWithBundle(nullptr, nullptr);
 }
 
-bool QuickContext::ExecuteBinaryWithBundle(const ContextBundle* bundle,
+bool QuickContext::ExecuteBinaryWithBundle(const runtime::ContextBundle* bundle,
                                            Value* ret_val) {
   (void)bundle;
   return ExecuteBinaryInternal(ret_val);
@@ -1031,8 +1031,8 @@ LEPUSValue QuickContext::NewBindingFunction(CFunction func) {
       0, 0, 1, &binding_func);
 }
 
-void QuickContext::RegisterGlobalFunction(const RenderBindingFunction* funcs,
-                                          size_t size) {
+void QuickContext::RegisterGlobalFunction(
+    const runtime::RenderBindingFunction* funcs, size_t size) {
   for (size_t i = 0; i < size; ++i) {
     if (!funcs->for_lepusng) {
       continue;
@@ -1045,9 +1045,9 @@ void QuickContext::RegisterGlobalFunction(const RenderBindingFunction* funcs,
   return;
 }
 
-void QuickContext::RegisterObjectFunction(lepus::Value& obj,
-                                          const RenderBindingFunction* funcs,
-                                          size_t size) {
+void QuickContext::RegisterObjectFunction(
+    lepus::Value& obj, const runtime::RenderBindingFunction* funcs,
+    size_t size) {
   for (size_t i = 0; i < size; ++i) {
     if (!funcs->for_lepusng) {
       continue;
@@ -1070,8 +1070,9 @@ LEPUSValue QuickContext::SearchGlobalData(const std::string& name) {
   return lepus_val;
 }
 
-bool QuickContext::DeSerialize(const ContextBundle& bundle, bool reuse_context,
-                               Value* ret, const char* file_name) {
+bool QuickContext::DeSerialize(const runtime::ContextBundle& bundle,
+                               bool reuse_context, Value* ret,
+                               const char* file_name) {
   const auto& quick_bundle = static_cast<const QuickContextBundle&>(bundle);
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_DO_SERIALIZE,
               "bytecodeSize", quick_bundle.lepusng_code_len_);

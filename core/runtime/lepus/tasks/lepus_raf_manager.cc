@@ -8,14 +8,15 @@
 
 #include "base/include/value/base_value.h"
 #include "base/trace/native/trace_event.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
 
 AnimationFrameManager::FrameTask::FrameTask(
-    lepus::Context* context, std::unique_ptr<lepus::Value> callback_closure)
+    runtime::MTSRuntime* context,
+    std::unique_ptr<lepus::Value> callback_closure)
     : callback_closure_(std::move(callback_closure)),
       context_(context),
       cancelled_(false) {}
@@ -37,7 +38,8 @@ AnimationFrameManager::AnimationFrameManager()
 AnimationFrameManager::~AnimationFrameManager() { Destroy(); }
 
 int64_t AnimationFrameManager::RequestAnimationFrame(
-    lepus::Context* context, std::unique_ptr<lepus::Value> callback_closure) {
+    runtime::MTSRuntime* context,
+    std::unique_ptr<lepus::Value> callback_closure) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ANIMATION_FRAME_TASK_REQUEST_ANIMATION_FRAME);
   const int64_t task_id = current_index_++;

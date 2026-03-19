@@ -13,7 +13,6 @@
 #include "core/runtime/lepus/binary_input_stream.h"
 #include "core/runtime/lepus/builtin.h"
 #include "core/runtime/lepus/bytecode_generator.h"
-#include "core/runtime/lepus/context.h"
 #include "core/runtime/lepus/context_binary_writer.h"
 #include "core/runtime/lepus/exception.h"
 #include "core/runtime/lepus/js_object.h"
@@ -22,6 +21,7 @@
 #include "core/runtime/lepus/vm_context.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/quick_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 using namespace lynx;  // NOLINT
@@ -70,7 +70,8 @@ static int count = 0;
 
 #pragma clang diagnostic pop
 
-static lepus::Value EmptyFunc(lepus::MTSContext* context, lepus::Value*, int) {
+static lepus::Value EmptyFunc(runtime::MTSContext* context, lepus::Value*,
+                              int) {
   ++count;
   // std::cout << count << std::endl;
   return lepus::Value();
@@ -170,7 +171,7 @@ static void Print_Value(const lepus::Value* val, std::ostream& output) {
   }
 }
 
-lepus::Value Print(lepus::MTSContext* context, lepus::Value* argv, int argc) {
+lepus::Value Print(runtime::MTSContext* context, lepus::Value* argv, int argc) {
   long params_count = argc;
   for (long i = 0; i < params_count; i++) {
     lepus::Value v(static_cast<lepus::VMContext*>(context)->GetParam(i));
@@ -181,7 +182,7 @@ lepus::Value Print(lepus::MTSContext* context, lepus::Value* argv, int argc) {
   return lepus::Value();
 }
 
-static lepus::Value Assert(lepus::MTSContext* context, lepus::Value* argv,
+static lepus::Value Assert(runtime::MTSContext* context, lepus::Value* argv,
                            int argc) {
   if (argv->IsTrue()) {
     return lepus::Value();
@@ -191,7 +192,7 @@ static lepus::Value Assert(lepus::MTSContext* context, lepus::Value* argv,
   }
 }
 
-static lepus::Value Typeof(lepus::MTSContext* context, lepus::Value* val,
+static lepus::Value Typeof(runtime::MTSContext* context, lepus::Value* val,
                            int argc) {
   switch (val->Type()) {
     case lepus::ValueType::Value_Nil:
@@ -228,7 +229,7 @@ static lepus::Value Typeof(lepus::MTSContext* context, lepus::Value* val,
   return *val;
 }
 
-static lepus::Value SetFlag(lepus::MTSContext* context, lepus::Value* parm1,
+static lepus::Value SetFlag(runtime::MTSContext* context, lepus::Value* parm1,
                             int argc) {
   if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
     static_cast<lepus::VMContext*>(context)->SetNullPropAsUndef(
@@ -237,8 +238,8 @@ static lepus::Value SetFlag(lepus::MTSContext* context, lepus::Value* parm1,
   return lepus::Value();
 }
 
-static lepus::Value CheckArgs(lepus::MTSContext* context, lepus::Value* param1,
-                              int argc) {
+static lepus::Value CheckArgs(runtime::MTSContext* context,
+                              lepus::Value* param1, int argc) {
   if (!param1->IsString()) {
     return context->ReportFatalError("arg is not string", false,
                                      error::E_MTS_RENDERER_FUNCTION_FATAL);
@@ -282,21 +283,21 @@ void RegisterBuiltinTest(lepus::VMContext* context) {
 
 class TestLepusContextHolder {
  protected:
-  explicit TestLepusContextHolder(lynx::lepus::ContextType type)
-      : owned_context_(new lynx::lepus::Context(type, false, 0,
-                                                lynx::tasm::PageOptions())) {}
+  explicit TestLepusContextHolder(lynx::runtime::ContextType type)
+      : owned_context_(new lynx::runtime::MTSRuntime(
+            type, false, 0, lynx::tasm::PageOptions())) {}
 
-  lynx::lepus::Context* context() const { return owned_context_.get(); }
+  lynx::runtime::MTSRuntime* context() const { return owned_context_.get(); }
 
  private:
-  std::unique_ptr<lynx::lepus::Context> owned_context_;
+  std::unique_ptr<lynx::runtime::MTSRuntime> owned_context_;
 };
 
 class TestLepus : private TestLepusContextHolder,
                   public lynx::lepus::ContextBinaryWriter {
  public:
   TestLepus()
-      : TestLepusContextHolder(lynx::lepus::ContextType::VMContextType),
+      : TestLepusContextHolder(lynx::runtime::ContextType::VMContextType),
         lynx::lepus::ContextBinaryWriter(context()->GetMTSContext()) {}
 
   static const char* input;
@@ -306,8 +307,8 @@ class TestLepus : private TestLepusContextHolder,
       lepus_resource = lepus::readFile(TestLepus::input);
     }
     context()->Initialize();
-    RegisterBuiltinTest(lynx::lepus::Context::ToVMContext(context()));
-    lynx::lepus::Context::ToVMContext(context())->SetClosureFix(true);
+    RegisterBuiltinTest(lynx::runtime::MTSRuntime::ToVMContext(context()));
+    lynx::runtime::MTSRuntime::ToVMContext(context())->SetClosureFix(true);
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
         context()->GetMTSContext(), lepus_resource, "2.6");
 
@@ -475,11 +476,24 @@ void RegisterQuickBuiltins(lepus::QuickContext* ctx) {
   ctx->RegisterGlobalFunction("TestReportFatal", TestArgcNG);
 }
 
-class TestLepusNG : private TestLepusContextHolder,
+class TestLepusNGContextHolder {
+ protected:
+  explicit TestLepusNGContextHolder(lynx::runtime::ContextType type)
+      : owned_context_(new lynx::runtime::MTSRuntime(
+            type, false, 0, lynx::tasm::PageOptions())) {}
+
+  lynx::runtime::MTSRuntime* context() const { return owned_context_.get(); }
+
+ private:
+  std::unique_ptr<lynx::runtime::MTSRuntime> owned_context_;
+};
+
+class TestLepusNG : private TestLepusNGContextHolder,
                     public lynx::lepus::ContextBinaryWriter {
  public:
   TestLepusNG()
-      : TestLepusContextHolder(lynx::lepus::ContextType::LepusNGContextType),
+      : TestLepusNGContextHolder(
+            lynx::runtime::ContextType::LepusNGContextType),
         lynx::lepus::ContextBinaryWriter(context()->GetMTSContext()) {}
   void Run(const char* input, const char* source) {
     std::string lepus_resource = source;
@@ -487,7 +501,8 @@ class TestLepusNG : private TestLepusContextHolder,
       lepus_resource = lepus::readFile(input);
     }
 
-    lepus::QuickContext* ctx = lynx::lepus::Context::ToQuickContext(context());
+    lepus::QuickContext* ctx =
+        lynx::runtime::MTSRuntime::ToQuickContext(context());
     RegisterQuickBuiltins(ctx);
     ctx->Initialize();
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(

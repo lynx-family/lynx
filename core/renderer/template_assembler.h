@@ -61,9 +61,9 @@ namespace shell {
 class PlatformCallBackHolder;
 }  // namespace shell.
 
-namespace lepus {
-class Context;
-}
+namespace runtime {
+class MTSRuntime;
+}  // namespace runtime
 
 namespace tasm {
 class CSSStyleSheetManager;
@@ -126,7 +126,7 @@ class AirTouchEventHandlerBase {
 class TemplateAssembler final : public TemplateEntryHolder,
                                 public TemplateBinaryReader::PageConfigger,
                                 public PageProxy::TasmDelegate,
-                                public lepus::Context::Delegate {
+                                public runtime::MTSRuntime::Delegate {
  public:
   class Delegate : public runtime::ContextProxy::Delegate,
                    public runtime::ResponseHandlerProxy::Delegate {
@@ -212,7 +212,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
     // air-runtime methods
     virtual void LepusInvokeUIMethod(
         std::vector<int32_t> ui_impl_ids, const std::string& method,
-        const lepus::Value& params, lepus::Context* context,
+        const lepus::Value& params, runtime::MTSRuntime* context,
         std::unique_ptr<lepus::Value> callback_closure) = 0;
 
     virtual void OnJSSourcePrepared(
@@ -373,7 +373,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void SendBubbleEvent(const std::string& name, int tag,
                        lepus::DictionaryPtr dict);
 
-  lepus::Value GetModule(lepus::Context*, const std::string& module_name);
+  lepus::Value GetModule(runtime::MTSRuntime*, const std::string& module_name);
 
   LYNX_EXPORT_FOR_DEVTOOL void SetLepusObserver(
       const std::shared_ptr<lepus::InspectorLepusObserver>& observer);
@@ -410,7 +410,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   PageProxy* page_proxy() { return &page_proxy_; }
 
-  const std::shared_ptr<lepus::Context>& GetLepusContext(
+  const std::shared_ptr<runtime::MTSRuntime>& GetLepusContext(
       const std::string& entry_name) {
     const auto& entry = FindEntry(entry_name);
     return entry->GetVm();
@@ -469,7 +469,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   void LepusInvokeUIMethod(std::vector<int32_t> ui_impl_ids,
                            const std::string& method,
-                           const lepus::Value& params, lepus::Context* context,
+                           const lepus::Value& params,
+                           runtime::MTSRuntime* context,
                            std::unique_ptr<lepus::Value> callback_closure);
 
   void CallJSFunctionInLepusEvent(const std::string& component_id,
@@ -951,7 +952,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
                           std::remove_cv_t<std::remove_reference_t<Args>>> &&
            ...)>>
   void DispatchEventFromEngineToCoreContext(
-      const std::shared_ptr<lepus::Context>& context,
+      const std::shared_ptr<runtime::MTSRuntime>& context,
       const std::string& func_name, const std::string& event_name,
       const Args&... args) {
     auto engine_context_proxy =

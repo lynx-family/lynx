@@ -15,7 +15,6 @@
 
 namespace lynx {
 namespace lepus {
-class Context;
 
 class Global {
  public:

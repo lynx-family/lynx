@@ -18,7 +18,7 @@ class AnimationFrameManager {
  public:
   AnimationFrameManager();
   ~AnimationFrameManager();
-  int64_t RequestAnimationFrame(lepus::Context* context,
+  int64_t RequestAnimationFrame(runtime::MTSRuntime* context,
                                 std::unique_ptr<lepus::Value> callback_closure);
   void CancelAnimationFrame(int64_t id);
   void DoFrame(int64_t time_stamp);
@@ -28,14 +28,15 @@ class AnimationFrameManager {
  private:
   class FrameTask {
    public:
-    FrameTask(lepus::Context* context, std::unique_ptr<lepus::Value> closure);
+    FrameTask(runtime::MTSRuntime* context,
+              std::unique_ptr<lepus::Value> closure);
 
     void Execute(int64_t time_stamp);
     void Cancel();
 
    private:
     std::unique_ptr<lepus::Value> callback_closure_;
-    lepus::Context* context_;
+    runtime::MTSRuntime* context_;
     bool cancelled_;
   };
   using TaskMap = std::unordered_map<int64_t, std::unique_ptr<FrameTask>>;

@@ -270,8 +270,8 @@ class LEPUSValueHelper {
   static LEPUSValue RefCountedToJSValue(LEPUSContext* ctx, const RefCounted&);
   static lynx_value ConstructLepusRefToLynxValue(LEPUSContext* ctx,
                                                  const LEPUSValue& val);
-  static lepus::Value CreateObject(Context* ctx);
-  static lepus::Value CreateArray(Context* ctx);
+  static lepus::Value CreateObject(runtime::MTSRuntime* ctx);
+  static lepus::Value CreateArray(runtime::MTSRuntime* ctx);
 
   static ALWAYS_INLINE LEPUSValue WrapAsJsValue(const lynx_value& val) {
     if (val.type != lynx_value_extended) return LEPUS_UNDEFINED;

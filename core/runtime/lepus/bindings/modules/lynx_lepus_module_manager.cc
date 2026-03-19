@@ -21,7 +21,7 @@ LynxLepusModuleManager::LynxLepusModuleManager(
       pub::LynxNativeModuleManager::GetFacadeActor());
 }
 
-Value LynxLepusModuleManager::GetModule(Context* context,
+Value LynxLepusModuleManager::GetModule(runtime::MTSRuntime* context,
                                         const std::string& name) {
   // find module from cache
   auto itr = module_map_.find(name);

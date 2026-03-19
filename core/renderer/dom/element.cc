@@ -884,7 +884,7 @@ void Element::SetLepusEventHandler(const base::String& name,
 void Element::SetWorkletEventHandler(const base::String& name,
                                      const base::String& type,
                                      const lepus::Value& worklet_info,
-                                     lepus::Context* ctx) {
+                                     runtime::MTSRuntime* ctx) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_WORKLET_EVENT_HANDLER);
 
   data_model_->SetWorkletEvent(type, name, worklet_info, ctx);

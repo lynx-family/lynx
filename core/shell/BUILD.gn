@@ -4,7 +4,6 @@
 
 import("../../testing/test.gni")
 import("../Lynx.gni")
-
 shell_shared_sources = [
   "common/platform_call_back.cc",
   "common/platform_call_back.h",
@@ -54,6 +53,8 @@ shell_shared_sources = [
   "runtime/bts/bts_runtime_standalone_helper.h",
   "runtime/bts/lynx_bts_runtime_proxy_impl.cc",
   "runtime/bts/lynx_bts_runtime_proxy_impl.h",
+  "runtime/mts/mts_runtime.cc",
+  "runtime/mts/mts_runtime.h",
   "tasm_mediator.cc",
   "tasm_mediator.h",
   "tasm_operation_queue.cc",

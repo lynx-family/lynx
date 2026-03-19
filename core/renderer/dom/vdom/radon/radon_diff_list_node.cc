@@ -17,7 +17,7 @@ namespace lynx {
 namespace tasm {
 
 // TODO: 1. check component name valid.  2. read diffable attribute.
-RadonDiffListNode::RadonDiffListNode(lepus::Context* context,
+RadonDiffListNode::RadonDiffListNode(runtime::MTSRuntime* context,
                                      PageProxy* page_proxy,
                                      TemplateAssembler* tasm,
                                      uint32_t node_index)

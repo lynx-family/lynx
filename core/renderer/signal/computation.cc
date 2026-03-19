@@ -31,13 +31,13 @@ SOFTWARE.
 
 #include "core/renderer/signal/memo.h"
 #include "core/renderer/signal/signal_context.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
 
 Computation::Computation(SignalContext* signal_context_ptr,
-                         lepus::Context* vm_context_ptr,
+                         runtime::MTSRuntime* vm_context_ptr,
                          const lepus::Value& closure, const lepus::Value& value,
                          bool pure_computation, Memo* memo)
     : BaseScope(signal_context_ptr, vm_context_ptr),

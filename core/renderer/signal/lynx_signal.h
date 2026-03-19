@@ -39,10 +39,6 @@ SOFTWARE.
 
 namespace lynx {
 
-namespace lepus {
-class Context;
-}
-
 namespace tasm {
 
 class SignalContext;
@@ -56,7 +52,7 @@ enum class CheckEqualType : int32_t {
 
 class Signal : public lepus::RefCounted {
  public:
-  Signal(SignalContext* context, lepus::Context* vm_context,
+  Signal(SignalContext* context, runtime::MTSRuntime* vm_context,
          const lepus::Value& init_value);
   virtual ~Signal();
 
@@ -87,7 +83,7 @@ class Signal : public lepus::RefCounted {
   CheckEqualType check_equal_type_{CheckEqualType::kDeepCheck};
 
   SignalContext* signal_context_;
-  lepus::Context* vm_context_;
+  runtime::MTSRuntime* vm_context_;
 
   lepus::Value value_;
   std::list<Computation*> computation_list_;

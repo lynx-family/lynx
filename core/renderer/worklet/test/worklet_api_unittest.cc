@@ -77,8 +77,8 @@ class WorkletAPITest : public ::testing::Test {
 
   void TearDown() override {}
 
-  std::shared_ptr<lepus::Context> ctx_{
-      lepus::Context::CreateContext(lepus::ContextType::LepusNGContextType)};
+  std::shared_ptr<runtime::MTSRuntime> ctx_{runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType)};
   runtime::js::NapiRuntimeProxy* napi_proxy_;
 
   lynx::tasm::ElementManager* manager_;  // Not Owned
@@ -149,7 +149,8 @@ TEST_F(WorkletAPITest, TestLepusGestureAPI) {
   auto lepus_gesture = std::unique_ptr<worklet::LepusGesture>(
       worklet::LepusGesture::Create(element->impl_id(), tasm_.get()));
 
-  auto lepus_context = lepus::Context::ToQuickContext(ctx_.get())->context();
+  auto lepus_context =
+      runtime::MTSRuntime::ToQuickContext(ctx_.get())->context();
   // Create and convert a Lepus value (integer 1) to a Napi value
   auto js_1 = LEPUS_NewInt32(lepus_context, 1);
   lepus::Value value_1 = MK_JS_LEPUS_VALUE(lepus_context, js_1);

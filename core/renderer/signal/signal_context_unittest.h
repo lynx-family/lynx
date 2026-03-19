@@ -36,7 +36,7 @@ SOFTWARE.
 #include <utility>
 
 #include "core/renderer/signal/signal_context.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -75,15 +75,15 @@ class BaseSignalTest : public ::testing::TestWithParam<std::tuple<bool>> {
   void SetUp() override;
   void TearDown() override {}
 
-  void Compile(const std::string& code, lepus::Context* ctx = nullptr);
-  bool Execute(lepus::Context* ctx = nullptr);
+  void Compile(const std::string& code, runtime::MTSRuntime* ctx = nullptr);
+  bool Execute(runtime::MTSRuntime* ctx = nullptr);
   lepus::Value GetTopLevelVariableByName(const std::string& name);
 
   std::unique_ptr<BaseSignalTestMockTasmDelegate> delegate_;
   std::shared_ptr<lynx::tasm::LayoutContext> layout_context_;
   std::unique_ptr<TemplateAssembler> tasm_;
 
-  std::shared_ptr<lepus::Context> ctx_;
+  std::shared_ptr<runtime::MTSRuntime> ctx_;
 
   bool enable_ng_;
 

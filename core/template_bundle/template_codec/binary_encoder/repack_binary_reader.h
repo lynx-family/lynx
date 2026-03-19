@@ -18,8 +18,11 @@
 #include "core/template_bundle/template_codec/template_binary.h"
 
 namespace lynx {
+namespace runtime {
+class MTSRuntime;
+}  // namespace runtime
+
 namespace lepus {
-class Context;
 class InputStream;
 }  // namespace lepus
 
@@ -27,9 +30,9 @@ namespace tasm {
 
 class RepackBinaryReader : public lepus::BinaryReader {
  public:
-  RepackBinaryReader(lepus::Context* context,
+  RepackBinaryReader(runtime::MTSRuntime* mts_runtime,
                      std::unique_ptr<lepus::InputStream> stream)
-      : BinaryReader(std::move(stream)), context_(context) {}
+      : BinaryReader(std::move(stream)), context_(mts_runtime) {}
 
   bool DecodeHeader();
   bool DecodeHeaderInfo();
@@ -46,7 +49,7 @@ class RepackBinaryReader : public lepus::BinaryReader {
   }
   inline size_t header_ext_info_size() const { return header_ext_info_size_; }
   inline EncodeSSRError error_code() const { return error_code_; }
-  inline lepus::Context* context() const { return context_; }
+  inline runtime::MTSRuntime* context() const { return context_; }
   inline const CompileOptions& compile_options() const {
     return compile_options_;
   }
@@ -64,7 +67,7 @@ class RepackBinaryReader : public lepus::BinaryReader {
   bool CheckLynxVersion(const std::string& binary_version);
 
  private:
-  lepus::Context* context_;
+  runtime::MTSRuntime* context_;
 
   bool is_card_ = true;
   size_t suffix_size_ = 0;

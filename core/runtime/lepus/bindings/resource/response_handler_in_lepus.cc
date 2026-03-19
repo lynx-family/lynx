@@ -23,7 +23,7 @@ ResponseHandlerInLepus::ResponseHandlerInLepus(
     : runtime::ResponseHandlerProxy(delegate, url, promise) {}
 
 lepus::Value ResponseHandlerInLepus::GetBindingObject(
-    lepus::Context* context,
+    runtime::MTSRuntime* context,
     fml::RefPtr<tasm::ResponseHandlerInLepus>& handler) {
   return Utils::CreateResponseHandler(context, lepus::Value(handler));
 }

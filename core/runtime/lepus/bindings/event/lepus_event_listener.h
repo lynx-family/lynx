@@ -8,7 +8,7 @@
 #include "base/include/value/base_value.h"
 #include "core/event/event.h"
 #include "core/event/event_listener.h"
-#include "core/runtime/lepus/context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
@@ -16,7 +16,7 @@ namespace tasm {
 class LepusClosureEventListener : public event::EventListener {
  public:
   LepusClosureEventListener(
-      lepus::Context* context, lepus::Value closure,
+      runtime::MTSRuntime* context, lepus::Value closure,
       const EventListener::Options& options = EventListener::Options());
   virtual ~LepusClosureEventListener() override = default;
 
@@ -27,7 +27,7 @@ class LepusClosureEventListener : public event::EventListener {
  private:
   lepus::Value ConvertEventToLepusValue(fml::RefPtr<event::Event> event);
 
-  lepus::Context* context_;
+  runtime::MTSRuntime* context_;
   lepus::Value closure_;
 };
 

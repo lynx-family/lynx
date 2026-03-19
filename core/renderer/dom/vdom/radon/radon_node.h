@@ -250,7 +250,8 @@ class RadonNode : public RadonBase {
     return attribute_holder_->global_bind_events();
   }
   void SetWorkletEvent(const base::String& type, const base::String& name,
-                       const lepus::Value& worklet_info, lepus::Context* ctx) {
+                       const lepus::Value& worklet_info,
+                       runtime::MTSRuntime* ctx) {
     // TODO(luochangan.adrian): Add UI Worklet Event
     attribute_holder_->SetWorkletEvent(type, name, worklet_info, ctx);
   }

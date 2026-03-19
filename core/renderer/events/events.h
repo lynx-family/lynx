@@ -90,7 +90,7 @@ class EventHandler {
   // Constructor for lepus events with object param, The main scenario is
   // element worklet in fiber.
   EventHandler(const base::String& type, const base::String& name,
-               const lepus::Value& lepus_object, lepus::Context* context)
+               const lepus::Value& lepus_object, runtime::MTSRuntime* context)
       : EventHandler(false, type, name, base::String(), lepus::Value(),
                      lepus::Value(), lepus_object, std::nullopt, context) {}
 
@@ -138,7 +138,7 @@ class EventHandler {
   const lepus::Value& lepus_object() { return lepus_object_; }
 
   // lepus context, the main usage scenario is worklet in fiber
-  lepus::Context* lepus_context() { return ctx_; }
+  runtime::MTSRuntime* lepus_context() { return ctx_; }
 
   std::optional<std::vector<PiperEventContent>>& piper_event_vec() {
     return piper_event_vec_;
@@ -160,7 +160,7 @@ class EventHandler {
       const base::String& function, const lepus::Value& lepus_script,
       const lepus::Value& lepus_function, const lepus::Value& lepus_object,
       const std::optional<std::vector<PiperEventContent>>& piper_event_vec,
-      lepus::Context* ctx)
+      runtime::MTSRuntime* ctx)
       : is_js_event_(is_js_event),
         type_(type),
         name_(name),
@@ -189,7 +189,7 @@ class EventHandler {
   std::optional<std::vector<PiperEventContent>> piper_event_vec_;
 
   // lepus context
-  lepus::Context* ctx_;
+  runtime::MTSRuntime* ctx_;
 };
 
 }  // namespace tasm

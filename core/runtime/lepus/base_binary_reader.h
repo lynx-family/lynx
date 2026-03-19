@@ -20,6 +20,10 @@
 #include "core/template_bundle/template_codec/template_binary.h"
 
 namespace lynx {
+namespace runtime {
+class ContextBundle;
+}  // namespace runtime
+
 namespace lepus {
 
 #define DECODE_VALUE(name) \
@@ -108,8 +112,6 @@ class CArray;
 class Value;
 class CDate;
 class Function;
-class Context;
-class ContextBundle;
 
 class BaseBinaryReader : public BinaryReader {
  public:
@@ -152,7 +154,7 @@ class BaseBinaryReader : public BinaryReader {
   bool DecodeValue(Value*, bool = false);
   bool DecodeRawLynxValue(lynx_value&);
 
-  bool DecodeContextBundle(ContextBundle* bundle);
+  bool DecodeContextBundle(runtime::ContextBundle* bundle);
 
   virtual tasm::StringListVec& GetStringList() { return string_list_; }
 
