@@ -25,8 +25,7 @@ TextElement::TextElement(ElementManager* manager, const base::String& tag)
   if (element_manager_ == nullptr) {
     return;
   }
-  SetDefaultOverflow(element_manager_->GetDefaultTextOverflow() &&
-                     !EnableLayoutInElementMode());
+  SetDefaultOverflow(element_manager_->GetDefaultTextOverflow());
 
   if (Config::DefaultFontScale() != manager->GetLynxEnvConfig().FontScale() &&
       EnableLayoutInElementMode()) {
@@ -48,8 +47,7 @@ void TextElement::AttachToElementManager(
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
   FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
-  SetDefaultOverflow(manager->GetDefaultTextOverflow() &&
-                     !EnableLayoutInElementMode());
+  SetDefaultOverflow(manager->GetDefaultTextOverflow());
 }
 
 void TextElement::SetStyleInternal(CSSPropertyID id,
