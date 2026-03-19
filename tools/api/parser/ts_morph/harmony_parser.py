@@ -20,6 +20,21 @@ from env_setup import (
 )
 import subprocess
 
+PYJSON5_SRC_PATH = os.path.join(
+    LYNX_ROOT_PATH,
+    "lynx",
+    "third_party",
+    "binding",
+    "idl-codegen",
+    "third_party",
+    "pyjson5",
+    "src",
+)
+if PYJSON5_SRC_PATH not in sys.path:
+    sys.path.insert(0, PYJSON5_SRC_PATH)
+
+import json5
+
 
 class Parser:
     def __init__(self):
@@ -137,10 +152,25 @@ class HarmonyParser(Parser):
     def _clean_exported_item(self, item_str: str) -> str:
         return item_str.split(" as ")[0].strip()
 
+    def _get_oh_package_main_file(self, oh_package_path: str):
+        with open(oh_package_path, "r", encoding="utf-8") as f:
+            package_data = json5.loads(f.read())
+
+        if not isinstance(package_data, dict):
+            return None
+
+        main_file = package_data.get("main")
+        return main_file if isinstance(main_file, str) else None
+
     def _resolve_absolute_path(
         self, current_file_abs_dir: str, relative_import_path: str
-    ) -> str:
+    ):
         path_to_resolve = relative_import_path
+
+        # Skip ohpm package references (e.g. @lynx/lynx)
+        if path_to_resolve.startswith("@"):
+            return None
+
         if "liblynx.so" in path_to_resolve:
             return self._lynx_so_index_file
         if "liblynxdevtool.so" in path_to_resolve:
@@ -174,6 +204,9 @@ class HarmonyParser(Parser):
             abs_path_to_potentially_queue = self._resolve_absolute_path(
                 current_file_directory, path_in_from_clause
             )
+
+            if abs_path_to_potentially_queue is None:
+                continue
 
             if exported_specifier == "*":
                 if abs_path_to_potentially_queue.endswith(".ets"):
@@ -216,12 +249,27 @@ class HarmonyParser(Parser):
         for path in self.metadata_path:
             if os.path.isfile(path):
                 files_to_process_queue.append(path)
+            elif os.path.isdir(path):
+                for root, dirs, files in os.walk(path):
+                    dirs[:] = [d for d in dirs if d not in ("oh_modules", "build", ".hvigor")]
+                    if "oh-package.json5" in files:
+                        try:
+                            main_file = self._get_oh_package_main_file(
+                                os.path.join(root, "oh-package.json5")
+                            )
+                            if main_file:
+                                idx_path = os.path.normpath(os.path.join(root, main_file))
+                                if os.path.isfile(idx_path):
+                                    files_to_process_queue.append(idx_path)
+                        except Exception as e:
+                            print(f"Failed to parse oh-package.json5 at {root}: {e}")
             else:
                 print(f"'{path}' not found.")
                 return {}
 
         processed_abs_paths = set()
         final_exports_map = {}
+        files_to_process_queue = deque(sorted(files_to_process_queue))
 
         while files_to_process_queue:
             current_abs_path_to_process = files_to_process_queue.popleft()
