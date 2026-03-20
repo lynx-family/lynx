@@ -8,7 +8,10 @@
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
+#import <Lynx/LynxUIContext.h>
+#import "LynxContext+Internal.h"
 #import "LynxDisplayListApplier+Internal.h"
+#import "LynxTextraLayer.h"
 
 #include <stack>
 #include "base/include/vector.h"
@@ -98,6 +101,11 @@ using namespace lynx::tasm;
   return list_->GetFloatAtIndex(content_float_index_++);
 }
 
+- (BOOL)isTextServiceModeOn {
+  LynxContext *lynxContext = _renderer_context.uiContext.lynxContext;
+  return lynxContext != nil && lynxContext.isTextServiceModeOn;
+}
+
 - (void)processContentOperations {
   if (list_ == nullptr || list_->GetContentOpTypesSize() == 0) {
     return;
@@ -182,13 +190,24 @@ using namespace lynx::tasm;
         if (int_count >= 2) {
           auto text_id = [self nextContentInt];
           auto box_index = [self nextContentInt];
-
-          LynxTextLayer *layer = [[LynxTextLayer alloc]
-              initWithLynxTextRenderer:(LynxTextRenderer *)[_renderer_context.textRenderManager
-                                           takeTextRender:text_id]];
-          [self applyRectToLayer:layer withBoxIndex:box_index];
-          [self insertLayer:layer];
-          [layer setNeedsDisplay];
+          CALayer *layer = nil;
+          if ([self isTextServiceModeOn]) {
+            void *page = [_renderer_context takeTextBundle:text_id];
+            if (page != nullptr) {
+              layer = [[LynxTextraLayer alloc] initWithPage:page];
+            }
+          } else {
+            LynxTextRenderer *textRenderer =
+                (LynxTextRenderer *)[_renderer_context.textRenderManager takeTextRender:text_id];
+            if (textRenderer != nil) {
+              layer = [[LynxTextLayer alloc] initWithLynxTextRenderer:textRenderer];
+            }
+          }
+          if (layer != nil) {
+            [self applyRectToLayer:layer withBoxIndex:box_index];
+            [self insertLayer:layer];
+            [layer setNeedsDisplay];
+          }
         }
         break;
       }

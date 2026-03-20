@@ -251,6 +251,8 @@ subspec_target("lynx") {
     "renderer/LynxRendererHost.h",
     "renderer/LynxTextLayer.h",
     "renderer/LynxTextLayer.mm",
+    "renderer/LynxTextraLayer.h",
+    "renderer/LynxTextraLayer.mm",
     "shadow_node/LynxCustomMeasureShadowNode.mm",
     "shadow_node/LynxLayoutNode.mm",
     "shadow_node/LynxLayoutNodeManager.mm",

@@ -12,6 +12,8 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 
+@class LynxRendererContext;
+
 namespace lynx {
 namespace tasm {
 
@@ -25,6 +27,7 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
 
   void GetRootViewLocationOnScreen(float location[2]) override;
   void GetScreenSize(float size[2]) override;
+  LynxRendererContext* GetRendererContext();
 
   void SetPerformanceController(LynxPerformanceController* controller) {
     perf_controller_ = controller;

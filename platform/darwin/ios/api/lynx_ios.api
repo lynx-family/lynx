@@ -3195,6 +3195,9 @@ public class LynxRendererContext : NSObject {
   public LynxTextRenderManager* LynxRendererContext::textRenderManager textRenderManager;
   public void LynxRendererContext::createImageManager:withSourceURL:andPlaceholderURL:(int32_t imageManagerID,[withSourceURL] LynxURL *sourceURL,[andPlaceholderURL] LynxURL *placeholderURL);
   public LynxImageManager * LynxRendererContext::takeImageManager:(int32_t imageManagerID);
+  public void LynxRendererContext::updateTextBundle:withBundle:(int32_t textID,[withBundle] void *bundle);
+  public void LynxRendererContext::destroyTextBundle:(int32_t textID);
+  public void * LynxRendererContext::takeTextBundle:(int32_t textID);
 }
 
 public protocol LynxRendererHost-p : <NSObject> {
@@ -3515,6 +3518,7 @@ public protocol LynxServiceSystemInvokeProtocol-p : <LynxServiceProtocol> {
 public protocol LynxServiceTextProtocol-p : <LynxServiceProtocol> {
   public void * LynxServiceTextProtocol-p::createTextLayoutAPIFromContext:(LynxUIOwner *context);
   public void LynxServiceTextProtocol-p::destroyTextLayoutAPI:(void *api);
+  public void LynxServiceTextProtocol-p::destroyPage:(void *page);
   public void LynxServiceTextProtocol-p::drawPage:OnContext:(void *page,[OnContext] CGContextRef context);
   public int LynxServiceTextProtocol-p::getSelectionCharIndexOfPage:ByTouchPosition:(void *page,[ByTouchPosition] CGPoint point);
   public NSArray * LynxServiceTextProtocol-p::getSelectionRectsOfPage:ByCharRange:(void *page,[ByCharRange] NSRange range);
@@ -3940,6 +3944,10 @@ public class LynxTextOverflowLayer : CALayer {
   public LynxTextView* LynxTextOverflowLayer::view view;
   public instancetype LynxTextOverflowLayer::init();
   public instancetype LynxTextOverflowLayer::initWithView:(nullable LynxTextView *view);
+}
+
+public class LynxTextraLayer : CALayer, <CALayerDelegate> {
+  public instancetype LynxTextraLayer::initWithPage:(void *page);
 }
 
 public class LynxTextRenderer : NSObject {

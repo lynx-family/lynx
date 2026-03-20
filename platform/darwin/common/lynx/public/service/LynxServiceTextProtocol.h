@@ -24,6 +24,11 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)destroyTextLayoutAPI:(void *)api;
 /**
+ * destroy page object
+ * @param page cpp Page object pointer
+ */
+- (void)destroyPage:(void *)page;
+/**
  * draw page on a core graphics context
  * @param page cpp Page object pointer
  * @param context core graphics context to draw

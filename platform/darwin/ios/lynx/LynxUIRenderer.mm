@@ -7,20 +7,20 @@
 #import <Lynx/DevToolOverlayDelegate.h>
 #import <Lynx/LUIConfigAdapter.h>
 #import <Lynx/ListNodeInfoFetcher.h>
+#import <Lynx/LynxEnv+Internal.h>
+#import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxKeyboardEventDispatcher.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <Lynx/UIView+Lynx.h>
 #import "LynxBaseConfigurator+Internal.h"
 #import "LynxContext+Internal.h"
-#import "LynxEnv+Internal.h"
-#import "LynxEventHandler+Internal.h"
-#import "LynxTemplateRender+Internal.h"
 #import "LynxTemplateRender+Protected.h"
 #import "LynxTouchHandler+Internal.h"
 #import "LynxUIContext+Internal.h"
@@ -327,6 +327,7 @@ static id<LynxServiceTextProtocol> getTextService() {
 
   if (getTextService() != nil && _textra) {
     [getTextService() destroyTextLayoutAPI:_textra];
+    _textra = 0;
   }
 }
 

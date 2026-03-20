@@ -20,4 +20,10 @@
 
 - (LynxImageManager *)takeImageManager:(int32_t)imageManagerID;
 
+- (void)updateTextBundle:(int32_t)textID withBundle:(void *)bundle;
+
+- (void)destroyTextBundle:(int32_t)textID;
+
+- (void *)takeTextBundle:(int32_t)textID;
+
 @end
