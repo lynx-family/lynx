@@ -466,13 +466,10 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
 
     // do special check for transition, keyframe, z-index,etc.
     if (!(CheckTransitionProps(css_id) || CheckKeyframeProps(css_id))) {
-#if OS_ANDROID
-      // check flatten flag for Android platform if needed
-      // FIXME(linxs): only Android need to check below props for flatten.
-      // Normally, it's better to move below checks to Android platform side,
-      // but checking in C++ size has a better performance
+      // Check flatten-related CSS props eagerly in C++.
+      // This is shared by current platform-rendering flatten logic, and is
+      // cheaper than deferring the same decision to platform-specific code.
       CheckHasNonFlattenCSSProps(css_id);
-#endif
     }
   }
 }
@@ -1356,22 +1353,20 @@ bool Element::TendToFlatten() {
          !ShouldAvoidFlattenForView()
 #if OS_IOS
          // On iOS, the current CUI platform-rendering flatten path does not
-         // preserve clip/overflow scope or subtree transform semantics the
-         // same way as Android's platform renderer. To avoid clipping
-         // previously replayed border/image/text contents, and to keep
-         // transforms from mutating the flattened host geometry directly,
-         // only allow flatten when overflow stays visible and transform is
-         // absent.
+         // preserve clip/overflow scope the same way as Android's platform
+         // renderer. To avoid clipping previously replayed
+         // border/image/text contents, only allow flatten when overflow stays
+         // visible here. Other non-flatten CSS props, including transform,
+         // are filtered earlier by CheckHasNonFlattenCSSProps.
          //
          // TODO(songshourui.null): Revisit this once iOS supports both CUI
          // platform rendering and self rendering with separate clip semantics.
-         // Non-visible overflow or transformed nodes may become flattenable
-         // again once clip and transform are scoped to rendering content
-         // instead of the host view subtree.
-         && computed_css_style()->IsOverflowXY() &&
-         !computed_css_style()->HasTransform()
+         // Nodes with non-visible overflow may become flattenable again once
+         // clip is scoped to rendering content instead of the host view
+         // subtree.
+         && computed_css_style()->IsOverflowXY();
 #endif
-      ;
+  ;
 }
 
 double Element::GetFontSize() { return computed_css_style()->GetFontSize(); }
