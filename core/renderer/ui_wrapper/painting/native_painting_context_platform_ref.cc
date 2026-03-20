@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/event/event.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
@@ -23,7 +24,11 @@ namespace lynx::tasm {
 
 NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
     std::unique_ptr<PlatformRendererFactory> view_factory)
-    : view_factory_(std::move(view_factory)) {}
+    : view_factory_(std::move(view_factory)) {
+  // TODO(hexionghui): The task runner should be obtained from the shell.
+  event_target_exposure_ = std::make_shared<PlatformEventTargetExposure>(
+      this, base::UIThread::GetRunner());
+}
 
 void NativePaintingCtxPlatformRef::CreatePlatformRenderer(
     int id, PlatformRendererType type,
@@ -140,10 +145,6 @@ void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
   device_pixel_ratio = 1.0f;
 #endif
   event_target_helper_->SetDevicePixelRatio(device_pixel_ratio);
-  if (event_target_exposure_ != nullptr && engine_actor_ != nullptr) {
-    event_target_exposure_->SetTaskRunner(
-        engine_actor_->Impl()->GetTasm()->GetLepusTimedTaskRunner());
-  }
 }
 
 bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(

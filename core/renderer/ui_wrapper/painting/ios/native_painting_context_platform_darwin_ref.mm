@@ -14,17 +14,41 @@ NativePaintingCtxPlatformDarwinRef::NativePaintingCtxPlatformDarwinRef(
     : NativePaintingCtxPlatformRef(std::move(view_factory)) {}
 
 void NativePaintingCtxPlatformDarwinRef::GetRootViewLocationOnScreen(float location[2]) {
-  const auto res = static_cast<PlatformRendererDarwinFactory*>(view_factory_.get())
-                       ->GetContext()
-                       ->GetRootViewLocationOnScreen();
+  if (location == nullptr) {
+    return;
+  }
+  location[0] = 0.f;
+  location[1] = 0.f;
+
+  auto* factory = static_cast<PlatformRendererDarwinFactory*>(view_factory_.get());
+  if (factory == nullptr) {
+    return;
+  }
+  auto* context = factory->GetContext();
+  if (context == nullptr) {
+    return;
+  }
+  const auto res = context->GetRootViewLocationOnScreen();
   location[0] = res.x;
   location[1] = res.y;
 }
 
 void NativePaintingCtxPlatformDarwinRef::GetScreenSize(float size[2]) {
-  const auto res = static_cast<PlatformRendererDarwinFactory*>(view_factory_.get())
-                       ->GetContext()
-                       ->GetScreenSize();
+  if (size == nullptr) {
+    return;
+  }
+  size[0] = 0.f;
+  size[1] = 0.f;
+
+  auto* factory = static_cast<PlatformRendererDarwinFactory*>(view_factory_.get());
+  if (factory == nullptr) {
+    return;
+  }
+  auto* context = factory->GetContext();
+  if (context == nullptr) {
+    return;
+  }
+  const auto res = context->GetScreenSize();
   size[0] = res.width;
   size[1] = res.height;
 }

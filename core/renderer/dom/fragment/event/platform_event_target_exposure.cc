@@ -63,14 +63,6 @@ bool PlatformEventTargetExposure::ExposureTargetDetail::operator<(
   return unique_id_ < other.UniqueId();
 }
 
-void PlatformEventTargetExposure::SetTaskRunner(
-    const fml::RefPtr<fml::TaskRunner>& task_runner) {
-  task_runner_ = task_runner;
-  if (task_runner_ && scheduled_exposure_check_) {
-    ScheduleNextExposureCheck();
-  }
-}
-
 void PlatformEventTargetExposure::SetIntervalMs(int interval_ms) {
   if (interval_ms <= 0 || interval_ms > 1000 || interval_ms_ == interval_ms) {
     return;
