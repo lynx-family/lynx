@@ -1881,10 +1881,14 @@ void TouchEventHandler::StartEventFire(TemplateAssembler *tasm, bool is_stop,
             continue;
           }
 
-          if (!tasm->page_proxy()->element_manager()->IsAirModeFiberEnabled()) {
-            FireEvent(event_context.event_type, event_context.page_name,
-                      op.handler_, op.target_, op.current_target_, params);
-          }
+          // Since EmbeddedMode depends on AirMode, FireEvent will be
+          // intercepted in the case of EmbeddedMode+Frame. Therefore, the
+          // AirMode check is removed here to ensure that FireEvent executes
+          // normally. StartEventGenerate, StartEventCapture, StartEventBubble,
+          // and StartEventFire will be adapted later to follow the new event
+          // logic.
+          FireEvent(event_context.event_type, event_context.page_name,
+                    op.handler_, op.target_, op.current_target_, params);
         }
       }
       if (is_propagation) {
