@@ -11,6 +11,12 @@
 
 - (lynx::tasm::DisplayList *)getDisplayList;
 
+- (void)detachHostDecorationLayers;
+
+- (void)reattachHostDecorationLayers;
+
+- (void)syncHostDecorationLayers;
+
 // SubtreeProperties support
 - (void)applySubtreeProperties:(const lynx::tasm::SubtreeProperty *)properties count:(size_t)count;
 - (void)applyTransform:(const float *)transform;

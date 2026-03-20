@@ -13,6 +13,26 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+
+void LynxCUIApplyLayoutFrame(UIView* view, CGRect layout_frame) {
+  if (CATransform3DIsIdentity(view.layer.transform)) {
+    view.layer.anchorPoint = CGPointMake(0.5f, 0.5f);
+    [view setFrame:layout_frame];
+    return;
+  }
+
+  // CUI subtree transform matrices already bake transform-origin. Consume them
+  // with top-left anchor semantics so iOS does not apply an extra center pivot.
+  view.layer.anchorPoint = CGPointZero;
+  CGRect bounds = view.bounds;
+  bounds.size = layout_frame.size;
+  view.bounds = bounds;
+  view.layer.position = layout_frame.origin;
+}
+
+}  // namespace
+
 PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                                PlatformRendererType type)
     : PlatformRendererDarwin(context, id, type, base::String()) {}
@@ -41,9 +61,10 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
         // layer's OP_BEGIN.
         memcpy(frame, display_list_.GetContentFloatData(), 4 * sizeof(float));
 
-        [_view
-            setFrame:CGRectMake(frame[0] + display_list_.GetRenderOffset()[0],
-                                frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3])];
+        CGRect layout_frame =
+            CGRectMake(frame[0] + display_list_.GetRenderOffset()[0],
+                       frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3]);
+        LynxCUIApplyLayoutFrame(_view, layout_frame);
 
         if ([_view conformsToProtocol:@protocol(LUIBodyView)]) {
           ((UIView<LUIBodyView>*)_view).intrinsicContentSize = CGSizeMake(frame[2], frame[3]);
@@ -66,7 +87,10 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child) {
     return;
   }
 
-  [_view addSubview:static_cast<PlatformRendererDarwin*>(child)->GetUIView()];
+  auto* child_renderer = static_cast<PlatformRendererDarwin*>(child);
+  UIView<LynxRendererHost>* child_view = child_renderer->GetUIView();
+  [_view addSubview:child_view];
+  [[child_view getRenderer] reattachHostDecorationLayers];
 }
 
 void PlatformRendererDarwin::OnRemoveFromParent() {
@@ -74,6 +98,7 @@ void PlatformRendererDarwin::OnRemoveFromParent() {
     return;
   }
 
+  [[_view getRenderer] detachHostDecorationLayers];
   [_view removeFromSuperview];
 }
 

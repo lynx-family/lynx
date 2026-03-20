@@ -49,10 +49,33 @@
   [self ensureLynxDisplayListApplier];
 
   [_applier applyDisplayList:list_];
+  [_applier syncHostDecorationLayers];
 }
 
 - (lynx::tasm::DisplayList*)getDisplayList {
   return list_;
+}
+
+- (void)detachHostDecorationLayers {
+  if (_applier == nil) {
+    return;
+  }
+  [_applier detachHostDecorationLayers];
+}
+
+- (void)reattachHostDecorationLayers {
+  if (_applier == nil) {
+    return;
+  }
+  [_applier reattachHostDecorationLayers];
+  [_applier syncHostDecorationLayers];
+}
+
+- (void)syncHostDecorationLayers {
+  if (_applier == nil) {
+    return;
+  }
+  [_applier syncHostDecorationLayers];
 }
 
 #pragma mark - SubtreeProperties
@@ -62,14 +85,21 @@
     return;
   }
 
+  bool needs_sync = false;
   for (size_t i = 0; i < count; i++) {
     const auto& prop = properties[i];
 
     if (prop.type == lynx::tasm::DisplayListSubtreePropertyOpType::kTransform) {
       [self applyTransform:prop.data.transform];
+      needs_sync = true;
     } else if (prop.type == lynx::tasm::DisplayListSubtreePropertyOpType::kOpacity) {
       [self applyOpacity:prop.data.opacity];
+      needs_sync = true;
     }
+  }
+
+  if (needs_sync) {
+    [self syncHostDecorationLayers];
   }
 }
 

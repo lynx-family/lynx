@@ -17,6 +17,12 @@
 
 - (void)applyDisplayList:(lynx::tasm::DisplayList *)list;
 
+- (void)detachHostDecorationLayers;
+
+- (void)reattachHostDecorationLayers;
+
+- (void)syncHostDecorationLayers;
+
 - (void)reset;
 
 @end

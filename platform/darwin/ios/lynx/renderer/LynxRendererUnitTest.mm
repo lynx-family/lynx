@@ -12,7 +12,10 @@
 #import <XCTest/XCTest.h>
 #import <malloc/malloc.h>
 #include <objc/runtime.h>
+#include <utility>
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
 
 @interface LynxRenderer (Testing)
 - (void)ensureLynxDisplayListApplier;
@@ -46,6 +49,7 @@
 
   lynx::tasm::DisplayList list;
   [[mockApplier expect] applyDisplayList:&list];
+  [[mockApplier expect] syncHostDecorationLayers];
 
   [renderer updateDisplayList:&list];
 
@@ -65,9 +69,84 @@
   OCMStub([mockApplier alloc]).andReturn(mockApplier);
 
   // Verify initWithView:andContext: is called with the host and context
-  [[[mockApplier expect] andReturn:mockApplier] initWithView:host andContext:context];
+  (void)[[[mockApplier expect] andReturn:mockApplier] initWithView:host andContext:context];
 
   [renderer ensureLynxDisplayListApplier];
+
+  [mockApplier verify];
+  [mockApplier stopMocking];
+}
+
+- (void)testDetachHostDecorationLayers {
+  id host = OCMProtocolMock(@protocol(LynxRendererHost));
+  id context = OCMClassMock([LynxRendererContext class]);
+  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:host
+                                                            andSign:1
+                                                         andContext:context];
+
+  id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
+  OCMStub([mockApplier alloc]).andReturn(mockApplier);
+  OCMStub([mockApplier initWithView:host andContext:context]).andReturn(mockApplier);
+  [renderer ensureLynxDisplayListApplier];
+
+  [[mockApplier expect] detachHostDecorationLayers];
+  [renderer detachHostDecorationLayers];
+
+  [mockApplier verify];
+  [mockApplier stopMocking];
+}
+
+- (void)testReattachHostDecorationLayers {
+  id host = OCMProtocolMock(@protocol(LynxRendererHost));
+  id context = OCMClassMock([LynxRendererContext class]);
+  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:host
+                                                            andSign:1
+                                                         andContext:context];
+
+  id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
+  OCMStub([mockApplier alloc]).andReturn(mockApplier);
+  OCMStub([mockApplier initWithView:host andContext:context]).andReturn(mockApplier);
+  [renderer ensureLynxDisplayListApplier];
+
+  [[mockApplier expect] reattachHostDecorationLayers];
+  [[mockApplier expect] syncHostDecorationLayers];
+  [renderer reattachHostDecorationLayers];
+
+  [mockApplier verify];
+  [mockApplier stopMocking];
+}
+
+- (void)testApplySubtreePropertiesSyncsHostDecorationLayersOnce {
+  LynxContainerView* hostView = [[LynxContainerView alloc] init];
+  id context = OCMClassMock([LynxRendererContext class]);
+  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:hostView
+                                                            andSign:1
+                                                         andContext:context];
+
+  id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
+  OCMStub([mockApplier alloc]).andReturn(mockApplier);
+  OCMStub([mockApplier initWithView:hostView andContext:context]).andReturn(mockApplier);
+  [renderer ensureLynxDisplayListApplier];
+
+  lynx::tasm::SubtreeProperty props[2];
+
+  props[0].type = lynx::tasm::DisplayListSubtreePropertyOpType::kTransform;
+  float* transform = props[0].data.transform;
+  float transformMatrix[16] = {
+      1.0f, 0.0f, 0.0f, 0.0f, 0.0f,  1.0f,  0.0f, 0.0f,
+      0.0f, 0.0f, 1.0f, 0.0f, 20.0f, 30.0f, 0.0f, 1.0f,
+  };
+  memcpy(transform, transformMatrix, sizeof(transformMatrix));
+
+  props[1].type = lynx::tasm::DisplayListSubtreePropertyOpType::kOpacity;
+  props[1].data.opacity = 0.5f;
+
+  [[mockApplier expect] syncHostDecorationLayers];
+  [renderer applySubtreeProperties:props count:2];
+
+  XCTAssertEqual(hostView.alpha, 0.5f);
+  XCTAssertEqual(hostView.layer.transform.m41, 20.0f);
+  XCTAssertEqual(hostView.layer.transform.m42, 30.0f);
 
   [mockApplier verify];
   [mockApplier stopMocking];
@@ -125,6 +204,34 @@
   XCTAssertEqual(transform.m41, 100.0f);  // translateX
   XCTAssertEqual(transform.m42, 50.0f);   // translateY
   XCTAssertEqual(transform.m43, 0.0f);    // translateZ
+}
+
+- (void)testPlatformRendererDarwinUsesTopLeftAnchorForTransformedLayout {
+  lynx::tasm::PlatformRendererContextDarwin context(nil);
+  lynx::tasm::PlatformRendererDarwin renderer(&context, 13, PlatformRendererType::kView);
+  UIView<LynxRendererHost>* view = renderer.GetUIView();
+  XCTAssertNotNil(view);
+
+  float rotate[16] = {
+      0.70710677f, 0.70710677f, 0.0f, 0.0f, -0.70710677f, 0.70710677f, 0.0f, 0.0f,
+      0.0f,        0.0f,        1.0f, 0.0f, 60.0f,        -24.852814f, 0.0f, 1.0f,
+  };
+  [[view getRenderer] applyTransform:rotate];
+
+  lynx::tasm::DisplayList list;
+  list.AddOperation(lynx::tasm::DisplayListOpType::kBegin, 13, 135.0f, 45.0f, 120.0f, 120.0f);
+  list.AddOperation(lynx::tasm::DisplayListOpType::kEnd);
+  renderer.OnUpdateDisplayList(std::move(list));
+
+  XCTAssertTrue(CGPointEqualToPoint(view.layer.anchorPoint, CGPointZero));
+  XCTAssertTrue(CGPointEqualToPoint(view.layer.position, CGPointMake(135.0f, 45.0f)));
+  XCTAssertTrue(CGRectEqualToRect(view.bounds, CGRectMake(0.0f, 0.0f, 120.0f, 120.0f)));
+  XCTAssertEqualWithAccuracy(view.layer.transform.m11, 0.70710677f, 0.001f);
+  XCTAssertEqualWithAccuracy(view.layer.transform.m12, 0.70710677f, 0.001f);
+  XCTAssertEqualWithAccuracy(view.layer.transform.m21, -0.70710677f, 0.001f);
+  XCTAssertEqualWithAccuracy(view.layer.transform.m22, 0.70710677f, 0.001f);
+  XCTAssertEqualWithAccuracy(view.layer.transform.m41, 60.0f, 0.001f);
+  XCTAssertEqualWithAccuracy(view.layer.transform.m42, -24.852814f, 0.001f);
 }
 
 - (void)testApplyTransformScale {

@@ -16,6 +16,14 @@
 using namespace lynx;
 using namespace lynx::tasm;
 
+@interface LynxDisplayListApplier ()
+
+- (void)insertHostDecorationLayer:(CALayer *)layer;
+- (void)insertLayer:(CALayer *)layer forOp:(DisplayListOpType)op;
+- (BOOL)shouldInsertAsHostDecorationForOp:(DisplayListOpType)op;
+
+@end
+
 @implementation LynxDisplayListApplier {
   __weak UIView<LynxRendererHost> *_view;
   LynxRendererContext *_renderer_context;
@@ -31,13 +39,17 @@ using namespace lynx::tasm;
   std::stack<float> y_stack_;
   float top_offset_;
 
+  std::stack<int32_t> sign_stack_;
+
   base::Vector<RoundedRectangle> box_array_;
 
   CALayer *_refLayer;
+  CALayer *_hostDecorationRefLayer;
 
   NSMutableDictionary<NSNumber *, LynxImageManager *> *_imageManagers;
   NSMutableArray<UIImageView *> *_contentImageViews;
   NSMutableArray<CALayer *> *_contentLayers;
+  NSMutableArray<CALayer *> *_hostDecorationLayers;
 }
 
 - (instancetype)initWithView:(UIView<LynxRendererHost> *)view
@@ -55,8 +67,10 @@ using namespace lynx::tasm;
     top_offset_ = 0;
 
     _refLayer = nil;
+    _hostDecorationRefLayer = nil;
     _contentImageViews = [NSMutableArray new];
     _contentLayers = [NSMutableArray new];
+    _hostDecorationLayers = [NSMutableArray new];
   }
   return self;
 }
@@ -89,8 +103,10 @@ using namespace lynx::tasm;
     switch (op) {
       case DisplayListOpType::kBegin: {
         bool record_offset = false;
-        if (int_count == 1) {
-          record_offset = [[_view getRenderer] getSign] != [self nextContentInt];
+        if (int_count >= 1) {
+          int32_t sign = [self nextContentInt];
+          record_offset = [[_view getRenderer] getSign] != sign;
+          sign_stack_.emplace(sign);
         }
 
         if (float_count == 4) {
@@ -106,6 +122,9 @@ using namespace lynx::tasm;
         break;
       }
       case DisplayListOpType::kEnd: {
+        if (!sign_stack_.empty()) {
+          sign_stack_.pop();
+        }
         left_offset_ -= x_stack_.top();
         x_stack_.pop();
 
@@ -125,7 +144,7 @@ using namespace lynx::tasm;
         CALayer *layer = [[CALayer alloc] init];
         layer.backgroundColor = [[UIColor alloc] initWithRed:r green:g blue:b alpha:a].CGColor;
         [self applyRectToLayer:layer withBoxIndex:clip_index];
-        [self insertLayer:layer];
+        [self insertLayer:layer forOp:op];
         break;
       }
       case DisplayListOpType::kDrawView: {
@@ -226,7 +245,7 @@ using namespace lynx::tasm;
                                       outBox.GetWidth(), outBox.GetHeight());
             borderLayer.frame = frame;
 
-            [self insertLayer:borderLayer];
+            [self insertLayer:borderLayer forOp:op];
           }
         }
         break;
@@ -357,6 +376,8 @@ using namespace lynx::tasm;
   left_offset_ = 0;
   box_array_.clear();
   _refLayer = nil;
+  _hostDecorationRefLayer = nil;
+  sign_stack_ = std::stack<int32_t>();
 
   // Clear previous clip state
   if (_view) {
@@ -374,9 +395,69 @@ using namespace lynx::tasm;
     [layer removeFromSuperlayer];
   }
   [_contentLayers removeAllObjects];
+
+  for (CALayer *layer in _hostDecorationLayers) {
+    [layer removeFromSuperlayer];
+  }
+  [_hostDecorationLayers removeAllObjects];
+}
+
+- (void)detachHostDecorationLayers {
+  _hostDecorationRefLayer = nil;
+  for (CALayer *layer in _hostDecorationLayers) {
+    [layer removeFromSuperlayer];
+  }
+}
+
+- (void)reattachHostDecorationLayers {
+  CALayer *hostLayer = _view.layer;
+  CALayer *superLayer = hostLayer.superlayer;
+  if (superLayer == nil || _hostDecorationLayers.count == 0) {
+    return;
+  }
+
+  _hostDecorationRefLayer = nil;
+  for (CALayer *layer in _hostDecorationLayers) {
+    [layer removeFromSuperlayer];
+    if (_hostDecorationRefLayer == nil) {
+      [superLayer insertSublayer:layer below:hostLayer];
+    } else {
+      [superLayer insertSublayer:layer above:_hostDecorationRefLayer];
+    }
+    _hostDecorationRefLayer = layer;
+  }
+}
+
+- (void)syncHostDecorationLayers {
+  if (_view == nil || _hostDecorationLayers.count == 0) {
+    return;
+  }
+
+  CALayer *hostLayer = _view.layer;
+  float hostOpacity = hostLayer.opacity;
+  BOOL hostHidden = _view.hidden || hostLayer.hidden;
+
+  [CATransaction begin];
+  [CATransaction setDisableActions:YES];
+
+  for (CALayer *layer in _hostDecorationLayers) {
+    layer.transform = CATransform3DIdentity;
+    layer.anchorPoint = hostLayer.anchorPoint;
+    layer.bounds = hostLayer.bounds;
+    layer.position = hostLayer.position;
+    layer.transform = hostLayer.transform;
+
+    layer.opacity = hostOpacity;
+    layer.hidden = hostHidden;
+  }
+
+  [CATransaction commit];
 }
 
 - (void)applyRectToLayer:(CALayer *)layer withBoxIndex:(int32_t)index {
+  if (index < 0 || static_cast<size_t>(index) >= box_array_.size()) {
+    return;
+  }
   auto &box = box_array_[index];
   CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
   rect.origin.x += left_offset_;
@@ -386,12 +467,44 @@ using namespace lynx::tasm;
 
 - (void)insertLayer:(CALayer *)layer {
   if (_refLayer == nil) {
-    [_view.layer addSublayer:layer];
+    [_view.layer insertSublayer:layer atIndex:0];
   } else {
     [_view.layer insertSublayer:layer above:_refLayer];
   }
   [_contentLayers addObject:layer];
   _refLayer = layer;
+}
+
+- (void)insertLayer:(CALayer *)layer forOp:(DisplayListOpType)op {
+  if ([self shouldInsertAsHostDecorationForOp:op]) {
+    [self insertHostDecorationLayer:layer];
+  } else {
+    [self insertLayer:layer];
+  }
+}
+
+- (void)insertHostDecorationLayer:(CALayer *)layer {
+  CALayer *hostLayer = _view.layer;
+  CALayer *superLayer = hostLayer.superlayer;
+  if (superLayer == nil) {
+    [_hostDecorationLayers addObject:layer];
+    return;
+  }
+
+  if (_hostDecorationRefLayer == nil) {
+    [superLayer insertSublayer:layer below:hostLayer];
+  } else {
+    [superLayer insertSublayer:layer above:_hostDecorationRefLayer];
+  }
+  [_hostDecorationLayers addObject:layer];
+  _hostDecorationRefLayer = layer;
+}
+
+- (BOOL)shouldInsertAsHostDecorationForOp:(DisplayListOpType)op {
+  if (sign_stack_.empty() || sign_stack_.top() != [[_view getRenderer] getSign]) {
+    return NO;
+  }
+  return op == DisplayListOpType::kFill || op == DisplayListOpType::kBorder;
 }
 
 - (UIImageView *)createImageView {

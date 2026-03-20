@@ -16,9 +16,28 @@ using namespace lynx::tasm;
 
 // Define a mock view class that implements the protocol
 @interface LynxMockView : UIView <LynxRendererHost>
+@property(nonatomic, strong) LynxRenderer *renderer;
 @end
 
 @implementation LynxMockView
+
+- (void)setRenderer:(LynxRenderer *)renderer {
+  _renderer = renderer;
+}
+
+- (LynxRenderer *)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext *)context {
+  self.renderer = [[LynxRenderer alloc] initWithRenderHost:self andSign:sign andContext:context];
+  return self.renderer;
+}
+
+- (LynxRenderer *)getRenderer {
+  return self.renderer;
+}
+
+- (UIView *)getView {
+  return self;
+}
+
 @end
 
 @interface LynxDisplayListApplierUnitTest : XCTestCase
@@ -106,9 +125,8 @@ using namespace lynx::tasm;
   // So 0xFF0000FF -> A=FF, R=00, G=00, B=FF.
   list.AddOperation(DisplayListOpType::kFill, (int32_t)0xFF0000FF, 0);
 
-  // Expectation: A layer should be added.
-  // Since _refLayer is nil initially, it calls [view.layer addSublayer:newLayer]
-  [[mockLayer expect] addSublayer:[OCMArg any]];
+  // Expectation: A layer should be added at the bottom of the host layer tree.
+  [[mockLayer expect] insertSublayer:[OCMArg any] atIndex:0];
 
   // 4. kDrawView
   // int_count=1 (view_id)
@@ -145,36 +163,6 @@ using namespace lynx::tasm;
 
   [applier applyDisplayList:&list];
   // Verify no crash
-}
-
-- (void)testBeginWithIntCountNotOne {
-  id mockUIView = OCMClassMock([LynxMockView class]);
-  id mockLayer = OCMClassMock([CALayer class]);
-  id mockContext = OCMClassMock([LynxRendererContext class]);
-  [[[mockUIView stub] andReturn:mockLayer] layer];
-
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
-                                                                      andContext:mockContext];
-
-  DisplayList list;
-  // kBegin with int_count=0 -> record_offset should be false
-  // float_count=4 -> x, y, w, h
-  list.AddOperation(DisplayListOpType::kBegin, 0, 10.0f, 20.0f, 100.0f, 100.0f);
-
-  // kRecordBox at 0,0
-  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 50.0f, 50.0f);
-
-  // kFill
-  list.AddOperation(DisplayListOpType::kFill, (int32_t)0xFFFFFFFF, 0);
-
-  // Expectation: offset (10, 20) NOT applied
-  [[mockLayer expect] addSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
-                        CGRect frame = layer.frame;
-                        return (frame.origin.x == 0.0f && frame.origin.y == 0.0f);
-                      }]];
-
-  [applier applyDisplayList:&list];
-  [mockLayer verify];
 }
 
 - (void)testDrawViewWithIntCountNotOne {
@@ -356,10 +344,12 @@ using namespace lynx::tasm;
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockRenderer = OCMClassMock([LynxRenderer class]);
   id mockLayer = OCMClassMock([CALayer class]);
+  id mockSuperLayer = OCMClassMock([CALayer class]);
   id mockContext = OCMClassMock([LynxRendererContext class]);
 
   [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
   [[[mockUIView stub] andReturn:mockLayer] layer];
+  [[[mockLayer stub] andReturn:mockSuperLayer] superlayer];
 
   // Renderer sign is 1
   [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
@@ -384,15 +374,17 @@ using namespace lynx::tasm;
   // Offsets (10, 20) should NOT be added.
   // Rect should be (0, 0, 50, 50) NOT (10, 20, 50, 50)
 
-  [[mockLayer expect] addSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
-                        CGRect frame = layer.frame;
-                        // Verify offset was NOT applied
-                        return (frame.origin.x == 0.0f && frame.origin.y == 0.0f);
-                      }]];
+  [[mockSuperLayer expect] insertSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
+                             CGRect frame = layer.frame;
+                             // Verify offset was NOT applied
+                             return (frame.origin.x == 0.0f && frame.origin.y == 0.0f);
+                           }]
+                                    below:mockLayer];
 
   [applier applyDisplayList:&list];
 
   [mockLayer verify];
+  [mockSuperLayer verify];
 }
 
 - (void)testNestedBeginEnd {
@@ -427,10 +419,11 @@ using namespace lynx::tasm;
   list.AddOperation(DisplayListOpType::kFill, (int32_t)0xFFFFFFFF, 0);
 
   // Expectation: Total offset 30, 30
-  [[mockLayer expect] addSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
+  [[mockLayer expect] insertSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
                         CGRect frame = layer.frame;
                         return (frame.origin.x == 30.0f && frame.origin.y == 30.0f);
-                      }]];
+                      }]
+                             atIndex:0];
 
   // kEnd (Pops 20, 20) -> Offset back to 10, 10
   list.AddOperation(DisplayListOpType::kEnd);
@@ -466,10 +459,11 @@ using namespace lynx::tasm;
   list.AddOperation(DisplayListOpType::kText, 123, 0);
 
   // Expectation: LynxTextLayer added with correct frame
-  [[mockLayer expect] addSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
+  [[mockLayer expect] insertSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
                         return [layer isKindOfClass:[LynxTextLayer class]] &&
                                CGRectEqualToRect(layer.frame, CGRectMake(10, 10, 100, 50));
-                      }]];
+                      }]
+                             atIndex:0];
 
   [applier applyDisplayList:&list];
 
@@ -504,14 +498,133 @@ using namespace lynx::tasm;
                     1, 2, 3, 1);                               // top, right, bottom, left styles
 
   // Expectation: A layer should be added with border image
-  [[mockLayer expect] addSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
+  [[mockLayer expect] insertSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
                         // Verify it's a CALayer with contents (border image)
                         return [layer isKindOfClass:[CALayer class]] && layer.contents != nil;
-                      }]];
+                      }]
+                             atIndex:0];
 
   [applier applyDisplayList:&list];
 
   [mockLayer verify];
+}
+
+- (void)testProcessContentOperationsWithHostBorderDecoration {
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
+  id mockSuperLayer = OCMClassMock([CALayer class]);
+  id mockRenderer = OCMClassMock([LynxRenderer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+  [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
+  [[[mockLayer stub] andReturn:mockSuperLayer] superlayer];
+  [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kBegin, 1, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 10.0f, 80.0f, 80.0f);
+  list.AddOperation(DisplayListOpType::kBorder, 0, 1, (int32_t)0xFFFF0000, (int32_t)0xFF00FF00,
+                    (int32_t)0xFF0000FF, (int32_t)0xFFFFFF00, 1, 2, 3, 1);
+
+  [[mockSuperLayer expect] insertSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
+                             return [layer isKindOfClass:[CALayer class]] && layer.contents != nil;
+                           }]
+                                    below:mockLayer];
+
+  [applier applyDisplayList:&list];
+
+  [mockLayer verify];
+  [mockSuperLayer verify];
+}
+
+- (void)testHostDecorationLayersDetachAndReattach {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxRenderer *renderer = [[LynxRenderer alloc] initWithRenderHost:view andSign:1 andContext:nil];
+  [view setRenderer:renderer];
+
+  UIView *firstSuperview = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  [firstSuperview addSubview:view];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kBegin, 1, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 50.0f, 50.0f);
+  list.AddOperation(DisplayListOpType::kFill, (int32_t)0xFFFF0000, 0);
+
+  [applier applyDisplayList:&list];
+
+  CALayer *decorationLayer = nil;
+  for (CALayer *layer in firstSuperview.layer.sublayers) {
+    if (layer != view.layer) {
+      decorationLayer = layer;
+      break;
+    }
+  }
+
+  XCTAssertNotNil(decorationLayer);
+  XCTAssertEqual(decorationLayer.superlayer, firstSuperview.layer);
+  XCTAssertLessThan([firstSuperview.layer.sublayers indexOfObject:decorationLayer],
+                    [firstSuperview.layer.sublayers indexOfObject:view.layer]);
+
+  [applier detachHostDecorationLayers];
+  XCTAssertNil(decorationLayer.superlayer);
+
+  UIView *secondSuperview = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  [view removeFromSuperview];
+  [secondSuperview addSubview:view];
+
+  [applier reattachHostDecorationLayers];
+
+  XCTAssertEqual(decorationLayer.superlayer, secondSuperview.layer);
+  XCTAssertLessThan([secondSuperview.layer.sublayers indexOfObject:decorationLayer],
+                    [secondSuperview.layer.sublayers indexOfObject:view.layer]);
+}
+
+- (void)testSyncHostDecorationLayersMatchesHostLayerGeometry {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 100)];
+  LynxRenderer *renderer = [[LynxRenderer alloc] initWithRenderHost:view andSign:1 andContext:nil];
+  [view setRenderer:renderer];
+
+  UIView *superview = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 300)];
+  [superview addSubview:view];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kBegin, 1, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 15.0f, 40.0f, 50.0f);
+  list.AddOperation(DisplayListOpType::kFill, (int32_t)0xFFFF0000, 0);
+
+  [applier applyDisplayList:&list];
+
+  CALayer *decorationLayer = nil;
+  for (CALayer *layer in superview.layer.sublayers) {
+    if (layer != view.layer) {
+      decorationLayer = layer;
+      break;
+    }
+  }
+
+  XCTAssertNotNil(decorationLayer);
+
+  view.alpha = 0.4f;
+  view.layer.transform = CATransform3DMakeTranslation(15.0f, 25.0f, 0.0f);
+
+  [applier syncHostDecorationLayers];
+
+  XCTAssertTrue(CGRectEqualToRect(decorationLayer.bounds, view.layer.bounds));
+  XCTAssertTrue(CGPointEqualToPoint(decorationLayer.anchorPoint, view.layer.anchorPoint));
+  XCTAssertTrue(CGPointEqualToPoint(decorationLayer.position, view.layer.position));
+  XCTAssertTrue(CATransform3DEqualToTransform(decorationLayer.transform, view.layer.transform));
+  XCTAssertEqualWithAccuracy(decorationLayer.opacity, view.alpha, 0.001f);
 }
 
 - (void)testProcessContentOperationsWithBorderInvalidIndices {
@@ -554,7 +667,7 @@ using namespace lynx::tasm;
                     (int32_t)0xFF0000FF, (int32_t)0xFFFFFF00, 1, 1, 1, 1);
 
   // No layer should be added since border width is zero
-  OCMReject([mockLayer addSublayer:[OCMArg any]]);
+  OCMReject([mockLayer insertSublayer:[OCMArg any] atIndex:0]);
 
   [applier applyDisplayList:&list];
 
