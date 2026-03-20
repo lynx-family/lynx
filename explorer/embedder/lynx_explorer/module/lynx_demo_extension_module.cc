@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "explorer/embedder/lynx_explorer/module/lynx_demo_extension_module.h"
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -23,23 +23,27 @@ napi_value EXTestMethod(napi_env env, napi_callback_info info) {
 
   size_t argc = 1;
   napi_value argv[1];
-  env->napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+  napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
   if (argc < 1) {
     return nullptr;
   }
   int32_t arg1;
-  env->napi_get_value_int32(env, argv[0], &arg1);
+  napi_get_value_int32(env, argv[0], &arg1);
   napi_value result;
-  env->napi_get_boolean(env, arg1 > 0, &result);
+  napi_get_boolean(env, arg1 > 0, &result);
   return result;
 }
 
-napi_value LynxDemoExtensionModuleCreator(napi_env env, napi_value exports,
-                                          const char* module_name,
-                                          void* opaque) {
+Napi::Value LynxDemoExtensionModuleCreator(Napi::Env env, Napi::Value exports,
+                                           const char* module_name,
+                                           LynxDemoExtensionModule& module) {
   napi_value func;
-  env->napi_create_function(env, "exTestMethod", 1, &EXTestMethod, 0, &func);
-  env->napi_set_named_property(env, exports, "exTestMethod", func);
+  // TODO(wujintian): Replace all NAPI C APIs in the module with C++ APIs
+  napi_create_function(static_cast<napi_env>(env), "exTestMethod", 1,
+                       &EXTestMethod, 0, &func);
+  napi_set_named_property(static_cast<napi_env>(env),
+                          static_cast<napi_value>(exports), "exTestMethod",
+                          func);
   return exports;
 }
 
@@ -62,9 +66,9 @@ lynx_extension_module_t* LynxDemoExtensionModule::CreateCModule(void* opaque) {
 }
 
 void LynxDemoExtensionModule::OnRuntimeAttach(
-    napi_env env, std::unique_ptr<pub::VSyncObserver> vsync_observer) {
-  lynx_napi_set_instance_data(env, kDemoExtensionModuleID, this, nullptr,
-                              nullptr);
+    Napi::Env env, std::unique_ptr<pub::VSyncObserver> vsync_observer) {
+  lynx_napi_set_instance_data(static_cast<napi_env>(env),
+                              kDemoExtensionModuleID, this, nullptr, nullptr);
 }
 
 void LynxDemoExtensionModule::Destroy() {

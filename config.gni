@@ -94,6 +94,9 @@ declare_args() {
   # Whether to enable embedder layer for desktop.
   # If true, we can eliminate some unused platform-layer compilation units.
   desktop_enable_embedder_layer = false
+
+  # Controls whether to use weak_node_api symbols with the _weak suffix. In some cases, this configuration needs to be enabled to avoid conflicts with other NAPI symbols.
+  use_weak_suffix_napi = true
 }
 
 declare_args() {

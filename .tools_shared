@@ -106,6 +106,8 @@ checker-config:
       - "core/include/starlight_standalone"
       - "/public/"
       - "clay/third_party/"
+      - "third_party/napi/include/"
+      - "explorer/"
     header-extend-prefixes:
       - "public"
     ignore-header-files:

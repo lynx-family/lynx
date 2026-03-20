@@ -144,6 +144,7 @@ class ValueUtilsNapiPrimJS {
                                                const Value& value);
   static napi_value ConvertPubValueToNapiObject(napi_env env,
                                                 const Value& value);
+  static void* ConvertPubValueToOpaqueNapiValue(void* env, const Value& value);
 };
 
 }  // namespace pub

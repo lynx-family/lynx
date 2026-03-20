@@ -14,6 +14,8 @@ lynx_core_source_set("base_module") {
     "lynx_native_module_napi.cc",
     "lynx_native_module_napi.h",
   ]
+  defines = [ "NAPI_CPP_CUSTOM_NAMESPACE=weak_node_api" ]
+  public_configs = [ "../../../third_party/weak-node-api:weak_node_api_config" ]
 }
 
 lynx_core_source_set("module") {
@@ -27,8 +29,7 @@ lynx_core_source_set("module") {
     "lynx_fetch_module.cc",
     "lynx_fetch_module.h",
   ]
-  deps = [
-    ":base_module",
-    "../../../third_party/napi:env",
-  ]
+  deps = [ ":base_module" ]
+  public_configs = [ "../../../third_party/weak-node-api:weak_node_api_config" ]
+  defines = [ "NAPI_CPP_CUSTOM_NAMESPACE=weak_node_api" ]
 }

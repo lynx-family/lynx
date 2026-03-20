@@ -25,3 +25,5 @@ _lynx_malloc*
 _lynx_strdup*
 _lynx_trace_*
 _lynx_log_write_detailed*
+# weak-node-api symbols
+_napi*_weak

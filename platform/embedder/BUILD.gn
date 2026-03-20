@@ -7,6 +7,10 @@ import("../../testing/test.gni")
 
 config("public_api") {
   include_dirs = [ "./public" ]
+  defines = [
+    "NAPI_DISABLE_CPP_EXCEPTIONS",
+    "NAPI_DISABLE_CPP_RTTI",
+  ]
 }
 
 config("config") {
@@ -66,7 +70,15 @@ lynx_core_source_set("embedder") {
     "./resource:resource",
   ]
   if (enable_napi_binding) {
-    public_deps += [ "./module:module" ]
+    public_deps += [
+      "../../third_party/napi:weak_node_api_host",
+      "./module:module",
+    ]
+    defines = [
+      "NAPI_CPP_CUSTOM_NAMESPACE=weak_node_api",
+      "NAPI_DISABLE_CPP_EXCEPTIONS",
+      "NAPI_DISABLE_CPP_RTTI",
+    ]
   }
 
   public_configs = [
@@ -171,14 +183,17 @@ copy("lynx_value_api") {
 
 copy("lynx_napi_api") {
   sources = [
-    "../../third_party/napi/include/js_native_api.h",
-    "../../third_party/napi/include/js_native_api_types.h",
-    "../../third_party/napi/include/primjs_napi_defines.h",
-    "../../third_party/napi/include/primjs_napi_undefs.h",
+    "../../third_party/weak-node-api/headers/js_native_api.h",
+    "../../third_party/weak-node-api/headers/js_native_api_types.h",
+    "../../third_party/weak-node-api/headers/napi-inl.deprecated.h",
+    "../../third_party/weak-node-api/headers/napi-inl.h",
+    "../../third_party/weak-node-api/headers/napi.h",
+    "../../third_party/weak-node-api/headers/node_api.h",
+    "../../third_party/weak-node-api/headers/node_api_types.h",
+    "../../third_party/weak-node-api/headers/weak_napi_defines.h",
+    "../../third_party/weak-node-api/headers/weak_napi_undefs.h",
   ]
-  outputs = [
-    "$root_build_dir/include/third_party/napi/include/{{source_file_part}}",
-  ]
+  outputs = [ "$root_build_dir/include/third_party/weak-node-api/headers/{{source_file_part}}" ]
 }
 
 if (enable_unittests) {

@@ -6,6 +6,7 @@ import("//build/apple/templates/darwin_general_bundle.gni")
 import("//build/apple/templates/xib.gni")
 import("//build/config/mac/mac_sdk.gni")
 import("//build/config/mac/templates/mac_app_bundle.gni")
+import("//config.gni")
 import("../../../../core/Lynx.gni")
 import("../../../../oliver/oliver.gni")
 
@@ -64,8 +65,9 @@ mac_app_bundle("lynx_explorer") {
     "LynxExplorer/service/LynxHttpService.h",
     "LynxExplorer/service/LynxHttpService.mm",
   ]
-
-  defines = []
+  if (use_weak_suffix_napi) {
+    defines = [ "USE_WEAK_SUFFIX_NAPI=1" ]
+  }
 
   cflags_objc = [
     "-fobjc-arc",
