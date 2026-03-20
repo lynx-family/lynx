@@ -57,6 +57,7 @@
 #define LYNX_VERSION_1_6 tasm::V_1_6
 #define FEATURE_TEMPLATE_SCRIPT tasm::V_2_3
 #define FEATURE_NEW_RENDER_PAGE tasm::V_2_1
+#define FEATURE_OPT_LEPUS_BYTECODE tasm::V_3_8
 
 #define LYNX_VERSION_1_0 tasm::V_1_0
 #define LYNX_VERSION_1_1 tasm::V_1_1

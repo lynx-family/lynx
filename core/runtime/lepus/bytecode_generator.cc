@@ -8,6 +8,9 @@
 
 #include "core/parser/input_stream.h"
 #include "core/runtime/lepus/code_generator.h"
+#include "core/runtime/lepus/ir/ir_context.h"
+#include "core/runtime/lepus/ir/pass_manager/pipeline.h"
+#include "core/runtime/lepus/ir/value.h"
 #include "core/runtime/lepus/parser.h"
 
 namespace lynx {
@@ -16,14 +19,15 @@ namespace lepus {
 std::string BytecodeGenerator::GenerateBytecode(MTSContext* context,
                                                 const std::string& source,
                                                 const std::string& sdk_version,
-                                                const std::string& file_name) {
+                                                const std::string& file_name,
+                                                const char* ir_dump_path) {
   if (!context) {
     return "Compile error: the context is nullptr.";
   }
   context->SetSdkVersion(sdk_version);
   if (context->Type() == ContextType::VMContextType) {
     return GenerateBytecodeForVMContext(static_cast<VMContext*>(context),
-                                        source, sdk_version);
+                                        source, sdk_version, ir_dump_path);
   }
   return GenerateBytecodeForQuickContext(static_cast<QuickContext*>(context),
                                          source, sdk_version, file_name);
@@ -31,7 +35,7 @@ std::string BytecodeGenerator::GenerateBytecode(MTSContext* context,
 
 std::string BytecodeGenerator::GenerateBytecodeForVMContext(
     VMContext* context, const std::string& source,
-    const std::string& sdk_version) {
+    const std::string& sdk_version, const char* ir_dump_path) {
   parser::InputStream input;
   input.Write(source);
   Scanner scanner(&input);
@@ -42,7 +46,6 @@ std::string BytecodeGenerator::GenerateBytecodeForVMContext(
   semantic_analysis.SetInput(&scanner);
   semantic_analysis.SetSdkVersion(sdk_version);
   semantic_analysis.SetClosureFix(context->GetClosureFix());
-
   CodeGenerator code_generator(context, &semantic_analysis);
   std::unique_ptr<ASTree> root;
   root.reset(parser.Parse());
@@ -51,10 +54,18 @@ std::string BytecodeGenerator::GenerateBytecodeForVMContext(
   // root->Accept(&ast_dump, nullptr);
   root->Accept(&code_generator, nullptr);
 
-  if (context->GetRootFunction()) {
-    context->GetRootFunction()->SetSource(source);
-  }
+  auto root_func = context->GetRootFunction();
+  if (!root_func) return std::string();
+  root_func->SetSource(source);
 
+  if (context->OptBytecode()) {
+    // optimize lepus bytecode.
+    std::cout << "opt lepus bytecode..." << std::endl;
+    root_func->SetTopLevelFunction(true);
+    auto ir_context = std::make_unique<ir::IRContext>(context);
+    ir_context->Init(root_func, context);
+    ir::RunO1OptimizationPasses(*ir_context->GetMainMod(), ir_dump_path);
+  }
   return std::string();
 }
 

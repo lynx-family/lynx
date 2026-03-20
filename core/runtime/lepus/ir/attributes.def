@@ -1,0 +1,69 @@
+#ifndef ATTRIBUTE
+#define ATTRIBUTE(name, desc, type, typename)
+#endif
+
+#ifndef BOOL_ATTRIBUTE
+#define BOOL_ATTRIBUTE(name, desc, type, typename)
+#endif
+
+#ifndef NON_BOOL_ATTRIBUTE
+#define NON_BOOL_ATTRIBUTE(name, desc, type, typename)
+#endif
+
+#ifndef UNSIGNED_ATTRIBUTE
+#define UNSIGNED_ATTRIBUTE(name, desc, type, typename)
+#endif
+
+#ifndef VALUE_ATTRIBUTE
+#define VALUE_ATTRIBUTE(name, desc, type, typename)
+#endif
+
+#ifndef STRING_ATTRIBUTE
+#define STRING_ATTRIBUTE(name, desc, type, typename)
+#endif
+
+#ifndef VALUE_ATTRIBUTE
+#define VALUE_ATTRIBUTE(name, desc, type, typename)
+#endif
+
+#define DECLARE_BOOL_ATTRIBUTE(attr, desc)                                     \
+  ATTRIBUTE(attr, desc, bool, Bool) BOOL_ATTRIBUTE(attr, desc, bool, Bool)
+
+#define DECLARE_UNSIGNED_ATTRIBUTE(attr, desc)                                 \
+  ATTRIBUTE(attr, desc, unsigned, Unsigned)                                    \
+  NON_BOOL_ATTRIBUTE(attr, desc, unsigned, Unsigned)                           \
+  UNSIGNED_ATTRIBUTE(attr, desc, unsigned, Unsigned)
+
+#define DECLARE_VALUE_ATTRIBUTE(attr, desc)                                    \
+  ATTRIBUTE(attr, desc, Value *, Value)                                        \
+  NON_BOOL_ATTRIBUTE(attr, desc, Value *, Value)                               \
+  VALUE_ATTRIBUTE(attr, desc, Value *, Value)
+
+#define DECLARE_STRING_ATTRIBUTE(attr, desc)                                   \
+  ATTRIBUTE(attr, desc, std::string, String)                                   \
+  NON_BOOL_ATTRIBUTE(attr, desc, std::string, String)                          \
+  STRING_ATTRIBUTE(attr, desc, std::string, String)
+
+#define DECLARE_VALUE_ATTRIBUTE(attr, desc)                                    \
+  ATTRIBUTE(attr, desc, Value *, Value)                                        \
+  NON_BOOL_ATTRIBUTE(attr, desc, Value *, Value)                               \
+  VALUE_ATTRIBUTE(attr, desc, Value *, Value)
+
+DECLARE_UNSIGNED_ATTRIBUTE(ClosureVarReg, "closure var register")
+DECLARE_UNSIGNED_ATTRIBUTE(ToplevelVarReg, "toplevel var reg in top_level_variables_")
+DECLARE_UNSIGNED_ATTRIBUTE(ChildrenIndex, "children index for closureInst")
+DECLARE_BOOL_ATTRIBUTE(SmallJmp, "jmp offset is around [-127, 128]")
+DECLARE_BOOL_ATTRIBUTE(FixReg, "is_fix_reg")
+DECLARE_BOOL_ATTRIBUTE(CallFuncMov, "if_call_func_mov")
+DECLARE_BOOL_ATTRIBUTE(DeepCloneCall, "call is lowered to TypeOp_DeepClone")
+DECLARE_BOOL_ATTRIBUTE(ReadonlyCall, "call is known read-only (does not invalidate LSE caches)")
+DECLARE_STRING_ATTRIBUTE(BuiltinFuncName, "builtin function name")
+
+#undef UNSIGNED_ATTRIBUTE
+#undef VALUE_ATTRIBUTE
+#undef STRING_ATTRIBUTE
+#undef NON_BOOL_ATTRIBUTE
+#undef DECLARE_STRING_ATTRIBUTE
+#undef BOOL_ATTRIBUTE
+#undef VALUE_ATTRIBUTE
+#undef ATTRIBUTE

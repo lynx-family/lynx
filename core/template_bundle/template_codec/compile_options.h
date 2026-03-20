@@ -93,6 +93,7 @@ struct CompileOptions {
   bool encode_quickjs_bytecode_{false};
   bool enable_async_lepus_chunk_decode_{false};
   bool enable_simple_styling_{false};
+  bool enable_opt_lepus_bytecode_{true};
   // Compile options auto generated end
 };
 

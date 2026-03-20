@@ -300,7 +300,8 @@ class TestLepus : private TestLepusContextHolder,
         lynx::lepus::ContextBinaryWriter(context()->GetMTSContext()) {}
 
   static const char* input;
-  void Run(const char* source) {
+  void Run(const char* source, bool opt_bytecode,
+           const char* ir_dump_path = nullptr) {
     std::string lepus_resource = source;
     if (lepus_resource == "") {
       lepus_resource = lepus::readFile(TestLepus::input);
@@ -308,8 +309,9 @@ class TestLepus : private TestLepusContextHolder,
     context()->Initialize();
     RegisterBuiltinTest(lynx::lepus::Context::ToVMContext(context()));
     lynx::lepus::Context::ToVMContext(context())->SetClosureFix(true);
+    lynx::lepus::Context::ToVMContext(context())->SetOptBytecode(opt_bytecode);
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
-        context()->GetMTSContext(), lepus_resource, "2.6");
+        context()->GetMTSContext(), lepus_resource, "2.6", "", ir_dump_path);
 
     if (!error.empty()) {
       LOGE("error: compile  failed:" << error << "\n");
@@ -511,5 +513,26 @@ void CustomInit(int argc, char** argv) {
 
 TEST(lepus, compile) {
   TestLepus t;
-  t.Run("");
+  t.Run("", false);
+}
+
+TEST(lepus, compile_opt) {
+  const auto unit_test_dir =
+      std::filesystem::path("lynx/core/runtime/lepus/compiler/unit_test");
+  const auto dump_root = unit_test_dir / "ir_dumps";
+
+  // Keep historical behavior: if `argv[1]` provides an input file path, only
+  // compile that single file.
+  if (TestLepus::input != nullptr && strcmp(TestLepus::input, "") != 0) {
+    const std::filesystem::path input_path(TestLepus::input);
+    TestLepus t;
+#ifdef LEPUS_TEST
+    std::filesystem::create_directories(dump_root);
+    const std::string dump_path = (dump_root / input_path.stem()).string();
+    t.Run("", true, dump_path.c_str());
+#else
+    t.Run("", true, nullptr);
+#endif
+    return;
+  }
 }

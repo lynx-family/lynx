@@ -1,0 +1,52 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef DEF_VALUE
+#define DEF_VALUE(NAME, PARENT)
+#endif
+#ifndef MARK_FIRST
+#define MARK_FIRST(NAME, PARENT)
+#endif
+#ifndef MARK_LAST
+#define MARK_LAST(NAME)
+#endif
+#ifndef MARK_VALUE
+#define MARK_VALUE(NAME)
+#endif
+MARK_FIRST(Instruction, Value)
+#define INCLUDED_FROM_VALUE_KINDS
+#include "core/runtime/lepus/ir/instrs.def"
+#undef INCLUDED_FROM_VALUE_KINDS
+MARK_LAST(Instruction)
+
+MARK_FIRST(Literal, Value)
+DEF_VALUE(LiteralNull, Literal)
+DEF_VALUE(LiteralUndefined, Literal)
+DEF_VALUE(LiteralInt8, Literal)
+DEF_VALUE(LiteralInt32, Literal)
+DEF_VALUE(LiteralUint8, Literal)
+DEF_VALUE(LiteralUint32, Literal)
+DEF_VALUE(LiteralFloat64, Literal)
+DEF_VALUE(LiteralBool, Literal)
+MARK_LAST(Literal)
+
+DEF_VALUE(Parameter, Value)
+DEF_VALUE(Block, Value)
+DEF_VALUE(FuncOp, Value)
+DEF_VALUE(ModuleOp, Value)
+
+MARK_FIRST(TypeOp, Value)
+DEF_VALUE(PrimitiveTypeOp, TypeOp)
+MARK_LAST(TypeOp)
+
+MARK_FIRST(Attribute, Value)
+DEF_VALUE(BoolAttr, Attribute)
+DEF_VALUE(UnsignedAttr, Attribute)
+DEF_VALUE(StringAttr, Attribute)
+DEF_VALUE(ValueAttr, Attribute)
+MARK_LAST(Attribute)
+
+#undef DEF_VALUE
+#undef MARK_FIRST
+#undef MARK_LAST

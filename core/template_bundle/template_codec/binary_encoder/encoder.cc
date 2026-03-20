@@ -161,6 +161,16 @@ std::shared_ptr<lynx::lepus::Context> GetVMContent(
         ->SetSdkVersion(encoder_options.compile_options_.target_sdk_version_);
     lynx::lepus::Context::ToVMContext(vm_context.get())
         ->SetClosureFix(encoder_options.generator_options_.lepus_closure_fix_);
+
+    // only opt lepus bytecode when sdk version is higher or equal to 3.8 and
+    // opt bytecode is enabled
+    bool opt_lepus_bytecode =
+        lynx::tasm::Config::IsHigherOrEqual(
+            encoder_options.compile_options_.target_sdk_version_,
+            FEATURE_OPT_LEPUS_BYTECODE) &&
+        encoder_options.compile_options_.enable_opt_lepus_bytecode_;
+    lynx::lepus::Context::ToVMContext(vm_context.get())
+        ->SetOptBytecode(opt_lepus_bytecode);
   }
   vm_context->Initialize();
 

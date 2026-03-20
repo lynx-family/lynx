@@ -87,6 +87,12 @@ class Function : public fml::RefCountedThreadSafeStorage {
 
   int32_t GetParamsSize();
 
+  void SetRegisterCount(long register_count) {
+    register_count_ = static_cast<int32_t>(register_count);
+  }
+
+  int32_t GetRegisterCount() { return register_count_; }
+
   std::size_t OpCodeSize() { return op_codes_.size(); }
 
   const Instruction* GetOpCodes() const {
@@ -98,6 +104,20 @@ class Function : public fml::RefCountedThreadSafeStorage {
     debug_line_col_.push_back(current_line_col_);
     return op_codes_.size() - 1;
   }
+
+  void ResetOpcodes(base::Vector<Instruction>& op_codes,
+                    std::vector<int64_t>& line_cols) {
+    op_codes_.swap(op_codes);
+    debug_line_col_.swap(line_cols);
+  }
+
+  // Clear bytecode + debug line/col info.
+  void ClearOpCodes() {
+    op_codes_.clear();
+    debug_line_col_.clear();
+  }
+
+  void ClearUpvalues() { upvalues_.clear(); }
 
   void ReleaseSelf() const override { delete this; }
 
@@ -171,6 +191,12 @@ class Function : public fml::RefCountedThreadSafeStorage {
     function_name_ = function_name;
   }
 
+  void SetTopLevelFunction(bool is_toplevel_function) {
+    is_toplevel_function_ = is_toplevel_function;
+  }
+
+  bool IsToplevelFunction() const { return is_toplevel_function_; }
+
   LYNX_EXPORT_FOR_DEVTOOL std::string GetFunctionName();
 
   void SetUpvalueArray(const std::unordered_map<
@@ -216,8 +242,6 @@ class Function : public fml::RefCountedThreadSafeStorage {
 
   void SetScope(Value& scopes) { scopes_ = scopes; }
 
-  void DumpScope();
-
   const auto& block_scope_stack() { return block_scope_stack_; }
 
   void PushBSStack(uint64_t id);
@@ -231,6 +255,11 @@ class Function : public fml::RefCountedThreadSafeStorage {
   void PopLoopBlockStack();
 
   uint64_t GetLoopBlockStack();
+
+  const std::vector<int64_t>& GetLineCol() const { return debug_line_col_; }
+
+  void RecordUpvalueIndex2ToplevelReg(long index, long reg_index);
+  long GetClosureVarToplevelReg(long index);
 
  protected:
   Function() = default;
@@ -249,10 +278,12 @@ class Function : public fml::RefCountedThreadSafeStorage {
 
   int32_t params_size_ = -1;
 
-  // we use function-id and pc-index to generate sourceMap, then sourceMap treat
-  // function-id as line number
-  // and treat pc-index as column number, but sourceMap assume tha line number
-  // is start from 1, so the function_id will start from 1, other than 0
+  int32_t register_count_ = -1;
+
+  // we use function-id and pc-index to generate sourceMap, then sourceMap
+  // treat function-id as line number and treat pc-index as column number, but
+  // sourceMap assume tha line number is start from 1, so the function_id will
+  // start from 1, other than 0
   int64_t function_id_ = 0;
   std::string function_name_;
   std::size_t index_ = 0;
@@ -273,6 +304,8 @@ class Function : public fml::RefCountedThreadSafeStorage {
   // These two stacks are used by code generator only.
   base::Stack<uint64_t> block_scope_stack_;
   base::Stack<uint64_t> loop_block_stack_;
+  bool is_toplevel_function_ = false;
+  std::unordered_map<long, long> upvalue_index_to_toplevel_reg_;
 };
 
 class Closure : public lepus::RefCounted {

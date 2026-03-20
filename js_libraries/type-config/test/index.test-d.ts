@@ -161,6 +161,7 @@ describe('Test Compile Options Types', () => {
     expectTypeOf<CompilerOptions>().toHaveProperty('enableFiberArch').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableFlexibleTemplate').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableKeepPageData').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableOptLepusBytecode').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableRemoveCSSScope').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableSimpleStyling').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('experimental_encodeQuickjsBytecode').toEqualTypeOf<boolean | undefined>();

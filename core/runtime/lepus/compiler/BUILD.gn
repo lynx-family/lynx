@@ -31,8 +31,9 @@ executable("lepus_compiler") {
   testonly = true
   sources = [ "encode_main.cc" ]
   deps = [
+    "../../../../base/src:base_group",
     "../../../renderer/dom:dom",
-    "../../lepus:lepus",
+    "../../lepus",
   ]
   data_deps = [ ":test_cases_copy" ]
   configs += [ ":private_compiler_config" ]
