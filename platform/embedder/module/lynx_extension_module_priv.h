@@ -11,8 +11,9 @@
 #include "core/public/jsb/lynx_extension_module.h"
 #include "platform/embedder/public/capi/lynx_extension_module_capi.h"
 #include "platform/embedder/public/capi/lynx_view_capi.h"
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#include "third_party/weak-node-api/headers/node_api.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -95,8 +96,8 @@ class ExtensionModuleImpl : public piper::LynxExtensionModule {
 }  // namespace embedder
 }  // namespace lynx
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // PLATFORM_EMBEDDER_MODULE_LYNX_EXTENSION_MODULE_PRIV_H_

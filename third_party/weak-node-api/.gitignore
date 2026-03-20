@@ -1,0 +1,5 @@
+generated/
+headers/
+prebuilt/
+node_modules/
+pnpm-lock.yaml

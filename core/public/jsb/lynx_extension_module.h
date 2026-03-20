@@ -14,11 +14,6 @@
 #include "core/public/jsb/lynx_native_module.h"
 #include "core/public/ui_delegate.h"
 #include "core/public/vsync_observer_interface.h"
-#include "third_party/binding/napi/shim/shim_napi.h"
-
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
-#endif
 
 namespace lynx {
 namespace piper {
@@ -54,9 +49,5 @@ class LynxExtensionModule : public LynxNativeModule {
 
 }  // namespace piper
 }  // namespace lynx
-
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
-#endif
 
 #endif  // CORE_PUBLIC_JSB_LYNX_EXTENSION_MODULE_H_

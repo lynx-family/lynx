@@ -5,10 +5,9 @@
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_RUNTIME_LIFECYCLE_OBSERVER_CAPI_H_
 
 #include "lynx_export.h"
-#include "third_party/napi/include/js_native_api.h"
-#include "third_party/napi/include/js_native_api_types.h"
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#include "third_party/weak-node-api/headers/node_api.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 LYNX_EXTERN_C_BEGIN
@@ -56,8 +55,8 @@ LYNX_CAPI_EXPORT void lynx_runtime_lifecycle_observer_release(
 
 LYNX_EXTERN_C_END
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_RUNTIME_LIFECYCLE_OBSERVER_CAPI_H_

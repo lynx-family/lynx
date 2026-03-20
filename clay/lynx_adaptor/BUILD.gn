@@ -34,6 +34,7 @@ source_set("lynx_adaptor") {
   public_configs = [
     "../../clay:config",
     "../../core:lynx_public_config",
+    "../../platform/embedder:public_api",
   ]
 
   public_deps = [

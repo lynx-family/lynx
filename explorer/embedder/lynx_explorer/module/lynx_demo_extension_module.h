@@ -8,8 +8,9 @@
 #include <memory>
 
 #include "lynx_extension_module.h"
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#include "third_party/weak-node-api/headers/node_api.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -22,7 +23,7 @@ class LynxDemoExtensionModule : public pub::LynxExtensionModule {
   LynxDemoExtensionModule() = default;
 
   void OnRuntimeAttach(
-      napi_env env,
+      Napi::Env env,
       std::unique_ptr<pub::VSyncObserver> vsync_observer) override;
 
   void Destroy() override;
@@ -36,8 +37,8 @@ class LynxDemoExtensionModule : public pub::LynxExtensionModule {
 }  // namespace example
 }  // namespace lynx
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // EXPLORER_EMBEDDER_LYNX_EXPLORER_MODULE_LYNX_DEMO_EXTENSION_MODULE_H_

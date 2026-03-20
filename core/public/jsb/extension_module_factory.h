@@ -13,10 +13,6 @@
 #include "core/public/jsb/lynx_extension_module.h"
 #include "core/public/jsb/native_module_factory.h"
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
-#endif
-
 namespace lynx {
 namespace piper {
 
@@ -121,9 +117,5 @@ class ExtensionModuleFactory : public NativeModuleFactory {
 
 }  // namespace piper
 }  // namespace lynx
-
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
-#endif
 
 #endif  // CORE_PUBLIC_JSB_EXTENSION_MODULE_FACTORY_H_

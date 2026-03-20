@@ -19,6 +19,7 @@ if (enable_napi_binding) {
     "napi/napi_util_primjs.h",
     "napi/value_impl_napi_primjs.cc",
     "napi/value_impl_napi_primjs.h",
+    "napi/value_impl_opaque_napi_primjs.h",
   ]
 }
 
