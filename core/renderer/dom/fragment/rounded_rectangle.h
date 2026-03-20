@@ -55,6 +55,16 @@ class RoundedRectangle {
            radius_y_bottom_right_ > 0 || radius_y_bottom_left_ > 0;
   }
 
+  bool IsUniformRadius() const {
+    return radius_x_top_left_ > 0 && radius_x_top_left_ == radius_y_top_left_ &&
+           radius_x_top_left_ == radius_x_top_right_ &&
+           radius_x_top_left_ == radius_y_top_right_ &&
+           radius_x_top_left_ == radius_x_bottom_right_ &&
+           radius_x_top_left_ == radius_y_bottom_right_ &&
+           radius_x_top_left_ == radius_x_bottom_left_ &&
+           radius_x_top_left_ == radius_y_bottom_left_;
+  }
+
  private:
   base::geometry::FloatRect rect_;
 
