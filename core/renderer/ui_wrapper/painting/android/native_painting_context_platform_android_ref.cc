@@ -15,21 +15,49 @@ NativePaintingCtxAndroidRef::NativePaintingCtxAndroidRef(
 
 void NativePaintingCtxAndroidRef::GetRootViewLocationOnScreen(
     float location[2]) {
-  const auto res =
-      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get())
-          ->GetContext()
-          ->GetRootViewLocationOnScreen();
-  location[0] = res[0];
-  location[1] = res[1];
+  if (location == nullptr) {
+    return;
+  }
+  location[0] = 0.f;
+  location[1] = 0.f;
+
+  auto* factory =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());
+  if (factory == nullptr) {
+    return;
+  }
+  auto* context = factory->GetContext();
+  if (context == nullptr) {
+    return;
+  }
+  const auto res = context->GetRootViewLocationOnScreen();
+  if (res.size() >= 2) {
+    location[0] = res[0];
+    location[1] = res[1];
+  }
 }
 
 void NativePaintingCtxAndroidRef::GetScreenSize(float size[2]) {
-  const auto res =
-      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get())
-          ->GetContext()
-          ->GetScreenSize();
-  size[0] = res[0];
-  size[1] = res[1];
+  if (size == nullptr) {
+    return;
+  }
+  size[0] = 0.f;
+  size[1] = 0.f;
+
+  auto* factory =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());
+  if (factory == nullptr) {
+    return;
+  }
+  auto* context = factory->GetContext();
+  if (context == nullptr) {
+    return;
+  }
+  const auto res = context->GetScreenSize();
+  if (res.size() >= 2) {
+    size[0] = res[0];
+    size[1] = res[1];
+  }
 }
 
 }  // namespace tasm

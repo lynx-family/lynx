@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/task_runner.h"
@@ -70,10 +71,10 @@ class PlatformEventTargetExposure
   };
 
   explicit PlatformEventTargetExposure(
-      NativePaintingCtxPlatformRef* platform_ref)
-      : platform_ref_(platform_ref) {}
+      NativePaintingCtxPlatformRef* platform_ref,
+      fml::RefPtr<fml::TaskRunner> task_runner)
+      : platform_ref_(platform_ref), task_runner_(std::move(task_runner)) {}
 
-  void SetTaskRunner(const fml::RefPtr<fml::TaskRunner>& task_runner);
   void SetIntervalMs(int interval_ms);
   void AddExposureTarget(const fml::RefPtr<PlatformEventTarget>& target,
                          const lepus::Value& option);
