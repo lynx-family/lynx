@@ -53,5 +53,11 @@ void NativePaintingCtxPlatformDarwinRef::GetScreenSize(float size[2]) {
   size[1] = res.height;
 }
 
+LynxRendererContext* NativePaintingCtxPlatformDarwinRef::GetRendererContext() {
+  return static_cast<PlatformRendererDarwinFactory*>(view_factory_.get())
+      ->GetContext()
+      ->GetRendererContext();
+}
+
 }  // namespace tasm
 }  // namespace lynx

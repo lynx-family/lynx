@@ -8,8 +8,11 @@
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
 #import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/LynxUIContext.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
+#import "LynxContext+Internal.h"
+#import "LynxTextraLayer.h"
 #include "core/renderer/dom/fragment/display_list.h"
 
 using namespace lynx::tasm;
@@ -515,6 +518,38 @@ using namespace lynx::tasm;
                                CGRectEqualToRect(layer.frame, CGRectMake(10, 10, 100, 50));
                       }]
                              atIndex:0];
+
+  [applier applyDisplayList:&list];
+
+  [mockLayer verify];
+}
+
+- (void)testProcessContentOperationsWithTextraText {
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  id mockUIContext = OCMClassMock([LynxUIContext class]);
+  id mockLynxContext = OCMClassMock([LynxContext class]);
+  void *page = reinterpret_cast<void *>(0x1234);
+  bool textServiceModeOn = true;
+
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+  [[[mockContext stub] andReturn:mockUIContext] uiContext];
+  [[[mockUIContext stub] andReturn:mockLynxContext] lynxContext];
+  [[[mockLynxContext stub] andReturnValue:OCMOCK_VALUE(textServiceModeOn)] isTextServiceModeOn];
+  [[[mockContext stub] andReturnValue:OCMOCK_VALUE(page)] takeTextBundle:123];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 10.0f, 100.0f, 50.0f);
+  list.AddOperation(DisplayListOpType::kText, 123, 0);
+
+  [[mockLayer expect] addSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
+                        return [layer isKindOfClass:[LynxTextraLayer class]] &&
+                               CGRectEqualToRect(layer.frame, CGRectMake(10, 10, 100, 50));
+                      }]];
 
   [applier applyDisplayList:&list];
 

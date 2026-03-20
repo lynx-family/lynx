@@ -162,11 +162,22 @@ void NativePaintingCtxDarwin::UpdateDisplayList(int id, DisplayList display_list
 }
 
 void NativePaintingCtxDarwin::UpdateTextBundle(int id, intptr_t bundle) {
-  // TBD
+  Enqueue([ref = platform_ref_, id, bundle]() {
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
+    if (darwin_ref) {
+      [darwin_ref->GetRendererContext() updateTextBundle:id
+                                              withBundle:reinterpret_cast<void *>(bundle)];
+    }
+  });
 }
 
 void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
-  // TBD
+  Enqueue([ref = platform_ref_, id]() {
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
+    if (darwin_ref) {
+      [darwin_ref->GetRendererContext() destroyTextBundle:id];
+    }
+  });
 }
 
 void NativePaintingCtxDarwin::ReconstructEventTargetTreeRecursively() {
