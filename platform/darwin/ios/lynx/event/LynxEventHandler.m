@@ -308,6 +308,7 @@
   float range_;
   NSMutableSet* _set;
   NSMutableSet* _setOfPropsChanged;
+  BOOL _enablePlatformGesture;
 }
 
 - (void)dealloc {
@@ -361,6 +362,7 @@
 
     _longPressPoint = CGPointMake(-FLT_MAX, -FLT_MAX);
     range_ = 50;
+    _enablePlatformGesture = NO;
     self.gestureRecognized = NO;
     _set = [NSMutableSet set];
     _setOfPropsChanged = [NSMutableSet set];
@@ -637,6 +639,7 @@
 }
 
 - (void)setEnablePlatformGesture:(BOOL)enablePlatformGesture {
+  _enablePlatformGesture = enablePlatformGesture;
   if (enablePlatformGesture) {
     [self setUpPlatformGesture];
   } else {

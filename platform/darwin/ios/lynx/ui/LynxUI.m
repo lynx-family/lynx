@@ -3068,7 +3068,7 @@ LYNX_PROP_DEFINE("pan-intercept-direction", setPanInterceptDirection, NSInteger)
     // collect other Gestures.
     if (_panInterceptDirection != kLynxPanInterceptDirectionNone) {
       [self.nodeReadyBlockArray addObject:^(LynxUI* ui) {
-        [ui.context.eventHandler setEnablePlatformGesture:YES];
+        [ui.context.eventHandler setUpPlatformGesture];
       }];
     }
   }
