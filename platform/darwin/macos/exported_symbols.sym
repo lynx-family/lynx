@@ -26,3 +26,5 @@ _lynx_strdup*
 _lynx_trace_*
 _lynx_log_write_detailed*
 _lynx_windowless_renderer_*
+# weak-node-api symbols
+_napi*_weak

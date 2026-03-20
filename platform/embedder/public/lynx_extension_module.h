@@ -12,10 +12,10 @@
 
 #include "capi/lynx_extension_module_capi.h"
 #include "capi/lynx_native_module_capi.h"
-#include "headers/napi.h"
 #include "lynx_view.h"
+#include "third_party/weak-node-api/headers/napi.h"
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -515,7 +515,7 @@ class LynxExtensionModule {
 }  // namespace lynx
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "headers/weak_napi_undefs.h"
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_LYNX_EXTENSION_MODULE_H_

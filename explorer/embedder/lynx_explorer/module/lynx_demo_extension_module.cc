@@ -4,7 +4,7 @@
 
 #include "explorer/embedder/lynx_explorer/module/lynx_demo_extension_module.h"
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {

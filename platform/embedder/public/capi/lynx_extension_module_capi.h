@@ -7,14 +7,14 @@
 
 #include <stdint.h>
 
-#include "headers/node_api.h"
 #include "lynx_export.h"
 #include "lynx_extension_module_types_capi.h"
 #include "lynx_generic_resource_fetcher_capi.h"
 #include "lynx_native_module_capi.h"
 #include "lynx_view_capi.h"
+#include "third_party/weak-node-api/headers/node_api.h"
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 LYNX_EXTERN_C_BEGIN
@@ -142,7 +142,7 @@ LYNX_CAPI_EXPORT void lynx_extension_module_unref(lynx_extension_module_t*);
 LYNX_EXTERN_C_END
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "headers/weak_napi_undefs.h"
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_EXTENSION_MODULE_CAPI_H_

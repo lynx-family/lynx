@@ -7,6 +7,13 @@ set(CEF_WEBVIEW_TARGET "cef_webview")
 # Determine the target output directory.
 SET_CEF_TARGET_OUT_DIR()
 
+add_compile_definitions(
+  NAPI_CPP_CUSTOM_NAMESPACE=weak_node_api
+  USE_WEAK_SUFFIX_NAPI
+  NAPI_DISABLE_CPP_RTTI
+  NAPI_DISABLE_CPP_EXCEPTIONS
+)
+
 # Sources
 set(CEF_WEBVIEW_SRCS
   cef_extension_module.cc
@@ -48,7 +55,6 @@ add_library(${CEF_WEBVIEW_TARGET} STATIC ${CEF_WEBVIEW_SRCS})
 target_include_directories(${CEF_WEBVIEW_TARGET} PRIVATE ${LYNX_ROOT_DIR})
 target_include_directories(${CEF_WEBVIEW_TARGET} PRIVATE ${LYNX_ROOT_DIR}/lynx)
 target_include_directories(${CEF_WEBVIEW_TARGET} PRIVATE ${PROJECT_ROOT_DIR}/third_party/cef_binary)
-target_include_directories(${CEF_WEBVIEW_TARGET} PRIVATE ${LYNX_ROOT_DIR}/lynx/third_party/weak-node-api/vendor)
 
 target_compile_definitions(${CEF_WEBVIEW_TARGET} PRIVATE USE_PRIMJS_NAPI)
 if(OS_MAC)

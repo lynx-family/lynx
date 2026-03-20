@@ -9,10 +9,10 @@
 #include "base/include/log/logging.h"
 #include "platform/embedder/lynx_service/lynx_http_service_priv.h"
 #include "platform/embedder/lynx_service/lynx_service_center_priv.h"
-#include "third_party/weak-node-api/vendor/headers/napi.h"
+#include "third_party/weak-node-api/headers/napi.h"
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -145,5 +145,5 @@ napi_value LynxFetchModuleCreator(napi_env c_env, napi_value c_exports,
 }  // namespace lynx
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
 #endif

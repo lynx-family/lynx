@@ -5,7 +5,7 @@
 #include "platform/embedder/module/lynx_module_factory_napi.h"
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 extern "C" napi_module* napi_find_module_weak(const char* name);

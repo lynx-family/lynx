@@ -10,10 +10,10 @@
 #include "base/include/fml/memory/ref_counted.h"
 #include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "platform/embedder/public/capi/lynx_runtime_lifecycle_observer_capi.h"
-#include "third_party/weak-node-api/vendor/headers/node_api.h"
+#include "third_party/weak-node-api/headers/node_api.h"
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 // Use fml::RefCountedThreadSafe to manage the lifetime of
@@ -78,7 +78,7 @@ class LynxRuntimeLifecycleListenerDelegate
 }  // namespace lynx
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // PLATFORM_EMBEDDER_LYNX_RUNTIME_LIFECYCLE_OBSERVER_PRIV_H_

@@ -5,10 +5,10 @@
 #include "core/renderer/tasm/config.h"
 #include "platform/embedder/public/lynx_env.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
-#include "third_party/weak-node-api/vendor/headers/node_api.h"
+#include "third_party/weak-node-api/headers/node_api.h"
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 #if ENABLE_INSPECTOR

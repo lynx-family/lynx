@@ -6,7 +6,7 @@
 #include "platform/embedder/module/lynx_extension_module_priv.h"
 #include "platform/embedder/module/lynx_native_module_napi.h"
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 LYNX_EXTERN_C void lynx_vsync_observer_request_before_animation_frame(

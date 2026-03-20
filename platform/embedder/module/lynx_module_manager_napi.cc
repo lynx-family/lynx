@@ -6,10 +6,10 @@
 
 #include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
-#include "third_party/weak-node-api/vendor/headers/napi.h"
+#include "third_party/weak-node-api/headers/napi.h"
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {

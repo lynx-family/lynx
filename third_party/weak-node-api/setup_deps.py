@@ -29,45 +29,47 @@ def main():
     pnpm_args = ['pnpm', 'install', '--ignore-workspace']
     run_pnpm_command(pnpm_args, script_dir)
     
-    # Move the weak-node-api package to the vendor directory
+    # Move the weak-node-api package to the current directory
     source_dir = os.path.join(script_dir, "node_modules", "@lynx-js", "weak-node-api")
-    target_dir = os.path.join(script_dir, "vendor")
+    target_dir = script_dir
     
     print(f"Copying {source_dir} to {target_dir}")
     
-    # Ensure the target directory exists
-    os.makedirs(target_dir, exist_ok=True)
-    
-    # Copy the directory contents directly to vendor directory
+    # Copy the directory contents directly to current directory
     try:
-        # Clear target directory if it exists
-        if os.path.exists(target_dir):
-            for item in os.listdir(target_dir):
-                item_path = os.path.join(target_dir, item)
-                if os.path.islink(item_path):
-                    os.unlink(item_path)
-                elif os.path.isdir(item_path):
-                    shutil.rmtree(item_path)
-                else:
-                    os.remove(item_path)
+        # Only copy specific files/directories
+        items_to_copy = ["generated", "headers", "prebuilt"]
         
-        # Copy all items from source_dir to target_dir
-        for item in os.listdir(source_dir):
+        for item in items_to_copy:
             src_item = os.path.join(source_dir, item)
             dst_item = os.path.join(target_dir, item)
+            
+            if not os.path.exists(src_item):
+                print(f"Warning: Source item {src_item} does not exist, skipping.")
+                continue
+            
+            # Remove existing item before copying to avoid errors
+            if os.path.exists(dst_item):
+                if os.path.islink(dst_item):
+                    os.unlink(dst_item)
+                elif os.path.isdir(dst_item):
+                    shutil.rmtree(dst_item)
+                else:
+                    os.remove(dst_item)
+                    
             if os.path.isdir(src_item):
                 shutil.copytree(src_item, dst_item, symlinks=True)
             else:
                 shutil.copy2(src_item, dst_item)
-        print(f"Successfully copied {source_dir} to {target_dir}")
+        print(f"Successfully copied specific items from {source_dir} to {target_dir}")
     except Exception as e:
-        print(f"Error copying {source_dir} to {target_dir}: {e}")
+        print(f"Error copying items from {source_dir} to {target_dir}: {e}")
         sys.exit(1)
     
     # Output some content according to BUILD.gn requirements
     # BUILD.gn uses "list lines", so we need to output some lines
     # Here we can output files/directories under node_modules or just a success message
-    return ["pnpm_install_success", "vendor_weak_node_api_moved"]
+    return ["pnpm_install_success", "weak_node_api_moved"]
 if __name__ == "__main__":
     outputs = main()
     for output in outputs:

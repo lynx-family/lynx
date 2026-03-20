@@ -59,7 +59,6 @@ executable("lynx_explorer") {
     ":copy_icu",
     ":copy_resources",
     "../../../platform/windows:windows",
-    "../../../third_party/weak-node-api:weak_node_api_prebuilt",
     "../../embedder/lynx_explorer:lynx_explorer_embedder",
 
     # httplib is used by lynx_explorer to download resources.
@@ -101,14 +100,8 @@ action("build_card_resources") {
 }
 
 copy("copy_dll") {
-  sources = [
-    "$root_build_dir/WeakNodeAPI.dll",
-    "$root_build_dir/lynx.dll",
-  ]
-  deps = [
-    "../../../clay/shell/platform/windows:flutter_windows_source",
-    "../../../third_party/weak-node-api:copy_win_dll",
-  ]
+  sources = [ "$root_build_dir/lynx.dll" ]
+  deps = [ "../../../clay/shell/platform/windows:flutter_windows_source" ]
   outputs = [ "$root_build_dir/lynx_explorer/{{source_file_part}}" ]
   public_deps = [ "../../../platform/windows:windows" ]
 }

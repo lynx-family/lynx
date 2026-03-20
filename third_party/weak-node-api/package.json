@@ -1,6 +1,9 @@
 {
   "name": "weak-node-api",
   "version": "1.0.0",
+  "scripts": {
+    "clean": "rm -rf generated headers prebuilt node_modules pnpm-lock.yaml"
+  },
   "dependencies": {
     "@lynx-js/weak-node-api": "0.0.3"
   }

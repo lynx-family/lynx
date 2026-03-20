@@ -7,7 +7,7 @@ if (is_win) {
   import("//build/config/win/win.gni")
 }
 
-weak_node_api_pkg_root = "./vendor"
+weak_node_api_pkg_root = "."
 
 weak_node_api_public_headers = [
   "${weak_node_api_pkg_root}/headers/js_native_api_types.h",
@@ -25,8 +25,6 @@ weak_node_api_public_headers = [
 
 weak_node_api_sources =
     [ "${weak_node_api_pkg_root}/generated/weak_node_api.cpp" ]
-
-weak_node_api_include_dirs = [ "${weak_node_api_pkg_root}" ]
 
 weak_node_api_mac_lib_dir = ""
 weak_node_api_win_lib_dir = ""
@@ -61,7 +59,6 @@ config("weak_node_api_config") {
   if (use_weak_suffix_napi) {
     defines += [ "USE_WEAK_SUFFIX_NAPI=1" ]
   }
-  include_dirs = weak_node_api_include_dirs
 }
 
 config("private_config") {

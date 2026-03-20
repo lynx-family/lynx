@@ -8,4 +8,4 @@
 build_with_chromium = false
 
 # Controls whether to build with the source code of the weak-node-api library
-use_weak_node_api_source = false
+use_weak_node_api_source = true

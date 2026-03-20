@@ -8,7 +8,7 @@
 #include "platform/embedder/public/capi/lynx_native_module_capi.h"
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -21,7 +21,7 @@ napi_value LynxFetchModuleCreator(napi_env, napi_value exports,
 }  // namespace lynx
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // PLATFORM_EMBEDDER_MODULE_LYNX_FETCH_MODULE_H_

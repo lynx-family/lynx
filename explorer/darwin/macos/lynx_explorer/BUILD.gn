@@ -117,7 +117,6 @@ mac_app_bundle("lynx_explorer") {
   public_deps += [
     ":copy_dylib",
     "../../../../platform/darwin/macos:lynx_shared_library",
-    "../../../../third_party/weak-node-api:weak_node_api_prebuilt",
     "../../../embedder/lynx_explorer:lynx_explorer_embedder",
   ]
   if (enable_testbench_replay) {
@@ -126,14 +125,8 @@ mac_app_bundle("lynx_explorer") {
 }
 
 copy("copy_dylib") {
-  deps = [
-    "../../../../platform/darwin/macos:lynx_shared_library",
-    "../../../../third_party/weak-node-api:copy_mac_dylib",
-  ]
-  sources = [
-    "$root_build_dir/libLynx.dylib",
-    "$root_build_dir/libweak-node-api.dylib",
-  ]
+  deps = [ "../../../../platform/darwin/macos:lynx_shared_library" ]
+  sources = [ "$root_build_dir/libLynx.dylib" ]
   outputs = [
     "$root_build_dir/LynxExplorer.app/Contents/Frameworks/{{source_file_part}}",
   ]

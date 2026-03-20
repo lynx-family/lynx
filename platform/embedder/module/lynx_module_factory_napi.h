@@ -14,10 +14,10 @@
 #include "core/public/jsb/native_module_factory.h"
 #include "platform/embedder/module/lynx_native_module_napi.h"
 #include "platform/embedder/public/capi/lynx_native_module_capi.h"
-#include "third_party/weak-node-api/vendor/headers/node_api.h"
+#include "third_party/weak-node-api/headers/node_api.h"
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
@@ -48,7 +48,7 @@ class LynxModuleFactoryNAPI : public runtime::NativeModuleFactory {
 }  // namespace lynx
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_undefs.h"
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
 #endif
 
 #endif  // PLATFORM_EMBEDDER_MODULE_LYNX_MODULE_FACTORY_NAPI_H_

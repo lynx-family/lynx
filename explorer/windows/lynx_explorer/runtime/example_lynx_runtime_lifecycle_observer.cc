@@ -5,7 +5,7 @@
 #include "explorer/windows/lynx_explorer/runtime/example_lynx_runtime_lifecycle_observer.h"
 
 #ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/vendor/headers/weak_napi_defines.h"
+#include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
 namespace lynx {
