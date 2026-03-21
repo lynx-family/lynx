@@ -671,12 +671,16 @@ void Fragment::MarkHasExposureEventIfNeeded() const {
 void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
   MarkHasExposureEventIfNeeded();
 
-  // FIXME(zhongyr): find a way to avoid this redraw issue
-  // if (NeedRedraw()) {
-  DrawFull(display_list_builder);
-  //} else {
-  //  DispatchUpdateDisplayList();
-  //}
+  // Only a fragment backed by a platform layer can skip full draw when its
+  // contents haven't changed and only update subtree properties (transform,
+  // opacity) instead. Fragments without a platform renderer have no display
+  // list of their own and must always contribute to the parent layer's display
+  // list via DrawFull.
+  if (NeedRedraw() || !has_platform_renderer_) {
+    DrawFull(display_list_builder);
+  } else {
+    DispatchUpdateDisplayList();
+  }
 
   if (NeedUpdateSubtreeProperty()) {
     DrawTransform(display_list_builder);
