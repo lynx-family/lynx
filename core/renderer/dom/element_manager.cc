@@ -423,7 +423,7 @@ void ElementManager::RequestLayout(
   if (root()->EnableFragmentLayerRender()) {
     {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
-      static_cast<Fragment *>(root()->element_container())->Draw();
+      root()->element_container()->CastToFragment()->Draw();
     }
     root()->element_container()->Flush();
   }
@@ -1336,6 +1336,13 @@ void ElementManager::OnPatchFinishForFiber(
     // and don't trigger layout, so we need to invoke OnComponentFinish to
     // notify list that child has been rendered.
     OnListComponentUpdated(options);
+    // Even if no layout is needed, we should still repaint if fragments are
+    // dirty. Repaint should not be bound to relayout.
+    if (root() && root()->EnableFragmentLayerRender()) {
+      TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
+      root()->element_container()->CastToFragment()->Draw();
+      root()->element_container()->Flush();
+    }
     catalyzer_->painting_context()->FinishLayoutOperation(options);
     delegate_->OnUpdateDataWithoutChange();
     patch_finish_callback(false);
