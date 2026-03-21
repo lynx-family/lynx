@@ -40,6 +40,8 @@ public final class LynxFrameView extends UIBodyView {
   private boolean mDestroyed = false;
   private TemplateData mInitData = null;
   private TemplateData mGlobalProps = null;
+  private boolean mAutoWidth = false;
+  private boolean mAutoHeight = false;
   private int mWidthMode = MeasureSpec.UNSPECIFIED;
   private int mHeightMode = MeasureSpec.UNSPECIFIED;
   private int mEmbeddedMode = EmbeddedMode.UNSET;
@@ -112,8 +114,10 @@ public final class LynxFrameView extends UIBodyView {
       return false;
     }
 
-    mRender.updateViewport(MeasureSpec.makeMeasureSpec(mContentWidth, mWidthMode),
-        MeasureSpec.makeMeasureSpec(mContentHeight, mHeightMode));
+    if (hasInitializedSize(mContentWidth, mContentHeight)) {
+      mRender.updateViewport(MeasureSpec.makeMeasureSpec(mContentWidth, mWidthMode),
+          MeasureSpec.makeMeasureSpec(mContentHeight, mHeightMode));
+    }
     LynxLoadMeta.Builder builder = new LynxLoadMeta.Builder();
     builder.setUrl(mUrl);
     builder.setTemplateBundle(bundle);
@@ -131,10 +135,9 @@ public final class LynxFrameView extends UIBodyView {
   }
 
   public void updateLayout(int width, int height) {
-    if (!mIsBundleLoaded || (mContentWidth == -1 && mContentHeight == -1)) {
-      mWidthMode = width == 0 ? MeasureSpec.UNSPECIFIED : MeasureSpec.EXACTLY;
-      mHeightMode = height == 0 ? MeasureSpec.UNSPECIFIED : MeasureSpec.EXACTLY;
-    }
+    boolean shouldUseLegacyCalc =
+        !mIsBundleLoaded || !hasInitializedSize(mContentWidth, mContentHeight);
+    updateMeasureModes(width, height, shouldUseLegacyCalc, shouldUseLegacyCalc);
 
     if (TraceEvent.isTracingStarted()) {
       HashMap<String, String> traceProps = new HashMap<>();
@@ -147,6 +150,24 @@ public final class LynxFrameView extends UIBodyView {
     }
     mContentWidth = width;
     mContentHeight = height;
+  }
+
+  void setAutoWidth(boolean value) {
+    if (mAutoWidth == value) {
+      return;
+    }
+    mAutoWidth = value;
+    updateMeasureModes(mContentWidth, mContentHeight, !mAutoWidth, false);
+    requestLayout();
+  }
+
+  void setAutoHeight(boolean value) {
+    if (mAutoHeight == value) {
+      return;
+    }
+    mAutoHeight = value;
+    updateMeasureModes(mContentWidth, mContentHeight, false, !mAutoHeight);
+    requestLayout();
   }
 
   void setInitData(TemplateData data) {
@@ -199,6 +220,27 @@ public final class LynxFrameView extends UIBodyView {
     mEmbeddedMode = mode;
   }
 
+  private boolean hasInitializedSize(int width, int height) {
+    return width != -1 && height != -1;
+  }
+
+  private void updateMeasureModes(
+      int width, int height, boolean shouldUseLegacyWidthCalc, boolean shouldUseLegacyHeightCalc) {
+    mWidthMode = resolveMeasureMode(mAutoWidth, width, mWidthMode, shouldUseLegacyWidthCalc);
+    mHeightMode = resolveMeasureMode(mAutoHeight, height, mHeightMode, shouldUseLegacyHeightCalc);
+  }
+
+  private int resolveMeasureMode(
+      boolean autoValue, int size, int currentMode, boolean shouldUseLegacyCalc) {
+    if (autoValue) {
+      return MeasureSpec.UNSPECIFIED;
+    }
+    if (shouldUseLegacyCalc) {
+      return size == 0 ? MeasureSpec.UNSPECIFIED : MeasureSpec.EXACTLY;
+    }
+    return currentMode;
+  }
+
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
     if (TraceEvent.isTracingStarted()) {
@@ -209,7 +251,7 @@ public final class LynxFrameView extends UIBodyView {
           TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_ON_MEASURE, traceProps);
     }
 
-    if (!mIsBundleLoaded) {
+    if (!mIsBundleLoaded || mRender == null) {
       super.onMeasure(widthMeasureSpec, heightMeasureSpec);
       return;
     }
@@ -226,19 +268,23 @@ public final class LynxFrameView extends UIBodyView {
       mIsIntrinsicSizeConsumed = true;
     }
 
-    if (TraceEvent.isTracingStarted()) {
-      HashMap<String, String> traceProps = new HashMap<>();
-      int targetWidthMeasureSpec = MeasureSpec.makeMeasureSpec(targetWidth, mWidthMode);
-      int targetHeightMeasureSpec = MeasureSpec.makeMeasureSpec(targetHeight, mHeightMode);
-      traceProps.put(
-          TraceEventDef.WIDTH_MEASURE_SPEC, MeasureSpec.toString(targetWidthMeasureSpec));
-      traceProps.put(
-          TraceEventDef.HEIGHT_MEASURE_SPEC, MeasureSpec.toString(targetHeightMeasureSpec));
-      TraceEvent.instant(
-          TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_ON_MEASURE_TARGET, traceProps);
+    if (hasInitializedSize(targetWidth, targetHeight)) {
+      if (TraceEvent.isTracingStarted()) {
+        HashMap<String, String> traceProps = new HashMap<>();
+        int targetWidthMeasureSpec = MeasureSpec.makeMeasureSpec(targetWidth, mWidthMode);
+        int targetHeightMeasureSpec = MeasureSpec.makeMeasureSpec(targetHeight, mHeightMode);
+        traceProps.put(
+            TraceEventDef.WIDTH_MEASURE_SPEC, MeasureSpec.toString(targetWidthMeasureSpec));
+        traceProps.put(
+            TraceEventDef.HEIGHT_MEASURE_SPEC, MeasureSpec.toString(targetHeightMeasureSpec));
+        TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT,
+            TraceEventDef.LYNX_FRAME_VIEW_ON_MEASURE_TARGET, traceProps);
+      }
+      mRender.onMeasure(MeasureSpec.makeMeasureSpec(targetWidth, mWidthMode),
+          MeasureSpec.makeMeasureSpec(targetHeight, mHeightMode));
+    } else {
+      super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
-    mRender.onMeasure(MeasureSpec.makeMeasureSpec(targetWidth, mWidthMode),
-        MeasureSpec.makeMeasureSpec(targetHeight, mHeightMode));
   }
 
   @Override

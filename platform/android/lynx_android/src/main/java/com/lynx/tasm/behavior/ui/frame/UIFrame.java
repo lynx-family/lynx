@@ -203,6 +203,22 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     }
   }
 
+  @LynxProp(name = "auto-width", defaultBoolean = false)
+  public void setAutoWidth(boolean value) {
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.setAutoWidth(value);
+    }
+  }
+
+  @LynxProp(name = "auto-height", defaultBoolean = false)
+  public void setAutoHeight(boolean value) {
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.setAutoHeight(value);
+    }
+  }
+
   @Override
   public void onPropsUpdated() {
     super.onPropsUpdated();

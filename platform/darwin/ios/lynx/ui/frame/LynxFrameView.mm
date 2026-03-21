@@ -33,6 +33,8 @@
   BOOL _isIntrinsicSizeConsumed;
   LynxTemplateData *_initData;
   LynxTemplateData *_globalProps;
+  BOOL _autoWidth;
+  BOOL _autoHeight;
   LynxViewSizeMode _widthMode;
   LynxViewSizeMode _heightMode;
   LynxEmbeddedMode _embeddedMode;
@@ -143,6 +145,42 @@
   return loadMeta;
 }
 
+- (BOOL)hasInitializedContentRect {
+  return !CGRectIsNull(_contentRect);
+}
+
+- (LynxViewSizeMode)resolveSizeModeWithAutoEnabled:(BOOL)autoEnabled
+                                              size:(CGFloat)size
+                                       currentMode:(LynxViewSizeMode)currentMode
+                               shouldUseLegacyCalc:(BOOL)shouldUseLegacyCalc {
+  if (autoEnabled) {
+    return LynxViewSizeModeUndefined;
+  }
+
+  if (shouldUseLegacyCalc) {
+    return IS_ZERO(size) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
+  }
+
+  return currentMode;
+}
+
+- (void)updateSizeModesWithRect:(CGRect)contentRect
+       shouldUseLegacyWidthCalc:(BOOL)shouldUseLegacyWidthCalc
+      shouldUseLegacyHeightCalc:(BOOL)shouldUseLegacyHeightCalc {
+  const BOOL hasInitializedContentRect = !CGRectIsNull(contentRect);
+  const CGFloat width = hasInitializedContentRect ? CGRectGetWidth(contentRect) : -1;
+  const CGFloat height = hasInitializedContentRect ? CGRectGetHeight(contentRect) : -1;
+
+  _widthMode = [self resolveSizeModeWithAutoEnabled:_autoWidth
+                                               size:width
+                                        currentMode:_widthMode
+                                shouldUseLegacyCalc:shouldUseLegacyWidthCalc];
+  _heightMode = [self resolveSizeModeWithAutoEnabled:_autoHeight
+                                                size:height
+                                         currentMode:_heightMode
+                                 shouldUseLegacyCalc:shouldUseLegacyHeightCalc];
+}
+
 - (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame {
   [super setFrame:frame];
   if (CGRectEqualToRect(contentFrame, _contentRect)) {
@@ -153,13 +191,10 @@
               std::to_string(contentFrame.size.width), "heightMeasureSpec",
               std::to_string(contentFrame.size.height));
 
-  const BOOL shouldResetSizeMode = !_isBundleLoad || CGRectIsNull(_contentRect);
-  if (shouldResetSizeMode) {
-    _widthMode =
-        IS_ZERO(contentFrame.size.width) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
-    _heightMode =
-        IS_ZERO(contentFrame.size.height) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
-  }
+  const BOOL shouldResetSizeMode = !_isBundleLoad || ![self hasInitializedContentRect];
+  [self updateSizeModesWithRect:contentFrame
+       shouldUseLegacyWidthCalc:shouldResetSizeMode && !_autoWidth
+      shouldUseLegacyHeightCalc:shouldResetSizeMode && !_autoHeight];
 
   _contentRect = contentFrame;
   [self applyRenderLayoutWithRect:_contentRect
@@ -199,6 +234,30 @@
 
 - (void)setUrl:(NSString *)url {
   _url = url;
+}
+
+- (void)setAutoWidth:(BOOL)autoWidth {
+  if (_autoWidth == autoWidth) {
+    return;
+  }
+
+  _autoWidth = autoWidth;
+  [self updateSizeModesWithRect:_contentRect
+       shouldUseLegacyWidthCalc:!_autoWidth
+      shouldUseLegacyHeightCalc:NO];
+  [self setNeedsLayout];
+}
+
+- (void)setAutoHeight:(BOOL)autoHeight {
+  if (_autoHeight == autoHeight) {
+    return;
+  }
+
+  _autoHeight = autoHeight;
+  [self updateSizeModesWithRect:_contentRect
+       shouldUseLegacyWidthCalc:NO
+      shouldUseLegacyHeightCalc:!_autoHeight];
+  [self setNeedsLayout];
 }
 
 - (void)setEmbeddedMode:(LynxEmbeddedMode)embeddedMode {
