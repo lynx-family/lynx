@@ -141,6 +141,28 @@ public class LynxInspectorOwnerTest {
   }
 
   @Test
+  public void testSetGlobalSwitch_EnableQuickJSDebug() throws JSONException {
+    JSONObject message = new JSONObject();
+    message.put("global_key", DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG);
+    message.put("global_value", true);
+
+    Object result = mInspectorOwner.setGlobalSwitch(message.toString());
+
+    assertEquals(Boolean.TRUE, result);
+    assertTrue(DevToolSettings.inst().isQuickJSDebugEnabled());
+  }
+
+  @Test
+  public void testGetGlobalSwitch_EnableQuickJSDebug() throws JSONException {
+    DevToolSettings.inst().setQuickJSDebugEnabled(true);
+    JSONObject message = new JSONObject();
+    message.put("global_key", DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG);
+
+    Object result = mInspectorOwner.getGlobalSwitch(message.toString());
+    assertTrue((Boolean) result);
+  }
+
+  @Test
   public void testSetGlobalSwitch_EnableV8() throws JSONException {
     JSONObject message = new JSONObject();
     message.put("global_key", DevToolSettings.SP_KEY_ENABLE_V8);

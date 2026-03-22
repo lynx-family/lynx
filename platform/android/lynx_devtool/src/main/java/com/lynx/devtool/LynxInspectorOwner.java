@@ -418,6 +418,7 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
       // - DevToolSettings.SP_KEY_ENABLE_DEVTOOL
       // - DevToolSettings.SP_KEY_ENABLE_LOGBOX
       // - DevToolSettings.SP_KEY_ENABLE_DEBUG_MODE
+      // - DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG
       // - DevToolSettings.SP_KEY_ENABLE_V8
       // - DevToolSettings.SP_KEY_ENABLE_DOM_TREE
       // - DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU
@@ -432,6 +433,9 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
           return value;
         case DevToolSettings.SP_KEY_ENABLE_DEBUG_MODE:
           DevToolSettings.inst().setDebugModeEnabled((boolean) value);
+          return value;
+        case DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG:
+          DevToolSettings.inst().setQuickJSDebugEnabled((boolean) value);
           return value;
         case DevToolSettings.SP_KEY_ENABLE_V8:
           DevToolSettings.inst().setV8Enabled((int) value);
@@ -466,6 +470,7 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
       // - DevToolSettings.SP_KEY_ENABLE_DEVTOOL
       // - DevToolSettings.SP_KEY_ENABLE_LOGBOX
       // - DevToolSettings.SP_KEY_ENABLE_DEBUG_MODE
+      // - DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG
       // - DevToolSettings.SP_KEY_ENABLE_V8
       // - DevToolSettings.SP_KEY_ENABLE_DOM_TREE
       // - DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU
@@ -478,6 +483,8 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
           return DevToolSettings.inst().isLogBoxEnabled();
         case DevToolSettings.SP_KEY_ENABLE_DEBUG_MODE:
           return DevToolSettings.inst().isDebugModeEnabled();
+        case DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG:
+          return DevToolSettings.inst().isQuickJSDebugEnabled();
         case DevToolSettings.SP_KEY_ENABLE_V8:
           return DevToolSettings.inst().getV8Enabled();
         case DevToolSettings.SP_KEY_ENABLE_DOM_TREE:
