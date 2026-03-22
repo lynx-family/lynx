@@ -22,8 +22,6 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxTraceEnv;
 import com.lynx.tasm.service.ILynxDevToolService;
 import com.lynx.tasm.service.LynxServiceCenter;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -493,7 +491,7 @@ public class LynxDevtoolEnv {
 
   @Deprecated
   public boolean isPreviewScreenShotEnabled() {
-    return DevToolSettings.inst().isPreviewScreenShotEnabled();
+    return DevToolSettings.inst().isPreviewScreenshotEnabled();
   }
 
   /**

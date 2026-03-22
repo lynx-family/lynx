@@ -1509,8 +1509,8 @@ public class com::lynx::devtoolwrapper::DevToolSettings :  {
   public void com.lynx.devtoolwrapper.DevToolSettings.setDOMTreeEnabled(boolean enabled);
   public boolean com.lynx.devtoolwrapper.DevToolSettings.isLongPressMenuEnabled();
   public void com.lynx.devtoolwrapper.DevToolSettings.setLongPressMenuEnabled(boolean enabled);
-  public boolean com.lynx.devtoolwrapper.DevToolSettings.isPreviewScreenShotEnabled();
-  public void com.lynx.devtoolwrapper.DevToolSettings.setPreviewScreenShotEnabled(boolean enabled);
+  public boolean com.lynx.devtoolwrapper.DevToolSettings.isPreviewScreenshotEnabled();
+  public void com.lynx.devtoolwrapper.DevToolSettings.setPreviewScreenshotEnabled(boolean enabled);
   public boolean com.lynx.devtoolwrapper.DevToolSettings.isQuickJSCacheEnabled();
   public void com.lynx.devtoolwrapper.DevToolSettings.setQuickJSCacheEnabled(boolean enabled);
   public boolean com.lynx.devtoolwrapper.DevToolSettings.isPixelCopyEnabled();

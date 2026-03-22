@@ -49,7 +49,7 @@ public class DevToolSettings {
 
   // Member variables to store non-persisted settings
   private volatile boolean mHighlightTouchEnabled = false;
-  private volatile boolean mPreviewScreenShotEnabled = true;
+  private volatile boolean mPreviewScreenshotEnabled = true;
   private volatile boolean mPerfMetricsEnabled = false;
 
   public static DevToolSettings inst() {
@@ -256,12 +256,12 @@ public class DevToolSettings {
    * <br><b>Sync to Native:</b> false
    * <br><b>Default:</b> true
    */
-  public boolean isPreviewScreenShotEnabled() {
-    return mPreviewScreenShotEnabled;
+  public boolean isPreviewScreenshotEnabled() {
+    return mPreviewScreenshotEnabled;
   }
 
-  public void setPreviewScreenShotEnabled(boolean enabled) {
-    mPreviewScreenShotEnabled = enabled;
+  public void setPreviewScreenshotEnabled(boolean enabled) {
+    mPreviewScreenshotEnabled = enabled;
   }
 
   /**

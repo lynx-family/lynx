@@ -90,12 +90,12 @@ public class DevToolSettingsTest {
   }
 
   @Test
-  public void testPreviewScreenShotEnabled() {
+  public void testPreviewScreenshotEnabled() {
     // Default true
-    assertTrue(mSettings.isPreviewScreenShotEnabled());
+    assertTrue(mSettings.isPreviewScreenshotEnabled());
 
-    mSettings.setPreviewScreenShotEnabled(false);
-    assertFalse(mSettings.isPreviewScreenShotEnabled());
+    mSettings.setPreviewScreenshotEnabled(false);
+    assertFalse(mSettings.isPreviewScreenshotEnabled());
 
     // Should NOT be persisted
     SharedPreferences sp = mContext.getSharedPreferences("lynx_env_config", Context.MODE_PRIVATE);
