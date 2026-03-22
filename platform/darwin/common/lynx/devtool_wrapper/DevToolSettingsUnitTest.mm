@@ -44,7 +44,7 @@
   XCTAssertFalse(settings.fspScreenshotEnabled);
   XCTAssertFalse(settings.highlightTouchEnabled);
   XCTAssertTrue(settings.longPressMenuEnabled);
-  XCTAssertTrue(settings.previewScreenShotEnabled);
+  XCTAssertTrue(settings.previewScreenshotEnabled);
 }
 
 - (void)testPersistence {

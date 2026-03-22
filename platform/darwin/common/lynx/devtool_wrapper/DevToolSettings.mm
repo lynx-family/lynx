@@ -15,7 +15,7 @@
   // Member variables for non-persisted settings
   BOOL _highlightTouchEnabled;
   BOOL _perfMetricsEnabled;
-  BOOL _previewScreenShotEnabled;
+  BOOL _previewScreenshotEnabled;
 }
 
 + (instancetype)sharedInstance {
@@ -35,7 +35,7 @@
     // Initialize default values for non-persisted settings
     _highlightTouchEnabled = NO;
     _perfMetricsEnabled = NO;
-    _previewScreenShotEnabled = YES;
+    _previewScreenshotEnabled = YES;
 
     [self syncToNative];
   }
@@ -174,18 +174,18 @@
   [self setBool:longPressMenuEnabled forKey:SP_KEY_ENABLE_LONG_PRESS_MENU];
 }
 
-- (BOOL)previewScreenShotEnabled {
+- (BOOL)previewScreenshotEnabled {
   /*!
-   previewScreenShotEnabled
+   previewScreenshotEnabled
    @note Persistence: NO
    @note Sync to native: NO
    @note Default: YES
    */
-  return _previewScreenShotEnabled;
+  return _previewScreenshotEnabled;
 }
 
-- (void)setPreviewScreenShotEnabled:(BOOL)previewScreenShotEnabled {
-  _previewScreenShotEnabled = previewScreenShotEnabled;
+- (void)setPreviewScreenshotEnabled:(BOOL)previewScreenshotEnabled {
+  _previewScreenshotEnabled = previewScreenshotEnabled;
 }
 
 #pragma mark - Helper Methods

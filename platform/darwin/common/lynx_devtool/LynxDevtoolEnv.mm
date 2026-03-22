@@ -415,7 +415,7 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
 
 - (BOOL)previewScreenshotEnabled {
 #if OS_IOS
-  return [DevToolSettings sharedInstance].previewScreenShotEnabled;
+  return [DevToolSettings sharedInstance].previewScreenshotEnabled;
 #else
   return NO;
 #endif

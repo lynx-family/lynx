@@ -32,7 +32,7 @@ static NSString *const SP_KEY_ENABLE_PERF_METRICS = @"enable_perf_metrics";
 @property(nonatomic, assign) BOOL domTreeEnabled;
 @property(nonatomic, assign) BOOL longPressMenuEnabled;
 @property(nonatomic, assign) BOOL highlightTouchEnabled;
-@property(nonatomic, assign) BOOL previewScreenShotEnabled;
+@property(nonatomic, assign) BOOL previewScreenshotEnabled;
 @property(nonatomic, assign) BOOL fspScreenshotEnabled;
 @property(nonatomic, assign) BOOL perfMetricsEnabled;
 

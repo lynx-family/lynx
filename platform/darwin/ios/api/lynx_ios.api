@@ -81,7 +81,7 @@ public class DevToolSettings : NSObject {
   public BOOL DevToolSettings::domTreeEnabled domTreeEnabled;
   public BOOL DevToolSettings::longPressMenuEnabled longPressMenuEnabled;
   public BOOL DevToolSettings::highlightTouchEnabled highlightTouchEnabled;
-  public BOOL DevToolSettings::previewScreenShotEnabled previewScreenShotEnabled;
+  public BOOL DevToolSettings::previewScreenshotEnabled previewScreenshotEnabled;
   public BOOL DevToolSettings::fspScreenshotEnabled fspScreenshotEnabled;
   public BOOL DevToolSettings::perfMetricsEnabled perfMetricsEnabled;
   public instancetype DevToolSettings::sharedInstance();
