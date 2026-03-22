@@ -19,7 +19,6 @@ lynx_lepus_common_sources = [
   "json_api.h",
   "json_parser.cc",
   "json_parser.h",
-  "lepus_context_cell.cc",
   "lepus_context_cell.h",
   "lepus_error_helper.cc",
   "lepus_error_helper.h",

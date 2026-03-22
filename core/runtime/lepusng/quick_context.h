@@ -225,14 +225,12 @@ class QuickContext : private LEPUSRuntimeData,
   const std::string& GetDebugSourceCode() const { return debug_source_; }
 
   static inline ContextCell* GetContextCellFromCtx(LEPUSContext* ctx) {
-    return ctx ? reinterpret_cast<ContextCell*>(LEPUS_GetContextOpaque(ctx))
+    return ctx ? static_cast<ContextCell*>(LEPUS_GetContextOpaque(ctx))
                : nullptr;
   }
 
  private:
   static LEPUSLepusRefCallbacks GetLepusRefCall();
-  static CellManager& GetContextCells();
-  static ContextCell* RegisterContextCell(lepus::QuickContext* qctx);
 
   bool ExecuteBinaryInternal(Value* ret);
 
