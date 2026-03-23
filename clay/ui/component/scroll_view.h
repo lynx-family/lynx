@@ -49,8 +49,6 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   void OnLayoutUpdated() override;
   void OnLayout(LayoutContext* context) override;
 
-  bool CanChildrenEscape() const override { return false; }
-
   FloatPoint GetScrollOffsetForPaint() const override {
     return GetRenderScroll()->GetPaintOffsetForScroll();
   }
