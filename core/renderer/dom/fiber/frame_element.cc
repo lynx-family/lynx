@@ -19,6 +19,8 @@ namespace tasm {
 namespace {
 constexpr char kDefaultFrameTag[] = "frame";
 constexpr char kParamsName[] = "detail";
+constexpr char kFrameLoaded[] = "frameLoaded";
+constexpr char kFrameElement[] = "frameElement";
 constexpr char kLoad[] = "load";
 constexpr char kURL[] = "url";
 constexpr char kStatusCode[] = "statusCode";
@@ -144,19 +146,29 @@ void FrameElement::FlushProps() {
 
 void FrameElement::SendLoadEvent(
     const std::shared_ptr<FrameElementData>& data) {
-  if (data_model()->static_events().find(BASE_STATIC_STRING(kLoad)) ==
+  auto detail = lepus::Dictionary::Create();
+  detail->SetValue(BASE_STATIC_STRING(kURL), data->src);
+  detail->SetValue(BASE_STATIC_STRING(kStatusCode), data->error_code);
+  detail->SetValue(BASE_STATIC_STRING(kStatusMessage), data->error_message);
+
+  if (data_model()->static_events().find(BASE_STATIC_STRING(kLoad)) !=
       data_model()->static_events().end()) {
+    element_manager()->SendNativeCustomEvent(kLoad, impl_id(),
+                                             lepus::Value(detail), kParamsName);
+  } else {
     LOGI("bindload callback not found");
-    return;
   }
 
-  auto dict = lepus::Dictionary::Create();
-  dict->SetValue(BASE_STATIC_STRING(kURL), data->src);
-  dict->SetValue(BASE_STATIC_STRING(kStatusCode), data->error_code);
-  dict->SetValue(BASE_STATIC_STRING(kStatusMessage), data->error_message);
+  auto frame_loaded_info = lepus::Dictionary::Create();
+  frame_loaded_info->SetValue(BASE_STATIC_STRING(kParamsName),
+                              std::move(detail));
+  frame_loaded_info->SetValue(BASE_STATIC_STRING(kFrameElement),
+                              fml::RefPtr<FiberElement>(this));
 
-  element_manager()->SendNativeCustomEvent(
-      kLoad, impl_id(), lepus::Value(std::move(dict)), kParamsName);
+  if (auto* delegate = element_manager()->element_manager_delegate()) {
+    delegate->TriggerLepusGlobalEvent(
+        kFrameLoaded, lepus::Value(std::move(frame_loaded_info)));
+  }
 }
 
 const std::string& FrameElement::GetSrc() const { return src_; }
