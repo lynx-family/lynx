@@ -4,8 +4,10 @@
 #include "core/renderer/css/css_style_utils.h"
 
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/style/filter_data.h"
+#include "core/style/transition_data.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -438,6 +440,101 @@ TEST(CSSStyleUtils, SetBasicShapeInset) {
                 static_cast<uint32_t>(PlatformLengthUnit::PERCENTAGE));
     }
   }
+}
+
+// Test that transition longhand properties with fewer values than
+// transition-property entries repeat cyclically per CSS spec.
+// See: https://www.w3.org/TR/css-transitions-1/#transition-duration-property
+TEST(CssStyleUtils, TransitionLonghandValueRepeat) {
+  ComputedCSSStyle computed_css_style(1.f, 1.f);
+  tasm::CSSParserConfigs configs;
+
+  // Step 1: Set transition-property: opacity, transform (2 values)
+  auto property_parsed = tasm::UnitHandler::Process(
+      tasm::kPropertyIDTransitionProperty,
+      lepus::Value("opacity, transform"), configs);
+  EXPECT_TRUE(computed_css_style.SetValue(
+      tasm::kPropertyIDTransitionProperty,
+      property_parsed[tasm::kPropertyIDTransitionProperty]));
+
+  // Verify 2 transition entries were created
+  auto& data = computed_css_style.transition_data();
+  ASSERT_EQ(data.size(), 2u);
+  EXPECT_EQ(data[0].property, AnimationPropertyType::kOpacity);
+  EXPECT_EQ(data[1].property, AnimationPropertyType::kTransform);
+
+  // Step 2: Set transition-duration: 300ms (1 value, should apply to both)
+  auto duration_parsed = tasm::UnitHandler::Process(
+      tasm::kPropertyIDTransitionDuration,
+      lepus::Value("300ms"), configs);
+  EXPECT_TRUE(computed_css_style.SetValue(
+      tasm::kPropertyIDTransitionDuration,
+      duration_parsed[tasm::kPropertyIDTransitionDuration]));
+
+  // Both entries should have duration 300
+  EXPECT_EQ(data[0].duration, 300);
+  EXPECT_EQ(data[1].duration, 300);
+
+  // Step 3: Set transition-timing-function: ease-out (1 value, should apply to
+  // both)
+  auto timing_parsed = tasm::UnitHandler::Process(
+      tasm::kPropertyIDTransitionTimingFunction,
+      lepus::Value("ease-out"), configs);
+  EXPECT_TRUE(computed_css_style.SetValue(
+      tasm::kPropertyIDTransitionTimingFunction,
+      timing_parsed[tasm::kPropertyIDTransitionTimingFunction]));
+
+  // Both entries should have the same timing function
+  EXPECT_EQ(data[0].timing_func.timing_func, TimingFunctionType::kEaseOut);
+  EXPECT_EQ(data[1].timing_func.timing_func, TimingFunctionType::kEaseOut);
+
+  // Step 4: Set transition-delay: 100ms (1 value, should apply to both)
+  auto delay_parsed = tasm::UnitHandler::Process(
+      tasm::kPropertyIDTransitionDelay,
+      lepus::Value("100ms"), configs);
+  EXPECT_TRUE(computed_css_style.SetValue(
+      tasm::kPropertyIDTransitionDelay,
+      delay_parsed[tasm::kPropertyIDTransitionDelay]));
+
+  // Both entries should have delay 100
+  EXPECT_EQ(data[0].delay, 100);
+  EXPECT_EQ(data[1].delay, 100);
+
+  // Verify properties are still intact
+  EXPECT_EQ(data[0].property, AnimationPropertyType::kOpacity);
+  EXPECT_EQ(data[1].property, AnimationPropertyType::kTransform);
+}
+
+// Test that array values with fewer entries than existing entries repeat
+// cyclically. E.g., transition-property: a, b, c; transition-duration: 1s, 2s
+// should result in durations [1s, 2s, 1s].
+TEST(CssStyleUtils, TransitionLonghandArrayValueRepeat) {
+  ComputedCSSStyle computed_css_style(1.f, 1.f);
+  tasm::CSSParserConfigs configs;
+
+  // Set transition-property: opacity, transform, width (3 values)
+  auto property_parsed = tasm::UnitHandler::Process(
+      tasm::kPropertyIDTransitionProperty,
+      lepus::Value("opacity, transform, width"), configs);
+  EXPECT_TRUE(computed_css_style.SetValue(
+      tasm::kPropertyIDTransitionProperty,
+      property_parsed[tasm::kPropertyIDTransitionProperty]));
+
+  auto& data = computed_css_style.transition_data();
+  ASSERT_EQ(data.size(), 3u);
+
+  // Set transition-duration: 1s, 2s (2 values for 3 entries, should cycle)
+  auto duration_parsed = tasm::UnitHandler::Process(
+      tasm::kPropertyIDTransitionDuration,
+      lepus::Value("1s, 2s"), configs);
+  EXPECT_TRUE(computed_css_style.SetValue(
+      tasm::kPropertyIDTransitionDuration,
+      duration_parsed[tasm::kPropertyIDTransitionDuration]));
+
+  // Durations should be [1000, 2000, 1000] (cycling)
+  EXPECT_EQ(data[0].duration, 1000);
+  EXPECT_EQ(data[1].duration, 2000);
+  EXPECT_EQ(data[2].duration, 1000);
 }
 
 }  // namespace starlight

@@ -219,9 +219,20 @@ class CSSStyleUtils {
       changed = compute_func(value.GetValue(), anim->front(), reset);
     }
     changed = changed || input_size != anim->size();
-    // Reset the remaining values
-    for (size_t i = input_size; i < anim->size(); ++i) {
-      reset_func((*anim)[i]);
+    // Per CSS spec, if there are fewer values than entries, repeat them
+    // cyclically instead of resetting. This ensures that longhand properties
+    // like transition-duration: 300ms apply to all transition-property entries.
+    if (input_size > 0) {
+      if (value.IsArray()) {
+        auto arr = value.GetArray();
+        for (size_t i = input_size; i < anim->size(); ++i) {
+          changed |= compute_func(arr->get(i % input_size), (*anim)[i], reset);
+        }
+      } else {
+        for (size_t i = input_size; i < anim->size(); ++i) {
+          changed |= compute_func(value.GetValue(), (*anim)[i], reset);
+        }
+      }
     }
     return changed;
   }
