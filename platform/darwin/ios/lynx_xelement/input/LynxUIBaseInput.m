@@ -114,14 +114,14 @@
   if (self.view.isFirstResponder) {
     self.keyboardHeight = keyboardHeight;
     self.avoidKeyboardDist = [self handleAvoidKeyboard:YES];
-    [self emitEvent:@"keyboardheightchange " detail:@{@"height" : @(keyboardHeight)}];
+    [self emitEvent:@"keyboardheightchange" detail:@{@"height" : @(keyboardHeight)}];
   }
 }
 
 - (void)keyboardWillHide {
   if (self.view.isFirstResponder) {
     self.avoidKeyboardDist = [self handleAvoidKeyboard:NO];
-    [self emitEvent:@"keyboardheightchange " detail:@{@"height" : @(0)}];
+    [self emitEvent:@"keyboardheightchange" detail:@{@"height" : @(0)}];
   }
 }
 
