@@ -776,6 +776,17 @@ ElementInspector::GetInlineStylesFromAttributeHolder(Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(node, "node is null", res);
   const StyleMap& inline_style = node->inline_styles();
   res = GetCssByStyleMap(element, inline_style);
+
+  auto insert_css_variables = [&res](const CSSVariableMap& var_map) {
+    for (const auto& pair : var_map) {
+      res[pair.first.str()] = pair.second.str();
+    }
+  };
+
+  insert_css_variables(node->css_variables_map());
+  insert_css_variables(node->css_variable_from_js());
+  insert_css_variables(node->css_variable_related());
+
   return res;
 }
 

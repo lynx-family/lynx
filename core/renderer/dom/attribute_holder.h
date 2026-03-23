@@ -276,6 +276,12 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     css_variables_->css_variable_related_.insert_or_assign(key, value);
   }
 
+  const CSSVariableMap& css_variable_from_js() {
+    return css_variables_.has_value()
+               ? css_variables_->css_variables_from_js_
+               : CSSVariableBundle::DefaultEmptyCSSVariableMap();
+  }
+
   const CSSVariableMap& css_variable_related() {
     return css_variables_.has_value()
                ? css_variables_->css_variable_related_
