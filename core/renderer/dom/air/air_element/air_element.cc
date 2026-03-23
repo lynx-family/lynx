@@ -911,9 +911,12 @@ bool AirElement::CheckFlattenProp(const base::String &key,
 
 void AirElement::SetClasses(const lepus::Value &class_names) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, AIR_ELEMENT_SET_CLASSES);
-  if (class_names.IsEmpty()) {
-    classes_.clear();
-    style_dirty_ |= Selector::kCLASS;
+  if (class_names.IsEmpty() ||
+      (class_names.IsString() && class_names.StringView().empty())) {
+    if (!classes_.empty()) {
+      classes_.clear();
+      style_dirty_ |= Selector::kCLASS;
+    }
     return;
   }
 
