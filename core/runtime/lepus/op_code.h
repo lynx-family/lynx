@@ -5,91 +5,14 @@
 #define CORE_RUNTIME_LEPUS_OP_CODE_H_
 namespace lynx {
 namespace lepus {
-#define OPCODE_LIST(V)                                                         \
-  V(TypeOp_LoadNil)    /* A    A: register*/                                   \
-  V(TypeOp_LoadConst)  /* ABx  A: register Bx: const index*/                   \
-  V(TypeOp_Move)       /* AB   A: dst register B: src register*/               \
-  V(TypeOp_GetUpvalue) /* AB   A: register B: upvalue index*/                  \
-  V(TypeOp_SetUpvalue) /* AB   A: register B: upvalue index*/                  \
-  V(TypeOp_GetGlobal)  /* ABx  A: value register Bx: const index*/             \
-  V(TypeOp_SetGlobal)  /* ABx  A: value register Bx: const index*/             \
-  V(TypeOp_Closure)    /* ABx  A: register Bx: proto index*/                   \
-  V(TypeOp_Call) /* ABC  A: register B: arg value count + 1 C: expected result \
-                    count + 1*/                                                \
-  V(TypeOp_Ret)  /* AsBx A: return value start register sBx: return value      \
-                    count*/                                                    \
-  V(TypeOp_JmpFalse)  /* AsBx A: register sBx: diff of instruction index*/     \
-  V(TypeOp_Jmp)       /* sBx  sBx: diff of instruction index*/                 \
-  V(TypeOp_Neg)       /* A    A: operand register and dst register*/           \
-  V(TypeOp_Not)       /* A    A: operand register and dst register*/           \
-  V(TypeOp_Len)       /* A    A: operand register and dst register*/           \
-  V(TypeOp_Add)       /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_Sub)       /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_Mul)       /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_Div)       /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_Pow)       /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_Mod)       /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_And)       /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_Or)        /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_Less)      /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_Greater)   /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_Equal)     /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_UnEqual)   /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_LessEqual) /* ABC  A: dst register B: operand1 register C: operand2 \
-                         register*/                                            \
-  V(TypeOp_GreaterEqual) /* ABC  A: dst register B: operand1 register C:       \
-                            operand2 register*/                                \
-  V(TypeOp_NewTable)     /* A    A: register of table*/                        \
-  V(TypeOp_SetTable)     /* ABC  A: register of table B: key register C: value \
-                            register*/                                         \
-  V(TypeOp_GetTable)     /* ABC  A: register of table B: key register C: value \
-                            register*/                                         \
-  V(TypeOp_Switch)                                                             \
-  V(TypeOp_Inc)                                                                \
-  V(TypeOp_Dec)                                                                \
-  V(TypeOp_Noop)                                                               \
-  V(TypeOp_NewArray)   /* ABC  A: register B: value count + 1*/                \
-  V(TypeOp_GetBuiltin) /* ABx  A: value register Bx: const index*/             \
-  V(TypeOp_Typeof)                                                             \
-  V(TypeOp_SetCatchId)                                                         \
-  V(TypeLabel_Throw)                                                           \
-  V(TypeLabel_Catch)                                                           \
-  V(TypeOp_BitOr)                                                              \
-  V(TypeOp_BitAnd)                                                             \
-  V(TypeOp_BitXor)                                                             \
-  V(TypeOp_BitNot)                                                             \
-  V(TypeOp_Pos)                                                                \
-  V(TypeOp_CreateContext)                                                      \
-  V(TypeOp_SetContextSlotMove)                                                 \
-  V(TypeOp_GetContextSlotMove)                                                 \
-  V(TypeOp_PushContext)                                                        \
-  V(TypeOp_PopContext)                                                         \
-  V(TypeOp_GetContextSlot)                                                     \
-  V(TypeOp_SetContextSlot)                                                     \
-  V(TypeOp_AbsUnEqual)                                                         \
-  V(TypeOp_AbsEqual)                                                           \
-  V(TypeOp_JmpTrue)                                                            \
-  V(TypeLabel_EnterBlock)                                                      \
-  V(TypeLabel_LeaveBlock)                                                      \
-  V(TypeOp_CreateBlockContext)
-
 enum TypeOpCode {
   OP_PLACEHOLDER = 0,
-#define DECLARE(x) x,
-  OPCODE_LIST(DECLARE) TypeOpCount
-#undef DECLARE
+#define DEF_OPCODE(x) x,
+#define DEF_NEW_OPCODE(x) x,
+#include "core/runtime/lepus/lepus_bytecode.def"
+  TypeOpCount
+#undef DEF_OPCODE
+#undef DEF_NEW_OPCODE
 };
 
 struct Instruction {

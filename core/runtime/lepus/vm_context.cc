@@ -44,19 +44,34 @@ namespace lepus {
 #define GET_CONST_VALUE(i) (function->GetConstValue(Instruction::GetParamBx(i)))
 #define GET_GLOBAL_VALUE(i) (global()->Get(Instruction::GetParamBx(i)))
 #define GET_BUILTIN_VALUE(i) (builtin()->Get(Instruction::GetParamBx(i)))
+#define GET_REGISTER_OPCODE(i) auto* d = (regs + Instruction::GetOpCode(i));
 #define GET_REGISTER_A(i) auto* a = (regs + Instruction::GetParamA(i));
 #define GET_REGISTER_B(i) auto* b = (regs + Instruction::GetParamB(i));
 #define GET_REGISTER_C(i) auto* c = (regs + Instruction::GetParamC(i));
+#define GET_REGISTER_X(i) auto* x = (regs + Instruction::GetParamA(i));
+#define GET_REGISTER_Y(i) auto* y = (regs + Instruction::GetParamB(i));
+#define GET_REGISTER_Z(i) auto* z = (regs + Instruction::GetParamC(i));
 
 #define GET_REGISTER_A_FROM_CTX(ctx) (ctx.regs + Instruction::GetParamA(ctx.i))
 #define GET_REGISTER_B_FROM_CTX(ctx) (ctx.regs + Instruction::GetParamB(ctx.i))
 #define GET_REGISTER_C_FROM_CTX(ctx) (ctx.regs + Instruction::GetParamC(ctx.i))
 
 #define GET_UPVALUE_B(i) (closure->GetUpvalue(Instruction::GetParamB(i)))
+#define GET_TOPLEVEL_B(i) (heap_.base() + 1 + Instruction::GetParamB(i))
 #define GET_REGISTER_ABC(i) \
   GET_REGISTER_A(i);        \
   GET_REGISTER_B(i);        \
   GET_REGISTER_C(i);
+
+#define GET_REGISTER_OP_AND_XYZ(i) \
+  GET_REGISTER_OPCODE(i);          \
+  GET_REGISTER_X(i);               \
+  GET_REGISTER_Y(i);               \
+  GET_REGISTER_Z(i);
+#define GET_REGISTER_OP_AND_XY(i) \
+  GET_REGISTER_OPCODE(i);         \
+  GET_REGISTER_X(i);              \
+  GET_REGISTER_Y(i);
 
 #define GET_REGISTER_ABC_FROM_CTX(ctx)    \
   auto* a = GET_REGISTER_A_FROM_CTX(ctx); \
@@ -67,6 +82,167 @@ namespace lepus {
   auto& a = ctx.a;             \
   auto& b = ctx.b;             \
   auto& c = ctx.c;
+
+#define COPY_ARG_RANDOM                                 \
+  auto full_inst_count = argc / 4;                      \
+  auto param_index = 1;                                 \
+  auto* local_base = base;                              \
+  int local_pc = pc;                                    \
+                                                        \
+  for (auto inst = 0; inst < full_inst_count; ++inst) { \
+    i = *(local_base + local_pc++);                     \
+    GET_REGISTER_OP_AND_XYZ(i);                         \
+    *(a + param_index++) = (*d);                        \
+    *(a + param_index++) = (*x);                        \
+    *(a + param_index++) = (*y);                        \
+    *(a + param_index++) = (*z);                        \
+  }                                                     \
+  pc = local_pc;
+
+#define COPY_ARG_RANDOM1                                \
+  auto full_inst_count = argc / 4;                      \
+  auto param_index = 1;                                 \
+  auto* local_base = base;                              \
+  int local_pc = pc;                                    \
+                                                        \
+  for (auto inst = 0; inst < full_inst_count; ++inst) { \
+    i = *(local_base + local_pc++);                     \
+    GET_REGISTER_OP_AND_XYZ(i);                         \
+    *(a + param_index++) = (*d);                        \
+    *(a + param_index++) = (*x);                        \
+    *(a + param_index++) = (*y);                        \
+    *(a + param_index++) = (*z);                        \
+  }                                                     \
+  i = *(local_base + local_pc++);                       \
+  GET_REGISTER_OPCODE(i);                               \
+  *(a + param_index++) = (*d);                          \
+  pc = local_pc;
+
+#define COPY_ARG_RANDOM2                                \
+  auto full_inst_count = argc / 4;                      \
+  auto param_index = 1;                                 \
+  auto* local_base = base;                              \
+  int local_pc = pc;                                    \
+                                                        \
+  for (auto inst = 0; inst < full_inst_count; ++inst) { \
+    i = *(local_base + local_pc++);                     \
+    GET_REGISTER_OP_AND_XYZ(i);                         \
+    *(a + param_index++) = (*d);                        \
+    *(a + param_index++) = (*x);                        \
+    *(a + param_index++) = (*y);                        \
+    *(a + param_index++) = (*z);                        \
+  }                                                     \
+  i = *(local_base + local_pc++);                       \
+  GET_REGISTER_OPCODE(i);                               \
+  GET_REGISTER_X(i);                                    \
+  *(a + param_index++) = (*d);                          \
+  *(a + param_index++) = (*x);                          \
+  pc = local_pc;
+
+#define COPY_ARG_RANDOM3                                \
+  auto full_inst_count = argc / 4;                      \
+  auto param_index = 1;                                 \
+  auto* local_base = base;                              \
+  int local_pc = pc;                                    \
+                                                        \
+  for (auto inst = 0; inst < full_inst_count; ++inst) { \
+    i = *(local_base + local_pc++);                     \
+    GET_REGISTER_OP_AND_XYZ(i);                         \
+    *(a + param_index++) = (*d);                        \
+    *(a + param_index++) = (*x);                        \
+    *(a + param_index++) = (*y);                        \
+    *(a + param_index++) = (*z);                        \
+  }                                                     \
+  i = *(local_base + local_pc++);                       \
+  GET_REGISTER_OP_AND_XY(i);                            \
+  *(a + param_index++) = (*d);                          \
+  *(a + param_index++) = (*x);                          \
+  *(a + param_index++) = (*y);                          \
+  pc = local_pc;
+
+#define CALL                                                                 \
+  current_frame_->current_pc_ = pc;                                          \
+  if (unlikely(is_debug_enabled_)) {                                         \
+    if (a->IsClosure()) {                                                    \
+      auto lepus_function =                                                  \
+          fml::static_ref_ptr_cast<Closure>(a->RefCounted()) -> function();  \
+      int32_t params_size = lepus_function->GetParamsSize();                 \
+      if (params_size > static_cast<int32_t>(argc)) {                        \
+        ReportLogBox("Do not support default function params on function " + \
+                         lepus_function->GetFunctionName() + ".",            \
+                     pc);                                                    \
+      }                                                                      \
+    }                                                                        \
+  }                                                                          \
+  int32_t result = CallFunction(a, argc, c);                                 \
+  if (unlikely(result <= 0)) {                                               \
+    bool caught = false;                                                     \
+    if (result < 0) {                                                        \
+      /* exception */                                                        \
+      caught = ReportException(                                              \
+          *std::exchange(current_exception_, std::nullopt), pc, length,      \
+          closure, function, base, regs, true,                               \
+          std::exchange(err_code_, error::E_MTS_RUNTIME_ERROR));             \
+    } else {                                                                 \
+      /* failed: not a function */                                           \
+      caught =                                                               \
+          ReportException(std::string(TYPEERROR) + ", not a function.", pc,  \
+                          length, closure, function, base, regs, true);      \
+    }                                                                        \
+    if (caught) {                                                            \
+      continue;                                                              \
+    }                                                                        \
+    return;                                                                  \
+  } else if (pc < current_frame_->current_pc_) {                             \
+    return;                                                                  \
+  }
+
+#define TYPE_OF(dst, src)                                     \
+  static constexpr const char kUndefined[] = "undefined";     \
+  static constexpr const char kObject[] = "object";           \
+  static constexpr const char kBoolean[] = "boolean";         \
+  static constexpr const char kNumber[] = "number";           \
+  static constexpr const char kString[] = "string";           \
+  static constexpr const char kFunction[] = "function";       \
+  static constexpr const char kLepusObject[] = "lepusobject"; \
+  switch (src->value().type) {                                \
+    case lynx_value_undefined:                                \
+      dst->SetString(BASE_STATIC_STRING(kUndefined));         \
+      break;                                                  \
+    case lynx_value_bool:                                     \
+      dst->SetString(BASE_STATIC_STRING(kBoolean));           \
+      break;                                                  \
+    case lynx_value_double:                                   \
+    case lynx_value_int32:                                    \
+    case lynx_value_uint32:                                   \
+    case lynx_value_int64:                                    \
+    case lynx_value_uint64:                                   \
+    case lynx_value_nan:                                      \
+      dst->SetString(BASE_STATIC_STRING(kNumber));            \
+      break;                                                  \
+    case lynx_value_string:                                   \
+      dst->SetString(BASE_STATIC_STRING(kString));            \
+      break;                                                  \
+    case lynx_value_object:                                   \
+      switch (src->RefType()) {                               \
+        case RefType::kJSIObject:                             \
+          dst->SetString(BASE_STATIC_STRING(kLepusObject));   \
+          break;                                              \
+        case RefType::kClosure:                               \
+          dst->SetString(BASE_STATIC_STRING(kFunction));      \
+          break;                                              \
+        default:                                              \
+          dst->SetString(BASE_STATIC_STRING(kObject));        \
+          break;                                              \
+      }                                                       \
+      break;                                                  \
+    case lynx_value_function:                                 \
+      dst->SetString(BASE_STATIC_STRING(kFunction));          \
+      break;                                                  \
+    default:                                                  \
+      dst->SetString(BASE_STATIC_STRING(kObject));            \
+      break;                                                  \
+  }
 
 using UnsafeOp = RestrictedValue::Unsafe;
 
@@ -187,7 +363,7 @@ RestrictedValue VMContext::PrepareClosureContext(
 
 #ifdef LEPUS_TEST
 void VMContext::Dump() {
-  Dumper dumper(root_function_.Get());
+  Dumper dumper(root_function_.get());
   dumper.Dump();
 }
 #endif
@@ -233,9 +409,6 @@ bool VMContext::UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
   long reg = 0;
   if (reg_info == top_level_variables_.end()) {
     if (enable_top_var_strict_mode_) {
-#ifdef LEPUS_LOG
-      LOGE("lepus-updateTopLevelVariable: not find variables " << name);
-#endif
       return false;
     } else {
       reg = top_level_variables_.size();
@@ -695,7 +868,7 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Op_Mod(RunFrameContext& ctx) {
 
   if (c->Number() == 0) {
     a->SetNil();
-    LOGE("lepus-mode: div 0");
+    LOGE("lepus-mode: mod 0");
     return;
   }
   RestrictedValue b_tmp = *b;
@@ -780,9 +953,6 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Op_GetTable_UnlikelyPath_String(
       a->SetString(base::String(result_begin, result_len));
     }
   } else {
-#ifdef LEPUS_LOG
-    LOGE("lepus: GetTable for base::String, key error is " << c->Type());
-#endif
     a->SetNil();
   }
 }
@@ -825,9 +995,14 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Label_LeaveBlock() {
 }
 
 void VMContext::RunFrame() {
-  static const void* const dispatch_table[TypeOpCount] = {&&case_default,
-#define DECLARE(x) &&case_##x,
-                                                          OPCODE_LIST(DECLARE)};
+  static const void* const dispatch_table[TypeOpCount] = {
+      &&case_default,
+#define DEF_OPCODE(x) &&case_##x,
+#define DEF_NEW_OPCODE(x) &&case_##x,
+#include "core/runtime/lepus/lepus_bytecode.def"
+#undef DEF_OPCODE
+#undef DEF_NEW_OPCODE
+  };
   static const void* const debugger_dispatch_table[TypeOpCount] = {
       &&case_default, [1 ...(TypeOpCount - 1)] = &&case_debug};
   if (current_frame_ == nullptr) return;
@@ -918,6 +1093,10 @@ void VMContext::RunFrame() {
         RestrictedValue::Assign(*a, *b);
       }
       BREAK;
+      CASE(TypeOp_LoadSmallInt) : {
+        // TODO(yangruqing): implement in phase2 optimization.
+      }
+      BREAK;
       CASE(TypeOp_Move) : {
         GET_REGISTER_A(i);
         GET_REGISTER_B(i);
@@ -939,6 +1118,18 @@ void VMContext::RunFrame() {
         } else {
           array->set(static_cast<int>(index), *a);
         }
+      }
+      BREAK;
+      CASE(TypeOp_GetToplevelClosureVar) : {
+        GET_REGISTER_A(i);
+        auto* b = GET_TOPLEVEL_B(i);
+        RestrictedValue::Assign(*a, *b);
+      }
+      BREAK;
+      CASE(TypeOp_SetToplevelClosureVar) : {
+        GET_REGISTER_A(i);
+        auto* b = GET_TOPLEVEL_B(i);
+        *b = *a;
       }
       BREAK;
       CASE(TypeOp_GetUpvalue) : {
@@ -966,46 +1157,53 @@ void VMContext::RunFrame() {
         RestrictedValue::Assign(*a, *b);
       }
       BREAK;
+      CASE(TypeOp_CallRandom) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_C(i);
+        long argc = Instruction::GetParamB(i);
+        COPY_ARG_RANDOM;
+        CALL;
+      }
+      BREAK;
+      CASE(TypeOp_CallRandom3) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_C(i);
+        long argc = Instruction::GetParamB(i);
+
+        COPY_ARG_RANDOM3;
+        CALL;
+      }
+      BREAK;
+      CASE(TypeOp_CallRandom2) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_C(i);
+        long argc = Instruction::GetParamB(i);
+
+        COPY_ARG_RANDOM2;
+        CALL;
+      }
+      BREAK;
+      CASE(TypeOp_CallRandom1) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_C(i);
+        long argc = Instruction::GetParamB(i);
+
+        COPY_ARG_RANDOM1;
+        CALL;
+      }
+      BREAK;
+      CASE(TypeOp_Call1) : {
+        GET_REGISTER_ABC(i);
+        *(a + 1) = (*b);
+        long argc = 1;
+        CALL;
+      }
+      BREAK;
       CASE(TypeOp_Call) : {
         GET_REGISTER_A(i);
         long argc = Instruction::GetParamB(i);
         GET_REGISTER_C(i);
-        current_frame_->current_pc_ = pc;
-        if (unlikely(is_debug_enabled_)) {
-          if (a->IsClosure()) {
-            auto lepus_function =
-                fml::static_ref_ptr_cast<Closure>(a->RefCounted())->function();
-            int32_t params_size = lepus_function->GetParamsSize();
-            if (params_size > static_cast<int32_t>(argc)) {
-              ReportLogBox(
-                  "Do not support default function params on function " +
-                      lepus_function->GetFunctionName() + ".",
-                  pc);
-            }
-          }
-        }
-        int32_t result = CallFunction(a, argc, c);
-        if (unlikely(result <= 0)) {
-          bool caught = false;
-          if (result < 0) {
-            // exception
-            caught = ReportException(
-                *std::exchange(current_exception_, std::nullopt), pc, length,
-                closure, function, base, regs, true,
-                std::exchange(err_code_, error::E_MTS_RUNTIME_ERROR));
-          } else {
-            // failed: not a function
-            caught = ReportException(
-                std::string(TYPEERROR) + ", not a function.", pc, length,
-                closure, function, base, regs, true);
-          }
-          if (caught) {
-            continue;
-          }
-          return;
-        } else if (pc < current_frame_->current_pc_) {
-          return;
-        }
+        CALL;
       }
       BREAK;
       CASE(TypeOp_Ret) : {
@@ -1020,9 +1218,69 @@ void VMContext::RunFrame() {
         if (a->IsFalse()) pc += -1 + Instruction::GetParamsBx(i);
       }
       BREAK;
+      CASE(TypeOp_BoolJmpFalse) : {
+        GET_REGISTER_A(i);
+        if (!UnsafeOp::TypeSure::GetBool(*a))
+          pc += -1 + Instruction::GetParamsBx(i);
+      }
+      BREAK;
+      CASE(TypeOp_UnEqualJmpFalse) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_C(i);
+        bool res = (*a != *c);
+        if (!res) {
+          pc += -1 + Instruction::GetParamB(i);
+        }
+      }
+      BREAK;
+      CASE(TypeOp_UnEqualJmpTrue) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_C(i);
+        bool res = (*a != *c);
+        if (res) {
+          pc += -1 + Instruction::GetParamB(i);
+        }
+      }
+      BREAK;
+      CASE(TypeOp_EqualJmpFalse) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_C(i);
+        bool res = false;
+        if (a->IsString() && c->IsString()) {
+          res = (UnsafeOp::TypeSure::GetStdString(*a) ==
+                 UnsafeOp::TypeSure::GetStdString(*c));
+        } else {
+          res = (*a == *c);
+        }
+        if (!res) {
+          pc += -1 + Instruction::GetParamB(i);
+        }
+      }
+      BREAK;
+      CASE(TypeOp_EqualJmpTrue) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_C(i);
+        bool res = false;
+        if (a->IsString() && c->IsString()) {
+          res = (UnsafeOp::TypeSure::GetStdString(*a) ==
+                 UnsafeOp::TypeSure::GetStdString(*c));
+        } else {
+          res = (*a == *c);
+        }
+        if (res) {
+          pc += -1 + Instruction::GetParamB(i);
+        }
+      }
+      BREAK;
       CASE(TypeOp_JmpTrue) : {
         GET_REGISTER_A(i);
         if (a->IsTrue()) pc += -1 + Instruction::GetParamsBx(i);
+      }
+      BREAK;
+      CASE(TypeOp_BoolJmpTrue) : {
+        GET_REGISTER_A(i);
+        if (UnsafeOp::TypeSure::GetBool(*a))
+          pc += -1 + Instruction::GetParamsBx(i);
       }
       BREAK;
       CASE(TypeOp_Jmp) : pc += -1 + Instruction::GetParamsBx(i);
@@ -1065,56 +1323,34 @@ void VMContext::RunFrame() {
       }
       BREAK;
       CASE(TypeOp_Typeof) : {
-        static constexpr const char kUndefined[] = "undefined";
-        static constexpr const char kObject[] = "object";
-        static constexpr const char kBoolean[] = "boolean";
-        static constexpr const char kNumber[] = "number";
-        static constexpr const char kString[] = "string";
-        static constexpr const char kFunction[] = "function";
-        static constexpr const char kLepusObject[] = "lepusobject";
         GET_REGISTER_A(i);
-        switch (a->value().type) {
-          case lynx_value_undefined:
-            a->SetString(BASE_STATIC_STRING(kUndefined));
-            break;
-          case lynx_value_bool:
-            a->SetString(BASE_STATIC_STRING(kBoolean));
-            break;
-          case lynx_value_double:
-          case lynx_value_int32:
-          case lynx_value_uint32:
-          case lynx_value_int64:
-          case lynx_value_uint64:
-          case lynx_value_nan:
-            a->SetString(BASE_STATIC_STRING(kNumber));
-            break;
-          case lynx_value_string:
-            a->SetString(BASE_STATIC_STRING(kString));
-            break;
-          case lynx_value_object:
-            switch (a->RefType()) {
-              case RefType::kJSIObject:
-                a->SetString(BASE_STATIC_STRING(kLepusObject));
-                break;
-              case RefType::kClosure:
-                a->SetString(BASE_STATIC_STRING(kFunction));
-                break;
-              default:
-                a->SetString(BASE_STATIC_STRING(kObject));
-                break;
-            }
-            break;
-          case lynx_value_function:
-            a->SetString(BASE_STATIC_STRING(kFunction));
-            break;
-          default:
-            a->SetString(BASE_STATIC_STRING(kObject));
-            break;
-        }
+        TYPE_OF(a, a);
+      }
+      BREAK;
+      CASE(TypeOp_Typeof2) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+        TYPE_OF(a, b);
       }
       BREAK;
       CASE(TypeOp_Neg) : {
         GET_REGISTER_A(i);
+        if (a->IsInt64()) {
+          UnsafeOp::TypeSure::SetInt64(*a, -UnsafeOp::TypeSure::GetInt64(*a));
+        } else if (a->IsNumber()) {
+          UnsafeOp::NoFree::SetNumber(
+              *a, -UnsafeOp::TypeSure::GetNumberDoubleFast(*a));
+        } else if (a->IsString()) {
+          RunFrame_Op_Neg_UnlikelyPath(a);
+        }
+      }
+      BREAK;
+      CASE(TypeOp_Neg2) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+        // Preserve legacy semantics by copying src to dst first and then
+        // applying the same in-place operation.
+        RestrictedValue::Assign(*a, *b);
         if (a->IsInt64()) {
           UnsafeOp::TypeSure::SetInt64(*a, -UnsafeOp::TypeSure::GetInt64(*a));
         } else if (a->IsNumber()) {
@@ -1130,13 +1366,63 @@ void VMContext::RunFrame() {
         RunFrame_Op_Pos(a);
       }
       BREAK;
+      CASE(TypeOp_Pos2) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+        RestrictedValue::Assign(*a, *b);
+        RunFrame_Op_Pos(a);
+      }
+      BREAK;
       CASE(TypeOp_Not) : {
         GET_REGISTER_A(i);
         a->SetBool(!a->Bool());
       }
       BREAK;
+      CASE(TypeOp_Not2) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+        a->SetBool(!b->Bool());
+      }
+      BREAK;
+      CASE(TypeOp_ToString) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+        if (b->IsNumber()) {
+          char buffer[128];
+          const char* num_str = base::StringConvertHelper::NumberToString(
+              b->Number(), buffer, sizeof(buffer));
+          if (num_str) {
+            a->SetString(num_str);
+          } else {
+            if (b->IsInt64()) {
+              a->SetString(std::to_string(UnsafeOp::TypeSure::GetInt64(*b)));
+            } else {
+              a->SetString(
+                  base::StringConvertHelper::DoubleToString(b->Number()));
+            }
+          }
+        } else if (b->IsString()) {
+          // Keep the original string value without extra allocations.
+          RestrictedValue::Assign(*a, *b);
+        } else {
+          a->SetString(b->StdString());
+        }
+      }
+      BREAK;
       CASE(TypeOp_BitNot) : {
         GET_REGISTER_A(i);
+        if (a->IsInt64()) {
+          UnsafeOp::TypeSure::SetInt64(*a, ~(UnsafeOp::TypeSure::GetInt64(*a)));
+        } else if (a->IsNumber()) {
+          int64_t x = static_cast<int64_t>(a->Number()) & 0xffffffff;
+          UnsafeOp::NoFree::SetNumber(*a, ~x);
+        }
+      }
+      BREAK;
+      CASE(TypeOp_BitNot2) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+        RestrictedValue::Assign(*a, *b);
         if (a->IsInt64()) {
           UnsafeOp::TypeSure::SetInt64(*a, ~(UnsafeOp::TypeSure::GetInt64(*a)));
         } else if (a->IsNumber()) {
@@ -1166,6 +1452,40 @@ void VMContext::RunFrame() {
       }
       BREAK;
       CASE(TypeOp_Len) : BREAK;
+      CASE(TypeOp_AddAnyString) : {
+        GET_REGISTER_ABC(i);
+        double b_value;
+        if (b->IsString()) {
+          a->SetString(UnsafeOp::TypeSure::GetStdString(*b) +
+                       UnsafeOp::TypeSure::GetStdString(*c));
+        } else if (b->IsInt64()) {
+          RunFrame_Op_Add_UnlikelyPath_B_Number(a, b, c);
+        } else if (UnsafeOp::TypeSure::IsNumberDoubleFast(*b, b_value)) {
+          RunFrame_Op_Add_UnlikelyPath_B_Number(a, b, c);
+        } else {
+          a->SetString(b->StdString() + c->StdString());
+        }
+      }
+      BREAK;
+      CASE(TypeOp_AddStringAny) : {
+        GET_REGISTER_ABC(i);
+        if (likely(c->IsString())) {
+          a->SetString(UnsafeOp::TypeSure::GetStdString(*b) +
+                       UnsafeOp::TypeSure::GetStdString(*c));
+        } else if (c->IsNumber()) {
+          RunFrame_Op_Add_UnlikelyPath_C_Number(a, b, c);
+        } else {
+          // may string + null or null + string
+          a->SetString(b->StdString() + c->StdString());
+        }
+      }
+      BREAK;
+      CASE(TypeOp_AddStringString) : {
+        GET_REGISTER_ABC(i);
+        a->SetString(UnsafeOp::TypeSure::GetStdString(*b) +
+                     UnsafeOp::TypeSure::GetStdString(*c));
+      }
+      BREAK;
       CASE(TypeOp_Add) : {
         GET_REGISTER_ABC(i);
         double b_value;
@@ -1296,14 +1616,21 @@ void VMContext::RunFrame() {
         }
       }
       BREAK;
-      CASE(TypeOp_UnEqual) : {
+      CASE(TypeOp_EqualString) : {
+        GET_REGISTER_ABC(i);
+        a->SetBool(UnsafeOp::TypeSure::GetStdString(*b) ==
+                   UnsafeOp::TypeSure::GetStdString(*c));
+      }
+      BREAK;
+      CASE(TypeOp_UnEqual) : CASE(TypeOp_AbsUnEqual) : {
         GET_REGISTER_ABC(i);
         a->SetBool(*b != *c);
       }
       BREAK;
-      CASE(TypeOp_AbsUnEqual) : {
+      CASE(TypeOp_UnEqualString) : {
         GET_REGISTER_ABC(i);
-        a->SetBool(*b != *c);
+        a->SetBool(UnsafeOp::TypeSure::GetStdString(*b) !=
+                   UnsafeOp::TypeSure::GetStdString(*c));
       }
       BREAK;
       CASE(TypeOp_LessEqual) : {
@@ -1343,6 +1670,125 @@ void VMContext::RunFrame() {
         a->SetArray(std::move(arr));
       }
       BREAK;
+      CASE(TypeOp_NewArrayConsecutive) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_C(i);
+        long argc = Instruction::GetParamB(i);
+        auto arr = CArray::Create();
+        arr->reserve(argc);
+        for (int i = 0; i < argc; ++i) {
+          arr->push_back(*(c + i));
+        }
+        a->SetArray(std::move(arr));
+      }
+      BREAK;
+      CASE(TypeOp_NewArrayRandom) : {
+        GET_REGISTER_A(i);
+        long argc = Instruction::GetParamB(i);
+        auto arr = CArray::Create();
+        arr->reserve(argc);
+
+        auto full_inst_count = argc / 4;
+        auto* local_base = base;
+        int local_pc = pc;
+
+        for (auto inst = 0; inst < full_inst_count; ++inst) {
+          i = *(local_base + local_pc++);
+          GET_REGISTER_OP_AND_XYZ(i);
+          arr->push_back(*d);
+          arr->push_back(*x);
+          arr->push_back(*y);
+          arr->push_back(*z);
+        }
+        pc = local_pc;
+        a->SetArray(std::move(arr));
+      }
+      BREAK;
+      CASE(TypeOp_NewArrayRandom1) : {
+        GET_REGISTER_A(i);
+        long argc = Instruction::GetParamB(i);
+        auto arr = CArray::Create();
+        arr->reserve(argc);
+
+        auto full_inst_count = argc / 4;
+        auto* local_base = base;
+        int local_pc = pc;
+
+        for (auto inst = 0; inst < full_inst_count; ++inst) {
+          i = *(local_base + local_pc++);
+          GET_REGISTER_OP_AND_XYZ(i);
+          arr->push_back(*d);
+          arr->push_back(*x);
+          arr->push_back(*y);
+          arr->push_back(*z);
+        }
+
+        i = *(local_base + local_pc++);
+        GET_REGISTER_OPCODE(i);
+        arr->push_back(*d);
+
+        pc = local_pc;
+        a->SetArray(std::move(arr));
+      }
+      BREAK;
+      CASE(TypeOp_NewArrayRandom2) : {
+        GET_REGISTER_A(i);
+        long argc = Instruction::GetParamB(i);
+        auto arr = CArray::Create();
+        arr->reserve(argc);
+
+        auto full_inst_count = argc / 4;
+        auto* local_base = base;
+        int local_pc = pc;
+
+        for (auto inst = 0; inst < full_inst_count; ++inst) {
+          i = *(local_base + local_pc++);
+          GET_REGISTER_OP_AND_XYZ(i);
+          arr->push_back(*d);
+          arr->push_back(*x);
+          arr->push_back(*y);
+          arr->push_back(*z);
+        }
+
+        i = *(local_base + local_pc++);
+        GET_REGISTER_OPCODE(i);
+        GET_REGISTER_X(i);
+        arr->push_back(*d);
+        arr->push_back(*x);
+
+        pc = local_pc;
+        a->SetArray(std::move(arr));
+      }
+      BREAK;
+      CASE(TypeOp_NewArrayRandom3) : {
+        GET_REGISTER_A(i);
+        long argc = Instruction::GetParamB(i);
+        auto arr = CArray::Create();
+        arr->reserve(argc);
+
+        auto full_inst_count = argc / 4;
+        auto* local_base = base;
+        int local_pc = pc;
+
+        for (auto inst = 0; inst < full_inst_count; ++inst) {
+          i = *(local_base + local_pc++);
+          GET_REGISTER_OP_AND_XYZ(i);
+          arr->push_back(*d);
+          arr->push_back(*x);
+          arr->push_back(*y);
+          arr->push_back(*z);
+        }
+
+        i = *(local_base + local_pc++);
+        GET_REGISTER_OP_AND_XY(i);
+        arr->push_back(*d);
+        arr->push_back(*x);
+        arr->push_back(*y);
+
+        pc = local_pc;
+        a->SetArray(std::move(arr));
+      }
+      BREAK;
       CASE(TypeOp_CreateContext) : {
         GET_REGISTER_A(i);
         // context + data
@@ -1373,6 +1819,49 @@ void VMContext::RunFrame() {
         a->SetTable(Dictionary::Create());
       }
       BREAK;
+      CASE(TypeOp_SetObjectString) : {
+        GET_REGISTER_ABC(i);
+        UnsafeOp::TypeSure::GetTable(*a)->SetValue(
+            UnsafeOp::TypeSure::GetString(*b), *c);
+      }
+      BREAK;
+      CASE(TypeOp_SetObjectConstString) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_C(i);
+        const Value* const_key =
+            function->GetConstValue(Instruction::GetParamB(i));
+        auto key = base::String::Unsafe::ConstructWeakRefStringFromRawRef(
+            reinterpret_cast<base::RefCountedStringImpl*>(
+                const_key->value().val_ptr));
+        UnsafeOp::TypeSure::GetTable(*a)->SetValue(key, *c);
+      }
+      BREAK;
+      CASE(TypeOp_SetObjectNumber) : {
+        GET_REGISTER_ABC(i);
+        std::ostringstream s;
+        s << b->Number();
+        a->Table()->SetValue(s.str(), *c);
+      }
+      BREAK;
+      CASE(TypeOp_SetTableNumber) : {
+        GET_REGISTER_ABC(i);
+        if (a->IsArray()) {
+          if (likely(b->IsInt64())) {
+            UnsafeOp::TypeSure::GetArray(*a)->set(
+                UnsafeOp::TypeSure::GetInt64(*b), *c);
+          } else if (b->IsNumber()) {
+            UnsafeOp::TypeSure::GetArray(*a)->set(
+                static_cast<size_t>(
+                    UnsafeOp::TypeSure::GetNumberDoubleFast(*b)),
+                *c);
+          }
+        } else if (a->IsTable() && b->IsNumber()) {
+          std::ostringstream s;
+          s << b->Number();
+          a->Table()->SetValue(s.str(), *c);
+        }
+      }
+      BREAK;
       CASE(TypeOp_SetTable) : {
         GET_REGISTER_ABC(i);
         if (a->IsTable() && b->IsString()) {
@@ -1392,6 +1881,72 @@ void VMContext::RunFrame() {
           std::ostringstream s;
           s << b->Number();
           a->Table()->SetValue(s.str(), *c);
+        }
+      }
+      BREAK;
+      CASE(TypeOp_GetArrayInt64) : {
+        GET_REGISTER_ABC(i);
+        auto arr = UnsafeOp::TypeSure::GetArray(*b);
+        RestrictedValue::Assign(*a, arr->get(UnsafeOp::TypeSure::GetInt64(*c)));
+      }
+      BREAK;
+      CASE(TypeOp_GetObjectString) : {
+        GET_REGISTER_ABC(i);
+        auto tbl = UnsafeOp::TypeSure::GetTable(*b);
+        RestrictedValue::Assign(
+            *a,
+            enable_null_prop_as_undef_
+                ? tbl->GetValueOrUndefined(UnsafeOp::TypeSure::GetString(*c))
+                : tbl->GetValue(UnsafeOp::TypeSure::GetString(*c)));
+      }
+      BREAK;
+      CASE(TypeOp_GetObjectNumber) : {
+        GET_REGISTER_ABC(i);
+        auto tbl = UnsafeOp::TypeSure::GetTable(*b);
+        std::ostringstream s;
+        s << c->Number();
+        *a = enable_null_prop_as_undef_ ? tbl->GetValueOrUndefined(s.str())
+                                        : tbl->GetValue(s.str());
+      }
+      BREAK;
+      CASE(TypeOp_GetStringLength) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+        a->SetNumber(static_cast<int64_t>(
+            UnsafeOp::TypeSure::GetString(*b).length_utf16()));
+        BREAK;
+      }
+      CASE(TypeOp_DeepClone) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+        if (b->IsArray()) {
+          auto src_arr = UnsafeOp::TypeSure::GetArray(*b);
+          auto dst_arr = CArray::Create();
+          dst_arr->reserve(static_cast<long>(src_arr->size()));
+          for (size_t idx = 0; idx < src_arr->size(); ++idx) {
+            dst_arr->push_back(src_arr->get(idx));
+          }
+          RestrictedValue::Assign(*a, RestrictedValue(std::move(dst_arr)));
+        } else if (b->IsTable()) {
+          auto src_tbl = UnsafeOp::TypeSure::GetTable(*b);
+          auto dst_tbl = Dictionary::Create();
+          dst_tbl->reserve(src_tbl->size());
+          src_tbl->for_each([&](const auto& key, const auto& value) {
+            dst_tbl->SetValue(key, value);
+          });
+          RestrictedValue::Assign(*a, RestrictedValue(std::move(dst_tbl)));
+        } else {
+          *a = *b;
+        }
+      }
+      BREAK;
+      CASE(TypeOp_GetBuiltinFunc) : {
+        GET_REGISTER_ABC(i);
+        if (likely(c->IsString())) {
+          RestrictedValue::Assign(*a, b->FunctionTable()->GetFunction(
+                                          UnsafeOp::TypeSure::GetString(*c)));
+        } else {
+          a->SetNil();
         }
       }
       BREAK;
@@ -1439,9 +1994,6 @@ void VMContext::RunFrame() {
             // Array index of other number type.
             *a = arr->get(c->Number());
           } else {
-#ifdef LEPUS_LOG
-            LOGE("lepus: GetTable for Array, key error is " << c->Type());
-#endif
             a->SetNil();
           }
         } else if (b->IsBuiltinFunctionTable()) {
@@ -1455,7 +2007,8 @@ void VMContext::RunFrame() {
           if (c->IsString()) {
             auto c_str = UnsafeOp::TypeSure::GetString(*c);
             const auto& c_str_value = c_str.str();
-            if (c_str_value == "length") {
+            constexpr char k_length[] = "length";
+            if (c_str_value == k_length) {
               a->SetNumber(static_cast<int64_t>(
                   UnsafeOp::TypeSure::GetString(*b).length_utf16()));
             } else {
@@ -1480,18 +2033,6 @@ void VMContext::RunFrame() {
               }
               return;
             }
-          } else {
-#ifdef LEPUS_LOG
-            if (c->IsString()) {
-              LOGE("lepus: Cannot read property " << c->StdString()
-                                                  << " of undefined.");
-            } else if (c->IsNumber()) {
-              LOGE("lepus: Cannot read property " << c->Number()
-                                                  << " of undefined.");
-            } else {
-              LOGE("lepus: Cannot read property of undefined");
-            }
-#endif
           }
           enable_null_prop_as_undef_ ? a->SetUndefined() : a->SetNil();
         } else {
@@ -1514,14 +2055,213 @@ void VMContext::RunFrame() {
               if (b->IsNumber() && c->IsString()) {
                 *a = GetNumberPrototypeAPI(UnsafeOp::TypeSure::GetString(*c));
               } else {
-#ifdef LEPUS_LOG
-                LOGE("lepus: GetTable unknown, receiver type  "
-                     << b->Type() << ", key type " << c->Type());
-#endif
                 a->SetNil();
               }
               break;
           }
+        }
+      }
+      BREAK;
+      CASE(TypeOp_GetTableString) : {
+        GET_REGISTER_ABC(i);
+        constexpr char k_length[] = "length";
+        constexpr char k_input[] = "input";
+        constexpr char k_index[] = "index";
+        constexpr char k_groups[] = "groups";
+        if (b->IsTable()) {
+          auto tbl = UnsafeOp::TypeSure::GetTable(*b);
+          RestrictedValue::Assign(
+              *a,
+              enable_null_prop_as_undef_
+                  ? tbl->GetValueOrUndefined(UnsafeOp::TypeSure::GetString(*c))
+                  : tbl->GetValue(UnsafeOp::TypeSure::GetString(*c)));
+        } else if (b->IsArray()) {
+          auto arr = UnsafeOp::TypeSure::GetArray(*b);
+          auto c_str = UnsafeOp::TypeSure::GetString(*c);
+          const auto& c_str_value = c_str.str();
+          if (c_str_value == k_length) {
+            a->SetNumber(static_cast<int64_t>(arr->size()));
+          } else if (unlikely(arr->GetIsMatchResult())) {
+            if (c_str_value == k_input) {
+              *a = arr->GetMatchInput();
+            } else if (c_str_value == k_index) {
+              *a = arr->GetMatchIndex();
+            } else if (c_str_value == k_groups) {
+              *a = arr->GetMatchGroups();
+            }
+          } else {
+            RestrictedValue::Assign(*a, GetArrayPrototypeAPI(c_str));
+          }
+        } else if (b->IsBuiltinFunctionTable()) {
+          RestrictedValue::Assign(*a, b->FunctionTable()->GetFunction(
+                                          UnsafeOp::TypeSure::GetString(*c)));
+        } else if (b->IsString()) {
+          if (c->IsString()) {
+            auto c_str = UnsafeOp::TypeSure::GetString(*c);
+            const auto& c_str_value = c_str.str();
+            if (c_str_value == k_length) {
+              a->SetNumber(static_cast<int64_t>(
+                  UnsafeOp::TypeSure::GetString(*b).length_utf16()));
+            } else {
+              RestrictedValue::Assign(*a, GetStringPrototypeAPI(c_str));
+            }
+          }
+        } else if (b->IsNil() || b->IsUndefined()) {
+          a->SetNil();
+          if (enable_strict_check_) {
+            std::string key;
+            if (c->IsString()) {
+              key = c->StdString();
+            }
+            bool caught = ReportException("Cannot read " + key + " of null ",
+                                          pc, length, closure, function, base,
+                                          regs, enable_strict_check_);
+            if (caught) {
+              continue;
+            }
+            return;
+          }
+          enable_null_prop_as_undef_ ? a->SetUndefined() : a->SetNil();
+        } else {
+          switch (b->Type()) {
+            case Value_CDate:
+              *a = GetDatePrototypeAPI(UnsafeOp::TypeSure::GetString(*c));
+              break;
+            case Value_RegExp:
+              *a = GetRegexPrototypeAPI(UnsafeOp::TypeSure::GetString(*c));
+              break;
+            default:
+              if (b->IsNumber()) {
+                *a = GetNumberPrototypeAPI(UnsafeOp::TypeSure::GetString(*c));
+              } else {
+                a->SetNil();
+              }
+              break;
+          }
+        }
+      }
+      BREAK;
+      CASE(TypeOp_GetTableConstString) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+
+        const Value* const_key_val =
+            function->GetConstValue(Instruction::GetParamC(i));
+        // Const pool entry is expected to be a string.
+        auto key = base::String::Unsafe::ConstructWeakRefStringFromRawRef(
+            reinterpret_cast<base::RefCountedStringImpl*>(
+                const_key_val->value().val_ptr));
+        if (b->IsTable()) {
+          auto tbl = UnsafeOp::TypeSure::GetTable(*b);
+          RestrictedValue::Assign(*a, enable_null_prop_as_undef_
+                                          ? tbl->GetValueOrUndefined(key)
+                                          : tbl->GetValue(key));
+        } else if (b->IsArray()) {
+          constexpr char k_length[] = "length";
+          constexpr char k_input[] = "input";
+          constexpr char k_index[] = "index";
+          constexpr char k_groups[] = "groups";
+          const auto& key_str_value = key.str();
+          auto arr = UnsafeOp::TypeSure::GetArray(*b);
+          if (key_str_value == k_length) {
+            a->SetNumber(static_cast<int64_t>(arr->size()));
+          } else if (unlikely(arr->GetIsMatchResult())) {
+            if (key_str_value == k_input) {
+              *a = arr->GetMatchInput();
+            } else if (key_str_value == k_index) {
+              *a = arr->GetMatchIndex();
+            } else if (key_str_value == k_groups) {
+              *a = arr->GetMatchGroups();
+            }
+          } else {
+            RestrictedValue::Assign(*a, GetArrayPrototypeAPI(key));
+          }
+        } else if (b->IsBuiltinFunctionTable()) {
+          RestrictedValue::Assign(*a, b->FunctionTable()->GetFunction(key));
+        } else if (b->IsString()) {
+          const auto& key_str_value = key.str();
+          constexpr char k_length[] = "length";
+          if (key_str_value == k_length) {
+            a->SetNumber(static_cast<int64_t>(
+                UnsafeOp::TypeSure::GetString(*b).length_utf16()));
+          } else {
+            RestrictedValue::Assign(*a, GetStringPrototypeAPI(key));
+          }
+        } else if (b->IsNil() || b->IsUndefined()) {
+          a->SetNil();
+          if (enable_strict_check_) {
+            const auto& key_str_value = key.str();
+            bool caught = ReportException(
+                "Cannot read " + key_str_value + " of null ", pc, length,
+                closure, function, base, regs, enable_strict_check_);
+            if (caught) {
+              continue;
+            }
+            return;
+          }
+          enable_null_prop_as_undef_ ? a->SetUndefined() : a->SetNil();
+        } else {
+          switch (b->Type()) {
+            case Value_CDate:
+              *a = GetDatePrototypeAPI(key);
+              break;
+            case Value_RegExp:
+              *a = GetRegexPrototypeAPI(key);
+              break;
+            default:
+              if (b->IsNumber()) {
+                *a = GetNumberPrototypeAPI(key);
+              } else {
+                a->SetNil();
+              }
+              break;
+          }
+        }
+      }
+      BREAK;
+      CASE(TypeOp_GetTableNumber) : {
+        GET_REGISTER_ABC(i);
+
+        if (b->IsTable()) {
+          auto tbl = UnsafeOp::TypeSure::GetTable(*b);
+          std::ostringstream s;
+          s << c->Number();
+          *a = enable_null_prop_as_undef_ ? tbl->GetValueOrUndefined(s.str())
+                                          : tbl->GetValue(s.str());
+        } else if (b->IsArray()) {
+          auto arr = UnsafeOp::TypeSure::GetArray(*b);
+          if (likely(c->IsInt64())) {
+            RestrictedValue::Assign(*a,
+                                    arr->get(UnsafeOp::TypeSure::GetInt64(*c)));
+          } else if (c->IsNumber()) {
+            // Array index of other number type.
+            *a = arr->get(c->Number());
+          } else {
+            a->SetNil();
+          }
+        } else if (b->IsBuiltinFunctionTable()) {
+          a->SetNil();
+        } else if (b->IsString()) {
+          RunFrame_Op_GetTable_UnlikelyPath_String(a, b, c);
+        } else if (b->IsNil() || b->IsUndefined()) {
+          a->SetNil();
+          if (enable_strict_check_) {
+            std::string key;
+            if (c->IsString()) {
+              key = c->StdString();
+            }
+            bool caught = ReportException("Cannot read " + key + " of null ",
+                                          pc, length, closure, function, base,
+                                          regs, enable_strict_check_);
+            if (caught) {
+              continue;
+            }
+            return;
+          }
+          enable_null_prop_as_undef_ ? a->SetUndefined() : a->SetNil();
+        } else {
+          a->SetNil();
+          break;
         }
       }
       BREAK;
@@ -1543,8 +2283,34 @@ void VMContext::RunFrame() {
         }
       }
       BREAK;
+      CASE(TypeOp_Inc2) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+        RestrictedValue::Assign(*a, *b);
+        double a_value;
+        if (a->IsInt64()) {
+          UnsafeOp::TypeSure::SetInt64(*a,
+                                       UnsafeOp::TypeSure::GetInt64(*a) + 1);
+        } else if (UnsafeOp::TypeSure::IsNumberDoubleFast(*a, a_value)) {
+          UnsafeOp::NoFree::SetNumber(*a, a_value + 1);
+        }
+      }
+      BREAK;
       CASE(TypeOp_Dec) : {
         GET_REGISTER_A(i);
+        double a_value;
+        if (a->IsInt64()) {
+          UnsafeOp::TypeSure::SetInt64(*a,
+                                       UnsafeOp::TypeSure::GetInt64(*a) - 1);
+        } else if (UnsafeOp::TypeSure::IsNumberDoubleFast(*a, a_value)) {
+          UnsafeOp::NoFree::SetNumber(*a, a_value - 1);
+        }
+      }
+      BREAK;
+      CASE(TypeOp_Dec2) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
+        RestrictedValue::Assign(*a, *b);
         double a_value;
         if (a->IsInt64()) {
           UnsafeOp::TypeSure::SetInt64(*a,
@@ -1566,17 +2332,21 @@ void VMContext::RunFrame() {
       // BREAK;
     }
   }
-  CASE(default) : if (current_frame_->return_ != nullptr) {
-    current_frame_->return_->SetNil();
-  }
-  return;
-  CASE(debug) : if (is_debug_enabled_) {
-    auto debug_delegate = debug_delegate_.lock();
-    if (debug_delegate != nullptr) {
-      debug_delegate->UpdateCurrentPC(pc - 1);
+  CASE(default) : {
+    if (current_frame_->return_ != nullptr) {
+      current_frame_->return_->SetNil();
     }
+    return;
   }
-  goto* dispatch_table[Instruction::GetOpCode(i)];
+  CASE(debug) : {
+    if (is_debug_enabled_) {
+      auto debug_delegate = debug_delegate_.lock();
+      if (debug_delegate != nullptr) {
+        debug_delegate->UpdateCurrentPC(pc - 1);
+      }
+    }
+    goto* dispatch_table[Instruction::GetOpCode(i)];
+  }
 }
 
 void VMContext::GenerateClosure(RestrictedValue* value, long index) {
@@ -1587,14 +2357,16 @@ void VMContext::GenerateClosure(RestrictedValue* value, long index) {
   auto closure = Closure::Create(function);
 
   std::size_t upvalues_count = function->UpvaluesSize();
-  closure->upvalues_.reserve(upvalues_count);
-  for (int i = 0; static_cast<size_t>(i) < upvalues_count; ++i) {
-    UpvalueInfo* info = function->GetUpvalue(i);
-    if (info->in_parent_vars_) {
-      auto* v = frame->register_ + info->register_;
-      closure->AddUpvalue(v);
-    } else {
-      closure->AddUpvalue(current_closure->GetUpvalue(info->register_));
+  if (upvalues_count) {
+    closure->upvalues_.reserve(upvalues_count);
+    for (int i = 0; static_cast<size_t>(i) < upvalues_count; ++i) {
+      UpvalueInfo* info = function->GetUpvalue(i);
+      if (info->in_parent_vars_) {
+        auto* v = frame->register_ + info->register_;
+        closure->AddUpvalue(v);
+      } else {
+        closure->AddUpvalue(current_closure->GetUpvalue(info->register_));
+      }
     }
   }
   closure->SetContext(closure_context_);

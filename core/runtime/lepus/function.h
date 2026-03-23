@@ -171,6 +171,12 @@ class Function : public fml::RefCountedThreadSafeStorage {
     function_name_ = function_name;
   }
 
+  void SetTopLevelFunction(bool is_toplevel_function) {
+    is_toplevel_function_ = is_toplevel_function;
+  }
+
+  bool IsToplevelFunction() const { return is_toplevel_function_; }
+
   LYNX_EXPORT_FOR_DEVTOOL std::string GetFunctionName();
 
   void SetUpvalueArray(const std::unordered_map<
@@ -215,8 +221,6 @@ class Function : public fml::RefCountedThreadSafeStorage {
                                                          int32_t& offset);
 
   void SetScope(Value& scopes) { scopes_ = scopes; }
-
-  void DumpScope();
 
   const auto& block_scope_stack() { return block_scope_stack_; }
 
@@ -273,6 +277,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
   // These two stacks are used by code generator only.
   base::Stack<uint64_t> block_scope_stack_;
   base::Stack<uint64_t> loop_block_stack_;
+  bool is_toplevel_function_ = false;
 };
 
 class Closure : public lepus::RefCounted {
