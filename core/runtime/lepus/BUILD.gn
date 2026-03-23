@@ -17,11 +17,12 @@ lynx_core_source_set("lepus") {
     sources += lynx_lepus_core_sources_path
   }
 
+  deps = []
   if (build_lepus_compile) {
     sources += lynx_lepus_compile_sources_path
+    deps += [ "ir/llvh" ]
   }
 
-  deps = []
   if (is_mac || is_linux) {
     deps += [ "../../../third_party/quickjs" ]
   } else if (is_ios) {
@@ -47,6 +48,9 @@ lynx_core_source_set("lepus") {
   #     "ast_dump.cc",
   #     "bytecode_print.h",
   #     "bytecode_print.cc",
+  #     "ir/ir_dumper.cc",
+  #     "ir/transformer/common/cfg_raw_viewer.cc",
+  #     "ir/dialects/mir/mir_dumper.cc",
   #   ]
   #   defines = ["LEPUS_PC", "LEPUS_TEST"]
   # }
@@ -94,6 +98,7 @@ unittest_set("lepus_testset") {
     "../../../third_party/rapidjson:rapidjson",
     "../lepusng:lepus_ng",
     "../lepusng:lepusng_unittest_sources",
+    "ir/llvh",
   ]
 }
 

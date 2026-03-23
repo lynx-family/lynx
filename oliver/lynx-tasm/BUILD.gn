@@ -202,6 +202,10 @@ if (build_lynx_lepus_node) {
 
     deps += [ "../../third_party/quickjs" ]
 
+    if (build_lepus_compile) {
+      deps += [ "../../core/runtime/lepus/ir/llvh" ]
+    }
+
     if (is_wasm) {
       exclude_configs = [ "//build/config/compiler:no_rtti" ]
       configs = [ "//build/config/compiler:rtti" ]

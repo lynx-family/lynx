@@ -187,7 +187,7 @@ compilerOptions:
     since: '3.3'
   enableOptLepusBytecode:
     description: Allow opt lepus bytecode.
-    defaultValue: 'true'
+    defaultValue: 'false'
     valueType: boolean
     since: '3.8'
   bundleModuleMode:

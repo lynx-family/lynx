@@ -1,0 +1,55 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+//===----------------------------------------------------------------------===//
+//
+// This file defines macros used for macro-metaprogramming with lepus Passes.
+//
+//===----------------------------------------------------------------------===//
+
+/// PASS(Id, Name, Description)
+///   There exists a global function Create##Id().
+///
+///   This macro must be defined by the include.
+
+#ifndef PASS
+#error "Macro must be defined by include"
+#endif
+
+// ------------------ LEPUS IR Passes ---------------------------------
+
+PASS(CollectToplevelClosureRegPass, "collect-toplevel-closure-vars-reg", "collect toplevel closure vars reg")
+PASS(ConstructSSAIRPass, "construct-ssa-ir", "construct ssa ir")
+PASS(ProcessSpecialMovPass, "replace-toplevel-closure-mov", "replace MovInst with Get/SetToplevelVarInst or Get/SetToplevelClosureVarInst")
+PASS(GetToplevelRelatedInstEliminationPass, "get-toplevel-related-inst-elimination", "eliminate redundant GetToplevel* and strip toplevel-related attrs")
+PASS(NormalizePhiPass, "normalize-phi", "normalize phi")
+
+PASS(SSAIRVerifyPass, "verify-ssa-ir", "verify ssa ir")
+PASS(ChangeSpecialAttributePass, "change-special-attribute", "assert and clear closureVarReg when both attrs exist")
+PASS(TypeSpecificationPass, "type-specification", "type specification")
+PASS(SimplifyCFG, "simplify-cfg", "Simplify CFG")
+PASS(InstCombinePass, "inst-combine", "inst combine pass")
+PASS(DCE, "dce", "Eliminate dead code")
+PASS(CSE, "cse", "Common subexpression elimination")
+PASS(LoadStoreElimination, "load-store-elimination", "eliminate redundant heap load and stores")
+PASS(SpecialProcessForUnaryOperatorInst, "special-process-for-unary-operator-inst", "special process for unary operator inst")
+
+
+PASS(RegisterAllocationPass, "reg-alloc-pass", "register allocation")
+PASS(MovEliminationPass, "mov-elimination", "eliminate redundant movs")
+PASS(RegisterCompactionPass, "reg-compact-pass", "compact/renumber physical registers after RA")
+PASS(VerifyCallRegisterPass, "verify-call-register", "verify call register allocation")
+PASS(FunctionToBuiltInPass, "function-to-builtin", "mark builtin func calls that can be lowered to dedicated opcodes")
+PASS(UpdateToplevelClosureVarPass, "update-toplevel-closure-vars", "update toplevel closure vars")
+PASS(SetToplevelEliminationPass, "set-toplevel-elimination", "eliminate redundant SetToplevel* by fixing producer register")
+PASS(UpdateToplevelVarRegPass, "update-toplevel-vars-reg", "update toplevel vars reg")
+PASS(DumpOpcodeBeforeOptPass, "dump-original-opcode", "dump original opcode before opt")
+PASS(InstructionSelectionPass, "instruction-selection-pass", "instruction select")
+
+// ------------------ Debug Passes ---------------------------------
+#ifdef LEPUS_TEST
+PASS(CFGRawViewer, "cfg-raw-viewer", "dump cfg viewer")
+#endif
+
+#undef PASS

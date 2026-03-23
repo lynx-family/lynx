@@ -768,7 +768,7 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
     enable_css_parser = true;
   }
 
-  bool enable_opt_lepus_bytecode = true;
+  bool enable_opt_lepus_bytecode = false;
   GET_VALUE_FROM_JSON(options, kEnableOptLepusBytecode, Bool,
                       enable_opt_lepus_bytecode);
 

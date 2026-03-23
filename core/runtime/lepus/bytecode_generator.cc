@@ -10,6 +10,9 @@
 // NOTE(OSS): RTS runtime headers are non-open-source. This file only needs
 // lepus/quickjs compilation paths, so avoid including RTS headers.
 #include "core/runtime/lepus/code_generator.h"
+#include "core/runtime/lepus/ir/ir_context.h"
+#include "core/runtime/lepus/ir/pass_manager/pipeline.h"
+#include "core/runtime/lepus/ir/value.h"
 #include "core/runtime/lepus/parser.h"
 #include "third_party/modp_b64/modp_b64.h"
 
@@ -65,7 +68,7 @@ std::string BytecodeGenerator::GenerateBytecodeForVMContext(
     // TODO(zhangye): uncomment in the subsequent MR.
     // auto ir_context = std::make_unique<ir::IRContext>(context);
     // ir_context->Init(root_func, context);
-    // ir::RunO1OptimizationPasses(*ir_context->GetMainMod(), ir_dump_path);
+    // ir::RunO1OptimizationPasses(*ir_context->GetMainMod());
   }
 
   return std::string();

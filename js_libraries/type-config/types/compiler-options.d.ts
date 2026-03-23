@@ -232,7 +232,7 @@ export interface CompilerOptions {
    *
    * Since: LynxSDK 3.8
    *
-   * @defaultValue true
+   * @defaultValue false
    *
    */
   enableOptLepusBytecode?: boolean;

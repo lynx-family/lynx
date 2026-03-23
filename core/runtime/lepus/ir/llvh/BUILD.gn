@@ -1,0 +1,186 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/util/write_cmake_config.gni")
+
+# Keep the generated config headers minimal and portable.
+#
+# Notes:
+# - Some values are required for successful compilation/linking (e.g.
+#   LLVH_HOST_TRIPLE, RETSIGTYPE, HAVE_PTHREAD_* on POSIX).
+# - Many HAVE_* feature macros only gate optional functionality; keep only what
+#   is needed by the subset of llvh sources we build here.
+
+_llvh_is_posix = !is_win
+
+_llvh_host_cpu = current_cpu
+if (_llvh_host_cpu == "x64") {
+  _llvh_host_cpu = "x86_64"
+} else if (_llvh_host_cpu == "ia32") {
+  _llvh_host_cpu = "i386"
+}
+
+_llvh_host_triple = "${_llvh_host_cpu}-unknown-unknown"
+if (is_win) {
+  _llvh_host_triple = "${_llvh_host_cpu}-pc-windows-msvc"
+} else if (is_mac) {
+  _llvh_host_triple = "${_llvh_host_cpu}-apple-darwin"
+} else if (is_linux) {
+  _llvh_host_triple = "${_llvh_host_cpu}-unknown-linux-gnu"
+}
+
+config_file("gen_llvh_llvm_config_h") {
+  input = "include/llvh/Config/llvm-config.h.cmake"
+  output = "$root_gen_dir/llvh/include/llvh/Config/llvm-config.h"
+  values = [
+    "LLVM_ENABLE_THREADS=1",
+    "LLVM_HAS_ATOMICS=1",
+    "LLVH_HOST_TRIPLE=${_llvh_host_triple}",
+    "LLVM_FORCE_ENABLE_STATS=1",
+    "PACKAGE_VERSION=8.0.0svn",
+
+    # llvm-config.h.cmake expects these to be numbers.
+    "LLVH_VERSION_MAJOR=8",
+    "LLVH_VERSION_MINOR=0",
+    "LLVH_VERSION_PATCH=0",
+  ]
+
+  # llvm-config.h.cmake uses "#cmakedefine LLVM_ON_UNIX ..." and is consumed via
+  # "#ifdef LLVM_ON_UNIX" in sources (Signals.cpp, Threading.cpp). So on Windows
+  # it must be *undefined* instead of being defined to 0.
+  if (!is_win) {
+    values += [ "LLVM_ON_UNIX=1" ]
+  }
+}
+
+config_file("gen_llvh_config_h") {
+  input = "include/llvh/Config/config.h.cmake"
+  output = "$root_gen_dir/llvh/include/llvh/Config/llvh-config.h"
+  values = [
+    "BUG_REPORT_URL=https://github.com/llvm/llvm-project/issues/",
+    "BACKTRACE_HEADER=execinfo.h",
+
+    "PACKAGE_NAME=LLVH",
+    "PACKAGE_STRING=LLVH 8.0.0svn",
+    "PACKAGE_VERSION=8.0.0svn",
+
+    # Keep StrError() available across platforms.
+    "HAVE_ERRNO_H=1",
+    "HAVE_STRERROR=1",
+  ]
+
+  if (_llvh_is_posix) {
+    values += [
+      # Needed by Unix/Signals.inc.
+      "RETSIGTYPE=void",
+
+      # Required to compile Mutex.cpp / Threading.cpp against pthread.
+      "HAVE_PTHREAD_H=1",
+      "HAVE_LIBPTHREAD=1",
+      "HAVE_PTHREAD_GETSPECIFIC=1",
+      "HAVE_PTHREAD_MUTEX_LOCK=1",
+      "HAVE_PTHREAD_RWLOCK_INIT=1",
+
+      # Required to compile Unix/Memory.inc and various file/FD helpers.
+      "HAVE_SYS_MMAN_H=1",
+      "HAVE_SYS_STAT_H=1",
+      "HAVE_SYS_TIME_H=1",
+      "HAVE_SYS_RESOURCE_H=1",
+      "HAVE_UNISTD_H=1",
+      "HAVE_FCNTL_H=1",
+
+      # Required by Process::getPageSize() (see Unix/Process.inc).
+      "HAVE_SYSCONF=1",
+      "HAVE_GETPAGESIZE=1",
+
+      # Avoid -Werror failures caused by fallback #warning branches.
+      "HAVE_GETRUSAGE=1",
+      "HAVE_FUTIMES=1",
+
+      # DynamicLibrary + backtrace support (optional at runtime, but keeps
+      # compile-time paths consistent).
+      "HAVE_DLFCN_H=1",
+      "HAVE_DLOPEN=1",
+      "HAVE_SIGNAL_H=1",
+    ]
+  } else {
+    # Prefer the secure Windows API for error strings when available.
+    values += [ "HAVE_DECL_STRERROR_S=1" ]
+  }
+
+  if (is_mac) {
+    values += [
+      "HAVE_DECL_ARC4RANDOM=1",
+      "HAVE_MACH_MACH_H=1",
+    ]
+  }
+
+  # pthread_{set,get}name_np are not consistently available across all Android
+  # NDK levels; keep them conservative.
+  if (is_mac || (is_linux && !is_android)) {
+    values += [
+      "HAVE_PTHREAD_GETNAME_NP=1",
+      "HAVE_PTHREAD_SETNAME_NP=1",
+    ]
+  }
+}
+
+config("llvh_config") {
+  include_dirs = [
+    "$root_gen_dir/llvh/include",
+    "include",
+  ]
+}
+
+# Header-only consumers (or targets that only need the generated config headers)
+# can depend on this group to get include paths + generation, without pulling in
+# the llvh compilation units.
+group("llvh_headers") {
+  public_deps = [
+    ":gen_llvh_config_h",
+    ":gen_llvh_llvm_config_h",
+  ]
+  public_configs = [ ":llvh_config" ]
+}
+
+source_set("llvh") {
+  deps = [
+    ":gen_llvh_config_h",
+    ":gen_llvh_llvm_config_h",
+  ]
+
+  # Some Linux toolchains do not provide MAXPATHLEN (a BSD-ism). llvh's
+  # Unix/Path.inc uses MAXPATHLEN as a "reasonable" buffer size, so provide a
+  # local fallback for llvh compilation units.
+  defines = []
+  if (is_linux) {
+    defines += [ "MAXPATHLEN=PATH_MAX" ]
+  }
+
+  # The llvh ADT layer contains classes with virtual anchors (e.g.
+  # llvh::FoldingSetBase). When building the wasm target, lepus/oliver enables
+  # RTTI, so llvh must also build with RTTI to provide the required typeinfo.
+  if (is_wasm) {
+    if (!defined(configs)) {
+      configs = []
+    }
+    configs -= [ "//build/config/compiler:no_rtti" ]
+    configs += [ "//build/config/compiler:rtti" ]
+  }
+
+  sources = [
+    "lib/Support/FoldingSet.cpp",
+    "lib/Support/Hashing.cpp",
+    "lib/Support/LynxSupportStubs.cpp",
+    "lib/Support/SmallPtrSet.cpp",
+    "lib/Support/SmallVector.cpp",
+    "lib/Support/regcomp.c",
+    "lib/Support/regerror.c",
+    "lib/Support/regexec.c",
+    "lib/Support/regfree.c",
+    "lib/Support/regstrlcpy.c",
+  ]
+
+  public_configs = [ ":llvh_config" ]
+}

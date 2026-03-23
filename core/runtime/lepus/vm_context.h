@@ -92,6 +92,11 @@ class VMContext : public runtime::MTSContext {
     root_function_ = std::move(func);
   }
 
+  const std::unordered_map<base::String, long>& GetToplevelVariables() const;
+  void UpdateToplevelVarReg(const base::String& key, long new_reg);
+  void UpdateToplevelVarRegToOffset(long reg, long offset);
+  long GetToplevelVarOffset(long reg) const;
+
 #ifdef LEPUS_TEST
   void Dump();
 #endif
@@ -256,6 +261,10 @@ class VMContext : public runtime::MTSContext {
   Global builtin_;
 
   std::unordered_map<base::String, long> top_level_variables_;
+  // key: vreg for toplevel variable; value: first bytecode offset that writes
+  // it. Used by the IR pipeline to keep toplevel vregs stable across
+  // transforms.
+  std::unordered_map<long, long> top_level_reg_to_offset_;
   fml::RefPtr<Function> root_function_;
   base::InlineStack<RestrictedValue, 32> context_;
   RestrictedValue closure_context_;
@@ -264,7 +273,7 @@ class VMContext : public runtime::MTSContext {
   bool enable_top_var_strict_mode_;
   bool enable_null_prop_as_undef_ = false;
   bool closure_fix_ = false;
-  bool opt_bytecode_ = true;
+  bool opt_bytecode_ = false;
 
   bool executed_ = false;
 

@@ -156,7 +156,8 @@ static bool RunEncodeDecodeVmExecuteAndGetGlobal(
 
 }  // namespace
 
-TEST(LEPUS_IR, TemplateCompileChain_OptOnOff_SemanticEq_RepresentativeCases) {
+TEST(LEPUS_IR_TEST_OPT_BYTECODE_SWITCH,
+     TemplateCompileChain_OptOnOff_SemanticEq_RepresentativeCases) {
   struct Case {
     const char* name;
     const char* src;

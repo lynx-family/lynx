@@ -87,6 +87,12 @@ class Function : public fml::RefCountedThreadSafeStorage {
 
   int32_t GetParamsSize();
 
+  void SetRegisterCount(long register_count) {
+    register_count_ = static_cast<int32_t>(register_count);
+  }
+
+  int32_t GetRegisterCount() { return register_count_; }
+
   std::size_t OpCodeSize() { return op_codes_.size(); }
 
   const Instruction* GetOpCodes() const {
@@ -98,6 +104,20 @@ class Function : public fml::RefCountedThreadSafeStorage {
     debug_line_col_.push_back(current_line_col_);
     return op_codes_.size() - 1;
   }
+
+  void ResetOpcodes(base::Vector<Instruction>& op_codes,
+                    std::vector<int64_t>& line_cols) {
+    op_codes_.swap(op_codes);
+    debug_line_col_.swap(line_cols);
+  }
+
+  // Clear bytecode + debug line/col info.
+  void ClearOpCodes() {
+    op_codes_.clear();
+    debug_line_col_.clear();
+  }
+
+  void ClearUpvalues() { upvalues_.clear(); }
 
   void ReleaseSelf() const override { delete this; }
 
@@ -236,6 +256,8 @@ class Function : public fml::RefCountedThreadSafeStorage {
 
   uint64_t GetLoopBlockStack();
 
+  const std::vector<int64_t>& GetLineCol() const { return debug_line_col_; }
+
  protected:
   Function() = default;
 
@@ -252,6 +274,8 @@ class Function : public fml::RefCountedThreadSafeStorage {
   base::InlineVector<fml::RefPtr<Function>, 4> child_functions_;
 
   int32_t params_size_ = -1;
+
+  int32_t register_count_ = -1;
 
   // we use function-id and pc-index to generate sourceMap, then sourceMap treat
   // function-id as line number

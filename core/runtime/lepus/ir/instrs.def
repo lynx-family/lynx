@@ -1,0 +1,66 @@
+#ifndef DEF_VALUE
+#define DEF_VALUE(NAME, PARENT)
+#endif
+#ifndef BEGIN_VALUE
+#define BEGIN_VALUE(NAME, PARENT)
+#endif
+#ifndef END_VALUE
+#define END_VALUE(NAME)
+#endif
+#ifndef DEF_TAG
+#define DEF_TAG(NAME, PARENT)
+#endif
+#ifndef MARK_FIRST
+#define MARK_FIRST(NAME, PARENT)
+#endif
+#ifndef MARK_LAST
+#define MARK_LAST(NAME)
+#endif
+
+#ifndef TERMINATOR
+#define TERMINATOR(NAME, PARENT) DEF_VALUE(NAME, PARENT)
+#endif
+#ifndef BEGIN_TERMINATOR
+#define BEGIN_TERMINATOR(NAME, PARENT) BEGIN_VALUE(NAME, PARENT)
+#endif
+#ifndef END_TERMINATOR
+#define END_TERMINATOR(NAME) END_VALUE(NAME)
+#endif
+
+#ifndef SPECIAL_HOLD_FUNC_OP_VALUE
+#define SPECIAL_HOLD_FUNC_OP_VALUE(NAME, PARENT) DEF_VALUE(NAME, PARENT)
+#endif
+
+#ifndef ENABLE_HIR_INSTR
+#define ENABLE_HIR_INSTR 0
+#endif
+
+#ifndef ENABLE_MIR_INSTR
+#define ENABLE_MIR_INSTR 0
+#endif
+
+#ifndef ENABLE_AIR_INSTR
+#define ENABLE_AIR_INSTR 0
+#endif
+
+#if ENABLE_MIR_INSTR
+#include "core/runtime/lepus/ir/dialects/mir/instrs.def"
+#endif
+
+// Don't undef these if this file is being included in ValueKinds.def, since
+// these macros are still used after the #include.
+#ifndef INCLUDED_FROM_VALUE_KINDS
+#undef DEF_VALUE
+#undef MARK_FIRST
+#undef MARK_LAST
+#endif
+#undef BEGIN_VALUE
+#undef END_VALUE
+#undef DEF_TAG
+#undef TERMINATOR
+#undef BEGIN_TERMINATOR
+#undef END_TERMINATOR
+#undef ENABLE_HIR_INSTR
+#undef ENABLE_MIR_INSTR
+#undef ENABLE_AIR_INSTR
+#undef SPECIAL_HOLD_FUNC_OP_VALUE

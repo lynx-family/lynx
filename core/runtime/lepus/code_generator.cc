@@ -34,59 +34,57 @@ class AstLineScope {
   int64_t old_line_col_;
 };
 
-#define NOOP function->AddInstruction(Instruction::ACode(TypeOp_Noop, 0));
+#define NOOP AddInstruction(Instruction::ACode(TypeOp_Noop, 0));
 
-#define Load(type, reg, index)                                          \
-  do {                                                                  \
-    if (reg >= 0)                                                       \
-      function->AddInstruction(Instruction::ABxCode(type, reg, index)); \
+#define Load(type, reg, index)                                            \
+  do {                                                                    \
+    if (reg >= 0) AddInstruction(Instruction::ABxCode(type, reg, index)); \
   } while (0);
 
-#define Ret(reg)                                                     \
-  do {                                                               \
-    if (reg >= 0)                                                    \
-      function->AddInstruction(Instruction::ACode(TypeOp_Ret, reg)); \
-  } while (0);
-
-#define MOVE(dst, src)                                                      \
-  do {                                                                      \
-    if (src >= 0 && dst >= 0)                                               \
-      function->AddInstruction(Instruction::ABCode(TypeOp_Move, dst, src)); \
-  } while (0);
-
-#define Call(caller, argc, result)                                  \
-  do {                                                              \
-    if (caller >= 0 && result >= 0 && argc >= 0)                    \
-      function->AddInstruction(                                     \
-          Instruction::ABCCode(TypeOp_Call, caller, argc, result)); \
-  } while (0);
-
-#define Switch(jmp_index, reg, index)                       \
-  long jmp_index = -1;                                      \
-  do {                                                      \
-    if (reg >= 0 && index >= 0)                             \
-      jmp_index = function->AddInstruction(                 \
-          Instruction::ABxCode(TypeOp_Switch, reg, index)); \
-  } while (0);
-
-#define BinaryOperator(type, dst, src1, src2)                                \
-  do {                                                                       \
-    if (src1 >= 0 && src2 >= 0 && dst >= 0)                                  \
-      function->AddInstruction(Instruction::ABCCode(type, dst, src1, src2)); \
-  } while (0);
-
-#define UpvalueOperator(type, reg, index)                              \
+#define Ret(reg)                                                       \
   do {                                                                 \
-    if (reg >= 0 && index >= 0)                                        \
-      function->AddInstruction(Instruction::ABCode(type, reg, index)); \
+    if (reg >= 0) AddInstruction(Instruction::ACode(TypeOp_Ret, reg)); \
   } while (0);
 
-#define AutomaticOperator(type, reg)                                       \
+#define MOVE(dst, src)                                            \
+  do {                                                            \
+    if (src >= 0 && dst >= 0)                                     \
+      AddInstruction(Instruction::ABCode(TypeOp_Move, dst, src)); \
+  } while (0);
+
+#define Call(caller, argc, result)                                             \
+  do {                                                                         \
+    if (caller >= 0 && result >= 0 && argc >= 0)                               \
+      AddInstruction(Instruction::ABCCode(TypeOp_Call, caller, argc, result)); \
+  } while (0);
+
+#define Switch(jmp_index, reg, index)                                      \
+  long jmp_index = -1;                                                     \
   do {                                                                     \
-    if (reg >= 0) function->AddInstruction(Instruction::ACode(type, reg)); \
+    if (reg >= 0 && index >= 0)                                            \
+      jmp_index =                                                          \
+          AddInstruction(Instruction::ABxCode(TypeOp_Switch, reg, index)); \
   } while (0);
 
-CodeGenerator::CodeGenerator(VMContext* context) : context_(context) {
+#define BinaryOperator(type, dst, src1, src2)                      \
+  do {                                                             \
+    if (src1 >= 0 && src2 >= 0 && dst >= 0)                        \
+      AddInstruction(Instruction::ABCCode(type, dst, src1, src2)); \
+  } while (0);
+
+#define UpvalueOperator(type, reg, index)                    \
+  do {                                                       \
+    if (reg >= 0 && index >= 0)                              \
+      AddInstruction(Instruction::ABCode(type, reg, index)); \
+  } while (0);
+
+#define AutomaticOperator(type, reg)                             \
+  do {                                                           \
+    if (reg >= 0) AddInstruction(Instruction::ACode(type, reg)); \
+  } while (0);
+
+CodeGenerator::CodeGenerator(VMContext* context)
+    : context_(context), pending_toplevel_var_init_reg_(-1) {
   support_closure_ = tasm::Config::IsHigherOrEqual(
       context_->sdk_version_, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION);
   support_block_closure_ =
@@ -98,11 +96,70 @@ CodeGenerator::CodeGenerator(VMContext* context,
     : context_(context),
       semanticAnalysis_(semanticAnalysis),
       function_number_(-1),
-      block_number_(-1) {
+      block_number_(-1),
+      pending_toplevel_var_init_reg_(-1) {
   support_closure_ = lynx::tasm::Config::IsHigherOrEqual(
       context_->sdk_version_, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION);
   support_block_closure_ = lynx::tasm::Config::IsHigherOrEqual(
       context_->sdk_version_, LYNX_VERSION_2_6);
+}
+
+long CodeGenerator::AddInstruction(Instruction instruction) {
+  long offset = current_function_->function_->AddInstruction(instruction);
+  if (pending_toplevel_var_init_reg_ != -1 && IsTopLevelFunction()) {
+    // NOTE: This check lives in `AddInstruction()` on purpose.
+    // The initializer codegen path may emit many instructions, and we want to
+    // capture the *first* instruction that defines the toplevel vreg,
+    // regardless of which AST node triggered the emission.
+    if (InstructionWritesToRegister(instruction,
+                                    pending_toplevel_var_init_reg_)) {
+      context_->UpdateToplevelVarRegToOffset(pending_toplevel_var_init_reg_,
+                                             offset);
+      pending_toplevel_var_init_reg_ = -1;
+    }
+  }
+  return offset;
+}
+
+bool CodeGenerator::InstructionWritesToRegister(Instruction& instr, long reg) {
+  auto op = static_cast<TypeOpCode>(Instruction::GetOpCode(instr));
+  switch (op) {
+#define DEF_NEW_OPCODE(name)                                                  \
+  case name:                                                                  \
+    throw ::lynx::lepus::CompileException(                                    \
+        "InstructionWritesToRegister do not support DEF_NEW_OPCODE: " #name); \
+    break;
+#include "core/runtime/lepus/lepus_bytecode_def.h"
+#undef DEF_NEW_OPCODE
+
+    case TypeOp_Call: {
+      // Call family writes result to C (legacy opcode only).
+      return Instruction::GetParamC(instr) == reg;
+    }
+    case TypeOp_Ret:
+    case TypeOp_Jmp:
+    case TypeOp_JmpTrue:
+    case TypeOp_JmpFalse:
+    case TypeOp_SetGlobal:
+    case TypeOp_SetTable:
+    case TypeOp_SetUpvalue:
+    case TypeOp_SetContextSlotMove:
+    case TypeOp_SetContextSlot:
+    case TypeOp_PushContext:
+    case TypeOp_Switch:
+    case TypeOp_Noop:
+    case TypeLabel_Throw:
+    case TypeLabel_Catch:
+    case TypeLabel_EnterBlock:
+    case TypeLabel_LeaveBlock:
+    case OP_PLACEHOLDER: {
+      return false;
+    }
+    default: {
+      // Most other instructions write to A
+      return Instruction::GetParamA(instr) == reg;
+    }
+  }
 }
 
 void CodeGenerator::EnterFunction() {
@@ -155,8 +212,7 @@ void CodeGenerator::LeaveFunction() {
     }
     upvalue_array_ = GetParentUpArray();
   }
-  current_function_->function_->AddInstruction(
-      Instruction::Code(OP_PLACEHOLDER));
+  AddInstruction(Instruction::Code(OP_PLACEHOLDER));
 
   current_function_ = std::move(current_function_->parent_);
   current_function_name_ = "";
@@ -241,13 +297,15 @@ void CodeGenerator::LeaveTryCatch() {
   current_function_->current_tryCatch_ = std::move(current_tryCatch->parent_);
 }
 
-void CodeGenerator::InsertVariable(const base::String& name, long register_id) {
+bool CodeGenerator::InsertVariable(const base::String& name, long register_id) {
   current_function_->current_block_->variables_map_[name] = register_id;
   if ((!context_->closure_fix_ ||
        !current_function_->current_block_->parent_) &&
       !current_function_->parent_) {
     context_->top_level_variables_.insert(std::make_pair(name, register_id));
+    return true;
   }
+  return false;
 }
 
 long CodeGenerator::SearchVariable(const base::String& name) {
@@ -387,7 +445,7 @@ void CodeGenerator::GenLeaveBlockScopeIns() {
 
   while (block) {
     if (!bs_stack.empty() && bs_stack.top() == block->block_id_) {
-      function->AddInstruction(Instruction::Code(TypeLabel_LeaveBlock));
+      AddInstruction(Instruction::Code(TypeLabel_LeaveBlock));
       break;
     }
     if (block->block_id_ == function->GetLoopBlockStack()) {
@@ -446,7 +504,7 @@ void CodeGenerator::Visit(ReturnStatementAST* ast, void* data) {
   auto bs_stack = function->block_scope_stack();
   size_t bs_stack_size = bs_stack.size();
   while (bs_stack_size--) {
-    function->AddInstruction(Instruction::Code(TypeLabel_LeaveBlock));
+    AddInstruction(Instruction::Code(TypeLabel_LeaveBlock));
   }
 
   if (support_closure_) {
@@ -553,55 +611,55 @@ void CodeGenerator::WriteUpValueNew(LexicalOp op, std::pair<long, long> data,
   long register_id = GenerateRegisterId();
   switch (op) {
     case LexicalOp_ASSIGN_ADD:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       BinaryOperator(TypeOp_Add, src, register_id, src);
       break;
     case LexicalOp_ASSIGN_SUB:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       BinaryOperator(TypeOp_Sub, src, register_id, src);
       break;
     case LexicalOp_ASSIGN_MUL:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       BinaryOperator(TypeOp_Mul, src, register_id, src);
       break;
     case LexicalOp_ASSIGN_DIV:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       BinaryOperator(TypeOp_Div, src, register_id, src);
       break;
     case LexicalOp_ASSIGN_MOD:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       BinaryOperator(TypeOp_Mod, src, register_id, src);
       break;
     case LexicalOp_ASSIGN_BIT_OR:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       BinaryOperator(TypeOp_BitOr, src, register_id, src);
       break;
     case LexicalOp_ASSIGN_BIT_AND:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       BinaryOperator(TypeOp_BitAnd, src, register_id, src);
       break;
     case LexicalOp_ASSIGN_BIT_XOR:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       BinaryOperator(TypeOp_BitXor, src, register_id, src);
       break;
     case LexicalOp_ASSIGN_POW:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       BinaryOperator(TypeOp_Pow, src, register_id, src);
       break;
     default:
       break;
   }
-  function->AddInstruction(Instruction::ABCCode(TypeOp_SetContextSlot, src,
-                                                data.first, data.second));
+  AddInstruction(Instruction::ABCCode(TypeOp_SetContextSlot, src, data.first,
+                                      data.second));
 }
 
 void CodeGenerator::AutomaticLocalValue(AutomaticType type, long dst,
@@ -612,20 +670,20 @@ void CodeGenerator::AutomaticLocalValue(AutomaticType type, long dst,
       MOVE(dst, src);
       break;
     case Automatic_Inc_Before:
-      function->AddInstruction(Instruction::ACode(TypeOp_Inc, src));
+      AddInstruction(Instruction::ACode(TypeOp_Inc, src));
       MOVE(dst, src);
       break;
     case Automatic_Inc_After:
       MOVE(dst, src);
-      function->AddInstruction(Instruction::ACode(TypeOp_Inc, src));
+      AddInstruction(Instruction::ACode(TypeOp_Inc, src));
       break;
     case Automatic_Dec_Before:
-      function->AddInstruction(Instruction::ACode(TypeOp_Dec, src));
+      AddInstruction(Instruction::ACode(TypeOp_Dec, src));
       MOVE(dst, src);
       break;
     case Automatic_Dec_After:
       MOVE(dst, src);
-      function->AddInstruction(Instruction::ACode(TypeOp_Dec, src));
+      AddInstruction(Instruction::ACode(TypeOp_Dec, src));
       break;
     default:
       break;
@@ -676,40 +734,40 @@ void CodeGenerator::AutomaticUpValueNew(AutomaticType type, long dst,
   long register_id = GenerateRegisterId();
   switch (type) {
     case Automatic_None:
-      function->AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, dst,
-                                                    data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, dst,
+                                          data.first, data.second));
       break;
     case Automatic_Inc_Before:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       AutomaticOperator(TypeOp_Inc, register_id);
       MOVE(dst, register_id);
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_SetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_SetContextSlot, register_id,
+                                          data.first, data.second));
       break;
     case Automatic_Inc_After:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       MOVE(dst, register_id);
       AutomaticOperator(TypeOp_Inc, register_id);
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_SetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_SetContextSlot, register_id,
+                                          data.first, data.second));
       break;
     case Automatic_Dec_Before:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       AutomaticOperator(TypeOp_Dec, register_id);
       MOVE(dst, register_id);
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_SetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_SetContextSlot, register_id,
+                                          data.first, data.second));
       break;
     case Automatic_Dec_After:
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_GetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetContextSlot, register_id,
+                                          data.first, data.second));
       MOVE(dst, register_id);
       AutomaticOperator(TypeOp_Dec, register_id);
-      function->AddInstruction(Instruction::ABCCode(
-          TypeOp_SetContextSlot, register_id, data.first, data.second));
+      AddInstruction(Instruction::ABCCode(TypeOp_SetContextSlot, register_id,
+                                          data.first, data.second));
       break;
     default:
       break;
@@ -724,7 +782,7 @@ void CodeGenerator::Visit(ThrowStatementAST* ast, void* data) {
     ast->throw_identifier()->Accept(this, &source_id);
 
     Instruction instruction = Instruction::ACode(TypeLabel_Throw, source_id);
-    function->AddInstruction(instruction);
+    AddInstruction(instruction);
   }
 }
 
@@ -782,7 +840,7 @@ void CodeGenerator::Visit(LiteralAST* ast, void* data) {
           auto instruction = Instruction::ABCCode(
               TypeOp_SetContextSlotMove, context_->GetCurrentContextReg(),
               array_index, var_reg_id);
-          current_function_->function_->AddInstruction(instruction);
+          AddInstruction(instruction);
           current_function_->current_block_->closure_variables_outside_.insert(
               {name, {array_index, context_->GetCurrentContextReg()}});
         }
@@ -810,25 +868,25 @@ void CodeGenerator::Visit(LiteralAST* ast, void* data) {
       long index = function->AddConstNumber(ast->token().number_);
       auto instruction =
           Instruction::ABxCode(TypeOp_LoadConst, register_id, index);
-      function->AddInstruction(instruction);
+      AddInstruction(instruction);
     } else if (ast->token().token_ == Token_String) {
       long index = function->AddConstString(ast->token().str_);
       auto instruction =
           Instruction::ABxCode(TypeOp_LoadConst, register_id, index);
-      function->AddInstruction(instruction);
+      AddInstruction(instruction);
     } else if (ast->token().token_ == Token_RegExp) {
       long index = function->AddConstRegExp(
           RegExp::Create(ast->token().pattern_, ast->token().flags_));
       auto instruction =
           Instruction::ABxCode(TypeOp_LoadConst, register_id, index);
-      function->AddInstruction(instruction);
+      AddInstruction(instruction);
     } else if (ast->token().token_ == Token_True ||
                ast->token().token_ == Token_False) {
       long index = function->AddConstBoolean(
           ast->token().token_ == Token_True ? true : false);
       auto instruction =
           Instruction::ABxCode(TypeOp_LoadConst, register_id, index);
-      function->AddInstruction(instruction);
+      AddInstruction(instruction);
     } else if (ast->token().token_ == Token_Id) {
       if (ast->scope() == LexicalScoping_Local) {
         base::String name = ast->token().str_.c_str();
@@ -845,12 +903,12 @@ void CodeGenerator::Visit(LiteralAST* ast, void* data) {
             auto instruction = Instruction::ABCCode(
                 TypeOp_GetContextSlotMove, var_reg_id, array_index,
                 context_->GetCurrentContextReg());
-            current_function_->function_->AddInstruction(instruction);
+            AddInstruction(instruction);
             AutomaticLocalValue(ast->auto_type(), register_id, var_reg_id);
             auto instruction1 = Instruction::ABCCode(
                 TypeOp_SetContextSlotMove, context_->GetCurrentContextReg(),
                 array_index, var_reg_id);
-            current_function_->function_->AddInstruction(instruction1);
+            AddInstruction(instruction1);
             current_function_->current_block_->closure_variables_outside_
                 .insert({ast->token().str_,
                          {array_index, context_->GetCurrentContextReg()}});
@@ -863,11 +921,11 @@ void CodeGenerator::Visit(LiteralAST* ast, void* data) {
         if (global_index >= 0) {
           auto instruction =
               Instruction::ABxCode(TypeOp_GetGlobal, register_id, global_index);
-          function->AddInstruction(instruction);
+          AddInstruction(instruction);
         } else if (ast->token().str_ == "globalThis") {
           auto instruction =
               Instruction::ABCode(TypeOp_LoadNil, register_id, 2);
-          function->AddInstruction(instruction);
+          AddInstruction(instruction);
         } else if (lynx::tasm::Config::IsHigherOrEqual(
                        context_->sdk_version_, FEATURE_CONTEXT_GLOBAL_DATA) &&
                    ast->token().str_ == "lynx") {
@@ -875,14 +933,14 @@ void CodeGenerator::Visit(LiteralAST* ast, void* data) {
           // Instruction::ABCode(TypeOp_LoadNil, register_id, 3).
           auto instruction =
               Instruction::ABCode(TypeOp_LoadNil, register_id, 3);
-          function->AddInstruction(instruction);
+          AddInstruction(instruction);
         } else if (lynx::tasm::Config::IsHigherOrEqual(
                        context_->sdk_version_, FEATURE_CONTROL_VERSION)) {
           long builtin_index = SearchBuiltin(ast->token().str_);
           if (builtin_index >= 0) {
             auto instruction = Instruction::ABxCode(TypeOp_GetBuiltin,
                                                     register_id, builtin_index);
-            function->AddInstruction(instruction);
+            AddInstruction(instruction);
           } else {
             throw CompileException(ast->token().str_.c_str(),
                                    " is not defined 2", ast->token(),
@@ -919,11 +977,11 @@ void CodeGenerator::Visit(LiteralAST* ast, void* data) {
       // Instead of adding more instructions, it's recommended to clear the
       // memory.
       auto instruction = Instruction::ACode(TypeOp_LoadNil, register_id);
-      function->AddInstruction(instruction);
+      AddInstruction(instruction);
     } else if (ast->token().token_ == Token_Undefined) {
       // use c register to show it need load undefined
       auto instruction = Instruction::ABCode(TypeOp_LoadNil, register_id, 1);
-      function->AddInstruction(instruction);
+      AddInstruction(instruction);
     }
   }
 }
@@ -952,29 +1010,27 @@ void CodeGenerator::Visit(BinaryExprAST* ast, void* data) {
       long undef_jmp_index = 0;
       if (ast->op_token().token_ == Token_And) {
         instruction = Instruction::ABxCode(TypeOp_JmpTrue, left_register_id, 0);
-        jmp_index = function->AddInstruction(instruction);
+        jmp_index = AddInstruction(instruction);
       } else if (ast->op_token().token_ == Token_Or) {
         instruction =
             Instruction::ABxCode(TypeOp_JmpFalse, left_register_id, 0);
-        jmp_index = function->AddInstruction(instruction);
+        jmp_index = AddInstruction(instruction);
       } else {
         long null_id = GenerateRegisterId();
-        function->AddInstruction(
-            Instruction::ABCode(TypeOp_LoadNil, null_id, 0));
+        AddInstruction(Instruction::ABCode(TypeOp_LoadNil, null_id, 0));
         BinaryOperator(TypeOp_AbsEqual, null_id, left_register_id, null_id);
         instruction = Instruction::ABxCode(TypeOp_JmpTrue, null_id, 0);
-        jmp_index = function->AddInstruction(instruction);
-        function->AddInstruction(
-            Instruction::ABCode(TypeOp_LoadNil, null_id, 1));
+        jmp_index = AddInstruction(instruction);
+        AddInstruction(Instruction::ABCode(TypeOp_LoadNil, null_id, 1));
         BinaryOperator(TypeOp_AbsEqual, null_id, left_register_id, null_id);
-        undef_jmp_index = function->AddInstruction(
-            Instruction::ABxCode(TypeOp_JmpTrue, null_id, 0));
+        undef_jmp_index =
+            AddInstruction(Instruction::ABxCode(TypeOp_JmpTrue, null_id, 0));
       }
 
       MOVE(register_id, left_register_id);
 
       instruction = Instruction::ABxCode(TypeOp_Jmp, 0, 0);
-      long true_jmp_index = function->AddInstruction(instruction);
+      long true_jmp_index = AddInstruction(instruction);
 
       long index = function->OpCodeSize();
       function->GetInstruction(jmp_index)->RefillsBx(index - jmp_index);
@@ -1150,7 +1206,7 @@ void CodeGenerator::Visit(ExpressionListAST* ast, void* data) {
 void CodeGenerator::Visit(VariableAST* ast, void* data) {
   long register_id = GenerateRegisterId();
   AstLineScope sop(current_function_->function_.get(), ast);
-  InsertVariable(ast->identifier().str_, register_id);
+  bool toplevel_var = InsertVariable(ast->identifier().str_, register_id);
   long array_index = -1;
   if (support_closure_) {
     auto iter =
@@ -1160,21 +1216,32 @@ void CodeGenerator::Visit(VariableAST* ast, void* data) {
     }
   }
 
+  // Save/restore because nested statements inside the initializer may also
+  // temporarily track another toplevel vreg.
+  long old_tracking_reg = pending_toplevel_var_init_reg_;
+  if (IsTopLevelFunction() && toplevel_var) {
+    // Mark this vreg as "pending toplevel init" so that the first instruction
+    // writing to it can be recorded as the toplevel-var start offset.
+    pending_toplevel_var_init_reg_ = register_id;
+  }
+
   if (!ast->expression()) {
     // use register b to show it may as LoadUndefined, it is decided in runtime
     Instruction instruction =
         Instruction::ABCode(TypeOp_LoadNil, register_id, 1);
-    current_function_->function_->AddInstruction(instruction);
+    AddInstruction(instruction);
   } else {
     ast->expression()->Accept(this, &register_id);
   }
+
+  pending_toplevel_var_init_reg_ = old_tracking_reg;
 
   if (support_closure_) {
     if (array_index != -1) {
       auto instruction = Instruction::ABCCode(TypeOp_SetContextSlotMove,
                                               context_->GetCurrentContextReg(),
                                               array_index, register_id);
-      current_function_->function_->AddInstruction(instruction);
+      AddInstruction(instruction);
       current_function_->current_block_->closure_variables_outside_.insert(
           {ast->identifier().str_,
            {array_index, context_->GetCurrentContextReg()}});
@@ -1185,12 +1252,20 @@ void CodeGenerator::Visit(VariableAST* ast, void* data) {
 void CodeGenerator::Visit(CatchVariableAST* ast, void* data) {
   long register_id = GenerateRegisterId();
   AstLineScope sop(current_function_->function_.get(), ast);
-  InsertVariable(ast->identifier().str_, register_id);
+  bool toplevel_var = InsertVariable(ast->identifier().str_, register_id);
+  // Save/restore because function body codegen may emit nested declarations.
+  long old_tracking_reg = pending_toplevel_var_init_reg_;
+  if (IsTopLevelFunction() && toplevel_var) {
+    pending_toplevel_var_init_reg_ = register_id;
+  }
   if (!ast->expression()) {
     Instruction instruction =
         Instruction::ACode(TypeOp_SetCatchId, register_id);
-    current_function_->function_->AddInstruction(instruction);
+    AddInstruction(instruction);
+  } else {
+    ast->expression()->Accept(this, &register_id);
   }
+  pending_toplevel_var_init_reg_ = old_tracking_reg;
 }
 
 void CodeGenerator::Visit(VariableListAST* ast, void* data) {
@@ -1205,8 +1280,14 @@ void CodeGenerator::Visit(FunctionStatementAST* ast, void* data) {
   long register_id =
       data != nullptr ? *static_cast<long*>(data) : GenerateRegisterId();
   AstLineScope sop(current_function_->function_.get(), ast);
+  bool toplevel_var = false;
   if (ast->function_name().token_ != Token_EOF) {
-    InsertVariable(ast->function_name().str_, register_id);
+    toplevel_var = InsertVariable(ast->function_name().str_, register_id);
+  }
+
+  long old_tracking_reg = pending_toplevel_var_init_reg_;
+  if (IsTopLevelFunction() && toplevel_var) {
+    pending_toplevel_var_init_reg_ = register_id;
   }
 
   {
@@ -1249,7 +1330,7 @@ void CodeGenerator::Visit(FunctionStatementAST* ast, void* data) {
             auto instruction = Instruction::ABCCode(
                 TypeOp_SetContextSlotMove, context_->GetCurrentContextReg(),
                 array_index, var_reg_id);
-            current_function_->function_->AddInstruction(instruction);
+            AddInstruction(instruction);
             current_function_->current_block_->closure_variables_outside_
                 .insert(
                     {iter, {array_index, context_->GetCurrentContextReg()}});
@@ -1262,7 +1343,9 @@ void CodeGenerator::Visit(FunctionStatementAST* ast, void* data) {
 
   Instruction i =
       Instruction::ABxCode(TypeOp_Closure, register_id, child_index);
-  current_function_->function_->AddInstruction(i);
+  AddInstruction(i);
+
+  pending_toplevel_var_init_reg_ = old_tracking_reg;
 
   if (support_closure_) {
     const auto& function_name = ast->function_name().str_;
@@ -1271,7 +1354,7 @@ void CodeGenerator::Visit(FunctionStatementAST* ast, void* data) {
       auto instruction = Instruction::ABCCode(TypeOp_SetContextSlotMove,
                                               context_->GetCurrentContextReg(),
                                               array_index, register_id);
-      current_function_->function_->AddInstruction(instruction);
+      AddInstruction(instruction);
       current_function_->current_block_->closure_variables_outside_.insert(
           {function_name, {array_index, context_->GetCurrentContextReg()}});
     }
@@ -1300,7 +1383,7 @@ void CodeGenerator::Visit(ForStatementAST* ast, void* data) {
     ast->statement2()->Accept(this, &register_id);
     Instruction instruction =
         Instruction::ABxCode(TypeOp_JmpFalse, register_id, 0);
-    jmp_index = function->AddInstruction(instruction);
+    jmp_index = AddInstruction(instruction);
   }
   if (ast->block()) {
     ast->block()->Accept(this, nullptr, true);
@@ -1316,7 +1399,7 @@ void CodeGenerator::Visit(ForStatementAST* ast, void* data) {
   }
 
   Instruction instruction = Instruction::ABxCode(TypeOp_Jmp, 0, 0);
-  long loop_head_index = function->AddInstruction(instruction);
+  long loop_head_index = AddInstruction(instruction);
   LoopGenerate* current_loop = current_function_->current_loop_.get();
   if (current_loop) {
     current_loop->loop_infos_.push_back(
@@ -1344,7 +1427,7 @@ void CodeGenerator::Visit(TryCatchFinallyStatementAST* ast, void* data) {
     {
       ast->try_block()->Accept(this, nullptr);
       Instruction instruction = Instruction::ABxCode(TypeOp_Jmp, 0, 0);
-      long finally_index = function->AddInstruction(instruction);
+      long finally_index = AddInstruction(instruction);
       TryCatchGenerate* current_trycatch =
           current_function_->current_tryCatch_.get();
       if (current_trycatch) {
@@ -1355,7 +1438,7 @@ void CodeGenerator::Visit(TryCatchFinallyStatementAST* ast, void* data) {
 
     if (ast->catch_block()) {
       Instruction instruction = Instruction::Code(TypeLabel_Catch);
-      function->AddInstruction(instruction);
+      AddInstruction(instruction);
       ast->catch_block()->Accept(this, nullptr);
     }
 
@@ -1391,10 +1474,10 @@ void CodeGenerator::Visit(DoWhileStatementAST* ast, void* data) {
       ast->condition()->Accept(this, &register_id);
       Instruction jmp_false_instruction =
           Instruction::ABxCode(TypeOp_JmpFalse, register_id, 2);
-      function->AddInstruction(jmp_false_instruction);
+      AddInstruction(jmp_false_instruction);
 
       Instruction instruction = Instruction::ABxCode(TypeOp_Jmp, 0, 0);
-      long loop_head_index = function->AddInstruction(instruction);
+      long loop_head_index = AddInstruction(instruction);
       LoopGenerate* current_loop = current_function_->current_loop_.get();
       if (current_loop) {
         current_loop->loop_infos_.push_back(
@@ -1410,7 +1493,7 @@ void CodeGenerator::Visit(BreakStatementAST* ast, void* data) {
   fml::RefPtr<Function> function = current_function_->function_;
   AstLineScope sop(current_function_->function_.get(), ast);
   Instruction instruction = Instruction::ABxCode(TypeOp_Jmp, 0, 0);
-  long break_index = function->AddInstruction(instruction);
+  long break_index = AddInstruction(instruction);
   LoopGenerate* current_loop = current_function_->current_loop_.get();
   if (current_loop) {
     current_loop->loop_infos_.push_back(LoopInfo(LoopJmp_Tail, break_index));
@@ -1422,7 +1505,7 @@ void CodeGenerator::Visit(ContinueStatementAST* ast, void* data) {
   fml::RefPtr<Function> function = current_function_->function_;
   AstLineScope sop(current_function_->function_.get(), ast);
   Instruction instruction = Instruction::ABxCode(TypeOp_Jmp, 0, 0);
-  long continue_index = function->AddInstruction(instruction);
+  long continue_index = AddInstruction(instruction);
   LoopGenerate* current_loop = current_function_->current_loop_.get();
   if (current_loop) {
     current_loop->loop_infos_.push_back(
@@ -1442,7 +1525,7 @@ void CodeGenerator::Visit(WhileStatementAST* ast, void* data) {
     ast->condition()->Accept(this, &register_id);
     Instruction instruction =
         Instruction::ABxCode(TypeOp_JmpFalse, register_id, 0);
-    long jmp_index = function->AddInstruction(instruction);
+    long jmp_index = AddInstruction(instruction);
     {
       LineScope lsp(this, ast);
       Guard<CodeGenerator> g(this, &CodeGenerator::EnterBlock,
@@ -1454,7 +1537,7 @@ void CodeGenerator::Visit(WhileStatementAST* ast, void* data) {
           function->OpCodeSize();
 
       Instruction instruction = Instruction::ABxCode(TypeOp_Jmp, 0, 0);
-      long loop_head_index = function->AddInstruction(instruction);
+      long loop_head_index = AddInstruction(instruction);
       LoopGenerate* current_loop = current_function_->current_loop_.get();
       if (current_loop) {
         current_loop->loop_infos_.push_back(
@@ -1477,7 +1560,7 @@ void CodeGenerator::Visit(IfStatementAST* ast, void* data) {
     ast->condition()->Accept(this, &register_id);
     Instruction instruction =
         Instruction::ABxCode(TypeOp_JmpFalse, register_id, 0);
-    long jmp_index = function->AddInstruction(instruction);
+    long jmp_index = AddInstruction(instruction);
 
     LineScope lsp(this, ast);
     Guard<CodeGenerator> g(this, &CodeGenerator::EnterBlock,
@@ -1486,7 +1569,7 @@ void CodeGenerator::Visit(IfStatementAST* ast, void* data) {
     ast->true_branch()->Accept(this, nullptr);
 
     instruction = Instruction::ABxCode(TypeOp_Jmp, 0, 0);
-    long true_jmp_index = function->AddInstruction(instruction);
+    long true_jmp_index = AddInstruction(instruction);
 
     long index = function->OpCodeSize();
     function->GetInstruction(jmp_index)->RefillsBx(index - jmp_index);
@@ -1529,8 +1612,8 @@ void CodeGenerator::Visit(AssignStatement* ast, void* data) {
     long accumulate = GenerateRegisterId();
     if (ast->lex_op() == LexicalOp_Write) {
       ast->expression()->Accept(this, &accumulate);
-      function->AddInstruction(Instruction::ABCCode(TypeOp_SetTable, table_reg,
-                                                    member_reg_id, accumulate));
+      AddInstruction(Instruction::ABCCode(TypeOp_SetTable, table_reg,
+                                          member_reg_id, accumulate));
     } else {
       TypeOpCode op;
       switch (ast->lex_op()) {
@@ -1565,13 +1648,13 @@ void CodeGenerator::Visit(AssignStatement* ast, void* data) {
           return;
       }
 
-      function->AddInstruction(Instruction::ABCCode(TypeOp_GetTable, accumulate,
-                                                    table_reg, member_reg_id));
+      AddInstruction(Instruction::ABCCode(TypeOp_GetTable, accumulate,
+                                          table_reg, member_reg_id));
       long src = GenerateRegisterId();
       ast->expression()->Accept(this, &src);
       BinaryOperator(op, accumulate, accumulate, src);
-      function->AddInstruction(Instruction::ABCCode(TypeOp_SetTable, table_reg,
-                                                    member_reg_id, accumulate));
+      AddInstruction(Instruction::ABCCode(TypeOp_SetTable, table_reg,
+                                          member_reg_id, accumulate));
     }
 
     if (data) {
@@ -1603,20 +1686,18 @@ void CodeGenerator::AddOptionalChainInfo(ASTree* ast, Function* function,
     // generate instructions which compare result and null/undefined
     // and jmp instructions if result equals to null or undefined
     long reg_id = GenerateRegisterId();
-    function->AddInstruction(Instruction::ABCode(TypeOp_LoadNil, reg_id, 0));
+    AddInstruction(Instruction::ABCode(TypeOp_LoadNil, reg_id, 0));
     BinaryOperator(TypeOp_AbsEqual, reg_id, result_reg_id, reg_id);
-    op_info.move_indexes_.push_back(function->AddInstruction(
+    op_info.move_indexes_.push_back(AddInstruction(
         Instruction::ABCode(TypeOp_LoadNil, 0, 1)));  // need refill register id
-    op_info.jmp_indexes_.push_back(
-        function->AddInstruction(Instruction::ABxCode(
-            TypeOp_JmpTrue, reg_id, 0)));  // need refill jmp_index
-    function->AddInstruction(Instruction::ABCode(TypeOp_LoadNil, reg_id, 1));
+    op_info.jmp_indexes_.push_back(AddInstruction(Instruction::ABxCode(
+        TypeOp_JmpTrue, reg_id, 0)));  // need refill jmp_index
+    AddInstruction(Instruction::ABCode(TypeOp_LoadNil, reg_id, 1));
     BinaryOperator(TypeOp_AbsEqual, reg_id, result_reg_id, reg_id);
-    op_info.move_indexes_.push_back(function->AddInstruction(
+    op_info.move_indexes_.push_back(AddInstruction(
         Instruction::ABCode(TypeOp_LoadNil, 0, 1)));  // need refill register id
-    op_info.jmp_indexes_.push_back(
-        function->AddInstruction(Instruction::ABxCode(
-            TypeOp_JmpTrue, reg_id, 0)));  // need refill jmp_index
+    op_info.jmp_indexes_.push_back(AddInstruction(Instruction::ABxCode(
+        TypeOp_JmpTrue, reg_id, 0)));  // need refill jmp_index
   }
   op_info.current_jmp_index_ =
       function->OpCodeSize();  // current ast's end instruction pc
@@ -1638,7 +1719,7 @@ void CodeGenerator::Visit(MemberAccessorAST* ast, void* data) {
 
   long result_id =
       data != nullptr ? *static_cast<int*>(data) : GenerateRegisterId();
-  function->AddInstruction(
+  AddInstruction(
       Instruction::ABCCode(TypeOp_GetTable, result_id, reg, member_reg_id));
   optional_chain_infos_.at(ast).current_jmp_index_ = function->OpCodeSize();
   optional_chain_infos_.at(ast).current_result_id_ = result_id;
@@ -1725,9 +1806,8 @@ void CodeGenerator::Visit(FunctionCallAST* ast, void* data) {
     long member_reg_id = GenerateRegisterId();
     property->member()->Accept(this, &member_reg_id);
 
-    function->AddInstruction(
-        Instruction::ABCCode(TypeOp_GetTable, caller_register_id,
-                             resolve_this_register, member_reg_id));
+    AddInstruction(Instruction::ABCCode(TypeOp_GetTable, caller_register_id,
+                                        resolve_this_register, member_reg_id));
 
     optional_chain_infos_.at(property).current_jmp_index_ =
         function->OpCodeSize();
@@ -1775,11 +1855,11 @@ void CodeGenerator::Visit(TernaryStatementAST* ast, void* data) {
   ast->condition()->Accept(this, &condition_register_id);
   Instruction instruction =
       Instruction::ABxCode(TypeOp_JmpFalse, condition_register_id, 0);
-  long jmp_index = function->AddInstruction(instruction);
+  long jmp_index = AddInstruction(instruction);
   DestoryRegisterId();
   ast->true_branch()->Accept(this, data);
   instruction = Instruction::ABxCode(TypeOp_Jmp, 0, 0);
-  long true_jmp_index = function->AddInstruction(instruction);
+  long true_jmp_index = AddInstruction(instruction);
   long index = function->OpCodeSize();
   function->GetInstruction(jmp_index)->RefillsBx(index - jmp_index);
 
@@ -1796,17 +1876,16 @@ void CodeGenerator::Visit(ObjectLiteralAST* ast, void* data) {
   fml::RefPtr<Function> function = current_function_->function_;
   AstLineScope sop(function.get(), ast);
   auto instruction = Instruction::ACode(TypeOp_NewTable, register_id);
-  function->AddInstruction(instruction);
+  AddInstruction(instruction);
 
   long key_reg = GenerateRegisterId();
   long value_reg = GenerateRegisterId();
   base::SortedForEach(ast->property(), [this, &function, &key_reg, &value_reg,
                                         &register_id](const auto& it) {
     long key_index = function->AddConstString(it.first);
-    function->AddInstruction(
-        Instruction::ABxCode(TypeOp_LoadConst, key_reg, key_index));
+    AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, key_reg, key_index));
     it.second->Accept(this, &value_reg);
-    function->AddInstruction(
+    AddInstruction(
         Instruction::ABCCode(TypeOp_SetTable, register_id, key_reg, value_reg));
   });
 }
@@ -1816,12 +1895,12 @@ void CodeGenerator::Visit(ArrayLiteralAST* ast, void* data) {
   fml::RefPtr<Function> function = current_function_->function_;
   AstLineScope sop(function.get(), ast);
   long register_id =
-      data == nullptr ? GenerateRegisterId() : *static_cast<int*>(data);
+      data == nullptr ? GenerateRegisterId() : *static_cast<long*>(data);
   long argc =
       ast->values() != nullptr ? ast->values()->expressions().size() : 0;
   ast->values()->Accept(this, &register_id);
   auto instruction = Instruction::ABCode(TypeOp_NewArray, register_id, argc);
-  function->AddInstruction(instruction);
+  AddInstruction(instruction);
 }
 
 void CodeGenerator::CreateAndPushContext(bool is_block) {
@@ -1830,20 +1909,20 @@ void CodeGenerator::CreateAndPushContext(bool is_block) {
   if (is_block) {
     Instruction instruction = Instruction::ABCode(
         TypeOp_CreateBlockContext, array_register_id, upvalue_array_.size());
-    current_function_->function_->AddInstruction(instruction);
+    AddInstruction(instruction);
   } else {
     Instruction instruction = Instruction::ABCode(
         TypeOp_CreateContext, array_register_id, upvalue_array_.size());
-    current_function_->function_->AddInstruction(instruction);
+    AddInstruction(instruction);
     Instruction instruction1 =
         Instruction::ACode(TypeOp_PushContext, array_register_id);
-    current_function_->function_->AddInstruction(instruction1);
+    AddInstruction(instruction1);
   }
 }
 
 void CodeGenerator::PopContext() {
   Instruction instruction = Instruction::Code(TypeOp_PopContext);
-  current_function_->function_->AddInstruction(instruction);
+  AddInstruction(instruction);
 }
 
 long CodeGenerator::GenerateRegisterId() {
@@ -1853,6 +1932,11 @@ long CodeGenerator::GenerateRegisterId() {
     Token fake_token;
     throw CompileException(
         "Register ID is overflow! The max register id is 256!", fake_token, "");
+  }
+
+  // record max register id
+  if (register_id > current_function_->function_->GetRegisterCount()) {
+    current_function_->function_->SetRegisterCount(register_id);
   }
   return register_id;
 }

@@ -301,7 +301,7 @@ class TestLepus : private TestLepusContextHolder,
         lynx::lepus::ContextBinaryWriter(context()->GetMTSContext()) {}
 
   static const char* input;
-  void Run(const char* source) {
+  void Run(const char* source, bool opt_bytecode) {
     std::string lepus_resource = source;
     if (lepus_resource == "") {
       lepus_resource = lepus::readFile(TestLepus::input);
@@ -309,6 +309,8 @@ class TestLepus : private TestLepusContextHolder,
     context()->Initialize();
     RegisterBuiltinTest(lynx::runtime::MTSRuntime::ToVMContext(context()));
     lynx::runtime::MTSRuntime::ToVMContext(context())->SetClosureFix(true);
+    lynx::runtime::MTSRuntime::ToVMContext(context())->SetOptBytecode(
+        opt_bytecode);
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
         context()->GetMTSContext(), lepus_resource, "2.6");
 
@@ -526,5 +528,10 @@ void CustomInit(int argc, char** argv) {
 
 TEST(lepus, compile) {
   TestLepus t;
-  t.Run("");
+  t.Run("", false);
+}
+
+TEST(lepus, compile_opt_lepus_bytecode) {
+  TestLepus t;
+  t.Run("", true);
 }

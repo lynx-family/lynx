@@ -204,6 +204,7 @@ class CodeGenerator : public Visitor {
   explicit CodeGenerator(VMContext* context);
   CodeGenerator(VMContext* context, SemanticAnalysis* semanticAnalysis);
   virtual ~CodeGenerator() {}
+
   virtual void Visit(ChunkAST* ast, void* data);
   virtual void Visit(BlockAST* ast, void* data);
   virtual void Visit(BlockAST* ast, void* data, bool);
@@ -323,7 +324,8 @@ class CodeGenerator : public Visitor {
   void LeaveTryCatch();
   void GenLeaveBlockScopeIns();
 
-  void InsertVariable(const base::String& name, long register_id);
+  // return if the variable is toplevel variable
+  bool InsertVariable(const base::String& name, long register_id);
   long SearchVariable(const base::String& name);
   long SearchVariable(const base::String& name, FunctionGenerate* current);
   long SearchGlobal(const base::String& name);
@@ -408,6 +410,33 @@ class CodeGenerator : public Visitor {
   int64_t start_line_ = -1;
   int64_t end_line_ = -1;
   uint64_t block_id_increase_ = 0;
+  // When generating bytecode for a *top-level* variable declaration (including
+  // function declarations that are lowered to `TypeOp_Closure` stored in a
+  // register), we need to know the first bytecode offset that *writes* into the
+  // variable's dedicated vreg.
+  //
+  // Why do we need it?
+  // - The IR pipeline (see `BytecodeBuilderImpl::RecordToplevelVarReg`) uses
+  //   `VMContext::top_level_reg_to_offset_` to decide from which bytecode
+  //   offset a vreg should be treated as a "toplevel variable" and thus should
+  //   keep a stable/fixed vreg across IR transformations and reg allocation.
+  // - The correct offset is not simply "the declaration site". It must be the
+  //   first instruction that actually defines the vreg (e.g. `LoadConst`,
+  //   `TypeOp_Closure`, `LoadNil`, etc.), which depends on how the initializer
+  //   expression is lowered.
+  //
+  // Implementation detail:
+  // - During codegen we temporarily set this field to the target vreg.
+  // - `AddInstruction()` checks whether the newly appended instruction writes
+  //   to that vreg; once it does, we record the offset into the local map and
+  //   clear this field.
+  // - Nested codegen (e.g. initializer contains other statements)
+  // saves/restores
+  //   the previous value to avoid clobbering an outer tracking context.
+  long pending_toplevel_var_init_reg_ = -1;
+
+  long AddInstruction(Instruction instruction);
+  bool InstructionWritesToRegister(Instruction& instr, long reg);
   friend ContextScope;
   friend BlockScope;
   friend LineScope;

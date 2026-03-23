@@ -37,9 +37,26 @@ struct Instruction {
                (static_cast<uint32_t>(b) & 0xFFFF);
   }
 
+  Instruction(long op_code, long a, long b, long c)
+      : op_code_(static_cast<uint32_t>(op_code)) {
+    op_code_ = (op_code_ << 24) | ((static_cast<uint32_t>(a) & 0xFF) << 16) |
+               ((static_cast<uint32_t>(b) & 0xFF) << 8) |
+               (static_cast<uint32_t>(c) & 0xFF);
+  }
+
   void RefillsA(long a) {
     op_code_ =
         (op_code_ & 0xFF00FFFF) | ((static_cast<uint32_t>(a) & 0xFF) << 16);
+  }
+
+  void RefillsB(long a) {
+    op_code_ =
+        (op_code_ & 0xFFFF00FF) | ((static_cast<uint32_t>(a) & 0xFF) << 8);
+  }
+
+  static Instruction OpABCCode(long d, long a, long b, long c) {
+    assert(d <= (long)UINT32_MAX && "for ABCD code, d must be uint32");
+    return Instruction(d, a, b, c);
   }
 
   void RefillsBx(short b) {
