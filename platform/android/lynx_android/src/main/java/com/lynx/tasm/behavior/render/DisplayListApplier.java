@@ -16,6 +16,7 @@ import android.text.Spanned;
 import android.view.View;
 import androidx.annotation.NonNull;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
@@ -388,13 +389,23 @@ public class DisplayListApplier implements Drawable.Callback {
       return;
     }
 
-    float width = tilingBox.getRectF().width();
-    float height = tilingBox.getRectF().height();
-    float left = tilingBox.getRectF().left;
-    float top = tilingBox.getRectF().top;
+    RoundedRectangle clipBox = null;
+    if (clipIndex >= 0 && clipIndex < mRoundedRectangleArray.size()) {
+      clipBox = mRoundedRectangleArray.get(clipIndex);
+    }
+    if (clipBox == null) {
+      return;
+    }
+
+    // Cache tiling box RectF to avoid repeated calls
+    final RectF tilingRect = tilingBox.getRectF();
+    final float width = tilingRect.width();
+    final float height = tilingRect.height();
+    final float left = tilingRect.left;
+    final float top = tilingRect.top;
 
     PointF center = mReusablePointF1;
-    center.set(left + width / 2.f, top + height / 2.f);
+    center.set(width / 2.f, height / 2.f);
     double radial = Math.toRadians(angle);
     float sin = (float) Math.sin(radial);
     float cos = (float) Math.cos(radial);
@@ -402,13 +413,13 @@ public class DisplayListApplier implements Drawable.Callback {
 
     PointF m = mReusablePointF2;
     if (sin >= 0 && cos >= 0) { // Bottom left to top right
-      m.set(left + width, top);
+      m.set(width, top);
     } else if (sin >= 0 && cos < 0) { // Top left to bottom right
-      m.set(left + width, top + height);
+      m.set(width, height);
     } else if (sin < 0 && cos < 0) { // Top right to bottom left
-      m.set(left, top + height);
+      m.set(left, height);
     } else { // Bottom right to top left
-      m.set(left, top);
+      m.set(0, 0);
     }
 
     // Reference logic from BackgroundLinearGradientLayer.java
@@ -421,25 +432,92 @@ public class DisplayListApplier implements Drawable.Callback {
     mPaint.reset();
     mPaint.setAntiAlias(true);
 
-    Shader.TileMode tileMode = Shader.TileMode.CLAMP;
-    // BackgroundRepeatType: kRepeat = 0, kNoRepeat = 1, kRepeatX = 2, kRepeatY = 3, kRound = 4,
-    // kSpace = 5 For LinearGradient, if either axis repeats, we use REPEAT tile mode.
-    if (repeatX != 1 || repeatY != 1) {
-      tileMode = Shader.TileMode.REPEAT;
+    // Always use CLAMP - we handle tiling manually to support directional repeats
+    mPaint.setShader(
+        new LinearGradient(startX, startY, endX, endY, colors, stops, Shader.TileMode.CLAMP));
+
+    // Cache RectF values to avoid repeated getRectF() calls
+    final RectF clipRect = clipBox.getRectF();
+    final float clipLeft = clipRect.left;
+    final float clipTop = clipRect.top;
+    final float clipRight = clipRect.right;
+    final float clipBottom = clipRect.bottom;
+
+    // Clip to the clip box bounds
+    canvas.save();
+    if (clipBox.hasBorderRadius()) {
+      mReusablePath.reset();
+      mReusablePath.addRoundRect(clipRect, clipBox.getBorderRadii(), Path.Direction.CW);
+      canvas.clipPath(mReusablePath);
+    } else {
+      canvas.clipRect(clipRect);
     }
 
-    mPaint.setShader(new LinearGradient(startX, startY, endX, endY, colors, stops, tileMode));
+    // Manual repeat handling similar to LayerManager.java
+    // Calculate the drawing bounds based on repeat mode
+    if (repeatX == StyleConstants.BACKGROUND_REPEAT_NO_REPEAT
+        && repeatY == StyleConstants.BACKGROUND_REPEAT_NO_REPEAT) {
+      // No repeat - draw once at tiling box position
+      canvas.save();
+      canvas.translate(left, top);
+      canvas.drawRect(0, 0, width, height, mPaint);
+      canvas.restore();
+    } else {
+      // Calculate end coordinates for tiling
+      final float endTileX = clipRight;
+      final float endTileY = clipBottom;
 
-    if (clipIndex >= 0 && clipIndex < mRoundedRectangleArray.size()) {
-      RoundedRectangle clipBox = mRoundedRectangleArray.get(clipIndex);
-      if (clipBox.hasBorderRadius()) {
-        mReusablePath.reset();
-        mReusablePath.addRoundRect(clipBox.getRectF(), clipBox.getBorderRadii(), Path.Direction.CW);
-        canvas.drawPath(mReusablePath, mPaint);
-      } else {
-        canvas.drawRect(clipBox.getRectF(), mPaint);
+      // Calculate start coordinates with proper tiling alignment
+      float tileStartX = left;
+      float tileStartY = top;
+
+      // For REPEAT or REPEAT_X: adjust start to cover area left of tiling box
+      if (repeatX == StyleConstants.BACKGROUND_REPEAT_REPEAT
+          || repeatX == StyleConstants.BACKGROUND_REPEAT_REPEAT_X) {
+        if (tileStartX > clipLeft) {
+          tileStartX = tileStartX - ((int) Math.ceil((tileStartX - clipLeft) / width)) * width;
+        }
       }
+
+      // For REPEAT or REPEAT_Y: adjust start to cover area above tiling box
+      if (repeatY == StyleConstants.BACKGROUND_REPEAT_REPEAT
+          || repeatY == StyleConstants.BACKGROUND_REPEAT_REPEAT_Y) {
+        if (tileStartY > clipTop) {
+          tileStartY = tileStartY - ((int) Math.ceil((tileStartY - clipTop) / height)) * height;
+        }
+      }
+
+      // Tile the gradient - minimize canvas save/restore by using translate
+      final int saveCount = canvas.save();
+      // Round to pixel boundaries to prevent subpixel gaps between tiles
+      final float pixelAlignedStartX = Math.round(tileStartX);
+      final float pixelAlignedStartY = Math.round(tileStartY);
+      final float pixelAlignedWidth = Math.round(width);
+      final float pixelAlignedHeight = Math.round(height);
+      canvas.translate(pixelAlignedStartX, pixelAlignedStartY);
+      for (float x = pixelAlignedStartX; x < endTileX; x += pixelAlignedWidth) {
+        final int rowSaveCount = canvas.save();
+        for (float y = pixelAlignedStartY; y < endTileY; y += pixelAlignedHeight) {
+          canvas.drawRect(0, 0, pixelAlignedWidth, pixelAlignedHeight, mPaint);
+          canvas.translate(0, pixelAlignedHeight);
+
+          // Break after first iteration if no repeat on Y
+          if (repeatY == StyleConstants.BACKGROUND_REPEAT_NO_REPEAT) {
+            break;
+          }
+        }
+        canvas.restoreToCount(rowSaveCount);
+        canvas.translate(pixelAlignedWidth, 0);
+
+        // Break after first iteration if no repeat on X
+        if (repeatX == StyleConstants.BACKGROUND_REPEAT_NO_REPEAT) {
+          break;
+        }
+      }
+      canvas.restoreToCount(saveCount);
     }
+    canvas.restore();
+
     mPaint.setShader(null);
   }
 

@@ -734,7 +734,7 @@ bool CSSStringParser::BackgroundLayer(CSSBackgroundLayer &layer, bool mask) {
         continue;
       }
     } else {
-      auto clip = BackgroundBox();
+      auto clip = BackgroundClip();
       if (!clip.IsEmpty()) {
         if ((curr_byte & BG_CLIP_BOX) == 0) {
           return false;

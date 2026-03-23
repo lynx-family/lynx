@@ -9759,6 +9759,12 @@ public class com::lynx::tasm::behavior::StyleConstants : com.lynx.tasm.behavior.
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_SIZE_AUTO BACKGROUND_SIZE_AUTO;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_SIZE_COVER BACKGROUND_SIZE_COVER;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_SIZE_CONTAIN BACKGROUND_SIZE_CONTAIN;
+  public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_REPEAT_REPEAT BACKGROUND_REPEAT_REPEAT;
+  public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_REPEAT_NO_REPEAT BACKGROUND_REPEAT_NO_REPEAT;
+  public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_REPEAT_REPEAT_X BACKGROUND_REPEAT_REPEAT_X;
+  public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_REPEAT_REPEAT_Y BACKGROUND_REPEAT_REPEAT_Y;
+  public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_REPEAT_ROUND BACKGROUND_REPEAT_ROUND;
+  public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_REPEAT_SPACE BACKGROUND_REPEAT_SPACE;
   public final int com.lynx.tasm.behavior.StyleConstants.VERTICAL_ALIGN_DEFAULT VERTICAL_ALIGN_DEFAULT;
   public final int com.lynx.tasm.behavior.StyleConstants.VERTICAL_ALIGN_BASELINE VERTICAL_ALIGN_BASELINE;
   public final int com.lynx.tasm.behavior.StyleConstants.VERTICAL_ALIGN_SUB VERTICAL_ALIGN_SUB;

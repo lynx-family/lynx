@@ -375,7 +375,7 @@ TEST_F(FragmentTest, LinearGradientGeneratesLinearGradientOp) {
 
   // Op 0 is RecordBox (for clip)
   // Op 1 is Fill (background color)
-  // Op 2 is RecordBox (for origin)
+  // Op 2 is RecordBox (for tiling box)
   // Op 3 is LinearGradient
   EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kLinearGradient));
 

@@ -8,11 +8,13 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -716,21 +718,25 @@ public class DisplayListApplierTest {
     doAnswer(new Answer<Void>() {
       @Override
       public Void answer(InvocationOnMock invocation) throws Throwable {
-        Paint paint = invocation.getArgument(1);
+        Paint paint = invocation.getArgument(4);
         capturedShader.set(paint.getShader());
         return null;
       }
     })
         .when(mockCanvas)
-        .drawRect(any(RectF.class), any(Paint.class));
+        .drawRect(anyFloat(), anyFloat(), anyFloat(), anyFloat(), any(Paint.class));
 
     displayListApplier.setDisplayList(testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
-    verify(mockCanvas).save();
-    verify(mockCanvas).drawRect(any(RectF.class), any(Paint.class));
+    // The gradient implementation uses nested save/restore calls:
+    // - 1 save at OP_BEGIN, 1 restore at OP_END
+    // - 1 save for clip, 1 restore after drawing (in drawLinearGradient)
+    // - 1 save for single tile drawing in no-repeat mode, 1 restore
+    verify(mockCanvas, times(3)).save();
+    verify(mockCanvas, times(3)).restore();
+    verify(mockCanvas).drawRect(anyFloat(), anyFloat(), anyFloat(), anyFloat(), any(Paint.class));
     assertNotNull(capturedShader.get());
-    verify(mockCanvas).restore();
   }
 
   @Test

@@ -127,6 +127,14 @@ public final class StyleConstants implements AutoGenStyleConstants {
   public static final int BACKGROUND_SIZE_COVER = -(1 << 5) - 1;
   public static final int BACKGROUND_SIZE_CONTAIN = -(1 << 5) - 2;
 
+  // BackgroundRepeatType (matches C++ enum class BackgroundRepeatType)
+  public static final int BACKGROUND_REPEAT_REPEAT = 0;
+  public static final int BACKGROUND_REPEAT_NO_REPEAT = 1;
+  public static final int BACKGROUND_REPEAT_REPEAT_X = 2;
+  public static final int BACKGROUND_REPEAT_REPEAT_Y = 3;
+  public static final int BACKGROUND_REPEAT_ROUND = 4;
+  public static final int BACKGROUND_REPEAT_SPACE = 5;
+
   // VerticalAlign
   public static final int VERTICAL_ALIGN_DEFAULT = 0;
   public static final int VERTICAL_ALIGN_BASELINE = 1;

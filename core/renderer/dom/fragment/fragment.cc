@@ -5,6 +5,7 @@
 #include "core/renderer/dom/fragment/fragment.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <utility>
 
@@ -342,6 +343,109 @@ void Fragment::DrawBorder(DisplayListBuilder& display_list_builder) {
                               DefinePaddingBox(display_list_builder), *border);
 }
 
+namespace {
+
+// Background size keyword constants (matching BackgroundSizeType enum)
+constexpr int BACKGROUND_SIZE_AUTO =
+    -1 * static_cast<int>(starlight::BackgroundSizeType::kAuto);  // -32
+constexpr int BACKGROUND_SIZE_COVER =
+    -1 * static_cast<int>(starlight::BackgroundSizeType::kCover);  // -33
+constexpr int BACKGROUND_SIZE_CONTAIN =
+    -1 * static_cast<int>(starlight::BackgroundSizeType::kContain);  // -34
+
+// Calculate background size dimensions
+void CalculateBackgroundSize(
+    const starlight::BackgroundData::BackgroundImageData& image_data,
+    size_t image_index, float origin_width, float origin_height,
+    float& out_width, float& out_height) {
+  // Default to auto (use origin box dimensions for gradients)
+  out_width = origin_width;
+  out_height = origin_height;
+
+  if (image_data.size.empty()) {
+    return;
+  }
+
+  // Get size values for this image (cycle if needed)
+  size_t size_index = (image_index * 2) % image_data.size.size();
+  const starlight::NLength& size_x = image_data.size[size_index];
+  const starlight::NLength& size_y =
+      image_data.size[(size_index + 1) % image_data.size.size()];
+
+  // Handle keywords: cover, contain, auto
+  // These are encoded as NLength with specific raw values (negated
+  // BackgroundSizeType)
+  bool is_cover =
+      !size_x.IsPercent() && size_x.GetRawValue() == BACKGROUND_SIZE_COVER;
+  bool is_contain =
+      !size_x.IsPercent() && size_x.GetRawValue() == BACKGROUND_SIZE_CONTAIN;
+
+  if (is_cover || is_contain) {
+    // For gradients, cover just fills the origin box
+    out_width = origin_width;
+    out_height = origin_height;
+    return;
+  }
+
+  // Handle auto for width
+  if (!size_x.IsPercent() && size_x.GetRawValue() == BACKGROUND_SIZE_AUTO) {
+    // auto - use origin width for gradients
+    out_width = origin_width;
+  } else {
+    out_width = size_x.IsPercent() ? size_x.GetRawValue() * origin_width / 100
+                                   : size_x.GetRawValue();
+  }
+
+  // Handle auto for height
+  if (!size_y.IsPercent() && size_y.GetRawValue() == BACKGROUND_SIZE_AUTO) {
+    // auto - use origin height for gradients
+    out_height = origin_height;
+  } else {
+    out_height = size_y.IsPercent() ? size_y.GetRawValue() * origin_height / 100
+                                    : size_y.GetRawValue();
+  }
+}
+
+// Calculate background position offsets
+void CalculateBackgroundPosition(
+    const starlight::BackgroundData::BackgroundImageData& image_data,
+    size_t image_index, float origin_width, float origin_height,
+    float image_width, float image_height, float& out_offset_x,
+    float& out_offset_y) {
+  // Default to top-left (0, 0)
+  out_offset_x = 0;
+  out_offset_y = 0;
+
+  if (image_data.position.empty()) {
+    return;
+  }
+
+  // Get position values for this image (cycle if needed)
+  size_t pos_index = (image_index * 2) % image_data.position.size();
+  const starlight::NLength& pos_x = image_data.position[pos_index];
+  const starlight::NLength& pos_y =
+      image_data.position[(pos_index + 1) % image_data.position.size()];
+
+  float delta_width = origin_width - image_width;
+  float delta_height = origin_height - image_height;
+
+  // Handle position keywords encoded as percentages
+  // Left/Top = 0%, Center = 50%, Right/Bottom = 100%
+  if (!pos_x.IsPercent()) {
+    out_offset_x = pos_x.GetRawValue();
+  } else {
+    out_offset_x = pos_x.GetRawValue() * delta_width / 100;
+  }
+
+  if (!pos_y.IsPercent()) {
+    out_offset_y = pos_y.GetRawValue();
+  } else {
+    out_offset_y = pos_y.GetRawValue() * delta_height / 100;
+  }
+}
+
+}  // namespace
+
 void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
   if (!element()->computed_css_style()->GetBackgroundData()) {
     return;
@@ -374,30 +478,73 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
   if (background_data->image_data) {
     const auto& image_data = background_data->image_data;
     if (image_data->image.IsArray()) {
-      starlight::BackgroundOriginType origin_type =
-          starlight::BackgroundOriginType::kPaddingBox;
-      if (!image_data->origin.empty()) {
-        origin_type = image_data->origin.back();
-      }
-      int32_t origin_index = -1;
-      switch (origin_type) {
-        case starlight::BackgroundOriginType::kPaddingBox:
-          origin_index = DefinePaddingBox(display_list_builder);
-          break;
-        case starlight::BackgroundOriginType::kBorderBox:
-          origin_index = DefineBorderBox(display_list_builder);
-          break;
-        case starlight::BackgroundOriginType::kContentBox:
-          origin_index = DefineContentBox(display_list_builder);
-          break;
-        default:
-          origin_index = DefinePaddingBox(display_list_builder);
-          break;
-      }
-
       auto array = image_data->image.Array();
       for (size_t i = 0; i + 1 < array->size(); i += 2) {
-        size_t image_index = i / 2;
+        size_t i_image = i / 2;
+        starlight::BackgroundOriginType origin_type =
+            starlight::BackgroundOriginType::kPaddingBox;
+
+        if (!image_data->origin.empty()) {
+          size_t i_origin = i_image % image_data->origin.size();
+          origin_type = image_data->origin[i_origin];
+        }
+
+        // Get origin box dimensions
+        float origin_x, origin_y, origin_width, origin_height;
+
+        switch (origin_type) {
+          case starlight::BackgroundOriginType::kBorderBox:
+            origin_x = layout_info_.GetBorderBoxX();
+            origin_y = layout_info_.GetBorderBoxY();
+            origin_width = layout_info_.GetBorderBoxWidth();
+            origin_height = layout_info_.GetBorderBoxHeight();
+            break;
+          case starlight::BackgroundOriginType::kContentBox:
+            origin_x = layout_info_.GetContentBoxX();
+            origin_y = layout_info_.GetContentBoxY();
+            origin_width = layout_info_.GetContentBoxWidth();
+            origin_height = layout_info_.GetContentBoxHeight();
+            break;
+          default:
+            origin_x = layout_info_.GetPaddingBoxX();
+            origin_y = layout_info_.GetPaddingBoxY();
+            origin_width = layout_info_.GetPaddingBoxWidth();
+            origin_height = layout_info_.GetPaddingBoxHeight();
+            break;
+        }
+
+        starlight::BackgroundRepeatType repeat_x =
+            starlight::BackgroundRepeatType::kRepeat;
+        starlight::BackgroundRepeatType repeat_y =
+            starlight::BackgroundRepeatType::kRepeat;
+
+        if (!image_data->repeat.empty()) {
+          size_t i_repeat = i_image % (image_data->repeat.size() / 2);
+          repeat_x = image_data->repeat[2 * i_repeat];
+          repeat_y = image_data->repeat[2 * i_repeat + 1];
+        }
+
+        // Calculate tiling box based on size and position
+        float tiling_width, tiling_height;
+        CalculateBackgroundSize(*image_data, i_image, origin_width,
+                                origin_height, tiling_width, tiling_height);
+
+        float offset_x = .0f, offset_y = .0f;
+        CalculateBackgroundPosition(*image_data, i_image, origin_width,
+                                    origin_height, tiling_width, tiling_height,
+                                    offset_x, offset_y);
+
+        // Create tiling box rectangle
+        RoundedRectangle tiling_rect;
+        tiling_rect.SetX(origin_x + offset_x);
+        tiling_rect.SetY(origin_y + offset_y);
+        tiling_rect.SetWidth(std::max(0.f, tiling_width));
+        tiling_rect.SetHeight(std::max(0.f, tiling_height));
+
+        // Record tiling box and get its index
+        int32_t tiling_index = -1;
+        display_list_builder.RecordBoxModel(tiling_rect, tiling_index);
+
         auto type =
             static_cast<starlight::BackgroundImageType>(array->get(i).Number());
         if (type == starlight::BackgroundImageType::kLinearGradient) {
@@ -411,7 +558,7 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
           colors.reserve(colors_arr->size());
           for (size_t j = 0; j < colors_arr->size(); ++j) {
             colors.push_back(
-                static_cast<uint32_t>(colors_arr->get(j).Number()));
+                static_cast<uint32_t>(colors_arr->get(j).UInt32()));
           }
 
           base::Vector<float> stops;
@@ -421,19 +568,27 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
                             100.0f);
           }
 
-          starlight::BackgroundRepeatType repeat_x =
-              starlight::BackgroundRepeatType::kRepeat;
-          starlight::BackgroundRepeatType repeat_y =
-              starlight::BackgroundRepeatType::kRepeat;
-          if (image_index * 2 < image_data->repeat.size()) {
-            repeat_x = image_data->repeat[image_index * 2];
+          clip_type = starlight::BackgroundClipType::kBorderBox;
+          if (background_data->image_data &&
+              !background_data->image_data->clip.empty()) {
+            size_t i_clip = i_image % image_data->clip.size();
+            clip_type = background_data->image_data->clip[i_clip];
           }
-          if (image_index * 2 + 1 < image_data->repeat.size()) {
-            repeat_y = image_data->repeat[image_index * 2 + 1];
+          switch (clip_type) {
+            case starlight::BackgroundClipType::kPaddingBox:
+              clip_index = DefinePaddingBox(display_list_builder);
+              break;
+            case starlight::BackgroundClipType::kContentBox:
+              clip_index = DefineContentBox(display_list_builder);
+              break;
+            case lynx::starlight::BackgroundClipType::kBorderBox:
+            default:
+              clip_index = DefineBorderBox(display_list_builder);
+              break;
           }
 
           display_list_builder.LinearGradient(
-              angle, colors, stops, origin_index, clip_index,
+              angle, colors, stops, tiling_index, clip_index,
               static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y));
         }
       }
