@@ -27,6 +27,7 @@ namespace harmony {
 struct AsyncParseTemplateContext {
   fml::WeakPtr<LynxTemplateBundleHarmony> weak_bundle;
   std::string error_msg{};
+  bool decode_success = false;
   tasm::LynxTemplateBundle bundle_result;
   napi_async_work async_work = nullptr;
   napi_deferred deferred = nullptr;
@@ -197,16 +198,18 @@ napi_value LynxTemplateBundleHarmony::AsyncParseTemplate(
     if (context) {
       auto decoder = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(
           std::move(context->template_buffer));
-      decoder.Decode();
+      context->decode_success = decoder.Decode();
       context->error_msg = std::move(decoder.error_message_);
-      context->bundle_result = decoder.GetTemplateBundle();
+      if (context->decode_success) {
+        context->bundle_result = decoder.GetTemplateBundle();
+      }
     }
   };
   auto complete_task = [](napi_env env, napi_status status, void* data) {
     AsyncParseTemplateContext* context =
         static_cast<AsyncParseTemplateContext*>(data);
     if (context) {
-      if (context->weak_bundle) {
+      if (context->decode_success && context->weak_bundle) {
         context->weak_bundle->SetBundle(std::move(context->bundle_result));
       }
       napi_value error_value = nullptr;
@@ -218,8 +221,9 @@ napi_value LynxTemplateBundleHarmony::AsyncParseTemplate(
       }
       napi_resolve_deferred(env, context->deferred, error_value);
 
+      napi_async_work async_work = context->async_work;
+      napi_delete_async_work(env, async_work);
       delete context;
-      napi_delete_async_work(env, context->async_work);
     }
   };
 
@@ -235,6 +239,7 @@ napi_value LynxTemplateBundleHarmony::AsyncParseTemplate(
   status = napi_queue_async_work(env, context->async_work);
   if (status != napi_ok) {
     LOGE("fail to queue async work " << status);
+    napi_delete_async_work(env, context->async_work);
     delete context;
     return nullptr;
   }
@@ -263,6 +268,9 @@ napi_value LynxTemplateBundleHarmony::GetExtraInfo(napi_env env,
 }
 
 napi_value LynxTemplateBundleHarmony::GetExtraInfo(napi_env env) {
+  if (!bundle_) {
+    return nullptr;
+  }
   lynx::lepus::Value extra_info = bundle_->GetExtraInfo();
   napi_value result = base::NapiConvertHelper::CreateNapiValue(env, extra_info);
   return result;
@@ -289,7 +297,7 @@ napi_value LynxTemplateBundleHarmony::GetContainsElementTree(
 }
 
 napi_value LynxTemplateBundleHarmony::GetContainsElementTree(napi_env env) {
-  bool result = bundle_->GetContainsElementTree();
+  bool result = bundle_ && bundle_->GetContainsElementTree();
   napi_value result_value = nullptr;
   auto status = napi_get_boolean(env, result, &result_value);
   if (status != napi_ok) {
@@ -336,6 +344,9 @@ napi_value LynxTemplateBundleHarmony::InitWithOption(napi_env env,
 napi_value LynxTemplateBundleHarmony::InitWithOption(napi_env env,
                                                      int32_t count,
                                                      bool enable) {
+  if (!bundle_) {
+    return nullptr;
+  }
   bundle_->PrepareLepusContext(count);
   bundle_->SetEnableVMAutoGenerate(enable);
   return nullptr;
@@ -377,6 +388,9 @@ napi_value LynxTemplateBundleHarmony::PostJsCacheGenerationTask(
 
 napi_value LynxTemplateBundleHarmony::PostJsCacheGenerationTask(
     napi_env env, std::string bytecode_source_url, bool use_v8) {
+  if (!bundle_) {
+    return nullptr;
+  }
   lynx::runtime::js::cache::JsCacheManagerFacade::PostCacheGenerationTask(
       *bundle_, bytecode_source_url,
       use_v8 ? lynx::runtime::js::JSRuntimeType::v8
