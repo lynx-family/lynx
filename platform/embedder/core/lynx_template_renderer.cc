@@ -14,6 +14,7 @@
 #include "devtool/embedder/core/lynx_devtool_set_module.h"
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
 #endif
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/timing_handler/timing_constants.h"
 
@@ -370,6 +371,12 @@ void LynxTemplateRenderer::InvokeCDPFromSDK(
                                                      std::move(callback));
   }
 }
+
+void LynxTemplateRenderer::OnReceiveMessageEvent(const Json::Value& event) {
+  if (devtools_) {
+    devtools_->GetInspectorOwner()->OnReceiveMessageEvent(event);
+  }
+}
 #endif  // ENABLE_INSPECTOR
 
 void LynxTemplateRenderer::AddClient(TemplateRendererClient* client) {
@@ -616,6 +623,25 @@ void LynxTemplateRenderer::ClearGenericInfo(int32_t instance_id) {
   if (instance_id != shell::kUnknownInstanceId) {
     tasm::report::EventTracker::ClearCache(instance_id);
   }
+}
+
+void LynxTemplateRenderer::DispatchMessageEvent(const Json::Value& message) {
+  if (!shell_ || !message.isObject()) {
+    return;
+  }
+  auto type = message.get(lynx::tasm::kType, "").asString();
+  runtime::ContextProxy::Type origin =
+      runtime::ContextProxy::ConvertStringToContextType(
+          message.get(lynx::tasm::kOrigin, "").asString());
+  runtime::ContextProxy::Type target =
+      runtime::ContextProxy::ConvertStringToContextType(
+          message.get(lynx::tasm::kTarget, "").asString());
+  auto data_value = pub::PubValueFactoryDefault();
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+      type, origin, target,
+      data_value.CreateString(message.get(lynx::tasm::kData, "").asString()));
+
+  shell_->DispatchMessageEvent(event);
 }
 
 }  // namespace embedder

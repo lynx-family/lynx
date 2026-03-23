@@ -12,6 +12,10 @@
 
 #include "base/include/fml/task_runner.h"
 
+namespace Json {
+class Value;
+}
+
 namespace lynx {
 namespace runtime {
 namespace js {
@@ -46,6 +50,7 @@ class LynxInspectorOwner {
       std::function<void(const std::string&)>&& callback) = 0;
   virtual std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
   OnBackgroundRuntimeCreated(const std::string& group_thread_name) = 0;
+  virtual void OnReceiveMessageEvent(const Json::Value& event) = 0;
 };
 
 }  // namespace devtool

@@ -4,6 +4,7 @@
 
 #include "platform/embedder/core/native_facade_impl.h"
 
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "platform/embedder/core/lynx_template_renderer.h"
 
 namespace lynx {
@@ -49,6 +50,26 @@ void NativeFacadeImpl::OnUpdatePerfReady(
     const std::unordered_map<int32_t, double>& perf,
     const std::unordered_map<int32_t, std::string>& perf_timing) {
   renderer_->OnUpdatePerfReady(perf, perf_timing);
+}
+
+void NativeFacadeImpl::OnReceiveMessageEvent(
+    fml::RefPtr<runtime::MessageEvent> event) {
+#if ENABLE_INSPECTOR
+  if (!event || !event->IsSendingToDevTool()) {
+    return;
+  }
+
+  Json::Value message;
+  message[lynx::tasm::kType] = event->type();
+  message[lynx::tasm::kTimestamp] = event->time_stamp();
+  message[lynx::tasm::kTarget] = event->GetTargetString();
+  message[lynx::tasm::kOrigin] = event->GetOriginString();
+
+  const auto* msg = event->message();
+  message[lynx::tasm::kData] = msg ? msg->str() : "";
+
+  renderer_->OnReceiveMessageEvent(message);
+#endif
 }
 
 void NativeFacadeImpl::OnTimingSetup(const lepus::Value& timing_info) {

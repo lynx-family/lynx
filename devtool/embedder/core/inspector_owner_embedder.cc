@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "devtool/embedder/core/debug_bridge_embedder.h"
@@ -17,6 +18,24 @@
 
 namespace lynx {
 namespace devtool {
+
+void InspectorOwnerEmbedder::OnReceiveMessageEvent(const Json::Value& event) {
+  if (event.isNull() || !platform_embedder_ || !devtoolng_delegate_ ||
+      !devtoolng_delegate_->isAttachToDebugRouter()) {
+    return;
+  }
+  Json::Value message_params;
+  message_params["event"] = event.get(lynx::tasm::kType, "");
+  message_params["vmType"] = event.get(lynx::tasm::kOrigin, "");
+  message_params["data"] = event.get(lynx::tasm::kData, "");
+
+  Json::Value message;
+  message["method"] = "Lynx.onVMEvent";
+  message["params"] = message_params;
+
+  Json::FastWriter writer;
+  platform_embedder_->SendCDPEvent(writer.write(message));
+}
 
 InspectorOwnerEmbedder::InspectorOwnerEmbedder()
     : connection_id_(0),

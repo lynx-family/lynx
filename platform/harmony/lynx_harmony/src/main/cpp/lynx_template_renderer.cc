@@ -1904,5 +1904,7 @@ void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
                                         float delta_x, float delta_y,
                                         int modifiers, int click_count) {}
 
+void LynxTemplateRenderer::DispatchMessageEvent(const Json::Value& message) {}
+
 }  // namespace harmony
 }  // namespace lynx

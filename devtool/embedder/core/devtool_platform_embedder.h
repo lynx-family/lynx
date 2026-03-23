@@ -12,6 +12,7 @@
 #include "devtool/embedder/core/debug_info_helper.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
 #include "devtool/lynx_devtool/base/screen_metadata.h"
+#include "third_party/jsoncpp/include/json/json.h"
 
 namespace lynx {
 
@@ -73,6 +74,10 @@ class DevtoolPlatformEmbedder
 
   void SendConsoleEvent(const std::string& message, int32_t level,
                         int64_t time_stamp);
+
+  void SendCDPEvent(const std::string& message);
+
+  void SendEventToVM(const Json::Value& message);
 
   void DispatchScreencastVisibilityChanged(bool status);
 

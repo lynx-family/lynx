@@ -38,6 +38,8 @@ class NativeFacadeImpl : public shell::NativeFacade {
 
   void OnTemplateLoaded(const std::string& url) override;
 
+  void OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event) override;
+
   void OnRuntimeReady() override;
 
   void ReportError(const base::LynxError& error) override;

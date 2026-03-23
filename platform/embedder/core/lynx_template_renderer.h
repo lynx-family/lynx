@@ -27,6 +27,7 @@
 #include "core/shell/perf_controller_proxy_impl.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "platform/embedder/public/lynx_event_simulation_proxy.h"
+#include "third_party/jsoncpp/include/json/json.h"
 #if ENABLE_INSPECTOR
 #include "devtool/embedder/common/devtools_embedder.h"
 #endif  // ENABLE_INSPECTOR
@@ -175,6 +176,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 #if ENABLE_INSPECTOR
   void InvokeCDPFromSDK(const std::string& cdp_msg,
                         std::function<void(const std::string&)>&& callback);
+  void OnReceiveMessageEvent(const Json::Value& event);
 #endif  // ENABLE_INSPECTOR
 
   void AddClient(TemplateRendererClient* client);
@@ -261,6 +263,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       pub::LynxEventSimulationProxy* event_proxy) {
     event_proxy_ = event_proxy;
   }
+
+  void DispatchMessageEvent(const Json::Value& message) override;
 
  protected:
   std::vector<uint8_t> LoadJSSource(const std::string& url);

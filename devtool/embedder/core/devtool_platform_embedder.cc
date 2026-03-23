@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/public/devtool/lynx_devtool_proxy.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/embedder/core/env_embedder.h"
 #include "devtool/embedder/core/inspector_owner_embedder.h"
@@ -81,7 +82,16 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
   std::vector<int32_t> GetViewLocationOnScreen() const override { return {}; }
 
   void SendEventToVM(const std::string& vm_type, const std::string& event_name,
-                     const std::string& data) override {}
+                     const std::string& data) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
+    Json::Value message;
+    message[lynx::tasm::kType] = event_name;
+    message[lynx::tasm::kOrigin] = "Devtool";
+    message[lynx::tasm::kData] = data;
+    message[lynx::tasm::kTarget] = vm_type;
+    embedder->SendEventToVM(message);
+  }
 
   lynx::lepus::Value* GetLepusValueFromTemplateData() override {
     // TODO(yaoyuchi): add implement
@@ -162,6 +172,17 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
 };
 
 DevtoolPlatformEmbedder::DevtoolPlatformEmbedder() : reload_helper_(nullptr) {}
+
+void DevtoolPlatformEmbedder::SendCDPEvent(const std::string& message) {
+  if (devtool_platform_facade_) {
+    devtool_platform_facade_->SendCDPEvent(message);
+  }
+}
+
+void DevtoolPlatformEmbedder::SendEventToVM(const Json::Value& message) {
+  CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
+  proxy_->DispatchMessageEvent(message);
+}
 
 void DevtoolPlatformEmbedder::Init(
     devtool::LynxDevToolProxy* proxy,

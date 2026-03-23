@@ -27,7 +27,10 @@ lynx_core_source_set("renderer") {
       sources += [ "../../../core/services/event_report/embedder/event_tracker_platform_embedder_impl.cc" ]
     }
   }
-  deps = [ "../../../core:lynx_native" ]
+  deps = [
+    "../../../core:lynx_native",
+    "../../../third_party/jsoncpp:jsoncpp",
+  ]
   if (!enable_unittests && !is_oliver_node_lynx) {
     deps += [ "../lynx_service:lynx_service" ]
   }
