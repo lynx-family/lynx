@@ -31,6 +31,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setUrl:(NSString *)url;
 
+- (void)setAutoWidth:(BOOL)autoWidth;
+
+- (void)setAutoHeight:(BOOL)autoHeight;
+
 - (UIView<LUIBodyView> *_Nullable)getRootView;
 
 - (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame;

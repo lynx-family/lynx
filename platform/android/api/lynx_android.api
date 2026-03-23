@@ -10738,6 +10738,8 @@ public class com::lynx::tasm::behavior::ui::frame::UIFrame : com::lynx::tasm::be
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.setSrc(String value);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.setGlobalProps(ReadableMap value);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.setEmbeddedMode(@EmbeddedMode.Mode int mode);
+  public void com.lynx.tasm.behavior.ui.frame.UIFrame.setAutoWidth(boolean value);
+  public void com.lynx.tasm.behavior.ui.frame.UIFrame.setAutoHeight(boolean value);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.onPropsUpdated();
 }
 

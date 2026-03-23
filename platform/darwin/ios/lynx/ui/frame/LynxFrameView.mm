@@ -17,8 +17,6 @@
 #include "base/trace/native/trace_defines.h"
 #include "base/trace/native/trace_event.h"
 
-#define IS_ZERO(num) ((num) < 1e-5)
-
 #pragma mark - LynxFrameView
 
 @implementation LynxFrameView {
@@ -33,6 +31,8 @@
   BOOL _isIntrinsicSizeConsumed;
   LynxTemplateData *_initData;
   LynxTemplateData *_globalProps;
+  BOOL _autoWidth;
+  BOOL _autoHeight;
   LynxViewSizeMode _widthMode;
   LynxViewSizeMode _heightMode;
   LynxEmbeddedMode _embeddedMode;
@@ -46,6 +46,8 @@
     _isIntrinsicSizeConsumed = YES;
     _contentRect = CGRectNull;
     _embeddedMode = LynxEmbeddedModeUnset;
+    _widthMode = LynxViewSizeModeExact;
+    _heightMode = LynxViewSizeModeExact;
   }
   return self;
 }
@@ -153,14 +155,6 @@
               std::to_string(contentFrame.size.width), "heightMeasureSpec",
               std::to_string(contentFrame.size.height));
 
-  const BOOL shouldResetSizeMode = !_isBundleLoad || CGRectIsNull(_contentRect);
-  if (shouldResetSizeMode) {
-    _widthMode =
-        IS_ZERO(contentFrame.size.width) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
-    _heightMode =
-        IS_ZERO(contentFrame.size.height) ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
-  }
-
   _contentRect = contentFrame;
   [self applyRenderLayoutWithRect:_contentRect
                   layoutWidthMode:_widthMode
@@ -199,6 +193,34 @@
 
 - (void)setUrl:(NSString *)url {
   _url = url;
+}
+
+- (void)setAutoWidth:(BOOL)autoWidth {
+  if (_autoWidth == autoWidth) {
+    return;
+  }
+
+  _autoWidth = autoWidth;
+  _widthMode = autoWidth ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
+  if (_isBundleLoad && !CGRectIsNull(_contentRect)) {
+    [self applyRenderLayoutWithRect:_contentRect
+                    layoutWidthMode:_widthMode
+                   layoutHeightMode:_heightMode];
+  }
+}
+
+- (void)setAutoHeight:(BOOL)autoHeight {
+  if (_autoHeight == autoHeight) {
+    return;
+  }
+
+  _autoHeight = autoHeight;
+  _heightMode = autoHeight ? LynxViewSizeModeUndefined : LynxViewSizeModeExact;
+  if (_isBundleLoad && !CGRectIsNull(_contentRect)) {
+    [self applyRenderLayoutWithRect:_contentRect
+                    layoutWidthMode:_widthMode
+                   layoutHeightMode:_heightMode];
+  }
 }
 
 - (void)setEmbeddedMode:(LynxEmbeddedMode)embeddedMode {

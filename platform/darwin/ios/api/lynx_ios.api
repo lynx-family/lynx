@@ -1917,6 +1917,8 @@ public class LynxFrameView : UIView, <LUIBodyView> {
   public void LynxFrameView::setGlobalProps:(nullable LynxTemplateData *globalProps);
   public void LynxFrameView::propsDidUpdate();
   public void LynxFrameView::setUrl:(NSString *url);
+  public void LynxFrameView::setAutoWidth:(BOOL autoWidth);
+  public void LynxFrameView::setAutoHeight:(BOOL autoHeight);
   public UIView< LUIBodyView > *_Nullable LynxFrameView::getRootView();
   public void LynxFrameView::updateFrame:contentFrame:(CGRect frame,[contentFrame] CGRect contentFrame);
   public void LynxFrameView::setEmbeddedMode:(LynxEmbeddedMode embeddedMode);
