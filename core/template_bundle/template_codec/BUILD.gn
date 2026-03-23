@@ -66,3 +66,27 @@ lynx_core_source_set("template_decoder") {
     "binary_decoder:binary_decoder",
   ]
 }
+
+lynx_core_source_set("tasm_codec_facade") {
+  sources = [
+    "public/tasm_codec.h",
+    "public/tasm_codec_types.h",
+    "tasm_codec.cc",
+  ]
+
+  public_deps = [
+    ":template_decoder",
+    ":template_encoder",
+    "../:template_bundle_converter",
+  ]
+}
+
+executable("tasm_codec_unittest") {
+  sources = [ "testing/tasm_codec_unittest.cc" ]
+
+  deps = [ ":tasm_codec_facade" ]
+
+  if (is_oliver) {
+    deps += [ "../../../third_party/quickjs:quickjs" ]
+  }
+}

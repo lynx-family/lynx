@@ -84,6 +84,8 @@ if (build_lynx_lepus_node) {
       ]
 
       deps = lynx_encoder_deps + lynx_decoder_deps
+      deps += [ ":encoder_bindings" ]
+      deps += [ "../../core/template_bundle/template_codec:tasm_codec_facade" ]
     }
   } else {
     oliver_node_lib("create_tasm_node") {
@@ -96,6 +98,8 @@ if (build_lynx_lepus_node) {
       }
 
       deps = lynx_encoder_deps + lynx_decoder_deps
+      deps += [ ":encoder_bindings" ]
+      deps += [ "../../core/template_bundle/template_codec:tasm_codec_facade" ]
       deps += [ "../../third_party/quickjs:quickjs" ]
     }
 
@@ -165,13 +169,6 @@ if (build_lynx_lepus_node) {
     # dom
     sources += lynx_component_attr_sources_path
     sources += lynx_tasm_config_sources_path
-    if (is_nodejs) {
-      sources += [ "../../core/renderer/tasm/napi_bind.cc" ]
-    }
-
-    if (is_wasm) {
-      sources += [ "../../core/template_bundle/template_codec/wasm_bind.cc" ]
-    }
 
     # utils
     sources += lynx_renderer_utils_sources_path
@@ -204,6 +201,28 @@ if (build_lynx_lepus_node) {
     ]
 
     deps += [ "../../third_party/quickjs" ]
+
+    if (is_wasm) {
+      exclude_configs = [ "//build/config/compiler:no_rtti" ]
+      configs = [ "//build/config/compiler:rtti" ]
+    }
+  }
+
+  lynx_core_source_set("encoder_bindings") {
+    sources = []
+
+    if (is_nodejs) {
+      sources += [ "../../core/template_bundle/napi_bind.cc" ]
+    }
+
+    if (is_wasm) {
+      sources += [ "../../core/template_bundle/wasm_bind.cc" ]
+    }
+
+    deps = [
+      "../../core:find_node_headers",
+      "../../core/template_bundle/template_codec:tasm_codec_facade",
+    ]
 
     if (is_wasm) {
       exclude_configs = [ "//build/config/compiler:no_rtti" ]
