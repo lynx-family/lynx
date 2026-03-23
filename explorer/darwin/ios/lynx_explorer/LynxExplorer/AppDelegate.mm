@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "AppDelegate.h"
+#import "AppDelegate+DebugRouter.h"
 #import "LynxDebugger.h"
 #import "LynxInitProcessor.h"
 #import "LynxViewShellViewController.h"
@@ -11,10 +12,6 @@
 NSString *const LOCAL_URL_PREFIX = @"file://lynx?local://";
 NSString *const HOMEPAGE_URL =
     @"file://lynx?local://homepage.lynx.bundle?fullscreen=true&orientation=portrait";
-
-@interface AppDelegate ()
-
-@end
 
 @implementation AppDelegate
 
@@ -30,6 +27,7 @@ NSString *const HOMEPAGE_URL =
   self.window.rootViewController = self.navigationController;
   self.window.backgroundColor = [UIColor whiteColor];
   [self.window makeKeyAndVisible];
+  [self registerDebugRouterMessageHandlers];
 
   [LynxDebugger setOpenCardCallback:^(NSString *url) {
     dispatch_async(dispatch_get_main_queue(), ^{

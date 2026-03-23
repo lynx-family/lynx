@@ -19,6 +19,7 @@
 		2B590A452D633F3A0041DE80 /* DemoGenericResourceFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B590A442D633F3A0041DE80 /* DemoGenericResourceFetcher.m */; };
 		2B590A492D635BEB0041DE80 /* DemoMeidaResourceFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B590A482D635BEB0041DE80 /* DemoMeidaResourceFetcher.m */; };
 		2B590A4C2D635CF00041DE80 /* DemoTemplateResourceFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B590A4B2D635CF00041DE80 /* DemoTemplateResourceFetcher.m */; };
+		2B6010012E0010000041DE80 /* AppDelegate+DebugRouter.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B6010032E0010000041DE80 /* AppDelegate+DebugRouter.mm */; };
 		2B736B8C2D096F8A000A35F6 /* LynxExplorerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B736B8B2D096F8A000A35F6 /* LynxExplorerTests.m */; };
 		2B948FA22C2D9FD900535C96 /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B948FA12C2D9FD900535C96 /* AppDelegate.mm */; };
 		2B948FA82C2D9FD900535C96 /* LynxViewShellViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B948FA72C2D9FD900535C96 /* LynxViewShellViewController.m */; };
@@ -66,6 +67,8 @@
 		2B590A482D635BEB0041DE80 /* DemoMeidaResourceFetcher.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DemoMeidaResourceFetcher.m; sourceTree = "<group>"; };
 		2B590A4A2D635CD80041DE80 /* DemoTemplateResourceFetcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DemoTemplateResourceFetcher.h; sourceTree = "<group>"; };
 		2B590A4B2D635CF00041DE80 /* DemoTemplateResourceFetcher.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DemoTemplateResourceFetcher.m; sourceTree = "<group>"; };
+		2B6010022E0010000041DE80 /* AppDelegate+DebugRouter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AppDelegate+DebugRouter.h"; sourceTree = "<group>"; };
+		2B6010032E0010000041DE80 /* AppDelegate+DebugRouter.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = "AppDelegate+DebugRouter.mm"; sourceTree = "<group>"; };
 		2B736B892D096F8A000A35F6 /* LynxExplorerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LynxExplorerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B736B8B2D096F8A000A35F6 /* LynxExplorerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LynxExplorerTests.m; sourceTree = "<group>"; };
 		2B948F9D2C2D9FD900535C96 /* LynxExplorer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LynxExplorer.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -213,7 +216,9 @@
 				2B382D822D17BF9200C67770 /* scan */,
 				2B382D7B2D17BCDC00C67770 /* modules */,
 				2B948FA02C2D9FD900535C96 /* AppDelegate.h */,
+				2B6010022E0010000041DE80 /* AppDelegate+DebugRouter.h */,
 				2B948FA12C2D9FD900535C96 /* AppDelegate.mm */,
+				2B6010032E0010000041DE80 /* AppDelegate+DebugRouter.mm */,
 				2B948FA62C2D9FD900535C96 /* LynxViewShellViewController.h */,
 				2B948FA72C2D9FD900535C96 /* LynxViewShellViewController.m */,
 				2B948FA92C2D9FD900535C96 /* Main.storyboard */,
@@ -437,6 +442,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2B948FA82C2D9FD900535C96 /* LynxViewShellViewController.m in Sources */,
+				2B6010012E0010000041DE80 /* AppDelegate+DebugRouter.mm in Sources */,
 				2B382D862D17C06D00C67770 /* ScanViewController.m in Sources */,
 				2B948FA22C2D9FD900535C96 /* AppDelegate.mm in Sources */,
 				2BB78AD32D1D18FA00060E1C /* LynxSettingManager.m in Sources */,
