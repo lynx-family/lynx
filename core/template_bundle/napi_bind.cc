@@ -2,10 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/template_bundle/lynx_template_bundle.h"
-#include "core/template_bundle/lynx_template_bundle_converter.h"
-#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
+#include "core/template_bundle/template_codec/public/tasm_codec.h"
 #include "napi.h"
 #include "third_party/aes/aes.h"
 
@@ -39,7 +37,7 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
   Napi::Value EncodeNapi(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     std::string options = info[0].As<Napi::String>();
-    auto res = lynx::tasm::encode(options.c_str());
+    auto res = lynx::tasm::codec::Encode(options);
     Napi::Object obj = Napi::Object::New(env);
     Napi::Buffer<uint8_t> buffer =
         Napi::Buffer<uint8_t>::New(env, res.buffer.size());
@@ -111,23 +109,14 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
       obj.Set("error_msg", "Invalid Buffer!");
       return obj;
     }
-    auto reader = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(
-        std::vector<uint8_t>(buffer_ptr, buffer_ptr + buffer_length));
-    bool result = reader.Decode();
-    if (result) {
-      // decode success.
-      auto template_bundle = reader.GetTemplateBundle();
-      std::string res = lynx::tasm::LynxTemplateBundleConverter::
-          ConvertTemplateBundleToSerializedString(template_bundle);
+    auto res = lynx::tasm::codec::Decode(buffer_ptr, buffer_length);
+    if (res.status == 0) {
       obj.Set("status", 0);
-      obj.Set("result", std::move(res));
+      obj.Set("result", std::move(res.result));
       return obj;
     } else {
-      // decode failed.
-      std::cout << "ParseTemplate failed. error_msg is : "
-                << reader.error_message_ << std::endl;
       obj.Set("status", -1);
-      obj.Set("error_msg", reader.error_message_);
+      obj.Set("error_msg", res.error_msg);
       return obj;
     }
   }

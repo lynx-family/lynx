@@ -6,30 +6,16 @@
 
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "base/include/value/base_value.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "core/template_bundle/template_codec/generator/ttml_holder.h"
+#include "core/template_bundle/template_codec/public/tasm_codec_types.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 #include "third_party/rapidjson/rapidjson.h"
 
 namespace lynx {
 namespace tasm {
-
-struct EncodeResult {
-  int status;
-  std::string error_msg;
-  std::vector<uint8_t> buffer;
-  std::string lepus_code;
-  std::string lepus_debug;
-  std::string section_size;
-};
-
-struct DecodeResult {
-  int status;
-  std::string result;
-};
 
 // Options used in encode time, but not be used in run time.
 struct GeneratorOptions {
