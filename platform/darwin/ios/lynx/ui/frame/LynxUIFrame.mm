@@ -138,4 +138,12 @@ LYNX_PROP_SETTER("global-props", updateGlobalProps, NSDictionary*) {
 LYNX_PROP_SETTER("embedded-mode", setEmbeddedMode, NSNumber*) {
   [[self view] setEmbeddedMode:value.intValue];
 }
+
+LYNX_PROP_SETTER("auto-width", setAutoWidth, BOOL) {
+  [[self view] setAutoWidth:requestReset ? NO : value];
+}
+
+LYNX_PROP_SETTER("auto-height", setAutoHeight, BOOL) {
+  [[self view] setAutoHeight:requestReset ? NO : value];
+}
 @end
