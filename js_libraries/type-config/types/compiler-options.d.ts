@@ -226,6 +226,18 @@ export interface CompilerOptions {
   enableKeepPageData?: boolean;
 
   /**
+   * Allow opt lepus bytecode.
+   *
+   * Supported platform: Android, iOS, HarmonyOS
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue true
+   *
+   */
+  enableOptLepusBytecode?: boolean;
+
+  /**
    * NA
    *
    * Supported platform: Android, iOS, HarmonyOS

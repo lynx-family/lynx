@@ -328,6 +328,37 @@ TEST_F(ContextBinaryReaderTest, DISABLED_TemplateBinaryReaderLepus) {
     auto src = TestUtils::ReadFileFromPath(test_file);
     auto vm_ctx =
         runtime::MTSRuntime::CreateContext(runtime::ContextType::VMContextType);
+    static_cast<lepus::VMContext*>(vm_ctx->GetMTSContext())
+        ->SetOptBytecode(false);
+    TestUtils::RegisterBuiltin(vm_ctx.get());
+    lepus::BytecodeGenerator::GenerateBytecode(vm_ctx->GetMTSContext(), src,
+                                               target_sdk_version);
+    auto binary_writer = ContextBinaryWriterTest(vm_ctx.get());
+    binary_writer.encode();
+    auto byte_array =
+        const_cast<lepus::OutputStream*>(binary_writer.stream())->byte_array();
+
+    TemplateBinaryReaderTest binary_reader{
+        std::make_unique<lepus::ByteArrayInputStream>(std::move(byte_array)),
+        false};
+
+    ASSERT_TRUE(binary_reader.DecodeContext());
+    ASSERT_TRUE(binary_reader.GetVm()->Execute(
+        binary_reader.GetTemplateBundle().context_bundle_.get()));
+  }
+}
+
+TEST_F(ContextBinaryReaderTest, DISABLED_TemplateBinaryReaderLepusOpt) {
+  auto all_test_file =
+      TestUtils::GetTestFileLists("core/runtime/lepus/compiler/unit_test");
+
+  for (const auto& test_file : all_test_file) {
+    std::cout << "[ContextDecoderTest] test file: " << test_file << std::endl;
+    auto src = TestUtils::ReadFileFromPath(test_file);
+    auto vm_ctx =
+        runtime::MTSRuntime::CreateContext(runtime::ContextType::VMContextType);
+    static_cast<lepus::VMContext*>(vm_ctx->GetMTSContext())
+        ->SetOptBytecode(true);
     TestUtils::RegisterBuiltin(vm_ctx.get());
     lepus::BytecodeGenerator::GenerateBytecode(vm_ctx->GetMTSContext(), src,
                                                target_sdk_version);

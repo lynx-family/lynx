@@ -101,6 +101,7 @@ struct CompileOptions {
   bool encode_quickjs_bytecode_{false};
   bool enable_async_lepus_chunk_decode_{false};
   bool enable_simple_styling_{false};
+  bool enable_opt_lepus_bytecode_{true};
   uint8_t context_type_{0};
   // Compile options auto generated end
 };

@@ -37,8 +37,6 @@ lynx_lepus_core_sources = [
   "array_api.h",
   "base_api.cc",
   "base_api.h",
-  "bytecode_print.cc",
-  "bytecode_print.h",
   "date_api.h",
   "exception.h",
   "function.cc",
@@ -47,6 +45,7 @@ lynx_lepus_core_sources = [
   "function_api.h",
   "guard.h",
   "heap.h",
+  "lepus_bytecode_def.h",
   "lepus_date.cc",
   "lepus_date.h",
   "lepus_date_api.cc",
@@ -77,12 +76,6 @@ lynx_lepus_core_sources = [
   "vm_context.cc",
   "vm_context.h",
 ]
-if (is_ios) {
-  lynx_lepus_core_sources -= [
-    "bytecode_print.cc",
-    "bytecode_print.h",
-  ]
-}
 lynx_lepus_core_sources_path = get_path_info(lynx_lepus_core_sources, "abspath")
 
 lynx_lepus_compile_sources = [

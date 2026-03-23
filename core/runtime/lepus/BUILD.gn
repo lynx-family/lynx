@@ -44,7 +44,9 @@ lynx_core_source_set("lepus") {
   # if(is_test) {
   #   sources += [
   #     "ast_dump.h",
-  #     "ast_dump.cc"
+  #     "ast_dump.cc",
+  #     "bytecode_print.h",
+  #     "bytecode_print.cc",
   #   ]
   #   defines = ["LEPUS_PC", "LEPUS_TEST"]
   # }
@@ -73,15 +75,15 @@ unittest_set("lepus_testset") {
     "function_api_unittest.cc",
     "json_parser_unittest.cc",
     "lepus_error_helper_unittest.cc",
+    "lepus_ir_vm_context_unittest.cc",
     "lepus_value_unittest.cc",
+    "lepusir_template_compile_chain_integration_unittests.cc",
     "lynx_value_extended_unittest.cc",
     "restricted_value_unittest.cc",
     "string_api_unittest.cc",
     "value_deep_check_unittest.cc",
     "value_utils_unittest.cc",
   ]
-
-  public_configs = [ "../../:lynx_public_config" ]
 
   public_deps = [
     ":lepus",

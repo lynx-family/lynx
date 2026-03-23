@@ -125,6 +125,9 @@ class VMContext : public runtime::MTSContext {
   void SetClosureFix(bool val) { closure_fix_ = val; }
   bool GetClosureFix() { return closure_fix_; }
 
+  void SetOptBytecode(bool val) { opt_bytecode_ = val; }
+  bool GetOptBytecode() { return opt_bytecode_; }
+
   inline Global* global() { return &global_; }
   inline Global* builtin() { return &builtin_; }
   void SetGlobalData(const base::String& name, Value value) override;
@@ -261,6 +264,7 @@ class VMContext : public runtime::MTSContext {
   bool enable_top_var_strict_mode_;
   bool enable_null_prop_as_undef_ = false;
   bool closure_fix_ = false;
+  bool opt_bytecode_ = true;
 
   bool executed_ = false;
 

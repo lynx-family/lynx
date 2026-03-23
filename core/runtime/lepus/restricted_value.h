@@ -457,6 +457,10 @@ struct RestrictedValue {
         return value.value_.val_int64;
       }
 
+      static BASE_INLINE bool GetBool(const RestrictedValue& value) {
+        return value.value_.val_bool;
+      }
+
       static BASE_INLINE void SetInt64(RestrictedValue& value, int64_t v) {
         value.value_.val_int64 = v;
       }

@@ -21,6 +21,7 @@ const compilerOptionsKeys = [
   'enableFiberArch',
   'enableFlexibleTemplate',
   'enableKeepPageData',
+  'enableOptLepusBytecode',
   'enableRemoveCSSScope',
   'enableSimpleStyling',
   'experimental_encodeQuickjsBytecode',

@@ -14,7 +14,7 @@ describe('type-config index', () => {
     expect(configKeys).toBeDefined();
   });
   it('should have correct compilerOptionsKeys', () => {
-    expect(compilerOptionsKeys.length).toBe(26);
+    expect(compilerOptionsKeys.length).toBe(27);
     expect(compilerOptionsKeys).toEqual([
       'debugInfoOutside',
       'defaultDisplayLinear',
@@ -34,6 +34,7 @@ describe('type-config index', () => {
       'enableFiberArch',
       'enableFlexibleTemplate',
       'enableKeepPageData',
+      'enableOptLepusBytecode',
       'enableRemoveCSSScope',
       'enableSimpleStyling',
       'experimental_encodeQuickjsBytecode',

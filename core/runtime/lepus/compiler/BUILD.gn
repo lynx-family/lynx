@@ -31,6 +31,7 @@ executable("lepus_compiler") {
   testonly = true
   sources = [ "encode_main.cc" ]
   deps = [
+    "../../../../base/src:base_group",
     "../../../renderer/dom:dom",
     "../../lepus:lepus",
   ]

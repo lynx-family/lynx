@@ -231,68 +231,6 @@ void Function::PopLoopBlockStack() { loop_block_stack_.pop(); }
 
 uint64_t Function::GetLoopBlockStack() { return loop_block_stack_.top(); }
 
-#ifdef LEPUS_TEST
-static void DumpEmptySpaces(int32_t intend) {
-  for (size_t i = 0; i < intend; i++) {
-    std::cout << " ";
-  }
-}
-
-static void DumpBlockScope(const Value& scopes_, int32_t intend) {
-  if (!scopes_.IsTable()) return;
-  int32_t line;
-  int32_t col;
-  Value start = scopes_.GetProperty(Function::kStartLine);
-  Value end = scopes_.GetProperty(Function::kEndLine);
-
-  Function::DecodeLineCol(start.Number(), line, col);
-  DumpEmptySpaces(intend);
-  std::cout << "ScopeLine: (" << line << ":" << col << ") => ";
-  Function::DecodeLineCol(end.Number(), line, col);
-  std::cout << "(" << line << ":" << col << ")" << std::endl;
-
-  for (const auto& it : *scopes_.Table()) {
-    int32_t type = -1;
-    int32_t reg_index = -1;
-    int32_t array_index = -1;
-    int32_t offset = -1;
-    if (!it.second.IsUInt32()) continue;
-    Function::DecodeVariableInfo(it.second.UInt32(), type, reg_index,
-                                 array_index, offset);
-    if (type == 0) {
-      DumpEmptySpaces(intend);
-      std::cout << it.first.c_str() << "  : " << reg_index << " : NORMAL"
-                << std::endl;
-    } else if (type == 1) {
-      DumpEmptySpaces(intend);
-      std::cout << it.first.c_str() << " :array_index(" << array_index
-                << ") :offset(" << offset << ")"
-                << " :Closure" << std::endl;
-    } else if (type == 2) {
-      DumpEmptySpaces(intend);
-      std::cout << it.first.c_str() << " :array_index(" << array_index
-                << ") :current_context(" << offset << ")"
-                << " :Closure_Outside" << std::endl;
-    } else {
-      std::cout << "wrong decode type, please check";
-    }
-  }
-  std::cout << std::endl;
-
-  Value childs = scopes_.GetProperty(Function::kChilds);
-  if (!childs.Array()) return;
-
-  size_t size = childs.Array()->size();
-  for (size_t i = 0; i < size; i++) {
-    DumpBlockScope(childs.Array()->get(i), intend + 1);
-  }
-}
-void Function::DumpScope() {
-  std::cout << "----ScopeInfo:-----" << std::endl;
-  DumpBlockScope(scopes_, 0);
-}
-#endif
-
 int32_t Function::GetParamsSize() {
   if (params_size_ != -1) {
     return params_size_;

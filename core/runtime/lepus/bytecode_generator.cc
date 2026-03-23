@@ -54,8 +54,18 @@ std::string BytecodeGenerator::GenerateBytecodeForVMContext(
   // root->Accept(&ast_dump, nullptr);
   root->Accept(&code_generator, nullptr);
 
-  if (context->GetRootFunction()) {
-    context->GetRootFunction()->SetSource(source);
+  auto root_func = context->GetRootFunction();
+  if (!root_func) return std::string();
+  root_func->SetSource(source);
+
+  if (context->GetOptBytecode()) {
+    // optimize lepus bytecode.
+    // std::cout << "opt lepus bytecode..." << std::endl;
+    root_func->SetTopLevelFunction(true);
+    // TODO(zhangye): uncomment in the subsequent MR.
+    // auto ir_context = std::make_unique<ir::IRContext>(context);
+    // ir_context->Init(root_func, context);
+    // ir::RunO1OptimizationPasses(*ir_context->GetMainMod(), ir_dump_path);
   }
 
   return std::string();

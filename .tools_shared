@@ -49,6 +49,7 @@ checker-config:
       - 'Podfile.yml'
       - '.d.ts'
       - '.r.ts'
+      - 'lepus_bytecode_def.h'
     ignore-dirs:
       - '^core/build/gen/*'
       - '^third_party/*'
