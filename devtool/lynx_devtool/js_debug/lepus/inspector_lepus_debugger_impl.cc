@@ -15,6 +15,29 @@ InspectorLepusDebuggerImpl::InspectorLepusDebuggerImpl(
     const std::shared_ptr<LynxDevToolMediator> &devtool_mediator)
     : JavaScriptDebuggerNG(devtool_mediator) {}
 
+void InspectorLepusDebuggerImpl::TakeOver(
+    const std::shared_ptr<InspectorLepusDebuggerImpl> &other) {
+  if (other == nullptr) {
+    return;
+  }
+  devtool_mediator_wp_ = other->devtool_mediator_wp_;
+  devtool_platform_facade_wp_ = other->devtool_platform_facade_wp_;
+}
+
+void InspectorLepusDebuggerImpl::SetPreExecute(bool pre_execute) {
+  if (!pre_execute && pre_execute_ &&
+      tasm::LynxEnv::GetInstance().IsDevToolConnected()) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    auto it = delegates_.find(kTargetLepus);
+    if (it != delegates_.end() && it->second) {
+      auto delegate = it->second;
+      delegate->ResetTargetState();
+      delegate->OnTargetCreated();
+    }
+  }
+  pre_execute_ = pre_execute;
+}
+
 const std::shared_ptr<InspectorLepusObserverImpl> &
 InspectorLepusDebuggerImpl::GetInspectorLepusObserver() {
   if (observer_ == nullptr) {
@@ -136,7 +159,14 @@ void InspectorLepusDebuggerImpl::RunOnTargetThread(base::closure &&closure,
       *shared = nullptr;
     }
   };
-  sp->RunOnTASMThread([try_run]() mutable { try_run(); }, run_now);
+
+  if (pre_execute_) {
+    base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+        [try_run]() mutable { try_run(); },
+        base::ConcurrentTaskType::NORMAL_PRIORITY);
+  } else {
+    sp->RunOnTASMThread([try_run]() mutable { try_run(); }, run_now);
+  }
 
   for (const auto &it : delegates_) {
     if (it.second) {

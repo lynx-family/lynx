@@ -95,7 +95,8 @@ class TaskRunnerManufactor {
 
   static fml::Thread CreateJSWorkerThread(const std::string& worker_name);
 
-  static void PostTaskToConcurrentLoop(base::closure, ConcurrentTaskType type);
+  LYNX_EXPORT_FOR_DEVTOOL static void PostTaskToConcurrentLoop(
+      base::closure, ConcurrentTaskType type);
 
   // Returns true if the calling thread is one of the worker threads owned by
   // the concurrent message loop of the specified priority type.

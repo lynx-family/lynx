@@ -16,6 +16,10 @@
 #include "core/template_bundle/template_codec/compile_options.h"
 
 namespace lynx {
+
+namespace devtool {
+class DevToolPool;
+}
 namespace shell {
 
 class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
@@ -44,6 +48,15 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
 
   void SetEnableAutoGenerate(bool enable);
 
+  void SetDevToolPool(
+      const std::shared_ptr<devtool::DevToolPool>& devtool_pool) {
+    devtool_pool_ = devtool_pool;
+  }
+
+  const std::shared_ptr<devtool::DevToolPool>& GetDevToolPool() {
+    return devtool_pool_;
+  }
+
  private:
   // The global pool doesn't hold context_bundle_ and need to check settings to
   // determine its size.
@@ -64,7 +77,8 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
         context_bundle_(context_bundle),
         arch_option_(compile_options.arch_option_),
         enable_mts_pre_execute_(
-            page_configs ? page_configs->GetEnableMTSPreExecute() : false) {}
+            page_configs ? page_configs->GetEnableMTSPreExecute() : false),
+        debug_info_url_(compile_options.template_debug_url_) {}
 
   void AddMTSRuntimeSafely(int32_t count);
 
@@ -81,6 +95,9 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
 
   std::mutex mtx_;
   base::InlineVector<std::shared_ptr<runtime::MTSRuntime>, 8> mts_runtimes_;
+
+  std::shared_ptr<devtool::DevToolPool> devtool_pool_;
+  std::string debug_info_url_;
 };
 
 }  // namespace shell

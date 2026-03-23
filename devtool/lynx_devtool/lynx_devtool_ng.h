@@ -34,6 +34,8 @@ class LynxDevToolNG : public lynx::devtool::AbstractDevTool,
   std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
   OnBackgroundRuntimeCreated(const std::string& group_thread_name);
 
+  void OnMTSRuntimeCreated(intptr_t devtool_pool_ptr);
+
   void AddCDPEventListener(const std::string& name,
                            const std::shared_ptr<MessageSender>& listener);
 

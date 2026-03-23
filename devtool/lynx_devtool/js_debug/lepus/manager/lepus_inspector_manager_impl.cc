@@ -75,6 +75,16 @@ void LepusInspectorManagerImpl::DestroyInspector() {
   }
 }
 
+std::shared_ptr<InspectorLepusObserver>
+LepusInspectorManagerImpl::UpdateInspector(
+    const std::shared_ptr<InspectorLepusObserver>& observer) {
+  auto sp = observer_wp_.lock();
+  if (sp != nullptr) {
+    sp->TakeOver(observer);
+  }
+  return sp;
+}
+
 std::string LepusInspectorManagerImpl::GenerateInspectorName(
     const std::string& name) {
   // default context: inspector_name_ is "Main"

@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "base/include/fml/task_runner.h"
+#include "core/devtool_wrapper/devtool_pool.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/shell/lynx_shell.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
@@ -73,6 +74,13 @@ class LynxDevToolMediator
   InitWhenBackgroundRuntimeCreated(
       const std::string& group_thread_name,
       const std::shared_ptr<LynxDevToolNG>& lynx_devtool_ng);
+  void InitWhenMTSRuntimeCreated(
+      DevToolPool* devtool_pool,
+      const std::shared_ptr<LynxDevToolNG>& lynx_devtool_ng);
+
+  void UpdateLepusDebugger(
+      const std::shared_ptr<InspectorLepusDebuggerImpl>& debugger);
+
   void SetRuntimeEnableNeeded(bool enable);
   void OnAttached();
 

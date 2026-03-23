@@ -19,8 +19,6 @@
 #include "base/include/value/path_parser.h"
 #include "base/include/vector.h"
 #include "core/build/gen/lynx_sub_error_code.h"
-#include "core/inspector/lepus_inspector_manager.h"
-#include "core/inspector/observer/inspector_lepus_observer.h"
 #include "core/public/page_options.h"
 // #include "core/runtime/bindings/lepus/renderer.h"
 #include "core/runtime/lepus/lepus_context_cell.h"
@@ -108,9 +106,10 @@ class MTSContext {
   void set_is_debug_enabled(bool is_debug_enabled) {
     is_debug_enabled_ = is_debug_enabled;
   }
+  virtual void PrepareInspector(const char* file_name) {}
 
-  virtual void UpdateGCTiming(bool is_start){};
-  virtual void TriggerVmGC(){};
+  virtual void UpdateGCTiming(bool is_start) {}
+  virtual void TriggerVmGC() {}
 
   virtual bool EnableSendEventToMainThread() const { return false; }
 

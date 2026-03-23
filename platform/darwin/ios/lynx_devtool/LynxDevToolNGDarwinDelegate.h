@@ -22,6 +22,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)onTemplateAssemblerCreated:(intptr_t)ptr;
 
+- (void)onMTSRuntimeCreated:(intptr_t)devtool_pool_ptr;
+
 - (int)attachToDebug:(NSString *)url;
 
 - (void)detachToDebug;

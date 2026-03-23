@@ -34,6 +34,10 @@ namespace style {
 class StyleObject;
 }
 
+namespace devtool {
+class DevToolPool;
+}
+
 namespace tasm {
 class LepusChunkManager {
  public:
@@ -180,6 +184,11 @@ class LynxTemplateBundle final {
 
   const CompileOptions& GetCompileOptions() const { return compile_options_; }
 
+  void SetDevToolPool(
+      const std::shared_ptr<devtool::DevToolPool>& devtool_pool) {
+    devtool_pool_ = devtool_pool;
+  }
+
  private:
   void EnsureParseTaskScheduler();
 
@@ -273,6 +282,8 @@ class LynxTemplateBundle final {
   uint64_t decode_end_timestamp_{0};
 
   std::shared_ptr<ParallelParseTaskScheduler> task_schedular_{nullptr};
+
+  std::shared_ptr<devtool::DevToolPool> devtool_pool_;
 
   friend class LynxBinaryReader;
   friend class TemplateAssembler;

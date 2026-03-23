@@ -171,6 +171,10 @@
   }
 }
 
+- (void)onMTSRuntimeCreated:(intptr_t)devtool_pool_ptr {
+  [_owner onMTSRuntimeCreated:devtool_pool_ptr];
+}
+
 - (void)onEnterForeground {
   if (_owner != nil) {
     [_owner continueCasting];

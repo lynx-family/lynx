@@ -12,7 +12,10 @@ lynx_core_source_set("template_bundle") {
     "lynx_template_bundle.h",
   ]
 
-  public_deps = [ "template_codec:template_decoder" ]
+  public_deps = [
+    "../devtool_wrapper:devtool_wrapper",
+    "template_codec:template_decoder",
+  ]
 }
 
 lynx_core_source_set("template_bundle_converter") {

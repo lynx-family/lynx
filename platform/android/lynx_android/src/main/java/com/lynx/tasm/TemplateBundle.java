@@ -7,6 +7,7 @@ package com.lynx.tasm;
 import android.text.TextUtils;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
+import com.lynx.devtoolwrapper.LynxDevToolPool;
 import com.lynx.jsbridge.LynxBytecodeCallback;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.base.CalledByNative;
@@ -38,6 +39,8 @@ public final class TemplateBundle {
 
   private final PageConfig pageConfig;
   private OnReleaseCallback onReleaseCallback;
+
+  private LynxDevToolPool mDevToolPool;
 
   interface OnReleaseCallback {
     void onRelease();
@@ -73,7 +76,7 @@ public final class TemplateBundle {
   }
 
   private static TemplateBundle internalBuildTemplate(
-      byte[] template, ByteBuffer buffer, String url) {
+      byte[] template, ByteBuffer buffer, String url, boolean debuggable) {
     TemplateBundle result = null;
     int length;
     if (template != null || buffer != null) {
@@ -86,17 +89,23 @@ public final class TemplateBundle {
               "template verify failed, error message: " + securityResult.getErrorMsg(), null);
           return result;
         }
+        LynxDevToolPool devToolPool = null;
+        if (LynxEnv.inst().isLynxDebugEnabled()) {
+          devToolPool = new LynxDevToolPool(url, debuggable);
+        }
         // 0: string, error message
         // 1: ReadableMap, pageConfig
         Object[] options = new Object[2];
         long ptr = 0;
+        long devtoolPoolPtr = devToolPool != null ? devToolPool.getNativePtr() : 0;
         if (buffer != null) {
-          ptr = nativeParseTemplateFromByteBuffer(buffer, options);
+          ptr = nativeParseTemplateFromByteBuffer(buffer, options, devtoolPoolPtr);
         } else {
-          ptr = nativeParseTemplateFromByteArray(template, options);
+          ptr = nativeParseTemplateFromByteArray(template, options, devtoolPoolPtr);
         }
         result =
             new TemplateBundle(ptr, length, url, (String) options[0], (ReadableMap) options[1]);
+        result.mDevToolPool = devToolPool;
       } else {
         result = new TemplateBundle(0, length, url, "Lynx Env is not prepared", null);
       }
@@ -115,7 +124,7 @@ public final class TemplateBundle {
    * an invalid `TemplateBundle` is returned.
    */
   public static TemplateBundle fromTemplate(byte[] template) {
-    return internalBuildTemplate(template, null, null);
+    return internalBuildTemplate(template, null, null, false);
   }
 
   /**
@@ -140,14 +149,16 @@ public final class TemplateBundle {
       return new TemplateBundle(
           0, buffer.limit(), url, "TemplateBundle only supports DirectByteBuffer.", null);
     }
-    TemplateBundle result = internalBuildTemplate(null, buffer, url);
+    boolean debuggable = option != null && option.getDebuggable();
+    TemplateBundle result = internalBuildTemplate(null, buffer, url, debuggable);
     result.initWithOption(option);
     return result;
   }
 
   public static TemplateBundle fromTemplate(byte[] template, TemplateBundleOption option) {
     String url = option != null ? option.getUrl() : null;
-    TemplateBundle result = internalBuildTemplate(template, null, url);
+    boolean debuggable = option != null && option.getDebuggable();
+    TemplateBundle result = internalBuildTemplate(template, null, url, debuggable);
     result.initWithOption(option);
     return result;
   }
@@ -230,6 +241,10 @@ public final class TemplateBundle {
       if (onReleaseCallback != null) {
         onReleaseCallback.onRelease();
         onReleaseCallback = null;
+      }
+      if (mDevToolPool != null) {
+        mDevToolPool.destroy();
+        mDevToolPool = null;
       }
       nativeReleaseBundle(nativePtr);
       nativePtr = 0;
@@ -337,8 +352,10 @@ public final class TemplateBundle {
   private static native void nativePostJsCacheGenerationTask(
       long bundle, String bytecodeSourceUrl, boolean useV8, LynxBytecodeCallback callback);
 
-  private static native long nativeParseTemplateFromByteArray(byte[] temp, Object[] options);
-  private static native long nativeParseTemplateFromByteBuffer(ByteBuffer bytes, Object[] options);
+  private static native long nativeParseTemplateFromByteArray(
+      byte[] temp, Object[] options, long devToolPoolPtr);
+  private static native long nativeParseTemplateFromByteBuffer(
+      ByteBuffer bytes, Object[] options, long devToolPoolPtr);
   private static native void nativeReleaseBundle(long ptr);
   private static native Object nativeGetExtraInfo(long ptr);
   private static native boolean nativeGetContainsElementTree(long ptr);

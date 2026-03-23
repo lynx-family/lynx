@@ -183,6 +183,7 @@ class VMContext : public runtime::MTSContext {
     is_debug_enabled_ = true;
     debug_delegate_ = debug_delegate;
   }
+  void PrepareInspector(const char* file_name) override;
 
  private:
   // used to control closure context

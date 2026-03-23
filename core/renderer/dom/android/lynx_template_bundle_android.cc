@@ -49,14 +49,21 @@ std::optional<lynx::base::android::JavaOnlyMap> GetPageConfigMap(
 }  // namespace
 
 jlong ParseTemplateInternal(JNIEnv* env, jclass jcaller,
-                            std::vector<uint8_t>&& binary,
-                            jobjectArray options) {
+                            std::vector<uint8_t>&& binary, jobjectArray options,
+                            jlong devToolPoolPtr) {
   auto reader =
       lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(std::move(binary));
   if (reader.Decode()) {
     // decode success.
     lynx::tasm::LynxTemplateBundle* bundle =
         new lynx::tasm::LynxTemplateBundle(reader.GetTemplateBundle());
+    auto* devtool_pool_ptr =
+        reinterpret_cast<std::shared_ptr<lynx::devtool::DevToolPool>*>(
+            devToolPoolPtr);
+    if (devtool_pool_ptr != nullptr) {
+      auto devtool_pool = *devtool_pool_ptr;
+      bundle->SetDevToolPool(devtool_pool);
+    }
     bundle->PrepareVMByConfigs();
     auto page_config = GetPageConfigMap(env, bundle);
     env->SetObjectArrayElement(
@@ -74,14 +81,17 @@ jlong ParseTemplateInternal(JNIEnv* env, jclass jcaller,
 }
 
 jlong ParseTemplateFromByteArray(JNIEnv* env, jclass jcaller,
-                                 jbyteArray j_binary, jobjectArray options) {
+                                 jbyteArray j_binary, jobjectArray options,
+                                 jlong devToolPoolPtr) {
   auto binary =
       lynx::base::android::JNIConvertHelper::ConvertJavaBinary(env, j_binary);
-  return ParseTemplateInternal(env, jcaller, std::move(binary), options);
+  return ParseTemplateInternal(env, jcaller, std::move(binary), options,
+                               devToolPoolPtr);
 }
 
 jlong ParseTemplateFromByteBuffer(JNIEnv* env, jclass jcaller,
-                                  jobject bufferPtr, jobjectArray options) {
+                                  jobject bufferPtr, jobjectArray options,
+                                  jlong devToolPoolPtr) {
   auto* buffer_ptr =
       static_cast<uint8_t*>(env->GetDirectBufferAddress(bufferPtr));
   if (buffer_ptr == nullptr) {
@@ -96,7 +106,8 @@ jlong ParseTemplateFromByteBuffer(JNIEnv* env, jclass jcaller,
   }
 
   std::vector<uint8_t> buffer(buffer_ptr, buffer_ptr + capacity);
-  return ParseTemplateInternal(env, jcaller, std::move(buffer), options);
+  return ParseTemplateInternal(env, jcaller, std::move(buffer), options,
+                               devToolPoolPtr);
 }
 
 jobject GetExtraInfo(JNIEnv* env, jclass jcaller, jlong ptr) {

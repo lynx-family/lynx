@@ -71,4 +71,5 @@ native_podspec_deps = rebase_path([
                                     ":tasm",
                                     ":template_bundle",
                                     ":third_party",
+                                    ":devtool_wrapper",
                                   ])

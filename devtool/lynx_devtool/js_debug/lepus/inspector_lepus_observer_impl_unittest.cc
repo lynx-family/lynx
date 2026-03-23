@@ -83,6 +83,13 @@ TEST_F(InspectorLepusObserverImplTest, OnContextDestroyed) {
   observer_->OnContextDestroyed("test");
 }
 
+TEST_F(InspectorLepusObserverImplTest, TakeOver) {
+  std::shared_ptr<InspectorLepusObserverImpl> other_observer1;
+  observer_->TakeOver(other_observer1);
+
+  observer_->TakeOver(observer_);
+}
+
 TEST_F(InspectorLepusObserverImplTest, OnConsoleEvent) {
   std::string alog_mes = "alog message";
   std::string debug_mes = "debug message";
@@ -128,6 +135,29 @@ TEST_F(InspectorLepusObserverImplTest, OnConsoleEvent) {
   observer_->OnConsoleEvent(runtime::LepusConsoleWarn, warn_mes);
   EXPECT_EQ(mediator_->message_.text_, warn_mes);
   EXPECT_EQ(mediator_->message_.level_, runtime::CONSOLE_LOG_WARNING);
+}
+
+TEST_F(InspectorLepusObserverImplTest, CopyMembersFrom) {
+  auto other_mediator =
+      std::make_shared<lynx::testing::LynxDevToolMediatorMock>();
+  auto other_debugger =
+      std::make_shared<InspectorLepusDebuggerImpl>(other_mediator);
+  auto other_observer = other_debugger->GetInspectorLepusObserver();
+  other_observer->SetDevToolMediator(other_mediator);
+  other_observer->need_post_console_ = true;
+
+  observer_->CopyMembersFrom(other_observer);
+  EXPECT_EQ(observer_->need_post_console_, false);
+  EXPECT_EQ(observer_->mediator_ptr_.lock(), mediator_);
+
+  auto debugger = std::make_shared<InspectorLepusDebuggerImpl>(mediator_);
+  debugger->SetPreExecute(true);
+  observer_->debugger_wp_ = debugger;
+  observer_->CopyMembersFrom(other_observer);
+  EXPECT_EQ(observer_->need_post_console_, true);
+  EXPECT_EQ(observer_->mediator_ptr_.lock(), other_mediator);
+  EXPECT_EQ(other_mediator->lepus_debugger_, debugger);
+  EXPECT_EQ(debugger->pre_execute_, false);
 }
 
 }  // namespace testing

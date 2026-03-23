@@ -2494,12 +2494,7 @@ bool VMContext::MoveContextBundle(VMContextBundle& bundle) {
   root_function_.swap(bundle.lepus_root_function_);
   top_level_variables_.swap(bundle.lepus_top_variables_);
 
-  if (unlikely(is_debug_enabled_)) {
-    auto debug_delegate = debug_delegate_.lock();
-    if (debug_delegate != nullptr) {
-      debug_delegate->OnRootFunctionReady();
-    }
-  }
+  PrepareInspector(nullptr);
 
   return true;
 }
@@ -2535,6 +2530,15 @@ lepus::Value VMContext::ReportFatalError(const std::string& error_message,
 
 lepus::Value VMContext::GetCurrentThis(lepus::Value* argv, int32_t offset) {
   return *(argv + offset);
+}
+
+void VMContext::PrepareInspector(const char* file_name) {
+  if (unlikely(is_debug_enabled_)) {
+    auto debug_delegate = debug_delegate_.lock();
+    if (debug_delegate != nullptr) {
+      debug_delegate->OnRootFunctionReady();
+    }
+  }
 }
 
 }  // namespace lepus

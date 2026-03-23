@@ -590,10 +590,6 @@ void QuickContext::SetTopLevelFunction(LEPUSValue val) {
 
   top_level_function_ = val;
   if (gc_flag_) p_val_.Reset(context(), top_level_function_);
-  auto debug_delegate = debug_delegate_.lock();
-  if (debug_delegate != nullptr) {
-    debug_delegate->OnTopLevelFunctionReady();
-  }
 }
 
 void QuickContext::SetEnableStrictCheck(bool val) {
@@ -1094,10 +1090,7 @@ bool QuickContext::DeSerialize(const runtime::ContextBundle& bundle,
     return false;
   }
   SetTopLevelFunction(val);
-  if (is_debug_enabled_ && (tasm::LynxEnv::GetInstance().IsDevToolConnected() ||
-                            tasm::LynxEnv::GetInstance().IsLogBoxEnabled())) {
-    SetFunctionFileName(val, file_name);
-  }
+  PrepareInspector(file_name);
   return true;
 }
 
@@ -1118,6 +1111,7 @@ bool QuickContext::EvalBinary(const uint8_t* buf, uint64_t size, Value& ret,
       LEPUS_DupValue(context(), top_level_function_);
   func_scope.PushHandle(&top_level_function, HANDLE_TYPE_LEPUS_VALUE);
   SetTopLevelFunction(val);
+  PrepareInspector(nullptr);
   ExecuteBinaryInternal(&ret);
   SetTopLevelFunction(top_level_function);
   return true;
@@ -1339,6 +1333,21 @@ void QuickContext::RemoveRuntimeProfiler() {
   runtime_profiler_ = nullptr;
 }
 #endif
+
+void QuickContext::PrepareInspector(const char* file_name) {
+  if (LEPUS_IsUndefined(top_level_function_)) {
+    return;
+  }
+  auto debug_delegate = debug_delegate_.lock();
+  if (debug_delegate != nullptr) {
+    debug_delegate->OnTopLevelFunctionReady();
+  }
+  if (is_debug_enabled_ && file_name != nullptr && *file_name != '\0' &&
+      (tasm::LynxEnv::GetInstance().IsDevToolConnected() ||
+       tasm::LynxEnv::GetInstance().IsLogBoxEnabled())) {
+    SetFunctionFileName(top_level_function_, file_name);
+  }
+}
 
 }  // namespace lepus
 }  // namespace lynx

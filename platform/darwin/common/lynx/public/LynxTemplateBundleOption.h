@@ -31,4 +31,12 @@
  */
 @property(nonatomic, nullable) NSString* url;
 
+/**
+ * A TemplateBundle can be debugged in two cases:
+ * 1. The switch `LynxEnv.sharedInstance.devtoolEnabled` is `true`.
+ * 2. The switch `LynxEnv.sharedInstance.devtoolEnabled` is `false` and this property is `true`.
+ * Default value: NO
+ */
+@property(nonatomic, assign) BOOL debuggable;
+
 @end

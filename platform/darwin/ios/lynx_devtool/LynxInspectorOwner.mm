@@ -139,6 +139,13 @@
   self->record_id = ptr;
 }
 
+- (void)onMTSRuntimeCreated:(intptr_t)devtool_pool_ptr {
+  [_devtoolNG onMTSRuntimeCreated:devtool_pool_ptr];
+  if (_platform != nil) {
+    [_devtoolNG setDevToolPlatformAbility:[_platform getNativePtr]];
+  }
+}
+
 - (void)onLoadFinished {
   // Attach debug bridge if necessary
   if ([[LynxDebugBridge singleton] isEnabled]) {

@@ -1,0 +1,15 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../Lynx.gni")
+
+lynx_core_source_set("devtool_wrapper") {
+  sources = [ "devtool_pool.h" ]
+  if (is_android) {
+    sources += [
+      "android/devtool_pool_android.cc",
+      "android/devtool_pool_android.h",
+    ]
+  }
+}

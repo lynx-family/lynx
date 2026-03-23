@@ -156,6 +156,15 @@ void InspectorClientDelegateImpl::OnTargetDestroyed() {
   target_created_ = false;
 }
 
+void InspectorClientDelegateImpl::ResetTargetState() {
+  if (!target_created_) {
+    return;
+  }
+  DispatchMessage(GenSimpleMessage(kMethodDebuggerDisable), kDefaultViewID);
+  DispatchMessage(GenSimpleMessage(kMethodRuntimeDisable), kDefaultViewID);
+  OnTargetDestroyed();
+}
+
 void InspectorClientDelegateImpl::DispatchInitMessage(int view_id,
                                                       bool runtime_enable) {
   InspectorClientDelegateBaseImpl::DispatchInitMessage(

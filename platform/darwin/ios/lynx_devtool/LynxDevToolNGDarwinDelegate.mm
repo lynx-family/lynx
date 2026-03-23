@@ -103,6 +103,12 @@ class DevToolMessageHandlerIos : public DevToolMessageHandler {
   }
 }
 
+- (void)onMTSRuntimeCreated:(intptr_t)devtool_pool_ptr {
+  if (devtool_ng_ != nullptr) {
+    devtool_ng_->OnMTSRuntimeCreated(devtool_pool_ptr);
+  }
+}
+
 - (int)attachToDebug:(NSString*)url {
   if (devtool_ng_ != nullptr && url != nil) {
     session_id_ = devtool_ng_->Attach([url UTF8String]);

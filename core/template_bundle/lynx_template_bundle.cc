@@ -59,6 +59,7 @@ void LynxTemplateBundle::PrepareVMByConfigs() {
   mts_runtime_pool_ = shell::MTSRuntimePool::Create(
       context_type_, disable_tracing_gc, context_bundle_, compile_options_,
       page_configs_.get());
+  mts_runtime_pool_->SetDevToolPool(devtool_pool_);
 
   // if FE disables it in card, do not pre-create contexts. However, we reserve
   // the ability for the client to force pre-creation

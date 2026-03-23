@@ -122,6 +122,7 @@ class MTSRuntime : private MTSContextHolder {
   bool TryExecute();
 
   bool HasPreExecuteSuccess();
+  void ResetPreExecuteSuccess();
 
   void UpdateGCTiming(bool is_start);
 
@@ -216,7 +217,10 @@ class MTSRuntime : private MTSContextHolder {
   void InitInspector(
       const std::shared_ptr<lepus::InspectorLepusObserver>& observer,
       const std::string& context_name);
+  void PrepareInspector(const char* file_name);
   void DestroyInspector();
+  std::shared_ptr<lepus::InspectorLepusObserver> UpdateInspector(
+      const std::shared_ptr<lepus::InspectorLepusObserver>& observer);
 
   void set_name(const std::string& name) { name_ = name; }
 

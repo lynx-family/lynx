@@ -77,6 +77,7 @@ class InspectorClientDelegateImpl : public InspectorClientDelegateBaseImpl {
   void OnRuntimeDestroyed(int view_id, int64_t runtime_id);
   void OnTargetCreated();
   void OnTargetDestroyed();
+  void ResetTargetState();
 
   void DispatchInitMessage(int view_id, bool runtime_enable);
 

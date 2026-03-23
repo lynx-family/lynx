@@ -35,6 +35,9 @@ class InspectorLepusObserver {
       const std::shared_ptr<devtool::InspectorClientNG>& client) = 0;
   virtual void OnContextDestroyed(const std::string& name) = 0;
 
+  virtual void TakeOver(
+      const std::shared_ptr<InspectorLepusObserver>& other) = 0;
+
   virtual void OnConsoleEvent(const std::string& func_name,
                               const std::string& args) = 0;
 

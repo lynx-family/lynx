@@ -27,6 +27,8 @@ class LepusInspectorManager {
   virtual void SetDebugInfo(const std::string& debug_info_url,
                             const std::string& file_name) = 0;
   virtual void DestroyInspector() = 0;
+  virtual std::shared_ptr<InspectorLepusObserver> UpdateInspector(
+      const std::shared_ptr<InspectorLepusObserver>& observer) = 0;
 };
 
 }  // namespace lepus

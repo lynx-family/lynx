@@ -181,6 +181,7 @@ std::shared_ptr<MTSRuntime> MTSRuntime::CreateContext(
 
 bool MTSRuntime::Execute(const ContextBundle* bundle) {
   if (HasPreExecuteSuccess()) {
+    ResetPreExecuteSuccess();
     return true;
   }
   ScriptingScope scope(this);
@@ -366,11 +367,23 @@ void MTSRuntime::InitInspector(
   }
 }
 
+void MTSRuntime::PrepareInspector(const char* file_name) {
+  mts_context_->PrepareInspector(file_name);
+}
+
 void MTSRuntime::DestroyInspector() {
   if (inspector_manager_ != nullptr) {
     mts_context_->set_is_debug_enabled(false);
     inspector_manager_->DestroyInspector();
   }
+}
+
+std::shared_ptr<lepus::InspectorLepusObserver> MTSRuntime::UpdateInspector(
+    const std::shared_ptr<lepus::InspectorLepusObserver>& observer) {
+  if (inspector_manager_ != nullptr) {
+    return inspector_manager_->UpdateInspector(observer);
+  }
+  return nullptr;
 }
 
 void MTSRuntime::SetDebugInfoURL(const std::string& url,
@@ -496,14 +509,9 @@ bool MTSRuntime::TryExecute() {
   return has_pre_execute_success_;
 }
 
-bool MTSRuntime::HasPreExecuteSuccess() {
-  if (has_pre_execute_success_) {
-    // can only use once.
-    has_pre_execute_success_ = false;
-    return true;
-  }
-  return false;
-}
+bool MTSRuntime::HasPreExecuteSuccess() { return has_pre_execute_success_; }
+
+void MTSRuntime::ResetPreExecuteSuccess() { has_pre_execute_success_ = false; }
 
 std::unique_ptr<ContextBundle> ContextBundle::Create(ContextType context_type) {
   return ContextBundleFactory::Create(context_type);

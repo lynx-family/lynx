@@ -197,6 +197,12 @@ public class LynxDevtool {
     return 0;
   }
 
+  public void onMTSRuntimeCreated(long devtoolPoolPtr) {
+    if (mOwner != null) {
+      mOwner.onMTSRuntimeCreated(devtoolPoolPtr);
+    }
+  }
+
   public void onEnterForeground() {
     if (mOwner != null) {
       mOwner.continueCasting();

@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxDevToolPool.h>
+#import <Lynx/LynxEnv.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxTemplateBundle.h>
 #import "LynxBytecodeResponseBlock+Converter.h"
@@ -13,13 +15,19 @@
 
 @implementation LynxTemplateBundle {
   std::shared_ptr<lynx::tasm::LynxTemplateBundle> template_bundle_;
+  LynxDevToolPool* _devtool_pool;
   NSString* _error;
   NSDictionary* _extraInfo;
 }
 
-- (instancetype _Nullable)initWithTemplate:(NSData*)tem url:(NSString*)url {
+- (instancetype _Nullable)initWithTemplate:(NSData*)tem
+                                       url:(NSString*)url
+                                debuggable:(BOOL)debuggable {
   if (self = [super init]) {
     _url = url;
+    if ([[LynxEnv sharedInstance] lynxDebugEnabled]) {
+      _devtool_pool = [[LynxDevToolPool alloc] initWithURL:url debuggable:debuggable];
+    }
     auto securityService = LynxService(LynxServiceSecurityProtocol);
     if (securityService != nil) {
       LynxVerificationResult* verification = [securityService verifyTASM:tem
@@ -37,6 +45,7 @@
       // decode success.
       template_bundle_ =
           std::make_shared<lynx::tasm::LynxTemplateBundle>(decoder.GetTemplateBundle());
+      [_devtool_pool onTemplateBundleCreated:reinterpret_cast<intptr_t>(template_bundle_.get())];
       template_bundle_->PrepareVMByConfigs();
     } else {
       // decode failed.
@@ -47,12 +56,12 @@
 }
 
 - (instancetype _Nullable)initWithTemplate:(NSData*)tem {
-  return [self initWithTemplate:tem url:nil];
+  return [self initWithTemplate:tem url:nil debuggable:NO];
 }
 
 - (instancetype _Nullable)initWithTemplate:(nonnull NSData*)tem
                                     option:(nullable LynxTemplateBundleOption*)option {
-  if (self = [self initWithTemplate:tem url:[option url]]) {
+  if (self = [self initWithTemplate:tem url:[option url] debuggable:[option debuggable]]) {
     [self initWithOption:option];
   }
   return self;

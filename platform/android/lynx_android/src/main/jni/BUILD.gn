@@ -52,6 +52,8 @@ lynx_core_source_set("build") {
     "gen/LynxBackgroundRuntime_register_jni.h",
     "gen/LynxBytecodeCallback_jni.h",
     "gen/LynxBytecodeCallback_register_jni.h",
+    "gen/LynxDevToolPool_jni.h",
+    "gen/LynxDevToolPool_register_jni.h",
     "gen/LynxEngineProxy_jni.h",
     "gen/LynxEngineProxy_register_jni.h",
     "gen/LynxEngine_jni.h",

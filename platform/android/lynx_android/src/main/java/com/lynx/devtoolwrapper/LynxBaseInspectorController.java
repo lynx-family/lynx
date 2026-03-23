@@ -23,6 +23,7 @@ public interface LynxBaseInspectorController {
 
   void onTemplateAssemblerCreated(long ptr);
   long onBackgroundRuntimeCreated(String groupName);
+  void onMTSRuntimeCreated(long devtoolPoolPtr);
   void attach(LynxView view);
   void attachLynxUIOwnerToAgent(LynxUIOwner uiOwner);
   void attachToDebugBridge(String url);

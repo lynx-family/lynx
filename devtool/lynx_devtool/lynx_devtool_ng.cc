@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
+#include "core/devtool_wrapper/devtool_pool.h"
 #include "core/shell/lynx_shell.h"
 #include "devtool/base_devtool/native/public/abstract_devtool.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_agent.h"
@@ -288,6 +289,12 @@ LynxDevToolNG::OnBackgroundRuntimeCreated(
     const std::string& group_thread_name) {
   return devtool_mediator_->InitWhenBackgroundRuntimeCreated(
       group_thread_name, shared_from_this());
+}
+
+void LynxDevToolNG::OnMTSRuntimeCreated(intptr_t devtool_pool_ptr) {
+  auto* devtool_pool = reinterpret_cast<DevToolPool*>(devtool_pool_ptr);
+  devtool_mediator_->InitWhenMTSRuntimeCreated(devtool_pool,
+                                               shared_from_this());
 }
 
 void LynxDevToolNG::SetTag(const std::string& tag) {

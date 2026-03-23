@@ -208,6 +208,7 @@ class QuickContext : private LEPUSRuntimeData,
   const std::weak_ptr<DebugDelegate> GetDebugDelegate() {
     return debug_delegate_;
   }
+  void PrepareInspector(const char* file_name) override;
 
 #if ENABLE_TRACE_PERFETTO
   void SetRuntimeProfiler(

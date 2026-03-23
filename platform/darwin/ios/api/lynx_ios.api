@@ -680,6 +680,7 @@ public protocol LynxBaseInspectorController-p : <NSObject> {
   public void LynxBaseInspectorController-p::setDebugInfoInterceptor:(nonnull id< LynxDebugInfoRecorderProtocol > debugInfoRecorder);
   public void LynxBaseInspectorController-p::onBackgroundRuntimeCreated:groupThreadName:(LynxBackgroundRuntime *runtime,[groupThreadName] NSString *groupThreadName);
   public void LynxBaseInspectorController-p::onTemplateAssemblerCreated:(intptr_t ptr);
+  public void LynxBaseInspectorController-p::onMTSRuntimeCreated:(intptr_t devtool_pool_ptr);
   public void LynxBaseInspectorController-p::handleLongPress();
   public void LynxBaseInspectorController-p::continueCasting();
   public void LynxBaseInspectorController-p::pauseCasting();
@@ -1329,6 +1330,7 @@ public class LynxDevtool : NSObject {
   public void LynxDevtool::onStandaloneRuntimeLoadFromURL:(NSString *url);
   public void LynxDevtool::onBackgroundRuntimeCreated:groupThreadName:(LynxBackgroundRuntime *runtime,[groupThreadName] NSString *groupThreadName);
   public void LynxDevtool::onTemplateAssemblerCreated:(intptr_t ptr);
+  public void LynxDevtool::onMTSRuntimeCreated:(intptr_t devtool_pool_ptr);
   public void LynxDevtool::onEnterForeground();
   public void LynxDevtool::onEnterBackground();
   public void LynxDevtool::onLoadFinished();
@@ -1349,6 +1351,14 @@ public class LynxDevtool : NSObject {
 public class LynxDevToolEnvUtils : NSObject {
   public void LynxDevToolEnvUtils::setDevtoolEnv:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
   public NSSet * LynxDevToolEnvUtils::getDevtoolEnvWithGroupName:(NSString *groupKey);
+}
+
+public class LynxDevToolPool : NSObject {
+  public instancetype LynxDevToolPool::initWithURL:debuggable:(NSString *url,[debuggable] BOOL debuggable);
+  public void LynxDevToolPool::onTemplateBundleCreated:(intptr_t bundle);
+  public void LynxDevToolPool::createDevTool();
+  public void LynxDevToolPool::popDevTool();
+  public void LynxDevToolPool::onMTSRuntimeCreated();
 }
 
 public class LynxDisplayListApplier : NSObject {
@@ -3662,6 +3672,7 @@ public class LynxTemplateBundleOption : NSObject {
   public int LynxTemplateBundleOption::contextPoolSize contextPoolSize;
   public BOOL LynxTemplateBundleOption::enableContextAutoRefill enableContextAutoRefill;
   public NSString* LynxTemplateBundleOption::url url;
+  public BOOL LynxTemplateBundleOption::debuggable debuggable;
 }
 
 public class LynxTemplateData : NSObject {

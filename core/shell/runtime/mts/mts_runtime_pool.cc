@@ -5,6 +5,7 @@
 #include "core/shell/runtime/mts/mts_runtime_pool.h"
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/devtool_wrapper/devtool_pool.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 
 namespace lynx {
@@ -64,6 +65,18 @@ void MTSRuntimePool::AddMTSRuntimeSafely(int32_t count) {
       }
       tasm::Renderer::RegisterBuiltin(mts_runtime.get(), arch_option_);
       mts_runtime->RegisterLynx(enable_signal_api_);
+
+      if (devtool_pool_ != nullptr &&
+          context_type_ == runtime::ContextType::LepusNGContextType &&
+          enable_mts_pre_execute_) {
+        devtool_pool_->CreateDevTool();
+        auto lepus_observer = devtool_pool_->OnMTSRuntimeCreated();
+        // Currently, only support debugging the main entry.
+        mts_runtime->InitInspector(lepus_observer, LEPUS_DEFAULT_CONTEXT_NAME);
+        static const std::string file_name = "file:///main-thread.js";
+        mts_runtime->SetDebugInfoURL(debug_info_url_, file_name);
+      }
+
       // if context_bundle_ exists, should call DeSerialize. And if DeSerialize
       // fails, just return.
       if (!mts_runtime->DeSerialize(*context_bundle_, false, nullptr)) {

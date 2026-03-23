@@ -11,11 +11,14 @@ public final class TemplateBundleOption {
   private int mContextPoolSize = 0;
   private boolean mEnableContextAutoRefill = false;
   private final String mUrl;
+  private boolean mDebuggable = false;
 
-  private TemplateBundleOption(int contextPoolSize, boolean enableContextAutoRefill, String url) {
+  private TemplateBundleOption(
+      int contextPoolSize, boolean enableContextAutoRefill, String url, boolean debuggable) {
     mContextPoolSize = contextPoolSize;
     mEnableContextAutoRefill = enableContextAutoRefill;
     mUrl = url;
+    mDebuggable = debuggable;
   }
 
   public int getContextPoolSize() {
@@ -30,10 +33,15 @@ public final class TemplateBundleOption {
     return mEnableContextAutoRefill;
   }
 
+  public boolean getDebuggable() {
+    return mDebuggable;
+  }
+
   public static class Builder {
     private String mUrl;
     private int mContextPoolSize = 0;
     private boolean mEnableContextAutoRefill = false;
+    private boolean mDebuggable = false;
 
     /**
      * Pre-create a certain number of lepus contexts, which could speed up loadTemplateBundle.
@@ -69,8 +77,20 @@ public final class TemplateBundleOption {
       return this;
     }
 
+    /**
+     * A TemplateBundle can be debugged in two cases:
+     * 1. The switch `LynxEnv.inst().isDevtoolEnabled()` is `true`.
+     * 2. The switch `LynxEnv.inst().isDevtoolEnabled()` is `false` and this value is `true`.
+     * Default value: false
+     */
+    public Builder setDebuggable(boolean debuggable) {
+      this.mDebuggable = debuggable;
+      return this;
+    }
+
     public TemplateBundleOption build() {
-      return new TemplateBundleOption(mContextPoolSize, mEnableContextAutoRefill, mUrl);
+      return new TemplateBundleOption(
+          mContextPoolSize, mEnableContextAutoRefill, mUrl, mDebuggable);
     }
   }
 }

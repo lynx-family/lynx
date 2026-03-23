@@ -65,6 +65,14 @@ jlong OnBackgroundRuntimeCreated(JNIEnv* env, jobject jcaller, jlong nativePtr,
           observer));
 }
 
+void OnMTSRuntimeCreated(JNIEnv* env, jobject jcaller, jlong nativePtr,
+                         jlong devtoolPoolPtr) {
+  auto lynx_devtool =
+      *reinterpret_cast<std::shared_ptr<lynx::devtool::LynxDevToolNG>*>(
+          nativePtr);
+  lynx_devtool->OnMTSRuntimeCreated(devtoolPoolPtr);
+}
+
 void OnTasmCreated(JNIEnv* env, jobject jcaller, jlong nativePtr,
                    jlong shellPtr) {
   auto lynx_devtool =

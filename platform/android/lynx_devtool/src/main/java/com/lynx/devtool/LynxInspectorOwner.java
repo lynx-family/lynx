@@ -280,6 +280,17 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
     return 0;
   }
 
+  @Override
+  public void onMTSRuntimeCreated(long devtoolPoolPtr) {
+    if (mLynxDevToolNG == null) {
+      return;
+    }
+    mLynxDevToolNG.onMTSRuntimeCreated(devtoolPoolPtr);
+    if (mPlatform != null) {
+      mLynxDevToolNG.setDevToolPlatformAbility(mPlatform.getNativePtr());
+    }
+  }
+
   public static boolean isApkDebuggable(Context context) {
     try {
       ApplicationInfo info = context.getApplicationInfo();

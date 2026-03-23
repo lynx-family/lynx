@@ -1161,6 +1161,7 @@ public class com::lynx::tasm::TemplateBundleOption::Builder :  {
   public Builder com.lynx.tasm.TemplateBundleOption.Builder.setContextPoolSize(int size);
   public Builder com.lynx.tasm.TemplateBundleOption.Builder.setEnableContextAutoRefill(boolean enable);
   public Builder com.lynx.tasm.TemplateBundleOption.Builder.setUrl(String url);
+  public Builder com.lynx.tasm.TemplateBundleOption.Builder.setDebuggable(boolean debuggable);
   public TemplateBundleOption com.lynx.tasm.TemplateBundleOption.Builder.build();
 }
 
@@ -3957,6 +3958,7 @@ public interface com::lynx::devtoolwrapper::LynxBaseInspectorController {
   public void com.lynx.devtoolwrapper.LynxBaseInspectorController.setDevToolDelegate(IDevToolDelegate devToolDelegate);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorController.onTemplateAssemblerCreated(long ptr);
   public long com.lynx.devtoolwrapper.LynxBaseInspectorController.onBackgroundRuntimeCreated(String groupName);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.onMTSRuntimeCreated(long devtoolPoolPtr);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorController.attach(LynxView view);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorController.attachLynxUIOwnerToAgent(LynxUIOwner uiOwner);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorController.attachToDebugBridge(String url);
@@ -4909,6 +4911,7 @@ public class com::lynx::devtoolwrapper::LynxDevtool :  {
   public void com.lynx.devtoolwrapper.LynxDevtool.onRootViewInputEvent(InputEvent ev);
   public void com.lynx.devtoolwrapper.LynxDevtool.onTemplateAssemblerCreated(long ptr);
   public long com.lynx.devtoolwrapper.LynxDevtool.onBackgroundRuntimeCreated(String groupName);
+  public void com.lynx.devtoolwrapper.LynxDevtool.onMTSRuntimeCreated(long devtoolPoolPtr);
   public void com.lynx.devtoolwrapper.LynxDevtool.onEnterForeground();
   public void com.lynx.devtoolwrapper.LynxDevtool.onEnterBackground();
   public void com.lynx.devtoolwrapper.LynxDevtool.showErrorMessage(final LynxError error);
@@ -4961,6 +4964,15 @@ public class com::lynx::devtoolwrapper::LynxDevtoolGlobalHelper :  {
   public boolean com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.prepareRemoteDebug(String scheme);
   public void com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.registerCardListener(LynxDevtoolCardListener listener);
   public void com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.onPerfMetricsEvent(String eventName, @NonNull JSONObject data, int instanceId);
+}
+
+public class com::lynx::devtoolwrapper::LynxDevToolPool :  {
+  public com.lynx.devtoolwrapper.LynxDevToolPool.LynxDevToolPool(String url, boolean debuggable);
+  public long com.lynx.devtoolwrapper.LynxDevToolPool.getNativePtr();
+  public void com.lynx.devtoolwrapper.LynxDevToolPool.destroy();
+  public void com.lynx.devtoolwrapper.LynxDevToolPool.createDevTool();
+  public void com.lynx.devtoolwrapper.LynxDevToolPool.popDevTool();
+  public void com.lynx.devtoolwrapper.LynxDevToolPool.onMTSRuntimeCreated(long poolRawPtr);
 }
 
 public class com::lynx::devtoolwrapper::LynxDevToolUtils :  {
@@ -9930,6 +9942,7 @@ public class com::lynx::tasm::TemplateBundleOption :  {
   public int com.lynx.tasm.TemplateBundleOption.getContextPoolSize();
   public String com.lynx.tasm.TemplateBundleOption.getUrl();
   public boolean com.lynx.tasm.TemplateBundleOption.getEnableContextAutoRefill();
+  public boolean com.lynx.tasm.TemplateBundleOption.getDebuggable();
 }
 
 public class com::lynx::tasm::TemplateData :  {

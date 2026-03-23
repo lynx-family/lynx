@@ -150,6 +150,32 @@ LynxDevToolMediator::InitWhenBackgroundRuntimeCreated(
   return runtime_observer;
 }
 
+void LynxDevToolMediator::InitWhenMTSRuntimeCreated(
+    DevToolPool* devtool_pool,
+    const std::shared_ptr<LynxDevToolNG>& lynx_devtool_ng) {
+  devtool_wp_ = lynx_devtool_ng;
+  if (lepus_debugger_ == nullptr) {
+    lepus_debugger_ =
+        std::make_shared<InspectorLepusDebuggerImpl>(shared_from_this());
+    lepus_debugger_->SetPreExecute(true);
+  }
+  auto lepus_observer = lepus_debugger_->GetInspectorLepusObserver();
+  lepus_observer->SetDevToolMediator(shared_from_this());
+  if (devtool_pool != nullptr) {
+    devtool_pool->AddLepusObserver(lepus_observer);
+  }
+  if (!devtool_executor_) {
+    devtool_executor_ =
+        std::make_shared<InspectorDefaultExecutor>(shared_from_this());
+  }
+}
+
+void LynxDevToolMediator::UpdateLepusDebugger(
+    const std::shared_ptr<InspectorLepusDebuggerImpl>& debugger) {
+  lepus_debugger_ = debugger;
+  lepus_debugger_->SetPreExecute(false);
+}
+
 void LynxDevToolMediator::OnAttached() {
   attached_ = true;
   if (js_debugger_ != nullptr) {

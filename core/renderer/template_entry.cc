@@ -30,6 +30,8 @@
 #include "third_party/napi/include/primjs_napi_defines.h"
 #endif
 
+#include "core/devtool_wrapper/devtool_pool.h"
+
 namespace lynx {
 namespace tasm {
 
@@ -137,12 +139,36 @@ bool TemplateEntry::ConstructContext(
   }
   std::string file_name = GenerateLepusJSFileName(name_);
 
-  // InitInspector() and SetDebugInfoURL() should be called before calling
-  // DeSerialize().
-  vm_context_->InitInspector(lepus_observer_.lock(),
-                             is_card_ ? DEFAULT_ENTRY_NAME : name_);
-  vm_context_->SetDebugInfoURL(compile_options().template_debug_url_,
-                               file_name);
+  auto observer = lepus_observer_.lock();
+  if (observer != nullptr) {
+    if (source_type == LepusContextSourceType::kFromLocalPool &&
+        vm_context_->HasPreExecuteSuccess()) {
+      // For a pre-executed context from the local pool, call UpdateInspector()
+      // with the current observer and update the assembler's observer with the
+      // result.
+      std::shared_ptr<lepus::InspectorLepusObserver> new_observer =
+          vm_context_->UpdateInspector(observer);
+      assembler->SetLepusObserver(new_observer);
+      // PopDevTool() should be called after UpdateInspector().
+      auto devtool_pool = template_bundle().mts_runtime_pool_->GetDevToolPool();
+      if (devtool_pool != nullptr) {
+        devtool_pool->PopDevTool();
+      }
+    } else {
+      // For a new context, InitInspector() and SetDebugInfoURL() should be
+      // called before DeSerialize().
+      // For a context from the local pool, PrepareInspector() should be called
+      // since DeSerialize() has already been called.
+      vm_context_->InitInspector(observer,
+                                 is_card_ ? DEFAULT_ENTRY_NAME : name_);
+      vm_context_->SetDebugInfoURL(compile_options().template_debug_url_,
+                                   file_name);
+      if (source_type == LepusContextSourceType::kFromLocalPool) {
+        vm_context_->PrepareInspector(file_name.c_str());
+      }
+    }
+  }
+
   // the context from local pool has no need to DeSerialize
   return source_type == LepusContextSourceType::kFromLocalPool ||
          vm_context_->DeSerialize(context_bundle, false, nullptr,

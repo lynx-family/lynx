@@ -68,6 +68,20 @@ void InspectorLepusObserverImpl::OnContextDestroyed(const std::string &name) {
   }
 }
 
+void InspectorLepusObserverImpl::TakeOver(
+    const std::shared_ptr<lepus::InspectorLepusObserver> &other) {
+  if (other == nullptr) {
+    return;
+  }
+
+  auto other_impl = std::static_pointer_cast<InspectorLepusObserverImpl>(other);
+  if (this == other_impl.get()) {
+    return;
+  }
+
+  CopyMembersFrom(other_impl);
+}
+
 void InspectorLepusObserverImpl::OnConsoleEvent(const std::string &level,
                                                 const std::string &args) {
   if (need_post_console_) {
@@ -90,6 +104,23 @@ void InspectorLepusObserverImpl::PrepareForScriptEval(const std::string &name) {
   auto sp = debugger_wp_.lock();
   if (sp != nullptr) {
     sp->PrepareForScriptEval(name);
+  }
+}
+
+void InspectorLepusObserverImpl::CopyMembersFrom(
+    const std::shared_ptr<InspectorLepusObserverImpl> &other) {
+  auto debugger = debugger_wp_.lock();
+  if (debugger == nullptr) {
+    return;
+  }
+  auto other_debugger = other->debugger_wp_.lock();
+  debugger->TakeOver(other_debugger);
+  need_post_console_ = other->need_post_console_;
+  mediator_ptr_ = other->mediator_ptr_;
+
+  auto mediator = mediator_ptr_.lock();
+  if (mediator != nullptr) {
+    mediator->UpdateLepusDebugger(debugger);
   }
 }
 

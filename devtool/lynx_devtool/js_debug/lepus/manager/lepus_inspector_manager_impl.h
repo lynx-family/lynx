@@ -24,6 +24,8 @@ class LepusInspectorManagerImpl : public LepusInspectorManager {
   void SetDebugInfo(const std::string& debug_info_url,
                     const std::string& file_name) override;
   void DestroyInspector() override;
+  std::shared_ptr<InspectorLepusObserver> UpdateInspector(
+      const std::shared_ptr<InspectorLepusObserver>& observer) override;
 
  private:
   std::string GenerateInspectorName(const std::string& name);

@@ -13,6 +13,7 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
 #include "devtool/testing/mock/inspector_client_ng_mock.h"
+#include "devtool/testing/mock/lynx_devtool_mediator_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -30,6 +31,48 @@ class InspectorLepusDebuggerImplTest : public ::testing::Test {
  private:
   std::shared_ptr<InspectorLepusDebuggerImpl> debugger_;
 };
+
+TEST_F(InspectorLepusDebuggerImplTest, SetPreExecute) {
+  tasm::DevToolLifecycle::GetInstance().OnAttached();
+  tasm::DevToolLifecycle::GetInstance().OnEnabled();
+  tasm::DevToolLifecycle::GetInstance().OnInitialized();
+  tasm::DevToolLifecycle::GetInstance().OnConnected();
+  std::shared_ptr<lynx::testing::InspectorClientNGMock> client =
+      std::make_shared<lynx::testing::InspectorClientNGMock>();
+  debugger_->OnInspectorInited(kKeyEngineLepus, kTargetLepus, client);
+  while (!client->message_queue_.empty()) {
+    client->message_queue_.pop();
+  }
+  while (!debugger_->message_buf_.empty()) {
+    debugger_->message_buf_.pop();
+  }
+
+  debugger_->SetPreExecute(true);
+  EXPECT_TRUE(debugger_->pre_execute_);
+  EXPECT_EQ(client->message_queue_.size(), 0);
+  EXPECT_EQ(debugger_->message_buf_.size(), 0);
+
+  debugger_->SetPreExecute(false);
+  EXPECT_FALSE(debugger_->pre_execute_);
+  EXPECT_EQ(client->message_queue_.size(), 2);
+  EXPECT_EQ(debugger_->message_buf_.size(), 4);
+
+  tasm::DevToolLifecycle::GetInstance().OnDisconnected();
+}
+
+TEST_F(InspectorLepusDebuggerImplTest, TakeOver) {
+  std::shared_ptr<InspectorLepusDebuggerImpl> other_debugger1;
+  debugger_->TakeOver(other_debugger1);
+
+  std::shared_ptr<lynx::testing::DevToolPlatformFacadeMock> platform =
+      std::make_shared<lynx::testing::DevToolPlatformFacadeMock>();
+  auto mediator = std::make_shared<lynx::testing::LynxDevToolMediatorMock>();
+  auto other_debugger2 = std::make_shared<InspectorLepusDebuggerImpl>(mediator);
+  other_debugger2->SetDevToolPlatformFacade(platform);
+  debugger_->TakeOver(other_debugger2);
+  EXPECT_EQ(debugger_->devtool_mediator_wp_.lock(), mediator);
+  EXPECT_EQ(debugger_->devtool_platform_facade_wp_.lock(), platform);
+}
 
 TEST_F(InspectorLepusDebuggerImplTest, GetInspectorLepusObserver) {
   auto observer1 = debugger_->GetInspectorLepusObserver();

@@ -41,12 +41,18 @@ class InspectorLepusObserverImpl : public lepus::InspectorLepusObserver {
       const std::shared_ptr<devtool::InspectorClientNG>& client) override;
   void OnContextDestroyed(const std::string& name) override;
 
+  void TakeOver(
+      const std::shared_ptr<lepus::InspectorLepusObserver>& other) override;
+
   void OnConsoleEvent(const std::string& func_name,
                       const std::string& args) override;
 
   void PrepareForScriptEval(const std::string& name) override;
 
  private:
+  void CopyMembersFrom(
+      const std::shared_ptr<InspectorLepusObserverImpl>& other);
+
   std::weak_ptr<InspectorLepusDebuggerImpl> debugger_wp_;
   std::weak_ptr<LynxDevToolMediator> mediator_ptr_;
   bool need_post_console_{false};

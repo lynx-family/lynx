@@ -21,6 +21,9 @@ class InspectorLepusDebuggerImpl : public JavaScriptDebuggerNG {
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   ~InspectorLepusDebuggerImpl() override = default;
 
+  void SetPreExecute(bool pre_execute);
+  void TakeOver(const std::shared_ptr<InspectorLepusDebuggerImpl>& other);
+
   const std::shared_ptr<InspectorLepusObserverImpl>&
   GetInspectorLepusObserver();
   void DecodeDebugInfo(const std::string& debug_info, std::string& result);
@@ -56,6 +59,8 @@ class InspectorLepusDebuggerImpl : public JavaScriptDebuggerNG {
   std::mutex mutex_;
 
   ALLOW_UNUSED_TYPE int64_t record_id_ = 0;
+
+  bool pre_execute_{false};
 };
 
 }  // namespace devtool

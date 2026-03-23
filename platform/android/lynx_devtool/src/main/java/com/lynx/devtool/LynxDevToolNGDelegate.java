@@ -62,6 +62,14 @@ public class LynxDevToolNGDelegate {
 
   private native long nativeOnBackgroundRuntimeCreated(long nativePtr, String groupName);
 
+  public void onMTSRuntimeCreated(long devtoolPoolPtr) {
+    if (mLynxDevToolNGPtr != 0) {
+      nativeOnMTSRuntimeCreated(mLynxDevToolNGPtr, devtoolPoolPtr);
+    }
+  }
+
+  private native void nativeOnMTSRuntimeCreated(long nativePtr, long devtoolPoolPtr);
+
   public void onTASMCreated(long shellPtr) {
     if (mLynxDevToolNGPtr != 0) {
       nativeOnTasmCreated(mLynxDevToolNGPtr, shellPtr);
