@@ -421,6 +421,12 @@ int32_t RadonDiffListNode2::ComponentAtIndex(uint32_t index,
     return 0;
   }
 
+  // Since the new event logic requires tasm to determine whether to enable it,
+  // tasm needs to be set manually here.
+  if (component_is_newly_created) {
+    component->SetTasm(tasm_);
+  }
+
   auto reuse_action =
       reuse_pool_->Dequeue(item_key, reuse_identifier, component);
   tasm_->page_proxy()->InsertEmptyComponent(component);
