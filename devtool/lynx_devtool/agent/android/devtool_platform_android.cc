@@ -200,11 +200,7 @@ std::string DevToolPlatformAndroid::GetLynxVersion() const {
 
 void DevToolPlatformAndroid::SetDevToolSwitch(const std::string& key,
                                               bool value) {
-  JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  auto jniKey =
-      lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-  Java_DevToolPlatformAndroidDelegate_setDevToolSwitch(env, jniKey.Get(),
-                                                       value);
+  // Deprecated since 3.8
 }
 
 void DevToolPlatformAndroid::EmulateTouch(

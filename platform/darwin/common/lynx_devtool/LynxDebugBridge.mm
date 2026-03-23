@@ -233,15 +233,9 @@ using ClientInfo = std::unordered_map<std::string, std::string>;
 }
 
 - (void)onClose:(int32_t)code withReason:(NSString *)reason {
-  if (agent_dispatcher_) {
-    [agent_dispatcher_ enableTraceMode:false];
-  }
 }
 
 - (void)onError:(NSString *)error_msg {
-  if (agent_dispatcher_) {
-    [agent_dispatcher_ enableTraceMode:false];
-  }
 }
 
 - (void)onMessage:(NSString *)message {

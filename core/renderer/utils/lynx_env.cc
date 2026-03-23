@@ -179,21 +179,6 @@ std::string LynxEnv::GetDebugDescription() {
   return result;
 }
 
-void LynxEnv::SetEnvMask(const std::string& key, bool value) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  auto old_value = env_mask_map_.find(key);
-  if (old_value != env_mask_map_.end()) {
-    env_mask_map_.erase(old_value);
-  }
-  env_mask_map_.emplace(key, value);
-}
-
-bool LynxEnv::GetEnvMask(Key key) {
-  std::string key_string = GetEnvKeyString(key);
-  auto value = env_mask_map_.find(key_string);
-  return value != env_mask_map_.end() ? (*value).second : true;
-}
-
 std::unordered_set<std::string> LynxEnv::GetGroupedEnv(
     const std::string& group_key) {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -389,8 +374,7 @@ std::optional<std::string> LynxEnv::GetLocalEnv(Key key) {
   std::string key_string = GetEnvKeyString(key);
   std::lock_guard<std::mutex> lock(mutex_);
   if (local_env_map_.count(key_string) > 0) {
-    bool mask = GetEnvMask(key);
-    return mask ? local_env_map_[key_string] : kLocalEnvValueFalse;
+    return local_env_map_[key_string];
   }
   return std::nullopt;
 }

@@ -65,6 +65,7 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
   }
 
   void SetDevToolSwitch(const std::string& key, bool value) override {
+    // TODO(mitchilling): deprecated this after refactoring setting
     EnvEmbedder::SetSwitch(key, value);
   }
 

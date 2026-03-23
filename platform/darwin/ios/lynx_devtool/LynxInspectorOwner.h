@@ -78,8 +78,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)enableRecording:(bool)enable;
 
-- (void)enableTraceMode:(bool)enable;
-
 - (void)onPageUpdate;
 
 - (void)attachLynxUIOwnerToAgent:(nullable LynxUIOwner *)uiOwner;

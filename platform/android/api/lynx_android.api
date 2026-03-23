@@ -5143,7 +5143,6 @@ public class com::lynx::tasm::LynxEnv :  {
   public native void com.lynx.tasm.LynxEnv.nativeSetLocalEnv(String key, String value);
   public native void com.lynx.tasm.LynxEnv.nativeSetGroupedEnv(String key, boolean value, String groupKey);
   public native void com.lynx.tasm.LynxEnv.nativeSetGroupedEnvWithGroupSet(String groupKey, Set< String > newGroupValues);
-  public native void com.lynx.tasm.LynxEnv.nativeSetEnvMask(String key, boolean value);
   public HashMap< String, String > com.lynx.tasm.LynxEnv.GetNativeEnvDebugDescription();
   public HashMap< String, String > com.lynx.tasm.LynxEnv.GetPlatformEnvDebugDescription();
   public void com.lynx.tasm.LynxEnv.setStringLocalEnv(LynxEnvKey key, String value);

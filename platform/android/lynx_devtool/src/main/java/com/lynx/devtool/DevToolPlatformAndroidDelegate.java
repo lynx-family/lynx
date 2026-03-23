@@ -364,11 +364,6 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   @CalledByNative
-  public static void setDevToolSwitch(String key, boolean value) {
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(key, value);
-  }
-
-  @CalledByNative
   public void onReceiveTemplateFragment(String data, boolean eof) {
     if (mReloadHelper != null) {
       mReloadHelper.onReceiveTemplateFragment(data, eof);

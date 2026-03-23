@@ -125,7 +125,6 @@ public class LynxGlobalDebugBridge
   @Override
   public void onClose(int code, String reason) {
     LLog.i(TAG, "Connection closed. Code: " + code + ". Reason: " + reason);
-    enableTraceMode(false);
     // FIXME(mitchilling): Theoretically, we should notify the DevToolLifecycle
     // to update the state to DISCONNECTED.
     // However, at the moment onClose() and onOpen() are called multiple times back and forth.
@@ -133,20 +132,9 @@ public class LynxGlobalDebugBridge
     // For now, let's not update the state yet.
   }
 
-  private void enableTraceMode(boolean enable) {
-    // TODO(mitchilling): we have to figure out what does this "mask" do and then deal with them
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(DevToolSettings.SP_KEY_ENABLE_DOM_TREE, !enable);
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG, !enable);
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(DevToolSettings.SP_KEY_ENABLE_V8, !enable);
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(
-        DevToolSettings.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT, !enable);
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(DevToolSettings.SP_KEY_ENABLE_HIGHLIGHT_TOUCH, !enable);
-  }
-
   @Override
   public void onError(String error) {
     LLog.i(TAG, "Connection closed. Error: " + error);
-    enableTraceMode(false);
   }
 
   @Override

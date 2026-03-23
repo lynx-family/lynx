@@ -22,7 +22,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
 
 @implementation LynxDevtoolEnv {
   dispatch_queue_t _read_write_queue;
-  NSMutableDictionary *_switchMasks;
   NSMutableDictionary *_groupDics;
   NSDictionary *_errorCodeDic;
 }
@@ -42,7 +41,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
   if (self) {
     _read_write_queue =
         dispatch_queue_create("DevtoolEnv.read_write_queue", DISPATCH_QUEUE_CONCURRENT);
-    _switchMasks = [[NSMutableDictionary alloc] init];
 
     /**
      * [self setDefaultAppInfo]
@@ -182,24 +180,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
   return retSet;
 }
 
-- (void)setSwitchMask:(BOOL)value forKey:(NSString *)key {
-  dispatch_barrier_async(_read_write_queue, ^{
-    [self->_switchMasks setValue:[NSNumber numberWithBool:value] forKey:key];
-  });
-  [self syncMaskToNative:value forKey:key];
-}
-
-- (BOOL)getSwitchMask:(NSString *)key {
-  __block NSNumber *value;
-  dispatch_sync(_read_write_queue, ^{
-    value = [_switchMasks valueForKey:key];
-  });
-  if (value) {
-    return [value boolValue];
-  }
-  return YES;
-}
-
 - (void)setSwitch:(BOOL)value
      forSwitchKey:(NSString *)switchKey
         groupName:(NSString *)groupKey
@@ -253,10 +233,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     groupSet.insert(std::string([key UTF8String]));
   }
   lynx::tasm::LynxEnv::GetInstance().SetGroupedEnv(groupSet, [groupKey UTF8String]);
-}
-
-- (void)syncMaskToNative:(BOOL)value forKey:(NSString *)key {
-  lynx::tasm::LynxEnv::GetInstance().SetEnvMask([key UTF8String], value ? true : false);
 }
 
 - (BOOL)isErrorTypeIgnored:(NSInteger)errCode {

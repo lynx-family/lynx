@@ -258,20 +258,17 @@ TEST_F(DevToolMediatorTest, LynxSetTraceMode) {
   Json::Value param = Json::Value(Json::ValueType::objectValue);
   param["enableTraceMode"] = true;
   request["params"] = param;
+  request["id"] = 123;
+
   devtool_mediator_->LynxSetTraceMode(message_sender_, request);
   devtool_thread_->Join();
-  EXPECT_TRUE(facade_->devtools_switch_.find("enable_dom_tree") !=
-              facade_->devtools_switch_.end());
-  EXPECT_TRUE(facade_->devtools_switch_.find("enable_preview_screen_shot") !=
-              facade_->devtools_switch_.end());
-  EXPECT_TRUE(facade_->devtools_switch_.find("enable_quickjs_debug") !=
-              facade_->devtools_switch_.end());
-  EXPECT_TRUE(facade_->devtools_switch_.find("enable_v8") !=
-              facade_->devtools_switch_.end());
-  EXPECT_FALSE(facade_->devtools_switch_["enable_dom_tree"]);
-  EXPECT_FALSE(facade_->devtools_switch_["enable_preview_screen_shot"]);
-  EXPECT_FALSE(facade_->devtools_switch_["enable_quickjs_debug"]);
-  EXPECT_FALSE(facade_->devtools_switch_["enable_v8"]);
+
+  // The new behavior is to log a warning and return an error object
+  // to explicitly tell the client this method is dead.
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"error\" : {\n      \"code\" : -32601,\n      \"message\" "
+            ": \"SetTraceMode is deprecated. Use global messages.\"\n   },\n   "
+            "\"id\" : 123\n}\n");
 }
 
 TEST_F(DevToolMediatorTest, GetLynxVersion) {

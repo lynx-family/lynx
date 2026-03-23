@@ -1201,8 +1201,6 @@ public class LynxEnv {
 
   protected native void nativeCleanExternalCache();
 
-  public native void nativeSetEnvMask(String key, boolean value);
-
   protected native String nativeGetDebugEnvDescription();
 
   public HashMap<String, String> GetNativeEnvDebugDescription() {

@@ -141,8 +141,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   }
 
   void SetDevToolSwitch(const std::string& key, bool value) override {
-    [LynxDevtoolEnv.sharedInstance setSwitchMask:value
-                                          forKey:[NSString stringWithUTF8String:key.c_str()]];
+    // deprecated since 3.8
   }
 
   std::vector<float> GetRectToWindow() const override {

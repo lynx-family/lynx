@@ -365,12 +365,6 @@
   LynxEnv.sharedInstance.recordEnable = enable;
 }
 
-- (void)enableTraceMode:(bool)enable {
-  [LynxDevtoolEnv.sharedInstance setSwitchMask:!enable forKey:SP_KEY_ENABLE_DOM_TREE];
-  [LynxDevtoolEnv.sharedInstance setSwitchMask:!enable forKey:SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT];
-  [LynxDevtoolEnv.sharedInstance setSwitchMask:!enable forKey:SP_KEY_ENABLE_HIGHLIGHT_TOUCH];
-}
-
 - (void)onPageUpdate {
   if (_platform != nil) {
     [_platform sendLayerTreeDidChangeEvent];

@@ -214,10 +214,6 @@ public class LynxDevtoolEnv {
     LynxEnv.inst().nativeSetGroupedEnvWithGroupSet(groupKey, newGroupValues);
   }
 
-  private void syncMaskToNative(String key) {
-    LynxEnv.inst().nativeSetEnvMask(key, getDevtoolEnvMask(key));
-  }
-
   public void setDevtoolEnv(String key, Object value) {
     try {
       boolean persist = needPersist(key);
@@ -328,15 +324,6 @@ public class LynxDevtoolEnv {
     }
     Set<String> set = mGroupSets.get(groupKey);
     return set != null ? set.contains(switchKey) : defaultValue;
-  }
-
-  public void setDevtoolEnvMask(String key, boolean value) {
-    if (mSwitchMasks != null && mReadWriteLock != null) {
-      mReadWriteLock.writeLock().lock();
-      mSwitchMasks.put(key, value);
-      mReadWriteLock.writeLock().unlock();
-      syncMaskToNative(key);
-    }
   }
 
   public Boolean getDevtoolEnvMask(String key) {

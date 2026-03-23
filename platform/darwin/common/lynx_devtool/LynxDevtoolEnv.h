@@ -13,9 +13,6 @@
 - (void)set:(NSSet *)newGroupValues forGroup:(NSString *)groupKey;
 - (NSSet *)getGroup:(NSString *)groupKey;
 
-- (void)setSwitchMask:(BOOL)value forKey:(NSString *)key;
-- (BOOL)getSwitchMask:(NSString *)key;
-
 - (BOOL)isErrorTypeIgnored:(NSInteger)errCode;
 
 - (BOOL)getDefaultValue:(NSString *)key;

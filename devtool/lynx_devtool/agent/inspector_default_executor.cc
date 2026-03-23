@@ -46,24 +46,15 @@ void InspectorDefaultExecutor::InspectorDetached(
 void InspectorDefaultExecutor::LynxSetTraceMode(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
+  // TODO(mitchilling): remove this protocol, including agent and mediator.
+  LOGW(
+      "SetTraceMode is no longer supported. Please use global messages to "
+      "access certain settings.");
   Json::Value response(Json::ValueType::objectValue);
-  Json::Value content = Json::Value(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  if (!params.empty()) {
-    Json::Value enable_trace_mode = params["enableTraceMode"];
-    if (!enable_trace_mode.empty() && enable_trace_mode.isBool()) {
-      bool value = enable_trace_mode.asBool();
-      CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                                "devtool_platform_facade_ is null");
-      devtool_platform_facade_->SetDevToolSwitch("enable_dom_tree", !value);
-      devtool_platform_facade_->SetDevToolSwitch("enable_preview_screen_shot",
-                                                 !value);
-      devtool_platform_facade_->SetDevToolSwitch("enable_quickjs_debug",
-                                                 !value);
-      devtool_platform_facade_->SetDevToolSwitch("enable_v8", !value);
-    }
-  }
-  response["result"] = content;
+  Json::Value error(Json::ValueType::objectValue);
+  error["code"] = -32601;  // JSON-RPC standard code for Method not found
+  error["message"] = "SetTraceMode is deprecated. Use global messages.";
+  response["error"] = error;
   response["id"] = message["id"].asInt64();
   sender->SendMessage("CDP", response);
 }

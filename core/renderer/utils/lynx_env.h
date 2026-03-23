@@ -357,7 +357,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   void CleanExternalCache();
   void SetBoolLocalEnv(const std::string& key, bool value);
   void SetLocalEnv(const std::string& key, const std::string& value);
-  void SetEnvMask(const std::string& key, bool value);
   bool GetBoolEnv(Key key, bool default_value,
                   EnvType type = EnvType::EXTERNAL);
   bool GetBoolEnv(const std::string& key, bool default_value);
@@ -480,7 +479,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
  private:
   LynxEnv() = default;
 
-  bool GetEnvMask(Key key);
   bool ConvertToBool(const std::string& value);
   std::optional<std::string> GetLocalEnv(Key key);
   std::optional<std::string> GetExternalEnv(Key key);
@@ -489,7 +487,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
 
   std::mutex mutex_;
   std::unordered_map<std::string, std::string> local_env_map_;
-  std::unordered_map<std::string, bool> env_mask_map_;
   std::unordered_map<std::string, std::unordered_set<std::string>>
       env_group_sets_;
 

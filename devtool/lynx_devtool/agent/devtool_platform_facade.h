@@ -78,6 +78,7 @@ class DevToolPlatformFacade
     return std::vector<float>();
   }
 
+  // Deprecated since 3.8
   virtual void SetDevToolSwitch(const std::string& key, bool value) = 0;
 
   virtual std::vector<float> GetRectToWindow() const = 0;

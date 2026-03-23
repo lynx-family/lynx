@@ -72,12 +72,6 @@ jstring GetDebugEnvDescription(JNIEnv* env, jobject jcaller) {
   return env->NewStringUTF(envJsonString.c_str());  // NOLINT
 }
 
-void SetEnvMask(JNIEnv* env, jobject jcaller, jstring key, jboolean value) {
-  lynx::tasm::LynxEnv::GetInstance().SetEnvMask(
-      lynx::base::android::JNIConvertHelper::ConvertToString(env, key),
-      value == JNI_TRUE);
-}
-
 void InitUIThread(JNIEnv* env, jclass jcaller) { lynx::base::UIThread::Init(); }
 
 void OnMemoryPressure(JNIEnv* env, jclass jcaller, jint pressure) {
