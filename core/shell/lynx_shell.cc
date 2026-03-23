@@ -345,6 +345,11 @@ void LynxShell::Destroy() {
 
   is_destroyed_ = true;
 
+#if ENABLE_TESTBENCH_RECORDER
+  tasm::recorder::RecorderController::RemoveRecord(
+      reinterpret_cast<int64_t>(this));
+#endif
+
   perf_controller_actor_->ActAsync(
       [](auto& performance_controller) { performance_controller = nullptr; });
 

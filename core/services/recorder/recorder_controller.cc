@@ -48,6 +48,13 @@ void RecorderController::InitConfig(const std::string& path, int64_t session_id,
 #endif
 }
 
+void RecorderController::RemoveRecord(int64_t record_id) {
+#if ENABLE_TESTBENCH_RECORDER
+  lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance().RemoveRecord(
+      record_id);
+#endif
+}
+
 void* RecorderController::GetTestBenchBaseRecorderInstance() {
 #if ENABLE_TESTBENCH_RECORDER
   return static_cast<void*>(

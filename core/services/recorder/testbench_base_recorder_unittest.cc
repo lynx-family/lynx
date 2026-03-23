@@ -83,8 +83,49 @@ void CheckLynxViewTable(TestBenchBaseRecorder& ark, int64_t record_id) {
 
 TEST(TestBenchBaseRecorder, Clear) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  int64_t record_id = 1;
+
+  ark.GetRecordedFile(record_id);
+  ark.SetScreenSize(record_id, 123, 456);
+  wait(ark.thread_);
+  ark.AddLynxViewSessionID(record_id, 42);
+  ark.url_map_[record_id] = "url";
+
+  EXPECT_EQ(ark.lynx_view_table_.size(), 1);
+  EXPECT_EQ(ark.replay_config_map_.size(), 1);
+  EXPECT_EQ(ark.url_map_.size(), 1);
+  EXPECT_EQ(ark.session_ids_.size(), 1);
+
   ark.Clear();
+
   EXPECT_EQ(ark.lynx_view_table_.size(), 0);
+  EXPECT_EQ(ark.replay_config_map_.size(), 0);
+  EXPECT_EQ(ark.url_map_.size(), 0);
+  EXPECT_EQ(ark.session_ids_.size(), 0);
+}
+
+TEST(TestBenchBaseRecorder, RemoveRecord) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  int64_t record_id = 1;
+
+  ark.GetRecordedFile(record_id);
+  ark.SetScreenSize(record_id, 123, 456);
+  wait(ark.thread_);
+  ark.AddLynxViewSessionID(record_id, 42);
+
+  EXPECT_EQ(ark.lynx_view_table_.count(record_id), 1);
+  EXPECT_EQ(ark.replay_config_map_.count(record_id), 1);
+  EXPECT_EQ(ark.session_ids_.count(record_id), 1);
+
+  ark.RemoveRecord(record_id);
+  wait(ark.thread_);
+
+  EXPECT_EQ(ark.lynx_view_table_.count(record_id), 0);
+  EXPECT_EQ(ark.replay_config_map_.count(record_id), 0);
+  EXPECT_EQ(ark.url_map_.count(record_id), 0);
+  EXPECT_EQ(ark.session_ids_.count(record_id), 0);
+
+  ark.Clear();
 }
 
 TEST(TestBenchBaseRecorder, CreateRecordedFile) {

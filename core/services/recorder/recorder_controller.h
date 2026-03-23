@@ -37,6 +37,7 @@ class RecorderController {
                                                  float screen_width,
                                                  float screen_height,
                                                  int64_t record_id);
+  LYNX_EXPORT_FOR_DEVTOOL static void RemoveRecord(int64_t record_id);
   LYNX_EXPORT_FOR_DEVTOOL static void* GetTestBenchBaseRecorderInstance();
   LYNX_EXPORT_FOR_DEVTOOL static void RecordDebugInfo(
       int64_t record_id, const std::string& url, const std::string& debug_info);

@@ -69,26 +69,61 @@ void TestBenchBaseRecorder::SetScreenSize(int64_t record_id, float screen_width,
   thread_.GetTaskRunner()->PostTask(std::move(set_screen_size_task));
 }
 
+namespace {
+
+[[maybe_unused]] inline void SetJsonValue(rapidjson::Value* target,
+                                          float value) {
+  target->SetFloat(value);
+}
+
+[[maybe_unused]] inline void SetJsonValue(rapidjson::Value* target,
+                                          double value) {
+  target->SetDouble(value);
+}
+
+[[maybe_unused]] inline void SetJsonValue(rapidjson::Value* target,
+                                          int64_t value) {
+  target->SetInt64(value);
+}
+
+[[maybe_unused]] inline void SetJsonValue(rapidjson::Value* target, int value) {
+  target->SetInt(value);
+}
+
+[[maybe_unused]] inline void SetJsonValue(rapidjson::Value* target,
+                                          bool value) {
+  target->SetBool(value);
+}
+
+}  // namespace
+
 template <typename T>
 void TestBenchBaseRecorder::InsertReplayConfig(int64_t record_id,
                                                const char* name, T value) {
   rapidjson::Document::AllocatorType& allocator = GetAllocator();
-  if (replay_config_map_.count(record_id) == 0) {
-    rapidjson::Value config_object;
-    config_object.SetObject();
+
+  rapidjson::Value& config = replay_config_map_[record_id];
+  if (!config.IsObject()) {
+    config.SetObject();
+
     // add jsb ignored info
     rapidjson::Document jsb_ignored_info;
     jsb_ignored_info.Parse(KJsbIgnoredInfo);
-    config_object.AddMember(rapidjson::StringRef("jsbIgnoredInfo"),
-                            jsb_ignored_info, allocator);
-    rapidjson::Value jsb_settings;
-    jsb_settings.SetObject();
+    config.AddMember(rapidjson::StringRef("jsbIgnoredInfo"), jsb_ignored_info,
+                     allocator);
+
+    rapidjson::Value jsb_settings(rapidjson::kObjectType);
     jsb_settings.AddMember(rapidjson::StringRef("strict"), true, allocator);
-    config_object.AddMember(rapidjson::StringRef("jsbSettings"), jsb_settings,
-                            allocator);
-    replay_config_map_[record_id] = config_object;
+    config.AddMember(rapidjson::StringRef("jsbSettings"), jsb_settings,
+                     allocator);
   }
-  rapidjson::Value& config = replay_config_map_[record_id];
+
+  auto member_it = config.FindMember(name);
+  if (member_it != config.MemberEnd()) {
+    SetJsonValue(&member_it->value, value);
+    return;
+  }
+
   // StringRef creates dangling pointer when original string is destroyed, we
   // create a deep copy of the string key to avoid heap-buffer-overflow.
   rapidjson::Value key;
@@ -170,6 +205,16 @@ void TestBenchBaseRecorder::EndRecord(
 void TestBenchBaseRecorder::AddLynxViewSessionID(int64_t record_id,
                                                  int64_t session) {
   session_ids_[record_id] = session;
+}
+
+void TestBenchBaseRecorder::RemoveRecord(int64_t record_id) {
+  auto remove_record_task = [this, record_id]() {
+    lynx_view_table_.erase(record_id);
+    replay_config_map_.erase(record_id);
+    url_map_.erase(record_id);
+    session_ids_.erase(record_id);
+  };
+  thread_.GetTaskRunner()->PostTask(std::move(remove_record_task));
 }
 
 void TestBenchBaseRecorder::RecordAction(const char* function_name,
@@ -527,8 +572,11 @@ void TestBenchBaseRecorder::CreateRecordedFile(int64_t record_id) {
 }
 
 void TestBenchBaseRecorder::Clear() {
-  std::unordered_map<int64_t, rapidjson::Value> empty_table;
-  this->lynx_view_table_.swap(empty_table);
+  lynx_view_table_.clear();
+  replay_config_map_.clear();
+  url_map_.clear();
+  session_ids_.clear();
+  resource_table_.SetNull();
   GetAllocator().Clear();
 }
 

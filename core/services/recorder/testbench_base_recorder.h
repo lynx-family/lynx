@@ -50,6 +50,7 @@ class TestBenchBaseRecorder {
   void SetScreenSize(int64_t record_id, float screen_width,
                      float screen_height);
   void AddLynxViewSessionID(int64_t record_id, int64_t session);
+  void RemoveRecord(int64_t record_id);
   void StartRecord();
   void EndRecord(base::MoveOnlyClosure<void, std::vector<std::string>&,
                                        std::vector<int64_t>&>
