@@ -13493,6 +13493,29 @@ TEST_P(FiberElementTest, SetClasses) {
   EXPECT_TRUE(page->classes()[2] == "black");
 }
 
+TEST_P(FiberElementTest, SetClassesEmptyClears) {
+  auto element = manager->CreateFiberNode("view");
+
+  // Set initial classes
+  ClassList input = {"theme-light", "active"};
+  element->SetClasses(std::move(input));
+  EXPECT_EQ(static_cast<int>(element->classes().size()), 2);
+
+  // Clear classes with RemoveAllClass (simulates __SetClasses(el, ""))
+  element->RemoveAllClass();
+  EXPECT_EQ(static_cast<int>(element->classes().size()), 0);
+
+  // Set classes again
+  ClassList input2 = {"theme-dark"};
+  element->SetClasses(std::move(input2));
+  EXPECT_EQ(static_cast<int>(element->classes().size()), 1);
+  EXPECT_TRUE(element->classes()[0] == "theme-dark");
+
+  // Clear again
+  element->RemoveAllClass();
+  EXPECT_EQ(static_cast<int>(element->classes().size()), 0);
+}
+
 TEST_P(FiberElementTest, AttributeTiming) {
   // page
   auto page = manager->CreateFiberPage("page", 11);

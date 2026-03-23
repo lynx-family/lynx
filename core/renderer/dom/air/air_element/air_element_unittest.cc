@@ -738,6 +738,38 @@ TEST_F(AirElementTest, SetClasses) {
   page->style_dirty_ = 0;
 }
 
+TEST_F(AirElementTest, SetClassesEmptyString) {
+  AirElement *page = CreateAirNode("view", 1)->Get();
+
+  // Set initial classes
+  page->SetClasses(lepus::Value("theme-light active"));
+  EXPECT_TRUE(page->style_dirty_ & AirElement::Selector::kCLASS);
+  EXPECT_EQ(page->classes_.size(), 2);
+  page->style_dirty_ = 0;
+
+  // Clear classes with empty string
+  page->SetClasses(lepus::Value(""));
+  EXPECT_TRUE(page->style_dirty_ & AirElement::Selector::kCLASS);
+  EXPECT_EQ(page->classes_.size(), 0);
+  page->style_dirty_ = 0;
+
+  // Setting empty string again should not mark dirty (already empty)
+  page->SetClasses(lepus::Value(""));
+  EXPECT_FALSE(page->style_dirty_ & AirElement::Selector::kCLASS);
+  EXPECT_EQ(page->classes_.size(), 0);
+  page->style_dirty_ = 0;
+
+  // Set single class then clear with empty
+  page->SetClasses(lepus::Value("theme-dark"));
+  EXPECT_TRUE(page->style_dirty_ & AirElement::Selector::kCLASS);
+  EXPECT_EQ(page->classes_.size(), 1);
+  page->style_dirty_ = 0;
+
+  page->SetClasses(lepus::Value(""));
+  EXPECT_TRUE(page->style_dirty_ & AirElement::Selector::kCLASS);
+  EXPECT_EQ(page->classes_.size(), 0);
+}
+
 TEST_F(AirElementTest, ComponentGetElement) {
   auto config = std::make_shared<PageConfig>();
   config->SetLynxAirMode(CompileOptionAirMode::AIR_MODE_STRICT);

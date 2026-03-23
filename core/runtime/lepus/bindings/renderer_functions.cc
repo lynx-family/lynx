@@ -1938,9 +1938,12 @@ RENDERER_FUNCTION_CC(SetClassTo) {
   }
 
   auto clazz = arg1->String();
-  if (clazz.empty()) RETURN_UNDEFINED();
-
   auto* radon_node = reinterpret_cast<RadonNode*>(arg0->CPoint());
+
+  if (clazz.empty()) {
+    radon_node->RemoveAllClass();
+    RETURN_UNDEFINED();
+  }
 
   // Split and trimmed
   base::SplitString(clazz.str(), ' ', true,
@@ -3719,14 +3722,14 @@ RENDERER_FUNCTION_CC(FiberSetClasses) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SET_CLASSES);
   // parameter size = 2
   // [0] RefCounted -> element
-  // [1] String -> classes
+  // [1] String|undefined -> classes
   CHECK_ARGC_GE(FiberSetClasses, 2);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberSetClasses);
-  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, String, FiberSetClasses);
+  CONVERT_ARG(arg1, 1);
 
   auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetClasses);
-  auto clazz = arg1->String();
+  auto clazz = arg1->IsString() ? arg1->String() : base::String();
   ClassList old_classes = element->ReleaseClasses();
   element->RemoveAllClass();
   if (clazz.empty()) {
