@@ -166,8 +166,11 @@ bool RuleSet::AddToRuleSetInternal(const LynxCSSSelector& selector,
   std::string tag_name;
   LynxCSSSelector::PseudoType pseudo_type = LynxCSSSelector::kPseudoUnknown;
 
-  ExtractBestSelector(selector, id, class_name, attr_name, attr_value, tag_name,
-                      pseudo_type);
+  const LynxCSSSelector* best = ExtractBestSelector(
+      selector, id, class_name, attr_name, attr_value, tag_name, pseudo_type);
+  if (best && best->Relation() == LynxCSSSelector::kDirectAdjacent) {
+    has_adjacent_sibling_rules_ = true;
+  }
 
   // Prefer rule sets in order of most likely to apply infrequently.
   if (!id.empty()) {

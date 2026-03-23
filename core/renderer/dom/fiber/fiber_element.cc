@@ -787,6 +787,12 @@ void FiberElement::InsertNodeBeforeInternal(
     // new inserted child should be marked to do inheritance from parent
     child->MarkDirty(kDirtyPropagateInherited);
   }
+
+  // Invalidate ref_node for next-sibling combinator (A + B).
+  if (ref_node && HasAdjacentSiblingRulesInStyleSheets()) {
+    ref_node->MarkStyleDirty(false);
+  }
+
   MarkDirty(kDirtyTree);
 }
 
@@ -812,6 +818,10 @@ void FiberElement::RemoveNodeInternal(const fml::RefPtr<FiberElement> &child,
     return;
   }
 
+  // Capture next sibling before removal for next-sibling combinator (A + B).
+  FiberElement *next_sibling_of_removed =
+      static_cast<FiberElement *>(child->next_sibling());
+
   // the Remove Action should be inserted to Parent, due to child has been
   // removed from element tree here
   if (has_to_store_insert_remove_actions_) {
@@ -831,6 +841,11 @@ void FiberElement::RemoveNodeInternal(const fml::RefPtr<FiberElement> &child,
     RemoveLogicalChild(child);
   }
   removed->set_parent(nullptr);
+
+  // Invalidate next sibling for next-sibling combinator (A + B).
+  if (next_sibling_of_removed && HasAdjacentSiblingRulesInStyleSheets()) {
+    next_sibling_of_removed->MarkStyleDirty(false);
+  }
 
   MarkDirty(kDirtyTree);
 }
@@ -3958,6 +3973,32 @@ bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
 
   CSSValue::SubstituteAll(*map);
   return true;
+}
+
+// Returns true if any active stylesheet (the element's own CSS fragment or any
+// adopted stylesheet from the element manager) contains a next-sibling
+// combinator rule (A + B). Used to guard sibling invalidation on insertion /
+// removal so we don't dirty siblings when no such rules exist.
+bool FiberElement::HasAdjacentSiblingRulesInStyleSheets() {
+  auto *css_fragment = GetRelatedCSSFragment();
+  if (!css_fragment || !css_fragment->enable_css_selector()) {
+    return false;
+  }
+  if (css_fragment->rule_set() &&
+      css_fragment->rule_set()->HasAdjacentSiblingRules()) {
+    return true;
+  }
+  if (element_manager_) {
+    for (const auto &wrapper : element_manager_->GetAdoptedStyleSheets()) {
+      if (wrapper && wrapper->fragment_ &&
+          wrapper->fragment_->enable_css_selector() &&
+          wrapper->fragment_->rule_set() &&
+          wrapper->fragment_->rule_set()->HasAdjacentSiblingRules()) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 void FiberElement::InvalidateChildrenIfNeeded() {

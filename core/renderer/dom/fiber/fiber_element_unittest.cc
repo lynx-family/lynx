@@ -16611,6 +16611,166 @@ TEST_P(FiberElementTest, PrepareAndGenerateChildrenActionsUsesHasZIndex) {
   SUCCEED();
 }
 
+// Helper: create a SharedCSSFragment with CSS selector support and add a rule.
+// The rule text should be a valid CSS selector (e.g. ".a + .b").
+static std::shared_ptr<SharedCSSFragment> MakeFragmentWithRule(
+    const std::string& selector_text) {
+  auto fragment = std::make_shared<SharedCSSFragment>();
+  fragment->SetEnableCSSSelector();
+
+  css::CSSParserContext context;
+  css::CSSTokenizer tokenizer(selector_text);
+  const auto tokens = tokenizer.TokenizeToEOF();
+  css::CSSParserTokenRange range(tokens);
+  css::LynxCSSSelectorVector vector =
+      css::CSSSelectorParser::ParseSelector(range, &context);
+  size_t flattened_size = css::CSSSelectorParser::FlattenedSize(vector);
+  auto selector_array =
+      std::make_unique<css::LynxCSSSelector[]>(flattened_size);
+  css::CSSSelectorParser::AdoptSelectorVector(vector, selector_array.get(),
+                                              flattened_size);
+  fragment->AddStyleRule(std::move(selector_array), nullptr);
+  return fragment;
+}
+
+// Verify that removing a child marks its next sibling as style-dirty when
+// adjacent sibling rules (+ combinator) exist.
+TEST_P(FiberElementTest, RemoveNode_InvalidatesNextSibling_WithAdjacentRules) {
+  auto fragment = MakeFragmentWithRule(".a + .b");
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  auto child1 = manager->CreateFiberNode("view");
+  child1->parent_component_element_ = page.get();
+  page->InsertNode(child1);
+
+  auto child2 = manager->CreateFiberNode("view");
+  child2->parent_component_element_ = page.get();
+  page->InsertNode(child2);
+
+  auto child3 = manager->CreateFiberNode("view");
+  child3->parent_component_element_ = page.get();
+  page->InsertNode(child3);
+
+  page->FlushActionsAsRoot();
+
+  // Sanity: child3 should not be style-dirty after flush.
+  EXPECT_FALSE(child3->StyleDirty());
+
+  // Remove child2 — child3 (the next sibling of the removed node) should
+  // become style-dirty because adjacent sibling rules exist.
+  page->RemoveNode(child2);
+  EXPECT_TRUE(child3->StyleDirty());
+}
+
+// Verify that removing a child does NOT mark the next sibling as style-dirty
+// when no adjacent sibling rules exist.
+TEST_P(FiberElementTest,
+       RemoveNode_DoesNotInvalidateNextSibling_WithoutAdjacentRules) {
+  auto fragment = MakeFragmentWithRule(".a .b");
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  auto child1 = manager->CreateFiberNode("view");
+  child1->parent_component_element_ = page.get();
+  page->InsertNode(child1);
+
+  auto child2 = manager->CreateFiberNode("view");
+  child2->parent_component_element_ = page.get();
+  page->InsertNode(child2);
+
+  auto child3 = manager->CreateFiberNode("view");
+  child3->parent_component_element_ = page.get();
+  page->InsertNode(child3);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(child3->StyleDirty());
+
+  // Remove child2 — child3 should NOT become style-dirty because there are
+  // no adjacent sibling rules.
+  page->RemoveNode(child2);
+  EXPECT_FALSE(child3->StyleDirty());
+}
+
+// Verify that inserting a node before a ref_node marks ref_node as style-dirty
+// when adjacent sibling rules exist.
+TEST_P(FiberElementTest,
+       InsertNodeBefore_InvalidatesRefNode_WithAdjacentRules) {
+  auto fragment = MakeFragmentWithRule(".a + .b");
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  auto child1 = manager->CreateFiberNode("view");
+  child1->parent_component_element_ = page.get();
+  page->InsertNode(child1);
+
+  auto child2 = manager->CreateFiberNode("view");
+  child2->parent_component_element_ = page.get();
+  page->InsertNode(child2);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(child2->StyleDirty());
+
+  // Insert a new node before child2 — child2 (the ref_node) should become
+  // style-dirty because adjacent sibling rules exist.
+  auto new_child = manager->CreateFiberNode("view");
+  new_child->parent_component_element_ = page.get();
+  page->InsertNodeBefore(new_child, child2);
+  EXPECT_TRUE(child2->StyleDirty());
+}
+
+// Verify that inserting a node before a ref_node does NOT mark ref_node as
+// style-dirty when no adjacent sibling rules exist.
+TEST_P(FiberElementTest,
+       InsertNodeBefore_DoesNotInvalidateRefNode_WithoutAdjacentRules) {
+  auto fragment = MakeFragmentWithRule(".a > .b");
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  auto child1 = manager->CreateFiberNode("view");
+  child1->parent_component_element_ = page.get();
+  page->InsertNode(child1);
+
+  auto child2 = manager->CreateFiberNode("view");
+  child2->parent_component_element_ = page.get();
+  page->InsertNode(child2);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(child2->StyleDirty());
+
+  // Insert a new node before child2 — child2 should NOT become style-dirty
+  // because no adjacent sibling rules exist.
+  auto new_child = manager->CreateFiberNode("view");
+  new_child->parent_component_element_ = page.get();
+  page->InsertNodeBefore(new_child, child2);
+  EXPECT_FALSE(child2->StyleDirty());
+}
+
+// Verify that removing the last child does not crash (no next sibling).
+TEST_P(FiberElementTest, RemoveNode_LastChild_NoCrash) {
+  auto fragment = MakeFragmentWithRule(".a + .b");
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  auto child1 = manager->CreateFiberNode("view");
+  child1->parent_component_element_ = page.get();
+  page->InsertNode(child1);
+
+  page->FlushActionsAsRoot();
+
+  // Remove the only child — should not crash even with adjacent rules.
+  page->RemoveNode(child1);
+  SUCCEED();
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 

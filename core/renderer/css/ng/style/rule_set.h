@@ -72,6 +72,14 @@ class RuleSet {
 
   const auto& universal_rules() { return universal_rules_; }
 
+  bool HasAdjacentSiblingRules() const {
+    if (has_adjacent_sibling_rules_) return true;
+    for (const auto& dep : deps_) {
+      if (dep.HasAdjacentSiblingRules()) return true;
+    }
+    return false;
+  }
+
  private:
   bool AddToRuleSetInternal(const LynxCSSSelector& component,
                             const RuleData& rule);
@@ -91,6 +99,7 @@ class RuleSet {
   std::vector<RuleSet> deps_;
   tasm::SharedCSSFragment* fragment_ = nullptr;
   unsigned rule_count_ = 0;
+  bool has_adjacent_sibling_rules_ = false;
 };
 
 }  // namespace css

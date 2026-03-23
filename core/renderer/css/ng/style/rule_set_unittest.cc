@@ -142,5 +142,56 @@ TEST(RuleSetTest, FindBestRuleSetAndAdd_PlaceholderPseudo) {
   ASSERT_EQ(2u, rules.size());
 }
 
+TEST(RuleSetTest, HasAdjacentSiblingRules_DirectAdjacent) {
+  TestFragment fragment;
+  fragment.AddCSSRules(".a + .b");
+  EXPECT_TRUE(fragment.GetRuleSet().HasAdjacentSiblingRules());
+}
+
+TEST(RuleSetTest, HasAdjacentSiblingRules_NoAdjacent) {
+  TestFragment fragment;
+  fragment.AddCSSRules(".a .b");
+  EXPECT_FALSE(fragment.GetRuleSet().HasAdjacentSiblingRules());
+}
+
+TEST(RuleSetTest, HasAdjacentSiblingRules_ChildCombinator) {
+  TestFragment fragment;
+  fragment.AddCSSRules(".a > .b");
+  EXPECT_FALSE(fragment.GetRuleSet().HasAdjacentSiblingRules());
+}
+
+TEST(RuleSetTest, HasAdjacentSiblingRules_IndirectAdjacent) {
+  TestFragment fragment;
+  fragment.AddCSSRules(".a ~ .b");
+  EXPECT_FALSE(fragment.GetRuleSet().HasAdjacentSiblingRules());
+}
+
+TEST(RuleSetTest, HasAdjacentSiblingRules_SimpleSelector) {
+  TestFragment fragment;
+  fragment.AddCSSRules(".a");
+  EXPECT_FALSE(fragment.GetRuleSet().HasAdjacentSiblingRules());
+}
+
+TEST(RuleSetTest, HasAdjacentSiblingRules_MixedRules) {
+  TestFragment fragment;
+  fragment.AddCSSRules(".a .b");
+  EXPECT_FALSE(fragment.GetRuleSet().HasAdjacentSiblingRules());
+  fragment.AddCSSRules(".c + .d");
+  EXPECT_TRUE(fragment.GetRuleSet().HasAdjacentSiblingRules());
+}
+
+TEST(RuleSetTest, HasAdjacentSiblingRules_MergedDeps) {
+  TestFragment parent_fragment;
+  parent_fragment.AddCSSRules(".a .b");
+  EXPECT_FALSE(parent_fragment.GetRuleSet().HasAdjacentSiblingRules());
+
+  TestFragment dep_fragment;
+  dep_fragment.AddCSSRules(".c + .d");
+  EXPECT_TRUE(dep_fragment.GetRuleSet().HasAdjacentSiblingRules());
+
+  parent_fragment.GetRuleSet().Merge(dep_fragment.GetRuleSet());
+  EXPECT_TRUE(parent_fragment.GetRuleSet().HasAdjacentSiblingRules());
+}
+
 }  // namespace css
 }  // namespace lynx

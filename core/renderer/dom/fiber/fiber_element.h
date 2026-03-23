@@ -463,6 +463,7 @@ class FiberElement : public Element {
   void PrepareSelfForThreadedElementResolution();
 
   void InvalidateChildrenIfNeeded();
+  bool HasAdjacentSiblingRulesInStyleSheets();
 
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
