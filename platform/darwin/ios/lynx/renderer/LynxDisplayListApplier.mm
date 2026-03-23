@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBackgroundDrawable.h>
 #import <Lynx/LynxBackgroundUtils.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxRendererContext.h>
@@ -22,6 +23,14 @@ using namespace lynx::tasm;
 - (void)insertLayer:(CALayer *)layer forOp:(DisplayListOpType)op;
 - (BOOL)shouldInsertAsHostDecorationForOp:(DisplayListOpType)op;
 - (void)applyRoundedRect:(const RoundedRectangle &)box toLayer:(CALayer *)layer;
+- (CGRect)rectForRoundedRectangle:(const RoundedRectangle &)rect applyingOffsets:(BOOL)applyOffsets;
+- (CALayer *)createLinearGradientLayerWithAngle:(float)angle
+                                         colors:(NSArray<NSNumber *> *)colors
+                                          stops:(NSArray<NSNumber *> *)stops
+                                      originBox:(const RoundedRectangle &)originBox
+                                        clipBox:(const RoundedRectangle &)clipBox
+                                        repeatX:(int32_t)repeatX
+                                        repeatY:(int32_t)repeatY;
 - (LynxBorderRadii)borderRadiiWithRoundedRectangle:(const RoundedRectangle &)rect;
 - (void)applyRoundedMaskToLayer:(CALayer *)layer
                       maskFrame:(CGRect)maskFrame
@@ -334,8 +343,51 @@ using namespace lynx::tasm;
         break;
       }
       case DisplayListOpType::kLinearGradient: {
-        // TODO(songshourui.null): Implement actual linear gradient rendering on
-        // iOS once the display list consumer is ready to paint this op.
+        if (int_count < 6 || float_count < 1) {
+          break;
+        }
+
+        int32_t color_count = [self nextContentInt];
+        if (color_count < 0 || int_count < color_count + 6) {
+          break;
+        }
+
+        NSMutableArray<NSNumber *> *colors = [NSMutableArray arrayWithCapacity:color_count];
+        for (int32_t i = 0; i < color_count; ++i) {
+          [colors addObject:@([self nextContentInt])];
+        }
+
+        int32_t stop_count = [self nextContentInt];
+        if (stop_count < 0 || float_count < stop_count + 1) {
+          break;
+        }
+
+        int32_t origin_index = [self nextContentInt];
+        int32_t clip_index = [self nextContentInt];
+        int32_t repeat_x = [self nextContentInt];
+        int32_t repeat_y = [self nextContentInt];
+
+        if (origin_index < 0 || static_cast<size_t>(origin_index) >= box_array_.size() ||
+            clip_index < 0 || static_cast<size_t>(clip_index) >= box_array_.size()) {
+          break;
+        }
+
+        float angle = [self nextContentFloat];
+        NSMutableArray<NSNumber *> *stops = [NSMutableArray arrayWithCapacity:stop_count];
+        for (int32_t i = 0; i < stop_count; ++i) {
+          [stops addObject:@([self nextContentFloat] * 100.0f)];
+        }
+
+        CALayer *gradientLayer = [self createLinearGradientLayerWithAngle:angle
+                                                                   colors:colors
+                                                                    stops:stops
+                                                                originBox:box_array_[origin_index]
+                                                                  clipBox:box_array_[clip_index]
+                                                                  repeatX:repeat_x
+                                                                  repeatY:repeat_y];
+        if (gradientLayer != nil) {
+          [self insertLayer:gradientLayer];
+        }
         break;
       }
       default:
@@ -459,6 +511,61 @@ using namespace lynx::tasm;
   rect.origin.x += left_offset_;
   rect.origin.y += top_offset_;
   [layer setFrame:rect];
+}
+
+- (CGRect)rectForRoundedRectangle:(const RoundedRectangle &)rect
+                  applyingOffsets:(BOOL)applyOffsets {
+  CGRect boxRect = CGRectMake(rect.GetX(), rect.GetY(), rect.GetWidth(), rect.GetHeight());
+  if (applyOffsets) {
+    boxRect.origin.x += left_offset_;
+    boxRect.origin.y += top_offset_;
+  }
+  return boxRect;
+}
+
+- (CALayer *)createLinearGradientLayerWithAngle:(float)angle
+                                         colors:(NSArray<NSNumber *> *)colors
+                                          stops:(NSArray<NSNumber *> *)stops
+                                      originBox:(const RoundedRectangle &)originBox
+                                        clipBox:(const RoundedRectangle &)clipBox
+                                        repeatX:(int32_t)repeatX
+                                        repeatY:(int32_t)repeatY {
+  CGRect clipRect = [self rectForRoundedRectangle:clipBox applyingOffsets:YES];
+  if (CGRectIsEmpty(clipRect)) {
+    return nil;
+  }
+
+  CGRect localBorderRect = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
+  CGRect originRect = [self rectForRoundedRectangle:originBox applyingOffsets:YES];
+  CGRect localPaintRect =
+      CGRectOffset(originRect, -CGRectGetMinX(clipRect), -CGRectGetMinY(clipRect));
+
+  LynxBackgroundLinearGradientDrawable *drawable =
+      [[LynxBackgroundLinearGradientDrawable alloc] initWithArray:@[ @(angle), colors, stops ]];
+  if (drawable == nil) {
+    return nil;
+  }
+
+  drawable.repeatX = static_cast<LynxBackgroundRepeatType>(repeatX);
+  drawable.repeatY = static_cast<LynxBackgroundRepeatType>(repeatY);
+  [drawable prepareGradientWithBorderBox:localBorderRect
+                             andPaintBox:localPaintRect
+                             andClipRect:localBorderRect];
+
+  CALayer *layer = drawable.verticalRepeatLayer;
+  if (layer == nil) {
+    return nil;
+  }
+
+  layer.frame = clipRect;
+
+  if (clipBox.HasRadius()) {
+    RoundedRectangle localClipBox = clipBox;
+    localClipBox.SetX(0);
+    localClipBox.SetY(0);
+    [self applyRoundedRect:localClipBox toLayer:layer];
+  }
+  return layer;
 }
 
 - (void)applyRoundedRect:(const RoundedRectangle &)box toLayer:(CALayer *)layer {
