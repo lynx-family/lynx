@@ -198,16 +198,13 @@ using namespace lynx::tasm;
 }
 
 - (void)testProcessContentOperationsWithLinearGradientKeepsFollowingOpsAligned {
-  id mockUIView = OCMClassMock([LynxMockView class]);
-  id mockLayer = OCMClassMock([CALayer class]);
-  id mockContext = OCMClassMock([LynxRendererContext class]);
-  [[[mockUIView stub] andReturn:mockLayer] layer];
-
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
-                                                                      andContext:mockContext];
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
 
   DisplayList list;
-  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 50.0f, 50.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 12.0f, 80.0f, 60.0f);
 
   lynx::base::Vector<uint32_t> colors;
   colors.push_back(0xFFFF0000);
@@ -215,19 +212,78 @@ using namespace lynx::tasm;
   lynx::base::Vector<float> stops;
   stops.push_back(0.0f);
   stops.push_back(1.0f);
-  list.AddLinearGradient(90.0f, colors, stops, 0, 0, 0, 1);
+  list.AddLinearGradient(90.0f, colors, stops, 0, 1, 1, 1);
+
+  list.AddOperation(DisplayListOpType::kRecordBox, 5.0f, 6.0f, 10.0f, 12.0f);
+  list.AddOperation(DisplayListOpType::kFill, (int32_t)0xFF00FF00, 2);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 2u);
+  CALayer *gradientLayer = view.layer.sublayers[0];
+  CALayer *fillLayer = view.layer.sublayers[1];
+
+  XCTAssertEqualWithAccuracy(gradientLayer.frame.origin.x, 10.0f, 0.001f);
+  XCTAssertEqualWithAccuracy(gradientLayer.frame.origin.y, 12.0f, 0.001f);
+  XCTAssertEqualWithAccuracy(gradientLayer.frame.size.width, 80.0f, 0.001f);
+  XCTAssertEqualWithAccuracy(gradientLayer.frame.size.height, 60.0f, 0.001f);
+  XCTAssertTrue([gradientLayer isKindOfClass:[CAReplicatorLayer class]]);
+  XCTAssertNotNil(gradientLayer.sublayers.firstObject);
+
+  XCTAssertTrue(CGRectEqualToRect(fillLayer.frame, CGRectMake(5, 6, 10, 12)));
+}
+
+- (void)testProcessContentOperationsWithLinearGradientInvalidIndexKeepsFollowingOpsAligned {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 100.0f, 100.0f);
+
+  lynx::base::Vector<uint32_t> colors;
+  colors.push_back(0xFFFF0000);
+  colors.push_back(0xFF0000FF);
+  lynx::base::Vector<float> stops;
+  stops.push_back(0.0f);
+  stops.push_back(1.0f);
+  list.AddLinearGradient(90.0f, colors, stops, 0, 99, 1, 1);
 
   list.AddOperation(DisplayListOpType::kRecordBox, 5.0f, 6.0f, 10.0f, 12.0f);
   list.AddOperation(DisplayListOpType::kFill, (int32_t)0xFF00FF00, 1);
 
-  [[mockLayer expect] insertSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
-                        return CGRectEqualToRect(layer.frame, CGRectMake(5, 6, 10, 12));
-                      }]
-                             atIndex:0];
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *fillLayer = view.layer.sublayers.firstObject;
+  XCTAssertTrue(CGRectEqualToRect(fillLayer.frame, CGRectMake(5, 6, 10, 12)));
+}
+
+- (void)testProcessContentOperationsWithLinearGradientRoundedClipAppliesMask {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 12.0f, 80.0f, 60.0f, 4.0f, 4.0f, 8.0f,
+                    8.0f, 12.0f, 12.0f, 16.0f, 16.0f);
+
+  lynx::base::Vector<uint32_t> colors;
+  colors.push_back(0xFFFF0000);
+  colors.push_back(0xFF0000FF);
+  lynx::base::Vector<float> stops;
+  stops.push_back(0.0f);
+  stops.push_back(1.0f);
+  list.AddLinearGradient(90.0f, colors, stops, 0, 1, 1, 1);
 
   [applier applyDisplayList:&list];
 
-  [mockLayer verify];
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *gradientLayer = view.layer.sublayers.firstObject;
+  XCTAssertNotNil(gradientLayer.mask);
+  XCTAssertTrue([gradientLayer.mask isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertTrue(((CAShapeLayer *)gradientLayer.mask).path != nil);
 }
 
 - (void)testProcessContentOperationsWithClipRectPartial {
@@ -389,6 +445,27 @@ using namespace lynx::tasm;
   XCTAssertNotNil(layer);
   XCTAssertEqualWithAccuracy(layer.cornerRadius, 6.0f, 0.001f);
   XCTAssertTrue(layer.masksToBounds);
+}
+
+- (void)testFillAppliesNonUniformCornerRadiusMask {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 12.0f, 40.0f, 50.0f, 2.0f, 2.0f, 6.0f,
+                    6.0f, 10.0f, 10.0f, 14.0f, 14.0f);
+  list.AddOperation(DisplayListOpType::kFill, (int32_t)0xFFFF0000, 0);
+
+  [applier applyDisplayList:&list];
+
+  CALayer *layer = view.layer.sublayers.firstObject;
+  XCTAssertNotNil(layer);
+  XCTAssertEqualWithAccuracy(layer.cornerRadius, 0.0f, 0.001f);
+  XCTAssertFalse(layer.masksToBounds);
+  XCTAssertNotNil(layer.mask);
+  XCTAssertTrue([layer.mask isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertTrue(((CAShapeLayer *)layer.mask).path != nil);
 }
 
 - (void)testBeginWithMatchingSign {
