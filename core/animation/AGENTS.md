@@ -20,6 +20,7 @@ This directory contains Lynx core animation code: shared animation primitives, C
 - `keyframe_effect.*`: element-facing effect container for root animation code. It holds the per-curve `KeyframeModel` instances used by CSS animation and transition flows.
 - `keyframe_model.*`: shared root-level model for animation run state and curve progression in the CSS animation path.
 - `transform_animation_curve.*` and `keyframed_animation_curve.*`: property-specific curve implementations used by CSS animations and transitions.
+- `testing/mock_animation.cc`, `testing/mock_css_keyframe_manager.cc`, and `testing/mock_css_transition_manager.cc`: test doubles used by `animation_unittests_exec`. Keep test-only assumptions here and out of production code.
 
 ## Layer Choice
 
@@ -33,6 +34,18 @@ This directory contains Lynx core animation code: shared animation primitives, C
 - If you are changing CSS animation parsing or how CSS keyframes become runtime curves, start from `css_keyframe_manager.*`.
 - If you are changing transition construction, transition restart/stop behavior, or property expansion such as `all`, `margin`, or `padding`, start from `css_transition_manager.*`.
 - If you are changing generic animation lifecycle semantics such as play, pause, stop, dummy-start ticking, or frame scheduling, inspect the root `animation.*` files and compare behavior with `basic_animation/basic_animation.*`.
+
+## Cross-Layer Handoffs
+
+- CSS animation tokens and transition declarations usually enter from the renderer CSS layer, then flow through `css_keyframe_manager.*` or `css_transition_manager.*`, and finally surface back through renderer element style updates.
+- Transition bugs that look like "wrong property set" often sit on the boundary between animation property expansion here and style/value ownership in `style/` or `renderer/css/`.
+- Event-order or first-frame issues often cross the boundary between animation lifecycle here and renderer/shell timing of style application.
+
+## What To Inspect Together
+
+- Inspect `css_keyframe_manager.*`, `keyframe_effect.*`, and `keyframe_model.*` together when a keyframe animation uses the wrong property set or curve type.
+- Inspect `css_transition_manager.*` together with style/value ownership in `style/` or `renderer/css/` when transition expansion of `all`, `margin`, `padding`, or border shorthands changes.
+- Inspect `animation.*` together with renderer-side style application when first-frame appearance, restart behavior, or animation events regress.
 
 ## Edit Rules
 
@@ -54,6 +67,7 @@ This directory contains Lynx core animation code: shared animation primitives, C
 - First-frame style flicker or missing initial animated state often points to lifecycle changes around the dummy start time or first tick path in `animation.*`.
 - Transitions that stop restarting, refuse to cancel, or only animate part of an aggregate property often point to `css_transition_manager.*`.
 - CSS keyframe animations that animate the wrong property set or use the wrong curve type often point to model construction in `css_keyframe_manager.*`.
+- Unit tests that only fail through mocks often point to assumptions drifting between `testing/mock_*` helpers and the production managers they stand in for.
 
 ## Validate
 
@@ -74,6 +88,13 @@ Expand validation when appropriate:
 - If you changed shared keyframe/timing/value abstractions, use `lynx-cpp-test` to run both `basic_animation_unittests_exec` and `animation_unittests_exec`.
 - If you changed adapter-side callback or VSync behavior, use `lynx-cpp-test` to run `lynx_basic_animator_unittests_exec` and consider whether the shared layer tests should also run.
 - If you changed `utils/*`, easing selection, cubic bezier math, or timing-function behavior, use `lynx-cpp-test` to run `animation_utils_unittests_exec`.
+- If animation behavior changed because of CSS token conversion or element-style handoff, also consider `css_test_exec` or `dom_unittest_exec` in the renderer tree.
+
+## Coverage Reality
+
+- `animation_unittests_exec` covers lifecycle, keyframe/transition manager behavior, and curve/model semantics with substantial mock and renderer-test-helper support.
+- That coverage is good for root animation rules, but it is still weaker than real renderer flows at catching style-application timing and cross-module ownership drift.
+- If a fix changes CSS token conversion, aggregate property expansion, or element event timing, do not trust the animation target alone when renderer tests are available.
 
 ## Notes
 
