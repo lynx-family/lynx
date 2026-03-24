@@ -123,7 +123,7 @@ void PaintingContextHarmonyRef::UpdateLayout(
 }
 
 void PaintingContextHarmonyRef::OnLayoutFinish(int32_t list_comp_id,
-                                               int32_t operation_id) {
+                                               int64_t operation_id) {
   ui_owner_->OnLayoutFinish(list_comp_id, operation_id);
 }
 

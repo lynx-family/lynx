@@ -58,7 +58,7 @@ class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
                     const float* paddings, const float* margins,
                     const float* borders, const float* sticky, float max_height,
                     uint32_t node_index);
-  void OnLayoutFinish(int32_t list_comp_id, int32_t operation_id);
+  void OnLayoutFinish(int32_t list_comp_id, int64_t operation_id);
   void StopExposure(const lepus::Value& options);
   void ResumeExposure();
   void UpdateExtraData(
