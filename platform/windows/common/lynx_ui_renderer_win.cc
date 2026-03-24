@@ -152,6 +152,14 @@ void LynxUIRendererWin::SetFrame(float x, float y, float width, float height) {
   }
 }
 
+void LynxUIRendererWin::Reset() {
+  auto* view_context =
+      static_cast<clay::ViewContext*>(engine_->GetViewContext());
+  if (view_context) {
+    view_context->ResetPageView();
+  }
+}
+
 void LynxUIRendererWin::OnEnterForeground() { engine_->OnEnterForeground(); }
 
 void LynxUIRendererWin::OnEnterBackground() { engine_->OnEnterBackground(); }

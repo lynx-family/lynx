@@ -129,7 +129,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
   int32_t GetInstanceId();
 
-  void Reset();
+  void Reset(bool wait_for_runtime_detach = true);
 
   void SetTemplateVerification(TemplateVerification verification) {
     template_verification_ = verification;
@@ -279,7 +279,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::unique_ptr<shell::LynxShell> shell_;
   tasm::UIDelegate* ui_delegate_;
   std::shared_ptr<WeakFlag> weak_flag_;
+  std::shared_ptr<runtime::js::LynxModuleManager> preset_module_manager_;
   std::shared_ptr<runtime::js::LynxModuleManager> module_manager_;
+
   std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>
       perf_controller_ptr_;
   RuntimeProxyCallback runtime_proxy_callback_;

@@ -8,9 +8,13 @@
 #include <vector>
 
 #include "core/runtime/lepus/json_parser.h"
+#include "platform/embedder/lynx_view_priv.h"
 
 namespace lynx {
 namespace embedder {
+
+LynxViewClients::LynxViewClients(lynx_view_t* lynx_view)
+    : lynx_view_(lynx_view) {}
 
 void LynxViewClients::AddClient(lynx_view_client_t* client) {
   if (std::find(clients_.begin(), clients_.end(), client) == clients_.end()) {
@@ -96,7 +100,32 @@ void LynxViewClients::OnLoadTemplate(
 
 void LynxViewClients::OnReloadTemplate(
     const std::string& url, const std::vector<uint8_t>& source,
-    const std::shared_ptr<tasm::TemplateData>& data) {}
+    const std::shared_ptr<tasm::TemplateData>& data) {
+  auto& ui_renderer = lynx_view_->lynx_ui_renderer;
+  auto& template_renderer = lynx_view_->lynx_template_renderer;
+  // Reset ui renderer
+  ui_renderer->Reset();
+  // Reset template renderer
+  template_renderer->Reset(true);
+  if (lynx_view_->global_props) {
+    // Update global props if available
+    template_renderer->UpdateGlobalProps(lynx_view_->global_props->GetValue());
+  }
+  // Load template
+  if (!source.empty()) {
+    std::shared_ptr<tasm::PipelineOptions> pipeline_options = nullptr;
+    template_renderer->LoadTemplate(url, source, pipeline_options, data);
+  } else {
+    template_renderer->LoadTemplateFromURL(url, data);
+  }
+  // Update screen metrics & viewport
+  auto& settings = template_renderer->GetSettings();
+  lynx_view_update_screen_metrics(lynx_view_, settings.screen_size.cx,
+                                  settings.screen_size.cy,
+                                  settings.device_pixel_ratio);
+  lynx_view_set_frame(lynx_view_, 0, 0, ui_renderer->GetWidth(),
+                      ui_renderer->GetHeight());
+}
 
 void LynxViewClients::OnLoadTemplateBundle(
     const std::string& url, const tasm::LynxTemplateBundle& template_bundle,

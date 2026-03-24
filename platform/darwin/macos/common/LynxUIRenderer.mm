@@ -223,6 +223,7 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
 }
 
 LynxUIRendererImpl::~LynxUIRendererImpl() {
+  ui_delegate_.reset();
   if (lynx_ui_renderer_) {
     (void)(__bridge_transfer id)lynx_ui_renderer_;
   }
@@ -252,6 +253,18 @@ void LynxUIRendererImpl::SetFrame(float x, float y, float width, float height) {
   LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
   CGRect frame = CGRectMake(x, y, width, height);
   [lynx_ui_renderer setFrame:frame];
+}
+
+void LynxUIRendererImpl::Reset() {
+  if (!lynx_ui_renderer_) {
+    return;
+  }
+  LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+  auto* view_context =
+      reinterpret_cast<clay::ViewContext*>(lynx_ui_renderer.clayViewProvider.clayViewContext);
+  if (view_context) {
+    view_context->ResetPageView();
+  }
 }
 
 void LynxUIRendererImpl::OnEnterForeground() {

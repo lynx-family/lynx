@@ -32,6 +32,7 @@ struct lynx_view_t {
   std::shared_ptr<lynx::embedder::LynxResourceFetcherHolder>
       resource_fetcher_holder = nullptr;
   lynx_vsync_monitor_t* custom_vsync_monitor = nullptr;
+  std::shared_ptr<lynx::tasm::TemplateData> global_props = nullptr;
   void* user_data = nullptr;
 };
 

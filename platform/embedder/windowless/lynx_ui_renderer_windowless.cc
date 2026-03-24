@@ -153,6 +153,13 @@ void LynxUIRendererWindowless::SetFrame(float x, float y, float width,
   }
 }
 
+void LynxUIRendererWindowless::Reset() {
+  if (auto* vc =
+          static_cast<clay::ViewContext*>(headless_engine_->GetViewContext())) {
+    vc->ResetPageView();
+  }
+}
+
 void LynxUIRendererWindowless::OnEnterForeground() {
   headless_engine_->OnEnterForeground();
 }

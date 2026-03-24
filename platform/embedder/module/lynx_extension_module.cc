@@ -245,6 +245,8 @@ void ExtensionModuleImpl::SetRuntimeReadyState(void* opaque_env,
 }
 
 void ExtensionModuleImpl::SetRuntimeDetachedState() {
+  napi_module_.reset();
+  methods_.clear();
   if (!c_module_ || !c_module_->on_runtime_detach_func) {
     LOGE("ExtensionModuleImpl c_module or on_runtime_detach_func is nullptr");
     return;

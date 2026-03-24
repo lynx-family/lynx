@@ -29,6 +29,8 @@ class LynxUIRendererWin : public LynxUIRenderer {
   void SetPixelRatio(float pixel_ratio) override;
   void SetFrame(float x, float y, float width, float height) override;
 
+  void Reset() override;
+
   void OnEnterForeground() override;
 
   void OnEnterBackground() override;

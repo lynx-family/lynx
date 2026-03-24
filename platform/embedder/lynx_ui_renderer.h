@@ -42,6 +42,14 @@ class LynxUIRenderer {
     height_ = height;
   }
 
+  float GetWidth() const { return width_; }
+
+  float GetHeight() const { return height_; }
+
+  float GetPixelRatio() const { return pixel_ratio_; }
+
+  virtual void Reset() {}
+
   virtual void OnEnterForeground() = 0;
 
   virtual void OnEnterBackground() = 0;

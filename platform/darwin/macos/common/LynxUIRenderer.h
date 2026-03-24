@@ -25,6 +25,8 @@ class LynxUIRendererImpl : public LynxUIRenderer {
 
   void SetFrame(float x, float y, float width, float height) override;
 
+  void Reset() override;
+
   void OnEnterForeground() override;
 
   void OnEnterBackground() override;

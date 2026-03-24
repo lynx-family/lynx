@@ -14,11 +14,13 @@
 #include "platform/embedder/core/lynx_template_renderer.h"
 #include "platform/embedder/lynx_view_client_priv.h"
 
+struct lynx_view_t;
+
 namespace lynx {
 namespace embedder {
 class LynxViewClients : public TemplateRendererClient {
  public:
-  LynxViewClients() = default;
+  explicit LynxViewClients(lynx_view_t* lynx_view);
   virtual ~LynxViewClients() = default;
 
   void AddClient(lynx_view_client_t* client);
@@ -66,6 +68,7 @@ class LynxViewClients : public TemplateRendererClient {
                      int64_t frame_finish_time_in_ns);
 
  private:
+  lynx_view_t* lynx_view_;
   std::list<lynx_view_client_t*> clients_;
 };
 }  // namespace embedder

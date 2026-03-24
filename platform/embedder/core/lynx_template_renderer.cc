@@ -52,7 +52,7 @@ LynxTemplateRenderer::LynxTemplateRenderer(
     : settings_(settings),
       ui_delegate_(ui_delegate),
       weak_flag_(std::make_shared<WeakFlag>(this)),
-      module_manager_(module_manager),
+      preset_module_manager_(module_manager),
       perf_controller_ptr_(std::move(perf_controller_ptr)),
       runtime_proxy_callback_(runtime_proxy_callback) {
   if (!perf_controller_ptr_) {
@@ -78,7 +78,14 @@ int32_t LynxTemplateRenderer::GetInstanceId() {
   return shell_->GetInstanceId();
 }
 
-void LynxTemplateRenderer::Reset() {
+void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
+  if (shell_ && wait_for_runtime_detach) {
+    // For some scenarios, we need to wait for runtime detach to complete before
+    // resetting the shell. Post an empty sync task to ensure that.
+    auto task_runner = shell_->GetRunners()->GetJSTaskRunner();
+    shell_.reset();
+    task_runner->PostSyncTask([]() {});
+  }
   // If the screen size is physical, density equals the device pixel ratio and
   // the ratio should be 1. If the screen size is a logical size, density equals
   // 1, the ratio should be device pixel ratio.
@@ -137,6 +144,7 @@ void LynxTemplateRenderer::Reset() {
       std::make_shared<shell::LynxLayoutProxyImpl>(shell_->GetLayoutActor());
 
   // InitJSBridge
+  module_manager_ = preset_module_manager_;
   if (!module_manager_) {
     module_manager_ = std::make_shared<runtime::js::LynxModuleManager>();
   }
