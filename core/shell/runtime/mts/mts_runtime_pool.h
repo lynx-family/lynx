@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_LEPUS_CONTEXT_POOL_H_
-#define CORE_RUNTIME_LEPUS_CONTEXT_POOL_H_
+#ifndef CORE_SHELL_RUNTIME_MTS_MTS_RUNTIME_POOL_H_
+#define CORE_SHELL_RUNTIME_MTS_MTS_RUNTIME_POOL_H_
 
 #include <memory>
 #include <mutex>
@@ -16,31 +16,31 @@
 #include "core/template_bundle/template_codec/compile_options.h"
 
 namespace lynx {
-namespace lepus {
+namespace shell {
 
-class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
+class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
  public:
-  static std::shared_ptr<LynxContextPool> Create(
+  static std::shared_ptr<MTSRuntimePool> Create(
       runtime::ContextType context_type, bool disable_tracing_gc);
   // ContextPool must check its own life cycle asynchronously when
   // replenishing the cache, so it can only exist in the form of shared_ptr
-  static std::shared_ptr<LynxContextPool> Create(
+  static std::shared_ptr<MTSRuntimePool> Create(
       runtime::ContextType context_type, bool disable_tracing_gc,
       const std::shared_ptr<runtime::ContextBundle>& context_bundle,
       const tasm::CompileOptions& compile_options,
       tasm::PageConfig* page_configs);
 
-  ~LynxContextPool() = default;
+  ~MTSRuntimePool() = default;
 
-  LynxContextPool(const LynxContextPool&) = delete;
-  LynxContextPool& operator=(const LynxContextPool&) = delete;
+  MTSRuntimePool(const MTSRuntimePool&) = delete;
+  MTSRuntimePool& operator=(const MTSRuntimePool&) = delete;
 
-  LynxContextPool(LynxContextPool&&) = delete;
-  LynxContextPool& operator=(LynxContextPool&&) = delete;
+  MTSRuntimePool(MTSRuntimePool&&) = delete;
+  MTSRuntimePool& operator=(MTSRuntimePool&&) = delete;
 
   void FillPool(int32_t count);
 
-  std::shared_ptr<runtime::MTSRuntime> TakeContextSafely();
+  std::shared_ptr<runtime::MTSRuntime> TakeMTSRuntimeSafely();
 
   void SetEnableAutoGenerate(bool enable);
 
@@ -49,13 +49,13 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
   // determine its size.
   // The local pool in TemplateBundle hold context_bundle_ and have no need to
   // check settings.
-  LynxContextPool(runtime::ContextType context_type, bool disable_tracing_gc)
+  MTSRuntimePool(runtime::ContextType context_type, bool disable_tracing_gc)
       : context_type_(context_type), disable_tracing_gc_(disable_tracing_gc) {}
 
-  LynxContextPool(runtime::ContextType context_type, bool disable_tracing_gc,
-                  const std::shared_ptr<runtime::ContextBundle>& context_bundle,
-                  const tasm::CompileOptions& compile_options,
-                  tasm::PageConfig* page_configs)
+  MTSRuntimePool(runtime::ContextType context_type, bool disable_tracing_gc,
+                 const std::shared_ptr<runtime::ContextBundle>& context_bundle,
+                 const tasm::CompileOptions& compile_options,
+                 tasm::PageConfig* page_configs)
       : context_type_(context_type),
         disable_tracing_gc_(disable_tracing_gc),
         enable_signal_api_(
@@ -66,7 +66,7 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
         enable_mts_pre_execute_(
             page_configs ? page_configs->GetEnableMTSPreExecute() : false) {}
 
-  void AddContextSafely(int32_t count);
+  void AddMTSRuntimeSafely(int32_t count);
 
   bool enable_auto_generate_{true};
 
@@ -80,10 +80,10 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
   const bool enable_mts_pre_execute_{false};
 
   std::mutex mtx_;
-  base::InlineVector<std::shared_ptr<runtime::MTSRuntime>, 8> contexts_;
+  base::InlineVector<std::shared_ptr<runtime::MTSRuntime>, 8> mts_runtimes_;
 };
 
-}  // namespace lepus
+}  // namespace shell
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_LEPUS_CONTEXT_POOL_H_
+#endif  // CORE_SHELL_RUNTIME_MTS_MTS_RUNTIME_POOL_H_

@@ -55,6 +55,8 @@ shell_shared_sources = [
   "runtime/bts/lynx_bts_runtime_proxy_impl.h",
   "runtime/mts/mts_runtime.cc",
   "runtime/mts/mts_runtime.h",
+  "runtime/mts/mts_runtime_pool.cc",
+  "runtime/mts/mts_runtime_pool.h",
   "tasm_mediator.cc",
   "tasm_mediator.h",
   "tasm_operation_queue.cc",

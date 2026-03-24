@@ -62,8 +62,8 @@ bool TemplateEntry::ConstructContext(
       use_context_pool || template_bundle().EnableUseContextPool();
   if (enable_use_context_pool) {
     // 1. try to take context for local pool
-    if (template_bundle().context_pool_) {
-      vm_context_ = template_bundle().context_pool_->TakeContextSafely();
+    if (template_bundle().mts_runtime_pool_) {
+      vm_context_ = template_bundle().mts_runtime_pool_->TakeMTSRuntimeSafely();
     }
     if (vm_context_) {
       source_type = LepusContextSourceType::kFromLocalPool;
@@ -72,7 +72,7 @@ bool TemplateEntry::ConstructContext(
       // for global pool
       vm_context_ = LynxGlobalPool::GetInstance()
                         .GetQuickContextPool()
-                        .TakeContextSafely();
+                        .TakeMTSRuntimeSafely();
       source_type =
           vm_context_ ? LepusContextSourceType::kFromGlobalPool : source_type;
     }

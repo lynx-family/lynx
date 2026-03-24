@@ -56,7 +56,7 @@ void LynxTemplateBundle::PrepareVMByConfigs() {
   const bool disable_tracing_gc =
       page_configs_ && page_configs_->GetDisableQuickTracingGC();
 
-  context_pool_ = lepus::LynxContextPool::Create(
+  mts_runtime_pool_ = shell::MTSRuntimePool::Create(
       context_type_, disable_tracing_gc, context_bundle_, compile_options_,
       page_configs_.get());
 
@@ -64,26 +64,26 @@ void LynxTemplateBundle::PrepareVMByConfigs() {
   // the ability for the client to force pre-creation
   if (page_configs_ && page_configs_->GetEnableUseContextPool()) {
     constexpr int32_t kLocalQuickContextPoolSize = 1;
-    context_pool_->FillPool(kLocalQuickContextPoolSize);
+    mts_runtime_pool_->FillPool(kLocalQuickContextPoolSize);
   }
 }
 
 bool LynxTemplateBundle::PrepareLepusContext(int32_t count) {
-  if (!context_pool_ || count <= 0) {
+  if (!mts_runtime_pool_ || count <= 0) {
     return false;
   }
 
   // a maximum of 20 contexts can be created in a single task
   constexpr int32_t kOnePatchMaxSize = 20;
-  context_pool_->FillPool(std::min(kOnePatchMaxSize, count));
+  mts_runtime_pool_->FillPool(std::min(kOnePatchMaxSize, count));
 
   force_use_context_pool_ = true;
   return true;
 }
 
 void LynxTemplateBundle::SetEnableVMAutoGenerate(bool enable) {
-  if (context_pool_) {
-    context_pool_->SetEnableAutoGenerate(enable);
+  if (mts_runtime_pool_) {
+    mts_runtime_pool_->SetEnableAutoGenerate(enable);
   }
 }
 

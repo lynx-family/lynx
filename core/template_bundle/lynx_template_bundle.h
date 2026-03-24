@@ -20,7 +20,7 @@
 #include "core/renderer/template_themed.h"
 #include "core/renderer/utils/base/element_template_info.h"
 #include "core/runtime/js/js_bundle.h"
-#include "core/runtime/lepus/context_pool.h"
+#include "core/shell/runtime/mts/mts_runtime_pool.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/binary_decoder/parallel_parse_task_scheduler.h"
 #include "core/template_bundle/template_codec/compile_options.h"
@@ -242,7 +242,7 @@ class LynxTemplateBundle final {
 
   // body - lepus context binary
   std::shared_ptr<runtime::ContextBundle> context_bundle_{nullptr};
-  std::shared_ptr<lepus::LynxContextPool> context_pool_{nullptr};
+  std::shared_ptr<shell::MTSRuntimePool> mts_runtime_pool_{nullptr};
 
   // fiber - lepus chunk binary
   std::shared_ptr<LepusChunkManager> lepus_chunk_manager_;

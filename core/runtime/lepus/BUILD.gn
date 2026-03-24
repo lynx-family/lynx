@@ -7,7 +7,7 @@ import("../../Lynx.gni")
 import("build.gni")
 
 lynx_core_source_set("lepus") {
-  sources = lynx_lepus_common_sources_path + lynx_context_pool_sources_path
+  sources = lynx_lepus_common_sources_path
   include_dirs = [ "//third_party/PrimTS/src" ]
   if (is_android) {
     if (!enable_just_lepusng) {
@@ -69,7 +69,6 @@ unittest_set("lepus_testset") {
     "//${lynx_dir}/core/runtime/lepus/binary_input_stream_unittest.cc",
     "binary_input_stream_unittest.h",
     "context_decoder_unittests.cc",
-    "context_pool_unittest.cc",
     "function_api_unittest.cc",
     "json_parser_unittest.cc",
     "lepus_error_helper_unittest.cc",
