@@ -11,6 +11,7 @@
 #include "base/include/value/table.h"
 #include "core/base/js_constants.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/dom/android/lynx_view_data_manager_android.h"
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/tasm/react/android/mapbuffer/readable_map_buffer.h"
 #include "core/renderer/utils/value_utils.h"
@@ -252,6 +253,26 @@ void PropBundleAndroid::SetProps(const pub::Value& value) {
   value.ForeachMap([this](const pub::Value& k, const pub::Value& v) {
     SetProps(k.str().c_str(), v);
   });
+}
+
+void PropBundleAndroid::SetNativeTemplateData(
+    const char* key, const std::shared_ptr<TemplateData>& value) {
+  if (value == nullptr) {
+    return;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  auto template_data =
+      LynxViewDataManagerAndroid::CreateJavaTemplateData(env, value);
+  if (template_data.IsNull()) {
+    return;
+  }
+  Java_PropBundle_putTemplateData(env, jni_object_->Get(), jni_key.Get(),
+                                  template_data.Get());
 }
 
 bool PropBundleAndroid::Contains(const char* key) const {

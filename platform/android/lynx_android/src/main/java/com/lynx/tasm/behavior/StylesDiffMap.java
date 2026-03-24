@@ -10,6 +10,7 @@ import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.MapBuffer;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBufferWrapper;
+import com.lynx.tasm.TemplateData;
 
 public class StylesDiffMap {
   public final ReadableMap mBackingMap;
@@ -84,6 +85,11 @@ public class StylesDiffMap {
   @Nullable
   public ReadableMap getMap(String key) {
     return mBackingMap.getMap(key);
+  }
+
+  @Nullable
+  public TemplateData getTemplateData(String key) {
+    return mBackingMap.getTemplateData(key);
   }
 
   @Nullable

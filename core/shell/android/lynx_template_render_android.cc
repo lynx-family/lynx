@@ -14,6 +14,7 @@
 #include "core/public/ui_delegate.h"
 #include "core/renderer/data/android/platform_data_android.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
+#include "core/renderer/dom/android/lynx_view_data_manager_android.h"
 #include "core/renderer/utils/android/event_converter_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
@@ -153,6 +154,35 @@ std::shared_ptr<lynx::tasm::PipelineOptions> ProcessLoadTemplateTimingOption(
   return pipeline_options;
 }
 
+std::shared_ptr<lynx::tasm::TemplateData> ConvertToTemplateData(
+    JNIEnv* env, const Value& value, bool read_only,
+    const std::string& processor_name, jobject android_template_data) {
+  if (android_template_data != nullptr) {
+    auto template_data =
+        lynx::tasm::LynxViewDataManagerAndroid::GetNativeTemplateData(
+            env, android_template_data);
+    if (template_data != nullptr) {
+      template_data->SetPlatformData(
+          std::make_unique<lynx::tasm::PlatformDataAndroid>(
+              lynx::base::android::ScopedGlobalJavaRef<jobject>(
+                  env, android_template_data)));
+      return template_data;
+    }
+  }
+
+  if (value.IsNil()) {
+    return nullptr;
+  }
+
+  auto template_data = std::make_shared<lynx::tasm::TemplateData>(
+      value, read_only, processor_name);
+  template_data->SetPlatformData(
+      std::make_unique<lynx::tasm::PlatformDataAndroid>(
+          lynx::base::android::ScopedGlobalJavaRef<jobject>(
+              env, android_template_data)));
+  return template_data;
+}
+
 void InternalLoadTemplate(JNIEnv* env, jlong ptr, jlong lifecycle,
                           jstring j_url, std::vector<uint8_t> j_binary,
                           const Value& value, const bool read_only_value,
@@ -161,18 +191,9 @@ void InternalLoadTemplate(JNIEnv* env, jlong ptr, jlong lifecycle,
                           jobject android_template_data,
                           bool enable_recycle_template_bundle,
                           jobject j_timing_option, jint options) {
-  // TODO(songshourui.null): add a method to get template_data with
-  // android_template_data
   std::shared_ptr<lynx::tasm::TemplateData> template_data =
-      value.IsNil() ? nullptr
-                    : std::make_shared<lynx::tasm::TemplateData>(
-                          value, read_only_value, processor_name);
-  if (template_data) {
-    template_data->SetPlatformData(
-        std::make_unique<lynx::tasm::PlatformDataAndroid>(
-            lynx::base::android::ScopedGlobalJavaRef<jobject>(
-                env, android_template_data)));
-  }
+      ConvertToTemplateData(env, value, read_only_value, processor_name,
+                            android_template_data);
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
@@ -197,18 +218,9 @@ void InternalLoadSSRData(JNIEnv* env, jlong ptr, jlong lifecycle,
                          const bool read_only_value,
                          const std::string& processor_name,
                          jobject android_template_data) {
-  // TODO(songshourui.null): add a method to get template_data with
-  // android_template_data
   std::shared_ptr<lynx::tasm::TemplateData> template_data =
-      value.IsNil() ? nullptr
-                    : std::make_shared<lynx::tasm::TemplateData>(
-                          value, read_only_value, processor_name);
-  if (template_data) {
-    template_data->SetPlatformData(
-        std::make_unique<lynx::tasm::PlatformDataAndroid>(
-            lynx::base::android::ScopedGlobalJavaRef<jobject>(
-                env, android_template_data)));
-  }
+      ConvertToTemplateData(env, value, read_only_value, processor_name,
+                            android_template_data);
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
@@ -223,18 +235,10 @@ void InternalLoadSSRData(JNIEnv* env, jlong ptr, jlong lifecycle,
 std::shared_ptr<lynx::tasm::TemplateData> ConvertToTemplateData(
     JNIEnv* env, jlong ptr, jboolean readOnly, jstring processorName,
     jobject android_template_data) {
-  // TODO(songshourui.null): add a method to get template_data with
-  // android_template_data
-  auto template_data = std::make_shared<lynx::tasm::TemplateData>(
-      ptr ? *(reinterpret_cast<Value*>(ptr)) : Value(), readOnly,
-      JNIConvertHelper::ConvertToString(env, processorName));
-  if (template_data) {
-    template_data->SetPlatformData(
-        std::make_unique<lynx::tasm::PlatformDataAndroid>(
-            lynx::base::android::ScopedGlobalJavaRef<jobject>(
-                env, android_template_data)));
-  }
-  return template_data;
+  return ConvertToTemplateData(
+      env, ptr ? *(reinterpret_cast<Value*>(ptr)) : Value(), readOnly,
+      JNIConvertHelper::ConvertToString(env, processorName),
+      android_template_data);
 }
 }  // namespace
 
@@ -598,22 +602,12 @@ void LoadTemplateBundleByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
                                        jboolean readOnly, jstring processorName,
                                        jobject android_template_data,
                                        jint options, jobject j_timing_option) {
-  // TODO(songshourui.null): add a method to get template_data with
-  // android_template_data
   std::string processor_name =
       JNIConvertHelper::ConvertToString(env, processorName);
   std::string url = JNIConvertHelper::ConvertToString(env, j_url);
   auto value = data ? *(reinterpret_cast<Value*>(data)) : Value();
-  auto template_data = value.IsNil()
-                           ? nullptr
-                           : std::make_shared<lynx::tasm::TemplateData>(
-                                 value, readOnly, processor_name);
-  if (template_data) {
-    template_data->SetPlatformData(
-        std::make_unique<lynx::tasm::PlatformDataAndroid>(
-            lynx::base::android::ScopedGlobalJavaRef<jobject>(
-                env, android_template_data)));
-  }
+  auto template_data = ConvertToTemplateData(
+      env, value, readOnly, processor_name, android_template_data);
 
   auto bundle = reinterpret_cast<lynx::tasm::LynxTemplateBundle*>(bundlePtr);
   lynx::tasm::LynxTemplateBundle copied_bundle = *bundle;
@@ -673,20 +667,8 @@ void UpdateDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
                                jboolean read_only_value,
                                jobject android_template_data,
                                jboolean is_reuse_engine) {
-  // TODO(songshourui.null): add a method to get template_data with
-  // android_template_data
-  const auto& value = data ? *(reinterpret_cast<Value*>(data)) : Value();
-  std::string processor_name =
-      JNIConvertHelper::ConvertToString(env, j_processor_name);
-  std::shared_ptr<lynx::tasm::TemplateData> template_data =
-      std::make_shared<lynx::tasm::TemplateData>(value, read_only_value,
-                                                 processor_name);
-  if (template_data) {
-    template_data->SetPlatformData(
-        std::make_unique<lynx::tasm::PlatformDataAndroid>(
-            lynx::base::android::ScopedGlobalJavaRef<jobject>(
-                env, android_template_data)));
-  }
+  auto template_data = ConvertToTemplateData(
+      env, data, read_only_value, j_processor_name, android_template_data);
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
@@ -701,18 +683,8 @@ void UpdateDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
 void UpdateMetaData(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                     jlong dataPtr, jstring processorName, jboolean readOnly,
                     jobject templateData, jlong globalPropsPtr) {
-  std::shared_ptr<lynx::tasm::TemplateData> updated_data = nullptr;
-  if (dataPtr != 0) {
-    std::string processor_name =
-        JNIConvertHelper::ConvertToString(env, processorName);
-    const auto& value = *(reinterpret_cast<Value*>(dataPtr));
-    updated_data = std::make_shared<lynx::tasm::TemplateData>(value, readOnly,
-                                                              processor_name);
-    updated_data->SetPlatformData(
-        std::make_unique<lynx::tasm::PlatformDataAndroid>(
-            lynx::base::android::ScopedGlobalJavaRef<jobject>(env,
-                                                              templateData)));
-  }
+  auto updated_data = ConvertToTemplateData(env, dataPtr, readOnly,
+                                            processorName, templateData);
 
   auto updated_global_props =
       globalPropsPtr ? *(reinterpret_cast<Value*>(globalPropsPtr)) : Value();
@@ -731,22 +703,8 @@ void ResetDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
                               jlong lifecycle, jlong data_ptr,
                               jstring j_processor_name, jboolean read_only,
                               jobject android_template_data) {
-  // TODO(songshourui.null): add a method to get template_data with
-  // android_template_data
-  const auto& value =
-      data_ptr ? *(reinterpret_cast<Value*>(data_ptr)) : Value();
-  std::string processor_name =
-      JNIConvertHelper::ConvertToString(env, j_processor_name);
-
-  std::shared_ptr<lynx::tasm::TemplateData> template_data =
-      std::make_shared<lynx::tasm::TemplateData>(value, read_only,
-                                                 processor_name);
-  if (template_data) {
-    template_data->SetPlatformData(
-        std::make_unique<lynx::tasm::PlatformDataAndroid>(
-            lynx::base::android::ScopedGlobalJavaRef<jobject>(
-                env, android_template_data)));
-  }
+  auto template_data = ConvertToTemplateData(
+      env, data_ptr, read_only, j_processor_name, android_template_data);
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);

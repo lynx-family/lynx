@@ -168,6 +168,26 @@ jlong CreateTemplateData(JNIEnv* env, jclass jcaller, jlong data,
   return reinterpret_cast<jlong>(ptr);
 }
 
+jlong CloneDataFromTemplateData(JNIEnv* env, jclass jcaller, jlong ptr) {
+  if (ptr == 0) {
+    return 0;
+  }
+
+  auto template_data_ptr =
+      reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(ptr);
+  if (*template_data_ptr == nullptr) {
+    return 0;
+  }
+
+  const auto& value = (*template_data_ptr)->GetValue();
+  if (value.IsNil()) {
+    return 0;
+  }
+
+  auto* cloned_data = new lynx::lepus::Value(lynx::lepus::Value::Clone(value));
+  return reinterpret_cast<jlong>(cloned_data);
+}
+
 void ReleaseTemplateData(JNIEnv* env, jclass jcaller, jlong ptr) {
   if (ptr == 0) {
     return;
@@ -201,14 +221,55 @@ LynxViewDataManagerAndroid::GetTemplateDataForJSThread(JNIEnv* env,
   return Java_TemplateData_getTemplateDataForJSThread(env, jni_object);
 }
 
+lynx::base::android::ScopedLocalJavaRef<jobject>
+LynxViewDataManagerAndroid::CreateJavaTemplateData(
+    JNIEnv* env, const std::shared_ptr<TemplateData>& template_data) {
+  if (template_data == nullptr) {
+    return lynx::base::android::ScopedLocalJavaRef<jobject>(env, nullptr);
+  }
+
+  auto* ptr = new std::shared_ptr<lynx::tasm::TemplateData>(template_data);
+  base::android::ScopedLocalJavaRef<jstring> processor_name(env, nullptr);
+  if (!template_data->PreprocessorName().empty()) {
+    processor_name = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+        env, template_data->PreprocessorName().c_str());
+  }
+  auto result = Java_TemplateData_createNativeBacked(
+      env, reinterpret_cast<jlong>(ptr), template_data->IsReadOnly(),
+      processor_name.Get());
+  if (result.IsNull()) {
+    delete ptr;
+  }
+  return result;
+}
+
 lepus::Value LynxViewDataManagerAndroid::GetTemplateDataNativeData(
     JNIEnv* env, jobject jni_object) {
   if (jni_object == nullptr) {
     return lepus::Value();
   }
+
+  auto template_data = GetNativeTemplateData(env, jni_object);
+  if (template_data != nullptr) {
+    return template_data->GetValue();
+  }
+
+  auto ptr = Java_TemplateData_getLegacyNativeData(env, jni_object);
+  return ptr ? *(reinterpret_cast<lepus::Value*>(ptr)) : lepus::Value();
+}
+
+std::shared_ptr<TemplateData> LynxViewDataManagerAndroid::GetNativeTemplateData(
+    JNIEnv* env, jobject jni_object) {
+  if (jni_object == nullptr) {
+    return nullptr;
+  }
+
   auto ptr = Java_TemplateData_getNativeTemplateData(env, jni_object);
-  auto value = ptr ? *(reinterpret_cast<lepus::Value*>(ptr)) : lepus::Value();
-  return value;
+  if (ptr == 0) {
+    return nullptr;
+  }
+
+  return *(reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(ptr));
 }
 
 void LynxViewDataManagerAndroid::ConsumeTemplateDataActions(

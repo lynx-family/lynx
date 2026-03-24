@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 import com.lynx.react.bridge.Dynamic;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.LynxPropGroup;
 import com.lynx.tasm.behavior.StylesDiffMap;
@@ -214,6 +215,17 @@ import java.util.concurrent.ConcurrentHashMap;
     }
   }
 
+  private static class TemplateDataPropSetter extends PropSetter {
+    public TemplateDataPropSetter(LynxProp prop, Method setter) {
+      super(prop, "Map", setter);
+    }
+
+    @Override
+    protected @Nullable Object extractProperty(StylesDiffMap props) {
+      return props.getTemplateData(mPropName);
+    }
+  }
+
   private static class StringPropSetter extends PropSetter {
     public StringPropSetter(LynxProp prop, Method setter) {
       super(prop, "String", setter);
@@ -325,6 +337,8 @@ import java.util.concurrent.ConcurrentHashMap;
       return new ArrayPropSetter(annotation, method);
     } else if (propTypeClass == ReadableMap.class) {
       return new MapPropSetter(annotation, method);
+    } else if (propTypeClass == TemplateData.class) {
+      return new TemplateDataPropSetter(annotation, method);
     } else {
       throw new RuntimeException("Unrecognized type: " + propTypeClass
           + " for method: " + method.getDeclaringClass().getName() + "#" + method.getName());

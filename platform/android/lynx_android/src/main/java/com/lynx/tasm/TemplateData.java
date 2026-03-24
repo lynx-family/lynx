@@ -103,6 +103,7 @@ public final class TemplateData {
   }
 
   private volatile long mNativeData;
+  private volatile long mNativeTemplateData;
   private volatile Map<String, Object> mData;
   private String mProcessorName;
   private final AtomicBoolean mIsConcurrent = new AtomicBoolean(false);
@@ -204,6 +205,9 @@ public final class TemplateData {
     synchronized (mJsNativeDataLock) {
       if (mJsNativeData != 0) {
         actions.add(UpdateAction.buildNativeAction(nativeShallowCopy(mJsNativeData)));
+      } else if (mNativeTemplateData != 0) {
+        actions.add(
+            UpdateAction.buildNativeAction(nativeCloneDataFromTemplateData(mNativeTemplateData)));
       }
     }
 
@@ -232,6 +236,7 @@ public final class TemplateData {
   }
 
   public long getNativePtr() {
+    ensureNativeDataForLegacyAccess();
     return mNativeData;
   }
 
@@ -250,6 +255,7 @@ public final class TemplateData {
     }
 
     flush();
+    ensureNativeDataForLegacyAccess();
     if (mNativeData == 0) {
       LLog.w(TAG, "toMap failed since mNativeData == 0.");
       return null;
@@ -291,6 +297,7 @@ public final class TemplateData {
           TAG, "updateWithTemplateData to consumed TemplateData, this:" + this + ",diff:" + diff);
     }
 
+    detachNativeTemplateData();
     flush();
     diff.flush();
     // record diff's update actions
@@ -309,6 +316,7 @@ public final class TemplateData {
     if (mConsumed.get()) {
       LLog.w(TAG, "put data to consumed TemplateData,key:" + key);
     }
+    detachNativeTemplateData();
     putSafely(key, value);
   }
 
@@ -324,6 +332,7 @@ public final class TemplateData {
     if (mConsumed.get()) {
       LLog.w(TAG, "put data to consumed TemplateData,key:" + key);
     }
+    detachNativeTemplateData();
     addUpdateAction(UpdateAction.buildRemoveAction(key));
     if (mNativeData != 0) {
       nativeRemoveData(mNativeData, key);
@@ -338,6 +347,7 @@ public final class TemplateData {
     if (mConsumed.get()) {
       LLog.w(TAG, "updateData to consumed TemplateData, diff:" + diff.keySet());
     }
+    detachNativeTemplateData();
     putSafely(diff);
   }
 
@@ -363,7 +373,7 @@ public final class TemplateData {
     synchronized (mDataLock) {
       if (mData == null || mData.isEmpty()) {
         synchronized (mNativeDataLock) {
-          if (mNativeData == 0) {
+          if (mNativeData == 0 && mNativeTemplateData == 0) {
             mNativeData = nativeCreateObject();
           }
         }
@@ -414,12 +424,14 @@ public final class TemplateData {
           @Override
           public void run() {
             releaseNativeData();
+            releaseNativeTemplateData();
           }
         });
         return;
       }
     }
     releaseNativeData();
+    releaseNativeTemplateData();
   }
 
   private void releaseNativeData() {
@@ -432,6 +444,37 @@ public final class TemplateData {
         mNativeData = 0;
       }
     }
+  }
+
+  private void releaseNativeTemplateData() {
+    if (mNativeTemplateData == 0) {
+      return;
+    }
+    synchronized (mNativeDataLock) {
+      if (checkIfEnvPrepared() && mNativeTemplateData != 0) {
+        nativeReleaseTemplateData(mNativeTemplateData);
+        mNativeTemplateData = 0;
+      }
+    }
+  }
+
+  private void ensureNativeDataForLegacyAccess() {
+    if (mNativeData != 0 || mNativeTemplateData == 0 || !checkIfEnvPrepared()) {
+      return;
+    }
+    synchronized (mNativeDataLock) {
+      if (mNativeData == 0 && mNativeTemplateData != 0) {
+        mNativeData = nativeCloneDataFromTemplateData(mNativeTemplateData);
+      }
+    }
+  }
+
+  private void detachNativeTemplateData() {
+    if (mNativeTemplateData == 0) {
+      return;
+    }
+    ensureNativeDataForLegacyAccess();
+    releaseNativeTemplateData();
   }
 
   private void releaseJsData() {
@@ -489,6 +532,13 @@ public final class TemplateData {
   private TemplateData() {
     LynxEnv.inst();
     mProcessorName = null;
+  }
+
+  private TemplateData(long nativeTemplateData, boolean readOnly, String processorName) {
+    LynxEnv.inst();
+    mNativeTemplateData = nativeTemplateData;
+    mProcessorName = processorName;
+    this.readOnly = readOnly;
   }
 
   private TemplateData(Map<String, Object> data) {
@@ -583,7 +633,7 @@ public final class TemplateData {
    * @return valid.
    */
   public boolean checkIsLegalData() {
-    return mNativeData != 0;
+    return mNativeData != 0 || mNativeTemplateData != 0;
   }
 
   private static boolean checkIfEnvPrepared() {
@@ -599,6 +649,9 @@ public final class TemplateData {
    * @param name Marked name.
    */
   public void markState(String name) {
+    if (mNativeTemplateData != 0 && !TextUtils.equals(mProcessorName, name)) {
+      detachNativeTemplateData();
+    }
     mProcessorName = name;
   }
 
@@ -619,6 +672,7 @@ public final class TemplateData {
     }
 
     this.flush();
+    ensureNativeDataForLegacyAccess();
     TemplateData data = TemplateData.empty();
     if (this.mNativeData != 0) {
       data.mNativeData = nativeClone(this.mNativeData);
@@ -650,6 +704,7 @@ public final class TemplateData {
     }
 
     this.flush();
+    ensureNativeDataForLegacyAccess();
     TemplateData data = TemplateData.empty();
     if (this.mNativeData != 0) {
       data.mNativeData = nativeShallowCopy(this.mNativeData);
@@ -677,6 +732,9 @@ public final class TemplateData {
    * improve performance.
    */
   public void markReadOnly() {
+    if (mNativeTemplateData != 0 && !this.readOnly) {
+      detachNativeTemplateData();
+    }
     this.readOnly = true;
   }
 
@@ -685,7 +743,7 @@ public final class TemplateData {
   }
 
   public boolean isEmpty() {
-    return this.mNativeData == 0;
+    return this.mNativeData == 0 && this.mNativeTemplateData == 0;
   }
 
   void markConsumed() {
@@ -727,6 +785,9 @@ public final class TemplateData {
     if (actions.isEmpty()) {
       // If there are no update actions, check and return mJsNativeData
       synchronized (mJsNativeDataLock) {
+        if (mJsNativeData == 0 && mNativeTemplateData != 0) {
+          mJsNativeData = nativeCloneDataFromTemplateData(mNativeTemplateData);
+        }
         return mJsNativeData;
       }
     }
@@ -734,7 +795,11 @@ public final class TemplateData {
     // Update mJsNativeData inside the lock, but minimize operations within the lock
     synchronized (mJsNativeDataLock) {
       if (mJsNativeData == 0) {
-        mJsNativeData = nativeCreateObject();
+        if (mNativeTemplateData != 0) {
+          mJsNativeData = nativeCloneDataFromTemplateData(mNativeTemplateData);
+        } else {
+          mJsNativeData = nativeCreateObject();
+        }
       }
 
       for (UpdateAction action : actions) {
@@ -799,7 +864,18 @@ public final class TemplateData {
 
   @CalledByNative
   long getNativeTemplateData() {
+    return this.mNativeTemplateData;
+  }
+
+  @CalledByNative
+  long getLegacyNativeData() {
     return this.mNativeData;
+  }
+
+  @CalledByNative
+  private static TemplateData createNativeBacked(
+      long nativeTemplateData, boolean readOnly, String processorName) {
+    return new TemplateData(nativeTemplateData, readOnly, processorName);
   }
 
   @CalledByNative
@@ -820,6 +896,7 @@ public final class TemplateData {
   private static native long nativeShallowCopy(long nativePtr);
   private static native long nativeCreateObject();
   static native void nativeMergeTemplateData(long destPtr, long srcPtr);
+  private static native long nativeCloneDataFromTemplateData(long nativeTemplateData);
 
   private static native long nativeCreateTemplateData(
       long nativePtr, boolean readOnly, String name, Object templateData);

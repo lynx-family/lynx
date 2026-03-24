@@ -65,6 +65,9 @@ public class JavaOnlyMap extends HashMap<String, Object> implements ReadableMap,
         case Array:
           res.putArray(propKey, JavaOnlyArray.deepClone(map.getArray(propKey)));
           break;
+        case TemplateData:
+          res.putTemplateData(propKey, map.getTemplateData(propKey).deepClone());
+          break;
         case ByteArray:
           res.putByteArray(propKey, map.getByteArray(propKey).clone());
       }
@@ -102,6 +105,9 @@ public class JavaOnlyMap extends HashMap<String, Object> implements ReadableMap,
           break;
         case Array:
           res.putArray(propKey, (WritableArray) map.getArray(propKey));
+          break;
+        case TemplateData:
+          res.putTemplateData(propKey, map.getTemplateData(propKey).shallowClone());
           break;
         case ByteArray:
           res.putByteArray(propKey, map.getByteArray(propKey));
@@ -559,6 +565,10 @@ public class JavaOnlyMap extends HashMap<String, Object> implements ReadableMap,
   @Override
   @CalledByNative
   public void putMap(String key, WritableMap value) {
+    put(key, value);
+  }
+
+  public void putTemplateData(String key, TemplateData value) {
     put(key, value);
   }
 

@@ -7,6 +7,7 @@ import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.CalledByNative;
 
 public class PropBundle {
@@ -83,6 +84,11 @@ public class PropBundle {
   @CalledByNative
   void putArray(String key, JavaOnlyArray array) {
     props_map_.putArray(key, array);
+  }
+
+  @CalledByNative
+  void putTemplateData(String key, TemplateData data) {
+    props_map_.putTemplateData(key, data);
   }
 
   @CalledByNative

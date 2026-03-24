@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_DOM_ANDROID_LYNX_VIEW_DATA_MANAGER_ANDROID_H_
 #define CORE_RENDERER_DOM_ANDROID_LYNX_VIEW_DATA_MANAGER_ANDROID_H_
 
+#include <memory>
+
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "core/renderer/data/lynx_view_data_manager.h"
 
@@ -14,6 +16,8 @@ class JsonData;
 }
 
 namespace tasm {
+class TemplateData;
+
 class LynxViewDataManagerAndroid : public LynxViewDataManager {
  public:
   static lepus::Value GetJsThreadDataFromTemplateData(JNIEnv* env,
@@ -21,9 +25,14 @@ class LynxViewDataManagerAndroid : public LynxViewDataManager {
   static lynx::base::android::ScopedLocalJavaRef<jobject>
   GetTemplateDataForJSThread(JNIEnv* env, jobject jni_object);
   static void ConsumeTemplateDataActions(JNIEnv* env, jobject jni_object);
+  static lynx::base::android::ScopedLocalJavaRef<jobject>
+  CreateJavaTemplateData(JNIEnv* env,
+                         const std::shared_ptr<TemplateData>& template_data);
 
   static lepus::Value GetTemplateDataNativeData(JNIEnv* env,
                                                 jobject jni_object);
+  static std::shared_ptr<TemplateData> GetNativeTemplateData(
+      JNIEnv* env, jobject jni_object);
 
   LynxViewDataManagerAndroid(JNIEnv* env, jobject jni_object);
 

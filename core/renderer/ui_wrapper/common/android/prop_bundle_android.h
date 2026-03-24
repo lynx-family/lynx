@@ -54,6 +54,8 @@ class PropBundleAndroid : public PropBundle {
   void SetProps(const char* key, double value) override;
   void SetProps(const char* key, const pub::Value& value) override;
   void SetProps(const pub::Value& value) override;
+  void SetNativeTemplateData(
+      const char* key, const std::shared_ptr<TemplateData>& value) override;
 
   void SetProps(const char* key, int64_t value);
   void SetProps(const char* key, uint64_t value);

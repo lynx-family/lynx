@@ -61,6 +61,7 @@ public class LynxPropsProcessor extends AbstractProcessor {
   private static final TypeName READABLE_ARRAY_TYPE =
       ClassName.get("com.lynx.react.bridge", "ReadableArray");
   private static final TypeName DYNAMIC_TYPE = ClassName.get("com.lynx.react.bridge", "Dynamic");
+  private static final TypeName TEMPLATE_DATA_TYPE = ClassName.get("com.lynx.tasm", "TemplateData");
 
   private static final ClassName LYNX_UI_TYPE =
       ClassName.get("com.lynx.tasm.behavior.ui", "LynxBaseUI");
@@ -97,6 +98,7 @@ public class LynxPropsProcessor extends AbstractProcessor {
     DEFAULT_TYPES.put(READABLE_ARRAY_TYPE, "Array");
     DEFAULT_TYPES.put(READABLE_MAP_TYPE, "Map");
     DEFAULT_TYPES.put(DYNAMIC_TYPE, "Dynamic");
+    DEFAULT_TYPES.put(TEMPLATE_DATA_TYPE, "Map");
 
     BOXED_PRIMITIVES = new HashSet<>();
     BOXED_PRIMITIVES.add(TypeName.BOOLEAN.box());
@@ -335,6 +337,8 @@ public class LynxPropsProcessor extends AbstractProcessor {
       return builder.add("props.getArray(name)");
     } else if (propertyType.equals(READABLE_MAP_TYPE)) {
       return builder.add("props.getMap(name)");
+    } else if (propertyType.equals(TEMPLATE_DATA_TYPE)) {
+      return builder.add("props.getTemplateData(name)");
     } else if (propertyType.equals(DYNAMIC_TYPE)) {
       return builder.add("props.getDynamic(name)");
     }
