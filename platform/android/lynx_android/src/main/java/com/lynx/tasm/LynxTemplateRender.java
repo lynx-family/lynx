@@ -4052,9 +4052,6 @@ public class LynxTemplateRender
   public LynxViewBuilder getLynxViewBuilder() {
     LynxViewBuilder builder =
         new LynxViewBuilder().setLynxViewGroup(mLynxViewBuilder.lynxViewGroup);
-    if (builder.lynxViewGroup != null) {
-      return builder;
-    }
     builder.setUIRendererCreator(mLynxViewBuilder.getUIRendererCreator())
         .setFontLoader(mLynxViewBuilder.fontLoader)
         .setImageFetcher(mLynxViewBuilder.imageFetcher)
