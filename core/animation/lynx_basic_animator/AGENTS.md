@@ -2,14 +2,14 @@
 
 ## Scope
 
-This directory adapts the generic `basic_animation/` layer to Lynx-facing animator behavior. It bridges shared animation primitives with `starlight::AnimationData`, VSync-backed frame callbacks, and user-visible animator event hooks.
+This directory adapts the generic basic-animation layer to Lynx-facing animator behavior. It bridges shared animation primitives with `starlight::AnimationData`, VSync-backed frame callbacks, and user-visible animator event hooks.
 
 ## Module Map
 
 - `basic_animator.*` is the main Lynx animator entry point and `AnimatorTarget` implementation.
 - `basic_animator_event_listener.*` translates low-level animation events into externally registered callbacks.
 - `basic_animator_frame_callback_provider.*` connects animation frame requests to `base::VSyncMonitor`.
-- `basic_property_value.*` contains Lynx-specific property-value adapters built on top of `basic_animation/property_value.h`.
+- `basic_property_value.*` contains Lynx-specific property-value adapters built on top of the shared `PropertyValue` contract.
 
 ## Key Files And Types
 
@@ -17,13 +17,20 @@ This directory adapts the generic `basic_animation/` layer to Lynx-facing animat
 - `basic_animator_event_listener.*`: receives shared animation lifecycle events and maps them to externally registered start/cancel/iteration/end callbacks.
 - `basic_animator_frame_callback_provider.*`: requests frames from `base::VSyncMonitor`, including creating and binding a thread-local monitor when one is not injected.
 - `basic_property_value.*`: adapter-side `PropertyValue` implementation for float progress interpolation used by `LynxBasicAnimator`.
+- `starlight::AnimationData`: upstream input contract that feeds delay, duration, fill mode, direction, iteration count, and easing into the shared animation layer.
+
+## Adjacent Layers
+
+- `basic_animation/` owns the shared timing, effect, and frame-callback abstractions that this adapter wraps.
+- `starlight::AnimationData` is the upstream input contract for duration, delay, fill mode, direction, and easing.
+- `base::VSyncMonitor` is the downstream scheduling primitive that drives frame delivery when the adapter is using VSync-backed execution.
 
 ## Layer Choice
 
-- This directory is the Lynx-facing adapter layer on top of `basic_animation/`; it is not the place for generic timing, interpolation, or reusable keyframe machinery.
+- This directory is the Lynx-facing adapter layer on top of the shared basic-animation layer; it is not the place for generic timing, interpolation, or reusable keyframe machinery.
 - If the issue is specific to `starlight::AnimationData`, callback wiring, adapter-visible progress values, or VSync-backed frame hookup, this directory is the right place.
-- If the issue is about generic timing semantics, iteration trimming, shared frame-callback abstractions, or core interpolation contracts, inspect `../basic_animation/` instead.
-- If you are unsure, inspect the parent `animation/AGENTS.md` first and then compare this directory with `../basic_animation/`.
+- If the issue is about generic timing semantics, iteration trimming, shared frame-callback abstractions, or core interpolation contracts, inspect the sibling basic-animation layer instead.
+- If you are unsure, inspect the parent animation guide first and then compare this directory with the sibling basic-animation layer.
 
 ## Typical Change Patterns
 
@@ -32,9 +39,15 @@ This directory adapts the generic `basic_animation/` layer to Lynx-facing animat
 - If the change is about frame scheduling, thread affinity, or VSync hookup, inspect `basic_animator_frame_callback_provider.*`.
 - If the change is about the value passed back through `UpdateAnimatedStyle`, inspect `basic_property_value.*` and the `"BASIC_TYPE_FLOAT"` path in `basic_animator.cc`.
 
+## What To Inspect Together
+
+- Inspect `basic_animator.cc`, `basic_property_value.*`, and the `"BASIC_TYPE_FLOAT"` path together when progress values look wrong or stop updating.
+- Inspect `basic_animator.cc` and `basic_animator_event_listener.*` together when callback order, missing callbacks, or repeated-start behavior changes.
+- Inspect `basic_animator_frame_callback_provider.*` together with `base::VSyncMonitor` behavior when animations initialize correctly but do not advance.
+
 ## Edit Rules
 
-- Keep generic animation semantics in `../basic_animation/`. This directory should stay focused on Lynx-facing adaptation and integration.
+- Keep generic animation semantics in the sibling basic-animation layer. This directory should stay focused on Lynx-facing adaptation and integration.
 - Changes to `basic_animator.*` can affect start/stop lifecycle, callback timing, and value propagation. Validate event and frame-scheduling behavior together rather than in isolation.
 - Keep `basic_animator_frame_callback_provider.*` aligned with VSync-driven execution. Avoid introducing alternative scheduling semantics here without a strong reason.
 - If you add new adapter-side property value behavior, confirm it still matches the `PropertyValue` type contract defined by the shared animation layer.
@@ -44,14 +57,17 @@ This directory adapts the generic `basic_animation/` layer to Lynx-facing animat
 
 - `basic_animator.cc` hardcodes a two-keyframe `"BASIC_TYPE_FLOAT"` animation from `0.0` to `1.0`, then converts progress back through `UpdateAnimatedStyle`. If you change that contract, update both keyframe construction and value consumption together.
 - `InitializeAnimator()` wires together effect timing, keyframes, frame provider, and event listener in one place. Partial refactors here often break either frame callbacks or event delivery.
+- `Start()` always rebuilds and reinitializes the shared animation before calling `Play()`. Repeated-start behavior should be reviewed with that lifecycle in mind.
 - `basic_animator_frame_callback_provider.cc` creates and binds a thread-local `VSyncMonitor` when one is not injected. Changes here can alter thread behavior in tests and in production.
 - `basic_property_value.cc` assumes float-to-float interpolation. If the adapter starts supporting more value kinds, expand the type contract deliberately rather than overloading the existing float path.
+- `GetStyle()` currently returns a constant float fallback. If missing-endpoint behavior starts mattering for this adapter, review both that placeholder and the shared keyframe fallback logic together.
 
 ## Common Regression Symptoms
 
 - Progress callbacks not firing, firing only once, or returning the wrong value usually point to `basic_animator.cc` and `basic_property_value.*`.
 - Start/cancel/iteration/end callbacks missing or arriving in the wrong order usually point to `basic_animator_event_listener.*` or how it is wired in `InitializeAnimator()`.
 - Animations that appear to initialize correctly but never advance frame-by-frame usually point to `basic_animator_frame_callback_provider.*` and its `VSyncMonitor` path.
+- Changes that look correct in shared animation tests but fail in Lynx-facing usage often point to `starlight::AnimationData` mapping or adapter-side callback wiring rather than to generic timing logic.
 
 ## Validate
 
@@ -61,11 +77,19 @@ Resolve the exact exec target from this directory's `BUILD.gn`.
 
 - Start with `lynx_basic_animator_unittests_exec`.
 - If your change crosses the shared adapter boundary, also run `basic_animation_unittests_exec`.
+- If your change affects CSS-facing animation semantics through shared timing or keyframe behavior, also run `animation_unittests_exec`.
 
 Expand validation when appropriate:
 
 - If you touched event callback mapping, confirm start, cancel, iteration, and end behavior in the adapter test coverage.
 - If you touched VSync or frame provider behavior, review whether the change should also be exercised through the shared animation scheduling path.
+- If you touched `UpdateAnimatedStyle`, `GetStyle`, or progress-value handling, review both adapter tests and the callers that consume the animated progress callback.
+
+## Coverage Reality
+
+- `lynx_basic_animator_unittests_exec` currently gives the strongest direct signal on float-progress construction and basic animator initialization.
+- Callback ordering, repeated-start behavior, and real VSync-driven frame progression are more lightly covered than the shared timing math itself.
+- If you change callback mapping, frame-provider behavior, or adapter-side fallback values, expect to rely on sibling-layer tests and possibly add targeted adapter coverage.
 
 ## Notes
 
