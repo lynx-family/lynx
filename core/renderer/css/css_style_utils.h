@@ -200,29 +200,81 @@ class CSSStyleUtils {
                             "Animation or Transition property must "
                             "be enum, number, string or array!")
     CSSStyleUtils::PrepareOptional(anim);
-    if (anim->empty()) {
-      anim->emplace_back();
-    }
     bool changed = false;
     size_t input_size;
+    base::InlineVector<lepus::Value, 4> input_values;
     if (value.IsArray()) {
       auto arr = value.GetArray();
       input_size = arr->size();
+      CSS_HANDLER_FAIL_IF_NOT(input_size > 0, configs.enable_css_strict_mode,
+                              "Animation property array must not be empty!")
       for (size_t i = 0; i < arr->size(); i++) {
-        if (anim->size() < i + 1) {
-          anim->emplace_back();
-        }
-        changed |= compute_func(arr->get(i), (*anim)[i], reset);
+        input_values.push_back(arr->get(i));
       }
     } else {
       input_size = 1;
-      changed = compute_func(value.GetValue(), anim->front(), reset);
+      input_values.push_back(value.GetValue());
     }
-    changed = changed || input_size != anim->size();
-    // Reset the remaining values
-    for (size_t i = input_size; i < anim->size(); ++i) {
-      reset_func((*anim)[i]);
+
+    if (anim->empty()) {
+      for (size_t i = 0; i < input_size; ++i) {
+        anim->emplace_back();
+        changed |= compute_func(input_values[i], (*anim)[i], reset);
+      }
+    } else {
+      for (size_t i = 0; i < anim->size(); ++i) {
+        const auto& input_value = input_values[i % input_size];
+        changed |= compute_func(input_value, (*anim)[i], reset);
+      }
     }
+    return changed;
+  }
+
+  template <typename T, typename F1>
+  static bool SetAnimationPropertyArray(T& anim, const tasm::CSSValue& value,
+                                        F1 const& compute_func,
+                                        const bool reset,
+                                        const tasm::CSSParserConfigs& configs) {
+    if (reset) {
+      anim.reset();
+      return true;
+    }
+    CSS_HANDLER_FAIL_IF_NOT(value.IsNumber() || value.IsArray(),
+                            configs.enable_css_strict_mode,
+                            "Animation property must be number or array!")
+    CSSStyleUtils::PrepareOptional(anim);
+
+    base::InlineVector<lepus::Value, 4> input_values;
+    if (value.IsArray()) {
+      auto arr = value.GetArray();
+      CSS_HANDLER_FAIL_IF_NOT(arr->size() > 0, configs.enable_css_strict_mode,
+                              "Animation property array must not be empty!")
+      for (size_t i = 0; i < arr->size(); i++) {
+        input_values.push_back(arr->get(i));
+      }
+    } else {
+      input_values.push_back(value.GetValue());
+    }
+
+    const size_t input_size = input_values.size();
+    const size_t old_size = anim->size();
+    bool changed = input_size != old_size;
+
+    // Adjust array size: remove excess or add new items
+    if (input_size < old_size) {
+      while (anim->size() > input_size) {
+        anim->pop_back();
+      }
+    } else if (input_size > old_size) {
+      for (size_t i = old_size; i < input_size; ++i) {
+        anim->emplace_back();
+      }
+    }
+
+    for (size_t i = 0; i < input_size; ++i) {
+      changed |= compute_func(input_values[i], (*anim)[i]);
+    }
+
     return changed;
   }
 
