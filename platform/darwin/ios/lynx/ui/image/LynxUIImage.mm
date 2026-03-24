@@ -212,6 +212,12 @@ LYNX_REGISTER_SHADOW_NODE("image")
 
 @end
 
+typedef NS_ENUM(NSInteger, LynxImagePlayState) {
+  LynxImagePlayStateDefault = 0,
+  LynxImagePlayStatePlaying,
+  LynxImagePlayStatePaused,
+};
+
 @interface LynxUIImage () <LynxMeasureDelegate>
 @property(nonatomic, assign) UIViewContentMode resizeMode;
 @property(nonatomic, assign) BOOL coverStart;
@@ -256,6 +262,8 @@ LYNX_REGISTER_SHADOW_NODE("image")
 @property(nonatomic) LynxBooleanOption frameCacheAutomatically;
 @property(nonatomic) CGFloat superResolutionScale;
 @property(nonatomic, assign) BOOL enableImageLoadCallback;
+@property(nonatomic, assign) LynxImagePlayState playState;
+@property(nonatomic, assign) BOOL keepAnimPlayState;
 @end
 
 @implementation LynxUIImage {
@@ -289,6 +297,8 @@ LYNX_REGISTER_UI("image")
   _frameCacheAutomatically = LynxBooleanOptionUnset;
   _superResolutionScale = 0.0;
   _enableReportInfo = false;
+  _playState = LynxImagePlayStateDefault;
+  _keepAnimPlayState = NO;
 }
 
 - (void)dealloc {
@@ -1715,9 +1725,17 @@ LYNX_PROP_SETTER("progressive-rendering", setProgressiveRendering, BOOL) {
   }
 }
 
+LYNX_PROP_SETTER("ios-keep-anim-play-state", setKeepImagePlayState, BOOL) {
+  if (requestReset) {
+    value = NO;
+  }
+  _keepAnimPlayState = value;
+}
+
 #pragma mark UI_Method
 
 LYNX_UI_METHOD(startAnimate) {
+  self.playState = LynxImagePlayStatePlaying;
   if (![[LynxImageLoader imageService] restartImageIfPossible:self.view callback:callback]) {
     [self.view stopAnimating];
     [self startAnimation];
@@ -1725,14 +1743,17 @@ LYNX_UI_METHOD(startAnimate) {
 }
 
 LYNX_UI_METHOD(pauseAnimation) {
+  self.playState = LynxImagePlayStatePaused;
   [[LynxImageLoader imageService] pauseImage:self.view callback:callback];
 }
 
 LYNX_UI_METHOD(resumeAnimation) {
+  self.playState = LynxImagePlayStatePlaying;
   [[LynxImageLoader imageService] resumeImage:self.view callback:callback];
 }
 
 LYNX_UI_METHOD(stopAnimation) {
+  self.playState = LynxImagePlayStatePaused;
   [[LynxImageLoader imageService] stopImage:self.view callback:callback];
 }
 
@@ -1838,6 +1859,38 @@ LYNX_UI_METHOD(stopAnimation) {
   [super restartAnimation];
   if ([self isAnimated] && _autoPlay) {
     [self startAnimating];
+  }
+}
+
+- (void)willMoveToWindow:(UIWindow*)window {
+  [super willMoveToWindow:window];
+  if (window) {
+    if (_keepAnimPlayState && [self isAnimated]) {
+      // Only override the underlying BDImageView's default behavior when the explicit play state
+      // contradicts the autoPlay setting.
+      BOOL needsForcePlay = (_playState == LynxImagePlayStatePlaying && !_autoPlay);
+      BOOL needsForcePause = (_playState == LynxImagePlayStatePaused && _autoPlay);
+
+      if (needsForcePlay || needsForcePause) {
+        // Defer animation control to the next RunLoop to resolve lifecycle conflicts.
+        // The underlying BDImageView's didMoveToWindow will be triggered by the system shortly
+        // after, and it will apply its default autoPlay behavior. Executing this asynchronously
+        // ensures that we forcefully apply the correct animation state AFTER the underlying
+        // view's didMoveToWindow.
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{
+          typeof(weakSelf) strongSelf = weakSelf;
+          if (!strongSelf || !strongSelf.view.window) {
+            return;
+          }
+          if (needsForcePlay) {
+            [strongSelf startAnimating];
+          } else if (needsForcePause) {
+            [strongSelf.view stopAnimating];
+          }
+        });
+      }
+    }
   }
 }
 
