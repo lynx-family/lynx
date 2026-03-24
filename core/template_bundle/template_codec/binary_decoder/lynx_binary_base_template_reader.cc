@@ -15,12 +15,6 @@
 #include "base/trace/native/trace_event.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 
-#if ENABLE_AIR
-#include <cstring>
-
-#include "core/renderer/dom/air/lynx_air_parsed_style_store.h"
-#endif
-
 namespace lynx {
 namespace tasm {
 

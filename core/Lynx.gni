@@ -12,9 +12,6 @@ declare_args() {
   # build_lepus_compile indicates whether build with template compiler
   build_lepus_compile = true
 
-  # enable_air corresponds the macro of ENABLE_AIR
-  enable_air = false
-
   # disable_nanbox corresponds the macro of DISABLE_NANBOX
   disable_nanbox = false
 
@@ -67,13 +64,8 @@ if (is_win) {
   }
 }
 
-if (enable_unittests) {
-  enable_air = true
-}
-
 if (enable_lite) {
   # these args are up to enable_lite arg
   enable_just_lepusng = true
-  enable_air = false
   disable_list_platform_implementation = true
 }

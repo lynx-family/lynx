@@ -74,9 +74,6 @@ class FrameElement;
 class Catalyzer;
 class ElementCache;
 class LynxEnvConfig;
-class AirElement;
-class AirLepusRef;
-class AirPageElement;
 class TemplateAssembler;
 class ElementLayoutNodeManager;
 class ElementManagerDelegate;
@@ -269,19 +266,6 @@ class ElementManager : public ElementContextDelegate,
   }
 
   bool GetDevToolFlag() { return devtool_flag_; }
-
-  // for air only, these functions won't be used when ENABLE_AIR is off, so link
-  // process works normally even if ENABLE_AIR is off.
-  fml::RefPtr<AirLepusRef> GetAirNode(const base::String &tag,
-                                      int32_t lepus_id);
-  fml::RefPtr<AirLepusRef> CreateAirNode(const base::String &tag,
-                                         int32_t lepus_id, int32_t impl_id,
-                                         uint64_t key);
-  AirPageElement *CreateAirPage(int32_t lepus_id);
-  inline void SetAirRoot(AirPageElement *node) { air_root_ = node; }
-  AirPageElement *AirRoot() { return air_root_; }
-  void OnPatchFinishInnerForAir(const std::shared_ptr<PipelineOptions> &option);
-  // for air end
 
   PaintingContext *painting_context();
   inline Catalyzer *catalyzer() { return catalyzer_.get(); }
@@ -1238,7 +1222,6 @@ class ElementManager : public ElementContextDelegate,
   std::unique_ptr<ComponentManager> component_manager_;
   std::unique_ptr<Catalyzer> catalyzer_;
   Element *root_{nullptr};
-  AirPageElement *air_root_{nullptr};
   std::weak_ptr<HierarchyObserver> hierarchy_observer_;
   std::shared_ptr<InspectorElementObserver> inspector_element_observer_;
 
@@ -1354,7 +1337,6 @@ class ElementManager : public ElementContextDelegate,
   std::unique_ptr<LayoutCtxPlatformImpl> platform_layout_context_{nullptr};
   std::unique_ptr<ElementLayoutNodeManager> layout_node_manager_;
 
-  CSSFragment *preresolving_style_sheet_{nullptr};
   std::unique_ptr<starlight::ComputedCSSStyle> platform_computed_css_;
 
   // <page>,<wrapper>,<none> is a special tag and must be COMMON.

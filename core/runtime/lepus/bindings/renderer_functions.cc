@@ -230,18 +230,6 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
                               ->element_manager()           \
                               ->PrepareNodeForInspector(node.get());)
 
-/* Use this macro when air element is created */
-#define ON_AIR_NODE_CREATED(node)                                           \
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_ON_AIR_NODE_CREATE);             \
-  auto* page =                                                              \
-      GET_TASM_POINTER() -> page_proxy() -> element_manager() -> AirRoot(); \
-  bool enableAsync = page->EnableAsyncCalc();                               \
-  if (enableAsync && node) {                                                \
-    node->SetEnableAsyncCalc(enableAsync);                                  \
-    page->AppendLastElement();                                              \
-    page->RecordFirstScreenElement(node);                                   \
-  }
-
 /* Use this macro when fiber element is modified, including its attributes,
  inline styles, classes, id and so on. For example:
  ```
@@ -6225,7 +6213,6 @@ RENDERER_FUNCTION_CC(LynxAddReporterCustomInfo) {
   RETURN_UNDEFINED();
 }
 
-/* AirElement API BEGIN */
 RENDERER_FUNCTION_CC(TriggerLepusBridge) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TRIGGER_LEPUS_BRIDGE);
   CHECK_ARGC_GE(TriggerLepusBridge, 1);

@@ -10,14 +10,14 @@
 namespace lynx {
 namespace lepus {
 
-// TODO(songshourui.null): Currently, Element, AirElement, lepus::Array,
-// lepus::Table, ByteArray, and LEPUSObject all inherit from lepus::RefCounted.
-// In the future, new classes added to the Signal API will also be extended
-// based on lepus::RefCounted. Since both Element and Signal are exposed to the
+// TODO(songshourui.null): Currently, Element, lepus::Array, lepus::Table,
+// ByteArray, and LEPUSObject all inherit from lepus::RefCounted. In the
+// future, new classes added to the Signal API will also be extended based on
+// lepus::RefCounted. Since both Element and Signal are exposed to the
 // frontend, Native needs to distinguish the specific types of
 // lepus::RefCounted, hence the above changes were made. In the long term, we
-// should avoid defining these enumerations within Lepus as much as possible. We
-// will consider optimization plans in the future.
+// should avoid defining these enumerations within Lepus as much as possible.
+// We will consider optimization plans in the future.
 enum class RefType : int32_t {
   kLepusTable,
   kLepusArray,

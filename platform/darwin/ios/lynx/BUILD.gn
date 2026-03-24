@@ -58,6 +58,9 @@ podspec_target("lynx_podspec") {
     ]
   }
   deps = [
+    # Keep an Air compatibility subspec for hosts that still depend on Lynx/Air.
+    # Remove it once those host-side dependencies are fully gone.
+    ":Air",
     ":Framework",
     ":ReleaseResource",
     ":UnitTestResource",
@@ -517,7 +520,9 @@ subspec_target("UnitTests") {
 }
 
 subspec_target("Air") {
-  deps = [ "../../../../core/renderer/dom/air:tasm_air" ]
+  # CocoaPods rejects a completely empty subspec, so keep Framework here
+  # until host-side Lynx/Air dependencies are fully removed.
+  dependency = [ "Lynx/Framework" ]
 }
 
 subspec_target("Inspector") {

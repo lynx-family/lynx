@@ -25,8 +25,7 @@ class RefCountedBase : public fml::RefCountedThreadSafeStorage {
    * Return RefType of this RefCountedBase.
    * ByteArray in base/include/value/byte_array.h,
    * Value_JSOBject in core/runtime/lepus/js_object.h,
-   * Element in core/renderer/dom/element.h,
-   * AirElement in core/renderer/dom/air/air_element/air_element.h
+   * Element in core/renderer/dom/element.h
    */
   virtual RefType GetRefType() const = 0;
 

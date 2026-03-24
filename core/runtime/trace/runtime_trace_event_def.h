@@ -508,11 +508,6 @@ inline constexpr const char* const CONTEXT_TRY_EXECUTE = "Context::TryExecute";
 inline constexpr const char* const DEVTOOL_ON_NODE_CREATE =
     "Devtool::ON_NODE_CREATE";
 /**
- * @trace_description: Emit a devtool event when an air node is created.
- */
-inline constexpr const char* const DEVTOOL_ON_AIR_NODE_CREATE =
-    "Devtool::ON_AIR_NODE_CREATED";
-/**
  * @trace_description: Emit a devtool event when a node is modified.
  */
 inline constexpr const char* const DEVTOOL_ON_NODE_MODIFIED =
