@@ -34,12 +34,40 @@ Child `AGENTS.md` files take precedence when they exist. Use this file to choose
 - If a change is about shared contracts rather than implementations, check `public/` before changing concrete classes.
 - If a change is only a data holder or math helper for style values, start in `style/` rather than `renderer/` or `animation/`.
 
+## Key Files And Boundaries
+
+- `BUILD.gn`: the top-level composition point for `lynx_native`. If a local-looking change starts breaking unrelated modules, check whether this file pulls the touched target into a wider surface.
+- `public/` and `include/`: exported header surfaces. Changes here are rarely isolated to one implementation directory.
+- `renderer/`, `runtime/`, and `shell/`: the three main execution planes of core. Many bugs land on a boundary between two of them rather than inside one subtree.
+- `shared_data/`: the white-board handshake layer between renderer, runtime, and shell. Bugs that look like "state updated but nobody reacted" often pass through here.
+
+## Typical Cross-Module Paths
+
+- CSS, style, and animation behavior often crosses `renderer/` -> `style/` -> `animation/`.
+- Page lifecycle and callback ownership often crosses `shell/` -> `runtime/` -> `renderer/`.
+- Bundle loading and execution often crosses `resource/` -> `template_bundle/` -> `runtime/`.
+- Shared-session or white-board behavior often crosses `shared_data/` -> `runtime/` and `shared_data/` -> `renderer/`.
+
+## What To Read First
+
+- Read the nearest child `AGENTS.md` before using this root guide to make implementation decisions.
+- Read the nearest `BUILD.gn` before adding files or changing target boundaries. Many "small" core edits actually widen through a shared source set.
+- Read `public/` or `include/` first when a change looks like a contract issue rather than a local implementation bug.
+- For boundary bugs, inspect one producer and one consumer instead of reading only the directory you plan to edit. Renderer-visible symptoms are often rooted in runtime, shell, or shared-data contracts.
+
 ## Edit Rules
 
 - Prefer the narrowest module that owns the behavior. Do not push renderer logic into `base/` or runtime semantics into `shell/`.
 - Treat `public/` headers as shared API surface. Signature changes there usually require coordinated updates in core and platform code.
 - Keep platform-specific implementations in their platform subdirectories; keep shared semantics in the root of each module.
 - When a directory already has its own `AGENTS.md`, follow the child document instead of generalizing from this file.
+
+## Common Review Questions
+
+- Is this change modifying a shared contract, or should it stay inside one implementation subtree?
+- Does the touched code own the behavior, or is it only adapting state that should really change one layer up or down?
+- Does the fix cross a thread, actor, or callback boundary that needs validation in both the caller and callee modules?
+- If a value is converted between representations, should the fix live in `value_wrapper/`, `style/`, or the consumer module instead of the current file?
 
 ## Validate
 
@@ -56,6 +84,18 @@ Common starting points by area:
 - `shared_data_test_exec`
 - `lazy_bundle_test_exec`
 - `value_wrapper_unittest_exec`
+
+Broaden validation when the change crosses a boundary:
+
+- If `public/` or `include/` changes, expect to run the owning consumer tests rather than a single local target.
+- If `BUILD.gn` wiring changes, validate both the local module target and at least one top-level consumer target that pulls it in.
+- If a fix spans renderer/runtime/shell ownership, do not stop after the first green unit target.
+
+## Coverage Reality
+
+- Most `lynx/core` unit targets are strong at module-local semantics, but weaker at actor boundaries, platform scheduling, and renderer/runtime/shell handoff timing.
+- A green local unit target is evidence that the owning module still behaves, not proof that boundary consumers still agree with it.
+- The more a change crosses `public/`, `shared_data/`, task-runner ownership, or style/value conversion boundaries, the less you should trust one directory-local target by itself.
 
 ## Notes
 
