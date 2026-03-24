@@ -2311,11 +2311,11 @@ public class LynxTemplateRender
       mLynxContext.clearExposure();
     }
     recycleUpdatedDataList();
+    recycleGlobalPropsSafely();
     destroyNative();
     onTraceEventBegin(TraceEventDef.CLIENT_REPORT_COMPONENT_INFO);
     mClient.onReportComponentInfo(new HashSet<>());
     onTraceEventEnd(TraceEventDef.CLIENT_REPORT_COMPONENT_INFO);
-    recycleGlobalPropsSafely();
     ILynxExtensionService extensionService =
         LynxServiceCenter.inst().getService(ILynxExtensionService.class);
     if (extensionService != null) {
