@@ -19,7 +19,6 @@ namespace tasm {
 class NodeIndexPair;
 class Element;
 class PaintingContext;
-class AirElement;
 
 class Catalyzer {
  public:
@@ -32,8 +31,6 @@ class Catalyzer {
 
   inline void set_root(Element* root) { root_ = root; }
   inline Element* get_root() { return root_; }
-  inline void set_air_root(AirElement* root) { air_root_ = root; }
-  inline AirElement* get_air_root() { return air_root_; }
 
   bool NeedUpdateLayout();
   void UpdateLayoutRecursively();
@@ -57,7 +54,6 @@ class Catalyzer {
  private:
   std::unique_ptr<PaintingContext> painting_context_;
   Element* root_ = nullptr;
-  AirElement* air_root_ = nullptr;
   Catalyzer(const Catalyzer&) = delete;
   Catalyzer& operator=(const Catalyzer&) = delete;
   const int32_t instance_id_;

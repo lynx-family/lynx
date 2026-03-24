@@ -382,51 +382,6 @@ inline constexpr const char* const DEVTOOL_PREPARE_COMPONENT_FOR_INSPECTOR =
 inline constexpr const char* const DEVTOOL_PREPARE_COMPONENT_USELESS_UPDATE =
     "Devtool::OnComponentUselessUpdate";
 
-inline constexpr const char* const AIR_TOUCH_EVENT_HANDLE_TOUCH_EVENT =
-    "AirTouchEventHandler::HandleTouchEvent";
-inline constexpr const char* const AIR_TOUCH_EVENT_FIRE_TOUCH_EVENT =
-    "AirTouchEventHandler::FireTouchEvent";
-inline constexpr const char* const AIR_TOUCH_EVENT_TRIGGER_COMPONENT_EVENT =
-    "AirTouchEventHandler::TriggerComponentEvent";
-inline constexpr const char* const AIR_TOUCH_EVENT_HANDLE_CUSTOM_EVENT =
-    "AirTouchEventHandler::HandleCustomEvent";
-inline constexpr const char* const AIR_TOUCH_EVENT_GENERATE_EVENT_OPERATION =
-    "AirTouchEventHandler::GenerateEventOperation";
-inline constexpr const char* const AIR_ELEMENT_CONTAINER_FIND_PARENT =
-    "AirElementContainer::FindParentForChild";
-inline constexpr const char* const AIR_ELEMENT_SET_ATTRIBUTE =
-    "AirElement::SetAttribute";
-inline constexpr const char* const AIR_ELEMENT_COMPUTE_CSS_STYLE =
-    "AirElement::ComputeCSSStyle";
-inline constexpr const char* const AIR_ELEMENT_UPDATE_LAYOUT =
-    "AirElement::UpdateLayout";
-inline constexpr const char* const AIR_ELEMENT_SET_STYLE =
-    "AirElement::SetStyle";
-inline constexpr const char* const AIR_ELEMENT_RESET_STYLE =
-    "AirElement::ResetStyle";
-inline constexpr const char* const AIR_ELEMENT_FLUSH_PROPS_RESOLVE_STYLES =
-    "AirElement::FlushPropsResolveStyles";
-inline constexpr const char* const AIR_ELEMENT_NO_PAINTING_NODE =
-    "AirElement::FlushProps::NoPaintingNode";
-inline constexpr const char* const AIR_ELEMENT_CALC_STYLE =
-    "AirElement::CalcStyle";
-inline constexpr const char* const AIR_ELEMENT_CALC_STYLE_ASYNC =
-    "AirElement::CalcStyleAsync";
-inline constexpr const char* const AIR_ELEMENT_SET_CLASSES =
-    "AirElement::SetClasses";
-inline constexpr const char* const AIR_ELEMENT_DIFF_STYLES =
-    "AirElement::DiffStyles";
-inline constexpr const char* const AIR_ELEMENT_REFRESH_STYLES =
-    "AirElement::RefreshStyles";
-inline constexpr const char* const AIR_ELEMENT_UPDATE_STYLE_PATCH =
-    "AirElement::UpdateStylePatch";
-inline constexpr const char* const AIR_ELEMENT_GET_STYLE_MAP =
-    "AirElement::GetStyleMap";
-inline constexpr const char* const AIR_ELEMENT_PUSH_TO_PROPS_BUNDLE =
-    "AirElement::PushToPropsBundle";
-inline constexpr const char* const AIR_ELEMENT_UPDATE_FIRST_SCREEN_LIST_STATE =
-    "AirElement::UpdateFirstScreenListState";
-
 inline constexpr const char* const LEPUS_DECODER_DECODE_MESSAGE =
     "LepusDecoder::DecodeMessage";
 inline constexpr const char* const LEPUS_DECODER_ENCODE_MESSAGE =

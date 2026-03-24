@@ -23,7 +23,6 @@ android {
 
         // enable tracing
         buildConfigField("Boolean","enable_frozen_mode",enable_frozen_mode)
-        buildConfigField("Boolean","enable_air",enable_air)
         buildConfigField("Boolean","disable_nanbox", disable_nanbox)
         buildConfigField("Boolean","enable_lite_production", enable_lite_production)
         buildConfigField("Boolean","enable_lite",enable_lite)
@@ -278,7 +277,6 @@ task configGnCompileParas {
             gnBuildArgs_list.put("enable_lto", "\"$enable_lto\"")
             gnBuildArgs_list.put("enable_lite_production", "\"$enable_lite_production\"")
             gnBuildArgs_list.put("disable_base_export", "\"$enable_lite_production\"")
-            gnBuildArgs_list.put("enable_air", "\"$enable_air\"")
             gnBuildArgs_list.put("disable_nanbox", "\"$disable_nanbox\"")
             gnBuildArgs_list.put("disable_list_platform_implementation", "\"$disable_list_platform_implementation\"")
             gnBuildArgs_list.put("compiler_optimization_level", "\"$compiler_optimization_level\"")

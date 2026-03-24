@@ -30,7 +30,7 @@ def main():
   parser.add_argument('--enable-trace', default=False, action='store_true', help='Whether to set the enable_trace flag to true, which will be used by the gn script.')
   args = parser.parse_args()
 
-  args.gn_args = f'use_xcode=true enable_air=true enable_testbench_replay=true enable_inspector=true \
+  args.gn_args = f'use_xcode=true enable_testbench_replay=true enable_inspector=true \
               enable_napi_binding=true enable_lepusng_worklet=true \
               enable_recorder=true arm_use_neon=false build_lepus_compile=false'
 
