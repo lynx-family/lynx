@@ -5,7 +5,7 @@
 path:
   doxygen: buildtools/doxygen/doxygen
   instruction_doc: https://github.com/lynx-family/lynx/blob/develop/CONTRIBUTING.md#static-code-analysis-tasks
-  node: buildtools/node/bin/node
+  bun: buildtools/bun/bun
   esbuild: buildtools/esbuild/bin/esbuild
   llvm: buildtools/llvm
 android:

@@ -12,7 +12,7 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 # Get the root directory
 root_dir = os.path.abspath(os.path.join(current_dir, '../../../'))
 sys.path.append(root_dir)
-from tools.js_tools.pnpm_helper import run_pnpm_command
+from tools.js_tools.bun_helper import run_bun_command
 
 # Get the directory of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -47,8 +47,8 @@ os.makedirs(automation_ios)
 print("========== build integration test demo pages ==========")
 os.chdir(script_dir)
 # Install dependencies and build
-run_pnpm_command(["pnpm", "install", "--frozen-lockfile"], os.getcwd())
-run_pnpm_command(["pnpm", "run", "build"], os.getcwd())
+run_bun_command(["bun", "install", "--frozen-lockfile"], os.getcwd())
+run_bun_command(["bun", "run", "build"], os.getcwd())
 
 print("========== copy integration test demo pages resource==========")
 # Iterate through directories in the current script directory

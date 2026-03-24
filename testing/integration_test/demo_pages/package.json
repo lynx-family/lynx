@@ -6,9 +6,9 @@
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
-      "build": "pnpm --filter @demo_pages/* run build"
+      "build": "bun run --filter @demo_pages/* build"
     },
     "engines": {
-      "node": ">=18"
+      "bun": ">=1.3.10"
     }
   }

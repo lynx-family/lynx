@@ -5,7 +5,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter @showcase/menu run build"
+    "build": "bun run --filter @showcase/menu build"
   },
   "dependencies": {
     "@lynx-example/animation": "0.3.0",

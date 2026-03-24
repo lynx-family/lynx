@@ -14,7 +14,7 @@ import os
 _this_dir = Path(__file__).resolve().parent
 _root_dir = _this_dir.parents[2]
 _clang_format_binary = "clang-format.exe" if sys.platform == "win32" else "clang-format"
-_npx_binary = "npx.cmd" if sys.platform == "win32" else "npx"
+_bun_binary = "bun.exe" if sys.platform == "win32" else "bun"
 
 
 def _get_clang_format_path():
@@ -33,24 +33,22 @@ def _get_clang_format_path():
     return shutil.which(_clang_format_binary) or _clang_format_binary
 
 
-def _get_npx_path():
+def _get_bun_path():
     # 1. Check pre-defined paths in the repository
     candidate_paths = [
-        _root_dir / "buildtools" / "node" / "bin" / _npx_binary,
-        _root_dir / "lynx" / "buildtools" / "node" / "bin" / _npx_binary,
-        _root_dir / "buildtools" / "node" / _npx_binary,
-        _root_dir / "lynx" / "buildtools" / "node" / _npx_binary,
+        _root_dir / "buildtools" / "bun" / _bun_binary,
+        _root_dir / "lynx" / "buildtools" / "bun" / _bun_binary,
     ]
     for path in candidate_paths:
         if path.exists():
             return str(path)
 
     # 2. Fallback to system PATH
-    return shutil.which(_npx_binary) or _npx_binary
+    return shutil.which(_bun_binary) or _bun_binary
 
 
 CLANG_FORMAT_PATH = _get_clang_format_path()
-NPX_PATH = _get_npx_path()
+BUN_PATH = _get_bun_path()
 
 
 def clang_format(file: str, style="Google", file_extension=None) -> str:
@@ -102,12 +100,12 @@ def prettier_format(directory: Path):
         return
     try:
         env = os.environ.copy()
-        if NPX_PATH and os.path.isabs(NPX_PATH):
-            npx_dir = str(Path(NPX_PATH).parent)
-            env["PATH"] = npx_dir + os.pathsep + env["PATH"]
+        if BUN_PATH and os.path.isabs(BUN_PATH):
+            bun_dir = str(Path(BUN_PATH).parent)
+            env["PATH"] = bun_dir + os.pathsep + env["PATH"]
 
         subprocess.run(
-            [NPX_PATH, "prettier", "--write", str(directory)],
+            [BUN_PATH, "x", "prettier", "--write", str(directory)],
             cwd=directory,
             capture_output=True,
             check=True,
@@ -117,4 +115,4 @@ def prettier_format(directory: Path):
     except subprocess.CalledProcessError as e:
         print(f"prettier format failed: {e.stderr}", file=sys.stderr)
     except FileNotFoundError:
-        print("npx not found, skipping prettier format", file=sys.stderr)
+        print("bun not found, skipping prettier format", file=sys.stderr)

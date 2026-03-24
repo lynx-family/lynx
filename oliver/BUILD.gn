@@ -8,7 +8,7 @@ import("oliver.gni")
 config("lynx_oliver_config") {
   include_dirs = [ "$root_gen_dir/node-addon-api" ]
   if (is_nodejs) {
-    include_dirs += [ "//buildtools/node/include/node" ]
+    include_dirs += [ "//buildtools/napi_headers/include/node" ]
   }
 
   #

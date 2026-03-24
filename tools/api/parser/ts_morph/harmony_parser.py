@@ -12,7 +12,7 @@ import re
 from metadata_def import BaseObject, BaseMember, BaseParam
 from collections import deque
 from env_setup import (
-    NODE_PATH,
+    BUN_PATH,
     API_CONFIG,
     LYNX_ROOT_PATH,
     API_DOC_ANNOTATION,
@@ -51,7 +51,13 @@ class HarmonyParser(Parser):
         self.arkts_parser_path: str = os.path.join(os.path.dirname(__file__), "cli.ts")
 
         self._need_to_parse = True
-        self.command: list[str] = ["npx", "ts-node", self.arkts_parser_path, "--file"]
+        self.command: list[str] = [
+            BUN_PATH,
+            "x",
+            "ts-node",
+            self.arkts_parser_path,
+            "--file",
+        ]
         if "lynx_so_index_file" in API_CONFIG["harmony"]:
             self._lynx_so_index_file = os.path.join(
                 LYNX_ROOT_PATH, API_CONFIG["harmony"]["lynx_so_index_file"]
