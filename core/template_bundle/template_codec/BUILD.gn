@@ -70,6 +70,7 @@ lynx_core_source_set("template_decoder") {
 lynx_core_source_set("tasm_codec_facade") {
   sources = [
     "public/tasm_codec.h",
+    "public/tasm_codec_capi.h",
     "public/tasm_codec_types.h",
     "tasm_codec.cc",
   ]

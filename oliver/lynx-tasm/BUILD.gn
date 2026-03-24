@@ -88,6 +88,14 @@ if (build_lynx_lepus_node) {
       deps += [ "../../core/template_bundle/template_codec:tasm_codec_facade" ]
     }
   } else {
+    static_library("tasm_codec_static") {
+      complete_static_lib = true
+      output_name = "lynx_tasm_codec"
+
+      deps = lynx_encoder_deps + lynx_decoder_deps
+      deps += [ "../../core/template_bundle/template_codec:tasm_codec_facade" ]
+    }
+
     oliver_node_lib("create_tasm_node") {
       output_name = "lepus"
 
