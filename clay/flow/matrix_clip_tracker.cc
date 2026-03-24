@@ -90,6 +90,8 @@ void MatrixClipTracker::save() {
 }
 
 void MatrixClipTracker::restore() {
+  FML_CHECK(saved_.size() > 1)
+      << "`restore()` is called more times than `save()`";
   saved_.pop_back();
   current_ = saved_.back().get();
 }
