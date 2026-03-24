@@ -6,6 +6,15 @@
 
 namespace lynx {
 
+namespace {
+
+const clay::Value& EmptyClayValue() {
+  static const clay::Value sEmptyValue{};
+  return sEmptyValue;
+}
+
+}  // namespace
+
 bool ClayValueWrapper::IsNumber() const {
   switch (backend_value_.type()) {
     case clay::Value::kInt:
@@ -135,7 +144,7 @@ std::unique_ptr<pub::Value> ClayValueWrapper::GetValueAtIndex(
   }
   // Returns an empty Value if it's not a array to keep consistent with
   // clay::Value
-  return std::make_unique<ClayValueWrapper>(clay::Value{});
+  return std::make_unique<ClayValueWrapper>(EmptyClayValue());
 }
 
 bool ClayValueWrapper::Erase(uint32_t idx) const {
@@ -159,7 +168,7 @@ std::unique_ptr<pub::Value> ClayValueWrapper::GetValueForKey(
   }
   // Returns an empty Value if it's not a map to keep consistent with
   // clay::Value
-  return std::make_unique<ClayValueWrapper>(clay::Value{});
+  return std::make_unique<ClayValueWrapper>(EmptyClayValue());
 }
 
 bool ClayValueWrapper::Erase(const std::string& key) const {
