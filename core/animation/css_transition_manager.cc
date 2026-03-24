@@ -120,61 +120,62 @@ const char* ConvertAnimationPropertyTypeToString(
 }
 
 void CSSTransitionManager::setTransitionData(
-    const base::Vector<starlight::TransitionData>& transition_data) {
+    const starlight::TransitionData& transition_data) {
   transition_data_.clear();
   property_types_.clear();
   base::LinearFlatMap<base::String, std::shared_ptr<Animation>>
       active_animations_map;
-  for (const auto& data : transition_data) {
-    if (data.property == starlight::AnimationPropertyType::kAll ||
-        data.property == starlight::AnimationPropertyType::kLegacyAll_1 ||
-        data.property == starlight::AnimationPropertyType::kLegacyAll_2 ||
-        data.property == starlight::AnimationPropertyType::kLegacyAll_3) {
-      starlight::TransitionData temp_data(data);
+
+  for (auto proxy : transition_data) {
+    starlight::AnimationPropertyType property = proxy.property();
+    long duration = proxy.duration();
+    long delay = proxy.delay();
+    starlight::TimingFunctionData tf = proxy.timing_func();
+
+    if (property == starlight::AnimationPropertyType::kAll ||
+        property == starlight::AnimationPropertyType::kLegacyAll_1 ||
+        property == starlight::AnimationPropertyType::kLegacyAll_2 ||
+        property == starlight::AnimationPropertyType::kLegacyAll_3) {
       const auto& transition_props_map =
           GetPropertyIDToAnimationPropertyTypeMap();
       for (const auto& iterator : transition_props_map) {
-        temp_data.property = iterator.second;
-        SetTransitionDataInternal(temp_data, active_animations_map);
+        SetTransitionDataInternal(iterator.second, duration, delay, tf,
+                                  active_animations_map);
       }
-    } else if (data.property ==
-                   starlight::AnimationPropertyType::kBorderWidth ||
-               data.property ==
-                   starlight::AnimationPropertyType::kBorderColor ||
-               data.property == starlight::AnimationPropertyType::kPadding ||
-               data.property == starlight::AnimationPropertyType::kMargin) {
-      starlight::TransitionData temp_data(data);
+    } else if (property == starlight::AnimationPropertyType::kBorderWidth ||
+               property == starlight::AnimationPropertyType::kBorderColor ||
+               property == starlight::AnimationPropertyType::kPadding ||
+               property == starlight::AnimationPropertyType::kMargin) {
       const auto& poly_transition_props_map =
-          GetPolymericPropertyIDToAnimationPropertyTypeMap(data.property);
+          GetPolymericPropertyIDToAnimationPropertyTypeMap(property);
       for (const auto& iterator : poly_transition_props_map) {
-        temp_data.property = iterator.second;
-        SetTransitionDataInternal(temp_data, active_animations_map);
+        SetTransitionDataInternal(iterator.second, duration, delay, tf,
+                                  active_animations_map);
       }
     } else {
-      SetTransitionDataInternal(data, active_animations_map);
+      SetTransitionDataInternal(property, duration, delay, tf,
+                                active_animations_map);
     }
   }
 
-  // 3. All animations remaining in animations_map_ need to be destroyed.
   for (auto& animation_iterator : animations_map_) {
     animation_iterator.second->Destroy();
   }
-  // 4. Swap active animations to animations_map_.
   animations_map_.swap(active_animations_map);
 }
 
 void CSSTransitionManager::SetTransitionDataInternal(
-    const starlight::TransitionData& data,
+    starlight::AnimationPropertyType property, long duration, long delay,
+    const starlight::TimingFunctionData& timing_func,
     base::LinearFlatMap<base::String, std::shared_ptr<Animation>>&
         active_animations_map) {
   // 1. Constructor animation_data according to transition_data
-  property_types_.emplace(static_cast<unsigned int>(data.property));
-  auto& animation_data =
-      transition_data_[static_cast<unsigned int>(data.property)];
-  animation_data.name = ConvertAnimationPropertyTypeToString(data.property);
-  animation_data.duration = data.duration;
-  animation_data.delay = data.delay;
-  animation_data.timing_func = data.timing_func;
+  property_types_.emplace(static_cast<unsigned int>(property));
+  auto& animation_data = transition_data_[static_cast<unsigned int>(property)];
+  animation_data.name = ConvertAnimationPropertyTypeToString(property);
+  animation_data.duration = duration;
+  animation_data.delay = delay;
+  animation_data.timing_func = timing_func;
   animation_data.iteration_count = 1;
   animation_data.fill_mode = starlight::AnimationFillModeType::kForwards;
   animation_data.direction = starlight::AnimationDirectionType::kNormal;

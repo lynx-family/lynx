@@ -4,8 +4,10 @@
 #include "core/renderer/css/css_style_utils.h"
 
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/style/filter_data.h"
+#include "core/style/transition_data.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -438,6 +440,153 @@ TEST(CSSStyleUtils, SetBasicShapeInset) {
                 static_cast<uint32_t>(PlatformLengthUnit::PERCENTAGE));
     }
   }
+}
+
+TEST(CSSStyleUtils, SetAnimationPropertySingleValueRepeated) {
+  ComputedCSSStyle computed_css_style(1.0f, 1.0f);
+  tasm::CSSParserConfigs configs;
+  tasm::StyleMap output;
+
+  bool ret1 = tasm::UnitHandler::Process(tasm::kPropertyIDTransitionProperty,
+                                         lepus::Value("opacity, width, height"),
+                                         output, configs);
+  bool ret2 = tasm::UnitHandler::Process(tasm::kPropertyIDTransitionDuration,
+                                         lepus::Value("1s"), output, configs);
+
+  EXPECT_TRUE(ret1);
+  EXPECT_TRUE(ret2);
+  EXPECT_FALSE(output.empty());
+  EXPECT_TRUE(output.find(tasm::kPropertyIDTransitionProperty) != output.end());
+  EXPECT_TRUE(output.find(tasm::kPropertyIDTransitionDuration) != output.end());
+
+  auto& prop_val = output[tasm::kPropertyIDTransitionProperty];
+  EXPECT_TRUE(prop_val.IsArray());
+  if (prop_val.IsArray()) {
+    EXPECT_EQ(prop_val.GetArray()->size(), 3u);
+  }
+
+  computed_css_style.SetValue(tasm::kPropertyIDTransitionProperty,
+                              output[tasm::kPropertyIDTransitionProperty]);
+  computed_css_style.SetValue(tasm::kPropertyIDTransitionDuration,
+                              output[tasm::kPropertyIDTransitionDuration]);
+
+  auto& transition_data = computed_css_style.GetTransitionData();
+  ASSERT_EQ(transition_data->size(), 3u);
+  EXPECT_EQ((*transition_data)[0].duration(), 1000);
+  EXPECT_EQ((*transition_data)[1].duration(), 1000);
+  EXPECT_EQ((*transition_data)[2].duration(), 1000);
+}
+
+TEST(CSSStyleUtils, SetAnimationPropertyArrayCycling) {
+  ComputedCSSStyle computed_css_style(1.0f, 1.0f);
+  tasm::CSSParserConfigs configs;
+  tasm::StyleMap output;
+
+  tasm::UnitHandler::Process(tasm::kPropertyIDTransitionProperty,
+                             lepus::Value("opacity, width, height, left"),
+                             output, configs);
+  tasm::UnitHandler::Process(tasm::kPropertyIDTransitionDuration,
+                             lepus::Value("1s, 2s"), output, configs);
+
+  computed_css_style.SetValue(tasm::kPropertyIDTransitionProperty,
+                              output[tasm::kPropertyIDTransitionProperty]);
+  computed_css_style.SetValue(tasm::kPropertyIDTransitionDuration,
+                              output[tasm::kPropertyIDTransitionDuration]);
+
+  auto& transition_data = computed_css_style.GetTransitionData();
+  ASSERT_EQ(transition_data->size(), 4u);
+  EXPECT_EQ((*transition_data)[0].duration(), 1000);
+  EXPECT_EQ((*transition_data)[1].duration(), 2000);
+  EXPECT_EQ((*transition_data)[2].duration(), 1000);
+  EXPECT_EQ((*transition_data)[3].duration(), 2000);
+}
+
+TEST(CSSStyleUtils, SetAnimationPropertyArrayEqualSize) {
+  ComputedCSSStyle computed_css_style(1.0f, 1.0f);
+  tasm::CSSParserConfigs configs;
+  tasm::StyleMap output;
+
+  tasm::UnitHandler::Process(tasm::kPropertyIDTransitionProperty,
+                             lepus::Value("opacity, width"), output, configs);
+  tasm::UnitHandler::Process(tasm::kPropertyIDTransitionDuration,
+                             lepus::Value("1s, 2s"), output, configs);
+
+  computed_css_style.SetValue(tasm::kPropertyIDTransitionProperty,
+                              output[tasm::kPropertyIDTransitionProperty]);
+  computed_css_style.SetValue(tasm::kPropertyIDTransitionDuration,
+                              output[tasm::kPropertyIDTransitionDuration]);
+
+  auto& transition_data = computed_css_style.GetTransitionData();
+  ASSERT_EQ(transition_data->size(), 2u);
+  EXPECT_EQ((*transition_data)[0].duration(), 1000);
+  EXPECT_EQ((*transition_data)[1].duration(), 2000);
+}
+
+TEST(CSSStyleUtils, SetAnimationPropertyArrayLarger) {
+  ComputedCSSStyle computed_css_style(1.0f, 1.0f);
+  tasm::CSSParserConfigs configs;
+  tasm::StyleMap output;
+
+  tasm::UnitHandler::Process(tasm::kPropertyIDTransitionProperty,
+                             lepus::Value("opacity"), output, configs);
+  tasm::UnitHandler::Process(tasm::kPropertyIDTransitionDuration,
+                             lepus::Value("1s, 2s, 3s"), output, configs);
+
+  computed_css_style.SetValue(tasm::kPropertyIDTransitionProperty,
+                              output[tasm::kPropertyIDTransitionProperty]);
+  computed_css_style.SetValue(tasm::kPropertyIDTransitionDuration,
+                              output[tasm::kPropertyIDTransitionDuration]);
+
+  auto& transition_data = computed_css_style.GetTransitionData();
+  ASSERT_EQ(transition_data->size(), 1u);
+  EXPECT_EQ((*transition_data)[0].duration(), 1000);
+}
+
+TEST(CSSStyleUtils, SetAnimationPropertyTimingFunctionCycling) {
+  ComputedCSSStyle computed_css_style(1.0f, 1.0f);
+  tasm::CSSParserConfigs configs;
+  tasm::StyleMap output;
+
+  tasm::UnitHandler::Process(tasm::kPropertyIDTransitionProperty,
+                             lepus::Value("opacity, width, height"), output,
+                             configs);
+  tasm::UnitHandler::Process(tasm::kPropertyIDTransitionTimingFunction,
+                             lepus::Value("linear, ease-in"), output, configs);
+
+  computed_css_style.SetValue(tasm::kPropertyIDTransitionProperty,
+                              output[tasm::kPropertyIDTransitionProperty]);
+  computed_css_style.SetValue(
+      tasm::kPropertyIDTransitionTimingFunction,
+      output[tasm::kPropertyIDTransitionTimingFunction]);
+
+  auto& transition_data = computed_css_style.GetTransitionData();
+  ASSERT_EQ(transition_data->size(), 3u);
+  EXPECT_EQ((*transition_data)[0].timing_func().timing_func,
+            starlight::TimingFunctionType::kLinear);
+  EXPECT_EQ((*transition_data)[1].timing_func().timing_func,
+            starlight::TimingFunctionType::kEaseIn);
+  EXPECT_EQ((*transition_data)[2].timing_func().timing_func,
+            starlight::TimingFunctionType::kLinear);
+}
+
+TEST(CSSStyleUtils, SetAnimationPropertyEmptyArrayStrictMode) {
+  ComputedCSSStyle computed_css_style(1.0f, 1.0f);
+  tasm::CSSParserConfigs configs;
+  configs.enable_css_strict_mode = true;
+  tasm::StyleMap output;
+
+  tasm::UnitHandler::Process(tasm::kPropertyIDTransitionProperty,
+                             lepus::Value("opacity"), output, configs);
+  computed_css_style.SetValue(tasm::kPropertyIDTransitionProperty,
+                              output[tasm::kPropertyIDTransitionProperty]);
+
+  auto empty_arr = lepus::CArray::Create();
+  tasm::CSSValue empty_value(lepus::Value(empty_arr),
+                             tasm::CSSValuePattern::ARRAY);
+
+  bool result = computed_css_style.SetValue(tasm::kPropertyIDTransitionDuration,
+                                            empty_value);
+  (void)result;
 }
 
 }  // namespace starlight

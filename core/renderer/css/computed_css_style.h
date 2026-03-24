@@ -216,7 +216,7 @@ class ComputedCSSStyle {
         ->radius_x_bottom_right;
   }
 
-  base::Vector<TransitionData>& transition_data() {
+  TransitionData& transition_data() {
     CSSStyleUtils::PrepareOptional(transition_data_);
     return *transition_data_;
   }
@@ -429,7 +429,7 @@ class ComputedCSSStyle {
   base::flex_optional<OutLineData> outline_;
   base::flex_optional<base::InlineVector<AnimationData, 1>> animation_data_;
   base::flex_optional<base::InlineVector<TransformRawData, 1>> transform_raw_;
-  base::flex_optional<base::InlineVector<TransitionData, 1>> transition_data_;
+  base::flex_optional<TransitionData> transition_data_;
   base::flex_optional<base::InlineVector<ShadowData, 1>> box_shadow_;
   base::flex_optional<TextAttributes> text_attributes_;
   base::flex_optional<TextAttributes> placeholder_text_attributes_;
@@ -654,6 +654,12 @@ class ComputedCSSStyle {
   void ClearChanged() { changed_bitset_.Reset(); }
 
   void ClearReset() { reset_bitset_.Reset(); }
+
+  template <typename T, typename Converter>
+  bool SetTransitionPropertyHelper(
+      const tasm::CSSValue& value, bool reset,
+      base::InlineVector<T, 1> TransitionData::*member, Converter converter,
+      const char* error_msg);
 
   tasm::CSSIDBitset changed_bitset_;
   tasm::CSSIDBitset reset_bitset_;

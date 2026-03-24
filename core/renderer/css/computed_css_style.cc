@@ -2233,6 +2233,45 @@ bool ComputedCSSStyle::SetLayoutAnimationDeleteTimingFunction(
       parser_configs_);
 }
 
+template <typename T, typename Converter>
+bool ComputedCSSStyle::SetTransitionPropertyHelper(
+    const tasm::CSSValue& value, bool reset,
+    base::InlineVector<T, 1> TransitionData::*member, Converter converter,
+    const char* error_msg) {
+  if (reset) {
+    if (transition_data_) {
+      ((*transition_data_).*member).clear();
+    }
+    return transition_data_.has_value();
+  }
+  CSS_HANDLER_FAIL_IF_NOT(value.IsNumber() || value.IsArray() || value.IsEnum(),
+                          parser_configs_.enable_css_strict_mode, error_msg)
+  CSSStyleUtils::PrepareOptional(transition_data_);
+
+  base::InlineVector<lepus::Value, 4> inputs;
+  if (value.IsArray()) {
+    auto arr = value.GetArray();
+    CSS_HANDLER_FAIL_IF_NOT(arr->size() > 0,
+                            parser_configs_.enable_css_strict_mode,
+                            "Transition property array must not be empty!")
+    inputs.reserve(arr->size());
+    for (size_t i = 0; i < arr->size(); ++i) {
+      inputs.push_back(arr->get(i));
+    }
+  } else {
+    inputs.push_back(value.GetValue());
+  }
+
+  auto& target = (*transition_data_).*member;
+  base::InlineVector<T, 1> old_values = target;
+  target.clear();
+  for (const auto& input : inputs) {
+    target.push_back(converter(input));
+  }
+
+  return old_values != target;
+}
+
 // TODO(baiqiang): Remove Transition shorthand setter
 bool ComputedCSSStyle::SetTransition(const tasm::CSSValue& value,
                                      const bool reset) {
@@ -2249,91 +2288,77 @@ bool ComputedCSSStyle::SetTransition(const tasm::CSSValue& value,
     if (!transition_data_) {
       transition_data_.emplace();
     }
-    transition_data_->clear();
+    transition_data_->properties.clear();
+    transition_data_->durations.clear();
+    transition_data_->delays.clear();
+    transition_data_->timing_funcs.clear();
     auto group = value.GetArray();
     BASE_STATIC_STRING_DECL(kProperty, "property");
     BASE_STATIC_STRING_DECL(kDuration, "duration");
     BASE_STATIC_STRING_DECL(kTiming, "timing");
     BASE_STATIC_STRING_DECL(kDelay, "delay");
     for (size_t i = 0; i < group->size(); i++) {
-      if (transition_data_->size() < i + 1) {
-        transition_data_->push_back(TransitionData());
-      }
       auto dict = group->get(i).Table();
-      (*transition_data_)[i].property = static_cast<AnimationPropertyType>(
-          dict->GetValue(kProperty).Number());
-      (*transition_data_)[i].duration = dict->GetValue(kDuration).Number();
+      transition_data_->properties.push_back(static_cast<AnimationPropertyType>(
+          dict->GetValue(kProperty).Number()));
+      transition_data_->durations.push_back(dict->GetValue(kDuration).Number());
       if (dict->Contains(kTiming)) {
         DCHECK(dict->GetValue(kTiming).IsArray());
+        TimingFunctionData tf;
         CSSStyleUtils::ComputeTimingFunction(
-            dict->GetValue(kTiming).Array()->get(0), reset,
-            (*transition_data_)[i].timing_func, parser_configs_);
+            dict->GetValue(kTiming).Array()->get(0), reset, tf,
+            parser_configs_);
+        transition_data_->timing_funcs.push_back(tf);
+      } else {
+        transition_data_->timing_funcs.emplace_back();
       }
       if (dict->Contains(kDelay)) {
-        (*transition_data_)[i].delay = dict->GetValue(kDelay).Number();
+        transition_data_->delays.push_back(dict->GetValue(kDelay).Number());
+      } else {
+        transition_data_->delays.push_back(0);
       }
     }
   }
-  return old_value != transition_data_;
+  return old_value.has_value() != transition_data_.has_value() ||
+         (old_value.has_value() && *old_value != *transition_data_);
 }
 
 bool ComputedCSSStyle::SetTransitionProperty(const tasm::CSSValue& value,
                                              const bool reset) {
-  auto reset_func = [](TransitionData& transition) {
-    transition.property = AnimationPropertyType::kNone;
-  };
-  auto compute_func = [](const lepus::Value& value, TransitionData& transition,
-                         bool reset) {
-    AnimationPropertyType old = transition.property;
-    transition.property = static_cast<AnimationPropertyType>(value.Number());
-    return old != transition.property;
-  };
-  return CSSStyleUtils::SetAnimationProperty(transition_data_, value,
-                                             reset_func, compute_func, reset,
-                                             parser_configs_);
+  return SetTransitionPropertyHelper(
+      value, reset, &TransitionData::properties,
+      [](const lepus::Value& val) {
+        return static_cast<AnimationPropertyType>(val.Number());
+      },
+      "transition-property must be number, enum, or array!");
 }
 
 bool ComputedCSSStyle::SetTransitionTimingFunction(const tasm::CSSValue& value,
                                                    const bool reset) {
-  auto reset_func = [](TransitionData& transition) {
-    transition.timing_func.Reset();
-  };
-  auto compute_func = [this](const lepus::Value& value,
-                             TransitionData& transition, bool reset) {
-    return CSSStyleUtils::ComputeTimingFunction(
-        value, reset, transition.timing_func, this->parser_configs_);
-  };
-  return CSSStyleUtils::SetAnimationProperty(transition_data_, value,
-                                             reset_func, compute_func, reset,
-                                             parser_configs_);
+  return SetTransitionPropertyHelper(
+      value, reset, &TransitionData::timing_funcs,
+      [this, reset](const lepus::Value& val) {
+        TimingFunctionData tf;
+        CSSStyleUtils::ComputeTimingFunction(val, reset, tf, parser_configs_);
+        return tf;
+      },
+      "transition-timing-function must be enum, number, string or array!");
 }
 
 bool ComputedCSSStyle::SetTransitionDuration(const tasm::CSSValue& value,
                                              const bool reset) {
-  auto reset_func = [](TransitionData& transition) { transition.duration = 0; };
-  auto compute_func = [](const lepus::Value& value, TransitionData& transition,
-                         bool reset) {
-    long old = transition.duration;
-    transition.duration = value.Number();
-    return old != transition.duration;
-  };
-  return CSSStyleUtils::SetAnimationProperty(transition_data_, value,
-                                             reset_func, compute_func, reset,
-                                             parser_configs_);
+  return SetTransitionPropertyHelper(
+      value, reset, &TransitionData::durations,
+      [](const lepus::Value& val) { return static_cast<long>(val.Number()); },
+      "transition-duration must be number or array!");
 }
 
 bool ComputedCSSStyle::SetTransitionDelay(const tasm::CSSValue& value,
                                           const bool reset) {
-  auto reset_func = [](TransitionData& transition) { transition.delay = 0; };
-  auto compute_func = [](const lepus::Value& value, TransitionData& transition,
-                         bool reset) {
-    long old = transition.delay;
-    transition.delay = value.Number();
-    return old != transition.delay;
-  };
-  return CSSStyleUtils::SetAnimationProperty(transition_data_, value,
-                                             reset_func, compute_func, reset,
-                                             parser_configs_);
+  return SetTransitionPropertyHelper(
+      value, reset, &TransitionData::delays,
+      [](const lepus::Value& val) { return static_cast<long>(val.Number()); },
+      "transition-delay must be number or array!");
 }
 
 bool ComputedCSSStyle::SetEnterTransitionName(const lynx::tasm::CSSValue& value,
@@ -3695,25 +3720,30 @@ lepus_value ComputedCSSStyle::LayoutAnimationUpdateDelayToLepus() {
 }
 
 lepus_value ComputedCSSStyle::TransitionToLepus() {
-  if (!transition_data_) {
+  if (!transition_data_ || transition_data_->empty()) {
     return lepus::Value();
   }
+
   auto array_wrap = lepus::CArray::Create();
-  for (const auto& it : *transition_data_) {
-    auto array = lepus::CArray::Create();
-    if (it.property == AnimationPropertyType::kNone) {
+
+  for (size_t i = 0; i < transition_data_->size(); ++i) {
+    auto proxy = (*transition_data_)[i];
+
+    if (proxy.property() == AnimationPropertyType::kNone) {
       break;
     }
+
+    auto array = lepus::CArray::Create();
     array->reserve(9);
-    array->emplace_back(static_cast<int>(it.property));
-    array->emplace_back(static_cast<double>(it.duration));
-    array->emplace_back(static_cast<int>(it.timing_func.timing_func));
-    array->emplace_back(static_cast<int>(it.timing_func.steps_type));
-    array->emplace_back(static_cast<double>(it.timing_func.x1));
-    array->emplace_back(static_cast<double>(it.timing_func.y1));
-    array->emplace_back(static_cast<double>(it.timing_func.x2));
-    array->emplace_back(static_cast<double>(it.timing_func.y2));
-    array->emplace_back(static_cast<double>(it.delay));
+    array->emplace_back(static_cast<int>(proxy.property()));
+    array->emplace_back(static_cast<double>(proxy.duration()));
+    array->emplace_back(static_cast<int>(proxy.timing_func().timing_func));
+    array->emplace_back(static_cast<int>(proxy.timing_func().steps_type));
+    array->emplace_back(static_cast<double>(proxy.timing_func().x1));
+    array->emplace_back(static_cast<double>(proxy.timing_func().y1));
+    array->emplace_back(static_cast<double>(proxy.timing_func().x2));
+    array->emplace_back(static_cast<double>(proxy.timing_func().y2));
+    array->emplace_back(static_cast<double>(proxy.delay()));
     array_wrap->emplace_back(std::move(array));
   }
   return lepus::Value(std::move(array_wrap));

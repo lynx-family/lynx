@@ -4,15 +4,6 @@
 
 #include "core/style/transition_data.h"
 
-#include "core/renderer/starlight/style/css_type.h"
-#include "core/style/default_computed_style.h"
-
 namespace lynx {
-namespace starlight {
-
-TransitionData::TransitionData()
-    : duration(DefaultComputedStyle::DEFAULT_LONG),
-      delay(DefaultComputedStyle::DEFAULT_LONG),
-      property(AnimationPropertyType::kNone) {}
-}  // namespace starlight
+namespace starlight {}  // namespace starlight
 }  // namespace lynx

@@ -6316,10 +6316,9 @@ TEST_P(FiberElementTest,
 
   element->css_transition_manager_ =
       std::make_unique<animation::CSSTransitionManager>(element.get());
-  base::Vector<starlight::TransitionData> transition_data;
-  starlight::TransitionData data;
-  data.property = starlight::AnimationPropertyType::kWidth;
-  transition_data.emplace_back(data);
+  starlight::TransitionData transition_data;
+  transition_data.properties.push_back(
+      starlight::AnimationPropertyType::kWidth);
   element->css_transition_manager_->setTransitionData(transition_data);
 
   tasm_mediator.captured_ids_.clear();
@@ -6346,11 +6345,9 @@ TEST_P(FiberElementTest,
 
   element->css_transition_manager_ =
       std::make_unique<animation::CSSTransitionManager>(element.get());
-  base::Vector<starlight::TransitionData> transition_data;
   starlight::TransitionData data;
-  data.property = starlight::AnimationPropertyType::kWidth;
-  transition_data.emplace_back(data);
-  element->css_transition_manager_->setTransitionData(transition_data);
+  data.properties.emplace_back(starlight::AnimationPropertyType::kWidth);
+  element->css_transition_manager_->setTransitionData(data);
 
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
@@ -6426,10 +6423,9 @@ TEST_P(FiberElementTest,
 
   element->css_transition_manager_ =
       std::make_unique<animation::CSSTransitionManager>(element.get());
-  base::Vector<starlight::TransitionData> transition_data;
-  starlight::TransitionData data;
-  data.property = starlight::AnimationPropertyType::kWidth;
-  transition_data.emplace_back(data);
+  starlight::TransitionData transition_data;
+  transition_data.properties.push_back(
+      starlight::AnimationPropertyType::kWidth);
   element->css_transition_manager_->setTransitionData(transition_data);
 
   tasm_mediator.captured_ids_.clear();
@@ -6457,10 +6453,9 @@ TEST_P(FiberElementTest,
 
   element->css_transition_manager_ =
       std::make_unique<animation::CSSTransitionManager>(element.get());
-  base::Vector<starlight::TransitionData> transition_data;
-  starlight::TransitionData data;
-  data.property = starlight::AnimationPropertyType::kWidth;
-  transition_data.emplace_back(data);
+  starlight::TransitionData transition_data;
+  transition_data.properties.push_back(
+      starlight::AnimationPropertyType::kWidth);
   element->css_transition_manager_->setTransitionData(transition_data);
 
   tasm_mediator.captured_ids_.clear();
@@ -6486,10 +6481,9 @@ TEST_P(FiberElementTest,
 
   element->css_transition_manager_ =
       std::make_unique<animation::CSSTransitionManager>(element.get());
-  base::Vector<starlight::TransitionData> transition_data;
-  starlight::TransitionData data;
-  data.property = starlight::AnimationPropertyType::kOpacity;
-  transition_data.emplace_back(data);
+  starlight::TransitionData transition_data;
+  transition_data.properties.push_back(
+      starlight::AnimationPropertyType::kOpacity);
   element->css_transition_manager_->setTransitionData(transition_data);
 
   tasm_mediator.captured_ids_.clear();

@@ -24,8 +24,7 @@ class CSSTransitionManager : public CSSKeyframeManager {
   CSSTransitionManager(tasm::Element* element) : CSSKeyframeManager(element) {}
   ~CSSTransitionManager() = default;
 
-  void setTransitionData(
-      const base::Vector<starlight::TransitionData>& transition_data);
+  void setTransitionData(const starlight::TransitionData& transition_data);
 
   const tasm::CSSKeyframesContent& GetKeyframesStyleMap(
       const base::String& animation_name) override;
@@ -46,7 +45,8 @@ class CSSTransitionManager : public CSSKeyframeManager {
                     const tasm::CSSValue& value,
                     const tasm::CSSParserConfigs& configs);
   void SetTransitionDataInternal(
-      const starlight::TransitionData& data,
+      starlight::AnimationPropertyType property, long duration, long delay,
+      const starlight::TimingFunctionData& timing_func,
       base::LinearFlatMap<base::String, std::shared_ptr<Animation>>&
           active_animations_map);
 
