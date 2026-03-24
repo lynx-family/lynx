@@ -152,6 +152,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 @property(nonatomic, assign) BOOL isInAutoScroll;
 @property(nonatomic, assign) LynxListScrollState currentScrollState;
 @property(nonatomic, assign) BOOL enableNeedVisibleItemInfo;
+@property(nonatomic, assign) BOOL updatingStickyAfterLayout;
 // Experimental
 @property(nonatomic, assign) BOOL disableFilterScroll;
 
@@ -368,6 +369,31 @@ LYNX_REGISTER_UI("list-container")
   }
 }
 
+- (void)updateStickyAfterLayoutIfNeeded:(LynxUIComponent *)component {
+  if (!self.enableListSticky) {
+    return;
+  }
+  if (self.updatingStickyAfterLayout) {
+    return;
+  }
+  BOOL isStickyRelevant = NO;
+  if (component.itemKey) {
+    isStickyRelevant = [self.stickyTopItemKeySet containsObject:component.itemKey] ||
+                       [self.stickyBottomItemKeySet containsObject:component.itemKey];
+  }
+  if (!isStickyRelevant) {
+    isStickyRelevant =
+        (self.prevStickyStartItem == component) || (self.prevStickyEndItem == component);
+  }
+  if (!isStickyRelevant) {
+    return;
+  }
+  self.updatingStickyAfterLayout = YES;
+  [self updateStickyTops];
+  [self updateStickyBottoms];
+  self.updatingStickyAfterLayout = NO;
+}
+
 #pragma mark component update
 - (void)onComponentLayoutUpdated:(LynxUIComponent *)component {
   LynxListContainerComponentWrapper *wrapper =
@@ -406,6 +432,8 @@ LYNX_REGISTER_UI("list-container")
       }
     }
   }
+
+  [self updateStickyAfterLayoutIfNeeded:component];
 }
 
 - (void)updateStickyItemDictWithItem:(LynxUIComponent *)component
