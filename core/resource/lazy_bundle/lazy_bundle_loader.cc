@@ -109,6 +109,7 @@ void LazyBundleLoader::LoadFrameBundle(const std::string& src) {
   auto preloaded_bundle = GetTemplateBundle(src);
   if (preloaded_bundle.has_value()) {
     // Hit cache, dispatch directly without network request
+    LOGE("Load Frame Bundle with preloaded bundle. Src： " << src.c_str());
     LazyBundleLoader::CallBackInfo callback_info(
         src, std::vector<uint8_t>(), std::move(preloaded_bundle), std::nullopt);
     lazy_bundle::LynxLazyBundleRequest request{
