@@ -272,10 +272,20 @@ void PlatformRendererContext::UpdatePlatformRendererExtraData(
                                                        extra_bundle);
 }
 
+void PlatformRendererContext::Destroy() {
+  java_ref_.Reset(nullptr, nullptr);
+  renderer_registry_.clear();
+}
+
 }  // namespace tasm
 }  // namespace lynx
 
-// JNI function implementations
+void Destroy(JNIEnv* env, jobject jcaller, jlong nativePtr) {
+  if (nativePtr == 0) {
+    return;
+  }
+  reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr)->Destroy();
+}
 jintArray GetDisplayListLengths(JNIEnv* env, jobject /*jcaller*/,
                                 jlong nativePtr, jint id) {
   // Get the PlatformRendererContext instance from the native pointer
@@ -384,4 +394,12 @@ void GetDisplayListData(JNIEnv* env, jobject /*jcaller*/, jlong nativePtr,
     env->ReleaseIntArrayElements(iArgv, iArgvData, 0);
     env->ReleaseFloatArrayElements(fArgv, fArgvData, 0);
   }
+}
+
+void Java_com_lynx_tasm_behavior_render_PlatformRendererContext_nativeDestroy(
+    JNIEnv* env, jobject jcaller, jlong nativePtr) {
+  if (nativePtr == 0) {
+    return;
+  }
+  reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr)->Destroy();
 }
