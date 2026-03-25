@@ -1357,7 +1357,7 @@ void LynxShell::AttachEngineToUIThread() {
       true, reinterpret_cast<int64_t>(this));
 #endif
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_ATTACH_ENGINE_TO_UI_THREAD);
-  if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+  if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker()) {
     engine_actor_->ActEmergency([](auto& engine) {
       // To enable MTS runtime tid check;
       engine->GetTasm()->BindMTSRuntimeThread();
@@ -1385,7 +1385,7 @@ void LynxShell::DetachEngineFromUIThread() {
       false, reinterpret_cast<int64_t>(this));
 #endif
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_DETACH_ENGINE_TO_UI_THREAD);
-  if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+  if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker()) {
     engine_actor_->Act([](auto& engine) {
       // To enable MTS runtime tid check;
       engine->GetTasm()->BindMTSRuntimeThread();

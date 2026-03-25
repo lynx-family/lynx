@@ -531,8 +531,7 @@ QuickContext::QuickContext(
       current_this_(LEPUS_UNDEFINED) {
   // TODO(nihao.royal): maybe add a platform interface to enable the runtime
   // leak checker later;
-  bool debuggable = page_options.GetDebuggable();
-  if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker() || debuggable) {
+  if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker()) {
     EnableRuntimeLeakCheck(true);
     BindCurrentThread();
   }
