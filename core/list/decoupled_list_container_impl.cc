@@ -418,6 +418,10 @@ void ListContainerImpl::OnLayoutChildren(
     }
     if (need_recycle_all_item_holders_before_layout_) {
       list_adapter_->RecycleAllItemHolders();
+      // Note: if list-type is changed, we will recycle all items before layout,
+      // so here need to clear last_binding_children set to make sure we can
+      // calculate new insert items after layout.
+      list_children_helper_->ClearLastBindingChildren();
       need_recycle_all_item_holders_before_layout_ = false;
     }
     if (intercept_depth_ == 0) {
