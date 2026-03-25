@@ -39,6 +39,7 @@ TextAreaView::TextAreaView(int id, PageView* page_view)
   editable_view_->SetKeyboardAction(KeyboardAction::kMultiLine);
   editable_view_->SetMaxLines(std::numeric_limits<uint32_t>::max());
   editable_scroll_ = new ScrollView(-1, ScrollDirection::kVertical, page_view);
+  editable_scroll_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
   BaseView::AddChild(editable_scroll_);
   editable_scroll_->BaseView::AddChild(editable_view_);
   ResetGestureRecognizers();
