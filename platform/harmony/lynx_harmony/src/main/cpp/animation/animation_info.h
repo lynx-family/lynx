@@ -39,6 +39,7 @@ class AnimationInfo {
   ArkUI_AnimationFillMode GetArkUIAnimationFillMode() const;
   ArkUI_AnimationDirection GetArkUIAnimationDirection() const;
   int GetPlayState() const { return play_state_; }
+  int GetOrderIndex() const { return order_index_; }
 
   void SetName(const std::string& name) { name_ = name; }
   void SetDuration(int64_t duration) { duration_ = duration; }
@@ -55,6 +56,7 @@ class AnimationInfo {
   void SetFillMode(int fill_mode) { fill_mode_ = fill_mode; }
   void SetDirection(int direction) { direction_ = direction; }
   void SetPlayState(int play_state) { play_state_ = play_state; }
+  void SetOrderIndex(int index) { order_index_ = index; }
 
   size_t SetTimingFunction(lepus::CArray* arr, size_t start);
   static AnimationInfo ToAnimationInfo(const lepus::Value& v);
@@ -75,6 +77,7 @@ class AnimationInfo {
   int fill_mode_;
   int direction_;
   int play_state_;
+  int order_index_;
 };
 
 }  // namespace harmony
