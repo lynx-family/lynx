@@ -21,6 +21,9 @@
 #include "clay/gfx/shared_image/shared_image_sink_accessor.h"
 #include "clay/net/loader/data_image_loader.h"
 #include "clay/ui/common/isolate.h"
+#ifdef ENABLE_SKITY
+#include "skity/codec/codec.hpp"
+#endif
 
 namespace clay {
 
@@ -85,9 +88,8 @@ class ExternalFenceSync final : public FenceSync {
   ClayVoidCallback delete_callback_;
   void* user_data_;
 };
-
-GrDataPtr GetImagePixels(fml::RefPtr<clay::GraphicsImage> image) {
 #ifndef ENABLE_SKITY
+GrDataPtr GetImagePixels(fml::RefPtr<clay::GraphicsImage> image) {
   SkPixmap pixmap;
   if (!image || !image->peekPixels(&pixmap)) {
     FML_LOG(ERROR) << "Could not peekPixels from image.";
@@ -117,27 +119,46 @@ GrDataPtr GetImagePixels(fml::RefPtr<clay::GraphicsImage> image) {
   }
 
   return SkData::MakeWithCopy(pixmap.addr(), pixmap.computeByteSize());
-#else
-  if (!image) {
-    FML_LOG(ERROR) << "Could not peekPixels from null image.";
-    return nullptr;
-  }
-  std::shared_ptr<skity::Pixmap> pixmap = image->peekPixels();
-  if (pixmap->GetColorType() == skity::ColorType::kRGBA &&
-      pixmap->GetAlphaType() == skity::AlphaType::kPremul_AlphaType) {
-    return skity::Data::MakeWithCopy(pixmap->Addr(),
-                                     pixmap->Height() * pixmap->RowBytes());
-  }
-
-  // TODO: Need raster surface to write pixels.
-  return skity::Data::MakeEmpty();
-#endif  // ENABLE_SKITY
 }
+#endif  // ENABLE_SKITY
 
 void DecodeImage(
     GrDataPtr data,
     std::function<void(const char* error_message, const ClayBitmap* bitmap)>
         callback) {
+#ifdef ENABLE_SKITY
+  GraphicsIsolate::Instance().GetConcurrentWorkerTaskRunner()->PostTask(
+      [data = std::move(data), callback = std::move(callback)]() {
+        auto codec = skity::Codec::MakeFromData(data);
+        if (!codec) {
+          callback("Invalid image data.", nullptr);
+          return;
+        }
+        codec->SetData(data);
+        auto pixmap = codec->Decode();
+        if (!pixmap) {
+          callback("Failed to decode image", nullptr);
+          return;
+        }
+        // Convert alpha type from kUnpremul_AlphaType to kPremul_AlphaType
+        pixmap->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
+                             pixmap->GetColorType());
+        auto image_pixels = skity::Data::MakeWithCopy(
+            pixmap->Addr(), pixmap->Height() * pixmap->RowBytes());
+        auto* shared_ptr_holder = new GrDataPtr(std::move(image_pixels));
+        ClayBitmap result{};
+        result.struct_size = sizeof(result);
+        result.width = pixmap->Width();
+        result.height = pixmap->Height();
+        result.pixels.size = DATA_GET_SIZE((*shared_ptr_holder));
+        result.pixels.ptr = DATA_GET_DATA((*shared_ptr_holder));
+        result.pixels.user_data = shared_ptr_holder;
+        result.pixels.destruction_callback = [](const void*, void* user_data) {
+          delete static_cast<GrDataPtr*>(user_data);
+        };
+        callback(nullptr, &result);
+      });
+#else
   fml::RefPtr<clay::ImageDescriptor> image_descriptor =
       clay::ImageDescriptor::Create(std::move(data));
 
@@ -174,6 +195,7 @@ void DecodeImage(
               }
             });
       });
+#endif
 }
 
 class ClayBitmapCallbackWrapper {
