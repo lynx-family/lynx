@@ -41,6 +41,8 @@ class linear_map_SynthProvider:
 
     def update(self):
         self.map_type = self.map_obj.GetType().GetDereferencedType()
+        if self.map_type.IsPointerType():
+            self.map_type = self.map_type.GetPointeeType()
         self.key_type = self.map_type.GetTemplateArgumentType(0)
         self.key_policy_type = self.map_type.GetTemplateArgumentType(2)
         self.consecutive_key = str(self.key_policy_type).find("lynx::base::MapKeyPolicyConsecutiveIntegers") >= 0
