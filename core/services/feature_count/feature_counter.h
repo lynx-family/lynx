@@ -74,7 +74,7 @@ class FeatureCounter {
   /// the features of current instance id.
   std::array<bool, kAllFeaturesCount>* current_features_{nullptr};
   /// The stack that stores instance id need to report features.
-  std::unordered_set<int32_t> all_instance_need_to_report_;
+  base::LinearFlatSet<int32_t> all_instance_need_to_report_;
   /// The instance id of the currently collected features.
   int32_t current_instance_id_ = shell::kUnknownInstanceId;
   /// The stack that stores instance id.

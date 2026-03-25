@@ -12,6 +12,7 @@
 #include <unordered_set>
 
 #include "base/include/thread/timed_task.h"
+#include "base/include/vector.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/feature_count/feature.h"
 
@@ -35,8 +36,10 @@ class GlobalFeatureCounter {
   /// Merge features into all_instance_features_ and report.
   /// @param features features of instance
   /// @param instance_id the unique id of template instance.
+  /// @param on_destroy if true and no current stored features, no need to
+  ///  do merge and discard the data.
   static void MergeAndReport(std::array<bool, kAllFeaturesCount> features,
-                             int32_t instance_id);
+                             int32_t instance_id, bool on_destroy = false);
 
   /// Clear and report features of instance id when template instance be reset
   /// or destory. Can be called from any thread, the method will run on report
@@ -67,7 +70,7 @@ class GlobalFeatureCounter {
   std::unordered_map<int32_t, std::array<bool, kAllFeaturesCount>>
       all_instance_features_;
   /// Instances with new features to be reported.
-  std::unordered_set<int32_t> all_instance_need_to_report_;
+  base::LinearFlatSet<int32_t> all_instance_need_to_report_;
   std::unique_ptr<base::TimedTaskManager> timer_{nullptr};
   std::atomic<bool> is_timer_running_ = false;
   bool enable_ = false;

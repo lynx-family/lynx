@@ -86,7 +86,7 @@ void FeatureCounter::ClearAndReport(int32_t instance_id) {
 
   std::array<bool, kAllFeaturesCount> features = std::move(features_it->second);
   all_instance_features.erase(instance_id);
-  GlobalFeatureCounter::MergeAndReport(std::move(features), instance_id);
+  GlobalFeatureCounter::MergeAndReport(std::move(features), instance_id, true);
 }
 
 void FeatureCounter::Flush() {
