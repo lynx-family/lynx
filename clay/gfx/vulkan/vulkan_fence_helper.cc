@@ -4,6 +4,7 @@
 
 #include "clay/gfx/vulkan/vulkan_fence_helper.h"
 
+#include "base/include/fml/unique_fd.h"
 #include "clay/gfx/shared_image/android_egl_image_representation.h"
 #include "clay/gfx/vulkan/vulkan_helper.h"
 namespace clay {
@@ -60,14 +61,21 @@ bool VulkanFenceHelper::WaitSemaphore() {
   if (!is_valid_) {
     return false;
   }
-  int32_t fd = GetSyncFd();
-  if (fd == -1) {
+  fml::UniqueFD fd(GetSyncFd());
+  if (!fd.is_valid()) {
     return false;
   }
-  EGLint attribs[] = {EGL_SYNC_NATIVE_FENCE_FD_ANDROID, fd, EGL_NONE};
+  EGLint attribs[] = {EGL_SYNC_NATIVE_FENCE_FD_ANDROID, fd.get(), EGL_NONE};
   EGLDisplay egl_display = eglGetCurrentDisplay();
   EGLSyncKHR sync = AndroidEGLFenceSync::eglCreateSyncKHR(
       egl_display, EGL_SYNC_NATIVE_FENCE_ANDROID, attribs);
+  if (sync == EGL_NO_SYNC_KHR) {
+    FML_LOG(ERROR) << "WaitSemaphore: failed to create EGL native fence sync";
+    return false;
+  }
+  // EGL takes ownership of EGL_SYNC_NATIVE_FENCE_FD_ANDROID after successful
+  // eglCreateSyncKHR.
+  [[maybe_unused]] const int transferred_fd = fd.release();
   AndroidEGLFenceSync::eglWaitSyncKHR(egl_display, sync, 0);
   AndroidEGLFenceSync::eglDestroySyncKHR(egl_display, sync);
   return true;
