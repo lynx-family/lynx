@@ -243,6 +243,9 @@ bool ItemHolder::VisibleInList(ListOrientationHelper* orientation_helper,
   float list_end = list_start + container_size;
   float start = orientation_helper->GetDecoratedStart(this);
   float end = orientation_helper->GetDecoratedEnd(this);
+  // case1. visible window's start line is in item's range
+  // case2. visible window's end line is in item's range
+  // case3. the whole item is in visible window
   return ((base::FloatsLarger(list_start, start) &&
            base::FloatsLarger(end, list_start)) ||
           (base::FloatsLarger(list_end, start) &&

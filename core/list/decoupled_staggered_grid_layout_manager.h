@@ -104,8 +104,6 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
   float CalculateCrossAxisPosition(const ItemHolder* item_holder);
   float CalculateMainAxisPosition(ItemHolder* item_holder,
                                   LayoutState& layout_state);
-  // Detect whether this item_holder intersects current visible area.
-  bool IntersectVisibleArea(const ItemHolder* item_holder) const;
   // Detect whether current trunk left empty space to fill. Both toStart and
   // toEnd.
   int FindNextIndexToFillStart(LayoutState& layout_state) const;

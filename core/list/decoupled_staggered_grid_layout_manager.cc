@@ -41,7 +41,8 @@ void StaggeredGridLayoutManager::UpdateStartAndEndLinesStatus(
           // Note: When updating layout status, we should exclude the item
           // holder which is removed or in sticky but not intersected with
           // visible area.
-          if (!IntersectVisibleArea(item_holder) ||
+          if (!item_holder->VisibleInList(list_orientation_helper_.get(),
+                                          content_offset_) ||
               list_adapter->IsRemoved(item_holder)) {
             return false;
           }
@@ -458,7 +459,8 @@ bool StaggeredGridLayoutManager::BindAllVisibleItemHolders() {
   bool should_fill = false;
   list_children_helper_->ForEachChild(
       [this, &should_fill](ItemHolder* item_holder) {
-        if (IntersectVisibleArea(item_holder)) {
+        if (item_holder->VisibleInList(list_orientation_helper_.get(),
+                                       content_offset_)) {
           should_fill = list_container_->list_adapter()->BindItemHolder(
                             item_holder, item_holder->index()) ||
                         should_fill;
@@ -659,17 +661,6 @@ float StaggeredGridLayoutManager::GetTargetContentSize() {
   // Note: end padding in main axis should be considered.
   return list_container_->RoundValueToPixelGrid(
       content_size + list_orientation_helper_->GetEndPadding());
-}
-
-bool StaggeredGridLayoutManager::IntersectVisibleArea(
-    const ItemHolder* item_holder) const {
-  float container_size = list_orientation_helper_->GetMeasurement();
-  return base::FloatsLargerOrEqual(
-             content_offset_ + container_size,
-             list_orientation_helper_->GetDecoratedStart(item_holder)) &&
-         base::FloatsLargerOrEqual(
-             list_orientation_helper_->GetDecoratedEnd(item_holder),
-             content_offset_);
 }
 
 bool StaggeredGridLayoutManager::CurrentLineHasRemainSpaceToFillEnd(
