@@ -44,7 +44,7 @@ public abstract class LynxLazyInitializer {
   private void runCatching() {
     try {
       initialized.set(doInitialize());
-    } catch (Exception e) {
+    } catch (Throwable e) {
       // pass
       LLog.e(TAG, "initialize failed: " + e);
     }
@@ -76,7 +76,7 @@ public abstract class LynxLazyInitializer {
   public boolean ensureInitialized(boolean runImmediately) {
     if (runnable.getStatus() == RunOnceRunnable.STATUS_FINISHED) {
       // fast path
-      return true;
+      return initialized.get();
     }
     if (!runImmediately) {
       initialize();
