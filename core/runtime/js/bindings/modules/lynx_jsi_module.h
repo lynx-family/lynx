@@ -18,6 +18,7 @@
 
 namespace lynx {
 namespace runtime {
+class JsCallNativeFrequencyMonitor;
 namespace js {
 struct InvokeInfo;
 
@@ -25,13 +26,8 @@ class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
  public:
   LynxJSIModule(const std::string& name,
                 const std::shared_ptr<ModuleDelegate>& delegate,
-                const std::shared_ptr<LynxNativeModule>& native_module)
-      : LynxModule(name, delegate), native_module_(native_module) {
-    auto factory = native_module ? native_module->GetValueFactory() : nullptr;
-    value_factory_ = factory ? std::move(factory)
-                             : std::make_shared<pub::PubValueFactoryDefault>();
-    SetMethodMetadata();
-  }
+                const std::shared_ptr<LynxNativeModule>& native_module);
+  ~LynxJSIModule() override;
 
   void Destroy() override;
 
@@ -62,6 +58,8 @@ class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
 
   std::shared_ptr<LynxNativeModule> native_module_ = nullptr;
   std::shared_ptr<pub::PubValueFactory> value_factory_;
+  std::unique_ptr<::lynx::runtime::JsCallNativeFrequencyMonitor>
+      invoke_method_frequency_monitor_;
 
   std::vector<InvokeInfo*> invoke_scopes_;
 };

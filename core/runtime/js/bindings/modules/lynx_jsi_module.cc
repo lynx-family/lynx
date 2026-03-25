@@ -11,6 +11,7 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/common/js_call_native_frequency_monitor.h"
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
 #include "core/runtime/js/bindings/modules/module_interceptor.h"
 #include "core/runtime/js/jsi/jsi-inl.h"
@@ -24,6 +25,23 @@
 namespace lynx {
 namespace runtime {
 namespace js {
+
+LynxJSIModule::LynxJSIModule(
+    const std::string& name, const std::shared_ptr<ModuleDelegate>& delegate,
+    const std::shared_ptr<LynxNativeModule>& native_module)
+    : LynxModule(name, delegate), native_module_(native_module) {
+  auto factory = native_module ? native_module->GetValueFactory() : nullptr;
+  value_factory_ = factory ? std::move(factory)
+                           : std::make_shared<pub::PubValueFactoryDefault>();
+  SetMethodMetadata();
+
+  auto& env = tasm::LynxEnv::GetInstance();
+  if (env.EnableJSCallNativeFrequencyMonitor()) {
+    invoke_method_frequency_monitor_ =
+        std::make_unique<::lynx::runtime::JsCallNativeFrequencyMonitor>(
+            env.GetJSCallNativeFrequencyMonitorThresholdCommon());
+  }
+}
 struct InvokeInfo {
   std::string method_name;
   NativeModuleInfoCollectorPtr timing_collector;
@@ -42,6 +60,7 @@ class InvokeScope {
   std::vector<InvokeInfo*>& infos_;
 };
 
+LynxJSIModule::~LynxJSIModule() = default;
 void LynxJSIModule::Destroy() {
   LOGI("NativeModule: LynxJSIModule Destroy " << name_);
   if (native_module_) {
@@ -67,6 +86,22 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   NativeModuleInfoCollectorPtr timing_collector =
       std::make_shared<NativeModuleInfoCollector>(delegate_, name_, method.name,
                                                   first_arg_str);
+
+  if (invoke_method_frequency_monitor_) {
+    std::string monitor_method_name;
+    monitor_method_name.reserve(name_.size() + method.name.size() +
+                                first_arg_str.size() + 2);
+    monitor_method_name.append(name_);
+    monitor_method_name.append("#");
+    monitor_method_name.append(method.name);
+    monitor_method_name.append("#");
+    monitor_method_name.append(first_arg_str);
+    auto error_opt = invoke_method_frequency_monitor_->Record(
+        call_func_start, "invokeMethod", monitor_method_name, "");
+    if (error_opt) {
+      delegate_->OnErrorOccurred(std::move(*error_opt));
+    }
+  }
 
   uint64_t callback_flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, NATIVE_MODULE_INVOKE,

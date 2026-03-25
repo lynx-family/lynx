@@ -53,7 +53,7 @@ std::optional<base::LynxError> JsCallNativeFrequencyMonitor::Record(
   stats.count_in_window += 1;
 
   std::string stack_key =
-      stacks.empty() ? std::string("<empty>") : Truncate(stacks, kStacksMaxLen);
+      stacks.empty() ? std::string("") : Truncate(stacks, kStacksMaxLen);
   stats.stacks_counts[stack_key] += 1;
 
   if (stats.count_in_window < threshold_per_method_) {
