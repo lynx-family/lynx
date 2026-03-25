@@ -156,4 +156,43 @@ TEST(StyleObjectParser, ParseFontFaceRule) {
   EXPECT_EQ(fontface->second[0]->GetAttrMap().at("src"), "link");
 }
 
+TEST(StyleObjectParser, ParseIntFlex) {
+  std::string json_input = R"(
+  {
+    "simpleStyleObjects": [
+      {
+        "flex": 2
+      }
+    ]
+  })";
+
+  rapidjson::Document document;
+  document.Parse(json_input);
+  CompileOptions encoder_options;
+  encoder_options.enable_simple_styling_ = true;
+  encoder_options.enable_parse_int_flex_ = true;
+  auto style_object_parser =
+      std::make_unique<StyleObjectParser>(encoder_options);
+  ASSERT_TRUE(style_object_parser->Parse(document["simpleStyleObjects"]));
+
+  auto& style_objects = style_object_parser->StyleObjects();
+  ASSERT_EQ(style_objects.size(), 1);
+
+  const auto& properties = style_objects.front().Properties();
+  const auto flex_grow = properties.find(kPropertyIDFlexGrow);
+  ASSERT_NE(flex_grow, properties.end());
+  EXPECT_TRUE(flex_grow->second.IsNumber());
+  EXPECT_EQ(flex_grow->second.AsNumber(), 2);
+
+  const auto flex_shrink = properties.find(kPropertyIDFlexShrink);
+  ASSERT_NE(flex_shrink, properties.end());
+  EXPECT_TRUE(flex_shrink->second.IsNumber());
+  EXPECT_EQ(flex_shrink->second.AsNumber(), 1);
+
+  const auto flex_basis = properties.find(kPropertyIDFlexBasis);
+  ASSERT_NE(flex_basis, properties.end());
+  EXPECT_TRUE(flex_basis->second.IsNumber());
+  EXPECT_EQ(flex_basis->second.AsNumber(), 0);
+}
+
 }  // namespace lynx::tasm::test

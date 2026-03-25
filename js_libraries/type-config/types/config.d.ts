@@ -626,6 +626,17 @@ export interface Config {
   enableNewTransformOrigin?: boolean;
 
   /**
+   * Preserve integer values for numeric flex inputs in CSS parser.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue false
+   */
+  enableParseIntFlex?: boolean;
+
+  /**
    * Enable shadow platform gesture to handle gesture conflict.
    *
    * Supported platform: Android, iOS

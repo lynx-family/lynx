@@ -501,6 +501,10 @@ bool LynxEnv::EnableNewIntersectionObserver() {
   return GetBoolEnv(Key::ENABLE_NEW_INTERSECTION_OBSERVER, false);
 }
 
+bool LynxEnv::EnableParseIntFlex() {
+  return GetBoolEnv(Key::ENABLE_PARSE_INT_FLEX, false);
+}
+
 bool LynxEnv::EnableAnimationVsyncOnUIThread() {
   static bool enable_animation_vsync_on_ui_thread =
       GetBoolEnv(Key::ENABLE_ANIMATION_VSYNC_ON_UI_THREAD, false);

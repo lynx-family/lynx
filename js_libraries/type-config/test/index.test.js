@@ -46,7 +46,7 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(127);
+    expect(configKeys.length).toBe(128);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
       'alignMouseEventWithW3C',
@@ -104,6 +104,7 @@ describe('type-config index', () => {
       'enableNewIntersectionObserver',
       'enableNewListContainer',
       'enableNewTransformOrigin',
+      'enableParseIntFlex',
       'enablePlatformGesture',
       'enablePropertyBasedSimpleStyle',
       'enableQueryComponentSync',

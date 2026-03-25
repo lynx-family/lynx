@@ -751,6 +751,15 @@ class LynxConfigDecoder final {
           LynxEnv::GetInstance().EnableNewIntersectionObserver());
     }
 
+    if (doc.HasMember(config::kEnableParseIntFlex) &&
+        doc[config::kEnableParseIntFlex].IsBool()) {
+      page_config->SetEnableParseIntFlex(
+          doc[config::kEnableParseIntFlex].GetBool());
+    } else {
+      page_config->SetEnableParseIntFlex(
+          LynxEnv::GetInstance().EnableParseIntFlex());
+    }
+
     if (doc.HasMember(config::kIncludeFontPadding) &&
         doc[config::kIncludeFontPadding].IsBool()) {
       page_config->SetIncludeFontPadding(

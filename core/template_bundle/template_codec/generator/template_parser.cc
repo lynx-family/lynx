@@ -23,6 +23,7 @@
 #include "core/runtime/lepus/exception.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/template_bundle/template_codec/generator/list_parser.h"
+#include "core/template_bundle/template_codec/generator/page_config_compile_options_helper.h"
 #include "core/template_bundle/template_codec/generator/template_scope.h"
 #include "core/template_bundle/template_codec/version.h"
 #include "third_party/rapidjson/document.h"
@@ -829,8 +830,16 @@ std::string TemplateParser::GenStyles(const rapidjson::Value &styles_obj) {
       dynamic_map.erase(key);
     }
   }
+  CompileOptions compile_options = compile_options_;
+  if (current_page_) {
+    ApplyPageConfigDerivedCompileOptions(compile_options,
+                                         current_page_->config());
+  } else if (current_component_) {
+    ApplyPageConfigDerivedCompileOptions(compile_options,
+                                         current_component_->config());
+  }
   auto configs = tasm::CSSParserConfigs::GetCSSParserConfigsByComplierOptions(
-      compile_options_);
+      compile_options);
   for (auto it = static_map.begin(); it != static_map.end(); ++it) {
     if (Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
                                 FEATURE_CSS_VALUE_VERSION) &&

@@ -13,6 +13,7 @@ lynx_core_source_set("generator") {
     "list_parser.h",
     "meta_factory.cc",
     "meta_factory.h",
+    "page_config_compile_options_helper.h",
     "source_generator.cc",
     "source_generator.h",
     "template_dynamic_component_parser.cc",

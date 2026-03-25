@@ -6,6 +6,7 @@
 #define private public
 #define protected public
 
+#include "core/renderer/css/unit_handler.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_config_decoder_unittest.h"
 
 namespace lynx {
@@ -26,6 +27,52 @@ TEST_F(LynxBinaryConfigDecoderTest, ReadEnableAsyncResolveSubtree) {
       "{\n  \"enableAsyncResolveSubtree\" : true\n}", page_config_);
   EXPECT_TRUE(page_config_->GetEnableAsyncResolveSubtree() ==
               TernaryBool::TRUE_VALUE);
+}
+
+TEST_F(LynxBinaryConfigDecoderTest, ReadEnableParseIntFlex) {
+  EXPECT_FALSE(page_config_->GetEnableParseIntFlex());
+  EXPECT_FALSE(page_config_->GetCSSParserConfigs().enable_parse_int_flex);
+  config_decoder_->DecodePageConfig("{\n  \"enableParseIntFlex\" : true\n}",
+                                    page_config_);
+  EXPECT_TRUE(page_config_->GetEnableParseIntFlex());
+  EXPECT_TRUE(page_config_->GetCSSParserConfigs().enable_parse_int_flex);
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       ParseIntFlexDisabledKeepsLegacyFlexParsing) {
+  auto id = CSSPropertyID::kPropertyIDFlex;
+  auto impl = lepus::Value(2);
+  StyleMap output;
+
+  auto ret = UnitHandler::Process(id, impl, output,
+                                  page_config_->GetCSSParserConfigs());
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), 3);
+  EXPECT_TRUE(output[kPropertyIDFlexGrow].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexGrow].AsNumber(), 0);
+  EXPECT_TRUE(output[kPropertyIDFlexShrink].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexShrink].AsNumber(), 1);
+  EXPECT_TRUE(output[kPropertyIDFlexBasis].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
+}
+
+TEST_F(LynxBinaryConfigDecoderTest, EnableParseIntFlexAffectsFlexParsing) {
+  auto id = CSSPropertyID::kPropertyIDFlex;
+  auto impl = lepus::Value(2);
+  StyleMap output;
+
+  config_decoder_->DecodePageConfig("{\n  \"enableParseIntFlex\" : true\n}",
+                                    page_config_);
+  auto ret = UnitHandler::Process(id, impl, output,
+                                  page_config_->GetCSSParserConfigs());
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), 3);
+  EXPECT_TRUE(output[kPropertyIDFlexGrow].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexGrow].AsNumber(), 2);
+  EXPECT_TRUE(output[kPropertyIDFlexShrink].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexShrink].AsNumber(), 1);
+  EXPECT_TRUE(output[kPropertyIDFlexBasis].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
 }
 
 }  // namespace test

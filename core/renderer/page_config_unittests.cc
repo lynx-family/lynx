@@ -165,6 +165,17 @@ TEST(PageConfigTest, EnableUnifiedPipeline) {
   EXPECT_EQ(page_config_1.GetEnableUnifiedPipeline(), TernaryBool::FALSE_VALUE);
 }
 
+TEST(PageConfigTest, EnableParseIntFlex) {
+  PageConfig page_config;
+  EXPECT_FALSE(page_config.GetEnableParseIntFlex());
+  EXPECT_FALSE(page_config.GetCSSParserConfigs().enable_parse_int_flex);
+
+  page_config.DecodePageConfigFromJsonStringWhileUndefined(
+      "{\n  \"enableParseIntFlex\" : true\n}");
+  EXPECT_FALSE(page_config.GetEnableParseIntFlex());
+  EXPECT_FALSE(page_config.GetCSSParserConfigs().enable_parse_int_flex);
+}
+
 #undef CHECK_CONFIG_VALUE
 
 }  // namespace test

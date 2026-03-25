@@ -89,6 +89,7 @@ const configKeys = [
   'enableNewIntersectionObserver',
   'enableNewListContainer',
   'enableNewTransformOrigin',
+  'enableParseIntFlex',
   'enablePlatformGesture',
   'enablePropertyBasedSimpleStyle',
   'enableQueryComponentSync',

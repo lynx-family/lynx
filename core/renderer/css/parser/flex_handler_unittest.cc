@@ -213,6 +213,31 @@ TEST(FlexHandler, Invalid) {
   EXPECT_EQ(output.size(), 0);
 }
 
+TEST(FlexHandler, NumberInputFix) {
+  auto id = CSSPropertyID::kPropertyIDFlex;
+  StyleMap output;
+  CSSParserConfigs configs;
+  auto impl = lepus::Value(2);
+
+  auto ret = UnitHandler::Process(id, impl, output, configs);
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), 3);
+  EXPECT_TRUE(output[kPropertyIDFlexGrow].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexGrow].AsNumber(), 0);
+
+  output.clear();
+  configs.enable_parse_int_flex = true;
+  ret = UnitHandler::Process(id, impl, output, configs);
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), 3);
+  EXPECT_TRUE(output[kPropertyIDFlexGrow].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexGrow].AsNumber(), 2);
+  EXPECT_TRUE(output[kPropertyIDFlexShrink].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexShrink].AsNumber(), 1);
+  EXPECT_TRUE(output[kPropertyIDFlexBasis].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

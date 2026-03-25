@@ -104,6 +104,10 @@ struct CompileOptions {
   bool enable_opt_lepus_bytecode_{true};
   uint8_t context_type_{0};
   // Compile options auto generated end
+
+  // Derived from page config at compile/decode time. Do not serialize it into
+  // the template header.
+  bool enable_parse_int_flex_{false};
 };
 
 #define FOREACH_FIXED_LENGTH_FIELD(V)             \

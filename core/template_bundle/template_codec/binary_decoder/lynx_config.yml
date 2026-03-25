@@ -1665,6 +1665,17 @@ forceCalcNewStyle:
     const: kForceCalcNewStyleKey
   author: DragonDragonDDD
   deprecated: '3.5'
+enableParseIntFlex:
+  description: Preserve integer values for numeric flex inputs in CSS parser.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  author: ShouruiSong
+  since: '3.8'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 includeFontPadding:
   description:
     Control the top and bottom padding of text on Android, which affects

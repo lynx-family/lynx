@@ -16,7 +16,11 @@ namespace FlexHandler {
 HANDLER_IMPL() {
   if (input.IsNumber()) {
     StyleMap num_map;
-    if (UnitHandler::Process(kPropertyIDFlexGrow, lepus::Value(input.Double()),
+    // Keep the numeric fix behind a parser config because switching integer
+    // inputs from Double() to Number() changes existing behavior.
+    const double flex_grow =
+        configs.enable_parse_int_flex ? input.Number() : input.Double();
+    if (UnitHandler::Process(kPropertyIDFlexGrow, lepus::Value(flex_grow),
                              num_map, configs) &&
         UnitHandler::Process(kPropertyIDFlexShrink, lepus::Value(1), num_map,
                              configs) &&

@@ -10,6 +10,7 @@
 #include "core/base/json/json_util.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/template_bundle/template_codec/generator/base_struct.h"
+#include "core/template_bundle/template_codec/generator/page_config_compile_options_helper.h"
 #include "core/template_bundle/template_codec/generator/source_generator.h"
 #include "third_party/aes/aes.h"
 #include "third_party/rapidjson/document.h"
@@ -835,6 +836,9 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
 
   // Get Config
   GET_UNLESS(GetConfig(encoder_options));
+  ApplyPageConfigDerivedCompileOptions(
+      encoder_options.compile_options_,
+      encoder_options.generator_options_.config_);
 
   return encoder_options;
 }

@@ -93,6 +93,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_FIXED_NEW,
     ENABLE_MULTI_TOUCH,
     ENABLE_NEW_INTERSECTION_OBSERVER,
+    ENABLE_PARSE_INT_FLEX,
     ENABLE_ANIMATION_VSYNC_ON_UI_THREAD,
     MULTI_JS_THREAD_COUNT,
     FIX_FIBER_REMOVE_TWICE_BUG,
@@ -252,6 +253,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_MULTI_TOUCH, "enable_multi_touch"},
             {Key::ENABLE_NEW_INTERSECTION_OBSERVER,
              "enable_new_intersection_observer"},
+            {Key::ENABLE_PARSE_INT_FLEX, "enable_parse_int_flex"},
             {Key::ENABLE_ANIMATION_VSYNC_ON_UI_THREAD,
              "enable_animation_vsync_on_ui_thread"},
             {Key::MULTI_JS_THREAD_COUNT, "multi_js_thread_count"},
@@ -439,6 +441,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableFixedNew();
   bool EnableMultiTouch();
   bool EnableNewIntersectionObserver();
+  bool EnableParseIntFlex();
   bool EnableAnimationInfoReport();
   bool EnableBatchLayoutTaskWithSyncLayout();
   bool EnableJSVMRuntime();

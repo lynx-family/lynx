@@ -211,6 +211,12 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
 
 void LynxBinaryConfigDecoder::UpdateCSSConfigs(
     const std::shared_ptr<PageConfig>& page_config) {
+  // Most parser configs still come from the serialized compile options in the
+  // template header. `enable_parse_int_flex_` is a transient bit derived
+  // from page config instead, so override it here before rebuilding the runtime
+  // CSS parser configs for this page.
+  compile_options_.enable_parse_int_flex_ =
+      page_config->GetEnableParseIntFlex();
   auto configs =
       CSSParserConfigs::GetCSSParserConfigsByComplierOptions(compile_options_);
   page_config->SetCSSParserConfigs(configs);
