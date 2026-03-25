@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxScrollEventManager.h>
 #import <Lynx/LynxScrollView.h>
@@ -1208,6 +1209,12 @@ LYNX_UI_METHOD(scrollToPosition) {
   [self.view setContentOffset:self.view.contentOffset animated:NO];
   self.isInScrollToPosition = NO;
 
+  // LynxShell has been destroyed, just return.
+  if (self.context.shellPtr == 0) {
+    LLogError(@"LynxShell has been destroyed,when invoking scrollToPosition()");
+    return;
+  }
+
   // Tell ListElement that we want scroll to some position
 
   if (_listContainerProxy) {
@@ -1309,6 +1316,12 @@ LYNX_UI_METHOD(getVisibleCells) {
   // is exactly the same with elementList, do not reenter ScrollByListContainer
 
   if (listNodeInfoFetcher && !_shouldBlockScrollByListContainer) {
+    // LynxShell has been destroyed, just return.
+    if (self.context.shellPtr == 0) {
+      LLogError(@"LynxShell has been destroyed,when invoking scrollViewDidScroll()");
+      return;
+    }
+
     // Before sending scrollByListContainer, previousContentOffset should be updated to avoid
     // scrollViewDidScroll->scrollByListContainer->onNodeReady->setContentOffset->scrollViewDidScroll
     // loop
@@ -1580,6 +1593,13 @@ LYNX_UI_METHOD(getVisibleCells) {
 
   ((LynxListContainerView *)(self.view)).scrollEstimatedOffset =
       kLynxListContainerInvalidScrollEstimatedOffset;
+
+  // LynxShell has been destroyed, just return.
+  if (self.context.shellPtr == 0) {
+    LLogError(@"LynxShell has been destroyed,when invoking scrollStopped()");
+    return;
+  }
+
   auto fetcher = self.context.fetcher;
 
   if (_listContainerProxy) {
