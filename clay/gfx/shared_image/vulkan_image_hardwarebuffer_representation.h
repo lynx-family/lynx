@@ -54,7 +54,7 @@ class VulkanImageHardwareBufferRepresentation
 
   void PostDrawVk();
 
-  void ChangeImageLayout(VkImageLayout old_layout, VkImageLayout new_layout,
+  bool ChangeImageLayout(VkImageLayout old_layout, VkImageLayout new_layout,
                          VkAccessFlags src_access_mask,
                          VkAccessFlags dst_access_mask,
                          VkPipelineStageFlagBits src_stage_mask,
