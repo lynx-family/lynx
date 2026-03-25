@@ -126,6 +126,54 @@ public class TemplateDataTest {
   }
 
   @Test
+  public void testBigInt() {
+    // Test with BigInt string representation (large number beyond long range)
+    String bigIntValue = "123456789012345678901234567890";
+    Map<String, Object> map = new HashMap<>();
+    map.put("bigint", bigIntValue);
+    TemplateData templateData = TemplateData.fromMap(map);
+    assertNotEquals(templateData.getNativePtr(), 0);
+    Map<Object, Object> result = templateData.toMap();
+    assertNotNull(result);
+    assertEquals(bigIntValue, result.get("bigint"));
+
+    assertNotEquals(templateData.toMap(), TemplateData.nativeGetData(templateData.mJsNativeData));
+    TemplateData.releaseNativeTemplateData(TemplateData.createNativeTemplateData(templateData));
+    System.gc();
+    try {
+      Thread.sleep(3000);
+    } catch (Throwable e) {
+      LLog.e("TemplateDataTest", e.toString());
+    }
+
+    assertEquals(templateData.toMap(), TemplateData.nativeGetData(templateData.mJsNativeData));
+  }
+
+  @Test
+  public void testBigIntNegative() {
+    // Test with negative BigInt
+    String bigIntValue = "-987654321098765432109876543210";
+    Map<String, Object> map = new HashMap<>();
+    map.put("bigint_negative", bigIntValue);
+    TemplateData templateData = TemplateData.fromMap(map);
+    assertNotEquals(templateData.getNativePtr(), 0);
+    Map<Object, Object> result = templateData.toMap();
+    assertNotNull(result);
+    assertEquals(bigIntValue, result.get("bigint_negative"));
+
+    assertNotEquals(templateData.toMap(), TemplateData.nativeGetData(templateData.mJsNativeData));
+    TemplateData.releaseNativeTemplateData(TemplateData.createNativeTemplateData(templateData));
+    System.gc();
+    try {
+      Thread.sleep(3000);
+    } catch (Throwable e) {
+      LLog.e("TemplateDataTest", e.toString());
+    }
+
+    assertEquals(templateData.toMap(), TemplateData.nativeGetData(templateData.mJsNativeData));
+  }
+
+  @Test
   public void testFromString() {
     TemplateData templateData = TemplateData.fromString("{\n"
         + "    \"language\": \"English\",\n"

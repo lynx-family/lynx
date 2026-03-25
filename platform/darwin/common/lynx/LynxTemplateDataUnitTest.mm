@@ -63,6 +63,40 @@
   XCTAssertEqual(123456789123456L, value->GetProperty("long").Number());
 }
 
+- (void)testBigInt {
+  // Test with BigInt string representation (large number beyond long range)
+  NSDictionary* dict = @{@"bigint" : @"123456789012345678901234567890"};
+  LynxTemplateData* templateData = [[LynxTemplateData alloc] initWithDictionary:dict];
+  auto* value = LynxGetLepusValueFromTemplateData(templateData);
+
+  XCTAssertFalse(value->IsEmpty());
+  XCTAssertTrue(value->IsTable());
+  XCTAssertTrue(value->Contains("bigint"));
+  XCTAssertTrue([dict isEqual:[templateData dictionary]]);
+
+  // Verify the retrieved BigInt value matches the original
+  const auto& bigintValue = value->GetProperty("bigint");
+  XCTAssertTrue(bigintValue.IsString());
+  XCTAssertEqual(bigintValue.String(), "123456789012345678901234567890");
+}
+
+- (void)testBigIntNegative {
+  // Test with negative BigInt
+  NSDictionary* dict = @{@"bigint_negative" : @"-987654321098765432109876543210"};
+  LynxTemplateData* templateData = [[LynxTemplateData alloc] initWithDictionary:dict];
+  auto* value = LynxGetLepusValueFromTemplateData(templateData);
+
+  XCTAssertFalse(value->IsEmpty());
+  XCTAssertTrue(value->IsTable());
+  XCTAssertTrue(value->Contains("bigint_negative"));
+  XCTAssertTrue([dict isEqual:[templateData dictionary]]);
+
+  // Verify the retrieved BigInt value matches the original
+  const auto& bigintValue = value->GetProperty("bigint_negative");
+  XCTAssertTrue(bigintValue.IsString());
+  XCTAssertEqual(bigintValue.String(), "-987654321098765432109876543210");
+}
+
 - (void)testFromString {
   LynxTemplateData* templateData = [[LynxTemplateData alloc]
       initWithJson:@"{\n"
