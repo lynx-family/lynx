@@ -7,6 +7,7 @@
 #include <cstring>
 #include <utility>
 
+#include "base/include/fml/unique_fd.h"
 #include "clay/gfx/shared_image/android_egl_image_representation.h"
 #include "clay/gfx/vulkan/vulkan_helper.h"
 
@@ -120,9 +121,9 @@ void VulkanImageHardwareBufferRepresentation::ConsumeFence(
       return;
     }
 
-    auto sync_fd =
-        static_cast<AndroidEGLFenceSync*>(fence_sync.get())->GetSyncFD();
-    if (sync_fd == -1) {
+    fml::UniqueFD sync_fd(
+        static_cast<AndroidEGLFenceSync*>(fence_sync.get())->GetSyncFD());
+    if (!sync_fd.is_valid()) {
       VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
       fence_sync->ClientWait();
       return;
@@ -135,12 +136,14 @@ void VulkanImageHardwareBufferRepresentation::ConsumeFence(
     import_semaphore_info.flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT;
     import_semaphore_info.handleType =
         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT_KHR;
-    import_semaphore_info.fd = sync_fd;
+    import_semaphore_info.fd = sync_fd.get();
     result = VulkanHelper::GetInstance().ImportSemaphoreFdKHR(
         device_, &import_semaphore_info);
     if (!LogVkIfNotSuccess(result, "vkImportSemaphoreFdKHR")) {
+      VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
       return;
     }
+    [[maybe_unused]] const int transferred_fd = sync_fd.release();
 
     VkFence fence;
     VkFenceCreateInfo fence_info;
@@ -151,17 +154,23 @@ void VulkanImageHardwareBufferRepresentation::ConsumeFence(
     result = VulkanHelper::GetInstance().CreateFence(device_, &fence_info,
                                                      nullptr, &fence);
     if (!LogVkIfNotSuccess(result, "vkCreateFence")) {
+      VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
       return;
     }
 
     VkPipelineStageFlags wait_stages[] = {
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT};
 
-    ChangeImageLayout(old_layout_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                      VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 1, &semaphore,
-                      wait_stages, 0, nullptr, fence);
+    if (!ChangeImageLayout(
+            old_layout_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 1, &semaphore, wait_stages,
+            0, nullptr, fence)) {
+      VulkanHelper::GetInstance().DestroyFence(device_, fence, nullptr);
+      VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
+      return;
+    }
     if (old_layout_ == VK_IMAGE_LAYOUT_UNDEFINED) {
       old_layout_ = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
@@ -170,7 +179,7 @@ void VulkanImageHardwareBufferRepresentation::ConsumeFence(
   fence_sync->ClientWait();
 }
 
-void VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
+bool VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
     VkImageLayout old_layout, VkImageLayout new_layout,
     VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
     VkPipelineStageFlagBits src_stage_mask,
@@ -178,8 +187,12 @@ void VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
     const VkSemaphore* wait_semaphores, const VkPipelineStageFlags* wait_stages,
     uint32_t signal_semaphore_count, const VkSemaphore* signal_semaphores,
     VkFence fence) {
-  VkCommandBuffer command_buffer;
+  VkCommandBuffer command_buffer = VK_NULL_HANDLE;
   command_pool_helper_->GetCommandBuffer(&command_buffer);
+  if (command_buffer == VK_NULL_HANDLE) {
+    FML_LOG(ERROR) << "Failed to allocate command buffer";
+    return false;
+  }
 
   VkCommandBufferBeginInfo beginInfo = {};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -188,7 +201,7 @@ void VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
   if (!LogVkIfNotSuccess(clay::VulkanHelper::GetInstance().BeginCommandBuffer(
                              command_buffer, &beginInfo),
                          "vkBeginCommandBuffer")) {
-    return;
+    return false;
   }
 
   vulkan_image_->ApplyImagerBarrier(command_buffer, old_layout, new_layout,
@@ -198,18 +211,8 @@ void VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
   if (!LogVkIfNotSuccess(
           clay::VulkanHelper::GetInstance().EndCommandBuffer(command_buffer),
           "vkEndCommandBuffer")) {
-    return;
+    return false;
   }
-
-  VulkanCommandPoolHelper::VkCMBStatus cmb_status;
-  cmb_status.command_buffer = command_buffer;
-  cmb_status.fence = fence;
-  for (auto i = 0u; i < wait_semaphore_count; i++) {
-    cmb_status.semaphores.push_back(wait_semaphores[i]);
-  }
-  cmb_status.has_signal_semaphore = signal_semaphore_count > 0;
-
-  command_pool_helper_->InsertUsedBuffer(cmb_status);
 
   VkSubmitInfo submit_info = {};
   submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -225,8 +228,18 @@ void VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
   auto result =
       VulkanHelper::GetInstance().QueueSubmit(queue_, 1, &submit_info, fence);
   if (!LogVkIfNotSuccess(result, "vkQueueSubmit")) {
-    return;
+    return false;
   }
+
+  VulkanCommandPoolHelper::VkCMBStatus cmb_status;
+  cmb_status.command_buffer = command_buffer;
+  cmb_status.fence = fence;
+  for (auto i = 0u; i < wait_semaphore_count; i++) {
+    cmb_status.semaphores.push_back(wait_semaphores[i]);
+  }
+  cmb_status.has_signal_semaphore = signal_semaphore_count > 0;
+  command_pool_helper_->InsertUsedBuffer(cmb_status);
+  return true;
 }
 
 std::unique_ptr<FenceSync>
@@ -240,6 +253,8 @@ void VulkanImageHardwareBufferRepresentation::SetCommandPoolHelper(
 }
 
 void VulkanImageHardwareBufferRepresentation::PostDrawVk() {
+  auto previous_fence_helper = last_fence_semaphore_;
+
   // We need to change the VkImage's imageLayout from
   // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL to
   // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. And signal a semaphore which will
@@ -270,16 +285,21 @@ void VulkanImageHardwareBufferRepresentation::PostDrawVk() {
   result = VulkanHelper::GetInstance().CreateFence(device_, &fence_info,
                                                    nullptr, &fence);
   if (!LogVkIfNotSuccess(result, "vkCreateFence")) {
+    VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
     return;
   }
 
-  ChangeImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    VK_ACCESS_SHADER_READ_BIT,
-                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, nullptr,
-                    nullptr, 1, &semaphore, fence);
+  if (!ChangeImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                         VK_ACCESS_SHADER_READ_BIT,
+                         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+                         nullptr, nullptr, 1, &semaphore, fence)) {
+    VulkanHelper::GetInstance().DestroyFence(device_, fence, nullptr);
+    VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
+    return;
+  }
 
   // Signal semaphores and feneces will be waited in clay raster thread.
   // So we need to trace their lifetime to avoid destroy them before they are
@@ -289,6 +309,13 @@ void VulkanImageHardwareBufferRepresentation::PostDrawVk() {
   command_pool_helper_->InsertFenceSemaphore(fence_helper);
 
   last_fence_semaphore_ = fence_helper;
+
+  // If previous helper is only retained by
+  // {last_fence_semaphore_, fence_semaphores_} and never exported via
+  // ProduceFence(), mark it destroyable to avoid accumulating stale helpers.
+  if (previous_fence_helper && previous_fence_helper.use_count() == 2) {
+    previous_fence_helper->MarkCanDestroy();
+  }
 }
 
 }  // namespace clay

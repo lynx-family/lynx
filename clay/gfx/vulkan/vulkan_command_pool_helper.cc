@@ -167,23 +167,25 @@ void VulkanCommandPoolHelper::InsertFenceSemaphore(
 }
 
 void VulkanCommandPoolHelper::FreeSignalSemaphoresAndFences() {
-  while (!fence_semaphores_.empty()) {
-    auto fence_semaphore = fence_semaphores_.front();
+  std::list<VkFence> pending_fences;
+  for (const auto& cmb_status : used_buffers_) {
+    pending_fences.push_back(cmb_status.fence);
+  }
+
+  for (auto iter = fence_semaphores_.begin();
+       iter != fence_semaphores_.end();) {
+    auto fence_semaphore = *iter;
     if (fence_semaphore == nullptr) {
-      fence_semaphores_.pop_front();
+      iter = fence_semaphores_.erase(iter);
       continue;
-    }
-    std::list<VkFence> pending_fences;
-    for (auto cmb_status : used_buffers_) {
-      pending_fences.push_back(cmb_status.fence);
     }
     if (fence_semaphore->CanDestroy() &&
         !fence_semaphore->InPendingQueue(pending_fences)) {
       fence_semaphore->Destroy();
-      fence_semaphores_.pop_front();
-    } else {
-      break;
+      iter = fence_semaphores_.erase(iter);
+      continue;
     }
+    ++iter;
   }
 }
 
