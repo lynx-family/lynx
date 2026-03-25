@@ -28,6 +28,8 @@ class PlatformRendererContext {
   PlatformRendererContext(JNIEnv* env, jobject j_this)
       : java_ref_(env, j_this) {}
 
+  void Destroy();
+
   void CreatePlatformRenderer(int32_t id, PlatformRendererType type);
   void CreatePlatformExtendedRenderer(int32_t id, const base::String& tag_name,
                                       jobject init_data);

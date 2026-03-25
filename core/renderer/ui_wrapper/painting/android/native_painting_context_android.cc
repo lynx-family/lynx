@@ -114,6 +114,20 @@ jint GetPlatformEventHandlerState(JNIEnv *env, jobject /*jcaller*/,
   return platform_ref->GetPlatformEventHandlerState();
 }
 
+void Destroy(JNIEnv *env, jobject /*jcaller*/, jlong nativePtr) {
+  if (nativePtr == 0) {
+    return;
+  }
+  auto *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref) {
+    platform_ref->Destroy();
+  }
+}
+
 namespace lynx {
 namespace jni {
 bool RegisterJNIForNativePaintingContext(JNIEnv *env) {

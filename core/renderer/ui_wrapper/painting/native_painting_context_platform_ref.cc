@@ -313,4 +313,13 @@ void NativePaintingCtxPlatformRef::InvokeUIMethod(
   }
 }
 
+void NativePaintingCtxPlatformRef::Destroy() {
+  renderers_.clear();
+  platform_event_bundles_.clear();
+  if (event_target_exposure_) {
+    event_target_exposure_->ClearExposureTargetMap();
+  }
+  engine_actor_.reset();
+}
+
 }  // namespace lynx::tasm

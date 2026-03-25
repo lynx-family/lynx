@@ -481,9 +481,18 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   native void nativeGetDisplayListData(
       long nativePtr, int id, int[] ops, int[] iArgv, float[] fArgv);
 
+  native void nativeDestroy(long nativePtr);
+
   public void destroy() {
+    if (mDestroyed) {
+      return;
+    }
     mDestroyed = true;
-    mNativePtr = 0; // Clear native pointer to indicate context is destroyed
+
+    if (mNativePtr != 0) {
+      nativeDestroy(mNativePtr);
+    }
+    mNativePtr = 0;
     mViewHolder.clear();
 
     for (Object value : mExtraDatas.values()) {

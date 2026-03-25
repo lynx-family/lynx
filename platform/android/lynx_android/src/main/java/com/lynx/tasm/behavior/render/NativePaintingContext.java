@@ -35,10 +35,16 @@ public class NativePaintingContext implements IPaintingContext {
         mPlatformRendererContext.getTextLayout(), mTextra);
   }
 
-  // this func will be execed on main thread.
   @Override
   public void destroy() {
+    if (mDestroyed) {
+      return;
+    }
     mDestroyed = true;
+
+    if (mNativePtr != 0) {
+      nativeDestroy(mNativePtr);
+    }
     mPlatformRendererContext.destroy();
     if (mTextra != 0 && mContext != null && mContext.getTextService() != null) {
       mContext.getTextService().destroyTextLayoutAPI(mTextra);
@@ -112,4 +118,6 @@ public class NativePaintingContext implements IPaintingContext {
       long nativePtr, int[] iEventData, float[] fEventData);
 
   native int nativeGetPlatformEventHandlerState(long nativePtr);
+
+  native void nativeDestroy(long nativePtr);
 }

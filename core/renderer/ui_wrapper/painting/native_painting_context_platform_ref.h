@@ -39,6 +39,8 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
       std::unique_ptr<PlatformRendererFactory> view_factory);
   ~NativePaintingCtxPlatformRef() override = default;
 
+  void Destroy();
+
   void CreatePlatformRenderer(int id, PlatformRendererType type,
                               const fml::RefPtr<PropBundle> &init_data);
   void CreatePlatformExtendedRenderer(int id, const base::String &tag_name,
