@@ -86,6 +86,7 @@ unittest_set("dom_testset") {
     "../css/layout_node_unittest.cc",
     "../css/select_element_token_unittest.cc",
     "../utils/base/tasm_worker_task_runner_unittest.cc",
+    "android/lepus_message_consumer_unittest.cc",
     "attribute_holder_unittest.cc",
     "element_container_unittest.cc",
     "element_context_delegate_unittest.cc",
@@ -112,6 +113,15 @@ unittest_set("dom_testset") {
     "testing/fiber_new_fixed_test.cc",
     "vdom/radon/radon_node_unittest.cc",
   ]
+
+  # LepusEncoder/LepusDecoder are needed by unittests but are excluded from
+  # lynx_dom_core_sources when enable_unittests=true, so we add them here
+  if (enable_unittests) {
+    sources += [
+      "android/lepus_message_consumer.cc",
+      "android/lepus_message_consumer.h",
+    ]
+  }
   deps = [
     "../../runtime/lepus/tasks:tasks_testset",
     "../../shell/testing:mock_tasm_delegate_testset",
