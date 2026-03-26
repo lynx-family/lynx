@@ -67,6 +67,9 @@ void DestroyTextBundlePointer(void *bundle) {
     if (previousValue != nil) {
       previousBundle = [previousValue pointerValue];
     }
+    if (previousBundle == bundle) {
+      return;
+    }
     _textBundles[@(textID)] = [NSValue valueWithPointer:bundle];
   }
   DestroyTextBundlePointer(previousBundle);
@@ -84,13 +87,12 @@ void DestroyTextBundlePointer(void *bundle) {
   DestroyTextBundlePointer(bundle);
 }
 
-- (void *)takeTextBundle:(int32_t)textID {
+- (void *)getTextBundle:(int32_t)textID {
   void *bundle = nullptr;
   @synchronized(self) {
     NSValue *value = _textBundles[@(textID)];
     if (value) {
       bundle = [value pointerValue];
-      [_textBundles removeObjectForKey:@(textID)];
     }
   }
   return bundle;

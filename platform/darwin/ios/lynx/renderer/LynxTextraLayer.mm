@@ -5,36 +5,31 @@
 #import "LynxTextraLayer.h"
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
+#import "LynxRendererContext.h"
 
 @implementation LynxTextraLayer {
-  void *_page;
+  int32_t _textID;
+  __weak LynxRendererContext *_rendererContext;
 }
 
-- (instancetype)initWithPage:(void *)page {
+- (instancetype)initWithTextID:(int32_t)textID
+               rendererContext:(LynxRendererContext *)rendererContext {
   if (self = [super init]) {
-    _page = page;
+    _textID = textID;
+    _rendererContext = rendererContext;
     self.delegate = self;
     self.contentsScale = [UIScreen mainScreen].scale;
   }
   return self;
 }
 
-- (void)dealloc {
-  if (_page != nullptr) {
-    id<LynxServiceTextProtocol> textService = LynxService(LynxServiceTextProtocol);
-    if (textService) {
-      [textService destroyPage:_page];
-    }
-    _page = nullptr;
-  }
-}
-
 - (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx {
-  if (!_page) return;
+  void *page = [_rendererContext getTextBundle:_textID];
+  if (page == nullptr) return;
 
   id<LynxServiceTextProtocol> textService = LynxService(LynxServiceTextProtocol);
   if (textService) {
-    [textService drawPage:_page OnContext:ctx];
+    [textService drawPage:page OnContext:ctx];
   }
 }
 

@@ -24,6 +24,6 @@
 
 - (void)destroyTextBundle:(int32_t)textID;
 
-- (void *)takeTextBundle:(int32_t)textID;
+- (void *)getTextBundle:(int32_t)textID;
 
 @end

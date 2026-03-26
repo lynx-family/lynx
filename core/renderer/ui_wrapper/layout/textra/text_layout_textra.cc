@@ -358,15 +358,19 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
     BuildParagraphRecursively(child, has_inline_view);
     paragraph_builder_->PopTextStyle();
 
-  } else if (child->is_image()) {
+  } else if (child->is_image() || child->is_view()) {
     paragraph_builder_->PushTextStyle();
-    HandleInlineImageProps(child);
+    if (child->is_view() || !child->is_virtual()) {
+      // On iOS TextService, inline images stay as standalone image nodes.
+      // Treat them like inline views here so Textra measure/alignment drives
+      // the platform image node instead of using the generic AddImage
+      // placeholder path.
+      HandleInlineViewProps(child);
+      has_inline_view = true;
+    } else {
+      HandleInlineImageProps(child);
+    }
     paragraph_builder_->PopTextStyle();
-  } else if (child->is_view()) {
-    paragraph_builder_->PushTextStyle();
-    HandleInlineViewProps(child);
-    paragraph_builder_->PopTextStyle();
-    has_inline_view = true;
   } else if (child->is_wrapper()) {
     for (auto* wrap_child = child->first_render_child(); wrap_child;
          wrap_child = wrap_child->next_render_sibling()) {

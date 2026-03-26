@@ -38,12 +38,18 @@ Textra is not responsible for:
   page is consumed by `LynxTextService` and drawn through Android canvas helpers
 - iOS:
   page is consumed by `LynxTextService` and drawn through `LynxTextraLayer` + CoreGraphics
+  inline images/views in TextService mode are treated like `InlineView`s so
+  Textra drives platform node measure/alignment instead of using generic image
+  placeholder loading
 
 ## Editing Guidance
 
 - If the task is about layout, style mapping, paragraph creation, or page creation, start here.
 - If the task is about actual drawing on Android/iOS, do not stop here; continue into the platform service implementation.
 - Keep cross-platform behavior here; do not add platform UI logic in this directory.
+- On iOS TextService, standalone image nodes are still the real render owner for
+  inline images; the Textra entry only needs to wire placeholder/inline-view
+  layout behavior.
 
 ## Related Files
 

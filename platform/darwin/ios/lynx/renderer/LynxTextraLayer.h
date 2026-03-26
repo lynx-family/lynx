@@ -4,8 +4,11 @@
 
 #import <UIKit/UIKit.h>
 
+@class LynxRendererContext;
+
 @interface LynxTextraLayer : CALayer <CALayerDelegate>
 
-- (instancetype)initWithPage:(void *)page;
+- (instancetype)initWithTextID:(int32_t)textID
+               rendererContext:(LynxRendererContext *)rendererContext;
 
 @end

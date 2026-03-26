@@ -3197,7 +3197,7 @@ public class LynxRendererContext : NSObject {
   public LynxImageManager * LynxRendererContext::takeImageManager:(int32_t imageManagerID);
   public void LynxRendererContext::updateTextBundle:withBundle:(int32_t textID,[withBundle] void *bundle);
   public void LynxRendererContext::destroyTextBundle:(int32_t textID);
-  public void * LynxRendererContext::takeTextBundle:(int32_t textID);
+  public void * LynxRendererContext::getTextBundle:(int32_t textID);
 }
 
 public protocol LynxRendererHost-p : <NSObject> {
@@ -3947,7 +3947,7 @@ public class LynxTextOverflowLayer : CALayer {
 }
 
 public class LynxTextraLayer : CALayer, <CALayerDelegate> {
-  public instancetype LynxTextraLayer::initWithPage:(void *page);
+  public instancetype LynxTextraLayer::initWithTextID:rendererContext:(int32_t textID,[rendererContext] LynxRendererContext *rendererContext);
 }
 
 public class LynxTextRenderer : NSObject {

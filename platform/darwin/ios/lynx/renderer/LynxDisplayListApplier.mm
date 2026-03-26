@@ -192,9 +192,10 @@ using namespace lynx::tasm;
           auto box_index = [self nextContentInt];
           CALayer *layer = nil;
           if ([self isTextServiceModeOn]) {
-            void *page = [_renderer_context takeTextBundle:text_id];
+            void *page = [_renderer_context getTextBundle:text_id];
             if (page != nullptr) {
-              layer = [[LynxTextraLayer alloc] initWithPage:page];
+              layer = [[LynxTextraLayer alloc] initWithTextID:text_id
+                                              rendererContext:_renderer_context];
             }
           } else {
             LynxTextRenderer *textRenderer =
