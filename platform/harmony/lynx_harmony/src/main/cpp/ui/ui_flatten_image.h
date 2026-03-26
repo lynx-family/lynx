@@ -70,7 +70,6 @@ class UIFlattenImage : public UIBase,
   bool auto_size_{false};
   bool auto_play_{true};
   int32_t loop_count_{0};
-  bool skip_redirection_{false};
   float image_width_{0.f};
   float image_height_{0.f};
   float cap_inset_scale_{1.f};
@@ -102,7 +101,6 @@ class UIFlattenImage : public UIBase,
   void UpdateDeferSrcInvalidation(const lepus::Value& value);
   void UpdateTintColor(const lepus::Value& value);
   void UpdateDropShadow(const lepus::Value& value);
-  void UpdateSkipRedirection(const lepus::Value& value);
   void SetImageModeAttribute(const std::string& value);
   void UpdateAutoPlay(const lepus::Value& value);
   void UpdateLoopCount(const lepus::Value& value);

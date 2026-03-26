@@ -1007,6 +1007,9 @@ void BackgroundDrawable::UpdateBounds(float left, float top, float width,
   padding_top_ = padding_top * scale_density_;
   padding_right_ = padding_right * scale_density_;
   padding_bottom_ = padding_bottom * scale_density_;
+  if (layer_manager_) {
+    layer_manager_->OnUpdateBounds();
+  }
 }
 
 void BackgroundDrawable::AdjustBorder() {
@@ -1296,6 +1299,10 @@ void BackgroundDrawable::SetBackgroundOrigin(const lepus::Value& value) {
 void BackgroundDrawable::SetBackgroundImage(const lepus::Value& value) {
   InitLayerManager();
   layer_manager_->SetLayerImage(value);
+  if (!base::FloatsEqual(view_width_, 0) &&
+      !base::FloatsEqual(view_height_, 0)) {
+    layer_manager_->OnUpdateBounds();
+  }
 }
 
 void BackgroundDrawable::SetBackgroundColor(uint32_t background_color) {

@@ -52,7 +52,6 @@ class UIImage : public UIBase {
   std::string place_holder_;
   std::string mode_;
   bool auto_size_{false};
-  bool skip_redirection_{false};
   float image_width_{0.f};
   float image_height_{0.f};
   float cap_inset_scale_{1.f};
@@ -89,7 +88,6 @@ class UIImage : public UIBase {
   void UpdateDeferSrcInvalidation(const lepus::Value& value);
   void UpdateTintColor(const lepus::Value& value);
   void UpdateDropShadow(const lepus::Value& value);
-  void UpdateSkipRedirection(const lepus::Value& value);
   void SetImageModeAttribute(const std::string& value);
   void HandleImageSuccessCallback(float image_width, float image_height);
   void HandleImageFailCallback(float error_code, const std::string& error_msg);

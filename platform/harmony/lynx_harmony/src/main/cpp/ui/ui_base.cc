@@ -146,6 +146,7 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"clip-path", &UIBase::SetClipPath},
     {"perspective", &UIBase::SetPerspective},
     {"block-list-event", &UIBase::SetBlockListEvent},
+    {"skip-redirection", &UIBase::SetSkipRedirection},
     {"accessibility-element", &UIBase::SetAccessibilityElement},
     {"accessibility-label", &UIBase::SetAccessibilityLabel},
     {"accessibility-traits", &UIBase::SetAccessibilityTraits},
@@ -2551,6 +2552,10 @@ void UIBase::SetBlockListEvent(const lepus::Value& value) {
   } else if (value.IsNil()) {
     block_list_event_ = false;
   }
+}
+
+void UIBase::SetSkipRedirection(const lepus::Value& value) {
+  skip_redirection_ = value.Bool();
 }
 
 void UIBase::OnListCellAppear(const std::string& item_key, UIBase* ui_list) {

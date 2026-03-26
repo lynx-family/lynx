@@ -48,6 +48,7 @@ class LayerManager {
             const Rect& padding_rect, const Rect& content_rect,
             OH_Drawing_Path* outer_path, OH_Drawing_Path* inner_path,
             bool has_border);
+  void OnUpdateBounds();
   void Reset();
   bool HasImageLayers();
   void SetLayerImage(const lepus::Value& data);

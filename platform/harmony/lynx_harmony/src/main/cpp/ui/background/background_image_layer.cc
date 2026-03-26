@@ -4,18 +4,25 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_image_layer.h"
 
+#include <filemanagement/file_uri/oh_file_uri.h>
 #include <native_drawing/drawing_pixel_map.h>
 #include <native_drawing/drawing_rect.h>
 #include <native_drawing/drawing_sampling_options.h>
 
+#include <algorithm>
+
 #include "core/renderer/utils/lynx_env.h"
-#include "harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
+static constexpr const char* const kBackgroundImageEventLoad = "bgload";
+static constexpr const char* const kBackgroundImageEventError = "bgerror";
 
 void BackgroundImageLayer::OnSizeChange(float width, float height,
                                         float scale_density) {
@@ -53,6 +60,14 @@ void BackgroundImageLayer::Draw(OH_Drawing_Canvas* canvas,
 bool BackgroundImageLayer::IsReady() {
   return pixel_map_ != nullptr ||
          (image_drawable_ && image_drawable_->image_data != nullptr);
+}
+
+void BackgroundImageLayer::OnUpdateBounds() {
+  if (image_loaded) {
+    return;
+  }
+  LoadImage();
+  image_loaded = true;
 }
 
 float BackgroundImageLayer::GetWidth() { return image_width_; }
@@ -103,8 +118,19 @@ void BackgroundImageLayer::LoadImage() {
 }
 
 void BackgroundImageLayer::LoadImageFromService() {
+  auto ui_base_self = ui_base_.lock();
+  if (!ui_base_self) {
+    return;
+  }
+  std::string final_url;
+  if (ui_base_self->SkipRedirection()) {
+    final_url = url_;
+  } else {
+    final_url = LynxImageHelper::GetRedirectUrl(
+        url_, ui_base_self->GetContext()->GetResourceLoader());
+  }
   ImageRequestInfo request;
-  request.url = url_;
+  request.url = final_url;
   UIOwner::image_service->DecodeImage(
       request,
       [weak_self = weak_from_this()](const std::shared_ptr<ImageData>& data) {
@@ -140,6 +166,54 @@ void BackgroundImageLayer::LoadImageFromService() {
         image_layer->image_drawable_->image_data = data;
         image_layer->pixel_map_.reset();
         ui_base_self->Invalidate();
+      },
+      [weak_self = weak_from_this(), url = url_](float width,
+                                                 float height) mutable {
+        auto self = weak_self.lock();
+        if (!self) {
+          return;
+        }
+        auto image_layer = std::static_pointer_cast<BackgroundImageLayer>(self);
+        auto ui_base_self = image_layer->ui_base_.lock();
+        if (!ui_base_self || !ui_base_self->GetContext()) {
+          return;
+        }
+        auto events = ui_base_self->EventSet();
+        if (std::find(events.begin(), events.end(),
+                      kBackgroundImageEventLoad) == events.end()) {
+          return;
+        }
+        auto dict = lepus::Dictionary::Create();
+        dict->SetValue("height", height);
+        dict->SetValue("width", width);
+        dict->SetValue("url", url);
+        CustomEvent event{ui_base_self->Sign(), kBackgroundImageEventLoad,
+                          "detail", lepus_value(dict)};
+        ui_base_self->GetContext()->SendEvent(event);
+      },
+      [weak_self = weak_from_this(), url = url_](
+          int error_code, const std::string& error_msg) mutable {
+        auto self = weak_self.lock();
+        if (!self) {
+          return;
+        }
+        auto image_layer = std::static_pointer_cast<BackgroundImageLayer>(self);
+        auto ui_base_self = image_layer->ui_base_.lock();
+        if (!ui_base_self || !ui_base_self->GetContext()) {
+          return;
+        }
+        auto events = ui_base_self->EventSet();
+        if (std::find(events.begin(), events.end(),
+                      kBackgroundImageEventError) == events.end()) {
+          return;
+        }
+        auto dict = lepus::Dictionary::Create();
+        dict->SetValue("error_code", error_code);
+        dict->SetValue("errMsg", error_msg);
+        dict->SetValue("url", url);
+        CustomEvent event{ui_base_self->Sign(), kBackgroundImageEventError,
+                          "detail", lepus_value(dict)};
+        ui_base_self->GetContext()->SendEvent(event);
       });
 }
 

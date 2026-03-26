@@ -289,6 +289,15 @@ void LayerManager::Draw(OH_Drawing_Canvas* canvas, const Rect& border_rect,
   }
 }
 
+void LayerManager::OnUpdateBounds() {
+  if (image_layer_list_.empty()) {
+    return;
+  }
+  for (auto& layer : image_layer_list_) {
+    layer->OnUpdateBounds();
+  }
+}
+
 void LayerManager::Reset() {
   image_layer_list_.clear();
   image_position_list_.clear();
@@ -314,7 +323,6 @@ void LayerManager::SetLayerImage(const lepus::Value& data) {
     if (type == starlight::BackgroundImageType::kUrl) {
       auto layer =
           std::make_shared<BackgroundImageLayer>(items->get(i), ui_base_);
-      layer->LoadImage();
       image_layer_list_.emplace_back(layer);
     } else if (type == starlight::BackgroundImageType::kLinearGradient) {
       image_layer_list_.emplace_back(

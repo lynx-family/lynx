@@ -14,6 +14,7 @@ namespace tasm {
 namespace harmony {
 class BackgroundLayer : public std::enable_shared_from_this<BackgroundLayer> {
  public:
+  virtual void OnUpdateBounds() {}
   virtual bool IsReady();
   virtual float GetWidth() { return width_; };
   virtual float GetHeight() { return height_; };

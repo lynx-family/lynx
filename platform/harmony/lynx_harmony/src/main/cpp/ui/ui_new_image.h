@@ -60,7 +60,6 @@ class UINewImage : public UIBase,
   std::string placeholder_;
   std::string mode_;
   bool auto_size_{false};
-  bool skip_redirection_{false};
   bool downsampling_{false};
   float image_width_{0.f};
   float image_height_{0.f};
@@ -106,11 +105,9 @@ class UINewImage : public UIBase,
   void UpdateDeferSrcInvalidation(const lepus::Value& value);
   void UpdateTintColor(const lepus::Value& value);
   void UpdateDropShadow(const lepus::Value& value);
-  void UpdateSkipRedirection(const lepus::Value& value);
   void UpdateDownsampling(const lepus::Value& value);
   void UpdateEnableReportInfo(const lepus::Value& value);
   void AutoSizeIfNeeded();
-  std::string GetRedirectUrl(const std::string& url);
   void LoadImage();
   void LoadImageFromService(const std::string& url,
                             const std::string& placeholder);

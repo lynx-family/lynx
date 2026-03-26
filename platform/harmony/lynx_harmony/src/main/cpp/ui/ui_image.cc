@@ -51,8 +51,7 @@ std::unordered_map<std::string, ImagePropSetter> UIImage::prop_setters_ = {
     {"tint-color", &UIImage::UpdateTintColor},
     {"drop-shadow", &UIImage::UpdateDropShadow},
     {"cap-insets", &UIImage::UpdateCapInsets},
-    {"cap-insets-scale", &UIImage::UpdateCapInsetScale},
-    {"skip-redirection", &UIImage::UpdateSkipRedirection}};
+    {"cap-insets-scale", &UIImage::UpdateCapInsetScale}};
 
 void UIImage::OnPropUpdate(const std::string& name, const lepus::Value& value) {
   UIBase::OnPropUpdate(name, value);
@@ -290,7 +289,7 @@ void UIImage::LoadImageFromURL(bool placeholder) {
     return;
   }
 
-  if (skip_redirection_) {
+  if (SkipRedirection()) {
     LoadImageResource(url, placeholder
                                ? &UIImage::HandleImagePlaceholderResponse
                                : &UIImage::HandleImageSrcResponse);
@@ -485,10 +484,6 @@ void UIImage::UpdateCapInsetScale(const lepus::Value& value) {
     const auto& value_str = value.StdString();
     base::StringToFloat(value_str, cap_inset_scale_);
   }
-}
-
-void UIImage::UpdateSkipRedirection(const lepus::Value& value) {
-  skip_redirection_ = value.Bool();
 }
 
 void UIImage::UpdateDeferSrcInvalidation(const lepus::Value& value) {

@@ -13,6 +13,7 @@
 
 #include "base/include/closure.h"
 #include "core/base/lynx_export.h"
+#include "core/public/lynx_resource_loader.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_base_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_effect_processor.h"
 
@@ -48,6 +49,10 @@ class LynxImageHelper {
   LYNX_EXPORT static ImageResponse DecodeImageSync(
       const std::string& url, bool is_base64,
       const LynxImageEffectProcessor& params);
+
+  LYNX_EXPORT static std::string GetRedirectUrl(
+      const std::string& url,
+      const std::shared_ptr<pub::LynxResourceLoader>& resource_loader);
 
  private:
   static void DecodeImageFromImageSource(

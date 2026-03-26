@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/logging.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_data.h"
 #include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_service_node.h"
@@ -36,10 +37,20 @@ ImageServiceHarmony::CreateImageNode() {
 }
 
 void ImageServiceHarmony::DecodeImage(
-    const tasm::harmony::ImageRequestInfo& info,
-    std::function<void(const std::shared_ptr<tasm::harmony::ImageData>&)>
-        callback) {
+    const tasm::harmony::ImageRequestInfo& info, ImageDataCallback callback,
+    ImageSuccessCallback on_load_success, ImageFailedCallback on_load_failed) {
   auto options = std::make_shared<ImageKnifePro::ImageKnifeOption>();
+  options->onLoadListener = std::make_shared<ImageKnifePro::OnLoadCallBack>();
+  options->onLoadListener->onLoadSuccess =
+      [on_load_success = std::move(on_load_success)](
+          ImageKnifePro::ImageInfo image_info) mutable {
+        on_load_success(image_info.imageWidth, image_info.imageHeight);
+      };
+  options->onLoadListener->onLoadFailed =
+      [on_load_failed = std::move(on_load_failed)](
+          std::string error, ImageKnifePro::ImageInfo image_info) mutable {
+        on_load_failed(static_cast<int>(image_info.errorInfo.code), error);
+      };
   ImageServiceNode::UpdateImageSource(this, options, info.url,
                                       options->loadSrc);
   ImageKnifePro::ImageKnife::GetInstance().GetCacheImage(

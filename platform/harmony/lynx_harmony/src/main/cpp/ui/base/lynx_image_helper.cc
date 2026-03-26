@@ -5,6 +5,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
 
 #include <arkui/drawable_descriptor.h>
+#include <filemanagement/file_uri/oh_file_uri.h>
 #include <resourcemanager/ohresmgr.h>
 
 #include <cstdint>
@@ -121,6 +122,34 @@ LynxImageHelper::ImageResponse LynxImageHelper::DecodeImageSync(
   DecodeImageFromImageSource(image_source_native, response, params);
   OH_ImageSourceNative_Release(image_source_native);
   return response;
+}
+
+std::string LynxImageHelper::GetRedirectUrl(
+    const std::string& url,
+    const std::shared_ptr<pub::LynxResourceLoader>& resource_loader) {
+  if (url.empty() || base::BeginsWith(url, image::kBase64Scheme) ||
+      base::BeginsWith(url, image::kLocalScheme) ||
+      base::BeginsWith(url, image::kResourceScheme)) {
+    return url;
+  }
+  if (!resource_loader) {
+    return url;
+  }
+  pub::LynxResourceRequest request{url, pub::LynxResourceType::kImage};
+  std::string redirect_url = resource_loader->ShouldRedirectUrl(request);
+  if (!redirect_url.empty() && redirect_url[0] == '/') {
+    char* result = nullptr;
+    auto code = OH_FileUri_GetUriFromPath(redirect_url.data(),
+                                          redirect_url.size(), &result);
+    if (code == ERR_OK && result != nullptr) {
+      redirect_url = result;
+      free(result);
+    } else {
+      LOGE("GetRedirectUrl failed, code: "
+           << code << ", url: " << url << ", redirect_url: " << redirect_url);
+    }
+  }
+  return redirect_url;
 }
 
 void LynxImageHelper::DecodeImageFromImageSource(

@@ -98,9 +98,14 @@ class ImageService {
  public:
   virtual ~ImageService() = default;
   virtual std::unique_ptr<ImageNode> CreateImageNode() = 0;
-  virtual void DecodeImage(
-      const ImageRequestInfo& info,
-      std::function<void(const std::shared_ptr<ImageData>&)> callback) = 0;
+  using ImageDataCallback =
+      std::function<void(const std::shared_ptr<ImageData>&)>;
+  using ImageSuccessCallback = std::function<void(float, float)>;
+  using ImageFailedCallback = std::function<void(int, const std::string&)>;
+  virtual void DecodeImage(const ImageRequestInfo& info,
+                           ImageDataCallback callback,
+                           ImageSuccessCallback on_load_success,
+                           ImageFailedCallback on_load_failed) = 0;
 };
 
 }  // namespace harmony

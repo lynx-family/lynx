@@ -23,10 +23,10 @@ class ImageServiceHarmony : public tasm::harmony::ImageService {
   ~ImageServiceHarmony() override = default;
 
   std::unique_ptr<tasm::harmony::ImageNode> CreateImageNode() override;
-  void DecodeImage(
-      const tasm::harmony::ImageRequestInfo& info,
-      std::function<void(const std::shared_ptr<tasm::harmony::ImageData>&)>
-          callback) override;
+  void DecodeImage(const tasm::harmony::ImageRequestInfo& info,
+                   ImageDataCallback callback,
+                   ImageSuccessCallback on_load_success,
+                   ImageFailedCallback on_load_failed) override;
   NativeResourceManager* CreateNativeResourceManager() const;
   napi_env env_ = nullptr;
   napi_ref resource_manager_ref_ = nullptr;

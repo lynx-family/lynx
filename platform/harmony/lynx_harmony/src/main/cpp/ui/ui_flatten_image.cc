@@ -49,7 +49,6 @@ std::unordered_map<std::string, ImagePropSetter> UIFlattenImage::prop_setters_ =
      {"drop-shadow", &UIFlattenImage::UpdateDropShadow},
      {"cap-insets", &UIFlattenImage::UpdateCapInsets},
      {"cap-insets-scale", &UIFlattenImage::UpdateCapInsetScale},
-     {"skip-redirection", &UIFlattenImage::UpdateSkipRedirection},
      {"autoplay", &UIFlattenImage::UpdateAutoPlay},
      {"loop-count", &UIFlattenImage::UpdateLoopCount}};
 
@@ -226,7 +225,7 @@ void UIFlattenImage::LoadImageFromURL(bool is_src) {
     return;
   }
 
-  if (skip_redirection_) {
+  if (SkipRedirection()) {
     LoadImageResource(url,
                       is_src ? &UIFlattenImage::HandleImageSrcResponse
                              : &UIFlattenImage::HandleImagePlaceholderResponse);
@@ -440,10 +439,6 @@ void UIFlattenImage::UpdateCapInsetScale(const lepus::Value& value) {
     const auto& value_str = value.StdString();
     base::StringToFloat(value_str, cap_inset_scale_);
   }
-}
-
-void UIFlattenImage::UpdateSkipRedirection(const lepus::Value& value) {
-  skip_redirection_ = value.Bool();
 }
 
 void UIFlattenImage::UpdateDeferSrcInvalidation(const lepus::Value& value) {

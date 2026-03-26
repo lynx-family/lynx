@@ -45,7 +45,6 @@ std::unordered_map<std::string, ImagePropSetter> UINewImage::prop_setters_ = {
     {"drop-shadow", &UINewImage::UpdateDropShadow},
     {"cap-insets", &UINewImage::UpdateCapInsets},
     {"cap-insets-scale", &UINewImage::UpdateCapInsetScale},
-    {"skip-redirection", &UINewImage::UpdateSkipRedirection},
     {"autoplay", &UINewImage::UpdateAutoPlay},
     {"loop-count", &UINewImage::UpdateLoopCount},
     {"enable-report-info", &UINewImage::UpdateEnableReportInfo}};
@@ -359,33 +358,6 @@ void UINewImage::ResumeAnimation(
   callback(LynxGetUIResult::SUCCESS, lepus_value(""));
 }
 
-std::string UINewImage::GetRedirectUrl(const std::string& url) {
-  if (url.empty() || base::BeginsWith(url, image::kBase64Scheme) ||
-      base::BeginsWith(url, image::kLocalScheme) ||
-      base::BeginsWith(url, image::kResourceScheme)) {
-    return url;
-  }
-  auto resource_loader = context_->GetResourceLoader();
-  if (!resource_loader) {
-    return url;
-  }
-  pub::LynxResourceRequest request{url, pub::LynxResourceType::kImage};
-  std::string redirect_url = resource_loader->ShouldRedirectUrl(request);
-  if (!redirect_url.empty() && redirect_url[0] == '/') {
-    char* result = nullptr;
-    auto code = OH_FileUri_GetUriFromPath(redirect_url.data(),
-                                          redirect_url.size(), &result);
-    if (code == ERR_OK && result != nullptr) {
-      redirect_url = result;
-      free(result);
-    } else {
-      LOGE("GetRedirectUrl failed, code: "
-           << code << ", url: " << url << ", redirect_url: " << redirect_url);
-    }
-  }
-  return redirect_url;
-}
-
 void UINewImage::LoadImage() {
   // When using a processor, the view size is used as the cache key.
   // Requests can be deferred until the size is available to avoid the processor
@@ -394,13 +366,15 @@ void UINewImage::LoadImage() {
     LOGE("LoadImage empty size, src: " << src_);
     return;
   }
-  if (skip_redirection_) {
+  if (SkipRedirection()) {
     LoadImageFromService(src_, placeholder_);
     return;
   }
 
-  std::string final_src = GetRedirectUrl(src_);
-  std::string final_placeholder = GetRedirectUrl(placeholder_);
+  std::string final_src =
+      LynxImageHelper::GetRedirectUrl(src_, context_->GetResourceLoader());
+  std::string final_placeholder = LynxImageHelper::GetRedirectUrl(
+      placeholder_, context_->GetResourceLoader());
   LoadImageFromService(final_src, final_placeholder);
 }
 
@@ -516,7 +490,7 @@ void UINewImage::LoadImageFromService(const std::string& url,
                                        placeholder.c_str());
   OH_ArkUI_NodeUtils_AddCustomProperty(node_, "mode", mode_.c_str());
   OH_ArkUI_NodeUtils_AddCustomProperty(node_, "skip-redirection",
-                                       skip_redirection_ ? "true" : "false");
+                                       SkipRedirection() ? "true" : "false");
   OH_ArkUI_NodeUtils_AddCustomProperty(node_, "auto-size",
                                        auto_size_ ? "true" : "false");
 #endif
@@ -583,10 +557,6 @@ void UINewImage::UpdateCapInsetScale(const lepus::Value& value) {
     const auto& value_str = value.StdString();
     base::StringToFloat(value_str, cap_inset_scale_);
   }
-}
-
-void UINewImage::UpdateSkipRedirection(const lepus::Value& value) {
-  skip_redirection_ = value.Bool();
 }
 
 void UINewImage::UpdateDownsampling(const lepus::Value& value) {

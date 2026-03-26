@@ -34,6 +34,7 @@ class BackgroundImageLayer : public BackgroundLayer {
   float GetWidth() override;
   float GetHeight() override;
   bool IsReady() override;
+  void OnUpdateBounds() override;
   void LoadImage();
   ~BackgroundImageLayer() override;
   void DestroyDrawStruct();
@@ -59,6 +60,7 @@ class BackgroundImageLayer : public BackgroundLayer {
   uint32_t image_width_{0};
   uint32_t image_height_{0};
   std::unique_ptr<ImageDrawable> image_drawable_{nullptr};
+  bool image_loaded{false};
 };
 }  // namespace harmony
 }  // namespace tasm

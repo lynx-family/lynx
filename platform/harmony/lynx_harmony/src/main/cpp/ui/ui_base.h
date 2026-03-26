@@ -242,6 +242,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void OnResponseChain() override { is_on_response_chain_ = true; };
   void OffResponseChain() override { is_on_response_chain_ = false; };
   starlight::ImageRenderingType RenderingType();
+  bool SkipRedirection() const { return skip_redirection_; }
 
   ArkUI_NodeHandle RootNode() override {
     return is_overlay_content_ ? node_ : nullptr;
@@ -329,6 +330,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   int gesture_arena_member_id_{0};
   bool consume_gesture_{true};
   bool block_list_event_{false};
+  bool skip_redirection_{false};
   LynxInterceptGestureStatus gesture_status_{
       LynxInterceptGestureStatus::LynxInterceptGestureStateUnset};
   enum class LynxAccessibilityMode {
@@ -439,6 +441,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetClipPath(const lepus::Value& value);
   void SetPerspective(const lepus::Value& value);
   void SetBlockListEvent(const lepus::Value& value);
+  void SetSkipRedirection(const lepus::Value& value);
   float GetPerspectiveValue();
   void SetAccessibilityElement(const lepus::Value& value);
   void SetAccessibilityLabel(const lepus::Value& value);
