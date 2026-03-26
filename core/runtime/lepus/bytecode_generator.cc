@@ -22,14 +22,15 @@ namespace lepus {
 std::string BytecodeGenerator::GenerateBytecode(runtime::MTSContext* context,
                                                 const std::string& source,
                                                 const std::string& sdk_version,
-                                                const std::string& file_name) {
+                                                const std::string& file_name,
+                                                const char* ir_dump_path) {
   if (!context) {
     return "Compile error: the context is nullptr.";
   }
   context->SetSdkVersion(sdk_version);
   if (context->Type() == runtime::ContextType::VMContextType) {
     return GenerateBytecodeForVMContext(static_cast<VMContext*>(context),
-                                        source, sdk_version);
+                                        source, sdk_version, ir_dump_path);
   }
   return GenerateBytecodeForQuickContext(static_cast<QuickContext*>(context),
                                          source, sdk_version, file_name);
@@ -37,7 +38,7 @@ std::string BytecodeGenerator::GenerateBytecode(runtime::MTSContext* context,
 
 std::string BytecodeGenerator::GenerateBytecodeForVMContext(
     VMContext* context, const std::string& source,
-    const std::string& sdk_version) {
+    const std::string& sdk_version, const char* ir_dump_path) {
   parser::InputStream input;
   input.Write(source);
   Scanner scanner(&input);
@@ -65,10 +66,9 @@ std::string BytecodeGenerator::GenerateBytecodeForVMContext(
     // optimize lepus bytecode.
     // std::cout << "opt lepus bytecode..." << std::endl;
     root_func->SetTopLevelFunction(true);
-    // TODO(zhangye): uncomment in the subsequent MR.
-    // auto ir_context = std::make_unique<ir::IRContext>(context);
-    // ir_context->Init(root_func, context);
-    // ir::RunO1OptimizationPasses(*ir_context->GetMainMod());
+    auto ir_context = std::make_unique<ir::IRContext>(context);
+    ir_context->Init(root_func, context);
+    ir::RunO1OptimizationPasses(*ir_context->GetMainMod(), ir_dump_path);
   }
 
   return std::string();

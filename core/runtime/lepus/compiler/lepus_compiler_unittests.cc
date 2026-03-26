@@ -301,7 +301,8 @@ class TestLepus : private TestLepusContextHolder,
         lynx::lepus::ContextBinaryWriter(context()->GetMTSContext()) {}
 
   static const char* input;
-  void Run(const char* source, bool opt_bytecode) {
+  void Run(const char* source, bool opt_bytecode,
+           const char* ir_dump_path = nullptr) {
     std::string lepus_resource = source;
     if (lepus_resource == "") {
       lepus_resource = lepus::readFile(TestLepus::input);
@@ -312,7 +313,7 @@ class TestLepus : private TestLepusContextHolder,
     lynx::runtime::MTSRuntime::ToVMContext(context())->SetOptBytecode(
         opt_bytecode);
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
-        context()->GetMTSContext(), lepus_resource, "2.6");
+        context()->GetMTSContext(), lepus_resource, "2.6", "", ir_dump_path);
 
     if (!error.empty()) {
       LOGE("error: compile  failed:" << error << "\n");
@@ -520,9 +521,25 @@ std::vector<uint8_t> ReadBinary(std::string full_path) {
   return data;
 }
 
+static bool g_dump_ir = false;
+
 void CustomInit(int argc, char** argv) {
-  if (argc > 1) {
+  // Keep historical behavior: if `argv[1]` provides an input file path, only
+  // compile that single file.
+  if (argc > 1 && argv[1] != nullptr && argv[1][0] != '-') {
     TestLepus::input = argv[1];
+  }
+
+  // Only dump IR when explicitly requested.
+  for (int i = 1; i < argc; i++) {
+    const char* arg = argv[i];
+    if (arg == nullptr) {
+      continue;
+    }
+    if (strcmp(arg, "--dump-ir") == 0 || strcmp(arg, "--dump-ir=1") == 0 ||
+        strcmp(arg, "--dump-ir=true") == 0) {
+      g_dump_ir = true;
+    }
   }
 }
 
@@ -532,6 +549,23 @@ TEST(lepus, compile) {
 }
 
 TEST(lepus, compile_opt_lepus_bytecode) {
-  TestLepus t;
-  t.Run("", true);
+  // if use --dump-ir, dump ir passes in folder
+  // `lynx/core/runtime/lepus/compiler/unit_test/ir_dumps`
+  const auto unit_test_dir =
+      std::filesystem::path("lynx/core/runtime/lepus/compiler/unit_test");
+  const auto dump_root = unit_test_dir / "ir_dumps";
+
+  // If `argv[1]` provides an input file path, only compile that single file.
+  if (TestLepus::input != nullptr && strcmp(TestLepus::input, "") != 0) {
+    const std::filesystem::path input_path(TestLepus::input);
+    TestLepus t;
+    if (g_dump_ir) {
+      std::filesystem::create_directories(dump_root);
+      const std::string dump_path = (dump_root / input_path.stem()).string();
+      t.Run("", true, dump_path.c_str());
+    } else {
+      t.Run("", true, nullptr);
+    }
+    return;
+  }
 }

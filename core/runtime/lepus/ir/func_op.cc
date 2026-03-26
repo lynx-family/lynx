@@ -51,6 +51,13 @@ void FuncOp::Init(fml::RefPtr<Function>& function) {
   lepus_function_ = function;
 
   auto* ir_ctx = GetIRCtx();
+
+  // Ensure IRContext can resolve this FuncOp from the lepus::Function.
+  // Some passes (e.g. UpdateToplevelClosureVar) rely on IRContext::GetFuncOp.
+  // IRContext::Init() will populate this mapping in the normal pipeline, but
+  // unit tests may construct FuncOps ad-hoc and call FuncOp::Init directly.
+  ir_ctx->RegisterFuncOp(function, this);
+
   // 0. create region and block
   auto builder = ir_ctx->GetOpBuilder();
   builder->CreateRegion(this);

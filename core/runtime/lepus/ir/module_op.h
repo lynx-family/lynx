@@ -278,6 +278,7 @@ class ModuleOp : public llvh::ilist_node<ModuleOp>, public Operation {
   inst_list_range InstRange() {
     return inst_list_range(InstBegin(), InstEnd());
   }
+  uint32_t FuncSize() const { return std::distance(begin(), end()); }
 
   // -------------------- get constant literal value ---------------
   LiteralNull* GetLiteralNull() { return &literal_null_; }

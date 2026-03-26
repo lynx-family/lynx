@@ -19,7 +19,8 @@ class BytecodeGenerator {
   static std::string GenerateBytecode(runtime::MTSContext* context,
                                       const std::string& source,
                                       const std::string& sdk_version,
-                                      const std::string& file_name = "");
+                                      const std::string& file_name = "",
+                                      const char* ir_dump_path = nullptr);
 
   static std::string GenerateBytecodeForRTSContext(
       const std::string& source, const std::string& sdk_version);
@@ -27,7 +28,7 @@ class BytecodeGenerator {
  private:
   static std::string GenerateBytecodeForVMContext(
       VMContext* context, const std::string& source,
-      const std::string& sdk_version);
+      const std::string& sdk_version, const char* ir_dump_path = nullptr);
   static std::string GenerateBytecodeForQuickContext(
       QuickContext* context, const std::string& source,
       const std::string& sdk_version, const std::string& file_name);

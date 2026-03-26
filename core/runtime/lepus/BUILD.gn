@@ -80,7 +80,6 @@ unittest_set("lepus_testset") {
     "lepus_error_helper_unittest.cc",
     "lepus_ir_vm_context_unittest.cc",
     "lepus_value_unittest.cc",
-    "lepusir_template_compile_chain_integration_unittests.cc",
     "lynx_value_extended_unittest.cc",
     "restricted_value_unittest.cc",
     "string_api_unittest.cc",
@@ -102,10 +101,65 @@ unittest_set("lepus_testset") {
   ]
 }
 
+unittest_set("lepus_ir_testset") {
+  sources = [
+    "ir/unittests/ir_test_base.cc",
+    "ir/unittests/register_allocator/ra_test.cc",
+    "ir/unittests/register_allocator/test_call_register_alloc.cc",
+    "ir/unittests/register_allocator/test_process_call_inst_optimization.cc",
+    "ir/unittests/register_allocator/test_redundant_call_mov_elimination.cc",
+    "ir/unittests/register_allocator/test_toplevel_reg_protection.cc",
+    "ir/unittests/register_allocator/test_unary_register_alloc.cc",
+    "ir/unittests/register_allocator/test_verify_call_register.cc",
+    "ir/unittests/test_attributes.cc",
+    "ir/unittests/test_bytecode_analysis.cc",
+    "ir/unittests/test_deep_clone_opcode.cc",
+    "ir/unittests/test_func_op.cc",
+    "ir/unittests/test_mir_dialect.cc",
+    "ir/unittests/test_op_builder.cc",
+    "ir/unittests/test_optimization_stability.cc",
+    "ir/unittests/test_toplevel_closure_variable.cc",
+    "ir/unittests/test_try_catch_finally_layout.cc",
+    "ir/unittests/test_type.cc",
+    "ir/unittests/test_type_specification.cc",
+    "ir/unittests/transformer/test_const_elimination.cc",
+    "ir/unittests/transformer/test_enhanced_opts.cc",
+    "ir/unittests/transformer/test_inst_combine.cc",
+    "ir/unittests/transformer/test_ir_opts.cc",
+    "ir/unittests/transformer/test_load_store_elimination.cc",
+    "ir/unittests/transformer/test_load_store_elimination_attr.cc",
+    "ir/unittests/transformer/test_load_store_elimination_complex.cc",
+    "ir/unittests/transformer/test_load_store_elimination_precision.cc",
+    "ir/unittests/transformer/test_lse_closure.cc",
+    "ir/unittests/transformer/test_lse_closure_rse.cc",
+    "ir/unittests/transformer/test_lse_redundant_store.cc",
+    "ir/unittests/transformer/test_normalize_phi.cc",
+    "ir/unittests/transformer/test_opt_indirect_jmp.cc",
+    "ir/unittests/transformer/test_toplevel_cse.cc",
+    "ir/unittests/transformer/test_toplevel_passes.cc",
+    "ir/unittests/transformer/test_update_toplevel.cc",
+    "lepusir_template_compile_chain_integration_unittests.cc",
+  ]
+
+  public_deps = [ ":lepus" ]
+  deps = [
+    "../lepusng:lepus_ng",
+    "ir/llvh",
+  ]
+}
+
 unittest_exec("lepus_unittests_exec") {
   sources = []
   deps = [
     ":lepus_testset",
+    "../../renderer/dom:dom",
+  ]
+}
+
+unittest_exec("lepus_ir_unittests_exec") {
+  sources = []
+  deps = [
+    ":lepus_ir_testset",
     "../../renderer/dom:dom",
   ]
 }

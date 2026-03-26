@@ -252,7 +252,24 @@ TEST_F(ContextBinaryReaderTest, LynxBinaryReaderLepus) {
         << "No test files found under core/runtime/lepus/compiler/unit_test/";
   }
 
+  // Note: `core/runtime/lepus/compiler/unit_test/` contains a large number of
+  // Lepus IR optimization-related test cases. Running all of them here will
+  // easily exceed the unit test time budget (timeout).
+  //
+  // Those IR optimization cases are fully covered in `lepus_compiler_exec`
+  // (which runs the entire set), so `LynxBinaryReaderLepus` only exercises the
+  // legacy/non-IR-prefixed cases for binary reader regression coverage.
+  constexpr const char* kLepusIrTestPrefix = "test_lepus_ir_";
+
   for (const auto& test_file : all_test_file) {
+    const std::filesystem::path test_path(test_file);
+    if (!std::filesystem::is_regular_file(test_path)) {
+      continue;
+    }
+    const auto filename = test_path.filename().string();
+    if (filename.rfind(kLepusIrTestPrefix, 0) == 0) {
+      continue;
+    }
     std::cout << "[ContextDecoderTest] test file: " << test_file << std::endl;
     auto src = TestUtils::ReadFileFromPath(test_file);
     auto vm_ctx =

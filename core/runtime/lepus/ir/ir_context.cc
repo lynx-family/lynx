@@ -80,6 +80,28 @@ FuncOp* IRContext::GetFuncOp(
   return it->second;
 }
 
+void IRContext::RegisterFuncOp(const fml::RefPtr<::lynx::lepus::Function>& func,
+                               FuncOp* op) {
+  if (LEPUS_UNLIKELY(!func)) {
+    throw ::lynx::lepus::CompileException(
+        "Lepus IR error: IRContext::RegisterFuncOp called with nullptr "
+        "lepus::Function");
+  }
+  if (LEPUS_UNLIKELY(!op)) {
+    throw ::lynx::lepus::CompileException(
+        "Lepus IR error: IRContext::RegisterFuncOp called with nullptr "
+        "FuncOp");
+  }
+
+  auto it = funcs_.find(func);
+  if (it != funcs_.end() && it->second != op) {
+    throw ::lynx::lepus::CompileException(
+        "Lepus IR error: IRContext::RegisterFuncOp detected conflicting "
+        "FuncOp mapping for the same lepus::Function");
+  }
+  funcs_[func] = op;
+}
+
 void IRContext::CollectChildFuncs(const fml::RefPtr<Function>& function) {
   for (auto child : function->GetChildFunction()) {
     auto func_name = child->GetFunctionName();
@@ -90,7 +112,6 @@ void IRContext::CollectChildFuncs(const fml::RefPtr<Function>& function) {
 
     auto* func = builder_->Create<FuncOp>(child->CurrentLineCol(), func_name);
     func->Init(child);
-    funcs_[child] = func;
 
     CollectChildFuncs(child);
   }
@@ -123,7 +144,6 @@ void IRContext::Init(fml::RefPtr<Function>& root_function, VMContext* context) {
   func->SetTopLevelFunction();
   mod->SetRootFunction(func);
   func->Init(root_function);
-  funcs_[root_function] = func;
   CollectChildFuncs(root_function);
 }
 

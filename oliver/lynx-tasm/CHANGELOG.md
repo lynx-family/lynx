@@ -1,4 +1,6 @@
 # CHANGELOG
+# 0.0.31
+* add lepus IR optimize module to optimize lepus bytecode;
 
 # 0.0.30
 * enlarge wasm MAXIMUM_MEMORY to 4G;

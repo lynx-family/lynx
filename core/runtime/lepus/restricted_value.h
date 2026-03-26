@@ -91,8 +91,13 @@ struct RestrictedValue {
 
   static BASE_INLINE void Assign(RestrictedValue& left, const Value& right) {
     right.DupValue();
+    // NOTE: keep a local copy of the raw storage before touching `left`.
+    // In some hot paths `left`/`right` may alias (e.g. via type-punning between
+    // Value/RestrictedValue registers). `left.FreeValue()` must not affect the
+    // source bits we are about to copy.
+    const auto right_storage = right.value();
     left.FreeValue();
-    left.value_ = right.value();
+    left.value_ = right_storage;
   }
 
   static BASE_INLINE void Assign(Value& left, const RestrictedValue& right) {

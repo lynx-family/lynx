@@ -38,6 +38,15 @@ class IRContext {
   OpBuilder* GetOpBuilder() { return builder_.get(); }
   ModuleOp* GetMainMod();
   FuncOp* GetFuncOp(const fml::RefPtr<::lynx::lepus::Function>& func) const;
+
+  // Register a mapping between a lepus::Function and its corresponding FuncOp.
+  //
+  // IRContext::Init()/CollectChildFuncs() will populate this mapping for the
+  // normal pipeline, but unit tests or other ad-hoc builders may construct
+  // FuncOp manually. RegisterFuncOp makes passes that rely on GetFuncOp more
+  // robust in those scenarios.
+  void RegisterFuncOp(const fml::RefPtr<::lynx::lepus::Function>& func,
+                      FuncOp* op);
   void Init(fml::RefPtr<::lynx::lepus::Function>& root_function,
             lynx::lepus::VMContext* context);
   void CollectChildFuncs(const fml::RefPtr<Function>& function);

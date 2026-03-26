@@ -337,7 +337,7 @@ long CodeGenerator::ManageUpvalues(const base::String& name) {
   fml::RefPtr<Function> function = current_function_->function_;
   long index = function->SearchUpvalue(name);
 
-  if (index > 0) return index;
+  if (index >= 0) return index;
 
   std::stack<FunctionGenerate*> parents;
   parents.push(current_function_->parent_);
@@ -871,9 +871,11 @@ void CodeGenerator::Visit(LiteralAST* ast, void* data) {
       AddInstruction(instruction);
     } else if (ast->token().token_ == Token_String) {
       long index = function->AddConstString(ast->token().str_);
-      auto instruction =
-          Instruction::ABxCode(TypeOp_LoadConst, register_id, index);
-      AddInstruction(instruction);
+      if (register_id != -1) {
+        auto instruction =
+            Instruction::ABxCode(TypeOp_LoadConst, register_id, index);
+        AddInstruction(instruction);
+      }
     } else if (ast->token().token_ == Token_RegExp) {
       long index = function->AddConstRegExp(
           RegExp::Create(ast->token().pattern_, ast->token().flags_));
@@ -973,12 +975,12 @@ void CodeGenerator::Visit(LiteralAST* ast, void* data) {
           }
         }
       }
-    } else if (ast->token().token_ == Token_Nil) {
+    } else if (ast->token().token_ == Token_Nil && register_id != -1) {
       // Instead of adding more instructions, it's recommended to clear the
       // memory.
       auto instruction = Instruction::ACode(TypeOp_LoadNil, register_id);
       AddInstruction(instruction);
-    } else if (ast->token().token_ == Token_Undefined) {
+    } else if (ast->token().token_ == Token_Undefined && register_id != -1) {
       // use c register to show it need load undefined
       auto instruction = Instruction::ABCode(TypeOp_LoadNil, register_id, 1);
       AddInstruction(instruction);
