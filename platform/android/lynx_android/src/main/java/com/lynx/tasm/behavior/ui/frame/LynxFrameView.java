@@ -123,13 +123,14 @@ public final class LynxFrameView extends UIBodyView {
     builder.setTemplateBundle(bundle);
     if (mInitData != null) {
       builder.setInitialData(mInitData);
-      mInitData = null;
     }
     if (mGlobalProps != null) {
       builder.setGlobalProps(mGlobalProps);
-      mGlobalProps = null;
     }
     mRender.loadTemplate(builder.build());
+
+    mInitData = null;
+    mGlobalProps = null;
     mIsBundleLoaded = true;
     return true;
   }
@@ -174,12 +175,12 @@ public final class LynxFrameView extends UIBodyView {
 
   void setInitData(TemplateData data) {
     TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_INIT_DATA);
-    mInitData = data;
+    mInitData = replacePendingTemplateData(mInitData, data);
   }
 
   void setGlobalProps(TemplateData data) {
     TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_GLOBAL_PROPS);
-    mGlobalProps = data;
+    mGlobalProps = replacePendingTemplateData(mGlobalProps, data);
   }
 
   void onPropsUpdated() {
@@ -224,6 +225,24 @@ public final class LynxFrameView extends UIBodyView {
 
   private boolean hasInitializedSize(int width, int height) {
     return width != -1 && height != -1;
+  }
+
+  private TemplateData replacePendingTemplateData(TemplateData current, TemplateData next) {
+    if (current != null && current != next) {
+      current.recycle();
+    }
+    return next;
+  }
+
+  private void recyclePendingTemplateData() {
+    if (mInitData != null) {
+      mInitData.recycle();
+      mInitData = null;
+    }
+    if (mGlobalProps != null) {
+      mGlobalProps.recycle();
+      mGlobalProps = null;
+    }
   }
 
   @Override
@@ -330,6 +349,7 @@ public final class LynxFrameView extends UIBodyView {
       mRender.destroy();
       mRender = null;
     }
+    recyclePendingTemplateData();
     TraceEvent.endSection(TraceEventDef.DESTORY_LYNXFRAMEVIEW);
   }
 

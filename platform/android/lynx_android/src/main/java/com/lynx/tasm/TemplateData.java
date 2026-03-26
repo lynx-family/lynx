@@ -103,6 +103,7 @@ public final class TemplateData {
   }
 
   private volatile long mNativeData;
+  private volatile long mNativeTemplateDataPtr;
   private volatile Map<String, Object> mData;
   private String mProcessorName;
   private final AtomicBoolean mIsConcurrent = new AtomicBoolean(false);
@@ -161,6 +162,29 @@ public final class TemplateData {
     TemplateData result = new TemplateData(json);
     TraceEvent.endSection(TraceEventDef.TEMPLATE_DATA_FROM_STRING);
     return result;
+  }
+
+  @CalledByNative
+  private static TemplateData fromNative(long nativePtr, boolean readOnly, String processorName) {
+    TemplateData result = TemplateData.empty();
+    result.mNativeTemplateDataPtr = nativePtr;
+    result.readOnly = readOnly;
+    result.mProcessorName = processorName;
+    return result;
+  }
+
+  public static TemplateData fromNativeTemplateDataPtr(long nativePtr) {
+    return fromNative(nativePtr, false, null);
+  }
+
+  public long getNativeTemplateDataPtr() {
+    return mNativeTemplateDataPtr;
+  }
+
+  public long getNativeTemplateDataPtrAndClear() {
+    long ptr = mNativeTemplateDataPtr;
+    mNativeTemplateDataPtr = 0;
+    return ptr;
   }
 
   private void addUpdateActions(List<UpdateAction> actions) {
@@ -423,13 +447,20 @@ public final class TemplateData {
   }
 
   private void releaseNativeData() {
-    if (mNativeData == 0) {
+    if (mNativeData == 0 && mNativeTemplateDataPtr == 0) {
       return;
     }
     synchronized (mNativeDataLock) {
-      if (checkIfEnvPrepared() && mNativeData != 0) {
+      if (!checkIfEnvPrepared()) {
+        return;
+      }
+      if (mNativeData != 0) {
         nativeReleaseData(mNativeData);
         mNativeData = 0;
+      }
+      if (mNativeTemplateDataPtr != 0) {
+        nativeReleaseTemplateData(mNativeTemplateDataPtr);
+        mNativeTemplateDataPtr = 0;
       }
     }
   }

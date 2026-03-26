@@ -591,13 +591,11 @@ void LoadTemplateBufferByPreParsedData(
                        timing_option, options);
 }
 
-void LoadTemplateBundleByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
-                                       jlong lifecycle, jstring j_url,
-                                       jlong bundlePtr,
-                                       jboolean is_pre_painting, jlong data,
-                                       jboolean readOnly, jstring processorName,
-                                       jobject android_template_data,
-                                       jint options, jobject j_timing_option) {
+void LoadTemplateBundleByPreParsedData(
+    JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle, jstring j_url,
+    jlong bundlePtr, jboolean is_pre_painting, jlong data,
+    jlong nativeTemplateDataPtr, jboolean readOnly, jstring processorName,
+    jobject android_template_data, jint options, jobject j_timing_option) {
   // TODO(songshourui.null): add a method to get template_data with
   // android_template_data
   std::string processor_name =
@@ -608,6 +606,13 @@ void LoadTemplateBundleByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
                            ? nullptr
                            : std::make_shared<lynx::tasm::TemplateData>(
                                  value, readOnly, processor_name);
+  if (nativeTemplateDataPtr != 0) {
+    template_data =
+        *reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(
+            nativeTemplateDataPtr);
+    delete reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(
+        nativeTemplateDataPtr);
+  }
   if (template_data) {
     template_data->SetPlatformData(
         std::make_unique<lynx::tasm::PlatformDataAndroid>(
@@ -699,23 +704,44 @@ void UpdateDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
 }
 
 void UpdateMetaData(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
-                    jlong dataPtr, jstring processorName, jboolean readOnly,
-                    jobject templateData, jlong globalPropsPtr) {
+                    jlong dataPtr, jlong dataNativeTemplateDataPtr,
+                    jstring processorName, jboolean readOnly,
+                    jobject templateData, jlong globalPropsPtr,
+                    jlong globalPropsNativeTemplateDataPtr) {
   std::shared_ptr<lynx::tasm::TemplateData> updated_data = nullptr;
-  if (dataPtr != 0) {
+  if (dataNativeTemplateDataPtr != 0) {
+    auto* native_data_ptr =
+        reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(
+            dataNativeTemplateDataPtr);
+    updated_data = *native_data_ptr;
+    delete native_data_ptr;
+  } else if (dataPtr != 0) {
     std::string processor_name =
         JNIConvertHelper::ConvertToString(env, processorName);
     const auto& value = *(reinterpret_cast<Value*>(dataPtr));
     updated_data = std::make_shared<lynx::tasm::TemplateData>(value, readOnly,
                                                               processor_name);
+  }
+  if (updated_data) {
     updated_data->SetPlatformData(
         std::make_unique<lynx::tasm::PlatformDataAndroid>(
             lynx::base::android::ScopedGlobalJavaRef<jobject>(env,
                                                               templateData)));
   }
 
-  auto updated_global_props =
-      globalPropsPtr ? *(reinterpret_cast<Value*>(globalPropsPtr)) : Value();
+  auto updated_global_props = Value();
+  if (globalPropsNativeTemplateDataPtr != 0) {
+    auto* native_global_props_ptr =
+        reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(
+            globalPropsNativeTemplateDataPtr);
+    if (*native_global_props_ptr != nullptr) {
+      updated_global_props = (*native_global_props_ptr)->value();
+    }
+    delete native_global_props_ptr;
+  } else {
+    updated_global_props =
+        globalPropsPtr ? *(reinterpret_cast<Value*>(globalPropsPtr)) : Value();
+  }
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<lynx::base::AtomicLifecycle*>(lifecycle);
@@ -806,9 +832,17 @@ void UpdateConfig(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
 }
 
 void UpdateGlobalProps(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
-                       jlong j_props) {
+                       jlong j_props, jlong nativeTemplateDataPtr) {
   auto* props = reinterpret_cast<Value*>(j_props);
-  if (props != nullptr && !props->IsNil()) {
+  if (nativeTemplateDataPtr != 0) {
+    auto* native_global_props_ptr =
+        reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(
+            nativeTemplateDataPtr);
+    props = &(*native_global_props_ptr)->value();
+    delete native_global_props_ptr;
+  }
+
+  if ((props != nullptr && !props->IsNil())) {
     AtomicLifecycle* lifecycle_ptr =
         reinterpret_cast<AtomicLifecycle*>(lifecycle);
     if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {

@@ -8,6 +8,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/value/base_value.h"
+#include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/template_assembler.h"
 #include "core/services/feature_count/global_feature_counter.h"
@@ -22,6 +23,8 @@ constexpr char kLoad[] = "load";
 constexpr char kURL[] = "url";
 constexpr char kStatusCode[] = "statusCode";
 constexpr char kStatusMessage[] = "statusMessage";
+constexpr char kFrameData[] = "data";
+constexpr char kGlobalProps[] = "global-props";
 }  // namespace
 
 FrameElement::FrameElement(ElementManager* element_manager)
@@ -41,6 +44,21 @@ void FrameElement::SetAttribute(const base::String& key,
                                 const lepus::Value& value,
                                 bool need_update_data_model) {
   OnSetSrc(key, value);
+  if (key.IsEqual(kFrameData)) {
+    data_ = std::make_shared<TemplateData>(value, false);
+    auto* native_ptr = new std::shared_ptr<TemplateData>(data_);
+    FiberElement::SetAttribute(
+        key, lepus::Value(reinterpret_cast<int64_t>(native_ptr)),
+        need_update_data_model);
+    return;
+  } else if (key.IsEqual(kGlobalProps)) {
+    global_props_ = std::make_shared<TemplateData>(value, false);
+    auto* native_ptr = new std::shared_ptr<TemplateData>(global_props_);
+    FiberElement::SetAttribute(
+        key, lepus::Value(reinterpret_cast<int64_t>(native_ptr)),
+        need_update_data_model);
+    return;
+  }
   FiberElement::SetAttribute(key, value, need_update_data_model);
 }
 
