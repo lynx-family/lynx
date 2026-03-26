@@ -1,4 +1,9 @@
 # CHANGELOG
+
+## 3.9.0
+
+- Introduce `<viewpager>`.
+
 ## 3.8.0
 
 - Add coding skills in types folder to optimize code-gen result.

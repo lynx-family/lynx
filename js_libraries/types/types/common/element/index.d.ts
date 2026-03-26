@@ -16,6 +16,7 @@ export * from './textarea';
 export * from './title-bar-view';
 export * from './svg';
 export * from './refresh';
+export * from './viewpager';
 export * from './element';
 export * from './methods';
 export * from './attributes';

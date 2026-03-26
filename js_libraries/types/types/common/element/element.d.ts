@@ -20,6 +20,7 @@ import { OverlayProps} from './overlay';
 import { SVGProps } from './svg';
 import { TitleBarViewProps } from './title-bar-view';
 import { RefreshProps, RefreshUIMethods } from './refresh';
+import { ViewPagerItemProps, ViewPagerProps, ViewPagerUIMethods } from './viewpager';
 
 
 export interface UIMethods {
@@ -30,6 +31,7 @@ export interface UIMethods {
   'textarea': TextAreaUIMethods;
   'text': TextUIMethods;
   'refresh': RefreshUIMethods;
+  'viewpager': ViewPagerUIMethods;
 }
 
 type LynxComponentProps = ComponentProps;
@@ -58,6 +60,8 @@ export interface IntrinsicElements {
   'title-bar-view': TitleBarViewProps;
   'refresh': RefreshProps;
   'refresh-header': StandardProps;
+  'viewpager': ViewPagerProps;
+  'viewpager-item': ViewPagerItemProps;
 }
 
 declare module 'react' {
@@ -86,6 +90,8 @@ declare module 'react' {
       'title-bar-view': TitleBarViewProps;
       'refresh': RefreshProps;
       'refresh-header': StandardProps;
+      'viewpager': ViewPagerProps;
+      'viewpager-item': ViewPagerItemProps;
     }
   }
 }
