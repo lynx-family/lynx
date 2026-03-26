@@ -46,11 +46,7 @@ void LynxUIHelper::ConvertPointFromAncestorToDescendant(float res[2],
 
   std::vector<UIBase*> ui_chain;
   UIBase* current_ui = descendant;
-  bool is_in_overlay = false;
   while (current_ui != nullptr && current_ui != ancestor) {
-    if (current_ui->IsOverlayContent()) {
-      is_in_overlay = true;
-    }
     ui_chain.push_back(current_ui);
     current_ui = current_ui->Parent();
   }
@@ -77,13 +73,6 @@ void LynxUIHelper::ConvertPointFromAncestorToDescendant(float res[2],
     }
     ancestor = current_ui;
   }
-
-  if (is_in_overlay) {
-    float pos_to_screen[2] = {0.f};
-    ConvertPointFromUIToScreen(pos_to_screen, ancestor, pos_to_screen);
-    res[0] += pos_to_screen[0];
-    res[1] += pos_to_screen[1];
-  }
 }
 
 void LynxUIHelper::ConvertPointFromDescendantToAncestor(float res[2],
@@ -108,13 +97,6 @@ void LynxUIHelper::ConvertPointFromDescendantToAncestor(float res[2],
 
   while (descendant != nullptr && descendant->Parent() &&
          descendant != ancestor) {
-    if (descendant->IsOverlayContent()) {
-      float pos_to_screen[2] = {0.f};
-      ConvertPointFromUIToScreen(pos_to_screen, ancestor, pos_to_screen);
-      res[0] -= pos_to_screen[0];
-      res[1] -= pos_to_screen[1];
-      break;
-    }
     res[0] += descendant->ViewLeft();
     res[1] += descendant->ViewTop();
     res[0] -= descendant->OffsetXForCalcPosition();
