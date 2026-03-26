@@ -21,7 +21,7 @@ def gn_clean(root_path):
   result = subprocess.check_call(command, shell=True)
   return result
 
-def gen_build_file(platform, arch, debug, root_path, type, sysroot):
+def gen_build_file(platform, arch, debug, root_path, type, sysroot, is_static=False):
   gn_path = os.path.join(root_path, 'buildtools', 'gn', 'gn')
   output_path = os.path.join(root_path, 'out', 'Default')
   is_debug = 'false'
@@ -43,12 +43,14 @@ def gen_build_file(platform, arch, debug, root_path, type, sysroot):
       node_headers_dst_dir=\\\"//oliver/lynx-tasm\\\" '
     if platform == 'linux':
       args += ' emsdk_dir=\\\"/root/emsdk\\\"'
+    if is_static:
+      args += ' enable_lto=false'
   elif type == 'testing':
     args += ' build_lepus_compile=false \
       enable_napi_binding=true \
       enable_lepusng_worklet=true \
       jsengine_type=\\\"quickjs\\\"'
-    
+
   if len(arch) > 0:
     args += " target_cpu=\\\"%s\\\"" % (arch)
 
@@ -65,6 +67,18 @@ def build_by_ninja(root_path, show_log):
     command = '%s -C %s oliver_group -v' % (ninja_path, output_path)
   else:
     command = '%s -C %s oliver_group' % (ninja_path, output_path)
+  result = subprocess.check_call(command, shell=True)
+  return result
+
+def build_static_lib_by_ninja(root_path, show_log, type):
+  ninja_path = os.path.join(root_path, 'buildtools', 'ninja', 'ninja')
+  output_path = os.path.join(root_path, 'out', 'Default')
+
+  static_lib_target = 'oliver/lynx-tasm:tasm_codec_static'
+  if show_log:
+    command = '%s -C %s %s -v' % (ninja_path, output_path, static_lib_target)
+  else:
+    command = '%s -C %s %s' % (ninja_path, output_path, static_lib_target)
   result = subprocess.check_call(command, shell=True)
   return result
 
@@ -125,13 +139,13 @@ def copy_wasm_target(root_path, type):
   shutil.copy(js_src_path, dst_root_path)
   shutil.copy(typing_src_path, dst_root_path)
 
-def build_target(platform, arch, debug, root_path, show_log, type, need_clean, sysroot):
+def build_target(platform, arch, debug, root_path, show_log, type, need_clean, sysroot, is_static=False):
   if need_clean:
     result = gn_clean(root_path)
     if result != 0:
       return result
 
-  result = gen_build_file(platform, arch, debug, root_path, type, sysroot)
+  result = gen_build_file(platform, arch, debug, root_path, type, sysroot, is_static)
   if result != 0:
     return result
 
@@ -158,17 +172,69 @@ def merge_file(folder_name, debug, root_path, type):
     return -1
   return subprocess.check_call(command, shell=True)
 
-def build(system, debug, root_path, show_log, type, is_wasm, need_clean, is_local, sysroot):
+def strip_static_lib(path):
+  command = 'strip -X %s' % path
+  return subprocess.check_call(command, shell=True)
+
+def copy_static_lib_target(folder_name, arch, debug, root_path, type):
+  dst_name = 'Release'
+  if debug:
+    dst_name = 'Debug'
+  type_path = get_type_path(type)
+  output_name = 'liblynx_tasm_codec.a'
+  dst_path = os.path.join(root_path, 'oliver', type_path, 'build', folder_name, dst_name)
+  if len(arch) > 0:
+    dst_path = os.path.join(dst_path, arch)
+  if os.path.exists(os.path.join(dst_path, output_name)):
+    os.remove(os.path.join(dst_path, output_name))
+  src_path = os.path.join(root_path, 'out', 'Default', 'obj', 'oliver', type_path, output_name)
+  if not os.path.exists(dst_path):
+    os.makedirs(dst_path)
+  shutil.copy(src_path, dst_path)
+  strip_static_lib(os.path.join(dst_path, output_name))
+
+def build(system, debug, root_path, show_log, type, is_wasm, need_clean, is_local, sysroot, is_static=False):
   # TODO(wangqingyu): remove wasm build when is_local after bumping up lynx-speedy
   if is_wasm:
     system = platform.system().lower()
-    result = build_target(system, 'wasm', debug, root_path, show_log, type, need_clean, sysroot)
+    result = build_target(system, 'wasm', debug, root_path, show_log, type, need_clean, sysroot, is_static)
     if result != 0:
       return result
     copy_wasm_target(root_path, type)
+  elif is_static:
+    if system == 'darwin':
+      result = build_target(system, machine, debug, root_path, show_log, type, need_clean, sysroot, is_static)
+      if result != 0:
+        return result
+      result = build_static_lib_by_ninja(root_path, show_log, type)
+      if result != 0:
+        return result
+      if is_local:
+        copy_static_lib_target(system, '', debug, root_path, type)
+        return 0
+      copy_static_lib_target(system, machine, debug, root_path, type)
+      other_machine = [m for m in ['x64', 'arm64'] if m != machine][0]
+      result = build_target(system, other_machine, debug, root_path, show_log, type, need_clean, sysroot, is_static)
+      if result != 0:
+        return result
+      result = build_static_lib_by_ninja(root_path, show_log, type)
+      if result != 0:
+        return result
+      copy_static_lib_target(system, other_machine, debug, root_path, type)
+      return 0
+    elif system == 'linux':
+      result = build_target(system, '', debug, root_path, show_log, type, need_clean, sysroot, is_static)
+      if result != 0:
+        return result
+      result = build_static_lib_by_ninja(root_path, show_log, type)
+      if result != 0:
+        return result
+      copy_static_lib_target(system, '', debug, root_path, type)
+    else:
+      return -1
   else:
     if system == 'darwin':
-      result = build_target(system, machine, debug, root_path, show_log, type, need_clean, sysroot)
+      result = build_target(system, machine, debug, root_path, show_log, type, need_clean, sysroot, is_static)
       if result != 0:
         return result
       if is_local:
@@ -182,7 +248,7 @@ def build(system, debug, root_path, show_log, type, is_wasm, need_clean, is_loca
       # For darwin release build, need build not only for current machine, but also for the other machine
       # TODO(wangqingyu): chaning other_machine to list if darwin has more supported machine
       other_machine = [m for m in ['x64', 'arm64'] if m != machine][0]
-      result = build_target(system, other_machine, debug, root_path, show_log, type, need_clean, sysroot)
+      result = build_target(system, other_machine, debug, root_path, show_log, type, need_clean, sysroot, is_static)
       if result != 0:
         return result
       copy_target(system, other_machine, debug, root_path, type)
@@ -193,7 +259,7 @@ def build(system, debug, root_path, show_log, type, is_wasm, need_clean, is_loca
         return result
       return 0
     elif system == 'linux':
-      result = build_target(system, '', debug, root_path, show_log, type, need_clean, sysroot)
+      result = build_target(system, '', debug, root_path, show_log, type, need_clean, sysroot, is_static)
       if result != 0:
         return result
       copy_target(system, '', debug, root_path, type)
@@ -210,6 +276,7 @@ def parse_args():
   parser.add_argument('--local', type=bool, default=False, help='Build for local CPU architecture. Only has effects on the Darwin system')
   parser.add_argument('--show_log', type=bool, default=False, help='Output compilation log')
   parser.add_argument('--wasm', type=bool, default=False, help='Build wasm product')
+  parser.add_argument('--static', type=bool, default=False, help='Build static library instead of node module')
   parser.add_argument('--sysroot', type=str, default='', help='Custom sysroot for build on linux')
   return parser.parse_args()
 
@@ -221,12 +288,13 @@ def main():
   need_clean = args.clean
   is_debug = args.debug
   is_wasm = args.wasm
+  is_static = args.static
   is_local = args.local
   sysroot = args.sysroot
 
   file_path = os.path.dirname(os.path.abspath(__file__))
   root_path = os.path.join(file_path, '..')
-  result = build(platform, is_debug, root_path, is_show_log, type, is_wasm, need_clean, is_local, sysroot)
+  result = build(platform, is_debug, root_path, is_show_log, type, is_wasm, need_clean, is_local, sysroot, is_static)
   if result != 0:
     return result
   return 0
