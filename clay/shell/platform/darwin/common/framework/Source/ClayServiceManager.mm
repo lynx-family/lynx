@@ -43,6 +43,7 @@
     [_serviceMap setObject:service forKey:NSStringFromProtocol(protocol)];
   }
 }
+
 - (id)getService:(Protocol *)protocol {
   id service = nil;
   @synchronized(self) {
