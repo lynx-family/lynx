@@ -868,6 +868,12 @@ class LynxConfigDecoder final {
       page_config->SetAlignMouseEventWithW3C(
           doc[config::kAlignMouseEventWithW3C].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableDisexposureWhenBackground) &&
+        doc[config::kEnableDisexposureWhenBackground].IsBool()) {
+      page_config->SetEnableDisexposureWhenBackground(
+          doc[config::kEnableDisexposureWhenBackground].GetBool());
+    }
   };
 };
 }  // namespace tasm

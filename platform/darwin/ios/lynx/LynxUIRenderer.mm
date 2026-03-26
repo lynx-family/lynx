@@ -237,6 +237,8 @@ static id<LynxServiceTextProtocol> getTextService() {
       setObserverFrameRateForExposure:pageConfig->GetObserverFrameRate()];
   [_uiOwner.uiContext.uiExposure
       setEnableCheckExposureOptimize:pageConfig->GetEnableCheckExposureOptimize()];
+  [_uiOwner.uiContext.uiExposure
+      setEnableDisexposureWhenBackground:pageConfig->GetEnableDisexposureWhenBackground()];
 
   // Set config to LynxUIContext;
   LynxUIContext *uiContext = _uiOwner.uiContext;

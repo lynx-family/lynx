@@ -57,6 +57,7 @@ const configKeys = [
   'enableCSSInheritance',
   'enableCSSInlineVariables',
   'enableCSSLazyImport',
+  'enableDisexposureWhenBackground',
   'enableDisexposureWhenLynxHidden',
   'enableEndGestureAtLastFingerUp',
   'enableEventHandleRefactor',

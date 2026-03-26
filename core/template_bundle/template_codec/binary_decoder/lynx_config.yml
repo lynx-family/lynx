@@ -1871,3 +1871,11 @@ alignMouseEventWithW3C:
   supportPlatform:
     - macOS
     - Windows
+enableDisexposureWhenBackground:
+  description: Enables the disexposure event to fire when LynxView is in the background.
+  defaultValue: 'true'
+  valueType: bool
+  author: rAY-ooo
+  since: '3.8'
+  supportPlatform:
+    - iOS

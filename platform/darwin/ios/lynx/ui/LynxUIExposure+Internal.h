@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setObserverFrameRateForExposure:(int32_t)rate;
 - (void)setObserverFrameRateForLynxView:(int32_t)rate;
 - (void)setEnableCheckExposureOptimize:(BOOL)enableCheckExposureOptimize;
+- (void)setEnableDisexposureWhenBackground:(BOOL)enableDisexposureWhenBackground;
 
 @end
 

@@ -120,6 +120,7 @@
   int32_t _frameRateForLynxView;
   // The callback that changes flag to YES reflecting the UI has changed.
   void (^_callback)(NSDictionary *);
+  BOOL _enableDisexposureWhenBackground;
 }
 
 - (void)didExposure {
@@ -226,6 +227,10 @@
   _enableCheckExposureOptimize = enableCheckExposureOptimize;
 }
 
+- (void)setEnableDisexposureWhenBackground:(BOOL)enableDisexposureWhenBackground {
+  _enableDisexposureWhenBackground = enableDisexposureWhenBackground;
+}
+
 - (CGFloat)getIntersectionAreaRatio:(CGRect)targetRect otherRect:(CGRect)otherRect {
   CGRect intersectionRect = CGRectIntersection(targetRect, otherRect);
   if (!CGRectIsNull(intersectionRect)) {
@@ -318,7 +323,10 @@
 }
 
 - (CGRect)borderOfExposureScreen:(LynxUI *)ui {
-  CGRect windowFrame = [LynxUIKitAPIAdapter getForegroundKeyWindow].frame;
+  CGRect windowFrame = [LynxUIKitAPIAdapter getKeyWindow].frame;
+  if (!_enableDisexposureWhenBackground) {
+    windowFrame = [LynxUIKitAPIAdapter getForegroundKeyWindow].frame;
+  }
   if ([ui enableExposureUIMargin]) {
     // get screen's frame, calculate the needed rect with exposureMargin (not exposureUIMargin)
     // screenRect's area < 0

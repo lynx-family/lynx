@@ -274,6 +274,17 @@ export interface Config {
   enableCSSLazyImport?: boolean;
 
   /**
+   * Enables the disexposure event to fire when LynxView is in the background.
+   *
+   * Supported platform: iOS
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue true
+   */
+  enableDisexposureWhenBackground?: boolean;
+
+  /**
    * Enables the disexposure event to fire when LynxView is in the hidden state.
    *
    * Supported platform: Android

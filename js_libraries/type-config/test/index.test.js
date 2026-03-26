@@ -46,7 +46,7 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(128);
+    expect(configKeys.length).toBe(129);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
       'alignMouseEventWithW3C',
@@ -72,6 +72,7 @@ describe('type-config index', () => {
       'enableCSSInheritance',
       'enableCSSInlineVariables',
       'enableCSSLazyImport',
+      'enableDisexposureWhenBackground',
       'enableDisexposureWhenLynxHidden',
       'enableEndGestureAtLastFingerUp',
       'enableEventHandleRefactor',
