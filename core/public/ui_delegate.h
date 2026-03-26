@@ -36,6 +36,7 @@ class PageConfig;
  */
 class UIDelegate {
  public:
+  UIDelegate() : weak_flag_(std::make_shared<WeakFlag>(this)) {}
   virtual ~UIDelegate() = default;
   virtual std::unique_ptr<PaintingCtxPlatformImpl> CreatePaintingContext() = 0;
   virtual std::unique_ptr<LayoutCtxPlatformImpl> CreateLayoutContext() = 0;
@@ -85,12 +86,22 @@ class UIDelegate {
     return 0;
   }
 
+  // WeakFlag is used to create a weak reference to the UIDelegate instance.
+  // This allows checking if the UIDelegate is still alive before accessing it.
+  struct WeakFlag : public std::enable_shared_from_this<WeakFlag> {
+    explicit WeakFlag(UIDelegate* ui_delegate) : ui_delegate(ui_delegate) {}
+    UIDelegate* ui_delegate;
+  };
+
+  std::weak_ptr<WeakFlag> GetWeakFlag() { return weak_flag_; }
+
  private:
   // Represents an unknown instance ID. Typically set proactively during event
   // reporting, indicating that the current event does not need to distinguish
   // the LynxShell runtime environment and does not need to associate common
   // parameters.
   int32_t instance_id_ = -1;
+  std::shared_ptr<WeakFlag> weak_flag_;
 };
 
 }  // namespace tasm

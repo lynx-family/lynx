@@ -2295,9 +2295,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 - (void)setPageConfig:(const std::shared_ptr<lynx::tasm::PageConfig>&)pageConfig {
   pageConfig_ = pageConfig;
-  if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
-    [(LynxUIRenderer*)_lynxUIRenderer onPageConfigUpdate:pageConfig];
-  }
+  [_lynxUIRenderer onPageConfigUpdate:pageConfig];
 }
 
 - (NSString*)translatedResourceWithId:(NSString*)resId themeKey:(NSString*)key {

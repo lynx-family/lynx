@@ -10,6 +10,7 @@
 
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "core/base/android/java_only_map.h"
+#include "core/public/ui_delegate.h"
 #include "core/shell/tasm_platform_invoker.h"
 
 namespace lynx {
@@ -17,8 +18,10 @@ namespace shell {
 
 class TasmPlatformInvokerAndroid : public TasmPlatformInvoker {
  public:
-  TasmPlatformInvokerAndroid(JNIEnv* env, jobject jni_object)
-      : jni_object_(env, jni_object) {}
+  TasmPlatformInvokerAndroid(JNIEnv* env, jobject jni_object,
+                             tasm::UIDelegate* ui_delegate)
+      : jni_object_(env, jni_object),
+        weak_ui_delegate_(ui_delegate->GetWeakFlag()) {}
   ~TasmPlatformInvokerAndroid() override = default;
 
   static base::android::JavaOnlyMap ConvertToJavaOnlyMap(
@@ -43,6 +46,7 @@ class TasmPlatformInvokerAndroid : public TasmPlatformInvoker {
 
  private:
   base::android::ScopedGlobalJavaRef<jobject> jni_object_;
+  std::weak_ptr<tasm::UIDelegate::WeakFlag> weak_ui_delegate_;
 };
 
 }  // namespace shell

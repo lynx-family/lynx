@@ -353,7 +353,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
           .SetPropBundleCreator(ui_delegate->CreatePropBundleCreator())
           .SetTasmPlatformInvoker(
               std::make_unique<lynx::shell::TasmPlatformInvokerAndroid>(
-                  env, tasm_platform_invoker))
+                  env, tasm_platform_invoker, ui_delegate))
           .SetForceLayoutOnBackgroundThread(force_layout_on_background_thread)
           .build());
 }
@@ -379,7 +379,7 @@ void RebuildLynxEngine(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   reinterpret_cast<LynxShell*>(ptr)->RebuildLynxEngine(
       ui_delegate->CreateLayoutContext(), ui_delegate->CreatePaintingContext(),
       std::make_unique<lynx::shell::TasmPlatformInvokerAndroid>(
-          env, tasm_platform_invoker),
+          env, tasm_platform_invoker, ui_delegate),
       std::move(native_module_manager));
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }

@@ -8,8 +8,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/android/java_only_map.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/shell/common/shell_trace_event_def.h"
 // TODO(heshan):Temporarily utilize the JNI methods of TemplateAssembler.
 //              Introduce TasmPlatformInvoker.java as a replacement
@@ -255,6 +257,17 @@ void TasmPlatformInvokerAndroid::OnPageConfigDecoded(
         base::android::AttachCurrentThread(), jni_object_.Get(),
         java_config.jni_object());
   }
+  // In some scenarios, such as clay rendering, we can directly trigger the page
+  // config change on UIDelegate without going through Java.
+  // Note: UIDelegate methods must be called on the UI thread.
+  fml::TaskRunner::RunNowOrPostTask(
+      base::UIThread::GetRunner(),
+      [weak_ui_delegate = weak_ui_delegate_, config]() {
+        if (auto strong_flag = weak_ui_delegate.lock()) {
+          LOGI("Trigger OnPageConfigDecoded on UIDelegate");
+          strong_flag->ui_delegate->OnPageConfigDecoded(config);
+        }
+      });
 }
 
 void TasmPlatformInvokerAndroid::OnRunPipelineFinished() {

@@ -5054,7 +5054,6 @@ public interface LynxUIOwner(Private) {
 }
 
 public class LynxUIRenderer : NSObject, <LynxUIRendererProtocol> {
-  public void LynxUIRenderer::onPageConfigUpdate:(const std::shared_ptr< lynx::tasm::PageConfig > &pageConfig);
 }
 
 public class LynxUIRendererCreator : NSObject, <LynxUIRendererCreatorProtocol> {
@@ -5071,6 +5070,7 @@ public protocol LynxUIRendererProtocol-p : <NSObject> {
   public void LynxUIRendererProtocol-p::setupUIDelegate:(LynxShadowNodeOwner *owner);
   public void * LynxUIRendererProtocol-p::uiDelegate();
   public void LynxUIRendererProtocol-p::setupEventHandler:shellPtr:block:(LynxEngineProxy *engineProxy,[shellPtr] int64_t shellPtr,[block] onLynxEvent block);
+  public void LynxUIRendererProtocol-p::onPageConfigUpdate:(const std::shared_ptr< lynx::tasm::PageConfig > &pageConfig);
   public void LynxUIRendererProtocol-p::setFluencyTracerEnabled:(LynxBooleanOption enabled);
   public BOOL LynxUIRendererProtocol-p::needPaintingContextProxy();
   public void LynxUIRendererProtocol-p::onSetFrame:(CGRect frame);

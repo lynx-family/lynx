@@ -11,6 +11,7 @@
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxUIMethodProcessor.h>
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -43,6 +44,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setupEventHandler:(LynxEngineProxy *)engineProxy
                  shellPtr:(int64_t)shellPtr
                     block:(onLynxEvent)block;
+
+- (void)onPageConfigUpdate:(const std::shared_ptr<lynx::tasm::PageConfig> &)pageConfig;
 
 - (void)setFluencyTracerEnabled:(LynxBooleanOption)enabled;
 
