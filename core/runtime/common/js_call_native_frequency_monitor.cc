@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/timer/time_utils.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/utils/lynx_env.h"
 
@@ -42,8 +43,9 @@ JsCallNativeFrequencyMonitor::JsCallNativeFrequencyMonitor(
 }
 
 std::optional<base::LynxError> JsCallNativeFrequencyMonitor::Record(
-    uint64_t now_ms, std::string_view call_api_name,
-    std::string_view method_name, std::string_view stacks) {
+    std::string_view call_api_name, std::string_view method_name,
+    std::string_view stacks) {
+  const uint64_t now_ms = base::CurrentSystemTimeMilliseconds();
   if (window_start_ms_ == 0 || now_ms - window_start_ms_ >= window_ms_) {
     ResetWindow(now_ms);
   }

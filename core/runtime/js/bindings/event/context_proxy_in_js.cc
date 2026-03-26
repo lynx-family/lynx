@@ -57,6 +57,14 @@ ContextProxyInJS::ContextProxyInJS(runtime::ContextProxy::Delegate &delegate,
                             target_type),
       native_app_(native_app) {}
 
+void ContextProxyInJS::ReportError(base::LynxError error) {
+  auto app = native_app_.lock();
+  if (!app) {
+    return;
+  }
+  app->GetDelegate().OnErrorOccurred(std::move(error));
+}
+
 fml::RefPtr<runtime::MessageEvent> ContextProxyInJS::CreateMessageEvent(
     Runtime &rt, std::shared_ptr<App> native_app, const Value &event) {
   return fml::MakeRefCounted<runtime::MessageEvent>(

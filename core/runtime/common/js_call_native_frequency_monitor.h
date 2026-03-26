@@ -19,10 +19,9 @@ class JsCallNativeFrequencyMonitor {
  public:
   explicit JsCallNativeFrequencyMonitor(uint32_t threshold_per_method);
 
-  std::optional<base::LynxError> Record(uint64_t now_ms,
-                                        std::string_view call_api_name,
+  std::optional<base::LynxError> Record(std::string_view call_api_name,
                                         std::string_view method_name,
-                                        std::string_view stacks);
+                                        std::string_view stacks = "");
 
  private:
   struct MethodStats {

@@ -6,13 +6,33 @@
 
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "core/event/event.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/common/bindings/event/runtime_constants.h"
+#include "core/runtime/common/js_call_native_frequency_monitor.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
 namespace runtime {
+
+ContextProxy::ContextProxy(Delegate& delegate, Type origin_type,
+                           Type target_type)
+    : delegate_(delegate),
+      origin_type_(origin_type),
+      target_type_(target_type),
+      event_listener_(nullptr),
+      dispatch_event_frequency_monitor_(nullptr) {
+  auto& env = tasm::LynxEnv::GetInstance();
+  if (env.EnableJSCallNativeFrequencyMonitor()) {
+    dispatch_event_frequency_monitor_ =
+        std::make_unique<JsCallNativeFrequencyMonitor>(
+            env.GetJSCallNativeFrequencyMonitorThresholdCommon());
+  }
+}
+
+ContextProxy::~ContextProxy() = default;
 
 std::string ContextProxy::ConvertContextTypeToString(ContextProxy::Type type) {
   if (type == ContextProxy::Type::kJSContext) {
@@ -71,6 +91,25 @@ event::DispatchEventResult ContextProxy::DispatchEvent(
     return {event::EventCancelType::kNotCanceled, false};
   }
   auto message_event = fml::static_ref_ptr_cast<runtime::MessageEvent>(event);
+  if (dispatch_event_frequency_monitor_) {
+    const std::string target_str = message_event->GetTargetString();
+    const std::string origin_str = message_event->GetOriginString();
+    const std::string& type_str = message_event->type();
+    std::string method_name = target_str;
+    method_name.reserve(method_name.size() + origin_str.size() +
+                        type_str.size() + 2);
+    method_name.push_back('#');
+    method_name += origin_str;
+    method_name.push_back('#');
+    method_name += type_str;
+    auto error_opt = dispatch_event_frequency_monitor_->Record(
+        "ContextProxy::DispatchEvent", method_name);
+    if (error_opt) {
+      LOGW("ContextProxy::DispatchEvent called too frequently. target:"
+           << target_str << " origin:" << origin_str << " type:" << type_str);
+      ReportError(std::move(*error_opt));
+    }
+  }
   if (message_event->GetTargetType() == origin_type_) {
     bool consumed = false;
     if (event_listener_ != nullptr) {

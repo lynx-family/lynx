@@ -39,6 +39,8 @@ class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
   void Destroy();
 
  protected:
+  void ReportError(base::LynxError error) override;
+
   std::weak_ptr<App> native_app_;
 };
 

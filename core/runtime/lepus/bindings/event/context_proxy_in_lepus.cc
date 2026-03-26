@@ -71,6 +71,17 @@ event::DispatchEventResult ContextProxyInLepus::DispatchEvent(
   return ContextProxy::DispatchEvent(event);
 }
 
+void ContextProxyInLepus::ReportError(base::LynxError error) {
+  if (!context_) {
+    return;
+  }
+  auto* delegate = context_->GetDelegate();
+  if (!delegate) {
+    return;
+  }
+  delegate->ReportError(std::move(error));
+}
+
 void ContextProxyInLepus::EnsureListenerBeforePublishEvent() {
   auto new_on_trigger_event_ =
       proxy_binding_.GetProperty(BASE_STATIC_STRING(runtime::kOnTriggerEvent));

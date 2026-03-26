@@ -34,6 +34,7 @@ class ContextProxyInLepus : public runtime::ContextProxy {
 
  protected:
   void EnsureListenerBeforePublishEvent();
+  void ReportError(base::LynxError error) override;
 
   runtime::MTSRuntime* context_;
   lepus::Value proxy_binding_;

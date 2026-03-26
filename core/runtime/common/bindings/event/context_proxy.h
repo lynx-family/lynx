@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "base/include/debug/lynx_error.h"
 #include "base/include/value/base_value.h"
 #include "core/event/event_listener.h"
 #include "core/event/event_target.h"
@@ -16,6 +17,7 @@
 namespace lynx {
 namespace runtime {
 
+class JsCallNativeFrequencyMonitor;
 class MessageEvent;
 
 // Currently, Lynx will have at least two contexts existing at the same time,
@@ -47,11 +49,8 @@ class ContextProxy : public event::EventTarget {
         fml::RefPtr<runtime::MessageEvent> event) = 0;
   };
 
-  ContextProxy(Delegate& delegate, Type origin_type, Type target_type)
-      : delegate_(delegate),
-        origin_type_(origin_type),
-        target_type_(target_type){};
-  virtual ~ContextProxy(){};
+  ContextProxy(Delegate& delegate, Type origin_type, Type target_type);
+  virtual ~ContextProxy();
 
   static std::string ConvertContextTypeToString(ContextProxy::Type type);
   static Type ConvertStringToContextType(const std::string& type_str);
@@ -71,11 +70,15 @@ class ContextProxy : public event::EventTarget {
   Type GetOriginType() const { return origin_type_; }
 
  protected:
+  virtual void ReportError(base::LynxError error) {}
+
   Delegate& delegate_;
   Type origin_type_;
   Type target_type_;
 
   std::unique_ptr<event::EventListener> event_listener_{nullptr};
+  std::unique_ptr<JsCallNativeFrequencyMonitor>
+      dispatch_event_frequency_monitor_;
 };
 
 }  // namespace runtime

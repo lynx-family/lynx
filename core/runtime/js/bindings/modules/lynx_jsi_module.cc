@@ -97,7 +97,7 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     monitor_method_name.append("#");
     monitor_method_name.append(first_arg_str);
     auto error_opt = invoke_method_frequency_monitor_->Record(
-        call_func_start, "invokeMethod", monitor_method_name, "");
+        "invokeMethod", monitor_method_name);
     if (error_opt) {
       delegate_->OnErrorOccurred(std::move(*error_opt));
     }
