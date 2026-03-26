@@ -54,6 +54,8 @@ import com.lynx.tasm.image.model.ImageInfo;
 import com.lynx.tasm.image.model.ImageLoadListener;
 import com.lynx.tasm.image.model.ImageRequestInfo;
 import com.lynx.tasm.image.model.ImageRequestInfoBuilder;
+import com.lynx.tasm.image.model.PlaceholderHashConfig;
+import com.lynx.tasm.image.model.PlaceholderHashListener;
 import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.media.OptionalBool;
@@ -101,6 +103,8 @@ public class LynxImageManager implements Drawable.Callback {
 
   private static final long BORDER_RADIUS_CHANGED = (1 << 12);
 
+  private static final long PLACEHOLDER_HASH_CONFIG_CHANGED = (1 << 13);
+
   private final LynxContext mContext;
 
   private final LynxImageLoader mImageLoader;
@@ -108,6 +112,8 @@ public class LynxImageManager implements Drawable.Callback {
   private String mSrc;
 
   private String mPlaceholder;
+
+  private @Nullable PlaceholderHashConfig mPlaceholderHashConfig;
 
   private boolean mSkipRedirection;
 
@@ -485,6 +491,14 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
+  public void setPlaceholderHashConfig(@Nullable ReadableMap config) {
+    PlaceholderHashConfig parsed = createPlaceholderHashConfig(config);
+    if (!Objects.equals(parsed, mPlaceholderHashConfig)) {
+      mPlaceholderHashConfig = parsed;
+      dirtyFlags |= PLACEHOLDER_HASH_CONFIG_CHANGED;
+    }
+  }
+
   public void setCapInsets(String capInsets) {
     if (!TextUtils.equals(capInsets, mCapInsets)) {
       mCapInsets = capInsets;
@@ -687,6 +701,9 @@ public class LynxImageManager implements Drawable.Callback {
           break;
         case PropsConstants.PLACEHOLDER:
           setPlaceholder(props.getString(name));
+          break;
+        case PropsConstants.IMAGE_PLACE_HOLDER_HASH_CONFIG:
+          setPlaceholderHashConfig(props.getMap(name, null));
           break;
         case PropsConstants.PRE_FETCH_HEIGHT:
           setPreFetchHeight(props.getString(name));
@@ -928,6 +945,17 @@ public class LynxImageManager implements Drawable.Callback {
       updatePlaceholderSource();
     }
 
+    if (isDirty(PLACEHOLDER_HASH_CONFIG_CHANGED)) {
+      if (mPlaceholderHashConfig != null) {
+        releaseDrawable(mPlaceholderDrawable);
+        if (mPlaceholderDrawable != null) {
+          mPlaceholderDrawable.releaseImageSource();
+          mPlaceholderDrawable = null;
+        }
+        updatePlaceholderHashSource();
+      }
+    }
+
     if (isDirty(SRC_CHANGED) || isDirty(BLUR_RADIUS_CHANGED)
         || isDirty(DOWN_SAMPLING_SCALE_CHANGED)) {
       if (!mDeferInvalidation) {
@@ -980,6 +1008,78 @@ public class LynxImageManager implements Drawable.Callback {
     if (drawable != null) {
       mImageLoader.releaseAnimDrawable(drawable.getCurrent());
     }
+  }
+
+  private void updatePlaceholderHashSource() {
+    boolean needRequest = (mViewWidth > 0 && mViewHeight > 0)
+        || (mPreFetchWidth > 0 && mPreFetchHeight > 0) || (mImageDrawable != null);
+    if (!needRequest) {
+      return;
+    }
+
+    mImageLoader.decodePlaceholderHash(mPlaceholderHashConfig, new PlaceholderHashListener() {
+      @Override
+      public void onSuccess(@NonNull ImageContent content) {
+        onPlaceholderHashDecoded(content);
+      }
+
+      @Override
+      public void onFailure(@NonNull Throwable t) {
+        LLog.e(TAG, "Decode placeholder hash failed: " + t.getMessage());
+      }
+    });
+  }
+
+  private void onPlaceholderHashDecoded(@NonNull ImageContent content) {
+    UIThreadUtils.runOnUiThreadImmediately(() -> {
+      mPlaceholderDrawable = new LynxScaleTypeDrawable(content, mMode);
+      configureBounds(mPlaceholderDrawable);
+      invalidate();
+    });
+  }
+
+  private PlaceholderHashConfig createPlaceholderHashConfig(@Nullable ReadableMap map) {
+    if (map == null) {
+      return null;
+    }
+
+    String type = map.getString("type", null);
+    boolean isPreview = "preview".equalsIgnoreCase(type);
+    boolean isBlur = "blur".equalsIgnoreCase(type);
+    if (!isPreview && !isBlur) {
+      return null;
+    }
+
+    String hash = map.getString("hash", null);
+    String widthString = map.getString("width", null);
+    String heightString = map.getString("height", null);
+    if (TextUtils.isEmpty(hash) || TextUtils.isEmpty(widthString)
+        || TextUtils.isEmpty(heightString)) {
+      return null;
+    }
+
+    int widthPx = Math.round(
+        UnitUtils.toPxWithDisplayMetrics(widthString, 0, 0, 0, 0, -1, mContext.getScreenMetrics()));
+    int heightPx = Math.round(UnitUtils.toPxWithDisplayMetrics(
+        heightString, 0, 0, 0, 0, -1, mContext.getScreenMetrics()));
+    if (widthPx <= 0 || heightPx <= 0) {
+      return null;
+    }
+
+    int radiusPx = 0;
+    int iterations = 1;
+    String metaData = null;
+    if (isPreview) {
+      String radiusString = map.getString("radius", null);
+      if (!TextUtils.isEmpty(radiusString)) {
+        radiusPx = Math.round(UnitUtils.toPxWithDisplayMetrics(
+            radiusString, 0, 0, 0, 0, -1, mContext.getScreenMetrics()));
+      }
+      iterations = map.getInt("iterations", 1);
+      metaData = map.getString("metaData", null);
+    }
+    return new PlaceholderHashConfig(
+        isPreview, hash, metaData, widthPx, heightPx, radiusPx, iterations);
   }
 
   private ImageRequestInfo createImageRequest(int width, int height, String url) {

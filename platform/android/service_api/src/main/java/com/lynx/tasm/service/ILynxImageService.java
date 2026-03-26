@@ -23,6 +23,8 @@ import androidx.annotation.Nullable;
 import com.lynx.tasm.image.model.AnimationListener;
 import com.lynx.tasm.image.model.ImageLoadListener;
 import com.lynx.tasm.image.model.ImageRequestInfo;
+import com.lynx.tasm.image.model.PlaceholderHashConfig;
+import com.lynx.tasm.image.model.PlaceholderHashListener;
 import java.util.Map;
 
 /**
@@ -112,6 +114,17 @@ public interface ILynxImageService extends IServiceProvider {
    * @param listener Listener for image loading callbacks.
    */
   void decodeImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener);
+
+  /**
+   * Decode placeholder hash config to image content used for placeholder rendering.
+   *
+   * <p>Note: This method is optional. If the service does not implement it, it should call
+   * {@link PlaceholderHashListener#onFailure(Throwable)}.
+   */
+  default void decodePlaceholderHash(
+      @NonNull PlaceholderHashConfig config, @NonNull PlaceholderHashListener listener) {
+    listener.onFailure(new UnsupportedOperationException("decodePlaceholderHash is not supported"));
+  }
 
   /**
    * Releases resources associated with the given image request.

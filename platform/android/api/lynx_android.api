@@ -2467,6 +2467,7 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public void com.lynx.tasm.service.ILynxImageService.prefetchImage( @NonNull String uri, @Nullable Object callerContext, @Nullable Map< String, Object > params);
   public void com.lynx.tasm.service.ILynxImageService.prefetchImage(@NonNull String uri, @Nullable Object callerContext, @Nullable Map< String, Object > params, @Nullable ImageLoadListener loadListener);
   public void com.lynx.tasm.service.ILynxImageService.decodeImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener);
+  public default void com.lynx.tasm.service.ILynxImageService.decodePlaceholderHash( @NonNull PlaceholderHashConfig config, @NonNull PlaceholderHashListener listener);
   public void com.lynx.tasm.service.ILynxImageService.releaseImage(@NonNull ImageRequestInfo imageRequestInfo);
   public void com.lynx.tasm.service.ILynxImageService.releaseAnimDrawable(@NonNull Drawable drawable);
   public boolean com.lynx.tasm.service.ILynxImageService.canParseUrl(@NonNull String url);
@@ -5726,6 +5727,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setEnableCustomGifDecoder(boolean enable);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setSrc(String src);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setPlaceholder(String placeholder);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setPlaceholderHashConfig(@Nullable ReadableMap config);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setCapInsets(String capInsets);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setCapInsetsBackUp(String capInsetsBackUp);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setMode(@Nullable String mode);
@@ -8454,6 +8456,24 @@ public class com::lynx::tasm::utils::PixelUtils :  {
   public static float com.lynx.tasm.utils.PixelUtils.dipToPx(double value, float density);
   public static float com.lynx.tasm.utils.PixelUtils.dipToPx(double value);
   public static float com.lynx.tasm.utils.PixelUtils.pxToDip(float value);
+}
+
+public class com::lynx::tasm::image::model::PlaceholderHashConfig :  {
+  public final boolean com.lynx.tasm.image.model.PlaceholderHashConfig.isPreView isPreView;
+  public final String com.lynx.tasm.image.model.PlaceholderHashConfig.hash hash;
+  public final String com.lynx.tasm.image.model.PlaceholderHashConfig.metaData metaData;
+  public final int com.lynx.tasm.image.model.PlaceholderHashConfig.width width;
+  public final int com.lynx.tasm.image.model.PlaceholderHashConfig.height height;
+  public final int com.lynx.tasm.image.model.PlaceholderHashConfig.radius radius;
+  public final int com.lynx.tasm.image.model.PlaceholderHashConfig.iterations iterations;
+  public com.lynx.tasm.image.model.PlaceholderHashConfig.PlaceholderHashConfig(boolean isPreView, @NonNull String hash, @Nullable String metaData, int width, int height, int radius, int iterations);
+  public boolean com.lynx.tasm.image.model.PlaceholderHashConfig.equals(Object o);
+  public int com.lynx.tasm.image.model.PlaceholderHashConfig.hashCode();
+}
+
+public interface com::lynx::tasm::image::model::PlaceholderHashListener {
+  public void com.lynx.tasm.image.model.PlaceholderHashListener.onSuccess(@NonNull ImageContent content);
+  public void com.lynx.tasm.image.model.PlaceholderHashListener.onFailure(@NonNull Throwable t);
 }
 
 public class abstract com::lynx::tasm::PlatformCallBack :  {

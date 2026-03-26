@@ -14,6 +14,8 @@ import com.lynx.tasm.image.model.AnimationListener;
 import com.lynx.tasm.image.model.ImageLoadListener;
 import com.lynx.tasm.image.model.ImageRequestInfo;
 import com.lynx.tasm.image.model.LynxImageFetcher;
+import com.lynx.tasm.image.model.PlaceholderHashConfig;
+import com.lynx.tasm.image.model.PlaceholderHashListener;
 import com.lynx.tasm.service.ILynxImageService;
 import com.lynx.tasm.service.LynxServiceCenter;
 
@@ -40,6 +42,13 @@ class LynxImageLoader {
       mLynxImageService.fetchImage(imageRequestInfo, loadListener, animationListener, context);
     }
     TraceEvent.endSection(TraceEventDef.IMAGE_SERVICE_PROXY_FETCH_IMAGE);
+  }
+
+  public void decodePlaceholderHash(
+      @NonNull PlaceholderHashConfig config, @NonNull PlaceholderHashListener listener) {
+    if (mLynxImageService != null) {
+      mLynxImageService.decodePlaceholderHash(config, listener);
+    }
   }
 
   public boolean startAnimation(Drawable animatable) {
