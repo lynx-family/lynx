@@ -16,6 +16,7 @@ import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.common.LepusBuffer;
 import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.service.security.ILynxSecurityService;
+import com.lynx.tasm.service.security.ILynxSecurityTarget;
 import com.lynx.tasm.service.security.SecurityResult;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -27,80 +28,93 @@ import java.util.Map;
  * provided by the Lynx SDK. Client developers can parse the Lynx App Bundle product
  * in advance to obtain the `TemplateBundle` object and consume the App Bundle product.
  */
-public final class TemplateBundle {
+public final class TemplateBundle implements ILynxSecurityTarget {
   public static final String TAG = "TemplateBundle";
 
-  private final String url;
+  private String url;
   private long nativePtr = 0; // native pointer for LynxTemplateBundle.
   private Map<String, Object> extraInfo;
   private String errorMsg = null;
-  private final int templateSize;
+  private int templateSize;
+  private boolean initialized = false;
 
-  private final PageConfig pageConfig;
+  private PageConfig pageConfig;
   private OnReleaseCallback onReleaseCallback;
 
   interface OnReleaseCallback {
     void onRelease();
   }
-  private TemplateBundle(
+  public TemplateBundle() {
+    pageConfig = new PageConfig(null);
+  }
+
+  private synchronized boolean initialize(
       long ptr, int templateSize, String url, String errMsg, ReadableMap pageConfigMap) {
-    this.nativePtr = ptr;
+    if (initialized) {
+      return false;
+    }
+    nativePtr = ptr;
     this.templateSize = templateSize;
     this.url = url;
-    this.errorMsg = errMsg;
-    this.pageConfig = new PageConfig(pageConfigMap);
+    errorMsg = errMsg;
+    pageConfig = new PageConfig(pageConfigMap);
+    initialized = true;
+    return true;
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (o == null || getClass() != o.getClass())
-      return false;
-    TemplateBundle that = (TemplateBundle) o;
-    return nativePtr == that.nativePtr && templateSize == that.templateSize;
+    return this == o;
   }
 
-  private static SecurityResult verifyTasm(byte[] template, ByteBuffer buffer, String url) {
+  @Override
+  public int hashCode() {
+    return System.identityHashCode(this);
+  }
+
+  private static SecurityResult verifyTasm(
+      ILynxSecurityTarget target, byte[] template, ByteBuffer buffer, String url) {
     ILynxSecurityService securityService =
         LynxServiceCenter.inst().getService(ILynxSecurityService.class);
     if (securityService != null) {
       // Do Security Check;
       return securityService.verifyTASM(
-          null, template, buffer, url, ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE);
+          target, template, buffer, url, ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE);
     }
     return SecurityResult.onSuccess();
   }
 
   private static TemplateBundle internalBuildTemplate(
-      byte[] template, ByteBuffer buffer, String url) {
-    TemplateBundle result = null;
+      TemplateBundle bundle, byte[] template, ByteBuffer buffer, String url) {
+    TemplateBundle result = bundle == null ? new TemplateBundle() : bundle;
     int length;
     if (template != null || buffer != null) {
       length = buffer != null ? buffer.limit() : template.length;
       TraceEvent.beginSection(TraceEventDef.TEMPLATE_BUNDLE_FROM_TEMPLATE);
-      if (checkIfEnvPrepared()) {
-        SecurityResult securityResult = verifyTasm(template, buffer, url);
-        if (!securityResult.isVerified()) {
-          result = new TemplateBundle(0, template.length, url,
-              "template verify failed, error message: " + securityResult.getErrorMsg(), null);
-          return result;
-        }
-        // 0: string, error message
-        // 1: ReadableMap, pageConfig
-        Object[] options = new Object[2];
-        long ptr = 0;
-        if (buffer != null) {
-          ptr = nativeParseTemplateFromByteBuffer(buffer, options);
+      try {
+        if (checkIfEnvPrepared()) {
+          SecurityResult securityResult = verifyTasm(result, template, buffer, url);
+          if (!securityResult.isVerified()) {
+            result.initialize(0, length, url,
+                "template verify failed, error message: " + securityResult.getErrorMsg(), null);
+            return result;
+          }
+          // 0: string, error message
+          // 1: ReadableMap, pageConfig
+          Object[] options = new Object[2];
+          long ptr = 0;
+          if (buffer != null) {
+            ptr = nativeParseTemplateFromByteBuffer(buffer, options);
+          } else {
+            ptr = nativeParseTemplateFromByteArray(template, options);
+          }
+          result.initialize(ptr, length, url, (String) options[0], (ReadableMap) options[1]);
         } else {
-          ptr = nativeParseTemplateFromByteArray(template, options);
+          result.initialize(0, length, url, "Lynx Env is not prepared", null);
         }
-        result =
-            new TemplateBundle(ptr, length, url, (String) options[0], (ReadableMap) options[1]);
-      } else {
-        result = new TemplateBundle(0, length, url, "Lynx Env is not prepared", null);
+      } finally {
+        TraceEvent.endSection(TraceEventDef.TEMPLATE_BUNDLE_FROM_TEMPLATE);
       }
-      TraceEvent.endSection(TraceEventDef.TEMPLATE_BUNDLE_FROM_TEMPLATE);
     }
     return result;
   }
@@ -115,7 +129,10 @@ public final class TemplateBundle {
    * an invalid `TemplateBundle` is returned.
    */
   public static TemplateBundle fromTemplate(byte[] template) {
-    return internalBuildTemplate(template, null, null);
+    if (template == null) {
+      return null;
+    }
+    return internalBuildTemplate(new TemplateBundle(), template, null, null);
   }
 
   /**
@@ -137,26 +154,67 @@ public final class TemplateBundle {
 
     if (!buffer.isDirect()) {
       LLog.i(TAG, "TemplateBundle only supports DirectByteBuffer.");
-      return new TemplateBundle(
+      TemplateBundle result = new TemplateBundle();
+      result.initialize(
           0, buffer.limit(), url, "TemplateBundle only supports DirectByteBuffer.", null);
+      return result;
     }
-    TemplateBundle result = internalBuildTemplate(null, buffer, url);
+    TemplateBundle result = internalBuildTemplate(new TemplateBundle(), null, buffer, url);
     result.initWithOption(option);
     return result;
   }
 
   public static TemplateBundle fromTemplate(byte[] template, TemplateBundleOption option) {
+    if (template == null) {
+      return null;
+    }
     String url = option != null ? option.getUrl() : null;
-    TemplateBundle result = internalBuildTemplate(template, null, url);
+    TemplateBundle result = internalBuildTemplate(new TemplateBundle(), template, null, url);
     result.initWithOption(option);
     return result;
+  }
+
+  public boolean initWithTemplate(ByteBuffer buffer, TemplateBundleOption option) {
+    String url = option != null ? option.getUrl() : null;
+    if (buffer == null || isInitialized()) {
+      return false;
+    }
+
+    if (!buffer.isDirect()) {
+      LLog.i(TAG, "TemplateBundle only supports DirectByteBuffer.");
+      return initialize(
+          0, buffer.limit(), url, "TemplateBundle only supports DirectByteBuffer.", null);
+    }
+    internalBuildTemplate(this, null, buffer, url);
+    initWithOption(option);
+    return true;
+  }
+
+  public boolean initWithTemplate(ByteBuffer buffer) {
+    return initWithTemplate(buffer, null);
+  }
+
+  public boolean initWithTemplate(byte[] template, TemplateBundleOption option) {
+    if (template == null || isInitialized()) {
+      return false;
+    }
+    String url = option != null ? option.getUrl() : null;
+    internalBuildTemplate(this, template, null, url);
+    initWithOption(option);
+    return true;
+  }
+
+  public boolean initWithTemplate(byte[] template) {
+    return initWithTemplate(template, null);
   }
 
   @CalledByNative
   private static TemplateBundle fromNative(long nativePtr, ReadableMap pageConfigMap) {
     // TODO(nihao.royal) add template size & template url for recycled TemplateBundle.
     String errMsg = nativePtr == 0 ? "native TemplateBundle doesn't exist" : null;
-    return new TemplateBundle(nativePtr, 0, null, errMsg, pageConfigMap);
+    TemplateBundle result = new TemplateBundle();
+    result.initialize(nativePtr, 0, null, errMsg, pageConfigMap);
+    return result;
   }
 
   private void initWithOption(TemplateBundleOption option) {
@@ -248,6 +306,10 @@ public final class TemplateBundle {
    */
   public boolean isValid() {
     return nativePtr != 0;
+  }
+
+  public boolean isInitialized() {
+    return initialized;
   }
 
   private static boolean checkIfEnvPrepared() {

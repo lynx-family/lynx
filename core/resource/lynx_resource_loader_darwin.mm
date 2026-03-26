@@ -66,7 +66,7 @@ void VerifyLynxTemplateResource(const std::string& url, lynx::pub::LynxResourceR
                                     : LynxTASMTypeDynamicComponent;
         LynxVerificationResult* result =
             [securityService verifyTASM:nsData
-                                   view:nil
+                                 target:nil
                                     url:[NSString stringWithUTF8String:url.c_str()]
                                    type:tasmType];
         if (!result.verified) {
