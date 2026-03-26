@@ -8,6 +8,7 @@
 #include <arkui/native_node.h>
 #include <multimedia/image_framework/image/pixelmap_native.h>
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -16,6 +17,15 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
+class ImageData {
+ public:
+  virtual ~ImageData() = default;
+  virtual OH_PixelmapNative* Pixelmap() const = 0;
+  virtual uint32_t FrameCount() const = 0;
+  virtual OH_PixelmapNative** PixelmapList() const = 0;
+  virtual int* DelayTimeList() const = 0;
+};
 
 class ImageProcessor {
  public:
@@ -88,6 +98,9 @@ class ImageService {
  public:
   virtual ~ImageService() = default;
   virtual std::unique_ptr<ImageNode> CreateImageNode() = 0;
+  virtual void DecodeImage(
+      const ImageRequestInfo& info,
+      std::function<void(const std::shared_ptr<ImageData>&)> callback) = 0;
 };
 
 }  // namespace harmony

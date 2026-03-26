@@ -8,6 +8,8 @@
 #include <native_drawing/drawing_rect.h>
 #include <native_drawing/drawing_sampling_options.h>
 
+#include "core/renderer/utils/lynx_env.h"
+#include "harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
@@ -27,17 +29,31 @@ void BackgroundImageLayer::OnSizeChange(float width, float height,
 
 void BackgroundImageLayer::Draw(OH_Drawing_Canvas* canvas,
                                 OH_Drawing_Path* path) {
-  if (!pixel_map_ || !src_rect_ || !dest_rect_ || !pixel_map_->FirstFrame() ||
-      !sample_) {
+  if (!src_rect_ || !dest_rect_ || !sample_) {
     LOGE("Draw with invalid args.");
     return;
   }
-  OH_Drawing_CanvasDrawPixelMapRect(canvas,
-                                    pixel_map_->FirstFrame()->DrawBitmap(),
-                                    src_rect_, dest_rect_, sample_);
+
+  OH_Drawing_PixelMap* draw_bitmap = nullptr;
+  if (image_drawable_ && image_drawable_->draw_bitmap) {
+    draw_bitmap = image_drawable_->draw_bitmap;
+  } else if (pixel_map_ && pixel_map_->FirstFrame() &&
+             pixel_map_->FirstFrame()->DrawBitmap()) {
+    draw_bitmap = pixel_map_->FirstFrame()->DrawBitmap();
+  }
+
+  if (!draw_bitmap) {
+    LOGE("Draw with invalid args.");
+    return;
+  }
+  OH_Drawing_CanvasDrawPixelMapRect(canvas, draw_bitmap, src_rect_, dest_rect_,
+                                    sample_);
 }
 
-bool BackgroundImageLayer::IsReady() { return pixel_map_ != nullptr; }
+bool BackgroundImageLayer::IsReady() {
+  return pixel_map_ != nullptr ||
+         (image_drawable_ && image_drawable_->image_data != nullptr);
+}
 
 float BackgroundImageLayer::GetWidth() { return image_width_; }
 
@@ -54,6 +70,11 @@ BackgroundImageLayer::~BackgroundImageLayer() {
 void BackgroundImageLayer::LoadImage() {
   auto ui_base_self = ui_base_.lock();
   if (!ui_base_self) {
+    return;
+  }
+  static bool enable_new_image = LynxEnv::GetInstance().EnableHarmonyNewImage();
+  if (UIOwner::image_service && enable_new_image) {
+    LoadImageFromService();
     return;
   }
   auto request = pub::LynxResourceRequest{url_, pub::LynxResourceType::kImage};
@@ -81,6 +102,47 @@ void BackgroundImageLayer::LoadImage() {
   }
 }
 
+void BackgroundImageLayer::LoadImageFromService() {
+  ImageRequestInfo request;
+  request.url = url_;
+  UIOwner::image_service->DecodeImage(
+      request,
+      [weak_self = weak_from_this()](const std::shared_ptr<ImageData>& data) {
+        auto self = weak_self.lock();
+        if (!self || !data) {
+          return;
+        }
+        auto image_layer = std::static_pointer_cast<BackgroundImageLayer>(self);
+        auto ui_base_self = image_layer->ui_base_.lock();
+        if (!ui_base_self || !data->Pixelmap()) {
+          return;
+        }
+        image_layer->DestroyDrawStruct();
+        bool pixelated = ui_base_self->RenderingType() ==
+                         starlight::ImageRenderingType::kPixelated;
+        image_layer->sample_ = OH_Drawing_SamplingOptionsCreate(
+            pixelated ? FILTER_MODE_NEAREST : FILTER_MODE_LINEAR,
+            pixelated ? MIPMAP_MODE_NEAREST : MIPMAP_MODE_LINEAR);
+        OH_Pixelmap_ImageInfo* pixel_map_info = nullptr;
+        OH_PixelmapImageInfo_Create(&pixel_map_info);
+        OH_PixelmapNative_GetImageInfo(data->Pixelmap(), pixel_map_info);
+        OH_PixelmapImageInfo_GetWidth(pixel_map_info,
+                                      &image_layer->image_width_);
+        OH_PixelmapImageInfo_GetHeight(pixel_map_info,
+                                       &image_layer->image_height_);
+        OH_PixelmapImageInfo_Release(pixel_map_info);
+        image_layer->src_rect_ = OH_Drawing_RectCreate(
+            0, 0, image_layer->image_width_, image_layer->image_height_);
+        image_layer->image_drawable_ =
+            std::make_unique<BackgroundImageLayer::ImageDrawable>();
+        image_layer->image_drawable_->draw_bitmap =
+            OH_Drawing_PixelMapGetFromOhPixelMapNative(data->Pixelmap());
+        image_layer->image_drawable_->image_data = data;
+        image_layer->pixel_map_.reset();
+        ui_base_self->Invalidate();
+      });
+}
+
 void BackgroundImageLayer::DecodeImageData(const std::string& url,
                                            bool is_base64) {
   auto ui_base_self = ui_base_.lock();
@@ -104,6 +166,7 @@ void BackgroundImageLayer::DecodeImageData(const std::string& url,
 }
 
 void BackgroundImageLayer::DestroyDrawStruct() {
+  image_drawable_.reset();
   if (src_rect_) {
     OH_Drawing_RectDestroy(src_rect_);
     src_rect_ = nullptr;

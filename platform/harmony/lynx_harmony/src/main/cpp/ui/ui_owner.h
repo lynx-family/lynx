@@ -19,6 +19,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_dispatcher.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_emitter.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/public/image_service.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_observer.h"
 
@@ -31,6 +32,7 @@ class LynxImageConfig;
 
 class UIOwner {
  public:
+  static ImageService* image_service;
   UIOwner();
   using UICreatorFunc = UIBase* (*)(LynxContext*, int, const std::string&);
   static napi_value Init(napi_env env, napi_value exports);

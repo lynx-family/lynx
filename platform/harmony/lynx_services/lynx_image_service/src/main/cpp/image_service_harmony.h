@@ -8,7 +8,9 @@
 #include <node_api.h>
 #include <rawfile/raw_file_manager.h>
 
+#include <functional>
 #include <memory>
+#include <string>
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/image_service.h"
 
@@ -21,6 +23,10 @@ class ImageServiceHarmony : public tasm::harmony::ImageService {
   ~ImageServiceHarmony() override = default;
 
   std::unique_ptr<tasm::harmony::ImageNode> CreateImageNode() override;
+  void DecodeImage(
+      const tasm::harmony::ImageRequestInfo& info,
+      std::function<void(const std::shared_ptr<tasm::harmony::ImageData>&)>
+          callback) override;
   NativeResourceManager* CreateNativeResourceManager() const;
   napi_env env_ = nullptr;
   napi_ref resource_manager_ref_ = nullptr;

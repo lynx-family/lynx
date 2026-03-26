@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/include/platform/harmony/napi_util.h"
+#include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_data.h"
 #include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_service_node.h"
 
 namespace lynx {
@@ -32,6 +33,20 @@ napi_value InitLynxImageService(napi_env env, napi_callback_info info) {
 std::unique_ptr<tasm::harmony::ImageNode>
 ImageServiceHarmony::CreateImageNode() {
   return std::unique_ptr<tasm::harmony::ImageNode>(new ImageServiceNode(this));
+}
+
+void ImageServiceHarmony::DecodeImage(
+    const tasm::harmony::ImageRequestInfo& info,
+    std::function<void(const std::shared_ptr<tasm::harmony::ImageData>&)>
+        callback) {
+  auto options = std::make_shared<ImageKnifePro::ImageKnifeOption>();
+  ImageServiceNode::UpdateImageSource(this, options, info.url,
+                                      options->loadSrc);
+  ImageKnifePro::ImageKnife::GetInstance().GetCacheImage(
+      options, [callback = std::move(callback)](
+                   std::shared_ptr<ImageKnifePro::ImageData> data) mutable {
+        callback(std::make_shared<ImageKnifeImageData>(data));
+      });
 }
 
 NativeResourceManager* ImageServiceHarmony::CreateNativeResourceManager()

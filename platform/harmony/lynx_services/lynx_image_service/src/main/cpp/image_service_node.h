@@ -23,6 +23,10 @@ class ImageServiceNode : public tasm::harmony::ImageNode {
   explicit ImageServiceNode(ImageServiceHarmony* service);
   ~ImageServiceNode() override;
   ArkUI_NodeHandle GetNodeHandle() override;
+  static void UpdateImageSource(
+      ImageServiceHarmony* service,
+      const std::shared_ptr<ImageKnifePro::ImageKnifeOption>& option,
+      const std::string& url, ImageKnifePro::ImageSource& source);
   void FetchImage(tasm::harmony::ImageRequestInfo info) override;
   void InitImageLoadListener(
       const std::weak_ptr<tasm::harmony::ImageLoadListener>& listener) override;
@@ -37,8 +41,6 @@ class ImageServiceNode : public tasm::harmony::ImageNode {
   void Clear() override;
 
  private:
-  void UpdateImageSource(const std::string& url,
-                         ImageKnifePro::ImageSource& source);
   std::shared_ptr<ImageKnifePro::ImageKnifeNode> image_knife_node_;
   std::shared_ptr<ImageKnifePro::ImageKnifeOption> image_knife_option_;
   std::shared_ptr<ImageKnifePro::AnimatorOption> image_knife_animator_option_;

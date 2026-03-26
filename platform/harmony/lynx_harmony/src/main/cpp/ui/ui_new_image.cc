@@ -32,8 +32,6 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
-ImageService* UINewImage::image_service = nullptr;
-
 using ImagePropSetter = void (UINewImage::*)(const lepus::Value& value);
 std::unordered_map<std::string, ImagePropSetter> UINewImage::prop_setters_ = {
     {"src", &UINewImage::UpdateImageSource},
@@ -205,7 +203,7 @@ void UINewImage::OnAnimationFinish() {
 UINewImage::UINewImage(LynxContext* context, int sign, const std::string& tag)
     : UIBase(context, ARKUI_NODE_UNDEFINED, sign, tag),
       mode_(image::kModeScaleToFill) {
-  image_node_ = image_service->CreateImageNode();
+  image_node_ = UIOwner::image_service->CreateImageNode();
   InitNode(image_node_->GetNodeHandle());
   InitAccessibilityAttrs(LynxAccessibilityMode::kEnable, "image");
 

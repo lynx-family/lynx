@@ -57,13 +57,13 @@ ArkUI_NodeHandle ImageServiceNode::GetNodeHandle() {
   return image_knife_node_->GetHandle();
 }
 
-void ImageServiceNode::UpdateImageSource(const std::string& url,
-                                         ImageKnifePro::ImageSource& source) {
+void ImageServiceNode::UpdateImageSource(
+    ImageServiceHarmony* service,
+    const std::shared_ptr<ImageKnifePro::ImageKnifeOption>& option,
+    const std::string& url, ImageKnifePro::ImageSource& source) {
   if (IsResource(url)) {
-    if (!image_knife_option_->context.resourceManager) {
-      // Released in ~ImageKnifeOption
-      image_knife_option_->context.resourceManager =
-          service_->CreateNativeResourceManager();
+    if (!option->context.resourceManager && service) {
+      option->context.resourceManager = service->CreateNativeResourceManager();
     }
     std::string param;
     if (IsRawFile(url)) {
@@ -90,8 +90,10 @@ void ImageServiceNode::FetchImage(tasm::harmony::ImageRequestInfo info) {
   image_knife_option_->downSampling =
       info.downsampling ? ImageKnifePro::DownSamplingStrategy::FIT_CENTER_MEMORY
                         : ImageKnifePro::DownSamplingStrategy::DEFAULT;
-  UpdateImageSource(info.url, image_knife_option_->loadSrc);
-  UpdateImageSource(info.placeholder, image_knife_option_->placeholderSrc);
+  UpdateImageSource(service_, image_knife_option_, info.url,
+                    image_knife_option_->loadSrc);
+  UpdateImageSource(service_, image_knife_option_, info.placeholder,
+                    image_knife_option_->placeholderSrc);
   if (info.processors.empty()) {
     image_knife_option_->transformation = nullptr;
   } else {

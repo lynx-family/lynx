@@ -26,8 +26,6 @@ class UINewImage : public UIBase,
     return new UINewImage(context, sign, tag);
   }
 
-  static ImageService* image_service;
-
   void OnPropUpdate(const std::string& name,
                     const lepus::Value& value) override;
 

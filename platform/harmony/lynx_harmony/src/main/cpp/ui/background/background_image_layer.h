@@ -6,6 +6,7 @@
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_BACKGROUND_BACKGROUND_IMAGE_LAYER_H_
 
 #include <multimedia/image_framework/image/image_source_native.h>
+#include <native_drawing/drawing_pixel_map.h>
 
 #include <memory>
 #include <string>
@@ -20,6 +21,7 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+class ImageData;
 class BackgroundImageLayer : public BackgroundLayer {
  public:
   explicit BackgroundImageLayer(const lepus::Value& data,
@@ -37,6 +39,17 @@ class BackgroundImageLayer : public BackgroundLayer {
   void DestroyDrawStruct();
 
  private:
+  void LoadImageFromService();
+  struct ImageDrawable {
+    std::shared_ptr<ImageData> image_data{nullptr};
+    OH_Drawing_PixelMap* draw_bitmap{nullptr};
+    ~ImageDrawable() {
+      if (draw_bitmap) {
+        OH_Drawing_PixelMapDissolve(draw_bitmap);
+      }
+    }
+  };
+
   std::string url_;
   std::unique_ptr<LynxBaseImage> pixel_map_{nullptr};
   std::weak_ptr<UIBase> ui_base_;
@@ -45,6 +58,7 @@ class BackgroundImageLayer : public BackgroundLayer {
   OH_Drawing_SamplingOptions* sample_{nullptr};
   uint32_t image_width_{0};
   uint32_t image_height_{0};
+  std::unique_ptr<ImageDrawable> image_drawable_{nullptr};
 };
 }  // namespace harmony
 }  // namespace tasm

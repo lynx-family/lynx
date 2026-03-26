@@ -702,7 +702,7 @@ napi_value LynxTemplateRenderer::RegisterImageService(napi_env env,
   napi_value args[1] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
   auto service_num = base::NapiUtil::ConvertToPtr(env, args[0]);
-  tasm::harmony::UINewImage::image_service =
+  tasm::harmony::UIOwner::image_service =
       reinterpret_cast<tasm::harmony::ImageService*>(service_num);
   return nullptr;
 }
