@@ -3284,11 +3284,29 @@ void App::selectComponent(const std::string& component_id,
 void App::InvokeUIMethod(tasm::NodeSelectRoot root,
                          tasm::NodeSelectOptions options, std::string method,
                          const Value* params, ApiCallBack callback) {
-  LOGI(" InvokeUIMethod with root: "
-       << root.ToPrettyString() << ", node: " << options.ToString()
-       << ", method: " << method << ", App: " << this);
+  const std::string root_str = root.ToPrettyString();
+  const std::string node_str = options.ToString();
+  LOGI(" InvokeUIMethod with root: " << root_str << ", node: " << node_str
+                                     << ", method: " << method
+                                     << ", App: " << this);
   auto rt = rt_.lock();
   if (rt) {
+    if (js_call_native_frequency_monitor_) {
+      std::string monitor_method_name = method;
+      monitor_method_name.reserve(monitor_method_name.size() + root_str.size() +
+                                  node_str.size() + 9);
+      monitor_method_name.push_back('#');
+      monitor_method_name += root_str;
+      monitor_method_name += ", node: ";
+      monitor_method_name += node_str;
+      auto error_opt = js_call_native_frequency_monitor_->Record(
+          "InvokeUIMethod", monitor_method_name);
+      if (error_opt) {
+        LOGW("InvokeUIMethod called too frequently. method:" << method << " "
+                                                             << this);
+        delegate_->OnErrorOccurred(std::move(*error_opt));
+      }
+    }
     Scope scope(*rt);
     if (page_options_.IsFragmentLayerRender()) {
       auto piper_value = std::make_unique<pub::ValueImplPiper>(*rt, *params);
