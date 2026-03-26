@@ -14,17 +14,16 @@ namespace lynx {
 namespace runtime {
 
 std::unique_ptr<MTSContext> MTSContextFactory::Create(
-    ContextType type, const std::shared_ptr<MTSContextDelegate>& delegate,
-    bool disable_tracing_gc, int runtime_mode,
-    const tasm::PageOptions& page_options) {
+    ContextType type, MTSRuntime* runtime_private, bool disable_tracing_gc,
+    int runtime_mode, const tasm::PageOptions& page_options) {
   switch (type) {
     case ContextType::LepusNGContextType:
-      return std::make_unique<lepus::QuickContext>(delegate, disable_tracing_gc,
-                                                   runtime_mode, page_options);
+      return std::make_unique<lepus::QuickContext>(
+          runtime_private, disable_tracing_gc, runtime_mode, page_options);
 
     case ContextType::VMContextType:
 #if !ENABLE_JUST_LEPUSNG
-      return std::make_unique<lepus::VMContext>(delegate);
+      return std::make_unique<lepus::VMContext>(runtime_private);
 #else
       LOGE("lepusng sdk do not support vm context");
       assert(false);

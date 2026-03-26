@@ -652,9 +652,7 @@ void VMContext::ReportLogBox(const std::string& exception_info, int& pc) {
   exception_info_ = "lepus exception:\n\n" + exception_info_;
   LOGE("lepus-ReportException: exception happened without catch "
        << this->exception_info_);
-  if (mts_context_delegate_) {
-    mts_context_delegate_->ReportError(exception_info_);
-  }
+  ReportError(exception_info_);
 }
 
 bool VMContext::ReportException(const std::string& exception_info, int& pc,
@@ -730,8 +728,8 @@ bool VMContext::ReportException(const std::string& exception_info, int& pc,
     exception_info_ = "lepus exception:\n\n" + exception_info_;
     LOGE("lepus-ReportException: exception happened without catch "
          << this->exception_info_);
-    if (report_logbox && mts_context_delegate_) {
-      mts_context_delegate_->ReportError(exception_info_, err_code);
+    if (report_logbox) {
+      ReportError(exception_info_, err_code);
     }
     return false;
   } else {

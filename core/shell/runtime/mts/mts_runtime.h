@@ -327,6 +327,8 @@ class MTSRuntime : private MTSContextHolder {
   base::InlineStack<ScriptingScope*, 16> scripting_scope_stack_;
 
   JSErrorReporter js_error_reporter_;
+
+  bool is_handling_exception_{false};
 };
 
 }  // namespace runtime

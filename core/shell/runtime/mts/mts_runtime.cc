@@ -25,61 +25,6 @@
 namespace lynx {
 namespace runtime {
 
-class MTSContextDelegateImpl : public MTSContextDelegate {
- public:
-  explicit MTSContextDelegateImpl(MTSRuntime* runtime) : runtime_(runtime) {}
-  ~MTSContextDelegateImpl() override = default;
-
-  void* GetRuntimePrivate() const override { return runtime_; }
-
-  void ReportErrorWithMsg(
-      const std::string& msg, int32_t error_code,
-      int32_t level = static_cast<int>(base::LynxErrorLevel::Error)) override {
-    // JSI exception from native should be sent to JSSDK formatting.
-    // If there has any JSI exception in this process, those exception will be
-    // sent to here too, then sent to JSSDK, then more exception will be
-    // thrown... finally you will get endless loop. So we use this flag to avoid
-    // endless loop.
-    if (is_handling_exception_) {
-      return;
-    }
-    // TODO: Use scoped flag to optimize here to ensure this flag can be reset
-    // even if exception thrown during this period.
-    is_handling_exception_ = true;
-    // avoid call by global runtime and caush dangling pointer...
-    if (!destroyed_) {
-      runtime_->ReportErrorWithMsg(msg, error_code, level);
-    }
-    is_handling_exception_ = false;
-  }
-
-  void OnBTSConsoleEvent(const std::string& func_name,
-                         const std::string& args) override {
-    runtime_->OnBTSConsoleEvent(func_name, args);
-  }
-
-  void OnGC(std::string mem_info) override { runtime_->OnGC(mem_info); }
-
-  void ReportGCTimingEvent(const char* start, const char* end) override {
-    runtime_->ReportGCTimingEvent(start, end);
-  }
-
-  void ReportError(
-      const std::string& exception_info,
-      int32_t err_code = error::E_MTS_RUNTIME_ERROR,
-      base::LynxErrorLevel error_level = base::LynxErrorLevel::Error) override {
-    runtime_->ReportError(exception_info, err_code, error_level);
-  }
-
-  void Destroy() override { destroyed_ = true; }
-
- private:
-  bool destroyed_ = false;
-  bool is_handling_exception_ = false;
-
-  MTSRuntime* const runtime_;
-};
-
 MTSContextHolder::MTSContextHolder(std::unique_ptr<MTSContext> mts_context)
     : mts_context_(std::move(mts_context)) {}
 
@@ -320,11 +265,17 @@ void MTSRuntime::ReportErrorWithMsg(const std::string& msg,
 
 void MTSRuntime::ReportErrorWithMsg(const std::string& msg, int32_t error_code,
                                     int32_t error_level) {
+  if (is_handling_exception_) {
+    return;
+  }
+  is_handling_exception_ = true;
+
   EnsureDelegate();
 
   // enable outside debug information only when engine version is bigger than
   // "2.7" and "debuginfo_outside_" is true when encode
   if (!delegate_) {
+    is_handling_exception_ = false;
     return;
   }
 
@@ -342,6 +293,7 @@ void MTSRuntime::ReportErrorWithMsg(const std::string& msg, int32_t error_code,
                 static_cast<base::LynxErrorLevel>(error_level));
   }
   OnBTSConsoleEvent("error", msg);
+  is_handling_exception_ = false;
 }
 
 void MTSRuntime::BeforeReportError(base::LynxError& error) {
@@ -511,9 +463,8 @@ std::unique_ptr<ContextBundle> ContextBundle::Create(ContextType context_type) {
 
 MTSRuntime::MTSRuntime(ContextType type, bool disable_tracing_gc,
                        int runtime_mode, const tasm::PageOptions& page_options)
-    : MTSContextHolder(MTSContextFactory::Create(
-          type, std::make_shared<MTSContextDelegateImpl>(this),
-          disable_tracing_gc, runtime_mode, page_options)),
+    : MTSContextHolder(MTSContextFactory::Create(type, this, disable_tracing_gc,
+                                                 runtime_mode, page_options)),
       type_(type) {}
 
 }  // namespace runtime

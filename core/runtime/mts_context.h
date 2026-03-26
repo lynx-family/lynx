@@ -31,6 +31,8 @@
 namespace lynx {
 namespace runtime {
 
+class MTSRuntime;
+
 using lepus::CFunction;
 using lepus::Value;
 
@@ -39,31 +41,6 @@ enum ContextType {
   LepusNGContextType,    // Run lepusNG with qucikjs code
   RTSContextType,        // Run RTS with VmContext
   RTSNativeContextType,  // Run RTS with NativeContext
-};
-
-class MTSContextDelegate {
- public:
-  virtual ~MTSContextDelegate() = default;
-
-  virtual void* GetRuntimePrivate() const = 0;
-
-  virtual void ReportErrorWithMsg(
-      const std::string& msg, int32_t error_code,
-      int32_t level = static_cast<int>(base::LynxErrorLevel::Error)) = 0;
-
-  virtual void OnBTSConsoleEvent(const std::string& func_name,
-                                 const std::string& args) = 0;
-
-  virtual void OnGC(std::string mem_info) = 0;
-
-  virtual void ReportGCTimingEvent(const char* start, const char* end) = 0;
-
-  virtual void ReportError(
-      const std::string& exception_info,
-      int32_t err_code = error::E_MTS_RUNTIME_ERROR,
-      base::LynxErrorLevel error_level = base::LynxErrorLevel::Error) = 0;
-
-  virtual void Destroy() = 0;
 };
 
 struct RenderBindingFunction {
@@ -89,8 +66,8 @@ class ContextBundle {
 class MTSContext {
  public:
   virtual ~MTSContext() {}
-  explicit MTSContext(std::shared_ptr<MTSContextDelegate> mts_context_delegate)
-      : mts_context_delegate_(std::move(mts_context_delegate)) {}
+  explicit MTSContext(MTSRuntime* runtime_private)
+      : runtime_private_(runtime_private) {}
 
   // virtual interface
   virtual void Initialize() = 0;
@@ -227,46 +204,24 @@ class MTSContext {
   }
   const std::string& GetSdkVersion() const { return sdk_version_; }
 
-  inline void* GetRuntimePrivate() const {
-    return mts_context_delegate_ ? mts_context_delegate_->GetRuntimePrivate()
-                                 : nullptr;
+  void* GetRuntimePrivate() const {
+    return reinterpret_cast<void*>(runtime_private_);
   }
 
-  void OnBTSConsoleEvent(const std::string& func_name,
-                         const std::string& args) {
-    if (mts_context_delegate_) {
-      mts_context_delegate_->OnBTSConsoleEvent(func_name, args);
-    }
-  }
+  void OnBTSConsoleEvent(const std::string& func_name, const std::string& args);
 
   void ReportErrorWithMsg(
       const std::string& msg, int32_t error_code,
-      int32_t level = static_cast<int>(base::LynxErrorLevel::Error)) {
-    if (mts_context_delegate_) {
-      mts_context_delegate_->ReportErrorWithMsg(msg, error_code, level);
-    }
-  }
+      int32_t level = static_cast<int>(base::LynxErrorLevel::Error));
 
   void ReportError(
       const std::string& exception_info,
       int32_t err_code = error::E_MTS_RUNTIME_ERROR,
-      base::LynxErrorLevel error_level = base::LynxErrorLevel::Error) {
-    if (mts_context_delegate_) {
-      mts_context_delegate_->ReportError(exception_info, err_code, error_level);
-    }
-  }
+      base::LynxErrorLevel error_level = base::LynxErrorLevel::Error);
 
-  void ReportGCTimingEvent(const char* start, const char* end) {
-    if (mts_context_delegate_) {
-      mts_context_delegate_->ReportGCTimingEvent(start, end);
-    }
-  }
+  void ReportGCTimingEvent(const char* start, const char* end);
 
-  void OnContextGC(std::string mem_info) {
-    if (mts_context_delegate_) {
-      mts_context_delegate_->OnGC(mem_info);
-    }
-  }
+  void OnContextGC(std::string mem_info);
 
  protected:
   // Inject this lynx as the global Lynx object to the Lepus runtime.
@@ -274,7 +229,7 @@ class MTSContext {
   base::StringTable string_table_;
   std::string sdk_version_{"null"};
   bool is_debug_enabled_{false};
-  std::shared_ptr<MTSContextDelegate> mts_context_delegate_;
+  MTSRuntime* runtime_private_{nullptr};
 };
 
 }  // namespace runtime

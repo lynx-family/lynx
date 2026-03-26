@@ -14,6 +14,7 @@ declare_args() {
 
 lynx_core_source_set("runtime") {
   sources = [
+              "mts_context.cc",
               "mts_context.h",
               "mts_context_factory.h",
             ] + mts_context_factory_sources

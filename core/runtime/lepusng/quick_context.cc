@@ -519,12 +519,11 @@ LEPUSRuntimeData::~LEPUSRuntimeData() {
   cell->DetachEnv();
 }
 
-QuickContext::QuickContext(
-    std::shared_ptr<runtime::MTSContextDelegate> mts_context_delegate,
-    bool disable_tracing_gc, int runtime_mode,
-    const tasm::PageOptions& page_options)
+QuickContext::QuickContext(runtime::MTSRuntime* runtime_private,
+                           bool disable_tracing_gc, int runtime_mode,
+                           const tasm::PageOptions& page_options)
     : LEPUSRuntimeData(disable_tracing_gc, runtime_mode),
-      runtime::MTSContext(std::move(mts_context_delegate)),
+      runtime::MTSContext(runtime_private),
       top_level_function_(LEPUS_UNDEFINED),
       use_lepus_strict_mode_(false),
       debuginfo_outside_(false),
@@ -560,7 +559,9 @@ QuickContext::~QuickContext() {
   }
 }
 
-void QuickContext::OnGC(std::string mem_info) { OnContextGC(mem_info); }
+void QuickContext::OnGC(std::string mem_info) {
+  OnContextGC(std::move(mem_info));
+}
 
 void QuickContext::Initialize() {
   // If Lepus debug is on, console object will be reset by debugger.
@@ -677,7 +678,7 @@ void QuickContext::UpdateGCTiming(bool is_start) {
     gc_info_start_ = LEPUS_GetGCTimingInfo(context(), is_start);
   } else {
     char* gc_info_end_ = LEPUS_GetGCTimingInfo(context(), is_start);
-    mts_context_delegate_->ReportGCTimingEvent(gc_info_start_, gc_info_end_);
+    ReportGCTimingEvent(gc_info_start_, gc_info_end_);
   }
 }
 

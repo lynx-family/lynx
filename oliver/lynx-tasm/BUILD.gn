@@ -151,6 +151,7 @@ if (build_lynx_lepus_node) {
     sources += lynx_lepus_ng_sources_path
     sources += lynx_lepus_task_sources_path
     sources += [
+      "../../core/runtime/mts_context.cc",
       "../../core/runtime/mts_context.h",
       "../../core/runtime/mts_context_factory.cc",
       "../../core/runtime/mts_context_factory.h",

@@ -57,10 +57,9 @@ class QuickContext : private LEPUSRuntimeData,
                      public runtime::MTSContext,
                      public GCObserver {
  public:
-  QuickContext(
-      std::shared_ptr<runtime::MTSContextDelegate> mts_context_delegate,
-      bool disable_tracing_gc = false, int runtime_mode = 0,
-      const tasm::PageOptions& page_options = tasm::PageOptions());
+  QuickContext(runtime::MTSRuntime* runtime_private,
+               bool disable_tracing_gc = false, int runtime_mode = 0,
+               const tasm::PageOptions& page_options = tasm::PageOptions());
   QuickContext() : QuickContext(nullptr) {}
 
   virtual ~QuickContext() override;

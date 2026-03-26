@@ -34,9 +34,8 @@ class OutputStream;
 class VMContextBundle;
 class VMContext : public runtime::MTSContext {
  public:
-  explicit VMContext(
-      std::shared_ptr<runtime::MTSContextDelegate> mts_context_delegate)
-      : runtime::MTSContext(std::move(mts_context_delegate)),
+  explicit VMContext(runtime::MTSRuntime* runtime_private)
+      : runtime::MTSContext(runtime_private),
         current_frame_(nullptr),
         enable_strict_check_(false),
         enable_top_var_strict_mode_(true),
