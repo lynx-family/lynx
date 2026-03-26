@@ -80,7 +80,7 @@ public class MarkdownResourceLoader implements IResourceLoader {
 
     if (!TextUtils.isEmpty(family) && typeface == null) {
       FontFaceManager.getInstance().getTypeface(
-          context, family, resolvedStyle, new WeakTypefaceListener(this));
+          context, family, resolvedStyle, new WeakTypefaceListener(this, family, weight, style));
     }
     return typeface;
   }
@@ -120,12 +120,6 @@ public class MarkdownResourceLoader implements IResourceLoader {
     return handle;
   }
 
-  private void notifyResourceLoaded() {
-    if (!mHost.isHostDestroyed()) {
-      mHost.onResourceLoaded();
-    }
-  }
-
   private static int resolveTypefaceStyle(int weight, int style) {
     boolean bold = weight > 400 || style == Typeface.BOLD || style == Typeface.BOLD_ITALIC;
     boolean italic = isItalic(style) || style == 1;
@@ -147,18 +141,24 @@ public class MarkdownResourceLoader implements IResourceLoader {
 
   private static class WeakTypefaceListener implements TypefaceCache.TypefaceListener {
     private final WeakReference<MarkdownResourceLoader> mLoaderRef;
+    private final String mFamily;
+    private final int mWeight;
+    private final int mStyle;
 
-    WeakTypefaceListener(MarkdownResourceLoader loader) {
+    WeakTypefaceListener(MarkdownResourceLoader loader, String family, int weight, int style) {
       mLoaderRef = new WeakReference<>(loader);
+      mFamily = family;
+      mWeight = weight;
+      mStyle = style;
     }
 
     @Override
     public void onTypefaceUpdate(Typeface typeface, int style) {
       MarkdownResourceLoader loader = mLoaderRef.get();
-      if (loader == null) {
+      if (loader == null || loader.mHost == null) {
         return;
       }
-      loader.notifyResourceLoaded();
+      loader.mHost.onFontLoaded(mFamily, mWeight, mStyle);
     }
   }
 }

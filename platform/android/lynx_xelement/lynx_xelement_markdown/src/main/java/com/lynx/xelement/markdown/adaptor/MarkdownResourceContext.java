@@ -11,8 +11,6 @@ import com.lynx.tasm.behavior.shadow.MeasureContext;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 
 public interface MarkdownResourceContext {
-  boolean isHostDestroyed();
-
   @Nullable LynxContext getLynxContext();
 
   @Nullable Drawable.Callback getDrawableCallback();
@@ -25,7 +23,9 @@ public interface MarkdownResourceContext {
 
   @Nullable ShadowNode getChildAt(int index);
 
-  void onResourceLoaded();
+  void onFontLoaded(String family, int weight, int style);
+
+  void onImageLoaded(String url);
 
   void onImageLoadError(String source, @Nullable Throwable throwable);
 }

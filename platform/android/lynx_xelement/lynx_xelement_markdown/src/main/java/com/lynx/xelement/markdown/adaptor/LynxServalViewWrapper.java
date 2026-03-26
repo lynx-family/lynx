@@ -16,6 +16,7 @@ public class LynxServalViewWrapper extends ServalMarkdownView {
 
   @Override
   public void requestMeasure() {
+    super.requestMeasure();
     if (mShadowNode == null) {
       return;
     }
@@ -24,6 +25,7 @@ public class LynxServalViewWrapper extends ServalMarkdownView {
 
   @Override
   public void requestAlign() {
+    super.requestAlign();
     if (mShadowNode == null) {
       return;
     }

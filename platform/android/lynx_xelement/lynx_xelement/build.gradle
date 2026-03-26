@@ -40,6 +40,7 @@ dependencies {
     implementation project(':LynxXElement:ViewPager')
     implementation project(':LynxXElement:SVG')
     implementation project(':LynxXElement:Refresh')
+    implementation project(':LynxXElement:Markdown')
     implementation 'io.github.scwang90:refresh-layout-kernel:3.0.0-alpha'
     compileOnly project(":LynxAndroid")
     compileOnly project(":LynxProcessor")

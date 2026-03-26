@@ -5,6 +5,7 @@ package com.lynx.xelement.markdown;
 
 import android.content.Context;
 import android.graphics.RectF;
+import android.view.View;
 import com.lynx.markdown.Constants;
 import com.lynx.markdown.MarkdownValuePack;
 import com.lynx.react.bridge.Callback;
@@ -16,6 +17,8 @@ import com.lynx.tasm.behavior.LynxBehavior;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.xelement.markdown.adaptor.LynxMarkdownBundle;
@@ -23,7 +26,6 @@ import com.lynx.xelement.markdown.adaptor.LynxMarkdownView;
 import com.lynx.xelement.markdown.adaptor.LynxServalViewWrapper;
 import java.util.ArrayList;
 
-@LynxBehavior(tagName = "x-markdown", isCreateAsync = true)
 public class LynxMarkdownUI extends UIGroup<LynxMarkdownView> {
   private LynxMarkdownBundle mBundle;
   private LynxServalViewWrapper mMarkdown;
@@ -48,6 +50,14 @@ public class LynxMarkdownUI extends UIGroup<LynxMarkdownView> {
       mBundle = (LynxMarkdownBundle) extraData;
       mMarkdown = mBundle.mMarkdownView;
       mView.setBundle(mBundle);
+    }
+  }
+
+  @Override
+  public void onInsertChild(LynxBaseUI child, int index) {
+    super.onInsertChild(child, index);
+    if (child instanceof LynxUI) {
+      ((LynxUI) child).setVisibilityForView(View.INVISIBLE);
     }
   }
 
@@ -343,5 +353,11 @@ public class LynxMarkdownUI extends UIGroup<LynxMarkdownView> {
     }
     result.putArray("boxes", boxList);
     return result;
+  }
+
+  @Override
+  public void destroy() {
+    super.destroy();
+    mView.destroy();
   }
 }

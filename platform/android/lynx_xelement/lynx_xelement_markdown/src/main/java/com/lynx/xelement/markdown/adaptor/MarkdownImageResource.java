@@ -100,7 +100,7 @@ public class MarkdownImageResource {
                   && imageInfo.getHeight() > 0) {
                 mDrawable.setBounds(0, 0, imageInfo.getWidth(), imageInfo.getHeight());
               }
-              mHost.onResourceLoaded();
+              mHost.onImageLoaded(mSource);
             }
 
             @Override

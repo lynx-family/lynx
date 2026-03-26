@@ -87,6 +87,8 @@ dependencies {
     implementation 'com.squareup.retrofit2:retrofit:2.7.0'
     implementation 'org.lynxsdk.lynx:v8so:11.1.277.4'
     implementation 'com.google.android.material:material:1.4.0'
+    implementation 'org.lynxsdk.lynx:lynxtextra:0.1.1'
+    implementation "org.lynxsdk.lynx:serval_markdown:0.0.28-alpha.3"
 
     implementation project(':LynxAndroid')
     implementation project(':LynxBase')
@@ -101,6 +103,7 @@ dependencies {
     implementation project(':LynxXElement:Overlay')
     implementation project(':LynxXElement:ViewPager')
     implementation project(':LynxXElement:SVG')
+    implementation project(':LynxXElement:Markdown')
     implementation project(':LynxXElement:Refresh')
 
     kapt project(':LynxProcessor')

@@ -4,6 +4,9 @@
 package com.lynx.xelement.markdown;
 
 import android.graphics.drawable.Drawable;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Choreographer;
 import androidx.annotation.Nullable;
 import com.lynx.markdown.Constants;
 import com.lynx.markdown.Markdown;
@@ -20,15 +23,17 @@ import com.lynx.tasm.behavior.shadow.MeasureContext;
 import com.lynx.tasm.behavior.shadow.MeasureParam;
 import com.lynx.tasm.behavior.shadow.MeasureResult;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
+import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.xelement.markdown.adaptor.LynxMarkdownBundle;
 import com.lynx.xelement.markdown.adaptor.LynxServalViewWrapper;
 import com.lynx.xelement.markdown.adaptor.MarkdownEventContext;
 import com.lynx.xelement.markdown.adaptor.MarkdownEventListener;
 import com.lynx.xelement.markdown.adaptor.MarkdownResourceContext;
 import com.lynx.xelement.markdown.adaptor.MarkdownResourceLoader;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
-@LynxShadowNode(tagName = "x-markdown")
+
 public class LynxMarkdownShadowNode
     extends ShadowNode implements CustomMeasureFunc, MarkdownResourceContext, MarkdownEventContext {
   private LynxServalViewWrapper mMarkdown;
@@ -39,9 +44,16 @@ public class LynxMarkdownShadowNode
   private AlignContext mAlignContext;
   private String mContent = "";
   private String mContentID = "";
+  private final Looper mLayoutLooper;
+  private Handler mLayoutHandler;
+  private Choreographer.FrameCallback mFrameCallback;
   public LynxMarkdownShadowNode() {
     Markdown.ensureInitialized();
     setCustomMeasureFunc(this);
+    mLayoutLooper = Looper.myLooper();
+    if (mLayoutLooper != null) {
+      mLayoutHandler = new Handler(mLayoutLooper);
+    }
   }
   @Override
   public void setContext(LynxContext context) {
@@ -53,6 +65,11 @@ public class LynxMarkdownShadowNode
       mMarkdown = new LynxServalViewWrapper(mContext, this);
       mMarkdown.setResourceLoader(mResourceLoader);
       mMarkdown.setEventListener(mEventListener);
+      mMarkdown.disableInternalVSync(true);
+      if (mLayoutLooper != null) {
+        mFrameCallback = this::onVSync;
+        Choreographer.getInstance().postFrameCallback(mFrameCallback);
+      }
       mBundle.mMarkdownView = mMarkdown;
     }
     return mMarkdown;
@@ -286,6 +303,15 @@ public class LynxMarkdownShadowNode
     }
   }
 
+  @LynxProp(name = "typewriter-height-transition-prefetch")
+  public void setTypewriterHeightTransitionPrefetch(boolean prefetch) {
+    LynxServalViewWrapper markdown = ensureMarkdownView();
+    if (markdown != null) {
+      markdown.setBooleanProp(
+          Constants.MARKDOWN_PROPS_TYPEWRITER_HEIGHT_TRANSITION_PREFETCH, prefetch);
+    }
+  }
+
   @LynxProp(name = "allow-break-around-punctuation")
   public void setAllowBreakAroundPunctuation(boolean allow) {
     LynxServalViewWrapper markdown = ensureMarkdownView();
@@ -310,11 +336,6 @@ public class LynxMarkdownShadowNode
   }
 
   @Override
-  public boolean isHostDestroyed() {
-    return super.isDestroyed();
-  }
-
-  @Override
   public @Nullable LynxContext getLynxContext() {
     return mContext;
   }
@@ -335,14 +356,24 @@ public class LynxMarkdownShadowNode
   }
 
   @Override
-  public void onResourceLoaded() {
+  public void onFontLoaded(String family, int weight, int style) {
     if (isDestroyed()) {
       return;
     }
     LynxServalViewWrapper markdown = ensureMarkdownView();
     if (markdown != null) {
-      markdown.requestMeasure();
-      markdown.requestDraw();
+      markdown.onFontLoaded(family, weight, style);
+    }
+  }
+
+  @Override
+  public void onImageLoaded(String url) {
+    if (isDestroyed()) {
+      return;
+    }
+    LynxServalViewWrapper markdown = ensureMarkdownView();
+    if (markdown != null) {
+      markdown.onImageLoaded(url);
     }
   }
 
@@ -353,5 +384,33 @@ public class LynxMarkdownShadowNode
     }
     String message = throwable == null ? "failed to load image" : throwable.getMessage();
     mContext.reportResourceError(source, "image", message);
+  }
+
+  public void runOnLayoutThread(Runnable runnable) {
+    if (mLayoutLooper != null) {
+      mLayoutHandler.post(runnable);
+    } else {
+      UIThreadUtils.runOnUiThreadImmediately(runnable);
+    }
+  }
+
+  @Override
+  public void markDirty() {
+    if (mLayoutLooper == null || Looper.myLooper() == mLayoutLooper) {
+      super.markDirty();
+    } else {
+      runOnLayoutThread(super::markDirty);
+    }
+  }
+
+  private void onVSync(long time) {
+    if (mFrameCallback == null) {
+      return;
+    }
+    LynxServalViewWrapper view = ensureMarkdownView();
+    if (view != null) {
+      view.onLayoutFrame(time);
+    }
+    Choreographer.getInstance().postFrameCallback(mFrameCallback);
   }
 }

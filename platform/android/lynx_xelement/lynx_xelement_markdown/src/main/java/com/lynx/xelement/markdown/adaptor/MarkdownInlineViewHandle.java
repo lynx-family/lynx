@@ -125,7 +125,7 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
   public void setVisibility(boolean visible) {
     LynxBaseUI ui = getUI();
     if (ui instanceof LynxUI) {
-      ((LynxUI<?>) ui).setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+      ((LynxUI<?>) ui).setVisibilityForView(visible ? View.VISIBLE : View.INVISIBLE);
     }
   }
 

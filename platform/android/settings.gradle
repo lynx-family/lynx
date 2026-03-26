@@ -39,6 +39,8 @@ include ':LynxXElement:ViewPager'
 project(":LynxXElement:ViewPager").projectDir = new File(rootProject.projectDir, './lynx_xelement/lynx_xelement_viewpager')
 include ':LynxXElement:SVG'
 project(":LynxXElement:SVG").projectDir = new File(rootProject.projectDir, './lynx_xelement/lynx_xelement_svg')
+include ':LynxXElement:Markdown'
+project(":LynxXElement:Markdown").projectDir = new File(rootProject.projectDir, './lynx_xelement/lynx_xelement_markdown')
 include ':LynxXElement:Refresh'
 project(":LynxXElement:Refresh").projectDir = new File(rootProject.projectDir, './lynx_xelement/lynx_xelement_refresh')
 
