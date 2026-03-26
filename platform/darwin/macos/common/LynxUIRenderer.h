@@ -5,9 +5,11 @@
 #ifndef PLATFORM_DARWIN_MACOS_COMMON_LYNX_UI_RENDERER_H_
 #define PLATFORM_DARWIN_MACOS_COMMON_LYNX_UI_RENDERER_H_
 
+#include <list>
 #include <memory>
 
 #include "clay/lynx_adaptor/ui_delegate_clay.h"
+#include "platform/embedder/frame_timing_listener_impl.h"
 #include "platform/embedder/lynx_ui_renderer.h"
 
 namespace lynx {
@@ -36,9 +38,13 @@ class LynxUIRendererImpl : public LynxUIRenderer {
 
   void RegisterIMEHandler(void* handler, void* opaque) override;
 
+  void AddClient(LynxViewClients* client) override;
+
  private:
   void* lynx_ui_renderer_ = nullptr;
   std::unique_ptr<lynx::tasm::UIDelegateClay> ui_delegate_;
+
+  std::shared_ptr<FrameTimingListenerImpl> frame_timing_listener_;
 };
 }  // namespace embedder
 }  // namespace lynx

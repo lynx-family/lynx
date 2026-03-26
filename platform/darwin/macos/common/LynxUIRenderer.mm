@@ -9,9 +9,11 @@
 #include "clay/lynx_adaptor/native_view_service_desktop.h"
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
 #include "clay/net/loader/resource_loader_creator_service.h"
+#include "clay/shell/common/services/instrumentation_service.h"
 #include "clay/shell/platform/darwin/macos/framework/Headers/ClayViewProvider.h"
 #include "clay/ui/component/view_context.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "platform/embedder/lynx_view_clients.h"
 #if ENABLE_TESTBENCH_REPLAY
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
@@ -173,7 +175,8 @@ std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(lynx_view_buil
   return std::make_unique<LynxUIRendererImpl>(builder);
 }
 
-LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder) : LynxUIRenderer(builder) {
+LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
+    : LynxUIRenderer(builder), frame_timing_listener_(std::make_shared<FrameTimingListenerImpl>()) {
   // init ui thread native loop
   if (NSThread.isMainThread) {
     base::UIThread::Init();
@@ -208,12 +211,22 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder) : LynxUIRen
                                                                     fetcher_holder);
             }));
   }
+
+  std::shared_ptr<clay::ServiceManager> service_manager = view_context->GetServiceManager();
+  if (service_manager) {
+    clay::Puppet<clay::Owner::kPlatform, clay::InstrumentationService> instrumentation_service =
+        service_manager->GetService<clay::InstrumentationService>();
+    instrumentation_service.Act([frame_timing_listener = frame_timing_listener_](auto& impl) {
+      impl.AddFrameTimingListener(frame_timing_listener);
+    });
+  }
 }
 
 LynxUIRendererImpl::~LynxUIRendererImpl() {
   if (lynx_ui_renderer_) {
     (void)(__bridge_transfer id)lynx_ui_renderer_;
   }
+  frame_timing_listener_->RemoveAllClients();
 }
 
 void LynxUIRendererImpl::SetParent(NativeWindow parent) {
@@ -325,6 +338,10 @@ void LynxUIRendererImpl::RegisterIMEHandler(void* handler, void* opaque) {
   }
   LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
   [lynx_ui_renderer RegisterIMEHandler:handler arg:opaque];
+}
+
+void LynxUIRendererImpl::AddClient(LynxViewClients* client) {
+  frame_timing_listener_->AddClient(client);
 }
 
 }  // namespace embedder

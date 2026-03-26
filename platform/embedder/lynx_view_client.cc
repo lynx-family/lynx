@@ -73,6 +73,11 @@ LYNX_EXTERN_C void lynx_view_client_bind_on_enter_background(
   client->on_enter_background = on_enter_background;
 }
 
+LYNX_EXTERN_C void lynx_view_client_bind_on_frame_timing(
+    lynx_view_client_t* client, on_frame_timing on_frame_timing) {
+  client->on_frame_timing = on_frame_timing;
+}
+
 LYNX_EXTERN_C void lynx_view_client_release(lynx_view_client_t* client) {
   delete client;
 }

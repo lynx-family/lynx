@@ -106,6 +106,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
       });
   view->lynx_template_renderer = std::move(lynx_template_renderer);
   view->lynx_view_clients = std::make_unique<lynx::embedder::LynxViewClients>();
+  view->lynx_ui_renderer->AddClient(view->lynx_view_clients.get());
   view->lynx_template_renderer->AddClient(view->lynx_view_clients.get());
   view->lynx_template_renderer->SetTemplateVerification(
       [](uint8_t* content, size_t length, const std::string url,

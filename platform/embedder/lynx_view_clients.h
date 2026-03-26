@@ -62,6 +62,9 @@ class LynxViewClients : public TemplateRendererClient {
   void OnPerformanceEvent(const lepus::Value& event_entry) override;
   void OnTemplateBundleReady(const tasm::LynxTemplateBundle& bundle) override;
 
+  void OnFrameTiming(int64_t frame_start_time_in_ns,
+                     int64_t frame_finish_time_in_ns);
+
  private:
   std::list<lynx_view_client_t*> clients_;
 };

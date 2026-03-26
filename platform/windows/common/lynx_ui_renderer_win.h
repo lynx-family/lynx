@@ -5,12 +5,14 @@
 #ifndef PLATFORM_WINDOWS_COMMON_LYNX_UI_RENDERER_WIN_H_
 #define PLATFORM_WINDOWS_COMMON_LYNX_UI_RENDERER_WIN_H_
 
+#include <list>
 #include <memory>
 
 #include "clay/lynx_adaptor/ui_delegate_clay.h"
 #include "clay/shell/platform/windows/dpi_utils.h"
 #include "clay/shell/platform/windows/flutter_window.h"
 #include "clay/shell/platform/windows/flutter_windows_view.h"
+#include "platform/embedder/frame_timing_listener_impl.h"
 #include "platform/embedder/lynx_ui_renderer.h"
 
 namespace lynx {
@@ -40,12 +42,15 @@ class LynxUIRendererWin : public LynxUIRenderer {
 
   void RegisterIMEHandler(void* handler, void* opaque) override;
 
+  void AddClient(LynxViewClients* client) override;
+
  private:
   void AdjustWindowRect();
 
   std::unique_ptr<clay::FlutterWindowsEngine> engine_;
   std::unique_ptr<clay::FlutterWindowsView> flutter_view_;
   std::unique_ptr<lynx::tasm::UIDelegateClay> ui_delegate_;
+  std::shared_ptr<FrameTimingListenerImpl> frame_timing_listener_;
 };
 }  // namespace embedder
 }  // namespace lynx

@@ -150,5 +150,15 @@ void LynxViewClients::OnPerformanceEvent(const lepus::Value& event_entry) {}
 void LynxViewClients::OnTemplateBundleReady(
     const tasm::LynxTemplateBundle& bundle) {}
 
+void LynxViewClients::OnFrameTiming(int64_t frame_start_time_in_ns,
+                                    int64_t frame_finish_time_in_ns) {
+  for (auto* client : clients_) {
+    if (client->on_frame_timing) {
+      client->on_frame_timing(client, frame_start_time_in_ns,
+                              frame_finish_time_in_ns);
+    }
+  }
+}
+
 }  // namespace embedder
 }  // namespace lynx

@@ -107,6 +107,15 @@ class LynxViewClient {
             wrapper->OnEnterBackground();
           }
         });
+    lynx_view_client_bind_on_frame_timing(
+        client_, [](lynx_view_client_t* client, int64_t frame_start_time_in_ns,
+                    int64_t frame_finish_time_in_ns) {
+          auto* wrapper = LynxViewClient::Unwrap(client);
+          if (wrapper) {
+            wrapper->OnFrameTiming(frame_start_time_in_ns,
+                                   frame_finish_time_in_ns);
+          }
+        });
   }
   virtual ~LynxViewClient() { lynx_view_client_release(client_); }
 
@@ -192,6 +201,15 @@ class LynxViewClient {
    * @brief Called when the view enters the background.
    */
   virtual void OnEnterBackground() {}
+
+  /**
+   * @apidoc
+   * @brief Called when frame timing is received.
+   * @param frame_start_time_in_ns The frame start time in ns.
+   * @param frame_finish_time_in_ns The frame finish time in ns.
+   */
+  virtual void OnFrameTiming(int64_t frame_start_time_in_ns,
+                             int64_t frame_finish_time_in_ns) {}
 
   lynx_view_client_t* Impl() { return client_; }
 

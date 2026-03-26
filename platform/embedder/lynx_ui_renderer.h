@@ -12,6 +12,8 @@
 namespace lynx {
 namespace embedder {
 
+class LynxViewClients;
+
 // Abstract class for UI Renderer.
 class LynxUIRenderer {
  public:
@@ -53,6 +55,8 @@ class LynxUIRenderer {
   virtual lynx::tasm::UIDelegate* GetUIDelegate() = 0;
 
   virtual void RegisterIMEHandler(void* handler, void* opaque) = 0;
+
+  virtual void AddClient(LynxViewClients* client) {}
 
   // TODO: Add more methods.
 

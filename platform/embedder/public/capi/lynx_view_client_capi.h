@@ -4,6 +4,8 @@
 #ifndef PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_CLIENT_CAPI_H_
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_CLIENT_CAPI_H_
 
+#include <stdint.h>
+
 #include "lynx_export.h"
 
 LYNX_EXTERN_C_BEGIN
@@ -40,6 +42,9 @@ typedef void (*on_timing_update)(lynx_view_client_t* client,
                                  const char* update_flag);
 typedef void (*on_enter_foreground)(lynx_view_client_t* client);
 typedef void (*on_enter_background)(lynx_view_client_t* client);
+typedef void (*on_frame_timing)(lynx_view_client_t* client,
+                                int64_t frame_start_time_in_ns,
+                                int64_t frame_finish_time_in_ns);
 
 LYNX_CAPI_EXPORT lynx_view_client_t* lynx_view_client_create(void* user_data);
 LYNX_CAPI_EXPORT void* lynx_view_client_get_user_data(lynx_view_client_t*);
@@ -67,6 +72,8 @@ LYNX_CAPI_EXPORT void lynx_view_client_bind_on_enter_foreground(
     lynx_view_client_t*, on_enter_foreground f);
 LYNX_CAPI_EXPORT void lynx_view_client_bind_on_enter_background(
     lynx_view_client_t*, on_enter_background f);
+LYNX_CAPI_EXPORT void lynx_view_client_bind_on_frame_timing(lynx_view_client_t*,
+                                                            on_frame_timing f);
 LYNX_CAPI_EXPORT void lynx_view_client_release(lynx_view_client_t*);
 
 LYNX_EXTERN_C_END

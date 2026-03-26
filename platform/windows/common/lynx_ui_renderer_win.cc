@@ -11,10 +11,12 @@
 #include <utility>
 
 #include "base/include/string/string_conversion_win.h"
+#include "clay/common/service/service_manager.h"
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
 #include "clay/lynx_adaptor/native_view_service_desktop.h"
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
 #include "clay/net/loader/resource_loader_creator_service.h"
+#include "clay/shell/common/services/instrumentation_service.h"
 #include "clay/shell/platform/windows/dpi_utils.h"
 #include "clay/ui/component/view_context.h"
 #if ENABLE_TESTBENCH_REPLAY
@@ -38,7 +40,8 @@ std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(
 }
 
 LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
-    : LynxUIRenderer(builder) {
+    : LynxUIRenderer(builder),
+      frame_timing_listener_(std::make_shared<FrameTimingListenerImpl>()) {
   clay::FlutterDesktopEngineProperties properties = {};
 
   const char* icu_data_path = builder->GetICUDataPath();
@@ -102,9 +105,23 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
                       task_runner, intercept, fetcher_holder);
                 }));
   }
+
+  std::shared_ptr<clay::ServiceManager> service_manager =
+      view_context->GetServiceManager();
+  if (service_manager) {
+    clay::Puppet<clay::Owner::kPlatform, clay::InstrumentationService>
+        instrumentation_service =
+            service_manager->GetService<clay::InstrumentationService>();
+    instrumentation_service.Act(
+        [frame_timing_listener = frame_timing_listener_](auto& impl) {
+          impl.AddFrameTimingListener(frame_timing_listener);
+        });
+  }
 }
 
-LynxUIRendererWin::~LynxUIRendererWin() {}
+LynxUIRendererWin::~LynxUIRendererWin() {
+  frame_timing_listener_->RemoveAllClients();
+}
 
 void LynxUIRendererWin::SetParent(NativeWindow parent) {
   HWND native_window = std::get<HWND>(*flutter_view_->GetRenderTarget());
@@ -228,6 +245,10 @@ void LynxUIRendererWin::AdjustWindowRect() {
     // Size and position the child window.
     MoveWindow(hwnd, 0, 0, width_ * pixel_ratio_, height_ * pixel_ratio_, TRUE);
   }
+}
+
+void LynxUIRendererWin::AddClient(LynxViewClients* client) {
+  frame_timing_listener_->AddClient(client);
 }
 
 }  // namespace embedder

@@ -20,6 +20,7 @@ struct lynx_view_client_t {
   on_timing_update on_timing_update = nullptr;
   on_enter_foreground on_enter_foreground = nullptr;
   on_enter_background on_enter_background = nullptr;
+  on_frame_timing on_frame_timing = nullptr;
 };
 
 #endif  // PLATFORM_EMBEDDER_LYNX_VIEW_CLIENT_PRIV_H_
