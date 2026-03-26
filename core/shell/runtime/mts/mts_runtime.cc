@@ -461,11 +461,6 @@ void MTSRuntime::ApplyConfig(const std::shared_ptr<tasm::PageConfig>& config,
   mts_context_->ApplyConfig(config, options);
 }
 
-lepus::Value MTSRuntime::ReportFatalError(const std::string& error_message,
-                                          bool exit, int32_t code) {
-  return mts_context_->ReportFatalError(error_message, exit, code);
-}
-
 Value MTSRuntime::CallArgs(const base::String& name,
                            const std::vector<Value>& args,
                            bool pause_suppression_mode) {

@@ -261,9 +261,6 @@ class MTSRuntime : private MTSContextHolder {
   void ApplyConfig(const std::shared_ptr<tasm::PageConfig>&,
                    const tasm::CompileOptions&);
 
-  lepus::Value ReportFatalError(const std::string& error_message, bool exit,
-                                int32_t code);
-
   // TODO(songshourui.null): Later, consider pushing the 'this' of LepusNG to
   // the stack, which is to avoid adding the following function on the
   // MTSRuntime class. However, pushing 'this' to the stack may lead to

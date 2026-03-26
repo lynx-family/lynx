@@ -110,7 +110,7 @@ namespace tasm {
 namespace {
 
 template <class... Args>
-lepus::Value RenderFatal(runtime::MTSRuntime* ctx, const char* fmt,
+lepus::Value RenderFatal(runtime::MTSContext* ctx, const char* fmt,
                          Args&&... a) {
   auto err_msg =
       std::string("\nerror code: ")
@@ -158,7 +158,7 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
 #define CHECK_ARGC_EQ(name, count)                               \
   do {                                                           \
     if (argc != (count)) {                                       \
-      return RenderFatal(LEPUS_CONTEXT(),                        \
+      return RenderFatal(LEPUS_MTS_CONTEXT(),                    \
                          #name " param size should be " #count); \
     }                                                            \
   } while (0)
@@ -167,7 +167,7 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
   lepus::Value* name = argv + (index);                                   \
   do {                                                                   \
     if (!name->Is##Type()) {                                             \
-      return RenderFatal(LEPUS_CONTEXT(),                                \
+      return RenderFatal(LEPUS_MTS_CONTEXT(),                            \
                          #FunName " param " #index " should be " #Type); \
     }                                                                    \
   } while (0)
@@ -175,7 +175,7 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
 #define CHECK_ARGC_GE(name, now_argc)                               \
   do {                                                              \
     if (argc < (now_argc)) {                                        \
-      return RenderFatal(LEPUS_CONTEXT(),                           \
+      return RenderFatal(LEPUS_MTS_CONTEXT(),                       \
                          #name " param size should >= " #now_argc); \
     }                                                               \
   } while (0)
@@ -520,21 +520,21 @@ GestureDetectorImpl InnerCreateGestureDetector(double gesture_id,
 /* Lepus Lynx API BEGIN */
 RENDERER_FUNCTION_CC(GetTextInfo) {
   if (argc < 2) {
-    LEPUS_CONTEXT()->ReportFatalError(
+    LEPUS_MTS_CONTEXT()->ReportFatalError(
         "lynx.getTextInfo's parameter must >= 2!!", false,
         error::E_MTS_RENDERER_FUNCTION_FATAL);
     RETURN_UNDEFINED();
   }
   CONVERT_ARG(content, 0);
   if (!content->IsString()) {
-    LEPUS_CONTEXT()->ReportFatalError(
+    LEPUS_MTS_CONTEXT()->ReportFatalError(
         "lynx.getTextInfo's first parameter must be string!!", false,
         error::E_MTS_RENDERER_FUNCTION_FATAL);
     RETURN_UNDEFINED();
   }
   CONVERT_ARG(options, 1);
   if (!options->IsObject()) {
-    LEPUS_CONTEXT()->ReportFatalError(
+    LEPUS_MTS_CONTEXT()->ReportFatalError(
         "lynx.getTextInfo's second parameter must be object!!", false,
         error::E_MTS_RENDERER_FUNCTION_FATAL);
     RETURN_UNDEFINED();
@@ -581,7 +581,7 @@ RENDERER_FUNCTION_CC(StopExposure) {
   if (argc == 1) {
     CONVERT_ARG(arg0, 0);
     if (!arg0->IsEmpty() && !arg0->IsObject()) {
-      LEPUS_CONTEXT()->ReportFatalError(
+      LEPUS_MTS_CONTEXT()->ReportFatalError(
           "lynx.stopExposure's first parameter must be empty or an object!",
           false, error::E_MTS_RENDERER_FUNCTION_FATAL);
       RETURN_UNDEFINED();
@@ -737,7 +737,7 @@ RENDERER_FUNCTION_CC(LoadScript) {
       } else {
         error_msg = error_msg_prefix + "not bytecode or string.";
       }
-      return RenderFatal(LEPUS_CONTEXT(),
+      return RenderFatal(LEPUS_MTS_CONTEXT(),
                          (error_msg + error_msg_suffix).c_str(), url.c_str(),
                          bundle_name.c_str(), source_code.Type());
     }
@@ -1212,7 +1212,7 @@ RENDERER_FUNCTION_CC(RuntimeAddEventListener) {
       ContextProxyInLepus::GetContextProxyFromLepusValue(
           LEPUS_CONTEXT()->GetCurrentThis(argv, argc - 1));
   if (context_proxy == nullptr) {
-    RenderFatal(LEPUS_CONTEXT(),
+    RenderFatal(LEPUS_MTS_CONTEXT(),
                 "DispatchEvent failed since the context_proxy is nullptr!");
     RETURN_UNDEFINED();
   }
@@ -1233,7 +1233,7 @@ RENDERER_FUNCTION_CC(RuntimeRemoveEventListener) {
       ContextProxyInLepus::GetContextProxyFromLepusValue(
           LEPUS_CONTEXT()->GetCurrentThis(argv, argc - 1));
   if (context_proxy == nullptr) {
-    RenderFatal(LEPUS_CONTEXT(),
+    RenderFatal(LEPUS_MTS_CONTEXT(),
                 "DispatchEvent failed since the context_proxy is nullptr!");
     RETURN_UNDEFINED();
   }
@@ -1253,7 +1253,7 @@ RENDERER_FUNCTION_CC(PostMessage) {
       ContextProxyInLepus::GetContextProxyFromLepusValue(
           LEPUS_CONTEXT()->GetCurrentThis(argv, argc - 1));
   if (context_proxy == nullptr) {
-    RenderFatal(LEPUS_CONTEXT(),
+    RenderFatal(LEPUS_MTS_CONTEXT(),
                 "DispatchEvent failed since the context_proxy is nullptr!");
     RETURN_UNDEFINED();
   }
@@ -1270,21 +1270,21 @@ RENDERER_FUNCTION_CC(DispatchEvent) {
       ContextProxyInLepus::GetContextProxyFromLepusValue(
           LEPUS_CONTEXT()->GetCurrentThis(argv, argc - 1));
   if (context_proxy == nullptr) {
-    RenderFatal(LEPUS_CONTEXT(),
+    RenderFatal(LEPUS_MTS_CONTEXT(),
                 "DispatchEvent failed since the context_proxy is nullptr!");
     RETURN_UNDEFINED();
   }
 
   auto kType = BASE_STATIC_STRING(runtime::kType);
   if (!arg0->Contains(kType) || !arg0->GetProperty(kType).IsString()) {
-    RenderFatal(LEPUS_CONTEXT(),
+    RenderFatal(LEPUS_MTS_CONTEXT(),
                 "DispatchEvent failed since the arg0 must contain type and the "
                 "value must be string!");
     RETURN_UNDEFINED();
   }
 
   if (!arg0->Contains(BASE_STATIC_STRING(runtime::kData))) {
-    RenderFatal(LEPUS_CONTEXT(),
+    RenderFatal(LEPUS_MTS_CONTEXT(),
                 "DispatchEvent failed since the arg0 must contain data!");
     RETURN_UNDEFINED();
   }
@@ -1358,7 +1358,7 @@ RENDERER_FUNCTION_CC(ReplaceStyleSheetByIdWithBase64) {
                              ->GetCSSFragmentMap()
                              ->extract(id);
   if (fragment_handle.empty()) {
-    RenderFatal(LEPUS_CONTEXT(),
+    RenderFatal(LEPUS_MTS_CONTEXT(),
                 "css fragment with specific id is not provided by this buffer");
     RETURN_UNDEFINED();
   }
@@ -1799,7 +1799,7 @@ RENDERER_FUNCTION_CC(SetStyleTo) {
   CONVERT_ARG(arg2, 2);
 
   if (!arg1->IsString() && !arg1->IsNumber()) {
-    RenderFatal(LEPUS_CONTEXT(), "SetStyleTo Params1 type error:%d",
+    RenderFatal(LEPUS_MTS_CONTEXT(), "SetStyleTo Params1 type error:%d",
                 static_cast<int>(arg1->Type()));
   }
 
@@ -1992,7 +1992,8 @@ RENDERER_FUNCTION_CC(UpdateComponentInfo) {
   lepus::Value slot1 = DCONVERT(arg2);
   lepus::Value slot2 = DCONVERT(arg3);
   if (!slot1.IsArrayOrJSArray()) {
-    RenderFatal(LEPUS_CONTEXT(), "UpdateComponentInfo: arg2 should be array");
+    RenderFatal(LEPUS_MTS_CONTEXT(),
+                "UpdateComponentInfo: arg2 should be array");
   }
 
   if (component_info_storage) {
