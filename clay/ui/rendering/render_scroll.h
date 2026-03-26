@@ -50,6 +50,9 @@ class RenderScroll : public RenderBox {
   void SetInScrollAnimation(bool value) { in_scroll_animation_ = value; }
   bool InScrollAnimation() const { return in_scroll_animation_; }
 
+  // Clip each direct child to its own bounds before painting.
+  void SetClipChildrenToBounds(bool value) { clip_children_to_bounds_ = value; }
+
  private:
   // If overscroll is enabled, we can keep scrolling regardless of whether
   // exceeding the overflow rect.
@@ -66,6 +69,7 @@ class RenderScroll : public RenderBox {
   FloatRect visible_overflow_rect_;
   ScrollDirection scroll_direction_;
   bool in_scroll_animation_ = false;
+  bool clip_children_to_bounds_ = false;
 };
 
 }  // namespace clay

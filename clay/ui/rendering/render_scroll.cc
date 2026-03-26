@@ -51,7 +51,18 @@ void RenderScroll::Paint(PaintingContext& context, const FloatPoint& offset) {
         if (child->IsOverlay() && child->Visible()) {
           renderer_->AddOverlayChild(child);
         }
-        ctx.PaintChild(child, child->OffsetInLayer());
+        if (clip_children_to_bounds_ && !child->IsOverlay()) {
+          const FloatPoint child_offset = child->OffsetInLayer();
+          const FloatRect child_clip_rect(child_offset.x(), child_offset.y(),
+                                          child->Width(), child->Height());
+          auto child_painter = [child](PaintingContext& child_ctx,
+                                       const FloatPoint&) {
+            child_ctx.PaintChild(child, child->OffsetInLayer());
+          };
+          ctx.PushClipRect(child_clip_rect, FloatPoint(), child_painter);
+        } else {
+          ctx.PaintChild(child, child->OffsetInLayer());
+        }
       };
       VisitChildren(visitor);
     };
