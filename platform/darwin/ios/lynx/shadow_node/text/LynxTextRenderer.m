@@ -274,43 +274,132 @@
     return;
   }
 
-  BOOL isShrink = [self isTextContentOverflow];
   NSRange textRange = NSMakeRange(0, _textStorage.length);
   NSDictionary<NSAttributedStringKey, id> *attr = [_textStorage attributesAtIndex:0
                                                                    effectiveRange:nil];
   UIFont *font = attr[NSFontAttributeName];
   CGFloat currentFontSize = [font pointSize];
+  // Keep a snapshot of the original font size so we can revert when the configured range has no
+  // feasible solution (RFC: "property is not effective").
+  CGFloat originalFontSize = currentFontSize;
+  NSArray *lineRanges = self.layoutSpec.textStyle.autoFontSizeLineRanges;
+  NSArray *matchedRange = [self resolveAutoFontSizeLineRange:[self numberOfVisibleLines]];
+  if (lineRanges.count > 0 && matchedRange == nil) {
+    return;
+  }
+  NSArray *presetSizes = self.layoutSpec.textStyle.autoFontSizePresetSizes;
+  CGFloat minSize = self.layoutSpec.textStyle.autoFontSizeMinSize;
+  CGFloat maxSize = self.layoutSpec.textStyle.autoFontSizeMaxSize;
+  CGFloat step = self.layoutSpec.textStyle.autoFontSizeStepGranularity;
+  NSInteger startLine = 0;
+  NSInteger endLine = 0;
+  if (matchedRange != nil && matchedRange.count >= 4) {
+    presetSizes = nil;
+    startLine = [matchedRange[0] integerValue];
+    endLine = [matchedRange[1] integerValue];
+    minSize = [matchedRange[2] floatValue];
+    maxSize = [matchedRange[3] floatValue];
+  }
 
-  if (isShrink) {
-    if (!isnan(self.layoutSpec.textStyle.lineHeight) &&
-        self.layoutSpec.heightMode != LynxMeasureModeIndefinite &&
-        self.layoutSpec.textStyle.lineHeight > self.layoutSpec.height &&
-        !layoutManagerIsTruncated(_layoutManager)) {
-      return;
+  if (maxSize > 0.f && minSize > maxSize) {
+    CGFloat t = minSize;
+    minSize = maxSize;
+    maxSize = t;
+  }
+
+  BOOL hasLineRangeConstraint = (matchedRange != nil && matchedRange.count >= 4);
+
+  // Preserve legacy behavior: when lineHeight itself can't fit into a fixed height container,
+  // do not autoshrink, otherwise text will look smaller but still visually clipped.
+  if ([self isTextContentOverflow] && !isnan(self.layoutSpec.textStyle.lineHeight) &&
+      self.layoutSpec.heightMode != LynxMeasureModeIndefinite &&
+      self.layoutSpec.textStyle.lineHeight > self.layoutSpec.height &&
+      !layoutManagerIsTruncated(_layoutManager)) {
+    return;
+  }
+
+  // Track the last font size that satisfies BOTH:
+  // - text is not overflow/truncated
+  // - if line-range is enabled, the resulting line count stays within [startLine, endLine]
+  CGFloat lastValidFontSize = -1.f;
+  NSInteger initialLines = [self numberOfVisibleLines];
+  if (![self isTextContentOverflow] &&
+      (!hasLineRangeConstraint || (initialLines >= startLine && initialLines <= endLine))) {
+    lastValidFontSize = currentFontSize;
+  }
+
+  // Phase 1 (shrink): keep shrinking until it fits, OR (for line-range) until lineCount <= endLine.
+  while ([self isTextContentOverflow] ||
+         (hasLineRangeConstraint && [self numberOfVisibleLines] > endLine)) {
+    CGFloat smallerFontSize = [self findSmallerFontSize:currentFontSize
+                                            presetSizes:presetSizes
+                                                minSize:minSize
+                                                   step:step];
+    if (smallerFontSize < 0) {
+      break;
     }
-    // shrink
-    do {
-      CGFloat smallerFontSize = [self findSmallerFontSize:currentFontSize];
-      if (smallerFontSize < 0) {
-        break;
-      }
-      [self ensureLayoutWithFontSize:smallerFontSize textRange:textRange];
-      currentFontSize = smallerFontSize;
-    } while ([self isTextContentOverflow]);
-  } else {
-    // grow
-    while (true) {
-      CGFloat largerFontSize = [self findLargerFontSize:currentFontSize];
-      if (largerFontSize < 0) {
-        break;
-      }
-      [self ensureLayoutWithFontSize:largerFontSize textRange:textRange];
-      if ([self isTextContentOverflow]) {
-        [self ensureLayoutWithFontSize:currentFontSize textRange:textRange];
-        break;
-      }
-      currentFontSize = largerFontSize;
+    [self ensureLayoutWithFontSize:smallerFontSize textRange:textRange];
+    currentFontSize = smallerFontSize;
+    NSInteger lines = [self numberOfVisibleLines];
+    if (![self isTextContentOverflow] &&
+        (!hasLineRangeConstraint || (lines >= startLine && lines <= endLine))) {
+      lastValidFontSize = currentFontSize;
     }
+  }
+
+  // If shrinking still can't make text fit:
+  // - Without line-range: keep the best-effort result (usually minSize), preserving legacy
+  //   auto-font-size behavior.
+  // - With line-range: treat it as "no feasible solution in the configured range" and revert.
+  if ([self isTextContentOverflow]) {
+    if (hasLineRangeConstraint) {
+      if (lastValidFontSize >= 0) {
+        [self ensureLayoutWithFontSize:lastValidFontSize textRange:textRange];
+      } else {
+        [self ensureLayoutWithFontSize:originalFontSize textRange:textRange];
+      }
+    }
+    return;
+  }
+  if (hasLineRangeConstraint && [self numberOfVisibleLines] > endLine) {
+    if (lastValidFontSize >= 0) {
+      [self ensureLayoutWithFontSize:lastValidFontSize textRange:textRange];
+    } else {
+      [self ensureLayoutWithFontSize:originalFontSize textRange:textRange];
+    }
+    return;
+  }
+
+  // Phase 2 (grow): try to increase font size to find the largest valid one within the range.
+  // If we become invalid (overflow or lineCount > endLine), revert to lastValidFontSize.
+  while (true) {
+    CGFloat largerFontSize = [self findLargerFontSize:currentFontSize
+                                          presetSizes:presetSizes
+                                              maxSize:maxSize
+                                                 step:step];
+    if (largerFontSize < 0) {
+      break;
+    }
+    [self ensureLayoutWithFontSize:largerFontSize textRange:textRange];
+    if ([self isTextContentOverflow] ||
+        (hasLineRangeConstraint && [self numberOfVisibleLines] > endLine)) {
+      if (lastValidFontSize >= 0) {
+        [self ensureLayoutWithFontSize:lastValidFontSize textRange:textRange];
+      } else {
+        [self ensureLayoutWithFontSize:originalFontSize textRange:textRange];
+      }
+      break;
+    }
+    currentFontSize = largerFontSize;
+    if (!hasLineRangeConstraint || [self numberOfVisibleLines] >= startLine) {
+      lastValidFontSize = currentFontSize;
+    }
+  }
+
+  // For strict line-range semantics: if we never found a valid font size that stays within the
+  // selected line-range, treat the property as ineffective and revert.
+  if (hasLineRangeConstraint && lastValidFontSize < 0) {
+    [self ensureLayoutWithFontSize:originalFontSize textRange:textRange];
   }
 }
 
@@ -328,8 +417,11 @@
   _calculatedSize = [_layoutManager usedRectForTextContainer:_textContainer].size;
 }
 
-- (CGFloat)findLargerFontSize:(CGFloat)currentFontSize {
-  NSArray *fontSizes = self.layoutSpec.textStyle.autoFontSizePresetSizes;
+- (CGFloat)findLargerFontSize:(CGFloat)currentFontSize
+                  presetSizes:(NSArray *)presetSizes
+                      maxSize:(CGFloat)maxSize
+                         step:(CGFloat)step {
+  NSArray *fontSizes = presetSizes;
   if (fontSizes != nil) {
     for (NSUInteger i = 0; i < fontSizes.count; i++) {
       CGFloat fontSize = [fontSizes[i] floatValue];
@@ -338,9 +430,8 @@
       }
     }
   } else {
-    CGFloat largerFontSize =
-        currentFontSize + self.layoutSpec.textStyle.autoFontSizeStepGranularity;
-    if (largerFontSize <= self.layoutSpec.textStyle.autoFontSizeMaxSize) {
+    CGFloat largerFontSize = currentFontSize + step;
+    if (largerFontSize <= maxSize) {
       return largerFontSize;
     }
   }
@@ -348,8 +439,11 @@
   return -1.f;
 }
 
-- (CGFloat)findSmallerFontSize:(CGFloat)currentFontSize {
-  NSArray *fontSizes = self.layoutSpec.textStyle.autoFontSizePresetSizes;
+- (CGFloat)findSmallerFontSize:(CGFloat)currentFontSize
+                   presetSizes:(NSArray *)presetSizes
+                       minSize:(CGFloat)minSize
+                          step:(CGFloat)step {
+  NSArray *fontSizes = presetSizes;
   if (fontSizes != nil) {
     for (NSInteger i = fontSizes.count - 1; i >= 0; i--) {
       CGFloat fontSize = [fontSizes[i] floatValue];
@@ -358,14 +452,38 @@
       }
     }
   } else {
-    CGFloat smallerFontSize =
-        currentFontSize - self.layoutSpec.textStyle.autoFontSizeStepGranularity;
-    if (smallerFontSize >= self.layoutSpec.textStyle.autoFontSizeMinSize) {
+    CGFloat smallerFontSize = currentFontSize - step;
+    if (smallerFontSize >= minSize) {
       return smallerFontSize;
     }
   }
 
   return -1.f;
+}
+
+- (NSArray *)resolveAutoFontSizeLineRange:(NSInteger)lineCount {
+  NSArray *lineRanges = self.layoutSpec.textStyle.autoFontSizeLineRanges;
+  if (lineCount <= 0 || lineRanges.count == 0) {
+    return nil;
+  }
+  for (NSUInteger i = 0; i < lineRanges.count; i++) {
+    if (![lineRanges[i] isKindOfClass:[NSArray class]]) {
+      continue;
+    }
+    NSArray *range = lineRanges[i];
+    if (range.count < 4) {
+      continue;
+    }
+    NSInteger startLine = [range[0] integerValue];
+    NSInteger endLine = [range[1] integerValue];
+    if (startLine <= 0 || endLine < startLine) {
+      continue;
+    }
+    if (lineCount >= startLine && lineCount <= endLine) {
+      return range;
+    }
+  }
+  return nil;
 }
 
 - (BOOL)isTextContentOverflow {

@@ -74,6 +74,7 @@ extern NSAttributedStringKey const LynxWordBreakKey;
 @property(nonatomic, assign) CGFloat autoFontSizeMinSize;
 @property(nonatomic, assign) CGFloat autoFontSizeStepGranularity;
 @property(nonatomic, strong, nullable) NSArray* autoFontSizePresetSizes;
+@property(nonatomic, strong, nullable) NSArray* autoFontSizeLineRanges;
 @property(nonatomic, assign) BOOL hyphen;
 
 @property(nonatomic, strong, nullable) NSAttributedString* truncationAttributedStr;

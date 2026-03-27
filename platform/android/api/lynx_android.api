@@ -579,6 +579,16 @@ public interface com::lynx::jsbridge::LynxModule::AuthValidator {
   public boolean com.lynx.jsbridge.LynxModule.AuthValidator.verify(String moduleName, String methodName, JavaOnlyArray methodParams);
 }
 
+public class com::lynx::tasm::behavior::shadow::text::TextAttributes::AutoFontSizeLineRange :  {
+  public final int com.lynx.tasm.behavior.shadow.text.TextAttributes.AutoFontSizeLineRange.startLine startLine;
+  public final int com.lynx.tasm.behavior.shadow.text.TextAttributes.AutoFontSizeLineRange.endLine endLine;
+  public final float com.lynx.tasm.behavior.shadow.text.TextAttributes.AutoFontSizeLineRange.minSize minSize;
+  public final float com.lynx.tasm.behavior.shadow.text.TextAttributes.AutoFontSizeLineRange.maxSize maxSize;
+  public com.lynx.tasm.behavior.shadow.text.TextAttributes.AutoFontSizeLineRange.AutoFontSizeLineRange(int startLine, int endLine, float minSize, float maxSize);
+  public boolean com.lynx.tasm.behavior.shadow.text.TextAttributes.AutoFontSizeLineRange.equals(Object o);
+  public int com.lynx.tasm.behavior.shadow.text.TextAttributes.AutoFontSizeLineRange.hashCode();
+}
+
 public interface com::lynx::tasm::behavior::AutoGenStyleConstants {
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.WHITESPACE_NORMAL WHITESPACE_NORMAL;
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.WHITESPACE_NOWRAP WHITESPACE_NOWRAP;
@@ -9023,6 +9033,7 @@ public class com::lynx::tasm::behavior::PropsConstants :  {
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_TRANSITION_STYLE IMAGE_TRANSITION_STYLE;
   public final String com.lynx.tasm.behavior.PropsConstants.X_AUTO_FONT_SIZE X_AUTO_FONT_SIZE;
   public final String com.lynx.tasm.behavior.PropsConstants.X_AUTO_FONT_SIZE_PRESET_SIZES X_AUTO_FONT_SIZE_PRESET_SIZES;
+  public final String com.lynx.tasm.behavior.PropsConstants.X_AUTO_FONT_SIZE_LINE_RANGES X_AUTO_FONT_SIZE_LINE_RANGES;
   public final String com.lynx.tasm.behavior.PropsConstants.EXTRA_LOAD_INFO EXTRA_LOAD_INFO;
   public final String com.lynx.tasm.behavior.PropsConstants.ENABLE_REPORT_INFO ENABLE_REPORT_INFO;
   public final String com.lynx.tasm.behavior.PropsConstants.HIT_SLOP HIT_SLOP;
@@ -10077,6 +10088,8 @@ public class com::lynx::tasm::behavior::shadow::text::TextAttributes :  {
   public float com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizeStepGranularity();
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setAutoFontSizePresetSizes(ReadableArray presetSizes);
   public float[] com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizePresetSizes();
+  public List< AutoFontSizeLineRange > com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizeLineRanges();
+  public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setAutoFontSizeLineRanges(ReadableArray lineRanges);
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setHasValidTypeface(boolean hasTypefaceUpdated);
   public boolean com.lynx.tasm.behavior.shadow.text.TextAttributes.getHyphen();
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setHyphen(boolean enable);
@@ -10211,6 +10224,7 @@ public class com::lynx::tasm::behavior::shadow::text::TextShadowNode : com.lynx.
   public void com.lynx.tasm.behavior.shadow.text.TextShadowNode.setLineHeight(float lineHeight);
   public void com.lynx.tasm.behavior.shadow.text.TextShadowNode.setAutoFontSize(ReadableArray autoFontSize);
   public void com.lynx.tasm.behavior.shadow.text.TextShadowNode.setAutoFontSizePresetSizes(ReadableArray presetSizes);
+  public void com.lynx.tasm.behavior.shadow.text.TextShadowNode.setAutoFontSizeLineRanges(ReadableArray lineRanges);
   public void com.lynx.tasm.behavior.shadow.text.TextShadowNode.setVerticalTextAlign(String verticalTextAlign);
   public void com.lynx.tasm.behavior.shadow.text.TextShadowNode.setHyphen(int value);
 }

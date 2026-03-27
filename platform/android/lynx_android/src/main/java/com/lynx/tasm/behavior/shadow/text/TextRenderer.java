@@ -36,6 +36,7 @@ import com.lynx.tasm.behavior.shadow.MeasureMode;
 import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import java.text.Bidi;
+import java.util.List;
 
 public class TextRenderer {
   private static final int MODE_NONE = -1;
@@ -447,40 +448,135 @@ public class TextRenderer {
       return;
     }
 
-    boolean isShrink = isTextContentOverflow();
     int currentFontSize = getCurrentFontSize();
+    // Keep a snapshot of the original font size so we can revert when the configured range has no
+    // feasible solution (RFC: "property is not effective").
+    int originalFontSize = currentFontSize;
+    int lineCount = getLineCount();
+    boolean hasLineRanges = mKey.getAttributes().getAutoFontSizeLineRanges() != null
+        && !mKey.getAttributes().getAutoFontSizeLineRanges().isEmpty();
+    TextAttributes.AutoFontSizeLineRange lineRange = resolveAutoFontSizeLineRange(lineCount);
+    if (hasLineRanges && lineRange == null) {
+      return;
+    }
+    float[] presetSizes = mKey.getAttributes().getAutoFontSizePresetSizes();
+    float minSize = mKey.getAttributes().getAutoFontSizeMinSize();
+    float maxSize = mKey.getAttributes().getAutoFontSizeMaxSize();
+    float step = mKey.getAttributes().getAutoFontSizeStepGranularity();
+    if (lineRange != null) {
+      presetSizes = null;
+      minSize = lineRange.minSize;
+      maxSize = lineRange.maxSize;
+    }
 
-    if (isShrink) {
-      if (!MeasureUtils.isUndefined(mKey.getAttributes().getLineHeight())
-          && mKey.heightMode != MeasureMode.UNDEFINED
-          && mKey.getAttributes().getLineHeight() > mKey.height && !isTextTruncated()) {
-        return;
+    if (maxSize > 0.f && minSize > maxSize) {
+      float t = minSize;
+      minSize = maxSize;
+      maxSize = t;
+    }
+
+    // Preserve legacy behavior: when lineHeight itself can't fit into a fixed height container,
+    // do not autoshrink, otherwise text will look smaller but still visually clipped.
+    if (isTextContentOverflow() && !MeasureUtils.isUndefined(mKey.getAttributes().getLineHeight())
+        && mKey.heightMode != MeasureMode.UNDEFINED
+        && mKey.getAttributes().getLineHeight() > mKey.height && !isTextTruncated()) {
+      return;
+    }
+
+    // Track the last font size that satisfies BOTH:
+    // - text is not overflow/truncated
+    // - if line-range is enabled, the resulting line count stays within [startLine, endLine]
+    int lastValidFontSize = -1;
+    if (!isTextContentOverflow()
+        && (lineRange == null
+            || (getLineCount() >= lineRange.startLine && getLineCount() <= lineRange.endLine))) {
+      lastValidFontSize = currentFontSize;
+    }
+
+    // Phase 1 (shrink): keep shrinking until it fits, OR (for line-range) until lineCount <=
+    // endLine.
+    while (isTextContentOverflow() || (lineRange != null && getLineCount() > lineRange.endLine)) {
+      int smallerFontSize = findSmallerFontSize(currentFontSize, presetSizes, minSize, step);
+      if (smallerFontSize < 0) {
+        break;
       }
-      // shrink
-      do {
-        int smallerFontSize = findSmallerFontSize(currentFontSize);
-        if (smallerFontSize < 0) {
-          break;
-        }
-        buildTextLayoutForAutoSize(smallerFontSize, textContext, context);
-        currentFontSize = smallerFontSize;
-      } while (isTextContentOverflow());
-    } else {
-      // grow
-      while (true) {
-        int largerFontSize = findLargerFontSize(currentFontSize);
-        if (largerFontSize < 0) {
-          break;
-        }
-        buildTextLayoutForAutoSize(largerFontSize, textContext, context);
-
-        if (isTextContentOverflow()) {
-          buildTextLayoutForAutoSize(currentFontSize, textContext, context);
-          break;
-        }
-        currentFontSize = largerFontSize;
+      buildTextLayoutForAutoSize(smallerFontSize, textContext, context);
+      currentFontSize = smallerFontSize;
+      if (!isTextContentOverflow()
+          && (lineRange == null
+              || (getLineCount() >= lineRange.startLine && getLineCount() <= lineRange.endLine))) {
+        lastValidFontSize = currentFontSize;
       }
     }
+
+    // If shrinking still can't make text fit:
+    // - Without line-range: keep the best-effort result (usually minSize), preserving legacy
+    //   auto-font-size behavior.
+    // - With line-range: treat it as "no feasible solution in the configured range" and revert.
+    if (isTextContentOverflow()) {
+      if (lineRange != null) {
+        if (lastValidFontSize >= 0) {
+          buildTextLayoutForAutoSize(lastValidFontSize, textContext, context);
+        } else {
+          buildTextLayoutForAutoSize(originalFontSize, textContext, context);
+        }
+      }
+      return;
+    }
+    if (lineRange != null && getLineCount() > lineRange.endLine) {
+      if (lastValidFontSize >= 0) {
+        buildTextLayoutForAutoSize(lastValidFontSize, textContext, context);
+      } else {
+        buildTextLayoutForAutoSize(originalFontSize, textContext, context);
+      }
+      return;
+    }
+
+    // Phase 2 (grow): try to increase font size to find the largest valid one within the range.
+    // If we become invalid (overflow or lineCount > endLine), revert to lastValidFontSize.
+    while (true) {
+      int largerFontSize = findLargerFontSize(currentFontSize, presetSizes, maxSize, step);
+      if (largerFontSize < 0) {
+        break;
+      }
+      buildTextLayoutForAutoSize(largerFontSize, textContext, context);
+      if (isTextContentOverflow() || (lineRange != null && getLineCount() > lineRange.endLine)) {
+        if (lastValidFontSize >= 0) {
+          buildTextLayoutForAutoSize(lastValidFontSize, textContext, context);
+        } else {
+          buildTextLayoutForAutoSize(originalFontSize, textContext, context);
+        }
+        break;
+      }
+      currentFontSize = largerFontSize;
+      if (lineRange == null || getLineCount() >= lineRange.startLine) {
+        lastValidFontSize = currentFontSize;
+      }
+    }
+
+    // For strict line-range semantics: if we never found a valid font size that stays within the
+    // selected line-range, treat the property as ineffective and revert.
+    if (lineRange != null && lastValidFontSize < 0) {
+      buildTextLayoutForAutoSize(originalFontSize, textContext, context);
+    }
+  }
+
+  private TextAttributes.AutoFontSizeLineRange resolveAutoFontSizeLineRange(int lineCount) {
+    if (lineCount <= 0) {
+      return null;
+    }
+    List<TextAttributes.AutoFontSizeLineRange> ranges =
+        mKey.getAttributes().getAutoFontSizeLineRanges();
+    if (ranges == null || ranges.isEmpty()) {
+      return null;
+    }
+    for (int i = 0; i < ranges.size(); i++) {
+      TextAttributes.AutoFontSizeLineRange range = ranges.get(i);
+      if (lineCount >= range.startLine && lineCount <= range.endLine) {
+        return range;
+      }
+    }
+    return null;
   }
 
   private int getCurrentFontSize() {
@@ -511,8 +607,9 @@ public class TextRenderer {
     buildTextLayout(textContext, context);
   }
 
-  private int findSmallerFontSize(int currentFontSize) {
-    float[] fontSizes = mKey.getAttributes().getAutoFontSizePresetSizes();
+  private int findSmallerFontSize(
+      int currentFontSize, float[] presetSizes, float minSize, float step) {
+    float[] fontSizes = presetSizes;
     if (fontSizes != null) {
       for (int i = fontSizes.length - 1; i >= 0; i--) {
         if (fontSizes[i] < currentFontSize) {
@@ -520,12 +617,11 @@ public class TextRenderer {
         }
       }
     } else {
-      int smallerFontSize =
-          (int) (currentFontSize - mKey.getAttributes().getAutoFontSizeStepGranularity());
+      int smallerFontSize = (int) (currentFontSize - step);
       if (smallerFontSize == currentFontSize) {
         return -1;
       }
-      if (smallerFontSize >= mKey.getAttributes().getAutoFontSizeMinSize()) {
+      if (smallerFontSize >= minSize) {
         return smallerFontSize;
       }
     }
@@ -533,8 +629,9 @@ public class TextRenderer {
     return -1;
   }
 
-  private int findLargerFontSize(int currentFontSize) {
-    float[] fontSizes = mKey.getAttributes().getAutoFontSizePresetSizes();
+  private int findLargerFontSize(
+      int currentFontSize, float[] presetSizes, float maxSize, float step) {
+    float[] fontSizes = presetSizes;
     if (fontSizes != null) {
       for (int i = 0; i < fontSizes.length; i++) {
         if (fontSizes[i] > currentFontSize) {
@@ -542,12 +639,11 @@ public class TextRenderer {
         }
       }
     } else {
-      int largerFontSize =
-          (int) (currentFontSize + mKey.getAttributes().getAutoFontSizeStepGranularity());
+      int largerFontSize = (int) (currentFontSize + step);
       if (largerFontSize == currentFontSize) {
         return -1;
       }
-      if (largerFontSize <= mKey.getAttributes().getAutoFontSizeMaxSize()) {
+      if (largerFontSize <= maxSize) {
         return largerFontSize;
       }
     }

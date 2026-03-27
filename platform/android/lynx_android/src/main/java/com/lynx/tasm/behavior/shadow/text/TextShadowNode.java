@@ -747,6 +747,12 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
     getTextAttributes().setAutoFontSizePresetSizes(presetSizes);
   }
 
+  @LynxProp(name = PropsConstants.X_AUTO_FONT_SIZE_LINE_RANGES)
+  public void setAutoFontSizeLineRanges(ReadableArray lineRanges) {
+    getTextAttributes().setAutoFontSizeLineRanges(lineRanges);
+    markDirty();
+  }
+
   @LynxProp(
       name = "text-single-line-vertical-align", defaultInt = StyleConstants.VERTICAL_ALIGN_DEFAULT)
   public void

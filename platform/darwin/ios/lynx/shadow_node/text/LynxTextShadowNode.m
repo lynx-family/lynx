@@ -1405,4 +1405,15 @@ LYNX_PROP_SETTER("-x-auto-font-size-preset-sizes", setXAutoFontSizePresetSizes, 
   [self setNeedsLayout];
 }
 
+LYNX_PROP_SETTER("-x-auto-font-size-line-ranges", setXAutoFontSizeLineRanges, NSArray *) {
+  if (requestReset) {
+    self.textStyle.autoFontSizeLineRanges = nil;
+  } else {
+    self.textStyle.autoFontSizeLineRanges = value;
+  }
+
+  [self markStyleDirty];
+  [self setNeedsLayout];
+}
+
 @end

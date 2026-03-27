@@ -4042,6 +4042,7 @@ public class LynxTextStyle : NSObject, <NSCopying> {
   public CGFloat LynxTextStyle::autoFontSizeMinSize autoFontSizeMinSize;
   public CGFloat LynxTextStyle::autoFontSizeStepGranularity autoFontSizeStepGranularity;
   public NSArray* LynxTextStyle::autoFontSizePresetSizes autoFontSizePresetSizes;
+  public NSArray* LynxTextStyle::autoFontSizeLineRanges autoFontSizeLineRanges;
   public BOOL LynxTextStyle::hyphen hyphen;
   public NSAttributedString* LynxTextStyle::truncationAttributedStr truncationAttributedStr;
   public void LynxTextStyle::updateBackgroundDrawableRepeat();

@@ -31,7 +31,9 @@ import com.lynx.tasm.behavior.ui.ShadowData;
 import com.lynx.tasm.behavior.ui.background.BackgroundGradientLayer;
 import com.lynx.tasm.utils.FloatUtils;
 import com.lynx.tasm.utils.PixelUtils;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 @SuppressWarnings("unused")
@@ -49,6 +51,40 @@ public class TextAttributes {
   public static final int FIRST_CHAR_RTL_STATE_NONE_CHECK = 0;
   public static final int FIRST_CHAR_RTL_STATE_RTL = 1;
   public static final int FIRST_CHAR_RTL_STATE_LTR = 2;
+
+  public static class AutoFontSizeLineRange {
+    public final int startLine;
+    public final int endLine;
+    public final float minSize;
+    public final float maxSize;
+
+    public AutoFontSizeLineRange(int startLine, int endLine, float minSize, float maxSize) {
+      this.startLine = startLine;
+      this.endLine = endLine;
+      this.minSize = minSize;
+      this.maxSize = maxSize;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (!(o instanceof AutoFontSizeLineRange)) {
+        return false;
+      }
+      AutoFontSizeLineRange range = (AutoFontSizeLineRange) o;
+      return startLine == range.startLine && endLine == range.endLine
+          && FloatUtils.floatsEqual(minSize, range.minSize)
+          && FloatUtils.floatsEqual(maxSize, range.maxSize);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = startLine;
+      result = 31 * result + endLine;
+      result = 31 * result + Float.floatToIntBits(minSize);
+      result = 31 * result + Float.floatToIntBits(maxSize);
+      return result;
+    }
+  }
 
   public int mMaxLineCount = NOT_SET;
   public int mMaxTextLength = NOT_SET;
@@ -79,6 +115,7 @@ public class TextAttributes {
   private float mAutoFontSizeMinSize = 0.f;
   private float mAutoFontSizeStepGranularity = 1.f;
   private float[] mAutoFontSizePresetSizes;
+  private List<AutoFontSizeLineRange> mAutoFontSizeLineRanges;
   public boolean mHasValidTypeface = false;
   private boolean mHyphen = false;
   private String mFontVariationSettings = null;
@@ -156,6 +193,8 @@ public class TextAttributes {
     attributes.mAutoFontSizeMaxSize = mAutoFontSizeMaxSize;
     attributes.mAutoFontSizeStepGranularity = mAutoFontSizeStepGranularity;
     attributes.mAutoFontSizePresetSizes = mAutoFontSizePresetSizes;
+    attributes.mAutoFontSizeLineRanges =
+        mAutoFontSizeLineRanges == null ? null : new ArrayList<>(mAutoFontSizeLineRanges);
     attributes.mTextSingleLineVerticalAlign = mTextSingleLineVerticalAlign;
     attributes.mHasValidTypeface = mHasValidTypeface;
     attributes.mHyphen = mHyphen;
@@ -194,6 +233,7 @@ public class TextAttributes {
         && FloatUtils.floatsEqual(mAutoFontSizeMaxSize, attr.mAutoFontSizeMaxSize)
         && FloatUtils.floatsEqual(mAutoFontSizeStepGranularity, attr.mAutoFontSizeStepGranularity)
         && Arrays.equals(mAutoFontSizePresetSizes, attr.mAutoFontSizePresetSizes)
+        && Objects.equals(mAutoFontSizeLineRanges, attr.mAutoFontSizeLineRanges)
         && mTextSingleLineVerticalAlign == attr.mTextSingleLineVerticalAlign
         && mHasValidTypeface == attr.mHasValidTypeface && mHyphen == attr.mHyphen
         && mFontOpticalSizing == attr.mFontOpticalSizing
@@ -238,6 +278,8 @@ public class TextAttributes {
     result = result * prime + Float.floatToIntBits(mAutoFontSizeStepGranularity);
     result = result * prime
         + (mAutoFontSizePresetSizes == null ? 0 : mAutoFontSizePresetSizes.hashCode());
+    result =
+        result * prime + (mAutoFontSizeLineRanges == null ? 0 : mAutoFontSizeLineRanges.hashCode());
     result = result * prime + mTextSingleLineVerticalAlign;
     result = result * prime + (mHasValidTypeface ? 1 : 0);
     result = result * prime + (mHyphen ? 1 : 0);
@@ -506,6 +548,37 @@ public class TextAttributes {
 
   public float[] getAutoFontSizePresetSizes() {
     return mAutoFontSizePresetSizes;
+  }
+
+  @Nullable
+  public List<AutoFontSizeLineRange> getAutoFontSizeLineRanges() {
+    return mAutoFontSizeLineRanges;
+  }
+
+  public void setAutoFontSizeLineRanges(ReadableArray lineRanges) {
+    if (lineRanges == null || lineRanges.size() == 0) {
+      mAutoFontSizeLineRanges = null;
+      return;
+    }
+    List<AutoFontSizeLineRange> ranges = new ArrayList<>();
+    for (int i = 0; i < lineRanges.size(); i++) {
+      if (!lineRanges.getType(i).equals(com.lynx.react.bridge.ReadableType.Array)) {
+        continue;
+      }
+      ReadableArray range = lineRanges.getArray(i);
+      if (range == null || range.size() < 4) {
+        continue;
+      }
+      int startLine = (int) range.getDouble(0);
+      int endLine = (int) range.getDouble(1);
+      if (startLine <= 0 || endLine < startLine) {
+        continue;
+      }
+      float minSize = (float) range.getDouble(2);
+      float maxSize = (float) range.getDouble(3);
+      ranges.add(new AutoFontSizeLineRange(startLine, endLine, minSize, maxSize));
+    }
+    mAutoFontSizeLineRanges = ranges.isEmpty() ? null : ranges;
   }
 
   public void setHasValidTypeface(boolean hasTypefaceUpdated) {

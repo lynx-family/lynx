@@ -199,6 +199,14 @@ static NSUInteger layoutManagerLineCount(NSLayoutManager *layoutManager) {
                               layoutSpec:(LynxLayoutSpec *)spec {
   if (str == nil) return nil;
 
+  if (spec.textStyle.isAutoFontSize || (spec.textStyle.autoFontSizeLineRanges != nil &&
+                                        spec.textStyle.autoFontSizeLineRanges.count > 0)) {
+    LynxTextRenderer *renderer = [[LynxTextRenderer alloc] initWithAttributedString:str
+                                                                         layoutSpec:spec];
+    [renderer ensureTextRenderLayout];
+    return renderer;
+  }
+
   if (!spec.enableTextLayoutCache) {
     LynxTextRenderer *renderer = [[LynxTextRenderer alloc] initWithAttributedString:str
                                                                          layoutSpec:spec];

@@ -256,6 +256,7 @@ public class PropsConstants {
   public static final String IMAGE_TRANSITION_STYLE = "image-transition-style";
   public static final String X_AUTO_FONT_SIZE = "-x-auto-font-size";
   public static final String X_AUTO_FONT_SIZE_PRESET_SIZES = "-x-auto-font-size-preset-sizes";
+  public static final String X_AUTO_FONT_SIZE_LINE_RANGES = "-x-auto-font-size-line-ranges";
   public static final String EXTRA_LOAD_INFO = "extra-load-info";
   public static final String ENABLE_REPORT_INFO = "enable-report-info";
   public static final String HIT_SLOP = "hit-slop";
