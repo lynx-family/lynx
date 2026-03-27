@@ -867,6 +867,9 @@ public abstract class LynxBaseUI
     if (wrapper != null) {
       wrapper.handleMutationStyleUpdate(this, props);
     }
+    if (mLynxBackground != null) {
+      mLynxBackground.onLynxUIPropsUpdated();
+    }
   }
   @LynxUIMethod
   public void boundingClientRect(ReadableMap params, Callback callback) {
