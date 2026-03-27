@@ -13,7 +13,10 @@
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
 #include "clay/lynx_adaptor/value_converter.h"
 #include "clay/public/value.h"
+#include "clay/ui/component/base_view.h"
+#include "clay/ui/component/intersection_observer_manager.h"
 #include "clay/ui/component/list/lynx_list_data.h"
+#include "clay/ui/component/page_view.h"
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/shadow/text_render.h"
 #include "core/renderer/css/css_property_id.h"
@@ -143,7 +146,11 @@ void PaintingContextClay::FinishLayoutOperation(
 }
 
 void PaintingContextClay::FinishTasmOperation(
-    const std::shared_ptr<PipelineOptions>& options) {}
+    const std::shared_ptr<PipelineOptions>& options) {
+  (void)options;
+  // Trigger queued UI operations for this tasm batch.
+  Flush();
+}
 
 // Invoked by BTS
 void PaintingContextClay::InvokeUIMethod(int32_t view_id,
@@ -460,9 +467,70 @@ std::unique_ptr<lynx::pub::Value> PaintingContextClay::GetTextInfo(
   return std::make_unique<ClayValue>(std::move(result));
 }
 
-void PaintingContextClay::StopExposure(const pub::Value& options) {}
+std::vector<float> PaintingContextClay::getWindowSize(int id) {
+  (void)id;
+  if (!view_context_ || !view_context_->GetPageView()) {
+    return floats_;
+  }
+  auto size = view_context_->GetPageView()->logical_size();
+  return std::vector<float>{size.width(), size.height()};
+}
 
-void PaintingContextClay::ResumeExposure() {}
+std::vector<float> PaintingContextClay::GetRectToWindow(int id) {
+  if (!view_context_) {
+    return floats_;
+  }
+
+  auto* view = view_context_->FindViewByViewId(id);
+  if (!view) {
+    return floats_;
+  }
+
+  float position[2] = {0.0f, 0.0f};
+  getAbsolutePosition(id, position);
+  return std::vector<float>{position[1], position[0], view->Width(),
+                            view->Height()};
+}
+
+std::vector<float> PaintingContextClay::GetRectToLynxView(int64_t id) {
+  return GetRectToWindow(static_cast<int>(id));
+}
+
+void PaintingContextClay::StopExposure(const pub::Value& options) {
+  bool send_event = true;
+  if (options.IsMap() && options.Contains("sendEvent")) {
+    auto send_event_value = options.GetValueForKey("sendEvent");
+    if (send_event_value && send_event_value->IsBool()) {
+      send_event = send_event_value->Bool();
+    }
+  }
+
+  Enqueue([view_context = view_context_, send_event]() {
+    if (!view_context || !view_context->GetPageView()) {
+      return;
+    }
+    auto* intersection_manager =
+        view_context->GetPageView()->intersection_observer_manager();
+    if (!intersection_manager) {
+      return;
+    }
+    intersection_manager->StopExposure(send_event);
+  });
+}
+
+void PaintingContextClay::ResumeExposure() {
+  Enqueue([view_context = view_context_]() {
+    if (!view_context || !view_context->GetPageView()) {
+      return;
+    }
+    auto* intersection_manager =
+        view_context->GetPageView()->intersection_observer_manager();
+    if (!intersection_manager) {
+      return;
+    }
+    intersection_manager->ResumeExposure();
+  });
+}
 
 std::list<int32_t> PaintingContextClay::GetAncestorElements(int32_t tag) {
   return engine_proxy_->GetAncestorElements(tag);
