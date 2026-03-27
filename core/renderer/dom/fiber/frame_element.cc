@@ -8,6 +8,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/value/base_value.h"
+#include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/template_assembler.h"
 #include "core/services/feature_count/global_feature_counter.h"
@@ -22,6 +23,17 @@ constexpr char kLoad[] = "load";
 constexpr char kURL[] = "url";
 constexpr char kStatusCode[] = "statusCode";
 constexpr char kStatusMessage[] = "statusMessage";
+constexpr char kFrameData[] = "data";
+constexpr char kGlobalProps[] = "global-props";
+
+lepus::Value CreateFrameTemplateDataDispatchValue(
+    const std::shared_ptr<TemplateData>& data) {
+  if (!data) {
+    return lepus::Value(static_cast<int64_t>(0));
+  }
+  auto* native_ptr = new std::shared_ptr<TemplateData>(data);
+  return lepus::Value(reinterpret_cast<int64_t>(native_ptr));
+}
 }  // namespace
 
 FrameElement::FrameElement(ElementManager* element_manager)
@@ -41,7 +53,38 @@ void FrameElement::SetAttribute(const base::String& key,
                                 const lepus::Value& value,
                                 bool need_update_data_model) {
   OnSetSrc(key, value);
+  if (key.IsEqual(kFrameData)) {
+    data_ =
+        value.IsEmpty() ? nullptr : std::make_shared<TemplateData>(value, true);
+  } else if (key.IsEqual(kGlobalProps)) {
+    global_props_ =
+        value.IsEmpty() ? nullptr : std::make_shared<TemplateData>(value, true);
+  }
   FiberElement::SetAttribute(key, value, need_update_data_model);
+}
+
+void FrameElement::ResetAttribute(const base::String& key) {
+  if (key.IsEqual(kFrameData)) {
+    data_ = nullptr;
+  } else if (key.IsEqual(kGlobalProps)) {
+    global_props_ = nullptr;
+  }
+  FiberElement::ResetAttribute(key);
+}
+
+void FrameElement::SetAttributeInternal(const base::String& key,
+                                        const lepus::Value& value) {
+  if (key.IsEqual(kFrameData)) {
+    FiberElement::SetAttributeInternal(
+        key, CreateFrameTemplateDataDispatchValue(data_));
+    return;
+  }
+  if (key.IsEqual(kGlobalProps)) {
+    FiberElement::SetAttributeInternal(
+        key, CreateFrameTemplateDataDispatchValue(global_props_));
+    return;
+  }
+  FiberElement::SetAttributeInternal(key, value);
 }
 
 void FrameElement::OnSetSrc(const base::String& key,

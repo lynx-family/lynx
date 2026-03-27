@@ -10,6 +10,7 @@
 #import <Lynx/LynxFrameViewProvider.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIContext.h>
@@ -22,6 +23,19 @@
   BOOL _isUrlChanged;
 }
 @end
+
+static LynxTemplateData* ConsumeFrameTemplateDataHolder(NSInteger value) {
+  if (value == 0) {
+    return nil;
+  }
+  auto* native_template_data = reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(value);
+  LynxTemplateData* template_data =
+      native_template_data
+          ? [[LynxTemplateData alloc] initWithNativeTemplateData:*native_template_data]
+          : nil;
+  delete native_template_data;
+  return template_data;
+}
 
 @implementation LynxUIFrame
 
@@ -122,12 +136,8 @@ LYNX_REGISTER_UI("frame")
   [[self view] propsDidUpdate];
 }
 
-// TODO(zhoupeng.z): pass data on native directly
-LYNX_PROP_SETTER("data", updateData, NSDictionary*) {
-  if (value != nil) {
-    [[self view] setInitData:[[LynxTemplateData alloc] initWithDictionary:value
-                                                          useBoolLiterals:YES]];
-  }
+LYNX_PROP_SETTER("data", updateData, NSInteger) {
+  [[self view] setInitData:requestReset ? nil : ConsumeFrameTemplateDataHolder(value)];
 }
 
 LYNX_PROP_SETTER("src", setUrl, NSString*) {
@@ -136,11 +146,8 @@ LYNX_PROP_SETTER("src", setUrl, NSString*) {
   [[self view] setUrl:value];
 }
 
-LYNX_PROP_SETTER("global-props", updateGlobalProps, NSDictionary*) {
-  if (value != nil) {
-    [[self view] setGlobalProps:[[LynxTemplateData alloc] initWithDictionary:value
-                                                             useBoolLiterals:YES]];
-  }
+LYNX_PROP_SETTER("global-props", updateGlobalProps, NSInteger) {
+  [[self view] setGlobalProps:requestReset ? nil : ConsumeFrameTemplateDataHolder(value)];
 }
 
 LYNX_PROP_SETTER("embedded-mode", setEmbeddedMode, NSNumber*) {
