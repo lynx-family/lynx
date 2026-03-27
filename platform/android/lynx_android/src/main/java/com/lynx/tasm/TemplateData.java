@@ -103,6 +103,7 @@ public final class TemplateData {
   }
 
   private volatile long mNativeData;
+  private volatile long mNativeTemplateDataPtr;
   private volatile Map<String, Object> mData;
   private String mProcessorName;
   private final AtomicBoolean mIsConcurrent = new AtomicBoolean(false);
@@ -118,6 +119,7 @@ public final class TemplateData {
   private final Object mDataLock = new Object();
   private final Object mJsNativeDataLock = new Object();
   private final Object mNativeDataLock = new Object();
+  private final Object mNativeTemplateDataPtrLock = new Object();
 
   enum ActionType {
     STRING_DATA,
@@ -161,6 +163,27 @@ public final class TemplateData {
     TemplateData result = new TemplateData(json);
     TraceEvent.endSection(TraceEventDef.TEMPLATE_DATA_FROM_STRING);
     return result;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public static TemplateData fromNativeTemplateDataPtr(long nativePtr) {
+    TemplateData result = TemplateData.empty();
+    result.mNativeTemplateDataPtr = nativePtr;
+    result.readOnly = true;
+    result.mProcessorName = null;
+    return result;
+  }
+
+  public long getNativeTemplateDataPtr() {
+    return mNativeTemplateDataPtr;
+  }
+
+  public long getNativeTemplateDataPtrAndClear() {
+    synchronized (mNativeTemplateDataPtrLock) {
+      long ptr = mNativeTemplateDataPtr;
+      mNativeTemplateDataPtr = 0;
+      return ptr;
+    }
   }
 
   private void addUpdateActions(List<UpdateAction> actions) {
@@ -423,13 +446,25 @@ public final class TemplateData {
   }
 
   private void releaseNativeData() {
-    if (mNativeData == 0) {
+    if (mNativeData == 0 && mNativeTemplateDataPtr == 0) {
       return;
     }
     synchronized (mNativeDataLock) {
-      if (checkIfEnvPrepared() && mNativeData != 0) {
+      if (!checkIfEnvPrepared()) {
+        return;
+      }
+      if (mNativeData != 0) {
         nativeReleaseData(mNativeData);
         mNativeData = 0;
+      }
+    }
+    synchronized (mNativeTemplateDataPtrLock) {
+      if (!checkIfEnvPrepared()) {
+        return;
+      }
+      if (mNativeTemplateDataPtr != 0) {
+        nativeReleaseTemplateData(mNativeTemplateDataPtr);
+        mNativeTemplateDataPtr = 0;
       }
     }
   }
