@@ -4856,6 +4856,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableAutoConcurrency();
   public void com.lynx.tasm.behavior.LynxContext.initUIExposure();
   public void com.lynx.tasm.behavior.LynxContext.EnsureEventDispatcher();
+  public void com.lynx.tasm.behavior.LynxContext.setPageId(String pageId);
   public void com.lynx.tasm.behavior.LynxContext.setExtensionModuleForKey(LynxExtensionModule module, String key);
   public LynxExtensionModule com.lynx.tasm.behavior.LynxContext.getExtensionModuleByKey(String key);
   public Map< String, LynxExtensionModule > com.lynx.tasm.behavior.LynxContext.getExtensionModules();
@@ -6685,6 +6686,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public void com.lynx.tasm.LynxTemplateRender.setFluencyTracerEnabled(LynxBooleanOption enabled);
   public void com.lynx.tasm.LynxTemplateRender.setLongTaskMonitorEnabled(LynxBooleanOption enabled);
   public void com.lynx.tasm.LynxTemplateRender.putExtraParamsForReportingEvents(final Map< String, Object > params);
+  public void com.lynx.tasm.LynxTemplateRender.setPageId(String pageId);
   public HashMap< String, Object > com.lynx.tasm.LynxTemplateRender.getAllTimingInfo();
   public String com.lynx.tasm.LynxTemplateRender.getRenderPhase();
   public void com.lynx.tasm.LynxTemplateRender.setImageInterceptor(ImageInterceptor interceptor);
@@ -7269,6 +7271,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.setLongTaskMonitorEnabled(LynxBooleanOption enabled);
   public void com.lynx.tasm.LynxView.setFluencyTracerEnabled(LynxBooleanOption enabled);
   public void com.lynx.tasm.LynxView.putParamsForReportingEvents(final Map< String, Object > params);
+  public void com.lynx.tasm.LynxView.setPageId(String pageId);
   public String com.lynx.tasm.LynxView.getRenderPhase();
   public HashMap< String, Object > com.lynx.tasm.LynxView.getAllTimingInfo();
   public void com.lynx.tasm.LynxView.setExtraTiming(Map< String, Long > extraTiming);
@@ -10456,6 +10459,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.FLUENCY_TRACER_START FLUENCY_TRACER_START;
   public final String com.lynx.tasm.base.trace.TraceEventDef.FLUENCY_TRACER_STOP FLUENCY_TRACER_STOP;
   public final String com.lynx.tasm.base.trace.TraceEventDef.INSTANCE_ID INSTANCE_ID;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.PAGE_ID PAGE_ID;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW LYNX_VIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.EXCEPTION EXCEPTION;
   public final String com.lynx.tasm.base.trace.TraceEventDef.WIDTH_MEASURE_SPEC WIDTH_MEASURE_SPEC;
@@ -10483,6 +10487,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_ON_MEASURE_TARGET LYNX_FRAME_VIEW_ON_MEASURE_TARGET;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_UPDATE_LAYOUT LYNX_FRAME_VIEW_UPDATE_LAYOUT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_SET_PAGE_ID TEMPLATE_RENDER_SET_PAGE_ID;
 }
 
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {

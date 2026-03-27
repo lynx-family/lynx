@@ -1136,6 +1136,7 @@ public class LynxContext : NSObject {
   public bool LynxContext()::isLayoutInElementModeOn isLayoutInElementModeOn;
   public bool LynxContext()::isTextServiceModeOn isTextServiceModeOn;
   public int32_t LynxContext()::instanceId instanceId;
+  public NSString* _Nullable LynxContext()::pageId pageId;
   public void LynxContext::sendGlobalEvent:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
   public nullable JSModule * LynxContext::getJSModule:(nonnull NSString *name);
   public nullable NSNumber * LynxContext::getLynxRuntimeId();
@@ -3902,6 +3903,7 @@ public protocol LynxTemplateRenderProtocol-p : <NSObject> {
   public void LynxTemplateRenderProtocol-p::setExtraTiming:(LynxExtraTiming *_Nonnull timing);
   public void LynxTemplateRenderProtocol-p::setFluencyTracerEnabled:(LynxBooleanOption enabled);
   public void LynxTemplateRenderProtocol-p::putExtraParamsForReportingEvents:(NSDictionary< NSString *, id > *_Nonnull params);
+  public void LynxTemplateRenderProtocol-p::setPageId:(nonnull NSString *pageId);
   public nullable NSDictionary * LynxTemplateRenderProtocol-p::getAllTimingInfo();
   public nullable NSDictionary * LynxTemplateRenderProtocol-p::getExtraInfo();
   public void LynxTemplateRenderProtocol-p::notifyIntersectionObservers();
@@ -5359,6 +5361,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxRendererHost> {
   public void LynxView::setLongTaskMonitorEnabled:(LynxBooleanOption enabled);
   public void LynxView::setFluencyTracerEnabled:(LynxBooleanOption enabled);
   public void LynxView::putParamsForReportingEvents:(NSDictionary< NSString *, id > *_Nonnull params);
+  public void LynxView::setPageId:(nonnull NSString *pageId);
   public void LynxView::runOnTasmThread:(dispatch_block_t _Nonnull task);
   public void LynxView::syncFlush();
   public void LynxView::attachEngineToUIThread();

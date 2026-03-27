@@ -304,6 +304,12 @@ public class LynxView extends UIBodyView {
     mLynxTemplateRender.putExtraParamsForReportingEvents(params);
   }
 
+  public void setPageId(String pageId) {
+    if (mLynxTemplateRender != null) {
+      mLynxTemplateRender.setPageId(pageId);
+    }
+  }
+
   @RestrictTo({RestrictTo.Scope.LIBRARY_GROUP})
   @AnyThread
   @LynxTemplateRender.RenderPhaseName

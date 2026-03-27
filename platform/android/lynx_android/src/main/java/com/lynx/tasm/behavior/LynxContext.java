@@ -171,6 +171,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private String tapSlop = TouchEventDispatcher.mTapSlopDefault;
 
   private LynxFrameViewProvider mLynxFrameViewProvider;
+  private String mPageId = "";
 
   public LynxContext(Context base, DisplayMetrics screenMetrics) {
     super(base);
@@ -1620,6 +1621,10 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     if (lynxUIRenderer != null && lynxUIRenderer instanceof LynxUIRenderer) {
       ((LynxUIRenderer) lynxUIRenderer).EnsureEventDispatcher();
     }
+  }
+
+  public void setPageId(String pageId) {
+    mPageId = pageId;
   }
 
   // This is a experimental API, it is unstable and may break at any time.

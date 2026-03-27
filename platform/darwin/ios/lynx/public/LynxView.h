@@ -451,6 +451,8 @@
 /// of LynxEventReporter.onEvent.
 - (void)putParamsForReportingEvents:(NSDictionary<NSString*, id>* _Nonnull)params;
 
+- (void)setPageId:(nonnull NSString*)pageId;
+
 #pragma mark - Multi Thread
 
 - (void)runOnTasmThread:(dispatch_block_t _Nonnull)task;

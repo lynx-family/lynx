@@ -225,6 +225,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// - Parameter params: common parameters for report events.
 - (void)putExtraParamsForReportingEvents:(NSDictionary<NSString*, id>* _Nonnull)params;
 
+- (void)setPageId:(nonnull NSString*)pageId;
+
 - (nullable NSDictionary*)getAllTimingInfo;
 
 - (nullable NSDictionary*)getExtraInfo;

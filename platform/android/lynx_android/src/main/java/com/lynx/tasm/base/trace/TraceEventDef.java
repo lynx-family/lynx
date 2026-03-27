@@ -217,6 +217,7 @@ public class TraceEventDef {
   public static final String FLUENCY_TRACER_START = "StartFluencyTrace";
   public static final String FLUENCY_TRACER_STOP = "StopFluencyTrace";
   public static final String INSTANCE_ID = "instance_id";
+  public static final String PAGE_ID = "page_id";
   public static final String LYNX_VIEW = "lynx_view";
   public static final String EXCEPTION = "exception";
   public static final String WIDTH_MEASURE_SPEC = "widthMeasureSpec";
@@ -272,4 +273,6 @@ public class TraceEventDef {
    * @trace_description: Update LynxFrameView's layout.
    */
   public static final String LYNX_FRAME_VIEW_UPDATE_LAYOUT = "LynxFrameView.updateLayout";
+
+  public static final String TEMPLATE_RENDER_SET_PAGE_ID = "TemplateRender.setPageId";
 }

@@ -950,6 +950,10 @@
   [_templateRender putExtraParamsForReportingEvents:params];
 }
 
+- (void)setPageId:(nonnull NSString*)pageId {
+  [_templateRender setPageId:pageId];
+}
+
 #pragma mark - Multi Thread
 
 - (void)runOnTasmThread:(dispatch_block_t)task {

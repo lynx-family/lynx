@@ -33,6 +33,8 @@
 // instanceId is a value greater than or equal to 0, the initial value is -1.
 @property(nonatomic, assign) int32_t instanceId;
 
+@property(nonatomic, strong) NSString* _Nullable pageId;
+
 - (nonnull instancetype)initWithContainerView:(id<LUIBodyView> _Nullable)containerView;
 - (void)setJSProxy:(const std::shared_ptr<lynx::shell::JSProxyDarwin>&)proxy;
 - (void)setLayoutProxy:(const std::shared_ptr<lynx::shell::LynxLayoutProxyDarwin>&)layout_proxy;

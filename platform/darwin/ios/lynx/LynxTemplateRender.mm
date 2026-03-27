@@ -2028,6 +2028,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [LynxEventReporter putExtraParams:params forInstanceId:self.instanceId];
 }
 
+- (void)setPageId:(nonnull NSString*)pageId {
+  if (_context != nil) {
+    _context.pageId = pageId;
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_SET_PAGE_ID, PAGE_ID, [pageId UTF8String],
+                INSTANCE_ID, [self instanceId]);
+  }
+}
+
 - (nullable NSDictionary*)getAllTimingInfo {
   return lynx::tasm::convertLepusValueToNSObject(shell_->GetAllTimingInfo());
 }

@@ -224,6 +224,8 @@ static const char* const LYNX_FRAME_VIEW_ON_MEASURE_TARGET = "LynxFrameView.onMe
  * @trace_description: Set LynxFrameView's layout mode.
  */
 static const char* const LYNX_FRAME_VIEW_SET_LAYOUT_MODE = "LynxFrameView.setLayoutMode";
+
+static const char* const TEMPLATE_RENDER_SET_PAGE_ID = "TemplateRender.setPageId";
 #endif
 
 NS_ASSUME_NONNULL_END

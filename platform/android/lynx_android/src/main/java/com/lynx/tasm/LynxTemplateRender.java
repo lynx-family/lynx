@@ -780,6 +780,20 @@ public class LynxTemplateRender
     onTraceEventEnd(eventName);
   }
 
+  public void setPageId(String pageId) {
+    if (mLynxContext != null) {
+      mLynxContext.setPageId(pageId);
+      if (!TraceEvent.isTracingStarted()) {
+        return;
+      }
+      HashMap map = new HashMap<String, String>();
+      map.put(TraceEventDef.INSTANCE_ID, String.valueOf(mLynxContext.getInstanceId()));
+      map.put(TraceEventDef.PAGE_ID, pageId);
+      TraceEvent.instant(
+          TraceEvent.CATEGORY_DEFAULT, TraceEventDef.TEMPLATE_RENDER_SET_PAGE_ID, map);
+    }
+  }
+
   public HashMap<String, Object> getAllTimingInfo() {
     if (mNativePtr != 0) {
       return nativeGetAllTimingInfo(mNativePtr, mNativeLifecycle);
