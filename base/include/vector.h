@@ -846,6 +846,10 @@ struct Vector
     BASE_VECTOR_DCHECK(first <= last);
     if (BASE_VECTOR_LIKELY(first != last)) {
       if constexpr (is_trivial || is_trivially_relocatable) {
+        if constexpr (!is_trivially_destructible) {
+          // Destruct the items in range firstly.
+          _nontrivial_destruct_reverse(first, last - first);
+        }
         std::memmove((void*)first, last, (_end_iter() - last) * sizeof(T));
       } else {
         // Slow path, move elements one by one and skip destructors if possible.
