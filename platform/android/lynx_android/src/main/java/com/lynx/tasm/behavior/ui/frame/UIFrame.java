@@ -8,13 +8,8 @@ import android.content.Context;
 import android.graphics.Rect;
 import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
-import com.lynx.react.bridge.JavaOnlyMap;
-import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.EmbeddedMode;
-import com.lynx.tasm.LynxUpdateMeta;
 import com.lynx.tasm.TemplateBundle;
-import com.lynx.tasm.TemplateData;
-import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxBehavior;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxFrameViewProvider;
@@ -159,16 +154,11 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     view.updateLayout(contentWidth, contentHeight);
   }
 
-  // TODO(zhoupeng): do not convet LepusValue to ReadableMap
   @LynxProp(name = "data")
-  public void setData(ReadableMap value) {
-    if (!(value instanceof JavaOnlyMap)) {
-      LLog.e(TAG, "prop data is not a JavaOnlyMap");
-      return;
-    }
+  public void setData(long value) {
     LynxFrameView view = getView();
     if (view != null) {
-      view.setInitData(TemplateData.fromMap((JavaOnlyMap) value));
+      view.setInitData(value);
     }
   }
 
@@ -184,14 +174,10 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
   }
 
   @LynxProp(name = "global-props")
-  public void setGlobalProps(ReadableMap value) {
-    if (!(value instanceof JavaOnlyMap)) {
-      LLog.e(TAG, "global props data is not a JavaOnlyMap");
-      return;
-    }
+  public void setGlobalProps(long value) {
     LynxFrameView view = getView();
     if (view != null) {
-      view.setGlobalProps(TemplateData.fromMap((JavaOnlyMap) value));
+      view.setGlobalProps(value);
     }
   }
 

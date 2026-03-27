@@ -667,13 +667,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [self
       executeNativeOpSafely:^() {
         [self prepareForLoadTemplateWithUrl:url initData:data];
-        lynx::lepus::Value value;
-        std::shared_ptr<lynx::tasm::TemplateData> ptr(nullptr);
+        std::shared_ptr<lynx::tasm::TemplateData> ptr = nullptr;
         if (data != nil) {
           TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_CREATE_TEMPLATE_DATA);
-          value = *LynxGetLepusValueFromTemplateData(data);
-          ptr = std::make_shared<lynx::tasm::TemplateData>(
-              value, data.isReadOnly, data.processorName ? data.processorName.UTF8String : "");
+          auto native_template_data = LynxGetNativeTemplateDataFromTemplateData(data);
+          ptr = native_template_data != nullptr ? native_template_data
+                                                : ConvertLynxTemplateDataToTemplateData(data);
           ptr->SetPlatformData(std::make_unique<lynx::tasm::PlatformDataDarwin>(data));
         }
 
@@ -855,12 +854,20 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
             // if passing globalProps is nil means globalProps should not be updated, pass Nil
             // downwards. if passing globalProps is not nil means globalProps should be updated,
             // pass merged globalProps downwards.
-            if (_globalProps == nil) {
+            if (LynxTemplateDataHasNativeTemplateData(meta.globalProps)) {
+              _globalProps = meta.globalProps;
+            } else if (_globalProps == nil) {
               _globalProps = meta.globalProps;
             } else {
               [_globalProps updateWithTemplateData:meta.globalProps];
             }
-            updated_global_props = *LynxGetLepusValueFromTemplateData(_globalProps);
+            auto native_global_props = LynxGetNativeTemplateDataFromTemplateData(_globalProps);
+            if (native_global_props != nullptr) {
+              updated_global_props = native_global_props->value();
+            } else {
+              auto* props_value = LynxGetLepusValueFromTemplateData(_globalProps);
+              updated_global_props = props_value == nullptr ? lynx::lepus::Value() : *props_value;
+            }
             [_devTool onGlobalPropsUpdated:_globalProps];
           }
 
@@ -869,10 +876,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
             if (_logicExecutor) {
               [_templateData updateWithTemplateData:meta.data];
             }
-            lynx::lepus::Value value = *LynxGetLepusValueFromTemplateData(meta.data);
-            updated_data = std::make_shared<lynx::tasm::TemplateData>(
-                value, meta.data.isReadOnly,
-                meta.data.processorName ? meta.data.processorName.UTF8String : "");
+            auto native_template_data = LynxGetNativeTemplateDataFromTemplateData(meta.data);
+            updated_data = native_template_data != nullptr
+                               ? native_template_data
+                               : ConvertLynxTemplateDataToTemplateData(meta.data);
             updated_data->SetPlatformData(
                 std::make_unique<lynx::tasm::PlatformDataDarwin>(meta.data));
           }
@@ -1134,10 +1141,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 - (void)updateGlobalPropsWithTemplateData:(LynxTemplateData*)data {
   LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, TEMPLATE_RENDER_UPDATE_GLOBAL_PROPS);
   if (data) {
-    if (!_globalProps) {
+    if (LynxTemplateDataHasNativeTemplateData(data)) {
+      _globalProps = data;
+    } else if (!_globalProps) {
       _globalProps = [[LynxTemplateData alloc] initWithDictionary:[NSDictionary new]];
+      [_globalProps updateWithTemplateData:data];
+    } else {
+      [_globalProps updateWithTemplateData:data];
     }
-    [_globalProps updateWithTemplateData:data];
     [self updateNativeGlobalProps];
   }
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
@@ -1151,7 +1162,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   __weak LynxTemplateRender* weakSelf = self;
   [self
       executeNativeOpSafely:^() {
-        self->shell_->UpdateGlobalProps(*LynxGetLepusValueFromTemplateData(_globalProps));
+        auto native_global_props = LynxGetNativeTemplateDataFromTemplateData(_globalProps);
+        if (native_global_props != nullptr) {
+          self->shell_->UpdateGlobalProps(native_global_props->value());
+        } else {
+          auto* global_props = LynxGetLepusValueFromTemplateData(_globalProps);
+          self->shell_->UpdateGlobalProps(global_props == nullptr ? lynx::lepus::Value()
+                                                                  : *global_props);
+        }
       }
       withErrorCallback:^(NSString* msg, NSString* stack) {
         __strong LynxTemplateRender* strongSelf = weakSelf;

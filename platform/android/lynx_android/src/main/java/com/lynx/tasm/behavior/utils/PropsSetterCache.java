@@ -155,6 +155,25 @@ import java.util.concurrent.ConcurrentHashMap;
     }
   }
 
+  private static class LongPropSetter extends PropSetter {
+    private final long mDefaultValue;
+
+    public LongPropSetter(LynxProp prop, Method setter, long defaultValue) {
+      super(prop, "number", setter);
+      mDefaultValue = defaultValue;
+    }
+
+    public LongPropSetter(LynxPropGroup prop, Method setter, int index, long defaultValue) {
+      super(prop, "number", setter, index);
+      mDefaultValue = defaultValue;
+    }
+
+    @Override
+    protected Object extractProperty(StylesDiffMap props) {
+      return props.getLong(mPropName, mDefaultValue);
+    }
+  }
+
   private static class BooleanPropSetter extends PropSetter {
     private final boolean mDefaultValue;
 
@@ -311,6 +330,8 @@ import java.util.concurrent.ConcurrentHashMap;
       return new BooleanPropSetter(annotation, method, annotation.defaultBoolean());
     } else if (propTypeClass == int.class) {
       return new IntPropSetter(annotation, method, annotation.defaultInt());
+    } else if (propTypeClass == long.class) {
+      return new LongPropSetter(annotation, method, 0L);
     } else if (propTypeClass == float.class) {
       return new FloatPropSetter(annotation, method, annotation.defaultFloat());
     } else if (propTypeClass == double.class) {
@@ -341,6 +362,10 @@ import java.util.concurrent.ConcurrentHashMap;
     } else if (propTypeClass == int.class) {
       for (int i = 0; i < names.length; i++) {
         props.put(names[i], new IntPropSetter(annotation, method, i, annotation.defaultInt()));
+      }
+    } else if (propTypeClass == long.class) {
+      for (int i = 0; i < names.length; i++) {
+        props.put(names[i], new LongPropSetter(annotation, method, i, 0L));
       }
     } else if (propTypeClass == float.class) {
       for (int i = 0; i < names.length; i++) {

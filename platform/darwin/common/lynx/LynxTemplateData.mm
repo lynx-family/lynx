@@ -36,7 +36,8 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
 @implementation LynxTemplateData {
   lynx::lepus::Value value_;
   lynx::lepus::Value value_for_js_;
-  NSString* _processerName;
+  std::shared_ptr<lynx::tasm::TemplateData> _nativeTemplateData;
+  NSString* _processorName;
   BOOL _readOnly;
   NSMutableArray<LynxTemplateDataUpdateAction*>* _updateActions;
   BOOL _useBoolLiterals;
@@ -44,10 +45,29 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
 
 - (instancetype)init {
   if (self = [super init]) {
-    _processerName = nil;
+    _processorName = nil;
     _readOnly = false;
 
     _updateActions = [[NSMutableArray alloc] init];
+  }
+  return self;
+}
+
+- (instancetype)initWithNativeTemplateData:
+    (const std::shared_ptr<lynx::tasm::TemplateData>&)nativeTemplateData {
+  if (self = [super init]) {
+    _nativeTemplateData = nativeTemplateData;
+    _processorName = nil;
+    _readOnly = false;
+    _updateActions = [[NSMutableArray alloc] init];
+
+    if (nativeTemplateData != nullptr) {
+      _readOnly = nativeTemplateData->IsReadOnly();
+      if (!nativeTemplateData->PreprocessorName().empty()) {
+        _processorName =
+            [NSString stringWithUTF8String:nativeTemplateData->PreprocessorName().c_str()];
+      }
+    }
   }
   return self;
 }
@@ -167,6 +187,18 @@ lepus_value RecursiveLynxConvertToLepusValue(id data, NSMutableSet* allObjects,
 lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   if (data == nil) return nullptr;
   return &data->value_;
+}
+
+bool LynxTemplateDataHasNativeTemplateData(LynxTemplateData* data) {
+  return data != nil && data->_nativeTemplateData != nullptr;
+}
+
+std::shared_ptr<lynx::tasm::TemplateData> LynxGetNativeTemplateDataFromTemplateData(
+    LynxTemplateData* data) {
+  if (data == nil) {
+    return nullptr;
+  }
+  return data->_nativeTemplateData;
 }
 
 - (instancetype)initWithDictionary:(NSDictionary*)dictionary useBoolLiterals:(BOOL)useBoolLiterals {
@@ -324,7 +356,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   auto base_value = *LynxGetLepusValueFromTemplateData(self);
   LynxTemplateData* data = [[LynxTemplateData alloc] init];
   data->value_ = lynx::lepus::Value::Clone(base_value);
-  data->_processerName = self.processorName;
+  data->_processorName = self.processorName;
   data->_readOnly = self.isReadOnly;
   data->value_for_js_ = lynx::lepus::Value::Clone(value_for_js_);
   [data addObjectToUpdateActions:[self copyUpdateActions]];
@@ -332,11 +364,11 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
 }
 
 - (void)markState:(NSString*)name {
-  _processerName = name;
+  _processorName = name;
 }
 
 - (NSString*)processorName {
-  return _processerName;
+  return _processorName;
 }
 
 // GetTemplateDataForJSThread just needs to copy the updateActions.

@@ -16,6 +16,8 @@
 
 namespace lynx {
 namespace tasm {
+class TemplateData;
+
 struct FrameElementData {
   FrameElementData(const std::string& src,
                    std::shared_ptr<LynxTemplateBundle>&& bundle,
@@ -38,6 +40,7 @@ class FrameElement : public FiberElement {
 
   void SetAttribute(const base::String& key, const lepus::Value& value,
                     bool need_update_data_model = true) override;
+  void ResetAttribute(const base::String& key) override;
 
   bool DidBundleLoaded(const std::shared_ptr<FrameElementData>& data);
 
@@ -47,6 +50,8 @@ class FrameElement : public FiberElement {
 
  protected:
   void OnNodeAdded(FiberElement* child) override;
+  void SetAttributeInternal(const base::String& key,
+                            const lepus::Value& value) override;
 
  private:
   // load bundle if src is set
@@ -57,6 +62,8 @@ class FrameElement : public FiberElement {
 
   std::shared_ptr<FrameElementData> bundle_data_{nullptr};
   std::string src_{};
+  std::shared_ptr<TemplateData> data_{nullptr};
+  std::shared_ptr<TemplateData> global_props_{nullptr};
 };
 }  // namespace tasm
 }  // namespace lynx

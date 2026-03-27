@@ -38,8 +38,12 @@ public final class LynxFrameView extends UIBodyView {
   private int mContentWidth = -1;
   private int mContentHeight = -1;
   private boolean mDestroyed = false;
-  private TemplateData mInitData = null;
-  private TemplateData mGlobalProps = null;
+  // Keep frame data/global-props as raw native handles until they are actually consumed by
+  // loadBundle/onPropsUpdated. This avoids creating duplicate Java TemplateData wrappers for the
+  // same native holder during async frame creation, while still letting FrameView recycle pending
+  // handles if they are replaced or the view is destroyed before consumption.
+  private long mInitDataPtr = 0;
+  private long mGlobalPropsPtr = 0;
   private boolean mAutoWidth = false;
   private boolean mAutoHeight = false;
   private int mWidthMode = MeasureSpec.EXACTLY;
@@ -121,13 +125,13 @@ public final class LynxFrameView extends UIBodyView {
     LynxLoadMeta.Builder builder = new LynxLoadMeta.Builder();
     builder.setUrl(mUrl);
     builder.setTemplateBundle(bundle);
-    if (mInitData != null) {
-      builder.setInitialData(mInitData);
-      mInitData = null;
+    TemplateData initData = consumePendingTemplateData(true);
+    if (initData != null) {
+      builder.setInitialData(initData);
     }
-    if (mGlobalProps != null) {
-      builder.setGlobalProps(mGlobalProps);
-      mGlobalProps = null;
+    TemplateData globalProps = consumePendingTemplateData(false);
+    if (globalProps != null) {
+      builder.setGlobalProps(globalProps);
     }
     mRender.loadTemplate(builder.build());
     mIsBundleLoaded = true;
@@ -172,14 +176,14 @@ public final class LynxFrameView extends UIBodyView {
     }
   }
 
-  void setInitData(TemplateData data) {
+  void setInitData(long dataPtr) {
     TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_INIT_DATA);
-    mInitData = data;
+    mInitDataPtr = replacePendingTemplateDataPtr(mInitDataPtr, dataPtr);
   }
 
-  void setGlobalProps(TemplateData data) {
+  void setGlobalProps(long dataPtr) {
     TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_GLOBAL_PROPS);
-    mGlobalProps = data;
+    mGlobalPropsPtr = replacePendingTemplateDataPtr(mGlobalPropsPtr, dataPtr);
   }
 
   void onPropsUpdated() {
@@ -188,19 +192,19 @@ public final class LynxFrameView extends UIBodyView {
       return;
     }
 
-    if (mInitData == null && mGlobalProps == null) {
+    if (mInitDataPtr == 0 && mGlobalPropsPtr == 0) {
       return;
     }
 
+    TemplateData initData = consumePendingTemplateData(true);
+    TemplateData globalProps = consumePendingTemplateData(false);
+
     LynxUpdateMeta meta =
         new LynxUpdateMeta.Builder()
-            .setUpdatedData(mInitData == null ? TemplateData.empty() : mInitData)
-            .setUpdatedGlobalProps(mGlobalProps == null ? TemplateData.empty() : mGlobalProps)
+            .setUpdatedData(initData == null ? TemplateData.empty() : initData)
+            .setUpdatedGlobalProps(globalProps == null ? TemplateData.empty() : globalProps)
             .build();
     mRender.updateMetaData(meta);
-
-    mInitData = null;
-    mGlobalProps = null;
   }
 
   public void setUrl(String url) {
@@ -224,6 +228,52 @@ public final class LynxFrameView extends UIBodyView {
 
   private boolean hasInitializedSize(int width, int height) {
     return width != -1 && height != -1;
+  }
+
+  private long replacePendingTemplateDataPtr(long current, long next) {
+    if (current != 0 && current != next) {
+      recyclePendingTemplateDataPtr(current);
+    }
+    return next;
+  }
+
+  private void recyclePendingTemplateData() {
+    if (mInitDataPtr != 0) {
+      recyclePendingTemplateDataPtr(mInitDataPtr);
+      mInitDataPtr = 0;
+    }
+    if (mGlobalPropsPtr != 0) {
+      recyclePendingTemplateDataPtr(mGlobalPropsPtr);
+      mGlobalPropsPtr = 0;
+    }
+  }
+
+  private TemplateData consumePendingTemplateData(boolean isInitData) {
+    long nativeTemplateDataPtr = isInitData ? mInitDataPtr : mGlobalPropsPtr;
+    if (isInitData) {
+      mInitDataPtr = 0;
+    } else {
+      mGlobalPropsPtr = 0;
+    }
+    return nativeTemplateDataPtr == 0
+        ? null
+        : TemplateData.fromNativeTemplateDataPtr(nativeTemplateDataPtr);
+  }
+
+  private void recyclePendingTemplateDataPtr(final long nativeTemplateDataPtr) {
+    if (nativeTemplateDataPtr == 0) {
+      return;
+    }
+    if (mContext != null) {
+      mContext.runOnTasmThread(new Runnable() {
+        @Override
+        public void run() {
+          TemplateData.fromNativeTemplateDataPtr(nativeTemplateDataPtr).recycle();
+        }
+      });
+      return;
+    }
+    TemplateData.fromNativeTemplateDataPtr(nativeTemplateDataPtr).recycle();
   }
 
   @Override
@@ -330,6 +380,7 @@ public final class LynxFrameView extends UIBodyView {
       mRender.destroy();
       mRender = null;
     }
+    recyclePendingTemplateData();
     TraceEvent.endSection(TraceEventDef.DESTORY_LYNXFRAMEVIEW);
   }
 

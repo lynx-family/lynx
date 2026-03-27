@@ -87,10 +87,12 @@ public class LynxPropsProcessor extends AbstractProcessor {
     DEFAULT_TYPES.put(TypeName.DOUBLE, "number");
     DEFAULT_TYPES.put(TypeName.FLOAT, "number");
     DEFAULT_TYPES.put(TypeName.INT, "number");
+    DEFAULT_TYPES.put(TypeName.LONG, "number");
 
     // Boxed primitives
     DEFAULT_TYPES.put(TypeName.BOOLEAN.box(), "boolean");
     DEFAULT_TYPES.put(TypeName.INT.box(), "number");
+    DEFAULT_TYPES.put(TypeName.LONG.box(), "number");
 
     // Class types
     DEFAULT_TYPES.put(STRING_TYPE, "String");
@@ -102,6 +104,7 @@ public class LynxPropsProcessor extends AbstractProcessor {
     BOXED_PRIMITIVES.add(TypeName.BOOLEAN.box());
     BOXED_PRIMITIVES.add(TypeName.FLOAT.box());
     BOXED_PRIMITIVES.add(TypeName.INT.box());
+    BOXED_PRIMITIVES.add(TypeName.LONG.box());
   }
 
   public LynxPropsProcessor() {
@@ -364,6 +367,9 @@ public class LynxPropsProcessor extends AbstractProcessor {
     }
     if (propertyType.equals(TypeName.INT)) {
       return builder.add("props.getInt(name, $L)", info.mProperty.defaultInt());
+    }
+    if (propertyType.equals(TypeName.LONG)) {
+      return builder.add("props.getLong(name, 0L)");
     }
 
     throw new IllegalArgumentException();
