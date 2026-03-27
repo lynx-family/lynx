@@ -8,7 +8,6 @@
 """
 import importlib
 import os
-from urllib.parse import urlparse
 
 from lib.common import utils
 
