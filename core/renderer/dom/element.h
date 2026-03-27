@@ -272,6 +272,7 @@ class Element : public lepus::RefCounted,
   Element* next_render_sibling() { return next_render_sibling_; }
 
   const auto& children() const { return scoped_children_; }
+  const auto& logical_children() const { return logical_children_; }
 
   // Helpers for finding non-virtual / non-wrapper nodes in the render tree
   // starting from the current element.
@@ -1497,6 +1498,8 @@ class Element : public lepus::RefCounted,
 
   base::InlineVector<fml::RefPtr<Element>, kChildrenInlineVectorSize>
       scoped_children_;
+  base::InlineVector<fml::RefPtr<Element>, kChildrenInlineVectorSize>
+      logical_children_;
   base::auto_create_optional<base::InlineVector<fml::RefPtr<Element>, 2>>
       scoped_virtual_children_;
   Element* virtual_parent_{nullptr};

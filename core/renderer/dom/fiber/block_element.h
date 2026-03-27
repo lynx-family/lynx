@@ -7,6 +7,7 @@
 
 #include <vector>
 
+#include "base/include/vector.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 
 namespace lynx {
@@ -28,11 +29,26 @@ class BlockElement : public FiberElement {
   size_t FindInsertIndex(const fml::RefPtr<FiberElement>& child);
   size_t GetAllNodeCountExcludeBlock();
 
-  size_t FindBlockInsertIndex(const fml::RefPtr<FiberElement>& child);
   void AddBlockChildAt(const fml::RefPtr<FiberElement>& child, size_t index);
 
   size_t IndexOfBlockChild(const fml::RefPtr<FiberElement>& child);
   void RemoveBlockChildAt(size_t index);
+
+  void ReplaceElements(const base::Vector<fml::RefPtr<FiberElement>>& inserted,
+                       const base::Vector<fml::RefPtr<FiberElement>>& removed);
+
+  const auto& block_children() const { return block_children_; }
+
+ private:
+  void RemoveBlockChildrenFromParent(BlockElement* block, FiberElement* parent);
+  void InsertBlockChildrenBefore(BlockElement* block, FiberElement* parent,
+                                 FiberElement* ref);
+
+  FiberElement* FirstFlattenedNode();
+  FiberElement* FindNearestRightLogicalRenderedSibling(FiberElement* parent);
+  FiberElement* FindNearestLeftLogicalRenderedSibling(FiberElement* parent);
+  size_t GetFlattenStartIndexInParent();
+  FiberElement* LastFlattenedNode();
 
  protected:
   base::InlineVector<fml::RefPtr<FiberElement>, kChildrenInlineVectorSize>

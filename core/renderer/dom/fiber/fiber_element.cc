@@ -32,6 +32,7 @@
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/block_element.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
@@ -689,6 +690,35 @@ void FiberElement::InsertNode(const fml::RefPtr<Element> &raw_child) {
   InsertNode(raw_child, static_cast<int32_t>(scoped_children_.size()));
 }
 
+void FiberElement::InsertLogicalChildBefore(
+    const fml::RefPtr<FiberElement> &child, FiberElement *ref_node) {
+  if (ref_node == nullptr) {
+    logical_children_.push_back(child);
+    return;
+  }
+
+  auto it = std::find_if(logical_children_.begin(), logical_children_.end(),
+                         [ref_node](const fml::RefPtr<Element> &logical_child) {
+                           return logical_child.get() == ref_node;
+                         });
+  if (it != logical_children_.end()) {
+    logical_children_.insert(it, child);
+    return;
+  }
+
+  logical_children_.push_back(child);
+}
+
+void FiberElement::RemoveLogicalChild(const fml::RefPtr<FiberElement> &child) {
+  auto it = std::find_if(logical_children_.begin(), logical_children_.end(),
+                         [&child](const fml::RefPtr<Element> &logical_child) {
+                           return logical_child.get() == child.get();
+                         });
+  if (it != logical_children_.end()) {
+    logical_children_.erase(it);
+  }
+}
+
 void FiberElement::InsertNode(const fml::RefPtr<Element> &raw_child,
                               int32_t index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_INSERT_NODE);
@@ -699,23 +729,30 @@ void FiberElement::InsertNode(const fml::RefPtr<Element> &raw_child,
          << index << ",size:" << scoped_children_.size());
     return;
   }
-  // reserve parent node for block element in AirModeFiber
-  if (element_manager() && element_manager()->IsAirModeFiberEnabled() &&
-      child->is_block()) {
-    child->set_parent(this);
-    scoped_virtual_children_->push_back(child);
-    return;
-  }
-  // ref_node: nullptr: means to append this node to the end
   FiberElement *ref =
       (index < static_cast<int>(scoped_children_.size()))
           ? static_cast<FiberElement *>(scoped_children_[index].get())
           : nullptr;
+  // reserve parent node for block element in AirModeFiber
+  if (element_manager() && element_manager()->IsAirModeFiberEnabled() &&
+      child->is_block()) {
+    child->set_parent(this);
+    InsertLogicalChildBefore(child, ref);
+    scoped_virtual_children_->push_back(child);
+    return;
+  }
+  // ref_node: nullptr: means to append this node to the end
   InsertNodeBeforeInternal(child, ref);
 }
 
 void FiberElement::InsertNodeBeforeInternal(
     const fml::RefPtr<FiberElement> &child, FiberElement *ref_node) {
+  InsertNodeBeforeInternal(child, ref_node, true);
+}
+
+void FiberElement::InsertNodeBeforeInternal(
+    const fml::RefPtr<FiberElement> &child, FiberElement *ref_node,
+    bool update_logical_children) {
   int index = -1;
   if (ref_node) {
     index = IndexOf(ref_node);
@@ -732,6 +769,9 @@ void FiberElement::InsertNodeBeforeInternal(
     child->LogNodeInfo();
     static_cast<FiberElement *>(child->parent_)->LogNodeInfo();
     static_cast<FiberElement *>(child->parent_)->RemoveNode(child);
+  }
+  if (update_logical_children) {
+    InsertLogicalChildBefore(child, ref_node);
   }
   // FIXME(linxs): use linked element to reduce the Element index calculation
   AddChildAt(child, index);
@@ -759,7 +799,12 @@ void FiberElement::InsertNodeBefore(
 void FiberElement::RemoveNode(const fml::RefPtr<Element> &raw_child,
                               bool destroy) {
   auto child = fml::static_ref_ptr_cast<FiberElement>(raw_child);
+  RemoveNodeInternal(child, destroy, true);
+}
 
+void FiberElement::RemoveNodeInternal(const fml::RefPtr<FiberElement> &child,
+                                      bool destroy,
+                                      bool update_logical_children) {
   // FIXME(linxs): to use linked node to avoid the index calculation asap!
   int index = IndexOf(child.get());
   if (index >= static_cast<int>(scoped_children_.size()) || index < 0) {
@@ -782,6 +827,9 @@ void FiberElement::RemoveNode(const fml::RefPtr<Element> &raw_child,
   FiberElement *removed =
       static_cast<FiberElement *>(scoped_children_[index].get());
   scoped_children_.erase(scoped_children_.begin() + index);
+  if (update_logical_children) {
+    RemoveLogicalChild(child);
+  }
   removed->set_parent(nullptr);
 
   MarkDirty(kDirtyTree);

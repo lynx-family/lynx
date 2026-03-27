@@ -328,6 +328,9 @@ class FiberElement : public Element {
   // TODO(linxs): to check if this APIs can be deleted
   void InsertNodeBeforeInternal(const fml::RefPtr<FiberElement>& child,
                                 FiberElement* ref_node);
+  void InsertNodeBeforeInternal(const fml::RefPtr<FiberElement>& child,
+                                FiberElement* ref_node,
+                                bool update_logical_children);
   void AddChildAt(fml::RefPtr<FiberElement> child, int index);
 
   /**
@@ -505,12 +508,18 @@ class FiberElement : public Element {
  private:
   friend class WrapperElement;
   friend class ComponentElement;
+  friend class BlockElement;
 
   FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
                                          FiberElement* node);
 
   void HandleContainerInsertion(FiberElement* parent, FiberElement* child,
                                 FiberElement* ref);
+  void InsertLogicalChildBefore(const fml::RefPtr<FiberElement>& child,
+                                FiberElement* ref_node);
+  void RemoveLogicalChild(const fml::RefPtr<FiberElement>& child);
+  void RemoveNodeInternal(const fml::RefPtr<FiberElement>& child, bool destroy,
+                          bool update_logical_children);
 
   void ResetDirectionAwareProperty(const CSSPropertyID& id,
                                    const CSSValue& value);

@@ -2655,6 +2655,7 @@ void Element::MarkPlatformNodeDestroyed() {
   // clear element's children only in radon or radon compatible mode.
   scoped_children_.clear();
   scoped_virtual_children_.reset();
+  logical_children_.clear();
 }
 
 void Element::ConvertToInlineElement() {
