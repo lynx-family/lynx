@@ -42,8 +42,11 @@ void DestroyTextBundlePointer(void *bundle) {
 
 - (void)createImageManager:(int32_t)imageManagerID
              withSourceURL:(LynxURL *)sourceURL
-         andPlaceholderURL:(LynxURL *)placeholderURL {
+         andPlaceholderURL:(LynxURL *)placeholderURL
+                 eventMask:(int32_t)eventMask {
   LynxImageManager *imageManager = [[LynxImageManager alloc] initWithContext:_uiContext];
+  [imageManager setSign:imageManagerID];
+  [imageManager setEventMask:eventMask];
   [imageManager requestImage:sourceURL withType:LynxImageRequestSrc];
   [imageManager requestImage:sourceURL withType:LynxImageRequestPlaceholder];
   @synchronized(self) {

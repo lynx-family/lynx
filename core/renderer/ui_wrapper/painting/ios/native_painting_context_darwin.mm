@@ -206,7 +206,8 @@ void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width,
 
   [context_->GetRendererContext() createImageManager:id
                                        withSourceURL:sourceUrl
-                                   andPlaceholderURL:nil];
+                                   andPlaceholderURL:nil
+                                           eventMask:event_mask];
 }
 
 template <typename F>

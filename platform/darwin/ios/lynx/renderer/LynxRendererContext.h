@@ -16,7 +16,8 @@
 
 - (void)createImageManager:(int32_t)imageManagerID
              withSourceURL:(LynxURL *)sourceURL
-         andPlaceholderURL:(LynxURL *)placeholderURL;
+         andPlaceholderURL:(LynxURL *)placeholderURL
+                 eventMask:(int32_t)eventMask;
 
 - (LynxImageManager *)takeImageManager:(int32_t)imageManagerID;
 

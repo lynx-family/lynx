@@ -17,6 +17,10 @@
 
 - (void)setTarget:(UIImageView*)view;
 
+- (void)setSign:(NSInteger)sign;
+
+- (void)setEventMask:(NSInteger)eventMask;
+
 - (void)reset;
 
 @end
