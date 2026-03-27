@@ -1009,6 +1009,8 @@ class Element : public lepus::RefCounted,
 
   base::InlineVector<fml::RefPtr<Element>, kChildrenInlineVectorSize>
       scoped_children_;
+  base::InlineVector<fml::RefPtr<Element>, kChildrenInlineVectorSize>
+      logical_children_;
   base::auto_create_optional<base::InlineVector<fml::RefPtr<Element>, 2>>
       scoped_virtual_children_;
   Element* virtual_parent_{nullptr};
