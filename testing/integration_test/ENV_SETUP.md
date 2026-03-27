@@ -8,6 +8,7 @@ Integration test uses [Lynx-E2E](https://pypi.org/project/lynx-e2e-appium) as th
 # First execute the environment preparation in the root directory of Lynx
 source tools/envsetup.sh
 tools/hab sync -f .
+
 # Install Appium by npm
 npm install -g appium@2.11.2
 # Install appium-doctor

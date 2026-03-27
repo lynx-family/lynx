@@ -5,7 +5,6 @@
 
 import os
 import cv2
-import time
 import numpy
 
 from lynx_e2e.api.config import settings

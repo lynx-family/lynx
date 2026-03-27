@@ -6,9 +6,9 @@
 import os
 import errno
 import time
-from retrying import retry
 import socket
 import traceback
+from retrying import retry
 from lynx_e2e.api.logger import EnumLogLevel
 from lynx_e2e.api.exception import LynxCDPTimeoutException
 
