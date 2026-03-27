@@ -37,7 +37,7 @@ export function Event() {
         </text>
       </view>
 
-      <text className="title">Click to change CSS </text>
+      <text className="title">Click to change CSS</text>
       <view className="button">
         <text
           lynx-test-tag="button2"
@@ -48,7 +48,7 @@ export function Event() {
             backgroundColor: inlineBg,
           }}
         >
-          Test inline-text:
+          Test inline-text: 
           <text lynx-test-tag="inline-text" bindtap={handleInlineTap}>
             Click Me
           </text>

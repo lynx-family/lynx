@@ -4,7 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 import os
 import shutil
-import subprocess
 import sys
 
 # Get the directory where the current script is located

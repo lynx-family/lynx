@@ -4,8 +4,8 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-import threading
 import queue
+import threading
 
 from urllib.parse import urlparse, urlunparse, parse_qsl
 from lynx_e2e.api.config import settings
