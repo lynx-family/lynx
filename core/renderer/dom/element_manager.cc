@@ -955,7 +955,7 @@ void ElementManager::SetGlobalBindElementId(const base::String &name,
                                             const base::String &type,
                                             const int node_id) {
   if (!name.empty()) {
-    global_bind_name_to_ids_[name.str()].insert(node_id);
+    global_bind_name_to_ids_[name].insert(node_id);
   }
 }
 
@@ -967,7 +967,7 @@ void ElementManager::EraseGlobalBindElementId(const EventMap &global_event_map,
 }
 
 const base::LinearFlatSet<int32_t> &ElementManager::GetGlobalBindElementIds(
-    const std::string &name) const {
+    const base::String &name) const {
   auto iter = global_bind_name_to_ids_.find(name);
   if (iter != global_bind_name_to_ids_.end()) {
     return iter->second;

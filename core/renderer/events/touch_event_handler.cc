@@ -1164,9 +1164,11 @@ bool TouchEventHandler::HandleEventInternal(
     }
   }
 
+  base::String base_str_name(event_name);
+
   ElementManager *manager = target->element_manager();
-  if (manager->GetGlobalBindElementIds(event_name).size() > 0) {
-    for (const auto &id : manager->GetGlobalBindElementIds(event_name)) {
+  if (manager->GetGlobalBindElementIds(base_str_name).size() > 0) {
+    for (const auto &id : manager->GetGlobalBindElementIds(base_str_name)) {
       Element *cur_target = node_manager_->Get(id);
       if (cur_target == nullptr) {
         LOGI(
@@ -1189,18 +1191,18 @@ bool TouchEventHandler::HandleEventInternal(
         // if set is empty, means the target is all other elements
         operation.append(
             std::move(TouchEventHandler::push_global_bind_operation_f_(
-                event_name, cur_target, target)));
+                base_str_name, cur_target, target)));
       } else {
         if (option.bubbles_) {
           for (const auto &target : response_chain) {
             operation.append(
                 std::move(TouchEventHandler::get_global_bind_operations_f_(
-                    event_name, cur_target, target, *set)));
+                    base_str_name, cur_target, target, *set)));
           }
         } else {
           operation.append(
               std::move(TouchEventHandler::get_global_bind_operations_f_(
-                  event_name, cur_target, target, *set)));
+                  base_str_name, cur_target, target, *set)));
         }
       }
     }
@@ -1215,7 +1217,7 @@ bool TouchEventHandler::HandleEventInternal(
       cur_target = *iter;
       if (cur_target == nullptr) break;
       auto handlers =
-          TouchEventHandler::get_handlers_f_(cur_target, event_name, false);
+          TouchEventHandler::get_handlers_f_(cur_target, base_str_name, false);
       bool need_break = false;
       for (auto handler : handlers) {
         // Need to copy rather than ref because the handler may be a null
@@ -1245,7 +1247,7 @@ bool TouchEventHandler::HandleEventInternal(
     for (auto *cur_target : response_chain) {
       if (cur_target == nullptr) break;
       auto handlers =
-          TouchEventHandler::get_handlers_f_(cur_target, event_name, false);
+          TouchEventHandler::get_handlers_f_(cur_target, base_str_name, false);
       bool need_break = false;
       for (auto handler : handlers) {
         // Need to copy rather than ref because the handler may be a null
@@ -1907,7 +1909,7 @@ void TouchEventHandler::StartEventFire(TemplateAssembler *tasm, bool is_stop,
 
 FindEventHandler TouchEventHandler::find_event_f_ =
     [](const EventMap &event_map,
-       const std::string &event_name) -> EventHandler * {
+       const base::String &event_name) -> EventHandler * {
   auto it = event_map.find(event_name);
   if (it == event_map.end()) {
     return nullptr;
@@ -1926,7 +1928,7 @@ lepus::Value TouchEventHandler::StopPropagation(runtime::MTSRuntime *ctx,
 }
 
 GetEventHandlers TouchEventHandler::get_handlers_f_ =
-    [](Element *cur_target, const std::string &event_name,
+    [](Element *cur_target, const base::String &event_name,
        bool global_bind_event) -> base::InlineVector<EventHandler *, 4> {
   base::InlineVector<EventHandler *, 4> res;
   if (global_bind_event) {
@@ -1958,7 +1960,7 @@ GetEventHandlers TouchEventHandler::get_handlers_f_ =
 };
 
 PushGlobalBindOperation TouchEventHandler::push_global_bind_operation_f_ =
-    [](const std::string &event_name, Element *cur_target,
+    [](const base::String &event_name, Element *cur_target,
        Element *target) -> EventOpsVector {
   auto handlers =
       TouchEventHandler::get_handlers_f_(cur_target, event_name, true);
@@ -1974,7 +1976,7 @@ PushGlobalBindOperation TouchEventHandler::push_global_bind_operation_f_ =
 };
 
 GetGlobalBindOperations TouchEventHandler::get_global_bind_operations_f_ =
-    [](const std::string &event_name, Element *cur_target, Element *target,
+    [](const base::String &event_name, Element *cur_target, Element *target,
        const base::LinearFlatSet<std::string> &global_bind_targets)
     -> EventOpsVector {
   EventOpsVector res;

@@ -103,17 +103,17 @@ using ResponseChainVector = base::InlineVector<Element *, 16>;
 using EventOpsVector = base::InlineVector<EventOperation, 2>;
 
 typedef EventHandler *(*FindEventHandler)(const EventMap &map,
-                                          const std::string &event_name);
+                                          const base::String &event_name);
 
 typedef base::InlineVector<EventHandler *, 4> (*GetEventHandlers)(
-    Element *cur_target, const std::string &event_name, bool global_bind_event);
+    Element *cur_target, const base::String &event_name,
+    bool global_bind_event);
 
-typedef EventOpsVector (*PushGlobalBindOperation)(const std::string &event_name,
-                                                  Element *cur_target,
-                                                  Element *target);
+typedef EventOpsVector (*PushGlobalBindOperation)(
+    const base::String &event_name, Element *cur_target, Element *target);
 
 typedef EventOpsVector (*GetGlobalBindOperations)(
-    const std::string &event_name, Element *cur_target, Element *target,
+    const base::String &event_name, Element *cur_target, Element *target,
     const base::LinearFlatSet<std::string> &global_bind_targets);
 
 class TouchEventHandler {

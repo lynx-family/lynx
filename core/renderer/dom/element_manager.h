@@ -742,7 +742,7 @@ class ElementManager : public ElementContextDelegate,
                               const base::String &type, const int node_id);
 
   const base::LinearFlatSet<int32_t> &GetGlobalBindElementIds(
-      const std::string &name) const;
+      const base::String &name) const;
 
   void EraseGlobalBindElementId(const EventMap &global_event_map,
                                 const int node_id);
@@ -1344,7 +1344,7 @@ class ElementManager : public ElementContextDelegate,
       {BASE_STATIC_STRING(kElementPageTag), LayoutNodeType::COMMON},
       {BASE_STATIC_STRING(kElementWrapperElementTag), LayoutNodeType::COMMON},
       {BASE_STATIC_STRING(kElementNoneElementTag), LayoutNodeType::COMMON}};
-  base::LinearFlatMap<std::string, base::LinearFlatSet<int32_t>>
+  base::LinearFlatMap<base::String, base::LinearFlatSet<int32_t>>
       global_bind_name_to_ids_;
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_ =
       std::make_shared<lynx::tasm::PropBundleCreatorDefault>();
