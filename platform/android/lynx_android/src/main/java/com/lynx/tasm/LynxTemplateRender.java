@@ -1904,6 +1904,8 @@ public class LynxTemplateRender
     if (mNativePtr != 0) {
       updateMetaDataInternal(data, updatedGlobalProps);
     }
+    postRenderOrUpdateData(data);
+    postRenderOrUpdateData(updatedGlobalProps);
     onTraceEventEnd(TraceEventDef.TEMPLATE_RENDER_UPDATE_META_DATE);
   }
 
@@ -1964,10 +1966,13 @@ public class LynxTemplateRender
     if (data != null) {
       if (LynxEnv.inst().enableDataListFix()) {
         data.bindContext(mLynxContext);
-      } else {
-        // add to updatedList and recycle it manually at destroy period.
-        updatedDataList.add(data);
       }
+      // add to updatedList and recycle it manually at destroy period.
+      updatedDataList.add(data);
+      LLog.i(TAG,
+          "retain TemplateData for lifecycle, url=" + getTemplateUrl() + ", data=" + data
+              + ", listSize=" + updatedDataList.size()
+              + ", bindContextEnabled=" + LynxEnv.inst().enableDataListFix());
     }
   }
 
@@ -2644,7 +2649,7 @@ public class LynxTemplateRender
         mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
       }
       meta.byteBuffer = buffer;
-      renderWithLoadMeta(metaData, timingOption);
+      renderWithLoadMeta(meta, timingOption);
     }
 
     /**

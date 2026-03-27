@@ -209,8 +209,9 @@ void TasmMediator::TriggerLepusMethodAsync(const std::string& method_name,
     tasm_platform_invoker_->TriggerLepusMethodAsync(method_name, arguments);
     return;
   }
-  facade_actor_->Act([method_name, arguments](auto& facade) {
-    facade->TriggerLepusMethodAsync(method_name, arguments);
+  facade_actor_->Act([method_name, safe_arguments = lepus::Value::ShallowCopy(
+                                       arguments)](auto& facade) {
+    facade->TriggerLepusMethodAsync(method_name, safe_arguments);
   });
 }
 
