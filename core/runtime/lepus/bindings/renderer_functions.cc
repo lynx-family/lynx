@@ -3291,9 +3291,6 @@ RENDERER_FUNCTION_CC(FiberReplaceElements) {
   // ref node is nullptr means to append to the end
   auto* last_old_element =
       !removed_elements.empty() ? removed_elements.back().get() : nullptr;
-  auto* ref = last_old_element
-                  ? static_cast<FiberElement*>(last_old_element->next_sibling())
-                  : nullptr;
 
   EXEC_EXPR_FOR_INSPECTOR({
     for (const auto& child : removed_elements) {
@@ -3301,7 +3298,16 @@ RENDERER_FUNCTION_CC(FiberReplaceElements) {
     }
   });
 
-  parent->ReplaceElements(inserted_elements, removed_elements, ref);
+  if (!parent->is_block()) {
+    auto* ref =
+        last_old_element
+            ? static_cast<FiberElement*>(last_old_element->next_sibling())
+            : nullptr;
+    parent->ReplaceElements(inserted_elements, removed_elements, ref);
+  } else {
+    static_cast<BlockElement*>(parent)->ReplaceElements(inserted_elements,
+                                                        removed_elements);
+  }
 
   EXEC_EXPR_FOR_INSPECTOR({
     for (const auto& child : inserted_elements) {

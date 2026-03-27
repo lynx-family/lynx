@@ -611,6 +611,9 @@ class FiberElement : public Element,
   // TODO(linxs): to check if this APIs can be deleted
   void InsertNodeBeforeInternal(const fml::RefPtr<FiberElement>& child,
                                 FiberElement* ref_node);
+  void InsertNodeBeforeInternal(const fml::RefPtr<FiberElement>& child,
+                                FiberElement* ref_node,
+                                bool update_logical_children);
   void AddChildAt(fml::RefPtr<FiberElement> child, int index);
 
   virtual int32_t IndexOf(const Element* child) const override;
@@ -692,6 +695,7 @@ class FiberElement : public Element,
   }
 
   const auto& children() const { return scoped_children_; }
+  const auto& logical_children() const { return logical_children_; }
 
   Element* Sibling(int offset) const override;
   Element* render_parent() override { return render_parent_; }
@@ -970,6 +974,7 @@ class FiberElement : public Element,
  private:
   friend class WrapperElement;
   friend class ComponentElement;
+  friend class BlockElement;
 
   inline void MarkPlatformNodeDestroyed();
 
@@ -980,6 +985,11 @@ class FiberElement : public Element,
 
   void HandleContainerInsertion(FiberElement* parent, FiberElement* child,
                                 FiberElement* ref);
+  void InsertLogicalChildBefore(const fml::RefPtr<FiberElement>& child,
+                                FiberElement* ref_node);
+  void RemoveLogicalChild(const fml::RefPtr<FiberElement>& child);
+  void RemoveNodeInternal(const fml::RefPtr<FiberElement>& child, bool destroy,
+                          bool update_logical_children);
 
   bool IsInheritable(CSSPropertyID id) const;
 
