@@ -21,6 +21,7 @@ interface SettingsPageProps {
   setTheme: (theme: string) => void;
   withTheme: (className: string) => string;
   withNotchScreen: (className: string) => string;
+  safeAreaBottom: number;
 }
 
 export default function SettingsPage(props: SettingsPageProps) {
@@ -66,9 +67,19 @@ export default function SettingsPage(props: SettingsPageProps) {
     return <></>;
   }
 
+  const safeAreaTop = lynx.__globalProps.safeAreaTop || 0;
+  const navigatorHeight = 48 + props.safeAreaBottom;
+
   return (
-    <view clip-radius="true" className={withTheme('page')}>
-      <view className={withNotchScreen('page-header')}>
+    <view
+      clip-radius="true"
+      className={withTheme('page')}
+      style={{ height: `calc(100% - ${navigatorHeight}px)` }}
+    >
+      <view
+        className="page-header"
+        style={{ marginTop: `${Math.max(safeAreaTop, 10)}px` }}
+      >
         <text className={withTheme('title')}>Settings</text>
       </view>
 

@@ -20,6 +20,7 @@ interface NavigatorProps {
   withTheme: (className: string) => string;
   openHomePage: () => void;
   openSettingsPage: () => void;
+  safeAreaBottom: number;
 }
 
 type IconName = 'home' | 'settings';
@@ -62,7 +63,11 @@ export default function Navigator(props: NavigatorProps) {
   };
 
   return (
-    <view clip-radius="true" className={props.withTheme('navigator')}>
+    <view
+      clip-radius="true"
+      className={props.withTheme('navigator')}
+      style={{ paddingBottom: `${props.safeAreaBottom}px` }}
+    >
       <view
         className="button"
         bindtap={props.openHomePage}

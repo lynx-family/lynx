@@ -316,6 +316,27 @@ public class LynxViewShellActivity extends AppCompatActivity {
     globalProps.put("isNotchScreen", isNotchScreen());
     globalProps.put("screenWidth", displayMetrics.widthPixels / displayMetrics.density);
     globalProps.put("screenHeight", displayMetrics.heightPixels / displayMetrics.density);
+    // Pass safe area insets for notch and navigation bar
+    double safeAreaTop = 0;
+    double safeAreaBottom = 0;
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      DisplayCutout cutout = getWindow().getDecorView().getRootWindowInsets() != null
+          ? getWindow().getDecorView().getRootWindowInsets().getDisplayCutout()
+          : null;
+      if (cutout != null) {
+        safeAreaTop = cutout.getSafeInsetTop() / displayMetrics.density;
+      }
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      android.view.WindowInsets insets = getWindow().getDecorView().getRootWindowInsets();
+      if (insets != null) {
+        android.graphics.Insets navInsets =
+            insets.getInsets(android.view.WindowInsets.Type.navigationBars());
+        safeAreaBottom = navInsets.bottom / displayMetrics.density;
+      }
+    }
+    globalProps.put("safeAreaTop", safeAreaTop);
+    globalProps.put("safeAreaBottom", safeAreaBottom);
 
     String theme = "Light";
     if ((context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)

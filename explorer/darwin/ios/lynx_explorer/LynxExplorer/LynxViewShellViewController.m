@@ -165,6 +165,15 @@ NSString *const kBackButtonImageDark = @"back_dark";
   [globalProps updateBool:[self isNotchScreen] forKey:@"isNotchScreen"];
   [globalProps updateDouble:screenHeight forKey:@"screenHeight"];
   [globalProps updateDouble:screenWidth forKey:@"screenWidth"];
+  if (@available(iOS 11.0, *)) {
+    UIWindow *window = UIApplication.sharedApplication.keyWindow;
+    UIEdgeInsets safeAreaInsets = window.safeAreaInsets;
+    [globalProps updateDouble:safeAreaInsets.top forKey:@"safeAreaTop"];
+    [globalProps updateDouble:safeAreaInsets.bottom forKey:@"safeAreaBottom"];
+  } else {
+    [globalProps updateDouble:0 forKey:@"safeAreaTop"];
+    [globalProps updateDouble:0 forKey:@"safeAreaBottom"];
+  }
   NSString *theme = @"Light";
   if ([UIScreen mainScreen].traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
     theme = @"Dark";

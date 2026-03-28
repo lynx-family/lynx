@@ -5,7 +5,6 @@
 @mixin navigator {
   display: flex;
   margin-top: auto;
-  height: 48px;
 }
 .navigator__light {
   @include navigator;
@@ -20,6 +19,7 @@
 }
 .button {
   flex-grow: 1;
+  height: 48px;
   align-items: center;
   justify-content: center;
 }
