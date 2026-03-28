@@ -11,10 +11,10 @@ def add_lynx_tools_path():
     project_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
     lynx_tools_path = os.path.join(project_root, "tools")
     sys.path.append(lynx_tools_path)
-# Add lynx tools path to import pnpm_helper
+# Add lynx tools path to import bun_helper
 add_lynx_tools_path()
-# Import pnpm_helper from js_tools
-from js_tools.pnpm_helper import run_pnpm_command
+# Import bun helper from js_tools
+from js_tools.bun_helper import run_bun_command
 def main():
     # Get the directory where the current script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,10 +24,10 @@ def main():
     
     print(f"Project root: {project_root}")
     
-    # Execute pnpm install command using pnpm_helper
-    print(f"Running pnpm install in {script_dir}")
-    pnpm_args = ['pnpm', 'install', '--ignore-workspace']
-    run_pnpm_command(pnpm_args, script_dir)
+    # Install dependencies with Bun
+    print(f"Running bun install in {script_dir}")
+    bun_args = ["bun", "install", "--frozen-lockfile"]
+    run_bun_command(bun_args, script_dir)
     
     # Move the weak-node-api package to the current directory
     source_dir = os.path.join(script_dir, "node_modules", "@lynx-js", "weak-node-api")
@@ -69,7 +69,7 @@ def main():
     # Output some content according to BUILD.gn requirements
     # BUILD.gn uses "list lines", so we need to output some lines
     # Here we can output files/directories under node_modules or just a success message
-    return ["pnpm_install_success", "weak_node_api_moved"]
+    return ["bun_install_success", "weak_node_api_moved"]
 if __name__ == "__main__":
     outputs = main()
     for output in outputs:

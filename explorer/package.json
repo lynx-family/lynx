@@ -3,8 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build:homepage": "pnpm --filter homepage build",
-    "build:showcase": "pnpm --filter showcase build",
-    "build": "pnpm run build:homepage && pnpm run build:showcase"
+    "build:homepage": "bun run --filter homepage build",
+    "build:showcase": "bun run --filter showcase build",
+    "build": "bun run build:homepage && bun run build:showcase"
   }
 }

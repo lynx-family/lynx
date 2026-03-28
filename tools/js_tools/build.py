@@ -8,7 +8,7 @@ import sys
 import argparse
 import shutil
 
-from pnpm_helper import get_pnpm_env, run_pnpm_command
+from bun_helper import get_bun_env, run_bun_command
 
 # Set the root path and output path
 rootPath = os.path.abspath(
@@ -33,19 +33,19 @@ def build(platform, releaseOutput, devOutput, version):
         # Change to the root directory
         os.chdir(rootPath)
 
-        # Run pnpm build for @lynx-js/runtime-shared
-        run_pnpm_command(
-            ['pnpm', '--filter', '@lynx-js/runtime-shared', 'build'],
-            os.getcwd())
+        run_bun_command(
+            ["bun", "run", "--filter", "@lynx-js/runtime-shared", "build"], os.getcwd()
+        )
 
         # Bundle lynx_core.js and lynx_core_dev.js
-        env = get_pnpm_env()
-        env['NODE_OPTIONS'] = '--max-old-space-size=8192'
+        env = get_bun_env()
         if version:
             env['version'] = version
-        run_pnpm_command(
-            ['pnpm', '--filter', f'@lynx-js/lynx-core', f'build:{platform}'],
-            os.getcwd(), env)
+        run_bun_command(
+            ["bun", "run", "--filter", "@lynx-js/lynx-core", f"build:{platform}"],
+            os.getcwd(),
+            env,
+        )
 
         # Copy lynx_core.js if releaseOutput is provided
         if releaseOutput:

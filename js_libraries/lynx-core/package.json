@@ -7,10 +7,10 @@
   "types": "./dist/typings/",
   "source": "src/index.ts",
   "scripts": {
-    "build:ios": "cross-env  TARGET=ios npm run build",
-    "build:android": "cross-env TARGET=android npm run build",
-    "build:web": "cross-env TARGET=web npm run build",
-    "build": "node esbuild.mjs",
+    "build:ios": "cross-env  TARGET=ios bun run build",
+    "build:android": "cross-env TARGET=android bun run build",
+    "build:web": "cross-env TARGET=web bun run build",
+    "build": "bun esbuild.mjs",
     "build:lib": "tsc",
     "format": "prettier -w src"
   },

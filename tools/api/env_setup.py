@@ -47,11 +47,9 @@ with open(API_CONFIG_PATH, "r") as f:
 
     HANDLE_FAILED_INSTRUCTION = API_CONFIG["path"]["instruction_doc"]
 
-    NODE_PATH = os.path.normpath(
-        os.path.join(LYNX_ROOT_PATH, API_CONFIG["path"]["node"])
-    )
-    if not os.path.exists(NODE_PATH):
-        NODE_PATH = os.path.join(LYNX_ROOT_PATH, os.pardir, API_CONFIG["path"]["node"])
+    BUN_PATH = os.path.normpath(os.path.join(LYNX_ROOT_PATH, API_CONFIG["path"]["bun"]))
+    if not os.path.exists(BUN_PATH):
+        BUN_PATH = os.path.join(LYNX_ROOT_PATH, os.pardir, API_CONFIG["path"]["bun"])
 
     CLANG_FORMAT_PATH = os.path.normpath(
         os.path.join(LYNX_ROOT_PATH, API_CONFIG["path"]["llvm"], "bin", "clang-format")

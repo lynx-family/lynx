@@ -58,7 +58,7 @@ try:
     print(f"Current directory before homepage build: {os.getcwd()}")
     
     # Build home page card with explicit working directory
-    subprocess.check_call(['bash', '-c', 'pnpm install --no-frozen-lockfile && pnpm run build'], cwd=homepage_dir)
+    subprocess.check_call(['bash', '-c', 'bun install && bun run build'], cwd=homepage_dir)
     print("Homepage built successfully")
     
     # Verify bundle source exists before copying

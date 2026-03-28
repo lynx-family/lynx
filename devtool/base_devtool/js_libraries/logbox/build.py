@@ -14,7 +14,7 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..', '..'))
 
 sys.path.append(root_path)
-from tools.js_tools.pnpm_helper import get_pnpm_env, run_pnpm_command
+from tools.js_tools.bun_helper import get_bun_env, run_bun_command
 
 # Define the distribution path
 dist_path = os.path.join(current_dir, 'dist')
@@ -40,18 +40,14 @@ def git_root_dir():
     return result.decode('utf-8').strip()
 
 def build():
-    env = get_pnpm_env()
-    env['COREPACK_HOME'] = os.path.join(git_root_dir(), 'buildtools', 'corepack')
-    env['COREPACK_ENABLE_NETWORK'] = '0'
+    env = get_bun_env()
     # Change to the root directory
     os.chdir(root_path)
 
     # Create the distribution directory if it doesn't exist
     os.makedirs(dist_path, exist_ok=True)
 
-    # Run the pnpm build command
-    run_pnpm_command(['pnpm', '--filter', '@lynx-dev/logbox', 'build'],
-                     root_path, env)
+    run_bun_command(["bun", "run", "--filter", "@lynx-dev/logbox", "build"], root_path, env)
 
     if output and os.path.exists(output):
         target_paths.append(output)
