@@ -628,6 +628,10 @@ bool LynxEnv::FixNewFixedRemovalBug() {
   return GetBoolEnv(Key::FIX_NEW_FIXED_REMOVAL_BUG, true);
 }
 
+bool LynxEnv::FixOldFixedInsertSelfUseRenderParent() {
+  return GetBoolEnv(Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT, false);
+}
+
 bool LynxEnv::FixAnimationForwardDynamicUpdateOverwrite() {
   return GetBoolEnv(Key::FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE, true);
 }

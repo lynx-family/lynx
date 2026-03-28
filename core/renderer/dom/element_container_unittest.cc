@@ -907,6 +907,148 @@ TEST_F(ElementContainerTest, OldFixedZIndexSwitchCase) {
               page_container);
 }
 
+TEST_F(ElementContainerTest,
+       OldFixedLayoutOnlySiblingShouldNotAffectFollowingFixedUIIndex) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(true);
+  config->SetEnableFixedNew(false);
+  config->SetEnableUnifyFixedBehavior(false);
+  manager->SetConfig(config);
+
+  manager->fix_old_fixed_insert_self_use_render_parent_ = true;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetRoot(page.get());
+  manager->SetRootOnLayout(page->impl_id());
+
+  // condition 1: add a zIndex child，to make the ‘should_skip_index_calculation
+  // = (!real_parent->element_container_impl()->has_z_child()) && !ref;’ to
+  // return false
+  auto z_child = manager->CreateFiberView();
+  z_child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  page->InsertNode(z_child);
+  page->FlushActionsAsRoot();
+
+  page->RemoveNode(z_child);
+
+  auto first_wrapper = manager->CreateFiberView();
+  first_wrapper->MarkCanBeLayoutOnly(false);
+  page->InsertNode(first_wrapper);
+
+  auto fixed_layout_only = manager->CreateFiberView();
+  fixed_layout_only->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                              lepus::Value("fixed"));
+  fixed_layout_only->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                              lepus::Value("visible"));
+  first_wrapper->InsertNode(fixed_layout_only);
+
+  auto second_wrapper = manager->CreateFiberView();
+  second_wrapper->MarkCanBeLayoutOnly(false);
+  page->InsertNode(second_wrapper);
+
+  page->FlushActionsAsRoot();
+
+  // condition 2: make the fixed_layout_only node TransitionToNativeView
+  fixed_layout_only->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                              lepus::Value("red"));
+  page->FlushActionsAsRoot();
+
+  auto fixed_dialog = manager->CreateFiberView();
+  fixed_dialog->MarkCanBeLayoutOnly(false);
+  fixed_dialog->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                         lepus::Value("fixed"));
+  second_wrapper->InsertNode(fixed_dialog);
+
+  // If you need to verify the buggy path more directly, mock
+  // MockPaintingContext::InsertPaintingNode here and assert that
+  // `fixed_dialog` is inserted with UI index 2 instead of counting the
+  // preceding layout-only fixed node as a native child.
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(fixed_layout_only->is_fixed());
+  EXPECT_FALSE(fixed_layout_only->IsLayoutOnly());
+  EXPECT_TRUE(fixed_dialog->is_fixed());
+  EXPECT_FALSE(fixed_dialog->IsLayoutOnly());
+
+  auto* painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  auto page_painting_children = page_painting_node->children_;
+
+  ASSERT_EQ(page_painting_children.size(), static_cast<size_t>(4));
+}
+
+TEST_F(ElementContainerTest, NewFixedDoesNotHitLayoutOnlyTransitionPath) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(true);
+  config->SetEnableFixedNew(true);
+  config->SetEnableUnifyFixedBehavior(false);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetRoot(page.get());
+  manager->SetRootOnLayout(page->impl_id());
+
+  auto first_wrapper = manager->CreateFiberView();
+  first_wrapper->MarkCanBeLayoutOnly(false);
+  page->InsertNode(first_wrapper);
+
+  auto fixed_a = manager->CreateFiberView();
+  fixed_a->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("fixed"));
+  fixed_a->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                    lepus::Value("visible"));
+  first_wrapper->InsertNode(fixed_a);
+
+  auto second_wrapper = manager->CreateFiberView();
+  second_wrapper->MarkCanBeLayoutOnly(false);
+  page->InsertNode(second_wrapper);
+
+  page->FlushActionsAsRoot();
+
+  auto* page_container = page->element_container_impl();
+  ASSERT_TRUE(page_container != nullptr);
+
+  EXPECT_TRUE(fixed_a->is_fixed());
+  EXPECT_FALSE(fixed_a->IsLayoutOnly());
+  EXPECT_EQ(fixed_a->element_container_impl()->parent(), page_container);
+
+  // Under new fixed, the fixed node should already be native after the first
+  // flush. Updating a non-layout-only style should not trigger the old
+  // layout-only transition path.
+  fixed_a->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                    lepus::Value("red"));
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(fixed_a->IsLayoutOnly());
+  EXPECT_EQ(fixed_a->element_container_impl()->parent(), page_container);
+
+  auto fixed_b = manager->CreateFiberView();
+  fixed_b->MarkCanBeLayoutOnly(false);
+  fixed_b->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("fixed"));
+  second_wrapper->InsertNode(fixed_b);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(fixed_b->is_fixed());
+  EXPECT_FALSE(fixed_b->IsLayoutOnly());
+  EXPECT_EQ(fixed_b->element_container_impl()->parent(), page_container);
+
+  auto* painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  auto page_painting_children = page_painting_node->children_;
+
+  ASSERT_EQ(page_painting_children.size(), static_cast<size_t>(4));
+  EXPECT_EQ(page_painting_children[0]->id_, first_wrapper->impl_id());
+  EXPECT_EQ(page_painting_children[1]->id_, second_wrapper->impl_id());
+  EXPECT_EQ(page_painting_children[2]->id_, fixed_a->impl_id());
+  EXPECT_EQ(page_painting_children[3]->id_, fixed_b->impl_id());
+}
+
 TEST_F(ElementContainerTest, StackingContextDirtyChangeCase) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);

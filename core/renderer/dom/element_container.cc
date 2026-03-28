@@ -220,9 +220,20 @@ void ElementContainer::RemoveSelf(bool destroy) {
 
 void ElementContainer::InsertSelf() {
   if (!parent() && element()->parent()) {
-    element()
-        ->parent()
-        ->element_container_impl()
+    Element* insertion_parent = element()->parent();
+    if (element()->is_fixed() && !element()->IsFixedNewOrUnified() &&
+        element_manager()->FixOldFixedInsertSelfUseRenderParent() &&
+        element()->render_parent() != nullptr) {
+      // For old fixed, the logical parent can differ from the UI parent.
+      // When a layout-only fixed node transitions to a native view, it should
+      // be re-inserted according to the render tree, otherwise it may be
+      // attached back to its logical wrapper instead of the page root.
+      // Note that old fixed is only a temporary compatibility state. Business
+      // should migrate to the new fixed behavior as soon as possible instead of
+      // relying on old fixed + layout-only transition semantics long-term.
+      insertion_parent = element()->render_parent();
+    }
+    insertion_parent->element_container_impl()
         ->InsertElementContainerAccordingToElement(
             element(), element()->next_render_sibling());
   }

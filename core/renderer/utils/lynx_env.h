@@ -119,6 +119,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_LIST_CALLBACK_LEAK_BUG,
     // FIXME(zhouzhitao): remove this config in the next version(remove in 3.9)
     FIX_NEW_FIXED_REMOVAL_BUG,
+    FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT,
     ENABLE_GLOBAL_FONT_COLLECTION,
     ENABLE_GC_ONCE_ON_IDLE,
     ENABLE_CSS_INLINE_VARIABLES,
@@ -304,6 +305,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_JS_CALL_TIMEOUT_GUARD, "enable_js_call_timeout_guard"},
             {Key::JS_CALL_TIMEOUT_MS, "js_call_timeout_ms"},
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
+            {Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT,
+             "fix_old_fixed_insert_self_use_render_parent"},
             {Key::FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE,
              "fix_animation_forward_dynamic_update_overwrite"},
         });
@@ -469,6 +472,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixDynamicUpdateTransitionConsumeBug();
   bool EnableFetchAPIStreamingStandard();
   bool FixNewFixedRemovalBug();
+  bool FixOldFixedInsertSelfUseRenderParent();
   bool FixAnimationForwardDynamicUpdateOverwrite();
 
   LynxEnv(const LynxEnv&) = delete;
