@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <DebugRouter/DebugRouter.h>
-#import <objc/runtime.h>
 
 #import "AppDelegate+DebugRouter.h"
 #import "DemoTemplateResourceFetcher.h"
@@ -14,8 +13,6 @@ NSString *const DEBUG_ROUTER_APP_CLOSE_PAGE = @"App.closePage";
 
 static NSInteger const kDebugRouterAppActionSuccessCode = 0;
 static NSInteger const kDebugRouterAppActionFailedCode = -1;
-static const void *kAppOpenPageMessageHandlerKey = &kAppOpenPageMessageHandlerKey;
-static const void *kAppClosePageMessageHandlerKey = &kAppClosePageMessageHandlerKey;
 
 static NSMutableDictionary<NSString *, id> *LynxExplorerDebugRouterResponse(NSInteger code,
                                                                             NSString *message) {
@@ -113,10 +110,6 @@ static void LynxExplorerRunOnMainThreadSync(dispatch_block_t block) {
       [[LynxExplorerOpenPageMessageHandler alloc] initWithAppDelegate:self];
   id<DebugRouterMessageHandler> closePageHandler =
       [[LynxExplorerClosePageMessageHandler alloc] initWithAppDelegate:self];
-  objc_setAssociatedObject(self, kAppOpenPageMessageHandlerKey, openPageHandler,
-                           OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-  objc_setAssociatedObject(self, kAppClosePageMessageHandlerKey, closePageHandler,
-                           OBJC_ASSOCIATION_RETAIN_NONATOMIC);
   [[DebugRouter instance] addMessageHandler:openPageHandler];
   [[DebugRouter instance] addMessageHandler:closePageHandler];
 }
