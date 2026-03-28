@@ -29,9 +29,14 @@ NSString *const HOMEPAGE_URL =
   [self.window makeKeyAndVisible];
   [self registerDebugRouterMessageHandlers];
 
+  __weak __typeof__(self) weakSelf = self;
   [LynxDebugger setOpenCardCallback:^(NSString *url) {
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self openCard:url];
+      __strong __typeof__(weakSelf) strongSelf = weakSelf;
+      if (!strongSelf) {
+        return;
+      }
+      [strongSelf openCard:url];
     });
   }];
 
