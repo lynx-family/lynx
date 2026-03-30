@@ -21,7 +21,9 @@ namespace lynx {
 namespace tasm {
 
 BaseElementContainer::BaseElementContainer(Element* element)
-    : element_(element), manager_(element->element_manager()) {}
+    : element_(element), manager_(element->element_manager()) {
+  id_ = element_ ? element_->impl_id() : -1;
+}
 
 BaseElementContainer::~BaseElementContainer() {}
 
@@ -33,7 +35,7 @@ PaintingContext* BaseElementContainer::painting_context() const {
   return element_manager()->painting_context();
 }
 
-int BaseElementContainer::id() const { return element()->impl_id(); }
+int BaseElementContainer::id() const { return id_; }
 
 bool BaseElementContainer::CheckFlatten(
     base::MoveOnlyClosure<bool, bool> func) {
