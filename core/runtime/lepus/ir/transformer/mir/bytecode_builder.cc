@@ -438,8 +438,15 @@ class BytecodeBuilderImpl {
     auto loc = iterator().GetCurrentLineCol();
 
     if (type == 0 || type == 1) {
-      BindRegister(dst_reg, builder()->Create<LoadNullOrUndefinedInst>(
-                                loc, builder()->GetLiteralInt8(type)));
+      if (ir_ctx_->GetVMContext()->GetNullPropAsUndef() == false) {
+        // if GetNullPropAsUndef() is false, lepus vm treats undefined as null.
+        // we use null instead.
+        BindRegister(dst_reg, builder()->Create<LoadNullOrUndefinedInst>(
+                                  loc, builder()->GetLiteralInt8(0)));
+      } else {
+        BindRegister(dst_reg, builder()->Create<LoadNullOrUndefinedInst>(
+                                  loc, builder()->GetLiteralInt8(type)));
+      }
     } else if (type == 2) {
       BindRegister(dst_reg, builder()->Create<LoadToplevelVarsInst>(loc));
     } else if (type == 3) {

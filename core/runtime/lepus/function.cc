@@ -42,6 +42,11 @@ std::size_t Function::AddConstValue(const Value& v) {
   return const_size_ - 1;
 }
 
+void Function::ResetConstValues(base::InlineVector<Value, 8>&& values) {
+  const_values_.swap(values);
+  const_size_ = const_values_.size();
+}
+
 void Function::DecodeLineCol(uint64_t line_col, int32_t& line, int32_t& col) {
   // line_col: bits[Function::kLineBitsShift-0]: col number
   // bits[63-Function::kLineBitsShift]: line number

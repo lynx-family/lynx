@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/builtin.h"
 #include "core/runtime/lepus/code_generator.h"
 #include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
@@ -12,7 +13,9 @@
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/module_op.h"
 #include "core/runtime/lepus/ir/op_builder.h"
+#include "core/runtime/lepus/ir/pass_manager/pass_manager.h"
 #include "core/runtime/lepus/ir/pass_manager/pipeline.h"
+#include "core/runtime/lepus/ir/target_context.h"
 #include "core/runtime/lepus/ir/transformer/mir/type_specification.h"
 #include "core/runtime/lepus/parser.h"
 #include "core/runtime/lepus/scanner.h"
@@ -45,6 +48,8 @@ static void RegisterBuiltinForTest(lepus::VMContext* context) {
                                  &EmptyFunc);
   lepus::RegisterBuiltinFunction(context, constants::kDecodeURIComponent,
                                  &EmptyFunc);
+
+  lepus::RegisterCFunction(context, tasm::kCFunctionSetStyleObject, &EmptyFunc);
 
   // Register RegExp to prevent crash
   lepus::RegisterCFunction(context, "RegExp", &EmptyFunc);
@@ -82,7 +87,37 @@ static ModuleOp* CompileToIRWithOptimization(lepus::VMContext* context,
   // Run IR optimization
   ir_ctx->Init(root_func, context);
   auto mod = ir_ctx->GetMainMod();
-  RunO1OptimizationPasses(*mod);
+
+  // For type-specification unit tests, we only need MIR-level passes.
+  // Target-level passes (regalloc / isel) may rewrite instruction forms and
+  // are not required for validating type inference correctness.
+  PassManager pm(ir_ctx);
+  pm.SetMode(StageMode::SM_MIR);
+  pm.AddCollectToplevelClosureRegPass();
+  pm.AddConstructSSAIRPass();
+  pm.AddNormalizePhiPass();
+
+  pm.AddProcessSpecialMovPass();
+  pm.AddGetToplevelRelatedInstEliminationPass();
+
+  pm.AddSSAIRVerifyPass();
+  pm.AddChangeSpecialAttributePass();
+  pm.AddTypeSpecificationPass();
+  pm.AddNormalizePhiPass();
+
+  pm.AddSimplifyCFG();
+  pm.AddInstCombinePass();
+  pm.AddSimplifyCFG();
+  pm.AddDCE();
+  pm.AddCSE();
+  pm.AddLoadStoreElimination();
+  pm.AddDCE();
+  pm.AddInstCombinePass();
+  pm.AddLoadStoreElimination();
+  pm.AddSimplifyCFG();
+  pm.AddInstCombinePass();
+  pm.AddDCE();
+  pm.Run(mod);
 
   return mod;
 }
@@ -180,6 +215,191 @@ TEST(LEPUSIRTypeSpecificationIR, StringLengthOptimization) {
   delete context;
 }
 
+TEST(LEPUSIRTypeSpecificationMIR,
+     StringLengthConstKeyRewritesToGetStringLength) {
+  // Regression: TypeSpecification must handle GetTableConstStringKeyInst for
+  // string proto property (e.g. "length"). Previously it only handled
+  // GetTableInst and could miss the optimization or crash later.
+
+  auto ir_ctx = std::make_unique<IRContext>(nullptr);
+  std::unique_ptr<TargetContext> target_ctx = std::make_unique<TargetContext>();
+  ir_ctx->SetTargetContext(target_ctx);
+
+  ModuleOp* mod = ir_ctx->GetMainMod();
+  ASSERT_NE(nullptr, mod);
+
+  OpBuilder* builder = ir_ctx->GetOpBuilder();
+  ASSERT_NE(nullptr, builder);
+  builder->SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_string_length_const_key";
+  auto* func = builder->Create<FuncOp>(0, name);
+  ASSERT_NE(nullptr, func);
+
+  auto lepus_func = lepus::Function::Create();
+  func->Init(lepus_func);
+
+  auto* entry =
+      builder->CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  ASSERT_NE(nullptr, entry);
+  builder->SetInsertionPointToEnd(entry);
+
+  const uint32_t str_idx =
+      static_cast<uint32_t>(lepus_func->AddConstString("hello"));
+  const uint32_t len_idx = static_cast<uint32_t>(
+      lepus_func->AddConstString(constants::kStringLength));
+
+  auto* str = builder->Create<LoadConstInst>(
+      0, builder->GetLiteralUint32(str_idx), TypeOp::CreateString(builder));
+  auto* get_len = builder->Create<GetTableConstStringKeyInst>(
+      0, str, builder->GetLiteralUint32(len_idx),
+      TypeOp::CreateAnyType(builder));
+  builder->Create<ReturnInst>(0, get_len);
+
+  TypeSpecification pass(ir_ctx.get());
+  ASSERT_TRUE(pass.RunOnFunction(func));
+
+  EXPECT_EQ(CountInstructions<GetStringLengthInst>(func), 1);
+  EXPECT_EQ(CountInstructions<GetTableConstStringKeyInst>(func), 0);
+}
+
+TEST(LEPUSIRTypeSpecificationMIR,
+     StringProtoCallWithConstKeyIsTypedAndDoesNotThrow) {
+  // Regression: when the string proto callee is represented as
+  // GetTableConstStringKeyInst, TypeSpecification must not throw and must set
+  // the CallInst return type.
+
+  auto ir_ctx = std::make_unique<IRContext>(nullptr);
+  std::unique_ptr<TargetContext> target_ctx = std::make_unique<TargetContext>();
+  ir_ctx->SetTargetContext(target_ctx);
+
+  ModuleOp* mod = ir_ctx->GetMainMod();
+  ASSERT_NE(nullptr, mod);
+
+  OpBuilder* builder = ir_ctx->GetOpBuilder();
+  ASSERT_NE(nullptr, builder);
+  builder->SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_string_proto_call_const_key";
+  auto* func = builder->Create<FuncOp>(0, name);
+  ASSERT_NE(nullptr, func);
+
+  auto lepus_func = lepus::Function::Create();
+  func->Init(lepus_func);
+
+  auto* entry =
+      builder->CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  ASSERT_NE(nullptr, entry);
+  builder->SetInsertionPointToEnd(entry);
+
+  const uint32_t str_idx =
+      static_cast<uint32_t>(lepus_func->AddConstString("hello"));
+  const uint32_t char_at_idx = static_cast<uint32_t>(
+      lepus_func->AddConstString(constants::kStringCharAt));
+
+  auto* str = builder->Create<LoadConstInst>(
+      0, builder->GetLiteralUint32(str_idx), TypeOp::CreateString(builder));
+  auto* get_char_at = builder->Create<GetTableConstStringKeyInst>(
+      0, str, builder->GetLiteralUint32(char_at_idx),
+      TypeOp::CreateAnyType(builder));
+
+  ArgList args;
+  args.push_back(builder->GetLiteralInt32(0));
+  auto* call = builder->Create<CallInst>(0, get_char_at, args);
+  builder->Create<ReturnInst>(0, call);
+
+  TypeSpecification pass(ir_ctx.get());
+  ASSERT_TRUE(pass.RunOnFunction(func));
+
+  EXPECT_TRUE(get_char_at->GetType()->IsStringProtoAPIType());
+  ASSERT_NE(call->GetType(), nullptr);
+  EXPECT_EQ(call->GetType()->GetTypeKind(), TypeOp::TypeKind::String);
+}
+
+TEST(LEPUSIRTypeSpecificationMIR,
+     PrototypeCallTypeFallbackOnAnyReceiverIsStable) {
+  // Regression: when receiver type is Any, SetPrototypeCallType should still
+  // assign stable return types based on prototype method name.
+
+  auto ir_ctx = std::make_unique<IRContext>(nullptr);
+  std::unique_ptr<TargetContext> target_ctx = std::make_unique<TargetContext>();
+  ir_ctx->SetTargetContext(target_ctx);
+
+  ModuleOp* mod = ir_ctx->GetMainMod();
+  ASSERT_NE(nullptr, mod);
+
+  OpBuilder* builder = ir_ctx->GetOpBuilder();
+  ASSERT_NE(nullptr, builder);
+  builder->SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_proto_fallback_any_receiver";
+  auto* func = builder->Create<FuncOp>(0, name);
+  ASSERT_NE(nullptr, func);
+
+  auto lepus_func = lepus::Function::Create();
+  func->Init(lepus_func);
+
+  auto* entry =
+      builder->CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  ASSERT_NE(nullptr, entry);
+  builder->SetInsertionPointToEnd(entry);
+
+  const uint32_t recv_idx =
+      static_cast<uint32_t>(lepus_func->AddConstString("opaque"));
+  const uint32_t join_idx =
+      static_cast<uint32_t>(lepus_func->AddConstString(constants::kArrayJoin));
+  const uint32_t tofixed_idx = static_cast<uint32_t>(
+      lepus_func->AddConstString(constants::kNumberToFixed));
+  const uint32_t test_idx =
+      static_cast<uint32_t>(lepus_func->AddConstString(constants::kRegExpTest));
+
+  // Receiver typed as Any (even though the const value is a string).
+  auto* recv_any = builder->Create<LoadConstInst>(
+      0, builder->GetLiteralUint32(recv_idx), TypeOp::CreateAnyType(builder));
+
+  auto* get_join = builder->Create<GetTableConstStringKeyInst>(
+      0, recv_any, builder->GetLiteralUint32(join_idx),
+      TypeOp::CreateAnyType(builder));
+  ArgList join_args;
+  join_args.push_back(builder->GetLiteralInt32(0));
+  auto* call_join = builder->Create<CallInst>(0, get_join, join_args);
+
+  auto* get_tofixed = builder->Create<GetTableConstStringKeyInst>(
+      0, recv_any, builder->GetLiteralUint32(tofixed_idx),
+      TypeOp::CreateAnyType(builder));
+  ArgList tofixed_args;
+  tofixed_args.push_back(builder->GetLiteralInt32(2));
+  auto* call_tofixed = builder->Create<CallInst>(0, get_tofixed, tofixed_args);
+
+  auto* get_test = builder->Create<GetTableConstStringKeyInst>(
+      0, recv_any, builder->GetLiteralUint32(test_idx),
+      TypeOp::CreateAnyType(builder));
+  ArgList test_args;
+  test_args.push_back(builder->GetLiteralInt32(0));
+  auto* call_test = builder->Create<CallInst>(0, get_test, test_args);
+
+  // Keep calls alive.
+  builder->Create<ReturnInst>(0, call_test);
+
+  TypeSpecification pass(ir_ctx.get());
+  ASSERT_TRUE(pass.RunOnFunction(func));
+
+  EXPECT_EQ(call_join->GetType()->GetTypeKind(), TypeOp::TypeKind::String);
+  EXPECT_EQ(call_join->GetBuiltinFuncName(),
+            std::string(TypeOp::RetKindStr(TypeOp::Array)) + "." +
+                constants::kArrayJoin);
+
+  EXPECT_EQ(call_tofixed->GetType()->GetTypeKind(), TypeOp::TypeKind::String);
+  EXPECT_EQ(call_tofixed->GetBuiltinFuncName(),
+            std::string(TypeOp::RetKindStr(TypeOp::Number)) + "." +
+                constants::kNumberToFixed);
+
+  EXPECT_EQ(call_test->GetType()->GetTypeKind(), TypeOp::TypeKind::Boolean);
+  EXPECT_EQ(call_test->GetBuiltinFuncName(),
+            std::string(TypeOp::RetKindStr(TypeOp::RegExp)) + "." +
+                constants::kRegExpTest);
+}
+
 // Test that String.split CallInst has Array return type
 TEST(LEPUSIRTypeSpecificationIR, StringSplitReturnType) {
   lepus::VMContext* context = new lepus::VMContext();
@@ -207,6 +427,46 @@ TEST(LEPUSIRTypeSpecificationIR, StringSplitReturnType) {
   bool found = HasCallInstWithType(main_func, TypeOp::TypeKind::Array);
   EXPECT_TRUE(found) << "Expected CallInst with Array return type for split";
 
+  delete context;
+}
+
+TEST(LEPUSIRTypeSpecificationIR, SetStyleObjectBuiltinNameAnnotation) {
+  lepus::VMContext* context = new lepus::VMContext();
+  context->Initialize();
+  RegisterBuiltinForTest(context);
+  context->SetClosureFix(true);
+
+  std::string source = R"(
+    function test(el) {
+      __SetStyleObject(el, [1, 2]);
+    }
+  )";
+
+  auto ir_ctx = std::make_unique<IRContext>(context);
+  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  ASSERT_NE(nullptr, mod);
+
+  FuncOp* target_func = nullptr;
+  for (auto* func : *mod) {
+    if (FindFirstInstruction<CallInst>(func) != nullptr) {
+      target_func = func;
+      break;
+    }
+  }
+  ASSERT_NE(nullptr, target_func);
+
+  bool found = false;
+  for (auto& block : *target_func) {
+    for (auto& inst : block) {
+      auto* call_inst = llvh::dyn_cast<CallInst>(&inst);
+      if (!call_inst) continue;
+      if (call_inst->GetBuiltinFuncName() == tasm::kCFunctionSetStyleObject) {
+        found = true;
+      }
+    }
+  }
+
+  EXPECT_TRUE(found);
   delete context;
 }
 
@@ -828,19 +1088,30 @@ TEST(LEPUSIRTypeSpecificationIR, PrototypeCallTypeInference) {
 
   std::string source = R"(
     // Array
+    let t = Date.now();
+    let sep = "" + (t & 3);
+    let v = (t & 1);
     let arr = [1, 2, 3];
     let newArr = arr.map(print);
-    let joined = arr.join(",");
-    let has = arr.includes(1);
-    let size = arr.push(4);
+    let joined = arr.join(sep);
+    let has = arr.includes(v);
+    let size = arr.push(v);
     
     // Number
     let num = 123.456;
-    let fixed = num.toFixed(2);
+    let fixed = num.toFixed(v + 1);
     
     // RegExp
     let reg = /abc/;
-    let tested = reg.test("abc");
+    let tested = reg.test(sep);
+
+    // Keep values alive so calls aren't removed by DCE.
+    Assert(newArr);
+    Assert(joined);
+    Assert(has);
+    Assert(size);
+    Assert(fixed);
+    Assert(tested);
   )";
 
   auto ir_ctx = std::make_unique<IRContext>(context);
@@ -865,39 +1136,51 @@ TEST(LEPUSIRTypeSpecificationIR, PrototypeCallTypeInference) {
     for (auto& inst : block) {
       if (auto* call_inst = llvh::dyn_cast<CallInst>(&inst)) {
         Value* callee = call_inst->GetFunction();
+        auto lepus_func = main_func->GetLepusFunction();
+        if (!lepus_func) continue;
+
+        // Prototype calls may be represented as:
+        // - GetTableInst + LoadConstInst(prop)
+        // - GetTableConstStringKeyInst(const_index)
+        uint32_t const_idx = 0;
+        bool has_const_idx = false;
         if (auto* get_table = llvh::dyn_cast<GetTableInst>(callee)) {
           if (auto* load_const =
                   llvh::dyn_cast<LoadConstInst>(get_table->GetProp())) {
-            auto lepus_func = main_func->GetLepusFunction();
             if (auto* lit = llvh::dyn_cast<LiteralUint32>(
                     load_const->GetSingleOperand())) {
-              auto val = lepus_func->GetConstValue(lit->GetValue());
-              if (val->IsString()) {
-                std::string name = val->StdString();
-                auto type_kind = call_inst->GetType()->GetTypeKind();
-
-                if (name == constants::kArrayMap) {
-                  if (type_kind == TypeOp::TypeKind::Array)
-                    found_array_map = true;
-                } else if (name == constants::kArrayJoin) {
-                  if (type_kind == TypeOp::TypeKind::String)
-                    found_array_join = true;
-                } else if (name == constants::kArrayIncludes) {
-                  if (type_kind == TypeOp::TypeKind::Boolean)
-                    found_array_includes = true;
-                } else if (name == constants::kArrayPush) {
-                  if (type_kind == TypeOp::TypeKind::Uint64)
-                    found_array_push = true;
-                } else if (name == constants::kNumberToFixed) {
-                  if (type_kind == TypeOp::TypeKind::String)
-                    found_num_tofixed = true;
-                } else if (name == constants::kRegExpTest) {
-                  if (type_kind == TypeOp::TypeKind::Boolean)
-                    found_reg_test = true;
-                }
-              }
+              const_idx = lit->GetValue();
+              has_const_idx = true;
             }
           }
+        } else if (auto* get_table_const =
+                       llvh::dyn_cast<GetTableConstStringKeyInst>(callee)) {
+          if (auto* lit = llvh::dyn_cast<LiteralUint32>(
+                  get_table_const->GetConstIndex())) {
+            const_idx = lit->GetValue();
+            has_const_idx = true;
+          }
+        }
+        if (!has_const_idx) continue;
+
+        auto val = lepus_func->GetConstValue(const_idx);
+        if (!val || !val->IsString()) continue;
+
+        std::string name = val->StdString();
+        auto type_kind = call_inst->GetType()->GetTypeKind();
+        if (name == constants::kArrayMap) {
+          if (type_kind == TypeOp::TypeKind::Array) found_array_map = true;
+        } else if (name == constants::kArrayJoin) {
+          if (type_kind == TypeOp::TypeKind::String) found_array_join = true;
+        } else if (name == constants::kArrayIncludes) {
+          if (type_kind == TypeOp::TypeKind::Boolean)
+            found_array_includes = true;
+        } else if (name == constants::kArrayPush) {
+          if (type_kind == TypeOp::TypeKind::Uint64) found_array_push = true;
+        } else if (name == constants::kNumberToFixed) {
+          if (type_kind == TypeOp::TypeKind::String) found_num_tofixed = true;
+        } else if (name == constants::kRegExpTest) {
+          if (type_kind == TypeOp::TypeKind::Boolean) found_reg_test = true;
         }
       }
     }

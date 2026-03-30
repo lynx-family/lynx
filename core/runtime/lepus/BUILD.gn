@@ -113,6 +113,7 @@ unittest_set("lepus_ir_testset") {
     "ir/unittests/register_allocator/test_verify_call_register.cc",
     "ir/unittests/test_attributes.cc",
     "ir/unittests/test_bytecode_analysis.cc",
+    "ir/unittests/test_const_aggregate_template_pass.cc",
     "ir/unittests/test_deep_clone_opcode.cc",
     "ir/unittests/test_func_op.cc",
     "ir/unittests/test_mir_dialect.cc",

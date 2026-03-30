@@ -27,6 +27,9 @@ static bool IsCatchBlock(const Block* bb) {
 
 static bool OptimizeIndirectJump(FuncOp* f);
 static bool OptimizeSingleEntryPhi(FuncOp* f);
+static bool OptCondInstWithSameTrueAndFalseBB(FuncOp* f);
+static bool OptPhiCondBranchJumpThreading(FuncOp* f);
+static bool OptPhiReturnThreading(FuncOp* f);
 
 bool SimplifyCFGPass::RunOnModule(ModuleOp* mod) {
   bool changed = false;
@@ -37,7 +40,12 @@ bool SimplifyCFGPass::RunOnModule(ModuleOp* mod) {
     // trampolines as long as we are making progress.
     do {
       iter_changed = OptimizeIndirectJump(f) || OptimizeStaticBranches(f) ||
-                     DeleteUnreachableBlocks(f) || OptimizeSingleEntryPhi(f);
+                     DeleteUnreachableBlocks(f) || OptimizeSingleEntryPhi(f) ||
+                     OptCondInstWithSameTrueAndFalseBB(f);
+
+      iter_changed = iter_changed || OptPhiCondBranchJumpThreading(f) ||
+                     OptPhiReturnThreading(f);
+
       changed |= iter_changed;
     } while (iter_changed);
   });
@@ -101,6 +109,315 @@ static void ReplaceCondBranchWithDirectBranch(CondBranchInst* cb, Block* dest) {
   builder->SetInsertionPointToEnd(current_block);
   builder->Create<BranchInst>(cb->GetLocation(), dest);
   cb->EraseFromParent();
+}
+
+static bool GetPhiIncomingValue(PhiInst* phi, Block* pred, Value*& out_val) {
+  if (!phi || !pred) return false;
+  Value* found = nullptr;
+  for (unsigned i = 0, e = phi->GetNumEntries(); i < e; i++) {
+    auto entry = phi->GetEntry(i);
+    if (entry.second == pred) {
+      if (found) {
+        // Invalid phi: multiple entries from the same predecessor.
+        return false;
+      }
+      found = entry.first;
+    }
+  }
+  if (!found) return false;
+  out_val = found;
+  return true;
+}
+
+static bool TranslateValueThroughPhiOnlyBlock(Value* val, Block* pred,
+                                              Block* mid, Value*& out_val) {
+  if (!val) return false;
+  // Values defined outside mid are still available if mid is bypassed.
+  auto* inst = llvh::dyn_cast<Instruction>(val);
+  if (!inst || inst->GetParent() != mid) {
+    out_val = val;
+    return true;
+  }
+
+  // Only allow translating PhiInsts in mid. Any other instruction would be
+  // skipped by bypassing mid and could break SSA.
+  auto* phi = llvh::dyn_cast<PhiInst>(inst);
+  if (!phi) return false;
+  return GetPhiIncomingValue(phi, pred, out_val);
+}
+
+// When threading an edge pred -> mid -> succ into pred -> succ, rewrite succ's
+// Phi entries that referenced mid to now reference pred. Any value defined in
+// mid must be translated to the corresponding incoming value from pred.
+static bool RewriteSuccPhisForThreadedEdge(Block* succ, Block* mid, Block* pred,
+                                           Block* mid_block_for_value_map) {
+  if (!succ || !mid || !pred) return false;
+
+  for (auto& inst : *succ) {
+    auto* phi = llvh::dyn_cast<PhiInst>(&inst);
+    if (!phi) break;
+
+    int idx_mid = -1;
+    int idx_pred = -1;
+    for (int i = 0, e = static_cast<int>(phi->GetNumEntries()); i < e; i++) {
+      auto entry = phi->GetEntry(i);
+      if (entry.second == mid) idx_mid = i;
+      if (entry.second == pred) idx_pred = i;
+    }
+    if (idx_mid < 0) {
+      // If succ has phi nodes but none refer to mid, IR is inconsistent.
+      // Bail out for safety.
+      return false;
+    }
+
+    Value* old_val = phi->GetEntry(static_cast<unsigned>(idx_mid)).first;
+    Value* new_val = nullptr;
+    if (!TranslateValueThroughPhiOnlyBlock(old_val, pred,
+                                           mid_block_for_value_map, new_val)) {
+      return false;
+    }
+
+    if (idx_pred >= 0) {
+      // succ already has pred as a predecessor. Only allow if the incoming
+      // values match; otherwise we'd need two entries from the same block.
+      Value* exist_val = phi->GetEntry(static_cast<unsigned>(idx_pred)).first;
+      if (exist_val != new_val) {
+        return false;
+      }
+      phi->RemoveEntry(static_cast<unsigned>(idx_mid));
+    } else {
+      phi->UpdateEntry(static_cast<unsigned>(idx_mid), new_val, pred);
+    }
+  }
+  return true;
+}
+
+static bool RedirectTerminatorEdge(Block* pred, Block* from, Block* to) {
+  if (!pred || !from || !to) return false;
+  auto* term = pred->GetTerminator();
+  if (!term) return false;
+
+  if (auto* br = llvh::dyn_cast<BranchInst>(term)) {
+    if (br->GetBranchDest() != from) return false;
+    br->SetBranchDest(to);
+    return true;
+  }
+
+  if (auto* cbr = llvh::dyn_cast<CondBranchInst>(term)) {
+    bool changed = false;
+    if (cbr->GetTrueDest() == from) {
+      cbr->SetTrueDest(to);
+      changed = true;
+    }
+    if (cbr->GetFalseDest() == from) {
+      cbr->SetFalseDest(to);
+      changed = true;
+    }
+    return changed;
+  }
+  return false;
+}
+
+// Thread edges through a phi-only block where the phi is used as a branch
+// condition, e.g.
+//   pred: CondBranchInst %c, mid, other
+//   mid:  %p = PhiInst(..., %c, pred, false, x); CondBranchInst %p, T, F
+// If the value of %p on a specific incoming edge is known (literal bool or
+// implied by pred's taken branch), rewrite pred to jump directly to T/F.
+static bool OptPhiCondBranchJumpThreading(FuncOp* f) {
+  if (!f) return false;
+  bool changed = false;
+
+  for (auto& it : *f) {
+    Block* mid = &it;
+    if (IsCatchBlock(mid)) continue;
+
+    auto* cbr_mid = llvh::dyn_cast<CondBranchInst>(mid->GetTerminator());
+    if (!cbr_mid) continue;
+
+    // Require the mid block to be: phi(s) + terminator only.
+    for (auto& inst : *mid) {
+      if (&inst == mid->GetTerminator()) break;
+      if (!llvh::isa<PhiInst>(&inst)) {
+        cbr_mid = nullptr;
+        break;
+      }
+    }
+    if (!cbr_mid) continue;
+
+    auto* cond_phi = llvh::dyn_cast<PhiInst>(cbr_mid->GetCondition());
+    if (!cond_phi || cond_phi->GetParent() != mid) continue;
+    if (!cond_phi->HasOneUser()) continue;
+
+    Block* true_succ = cbr_mid->GetTrueDest();
+    Block* false_succ = cbr_mid->GetFalseDest();
+    if (!true_succ || !false_succ) continue;
+    if (IsCatchBlock(true_succ) || IsCatchBlock(false_succ)) continue;
+
+    // Snapshot predecessors because we'll mutate CFG.
+    llvh::SmallVector<Block*, 8> predecessors;
+    for (auto* pred : Predecessors(mid)) {
+      predecessors.push_back(pred);
+    }
+
+    for (auto* pred : predecessors) {
+      if (!pred || IsCatchBlock(pred)) continue;
+
+      // Be conservative: only thread through simple branch terminators.
+      // Eq/NeqCondBranchInst lower to short cmp-jmp bytecodes with 8-bit
+      // offsets, which can overflow if we retarget far-away blocks.
+      auto* pred_term = pred->GetTerminator();
+      if (!llvh::isa<BranchInst>(pred_term) &&
+          !llvh::isa<CondBranchInst>(pred_term)) {
+        continue;
+      }
+
+      Value* incoming = nullptr;
+      if (!GetPhiIncomingValue(cond_phi, pred, incoming)) {
+        continue;
+      }
+
+      bool known = false;
+      bool cond_value = false;
+
+      if (auto* lit = llvh::dyn_cast<LiteralBool>(incoming)) {
+        known = true;
+        cond_value = lit->GetValue();
+      } else if (auto* pred_cbr = llvh::dyn_cast<CondBranchInst>(pred_term)) {
+        // If pred branches on the same SSA value and this edge is the taken
+        // true/false edge, then the condition is implied on this edge.
+        if (incoming == pred_cbr->GetCondition()) {
+          if (pred_cbr->GetTrueDest() == mid) {
+            known = true;
+            cond_value = true;
+          } else if (pred_cbr->GetFalseDest() == mid) {
+            known = true;
+            cond_value = false;
+          }
+        }
+      }
+
+      if (!known) continue;
+
+      Block* target = cond_value ? true_succ : false_succ;
+      if (!target) continue;
+
+      // Only thread edges that actually go to mid.
+      if (!SuccContains(pred, mid)) continue;
+
+      // Rewrite successor phis and then redirect pred's terminator edge.
+      if (!RewriteSuccPhisForThreadedEdge(target, mid, pred, mid)) {
+        continue;
+      }
+      if (!RedirectTerminatorEdge(pred, mid, target)) {
+        continue;
+      }
+
+      // Remove pred entry from mid's phi nodes.
+      RemoveEntryFromPhi(mid, pred);
+
+      changed = true;
+    }
+
+    if (changed) {
+      // If we threaded away all incoming edges, mid is now unreachable. Clean
+      // up successor phi entries and erase it immediately to avoid leaving
+      // invalid 0-entry phis around.
+      if (PredEmpty(mid)) {
+        RemoveEntryFromPhi(true_succ, mid);
+        if (false_succ != true_succ) {
+          RemoveEntryFromPhi(false_succ, mid);
+        }
+        mid->EraseFromParent();
+      }
+      // CFG changed; let outer iteration and other passes clean up.
+      return true;
+    }
+  }
+
+  return changed;
+}
+
+// If a join block only contains phi nodes and then immediately returns a phi,
+// thread the return back into each predecessor:
+//   pred_i: BranchInst join
+//   join:   %v = PhiInst(...); ReturnInst %v
+static bool OptPhiReturnThreading(FuncOp* f) {
+  if (!f) return false;
+  auto* ir_ctx = f->GetIRCtx();
+  if (!ir_ctx) return false;
+  auto* builder = ir_ctx->GetOpBuilder();
+  if (!builder) return false;
+
+  for (auto& it : *f) {
+    Block* join = &it;
+    if (IsCatchBlock(join)) continue;
+
+    auto* ret = llvh::dyn_cast<ReturnInst>(join->GetTerminator());
+    if (!ret) continue;
+
+    // Require join block to be phi(s) + ReturnInst only.
+    for (auto& inst : *join) {
+      if (&inst == ret) break;
+      if (!llvh::isa<PhiInst>(&inst)) {
+        ret = nullptr;
+        break;
+      }
+    }
+    if (!ret) continue;
+
+    auto* ret_phi = llvh::dyn_cast<PhiInst>(ret->GetValue());
+    if (!ret_phi || ret_phi->GetParent() != join) continue;
+    if (!ret_phi->HasOneUser()) continue;
+
+    // Snapshot predecessors.
+    llvh::SmallVector<Block*, 8> predecessors;
+    for (auto* pred : Predecessors(join)) {
+      predecessors.push_back(pred);
+    }
+    if (predecessors.empty()) continue;
+
+    // Only handle simple predecessors that unconditionally branch to join.
+    for (auto* pred : predecessors) {
+      auto* br =
+          llvh::dyn_cast<BranchInst>(pred ? pred->GetTerminator() : nullptr);
+      if (!br || br->GetBranchDest() != join) {
+        predecessors.clear();
+        break;
+      }
+      if (IsCatchBlock(pred)) {
+        predecessors.clear();
+        break;
+      }
+    }
+    if (predecessors.empty()) continue;
+
+    // Rewrite each pred terminator to ReturnInst(incoming).
+    for (auto* pred : predecessors) {
+      Value* incoming = nullptr;
+      if (!GetPhiIncomingValue(ret_phi, pred, incoming)) {
+        predecessors.clear();
+        break;
+      }
+
+      auto* old_term = pred->GetTerminator();
+      if (LEPUS_UNLIKELY(!old_term)) {
+        predecessors.clear();
+        break;
+      }
+
+      OpBuilderRestoreInsertPointerRAII _restore(builder);
+      builder->SetInsertionPointToEnd(pred);
+      builder->Create<ReturnInst>(ret->GetLocation(), incoming);
+      old_term->EraseFromParent();
+    }
+    if (predecessors.empty()) continue;
+
+    // Now join is unreachable; erase it.
+    join->EraseFromParent();
+    return true;
+  }
+  return false;
 }
 
 /// Try to remove a branch used by phi nodes.
@@ -404,6 +721,45 @@ static bool OptimizeSingleEntryPhi(FuncOp* f) {
         phi_inst->EraseFromParent();
         changed = true;
       }
+    }
+  }
+  return changed;
+}
+
+// If `bb` ends with a conditional branch whose true/false destinations are the
+// same, replace it with an unconditional BranchInst.
+static bool SimplifySameDestBranchToBranchInPlace(Block* bb,
+                                                  OpBuilder* builder) {
+  if (!bb || !builder) return false;
+  auto* term = bb->GetTerminator();
+  if (!term) return false;
+
+  Block* dst = nullptr;
+  if (llvh::isa<BranchInst>(term)) {
+    return false;
+  } else if (auto* br = llvh::dyn_cast<CondBranchInst>(term)) {
+    if (br->GetTrueDest() == br->GetFalseDest()) dst = br->GetTrueDest();
+  } else if (auto* br = llvh::dyn_cast<EqCondBranchInst>(term)) {
+    if (br->GetTrueDest() == br->GetFalseDest()) dst = br->GetTrueDest();
+  } else if (auto* br = llvh::dyn_cast<NeqCondBranchInst>(term)) {
+    if (br->GetTrueDest() == br->GetFalseDest()) dst = br->GetTrueDest();
+  }
+  if (!dst) return false;
+
+  OpBuilderRestoreInsertPointerRAII _restore(builder);
+  builder->SetInsertionPointToEnd(bb);
+  builder->Create<BranchInst>(term->GetLocation(), dst);
+  term->EraseFromParent();
+  return true;
+}
+
+static bool OptCondInstWithSameTrueAndFalseBB(FuncOp* func) {
+  auto* builder = func->GetIRCtx()->GetOpBuilder();
+  if (!func || !builder) return false;
+  bool changed = false;
+  for (auto& bb : *func) {
+    if (SimplifySameDestBranchToBranchInPlace(&bb, builder)) {
+      changed = true;
     }
   }
   return changed;

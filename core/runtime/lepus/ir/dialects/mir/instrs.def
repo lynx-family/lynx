@@ -43,6 +43,7 @@ DEF_TAG(UnaryBitNotInst, UnaryOperatorInst)
 END_VALUE(UnaryOperatorInst)
 
 DEF_VALUE(LoadConstInst, Instruction)
+DEF_VALUE(LoadConstMaterializeInst, Instruction)
 DEF_VALUE(GetTableInst, Instruction)
 DEF_VALUE(GetTableConstStringKeyInst, Instruction)
 DEF_VALUE(SetTableInst, Instruction)

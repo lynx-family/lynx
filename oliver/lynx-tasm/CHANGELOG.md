@@ -1,4 +1,6 @@
 # CHANGELOG
+# 0.0.34
+* optimize lepus bytecode phase 2;
 
 # 0.0.33
 * fix encode JsBytecode issue.

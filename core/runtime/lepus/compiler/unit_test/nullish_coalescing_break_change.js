@@ -1,4 +1,4 @@
-setFlag("lepusNullPropAsUndef", true);
+//lepusNullPropAsUndef
 
 let a = {};
 let b = a?.test ?? [];

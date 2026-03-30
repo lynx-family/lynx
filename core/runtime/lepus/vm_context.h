@@ -125,6 +125,7 @@ class VMContext : public runtime::MTSContext {
   }
 
   void SetNullPropAsUndef(bool val) { enable_null_prop_as_undef_ = val; }
+  bool GetNullPropAsUndef() { return enable_null_prop_as_undef_; }
 
   void SetClosureFix(bool val) { closure_fix_ = val; }
   bool GetClosureFix() { return closure_fix_; }

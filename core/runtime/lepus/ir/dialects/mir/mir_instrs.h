@@ -252,6 +252,38 @@ class LoadConstInst : public SingleOperandInst {
   }
 };
 
+// Like LoadConstInst but materializes a fresh heap object when loading an
+// aggregate (array/table) constant template from the const pool.
+// This must NOT be marked idempotent because the produced reference identity
+// is observable.
+class LoadConstMaterializeInst : public SingleOperandInst {
+  NON_COPYABLE(LoadConstMaterializeInst);
+
+ public:
+  explicit LoadConstMaterializeInst(Block* parent, OpBuilder* builder,
+                                    int64_t location, Literal* input,
+                                    TypeOp* value_type)
+      : SingleOperandInst(ValueKind::LoadConstMaterializeInstKind, parent,
+                          builder, location, input) {
+    SetType(value_type);
+  }
+
+  DEF_DEFAULT_COPY_CONSTRUCTOR(LoadConstMaterializeInst, SingleOperandInst);
+
+  Literal* GetConst() const { return llvh::cast<Literal>(GetSingleOperand()); }
+
+  static bool HasOutput() { return true; }
+
+  [[nodiscard]] SideEffect GetSideEffectImpl() const {
+    // Allocates a fresh aggregate on the heap.
+    return SideEffect{}.SetWriteHeap();
+  }
+
+  static bool classof(const Value* v) {
+    return v->GetKind() == ValueKind::LoadConstMaterializeInstKind;
+  }
+};
+
 class GetGlobalInst : public SingleOperandInst {
   NON_COPYABLE(GetGlobalInst);
 

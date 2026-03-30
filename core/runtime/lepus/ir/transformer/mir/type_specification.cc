@@ -6,6 +6,7 @@
 
 #include <set>
 
+#include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/instrs.h"
 #include "core/runtime/lepus/ir/ir_context.h"
@@ -201,18 +202,33 @@ static void SetCallReadOnlyAttr(IRContext* ir_ctx, FuncOp* func) {
 
   auto is_readonly_prototype_call = [&](CallInst* call) -> bool {
     Value* callee = call->GetFunction();
-    auto* get_table = llvh::dyn_cast<GetTableInst>(callee);
-    if (!get_table) return false;
+    Value* receiver = nullptr;
+    std::string fn_name;
+    if (auto* get_table = llvh::dyn_cast<GetTableInst>(callee)) {
+      receiver = get_table->GetObject();
+      Value* fn_name_v = get_table->GetProp();
+      if (!llvh::dyn_cast<LoadConstInst>(fn_name_v)) return false;
+      if (!fn_name_v->GetType() || !fn_name_v->GetType()->IsStringType())
+        return false;
 
-    Value* receiver = get_table->GetObject();
-    Value* fn_name_v = get_table->GetProp();
-    if (!llvh::dyn_cast<LoadConstInst>(fn_name_v)) return false;
-    if (!fn_name_v->GetType() || !fn_name_v->GetType()->IsStringType())
+      lepus::Value fn_val = get_lepus_value_func(fn_name_v);
+      if (!fn_val.IsString()) return false;
+      fn_name = fn_val.StdString();
+    } else if (auto* get_table_const =
+                   llvh::dyn_cast<GetTableConstStringKeyInst>(callee)) {
+      receiver = get_table_const->GetObject();
+      auto* idx_lit =
+          llvh::dyn_cast<LiteralUint32>(get_table_const->GetConstIndex());
+      if (!idx_lit) return false;
+      if (!lepus_func ||
+          idx_lit->GetValue() >= lepus_func->GetConstValue().size())
+        return false;
+      auto* v = lepus_func->GetConstValue(idx_lit->GetValue());
+      if (!v || !v->IsString()) return false;
+      fn_name = v->StdString();
+    } else {
       return false;
-
-    lepus::Value fn_val = get_lepus_value_func(fn_name_v);
-    if (!fn_val.IsString()) return false;
-    const std::string fn_name = fn_val.StdString();
+    }
 
     auto* ty = receiver ? receiver->GetType() : nullptr;
     if (!ty) return false;
@@ -249,16 +265,20 @@ static void SetCallReadOnlyAttr(IRContext* ir_ctx, FuncOp* func) {
 static void SetPrototypeCallType(IRContext* ir_ctx, FuncOp* func) {
   OpBuilder* builder = ir_ctx->GetOpBuilder();
 
+  auto get_const_string_by_index = [&](uint32_t idx) -> std::string {
+    auto lepus_func = func->GetLepusFunction();
+    if (lepus_func && idx < lepus_func->GetConstValue().size()) {
+      auto* val = lepus_func->GetConstValue(idx);
+      if (val && val->IsString()) return val->StdString();
+    }
+    return "";
+  };
+
   auto get_const_string = [&](Value* v) -> std::string {
     if (auto* load_const = llvh::dyn_cast<LoadConstInst>(v)) {
       if (auto* lit =
               llvh::dyn_cast<LiteralUint32>(load_const->GetSingleOperand())) {
-        auto lepus_func = func->GetLepusFunction();
-        if (lepus_func &&
-            lit->GetValue() < lepus_func->GetConstValue().size()) {
-          auto* val = lepus_func->GetConstValue(lit->GetValue());
-          if (val->IsString()) return val->StdString();
-        }
+        return get_const_string_by_index(lit->GetValue());
       }
     }
     return "";
@@ -268,53 +288,103 @@ static void SetPrototypeCallType(IRContext* ir_ctx, FuncOp* func) {
     for (auto& inst : bb) {
       if (auto* call_inst = llvh::dyn_cast<CallInst>(&inst)) {
         Value* callee = call_inst->GetFunction();
+
+        // String prototype calls are handled by
+        // `SpecifyGetTableForStringProtoType`.
+        if (callee && callee->GetType() &&
+            callee->GetType()->IsStringProtoAPIType()) {
+          continue;
+        }
+
+        Value* receiver = nullptr;
+        std::string name;
         if (auto* get_table = llvh::dyn_cast<GetTableInst>(callee)) {
-          Value* receiver = get_table->GetObject();
-          Value* prop = get_table->GetProp();
-
-          if (!receiver || !receiver->GetType()) continue;
-
-          std::string name = get_const_string(prop);
-          if (name.empty()) continue;
-
-          TypeOp* type = nullptr;
-
-          if (receiver->GetType()->IsArrayType()) {
-            // string prototype: push, pop, shift, map, filter, concat, join,
-            // findIndex, find, includes, slice, foreach
-            if (name == constants::kArrayPush || name == constants::kArrayPop) {
-              type = TypeOp::CreateUint64(builder);
-            } else if (name == constants::kArrayFindIndex) {
-              type = TypeOp::CreateInt64(builder);
-            } else if (name == constants::kArrayMap ||
-                       name == constants::kArrayFilter ||
-                       name == constants::kArrayConcat ||
-                       name == constants::kArraySlice) {
-              type = TypeOp::CreateArray(builder);
-            } else if (name == constants::kArrayJoin) {
-              type = TypeOp::CreateString(builder);
-            } else if (name == constants::kArrayIncludes) {
-              type = TypeOp::CreateBoolean(builder);
-            }
-          } else if (receiver->GetType()->IsNumberType()) {
-            // number prototype: toFixed
-            if (name == constants::kNumberToFixed) {
-              type = TypeOp::CreateString(builder);
-            }
-          } else if (receiver->GetType()->GetTypeKind() == TypeOp::RegExp) {
-            // regexp prototype: test
-            if (name == constants::kRegExpTest) {
-              type = TypeOp::CreateBoolean(builder);
-            }
+          receiver = get_table->GetObject();
+          name = get_const_string(get_table->GetProp());
+        } else if (auto* get_table_const =
+                       llvh::dyn_cast<GetTableConstStringKeyInst>(callee)) {
+          receiver = get_table_const->GetObject();
+          if (auto* lit = llvh::dyn_cast<LiteralUint32>(
+                  get_table_const->GetConstIndex())) {
+            name = get_const_string_by_index(lit->GetValue());
           }
+        }
 
-          if (type) {
-            call_inst->SetType(type);
-            call_inst->SetBuiltinFuncName(
-                std::string(
-                    TypeOp::RetKindStr(receiver->GetType()->GetTypeKind())) +
-                "." + name);
+        if (!receiver || !receiver->GetType()) continue;
+        if (name.empty()) continue;
+
+        TypeOp* type = nullptr;
+
+        // Prefer receiver static type when available. If receiver type is not
+        // yet inferred (or is too generic), fall back to method-name-based
+        // classification so prototype return types stay stable under IR
+        // canonicalization.
+        bool is_array_receiver = receiver->GetType()->IsArrayType();
+        bool is_number_receiver = receiver->GetType()->IsNumberType();
+        bool is_regexp_receiver =
+            receiver->GetType()->GetTypeKind() == TypeOp::RegExp;
+
+        // Only apply name-based fallback when the receiver type is unknown.
+        if (!is_array_receiver && !is_number_receiver && !is_regexp_receiver &&
+            receiver->GetType()->IsAnyType()) {
+          if (name == constants::kArrayPush || name == constants::kArrayPop ||
+              name == constants::kArrayFindIndex ||
+              name == constants::kArrayMap || name == constants::kArrayFilter ||
+              name == constants::kArrayConcat ||
+              name == constants::kArraySlice || name == constants::kArrayJoin ||
+              name == constants::kArrayIncludes) {
+            is_array_receiver = true;
+          } else if (name == constants::kNumberToFixed) {
+            is_number_receiver = true;
+          } else if (name == constants::kRegExpTest) {
+            is_regexp_receiver = true;
           }
+        }
+
+        TypeOp::TypeKind receiver_kind_for_name =
+            receiver->GetType()->GetTypeKind();
+        if (is_array_receiver) {
+          receiver_kind_for_name = TypeOp::Array;
+        } else if (is_number_receiver) {
+          receiver_kind_for_name = TypeOp::Number;
+        } else if (is_regexp_receiver) {
+          receiver_kind_for_name = TypeOp::RegExp;
+        }
+
+        if (is_array_receiver) {
+          // string prototype: push, pop, shift, map, filter, concat, join,
+          // findIndex, find, includes, slice, foreach
+          if (name == constants::kArrayPush || name == constants::kArrayPop) {
+            type = TypeOp::CreateUint64(builder);
+          } else if (name == constants::kArrayFindIndex) {
+            type = TypeOp::CreateInt64(builder);
+          } else if (name == constants::kArrayMap ||
+                     name == constants::kArrayFilter ||
+                     name == constants::kArrayConcat ||
+                     name == constants::kArraySlice) {
+            type = TypeOp::CreateArray(builder);
+          } else if (name == constants::kArrayJoin) {
+            type = TypeOp::CreateString(builder);
+          } else if (name == constants::kArrayIncludes) {
+            type = TypeOp::CreateBoolean(builder);
+          }
+        } else if (is_number_receiver) {
+          // number prototype: toFixed
+          if (name == constants::kNumberToFixed) {
+            type = TypeOp::CreateString(builder);
+          }
+        } else if (is_regexp_receiver) {
+          // regexp prototype: test
+          if (name == constants::kRegExpTest) {
+            type = TypeOp::CreateBoolean(builder);
+          }
+        }
+
+        if (type) {
+          call_inst->SetType(type);
+          call_inst->SetBuiltinFuncName(
+              std::string(TypeOp::RetKindStr(receiver_kind_for_name)) + "." +
+              name);
         }
       }
     }
@@ -394,6 +464,9 @@ static void SetBuiltinCallType(IRContext* ir_ctx, FuncOp* func) {
             } else if (is_global_func(idx, constants::kIsArray)) {
               call_inst->SetType(TypeOp::CreateBoolean(builder));
               call_inst->SetBuiltinFuncName(constants::kIsArray);
+            } else if (is_global_func(idx, tasm::kCFunctionSetStyleObject)) {
+              call_inst->SetType(TypeOp::CreateAnyType(builder));
+              call_inst->SetBuiltinFuncName(tasm::kCFunctionSetStyleObject);
             }
           }
         } else if (auto* get_builtin = llvh::dyn_cast<GetBuiltinInst>(callee)) {
@@ -512,6 +585,14 @@ void TypeSpecification::SpecifyGetTableForStringProtoType() {
   OpBuilder* builder = ir_ctx_->GetOpBuilder();
   bool changed = false;
 
+  auto get_const_string_by_index = [&](uint32_t idx) -> std::string {
+    auto lepus_func = func_->GetLepusFunction();
+    if (!lepus_func || idx >= lepus_func->GetConstValue().size()) return "";
+    auto* v = lepus_func->GetConstValue(idx);
+    if (!v || !v->IsString()) return "";
+    return v->StdString();
+  };
+
   for (auto& bb : *func_) {
     for (auto& inst : bb) {
       // find GetTableInst with string op
@@ -544,6 +625,29 @@ void TypeSpecification::SpecifyGetTableForStringProtoType() {
 
           changed = true;
         }
+      } else if (auto* get_table_const =
+                     llvh::dyn_cast<GetTableConstStringKeyInst>(&inst)) {
+        auto* object = get_table_const->GetObject();
+        if (!object || !object->GetType() || !object->GetType()->IsStringType())
+          continue;
+        auto* idx_lit =
+            llvh::dyn_cast<LiteralUint32>(get_table_const->GetConstIndex());
+        if (!idx_lit) continue;
+
+        const std::string name = get_const_string_by_index(idx_lit->GetValue());
+        if (name.empty()) continue;
+
+        get_table_const->SetType(TypeOp::CreateStringProtoAPI(builder));
+
+        if (name == constants::kStringLength) {
+          builder->SetInsertionPointAfter(get_table_const);
+          auto* get_length = builder->Create<GetStringLengthInst>(
+              get_table_const->GetLocation(), get_table_const->GetObject());
+          get_table_const->ReplaceAllUsesWith(get_length);
+          to_removed_.push_back(get_table_const);
+        }
+
+        changed = true;
       }
     }
   }
@@ -559,28 +663,45 @@ void TypeSpecification::SpecifyGetTableForStringProtoType() {
       if (auto* call_inst = llvh::dyn_cast<CallInst>(&inst)) {
         auto* call_func = call_inst->GetFunction();
         if (call_func->GetType()->IsStringProtoAPIType()) {
-          if (LEPUS_UNLIKELY(!llvh::isa<GetTableInst>(call_func))) {
+          std::string str;
+          if (auto* get_table_inst = llvh::dyn_cast<GetTableInst>(call_func)) {
+            auto prop = get_table_inst->GetProp();
+            if (LEPUS_UNLIKELY(!llvh::isa<LoadConstInst>(prop))) {
+              throw ::lynx::lepus::CompileException(
+                  "Lepus IR error: TypeSpecification expected string proto "
+                  "property to be LoadConstInst");
+            }
+            if (LEPUS_UNLIKELY(!llvh::cast<LoadConstInst>(prop)
+                                    ->GetType()
+                                    ->IsStringType())) {
+              throw ::lynx::lepus::CompileException(
+                  "Lepus IR error: TypeSpecification expected string proto "
+                  "property LoadConstInst to have string type");
+            }
+            auto load_const = llvh::cast<LoadConstInst>(prop);
+            str = GetConstString(load_const);
+          } else if (auto* get_table_const =
+                         llvh::dyn_cast<GetTableConstStringKeyInst>(
+                             call_func)) {
+            auto* idx_lit =
+                llvh::dyn_cast<LiteralUint32>(get_table_const->GetConstIndex());
+            if (LEPUS_UNLIKELY(!idx_lit)) {
+              throw ::lynx::lepus::CompileException(
+                  "Lepus IR error: TypeSpecification expected string proto "
+                  "const key to be LiteralUint32");
+            }
+            str = get_const_string_by_index(idx_lit->GetValue());
+            if (LEPUS_UNLIKELY(str.empty())) {
+              throw ::lynx::lepus::CompileException(
+                  "Lepus IR error: TypeSpecification expected const value to "
+                  "be string");
+            }
+          } else {
             throw ::lynx::lepus::CompileException(
                 "Lepus IR error: TypeSpecification expected string proto call "
-                "function to be GetTableInst");
-          }
-          auto* get_table_inst = llvh::cast<GetTableInst>(call_func);
-          auto prop = get_table_inst->GetProp();
-          if (LEPUS_UNLIKELY(!llvh::isa<LoadConstInst>(prop))) {
-            throw ::lynx::lepus::CompileException(
-                "Lepus IR error: TypeSpecification expected string proto "
-                "property to be LoadConstInst");
-          }
-          if (LEPUS_UNLIKELY(!llvh::cast<LoadConstInst>(prop)
-                                  ->GetType()
-                                  ->IsStringType())) {
-            throw ::lynx::lepus::CompileException(
-                "Lepus IR error: TypeSpecification expected string proto "
-                "property LoadConstInst to have string type");
+                "function to be GetTableInst/GetTableConstStringKeyInst");
           }
 
-          auto load_const = llvh::cast<LoadConstInst>(prop);
-          auto str = GetConstString(load_const);
           TypeOp* type =
               llvh::StringSwitch<TypeOp*>(str)
                   .Case(constants::kStringLength, TypeOp::CreateInt64(builder))

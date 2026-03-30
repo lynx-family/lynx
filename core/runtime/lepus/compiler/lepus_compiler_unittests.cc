@@ -26,6 +26,13 @@
 
 using namespace lynx;  // NOLINT
 
+bool HasLepusNullPropAsUndefMarker(const std::string& source) {
+  std::string kLepusNullPropAsUndefMarker = "//lepusNullPropAsUndef";
+  size_t len = kLepusNullPropAsUndefMarker.size();
+  if (source.size() < len) return false;
+  return source.compare(0, len, kLepusNullPropAsUndefMarker) == 0;
+}
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
 
@@ -43,6 +50,7 @@ static const char* kCFuncSetStaticAttributeTo = "_SetStaticAttributeTo";
 static const char* kCFuncSetStyleTo = "_SetStyleTo";
 static const char* kCFuncSetStaticStyleTo = "_SetStaticStyleTo";
 static const char* kCFuncSetDynamicStyleTo = "_SetDynamicStyleTo";
+static const char* kCFuncSetStyleObject = "__SetStyleObject";
 static const char* kCFuncSetClassTo = "_SetClassTo";
 static const char* kCFuncSetStaticClassTo = "_SetStaticClassTo";
 static const char* kCFuncSetStaticEventTo = "_SetStaticEventTo";
@@ -65,7 +73,6 @@ static const char* kCFuncGetComponentProps = "_GetComponentProps";
 static const char* kCFuncPrint = "print";
 static const char* kCFuncAssert = "Assert";
 static const char* kCFuncTypeof = "typeof";
-static const char* kCFuncSetFlag = "setFlag";
 static int count = 0;
 
 #pragma clang diagnostic pop
@@ -229,15 +236,6 @@ static lepus::Value Typeof(runtime::MTSContext* context, lepus::Value* val,
   return *val;
 }
 
-static lepus::Value SetFlag(runtime::MTSContext* context, lepus::Value* parm1,
-                            int argc) {
-  if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
-    static_cast<lepus::VMContext*>(context)->SetNullPropAsUndef(
-        static_cast<lepus::VMContext*>(context)->GetParam(1)->Bool());
-  }
-  return lepus::Value();
-}
-
 static lepus::Value CheckArgs(runtime::MTSContext* context,
                               lepus::Value* param1, int argc) {
   if (!param1->IsString()) {
@@ -273,10 +271,10 @@ void RegisterBuiltinTest(lepus::VMContext* context) {
   lepus::RegisterCFunction(context, kCFuncGetComponentData, &EmptyFunc);
   lepus::RegisterCFunction(context, kCFuncGetComponentProps, &EmptyFunc);
   lepus::RegisterCFunction(context, kCFuncSetDynamicStyleTo, &EmptyFunc);
+  lepus::RegisterCFunction(context, kCFuncSetStyleObject, &EmptyFunc);
   lepus::RegisterCFunction(context, kCFuncPrint, &Print);
   lepus::RegisterCFunction(context, kCFuncAssert, &Assert);
   lepus::RegisterCFunction(context, kCFuncTypeof, &Typeof);
-  lepus::RegisterCFunction(context, kCFuncSetFlag, &SetFlag);
   lepus::RegisterCFunction(context, "TestReportFatal", &CheckArgs);
   // lepus::RegisterCFunction(context, kCFuncSetData, &ProcessComponentData);
 }
@@ -312,6 +310,8 @@ class TestLepus : private TestLepusContextHolder,
     lynx::runtime::MTSRuntime::ToVMContext(context())->SetClosureFix(true);
     lynx::runtime::MTSRuntime::ToVMContext(context())->SetOptBytecode(
         opt_bytecode);
+    lynx::runtime::MTSRuntime::ToVMContext(context())->SetNullPropAsUndef(
+        HasLepusNullPropAsUndefMarker(lepus_resource));
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
         context()->GetMTSContext(), lepus_resource, "2.6", "", ir_dump_path);
 
@@ -568,4 +568,61 @@ TEST(lepus, compile_opt_lepus_bytecode) {
     }
     return;
   }
+}
+
+static bool CompileAndExecuteAndReadResult(const std::string& src,
+                                           bool opt_bytecode,
+                                           bool null_prop_as_undef,
+                                           bool strict_check,
+                                           lepus::Value* out_result) {
+  auto rt =
+      runtime::MTSRuntime::CreateContext(runtime::ContextType::VMContextType);
+  if (!rt) return false;
+  rt->Initialize();
+
+  auto* vm = runtime::MTSRuntime::ToVMContext(rt.get());
+  if (!vm) return false;
+  RegisterBuiltinTest(vm);
+  vm->SetClosureFix(true);
+  vm->SetOptBytecode(opt_bytecode);
+  vm->SetNullPropAsUndef(null_prop_as_undef);
+  vm->SetEnableStrictCheck(strict_check);
+
+  auto err = lepus::BytecodeGenerator::GenerateBytecode(
+      rt->GetMTSContext(), src, "2.6", "", nullptr);
+  if (!err.empty()) return false;
+  if (!rt->Execute(nullptr)) return false;
+
+  if (!out_result) return true;
+  lepus::Value v;
+  if (!vm->GetTopLevelVariableByName(base::String("result"), &v)) {
+    return false;
+  }
+  *out_result = v;
+  return true;
+}
+
+TEST(lepus, opt_bytecode_strict_optional_chain_behavior_consistent) {
+  // This test protects the semantic contract: enabling IR/O1 bytecode
+  // optimization must not change runtime behavior.
+  //
+  // In strict-check mode, property access on nullish receivers throws.
+  // Optional chaining lowering relies on a guard to avoid the throw.
+  const std::string src = R"(
+var x = null;
+var result = x?.a;
+)";
+
+  constexpr bool kNullPropAsUndef = false;  // majority pages
+  constexpr bool kStrict = true;
+
+  lepus::Value res_no_ir;
+  lepus::Value res_ir;
+  ASSERT_TRUE(CompileAndExecuteAndReadResult(
+      src, /*opt_bytecode=*/false, kNullPropAsUndef, kStrict, &res_no_ir));
+  ASSERT_TRUE(CompileAndExecuteAndReadResult(
+      src, /*opt_bytecode=*/true, kNullPropAsUndef, kStrict, &res_ir));
+
+  EXPECT_EQ(res_no_ir.Type(), res_ir.Type());
+  EXPECT_TRUE(res_no_ir.IsNil());
 }

@@ -248,7 +248,6 @@ bool LoadStoreElimination::RunOnFunction(FuncOp* f) {
     if (a.toplevel_vars.size() != b.toplevel_vars.size()) return false;
     if (a.constants.size() != b.constants.size()) return false;
     if (a.upvalues.size() != b.upvalues.size()) return false;
-    if (a.null_undefined.size() != b.null_undefined.size()) return false;
     if (a.context_slots.size() != b.context_slots.size()) return false;
 
     for (const auto& kv : a.tables) {
@@ -284,11 +283,6 @@ bool LoadStoreElimination::RunOnFunction(FuncOp* f) {
     for (const auto& kv : a.upvalues) {
       auto it = b.upvalues.find(kv.first);
       if (it == b.upvalues.end()) return false;
-      if (!values_equal(kv.second, it->second)) return false;
-    }
-    for (const auto& kv : a.null_undefined) {
-      auto it = b.null_undefined.find(kv.first);
-      if (it == b.null_undefined.end()) return false;
       if (!values_equal(kv.second, it->second)) return false;
     }
     for (const auto& kv : a.context_slots) {
@@ -364,17 +358,6 @@ bool LoadStoreElimination::RunOnFunction(FuncOp* f) {
       auto jt = other.upvalues.find(it->first);
       if (jt == other.upvalues.end() || !values_equal(it->second, jt->second)) {
         it = acc.upvalues.erase(it);
-      } else {
-        ++it;
-      }
-    }
-    // null_undefined
-    for (auto it = acc.null_undefined.begin();
-         it != acc.null_undefined.end();) {
-      auto jt = other.null_undefined.find(it->first);
-      if (jt == other.null_undefined.end() ||
-          !values_equal(it->second, jt->second)) {
-        it = acc.null_undefined.erase(it);
       } else {
         ++it;
       }
@@ -700,9 +683,6 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
       }
     } else if (auto* load_const = llvh::dyn_cast<LoadConstInst>(inst)) {
       ProcessLoad(load_const, available.constants, load_const->GetConst());
-    } else if (auto* load_nil = llvh::dyn_cast<LoadNullOrUndefinedInst>(inst)) {
-      ProcessLoad(load_nil, available.null_undefined,
-                  load_nil->GetLoadNilType());
     } else if (inst->GetSideEffect().MayReadOrWorse() &&
                !inst->GetSideEffect().IsPure()) {
       if (!(llvh::isa<NewTableInst>(inst) || llvh::isa<NewArrayInst>(inst) ||

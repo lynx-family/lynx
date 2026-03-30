@@ -126,7 +126,11 @@ bool MovEliminationPass::RemoveMovWithSameSrcAndDst(FuncOp* func) {
           }
 
           Value* src = mov->GetSingleOperand();
-          bool allocated = ra->IsAllocated(src);
+          // MovEliminationPass runs after RegisterAllocationPass, but some MOV
+          // instructions can be unallocated (e.g. they are kept only for
+          // correctness/metadata reasons or will be removed later). Never call
+          // GetRegister on an unallocated Value.
+          bool allocated = ra->IsAllocated(src) && ra->IsAllocated(mov);
           if (allocated) {
             src_reg = ra->GetRegister(src).GetIndex();
             dst_reg = ra->GetRegister(mov).GetIndex();

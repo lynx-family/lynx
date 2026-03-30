@@ -172,7 +172,6 @@ function __UpdateIfNodeIndex(a, b) {}
 function __CreateImage(a){}
 function __SetAttribute(a,b,c){}
 function __AppendElement(a,b) {}
-function __SetStyleObject(a,b) {}
 function __CreateIf(a) {}
 function _GetLength(a) {}
 function __UpdateForChildCount(a, b){}

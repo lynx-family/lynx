@@ -88,6 +88,7 @@ constexpr const char* kEnableLepusChunkAsyncDecode =
     "enableLepusChunkAsyncDecode";
 constexpr const char* kContextType = "contextType";
 constexpr const char* kEnableOptLepusBytecode = "enableOptLepusBytecode";
+constexpr const char* kLepusNullPropAsUndefined = "lepusNullPropAsUndef";
 
 #define GET_VALUE_FROM_JSON(Doc, Key, Type, Var)   \
   if (Doc.HasMember(Key) && Doc[Key].Is##Type()) { \
@@ -821,9 +822,21 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
   // Set compile_options_
   encoder_options.compile_options_ = compile_options;
 
+  // use lepus_null_prop_as_undefined config in lepus ir optimization pass
+  bool lepus_null_prop_as_undefined = false;
+  if (document.HasMember(kSourceContext) &&
+      document[kSourceContext].IsObject() &&
+      document[kSourceContext].HasMember(kConfig) &&
+      document[kSourceContext][kConfig].IsObject()) {
+    rapidjson::Value& config = document[kSourceContext][kConfig];
+    GET_VALUE_FROM_JSON(config, kLepusNullPropAsUndefined, Bool,
+                        lepus_null_prop_as_undefined);
+  }
+
   SourceGeneratorOptions source_generator_options{
       encoder_options.generator_options_.enable_tt_for_full_version_, false,
-      encoder_options.generator_options_.enable_dataset_attrs_};
+      encoder_options.generator_options_.enable_dataset_attrs_,
+      lepus_null_prop_as_undefined};
 
   // Set source_generator_options_
   encoder_options.source_generator_options_ = source_generator_options;

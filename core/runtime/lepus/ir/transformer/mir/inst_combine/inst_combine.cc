@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <string>
 
 #include "core/runtime/lepus/function.h"
 #include "core/runtime/lepus/ir/analysis/analysis.h"
@@ -16,8 +17,10 @@
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/DenseSet.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/SmallPtrSet.h"
 #include "core/runtime/lepus/ir/op_builder.h"
+#include "core/runtime/lepus/ir/utils/block_utils.h"
 #include "core/runtime/lepus/ir/utils/eval.h"
 #include "core/runtime/lepus/restricted_value.h"
+#include "core/runtime/lepus/vm_context.h"
 
 namespace lynx {
 namespace lepus {
@@ -114,6 +117,44 @@ static bool ResolveConstStringKeyIndex(
   return true;
 }
 
+static bool ResolveFreshTableFromNewTable(
+    Value* v, llvh::DenseMap<Value*, bool>& memo,
+    llvh::SmallPtrSet<Value*, 16>& visiting) {
+  if (!v) return false;
+
+  auto it = memo.find(v);
+  if (it != memo.end()) return it->second;
+
+  // Break cycles (e.g. ill-formed phi).
+  if (!visiting.insert(v).second) {
+    memo[v] = false;
+    return false;
+  }
+
+  bool result = false;
+  if (llvh::isa<NewTableInst>(v)) {
+    // NewTableInst always materializes a table at runtime, even if its IR type
+    // has been widened to `any` by other passes.
+    result = true;
+  } else if (auto* phi = llvh::dyn_cast<PhiInst>(v)) {
+    const unsigned n = phi->GetNumEntries();
+    if (n > 0) {
+      result = true;
+      for (unsigned i = 0; i < n; i++) {
+        auto entry = phi->GetEntry(i);
+        if (!ResolveFreshTableFromNewTable(entry.first, memo, visiting)) {
+          result = false;
+          break;
+        }
+      }
+    }
+  }
+
+  visiting.erase(v);
+  memo[v] = result;
+  return result;
+}
+
 static Value* CombineSetTableConstStringKey(OpBuilder* builder,
                                             Instruction* inst) {
   // loadConst
@@ -122,8 +163,19 @@ static Value* CombineSetTableConstStringKey(OpBuilder* builder,
   // setTableConstStringKey obj, literal_index, value
   if (auto* set_table = llvh::dyn_cast<SetTableInst>(inst)) {
     auto* obj = set_table->GetObject();
-    // object should be table type
-    if (!obj->GetType()->IsTableType()) return nullptr;
+    // `TypeOp_SetObjectConstString` assumes the receiver is a table (no runtime
+    // check). Be conservative:
+    // - If IR type already proves `table`, ok.
+    // - Otherwise, only allow when the receiver can be proven to originate from
+    //   a fresh NewTableInst through Phi chains.
+    if (!obj || !obj->GetType()) return nullptr;
+    if (!obj->GetType()->IsTableType()) {
+      llvh::DenseMap<Value*, bool> table_memo;
+      llvh::SmallPtrSet<Value*, 16> table_visiting;
+      if (!ResolveFreshTableFromNewTable(obj, table_memo, table_visiting)) {
+        return nullptr;
+      }
+    }
 
     // Resolve key to a const-string index through Phi chains.
     auto* func_op = inst->GetFunction();
@@ -179,6 +231,433 @@ static Value* CombineGetTableConstStringKey(OpBuilder* builder,
       builder->GetLiteralUint32(static_cast<uint32_t>(key_idx)),
       get_table->GetType());
   return res;
+}
+
+static bool IsNullishTrampolineBlock(Block* bb, Block* merge_bb,
+                                     int8_t expected_nullish_type) {
+  if (!bb || !merge_bb) return false;
+  auto* term = llvh::dyn_cast_or_null<BranchInst>(bb->GetTerminator());
+  if (!term || term->GetBranchDest() != merge_bb) return false;
+
+  llvh::SmallVector<Instruction*, 4> body;
+  for (auto* inst : bb->InstRange()) {
+    if (llvh::isa<TerminatorInst>(inst)) continue;
+    body.push_back(inst);
+  }
+
+  if (body.empty()) return true;
+  if (body.size() != 1) return false;
+  auto* inst = body[0];
+  {
+    const auto se = inst->GetSideEffect();
+    // Avoid instructions that constrain block layout (catch boundaries, etc).
+    if (se.GetFirstInBlock() || se.GetIsCatch()) return false;
+    // Only allow trivially removable instructions.
+    if (se.HasSideEffect()) return false;
+  }
+
+  // Allow a locally materialized nullish literal, used only by Phi(s) in merge.
+  auto* ln = llvh::dyn_cast<LoadNullOrUndefinedInst>(inst);
+  if (!ln) return false;
+  if (ln->GetLoadNilType()->GetValue() != expected_nullish_type) return false;
+  for (auto* u : inst->GetUsers()) {
+    if (!u) continue;
+    if (u->GetParent() != merge_bb) return false;
+    if (!llvh::isa<PhiInst>(u)) return false;
+  }
+  return true;
+}
+
+struct NullishGuardedGetTableNode {
+  EqCondBranchInst* guard = nullptr;
+  LoadNullOrUndefinedInst* nullish = nullptr;
+  Value* receiver = nullptr;
+  Block* nil_bb = nullptr;
+  Block* get_bb = nullptr;
+  Block* merge_bb = nullptr;
+  PhiInst* phi = nullptr;
+  Instruction* get_inst = nullptr;  // GetTableInst / GetTableConstStringKeyInst
+};
+
+static Instruction* FindSingleGetTableInBlock(Block* bb) {
+  if (!bb) return nullptr;
+  Instruction* found = nullptr;
+  for (auto* inst : bb->InstRange()) {
+    if (!inst) continue;
+    if (llvh::isa<TerminatorInst>(inst)) continue;
+    // Allow only a single GetTable* in the block body.
+    if (llvh::isa<GetTableInst>(inst) ||
+        llvh::isa<GetTableConstStringKeyInst>(inst)) {
+      if (found) return nullptr;
+      found = inst;
+      continue;
+    }
+    // Be conservative: reject other instructions.
+    return nullptr;
+  }
+  return found;
+}
+
+static PhiInst* FindSinglePhiInMerge(Block* merge_bb) {
+  if (!merge_bb) return nullptr;
+  PhiInst* phi = nullptr;
+  for (auto* inst : merge_bb->InstRange()) {
+    if (!inst) continue;
+    auto* p = llvh::dyn_cast<PhiInst>(inst);
+    if (!p) break;
+    if (phi) return nullptr;  // multiple phis not supported
+    phi = p;
+  }
+  return phi;
+}
+
+static bool MatchNullishGuardedGetTable(EqCondBranchInst* br,
+                                        NullishGuardedGetTableNode* out) {
+  if (!br || !out) return false;
+
+  Value* lhs = br->GetLeftHandSide();
+  Value* rhs = br->GetRightHandSide();
+  auto* lhs_nullish = llvh::dyn_cast_or_null<LoadNullOrUndefinedInst>(lhs);
+  auto* rhs_nullish = llvh::dyn_cast_or_null<LoadNullOrUndefinedInst>(rhs);
+  LoadNullOrUndefinedInst* nullish = nullptr;
+  Value* receiver = nullptr;
+  if (lhs_nullish && !rhs_nullish) {
+    nullish = lhs_nullish;
+    receiver = rhs;
+  } else if (rhs_nullish && !lhs_nullish) {
+    nullish = rhs_nullish;
+    receiver = lhs;
+  } else {
+    return false;
+  }
+  if (!receiver) return false;
+
+  Block* nil_bb = br->GetTrueDest();
+  Block* get_bb = br->GetFalseDest();
+  if (!nil_bb || !get_bb) return false;
+
+  auto* nil_term = llvh::dyn_cast_or_null<BranchInst>(nil_bb->GetTerminator());
+  auto* get_term = llvh::dyn_cast_or_null<BranchInst>(get_bb->GetTerminator());
+  if (!nil_term || !get_term) return false;
+
+  Block* merge_bb = nil_term->GetBranchDest();
+  if (!merge_bb || merge_bb != get_term->GetBranchDest()) return false;
+
+  const int8_t expected_type = nullish->GetLoadNilType()->GetValue();
+  if (!IsNullishTrampolineBlock(nil_bb, merge_bb, expected_type)) return false;
+
+  Instruction* get_inst = FindSingleGetTableInBlock(get_bb);
+  if (!get_inst) return false;
+
+  Value* get_receiver = nullptr;
+  if (auto* g = llvh::dyn_cast<GetTableInst>(get_inst)) {
+    get_receiver = g->GetObject();
+  } else if (auto* g = llvh::dyn_cast<GetTableConstStringKeyInst>(get_inst)) {
+    get_receiver = g->GetObject();
+  }
+  if (get_receiver != receiver) return false;
+
+  PhiInst* phi = FindSinglePhiInMerge(merge_bb);
+  if (!phi || phi->GetNumEntries() != 2) return false;
+
+  // Incoming blocks must be exactly nil_bb and get_bb.
+  Value* in_nil = nullptr;
+  Value* in_get = nullptr;
+  bool has_nil = false;
+  bool has_get = false;
+  for (unsigned i = 0; i < phi->GetNumEntries(); i++) {
+    auto entry = phi->GetEntry(i);
+    if (entry.second == nil_bb) {
+      has_nil = true;
+      in_nil = entry.first;
+    } else if (entry.second == get_bb) {
+      has_get = true;
+      in_get = entry.first;
+    } else {
+      return false;
+    }
+  }
+  if (!has_nil || !has_get) return false;
+
+  // The get incoming must be the GetTable* result.
+  if (in_get != get_inst) return false;
+
+  // The nil incoming must be a nullish value of the same kind.
+  if (in_nil != nullish) {
+    auto* other_nullish =
+        llvh::dyn_cast_or_null<LoadNullOrUndefinedInst>(in_nil);
+    if (!other_nullish) return false;
+    if (other_nullish->GetLoadNilType()->GetValue() != expected_type)
+      return false;
+  }
+
+  out->guard = br;
+  out->nullish = nullish;
+  out->receiver = receiver;
+  out->nil_bb = nil_bb;
+  out->get_bb = get_bb;
+  out->merge_bb = merge_bb;
+  out->phi = phi;
+  out->get_inst = get_inst;
+  return true;
+}
+
+// Canonicalize a lowering pattern commonly produced by optional chaining
+// expansion (e.g. `(_a = x) == null ? undefined : _a.k`):
+//
+//   EqCondBranchInst recv == nullish ? merge : get
+//   get:    v = GetTable*(recv, key); Branch merge
+//   merge:  v2 = GetTable*(recv, key); ... uses v2 ...
+//
+// Into a CFG shape that can be matched by MatchNullishGuardedGetTable and then
+// folded by FoldNullishGuardChainInPlace:
+//
+//   EqCondBranchInst recv == nullish ? nil : get
+//   nil:   Branch merge
+//   get:   v = GetTable*(recv, key); Branch merge
+//   merge: phi = Phi(nullish, v); ... uses phi ...
+static bool CanonicalizeNullishGuardedGetTableMergeRecompute(
+    FuncOp* func, OpBuilder* builder) {
+  if (!func || !builder) return false;
+  bool changed = false;
+  Region* region = func->GetSingleRegion();
+  if (!region) return false;
+
+  llvh::SmallVector<Instruction*, 16> to_erase;
+
+  for (auto& bb : *func) {
+    auto* br = llvh::dyn_cast_or_null<EqCondBranchInst>(bb.GetTerminator());
+    if (!br) continue;
+
+    // Identify receiver and nullish literal.
+    Value* lhs = br->GetLeftHandSide();
+    Value* rhs = br->GetRightHandSide();
+    auto* lhs_nullish = llvh::dyn_cast_or_null<LoadNullOrUndefinedInst>(lhs);
+    auto* rhs_nullish = llvh::dyn_cast_or_null<LoadNullOrUndefinedInst>(rhs);
+    LoadNullOrUndefinedInst* nullish = nullptr;
+    Value* receiver = nullptr;
+    if (lhs_nullish && !rhs_nullish) {
+      nullish = lhs_nullish;
+      receiver = rhs;
+    } else if (rhs_nullish && !lhs_nullish) {
+      nullish = rhs_nullish;
+      receiver = lhs;
+    } else {
+      continue;
+    }
+    if (!nullish || !receiver) continue;
+
+    // Try both successor orientations.
+    struct Candidate {
+      Block* merge = nullptr;
+      Block* get_bb = nullptr;
+      int merge_succ_idx =
+          -1;  // which successor of br points directly to merge
+      Instruction* get_inst = nullptr;
+      Instruction* merge_get_inst = nullptr;
+    } cand;
+
+    auto try_match = [&](Block* merge_side, Block* get_side,
+                         int merge_succ_idx) -> bool {
+      Block* merge = nullptr;
+      Instruction* get_inst = nullptr;
+      {
+        if (!get_side) return false;
+        auto* term =
+            llvh::dyn_cast_or_null<BranchInst>(get_side->GetTerminator());
+        if (!term) return false;
+        merge = term->GetBranchDest();
+        if (!merge) return false;
+        get_inst = FindSingleGetTableInBlock(get_side);
+        if (!get_inst) return false;
+      }
+      if (merge != merge_side) return false;
+
+      // We only canonicalize when merge doesn't already start with phis.
+      for (auto* inst : merge->InstRange()) {
+        if (!inst) continue;
+        if (llvh::isa<PhiInst>(inst)) return false;
+        break;
+      }
+
+      // Merge must start with a GetTable* that is identical to the one in
+      // get_bb.
+      Instruction* merge_first = nullptr;
+      for (auto* inst : merge->InstRange()) {
+        if (!inst) continue;
+        if (llvh::isa<PhiInst>(inst)) continue;
+        if (llvh::isa<TerminatorInst>(inst)) continue;
+        merge_first = inst;
+        break;
+      }
+      if (!merge_first) return false;
+      if (!llvh::isa<GetTableInst>(merge_first) &&
+          !llvh::isa<GetTableConstStringKeyInst>(merge_first)) {
+        return false;
+      }
+      if (get_inst->GetKind() != merge_first->GetKind()) return false;
+      if (auto* ga = llvh::dyn_cast<GetTableInst>(get_inst)) {
+        auto* gb = llvh::dyn_cast<GetTableInst>(merge_first);
+        if (!gb || ga->GetObject() != gb->GetObject() ||
+            ga->GetProp() != gb->GetProp()) {
+          return false;
+        }
+      } else if (auto* ga =
+                     llvh::dyn_cast<GetTableConstStringKeyInst>(get_inst)) {
+        auto* gb = llvh::dyn_cast<GetTableConstStringKeyInst>(merge_first);
+        if (!gb || ga->GetObject() != gb->GetObject() ||
+            ga->GetConstIndex() != gb->GetConstIndex()) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+
+      // Also require that the GetTable* receiver is exactly the compared
+      // receiver.
+      Value* obj = nullptr;
+      if (auto* g = llvh::dyn_cast<GetTableInst>(merge_first)) {
+        obj = g->GetObject();
+      } else if (auto* g =
+                     llvh::dyn_cast<GetTableConstStringKeyInst>(merge_first)) {
+        obj = g->GetObject();
+      }
+      if (obj != receiver) return false;
+
+      cand.merge = merge;
+      cand.get_bb = get_side;
+      cand.merge_succ_idx = merge_succ_idx;
+      cand.get_inst = get_inst;
+      cand.merge_get_inst = merge_first;
+      return true;
+    };
+
+    Block* s0 = br->GetTrueDest();
+    Block* s1 = br->GetFalseDest();
+    if (!s0 || !s1) continue;
+    if (!try_match(/*merge_side*/ s0, /*get_side*/ s1, /*merge_succ_idx*/ 0) &&
+        !try_match(/*merge_side*/ s1, /*get_side*/ s0, /*merge_succ_idx*/ 1)) {
+      continue;
+    }
+
+    // Create nil trampoline block.
+    Block* nil_bb =
+        builder->CreateBlock(region, BlockType::BT_INST, {}, "nullish_nil_bb");
+    if (!nil_bb) continue;
+    {
+      OpBuilderRestoreInsertPointerRAII _restore(builder);
+      builder->SetInsertionPointToEnd(nil_bb);
+      builder->Create<BranchInst>(br->GetLocation(), cand.merge);
+    }
+
+    // Insert phi at merge start.
+    {
+      OpBuilderRestoreInsertPointerRAII _restore(builder);
+      builder->SetInsertionPointToStart(cand.merge);
+      PhiInst::ValueListType values{nullish, cand.get_inst};
+      PhiInst::BlockListType blocks{nil_bb, cand.get_bb};
+      auto* phi = builder->Create<PhiInst>(br->GetLocation(), values, blocks);
+      if (!phi) continue;
+      cand.merge_get_inst->ReplaceAllUsesWith(phi);
+    }
+
+    // Remove the redundant GetTable* in merge.
+    to_erase.push_back(cand.merge_get_inst);
+
+    // Redirect the direct edge to merge into the new nil trampoline.
+    br->SetSuccessorImpl(cand.merge_succ_idx, nil_bb);
+    changed = true;
+  }
+
+  llvh::for_each(to_erase, [&](Instruction* inst) {
+    if (inst && inst->GetParent()) inst->EraseFromParent();
+  });
+
+  return changed;
+}
+
+static bool FoldNullishGuardChainInPlace(OpBuilder* builder, FuncOp* func) {
+  if (!func) return false;
+  bool changed = false;
+
+  // First, canonicalize optional-chaining-like patterns into a matchable CFG.
+  if (CanonicalizeNullishGuardedGetTableMergeRecompute(func, builder)) {
+    changed = true;
+  }
+
+  llvh::SmallPtrSet<EqCondBranchInst*, 16> visited_guards;
+
+  for (auto& bb : *func) {
+    auto* term = llvh::dyn_cast_or_null<EqCondBranchInst>(bb.GetTerminator());
+    if (!term) continue;
+    if (visited_guards.count(term)) continue;
+
+    // Try to build a forward chain starting from this guard.
+    llvh::SmallVector<NullishGuardedGetTableNode, 8> chain;
+    EqCondBranchInst* cur = term;
+    llvh::SmallPtrSet<Block*, 16> seen_merge;
+
+    while (cur && !visited_guards.count(cur) && chain.size() < 8) {
+      NullishGuardedGetTableNode node;
+      if (!MatchNullishGuardedGetTable(cur, &node)) break;
+
+      // Avoid cycles.
+      if (!seen_merge.insert(node.merge_bb).second) break;
+
+      chain.push_back(node);
+      visited_guards.insert(cur);
+
+      // Next guard must be the terminator of the merge block and must test the
+      // current phi result against the same nullish value.
+      auto* next = llvh::dyn_cast_or_null<EqCondBranchInst>(
+          node.merge_bb->GetTerminator());
+      if (!next) break;
+
+      Value* n_lhs = next->GetLeftHandSide();
+      Value* n_rhs = next->GetRightHandSide();
+      const int8_t expected_type = node.nullish->GetLoadNilType()->GetValue();
+      auto* n_lhs_nullish =
+          llvh::dyn_cast_or_null<LoadNullOrUndefinedInst>(n_lhs);
+      auto* n_rhs_nullish =
+          llvh::dyn_cast_or_null<LoadNullOrUndefinedInst>(n_rhs);
+      const bool rhs_nullish_ok =
+          (n_rhs == node.nullish) ||
+          (n_rhs_nullish &&
+           n_rhs_nullish->GetLoadNilType()->GetValue() == expected_type);
+      const bool lhs_nullish_ok =
+          (n_lhs == node.nullish) ||
+          (n_lhs_nullish &&
+           n_lhs_nullish->GetLoadNilType()->GetValue() == expected_type);
+      const bool uses_phi = (n_lhs == node.phi && rhs_nullish_ok) ||
+                            (n_rhs == node.phi && lhs_nullish_ok);
+      if (!uses_phi) break;
+      cur = next;
+    }
+
+    if (chain.size() < 2) continue;
+
+    // Unify all earlier null branches to jump into the last null trampoline.
+    Block* unified_nil = chain.back().nil_bb;
+    // Extra safety: ensure the chosen trampoline is still a nullish trampoline
+    // to its merge.
+    if (!unified_nil || !chain.back().merge_bb) continue;
+    const int8_t expected_type =
+        chain.back().nullish->GetLoadNilType()->GetValue();
+    if (!IsNullishTrampolineBlock(unified_nil, chain.back().merge_bb,
+                                  expected_type)) {
+      continue;
+    }
+
+    for (size_t i = 0; i + 1 < chain.size(); i++) {
+      auto* g = chain[i].guard;
+      if (!g) continue;
+      if (g->GetTrueDest() == unified_nil) continue;
+      g->SetSuccessorImpl(0, unified_nil);
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 static bool InvertCondBranchUnaryNotInPlace(FuncOp* func) {
@@ -735,6 +1214,9 @@ bool InstCombinePass::RunOnFunction(FuncOp* func) {
       changed_ = true;
     }
     auto builder = ir_ctx_->GetOpBuilder();
+    if (FoldNullishGuardChainInPlace(builder, func)) {
+      changed_ = true;
+    }
     for (auto& block : *func) {
       for (auto* inst : block.InstRange()) {
         Value* combined = nullptr;

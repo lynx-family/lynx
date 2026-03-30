@@ -59,12 +59,16 @@ class InstructionSelectionPass : public FunctionPass {
   bool ResolveRelocationsInternal();
   void ResolveRelocations();
   void BytecodeGenerateComplete();
+  void CompactConstPoolAndRewriteConstIndices();
+  void FixOutOfRangeCmpJmpRelocations();
   uint32_t GetCurrentOffset() const;
   uint8_t EncodeValue(Value* value);
   void Generate(Instruction* ii, Block* next);
   void RegisterJmp(uint32_t loc, Block* target);
   void RegisterCmpJmp(uint32_t loc, Block* target);
   lynx::lepus::Instruction* GetInstruction(uint32_t loc);
+
+  static bool IsInCmpJmpRange(int32_t diff);
 
   // Returns true if this CallInst is lowered to TypeOp_DeepClone.
   bool TryLowerDeepCloneCall(CallInst* inst, uint8_t ret_reg);
