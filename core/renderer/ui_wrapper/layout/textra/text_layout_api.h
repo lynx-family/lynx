@@ -87,6 +87,7 @@ class ParagraphBuilder {
 
 class TextLayoutAPI {
  public:
+  virtual ~TextLayoutAPI() = default;
   virtual ParagraphBuilder *CreateParagraphBuilder() = 0;
   virtual void DestroyParagraphBuilder(ParagraphBuilder *builder) = 0;
   virtual MeasureResult MeasureParagraph(Paragraph *paragraph,
