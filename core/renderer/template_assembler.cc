@@ -1607,6 +1607,7 @@ void TemplateAssembler::OnScriptingEnd() {
   }
 
   if (context->GetOptions()->created_in_on_scripting_start_) {
+    context->GetOptions()->created_in_on_scripting_start_ = false;
     RunPixelPipeline();
   }
 }
