@@ -16,7 +16,7 @@
 #include "core/runtime/lepus/ir/transformer/vm/reg_alloc.h"
 #include "core/runtime/lepus/ir/transformer/vm/register_allocation_pass.h"
 #include "core/runtime/lepus/ir/unittests/ir_test_base.h"
-#include "core/runtime/lepus/op_code.h"
+#include "core/runtime/lepus/op_code_builder.h"
 
 namespace lynx {
 namespace lepus {

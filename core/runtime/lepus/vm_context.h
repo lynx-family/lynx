@@ -264,7 +264,9 @@ class VMContext : public runtime::MTSContext {
   // key: vreg for toplevel variable; value: first bytecode offset that writes
   // it. Used by the IR pipeline to keep toplevel vregs stable across
   // transforms.
+#ifdef LEPUS_ENABLE_CODEGEN
   std::unordered_map<long, long> top_level_reg_to_offset_;
+#endif
   fml::RefPtr<Function> root_function_;
   base::InlineStack<RestrictedValue, 32> context_;
   RestrictedValue closure_context_;

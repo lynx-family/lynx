@@ -11,7 +11,7 @@
 #include "base/include/value/table.h"
 #include "core/runtime/lepus/builtin_function_table.h"
 #include "core/runtime/lepus/function.h"
-#include "core/runtime/lepus/op_code.h"
+#include "core/runtime/lepus/op_code_builder.h"
 #include "core/runtime/lepus/vm_context.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

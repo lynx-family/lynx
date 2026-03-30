@@ -9,6 +9,8 @@
 
 namespace lynx {
 namespace lepus {
+
+#if defined(LEPUS_ENABLE_CODEGEN)
 std::size_t Function::AddConstNumber(double number) {
   Value v;
   if (lynx::base::StringConvertHelper::IsInt64Double(number)) {
@@ -41,6 +43,7 @@ std::size_t Function::AddConstValue(const Value& v) {
   const_size_ = const_values_.size();
   return const_size_ - 1;
 }
+#endif  // defined(LEPUS_ENABLE_CODEGEN)
 
 void Function::DecodeLineCol(uint64_t line_col, int32_t& line, int32_t& col) {
   // line_col: bits[Function::kLineBitsShift-0]: col number
@@ -221,6 +224,7 @@ Value& Function::GetScope() {
   return scopes_;
 }
 
+#if defined(LEPUS_ENABLE_CODEGEN)
 void Function::PushBSStack(uint64_t id) { block_scope_stack_.push(id); }
 
 void Function::PopBSStack() { block_scope_stack_.pop(); }
@@ -230,6 +234,7 @@ void Function::PushLoopBlockStack(uint64_t id) { loop_block_stack_.push(id); }
 void Function::PopLoopBlockStack() { loop_block_stack_.pop(); }
 
 uint64_t Function::GetLoopBlockStack() { return loop_block_stack_.top(); }
+#endif  // defined(LEPUS_ENABLE_CODEGEN)
 
 int32_t Function::GetParamsSize() {
   if (params_size_ != -1) {
