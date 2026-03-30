@@ -212,6 +212,7 @@ class BaseElementContainer {
   ElementManager* manager_{nullptr};
 
   BaseElementContainer* parent_{nullptr};
+  int32_t id_{0};
 };
 
 }  // namespace tasm
