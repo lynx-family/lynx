@@ -122,6 +122,7 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
     content_utf16_length_ =
         GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
     MarkLayoutDirty();
+    element_container_->InvalidateForRedraw();
     return true;
   }
 
@@ -132,6 +133,7 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
             ? (value.IsNumber() ? value.Number() : std::stoi(value.StdString()))
             : 1;
     MarkLayoutDirty();
+    element_container_->InvalidateForRedraw();
     return true;
   }
   return false;

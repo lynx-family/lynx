@@ -27,6 +27,7 @@ void RawTextElement::SetText(const lepus::Value& text) {
     content_utf16_length_ =
         GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
     MarkLayoutDirty();
+    element_container_->InvalidateForRedraw();
   }
 }
 
@@ -38,6 +39,7 @@ void RawTextElement::SetAttributeInternal(const base::String& key,
       content_ = value.String();
       content_utf16_length_ =
           GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
+      element_container_->InvalidateForRedraw();
       return;
     }
   }
