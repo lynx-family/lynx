@@ -287,9 +287,20 @@ void NativePaintingCtxPlatformRef::UpdateAttributes(
 void NativePaintingCtxPlatformRef::InvokeUIMethod(
     int32_t id, const std::string &method, const lepus::Value &params,
     base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback) {
+  std::weak_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor =
+      engine_actor_;
   base::MoveOnlyClosure<void, int32_t, const lepus::Value &> cb =
-      [callback = std::move(callback)](int32_t code, const lepus::Value &data) {
-        callback(code, PubLepusValue(data));
+      [engine_actor = std::move(engine_actor), callback = std::move(callback)](
+          int32_t code, const lepus::Value &data) mutable {
+        auto actor = engine_actor.lock();
+        if (actor == nullptr) {
+          return;
+        }
+        lepus::Value data_copy = data;
+        actor->Act([callback = std::move(callback), code,
+                    data = std::move(data_copy)](auto &) mutable {
+          callback(code, PubLepusValue(data));
+        });
       };
 
   // Invoke ui method on the event target.
