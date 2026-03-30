@@ -1,5 +1,3 @@
-setFlag("lepusNullPropAsUndef", false);
-
 let ni = undefined;
 Assert(ni == null);
 

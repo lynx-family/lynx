@@ -119,9 +119,6 @@ class LoadStoreElimination : public FunctionPass {
         constants;  // Constant (Literal*) -> Value
     // GetUpValueInst, SetUpValueInst
     std::unordered_map<Value*, Value*> upvalues;  // Index (Literal*) -> Value
-    // LoadNullOrUndefinedInst
-    std::unordered_map<Value*, Value*>
-        null_undefined;  // Type (LiteralInt8*) -> Value
     // GetContextSlotInst, SetContextSlotInst
     std::unordered_map<ContextKey, Value*, ContextKeyHash> context_slots;
 

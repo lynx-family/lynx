@@ -167,6 +167,9 @@ std::shared_ptr<lynx::runtime::MTSRuntime> GetVMContent(
         encoder_options.compile_options_.enable_opt_lepus_bytecode_;
     lynx::runtime::MTSRuntime::ToVMContext(vm_context.get())
         ->SetOptBytecode(opt_lepus_bytecode);
+    lynx::runtime::MTSRuntime::ToVMContext(vm_context.get())
+        ->SetNullPropAsUndef(encoder_options.source_generator_options_
+                                 .lepus_null_prop_as_undef_);
   }
   vm_context->Initialize();
 

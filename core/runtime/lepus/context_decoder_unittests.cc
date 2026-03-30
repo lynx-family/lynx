@@ -62,12 +62,18 @@ class TestUtils {
       vm_ctx->SetClosureFix(true);
       lepus::RegisterCFunction(vm_ctx, "Assert", Assert);
       lepus::RegisterCFunction(vm_ctx, "print", Print);
-      lepus::RegisterCFunction(vm_ctx, "setFlag", SetFlag);
       lepus::RegisterCFunction(vm_ctx, "typeof", Typeof);
     } else {
       lepus::RegisterNGCFunction(runtime::MTSRuntime::ToQuickContext(ctx),
                                  "Assert", Assert);
     }
+  }
+
+  static bool HasLepusNullPropAsUndefMarker(const std::string& source) {
+    std::string kLepusNullPropAsUndefMarker = "//lepusNullPropAsUndef";
+    size_t len = kLepusNullPropAsUndefMarker.size();
+    if (source.size() < len) return false;
+    return source.compare(0, len, kLepusNullPropAsUndefMarker) == 0;
   }
 
  private:
@@ -126,15 +132,6 @@ class TestUtils {
         break;
     }
     return *val;
-  }
-
-  static lepus::Value SetFlag(runtime::MTSContext* context, lepus::Value* parm1,
-                              int argc) {
-    if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
-      static_cast<lepus::VMContext*>(context)->SetNullPropAsUndef(
-          static_cast<lepus::VMContext*>(context)->GetParam(1)->Bool());
-    }
-    return lepus::Value();
   }
 
   static LEPUSValue Assert(LEPUSContext* ctx, LEPUSValue this_obj, int32_t argc,
@@ -275,6 +272,8 @@ TEST_F(ContextBinaryReaderTest, LynxBinaryReaderLepus) {
     auto vm_ctx =
         runtime::MTSRuntime::CreateContext(runtime::ContextType::VMContextType);
     TestUtils::RegisterBuiltin(vm_ctx.get());
+    runtime::MTSRuntime::ToVMContext(vm_ctx.get())
+        ->SetNullPropAsUndef(TestUtils::HasLepusNullPropAsUndefMarker(src));
     lepus::BytecodeGenerator::GenerateBytecode(vm_ctx->GetMTSContext(), src,
                                                target_sdk_version);
     auto binary_writer = ContextBinaryWriterTest(vm_ctx.get());

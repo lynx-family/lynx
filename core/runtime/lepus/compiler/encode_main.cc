@@ -22,6 +22,13 @@
 
 using namespace lynx;  // NOLINT
 
+bool HasLepusNullPropAsUndefMarker(const std::string& source) {
+  std::string kLepusNullPropAsUndefMarker = "//lepusNullPropAsUndef";
+  size_t len = kLepusNullPropAsUndefMarker.size();
+  if (source.size() < len) return false;
+  return source.compare(0, len, kLepusNullPropAsUndefMarker) == 0;
+}
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
 
@@ -39,6 +46,7 @@ static const char* kCFuncSetStaticAttributeTo = "_SetStaticAttributeTo";
 static const char* kCFuncSetStyleTo = "_SetStyleTo";
 static const char* kCFuncSetStaticStyleTo = "_SetStaticStyleTo";
 static const char* kCFuncSetDynamicStyleTo = "_SetDynamicStyleTo";
+static const char* kCFuncSetStyleObject = "__SetStyleObject";
 static const char* kCFuncSetClassTo = "_SetClassTo";
 static const char* kCFuncSetStaticClassTo = "_SetStaticClassTo";
 static const char* kCFuncSetStaticEventTo = "_SetStaticEventTo";
@@ -61,7 +69,6 @@ static const char* kCFuncGetComponentProps = "_GetComponentProps";
 static const char* kCFuncPrint = "print";
 static const char* kCFuncAssert = "Assert";
 static const char* kCFuncTypeof = "typeof";
-static const char* kCFuncSetFlag = "setFlag";
 static int count = 0;
 
 static int32_t kTestErrorCode = 106;
@@ -220,15 +227,6 @@ static lepus::Value Typeof(runtime::MTSContext* context, lepus::Value* val,
   return *val;
 }
 
-static lepus::Value SetFlag(runtime::MTSContext* context, lepus::Value* parm1,
-                            int argc) {
-  if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
-    static_cast<lepus::VMContext*>(context)->SetNullPropAsUndef(
-        static_cast<lepus::VMContext*>(context)->GetParam(1)->Bool());
-  }
-  return lepus::Value();
-}
-
 static lepus::Value CheckArgs(runtime::MTSContext* context,
                               lepus::Value* param1, int argc) {
   if (!param1->IsString()) {
@@ -267,8 +265,8 @@ void RegisterBuiltinFunc(lepus::VMContext* context) {
   lepus::RegisterCFunction(context, kCFuncPrint, &Print);
   lepus::RegisterCFunction(context, kCFuncAssert, &Assert);
   lepus::RegisterCFunction(context, kCFuncTypeof, &Typeof);
-  lepus::RegisterCFunction(context, kCFuncSetFlag, &SetFlag);
   lepus::RegisterCFunction(context, "TestReportFatal", &CheckArgs);
+  lepus::RegisterCFunction(context, kCFuncSetStyleObject, &EmptyFunc);
   // lepus::RegisterCFunction(context, kCFuncSetData, &ProcessComponentData);
 }
 
@@ -287,6 +285,7 @@ class TestLepus {
     RegisterBuiltinFunc(&context);
     context.SetClosureFix(true);
     context.SetOptBytecode(opt_bytecode);
+    context.SetNullPropAsUndef(HasLepusNullPropAsUndefMarker(lepus_resource));
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
         &context, lepus_resource, "2.6", "");
 

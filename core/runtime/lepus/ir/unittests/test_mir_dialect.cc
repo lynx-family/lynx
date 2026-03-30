@@ -28,7 +28,7 @@ TEST_F(LEPUSIRTestMIRDialect, testBasic) {
   auto dialect = MIRDialect::SharedInstance();
   ASSERT_NE(nullptr, dialect);
   ASSERT_EQ("mir", dialect->GetName());
-  ASSERT_EQ(68, dialect->GetOpsSize());
+  ASSERT_EQ(69, dialect->GetOpsSize());
 }
 
 TEST_F(LEPUSIRTestMIRDialect, testMIRPrinterSmoke) {

@@ -812,29 +812,47 @@ TEST(LEPUS_IR_VMContext, GetBuiltinFunc_FetchAndCallBuiltin) {
   EXPECT_EQ(ret.Number(), 7);
 }
 
-TEST(LEPUS_IR_VMContext, LoadSmallInt_LoadsImmediateIntoDstReg) {
+TEST(LEPUSIR_VMContext, LoadSmallInt_LoadsPositiveImm16) {
   auto fn = Function::Create();
-
-  // r0 = 42 (imm16)
   fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadSmallInt, 0, 42));
   fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 0));
 
   auto ret = RunFunctionAsClosure(fn);
   ASSERT_TRUE(ret.IsNumber());
-  EXPECT_EQ(ret.Number(), 42);
+  EXPECT_EQ(ret.Int64(), 42);
 }
 
-TEST(LEPUS_IR_VMContext, LoadSmallInt_SignExtendsImm16) {
+TEST(LEPUSIR_VMContext, LoadSmallInt_LoadsNegativeImm16) {
   auto fn = Function::Create();
-
-  // r0 = -1 (imm16)
   fn->AddInstruction(
       Instruction::ABxCode(TypeOp_LoadSmallInt, 0, static_cast<uint16_t>(-1)));
   fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 0));
 
   auto ret = RunFunctionAsClosure(fn);
   ASSERT_TRUE(ret.IsNumber());
-  EXPECT_EQ(ret.Number(), -1);
+  EXPECT_EQ(ret.Int64(), -1);
+}
+
+TEST(LEPUSIR_VMContext, LoadSmallInt_Boundaries) {
+  // int16 min/max should round-trip.
+  {
+    auto fn = Function::Create();
+    fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadSmallInt, 0,
+                                            static_cast<uint16_t>(0x8000)));
+    fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 0));
+    auto ret = RunFunctionAsClosure(fn);
+    ASSERT_TRUE(ret.IsNumber());
+    EXPECT_EQ(ret.Int64(), -32768);
+  }
+  {
+    auto fn = Function::Create();
+    fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadSmallInt, 0,
+                                            static_cast<uint16_t>(0x7FFF)));
+    fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 0));
+    auto ret = RunFunctionAsClosure(fn);
+    ASSERT_TRUE(ret.IsNumber());
+    EXPECT_EQ(ret.Int64(), 32767);
+  }
 }
 
 }  // namespace test

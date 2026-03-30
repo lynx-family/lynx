@@ -169,6 +169,18 @@ void Dumper::PrintOpCode(Instruction i, Function* func_ptr, int index) {
       id[1] = Constant;
       PrintDetail("LoadConst", 2, offsets, id);
       break;
+    case TypeOp_LoadSmallInt:
+      offsets[0] = Instruction::GetParamA(i);
+      offsets[1] = Instruction::GetParamsBx(i);
+      id[1] = Constant;
+      PrintDetail("LoadSmallInt", 2, offsets, id);
+      break;
+    case TypeOp_LoadConstAndClone:
+      offsets[0] = Instruction::GetParamA(i);
+      offsets[1] = Instruction::GetParamsBx(i);
+      id[1] = Constant;
+      PrintDetail("LoadConstAndClone", 2, offsets, id);
+      break;
     case TypeOp_Move:
       offsets[0] = Instruction::GetParamA(i);
       offsets[1] = Instruction::GetParamB(i);

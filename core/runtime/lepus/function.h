@@ -154,6 +154,10 @@ class Function : public fml::RefCountedThreadSafeStorage {
 
   LYNX_EXPORT_FOR_DEVTOOL const auto& GetConstValue() { return const_values_; }
 
+  // Replace the whole constant pool (used by IR->bytecode lowering passes).
+  // Callers must rewrite any bytecode const indices accordingly.
+  void ResetConstValues(base::InlineVector<Value, 8>&& values);
+
   long SearchUpvalue(const base::String& name) {
     for (long i = 0; static_cast<size_t>(i) < upvalues_.size(); ++i) {
       if (upvalues_[i].name_ == name) {

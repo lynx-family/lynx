@@ -92,6 +92,7 @@ struct SourceGeneratorOptions {
   bool enable_tt_for_full_version = false;
   bool has_tt_for_command = false;
   bool enable_dataset_attrs_ = false;
+  bool lepus_null_prop_as_undef_ = false;
 };
 
 struct EncoderOptions {

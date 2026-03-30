@@ -44,7 +44,8 @@ namespace ir {
 //     registers or replaces anchor instructions MUST update corresponding
 //     side-tables, otherwise later lowering may read stale anchors / regs.
 //
-// Stage overview (order is significant)
+// Stage overview (order is significant and matches AddMIRPasses /
+// AddTargetPasses below)
 //   Stage A (SM_MIR): side-table precompute
 //     Pass: CollectToplevelClosureRegPass
 //       Requires: root function + LepusFunction child/upvalue metadata
@@ -70,7 +71,7 @@ namespace ir {
 //       Requires: SSA invariants hold
 //       Guarantees: no mutation; diagnostics/assertions only
 //
-//   Stage E (SM_MIR): attribute cleanup + type info
+//   Stage E (SM_MIR): attribute cleanup + type info refresh
 //     Passes: ChangeSpecialAttributePass -> TypeSpecificationPass ->
 //     NormalizePhiPass
 //       Notes:
@@ -80,19 +81,33 @@ namespace ir {
 //           this.
 //       Guarantees: type info attached; phi kept consistent with constraints
 //
-//   Stage F (SM_MIR): generic SSA-based optimizations
-//     Passes: SimplifyCFG / InstCombine / DCE / CSE / LoadStoreElimination ...
+//   Stage F (SM_MIR): generic SSA-based optimizations and late constant
+//   materialization
+//     Passes (exact order):
+//       SimplifyCFG -> LoadNullEliminationPass -> InstCombinePass ->
+//       DCE -> CSE -> LoadStoreElimination -> DCE -> LoadStoreElimination ->
+//       SimplifyCFG -> InstCombinePass -> DCE -> ConstAggregateTemplatePass ->
+//       SimplifyCFG -> DCE
 //       Requires: SSA validity; CFG/def-use available
+//       Guarantees:
+//         - canonical CFG / instruction shapes for downstream RA
+//         - redundant loads / stores / dead code removed as much as possible
+//         - const aggregate templates are formed only after the main MIR
+//           cleanup pipeline settles, and then we run a final SimplifyCFG to
+//           canonicalize CFG changes introduced by aggregation
 //
 //   Stage G (SM_REG_ALLOC): register allocation
 //     Passes: RegisterAllocationPass -> VerifyCallRegisterPass ->
-//     MovEliminationPass
-//             -> RegisterCompactionPass -> VerifyCallRegisterPass
+//             MovEliminationPass -> RegisterCompactionPass
+//       Notes:
+//         - VerifyCallRegisterPass after RegisterCompactionPass is currently
+//           disabled in this pipeline; the final call-register verification is
+//           performed after post-RA toplevel/closure rewrites.
 //       Requires: MIR/SSA stable enough for RA; TargetContext available
 //       Guarantees: RA analysis valid; values assigned to physical registers
 //
-//   Stage H (SM_MIR): side-table synchronization + post-RA toplevel/closure
-//   opts
+//   Stage H (SM_REG_ALLOC): post-RA side-table synchronization and late
+//   toplevel/closure lowering
 //     Pass: UpdateToplevelVarRegPass
 //       Requires: IRContext::toplevel_variables_ + VMContext toplevel mapping
 //       Updates:  VMContext reg indices; Get/SetToplevelVar literal regs
@@ -108,6 +123,11 @@ namespace ir {
 //     Pass: FunctionToBuiltInPass
 //       Requires: upvalue_index -> toplevel physical reg mapping ready
 //       Requires: anchors/regs stabilized after SetToplevelEliminationPass
+//
+//     Pass: VerifyCallRegisterPass
+//       Requires: post-RA rewrites preserve call register constraints
+//       Guarantees: later VM lowering still sees a valid physical-register
+//       layout
 //
 //   Stage I (SM_VM_TARGET): instruction selection
 //     Passes: DumpOpcodeBeforeOptPass -> InstructionSelectionPass
@@ -129,16 +149,18 @@ static void AddMIRPasses(PassManager& pm) {
   pm.AddNormalizePhiPass();
 
   pm.AddSimplifyCFG();
+  pm.AddLoadNullEliminationPass();
   pm.AddInstCombinePass();
-  pm.AddSimplifyCFG();
   pm.AddDCE();
   pm.AddCSE();
   pm.AddLoadStoreElimination();
   pm.AddDCE();
-  pm.AddInstCombinePass();
   pm.AddLoadStoreElimination();
   pm.AddSimplifyCFG();
   pm.AddInstCombinePass();
+  pm.AddDCE();
+  pm.AddConstAggregateTemplatePass();
+  pm.AddSimplifyCFG();
   pm.AddDCE();
 }
 
@@ -151,7 +173,7 @@ static void AddTargetPasses(PassManager& pm) {
   pm.AddVerifyCallRegisterPass();
   pm.AddMovEliminationPass();
   pm.AddRegisterCompactionPass();
-  pm.AddVerifyCallRegisterPass();
+  // pm.AddVerifyCallRegisterPass();
 
   pm.AddUpdateToplevelVarRegPass();
   pm.AddUpdateToplevelClosureVarPass();

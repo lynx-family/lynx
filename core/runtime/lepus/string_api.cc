@@ -989,7 +989,6 @@ static RestrictedValue Split(VMContext* context) {
       i += cur_length;
       size++;
     }
-    std::cout << std::endl;
   } else {
     std::string strs = str + pattern;
     size_t pos = strs.find(pattern);

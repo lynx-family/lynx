@@ -1,4 +1,4 @@
-setFlag("lepusNullPropAsUndef", true);
+//lepusNullPropAsUndef
 let i = undefined;
 let j = null;
 

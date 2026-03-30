@@ -4,7 +4,11 @@
 
 #include "core/runtime/lepus/ir/transformer/vm/instruction_selection.h"
 
+#include <algorithm>
+#include <limits>
+
 #include "base/include/value/base_string.h"
+#include "core/runtime/lepus/function.h"
 #include "core/runtime/lepus/ir/analysis/analysis.h"
 #include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/ir_context.h"
@@ -15,6 +19,35 @@
 namespace lynx {
 namespace lepus {
 namespace ir {
+
+static inline bool TryGetSignedInt16Immediate(const lepus::Value& v,
+                                              int16_t* out) {
+  if (!out) return false;
+
+  int64_t as_i64 = 0;
+  if (v.IsInt64()) {
+    as_i64 = v.Int64();
+  } else if (v.IsInt32()) {
+    as_i64 = static_cast<int64_t>(v.Int32());
+  } else if (v.IsUInt32()) {
+    as_i64 = static_cast<int64_t>(v.UInt32());
+  } else if (v.IsUInt64()) {
+    auto u = v.UInt64();
+    if (u > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+      return false;
+    }
+    as_i64 = static_cast<int64_t>(u);
+  } else {
+    return false;
+  }
+
+  if (as_i64 < std::numeric_limits<int16_t>::min() ||
+      as_i64 > std::numeric_limits<int16_t>::max()) {
+    return false;
+  }
+  *out = static_cast<int16_t>(as_i64);
+  return true;
+}
 
 InstructionSelectionPass::InstructionSelectionPass(IRContext* ir_ctx)
     : FunctionPass(ir_ctx, "instruction-selection") {}
@@ -179,7 +212,110 @@ bool InstructionSelectionPass::ResolveRelocationsInternal() {
   return true;
 }
 
+void InstructionSelectionPass::CompactConstPoolAndRewriteConstIndices() {
+  // After instruction selection we may lower some const-pool loads to
+  // immediates (e.g. TypeOp_LoadSmallInt). Compact the constant pool and
+  // rewrite any remaining const indices so we can drop now-unused entries.
+  const auto& old_consts = lepus_function_->GetConstValue();
+  const size_t old_size = old_consts.size();
+  if (old_size == 0) {
+    return;
+  }
+
+  std::vector<uint8_t> used(old_size, 0);
+
+  for (size_t pc = 0; pc < op_codes_.size(); ++pc) {
+    const auto& inst = op_codes_[pc];
+    const long op = lynx::lepus::Instruction::GetOpCode(inst);
+    if (op == TypeOp_LoadConst || op == TypeOp_LoadConstAndClone) {
+      const auto idx =
+          static_cast<size_t>(lynx::lepus::Instruction::GetParamBx(inst));
+      if (idx < old_size) used[idx] = 1;
+    } else if (op == TypeOp_SetObjectConstString) {
+      const auto idx =
+          static_cast<size_t>(lynx::lepus::Instruction::GetParamB(inst));
+      if (idx < old_size) used[idx] = 1;
+    } else if (op == TypeOp_GetTableConstString) {
+      const auto idx =
+          static_cast<size_t>(lynx::lepus::Instruction::GetParamC(inst));
+      if (idx < old_size) used[idx] = 1;
+    }
+  }
+
+  bool all_used = true;
+  for (auto u : used) {
+    if (!u) {
+      all_used = false;
+      break;
+    }
+  }
+
+  if (all_used) {
+    return;
+  }
+
+  // Build old->new remap.
+  std::vector<uint16_t> remap(old_size, static_cast<uint16_t>(0xFFFFu));
+  base::InlineVector<lepus::Value, 8> new_consts;
+  for (size_t i = 0; i < old_size; ++i) {
+    if (!used[i]) continue;
+    const auto new_idx = static_cast<uint16_t>(new_consts.size());
+    remap[i] = new_idx;
+    new_consts.push_back(old_consts[i]);
+  }
+
+  // Rewrite bytecode operands.
+  for (size_t pc = 0; pc < op_codes_.size(); ++pc) {
+    auto& inst = op_codes_[pc];
+    const long op = lynx::lepus::Instruction::GetOpCode(inst);
+    if (op == TypeOp_LoadConst || op == TypeOp_LoadConstAndClone) {
+      const auto old_idx =
+          static_cast<size_t>(lynx::lepus::Instruction::GetParamBx(inst));
+      if (old_idx < old_size) {
+        const auto new_idx = remap[old_idx];
+        if (LEPUS_UNLIKELY(new_idx == 0xFFFFu)) {
+          throw ::lynx::lepus::CompileException(
+              "Lepus IR error: const pool remap missing for const load");
+        }
+        inst.RefillsBx(static_cast<short>(new_idx));
+      }
+    } else if (op == TypeOp_SetObjectConstString) {
+      const auto old_idx =
+          static_cast<size_t>(lynx::lepus::Instruction::GetParamB(inst));
+      if (old_idx < old_size) {
+        const auto new_idx = remap[old_idx];
+        if (LEPUS_UNLIKELY(new_idx == 0xFFFFu || new_idx > 0xFFu)) {
+          throw ::lynx::lepus::CompileException(
+              "Lepus IR error: const pool remap out of range for "
+              "SetObjectConstString");
+        }
+        inst.RefillsB(static_cast<long>(new_idx));
+      }
+    } else if (op == TypeOp_GetTableConstString) {
+      const auto old_idx =
+          static_cast<size_t>(lynx::lepus::Instruction::GetParamC(inst));
+      if (old_idx < old_size) {
+        const auto new_idx = remap[old_idx];
+        if (LEPUS_UNLIKELY(new_idx == 0xFFFFu || new_idx > 0xFFu)) {
+          throw ::lynx::lepus::CompileException(
+              "Lepus IR error: const pool remap out of range for "
+              "GetTableConstString");
+        }
+        inst = lynx::lepus::Instruction::ABCCode(
+            static_cast<lynx::lepus::TypeOpCode>(op),
+            lynx::lepus::Instruction::GetParamA(inst),
+            lynx::lepus::Instruction::GetParamB(inst),
+            static_cast<long>(new_idx));
+      }
+    }
+  }
+
+  lepus_function_->ResetConstValues(std::move(new_consts));
+}
+
 void InstructionSelectionPass::BytecodeGenerateComplete() {
+  CompactConstPoolAndRewriteConstIndices();
+
   lepus_function_->ResetOpcodes(op_codes_, debug_line_col_);
 }
 
@@ -226,11 +362,140 @@ bool InstructionSelectionPass::RunOnFunction(FuncOp* func) {
     Generate(bb, next_bb);
   }
 
+  FixOutOfRangeCmpJmpRelocations();
+
   ResolveRelocations();
 
   BytecodeGenerateComplete();
 
   return true;
+}
+
+static bool IsEqNeqCmpJmpInstruction(lynx::lepus::Instruction& i,
+                                     lynx::lepus::TypeOpCode& out_cmp_op,
+                                     lynx::lepus::TypeOpCode& out_bool_jmp_op) {
+  const long opcode = lynx::lepus::Instruction::GetOpCode(i);
+  switch (opcode) {
+    case TypeOp_EqualJmpTrue:
+      out_cmp_op = TypeOp_Equal;
+      out_bool_jmp_op = TypeOp_BoolJmpTrue;
+      return true;
+    case TypeOp_EqualJmpFalse:
+      out_cmp_op = TypeOp_Equal;
+      out_bool_jmp_op = TypeOp_BoolJmpFalse;
+      return true;
+    case TypeOp_UnEqualJmpTrue:
+      out_cmp_op = TypeOp_UnEqual;
+      out_bool_jmp_op = TypeOp_BoolJmpTrue;
+      return true;
+    case TypeOp_UnEqualJmpFalse:
+      out_cmp_op = TypeOp_UnEqual;
+      out_bool_jmp_op = TypeOp_BoolJmpFalse;
+      return true;
+    default:
+      return false;
+  }
+}
+
+void InstructionSelectionPass::FixOutOfRangeCmpJmpRelocations() {
+  // Expand out-of-range 8-bit cmp-jmp relocations into:
+  //   cmp (writes bool into regA) + BoolJmp{True/False} (16-bit)
+  // This is done BEFORE ResolveRelocations so the remaining relocations are
+  // guaranteed to be in-range.
+
+  // Collect indices of cmp-jmp relocations.
+  llvh::SmallVector<size_t, 16> indices;
+  indices.reserve(relocations_.size());
+  for (size_t i = 0; i < relocations_.size(); i++) {
+    if (relocations_[i].type == Relocation::RelocationType::CmpJmp) {
+      indices.push_back(i);
+    }
+  }
+  if (indices.empty()) return;
+
+  // Sort by loc ascending to apply shifts deterministically.
+  std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) {
+    return relocations_[a].loc < relocations_[b].loc;
+  });
+
+  auto shift_after = [&](uint32_t loc, uint32_t delta) {
+    // Update cached offsets for future relocation calculations.
+    for (auto& kv : basic_block_map_) {
+      if (kv.second.first > loc) {
+        kv.second.first += delta;
+      }
+    }
+    for (auto& r : relocations_) {
+      if (r.loc > loc) {
+        r.loc += delta;
+      }
+    }
+  };
+
+  bool changed = false;
+  for (size_t r_index : indices) {
+    if (r_index >= relocations_.size()) continue;
+    auto& r = relocations_[r_index];
+    if (r.type != Relocation::RelocationType::CmpJmp) continue;
+
+    const uint32_t loc = r.loc;
+    auto* target_bb = llvh::cast<Block>(r.pointer);
+    auto it = basic_block_map_.find(target_bb);
+    if (it == basic_block_map_.end()) continue;
+    const uint32_t target = it->second.first;
+    const int diff = static_cast<int>(target) - static_cast<int>(loc);
+    if (diff != 0 && diff >= -128 && diff <= 127) {
+      continue;
+    }
+
+    if (loc >= op_codes_.size()) continue;
+    auto inst = op_codes_[loc];
+    lynx::lepus::TypeOpCode cmp_op = TypeOp_Equal;
+    lynx::lepus::TypeOpCode bool_jmp_op = TypeOp_BoolJmpTrue;
+    if (!IsEqNeqCmpJmpInstruction(inst, cmp_op, bool_jmp_op)) {
+      continue;
+    }
+
+    const long a = lynx::lepus::Instruction::GetParamA(inst);
+    const long c = lynx::lepus::Instruction::GetParamC(inst);
+
+    // Re-check after previous transformations since they may have shifted
+    // block offsets.
+    auto it2 = basic_block_map_.find(target_bb);
+    if (it2 == basic_block_map_.end()) continue;
+    const uint32_t target2 = it2->second.first;
+    const int diff2 = static_cast<int>(target2) - static_cast<int>(loc);
+    if (diff2 != 0 && diff2 >= -128 && diff2 <= 127) {
+      continue;
+    }
+
+    // Replace cmp-jmp at `loc` with a compare writing into reg `a`.
+    op_codes_[loc] = lynx::lepus::Instruction::ABCCode(cmp_op, a, a, c);
+
+    // Insert a wide BoolJmp instruction right after.
+    op_codes_.insert(op_codes_.begin() + static_cast<long>(loc + 1),
+                     lynx::lepus::Instruction::ABxCode(bool_jmp_op, a, 0));
+    debug_line_col_.insert(debug_line_col_.begin() + static_cast<long>(loc + 1),
+                           debug_line_col_[loc]);
+
+    // All subsequent offsets and relocation sites move by +1.
+    shift_after(loc, 1);
+
+    // Retarget this relocation to the inserted BoolJmp and switch to wide jmp.
+    r.type = Relocation::RelocationType::Jmp;
+    r.loc = loc + 1;
+    changed = true;
+  }
+
+  // There may be multiple cmp-jmps and their diffs can change after each
+  // insertion. Iterate to a fixed point.
+  if (changed) {
+    FixOutOfRangeCmpJmpRelocations();
+  }
+}
+
+bool InstructionSelectionPass::IsInCmpJmpRange(int32_t diff) {
+  return diff != 0 && diff >= -128 && diff <= 127;
 }
 
 void InstructionSelectionPass::GenerateNopInst(NopInst* inst, Block* next_bb) {}
@@ -561,8 +826,38 @@ void InstructionSelectionPass::GenerateLoadConstInst(LoadConstInst* inst,
   auto const_index = llvh::cast<LiteralUint32>(inst->GetConst())->GetValue();
   auto res = EncodeValue(inst);
 
+  // If the const pool entry is a small integer that fits in 2 bytes, lower
+  // it to an immediate-form opcode to avoid const-pool traffic.
+  if (lepus_function_) {
+    auto* cval = lepus_function_->GetConstValue(const_index);
+    if (cval != nullptr) {
+      int16_t imm16 = 0;
+      if (TryGetSignedInt16Immediate(*cval, &imm16)) {
+        ADD_INSTRUCTION(
+            inst, lynx::lepus::Instruction::ABxCode(
+                      TypeOp_LoadSmallInt, res,
+                      static_cast<uint16_t>(static_cast<uint16_t>(imm16))));
+        return;
+      }
+    }
+  }
+
   ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABxCode(TypeOp_LoadConst, res,
                                                           const_index));
+}
+
+void InstructionSelectionPass::GenerateLoadConstMaterializeInst(
+    LoadConstMaterializeInst* inst, Block* next_bb) {
+  if (LEPUS_UNLIKELY(!llvh::isa<LiteralUint32>(inst->GetConst()))) {
+    throw ::lynx::lepus::CompileException(
+        "Lepus IR error: GenerateLoadConstMaterializeInst expects const index "
+        "to be LiteralUint32");
+  }
+  const auto const_index =
+      llvh::cast<LiteralUint32>(inst->GetConst())->GetValue();
+  const auto res = EncodeValue(inst);
+  ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABxCode(
+                            TypeOp_LoadConstAndClone, res, const_index));
 }
 
 void InstructionSelectionPass::GenerateGetTableConstStringKeyInst(

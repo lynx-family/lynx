@@ -91,6 +91,37 @@ TEST_F(LEPUSIRRedundantMovEliminationTest, EliminateRedundantMov) {
   EXPECT_LE(mov_count, 1u);
 }
 
+TEST_F(LEPUSIRRedundantMovEliminationTest, UnallocatedMovShouldNotCrash) {
+  // Regression:
+  // MovEliminationPass::RemoveMovWithSameSrcAndDst must not call
+  // RegisterAllocator::GetRegister() on an unallocated MovInst.
+  auto* func = createTestFunction("test_unallocated_mov");
+  auto builder = ir_ctx->GetOpBuilder();
+  Block* block = &func->Front();
+  builder->SetInsertionPointToEnd(block);
+
+  auto* src = builder->Create<LoadConstInst>(0, builder->GetLiteralInt32(100),
+                                             TypeOp::CreateInt32(builder));
+  auto* mov = builder->Create<MovInst>(0, src);
+  // Keep mov alive so it won't be removed as dead.
+  builder->Create<ReturnInst>(0, mov);
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ra_pass.RunOnFunction(func);
+
+  auto* ra = ir_ctx->GetTargetContext()->GetRegisterAllocAnalysis(func);
+  ASSERT_NE(nullptr, ra);
+  ASSERT_TRUE(ra->IsAllocated(src));
+  ASSERT_TRUE(ra->IsAllocated(mov));
+
+  // Simulate a pipeline state where MOV exists but is not allocated.
+  ra->RemoveFromAllocated(mov);
+  ASSERT_FALSE(ra->IsAllocated(mov));
+
+  MovEliminationPass pass(ir_ctx.get());
+  EXPECT_NO_THROW(pass.RemoveMovWithSameSrcAndDst(func));
+}
+
 TEST_F(LEPUSIRRedundantMovEliminationTest,
        ReuseMovAcrossCallWhenNoClobberOverlap) {
   auto* func = createTestFunction("test_reuse_across_call_no_overlap");
