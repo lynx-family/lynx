@@ -106,6 +106,7 @@ base_core_public_headers_list = [
   "path_utils.h",
   "position.h",
   "shared_vector.h",
+  "skanda.h",
   "sorted_for_each.h",
   "thread/base_semaphore.h",
   "thread/pthread_rw_lock_guard.h",

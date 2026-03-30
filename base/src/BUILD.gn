@@ -230,6 +230,7 @@ lynx_base_source_set("base_core") {
               "fml/time/timer.cc",
               "fml/unique_fd.cc",
               "md5.cc",
+              "skanda.cc",
               "thread/timed_task.cc",
               "vector.cc",
             ]
