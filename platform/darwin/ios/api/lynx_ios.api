@@ -416,6 +416,7 @@ public class LynxBackgroundManager : NSObject, <CALayerDelegate> {
   public LynxBgShapeLayerProp LynxBackgroundManager::uiBackgroundShapeLayerEnabled uiBackgroundShapeLayerEnabled;
   public BOOL LynxBackgroundManager::shouldRasterizeShadow shouldRasterizeShadow;
   public BOOL LynxBackgroundManager::isPixelated isPixelated;
+  public BOOL LynxBackgroundManager::skipRedirection skipRedirection;
   public instancetype LynxBackgroundManager::initWithUI:(LynxUI *ui);
   public void LynxBackgroundManager::markBackgroundDirty();
   public void LynxBackgroundManager::markMaskDirty();

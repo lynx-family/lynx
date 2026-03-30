@@ -160,6 +160,7 @@ static inline bool LynxHasBorderRadii(LynxBorderRadii radii) {
 @property(nonatomic, assign) LynxBgShapeLayerProp uiBackgroundShapeLayerEnabled;
 @property(nonatomic, assign) BOOL shouldRasterizeShadow;
 @property(nonatomic, assign) BOOL isPixelated;
+@property(nonatomic, assign) BOOL skipRedirection;
 
 - (instancetype)initWithUI:(LynxUI*)ui;
 - (void)markBackgroundDirty;

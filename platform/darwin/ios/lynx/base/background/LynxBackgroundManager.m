@@ -165,6 +165,7 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
     _shouldRasterizeShadow = NO;
     _onlyGradient = YES;
     _isPixelated = NO;
+    _skipRedirection = NO;
   }
   return self;
 }
@@ -337,6 +338,10 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
   _isPixelated = isPixelated;
 }
 
+- (void)setSkipRedirection:(BOOL)skipRedirection {
+  _skipRedirection = skipRedirection;
+}
+
 - (void)setHidden:(BOOL)hidden {
   _hidden = hidden;
   if (_backgroundLayer) {
@@ -450,7 +455,8 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
                  contextInfo:@{
                    LynxImageFetcherContextKeyUI : self.ui,
                    LynxImagePreloadAllFrames : @(YES),
-                   LynxImageEnableFetchUIImage : @(self.ui.context.enableFetchUIImage)
+                   LynxImageEnableFetchUIImage : @(self.ui.context.enableFetchUIImage),
+                   LynxImageSkipRedirection : @(self.skipRedirection)
                  }
                   processors:processors
                 imageFetcher:[self shouldUseImageService] ? nil : self.ui.context.imageFetcher

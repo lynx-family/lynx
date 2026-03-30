@@ -1788,6 +1788,13 @@ LYNX_PROP_DEFINE("background-image", setBackgroundImage, NSArray*) {
   [_backgroundManager markBackgroundDirty];
 }
 
+LYNX_PROP_SETTER("skip-redirection", setSkipRedirection, BOOL) {
+  if (requestReset) {
+    value = NO;
+  }
+  [_backgroundManager setSkipRedirection:value];
+}
+
 LYNX_PROP_DEFINE("background", setBackground, NSString*) {
   LLogWarn(@"setBackground is deprecated, call this method has no effect");
 }
