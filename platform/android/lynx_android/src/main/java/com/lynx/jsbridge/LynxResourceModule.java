@@ -73,14 +73,9 @@ public class LynxResourceModule extends LynxContextModule {
   void cancelResourcePrefetch(final ReadableMap data, final Callback callback) {
     TraceEvent.beginSection(TraceEventDef.CANCEL_RESOURCE_PREFETCH);
 
-    JavaOnlyMap allResults = new JavaOnlyMap();
-    Pair<Integer, String> resultPair = resourcePrefetch(data, true, allResults);
-    Integer globalCode = resultPair.first;
-    String globalMsg = resultPair.second;
+    JavaOnlyMap allResults = resourcePrefetch(data, true);
 
     TraceEvent.endSection(TraceEventDef.CANCEL_RESOURCE_PREFETCH);
-    allResults.putInt(CODE_KEY, globalCode);
-    allResults.putString(MSG_KEY, globalMsg);
     if (callback != null) {
       callback.invoke(allResults);
     }
@@ -90,14 +85,9 @@ public class LynxResourceModule extends LynxContextModule {
   void requestResourcePrefetch(final ReadableMap data, final Callback callback) {
     TraceEvent.beginSection(TraceEventDef.REQUEST_RESOURCE_PREFETCH);
 
-    JavaOnlyMap allResults = new JavaOnlyMap();
-    Pair<Integer, String> resultPair = resourcePrefetch(data, false, allResults);
-    Integer globalCode = resultPair.first;
-    String globalMsg = resultPair.second;
+    JavaOnlyMap allResults = resourcePrefetch(data, false);
 
     TraceEvent.endSection(TraceEventDef.REQUEST_RESOURCE_PREFETCH);
-    allResults.putInt(CODE_KEY, globalCode);
-    allResults.putString(MSG_KEY, globalMsg);
     if (callback != null) {
       callback.invoke(allResults);
     }
@@ -117,10 +107,7 @@ public class LynxResourceModule extends LynxContextModule {
           LynxError.LEVEL_ERROR);
       onErrorOccurred(error);
       if (callback != null) {
-        JavaOnlyMap result = new JavaOnlyMap();
-        result.putInt(CODE_KEY, code);
-        result.putString(MSG_KEY, msg);
-        callback.invoke(result);
+        callback.invoke(createResult(code, msg));
       }
       return;
     }
@@ -132,10 +119,7 @@ public class LynxResourceModule extends LynxContextModule {
           LynxError.LEVEL_ERROR);
       onErrorOccurred(error);
       if (callback != null) {
-        JavaOnlyMap result = new JavaOnlyMap();
-        result.putInt(CODE_KEY, code);
-        result.putString(MSG_KEY, msg);
-        callback.invoke(result);
+        callback.invoke(createResult(code, msg));
       }
       return;
     }
@@ -143,10 +127,7 @@ public class LynxResourceModule extends LynxContextModule {
         (Map<String, Object>) params, new ImageLoadListener() {
           private void invokeCallback(int code, String msg) {
             if (callback != null) {
-              JavaOnlyMap result = new JavaOnlyMap();
-              result.putInt(CODE_KEY, code);
-              result.putString(MSG_KEY, msg);
-              callback.invoke(result);
+              callback.invoke(createResult(code, msg));
             }
           }
           @Override
@@ -173,26 +154,26 @@ public class LynxResourceModule extends LynxContextModule {
         });
   }
 
-  private Pair<Integer, String> resourcePrefetch(
-      final ReadableMap data, final boolean isCancel, final JavaOnlyMap allResults) {
-    Integer globalCode = LynxSubErrorCode.E_SUCCESS;
-    String globalMsg = "";
+  private JavaOnlyMap resourcePrefetch(final ReadableMap data, final boolean isCancel) {
+    JavaOnlyMap allResults = createResult(LynxSubErrorCode.E_SUCCESS, "");
     ReadableArray resArray = data.getArray(DATA_KEY, null);
     if (resArray == null) {
-      globalCode = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
-      globalMsg =
+      int globalCode = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+      String globalMsg =
           "Parameters error in Lynx resource prefetch module! Value of 'data' should be an array.";
       LynxError error = new LynxError(globalCode, globalMsg,
           "Please check the parameters passed to Lynx resource prefetch module.",
           LynxError.LEVEL_ERROR);
       error.addCustomInfo("actionType", isCancel ? "cancel" : "request");
       onErrorOccurred(error);
+      allResults.putInt(CODE_KEY, globalCode);
+      allResults.putString(MSG_KEY, globalMsg);
     } else {
       JavaOnlyArray resultArray = new JavaOnlyArray();
       for (int i = 0; i < resArray.size(); ++i) {
         Integer code = LynxSubErrorCode.E_SUCCESS;
         String msg = "";
-        JavaOnlyMap result = new JavaOnlyMap();
+        JavaOnlyMap result = createResult(code, msg);
         String uri = "";
         if (resArray.getType(i) != ReadableType.Map) {
           code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
@@ -230,7 +211,7 @@ public class LynxResourceModule extends LynxContextModule {
       }
       allResults.putArray(DETAIL_KEY, resultArray);
     }
-    return new Pair<>(globalCode, globalMsg);
+    return allResults;
   }
 
   private Pair<Integer, String> requestResourcePrefetchInternal(
@@ -333,5 +314,13 @@ public class LynxResourceModule extends LynxContextModule {
 
   private void onErrorOccurred(LynxError error) {
     mLynxContext.handleLynxError(error);
+  }
+
+  /** Creates a simple result map with code/msg preset. */
+  private JavaOnlyMap createResult(int code, String msg) {
+    JavaOnlyMap result = new JavaOnlyMap();
+    result.putInt(CODE_KEY, code);
+    result.putString(MSG_KEY, msg);
+    return result;
   }
 }
