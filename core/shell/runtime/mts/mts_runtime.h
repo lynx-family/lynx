@@ -316,7 +316,14 @@ class MTSRuntime : private MTSContextHolder {
 
   // Inject this lynx as the global Lynx object to the Lepus runtime.
   lepus::Value lynx_;
+
+  // These managers are lazily initialized and are expected to be used on the
+  // runtime's owning thread. `call_once` is used here to avoid data races
+  // during first-time initialization if the thread-affinity contract is
+  // violated.
+  mutable std::once_flag callback_manager_once_;
   mutable std::shared_ptr<tasm::LepusCallbackManager> callback_manager_;
+  mutable std::once_flag animate_frame_manager_once_;
   mutable std::shared_ptr<tasm::AnimationFrameManager> animate_frame_manager_;
 
   ContextType type_;

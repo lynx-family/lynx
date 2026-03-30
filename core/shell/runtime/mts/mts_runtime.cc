@@ -155,17 +155,17 @@ void MTSRuntime::SetPropertyToLynx(const base::String& key,
 
 const std::shared_ptr<tasm::LepusCallbackManager>&
 MTSRuntime::GetCallbackManager() const {
-  if (!callback_manager_) {
+  std::call_once(callback_manager_once_, [this]() {
     callback_manager_ = std::make_shared<tasm::LepusCallbackManager>();
-  }
+  });
   return callback_manager_;
 }
 
 const std::shared_ptr<tasm::AnimationFrameManager>&
 MTSRuntime::GetAnimationFrameManager() const {
-  if (!animate_frame_manager_) {
+  std::call_once(animate_frame_manager_once_, [this]() {
     animate_frame_manager_ = std::make_shared<tasm::AnimationFrameManager>();
-  }
+  });
   return animate_frame_manager_;
 }
 
