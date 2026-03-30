@@ -55,7 +55,8 @@ class Fragment : public BaseElementContainer {
     }
     if (has_platform_renderer_) {
       painting_context()->DestroyPaintingNode(
-          parent()->id(), id(), -1 /* will be ignored when remove*/);
+          0 /* will be ignored, directly destroy it */, id(),
+          -1 /* will be ignored when remove*/);
     }
   };
 
