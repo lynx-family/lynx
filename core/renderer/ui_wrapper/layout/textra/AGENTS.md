@@ -1,4 +1,4 @@
-# Textra AGENTS Guide
+# AGENTS.md
 
 ## Scope
 
@@ -32,6 +32,17 @@ Textra is not responsible for:
 - `Text bundle`: platform-facing handle that currently carries `Page*`
 - `TextLayoutAPI`: abstraction implemented by platform/service-backed text engines
 
+## Lifetime And Teardown
+
+- `TextLayoutTextra` owns `TextLayoutAPI` and is responsible for releasing it.
+- `TextLayoutTextra` teardown must destroy any remaining `ParagraphBuilder` and
+  `Paragraph` objects before releasing `TextLayoutAPI`.
+- Do not assume `TextElement::~TextElement()` will always trigger
+  `DestroyText(element)` during page teardown. Page destroy may set
+  `will_destroy=true` first and skip the per-element cleanup path.
+- Async font callbacks may still arrive while page teardown is in progress, so
+  `Paragraph` state must not outlive the `TextLayoutAPI` it depends on.
+
 ## Platform Split
 
 - Android:
@@ -47,6 +58,9 @@ Textra is not responsible for:
 - If the task is about layout, style mapping, paragraph creation, or page creation, start here.
 - If the task is about actual drawing on Android/iOS, do not stop here; continue into the platform service implementation.
 - Keep cross-platform behavior here; do not add platform UI logic in this directory.
+- When changing teardown behavior, review both paragraph ownership and API
+  ownership together. Fixes that only move one side often create stale
+  `Paragraph`, `Page`, or callback state.
 - On iOS TextService, standalone image nodes are still the real render owner for
   inline images; the Textra entry only needs to wire placeholder/inline-view
   layout behavior.

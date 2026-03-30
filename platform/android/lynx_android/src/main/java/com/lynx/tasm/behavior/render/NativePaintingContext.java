@@ -44,11 +44,12 @@ public class NativePaintingContext implements IPaintingContext {
 
     if (mNativePtr != 0) {
       nativeDestroy(mNativePtr);
+      mNativePtr = 0;
     }
     mPlatformRendererContext.destroy();
-    if (mTextra != 0 && mContext != null && mContext.getTextService() != null) {
-      mContext.getTextService().destroyTextLayoutAPI(mTextra);
-    }
+    // TextLayoutTextra owns mTextra and releases it on native teardown.
+    mTextra = 0;
+    mContext = null;
   }
 
   @Override

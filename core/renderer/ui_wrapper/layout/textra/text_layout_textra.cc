@@ -75,16 +75,20 @@ TextLayoutTextra::TextLayoutTextra(intptr_t api)
     : api_(reinterpret_cast<text::TextLayoutAPI*>(api)) {}
 
 TextLayoutTextra::~TextLayoutTextra() {
-  if (!paragraphs_.empty()) {
-    // If paragraphs_ is not empty, it means some TextElements were leaked or
-    // not properly destroyed before TextLayoutTextra destruction. Calling
-    // api_->DestroyParagraph here might cause a crash if the underlying text
-    // engine is already shut down. So we just log a warning and skip
-    // destruction.
-    // LOGE("TextLayoutTextra::~TextLayoutTextra: paragraphs_ is not empty!
-    // Count: "
-    //      << paragraphs_.size());
+  if (!api_) {
+    return;
   }
+
+  if (paragraph_builder_ != nullptr) {
+    api_->DestroyParagraphBuilder(paragraph_builder_);
+    paragraph_builder_ = nullptr;
+  }
+
+  while (!paragraphs_.empty()) {
+    DestroyParagraph(paragraphs_.begin()->first);
+  }
+
+  paragraph_listeners_.clear();
 }
 
 void TextLayoutTextra::ApplyTextStyle(TextElement* text_element) {
@@ -468,16 +472,22 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
 }
 
 void TextLayoutTextra::Destroy(Element* element) {
-  auto it_para = paragraphs_.find(element->impl_id());
-  if (it_para != paragraphs_.end()) {
-    api_->DestroyParagraph(it_para->second);
-    paragraphs_.erase(it_para);
-  }
+  DestroyParagraph(element->impl_id());
 
   auto it_listener = paragraph_listeners_.find(element->impl_id());
   if (it_listener != paragraph_listeners_.end()) {
     paragraph_listeners_.erase(it_listener);
   }
+}
+
+void TextLayoutTextra::DestroyParagraph(int32_t id) {
+  auto it_para = paragraphs_.find(id);
+  if (it_para == paragraphs_.end()) {
+    return;
+  }
+
+  api_->DestroyParagraph(it_para->second);
+  paragraphs_.erase(it_para);
 }
 
 }  // namespace tasm

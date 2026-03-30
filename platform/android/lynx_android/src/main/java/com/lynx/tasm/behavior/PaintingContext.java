@@ -117,9 +117,8 @@ public final class PaintingContext implements IPaintingContext {
   @Override
   public void destroy() {
     mDestroyed = true;
-    if (mTextra != 0 && mUIOwner.getContext().getTextService() != null) {
-      mUIOwner.getContext().getTextService().destroyTextLayoutAPI(mTextra);
-    }
+    // TextLayoutTextra owns mTextra and releases it on native teardown.
+    mTextra = 0;
   }
 
   @Override

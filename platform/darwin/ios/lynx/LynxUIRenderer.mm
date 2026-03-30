@@ -327,10 +327,7 @@ static id<LynxServiceTextProtocol> getTextService() {
 - (void)reset {
   [_uiOwner reset];
 
-  if (getTextService() != nil && _textra) {
-    [getTextService() destroyTextLayoutAPI:_textra];
-    _textra = 0;
-  }
+  _textra = 0;
 }
 
 - (LynxGestureArenaManager *)getGestureArenaManager {
