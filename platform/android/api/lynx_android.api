@@ -1499,6 +1499,12 @@ public class com::lynx::devtoolwrapper::DevToolSettings :  {
   public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_PIXEL_COPY SP_KEY_ENABLE_PIXEL_COPY;
   public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_FSP_SCREENSHOT SP_KEY_ENABLE_FSP_SCREENSHOT;
   public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_PERF_METRICS SP_KEY_ENABLE_PERF_METRICS;
+  public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS SP_KEY_ENABLE_CDP_DOMAIN_CSS;
+  public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_DEBUGGER SP_KEY_ENABLE_CDP_DOMAIN_DEBUGGER;
+  public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_DOM SP_KEY_ENABLE_CDP_DOMAIN_DOM;
+  public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_OVERLAY SP_KEY_ENABLE_CDP_DOMAIN_OVERLAY;
+  public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_PAGE SP_KEY_ENABLE_CDP_DOMAIN_PAGE;
+  public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME;
   public final int com.lynx.devtoolwrapper.DevToolSettings.V8_OFF V8_OFF;
   public final int com.lynx.devtoolwrapper.DevToolSettings.V8_ON V8_ON;
   public final int com.lynx.devtoolwrapper.DevToolSettings.V8_ALIGN_WITH_PROD V8_ALIGN_WITH_PROD;
@@ -1533,6 +1539,16 @@ public class com::lynx::devtoolwrapper::DevToolSettings :  {
   public void com.lynx.devtoolwrapper.DevToolSettings.setV8Enabled(int enabled);
   public boolean com.lynx.devtoolwrapper.DevToolSettings.isPerfMetricsEnabled();
   public void com.lynx.devtoolwrapper.DevToolSettings.setPerfMetricsEnabled(boolean enabled);
+  public boolean com.lynx.devtoolwrapper.DevToolSettings.isCSSErrorIgnored();
+  public void com.lynx.devtoolwrapper.DevToolSettings.setCSSErrorIgnored(boolean ignored);
+  public Set< String > com.lynx.devtoolwrapper.DevToolSettings.getIgnoredErrorTypes();
+  public void com.lynx.devtoolwrapper.DevToolSettings.setIgnoredErrorTypes(@NonNull Collection< String > errorTypes);
+  public boolean com.lynx.devtoolwrapper.DevToolSettings.isErrorTypeIgnored(int errorType);
+  public void com.lynx.devtoolwrapper.DevToolSettings.setErrorTypeIgnored(int errorType, boolean ignored);
+  public Set< String > com.lynx.devtoolwrapper.DevToolSettings.getEnabledCDPDomains();
+  public void com.lynx.devtoolwrapper.DevToolSettings.setEnabledCDPDomains(@NonNull Collection< String > domains);
+  public boolean com.lynx.devtoolwrapper.DevToolSettings.isCDPDomainEnabled(@NonNull String key);
+  public void com.lynx.devtoolwrapper.DevToolSettings.setCDPDomainEnabled(@NonNull String key, boolean enabled);
 }
 
 public enum com::lynx::devtoolwrapper::DevToolState {
@@ -2420,8 +2436,6 @@ public interface com::lynx::tasm::service::ILynxDevToolService {
   public void com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgeSetAppInfo(Context ctx, Map< String, String > appInfo);
   public void com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgeOnPerfMetricsEvent(String eventName, @NonNull JSONObject data, int instanceId);
   public void com.lynx.tasm.service.ILynxDevToolService.devtoolEnvSetDevToolLibraryLoader(INativeLibraryLoader loader);
-  public void com.lynx.tasm.service.ILynxDevToolService.setDevtoolGroupEnv(String groupKey, Set< String > newGroupValues);
-  public Set< String > com.lynx.tasm.service.ILynxDevToolService.getDevtoolGroupEnv(String key);
   public void com.lynx.tasm.service.ILynxDevToolService.devtoolEnvInit(Context ctx);
   public boolean com.lynx.tasm.service.ILynxDevToolService.isDevtoolAttached();
   public void com.lynx.tasm.service.ILynxDevToolService.enableAllSessions();
@@ -4973,11 +4987,6 @@ public class com::lynx::tasm::LynxDevToolDelegateImpl : com.lynx.devtoolwrapper.
   public Bitmap com.lynx.tasm.LynxDevToolDelegateImpl.getBitmapOfView();
 }
 
-public class com::lynx::devtoolwrapper::LynxDevToolEnvUtils :  {
-  public static void com.lynx.devtoolwrapper.LynxDevToolEnvUtils.setDevtoolEnv(String groupKey, Set< String > newGroupValues);
-  public static Set< String > com.lynx.devtoolwrapper.LynxDevToolEnvUtils.getDevtoolEnv(String groupKey);
-}
-
 public class com::lynx::devtoolwrapper::LynxDevtoolGlobalHelper :  {
   public static LynxDevtoolGlobalHelper com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.getInstance();
   public void com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.setAppInfo(Context context, Map< String, String > appInfo);
@@ -5106,8 +5115,6 @@ public class com::lynx::tasm::LynxEnv :  {
   public synchronized String com.lynx.tasm.LynxEnv.getLastUrl();
   public void com.lynx.tasm.LynxEnv.setLastUrl(String url);
   public boolean com.lynx.tasm.LynxEnv.hasInited();
-  public void com.lynx.tasm.LynxEnv.setDevtoolEnv(String groupKey, Set< String > newGroupValues);
-  public Set< String > com.lynx.tasm.LynxEnv.getDevtoolEnv(String groupKey);
   public boolean com.lynx.tasm.LynxEnv.isLynxDebugEnabled();
   public void com.lynx.tasm.LynxEnv.initDevtool();
   public void com.lynx.tasm.LynxEnv.enableLynxDebug(boolean enableLynxDebug);

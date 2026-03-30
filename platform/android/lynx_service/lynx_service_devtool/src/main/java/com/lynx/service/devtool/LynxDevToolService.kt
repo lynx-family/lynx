@@ -173,28 +173,6 @@ class LynxDevToolService : ILynxDevToolService {
         }
     }
 
-    override fun setDevtoolGroupEnv(groupKey: String?, newGroupValues: MutableSet<String>?) {
-        try {
-            LynxDevtoolEnv.inst().setDevtoolEnv(groupKey, newGroupValues)
-        } catch (e: ClassNotFoundException) {
-            LLog.e(TAG, "setDevtoolGroupEnv failed, ${e.message}")
-        } catch (e: NoClassDefFoundError) {
-            LLog.e(TAG, "setDevtoolGroupEnv failed, ${e.message}")
-        }
-    }
-
-    override fun getDevtoolGroupEnv(key: String?): MutableSet<String> {
-        try {
-            return LynxDevtoolEnv.inst().getDevtoolEnv(key)
-        } catch (e: ClassNotFoundException) {
-            LLog.e(TAG, "getDevtoolGroupEnv failed, ${e.message}")
-            return mutableSetOf()
-        } catch (e: NoClassDefFoundError) {
-            LLog.e(TAG, "getDevtoolGroupEnv failed, ${e.message}")
-            return mutableSetOf()
-        }
-    }
-
     override fun devtoolEnvInit(ctx: Context) {
         try {
             LynxDevtoolEnv.inst().init(ctx)

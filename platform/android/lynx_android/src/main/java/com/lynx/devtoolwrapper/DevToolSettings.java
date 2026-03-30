@@ -9,7 +9,12 @@ import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.LLog;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * A centralized manager for DevTool user preferences and settings.
@@ -50,6 +55,21 @@ public class DevToolSettings {
   public static final String SP_KEY_ENABLE_PIXEL_COPY = "enable_pixel_copy";
   public static final String SP_KEY_ENABLE_FSP_SCREENSHOT = "enable_fsp_screenshot";
   public static final String SP_KEY_ENABLE_PERF_METRICS = "enable_perf_metrics";
+  // TODO(mitchilling): can't figure out how this error filtering work
+  //   due to no active caller found in this repo.
+  //   Remove this if confirmed not needed.
+  private static final String SP_KEY_IGNORE_ERROR_TYPES = "ignore_error_types";
+
+  private static final String SP_KEY_ACTIVATED_CDP_DOMAINS = "activated_cdp_domains";
+  private static final String CDP_DOMAIN_KEY_PREFIX = "enable_cdp_domain_";
+  // The CDP domain keys are expected to be in the format of "enable_cdp_domain_{domain_name}"
+  // And they need to stay public for callers to get/set.
+  public static final String SP_KEY_ENABLE_CDP_DOMAIN_CSS = "enable_cdp_domain_css";
+  public static final String SP_KEY_ENABLE_CDP_DOMAIN_DEBUGGER = "enable_cdp_domain_debugger";
+  public static final String SP_KEY_ENABLE_CDP_DOMAIN_DOM = "enable_cdp_domain_dom";
+  public static final String SP_KEY_ENABLE_CDP_DOMAIN_OVERLAY = "enable_cdp_domain_overlay";
+  public static final String SP_KEY_ENABLE_CDP_DOMAIN_PAGE = "enable_cdp_domain_page";
+  public static final String SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME = "enable_cdp_domain_runtime";
 
   public static final int V8_OFF = 0;
   public static final int V8_ON = 1;
@@ -98,6 +118,7 @@ public class DevToolSettings {
         SP_KEY_ENABLE_QUICKJS_DEBUG, getPersistedBoolean(SP_KEY_ENABLE_QUICKJS_DEBUG, true));
     syncToNativeBoolean(SP_KEY_ENABLE_DOM_TREE, getPersistedBoolean(SP_KEY_ENABLE_DOM_TREE, true));
     syncToNativeBoolean(SP_KEY_ENABLE_LOGBOX, getPersistedBoolean(SP_KEY_ENABLE_LOGBOX, true));
+    syncToNativeEnabledCDPDomains(getEnabledCDPDomains());
   }
 
   private boolean getPersistedBoolean(String key, boolean defaultValue) {
@@ -110,6 +131,23 @@ public class DevToolSettings {
   private void setPersistedBoolean(String key, boolean value) {
     if (mSharedPreferences != null) {
       mSharedPreferences.edit().putBoolean(key, value).apply();
+    }
+  }
+
+  private Set<String> getPersistedStringSet(String key) {
+    if (mSharedPreferences == null) {
+      return new HashSet<>();
+    }
+    Set<String> values = mSharedPreferences.getStringSet(key, Collections.emptySet());
+    if (values == null) {
+      return new HashSet<>();
+    }
+    return new HashSet<>(values);
+  }
+
+  private void setPersistedStringSet(String key, @NonNull Set<String> values) {
+    if (mSharedPreferences != null) {
+      mSharedPreferences.edit().putStringSet(key, new HashSet<>(values)).apply();
     }
   }
 
@@ -140,6 +178,22 @@ public class DevToolSettings {
     }
     // FIXME(mitchilling): loop dependency between DevToolSettings and LynxEnv
     LynxEnv.inst().nativeSetLocalEnv(key, String.valueOf(value));
+  }
+
+  private void syncToNativeEnabledCDPDomains(@NonNull Set<String> domains) {
+    if (!DevToolLifecycle.getInstance().isInitialized()) {
+      return;
+    }
+    LynxEnv.inst().nativeSetGroupedEnvWithGroupSet(
+        SP_KEY_ACTIVATED_CDP_DOMAINS, new HashSet<>(domains));
+  }
+
+  private boolean verifyCDPDomainKey(@NonNull String key) {
+    if (!key.startsWith(CDP_DOMAIN_KEY_PREFIX)) {
+      LLog.e(TAG, "Invalid CDP domain key: " + key);
+      return false;
+    }
+    return true;
   }
 
   // TODO(mitchilling): we need explanation of the purpose and usage of each setting in javadoc
@@ -339,5 +393,97 @@ public class DevToolSettings {
 
   public void setPerfMetricsEnabled(boolean enabled) {
     mPerfMetricsEnabled = enabled;
+  }
+
+  /**
+   * <b>Persistence:</b> true
+   * <br><b>Sync to Native:</b> false
+   * <br><b>Default:</b> false
+   */
+  public boolean isCSSErrorIgnored() {
+    return isErrorTypeIgnored(LynxSubErrorCode.E_CSS);
+  }
+
+  public void setCSSErrorIgnored(boolean ignored) {
+    setErrorTypeIgnored(LynxSubErrorCode.E_CSS, ignored);
+  }
+
+  /**
+   * <b>Persistence:</b> true
+   * <br><b>Sync to Native:</b> false
+   * <br><b>Default:</b> empty set
+   */
+  @NonNull
+  public Set<String> getIgnoredErrorTypes() {
+    return getPersistedStringSet(SP_KEY_IGNORE_ERROR_TYPES);
+  }
+
+  /**
+   * Replaces the ignored error type set. Duplicate entries are ignored.
+   */
+  public void setIgnoredErrorTypes(@NonNull Collection<String> errorTypes) {
+    // Take ownership of a stable snapshot before persistence.
+    Set<String> errorTypeSnapshot = new HashSet<>(errorTypes);
+    setPersistedStringSet(SP_KEY_IGNORE_ERROR_TYPES, errorTypeSnapshot);
+  }
+
+  public boolean isErrorTypeIgnored(int errorType) {
+    return getIgnoredErrorTypes().contains(String.valueOf(errorType));
+  }
+
+  public void setErrorTypeIgnored(int errorType, boolean ignored) {
+    Set<String> ignoredErrorTypes = getIgnoredErrorTypes();
+    String errorTypeKey = String.valueOf(errorType);
+    boolean changed =
+        ignored ? ignoredErrorTypes.add(errorTypeKey) : ignoredErrorTypes.remove(errorTypeKey);
+    if (!changed) {
+      return;
+    }
+    setPersistedStringSet(SP_KEY_IGNORE_ERROR_TYPES, ignoredErrorTypes);
+  }
+
+  /**
+   * <b>Persistence:</b> true
+   * <br><b>Sync to Native:</b> true
+   * <br><b>Default:</b> empty set
+   */
+  @NonNull
+  public Set<String> getEnabledCDPDomains() {
+    return getPersistedStringSet(SP_KEY_ACTIVATED_CDP_DOMAINS);
+  }
+
+  /**
+   * Replaces the enabled CDP domain set. Duplicate entries are ignored.
+   */
+  public void setEnabledCDPDomains(@NonNull Collection<String> domains) {
+    // Take ownership of a stable snapshot before validation, persistence, and native sync.
+    Set<String> domainSnapshot = new HashSet<>(domains);
+    for (String key : domainSnapshot) {
+      if (!verifyCDPDomainKey(key)) {
+        return;
+      }
+    }
+    setPersistedStringSet(SP_KEY_ACTIVATED_CDP_DOMAINS, domainSnapshot);
+    syncToNativeEnabledCDPDomains(domainSnapshot);
+  }
+
+  public boolean isCDPDomainEnabled(@NonNull String key) {
+    if (!verifyCDPDomainKey(key)) {
+      return false;
+    }
+    return getEnabledCDPDomains().contains(key);
+  }
+
+  public void setCDPDomainEnabled(@NonNull String key, boolean enabled) {
+    if (!verifyCDPDomainKey(key)) {
+      return;
+    }
+    Set<String> enabledDomains = getEnabledCDPDomains();
+    boolean changed = enabled ? enabledDomains.add(key) : enabledDomains.remove(key);
+    if (!changed) {
+      return;
+    }
+    setPersistedStringSet(SP_KEY_ACTIVATED_CDP_DOMAINS, enabledDomains);
+    syncToNativeEnabledCDPDomains(enabledDomains);
   }
 }

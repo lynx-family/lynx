@@ -16,7 +16,6 @@ import com.lynx.devtoolwrapper.LynxDevtoolCardListener;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxView;
 import java.util.Map;
-import java.util.Set;
 import org.json.JSONObject;
 
 @Keep
@@ -43,8 +42,6 @@ public interface ILynxDevToolService extends IServiceProvider {
       String eventName, @NonNull JSONObject data, int instanceId);
 
   void devtoolEnvSetDevToolLibraryLoader(INativeLibraryLoader loader);
-  void setDevtoolGroupEnv(String groupKey, Set<String> newGroupValues);
-  Set<String> getDevtoolGroupEnv(String key);
   void devtoolEnvInit(Context ctx);
 
   boolean isDevtoolAttached();

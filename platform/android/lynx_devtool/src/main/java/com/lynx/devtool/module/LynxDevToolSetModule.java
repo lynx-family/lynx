@@ -4,7 +4,6 @@
 
 package com.lynx.devtool.module;
 
-import com.lynx.devtool.LynxDevtoolEnv;
 import com.lynx.devtoolwrapper.CDPResultCallback;
 import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
@@ -12,7 +11,6 @@ import com.lynx.jsbridge.LynxContextModule;
 import com.lynx.jsbridge.LynxMethod;
 import com.lynx.react.bridge.Callback;
 import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.behavior.LynxContext;
 
 public class LynxDevToolSetModule extends LynxContextModule {
@@ -132,14 +130,15 @@ public class LynxDevToolSetModule extends LynxContextModule {
     return DevToolSettings.inst().isLongPressMenuEnabled();
   }
 
+  // TODO(mitchilling): the name is inaccurate with wider semantics
   @LynxMethod
   public void switchIgnorePropErrors(Boolean arg) {
-    LynxDevtoolEnv.inst().setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_IGNORE_ERROR_CSS, arg);
+    DevToolSettings.inst().setCSSErrorIgnored(arg);
   }
 
   @LynxMethod
   public boolean isIgnorePropErrorsEnabled() {
-    return LynxDevtoolEnv.inst().getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_IGNORE_ERROR_CSS, false);
+    return DevToolSettings.inst().isCSSErrorIgnored();
   }
 
   @LynxMethod

@@ -79,14 +79,14 @@ public enum LynxEnvKey {
   @Deprecated public static final String SP_KEY_ENABLE_V8 = "enable_v8";
   @Deprecated public static final String SP_KEY_ENABLE_DOM_TREE = "enable_dom_tree";
   @Deprecated public static final String SP_KEY_ENABLE_LONG_PRESS_MENU = "enable_long_press_menu";
-  public static final String SP_KEY_IGNORE_ERROR_TYPES = "ignore_error_types";
-  public static final String SP_KEY_ENABLE_IGNORE_ERROR_CSS = "error_code_css";
+  @Deprecated public static final String SP_KEY_IGNORE_ERROR_TYPES = "ignore_error_types";
+  @Deprecated public static final String SP_KEY_ENABLE_IGNORE_ERROR_CSS = "error_code_css";
   @Deprecated public static final String SP_KEY_ENABLE_PIXEL_COPY = "enable_pixel_copy";
   @Deprecated public static final String SP_KEY_ENABLE_QUICKJS_DEBUG = "enable_quickjs_debug";
   @Deprecated
   public static final String SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT = "enable_preview_screen_shot";
-  public static final String SP_KEY_ACTIVATED_CDP_DOMAINS = "activated_cdp_domains";
-  public static final String SP_KEY_ENABLE_CDP_DOMAIN_DOM = "enable_cdp_domain_dom";
-  public static final String SP_KEY_ENABLE_CDP_DOMAIN_CSS = "enable_cdp_domain_css";
-  public static final String SP_KEY_ENABLE_CDP_DOMAIN_PAGE = "enable_cdp_domain_page";
+  @Deprecated public static final String SP_KEY_ACTIVATED_CDP_DOMAINS = "activated_cdp_domains";
+  @Deprecated public static final String SP_KEY_ENABLE_CDP_DOMAIN_DOM = "enable_cdp_domain_dom";
+  @Deprecated public static final String SP_KEY_ENABLE_CDP_DOMAIN_CSS = "enable_cdp_domain_css";
+  @Deprecated public static final String SP_KEY_ENABLE_CDP_DOMAIN_PAGE = "enable_cdp_domain_page";
 }

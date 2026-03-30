@@ -4,7 +4,6 @@
 package com.lynx.devtool;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import androidx.annotation.Keep;
@@ -16,37 +15,20 @@ import com.lynx.devtoolwrapper.DevToolLifecycle;
 import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.LynxEnvKey;
-import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxTraceEnv;
 import com.lynx.tasm.service.ILynxDevToolService;
 import com.lynx.tasm.service.LynxServiceCenter;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Keep
 public class LynxDevtoolEnv {
   private final String TAG = "LynxDevtoolEnv";
-  private final String ERROR_CODE_KEY_PREFIX = "error_code";
-  private final String CDP_DOMAIN_KEY_PREFIX = "enable_cdp_domain";
   private volatile static LynxDevtoolEnv sInstance;
   private Context mContext;
-  private SharedPreferences mSharedPreferences;
-  private Map<String, Integer> mErrorCodeMap;
-  private Map<String, Set<String>> mGroupSets;
-  private Map<String, Object> mSwitchNotPersist;
   // be used to load devtool native library
   private INativeLibraryLoader mDevtoolLibraryLoader = null;
-
-  enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY }
-
-  private ReadWriteLock mReadWriteLock;
-  private Map<String, Boolean> mSwitchMasks;
 
   // TODO(mitchilling): remove this deprecated value
   @Deprecated public static final String ENABLE_PERF_METRICS = "enable_perf_metrics";
@@ -62,13 +44,7 @@ public class LynxDevtoolEnv {
     return sInstance;
   }
 
-  private LynxDevtoolEnv() {
-    mErrorCodeMap = new HashMap<>();
-    mReadWriteLock = new ReentrantReadWriteLock(true);
-    mSwitchMasks = new HashMap<>();
-    mGroupSets = new HashMap<>();
-    mSwitchNotPersist = new HashMap<>();
-  }
+  private LynxDevtoolEnv() {}
 
   public String getVersion() {
     return BuildConfig.LYNX_SDK_VERSION;
@@ -85,11 +61,8 @@ public class LynxDevtoolEnv {
         }
       }
 
-      if (mContext == null || mSharedPreferences == null) {
+      if (mContext == null) {
         mContext = context;
-        if (context != null) {
-          mSharedPreferences = context.getSharedPreferences(LynxEnv.SP_NAME, Context.MODE_PRIVATE);
-        }
       }
 
       if (!LynxEnv.inst().isDevLibraryLoaded()) {
@@ -99,7 +72,6 @@ public class LynxDevtoolEnv {
       MemoryController.getInstance().init(mContext);
 
       setDefaultAppInfo(context);
-      initEnvGroups();
     } catch (Throwable t) {
       LLog.e(TAG, t.toString());
       throw t;
@@ -125,24 +97,6 @@ public class LynxDevtoolEnv {
       LLog.w(TAG, t.toString());
     }
     LynxGlobalDebugBridge.getInstance().setAppInfo(context, appInfo);
-  }
-
-  private void initEnvGroups() {
-    // only put error code which could be ignored
-    mErrorCodeMap.put(LynxEnvKey.SP_KEY_ENABLE_IGNORE_ERROR_CSS, LynxSubErrorCode.E_CSS);
-    if (mSharedPreferences == null) {
-      return;
-    }
-
-    try {
-      Set<String> ignoredErrors =
-          mSharedPreferences.getStringSet(LynxEnvKey.SP_KEY_IGNORE_ERROR_TYPES, null);
-      if (ignoredErrors != null) {
-        mGroupSets.put(LynxEnvKey.SP_KEY_IGNORE_ERROR_TYPES, ignoredErrors);
-      }
-    } catch (Throwable t) {
-      LLog.e(TAG, "failed to initEnvGroups: " + t.toString());
-    }
   }
 
   public void setDevToolLibraryLoader(INativeLibraryLoader loader) {
@@ -201,142 +155,6 @@ public class LynxDevtoolEnv {
       }
     }
     LynxEnv.inst().setDevLibraryLoaded(true);
-  }
-
-  private void syncToNative(String key, boolean defaultValue, String groupKey) {
-    LynxEnv.inst().nativeSetGroupedEnv(key, defaultValue, groupKey);
-  }
-
-  private void syncToNative(String groupKey, Set<String> newGroupValues) {
-    if (newGroupValues == null) {
-      return;
-    }
-    LynxEnv.inst().nativeSetGroupedEnvWithGroupSet(groupKey, newGroupValues);
-  }
-
-  public void setDevtoolEnv(String key, Object value) {
-    try {
-      boolean persist = needPersist(key);
-      boolean syncToNative = needSyncToNative(key);
-      KeyType type = getKeyType(key);
-      switch (type) {
-        case CDP_DOMAIN_KEY:
-          setDevtoolGroupedEnvInternal(
-              key, LynxEnvKey.SP_KEY_ACTIVATED_CDP_DOMAINS, (Boolean) value, persist, syncToNative);
-          break;
-        case ERROR_KEY:
-          Integer errorCode = mErrorCodeMap.get(key);
-          if (errorCode != null) {
-            setDevtoolGroupedEnvInternal(errorCode.toString(), LynxEnvKey.SP_KEY_IGNORE_ERROR_TYPES,
-                (Boolean) value, persist, syncToNative);
-          }
-          break;
-        default:
-          LLog.e(TAG, "setDevtoolEnv, unsupported key: " + key);
-          break;
-      }
-    } catch (RuntimeException e) {
-      LLog.e(TAG, e.toString() + ", key: " + key + ", value: " + value.toString());
-    }
-  }
-
-  public void setDevtoolEnv(String groupKey, Set<String> newGroupValues) {
-    if (mGroupSets == null || newGroupValues == null || newGroupValues.isEmpty()) {
-      return;
-    }
-    mGroupSets.put(groupKey, newGroupValues);
-    String key = newGroupValues.iterator().next();
-    if (mSharedPreferences != null && needPersist(key)) {
-      mSharedPreferences.edit().putStringSet(groupKey, newGroupValues).apply();
-    }
-    if (needSyncToNative(key)) {
-      syncToNative(groupKey, newGroupValues);
-    }
-  }
-
-  public Boolean getDevtoolEnv(String key, Boolean defaultValue) {
-    return (Boolean) getDevtoolObjectEnv(key, defaultValue);
-  }
-
-  // This function will be called in LynxInspectorOwner when handle GetGlobalSwitch messages.
-  Object getDevtoolObjectEnv(String key, Object defaultValue) {
-    try {
-      KeyType type = getKeyType(key);
-      switch (type) {
-        case CDP_DOMAIN_KEY:
-          return getDevtoolGroupedEnvInternal(
-              key, LynxEnvKey.SP_KEY_ACTIVATED_CDP_DOMAINS, (Boolean) defaultValue);
-        case ERROR_KEY:
-          Integer errorCode = mErrorCodeMap.get(key);
-          if (errorCode == null) {
-            return false;
-          }
-          return getDevtoolGroupedEnvInternal(
-              errorCode.toString(), LynxEnvKey.SP_KEY_IGNORE_ERROR_TYPES, (Boolean) defaultValue);
-        default:
-          LLog.e(TAG, "getDevtoolObjectEnv, unsupported key: " + key);
-          return defaultValue;
-      }
-    } catch (RuntimeException e) {
-      LLog.e(TAG, e.toString() + ", key: " + key + ", value: " + defaultValue.toString());
-    }
-    return defaultValue;
-  }
-
-  public Set<String> getDevtoolEnv(String groupKey) {
-    if (mGroupSets == null) {
-      return new HashSet<String>();
-    }
-    Set<String> set = mGroupSets.get(groupKey);
-    if (set == null) {
-      return new HashSet<String>();
-    }
-    return set;
-  }
-
-  private void setDevtoolGroupedEnvInternal(
-      String switchKey, String groupKey, Boolean value, Boolean persist, Boolean syncToNative) {
-    if (mGroupSets == null) {
-      return;
-    }
-    Set<String> groupSet = mGroupSets.get(groupKey);
-    if (groupSet == null) {
-      groupSet = new HashSet<>();
-      mGroupSets.put(groupKey, groupSet);
-    }
-    if (value) {
-      groupSet.add(switchKey);
-    } else {
-      groupSet.remove(switchKey);
-    }
-    if (mSharedPreferences != null && persist) {
-      mSharedPreferences.edit().putStringSet(groupKey, groupSet).apply();
-    }
-    if (syncToNative) {
-      syncToNative(switchKey, value, groupKey);
-    }
-  }
-
-  private Boolean getDevtoolGroupedEnvInternal(
-      String switchKey, String groupKey, Boolean defaultValue) {
-    if (mGroupSets == null) {
-      return defaultValue;
-    }
-    Set<String> set = mGroupSets.get(groupKey);
-    return set != null ? set.contains(switchKey) : defaultValue;
-  }
-
-  public Boolean getDevtoolEnvMask(String key) {
-    Boolean mask = null;
-    if (mSwitchMasks != null && mReadWriteLock != null) {
-      mReadWriteLock.readLock().lock();
-      mask = mSwitchMasks.get(key);
-      mReadWriteLock.readLock().unlock();
-    }
-    if (mask == null) {
-      return true;
-    }
-    return mask;
   }
 
   private boolean tryLoadDebugLynxLibrary(INativeLibraryLoader nativeLibraryLoader) {
@@ -428,44 +246,6 @@ public class LynxDevtoolEnv {
     DevToolSettings.inst().setLongPressMenuEnabled(enabled);
   }
 
-  public boolean isIgnoreErrorTypeEnabled(final Integer errCode) {
-    if (mErrorCodeMap == null || !mErrorCodeMap.containsValue(errCode)) {
-      return false;
-    }
-    return getDevtoolGroupedEnvInternal(
-        errCode.toString(), LynxEnvKey.SP_KEY_IGNORE_ERROR_TYPES, false);
-  }
-
-  private KeyType getKeyType(String key) {
-    if (key.startsWith(ERROR_CODE_KEY_PREFIX)) {
-      return KeyType.ERROR_KEY;
-    } else if (key.startsWith(CDP_DOMAIN_KEY_PREFIX)) {
-      return KeyType.CDP_DOMAIN_KEY;
-    } else {
-      return KeyType.NORMAL_KEY;
-    }
-  }
-
-  private boolean needPersist(String key) {
-    KeyType type = getKeyType(key);
-    switch (type) {
-      case ERROR_KEY:
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  private boolean needSyncToNative(String key) {
-    KeyType type = getKeyType(key);
-    switch (type) {
-      case CDP_DOMAIN_KEY:
-        return true;
-      default:
-        return false;
-    }
-  }
-
   @Deprecated
   public void enableQuickjsDebug(boolean enabled) {
     DevToolSettings.inst().setQuickJSDebugEnabled(enabled);
@@ -488,6 +268,16 @@ public class LynxDevtoolEnv {
   @Deprecated
   public void enablePerfMetrics(boolean enable) {
     DevToolSettings.inst().setPerfMetricsEnabled(enable);
+  }
+
+  @Deprecated
+  public boolean isErrorTypeIgnored(int errCode) {
+    return DevToolSettings.inst().isErrorTypeIgnored(errCode);
+  }
+
+  @Deprecated
+  public boolean isIgnoreErrorTypeEnabled(final Integer errCode) {
+    return errCode != null && DevToolSettings.inst().isErrorTypeIgnored(errCode);
   }
 
   @Deprecated

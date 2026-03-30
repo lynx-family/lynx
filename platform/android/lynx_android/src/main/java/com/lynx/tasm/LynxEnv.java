@@ -26,7 +26,6 @@ import com.lynx.base.memory.MemoryPressureLevel;
 import com.lynx.config.LynxLiteConfigs;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
 import com.lynx.devtoolwrapper.DevToolSettings;
-import com.lynx.devtoolwrapper.LynxDevToolEnvUtils;
 import com.lynx.jsbridge.LynxBytecodeCallback;
 import com.lynx.jsbridge.LynxModule;
 import com.lynx.jsbridge.LynxModuleFactory;
@@ -671,24 +670,6 @@ public class LynxEnv {
         LLog.e(TAG, "initDevtoolEnv failed: " + e.toString());
       }
     }
-  }
-
-  public void setDevtoolEnv(String groupKey, Set<String> newGroupValues) {
-    if (isNativeLibraryLoaded() && isLynxDebugEnabled()) {
-      LynxDevToolEnvUtils.setDevtoolEnv(groupKey, newGroupValues);
-    }
-  }
-
-  public Set<String> getDevtoolEnv(String groupKey) {
-    if (!isNativeLibraryLoaded()) {
-      return new HashSet<>();
-    }
-    if (!isLynxDebugEnabled()) {
-      LLog.e(
-          TAG, "getDevtoolEnv must be called when isLynxDebugEnabled = true groupKey: " + groupKey);
-      return new HashSet<>();
-    }
-    return LynxDevToolEnvUtils.getDevtoolEnv(groupKey);
   }
 
   //------------warning---------------
