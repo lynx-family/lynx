@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.0.4
+
+### Patch Changes
+
+- Add `emptyPatch` option to `__FlushElementTree`.
+
 ## 0.0.3
 
 ### Patch Changes

@@ -811,6 +811,9 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   void TriggerLayout(const std::shared_ptr<PipelineOptions>& pipeline_options);
 
+  void HandleEmptyPatch(
+      const std::shared_ptr<PipelineOptions>& pipeline_options);
+
   // Start pixel pipeline process;
   void RunPixelPipeline();
 

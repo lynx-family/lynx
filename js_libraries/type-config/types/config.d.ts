@@ -296,6 +296,17 @@ export interface Config {
   enableDisexposureWhenLynxHidden?: boolean;
 
   /**
+   * Enable skipping the native render pipeline when FiberFlushElementTree reports an empty patch.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue false
+   */
+  enableEmptyPatchSkipRender?: boolean;
+
+  /**
    * Enable the Lynx touch event to be triggered normally after the last finger is lifted in a multi-finger scenario.
    *
    * Supported platform: iOS

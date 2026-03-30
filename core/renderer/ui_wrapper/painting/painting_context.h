@@ -222,6 +222,8 @@ class PaintingContext {
                                            bool is_init_scroll_offset,
                                            bool from_layout);
 
+  void FinishEmptyPatchOperation(
+      const std::shared_ptr<PipelineOptions>& options);
   void FinishLayoutOperation(const std::shared_ptr<PipelineOptions>& options);
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id);
   void MarkUIOperationQueueFlushTiming(tasm::TimingKey key,

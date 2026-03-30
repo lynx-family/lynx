@@ -78,6 +78,26 @@ TEST_F(PipelineScopeTest, TestPipelineContextConstructor03) {
   EXPECT_EQ(current_context, nullptr);
   EXPECT_EQ(options->HeldByContext(), false);
 }
+
+TEST_F(PipelineScopeTest,
+       HandleEmptyPatchStopsUnifiedPipelineWithoutCallbacks) {
+  auto options = std::make_shared<PipelineOptions>();
+  options->is_empty_patch = true;
+
+  PipelineScope scope(tasm_.get(), options, true);
+  ASSERT_NE(tasm_->GetCurrentPipelineContext(), nullptr);
+
+  tasm_->HandleEmptyPatch(options);
+
+  auto* painting_context = static_cast<MockPaintingContext*>(
+      tasm_->page_proxy()->element_manager()->painting_context()->impl());
+  EXPECT_FALSE(painting_context->HasFlushed());
+  EXPECT_FALSE(delegate_->dispatch_layout_updates_called_);
+  EXPECT_EQ(delegate_->DumpDelegate(), "");
+  EXPECT_EQ(delegate_->on_update_data_without_change_count(), 0u);
+  EXPECT_EQ(tasm_->GetCurrentPipelineContext(), nullptr);
+  EXPECT_FALSE(options->HeldByContext());
+}
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

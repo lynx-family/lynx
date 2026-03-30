@@ -514,6 +514,10 @@ bool LynxEnv::EnableUnifiedPixelPipeline() {
   return GetBoolEnv(Key::ENABLE_UNIFIED_PIXEL_PIPELINE, false);
 }
 
+bool LynxEnv::EnableEmptyPatchSkipRender() {
+  return GetBoolEnv(Key::ENABLE_EMPTY_PATCH_SKIP_RENDER, false);
+}
+
 bool LynxEnv::EnableEventHandleRefactor() {
   return GetBoolEnv(Key::ENABLE_EVENT_HANDLE_REFACTOR, false);
 }

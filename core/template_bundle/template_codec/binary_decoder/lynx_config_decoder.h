@@ -874,6 +874,15 @@ class LynxConfigDecoder final {
       page_config->SetEnableDisexposureWhenBackground(
           doc[config::kEnableDisexposureWhenBackground].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableEmptyPatchSkipRender) &&
+        doc[config::kEnableEmptyPatchSkipRender].IsBool()) {
+      page_config->SetEnableEmptyPatchSkipRender(
+          doc[config::kEnableEmptyPatchSkipRender].GetBool());
+    } else {
+      page_config->SetEnableEmptyPatchSkipRender(
+          LynxEnv::GetInstance().EnableEmptyPatchSkipRender());
+    }
   };
 };
 }  // namespace tasm

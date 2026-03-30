@@ -2,9 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#define private public
+#define protected public
+
 #include "core/shell/lynx_ui_operation_async_queue.h"
 
 #include "base/include/fml/synchronization/waitable_event.h"
+#include "core/base/threading/task_runner_manufactor.h"
+#include "core/public/pipeline_option.h"
+#include "core/renderer/ui_wrapper/painting/empty/painting_context_implementation.h"
 #include "core/shell/testing/mock_runner_manufactor.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -136,6 +142,25 @@ TEST_F(LynxUIOperationAsyncQueueTest, FlushOnUIThreadWhenAllFinish) {
   // We expect that the operation will not be executed since the status has been
   // updated to ALL_FINISH.
   ASSERT_FALSE(executed);
+}
+
+TEST_F(LynxUIOperationAsyncQueueTest,
+       FinishEmptyPatchMarksCurrentNativeUpdateAsAllFinish) {
+  tasm::PaintingContext painting_context(
+      std::make_unique<tasm::PaintingContextPlatformImpl>());
+  auto dynamic_queue = std::make_shared<shell::DynamicUIOperationQueue>(
+      base::ThreadStrategyForRendering::ALL_ON_UI, ui_runner_);
+  dynamic_queue->impl_ = queue_;
+  painting_context.SetUIOperationQueue(dynamic_queue);
+
+  dynamic_queue->MarkDirty();
+  auto options = std::make_shared<tasm::PipelineOptions>();
+  options->native_update_data_order_ =
+      dynamic_queue->GetNativeUpdateDataOrder();
+
+  painting_context.FinishEmptyPatchOperation(options);
+
+  EXPECT_EQ(queue_->status_, shell::UIOperationStatus::ALL_FINISH);
 }
 
 TEST_F(LynxUIOperationAsyncQueueTest, FlushHighPriorityTask) {

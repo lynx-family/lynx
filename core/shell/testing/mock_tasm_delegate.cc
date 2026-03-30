@@ -15,6 +15,9 @@ namespace tasm {
 namespace test {
 
 void MockTasmDelegate::OnDataUpdated() { ss_ << "OnDataUpdated\n"; }
+void MockTasmDelegate::OnUpdateDataWithoutChange() {
+  ++on_update_data_without_change_count_;
+}
 void MockTasmDelegate::OnTasmFinishByNative() {}
 void MockTasmDelegate::OnRunPipelineFinished() {}
 void MockTasmDelegate::OnTemplateLoaded(const std::string& url) {

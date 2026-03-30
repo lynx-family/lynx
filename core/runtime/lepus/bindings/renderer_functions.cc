@@ -5169,6 +5169,15 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
         trigger_data_updated = arg1->GetProperty(kTriggerDataUpdated).Bool();
       }
 
+      BASE_STATIC_STRING_DECL(kEmptyPatch, "emptyPatch");
+      if (arg1->Contains(kEmptyPatch)) {
+        const bool enable_empty_patch_skip_render =
+            self->GetPageConfig() != nullptr &&
+            self->GetPageConfig()->GetEnableEmptyPatchSkipRender();
+        current_option->is_empty_patch = enable_empty_patch_skip_render &&
+                                         arg1->GetProperty(kEmptyPatch).Bool();
+      }
+
       BASE_STATIC_STRING_DECL(kListReuseNotification, "listReuseNotification");
       if (arg1->Contains(kListReuseNotification)) {
         const auto& notification_value =
@@ -5197,7 +5206,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
       }
 
       BASE_STATIC_STRING_DECL(kAsyncFlush, "asyncFlush");
-      if (arg1->Contains(kAsyncFlush) &&
+      if (!current_option->is_empty_patch && arg1->Contains(kAsyncFlush) &&
           arg1->GetProperty(kAsyncFlush).Bool()) {
         if (element) {
           element->AsyncResolveSubtreeProperty();
@@ -5206,13 +5215,15 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
       }
     }
 
-    BASE_STATIC_STRING_DECL(kOnLayoutReady, "onLayoutReady");
-    if (auto on_layout_ready = arg1->GetProperty(kOnLayoutReady);
-        on_layout_ready.IsCallable()) {
-      GET_TASM_POINTER()->RegisterOnLayoutReadyHook(
-          [context = LEPUS_CONTEXT(), hook = on_layout_ready]() mutable {
-            context->CallClosure(hook);
-          });
+    if (!current_option->is_empty_patch) {
+      BASE_STATIC_STRING_DECL(kOnLayoutReady, "onLayoutReady");
+      if (auto on_layout_ready = arg1->GetProperty(kOnLayoutReady);
+          on_layout_ready.IsCallable()) {
+        GET_TASM_POINTER()->RegisterOnLayoutReadyHook(
+            [context = LEPUS_CONTEXT(), hook = on_layout_ready]() mutable {
+              context->CallClosure(hook);
+            });
+      }
     }
   }
 
@@ -5227,22 +5238,26 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   // behaviours. After `RunPixelPipeline` is unified, we may remove the
   // redundant logic here.
   if (current_option->enable_unified_pixel_pipeline) {
-    current_option->resolve_requested = true;
+    current_option->resolve_requested = current_option->is_empty_patch;
     current_option->target_node = element;
     current_option->need_trigger_data_updated_ = trigger_data_updated;
   } else {
-    self->page_proxy()->element_manager()->OnPatchFinish(current_option,
-                                                         element);
+    if (current_option->is_empty_patch) {
+      self->HandleEmptyPatch(current_option);
+    } else {
+      self->page_proxy()->element_manager()->OnPatchFinish(current_option,
+                                                           element);
 
-    // Currently, only client updateData, client resetData, and JS root
-    // component setData updates trigger the OnDataUpdated callback, and only
-    // when the page has actually changed. Other data updates, such as client
-    // reloadTemplate and JS child components setData, do not trigger
-    // OnDataUpdated. In order to align with this logic, the timing of
-    // OnDataUpdated is moved to the end of FiberFlushElementTree, and it is
-    // controlled by LepusRuntime through triggerDataUpdated.
-    if (trigger_data_updated) {
-      self->GetDelegate().OnDataUpdated();
+      // Currently, only client updateData, client resetData, and JS root
+      // component setData updates trigger the OnDataUpdated callback, and only
+      // when the page has actually changed. Other data updates, such as client
+      // reloadTemplate and JS child components setData, do not trigger
+      // OnDataUpdated. In order to align with this logic, the timing of
+      // OnDataUpdated is moved to the end of FiberFlushElementTree, and it is
+      // controlled by LepusRuntime through triggerDataUpdated.
+      if (trigger_data_updated) {
+        self->GetDelegate().OnDataUpdated();
+      }
     }
   }
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_FLUSH_ELEMENT_TREE_END,

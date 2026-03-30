@@ -1879,3 +1879,14 @@ enableDisexposureWhenBackground:
   since: '3.8'
   supportPlatform:
     - iOS
+enableEmptyPatchSkipRender:
+  description: Enable skipping the native render pipeline when FiberFlushElementTree reports an empty patch.
+  defaultValue: 'false'
+  valueType: boolean
+  readSettings: true
+  author: 'pilipala195'
+  since: '3.8'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS

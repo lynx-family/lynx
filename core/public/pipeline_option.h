@@ -112,6 +112,9 @@ struct PipelineOptions {
   bool has_layout = false;
   // true if need call DispatchLayoutUpdates
   bool trigger_layout_ = true;
+  // true if FE explicitly declares the current patch is empty and native
+  // should short-circuit the render pipeline.
+  bool is_empty_patch = false;
   // Whether mark entire tree dirty or not.
   bool force_resolve_style_ = false;
   // Whether mark entire tree dirty and reset style sheet or not.

@@ -920,6 +920,7 @@ class ElementManager : public ElementContextDelegate,
 
   LYNX_EXPORT_FOR_DEVTOOL void OnPatchFinish(
       std::shared_ptr<PipelineOptions> &option, Element *root = nullptr);
+  void OnEmptyPatchFinish(const std::shared_ptr<PipelineOptions> &options);
 
   /**
    * Used By RunPixelPipeline Process.

@@ -23,6 +23,41 @@
 namespace lynx {
 namespace tasm {
 namespace testing {
+namespace {
+
+class EmptyPatchListElement : public ListElement {
+ public:
+  EmptyPatchListElement(ElementManager* manager, const base::String& tag,
+                        const lepus::Value& component_at_index,
+                        const lepus::Value& enqueue_component,
+                        const lepus::Value& component_at_indexes)
+      : ListElement(manager, tag, component_at_index, enqueue_component,
+                    component_at_indexes) {}
+
+  bool DisableListPlatformImplementation() const override { return true; }
+
+  void OnListElementUpdated(const std::shared_ptr<PipelineOptions>&) override {
+    list_updated_ = true;
+  }
+
+  void OnComponentFinished(
+      Element* component,
+      const std::shared_ptr<PipelineOptions>& option) override {
+    component_finished_ = component != nullptr && option->operation_id != 0;
+  }
+
+  void OnListItemBatchFinished(
+      const std::shared_ptr<PipelineOptions>&) override {
+    batch_finished_ = true;
+  }
+
+  bool list_updated_{false};
+  bool component_finished_{false};
+  bool batch_finished_{false};
+};
+
+}  // namespace
+
 static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
@@ -532,6 +567,43 @@ TEST_F(ElementManagerTest, AdoptedStylesheets_MultipleAdoption) {
 
   manager->AdoptStyleSheet(wrapper1);
   EXPECT_EQ(manager->GetAdoptedStyleSheets().size(), 1);
+}
+
+TEST_F(ElementManagerTest,
+       OnEmptyPatchFinishNotifiesListComponentWithoutDataCallback) {
+  auto list = fml::AdoptRef<EmptyPatchListElement>(new EmptyPatchListElement(
+      manager.get(), "list", lepus::Value(), lepus::Value(), lepus::Value()));
+  auto component = manager->CreateFiberNode("view");
+  auto options = std::make_shared<PipelineOptions>();
+  options->operation_id = 1001;
+  options->list_id_ = list->impl_id();
+  options->list_comp_id_ = component->impl_id();
+  options->updated_list_elements_.push_back(list->impl_id());
+
+  manager->OnEmptyPatchFinish(options);
+
+  EXPECT_TRUE(list->list_updated_);
+  EXPECT_TRUE(list->component_finished_);
+  EXPECT_FALSE(list->batch_finished_);
+  EXPECT_EQ(tasm_mediator->on_update_data_without_change_count(), 0u);
+}
+
+TEST_F(ElementManagerTest,
+       OnEmptyPatchFinishNotifiesListBatchWithoutDataCallback) {
+  auto list = fml::AdoptRef<EmptyPatchListElement>(new EmptyPatchListElement(
+      manager.get(), "list", lepus::Value(), lepus::Value(), lepus::Value()));
+  auto first_item = manager->CreateFiberNode("view");
+  auto second_item = manager->CreateFiberNode("view");
+  auto options = std::make_shared<PipelineOptions>();
+  options->list_id_ = list->impl_id();
+  options->operation_ids_ = {101, 102};
+  options->list_item_ids_ = {first_item->impl_id(), second_item->impl_id()};
+
+  manager->OnEmptyPatchFinish(options);
+
+  EXPECT_FALSE(list->component_finished_);
+  EXPECT_TRUE(list->batch_finished_);
+  EXPECT_EQ(tasm_mediator->on_update_data_without_change_count(), 0u);
 }
 
 }  // namespace testing

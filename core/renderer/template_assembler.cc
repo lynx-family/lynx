@@ -3539,6 +3539,12 @@ void TemplateAssembler::RequestLayout(
   layout_scheduler_->RequestLayout(pipeline_options);
 }
 
+void TemplateAssembler::HandleEmptyPatch(
+    const std::shared_ptr<PipelineOptions>& pipeline_options) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "TemplateAssembler::HandleEmptyPatch");
+  page_proxy()->element_manager()->OnEmptyPatchFinish(pipeline_options);
+}
+
 // starts run pixel pipeline process;
 // TODO(@yangguangzhao.solace): The same context is only allowed to enter the
 // pixel pipeline once, controlled by its lifecycle state.

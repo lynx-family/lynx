@@ -138,6 +138,9 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
                                bool is_air) override;
 
   std::string DumpDelegate() { return ss_.str(); }
+  size_t on_update_data_without_change_count() const {
+    return on_update_data_without_change_count_;
+  }
   void ResetThemeConfig();
 
   MOCK_METHOD(void, UpdateLayoutNodeFontSize,
@@ -188,7 +191,7 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
 
   MOCK_METHOD(void, SetRootOnLayout, (int32_t id), (override));
 
-  void OnUpdateDataWithoutChange() override {}
+  void OnUpdateDataWithoutChange() override;
 
   void SetPageConfigForLayoutThread(
       const std::shared_ptr<PageConfig>& config) override {}
@@ -288,6 +291,7 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   void UpdateMockDelegateThemeConfig(const lepus::Value& data);
 
   bool dispatch_layout_updates_called_{false};
+  size_t on_update_data_without_change_count_{0};
 
   std::string lepus_method_id_{};
   lepus::Value lepus_method_arguments_{};

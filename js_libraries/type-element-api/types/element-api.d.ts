@@ -264,6 +264,7 @@ declare global {
       operationIDs?: number[];
       asyncFlush?: boolean;
       onLayoutReady?: () => void;
+      emptyPatch?: boolean;
     }
   ): void;
 

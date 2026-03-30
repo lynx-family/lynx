@@ -264,6 +264,20 @@ void PaintingContext::MarkLayoutUIOperationQueueFlushStartIfNeed() {
   }
 }
 
+void PaintingContext::FinishEmptyPatchOperation(
+    const std::shared_ptr<PipelineOptions>& options) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_FINISH_LAYOUT_OPERATION);
+  if (ui_operation_queue_ != nullptr &&
+      options->native_update_data_order_ ==
+          ui_operation_queue_->GetNativeUpdateDataOrder()) {
+    ui_operation_queue_->UpdateStatus(shell::UIOperationStatus::ALL_FINISH);
+  }
+  {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_CLEAN_OPTIONS_FOR_TIMING);
+    ClearOptionsForTiming();
+  }
+}
+
 void PaintingContext::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_FINISH_LAYOUT_OPERATION);

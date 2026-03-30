@@ -102,6 +102,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT,
     ENABLE_JSVM_RUNTIME,
     ENABLE_UNIFIED_PIXEL_PIPELINE,
+    ENABLE_EMPTY_PATCH_SKIP_RENDER,
     ENABLE_REPORT_BTS_CONTEXT_EVENT,
     ENABLE_FIBER_ELEMENT_MEMORY_REPORT,
     ENABLE_HARMONY_NEW_OVERLAY,
@@ -266,6 +267,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_JSVM_RUNTIME, kLyneEnableJSVMRuntime},
             {Key::ENABLE_UNIFIED_PIXEL_PIPELINE,
              "enable_unified_pixel_pipeline"},
+            {Key::ENABLE_EMPTY_PATCH_SKIP_RENDER,
+             "enable_empty_patch_skip_render"},
             {Key::ENABLE_REPORT_BTS_CONTEXT_EVENT,
              "enable_report_mts_context_event"},
             {Key::ENABLE_FIBER_ELEMENT_MEMORY_REPORT,
@@ -448,6 +451,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableBatchLayoutTaskWithSyncLayout();
   bool EnableJSVMRuntime();
   bool EnableUnifiedPixelPipeline();
+  bool EnableEmptyPatchSkipRender();
   bool EnableReportMTSContextEvent();
   bool EnableFiberElementMemoryReport();
   bool EnableHarmonyNewOverlay();

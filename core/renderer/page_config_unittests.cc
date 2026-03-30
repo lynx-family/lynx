@@ -5,6 +5,7 @@
 #define private public
 #define protected public
 
+#include "core/template_bundle/template_codec/binary_decoder/lynx_config_decoder.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -163,6 +164,42 @@ TEST(PageConfigTest, EnableUnifiedPipeline) {
   page_config_1.DecodePageConfigFromJsonStringWhileUndefined(
       "{\n  \"enableUnifiedPipeline\" : false\n}");
   EXPECT_EQ(page_config_1.GetEnableUnifiedPipeline(), TernaryBool::FALSE_VALUE);
+}
+
+TEST(PageConfigTest, EnableEmptyPatchSkipRender) {
+  LynxEnv::GetInstance()
+      .external_env_map_[LynxEnv::Key::ENABLE_EMPTY_PATCH_SKIP_RENDER] = "true";
+
+  auto page_config_from_settings = std::make_shared<PageConfig>();
+  rapidjson::Document empty_doc;
+  empty_doc.Parse("{}");
+  LynxConfigDecoder::DecodePageConfig(page_config_from_settings, empty_doc, "");
+  EXPECT_TRUE(page_config_from_settings->GetEnableEmptyPatchSkipRender());
+
+  auto page_config_from_json = std::make_shared<PageConfig>();
+  rapidjson::Document json_doc;
+  json_doc.Parse("{\n  \"enableEmptyPatchSkipRender\" : false\n}");
+  LynxConfigDecoder::DecodePageConfig(page_config_from_json, json_doc, "");
+  EXPECT_FALSE(page_config_from_json->GetEnableEmptyPatchSkipRender());
+
+  LynxEnv::GetInstance()
+      .external_env_map_[LynxEnv::Key::ENABLE_EMPTY_PATCH_SKIP_RENDER] =
+      "false";
+  auto page_config_from_disabled_settings = std::make_shared<PageConfig>();
+  rapidjson::Document disabled_doc;
+  disabled_doc.Parse("{}");
+  LynxConfigDecoder::DecodePageConfig(page_config_from_disabled_settings,
+                                      disabled_doc, "");
+  EXPECT_FALSE(
+      page_config_from_disabled_settings->GetEnableEmptyPatchSkipRender());
+
+  LynxEnv::GetInstance().external_env_map_.erase(
+      LynxEnv::Key::ENABLE_EMPTY_PATCH_SKIP_RENDER);
+  auto page_config_default = std::make_shared<PageConfig>();
+  rapidjson::Document default_doc;
+  default_doc.Parse("{}");
+  LynxConfigDecoder::DecodePageConfig(page_config_default, default_doc, "");
+  EXPECT_FALSE(page_config_default->GetEnableEmptyPatchSkipRender());
 }
 
 TEST(PageConfigTest, EnableParseIntFlex) {
