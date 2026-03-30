@@ -345,20 +345,27 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
   }
   auto raw_bundle = LynxGetRawTemplateBundle(bundle).get();
   std::string js_path = [jsFile UTF8String];
+  std::string script;
   auto js_content = raw_bundle->GetJsBundle().GetJsContent(js_path);
-  if (!js_content.has_value()) {
+  if (js_content.has_value()) {
+    auto js_content_val = js_content->get();
+    if (js_content_val.IsError()) {
+      return;
+    }
+    auto buffer = js_content_val.GetBuffer();
+    if (buffer && buffer->data()) {
+      script = std::string(reinterpret_cast<const char*>(buffer->data()), buffer->size());
+    }
+  }
+  if (script.empty()) {
+    auto custom_section = raw_bundle->GetCustomSection(js_path);
+    if (custom_section.IsString()) {
+      script = custom_section.StdString();
+    }
+  }
+  if (script.empty()) {
     return;
   }
-  auto js_content_val = js_content->get();
-  if (js_content_val.IsError()) {
-    return;
-  }
-  auto buffer = js_content_val.GetBuffer();
-  if (!buffer || !buffer->data()) {
-    return;
-  }
-  const auto length = buffer->size();
-  const auto* data = reinterpret_cast<const char*>(buffer->data());
   uint64_t trace_flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE_FROM_BUNDLE,
               [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
@@ -366,9 +373,9 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
                 ctx.event()->add_flow_ids(trace_flow_id);
               });
   _runtime_standalone_bundle.runtime_actor_->Act([url = std::string([url UTF8String]),
-                                                  sources = std::string(data, length),
+                                                  script = std::move(script),
                                                   trace_flow_id](auto& runtime) mutable {
-    runtime->EvaluateScriptStandalone(std::move(url), std::move(sources), trace_flow_id);
+    runtime->EvaluateScriptStandalone(std::move(url), std::move(script), trace_flow_id);
   });
 }
 
