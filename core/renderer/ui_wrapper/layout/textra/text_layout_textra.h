@@ -46,10 +46,11 @@ class TextLayoutTextra : public TextLayoutImpl {
   void HandleInlineImageProps(Element* child);
   void HandleInlineViewProps(Element* child);
   void EnsureParagraphListener(Element* element);
+  void DestroyParagraph(int32_t id);
   //  void MeasureChildrenRecursively(Element* element,starlight::Constraints&
   //  constraints);
 
-  text::TextLayoutAPI* api_{nullptr};
+  std::unique_ptr<text::TextLayoutAPI> api_;
   text::ParagraphBuilder* paragraph_builder_{nullptr};
   std::unordered_map<int32_t, text::Paragraph*> paragraphs_;
   std::unordered_map<int32_t, std::unique_ptr<text::ParagraphListener>>
