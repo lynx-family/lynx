@@ -9,6 +9,8 @@ import("../../oliver/oliver.gni")
 shared_library("windows") {
   output_name = "lynx"
 
+  public_configs = [ ":win_v8_config" ]
+
   deps = [ ":lynx_windows_group" ]
   libs = [ "user32.lib" ]
 
@@ -18,6 +20,15 @@ shared_library("windows") {
     } else if (windows_runtime_library_mode == "mt") {
       libs += [ "libcpmt.lib" ]
     }
+  }
+}
+
+config("win_v8_config") {
+  lib_dirs = []
+  libs = []
+  if (jsengine_type == "v8" && use_flutter_cxx) {
+    lib_dirs += [ "//third_party/v8/win/lib/${current_cpu}" ]
+    libs += [ "v8_monolith.lib" ]
   }
 }
 

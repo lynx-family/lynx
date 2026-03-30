@@ -173,6 +173,18 @@ deps = {
         "url": "https://github.com/lynx-family/v8-build/releases/download/11.1.277.1/v8_include_headers.zip",
         "ignore_in_git": True,
     },
+    "third_party/v8/win/lib/x64": {
+        "type": "http",
+        "url": "https://github.com/lynx-family/v8-build/releases/download/11.1.277/v8_lib_windows_x64.zip",
+        "ignore_in_git": True,
+        'condition': system in ['windows'],
+    },
+    "third_party/v8/win/lib/x86": {
+        "type": "http",
+        "url": "https://github.com/lynx-family/v8-build/releases/download/11.1.277/v8_lib_windows_x86.zip",
+        "ignore_in_git": True,
+        'condition': system in ['windows'],
+    },
     'third_party/jacoco':{
         "type":"http",
         "url":f"https://repo1.maven.org/maven2/org/jacoco/jacoco/0.8.12/jacoco-0.8.12.zip",
