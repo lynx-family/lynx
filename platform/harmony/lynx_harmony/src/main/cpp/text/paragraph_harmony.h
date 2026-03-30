@@ -165,7 +165,8 @@ class ParagraphHarmony : public fml::RefCountedThreadSafeStorage {
 
   PositionAndAffinityHarmony GetPositionAndAffinity(double x, double y) const {
     return PositionAndAffinityHarmony(
-        OH_Drawing_TypographyGetGlyphPositionAtCoordinate(paragraph_, x, y));
+        OH_Drawing_TypographyGetGlyphPositionAtCoordinateWithCluster(paragraph_,
+                                                                     x, y));
   }
 
   LineMetricsHarmony GetLineMetrics(size_t idx) {
