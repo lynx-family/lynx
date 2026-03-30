@@ -288,8 +288,16 @@ void NativePaintingCtxPlatformRef::InvokeUIMethod(
     int32_t id, const std::string &method, const lepus::Value &params,
     base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback) {
   base::MoveOnlyClosure<void, int32_t, const lepus::Value &> cb =
-      [callback = std::move(callback)](int32_t code, const lepus::Value &data) {
-        callback(code, PubLepusValue(data));
+      [engine_actor = engine_actor_, callback = std::move(callback)](
+          int32_t code, const lepus::Value &data) mutable {
+        if (engine_actor == nullptr) {
+          return;
+        }
+        lepus::Value data_copy = data;
+        engine_actor->Act([callback = std::move(callback), code,
+                           data = std::move(data_copy)](auto &engine) mutable {
+          callback(code, PubLepusValue(data));
+        });
       };
 
   // Invoke ui method on the event target.
@@ -299,12 +307,7 @@ void NativePaintingCtxPlatformRef::InvokeUIMethod(
          lepus::Value("failed to reconstruct event target tree"));
       return;
     }
-    if (params.IsJSValue()) {
-      event_target_helper_->InvokeMethod(id, method, params.ToLepusValue(),
-                                         std::move(cb));
-    } else {
-      event_target_helper_->InvokeMethod(id, method, params, std::move(cb));
-    }
+    event_target_helper_->InvokeMethod(id, method, params, std::move(cb));
   }
   // Invoke ui method on the platform renderer.
   else {

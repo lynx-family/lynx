@@ -297,7 +297,7 @@ void NativePaintingCtxAndroid::Invoke(
   // temporarily use TaskRunner to throw the UI thread for execution instead of
   // Enqueue.
   runner->PostTask([ref = platform_ref_, id, method,
-                    params = std::move(lepus_params),
+                    params = lepus_params.ToLepusValue(),
                     cb = std::move(cb)]() mutable {
     auto android_ref =
         std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);

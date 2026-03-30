@@ -87,7 +87,7 @@ void NativePaintingCtxDarwin::Invoke(
   const auto &lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
   base::MoveOnlyClosure<void, int32_t, const pub::Value &> cb =
       [callback](int32_t code, const pub::Value &data) { callback(code, data); };
-  runner->PostTask([ref = platform_ref_, id, method, params = std::move(lepus_params),
+  runner->PostTask([ref = platform_ref_, id, method, params = lepus_params.ToLepusValue(),
                     cb = std::move(cb)]() mutable {
     auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
     if (darwin_ref) {
