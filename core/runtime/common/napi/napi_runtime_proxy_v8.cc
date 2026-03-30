@@ -28,11 +28,15 @@ NapiRuntimeProxyV8::NapiRuntimeProxyV8(
     runtime::TemplateDelegate *delegate)
     : NapiRuntimeProxy(delegate), context_(context) {}
 
+NapiRuntimeProxyV8::~NapiRuntimeProxyV8() = default;
+
 void NapiRuntimeProxyV8::Attach() {
   auto ctx = context_.lock();
   if (ctx) {
-    ctx->getIsolate()->Enter();
-    v8::HandleScope handle_scope(ctx->getIsolate());
+    auto *isolate = ctx->getIsolate();
+    locker_ = std::make_unique<v8::Locker>(isolate);
+    isolate->Enter();
+    v8::HandleScope handle_scope(isolate);
     napi_attach_v8(env_, ctx->getContext());
   }
 }
@@ -42,6 +46,7 @@ void NapiRuntimeProxyV8::Detach() {
   auto ctx = context_.lock();
   if (ctx) {
     ctx->getIsolate()->Exit();
+    locker_.reset();
     napi_detach_v8(env_);
   }
 }
