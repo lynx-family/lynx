@@ -67,6 +67,7 @@ const configKeys = [
   'enableExposureWhenReload',
   'enableFetchAPIStandardStreaming',
   'enableFixedNew',
+  'enableFlexBasisZeroPercent',
   'enableHarmonyNewOverlay',
   'enableHarmonyVisibleAreaChangeForExposure',
   'enableICU',

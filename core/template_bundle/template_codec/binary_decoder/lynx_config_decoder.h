@@ -760,6 +760,12 @@ class LynxConfigDecoder final {
           LynxEnv::GetInstance().EnableParseIntFlex());
     }
 
+    if (doc.HasMember(config::kEnableFlexBasisZeroPercent) &&
+        doc[config::kEnableFlexBasisZeroPercent].IsBool()) {
+      page_config->SetEnableFlexBasisZeroPercent(
+          doc[config::kEnableFlexBasisZeroPercent].GetBool());
+    }
+
     if (doc.HasMember(config::kIncludeFontPadding) &&
         doc[config::kIncludeFontPadding].IsBool()) {
       page_config->SetIncludeFontPadding(

@@ -217,6 +217,8 @@ void LynxBinaryConfigDecoder::UpdateCSSConfigs(
   // CSS parser configs for this page.
   compile_options_.enable_parse_int_flex_ =
       page_config->GetEnableParseIntFlex();
+  compile_options_.enable_flex_basis_zero_percent_ =
+      page_config->GetEnableFlexBasisZeroPercent();
   auto configs =
       CSSParserConfigs::GetCSSParserConfigsByComplierOptions(compile_options_);
   page_config->SetCSSParserConfigs(configs);

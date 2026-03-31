@@ -108,6 +108,7 @@ struct CompileOptions {
   // Derived from page config at compile/decode time. Do not serialize it into
   // the template header.
   bool enable_parse_int_flex_{false};
+  bool enable_flex_basis_zero_percent_{false};
 };
 
 #define FOREACH_FIXED_LENGTH_FIELD(V)             \

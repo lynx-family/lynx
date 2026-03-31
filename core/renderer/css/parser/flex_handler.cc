@@ -23,9 +23,11 @@ HANDLER_IMPL() {
     if (UnitHandler::Process(kPropertyIDFlexGrow, lepus::Value(flex_grow),
                              num_map, configs) &&
         UnitHandler::Process(kPropertyIDFlexShrink, lepus::Value(1), num_map,
-                             configs) &&
-        UnitHandler::Process(kPropertyIDFlexBasis, lepus::Value(0), num_map,
                              configs)) {
+      num_map.emplace_or_assign(kPropertyIDFlexBasis, 0.f,
+                                configs.enable_flex_basis_zero_percent
+                                    ? CSSValuePattern::PERCENT
+                                    : CSSValuePattern::NUMBER);
       for (auto& v : num_map) {
         output.insert_or_assign(v.first, std::move(v.second));
       }

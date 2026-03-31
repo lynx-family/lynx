@@ -1676,6 +1676,16 @@ enableParseIntFlex:
     - Android
     - HarmonyOS
     - iOS
+enableFlexBasisZeroPercent:
+  description: When enabled, flex-basis defaults to 0% instead of 0 when omitted in flex shorthand, matching web browser behavior.
+  defaultValue: 'false'
+  valueType: bool
+  author: renzhongyue
+  since: '3.9'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 includeFontPadding:
   description:
     Control the top and bottom padding of text on Android, which affects

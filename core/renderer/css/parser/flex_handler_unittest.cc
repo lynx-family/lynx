@@ -238,6 +238,53 @@ TEST(FlexHandler, NumberInputFix) {
   EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
 }
 
+TEST(FlexHandler, EnableFlexBasisZeroPercent) {
+  auto id = CSSPropertyID::kPropertyIDFlex;
+  StyleMap output;
+  CSSParserConfigs configs;
+
+  // Test numeric input: flex: 1
+  output.clear();
+  auto impl = lepus::Value(1);
+  auto ret = UnitHandler::Process(id, impl, output, configs);
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), 3);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].GetPattern(), CSSValuePattern::NUMBER);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
+
+  // Test string input: flex: 1 1
+  output.clear();
+  impl = lepus::Value("1 1");
+  ret = UnitHandler::Process(id, impl, output, configs);
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), 3);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].GetPattern(), CSSValuePattern::NUMBER);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
+
+  // Enable flex-basis 0% mode
+  configs.enable_flex_basis_zero_percent = true;
+
+  // Test numeric input with config enabled: flex: 1
+  output.clear();
+  impl = lepus::Value(1);
+  ret = UnitHandler::Process(id, impl, output, configs);
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), 3);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].GetPattern(),
+            CSSValuePattern::PERCENT);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
+
+  // Test string input with config enabled: flex: 1 1
+  output.clear();
+  impl = lepus::Value("1 1");
+  ret = UnitHandler::Process(id, impl, output, configs);
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), 3);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].GetPattern(),
+            CSSValuePattern::PERCENT);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

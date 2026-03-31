@@ -75,6 +75,49 @@ TEST_F(LynxBinaryConfigDecoderTest, EnableParseIntFlexAffectsFlexParsing) {
   EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
 }
 
+TEST_F(LynxBinaryConfigDecoderTest, ReadEnableFlexBasisZeroPercent) {
+  EXPECT_FALSE(page_config_->GetEnableFlexBasisZeroPercent());
+  EXPECT_FALSE(
+      page_config_->GetCSSParserConfigs().enable_flex_basis_zero_percent);
+  config_decoder_->DecodePageConfig(
+      "{\n  \"enableFlexBasisZeroPercent\" : true\n}", page_config_);
+  EXPECT_TRUE(page_config_->GetEnableFlexBasisZeroPercent());
+  EXPECT_TRUE(
+      page_config_->GetCSSParserConfigs().enable_flex_basis_zero_percent);
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       FlexBasisZeroPercentDisabledKeepsDefaultBehavior) {
+  auto id = CSSPropertyID::kPropertyIDFlex;
+  auto impl = lepus::Value(1);
+  StyleMap output;
+
+  auto ret = UnitHandler::Process(id, impl, output,
+                                  page_config_->GetCSSParserConfigs());
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), 3);
+  EXPECT_TRUE(output[kPropertyIDFlexBasis].IsNumber());
+  EXPECT_EQ(output[kPropertyIDFlexBasis].GetPattern(), CSSValuePattern::NUMBER);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       EnableFlexBasisZeroPercentUsesPercentPattern) {
+  auto id = CSSPropertyID::kPropertyIDFlex;
+  auto impl = lepus::Value(1);
+  StyleMap output;
+
+  config_decoder_->DecodePageConfig(
+      "{\n  \"enableFlexBasisZeroPercent\" : true\n}", page_config_);
+  auto ret = UnitHandler::Process(id, impl, output,
+                                  page_config_->GetCSSParserConfigs());
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), 3);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].GetPattern(),
+            CSSValuePattern::PERCENT);
+  EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

@@ -384,6 +384,17 @@ export interface Config {
   enableFixedNew?: boolean;
 
   /**
+   * When enabled, flex-basis defaults to 0% instead of 0 when omitted in flex shorthand, matching web browser behavior.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.9
+   *
+   * @defaultValue false
+   */
+  enableFlexBasisZeroPercent?: boolean;
+
+  /**
    * Enable harmony new overlay based overlayManager to handle events pass through.
    *
    * Supported platform: HarmonyOS

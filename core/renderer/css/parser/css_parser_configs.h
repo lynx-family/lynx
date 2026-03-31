@@ -39,6 +39,8 @@ struct CSSParserConfigs {
     }
     config.enable_css_strict_mode = compile_options.enable_css_strict_mode_;
     config.enable_parse_int_flex = compile_options.enable_parse_int_flex_;
+    config.enable_flex_basis_zero_percent =
+        compile_options.enable_flex_basis_zero_percent_;
     return config;
   }
   // default is disable.
@@ -49,6 +51,7 @@ struct CSSParserConfigs {
   bool enable_new_transform_handler = false;
   bool enable_new_flex_handler = false;
   bool enable_parse_int_flex = false;
+  bool enable_flex_basis_zero_percent = false;
   bool enable_new_time_handler = false;
 };
 

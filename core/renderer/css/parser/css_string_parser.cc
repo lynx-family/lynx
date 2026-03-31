@@ -3807,7 +3807,11 @@ bool CSSStringParser::ParseFlex(double &flex_grow, double &flex_shrink,
     flex_shrink = 1;
   }
   if (flex_basis.IsEmpty()) {
-    flex_basis.SetNumber(0.f, CSSValuePattern::NUMBER);
+    if (parser_configs_.enable_flex_basis_zero_percent) {
+      flex_basis.SetNumber(0.f, CSSValuePattern::PERCENT);
+    } else {
+      flex_basis.SetNumber(0.f, CSSValuePattern::NUMBER);
+    }
   }
   return AtEnd();
 }
