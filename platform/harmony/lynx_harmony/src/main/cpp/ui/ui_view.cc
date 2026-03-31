@@ -25,14 +25,13 @@ void UIView::OnPropUpdate(const std::string& name, const lepus::Value& value) {
 void UIView::OnNodeReady() {
   UIBase::OnNodeReady();
   if (IsOverlayContent()) {
-    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_EVENT_ON_ATTACH, 0,
+    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_EVENT_ON_ATTACH,
                                               this);
-    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_EVENT_ON_DETACH, 0,
+    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_EVENT_ON_DETACH,
                                               this);
     NodeManager::Instance().RegisterNodeEvent(Node(), NODE_ON_TOUCH_INTERCEPT,
-                                              0, this);
-    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_TOUCH_EVENT,
-                                              NODE_TOUCH_EVENT, this);
+                                              this);
+    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_TOUCH_EVENT, this);
     NodeManager::Instance().AddNodeEventReceiver(Node(), UIBase::EventReceiver);
     NodeManager::Instance().AddNodeCustomEventReceiver(
         Node(), UIBase::CustomEventReceiver);

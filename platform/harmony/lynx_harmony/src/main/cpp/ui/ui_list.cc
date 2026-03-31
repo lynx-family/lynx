@@ -33,8 +33,7 @@ UIList::UIList(LynxContext* context, int sign, const std::string& tag)
   container_layout_ = NodeManager::Instance().CreateNode(ARKUI_NODE_CUSTOM);
   NodeManager::Instance().SetAttributeWithNumberValue(
       node_, NODE_ALIGNMENT, static_cast<int32_t>(ARKUI_ALIGNMENT_TOP_START));
-  NodeManager::Instance().RegisterNodeEvent(node_, NODE_TOUCH_EVENT,
-                                            NODE_TOUCH_EVENT, this);
+  NodeManager::Instance().RegisterNodeEvent(node_, NODE_TOUCH_EVENT, this);
   NodeManager::Instance().InsertNode(node_, container_layout_, 0);
   NodeManager::Instance().SetAttributeWithNumberValue(node_, NODE_POSITION, 0,
                                                       0);
@@ -47,12 +46,10 @@ UIList::UIList(LynxContext* context, int sign, const std::string& tag)
       container_layout_, UIBase::CustomEventReceiver);
 
   for (auto eventType : LIST_NODE_EVENT_TYPES) {
-    NodeManager::Instance().RegisterNodeEvent(node_, eventType, eventType,
-                                              this);
+    NodeManager::Instance().RegisterNodeEvent(node_, eventType, this);
   }
   NodeManager::Instance().RegisterNodeCustomEvent(
-      container_layout_, ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE,
-      ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE, this);
+      container_layout_, ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE, this);
   auto_scroller_ = std::make_shared<AutoScroller>(this);
 }
 

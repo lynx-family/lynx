@@ -83,9 +83,8 @@ UIImage::UIImage(LynxContext* context, int sign, const std::string& tag)
     : UIBase(context, ARKUI_NODE_IMAGE, sign, tag),
       mode_(image::kModeScaleToFill) {
   NodeManager::Instance().RegisterNodeEvent(Node(), NODE_IMAGE_ON_COMPLETE,
-                                            NODE_IMAGE_ON_COMPLETE, this);
-  NodeManager::Instance().RegisterNodeEvent(Node(), NODE_IMAGE_ON_ERROR,
-                                            NODE_IMAGE_ON_ERROR, this);
+                                            this);
+  NodeManager::Instance().RegisterNodeEvent(Node(), NODE_IMAGE_ON_ERROR, this);
   NodeManager::Instance().SetAttributeWithNumberValue(
       Node(), NODE_IMAGE_INTERPOLATION,
       static_cast<int32_t>(ARKUI_IMAGE_INTERPOLATION_LOW));

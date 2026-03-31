@@ -1183,8 +1183,7 @@ void UIText::EnsureHandleNodesCreated() {
     NodeManager::Instance().AddNodeCustomEventReceiver(
         node, HandleNodeCustomEventReceiver);
     NodeManager::Instance().RegisterNodeCustomEvent(
-        node, ARKUI_NODE_CUSTOM_EVENT_ON_DRAW, ARKUI_NODE_CUSTOM_EVENT_ON_DRAW,
-        &draw_extra);
+        node, ARKUI_NODE_CUSTOM_EVENT_ON_DRAW, &draw_extra);
     NodeManager::Instance().SetAttributeWithNumberValue(node, NODE_Z_INDEX,
                                                         9999);
     NodeManager::Instance().SetAttributeWithNumberValue(

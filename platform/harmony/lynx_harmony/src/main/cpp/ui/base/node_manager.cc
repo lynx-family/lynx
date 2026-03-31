@@ -74,15 +74,16 @@ void NodeManager::Invalidate(ArkUI_NodeHandle node) {
 }
 
 bool NodeManager::RegisterNodeEvent(ArkUI_NodeHandle node,
-                                    ArkUI_NodeEventType type, uint32_t id,
-                                    void* data) {
-  return native_node_api_->registerNodeEvent(node, type, id, data) == 0;
+                                    ArkUI_NodeEventType type, void* data) {
+  return native_node_api_->registerNodeEvent(node, type, LYNX_EVENT_ID, data) ==
+         0;
 }
 
 bool NodeManager::RegisterNodeCustomEvent(ArkUI_NodeHandle node,
                                           ArkUI_NodeCustomEventType type,
-                                          uint32_t id, void* data) {
-  return native_node_api_->registerNodeCustomEvent(node, type, id, data) == 0;
+                                          void* data) {
+  return native_node_api_->registerNodeCustomEvent(node, type, LYNX_EVENT_ID,
+                                                   data) == 0;
 }
 
 void NodeManager::UnregisterNodeEvent(ArkUI_NodeHandle node,

@@ -54,22 +54,18 @@ void UITextArea::OnNodeReady() { UIBaseInput::OnNodeReady(); }
 UITextArea::UITextArea(LynxContext* context, ArkUI_NodeType type, int sign,
                        const std::string& tag)
     : UIBaseInput(context, type, sign, tag, ARKUI_NODE_TEXT_AREA) {
-  NodeManager::Instance().RegisterNodeEvent(Node(), NODE_TOUCH_EVENT,
-                                            NODE_TOUCH_EVENT, this);
+  NodeManager::Instance().RegisterNodeEvent(Node(), NODE_TOUCH_EVENT, this);
+  NodeManager::Instance().RegisterNodeEvent(input_node_,
+                                            NODE_TEXT_AREA_ON_CHANGE, this);
   NodeManager::Instance().RegisterNodeEvent(
-      input_node_, NODE_TEXT_AREA_ON_CHANGE, NODE_TEXT_AREA_ON_CHANGE, this);
-  NodeManager::Instance().RegisterNodeEvent(
-      input_node_, NODE_TEXT_AREA_ON_TEXT_SELECTION_CHANGE,
-      NODE_TEXT_AREA_ON_TEXT_SELECTION_CHANGE, this);
-
-  NodeManager::Instance().RegisterNodeEvent(
-      input_node_, NODE_TEXT_AREA_ON_SUBMIT, NODE_TEXT_AREA_ON_SUBMIT, this);
+      input_node_, NODE_TEXT_AREA_ON_TEXT_SELECTION_CHANGE, this);
 
   NodeManager::Instance().RegisterNodeEvent(input_node_,
-                                            GetOnWillInsertEventType(),
+                                            NODE_TEXT_AREA_ON_SUBMIT, this);
+
+  NodeManager::Instance().RegisterNodeEvent(input_node_,
                                             GetOnWillInsertEventType(), this);
   NodeManager::Instance().RegisterNodeEvent(input_node_,
-                                            GetOnWillDeleteEventType(),
                                             GetOnWillDeleteEventType(), this);
 
   NodeManager::Instance().SetAttributeWithNumberValue(

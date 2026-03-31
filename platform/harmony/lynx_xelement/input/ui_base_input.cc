@@ -52,8 +52,7 @@ UIBaseInput::UIBaseInput(LynxContext* context, ArkUI_NodeType type, int sign,
   custom_keyboard_ = NodeManager::Instance().CreateNode(ARKUI_NODE_CUSTOM);
 
   NodeManager::Instance().RegisterNodeCustomEvent(
-      Node(), ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE,
-      ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE, this);
+      Node(), ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE, this);
 
   NodeManager::Instance().AddNodeEventReceiver(input_node_,
                                                UIBase::EventReceiver);
@@ -67,14 +66,12 @@ UIBaseInput::UIBaseInput(LynxContext* context, ArkUI_NodeType type, int sign,
   NodeManager::Instance().SetAttributeWithNumberValue(
       input_node_, NODE_BORDER_RADIUS, 0.0, 0.0, 0.0, 0.0);
 
-  NodeManager::Instance().RegisterNodeEvent(
-      input_node_, NODE_EVENT_ON_AREA_CHANGE, Sign(), this);
-  NodeManager::Instance().RegisterNodeEvent(input_node_, NODE_ON_FOCUS, Sign(),
-                                            this);
-  NodeManager::Instance().RegisterNodeEvent(input_node_, NODE_ON_BLUR, Sign(),
-                                            this);
+  NodeManager::Instance().RegisterNodeEvent(input_node_,
+                                            NODE_EVENT_ON_AREA_CHANGE, this);
+  NodeManager::Instance().RegisterNodeEvent(input_node_, NODE_ON_FOCUS, this);
+  NodeManager::Instance().RegisterNodeEvent(input_node_, NODE_ON_BLUR, this);
   NodeManager::Instance().RegisterNodeEvent(input_node_, NODE_EVENT_ON_APPEAR,
-                                            Sign(), this);
+                                            this);
 }
 
 UIBaseInput::~UIBaseInput() {

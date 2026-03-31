@@ -34,12 +34,10 @@ UIScroll::UIScroll(LynxContext* context, int sign, const std::string& tag)
       container_layout_, UIBase::CustomEventReceiver);
 
   for (auto eventType : scroll::kScrollNodeEventTypes) {
-    NodeManager::Instance().RegisterNodeEvent(Node(), eventType, eventType,
-                                              this);
+    NodeManager::Instance().RegisterNodeEvent(Node(), eventType, this);
   }
   NodeManager::Instance().RegisterNodeCustomEvent(
-      container_layout_, ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE,
-      ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE, this);
+      container_layout_, ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE, this);
   auto_scroller_ = std::make_shared<AutoScroller>(this);
 }
 

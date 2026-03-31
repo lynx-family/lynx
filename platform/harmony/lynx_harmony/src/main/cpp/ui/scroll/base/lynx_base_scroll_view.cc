@@ -23,24 +23,18 @@ LynxBaseScrollView::LynxBaseScrollView(LynxBaseScrollViewDelegate* delegate)
       node_, LynxBaseScrollView::EventReceiver);
 
   NodeManager::Instance().RegisterNodeEvent(node_, NODE_SCROLL_EVENT_ON_SCROLL,
-                                            NODE_SCROLL_EVENT_ON_SCROLL, this);
+                                            this);
   NodeManager::Instance().RegisterNodeEvent(
-      node_, NODE_SCROLL_EVENT_ON_SCROLL_START,
-      NODE_SCROLL_EVENT_ON_SCROLL_START, this);
+      node_, NODE_SCROLL_EVENT_ON_SCROLL_START, this);
   NodeManager::Instance().RegisterNodeEvent(
-      node_, NODE_SCROLL_EVENT_ON_SCROLL_STOP, NODE_SCROLL_EVENT_ON_SCROLL_STOP,
-      this);
+      node_, NODE_SCROLL_EVENT_ON_SCROLL_STOP, this);
   NodeManager::Instance().RegisterNodeEvent(
-      node_, NODE_SCROLL_EVENT_ON_SCROLL_EDGE, NODE_SCROLL_EVENT_ON_SCROLL_EDGE,
-      this);
+      node_, NODE_SCROLL_EVENT_ON_SCROLL_EDGE, this);
   NodeManager::Instance().RegisterNodeEvent(
-      node_, NODE_SCROLL_EVENT_ON_WILL_SCROLL, NODE_SCROLL_EVENT_ON_WILL_SCROLL,
-      this);
+      node_, NODE_SCROLL_EVENT_ON_WILL_SCROLL, this);
   NodeManager::Instance().RegisterNodeEvent(
-      node_, NODE_SCROLL_EVENT_ON_DID_SCROLL, NODE_SCROLL_EVENT_ON_DID_SCROLL,
-      this);
-  NodeManager::Instance().RegisterNodeEvent(node_, NODE_TOUCH_EVENT,
-                                            NODE_TOUCH_EVENT, this);
+      node_, NODE_SCROLL_EVENT_ON_DID_SCROLL, this);
+  NodeManager::Instance().RegisterNodeEvent(node_, NODE_TOUCH_EVENT, this);
 
   scroll_content_ = NodeManager::Instance().CreateNode(ARKUI_NODE_CUSTOM);
   NodeManager::Instance().InsertNode(node_, scroll_content_, 0);

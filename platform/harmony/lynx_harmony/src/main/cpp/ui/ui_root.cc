@@ -38,17 +38,17 @@ UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
   NodeManager::Instance().AddNodeEventReceiver(root_proxy_,
                                                UIBase::EventReceiver);
   NodeManager::Instance().RegisterNodeEvent(transparent_sibling_,
-                                            NODE_TOUCH_EVENT, 0, this);
+                                            NODE_TOUCH_EVENT, this);
   NodeManager::Instance().RegisterNodeEvent(normal_sibling_, NODE_TOUCH_EVENT,
-                                            0, this);
+                                            this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_,
-                                            NODE_ON_TOUCH_INTERCEPT, 0, this);
+                                            NODE_ON_TOUCH_INTERCEPT, this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_EVENT_ON_ATTACH,
-                                            0, this);
+                                            this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_EVENT_ON_DETACH,
-                                            0, this);
+                                            this);
   NodeManager::Instance().RegisterNodeEvent(
-      root_proxy_, NODE_EVENT_ON_VISIBLE_AREA_CHANGE, 0, this);
+      root_proxy_, NODE_EVENT_ON_VISIBLE_AREA_CHANGE, this);
 }
 
 UIRoot::~UIRoot() {

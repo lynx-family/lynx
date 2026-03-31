@@ -70,15 +70,13 @@ UIRefresh::UIRefresh(LynxContext* context, int sign, const std::string& tag)
   NodeManager::Instance().SetAttributeWithNumberValue(
       Node(), NODE_REFRESH_PULL_DOWN_RATIO, 0.5);
 
-  NodeManager::Instance().RegisterNodeEvent(Node(), NODE_TOUCH_EVENT,
-                                            NODE_TOUCH_EVENT, this);
+  NodeManager::Instance().RegisterNodeEvent(Node(), NODE_TOUCH_EVENT, this);
   NodeManager::Instance().RegisterNodeEvent(Node(), NODE_REFRESH_ON_REFRESH,
-                                            NODE_REFRESH_ON_REFRESH, this);
+                                            this);
   NodeManager::Instance().RegisterNodeEvent(Node(), NODE_REFRESH_STATE_CHANGE,
-                                            NODE_REFRESH_STATE_CHANGE, this);
+                                            this);
   NodeManager::Instance().RegisterNodeEvent(
-      Node(), NODE_REFRESH_ON_OFFSET_CHANGE, NODE_REFRESH_ON_OFFSET_CHANGE,
-      this);
+      Node(), NODE_REFRESH_ON_OFFSET_CHANGE, this);
 }
 
 UIRefresh::~UIRefresh() {

@@ -118,16 +118,13 @@ UIOverlay::UIOverlay(LynxContext* context, int sign, const std::string& tag)
   NodeManager::Instance().SetAttributeWithNumberValue(
       stack_, NODE_HIT_TEST_BEHAVIOR,
       static_cast<int32_t>(ARKUI_HIT_TEST_MODE_TRANSPARENT));
-  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_TOUCH_EVENT,
-                                            NODE_TOUCH_EVENT, this);
+  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_TOUCH_EVENT, this);
   NodeManager::Instance().AddNodeEventReceiver(stack_, UIBase::EventReceiver);
   NodeManager::Instance().AddNodeCustomEventReceiver(
       stack_, UIBase::CustomEventReceiver);
-  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_EVENT_ON_ATTACH, 0,
-                                            this);
-  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_EVENT_ON_DETACH, 0,
-                                            this);
-  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_TOUCH_INTERCEPT, 0,
+  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_EVENT_ON_ATTACH, this);
+  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_EVENT_ON_DETACH, this);
+  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_TOUCH_INTERCEPT,
                                             this);
   native_dialog_ = NodeManager::DialogInstance()->create();
   LOGI("overlay construction create dialog sign="

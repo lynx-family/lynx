@@ -116,24 +116,20 @@ UIInput::UIInput(LynxContext* context, ArkUI_NodeType type, int sign,
       input_node_, NODE_TEXT_INPUT_SHOW_PASSWORD_ICON, 0);
   NodeManager::Instance().SetAttributeWithNumberValue(
       input_node_, NODE_TEXT_INPUT_MAX_LENGTH, 140);
-  NodeManager::Instance().RegisterNodeEvent(Node(), NODE_TOUCH_EVENT,
-                                            NODE_TOUCH_EVENT, this);
-  NodeManager::Instance().RegisterNodeEvent(
-      input_node_, NODE_TEXT_INPUT_ON_CHANGE, NODE_TEXT_INPUT_ON_CHANGE, this);
+  NodeManager::Instance().RegisterNodeEvent(Node(), NODE_TOUCH_EVENT, this);
+  NodeManager::Instance().RegisterNodeEvent(input_node_,
+                                            NODE_TEXT_INPUT_ON_CHANGE, this);
 
   NodeManager::Instance().RegisterNodeEvent(
-      input_node_, NODE_TEXT_INPUT_ON_TEXT_SELECTION_CHANGE,
-      NODE_TEXT_INPUT_ON_TEXT_SELECTION_CHANGE, this);
+      input_node_, NODE_TEXT_INPUT_ON_TEXT_SELECTION_CHANGE, this);
 
   NodeManager::Instance().RegisterNodeEvent(input_node_,
-                                            GetOnWillInsertEventType(),
                                             GetOnWillInsertEventType(), this);
   NodeManager::Instance().RegisterNodeEvent(input_node_,
-                                            GetOnWillDeleteEventType(),
                                             GetOnWillDeleteEventType(), this);
 
-  NodeManager::Instance().RegisterNodeEvent(
-      input_node_, NODE_TEXT_INPUT_ON_SUBMIT, NODE_TEXT_INPUT_ON_SUBMIT, this);
+  NodeManager::Instance().RegisterNodeEvent(input_node_,
+                                            NODE_TEXT_INPUT_ON_SUBMIT, this);
 
   NodeManager::Instance().SetAttributeWithNumberValue(
       input_node_, NODE_TEXT_INPUT_PLACEHOLDER_COLOR, INPUT_DEFAULT_COLOR);

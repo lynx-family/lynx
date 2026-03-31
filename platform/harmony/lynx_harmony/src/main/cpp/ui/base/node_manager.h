@@ -27,6 +27,9 @@ typedef void (*GestureReceiver)(ArkUI_GestureEvent* event, void* extraParams);
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
+constexpr int LYNX_EVENT_ID = 'l' + 'y' + 'n' + 'x';
+
 class EventDispatcher;
 class BASE_EXPORT NodeManager {
  public:
@@ -83,18 +86,16 @@ class BASE_EXPORT NodeManager {
    * Add event to the target node.
    * @param node Node instance the event binds to.
    * @param type Type of the event that you wants to receive.
-   * @param id Customized id.
    * @param data Customized data. If you registered the node with {RegisterNode}
    * before, you must pass a pointer to {UIBase} instance to handle the event by
    * the default event receiver.
    * @return
    */
   LYNX_EXPORT bool RegisterNodeEvent(ArkUI_NodeHandle node,
-                                     ArkUI_NodeEventType type, uint32_t id,
-                                     void* data);
+                                     ArkUI_NodeEventType type, void* data);
   LYNX_EXPORT bool RegisterNodeCustomEvent(ArkUI_NodeHandle node,
                                            ArkUI_NodeCustomEventType type,
-                                           uint32_t id, void* data);
+                                           void* data);
 
   LYNX_EXPORT void UnregisterNodeEvent(ArkUI_NodeHandle node,
                                        ArkUI_NodeEventType type);

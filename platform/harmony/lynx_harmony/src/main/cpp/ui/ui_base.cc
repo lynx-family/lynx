@@ -184,14 +184,12 @@ void UIBase::InitNode(ArkUI_NodeHandle node) {
     NodeManager::Instance().AddNodeCustomEventReceiver(
         Node(), UIBase::CustomEventReceiver);
     NodeManager::Instance().RegisterNodeCustomEvent(
-        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW_BEHIND,
-        ARKUI_NODE_CUSTOM_EVENT_ON_DRAW_BEHIND, this);
+        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW_BEHIND, this);
   } else if (node_type_ == ARKUI_NODE_CUSTOM) {
     NodeManager::Instance().AddNodeCustomEventReceiver(
         Node(), UIBase::CustomEventReceiver);
     NodeManager::Instance().RegisterNodeCustomEvent(
-        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW,
-        ARKUI_NODE_CUSTOM_EVENT_ON_DRAW, this);
+        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW, this);
   }
   OH_ArkUI_NodeUtils_AddCustomProperty(Node(), "tag", tag_.c_str());
   NodeManager::Instance().AddNodeEventReceiver(Node(), UIBase::EventReceiver);
@@ -245,6 +243,9 @@ const lepus::Value& UIBase::GetKeyframes(const std::string& name) {
 }
 
 void UIBase::EventReceiver(ArkUI_NodeEvent* event) {
+  if (OH_ArkUI_NodeEvent_GetTargetId(event) != LYNX_EVENT_ID) {
+    return;
+  }
   auto* ui = reinterpret_cast<UIBase*>(OH_ArkUI_NodeEvent_GetUserData(event));
   if (!ui) {
     return;
@@ -253,6 +254,9 @@ void UIBase::EventReceiver(ArkUI_NodeEvent* event) {
 }
 
 void UIBase::CustomEventReceiver(ArkUI_NodeCustomEvent* event) {
+  if (OH_ArkUI_NodeCustomEvent_GetEventTargetId(event) != LYNX_EVENT_ID) {
+    return;
+  }
   UIBase* ui =
       reinterpret_cast<UIBase*>(OH_ArkUI_NodeCustomEvent_GetUserData(event));
   if (!ui) {
@@ -1859,11 +1863,9 @@ void UIBase::InitDrawNode() {
     NodeManager::Instance().AddNodeCustomEventReceiver(
         draw_node_, UIBase::CustomEventReceiver);
     NodeManager::Instance().RegisterNodeCustomEvent(
-        draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_DRAW,
-        ARKUI_NODE_CUSTOM_EVENT_ON_DRAW, this);
+        draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_DRAW, this);
     NodeManager::Instance().RegisterNodeCustomEvent(
-        draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW,
-        ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW, this);
+        draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW, this);
     // update view tree
     NodeManager::Instance().InsertNodeAfter(parent, draw_node_, Node());
     NodeManager::Instance().RemoveNode(parent, Node());
@@ -2528,8 +2530,7 @@ void UIBase::CreateOrUpdateMask() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "UIBase::CreateOrUpdateMask");
   if (!mask_drawable_) {
     NodeManager::Instance().RegisterNodeCustomEvent(
-        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW,
-        ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW, this);
+        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW, this);
     mask_drawable_ =
         std::make_unique<BackgroundDrawable>(weak_from_this(), true);
   }
