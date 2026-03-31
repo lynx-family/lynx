@@ -867,6 +867,14 @@ public abstract class LynxBaseUI
     if (wrapper != null) {
       wrapper.handleMutationStyleUpdate(this, props);
     }
+    if (props != null && !props.isEmpty()) {
+      if (props.hasKey(PropsConstants.BACKGROUND_IMAGE) && mLynxBackground != null) {
+        mLynxBackground.onLynxUIPropsUpdated();
+      }
+      if (props.hasKey(PropsConstants.MASK_IMAGE) && mLynxMask != null) {
+        mLynxMask.onLynxUIPropsUpdated();
+      }
+    }
   }
   @LynxUIMethod
   public void boundingClientRect(ReadableMap params, Callback callback) {

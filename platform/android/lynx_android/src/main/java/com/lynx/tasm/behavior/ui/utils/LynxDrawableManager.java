@@ -106,4 +106,10 @@ public abstract class LynxDrawableManager<T extends LayerDrawable<?>> {
   public void setEnableBitmapGradient(boolean enable) {
     getOrCreateViewLayer().setEnableBitmapGradient(enable);
   }
+
+  public void onLynxUIPropsUpdated() {
+    if (mLayerDrawable != null) {
+      mLayerDrawable.onLynxUIPropsUpdated();
+    }
+  }
 }

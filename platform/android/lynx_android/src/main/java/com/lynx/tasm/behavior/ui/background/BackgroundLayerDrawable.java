@@ -50,4 +50,6 @@ public abstract class BackgroundLayerDrawable extends Drawable {
   public void setEnableBitmapGradient(boolean enable) {}
 
   public void setLynxUI(LynxBaseUI ui) {}
+
+  public void onLynxUIPropsUpdated() {}
 }

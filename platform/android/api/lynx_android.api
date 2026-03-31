@@ -733,6 +733,7 @@ public class abstract com::lynx::tasm::behavior::ui::background::BackgroundLayer
   public void com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable.setBitmapConfig(@Nullable Bitmap.Config config);
   public void com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable.setEnableBitmapGradient(boolean enable);
   public void com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable.setLynxUI(LynxBaseUI ui);
+  public void com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable.onLynxUIPropsUpdated();
 }
 
 public class com::lynx::tasm::behavior::ui::background::BackgroundLayerManager : com.lynx.tasm.behavior.ui.background.LayerManager {
@@ -3353,6 +3354,7 @@ public class abstract com::lynx::tasm::behavior::ui::utils::LayerDrawable : Draw
   public void com.lynx.tasm.behavior.ui.utils.LayerDrawable< T extends LayerManager >.onAttach();
   public void com.lynx.tasm.behavior.ui.utils.LayerDrawable< T extends LayerManager >.onDetach();
   public void com.lynx.tasm.behavior.ui.utils.LayerDrawable< T extends LayerManager >.setEnableBitmapGradient(boolean enable);
+  public void com.lynx.tasm.behavior.ui.utils.LayerDrawable< T extends LayerManager >.onLynxUIPropsUpdated();
 }
 
 public class abstract com::lynx::tasm::behavior::ui::background::LayerManager : Drawable.Callback {
@@ -3376,6 +3378,7 @@ public class abstract com::lynx::tasm::behavior::ui::background::LayerManager : 
   public void com.lynx.tasm.behavior.ui.background.LayerManager.scheduleDrawable(@NonNull Drawable who, @NonNull Runnable what, long when);
   public void com.lynx.tasm.behavior.ui.background.LayerManager.unscheduleDrawable(@NonNull Drawable who, @NonNull Runnable what);
   public void com.lynx.tasm.behavior.ui.background.LayerManager.setEnableBitmapGradient(boolean enable);
+  public void com.lynx.tasm.behavior.ui.background.LayerManager.onLynxUIPropsUpdated();
 }
 
 public class com::lynx::tasm::animation::layout::LayoutAnimationManager :  {

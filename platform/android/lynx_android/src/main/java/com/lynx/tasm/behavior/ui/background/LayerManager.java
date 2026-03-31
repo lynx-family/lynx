@@ -490,4 +490,10 @@ public abstract class LayerManager implements Drawable.Callback {
   public void setEnableBitmapGradient(boolean enable) {
     mEnableBitmapGradient = enable;
   }
+
+  public void onLynxUIPropsUpdated() {
+    for (BackgroundLayerDrawable layer : mImageLayerDrawableList) {
+      layer.onLynxUIPropsUpdated();
+    }
+  }
 }
