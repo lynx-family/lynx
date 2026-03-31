@@ -6,7 +6,7 @@
 
 #include "core/runtime/lepus/ir/analysis/cfg.h"
 #include "core/runtime/lepus/ir/block_op.h"
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/op_builder.h"
 

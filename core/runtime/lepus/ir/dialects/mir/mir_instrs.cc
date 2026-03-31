@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 
 #include "core/runtime/lepus/ir/ir_base.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/Hashing.h"

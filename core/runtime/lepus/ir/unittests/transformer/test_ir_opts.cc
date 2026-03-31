@@ -6,7 +6,7 @@
 
 #include <limits>
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/ir_base.h"
 #include "core/runtime/lepus/ir/transformer/mir/construct_ssa_ir.h"
 #include "core/runtime/lepus/ir/transformer/mir/cse.h"

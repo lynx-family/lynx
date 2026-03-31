@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "core/runtime/lepus/bytecode_generator.h"
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/op_builder.h"
 #include "core/runtime/lepus/ir/transformer/mir/construct_ssa_ir.h"
 #include "core/runtime/lepus/ir/transformer/mir/load_store_elimination.h"

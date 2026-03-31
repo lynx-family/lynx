@@ -6,7 +6,7 @@
 
 #include <set>
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/instrs.h"
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/StringSwitch.h"

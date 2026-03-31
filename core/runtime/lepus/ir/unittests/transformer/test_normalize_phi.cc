@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/transformer/mir/normalize_phi.h"
 #include "core/runtime/lepus/ir/unittests/ir_test_base.h"
 

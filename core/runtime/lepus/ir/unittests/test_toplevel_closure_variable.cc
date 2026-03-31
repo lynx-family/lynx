@@ -8,7 +8,7 @@
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepus/code_generator.h"
 #include "core/runtime/lepus/function.h"
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/module_op.h"
 #include "core/runtime/lepus/ir/pass_manager/pass_manager.h"

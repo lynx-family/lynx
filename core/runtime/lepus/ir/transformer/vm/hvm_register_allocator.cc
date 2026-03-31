@@ -4,7 +4,7 @@
 
 #include "core/runtime/lepus/ir/transformer/vm/hvm_register_allocator.h"
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 
 namespace lynx {
 

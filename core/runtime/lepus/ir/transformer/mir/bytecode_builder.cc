@@ -9,7 +9,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/ArrayRef.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/DenseMap.h"

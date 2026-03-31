@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/lepus/ir/dialects/mir/dialect.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_dialect.h"
 
 namespace lynx {
 namespace lepus {

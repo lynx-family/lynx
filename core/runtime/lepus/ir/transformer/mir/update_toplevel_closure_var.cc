@@ -4,7 +4,7 @@
 
 #include "core/runtime/lepus/ir/transformer/mir/update_toplevel_closure_var.h"
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/transformer/vm/reg_alloc.h"
 #include "core/runtime/lepus/ir/type_op.h"

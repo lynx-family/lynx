@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_LEPUS_IR_DIALECTS_MIR_DIALECT_H_
-#define CORE_RUNTIME_LEPUS_IR_DIALECTS_MIR_DIALECT_H_
+#ifndef CORE_RUNTIME_LEPUS_IR_DIALECTS_MIR_MIR_DIALECT_H_
+#define CORE_RUNTIME_LEPUS_IR_DIALECTS_MIR_MIR_DIALECT_H_
 
 #include <string>
 
@@ -55,4 +55,4 @@ class MIRDialect : public Dialect {
 }  // namespace ir
 }  // namespace lepus
 }  // namespace lynx
-#endif  // CORE_RUNTIME_LEPUS_IR_DIALECTS_MIR_DIALECT_H_
+#endif  // CORE_RUNTIME_LEPUS_IR_DIALECTS_MIR_MIR_DIALECT_H_

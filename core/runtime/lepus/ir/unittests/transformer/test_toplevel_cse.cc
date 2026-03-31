@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/ir_base.h"
 #include "core/runtime/lepus/ir/transformer/mir/cse.h"
 #include "core/runtime/lepus/ir/transformer/mir/get_toplevel_related_inst_elimination.h"

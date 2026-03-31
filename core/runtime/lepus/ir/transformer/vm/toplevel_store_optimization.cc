@@ -4,7 +4,7 @@
 
 #include "core/runtime/lepus/ir/transformer/vm/toplevel_store_optimization.h"
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/func_op.h"
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/transformer/vm/reg_alloc.h"

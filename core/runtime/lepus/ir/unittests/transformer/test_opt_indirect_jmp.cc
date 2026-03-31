@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/instruction.h"
 #include "core/runtime/lepus/ir/op_builder.h"
 #include "core/runtime/lepus/ir/pass_manager/pass_manager.h"

@@ -5,7 +5,7 @@
 #include "core/runtime/lepus/ir/op_builder.h"
 
 #include "core/runtime/lepus/ir/block_op.h"
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/module_op.h"
 #include "core/runtime/lepus/ir/region_op.h"
 #include "core/runtime/lepus/ir/type_op.h"

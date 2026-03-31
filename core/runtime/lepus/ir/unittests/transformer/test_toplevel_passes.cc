@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "core/runtime/lepus/function.h"
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/ir_base.h"
 #include "core/runtime/lepus/ir/pass_manager/pass.h"
 #include "core/runtime/lepus/ir/transformer/mir/change_special_attribute.h"

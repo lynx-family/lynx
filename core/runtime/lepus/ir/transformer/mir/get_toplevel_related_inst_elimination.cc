@@ -4,7 +4,7 @@
 
 #include "core/runtime/lepus/ir/transformer/mir/get_toplevel_related_inst_elimination.h"
 
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/instrs.h"
 
 namespace lynx {

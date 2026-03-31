@@ -5,7 +5,7 @@
 #include "core/runtime/lepus/ir/dialect.h"
 
 #include "core/runtime/lepus/ir/builtin_dialect.h"
-#include "core/runtime/lepus/ir/dialects/mir/dialect.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_dialect.h"
 namespace lynx {
 namespace lepus {
 namespace ir {

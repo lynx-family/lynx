@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include "core/runtime/lepus/ir/analysis/analysis.h"
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/DenseMap.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/SmallVector.h"
 #include "core/runtime/lepus/ir/pass_manager/pass.h"

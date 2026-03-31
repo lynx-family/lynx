@@ -7,7 +7,7 @@
 #include <set>
 
 #include "core/runtime/lepus/ir/analysis/analysis.h"
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/func_op.h"
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/value.h"

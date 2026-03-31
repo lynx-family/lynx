@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "core/runtime/lepus/ir/analysis/cfg.h"
-#include "core/runtime/lepus/ir/dialects/mir/instrs.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/instrs.h"
 #include "core/runtime/lepus/ir/ir_base.h"
 #include "core/runtime/lepus/ir/ir_context.h"

@@ -5,7 +5,7 @@
 #include <sstream>
 #include <string>
 
-#include "core/runtime/lepus/ir/dialects/mir/dialect.h"
+#include "core/runtime/lepus/ir/dialects/mir/mir_dialect.h"
 #include "core/runtime/lepus/ir/dialects/mir/mir_dumper.h"
 #include "core/runtime/lepus/ir/ir_dumper.h"
 #include "core/runtime/lepus/ir/unittests/ir_test_base.h"
