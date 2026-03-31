@@ -178,10 +178,10 @@ lynx_lepus_ir_compile_files = [
   "ir/transformer/vm/instruction_selection.cc",
   "ir/transformer/vm/verify_call_register_pass.h",
   "ir/transformer/vm/verify_call_register_pass.cc",
-  "ir/dialects/mir/dialect.h",
-  "ir/dialects/mir/dialect.cc",
-  "ir/dialects/mir/instrs.h",
-  "ir/dialects/mir/instrs.cc",
+
+  # MIR dialect sources are built in a separate target to avoid
+  # object filename collisions with core IR files (e.g. dialect.cc).
+  # See lepus/BUILD.gn for the dedicated source_set.
   "ir/utils/block_utils.h",
   "ir/utils/block_utils.cc",
   "ir/utils/eval.h",
@@ -247,3 +247,14 @@ lynx_lepus_task_sources = [
 ]
 
 lynx_lepus_task_sources_path = get_path_info(lynx_lepus_task_sources, "abspath")
+
+# MIR dialect sources split out to avoid duplicate object names with core IR
+lynx_lepus_mir_dialect_sources = [
+  "ir/dialects/mir/dialect.cc",
+  "ir/dialects/mir/dialect.h",
+  "ir/dialects/mir/instrs.cc",
+  "ir/dialects/mir/instrs.h",
+]
+
+lynx_lepus_mir_dialect_sources_path =
+    get_path_info(lynx_lepus_mir_dialect_sources, "abspath")
