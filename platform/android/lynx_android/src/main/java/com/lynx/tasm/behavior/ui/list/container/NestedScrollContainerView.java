@@ -33,6 +33,7 @@ public class NestedScrollContainerView
     extends FrameLayout implements NestedScrollingParent2, NestedScrollingChild2, ScrollingView {
   private static final String TAG = "UIListContainer.NestedScrollContainerView";
   private static final boolean DEBUG = false;
+  private static final boolean PAGING_DEBUG = false;
   public LynxSnapHelper mSnapHelper = null;
 
   public static final float LIST_AUTOMATIC_MAX_FLING_RATIO = Float.MAX_VALUE;
@@ -53,6 +54,8 @@ public class NestedScrollContainerView
    * scroll.
    */
   public static final int SCROLL_STATE_SCROLL_ANIMATION = 4;
+  private static final int SCROLL_DIRECTION_FORWARD = 1;
+  private static final int SCROLL_DIRECTION_BACKWARD = -1;
   private static final int INVALID_POINTER = -1;
   private boolean mIsVertical = true;
   private int mTouchSlop = 0;
@@ -541,11 +544,12 @@ public class NestedScrollContainerView
       if (mSnapHelper == null) {
         return false;
       }
-
       if (mScrollState == SCROLL_STATE_IDLE) {
         return false;
       }
-
+      if (PAGING_DEBUG) {
+        LLog.i(TAG, "start paging");
+      }
       setScrollState(SCROLL_STATE_FLING);
       mCustomScrollHook = null;
       mLastScrollX = getScrollX();
@@ -1003,6 +1007,15 @@ public class NestedScrollContainerView
   @Override
   public void onStopNestedScroll(@NonNull View target, int type) {
     mParentHelper.onStopNestedScroll(target, type);
+    if ((type == TYPE_TOUCH && mScrollState == SCROLL_STATE_DRAGGING)
+        || (type == TYPE_NON_TOUCH && mScrollState == SCROLL_STATE_FLING)) {
+      if (PAGING_DEBUG) {
+        LLog.i(TAG, "onStopNestedScroll: type=" + type + ", state=" + mScrollState);
+      }
+      if (mSnapHelper == null || !mScrollHelper.paging()) {
+        setScrollState(SCROLL_STATE_IDLE);
+      }
+    }
     this.stopNestedScroll(type);
   }
 
@@ -1025,7 +1038,20 @@ public class NestedScrollContainerView
   @Override
   public void onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed,
       int dyUnconsumed, int type) {
+    if (mSnapHelper != null && type == TYPE_NON_TOUCH) {
+      if (PAGING_DEBUG) {
+        LLog.i(TAG,
+            "onNestedScroll with TYPE_NON_TOUCH: dxConsumed=" + dxConsumed + ", dyConsumed="
+                + dyConsumed + ", dxUnconsumed=" + dxUnconsumed + ", dyUnconsumed=" + dyUnconsumed);
+      }
+      this.dispatchNestedScroll(
+          mIsVertical ? 0 : dxUnconsumed, mIsVertical ? dyUnconsumed : 0, 0, 0, null, type);
+      return;
+    }
     int scrollRange = getScrollRange();
+    int unConsumed = mIsVertical ? dyUnconsumed : dxUnconsumed;
+    int selfConsumed = 0;
+    int selfUnconsumed = 0;
     if (mIsVertical) {
       final int oldScrollY = getScrollY();
       // Consider nested scroll scenario, the outside NestedScrollContainerView may receive any
@@ -1034,16 +1060,22 @@ public class NestedScrollContainerView
       // UIListContainer#updateContentSizeAndOffset() callback is invoked immediately, so here we
       // need to make sure the scroll offset is in the valid range.
       scrollTo(getScrollX(), MathUtils.clamp(oldScrollY + dyUnconsumed, 0, scrollRange));
-      final int myConsumed = getScrollY() - oldScrollY;
-      final int myUnconsumed = dyUnconsumed - myConsumed;
-      this.dispatchNestedScroll(0, myConsumed, 0, myUnconsumed, null, type);
+      selfConsumed = getScrollY() - oldScrollY;
     } else {
       final int oldScrollX = getScrollX();
       scrollTo(MathUtils.clamp(oldScrollX + dxUnconsumed, 0, scrollRange), getScrollY());
-      final int myConsumed = getScrollX() - oldScrollX;
-      final int myUnconsumed = dxUnconsumed - myConsumed;
-      this.dispatchNestedScroll(myConsumed, 0, myUnconsumed, 0, null, type);
+      selfConsumed = getScrollX() - oldScrollX;
     }
+    selfUnconsumed = unConsumed - selfConsumed;
+    if (unConsumed != 0 && selfConsumed != 0) {
+      if (type == TYPE_TOUCH) {
+        setScrollState(SCROLL_STATE_DRAGGING);
+      } else if (type == TYPE_NON_TOUCH) {
+        setScrollState(SCROLL_STATE_FLING);
+      }
+    }
+    this.dispatchNestedScroll(mIsVertical ? 0 : selfConsumed, mIsVertical ? selfConsumed : 0,
+        mIsVertical ? 0 : selfUnconsumed, mIsVertical ? selfUnconsumed : 0, null, type);
   }
 
   @Override
@@ -1054,7 +1086,26 @@ public class NestedScrollContainerView
 
   @Override
   public boolean onNestedPreFling(View target, float velocityX, float velocityY) {
-    return this.dispatchNestedPreFling(velocityX, velocityY);
+    boolean nestedParentConsumeFling = this.dispatchNestedPreFling(velocityX, velocityY);
+    if (mSnapHelper != null && target != null && !nestedParentConsumeFling) {
+      // Note: If list uses item snap, and nested parent does not consume fling, we need to consume
+      // fling if needed.
+      boolean selfConsumeFling = mIsVertical
+          ? !target.canScrollVertically(
+              velocityY > 0.f ? SCROLL_DIRECTION_FORWARD : SCROLL_DIRECTION_BACKWARD)
+          : !target.canScrollHorizontally(
+              velocityX > 0.f ? SCROLL_DIRECTION_FORWARD : SCROLL_DIRECTION_BACKWARD);
+      if (PAGING_DEBUG) {
+        LLog.i(TAG, "onNestedPreFling: selfConsumeFling=" + selfConsumeFling);
+      }
+      if (selfConsumeFling) {
+        // Trigger self page scroll.
+        flingWithNestedDispatch((int) velocityX, (int) velocityY);
+      }
+      return selfConsumeFling;
+    } else {
+      return nestedParentConsumeFling;
+    }
   }
 
   @Override
