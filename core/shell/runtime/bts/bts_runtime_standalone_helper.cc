@@ -4,10 +4,12 @@
 
 #include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
 
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "core/base/threading/vsync_monitor.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/performance_mediator.h"
 #include "core/shell/common/shell_trace_event_def.h"
@@ -128,50 +130,65 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
       std::move(js_bundle_proxy), js_bundle_holder));
 }
 
-void BTSRuntimeStandalone::EvaluateScript(std::string url, std::string script) {
+void BTSRuntimeStandalone::EvaluateScript(
+    std::string url, std::string script,
+    tasm::PackageInstanceDSL runtime_type) {
+  std::unordered_map<std::string, runtime::js::JsContent> js_files_map;
+  js_files_map.emplace(
+      url, runtime::js::JsContent(std::move(script),
+                                  runtime::js::JsContent::Type::SOURCE));
+
   uint64_t trace_flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
               [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("url", url);
                 ctx.event()->add_flow_ids(trace_flow_id);
               });
-  runtime_actor_->Act([url = std::move(url), script = std::move(script),
+  runtime_actor_->Act([url = std::move(url),
+                       js_files_map = std::move(js_files_map), runtime_type,
                        trace_flow_id](auto& runtime) mutable {
-    runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
-                                      trace_flow_id);
+    runtime->EvaluateScriptStandalone(std::move(url), std::move(js_files_map),
+                                      runtime_type, trace_flow_id);
   });
 }
 
 void BTSRuntimeStandalone::EvaluateScript(
     std::string url, lynx::tasm::LynxTemplateBundle* bundle,
-    std::string js_file) {
-  auto js_content = bundle->GetJsBundle().GetJsContent(js_file);
-  if (!js_content.has_value()) {
-    return;
-  }
-  auto js_content_val = js_content->get();
-  if (js_content_val.IsError()) {
-    return;
-  }
-  auto buffer = js_content_val.GetBuffer();
-
-  if (!buffer || !buffer->data()) {
-    return;
-  }
-
-  const auto length = buffer->size();
-  const auto* data = reinterpret_cast<const char*>(buffer->data());
-
+    std::string entry_file) {
+  auto runtime_type = bundle->GetPageConfig()->GetDSL();
   uint64_t trace_flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
               [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("url", url);
                 ctx.event()->add_flow_ids(trace_flow_id);
               });
-  runtime_actor_->Act([url = std::move(url), script = std::string(data, length),
+  std::unordered_map<std::string, runtime::js::JsContent> js_files_map;
+  for (const auto& [path, content] : bundle->GetJsBundle().GetAllJsFiles()) {
+    if (content.IsError()) {
+      continue;
+    }
+    auto buffer = content.GetBuffer();
+    if (!buffer || !buffer->data()) {
+      continue;
+    }
+    if (content.IsSourceCode()) {
+      js_files_map.emplace(
+          path, runtime::js::JsContent(
+                    std::static_pointer_cast<runtime::js::StringBuffer>(buffer),
+                    runtime::js::JsContent::Type::SOURCE));
+    } else {
+      js_files_map.emplace(
+          path, runtime::js::JsContent(
+                    std::string(reinterpret_cast<const char*>(buffer->data()),
+                                buffer->size()),
+                    runtime::js::JsContent::Type::BYTECODE));
+    }
+  }
+  runtime_actor_->Act([url = std::move(url),
+                       js_files_map = std::move(js_files_map), runtime_type,
                        trace_flow_id](auto& runtime) mutable {
-    runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
-                                      trace_flow_id);
+    runtime->EvaluateScriptStandalone(std::move(url), std::move(js_files_map),
+                                      runtime_type, trace_flow_id);
   });
 }
 

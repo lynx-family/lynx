@@ -23,6 +23,7 @@
 #include "core/services/performance/performance_controller.h"
 #include "core/shared_data/white_board_runtime_delegate.h"
 #include "core/shell/native_facade.h"
+#include "core/template_bundle/template_codec/ttml_constant.h"
 
 namespace lynx {
 namespace shell {
@@ -72,7 +73,9 @@ class BTSRuntimeStandalone {
 
   void SetPresetData(lepus::Value data);
 
-  void EvaluateScript(std::string url, std::string script);
+  void EvaluateScript(std::string url, std::string script,
+                      tasm::PackageInstanceDSL runtime_type =
+                          tasm::PackageInstanceDSL::STANDALONE);
 
   void EvaluateScript(std::string url, lynx::tasm::LynxTemplateBundle* bundle,
                       std::string js_file);
