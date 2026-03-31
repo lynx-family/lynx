@@ -64,7 +64,7 @@ def build_by_ninja(root_path, show_log):
   if show_log:
     command = '%s -C %s oliver_group -v' % (ninja_path, output_path)
   else:
-    command = '%s -C %s oliver_group -v' % (ninja_path, output_path)
+    command = '%s -C %s oliver_group' % (ninja_path, output_path)
   result = subprocess.check_call(command, shell=True)
   return result
 
@@ -106,8 +106,6 @@ def copy_target(folder_name, arch, debug, root_path, type):
   src_path = os.path.join(root_path, 'out', 'Default', 'oliver', output_name)
   if not os.path.exists(dst_path):
     os.makedirs(dst_path)
-  print("src_path:",src_path);
-  print("dst_path:",dst_path);
   shutil.copy(src_path, dst_path)
 
 def copy_wasm_target(root_path, type):
@@ -203,7 +201,7 @@ def build(system, debug, root_path, show_log, type, is_wasm, need_clean, is_loca
       return -1
   return 0
 
-def main():
+def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('-p', '--platform', help='Target platform')
   parser.add_argument('-t', '--type', help='Oliver product type. The type contains values such as ssr, tasm, security, and testing')
@@ -213,8 +211,10 @@ def main():
   parser.add_argument('--show_log', type=bool, default=False, help='Output compilation log')
   parser.add_argument('--wasm', type=bool, default=False, help='Build wasm product')
   parser.add_argument('--sysroot', type=str, default='', help='Custom sysroot for build on linux')
-  args = parser.parse_args()
+  return parser.parse_args()
 
+def main():
+  args = parse_args()
   platform = args.platform
   is_show_log = args.show_log
   type = args.type
