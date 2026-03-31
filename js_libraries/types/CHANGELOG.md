@@ -1,4 +1,8 @@
 # CHANGELOG
+## 3.8.6
+
+- Add `auto-width` and `auto-height` properties for `frame` element.
+
 ## 3.8.5
 
 - Add `-x-auto-font-size-line-ranges` CSS property.
@@ -21,7 +25,7 @@
 
 - Update `image` typings.
 
-## 3.8.0 
+## 3.8.0
 
 - Add coding skills in types folder to optimize code-gen result.
 

@@ -37,6 +37,24 @@ export interface FrameProps extends StandardProps {
    * @since 3.6
    */
   'global-props'?: Record<string, unknown>;
+
+  /**
+   * Lets the frame width follow the embedded Lynx page’s content width. When enabled, the embedded page can report its content size, and the frame uses that value as its measured width.
+   * @defaultValue false
+   * @iOS
+   * @Android
+   * @since 3.8
+   */
+  'auto-width'?: boolean;
+
+  /**
+   * Lets the frame height follow the embedded Lynx page’s content height. When enabled, the embedded page can report its content size, and the frame uses that value as its measured height.
+   * @defaultValue false
+   * @iOS
+   * @Android
+   * @since 3.8
+   */
+  'auto-height'?: boolean;
 }
 
 export interface BaseFrameLoadInfo {

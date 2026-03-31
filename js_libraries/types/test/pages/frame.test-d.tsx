@@ -46,6 +46,19 @@ let a;
   <frame src={'1'} global-props={1} />;
   // @ts-expect-error: global-props shoudl be object not array
   <frame src={'1'} global-props={[1, 2, 3]} />;
+
+  <frame src={'1'} auto-width={true} />;
+  assertType<boolean | undefined>((a as unknown) as IntrinsicElements['frame']['auto-width']);
+  <frame src={'1'} auto-height={true} />;
+  assertType<boolean | undefined>((a as unknown) as IntrinsicElements['frame']['auto-height']);
+  // @ts-expect-error: auto-height shoudl be boolean not number
+  <frame src={'1'} auto-height={1} />;
+  // @ts-expect-error: auto-height shoudl be boolean not string
+  <frame src={'1'} auto-height={'1'} />;
+  // @ts-expect-error: auto-width shoudl be boolean not number
+  <frame src={'1'} auto-width={1} />;
+  // @ts-expect-error: auto-width shoudl be boolean not string
+  <frame src={'1'} auto-width={'1'} />;
 }
 
 // Events types check
