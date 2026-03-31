@@ -73,8 +73,6 @@ class BackgroundOrMaskImageClient : public ImageResourceClient {
   RenderObject* render_object_;
 };
 
-uint8_t RenderObject::default_overflow_ = CSSProperty::OVERFLOW_XY;
-
 RenderObject::RenderObject()
     : raster_transition_properties_(ClayAnimationPropertyType::kNone),
       raster_animation_properties_(ClayAnimationPropertyType::kNone),
@@ -819,8 +817,10 @@ void RenderObject::AppendCustomColorMatrix(
 }
 
 void RenderObject::SetOverflow(uint8_t overflow) {
-  overflow_ = overflow;
-  MarkNeedsPaint();
+  if (overflow_ != overflow) {
+    overflow_ = overflow;
+    MarkNeedsPaint();
+  }
 }
 
 void RenderObject::SetClipPath(const FloatRoundedRect& rrect) {

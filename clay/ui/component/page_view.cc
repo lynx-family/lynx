@@ -892,6 +892,7 @@ void PageView::SetupIsolatedGestures() {
       ReportTopViewEvent(tap_event, kClayEventTypeTap);
     }
   });
+  tap_gesture_recognizer_ = tap_recognizer.get();
   isolated_gesture_detector_.AddRecognizer(std::move(tap_recognizer));
 
   auto long_press_recognizer = std::make_unique<LongPressGestureRecognizer>(
@@ -910,6 +911,7 @@ void PageView::SetupIsolatedGestures() {
         }
       });
   long_press_recognizer->SetTaskRunner(GetTaskRunner());
+  long_press_gesture_recognizer_ = long_press_recognizer.get();
   isolated_gesture_detector_.AddRecognizer(std::move(long_press_recognizer));
 }
 
@@ -2099,6 +2101,18 @@ ClayEventType ToClayEventType(KeyEventType type) {
     return kClayEventTypeKeyUp;
   }
   return kClayEventTypeUnknown;
+}
+
+void PageView::SetTapSlop(float slop) {
+  if (tap_gesture_recognizer_) {
+    tap_gesture_recognizer_->SetDriftTolerance(slop);
+  }
+}
+
+void PageView::SetLongPressDuration(uint64_t duration) {
+  if (long_press_gesture_recognizer_) {
+    long_press_gesture_recognizer_->SetTimeout(duration);
+  }
 }
 
 }  // namespace clay

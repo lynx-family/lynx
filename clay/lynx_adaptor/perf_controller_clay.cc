@@ -4,6 +4,7 @@
 
 #include "clay/lynx_adaptor/perf_controller_clay.h"
 
+#include <random>
 #include <string>
 #include <utility>
 
@@ -52,6 +53,23 @@ void PerfControllerClay::SetNeedMarkPaintEndTiming(
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, TIMING_SET_NEED_MARK_DRAW_END,
                       "pipeline_id", pipeline_id);
   pipeline_id_list_.push_back(pipeline_id);
+}
+
+void PerfControllerClay::SetPageConfigProbability(double probability) {
+  page_config_probability_ = probability;
+  if (page_config_probability_ >= 0.0) {
+    // Generate a random number between 0.0 and 1.0
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dis(0.0, 1.0);
+    double random_value = dis(gen);
+
+    // Enable fluency monitor if random value is less than or equal to the
+    // probability
+    if (random_value <= page_config_probability_) {
+      enable_fluency_monitor_ = true;
+    }
+  }
 }
 
 void PerfControllerClay::OnPaintEnd() {
@@ -249,9 +267,10 @@ void PerfControllerClay::EndFluencyMonitor(int id) {
               "lynxsdk_fluency_drop25_ratio",
               1000.0 * metrics.drop25_duration_ms / metrics.duration_ms);
 
-          // TODO(zuojinglong.9): use real page config probability.
+          // Use real page config probability
           event.double_props.insert_or_assign(
-              "lynxsdk_fluency_pageconfig_probability", 0.0);
+              "lynxsdk_fluency_pageconfig_probability",
+              strong_self->page_config_probability_);
           event.int_props.insert_or_assign(
               "lynxsdk_fluency_enabled_by_sampling", 0);
 

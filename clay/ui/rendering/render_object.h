@@ -70,13 +70,6 @@ class RenderObject : public AbstractNode {
 
   RenderObject* SlowLastChild() const { return VirtualChildren().LastChild(); }
 
-  static void ChangeDefaultOverflowValue(bool default_overflow_visible) {
-    default_overflow_ = default_overflow_visible ? CSSProperty::OVERFLOW_XY
-                                                 : CSSProperty::OVERFLOW_HIDDEN;
-  }
-
-  static uint8_t DefaultOverflowValue() { return default_overflow_; }
-
   virtual bool HasClip() const { return false; }
   bool HasOverflowClip() const { return overflow_ != CSSProperty::OVERFLOW_XY; }
   virtual PaintFunction FixupPainterIfNeeded(const PaintFunction& painter) {
@@ -611,9 +604,7 @@ class RenderObject : public AbstractNode {
   std::array<std::unique_ptr<PendingEffectLayer>,
              static_cast<size_t>(EffectType::kLast) + 1u>
       effect_layers_;
-  uint8_t overflow_ = DefaultOverflowValue();
-
-  static uint8_t default_overflow_;
+  uint8_t overflow_ = CSSProperty::OVERFLOW_XY;
 
   float translate_z_ = 0.f;
   int painting_order_ = 0;

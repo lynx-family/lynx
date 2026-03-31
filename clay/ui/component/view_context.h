@@ -285,13 +285,6 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   void UpdateScrollInfo(int id, bool smooth, float estimated_offset,
                         bool scrolling);
   void FinishLayoutOperation(int child_view_id, int parent_view_id);
-  void SetDefaultOverflowAlwaysVisible(bool visible) {
-    default_overflow_always_visible = visible;
-  }
-
-  bool DefaultOverflowAlwaysVisible() {
-    return default_overflow_always_visible;
-  }
 
   Bundle* GetTextBundle(int32_t id);
   void UpdateExtraData(int id, Bundle* bundle);
@@ -318,8 +311,6 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   // In Lynx, the initial properties are passed during view creation. That's
   // missing for now.
   void ConsumeInitialAttributes(BaseView* view);
-
-  bool default_overflow_always_visible = true;
 
   PageView* page_view_;
 

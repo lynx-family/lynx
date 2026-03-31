@@ -70,6 +70,8 @@ class NativeView;
 class OverlayManager;
 class ScrollFluencyMonitorDelegate;
 class PipelineTimingDelegate;
+class TapGestureRecognizer;
+class LongPressGestureRecognizer;
 
 ClayEventType ToClayEventType(PointerEvent::EventType event_type,
                               PointerEvent::DeviceType device,
@@ -478,6 +480,12 @@ class PageView : public BaseView,
     align_mouse_event_with_w3c_ = is_aligned;
   }
 
+  uint8_t DefaultOverflow() const { return default_overflow_; }
+  void SetDefaultOverflow(uint8_t overflow) { default_overflow_ = overflow; }
+
+  void SetTapSlop(float slop);
+  void SetLongPressDuration(uint64_t duration);
+
  protected:
   void OnDestroy() override;
 
@@ -618,6 +626,10 @@ class PageView : public BaseView,
 #endif
   std::unique_ptr<GestureHandlerDispatcher> gesture_handler_dispatcher_;
   bool align_mouse_event_with_w3c_ = false;
+  uint8_t default_overflow_ = CSSProperty::OVERFLOW_XY;
+
+  TapGestureRecognizer* tap_gesture_recognizer_ = nullptr;
+  LongPressGestureRecognizer* long_press_gesture_recognizer_ = nullptr;
 };
 
 }  // namespace clay

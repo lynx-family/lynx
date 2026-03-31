@@ -144,6 +144,8 @@ class PrimaryPointerGestureRecognizer : public OneSequenceGestureRecognizer {
 
   void SetDriftTolerance(float tolerance) { drift_tolerance_ = tolerance; }
 
+  void SetTimeout(uint64_t timeout_ms) { timeout_ms_ = timeout_ms; }
+
  protected:
   void AddAllowedPointer(const PointerEvent& pointer) override;
 

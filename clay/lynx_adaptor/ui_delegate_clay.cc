@@ -8,10 +8,12 @@
 #include <string>
 #include <utility>
 
+#include "clay/fml/logging.h"
 #include "clay/lynx_adaptor/layout_context_clay.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/lynx_adaptor/perf_controller_clay.h"
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
+#include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
@@ -76,7 +78,7 @@ void UIDelegateClay::OnLynxCreate(
     const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
     const fml::RefPtr<fml::TaskRunner>& layout_task_runner, int32_t instance_id,
     bool is_embedded_mode) {
-  auto perf_controller =
+  perf_controller_ =
       std::make_shared<PerfControllerClay>(perf_controller_proxy, instance_id);
   if (painting_context_) {
     painting_context_->SetListEngineProxy(list_engine_proxy);
@@ -86,7 +88,7 @@ void UIDelegateClay::OnLynxCreate(
     if (ref) {
       auto* painting_context_ref =
           static_cast<PaintingContextClayRef*>(ref.get());
-      painting_context_ref->SetPerfController(perf_controller);
+      painting_context_ref->SetPerfController(perf_controller_);
     }
   }
   if (layout_context_) {
@@ -96,7 +98,7 @@ void UIDelegateClay::OnLynxCreate(
   if (event_dispatcher_) {
     event_dispatcher_->SetEngineProxy(engine_proxy);
     event_dispatcher_->SetRuntimeProxy(runtime_proxy);
-    event_dispatcher_->SetPerfController(perf_controller);
+    event_dispatcher_->SetPerfController(perf_controller_);
   }
 }
 
@@ -217,6 +219,56 @@ void UIDelegateClay::OnPageConfigDecoded(
     const std::shared_ptr<PageConfig>& config) {
   if (auto* page_view = view_context_->GetPageView()) {
     page_view->SetAlignMouseEventWithW3C(config->GetAlignMouseEventWithW3C());
+    // Set exposure props.
+    int observer_frame_rate = config->GetObserverFrameRate();
+    bool enable_exposure_ui_margin = config->GetEnableExposureUIMargin();
+    FML_DLOG(INFO)
+        << "UIDelegateClay::OnPageConfigDecoded observer_frame_rate: "
+        << observer_frame_rate;
+    FML_DLOG(INFO)
+        << "UIDelegateClay::OnPageConfigDecoded enable_exposure_ui_margin: "
+        << enable_exposure_ui_margin;
+    page_view->SetExposureProps(observer_frame_rate, enable_exposure_ui_margin);
+
+    // Set tap slop.
+    float tap_slop = clay::attribute_utils::ToPxWithDisplayMetrics(
+        config->GetTapSlop(), page_view);
+    if (tap_slop > 0) {
+      FML_DLOG(INFO) << "UIDelegateClay::OnPageConfigDecoded tap_slop: "
+                     << tap_slop;
+      page_view->SetTapSlop(tap_slop);
+    }
+    // Set long press duration.
+    uint64_t long_press_duration = config->GetLongPressDuration();
+    if (long_press_duration > 0) {
+      FML_DLOG(INFO)
+          << "UIDelegateClay::OnPageConfigDecoded long_press_duration: "
+          << long_press_duration;
+      page_view->SetLongPressDuration(long_press_duration);
+    }
+
+    // Set event through.
+    if (config->GetEnableEventThrough()) {
+      FML_DLOG(INFO)
+          << "UIDelegateClay::OnPageConfigDecoded enable_event_through: "
+          << config->GetEnableEventThrough();
+      page_view->SetEventThrough(config->GetEnableEventThrough());
+    }
+
+    // Set scroll fluency monitor.
+    double page_config_probability = config->GetEnableScrollFluencyMonitor();
+    FML_DLOG(INFO)
+        << "UIDelegateClay::OnPageConfigDecoded enable_scroll_fluency_monitor: "
+        << page_config_probability;
+    perf_controller_->SetPageConfigProbability(page_config_probability);
+#ifdef ENABLE_ACCESSIBILITY
+    // Set accessibility enabled.
+    FML_DLOG(INFO)
+        << "UIDelegateClay::OnPageConfigDecoded enable_accessibility_element: "
+        << config->GetEnableAccessibilityElement();
+    page_view->SetPageEnableAccessibilityElement(
+        config->GetEnableAccessibilityElement());
+#endif
   }
 }
 

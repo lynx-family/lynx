@@ -21,6 +21,7 @@ namespace tasm {
 
 class PaintingContextClay;
 class LayoutContextClay;
+class PerfControllerClay;
 
 class UIDelegateClay : public UIDelegate {
  public:
@@ -73,6 +74,7 @@ class UIDelegateClay : public UIDelegate {
   // Its lifecycle is managed by Lynx.
   PaintingContextClay* painting_context_ = nullptr;
   LayoutContextClay* layout_context_ = nullptr;
+  std::shared_ptr<PerfControllerClay> perf_controller_;
 };
 
 }  // namespace tasm

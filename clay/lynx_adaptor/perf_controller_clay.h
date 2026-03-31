@@ -36,6 +36,8 @@ class PerfControllerClay
     ui_task_runner_ = ui_task_runner;
   }
 
+  void SetPageConfigProbability(double probability);
+
   /**
    * @brief Mark paint-end timing event
    * this interface can only be called in the UI thread.
@@ -99,6 +101,7 @@ class PerfControllerClay
   std::map<int, uint64_t> fluency_monitor_session_ids_;
   // TODO: Get this value from config.
   bool enable_fluency_monitor_ = false;
+  double page_config_probability_ = -1.0;
 };
 
 }  // namespace tasm

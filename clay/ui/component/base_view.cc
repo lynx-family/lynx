@@ -116,8 +116,9 @@ BaseView::BaseView(int id, std::string tag_name,
       page_view_(page_view),
       render_object_(std::move(render_object)),
       weak_factory_(this),
-      overflow_(RenderObject::DefaultOverflowValue()) {
+      overflow_(page_view_->DefaultOverflow()) {
   render_object_->SetID(id_);
+  render_object_->SetOverflow(overflow_);
 #if defined(ENABLE_MOUSE_TRACKING)
   if (page_view != this) {
     auto* mouse_region_manager = page_view->mouse_region_manager();

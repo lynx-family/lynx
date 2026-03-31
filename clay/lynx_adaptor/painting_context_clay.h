@@ -92,11 +92,7 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
                           bool flatten, bool create_node_async,
                           uint32_t node_index) override;
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override;
-  bool DefaultOverflowAlwaysVisible() override {
-    return view_context_ != nullptr
-               ? view_context_->DefaultOverflowAlwaysVisible()
-               : true;
-  }
+  bool DefaultOverflowAlwaysVisible() override { return true; }
   void UpdatePaintingNode(
       int id, bool tend_to_flatten,
       const fml::RefPtr<PropBundle>& painting_data) override;
