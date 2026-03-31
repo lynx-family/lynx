@@ -557,8 +557,11 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
                                   "inspector_attribute is null", res);
 
   auto* style_root = inspector_attribute->style_root_;
+  auto* element_manager = element->element_manager();
+  const auto* adopted_sheets =
+      element_manager ? &element_manager->GetAdoptedStyleSheets() : nullptr;
   auto matched_rules = lynx::tasm::StyleResolver::GetCSSMatchedRule(
-      attribute_holder, style_sheet);
+      attribute_holder, style_sheet, adopted_sheets);
   for (const auto& matched : matched_rules) {
     if (matched.Data()->Rule()->Token() != nullptr) {
       std::string name = matched.Data()->Selector().ToString();
