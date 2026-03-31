@@ -21,6 +21,10 @@ lynx_core_source_set("lepus") {
   if (build_lepus_compile) {
     sources += lynx_lepus_compile_sources_path
     deps += [ "ir/llvh" ]
+
+    # Build MIR dialect sources in a separate target to avoid duplicate
+    # object filenames (e.g. dialect.o, instrs.o) within the same target.
+    deps += [ ":lepus_mir_dialect" ]
   }
 
   if (is_mac || is_linux) {
@@ -34,7 +38,7 @@ lynx_core_source_set("lepus") {
     "../../base",
     "../../parser",
     "../profile:profile_public_header",
-    "tasks:tasks",
+    "tasks",
   ]
 
   if (is_mac) {
@@ -56,11 +60,18 @@ lynx_core_source_set("lepus") {
   # }
 }
 
+# Split-out MIR dialect sources to prevent object name collisions with
+# core IR sources (both contain files named dialect.cc and instrs.cc).
+source_set("lepus_mir_dialect") {
+  sources = lynx_lepus_mir_dialect_sources_path
+  deps = []
+}
+
 shared_library("lepus_shared") {
   sources = []
   deps = [
     ":lepus",
-    "../../renderer/dom:dom",
+    "../../renderer/dom",
   ]
 }
 
@@ -94,7 +105,7 @@ unittest_set("lepus_testset") {
   deps = [
     ":lepus_unittest_sources",
     ":value_utils_sources",
-    "../../../third_party/rapidjson:rapidjson",
+    "../../../third_party/rapidjson",
     "../lepusng:lepus_ng",
     "../lepusng:lepusng_unittest_sources",
     "ir/llvh",
@@ -152,7 +163,7 @@ unittest_exec("lepus_unittests_exec") {
   sources = []
   deps = [
     ":lepus_testset",
-    "../../renderer/dom:dom",
+    "../../renderer/dom",
   ]
 }
 
@@ -160,7 +171,7 @@ unittest_exec("lepus_ir_unittests_exec") {
   sources = []
   deps = [
     ":lepus_ir_testset",
-    "../../renderer/dom:dom",
+    "../../renderer/dom",
   ]
 }
 
