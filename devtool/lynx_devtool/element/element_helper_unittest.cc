@@ -8,6 +8,13 @@
 #include "devtool/lynx_devtool/element/element_helper.h"
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/css/css_fragment_decorator.h"
+#include "core/renderer/css/css_parser_token.h"
+#include "core/renderer/css/ng/parser/css_parser_token_range.h"
+#include "core/renderer/css/ng/parser/css_tokenizer.h"
+#include "core/renderer/css/ng/selector/css_parser_context.h"
+#include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -25,6 +32,44 @@ static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
+
+std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateSelectorCSSFragment(
+    const std::string& selector, lynx::tasm::CSSPropertyID property_id,
+    const std::string& value) {
+  lynx::tasm::CSSParserConfigs parser_configs;
+  auto token = fml::MakeRefCounted<lynx::tasm::CSSParseToken>(parser_configs);
+  token->raw_attributes_[property_id] =
+      lynx::tasm::CSSValue::MakePlainString(value.c_str());
+
+  auto sheet = std::make_shared<lynx::tasm::CSSSheet>(selector);
+  token->sheets().emplace_back(sheet);
+
+  lynx::tasm::CSSParserTokenMap token_map;
+  token_map.insert(std::make_pair(selector, token));
+
+  const std::vector<int32_t> dependent_ids;
+  lynx::tasm::CSSKeyframesTokenMap keyframes;
+  lynx::tasm::CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<lynx::tasm::SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+
+  lynx::css::CSSParserContext context;
+  lynx::css::CSSTokenizer tokenizer(selector);
+  auto parser_tokens = tokenizer.TokenizeToEOF();
+  lynx::css::CSSParserTokenRange range(parser_tokens);
+  auto selector_vector =
+      lynx::css::CSSSelectorParser::ParseSelector(range, &context);
+  size_t flattened_size =
+      lynx::css::CSSSelectorParser::FlattenedSize(selector_vector);
+  auto selector_arr =
+      std::make_unique<lynx::css::LynxCSSSelector[]>(flattened_size);
+  lynx::css::CSSSelectorParser::AdoptSelectorVector(
+      selector_vector, selector_arr.get(), flattened_size);
+  fragment->AddStyleRule(std::move(selector_arr), token);
+
+  return fragment;
+}
 
 class ElementHelperTest : public ::testing::Test {
  public:
@@ -757,6 +802,67 @@ TEST_F(ElementHelperTest, GetInheritedCSSRulesOfNodeTest) {
             "height");
   EXPECT_EQ(grand_parent_inlineStyle["cssProperties"][0]["value"].asString(),
             "200px");
+}
+
+TEST_F(ElementHelperTest, GetMatchedStyleSheetTest) {
+  // Test case 1: Basic element with no styles
+  auto element = manager->CreateFiberElement("view");
+  auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  element->SetAttributeHolder(comp->attribute_holder());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+
+  // Get matched style sheets for element with no styles
+  auto res1 =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(element.get());
+  // Should return an empty vector since no styles are set
+  EXPECT_TRUE(res1.empty());
+
+  // Test case 2: Element with matched selector stylesheet
+  auto page = manager->CreateFiberPage("page", 0);
+  auto selector_fragment = CreateSelectorCSSFragment(
+      "view", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px");
+  page->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+
+  lynx::base::String component_id("21");
+  int32_t css_id = 100;
+  lynx::base::String entry_name("__Card__");
+  lynx::base::String component_name("TestComp");
+  lynx::base::String path("/index/components/TestComp");
+  auto component = manager->CreateFiberComponent(
+      component_id, css_id, entry_name, component_name, path);
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+  page->InsertNode(component);
+
+  auto styled_element = manager->CreateFiberElement("view");
+  auto styled_comp = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  styled_element->SetAttributeHolder(styled_comp->attribute_holder());
+  styled_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  component->InsertNode(styled_element);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(styled_element.get()));
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(styled_element.get(), style_root.get()));
+
+  ASSERT_NE(styled_element->GetRelatedCSSFragment(), nullptr);
+
+  auto res2 = lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+      styled_element.get());
+  ASSERT_EQ(res2.size(), 1U);
+  EXPECT_EQ(res2[0].style_name_, "view");
+  EXPECT_EQ(res2[0].css_text_, "width:10px;");
+  auto width_iter = res2[0].css_properties_.find("width");
+  ASSERT_NE(width_iter, res2[0].css_properties_.end());
+  EXPECT_EQ(width_iter->second.value_, "10px");
 }
 
 }  // namespace testing
