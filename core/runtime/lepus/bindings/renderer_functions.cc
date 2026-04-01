@@ -226,12 +226,14 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
  RETURN(lepus::Value(element));
  ```
  */
-#define ON_NODE_CREATE(node)                                \
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_ON_NODE_CREATE); \
-  EXEC_EXPR_FOR_INSPECTOR(GET_TASM_POINTER()                \
-                              ->page_proxy()                \
-                              ->element_manager()           \
-                              ->PrepareNodeForInspector(node.get());)
+#define ON_NODE_CREATE(node)                                             \
+  {                                                                      \
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_ON_NODE_CREATE);            \
+    EXEC_EXPR_FOR_INSPECTOR(GET_TASM_POINTER()                           \
+                                ->page_proxy()                           \
+                                ->element_manager()                      \
+                                ->PrepareNodeForInspector(node.get());); \
+  }
 
 /* Use this macro when fiber element is modified, including its attributes,
  inline styles, classes, id and so on. For example:
@@ -243,12 +245,14 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
  ON_NODE_MODIFIED(element);
  ```
  */
-#define ON_NODE_MODIFIED(node)                                \
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_ON_NODE_MODIFIED); \
-  EXEC_EXPR_FOR_INSPECTOR(GET_TASM_POINTER()                  \
-                              ->page_proxy()                  \
-                              ->element_manager()             \
-                              ->OnElementNodeSetForInspector(node.get());)
+#define ON_NODE_MODIFIED(node)                                                \
+  {                                                                           \
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_ON_NODE_MODIFIED);               \
+    EXEC_EXPR_FOR_INSPECTOR(GET_TASM_POINTER()                                \
+                                ->page_proxy()                                \
+                                ->element_manager()                           \
+                                ->OnElementNodeSetForInspector(node.get());); \
+  }
 
 /* Use this macro when fiber element is added to another fiber element. For
  example:
@@ -271,16 +275,19 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
  this time, and DevTool cannot get the corresponding parent and accurate
  information. The same goes for calling ON_NODE_ADDED before InsertNode.
  */
-#define ON_NODE_ADDED(node)                                                  \
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_ON_NODE_ADDED);                   \
-  EXEC_EXPR_FOR_INSPECTOR(GET_TASM_POINTER()                                 \
-                              ->page_proxy()                                 \
-                              ->element_manager()                            \
-                              ->CheckAndProcessSlotForInspector(node.get()); \
-                          GET_TASM_POINTER()                                 \
-                              ->page_proxy()                                 \
-                              ->element_manager()                            \
-                              ->OnElementNodeAddedForInspector(node.get());)
+#define ON_NODE_ADDED(node)                                  \
+  {                                                          \
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_ON_NODE_ADDED); \
+    EXEC_EXPR_FOR_INSPECTOR(                                 \
+        GET_TASM_POINTER()                                   \
+            ->page_proxy()                                   \
+            ->element_manager()                              \
+            ->CheckAndProcessSlotForInspector(node.get());   \
+        GET_TASM_POINTER()                                   \
+            ->page_proxy()                                   \
+            ->element_manager()                              \
+            ->OnElementNodeAddedForInspector(node.get()););  \
+  }
 
 /* Use this macro when fiber element is removed from the parent. For example:
  ```
@@ -303,12 +310,15 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
  this time, and DevTool cannot get the corresponding parent and accurate
  information. The same goes for calling ON_NODE_ADDED before InsertNode.
  */
-#define ON_NODE_REMOVED(node)                                \
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_ON_NODE_REMOVED); \
-  EXEC_EXPR_FOR_INSPECTOR(GET_TASM_POINTER()                 \
-                              ->page_proxy()                 \
-                              ->element_manager()            \
-                              ->OnElementNodeRemovedForInspector(node.get());)
+#define ON_NODE_REMOVED(node)                                  \
+  {                                                            \
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_ON_NODE_REMOVED); \
+    EXEC_EXPR_FOR_INSPECTOR(                                   \
+        GET_TASM_POINTER()                                     \
+            ->page_proxy()                                     \
+            ->element_manager()                                \
+            ->OnElementNodeRemovedForInspector(node.get()););  \
+  }
 
 void UpdateComponentConfig(TemplateAssembler* tasm, RadonComponent* component) {
   component->UpdateSystemInfo(GetSystemInfoFromTasm(tasm));
@@ -2539,7 +2549,7 @@ RENDERER_FUNCTION_CC(SendGlobalEvent) {
 
 /* Element API BEGIN */
 RENDERER_FUNCTION_CC(FiberCreateElement) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_ELEMENT);
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, FIBER_CREATE_ELEMENT);
   // parameter size >= 2
   // [0] String -> element's tag
   // [1] Number -> parent component/page's unique id
@@ -2552,16 +2562,17 @@ RENDERER_FUNCTION_CC(FiberCreateElement) {
   auto element = manager->CreateFiberNode(arg0->String());
   element->SetParentComponentUniqueIdForFiber(
       static_cast<int64_t>(arg1->Number()));
-
+  uint32_t node_index = 0;
   if (argc > 2) {
     CONVERT_ARG(arg2, 2);
     const auto& nid = arg2->GetProperty(BASE_STATIC_STRING(kNodeIndex));
     if (nid.IsNumber()) {
-      element->SetNodeIndex(nid.Number());
+      node_index = nid.Number();
+      element->SetNodeIndex(node_index);
     }
   }
-
   ON_NODE_CREATE(element);
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY, "nodeIndex", node_index);
   RETURN(lepus::Value(std::move(element)));
 }
 
@@ -2667,7 +2678,7 @@ RENDERER_FUNCTION_CC(FiberCreateComponent) {
 }
 
 RENDERER_FUNCTION_CC(FiberCreateView) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_VIEW);
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, FIBER_CREATE_VIEW);
   // parameter size >= 1
   // [0] Number -> parent component/page's unique id
   // [1] Object|Undefined -> optional info, not used now
@@ -2680,15 +2691,17 @@ RENDERER_FUNCTION_CC(FiberCreateView) {
   element->SetParentComponentUniqueIdForFiber(
       static_cast<int64_t>(arg0->Number()));
 
+  uint32_t node_index = 0;
   if (argc > 1) {
     CONVERT_ARG(arg1, 1);
     const auto& nid = arg1->GetProperty(BASE_STATIC_STRING(kNodeIndex));
     if (nid.IsNumber()) {
-      element->SetNodeIndex(nid.Number());
+      node_index = nid.Number();
+      element->SetNodeIndex(node_index);
     }
   }
-
   ON_NODE_CREATE(element);
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY, "nodeIndex", node_index);
   RETURN(lepus::Value(std::move(element)));
 }
 
@@ -2737,7 +2750,7 @@ RENDERER_FUNCTION_CC(FiberCreateList) {
 }
 
 RENDERER_FUNCTION_CC(FiberCreateScrollView) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_SCROLL_VIEW);
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, FIBER_CREATE_SCROLL_VIEW);
   // parameter size >= 1
   // [0] Number -> parent component/page's unique id
   // [1] Object|Undefined -> optional info, not used now
@@ -2768,13 +2781,13 @@ RENDERER_FUNCTION_CC(FiberCreateScrollView) {
   element->SetParentComponentUniqueIdForFiber(
       static_cast<int64_t>(arg0->Number()));
   element->SetNodeIndex(node_index);
-
   ON_NODE_CREATE(element);
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY, "nodeIndex", node_index);
   RETURN(lepus::Value(std::move(element)));
 }
 
 RENDERER_FUNCTION_CC(FiberCreateText) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_TEXT);
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, FIBER_CREATE_TEXT);
   // parameter size >= 1
   // [0] Number -> parent component/page's unique id
   // [1] Object|Undefined -> optional info, not used now
@@ -2803,13 +2816,13 @@ RENDERER_FUNCTION_CC(FiberCreateText) {
   element->SetParentComponentUniqueIdForFiber(
       static_cast<int64_t>(arg0->Number()));
   element->SetNodeIndex(node_index);
-
   ON_NODE_CREATE(element);
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY, "nodeIndex", node_index);
   RETURN(lepus::Value(std::move(element)));
 }
 
 RENDERER_FUNCTION_CC(FiberCreateImage) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_IMAGE);
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, FIBER_CREATE_IMAGE);
   // parameter size >= 1
   // [0] Number -> parent component/page's unique id
   // [1] Object|Undefined -> optional info, not used now
@@ -2838,8 +2851,8 @@ RENDERER_FUNCTION_CC(FiberCreateImage) {
   element->SetParentComponentUniqueIdForFiber(
       static_cast<int64_t>(arg0->Number()));
   element->SetNodeIndex(node_index);
-
   ON_NODE_CREATE(element);
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY, "nodeIndex", node_index);
   RETURN(lepus::Value(std::move(element)));
 }
 
@@ -5761,7 +5774,7 @@ RENDERER_FUNCTION_CC(LoadLepusChunk) {
 }
 
 RENDERER_FUNCTION_CC(FiberCreateFrame) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_FRAME);
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, FIBER_CREATE_FRAME);
   // parameter size >= 1
   // [0] Number -> parent component/page's unique id
   // [1] Object|Undefined -> optional info, not used now
@@ -5773,15 +5786,17 @@ RENDERER_FUNCTION_CC(FiberCreateFrame) {
   element->SetParentComponentUniqueIdForFiber(
       static_cast<int64_t>(arg0->Number()));
 
+  uint32_t node_index = 0;
   if (argc > 1) {
     CONVERT_ARG(arg1, 1);
     const auto& nid = arg1->GetProperty(BASE_STATIC_STRING(kNodeIndex));
     if (nid.IsNumber()) {
-      element->SetNodeIndex(nid.Number());
+      node_index = nid.Number();
+      element->SetNodeIndex(node_index);
     }
   }
-
   ON_NODE_CREATE(element);
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY, "nodeIndex", node_index);
   RETURN(lepus::Value(std::move(element)));
 }
 

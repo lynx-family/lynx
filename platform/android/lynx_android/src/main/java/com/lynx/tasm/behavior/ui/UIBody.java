@@ -668,6 +668,7 @@ public class UIBody extends UIGroup<UIBodyView> {
         jsonData.put("name", ui.getClass().getName());
         jsonData.put("tagName", ui.getTagName());
         jsonData.put("id", ui.getSign());
+        jsonData.put("nodeIndex", ui.getNodeIndex());
         jsonData.put("frame",
             new JSONArray(Arrays.asList(ui.getLeft(), ui.getTop(), ui.getWidth(), ui.getHeight())));
         List<Object> list = new ArrayList<>();

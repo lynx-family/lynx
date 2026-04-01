@@ -3886,6 +3886,9 @@ void FiberElement::UpdateTraceDebugInfo(TraceEvent *event) {
       classInfo->set_string_value(class_str);
     }
   }
+  auto *nodeIndexInfo = event->add_debug_annotations();
+  nodeIndexInfo->set_name("nodeIndex");
+  nodeIndexInfo->set_uint_value(node_index_);
 }
 #endif
 
