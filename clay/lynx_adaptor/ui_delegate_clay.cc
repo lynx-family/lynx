@@ -16,6 +16,7 @@
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
+#include "core/services/timing_handler/timing.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
@@ -74,6 +75,7 @@ void UIDelegateClay::OnLynxCreate(
     const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
     const std::shared_ptr<shell::LynxLayoutProxy>& layout_proxy,
     const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
+    const std::shared_ptr<shell::EventTrackerProxy>& event_tracker_proxy,
     const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
     const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
     const fml::RefPtr<fml::TaskRunner>& layout_task_runner, int32_t instance_id,
@@ -99,6 +101,10 @@ void UIDelegateClay::OnLynxCreate(
     event_dispatcher_->SetEngineProxy(engine_proxy);
     event_dispatcher_->SetRuntimeProxy(runtime_proxy);
     event_dispatcher_->SetPerfController(perf_controller_);
+  }
+  if (event_tracker_proxy) {
+    event_tracker_proxy->UpdateGenericInfo(instance_id, "renderer_type",
+                                           "clay");
   }
 }
 
