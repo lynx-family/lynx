@@ -850,15 +850,16 @@ void BTSRuntime::DestroyAppAndNapi() {
   if (factory) {
     factory->OnRuntimeDetach();
   }
-  if (napi_environment_) {
-    LOGI("napi detaching runtime, id: " << GetRuntimeId());
-    napi_environment_->Detach();
-    napi_environment_.reset();
-  }
+  // Detach napi environments in reverse order.
   if (napi_restricted_environment_) {
     LOGI("restricted napi detaching runtime, id: " << GetRuntimeId());
     napi_restricted_environment_->Detach();
     napi_restricted_environment_.reset();
+  }
+  if (napi_environment_) {
+    LOGI("napi detaching runtime, id: " << GetRuntimeId());
+    napi_environment_->Detach();
+    napi_environment_.reset();
   }
 #endif
 }
