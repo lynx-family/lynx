@@ -196,7 +196,9 @@ config("lynx_android_public_config") {
   if (enable_radon) {
     defines += [ "_ENABLE_RADON_" ]
   }
-
+  if (!enable_unittests && !disable_rts_ng) {
+    defines += [ "LYNX_HAS_RTS_RUNTIME=1" ]
+  }
   if (enable_frozen_mode) {
     defines += [ "LYNX_ENABLE_FROZEN_MODE=true" ]
   }

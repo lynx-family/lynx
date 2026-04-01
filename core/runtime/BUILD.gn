@@ -43,7 +43,7 @@ lynx_core_source_set("runtime") {
     deps += [ "profile/v8:v8_profile" ]
   }
   defines = []
-  if (enable_unittests) {
+  if (enable_unittests || disable_rts_ng) {
     defines += [ "LYNX_HAS_RTS_RUNTIME=0" ]
   }
   public_deps = [ "js/jsi/quickjs" ]
