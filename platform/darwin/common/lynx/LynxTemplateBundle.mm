@@ -20,37 +20,45 @@
   NSDictionary* _extraInfo;
 }
 
+- (BOOL)isValid {
+  return template_bundle_ != nullptr;
+}
+
+- (void)decodeTemplate:(NSData*)tem url:(NSString*)url debuggable:(BOOL)debuggable {
+  _url = url;
+  if ([[LynxEnv sharedInstance] lynxDebugEnabled]) {
+    _devtool_pool = [[LynxDevToolPool alloc] initWithURL:url debuggable:debuggable];
+  }
+  auto securityService = LynxService(LynxServiceSecurityProtocol);
+  if (securityService != nil) {
+    LynxVerificationResult* verification = [securityService verifyTASM:tem
+                                                                target:self
+                                                                   url:url
+                                                                  type:LynxTASMTypeTemplate];
+    if (!verification.verified) {
+      _error = verification.errorMsg;
+      return;
+    }
+  }
+  auto source = ConvertNSBinary(tem);
+  auto decoder = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(std::move(source));
+  if (decoder.Decode()) {
+    // decode success.
+    template_bundle_ =
+        std::make_shared<lynx::tasm::LynxTemplateBundle>(decoder.GetTemplateBundle());
+    [_devtool_pool onTemplateBundleCreated:reinterpret_cast<intptr_t>(template_bundle_.get())];
+    template_bundle_->PrepareVMByConfigs();
+  } else {
+    // decode failed.
+    _error = [NSString stringWithUTF8String:decoder.error_message_.c_str()];
+  }
+}
+
 - (instancetype _Nullable)initWithTemplate:(NSData*)tem
                                        url:(NSString*)url
                                 debuggable:(BOOL)debuggable {
   if (self = [super init]) {
-    _url = url;
-    if ([[LynxEnv sharedInstance] lynxDebugEnabled]) {
-      _devtool_pool = [[LynxDevToolPool alloc] initWithURL:url debuggable:debuggable];
-    }
-    auto securityService = LynxService(LynxServiceSecurityProtocol);
-    if (securityService != nil) {
-      LynxVerificationResult* verification = [securityService verifyTASM:tem
-                                                                  target:self
-                                                                     url:url
-                                                                    type:LynxTASMTypeTemplate];
-      if (!verification.verified) {
-        _error = verification.errorMsg;
-        return self;
-      }
-    }
-    auto source = ConvertNSBinary(tem);
-    auto decoder = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(std::move(source));
-    if (decoder.Decode()) {
-      // decode success.
-      template_bundle_ =
-          std::make_shared<lynx::tasm::LynxTemplateBundle>(decoder.GetTemplateBundle());
-      [_devtool_pool onTemplateBundleCreated:reinterpret_cast<intptr_t>(template_bundle_.get())];
-      template_bundle_->PrepareVMByConfigs();
-    } else {
-      // decode failed.
-      _error = [NSString stringWithUTF8String:decoder.error_message_.c_str()];
-    }
+    [self decodeTemplate:tem url:url debuggable:debuggable];
   }
   return self;
 }
@@ -59,11 +67,37 @@
   return [self initWithTemplate:tem url:nil debuggable:NO];
 }
 
++ (instancetype _Nullable)_swiftTemplateBundleWithTemplate:(NSData*)tem {
+  return [[self alloc] initWithTemplate:tem];
+}
+
++ (instancetype _Nullable)_swiftTemplateBundleWithTemplate:(NSData*)tem
+                                                    option:
+                                                        (nullable LynxTemplateBundleOption*)option {
+  return [[self alloc] initWithTemplate:tem option:option];
+}
+
 - (instancetype _Nullable)initWithTemplate:(nonnull NSData*)tem
                                     option:(nullable LynxTemplateBundleOption*)option {
   if (self = [self initWithTemplate:tem url:[option url] debuggable:[option debuggable]]) {
     [self initWithOption:option];
   }
+  return self;
+}
+
+- (instancetype _Nullable)_swiftInitWithData:(NSData*)data {
+  return [self _swiftInitWithData:data option:nil];
+}
+
+- (instancetype _Nullable)_swiftInitWithData:(NSData*)data
+                                      option:(nullable LynxTemplateBundleOption*)option {
+  if ([self isValid] || _error != nil) {
+    return self;
+  }
+  NSString* url = option ? [option url] : nil;
+  BOOL debuggable = option ? [option debuggable] : NO;
+  [self decodeTemplate:data url:url debuggable:debuggable];
+  [self initWithOption:option];
   return self;
 }
 
