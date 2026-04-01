@@ -12,6 +12,7 @@
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
+#include "core/public/common_constants.h"
 #include "core/renderer/dom/selector/selector_item.h"
 #include "core/renderer/dom/vdom/radon/radon_dispatch_option.h"
 #include "core/renderer/dom/vdom/radon/radon_factory.h"
@@ -30,7 +31,7 @@ class TemplateAssembler;
 using RadonNodeIndexType = uint32_t;
 using RadonBaseVector =
     base::InlineVector<std::unique_ptr<RadonBase>, kChildrenInlineVectorSize>;
-constexpr RadonNodeIndexType kRadonInvalidNodeIndex = 0;
+constexpr RadonNodeIndexType kRadonInvalidNodeIndex = kInvalidNodeIndex;
 
 class RadonBase : public SelectorItem {
  public:

@@ -99,7 +99,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
                     const float* paddings, const float* margins,
                     const float* borders, const float* bounds,
                     const float* sticky, float max_height,
-                    uint32_t node_index = 0) override;
+                    uint32_t node_index) override;
   void UpdatePlatformExtraBundle(int32_t id,
                                  PlatformExtraBundle* bundle) override;
   void SetFrameAppBundle(

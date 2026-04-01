@@ -56,7 +56,7 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
                     const float* paddings, const float* margins,
                     const float* borders, const float* bounds,
                     const float* sticky, float max_height,
-                    uint32_t node_index = 0) override;
+                    uint32_t node_index) override;
 
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override;
 

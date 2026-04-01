@@ -46,8 +46,7 @@ class PaintingContextPlatformImpl : public PaintingCtxPlatformImpl {
                             float height, const float* paddings,
                             const float* margins, const float* borders,
                             const float* bounds, const float* sticky,
-                            float max_height,
-                            uint32_t node_index = 0) override {}
+                            float max_height, uint32_t node_index) override {}
   virtual void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override {}
   virtual void Flush() override {}
   virtual void HandleValidate(int tag) override {}

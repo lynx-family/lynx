@@ -94,7 +94,7 @@ class PaintingCtxPlatformImpl {
   virtual void CreatePaintingNode(int id, const std::string& tag,
                                   const fml::RefPtr<PropBundle>& painting_data,
                                   bool flatten, bool create_node_async,
-                                  uint32_t node_index = 0) = 0;
+                                  uint32_t node_index) = 0;
   virtual void InsertPaintingNode(int parent, int child, int index) {}
   virtual void RemovePaintingNode(int parent, int child, int index,
                                   bool is_move){};
@@ -116,7 +116,7 @@ class PaintingCtxPlatformImpl {
                             float height, const float* paddings,
                             const float* margins, const float* borders,
                             const float* bounds, const float* sticky,
-                            float max_height, uint32_t node_index = 0) = 0;
+                            float max_height, uint32_t node_index) = 0;
   virtual void UpdatePlatformExtraBundle(int32_t id,
                                          PlatformExtraBundle* bundle) {}
 

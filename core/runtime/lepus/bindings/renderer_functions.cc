@@ -28,6 +28,7 @@
 #include "core/animation/animation_trace_event_def.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/event/event_dispatcher.h"
+#include "core/public/common_constants.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/css/css_utils.h"
 #include "core/renderer/dom/element_manager.h"
@@ -2750,7 +2751,7 @@ RENDERER_FUNCTION_CC(FiberCreateScrollView) {
 
   auto& manager = GET_TASM_POINTER()->page_proxy()->element_manager();
 
-  uint32_t node_index = 0;
+  uint32_t node_index = kInvalidNodeIndex;
   if (argc > 1) {
     CONVERT_ARG(arg1, 1);
     const auto& custom_tag = arg1->GetProperty(kTag);
@@ -2786,7 +2787,7 @@ RENDERER_FUNCTION_CC(FiberCreateText) {
 
   auto& manager = GET_TASM_POINTER()->page_proxy()->element_manager();
 
-  uint32_t node_index = 0;
+  uint32_t node_index = kInvalidNodeIndex;
   if (argc > 1) {
     CONVERT_ARG(arg1, 1);
     const auto& custom_tag = arg1->GetProperty(kTag);
@@ -2821,7 +2822,7 @@ RENDERER_FUNCTION_CC(FiberCreateImage) {
 
   auto& manager = GET_TASM_POINTER()->page_proxy()->element_manager();
 
-  uint32_t node_index = 0;
+  uint32_t node_index = kInvalidNodeIndex;
   if (argc > 1) {
     CONVERT_ARG(arg1, 1);
     const auto& custom_tag = arg1->GetProperty(kTag);

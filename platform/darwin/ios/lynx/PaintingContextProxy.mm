@@ -4,6 +4,8 @@
 
 #import "PaintingContextProxy.h"
 
+#include "core/public/common_constants.h"
+
 @implementation PaintingContextProxy {
   // not owned, LynxShell released after platform, ensure life cycle
   lynx::tasm::PaintingCtxPlatformImpl* painting_context_;
@@ -26,7 +28,7 @@
                width:(CGFloat)width
               height:(CGFloat)height {
   painting_context_->UpdateLayout((int)sign, left, top, width, height, nullptr, nullptr, nullptr,
-                                  nullptr, nullptr, 0);
+                                  nullptr, nullptr, 0, lynx::tasm::kInvalidNodeIndex);
 }
 
 - (void)finishLayoutOperation {

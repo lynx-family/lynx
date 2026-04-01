@@ -104,7 +104,7 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
                     const float* paddings, const float* margins,
                     const float* borders, const float* bounds,
                     const float* sticky, float max_height,
-                    uint32_t node_index = 0) override;
+                    uint32_t node_index) override;
   void Invoke(int64_t id, const std::string& method, const pub::Value& params,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback) override;

@@ -589,7 +589,8 @@ void ElementContainer::CreatePaintingNode(
   }
   painting_context()->CreatePaintingNode(
       element()->impl_id(), element()->GetPlatformNodeTag().str(),
-      painting_data, is_flatten, element()->NeedCreateNodeAsync());
+      painting_data, is_flatten, element()->NeedCreateNodeAsync(),
+      element()->NodeIndex());
 }
 
 void ElementContainer::UpdatePaintingNode(

@@ -75,7 +75,7 @@ FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
 
 FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
                            int32_t css_id)
-    : Element(tag, manager) {
+    : Element(tag, manager, kInvalidNodeIndex) {
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSTRUCTOR, "tag",
                       tag.c_str(), "id", id_);
   dirty_ = kDirtyCreated;

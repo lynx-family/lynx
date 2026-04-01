@@ -26,6 +26,7 @@
 #include "core/base/lynx_export.h"
 #include "core/event/event_target.h"
 #include "core/inspector/style_sheet.h"
+#include "core/public/common_constants.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_content_data.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
@@ -125,7 +126,7 @@ class Element : public lepus::RefCounted,
                 public style::SimpleStyleNode {
  public:
   Element(const base::String& tag, ElementManager* element_manager,
-          uint32_t node_index = 0);
+          uint32_t node_index);
 
   Element& operator=(const Element&) = delete;
 
@@ -1347,7 +1348,7 @@ class Element : public lepus::RefCounted,
    * inserted into the DOM tree relative to all other elements.
    */
   uint32_t global_insertion_order_{kInitialGlobalInsertionOrder};
-  uint32_t node_index_{0};
+  uint32_t node_index_{kInvalidNodeIndex};
 
   constexpr const static int32_t kLayoutNodeTypeNotInit = -1;
   // Used to record the LayoutNodeType corresponding to the current tag, init

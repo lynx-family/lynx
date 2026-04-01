@@ -165,8 +165,7 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
                             float height, const float* paddings,
                             const float* margins, const float* borders,
                             const float* bounds, const float* sticky,
-                            float max_height,
-                            uint32_t node_index = 0) override {
+                            float max_height, uint32_t node_index) override {
     std::lock_guard guard(lock_);
 
     if (node_map_.find(tag) == node_map_.end()) {

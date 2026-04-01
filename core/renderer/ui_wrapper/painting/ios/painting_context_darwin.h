@@ -86,7 +86,7 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
                     const float* paddings, const float* margins,
                     const float* borders, const float* flatten_bounds,
                     const float* sticky, float max_height,
-                    uint32_t node_index = 0) override;
+                    uint32_t node_index) override;
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info) override;
   void StopExposure(const pub::Value& options) override;

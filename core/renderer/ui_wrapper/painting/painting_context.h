@@ -58,7 +58,7 @@ class PaintingContext {
   inline void CreatePaintingNode(int id, const std::string& tag,
                                  const fml::RefPtr<PropBundle>& painting_data,
                                  bool flatten, bool create_node_async,
-                                 uint32_t node_index = 0) {
+                                 uint32_t node_index) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_CREATE_NODE, "tag", tag);
     platform_impl_->CreatePaintingNode(id, tag, painting_data, flatten,
                                        create_node_async, node_index);
@@ -89,7 +89,7 @@ class PaintingContext {
                            const float* paddings, const float* margins,
                            const float* borders, const float* bounds,
                            const float* sticky, float max_height,
-                           uint32_t node_index = 0) {
+                           uint32_t node_index) {
     platform_impl_->UpdateLayout(tag, x, y, width, height, paddings, margins,
                                  borders, bounds, sticky, max_height,
                                  node_index);
