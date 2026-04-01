@@ -8,6 +8,7 @@ import static com.lynx.tasm.behavior.AutoGenStyleConstants.IMAGERENDERING_PIXELA
 
 import android.graphics.Canvas;
 import android.graphics.Path;
+import android.view.View;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
@@ -48,6 +49,29 @@ public class FlattenUIImage extends LynxFlattenUI {
     }
     return MeaningfulContentStatus.PENDING;
   }
+
+  @Override
+  protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int offsetX, int offsetY) {
+    if (getMeaningfulContentStatus() == MeaningfulContentStatus.IRRELEVANT) {
+      return null;
+    }
+
+    if (mLynxImageManager != null) {
+      mLynxImageManager.tryHandleResult();
+    }
+
+    MeaningfulPaintingArea area = new MeaningfulPaintingArea(offsetX, offsetY, getWidth(),
+        getHeight(), mLynxImageManager != null && mLynxImageManager.getHasContent());
+    area.setAlpha(getAlpha());
+    area.setScaleX(getScaleX());
+    area.setScaleY(getScaleY());
+    area.setVisibleStatus(getVisibility() ? View.VISIBLE : View.INVISIBLE);
+    area.setMeaningfulContentStatus(getMeaningfulContentStatus());
+    area.setFirstMeaningfulContentPresentedTimestampMicros(
+        getFirstMeaningfulContentPresentedTimestampMicros());
+    return area;
+  }
+
   private void ensureLynxImageManager() {
     if (mLynxImageManager != null) {
       return;
