@@ -5,6 +5,7 @@
 #import <Lynx/LynxUIFrame.h>
 
 #import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxContext.h>
 #import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxFrameView.h>
 #import <Lynx/LynxFrameViewProvider.h>
@@ -32,7 +33,7 @@ LYNX_REGISTER_UI("frame")
 #endif
 
 - (UIView*)createView {
-  id<LynxFrameViewProvider> provider = self.context.lynxFrameViewProvider;
+  id<LynxFrameViewProvider> provider = self.context.lynxContext.lynxFrameViewProvider;
   if (provider) {
     LynxFrameView* view = [provider getLynxFrameView:self.context];
     if (view) {

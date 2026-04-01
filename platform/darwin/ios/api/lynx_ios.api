@@ -1129,6 +1129,7 @@ public class LynxContext : NSObject {
   public BOOL LynxContext::hasCustomMediaFetcher hasCustomMediaFetcher;
   public BOOL LynxContext::hasCustomTemplateFetcher hasCustomTemplateFetcher;
   public BOOL LynxContext::hasLynxViewDestroyed hasLynxViewDestroyed;
+  public id<LynxFrameViewProvider> LynxContext::lynxFrameViewProvider lynxFrameViewProvider;
   public LynxUIOwner* _Nullable LynxContext()::uiOwner uiOwner;
   public LynxUIIntersectionObserverManager* _Nullable LynxContext()::intersectionManager intersectionManager;
   public id<LUIBodyView> _Nullable LynxContext()::containerView containerView;
@@ -4555,7 +4556,6 @@ public class LynxUIContext : NSObject {
   public id<LynxMediaResourceFetcher> LynxUIContext::mediaResourceFetcher mediaResourceFetcher;
   public id<LynxTemplateResourceFetcher> LynxUIContext::templateResourceFetcher templateResourceFetcher;
   public BOOL LynxUIContext::enableFetchUIImage enableFetchUIImage;
-  public id<LynxFrameViewProvider> LynxUIContext::lynxFrameViewProvider lynxFrameViewProvider;
   public LynxImageConfig* LynxUIContext::imageConfig imageConfig;
   public BOOL LynxUIContext::defaultOverflowVisible defaultOverflowVisible;
   public BOOL LynxUIContext::defaultImplicitAnimation defaultImplicitAnimation;
