@@ -47,6 +47,7 @@
 #include "core/runtime/js/bindings/modules/ios/common_module_creator.h"
 #include "core/runtime/js/bindings/modules/ios/shared_module_creator.h"
 #include "core/services/performance/darwin/performance_controller_darwin.h"
+#include "core/shell/event_tracker_proxy_impl.h"
 #include "core/shell/ios/js_proxy_darwin.h"
 #include "core/shell/ios/lynx_engine_proxy_darwin.h"
 #include "core/shell/ios/native_facade_darwin.h"
@@ -185,10 +186,12 @@
 
   auto perf_proxy =
       std::make_shared<lynx::shell::PerfControllerProxyImpl>(shell_->GetPerfControllerActor());
+  auto event_tracker_proxy = std::make_shared<lynx::shell::EventTrackerProxyImpl>();
   auto layout_proxy = std::make_shared<lynx::shell::LynxLayoutProxyImpl>(shell_->GetLayoutActor());
   ui_delegate->OnLynxCreate(shell_->GetListEngineProxy(), [_lynxEngineProxy nativeProxy],
                             std::move(js_proxy), std::move(layout_proxy), std::move(perf_proxy),
-                            nullptr, nullptr, nullptr, shell_->GetInstanceId(), _embeddedMode);
+                            std::move(event_tracker_proxy), nullptr, nullptr, nullptr,
+                            shell_->GetInstanceId(), _embeddedMode);
 
   // reset ui flush flag
   [self setNeedPendingUIOperation:_needPendingUIOperation];
