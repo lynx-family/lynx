@@ -758,8 +758,10 @@ void BTSRuntime::OnJSSourcePrepared(
       }
 #endif
     }
-    app_->loadApp(std::move(bundle), init_global_props_, dsl,
-                  bundle_module_mode, url, trace_flow_id);
+    if (!js_app_loaded_) {
+      app_->loadApp(std::move(bundle), init_global_props_, dsl,
+                    bundle_module_mode, url, trace_flow_id);
+    }
     tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadBackgroundEnd);
 
     UpdateState(State::kRuntimeReady);
@@ -899,8 +901,10 @@ void BTSRuntime::OnScriptLoaded(const std::string& url, std::string script,
   });
 }
 
-void BTSRuntime::EvaluateScriptStandalone(std::string url, std::string script,
-                                          uint64_t trace_flow_id) {
+void BTSRuntime::EvaluateScriptStandalone(
+    std::string url,
+    const std::unordered_map<std::string, runtime::js::JsContent>& js_files,
+    tasm::PackageInstanceDSL runtime_type, uint64_t trace_flow_id) {
   LOGI("EvaluateScriptStandalone, url: " << url);
   if (state_ != State::kJsCoreLoaded) {
     delegate_->OnErrorOccurred(base::LynxError(
@@ -918,11 +922,13 @@ void BTSRuntime::EvaluateScriptStandalone(std::string url, std::string script,
   // We can safely access app_ here. `EvaluateScriptStandalone`
   // can only be used in LynxBackgroundRuntime which will
   // never use pending JS so the app_ is always created.
-  app_->OnStandaloneScriptAdded(url, std::move(script));
-  app_->loadApp(tasm::TasmRuntimeBundle(), init_global_props_,
-                tasm::PackageInstanceDSL::STANDALONE,
+  app_->OnStandaloneScriptAdded(js_files);
+  app_->loadApp(tasm::TasmRuntimeBundle(), init_global_props_, runtime_type,
                 tasm::PackageInstanceBundleModuleMode::RETURN_BY_FUNCTION_MODE,
                 url, trace_flow_id);
+  if (runtime_type == tasm::PackageInstanceDSL::TT) {
+    js_app_loaded_ = true;
+  }
   delegate_->OnEvaluateJavaScriptEnd(url);
 }
 

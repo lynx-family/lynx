@@ -244,7 +244,8 @@ class App : public std::enable_shared_from_this<App> {
   void PauseGcSuppressionMode();
   void ResumeGcSuppressionMode();
 
-  void OnStandaloneScriptAdded(const std::string& name, std::string source);
+  void OnStandaloneScriptAdded(
+      const std::unordered_map<std::string, JsContent>& js_files);
   void OnSetPresetData(lepus::Value data);
   // from LynxDataDispatcher
   void OnComponentDecoded(tasm::TasmRuntimeBundle bundle);
