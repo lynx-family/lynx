@@ -2270,7 +2270,7 @@ lepus::Value Element::GetEventTargetInfo(bool is_core_event) {
 lepus::Value Element::GetEventControlInfo(bool is_core_event) {
   auto array = lepus::CArray::Create();
   if (is_core_event) {
-    array->emplace_back(ParentComponentId());
+    array->emplace_back(ParentComponentIdString());
     array->emplace_back(ParentComponentEntryName());
     array->emplace_back(impl_id());
   } else {

@@ -755,7 +755,47 @@ void RadonNode::SetEventListeners(
                   const auto& event_detail = args_array->get(1);
                   const auto& event_info_array = event_info.Array();
                   if (event_info.IsArray() && event_info_array->size() == 2) {
-                    auto call_method_name = event_info_array->get(0).Bool();
+                    if (tasm->page_proxy()
+                            ->element_manager()
+                            ->IsAirModeFiberEnabled()) {
+                      auto event = fml::static_ref_ptr_cast<event::Event>(
+                          args_array->get(2).RefCounted());
+                      if (event == nullptr || !event->target() ||
+                          !event->current_target()) {
+                        return;
+                      }
+                      auto* target =
+                          static_cast<FiberElement*>(event->target().get());
+                      auto* current_target = static_cast<FiberElement*>(
+                          event->current_target().get());
+                      auto* parent_component =
+                          current_target->GetParentComponentElement();
+                      auto vm_context =
+                          tasm->FindEntry(tasm::DEFAULT_ENTRY_NAME)->GetVm();
+                      if (!current_target->InComponent()) {
+                        if (parent_component) {
+                          BASE_STATIC_STRING_DECL(kCallPageEvent,
+                                                  "$callPageEvent");
+                          vm_context->Call(
+                              kCallPageEvent, lepus::Value(callback),
+                              lepus_value::ShallowCopy(event_detail),
+                              lepus::Value(parent_component->impl_id()));
+                        }
+                      } else if (parent_component && target) {
+                        BASE_STATIC_STRING_DECL(kCallComponentEvent,
+                                                "$callComponentEvent");
+                        vm_context->Call(
+                            kCallComponentEvent,
+                            lepus::Value(parent_component->impl_id()),
+                            lepus::Value(callback),
+                            lepus_value::ShallowCopy(event_detail),
+                            lepus::Value(target->impl_id()));
+                      }
+                      return;
+                    }
+                    bool support_component_js = tasm->SupportComponentJS();
+                    auto call_method_name = !support_component_js ||
+                                            event_info_array->get(0).Bool();
                     auto page_name_or_component_id =
                         call_method_name
                             ? tasm->FindEntry(tasm::DEFAULT_ENTRY_NAME)
