@@ -46,7 +46,7 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(130);
+    expect(configKeys.length).toBe(131);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
       'alignMouseEventWithW3C',
@@ -55,6 +55,7 @@ describe('type-config index', () => {
       'CSSAlignWithLegacyW3C',
       'customCSSInheritanceList',
       'dataStrictMode',
+      'debugMetadataUrl',
       'disableLongpressAfterScroll',
       'disableQuickTracingGC',
       'enableA11y',

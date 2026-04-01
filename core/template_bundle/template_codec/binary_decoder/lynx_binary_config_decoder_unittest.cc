@@ -118,6 +118,14 @@ TEST_F(LynxBinaryConfigDecoderTest,
   EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
 }
 
+TEST_F(LynxBinaryConfigDecoderTest, ReadDebugMetadataUrl) {
+  config_decoder_->DecodePageConfig(
+      "{\n  \"debugMetadataUrl\" : \"https://example.com/debug-info.json\"\n}",
+      page_config_);
+  EXPECT_EQ(page_config_->GetDebugMetadataUrl(),
+            "https://example.com/debug-info.json");
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

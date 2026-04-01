@@ -347,6 +347,16 @@ customData:
   valueType: string
   author: nhsprite
   deprecated: '3.5'
+debugMetadataUrl:
+  description: Debug metadata URL for template diagnostics.
+  defaultValue: ''
+  valueType: string
+  author: songshourui.null
+  since: '3.8'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 tapSlop:
   description:
     Specify the sliding distance threshold at which the tap event is not

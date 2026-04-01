@@ -18,6 +18,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('CSSAlignWithLegacyW3C').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('customCSSInheritanceList').toEqualTypeOf<string[] | undefined>();
     expectTypeOf<Config>().toHaveProperty('dataStrictMode').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('debugMetadataUrl').toEqualTypeOf<string | undefined>();
     expectTypeOf<Config>().toHaveProperty('disableLongpressAfterScroll').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('disableQuickTracingGC').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableA11y').toEqualTypeOf<boolean | undefined>();
