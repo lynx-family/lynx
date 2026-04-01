@@ -9,7 +9,14 @@ import androidx.annotation.NonNull;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.IPaintingContext;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
+import com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.service.ILynxTextService.Page;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Wrap the native object only to manage the lifetime on Java side.
@@ -17,6 +24,14 @@ import com.lynx.tasm.behavior.ui.UIBody;
  * by the pipeline.
  */
 public class NativePaintingContext implements IPaintingContext {
+  private static final int MEANINGFUL_PAINTING_RECORD_SIZE = 6;
+  private static final int RECORD_INDEX_SIGN = 0;
+  private static final int RECORD_INDEX_TYPE = 1;
+  private static final int RECORD_INDEX_X = 2;
+  private static final int RECORD_INDEX_Y = 3;
+  private static final int RECORD_INDEX_WIDTH = 4;
+  private static final int RECORD_INDEX_HEIGHT = 5;
+
   private long mNativePtr = 0;
 
   @NonNull private final PlatformRendererContext mPlatformRendererContext;
@@ -110,6 +125,84 @@ public class NativePaintingContext implements IPaintingContext {
     return nativeGetPlatformEventHandlerState(mNativePtr);
   }
 
+  public List<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
+    if (mDestroyed || mNativePtr == 0) {
+      return new ArrayList<>();
+    }
+
+    // Native code only exports compact geometry records. Android resolves
+    // validity and presented state here so the collector stays reusable for
+    // other platforms.
+    int[] records = nativeGetMeaningfulPaintingAreaRecords(mNativePtr);
+    if (records == null || records.length == 0) {
+      return new ArrayList<>();
+    }
+
+    ArrayList<MeaningfulPaintingArea> areas =
+        new ArrayList<>(records.length / MEANINGFUL_PAINTING_RECORD_SIZE);
+    for (int i = 0; i + MEANINGFUL_PAINTING_RECORD_SIZE <= records.length;
+         i += MEANINGFUL_PAINTING_RECORD_SIZE) {
+      int sign = records[i + RECORD_INDEX_SIGN];
+      int type = records[i + RECORD_INDEX_TYPE];
+      // Native collector returns geometry only. Java resolves whether the
+      // content is already presented from the current Android render state.
+      MeaningfulPaintingArea area =
+          MeaningfulPaintingArea.create(records[i + RECORD_INDEX_X], records[i + RECORD_INDEX_Y],
+              records[i + RECORD_INDEX_WIDTH], records[i + RECORD_INDEX_HEIGHT],
+              isMeaningfulContentValid(type, sign), getMeaningfulContentStatus(type, sign), -1,
+              mPlatformRendererContext.getMeaningfulPaintingAreaVisibleStatus(sign),
+              mPlatformRendererContext.getMeaningfulPaintingAreaAlpha(sign),
+              mPlatformRendererContext.getMeaningfulPaintingAreaScaleX(sign),
+              mPlatformRendererContext.getMeaningfulPaintingAreaScaleY(sign));
+      if (area != null) {
+        areas.add(area);
+      }
+    }
+    return areas;
+  }
+
+  private boolean isMeaningfulContentValid(int type, int sign) {
+    if (type != PlatformRendererContext.PlatformRendererType.kImage) {
+      return true;
+    }
+    LynxImageManager imageManager = mPlatformRendererContext.getImage(sign);
+    return imageManager != null && imageManager.getHasContent();
+  }
+
+  private ILynxUIMeaningfulContent.MeaningfulContentStatus getMeaningfulContentStatus(
+      int type, int sign) {
+    if (type == PlatformRendererContext.PlatformRendererType.kImage) {
+      LynxImageManager imageManager = mPlatformRendererContext.getImage(sign);
+      if (imageManager != null && imageManager.getHasContent()) {
+        return ILynxUIMeaningfulContent.MeaningfulContentStatus.PRESENTED;
+      }
+      return ILynxUIMeaningfulContent.MeaningfulContentStatus.PENDING;
+    }
+
+    if (type == PlatformRendererContext.PlatformRendererType.kText) {
+      if (isTextPresented(sign)) {
+        return ILynxUIMeaningfulContent.MeaningfulContentStatus.PRESENTED;
+      }
+      return ILynxUIMeaningfulContent.MeaningfulContentStatus.PENDING;
+    }
+
+    return ILynxUIMeaningfulContent.MeaningfulContentStatus.IRRELEVANT;
+  }
+
+  private boolean isTextPresented(int sign) {
+    if (mContext != null && mContext.isTextServiceModeOn()) {
+      // Text service publishes bundles after the platform text content has
+      // been materialized, so bundle presence is enough to mark it presented.
+      Page page = mPlatformRendererContext.getTextBundle(sign);
+      return page != null;
+    }
+
+    // Non-text-service mode keeps layouts in TextMeasurer. A resolved layout
+    // means the text content is already available for painting.
+    TextMeasurer textMeasurer = mPlatformRendererContext.getTextMeasurer();
+    return textMeasurer != null && textMeasurer.takeTextLayout(sign) != null;
+  }
+
   private native long nativeCreatePaintingContext(
       NativePaintingContext jThis, long platformRendererContextPtr, Object textLayout, long textra);
 
@@ -120,5 +213,6 @@ public class NativePaintingContext implements IPaintingContext {
 
   native int nativeGetPlatformEventHandlerState(long nativePtr);
 
+  native int[] nativeGetMeaningfulPaintingAreaRecords(long nativePtr);
   native void nativeDestroy(long nativePtr);
 }

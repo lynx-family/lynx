@@ -41,6 +41,23 @@ public class MeaningfulPaintingArea {
     mFirstMeaningfulContentPresentedTimestampMicros = timestampMicros;
   }
 
+  public static MeaningfulPaintingArea create(int offsetX, int offsetY, int width, int height,
+      boolean isValid, ILynxUIMeaningfulContent.MeaningfulContentStatus status,
+      long timestampMicros, int visibleStatus, float alpha, float scaleX, float scaleY) {
+    if (width <= 0 || height <= 0) {
+      return null;
+    }
+    MeaningfulPaintingArea area =
+        new MeaningfulPaintingArea(offsetX, offsetY, width, height, isValid);
+    area.setMeaningfulContentStatus(status);
+    area.setFirstMeaningfulContentPresentedTimestampMicros(timestampMicros);
+    area.setVisibleStatus(visibleStatus);
+    area.setAlpha(alpha);
+    area.setScaleX(scaleX);
+    area.setScaleY(scaleY);
+    return area;
+  }
+
   public MeaningfulPaintingArea(int offsetX, int offsetY, int width, int height, boolean isValid) {
     mOffsetX = offsetX;
     mOffsetY = offsetY;

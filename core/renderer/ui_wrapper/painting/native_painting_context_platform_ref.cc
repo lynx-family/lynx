@@ -14,6 +14,7 @@
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/ui_wrapper/painting/meaningful_painting_collector.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/diff_algorithm.h"
 #include "core/renderer/utils/value_utils.h"
@@ -243,6 +244,18 @@ NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively(
   return event_target_helper_->ReconstructEventTargetTreeRecursively(
       fml::RefPtr<PlatformRendererImpl>(
           static_cast<PlatformRendererImpl *>(page_renderer->second.get())));
+}
+
+base::Vector<MeaningfulPaintingAreaRecord>
+NativePaintingCtxPlatformRef::CollectMeaningfulPaintingAreas() const {
+  auto page_renderer = renderers_.find(kRootId);
+  if (page_renderer == renderers_.end() || page_renderer->second == nullptr) {
+    return {};
+  }
+
+  MeaningfulPaintingCollector collector(
+      fml::static_ref_ptr_cast<PlatformRendererImpl>(page_renderer->second));
+  return collector.Collect();
 }
 
 void NativePaintingCtxPlatformRef::AddPlatformEventTargetToExposure(

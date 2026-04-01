@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
@@ -16,6 +17,7 @@
 #include "core/renderer/dom/fragment/event/platform_event_emitter.h"
 #include "core/renderer/dom/fragment/event/platform_event_handler.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
+#include "core/renderer/ui_wrapper/painting/meaningful_painting_collector.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 
 namespace lynx {
@@ -81,6 +83,8 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   // did_reconstruct is set to true if the event target tree is reconstructed.
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
       bool *did_reconstruct);
+  base::Vector<MeaningfulPaintingAreaRecord> CollectMeaningfulPaintingAreas()
+      const;
   // Add the target element to the exposure target map.
   void AddPlatformEventTargetToExposure(
       const fml::RefPtr<PlatformEventTarget> &target,

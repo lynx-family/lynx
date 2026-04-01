@@ -7182,6 +7182,7 @@ public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.isAccessibilityDisabled();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.enableTimingCollector();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.shouldInvokeNativeViewMethod();
+  public List< MeaningfulPaintingArea > com.lynx.tasm.behavior.LynxUIRenderer.getMeaningfulPaintingAreas();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.disableBindDrawChildHook();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.needHandleDispatchKeyEvent();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.dispatchKeyEvent(KeyEvent event);
@@ -7711,6 +7712,7 @@ public class com::lynx::tasm::behavior::ui::MeaningfulPaintingArea :  {
   public void com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.setScaleY(float scaleY);
   public int com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getVisibleStatus();
   public void com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.setVisibleStatus(int status);
+  public static MeaningfulPaintingArea com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.create(int offsetX, int offsetY, int width, int height, boolean isValid, ILynxUIMeaningfulContent.MeaningfulContentStatus status, long timestampMicros, int visibleStatus, float alpha, float scaleX, float scaleY);
 }
 
 public class com::lynx::tasm::behavior::shadow::MeasureContext :  {
@@ -7939,6 +7941,7 @@ public class com::lynx::tasm::behavior::render::NativePaintingContext : com.lynx
   public void com.lynx.tasm.behavior.render.NativePaintingContext.setLynxEngineActorForPlatformContextRef(long ptr);
   public boolean com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformMotionEvent(MotionEvent ev);
   public int com.lynx.tasm.behavior.render.NativePaintingContext.getPlatformEventHandlerState();
+  public List< MeaningfulPaintingArea > com.lynx.tasm.behavior.render.NativePaintingContext.getMeaningfulPaintingAreas();
 }
 
 public class com::lynx::tasm::navigator::NavigationModule : com.lynx.jsbridge.LynxModule {

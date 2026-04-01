@@ -9,6 +9,8 @@ import("../../../Lynx.gni")
 ui_wrapper_painting_shared_sources = [
   "catalyzer.cc",
   "catalyzer.h",
+  "meaningful_painting_collector.cc",
+  "meaningful_painting_collector.h",
   "native_painting_context.cc",
   "native_painting_context.h",
   "native_painting_context_platform_ref.cc",
@@ -77,4 +79,29 @@ lynx_core_source_set("painting") {
     "../../trace:renderer_trace",
     "../common",
   ]
+}
+
+lynx_core_source_set("meaningful_painting") {
+  sources = [
+    "meaningful_painting_collector.cc",
+    "meaningful_painting_collector.h",
+    "platform_renderer.h",
+    "platform_renderer_impl.cc",
+    "platform_renderer_impl.h",
+  ]
+
+  deps = [
+    "../../../public",
+    "../../dom/fragment:display_list",
+  ]
+}
+
+unittest_set("meaningful_painting_collector_testset") {
+  testonly = true
+  sources = [ "meaningful_painting_collector_unittest.cc" ]
+  public_deps = [ ":meaningful_painting" ]
+}
+
+unittest_exec("meaningful_painting_collector_test_exec") {
+  deps = [ ":meaningful_painting_collector_testset" ]
 }

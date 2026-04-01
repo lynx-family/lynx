@@ -19,6 +19,7 @@
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_platform_android_ref.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
+#include "core/renderer/ui_wrapper/painting/meaningful_painting_collector.h"
 #include "core/shell/lynx_shell.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_jni.h"
@@ -93,6 +94,34 @@ jboolean DispatchPlatformInputEvent(JNIEnv *env, jobject /*jcaller*/,
   env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
   env->ReleaseFloatArrayElements(fEventData, f_event_data, 0);
   return res;
+}
+
+jintArray GetMeaningfulPaintingAreaRecords(JNIEnv *env, jobject /*jcaller*/,
+                                           jlong nativePtr) {
+  if (nativePtr == 0) {
+    return nullptr;
+  }
+
+  auto *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return nullptr;
+  }
+
+  auto records = platform_ref->CollectMeaningfulPaintingAreas();
+  auto serialized_records =
+      lynx::tasm::MeaningfulPaintingCollector::Serialize(records);
+  auto result = env->NewIntArray(static_cast<jsize>(serialized_records.size()));
+  if (result == nullptr || serialized_records.empty()) {
+    return result;
+  }
+  env->SetIntArrayRegion(result, 0,
+                         static_cast<jsize>(serialized_records.size()),
+                         serialized_records.data());
+  return result;
 }
 
 jint GetPlatformEventHandlerState(JNIEnv *env, jobject /*jcaller*/,
