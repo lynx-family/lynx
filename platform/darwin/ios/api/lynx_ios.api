@@ -3665,13 +3665,17 @@ public class LynxTapGestureHandler : LynxBaseGestureHandler {
 
 public class LynxTemplateBundle : NSObject, <LynxSecurityTarget> {
   public NSString* LynxTemplateBundle::url url;
-  public instancetype _Nullable LynxTemplateBundle::initWithTemplate:(nonnull NSData *tem);
-  public instancetype _Nullable LynxTemplateBundle::initWithTemplate:option:(nonnull NSData *tem,[option] nullable LynxTemplateBundleOption *option);
+  public instancetype _Nullable LynxTemplateBundle::initWithTemplate:(init(_:) NS_SWIFT_NAME);
+  public instancetype _Nullable LynxTemplateBundle::initWithTemplate:option:(nonnull NSData *tem,[option] init(_:option:) NS_SWIFT_NAME);
+  public instancetype _Nullable LynxTemplateBundle::_swiftInitWithData:(initWith(_:) NS_SWIFT_NAME);
+  public instancetype _Nullable LynxTemplateBundle::_swiftInitWithData:option:(nonnull NSData *data,[option] initWith(_:option:) NS_SWIFT_NAME);
   public NSString *_Nullable LynxTemplateBundle::errorMsg();
   public NSDictionary *_Nullable LynxTemplateBundle::extraInfo();
   public BOOL LynxTemplateBundle::isElementBundleValid();
   public void LynxTemplateBundle::postJsCacheGenerationTask:(nonnull NSString *bytecodeSourceUrl);
   public void LynxTemplateBundle::postJsCacheGenerationTask:callback:(nonnull NSString *bytecodeSourceUrl,[callback] nullable LynxBytecodeResponseBlock callback);
+  public instancetype _Nullable LynxTemplateBundle::_swiftTemplateBundleWithTemplate:(init(template:) NS_SWIFT_NAME);
+  public instancetype _Nullable LynxTemplateBundle::_swiftTemplateBundleWithTemplate:option:(nonnull NSData *tem,[option] init(template:option:) NS_SWIFT_NAME);
 }
 
 public class LynxTemplateBundleOption : NSObject {
