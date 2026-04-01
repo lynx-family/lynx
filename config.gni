@@ -97,6 +97,9 @@ declare_args() {
 
   # Controls whether to use weak_node_api symbols with the _weak suffix. In some cases, this configuration needs to be enabled to avoid conflicts with other NAPI symbols.
   use_weak_suffix_napi = true
+
+  # Controls whether to enable RTS NG
+  disable_rts_ng = false
 }
 
 declare_args() {
