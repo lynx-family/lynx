@@ -640,7 +640,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if ([bundle errorMsg]) {
     NSString* errorMsg =
         [NSString stringWithFormat:@"LynxTemplateRender loadTemplateBundle with an invalid "
-                                   @"LynxTemplateBundle. error is: %p",
+                                   @"LynxTemplateBundle. error is: %@",
                                    [bundle errorMsg]];
     LynxError* error =
         [LynxError lynxErrorWithCode:ECLynxAppBundleLoadBadBundle
