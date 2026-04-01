@@ -13,6 +13,7 @@
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
 #include "clay/lynx_adaptor/value_converter.h"
 #include "clay/public/value.h"
+#include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/list/lynx_list_data.h"
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/shadow/text_render.h"
@@ -460,9 +461,20 @@ std::unique_ptr<lynx::pub::Value> PaintingContextClay::GetTextInfo(
   return std::make_unique<ClayValue>(std::move(result));
 }
 
-void PaintingContextClay::StopExposure(const pub::Value& options) {}
+void PaintingContextClay::StopExposure(const pub::Value& options) {
+  auto opts = ValueConverter::CreateClayValue(options);
+  bool send_event = true;
+  if (opts.IsMap()) {
+    send_event = SafeGetBool(FindMapItem(opts.GetMap(), "sendEvent"), true);
+  }
+  Enqueue([view_context = view_context_, send_event] {
+    view_context->StopExposure(send_event);
+  });
+}
 
-void PaintingContextClay::ResumeExposure() {}
+void PaintingContextClay::ResumeExposure() {
+  Enqueue([view_context = view_context_] { view_context->ResumeExposure(); });
+}
 
 std::vector<float> PaintingContextClay::GetRectToLynxView(int64_t id) {
   return view_context_->GetRectToLynxView(id);

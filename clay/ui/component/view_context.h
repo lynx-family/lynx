@@ -250,7 +250,6 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   BaseView* FindViewByViewId(int view_id);
   ShadowNode* FindShadowNodeByNodeId(int node_id);
   BaseView* FindViewByComponentId(const std::string& component_id);
-  void ShowToast(const char* message, const char* type, float duration);
   void GetAbsolutePosition(int id, float& top, float& left);
   int GetViewIdForLocation(int x, int y);
 
@@ -312,6 +311,9 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   FrameObserver* GetFrameObserver() const { return frame_observer_; }
 
   std::vector<float> GetRectToLynxView(int64_t id);
+
+  void StopExposure(bool send_event);
+  void ResumeExposure();
 
  protected:
   // FIXME(Xietong):

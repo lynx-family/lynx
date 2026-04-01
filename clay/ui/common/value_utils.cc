@@ -8,6 +8,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "clay/ui/common/attribute_utils.h"
+
 namespace clay {
 
 const clay::Value& GetNullClayValue() {
@@ -168,6 +170,40 @@ const char* GetStringProperty(const clay::Value::Map& m, const char* name) {
     }
   }
   return nullptr;
+}
+
+const clay::Value* FindMapItem(const clay::Value::Map& map,
+                               const std::string& key) {
+  const auto it = map.find(key);
+  if (it != map.end()) {
+    return &it->second;
+  }
+  return nullptr;
+}
+
+int SafeGetInt(const clay::Value* value, int default_value) {
+  if (!value) {
+    return default_value;
+  }
+  double result = default_value;
+  attribute_utils::TryGetNum(*value, result, default_value);
+  return result;
+}
+
+bool SafeGetBool(const clay::Value* value, bool default_value) {
+  if (!value) {
+    return default_value;
+  }
+  return attribute_utils::GetBool(*value, default_value);
+}
+
+std::string SafeGetString(const clay::Value* value, std::string default_value) {
+  if (!value) {
+    return default_value;
+  }
+  std::string result = default_value;
+  attribute_utils::TryGetString(*value, result, default_value);
+  return result;
 }
 
 }  // namespace clay

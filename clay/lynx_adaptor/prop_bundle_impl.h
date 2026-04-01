@@ -7,10 +7,10 @@
 
 #include <sys/types.h>
 
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "clay/public/value.h"
@@ -21,8 +21,10 @@ namespace lynx {
 
 class PropBundleImpl : public tasm::PropBundle {
  public:
-  PropBundleImpl() = default;
+  PropBundleImpl();
   ~PropBundleImpl() override;
+  PropBundleImpl(const clay::Value::Map& props,
+                 const std::vector<std::string>& event_handlers);
   void SetNullProps(const char* key) override;
   void SetProps(const char* key, unsigned int value) override;
   void SetProps(const char* key, int value) override;
@@ -48,24 +50,48 @@ class PropBundleImpl : public tasm::PropBundle {
 
   void SetPropsByID(tasm::CSSPropertyID id, const uint32_t* data,
                     size_t size) override;
-  fml::RefPtr<PropBundle> ShallowCopy() override { return nullptr; }
+  fml::RefPtr<PropBundle> ShallowCopy() override {
+    // Use copy-on-write strategy to avoid copying large maps during element
+    // cloning. Any subsequent mutation will detach by copying first-level
+    // props.
+    return fml::AdoptRef(new PropBundleImpl(data_));
+  }
 
-  const clay::Value::Map& map() const { return map_; }
+  const clay::Value::Map& map() const { return data_->map_; }
 
-  clay::Value::Map& mutable_map() { return map_; }
+  clay::Value::Map& mutable_map() { return UniqueData().map_; }
 
   const std::vector<std::string>& event_handlers() const {
-    return event_handlers_;
+    return data_->event_handlers_;
   }
 
   const std::optional<clay::GestureMap>& GestureDetectorMap() const {
-    return gesture_detector_map_;
+    return data_->gesture_detector_map_;
   }
 
  private:
-  clay::Value::Map map_;
-  std::vector<std::string> event_handlers_;
-  std::optional<clay::GestureMap> gesture_detector_map_;
+  struct SharedData {
+    SharedData() = default;
+
+    SharedData(const clay::Value::Map& props,
+               const std::vector<std::string>& event_handlers);
+
+    SharedData(const SharedData& other);
+    SharedData(SharedData&& other) = default;
+
+    SharedData& operator=(const SharedData& other) = delete;
+    SharedData& operator=(SharedData&& other) = default;
+
+    clay::Value::Map map_;
+    std::vector<std::string> event_handlers_;
+    std::optional<clay::GestureMap> gesture_detector_map_;
+  };
+
+  explicit PropBundleImpl(std::shared_ptr<SharedData> data);
+
+  SharedData& UniqueData();
+
+  std::shared_ptr<SharedData> data_;
 };
 
 class PropBundleCreatorClay : public tasm::PropBundleCreator {

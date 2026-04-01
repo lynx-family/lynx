@@ -18,6 +18,7 @@
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component.h"
 #include "clay/ui/component/editable/editable_view.h"
+#include "clay/ui/component/intersection_observer_manager.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/list/lynx_list_data.h"
 #include "clay/ui/component/native_view.h"
@@ -792,11 +793,6 @@ void ViewContext::SetFontFace(const char* font_family, const char* src[],
       std::move(src_vec));
 }
 
-void ViewContext::ShowToast(const char* message, const char* type,
-                            float duration) {
-  // TODO(zhangxiao.ninja): for toast
-}
-
 void ViewContext::GetAbsolutePosition(int id, float& top, float& left) {
   FIND_VIEW_WITH_ID_OR_RET;
   auto position = view->AbsoluteLocationWithScroll();
@@ -1043,6 +1039,24 @@ std::vector<float> ViewContext::GetRectToLynxView(int64_t id) {
   }
   return std::vector<float>{rect.left(), rect.top(), rect.width(),
                             rect.height()};
+}
+
+void ViewContext::StopExposure(bool send_event) {
+  if (page_view_) {
+    auto intersection_manager = page_view_->intersection_observer_manager();
+    if (intersection_manager) {
+      intersection_manager->StopExposure(send_event);
+    }
+  }
+}
+
+void ViewContext::ResumeExposure() {
+  if (page_view_) {
+    auto intersection_manager = page_view_->intersection_observer_manager();
+    if (intersection_manager) {
+      intersection_manager->ResumeExposure();
+    }
+  }
 }
 
 }  // namespace clay

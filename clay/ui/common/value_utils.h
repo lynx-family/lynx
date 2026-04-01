@@ -44,6 +44,12 @@ bool GetBoolProperty(const clay::Value::Map& m, const char* name);
 int64_t GetIntProperty(const clay::Value::Map& m, const char* name);
 double GetDoubleProperty(const clay::Value::Map& m, const char* name);
 const char* GetStringProperty(const clay::Value::Map& m, const char* name);
+const clay::Value* FindMapItem(const clay::Value::Map& map,
+                               const std::string& key);
+int SafeGetInt(const clay::Value* value, int default_value = 0);
+bool SafeGetBool(const clay::Value* value, bool default_value = false);
+std::string SafeGetString(const clay::Value* value,
+                          std::string default_value = "");
 
 }  // namespace clay
 

@@ -12,6 +12,7 @@
 
 #include "base/trace/native/trace_event.h"
 #include "clay/ui/common/attribute_utils.h"
+#include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/list/list_children_helper.h"
 #include "clay/ui/component/list/list_item_view_holder.h"
@@ -21,45 +22,6 @@
 #include "clay/ui/component/page_view.h"
 
 namespace clay {
-
-namespace {
-
-const clay::Value* FindMapItem(const clay::Value::Map& map,
-                               const std::string& key) {
-  const auto it = map.find(key);
-  if (it != map.end()) {
-    return &it->second;
-  }
-  return nullptr;
-}
-
-inline int SafeGetInt(const clay::Value* value, int default_value = 0) {
-  if (!value) {
-    return default_value;
-  }
-  double result = default_value;
-  attribute_utils::TryGetNum(*value, result, default_value);
-  return result;
-}
-
-inline bool SafeGetBool(const clay::Value* value, bool default_value = false) {
-  if (!value) {
-    return default_value;
-  }
-  return attribute_utils::GetBool(*value, default_value);
-}
-
-inline std::string SafeGetString(const clay::Value* value,
-                                 std::string default_value = "") {
-  if (!value) {
-    return default_value;
-  }
-  std::string result = default_value;
-  attribute_utils::TryGetString(*value, result, default_value);
-  return result;
-}
-
-}  // namespace
 
 ListView::ListView(int id, PageView* page_view) : ListView(id, id, page_view) {}
 
