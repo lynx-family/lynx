@@ -243,6 +243,7 @@ void UIDelegateHarmony::OnLynxCreate(
     const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
     const std::shared_ptr<shell::LynxLayoutProxy>& layout_proxy,
     const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
+    const std::shared_ptr<shell::EventTrackerProxy>& event_tracker_proxy,
     const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
     const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
     const fml::RefPtr<fml::TaskRunner>& layout_task_runner, int32_t instance_id,
@@ -251,9 +252,9 @@ void UIDelegateHarmony::OnLynxCreate(
   if (!lynx_context) {
     return;
   }
-  lynx_context->OnLynxCreate(list_engine_proxy, engine_proxy, runtime_proxy,
-                             perf_controller_proxy, resource_loader,
-                             ui_task_runner, layout_task_runner);
+  lynx_context->OnLynxCreate(
+      list_engine_proxy, engine_proxy, runtime_proxy, perf_controller_proxy,
+      event_tracker_proxy, resource_loader, ui_task_runner, layout_task_runner);
   node_owner_->SetTriggerLayoutCallback(
       [layout_proxy]() { layout_proxy->TriggerLayout(); });
 }

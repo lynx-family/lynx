@@ -25,6 +25,7 @@
 #include "core/shell/android/native_facade_android.h"
 #include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/android/tasm_platform_invoker_android.h"
+#include "core/shell/event_tracker_proxy_impl.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
@@ -487,13 +488,16 @@ void OnLynxEngineCreated(JNIEnv* env, jclass jcaller, jlong ptr,
   auto perf_controller_proxy =
       std::make_shared<lynx::shell::PerfControllerProxyImpl>(
           shell->GetPerfControllerActor());
+  auto event_tracker_proxy =
+      std::make_shared<lynx::shell::EventTrackerProxyImpl>();
   auto layout_proxy = std::make_shared<lynx::shell::LynxLayoutProxyImpl>(
       shell->GetLayoutActor());
   ui_delegate->OnLynxCreate(
       shell->GetListEngineProxy(), std::move(engine_proxy),
       std::move(runtime_proxy), std::move(layout_proxy),
-      std::move(perf_controller_proxy), nullptr, nullptr, nullptr,
-      shell->GetInstanceId(), shell->GetPageOptions().IsEmbeddedModeOn());
+      std::move(perf_controller_proxy), std::move(event_tracker_proxy), nullptr,
+      nullptr, nullptr, shell->GetInstanceId(),
+      shell->GetPageOptions().IsEmbeddedModeOn());
 }
 
 void StartRuntime(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
