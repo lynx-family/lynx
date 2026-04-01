@@ -6,6 +6,7 @@
 
 #include "core/runtime/lepus/json_parser.h"
 #include "core/services/performance/performance_controller.h"
+#include "core/shell/event_tracker_proxy_impl.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/embedder/core/native_facade_impl.h"
 #include "platform/embedder/core/performance/performance_controller_impl.h"
@@ -192,8 +193,9 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
 
   ui_delegate_->OnLynxCreate(
       shell_->GetListEngineProxy(), engine_proxy_, runtime_proxy_,
-      layout_proxy_, perf_controller_proxy_, settings_.resource_loader,
-      shell_->GetRunners()->GetUITaskRunner(),
+      layout_proxy_, perf_controller_proxy_,
+      std::make_shared<shell::EventTrackerProxyImpl>(),
+      settings_.resource_loader, shell_->GetRunners()->GetUITaskRunner(),
       shell_->GetRunners()->GetLayoutTaskRunner(), shell_->GetInstanceId(),
       shell_->GetPageOptions().IsEmbeddedModeOn());
 }

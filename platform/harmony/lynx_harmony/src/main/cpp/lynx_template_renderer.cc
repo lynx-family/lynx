@@ -24,6 +24,7 @@
 #include "core/services/performance/harmony/performance_controller_harmony.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/common/platform_call_back.h"
+#include "core/shell/event_tracker_proxy_impl.h"
 #include "core/shell/harmony/native_facade_harmony.h"
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
@@ -223,7 +224,8 @@ void LynxTemplateRenderer::SetUpLynxShell(
       std::make_shared<shell::LynxLayoutProxyImpl>(shell_->GetLayoutActor());
   ui_delegate_->OnLynxCreate(
       shell_->GetListEngineProxy(), engine_proxy_, runtime_proxy_,
-      layout_proxy_, perf_controller_proxy_, resource_loader,
+      layout_proxy_, perf_controller_proxy_,
+      std::make_shared<shell::EventTrackerProxyImpl>(), resource_loader,
       shell_->GetRunners()->GetUITaskRunner(),
       shell_->GetRunners()->GetLayoutTaskRunner(), shell_->GetInstanceId(),
       shell_->GetPageOptions().IsEmbeddedModeOn());

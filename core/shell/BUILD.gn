@@ -14,6 +14,8 @@ shell_shared_sources = [
   "dynamic_ui_operation_queue.h",
   "engine_thread_switch.cc",
   "engine_thread_switch.h",
+  "event_tracker_proxy_impl.cc",
+  "event_tracker_proxy_impl.h",
   "layout_mediator.cc",
   "layout_mediator.h",
   "layout_result_manager.cc",
