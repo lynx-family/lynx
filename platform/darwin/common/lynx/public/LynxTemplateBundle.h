@@ -27,9 +27,29 @@
  * @note When the input `tem` is not a correct `Lynx` template data, or is `nil`, an invalid
  * `TemplateBundle` is returned
  */
-- (instancetype _Nullable)initWithTemplate:(nonnull NSData*)tem;
+- (instancetype _Nullable)initWithTemplate:(nonnull NSData*)tem NS_SWIFT_NAME(init(_:));
 - (instancetype _Nullable)initWithTemplate:(nonnull NSData*)tem
-                                    option:(nullable LynxTemplateBundleOption*)option;
+                                    option:(nullable LynxTemplateBundleOption*)option
+    NS_SWIFT_NAME(init(_:option:));
++ (instancetype _Nullable)_swiftTemplateBundleWithTemplate:(nonnull NSData*)tem
+    NS_SWIFT_NAME(init(template:));
++ (instancetype _Nullable)_swiftTemplateBundleWithTemplate:(nonnull NSData*)tem
+                                                    option:
+                                                        (nullable LynxTemplateBundleOption*)option
+    NS_SWIFT_NAME(init(template:option:));
+
+/**
+ * @apidoc
+ * @brief Swift-oriented two-stage initializer entry for a `TemplateBundle` instance created by
+ * `init`.
+ * @param data Template binary content.
+ * @return The current `TemplateBundle` object.
+ */
+- (instancetype _Nullable)_swiftInitWithData:(nonnull NSData*)data
+    __attribute__((objc_method_family(none)))NS_SWIFT_NAME(initWith(_:));
+- (instancetype _Nullable)_swiftInitWithData:(nonnull NSData*)data
+                                      option:(nullable LynxTemplateBundleOption*)option
+    __attribute__((objc_method_family(none)))NS_SWIFT_NAME(initWith(_:option:));
 
 /**
  * @apidoc
