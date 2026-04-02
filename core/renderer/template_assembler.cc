@@ -3551,6 +3551,14 @@ void TemplateAssembler::RunPixelPipeline() {
     return;
   }
 
+  if (destroyed_) {
+    // quick rejection for destroyed engine.
+    pipeline_context_manager_->ResetCurrentPipelineContext();
+    pipeline_context_manager_->RemovePipelineContextByVersion(
+        current_pipeline_context->GetVersion());
+    return;
+  }
+
   auto pipeline_option = current_pipeline_context->GetOptions();
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_PIPELINE_RUN_PIXEL,
               [&pipeline_option](lynx::perfetto::EventContext ctx) {
