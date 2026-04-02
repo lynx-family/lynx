@@ -2489,6 +2489,7 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public void com.lynx.tasm.service.ILynxImageService.setImagePlaceHolderHash(@NonNull Object hierarchy, @NonNull Object request, @NonNull Object scaleType, @NonNull String hash, @Nullable String metaData, int width, int height, int radius, int iterations, boolean isPreView);
   public int com.lynx.tasm.service.ILynxImageService.getImageOrigin(@NonNull Object imageInfo);
   public void com.lynx.tasm.service.ILynxImageService.setImageSRSize(@NonNull Object builder, int width, int height);
+  public void com.lynx.tasm.service.ILynxImageService.setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri);
 }
 
 public interface com::lynx::tasm::service::ILynxImageServiceExtension {
@@ -2865,6 +2866,7 @@ public class com::lynx::tasm::image::model::ImageRequestInfo :  {
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableSmoothAnimation();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableProgressiveRendering();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableReportInfo();
+  public boolean com.lynx.tasm.image.model.ImageRequestInfo.isCacheKeyPathOnly();
   public float com.lynx.tasm.image.model.ImageRequestInfo.getImageSRScale();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.equals(Object o);
   public int com.lynx.tasm.image.model.ImageRequestInfo.hashCode();
@@ -2914,6 +2916,8 @@ public class com::lynx::tasm::image::model::ImageRequestInfoBuilder :  {
   public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isEnableProgressiveRendering();
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setEnableReportInfo(boolean enable);
   public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isEnableReportInfo();
+  public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setCacheKeyPathOnly(boolean enable);
+  public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isCacheKeyPathOnly();
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setImageCustomParam(Map< String, String > imageCustomParam);
   public Map< String, String > com.lynx.tasm.image.model.ImageRequestInfoBuilder.getImageCustomParam();
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setImageSRScale(float scale);
@@ -9024,6 +9028,7 @@ public class com::lynx::tasm::behavior::PropsConstants :  {
   public final String com.lynx.tasm.behavior.PropsConstants.DEFER_SRC_INVALIDATION DEFER_SRC_INVALIDATION;
   public final String com.lynx.tasm.behavior.PropsConstants.AUTO_PLAY AUTO_PLAY;
   public final String com.lynx.tasm.behavior.PropsConstants.ANDROID_IMAGE_SIMPLE_KEY ANDROID_IMAGE_SIMPLE_KEY;
+  public final String com.lynx.tasm.behavior.PropsConstants.ANDROID_CACHE_KEY_PATH_ONLY ANDROID_CACHE_KEY_PATH_ONLY;
   public final String com.lynx.tasm.behavior.PropsConstants.TINT_COLOR TINT_COLOR;
   public final String com.lynx.tasm.behavior.PropsConstants.ENABLE_REUSE_ANIMATION_STATE ENABLE_REUSE_ANIMATION_STATE;
   public final String com.lynx.tasm.behavior.PropsConstants.LIST LIST;

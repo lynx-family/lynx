@@ -16,6 +16,7 @@ package com.lynx.tasm.service;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.view.View;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
@@ -199,4 +200,13 @@ public interface ILynxImageService extends IServiceProvider {
    * @param height The height for the super-resolution image.
    */
   @Deprecated void setImageSRSize(@NonNull Object builder, int width, int height);
+
+  /**
+   * Set a custom {@code cacheKeyUri} for this single request builder.
+   *
+   * <p>This API is mainly used to customize Fresco cache key behavior per request.
+   * Requires Fresco version >= 1.27.1. On lower versions (or when the underlying API is
+   * unavailable), this call becomes a no-op.
+   */
+  void setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri);
 }
