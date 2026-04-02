@@ -330,13 +330,13 @@ LYNX_REGISTER_UI("image")
   }
 }
 
-- (float)memoryUsageKB {
-  float sizeKB = [super memoryUsageKB];
+- (int64_t)memoryUsageBytes {
+  int64_t sizeBytes = [super memoryUsageBytes];
   UIImage* image = self.image;
   if (image) {
-    sizeKB += (image.size.height * image.scale * image.size.width * image.scale * 4) / 1024.f;
+    sizeBytes += (image.size.height * image.scale * image.size.width * image.scale * 4);
   }
-  return sizeKB;
+  return sizeBytes;
 }
 
 - (NSDictionary<NSString*, NSString*>*)memoryUsageDetail {
@@ -350,7 +350,7 @@ LYNX_REGISTER_UI("image")
     // are not performed to avoid memory and CPU consumption caused by excessively large URLs.
     return nil;
   }
-  return @{url : [NSString stringWithFormat:@"%f", [self memoryUsageKB]]};
+  return @{url : [NSString stringWithFormat:@"%lld", [self memoryUsageBytes]]};
 }
 
 - (void)setContext:(LynxUIContext*)context {
