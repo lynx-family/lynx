@@ -6,10 +6,12 @@
 #define THIRD_PARTY_BINDING_GEN_TEST_JSBRIDGE_BINDINGS_GEN_TEST_NAPI_GEN_TEST_COMMAND_BUFFER_H_
 
 #include <map>
+#include <utility>
 
 #include "base/include/auto_reset.h"
 #include "base/include/log/logging.h"
 #include "base/include/shared_vector.h"
+#include "third_party/binding/napi/buffered_object_registration.h"
 #include "third_party/binding/napi/napi_bridge.h"
 
 namespace lynx {
@@ -25,6 +27,9 @@ using binding::NapiBridge;
 
 class NapiGenTestCommandBuffer : public Napi::ScriptWrappable {
  public:
+  using BufferedObjectRegistration =
+      binding::NapiBufferedObjectRegistration<NapiGenTestCommandBuffer>;
+
   explicit NapiGenTestCommandBuffer(const Napi::CallbackInfo&);
 
   static Napi::Value GetCommandBufferInstance(const Napi::CallbackInfo&);

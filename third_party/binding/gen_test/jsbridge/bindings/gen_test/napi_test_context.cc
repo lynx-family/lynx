@@ -122,10 +122,12 @@ NapiTestContext::NapiTestContext(const CallbackInfo& info, bool skip_init_as_bas
 NapiTestContext::~NapiTestContext() {
   // If JS context is being teared down, no need to keep the impl.
   if (static_cast<napi_env>(Env())->rt) {
-    NapiGenTestCommandBuffer::OrphanImpl(Env(), std::unique_ptr<ImplBase>(ReleaseImpl()), object_id_);
+    NapiGenTestCommandBuffer::OrphanImpl(Env(), std::unique_ptr<ImplBase>(ReleaseImpl()), object_id());
   }
+}
 
-  NapiGenTestCommandBuffer::UnregisterBufferedObject(this, object_id_);
+uint32_t NapiTestContext::object_id() const {
+  return object_registration_.id();
 }
 
 TestContext* NapiTestContext::ToImplUnsafe() {
@@ -156,13 +158,10 @@ void NapiTestContext::Init(std::unique_ptr<TestContext> impl) {
   DCHECK(!impl_);
 
   impl_ = std::move(impl);
+  object_registration_.Register(this);
+
   // We only associate and call OnWrapped() once, when we init the root base.
   impl_->AssociateWithWrapper(this);
-
-  object_id_ = NapiGenTestCommandBuffer::RegisterBufferedObject(this);
-  Napi::PropertyDescriptor js_id =
-      Napi::PropertyDescriptor::Value("__id",  Number::New(Env(), object_id_), napi_default);
-  NapiObject().DefineProperty(js_id);
 
   impl_->SetClientOnFrameCallback(
       fml::MakeCopyable([env = Env()]() {

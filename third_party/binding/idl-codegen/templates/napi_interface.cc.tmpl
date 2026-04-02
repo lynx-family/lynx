@@ -214,15 +214,11 @@ void {{napi_class}}::Init{{'Overload' + constructor.overload_index | string if c
   {% if buffer_commands %}
   // If JS context is being teared down, no need to keep the impl.
   if (static_cast<napi_env>(Env())->rt) {
-    {{command_buffer_class}}::OrphanImpl(Env(), std::unique_ptr<ImplBase>(ReleaseImpl()), object_id_);
+    {{command_buffer_class}}::OrphanImpl(Env(), std::unique_ptr<ImplBase>(ReleaseImpl()), object_id());
   }
   {% endif %}
   {% if dispose_on_destruction %}
   impl_->Dispose();
-  {% endif %}
-
-  {% if attach_native_info %}
-  {{command_buffer_class}}::UnregisterBufferedObject(this, object_id_);
   {% endif %}
 }
 {% endif %}
@@ -237,6 +233,13 @@ void {{napi_class}}::PropagateDescendantType(void* type_info) {
   DescendantTypes().push_back(type_info);
   {% endif %}
 }
+{% endif %}
+
+{% if attach_native_info and not parent_interface %}
+uint32_t {{napi_class}}::object_id() const {
+  return object_registration_.id();
+}
+
 {% endif %}
 
 {{cpp_class}}* {{napi_class}}::ToImplUnsafe() {
@@ -303,16 +306,15 @@ void {{napi_class}}::Init(std::unique_ptr<{{cpp_class}}> impl) {
   Napi{{parent_interface}}::Init(std::unique_ptr<{{parent_cpp_class}}>(impl_));
   {% else %}
   impl_ = std::move(impl);
+  {% if attach_native_info %}
+  object_registration_.Register(this);
+  {% endif %}
+
   // We only associate and call OnWrapped() once, when we init the root base.
   impl_->AssociateWithWrapper(this);
   {% endif %}
 
   {% if attach_native_info %}
-  object_id_ = {{command_buffer_class}}::RegisterBufferedObject(this);
-  Napi::PropertyDescriptor js_id =
-      Napi::PropertyDescriptor::Value("__id",  Number::New(Env(), object_id_), napi_default);
-  NapiObject().DefineProperty(js_id);
-  
   {% for attribute in attributes if attribute.is_same_object and attribute.owned_by_parent %}
   Napi{{attribute.idl_type}}::DefineProperty(Env(), NapiObject(), impl_->Get{{attribute.camel_case_name}}(), "{{attribute.name}}");
   {% endfor %}

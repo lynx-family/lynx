@@ -72,6 +72,7 @@ uint32_t NapiGenTestCommandBuffer::RegisterBufferedObject(
   // We really don't want the id to overflow. This also helps differentiate null
   // objects.
   CHECK(s_incremental_id);
+  DCHECK(wrapped);
   ObjectRegistry()[s_incremental_id] = wrapped;
   return s_incremental_id++;
 }

@@ -84,12 +84,20 @@ void {{napi_class}}::Init(std::unique_ptr<{{cpp_class}}> impl) {
   Napi{{parent_interface}}::Init(std::unique_ptr<{{parent_cpp_class}}>(impl_));
   {% else %}
   impl_ = std::move(impl);
+  {% if buffer_commands %}
+  object_registration_.Register(this);
+  {% endif %}
+
   // We only associate and call OnWrapped() once, when we init the root base.
   impl_->AssociateWithWrapper(this);
   {% endif %}
 }
 
 {% if not parent_interface %}
+uint32_t {{napi_class}}::object_id() const {
+  return object_registration_.id();
+}
+
 ImplBase* {{napi_class}}::ReleaseImpl() {
   impl_->AssociateWithWrapper(nullptr);
   return impl_.release();

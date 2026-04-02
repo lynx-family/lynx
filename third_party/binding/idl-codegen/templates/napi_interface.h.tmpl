@@ -15,6 +15,9 @@
 {% if exported %}
 #include "krypton/core/base/krypton_export.h"
 {% endif %}
+{% if attach_native_info and not parent_interface %}
+#include "jsbridge/bindings/{{component}}/napi_{{component}}_command_buffer.h"
+{% endif %}
 
 {% if impl_namespace %}
 namespace {{impl_namespace}} {
@@ -99,9 +102,14 @@ class {{'KRYPTON_EXPORT ' if exported}}{{napi_class}} : public {{'Napi' + parent
     return "{{interface_name}}";
   }
 
- {% if parent_interface and not sharing_impl or descendants %}
+ {% if (parent_interface and not sharing_impl) or descendants or (attach_native_info and not parent_interface) %}
  protected:
+  {% if parent_interface and not sharing_impl or descendants %}
   void PropagateDescendantType(void* type_info);
+  {% endif %}
+  {% if attach_native_info and not parent_interface %}
+  uint32_t object_id() const;
+  {% endif %}
  {% endif %}
 
  private:
@@ -117,9 +125,8 @@ class {{'KRYPTON_EXPORT ' if exported}}{{napi_class}} : public {{'Napi' + parent
   {% else %}
   std::unique_ptr<{{cpp_class}}> impl_;
   {% endif %}
-  {% if attach_native_info %}
-  // The unique id of this object in JS command buffer.
-  uint32_t object_id_;
+  {% if attach_native_info and not parent_interface %}
+  {{command_buffer_class}}::BufferedObjectRegistration object_registration_;
   {% endif %}
 };
 

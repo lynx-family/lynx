@@ -8,13 +8,14 @@
 // DO NOT MODIFY!
 
 // clang-format off
-#ifndef LYNX_THIRD_PARTY_BINDING_GEN_TEST_JSBRIDGE_BINDINGS_GEN_TEST_NAPI_TEST_CONTEXT_H_
-#define LYNX_THIRD_PARTY_BINDING_GEN_TEST_JSBRIDGE_BINDINGS_GEN_TEST_NAPI_TEST_CONTEXT_H_
+#ifndef THIRD_PARTY_BINDING_GEN_TEST_JSBRIDGE_BINDINGS_GEN_TEST_NAPI_TEST_CONTEXT_H_
+#define THIRD_PARTY_BINDING_GEN_TEST_JSBRIDGE_BINDINGS_GEN_TEST_NAPI_TEST_CONTEXT_H_
 
 #include <memory>
 
 #include "third_party/binding/napi/napi_bridge.h"
 #include "third_party/binding/napi/native_value_traits.h"
+#include "jsbridge/bindings/gen_test/napi_gen_test_command_buffer.h"
 
 namespace lynx {
 namespace gen_test {
@@ -63,14 +64,16 @@ class NapiTestContext : public NapiBridge {
     return "TestContext";
   }
 
+ protected:
+  uint32_t object_id() const;
+
  private:
   ImplBase* ReleaseImpl();
   std::unique_ptr<TestContext> impl_;
-  // The unique id of this object in JS command buffer.
-  uint32_t object_id_;
+  NapiGenTestCommandBuffer::BufferedObjectRegistration object_registration_;
 };
 
 }  // namespace gen_test
 }  // namespace lynx
 
-#endif  // LYNX_THIRD_PARTY_BINDING_GEN_TEST_JSBRIDGE_BINDINGS_GEN_TEST_NAPI_TEST_CONTEXT_H_
+#endif  // THIRD_PARTY_BINDING_GEN_TEST_JSBRIDGE_BINDINGS_GEN_TEST_NAPI_TEST_CONTEXT_H_

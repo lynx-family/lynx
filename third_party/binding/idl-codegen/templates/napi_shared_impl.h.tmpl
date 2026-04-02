@@ -9,6 +9,9 @@
 {% for filename in header_includes %}
 #include "{{filename}}"
 {% endfor %}
+{% if buffer_commands and not parent_interface %}
+#include "jsbridge/bindings/{{component}}/napi_{{component}}_command_buffer.h"
+{% endif %}
 
 {% if impl_namespace %}
 namespace {{impl_namespace}} {
@@ -57,6 +60,7 @@ class {{napi_class}} : public NapiBridge {
 
 {% if not parent_interface %}
  protected:
+  uint32_t object_id() const;
   ImplBase* ReleaseImpl();
 
 {% endif %}
@@ -69,6 +73,7 @@ class {{napi_class}} : public NapiBridge {
   {{cpp_class}}* impl_ = nullptr;
   {% else %}
   std::unique_ptr<{{cpp_class}}> impl_;
+  {{command_buffer_class}}::BufferedObjectRegistration object_registration_;
   {% endif %}
 };
 

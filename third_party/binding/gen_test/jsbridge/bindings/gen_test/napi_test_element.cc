@@ -124,7 +124,10 @@ void NapiTestElement::Init(const CallbackInfo& info) {
 }
 
 NapiTestElement::~NapiTestElement() {
-  NapiGenTestCommandBuffer::UnregisterBufferedObject(this, object_id_);
+}
+
+uint32_t NapiTestElement::object_id() const {
+  return object_registration_.id();
 }
 
 TestElement* NapiTestElement::ToImplUnsafe() {
@@ -155,13 +158,10 @@ void NapiTestElement::Init(std::unique_ptr<TestElement> impl) {
   DCHECK(!impl_);
 
   impl_ = std::move(impl);
+  object_registration_.Register(this);
+
   // We only associate and call OnWrapped() once, when we init the root base.
   impl_->AssociateWithWrapper(this);
-
-  object_id_ = NapiGenTestCommandBuffer::RegisterBufferedObject(this);
-  Napi::PropertyDescriptor js_id =
-      Napi::PropertyDescriptor::Value("__id",  Number::New(Env(), object_id_), napi_default);
-  NapiObject().DefineProperty(js_id);
 }
 
 Value NapiTestElement::GetContextMethod(const CallbackInfo& info) {
