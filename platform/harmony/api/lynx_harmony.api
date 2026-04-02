@@ -577,6 +577,7 @@ export class ExtensionModule {
   nativeOnTemplateLoad(url: stirng): void;
   nativeGetExtensionDelegatePtr(): number[];
   nativeDestroy(): void;
+  nativeRegisterService(type: string, service: Object): void;
 }
 
 export interface EventHandler {

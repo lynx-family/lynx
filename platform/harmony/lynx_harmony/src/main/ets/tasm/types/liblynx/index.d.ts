@@ -329,12 +329,14 @@ export class ExtensionModule {
   constructor(uiDelegate: number[])
 
   nativeSetup(): void;
-  
+
   nativeOnTemplateLoad(url : stirng) : void;
 
   nativeGetExtensionDelegatePtr(): number[];
 
   nativeDestroy(): void;
+
+  nativeRegisterService(type: string, service: Object): void;
 }
 
 export class LynxRuntimeWrapper {
