@@ -129,6 +129,17 @@ common_lynx_public_headers =
                     "ui/LUIErrorHandling.h",
                     "LynxViewEnum.h",
                     "LynxLifecycleDispatcher.h",
+                    "../LynxTemplateData+Converter.h",
+                    "../LynxErrorReceiverProtocol.h",
+                    "../LynxEnv+Internal.h",
+                    "../performance/LynxPerformanceController.h",
+                    "../performance/memory/LynxMemoryMonitorProtocol.h",
+                    "../performance/timing/LynxTimingCollectorProtocol.h",
+                    "../performance/memory/LynxMemoryRecord.h",
+                    "../performance/fsp/LynxFSPTracer.h",
+                    "../performance/fsp/LynxMeaningfulContentSnapshot.h",
+                    "../devtool_wrapper/LynxDevtool.h",
+                    "../devtool_wrapper/LynxBaseInspectorController.h",
                   ],
                   "abspath")
 

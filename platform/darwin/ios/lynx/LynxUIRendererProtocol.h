@@ -11,6 +11,8 @@
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxUIMethodProcessor.h>
+
+#if defined(__cplusplus)
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -147,4 +149,5 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
+#endif  // __cplusplus
 #endif  // PLATFORM_DARWIN_IOS_LYNX_LYNXUIRENDERERPROTOCOL_H_
