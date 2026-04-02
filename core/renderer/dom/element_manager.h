@@ -1111,6 +1111,9 @@ class ElementManager : public ElementContextDelegate,
   bool FixDynamicUpdateTransitionConsumeBug() const {
     return fix_dynamic_update_transition_consume_bug_;
   }
+  bool FixFilterDynamicUpdateBug() const {
+    return fix_filter_dynamic_update_bug_;
+  }
 
   bool FixListCallbackLeakFlag() const { return fix_list_callback_leak_flag_; }
   bool FixNewFixedRemovalBug() const { return fix_new_fixed_removal_bug_; }
@@ -1306,6 +1309,7 @@ class ElementManager : public ElementContextDelegate,
   bool fix_new_animator_flush_bug_{true};
   bool fix_radon_inline_convert_bug_{true};
   bool fix_dynamic_update_transition_consume_bug_{true};
+  bool fix_filter_dynamic_update_bug_{false};
   bool fix_new_fixed_removal_bug_{true};
   bool fix_old_fixed_insert_self_use_render_parent_{false};
   bool fix_animation_forward_dynamic_update_overwrite_{true};

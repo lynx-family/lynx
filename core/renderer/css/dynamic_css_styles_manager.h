@@ -99,8 +99,13 @@ class DynamicCSSStylesManager {
       Element* element, starlight::DirectionType direction,
       const CSSValue& text_align_value);
 
+  // `fix_filter_dynamic_update_bug` is a temporary rollout guard for this
+  // viewport-update fix. Remove the setting after the behavior is validated in
+  // release, and replace the fallback with precise parsing of structured
+  // values such as filter.
   static StyleUpdateFlags GetValueFlags(CSSPropertyID id, const CSSValue& value,
-                                        bool unify_vw_vh_behavior);
+                                        bool unify_vw_vh_behavior,
+                                        bool fix_filter_dynamic_update_bug);
 };
 
 }  // namespace tasm

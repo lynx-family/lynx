@@ -38,7 +38,8 @@ const std::unordered_set<CSSPropertyID>& GetDefaultInheritableProps() {
   return *kDefaultInheritableProps;
 }
 
-const std::unordered_set<CSSPropertyID>& GetComplexDynamicProps() {
+const std::unordered_set<CSSPropertyID>& GetComplexDynamicProps(
+    bool fix_filter_dynamic_update_bug) {
   const static base::NoDestructor<std::unordered_set<CSSPropertyID>>
       kComplexDynamicProps(std::unordered_set<CSSPropertyID>{
           kPropertyIDTransformOrigin,
@@ -61,6 +62,33 @@ const std::unordered_set<CSSPropertyID>& GetComplexDynamicProps() {
           kPropertyIDGridTemplateRows,
           kPropertyIDGridTemplateColumns,
       });
+
+  const static base::NoDestructor<std::unordered_set<CSSPropertyID>>
+      kComplexDynamicPropsWithFilter(std::unordered_set<CSSPropertyID>{
+          kPropertyIDTransformOrigin,
+          kPropertyIDBackgroundSize,
+          kPropertyIDBackgroundPosition,
+          kPropertyIDBorderRadius,
+          kPropertyIDBorderTopLeftRadius,
+          kPropertyIDBorderTopRightRadius,
+          kPropertyIDBorderBottomLeftRadius,
+          kPropertyIDBorderBottomRightRadius,
+          kPropertyIDBorderStartStartRadius,
+          kPropertyIDBorderStartEndRadius,
+          kPropertyIDBorderEndEndRadius,
+          kPropertyIDBorderEndStartRadius,
+          kPropertyIDTransform,
+          kPropertyIDBoxShadow,
+          kPropertyIDTextShadow,
+          kPropertyIDGridAutoRows,
+          kPropertyIDGridAutoColumns,
+          kPropertyIDGridTemplateRows,
+          kPropertyIDGridTemplateColumns,
+          kPropertyIDFilter,
+      });
+  if (fix_filter_dynamic_update_bug) {
+    return *kComplexDynamicPropsWithFilter;
+  }
   return *kComplexDynamicProps;
 }
 
@@ -117,7 +145,8 @@ void DynamicCSSStylesManager::UpdateDirectionAwareDefaultStyles(
 
 DynamicCSSStylesManager::StyleUpdateFlags
 DynamicCSSStylesManager::GetValueFlags(CSSPropertyID id, const CSSValue& value,
-                                       bool unify_vw_vh_behavior) {
+                                       bool unify_vw_vh_behavior,
+                                       bool fix_filter_dynamic_update_bug) {
   DynamicCSSStylesManager::StyleUpdateFlags flags =
       DynamicCSSStylesManager::kNoUpdate;
 
@@ -182,10 +211,12 @@ DynamicCSSStylesManager::GetValueFlags(CSSPropertyID id, const CSSValue& value,
     case CSSValuePattern::SP:
       flags |= DynamicCSSStylesManager::kUpdateFontScale;
     default:
-      // TODO: Currently always recompute complex properties, we can
-      // struturelize the properties before passing it to computed style in
-      // future.
-      if (GetComplexDynamicProps().count(id)) {
+      // TODO: This is a temporary fallback for structured properties such as
+      // filter. We do not parse nested values here yet, so complex properties
+      // have to be marked dynamic as a whole. The long-term fix is to inspect
+      // the parsed value and set only the relevant flags when units such as
+      // vw/vh/rpx are actually present.
+      if (GetComplexDynamicProps(fix_filter_dynamic_update_bug).count(id)) {
         flags = DynamicCSSStylesManager::kUpdateScreenMetrics |
                 DynamicCSSStylesManager::kUpdateEm |
                 DynamicCSSStylesManager::kUpdateRem |

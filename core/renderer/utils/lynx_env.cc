@@ -624,6 +624,10 @@ bool LynxEnv::EnableFetchAPIStreamingStandard() {
   return GetBoolEnv(Key::ENABLE_FETCH_API_STANDARD_STREAMING, false);
 }
 
+bool LynxEnv::FixFilterDynamicUpdateBug() {
+  return GetBoolEnv(Key::FIX_FILTER_DYNAMIC_UPDATE_BUG, true);
+}
+
 bool LynxEnv::FixNewFixedRemovalBug() {
   return GetBoolEnv(Key::FIX_NEW_FIXED_REMOVAL_BUG, true);
 }

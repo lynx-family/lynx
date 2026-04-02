@@ -3341,7 +3341,8 @@ void FiberElement::CheckDynamicUnit(CSSPropertyID id, const CSSValue &value,
 
   dynamic_style_flags_ |= DynamicCSSStylesManager::GetValueFlags(
       id, value,
-      element_manager()->GetDynamicCSSConfigs().unify_vw_vh_behavior_);
+      element_manager()->GetDynamicCSSConfigs().unify_vw_vh_behavior_,
+      element_manager()->FixFilterDynamicUpdateBug());
 }
 
 bool FiberElement::CheckHasInvalidationForId(const std::string &old_id,
@@ -3464,7 +3465,8 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
             }
 
             auto new_flags = DynamicCSSStylesManager::GetValueFlags(
-                id, value, css_config.unify_vw_vh_behavior_);
+                id, value, css_config.unify_vw_vh_behavior_,
+                element_manager()->FixFilterDynamicUpdateBug());
 
             if ((new_flags & (style | ((dirty_ & kDirtyFontSize)
                                            ? DynamicCSSStylesManager::kUpdateEm
