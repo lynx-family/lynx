@@ -50,6 +50,8 @@ public class ImageRequestInfo {
 
   private boolean mEnableReportInfo = false;
 
+  private boolean mCacheKeyPathOnly = false;
+
   private float mImageSRScale = 0;
 
   // Whether an image needs premultiplication: Libraries like Fresco default to premultiplying
@@ -84,6 +86,7 @@ public class ImageRequestInfo {
     mEnableSmoothAnimation = builder.isEnableSmoothAnimation();
     mEnableProgressiveRendering = builder.isEnableProgressiveRendering();
     mEnableReportInfo = builder.isEnableReportInfo();
+    mCacheKeyPathOnly = builder.isCacheKeyPathOnly();
     mImageSRScale = builder.getmImageSRScale();
   }
 
@@ -169,6 +172,10 @@ public class ImageRequestInfo {
 
   public boolean isEnableReportInfo() {
     return mEnableReportInfo;
+  }
+
+  public boolean isCacheKeyPathOnly() {
+    return mCacheKeyPathOnly;
   }
 
   public float getImageSRScale() {

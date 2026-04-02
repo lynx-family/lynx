@@ -51,6 +51,8 @@ public class ImageRequestInfoBuilder {
 
   private boolean mEnableReportInfo = false;
 
+  private boolean mCacheKeyPathOnly = false;
+
   private Map<String, String> mImageCustomParams;
 
   private float mImageSRScale = 0;
@@ -244,6 +246,15 @@ public class ImageRequestInfoBuilder {
 
   public boolean isEnableReportInfo() {
     return mEnableReportInfo;
+  }
+
+  public ImageRequestInfoBuilder setCacheKeyPathOnly(boolean enable) {
+    this.mCacheKeyPathOnly = enable;
+    return this;
+  }
+
+  public boolean isCacheKeyPathOnly() {
+    return mCacheKeyPathOnly;
   }
 
   public ImageRequestInfoBuilder setImageCustomParam(Map<String, String> imageCustomParam) {

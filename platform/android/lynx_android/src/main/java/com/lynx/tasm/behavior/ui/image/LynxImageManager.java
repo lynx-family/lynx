@@ -240,6 +240,8 @@ public class LynxImageManager implements Drawable.Callback {
 
   private float mImageSRScale = 0;
 
+  private boolean mCacheKeyPathOnly = false;
+
   private static class ImageRequestHandle implements ImageLoadListener {
     private final ImageLoadListener mSrcLoadListenerImpl;
     private final ArrayList<Runnable> mRunnableList = new ArrayList<>();
@@ -726,6 +728,9 @@ public class LynxImageManager implements Drawable.Callback {
         case PropsConstants.IMAGE_SUPER_RESOLUTION_SCALE:
           setImageSRScale((float) props.getDouble(name, 0.0));
           break;
+        case PropsConstants.ANDROID_CACHE_KEY_PATH_ONLY:
+          setCacheKeyPathOnly(props.getBoolean(name, false));
+          break;
       }
     }
     updateRedirectCheckResult();
@@ -999,7 +1004,8 @@ public class LynxImageManager implements Drawable.Callback {
         .setEnableResourceHint(mEnableResourceHint)
         .setSmoothAnimation(mEnableSmoothAnimation)
         .setProgressiveRendering(mEnableProgressiveRendering)
-        .setEnableReportInfo(mEnableReportInfo);
+        .setEnableReportInfo(mEnableReportInfo)
+        .setCacheKeyPathOnly(mCacheKeyPathOnly);
 
     if (mImageSRScale > 0.0f) {
       builder.setImageSRScale(mImageSRScale);
@@ -1416,5 +1422,9 @@ public class LynxImageManager implements Drawable.Callback {
 
   private void setImageSRScale(float scale) {
     mImageSRScale = scale;
+  }
+
+  private void setCacheKeyPathOnly(boolean enable) {
+    mCacheKeyPathOnly = enable;
   }
 }

@@ -197,6 +197,7 @@ public class PropsConstants {
   public static final String DEFER_SRC_INVALIDATION = "defer-src-invalidation";
   public static final String AUTO_PLAY = "autoplay";
   public static final String ANDROID_IMAGE_SIMPLE_KEY = "android-simple-cache-key";
+  public static final String ANDROID_CACHE_KEY_PATH_ONLY = "android-cache-key-path-only";
   public static final String TINT_COLOR = "tint-color";
   public static final String ENABLE_REUSE_ANIMATION_STATE = "enable-reuse-animation-state";
   public static final String LIST = "list";
