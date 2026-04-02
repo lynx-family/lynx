@@ -6,6 +6,8 @@ export { openSchema, navigateTo, navigateBack } from './navigation';
 
 export { AppContextProvider, useTheme, useSafeArea } from './context';
 
+export { getRecentUrls, addRecentUrl, clearRecentUrls } from './recentHistory';
+
 export type {
   ThemePreference,
   ResolvedTheme,
