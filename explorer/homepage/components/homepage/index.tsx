@@ -13,7 +13,14 @@ import ScanIconDark from '@assets/images/scan-dark.png?inline';
 import ScanIcon from '@assets/images/scan.png?inline';
 import ShowcaseIcon from '@assets/images/showcase.png?inline';
 import type { InputEvent } from '../../typing';
-import { openSchema, navigateTo, useTheme, useSafeArea } from '@explorer/lib';
+import {
+  openSchema,
+  navigateTo,
+  useTheme,
+  useSafeArea,
+  getRecentUrls,
+  clearRecentUrls,
+} from '@explorer/lib';
 
 interface HomePageProps {
   showPage: boolean;
@@ -23,6 +30,7 @@ export default function HomePage(props: HomePageProps) {
   const { resolved, withTheme } = useTheme();
   const safeArea = useSafeArea();
   const [inputValue, setInputValue] = useState('');
+  const [recentUrls, setRecentUrls] = useState<string[]>(() => getRecentUrls());
 
   const icons = {
     Scan: { dark: ScanIconDark, light: ScanIcon },
@@ -39,6 +47,7 @@ export default function HomePage(props: HomePageProps) {
     'background only';
     if (inputValue && inputValue.length > 0) {
       openSchema(inputValue);
+      setRecentUrls(getRecentUrls());
     }
   };
 
@@ -58,6 +67,18 @@ export default function HomePage(props: HomePageProps) {
     setInputValue(currentValue);
   };
 
+  const handleClearRecent = () => {
+    'background only';
+    clearRecentUrls();
+    setRecentUrls([]);
+  };
+
+  const handleOpenRecent = (url: string) => {
+    'background only';
+    openSchema(url);
+    setRecentUrls(getRecentUrls());
+  };
+
   const getIcon = (name: keyof typeof icons) => icons[name][resolved];
   const getTextColor = () => (resolved === 'dark' ? '#FFFFFF' : '#000000');
 
@@ -68,8 +89,8 @@ export default function HomePage(props: HomePageProps) {
   const navigatorHeight = 48 + safeArea.bottom;
 
   return (
-    <view
-      clip-radius="true"
+    <scroll-view
+      scroll-y
       className={withTheme('page')}
       style={{ height: `calc(100% - ${navigatorHeight}px)` }}
     >
@@ -146,6 +167,43 @@ export default function HomePage(props: HomePageProps) {
           <image src={getIcon('Forward')} className="forward-icon" />
         </view>
       </view>
-    </view>
+
+      {recentUrls.length > 0 && (
+        <view className={withTheme('recent-panel')}>
+          <view className="recent-header">
+            <text className={withTheme('recent-title')}>Recently Opened</text>
+            <text
+              className={withTheme('recent-clear')}
+              bindtap={handleClearRecent}
+              accessibility-element={true}
+              accessibility-label="Clear recent history"
+              accessibility-traits="button"
+            >
+              Clear
+            </text>
+          </view>
+          {recentUrls.map((url) => (
+            <view
+              key={url}
+              className={withTheme('recent-item')}
+              bindtap={() => handleOpenRecent(url)}
+              accessibility-element={true}
+              accessibility-label={`Open ${url}`}
+              accessibility-traits="button"
+            >
+              <text
+                className={withTheme('recent-url')}
+                accessibility-element={false}
+              >
+                {url}
+              </text>
+              <view style="margin: auto 5% auto auto; justify-content: center">
+                <image src={getIcon('Forward')} className="forward-icon" />
+              </view>
+            </view>
+          ))}
+        </view>
+      )}
+    </scroll-view>
   );
 }
