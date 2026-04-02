@@ -299,8 +299,8 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 - (void)setContentOffset:(CGPoint)contentOffset {
 }
 
-- (float)memoryUsageKB {
-  return malloc_size((__bridge void*)self) / 1024.f;
+- (int64_t)memoryUsageBytes {
+  return (int64_t)malloc_size((__bridge void*)self);
 }
 
 - (NSDictionary<NSString*, NSString*>*)memoryUsageDetail {
