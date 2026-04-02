@@ -9,14 +9,25 @@ lynx_core_source_set("lepus_cmd") {
   include_dirs = [ "//third_party" ]
 
   sources = [
+    "cbor_codec.cc",
+    "cbor_codec.h",
+    "ipc_protocol.cc",
+    "ipc_protocol.h",
     "lepus_cmd.cc",
     "lepus_cmd.h",
+    "lepus_cmd_ipc.cc",
+    "lepus_cmd_ipc.h",
   ]
 
   if (is_oliver) {
     public_deps = [ "../../../third_party/quickjs:quickjs" ]
   }
-  deps = [ "../../../third_party/rapidjson:rapidjson" ]
+  deps = [
+    "../../../third_party/rapidjson:rapidjson",
+    "../../template_bundle:template_bundle_converter",
+    "binary_decoder:binary_decoder",
+    "binary_encoder:binary_encoder",
+  ]
 }
 
 lynx_core_source_set("lepus_compile") {

@@ -7,10 +7,15 @@
 
 #include <dirent.h>
 
+#include <fstream>
 #include <memory>
 #include <system_error>
+#include <vector>
 
+#include "core/template_bundle/lynx_template_bundle_converter.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
+#include "core/template_bundle/template_codec/lepus_cmd_ipc.h"
 
 namespace {
 auto CreateJsonDocumentForCompile(
@@ -143,6 +148,58 @@ auto GetAbsFolderPathFromPath(const std::string& option_path) {
   return res;
 }
 
+bool ReadTextFile(const std::string& file_path, std::string& out) {
+  std::ifstream input(file_path, std::ios::in);
+  if (!input.is_open()) {
+    return false;
+  }
+  out.assign(std::istreambuf_iterator<char>(input),
+             std::istreambuf_iterator<char>());
+  return true;
+}
+
+bool ReadBinaryFile(const std::string& file_path, std::vector<uint8_t>& out) {
+  std::ifstream input(file_path, std::ios::in | std::ios::binary);
+  if (!input.is_open()) {
+    return false;
+  }
+  input.seekg(0, std::ios::end);
+  const auto size = input.tellg();
+  if (size < 0) {
+    return false;
+  }
+  out.resize(static_cast<size_t>(size));
+  input.seekg(0, std::ios::beg);
+  if (!out.empty()) {
+    input.read(reinterpret_cast<char*>(out.data()),
+               static_cast<std::streamsize>(out.size()));
+  }
+  return input.good() || input.eof();
+}
+
+bool WriteTextFile(const std::string& file_path, const std::string& content) {
+  std::ofstream output(file_path, std::ios::out | std::ios::trunc);
+  if (!output.is_open()) {
+    return false;
+  }
+  output << content;
+  return output.good();
+}
+
+bool WriteBinaryFile(const std::string& file_path,
+                     const std::vector<uint8_t>& content) {
+  std::ofstream output(file_path,
+                       std::ios::out | std::ios::binary | std::ios::trunc);
+  if (!output.is_open()) {
+    return false;
+  }
+  if (!content.empty()) {
+    output.write(reinterpret_cast<const char*>(content.data()),
+                 static_cast<std::streamsize>(content.size()));
+  }
+  return output.good();
+}
+
 }  // anonymous namespace
 
 namespace lynx {
@@ -252,11 +309,94 @@ std::string MakeEncodeOptionsFromArgs(int args, char** argv) {
 }  // namespace lynx
 
 int main(int argc, char** argv) {
-  // put speedy's input here.
-  const auto compile_options = "";
-  lynx::tasm::EncodeResult res = lynx::tasm::encode(compile_options);
-  LOGI("Encode status: " << res.status
-                         << ". And error message is: " << res.error_msg);
+  auto has_option = [argc, argv](const std::string& option) {
+    auto first = argv;
+    auto last = argv + argc;
+    return std::find(first, last, option) != last;
+  };
+  auto parse_option = [argc, argv](const std::string& option) {
+    auto first = argv;
+    auto last = argv + argc;
+    auto it = std::find(first, last, option);
+    if (it != last && ++it != last) {
+      return std::string{*it};
+    }
+    return std::string{};
+  };
+
+  const auto mode = parse_option("--mode");
+  if (mode == "ipc") {
+    // Run in IPC mode using stdin/stdout with CBOR protocol
+    lynx::lepus_cmd::RunIpcMode();
+    return 0;
+  }
+  if (mode == "decode") {
+    const auto input_path = parse_option("--input");
+    const auto output_path = parse_option("--output");
+    if (input_path.empty() || output_path.empty()) {
+      std::cerr << "decode mode requires --input <binary> and --output <json>"
+                << std::endl;
+      return 1;
+    }
+
+    std::vector<uint8_t> binary;
+    if (!ReadBinaryFile(input_path, binary)) {
+      std::cerr << "cannot read input file: " << input_path << std::endl;
+      return 2;
+    }
+
+    auto reader = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(binary);
+    if (!reader.Decode()) {
+      std::cerr << "decode failed: " << reader.error_message_ << std::endl;
+      return 3;
+    }
+    auto bundle = reader.GetTemplateBundle();
+    const auto result = lynx::tasm::LynxTemplateBundleConverter::
+        ConvertTemplateBundleToSerializedString(bundle);
+    if (!WriteTextFile(output_path, result)) {
+      std::cerr << "cannot write output file: " << output_path << std::endl;
+      return 4;
+    }
+    std::cout << "decode success: " << output_path << std::endl;
+    return 0;
+  }
+
+  std::string encode_options;
+  if (!parse_option("--input").empty()) {
+    const auto input_path = parse_option("--input");
+    if (!ReadTextFile(input_path, encode_options)) {
+      std::cerr << "cannot read input file: " << input_path << std::endl;
+      return 1;
+    }
+  } else {
+    // Backward compatible mode:
+    // use --path/--ttml/--config/--snapshot/... to generate encode options.
+    encode_options = lynx::lepus_cmd::MakeEncodeOptionsFromArgs(argc, argv);
+  }
+
+  auto encode_result = lynx::tasm::encode(encode_options);
+  if (encode_result.status != 0) {
+    std::cerr << "encode failed, status=" << encode_result.status
+              << ", error=" << encode_result.error_msg << std::endl;
+    return 2;
+  }
+
+  const auto output_path = parse_option("--output");
+  if (!output_path.empty()) {
+    if (!WriteBinaryFile(output_path, encode_result.buffer)) {
+      std::cerr << "cannot write output file: " << output_path << std::endl;
+      return 3;
+    }
+    std::cout << "encode success: " << output_path
+              << ", bytes=" << encode_result.buffer.size() << std::endl;
+  } else if (has_option("--mode")) {
+    std::cerr << "encode mode requires --output <binary>" << std::endl;
+    return 1;
+  } else {
+    std::cout << "encode success, bytes=" << encode_result.buffer.size()
+              << " (missing --output, nothing written)" << std::endl;
+  }
+  return 0;
 }
 
 #endif  // __EMSCRIPTEN__

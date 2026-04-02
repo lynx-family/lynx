@@ -141,7 +141,11 @@ if (build_lynx_lepus_node) {
             "",
             "Threads::Threads",
           ] ]
-      libs = [ "stdc++" ]
+      if (is_mac) {
+        libs = [ "c++" ]
+      } else {
+        libs = [ "stdc++" ]
+      }
     }
   }
 

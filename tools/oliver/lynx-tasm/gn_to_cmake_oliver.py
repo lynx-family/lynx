@@ -23,6 +23,7 @@ ROOT_PATH = os.path.join(CUR_FILE_DIR, '..', '..', '..')
 
 machine = platform.machine().lower()
 machine = "x64" if machine == "x86_64" else machine
+DEFAULT_TARGET = '//oliver/lynx-tasm:lepus_cmd_exec'
 
 def copy_cmake_files(main_target):
   target_path = main_target.split(':')[0].replace('//', '')
@@ -63,7 +64,14 @@ def generate(main_target, cmake_version, project_name, platform, debug):
   return r
 
 def main():
-  main_target = '//oliver/lynx-tasm:lepus_cmd_exec'
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      '--main-target',
+      default=DEFAULT_TARGET,
+      help='GN cmake target, for example //oliver/lynx-tasm:lepus_cmd_exec')
+  args = parser.parse_args()
+
+  main_target = args.main_target
   cmake_version = '3.0'
   project_name = 'lepus'
   platform = 'darwin'

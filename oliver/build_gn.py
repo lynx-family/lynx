@@ -21,7 +21,7 @@ def gn_clean(root_path):
   result = subprocess.check_call(command, shell=True)
   return result
 
-def gen_build_file(platform, arch, debug, root_path, type, sysroot):
+def gen_build_file(platform, arch, debug, root_path, type, sysroot, build_executable):
   gn_path = os.path.join(root_path, 'buildtools', 'gn', 'gn')
   output_path = os.path.join(root_path, 'out', 'Default')
   is_debug = 'false'
@@ -51,6 +51,8 @@ def gen_build_file(platform, arch, debug, root_path, type, sysroot):
     
   if len(arch) > 0:
     args += " target_cpu=\\\"%s\\\"" % (arch)
+  if build_executable:
+    args += ' compile_lepus_cmd=true'
 
   command = "{} gen {} --args=\"{}\"".format(gn_path, output_path, args)
   print(command)
@@ -92,6 +94,12 @@ def get_output_name(type):
     output_name = 'lynx_testing.node'
   return output_name
 
+def get_executable_output_name(type):
+  output_name = ''
+  if type == 'tasm':
+    output_name = 'lepus_cmd'
+  return output_name
+
 def copy_target(folder_name, arch, debug, root_path, type):
   dst_name = 'Release'
   if debug:
@@ -106,6 +114,24 @@ def copy_target(folder_name, arch, debug, root_path, type):
   src_path = os.path.join(root_path, 'out', 'Default', 'oliver', output_name)
   if not os.path.exists(dst_path):
     os.makedirs(dst_path)
+  shutil.copy(src_path, dst_path)
+
+def copy_executable_target(folder_name, arch, debug, root_path, type):
+  dst_name = 'Release'
+  if debug:
+    dst_name = 'Debug'
+  type_path = get_type_path(type)
+  output_name = get_executable_output_name(type)
+  dst_path = os.path.join(root_path, 'oliver', type_path, 'build', folder_name, dst_name)
+  if len(arch) > 0:
+    dst_path = os.path.join(dst_path, arch)
+  if os.path.exists(os.path.join(dst_path, output_name)):
+    os.remove(os.path.join(dst_path, output_name))
+  src_path = os.path.join(root_path, 'out', 'Default', output_name)
+  if not os.path.exists(dst_path):
+    os.makedirs(dst_path)
+  print("src_path:",src_path);
+  print("dst_path:",dst_path);
   shutil.copy(src_path, dst_path)
 
 def copy_wasm_target(root_path, type):
@@ -125,13 +151,13 @@ def copy_wasm_target(root_path, type):
   shutil.copy(js_src_path, dst_root_path)
   shutil.copy(typing_src_path, dst_root_path)
 
-def build_target(platform, arch, debug, root_path, show_log, type, need_clean, sysroot):
+def build_target(platform, arch, debug, root_path, show_log, type, need_clean, sysroot, build_executable):
   if need_clean:
     result = gn_clean(root_path)
     if result != 0:
       return result
 
-  result = gen_build_file(platform, arch, debug, root_path, type, sysroot)
+  result = gen_build_file(platform, arch, debug, root_path, type, sysroot, build_executable)
   if result != 0:
     return result
 
@@ -141,12 +167,12 @@ def build_target(platform, arch, debug, root_path, show_log, type, need_clean, s
 
   return 0
 
-def merge_file(folder_name, debug, root_path, type):
+def merge_file(folder_name, debug, root_path, type, build_executable):
   dst_name = 'Release'
   if debug:
     dst_name = 'Debug'
   type_path = get_type_path(type)
-  output_name = get_output_name(type)
+  output_name = get_executable_output_name(type) if build_executable else get_output_name(type)
   dst_root_path = os.path.join(root_path, 'oliver', type_path, 'build', folder_name, dst_name)
   arm64_path = os.path.join(dst_root_path, 'arm64', output_name)
   x86_64_path = os.path.join(dst_root_path, 'x64', output_name)
@@ -158,45 +184,61 @@ def merge_file(folder_name, debug, root_path, type):
     return -1
   return subprocess.check_call(command, shell=True)
 
-def build(system, debug, root_path, show_log, type, is_wasm, need_clean, is_local, sysroot):
+def build(system, debug, root_path, show_log, type, is_wasm, need_clean, is_local, sysroot, build_executable):
+  if build_executable and type != 'tasm':
+    print("executable build only supports type=tasm")
+    return -1
+
   # TODO(wangqingyu): remove wasm build when is_local after bumping up lynx-speedy
   if is_wasm:
     system = platform.system().lower()
-    result = build_target(system, 'wasm', debug, root_path, show_log, type, need_clean, sysroot)
+    result = build_target(system, 'wasm', debug, root_path, show_log, type, need_clean, sysroot, build_executable)
     if result != 0:
       return result
     copy_wasm_target(root_path, type)
   else:
     if system == 'darwin':
-      result = build_target(system, machine, debug, root_path, show_log, type, need_clean, sysroot)
+      result = build_target(system, machine, debug, root_path, show_log, type, need_clean, sysroot, build_executable)
       if result != 0:
         return result
       if is_local:
         # Copy to oliver/{type}/build/{system}/{type}.node
         # Without the machine folder
-        copy_target(system, '', debug, root_path, type)
+        if build_executable:
+          copy_executable_target(system, '', debug, root_path, type)
+        else:
+          copy_target(system, '', debug, root_path, type)
         return 0
       # Copy to oliver/{type}/build/{system}/{machine}/{type}.node
       # For merging with other targets
-      copy_target(system, machine, debug, root_path, type)
+      if build_executable:
+        copy_executable_target(system, machine, debug, root_path, type)
+      else:
+        copy_target(system, machine, debug, root_path, type)
       # For darwin release build, need build not only for current machine, but also for the other machine
       # TODO(wangqingyu): chaning other_machine to list if darwin has more supported machine
       other_machine = [m for m in ['x64', 'arm64'] if m != machine][0]
-      result = build_target(system, other_machine, debug, root_path, show_log, type, need_clean, sysroot)
+      result = build_target(system, other_machine, debug, root_path, show_log, type, need_clean, sysroot, build_executable)
       if result != 0:
         return result
-      copy_target(system, other_machine, debug, root_path, type)
+      if build_executable:
+        copy_executable_target(system, other_machine, debug, root_path, type)
+      else:
+        copy_target(system, other_machine, debug, root_path, type)
       # Uses `lipo` to get merge multiple target for different machine
       # to get a universal binary that support all machine
-      result = merge_file(system, debug, root_path, type)
+      result = merge_file(system, debug, root_path, type, build_executable)
       if result != 0:
         return result
       return 0
     elif system == 'linux':
-      result = build_target(system, '', debug, root_path, show_log, type, need_clean, sysroot)
+      result = build_target(system, '', debug, root_path, show_log, type, need_clean, sysroot, build_executable)
       if result != 0:
         return result
-      copy_target(system, '', debug, root_path, type)
+      if build_executable:
+        copy_executable_target(system, '', debug, root_path, type)
+      else:
+        copy_target(system, '', debug, root_path, type)
     else:
       return -1
   return 0
@@ -210,6 +252,7 @@ def parse_args():
   parser.add_argument('--local', type=bool, default=False, help='Build for local CPU architecture. Only has effects on the Darwin system')
   parser.add_argument('--show_log', type=bool, default=False, help='Output compilation log')
   parser.add_argument('--wasm', type=bool, default=False, help='Build wasm product')
+  parser.add_argument('--executable', type=bool, default=False, help='Build executable product for supported type')
   parser.add_argument('--sysroot', type=str, default='', help='Custom sysroot for build on linux')
   return parser.parse_args()
 
@@ -221,12 +264,13 @@ def main():
   need_clean = args.clean
   is_debug = args.debug
   is_wasm = args.wasm
+  build_executable = args.executable
   is_local = args.local
   sysroot = args.sysroot
 
   file_path = os.path.dirname(os.path.abspath(__file__))
   root_path = os.path.join(file_path, '..')
-  result = build(platform, is_debug, root_path, is_show_log, type, is_wasm, need_clean, is_local, sysroot)
+  result = build(platform, is_debug, root_path, is_show_log, type, is_wasm, need_clean, is_local, sysroot, build_executable)
   if result != 0:
     return result
   return 0
