@@ -8,6 +8,7 @@
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxViewEnum.h>
+#if defined(__cplusplus)
 #include "core/shell/ios/js_proxy_darwin.h"
 #include "core/shell/ios/lynx_layout_proxy_darwin.h"
 
@@ -34,9 +35,12 @@
 @property(nonatomic, assign) int32_t instanceId;
 
 - (nonnull instancetype)initWithContainerView:(id<LUIBodyView> _Nullable)containerView;
+
 - (void)setJSProxy:(const std::shared_ptr<lynx::shell::JSProxyDarwin>&)proxy;
 - (void)setLayoutProxy:(const std::shared_ptr<lynx::shell::LynxLayoutProxyDarwin>&)layout_proxy;
 
 - (nullable NSDictionary*)extentionModules;
 
 @end
+
+#endif
