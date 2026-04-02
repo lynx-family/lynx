@@ -134,3 +134,86 @@
   height: 32px;
   width: 32px;
 }
+
+// Recently Opened panel
+
+.recent-panel__light {
+  @include box;
+  flex-direction: column;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  background: var(--box-light);
+}
+
+.recent-panel__dark {
+  @include box;
+  flex-direction: column;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  background: var(--box-dark);
+}
+
+.recent-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 5% 4px 5%;
+}
+
+.recent-title__light {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.recent-title__dark {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.recent-clear__light {
+  font-size: 13px;
+  color: #ff351a;
+}
+
+.recent-clear__dark {
+  font-size: 13px;
+  color: #ff6448;
+}
+
+@mixin recent-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 44px;
+  margin: 0 5%;
+  border-width: 1px 0 0 0;
+}
+
+.recent-item__light {
+  @include recent-item;
+  border-color: #0000000d;
+}
+
+.recent-item__dark {
+  @include recent-item;
+  border-color: #ffffff0d;
+}
+
+@mixin recent-url {
+  font-size: 13px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.recent-url__light {
+  @include recent-url;
+  color: var(--sub-title-light);
+}
+
+.recent-url__dark {
+  @include recent-url;
+  color: var(--sub-title-dark);
+}
