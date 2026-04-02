@@ -3,7 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 #import <Foundation/Foundation.h>
 #if TARGET_OS_IOS
-#import <Lynx/LynxDevtool.h>
+// #import <Lynx/LynxDevtool.h>
+@class LynxDevtool;
 #endif
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxView.h>
