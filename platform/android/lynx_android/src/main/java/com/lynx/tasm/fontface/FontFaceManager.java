@@ -92,16 +92,24 @@ public class FontFaceManager {
     }
   }
 
+  public interface FontFacePrefetchListener {
+    void onComplete(int code, String msg);
+  }
+
   /**
-   * Prefetch font with url.
+   * Prefetch font with url and listener.
    *
    * @param context
    * @param url
    * @param params
+   * @param listener
    */
-  public void prefetchFont(
-      final LynxContext context, final String url, @Nullable final ReadableMap params) {
+  public void prefetchFont(final LynxContext context, final String url,
+      @Nullable final ReadableMap params, @Nullable final FontFacePrefetchListener listener) {
     if (TextUtils.isEmpty(url)) {
+      if (listener != null) {
+        listener.onComplete(LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR, "url is empty");
+      }
       return;
     }
     LynxThreadPool.getBriefIOExecutor().execute(new Runnable() {
@@ -109,13 +117,23 @@ public class FontFaceManager {
       public void run() {
         // 1. Try Base64
         if (url.startsWith(BASE64_SRC_PREFIX)) {
+          int code = LynxSubErrorCode.E_SUCCESS;
+          String msg = "";
           try {
             Typeface typeface = loadFromBase64(context, FontFace.TYPE.URL, url);
             if (typeface != null) {
               cachePrefetchedTypeface(url, typeface);
+            } else {
+              code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+              msg = "loadFromBase64 failed";
             }
           } catch (Exception e) {
-            LLog.e(TAG, "prefetchFont base64 failed: " + e.getMessage());
+            code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+            msg = "prefetchFont base64 failed: " + e.getMessage();
+            LLog.e(TAG, msg);
+          }
+          if (listener != null) {
+            listener.onComplete(code, msg);
           }
           return;
         }
@@ -141,10 +159,16 @@ public class FontFaceManager {
                           TypefaceUtils.createFromBytes(context, response.getData());
                       if (typeface != null) {
                         cachePrefetchedTypeface(url, typeface);
+                        if (listener != null) {
+                          listener.onComplete(LynxSubErrorCode.E_SUCCESS, "");
+                        }
+                      } else {
+                        // Fallback to Loader
+                        prefetchFontWithLoader(context, url, listener);
                       }
                     } else {
                       // Fallback to Loader
-                      prefetchFontWithLoader(context, url);
+                      prefetchFontWithLoader(context, url, listener);
                     }
                   }
                 });
@@ -153,22 +177,33 @@ public class FontFaceManager {
         }
 
         // 3. Fallback to default loader
-        prefetchFontWithLoader(context, url);
+        prefetchFontWithLoader(context, url, listener);
       }
     });
   }
 
-  private void prefetchFontWithLoader(final LynxContext context, final String url) {
+  private void prefetchFontWithLoader(final LynxContext context, final String url,
+      @Nullable final FontFacePrefetchListener listener) {
     // Avoid running on BriefIOExecutor again if we are already there, but prefetchFont ensures it.
     // However, LynxFontFaceLoader might do its own threading or sync IO.
+    int code = LynxSubErrorCode.E_SUCCESS;
+    String msg = "";
     try {
       Typeface typeface =
           LynxFontFaceLoader.getLoader(context).loadFontFace(context, FontFace.TYPE.URL, url);
       if (typeface != null) {
         cachePrefetchedTypeface(url, typeface);
+      } else {
+        code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+        msg = "loadFontFace failed";
       }
     } catch (Exception e) {
-      LLog.e(TAG, "prefetchFont with loader failed: " + e.getMessage());
+      code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+      msg = "prefetchFont with loader failed: " + e.getMessage();
+      LLog.e(TAG, msg);
+    }
+    if (listener != null) {
+      listener.onComplete(code, msg);
     }
   }
 

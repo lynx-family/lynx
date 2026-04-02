@@ -48,12 +48,22 @@ public interface ILynxResourceService extends IServiceProvider {
   int isLocalResource(@Nullable String url);
 
   /**
-   * preload media
+   * preload media callback
+   */
+  interface PreloadMediaCallback {
+    void onComplete(int code, String msg);
+  }
+
+  /**
+   * preload media with callback
    * @param url
    * @param preloadKey key of preload media
    * @param videoID video id
+   * @param size size of preload media
+   * @param callback callback
    */
-  void preloadMedia(String url, String preloadKey, @Nullable String videoID, long size);
+  void preloadMedia(String url, String preloadKey, @Nullable String videoID, long size,
+      @Nullable PreloadMediaCallback callback);
 
   /**
    * cancel preload media

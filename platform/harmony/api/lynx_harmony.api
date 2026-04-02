@@ -680,6 +680,7 @@ export class LynxSubErrorCode {
   public static readonly E_RESOURCE_MODULE_PARAMS_ERROR: number; = 32101
   public static readonly E_RESOURCE_MODULE_IMG_PREFETCH_HELPER_NOT_EXIST: number; = 32102
   public static readonly E_RESOURCE_MODULE_RESOURCE_SERVICE_NOT_EXIST: number; = 32103
+  public static readonly E_RESOURCE_MODULE_AWAIT_TIMEOUT: number; = 32104
   public static readonly E_RESOURCE_CUSTOM: number; = 39800
   public static readonly E_RESOURCE_EXCEPTION: number; = 39900
   public static readonly E_DATA_FLOW_UPDATE_INVALID_PROCESSOR: number; = 40101

@@ -243,6 +243,12 @@ sections:
             fix-suggestion: 'Please refer to the official documentation to implement the ILynxResourceService and integrate it into your app.'
             consumers:
               - client
+          - name: AwaitTimeout
+            low-code: 4
+            description: 'The prefetch task did not complete within the specified timeout.'
+            fix-suggestion: 'Please check the network status or increase the timeout value.'
+            consumers:
+              - front-end
       - name: Custom
         description: 'Custom error for resource'
         mid-code: 98

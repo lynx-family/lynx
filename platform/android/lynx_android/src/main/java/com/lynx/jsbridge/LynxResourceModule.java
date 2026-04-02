@@ -28,6 +28,8 @@ import com.lynx.tasm.image.model.ImageRequestInfo;
 import com.lynx.tasm.service.ILynxImageService;
 import com.lynx.tasm.service.ILynxResourceService;
 import com.lynx.tasm.service.LynxServiceCenter;
+import com.lynx.tasm.utils.UIThreadUtils;
+import java.lang.ref.WeakReference;
 import java.util.Map;
 import org.json.JSONObject;
 
@@ -48,6 +50,19 @@ public class LynxResourceModule extends LynxContextModule {
 
   public static final long DEFAULT_MEDIA_SIZE = 500 * 1024;
 
+  private static final String PARAM_ERROR_FIX_SUGGESTION =
+      "Please check the parameters passed to Lynx resource prefetch module.";
+
+  private static final String RESOURCE_SERVICE_ERROR_FIX_SUGGESTION =
+      "If it is a parameter error, please check the parameters passed in. If the Resource service does not exist, it may be due to an error that occurred while creating the resource service through reflection. Please contact the client RD for help.";
+
+  private static final String AWAIT_TIMEOUT_MSG =
+      "The prefetch task did not complete within the specified timeout.";
+
+  private interface PrefetchInternalCallback {
+    void onComplete(int code, String msg);
+  }
+
   private ILynxImageService mImagePrefetchHelper;
 
   @RequiresApi(api = Build.VERSION_CODES.KITKAT)
@@ -55,17 +70,15 @@ public class LynxResourceModule extends LynxContextModule {
     super(context);
     mImagePrefetchHelper = LynxServiceCenter.inst().getService(ILynxImageService.class);
     if (mImagePrefetchHelper == null) {
-      LynxError error =
-          new LynxError(LynxSubErrorCode.E_RESOURCE_MODULE_IMG_PREFETCH_HELPER_NOT_EXIST,
-              "An exception occurred when try to get image prefetch helper.",
-              "An error occurred while attempting to create a Java object "
-                  + "ImagePrefetchHelper through reflection. This may be due to a "
-                  + "change in the constructor interface of ImagePrefetchHelper, or "
-                  + "because ImagePrefetchHelper is located in a plugin that is not "
-                  + "ready. If you are unable to resolve this issue, you can seek "
-                  + "help from the client RD.",
-              LynxError.LEVEL_ERROR);
-      onErrorOccurred(error);
+      reportError(LynxSubErrorCode.E_RESOURCE_MODULE_IMG_PREFETCH_HELPER_NOT_EXIST,
+          "An exception occurred when try to get image prefetch helper.",
+          "An error occurred while attempting to create a Java object "
+              + "ImagePrefetchHelper through reflection. This may be due to a "
+              + "change in the constructor interface of ImagePrefetchHelper, or "
+              + "because ImagePrefetchHelper is located in a plugin that is not "
+              + "ready. If you are unable to resolve this issue, you can seek "
+              + "help from the client RD.",
+          null, null);
     }
   }
 
@@ -82,13 +95,27 @@ public class LynxResourceModule extends LynxContextModule {
   }
 
   @LynxMethod
-  void requestResourcePrefetch(final ReadableMap data, final Callback callback) {
+  void requestResourcePrefetch(
+      final ReadableMap data, final Callback callback, @Nullable final ReadableMap config) {
     TraceEvent.beginSection(TraceEventDef.REQUEST_RESOURCE_PREFETCH);
 
-    JavaOnlyMap allResults = resourcePrefetch(data, false);
+    boolean awaitComplete = false;
+    long awaitTimeout = 60000;
+    if (config != null) {
+      awaitComplete = config.getBoolean("awaitComplete", awaitComplete);
+      awaitTimeout = config.getLong("awaitTimeout", awaitTimeout);
+    }
+
+    JavaOnlyMap allResults = null;
+    if (awaitComplete) {
+      LLog.i(NAME, " start resourcePrefetchAwaitComplete with timeout: " + awaitTimeout);
+      resourcePrefetchAwaitComplete(data, callback, awaitTimeout);
+    } else {
+      allResults = resourcePrefetch(data, false);
+    }
 
     TraceEvent.endSection(TraceEventDef.REQUEST_RESOURCE_PREFETCH);
-    if (callback != null) {
+    if (allResults != null && callback != null) {
       callback.invoke(allResults);
     }
   }
@@ -102,10 +129,7 @@ public class LynxResourceModule extends LynxContextModule {
     if (uri == null) {
       code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
       msg = "Parameters error in Lynx resource prefetch module! 'uri' is null.";
-      LynxError error = new LynxError(code, msg,
-          "Please check the parameters passed to Lynx resource prefetch module.",
-          LynxError.LEVEL_ERROR);
-      onErrorOccurred(error);
+      reportError(code, msg, PARAM_ERROR_FIX_SUGGESTION, null, null);
       if (callback != null) {
         callback.invoke(createResult(code, msg));
       }
@@ -114,10 +138,7 @@ public class LynxResourceModule extends LynxContextModule {
     if (mImagePrefetchHelper == null) {
       code = LynxSubErrorCode.E_RESOURCE_MODULE_IMG_PREFETCH_HELPER_NOT_EXIST;
       msg = "Image prefetch helper do not exist!";
-      LynxError error = new LynxError(code, msg,
-          "If the Resource service does not exist, it may be due to an error that occurred while creating the resource service through reflection. Please contact the client RD for help.",
-          LynxError.LEVEL_ERROR);
-      onErrorOccurred(error);
+      reportError(code, msg, RESOURCE_SERVICE_ERROR_FIX_SUGGESTION, null, null);
       if (callback != null) {
         callback.invoke(createResult(code, msg));
       }
@@ -130,6 +151,7 @@ public class LynxResourceModule extends LynxContextModule {
               callback.invoke(createResult(code, msg));
             }
           }
+
           @Override
           public void onRequestSubmit(ImageRequestInfo imageRequestInfo) {
             // Do nothing
@@ -161,11 +183,8 @@ public class LynxResourceModule extends LynxContextModule {
       int globalCode = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
       String globalMsg =
           "Parameters error in Lynx resource prefetch module! Value of 'data' should be an array.";
-      LynxError error = new LynxError(globalCode, globalMsg,
-          "Please check the parameters passed to Lynx resource prefetch module.",
-          LynxError.LEVEL_ERROR);
-      error.addCustomInfo("actionType", isCancel ? "cancel" : "request");
-      onErrorOccurred(error);
+      reportError(
+          globalCode, globalMsg, PARAM_ERROR_FIX_SUGGESTION, null, isCancel ? "cancel" : "request");
       allResults.putInt(CODE_KEY, globalCode);
       allResults.putString(MSG_KEY, globalMsg);
     } else {
@@ -198,12 +217,8 @@ public class LynxResourceModule extends LynxContextModule {
           }
         }
         if (code != LynxSubErrorCode.E_SUCCESS) {
-          LynxError error = new LynxError(code, msg,
-              "If it is a parameter error, please check the parameters passed in. If the Resource service does not exist, it may be due to an error that occurred while creating the resource service through reflection. Please contact the client RD for help.",
-              LynxError.LEVEL_ERROR);
-          error.addCustomInfo("resourceUri", uri);
-          error.addCustomInfo("actionType", isCancel ? "cancel" : "request");
-          onErrorOccurred(error);
+          reportError(code, msg, RESOURCE_SERVICE_ERROR_FIX_SUGGESTION, uri,
+              isCancel ? "cancel" : "request");
         }
         result.putInt(CODE_KEY, code);
         result.putString(MSG_KEY, msg);
@@ -212,6 +227,136 @@ public class LynxResourceModule extends LynxContextModule {
       allResults.putArray(DETAIL_KEY, resultArray);
     }
     return allResults;
+  }
+
+  private void resourcePrefetchAwaitComplete(
+      final ReadableMap data, final Callback callback, long awaitTimeout) {
+    final JavaOnlyMap allResults = createResult(LynxSubErrorCode.E_SUCCESS, "");
+    final ReadableArray resArray = data.getArray(DATA_KEY, null);
+    if (resArray == null) {
+      int globalCode = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+      String globalMsg =
+          "Parameters error in Lynx resource prefetch module! Value of 'data' should be an array.";
+      reportError(globalCode, globalMsg, PARAM_ERROR_FIX_SUGGESTION, null, "request");
+      allResults.putInt(CODE_KEY, globalCode);
+      allResults.putString(MSG_KEY, globalMsg);
+      if (callback != null) {
+        callback.invoke(allResults);
+      }
+      return;
+    }
+
+    final int totalCount = resArray.size();
+    if (totalCount == 0) {
+      if (callback != null) {
+        callback.invoke(allResults);
+      }
+      return;
+    }
+    final int[] completedCount = {0};
+    final boolean[] isCallbackInvoked = {false};
+    final JavaOnlyArray resultArray = new JavaOnlyArray();
+    allResults.putArray(DETAIL_KEY, resultArray);
+
+    final WeakReference<LynxResourceModule> weakModule = new WeakReference<>(this);
+
+    UIThreadUtils.runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        LynxResourceModule module = weakModule.get();
+        if (module == null || module.mLynxContext == null) {
+          return;
+        }
+        module.mLynxContext.runOnJSThread(new Runnable() {
+          @Override
+          public void run() {
+            if (!isCallbackInvoked[0]) {
+              isCallbackInvoked[0] = true;
+              allResults.putInt(CODE_KEY, LynxSubErrorCode.E_RESOURCE_MODULE_AWAIT_TIMEOUT);
+              allResults.putString(MSG_KEY, AWAIT_TIMEOUT_MSG);
+              LynxResourceModule module = weakModule.get();
+              if (module != null) {
+                module.reportError(LynxSubErrorCode.E_RESOURCE_MODULE_AWAIT_TIMEOUT,
+                    AWAIT_TIMEOUT_MSG, RESOURCE_SERVICE_ERROR_FIX_SUGGESTION, null, "request");
+              }
+              if (callback != null) {
+                LLog.i(NAME, " timeout invoke, count: " + completedCount[0]);
+                callback.invoke(allResults);
+              }
+            }
+          }
+        });
+      }
+    }, awaitTimeout);
+
+    for (int i = 0; i < totalCount; ++i) {
+      final String uri;
+      final String type;
+      final ReadableMap params;
+      final Integer initialCode;
+      final String initialMsg;
+
+      if (resArray.getType(i) != ReadableType.Map) {
+        initialCode = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+        initialMsg =
+            "Parameters error in Lynx resource prefetch module! The prefetch data should be a map.";
+        uri = "";
+        type = "";
+        params = null;
+      } else {
+        ReadableMap resData = resArray.getMap(i);
+        uri = resData.getString(URI_KEY, "");
+        type = resData.getString(TYPE_KEY, "");
+        params = resData.getMap(PARAMS_KEY, null);
+        if (uri == null || type == null || uri.isEmpty() || type.isEmpty()) {
+          initialCode = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+          initialMsg =
+              "Parameters error in Lynx resource prefetch module! 'uri' or 'type' is null.";
+        } else {
+          initialCode = LynxSubErrorCode.E_SUCCESS;
+          initialMsg = "";
+        }
+      }
+
+      PrefetchInternalCallback internalCallback = new PrefetchInternalCallback() {
+        @Override
+        public void onComplete(final int code, final String msg) {
+          LynxResourceModule module = weakModule.get();
+          if (module == null || module.mLynxContext == null) {
+            return;
+          }
+          if (code != LynxSubErrorCode.E_SUCCESS) {
+            module.reportError(code, msg, RESOURCE_SERVICE_ERROR_FIX_SUGGESTION, uri, "request");
+          }
+
+          module.mLynxContext.runOnJSThread(new Runnable() {
+            @Override
+            public void run() {
+              if (isCallbackInvoked[0]) {
+                return;
+              }
+              JavaOnlyMap result = createResult(code, msg);
+              result.putString(URI_KEY, uri);
+              result.putString(TYPE_KEY, type);
+
+              resultArray.pushMap(result);
+              completedCount[0]++;
+              LLog.i(NAME, "onComplete:" + uri + " msg:" + msg + " count:" + completedCount[0]);
+              if (completedCount[0] == totalCount && callback != null) {
+                isCallbackInvoked[0] = true;
+                callback.invoke(allResults);
+              }
+            }
+          });
+        }
+      };
+
+      if (initialCode != LynxSubErrorCode.E_SUCCESS) {
+        internalCallback.onComplete(initialCode, initialMsg);
+      } else {
+        requestResourcePrefetchInternalAwaitComplete(uri, type, params, internalCallback);
+      }
+    }
   }
 
   private Pair<Integer, String> requestResourcePrefetchInternal(
@@ -230,7 +375,7 @@ public class LynxResourceModule extends LynxContextModule {
         break;
       }
       case FONT_TYPE: {
-        FontFaceManager.getInstance().prefetchFont(mLynxContext, uri, params);
+        FontFaceManager.getInstance().prefetchFont(mLynxContext, uri, params, null);
         break;
       }
       case AUDIO_TYPE:
@@ -251,7 +396,7 @@ public class LynxResourceModule extends LynxContextModule {
             code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
             msg = "missing preloadKey!";
           } else {
-            service.preloadMedia(uri, preloadKey, videoID, size);
+            service.preloadMedia(uri, preloadKey, videoID, size, null);
           }
         }
         break;
@@ -264,6 +409,96 @@ public class LynxResourceModule extends LynxContextModule {
     }
     LLog.i("LynxResourceModule", "requestResourcePrefetch uri: " + uri + " type: " + type);
     return new Pair<>(code, msg);
+  }
+
+  private void requestResourcePrefetchInternalAwaitComplete(final String uri, final String type,
+      @Nullable final ReadableMap params, final PrefetchInternalCallback callback) {
+    Integer code = LynxSubErrorCode.E_SUCCESS;
+    String msg = "";
+    boolean isAsync = false;
+    switch (type) {
+      case IMAGE_TYPE: {
+        if (mImagePrefetchHelper == null) {
+          code = LynxSubErrorCode.E_RESOURCE_MODULE_IMG_PREFETCH_HELPER_NOT_EXIST;
+          msg = "Image prefetch helper do not exist!";
+          break;
+        }
+        isAsync = true;
+        mImagePrefetchHelper.prefetchImage(uri, mLynxContext.getFrescoCallerContext(),
+            (Map<String, Object>) params, new ImageLoadListener() {
+              @Override
+              public void onRequestSubmit(ImageRequestInfo imageRequestInfo) {}
+
+              @Override
+              public void onSuccess(@Nullable ImageContent imageContent,
+                  ImageRequestInfo requestInfo, ImageInfo imageInfo) {
+                callback.onComplete(LynxSubErrorCode.E_SUCCESS, "");
+              }
+
+              @Override
+              public void onFailure(int errorCode, Throwable throwable) {
+                callback.onComplete(errorCode, "prefetch image failed");
+              }
+
+              @Override
+              public void onImageMonitorInfo(JSONObject monitorInfo) {
+                // Do nothing
+              }
+            });
+        break;
+      }
+      case FONT_TYPE: {
+        isAsync = true;
+        FontFaceManager.getInstance().prefetchFont(
+            mLynxContext, uri, params, new FontFaceManager.FontFacePrefetchListener() {
+              @Override
+              public void onComplete(int code, String msg) {
+                callback.onComplete(code, msg);
+              }
+            });
+        break;
+      }
+      case AUDIO_TYPE:
+      case VIDEO_TYPE: {
+        if (params == null) {
+          code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+          msg = "missing preloadKey!";
+        } else {
+          String preloadKey = params.getString("preloadKey", null);
+          String videoID = params.getString("videoID", null);
+          long size = params.getLong("size", DEFAULT_MEDIA_SIZE);
+          ILynxResourceService service =
+              LynxServiceCenter.inst().getService(ILynxResourceService.class);
+          if (service == null) {
+            code = LynxSubErrorCode.E_RESOURCE_MODULE_RESOURCE_SERVICE_NOT_EXIST;
+            msg = "Resource service do not exist!";
+          } else if (preloadKey == null) {
+            code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+            msg = "missing preloadKey!";
+          } else {
+            isAsync = true;
+            service.preloadMedia(
+                uri, preloadKey, videoID, size, new ILynxResourceService.PreloadMediaCallback() {
+                  @Override
+                  public void onComplete(int code, String msg) {
+                    callback.onComplete(code, msg);
+                  }
+                });
+          }
+        }
+        break;
+      }
+      default: {
+        code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+        msg = "Parameters error! Unknown type :" + type;
+        break;
+      }
+    }
+    if (!isAsync) {
+      callback.onComplete(code, msg);
+    }
+    LLog.i("LynxResourceModule",
+        "requestResourcePrefetchInternalAwaitComplete uri: " + uri + " type: " + type);
   }
 
   private Pair<Integer, String> cancelResourcePrefetchInternal(
@@ -312,7 +547,15 @@ public class LynxResourceModule extends LynxContextModule {
     return new Pair<>(code, msg);
   }
 
-  private void onErrorOccurred(LynxError error) {
+  private void reportError(int code, String msg, String fixSuggestion, @Nullable String uri,
+      @Nullable String actionType) {
+    LynxError error = new LynxError(code, msg, fixSuggestion, LynxError.LEVEL_ERROR);
+    if (uri != null) {
+      error.addCustomInfo("resourceUri", uri);
+    }
+    if (actionType != null) {
+      error.addCustomInfo("actionType", actionType);
+    }
     mLynxContext.handleLynxError(error);
   }
 

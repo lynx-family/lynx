@@ -6386,6 +6386,7 @@ public enum ELynxConsumer {
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceModuleParamsError ECLynxResourceModuleParamsError;
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceModuleImgPrefetchHelperNotExist ECLynxResourceModuleImgPrefetchHelperNotExist;
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceModuleResourceServiceNotExist ECLynxResourceModuleResourceServiceNotExist;
+  public FOUNDATION_EXPORT NSInteger const ECLynxResourceModuleAwaitTimeout ECLynxResourceModuleAwaitTimeout;
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceCustom ECLynxResourceCustom;
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceException ECLynxResourceException;
   public FOUNDATION_EXPORT NSInteger const ECLynxDataFlowUpdateInvalidProcessor ECLynxDataFlowUpdateInvalidProcessor;

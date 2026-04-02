@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.9.1
+
+- lynx.requestResourcePrefetch support awaitComplete options.
+
 ## 3.9.0
 
 - Introduce `<viewpager>`.

@@ -70,6 +70,11 @@ export interface ResourcePrefetchResult {
   }[];
 }
 
+export interface ResourcePrefetchConfig {
+  awaitComplete?: boolean;
+  awaitTimeout?: number; // default is 60000ms
+}
+
 export interface FontFace {
   'font-family': string;
   'src': string;
@@ -117,7 +122,11 @@ export interface Lynx extends CommonLynx {
 
   reload(value: object, callback: () => void): void;
 
-  requestResourcePrefetch(data: ResourcePrefetchData, callback: (res: ResourcePrefetchResult) => void): void;
+  requestResourcePrefetch(
+    data: ResourcePrefetchData,
+    callback: (res: ResourcePrefetchResult) => void,
+    config?: ResourcePrefetchConfig
+  ): void;
 
   requireModuleAsync<T>(path: string, callback: (error: Error | null, exports?: T) => void): void;
 

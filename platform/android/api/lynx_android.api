@@ -1982,13 +1982,17 @@ public class com::lynx::tasm::fontface::FontFaceManager :  {
   public static FontFaceManager com.lynx.tasm.fontface.FontFaceManager.getInstance();
   public Typeface com.lynx.tasm.fontface.FontFaceManager.getFontWithSettings(FontSettingsKey key);
   public void com.lynx.tasm.fontface.FontFaceManager.putFontWithSettings(FontSettingsKey key, Typeface tf);
-  public void com.lynx.tasm.fontface.FontFaceManager.prefetchFont(final LynxContext context, final String url, @Nullable final ReadableMap params);
+  public void com.lynx.tasm.fontface.FontFaceManager.prefetchFont(final LynxContext context, final String url, @Nullable final ReadableMap params, @Nullable final FontFacePrefetchListener listener);
   public Typeface com.lynx.tasm.fontface.FontFaceManager.getTypeface(final LynxContext context, final String fontFamily, final int style, final TypefaceCache.TypefaceListener listener);
 }
 
 public class com::lynx::tasm::utils::FontFaceParser :  {
   public static String com.lynx.tasm.utils.FontFaceParser.trim(String s);
   public static FontFace com.lynx.tasm.utils.FontFaceParser.parse(LynxContext context, String fontFamily);
+}
+
+public interface com::lynx::tasm::fontface::FontFaceManager::FontFacePrefetchListener {
+  public void com.lynx.tasm.fontface.FontFaceManager.FontFacePrefetchListener.onComplete(int code, String msg);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::FontFamilySpan : MetricAffectingSpan {
@@ -2567,7 +2571,7 @@ public interface com::lynx::tasm::service::ILynxResourceService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxResourceService.getServiceClass();
   public boolean com.lynx.tasm.service.ILynxResourceService.isReady();
   public int com.lynx.tasm.service.ILynxResourceService.isLocalResource(@Nullable String url);
-  public void com.lynx.tasm.service.ILynxResourceService.preloadMedia(String url, String preloadKey, @Nullable String videoID, long size);
+  public void com.lynx.tasm.service.ILynxResourceService.preloadMedia(String url, String preloadKey, @Nullable String videoID, long size, @Nullable PreloadMediaCallback callback);
   public void com.lynx.tasm.service.ILynxResourceService.cancelPreloadMedia(String preloadKey, @Nullable String videoID);
   public void com.lynx.tasm.service.ILynxResourceService.addResourceLoader(@NonNull Object loader, @NonNull String templateUrl);
   public ILynxResourceServiceRequestOperation com.lynx.tasm.service.ILynxResourceService.fetchResourceAsync(@Nullable String url, @NonNull LynxResourceServiceRequestParams lynxResourceServiceRequestParams, @NonNull final LynxResourceServiceCallback callback);
@@ -6609,6 +6613,7 @@ public class com::lynx::tasm::LynxSubErrorCode :  {
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR E_RESOURCE_MODULE_PARAMS_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_MODULE_IMG_PREFETCH_HELPER_NOT_EXIST E_RESOURCE_MODULE_IMG_PREFETCH_HELPER_NOT_EXIST;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_MODULE_RESOURCE_SERVICE_NOT_EXIST E_RESOURCE_MODULE_RESOURCE_SERVICE_NOT_EXIST;
+  public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_MODULE_AWAIT_TIMEOUT E_RESOURCE_MODULE_AWAIT_TIMEOUT;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_CUSTOM E_RESOURCE_CUSTOM;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_EXCEPTION E_RESOURCE_EXCEPTION;
   public final int com.lynx.tasm.LynxSubErrorCode.E_DATA_FLOW_UPDATE_INVALID_PROCESSOR E_DATA_FLOW_UPDATE_INVALID_PROCESSOR;
@@ -8588,6 +8593,14 @@ public class com::lynx::tasm::animation::layout::PositionAndSizeAnimation : Anim
   public com.lynx.tasm.animation.layout.PositionAndSizeAnimation.PositionAndSizeAnimation(LynxUI ui, int x, int y, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, final Rect bound);
   public void com.lynx.tasm.animation.layout.PositionAndSizeAnimation.onLayoutUpdate(int x, int y, int width, int height);
   public boolean com.lynx.tasm.animation.layout.PositionAndSizeAnimation.willChangeBounds();
+}
+
+public interface com::lynx::jsbridge::LynxResourceModule::PrefetchInternalCallback {
+  public void com.lynx.jsbridge.LynxResourceModule.PrefetchInternalCallback.onComplete(int code, String msg);
+}
+
+public interface com::lynx::tasm::service::ILynxResourceService::PreloadMediaCallback {
+  public void com.lynx.tasm.service.ILynxResourceService.PreloadMediaCallback.onComplete(int code, String msg);
 }
 
 public interface com::lynx::jsbridge::Promise {
