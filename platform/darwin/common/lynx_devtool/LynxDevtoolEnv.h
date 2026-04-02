@@ -7,15 +7,8 @@
 @interface LynxDevtoolEnv : NSObject
 
 + (instancetype)sharedInstance;
-- (void)set:(BOOL)value forKey:(NSString *)key;
-- (BOOL)get:(NSString *)key withDefaultValue:(BOOL)value;
-
-- (void)set:(NSSet *)newGroupValues forGroup:(NSString *)groupKey;
-- (NSSet *)getGroup:(NSString *)groupKey;
 
 - (BOOL)isErrorTypeIgnored:(NSInteger)errCode;
-
-- (BOOL)getDefaultValue:(NSString *)key;
 
 @property(nonatomic, readwrite) BOOL showDevtoolBadge
     __attribute__((deprecated("Deprecated after Lynx2.9")));

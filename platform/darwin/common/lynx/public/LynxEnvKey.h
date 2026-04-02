@@ -10,14 +10,6 @@
 
 static NSString *const SP_KEY_ENABLE_AUTOMATION = @"enable_automation";
 
-// Keys for devtool.
-static NSString *const SP_KEY_IGNORE_ERROR_TYPES = @"ignore_error_types";
-static NSString *const SP_KEY_ENABLE_IGNORE_ERROR_CSS = @"error_code_css";
-static NSString *const SP_KEY_ACTIVATED_CDP_DOMAINS = @"activated_cdp_domains";
-static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_DOM = @"enable_cdp_domain_dom";
-static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_CSS = @"enable_cdp_domain_css";
-static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_PAGE = @"enable_cdp_domain_page";
-
 // deprecated after Lynx2.9
 static NSString *const SP_KEY_SHOW_DEVTOOL_BADGE = @"show_devtool_badge";
 

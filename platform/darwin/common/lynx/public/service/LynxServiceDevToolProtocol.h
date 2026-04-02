@@ -60,14 +60,6 @@ typedef void (^LynxOpenCardCallback)(NSString *);
 
 - (id)devtoolEnvSharedInstance;
 
-- (void)devtoolEnvSetValue:(BOOL)value forKey:(NSString *)key;
-
-- (BOOL)devtoolEnvGetValue:(NSString *)key withDefaultValue:(BOOL)value;
-
-- (void)devtoolEnvSet:(NSSet *)newGroupValues forGroup:(NSString *)groupKey;
-
-- (NSSet *)devtoolEnvGetGroup:(NSString *)groupKey;
-
 - (void)enableAllSessions;
 
 @end

@@ -26,7 +26,6 @@
 #endif
 #import <Lynx/LynxBaseInspectorController.h>
 #import <Lynx/LynxBaseInspectorOwnerNG.h>
-#import <Lynx/LynxDevToolEnvUtils.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
 #import <Lynx/LynxServiceExtensionProtocol.h>
@@ -148,27 +147,27 @@
 }
 
 - (void)initDevTool {
-  BLOCK_FOR_INSPECTOR(^{
-    [self initDevToolComponentAttachSwitch];
-    [self initDevToolEnv];
-  });
+#if ENABLE_INSPECTOR
+  [self initDevToolComponentAttachSwitch];
+  [self initDevToolEnv];
+#endif
 }
 
 - (void)initDevToolComponentAttachSwitch {
-  BLOCK_FOR_INSPECTOR(^{
-    Class inspectorClass = [LynxService(LynxServiceDevToolProtocol) inspectorOwnerClass];
-    if ([inspectorClass conformsToProtocol:@protocol(LynxBaseInspectorOwnerNG)] &&
-        [inspectorClass conformsToProtocol:@protocol(LynxBaseInspectorController)]) {
-      lynx::tasm::DevToolLifecycle::GetInstance().OnAttached();
-      // Although there is no such thing as "preset" on iOS,
-      // `lynxDebugPresetValue` is actually working as a default value set from service.
-      // We still need to check it and apply.
-      // TODO(mitchilling): rename `lynxDebugPresetValue` to solve ambiguity.
-      if ([LynxService(LynxServiceDevToolProtocol) lynxDebugPresetValue]) {
-        lynx::tasm::DevToolLifecycle::GetInstance().OnEnabled();
-      }
+#if ENABLE_INSPECTOR
+  Class inspectorClass = [LynxService(LynxServiceDevToolProtocol) inspectorOwnerClass];
+  if ([inspectorClass conformsToProtocol:@protocol(LynxBaseInspectorOwnerNG)] &&
+      [inspectorClass conformsToProtocol:@protocol(LynxBaseInspectorController)]) {
+    lynx::tasm::DevToolLifecycle::GetInstance().OnAttached();
+    // Although there is no such thing as "preset" on iOS,
+    // `lynxDebugPresetValue` is actually working as a default value set from service.
+    // We still need to check it and apply.
+    // TODO(mitchilling): rename `lynxDebugPresetValue` to solve ambiguity.
+    if ([LynxService(LynxServiceDevToolProtocol) lynxDebugPresetValue]) {
+      lynx::tasm::DevToolLifecycle::GetInstance().OnEnabled();
     }
-  });
+  }
+#endif  // ENABLE_INSPECTOR
 }
 
 // Since `LynxEnv init` is called inside `LynxEnv sharedInstance`,
@@ -187,11 +186,11 @@
 }
 
 - (void)initDevToolEnv {
-  BLOCK_FOR_INSPECTOR(^{
-    if ([self lynxDebugEnabled]) {
-      [LynxService(LynxServiceDevToolProtocol) devtoolEnvSharedInstance];
-    }
-  });
+#if ENABLE_INSPECTOR
+  if ([self lynxDebugEnabled]) {
+    [LynxService(LynxServiceDevToolProtocol) devtoolEnvSharedInstance];
+  }
+#endif
 }
 
 - (void)setEnableRadonCompatible:(BOOL)value
@@ -225,22 +224,6 @@
 
 - (void)setLocalEnv:(NSString *)value forKey:(NSString *)key {
   lynx::tasm::LynxEnv::GetInstance().SetLocalEnv(key.UTF8String, value.UTF8String);
-}
-
-- (void)setDevtoolEnv:(NSSet *)newGroupValues forGroup:(NSString *)groupKey {
-  if (![self lynxDebugEnabled]) {
-    _LogI(@"setDevtoolEnv group %@, lynxDebugEnabled is NO", groupKey);
-    return;
-  }
-  [LynxDevToolEnvUtils setDevtoolEnv:newGroupValues forGroup:groupKey];
-}
-
-- (NSSet *)getDevtoolEnvWithGroupName:(NSString *)groupKey {
-  if (![self lynxDebugEnabled]) {
-    _LogI(@"getDevtoolEnvWithGroupName %@, lynxDebugEnabled is NO", groupKey);
-    return nil;
-  }
-  return [LynxDevToolEnvUtils getDevtoolEnvWithGroupName:groupKey];
 }
 
 - (void)setDevtoolEnabled:(BOOL)enableDevtool {

@@ -74,6 +74,11 @@
   [bridge handleSetGlobalSwitch:SP_KEY_ENABLE_HIGHLIGHT_TOUCH value:YES];
   XCTAssertFalse(settings.highlightTouchEnabled);  // Should remain NO
 
+  // Test unsupported key: CDP domains (not added to supported list)
+  [settings setCDPDomain:SP_KEY_ENABLE_CDP_DOMAIN_DOM enabled:NO];
+  [bridge handleSetGlobalSwitch:SP_KEY_ENABLE_CDP_DOMAIN_DOM value:YES];
+  XCTAssertFalse([settings isCDPDomainEnabled:SP_KEY_ENABLE_CDP_DOMAIN_DOM]);
+
   // Test random key
   [bridge handleSetGlobalSwitch:@"random_key" value:YES];
   XCTAssertFalse([bridge handleGetGlobalSwitch:@"random_key"]);

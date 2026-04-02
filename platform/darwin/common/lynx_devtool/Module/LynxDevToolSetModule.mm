@@ -6,7 +6,6 @@
 #import <Lynx/LynxBaseInspectorOwner.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxEnv.h>
-#import <Lynx/LynxEnvKey.h>
 #import <LynxDevtool/LynxDevToolSetModule.h>
 #import <LynxDevtool/LynxDevtoolEnv.h>
 
@@ -95,11 +94,11 @@
 }
 
 - (BOOL)isIgnorePropErrorsEnabled {
-  return [LynxDevtoolEnv.sharedInstance get:SP_KEY_ENABLE_IGNORE_ERROR_CSS withDefaultValue:NO];
+  return [[DevToolSettings sharedInstance] isCSSErrorIgnored];
 }
 
 - (void)switchIgnorePropErrors:(BOOL)arg {
-  [LynxDevtoolEnv.sharedInstance set:arg forKey:SP_KEY_ENABLE_IGNORE_ERROR_CSS];
+  [[DevToolSettings sharedInstance] setCSSErrorIgnored:arg];
 }
 
 - (BOOL)isQuickjsDebugEnabled {

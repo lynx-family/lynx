@@ -116,9 +116,6 @@ typedef NS_ENUM(NSInteger, LynxMemoryPressureLevel) {
 
 - (void)setLocalEnv:(NSString *)value forKey:(NSString *)key;
 
-- (void)setDevtoolEnv:(NSSet *)newGroupValues forGroup:(NSString *)groupKey;
-- (NSSet *)getDevtoolEnvWithGroupName:(NSString *)groupKey;
-
 - (void)setEnableRadonCompatible:(BOOL)value
     __attribute__((deprecated("Radon diff mode can't be close after lynx 2.3.")));
 - (BOOL)getEnableRadonCompatible

@@ -85,6 +85,16 @@ public class DevToolSettings : NSObject {
   public BOOL DevToolSettings::fspScreenshotEnabled fspScreenshotEnabled;
   public BOOL DevToolSettings::perfMetricsEnabled perfMetricsEnabled;
   public instancetype DevToolSettings::sharedInstance();
+  public BOOL DevToolSettings::isCSSErrorIgnored();
+  public void DevToolSettings::setCSSErrorIgnored:(BOOL ignored);
+  public NSSet< NSString * > * DevToolSettings::ignoredErrorTypes();
+  public void DevToolSettings::setIgnoredErrorTypes:(NSSet< NSString * > *errorTypes);
+  public BOOL DevToolSettings::isErrorTypeIgnored:(NSInteger errorType);
+  public void DevToolSettings::setErrorType:ignored:(NSInteger errorType,[ignored] BOOL ignored);
+  public NSSet< NSString * > * DevToolSettings::enabledCDPDomains();
+  public void DevToolSettings::setEnabledCDPDomains:(NSSet< NSString * > *domains);
+  public BOOL DevToolSettings::isCDPDomainEnabled:(NSString *key);
+  public void DevToolSettings::setCDPDomain:enabled:(NSString *key,[enabled] BOOL enabled);
 }
 
 public protocol GlobalPropsUpdatedObserver-p : <NSObject> {
@@ -1355,11 +1365,6 @@ public class LynxDevtool : NSObject {
   public void LynxDevtool::onGlobalPropsUpdated:(LynxTemplateData *props);
 }
 
-public class LynxDevToolEnvUtils : NSObject {
-  public void LynxDevToolEnvUtils::setDevtoolEnv:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
-  public NSSet * LynxDevToolEnvUtils::getDevtoolEnvWithGroupName:(NSString *groupKey);
-}
-
 public class LynxDevToolPool : NSObject {
   public instancetype LynxDevToolPool::initWithURL:debuggable:(NSString *url,[debuggable] BOOL debuggable);
   public void LynxDevToolPool::onTemplateBundleCreated:(intptr_t bundle);
@@ -1466,8 +1471,6 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::boolFromExternalEnv:defaultValue:(LynxEnvKey key,[defaultValue] BOOL defaultValue);
   public NSString * LynxEnv::stringFromExternalEnv:(LynxEnvKey key);
   public void LynxEnv::setLocalEnv:forKey:(NSString *value,[forKey] NSString *key);
-  public void LynxEnv::setDevtoolEnv:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
-  public NSSet * LynxEnv::getDevtoolEnvWithGroupName:(NSString *groupKey);
   public void LynxEnv::setEnableRadonCompatible:((deprecated("Radon diff mode can't be close after lynx 2.3.")) __attribute__);
   public (deprecated("Radon diff mode can't be close after lynx 2.3.")) LynxEnv::__attribute__();
   public void LynxEnv::setEnableLayoutOnly:(BOOL value);
@@ -3435,10 +3438,6 @@ public protocol LynxServiceDevToolProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceDevToolProtocol-p::onPerfMetricsEvent:withData:instanceId:(NSString *eventName,[withData] NSDictionary< NSString *, NSObject * > *data,[instanceId] int32_t instanceId);
   public void LynxServiceDevToolProtocol-p::setAppInfo:(NSDictionary *options);
   public id LynxServiceDevToolProtocol-p::devtoolEnvSharedInstance();
-  public void LynxServiceDevToolProtocol-p::devtoolEnvSetValue:forKey:(BOOL value,[forKey] NSString *key);
-  public BOOL LynxServiceDevToolProtocol-p::devtoolEnvGetValue:withDefaultValue:(NSString *key,[withDefaultValue] BOOL value);
-  public void LynxServiceDevToolProtocol-p::devtoolEnvSet:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
-  public NSSet * LynxServiceDevToolProtocol-p::devtoolEnvGetGroup:(NSString *groupKey);
   public void LynxServiceDevToolProtocol-p::enableAllSessions();
 }
 
@@ -6156,6 +6155,12 @@ public enum LynxFetchResType {
   public NSString* const SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT;
   public NSString* const SP_KEY_ENABLE_FSP_SCREENSHOT SP_KEY_ENABLE_FSP_SCREENSHOT;
   public NSString* const SP_KEY_ENABLE_PERF_METRICS SP_KEY_ENABLE_PERF_METRICS;
+  public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_CSS SP_KEY_ENABLE_CDP_DOMAIN_CSS;
+  public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_DEBUGGER SP_KEY_ENABLE_CDP_DOMAIN_DEBUGGER;
+  public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_DOM SP_KEY_ENABLE_CDP_DOMAIN_DOM;
+  public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_OVERLAY SP_KEY_ENABLE_CDP_DOMAIN_OVERLAY;
+  public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_PAGE SP_KEY_ENABLE_CDP_DOMAIN_PAGE;
+  public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME;
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ CDPResultCallback) (NSString *result) CDPResultCallback;
 
@@ -6270,12 +6275,6 @@ public enum LynxEnvKey {
 }
 
   public NSString* const SP_KEY_ENABLE_AUTOMATION SP_KEY_ENABLE_AUTOMATION;
-  public NSString* const SP_KEY_IGNORE_ERROR_TYPES SP_KEY_IGNORE_ERROR_TYPES;
-  public NSString* const SP_KEY_ENABLE_IGNORE_ERROR_CSS SP_KEY_ENABLE_IGNORE_ERROR_CSS;
-  public NSString* const SP_KEY_ACTIVATED_CDP_DOMAINS SP_KEY_ACTIVATED_CDP_DOMAINS;
-  public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_DOM SP_KEY_ENABLE_CDP_DOMAIN_DOM;
-  public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_CSS SP_KEY_ENABLE_CDP_DOMAIN_CSS;
-  public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_PAGE SP_KEY_ENABLE_CDP_DOMAIN_PAGE;
   public NSString* const SP_KEY_SHOW_DEVTOOL_BADGE SP_KEY_SHOW_DEVTOOL_BADGE;
 
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT NSString* const LynxErrorDomain LynxErrorDomain;

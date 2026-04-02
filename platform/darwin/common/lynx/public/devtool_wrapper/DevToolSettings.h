@@ -20,6 +20,15 @@ static NSString *const SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT = @"enable_preview_scre
 static NSString *const SP_KEY_ENABLE_FSP_SCREENSHOT = @"enable_fsp_screenshot";
 static NSString *const SP_KEY_ENABLE_PERF_METRICS = @"enable_perf_metrics";
 
+// The CDP domain keys are expected to be in the format of "enable_cdp_domain_{domain_name}".
+// They need to stay public for callers to get/set enabled CDP domains.
+static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_CSS = @"enable_cdp_domain_css";
+static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_DEBUGGER = @"enable_cdp_domain_debugger";
+static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_DOM = @"enable_cdp_domain_dom";
+static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_OVERLAY = @"enable_cdp_domain_overlay";
+static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_PAGE = @"enable_cdp_domain_page";
+static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME = @"enable_cdp_domain_runtime";
+
 /**
  * A centralized manager for DevTool user preferences and settings.
  * Handles persistence via NSUserDefaults and synchronizes values with the native C++ layer.
@@ -46,6 +55,19 @@ static NSString *const SP_KEY_ENABLE_PERF_METRICS = @"enable_perf_metrics";
 @property(nonatomic, assign) BOOL previewScreenshotEnabled;
 @property(nonatomic, assign) BOOL fspScreenshotEnabled;
 @property(nonatomic, assign) BOOL perfMetricsEnabled;
+
+- (BOOL)isCSSErrorIgnored;
+- (void)setCSSErrorIgnored:(BOOL)ignored;
+
+- (NSSet<NSString *> *)ignoredErrorTypes;
+- (void)setIgnoredErrorTypes:(NSSet<NSString *> *)errorTypes;
+- (BOOL)isErrorTypeIgnored:(NSInteger)errorType;
+- (void)setErrorType:(NSInteger)errorType ignored:(BOOL)ignored;
+
+- (NSSet<NSString *> *)enabledCDPDomains;
+- (void)setEnabledCDPDomains:(NSSet<NSString *> *)domains;
+- (BOOL)isCDPDomainEnabled:(NSString *)key;
+- (void)setCDPDomain:(NSString *)key enabled:(BOOL)enabled;
 
 @end
 
