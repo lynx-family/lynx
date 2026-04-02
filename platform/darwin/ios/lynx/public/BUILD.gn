@@ -9,6 +9,7 @@ import("../../../../../config.gni")
 public_shared_sources = [
   "ListNodeInfoFetcher.h",
   "ListNodeInfoFetcherProtocol.h",
+  "LynxBackgroundRuntime+Internal.h",
   "LynxBackgroundRuntime.h",
   "LynxBlurImageProcessor.h",
   "LynxBooleanOption.h",

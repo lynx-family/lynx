@@ -6,6 +6,7 @@
 #define DARWIN_COMMON_LYNX_LYNXTEMPLATEDATA_CONVERTER_H_
 
 #import <Lynx/LynxTemplateData.h>
+#if defined(__cplusplus)
 
 #include <memory>
 
@@ -44,5 +45,5 @@ std::shared_ptr<lynx::tasm::TemplateData> ConvertLynxTemplateDataToTemplateData(
 - (LynxTemplateData *)getTemplateDataForJSThread;
 
 @end
-
+#endif
 #endif  // DARWIN_COMMON_LYNX_LYNXTEMPLATEDATA_CONVERTER_H_

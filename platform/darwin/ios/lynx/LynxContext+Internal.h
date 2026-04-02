@@ -8,6 +8,7 @@
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxViewEnum.h>
+#if defined(__cplusplus)
 #include "core/shell/ios/js_proxy_darwin.h"
 #include "core/shell/ios/lynx_layout_proxy_darwin.h"
 
@@ -41,3 +42,4 @@
 - (nullable NSDictionary*)extentionModules;
 
 @end
+#endif
