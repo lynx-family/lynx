@@ -1858,6 +1858,71 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle3) {
   view->pre_prop_bundle_ = nullptr;
 }
 
+TEST_P(FiberElementTest,
+       TestUpdateDynamicElementStyleFilterBlurVwWithEnvGuard) {
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->fix_filter_dynamic_update_bug_ = false;
+  auto element_without_fix = manager->CreateFiberView();
+  element_without_fix->SetStyle(CSSPropertyID::kPropertyIDFilter,
+                                lepus::Value("blur(10vw)"));
+  page->InsertNode(element_without_fix);
+  page->FlushActionsAsRoot();
+
+  auto* painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->platform_impl_.get());
+  painting_context->Flush();
+
+  auto* node_without_fix =
+      painting_context->node_map_.at(element_without_fix->impl_id()).get();
+  ASSERT_TRUE(node_without_fix->props_.find("filter") !=
+              node_without_fix->props_.end());
+  ASSERT_TRUE(node_without_fix->props_["filter"].IsArray());
+
+  auto filter_without_fix = node_without_fix->props_["filter"].Array();
+  ASSERT_EQ(filter_without_fix->size(), static_cast<size_t>(3));
+  EXPECT_EQ(filter_without_fix->get(1).Number(), 10);
+
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+  painting_context->Flush();
+
+  auto updated_filter_without_fix = node_without_fix->props_["filter"].Array();
+  ASSERT_EQ(updated_filter_without_fix->size(), static_cast<size_t>(3));
+  EXPECT_EQ(updated_filter_without_fix->get(1).Number(), 10);
+
+  manager->fix_filter_dynamic_update_bug_ = true;
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto element_with_fix = manager->CreateFiberView();
+  element_with_fix->SetStyle(CSSPropertyID::kPropertyIDFilter,
+                             lepus::Value("blur(10vw)"));
+  page->InsertNode(element_with_fix);
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+
+  auto* node_with_fix =
+      painting_context->node_map_.at(element_with_fix->impl_id()).get();
+  ASSERT_TRUE(node_with_fix->props_.find("filter") !=
+              node_with_fix->props_.end());
+  ASSERT_TRUE(node_with_fix->props_["filter"].IsArray());
+
+  auto filter_with_fix = node_with_fix->props_["filter"].Array();
+  ASSERT_EQ(filter_with_fix->size(), static_cast<size_t>(3));
+  EXPECT_EQ(filter_with_fix->get(1).Number(), 10);
+
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+  painting_context->Flush();
+
+  auto updated_filter_with_fix = node_with_fix->props_["filter"].Array();
+  ASSERT_EQ(updated_filter_with_fix->size(), static_cast<size_t>(3));
+  EXPECT_EQ(updated_filter_with_fix->get(1).Number(), 20);
+}
+
 TEST_P(FiberElementTest, TestUpdateDynamicElementStyle4) {
   auto view = manager->CreateFiberPage("0", 0);
 

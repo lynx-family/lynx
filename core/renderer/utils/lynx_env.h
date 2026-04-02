@@ -120,6 +120,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     // FIXME(zhouzhitao): remove this config in the next version(remove in 3.9)
     FIX_NEW_FIXED_REMOVAL_BUG,
     FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT,
+    FIX_FILTER_DYNAMIC_UPDATE_BUG,
     ENABLE_GLOBAL_FONT_COLLECTION,
     ENABLE_GC_ONCE_ON_IDLE,
     ENABLE_CSS_INLINE_VARIABLES,
@@ -307,6 +308,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
             {Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT,
              "fix_old_fixed_insert_self_use_render_parent"},
+            {Key::FIX_FILTER_DYNAMIC_UPDATE_BUG,
+             "fix_filter_dynamic_update_bug"},
             {Key::FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE,
              "fix_animation_forward_dynamic_update_overwrite"},
         });
@@ -470,6 +473,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableUnifyFixedBehavior();
   bool FixRadonInlineConvertBug();
   bool FixDynamicUpdateTransitionConsumeBug();
+  bool FixFilterDynamicUpdateBug();
   bool EnableFetchAPIStreamingStandard();
   bool FixNewFixedRemovalBug();
   bool FixOldFixedInsertSelfUseRenderParent();
