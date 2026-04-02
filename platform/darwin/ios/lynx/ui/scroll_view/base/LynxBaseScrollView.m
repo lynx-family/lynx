@@ -27,6 +27,12 @@
 @property(nonatomic, assign) NestedScrollMode forwardsNestedScrollMode;
 @property(nonatomic, assign) NestedScrollMode backwardsNestedScrollMode;
 @property(nonatomic, assign) CGPoint previousScrollOffset;
+@property(nonatomic, assign) CGPoint lynxLastScrollDelta;
+@end
+
+@interface LynxBaseScrollView (NestedInternal)
+- (void)stopSameDirectionParentFlingWithTargetContentOffset:(CGPoint)targetContentOffset
+                                                   velocity:(CGPoint)velocity;
 @end
 
 @implementation LynxBaseScrollView
@@ -73,9 +79,27 @@
 
 #pragma mark - UIScrollViewDelegate
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+  CGPoint delta = CGPointMake(scrollView.contentOffset.x - self.previousScrollOffset.x,
+                              scrollView.contentOffset.y - self.previousScrollOffset.y);
+  if (!CGPointEqualToPoint(delta, CGPointZero)) {
+    self.lynxLastScrollDelta = delta;
+  }
+
+  [[self.scrollDelegate getHitTestChainForNestedScrollViews]
+      enumerateObjectsUsingBlock:^(UIScrollView<LynxNestedScrollProtocol> *_Nonnull obj,
+                                   NSUInteger idx, BOOL *_Nonnull stop) {
+        [obj setNeedsLayout];
+      }];
+
   if (![self triggerLayoutForNestedScrollViews]) {
     [self scrollOffsetUpdated:scrollView];
   }
+}
+
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView
+                     withVelocity:(CGPoint)velocity
+              targetContentOffset:(inout CGPoint *)targetContentOffset {
+  [self stopSameDirectionParentFlingWithTargetContentOffset:*targetContentOffset velocity:velocity];
 }
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
@@ -143,4 +167,5 @@
   }
   return NO;
 }
+
 @end

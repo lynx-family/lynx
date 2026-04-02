@@ -735,6 +735,7 @@ public class LynxBaseScrollView : UIScrollView {
   public NSInteger LynxBaseScrollView(Internal)::forwardsNestedScrollMode forwardsNestedScrollMode;
   public NSInteger LynxBaseScrollView(Internal)::backwardsNestedScrollMode backwardsNestedScrollMode;
   public CGPoint LynxBaseScrollView(Internal)::previousScrollOffset previousScrollOffset;
+  public CGPoint LynxBaseScrollView(Internal)::lynxLastScrollDelta lynxLastScrollDelta;
   public instancetype LynxBaseScrollView::initWithVertical:layoutFromEnd:(BOOL vertical,[layoutFromEnd] BOOL layoutFromEnd);
   public void LynxBaseScrollView::tryToUpdateScrollState:(LynxBaseScrollViewScrollState newState);
   public void LynxBaseScrollView::updateProgrammaticallyScrollFinishedCallback:(LynxBaseScrollViewScrollFinishedCallback callback);
@@ -757,6 +758,7 @@ public interface LynxBaseScrollView(Internal) {
   public NSInteger LynxBaseScrollView(Internal)::forwardsNestedScrollMode forwardsNestedScrollMode;
   public NSInteger LynxBaseScrollView(Internal)::backwardsNestedScrollMode backwardsNestedScrollMode;
   public CGPoint LynxBaseScrollView(Internal)::previousScrollOffset previousScrollOffset;
+  public CGPoint LynxBaseScrollView(Internal)::lynxLastScrollDelta lynxLastScrollDelta;
 }
 
 public interface LynxBaseScrollView(Nested) {

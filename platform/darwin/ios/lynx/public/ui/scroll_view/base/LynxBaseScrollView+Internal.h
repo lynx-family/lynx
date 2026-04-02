@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) NSInteger forwardsNestedScrollMode;
 @property(nonatomic, assign) NSInteger backwardsNestedScrollMode;
 @property(nonatomic, assign) CGPoint previousScrollOffset;
+@property(nonatomic, assign) CGPoint lynxLastScrollDelta;
 
 @end
 

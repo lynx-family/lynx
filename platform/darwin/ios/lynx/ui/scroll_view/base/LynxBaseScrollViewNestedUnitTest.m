@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxBaseScrollView+Internal.h>
 #import <Lynx/LynxBaseScrollView+Nested.h>
+#import <Lynx/LynxBaseScrollView+Public.h>
 #import <Lynx/UIScrollView+Lynx.h>
 #import <XCTest/XCTest.h>
 
@@ -26,12 +27,28 @@
 
 + (BOOL)handleNestedScroll:(UIScrollView<LynxNestedScrollProtocol> *)scrollView
                       with:(NSArray<UIScrollView<LynxNestedScrollProtocol> *> *)hittestChain;
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView
+                     withVelocity:(CGPoint)velocity
+              targetContentOffset:(inout CGPoint *)targetContentOffset;
+
+@end
+
+@interface TrackingLynxBaseScrollView : LynxBaseScrollView
+@property(nonatomic, assign) BOOL stopScrollCalled;
+@end
+
+@implementation TrackingLynxBaseScrollView
+
+- (void)stopScroll {
+  self.stopScrollCalled = YES;
+  [super stopScroll];
+}
 
 @end
 
 @interface LynxBaseScrollViewNestedUnitTest : XCTestCase
-@property(nonatomic, strong) LynxBaseScrollView *parentScrollView;
-@property(nonatomic, strong) LynxBaseScrollView *childScrollView;
+@property(nonatomic, strong) TrackingLynxBaseScrollView *parentScrollView;
+@property(nonatomic, strong) TrackingLynxBaseScrollView *childScrollView;
 @property(nonatomic, strong) MockLynxBaseScrollViewDelegate *parentDelegate;
 @property(nonatomic, strong) MockLynxBaseScrollViewDelegate *childDelegate;
 @end
@@ -39,17 +56,17 @@
 @implementation LynxBaseScrollViewNestedUnitTest
 
 - (void)setUp {
-  _parentScrollView = [[LynxBaseScrollView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  _parentScrollView = [[TrackingLynxBaseScrollView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
   _parentScrollView.contentSize = CGSizeMake(200, 400);
   _parentScrollView.vertical = YES;
 
-  _childScrollView = [[LynxBaseScrollView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  _childScrollView = [[TrackingLynxBaseScrollView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
   _childScrollView.contentSize = CGSizeMake(100, 200);
   _childScrollView.vertical = YES;
 
   [_parentScrollView addSubview:_childScrollView];
 
-  _parentDelegate = _parentDelegate = [[MockLynxBaseScrollViewDelegate alloc] init];
+  _parentDelegate = [[MockLynxBaseScrollViewDelegate alloc] init];
   _childDelegate = [[MockLynxBaseScrollViewDelegate alloc] init];
 
   _parentScrollView.scrollDelegate = _parentDelegate;
@@ -164,6 +181,57 @@
 
   XCTAssertEqualWithAccuracy(_childScrollView.contentOffset.y, 150, 0.001);
   XCTAssertEqualWithAccuracy(_parentScrollView.contentOffset.y, 150, 0.001);
+}
+
+- (void)testStopSameDirectionParentFlingForSelfOnlyForward {
+  _childScrollView.forwardsNestedScrollMode = NestedScrollModeSelfOnly;
+  _childScrollView.backwardsNestedScrollMode = NestedScrollModeParallel;
+  _parentScrollView.scrollState = LynxBaseScrollViewScrollStateFling;
+  _parentScrollView.previousScrollOffset = CGPointMake(0, 20);
+  _parentScrollView.contentOffset = CGPointMake(0, 80);
+
+  _childScrollView.contentOffset = CGPointMake(0, 10);
+  CGPoint targetContentOffset = CGPointMake(0, 60);
+  [_childScrollView scrollViewWillEndDragging:_childScrollView
+                                 withVelocity:CGPointZero
+                          targetContentOffset:&targetContentOffset];
+
+  XCTAssertTrue(_parentScrollView.stopScrollCalled);
+  XCTAssertEqual([_parentScrollView currentScrollState], LynxBaseScrollViewScrollStateIdle);
+}
+
+- (void)testStopOppositeDirectionParentFling {
+  _childScrollView.forwardsNestedScrollMode = NestedScrollModeSelfOnly;
+  _childScrollView.backwardsNestedScrollMode = NestedScrollModeParallel;
+  _parentScrollView.scrollState = LynxBaseScrollViewScrollStateFling;
+  _parentScrollView.previousScrollOffset = CGPointMake(0, 80);
+  _parentScrollView.contentOffset = CGPointMake(0, 20);
+
+  _childScrollView.contentOffset = CGPointMake(0, 10);
+  CGPoint targetContentOffset = CGPointMake(0, 60);
+  [_childScrollView scrollViewWillEndDragging:_childScrollView
+                                 withVelocity:CGPointZero
+                          targetContentOffset:&targetContentOffset];
+
+  XCTAssertTrue(_parentScrollView.stopScrollCalled);
+  XCTAssertEqual([_parentScrollView currentScrollState], LynxBaseScrollViewScrollStateIdle);
+}
+
+- (void)testStopSameDirectionParentFlingForSelfOnlyWithBounceUsesVelocity {
+  _childScrollView.forwardsNestedScrollMode = NestedScrollModeSelfOnly;
+  _childScrollView.backwardsNestedScrollMode = NestedScrollModeParallel;
+  _parentScrollView.scrollState = LynxBaseScrollViewScrollStateFling;
+  _parentScrollView.previousScrollOffset = CGPointMake(0, 20);
+  _parentScrollView.contentOffset = CGPointMake(0, 80);
+
+  _childScrollView.contentOffset = CGPointMake(0, 130);
+  CGPoint targetContentOffset = CGPointMake(0, 100);
+  [_childScrollView scrollViewWillEndDragging:_childScrollView
+                                 withVelocity:CGPointMake(0, -500)
+                          targetContentOffset:&targetContentOffset];
+
+  XCTAssertTrue(_parentScrollView.stopScrollCalled);
+  XCTAssertEqual([_parentScrollView currentScrollState], LynxBaseScrollViewScrollStateIdle);
 }
 
 @end
