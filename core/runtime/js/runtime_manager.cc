@@ -146,6 +146,20 @@ std::shared_ptr<runtime::js::VMInstance> VMInstancePool::DoCreateVMInstance(
 
 #endif  // JS_ENGINE_TYPE
 
+bool ShouldUseJSVMRuntime(bool force_use_lightweight_js_engine) {
+#if OS_HARMONY
+#if JS_ENGINE_TYPE != 3
+  return (!force_use_lightweight_js_engine ||
+          tasm::LynxEnv::GetInstance().EnableJSVMRuntime()) &&
+         runtime::js::IsJSVMRuntimeAvailable();
+#else
+  return runtime::js::IsJSVMRuntimeAvailable();
+#endif  // JS_ENGINE_TYPE != 3
+#else
+  return false;
+#endif  // OS_HARMONY
+}
+
 }  // namespace
 
 RuntimeManager* RuntimeManager::Instance() {
@@ -514,20 +528,14 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
 #endif  // OS_WIN
 
 #if OS_HARMONY
-#if JS_ENGINE_TYPE != 3
-  if ((!force_use_lightweight_js_engine ||
-       tasm::LynxEnv::GetInstance().EnableJSVMRuntime()) &&
-      runtime::js::IsJSVMRuntimeAvailable()) {
-#endif  // JS_ENGINE_TYPE != 3
+  if (ShouldUseJSVMRuntime(force_use_lightweight_js_engine)) {
 #if ENABLE_NAPI_BINDING
     static runtime::js::NapiRuntimeProxyJSVMFactoryImpl factory;
     RegisterJSVMRuntimeProxyFactory(&factory);
 #endif  // ENABLE_NAPI_BINDING
     LOGI("make jsvm runtime");
     return runtime::js::makeJSVMRuntime();
-#if JS_ENGINE_TYPE != 3
   }
-#endif  // JS_ENGINE_TYPE != 3
 #endif  // OS_HARMONY
 
 // Fit compile on other unknown platforms such as Linux.
@@ -570,6 +578,14 @@ std::shared_ptr<profile::RuntimeProfiler> RuntimeManager::MakeRuntimeProfiler(
 
 bool RuntimeManager::IsInspectEnabled(bool force_use_lightweight_js_engine,
                                       const tasm::PageOptions& page_options) {
+#if OS_HARMONY
+  // JSVM currently does not implement inspector support. If runtime creation is
+  // going to land on JSVM, force inspect off so RuntimeManager stays on the
+  // normal non-inspect path consistently.
+  if (ShouldUseJSVMRuntime(force_use_lightweight_js_engine)) {
+    return false;
+  }
+#endif  // OS_HARMONY
   bool debuggable = page_options.GetDebuggable();
   return runtime_manager_delegate_ &&
          tasm::LynxEnv::GetInstance().IsJsDebugEnabled(
