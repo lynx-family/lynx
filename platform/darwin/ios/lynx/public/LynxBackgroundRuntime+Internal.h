@@ -5,6 +5,7 @@
 #import <Lynx/LynxBackgroundRuntime.h>
 #import <Lynx/LynxDevtool.h>
 
+#if defined(__cplusplus)
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/runtime/js/bindings/modules/ios/module_factory_darwin.h"
 #include "core/shell/ios/js_proxy_darwin.h"
@@ -34,3 +35,4 @@
     (const std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG> &)observer;
 - (void)onEvaluateJavaScriptEnd:(NSString *)url;
 @end
+#endif
