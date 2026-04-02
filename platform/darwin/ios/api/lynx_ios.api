@@ -5174,7 +5174,7 @@ public protocol LynxUITarget-p : <NSObject> {
   public void LynxUITarget-p::targetOnScreen();
   public void LynxUITarget-p::freeMemoryCache();
   public void LynxUITarget-p::targetOffScreen();
-  public float LynxUITarget-p::memoryUsageKB();
+  public int64_t LynxUITarget-p::memoryUsageBytes();
   public NSDictionary< NSString *, NSString * > * LynxUITarget-p::memoryUsageDetail();
 }
 
