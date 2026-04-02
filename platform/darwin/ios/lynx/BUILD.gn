@@ -113,7 +113,6 @@ subspec_target("lynx") {
   sources = [
     "LUIConfigAdapter.h",
     "LUIConfigAdapter.mm",
-    "LynxBackgroundRuntime+Internal.h",
     "LynxBackgroundRuntime.mm",
     "LynxBaseConfigurator+Internal.h",
     "LynxBaseConfigurator.mm",
@@ -406,6 +405,17 @@ subspec_target("lynx") {
     "public/LynxView.h",
     "public/LynxView+Internal.h",
     "public/LynxServiceProtocol.h",
+
+    # Extension module headers
+    "LynxTemplateRender+Internal.h",
+    "event/LynxEventHandler+Internal.h",
+    "ui/LynxUI+Private.h",
+    "ui/LynxUIContext+Internal.h",
+    "fluency/LynxScrollFluency.h",
+    "fluency/LynxFluencyMonitor.h",
+    "LynxUIRendererProtocol.h",
+    "LynxContext+Internal.h",
+    "LynxUIRenderer.h",
   ]
 }
 
