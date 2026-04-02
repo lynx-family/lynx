@@ -1,33 +1,14 @@
 # CHANGELOG
-## 3.8.6
-
-- Add `auto-width` and `auto-height` properties for `frame` element.
-
-## 3.8.5
-
-- Add `-x-auto-font-size-line-ranges` CSS property.
-
-## 3.8.4
-
-- Add `font` type for `requestResourcePrefetch`.
-
-## 3.8.3
-
-- Add `refresh` element types.
-
-## 3.8.2
-
-- Add `title-bar-view` element types.
-
-## 3.8.1
-
-- Add memory event.
-
-- Update `image` typings.
-
 ## 3.8.0
 
 - Add coding skills in types folder to optimize code-gen result.
+- Add memory event.
+- Update `image` typings.
+- Add `title-bar-view` element types.
+- Add `refresh` element types.
+- Add `font` type for `requestResourcePrefetch`.
+- Add `-x-auto-font-size-line-ranges` CSS property.
+- Add `auto-width` and `auto-height` properties for `frame` element.
 
 ## 3.7.0
 
