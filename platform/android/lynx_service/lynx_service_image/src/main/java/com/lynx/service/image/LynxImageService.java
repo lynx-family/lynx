@@ -475,4 +475,7 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
   @Deprecated
   @Override
   public void setImageSRSize(@NonNull Object builder, int width, int height) {}
+
+  @Override
+  public void setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri) {}
 }
