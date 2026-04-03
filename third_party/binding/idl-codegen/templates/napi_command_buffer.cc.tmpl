@@ -155,7 +155,7 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
   {% endif %}{# array type #}
 {#                                                                            #}
   {% elif argument.is_sequence_type %}
-  {# TODO(yuyifei): Currently assumes sequence<string> or sequence<uint32> #}
+  {# TODO(yuyifei): Currently assumes sequence<string> or sequence<uint32> or sequence<double> #}
   {% if argument.sequence_element_type == 'String' %}
   std::vector<std::string> {{argument.name}};
   for (uint32_t i = 0; i < command.{{argument.name}}ArrayLengthGen; ++i) {
@@ -163,6 +163,10 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
     {{argument.name}}.push_back(binding::Utf16LeToUtf8((char16_t*)(buffer + current + 1), str_len));
     current += (str_len + 3) / 2;
   }
+  {% elif argument.idl_type_name == 'IDLSequence<IDLDouble>' or argument.idl_type_name == 'IDLSequence<IDLUnrestrictedDouble>' %}
+  std::vector<double> {{argument.name}}(command.{{argument.name}}ArrayLengthGen);
+  std::memcpy({{argument.name}}.data(), buffer + current, command.{{argument.name}}ArrayLengthGen * sizeof(double));
+  current += command.{{argument.name}}ArrayLengthGen * 2;
   {% else %}
   SharedVector<uint32_t> {{argument.name}}((uint32_t*)buffer + current, command.{{argument.name}}ArrayLengthGen);
   current += command.{{argument.name}}ArrayLengthGen;
