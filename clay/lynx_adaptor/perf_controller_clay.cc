@@ -217,7 +217,7 @@ void PerfControllerClay::EndFluencyMonitor(int id) {
                                               fps_tracer->GetConfig().tag);
 
           // int props
-          event.int_props.insert_or_assign("max_refresh_rate",
+          event.int_props.insert_or_assign("lynxsdk_fluency_maximum_frames",
                                            metrics.max_refresh_rate);
           event.int_props.insert_or_assign("lynxsdk_fluency_frames_number",
                                            metrics.frames);
