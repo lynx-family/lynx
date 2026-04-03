@@ -21,6 +21,12 @@ namespace tasm {
 
 namespace {
 
+// TODO(linxiaosong): TextLayoutAPI is created by platform TextService, so the
+// ideal final shape is to route destruction through the same service boundary.
+// For now Textra performs the final destroy to keep teardown ordering correct:
+// ParagraphBuilder/Paragraph state must be released before the API goes away.
+void DestroyTextLayoutAPI(text::TextLayoutAPI* api) { delete api; }
+
 class TextraInlineView : public text::InlineView {
  public:
   explicit TextraInlineView(Element* child)
@@ -89,6 +95,9 @@ TextLayoutTextra::~TextLayoutTextra() {
   }
 
   paragraph_listeners_.clear();
+  // Destroy the API only after all paragraph-related state is gone.
+  DestroyTextLayoutAPI(api_);
+  api_ = nullptr;
 }
 
 void TextLayoutTextra::ApplyTextStyle(TextElement* text_element) {
