@@ -42,7 +42,6 @@ const INVALID_SESSION_STORAGE_LISTENER_ID = -1;
  */
 export class LynxContext implements IContext {
   private renderer?: LynxTemplateRenderer;
-  private _screenMetrics: LynxScreenMetrics;
   private shadowNodeOwner?: ShadowNodeOwner;
   private genericResourceFetcher?: LynxGenericResourceFetcher;
   private mediaResourceFetcher?: LynxMediaResourceFetcher;
@@ -55,12 +54,18 @@ export class LynxContext implements IContext {
     this._screenMetrics = new LynxScreenMetrics();
   }
 
+  private _screenMetrics: LynxScreenMetrics;
+
+  public get screenMetrics(): LynxScreenMetrics {
+    return this._screenMetrics;
+  }
+
   findJSShadowNodeBySign(sign: number): Object | undefined {
     return this.shadowNodeOwner?.findJSShadowNodeBySign(sign);
   }
 
-  public prefetchFont(uri: string) {
-    this.shadowNodeOwner?.prefetchFont(uri);
+  public prefetchFont(uri: string, callback?: (code: number, msg: string) => void) {
+    this.shadowNodeOwner?.prefetchFont(uri, callback);
   }
 
   public setShadowNodeOwner(nodeOwner?: ShadowNodeOwner) {
@@ -173,7 +178,9 @@ export class LynxContext implements IContext {
    * @param data Lynx template update metadata, developers use this data structure to specify the optional data content of the update template.
    */
   updateMetaData(data: LynxUpdateMeta): void;
+
   updateMetaData(data: MetaData): void;
+
   updateMetaData(data: LynxUpdateMeta | MetaData): void {
     const updateMode = (data as LynxUpdateMeta).updateMode ?? LynxUpdateMode.UPDATE;
     if (this.lynxView?.templateLoaded) {
@@ -199,10 +206,6 @@ export class LynxContext implements IContext {
 
   scrollStopped(containerSign: number) {
     this.renderer?.scrollStopped(containerSign);
-  }
-
-  public get screenMetrics(): LynxScreenMetrics {
-    return this._screenMetrics;
   }
 
   /**

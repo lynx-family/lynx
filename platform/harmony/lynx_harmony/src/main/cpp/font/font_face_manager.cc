@@ -174,31 +174,50 @@ void FontFaceManager::LoadFontWithUrl(int sign, const std::string& font_family,
 }
 
 void FontFaceManager::PrefetchFont(const std::string& src) {
+  FontPrefetchCallback callback;
+  PrefetchFont(src, std::move(callback));
+}
+
+void FontFaceManager::PrefetchFont(const std::string& src,
+                                   FontPrefetchCallback callback) {
   if (base::DataURIUtil::IsDataURI(src)) {
+    if (callback) {
+      callback(0, "");
+    }
     return;
   }
   const auto& font_face_cache = GetFontFaceCache();
   std::vector<uint8_t> cached_data;
   if (font_face_cache.GetFontCache(src, cached_data)) {
+    if (callback) {
+      callback(0, "");
+    }
     return;
   }
 
   auto& resource_loader = node_owner_->Context()->GetResourceLoader();
   auto request = pub::LynxResourceRequest{src, pub::LynxResourceType::kFont};
   resource_loader->LoadResource(
-      request,
-      [src, weak_self = std::weak_ptr<FontFaceManager>(shared_from_this())](
-          pub::LynxResourceResponse& response) mutable {
+      request, [src, callback = std::move(callback),
+                weak_self = std::weak_ptr<FontFaceManager>(shared_from_this())](
+                   pub::LynxResourceResponse& response) mutable {
         auto shared_self = weak_self.lock();
 
         if (!shared_self) {
+          if (callback) {
+            callback(response.err_code, response.err_msg);
+          }
           return;
         }
 
-        auto task = [shared_self, src, response]() mutable {
+        auto task = [shared_self, src, response,
+                     callback = std::move(callback)]() mutable {
           if (response.Success() && !response.data.empty()) {
             auto& font_face_cache = shared_self->GetFontFaceCache();
             font_face_cache.CacheFont(src, std::move(response.data));
+          }
+          if (callback) {
+            callback(response.err_code, response.err_msg);
           }
         };
 

@@ -235,7 +235,7 @@ export enum ThreadStrategyForRendering {
 export class LynxContext implements IContext {
   constructor();
   findJSShadowNodeBySign(sign: number): Object | undefined;
-  public prefetchFont(uri: string): void;
+  public prefetchFont(uri: string, callback: (code: number, msg: string) => void): void;
   public setShadowNodeOwner(nodeOwner: ShadowNodeOwner): void;
   public setUIOwner(uiOwner: UIOwner): void;
   public measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number, finalMeasure: boolean): void;
@@ -523,7 +523,7 @@ export class ShadowNodeOwner {
   findJSShadowNodeBySign(sign: number): Object | undefined;
   measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number, finalMeasure: boolean): ArrayBuffer;
   alignNativeNode(sign: number, top: number, left: number): void;
-  prefetchFont(uri: string): void;
+  prefetchFont(uri: string, callback: (code: number, msg: string) => void): void;
   destroy(): void;
 }
 

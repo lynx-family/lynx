@@ -64,7 +64,7 @@ export class ShadowNodeOwner {
    * Prefetch font resource.
    * @param {string} uri - The uri of the font resource.
    */
-  prefetchFont(uri: string): void;
+  prefetchFont(uri: string, callback?: (code: number, msg: string) => void): void;
 
   /**
    * Destroy the native instance immediately.
@@ -76,11 +76,11 @@ export class EmbedderPlatform {
   constructor(embedder: EmbedderEngine, paintingContext: UIOwner,
     shadowNodeOwner: ShadowNodeOwner);
 
+  static updateRefreshRate(refreshRate: number): void;
+
   getUIDelegate(): number[];
 
   destroy(): void;
-
-  static updateRefreshRate(refreshRate: number): void;
 }
 
 export interface DevtoolResult {
@@ -88,7 +88,6 @@ export interface DevtoolResult {
   width: number,
   height: number,
 }
-
 
 
 export class LynxWhiteBoard {
@@ -187,7 +186,8 @@ export class LynxTemplateRenderer {
   invokeLepusCallback(id: number, entryName: string, args: Object): void;
 }
 
-export type JSMeasureFunc = (width: number, widthMode: number, height: number, heightMode: number) => [number, number, number];
+export type JSMeasureFunc = (width: number, widthMode: number, height: number,
+  heightMode: number) => [number, number, number];
 
 export type JSAlignLayoutFunc = () => void;
 
@@ -228,12 +228,12 @@ export class UIOwner {
   canConsumeTouchEvent(x: number, y: number): boolean;
 
   updateRootTarget(node: NativeContent): void;
-  
+
   setLynxImageConfig(config?: Object): void;
 
-  onEnterForeground() : void;
+  onEnterForeground(): void;
 
-  onEnterBackground() : void;
+  onEnterBackground(): void;
 }
 
 export class UIBase {
@@ -344,19 +344,27 @@ export class LynxRuntimeWrapper {
 
   protected nativeCreate(providers: (Object | undefined)[], groupId: string,
     useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
-  bytecodeSourceUrl: string, moduleManagerArgs: Object[],
-  sendableModuleManagerArgs: Object[], processor?: string, data?: Object | string, readonly?: boolean, props?: Object | string): void;
+    bytecodeSourceUrl: string, moduleManagerArgs: Object[],
+    sendableModuleManagerArgs: Object[], processor?: string, data?: Object | string, readonly?: boolean,
+    props?: Object | string): void;
 
   protected nativeEvaluateScript(url: string, sources: string): void;
+
   protected nativeEvaluateBundleScript(url: string, bundle: TemplateBundle, jsFile: string): void;
+
   protected nativeTransitionToFullRuntime(): void;
+
   protected nativeCallJSFunction(module: string, method: string, params: Object[]): void;
+
   protected nativeAddRuntimeLifecycleListener(listener: Object);
+
   protected nativeSetSessionStorageItem(key: string, data?: Object | string): void;
+
   protected nativeGetSessionStorageItem(key: string, callback: Function): void;
+
   protected nativeSubscribeSessionStorage(key: string, callback: Function): number;
+
   protected nativeUnsubscribeSessionStorage(key: string, listenerId: number): void;
-  
 }
 
 export const registerStaticTask: (

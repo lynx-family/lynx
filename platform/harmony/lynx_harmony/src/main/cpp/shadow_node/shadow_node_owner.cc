@@ -453,7 +453,7 @@ napi_value ShadowNodeOwner::AlignLayoutNode(napi_env env,
 
 napi_value ShadowNodeOwner::PrefetchFont(napi_env env,
                                          napi_callback_info info) {
-  size_t argc = 1;
+  size_t argc = 2;
   napi_value argv[argc];
   napi_value js_this;
   napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
@@ -469,7 +469,45 @@ napi_value ShadowNodeOwner::PrefetchFont(napi_env env,
   std::string uri(len + 1, '\0');
   napi_get_value_string_utf8(env, argv[0], uri.data(), len + 1, &len);
   uri.resize(len);
-  node_owner->GetFontFaceManager()->PrefetchFont(uri);
+
+  napi_ref callback_ref = nullptr;
+  if (argc == 2) {
+    napi_valuetype callback_type = napi_undefined;
+    napi_typeof(env, argv[1], &callback_type);
+    if (callback_type == napi_function) {
+      napi_create_reference(env, argv[1], 1, &callback_ref);
+    }
+  }
+
+  if (!callback_ref) {
+    node_owner->GetFontFaceManager()->PrefetchFont(uri);
+    return nullptr;
+  }
+
+  auto owner = node_owner->shared_from_this();
+  node_owner->GetFontFaceManager()->PrefetchFont(
+      uri, [env, owner = std::move(owner), callback_ref](
+               int32_t code, std::string msg) mutable {
+        owner->NativeCallJSTask(
+            [env, callback_ref, code, msg = std::move(msg)]() mutable {
+              base::NapiHandleScope scope(env);
+              napi_value callback =
+                  base::NapiUtil::GetReferenceNapiValue(env, callback_ref);
+              if (!callback) {
+                napi_delete_reference(env, callback_ref);
+                return;
+              }
+              napi_value js_this = nullptr;
+              napi_get_undefined(env, &js_this);
+              napi_value args[2];
+              napi_create_int32(env, code, &args[0]);
+              napi_create_string_utf8(env, msg.c_str(), NAPI_AUTO_LENGTH,
+                                      &args[1]);
+              napi_call_function(env, js_this, callback, 2, args, nullptr);
+              napi_delete_reference(env, callback_ref);
+            },
+            false);
+      });
   return nullptr;
 }
 

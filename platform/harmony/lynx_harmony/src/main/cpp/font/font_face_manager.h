@@ -76,6 +76,7 @@ class FontFaceCache {
 using FontResourceCallback =
     base::MoveOnlyClosure<void, const std::string&, int32_t,
                           std::vector<uint8_t>&, size_t>;
+using FontPrefetchCallback = base::MoveOnlyClosure<void, int32_t, std::string>;
 class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
  public:
   explicit FontFaceManager(ShadowNodeOwner* node_owner,
@@ -101,6 +102,7 @@ class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
   }
 
   void PrefetchFont(const std::string& src);
+  void PrefetchFont(const std::string& src, FontPrefetchCallback callback);
 
   void LoadFontWithUrl(int sign, const std::string& custom_font_family,
                        const std::string& src, const FontFace::Type type,

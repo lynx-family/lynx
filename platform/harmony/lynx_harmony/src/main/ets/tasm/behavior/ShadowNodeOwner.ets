@@ -10,11 +10,11 @@ import { BehaviorRegistryMap } from './Behavior';
 
 export class ShadowNodeOwner {
   public readonly native: lynx.ShadowNodeOwner;
-  private context: LynxContext;
   nodeHolder: Map<number, ShadowNode> = new Map();
   behaviors: BehaviorRegistryMap;
   rootSize: Size;
   isDestroyed: boolean = false;
+  private context: LynxContext;
 
   constructor(context: LynxContext, behaviors: BehaviorRegistryMap, rootSize: Size) {
     this.behaviors = behaviors;
@@ -67,11 +67,11 @@ export class ShadowNodeOwner {
     this.native.alignNativeNode(sign, top, left);
   }
 
-  prefetchFont(uri: string) {
+  prefetchFont(uri: string, callback?: (code: number, msg: string) => void) {
     if (this.isDestroyed) {
       return;
     }
-    this.native.prefetchFont(uri);
+    this.native.prefetchFont(uri, callback);
   }
 
   destroy() {
