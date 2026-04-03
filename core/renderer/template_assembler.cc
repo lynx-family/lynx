@@ -2068,9 +2068,11 @@ void TemplateAssembler::SendTouchEvent(const std::string& name,
   touch_event_handler_->HandleTouchEvent(
       this, FindEntry(DEFAULT_ENTRY_NAME)->GetName(), name, info);
 #if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordTouchEvent(
-      name, page_proxy()->element_manager()->root()->impl_id(), info,
-      record_id_);
+  Element* root = page_proxy()->element_manager()->root();
+  if (root != nullptr) {
+    tasm::recorder::TemplateAssemblerRecorder::RecordTouchEvent(
+        name, root->impl_id(), info, record_id_);
+  }
 #endif
 }
 
