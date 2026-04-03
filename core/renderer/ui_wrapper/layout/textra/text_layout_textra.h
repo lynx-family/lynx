@@ -50,7 +50,11 @@ class TextLayoutTextra : public TextLayoutImpl {
   //  void MeasureChildrenRecursively(Element* element,starlight::Constraints&
   //  constraints);
 
-  std::unique_ptr<text::TextLayoutAPI> api_;
+  // Textra owns teardown ordering for the API today so it can release
+  // ParagraphBuilder/Paragraph state before destroying the underlying API.
+  // TODO(linxiaosong): align API destruction with the TextService boundary,
+  // since the implementation is created by TextService.
+  text::TextLayoutAPI* api_{nullptr};
   text::ParagraphBuilder* paragraph_builder_{nullptr};
   std::unordered_map<int32_t, text::Paragraph*> paragraphs_;
   std::unordered_map<int32_t, std::unique_ptr<text::ParagraphListener>>
