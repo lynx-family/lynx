@@ -107,7 +107,7 @@ PropBundleImpl::SharedData& PropBundleImpl::UniqueData() {
     return *data_;
   }
 
-  if (!data_.unique()) {
+  if (data_.use_count() != 1) {
     data_ = std::make_shared<SharedData>(*data_);
   }
   return *data_;
