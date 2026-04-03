@@ -194,6 +194,7 @@ DEF_NEW_OPCODE_2(TypeOp_Inc2, DstReg, SrcReg)
 DEF_NEW_OPCODE_2(TypeOp_Dec2, DstReg, SrcReg)
 DEF_NEW_OPCODE_2(TypeOp_Typeof2, DstReg, SrcReg)
 DEF_NEW_OPCODE_2(TypeOp_LoadSmallInt, DstReg, UInt16)
+DEF_NEW_OPCODE_2(TypeOp_LoadConstAndClone, DstReg, UInt16)
 
 #undef DEF_OPERAND
 #undef DEF_OPCODE
