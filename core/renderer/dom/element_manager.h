@@ -1308,7 +1308,7 @@ class ElementManager : public ElementContextDelegate,
   bool fix_dynamic_update_transition_consume_bug_{true};
   bool fix_new_fixed_removal_bug_{true};
   bool fix_old_fixed_insert_self_use_render_parent_{false};
-  bool fix_animation_forward_dynamic_update_overwrite_{true};
+  bool fix_animation_forward_dynamic_update_overwrite_{false};
   bool css_fragment_parsing_tasm_worker_thread_{false};
   bool enable_level_order_traversing_{false};
   std::atomic_int pending_level_order_tasks_{0};
