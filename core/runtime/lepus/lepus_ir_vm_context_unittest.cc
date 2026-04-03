@@ -152,6 +152,72 @@ TEST(LEPUS_IR_VMContext, DeepClone_ArrayIndependence) {
   EXPECT_EQ(ret.Number(), 1);
 }
 
+TEST(LEPUS_IR_VMContext, LoadConstAndClone_ArrayIndependenceFromConstPool) {
+  auto fn = Function::Create();
+
+  auto arr = CArray::Create();
+  arr->push_back(Value(1));
+  arr->push_back(Value(2));
+  const auto arr_idx = fn->AddConstValue(Value(arr));
+  const auto idx0_i64 = fn->AddConstValue(Value(static_cast<int64_t>(0)));
+  const auto v99_idx = fn->AddConstNumber(99);
+
+  // r0 = const_arr
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 0, arr_idx));
+  // r1 = clone(const_arr)
+  fn->AddInstruction(
+      Instruction::ABxCode(TypeOp_LoadConstAndClone, 1, arr_idx));
+  // r2 = 0 (int64)
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 2, idx0_i64));
+  // r3 = 99
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 3, v99_idx));
+  // r1[0] = 99
+  fn->AddInstruction(Instruction::ABCCode(TypeOp_SetTable, 1, 2, 3));
+  // r4 = r1[0]
+  fn->AddInstruction(Instruction::ABCCode(TypeOp_GetArrayInt64, 4, 1, 2));
+  // r5 = r0[0]
+  fn->AddInstruction(Instruction::ABCCode(TypeOp_GetArrayInt64, 5, 0, 2));
+  // return r4 + r5
+  fn->AddInstruction(Instruction::ABCCode(TypeOp_Add, 6, 4, 5));
+  fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 6));
+
+  auto ret = RunFunctionAsClosure(fn);
+  ASSERT_TRUE(ret.IsNumber());
+  EXPECT_EQ(ret.Number(), 100);
+}
+
+TEST(LEPUS_IR_VMContext, LoadConstAndClone_TableIndependenceFromConstPool) {
+  auto fn = Function::Create();
+
+  auto tbl = Dictionary::Create({{base::String("k"), Value(1)}});
+  const auto tbl_idx = fn->AddConstValue(Value(tbl));
+  const auto k_idx = fn->AddConstString(base::String("k"));
+  const auto v99_idx = fn->AddConstNumber(99);
+
+  // r0 = const_tbl
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 0, tbl_idx));
+  // r1 = clone(const_tbl)
+  fn->AddInstruction(
+      Instruction::ABxCode(TypeOp_LoadConstAndClone, 1, tbl_idx));
+  // r2 = "k"
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 2, k_idx));
+  // r3 = 99
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 3, v99_idx));
+  // r1["k"] = 99
+  fn->AddInstruction(Instruction::ABCCode(TypeOp_SetTable, 1, 2, 3));
+  // r4 = r1["k"]
+  fn->AddInstruction(Instruction::ABCCode(TypeOp_GetTableString, 4, 1, 2));
+  // r5 = r0["k"]
+  fn->AddInstruction(Instruction::ABCCode(TypeOp_GetTableString, 5, 0, 2));
+  // return r4 + r5
+  fn->AddInstruction(Instruction::ABCCode(TypeOp_Add, 6, 4, 5));
+  fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 6));
+
+  auto ret = RunFunctionAsClosure(fn);
+  ASSERT_TRUE(ret.IsNumber());
+  EXPECT_EQ(ret.Number(), 100);
+}
+
 TEST(LEPUS_IR_VMContext, Inc2_Int64Increment) {
   auto fn = Function::Create();
 
@@ -746,16 +812,29 @@ TEST(LEPUS_IR_VMContext, GetBuiltinFunc_FetchAndCallBuiltin) {
   EXPECT_EQ(ret.Number(), 7);
 }
 
-TEST(LEPUS_IR_VMContext, LoadSmallInt_CurrentNoOp) {
+TEST(LEPUS_IR_VMContext, LoadSmallInt_LoadsImmediateIntoDstReg) {
   auto fn = Function::Create();
-  const auto v123 = fn->AddConstNumber(123);
-  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 0, v123));
+
+  // r0 = 42 (imm16)
   fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadSmallInt, 0, 42));
   fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 0));
 
   auto ret = RunFunctionAsClosure(fn);
   ASSERT_TRUE(ret.IsNumber());
-  EXPECT_EQ(ret.Number(), 123);
+  EXPECT_EQ(ret.Number(), 42);
+}
+
+TEST(LEPUS_IR_VMContext, LoadSmallInt_SignExtendsImm16) {
+  auto fn = Function::Create();
+
+  // r0 = -1 (imm16)
+  fn->AddInstruction(
+      Instruction::ABxCode(TypeOp_LoadSmallInt, 0, static_cast<uint16_t>(-1)));
+  fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 0));
+
+  auto ret = RunFunctionAsClosure(fn);
+  ASSERT_TRUE(ret.IsNumber());
+  EXPECT_EQ(ret.Number(), -1);
 }
 
 }  // namespace test
