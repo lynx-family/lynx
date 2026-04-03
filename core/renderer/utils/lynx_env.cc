@@ -633,7 +633,7 @@ bool LynxEnv::FixOldFixedInsertSelfUseRenderParent() {
 }
 
 bool LynxEnv::FixAnimationForwardDynamicUpdateOverwrite() {
-  return GetBoolEnv(Key::FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE, true);
+  return GetBoolEnv(Key::FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE, false);
 }
 }  // namespace tasm
 }  // namespace lynx
