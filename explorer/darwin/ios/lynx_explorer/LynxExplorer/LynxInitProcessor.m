@@ -36,7 +36,7 @@ static LynxInitProcessor *_instance = nil;
   [env setLynxDebugEnabled:YES];
   [LynxService(LynxServiceDevToolProtocol) setLogBoxPresetValue:YES];
 
-  // enable all sessions debug
+  // enable debugging for all sessions
   [LynxService(LynxServiceDevToolProtocol) enableAllSessions];
 
   // init global config
