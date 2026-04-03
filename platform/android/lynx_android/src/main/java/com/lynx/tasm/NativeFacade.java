@@ -16,7 +16,6 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
-import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.event.EventTargetBase;
 import com.lynx.tasm.common.LepusBuffer;
@@ -161,14 +160,13 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
   }
 
   public boolean onLynxEvent(LynxEvent event) {
-    if (mClient == null || event == null) {
+    if (mClient == null) {
       return false;
     }
     LynxContext context = mLynxContext.get();
     if (context == null || context.getLynxUIOwner() == null) {
       return false;
     }
-    LynxUIOwner uiOwner = context.getLynxUIOwner();
 
     if (event.getType() == LynxEvent.LynxEventType.kTouch && event instanceof LynxTouchEvent
         && ((LynxTouchEvent) event).getIsMultiTouch()) {
@@ -176,10 +174,9 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
       for (Iterator<Map.Entry<String, Object>> it = uiTouchMap.entrySet().iterator();
            it.hasNext();) {
         Map.Entry<String, Object> entry = it.next();
-        int targetKey = Integer.parseInt(entry.getKey());
-        EventTarget target =
-            (EventTarget) ((LynxTouchEvent) event).getActiveTargetMap().get(targetKey);
-        target = target == null ? uiOwner.findLynxUIBySign(targetKey) : target;
+        EventTarget target = (EventTarget) ((LynxTouchEvent) event)
+                                 .getActiveTargetMap()
+                                 .get(Integer.parseInt(entry.getKey()));
         if (target == null) {
           continue;
         }
@@ -208,7 +205,6 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
     }
 
     EventTarget target = (EventTarget) event.getTarget();
-    target = target == null ? uiOwner.findLynxUIBySign(event.getTag()) : target;
     if (target == null) {
       return false;
     }
