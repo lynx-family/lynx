@@ -696,6 +696,7 @@ typedef struct _LynxInnerFontInfo {
                     fontFamilyName:(NSString *)fontFamilyName
                    fontFaceContext:(LynxFontFaceContext *)fontFaceContext
                   fontFaceObserver:(id<LynxFontFaceObserver>)fontFaceObserver
+                   didRequestAsync:(BOOL *)didRequestAsync
                           fontInfo:(LynxInnerFontInfo *)info {
   UIFont *font = nil;
   if (fontFaceContext != nil) {
@@ -723,6 +724,9 @@ typedef struct _LynxInnerFontInfo {
 
           if (item.dataFontName == nil) {
             // request by url, return will be sync or ansync
+            if (didRequestAsync != nil) {
+              *didRequestAsync = YES;
+            }
             [self requestFontfaceItem:item
                       fontFaceContext:fontFaceContext
                      fontFaceObserver:fontFaceObserver
@@ -802,6 +806,22 @@ typedef struct _LynxInnerFontInfo {
                   fontFamilyName:(NSString *)fontFamilyName
                  fontFaceContext:(LynxFontFaceContext *)fontFaceContext
                 fontFaceObserver:(id<LynxFontFaceObserver>)observer {
+  return [self generateFontWithSize:fontSize
+                             weight:fontWeight
+                              style:fontStyle
+                     fontFamilyName:fontFamilyName
+                    fontFaceContext:fontFaceContext
+                   fontFaceObserver:observer
+                    didRequestAsync:nil];
+}
+
+- (UIFont *)generateFontWithSize:(CGFloat)fontSize
+                          weight:(CGFloat)fontWeight
+                           style:(LynxFontStyleType)fontStyle
+                  fontFamilyName:(NSString *)fontFamilyName
+                 fontFaceContext:(LynxFontFaceContext *)fontFaceContext
+                fontFaceObserver:(id<LynxFontFaceObserver>)observer
+                 didRequestAsync:(BOOL *)didRequestAsync {
   static NSString *defaultFontFamilyName;
   static NSCache *systemFontCache;
   static dispatch_once_t onceToken;
@@ -831,6 +851,7 @@ typedef struct _LynxInnerFontInfo {
                            fontFamilyName:curFontFamilyName
                           fontFaceContext:fontFaceContext
                          fontFaceObserver:observer
+                          didRequestAsync:didRequestAsync
                                  fontInfo:&info];
       if (font != nil) break;
     }

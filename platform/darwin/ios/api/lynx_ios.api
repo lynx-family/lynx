@@ -1839,6 +1839,7 @@ public class LynxFontFaceManager : NSObject {
   public LynxFontFaceManager * LynxFontFaceManager::sharedManager();
   public UIFont * LynxFontFaceManager::generateFontWithBaseFont:fontVariationSettings:fontFeatureSettings:fontOpticalSizing:(UIFont *baseFont,[fontVariationSettings] NSArray *fontVariationSettings,[fontFeatureSettings] NSArray *fontFeatureSettings,[fontOpticalSizing] BOOL fontOpticalSizing);
   public UIFont * LynxFontFaceManager::generateFontWithSize:weight:style:fontFamilyName:fontFaceContext:fontFaceObserver:(CGFloat fontSize,[weight] CGFloat fontWeight,[style] LynxFontStyleType fontStyle,[fontFamilyName] NSString *fontFamilyName,[fontFaceContext] LynxFontFaceContext *fontFaceContext,[fontFaceObserver] id< LynxFontFaceObserver > observer);
+  public UIFont * LynxFontFaceManager::generateFontWithSize:weight:style:fontFamilyName:fontFaceContext:fontFaceObserver:didRequestAsync:(CGFloat fontSize,[weight] CGFloat fontWeight,[style] LynxFontStyleType fontStyle,[fontFamilyName] NSString *fontFamilyName,[fontFaceContext] LynxFontFaceContext *fontFaceContext,[fontFaceObserver] id< LynxFontFaceObserver > observer,[didRequestAsync] nullable BOOL *didRequestAsync);
   public void LynxFontFaceManager::registerFont:forName:(UIFont *font,[forName] NSString *name);
   public void LynxFontFaceManager::registerFamilyName:withAliasName:(NSString *fontFamilyName,[withAliasName] NSString *aliasName);
   public UIFont * LynxFontFaceManager::getRegisteredUIFont:fontSize:(NSString *familyName,[fontSize] CGFloat fontSize);
@@ -3497,9 +3498,10 @@ public protocol LynxServiceMonitorProtocol-p : <LynxServiceProtocol> {
 }
 
 public protocol LynxServiceResourceProtocol-p : <LynxServiceProtocol> {
+  typedef void(^ LynxServiceResourceProtocol-p::LynxPreloadMediaCompletionBlock) (NSInteger code, NSString *_Nullable msg)
   public nonnull id< LynxServiceResourceRequestOperationProtocol > LynxServiceResourceProtocol-p::fetchResourceAsync:parameters:completion:(NSString *url,[parameters] nullable LynxServiceResourceRequestParameters *parameters,[completion] nullable LynxServiceResourceCompletionHandler completionHandler);
   public nonnull id< LynxServiceResourceResponseProtocol > LynxServiceResourceProtocol-p::fetchResourceSync:parameters:error:(NSString *url,[parameters] nullable LynxServiceResourceRequestParameters *parameters,[error] NSError *_Nullable *errorPtr);
-  public void LynxServiceResourceProtocol-p::preloadMedia:cacheKey:videoID:videoModel:resolution:encodeType:apiString:size:(NSString *url,[cacheKey] NSString *cacheKey,[videoID] nullable NSString *videoID,[videoModel] nullable NSDictionary *videoModel,[resolution] NSUInteger resolution,[encodeType] NSUInteger encodeType,[apiString] nullable NSString *apiString,[size] NSInteger size);
+  public void LynxServiceResourceProtocol-p::preloadMedia:cacheKey:videoID:videoModel:resolution:encodeType:apiString:size:completed:(NSString *url,[cacheKey] NSString *cacheKey,[videoID] nullable NSString *videoID,[videoModel] nullable NSDictionary *videoModel,[resolution] NSUInteger resolution,[encodeType] NSUInteger encodeType,[apiString] nullable NSString *apiString,[size] NSInteger size,[completed] nullable LynxPreloadMediaCompletionBlock completed);
   public void LynxServiceResourceProtocol-p::cancelPreloadMedia:videoID:videoModel:(NSString *cacheKey,[videoID] nullable NSString *videoID,[videoModel] BOOL videoModel);
   public void LynxServiceResourceProtocol-p::addResourceLoader:TemplateUrl:(id loader,[TemplateUrl] NSString *templateUrl);
 }

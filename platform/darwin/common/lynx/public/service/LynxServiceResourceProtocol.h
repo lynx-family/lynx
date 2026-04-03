@@ -37,6 +37,9 @@ NS_ASSUME_NONNULL_BEGIN
            parameters:(nullable LynxServiceResourceRequestParameters *)parameters
                 error:(NSError *_Nullable *)errorPtr;
 
+/// preload media callback
+typedef void (^LynxPreloadMediaCompletionBlock)(NSInteger code, NSString *_Nullable msg);
+
 /// Preload media resource
 - (void)preloadMedia:(NSString *)url
             cacheKey:(NSString *)cacheKey
@@ -45,7 +48,8 @@ NS_ASSUME_NONNULL_BEGIN
           resolution:(NSUInteger)resolution
           encodeType:(NSUInteger)encodeType
            apiString:(nullable NSString *)apiString
-                size:(NSInteger)size;
+                size:(NSInteger)size
+           completed:(nullable LynxPreloadMediaCompletionBlock)completed;
 
 /// Cancel preload media resource
 - (void)cancelPreloadMedia:(NSString *)cacheKey

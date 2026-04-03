@@ -62,6 +62,13 @@ typedef NS_ENUM(NSUInteger, LynxFontSrcType) {
                   fontFamilyName:(NSString *)fontFamilyName
                  fontFaceContext:(LynxFontFaceContext *)fontFaceContext
                 fontFaceObserver:(id<LynxFontFaceObserver>)observer;
+- (UIFont *)generateFontWithSize:(CGFloat)fontSize
+                          weight:(CGFloat)fontWeight
+                           style:(LynxFontStyleType)fontStyle
+                  fontFamilyName:(NSString *)fontFamilyName
+                 fontFaceContext:(LynxFontFaceContext *)fontFaceContext
+                fontFaceObserver:(id<LynxFontFaceObserver>)observer
+                 didRequestAsync:(nullable BOOL *)didRequestAsync;
 - (void)registerFont:(UIFont *)font forName:(NSString *)name;
 - (void)registerFamilyName:(NSString *)fontFamilyName withAliasName:(NSString *)aliasName;
 - (UIFont *)getRegisteredUIFont:(NSString *)familyName fontSize:(CGFloat)fontSize;
