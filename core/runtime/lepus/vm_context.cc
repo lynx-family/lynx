@@ -1092,7 +1092,10 @@ void VMContext::RunFrame() {
       }
       BREAK;
       CASE(TypeOp_LoadSmallInt) : {
-        // TODO(yangruqing): implement in phase2 optimization.
+        GET_REGISTER_A(i);
+        const int16_t imm16 =
+            static_cast<int16_t>(lynx::lepus::Instruction::GetParamBx(i));
+        a->SetNumber(static_cast<int64_t>(imm16));
       }
       BREAK;
       CASE(TypeOp_Move) : {
@@ -2316,6 +2319,14 @@ void VMContext::RunFrame() {
         } else if (UnsafeOp::TypeSure::IsNumberDoubleFast(*a, a_value)) {
           UnsafeOp::NoFree::SetNumber(*a, a_value - 1);
         }
+      }
+      BREAK;
+      CASE(TypeOp_LoadConstAndClone) : {
+        // load const value from constant pool and clone it to register, so that
+        // the const value in constant pool is not modified.
+        GET_REGISTER_A(i);
+        auto* b = GET_CONST_VALUE(i);
+        RestrictedValue::Assign(*a, RestrictedValue(Value::Clone(*b)));
       }
       BREAK;
       CASE(TypeOp_Noop) : BREAK;
