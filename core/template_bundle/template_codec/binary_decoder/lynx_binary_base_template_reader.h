@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/css/css_value.h"
@@ -80,11 +81,10 @@ class LynxBinaryBaseTemplateReader : public ElementBinaryReader {
                              std::string& error);
   bool CheckLynxVersion(const std::string& binary_version);
   VersionComponentArray VersionStrToNumber(const std::string& version_str);
+  bool DecodeMagicWord(uint32_t magic_word);
+  const std::vector<BinarySection>& GetFlexibleTemplateSectionOrder() const;
   bool DecodeHeaderInfo(CompileOptions& compile_options);
   bool DecodeHeaderInfoField();
-
-  template <typename T>
-  void ReinterpretValue(T& tgt, const HeaderExtInfoByteArray& src);
 
   // Decode Template body
   bool DecodeTemplateBody();
@@ -92,6 +92,7 @@ class LynxBinaryBaseTemplateReader : public ElementBinaryReader {
   bool DecodeSectionRoute();
   // For Specific Section
   bool DecodeSpecificSection(const BinarySection& section);
+  bool DecodeConfigSection();
   // For FlexibleTemplate
   bool DecodeFlexibleTemplateBody();
   // For NonFlexibleTemplate

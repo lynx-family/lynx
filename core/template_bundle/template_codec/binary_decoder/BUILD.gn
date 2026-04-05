@@ -16,6 +16,7 @@ binary_decoder_shared_sources = [
   "lynx_binary_base_css_reader.cc",
   "lynx_binary_base_css_reader.h",
   "lynx_binary_base_template_reader.h",
+  "lynx_binary_base_template_reader_impl.cc",
   "lynx_binary_config_decoder.cc",
   "lynx_binary_config_decoder.h",
   "lynx_binary_config_helper.h",
