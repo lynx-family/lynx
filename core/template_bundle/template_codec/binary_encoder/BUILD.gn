@@ -18,6 +18,7 @@ lynx_core_source_set("binary_encoder") {
     "repack_binary_reader.h",
     "repack_binary_writer.cc",
     "repack_binary_writer.h",
+    "template_binary_writer_impl.cc",
   ]
 
   public_deps = [

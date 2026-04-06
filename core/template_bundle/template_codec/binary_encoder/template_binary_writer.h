@@ -135,6 +135,7 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
   void EncodeJsBytecode();
 
   // Encode Header
+  uint32_t ResolveHeaderMagic() const;
   void EncodeHeader();
   void EncodeSectionCount(const std::string& app_type);
 
