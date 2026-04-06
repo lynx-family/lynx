@@ -3832,8 +3832,9 @@ RENDERER_FUNCTION_CC(FiberSetInlineStyles) {
   if (arg1->IsString()) {
     element->SetRawInlineStyles(arg1->String());
   } else if (arg1->IsObject()) {
+    tasm::CSSVariableMap changed_css_vars;
     if (element->IsCSSInlineVariablesEnabled()) {
-      element->data_model()->MoveAndClearCSSInlineVariables(nullptr);
+      element->data_model()->MoveAndClearCSSInlineVariables(&changed_css_vars);
     }
     // TODO(linxs): opt this function, should diff first. Use
     tasm::ForEachLepusValue(*arg1, [&](const lepus::Value& key,
@@ -3855,6 +3856,23 @@ RENDERER_FUNCTION_CC(FiberSetInlineStyles) {
         }
       }
     });
+    // Propagate CSS custom property changes to self and descendants.
+    if (element->IsCSSInlineVariablesEnabled()) {
+      element->data_model()->UpdateInlineStyleChangedVars(&changed_css_vars);
+      if (!changed_css_vars.empty()) {
+        auto table = lepus::Dictionary::Create();
+        for (const auto& iter : changed_css_vars) {
+          table.get()->SetValue(iter.first, iter.second);
+        }
+        auto css_var_table = lepus::Value(std::move(table));
+        element->MarkCustomPropertiesDirty();
+        if (element->IsRelatedCSSVariableUpdated(element->data_model(),
+                                                 css_var_table)) {
+          element->MarkStyleDirty(false);
+        }
+        element->RecursivelyMarkChildrenCSSVariableDirty(css_var_table);
+      }
+    }
   } else if (!arg1->IsEmpty()) {
     // If arg1 is not string, not obejct and not empty
     ElementAPIError(

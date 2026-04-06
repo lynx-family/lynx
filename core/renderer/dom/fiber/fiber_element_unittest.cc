@@ -85,6 +85,7 @@ style::DynamicStyleObjectRef MakeDynamicStyleObjectRef(StyleMap style_map) {
 static std::unordered_map<std::string, uint32_t> kTestColorMap = {
     {"red", 4294901760},
     {"green", 4278222848},
+    {"blue", 4278190335},
     {"black", 4278190080},
 };
 
@@ -15372,6 +15373,77 @@ TEST_P(FiberElementTest, TestSetRawInlineStyles04) {
     EXPECT_TRUE(node != nullptr);
     EXPECT_EQ(node->props_["color"],
               lepus::Value(static_cast<uint32_t>(kTestColorMap["green"])));
+  }
+}
+
+// Test that CSS custom property changes propagate to descendants when
+// using the object-based inline style path (FiberSetInlineStyles with object).
+// This is the regression test for
+// https://github.com/lynx-family/lynx/issues/5889
+TEST_P(FiberElementTest, TestObjectPathCSSVariablePropagation) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  // page
+  // └── view1 (sets --bg-color)
+  //     └── view2 (uses var(--bg-color))
+  auto page = manager->CreateFiberPage("0", 0);
+  auto view1 = manager->CreateFiberView();
+  auto view2 = manager->CreateFiberView();
+  page->InsertNode(view1);
+  view1->InsertNode(view2);
+
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->platform_impl_.get());
+
+  {
+    // Establish initial state using the string path (known working).
+    // view1: "--bg-color: red;"
+    // view2: "background-color: var(--bg-color);"
+    view1->SetRawInlineStyles("--bg-color: red;");
+    view2->SetRawInlineStyles("background-color: var(--bg-color);");
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+
+    auto node = painting_context->node_map_[view2->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+  }
+
+  {
+    // Simulate FiberSetInlineStyles object path: update --bg-color to blue.
+    // This exercises the code path that was missing dirty-marking.
+    view1->RemoveAllInlineStyles();
+
+    CSSVariableMap changed_css_vars;
+    view1->data_model()->MoveAndClearCSSInlineVariables(&changed_css_vars);
+    view1->data_model()->UpdateCSSInlineVariables("--bg-color", "blue");
+
+    // Dirty-marking (the fix for issue #5889).
+    view1->data_model()->UpdateInlineStyleChangedVars(&changed_css_vars);
+    if (!changed_css_vars.empty()) {
+      auto table = lepus::Dictionary::Create();
+      for (const auto& iter : changed_css_vars) {
+        table.get()->SetValue(iter.first, iter.second);
+      }
+      auto css_var_table = lepus::Value(std::move(table));
+      view1->MarkCustomPropertiesDirty();
+      if (view1->IsRelatedCSSVariableUpdated(view1->data_model(),
+                                             css_var_table)) {
+        view1->MarkStyleDirty(false);
+      }
+      view1->RecursivelyMarkChildrenCSSVariableDirty(css_var_table);
+    }
+
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+
+    // view2 should now see --bg-color: blue from view1.
+    auto node = painting_context->node_map_[view2->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["blue"])));
   }
 }
 
