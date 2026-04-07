@@ -5,7 +5,11 @@
 #ifndef SRC_INTERPRETER_QUICKJS_INCLUDE_BASE_EXPORT_H_
 #define SRC_INTERPRETER_QUICKJS_INCLUDE_BASE_EXPORT_H_
 
-#if defined(WIN32)
+#if defined(QJS_STATIC_LIBRARY)
+#define QJS_EXPORT
+#define QJS_EXPORT_FOR_DEVTOOL
+#define QJS_HIDE
+#elif defined(WIN32)
 #define QJS_EXPORT __declspec(dllimport)
 #define QJS_EXPORT_FOR_DEVTOOL __declspec(dllimport)
 #define QJS_HIDE

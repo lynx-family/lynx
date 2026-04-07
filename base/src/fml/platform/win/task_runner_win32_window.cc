@@ -10,6 +10,10 @@
 #include <algorithm>
 #include <iostream>
 
+#if defined(_WIN32)
+#pragma comment(lib, "user32.lib")
+#endif
+
 namespace lynx {
 namespace fml {
 

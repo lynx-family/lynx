@@ -94,6 +94,21 @@ if (build_lynx_lepus_node) {
 
       deps = lynx_encoder_deps + lynx_decoder_deps
       deps += [ "../../core/template_bundle/template_codec:tasm_codec_facade" ]
+
+      if (is_win && enable_napi_binding) {
+        deps += [
+          "../../core/runtime/common/napi:napi_binding_quickjs",
+          "../../third_party/napi:env",
+          "../../third_party/napi:quickjs",
+          "../../third_party/quickjs",
+        ]
+        if (jsengine_type == "v8") {
+          deps += [
+            "../../core/runtime/common/napi:napi_binding_v8",
+            "../../third_party/napi:v8",
+          ]
+        }
+      }
     }
 
     oliver_node_lib("create_tasm_node") {
