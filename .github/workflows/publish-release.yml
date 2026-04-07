@@ -289,3 +289,64 @@ jobs:
           export PUBLISH_ID=${{ secrets.HARMONY_PUBLISH_ID }}
           export KEY_PATH=$GITHUB_WORKSPACE/lynx/publish_key
           python3 explorer/harmony/script/publish.py --modules ${{ matrix.modules }} --version ${{ needs.get-version.outputs.version }}${{ matrix.version_suffix }}
+
+  macos-explorer-release:
+    timeout-minutes: 60
+    runs-on: lynx-darwin-14-medium
+    needs: get-version
+    strategy:
+      matrix:
+        arch: [arm64, x64]
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+          ref: ${{ github.event.inputs.commitId || github.ref }}
+          fetch-depth: 0
+      - name: Build macOS Explorer
+        uses: ./lynx/.github/actions/macos-explorer-build
+        with:
+          build-arch: ${{ matrix.arch }}
+      - name: push explorer to release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ needs.get-version.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: '${{ github.workspace }}/lynx/LynxExplorer-macos-${{ matrix.arch }}.app.tar.gz,${{ github.workspace }}/lynx/out/Default/lynx_sdk_macos_${{ matrix.arch }}.zip'
+          allowUpdates: true
+          body: ''
+
+  windows-explorer-release:
+    timeout-minutes: 60
+    runs-on: lynx-windows-2022-large
+    needs: get-version
+    strategy:
+      matrix:
+        arch: [x86, x64]
+    steps:
+      - name: Configure Git
+        shell: PowerShell
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git config --global http.sslBackend "schannel"
+        working-directory: ./
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+          ref: ${{ github.event.inputs.commitId || github.ref }}
+          fetch-depth: 0
+      - name: Build windows Explorer
+        uses: ./lynx/.github/actions/windows-explorer-build
+        with:
+          build-arch: ${{ matrix.arch }}
+      - name: push explorer to release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ needs.get-version.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: '${{ github.workspace }}/lynx/LynxExplorer-windows-${{ matrix.arch }}.tar.gz,${{ github.workspace }}/lynx/out/Default/lynx_sdk_windows_${{ matrix.arch }}.zip'
+          allowUpdates: true
+          body: ''
