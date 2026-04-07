@@ -7,6 +7,7 @@
 #include <cstring>
 #include <mutex>
 
+#include "core/runtime/js/jsi/jsvm/jsvm_creator.h"
 #include "core/runtime/js/jsi/jsvm/jsvm_util.h"
 
 namespace lynx {
@@ -44,8 +45,7 @@ void JSVMRuntimeInstance::InitInstance() {
         memset(&initOptions, 0, sizeof(initOptions));
         break;
     }
-
-    JSVM_CALL_NO_ENV(OH_JSVM_Init, &initOptions);
+    InitializeJSVM(&initOptions);
 
     JSVM_CreateVMOptions options;
     memset(&options, 0, sizeof(options));
