@@ -10,8 +10,8 @@
     "build:ios": "cross-env  TARGET=ios npm run build",
     "build:android": "cross-env TARGET=android npm run build",
     "build:web": "cross-env TARGET=web npm run build",
-    "build": "node esbuild.mjs",
-    "build:lib": "tsc",
+    "build": "echo \"build tsc path: $(which tsc) path: ${PATH}\" && node esbuild.mjs",
+    "build:lib": "echo \"tsc path: $(which tsc) path: ${PATH}\" && tsc",
     "format": "prettier -w src"
   },
   "author": "Lynx Authors",

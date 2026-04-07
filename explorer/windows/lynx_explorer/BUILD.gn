@@ -77,6 +77,10 @@ executable("lynx_explorer") {
             ] + manifests
 }
 
+pool("resource_serial_pool") {
+  depth = 1
+}
+
 action("build_card_resources") {
   # Use the custom Python script
   script = "build_resources.py"
@@ -97,6 +101,9 @@ action("build_card_resources") {
     root_dir,
     target_gen_dir,
   ]
+
+  # Serialize resource-related steps to avoid concurrent writes/reads.
+  pool = ":resource_serial_pool"
 }
 
 copy("copy_dll") {
@@ -113,6 +120,8 @@ copy("copy_resources") {
   ]
   outputs = [ "$root_build_dir/lynx_explorer/{{source_file_part}}" ]
   deps = [ "../../../platform/windows:lynx_core" ]
+
+  pool = ":resource_serial_pool"
 }
 
 action("copy_devtool_resources") {
@@ -127,6 +136,8 @@ action("copy_devtool_resources") {
   ]
   outputs = [ "$root_build_dir/lynx_explorer/js_assets/lynx-error-parser.js" ]
   deps = [ "../../../devtool/lynx_devtool:devtool_assets" ]
+
+  pool = ":resource_serial_pool"
 }
 
 copy("copy_icu") {
