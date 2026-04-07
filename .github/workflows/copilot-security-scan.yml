@@ -1,0 +1,227 @@
+# Daily security scan powered by GitHub Copilot (via GitHub Models API).
+#
+# This workflow analyzes new code committed in the last 24 hours for potential
+# security vulnerabilities using AI-powered analysis. It calls the GitHub
+# Models inference API (the same AI that powers GitHub Copilot) to review
+# source code diffs and identify security risks.
+#
+# Prerequisites:
+#   1. Create a GitHub Personal Access Token (classic or fine-grained) that
+#      has access to GitHub Models (https://github.com/marketplace/models).
+#   2. Add the token as a repository secret named COPILOT_TOKEN:
+#      Settings → Secrets and variables → Actions → New repository secret.
+#
+name: 'Copilot Security Scan'
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  security-scan:
+    name: Copilot Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Collect recent code changes
+        id: diff
+        run: |
+          SINCE=$(date -u -d '24 hours ago' '+%Y-%m-%dT%H:%M:%SZ')
+          echo "Scanning for commits since ${SINCE} ..."
+
+          COMMITS=$(git log --since="${SINCE}" --format="%H" 2>/dev/null || true)
+          if [ -z "$COMMITS" ]; then
+            echo "No commits in the last 24 hours — nothing to scan."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          OLDEST=$(echo "$COMMITS" | tail -1)
+          echo "Found $(echo "$COMMITS" | wc -l) commit(s). Oldest: ${OLDEST}"
+
+          # Diff only source-code files to reduce noise
+          EMPTY_TREE=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+          if git rev-parse --verify "${OLDEST}^" >/dev/null 2>&1; then
+            git diff "${OLDEST}^..HEAD" -- \
+              '*.cc' '*.cpp' '*.c' '*.h' '*.hpp' \
+              '*.m' '*.mm' '*.swift' \
+              '*.js' '*.ts' '*.jsx' '*.tsx' \
+              '*.py' '*.java' '*.kt' '*.rb' \
+              > /tmp/diff.patch
+          else
+            git diff "${EMPTY_TREE}..HEAD" -- \
+              '*.cc' '*.cpp' '*.c' '*.h' '*.hpp' \
+              '*.m' '*.mm' '*.swift' \
+              '*.js' '*.ts' '*.jsx' '*.tsx' \
+              '*.py' '*.java' '*.kt' '*.rb' \
+              > /tmp/diff.patch
+          fi
+
+          if [ ! -s /tmp/diff.patch ]; then
+            echo "No source-code changes in the last 24 hours."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          LINES=$(wc -l < /tmp/diff.patch)
+          echo "Collected ${LINES} lines of diff."
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Analyze changes with Copilot
+        if: steps.diff.outputs.skip != 'true'
+        id: analyze
+        env:
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+        run: |
+          if [ -z "$COPILOT_TOKEN" ]; then
+            echo "::error::Secret COPILOT_TOKEN is not set. Please add a GitHub PAT with Models access as a repository secret."
+            exit 1
+          fi
+
+          # Truncate diff to stay within model context-window limits (~60 KB)
+          head -c 60000 /tmp/diff.patch > /tmp/diff_truncated.patch
+
+          # Build the analysis prompt — request structured JSON output so we
+          # can reliably determine whether risks were found without fragile
+          # string matching on the model's prose.
+          cat > /tmp/prompt.txt <<'PROMPT'
+          You are an expert security code reviewer. Analyze the following code
+          diff and identify potential security vulnerabilities.
+
+          Focus on these categories:
+          - Injection attacks (SQL injection, command injection, XSS, etc.)
+          - Buffer overflows and memory-safety issues
+          - Authentication and authorization flaws
+          - Sensitive data exposure (hard-coded secrets, logging of credentials)
+          - Insecure deserialization
+          - Server-Side Request Forgery (SSRF) and Cross-Site Request Forgery (CSRF)
+          - Cryptographic weaknesses
+          - Race conditions and concurrency issues
+          - Path traversal and file-access issues
+          - Other OWASP Top-10 risks
+
+          You MUST respond with a JSON object containing exactly two keys:
+          - "has_risks" (boolean): true if any security issues were found, false otherwise.
+          - "analysis" (string): Markdown-formatted analysis. When has_risks is true,
+            for each finding include:
+            1. **File & location** — the file name and approximate line(s) in the diff
+            2. **Risk level** — 🔴 High / 🟡 Medium / 🟢 Low
+            3. **Description** — what the vulnerability is
+            4. **Recommendation** — how to fix or mitigate it
+            When has_risks is false, set analysis to:
+            "✅ No security issues detected in the reviewed changes."
+          PROMPT
+
+          # Call GitHub Models inference API (Copilot-powered) with JSON mode
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            "https://models.inference.ai.azure.com/chat/completions" \
+            -H "Authorization: Bearer ${COPILOT_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+                  --rawfile system_prompt /tmp/prompt.txt \
+                  --rawfile diff /tmp/diff_truncated.patch \
+                  '{
+                    "model": "gpt-4o",
+                    "messages": [
+                      { "role": "system", "content": $system_prompt },
+                      { "role": "user",   "content": ("Review this diff for security risks:\n\n" + $diff) }
+                    ],
+                    "temperature": 0.1,
+                    "response_format": { "type": "json_object" }
+                  }')")
+
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "::error::GitHub Models API returned HTTP ${HTTP_CODE}."
+            cat /tmp/response.json
+            exit 1
+          fi
+
+          ANALYSIS=$(jq -r '.choices[0].message.content // empty' /tmp/response.json)
+          if [ -z "$ANALYSIS" ]; then
+            echo "::error::Copilot returned an empty response."
+            exit 1
+          fi
+
+          # Parse the structured JSON response from the model
+          HAS_RISKS=$(echo "$ANALYSIS" | jq -r 'if .has_risks then "true" else "false" end')
+          ANALYSIS_MD=$(echo "$ANALYSIS" | jq -r '.analysis // empty')
+
+          if [ -z "$ANALYSIS_MD" ]; then
+            echo "::warning::Model response did not contain expected JSON structure. Treating as risks found."
+            echo "$ANALYSIS" > /tmp/analysis.md
+            echo "has_risks=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$ANALYSIS_MD" > /tmp/analysis.md
+            if [ "$HAS_RISKS" = "true" ]; then
+              echo "has_risks=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_risks=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Write results to job summary
+        if: steps.diff.outputs.skip != 'true' && steps.analyze.conclusion == 'success'
+        run: |
+          DATE=$(date -u '+%Y-%m-%d')
+          {
+            echo "## 🔒 Copilot Security Scan — ${DATE}"
+            echo ""
+            cat /tmp/analysis.md
+            echo ""
+            echo "---"
+            echo "_Scanned commits from the last 24 hours._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create or update issue for findings
+        if: steps.diff.outputs.skip != 'true' && steps.analyze.outputs.has_risks == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DATE=$(date -u '+%Y-%m-%d')
+          LABEL="security-scan"
+
+          # Ensure the label exists
+          gh label create "$LABEL" \
+            --description "Automated Copilot security scan findings" \
+            --color "D93F0B" 2>/dev/null || true
+
+          # Build issue body without heredoc to avoid delimiter collisions
+          {
+            echo "## 🔒 Copilot Security Scan — ${DATE}"
+            echo ""
+            echo "The daily Copilot security scan detected potential security risks in"
+            echo "recent code changes. Please review the findings below."
+            echo ""
+            cat /tmp/analysis.md
+            echo ""
+            echo "---"
+            echo "> _This issue was created automatically by the"
+            echo "> [Copilot Security Scan](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/copilot-security-scan.yml)"
+            echo "> workflow. Scan date: ${DATE}_"
+          } > /tmp/issue_body.md
+
+          # Search for an existing open issue with the security-scan label
+          EXISTING=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            echo "Updating existing issue #${EXISTING} with new findings."
+            gh issue comment "$EXISTING" --body-file /tmp/issue_body.md
+          else
+            echo "Creating new issue for findings."
+            gh issue create \
+              --title "🔒 Copilot Security Scan — ${DATE}" \
+              --label "$LABEL" \
+              --body-file /tmp/issue_body.md
+          fi
