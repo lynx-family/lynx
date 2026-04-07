@@ -23,6 +23,7 @@ import android.view.ViewParent;
 import android.view.WindowManager;
 import androidx.annotation.AnyThread;
 import androidx.annotation.Keep;
+import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
@@ -50,6 +51,7 @@ import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.behavior.utils.Predicate;
 import com.lynx.tasm.core.VSyncMonitor;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.featurecount.LynxFeatureCounter;
@@ -61,6 +63,7 @@ import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1599,6 +1602,9 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
    * @brief Find `LynxUI` nodes based on the name attribute.
    * @param name The name attribute of the view specified by the front end in the layout file.
    * @return The `LynxUI` node corresponding to the name attribute.
+   * @implNote Warning: This function may return UI elements that have already
+   *  been unmounted from the UI tree. To ensure retrieval of valid UI elements, it is
+   *  recommended to use {@link LynxView#findAllUIByFilter} instead.
    */
   @Nullable
   public LynxBaseUI findUIByName(String name) {
@@ -1613,6 +1619,9 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
    * @brief Find `UIView` based on `idSelector` property.
    * @param id The id attribute of the view specified by the front end in the layout file.
    * @return The `UIView` node corresponding to the idSelector attribute.
+   * @implNote Warning: This function may return UI elements that have already
+   *  been unmounted from the UI tree. To ensure retrieval of valid UI elements, it is
+   *  recommended to use {@link LynxView#findAllUIByFilter} instead.
    */
   @Nullable
   public View findViewByIdSelector(String id) {
@@ -1656,6 +1665,26 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
       return mLynxTemplateRender.findUIByIndex(index);
     }
     return null;
+  }
+
+  /**
+   *  Find all `LynxUI` nodes filtered by the `filter`.
+   *
+   * @param filter The filter to decide whether the node should be selected.
+   * @param findRoot The root to start find. This root may be included in the result. If null, the
+   *  search starts from the root of LynxView.
+   * @param maxCount The maximum number of nodes to return. If 0 or negative, all matching nodes
+   * will be returned.
+   * @return A list of `LynxUI` nodes that match the filter criteria, starting from the specified
+   *  root.
+   * @since 3.7
+   */
+  @NonNull
+  @MainThread
+  public List<LynxBaseUI> findAllUIByFilter(
+      @NonNull Predicate<LynxBaseUI> filter, @Nullable LynxBaseUI findRoot, int maxCount) {
+    return (mLynxUIRender != null) ? mLynxUIRender.findAllLynxUIByFilter(filter, findRoot, maxCount)
+                                   : Collections.emptyList();
   }
 
   @Override

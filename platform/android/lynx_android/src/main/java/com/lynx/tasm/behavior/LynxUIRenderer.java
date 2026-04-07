@@ -52,12 +52,15 @@ import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.behavior.utils.Predicate;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 enum BoxModelOffset {
   PAD_LEFT,
@@ -365,8 +368,16 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   }
 
   @Override
-  public LynxBaseUI findLynxUIByIndex(@NonNull int index) {
+  public LynxBaseUI findLynxUIByIndex(int index) {
     return (mLynxUIOwner != null) ? mLynxUIOwner.findLynxUIByIndex(index) : null;
+  }
+
+  @NonNull
+  @Override
+  public List<LynxBaseUI> findAllLynxUIByFilter(
+      @NonNull Predicate<LynxBaseUI> filter, @Nullable LynxBaseUI findRoot, int maxCount) {
+    return (mLynxUIOwner != null) ? mLynxUIOwner.findAllLynxUIByFilter(filter, findRoot, maxCount)
+                                  : Collections.emptyList();
   }
 
   @Override
