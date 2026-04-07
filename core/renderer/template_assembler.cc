@@ -1357,6 +1357,23 @@ void TemplateAssembler::DidFetchBundle(
   }
 
   if (callback_info.Success() && callback_info.bundle) {
+#if ENABLE_TESTBENCH_RECORDER
+    // Record bundle binary for JS API `fetchBundle` so that TestBench replay
+    // can serve the bundle from recorded data even if the original url is not a
+    // fully-qualified network url (e.g. "/xxx.template.js").
+    if (callback_info.request.response_promise != nullptr &&
+        callback_info.request.resource_type ==
+            pub::LynxResourceType::kLazyBundle &&
+        tasm::recorder::TestBenchBaseRecorder::GetInstance()
+            .IsRecordingProcess() &&
+        !callback_info.bundle->GetBinary().empty()) {
+      std::vector<uint8_t> binary = callback_info.bundle->GetBinary();
+      tasm::recorder::TemplateAssemblerRecorder::
+          RecordLoadComponentWithCallback(callback_info.component_url, binary,
+                                          false, -1, record_id_);
+    }
+#endif  // ENABLE_TESTBENCH_RECORDER
+
     // TODO(yangguangzhao.solace): remove this check when resource loader
     // refactor is done.
     if (!callback_info.bundle->IsCard()) {
@@ -2603,6 +2620,23 @@ void TemplateAssembler::FetchBundle(
   auto bundle = FindTemplateBundle(bundle_url);
   if (bundle) {
     // bundle already loaded;
+#if ENABLE_TESTBENCH_RECORDER
+    LOGI("TemplateAssembler::FetchBundle, bundle already loaded, bundle_url: "
+         << bundle_url);
+    // JS API `fetchBundle` may preload dynamic component bundles without
+    // triggering `RequireTemplateEntry/LoadComponentWithCallback`. For
+    // TestBench replay, record the bundle binary so replay can mock the
+    // DynamicComponentFetcher result and avoid network/protocol dependency.
+    if (tasm::recorder::TestBenchBaseRecorder::GetInstance()
+            .IsRecordingProcess() &&
+        !bundle->GetBinary().empty()) {
+      std::vector<uint8_t> binary = bundle->GetBinary();
+      tasm::recorder::TemplateAssemblerRecorder::
+          RecordLoadComponentWithCallback(bundle_url, binary, false, -1,
+                                          record_id_);
+    }
+#endif  // ENABLE_TESTBENCH_RECORDER
+
     response_promise->SetValue(
         {.url = bundle_url, .code = LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
   } else {
