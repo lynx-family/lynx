@@ -20,11 +20,10 @@
 
 namespace lynx {
 namespace tasm {
-/// Upload global feature switches in PageConfig with common data about lynx
-/// view. If you add a new  global feature switch, you should add it to report
-/// event.
+/// Upload the original page config string for global feature switch analysis.
 static constexpr const char* kLynxSDKGlobalFeatureSwitchEvent =
     "lynxsdk_global_feature_switch_statistic";
+static constexpr const char* kPageConfigStringProp = "config_str";
 
 bool LynxBinaryConfigDecoder::DecodePageConfig(
     std::string config_str, std::shared_ptr<PageConfig>& page_config) {
@@ -204,8 +203,8 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
   UpdateCSSConfigs(page_config);
 
   config_helper_.HandlePageConfig(doc, page_config);
+  ReportGlobalFeatureSwitch(config_str);
   page_config->SetOriginalConfig(std::move(config_str));
-  ReportGlobalFeatureSwitch(page_config);
   return true;
 }
 
@@ -249,56 +248,15 @@ bool LynxBinaryConfigDecoder::DecodeComponentConfig(
 }
 
 /// TODO(limeng.amer): move to report thread.
-/// Upload global feature switches in PageConfig with common data about lynx
-/// view. If you add a new  global feature switch, you should add it to report
-/// event.
+/// Upload the original page config string for global feature switch analysis.
 void LynxBinaryConfigDecoder::ReportGlobalFeatureSwitch(
-    const std::shared_ptr<PageConfig>& page_config) {
+    const std::string& config_str) {
   if (!tasm::LynxEnv::GetInstance().EnableGlobalFeatureSwitchStatistic()) {
     return;
   }
-  report::EventTracker::OnEvent([page_config](report::MoveOnlyEvent& event) {
+  report::EventTracker::OnEvent([config_str](report::MoveOnlyEvent& event) {
     event.SetName(kLynxSDKGlobalFeatureSwitchEvent);
-    event.SetProps(config::kImplicit, page_config->GetGlobalImplicit());
-    event.SetProps(config::kEnableAsyncDisplay,
-                   page_config->GetEnableAsyncDisplay());
-    event.SetProps(config::kEnableViewReceiveTouch,
-                   page_config->GetEnableViewReceiveTouch());
-    event.SetProps(config::kEnableEventThrough,
-                   page_config->GetEnableEventThrough());
-    event.SetProps(config::kRemoveComponentElement,
-                   page_config->GetRemoveComponentElement());
-    event.SetProps(config::kEnableCSSInheritance,
-                   page_config->GetEnableCSSInheritance());
-    event.SetProps(config::kEnableListNewArchitecture,
-                   page_config->GetListNewArchitecture());
-    event.SetProps(config::kEnableReactOnlyPropsId,
-                   page_config->GetEnableReactOnlyPropsId());
-    event.SetProps(config::kEnableCircularDataCheck,
-                   page_config->GetGlobalCircularDataCheck());
-    event.SetProps(config::kEnableReduceInitDataCopy,
-                   page_config->GetEnableReduceInitDataCopy());
-    event.SetProps(config::kUnifyVWVHBehavior, page_config->GetUnifyVWVH());
-    event.SetProps(config::kEnableComponentLayoutOnly,
-                   page_config->GetEnableComponentLayoutOnly());
-    event.SetProps(config::kAutoExpose, page_config->GetAutoExpose());
-    event.SetProps(config::kAbsoluteInContentBound,
-                   page_config->GetAbsoluteInContentBound());
-    event.SetProps(config::kLongPressDuration,
-                   page_config->GetLongPressDuration());
-    event.SetProps(config::kObserverFrameRate,
-                   page_config->GetObserverFrameRate());
-    event.SetProps(config::kEnableExposureUIMargin,
-                   page_config->GetEnableExposureUIMargin());
-    event.SetProps(config::kFlatten, page_config->GetGlobalFlattern());
-    event.SetProps(config::kForceCalcNewStyleKey,
-                   page_config->GetForceCalcNewStyle());
-    event.SetProps(config::kEnableComponentNullProp,
-                   page_config->GetEnableComponentNullProp());
-    event.SetProps(config::kRemoveDescendantSelectorScope,
-                   page_config->GetRemoveDescendantSelectorScope());
-    event.SetProps(config::kEnableComponentAsyncDecode,
-                   page_config->GetEnableComponentAsyncDecode());
+    event.SetProps(kPageConfigStringProp, config_str);
   });
 }
 
