@@ -8,8 +8,10 @@ import("../../../../base_targets.gni")
 
 lynx_core_source_set("jsvm") {
   sources = [
+    "//$lynx_dir/core/runtime/js/jsi/jsvm/jsvm_creator.cc",
     "jsvm_context_wrapper.cc",
     "jsvm_context_wrapper.h",
+    "jsvm_creator.h",
     "jsvm_dyn_load.h",
     "jsvm_exception.cc",
     "jsvm_exception.h",
