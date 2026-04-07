@@ -46,11 +46,9 @@ class LynxBinaryConfigDecoder {
 
  private:
   /// TODO(limeng.amer): move to report thread.
-  /// Upload global feature switches in PageConfig with common data about lynx
-  /// view. If you add a new  global feature switch, you should add it to report
-  /// event.
-  void ReportGlobalFeatureSwitch(
-      const std::shared_ptr<PageConfig>& page_config);
+  /// Upload the original page config string for global feature switch
+  /// analysis.
+  void ReportGlobalFeatureSwitch(const std::string& config_str);
 
   void UpdateCSSConfigs(const std::shared_ptr<PageConfig>& page_config);
 

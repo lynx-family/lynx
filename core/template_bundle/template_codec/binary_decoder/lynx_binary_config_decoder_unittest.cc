@@ -2,16 +2,68 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "template_bundle/template_codec/binary_decoder/lynx_config_auto_gen.h"
 #define private public
 #define protected public
 
-#include "core/renderer/css/unit_handler.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_config_decoder_unittest.h"
+
+#include "core/renderer/css/unit_handler.h"
+#include "core/services/event_report/event_tracker.h"
+#include "template_bundle/template_codec/binary_decoder/lynx_config_auto_gen.h"
 
 namespace lynx {
 namespace tasm {
+namespace report {
 namespace test {
+
+void GetEventParams(MoveOnlyEvent& event, int event_depth) {
+  auto& event_builders = EventTracker::Instance()->tracker_event_builder_stack_;
+  ASSERT_GE(event_builders.size(), static_cast<size_t>(event_depth));
+  event_builders[event_builders.size() - event_depth](event);
+  for (int i = 0; i < event_depth; ++i) {
+    event_builders.pop_back();
+  }
+}
+
+}  // namespace test
+}  // namespace report
+namespace test {
+
+namespace {
+
+class ScopedGlobalFeatureSwitchStatisticEnv {
+ public:
+  ScopedGlobalFeatureSwitchStatisticEnv() : env_(LynxEnv::GetInstance()) {
+    std::lock_guard<std::recursive_mutex> lock(env_.external_env_mutex_);
+    auto it = env_.external_env_map_.find(
+        LynxEnv::Key::ENABLE_GLOBAL_FEATURE_SWITCH_STATISTIC);
+    if (it != env_.external_env_map_.end()) {
+      has_old_value_ = true;
+      old_value_ = it->second;
+    }
+    env_.external_env_map_
+        [LynxEnv::Key::ENABLE_GLOBAL_FEATURE_SWITCH_STATISTIC] =
+        LynxEnv::kLocalEnvValueTrue;
+  }
+
+  ~ScopedGlobalFeatureSwitchStatisticEnv() {
+    std::lock_guard<std::recursive_mutex> lock(env_.external_env_mutex_);
+    if (has_old_value_) {
+      env_.external_env_map_
+          [LynxEnv::Key::ENABLE_GLOBAL_FEATURE_SWITCH_STATISTIC] = old_value_;
+      return;
+    }
+    env_.external_env_map_.erase(
+        LynxEnv::Key::ENABLE_GLOBAL_FEATURE_SWITCH_STATISTIC);
+  }
+
+ private:
+  LynxEnv& env_;
+  bool has_old_value_{false};
+  std::string old_value_{};
+};
+
+}  // namespace
 
 TEST_F(LynxBinaryConfigDecoderTest, ReadPipelineSchedulerConfig) {
   EXPECT_FALSE(page_config_->GetEnableParallelParseElementTemplate());
@@ -124,6 +176,25 @@ TEST_F(LynxBinaryConfigDecoderTest, ReadDebugMetadataUrl) {
       page_config_);
   EXPECT_EQ(page_config_->GetDebugMetadataUrl(),
             "https://example.com/debug-info.json");
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       ReportGlobalFeatureSwitchReportsOriginalConfigString) {
+  ScopedGlobalFeatureSwitchStatisticEnv scoped_env;
+  const std::string config_str =
+      "{\n  \"enableAsyncDisplay\": true,\n  \"enableEventThrough\": false\n}";
+
+  config_decoder_->ReportGlobalFeatureSwitch(config_str);
+
+  report::MoveOnlyEvent event;
+  report::test::GetEventParams(event, 1);
+
+  EXPECT_EQ(event.GetName(), "lynxsdk_global_feature_switch_statistic");
+  EXPECT_TRUE(event.GetIntProps().empty());
+  EXPECT_TRUE(event.GetDoubleProps().empty());
+  const auto& string_props = event.GetStringProps();
+  ASSERT_EQ(string_props.size(), 1u);
+  EXPECT_EQ(string_props.at("config_str"), config_str);
 }
 
 }  // namespace test
