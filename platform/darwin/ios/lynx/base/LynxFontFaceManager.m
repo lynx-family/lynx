@@ -285,7 +285,11 @@ typedef struct _LynxInnerFontInfo {
     id cached = [_cachedFontNamesForFamilyName objectForKey:familyName];
     if (cached == nil) {
       cached = [UIFont fontNamesForFamilyName:familyName];
-      [_cachedFontNamesForFamilyName setObject:cached forKey:familyName];
+      if (cached) {
+        [_cachedFontNamesForFamilyName setObject:cached forKey:familyName];
+      } else {
+        cached = @[];
+      }
     }
     return cached;
   }
