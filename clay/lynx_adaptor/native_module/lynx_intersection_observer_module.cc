@@ -47,29 +47,35 @@ std::unique_ptr<lynx::pub::Value>
 LynxIntersectionObserverModule::CreateIntersectionObserver(
     std::unique_ptr<lynx::pub::Value> args_array,
     const lynx::runtime::CallbackMap& callback_map) {
-  fml::TaskRunner::RunNowOrPostTask(
-      task_runner_, [week_this = weak_from_this(),
-                     args_array = std::move(args_array), callback_map]() {
-        auto strong_this = week_this.lock();
-        if (strong_this) {
-          auto view_context = clay::Isolate::Instance().GetViewContextById(
-              strong_this->view_context_id_);
-          if (!view_context) {
-            FML_LOG(ERROR) << "setTriggerInterval failed, view context has "
-                              "been destroyed.";
-            return;
-          }
-          int id = args_array->GetValueAtIndex(0)->Int32();
-          int component = args_array->GetValueAtIndex(1)->Int32();
-          auto options = args_array->GetValueAtIndex(2);
-          clay::Value clay_option_value =
-              ValueConverter::CreateClayValue(*options);
-          clay_option_value.GetMap()["componentId"] = clay::Value(component);
-          clay_option_value.GetMap()["customObserverId"] = clay::Value(id);
-          strong_this->observer_configs_[id] =
-              std::move(clay_option_value.GetMap());
-        }
-      });
+  fml::TaskRunner::RunNowOrPostTask(task_runner_, [week_this = weak_from_this(),
+                                                   args_array =
+                                                       std::move(args_array),
+                                                   callback_map]() {
+    auto strong_this = week_this.lock();
+    if (strong_this) {
+      auto view_context = clay::Isolate::Instance().GetViewContextById(
+          strong_this->view_context_id_);
+      if (!view_context) {
+        FML_LOG(ERROR) << "createIntersectionObserver failed, view context has "
+                          "been destroyed.";
+        return;
+      }
+      if (args_array->Length() != 3) {
+        FML_LOG(ERROR) << "createIntersectionObserver invoked with wrong "
+                          "number of arguments: "
+                       << (args_array->Length() - 1) << ", expected: " << 2;
+        return;
+      }
+      int id = args_array->GetValueAtIndex(0)->Int32();
+      int component = args_array->GetValueAtIndex(1)->Int32();
+      auto options = args_array->GetValueAtIndex(2);
+      clay::Value clay_option_value = ValueConverter::CreateClayValue(*options);
+      clay_option_value.GetMap()["componentId"] = clay::Value(component);
+      clay_option_value.GetMap()["customObserverId"] = clay::Value(id);
+      strong_this->observer_configs_[id] =
+          std::move(clay_option_value.GetMap());
+    }
+  });
   return std::make_unique<lynx::ClayValue>(clay::Value(true));
 }
 
@@ -85,12 +91,13 @@ std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::RelativeTo(
       auto view_context = clay::Isolate::Instance().GetViewContextById(
           strong_this->view_context_id_);
       if (!view_context) {
-        FML_DLOG(ERROR) << "setTriggerInterval failed, view context has "
+        FML_DLOG(ERROR) << "relativeTo failed, view context has "
                            "been destroyed.";
         return;
       }
       if (args_array->Length() != 3) {
-        FML_LOG(ERROR) << "relativeTo failed, args length is not 2.";
+        FML_LOG(ERROR) << "relativeTo invoked with wrong number of arguments: "
+                       << (args_array->Length() - 1) << ", expected: " << 2;
         return;
       }
       int id = args_array->GetValueAtIndex(0)->Int32();
@@ -131,8 +138,14 @@ std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::Observe(
           auto view_context = clay::Isolate::Instance().GetViewContextById(
               strong_this->view_context_id_);
           if (!view_context) {
-            FML_DLOG(ERROR) << "setTriggerInterval failed, view context has "
+            FML_DLOG(ERROR) << "observe failed, view context has "
                                "been destroyed.";
+            return;
+          }
+          if (args_array_->Length() != 3) {
+            FML_LOG(ERROR) << "observe invoked with wrong number of arguments: "
+                           << (args_array_->Length() - 1)
+                           << ", expected: " << 2;
             return;
           }
           int id = args_array_->GetValueAtIndex(0)->Int32();
@@ -142,7 +155,7 @@ std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::Observe(
           clay::BaseView* target = view_context->FindViewByIdSelector(
               target_id_selector, view_context->GetPageView());
           if (target == nullptr) {
-            FML_LOG(ERROR) << "relativeTo failed, target is null.";
+            FML_LOG(ERROR) << "observe failed, target is not found.";
             return;
           }
           auto it = strong_this->observer_configs_.find(id);
@@ -175,32 +188,34 @@ std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::Observe(
 std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::Disconnect(
     std::unique_ptr<lynx::pub::Value> args_array,
     const lynx::runtime::CallbackMap& callback_map) {
-  fml::TaskRunner::RunNowOrPostTask(
-      task_runner_, [week_this = weak_from_this(),
-                     args_array = std::move(args_array), callback_map]() {
-        auto strong_this = week_this.lock();
-        if (strong_this) {
-          auto view_context = clay::Isolate::Instance().GetViewContextById(
-              strong_this->view_context_id_);
-          if (!view_context) {
-            FML_DLOG(ERROR) << "setTriggerInterval failed, view context has "
-                               "been destroyed.";
-            return;
-          }
-          if (args_array->Length() != 1) {
-            FML_LOG(ERROR) << "relativeTo failed, args length is not 3.";
-            return;
-          }
-          int id = args_array->GetValueAtIndex(0)->Int32();
-          auto observer_manager =
-              view_context->GetPageView()->intersection_observer_manager();
-          for (auto observer : strong_this->observers_[id]) {
-            observer_manager->RemoveIntersectionObserver(observer);
-          }
-          strong_this->observers_.erase(id);
-          strong_this->observer_configs_.erase(id);
-        }
-      });
+  fml::TaskRunner::RunNowOrPostTask(task_runner_, [week_this = weak_from_this(),
+                                                   args_array =
+                                                       std::move(args_array),
+                                                   callback_map]() {
+    auto strong_this = week_this.lock();
+    if (strong_this) {
+      auto view_context = clay::Isolate::Instance().GetViewContextById(
+          strong_this->view_context_id_);
+      if (!view_context) {
+        FML_DLOG(ERROR) << "disconnect failed, view context has "
+                           "been destroyed.";
+        return;
+      }
+      if (args_array->Length() != 1) {
+        FML_LOG(ERROR) << "disconnect invoked with wrong number of arguments: "
+                       << (args_array->Length() - 1) << ", expected: " << 0;
+        return;
+      }
+      int id = args_array->GetValueAtIndex(0)->Int32();
+      auto observer_manager =
+          view_context->GetPageView()->intersection_observer_manager();
+      for (auto observer : strong_this->observers_[id]) {
+        observer_manager->RemoveIntersectionObserver(observer);
+      }
+      strong_this->observers_.erase(id);
+      strong_this->observer_configs_.erase(id);
+    }
+  });
   return std::make_unique<lynx::ClayValue>(clay::Value(true));
 }
 
@@ -226,12 +241,14 @@ LynxIntersectionObserverModule::RelativeToViewport(
           auto view_context = clay::Isolate::Instance().GetViewContextById(
               strong_this->view_context_id_);
           if (!view_context) {
-            FML_DLOG(ERROR) << "setTriggerInterval failed, view context has "
+            FML_DLOG(ERROR) << "relativeToViewport failed, view context has "
                                "been destroyed.";
             return;
           }
-          if (args_array->Length() != 3) {
-            FML_LOG(ERROR) << "relativeTo failed, args length is not 2.";
+          if (args_array->Length() != 2) {
+            FML_LOG(ERROR)
+                << "relativeToViewport invoked with wrong number of arguments: "
+                << (args_array->Length() - 1) << ", expected: " << 1;
             return;
           }
           int id = args_array->GetValueAtIndex(0)->Int32();
