@@ -17,6 +17,14 @@ import { InputProps, InputUIMethods } from './input';
 import { TextAreaProps, TextAreaUIMethods } from './textarea';
 import { FrameProps } from './frame';
 import { OverlayProps} from './overlay';
+import {
+  ScrollCoordinatorHeaderProps,
+  ScrollCoordinatorProps,
+  ScrollCoordinatorSlotDragProps,
+  ScrollCoordinatorSlotProps,
+  ScrollCoordinatorToolbarProps,
+  ScrollCoordinatorUIMethods,
+} from './scroll-coordinator';
 import { SVGProps } from './svg';
 import { TitleBarViewProps } from './title-bar-view';
 import { RefreshProps, RefreshUIMethods } from './refresh';
@@ -31,6 +39,7 @@ export interface UIMethods {
   'textarea': TextAreaUIMethods;
   'text': TextUIMethods;
   'refresh': RefreshUIMethods;
+  'scroll-coordinator': ScrollCoordinatorUIMethods;
   'viewpager': ViewPagerUIMethods;
 }
 
@@ -60,6 +69,11 @@ export interface IntrinsicElements {
   'title-bar-view': TitleBarViewProps;
   'refresh': RefreshProps;
   'refresh-header': StandardProps;
+  'scroll-coordinator': ScrollCoordinatorProps;
+  'scroll-coordinator-header': ScrollCoordinatorHeaderProps;
+  'scroll-coordinator-slot': ScrollCoordinatorSlotProps;
+  'scroll-coordinator-slot-drag': ScrollCoordinatorSlotDragProps;
+  'scroll-coordinator-toolbar': ScrollCoordinatorToolbarProps;
   'viewpager': ViewPagerProps;
   'viewpager-item': ViewPagerItemProps;
 }
@@ -90,6 +104,11 @@ declare module 'react' {
       'title-bar-view': TitleBarViewProps;
       'refresh': RefreshProps;
       'refresh-header': StandardProps;
+      'scroll-coordinator': ScrollCoordinatorProps;
+      'scroll-coordinator-header': ScrollCoordinatorHeaderProps;
+      'scroll-coordinator-slot': ScrollCoordinatorSlotProps;
+      'scroll-coordinator-slot-drag': ScrollCoordinatorSlotDragProps;
+      'scroll-coordinator-toolbar': ScrollCoordinatorToolbarProps;
       'viewpager': ViewPagerProps;
       'viewpager-item': ViewPagerItemProps;
     }

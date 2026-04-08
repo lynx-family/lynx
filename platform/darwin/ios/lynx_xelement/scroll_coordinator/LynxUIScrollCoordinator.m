@@ -434,6 +434,7 @@ typedef NS_ENUM(NSInteger, LynxUIScrollCoordinatorHeaderOverSlot) {
 @property(nonatomic, assign) CGFloat topPaddingForNative;
 @property(nonatomic, assign) LynxUIScrollCoordinatorHeaderOverSlot headerOverSlot;
 @property(nonatomic, assign) BOOL headerSlotOverflowHitTest;
+
 @end
 
 @implementation LynxUIScrollCoordinator
@@ -703,29 +704,24 @@ typedef NS_ENUM(NSInteger, LynxUIScrollCoordinatorHeaderOverSlot) {
 
 #pragma mark - LYNX_PROPS
 
-LYNX_PROP_SETTER("bounces", setBounces, BOOL) { self.scrollCoordinator.bounces = value; }
+LYNX_PROP_SETTER("bounces", setBounces, BOOL) { [self updateBounces:value]; }
 
-LYNX_PROP_SETTER("allow-vertical-bounce", allowVerticalBounce, BOOL) {
-  [self setBounces:value requestReset:requestReset];
-}
+LYNX_PROP_SETTER("allow-vertical-bounce", allowVerticalBounce, BOOL) { [self updateBounces:value]; }
 
 LYNX_PROP_SETTER("granularity", granularity, CGFloat) { self.granularity = value; }
 
-LYNX_PROP_SETTER("scroll-bar-enable", scrollBarEnable, BOOL) {
-  self.scrollCoordinator.showsVerticalScrollIndicator = value;
-}
+LYNX_PROP_SETTER("enable-scroll-bar", enableScrollBar, BOOL) { [self updateScrollBarEnable:value]; }
+
+LYNX_PROP_SETTER("scroll-bar-enable", scrollBarEnable, BOOL) { [self updateScrollBarEnable:value]; }
 
 LYNX_PROP_SETTER("refresh-mode", refreshMode, NSString *) {
   self.scrollCoordinator.allowNestScrollViewBounces = [value isEqualToString:@"page"];
   self.bounceWithToolbar = [value isEqualToString:@"fold"];
 }
 
-LYNX_PROP_SETTER("scroll-enable", scrollEnable, BOOL) {
-  self.scrollCoordinator.scrollEnabled = value;
-  if (!value) {
-    self.scrollCoordinator.panGestureRecognizer.state = UIGestureRecognizerStateCancelled;
-  }
-}
+LYNX_PROP_SETTER("enable-scroll", enableScroll, BOOL) { [self updateScrollEnable:value]; }
+
+LYNX_PROP_SETTER("scroll-enable", scrollEnable, BOOL) { [self updateScrollEnable:value]; }
 
 LYNX_PROP_SETTER("ios-force-scroll-detach", setForceDetach, BOOL) {
   self.scrollCoordinator.forceScrollDetachWhileIdling = NO;
@@ -740,6 +736,21 @@ LYNX_PROP_SETTER("ios-scroll-view-filter", setScrollFilter, NSNumber *) {
 LYNX_PROP_SETTER("ios-scroll-exclude", setScrollExclude, NSString *) {
   self.excludeLynxUINames = [value componentsSeparatedByString:@","];
   self.scrollCoordinator.excludeScrollViewNames = self.excludeLynxUINames;
+}
+
+- (void)updateBounces:(BOOL)value {
+  self.scrollCoordinator.bounces = value;
+}
+
+- (void)updateScrollBarEnable:(BOOL)value {
+  self.scrollCoordinator.showsVerticalScrollIndicator = value;
+}
+
+- (void)updateScrollEnable:(BOOL)value {
+  self.scrollCoordinator.scrollEnabled = value;
+  if (!value) {
+    self.scrollCoordinator.panGestureRecognizer.state = UIGestureRecognizerStateCancelled;
+  }
 }
 
 /**

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.9.3
+
+- Introduce `<scroll-coordinator>` and related element typings.
+
 ## 3.9.2
 
 - Add `bindmouseenter` and `bindmouseleave` typings for mouse events.

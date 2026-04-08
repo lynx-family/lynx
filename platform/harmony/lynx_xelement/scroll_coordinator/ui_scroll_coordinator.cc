@@ -220,6 +220,16 @@ void UIScrollCoordinator::OnPropUpdate(const std::string& name,
     NodeManager::Instance().SetAttributeWithNumberValue(
         foldview_, NODE_SCROLL_ENABLE_SCROLL_INTERACTION,
         static_cast<int32_t>(value.Bool()));
+  } else if (name == "bounces" || name == "allow-vertical-bounce") {
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        foldview_, NODE_SCROLL_EDGE_EFFECT,
+        static_cast<int32_t>(value.Bool() ? ARKUI_EDGE_EFFECT_SPRING
+                                          : ARKUI_EDGE_EFFECT_NONE));
+  } else if (name == "enable-scroll-bar" || name == "scroll-bar-enable") {
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        foldview_, NODE_SCROLL_BAR_DISPLAY_MODE,
+        static_cast<int32_t>(value.Bool() ? ARKUI_SCROLL_BAR_DISPLAY_MODE_ON
+                                          : ARKUI_SCROLL_BAR_DISPLAY_MODE_OFF));
   } else if (name == "header-over-slot") {
     header_over_slot_ = value.Bool();
   }

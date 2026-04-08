@@ -130,7 +130,7 @@ export interface ViewPagerProps extends StandardProps {
   bindchange?: (e: ViewPagerChangeEvent) => void;
 
   /**
-   * Page switch event, it will only be triggered when the UI completely switches to the next page (from 100% to 200%).
+   * Page switch event, it will be triggered when the page is about to switch, and at this time the UI has not switched to the next page yet, so the offset is still in the range of 0~100% (from page 0 to page 1) or 100%~200% (from page 1 to page 2).
    * @Android
    * @iOS
    * @Harmony
