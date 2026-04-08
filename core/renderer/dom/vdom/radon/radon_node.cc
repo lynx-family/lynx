@@ -755,7 +755,8 @@ void RadonNode::SetEventListeners(
                   const auto& event_detail = args_array->get(1);
                   const auto& event_info_array = event_info.Array();
                   if (event_info.IsArray() && event_info_array->size() == 2) {
-                    if (tasm->page_proxy()
+                    if (!tasm->IsEmbeddedModeOn() &&
+                        tasm->page_proxy()
                             ->element_manager()
                             ->IsAirModeFiberEnabled()) {
                       auto event = fml::static_ref_ptr_cast<event::Event>(
