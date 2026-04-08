@@ -3,6 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import("//build/config/win/win.gni")
+import("//config.gni")
 import("../../../core/Lynx.gni")
 import("../../../oliver/oliver.gni")
 
@@ -38,6 +39,14 @@ executable("lynx_explorer") {
     "-Wno-vla-extension",
     "-Wno-vla-cxx-extension",
   ]
+
+  if (use_weak_suffix_napi) {
+    if (defined(defines)) {
+      defines += [ "USE_WEAK_SUFFIX_NAPI=1" ]
+    } else {
+      defines = [ "USE_WEAK_SUFFIX_NAPI=1" ]
+    }
+  }
 
   libs = [
     "gdi32.lib",
