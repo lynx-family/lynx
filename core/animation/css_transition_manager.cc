@@ -387,6 +387,12 @@ bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,
       }
       return true;
     }
+    case starlight::AnimationPropertyType::kVisibility: {
+      if (!value.IsEnum() && !value.IsVariable()) {
+        return false;
+      }
+      return true;
+    }
     default: {
       return false;
     }

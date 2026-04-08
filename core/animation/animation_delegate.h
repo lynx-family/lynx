@@ -22,13 +22,13 @@ class Animation;
 class AnimationDelegate {
  public:
   virtual ~AnimationDelegate() {}
-  virtual void RequestNextFrame(std::weak_ptr<Animation> ptr){};
-  virtual void UpdateFinalStyleMap(const tasm::StyleMap& styles){};
-  virtual void FlushAnimatedStyle(){};
-  virtual void SetNeedsAnimationStyleRecalc(const base::String& name){};
+  virtual void RequestNextFrame(std::weak_ptr<Animation> ptr) {}
+  virtual void UpdateFinalStyleMap(const tasm::StyleMap& styles) {}
+  virtual void FlushAnimatedStyle() {}
+  virtual void SetNeedsAnimationStyleRecalc(const base::String& name) {}
   virtual void NotifyClientAnimated(tasm::StyleMap& styles,
                                     tasm::CSSValue value,
-                                    tasm::CSSPropertyID css_id){};
+                                    tasm::CSSPropertyID css_id) {}
   tasm::Element* element() { return element_; }
 
  protected:
