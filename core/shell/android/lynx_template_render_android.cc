@@ -8,12 +8,14 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/vector.h"
 #include "core/base/android/jni_helper.h"
 #include "core/base/thread/atomic_lifecycle.h"
 #include "core/public/lynx_extension_delegate.h"
 #include "core/public/ui_delegate.h"
 #include "core/renderer/data/android/platform_data_android.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
+#include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/utils/android/event_converter_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
@@ -21,6 +23,7 @@
 #include "core/runtime/js/bindings/modules/android/module_factory_android.h"
 #include "core/services/performance/android/performance_controller_android.h"
 #include "core/shell/android/lynx_engine_proxy_android.h"
+#include "core/shell/android/lynx_node_info_result_android.h"
 #include "core/shell/android/lynx_runtime_wrapper_android.h"
 #include "core/shell/android/native_facade_android.h"
 #include "core/shell/android/platform_call_back_android.h"
@@ -69,6 +72,25 @@ Value ConvertJavaData(JNIEnv* env, jobject j_data, jint length) {
   return decoder.DecodeMessage(data, length);
 }
 
+lynx::base::Vector<int32_t> ConvertJavaIntArray(JNIEnv* env, jintArray signs) {
+  if (signs == nullptr) {
+    return {};
+  }
+
+  const auto count = env->GetArrayLength(signs);
+  std::vector<jint> java_signs(count);
+  if (count > 0) {
+    env->GetIntArrayRegion(signs, 0, count, java_signs.data());
+  }
+
+  lynx::base::Vector<int32_t> native_signs;
+  native_signs.reserve(java_signs.size());
+  for (auto sign : java_signs) {
+    native_signs.push_back(static_cast<int32_t>(sign));
+  }
+  return native_signs;
+}
+
 // TODO(heshan):use template optimize java only container
 template <typename T>
 std::unique_ptr<JavaOnlyArray> ConvertToJavaArray(const std::vector<T>& vec) {
@@ -105,6 +127,16 @@ std::unique_ptr<JavaOnlyArray> ConvertToJavaArray(
     array->PushString(str);
   }
   return array;
+}
+
+void DispatchNodeInfoResult(
+    JNIEnv* env, jobject caller,
+    const lynx::base::Vector<lynx::tasm::NodeInfo>& node_infos,
+    int32_t err_code, const std::string& err_msg, jint callback_id) {
+  lynx::shell::LynxNodeInfoResultAndroid result_android(node_infos, err_code,
+                                                        err_msg);
+  Java_LynxTemplateRender_onNodeInfoResult(
+      env, caller, result_android.jni_object(), callback_id);
 }
 
 template <typename T>
@@ -1120,6 +1152,40 @@ jobject GetPageDataByKey(JNIEnv* env, jclass jcaller, jlong ptr,
     return env->NewLocalRef(result_from_java.Get());  // NOLINT
   }
   return nullptr;
+}
+
+void GetNodeInfos(JNIEnv* env, jobject jcaller, jlong ptr, jlong lifecycle,
+                  jintArray signs, jint callback_id) {
+  const auto native_signs = ConvertJavaIntArray(env, signs);
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    DispatchNodeInfoResult(env, jcaller, {},
+                           lynx::tasm::LynxGetUIResult::INVALID_STATE_ERROR,
+                           "Lynx shell is unavailable.", callback_id);
+    return;
+  }
+
+  auto* shell = reinterpret_cast<LynxShell*>(ptr);
+  ScopedGlobalJavaRef<jobject> caller_ref(env, jcaller);
+  shell->GetEngineActor()->Act([caller_ref = std::move(caller_ref),
+                                lifecycle_ptr, signs = std::move(native_signs),
+                                callback_id](auto& engine) mutable {
+    lynx::base::Vector<lynx::tasm::NodeInfo> node_infos;
+    int32_t err_code = lynx::tasm::LynxGetUIResult::SUCCESS;
+    std::string err_msg;
+    if (engine != nullptr) {
+      node_infos = engine->GetNodeInfos(signs);
+    } else {
+      err_code = lynx::tasm::LynxGetUIResult::INVALID_STATE_ERROR;
+      err_msg = "LynxEngine is unavailable.";
+    }
+
+    JNIEnv* env = AttachCurrentThread();
+    DispatchNodeInfoResult(env, caller_ref.Get(), node_infos, err_code, err_msg,
+                           callback_id);
+    AtomicLifecycle::TryFree(lifecycle_ptr);
+  });
 }
 
 jobject GetAllJsSource(JNIEnv* env, jclass jcaller, jlong ptr,

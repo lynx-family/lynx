@@ -43,6 +43,7 @@ import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.behavior.ImageInterceptor;
 import com.lynx.tasm.behavior.KeyboardEvent;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.herotransition.HeroTransitionManager;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -1009,6 +1010,23 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     }
 
     return mLynxTemplateRender.getPageDataByKey(keys);
+  }
+
+  /**
+   * Queries node metadata for the requested signs.
+   *
+   * <p>The callback is invoked on the UI thread, and the returned items keep the same order as the
+   * requested signs.
+   */
+  public void getNodeInfos(
+      @NonNull LynxNodeInfoRequest request, @NonNull LynxNodeInfoCallback callback) {
+    checkAccessFromNonUiThread("getNodeInfos");
+    if (mLynxTemplateRender == null) {
+      callback.onResult(LynxNodeInfoResult.error(
+          LynxUIMethodConstants.INVALID_STATE_ERROR, "LynxTemplateRender is unavailable."));
+      return;
+    }
+    mLynxTemplateRender.getNodeInfos(request, callback);
   }
 
   /**

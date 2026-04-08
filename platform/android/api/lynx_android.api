@@ -6150,6 +6150,29 @@ public interface com::lynx::tasm::gesture::LynxNewGestureDelegate {
   public float[] com.lynx.tasm.gesture.LynxNewGestureDelegate.scrollBy(float deltaX, float deltaY);
 }
 
+public interface com::lynx::tasm::LynxNodeInfoCallback {
+  public void com.lynx.tasm.LynxNodeInfoCallback.onResult(@NonNull LynxNodeInfoResult result);
+}
+
+public class com::lynx::tasm::LynxNodeInfoItem :  {
+  public int com.lynx.tasm.LynxNodeInfoItem.getSign();
+  public String com.lynx.tasm.LynxNodeInfoItem.getEntryUrl();
+  public String com.lynx.tasm.LynxNodeInfoItem.getDebugMetadataUrl();
+}
+
+public class com::lynx::tasm::LynxNodeInfoRequest :  {
+  public com.lynx.tasm.LynxNodeInfoRequest.LynxNodeInfoRequest();
+  public void com.lynx.tasm.LynxNodeInfoRequest.setSigns(@Nullable int[] signs);
+  public int[] com.lynx.tasm.LynxNodeInfoRequest.getSigns();
+}
+
+public class com::lynx::tasm::LynxNodeInfoResult :  {
+  public List< LynxNodeInfoItem > com.lynx.tasm.LynxNodeInfoResult.getItems();
+  public boolean com.lynx.tasm.LynxNodeInfoResult.succeed();
+  public int com.lynx.tasm.LynxNodeInfoResult.getErrCode();
+  public String com.lynx.tasm.LynxNodeInfoResult.getErrMsg();
+}
+
 public class com::lynx::tasm::behavior::ui::accessibility::LynxNodeProvider : AccessibilityNodeProviderCompat {
   public final int com.lynx.tasm.behavior.ui.accessibility.LynxNodeProvider.SECTION_COUNT SECTION_COUNT;
   public com.lynx.tasm.behavior.ui.accessibility.LynxNodeProvider.LynxNodeProvider(LynxAccessibilityDelegate delegate);
@@ -6754,6 +6777,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public void com.lynx.tasm.LynxTemplateRender.preloadLazyBundles(String[] urls);
   public void com.lynx.tasm.LynxTemplateRender.getCurrentData(LynxGetDataCallback callback);
   public Map< String, Object > com.lynx.tasm.LynxTemplateRender.getPageDataByKey(String[] keys);
+  public void com.lynx.tasm.LynxTemplateRender.getNodeInfos( @NonNull LynxNodeInfoRequest request, @NonNull LynxNodeInfoCallback callback);
   public void com.lynx.tasm.LynxTemplateRender.updateData(Map< String, Object > data, String processorName);
   public void com.lynx.tasm.LynxTemplateRender.onMeasure(int widthMeasureSpec, int heightMeasureSpec);
   public void com.lynx.tasm.LynxTemplateRender.markHostPlatformTiming(final String key);
@@ -7340,6 +7364,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.reloadTemplate(TemplateData data, TemplateData globalProps);
   public boolean com.lynx.tasm.LynxView.registerDynamicComponent(@NonNull String url, @NonNull TemplateBundle bundle);
   public Map< String, Object > com.lynx.tasm.LynxView.getPageDataByKey(String[] keys);
+  public void com.lynx.tasm.LynxView.getNodeInfos( @NonNull LynxNodeInfoRequest request, @NonNull LynxNodeInfoCallback callback);
   public void com.lynx.tasm.LynxView.updateGlobalProps(@NonNull Map< String, Object > props);
   public void com.lynx.tasm.LynxView.updateGlobalProps(@NonNull TemplateData props);
   public void com.lynx.tasm.LynxView.updateData(Map< String, Object > data);

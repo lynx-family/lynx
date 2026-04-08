@@ -52,6 +52,7 @@ import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.behavior.ImageInterceptor;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxIntersectionObserverManager;
+import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.herotransition.HeroTransitionManager;
@@ -233,6 +234,8 @@ public class LynxTemplateRender
 
   private AtomicInteger mLynxGetDataCounter = new AtomicInteger(0);
   private SparseArray<LynxGetDataCallback> mCallbackSparseArray = new SparseArray<>();
+  private AtomicInteger mLynxNodeInfoCounter = new AtomicInteger(0);
+  private SparseArray<LynxNodeInfoCallback> mNodeInfoCallbackSparseArray = new SparseArray<>();
 
   private int mEmbeddedMode;
   private boolean mEnableReuseEngine;
@@ -2117,6 +2120,20 @@ public class LynxTemplateRender
     return result;
   }
 
+  public void getNodeInfos(
+      @NonNull LynxNodeInfoRequest request, @NonNull LynxNodeInfoCallback callback) {
+    if (!checkIfEnvPrepared() || mNativePtr == 0) {
+      callback.onResult(LynxNodeInfoResult.error(
+          LynxUIMethodConstants.INVALID_STATE_ERROR, "Lynx environment is not prepared."));
+      return;
+    }
+
+    int[] signs = request.getSigns();
+    int tag = mLynxNodeInfoCounter.incrementAndGet();
+    mNodeInfoCallbackSparseArray.put(tag, callback);
+    nativeGetNodeInfos(mNativePtr, mNativeLifecycle, signs, tag);
+  }
+
   @Keep
   public void updateData(Map<String, Object> data, String processorName) {
     TemplateData templateData = TemplateData.fromMap(data);
@@ -2285,7 +2302,8 @@ public class LynxTemplateRender
     if (mPreWidthMeasureSpec == widthMeasureSpec && mPreHeightMeasureSpec == heightMeasureSpec
         && !mShouldUpdateViewport) {
       LLog.i(TAG,
-          "updateViewport is unnecessary, because the size of the cache are the same as the size to be set.");
+          "updateViewport is unnecessary, because the size of the cache are the same as the size "
+              + "to be set.");
       return;
     }
 
@@ -4116,8 +4134,8 @@ public class LynxTemplateRender
         mLynxEngineRef.registerLynxEngineReused();
       } else {
         LLog.e(TAG,
-            "Can not call registerLynxEngineReused, because next pipeline is running. mEmbeddedPipelineCounter:"
-                + mEmbeddedPipelineCounter.get());
+            "Can not call registerLynxEngineReused, because next pipeline is running. "
+                + "mEmbeddedPipelineCounter:" + mEmbeddedPipelineCounter.get());
       }
     }
   }
@@ -4200,6 +4218,22 @@ public class LynxTemplateRender
       return LepusBuffer.INSTANCE.decodeMessage(buffer);
     }
     return null;
+  }
+
+  @CalledByNative
+  private void onNodeInfoResult(@Nullable LynxNodeInfoResult result, int tag) {
+    final LynxNodeInfoResult safeResult = result == null
+        ? LynxNodeInfoResult.error(
+            LynxUIMethodConstants.INVALID_STATE_ERROR, "Failed to query node infos.")
+        : result;
+    UIThreadUtils.runOnUiThreadImmediately(() -> {
+      LynxNodeInfoCallback callback = mNodeInfoCallbackSparseArray.get(tag);
+      if (callback == null) {
+        return;
+      }
+      mNodeInfoCallbackSparseArray.remove(tag);
+      callback.onResult(safeResult);
+    });
   }
 
   @RestrictTo({RestrictTo.Scope.LIBRARY})
@@ -4364,6 +4398,8 @@ public class LynxTemplateRender
   private native void nativeGetDataAsync(long ptr, long lifecycle, int tag);
 
   private static native Object nativeGetPageDataByKey(long ptr, long lifecycle, String[] keys);
+
+  private native void nativeGetNodeInfos(long ptr, long lifecycle, int[] signs, int callbackId);
 
   private static native JavaOnlyMap nativeGetAllJsSource(long ptr, long lifecycle);
 

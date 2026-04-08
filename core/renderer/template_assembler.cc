@@ -9,6 +9,7 @@
 #include <limits>
 #include <numeric>
 #include <stack>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -159,6 +160,41 @@ class ComponentUpdateReporter {
   std::string component_name_;
   bool enable_{true};
 };
+
+std::string ResolveEntryUrl(const Element* element) {
+  if (element == nullptr) {
+    return {};
+  }
+
+  const auto& entry_name = element->ParentComponentEntryName();
+  return entry_name.empty() ? std::string(DEFAULT_ENTRY_NAME) : entry_name;
+}
+
+std::string ResolveDebugMetadataUrl(
+    TemplateAssembler& tasm, const std::shared_ptr<PageConfig>& page_config,
+    const std::string& entry_url,
+    std::unordered_map<std::string, std::string>& debug_metadata_cache) {
+  if (entry_url.empty() || entry_url == DEFAULT_ENTRY_NAME) {
+    return page_config != nullptr ? page_config->GetDebugMetadataUrl()
+                                  : std::string();
+  }
+
+  const auto cache_iter = debug_metadata_cache.find(entry_url);
+  if (cache_iter != debug_metadata_cache.end()) {
+    return cache_iter->second;
+  }
+
+  std::string debug_metadata_url;
+  if (auto bundle = tasm.FindTemplateBundle(entry_url); bundle) {
+    const auto& target_page_config = bundle->GetPageConfig();
+    if (target_page_config != nullptr) {
+      debug_metadata_url = target_page_config->GetDebugMetadataUrl();
+    }
+  }
+
+  debug_metadata_cache.emplace(entry_url, debug_metadata_url);
+  return debug_metadata_url;
+}
 
 }  // namespace
 const std::unordered_map<int, std::shared_ptr<PageMould>>&
@@ -1701,6 +1737,32 @@ lepus::Value TemplateAssembler::GetPageDataByKey(
     return lepus::Value();
   }
   return lepus::Value::Clone(page_proxy()->GetDataByKey(keys));
+}
+
+base::Vector<NodeInfo> TemplateAssembler::GetNodeInfos(
+    const base::Vector<int32_t>& signs) {
+  base::Vector<NodeInfo> node_infos;
+  node_infos.reserve(signs.size());
+  auto* manager = page_proxy_.element_manager().get();
+  auto* node_manager = manager ? manager->node_manager() : nullptr;
+  std::unordered_map<std::string, std::string> debug_metadata_cache;
+
+  for (auto sign : signs) {
+    NodeInfo info;
+    info.sign = sign;
+
+    if (node_manager != nullptr) {
+      if (auto* element = node_manager->Get(sign); element != nullptr) {
+        info.entry_url = ResolveEntryUrl(element);
+        info.debug_metadata_url = ResolveDebugMetadataUrl(
+            *this, page_config_, info.entry_url, debug_metadata_cache);
+      }
+    }
+
+    node_infos.push_back(std::move(info));
+  }
+
+  return node_infos;
 }
 
 void TemplateAssembler::UpdateComponentData(

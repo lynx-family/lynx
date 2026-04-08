@@ -19,6 +19,7 @@
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/fml/task_runner.h"
 #include "base/include/log/logging.h"
+#include "base/include/vector.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
 #include "core/public/page_options.h"
 #include "core/public/pipeline_option.h"
@@ -26,6 +27,7 @@
 #include "core/renderer/element_manager_delegate_impl.h"
 #include "core/renderer/events/touch_event_handler.h"
 #include "core/renderer/layout_scheduler/layout_scheduler.h"
+#include "core/renderer/node_info.h"
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/pipeline/pipeline_context_manager.h"
 #include "core/renderer/pipeline/pipeline_layout_data.h"
@@ -448,6 +450,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   std::unique_ptr<lepus::Value> GetCurrentData();
   lepus::Value GetPageDataByKey(const std::vector<std::string>& keys);
+  base::Vector<NodeInfo> GetNodeInfos(const base::Vector<int32_t>& signs);
 
   void UpdateComponentData(const runtime::UpdateDataTask& task,
                            std::shared_ptr<PipelineOptions>& pipeline_options);

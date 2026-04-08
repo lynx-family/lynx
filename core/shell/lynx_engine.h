@@ -175,6 +175,7 @@ class LynxEngine {
   std::unique_ptr<lepus_value> GetCurrentData();
 
   lepus::Value GetPageDataByKey(const std::vector<std::string>& keys);
+  base::Vector<tasm::NodeInfo> GetNodeInfos(const base::Vector<int32_t>& signs);
 
   tasm::ListNode* GetListNode(int32_t tag);
 

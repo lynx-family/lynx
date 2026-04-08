@@ -352,6 +352,11 @@ lepus::Value LynxEngine::GetPageDataByKey(
   return tasm_->GetPageDataByKey(keys);
 }
 
+base::Vector<tasm::NodeInfo> LynxEngine::GetNodeInfos(
+    const base::Vector<int32_t>& signs) {
+  return tasm_->GetNodeInfos(signs);
+}
+
 tasm::ListNode* LynxEngine::GetListNode(int32_t tag) {
   // client maybe nullptr
   if (tasm_ == nullptr) {
