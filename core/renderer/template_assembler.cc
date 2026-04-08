@@ -1703,6 +1703,37 @@ lepus::Value TemplateAssembler::GetPageDataByKey(
   return lepus::Value::Clone(page_proxy()->GetDataByKey(keys));
 }
 
+std::vector<TemplateAssembler::NodeInfo> TemplateAssembler::GetNodeInfos(
+    const std::vector<int32_t>& signs) {
+  std::vector<NodeInfo> node_infos;
+  node_infos.reserve(signs.size());
+
+  const auto debug_metadata_url =
+      page_config_ ? page_config_->GetDebugMetadataUrl() : std::string();
+  auto* manager = page_proxy_.element_manager().get();
+  auto* node_manager = manager ? manager->node_manager() : nullptr;
+
+  for (auto sign : signs) {
+    NodeInfo info;
+    info.sign = sign;
+    info.debug_metadata_url = debug_metadata_url;
+
+    if (node_manager != nullptr) {
+      if (auto* element = node_manager->Get(sign); element != nullptr) {
+        const auto& entry_name = element->ParentComponentEntryName();
+        info.entry_url =
+            (entry_name.empty() || entry_name == DEFAULT_ENTRY_NAME)
+                ? url_
+                : entry_name;
+      }
+    }
+
+    node_infos.emplace_back(std::move(info));
+  }
+
+  return node_infos;
+}
+
 void TemplateAssembler::UpdateComponentData(
     const runtime::UpdateDataTask& task,
     std::shared_ptr<PipelineOptions>& pipeline_options) {

@@ -446,8 +446,15 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   Delegate& GetDelegate() { return delegate_; }
 
+  struct NodeInfo {
+    int32_t sign{0};
+    std::string entry_url;
+    std::string debug_metadata_url;
+  };
+
   std::unique_ptr<lepus::Value> GetCurrentData();
   lepus::Value GetPageDataByKey(const std::vector<std::string>& keys);
+  std::vector<NodeInfo> GetNodeInfos(const std::vector<int32_t>& signs);
 
   void UpdateComponentData(const runtime::UpdateDataTask& task,
                            std::shared_ptr<PipelineOptions>& pipeline_options);

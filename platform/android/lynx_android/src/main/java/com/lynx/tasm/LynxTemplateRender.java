@@ -2117,6 +2117,19 @@ public class LynxTemplateRender
     return result;
   }
 
+  public void getNodeInfos(
+      @NonNull LynxNodeInfoRequest request, @NonNull LynxNodeInfoCallback callback) {
+    Objects.requireNonNull(callback, "callback");
+    if (!checkIfEnvPrepared() || mNativePtr == 0) {
+      callback.onResult(LynxNodeInfoResult.empty());
+      return;
+    }
+
+    int[] signs = request == null ? null : request.getSigns();
+    LynxNodeInfoResult result = nativeGetNodeInfos(mNativePtr, mNativeLifecycle, signs);
+    callback.onResult(result == null ? LynxNodeInfoResult.empty() : result);
+  }
+
   @Keep
   public void updateData(Map<String, Object> data, String processorName) {
     TemplateData templateData = TemplateData.fromMap(data);
@@ -2285,7 +2298,8 @@ public class LynxTemplateRender
     if (mPreWidthMeasureSpec == widthMeasureSpec && mPreHeightMeasureSpec == heightMeasureSpec
         && !mShouldUpdateViewport) {
       LLog.i(TAG,
-          "updateViewport is unnecessary, because the size of the cache are the same as the size to be set.");
+          "updateViewport is unnecessary, because the size of the cache are the same as the size "
+              + "to be set.");
       return;
     }
 
@@ -4116,8 +4130,8 @@ public class LynxTemplateRender
         mLynxEngineRef.registerLynxEngineReused();
       } else {
         LLog.e(TAG,
-            "Can not call registerLynxEngineReused, because next pipeline is running. mEmbeddedPipelineCounter:"
-                + mEmbeddedPipelineCounter.get());
+            "Can not call registerLynxEngineReused, because next pipeline is running. "
+                + "mEmbeddedPipelineCounter:" + mEmbeddedPipelineCounter.get());
       }
     }
   }
@@ -4363,6 +4377,9 @@ public class LynxTemplateRender
   private native void nativeGetDataAsync(long ptr, long lifecycle, int tag);
 
   private static native Object nativeGetPageDataByKey(long ptr, long lifecycle, String[] keys);
+
+  private static native LynxNodeInfoResult nativeGetNodeInfos(
+      long ptr, long lifecycle, int[] signs);
 
   private static native JavaOnlyMap nativeGetAllJsSource(long ptr, long lifecycle);
 

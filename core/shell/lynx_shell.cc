@@ -1167,6 +1167,17 @@ const lepus::Value LynxShell::GetPageDataByKey(std::vector<std::string> keys) {
   });
 }
 
+std::vector<tasm::TemplateAssembler::NodeInfo> LynxShell::GetNodeInfos(
+    const std::vector<int32_t>& signs) {
+  return engine_actor_->ActSync([signs](auto& engine) {
+    auto* tasm = engine->GetTasm();
+    if (tasm == nullptr) {
+      return std::vector<tasm::TemplateAssembler::NodeInfo>{};
+    }
+    return tasm->GetNodeInfos(signs);
+  });
+}
+
 // TODO(heshan): change this method to be private
 tasm::ListNode* LynxShell::GetListNode(int32_t tag) {
   // ensure on engine thread

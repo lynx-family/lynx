@@ -21,6 +21,7 @@
 #include "core/runtime/js/bindings/modules/android/module_factory_android.h"
 #include "core/services/performance/android/performance_controller_android.h"
 #include "core/shell/android/lynx_engine_proxy_android.h"
+#include "core/shell/android/lynx_node_info_result_android.h"
 #include "core/shell/android/lynx_runtime_wrapper_android.h"
 #include "core/shell/android/native_facade_android.h"
 #include "core/shell/android/platform_call_back_android.h"
@@ -67,6 +68,25 @@ Value ConvertJavaData(JNIEnv* env, jobject j_data, jint length) {
 
   lynx::tasm::LepusDecoder decoder;
   return decoder.DecodeMessage(data, length);
+}
+
+std::vector<int32_t> ConvertJavaIntArray(JNIEnv* env, jintArray signs) {
+  if (signs == nullptr) {
+    return {};
+  }
+
+  const auto count = env->GetArrayLength(signs);
+  std::vector<jint> java_signs(count);
+  if (count > 0) {
+    env->GetIntArrayRegion(signs, 0, count, java_signs.data());
+  }
+
+  std::vector<int32_t> native_signs;
+  native_signs.reserve(java_signs.size());
+  for (auto sign : java_signs) {
+    native_signs.push_back(static_cast<int32_t>(sign));
+  }
+  return native_signs;
 }
 
 // TODO(heshan):use template optimize java only container
@@ -1120,6 +1140,24 @@ jobject GetPageDataByKey(JNIEnv* env, jclass jcaller, jlong ptr,
     return env->NewLocalRef(result_from_java.Get());  // NOLINT
   }
   return nullptr;
+}
+
+jobject GetNodeInfos(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
+                     jintArray signs) {
+  const auto native_signs = ConvertJavaIntArray(env, signs);
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    lynx::shell::LynxNodeInfoResultAndroid result_android({});
+    return env->NewLocalRef(result_android.jni_object());  // NOLINT
+  }
+
+  auto node_infos =
+      reinterpret_cast<LynxShell*>(ptr)->GetNodeInfos(native_signs);
+  AtomicLifecycle::TryFree(lifecycle_ptr);
+
+  lynx::shell::LynxNodeInfoResultAndroid result_android(node_infos);
+  return env->NewLocalRef(result_android.jni_object());  // NOLINT
 }
 
 jobject GetAllJsSource(JNIEnv* env, jclass jcaller, jlong ptr,

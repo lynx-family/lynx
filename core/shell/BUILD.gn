@@ -92,6 +92,8 @@ if (is_android) {
     "android/lynx_engine_wrapper_android.h",
     "android/lynx_layout_proxy_android.cc",
     "android/lynx_layout_proxy_android.h",
+    "android/lynx_node_info_result_android.cc",
+    "android/lynx_node_info_result_android.h",
     "android/lynx_runtime_wrapper_android.cc",
     "android/lynx_runtime_wrapper_android.h",
     "android/lynx_template_render_android.cc",

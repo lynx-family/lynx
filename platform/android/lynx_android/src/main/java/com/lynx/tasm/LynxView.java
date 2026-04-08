@@ -64,6 +64,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 
 /**
@@ -1009,6 +1010,23 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     }
 
     return mLynxTemplateRender.getPageDataByKey(keys);
+  }
+
+  /**
+   * Queries node metadata for the requested signs.
+   *
+   * <p>The callback is invoked on the UI thread, and the returned items keep the same order as the
+   * requested signs.
+   */
+  public void getNodeInfos(
+      @NonNull LynxNodeInfoRequest request, @NonNull LynxNodeInfoCallback callback) {
+    Objects.requireNonNull(callback, "callback");
+    checkAccessFromNonUiThread("getNodeInfos");
+    if (mLynxTemplateRender == null) {
+      callback.onResult(LynxNodeInfoResult.empty());
+      return;
+    }
+    mLynxTemplateRender.getNodeInfos(request, callback);
   }
 
   /**
