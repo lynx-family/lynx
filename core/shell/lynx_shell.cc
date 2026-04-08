@@ -1282,18 +1282,19 @@ void LynxShell::OnEnterForeground() {
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value()));
   tasm_mediator_->DispatchMessageEvent(std::move(event));
-  bool send_event_to_main_thread =
-      engine_actor_ && engine_actor_->ActSync([](auto& engine) {
-        auto* tasm = engine->GetTasm();
-        return tasm && tasm->ShouldSendEventToMainThread();
-      });
-  if (send_event_to_main_thread) {
-    auto lepus_event = fml::MakeRefCounted<runtime::MessageEvent>(
-        runtime::kMessageEventTypeOnAppEnterForeground,
-        runtime::ContextProxy::Type::kNative,
-        runtime::ContextProxy::Type::kCoreContext,
-        std::make_unique<pub::ValueImplLepus>(lepus::Value()));
-    DispatchMessageEvent(std::move(lepus_event));
+  if (engine_actor_) {
+    engine_actor_->Act([](auto& engine) {
+      auto* tasm = engine->GetTasm();
+      if (!tasm || !tasm->ShouldSendEventToMainThread()) {
+        return;
+      }
+      auto lepus_event = fml::MakeRefCounted<runtime::MessageEvent>(
+          runtime::kMessageEventTypeOnAppEnterForeground,
+          runtime::ContextProxy::Type::kNative,
+          runtime::ContextProxy::Type::kCoreContext,
+          std::make_unique<pub::ValueImplLepus>(lepus::Value()));
+      engine->OnReceiveMessageEvent(std::move(lepus_event));
+    });
   }
 }
 
@@ -1311,18 +1312,19 @@ void LynxShell::OnEnterBackground() {
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value()));
   tasm_mediator_->DispatchMessageEvent(std::move(event));
-  bool send_event_to_main_thread =
-      engine_actor_ && engine_actor_->ActSync([](auto& engine) {
-        auto* tasm = engine->GetTasm();
-        return tasm && tasm->ShouldSendEventToMainThread();
-      });
-  if (send_event_to_main_thread) {
-    auto lepus_event = fml::MakeRefCounted<runtime::MessageEvent>(
-        runtime::kMessageEventTypeOnAppEnterBackground,
-        runtime::ContextProxy::Type::kNative,
-        runtime::ContextProxy::Type::kCoreContext,
-        std::make_unique<pub::ValueImplLepus>(lepus::Value()));
-    DispatchMessageEvent(std::move(lepus_event));
+  if (engine_actor_) {
+    engine_actor_->Act([](auto& engine) {
+      auto* tasm = engine->GetTasm();
+      if (!tasm || !tasm->ShouldSendEventToMainThread()) {
+        return;
+      }
+      auto lepus_event = fml::MakeRefCounted<runtime::MessageEvent>(
+          runtime::kMessageEventTypeOnAppEnterBackground,
+          runtime::ContextProxy::Type::kNative,
+          runtime::ContextProxy::Type::kCoreContext,
+          std::make_unique<pub::ValueImplLepus>(lepus::Value()));
+      engine->OnReceiveMessageEvent(std::move(lepus_event));
+    });
   }
 }
 
