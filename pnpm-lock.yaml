@@ -206,6 +206,7 @@ importers:
       cross-env: ^7.0.3
       esbuild: 0.19.12
       regenerator-runtime: 0.13.7
+      typescript: 5.8.3
     devDependencies:
       '@lynx-js/ios-polyfill': link:../lynx-polyfill
       '@lynx-js/ios-polyfill-promise': link:../lynx-promise
@@ -215,6 +216,7 @@ importers:
       cross-env: 7.0.3
       esbuild: 0.19.12
       regenerator-runtime: 0.13.7
+      typescript: 5.8.3
 
   js_libraries/lynx-polyfill:
     specifiers:
@@ -228,8 +230,11 @@ importers:
   js_libraries/lynx-runtime-shared:
     specifiers:
       tslib: 2.5.0
+      typescript: 5.8.3
     dependencies:
       tslib: 2.5.0
+    devDependencies:
+      typescript: 5.8.3
 
   js_libraries/type-config:
     specifiers:
@@ -244,9 +249,11 @@ importers:
   js_libraries/type-element-api:
     specifiers:
       tsd: 0.30.4
+      typescript: 5.8.3
       vitest: 2.1.9
     devDependencies:
       tsd: 0.30.4
+      typescript: 5.8.3
       vitest: 2.1.9
 
   js_libraries/types:

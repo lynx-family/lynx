@@ -33,16 +33,17 @@ def build(platform, releaseOutput, devOutput, version):
         # Change to the root directory
         os.chdir(rootPath)
 
-        # Run pnpm build for @lynx-js/runtime-shared
-        run_pnpm_command(
-            ['pnpm', '--filter', '@lynx-js/runtime-shared', 'build'],
-            os.getcwd())
-
-        # Bundle lynx_core.js and lynx_core_dev.js
         env = get_pnpm_env()
         env['NODE_OPTIONS'] = '--max-old-space-size=8192'
         if version:
             env['version'] = version
+
+        # Run pnpm build for @lynx-js/runtime-shared
+        run_pnpm_command(
+            ['pnpm', '--filter', '@lynx-js/runtime-shared', 'build'],
+            os.getcwd(), env)
+
+        # Bundle lynx_core.js and lynx_core_dev.js
         run_pnpm_command(
             ['pnpm', '--filter', f'@lynx-js/lynx-core', f'build:{platform}'],
             os.getcwd(), env)
