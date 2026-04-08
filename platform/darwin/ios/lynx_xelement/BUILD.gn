@@ -39,6 +39,7 @@ podspec_target("XElement_podspec") {
     default_subspecs = [
       "Input",
       "Overlay",
+      "ScrollCoordinator",
       "ViewPager",
       "SVG",
       "Refresh",
@@ -52,6 +53,7 @@ podspec_target("XElement_podspec") {
     ":Overlay",
     ":Refresh",
     ":SVG",
+    ":ScrollCoordinator",
     ":ViewPager",
   ]
 }
@@ -107,6 +109,34 @@ subspec_target("Overlay") {
     "overlay/LynxUIOverlay.h",
   ]
   dependency = lynx_dependency
+}
+
+subspec_target("ScrollCoordinator") {
+  sources = [
+    "scroll_coordinator/LynxUIScrollCoordinator.h",
+    "scroll_coordinator/LynxUIScrollCoordinator.m",
+    "scroll_coordinator/LynxUIScrollCoordinatorHeader.h",
+    "scroll_coordinator/LynxUIScrollCoordinatorHeader.m",
+    "scroll_coordinator/LynxUIScrollCoordinatorSlot.h",
+    "scroll_coordinator/LynxUIScrollCoordinatorSlot.m",
+    "scroll_coordinator/LynxUIScrollCoordinatorSlotDrag.h",
+    "scroll_coordinator/LynxUIScrollCoordinatorSlotDrag.m",
+    "scroll_coordinator/LynxUIScrollCoordinatorToolbar.h",
+    "scroll_coordinator/LynxUIScrollCoordinatorToolbar.m",
+    "scroll_coordinator/NSObject+LynxScrollCoordinatorKVO.h",
+    "scroll_coordinator/NSObject+LynxScrollCoordinatorKVO.m",
+    "scroll_coordinator/UIScrollView+ScrollCoordinator.h",
+    "scroll_coordinator/UIScrollView+ScrollCoordinator.m",
+  ]
+  public_header_files = [
+    "scroll_coordinator/LynxUIScrollCoordinator.h",
+    "scroll_coordinator/LynxUIScrollCoordinatorHeader.h",
+    "scroll_coordinator/LynxUIScrollCoordinatorSlot.h",
+    "scroll_coordinator/LynxUIScrollCoordinatorSlotDrag.h",
+    "scroll_coordinator/LynxUIScrollCoordinatorToolbar.h",
+  ]
+  dependency = lynx_dependency
+  dependency += [ "XElement/ViewPager" ]
 }
 
 subspec_target("ViewPager") {
@@ -176,6 +206,8 @@ subspec_target("Behavior") {
     "behavior/LynxUIRefreshAutoRegistry.m",
     "behavior/LynxUISVGAutoRegistry.h",
     "behavior/LynxUISVGAutoRegistry.m",
+    "behavior/LynxUIScrollCoordinatorAutoRegistry.h",
+    "behavior/LynxUIScrollCoordinatorAutoRegistry.m",
     "behavior/LynxUITextAreaAutoRegistry.h",
     "behavior/LynxUITextAreaAutoRegistry.m",
     "behavior/LynxUIViewPagerAutoRegistry.h",
@@ -185,6 +217,7 @@ subspec_target("Behavior") {
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.h",
     "behavior/LynxUIRefreshAutoRegistry.h",
+    "behavior/LynxUIScrollCoordinatorAutoRegistry.h",
     "behavior/LynxUIViewPagerAutoRegistry.h",
     "behavior/LynxUISVGAutoRegistry.h",
     "behavior/LynxUITextAreaAutoRegistry.h",
@@ -194,6 +227,7 @@ subspec_target("Behavior") {
   dependency += [
     "XElement/Input",
     "XElement/Overlay",
+    "XElement/ScrollCoordinator",
     "XElement/ViewPager",
     "XElement/SVG",
     "XElement/Refresh",
