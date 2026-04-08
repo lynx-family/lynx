@@ -62,45 +62,46 @@ static constexpr PseudoState kPseudoStateSelection = 1 << 11;
       tasm::kPropertyIDFlexGrow, tasm::kPropertyIDFlexBasis,                \
       tasm::kPropertyIDFilter, tasm::kPropertyIDTransform,                  \
       tasm::kPropertyIDOffsetDistance, tasm::kPropertyIDBackgroundPosition, \
-      tasm::kPropertyIDTransformOrigin
+      tasm::kPropertyIDTransformOrigin, tasm::kPropertyIDVisibility
 
-#define FOREACH_NEW_ANIMATOR_PROPERTY(V)              \
-  V(kPropertyIDLeft, kLeft)                           \
-  V(kPropertyIDTop, kTop)                             \
-  V(kPropertyIDRight, kRight)                         \
-  V(kPropertyIDBottom, kBottom)                       \
-  V(kPropertyIDWidth, kWidth)                         \
-  V(kPropertyIDHeight, kHeight)                       \
-  V(kPropertyIDOpacity, kOpacity)                     \
-  V(kPropertyIDBackgroundColor, kBackgroundColor)     \
-  V(kPropertyIDColor, kColor)                         \
-  V(kPropertyIDMaxWidth, kMaxWidth)                   \
-  V(kPropertyIDMinWidth, kMinWidth)                   \
-  V(kPropertyIDMaxHeight, kMaxHeight)                 \
-  V(kPropertyIDMinHeight, kMinHeight)                 \
-  V(kPropertyIDMarginLeft, kMarginLeft)               \
-  V(kPropertyIDMarginRight, kMarginRight)             \
-  V(kPropertyIDMarginTop, kMarginTop)                 \
-  V(kPropertyIDMarginBottom, kMarginBottom)           \
-  V(kPropertyIDPaddingLeft, kPaddingLeft)             \
-  V(kPropertyIDPaddingRight, kPaddingRight)           \
-  V(kPropertyIDPaddingTop, kPaddingTop)               \
-  V(kPropertyIDPaddingBottom, kPaddingBottom)         \
-  V(kPropertyIDBorderLeftWidth, kBorderLeftWidth)     \
-  V(kPropertyIDBorderRightWidth, kBorderRightWidth)   \
-  V(kPropertyIDBorderTopWidth, kBorderTopWidth)       \
-  V(kPropertyIDBorderBottomWidth, kBorderBottomWidth) \
-  V(kPropertyIDBorderLeftColor, kBorderLeftColor)     \
-  V(kPropertyIDBorderRightColor, kBorderRightColor)   \
-  V(kPropertyIDBorderTopColor, kBorderTopColor)       \
-  V(kPropertyIDBorderBottomColor, kBorderBottomColor) \
-  V(kPropertyIDFlexGrow, kFlexGrow)                   \
-  V(kPropertyIDFlexBasis, kFlexBasis)                 \
-  V(kPropertyIDFilter, kFilter)                       \
-  V(kPropertyIDTransform, kTransform)                 \
-  V(kPropertyIDTransformOrigin, kTransformOrigin)     \
-  V(kPropertyIDOffsetDistance, kOffsetDistance)       \
-  V(kPropertyIDBackgroundPosition, kBackgroundPosition)
+#define FOREACH_NEW_ANIMATOR_PROPERTY(V)                \
+  V(kPropertyIDLeft, kLeft)                             \
+  V(kPropertyIDTop, kTop)                               \
+  V(kPropertyIDRight, kRight)                           \
+  V(kPropertyIDBottom, kBottom)                         \
+  V(kPropertyIDWidth, kWidth)                           \
+  V(kPropertyIDHeight, kHeight)                         \
+  V(kPropertyIDOpacity, kOpacity)                       \
+  V(kPropertyIDBackgroundColor, kBackgroundColor)       \
+  V(kPropertyIDColor, kColor)                           \
+  V(kPropertyIDMaxWidth, kMaxWidth)                     \
+  V(kPropertyIDMinWidth, kMinWidth)                     \
+  V(kPropertyIDMaxHeight, kMaxHeight)                   \
+  V(kPropertyIDMinHeight, kMinHeight)                   \
+  V(kPropertyIDMarginLeft, kMarginLeft)                 \
+  V(kPropertyIDMarginRight, kMarginRight)               \
+  V(kPropertyIDMarginTop, kMarginTop)                   \
+  V(kPropertyIDMarginBottom, kMarginBottom)             \
+  V(kPropertyIDPaddingLeft, kPaddingLeft)               \
+  V(kPropertyIDPaddingRight, kPaddingRight)             \
+  V(kPropertyIDPaddingTop, kPaddingTop)                 \
+  V(kPropertyIDPaddingBottom, kPaddingBottom)           \
+  V(kPropertyIDBorderLeftWidth, kBorderLeftWidth)       \
+  V(kPropertyIDBorderRightWidth, kBorderRightWidth)     \
+  V(kPropertyIDBorderTopWidth, kBorderTopWidth)         \
+  V(kPropertyIDBorderBottomWidth, kBorderBottomWidth)   \
+  V(kPropertyIDBorderLeftColor, kBorderLeftColor)       \
+  V(kPropertyIDBorderRightColor, kBorderRightColor)     \
+  V(kPropertyIDBorderTopColor, kBorderTopColor)         \
+  V(kPropertyIDBorderBottomColor, kBorderBottomColor)   \
+  V(kPropertyIDFlexGrow, kFlexGrow)                     \
+  V(kPropertyIDFlexBasis, kFlexBasis)                   \
+  V(kPropertyIDFilter, kFilter)                         \
+  V(kPropertyIDTransform, kTransform)                   \
+  V(kPropertyIDTransformOrigin, kTransformOrigin)       \
+  V(kPropertyIDOffsetDistance, kOffsetDistance)         \
+  V(kPropertyIDBackgroundPosition, kBackgroundPosition) \
+  V(kPropertyIDVisibility, kVisibility)
 
 // Define macro for direction aware property, {css_id, is_logic_style, css_id in
 // ltr mode, css_id in rtl mode}
