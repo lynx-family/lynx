@@ -17,13 +17,23 @@ constexpr int CONSOLE_LOG_REPORT = 4;
 constexpr int CONSOLE_LOG_ALOG = 5;
 
 // lepus console method
-constexpr char LepusConsoleAlog[] = "alog";
-constexpr char LepusConsoleDebug[] = "debug";
-constexpr char LepusConsoleError[] = "error";
-constexpr char LepusConsoleInfo[] = "info";
-constexpr char LepusConsoleLog[] = "log";
-constexpr char LepusConsoleReport[] = "report";
-constexpr char LepusConsoleWarn[] = "warn";
+constexpr char ConsoleAlog[] = "alog";
+constexpr char ConsoleAssert[] = "assert";
+constexpr char ConsoleCount[] = "count";
+constexpr char ConsoleCountReset[] = "countReset";
+constexpr char ConsoleDebug[] = "debug";
+constexpr char ConsoleError[] = "error";
+constexpr char ConsoleGroup[] = "group";
+constexpr char ConsoleGroupCollapsed[] = "groupCollapsed";
+constexpr char ConsoleGroupEnd[] = "groupEnd";
+constexpr char ConsoleInfo[] = "info";
+constexpr char ConsoleLog[] = "log";
+constexpr char ConsoleReport[] = "report";
+constexpr char ConsoleTable[] = "table";
+constexpr char ConsoleTime[] = "time";
+constexpr char ConsoleTimeEnd[] = "timeEnd";
+constexpr char ConsoleTimeLog[] = "timeLog";
+constexpr char ConsoleWarn[] = "warn";
 
 }  // namespace runtime
 }  // namespace lynx

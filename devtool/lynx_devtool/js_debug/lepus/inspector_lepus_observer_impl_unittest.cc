@@ -101,38 +101,38 @@ TEST_F(InspectorLepusObserverImplTest, OnConsoleEvent) {
 
   observer_->SetConsolePostNeeded(false);
 
-  observer_->OnConsoleEvent(runtime::LepusConsoleAlog, alog_mes);
+  observer_->OnConsoleEvent(runtime::ConsoleAlog, alog_mes);
   EXPECT_EQ(mediator_->message_.text_, "");
   EXPECT_EQ(mediator_->message_.level_, -2);
   EXPECT_EQ(mediator_->message_.timestamp_, -1);
 
   observer_->SetConsolePostNeeded(true);
 
-  observer_->OnConsoleEvent(runtime::LepusConsoleAlog, alog_mes);
+  observer_->OnConsoleEvent(runtime::ConsoleAlog, alog_mes);
   EXPECT_EQ(mediator_->message_.text_, alog_mes);
   EXPECT_EQ(mediator_->message_.level_, runtime::CONSOLE_LOG_ALOG);
 
-  observer_->OnConsoleEvent(runtime::LepusConsoleDebug, debug_mes);
+  observer_->OnConsoleEvent(runtime::ConsoleDebug, debug_mes);
   EXPECT_EQ(mediator_->message_.text_, debug_mes);
   EXPECT_EQ(mediator_->message_.level_, runtime::CONSOLE_LOG_INFO);
 
-  observer_->OnConsoleEvent(runtime::LepusConsoleError, error_mes);
+  observer_->OnConsoleEvent(runtime::ConsoleError, error_mes);
   EXPECT_EQ(mediator_->message_.text_, error_mes);
   EXPECT_EQ(mediator_->message_.level_, runtime::CONSOLE_LOG_ERROR);
 
-  observer_->OnConsoleEvent(runtime::LepusConsoleInfo, info_mes);
+  observer_->OnConsoleEvent(runtime::ConsoleInfo, info_mes);
   EXPECT_EQ(mediator_->message_.text_, info_mes);
   EXPECT_EQ(mediator_->message_.level_, runtime::CONSOLE_LOG_INFO);
 
-  observer_->OnConsoleEvent(runtime::LepusConsoleLog, log_mes);
+  observer_->OnConsoleEvent(runtime::ConsoleLog, log_mes);
   EXPECT_EQ(mediator_->message_.text_, log_mes);
   EXPECT_EQ(mediator_->message_.level_, runtime::CONSOLE_LOG_LOG);
 
-  observer_->OnConsoleEvent(runtime::LepusConsoleReport, report_mes);
+  observer_->OnConsoleEvent(runtime::ConsoleReport, report_mes);
   EXPECT_EQ(mediator_->message_.text_, report_mes);
   EXPECT_EQ(mediator_->message_.level_, runtime::CONSOLE_LOG_REPORT);
 
-  observer_->OnConsoleEvent(runtime::LepusConsoleWarn, warn_mes);
+  observer_->OnConsoleEvent(runtime::ConsoleWarn, warn_mes);
   EXPECT_EQ(mediator_->message_.text_, warn_mes);
   EXPECT_EQ(mediator_->message_.level_, runtime::CONSOLE_LOG_WARNING);
 }
