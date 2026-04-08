@@ -203,6 +203,7 @@ lynx_lepus_compile_sources = [
   "code_generator.cc",
   "code_generator.h",
   "context_binary_writer.h",
+  "op_code_builder.h",
   "parser.cc",
   "parser.h",
   "scanner.cc",

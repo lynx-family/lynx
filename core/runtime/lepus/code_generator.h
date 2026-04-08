@@ -14,7 +14,7 @@
 #include "base/include/value/base_value.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/lepus/function.h"
-#include "core/runtime/lepus/op_code.h"
+#include "core/runtime/lepus/op_code_builder.h"
 #include "core/runtime/lepus/semantic_analysis.h"
 #include "core/runtime/lepus/visitor.h"
 #include "core/runtime/lepus/vm_context.h"

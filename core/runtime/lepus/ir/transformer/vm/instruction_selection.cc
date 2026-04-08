@@ -9,7 +9,7 @@
 #include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/transformer/vm/reg_alloc.h"
-#include "core/runtime/lepus/op_code.h"
+#include "core/runtime/lepus/op_code_builder.h"
 #include "core/runtime/lepus/vm_context.h"
 
 namespace lynx {

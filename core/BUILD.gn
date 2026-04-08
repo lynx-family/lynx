@@ -45,6 +45,10 @@ config("lynx_public_config") {
     "ENABLE_INSPECTOR=${enable_inspector}",
   ]
 
+  if (build_lepus_compile) {
+    defines += [ "LEPUS_ENABLE_CODEGEN" ]
+  }
+
   if (is_android) {
     if (is_debug) {
       defines += [ "DEBUG_MEMORY" ]

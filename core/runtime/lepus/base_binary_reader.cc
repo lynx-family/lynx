@@ -43,7 +43,8 @@ bool BaseBinaryReader::DeserializeFunction(fml::RefPtr<Function>& parent,
   }
   // this sentinel inst is used to ensure direct dispatch does not go out of
   // range
-  function->op_codes_[size] = Instruction::Code(OP_PLACEHOLDER);
+  function->op_codes_[size].op_code_ =
+      (static_cast<uint32_t>(OP_PLACEHOLDER) << 24);
 
   // up value info
   DECODE_COMPACT_U32(update_value_size);

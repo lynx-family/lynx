@@ -9,7 +9,7 @@
 #include "core/runtime/lepus/exception.h"
 #include "core/runtime/lepus/function.h"
 #include "core/runtime/lepus/guard.h"
-#include "core/runtime/lepus/op_code.h"
+#include "core/runtime/lepus/op_code_builder.h"
 #include "core/runtime/lepus/switch.h"
 #define INT_LOGIC_VERSION "1.3"
 

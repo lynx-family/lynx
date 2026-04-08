@@ -5,11 +5,13 @@
 #define CORE_RUNTIME_LEPUS_FUNCTION_H_
 
 #include <memory>
-#include <stack>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
+
+#if defined(LEPUS_ENABLE_CODEGEN)
+#include <unordered_map>
+#endif
 
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
@@ -25,6 +27,7 @@
 
 namespace lynx {
 namespace lepus {
+#if defined(LEPUS_ENABLE_CODEGEN)
 // hash function for unordered map which has std::pair as key
 // from boost (functional/hash): see
 // http://www.boost.org/doc/libs/1_35_0/doc/html/hash/combine.html template
@@ -56,6 +59,7 @@ struct pair_hash {
     return hash_val(p.first, p.second);
   }
 };
+#endif  // defined(LEPUS_ENABLE_CODEGEN)
 
 class Function : public fml::RefCountedThreadSafeStorage {
  public:
@@ -83,21 +87,28 @@ class Function : public fml::RefCountedThreadSafeStorage {
   }
   ~Function() override = default;
 
-  void SetParamsSize(int32_t params_size) { params_size_ = params_size; }
-
   int32_t GetParamsSize();
-
-  void SetRegisterCount(long register_count) {
-    register_count_ = static_cast<int32_t>(register_count);
-  }
-
-  int32_t GetRegisterCount() { return register_count_; }
 
   std::size_t OpCodeSize() { return op_codes_.size(); }
 
   const Instruction* GetOpCodes() const {
     return op_codes_.empty() ? nullptr : &op_codes_[0];
   }
+
+  void ReleaseSelf() const override { delete this; }
+
+  Instruction* GetInstruction(std::size_t index) { return &op_codes_[index]; }
+
+#if defined(LEPUS_ENABLE_CODEGEN)
+  void SetParamsSize(int32_t params_size) { params_size_ = params_size; }
+
+  // These APIs are only needed when building bytecode (compile-time) or in
+  // unit tests that construct bytecode in-memory.
+  void SetRegisterCount(long register_count) {
+    register_count_ = static_cast<int32_t>(register_count);
+  }
+
+  int32_t GetRegisterCount() { return register_count_; }
 
   std::size_t AddInstruction(Instruction i) {
     op_codes_.push_back(i);
@@ -119,10 +130,6 @@ class Function : public fml::RefCountedThreadSafeStorage {
 
   void ClearUpvalues() { upvalues_.clear(); }
 
-  void ReleaseSelf() const override { delete this; }
-
-  Instruction* GetInstruction(std::size_t index) { return &op_codes_[index]; }
-
   std::size_t AddConstNumber(double number);
 
   std::size_t AddConstString(const base::String& string);
@@ -132,6 +139,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
   std::size_t AddConstBoolean(bool boolean);
 
   std::size_t AddConstValue(const Value& v);
+#endif  // defined(LEPUS_ENABLE_CODEGEN)
 
   std::size_t AddChildFunction(fml::RefPtr<Function> function) {
     child_functions_.push_back(std::move(function));
@@ -191,19 +199,20 @@ class Function : public fml::RefCountedThreadSafeStorage {
     function_name_ = function_name;
   }
 
+  LYNX_EXPORT_FOR_DEVTOOL std::string GetFunctionName();
+
+#if defined(LEPUS_ENABLE_CODEGEN)
   void SetTopLevelFunction(bool is_toplevel_function) {
     is_toplevel_function_ = is_toplevel_function;
   }
 
   bool IsToplevelFunction() const { return is_toplevel_function_; }
 
-  LYNX_EXPORT_FOR_DEVTOOL std::string GetFunctionName();
-
   void SetUpvalueArray(const std::unordered_map<
                        std::pair<lynx::base::String, uint64_t>, long, pair_hash>
                            upvalue_array) {
     upvalue_array_.clear();
-    upvalue_array_ = upvalue_array;
+    upvalue_array_ = std::move(upvalue_array);
   }
 
   const std::unordered_map<std::pair<lynx::base::String, uint64_t>, long,
@@ -211,6 +220,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
   GetUpvalueArray() {
     return upvalue_array_;
   }
+#endif  // defined(LEPUS_ENABLE_CODEGEN)
 
   void SetCurrentLineCol(int64_t num) { current_line_col_ = num; }
 
@@ -242,6 +252,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
 
   void SetScope(Value& scopes) { scopes_ = scopes; }
 
+#if defined(LEPUS_ENABLE_CODEGEN)
   const auto& block_scope_stack() { return block_scope_stack_; }
 
   void PushBSStack(uint64_t id);
@@ -255,6 +266,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
   void PopLoopBlockStack();
 
   uint64_t GetLoopBlockStack();
+#endif  // defined(LEPUS_ENABLE_CODEGEN)
 
   const std::vector<int64_t>& GetLineCol() const { return debug_line_col_; }
 
@@ -295,6 +307,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
   friend class ContextBinaryWriter;
   friend class BaseBinaryReader;
 
+#if defined(LEPUS_ENABLE_CODEGEN)
   std::unordered_map<std::pair<lynx::base::String, uint64_t>, long, pair_hash>
       upvalue_array_;
 
@@ -302,6 +315,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
   base::Stack<uint64_t> block_scope_stack_;
   base::Stack<uint64_t> loop_block_stack_;
   bool is_toplevel_function_ = false;
+#endif  // defined(LEPUS_ENABLE_CODEGEN)
 };
 
 class Closure : public lepus::RefCounted {

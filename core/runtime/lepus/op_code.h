@@ -3,6 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 #ifndef CORE_RUNTIME_LEPUS_OP_CODE_H_
 #define CORE_RUNTIME_LEPUS_OP_CODE_H_
+
+#include <cstdint>
+
 namespace lynx {
 namespace lepus {
 enum TypeOpCode {
@@ -18,68 +21,29 @@ enum TypeOpCode {
 struct Instruction {
   uint32_t op_code_;
 
+#if defined(LEPUS_ENABLE_CODEGEN)
   Instruction() : op_code_(0) {}
 
-  Instruction(TypeOpCode op_code, long a, long b, long c) : op_code_(op_code) {
-    op_code_ = (op_code_ << 24) | ((static_cast<uint32_t>(a) & 0xFF) << 16) |
-               ((static_cast<uint32_t>(b) & 0xFF) << 8) |
-               (static_cast<uint32_t>(c) & 0xFF);
-  }
+  // Bytecode building helpers.
+  //
+  // Definitions live in `op_code_builder.h` so VM-only compilation units that
+  // include `op_code.h` don't pull in bytecode-generation-only helpers.
+  Instruction(TypeOpCode op_code, long a, long b, long c);
+  Instruction(TypeOpCode op_code, long a, short b);
+  Instruction(TypeOpCode op_code, long a, unsigned short b);
+  Instruction(long op_code, long a, long b, long c);
 
-  Instruction(TypeOpCode op_code, long a, short b) : op_code_(op_code) {
-    op_code_ = (op_code_ << 24) | ((static_cast<uint32_t>(a) & 0xFF) << 16) |
-               (static_cast<uint32_t>(b) & 0xFFFF);
-  }
+  void RefillsA(long a);
+  void RefillsB(long b);
+  void RefillsBx(short b);
 
-  Instruction(TypeOpCode op_code, long a, unsigned short b)
-      : op_code_(op_code) {
-    op_code_ = (op_code_ << 24) | ((static_cast<uint32_t>(a) & 0xFF) << 16) |
-               (static_cast<uint32_t>(b) & 0xFFFF);
-  }
-
-  Instruction(long op_code, long a, long b, long c)
-      : op_code_(static_cast<uint32_t>(op_code)) {
-    op_code_ = (op_code_ << 24) | ((static_cast<uint32_t>(a) & 0xFF) << 16) |
-               ((static_cast<uint32_t>(b) & 0xFF) << 8) |
-               (static_cast<uint32_t>(c) & 0xFF);
-  }
-
-  void RefillsA(long a) {
-    op_code_ =
-        (op_code_ & 0xFF00FFFF) | ((static_cast<uint32_t>(a) & 0xFF) << 16);
-  }
-
-  void RefillsB(long a) {
-    op_code_ =
-        (op_code_ & 0xFFFF00FF) | ((static_cast<uint32_t>(a) & 0xFF) << 8);
-  }
-
-  static Instruction OpABCCode(long d, long a, long b, long c) {
-    assert(d <= (long)UINT32_MAX && "for ABCD code, d must be uint32");
-    return Instruction(d, a, b, c);
-  }
-
-  void RefillsBx(short b) {
-    op_code_ = (op_code_ & 0xFFFF0000) | (static_cast<int>(b) & 0xFFFF);
-  }
-
-  static Instruction ABCCode(TypeOpCode op, long a, long b, long c) {
-    return Instruction(op, a, b, c);
-  }
-
-  static Instruction ABCode(TypeOpCode op, long a, long b) {
-    return Instruction(op, a, b, 0);
-  }
-
-  static Instruction ACode(TypeOpCode op, long a) {
-    return Instruction(op, a, 0, 0);
-  }
-
-  static Instruction Code(TypeOpCode op) { return Instruction(op, 0, 0, 0); }
-
-  static Instruction ABxCode(TypeOpCode op, long a, long b) {
-    return Instruction(op, a, static_cast<unsigned short>(b));
-  }
+  static Instruction OpABCCode(long d, long a, long b, long c);
+  static Instruction ABCCode(TypeOpCode op, long a, long b, long c);
+  static Instruction ABCode(TypeOpCode op, long a, long b);
+  static Instruction ACode(TypeOpCode op, long a);
+  static Instruction Code(TypeOpCode op);
+  static Instruction ABxCode(TypeOpCode op, long a, long b);
+#endif
 
   inline static long GetOpCode(Instruction i) {
     return (i.op_code_ >> 24) & 0xFF;
@@ -106,4 +70,8 @@ struct Instruction {
 }  // namespace lepus
 }  // namespace lynx
 
+#if defined(LEPUS_ENABLE_CODEGEN)
+// Bring in the inline definitions for bytecode-generation helpers.
+#include "core/runtime/lepus/op_code_builder.h"
+#endif
 #endif  // CORE_RUNTIME_LEPUS_OP_CODE_H_

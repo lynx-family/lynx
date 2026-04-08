@@ -2479,6 +2479,7 @@ const std::unordered_map<base::String, long>& VMContext::GetToplevelVariables()
   return top_level_variables_;
 }
 
+#if defined(LEPUS_ENABLE_CODEGEN)
 void VMContext::UpdateToplevelVarReg(const base::String& key, long new_reg) {
   top_level_variables_[key] = new_reg;
 }
@@ -2494,6 +2495,7 @@ long VMContext::GetToplevelVarOffset(long reg) const {
 void VMContext::UpdateToplevelVarRegToOffset(long reg, long offset) {
   top_level_reg_to_offset_[reg] = offset;
 }
+#endif
 
 bool VMContext::MoveContextBundle(VMContextBundle& bundle) {
   for (auto& pair : bundle.lepus_root_global_) {
