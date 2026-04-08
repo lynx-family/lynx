@@ -77,9 +77,9 @@ inline constexpr const char* const UIBASE_INIT_DRAW_NODE =
     "UIBase::InitDrawNode";
 inline constexpr const char* const UI_EXPOSURE_EXEC = "UIExposure::Exec";
 inline constexpr const char* const UI_FOLD_VIEW_UPDATE_LAYOUT =
-    "UIFoldView::UpdateLayout";
+    "UIScrollCoordinator::UpdateLayout";
 inline constexpr const char* const UI_FOLD_VIEW_UPDATE_FOLD_VIEW_LAYOUT =
-    "UIFoldView::UpdateFoldViewLayout";
+    "UIScrollCoordinator::UpdateFoldViewLayout";
 inline constexpr const char* const UI_IMAGE_UPDATE_LAYOUT =
     "UIImage::UpdateLayout";
 inline constexpr const char* const UI_LIST_ON_MEASURE = "UIList::OnMeasure";

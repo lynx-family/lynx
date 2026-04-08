@@ -25,6 +25,8 @@ lynx_core_source_set("lynx_xelement") {
     "refresh/ui_refresh.h",
     "registry.cc",
     "registry.h",
+    "scroll_coordinator/ui_scroll_coordinator.cc",
+    "scroll_coordinator/ui_scroll_coordinator.h",
     "viewpager/ui_viewpager.cc",
     "viewpager/ui_viewpager.h",
     "viewpager/ui_viewpager_item.cc",

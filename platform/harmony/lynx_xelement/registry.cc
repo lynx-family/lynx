@@ -11,6 +11,7 @@
 #include "platform/harmony/lynx_xelement/overlay/ui_overlay.h"
 #include "platform/harmony/lynx_xelement/refresh/refresh_shadow_node.h"
 #include "platform/harmony/lynx_xelement/refresh/ui_refresh.h"
+#include "platform/harmony/lynx_xelement/scroll_coordinator/ui_scroll_coordinator.h"
 #include "platform/harmony/lynx_xelement/viewpager/ui_viewpager.h"
 #include "platform/harmony/lynx_xelement/viewpager/ui_viewpager_item.h"
 
@@ -28,6 +29,11 @@ void XElementRegistry::Initialize() {
   map["refresh"] = {UIRefresh::Make, RefreshShadowNode::Make,
                     LayoutNodeType::CUSTOM};
   map["refresh-header"] = {UIRefreshHeader::Make};
+  map["scroll-coordinator"] = {UIScrollCoordinator::Make};
+  map["scroll-coordinator-toolbar"] = {UIScrollCoordinatorToolBar::Make};
+  map["scroll-coordinator-header"] = {UIScrollCoordinatorHeader::Make};
+  map["scroll-coordinator-slot"] = {UIScrollCoordinatorSlot::Make};
+  map["scroll-coordinator-slot-drag"] = {UIScrollCoordinatorSlotDrag::Make};
   map["viewpager"] = {UIViewPager::Make};
   map["viewpager-item"] = {UIViewPagerItem::Make};
 }
