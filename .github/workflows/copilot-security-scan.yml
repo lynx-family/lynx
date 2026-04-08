@@ -1,14 +1,13 @@
-# Daily security scan powered by GitHub Copilot (via GitHub Models API).
+# Daily security scan powered by GitHub Copilot CLI.
 #
-# This workflow analyzes new code committed in the last 24 hours for potential
-# security vulnerabilities using AI-powered analysis. It calls the GitHub
-# Models inference API (the same AI that powers GitHub Copilot) to review
-# source code diffs and identify security risks.
+# This workflow follows GitHub's documented pattern for running Copilot CLI in
+# GitHub Actions: check out the repository, install the CLI on the runner,
+# authenticate it with a dedicated Copilot token, then run Copilot in
+# programmatic mode to review recent source-code changes for security risks.
 #
 # Prerequisites:
-#   1. Create a GitHub Personal Access Token (classic or fine-grained) that
-#      has access to GitHub Models (https://github.com/marketplace/models).
-#   2. Add the token as a repository secret named COPILOT_TOKEN:
+#   1. Create a fine-grained PAT with the "Copilot Requests" permission.
+#   2. Add the token as a repository secret named COPILOT_GITHUB_TOKEN:
 #      Settings → Secrets and variables → Actions → New repository secret.
 #
 name: 'Copilot Security Scan'
@@ -31,9 +30,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Set up Node.js environment
+        uses: actions/setup-node@v4
+
+      - name: Install Copilot CLI
+        run: npm install -g @github/copilot
 
       - name: Collect recent code changes
         id: diff
@@ -50,24 +55,29 @@ jobs:
 
           OLDEST=$(echo "$COMMITS" | tail -1)
           echo "Found $(echo "$COMMITS" | wc -l) commit(s). Oldest: ${OLDEST}"
+          echo "since=${SINCE}" >> "$GITHUB_OUTPUT"
+          echo "oldest=${OLDEST}" >> "$GITHUB_OUTPUT"
 
           # Diff only source-code files to reduce noise
           EMPTY_TREE=4b825dc642cb6eb9a060e54bf8d69288fbee4904
           if git rev-parse --verify "${OLDEST}^" >/dev/null 2>&1; then
-            git diff "${OLDEST}^..HEAD" -- \
+            DIFF_BASE="${OLDEST}^"
+            git diff --unified=0 "${DIFF_BASE}..HEAD" -- \
               '*.cc' '*.cpp' '*.c' '*.h' '*.hpp' \
               '*.m' '*.mm' '*.swift' \
               '*.js' '*.ts' '*.jsx' '*.tsx' \
               '*.py' '*.java' '*.kt' '*.rb' \
               > /tmp/diff.patch
           else
-            git diff "${EMPTY_TREE}..HEAD" -- \
+            DIFF_BASE="${EMPTY_TREE}"
+            git diff --unified=0 "${DIFF_BASE}..HEAD" -- \
               '*.cc' '*.cpp' '*.c' '*.h' '*.hpp' \
               '*.m' '*.mm' '*.swift' \
               '*.js' '*.ts' '*.jsx' '*.tsx' \
               '*.py' '*.java' '*.kt' '*.rb' \
               > /tmp/diff.patch
           fi
+          echo "diff_base=${DIFF_BASE}" >> "$GITHUB_OUTPUT"
 
           if [ ! -s /tmp/diff.patch ]; then
             echo "No source-code changes in the last 24 hours."
@@ -83,93 +93,58 @@ jobs:
         if: steps.diff.outputs.skip != 'true'
         id: analyze
         env:
-          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN || secrets.COPILOT_TOKEN }}
         run: |
-          if [ -z "$COPILOT_TOKEN" ]; then
-            echo "::error::Secret COPILOT_TOKEN is not set. Please add a GitHub PAT with Models access as a repository secret."
+          if [ -z "$COPILOT_GITHUB_TOKEN" ]; then
+            echo "::error::Neither COPILOT_GITHUB_TOKEN nor COPILOT_TOKEN is set. Please add a fine-grained PAT with the Copilot Requests permission as a repository secret."
             exit 1
           fi
 
-          # Truncate diff to stay within model context-window limits (~60 KB)
-          head -c 60000 /tmp/diff.patch > /tmp/diff_truncated.patch
+          cat > /tmp/copilot_prompt.txt <<EOF
+          You are an expert security code reviewer.
+          Review the recent source-code changes in this repository for concrete security risks only.
 
-          # Build the analysis prompt — request structured JSON output so we
-          # can reliably determine whether risks were found without fragile
-          # string matching on the model's prose.
-          cat > /tmp/prompt.txt <<'PROMPT'
-          You are an expert security code reviewer. Analyze the following code
-          diff and identify potential security vulnerabilities.
+          Use git commands to inspect commits since ${{ steps.diff.outputs.since }}. Limit the review to these file patterns:
+          *.cc *.cpp *.c *.h *.hpp *.m *.mm *.swift *.js *.ts *.jsx *.tsx *.py *.java *.kt *.rb
 
-          Focus on these categories:
-          - Injection attacks (SQL injection, command injection, XSS, etc.)
-          - Buffer overflows and memory-safety issues
-          - Authentication and authorization flaws
-          - Sensitive data exposure (hard-coded secrets, logging of credentials)
-          - Insecure deserialization
-          - Server-Side Request Forgery (SSRF) and Cross-Site Request Forgery (CSRF)
-          - Cryptographic weaknesses
-          - Race conditions and concurrency issues
-          - Path traversal and file-access issues
-          - Other OWASP Top-10 risks
+          Use a command equivalent to:
+          git diff --unified=0 "${{ steps.diff.outputs.diff_base }}..HEAD" -- '*.cc' '*.cpp' '*.c' '*.h' '*.hpp' '*.m' '*.mm' '*.swift' '*.js' '*.ts' '*.jsx' '*.tsx' '*.py' '*.java' '*.kt' '*.rb'
 
-          You MUST respond with a JSON object containing exactly two keys:
-          - "has_risks" (boolean): true if any security issues were found, false otherwise.
-          - "analysis" (string): Markdown-formatted analysis. When has_risks is true,
-            for each finding include:
-            1. **File & location** — the file name and approximate line(s) in the diff
-            2. **Risk level** — 🔴 High / 🟡 Medium / 🟢 Low
-            3. **Description** — what the vulnerability is
-            4. **Recommendation** — how to fix or mitigate it
-            When has_risks is false, set analysis to:
-            "✅ No security issues detected in the reviewed changes."
-          PROMPT
+          Focus only on security categories such as injection, authentication or authorization flaws, sensitive data exposure, insecure deserialization, SSRF or CSRF, path traversal, cryptographic weaknesses, memory-safety issues, race conditions, and other OWASP-class risks.
 
-          # Call GitHub Models inference API (Copilot-powered) with JSON mode
-          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            "https://models.inference.ai.azure.com/chat/completions" \
-            -H "Authorization: Bearer ${COPILOT_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "$(jq -n \
-                  --rawfile system_prompt /tmp/prompt.txt \
-                  --rawfile diff /tmp/diff_truncated.patch \
-                  '{
-                    "model": "gpt-4o",
-                    "messages": [
-                      { "role": "system", "content": $system_prompt },
-                      { "role": "user",   "content": ("Review this diff for security risks:\n\n" + $diff) }
-                    ],
-                    "temperature": 0.1,
-                    "response_format": { "type": "json_object" }
-                  }')")
+          Write the final markdown report to /tmp/analysis.md.
+          If no concrete security issues are found, write exactly this single line:
+          ✅ No security issues detected in the reviewed changes.
 
-          if [ "$HTTP_CODE" -ne 200 ]; then
-            echo "::error::GitHub Models API returned HTTP ${HTTP_CODE}."
-            cat /tmp/response.json
+          If issues are found, use a markdown table with these exact columns:
+          | File & location | Risk level | Description | Recommendation |
+
+          In the File & location column, use a single backticked value in the exact format:
+          `path/to/file.ext:123`
+
+          Always include a concrete line number when possible. Do not use ranges.
+
+          Do not write anything except the final report file.
+          EOF
+
+          copilot -p "$(cat /tmp/copilot_prompt.txt)" \
+            --model gpt-5.4 \
+            --allow-tool='shell(git:*)' \
+            --allow-tool=write \
+            --no-ask-user
+
+          if [ ! -s /tmp/analysis.md ]; then
+            echo "::error::Copilot CLI did not write /tmp/analysis.md."
             exit 1
           fi
 
-          ANALYSIS=$(jq -r '.choices[0].message.content // empty' /tmp/response.json)
-          if [ -z "$ANALYSIS" ]; then
-            echo "::error::Copilot returned an empty response."
-            exit 1
-          fi
-
-          # Parse the structured JSON response from the model
-          HAS_RISKS=$(echo "$ANALYSIS" | jq -r 'if .has_risks then "true" else "false" end')
-          ANALYSIS_MD=$(echo "$ANALYSIS" | jq -r '.analysis // empty')
-
-          if [ -z "$ANALYSIS_MD" ]; then
-            echo "::warning::Model response did not contain expected JSON structure. Treating as risks found."
-            echo "$ANALYSIS" > /tmp/analysis.md
-            echo "has_risks=true" >> "$GITHUB_OUTPUT"
+          if grep -Fxq "✅ No security issues detected in the reviewed changes." /tmp/analysis.md; then
+            HAS_RISKS=false
           else
-            echo "$ANALYSIS_MD" > /tmp/analysis.md
-            if [ "$HAS_RISKS" = "true" ]; then
-              echo "has_risks=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "has_risks=false" >> "$GITHUB_OUTPUT"
-            fi
+            HAS_RISKS=true
           fi
+
+          echo "has_risks=${HAS_RISKS}" >> "$GITHUB_OUTPUT"
 
       - name: Write results to job summary
         if: steps.diff.outputs.skip != 'true' && steps.analyze.conclusion == 'success'
@@ -183,6 +158,75 @@ jobs:
             echo "---"
             echo "_Scanned commits from the last 24 hours._"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve assignees for findings
+        if: steps.diff.outputs.skip != 'true' && steps.analyze.outputs.has_risks == 'true'
+        id: assignees
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'PY' > /tmp/finding_locations.txt
+          import pathlib
+          import re
+
+          text = pathlib.Path("/tmp/analysis.md").read_text()
+          locations = set()
+
+          for file_path, line in re.findall(r"`([^`\n]+?):(\d+)`", text):
+            locations.add((file_path, line))
+
+          for file_path, line in sorted(locations):
+            print(f"{file_path}\t{line}")
+          PY
+
+          if [ ! -s /tmp/finding_locations.txt ]; then
+            echo "No precise finding locations found in /tmp/analysis.md."
+            echo "logins=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          ASSIGNEE_FILE=$(mktemp)
+
+          while IFS=$'\t' read -r FILE_PATH LINE; do
+            [ -n "$FILE_PATH" ] || continue
+
+            if [ ! -f "$FILE_PATH" ]; then
+              echo "Finding path ${FILE_PATH} is not present in the working tree."
+              continue
+            fi
+
+            BLAME_SHA=$(git blame --porcelain -L "${LINE},${LINE}" -- "$FILE_PATH" 2>/dev/null | \
+              awk 'NR == 1 { sub(/^\\^/, "", $1); print $1; exit }')
+
+            if [ -z "$BLAME_SHA" ]; then
+              echo "Could not resolve blame commit for ${FILE_PATH}:${LINE}."
+              continue
+            fi
+
+            LOGIN=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${BLAME_SHA}" \
+              --jq '.author.login // .committer.login // empty' 2>/dev/null || true)
+
+            if [ -z "$LOGIN" ]; then
+              echo "No GitHub login mapped for blame commit ${BLAME_SHA} (${FILE_PATH}:${LINE})."
+              continue
+            fi
+
+            if gh api "repos/${GITHUB_REPOSITORY}/assignees/${LOGIN}" >/dev/null 2>&1; then
+              echo "$LOGIN" >> "$ASSIGNEE_FILE"
+            else
+              echo "GitHub user ${LOGIN} is not assignable in ${GITHUB_REPOSITORY}."
+            fi
+          done < /tmp/finding_locations.txt
+
+          if [ ! -s "$ASSIGNEE_FILE" ]; then
+            echo "No assignable commit authors found."
+            echo "logins=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          ASSIGNEES=$(sort -u "$ASSIGNEE_FILE" | paste -sd, -)
+          echo "Resolved assignees: ${ASSIGNEES}"
+          echo "logins=${ASSIGNEES}" >> "$GITHUB_OUTPUT"
 
       - name: Create or update issue for findings
         if: steps.diff.outputs.skip != 'true' && steps.analyze.outputs.has_risks == 'true'
@@ -214,14 +258,38 @@ jobs:
 
           # Search for an existing open issue with the security-scan label
           EXISTING=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
+          ISSUE_NUMBER="$EXISTING"
 
           if [ -n "$EXISTING" ]; then
             echo "Updating existing issue #${EXISTING} with new findings."
             gh issue comment "$EXISTING" --body-file /tmp/issue_body.md
           else
             echo "Creating new issue for findings."
-            gh issue create \
+            ISSUE_URL=$(gh issue create \
               --title "🔒 Copilot Security Scan — ${DATE}" \
               --label "$LABEL" \
-              --body-file /tmp/issue_body.md
+              --body-file /tmp/issue_body.md)
+            echo "$ISSUE_URL"
+            ISSUE_NUMBER="${ISSUE_URL##*/}"
           fi
+
+          ASSIGNEES="${{ steps.assignees.outputs.logins }}"
+          export ASSIGNEES
+          python3 - <<'PY' > /tmp/issue_assignees.json
+          import json
+          import os
+          import sys
+
+          assignees = [login for login in os.environ.get("ASSIGNEES", "").split(",") if login]
+          json.dump({"assignees": assignees}, sys.stdout)
+          PY
+
+          if [ -n "$ASSIGNEES" ]; then
+            echo "Setting issue #${ISSUE_NUMBER} assignees to ${ASSIGNEES}."
+          else
+            echo "No assignable code owners found for this scan. Clearing issue assignees."
+          fi
+
+          gh api "repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}" \
+            --method PATCH \
+            --input /tmp/issue_assignees.json >/dev/null
