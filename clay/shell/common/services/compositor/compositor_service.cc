@@ -87,7 +87,9 @@ bool CompositorService::SubmitFrame(
     clay::GrCanvas* overlay_canvas = frame->GetCanvas();
     int restore_count = CANVAS_GET_SAVE_COUNT(overlay_canvas);
     CANVAS_SAVE(overlay_canvas);
-    CANVAS_CLIP_RECT(overlay_canvas, overlay_rect);
+    CANVAS_CLIP_RECT(
+        overlay_canvas,
+        skity::Rect::MakeWH(overlay_rect.Width(), overlay_rect.Height()));
     CANVAS_CLEAR(overlay_canvas, clay::Color::kTransparent());
     CANVAS_TRANSLATE(overlay_canvas, -overlay_rect.X(), -overlay_rect.Y());
     compositor_state->GetSlices()[view_id]->render_into(overlay_canvas);
