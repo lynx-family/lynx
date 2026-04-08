@@ -875,5 +875,87 @@ tasm::CSSValue KeyframedTransformOriginAnimationCurve::GetValue(
   return tasm::CSSValue(std::move(inner_array));
 }
 //====== TransformOriginAnimator end =======
+
+//====== VisibilityAnimator start =======
+VisibilityKeyframe::VisibilityKeyframe(
+    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function)
+    : Keyframe(time, std::move(timing_function)) {}
+
+float VisibilityKeyframe::GetVisibilityKeyframeValue(
+    VisibilityKeyframe* keyframe, tasm::Element* element) {
+  float value;
+  if (keyframe->IsEmpty()) {
+    const auto& opacity = GetStyleInElement(tasm::kPropertyIDOpacity, element);
+    value = opacity.IsNumber() ? opacity.AsNumber() : 1.f;
+  } else {
+    value = keyframe->Value();
+  }
+  return value;
+}
+
+std::unique_ptr<VisibilityKeyframe> VisibilityKeyframe::Create(
+    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+  return std::make_unique<VisibilityKeyframe>(time, std::move(timing_function));
+}
+
+bool VisibilityKeyframe::SetValue(tasm::CSSPropertyID id,
+                                  const tasm::CSSValue& value,
+                                  tasm::Element* element) {
+  auto visibility_value = HandleCSSVariableValueIfNeed(id, value, element);
+  if (!visibility_value.IsEnum()) {
+    return false;
+  }
+  visibility_ =
+      static_cast<starlight::VisibilityType>(visibility_value.AsNumber());
+  const auto& element_opacity =
+      GetStyleInElement(tasm::kPropertyIDOpacity, element);
+  float opacity = element_opacity.IsNumber() ? element_opacity.AsNumber() : 1.f;
+  opacity_ = visibility_ == starlight::VisibilityType::kVisible ? opacity : 0.f;
+  is_empty_ = false;
+  return true;
+}
+
+std::unique_ptr<KeyframedVisibilityAnimationCurve>
+KeyframedVisibilityAnimationCurve::Create() {
+  return std::make_unique<KeyframedVisibilityAnimationCurve>();
+}
+
+tasm::CSSValue KeyframedVisibilityAnimationCurve::GetValue(
+    fml::TimeDelta& t) const {
+  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
+                               t);
+  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
+  double progress =
+      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+
+  auto* keyframe = static_cast<VisibilityKeyframe*>(keyframes_[i].get());
+  auto* keyframe_next =
+      static_cast<VisibilityKeyframe*>(keyframes_[i + 1].get());
+
+  float start_opacity =
+      VisibilityKeyframe::GetVisibilityKeyframeValue(keyframe, element_);
+  float end_opacity =
+      VisibilityKeyframe::GetVisibilityKeyframeValue(keyframe_next, element_);
+  float result_value = start_opacity + (end_opacity - start_opacity) * progress;
+
+  if (start_opacity > end_opacity && result_value > 0.0f &&
+      base::FloatsEqual(result_value, 0.0f)) {
+    result_value = 0.0f;
+  } else if (start_opacity < end_opacity && result_value < 1.0f &&
+             base::FloatsEqual(result_value, 1.0f)) {
+    result_value = 1.0f;
+  }
+
+  auto result = lepus::CArray::Create();
+  result->push_back(result_value);
+  if (base::FloatsEqual(progress, 0.f)) {
+    result->push_back(static_cast<int>(starlight::VisibilityType::kVisible));
+  } else if (base::FloatsEqual(progress, 1.f)) {
+    result->push_back(static_cast<int>(keyframe_next->Visibility()));
+  }
+
+  return tasm::CSSValue(std::move(result));
+}
+//====== VisibilityAnimator end =======
 }  // namespace animation
 }  // namespace lynx

@@ -300,6 +300,38 @@ class KeyframedTransformOriginAnimationCurve
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
 };
 
+//====visibility keyframe ====
+class VisibilityKeyframe : public Keyframe {
+ public:
+  static float GetVisibilityKeyframeValue(VisibilityKeyframe* keyframe,
+                                          tasm::Element* element);
+
+  static std::unique_ptr<VisibilityKeyframe> Create(
+      fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function);
+  ~VisibilityKeyframe() override = default;
+
+  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                tasm::Element* element) override;
+
+  float Value() const { return opacity_; }
+  starlight::VisibilityType Visibility() const { return visibility_; }
+
+  VisibilityKeyframe(fml::TimeDelta time,
+                     std::unique_ptr<TimingFunction> timing_function);
+
+ private:
+  float opacity_{1.f};
+  starlight::VisibilityType visibility_{starlight::VisibilityType::kVisible};
+};
+
+class KeyframedVisibilityAnimationCurve : public VisibilityAnimationCurve {
+ public:
+  static std::unique_ptr<KeyframedVisibilityAnimationCurve> Create();
+  ~KeyframedVisibilityAnimationCurve() override = default;
+
+  tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
+};
+
 }  // namespace animation
 }  // namespace lynx
 #endif  // CORE_ANIMATION_KEYFRAMED_ANIMATION_CURVE_H_

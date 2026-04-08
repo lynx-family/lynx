@@ -439,7 +439,8 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
     return;
   }
 
-  if (css_id == kPropertyIDOpacity || css_id == kPropertyIDTransform) {
+  if (css_id == kPropertyIDOpacity || css_id == kPropertyIDTransform ||
+      css_id == kPropertyIDVisibility) {
     element_container()->InvalidateForSubtreeProperty();
   } else {
     element_container()->InvalidateForRedraw();
@@ -1945,6 +1946,7 @@ bool Element::WriteRenderStyleToBundle(tasm::CSSPropertyID id,
     case kPropertyIDOpacity:
     case kPropertyIDOffsetDistance:
     case kPropertyIDTransformOrigin:
+    case kPropertyIDVisibility:
       return computed_css_style()->SetValue(id, value);
     default:
       LOGE("[animation] unsupported animation value type for css:" << id);
