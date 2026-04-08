@@ -8,7 +8,7 @@
 #include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
-extern "C" napi_module* napi_find_module_weak(const char* name);
+extern "C" bool napi_find_module_weak(const char* name, napi_module* out);
 
 namespace lynx {
 namespace embedder {
@@ -46,17 +46,18 @@ std::shared_ptr<runtime::LynxNativeModule> LynxModuleFactoryNAPI::CreateModule(
   if (creator_pair.first == nullptr) {
     // If no corresponding creator is found, try searching in globally
     // registered NAPI modules
-    // Since the memory of the object returned by napi_find_module_weak needs to
-    // be managed by the caller, we use std::unique_ptr to manage it
-    std::unique_ptr<napi_module> module(napi_find_module_weak(name.c_str()));
-    if (!module) {
+    // napi_find_module_weak now returns a bool and writes the module info into
+    // the out parameter to avoid letting the caller free memory allocated in a
+    // different DLL.
+    napi_module module;
+    if (!napi_find_module_weak(name.c_str(), &module)) {
       return nullptr;
     }
     napi_env env = env_;
     napi_value ret_exports;
     napi_get_undefined(env, &ret_exports);
-    if (module->nm_register_func) {
-      ret_exports = module->nm_register_func(env, Napi::Object::New(env_));
+    if (module.nm_register_func) {
+      ret_exports = module.nm_register_func(env, Napi::Object::New(env_));
       napi_value exception;
       napi_get_and_clear_last_exception(env, &exception);
     }
