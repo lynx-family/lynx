@@ -4131,6 +4131,7 @@ public class LynxTemplateRender
         .setImageFetcher(mLynxViewBuilder.imageFetcher)
         .setFontScale(mLynxViewBuilder.getFontScale())
         .setEnablePreUpdateData(true)
+        .setEnableMultiAsyncThread(mLynxViewBuilder.isEnableMultiAsyncThread())
         .setLynxGroup(mLynxViewBuilder.getLynxGroup())
         .setDynamicComponentFetcher(mLynxViewBuilder.fetcher)
         .setEnableUnifiedPipeline(mLynxViewBuilder.isEnableUnifiedPipeline())

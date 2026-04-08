@@ -35,6 +35,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setAutoHeight:(BOOL)autoHeight;
 
+- (void)setPresetWidth:(CGFloat)presetWidth;
+
+- (void)setPresetHeight:(CGFloat)presetHeight;
+
+- (void)setEnableMultiAsyncThread:(nullable NSNumber *)enableMultiAsyncThread;
+
 - (UIView<LUIBodyView> *_Nullable)getRootView;
 
 - (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame;
