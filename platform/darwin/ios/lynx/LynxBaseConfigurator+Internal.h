@@ -4,7 +4,7 @@
 
 #import <Lynx/LynxViewBuilder.h>
 
-#import "LynxBackgroundRuntime+Internal.h"
+#import <Lynx/LynxBackgroundRuntime+Internal.h>
 
 @interface LynxBaseConfigurator ()
 

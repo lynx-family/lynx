@@ -7,6 +7,7 @@
 
 #import <Lynx/LynxTemplateData.h>
 
+#if defined(__cplusplus)
 #include <memory>
 
 #include "base/include/value/base_value.h"
@@ -45,4 +46,5 @@ std::shared_ptr<lynx::tasm::TemplateData> ConvertLynxTemplateDataToTemplateData(
 
 @end
 
+#endif
 #endif  // DARWIN_COMMON_LYNX_LYNXTEMPLATEDATA_CONVERTER_H_
