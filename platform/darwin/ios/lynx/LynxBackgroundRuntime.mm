@@ -4,19 +4,19 @@
 
 #import <Lynx/LynxBackgroundRuntime.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxErrorReceiverProtocol.h>
 #import <Lynx/LynxHttpStreamingDelegate.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxService.h>
+#import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxViewClient.h>
 #import "JSModule+Internal.h"
 #import "LynxConfig+Internal.h"
-#import "LynxErrorReceiverProtocol.h"
 #import "LynxFetchModule.h"
 #import "LynxGroup+Internal.h"
 #import "LynxTemplateBundle+Converter.h"
-#import "LynxTemplateData+Converter.h"
 #import "LynxTraceEventDef.h"
 
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
@@ -61,7 +61,7 @@
 // for `1` LynxBackgroundRuntime's configurations are not set, any overwrite/assign is safe
 // for `2` We need follow the rules described below.
 - (void)merge:(LynxBackgroundRuntimeOptions*)other {
-  if (!other) {
+  if (!other || other == self) {
     return;
   }
   // Merge LynxResourceProviders:
