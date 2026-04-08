@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/JSModule.h>
+#import <Lynx/LynxBackgroundRuntime+Internal.h>
+#import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxDebugger+Internal.h>
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxError.h>
@@ -20,18 +22,18 @@
 #import <Lynx/LynxSetModule.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTemplateBundle.h>
+#import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTemplateData.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxTemplateRenderHelper.h>
 #import <Lynx/LynxTheme.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxView.h>
 #import "LynxAccessibilityModule.h"
-#import "LynxBackgroundRuntime+Internal.h"
 #import "LynxBaseConfigurator+Internal.h"
 #import "LynxCallStackUtil.h"
 #import "LynxConfig+Internal.h"
-#import "LynxContext+Internal.h"
 #import "LynxEngine.h"
 #import "LynxEnginePool.h"
 #import "LynxEngineProxy+Native.h"
@@ -43,7 +45,6 @@
 #import "LynxResourceModule.h"
 #import "LynxSSRHelper.h"
 #import "LynxTemplateBundle+Converter.h"
-#import "LynxTemplateData+Converter.h"
 #import "LynxTemplateRender+Protected.h"
 #import "LynxTextInfoModule.h"
 #import "LynxTimingConstants.h"
@@ -51,7 +52,6 @@
 #import "LynxUIIntersectionObserver+Internal.h"
 #import "LynxUILayoutTick.h"
 #import "LynxUIMethodModule.h"
-#import "LynxUIRenderer.h"
 #import "LynxUIRendererProtocol.h"
 #import "LynxViewGroup+Internal.h"
 #import "PaintingContextProxy.h"
@@ -2587,6 +2587,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     builder.config = self->_config;
     builder.fontScale = self->_fontScale;
     builder.enablePreUpdateData = YES;
+    builder.enableMultiAsyncThread = self->_builder.enableMultiAsyncThread;
     builder.fetcher = self->_fetcher;
     builder.enableGenericResourceFetcher =
         self->_enableGenericResourceFetcher ? LynxBooleanOptionTrue : LynxBooleanOptionFalse;

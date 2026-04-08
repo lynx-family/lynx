@@ -9,10 +9,10 @@
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUIRendererProtocol.h>
 #import <Lynx/LynxViewBuilder.h>
 #import <Lynx/LynxViewEnum.h>
 #import "LynxTraceEventDef.h"
-#import "LynxUIRendererProtocol.h"
 
 #include "base/trace/native/trace_defines.h"
 #include "base/trace/native/trace_event.h"
@@ -36,6 +36,9 @@
   LynxViewSizeMode _widthMode;
   LynxViewSizeMode _heightMode;
   LynxEmbeddedMode _embeddedMode;
+  CGFloat _presetWidth;
+  CGFloat _presetHeight;
+  NSNumber *_enableMultiAsyncThread;
   LynxViewSizeMode _rootViewWidthMode;
   LynxViewSizeMode _rootViewHeightMode;
 }
@@ -48,6 +51,8 @@
     _embeddedMode = LynxEmbeddedModeUnset;
     _widthMode = LynxViewSizeModeExact;
     _heightMode = LynxViewSizeModeExact;
+    _presetWidth = -1;
+    _presetHeight = -1;
   }
   return self;
 }
@@ -66,6 +71,13 @@
   if (![self ensureRenderCreated]) {
     _LogE(@"LynxFrameView %p: create render failed in setAppBundle", self);
     return NO;
+  }
+
+  if (CGRectIsNull(_contentRect) && (_presetWidth != -1 || _presetHeight != -1)) {
+    [self applyRenderLayoutWithRect:CGRectMake(0, 0, _presetWidth == -1 ? 0 : _presetWidth,
+                                               _presetHeight == -1 ? 0 : _presetHeight)
+                    layoutWidthMode:_widthMode
+                   layoutHeightMode:_heightMode];
   }
 
   LynxLoadMeta *loadMeta = [self buildLoadMetaWithBundle:bundle];
@@ -113,6 +125,9 @@
         [builder setEnablePreUpdateData:YES];
         if (strongSelf) {
           [builder setEmbeddedMode:strongSelf->_embeddedMode];
+          if (strongSelf->_enableMultiAsyncThread != nil) {
+            [builder setEnableMultiAsyncThread:strongSelf->_enableMultiAsyncThread.boolValue];
+          }
         }
       }
              containerView:self];
@@ -221,6 +236,18 @@
                     layoutWidthMode:_widthMode
                    layoutHeightMode:_heightMode];
   }
+}
+
+- (void)setPresetWidth:(CGFloat)presetWidth {
+  _presetWidth = presetWidth;
+}
+
+- (void)setPresetHeight:(CGFloat)presetHeight {
+  _presetHeight = presetHeight;
+}
+
+- (void)setEnableMultiAsyncThread:(NSNumber *)enableMultiAsyncThread {
+  _enableMultiAsyncThread = enableMultiAsyncThread;
 }
 
 - (void)setEmbeddedMode:(LynxEmbeddedMode)embeddedMode {
