@@ -37,6 +37,13 @@ static LynxTemplateData* ConsumeFrameTemplateDataHolder(NSInteger value) {
   return template_data;
 }
 
+static CGFloat ConvertPresetLengthToPt(LynxUIFrame* ui, NSString* value) {
+  if (value == nil) {
+    return 0;
+  }
+  return [ui toPtWithUnitValue:value fontSize:0];
+}
+
 @implementation LynxUIFrame
 
 #if LYNX_LAZY_LOAD
@@ -160,5 +167,17 @@ LYNX_PROP_SETTER("auto-width", setAutoWidth, BOOL) {
 
 LYNX_PROP_SETTER("auto-height", setAutoHeight, BOOL) {
   [[self view] setAutoHeight:requestReset ? NO : value];
+}
+
+LYNX_PROP_SETTER("preset-width", setPresetWidth, NSString*) {
+  [[self view] setPresetWidth:requestReset ? -1 : ConvertPresetLengthToPt(self, value)];
+}
+
+LYNX_PROP_SETTER("preset-height", setPresetHeight, NSString*) {
+  [[self view] setPresetHeight:requestReset ? -1 : ConvertPresetLengthToPt(self, value)];
+}
+
+LYNX_PROP_SETTER("enable-multi-async-thread", setEnableMultiAsyncThread, NSNumber*) {
+  [[self view] setEnableMultiAsyncThread:requestReset ? nil : value];
 }
 @end
