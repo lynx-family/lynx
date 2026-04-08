@@ -205,6 +205,10 @@ public class LynxBackgroundRuntimeOptions {
     // This part of configurations are used to create BackgroundRuntime and cannot be modified
     // after it attaches to LynxView. So we use the configurations inside runtime to overwrite
     // LynxViewBuilder
+    if (other == this) {
+      // Do not merge self!
+      return;
+    }
     this.mLynxGroup = other.mLynxGroup;
     this.mEnableUserBytecode = other.mEnableUserBytecode;
     this.mBytecodeSourceUrl = other.mBytecodeSourceUrl;
