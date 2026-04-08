@@ -1,4 +1,4 @@
-// Copyright 2024 The Lynx Authors. All rights reserved.
+// Copyright 2026 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 apply plugin: 'com.android.library'
@@ -17,6 +17,7 @@ android {
         versionCode 1
         versionName "1.0"
         consumerProguardFiles 'consumer-rules.pro'
+        multiDexEnabled true
     }
 
     buildTypes {
@@ -27,23 +28,27 @@ android {
     }
 
     sourceSets {
+        main {
+            res {
+                srcDirs = ['src/main/res']
+            }
+        }
     }
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.annotation:annotation:1.1.0'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation project(':LynxXElement:Input')
-    implementation project(':LynxXElement:Overlay')
-    implementation project(':LynxXElement:ViewPager')
-    implementation project(':LynxXElement:ScrollCoordinator')
-    implementation project(':LynxXElement:SVG')
-    implementation project(':LynxXElement:Refresh')
-    implementation 'io.github.scwang90:refresh-layout-kernel:3.0.0-alpha'
-    compileOnly project(":LynxAndroid")
-    compileOnly project(":LynxProcessor")
-    kapt project(':LynxProcessor')
-    annotationProcessor project(':LynxProcessor')
+    implementation "androidx.appcompat:appcompat:1.0.0"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:1.0.0"
+    implementation "com.google.android.material:material:1.0.0"
 }
