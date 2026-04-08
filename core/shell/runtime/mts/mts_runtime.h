@@ -70,6 +70,8 @@ class MTSRuntime : private MTSContextHolder {
 
     virtual void OnScriptingStart() = 0;
     virtual void OnScriptingEnd() = 0;
+
+    virtual bool IsRuntimeEnabled() const { return true; }
   };
 
   class ScriptingScope {

@@ -214,6 +214,7 @@ void LynxShell::BuildEngineActor(
       *tasm_mediator, std::move(element_manager), tasm_mediator.get(),
       instance_id_, engine_build_options_.enable_unified_pipeline_,
       page_options_);
+  tasm->SetEnableRuntime(enable_runtime_);
   tasm->SetEnableLayoutOnly(engine_build_options_.enable_layout_only_);
   if (engine_build_options_.lazy_bundle_loader_ != nullptr) {
     tasm->SetLazyBundleLoader(engine_build_options_.lazy_bundle_loader_);

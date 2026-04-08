@@ -13,13 +13,13 @@ namespace devtool {
 
 static int32_t GetFuncNameByStr(const std::string &func_name) {
   static base::NoDestructor<std::unordered_map<std::string, int>> names_map(
-      {{runtime::LepusConsoleAlog, runtime::CONSOLE_LOG_ALOG},
-       {runtime::LepusConsoleDebug, runtime::CONSOLE_LOG_INFO},
-       {runtime::LepusConsoleError, runtime::CONSOLE_LOG_ERROR},
-       {runtime::LepusConsoleInfo, runtime::CONSOLE_LOG_INFO},
-       {runtime::LepusConsoleLog, runtime::CONSOLE_LOG_LOG},
-       {runtime::LepusConsoleReport, runtime::CONSOLE_LOG_REPORT},
-       {runtime::LepusConsoleWarn, runtime::CONSOLE_LOG_WARNING}});
+      {{runtime::ConsoleAlog, runtime::CONSOLE_LOG_ALOG},
+       {runtime::ConsoleDebug, runtime::CONSOLE_LOG_INFO},
+       {runtime::ConsoleError, runtime::CONSOLE_LOG_ERROR},
+       {runtime::ConsoleInfo, runtime::CONSOLE_LOG_INFO},
+       {runtime::ConsoleLog, runtime::CONSOLE_LOG_LOG},
+       {runtime::ConsoleReport, runtime::CONSOLE_LOG_REPORT},
+       {runtime::ConsoleWarn, runtime::CONSOLE_LOG_WARNING}});
   auto maybe_name = names_map->find(func_name);
   if (maybe_name == names_map->end()) {
     return runtime::CONSOLE_UNKNOWN;

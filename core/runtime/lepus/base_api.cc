@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "base/include/value/table.h"
+#include "core/runtime/common/lynx_console_helper.h"
 #include "core/runtime/lepus/exception.h"
 #include "core/runtime/lepus/vm_context.h"
 
@@ -35,43 +36,43 @@ static RestrictedValue Console_Log(VMContext* context) {
 #ifdef LEPUS_PC
   LOGE(msg);
 #endif
-  context->OnBTSConsoleEvent("log", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleLog, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_Warn(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("warn", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleWarn, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_Error(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("error", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleError, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_Info(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("info", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleInfo, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_Debug(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("debug", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleDebug, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_Report(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("report", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleReport, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_Alog(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("alog", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleAlog, msg);
   return RestrictedValue();
 }
 
@@ -85,78 +86,81 @@ static RestrictedValue Assert(VMContext* context) {
 
 static RestrictedValue Console_Count(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("count", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleCount, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_CountReset(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("countReset", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleCountReset, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_Group(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("group", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleGroup, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_GroupCollapsed(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("groupCollapsed", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleGroupCollapsed, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_GroupEnd(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("groupEnd", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleGroupEnd, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_Time(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("time", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleTime, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_TimeLog(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("timeLog", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleTimeLog, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_TimeEnd(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("timeEnd", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleTimeEnd, msg);
   return RestrictedValue();
 }
 
 static RestrictedValue Console_Table(VMContext* context) {
   std::string msg = GetPrintStr(context);
-  context->OnBTSConsoleEvent("table", msg);
+  context->OnBTSConsoleEvent(runtime::ConsoleTable, msg);
   return RestrictedValue();
 }
 
 void RegisterBaseAPI(VMContext* ctx) {
 #if 1
   fml::RefPtr<Dictionary> table = Dictionary::Create();
-  RegisterTableFunction(ctx, table, "log", &Console_Log);
-  RegisterTableFunction(ctx, table, "warn", &Console_Warn);
-  RegisterTableFunction(ctx, table, "error", &Console_Error);
-  RegisterTableFunction(ctx, table, "info", &Console_Info);
-  RegisterTableFunction(ctx, table, "debug", &Console_Debug);
-  RegisterTableFunction(ctx, table, "report", &Console_Report);
-  RegisterTableFunction(ctx, table, "alog", &Console_Alog);
-  RegisterTableFunction(ctx, table, "assert", &Assert);
-  RegisterTableFunction(ctx, table, "count", &Console_Count);
-  RegisterTableFunction(ctx, table, "countReset", &Console_CountReset);
-  RegisterTableFunction(ctx, table, "group", &Console_Group);
-  RegisterTableFunction(ctx, table, "groupCollapsed", &Console_GroupCollapsed);
-  RegisterTableFunction(ctx, table, "groupEnd", &Console_GroupEnd);
-  RegisterTableFunction(ctx, table, "time", &Console_Time);
-  RegisterTableFunction(ctx, table, "timeLog", &Console_TimeLog);
-  RegisterTableFunction(ctx, table, "timeEnd", &Console_TimeEnd);
-  RegisterTableFunction(ctx, table, "table", &Console_Table);
+  RegisterTableFunction(ctx, table, runtime::ConsoleLog, &Console_Log);
+  RegisterTableFunction(ctx, table, runtime::ConsoleWarn, &Console_Warn);
+  RegisterTableFunction(ctx, table, runtime::ConsoleError, &Console_Error);
+  RegisterTableFunction(ctx, table, runtime::ConsoleInfo, &Console_Info);
+  RegisterTableFunction(ctx, table, runtime::ConsoleDebug, &Console_Debug);
+  RegisterTableFunction(ctx, table, runtime::ConsoleReport, &Console_Report);
+  RegisterTableFunction(ctx, table, runtime::ConsoleAlog, &Console_Alog);
+  RegisterTableFunction(ctx, table, runtime::ConsoleAssert, &Assert);
+  RegisterTableFunction(ctx, table, runtime::ConsoleCount, &Console_Count);
+  RegisterTableFunction(ctx, table, runtime::ConsoleCountReset,
+                        &Console_CountReset);
+  RegisterTableFunction(ctx, table, runtime::ConsoleGroup, &Console_Group);
+  RegisterTableFunction(ctx, table, runtime::ConsoleGroupCollapsed,
+                        &Console_GroupCollapsed);
+  RegisterTableFunction(ctx, table, runtime::ConsoleGroupEnd,
+                        &Console_GroupEnd);
+  RegisterTableFunction(ctx, table, runtime::ConsoleTime, &Console_Time);
+  RegisterTableFunction(ctx, table, runtime::ConsoleTimeLog, &Console_TimeLog);
+  RegisterTableFunction(ctx, table, runtime::ConsoleTimeEnd, &Console_TimeEnd);
+  RegisterTableFunction(ctx, table, runtime::ConsoleTable, &Console_Table);
   RegisterFunctionTable(ctx, "console", std::move(table));
 #else
   // Not using BuiltinFunctionTable for Console apis because user

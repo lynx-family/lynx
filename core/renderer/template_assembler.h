@@ -523,6 +523,10 @@ class TemplateAssembler final : public TemplateEntryHolder,
     page_proxy_.SetTasmEnableLayoutOnly(enable_layout_only);
   }
 
+  void SetEnableRuntime(bool enable_runtime) {
+    enable_runtime_ = enable_runtime;
+  }
+
   void OnPageConfigDecoded(const std::shared_ptr<PageConfig>& config);
 
   PackageInstanceDSL GetPageDSL() {
@@ -729,6 +733,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void OnDynamicJSSourcePrepared(const std::string& component_url);
 
   const std::string& TargetSdkVersion() override { return target_sdk_version_; }
+
+  bool IsRuntimeEnabled() const override { return enable_runtime_; }
 
   void OnBTSConsoleEvent(const std::string& func_name,
                          const std::string& args) override;
@@ -1079,6 +1085,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   std::atomic<bool> has_load_page_;
   bool destroyed_;
   bool is_loading_template_;
+  bool enable_runtime_{true};
   bool enable_pre_update_data_{false};
   bool pre_painting_{false};
 };

@@ -14,6 +14,7 @@
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/js_error_reporter.h"
+#include "core/runtime/common/lynx_console_helper.h"
 #include "core/runtime/lepus/tasks/lepus_callback_manager.h"
 #include "core/runtime/lepus/tasks/lepus_raf_manager.h"
 #include "core/runtime/lepus/vm_context.h"
@@ -24,6 +25,36 @@
 
 namespace lynx {
 namespace runtime {
+
+namespace {
+
+int GetBTSConsoleLogLevel(const std::string& func_name) {
+  if (func_name == ConsoleWarn) {
+    return CONSOLE_LOG_WARNING;
+  }
+  if (func_name == ConsoleError || func_name == ConsoleAssert) {
+    return CONSOLE_LOG_ERROR;
+  }
+  return CONSOLE_LOG_INFO;
+}
+
+void LogBTSConsoleEventFallback(const std::string& func_name,
+                                const std::string& args) {
+  std::string msg = "[bts-console][" + func_name + "] " + args;
+  switch (GetBTSConsoleLogLevel(func_name)) {
+    case CONSOLE_LOG_WARNING:
+      LOGW(msg);
+      return;
+    case CONSOLE_LOG_ERROR:
+      LOGE(msg);
+      return;
+    default:
+      LOGI(msg);
+      return;
+  }
+}
+
+}  // namespace
 
 MTSContextHolder::MTSContextHolder(std::unique_ptr<MTSContext> mts_context)
     : mts_context_(std::move(mts_context)) {}
@@ -230,6 +261,10 @@ void MTSRuntime::OnBTSConsoleEvent(const std::string& func_name,
     return;
   }
 
+  if (!delegate_->IsRuntimeEnabled()) {
+    LogBTSConsoleEventFallback(func_name, args);
+  }
+
   delegate_->OnBTSConsoleEvent(func_name, args);
 }
 
@@ -252,8 +287,8 @@ void MTSRuntime::SetSourceMapRelease(const lepus::Value& source_map_release) {
   JSErrorInfo args;
   args.message = source_map_release.GetProperty(kMessage).StdString();
   args.stack = source_map_release.GetProperty(kStack).StdString();
-  OnBTSConsoleEvent("info", "SetSourceMapRelease.message:" + args.message);
-  OnBTSConsoleEvent("info", "SetSourceMapRelease.stack:" + args.stack);
+  OnBTSConsoleEvent(ConsoleInfo, "SetSourceMapRelease.message:" + args.message);
+  OnBTSConsoleEvent(ConsoleInfo, "SetSourceMapRelease.stack:" + args.stack);
   js_error_reporter_.SetSourceMapRelease(std::move(args));
 }
 
@@ -281,7 +316,7 @@ void MTSRuntime::ReportErrorWithMsg(const std::string& msg, int32_t error_code,
   }
 
   const auto& target_sdk_version = delegate_->TargetSdkVersion();
-  OnBTSConsoleEvent("info",
+  OnBTSConsoleEvent(ConsoleInfo,
                     "ReportErrorWithMsg.engine version:" + target_sdk_version);
   if (tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_7) &&
       mts_context_->debuginfo_outside()) {
@@ -293,7 +328,7 @@ void MTSRuntime::ReportErrorWithMsg(const std::string& msg, int32_t error_code,
     ReportError(msg, error_code,
                 static_cast<base::LynxErrorLevel>(error_level));
   }
-  OnBTSConsoleEvent("error", msg);
+  OnBTSConsoleEvent(ConsoleError, msg);
   is_handling_exception_ = false;
 }
 

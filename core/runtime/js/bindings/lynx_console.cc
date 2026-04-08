@@ -46,24 +46,29 @@ void Console::Init() {
     };
   };
 
-  methods_map_["log"] = make_log_function(runtime::CONSOLE_LOG_INFO, "log");
-  methods_map_["report"] =
-      make_log_function(runtime::CONSOLE_LOG_REPORT, "log");
+  methods_map_[ConsoleLog] =
+      make_log_function(runtime::CONSOLE_LOG_INFO, ConsoleLog);
+  methods_map_[ConsoleReport] =
+      make_log_function(runtime::CONSOLE_LOG_REPORT, ConsoleLog);
 
-  methods_map_["alog"] = make_log_function(runtime::CONSOLE_LOG_ALOG, "log");
-  methods_map_["error"] =
-      make_log_function(runtime::CONSOLE_LOG_ERROR, "error");
-  methods_map_["warn"] =
-      make_log_function(runtime::CONSOLE_LOG_WARNING, "warn");
-  methods_map_["info"] = make_log_function(runtime::CONSOLE_LOG_INFO, "info");
-  methods_map_["debug"] = make_log_function(runtime::CONSOLE_LOG_INFO, "debug");
+  methods_map_[ConsoleAlog] =
+      make_log_function(runtime::CONSOLE_LOG_ALOG, ConsoleLog);
+  methods_map_[ConsoleError] =
+      make_log_function(runtime::CONSOLE_LOG_ERROR, ConsoleError);
+  methods_map_[ConsoleWarn] =
+      make_log_function(runtime::CONSOLE_LOG_WARNING, ConsoleWarn);
+  methods_map_[ConsoleInfo] =
+      make_log_function(runtime::CONSOLE_LOG_INFO, ConsoleInfo);
+  methods_map_[ConsoleDebug] =
+      make_log_function(runtime::CONSOLE_LOG_INFO, ConsoleDebug);
 
-  methods_map_["assert"] = [this](Runtime* rt) {
+  methods_map_[ConsoleAssert] = [this](Runtime* rt) {
     return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "assert"), 0,
+        *rt, PropNameID::forAscii(*rt, ConsoleAssert), 0,
         [this](Runtime& rt, const Value& thisVal, const Value* args,
                size_t count) {
-          return Assert(&rt, runtime::CONSOLE_LOG_ERROR, args, count, "assert");
+          return Assert(&rt, runtime::CONSOLE_LOG_ERROR, args, count,
+                        ConsoleAssert);
         });
   };
 
@@ -121,15 +126,16 @@ void Console::Init() {
           });
     };
   };
-  methods_map_["count"] = make_call_js_function("count");
-  methods_map_["countReset"] = make_call_js_function("countReset");
-  methods_map_["group"] = make_call_js_function("group");
-  methods_map_["groupCollapsed"] = make_call_js_function("groupCollapsed");
-  methods_map_["groupEnd"] = make_call_js_function("groupEnd");
-  methods_map_["time"] = make_call_js_function("time");
-  methods_map_["timeLog"] = make_call_js_function("timeLog");
-  methods_map_["timeEnd"] = make_call_js_function("timeEnd");
-  methods_map_["table"] = make_call_js_function("table");
+  methods_map_[ConsoleCount] = make_call_js_function(ConsoleCount);
+  methods_map_[ConsoleCountReset] = make_call_js_function(ConsoleCountReset);
+  methods_map_[ConsoleGroup] = make_call_js_function(ConsoleGroup);
+  methods_map_[ConsoleGroupCollapsed] =
+      make_call_js_function(ConsoleGroupCollapsed);
+  methods_map_[ConsoleGroupEnd] = make_call_js_function(ConsoleGroupEnd);
+  methods_map_[ConsoleTime] = make_call_js_function(ConsoleTime);
+  methods_map_[ConsoleTimeLog] = make_call_js_function(ConsoleTimeLog);
+  methods_map_[ConsoleTimeEnd] = make_call_js_function(ConsoleTimeEnd);
+  methods_map_[ConsoleTable] = make_call_js_function(ConsoleTable);
 }
 
 Value Console::get(Runtime* rt, const PropNameID& name) {
