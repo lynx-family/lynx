@@ -55,7 +55,10 @@ std::unique_ptr<RuntimeProfile> QuickjsRuntimeProfiler::StopProfiling(
       auto ctx = context->getContext();
       auto result = StopCpuProfiler(ctx);
       runtime_profile = lepus::LEPUSValueHelper::ToStdString(ctx, result);
-      LEPUS_FreeValue(ctx, result);
+      // Only free value when not in GC mode
+      if (!LEPUS_IsGCMode(ctx)) {
+        LEPUS_FreeValue(ctx, result);
+      }
       QJSDebuggerFree(ctx);
     }
   };
