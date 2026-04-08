@@ -50,6 +50,9 @@ public final class LynxFrameView extends UIBodyView {
   private int mHeightMode = MeasureSpec.EXACTLY;
   private int mEmbeddedMode = EmbeddedMode.UNSET;
   private UIBodyView.attachLynxPageUICallback mAttachLynxPageUICallback;
+  private int mPresetWidth = -1;
+  private int mPresetHeight = -1;
+  private Boolean mEnableMultiAsyncThread = null;
 
   public LynxFrameView(Context context) {
     super(context);
@@ -85,6 +88,9 @@ public final class LynxFrameView extends UIBodyView {
     LynxViewBuilder builder = bodyView.getLynxViewBuilder();
     builder.setEnablePreUpdateData(true);
     builder.setEmbeddedMode(mEmbeddedMode);
+    if (mEnableMultiAsyncThread != null) {
+      builder.setEnableMultiAsyncThread(mEnableMultiAsyncThread);
+    }
     mLynxUIRender = builder.createLynxUIRenderer();
     mRender = new LynxTemplateRender(mContext, this, builder);
 
@@ -121,7 +127,12 @@ public final class LynxFrameView extends UIBodyView {
     if (hasInitializedSize(mContentWidth, mContentHeight)) {
       mRender.updateViewport(MeasureSpec.makeMeasureSpec(mContentWidth, mWidthMode),
           MeasureSpec.makeMeasureSpec(mContentHeight, mHeightMode));
+    } else if (mPresetWidth != -1 || mPresetHeight != -1) {
+      mRender.updateViewport(
+          MeasureSpec.makeMeasureSpec(mPresetWidth == -1 ? 0 : mPresetWidth, mWidthMode),
+          MeasureSpec.makeMeasureSpec(mPresetHeight == -1 ? 0 : mPresetHeight, mHeightMode));
     }
+
     LynxLoadMeta.Builder builder = new LynxLoadMeta.Builder();
     builder.setUrl(mUrl);
     builder.setTemplateBundle(bundle);
@@ -174,6 +185,18 @@ public final class LynxFrameView extends UIBodyView {
       mRender.updateViewport(MeasureSpec.makeMeasureSpec(mContentWidth, mWidthMode),
           MeasureSpec.makeMeasureSpec(mContentHeight, mHeightMode));
     }
+  }
+
+  void setPresetWidth(int width) {
+    mPresetWidth = width;
+  }
+
+  void setPresetHeight(int height) {
+    mPresetHeight = height;
+  }
+
+  void setEnableMultiAsyncThread(Boolean value) {
+    mEnableMultiAsyncThread = value;
   }
 
   void setInitData(long dataPtr) {

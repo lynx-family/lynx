@@ -15,9 +15,11 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxFrameViewProvider;
 import com.lynx.tasm.behavior.LynxGeneratorName;
 import com.lynx.tasm.behavior.LynxProp;
+import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
@@ -29,6 +31,23 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
   private TemplateBundle mPendingBundle;
   private boolean mIsPropsUpdated = false;
   private boolean mIsUrlChanged = false;
+
+  private int convertPresetLengthToPx(String value) {
+    if (value == null) {
+      return -1;
+    }
+    UIBody uiBody = getLynxContext().getUIBody();
+    float rootFontSize = 0;
+    float rootWidth = 0;
+    float rootHeight = 0;
+    if (uiBody != null) {
+      rootFontSize = uiBody.getFontSize();
+      rootWidth = uiBody.getWidth();
+      rootHeight = uiBody.getHeight();
+    }
+    return (int) UnitUtils.toPxWithDisplayMetrics(value, rootFontSize, getFontSize(), rootWidth,
+        rootHeight, MeasureUtils.UNDEFINED, getLynxContext().getScreenMetrics());
+  }
 
   public UIFrame(LynxContext context) {
     this(context, null);
@@ -202,6 +221,30 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     LynxFrameView view = getView();
     if (view != null) {
       view.setAutoHeight(value);
+    }
+  }
+
+  @LynxProp(name = "preset-width")
+  public void setPresetWidth(String width) {
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.setPresetWidth(convertPresetLengthToPx(width));
+    }
+  }
+
+  @LynxProp(name = "preset-height")
+  public void setPresetHeight(String height) {
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.setPresetHeight(convertPresetLengthToPx(height));
+    }
+  }
+
+  @LynxProp(name = "enable-multi-async-thread")
+  public void setEnableMultiAsyncThread(Boolean value) {
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.setEnableMultiAsyncThread(value);
     }
   }
 
