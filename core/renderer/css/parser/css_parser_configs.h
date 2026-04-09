@@ -41,6 +41,8 @@ struct CSSParserConfigs {
     config.enable_parse_int_flex = compile_options.enable_parse_int_flex_;
     config.enable_flex_basis_zero_percent =
         compile_options.enable_flex_basis_zero_percent_;
+    config.enable_grid_placement_shorthands =
+        compile_options.enable_grid_placement_shorthands_;
     return config;
   }
   // default is disable.
@@ -53,6 +55,7 @@ struct CSSParserConfigs {
   bool enable_parse_int_flex = false;
   bool enable_flex_basis_zero_percent = false;
   bool enable_new_time_handler = false;
+  bool enable_grid_placement_shorthands = false;
 };
 
 }  // namespace tasm

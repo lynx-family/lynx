@@ -118,6 +118,47 @@ TEST_F(LynxBinaryConfigDecoderTest,
   EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
 }
 
+TEST_F(LynxBinaryConfigDecoderTest, ReadEnableGridPlacementShorthands) {
+  EXPECT_FALSE(page_config_->GetEnableGridPlacementShorthands());
+  EXPECT_FALSE(
+      page_config_->GetCSSParserConfigs().enable_grid_placement_shorthands);
+  config_decoder_->DecodePageConfig(
+      "{\n  \"enableGridPlacementShorthands\" : true\n}", page_config_);
+  EXPECT_TRUE(page_config_->GetEnableGridPlacementShorthands());
+  EXPECT_TRUE(
+      page_config_->GetCSSParserConfigs().enable_grid_placement_shorthands);
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       GridPlacementShorthandsDisabledKeepsDefaultBehavior) {
+  auto id = CSSPropertyID::kPropertyIDGridColumn;
+  auto impl = lepus::Value("1 / 4");
+  StyleMap output;
+
+  auto ret = UnitHandler::Process(id, impl, output,
+                                  page_config_->GetCSSParserConfigs());
+  EXPECT_FALSE(ret);
+  EXPECT_TRUE(output.empty());
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       EnableGridPlacementShorthandsUsesShorthandHandler) {
+  auto id = CSSPropertyID::kPropertyIDGridColumn;
+  auto impl = lepus::Value("1 / 4");
+  StyleMap output;
+
+  config_decoder_->DecodePageConfig(
+      "{\n  \"enableGridPlacementShorthands\" : true\n}", page_config_);
+  auto ret = UnitHandler::Process(id, impl, output,
+                                  page_config_->GetCSSParserConfigs());
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), static_cast<size_t>(2));
+  EXPECT_TRUE(output[kPropertyIDGridColumnStart].IsNumber());
+  EXPECT_EQ(output[kPropertyIDGridColumnStart].AsNumber(), 1);
+  EXPECT_TRUE(output[kPropertyIDGridColumnEnd].IsNumber());
+  EXPECT_EQ(output[kPropertyIDGridColumnEnd].AsNumber(), 4);
+}
+
 TEST_F(LynxBinaryConfigDecoderTest, ReadDebugMetadataUrl) {
   config_decoder_->DecodePageConfig(
       "{\n  \"debugMetadataUrl\" : \"https://example.com/debug-info.json\"\n}",

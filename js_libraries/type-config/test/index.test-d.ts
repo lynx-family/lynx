@@ -48,6 +48,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableFetchAPIStandardStreaming').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFixedNew').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFlexBasisZeroPercent').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableGridPlacementShorthands').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableHarmonyNewOverlay').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableHarmonyVisibleAreaChangeForExposure').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableICU').toEqualTypeOf<boolean | undefined>();

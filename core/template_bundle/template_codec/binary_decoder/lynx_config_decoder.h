@@ -766,6 +766,12 @@ class LynxConfigDecoder final {
           LynxEnv::GetInstance().EnableParseIntFlex());
     }
 
+    if (doc.HasMember(config::kEnableGridPlacementShorthands) &&
+        doc[config::kEnableGridPlacementShorthands].IsBool()) {
+      page_config->SetEnableGridPlacementShorthands(
+          doc[config::kEnableGridPlacementShorthands].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableFlexBasisZeroPercent) &&
         doc[config::kEnableFlexBasisZeroPercent].IsBool()) {
       page_config->SetEnableFlexBasisZeroPercent(

@@ -1686,6 +1686,12 @@ enableParseIntFlex:
     - Android
     - HarmonyOS
     - iOS
+enableGridPlacementShorthands:
+  description: Enable grid-column and grid-row CSS shorthand properties parsing.
+  defaultValue: 'false'
+  valueType: bool
+  author: renzhongyue
+  since: '3.9'
 enableFlexBasisZeroPercent:
   description: When enabled, flex-basis defaults to 0% instead of 0 when omitted in flex shorthand, matching web browser behavior.
   defaultValue: 'false'

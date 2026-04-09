@@ -48,6 +48,7 @@
 #include "core/renderer/css/parser/four_sides_shorthand_handler.h"
 #include "core/renderer/css/parser/gap_handler.h"
 #include "core/renderer/css/parser/grid_position_handler.h"
+#include "core/renderer/css/parser/grid_shorthand_handler.h"
 #include "core/renderer/css/parser/grid_template_handler.h"
 #include "core/renderer/css/parser/handler_defines.h"
 #include "core/renderer/css/parser/length_handler.h"
@@ -215,6 +216,7 @@ UnitHandler::UnitHandler() {
   FontLengthHandler::Register(interceptors_);
   FourSidesShorthandHandler::Register(interceptors_);
   GridPositionHandler::Register(interceptors_);
+  GridShorthandHandler::Register(interceptors_);
   GridTemplateHandler::Register(interceptors_);
   LengthHandler::Register(interceptors_);
   NumberHandler::Register(interceptors_);

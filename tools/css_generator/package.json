@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/css-defines",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Property definitions of Lynx Styling module",
   "scripts": {
     "gen:types": "ts-node scripts/generate-types.ts",
@@ -12,7 +12,8 @@
   "files": [
     "./property_index.json",
     "./css_defines/*.json",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "index.d.ts"
   ],
   "author": "",
   "repository": {

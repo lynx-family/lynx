@@ -1,3 +1,6 @@
+## 0.0.9
+- Add `grid-column` and `grid-row` CSS shorthand properties.
+
 ## 0.0.8
 - Add `-x-auto-font-size-line-ranges` CSS property.
 

@@ -1405,6 +1405,18 @@ bool ComputedCSSStyle::SetGridColumnEnd(const tasm::CSSValue& value,
       "grid-column-end must be an int!", parser_configs_);
 }
 
+bool ComputedCSSStyle::SetGridColumn(const tasm::CSSValue& value,
+                                     const bool reset) {
+  return tasm::UnitHandler::CSSMethodUnreachable(
+      parser_configs_.enable_css_strict_mode);
+}
+
+bool ComputedCSSStyle::SetGridRow(const tasm::CSSValue& value,
+                                  const bool reset) {
+  return tasm::UnitHandler::CSSMethodUnreachable(
+      parser_configs_.enable_css_strict_mode);
+}
+
 bool ComputedCSSStyle::SetGap(const tasm::CSSValue& value, const bool reset) {
   return tasm::UnitHandler::CSSMethodUnreachable(
       parser_configs_.enable_css_strict_mode);

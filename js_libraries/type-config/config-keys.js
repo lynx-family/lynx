@@ -70,6 +70,7 @@ const configKeys = [
   'enableFetchAPIStandardStreaming',
   'enableFixedNew',
   'enableFlexBasisZeroPercent',
+  'enableGridPlacementShorthands',
   'enableHarmonyNewOverlay',
   'enableHarmonyVisibleAreaChangeForExposure',
   'enableICU',
