@@ -9,4 +9,6 @@
 #include <service_api/testing/b/b_service.h>
 #endif
 
+#include <service_api/services/trail/trail_service.h>
+
 #endif  // SERVICE_API_SERVICE_API_SERVICES_H_
