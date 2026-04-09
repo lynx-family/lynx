@@ -817,9 +817,9 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
   if (consumed) {
     // if not consumed by clay elements, it should not be consumed by lynx as
     // well.
+    ReportTopViewRawEvents(events);
     isolated_gesture_detector_.DispatchPointerEvent(
         events, gesture_manager_->GetHitTestResponsiveResult());
-    ReportTopViewRawEvents(events);
   } else {
 #if defined(ENABLE_MOUSE_TRACKING)
     for (PointerEvent& event : events) {
