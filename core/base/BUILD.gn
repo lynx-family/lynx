@@ -10,6 +10,8 @@ import("../Lynx.gni")
 base_shared_sources = [
                         "js_constants.h",
                         "lynx_export.h",
+                        "lynx_settings.cc",
+                        "lynx_settings.h",
                         "memory/memory_pressure_callback.cc",
                         "memory/memory_pressure_callback.h",
                         "thread/once_task.h",
@@ -112,7 +114,7 @@ if (is_android) {
 
 if (enable_unittests) {
   base_shared_sources += [ "threading/vsync_monitor_default.cc" ]
-  if (!is_android) {
+  if (!is_android && !is_ios) {
     base_shared_sources += [
       "threading/task_runner_vsync.cc",
       "threading/task_runner_vsync.h",
