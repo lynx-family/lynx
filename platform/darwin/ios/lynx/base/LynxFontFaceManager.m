@@ -179,6 +179,14 @@ typedef struct _LynxInnerFontInfo {
   NSMutableDictionary<NSString *, NSArray<NSString *> *> *_cachedFontNamesForFamilyName;
 }
 
+static NSString *const kLynxPreferredCJKCascadeFamilyHans = @"PingFang SC";
+static NSString *const kLynxPreferredCJKCascadeFamilyHant = @"PingFang TC";
+static NSString *const kLynxPreferredCJKCascadeFamilyHK = @"PingFang HK";
+static NSString *const kLynxPreferredCJKCascadeFamilyJA = @"Hiragino Sans";
+static NSString *const kLynxPreferredCJKCascadeFamilyKO = @"Apple SD Gothic Neo";
+static NSString *const kLynxPreferredEmojiFontName = @".AppleColorEmojiUI";
+static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
+
 + (LynxFontFaceManager *)sharedManager {
   static LynxFontFaceManager *sharedManager;
   static dispatch_once_t onceToken;
@@ -345,6 +353,158 @@ typedef struct _LynxInnerFontInfo {
     }
   }
   return font;
+}
+
+- (UIFont *)fontByAddingPreferredCascadeListIfNeeded:(UIFont *)font {
+  if (font == nil || [font.fontName hasPrefix:@"."] || [font.familyName hasPrefix:@"PingFang"] ||
+      [font.fontName isEqualToString:kLynxPreferredEmojiFontName]) {
+    return font;
+  }
+
+  UIFontDescriptor *fontDescriptor = font.fontDescriptor;
+  NSDictionary<UIFontDescriptorAttributeName, id> *fontAttributes = fontDescriptor.fontAttributes;
+  if (fontAttributes[(__bridge UIFontDescriptorAttributeName)kCTFontCascadeListAttribute] != nil) {
+    return font;
+  }
+  static NSCache<UIFont *, UIFont *> *cascadeFontCache = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    cascadeFontCache = [[NSCache alloc] init];
+    cascadeFontCache.countLimit = kLynxCascadeFontCacheCountLimit;
+  });
+  // Use UIFont directly as the hot-path cache key to avoid extra key construction work.
+  UIFont *cachedFont = [cascadeFontCache objectForKey:font];
+  if (cachedFont != nil) {
+    return cachedFont;
+  }
+
+  NSArray<NSString *> *preferredFallbackFamilies =
+      [self preferredFallbackFamilyCandidatesForCurrentLocale];
+  NSMutableArray<UIFontDescriptor *> *cascadeList = [NSMutableArray arrayWithCapacity:2];
+  NSDictionary *originalTraits = fontAttributes[UIFontDescriptorTraitsAttribute];
+  NSValue *originalMatrix = fontAttributes[UIFontDescriptorMatrixAttribute];
+  // Attach an explicit fallback chain for custom fonts so missing glyph resolution is
+  // more deterministic and less dependent on the default multi-threaded system fallback path.
+  for (NSString *preferredFallbackFamily in preferredFallbackFamilies) {
+    if (preferredFallbackFamily.length == 0 ||
+        [font.familyName isEqualToString:preferredFallbackFamily]) {
+      continue;
+    }
+    NSMutableDictionary<UIFontDescriptorAttributeName, id> *cjkAttributes =
+        [NSMutableDictionary dictionaryWithObject:preferredFallbackFamily
+                                           forKey:UIFontDescriptorFamilyAttribute];
+    if (originalTraits.count > 0) {
+      cjkAttributes[UIFontDescriptorTraitsAttribute] = originalTraits;
+    }
+    if (originalMatrix != nil) {
+      cjkAttributes[UIFontDescriptorMatrixAttribute] = originalMatrix;
+    }
+    [cascadeList addObject:[UIFontDescriptor fontDescriptorWithFontAttributes:cjkAttributes]];
+  }
+
+  if (![font.fontName isEqualToString:kLynxPreferredEmojiFontName]) {
+    [cascadeList addObject:[UIFontDescriptor fontDescriptorWithFontAttributes:@{
+                   UIFontDescriptorNameAttribute : kLynxPreferredEmojiFontName
+                 }]];
+  }
+
+  if (cascadeList.count == 0) {
+    [cascadeFontCache setObject:font forKey:font];
+    return font;
+  }
+
+  NSMutableDictionary<UIFontDescriptorAttributeName, id> *attributes = [fontAttributes mutableCopy];
+  attributes[(__bridge UIFontDescriptorAttributeName)kCTFontCascadeListAttribute] = cascadeList;
+  UIFontDescriptor *descriptor = [fontDescriptor fontDescriptorByAddingAttributes:attributes];
+  UIFont *fontWithCascade = [UIFont fontWithDescriptor:descriptor size:font.pointSize];
+  UIFont *resultFont = fontWithCascade ?: font;
+  [cascadeFontCache setObject:resultFont forKey:font];
+  return resultFont;
+}
+
+- (NSArray<NSString *> *)availableFontFamilyNamesFromCandidates:(NSArray<NSString *> *)candidates {
+  NSMutableArray<NSString *> *availableCandidates = [NSMutableArray array];
+  NSMutableSet<NSString *> *seenCandidates = [NSMutableSet set];
+  for (NSString *candidate in candidates) {
+    if (candidate.length == 0 || [seenCandidates containsObject:candidate]) {
+      continue;
+    }
+    if ([self getFontNamesForFamilyName:candidate].count > 0) {
+      [availableCandidates addObject:candidate];
+      [seenCandidates addObject:candidate];
+    }
+  }
+  return availableCandidates;
+}
+
+- (NSArray<NSString *> *)preferredFallbackFamilyCandidatesForLocale:(nullable NSString *)locale {
+  NSString *normalizedLocale = locale.lowercaseString;
+  NSArray<NSString *> *candidates = nil;
+  if (normalizedLocale.length == 0) {
+    candidates = @[ kLynxPreferredCJKCascadeFamilyHans ];
+  } else if ([normalizedLocale hasPrefix:@"ja"]) {
+    candidates = @[ kLynxPreferredCJKCascadeFamilyJA ];
+  } else if ([normalizedLocale hasPrefix:@"ko"]) {
+    candidates = @[ kLynxPreferredCJKCascadeFamilyKO ];
+  } else if ([normalizedLocale hasPrefix:@"zh"]) {
+    if ([normalizedLocale hasPrefix:@"zh-hk"] || [normalizedLocale hasPrefix:@"zh-mo"]) {
+      candidates = @[ kLynxPreferredCJKCascadeFamilyHK ];
+    } else if ([normalizedLocale containsString:@"hant"] || [normalizedLocale hasPrefix:@"zh-tw"]) {
+      candidates = @[ kLynxPreferredCJKCascadeFamilyHant ];
+    } else {
+      candidates = @[ kLynxPreferredCJKCascadeFamilyHans ];
+    }
+  } else {
+    candidates = @[ kLynxPreferredCJKCascadeFamilyHans ];
+  }
+
+  return [self availableFontFamilyNamesFromCandidates:candidates];
+}
+
+- (NSArray<NSString *> *)preferredFallbackFamilyCandidatesForCurrentLocale {
+  static NSArray<NSString *> *finalFallbackCandidates = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    CFTimeInterval startTime = CFAbsoluteTimeGetCurrent();
+    NSString *envLocale = LynxEnv.sharedInstance.locale ?: @"";
+    NSArray<NSString *> *preferredLanguages = NSLocale.preferredLanguages ?: @[];
+    NSMutableArray<NSString *> *localeCandidates = [NSMutableArray array];
+    if (envLocale.length > 0) {
+      [localeCandidates addObject:envLocale];
+    }
+    for (NSString *preferredLanguage in preferredLanguages) {
+      if (preferredLanguage.length > 0) {
+        [localeCandidates addObject:preferredLanguage];
+      }
+    }
+
+    for (NSString *localeCandidate in localeCandidates) {
+      NSArray<NSString *> *candidates =
+          [self preferredFallbackFamilyCandidatesForLocale:localeCandidate];
+      if (candidates.count > 0) {
+        finalFallbackCandidates = candidates;
+        LLogInfo(@"preferredFallbackFamilyCandidatesForCurrentLocale init envLocale=%@ families=%@ "
+                 @"cost=%.3fms",
+                 envLocale, [finalFallbackCandidates componentsJoinedByString:@","],
+                 (CFAbsoluteTimeGetCurrent() - startTime) * 1000.0);
+        return;
+      }
+    }
+
+    finalFallbackCandidates =
+        [self availableFontFamilyNamesFromCandidates:@[ kLynxPreferredCJKCascadeFamilyHans ]];
+    LLogInfo(@"preferredFallbackFamilyCandidatesForCurrentLocale init envLocale=%@ families=%@ "
+             @"cost=%.3fms",
+             envLocale, [finalFallbackCandidates componentsJoinedByString:@","],
+             (CFAbsoluteTimeGetCurrent() - startTime) * 1000.0);
+  });
+
+  return finalFallbackCandidates;
+}
+
+- (void)prewarmFontCascadeIfNeeded {
+  // Pay the one-time locale fallback resolution cost before the first real custom font measure.
+  (void)[self preferredFallbackFamilyCandidatesForCurrentLocale];
 }
 
 - (nullable NSString *)cachedKey:(nullable NSString *)key {
@@ -892,6 +1052,10 @@ typedef struct _LynxInnerFontInfo {
     font = [UIFont fontWithDescriptor:fontDescriptor size:fontSize];
   }
 
+  if (!info.isSystemFont && [LynxEnv.sharedInstance enableTextFontCascadeOpt]) {
+    font = [self fontByAddingPreferredCascadeListIfNeeded:font];
+  }
+
   return font;
 }
 
@@ -942,10 +1106,14 @@ typedef struct _LynxInnerFontInfo {
 
   CTFontDescriptorRef ctBaseDesc = CTFontDescriptorCreateWithNameAndSize(
       (__bridge CFStringRef)baseFont.fontName, baseFont.pointSize);
-  NSDictionary *ctAttrs = @{
-    (id)kCTFontFeatureSettingsAttribute : fontFeatureAttributeArray,
-    (id)kCTFontVariationAttribute : fontVariationDic
-  };
+  NSMutableDictionary *ctAttrs = [NSMutableDictionary dictionary];
+  ctAttrs[(id)kCTFontFeatureSettingsAttribute] = fontFeatureAttributeArray;
+  ctAttrs[(id)kCTFontVariationAttribute] = fontVariationDic;
+  id cascadeList = [baseFont.fontDescriptor
+      objectForKey:(__bridge UIFontDescriptorAttributeName)kCTFontCascadeListAttribute];
+  if (cascadeList != nil) {
+    ctAttrs[(id)kCTFontCascadeListAttribute] = cascadeList;
+  }
   CTFontDescriptorRef ctNewDesc =
       CTFontDescriptorCreateCopyWithAttributes(ctBaseDesc, (__bridge CFDictionaryRef)ctAttrs);
 
