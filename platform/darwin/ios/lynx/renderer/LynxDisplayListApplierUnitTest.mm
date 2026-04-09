@@ -21,6 +21,13 @@ using namespace lynx::tasm;
 
 @implementation LynxMockView
 
+@synthesize rendererContext = _rendererContext;
+
+- (instancetype)initWithRendererContext:(LynxRendererContext *)context {
+  self = [super init];
+  return self;
+}
+
 - (void)setRenderer:(LynxRenderer *)renderer {
   _renderer = renderer;
 }
@@ -30,11 +37,7 @@ using namespace lynx::tasm;
   return self.renderer;
 }
 
-- (LynxRenderer *)getRenderer {
-  return self.renderer;
-}
-
-- (UIView *)getView {
+- (UIView *)view {
   return self;
 }
 
@@ -77,7 +80,7 @@ using namespace lynx::tasm;
 
 - (void)testProcessContentOperations {
   // Setup Mock View and Layer
-  // We use LynxMockView to ensure it responds to 'getRenderer' (from protocol) and
+  // We use LynxMockView to ensure it responds to 'renderer' (from protocol) and
   // 'layer'/'subviews' (from UIView)
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockLayer = OCMClassMock([CALayer class]);
@@ -86,7 +89,7 @@ using namespace lynx::tasm;
 
   // Stub properties
   [[[mockUIView stub] andReturn:mockLayer] layer];
-  [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
+  [[[mockUIView stub] andReturn:mockRenderer] renderer];
 
   // Stub subviews for kDrawView
   id mockSubView = OCMClassMock([UIView class]);
@@ -95,8 +98,8 @@ using namespace lynx::tasm;
   [[[mockUIView stub] andReturn:@[ mockSubView ]] subviews];
 
   // Stub Renderer Sign
-  // [[_view getRenderer] getSign]
-  [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
+  // [[_view renderer] sign]
+  [OCMStub([(LynxRenderer *)mockRenderer sign]) andReturnValue:OCMOCK_VALUE((int32_t)1)];
 
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
                                                                       andContext:mockContext];
@@ -475,12 +478,12 @@ using namespace lynx::tasm;
   id mockSuperLayer = OCMClassMock([CALayer class]);
   id mockContext = OCMClassMock([LynxRendererContext class]);
 
-  [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
+  [[[mockUIView stub] andReturn:mockRenderer] renderer];
   [[[mockUIView stub] andReturn:mockLayer] layer];
   [[[mockLayer stub] andReturn:mockSuperLayer] superlayer];
 
   // Renderer sign is 1
-  [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
+  [OCMStub([(LynxRenderer *)mockRenderer sign]) andReturnValue:OCMOCK_VALUE((int32_t)1)];
 
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
                                                                       andContext:mockContext];
@@ -521,11 +524,11 @@ using namespace lynx::tasm;
   id mockLayer = OCMClassMock([CALayer class]);
   id mockContext = OCMClassMock([LynxRendererContext class]);
 
-  [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
+  [[[mockUIView stub] andReturn:mockRenderer] renderer];
   [[[mockUIView stub] andReturn:mockLayer] layer];
 
   // Renderer sign is 1
-  [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
+  [OCMStub([(LynxRenderer *)mockRenderer sign]) andReturnValue:OCMOCK_VALUE((int32_t)1)];
 
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
                                                                       andContext:mockContext];
@@ -645,9 +648,9 @@ using namespace lynx::tasm;
   id mockContext = OCMClassMock([LynxRendererContext class]);
 
   [[[mockUIView stub] andReturn:mockLayer] layer];
-  [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
+  [[[mockUIView stub] andReturn:mockRenderer] renderer];
   [[[mockLayer stub] andReturn:mockSuperLayer] superlayer];
-  [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
+  [OCMStub([(LynxRenderer *)mockRenderer sign]) andReturnValue:OCMOCK_VALUE((int32_t)1)];
 
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
                                                                       andContext:mockContext];

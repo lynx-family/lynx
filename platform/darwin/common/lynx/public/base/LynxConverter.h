@@ -5,6 +5,7 @@
 #ifndef DARWIN_COMMON_LYNX_BASE_LYNXCONVERTER_H_
 #define DARWIN_COMMON_LYNX_BASE_LYNXCONVERTER_H_
 
+#import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxCSSType.h>
 /**

@@ -31,8 +31,16 @@
   return self;
 }
 
-- (int32_t)getSign {
+- (int32_t)sign {
   return sign_;
+}
+
+- (UIView<LynxRendererHost>*)rendererHost {
+  return _host;
+}
+
+- (LynxRendererContext*)context {
+  return _renderer_context;
 }
 
 - (void)ensureLynxDisplayListApplier {
@@ -161,6 +169,18 @@
   }
 
   _host.alpha = MAX(0.0f, MIN(1.0f, opacity));
+}
+
+// Override point for subclasses to handle attribute updates.
+// Called when the native framework sends new props to this renderer.
+- (void)updateAttributes:(NSDictionary*)props {
+  // Subclasses should override this method to process props.
+}
+
+// Override point for subclasses to handle platform-specific extra data.
+// Called when the shadow node sends extra data to this renderer.
+- (void)updatePlatformExtraBundle:(id)data {
+  // Subclasses should override this method to process extra data.
 }
 
 @end

@@ -6,6 +6,7 @@
 #include "base/include/value/table.h"
 #include "core/base/js_constants.h"
 #include "core/renderer/events/gesture.h"
+#include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
@@ -38,6 +39,35 @@ NSData* convertJSIArrayBufferDataToNSData(uint8_t* data, int length) {
 }  // namespace
 
 PropBundleDarwin::PropBundleDarwin() { propMap = [[NSMutableDictionary alloc] init]; }
+
+PropBundleDarwin::PropBundleDarwin(const NativePropBundle& prop_bundle) {
+  propMap = [[NSMutableDictionary alloc] init];
+
+  // Copy all props from NativePropBundle
+  for (const auto& [key, value] : prop_bundle.GetProps()) {
+    pub::ValueImplLepus pub_value(value);
+    SetProps(key.c_str(), pub_value);
+  }
+
+  // Copy event handlers if present
+  const auto& events = prop_bundle.GetEvents();
+  if (events.has_value()) {
+    for (const auto& event_value : *events) {
+      pub::ValueImplLepus pub_event(event_value);
+      SetEventHandler(pub_event);
+    }
+  }
+
+  // Copy gesture detectors if present
+  const auto& gesture_detectors = prop_bundle.GetGestureDetectors();
+  if (gesture_detectors.has_value()) {
+    for (const auto& [gesture_id, detector] : *gesture_detectors) {
+      if (detector) {
+        SetGestureDetector(*detector);
+      }
+    }
+  }
+}
 
 void PropBundleDarwin::SetNullProps(const char* key) {
   [propMap setObject:[NSNull alloc] forKey:[[NSString alloc] initWithUTF8String:key]];
@@ -322,6 +352,14 @@ fml::RefPtr<PropBundle> PropBundleDarwin::ShallowCopy() {
 
 fml::RefPtr<PropBundle> PropBundleCreatorDarwin::CreatePropBundle() {
   return fml::AdoptRef(new PropBundleDarwin());
+}
+
+fml::RefPtr<PropBundle> PropBundleCreatorDarwin::CreatePropBundle(bool use_map_buffer,
+                                                                  bool use_native_value) {
+  if (use_native_value) {
+    return fml::MakeRefCounted<NativePropBundle>();
+  }
+  return CreatePropBundle();
 }
 
 }  // namespace tasm

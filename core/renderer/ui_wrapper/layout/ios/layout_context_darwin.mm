@@ -6,6 +6,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/ui_wrapper/common/ios/platform_extra_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
+#include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 
 #import <Lynx/LynxFontFaceManager.h>
 #include "base/include/debug/lynx_assert.h"
@@ -20,6 +21,12 @@ LayoutContextDarwin::~LayoutContextDarwin() {}
 int LayoutContextDarwin::CreateLayoutNode(int sign, const std::string& tag,
                                           PropBundle* painting_data, bool allow_inline) {
   PropBundleDarwin* pda = static_cast<PropBundleDarwin*>(painting_data);
+  std::unique_ptr<PropBundleDarwin> local_ptr;
+  if (painting_data->IsNative()) {
+    auto* native_prop_bundle = static_cast<NativePropBundle*>(painting_data);
+    local_ptr = std::make_unique<PropBundleDarwin>(*native_prop_bundle);
+    pda = local_ptr.get();
+  }
   @try {
     return static_cast<int>([nodeOwner
              createNodeWithSign:sign
@@ -57,8 +64,14 @@ void LayoutContextDarwin::DestroyLayoutNodes(const std::unordered_set<int>& ids)
 
 void LayoutContextDarwin::UpdateLayoutNode(int sign, PropBundle* painting_data) {
   PropBundleDarwin* pda = static_cast<PropBundleDarwin*>(painting_data);
+  std::unique_ptr<PropBundleDarwin> local_ptr;
+  if (painting_data->IsNative()) {
+    auto* native_prop_bundle = static_cast<NativePropBundle*>(painting_data);
+    local_ptr = std::make_unique<PropBundleDarwin>(*native_prop_bundle);
+    pda = local_ptr.get();
+  }
   [nodeOwner updateNodeWithSign:sign
-                          props:pda->dictionary()
+                          props:pda ? pda->dictionary() : nullptr
                        eventSet:pda ? pda->event_set() : nil
                   lepusEventSet:pda ? pda->lepus_event_set() : nil];
 }

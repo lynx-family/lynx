@@ -26,31 +26,33 @@
 #include "core/value_wrapper/value_impl_lepus.h"
 
 #import <Lynx/AbsLynxUIScroller.h>
+#import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxContext.h>
+#import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxNewGestureDelegate.h>
+#import <Lynx/LynxPerformanceController.h>
+#import <Lynx/LynxShadowNode.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxTemplateBundle+Converter.h>
+#import <Lynx/LynxTemplateData+Converter.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIImage.h>
 #import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/LynxUIOwner+Private.h>
+#import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIView.h>
 #import <Lynx/UIDevice+Lynx.h>
 #import "LynxCallStackUtil.h"
-#import "LynxEnv+Internal.h"
-#import "LynxPerformanceController.h"
-#import "LynxTemplateData+Converter.h"
-#import "LynxTemplateRender+Internal.h"
 #import "LynxTimingConstants.h"
-#import "LynxTouchHandler+Internal.h"
-#import "LynxUI+Gesture.h"
-#import "LynxUI+Private.h"
-#import "LynxUIOwner+Private.h"
 #if ENABLE_TRACE_PERFETTO
-#import "LynxContext+Internal.h"
+#import <Lynx/LynxContext+Internal.h>
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/reader.h"
 #include "third_party/rapidjson/stringbuffer.h"
@@ -596,19 +598,35 @@ void PaintingContextDarwin::ConsumeGesture(int64_t idx, int32_t gesture_id,
  * 18th bit represents whether node with tag name need text align value
  */
 int32_t PaintingContextDarwin::GetTagInfo(const std::string& tag_name) {
-  int32_t layout_node_type = static_cast<int32_t>(
-      [uiOwner_ getTagInfo:[[NSString alloc] initWithUTF8String:tag_name.c_str()]]);
+  NSString* tagName = [[NSString alloc] initWithUTF8String:tag_name.c_str()];
+  int32_t layout_node_type = 0;
+
+  // Use LynxComponentRegistry directly to get shadow node info
+  BOOL supported = YES;
+  Class clazz = [LynxComponentRegistry shadowNodeClassWithName:tagName accessible:&supported];
+  if (supported) {
+    LynxShadowNode* node = nil;
+    if (clazz) {
+      node = [[clazz alloc] initWithSign:0 tagName:tagName];
+    }
+    if (node != nil) {
+      layout_node_type |= LynxShadowNodeTypeCustom;
+      if ([node isVirtual]) {
+        layout_node_type |= LynxShadowNodeTypeVirtual;
+      }
+    } else {
+      layout_node_type |= LynxShadowNodeTypeCommon;
+    }
+  }
+
   bool is_virtual = layout_node_type & LayoutNodeType::VIRTUAL;
   if (is_virtual) {
     // For virtual nodes, we only need to return the layout node type.
     return (layout_node_type & 0xFFFF);
   }
 
-  bool create_ui_async =
-      (enable_create_ui_async_ &&
-       [uiOwner_ needCreateUIAsync:[[NSString alloc] initWithUTF8String:tag_name.c_str()]] == YES);
-  bool need_process_direction =
-      [uiOwner_ needProcessDirection:[[NSString alloc] initWithUTF8String:tag_name.c_str()]] == YES;
+  bool create_ui_async = (enable_create_ui_async_ && [uiOwner_ needCreateUIAsync:tagName] == YES);
+  bool need_process_direction = [uiOwner_ needProcessDirection:tagName] == YES;
   return ((need_process_direction ? 1 : 0) << 17 | (create_ui_async ? 1 : 0) << 16 |
           (layout_node_type & 0xFFFF));
 }

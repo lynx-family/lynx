@@ -5,6 +5,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
 
 namespace lynx {
 namespace tasm {
@@ -57,6 +58,14 @@ LynxRendererContext* NativePaintingCtxPlatformDarwinRef::GetRendererContext() {
   return static_cast<PlatformRendererDarwinFactory*>(view_factory_.get())
       ->GetContext()
       ->GetRendererContext();
+}
+
+void NativePaintingCtxPlatformDarwinRef::UpdatePlatformRendererExtraBundle(
+    int32_t sign, id platform_extra_bundle) {
+  if (auto it = renderers_.find(sign); it != renderers_.end()) {
+    auto* renderer = static_cast<PlatformRendererDarwin*>(it->second.get());
+    renderer->UpdatePlatformExtraBundle(platform_extra_bundle);
+  }
 }
 
 }  // namespace tasm

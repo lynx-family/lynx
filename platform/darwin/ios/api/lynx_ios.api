@@ -1043,6 +1043,8 @@ public class LynxComponentRegistry : NSObject {
   public void LynxComponentRegistry::registerNode:nameAs:(Class componentClass,[nameAs] NSString *name);
   public void LynxComponentRegistry::registerUI:withName:(Class componentClass,[withName] NSString *name);
   public void LynxComponentRegistry::registerShadowNode:withName:(Class componentClass,[withName] NSString *name);
+  public void LynxComponentRegistry::registerRendererHost:withName:(Class componentClass,[withName] NSString *name);
+  public Class LynxComponentRegistry::rendererHostClassWithName:(NSString *name);
   public Class LynxComponentRegistry::shadowNodeClassWithName:accessible:(NSString *name,[accessible] BOOL *legal);
   public Class LynxComponentRegistry::uiClassWithName:accessible:(NSString *name,[accessible] BOOL *legal);
   public NSSet< NSString * > * LynxComponentRegistry::lynxUIClasses();
@@ -1052,8 +1054,10 @@ public class LynxComponentScopeRegistry : NSObject {
   public NSSet<NSString*>* LynxComponentScopeRegistry::allRegisteredComponent allRegisteredComponent;
   public void LynxComponentScopeRegistry::registerUI:withName:(Class componentClass,[withName] NSString *name);
   public void LynxComponentScopeRegistry::registerShadowNode:withName:(Class componentClass,[withName] NSString *name);
+  public void LynxComponentScopeRegistry::registerRendererHost:withName:(Class componentClass,[withName] NSString *name);
   public Class LynxComponentScopeRegistry::shadowNodeClassWithName:accessible:(NSString *name,[accessible] BOOL *legal);
   public Class LynxComponentScopeRegistry::uiClassWithName:accessible:(NSString *name,[accessible] BOOL *legal);
+  public Class LynxComponentScopeRegistry::rendererHostClassWithName:(NSString *name);
   public void LynxComponentScopeRegistry::makeIntoGloabl();
   public void LynxComponentScopeRegistry::tryRegisterBuiltInClasses();
   public void LynxComponentScopeRegistry::registerBuiltInBehaviors:(LynxComponentScopeRegistry *registry);
@@ -3198,7 +3202,11 @@ public class LynxReloadBundleEntry : LynxPipelineEntry {
 
 public class LynxRenderer : NSObject {
   public instancetype LynxRenderer::initWithRenderHost:andSign:andContext:(UIView< LynxRendererHost > *host,[andSign] int32_t sign,[andContext] LynxRendererContext *context);
-  public int32_t LynxRenderer::getSign();
+  public int32_t LynxRenderer::sign();
+  public UIView< LynxRendererHost > * LynxRenderer::rendererHost();
+  public LynxRendererContext * LynxRenderer::context();
+  public void LynxRenderer::updateAttributes:(NSDictionary *props);
+  public void LynxRenderer::updatePlatformExtraBundle:(id data);
   public void LynxRenderer()::updateDisplayList:(lynx::tasm::DisplayList *list);
   public lynx::tasm::DisplayList * LynxRenderer()::getDisplayList();
   public void LynxRenderer()::detachHostDecorationLayers();
@@ -3221,10 +3229,11 @@ public class LynxRendererContext : NSObject {
 }
 
 public protocol LynxRendererHost-p : <NSObject> {
-  public void LynxRendererHost-p::setRenderer:(LynxRenderer *renderer);
+  public LynxRenderer* LynxRendererHost-p::renderer renderer;
+  public LynxRendererContext* LynxRendererHost-p::rendererContext rendererContext;
+  public instancetype LynxRendererHost-p::initWithRendererContext:(LynxRendererContext *context);
   public LynxRenderer * LynxRendererHost-p::createRendererWithSign:andContext:(int32_t sign,[andContext] LynxRendererContext *context);
-  public LynxRenderer * LynxRendererHost-p::getRenderer();
-  public UIView * LynxRendererHost-p::getView();
+  public UIView * LynxRendererHost-p::view();
 }
 
 public protocol LynxResourceFetcher-p : <NSObject> {

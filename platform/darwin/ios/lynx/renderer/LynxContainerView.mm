@@ -5,23 +5,23 @@
 #import <Lynx/LynxContainerView.h>
 #import <Lynx/LynxRenderer.h>
 
-@implementation LynxContainerView {
-  LynxRenderer* _render;
-}
+@implementation LynxContainerView
+@synthesize renderer = _renderer;
+@synthesize rendererContext = _rendererContext;
 
-- (void)setRenderer:(LynxRenderer*)renderer {
-  _render = renderer;
+- (instancetype)initWithRendererContext:(LynxRendererContext*)context {
+  self = [super init];
+  if (self) {
+    self.rendererContext = context;
+  }
+  return self;
 }
 
 - (LynxRenderer*)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext*)context {
   return [[LynxRenderer alloc] initWithRenderHost:self andSign:sign andContext:context];
 }
 
-- (LynxRenderer*)getRenderer {
-  return _render;
-}
-
-- (UIView*)getView {
+- (UIView*)view {
   return self;
 }
 

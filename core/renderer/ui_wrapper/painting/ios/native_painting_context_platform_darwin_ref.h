@@ -33,6 +33,8 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
     perf_controller_ = controller;
   }
 
+  void UpdatePlatformRendererExtraBundle(int32_t sign, id platform_extra_bundle);
+
  private:
   __weak LynxPerformanceController* perf_controller_;
 };
