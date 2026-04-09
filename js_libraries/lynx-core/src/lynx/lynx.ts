@@ -12,6 +12,9 @@ import {
   LoadDynamicComponentSuccessResult,
   LynxSetTimeout,
   MessageEvent,
+  ResourcePrefetchData,
+  ResourcePrefetchResult,
+  ResourcePrefetchConfig,
 } from '@lynx-js/types';
 import {
   RequireModule,
@@ -276,8 +279,35 @@ export class Lynx {
   accessibilityAnnounce = this.getNativeApp().nativeModuleProxy
     .LynxAccessibilityModule?.accessibilityAnnounce;
 
-  requestResourcePrefetch = this.getNativeApp().nativeModuleProxy
-    .LynxResourceModule?.requestResourcePrefetch;
+  requestResourcePrefetch = (
+    data: ResourcePrefetchData,
+    callback: (res: ResourcePrefetchResult) => void,
+    config?: ResourcePrefetchConfig
+  ): void => {
+    if (!isObject(data) || !Array.isArray(data.data)) {
+      const res = {
+        code: 32101,
+        msg:
+          "Parameters error in Lynx resource prefetch module! Value of 'data' should be an array.",
+        details: [],
+      };
+      if (callback) {
+        callback(res);
+      }
+      return;
+    }
+    if (
+      config &&
+      (!Number.isInteger(config.awaitTimeout) || config.awaitTimeout <= 0)
+    ) {
+      config = { ...config, awaitTimeout: 60000 };
+    }
+    const nativeMethod = this.getNativeApp().nativeModuleProxy
+      .LynxResourceModule?.requestResourcePrefetch;
+    if (nativeMethod) {
+      nativeMethod(data, callback, config);
+    }
+  };
 
   cancelResourcePrefetch = this.getNativeApp().nativeModuleProxy
     .LynxResourceModule?.cancelResourcePrefetch;
