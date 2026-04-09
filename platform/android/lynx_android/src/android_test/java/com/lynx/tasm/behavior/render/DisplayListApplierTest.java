@@ -59,7 +59,8 @@ import org.mockito.stubbing.Answer;
  *
  * <p>Supported Operations:
  * <ul>
- *   <li>{@code OP_BEGIN (0)}: Begin a fragment with ID and bounds [id, x, y, width, height]</li>
+ *   <li>{@code OP_BEGIN (0)}: Begin a fragment with ID, type and bounds
+ *   [id, type, x, y, width, height]</li>
  *   <li>{@code OP_END (1)}: End current fragment, restore canvas state</li>
  *   <li>{@code OP_FILL (2)}: Fill fragment bounds with solid color</li>
  *   <li>{@code OP_DRAW_VIEW (3)}: Draw native view by ID, stops processing</li>
@@ -73,13 +74,15 @@ import org.mockito.stubbing.Answer;
  * <p>Example Display List:
  * <pre>
  * ops = {0, 2, 6, 1}           // BEGIN, FILL, TEXT, END
- * iArgv = {1,4,0, 1,0, 1,0, 0,0} // param counts: (1int,4float), (id=0), (1int,0float),
- * (1int,0float), (0int,0float) fArgv = {10,20,100,50, 0xFF0000FF, 0, 0, 0} // x,y,w,h, color,
+ * iArgv = {2,4,0,1, 1,0, 1,0, 0,0} // param counts: (2int,4float), (id=0,type=kView),
+ * (1int,0float), (1int,0float) fArgv = {10,20,100,50, 0xFF0000FF, 0, 0, 0} // x,y,w,h, color,
  * text_id=0, unused
  * </pre>
  */
 @RunWith(AndroidJUnit4.class)
 public class DisplayListApplierTest {
+  private static final int VIEW_TYPE = PlatformRendererContext.PlatformRendererType.kView;
+
   @Mock private Canvas mockCanvas;
   @Mock private TextMeasurer mockTextMeasurer;
   @Mock private PlatformRendererContext mockPlatformRendererContext;
@@ -132,7 +135,8 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 1}                    // OP_BEGIN, OP_END
-   * iArgv = {0, 4, 0, 0, 0}            // param counts: (1int,4float), (id=0), (0int,0float)
+   * iArgv = {2, 4, 0, 1, 0, 0}         // param counts: (2int,4float), (id=0,type=kView),
+   *                                    // (0int,0float)
    * fArgv = {10f, 20f, 100f, 50f}    // x=10, y=20, width=100, height=50 for OP_BEGIN
    * </pre>
    */
@@ -140,7 +144,7 @@ public class DisplayListApplierTest {
   public void testReset() {
     // Set up display list with some operations
     testDisplayList.ops = new int[] {0, 1}; // OP_BEGIN, OP_END
-    testDisplayList.iArgv = new int[] {1, 4, 0, 0, 0}; // intParamCounts
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 0, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {10f, 20f, 100f, 50f}; // x, y, width, height
 
     displayListApplier.setDisplayList(testDisplayList);
@@ -186,7 +190,7 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0}                       // OP_BEGIN
-   * iArgv = {0, 4, 0, 0}               // 1 int param, 4 float params, id
+   * iArgv = {2, 4, 0, 1}               // 2 int params, 4 float params, id, type
    * fArgv = {10f, 20f, 100f, 50f}    // x=10, y=20, width=100, height=50
    * </pre>
    *
@@ -200,7 +204,7 @@ public class DisplayListApplierTest {
   @Test
   public void testOpBegin() {
     testDisplayList.ops = new int[] {0}; // OP_BEGIN
-    testDisplayList.iArgv = new int[] {1, 4, 0, 0}; // 1 int param, 4 float params, id
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE}; // 2 int params, 4 float params
     testDisplayList.fArgv = new float[] {10f, 20f, 100f, 50f}; // x, y, width, height
 
     displayListApplier.setDisplayList(testDisplayList);
@@ -217,7 +221,8 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 1}                    // OP_BEGIN, OP_END
-   * iArgv = {0, 4, 0, 0, 0}        // param counts: (1int,4float), (id=0), (0int,0float)
+   * iArgv = {2, 4, 0, 1, 0, 0}     // param counts: (2int,4float), (id=0,type=kView),
+   *                                // (0int,0float)
    * fArgv = {10f, 20f, 100f, 50f}    // x=10, y=20, width=100, height=50 for OP_BEGIN
    * </pre>
    *
@@ -230,8 +235,8 @@ public class DisplayListApplierTest {
    */
   @Test
   public void testOpEnd() {
-    testDisplayList.ops = new int[] {0, 1}; // OP_BEGIN {int: 1, float: 4}, OP_END {int:0, float:0}
-    testDisplayList.iArgv = new int[] {1, 4, 0, 0, 0}; // intParamCounts
+    testDisplayList.ops = new int[] {0, 1}; // OP_BEGIN {int: 2, float: 4}, OP_END {int:0, float:0}
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 0, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {10f, 20f, 100f, 50f}; // x, y, width, height
 
     displayListApplier.setDisplayList(testDisplayList);
@@ -248,7 +253,8 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 2}                    // OP_BEGIN, OP_FILL
-   * iArgv = {0, 4, 0, 1, 0, 0xFF0000FF} // param counts: (1int,4float), (id=0), (1int,0float),
+   * iArgv = {2, 4, 0, 1, 2, 0, 0xFF0000FF, 0} // param counts: (2int,4float),
+   * (id=0,type=kView), (2int,0float),
    * color=Blue fArgv = {0f, 0f, 100f, 50f}    // x=0, y=0, width=100, height=50 for OP_BEGIN
    * </pre>
    *
@@ -263,7 +269,7 @@ public class DisplayListApplierTest {
   public void testOpFill() {
     testDisplayList.ops = new int[] {0, 11, 2, 1}; // OP_BEGIN, OP_RECORD_BOX, OP_FILL, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, // OP_BEGIN: 1 int, 4 float
+        2, 4, 0, VIEW_TYPE, // OP_BEGIN: 2 int, 4 float
         0, 4, // OP_RECORD_BOX: 0 int, 4 float
         2, 0, 0xFF0000FF, 0, // OP_FILL: 2 int, 0 float, color, clipIndex
         0, 0 // OP_END
@@ -288,7 +294,8 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 3}                    // OP_BEGIN, OP_DRAW_VIEW
-   * iArgv = {0, 4, 0, 1, 0, 123}      // param counts: (1int,4float), (id=0), (1int,0float),
+   * iArgv = {2, 4, 0, 1, 1, 0, 123}   // param counts: (2int,4float),
+   *                                    // (id=0,type=kView), (1int,0float),
    * viewId=123 fArgv = {0f, 0f, 100f, 50f}    // x=0, y=0, width=100, height=50 for OP_BEGIN
    * </pre>
    *
@@ -302,7 +309,7 @@ public class DisplayListApplierTest {
   @Test
   public void testOpDrawView() {
     testDisplayList.ops = new int[] {0, 3}; // OP_BEGIN, OP_DRAW_VIEW
-    testDisplayList.iArgv = new int[] {1, 4, 0, 1, 0, 123}; // intParamCounts
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 1, 0, 123}; // intParamCounts
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // bounds for OP_BEGIN
 
     displayListApplier.setDisplayList(testDisplayList);
@@ -319,7 +326,8 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 6}                    // OP_BEGIN, OP_TEXT
-   * iArgv = {0, 4, 0, 1, 0, 456}      // param counts: (1int,4float), (id=0), (1int,0float),
+   * iArgv = {2, 4, 0, 1, 2, 0, 456, -1} // param counts: (2int,4float),
+   *                                      // (id=0,type=kView), (2int,0float),
    * textId=456 fArgv = {0f, 0f, 100f, 50f}    // x=0, y=0, width=100, height=50 for OP_BEGIN
    * </pre>
    *
@@ -336,8 +344,9 @@ public class DisplayListApplierTest {
     when(mockTextUpdateBundle.getTextLayout()).thenReturn(mockTextLayout);
 
     testDisplayList.ops = new int[] {0, 6}; // OP_BEGIN, OP_TEXT
-    testDisplayList.iArgv = new int[] {1, 4, 0, 2, 0, 456,
-        -1}; // OP_BEGIN{ int: 1, float: 4} ID: 0 OP_TEXT{int: 2, float: 0} OP_TEXT_ID: 456
+    testDisplayList.iArgv = new int[] {
+        2, 4, 0, VIEW_TYPE, 2, 0, 456, -1}; // OP_BEGIN{ int: 2, float: 4} ID: 0 TYPE: kView
+                                            // OP_TEXT{int: 2, float: 0} OP_TEXT_ID: 456
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // bounds for OP_BEGIN
 
     displayListApplier.setDisplayList(testDisplayList);
@@ -354,7 +363,8 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 6}                    // OP_BEGIN, OP_TEXT
-   * iArgv = {0, 4, 0, 1, 0, 456}      // param counts: (1int,4float), (id=0), (1int,0float),
+   * iArgv = {2, 4, 0, 1, 2, 0, 456, -1} // param counts: (2int,4float),
+   *                                      // (id=0,type=kView), (2int,0float),
    * textId=456 fArgv = {0f, 0f, 100f, 50f}    // x=0, y=0, width=100, height=50 for OP_BEGIN
    * </pre>
    *
@@ -370,7 +380,7 @@ public class DisplayListApplierTest {
     when(mockTextMeasurer.takeTextLayout(anyInt())).thenReturn(null);
 
     testDisplayList.ops = new int[] {0, 6}; // OP_BEGIN, OP_TEXT
-    testDisplayList.iArgv = new int[] {1, 4, 0, 2, 0}; // intParamCounts
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 2, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // bounds for OP_BEGIN
 
     // Add text ID parameter
@@ -393,7 +403,8 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 7}                    // OP_BEGIN, OP_IMAGE
-   * iArgv = {0, 4, 0, 0, 1, 789}      // param counts: (1int,4float), (id=0), (1int,0float),
+   * iArgv = {2, 4, 0, 1, 2, 0, 789, -1} // param counts: (2int,4float),
+   *                                      // (id=0,type=kView), (2int,0float),
    * imageId=789 fArgv = {0f, 0f, 100f, 50f, 10f, 20f, 30f, 40f} // bounds + image drawing params
    * </pre>
    *
@@ -408,7 +419,7 @@ public class DisplayListApplierTest {
   @Test
   public void testOpImage() {
     testDisplayList.ops = new int[] {0, 7}; // OP_BEGIN, OP_IMAGE
-    testDisplayList.iArgv = new int[] {1, 4, 0, 1, -1}; // intParamCounts: 1 int, 4 float params
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 2, 0, -1}; // intParamCounts
     testDisplayList.fArgv =
         new float[] {0f, 0f, 100f, 50f, 10f, 20f, 30f, 40f}; // bounds + image params
 
@@ -432,7 +443,7 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 2, 1}                 // OP_BEGIN, OP_FILL, OP_END
-   * iArgv = {0, 4, 0, 1, 0, 0xFF00FF00, 0, 0} // param counts and color
+   * iArgv = {2, 4, 0, 1, 0, 4, 2, 0, 0xFF00FF00, 0, 0, 0} // param counts and color
    * fArgv = {0f, 0f, 32f, 32f}     // x=0, y=0, width=32, height=32 for OP_BEGIN
    * </pre>
    *
@@ -448,7 +459,7 @@ public class DisplayListApplierTest {
     DisplayList newDisplayList = new DisplayList();
     newDisplayList.ops = new int[] {0, 11, 2, 1}; // Begin, RECORD_BOX, OP_FILL, end
     newDisplayList.iArgv =
-        new int[] {1, 4, 0, 0, 4, 2, 0, 0xFF00FF00, 0, 0, 0}; // param counts and color
+        new int[] {2, 4, 0, VIEW_TYPE, 0, 4, 2, 0, 0xFF00FF00, 0, 0, 0}; // param counts and color
     newDisplayList.fArgv = new float[] {
         0f, 0f, 32f, 32f, // BEGIN
         0f, 0f, 32f, 32f // RECORD_BOX
@@ -468,7 +479,7 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 2}                    // OP_BEGIN, OP_FILL
-   * iArgv = {0, 4, 0}                  // Missing OP_FILL parameters (should be 1,0)
+   * iArgv = {2, 4, 0, 1}               // Missing OP_FILL parameters (should be 2,0,...)
    * fArgv = {0f, 0f, 100f, 50f}    // x=0, y=0, width=100, height=50 for OP_BEGIN
    * </pre>
    *
@@ -483,7 +494,7 @@ public class DisplayListApplierTest {
   public void testInvalidArrayAccess() {
     // Test with mismatched array sizes
     testDisplayList.ops = new int[] {0, 2}; // OP_BEGIN, OP_FILL
-    testDisplayList.iArgv = new int[] {1, 4, 0}; // Missing parameters for OP_FILL
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE}; // Missing parameters for OP_FILL
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f};
 
     displayListApplier.setDisplayList(testDisplayList);
@@ -500,7 +511,8 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 2, 6, 1}              // OP_BEGIN, OP_FILL, OP_TEXT, OP_END
-   * iArgv = {0, 4, 0, 1, 0, 0xFF0000FF, 1, 0, 999, 0, 0} // param counts and IDs
+   * iArgv = {2, 4, 0, 1, 0, 4, 2, 0, 0xFF0000FF, 0, 2, 0, 999, -1, 0, 0}
+   * // param counts and IDs
    * fArgv = {10f, 20f, 100f, 50f}   // x=10, y=20, width=100, height=50 for OP_BEGIN
    * </pre>
    *
@@ -516,8 +528,8 @@ public class DisplayListApplierTest {
   public void testMultipleOperations() {
     testDisplayList.ops =
         new int[] {0, 11, 2, 6, 1}; // OP_BEGIN, OP_RECORD_BOX, OP_FILL, OP_TEXT, OP_END
-    testDisplayList.iArgv =
-        new int[] {1, 4, 0, 0, 4, 2, 0, 0xFF0000FF, 0, 2, 0, 999, -1, 0, 0}; // intParamCounts
+    testDisplayList.iArgv = new int[] {
+        2, 4, 0, VIEW_TYPE, 0, 4, 2, 0, 0xFF0000FF, 0, 2, 0, 999, -1, 0, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {
         10f, 20f, 100f, 50f, // BEGIN
         0f, 0f, 100f, 50f // RECORD_BOX
@@ -559,7 +571,7 @@ public class DisplayListApplierTest {
     testDisplayList.ops =
         new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_BOX, OP_BOX, OP_BORDER, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, // OP_BEGIN: 1 int, 4 float
+        2, 4, 0, VIEW_TYPE, // OP_BEGIN: 2 int, 4 float
         0, 4, 0, 4, // OP_BOX: 0 int, 4 float params, 0 int, 4 float params
         10, 0, // OP_BORDER: 10 int, 0 float params
         0, 1, // Out box index: 0, inner box index: 1
@@ -607,7 +619,7 @@ public class DisplayListApplierTest {
     testDisplayList.ops =
         new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_RECORD_BOX, OP_RECORD_BOX, OP_BORDER, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, // OP_BEGIN: 1 int, 4 float
+        2, 4, 0, VIEW_TYPE, // OP_BEGIN: 2 int, 4 float
         0, 4, // OP_RECORD_BOX (out): 0 int, 4 float
         0, 4, // OP_RECORD_BOX (inner): 0 int, 4 float
         10, 0, // OP_BORDER: 10 int, 0 float
@@ -655,7 +667,7 @@ public class DisplayListApplierTest {
     testDisplayList.ops =
         new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_BOX, OP_BOX, OP_BORDER, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, // OP_BEGIN: 1 int, 4 float
+        2, 4, 0, VIEW_TYPE, // OP_BEGIN: 2 int, 4 float
         0, 4, 0, 4, // OP_BOX: 0 int, 4 float params, 0 int, 4 float params
         10, 0, // OP_BORDER: 10 int, 0 float
         0, 1, // Out box index: 0, inner box index: 1
@@ -700,7 +712,7 @@ public class DisplayListApplierTest {
     testDisplayList.ops = new int[] {
         0, 11, 11, 12, 1}; // OP_BEGIN, OP_RECORD_BOX, OP_RECORD_BOX, OP_LINEAR_GRADIENT, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, // OP_BEGIN: 1 int, 4 float
+        2, 4, 0, VIEW_TYPE, // OP_BEGIN: 2 int, 4 float
         0, 4, // OP_RECORD_BOX (tiling): 0 int, 4 float
         0, 4, // OP_RECORD_BOX (clip): 0 int, 4 float
         8, 3, // OP_LINEAR_GRADIENT: 8 ints, 3 floats
@@ -742,7 +754,7 @@ public class DisplayListApplierTest {
   @Test
   public void testOpClipRectPlain() {
     testDisplayList.ops = new int[] {0, 10, 1};
-    testDisplayList.iArgv = new int[] {1, 4, 0, 0, 4, 0, 0};
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 0, 4, 0, 0};
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f, 10f, 12f, 80f, 30f};
 
     displayListApplier.setDisplayList(testDisplayList);
@@ -768,7 +780,7 @@ public class DisplayListApplierTest {
   @Test
   public void testOpRecordBox0() {
     testDisplayList.ops = new int[] {0, 11, 1};
-    testDisplayList.iArgv = new int[] {0, 4, 0, 4, 0, 0};
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 0, 4, 0, 0};
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f, 10f, 12f, 80f, 30f};
 
     ArrayList<RoundedRectangle> list = getBoxArray(displayListApplier);
@@ -787,7 +799,7 @@ public class DisplayListApplierTest {
   @Test
   public void testOpRecordBox1() {
     testDisplayList.ops = new int[] {0, 11, 1};
-    testDisplayList.iArgv = new int[] {0, 4, 0, 12, 0, 0};
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 0, 12, 0, 0};
     testDisplayList.fArgv = new float[] {
         0f, 0f, 100f, 50f, 10f, 12f, 80f, 30f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f};
 
@@ -817,7 +829,7 @@ public class DisplayListApplierTest {
   @Test
   public void testOpClipRectRounded() {
     testDisplayList.ops = new int[] {0, 10, 1};
-    testDisplayList.iArgv = new int[] {1, 4, 0, 0, 12, 0, 0};
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 0, 12, 0, 0};
     testDisplayList.fArgv =
         new float[] {0f, 0f, 100f, 50f, 10f, 12f, 80f, 30f, 5f, 6f, 7f, 8f, 9f, 10f, 11f, 12f};
 

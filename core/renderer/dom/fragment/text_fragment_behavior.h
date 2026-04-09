@@ -17,6 +17,9 @@ class TextFragmentBehavior : public FragmentBehavior {
       const fml::RefPtr<PropBundle>& attributes) override;
   void OnUpdateLayout(const LayoutInfoForDraw& layout_result) override;
   void OnDraw(DisplayListBuilder& builder) override;
+  PlatformRendererType GetType() const override {
+    return PlatformRendererType::kText;
+  }
   void SetTextBundle(intptr_t bundle) override { text_bundle_ = bundle; }
   void OnElementDestroying() override;
 

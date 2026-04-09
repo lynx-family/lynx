@@ -10,9 +10,14 @@
 #import <Lynx/LynxTextRenderManager.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
+#include "core/public/platform_renderer_type.h"
 #include "core/renderer/dom/fragment/display_list.h"
 
 using namespace lynx::tasm;
+
+namespace {
+constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
+}
 
 // Define a mock view class that implements the protocol
 @interface LynxMockView : UIView <LynxRendererHost>
@@ -105,11 +110,11 @@ using namespace lynx::tasm;
   DisplayList list;
 
   // 1. kBegin
-  // int_count=1 (sign to check), float_count=4 (x, y, w, h)
+  // int_count=2 (sign and type), float_count=4 (x, y, w, h)
   // Logic: if (sign_arg != renderer_sign) -> record_offset = true
   // Renderer sign is 1. We pass 2. 2 != 1 -> true.
   // Offsets updated by x, y.
-  list.AddOperation(DisplayListOpType::kBegin, 2, 10.0f, 20.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kBegin, 2, kViewType, 10.0f, 20.0f, 100.0f, 100.0f);
 
   // 2. kRecordBox
   // float_count=4 (x, y, w, h)
@@ -489,7 +494,7 @@ using namespace lynx::tasm;
 
   // kBegin with sign 1 (matches renderer)
   // x=10, y=20
-  list.AddOperation(DisplayListOpType::kBegin, 1, 10.0f, 20.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kBegin, 1, kViewType, 10.0f, 20.0f, 100.0f, 100.0f);
 
   // kRecordBox at 0,0
   list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 50.0f, 50.0f);
@@ -534,11 +539,11 @@ using namespace lynx::tasm;
 
   // Level 1: kBegin sign 2 (Mismatch -> Offset applied)
   // Offset += 10, 10
-  list.AddOperation(DisplayListOpType::kBegin, 2, 10.0f, 10.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kBegin, 2, kViewType, 10.0f, 10.0f, 100.0f, 100.0f);
 
   // Level 2: kBegin sign 3 (Mismatch -> Offset applied)
   // Offset += 20, 20 -> Total 30, 30
-  list.AddOperation(DisplayListOpType::kBegin, 3, 20.0f, 20.0f, 50.0f, 50.0f);
+  list.AddOperation(DisplayListOpType::kBegin, 3, kViewType, 20.0f, 20.0f, 50.0f, 50.0f);
 
   // kRecordBox at 0,0
   list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 10.0f, 10.0f);
@@ -653,7 +658,7 @@ using namespace lynx::tasm;
                                                                       andContext:mockContext];
 
   DisplayList list;
-  list.AddOperation(DisplayListOpType::kBegin, 1, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kBegin, 1, kViewType, 0.0f, 0.0f, 100.0f, 100.0f);
   list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 100.0f, 100.0f);
   list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 10.0f, 80.0f, 80.0f);
   list.AddOperation(DisplayListOpType::kBorder, 0, 1, (int32_t)0xFFFF0000, (int32_t)0xFF00FF00,
@@ -682,7 +687,7 @@ using namespace lynx::tasm;
                                                                       andContext:nil];
 
   DisplayList list;
-  list.AddOperation(DisplayListOpType::kBegin, 1, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kBegin, 1, kViewType, 0.0f, 0.0f, 100.0f, 100.0f);
   list.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 50.0f, 50.0f);
   list.AddOperation(DisplayListOpType::kFill, (int32_t)0xFFFF0000, 0);
 
@@ -727,7 +732,7 @@ using namespace lynx::tasm;
                                                                       andContext:nil];
 
   DisplayList list;
-  list.AddOperation(DisplayListOpType::kBegin, 1, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kBegin, 1, kViewType, 0.0f, 0.0f, 100.0f, 100.0f);
   list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 15.0f, 40.0f, 50.0f);
   list.AddOperation(DisplayListOpType::kFill, (int32_t)0xFFFF0000, 0);
 

@@ -21,6 +21,9 @@ class PlatformExtendedFragmentBehavior : public FragmentBehavior {
 
   void CreatePlatformRenderer(
       const fml::RefPtr<PropBundle>& attributes) override;
+  PlatformRendererType GetType() const override {
+    return PlatformRendererType::kExtended;
+  }
 
   // Get the tag name for this platform extended component
   const base::String& tag_name() const { return tag_name_; }

@@ -16,6 +16,9 @@ class ListFragmentBehavior : public FragmentBehavior {
 
   void CreatePlatformRenderer(
       const fml::RefPtr<PropBundle>& attributes) override;
+  PlatformRendererType GetType() const override {
+    return PlatformRendererType::kList;
+  }
 };
 
 }  // namespace tasm

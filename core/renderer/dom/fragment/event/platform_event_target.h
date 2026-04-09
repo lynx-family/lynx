@@ -87,6 +87,9 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float Top() const { return top_; }
   float Width() const { return width_; }
   float Height() const { return height_; }
+  PlatformRendererType GetPlatformRendererType() const {
+    return platform_renderer_type_;
+  }
   bool IsScrollContainer() const { return is_scroll_container_; }
   float ScrollOffsetX() const { return scroll_offset_x_; }
   float ScrollOffsetY() const { return scroll_offset_y_; }
@@ -206,6 +209,9 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
     exposure_scene_ = std::move(value);
   }
   void SetDataset(lepus::Value dataset) { dataset_ = std::move(dataset); }
+  void SetPlatformRendererType(PlatformRendererType type) {
+    platform_renderer_type_ = type;
+  }
 
  private:
   void GetOrUpdateTargetScreenRect(
@@ -219,6 +225,7 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float top_{0.f};
   float width_{0.f};
   float height_{0.f};
+  PlatformRendererType platform_renderer_type_{PlatformRendererType::kUnknown};
   bool is_scroll_container_{false};
   float scroll_offset_x_{0.f};
   float scroll_offset_y_{0.f};

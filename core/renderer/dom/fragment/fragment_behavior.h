@@ -6,6 +6,7 @@
 #define CORE_RENDERER_DOM_FRAGMENT_FRAGMENT_BEHAVIOR_H_
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "core/public/platform_renderer_type.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/layout_info.h"
@@ -79,6 +80,8 @@ class FragmentBehavior {
   virtual void OnAttributeUpdate(const fml::RefPtr<PropBundle>& attributes){};
 
   virtual void OnDraw(DisplayListBuilder& display_list_builder){};
+
+  virtual PlatformRendererType GetType() const = 0;
 
   virtual void OnUpdateLayout(const LayoutInfoForDraw& layout_result) {}
 
