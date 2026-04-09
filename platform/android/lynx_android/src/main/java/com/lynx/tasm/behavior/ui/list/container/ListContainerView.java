@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
+import androidx.core.view.ViewCompat;
 import com.lynx.tasm.IListNodeInfoFetcher;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
@@ -22,6 +23,14 @@ import com.lynx.tasm.utils.FloatUtils;
 
 public class ListContainerView
     extends NestedScrollContainerView implements IDrawChildHook.IDrawChildHookBinding {
+  static class CalcFlingOffsetResult {
+    private boolean mAvailable = true;
+    private float mOffset = 0.f;
+    public CalcFlingOffsetResult(float offset, boolean available) {
+      this.mOffset = offset;
+      this.mAvailable = available;
+    }
+  }
   private static final String TAG = "ListContainerView";
   private static final boolean DEBUG = true;
   private UIListContainer mUiListContainer;
@@ -444,10 +453,17 @@ public class ListContainerView
       float backwardFlingDistance = 0.f;
       float currentOffset = mIsVertical ? lastScrollY : lastScrollX;
       if (mMaxFlingDistanceRatio == LIST_AUTOMATIC_MAX_FLING_RATIO) {
-        forwardFlingDistance =
-            getAvailableScrollOffsetIfNeeded(true, currentOffset) - currentOffset;
-        backwardFlingDistance =
-            currentOffset - getAvailableScrollOffsetIfNeeded(false, currentOffset);
+        CalcFlingOffsetResult forwardFlingOffsetResult =
+            getAvailableScrollOffsetIfNeeded(true, currentOffset);
+        CalcFlingOffsetResult backwardFlingOffsetResult =
+            getAvailableScrollOffsetIfNeeded(false, currentOffset);
+        // calculate fling distance.
+        forwardFlingDistance = forwardFlingOffsetResult.mAvailable
+            ? forwardFlingOffsetResult.mOffset - currentOffset
+            : Float.MAX_VALUE;
+        backwardFlingDistance = backwardFlingOffsetResult.mAvailable
+            ? currentOffset - backwardFlingOffsetResult.mOffset
+            : Float.MAX_VALUE;
       } else {
         float maxFlingDistance = mMaxFlingDistanceRatio * (mIsVertical ? getHeight() : getWidth());
         forwardFlingDistance = maxFlingDistance;
@@ -459,13 +475,19 @@ public class ListContainerView
     }
   }
 
-  private float getAvailableScrollOffsetIfNeeded(boolean forward, float currentOffset) {
+  private CalcFlingOffsetResult getAvailableScrollOffsetIfNeeded(
+      boolean forward, float currentOffset) {
     float min = Float.MAX_VALUE;
     float max = Float.MIN_VALUE;
     // TODO:(dingwang.wxx) Define a interface and explicitly obtain the LinearLayout within the
     // ScrollView.
     if (getChildCount() > 0 && getChildAt(0) instanceof ViewGroup) {
       ViewGroup linearLayout = (ViewGroup) getChildAt(0);
+      // Note: If LinearLayout has no child, we should return the current offset.
+      int childCount = linearLayout.getChildCount();
+      if (childCount == 0) {
+        return new CalcFlingOffsetResult(currentOffset, true);
+      }
       if (forward) {
         int paddingEnd = mIsVertical ? mPaddingBottom : mPaddingRight;
         int linearLayoutSize = mIsVertical ? linearLayout.getHeight() : linearLayout.getWidth();
@@ -479,9 +501,16 @@ public class ListContainerView
           }
         }
         if (FloatUtils.floatsEqual(max + paddingEnd, linearLayoutSize)) {
-          max = linearLayoutSize;
+          // Note: During a non-touch nested fling, if a nested parent exists, we should extend the
+          // forward available scroll limit so the child still has positive forward distance at the
+          // edge to start fling animation, here we return Float.MAX_VALUE.
+          if (hasNestedScrollingParent(ViewCompat.TYPE_NON_TOUCH)) {
+            return new CalcFlingOffsetResult(0.f, false);
+          } else {
+            max = linearLayoutSize;
+          }
         }
-        max = max - containerSize;
+        return new CalcFlingOffsetResult(max - containerSize, true);
       } else {
         int paddingStart = mIsVertical ? mPaddingTop : mPaddingLeft;
         for (int i = 0; i < linearLayout.getChildCount(); i++) {
@@ -492,12 +521,19 @@ public class ListContainerView
           }
         }
         if (FloatUtils.floatsEqual(min - paddingStart, 0.f)) {
-          min = 0.f;
+          // Note: During a non-touch nested fling, if a nested parent exists, we should extend the
+          // backward available scroll limit so the child still has positive backward distance at
+          // the edge to start fling animation, here we return Float.MIN_VALUE.
+          if (hasNestedScrollingParent(ViewCompat.TYPE_NON_TOUCH)) {
+            return new CalcFlingOffsetResult(0.f, false);
+          } else {
+            min = 0.f;
+          }
         }
       }
-      return forward ? max : min;
+      return new CalcFlingOffsetResult(min, true);
     }
-    return currentOffset;
+    return new CalcFlingOffsetResult(currentOffset, true);
   }
 
   private class CustomLinearLayout extends LinearLayout {
