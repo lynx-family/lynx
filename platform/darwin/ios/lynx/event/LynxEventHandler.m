@@ -510,6 +510,13 @@
                      withLevel:DevToolLogLevelInfo];
     }
     [_eventEmitter dispatchTouchEvent:event];
+
+    LynxRootUI* childLynxPage =
+        _touchTarget.childrenLynxPageUI[[NSString stringWithFormat:@"%p", _touchTarget]];
+    if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+        childLynxPage.view.isChildLynxPage) {
+      [childLynxPage.context.eventHandler dispatchTapEvent:sender];
+    }
   } else {
     if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
       [_touchRecognizer
@@ -521,13 +528,6 @@
     }
     _LogW(@"LynxEventHandler: tap failed due to [outside] %d [slide] %ld [props] %ld",
           !touchInSideLynx, slideTargetSign, propsTargetSign);
-  }
-
-  LynxRootUI* childLynxPage =
-      _touchTarget.childrenLynxPageUI[[NSString stringWithFormat:@"%p", _touchTarget]];
-  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
-      childLynxPage.view.isChildLynxPage) {
-    [childLynxPage.context.eventHandler dispatchTapEvent:sender];
   }
 }
 
@@ -595,6 +595,13 @@
       }
       [_eventEmitter dispatchTouchEvent:event];
       _longPressPoint = CGPointMake(-FLT_MAX, -FLT_MAX);
+
+      LynxRootUI* childLynxPage =
+          _touchTarget.childrenLynxPageUI[[NSString stringWithFormat:@"%p", _touchTarget]];
+      if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+          childLynxPage.view.isChildLynxPage) {
+        [childLynxPage.context.eventHandler dispatchLongPressEvent:sender];
+      }
     } else {
       if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
         [_touchRecognizer
@@ -612,13 +619,6 @@
     _longPressPoint = CGPointMake(-FLT_MAX, -FLT_MAX);
     self.gestureRecognized = NO;
     [self resetEventEnv];
-  }
-
-  LynxRootUI* childLynxPage =
-      _touchTarget.childrenLynxPageUI[[NSString stringWithFormat:@"%p", _touchTarget]];
-  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
-      childLynxPage.view.isChildLynxPage) {
-    [childLynxPage.context.eventHandler dispatchLongPressEvent:sender];
   }
 }
 
