@@ -12,14 +12,14 @@
 // ServiceLazyLoad.h/LynxLazyLoad.h
 
 #if defined(OS_IOS)
-enum ServiceLazyLoadType : unsigned long {
-  ServiceLazyLoadTypeFunction = 1,
-  ServiceLazyLoadTypeObjCMethod = 2,
-  ServiceLazyLoadTypeFunctionInfo = 3,
+enum CppServiceLazyLoadType : unsigned long {
+  CppServiceLazyLoadTypeFunction = 1,
+  CppServiceLazyLoadTypeObjCMethod = 2,
+  CppServiceLazyLoadTypeFunctionInfo = 3,
 };
 
-struct ServiceLazyLoadData {
-  const ServiceLazyLoadType type;
+struct CppServiceLazyLoadData {
+  const CppServiceLazyLoadType type;
   const bool repeatable;
   const char* key;
   const void* value;
@@ -31,18 +31,17 @@ struct ServiceLazyLoadData {
 #define SERVICE_LAZY_LOAD_CPP_CAST(VALUE) (const void*)(VALUE)
 #endif
 
-#define SERVICE_LAZY_LOAD_CPP_DATA_DEFINE(KEY, REPEATABLE, TYPE, VALUE)      \
-  __attribute__((                                                            \
-      used, no_sanitize_address,                                             \
-      section(                                                               \
-          "__LYNX__DATA,__LYNX__SECTION"))) static const ServiceLazyLoadData \
-  BASE_CONCAT(__LYNX_ID__, __COUNTER__) = {TYPE, REPEATABLE, KEY,            \
+#define SERVICE_LAZY_LOAD_CPP_DATA_DEFINE(KEY, REPEATABLE, TYPE, VALUE)   \
+  __attribute__((used, no_sanitize_address,                               \
+                 section("__LYNX__DATA,__LYNX__"                          \
+                         "SECTION"))) static const CppServiceLazyLoadData \
+  BASE_CONCAT(__LYNX_ID__, __COUNTER__) = {TYPE, REPEATABLE, KEY,         \
                                            SERVICE_LAZY_LOAD_CPP_CAST(VALUE)}
 
-#define SERVICE_LAZY_LOAD_CPP(name)                                     \
-  static void name();                                                   \
-  SERVICE_LAZY_LOAD_CPP_DATA_DEFINE("LynxBaseInitKey", false,           \
-                                    ServiceLazyLoadTypeFunction, name); \
+#define SERVICE_LAZY_LOAD_CPP(name)                                        \
+  static void name();                                                      \
+  SERVICE_LAZY_LOAD_CPP_DATA_DEFINE("LynxBaseInitKey", false,              \
+                                    CppServiceLazyLoadTypeFunction, name); \
   static void name()
 #endif
 #endif  // SERVICE_API_SERVICE_LAZY_LOAD_H_

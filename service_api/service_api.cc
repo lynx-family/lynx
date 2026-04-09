@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #define LYNX_SERVICE_API_NEED_EXPORTS
+#define LYNX_TRAIL_SERVICE_IMPL
 
 #include <service_api/service_api.h>
 

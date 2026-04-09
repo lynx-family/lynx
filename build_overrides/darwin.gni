@@ -61,6 +61,8 @@ Native_includes = rebase_path([
                                 "//",
                                 "//PODS_ROOT/LynxBase/lynx",
                                 "//PODS_ROOT/LynxBase",
+                                "//PODS_ROOT/LynxServiceAPI/lynx",
+                                "//PODS_ROOT/LynxServiceAPI",
                                 "//TARGET_BUILD_DIR/Lynx/gen/Lynx",
                                 "../core",
                                 "..",
