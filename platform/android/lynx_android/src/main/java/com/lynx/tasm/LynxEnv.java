@@ -781,6 +781,10 @@ public class LynxEnv {
 
   // if true, user can debug any lynx view
   public void enableDevtool(boolean enableDevTool) {
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      return;
+    }
+
     LLog.i(TAG, enableDevTool ? "Turn on devtool" : "Turn off devtool");
     if (enableDevTool) {
       LLog.setMinimumLoggingLevel(LLog.VERBOSE);

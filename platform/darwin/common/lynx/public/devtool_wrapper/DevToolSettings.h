@@ -20,6 +20,17 @@ static NSString *const SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT = @"enable_preview_scre
 static NSString *const SP_KEY_ENABLE_FSP_SCREENSHOT = @"enable_fsp_screenshot";
 static NSString *const SP_KEY_ENABLE_PERF_METRICS = @"enable_perf_metrics";
 
+/**
+ * A centralized manager for DevTool user preferences and settings.
+ * Handles persistence via NSUserDefaults and synchronizes values with the native C++ layer.
+ *
+ * Architectural Note on Lifecycle Checks:
+ * This class acts as a pure "Data Layer" representing the user's raw intent or saved preference.
+ * It intentionally DOES NOT check `DevToolLifecycle` or other system states when returning values.
+ * This prevents "loss of information" where a user's preference is masked by a transient system
+ * state. To get the "Effective State" (User Preference + System Capability), callers should query
+ * the facade layer (e.g., `LynxEnv`), which combines this data with the lifecycle state.
+ */
 @interface DevToolSettings : NSObject
 
 + (instancetype)sharedInstance;
