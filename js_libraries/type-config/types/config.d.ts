@@ -142,6 +142,17 @@ export interface Config {
   enableAccessibilityElement?: boolean;
 
   /**
+   * Enable animation forward update preservation
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.9
+   *
+   * @defaultValue false
+   */
+  enableAnimationForwardUpdatePreservation?: boolean;
+
+  /**
    * Whether to enable asynchronous initialization of videoEngine
    *
    * Supported platform: Android

@@ -375,7 +375,7 @@ bool FiberElement::MergeInlineStyles(StyleMap &new_styles) {
 }
 
 void FiberElement::PersistAnimationFillStyles(const StyleMap &styles) {
-  if (!element_manager()->FixAnimationForwardDynamicUpdateOverwrite() ||
+  if (!element_manager()->EnableAnimationForwardUpdatePreservation() ||
       !enable_new_animator() || styles.empty()) {
     return;
   }
@@ -2124,7 +2124,7 @@ void FiberElement::ConsumeStyle(const StyleMap &styles,
         return false;
       });
 
-  if (element_manager()->FixAnimationForwardDynamicUpdateOverwrite() &&
+  if (element_manager()->EnableAnimationForwardUpdatePreservation() &&
       animation_override_styles_map_.has_value() &&
       !animation_override_styles_map_->empty()) {
     ConsumeStyleInternal(
@@ -3477,7 +3477,7 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
             return false;
           });
 
-      if (element_manager()->FixAnimationForwardDynamicUpdateOverwrite() &&
+      if (element_manager()->EnableAnimationForwardUpdatePreservation() &&
           animation_override_styles_map_.has_value() &&
           !animation_override_styles_map_->empty()) {
         ConsumeStyleInternal(*animation_override_styles_map_, nullptr,

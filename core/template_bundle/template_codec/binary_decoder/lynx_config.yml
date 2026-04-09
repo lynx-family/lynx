@@ -1899,3 +1899,15 @@ enableDisexposureWhenBackground:
   since: '3.8'
   supportPlatform:
     - iOS
+enableAnimationForwardUpdatePreservation:
+  description: Enable animation forward update preservation
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  readNative: true
+  author: usczz
+  since: '3.9'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS

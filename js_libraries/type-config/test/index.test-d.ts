@@ -23,6 +23,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('disableQuickTracingGC').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableA11y').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableAccessibilityElement').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableAnimationForwardUpdatePreservation').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableAsyncInitVideoEngine').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableAsyncRequestImage').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableAsyncResolveSubtree').toEqualTypeOf<boolean | undefined>();

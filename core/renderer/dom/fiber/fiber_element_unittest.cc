@@ -6333,7 +6333,7 @@ TEST_P(FiberElementTest,
 
 TEST_P(FiberElementTest, TestFiberNewAnimatorWithDynamicStyleUpdate) {
   CSSParserConfigs configs;
-  manager->fix_animation_forward_dynamic_update_overwrite_ = true;
+  manager->enable_animation_forward_update_preservation_ = true;
 
   auto page = manager->CreateFiberPage("page", 11);
   auto element = manager->CreateFiberView();

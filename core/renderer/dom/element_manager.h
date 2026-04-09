@@ -1120,8 +1120,8 @@ class ElementManager : public ElementContextDelegate,
   bool FixOldFixedInsertSelfUseRenderParent() const {
     return fix_old_fixed_insert_self_use_render_parent_;
   }
-  bool FixAnimationForwardDynamicUpdateOverwrite() const {
-    return fix_animation_forward_dynamic_update_overwrite_;
+  bool EnableAnimationForwardUpdatePreservation() const {
+    return enable_animation_forward_update_preservation_;
   }
 
   bool CSSFragmentParsingOnTASMWorkerMTSRender();
@@ -1312,7 +1312,7 @@ class ElementManager : public ElementContextDelegate,
   bool fix_filter_dynamic_update_bug_{false};
   bool fix_new_fixed_removal_bug_{true};
   bool fix_old_fixed_insert_self_use_render_parent_{false};
-  bool fix_animation_forward_dynamic_update_overwrite_{false};
+  bool enable_animation_forward_update_preservation_{false};
   bool css_fragment_parsing_tasm_worker_thread_{false};
   bool enable_level_order_traversing_{false};
   std::atomic_int pending_level_order_tasks_{0};
