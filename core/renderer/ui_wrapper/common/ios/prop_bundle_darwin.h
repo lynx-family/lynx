@@ -16,13 +16,17 @@
 namespace lynx {
 namespace tasm {
 
+class NativePropBundle;
+
 class PropBundleCreatorDarwin : public PropBundleCreator {
  public:
   fml::RefPtr<PropBundle> CreatePropBundle() override;
+  fml::RefPtr<PropBundle> CreatePropBundle(bool use_map_buffer, bool use_native_value) override;
 };
 
 class PropBundleDarwin : public PropBundle {
  public:
+  explicit PropBundleDarwin(const NativePropBundle& prop_bundle);
   void SetNullProps(const char* key) override;
   void SetProps(const char* key, uint value) override;
   void SetProps(const char* key, int value) override;
@@ -83,6 +87,7 @@ class PropBundleDarwin : public PropBundle {
 
  private:
   friend class PropBundleCreatorDarwin;
+
   PropBundleDarwin();
   void AssembleArray(NSMutableArray* array, const pub::Value& value,
                      std::vector<std::unique_ptr<pub::Value>>* prev_value_vector = nullptr,

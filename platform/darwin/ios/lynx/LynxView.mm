@@ -26,11 +26,11 @@
 #import <Lynx/LynxThreadManager.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
+#import <Lynx/LynxUIRendererProtocol.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxWeakProxy.h>
 #import "LynxFeatureCounter.h"
 #import "LynxTraceEventDef.h"
-#import "LynxUIRendererProtocol.h"
 #import "LynxView+Protected.h"
 
 #include "base/include/lynx_actor.h"
@@ -50,9 +50,10 @@
 
 @end
 
-@implementation LynxView {
-  LynxRenderer* _render;
-}
+@implementation LynxView
+
+@synthesize rendererContext = _rendererContext;
+@synthesize renderer = _render;
 
 #pragma mark - Init
 
@@ -336,19 +337,17 @@
 
 #pragma mark - Override
 
-- (void)setRenderer:(LynxRenderer*)renderer {
-  _render = renderer;
+- (instancetype)initWithRendererContext:(LynxRendererContext*)context {
+  // LynxView has its own designated initializer chain; this should not be called directly.
+  NSAssert(NO, @"LynxView does not support initWithRendererContext:");
+  return [self init];
 }
 
 - (LynxRenderer*)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext*)context {
   return [[LynxRenderer alloc] initWithRenderHost:self andSign:sign andContext:context];
 }
 
-- (LynxRenderer*)getRenderer {
-  return _render;
-}
-
-- (UIView*)getView {
+- (UIView*)view {
   return self;
 }
 

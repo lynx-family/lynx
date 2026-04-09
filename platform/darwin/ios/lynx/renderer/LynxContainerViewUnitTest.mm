@@ -30,12 +30,12 @@
 
   [containerView setRenderer:renderer];
 
-  XCTAssertEqual([containerView getRenderer], renderer);
+  XCTAssertEqual([containerView renderer], renderer);
 }
 
 - (void)testGetView {
   LynxContainerView* containerView = [[LynxContainerView alloc] init];
-  XCTAssertEqual([containerView getView], containerView);
+  XCTAssertEqual(containerView.view, containerView);
 }
 
 @end

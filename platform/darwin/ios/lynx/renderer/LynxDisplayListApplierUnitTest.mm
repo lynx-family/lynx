@@ -26,6 +26,13 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
 
 @implementation LynxMockView
 
+@synthesize rendererContext = _rendererContext;
+
+- (instancetype)initWithRendererContext:(LynxRendererContext *)context {
+  self = [super init];
+  return self;
+}
+
 - (void)setRenderer:(LynxRenderer *)renderer {
   _renderer = renderer;
 }
@@ -35,11 +42,7 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   return self.renderer;
 }
 
-- (LynxRenderer *)getRenderer {
-  return self.renderer;
-}
-
-- (UIView *)getView {
+- (UIView *)view {
   return self;
 }
 
@@ -82,7 +85,7 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
 
 - (void)testProcessContentOperations {
   // Setup Mock View and Layer
-  // We use LynxMockView to ensure it responds to 'getRenderer' (from protocol) and
+  // We use LynxMockView to ensure it responds to 'renderer' (from protocol) and
   // 'layer'/'subviews' (from UIView)
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockLayer = OCMClassMock([CALayer class]);
@@ -91,7 +94,7 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
 
   // Stub properties
   [[[mockUIView stub] andReturn:mockLayer] layer];
-  [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
+  [[[mockUIView stub] andReturn:mockRenderer] renderer];
 
   // Stub subviews for kDrawView
   id mockSubView = OCMClassMock([UIView class]);
@@ -100,8 +103,8 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   [[[mockUIView stub] andReturn:@[ mockSubView ]] subviews];
 
   // Stub Renderer Sign
-  // [[_view getRenderer] getSign]
-  [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
+  // [[_view renderer] sign]
+  [OCMStub([(LynxRenderer *)mockRenderer sign]) andReturnValue:OCMOCK_VALUE((int32_t)1)];
 
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
                                                                       andContext:mockContext];
@@ -480,12 +483,12 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   id mockSuperLayer = OCMClassMock([CALayer class]);
   id mockContext = OCMClassMock([LynxRendererContext class]);
 
-  [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
+  [[[mockUIView stub] andReturn:mockRenderer] renderer];
   [[[mockUIView stub] andReturn:mockLayer] layer];
   [[[mockLayer stub] andReturn:mockSuperLayer] superlayer];
 
   // Renderer sign is 1
-  [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
+  [OCMStub([(LynxRenderer *)mockRenderer sign]) andReturnValue:OCMOCK_VALUE((int32_t)1)];
 
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
                                                                       andContext:mockContext];
@@ -526,11 +529,11 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   id mockLayer = OCMClassMock([CALayer class]);
   id mockContext = OCMClassMock([LynxRendererContext class]);
 
-  [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
+  [[[mockUIView stub] andReturn:mockRenderer] renderer];
   [[[mockUIView stub] andReturn:mockLayer] layer];
 
   // Renderer sign is 1
-  [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
+  [OCMStub([(LynxRenderer *)mockRenderer sign]) andReturnValue:OCMOCK_VALUE((int32_t)1)];
 
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
                                                                       andContext:mockContext];
@@ -650,9 +653,9 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   id mockContext = OCMClassMock([LynxRendererContext class]);
 
   [[[mockUIView stub] andReturn:mockLayer] layer];
-  [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
+  [[[mockUIView stub] andReturn:mockRenderer] renderer];
   [[[mockLayer stub] andReturn:mockSuperLayer] superlayer];
-  [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
+  [OCMStub([(LynxRenderer *)mockRenderer sign]) andReturnValue:OCMOCK_VALUE((int32_t)1)];
 
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
                                                                       andContext:mockContext];

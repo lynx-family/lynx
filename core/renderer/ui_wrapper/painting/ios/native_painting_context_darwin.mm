@@ -6,6 +6,7 @@
 #include "base/include/debug/lynx_error.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/ui_wrapper/common/ios/platform_extra_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
@@ -17,6 +18,8 @@
 
 #import <Foundation/Foundation.h>
 #import <Lynx/LUIBodyView.h>
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxUIOwner+Private.h>
 
 namespace lynx {
@@ -69,8 +72,26 @@ std::vector<float> NativePaintingCtxDarwin::ScrollBy(int64_t id, float width, fl
 }
 
 int32_t NativePaintingCtxDarwin::GetTagInfo(const std::string &tag_name) {
-  // TODO: impl this function later.
-  return 0;
+  NSInteger result = 0;
+  BOOL supported = YES;
+  NSString *nsTagName = [NSString stringWithUTF8String:tag_name.c_str()];
+  Class clazz = [LynxComponentRegistry shadowNodeClassWithName:nsTagName accessible:&supported];
+  if (supported) {
+    LynxShadowNode *node = nil;
+    NSInteger sign = 0;
+    if (clazz) {
+      node = [[clazz alloc] initWithSign:sign tagName:nsTagName];
+    }
+    if (node != nil) {
+      result |= LynxShadowNodeTypeCustom;
+      if ([node isVirtual]) {
+        result |= LynxShadowNodeTypeVirtual;
+      }
+    } else {
+      result |= LynxShadowNodeTypeCommon;
+    }
+  }
+  return static_cast<int32_t>(result);
 }
 
 bool NativePaintingCtxDarwin::IsFlatten(base::MoveOnlyClosure<bool, bool> func) { return false; }
@@ -124,7 +145,15 @@ void NativePaintingCtxDarwin::ResumeExposure() {
 }
 
 void NativePaintingCtxDarwin::UpdatePlatformExtraBundle(int32_t id, PlatformExtraBundle *bundle) {
-  // TODO: impl this function later.
+  if (!bundle) {
+    return;
+  }
+
+  auto platform_bundle = static_cast<PlatformExtraBundleDarwin *>(bundle);
+  Enqueue([ref = platform_ref_, id, value = platform_bundle->PlatformBundle()]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)
+        ->UpdatePlatformRendererExtraBundle(id, value);
+  });
 }
 
 void NativePaintingCtxDarwin::FinishTasmOperation(const std::shared_ptr<PipelineOptions> &options) {

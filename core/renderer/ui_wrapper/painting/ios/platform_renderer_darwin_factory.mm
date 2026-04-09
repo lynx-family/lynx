@@ -5,6 +5,8 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
 
+#import <Lynx/LynxComponentRegistry.h>
+
 namespace lynx {
 namespace tasm {
 
@@ -18,7 +20,9 @@ fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateRenderer(
 
 fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateExtendedRenderer(
     int id, const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data) {
-  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, tag_name);
+  auto renderer = fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, tag_name);
+  renderer->UpdateAttributes(init_data, false);
+  return renderer;
 }
 
 }  // namespace tasm

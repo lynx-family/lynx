@@ -101,7 +101,7 @@ void NativePropBundle::SetPropsByID(CSSPropertyID id, const uint8_t* data,
                                     size_t size) {
   auto array = lepus::Value(lepus::CArray::Create());
   for (size_t i = 0; i < size; ++i) {
-    array.SetProperty(i, lepus::Value(data[i]));
+    array.SetProperty(static_cast<uint32_t>(i), lepus::Value(data[i]));
   }
   auto key = CSSProperty::GetPropertyNameCStr(id);
   props_[key] = lepus::Value(std::move(array));
@@ -111,7 +111,7 @@ void NativePropBundle::SetPropsByID(CSSPropertyID id, const uint32_t* data,
                                     size_t size) {
   auto array = lepus::Value(lepus::CArray::Create());
   for (size_t i = 0; i < size; ++i) {
-    array.SetProperty(i, lepus::Value(data[i]));
+    array.SetProperty(static_cast<uint32_t>(i), lepus::Value(data[i]));
   }
   auto key = CSSProperty::GetPropertyNameCStr(id);
   props_[key] = lepus::Value(std::move(array));

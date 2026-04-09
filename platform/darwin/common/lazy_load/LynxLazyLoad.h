@@ -81,6 +81,20 @@ typedef struct _LynxFunctionInfo {
   }
 
 /**
+ * Register renderer host class when lynx was initialized firstly which will be used by
+ * PlatformRendererFactory.
+ *
+ * the order of registration is not exact. It's possible that the
+ * previous renderer host will be replaced by the current class with the same name.
+ *
+ * @param name, the tag name used for displaying in front-end
+ */
+#define LYNX_LAZY_REGISTER_RENDERER_HOST(name)                                              \
+  +(void)lynxLazyLoad {                                                                     \
+    LYNX_BASE_INIT_METHOD [LynxComponentRegistry registerRendererHost:self withName:@name]; \
+  }
+
+/**
  * Code will be executed util lynxEnv was initialized when LazyLoad is true
  */
 #define LYNX_LOAD_LAZY(Codec) \
