@@ -36,6 +36,19 @@
   }
 
 /**
+ * Register renderer host class when app starts which will be used by PlatformRendererFactory.
+ *
+ * the order of registration is not exact. It's possible that the
+ * previous renderer host will be replaced by the current class with the same name.
+ *
+ * @param name, the tag name used for displaying in front-end
+ */
+#define LYNX_REGISTER_RENDERER_HOST(name)                             \
+  +(void)load {                                                       \
+    [LynxComponentRegistry registerRendererHost:self withName:@name]; \
+  }
+
+/**
  * Registry for shadow node and ui which are called component.
  */
 
@@ -45,6 +58,8 @@
 + (void)registerNode:(Class)componentClass nameAs:(NSString*)name;
 + (void)registerUI:(Class)componentClass withName:(NSString*)name;
 + (void)registerShadowNode:(Class)componentClass withName:(NSString*)name;
++ (void)registerRendererHost:(Class)componentClass withName:(NSString*)name;
++ (Class)rendererHostClassWithName:(NSString*)name;
 + (Class)shadowNodeClassWithName:(NSString*)name accessible:(BOOL*)legal;
 + (Class)uiClassWithName:(NSString*)name accessible:(BOOL*)legal;
 + (NSSet<NSString*>*)lynxUIClasses;
@@ -56,8 +71,10 @@
 
 - (void)registerUI:(Class)componentClass withName:(NSString*)name;
 - (void)registerShadowNode:(Class)componentClass withName:(NSString*)name;
+- (void)registerRendererHost:(Class)componentClass withName:(NSString*)name;
 - (Class)shadowNodeClassWithName:(NSString*)name accessible:(BOOL*)legal;
 - (Class)uiClassWithName:(NSString*)name accessible:(BOOL*)legal;
+- (Class)rendererHostClassWithName:(NSString*)name;
 
 + (void)tryRegisterBuiltInClasses;
 + (void)registerBuiltInBehaviors:(LynxComponentScopeRegistry*)registry;

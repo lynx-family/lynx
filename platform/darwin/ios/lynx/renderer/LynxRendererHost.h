@@ -11,12 +11,13 @@
 
 @protocol LynxRendererHost <NSObject>
 
-- (void)setRenderer:(LynxRenderer *)renderer;
+@property(nonatomic, strong) LynxRenderer *renderer;
+@property(nonatomic, strong) LynxRendererContext *rendererContext;
+
+- (instancetype)initWithRendererContext:(LynxRendererContext *)context;
 
 - (LynxRenderer *)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext *)context;
 
-- (LynxRenderer *)getRenderer;
-
-- (UIView *)getView;
+- (UIView *)view;
 
 @end

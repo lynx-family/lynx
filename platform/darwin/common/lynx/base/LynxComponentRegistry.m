@@ -17,6 +17,7 @@
 
 static LynxThreadSafeDictionary<NSString*, Class>* LynxUIClasses;
 static LynxThreadSafeDictionary<NSString*, Class>* LynxShadowNodeClasses;
+static LynxThreadSafeDictionary<NSString*, Class>* LynxRendererHostClasses;
 
 static NSDictionary<NSString*, Class>* LynxBuiltInUIClasses;
 static NSDictionary<NSString*, Class>* LynxBuiltInShadowNodeClasses;
@@ -61,6 +62,20 @@ static NSDictionary<NSString*, Class>* LynxBuiltInShadowNodeClasses;
   }
 }
 
++ (void)registerRendererHost:(Class)componentClass withName:(NSString*)name {
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    LynxRendererHostClasses = [LynxThreadSafeDictionary new];
+  });
+  if (componentClass && name) {
+    [LynxRendererHostClasses setObject:componentClass forKey:name];
+  }
+}
+
++ (Class)rendererHostClassWithName:(NSString*)name {
+  return LynxRendererHostClasses[name];
+}
+
 + (Class)shadowNodeClassWithName:(NSString*)name accessible:(BOOL*)legal {
   Class res = LynxShadowNodeClasses[name];
   if (res != nil || [self supportNode:name]) {
@@ -68,7 +83,7 @@ static NSDictionary<NSString*, Class>* LynxBuiltInShadowNodeClasses;
   } else {
     *legal = NO;
   }
-  return LynxShadowNodeClasses[name];
+  return res;
 }
 
 + (Class)uiClassWithName:(NSString*)name accessible:(BOOL*)legal {
@@ -78,7 +93,7 @@ static NSDictionary<NSString*, Class>* LynxBuiltInShadowNodeClasses;
   } else {
     *legal = NO;
   }
-  return LynxUIClasses[name];
+  return res;
 }
 
 + (BOOL)supportUI:(NSString*)name {
@@ -101,6 +116,7 @@ static NSDictionary<NSString*, Class>* LynxBuiltInShadowNodeClasses;
 
 @property(nonatomic) LynxThreadSafeDictionary<NSString*, Class>* uiClasses;
 @property(nonatomic) LynxThreadSafeDictionary<NSString*, Class>* shadowNodeClasses;
+@property(nonatomic) LynxThreadSafeDictionary<NSString*, Class>* rendererHostClasses;
 
 @end
 
@@ -111,6 +127,7 @@ static NSDictionary<NSString*, Class>* LynxBuiltInShadowNodeClasses;
   if (self) {
     _uiClasses = [LynxThreadSafeDictionary new];
     _shadowNodeClasses = [LynxThreadSafeDictionary new];
+    _rendererHostClasses = [LynxThreadSafeDictionary new];
   }
   return self;
 }
@@ -129,6 +146,20 @@ static NSDictionary<NSString*, Class>* LynxBuiltInShadowNodeClasses;
     [_shadowNodeClasses setObject:componentClass forKey:name];
   }
 #endif
+}
+
+- (void)registerRendererHost:(Class)componentClass withName:(NSString*)name {
+  if (componentClass && name) {
+    [_rendererHostClasses setObject:componentClass forKey:name];
+  }
+}
+
+- (Class)rendererHostClassWithName:(NSString*)name {
+  Class res = _rendererHostClasses[name];
+  if (res == nil) {
+    res = [LynxComponentRegistry rendererHostClassWithName:name];
+  }
+  return res;
 }
 
 - (Class)shadowNodeClassWithName:(NSString*)name accessible:(BOOL*)legal {
@@ -157,6 +188,10 @@ static NSDictionary<NSString*, Class>* LynxBuiltInShadowNodeClasses;
   }
   for (NSString* name in _shadowNodeClasses) {
     [LynxComponentRegistry registerShadowNode:[_shadowNodeClasses valueForKey:name] withName:name];
+  }
+  for (NSString* name in _rendererHostClasses) {
+    [LynxComponentRegistry registerRendererHost:[_rendererHostClasses valueForKey:name]
+                                       withName:name];
   }
 }
 

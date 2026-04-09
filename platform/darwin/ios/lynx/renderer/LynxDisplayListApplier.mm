@@ -4,12 +4,12 @@
 
 #import <Lynx/LynxBackgroundDrawable.h>
 #import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
 #import <Lynx/LynxUIContext.h>
-#import "LynxContext+Internal.h"
 #import "LynxDisplayListApplier+Internal.h"
 #import "LynxTextraLayer.h"
 
@@ -128,7 +128,7 @@ using namespace lynx::tasm;
         bool record_offset = false;
         if (int_count >= 2) {
           int32_t sign = [self nextContentInt];
-          record_offset = [[_view getRenderer] getSign] != sign;
+          record_offset = _view.renderer.sign != sign;
           sign_stack_.emplace(sign);
           [self nextContentInt];  // skip type
         }
@@ -678,7 +678,7 @@ using namespace lynx::tasm;
 }
 
 - (BOOL)shouldInsertAsHostDecorationForOp:(DisplayListOpType)op {
-  if (sign_stack_.empty() || sign_stack_.top() != [[_view getRenderer] getSign]) {
+  if (sign_stack_.empty() || sign_stack_.top() != _view.renderer.sign) {
     return NO;
   }
   return op == DisplayListOpType::kFill || op == DisplayListOpType::kBorder;

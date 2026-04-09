@@ -3,9 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
+#include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
+#include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 
 #import <Lynx/LUIBodyView.h>
+#import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxContainerView.h>
 #import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
@@ -39,7 +42,7 @@ PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* co
 
 PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                                const base::String& tag_name)
-    : PlatformRendererImpl(id, PlatformRendererType::kUnknown, tag_name) {}
+    : PlatformRendererDarwin(context, id, PlatformRendererType::kUnknown, tag_name) {}
 
 PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                                PlatformRendererType type,
@@ -71,7 +74,7 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
         }
       }
 
-      [[_view getRenderer] updateDisplayList:&display_list_];
+      [[_view renderer] updateDisplayList:&display_list_];
       [_view setNeedsDisplay];
     }
   }
@@ -79,7 +82,13 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
 
 void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                                                 bool tends_to_flatten) {
-  // TODO: impl this function later.
+  if (attributes && attributes->IsNative()) {
+    // Convert NativePropBundle to PropBundleDarwin
+    // The attributes should be a NativePropBundle from the pipeline
+    NativePropBundle* native_bundle = static_cast<NativePropBundle*>(attributes.get());
+    PropBundleDarwin prop_bundle_darwin(*native_bundle);
+    [_view.renderer updateAttributes:prop_bundle_darwin.dictionary()];
+  }
 }
 
 void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child) {
@@ -90,7 +99,7 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child) {
   auto* child_renderer = static_cast<PlatformRendererDarwin*>(child);
   UIView<LynxRendererHost>* child_view = child_renderer->GetUIView();
   [_view addSubview:child_view];
-  [[child_view getRenderer] reattachHostDecorationLayers];
+  [[child_view renderer] reattachHostDecorationLayers];
 }
 
 void PlatformRendererDarwin::OnRemoveFromParent() {
@@ -98,7 +107,7 @@ void PlatformRendererDarwin::OnRemoveFromParent() {
     return;
   }
 
-  [[_view getRenderer] detachHostDecorationLayers];
+  [[_view renderer] detachHostDecorationLayers];
   [_view removeFromSuperview];
 }
 
@@ -113,7 +122,7 @@ void PlatformRendererDarwin::OnUpdateSubtreeProperties(const DisplayList& subtre
     return;
   }
 
-  LynxRenderer* renderer = [_view getRenderer];
+  LynxRenderer* renderer = _view.renderer;
   if (renderer == nil) {
     return;
   }
@@ -123,7 +132,22 @@ void PlatformRendererDarwin::OnUpdateSubtreeProperties(const DisplayList& subtre
 
 void PlatformRendererDarwin::InitializeUIView() {
   if (IsPlatformExtendedRenderer()) {
-    // TODO: impl this function later.
+    NSString* tagName = [NSString stringWithUTF8String:GetTagName().str().c_str()];
+    Class hostClass = [LynxComponentRegistry rendererHostClassWithName:tagName];
+
+    if (hostClass && [hostClass conformsToProtocol:@protocol(LynxRendererHost)]) {
+      LynxRendererContext* rendererContext = context_->GetRendererContext();
+      id<LynxRendererHost> customHost = [[hostClass alloc] initWithRendererContext:rendererContext];
+      if (customHost && [customHost isKindOfClass:[UIView class]]) {
+        // Safe to cast after confirming it's a UIView
+        _view = (UIView<LynxRendererHost>*)customHost;
+
+        LynxRenderer* renderer = [_view createRendererWithSign:GetId() andContext:rendererContext];
+        [_view setRenderer:renderer];
+        return;
+      }
+    }
+
     _view = [[LynxContainerView alloc] init];
     return;
   }
@@ -151,6 +175,15 @@ void PlatformRendererDarwin::InitializeUIView() {
     LynxRenderer* renderer = [_view createRendererWithSign:GetId()
                                                 andContext:context_->GetRendererContext()];
     [_view setRenderer:renderer];
+  }
+}
+
+void PlatformRendererDarwin::UpdatePlatformExtraBundle(id platform_extra_bundle) {
+  if (_view != nil) {
+    LynxRenderer* renderer = _view.renderer;
+    if (renderer != nil) {
+      [renderer updatePlatformExtraBundle:platform_extra_bundle];
+    }
   }
 }
 

@@ -154,7 +154,7 @@
 
 - (void)testGetSign {
   LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:nil andSign:1 andContext:nil];
-  XCTAssertEqual([renderer getSign], 1);
+  XCTAssertEqual([renderer sign], 1);
 }
 
 #pragma mark - SubtreeProperties Tests
@@ -216,7 +216,7 @@
       0.70710677f, 0.70710677f, 0.0f, 0.0f, -0.70710677f, 0.70710677f, 0.0f, 0.0f,
       0.0f,        0.0f,        1.0f, 0.0f, 60.0f,        -24.852814f, 0.0f, 1.0f,
   };
-  [[view getRenderer] applyTransform:rotate];
+  [[view renderer] applyTransform:rotate];
 
   lynx::tasm::DisplayList list;
   list.AddOperation(lynx::tasm::DisplayListOpType::kBegin, 13,

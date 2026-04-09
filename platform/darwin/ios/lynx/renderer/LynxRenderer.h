@@ -14,6 +14,14 @@
                            andSign:(int32_t)sign
                         andContext:(LynxRendererContext *)context;
 
-- (int32_t)getSign;
+- (int32_t)sign;
+
+- (UIView<LynxRendererHost> *)rendererHost;
+
+- (LynxRendererContext *)context;
+
+- (void)updateAttributes:(NSDictionary *)props;
+
+- (void)updatePlatformExtraBundle:(id)data;
 
 @end

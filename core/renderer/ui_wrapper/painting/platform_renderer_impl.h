@@ -48,6 +48,7 @@ class PlatformRendererImpl : public PlatformRenderer {
   const ChildVecT& Children() const override { return children_; }
 
   int GetId() const override { return id_; }
+  const base::String& GetTagName() const { return tag_name_; }
 
  protected:
   void ReleaseSelf() const override;
