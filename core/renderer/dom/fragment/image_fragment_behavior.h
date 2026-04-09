@@ -21,6 +21,9 @@ class ImageFragmentBehavior : public FragmentBehavior {
       : FragmentBehavior(fragment) {}
   void OnUpdateLayout(const LayoutInfoForDraw& layout_result) override;
   void OnDraw(DisplayListBuilder& display_list_builder) override;
+  PlatformRendererType GetType() const override {
+    return PlatformRendererType::kImage;
+  }
 
  private:
   // Computes event mask based on element's event map.

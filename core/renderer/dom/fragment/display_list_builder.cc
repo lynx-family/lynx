@@ -24,12 +24,13 @@ void DisplayListBuilder::Reserve(int32_t capacity) {
   display_list_.Reserve(capacity);
 }
 
-DisplayListBuilder& DisplayListBuilder::Begin(int id, float x, float y,
-                                              float width, float height) {
+DisplayListBuilder& DisplayListBuilder::Begin(int id, PlatformRendererType type,
+                                              float x, float y, float width,
+                                              float height) {
   // Use AddOperation directly to avoid temporary vector construction - only
   // store float params
-  display_list_.AddOperation(DisplayListOpType::kBegin, id, x, y, width,
-                             height);
+  display_list_.AddOperation(DisplayListOpType::kBegin, id,
+                             static_cast<int32_t>(type), x, y, width, height);
   return *this;
 }
 

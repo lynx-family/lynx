@@ -43,6 +43,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     public static final int kImage = 5;
     public static final int kList = 6;
     public static final int kListItem = 7;
+    public static final int kExtended = 8;
   }
 
   public static final class PlatformEventHandlerState {

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 
+#include "core/public/platform_renderer_type.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 
@@ -32,8 +33,8 @@ class DisplayListBuilder {
   void Reserve(int32_t capacity);
 
   // Begin a new fragment
-  DisplayListBuilder& Begin(int id, float x, float y, float width,
-                            float height);
+  DisplayListBuilder& Begin(int id, PlatformRendererType type, float x, float y,
+                            float width, float height);
 
   // End the current fragment
   DisplayListBuilder& End();

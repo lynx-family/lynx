@@ -126,10 +126,11 @@ using namespace lynx::tasm;
     switch (op) {
       case DisplayListOpType::kBegin: {
         bool record_offset = false;
-        if (int_count >= 1) {
+        if (int_count >= 2) {
           int32_t sign = [self nextContentInt];
           record_offset = [[_view getRenderer] getSign] != sign;
           sign_stack_.emplace(sign);
+          [self nextContentInt];  // skip type
         }
 
         if (float_count == 4) {
