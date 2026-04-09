@@ -2,13 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxEngineProxy.h>
 #import <Lynx/LynxEventDetail.h>
 #import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
-#import "LynxEngineProxy.h"
 #import "LynxTemplateData+Converter.h"
 #import "LynxUIIntersectionObserver.h"
+
+#include <limits>
 
 using namespace lynx::tasm;
 using namespace lynx::lepus;
@@ -26,6 +28,7 @@ using namespace lynx::lepus;
   if (self) {
     eventObservers_ = [[NSMutableArray alloc] init];
     _engineProxy = engineProxy;
+    eventID_ = 0;
   }
   return self;
 }
@@ -49,10 +52,12 @@ using namespace lynx::lepus;
   id<LynxEventTarget> target = (id<LynxEventTarget>)event.eventTarget;
   if ([target parentLynxPageUI] || [target childrenLynxPageUI]) {
     if ([target parentLynxPageUI] == nil) {
-      eventID_ = (int64_t)(event.timestamp * 1000);
+      eventID_ = (eventID_ + 1) % (std::numeric_limits<int64_t>::max() - 1);
     }
     event.eventID = eventID_;
     [target setEventID:eventID_];
+    _LogI(@"LynxEventEmitter TouchEventHandler %@ %lld %p", event.eventName, (long long)eventID_,
+          self);
     [self startEventGenerate:event];
 
     if ([target childrenLynxPageUI][[NSString stringWithFormat:@"%p", target]] == nil) {
@@ -85,10 +90,12 @@ using namespace lynx::lepus;
   if ([target parentLynxPageUI] || [target childrenLynxPageUI]) {
     id<LynxEventTarget> target = (id<LynxEventTarget>)event.eventTarget;
     if ([target parentLynxPageUI] == nil) {
-      eventID_ = (int64_t)(event.timestamp * 1000);
+      eventID_ = (eventID_ + 1) % (std::numeric_limits<int64_t>::max() - 1);
     }
     event.eventID = eventID_;
     [target setEventID:eventID_];
+    _LogI(@"LynxEventEmitter TouchEventHandler %@ %lld %p", event.eventName, (long long)eventID_,
+          self);
     [self startEventGenerate:event];
 
     if ([target childrenLynxPageUI][[NSString stringWithFormat:@"%p", target]] == nil) {
