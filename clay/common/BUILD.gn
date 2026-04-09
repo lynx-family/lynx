@@ -24,6 +24,8 @@ source_set("common") {
     "thread_host.h",
     "thread_host_holder.cc",
     "thread_host_holder.h",
+    "trail_settings.cc",
+    "trail_settings.h",
   ]
 
   if (!is_android) {
