@@ -584,7 +584,7 @@ export interface Properties {
    *
    * @see https://lynxjs.org/api/css/properties/grid-column-start
    */
-  gridColumnStart?: 'span' | (number & {}) | (string & {}) | undefined;
+  gridColumnStart?: (number & {}) | (string & {}) | undefined;
   /**
    * The `grid-column-end` CSS property specifies a grid item's end position within the grid column by contributing a line, a span, or nothing (automatic) to its grid placement.
    *
@@ -592,7 +592,7 @@ export interface Properties {
    *
    * @see https://lynxjs.org/api/css/properties/grid-column-end
    */
-  gridColumnEnd?: 'span' | (number & {}) | (string & {}) | undefined;
+  gridColumnEnd?: (number & {}) | (string & {}) | undefined;
   /**
    * The `grid-row-start` CSS property specifies a grid item's start position within the grid row by contributing a line, a span, or nothing (automatic) to its grid placement.
    *
@@ -600,7 +600,7 @@ export interface Properties {
    *
    * @see https://lynxjs.org/api/css/properties/grid-row-start
    */
-  gridRowStart?: 'span' | (number & {}) | (string & {}) | undefined;
+  gridRowStart?: (number & {}) | (string & {}) | undefined;
   /**
    * Used to set the width of the left border.
    *
@@ -616,7 +616,7 @@ export interface Properties {
    *
    * @see https://lynxjs.org/api/css/properties/grid-row-end
    */
-  gridRowEnd?: 'span' | (number & {}) | (string & {}) | undefined;
+  gridRowEnd?: (number & {}) | (string & {}) | undefined;
   /**
    * The `column-gap`/`grid-column-gap` CSS property sets the size of the gap (gutter) between an element's columns in flexible box layout and grid layout.
    *
@@ -835,6 +835,22 @@ export interface Properties {
    * @see https://lynxjs.org/api/css/properties/-x-auto-font-size-line-ranges
    */
   XAutoFontSizeLineRanges?: 'line-range' | 'to' | (number & {}) | (string & {}) | 0 | infinity | undefined;
+  /**
+   * The grid-column CSS shorthand property specifies a grid item's size and location within a grid column by contributing a line, a span, or nothing (automatic) to its grid placement, thereby specifying the inline-start and inline-end edge of its grid area.
+   *
+   * **Syntax**: `<grid-line> [ / <grid-line> ]?`
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-column
+   */
+  gridColumn?: 'auto' | (number & {}) | (string & {}) | undefined;
+  /**
+   * The grid-row CSS shorthand property specifies a grid item's size and location within a grid row by contributing a line, a span, or nothing (automatic) to its grid placement, thereby specifying the inline-start and inline-end edge of its grid area.
+   *
+   * **Syntax**: `<grid-line> [ / <grid-line> ]?`
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-row
+   */
+  gridRow?: 'auto' | (number & {}) | (string & {}) | undefined;
   /**
    * The opacity CSS property sets the opacity of an element.
    *

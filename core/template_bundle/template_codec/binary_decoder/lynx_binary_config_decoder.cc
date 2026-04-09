@@ -218,6 +218,8 @@ void LynxBinaryConfigDecoder::UpdateCSSConfigs(
       page_config->GetEnableParseIntFlex();
   compile_options_.enable_flex_basis_zero_percent_ =
       page_config->GetEnableFlexBasisZeroPercent();
+  compile_options_.enable_grid_placement_shorthands_ =
+      page_config->GetEnableGridPlacementShorthands();
   auto configs =
       CSSParserConfigs::GetCSSParserConfigsByComplierOptions(compile_options_);
   page_config->SetCSSParserConfigs(configs);
