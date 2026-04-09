@@ -207,9 +207,10 @@ public class DisplayListApplier implements Drawable.Callback {
 
       switch (op) {
         case OP_BEGIN: {
-          // Begin fragment: id, x, y, width, height (1 int, 4 floats)
-          if (intParamCount >= 1) {
+          // Begin fragment: id, type, x, y, width, height (2 ints, 4 floats)
+          if (intParamCount >= 2) {
             nextContentInt(); // skip id
+            nextContentInt(); // skip type
           }
           if (floatParamCount >= 4) {
             float x = nextContentFloat();

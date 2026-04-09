@@ -22,11 +22,11 @@ void FragmentBehavior::Destroy() {
 
 void FragmentBehavior::CreatePlatformRenderer(
     const fml::RefPtr<PropBundle>& attributes) {
-  if (!painting_context_) {
+  if (!painting_context_ || !fragment_) {
     return;
   }
-  painting_context_->CreatePlatformRenderer(
-      fragment_->id(), PlatformRendererType::kView, attributes);
+  painting_context_->CreatePlatformRenderer(fragment_->id(), GetType(),
+                                            attributes);
 }
 
 }  // namespace lynx::tasm

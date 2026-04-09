@@ -261,9 +261,11 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
       // crate the event target.
       case static_cast<int>(DisplayListOpType::kBegin): {
         int sign = 0;
+        auto type = PlatformRendererType::kUnknown;
         float left = 0.f, top = 0.f, width = 0.f, height = 0.f;
-        if (int_param_cnt == 1) {
+        if (int_param_cnt >= 2) {
           sign = int_data[int_data_idx++];
+          type = static_cast<PlatformRendererType>(int_data[int_data_idx++]);
         }
         if (float_param_cnt == 4) {
           left = float_data[float_data_idx++];
@@ -273,6 +275,7 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         }
         auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
             this, sign, left, top, width, height);
+        event_target->SetPlatformRendererType(type);
         // the root event target.
         if (sign == kRootId) {
           event_target_tree_ = event_target;

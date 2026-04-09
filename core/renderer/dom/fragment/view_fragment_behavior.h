@@ -14,6 +14,9 @@ class ViewFragmentBehavior : public FragmentBehavior {
       : FragmentBehavior(fragment) {}
   void CreatePlatformRenderer(
       const fml::RefPtr<PropBundle>& init_data) override;
+  PlatformRendererType GetType() const override {
+    return PlatformRendererType::kView;
+  }
 };
 
 }  // namespace lynx::tasm

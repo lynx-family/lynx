@@ -219,7 +219,9 @@
   [[view getRenderer] applyTransform:rotate];
 
   lynx::tasm::DisplayList list;
-  list.AddOperation(lynx::tasm::DisplayListOpType::kBegin, 13, 135.0f, 45.0f, 120.0f, 120.0f);
+  list.AddOperation(lynx::tasm::DisplayListOpType::kBegin, 13,
+                    static_cast<int32_t>(PlatformRendererType::kView), 135.0f, 45.0f, 120.0f,
+                    120.0f);
   list.AddOperation(lynx::tasm::DisplayListOpType::kEnd);
   renderer.OnUpdateDisplayList(std::move(list));
 

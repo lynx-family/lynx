@@ -8559,6 +8559,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext::Platfor
   public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererType.kImage kImage;
   public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererType.kList kList;
   public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererType.kListItem kListItem;
+  public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererType.kExtended kExtended;
 }
 
 public class com::lynx::tasm::event::LynxTouchEvent::Point :  {

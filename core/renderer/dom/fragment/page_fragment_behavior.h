@@ -14,6 +14,9 @@ class PageFragmentBehavior : public FragmentBehavior {
       : FragmentBehavior(fragment) {}
   void CreatePlatformRenderer(
       const fml::RefPtr<PropBundle>& attributes) override;
+  PlatformRendererType GetType() const override {
+    return PlatformRendererType::kPage;
+  }
 };
 
 }  // namespace lynx::tasm

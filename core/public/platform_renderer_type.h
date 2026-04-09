@@ -15,6 +15,7 @@ enum class PlatformRendererType : uint8_t {
   kImage = 5,
   kList = 6,
   kListItem = 7,
+  kExtended = 8,
 };
 
 #endif  // CORE_PUBLIC_PLATFORM_RENDERER_TYPE_H_
