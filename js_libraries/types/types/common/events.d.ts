@@ -764,6 +764,18 @@ export interface LynxEvent<T> {
   MouseMove?: EventHandler<BaseMouseEvent<T>>;
 
   /** 
+   * Indicates that a pointing device is moved onto the element.
+   * @PC
+   */
+  MouseEnter?: EventHandler<BaseMouseEvent<T>>;
+
+  /** 
+   * Indicates that a pointing device is moved off the element.
+   * @PC
+   */
+  MouseLeave?: EventHandler<BaseMouseEvent<T>>;
+
+  /** 
    * Mouse click.
    * @PC
    */
@@ -904,6 +916,8 @@ interface AnimationEndProps<T> { bindanimationend?: LynxEvent<T>['AnimationEnd']
 interface MouseDownProps<T> { bindmousedown?: LynxEvent<T>['MouseDown']; catchmousedown?: LynxEvent<T>['MouseDown']; 'capture-bindmousedown'?: LynxEvent<T>['MouseDown']; 'capture-catchmousedown'?: LynxEvent<T>['MouseDown']; 'global-bindmousedown'?: LynxEvent<T>['MouseDown']; }
 interface MouseUpProps<T> { bindmouseup?: LynxEvent<T>['MouseUp']; catchmouseup?: LynxEvent<T>['MouseUp']; 'capture-bindmouseup'?: LynxEvent<T>['MouseUp']; 'capture-catchmouseup'?: LynxEvent<T>['MouseUp']; 'global-bindmouseup'?: LynxEvent<T>['MouseUp']; }
 interface MouseMoveProps<T> { bindmousemove?: LynxEvent<T>['MouseMove']; catchmousemove?: LynxEvent<T>['MouseMove']; 'capture-bindmousemove'?: LynxEvent<T>['MouseMove']; 'capture-catchmousemove'?: LynxEvent<T>['MouseMove']; 'global-bindmousemove'?: LynxEvent<T>['MouseMove']; }
+interface MouseEnterProps<T> { bindmouseenter?: LynxEvent<T>['MouseEnter']; catchmouseenter?: LynxEvent<T>['MouseEnter']; 'capture-bindmouseenter'?: LynxEvent<T>['MouseEnter']; 'capture-catchmouseenter'?: LynxEvent<T>['MouseEnter']; 'global-bindmouseenter'?: LynxEvent<T>['MouseEnter']; }
+interface MouseLeaveProps<T> { bindmouseleave?: LynxEvent<T>['MouseLeave']; catchmouseleave?: LynxEvent<T>['MouseLeave']; 'capture-bindmouseleave'?: LynxEvent<T>['MouseLeave']; 'capture-catchmouseleave'?: LynxEvent<T>['MouseLeave']; 'global-bindmouseleave'?: LynxEvent<T>['MouseLeave']; }
 interface MouseClickProps<T> { bindmouseclick?: LynxEvent<T>['MouseClick']; catchmouseclick?: LynxEvent<T>['MouseClick']; 'capture-bindmouseclick'?: LynxEvent<T>['MouseClick']; 'capture-catchmouseclick'?: LynxEvent<T>['MouseClick']; 'global-bindmouseclick'?: LynxEvent<T>['MouseClick']; }
 interface MouseDblClickProps<T> { bindmousedblclick?: LynxEvent<T>['MouseDblClick']; catchmousedblclick?: LynxEvent<T>['MouseDblClick']; 'capture-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; 'capture-catchmousedblclick'?: LynxEvent<T>['MouseDblClick']; 'global-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; }
 interface MouseLongPressProps<T> { bindmouselongpress?: LynxEvent<T>['MouseLongPress']; catchmouselongpress?: LynxEvent<T>['MouseLongPress']; 'capture-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; 'capture-catchmouselongpress'?: LynxEvent<T>['MouseLongPress']; 'global-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; }
@@ -941,6 +955,8 @@ export type LynxEventPropsBase<T> = BGLoadProps<T> &
   MouseDownProps<T> &
   MouseUpProps<T> &
   MouseMoveProps<T> &
+  MouseEnterProps<T> &
+  MouseLeaveProps<T> &
   MouseClickProps<T> &
   MouseDblClickProps<T> &
   MouseLongPressProps<T> &

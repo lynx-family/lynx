@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.9.2
+
+- Add `bindmouseenter` and `bindmouseleave` typings for mouse events.
+
 ## 3.9.1
 
 - lynx.requestResourcePrefetch support awaitComplete options.

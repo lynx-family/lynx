@@ -1,5 +1,5 @@
 import { assertType, describe, expect, expectTypeOf, it } from 'vitest';
-import { StandardProps, Target, TouchEvent, MainThread, AnimationEvent } from '../../types';
+import { StandardProps, Target, TouchEvent, MainThread, AnimationEvent, MouseEvent } from '../../types';
 
 describe('Test Basic Event Binding', () => {
   it('Test event bind', () => {
@@ -90,5 +90,21 @@ describe('Test Animation Events', () => {
     expectTypeOf<StandardProps['main-thread:bindtouchstart']>().parameter(0).toEqualTypeOf<MainThread.TouchEvent>();
     expectTypeOf<StandardProps['main-thread:bindtouchmove']>().parameter(0).toEqualTypeOf<MainThread.TouchEvent>();
     expectTypeOf<StandardProps['main-thread:bindtouchend']>().parameter(0).toEqualTypeOf<MainThread.TouchEvent>();
+  });
+});
+
+describe('Test Mouse Events', () => {
+  it('mouse enter and leave bind', () => {
+    expectTypeOf<StandardProps['bindmouseenter']>().exclude(undefined).toExtend<(e: MouseEvent) => void>();
+    expectTypeOf<StandardProps['bindmouseleave']>().exclude(undefined).toExtend<(e: MouseEvent) => void>();
+    expectTypeOf<StandardProps['main-thread:bindmouseenter']>().exclude(undefined).toExtend<(e: MainThread.MouseEvent) => void>();
+    expectTypeOf<StandardProps['main-thread:bindmouseleave']>().exclude(undefined).toExtend<(e: MainThread.MouseEvent) => void>();
+  });
+
+  it('mouse enter and leave event object', () => {
+    expectTypeOf<StandardProps['bindmouseenter']>().parameter(0).toEqualTypeOf<MouseEvent>();
+    expectTypeOf<StandardProps['bindmouseleave']>().parameter(0).toEqualTypeOf<MouseEvent>();
+    expectTypeOf<StandardProps['main-thread:bindmouseenter']>().parameter(0).toEqualTypeOf<MainThread.MouseEvent>();
+    expectTypeOf<StandardProps['main-thread:bindmouseleave']>().parameter(0).toEqualTypeOf<MainThread.MouseEvent>();
   });
 });
