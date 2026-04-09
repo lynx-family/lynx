@@ -18,6 +18,14 @@ import com.lynx.tasm.base.LLog;
  * <p>
  * It provides a strongly-typed API (e.g., `isDevToolEnabled()`) to ensure type safety and
  * better maintainability.
+ * <p>
+ * <b>Architectural Note on Lifecycle Checks:</b>
+ * This class acts as a pure "Data Layer" representing the user's raw intent or saved preference.
+ * It intentionally DOES NOT check `DevToolLifecycle.isEnabled()` or other system states when
+ * returning values. This prevents "loss of information" where a user's preference is masked
+ * by a transient system state.
+ * To get the "Effective State" (User Preference + System Capability), callers should query
+ * the facade layer (e.g., `LynxEnv`), which combines this data with the lifecycle state.
  */
 public class DevToolSettings {
   private static final String TAG = "DevToolSettings";
