@@ -514,16 +514,16 @@ public class TouchEventDispatcher {
         && !mActiveClickList.isEmpty() && mActiveClickList.getLast() != null
         && slideTargetSign == -1 && propsTargetSign == -1) {
       dispatchEvent(mActiveClickList.getLast(), EVENT_CLICK, e);
-    }
 
-    if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
-      UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
-          String.valueOf(System.identityHashCode(mActiveUI)));
-      if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
-          && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-        e.setLocation(
-            mFirstLynxTouchEvent.getViewPoint().getX(), mFirstLynxTouchEvent.getViewPoint().getY());
-        childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireClick(e);
+      if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
+        UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
+            String.valueOf(System.identityHashCode(mActiveUI)));
+        if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
+            && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
+          e.setLocation(mFirstLynxTouchEvent.getViewPoint().getX(),
+              mFirstLynxTouchEvent.getViewPoint().getY());
+          childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireClick(e);
+        }
       }
     }
   }
@@ -539,6 +539,17 @@ public class TouchEventDispatcher {
             TAG + ": fire tap for target " + mActiveUI.getSign(), LogBoxLogLevel.Info.ordinal());
       }
       dispatchEvent(mActiveUI, EVENT_TAP, e);
+
+      if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
+        UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
+            String.valueOf(System.identityHashCode(mActiveUI)));
+        if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
+            && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
+          e.setLocation(mFirstLynxTouchEvent.getViewPoint().getX(),
+              mFirstLynxTouchEvent.getViewPoint().getY());
+          childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireTap(e);
+        }
+      }
     } else {
       if (LynxEnv.inst().isHighlightTouchEnabled()) {
         showMessageOnConsole(TAG + ": tap failed due to [gesture] " + mGestureRecognized
@@ -550,17 +561,6 @@ public class TouchEventDispatcher {
           "tap failed:" + mGestureRecognized + " " + mTouchMoved + " " + slideTargetSign + " "
               + propsTargetSign);
     }
-
-    if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
-      UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
-          String.valueOf(System.identityHashCode(mActiveUI)));
-      if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
-          && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-        e.setLocation(
-            mFirstLynxTouchEvent.getViewPoint().getX(), mFirstLynxTouchEvent.getViewPoint().getY());
-        childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireTap(e);
-      }
-    }
   }
 
   public void fireLongpress(MotionEvent e) {
@@ -569,16 +569,16 @@ public class TouchEventDispatcher {
     if ((!mEnableMultiTouch || !mHasMultiTouch) && mActiveUI != null && slideTargetSign == -1
         && propsTargetSign == -1) {
       dispatchEvent(mActiveUI, EVENT_LONG_PRESS, e);
-    }
 
-    if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
-      UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
-          String.valueOf(System.identityHashCode(mActiveUI)));
-      if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
-          && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-        e.setLocation(
-            mFirstLynxTouchEvent.getViewPoint().getX(), mFirstLynxTouchEvent.getViewPoint().getY());
-        childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireLongpress(e);
+      if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
+        UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
+            String.valueOf(System.identityHashCode(mActiveUI)));
+        if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
+            && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
+          e.setLocation(mFirstLynxTouchEvent.getViewPoint().getX(),
+              mFirstLynxTouchEvent.getViewPoint().getY());
+          childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireLongpress(e);
+        }
       }
     }
   }
