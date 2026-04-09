@@ -136,6 +136,8 @@ lynx_css_core_sources = [
   "parser/gap_handler.h",
   "parser/grid_position_handler.cc",
   "parser/grid_position_handler.h",
+  "parser/grid_shorthand_handler.cc",
+  "parser/grid_shorthand_handler.h",
   "parser/grid_template_handler.cc",
   "parser/grid_template_handler.h",
   "parser/handler_defines.h",

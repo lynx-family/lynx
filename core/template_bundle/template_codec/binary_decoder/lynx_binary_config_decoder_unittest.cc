@@ -189,10 +189,60 @@ TEST_F(LynxBinaryConfigDecoderTest,
   EXPECT_EQ(string_props.at("config_str"), config_str);
 }
 
+TEST_F(LynxBinaryConfigDecoderTest, ReadEnableGridPlacementShorthands) {
+  EXPECT_FALSE(page_config_->GetEnableGridPlacementShorthands());
+  EXPECT_FALSE(
+      page_config_->GetCSSParserConfigs().enable_grid_placement_shorthands);
+  config_decoder_->DecodePageConfig(
+      "{\n  \"enableGridPlacementShorthands\" : true}", page_config_);
+  EXPECT_TRUE(page_config_->GetEnableGridPlacementShorthands());
+  EXPECT_TRUE(
+      page_config_->GetCSSParserConfigs().enable_grid_placement_shorthands);
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       GridPlacementShorthandsDisabledKeepsDefaultBehavior) {
+  auto id = CSSPropertyID::kPropertyIDGridColumn;
+  auto impl = lepus::Value("1 / 4");
+  StyleMap output;
+
+  auto ret = UnitHandler::Process(id, impl, output,
+                                  page_config_->GetCSSParserConfigs());
+  EXPECT_FALSE(ret);
+  EXPECT_TRUE(output.empty());
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       EnableGridPlacementShorthandsUsesShorthandHandler) {
+  auto id = CSSPropertyID::kPropertyIDGridColumn;
+  auto impl = lepus::Value("1 / 4");
+  StyleMap output;
+
+  config_decoder_->DecodePageConfig(
+      "{\n  \"enableGridPlacementShorthands\" : true\n}", page_config_);
+  auto ret = UnitHandler::Process(id, impl, output,
+                                  page_config_->GetCSSParserConfigs());
+  EXPECT_TRUE(ret);
+  EXPECT_EQ(output.size(), static_cast<size_t>(2));
+  EXPECT_TRUE(output[kPropertyIDGridColumnStart].IsNumber());
+  EXPECT_EQ(output[kPropertyIDGridColumnStart].AsNumber(), 1);
+  EXPECT_TRUE(output[kPropertyIDGridColumnEnd].IsNumber());
+  EXPECT_EQ(output[kPropertyIDGridColumnEnd].AsNumber(), 4);
+}
+
+TEST_F(LynxBinaryConfigDecoderTest, ReadDebugMetadataUrl) {
+  config_decoder_->DecodePageConfig(
+      "{\n  \"debugMetadataUrl\" : \"https://example.com/debug-info.json\"\n}",
+      page_config_);
+  EXPECT_EQ(page_config_->GetDebugMetadataUrl(),
+            "https://example.com/debug-info.json");
+}
+
 TEST_F(LynxBinaryConfigDecoderTest, CompileOptionsPropagatesDerivedCSSFlags) {
   tasm::CompileOptions options;
   EXPECT_FALSE(options.enable_parse_int_flex_);
   EXPECT_FALSE(options.enable_flex_basis_zero_percent_);
+  EXPECT_FALSE(options.enable_grid_placement_shorthands_);
 
   auto decoder =
       std::make_unique<LynxBinaryConfigDecoder>(options, "3.2", true, false);
@@ -207,6 +257,7 @@ TEST_F(LynxBinaryConfigDecoderTest, CompileOptionsPropagatesDerivedCSSFlags) {
 
   EXPECT_TRUE(options.enable_parse_int_flex_);
   EXPECT_TRUE(options.enable_flex_basis_zero_percent_);
+  EXPECT_TRUE(options.enable_grid_placement_shorthands_);
 }
 
 }  // namespace test

@@ -1,0 +1,12 @@
+{
+  "name": "grid-column",
+  "id": 227,
+  "type": "complex",
+  "default_value": "auto",
+  "version": "3.9",
+  "author": "renzhongyue",
+  "consumption_status": "layout-only",
+  "desc": "The grid-column CSS shorthand property specifies a grid item's size and location within a grid column by contributing a line, a span, or nothing (automatic) to its grid placement, thereby specifying the inline-start and inline-end edge of its grid area.",
+  "formal_syntax": "<grid-line> [ / <grid-line> ]?",
+  "is_shorthand": true
+}
