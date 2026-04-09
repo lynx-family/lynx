@@ -1117,6 +1117,14 @@
       _gestureRecognized == NO && slideTargetSign == -1 && propsTargetSign == -1) {
     // TODO check can send click event or not
     [self dispatchEvent:LynxEventClick toTarget:ui touch:touch];
+
+    LynxRootUI* childLynxPage =
+        _eventHandler.touchTarget
+            .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
+    if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+        childLynxPage.view.isChildLynxPage) {
+      [childLynxPage.context.eventHandler.touchRecognizer sendClickEvent:touch];
+    }
   }
 }
 
