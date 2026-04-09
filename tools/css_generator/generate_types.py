@@ -28,8 +28,29 @@ def resolve_type(type_str, values_map, resolved_cache):
     """
     Recursively resolves a value type to its primitive TypeScript types.
     """
+    type_str = type_str.strip()
     if type_str in resolved_cache:
         return resolved_cache[type_str]
+
+    # Handle grammar groups like [span && <number>] or [left | right] || [top | bottom]
+    if "[" in type_str or "&&" in type_str or "||" in type_str:
+        # If the group uses && (all required), treat the whole compound as string
+        if "&&" in type_str:
+            resolved_cache[type_str] = "(string & {})"
+            return "(string & {})"
+        cleaned = type_str.replace("[", " ").replace("]", " ")
+        cleaned = re.sub(r"\s*\|\|\s*", " | ", cleaned)
+        parts = [part.strip() for part in cleaned.split("|")]
+        resolved_parts = [
+            resolve_type(part, values_map, resolved_cache) for part in parts
+        ]
+        final_types = set()
+        for p in resolved_parts:
+            for t in p.split("|"):
+                final_types.add(t.strip())
+        result = " | ".join(sorted(list(final_types)))
+        resolved_cache[type_str] = result
+        return result
 
     # Handle direct primitives in the syntax string like '<length> | 0'
     if type_str not in values_map:
@@ -137,6 +158,10 @@ def main():
             has_hash_multiplier = prop_syntax.endswith("#")
             if has_hash_multiplier:
                 prop_syntax = prop_syntax[:-1].strip()
+
+            # Remove compound [ ... && ... ] groups so their keywords don't leak
+            # as standalone types (e.g., "span" in [span && <number>]).
+            prop_syntax = re.sub(r"\[[^\]]*&&[^\]]*\]", " ", prop_syntax)
 
             # More aggressive cleanup of the syntax string to isolate types and keywords.
             # This will find all <type> definitions and also standalone keywords.
