@@ -9,8 +9,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef SRC_NAPI_JS_NATIVE_API_ADAPTER_H_
-#define SRC_NAPI_JS_NATIVE_API_ADAPTER_H_
+#ifndef THIRD_PARTY_NAPI_INCLUDE_JS_NATIVE_API_ADAPTER_H_
+#define THIRD_PARTY_NAPI_INCLUDE_JS_NATIVE_API_ADAPTER_H_
 
 #include "js_native_api.h"
 #include "napi_module.h"
@@ -445,6 +445,10 @@ typedef struct napi_module_spec_compl {
   void* reserved[4];
 } napi_module_spec_compl;
 
+// Find a module by name and write its info into 'out'. Returns true if found.
+NAPI_ADAPTER_EXTERN bool napi_find_module_primjs(const char* name,
+                                                 napi_module_spec_compl* out);
+
 NAPI_ADAPTER_EXTERN void napi_module_register(napi_module_spec_compl* mod);
 
 NAPI_ADAPTER_EXTERN void napi_fatal_error(const char* location,
@@ -488,4 +492,4 @@ EXTERN_C_END
 #include "primjs_napi_undefs.h"
 #endif
 
-#endif  // SRC_NAPI_JS_NATIVE_API_ADAPTER_H_
+#endif  // THIRD_PARTY_NAPI_INCLUDE_JS_NATIVE_API_ADAPTER_H_
