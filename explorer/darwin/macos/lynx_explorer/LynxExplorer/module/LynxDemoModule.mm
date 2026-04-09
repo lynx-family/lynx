@@ -10,6 +10,45 @@
 #include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
+namespace {
+
+constexpr CGFloat kDefaultWindowWidth = 800.0;
+constexpr CGFloat kDefaultWindowHeight = 600.0;
+constexpr CGFloat kMinWindowSize = 200.0;
+
+NSSize GetInitialWindowSize(NSString *url) {
+  NSSize size = NSMakeSize(kDefaultWindowWidth, kDefaultWindowHeight);
+  NSRange queryRange = [url rangeOfString:@".lynx.bundle?"];
+  if (queryRange.location == NSNotFound) {
+    return size;
+  }
+
+  NSUInteger queryStart = queryRange.location + queryRange.length;
+  if (queryStart >= url.length) {
+    return size;
+  }
+
+  NSString *query = [url substringFromIndex:queryStart];
+  NSURLComponents *components = [NSURLComponents
+      componentsWithString:[@"https://lynx.local/?" stringByAppendingString:query]];
+  for (NSURLQueryItem *item in components.queryItems) {
+    if ([item.name isEqualToString:@"width"]) {
+      CGFloat width = item.value.doubleValue;
+      if (width > 0) {
+        size.width = MAX(kMinWindowSize, width);
+      }
+    } else if ([item.name isEqualToString:@"height"]) {
+      CGFloat height = item.value.doubleValue;
+      if (height > 0) {
+        size.height = MAX(kMinWindowSize, height);
+      }
+    }
+  }
+  return size;
+}
+
+}  // namespace
+
 // LynxTestModule, prefer to use C++ Wrapper.
 napi_value openSchema(napi_env env, napi_callback_info info) {
   // unwrap the url param.
@@ -26,8 +65,11 @@ napi_value openSchema(napi_env env, napi_callback_info info) {
   dispatch_sync(dispatch_get_main_queue(), ^{
     ViewController *viewController = [[ViewController alloc] initWithUrl:url];
     LynxWindow *lynxWindow = [[LynxWindow alloc] init];
+    NSSize size = GetInitialWindowSize(url);
     lynxWindow.contentViewController = viewController;
     lynxWindow.accessibilityLabel = @"openWindow";
+    [lynxWindow setContentSize:size];
+    [lynxWindow center];
     LynxWindowController *windowController =
         [[LynxWindowController alloc] initWithWindow:lynxWindow];
     [windowController showWindow:nil];

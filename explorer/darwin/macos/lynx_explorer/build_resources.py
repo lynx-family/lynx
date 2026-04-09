@@ -3,6 +3,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 import os
+import shutil
 import subprocess
 import sys
 
@@ -47,11 +48,17 @@ bundle_src = os.path.join(homepage_dir, 'dist', 'main.lynx.bundle')
 # Create homepage subdirectory and update bundle destination path
 homepage_resource_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Resource', 'homepage')
 bundle_dst = os.path.join(homepage_resource_dir, 'main.lynx.bundle')
+generated_resource_dir = os.path.join(target_gen_dir, 'Resource')
+generated_homepage_resource_dir = os.path.join(generated_resource_dir, 'homepage')
+generated_showcase_resource_dir = os.path.join(generated_resource_dir, 'showcase')
+generated_bundle_dst = os.path.join(generated_homepage_resource_dir, 'main.lynx.bundle')
+showcase_resource_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Resource', 'showcase')
 
 print(f"Homepage directory: {homepage_dir}")
 print(f"Bundle source: {bundle_src}")
 print(f"Homepage resource directory: {homepage_resource_dir}")
 print(f"Bundle destination: {bundle_dst}")
+print(f"Generated resource directory: {generated_resource_dir}")
 
 # Execute homepage build commands
 try:
@@ -70,6 +77,9 @@ try:
         # Copy bundle file to resource directory with new name
         subprocess.check_call(['cp', '-v', bundle_src, bundle_dst])
         print(f"Bundle copied to {bundle_dst} with new name")
+        os.makedirs(generated_homepage_resource_dir, exist_ok=True)
+        shutil.copy2(bundle_src, generated_bundle_dst)
+        print(f"Bundle copied to generated resource {generated_bundle_dst}")
         # Verify copy was successful
         if os.path.exists(bundle_dst):
             print(f"Bundle copy successful, destination size: {os.path.getsize(bundle_dst)} bytes")
@@ -87,8 +97,18 @@ try:
         print(f"Current directory before showcase build: {os.getcwd()}")
         # Execute showcase build script with explicit working directory
         subprocess.check_call(['python3', showcase_script], cwd=os.path.join(root_dir, 'explorer', 'showcase'))
+        if os.path.exists(generated_showcase_resource_dir):
+            shutil.rmtree(generated_showcase_resource_dir)
+        shutil.copytree(showcase_resource_dir, generated_showcase_resource_dir)
+        print(f"Showcase cards copied to generated resource {generated_showcase_resource_dir}")
         print("Showcase cards built successfully")
     else:
+        if os.path.exists(generated_showcase_resource_dir):
+            shutil.rmtree(generated_showcase_resource_dir)
+        if os.path.exists(showcase_resource_dir):
+            shutil.copytree(showcase_resource_dir, generated_showcase_resource_dir)
+        else:
+            os.makedirs(generated_showcase_resource_dir, exist_ok=True)
         print("Skipping showcase card build as SKIP_CARD_BUILD is true")
     
     # Build integration test demo pages if enabled
@@ -116,3 +136,4 @@ except subprocess.CalledProcessError as e:
 except Exception as e:
     print(f"Unexpected error: {e}")
     sys.exit(1)
+

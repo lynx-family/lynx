@@ -23,7 +23,11 @@ action("build_card_resources") {
     rebase_path(
         "../../../../testing/integration_test/demo_pages/build_and_copy.py"),
   ]
-  outputs = [ "$target_gen_dir/build_card_resources.stamp" ]
+  outputs = [
+    "$target_gen_dir/build_card_resources.stamp",
+    "$target_gen_dir/Resource/homepage",
+    "$target_gen_dir/Resource/showcase",
+  ]
 
   # Pass the necessary directories as arguments
   args = [
@@ -43,8 +47,12 @@ action("arrange_devtool_resources") {
     "$root_build_dir/devtool_resources/logbox.zip",
     "$root_build_dir/devtool_resources/lynx-error-parser.js",
     "$root_build_dir/devtool_resources/notification_cancel.png",
+    "$root_build_dir/devtool_resources/switchPage/devtoolSwitch.lynx.bundle",
   ]
-  outputs = [ "$root_build_dir/devtool_resources/logbox" ]
+  outputs = [
+    "$root_build_dir/devtool_resources/logbox",
+    "$root_build_dir/devtool_resources/switchPage",
+  ]
   public_deps = [ "../../../../devtool/lynx_devtool:devtool_assets" ]
 }
 
@@ -109,7 +117,9 @@ mac_app_bundle("lynx_explorer") {
   ]
 
   public_deps = [
+    ":devtool_resources",
     ":embed_bundles",
+    ":local_resource_data",
     ":main_menu",
     ":resources_data",
   ]
@@ -140,10 +150,18 @@ bundle_data("resources_data") {
   sources = [
     "//third_party/icu/flutter/icudtl.dat",
     "LynxExplorer/Info.plist",
-    "Resource",
   ]
-  data_deps = [ ":devtool_resources" ]
   outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
+}
+
+bundle_data("local_resource_data") {
+  sources = [
+    "$target_gen_dir/Resource/homepage",
+    "$target_gen_dir/Resource/showcase",
+    "Resource/Info.plist",
+  ]
+  outputs = [ "{{bundle_resources_dir}}/Resource/{{source_file_part}}" ]
+  public_deps = [ ":build_card_resources" ]
 }
 
 bundle_data("embed_bundles") {
@@ -163,7 +181,8 @@ bundle_data("devtool_resources") {
   sources = [
     "$root_build_dir/devtool_resources/logbox",
     "$root_build_dir/devtool_resources/notification_cancel.png",
+    "$root_build_dir/devtool_resources/switchPage",
   ]
-  outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
+  outputs = [ "{{bundle_resources_dir}}/Resource/{{source_file_part}}" ]
   public_deps = [ ":arrange_devtool_resources" ]
 }
