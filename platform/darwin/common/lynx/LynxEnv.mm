@@ -49,8 +49,10 @@
 #include "core/services/timing_handler/timing.h"
 
 #if OS_IOS
+#import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxUICollection.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
+#import <UIKit/UIKit.h>
 #endif
 
 @interface LynxEnv ()
@@ -58,6 +60,13 @@
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *externalEnvCache;
 
 @end
+
+#if OS_IOS
+@interface LynxFontFaceManager (LynxEnvPrewarm)
+// Warm up the locale-aware fallback family resolution used by custom font cascade fallback.
+- (void)prewarmFontCascadeIfNeeded;
+@end
+#endif
 
 @implementation LynxEnv {
   std::unique_ptr<fml::SharedMutex> external_env_mutex_;
@@ -73,6 +82,11 @@
     // register component here without using +load
 #if OS_IOS
     [LynxComponentRegistry registerUI:[LynxUICollection class] withName:@"list"];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      // Delay text prewarm until LynxEnv setup is fully finished to avoid pulling
+      // trail/settings initialization into LynxEnv init.
+      [_instance prewarmTextIfNeeded];
+    });
 #endif
   });
 
@@ -110,6 +124,26 @@
 - (void)initLynxTrace {
 #if ENABLE_TRACE_PERFETTO
   [[LynxTraceController sharedInstance] startStartupTracingIfNeeded];
+#endif
+}
+
+- (void)prewarmTextIfNeeded {
+#if OS_IOS
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    if (![self enableTextFontCascadeOpt]) {
+      return;
+    }
+    // Precompute the locale fallback family once so the first custom font measure
+    // does not pay the initialization cost on the hot path.
+    [[LynxFontFaceManager sharedManager] prewarmFontCascadeIfNeeded];
+    @autoreleasepool {
+      // Warm up TextKit on the main thread to avoid first-use initialization work
+      // racing with background text measurement.
+      NSLayoutManager *layoutManager = [[NSLayoutManager alloc] init];
+      (void)layoutManager;
+    }
+  });
 #endif
 }
 
@@ -572,6 +606,16 @@
   return enableTextGradientOpt;
 }
 
+- (BOOL)enableTextFontCascadeOpt {
+  static dispatch_once_t onceToken;
+  static BOOL enableTextFontCascadeOpt = NO;
+  dispatch_once(&onceToken, ^{
+    enableTextFontCascadeOpt = [self boolFromExternalEnv:LynxEnvEnableTextFontCascadeOpt
+                                            defaultValue:NO];
+  });
+  return enableTextFontCascadeOpt;
+}
+
 - (int)memoryAcquisitionDelaySec {
   static dispatch_once_t onceToken;
   static int delaySecond = 0;
@@ -746,6 +790,7 @@
     @(LynxEnvEnableTextLayoutCache) : @"enable_text_layout_cache",
     @(LynxEnvEnableForceMemoryMonitorOnOom) : @"enable_force_memory_monitor_on_oom",
     @(LynxEnvEnableTextGradientOpt) : @"lynx_text_gradient_opt",
+    @(LynxEnvEnableTextFontCascadeOpt) : @"lynx_text_font_cascade_opt",
     @(LynxEnvGlobalMemoryReportThresholdMB) : @"global_memory_report_threshold_mb",
     @(LynxEnvFSPEnable) : @"enable_fsp",
     @(LynxEnvFSPConfigJsonString) : @"fsp_config_json_string",

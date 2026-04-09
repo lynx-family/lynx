@@ -1488,6 +1488,7 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::enableGenericResourceFetcher();
   public BOOL LynxEnv::enableTextContainerOpt();
   public BOOL LynxEnv::enableTextGradientOpt();
+  public BOOL LynxEnv::enableTextFontCascadeOpt();
   public int LynxEnv::memoryAcquisitionDelaySec();
   public int LynxEnv::memoryReportIntervalSec();
   public int LynxEnv::globalMemoryReportThresholdMB();
@@ -4646,6 +4647,7 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext()::setTrailUseNewImage:(BOOL enable);
   public void LynxUIContext()::setLogBoxImageSizeWarningThreshold:(NSInteger threshold);
   public void LynxUIContext()::setEnableTextLayoutCache:(BOOL enable);
+  public void LynxUIContext()::setEnableTextGradientOpt:(BOOL enable);
   public void LynxUIContext()::didReceiveResourceError:withSource:type:(LynxError *error, [withSource] NSString *resourceUrl, [type] NSString *type);
   public void LynxUIContext()::reportLynxError:(LynxError *error);
   public int32_t LynxUIContext()::instanceId();
@@ -6248,6 +6250,7 @@ public enum LynxEnvKey {
   LynxEnvEnableTextLayoutCache
   LynxEnvEnableForceMemoryMonitorOnOom
   LynxEnvEnableTextGradientOpt
+  LynxEnvEnableTextFontCascadeOpt
   LynxEnvGlobalMemoryReportThresholdMB
   LynxEnvFSPEnable
   LynxEnvFSPConfigJsonString
