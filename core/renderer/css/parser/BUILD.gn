@@ -40,6 +40,7 @@ unittest_set("css_parser_testset") {
     "flex_handler_unittest.cc",
     "font_length_handler_unittest.cc",
     "four_sides_shorthand_handler_unittest.cc",
+    "grid_shorthand_handler_unittest.cc",
     "grid_template_handler_unittest.cc",
     "length_handler_unittest.cc",
     "list_gap_handler_unittest.cc",
