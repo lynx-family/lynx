@@ -50,6 +50,7 @@ typedef NS_ENUM(uint64_t, LynxEnvKey) {
   LynxEnvEnableTextLayoutCache,
   LynxEnvEnableForceMemoryMonitorOnOom,
   LynxEnvEnableTextGradientOpt,
+  LynxEnvEnableTextFontCascadeOpt,
   LynxEnvGlobalMemoryReportThresholdMB,
   LynxEnvFSPEnable,
   LynxEnvFSPConfigJsonString,

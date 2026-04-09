@@ -163,6 +163,8 @@ typedef NS_ENUM(NSInteger, LynxMemoryPressureLevel) {
 
 - (BOOL)enableTextGradientOpt;
 
+- (BOOL)enableTextFontCascadeOpt;
+
 - (int)memoryAcquisitionDelaySec;
 
 - (int)memoryReportIntervalSec;
