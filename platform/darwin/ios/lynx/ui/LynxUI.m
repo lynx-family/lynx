@@ -3845,7 +3845,6 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 
 - (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID {
   [self.context.eventEmitter startEventFire:isStop withEventID:eventID];
-  [self.context.eventEmitter setEventID:0];
 }
 
 - (void)onEventFire:(BOOL)isStop withEventID:(int64_t)eventID {
