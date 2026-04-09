@@ -455,8 +455,9 @@ void SetupWeakNodeApiEnv() {
       .napi_remove_async_cleanup_hook =
           reinterpret_cast<napi_status (*)(napi_async_cleanup_hook_handle)>(
               raw_ptr_host.napi_remove_async_cleanup_hook_rawptr),
-      .napi_find_module_weak = reinterpret_cast<napi_module* (*)(const char*)>(
-          raw_ptr_host.napi_find_module_rawptr),
+      .napi_find_module_weak =
+          reinterpret_cast<bool (*)(const char*, napi_module*)>(
+              raw_ptr_host.napi_find_module_rawptr),
   });
 
   inject_weak_node_api_host(sWeakHost);
