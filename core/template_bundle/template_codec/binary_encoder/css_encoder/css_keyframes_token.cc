@@ -19,6 +19,7 @@ constexpr const static char* kType = "type";
 constexpr const static char* kKeyframesRule = "KeyframesRule";
 constexpr const static char* kName = "name";
 constexpr const static char* kValue = "value";
+constexpr const static char* kVariables = "variables";
 constexpr const static char* kStyles = "styles";
 constexpr const static char* kKeyText = "keyText";
 constexpr const static char* kStyle = "style";
@@ -101,6 +102,13 @@ void CSSKeyframesToken::ParseStyles(const rapidjson::Value& value) {
         styles_.insert_or_assign(key, css_map);
       }
     }
+
+    std::shared_ptr<tasm::CustomPropertiesMap> custom_map(
+        new tasm::CustomPropertiesMap());
+    if ((*itr).HasMember(kVariables)) {
+      ConvertToCSSCustomPropertyMap((*itr)[kVariables], *custom_map);
+    }
+    custom_property_map_.insert_or_assign(key_text, std::move(custom_map));
   }
 }
 
@@ -163,6 +171,23 @@ void CSSKeyframesToken::ConvertToCSSAttrsMap(const rapidjson::Value& value,
     for (const auto& attribute : value.GetArray()) {
       iterate(attribute[kName], attribute);
     }
+  }
+}
+
+void CSSKeyframesToken::ConvertToCSSCustomPropertyMap(
+    const rapidjson::Value& value, tasm::CustomPropertiesMap& custom_map) {
+  if (!value.IsObject()) {
+    return;
+  }
+  for (auto itr = value.MemberBegin(); itr != value.MemberEnd(); ++itr) {
+    const auto* name = itr->name.GetString();
+    if (!tasm::CSSProperty::IsCustomProperty(
+            name, static_cast<uint32_t>(itr->name.GetStringLength()))) {
+      continue;
+    }
+    lepus::Value css_value = lepus::jsonValueTolepusValue(itr->value);
+    custom_map.insert_or_assign(
+        name, tasm::CSSValue(css_value, tasm::CSSValuePattern::STRING));
   }
 }
 

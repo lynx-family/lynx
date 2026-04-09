@@ -123,6 +123,10 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
   bool EncodeCSSAttributes(const StyleMap& attrs);
   bool EncodeCSSStyleVariables(const CSSVariableMap& style_variables);
   bool EncodeCSSKeyframesMap(const CSSKeyframesMap& keyframes);
+  bool EncodeCSSKeyframesCustomProperty(
+      const CustomPropertiesMap& custom_properties);
+  bool EncodeCSSKeyframesCustomPropertyContent(
+      const CSSKeyframesCustomPropertyMap& keyframes);
   bool EncodeCSSFontFaceToken(CSSFontFaceToken* token);
   bool EncodeCSSFontFaceTokenList(
       const std::vector<std::shared_ptr<CSSFontFaceToken>>& tokenList);

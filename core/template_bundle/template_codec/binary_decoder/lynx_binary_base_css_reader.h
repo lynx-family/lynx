@@ -62,9 +62,12 @@ class LynxBinaryBaseCSSReader : public lepus::BaseBinaryReader,
   bool DecodeCSSSheet(CSSSheet* parent, CSSSheet* sheet);
   bool DecodeCSSAttributes(CSSParseToken* token);
   bool DecodeCSSAttributes(StyleMap&, RawStyleMap&, const CSSParserConfigs&);
+  bool DecodeCSSKeyframesCustomProperty(CustomPropertiesMap&);
   bool DecodeCSSStyleVariables(CSSVariableMap& style_variables);
   bool DecodeCSSKeyframesMap(CSSKeyframesContent*, CSSRawKeyframesContent*,
                              const CSSParserConfigs&);
+  bool DecodeCSSKeyframesCustomPropertyContent(
+      CSSKeyframesCustomPropertyContent*);
   bool DecodeCSSFontFaceToken(CSSFontFaceRule* token);
   bool DecodeCSSSelector(css::LynxCSSSelector* selector);
 

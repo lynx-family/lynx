@@ -57,16 +57,22 @@ class CSSKeyframesToken : public tasm::CSSKeyframesToken {
     }
     return styles_;
   }
+  tasm::CSSKeyframesCustomPropertyMap& GetKeyframesCustomPropertyMap() {
+    return custom_property_map_;
+  }
 
  private:
   void ParseStyles(const rapidjson::Value& value);
   void ConvertToCSSAttrsMap(const rapidjson::Value& value,
                             tasm::StyleMap& css_map);
+  void ConvertToCSSCustomPropertyMap(const rapidjson::Value& value,
+                                     tasm::CustomPropertiesMap& custom_map);
 
   std::string file_;
 
   tasm::CSSKeyframesMap styles_;
   tasm::CSSRawKeyframesMap raw_styles_;
+  tasm::CSSKeyframesCustomPropertyMap custom_property_map_;
 
   const tasm::CompileOptions compile_options_;
 };

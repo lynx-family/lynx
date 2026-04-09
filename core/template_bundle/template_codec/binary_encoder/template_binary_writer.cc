@@ -537,6 +537,13 @@ bool TemplateBinaryWriter::EncodeCSSKeyframesToken(
   DCHECK(token != nullptr);
 
   EncodeCSSKeyframesMap(token->GetKeyframes());
+  if (tasm::Config::IsHigherOrEqual(
+          compile_options_.target_sdk_version_,
+          FEATURE_CUSTOM_PROPERTY_DECLARATION_KEYFRAME) &&
+      compile_options_.enable_keyframe_custom_property_declaration_) {
+    EncodeCSSKeyframesCustomPropertyContent(
+        token->GetKeyframesCustomPropertyMap());
+  }
   return true;
 }
 
@@ -626,6 +633,38 @@ bool TemplateBinaryWriter::EncodeCSSKeyframesMap(
         }
         // css attrs
         EncodeCSSAttributes(*itr.second);
+      });
+  return true;
+}
+
+bool TemplateBinaryWriter::EncodeCSSKeyframesCustomProperty(
+    const CustomPropertiesMap& custom_properties) {
+  WriteCompactU32(custom_properties.size());
+  for (const auto& [key, value] : custom_properties) {
+    EncodeUtf8Str(key.c_str());
+    EncodeCSSValue(value);
+  }
+  return true;
+}
+
+bool TemplateBinaryWriter::EncodeCSSKeyframesCustomPropertyContent(
+    const CSSKeyframesCustomPropertyMap& keyframes) {
+  WriteCompactU32(keyframes.size());
+  base::sorted_for_each(
+      keyframes.begin(), keyframes.end(), [this](const auto& itr) {
+        if (Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
+                                    FEATURE_CSS_VALUE_VERSION) &&
+            compile_options_.enable_css_parser_) {
+          WriteCompactD64(CSSKeyframesToken::ParseKeyStr(
+              itr.first, compile_options_.enable_css_strict_mode_));
+        } else {
+          EncodeUtf8Str(itr.first.c_str());
+        }
+        if (itr.second == nullptr) {
+          WriteCompactU32(0);
+          return;
+        }
+        EncodeCSSKeyframesCustomProperty(*itr.second);
       });
   return true;
 }

@@ -230,6 +230,14 @@ bool LynxBinaryBaseCSSReader::DecodeCSSKeyframesToken(
   ERROR_UNLESS(DecodeCSSKeyframesMap(&map, &raw_map, token->parser_configs_));
   token->SetKeyframesContent(std::move(map));
   token->SetRawKeyframesContent(std::move(raw_map));
+  if (tasm::Config::IsHigherOrEqual(
+          compile_options_.target_sdk_version_,
+          FEATURE_CUSTOM_PROPERTY_DECLARATION_KEYFRAME) &&
+      compile_options_.enable_keyframe_custom_property_declaration_) {
+    CSSKeyframesCustomPropertyContent custom_property_map;
+    ERROR_UNLESS(DecodeCSSKeyframesCustomPropertyContent(&custom_property_map));
+    token->SetKeyframesCustomPropertyContent(std::move(custom_property_map));
+  }
   return true;
 }
 
@@ -317,6 +325,18 @@ bool LynxBinaryBaseCSSReader::DecodeCSSStyleVariables(
   return true;
 }
 
+bool LynxBinaryBaseCSSReader::DecodeCSSKeyframesCustomProperty(
+    CustomPropertiesMap& custom_properties) {
+  DECODE_COMPACT_U32(size);
+  custom_properties.reserve(size);
+  for (size_t i = 0; i < size; ++i) {
+    DECODE_STDSTR(key);
+    DECODE_CSS_VALUE(value);
+    custom_properties.insert_or_assign(std::move(key), std::move(value));
+  }
+  return true;
+}
+
 bool LynxBinaryBaseCSSReader::DecodeCSSKeyframesMap(
     CSSKeyframesContent* keyframes, CSSRawKeyframesContent* raw_keyframes,
     const CSSParserConfigs& parser_config) {
@@ -342,6 +362,28 @@ bool LynxBinaryBaseCSSReader::DecodeCSSKeyframesMap(
     if (!raw_attrs_ptr->empty()) {
       raw_keyframes->emplace(key, std::move(raw_attrs_ptr));
     }
+  }
+  return true;
+}
+
+bool LynxBinaryBaseCSSReader::DecodeCSSKeyframesCustomPropertyContent(
+    CSSKeyframesCustomPropertyContent* keyframes) {
+  DECODE_COMPACT_U32(size);
+  keyframes->reserve(size);
+  for (size_t i = 0; i < size; ++i) {
+    float key;
+    if (enable_css_parser_) {
+      DECODE_DOUBLE(key_val);
+      key = key_val;
+    } else {
+      DECODE_STDSTR(key_text);
+      key = CSSKeyframesToken::ParseKeyStr(
+          key_text, compile_options_.enable_css_strict_mode_);
+    }
+
+    auto custom_properties = std::make_shared<CustomPropertiesMap>();
+    ERROR_UNLESS(DecodeCSSKeyframesCustomProperty(*custom_properties));
+    keyframes->emplace(key, std::move(custom_properties));
   }
   return true;
 }

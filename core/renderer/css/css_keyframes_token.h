@@ -30,11 +30,15 @@ typedef std::unordered_map<std::string, std::shared_ptr<StyleMap>>
     CSSKeyframesMap;
 typedef std::unordered_map<std::string, std::shared_ptr<RawStyleMap>>
     CSSRawKeyframesMap;
+typedef std::unordered_map<std::string, std::shared_ptr<CustomPropertiesMap>>
+    CSSKeyframesCustomPropertyMap;
 
 typedef base::LinearFlatMap<float, std::shared_ptr<StyleMap>>
     CSSKeyframesContent;
 typedef base::LinearFlatMap<float, std::shared_ptr<RawStyleMap>>
     CSSRawKeyframesContent;
+typedef base::LinearFlatMap<float, std::shared_ptr<CustomPropertiesMap>>
+    CSSKeyframesCustomPropertyContent;
 
 class CSSKeyframesToken : public fml::RefCountedThreadSafeStorage {
  public:
@@ -50,6 +54,11 @@ class CSSKeyframesToken : public fml::RefCountedThreadSafeStorage {
   }
   void SetRawKeyframesContent(CSSRawKeyframesContent&& content) {
     raw_content_ = std::move(content);
+  }
+
+  void SetKeyframesCustomPropertyContent(
+      CSSKeyframesCustomPropertyContent&& content) {
+    custom_property_content_ = std::move(content);
   }
 
   static float ParseKeyStr(const std::string& key_text,
@@ -91,12 +100,17 @@ class CSSKeyframesToken : public fml::RefCountedThreadSafeStorage {
     return content_;
   }
 
+  CSSKeyframesCustomPropertyContent& GetKeyframesCustomPropertyContent() {
+    return custom_property_content_;
+  }
+
  protected:
   // for decode css.
   friend class LynxBinaryBaseCSSReader;
 
   CSSKeyframesContent content_;
   CSSRawKeyframesContent raw_content_;
+  CSSKeyframesCustomPropertyContent custom_property_content_;
 
   const CSSParserConfigs parser_configs_;
 };

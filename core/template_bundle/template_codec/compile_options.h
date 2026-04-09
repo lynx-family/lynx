@@ -103,6 +103,7 @@ struct CompileOptions {
   bool enable_simple_styling_{false};
   bool enable_opt_lepus_bytecode_{false};
   uint8_t context_type_{0};
+  bool enable_keyframe_custom_property_declaration_{false};
   // Compile options auto generated end
 
   // Derived from page config at compile/decode time. Do not serialize it into

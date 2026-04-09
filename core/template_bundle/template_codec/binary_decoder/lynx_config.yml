@@ -263,6 +263,12 @@ compilerOptions:
     jsValueType: number
     since: '3.8'
     export: false
+  enableKeyframeCustomPropertyDeclaration:
+    description: Enable custom property declaration in keyframe.
+    defaultValue: 'false'
+    valueType: boolean
+    since: '3.9'
+    export: false
 # compiler options end here
 
 # PageConfig start here
