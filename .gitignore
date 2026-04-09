@@ -149,3 +149,7 @@ js_libraries/lynx-core/src/common/feature.ts
 /tools/api/android
 /tools/api/ios
 /tools/api/docs/gen
+
+# Build artifacts and sync'd dependencies
+native-ut-trace-events.json
+tools_shared/
