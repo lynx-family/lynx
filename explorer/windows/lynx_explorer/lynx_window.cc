@@ -4,6 +4,7 @@
 
 #include "explorer/windows/lynx_explorer/lynx_window.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -24,6 +25,9 @@ namespace lynx {
 namespace {
 
 constexpr const wchar_t kWindowClassName[] = L"Lynx Explorer";
+constexpr unsigned int kDefaultWindowWidth = 800;
+constexpr unsigned int kDefaultWindowHeight = 600;
+constexpr unsigned int kMinWindowSize = 200;
 
 const wchar_t *RegisterWindowClass() {
   static bool class_registered_ = false;
@@ -77,6 +81,40 @@ void LoadHomePage(std::vector<uint8_t> &data) {
     data.resize(size);
     file_rstream.read(reinterpret_cast<char *>(data.data()), size);
   }
+}
+
+std::pair<unsigned int, unsigned int> GetInitialWindowSizeForUrl(
+    const std::string &url) {
+  auto width = kDefaultWindowWidth;
+  auto height = kDefaultWindowHeight;
+  const std::string bundle_query_separator = ".lynx.bundle?";
+  auto query_pos = url.find(bundle_query_separator);
+  if (query_pos == std::string::npos) {
+    return {width, height};
+  }
+
+  std::string query =
+      url.substr(query_pos + bundle_query_separator.length(), url.size());
+  auto parse_dimension = [&](const std::string &key,
+                             unsigned int fallback) -> unsigned int {
+    const std::string key_with_equal = key + "=";
+    auto key_pos = query.find(key_with_equal);
+    if (key_pos == std::string::npos) {
+      return fallback;
+    }
+    auto value_start = key_pos + key_with_equal.length();
+    auto value_end = query.find('&', value_start);
+    auto value = query.substr(value_start, value_end - value_start);
+    if (value.empty()) {
+      return fallback;
+    }
+    auto parsed = std::stoul(value);
+    return std::max(kMinWindowSize, static_cast<unsigned int>(parsed));
+  };
+
+  width = parse_dimension("width", width);
+  height = parse_dimension("height", height);
+  return {width, height};
 }
 }  // namespace
 
@@ -292,7 +330,9 @@ LynxWindow::MessageHandler(HWND hwnd, UINT const message, WPARAM const wparam,
         is_test_bench_replay = true;
       }
 #endif
-      auto *window = new lynx::LynxWindow(0, 0, 800, 600, is_test_bench_replay);
+      auto [width, height] = GetInitialWindowSizeForUrl(*url_ptr);
+      auto *window =
+          new lynx::LynxWindow(0, 0, width, height, is_test_bench_replay);
       window->SetQuitOnClose(false);
       window->LoadTemplate(*url_ptr);
       delete url_ptr;

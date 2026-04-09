@@ -43,8 +43,12 @@ action("arrange_devtool_resources") {
     "$root_build_dir/devtool_resources/logbox.zip",
     "$root_build_dir/devtool_resources/lynx-error-parser.js",
     "$root_build_dir/devtool_resources/notification_cancel.png",
+    "$root_build_dir/devtool_resources/switchPage/devtoolSwitch.lynx.bundle",
   ]
-  outputs = [ "$root_build_dir/devtool_resources/logbox" ]
+  outputs = [
+    "$root_build_dir/devtool_resources/logbox",
+    "$root_build_dir/devtool_resources/switchPage",
+  ]
   public_deps = [ "../../../../devtool/lynx_devtool:devtool_assets" ]
 }
 
@@ -109,6 +113,7 @@ mac_app_bundle("lynx_explorer") {
   ]
 
   public_deps = [
+    ":devtool_resources",
     ":embed_bundles",
     ":main_menu",
     ":resources_data",
@@ -142,7 +147,6 @@ bundle_data("resources_data") {
     "LynxExplorer/Info.plist",
     "Resource",
   ]
-  data_deps = [ ":devtool_resources" ]
   outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
 }
 
@@ -163,7 +167,8 @@ bundle_data("devtool_resources") {
   sources = [
     "$root_build_dir/devtool_resources/logbox",
     "$root_build_dir/devtool_resources/notification_cancel.png",
+    "$root_build_dir/devtool_resources/switchPage",
   ]
-  outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
+  outputs = [ "{{bundle_resources_dir}}/Resource/{{source_file_part}}" ]
   public_deps = [ ":arrange_devtool_resources" ]
 }

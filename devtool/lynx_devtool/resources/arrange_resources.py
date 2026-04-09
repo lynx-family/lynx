@@ -10,8 +10,15 @@ import shutil
 def build():
     input = sys.argv[1] if len(sys.argv) > 1 else None
     output = sys.argv[2] if len(sys.argv) > 2 else None
+    logbox_zip = os.path.join(input, "logbox.zip") if input else None
+    error_parser = os.path.join(input, "lynx-error-parser.js") if input else None
+    switch_page_source = (
+        os.path.join(input, "switchPage", "devtoolSwitch.lynx.bundle")
+        if input
+        else None
+    )
 
-    if not (input and os.path.exists(f"{input}/logbox.zip") and os.path.exists(f"{input}/lynx-error-parser.js")):
+    if not (input and os.path.exists(logbox_zip) and os.path.exists(error_parser)):
         print(f"The devtool resource directory {input} is invalid.")
         return
     if output:
@@ -20,12 +27,24 @@ def build():
         return
 
     # unzip
-    if os.path.exists(f"{output}/logbox"):
-        shutil.rmtree(f"{output}/logbox")
-    shutil.unpack_archive(f"{input}/logbox.zip", f"{output}/logbox")
+    logbox_output = os.path.join(output, "logbox")
+    if os.path.exists(logbox_output):
+        shutil.rmtree(logbox_output)
+    shutil.unpack_archive(logbox_zip, logbox_output)
 
     # copy
-    shutil.copy2(f"{input}/lynx-error-parser.js", f"{output}/logbox")
+    shutil.copy2(error_parser, logbox_output)
+
+    if switch_page_source and os.path.exists(switch_page_source):
+        switch_page_output_dir = os.path.join(output, "switchPage")
+        switch_page_output = os.path.join(
+            switch_page_output_dir, "devtoolSwitch.lynx.bundle")
+
+        if os.path.abspath(switch_page_source) != os.path.abspath(switch_page_output):
+            if os.path.exists(switch_page_output_dir):
+                shutil.rmtree(switch_page_output_dir)
+            os.makedirs(switch_page_output_dir, exist_ok=True)
+            shutil.copy2(switch_page_source, switch_page_output)
 
 if __name__ == "__main__":
     build()

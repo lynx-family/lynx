@@ -22,10 +22,16 @@ interface SettingsPageProps {
   showPage: boolean;
 }
 
+const DESKTOP_DEVTOOL_SWITCH_PARAMS = {
+  width: 420,
+  height: 720,
+} as const;
+
 export default function SettingsPage(props: SettingsPageProps) {
   const { preference, resolved, setPreference, withTheme } = useTheme();
   const safeArea = useSafeArea();
   const [listAsyncRender, setListAsyncRender] = useState(false);
+  const platform = lynx.__globalProps.platform as string | undefined;
 
   const icons = {
     Auto: { dark: AutoDarkIcon, light: AutoLightIcon },
@@ -35,7 +41,11 @@ export default function SettingsPage(props: SettingsPageProps) {
   } as const;
 
   const openDevtoolSwitchPage = () => {
-    navigateTo('switchPage/devtoolSwitch.lynx.bundle');
+    const isDesktop = platform === 'macos' || platform === 'windows';
+    navigateTo(
+      'switchPage/devtoolSwitch.lynx.bundle',
+      isDesktop ? DESKTOP_DEVTOOL_SWITCH_PARAMS : undefined
+    );
   };
 
   const getIcon = (name: keyof typeof icons) => icons[name][resolved];

@@ -257,7 +257,7 @@ std::string LogBoxDialogWindows::GetLogboxFileUrl(const std::string& file) {
   if (exe_dir.back() != '\\') {
     exe_dir.append("\\");
   }
-  return exe_dir + "js_assets\\logbox\\" + file;
+  return exe_dir + "resources\\logbox\\" + file;
 }
 
 WNDCLASS LogBoxDialogWindows::RegisterWindowClass() {
