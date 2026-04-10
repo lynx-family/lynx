@@ -4,6 +4,7 @@
 
 #include "platform/embedder/module/lynx_module_manager_napi.h"
 
+#include "base/include/log/logging.h"
 #include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "third_party/weak-node-api/headers/napi.h"
@@ -61,9 +62,34 @@ void LynxModuleManagerNAPI::SetupRuntimeLifecycleListener(
           weak_from_this()));
 }
 
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
+#endif
+#include "third_party/napi/include/js_native_api.h"
 void LynxModuleManagerNAPI::OnRuntimeAttach(Napi::Env env) {
   lynx_napi_set_instance_data(env, LYNX_NAPI_ENV_LYNX_VIEW_TAG, view_context_,
                               nullptr, nullptr);
+
+  // Compatibility layer:
+  // Some modules still depend on legacy instance data in the short term, so we
+  // keep writing instance data via the legacy NAPI entry points when available.
+  // TODO(wujintian): Remove this once all legacy instance-data users are gone.
+#ifdef USE_WEAK_SUFFIX_NAPI
+  LOGI("LynxModuleManagerNAPI::OnRuntimeAttach, set "
+       << view_context_
+       << " to legacy instance data "
+          "with key "
+       << LYNX_NAPI_ENV_LYNX_VIEW_TAG);
+  napi_env_weak env_weak = static_cast<napi_env_weak>(env);
+#ifdef USE_PRIMJS_NAPI
+  napi_env_primjs env_primjs = reinterpret_cast<napi_env_primjs>(env_weak);
+#else
+  napi_env env_primjs = reinterpret_cast<napi_env>(env_weak);
+#endif
+  env_primjs->napi_set_instance_data(env_primjs, LYNX_NAPI_ENV_LYNX_VIEW_TAG,
+                                     view_context_, nullptr, nullptr);
+#endif
+
   auto module_factory =
       std::make_unique<LynxModuleFactoryNAPI>(env, std::move(module_creators_));
   module_factory_ = module_factory.get();
