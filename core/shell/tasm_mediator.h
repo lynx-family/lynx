@@ -141,6 +141,9 @@ class TasmMediator : public LynxEngine::Delegate {
   void SendNativeCustomEvent(const std::string& name, int tag,
                              const lepus::Value& param_value,
                              const std::string& param_name) override;
+  void TriggerLepusGlobalEvent(const std::string& name,
+                               const lepus::Value& param_value,
+                               bool is_async) override;
 
   void OnDataUpdatedByNative(tasm::TemplateData data,
                              const bool reset) override;

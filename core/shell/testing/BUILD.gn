@@ -25,6 +25,7 @@ mocktest_set("shell_testset") {
     "../lynx_ui_operation_async_queue_unittest.cc",
     "../lynx_ui_operation_queue_unittest.cc",
     "../runtime/mts/mts_runtime_pool_unittest.cc",
+    "../tasm_mediator_unittest.cc",
     "../tasm_operation_queue_async_unittest.cc",
     "../tasm_operation_queue_unittest.cc",
     "mock_native_facade.cc",

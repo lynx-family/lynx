@@ -740,6 +740,12 @@ void ElementManager::SendNativeCustomEvent(const std::string &name, int tag,
   delegate_->SendNativeCustomEvent(name, tag, param_value, param_name);
 }
 
+void ElementManager::TriggerLepusGlobalEvent(const std::string &name,
+                                             const lepus::Value &param_value,
+                                             bool is_async) {
+  delegate_->TriggerLepusGlobalEvent(name, param_value, is_async);
+}
+
 void ElementManager::UpdateLayoutNodeStyle(int32_t id,
                                            tasm::CSSPropertyID css_id,
                                            const tasm::CSSValue &value) {
