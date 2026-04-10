@@ -1537,6 +1537,7 @@ void ElementManager::SetPageOptions(const PageOptions &options) {
 }
 
 void ElementManager::ScheduleLayout() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_SCHEDULE_LAYOUT);
   if (platform_layout_context_) {
     platform_layout_context_->ScheduleLayout();
   }

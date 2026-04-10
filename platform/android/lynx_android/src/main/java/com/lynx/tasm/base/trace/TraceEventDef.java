@@ -272,4 +272,33 @@ public class TraceEventDef {
    * @trace_description: Update LynxFrameView's layout.
    */
   public static final String LYNX_FRAME_VIEW_UPDATE_LAYOUT = "LynxFrameView.updateLayout";
+
+  /**
+   * @trace_description: Measure FrameShadowNode with result.
+   * @args{width}: measured width result.
+   * @args{height}: measured height result.
+   */
+  public static final String FRAME_SHADOW_NODE_MEASURE = "FrameShadowNode.measure";
+
+  /**
+   * @trace_description: ViewLayoutTick requestLayout.
+   */
+  public static final String VIEW_LAYOUT_TICK_REQUEST_LAYOUT = "ViewLayoutTick.requestLayout";
+
+  /**
+   * @trace_description: ViewLayoutTick triggerLayout.
+   */
+  public static final String VIEW_LAYOUT_TICK_TRIGGER_LAYOUT = "ViewLayoutTick.triggerLayout";
+
+  /**
+   * @trace_description: ChoreographerLayoutTick requestLayout.
+   */
+  public static final String CHOREOGRAPHER_LAYOUT_TICK_REQUEST_LAYOUT =
+      "ChoreographerLayoutTick.requestLayout";
+
+  /**
+   * @trace_description: ChoreographerLayoutTick triggerLayout.
+   */
+  public static final String CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT =
+      "ChoreographerLayoutTick.triggerLayout";
 }

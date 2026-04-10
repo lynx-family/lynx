@@ -10538,6 +10538,11 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_ON_MEASURE_TARGET LYNX_FRAME_VIEW_ON_MEASURE_TARGET;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_FRAME_VIEW_UPDATE_LAYOUT LYNX_FRAME_VIEW_UPDATE_LAYOUT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.FRAME_SHADOW_NODE_MEASURE FRAME_SHADOW_NODE_MEASURE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.VIEW_LAYOUT_TICK_REQUEST_LAYOUT VIEW_LAYOUT_TICK_REQUEST_LAYOUT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.VIEW_LAYOUT_TICK_TRIGGER_LAYOUT VIEW_LAYOUT_TICK_TRIGGER_LAYOUT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_REQUEST_LAYOUT CHOREOGRAPHER_LAYOUT_TICK_REQUEST_LAYOUT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT;
 }
 
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {

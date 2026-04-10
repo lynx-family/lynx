@@ -4,6 +4,8 @@
 package com.lynx.tasm.behavior.shadow;
 
 import android.view.View;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.utils.UIThreadUtils;
 
 /**
@@ -26,10 +28,16 @@ public class ViewLayoutTick implements LayoutTick {
     UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
       @Override
       public void run() {
+        if (TraceEvent.isTracingStarted()) {
+          TraceEvent.beginSection(TraceEventDef.VIEW_LAYOUT_TICK_REQUEST_LAYOUT);
+        }
         if (mView != null) {
           mView.requestLayout();
         }
         mRunnable = runnable;
+        if (TraceEvent.isTracingStarted()) {
+          TraceEvent.endSection(TraceEventDef.VIEW_LAYOUT_TICK_REQUEST_LAYOUT);
+        }
       }
     });
   }
@@ -39,9 +47,15 @@ public class ViewLayoutTick implements LayoutTick {
   }
 
   public void triggerLayout() {
+    if (TraceEvent.isTracingStarted()) {
+      TraceEvent.beginSection(TraceEventDef.VIEW_LAYOUT_TICK_TRIGGER_LAYOUT);
+    }
     if (mRunnable != null) {
       mRunnable.run();
     }
     mRunnable = null;
+    if (TraceEvent.isTracingStarted()) {
+      TraceEvent.endSection(TraceEventDef.VIEW_LAYOUT_TICK_TRIGGER_LAYOUT);
+    }
   }
 }

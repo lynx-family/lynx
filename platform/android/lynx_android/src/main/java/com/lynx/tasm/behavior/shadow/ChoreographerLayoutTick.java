@@ -6,6 +6,8 @@ package com.lynx.tasm.behavior.shadow;
 import android.os.Build;
 import android.view.Choreographer;
 import androidx.annotation.RequiresApi;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxContext;
 
 @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
@@ -20,15 +22,38 @@ public class ChoreographerLayoutTick implements LayoutTick {
     if (runnable == null) {
       return;
     }
+    if (TraceEvent.isTracingStarted()) {
+      TraceEvent.beginSection(TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_REQUEST_LAYOUT);
+    }
     Choreographer.getInstance().postFrameCallback(new Choreographer.FrameCallback() {
       @Override
       public void doFrame(long frameTimeNanos) {
         if (mLynxContext.hasLayoutThreadChanged()) {
-          mLynxContext.runOnLayoutThread(runnable);
+          mLynxContext.runOnLayoutThread(new Runnable() {
+            @Override
+            public void run() {
+              if (TraceEvent.isTracingStarted()) {
+                TraceEvent.beginSection(TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT);
+              }
+              runnable.run();
+              if (TraceEvent.isTracingStarted()) {
+                TraceEvent.endSection(TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT);
+              }
+            }
+          });
         } else {
+          if (TraceEvent.isTracingStarted()) {
+            TraceEvent.beginSection(TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT);
+          }
           runnable.run();
+          if (TraceEvent.isTracingStarted()) {
+            TraceEvent.endSection(TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT);
+          }
         }
       }
     });
+    if (TraceEvent.isTracingStarted()) {
+      TraceEvent.endSection(TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_REQUEST_LAYOUT);
+    }
   }
 }
