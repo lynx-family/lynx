@@ -14,6 +14,7 @@
 
 #if defined(__cplusplus)
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
+#endif
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -47,7 +48,9 @@ NS_ASSUME_NONNULL_BEGIN
                  shellPtr:(int64_t)shellPtr
                     block:(onLynxEvent)block;
 
+#if defined(__cplusplus)
 - (void)onPageConfigUpdate:(const std::shared_ptr<lynx::tasm::PageConfig> &)pageConfig;
+#endif
 
 - (void)setFluencyTracerEnabled:(LynxBooleanOption)enabled;
 
@@ -149,5 +152,4 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-#endif  // __cplusplus
 #endif  // PLATFORM_DARWIN_IOS_LYNX_LYNXUIRENDERERPROTOCOL_H_
