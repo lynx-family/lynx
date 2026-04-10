@@ -211,7 +211,7 @@ class PlatformView {
   ///
   /// @param[in]  metrics  The updated viewport metrics.
   ///
-  void SetViewportMetrics(const ViewportMetrics& metrics);
+  virtual void SetViewportMetrics(const ViewportMetrics& metrics);
 
   //----------------------------------------------------------------------------
   /// @brief      Used by embedders to notify the shell that a platform view
