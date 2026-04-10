@@ -27,6 +27,40 @@ LayoutComputedStyle::LayoutComputedStyle(const LayoutComputedStyle& o) {
   physical_pixels_per_layout_unit_ = o.physical_pixels_per_layout_unit_;
 }
 
+void LayoutComputedStyle::CopyFrom(const LayoutComputedStyle& o) {
+  box_data_ = o.box_data_.Get() ? o.box_data_->Copy() : BoxData::Create();
+  flex_data_ = o.flex_data_.Get() ? o.flex_data_->Copy() : FlexData::Create();
+  grid_data_ = o.grid_data_.Get() ? o.grid_data_->Copy() : GridData::Create();
+  linear_data_ =
+      o.linear_data_.Get() ? o.linear_data_->Copy() : LinearData::Create();
+  relative_data_ = o.relative_data_.Get() ? o.relative_data_->Copy()
+                                          : RelativeData::Create();
+
+  surround_data_.left_ = o.surround_data_.left_;
+  surround_data_.right_ = o.surround_data_.right_;
+  surround_data_.top_ = o.surround_data_.top_;
+  surround_data_.bottom_ = o.surround_data_.bottom_;
+  surround_data_.margin_left_ = o.surround_data_.margin_left_;
+  surround_data_.margin_right_ = o.surround_data_.margin_right_;
+  surround_data_.margin_top_ = o.surround_data_.margin_top_;
+  surround_data_.margin_bottom_ = o.surround_data_.margin_bottom_;
+  surround_data_.padding_left_ = o.surround_data_.padding_left_;
+  surround_data_.padding_right_ = o.surround_data_.padding_right_;
+  surround_data_.padding_top_ = o.surround_data_.padding_top_;
+  surround_data_.padding_bottom_ = o.surround_data_.padding_bottom_;
+  if (o.surround_data_.border_data_.has_value()) {
+    surround_data_.border_data_ = *o.surround_data_.border_data_;
+  } else {
+    surround_data_.border_data_.reset();
+  }
+
+  box_sizing_ = o.box_sizing_;
+  display_ = o.display_;
+  position_ = o.position_;
+  direction_ = o.direction_;
+  physical_pixels_per_layout_unit_ = o.physical_pixels_per_layout_unit_;
+}
+
 void LayoutComputedStyle::Reset() {
   box_data_.Access()->Reset();
   flex_data_.Access()->Reset();

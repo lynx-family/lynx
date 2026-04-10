@@ -34,6 +34,11 @@ struct LayoutAnimationData {
   BaseLayoutAnimationData create_ani;
   BaseLayoutAnimationData update_ani;
   BaseLayoutAnimationData delete_ani;
+
+  bool operator==(const LayoutAnimationData& rhs) const {
+    return std::tie(create_ani, update_ani, delete_ani) ==
+           std::tie(rhs.create_ani, rhs.update_ani, rhs.delete_ani);
+  }
 };
 
 }  // namespace starlight

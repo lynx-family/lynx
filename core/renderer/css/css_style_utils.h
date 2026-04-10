@@ -290,6 +290,9 @@ class CSSStyleUtils {
 
   static std::shared_ptr<tasm::StyleMap> ProcessCSSAttrsMap(
       const lepus::Value& value, const tasm::CSSParserConfigs& configs);
+  static std::shared_ptr<tasm::CustomPropertiesMap>
+  ProcessCSSCustomPropertyAttrsMap(const lepus::Value& value,
+                                   const tasm::CSSParserConfigs& configs);
   static void UpdateCSSKeyframes(tasm::CSSKeyframesTokenMap& keyframes_map,
                                  const base::String& name,
                                  const lepus::Value& keyframes,
