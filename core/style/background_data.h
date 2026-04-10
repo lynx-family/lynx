@@ -29,6 +29,15 @@ struct BackgroundData {
     base::InlineVector<BackgroundRepeatType, 1> repeat;
     base::InlineVector<BackgroundOriginType, 1> origin;
     base::InlineVector<BackgroundClipType, 1> clip;
+
+    bool operator==(const BackgroundImageData& o) const {
+      return image_count == o.image_count && clone_image == o.clone_image &&
+             image == o.image && position == o.position && size == o.size &&
+             repeat == o.repeat && origin == o.origin && clip == o.clip;
+    }
+    bool operator!=(const BackgroundImageData& o) const {
+      return !(*this == o);
+    }
   };
 
   BackgroundData() = default;
@@ -36,6 +45,11 @@ struct BackgroundData {
 
   uint32_t color{DefaultColor::DEFAULT_COLOR};
   base::flex_optional<BackgroundImageData> image_data;
+
+  bool operator==(const BackgroundData& o) const {
+    return color == o.color && image_data == o.image_data;
+  }
+  bool operator!=(const BackgroundData& o) const { return !(*this == o); }
 
   // A flag telling `base::flex_optional<>` to save memory.
   using AlwaysUseFlexOptionalMemSave = bool;
