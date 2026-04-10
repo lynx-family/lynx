@@ -8,7 +8,6 @@
 
 #include <mutex>
 #include <string>
-#include <unordered_map>
 
 namespace lynx {
 namespace harmony {
@@ -16,17 +15,13 @@ namespace harmony {
 class StaticTaskNapiBridge {
  public:
   static void Init(napi_env env, napi_value exports);
-  static bool HasTask(const std::string& id);
-  static bool InvokeTask(const std::string& id,
-                         std::intptr_t native_context_ptr);
+  static bool LoadAndInvokeTask(const std::string& module_path,
+                                const std::string& module_info,
+                                const std::string& class_name,
+                                std::intptr_t native_context_ptr);
 
  private:
-  static napi_value Register(napi_env env, napi_callback_info info);
-  static napi_value Unregister(napi_env env, napi_callback_info info);
-
   static napi_env env_;
-  static std::unordered_map<std::string, napi_ref> tasks_;
-  static std::mutex tasks_mutex_;
 };
 
 }  // namespace harmony
