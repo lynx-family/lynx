@@ -95,6 +95,8 @@ ElementManager::ElementManager(
       LynxEnv::GetInstance().FixDynamicUpdateTransitionConsumeBug();
   fix_filter_dynamic_update_bug_ =
       LynxEnv::GetInstance().FixFilterDynamicUpdateBug();
+  fix_fiber_dynamic_update_transition_consume_bug_ =
+      LynxEnv::GetInstance().FixFiberDynamicUpdateTransitionConsumeBug();
   fix_new_fixed_removal_bug_ = LynxEnv::GetInstance().FixNewFixedRemovalBug();
   fix_old_fixed_insert_self_use_render_parent_ =
       LynxEnv::GetInstance().FixOldFixedInsertSelfUseRenderParent();

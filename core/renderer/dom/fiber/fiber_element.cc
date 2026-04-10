@@ -3450,7 +3450,12 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
 
             if (css_transition_manager_) {
               if (IsFiberArch()) {
-                if (css_transition_manager_->NeedsTransition(id)) {
+                const bool skip_transition =
+                    element_manager_ &&
+                    !element_manager_
+                         ->FixFiberDynamicUpdateTransitionConsumeBug();
+                if (skip_transition &&
+                    css_transition_manager_->NeedsTransition(id)) {
                   return true;
                 }
               } else {

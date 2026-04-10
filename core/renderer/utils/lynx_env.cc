@@ -620,6 +620,12 @@ bool LynxEnv::FixDynamicUpdateTransitionConsumeBug() {
   return fix_dynamic_update_transition_consume_bug;
 }
 
+bool LynxEnv::FixFiberDynamicUpdateTransitionConsumeBug() {
+  static bool fix_fiber_dynamic_update_transition_consume_bug =
+      GetBoolEnv(Key::FIX_FIBER_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG, true);
+  return fix_fiber_dynamic_update_transition_consume_bug;
+}
+
 bool LynxEnv::EnableFetchAPIStreamingStandard() {
   return GetBoolEnv(Key::ENABLE_FETCH_API_STANDARD_STREAMING, false);
 }

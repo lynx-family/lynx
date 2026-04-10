@@ -140,6 +140,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_SHARE_CONTEXT_ICU,
     FIX_RADON_INLINE_CONVERT_BUG,
     FIX_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
+    // FIXME(linxs): temporary validation switch for the Fiber viewport +
+    // transition dynamic update fix. Remove this config after the fix is
+    // verified online.
+    FIX_FIBER_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
     ENABLE_LIST_NEW_ARCHITECTURE,
     ENABLE_FETCH_API_STANDARD_STREAMING,
     ENABLE_JS_CALL_TIMEOUT_GUARD,
@@ -299,6 +303,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_RADON_INLINE_CONVERT_BUG, "fix_radon_inline_convert_bug"},
             {Key::FIX_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
              "fix_dynamic_update_transition_consume_bug"},
+            {Key::FIX_FIBER_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
+             "fix_fiber_dynamic_update_transition_consume_bug"},
             {Key::FIX_LIST_CALLBACK_LEAK_BUG, "fix_list_callback_leak"},
             {Key::ENABLE_LIST_NEW_ARCHITECTURE, "enable_list_new_architecture"},
             {Key::ENABLE_FETCH_API_STANDARD_STREAMING,
@@ -474,6 +480,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixRadonInlineConvertBug();
   bool FixDynamicUpdateTransitionConsumeBug();
   bool FixFilterDynamicUpdateBug();
+  bool FixFiberDynamicUpdateTransitionConsumeBug();
   bool EnableFetchAPIStreamingStandard();
   bool FixNewFixedRemovalBug();
   bool FixOldFixedInsertSelfUseRenderParent();

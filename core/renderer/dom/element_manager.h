@@ -1111,8 +1111,13 @@ class ElementManager : public ElementContextDelegate,
   bool FixDynamicUpdateTransitionConsumeBug() const {
     return fix_dynamic_update_transition_consume_bug_;
   }
+
   bool FixFilterDynamicUpdateBug() const {
     return fix_filter_dynamic_update_bug_;
+  }
+
+  bool FixFiberDynamicUpdateTransitionConsumeBug() const {
+    return fix_fiber_dynamic_update_transition_consume_bug_;
   }
 
   bool FixListCallbackLeakFlag() const { return fix_list_callback_leak_flag_; }
@@ -1310,6 +1315,7 @@ class ElementManager : public ElementContextDelegate,
   bool fix_radon_inline_convert_bug_{true};
   bool fix_dynamic_update_transition_consume_bug_{true};
   bool fix_filter_dynamic_update_bug_{false};
+  bool fix_fiber_dynamic_update_transition_consume_bug_{true};
   bool fix_new_fixed_removal_bug_{true};
   bool fix_old_fixed_insert_self_use_render_parent_{false};
   bool enable_animation_forward_update_preservation_{false};
