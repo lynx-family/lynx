@@ -541,7 +541,8 @@ std::string FlutterWindowsEngine::ShouldInterceptUrl(
     return platform_view_delegate_->ShouldInterceptUrl(origin_url,
                                                        should_decode);
   }
-  return origin_url;
+  return PlatformViewEmbedderDelegate::ShouldInterceptUrl(origin_url,
+                                                          should_decode);
 }
 
 std::shared_ptr<clay::ResourceLoaderIntercept>
@@ -549,7 +550,7 @@ FlutterWindowsEngine::GetResourceLoaderIntercept() {
   if (platform_view_delegate_) {
     return platform_view_delegate_->GetResourceLoaderIntercept();
   }
-  return nullptr;
+  return PlatformViewEmbedderDelegate::GetResourceLoaderIntercept();
 }
 
 void FlutterWindowsEngine::OnDwmCompositionChanged() {

@@ -14,6 +14,8 @@
 #include "clay/ui/component/view_context.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "platform/embedder/lynx_view_clients.h"
+#include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
+#include "platform/embedder/public/capi/lynx_memory_capi.h"
 #if ENABLE_TESTBENCH_REPLAY
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
@@ -203,6 +205,24 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
 
   if (builder->generic_fetcher) {
     auto fetcher_holder = std::make_shared<LynxResourceFetcherHolder>(builder->generic_fetcher);
+    [lynx_ui_renderer.clayViewProvider
+        setInterceptUrlCallback:^NSString*(NSString* originUrl, BOOL shouldDecode,
+                                           NSInteger maxPathLength) {
+          char* redirected = lynx_generic_resource_fetcher_intercept(
+              fetcher_holder->GenericFetcher(), [originUrl UTF8String], shouldDecode);
+          if (!redirected) {
+            return nil;
+          }
+          NSString* redirectedUrl = [NSString stringWithUTF8String:redirected];
+          lynx_free(redirected);
+          if (!redirectedUrl) {
+            return nil;
+          }
+          if (maxPathLength > 0 && redirectedUrl.length >= maxPathLength) {
+            return [redirectedUrl substringToIndex:maxPathLength - 1];
+          }
+          return redirectedUrl;
+        }];
     view_context->GetServiceManager()->RegisterService<clay::ResourceLoaderCreatorService>(
         std::make_shared<clay::ResourceLoaderCreatorService>(
             [fetcher_holder](fml::RefPtr<fml::TaskRunner> task_runner,
