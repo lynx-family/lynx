@@ -4,6 +4,7 @@
 
 #include "core/runtime/lepus/base_binary_reader.h"
 
+#include <limits>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -37,13 +38,19 @@ bool BaseBinaryReader::DeserializeFunction(fml::RefPtr<Function>& parent,
 
   // instruction
   ERROR_UNLESS(ReadCompactU32(&size));
-  function->op_codes_.resize<false>(size + 1);
-  for (size_t i = 0; i < size; ++i) {
+  constexpr size_t kOpCodeSentinelCount = 1;
+  constexpr size_t kMaxSafeOpCodeCount =
+      static_cast<size_t>(std::numeric_limits<int32_t>::max()) -
+      kOpCodeSentinelCount;
+  const size_t op_code_count = static_cast<size_t>(size);
+  ERROR_UNLESS(op_code_count <= kMaxSafeOpCodeCount);
+  function->op_codes_.resize<false>(op_code_count + kOpCodeSentinelCount);
+  for (size_t i = 0; i < op_code_count; ++i) {
     ERROR_UNLESS(ReadCompactU32(&function->op_codes_[i].op_code_));
   }
   // this sentinel inst is used to ensure direct dispatch does not go out of
   // range
-  function->op_codes_[size] = Instruction::Code(OP_PLACEHOLDER);
+  function->op_codes_[op_code_count] = Instruction::Code(OP_PLACEHOLDER);
 
   // up value info
   DECODE_COMPACT_U32(update_value_size);
