@@ -201,6 +201,9 @@ class ElementManager : public ElementContextDelegate,
     virtual void SendNativeCustomEvent(const std::string &name, int tag,
                                        const lepus::Value &param_value,
                                        const std::string &param_name) = 0;
+    virtual void TriggerLepusGlobalEvent(const std::string &name,
+                                         const lepus::Value &param_value,
+                                         bool is_async) = 0;
     virtual void InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
                                         int32_t ref_id) = 0;
     virtual void RemoveLayoutNode(int32_t parent_id, int32_t child_id) = 0;
@@ -332,6 +335,8 @@ class ElementManager : public ElementContextDelegate,
   void SendNativeCustomEvent(const std::string &name, int tag,
                              const lepus::Value &param_value,
                              const std::string &param_name);
+  void TriggerLepusGlobalEvent(const std::string &name,
+                               const lepus::Value &param_value, bool is_async);
   void ResetLayoutNodeStyle(int32_t id, tasm::CSSPropertyID css_id);
   void UpdateLayoutNodeAttribute(int32_t id, starlight::LayoutAttribute key,
                                  const lepus::Value &value);

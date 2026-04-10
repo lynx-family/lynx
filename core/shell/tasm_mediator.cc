@@ -626,6 +626,20 @@ void TasmMediator::SendNativeCustomEvent(const std::string& name, int tag,
   });
 };
 
+void TasmMediator::TriggerLepusGlobalEvent(const std::string& name,
+                                           const lepus::Value& param_value,
+                                           bool is_async) {
+  if (is_async) {
+    engine_actor_->ActAsync([name, param_value](auto& engine) {
+      engine->TriggerLepusGlobalEvent(name, param_value);
+    });
+    return;
+  }
+  engine_actor_->ActLite([name, param_value](auto& engine) {
+    engine->TriggerLepusGlobalEvent(name, param_value);
+  });
+}
+
 void TasmMediator::InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
                                           int32_t ref_id) {
   layout_actor_->ActLite([parent_id, child_id, ref_id](auto& layout) {
