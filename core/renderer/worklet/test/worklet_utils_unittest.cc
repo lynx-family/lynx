@@ -11,7 +11,6 @@
 #include "core/renderer/worklet/base/worklet_utils.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
-#include "core/runtime/lepus/lepus_context_cell.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
 #include "core/shell/runtime/mts/mts_runtime.h"

@@ -22,6 +22,7 @@
 #include "core/runtime/lepus/js_object.h"
 #include "core/runtime/lepus/lepus_error_helper.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
+#include "core/runtime/lepusng/lynx_api_context_lepusng.h"
 #include "core/runtime/lepusng/qjs_callback.h"
 #include "core/runtime/profile/runtime_profiler_manager.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
@@ -496,6 +497,28 @@ static void SetFuncsAndRegisterPrimJSCallbacks(LEPUSRuntime* rt) {
                           registered_count);
 }
 
+QuickContextEnvWrapper::QuickContextEnvWrapper(lepus::QuickContext* qctx,
+                                               LEPUSContext* ctx)
+    : qctx_(qctx) {
+  env_.ctx = reinterpret_cast<lynx_api_context>(
+      new lynx_api_context__lepusng(&env_, ctx));
+};
+
+void QuickContextEnvWrapper::DetachEnv() {
+  if (env_.ctx) {
+    delete reinterpret_cast<lynx_api_context__lepusng*>(env_.ctx);
+    env_.ctx = nullptr;
+  }
+  qctx_ = nullptr;
+}
+
+LEPUSContext* QuickContextEnvWrapper::GetJsContextFromEnv(lynx_api_env env) {
+  if (!env || !env->ctx) {
+    return nullptr;
+  }
+  return reinterpret_cast<lynx_api_context__lepusng*>(env->ctx)->ctx;
+}
+
 LEPUSRuntimeData::LEPUSRuntimeData(bool disable_tracing_gc, int runtime_mode) {
   runtime_ = LEPUS_NewRuntimeWithMode(runtime_mode);
   if (disable_tracing_gc || tasm::LynxEnv::GetInstance().IsDisableTracingGC()) {
@@ -510,13 +533,9 @@ LEPUSRuntimeData::LEPUSRuntimeData(bool disable_tracing_gc, int runtime_mode) {
 }
 
 LEPUSRuntimeData::~LEPUSRuntimeData() {
-  ContextCell* cell = QuickContext::GetContextCellFromCtx(lepus_context_);
+  QuickContextEnvWrapper::GetFromJsContext(lepus_context_)->DetachEnv();
   LEPUS_FreeContext(lepus_context_);
-  cell->ctx_ = nullptr;
-  cell->qctx_ = nullptr;
   LEPUS_FreeRuntime(runtime_);
-  cell->rt_ = nullptr;
-  cell->DetachEnv();
 }
 
 QuickContext::QuickContext(runtime::MTSRuntime* runtime_private,
@@ -537,7 +556,8 @@ QuickContext::QuickContext(runtime::MTSRuntime* runtime_private,
   LEPUSLepusRefCallbacks callbacks = GetLepusRefCall();
   RegisterLepusRefCallbacks(runtime_, &callbacks);
   LEPUS_SetMaxStackSize(context(), static_cast<size_t>(ULLONG_MAX));
-  LEPUS_SetContextOpaque(lepus_context_, RegisterContextCell(this));
+  LEPUS_SetContextOpaque(lepus_context_,
+                         new QuickContextEnvWrapper(this, lepus_context_));
   Initialize();
   RegisterLepusType(runtime_, Value_Array, Value_Table);
   // data associated with debugger need to be initialized
@@ -998,6 +1018,7 @@ LEPUSValue QuickContext::NewBindingFunction(CFunction func) {
         // 1. prepare args.
         char args_buf[sizeof(lepus::Value) * argc];
         lepus::Value* largv = reinterpret_cast<lepus::Value*>(args_buf);
+        auto* env = lepus::QuickContextEnvWrapper::GetEnvFromJsContext(ctx);
         for (int32_t i = 0; i < argc; ++i) {
           // High frequency call
           LEPUSValue val = argv[i];
@@ -1006,10 +1027,9 @@ LEPUSValue QuickContext::NewBindingFunction(CFunction func) {
                 lepus::LEPUSValueHelper::ConstructLepusRefToLynxValue(ctx,
                                                                       val));
           } else {
-            new (largv + i) lepus::Value(
-                lepus::QuickContext::GetContextCellFromCtx(ctx)->env_,
-                LEPUS_VALUE_GET_INT64(val),
-                lepus::LEPUSValueHelper::CalculateTag(val));
+            new (largv + i)
+                lepus::Value(env, LEPUS_VALUE_GET_INT64(val),
+                             lepus::LEPUSValueHelper::CalculateTag(val));
           }
         }
         qctx->set_current_this(this_obj);
@@ -1309,15 +1329,6 @@ LEPUSLepusRefCallbacks QuickContext::GetLepusRefCall() {
           &LepusRefSetPropertyCallBack, &LepusRefFreeStringCache,
           &LepusRefDeepEqualCallBack,   &LepusrefToString,
           &RefCountedObjVisitor};
-}
-
-CellManager& QuickContext::GetContextCells() {
-  thread_local CellManager cells_;
-  return cells_;
-}
-
-ContextCell* QuickContext::RegisterContextCell(lepus::QuickContext* qctx) {
-  return GetContextCells().AddCell(qctx);
 }
 
 #if ENABLE_TRACE_PERFETTO

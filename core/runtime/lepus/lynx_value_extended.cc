@@ -8,7 +8,6 @@
 
 #include <string>
 
-#include "core/runtime/lepus/lepus_context_cell.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/lynx_api_context_lepusng.h"
 #ifdef OS_IOS
@@ -47,33 +46,6 @@ inline lynx_value MakeLynxValue(const LEPUSValue& val) {
 }
 
 }  // namespace
-
-lynx_api_env lynx_value_api_new_env(LEPUSContext* ctx) {
-  auto* env = new lynx_api_env__();
-  env->ctx = new lynx_api_context__lepusng(env, ctx);
-  return env;
-}
-
-void lynx_value_api_delete_env(lynx_api_env env) {
-  if (!env) return;
-  if (env->ctx) {
-    delete env->ctx;
-  }
-  delete env;
-}
-
-void lynx_value_api_detach_context_from_env(lynx_api_env env) {
-  if (!env || !env->ctx) return;
-  delete env->ctx;
-  env->ctx = nullptr;
-}
-
-LEPUSContext* lynx_value_api_get_context_from_env(lynx_api_env env) {
-  if (env) {
-    return env->ctx->ctx;
-  }
-  return nullptr;
-}
 
 lynx_api_status lynx_value_get_bool_ext(lynx_api_env env, lynx_value value,
                                         bool* result) {

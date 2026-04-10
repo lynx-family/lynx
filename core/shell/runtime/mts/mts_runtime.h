@@ -24,7 +24,6 @@
 #include "core/public/page_options.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/lepus/bindings/renderer.h"
-#include "core/runtime/lepus/lepus_context_cell.h"
 #include "core/runtime/lepus/lepus_global.h"
 #include "core/runtime/mts_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"

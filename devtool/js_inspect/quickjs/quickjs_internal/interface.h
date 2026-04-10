@@ -7,6 +7,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "quickjs/include/quickjs.h"
+
 typedef struct LEPUSFunctionBytecode LEPUSFunctionBytecode;
 // quickjs debugger initialize, initialize LEPUSDebuggerInfo
 void QJSDebuggerInitialize(LEPUSContext *ctx);

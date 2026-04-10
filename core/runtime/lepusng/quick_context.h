@@ -39,7 +39,40 @@ struct LEPUSContext;
 namespace lynx {
 namespace lepus {
 
+class QuickContext;
 class ContextBinaryWriter;
+
+// QuickContextEnvWrapper always leaks, ensuring that the internal env
+// pointer is always valid. This env pointer is accessed by base::Value. When
+// the lifecycle of base::Value is inconsistent with QuickContext, you can check
+// whether the ctx member in env is nullptr to determine if the JS Context has
+// been released.
+class QuickContextEnvWrapper {
+ public:
+  QuickContextEnvWrapper(QuickContext* qctx, LEPUSContext* ctx);
+  void DetachEnv();
+
+  lynx_api_env GetEnv() { return &env_; }
+
+  QuickContext* GetQuickContext() const { return qctx_; }
+
+  static inline QuickContextEnvWrapper* GetFromJsContext(LEPUSContext* ctx) {
+    return ctx ? static_cast<QuickContextEnvWrapper*>(
+                     LEPUS_GetContextOpaque(ctx))
+               : nullptr;
+  }
+
+  static LEPUSContext* GetJsContextFromEnv(lynx_api_env env);
+
+  static inline lynx_api_env GetEnvFromJsContext(LEPUSContext* ctx) {
+    auto* env = GetFromJsContext(ctx);
+    return env ? env->GetEnv() : nullptr;
+  }
+
+ private:
+  QuickContext* qctx_;
+  lynx_api_env__ env_;
+};
 
 class LEPUSRuntimeData {
  public:
@@ -161,11 +194,6 @@ class QuickContext : private LEPUSRuntimeData,
 
   void SetFunctionFileName(LEPUSValue func_obj, const char* file_name);
 
-  static QuickContext* GetFromJsContext(LEPUSContext* ctx) {
-    auto* cell = GetContextCellFromCtx(ctx);
-    return cell ? cell->qctx_ : nullptr;
-  }
-
   lepus::Value ReportFatalError(const std::string& error_message, bool exit,
                                 int32_t code) override;
 
@@ -224,15 +252,13 @@ class QuickContext : private LEPUSRuntimeData,
   void SetDebugSourceCode(const std::string& source) { debug_source_ = source; }
   const std::string& GetDebugSourceCode() const { return debug_source_; }
 
-  static inline ContextCell* GetContextCellFromCtx(LEPUSContext* ctx) {
-    return ctx ? reinterpret_cast<ContextCell*>(LEPUS_GetContextOpaque(ctx))
-               : nullptr;
+  static QuickContext* GetFromJsContext(LEPUSContext* ctx) {
+    auto* env = QuickContextEnvWrapper::GetFromJsContext(ctx);
+    return env ? env->GetQuickContext() : nullptr;
   }
 
  private:
   static LEPUSLepusRefCallbacks GetLepusRefCall();
-  static CellManager& GetContextCells();
-  static ContextCell* RegisterContextCell(lepus::QuickContext* qctx);
 
   bool ExecuteBinaryInternal(Value* ret);
 

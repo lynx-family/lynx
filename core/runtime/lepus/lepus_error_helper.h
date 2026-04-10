@@ -4,11 +4,15 @@
 #ifndef CORE_RUNTIME_LEPUS_LEPUS_ERROR_HELPER_H_
 #define CORE_RUNTIME_LEPUS_LEPUS_ERROR_HELPER_H_
 
-#include <iostream>
 #include <string>
 
-#include "base/include/log/logging.h"
-#include "core/shell/runtime/mts/mts_runtime.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "quickjs/include/quickjs.h"
+#ifdef __cplusplus
+}
+#endif
 
 namespace lynx {
 namespace lepus {

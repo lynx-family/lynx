@@ -22,7 +22,6 @@
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
 #include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/bytecode_generator.h"
-#include "core/runtime/lepus/lepus_context_cell.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
 #include "core/shell/testing/mock_tasm_delegate.h"

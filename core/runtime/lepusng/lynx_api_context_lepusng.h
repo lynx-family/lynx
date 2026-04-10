@@ -22,9 +22,7 @@ extern "C" {
 
 struct lynx_api_context__lepusng {
   lynx_api_context__lepusng(lynx_api_env env, LEPUSContext* ctx)
-      : env(env), rt{LEPUS_GetRuntime(ctx)}, ctx{ctx} {
-    env->ctx = this;
-  }
+      : env(env), rt{LEPUS_GetRuntime(ctx)}, ctx{ctx} {}
 
   lynx_api_env env;
   LEPUSRuntime* rt{};

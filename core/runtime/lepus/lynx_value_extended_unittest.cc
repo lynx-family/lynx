@@ -24,8 +24,8 @@ class LynxValueLepusNGTest : public ::testing::Test {
   LynxValueLepusNGTest()
       : rt_(LEPUS_NewRuntime()),
         ctx_(LEPUS_NewContext(rt_)),
-        env_(lynx_value_api_new_env(ctx_)),
-        cell_(new ContextCell(nullptr, ctx_, rt_)) {
+        cell_(new QuickContextEnvWrapper(nullptr, ctx_)) {
+    env_ = cell_->GetEnv();
     LEPUS_SetContextOpaque(ctx_, cell_);
     LEPUSLepusRefCallbacks callbacks = QuickContext::GetLepusRefCall();
     RegisterLepusRefCallbacks(rt_, &callbacks);
@@ -33,7 +33,6 @@ class LynxValueLepusNGTest : public ::testing::Test {
 
   ~LynxValueLepusNGTest() {
     delete cell_;
-    lynx_value_api_delete_env(env_);
     LEPUS_FreeContext(ctx_);
     LEPUS_FreeRuntime(rt_);
   }
@@ -52,7 +51,7 @@ class LynxValueLepusNGTest : public ::testing::Test {
   LEPUSRuntime* rt_;
   LEPUSContext* ctx_;
   lynx_api_env env_;
-  ContextCell* cell_;
+  QuickContextEnvWrapper* cell_;
 };
 
 TEST_F(LynxValueLepusNGTest, LynxValueNull) {

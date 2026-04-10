@@ -29,6 +29,7 @@
 #include "core/runtime/lepusng/napi/worklet/napi_lepus_element.h"
 #include "core/runtime/lepusng/napi/worklet/napi_lepus_gesture.h"
 #include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
+#include "core/runtime/lepusng/quick_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #if OS_IOS
@@ -161,7 +162,8 @@ tasm::EventResult LepusElement::FireElementWorklet(
   }
 
   // Get & Exec element worklet function
-  auto* ctx = lynx_value_api_get_context_from_env(func_val.env());
+  auto* ctx =
+      lepus::QuickContextEnvWrapper::GetJsContextFromEnv(func_val.env());
 
   // Using lepus::Value to wrap LEPUSValue, so that we don't have to
   // LEPUS_FreeValue it. When using as LEPUSValue, use WrapJSValue()
@@ -274,8 +276,8 @@ std::optional<lepus::Value> LepusElement::TriggerWorkletFunction(
 
   // Get function with method_name, and make sure it's OK
 
-  LEPUSContext* ctx =
-      lynx_value_api_get_context_from_env(worklet_instance.env());
+  LEPUSContext* ctx = lepus::QuickContextEnvWrapper::GetJsContextFromEnv(
+      worklet_instance.env());
 
   // Using lepus::Value to wrap LEPUSValue, so that we don't have to
   // LEPUS_FreeValue it. When using as LEPUSValue, use WrapJSValue()

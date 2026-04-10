@@ -20,8 +20,6 @@
 #include "base/include/vector.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/public/page_options.h"
-// #include "core/runtime/bindings/lepus/renderer.h"
-#include "core/runtime/lepus/lepus_context_cell.h"
 #include "core/runtime/lepus/lepus_global.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/compile_options.h"
