@@ -15,7 +15,151 @@ namespace lynx {
 namespace tasm {
 namespace test {
 
-// TODO(songshourui.null): add unit test here.
+TEST(CSSParserDiagnostics, CollectUnsupportedProperty) {
+  CompileOptions options;
+  CSSParser parser(options);
+
+  std::string json_input = R"({
+    "type": "StyleRule",
+    "selectorText": {"value": ".container", "loc": {"line": 1, "column": 1}},
+    "style": [
+      {"name": "width", "value": "100px", "keyLoc": {"line": 2, "column": 3}},
+      {"name": "unsupported-property-xyz", "value": "1px", "keyLoc": {"line": 3, "column": 5}}
+    ],
+    "variables": {}
+  })";
+
+  auto json = base::strToJson(json_input.c_str());
+  parser.CollectStyleDiagnostics(json);
+
+  const auto& diags = parser.css_diagnostics();
+  ASSERT_EQ(diags.size(), 1);
+  EXPECT_EQ(diags[0].type, "property");
+  EXPECT_EQ(diags[0].name, "unsupported-property-xyz");
+  EXPECT_EQ(diags[0].line, 3);
+  EXPECT_EQ(diags[0].column, 5);
+}
+
+TEST(CSSParserDiagnostics, CollectUnsupportedPropertyWithoutLoc) {
+  CompileOptions options;
+  CSSParser parser(options);
+
+  std::string json_input = R"({
+    "type": "StyleRule",
+    "selectorText": {"value": ".container"},
+    "style": [
+      {"name": "bad-prop", "value": "1px"}
+    ],
+    "variables": {}
+  })";
+
+  auto json = base::strToJson(json_input.c_str());
+  parser.CollectStyleDiagnostics(json);
+
+  const auto& diags = parser.css_diagnostics();
+  ASSERT_EQ(diags.size(), 1);
+  EXPECT_EQ(diags[0].type, "property");
+  EXPECT_EQ(diags[0].name, "bad-prop");
+  EXPECT_EQ(diags[0].line, -1);
+  EXPECT_EQ(diags[0].column, -1);
+}
+
+TEST(CSSParserDiagnostics, LegacySelectorParseFailed) {
+  CompileOptions options;
+  CSSParser parser(options);
+
+  std::string json_input = R"({
+    "type": "StyleRule",
+    "selectorText": {"value": ":not", "loc": {"line": 5, "column": 10}},
+    "style": [],
+    "variables": {}
+  })";
+
+  auto json = base::strToJson(json_input.c_str());
+  CSSParserTokenMap css;
+  parser.ParseCSSTokens(css, json, "/test.css");
+
+  const auto& diags = parser.css_diagnostics();
+  ASSERT_EQ(diags.size(), 1);
+  EXPECT_EQ(diags[0].type, "selector");
+  EXPECT_EQ(diags[0].name, ":not");
+  EXPECT_EQ(diags[0].line, 5);
+  EXPECT_EQ(diags[0].column, 10);
+}
+
+TEST(CSSParserDiagnostics, NGSelectorParseFailed) {
+  CompileOptions options;
+  options.enable_css_selector_ = true;
+  CSSParser parser(options);
+
+  std::string json_input = R"({
+    "type": "StyleRule",
+    "selectorText": {"value": ":::", "loc": {"line": 7, "column": 14}},
+    "style": [],
+    "variables": {}
+  })";
+
+  auto json = base::strToJson(json_input.c_str());
+  CSSParserTokenMap css;
+  std::vector<encoder::LynxCSSSelectorTuple> tuples;
+  parser.ParseCSSTokensNew(tuples, css, json, "/test.css");
+
+  const auto& diags = parser.css_diagnostics();
+  ASSERT_EQ(diags.size(), 1);
+  EXPECT_EQ(diags[0].type, "selector");
+  EXPECT_EQ(diags[0].name, ":::");
+  EXPECT_EQ(diags[0].line, 7);
+  EXPECT_EQ(diags[0].column, 14);
+}
+
+TEST(CSSParserDiagnostics, NoDiagnosticsForValidRule) {
+  CompileOptions options;
+  options.enable_css_selector_ = false;
+  CSSParser parser(options);
+
+  std::string json_input = R"({
+    "type": "StyleRule",
+    "selectorText": {"value": ".container", "loc": {"line": 1, "column": 1}},
+    "style": [
+      {"name": "width", "value": "100px", "keyLoc": {"line": 2, "column": 3}}
+    ],
+    "variables": {}
+  })";
+
+  auto json = base::strToJson(json_input.c_str());
+  CSSParserTokenMap css;
+  parser.ParseCSSTokens(css, json, "/test.css");
+
+  EXPECT_TRUE(parser.css_diagnostics().empty());
+}
+
+TEST(CSSParserDiagnostics, GetCSSDiagnosticsJson) {
+  CompileOptions options;
+  CSSParser parser(options);
+
+  std::string json_input = R"({
+    "type": "StyleRule",
+    "selectorText": {"value": ".container", "loc": {"line": 1, "column": 1}},
+    "style": [
+      {"name": "bad-prop", "value": "1px", "keyLoc": {"line": 2, "column": 3}}
+    ],
+    "variables": {}
+  })";
+
+  auto json = base::strToJson(json_input.c_str());
+  parser.CollectStyleDiagnostics(json);
+  parser.CollectSelectorDiagnostics(json, ".container");
+
+  std::string result = parser.GetCSSDiagnosticsJson();
+  EXPECT_NE(result.find("\"type\":\"property\""), std::string::npos);
+  EXPECT_NE(result.find("\"name\":\"bad-prop\""), std::string::npos);
+  EXPECT_NE(result.find("\"line\":2"), std::string::npos);
+  EXPECT_NE(result.find("\"column\":3"), std::string::npos);
+  EXPECT_NE(result.find("\"type\":\"selector\""), std::string::npos);
+  EXPECT_NE(result.find("\"name\":\".container\""), std::string::npos);
+  EXPECT_NE(result.find("\"line\":1"), std::string::npos);
+  EXPECT_NE(result.find("\"column\":1"), std::string::npos);
+}
 
 }  // namespace test
 }  // namespace tasm

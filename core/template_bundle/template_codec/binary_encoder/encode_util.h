@@ -86,7 +86,8 @@ std::string MakeRepackBufferResult(std::vector<uint8_t>&& data,
 
 lynx::tasm::EncodeResult CreateSuccessResult(
     const std::vector<uint8_t>& buffer, const std::string& code,
-    const std::string& section_size = "", TemplateBinaryWriter* = nullptr);
+    const std::string& section_size = "", TemplateBinaryWriter* = nullptr,
+    const std::string& css_diagnostics = "");
 lynx::tasm::EncodeResult CreateErrorResult(const std::string& error_msg);
 
 lynx::tasm::EncodeResult CreateSSRSuccessResult(

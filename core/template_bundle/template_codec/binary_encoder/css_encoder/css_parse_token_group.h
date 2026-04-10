@@ -65,25 +65,34 @@ class CSSParseTokenGroup {
    */
 
  private:
-  std::vector<fml::RefPtr<CSSParseToken>> tokens;
+  std::vector<fml::RefPtr<CSSParseToken>> tokens_;
   std::string path_;
+  bool selector_parse_failed_ = false;
+  std::string failed_selector_text_;
 
-  std::string& replace_all(std::string& str, const std::string& old_value,
-                           const std::string& new_value) {
-    while (true) {
-      std::string::size_type pos(0);
-      if ((pos = str.find(old_value)) != std::string::npos)
-        str.replace(pos, old_value.length(), new_value);
-      else
-        break;
+  static void ReplaceAll(std::string& str, const std::string& old_value,
+                         const std::string& new_value) {
+    for (size_t pos = 0;
+         (pos = str.find(old_value, pos)) != std::string::npos;) {
+      str.replace(pos, old_value.length(), new_value);
     }
-    return str;
+  }
+
+  void ReportSelectorParseFailed(const std::string& text) {
+    selector_parse_failed_ = true;
+    failed_selector_text_ = text;
   }
 
  public:
-  std::vector<fml::RefPtr<CSSParseToken>>& getCssTokens() { return tokens; }
+  std::vector<fml::RefPtr<CSSParseToken>>& css_tokens() { return tokens_; }
+  bool selector_parse_failed() const { return selector_parse_failed_; }
+  const std::string& failed_selector_text() const {
+    return failed_selector_text_;
+  }
+
   std::string selector_key_;
   encoder::LynxCSSSelectorTuple selector_tuple_;
+
   /**
    * Preprocess COMMA_AND_BLANK
    * At the same time, split the selectors connected by COMMA into multiple ones
@@ -105,17 +114,20 @@ class CSSParseTokenGroup {
             const std::string newline(NEWLINE);
             const std::string comma_and_blank(COMMA_AND_BLANK);
             const std::string comma(COMMA);
-            selector = replace_all(selector, newline, "");
-            selector = replace_all(selector, comma_and_blank, comma);
+            ReplaceAll(selector, newline, "");
+            ReplaceAll(selector, comma_and_blank, comma);
             std::vector<std::string> rule;
             encoder::CSSParseToken::SplitRules(selector, COMMA, rule);
-            for (std::vector<std::string>::const_iterator iter = rule.cbegin();
-                 iter != rule.cend(); iter++) {
-              std::string str = *iter;
-              fml::RefPtr<CSSParseToken> token =
-                  fml::AdoptRef(new encoder::CSSParseToken(
-                      css_style, str, path, style_variables, compile_options_));
-              tokens.push_back(std::move(token));
+            for (const auto& iter : rule) {
+              std::string str = iter;
+              tokens_.emplace_back(fml::AdoptRef(new encoder::CSSParseToken(
+                  css_style, str, path, style_variables, compile_options_)));
+            }
+            for (const auto& token : tokens_) {
+              if (token->sheets().empty()) {
+                ReportSelectorParseFailed(selector);
+                break;
+              }
             }
           } else {
             // the new css ng logic
@@ -126,14 +138,11 @@ class CSSParseTokenGroup {
             css::CSSParserTokenRange range(parser_tokens);
             css::LynxCSSSelectorVector selector_vector =
                 css::CSSSelectorParser::ParseSelector(range, &context);
-            if (selector_vector.empty()) {
-              LOGE("CSS selector parse failed, ignore: " << selector_key_);
-              return;
-            }
             size_t flattened_size =
                 css::CSSSelectorParser::FlattenedSize(selector_vector);
-            if (flattened_size == 0) {
+            if (selector_vector.empty() || flattened_size == 0) {
               LOGE("CSS selector parse failed, ignore: " << selector_key_);
+              ReportSelectorParseFailed(selector);
               return;
             }
             selector_tuple_.selector_key = selector_key_;

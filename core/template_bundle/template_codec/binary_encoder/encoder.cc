@@ -394,6 +394,7 @@ lynx::tasm::EncodeResult EncodeInner(const std::string& options_str) {
   // step 1: parser ttss
   auto css_parser = ParserCSS(encoder_options);
   IF_FAIL_RETURN
+  std::string css_diagnostics = css_parser->GetCSSDiagnosticsJson();
 
   auto style_object_parser = ParserStyleObject(encoder_options);
   IF_FAIL_RETURN
@@ -405,7 +406,8 @@ lynx::tasm::EncodeResult EncodeInner(const std::string& options_str) {
   if (encoder_options.generator_options_.skip_encode_) {
     // If skip encode, return.
     std::vector<uint8_t> buffer;
-    return CreateSuccessResult(buffer, ttml_parser->GetLepusCode());
+    return CreateSuccessResult(buffer, ttml_parser->GetLepusCode(), "", nullptr,
+                               css_diagnostics);
   }
 
   // step 3: init vm context
@@ -434,7 +436,7 @@ lynx::tasm::EncodeResult EncodeInner(const std::string& options_str) {
 
   // step 6: return success result
   return CreateSuccessResult(std::move(res.first), ttml_parser->GetLepusCode(),
-                             res.second, encoder.get());
+                             res.second, encoder.get(), css_diagnostics);
 }
 
 lynx::tasm::EncodeResult encode_ssr_inner(const uint8_t* ptr, size_t buf_len,

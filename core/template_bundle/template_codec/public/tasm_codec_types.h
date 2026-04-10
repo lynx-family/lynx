@@ -18,6 +18,7 @@ struct EncodeResult {
   std::string lepus_code;
   std::string lepus_debug;
   std::string section_size;
+  std::string css_diagnostics;
 };
 
 struct DecodeResult {

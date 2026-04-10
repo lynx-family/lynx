@@ -72,6 +72,7 @@ TasmEncodeResult* Tasm_Encode(const char* options_json) {
   result->lepus_code = CopyString(cpp_result.lepus_code);
   result->lepus_debug = CopyString(cpp_result.lepus_debug);
   result->section_size = CopyString(cpp_result.section_size);
+  result->css_diagnostics = CopyString(cpp_result.css_diagnostics);
 
   return result;
 }
@@ -118,6 +119,9 @@ void Tasm_FreeEncodeResult(TasmEncodeResult* result) {
   }
   if (result->section_size) {
     free(result->section_size);
+  }
+  if (result->css_diagnostics) {
+    free(result->css_diagnostics);
   }
   free(result);
 }

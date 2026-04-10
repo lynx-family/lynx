@@ -39,7 +39,9 @@ EMSCRIPTEN_BINDINGS(encode) {
       .field("buffer", &lynx::tasm::codec::EncodeResult::buffer)
       .field("lepus_code", &lynx::tasm::codec::EncodeResult::lepus_code)
       .field("lepus_debug", &lynx::tasm::codec::EncodeResult::lepus_debug)
-      .field("section_size", &lynx::tasm::codec::EncodeResult::section_size);
+      .field("section_size", &lynx::tasm::codec::EncodeResult::section_size)
+      .field("css_diagnostics",
+             &lynx::tasm::codec::EncodeResult::css_diagnostics);
   emscripten::value_object<lynx::tasm::codec::DecodeResult>("DecodeResult")
       .field("status", &lynx::tasm::codec::DecodeResult::status)
       .field("result", &lynx::tasm::codec::DecodeResult::result)

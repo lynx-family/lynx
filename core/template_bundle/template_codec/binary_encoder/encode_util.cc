@@ -249,10 +249,10 @@ std::string MakeRepackBufferResult(std::vector<uint8_t>&& data,
   return str;
 }
 
-lynx::tasm::EncodeResult CreateSuccessResult(const std::vector<uint8_t>& buffer,
-                                             const std::string& lepus_code,
-                                             const std::string& section_size,
-                                             TemplateBinaryWriter* writer) {
+lynx::tasm::EncodeResult CreateSuccessResult(
+    const std::vector<uint8_t>& buffer, const std::string& lepus_code,
+    const std::string& section_size, TemplateBinaryWriter* writer,
+    const std::string& css_diagnostics) {
   rapidjson::Document document;
   rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
   rapidjson::Value template_debug_data(rapidjson::kObjectType);
@@ -284,7 +284,8 @@ lynx::tasm::EncodeResult CreateSuccessResult(const std::vector<uint8_t>& buffer,
                                .buffer = std::move(buffer),
                                .lepus_code = std::move(lepus_code),
                                .lepus_debug = std::move(template_debug_str),
-                               .section_size = std::move(section_size)};
+                               .section_size = std::move(section_size),
+                               .css_diagnostics = std::move(css_diagnostics)};
   return ret;
 };
 

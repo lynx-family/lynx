@@ -26,13 +26,14 @@ extern "C" {
 //! Result of encode operation.
 //! Caller must free memory via Tasm_FreeEncodeResult.
 typedef struct {
-  int status;          // 0 = success, -1 = error
-  char* error_msg;     // Error message, caller must free
-  uint8_t* buffer;     // Encoded binary data, caller must free
-  size_t buffer_size;  // Size of buffer
-  char* lepus_code;    // Lepus code string, caller must free
-  char* lepus_debug;   // Lepus debug info, caller must free
-  char* section_size;  // Section size info, caller must free
+  int status;             // 0 = success, -1 = error
+  char* error_msg;        // Error message, caller must free
+  uint8_t* buffer;        // Encoded binary data, caller must free
+  size_t buffer_size;     // Size of buffer
+  char* lepus_code;       // Lepus code string, caller must free
+  char* lepus_debug;      // Lepus debug info, caller must free
+  char* section_size;     // Section size info, caller must free
+  char* css_diagnostics;  // CSS diagnostics, caller must free
 } TasmEncodeResult;
 
 //! Result of decode operation.

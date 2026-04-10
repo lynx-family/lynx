@@ -42,6 +42,19 @@ class CSSParser {
     return fragments_;
   }
 
+  struct Diagnostic {
+    std::string type;
+    std::string name;
+    int line = -1;
+    int column = -1;
+  };
+
+  std::string GetCSSDiagnosticsJson() const;
+
+  const std::vector<Diagnostic> &css_diagnostics() const {
+    return css_diagnostics_;
+  }
+
  private:
   // Parse ttss file
   bool ParseOtherTTSS(const rapidjson::Value &value);
@@ -69,11 +82,19 @@ class CSSParser {
   void ParseCSS(const rapidjson::Value &map, const rapidjson::Value &id,
                 const rapidjson::Value &source);
 
+  void CollectStyleDiagnostics(const rapidjson::Value &value);
+  void CollectSelectorDiagnostics(const rapidjson::Value &value,
+                                  const std::string &selector_text);
+
+  static void ExtractLoc(const rapidjson::Value &obj, const char *loc_key,
+                         int &line, int &column);
+
   std::vector<std::unique_ptr<encoder::SharedCSSFragment>>
       shared_css_fragments_;
 
   std::unordered_map<std::string, encoder::SharedCSSFragment *> fragments_;
   const CompileOptions &compile_options_;
+  std::vector<Diagnostic> css_diagnostics_;
 };
 
 }  // namespace tasm

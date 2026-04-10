@@ -7,10 +7,14 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
+#include "core/base/json/json_util.h"
+#include "core/renderer/css/css_property.h"
 #include "core/runtime/lepus/exception.h"
 #include "core/runtime/lepus/vm_context.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_keyframes_token.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parse_token_group.h"
+#include "third_party/rapidjson/stringbuffer.h"
+#include "third_party/rapidjson/writer.h"
 
 #define APP_TTSS "/app.ttss"
 #define TTSS_SUFFIX ".ttss"
@@ -157,13 +161,81 @@ void CSSParser::ParseCSS(const rapidjson::Value &ttss, const std::string &path,
       ParseCSSFontFace(fontfaces, ttss[i], path);
     }
   }
-  auto parse_result = new encoder::SharedCSSFragment(
+  auto parse_result = std::make_unique<encoder::SharedCSSFragment>(
       fragment_id, dependent_css_list, std::move(css), std::move(keyframes),
       std::move(fontfaces));
   parse_result->SetSelectorTuple(std::move(selector_tuple_list));
-  shared_css_fragments_.push_back(
-      std::unique_ptr<encoder::SharedCSSFragment>(parse_result));
-  fragments_.insert({path, parse_result});
+  auto *raw = parse_result.get();
+  shared_css_fragments_.push_back(std::move(parse_result));
+  fragments_.insert({path, raw});
+}
+
+std::string CSSParser::GetCSSDiagnosticsJson() const {
+  if (css_diagnostics_.empty()) {
+    return "[]";
+  }
+  rapidjson::Document doc;
+  doc.SetArray();
+  auto &allocator = doc.GetAllocator();
+  for (const auto &diag : css_diagnostics_) {
+    rapidjson::Value item(rapidjson::kObjectType);
+    item.AddMember("type", rapidjson::Value(diag.type.c_str(), allocator),
+                   allocator);
+    item.AddMember("name", rapidjson::Value(diag.name.c_str(), allocator),
+                   allocator);
+    item.AddMember("line", diag.line, allocator);
+    item.AddMember("column", diag.column, allocator);
+    doc.PushBack(item, allocator);
+  }
+  return base::ToJson(doc);
+}
+
+void CSSParser::ExtractLoc(const rapidjson::Value &obj, const char *loc_key,
+                           int &line, int &column) {
+  if (!obj.HasMember(loc_key) || !obj[loc_key].IsObject()) {
+    return;
+  }
+  const auto &loc = obj[loc_key];
+  if (loc.HasMember("line") && loc["line"].IsInt()) {
+    line = loc["line"].GetInt();
+  }
+  if (loc.HasMember("column") && loc["column"].IsInt()) {
+    column = loc["column"].GetInt();
+  }
+}
+
+void CSSParser::CollectStyleDiagnostics(const rapidjson::Value &value) {
+  if (!value.HasMember(STYLE) || !value[STYLE].IsArray()) {
+    return;
+  }
+  const rapidjson::Value &style = value[STYLE];
+  for (const auto &attr : style.GetArray()) {
+    if (!attr.IsObject() || !attr.HasMember("name") ||
+        !attr["name"].IsString()) {
+      continue;
+    }
+    tasm::CSSPropertyID id =
+        tasm::CSSProperty::GetPropertyID(attr["name"].GetString());
+    if (!tasm::CSSProperty::IsPropertyValid(id)) {
+      int line = -1, column = -1;
+      ExtractLoc(attr, "keyLoc", line, column);
+      css_diagnostics_.emplace_back(
+          Diagnostic{"property", attr["name"].GetString(), line, column});
+    }
+  }
+}
+
+void CSSParser::CollectSelectorDiagnostics(const rapidjson::Value &value,
+                                           const std::string &selector_text) {
+  if (selector_text.empty() || !value.HasMember(SELECTORTEXT) ||
+      !value[SELECTORTEXT].IsObject()) {
+    return;
+  }
+  const rapidjson::Value &sel = value[SELECTORTEXT];
+  int line = -1, column = -1;
+  ExtractLoc(sel, "loc", line, column);
+  css_diagnostics_.emplace_back(
+      Diagnostic{"selector", selector_text, line, column});
 }
 
 void HandleCascadeSelector(fml::RefPtr<CSSParseToken> &token,
@@ -190,29 +262,32 @@ void HandleCascadeSelector(fml::RefPtr<CSSParseToken> &token,
 void CSSParser::ParseCSSTokens(CSSParserTokenMap &css,
                                const rapidjson::Value &value,
                                const std::string &path) {
-  std::shared_ptr<CSSParseTokenGroup> tokengroup(
-      new CSSParseTokenGroup(value, path, compile_options_));
-  std::vector<fml::RefPtr<CSSParseToken>> tokens =
-      tokengroup.get()->getCssTokens();
-  for (auto iter = tokens.cbegin(); iter != tokens.cend(); iter++) {
+  CollectStyleDiagnostics(value);
+  auto tokengroup =
+      std::make_unique<CSSParseTokenGroup>(value, path, compile_options_);
+  if (tokengroup->selector_parse_failed()) {
+    CollectSelectorDiagnostics(value, tokengroup->failed_selector_text());
+  }
+  auto &tokens = tokengroup->css_tokens();
+  for (auto iter = tokens.begin(); iter != tokens.end(); ++iter) {
     fml::RefPtr<CSSParseToken> token = std::move(*iter);
-    int token_size = token.get()->sheets().size();
+    int token_size = token->sheets().size();
     if (token_size == 0 ||
         (token_size >= 3 && compile_options_.disable_multiple_cascade_css_)) {
       continue;
     }
     int index = token_size - 1;
-    std::string key = token.get()->sheets()[index].get()->GetSelector().str();
+    std::string key = token->sheets()[index]->GetSelector().str();
     // add some tricky logic for .a .b
-    if (token.get()->IsCascadeSelectorStyleToken()) {
+    if (token->IsCascadeSelectorStyleToken()) {
       HandleCascadeSelector(token, key);
     }
 
-    int type = token.get()->sheets()[index].get()->GetType();
+    int type = token->sheets()[index]->GetType();
     auto it = css.find(key);
     if (it != css.end()) {
-      int sheet_index_ = it->second.get()->sheets().size() - 1;
-      int sheet_type = it->second.get()->sheets()[sheet_index_]->GetType();
+      int sheet_index = it->second->sheets().size() - 1;
+      int sheet_type = it->second->sheets()[sheet_index]->GetType();
       if (sheet_type == type) {
         if (compile_options_.enable_css_class_merge_) {
           MergeCSSParseToken(it->second, token);
@@ -231,9 +306,13 @@ void CSSParser::ParseCSSTokensNew(
     std::vector<encoder::LynxCSSSelectorTuple> &selector_tuple_lists,
     CSSParserTokenMap &css, const rapidjson::Value &value,
     const std::string &path) {
+  CollectStyleDiagnostics(value);
   auto token_group =
       std::make_unique<CSSParseTokenGroup>(value, path, compile_options_);
-  std::string key = token_group.get()->selector_key_;
+  if (token_group->selector_parse_failed()) {
+    CollectSelectorDiagnostics(value, token_group->failed_selector_text());
+  }
+  const std::string &key = token_group->selector_key_;
   for (auto &selector_tuple : selector_tuple_lists) {
     if (selector_tuple.selector_key == key) {
       // the new css ng will support class merge by default

@@ -51,6 +51,7 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
     obj.Set("lepus_debug", res.lepus_debug);
     obj.Set("error_msg", res.error_msg);
     obj.Set("section_size", res.section_size);
+    obj.Set("css_diagnostics", res.css_diagnostics);
     return obj;
   }
 
