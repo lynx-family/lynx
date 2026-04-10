@@ -67,10 +67,10 @@ LynxIntersectionObserverModule::CreateIntersectionObserver(
         return;
       }
       int id = args_array->GetValueAtIndex(0)->Int32();
-      int component = args_array->GetValueAtIndex(1)->Int32();
+      std::string component_id = args_array->GetValueAtIndex(1)->str();
       auto options = args_array->GetValueAtIndex(2);
       clay::Value clay_option_value = ValueConverter::CreateClayValue(*options);
-      clay_option_value.GetMap()["componentId"] = clay::Value(component);
+      clay_option_value.GetMap()["componentId"] = clay::Value(component_id);
       clay_option_value.GetMap()["customObserverId"] = clay::Value(id);
       strong_this->observer_configs_[id] =
           std::move(clay_option_value.GetMap());
@@ -253,11 +253,10 @@ LynxIntersectionObserverModule::RelativeToViewport(
           }
           int id = args_array->GetValueAtIndex(0)->Int32();
           clay::Value::Map& option = strong_this->observer_configs_[id];
-          std::string target_id_selector =
-              option["componentId"].GetString().substr(1);
-          clay::BaseView* target = view_context->FindViewByIdSelector(
-              target_id_selector, view_context->GetPageView());
-          if (target == nullptr) {
+          std::string component_id = option["componentId"].GetString();
+          clay::BaseView* component_root =
+              view_context->FindViewByComponentId(component_id);
+          if (component_root == nullptr) {
             FML_LOG(ERROR) << "relativeTo failed, target is null.";
             return;
           }
