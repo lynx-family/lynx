@@ -1874,7 +1874,17 @@ void BaseView::SetAnimation(const std::vector<AnimationData>& data) {
     SetRepaintBoundary(true);
   }
   animation_ = std::make_optional<std::vector<AnimationData>>(data);
-  auto result = KeyframesMgr()->UpdateData(data);
+  // This call of `OnAnimationNodeReady` can be removed if all upper frameworks
+  // will call `UpdateNodeReadyPatching` in future.
+  OnAnimationNodeReady();
+}
+
+void BaseView::OnAnimationNodeReady() {
+  if (!animation_.has_value()) {
+    return;
+  }
+
+  auto result = KeyframesMgr()->UpdateData(*animation_);
   if (result.data_has_changed) {
     // Animations may not play without this
     page_view()->RequestPaint();
@@ -3698,6 +3708,8 @@ float BaseView::FromLogical(float value) const {
 float BaseView::ToLogical(float value) const {
   return page_view()->ConvertTo<kPixelTypeLogical>(value);
 }
+
+void BaseView::OnNodeReady() { OnAnimationNodeReady(); }
 
 void BaseView::UpdateInlineImageInfo() {
   for (auto child : GetChildren()) {
