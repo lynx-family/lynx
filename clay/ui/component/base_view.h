@@ -131,7 +131,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
     return GetScrollOffset();
   }
 
-  virtual void OnNodeReady() {}
+  virtual void OnNodeReady();
 
   void UpdateInlineImageInfo();
 
@@ -675,6 +675,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
                               bool is_from_animation);
 
   void UpdateRenderObjectTransformOrigin();
+  void OnAnimationNodeReady();
 
 #ifdef ENABLE_ACCESSIBILITY
   // Some views can update its specific semantics data.

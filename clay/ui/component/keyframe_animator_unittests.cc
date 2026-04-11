@@ -104,9 +104,7 @@ TEST_F_UI(KeyFrameTest, DefaultStartAndEnd) {
 
   int64_t frame_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
   for (size_t i = 0; i < 10; i++) {
-    animator_view_->KeyframesMgr()
-        ->target_->GetAnimationHandler()
-        ->DoAnimationFrame(frame_time);
+    animator_view_->GetAnimationHandler()->DoAnimationFrame(frame_time);
     frame_time += 16;
   }
 
@@ -122,6 +120,33 @@ TEST_F_UI(KeyFrameTest, DefaultStartAndEnd) {
 
   EXPECT_EQ(keyframe_sets->keyframes_.front()->Value(), 0.1f);
   EXPECT_EQ(keyframe_sets->keyframes_.back()->Value(), 0.1f);
+}
+
+TEST_F_UI(KeyFrameTest, StartAnimationOnNodeReadyAfterKeyframesReady) {
+  Value keyframes_data = CreateKeyFrameData1();
+
+  animator_view_->SetBound(0, 0, 100, 100);
+  animation_data_.clear();
+  animation_data_.push_back(start_data_);
+  animator_view_->SetAnimation(animation_data_);
+
+  EXPECT_TRUE(animator_view_->KeyframesMgr()->animations().empty());
+
+  page_->SetKeyframesData(keyframes_data);
+  animator_view_->OnNodeReady();
+
+  ASSERT_EQ(animator_view_->KeyframesMgr()->animations().size(), 1u);
+  ValueAnimator* animator =
+      animator_view_->KeyframesMgr()->animations().front().animator.get();
+  EXPECT_TRUE(animator->StartListenersCalled());
+
+  int64_t frame_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+  for (size_t i = 0; i < 10; i++) {
+    animator_view_->GetAnimationHandler()->DoAnimationFrame(frame_time);
+    frame_time += 16;
+  }
+
+  EXPECT_GT(animator_view_->render_object()->Opacity(), 0.1f);
 }
 
 // Test update animation properties
