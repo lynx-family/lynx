@@ -172,6 +172,10 @@ class BaseBinaryReader : public BinaryReader {
   int has_feature_lepus_closure_{-1};  // -1 unset, 0 and 1 for bool value
 
  private:
+  bool DecodeLepusNGContextBundleImpl(runtime::ContextBundle* bundle);
+#if !ENABLE_JUST_LEPUSNG
+  bool DecodeVMContextBundleImpl(runtime::ContextBundle* bundle);
+#endif
   tasm::StringListVec string_list_;
 };
 
