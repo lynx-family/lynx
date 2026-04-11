@@ -231,8 +231,7 @@ const NodeApiRawPtrHost& GetWeakNapiRawPtrHost() {
     host->napi_get_value_bigint_words_rawptr =
         reinterpret_cast<void*>(napi_get_value_bigint_words);
     host->napi_get_version_rawptr = reinterpret_cast<void*>(napi_get_version);
-    host->napi_find_module_rawptr =
-        reinterpret_cast<void*>(napi_find_module_primjs);
+    host->napi_find_module_rawptr = reinterpret_cast<void*>(napi_find_module);
     return host;
   }();
   return *sWeakRawPtrHost;
