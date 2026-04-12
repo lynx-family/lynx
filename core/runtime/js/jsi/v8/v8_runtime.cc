@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/runtime/js/jsi/v8/v8_runtime.h"
 
+#include <cstring>
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -597,19 +598,20 @@ ArrayBuffer V8Runtime::createArrayBufferCopy(const uint8_t* bytes,
   Scope scope(*this);
   v8::TryCatch trycatch(getIsolate());
   v8::Local<v8::ArrayBuffer> obj;
-  void* dst_buffer = nullptr;
-  if (bytes && byte_length > 0) {
-    dst_buffer = malloc(byte_length);
-  }
   if (byte_length == 0) {
     obj = v8::ArrayBuffer::New(getIsolate(), 0);
-  } else if (bytes && dst_buffer) {
-    memcpy(dst_buffer, bytes, byte_length);
+  } else if (bytes) {
 #if V8_MAJOR_VERSION >= 9
-    auto store = v8::ArrayBuffer::NewBackingStore(
-        dst_buffer, byte_length, [](void*, size_t, void*) {}, nullptr);
+    auto store = v8::ArrayBuffer::NewBackingStore(getIsolate(), byte_length);
+    if (store) {
+      memcpy(store->Data(), bytes, byte_length);
+    }
     obj = v8::ArrayBuffer::New(getIsolate(), std::move(store));
 #else
+    void* dst_buffer = malloc(byte_length);
+    if (dst_buffer) {
+      memcpy(dst_buffer, bytes, byte_length);
+    }
     obj = v8::ArrayBuffer::New(getIsolate(), dst_buffer, byte_length,
                                v8::ArrayBufferCreationMode::kInternalized);
 #endif
@@ -631,10 +633,11 @@ ArrayBuffer V8Runtime::createArrayBufferNoCopy(
     const uint8_t* raw_buffer = bytes.release();
 
 #if V8_MAJOR_VERSION >= 9
-    auto store = v8::ArrayBuffer::NewBackingStore(
-        static_cast<void*>(const_cast<uint8_t*>(raw_buffer)), byte_length,
-        v8::BackingStore::EmptyDeleter, nullptr);
-
+    auto store = v8::ArrayBuffer::NewBackingStore(getIsolate(), byte_length);
+    if (store) {
+      memcpy(store->Data(), raw_buffer, byte_length);
+    }
+    delete[] raw_buffer;
     obj = v8::ArrayBuffer::New(getIsolate(), std::move(store));
 #else
     obj = v8::ArrayBuffer::New(getIsolate(), const_cast<uint8_t*>(raw_buffer),
