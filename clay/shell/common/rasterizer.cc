@@ -353,32 +353,22 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     FrameTimingsRecorder& frame_timings_recorder, clay::LayerTree& layer_tree) {
   FML_DCHECK(surface_);
 
-  class ScopedDrawTiming {
-   public:
-    explicit ScopedDrawTiming(FrameTimingsRecorder& recorder)
-        : recorder_(recorder) {
-      recorder_.RecordFrameTime(FrameTimingKey::kDoDrawStart);
-    }
-    void MarkDrawEnd() { draw_end_marked_ = true; }
-    ~ScopedDrawTiming() {
-      if (draw_end_marked_) {
-        recorder_.RecordFrameTime(FrameTimingKey::kDoDrawEnd);
-      }
-    }
-
-   private:
-    FrameTimingsRecorder& recorder_;
-    bool draw_end_marked_ = false;
-  };
-
-  ScopedDrawTiming scoped_draw_timing(frame_timings_recorder);
+  ScopedTimingRecorder scoped_draw_timing(frame_timings_recorder,
+                                          FrameTimingKey::kDoDrawStart,
+                                          FrameTimingKey::kDoDrawEnd);
 
   compositor_context_->ui_time().SetLapTime(
       frame_timings_recorder.GetBuildDuration());
 
-  frame_timings_recorder.RecordFrameTime(FrameTimingKey::kAcquireFrameStart);
-  auto frame = surface_->AcquireFrame(layer_tree.frame_size());
-  frame_timings_recorder.RecordFrameTime(FrameTimingKey::kAcquireFrameEnd);
+  std::unique_ptr<SurfaceFrame> frame = nullptr;
+  {
+    TRACE_EVENT("clay", "GPURasterizer::AcquireFrame");
+    ScopedTimingRecorder scoped_acquire_frame_timing(
+        frame_timings_recorder, FrameTimingKey::kAcquireFrameStart,
+        FrameTimingKey::kAcquireFrameEnd);
+    frame = surface_->AcquireFrame(layer_tree.frame_size());
+    scoped_acquire_frame_timing.MarkRecordEnd();
+  }
   if (frame == nullptr) {
     return RasterStatus::kFailed;
   }
@@ -445,13 +435,17 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
       // manually to avoid errors in raster_cache.EndFrame().
       compositor_context_->raster_cache().Clear();
     }
-    frame_timings_recorder.RecordFrameTime(FrameTimingKey::kRasterStart);
-    RasterStatus raster_status = compositor_frame->Raster(
-        layer_tree, ignore_raster_cache, damage.get(),
-        Color::kTransparent().Value(), [&] {
-          frame->Prepare(damage ? damage->GetBufferDamage() : std::nullopt);
-        });
-    frame_timings_recorder.RecordFrameTime(FrameTimingKey::kRasterEnd);
+    {
+      ScopedTimingRecorder scoped_raster_timing(frame_timings_recorder,
+                                                FrameTimingKey::kRasterStart,
+                                                FrameTimingKey::kRasterEnd);
+      compositor_frame->Raster(
+          layer_tree, ignore_raster_cache, damage.get(),
+          Color::kTransparent().Value(), [&] {
+            frame->Prepare(damage ? damage->GetBufferDamage() : std::nullopt);
+          });
+      scoped_raster_timing.MarkRecordEnd();
+    }
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                          std::chrono::system_clock::now().time_since_epoch())
                          .count();
@@ -462,9 +456,6 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
         impl.GetFrameTimingCollector()->EndRecord(clay::Perf::kFirstRasterCost);
       }
     });
-    if (raster_status == RasterStatus::kFailed) {
-      return raster_status;
-    }
 
     SurfaceFrame::SubmitInfo submit_info;
     // TODO (https://github.com/flutter/flutter/issues/105596):  // NOLINT
@@ -481,11 +472,15 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     }
 
     frame->set_submit_info(submit_info);
-    frame_timings_recorder.RecordFrameTime(FrameTimingKey::kSubmitFrameStart);
-    compositor_service_->SubmitFrame(surface_->GetContext(), std::move(frame),
-                                     std::move(compositor_state));
-    frame_timings_recorder.RecordFrameTime(FrameTimingKey::kSubmitFrameEnd);
-
+    {
+      TRACE_EVENT("clay", "GPURasterizer::SubmitFrame");
+      ScopedTimingRecorder scoped_submit_frame_timing(
+          frame_timings_recorder, FrameTimingKey::kSubmitFrameStart,
+          FrameTimingKey::kSubmitFrameEnd);
+      compositor_service_->SubmitFrame(surface_->GetContext(), std::move(frame),
+                                       std::move(compositor_state));
+      scoped_submit_frame_timing.MarkRecordEnd();
+    }
     compositor_context_->raster_cache().EndFrame();
     frame_timings_recorder.RecordRasterEnd(
         &compositor_context_->raster_cache());
@@ -528,8 +523,8 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
         impl.UpdateRasterCacheInfo(raster_cache_info);
       });
     }
-    scoped_draw_timing.MarkDrawEnd();
-    return raster_status;
+    scoped_draw_timing.MarkRecordEnd();
+    return RasterStatus::kSuccess;
   }
 
   return RasterStatus::kFailed;

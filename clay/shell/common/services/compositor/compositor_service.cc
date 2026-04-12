@@ -22,7 +22,7 @@ namespace clay {
 bool CompositorService::SubmitFrame(
     clay::GrContext* context, std::unique_ptr<SurfaceFrame> background_frame,
     std::unique_ptr<CompositorState> compositor_state) {
-  TRACE_EVENT("clay", "FlutterPlatformViewsController::SubmitFrame");
+  TRACE_EVENT("clay", "CompositorService::SubmitFrame");
 
   if (compositor_state->GetCompositionOrder().empty() &&
       !had_hybrid_composited_) {

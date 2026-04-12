@@ -68,6 +68,7 @@ void DrawableImageLayer::Preroll(PrerollContext* context) {
 }
 
 void DrawableImageLayer::Paint(PaintContext& context) const {
+  TRACE_EVENT("clay", "DrawableImageLayer::Paint");
   FML_DCHECK(needs_painting(context));
 
   std::shared_ptr<DrawableImage> image =

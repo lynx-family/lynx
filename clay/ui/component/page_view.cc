@@ -340,19 +340,22 @@ bool PageView::BeginFrame(
   frame_builder_->Reset();
   {
     TRACE_EVENT("clay", "Clay::Layout");
-    recorder->RecordFrameTime(FrameTimingKey::kLayoutStart);
+    ScopedTimingRecorder scoped_layout_timing(
+        *recorder, FrameTimingKey::kLayoutStart, FrameTimingKey::kLayoutEnd);
     LayoutInternal();
     LayoutUpdated();
-    recorder->RecordFrameTime(FrameTimingKey::kLayoutEnd);
+    scoped_layout_timing.MarkRecordEnd();
   }
 
   if (animation_handler_->GetAnimationCount() > 0) {
-    recorder->RecordFrameTime(FrameTimingKey::kDoAnimationStart);
     TRACE_EVENT("clay", "Clay::Animation");
+    ScopedTimingRecorder scoped_animation_timing(
+        *recorder, FrameTimingKey::kDoAnimationStart,
+        FrameTimingKey::kDoAnimationEnd);
     RequestNewFrame();
     animation_handler_->DoAnimationFrame(
         recorder->GetVsyncTargetTime().ToEpochDelta().ToMilliseconds());
-    recorder->RecordFrameTime(FrameTimingKey::kDoAnimationEnd);
+    scoped_animation_timing.MarkRecordEnd();
   }
 
   if (frame_timing_collector_ &&
@@ -393,9 +396,10 @@ bool PageView::BeginFrame(
   }
   {
     TRACE_EVENT("clay", "Clay::Paint");
-    recorder->RecordFrameTime(FrameTimingKey::kPaintStart);
+    ScopedTimingRecorder scoped_paint_timing(
+        *recorder, FrameTimingKey::kPaintStart, FrameTimingKey::kPaintEnd);
     Paint();
-    recorder->RecordFrameTime(FrameTimingKey::kPaintEnd);
+    scoped_paint_timing.MarkRecordEnd();
   }
 
   render_phase_ = RenderPhase::kBuildFrame;
@@ -559,9 +563,14 @@ void PageView::CompositeFrame(
     frame_timing_collector_->BeginRecord(Perf::kFirstBuildFrameCost);
   }
 
-  recorder->RecordFrameTime(FrameTimingKey::kBuildFrameStart);
-  frame_builder_->BuildFrame(renderer_->GetLayer());
-  recorder->RecordFrameTime(FrameTimingKey::kBuildFrameEnd);
+  {
+    TRACE_EVENT("clay", "Clay::CompositeFrame");
+    ScopedTimingRecorder scoped_composite_timing(
+        *recorder, FrameTimingKey::kBuildFrameStart,
+        FrameTimingKey::kBuildFrameEnd);
+    frame_builder_->BuildFrame(renderer_->GetLayer());
+    scoped_composite_timing.MarkRecordEnd();
+  }
   if (performance_overlay_enabled_) {
     frame_builder_->AddPerformanceOverlay(15, 0, physical_size_.width(), 0,
                                           physical_size_.height() / 5);

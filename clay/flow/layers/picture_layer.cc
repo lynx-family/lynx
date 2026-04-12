@@ -165,6 +165,7 @@ void PictureLayer::Preroll(PrerollContext* context) {
 }
 
 void PictureLayer::Paint(PaintContext& context) const {
+  TRACE_EVENT("clay", "PictureLayer::Paint");
   FML_DCHECK(picture());
   FML_DCHECK(needs_painting(context));
 

@@ -275,6 +275,27 @@ class FrameTimingsRecorder {
   BASE_DISALLOW_COPY_ASSIGN_AND_MOVE(FrameTimingsRecorder);
 };
 
+class ScopedTimingRecorder {
+ public:
+  ScopedTimingRecorder(FrameTimingsRecorder& recorder, FrameTimingKey start,
+                       FrameTimingKey end)
+      : recorder_(recorder), timing_start_(start), timing_end_(end) {
+    recorder_.RecordFrameTime(timing_start_);
+  }
+  void MarkRecordEnd() { record_end_marked_ = true; }
+  ~ScopedTimingRecorder() {
+    if (record_end_marked_) {
+      recorder_.RecordFrameTime(timing_end_);
+    }
+  }
+
+ private:
+  FrameTimingsRecorder& recorder_;
+  FrameTimingKey timing_start_;
+  FrameTimingKey timing_end_;
+  bool record_end_marked_ = false;
+};
+
 }  // namespace clay
 
 #endif  // CLAY_FLOW_FRAME_TIMINGS_H_

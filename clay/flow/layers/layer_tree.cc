@@ -111,6 +111,7 @@ bool LayerTree::Preroll(CompositorContext::ScopedFrame& frame,
 void LayerTree::TryToRasterCache(
     const std::vector<RasterCacheItem*>& raster_cached_items,
     const PaintContext* paint_context, bool ignore_raster_cache) {
+  TRACE_EVENT("clay", "LayerTree::TryToRasterCache");
   unsigned i = 0;
   const auto item_size = raster_cached_items.size();
   while (i < item_size) {

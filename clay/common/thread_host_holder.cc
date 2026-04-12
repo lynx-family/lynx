@@ -29,7 +29,7 @@ void ThreadHostHolder::SetConfig(
 
 void ThreadHostHolder::SetMask(uint64_t mask, const std::string& thread_label,
                                const ThreadConfigSetter& setter) {
-  std::string name_prefix = "rk" + thread_label;
+  std::string name_prefix = "clay" + thread_label;
   clay::ThreadHost::ThreadHostConfig host_config(name_prefix, mask, setter);
 
   if (mask & ThreadHost::Type::Platform) {
