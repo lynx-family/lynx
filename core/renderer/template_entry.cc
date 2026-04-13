@@ -60,8 +60,10 @@ bool TemplateEntry::ConstructContext(
   bool enable_rts = context_bundle.IsRTS();
   bool enable_rts_native = context_bundle.IsRTSNative();
   auto source_type = LepusContextSourceType::kFromRuntime;
+  // RTSNative bypasses the local context pool.
   bool enable_use_context_pool =
-      use_context_pool || template_bundle().EnableUseContextPool();
+      !enable_rts_native &&
+      (use_context_pool || template_bundle().EnableUseContextPool());
   if (enable_use_context_pool) {
     // 1. try to take context for local pool
     if (template_bundle().mts_runtime_pool_) {

@@ -53,6 +53,11 @@ void LynxTemplateBundle::PrepareVMByConfigs() {
     return;
   }
 
+  // RTSNative bypasses bundle-level context pool preparation.
+  if (context_type_ == runtime::ContextType::RTSNativeContextType) {
+    return;
+  }
+
   const bool disable_tracing_gc =
       page_configs_ && page_configs_->GetDisableQuickTracingGC();
 
@@ -70,7 +75,8 @@ void LynxTemplateBundle::PrepareVMByConfigs() {
 }
 
 bool LynxTemplateBundle::PrepareLepusContext(int32_t count) {
-  if (!mts_runtime_pool_ || count <= 0) {
+  if (context_type_ == runtime::ContextType::RTSNativeContextType ||
+      !mts_runtime_pool_ || count <= 0) {
     return false;
   }
 
