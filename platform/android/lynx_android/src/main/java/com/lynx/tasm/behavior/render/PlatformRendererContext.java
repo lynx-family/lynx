@@ -3,8 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.render;
 
+import android.graphics.Matrix;
 import android.graphics.PointF;
+import android.os.Build;
 import android.util.DisplayMetrics;
+import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -32,7 +35,7 @@ import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlatformRendererContext implements TextMeasurerProvider {
-  final private static String TAG = "PlatformRendererContext";
+  private static final String TAG = "PlatformRendererContext";
 
   public static final class PlatformRendererType {
     public static final int kUnknown = 0;
@@ -149,14 +152,59 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return host.getView().getHeight();
   }
 
+  public int getMeaningfulPaintingAreaVisibleStatus(int sign) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null || host.getView() == null) {
+      return View.VISIBLE;
+    }
+    return host.getView().getVisibility();
+  }
+
+  public float getMeaningfulPaintingAreaAlpha(int sign) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null || host.getView() == null) {
+      return 1.f;
+    }
+    return host.getView().getAlpha();
+  }
+
+  public float getMeaningfulPaintingAreaScaleX(int sign) {
+    return getMeaningfulPaintingAreaScale(sign, true);
+  }
+
+  public float getMeaningfulPaintingAreaScaleY(int sign) {
+    return getMeaningfulPaintingAreaScale(sign, false);
+  }
+
+  private float getMeaningfulPaintingAreaScale(int sign, boolean scaleX) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null || host.getView() == null) {
+      return 1.f;
+    }
+    View view = host.getView();
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      Matrix animationMatrix = view.getAnimationMatrix();
+      if (animationMatrix != null && !animationMatrix.isIdentity()) {
+        float[] values = new float[9];
+        // cspell:ignore MSCALE MSKEW
+        animationMatrix.getValues(values);
+        if (scaleX) {
+          return (float) Math.hypot(values[Matrix.MSCALE_X], values[Matrix.MSKEW_Y]);
+        }
+        return (float) Math.hypot(values[Matrix.MSKEW_X], values[Matrix.MSCALE_Y]);
+      }
+    }
+    return scaleX ? view.getScaleX() : view.getScaleY();
+  }
+
   @CalledByNative
   public void createPlatformRenderer(int sign, int type) {
     switch (type) {
       case PlatformRendererType.kView:
       case PlatformRendererType.kText:
       case PlatformRendererType.kImage:
-      // TODO(songshourui.null): Support <list>, <list-item> and <scroll-view>'s platform view
-      // later, use ContainerRenderer for now
+        // TODO(songshourui.null): Support <list>, <list-item> and <scroll-view>'s platform view
+        // later, use ContainerRenderer for now
       case PlatformRendererType.kList:
       case PlatformRendererType.kListItem:
       case PlatformRendererType.kScroll: {
@@ -438,8 +486,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   /**
-   * Implements TextMeasurerProvider.measureText to delegate to the TextMeasurer instance.
-   * This allows PlatformRendererContext to provide text measurement functionality directly.
+   * Implements TextMeasurerProvider.measureText to delegate to the TextMeasurer instance. This
+   * allows PlatformRendererContext to provide text measurement functionality directly.
    */
   @Override
   public float[] measureText(int sign, float width, int widthMode, float height, int heightMode,
@@ -476,8 +524,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   native int[] nativeGetDisplayListLengths(long nativePtr, int id);
 
   /**
-   * Fills the provided arrays with display list data.
-   * The arrays must be pre-allocated with lengths obtained from nativeGetDisplayListLengths().
+   * Fills the provided arrays with display list data. The arrays must be pre-allocated with lengths
+   * obtained from nativeGetDisplayListLengths().
    */
   native void nativeGetDisplayListData(
       long nativePtr, int id, int[] ops, int[] iArgv, float[] fArgv);

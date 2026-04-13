@@ -9,7 +9,10 @@ import androidx.annotation.NonNull;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.IPaintingContext;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Wrap the native object only to manage the lifetime on Java side.
@@ -110,6 +113,15 @@ public class NativePaintingContext implements IPaintingContext {
     return nativeGetPlatformEventHandlerState(mNativePtr);
   }
 
+  public List<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
+    if (mDestroyed || mNativePtr == 0) {
+      return new ArrayList<>();
+    }
+
+    return MeaningfulPaintingAreaHelper.buildMeaningfulPaintingAreas(
+        nativeGetMeaningfulPaintingAreaRecords(mNativePtr), mPlatformRendererContext, mContext);
+  }
+
   private native long nativeCreatePaintingContext(
       NativePaintingContext jThis, long platformRendererContextPtr, Object textLayout, long textra);
 
@@ -121,4 +133,6 @@ public class NativePaintingContext implements IPaintingContext {
   native int nativeGetPlatformEventHandlerState(long nativePtr);
 
   native void nativeDestroy(long nativePtr);
+
+  native int[] nativeGetMeaningfulPaintingAreaRecords(long nativePtr);
 }
