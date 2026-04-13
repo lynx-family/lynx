@@ -557,14 +557,18 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (_lynxViewGroup != nil && _lynxViewGroup.templateResourceFetcher != nil) {
     _LogI(@"loadTemplateFromURL with lynxViewGroup.");
     [_lynxViewGroup fetchTemplate:^(LynxTemplateBundle* bundle, NSError* error) {
+      __strong LynxTemplateRender* strongSelf = weakSelf;
+      if (strongSelf == nil) {
+        return;
+      }
       if (!error) {
-        [weakSelf.devTool onLoadFromBundle:bundle withURL:url initData:data];
+        [strongSelf.devTool onLoadFromBundle:bundle withURL:url initData:data];
         // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchViewDidStartLoading
         // Due to lynxDevTool UI session limitations, we cannot do this yet
-        [self->_devTool attachDebugBridge:url];
-        [weakSelf loadTemplateBundle:bundle withURL:url initData:data];
+        [strongSelf->_devTool attachDebugBridge:url];
+        [strongSelf loadTemplateBundle:bundle withURL:url initData:data];
       } else {
-        [weakSelf onFetchTemplateError:error];
+        [strongSelf onFetchTemplateError:error];
       }
     }];
   } else if (_lynxUIRenderer.uiOwner.uiContext.templateResourceFetcher) {
@@ -574,22 +578,26 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     [_lynxUIRenderer.uiOwner.uiContext.templateResourceFetcher
         fetchTemplate:(LynxResourceRequest* _Nonnull)request
            onComplete:^(LynxTemplateResource* _Nullable templateRes, NSError* _Nullable error) {
+             __strong LynxTemplateRender* strongSelf = weakSelf;
+             if (strongSelf == nil) {
+               return;
+             }
              if (!error) {
                if (templateRes.bundle) {
-                 [weakSelf.devTool onLoadFromBundle:templateRes.bundle withURL:url initData:data];
+                 [strongSelf.devTool onLoadFromBundle:templateRes.bundle withURL:url initData:data];
                  // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchViewDidStartLoading
                  // Due to lynxDevTool UI session limitations, we cannot do this yet
-                 [self->_devTool attachDebugBridge:url];
-                 [weakSelf loadTemplateBundle:templateRes.bundle withURL:url initData:data];
+                 [strongSelf->_devTool attachDebugBridge:url];
+                 [strongSelf loadTemplateBundle:templateRes.bundle withURL:url initData:data];
                } else if (templateRes.data) {
-                 [weakSelf.devTool onTemplateLoadSuccess:templateRes.data];
+                 [strongSelf.devTool onTemplateLoadSuccess:templateRes.data];
                  // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchViewDidStartLoading
                  // Due to lynxDevTool UI session limitations, we cannot do this yet
-                 [self->_devTool attachDebugBridge:url];
-                 [weakSelf internalLoadTemplate:templateRes.data withUrl:url initData:data];
+                 [strongSelf->_devTool attachDebugBridge:url];
+                 [strongSelf internalLoadTemplate:templateRes.data withUrl:url initData:data];
                }
              } else {
-               [weakSelf onFetchTemplateError:error];
+               [strongSelf onFetchTemplateError:error];
              }
            }];
   } else {
