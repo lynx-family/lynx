@@ -860,14 +860,38 @@ void ScrollView::StartScrollInto(BaseView* node, std::string block,
 }
 
 void ScrollView::CorrectScrollOffset() {
-  RenderScroll* scroll = static_cast<RenderScroll*>(render_object_.get());
+  if (skip_correct_scroll_offset_) {
+    return;
+  }
+  RenderScroll* scroll = GetRenderScroll();
+  if (!scroll) {
+    return;
+  }
+  // Use the paint offset to correct the scroll offset. If we correct it using
+  // scroll_offset_, the corrected scroll offset can get out of sync with the
+  // paint offset, causing flickering.
+  const auto paint_offset = scroll->GetPaintOffsetForScroll();
   if (scroll_direction_ == ScrollDirection::kVertical) {
-    if (scroll_offset_.y() > scroll->MaxScrollHeight()) {
-      OnScrollUpdate(scroll->MaxScrollHeight());
+    const float target_offset =
+        std::min(paint_offset.y(), scroll->MaxScrollHeight());
+    if (RoughlyNotZero(scroll_offset_.y() - target_offset)) {
+      OnScrollUpdate(target_offset);
+      return;
+    }
+    if (RoughlyNotZero(scroll->ScrollTop() - target_offset)) {
+      scroll->ScrollTo(scroll->ScrollLeft(), target_offset);
+      last_scroll_offset_ = scroll->ScrollOffset();
     }
   } else {
-    if (scroll_offset_.x() > scroll->MaxScrollWidth()) {
-      OnScrollUpdate(scroll->MaxScrollWidth());
+    const float target_offset =
+        std::min(paint_offset.x(), scroll->MaxScrollWidth());
+    if (RoughlyNotZero(scroll_offset_.x() - target_offset)) {
+      OnScrollUpdate(target_offset);
+      return;
+    }
+    if (RoughlyNotZero(scroll->ScrollLeft() - target_offset)) {
+      scroll->ScrollTo(target_offset, scroll->ScrollTop());
+      last_scroll_offset_ = scroll->ScrollOffset();
     }
   }
 }

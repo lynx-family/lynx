@@ -76,6 +76,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
 
  protected:
   void CalculateOverFlow() override;
+  void OnOverscroll(FloatPoint prev_overscroll_offset) override;
 
  private:
   void DidScroll() override;
@@ -113,6 +114,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
   void UpdateStickyInfoForUpdatedChild(
       Component* child, std::unordered_map<int, Component*> sticky_items,
       const std::vector<int>& sticky_indexes, int index);
+
   void ResetStickyItem(Component* child);
   void UpdateStickyStarts(float offset_x, float offset_y);
   void UpdateStickyEnds(float offset_x, float offset_y);
