@@ -108,6 +108,11 @@ void Scrollable::SetClampedOverscrollOffset(FloatPoint offset) {
   }
 }
 
+void Scrollable::ClearOverscrollState() {
+  overscroll_offset_ = {0, 0};
+  clamped_overscroll_offset_ = {0, 0};
+}
+
 void Scrollable::SetScrollStatus(ScrollStatus status) {
   if (status_ != status) {
     if (status == ScrollStatus::kIdle) {

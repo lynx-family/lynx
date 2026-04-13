@@ -193,6 +193,9 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   std::string next_scrollable_;
   std::string pre_scrollable_;
 
+ protected:
+  bool skip_correct_scroll_offset_ = false;
+
   FRIEND_TEST(ScrollViewTest, NestedScrollOnPC);
   FRIEND_TEST(ScrollViewTest, NestedScrollGestureOnPC);
   FRIEND_TEST(ScrollViewTest, ScrollToId);
