@@ -11,6 +11,7 @@
 #include <tuple>
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "base/include/float_comparison.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_size.h"
@@ -38,6 +39,9 @@ ListContainerView::ListContainerView(int32_t id, PageView* page_view,
                    std::make_unique<RenderScroll>()) {
   tag_ = "ListContainerView";
   AddEventCallback(event_attr::kEventScrollStateChange);
+  // We skip correct scroll offset by default for ListContainerView. It's only
+  // necessary when the max content size is updated.
+  skip_correct_scroll_offset_ = true;
 }
 
 void ListContainerView::SetAttribute(const char* attr_c,
@@ -234,14 +238,13 @@ void ListContainerView::ScrollToPosition(
 void ListContainerView::UpdateContentOffsetForListContainer(
     float content_size, float target_content_offset_x,
     float target_content_offset_y) {
+  lynx::base::AutoReset<bool> resetter(&should_block_did_scroll_, true);
   SetMaxContent(content_size);
-  should_block_did_scroll_ = true;
-  if (GetScrollDirection() == ScrollDirection::kVertical) {
-    ScrollWithDelta(false, target_content_offset_y);
+  if (CanScrollY()) {
+    OnScrollUpdate(scroll_offset_.y() + target_content_offset_y);
   } else {
-    ScrollWithDelta(false, target_content_offset_x);
+    OnScrollUpdate(scroll_offset_.x() + target_content_offset_x);
   }
-  should_block_did_scroll_ = false;
 }
 
 void ListContainerView::UpdateScrollInfo(bool smooth, float estimated_offset,
@@ -344,7 +347,7 @@ void ListContainerView::UpdateStickyEnds(float offset_x, float offset_y) {
     return;
   }
 
-  bool is_vertical = GetScrollDirection() == ScrollDirection::kVertical;
+  bool is_vertical = CanScrollY();
 
   int offset = 0;
   if (is_vertical) {
@@ -461,7 +464,7 @@ void ListContainerView::UpdateStickyStarts(float offset_x, float offset_y) {
     return;
   }
 
-  bool is_vertical = GetScrollDirection() == ScrollDirection::kVertical;
+  bool is_vertical = CanScrollY();
 
   int offset = (is_vertical ? offset_y : offset_x) + sticky_offset_;
   Component* sticky_start_item = nullptr;
@@ -595,13 +598,22 @@ void ListContainerView::CalculateOverFlow() {
 }
 
 void ListContainerView::SetMaxContent(float value) {
+  auto* scroll = GetRenderScroll();
+  float old_max_content = max_content_;
   max_content_ = value;
-  if (GetScrollDirection() == ScrollDirection::kVertical) {
-    GetRenderScroll()->SetOverflowRect(
-        FloatRect(0, 0, GetRenderScroll()->Width(), max_content_));
+  if (CanScrollY()) {
+    scroll->SetOverflowRect(FloatRect(0, 0, scroll->Width(), max_content_));
   } else {
-    GetRenderScroll()->SetOverflowRect(
-        FloatRect(0, 0, max_content_, GetRenderScroll()->Height()));
+    scroll->SetOverflowRect(FloatRect(0, 0, max_content_, scroll->Height()));
+  }
+  if (old_max_content != max_content_) {
+    // When max content changes, we need to correct scroll offset if necessary.
+    lynx::base::AutoReset<bool> resetter(&skip_correct_scroll_offset_, false);
+    CorrectScrollOffset();
+    // Stop bounce animation if necessary.
+    Scrollable::StopAnimation();
+    // Clear overscroll state if necessary.
+    ClearOverscrollState();
   }
 }
 
@@ -677,7 +689,7 @@ void ListContainerView::OnScrollUpdate(float offset) {
   if (status_ == Scrollable::ScrollStatus::kDragging) {
     last_scroll_offset_for_snap_ = scroll_offset_;
   }
-  if (is_scroll_animating_) {
+  if (is_scroll_animating_ && !should_block_did_scroll_) {
     if (initial_scrolling_estimated_offset_ != 0) {
       offset *=
           scrolling_estimated_offset_ / initial_scrolling_estimated_offset_;
@@ -746,7 +758,7 @@ void ListContainerView::DetectSnapScroll(PointerEvent::EventType type) {
         break;
       case PointerEvent::EventType::kUpEvent:
       case PointerEvent::EventType::kPanZoomEndEvent: {
-        bool is_vertical = GetScrollDirection() == ScrollDirection::kVertical;
+        bool is_vertical = CanScrollY();
         bool forward = false;
         if (is_vertical) {
           if (last_scroll_offset_for_snap_.y() == scroll_offset_.y() &&
@@ -805,7 +817,7 @@ void ListContainerView::DetectSnapScroll(PointerEvent::EventType type) {
 
 std::tuple<int32_t, float, float> ListContainerView::CalcSnapScroll(
     bool forward, bool has_velocity) const {
-  bool is_vertical = GetScrollDirection() == ScrollDirection::kVertical;
+  bool is_vertical = CanScrollY();
   float content_offset = is_vertical ? scroll_offset_.y() : scroll_offset_.x();
 
   Component* closest_item_before = nullptr;
@@ -911,7 +923,7 @@ std::tuple<int32_t, float, float> ListContainerView::CalcSnapScroll(
 
 float ListContainerView::GetListItemSnapScrollOffset(
     Component* list_item) const {
-  if (GetScrollDirection() == ScrollDirection::kHorizontal) {
+  if (CanScrollX()) {
     return list_item->Left() - (Width() - list_item->Width()) * snap_factor_ +
            snap_offset_;
   } else {
@@ -922,7 +934,7 @@ float ListContainerView::GetListItemSnapScrollOffset(
 
 std::pair<float, float> ListContainerView::CalculateOffsets(
     Component* item) const {
-  bool is_vertical = GetScrollDirection() == ScrollDirection::kVertical;
+  bool is_vertical = CanScrollY();
   float range = GetScrollRange();
   float snap_offset = GetListItemSnapScrollOffset(item);
   float clamped_offset = std::clamp(snap_offset, 0.f, range);
@@ -935,7 +947,7 @@ std::pair<float, float> ListContainerView::CalculateOffsets(
 }
 
 float ListContainerView::GetScrollRange() const {
-  bool is_horizontal = GetScrollDirection() == ScrollDirection::kHorizontal;
+  bool is_horizontal = CanScrollX();
   float content_size = is_horizontal
                            ? GetRenderScroll()->OverflowRect().width()
                            : GetRenderScroll()->OverflowRect().height();
@@ -974,6 +986,11 @@ size_t ListContainerView::GetVisibleItemsInfo(
     }
   }
   return top_array.size();
+}
+
+void ListContainerView::OnOverscroll(FloatPoint prev_overscroll_offset) {
+  lynx::base::AutoReset<bool> resetter(&should_block_did_scroll_, true);
+  ScrollView::OnOverscroll(prev_overscroll_offset);
 }
 
 }  // namespace clay
