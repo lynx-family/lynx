@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <functional>
 #include <utility>
+#include <vector>
 
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -21,6 +22,11 @@
 #include "core/shell/lynx_shell.h"
 
 namespace lynx::tasm {
+namespace {
+
+int32_t ToInt(float value) { return static_cast<int32_t>(value); }
+
+}  // namespace
 
 NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
     std::unique_ptr<PlatformRendererFactory> view_factory)
@@ -241,8 +247,55 @@ NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively(
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               NATIVE_PAINTING_CONTEXT_RECONSTRUCT_EVENT_TARGET_TREE);
   return event_target_helper_->ReconstructEventTargetTreeRecursively(
-      fml::RefPtr<PlatformRendererImpl>(
-          static_cast<PlatformRendererImpl *>(page_renderer->second.get())));
+      fml::static_ref_ptr_cast<PlatformRendererImpl>(page_renderer->second));
+}
+
+std::vector<int32_t>
+NativePaintingCtxPlatformRef::CollectMeaningfulPaintingAreaRecords() {
+  if (ReconstructEventTargetTreeRecursively() == nullptr) {
+    return {};
+  }
+
+  std::vector<int32_t> flattened;
+  const auto &event_targets = event_target_helper_->GetEventTargets();
+  flattened.reserve(event_targets.size() * 6);
+  for (const auto &it : event_targets) {
+    const auto &target = it.second;
+    if (target == nullptr) {
+      continue;
+    }
+
+    auto type = target->GetPlatformRendererType();
+    if (type == PlatformRendererType::kUnknown) {
+      auto renderer_it = renderers_.find(target->Sign());
+      if (renderer_it != renderers_.end() && renderer_it->second != nullptr) {
+        auto renderer =
+            fml::static_ref_ptr_cast<PlatformRendererImpl>(renderer_it->second);
+        type = renderer->GetPlatformRendererType();
+      }
+    }
+    if (type == PlatformRendererType::kUnknown) {
+      continue;
+    }
+
+    float rect[4] = {0.f, 0.f, target->Width(), target->Height()};
+    event_target_helper_->ConvertRectFromTargetToRootTarget(rect, target, rect);
+    int32_t x = ToInt(rect[0]);
+    int32_t y = ToInt(rect[1]);
+    int32_t width = ToInt(rect[2] - rect[0]);
+    int32_t height = ToInt(rect[3] - rect[1]);
+    if (width <= 0 || height <= 0) {
+      continue;
+    }
+
+    flattened.push_back(target->Sign());
+    flattened.push_back(static_cast<int32_t>(type));
+    flattened.push_back(x);
+    flattened.push_back(y);
+    flattened.push_back(width);
+    flattened.push_back(height);
+  }
+  return flattened;
 }
 
 void NativePaintingCtxPlatformRef::AddPlatformEventTargetToExposure(

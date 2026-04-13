@@ -5,6 +5,7 @@ package com.lynx.tasm.behavior.render;
 
 import android.graphics.PointF;
 import android.util.DisplayMetrics;
+import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -147,6 +148,38 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
 
     return host.getView().getHeight();
+  }
+
+  public int getMeaningfulPaintingAreaVisibleStatus(int sign) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null || host.getView() == null) {
+      return View.VISIBLE;
+    }
+    return host.getView().getVisibility();
+  }
+
+  public float getMeaningfulPaintingAreaAlpha(int sign) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null || host.getView() == null) {
+      return 1.f;
+    }
+    return host.getView().getAlpha();
+  }
+
+  public float getMeaningfulPaintingAreaScaleX(int sign) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null || host.getView() == null) {
+      return 1.f;
+    }
+    return host.getView().getScaleX();
+  }
+
+  public float getMeaningfulPaintingAreaScaleY(int sign) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null || host.getView() == null) {
+      return 1.f;
+    }
+    return host.getView().getScaleY();
   }
 
   @CalledByNative

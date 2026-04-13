@@ -95,6 +95,31 @@ jboolean DispatchPlatformInputEvent(JNIEnv *env, jobject /*jcaller*/,
   return res;
 }
 
+jintArray GetMeaningfulPaintingAreaRecords(JNIEnv *env, jobject /*jcaller*/,
+                                           jlong nativePtr) {
+  if (nativePtr == 0) {
+    return nullptr;
+  }
+
+  auto *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return nullptr;
+  }
+
+  auto records = platform_ref->CollectMeaningfulPaintingAreaRecords();
+  auto result = env->NewIntArray(static_cast<jsize>(records.size()));
+  if (result == nullptr || records.empty()) {
+    return result;
+  }
+  env->SetIntArrayRegion(result, 0, static_cast<jsize>(records.size()),
+                         records.data());
+  return result;
+}
+
 jint GetPlatformEventHandlerState(JNIEnv *env, jobject /*jcaller*/,
                                   jlong nativePtr) {
   // Get the NativePaintingCtxAndroid instance from the native pointer

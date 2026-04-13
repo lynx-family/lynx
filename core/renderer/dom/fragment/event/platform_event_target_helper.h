@@ -22,6 +22,11 @@ class PlatformEventTargetHelper {
 
   fml::RefPtr<PlatformEventTarget> GetRootEventTarget();
   fml::RefPtr<PlatformEventTarget> GetEventTarget(int32_t id);
+  const base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformEventTarget>,
+                                   64>&
+  GetEventTargets() const {
+    return event_targets_;
+  }
 
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
       fml::RefPtr<PlatformRendererImpl> page_renderer);

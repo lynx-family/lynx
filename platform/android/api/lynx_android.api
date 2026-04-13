@@ -7194,6 +7194,7 @@ public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.isAccessibilityDisabled();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.enableTimingCollector();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.shouldInvokeNativeViewMethod();
+  public List< MeaningfulPaintingArea > com.lynx.tasm.behavior.LynxUIRenderer.getMeaningfulPaintingAreas();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.disableBindDrawChildHook();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.needHandleDispatchKeyEvent();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.dispatchKeyEvent(KeyEvent event);
@@ -7951,6 +7952,7 @@ public class com::lynx::tasm::behavior::render::NativePaintingContext : com.lynx
   public void com.lynx.tasm.behavior.render.NativePaintingContext.setLynxEngineActorForPlatformContextRef(long ptr);
   public boolean com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformMotionEvent(MotionEvent ev);
   public int com.lynx.tasm.behavior.render.NativePaintingContext.getPlatformEventHandlerState();
+  public List< MeaningfulPaintingArea > com.lynx.tasm.behavior.render.NativePaintingContext.getMeaningfulPaintingAreas();
 }
 
 public class com::lynx::tasm::navigator::NavigationModule : com.lynx.jsbridge.LynxModule {
@@ -8526,6 +8528,10 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.getScreenSize();
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetWidth(int sign);
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetHeight(int sign);
+  public int com.lynx.tasm.behavior.render.PlatformRendererContext.getMeaningfulPaintingAreaVisibleStatus(int sign);
+  public float com.lynx.tasm.behavior.render.PlatformRendererContext.getMeaningfulPaintingAreaAlpha(int sign);
+  public float com.lynx.tasm.behavior.render.PlatformRendererContext.getMeaningfulPaintingAreaScaleX(int sign);
+  public float com.lynx.tasm.behavior.render.PlatformRendererContext.getMeaningfulPaintingAreaScaleY(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformRenderer(int sign, int type);
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTagInfo(String tagName);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData);
