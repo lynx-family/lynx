@@ -13,16 +13,14 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/message_loop_impl.h"
 #include "base/include/fml/task_runner.h"
-#include "base/include/no_destructor.h"
 
 namespace lynx {
 namespace fml {
 
 namespace {
 std::unique_ptr<MessageLoop>& GetThreadLocalLooper() {
-  static thread_local base::NoDestructor<std::unique_ptr<MessageLoop>>
-      tls_message_loop_instance;
-  return *tls_message_loop_instance;
+  thread_local std::unique_ptr<MessageLoop> tls_message_loop_instance;
+  return tls_message_loop_instance;
 }
 }  // namespace
 
