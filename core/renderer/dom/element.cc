@@ -2139,6 +2139,7 @@ bool Element::IsEventPathCatch(event::EventTarget* target,
     auto root = element_manager()->root();
     if (this != root) {
       LOGI("Element::IsEventPathCatch fixed target.")
+      event->event_path().push_back(this->GetWeakTarget());
       event->event_path().push_back(root->GetWeakTarget());
       return true;
     }
