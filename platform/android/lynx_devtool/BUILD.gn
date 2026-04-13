@@ -10,8 +10,10 @@ group("LynxDevtool") {
   deps = [
     ":lynxdevtool",
     "../../../devtool/lynx_devtool/js_debug:lynxdevtool_qjs_bridge",
-    "../../../devtool/lynx_devtool/js_debug:lynxdevtool_v8_bridge",
   ]
+  if (enable_v8_devtool_bridge) {
+    deps += [ "../../../devtool/lynx_devtool/js_debug:lynxdevtool_v8_bridge" ]
+  }
 }
 
 cmake_target("lynxdevtool") {
@@ -39,10 +41,12 @@ cmake_target("lynxdevtool") {
     "../:16kb_page",
   ]
 
-  sub_cmake_target = [
-    "../../../devtool/lynx_devtool/js_debug:lynxdevtool_qjs_bridge",
-    "../../../devtool/lynx_devtool/js_debug:lynxdevtool_v8_bridge",
-  ]
+  sub_cmake_target =
+      [ "../../../devtool/lynx_devtool/js_debug:lynxdevtool_qjs_bridge" ]
+  if (enable_v8_devtool_bridge) {
+    sub_cmake_target +=
+        [ "../../../devtool/lynx_devtool/js_debug:lynxdevtool_v8_bridge" ]
+  }
 }
 
 group("lynxdevtool_lib") {

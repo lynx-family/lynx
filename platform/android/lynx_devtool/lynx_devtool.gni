@@ -1,6 +1,3 @@
 # Copyright 2022 The Lynx Authors. All rights reserved.
 
-import("../Android.gni")
-
-declare_args() {
-}
+import("../../../../platform/android/lynx_devtool/LynxDevtool.gni")
