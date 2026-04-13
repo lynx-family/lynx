@@ -27,6 +27,7 @@ class LayoutComputedStyle {
   LYNX_EXPORT LayoutComputedStyle(double physical_pixels_per_layout_unit);
   LYNX_EXPORT LayoutComputedStyle(const LayoutComputedStyle& o);
   ~LayoutComputedStyle() = default;
+  void CopyFrom(const LayoutComputedStyle& o);
 
   void Reset();
 

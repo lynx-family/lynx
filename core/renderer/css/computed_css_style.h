@@ -73,6 +73,7 @@ class ComputedCSSStyle {
                                double physical_pixels_per_layout_unit);
   ComputedCSSStyle(const ComputedCSSStyle& o);
   ~ComputedCSSStyle() = default;
+  void CopyFrom(const ComputedCSSStyle& o);
 
   LYNX_EXPORT bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
                             bool reset = false);

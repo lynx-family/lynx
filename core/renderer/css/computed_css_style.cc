@@ -548,6 +548,66 @@ ComputedCSSStyle::ComputedCSSStyle(const ComputedCSSStyle& o)
     : layout_computed_style_(o.layout_computed_style_),
       length_context_(o.length_context_) {}
 
+void ComputedCSSStyle::CopyFrom(const ComputedCSSStyle& o) {
+  auto copy_flex_optional = [](auto& dst, const auto& src) {
+    if (src.has_value()) {
+      dst.emplace(*src);
+    } else {
+      dst.reset();
+    }
+  };
+
+  layout_computed_style_.CopyFrom(o.layout_computed_style_);
+  length_context_ = o.length_context_;
+  caret_color_ = o.caret_color_;
+  adapt_font_size_ = o.adapt_font_size_;
+  content_ = o.content_;
+  copy_flex_optional(enter_transition_data_, o.enter_transition_data_);
+  copy_flex_optional(exit_transition_data_, o.exit_transition_data_);
+  copy_flex_optional(pause_transition_data_, o.pause_transition_data_);
+  copy_flex_optional(resume_transition_data_, o.resume_transition_data_);
+  copy_flex_optional(background_data_, o.background_data_);
+  copy_flex_optional(mask_data_, o.mask_data_);
+  copy_flex_optional(layout_animation_data_, o.layout_animation_data_);
+  copy_flex_optional(outline_, o.outline_);
+  copy_flex_optional(animation_data_, o.animation_data_);
+  copy_flex_optional(transform_raw_, o.transform_raw_);
+  copy_flex_optional(transition_data_, o.transition_data_);
+  copy_flex_optional(box_shadow_, o.box_shadow_);
+  copy_flex_optional(text_attributes_, o.text_attributes_);
+  copy_flex_optional(placeholder_text_attributes_,
+                     o.placeholder_text_attributes_);
+  copy_flex_optional(transform_origin_, o.transform_origin_);
+  copy_flex_optional(filter_, o.filter_);
+  copy_flex_optional(perspective_data_, o.perspective_data_);
+  copy_flex_optional(cursor_, o.cursor_);
+  clip_path_ = o.clip_path_;
+  offset_path_ = o.offset_path_;
+  z_index_ = o.z_index_;
+  enable_z_index_ = o.enable_z_index_;
+  has_z_index_ = o.has_z_index_;
+  handle_color_ = o.handle_color_;
+  handle_size_ = o.handle_size_;
+  origin_has_opacity_ = o.origin_has_opacity_;
+  opacity_ = o.opacity_;
+  offset_distance_ = o.offset_distance_;
+  offset_rotate_ = o.offset_rotate_;
+  image_rendering_ = o.image_rendering_;
+  app_region_ = o.app_region_;
+  new_animator_interpolation_ = o.new_animator_interpolation_;
+  origin_overflow_ = o.origin_overflow_;
+  overflow_ = o.overflow_;
+  overflow_x_ = o.overflow_x_;
+  overflow_y_ = o.overflow_y_;
+  visibility_ = o.visibility_;
+  pointer_events_ = o.pointer_events_;
+  parser_configs_ = o.parser_configs_;
+  css_align_with_legacy_w3c_ = o.css_align_with_legacy_w3c_;
+  default_overflow_visible_ = o.default_overflow_visible_;
+  changed_bitset_ = o.changed_bitset_;
+  reset_bitset_ = o.reset_bitset_;
+}
+
 void ComputedCSSStyle::Reset() {
   layout_computed_style_.Reset();
 

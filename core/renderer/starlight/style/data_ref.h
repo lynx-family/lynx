@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_STARLIGHT_STYLE_DATA_REF_H_
 #define CORE_RENDERER_STARLIGHT_STYLE_DATA_REF_H_
 
+#include <utility>
+
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/log/logging.h"
 
@@ -14,6 +16,26 @@ namespace starlight {
 template <typename T>
 class DataRef {
  public:
+  DataRef() = default;
+  DataRef(fml::RefPtr<T> data) : data_(std::move(data)) {}
+  DataRef(const DataRef& o) : data_(o.data_) {}
+  DataRef(DataRef&& o) : data_(std::move(o.data_)) {}
+
+  DataRef& operator=(const DataRef& o) {
+    data_ = o.data_;
+    return *this;
+  }
+
+  DataRef& operator=(DataRef&& o) {
+    data_ = std::move(o.data_);
+    return *this;
+  }
+
+  DataRef& operator=(fml::RefPtr<T> data) {
+    data_ = std::move(data);
+    return *this;
+  }
+
   const T* Get() const { return data_.get(); }
   static_assert(std::is_same_v<decltype(&DataRef::Get),
                                const T* (DataRef<T>::*)() const>);
