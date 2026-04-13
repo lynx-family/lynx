@@ -162,6 +162,8 @@
 }
 
 - (void)dealloc {
+  [_displayLink invalidate];
+  [_displayLinkForLynxView invalidate];
   [_observer removeAnimationObserver:_callback];
   [_observer removeLayoutObserver:_callback];
   [_observer removeScrollObserver:_callback];

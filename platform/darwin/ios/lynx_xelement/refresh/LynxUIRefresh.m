@@ -35,6 +35,10 @@ typedef NS_ENUM(NSUInteger, LynxUIRefreshState) {
 
 @implementation LynxUIRefreshHeaderView
 
+- (void)dealloc {
+  [_displayLink invalidate];
+}
+
 - (void)prepare {
   [super prepare];
   if (!self.headerView) {

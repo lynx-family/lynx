@@ -3,10 +3,15 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxHeroAnimator.h>
+#import <Lynx/LynxWeakProxy.h>
 #import <QuartzCore/QuartzCore.h>
 
 @implementation LynxHeroAnimator {
   CADisplayLink* _displayLink;
+}
+
+- (void)dealloc {
+  [_displayLink invalidate];
 }
 
 - (void)displayLinkCallback:(CADisplayLink*)link {
@@ -39,7 +44,7 @@
   self.timePassed = timePassed;
   self.isReversed = isReversed;
   self.totalTime = totalTime;
-  _displayLink = [CADisplayLink displayLinkWithTarget:self
+  _displayLink = [CADisplayLink displayLinkWithTarget:[LynxWeakProxy proxyWithTarget:self]
                                              selector:@selector(displayLinkCallback:)];
   [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 }

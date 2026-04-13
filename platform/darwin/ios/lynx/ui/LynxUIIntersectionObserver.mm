@@ -433,6 +433,10 @@ using namespace lynx;
   return self;
 }
 
+- (void)dealloc {
+  [_displayLink invalidate];
+}
+
 - (void)setEnableNewIntersectionObserver:(BOOL)enable {
   _enableNewIntersectionObserver = enable;
 }
