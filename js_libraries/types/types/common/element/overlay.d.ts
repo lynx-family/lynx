@@ -54,6 +54,7 @@ export interface OverlayProps extends Omit<StandardProps, 'binderror'> {
   /**
    * Control whether the overlay is displayed
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC

@@ -192,6 +192,7 @@ interface IsAnimatingMethod extends BaseMethod {
 /**
  * Call this method to scroll the element into the visible area.
  * @Android
+ * @web
  * @iOS
  * @Harmony
  * @PC

@@ -5,6 +5,7 @@ export interface SVGProps extends StandardProps {
    * SVG resource URL
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -14,6 +15,7 @@ export interface SVGProps extends StandardProps {
    * SVG XML content
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */

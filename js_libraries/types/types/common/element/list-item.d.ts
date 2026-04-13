@@ -8,6 +8,7 @@ export interface ListItemProps extends StandardProps {
   /**
    * The unique key of list child node, and it's a mandatory property.
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -18,6 +19,7 @@ export interface ListItemProps extends StandardProps {
    * sticky top effect. Not compatible with flatten.
    * @defaultValue false
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -28,6 +30,7 @@ export interface ListItemProps extends StandardProps {
    * sticky bottom effect. Not compatible with flatten.
    * @defaultValue false
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -38,6 +41,7 @@ export interface ListItemProps extends StandardProps {
    * Adding the `full-span` attribute to `<list-item/>` will make it occupy a single line. You need to configure {@link ListProps."list-type" | list-type} correctly to make the list enter a multi-column layout for this to work.
    * @defaultValue false
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -48,6 +52,7 @@ export interface ListItemProps extends StandardProps {
    * Preset size in main scroll axis to control the placeholder size of the view while the list component has not finished rendering. The more accurately it is set, the less flickering the list will have. If not set, we will use list size in main axis as the estimated size of list-item.
    * @defaultValue -1
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -59,6 +64,7 @@ export interface ListItemProps extends StandardProps {
    * @since 3.4
    * @defaultValue true
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC

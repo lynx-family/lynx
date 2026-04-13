@@ -57,6 +57,7 @@ export interface ListAttachedCell {
    * id of list item
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -65,6 +66,7 @@ export interface ListAttachedCell {
    * item-key of list item
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -73,6 +75,7 @@ export interface ListAttachedCell {
    * index of list item
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -81,6 +84,7 @@ export interface ListAttachedCell {
    * left position of list item relative to list, in px
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -89,6 +93,7 @@ export interface ListAttachedCell {
    * top position of list item relative to list, in px
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -97,6 +102,7 @@ export interface ListAttachedCell {
    * right position of list item relative to list, in px
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -105,6 +111,7 @@ export interface ListAttachedCell {
    * bottom position of list item relative to list, in px
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -400,6 +407,7 @@ export interface ListProps extends StandardProps {
    * @defaultValue 'vertical'
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -409,6 +417,7 @@ export interface ListProps extends StandardProps {
    * The number of columns or rows for the list, and only effective when list-type is 'flow' or 'waterfall'.
    * @defaultValue 1
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -419,6 +428,7 @@ export interface ListProps extends StandardProps {
    * layout type of the list
    * @defaultValue  'single'
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -429,6 +439,7 @@ export interface ListProps extends StandardProps {
    * Whether to allow scrolling for a list.
    * @defaultValue true
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -449,6 +460,7 @@ export interface ListProps extends StandardProps {
    * Declared on the list to control whether the list as a whole is allowed to be sticky at the top or bottom.
    * @defaultValue  false
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -459,6 +471,7 @@ export interface ListProps extends StandardProps {
    * The offset distance from the top or bottom of list for sticky positioning, in px.
    * @defaultValue  0
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -478,6 +491,7 @@ export interface ListProps extends StandardProps {
    * Specifies the node position to which list automatically scrolls after rendering.
    * @defaultValue  0
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -488,6 +502,7 @@ export interface ListProps extends StandardProps {
    * Controls whether the scroll event callback parameters include the position information of the currently rendering node.
    * @defaultValue  false
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -498,6 +513,7 @@ export interface ListProps extends StandardProps {
    * When scrolling down, when the number of remaining displayable child nodes at the bottom is first less than lower-threshold-item-count, a scrolltolower event is triggered. If lower-threshold-item-count is specified, lower-threshold is not effective.
    * @defaultValue  0
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -508,6 +524,7 @@ export interface ListProps extends StandardProps {
    * When scrolling up, when the number of remaining displayable child nodes at the top is first less than upper-threshold-item-count, a scrolltoupper event is triggered. If upper-threshold-item-count is specified, upper-threshold is not effective.
    * @defaultValue  0
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -518,6 +535,7 @@ export interface ListProps extends StandardProps {
    * Specify the callback frequency of the scroll event by passing in a value, which specifies how many milliseconds (ms) list will call the scroll callback event during scrolling.
    * @defaultValue  200
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -668,6 +686,7 @@ export interface ScrollToPositionParams {
   /**
    * Specify the index of the node to scroll to, with a value range of [0, itemCount).
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -681,6 +700,7 @@ export interface ScrollToPositionParams {
    *  "middle": Scroll to make the node fully visible in the list and align the center of the node with the center of the list. This is only supported in LynxSDK 2.12 and above.
    * @defaultValue 'top'
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -691,6 +711,7 @@ export interface ScrollToPositionParams {
    * Align the node with alignTo, and then move the node downward by a length of offset.
    * @defaultValue 0
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -700,6 +721,7 @@ export interface ScrollToPositionParams {
   /**
    * Specify the unique identifier of the node to scroll to. If `item-key` is specified, `index` will be ignored.
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @since 3.6
@@ -710,6 +732,7 @@ export interface ScrollToPositionParams {
    * Enable scroll animation during scroll.
    * @defaultValue  false
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -720,6 +743,7 @@ export interface ScrollToPositionParams {
 /**
  * Scroll the list to the specified position.
  * @Android
+ * @web
  * @iOS
  * @Harmony
  * @PC
@@ -733,6 +757,7 @@ export interface ScrollToPositionMethod extends BaseMethod {
 /**
  * Automatic scrolling.
  * @Android
+ * @web
  * @iOS
  * @Harmony
  */
@@ -743,6 +768,7 @@ export interface AutoScrollMethod extends BaseMethod {
      * Start/stop automatic scrolling.
      * @defaultValue false
      * @Android
+     * @web
      * @iOS
      * @Harmony
      */
@@ -751,6 +777,7 @@ export interface AutoScrollMethod extends BaseMethod {
     /**
      *  The distance of each second's scrolling, which supports positive and negative values. The unit of distance can be "px", "rpx", "ppx", or null (for iOS, the value must be greater than 1/screen.scale px).
      * @Android
+     * @web
      * @iOS
      * @Harmony
      */
@@ -760,6 +787,7 @@ export interface AutoScrollMethod extends BaseMethod {
      * Whether to stop automatically when sliding to the bottom.
      * @defaultValue true
      * @Android
+     * @web
      * @iOS
      * @Harmony
      */
@@ -770,6 +798,7 @@ export interface AutoScrollMethod extends BaseMethod {
 /**
  * Get the info of the currently displayed list item.
  * @Android
+ * @web
  * @iOS
  * @Harmony
  * @PC
@@ -823,6 +852,7 @@ export interface GetScrollInfoMethod extends BaseMethod {
 /**
  * Scroll by specified offset
  * @Android
+ * @web
  * @iOS
  * @Harmony
  * @PC
@@ -834,6 +864,7 @@ export interface ScrollByMethod extends BaseMethod {
     /**
      * Offset to scroll, in px.
      * @Android
+     * @web
      * @iOS
      * @Harmony
      * @PC
