@@ -102,10 +102,18 @@ class FileGenerator(GeneratorGroup):
         parent_path = os.path.join(project_root_path, self._relative_path)
         if not os.path.exists(parent_path):
             os.makedirs(parent_path)
-        file_path = os.path.join(
-            parent_path, self._file_name)
-        with open(file_path, 'w') as f:
-            f.write(''.join(self._file_content))
+        file_path = os.path.join(parent_path, self._file_name)
+        new_content = ''.join(self._file_content)
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                if f.read() == new_content:
+                    print("generate file (unchanged): {0}".format(file_path))
+                    return
+        except FileNotFoundError:
+            pass
+
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
         print("generate file: {0}".format(file_path))
 
     def _generate_file_header(self):
@@ -173,5 +181,3 @@ class MetaDataEnumGenerator(ModuleGenerator):
     def after_generate(self):
         self._append_with_indent(META_DATA_DEF_END)
         self._append("\n")
-
-    
