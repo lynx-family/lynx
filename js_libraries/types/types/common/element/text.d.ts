@@ -12,6 +12,7 @@ export interface TextProps extends StandardProps {
   /**
    * Maximum number of lines for text display
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -46,6 +47,7 @@ export interface TextProps extends StandardProps {
    * By default, if text truncation occurs, the color of the inserted ... will be specified by the style on the nearest inline-text. If this attribute is enabled, the color of ... will be specified by the style on the outermost text tag.
    * @defaultValue false
    * @Android
+   * @web
    * @iOS
    * @since 2.0
    */
@@ -90,6 +92,7 @@ export interface TextProps extends StandardProps {
    * Sets whether to enable text selection.
    * @defaultValue false
    * @Android
+   * @web
    * @iOS
    * @since 2.18
    */

@@ -23,6 +23,7 @@ export interface ScrollViewProps extends StandardProps {
    * @since 3.0
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -44,6 +45,7 @@ export interface ScrollViewProps extends StandardProps {
    * @since 1.4
    * @iOS
    * @Android 2.2
+   * @web
    * @Harmony
    * @PC
    */
@@ -87,6 +89,7 @@ export interface ScrollViewProps extends StandardProps {
    * @since 2.17
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -98,6 +101,7 @@ export interface ScrollViewProps extends StandardProps {
    * @since 2.17
    * @iOS
    * @Android
+   * @web
    * @Harmony
    * @PC
    */
@@ -159,6 +163,7 @@ export interface ScrollViewProps extends StandardProps {
 /**
  * Scroll to specified position
  * @Android
+ * @web
  * @iOS
  * @Harmony
  * @PC
@@ -187,6 +192,7 @@ export interface ScrollViewScrollToMethod extends BaseMethod {
 /**
  * Scroll by specified offset
  * @Android
+ * @web
  * @iOS
  * @Harmony
  * @PC
@@ -206,6 +212,7 @@ export interface ScrollViewScrollByMethod extends BaseMethod {
 /**
  * Automatic scrolling
  * @Android
+ * @web
  * @iOS
  * @Harmony
  * @PC
@@ -216,6 +223,7 @@ export interface ScrollViewAutoScrollMethod extends BaseMethod {
     /**
      *  The distance of each second's scrolling, which supports positive and negative values. The unit of distance can be "px", "rpx", "ppx", or null (for iOS, the value must be greater than 1/screen.scale px).
      * @Android
+     * @web
      * @iOS
      * @Harmony
      * @PC
@@ -224,6 +232,7 @@ export interface ScrollViewAutoScrollMethod extends BaseMethod {
     /**
      * Start/stop automatic scrolling.
      * @Android
+     * @web
      * @iOS
      * @Harmony
      * @PC

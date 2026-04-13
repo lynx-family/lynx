@@ -54,6 +54,7 @@ export interface ViewPagerProps extends StandardProps {
   /**
    * Select the specified page at initialization, specifically referring to the first time when there are children.
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -65,6 +66,7 @@ export interface ViewPagerProps extends StandardProps {
   /**
    * Enable horizontal scroll gesture
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @PC
@@ -158,6 +160,7 @@ export interface ViewPagerItemProps extends StandardProps {}
 /**
  * Slide to the specified page.
  * @Android
+ * @web
  * @iOS
  * @Harmony
  * @PC
@@ -168,6 +171,7 @@ export interface ViewPagerSelectTabMethod extends BaseMethod {
     /**
      * The index to be scrolled to.
      * @Android
+     * @web
      * @iOS
      * @Harmony
      * @PC
@@ -177,6 +181,7 @@ export interface ViewPagerSelectTabMethod extends BaseMethod {
     /**
      * If a animation effect needed. The default setting is true.
      * @Android
+     * @web
      * @iOS
      * @Harmony
      * @PC

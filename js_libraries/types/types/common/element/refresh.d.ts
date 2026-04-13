@@ -11,6 +11,7 @@ export interface RefreshStartRefresh {
   /**
    * Indicates whether the startrefresh event is triggered by manual drag
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @Web
@@ -22,6 +23,7 @@ export interface RefreshHeaderOffset {
   /**
    * Indicates if `<refresh-header>` is being dragged
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @Web
@@ -31,6 +33,7 @@ export interface RefreshHeaderOffset {
   /**
    * The ratio of the pull-down movement distance to its own height
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @Web
@@ -60,6 +63,7 @@ export interface RefreshProps extends StandardProps {
    * Determines if dragging down or calling autoStartRefresh can trigger the startrefresh event.
    * @defaultValue true
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @Web
@@ -70,6 +74,7 @@ export interface RefreshProps extends StandardProps {
   /**
    * Triggered when enable-refresh is true, and dragging down or calling autoStartRefresh (enters refresh state).
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @Web
@@ -81,6 +86,7 @@ export interface RefreshProps extends StandardProps {
   /**
    * Triggered during movement when `<refresh-header>` is exposed.
    * @Android
+   * @web
    * @iOS
    * @Harmony
    * @Web
@@ -107,6 +113,7 @@ export interface RefreshHeaderProps extends StandardProps {}
 /**
  * Called after the startrefresh event to end the refresh state, making `<refresh-header>` rebound.
  * @Android
+ * @web
  * @iOS
  * @Harmony
  * @Web
@@ -121,6 +128,7 @@ export interface RefreshFinishRefreshMethod extends BaseMethod {
 /**
  * When enable-refresh is true, call this method to expose the entire `<refresh-header>`, triggering the startrefresh event, after which `<refresh-header>` will attach to the top edge of the refresh's viewport.
  * @Android
+ * @web
  * @iOS
  * @Harmony
  * @Web
