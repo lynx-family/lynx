@@ -26,10 +26,20 @@ import androidx.core.view.NestedScrollingParentHelper;
 import androidx.core.view.ViewCompat;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
+import com.lynx.tasm.utils.FloatUtils;
 import java.util.ArrayList;
 
 public class NestedScrollContainerView
     extends FrameLayout implements NestedScrollingParent2, NestedScrollingChild2 {
+  static class CalcFlingOffsetResult {
+    private boolean mAvailable = true;
+    private float mOffset = 0.f;
+    public CalcFlingOffsetResult(float offset, boolean available) {
+      this.mOffset = offset;
+      this.mAvailable = available;
+    }
+  }
+
   private static final String TAG = "UIListContainer.NestedScrollContainerView";
   private static final boolean DEBUG = false;
   public LynxSnapHelper mSnapHelper = null;
@@ -515,35 +525,57 @@ public class NestedScrollContainerView
       mScroller = new ListCustomScroller(getContext(), sQuinticInterpolator);
     }
 
-    private float getAvailableScrollOffsetFromSubviews(boolean forward) {
+    private CalcFlingOffsetResult getAvailableScrollOffsetFromSubviews(
+        boolean forward, float currentOffset) {
       float min = Float.MAX_VALUE;
       float max = Float.MIN_VALUE;
-      boolean vertical = mIsVertical;
       // TODO:(dingwang.wxx) Define a interface and explicitly obtain the LinearLayout within the
       // ScrollView.
       if (getChildCount() > 0 && getChildAt(0) instanceof ViewGroup) {
-        ViewGroup container = (ViewGroup) getChildAt(0);
+        ViewGroup linearLayout = (ViewGroup) getChildAt(0);
+        // Note: If LinearLayout has no child, we should return the current offset.
+        int childCount = linearLayout.getChildCount();
+        if (childCount == 0) {
+          return new CalcFlingOffsetResult(currentOffset, true);
+        }
         if (forward) {
-          for (int i = 0; i < container.getChildCount(); i++) {
-            View view = container.getChildAt(i);
+          int containerSize = mIsVertical ? getHeight() : getWidth();
+          int linearLayoutSize = mIsVertical ? linearLayout.getHeight() : linearLayout.getWidth();
+          for (int i = 0; i < linearLayout.getChildCount(); i++) {
+            View view = linearLayout.getChildAt(i);
             float offset =
-                vertical ? (view.getY() + view.getHeight()) : (view.getX() + view.getWidth());
+                mIsVertical ? (view.getY() + view.getHeight()) : (view.getX() + view.getWidth());
             if (max < offset) {
               max = offset;
             }
           }
-          max = max - (vertical ? getHeight() : getWidth());
+          if (FloatUtils.floatsEqual(max, linearLayoutSize)) {
+            if (hasNestedScrollingParent(ViewCompat.TYPE_NON_TOUCH)) {
+              return new CalcFlingOffsetResult(0.f, false);
+            } else {
+              max = linearLayoutSize;
+            }
+          }
+          return new CalcFlingOffsetResult(max - containerSize, true);
         } else {
-          for (int i = 0; i < container.getChildCount(); i++) {
-            View view = container.getChildAt(i);
-            float offset = vertical ? view.getY() : view.getX();
+          for (int i = 0; i < linearLayout.getChildCount(); i++) {
+            View view = linearLayout.getChildAt(i);
+            float offset = mIsVertical ? view.getY() : view.getX();
             if (min > offset) {
               min = offset;
             }
           }
+          if (FloatUtils.floatsEqual(min, 0.f)) {
+            if (hasNestedScrollingParent(ViewCompat.TYPE_NON_TOUCH)) {
+              return new CalcFlingOffsetResult(0.f, false);
+            } else {
+              min = 0.f;
+            }
+          }
+          return new CalcFlingOffsetResult(min, true);
         }
       }
-      return forward ? max : min;
+      return new CalcFlingOffsetResult(currentOffset, true);
     }
 
     public void fling(int velocityX, int velocityY) {
@@ -559,10 +591,18 @@ public class NestedScrollContainerView
           float forwardFlingDistance = 0;
           float backwardFlingDistance = 0;
           float currentOffset = mIsVertical ? mLastScrollY : mLastScrollX;
-
           if (mMaxFlingDistanceRatio == LIST_AUTOMATIC_MAX_FLING_RATIO) {
-            forwardFlingDistance = getAvailableScrollOffsetFromSubviews(true) - currentOffset;
-            backwardFlingDistance = currentOffset - getAvailableScrollOffsetFromSubviews(false);
+            CalcFlingOffsetResult forwardFlingOffsetResult =
+                getAvailableScrollOffsetFromSubviews(true, currentOffset);
+            CalcFlingOffsetResult backwardFlingOffsetResult =
+                getAvailableScrollOffsetFromSubviews(false, currentOffset);
+            // calculate fling distance.
+            forwardFlingDistance = forwardFlingOffsetResult.mAvailable
+                ? forwardFlingOffsetResult.mOffset - currentOffset
+                : Float.MAX_VALUE;
+            backwardFlingDistance = backwardFlingOffsetResult.mAvailable
+                ? currentOffset - backwardFlingOffsetResult.mOffset
+                : Float.MAX_VALUE;
           } else {
             float maxFlingDistance =
                 mMaxFlingDistanceRatio * (mIsVertical ? getHeight() : getWidth());
