@@ -69,6 +69,7 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
   FloatPoint ClampedOverscrollOffset() const {
     return clamped_overscroll_offset_;
   }
+  void ClearOverscrollState();
   void SetScrollMonitorTag(const std::string& tag) {
     scroll_monitor_tag_ = tag;
   }

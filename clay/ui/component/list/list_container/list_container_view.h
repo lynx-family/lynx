@@ -102,6 +102,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
     return static_cast<ListContainerEventCallbackManager*>(
         callback_manager_.get());
   }
+  void SyncScrollOffsetToCoreIfNeeded(const FloatPoint& expected_offset);
 
   // sticky
   void UpdateStickyInfoForInsertedChild(
@@ -112,6 +113,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
   void UpdateStickyInfoForUpdatedChild(
       Component* child, std::unordered_map<int, Component*> sticky_items,
       const std::vector<int>& sticky_indexes, int index);
+
   void ResetStickyItem(Component* child);
   void UpdateStickyStarts(float offset_x, float offset_y);
   void UpdateStickyEnds(float offset_x, float offset_y);

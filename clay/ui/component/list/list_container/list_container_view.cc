@@ -11,6 +11,7 @@
 #include <tuple>
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "base/include/float_comparison.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_size.h"
@@ -158,11 +159,22 @@ void ListContainerView::ResetItemSnapProp() {
 }
 
 void ListContainerView::RemoveListItemPaintingNode(BaseView* view) {
+  // We skip correct scroll offset when removing platform view
+  // to avoid incorrect scroll offset. This is because the max content size
+  // might not have been updated at this time. We will do correct scroll
+  // offset when the max content size is updated.
+  lynx::base::AutoReset<bool> resetter(&skip_correct_scroll_offset_, true);
   RemoveChild(view);
   EraseStickyItem(view);
 }
 
 void ListContainerView::InsertListItemPaintingNode(BaseView* view) {
+  // We skip correct scroll offset when inserting platform view
+  // to avoid incorrect scroll offset. This is because the max content size
+  // might not have been updated at this time. We will do correct scroll
+  // offset when the max content size is updated.
+  lynx::base::AutoReset<bool> resetter(&skip_correct_scroll_offset_, true);
+
   // In multi thread, the child component has been rendered when invoking
   // onLayoutFinish() but may not have any layout info, because we block the
   // child component layout info's flushing which triggered by starlight
@@ -234,6 +246,8 @@ void ListContainerView::ScrollToPosition(
 void ListContainerView::UpdateContentOffsetForListContainer(
     float content_size, float target_content_offset_x,
     float target_content_offset_y) {
+  FloatPoint expected_offset(scroll_offset_.x() + target_content_offset_x,
+                             scroll_offset_.y() + target_content_offset_y);
   SetMaxContent(content_size);
   should_block_did_scroll_ = true;
   if (GetScrollDirection() == ScrollDirection::kVertical) {
@@ -242,6 +256,25 @@ void ListContainerView::UpdateContentOffsetForListContainer(
     ScrollWithDelta(false, target_content_offset_x);
   }
   should_block_did_scroll_ = false;
+  SyncScrollOffsetToCoreIfNeeded(expected_offset);
+}
+
+void ListContainerView::SyncScrollOffsetToCoreIfNeeded(
+    const FloatPoint& expected_offset) {
+  if (!delegate_) {
+    return;
+  }
+  bool offset_changed =
+      !lynx::base::FloatsEqualPrecise(scroll_offset_.x(),
+                                      expected_offset.x()) ||
+      !lynx::base::FloatsEqualPrecise(scroll_offset_.y(), expected_offset.y());
+  if (!offset_changed) {
+    return;
+  }
+  delegate_->OnScrollByListContainer(scroll_offset_.x(), scroll_offset_.y(),
+                                     scroll_offset_.x(), scroll_offset_.y());
+  UpdateStickyStarts(scroll_offset_.x(), scroll_offset_.y());
+  UpdateStickyEnds(scroll_offset_.x(), scroll_offset_.y());
 }
 
 void ListContainerView::UpdateScrollInfo(bool smooth, float estimated_offset,
@@ -595,13 +628,21 @@ void ListContainerView::CalculateOverFlow() {
 }
 
 void ListContainerView::SetMaxContent(float value) {
+  auto* scroll = GetRenderScroll();
+  float old_max_content = max_content_;
   max_content_ = value;
   if (GetScrollDirection() == ScrollDirection::kVertical) {
-    GetRenderScroll()->SetOverflowRect(
-        FloatRect(0, 0, GetRenderScroll()->Width(), max_content_));
+    scroll->SetOverflowRect(FloatRect(0, 0, scroll->Width(), max_content_));
   } else {
-    GetRenderScroll()->SetOverflowRect(
-        FloatRect(0, 0, max_content_, GetRenderScroll()->Height()));
+    scroll->SetOverflowRect(FloatRect(0, 0, max_content_, scroll->Height()));
+  }
+  if (old_max_content != max_content_) {
+    // When max content changes, we need to correct scroll offset if necessary.
+    CorrectScrollOffset();
+    // Stop bounce animation if necessary.
+    Scrollable::StopAnimation();
+    // Clear overscroll state if necessary.
+    ClearOverscrollState();
   }
 }
 
