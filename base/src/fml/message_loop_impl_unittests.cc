@@ -15,6 +15,7 @@
 #include "base/include/fml/time/time_point.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
+// cspell:ignore TIMESENSITIVE
 #define TIMESENSITIVE(x) TimeSensitiveTest_##x
 
 namespace lynx {
@@ -119,6 +120,57 @@ TEST(MessageLoopImpl, WakeUpByVSync) {
   ASSERT_TRUE(vsync_task_executed);
 
   // Terminate thread safely
+  loop_impl->PostTask([&]() { loop_impl->Terminate(); }, fml::TimePoint::Now());
+  thread->join();
+}
+
+TEST(MessageLoopImpl, TIMESENSITIVE(WakeUpByVSyncDelayedTask)) {
+  fml::AutoResetWaitableEvent latch;
+  fml::RefPtr<fml::MessageLoopImpl> loop_impl;
+  base::closure setup_thread = [&]() {
+    auto& loop = fml::MessageLoop::EnsureInitializedForCurrentThread();
+    loop_impl = loop.GetLoopImpl();
+    latch.Signal();
+    loop.Run();
+  };
+  auto thread = std::make_unique<std::thread>(std::move(setup_thread));
+  latch.Wait();
+  latch.Reset();
+
+  auto task_queues = fml::MessageLoopTaskQueues::GetInstance();
+  auto vsync_queue_id = task_queues->CreateTaskQueue(true);
+  auto vsync_monitor = MockVSyncMonitor();
+  loop_impl->SetVSyncRequest([&](fml::VSyncCallback vsync_callback) {
+    vsync_monitor.RequestVSync(
+        [vsync_callback = std::move(vsync_callback)](
+            int64_t frame_start_time_ns, int64_t frame_target_time_ns) {
+          vsync_callback(frame_start_time_ns, frame_target_time_ns);
+        });
+  });
+
+  loop_impl->PostTask(
+      [&]() {
+        loop_impl->Bind(vsync_queue_id);
+        latch.Signal();
+      },
+      fml::TimePoint::Now());
+  latch.Wait();
+  latch.Reset();
+
+  bool vsync_task_executed = false;
+  task_queues->RegisterTask(
+      vsync_queue_id, [&]() { vsync_task_executed = true; },
+      fml::TimePoint::Now() + fml::TimeDelta::FromMilliseconds(10));
+
+  loop_impl->PostTask(
+      [&]() {
+        vsync_monitor.TriggerVSync();
+        latch.Signal();
+      },
+      fml::TimePoint::Now() + fml::TimeDelta::FromMilliseconds(30));
+  latch.Wait();
+  ASSERT_TRUE(vsync_task_executed);
+
   loop_impl->PostTask([&]() { loop_impl->Terminate(); }, fml::TimePoint::Now());
   thread->join();
 }
