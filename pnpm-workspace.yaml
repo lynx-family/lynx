@@ -13,6 +13,7 @@ packages:
   # base devtool
   - 'lynx/devtool/base_devtool/js_libraries/logbox'
   - tools/api/parser/ts_morph
+  - third_party/weak-node-api
   # e2e dependencies
   - testing/integration_test/test_script
 

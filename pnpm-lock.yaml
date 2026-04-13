@@ -276,6 +276,12 @@ importers:
       appium-ios-simulator: 6.2.6
       appium-xcuitest-driver: 7.24.18_appium@2.11.2
 
+  third_party/weak-node-api:
+    specifiers:
+      '@lynx-js/weak-node-api': 0.0.6
+    dependencies:
+      '@lynx-js/weak-node-api': 0.0.6
+
   tools/api/parser/ts_morph:
     specifiers:
       '@types/node': ^18.13.0
@@ -1952,6 +1958,12 @@ packages:
     resolution: {integrity: sha512-URUszZQBFGumpNDXm4FoLMMSSZAgH+NBvBOaERe8UWrnH0XB9Z8N2sAj28jfg57G+eZpRasbvu/ZR6NzFe5feQ==}
     dependencies:
       csstype: 3.1.3
+
+  /@lynx-js/weak-node-api/0.0.6:
+    resolution: {integrity: sha512-l6twk+iUk4uPQOvEWP1//lM2526Ffiyyg8JM7pMeUBitEl/4FxrHegCif87vhlzDllooa0pqorQSoYMnef7gDQ==}
+    dependencies:
+      node-addon-api: 7.1.0
+    dev: false
 
   /@lynx-js/web-style-transformer/0.3.0:
     resolution: {integrity: sha512-UpXNSVOYH+CYUJuv5VU0xCf1iUiMNhY8Scj8OSS/Ny+D4dylu0L8J1hUklqvTiCvCopiE+yQCFCqXemFCZlKcg==}
@@ -4162,6 +4174,7 @@ packages:
 
   /color-name/1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
+    requiresBuild: true
 
   /color-name/2.0.2:
     resolution: {integrity: sha512-9vEt7gE16EW7Eu7pvZnR0abW9z6ufzhXxGXZEVU9IqPdlsUiMwJeJfRtq0zePUmnbHGT9zajca7mX8zgoayo4A==}
@@ -4170,6 +4183,7 @@ packages:
 
   /color-string/1.9.1:
     resolution: {integrity: sha512-shrVawQFojnZv6xM40anx4CkoDP+fZsw/ZerEMsW/pyzsRbElpsL/DBVW7q3ExxwusdNXI3lXpuhEZkzs8p5Eg==}
+    requiresBuild: true
     dependencies:
       color-name: 1.1.4
       simple-swizzle: 0.2.4
@@ -4186,6 +4200,7 @@ packages:
   /color/4.2.3:
     resolution: {integrity: sha512-1rXeuUUiGGrykh+CeBdu5Ie7OJwinCgQY0bc7GCRxy5xVHy+moaqkpL/jqQq0MtQOeYcrqEz4abc5f0KtU7W4A==}
     engines: {node: '>=12.5.0'}
+    requiresBuild: true
     dependencies:
       color-convert: 2.0.1
       color-string: 1.9.1
@@ -4755,6 +4770,7 @@ packages:
   /detect-libc/2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
+    requiresBuild: true
     dev: false
     optional: true
 
@@ -5785,6 +5801,7 @@ packages:
 
   /is-arrayish/0.3.4:
     resolution: {integrity: sha512-m6UrgzFVUYawGBh1dUsWR5M2Clqic9RVXC/9f8ceNlv2IcO9j9J/z8UoCLPqtsPBFNzEpfR3xftohbfqDx8EQA==}
+    requiresBuild: true
     dev: false
     optional: true
 
@@ -6549,6 +6566,11 @@ packages:
   /negotiator/0.6.3:
     resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
     engines: {node: '>= 0.6'}
+
+  /node-addon-api/7.1.0:
+    resolution: {integrity: sha512-mNcltoe1R8o7STTegSOHdnJNN7s5EUvhoS7ShnTHDyOSd+8H+UdWODq6qSv67PjC8Zc5JRT8+oLAMCr0SIXw7g==}
+    engines: {node: ^16 || ^18 || >= 20}
+    dev: false
 
   /node-releases/2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
@@ -8579,6 +8601,7 @@ packages:
 
   /semver/5.7.2:
     resolution: {integrity: sha512-cBznnQ9KjJqU67B52RMC65CMarK2600WFnbkcaiwWq3xy/5haFJlshgnpjovMVJ+Hff49d8GEn0b87C5pDQ10g==}
+    hasBin: true
 
   /semver/7.6.2:
     resolution: {integrity: sha512-FNAIBWCx9qcRhoHcgcJ0gvU7SN1lYU2ZXuSfl04bSC5OpvDHFyJCjdNHomPXxjQlCBU67YW64PzY7/VIEH7F2w==}
@@ -8703,7 +8726,7 @@ packages:
     dependencies:
       color: 4.2.3
       detect-libc: 2.1.2
-      semver: 7.6.3
+      semver: 7.7.2
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.33.5
       '@img/sharp-darwin-x64': 0.33.5
@@ -8831,6 +8854,7 @@ packages:
 
   /simple-swizzle/0.2.4:
     resolution: {integrity: sha512-nAu1WFPQSMNr2Zn9PGSZK9AGn4t/y97lEm+MXTtUDwfP0ksAIX4nO+6ruD9Jwut4C49SB1Ws+fbXsm/yScWOHw==}
+    requiresBuild: true
     dependencies:
       is-arrayish: 0.3.4
     dev: false
