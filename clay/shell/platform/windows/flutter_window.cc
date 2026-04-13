@@ -12,14 +12,20 @@
 
 #include <chrono>
 #include <map>
+#include <optional>
+#include <unordered_map>
 #include <utility>
 
+#include "clay/fml/file.h"
 #include "clay/fml/logging.h"
+#include "clay/fml/paths.h"
+#include "clay/fml/platform/win/wstring_conversion.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_size.h"
 #include "clay/shell/platform/windows/flutter_windows_engine.h"
 #include "clay/shell/platform/windows/flutter_windows_view.h"
 #include "clay/ui/platform/cursor_types.h"
+#include "core/platform/clay/shell/public/lynx_env.h"
 
 // cspell:disable
 namespace clay {
@@ -37,7 +43,45 @@ constexpr int base_dpi = 96;
 // This map must be kept in sync with Flutter framework's
 // services/mouse_cursor.dart.
 
-static HCURSOR GetCursorByType(clay::CursorTypes cursor_type) {
+static std::optional<std::string_view> CursorTypeToCursorFileName(
+    clay::CursorTypes cursor_type) {
+  // CursorTypes -> "<css-cursor-name>.cur"
+  //
+  // Keep this aligned with `CursorTypeUtil::cursor_type_map_` for the strings.
+  static auto* cursor_files = new std::map<clay::CursorTypes, const char*>{
+      {clay::CursorTypes::kGrab, "grab.cur"},
+  };
+
+  auto it = cursor_files->find(cursor_type);
+  if (it == cursor_files->end()) {
+    return std::nullopt;
+  }
+  return it->second;
+}
+
+static std::optional<std::string> GetHostCursorPath(
+    clay::CursorTypes cursor_type) {
+  const char* dir = lynx::LynxEnv::GetInstance().GetCursorResourceDirectory();
+  if (dir == nullptr || dir[0] == '\0') {
+    return std::nullopt;
+  }
+
+  auto file_name = CursorTypeToCursorFileName(cursor_type);
+  if (!file_name.has_value()) {
+    return std::nullopt;
+  }
+
+  std::string candidate =
+      fml::paths::JoinPaths({std::string(dir), std::string(*file_name)});
+  if (fml::IsFile(candidate)) {
+    return candidate;
+  }
+
+  return std::nullopt;
+}
+
+static std::optional<HCURSOR> LoadSystemCursorByType(
+    clay::CursorTypes cursor_type) {
   static auto* cursors = new std::map<clay::CursorTypes, const wchar_t*>{
       {clay::CursorTypes::kClick, IDC_HAND},
       {clay::CursorTypes::kForbidden, IDC_NO},
@@ -65,12 +109,57 @@ static HCURSOR GetCursorByType(clay::CursorTypes cursor_type) {
       {clay::CursorTypes::kWait, IDC_WAIT},
   };
 
-  const wchar_t* idc_name = IDC_ARROW;
   auto it = cursors->find(cursor_type);
-  if (it != cursors->end()) {
-    idc_name = it->second;
+  if (it == cursors->end()) {
+    return std::nullopt;
   }
-  return ::LoadCursor(nullptr, idc_name);
+  if (it->second == nullptr) {
+    return static_cast<HCURSOR>(nullptr);
+  }
+  return ::LoadCursor(nullptr, it->second);
+}
+
+static std::optional<HCURSOR> LoadCursorFromHostFiles(
+    clay::CursorTypes cursor_type) {
+  if (cursor_type == clay::CursorTypes::kNone) {
+    return std::nullopt;
+  }
+
+  static auto* host_cursor_cache = new std::unordered_map<int, HCURSOR>();
+  const int key = static_cast<int>(cursor_type);
+  auto cache_it = host_cursor_cache->find(key);
+  if (cache_it != host_cursor_cache->end()) {
+    return cache_it->second;
+  }
+
+  auto host_cursor_path = GetHostCursorPath(cursor_type);
+  if (host_cursor_path.has_value()) {
+    HCURSOR cursor =
+        ::LoadCursorFromFileW(fml::Utf8ToWideString(*host_cursor_path).c_str());
+    if (cursor != nullptr) {
+      host_cursor_cache->emplace(key, cursor);
+      return cursor;
+    }
+  }
+  return std::nullopt;
+}
+
+static HCURSOR GetCursorByType(clay::CursorTypes cursor_type) {
+  // 1) Prefer the original Windows system cursor mapping for known types.
+  if (auto system_cursor = LoadSystemCursorByType(cursor_type);
+      system_cursor.has_value()) {
+    return *system_cursor;
+  }
+
+  // 2) Supplementary path: try host-provided cursor files for types that don't
+  // have a system cursor mapping on Windows.
+  if (auto host_cursor = LoadCursorFromHostFiles(cursor_type);
+      host_cursor.has_value()) {
+    return *host_cursor;
+  }
+
+  // 3) Fallback for unknown types: use the arrow cursor.
+  return ::LoadCursor(nullptr, IDC_ARROW);
 }
 
 }  // namespace
