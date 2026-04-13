@@ -22,6 +22,7 @@ import androidx.core.view.animation.PathInterpolatorCompat;
 import com.lynx.tasm.base.LLog;
 
 public class InterpolatorFactory {
+  private static final String TAG = "InterpolatorFactory";
   private static final SparseArray<BaseInterpolator> INTERPOLATOR =
       new SparseArray<BaseInterpolator>() {
         {
@@ -40,8 +41,19 @@ public class InterpolatorFactory {
       case INTERCEPTOR_EASE_IN_OUT:
         return INTERPOLATOR.get(timingType);
       case INTERCEPTOR_SQUARE_BEZIER:
+        if (!isValidBezierControlX(ai.getX1())) {
+          LLog.w(
+              TAG, "Invalid square-bezier control point x=" + ai.getX1() + ", fallback to linear.");
+          return INTERPOLATOR.get(INTERCEPTOR_LINEAR);
+        }
         return PathInterpolatorCompat.create(ai.getX1(), ai.getY1());
       case INTERCEPTOR_CUBIC_BEZIER:
+        if (!isValidBezierControlX(ai.getX1()) || !isValidBezierControlX(ai.getX2())) {
+          LLog.w(TAG,
+              "Invalid cubic-bezier control points x1=" + ai.getX1() + ", x2=" + ai.getX2()
+                  + ", fallback to linear.");
+          return INTERPOLATOR.get(INTERCEPTOR_LINEAR);
+        }
         return PathInterpolatorCompat.create(ai.getX1(), ai.getY1(), ai.getX2(), ai.getY2());
       case INTERCEPTOR_STEPS:
         return new StepsInterpolation(ai.getCount(), ai.getStepsType());
@@ -93,5 +105,9 @@ public class InterpolatorFactory {
           return 0;
       }
     }
+  }
+
+  private static boolean isValidBezierControlX(float value) {
+    return !Float.isNaN(value) && !Float.isInfinite(value) && value >= 0.0f && value <= 1.0f;
   }
 }
