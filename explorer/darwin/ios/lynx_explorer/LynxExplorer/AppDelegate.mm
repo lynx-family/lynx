@@ -37,6 +37,14 @@ NSString *const HOMEPAGE_URL =
     });
   }];
 
+  // Check for initial URL from environment variable.
+  NSDictionary *env = [[NSProcessInfo processInfo] environment];
+  NSString *initialUrl = env[@"lynx_initial_url"];
+  if (initialUrl && initialUrl.length > 0) {
+    [self openCard:initialUrl];
+    return YES;
+  }
+
   [[TasmDispatcher sharedInstance] openTargetUrl:HOMEPAGE_URL];
   return YES;
 }
@@ -52,6 +60,32 @@ NSString *const HOMEPAGE_URL =
     shellVC.navigationController = self.navigationController;
     [self.navigationController pushViewController:shellVC animated:YES];
   }
+}
+
+- (BOOL)application:(UIApplication *)app
+            openURL:(NSURL *)url
+            options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
+  NSString *scheme = [url scheme];
+
+  // Handle lynx://open?url=https://... for runtime page switching.
+  if ([scheme isEqualToString:@"lynx"] && [[url host] isEqualToString:@"open"]) {
+    // Parse query string manually (NSURLComponents doesn't handle nested URLs well).
+    NSString *queryString = [url query];
+    NSString *targetUrl = nil;
+    if (queryString) {
+      NSString *prefix = @"url=";
+      NSRange range = [queryString rangeOfString:prefix];
+      if (range.location != NSNotFound) {
+        targetUrl = [queryString substringFromIndex:range.location + range.length];
+      }
+    }
+    if (targetUrl && targetUrl.length > 0) {
+      [self openCard:targetUrl];
+      return YES;
+    }
+  }
+
+  return NO;
 }
 
 @end

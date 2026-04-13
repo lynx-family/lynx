@@ -6,6 +6,7 @@ import AbilityConstant from '@ohos.app.ability.AbilityConstant';
 import UIAbility from '@ohos.app.ability.UIAbility';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
+import url from '@ohos.url';
 import { LLog } from '@lynx/lynx';
 import { LynxInitProcessor } from '../common/LynxInitProcessor';
 import { Configuration } from '@ohos.app.ability.Configuration';
@@ -14,7 +15,37 @@ import { ConfigurationConstant } from '@kit.AbilityKit';
 const TAG = 'EntryAbility';
 
 export default class EntryAbility extends UIAbility {
+  private resolveInitialUrl(want: Want): string {
+    const urlFromParams: string = want.parameters?.lynx_initial_url as string ?? '';
+    if (urlFromParams) {
+      return urlFromParams;
+    }
+
+    const uri = want.uri ?? '';
+    if (!uri) {
+      return '';
+    }
+
+    try {
+      const urlObj = url.URL.parseURL(uri);
+      if (urlObj.protocol === 'lynx:' && urlObj.hostname === 'open') {
+        const urlParams = new url.URLParams(urlObj.search);
+        return urlParams.get('url') ?? '';
+      }
+    } catch (e) {
+      LLog.e(TAG, `resolveInitialUrl parse uri failed: ${e}`);
+    }
+    return '';
+  }
+
+  private updateInitialUrlStorage(want: Want) {
+    const initialUrl = this.resolveInitialUrl(want);
+    AppStorage.setOrCreate('lynx_initial_url', initialUrl);
+  }
+
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam) {
+    this.updateInitialUrlStorage(want);
+
     let initProcessor: LynxInitProcessor = new LynxInitProcessor(this.context);
 
     // Initialize LynxService first,
@@ -31,6 +62,7 @@ export default class EntryAbility extends UIAbility {
   onWindowStageCreate(windowStage: window.WindowStage): void {
     // Main window is created, set main page for this ability
     LLog.d(TAG, 'Ability onWindowStageCreate');
+    AppStorage.setOrCreate('lynxWindowStage', windowStage);
     windowStage.getMainWindow()
       .then((currentWindow) => {
         currentWindow.setPreferredOrientation(window.Orientation.AUTO_ROTATION_RESTRICTED)
@@ -51,6 +83,11 @@ export default class EntryAbility extends UIAbility {
   onWindowStageDestroy(): void {
     // Main window is destroyed, release UI related resources
     LLog.d(TAG, 'Ability onWindowStageDestroy');
+    AppStorage.delete('lynxWindowStage');
+  }
+
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    this.updateInitialUrlStorage(want);
   }
 
   onForeground(): void {

@@ -70,9 +70,19 @@ public class LynxViewShellActivity extends AppCompatActivity {
     extraTimingInfo.mContainerInitStart = System.currentTimeMillis();
 
     Intent intent = getIntent();
-    String url = intent.getStringExtra(URL_KEY);
-    if (url == null) {
-      url = HOME_PAGE_URL;
+
+    // Check for initial URL from intent extra / data, used by automation.
+    String initialUrl = intent.getStringExtra("lynx_initial_url");
+    if (initialUrl == null || initialUrl.isEmpty()) {
+      initialUrl = intent.getStringExtra(URL_KEY);
+    }
+    if ((initialUrl == null || initialUrl.isEmpty()) && intent.getData() != null) {
+      initialUrl = intent.getData().getQueryParameter(URL_KEY);
+    }
+
+    final String url = (initialUrl != null && !initialUrl.isEmpty()) ? initialUrl : HOME_PAGE_URL;
+    if (initialUrl != null && !initialUrl.isEmpty()) {
+      Log.d(TAG, "Opening initial URL: " + initialUrl);
     }
 
     setTopBarAppearance(url);

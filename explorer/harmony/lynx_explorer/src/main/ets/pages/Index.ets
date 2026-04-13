@@ -15,7 +15,10 @@ import {
   ModuleClassWrapper,
   TemplateData
 } from '@lynx/lynx';
+import { LynxRecorderEnv } from '@lynx/lynx_devtool';
+import router from '@ohos.router';
 import { EntryLynxClient } from '../client/EntryLynxClient';
+import Constants from '../common/constants';
 import { ExplorerModule } from '../module/ExplorerModule';
 import { ExampleGenericResourceFetcher } from '../provider/ExampleGenericResourceFetcher';
 import { ExampleMediaResourceFetcher } from '../provider/ExampleMediaResourceFetcher';
@@ -74,6 +77,25 @@ struct Index {
       moduleClass: ExplorerModule,
     });
     this.metaData.templateData?.merge('{"text":"string"}');
+
+    const initialUrl = AppStorage.get<string>('lynx_initial_url') ?? '';
+    if (initialUrl) {
+      let pageUrl = Constants.LYNX_URL;
+      if (initialUrl.startsWith(LynxRecorderEnv.RECORDER_URL_PREFIX)) {
+        pageUrl = Constants.LYNX_RECORDER_URL;
+      }
+      router
+        .pushUrl({
+          url: pageUrl,
+          params: {
+            url: initialUrl,
+          },
+        })
+        .catch(() => {
+          // ignore
+        });
+      AppStorage.setOrCreate('lynx_initial_url', '');
+    }
   }
 
   build() {
