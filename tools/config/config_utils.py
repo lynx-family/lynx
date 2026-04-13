@@ -17,36 +17,32 @@ _clang_format_binary = "clang-format.exe" if sys.platform == "win32" else "clang
 _npx_binary = "npx.cmd" if sys.platform == "win32" else "npx"
 
 
+def _get_executable_path(candidate_paths, binary_name):
+    for path in candidate_paths:
+        if path.is_file() and os.access(path, os.X_OK):
+            return str(path)
+
+    return shutil.which(binary_name) or binary_name
+
+
 def _get_clang_format_path():
-    # 1. Check pre-defined paths in the repository
     candidate_paths = [
         _root_dir / "buildtools" / "llvm" / "bin" / _clang_format_binary,
         _root_dir / "lynx" / "buildtools" / "llvm" / "bin" / _clang_format_binary,
         _root_dir / "buildtools" / "llvm" / _clang_format_binary,
         _root_dir / "lynx" / "buildtools" / "llvm" / _clang_format_binary,
     ]
-    for path in candidate_paths:
-        if path.exists():
-            return str(path)
-
-    # 2. Fallback to system PATH
-    return shutil.which(_clang_format_binary) or _clang_format_binary
+    return _get_executable_path(candidate_paths, _clang_format_binary)
 
 
 def _get_npx_path():
-    # 1. Check pre-defined paths in the repository
     candidate_paths = [
         _root_dir / "buildtools" / "node" / "bin" / _npx_binary,
         _root_dir / "lynx" / "buildtools" / "node" / "bin" / _npx_binary,
         _root_dir / "buildtools" / "node" / _npx_binary,
         _root_dir / "lynx" / "buildtools" / "node" / _npx_binary,
     ]
-    for path in candidate_paths:
-        if path.exists():
-            return str(path)
-
-    # 2. Fallback to system PATH
-    return shutil.which(_npx_binary) or _npx_binary
+    return _get_executable_path(candidate_paths, _npx_binary)
 
 
 CLANG_FORMAT_PATH = _get_clang_format_path()
@@ -77,6 +73,9 @@ def clang_format(file: str, style="Google", file_extension=None) -> str:
         return process.stdout
     except subprocess.CalledProcessError as e:
         print(f"clang format failed: {e.stderr}", file=sys.stderr)
+        return file
+    except PermissionError as e:
+        print(f"{CLANG_FORMAT_PATH} is not executable: {e}", file=sys.stderr)
         return file
     except FileNotFoundError:
         print(f"{CLANG_FORMAT_PATH} not found", file=sys.stderr)
