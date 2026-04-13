@@ -114,15 +114,14 @@
       _paintingContextProxy =
           [[PaintingContextProxy alloc] initWithPaintingContext:painting_context.get()];
       [_shadowNodeOwner setDelegate:_paintingContextProxy];
-
-      _performanceController =
-          [[LynxPerformanceController alloc] initWithObserver:[self getLifecycleDispatcher]];
-      lynx::tasm::PaintingContextDarwinUtils::SetPerformanceController(
-          painting_context->GetPlatformRef().get(), _performanceController);
-      _context.perfController = _performanceController;
-      if (_embeddedMode == LynxEmbeddedModeBase) {
-        [_performanceController setEmbeddedModeEnabled:YES];
-      }
+    }
+    _performanceController =
+        [[LynxPerformanceController alloc] initWithObserver:[self getLifecycleDispatcher]];
+    lynx::tasm::PaintingContextDarwinUtils::SetPerformanceController(
+        painting_context->GetPlatformRef().get(), _performanceController);
+    _context.perfController = _performanceController;
+    if (_embeddedMode == LynxEmbeddedModeBase) {
+      [_performanceController setEmbeddedModeEnabled:YES];
     }
   }
 
