@@ -37,8 +37,6 @@ import com.lynx.devtoolwrapper.ScreenshotMode;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxGroup;
-import com.lynx.tasm.LynxView;
-import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.NativeFacade;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.ThreadStrategyForRendering;
@@ -49,6 +47,7 @@ import com.lynx.tasm.behavior.render.NativePaintingContext;
 import com.lynx.tasm.behavior.shadow.LayoutTick;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
@@ -58,6 +57,7 @@ import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.List;
 
 enum BoxModelOffset {
   PAD_LEFT,
@@ -528,6 +528,13 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   @Override
   public boolean shouldInvokeNativeViewMethod() {
     return false;
+  }
+
+  public List<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
+    if (!(mPaintingContext instanceof NativePaintingContext)) {
+      return new ArrayList<>();
+    }
+    return ((NativePaintingContext) mPaintingContext).getMeaningfulPaintingAreas();
   }
 
   @Override

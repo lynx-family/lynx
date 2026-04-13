@@ -29,6 +29,7 @@ import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIRenderer;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.render.ContainerRenderer;
 import com.lynx.tasm.behavior.render.DisplayList;
@@ -103,6 +104,15 @@ public class UIBody extends UIGroup<UIBodyView> {
 
   public List<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
     tryRunDetachAndAttachTask();
+    if (getLynxContext() != null && getLynxContext().isFragmentLayerRenderOn()
+        && mBodyView != null) {
+      ILynxUIRenderer uiRenderer = mBodyView.getLynxUIRendererInternal();
+      if (uiRenderer instanceof LynxUIRenderer) {
+        List<MeaningfulPaintingArea> areas =
+            ((LynxUIRenderer) uiRenderer).getMeaningfulPaintingAreas();
+        return areas != null ? areas : new ArrayList<MeaningfulPaintingArea>();
+      }
+    }
     int width = getWidth();
     int height = getHeight();
     if (width == 0 || height == 0) {

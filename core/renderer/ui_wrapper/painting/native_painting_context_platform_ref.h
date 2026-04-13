@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
@@ -81,6 +82,7 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   // did_reconstruct is set to true if the event target tree is reconstructed.
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
       bool *did_reconstruct);
+  std::vector<int32_t> CollectMeaningfulPaintingAreaRecords();
   // Add the target element to the exposure target map.
   void AddPlatformEventTargetToExposure(
       const fml::RefPtr<PlatformEventTarget> &target,
