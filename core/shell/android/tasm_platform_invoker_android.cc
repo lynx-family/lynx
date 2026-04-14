@@ -292,6 +292,7 @@ std::string TasmPlatformInvokerAndroid::TranslateResourceForTheme(
 
 lepus::Value TasmPlatformInvokerAndroid::TriggerLepusMethod(
     const std::string& method_name, const lepus::Value& args) {
+  LOGI("TasmPlatformInvokerAndroid::TriggerLepusMethod method:" << method_name);
   if (args.IsTable() && args.Table()->size() > 0) {
     JNIEnv* env = base::android::AttachCurrentThread();
     base::android::JavaOnlyMap jni_hashmap =
@@ -314,6 +315,8 @@ lepus::Value TasmPlatformInvokerAndroid::TriggerLepusMethod(
 
 void TasmPlatformInvokerAndroid::TriggerLepusMethodAsync(
     const std::string& method_name, const lepus::Value& args) {
+  LOGI("TasmPlatformInvokerAndroid::TriggerLepusMethodAsync method:"
+       << method_name);
   if (args.IsTable() && args.Table()->size() > 0) {
     JNIEnv* env = base::android::AttachCurrentThread();
     base::android::JavaOnlyMap jni_hashmap =

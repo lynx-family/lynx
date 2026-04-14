@@ -271,8 +271,17 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
     }
   }
 
+  private String buildInstanceLogContext() {
+    LynxContext context = mLynxContext != null ? mLynxContext.get() : null;
+    int instanceId = context != null ? context.getInstanceId() : LynxContext.INSTANCE_ID_DEFAULT;
+    String url =
+        !TextUtils.isEmpty(mUrl) ? mUrl : (context != null ? context.getTemplateUrl() : "");
+    return "instanceId:" + instanceId + " url:" + url;
+  }
+
   @CalledByNative
   private void onRuntimeReady() {
+    LLog.i(TAG, "native->java onRuntimeReady " + buildInstanceLogContext());
     if (mCallback != null) {
       mCallback.onRuntimeReady();
     }
@@ -280,6 +289,7 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   @CalledByNative
   private void onDataUpdated() {
+    LLog.i(TAG, "native->java onDataUpdated " + buildInstanceLogContext());
     if (mCallback != null) {
       mCallback.onDataUpdated();
     }
@@ -287,6 +297,9 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   @CalledByNative
   private void onPageChanged(boolean isFirstScreen) {
+    LLog.i(TAG,
+        "native->java onPageChanged isFirstScreen:" + isFirstScreen + " "
+            + buildInstanceLogContext());
     if (mCallback != null) {
       mCallback.onPageChanged(isFirstScreen);
     }
@@ -294,6 +307,9 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   @CalledByNative
   public void reportError(LynxError error) {
+    LLog.i(TAG,
+        "native->java reportError instanceId:" + getInstanceId() + " url:" + mUrl
+            + " error:" + (error != null ? error.getErrorCode() : "null"));
     if (mCallback != null) {
       mCallback.onErrorOccurred(error);
     }
@@ -301,6 +317,8 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   @CalledByNative
   private void dispatchOnLoaded() {
+    LLog.i(TAG,
+        "native->java dispatchOnLoaded templateSize:" + mSize + " " + buildInstanceLogContext());
     if (mCallback != null) {
       mCallback.onLoaded(mSize);
     }
@@ -315,6 +333,7 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   @CalledByNative
   private void onTASMFinishedByNative() {
+    LLog.i(TAG, "native->java onTASMFinishedByNative " + buildInstanceLogContext());
     if (mCallback != null) {
       mCallback.onTASMFinishedByNative();
     }
@@ -392,6 +411,7 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   @CalledByNative
   private void onUpdateDataWithoutChange() {
+    LLog.i(TAG, "native->java onUpdateDataWithoutChange " + buildInstanceLogContext());
     if (mCallback != null) {
       mCallback.onUpdateDataWithoutChange();
     }
