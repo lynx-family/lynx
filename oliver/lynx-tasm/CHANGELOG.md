@@ -1,4 +1,7 @@
 # CHANGELOG
+# 0.0.32
+* Support encoding and decoding template attribute arrays, slot indices, and object-form template entries.
+
 # 0.0.31
 * add lepus IR optimize module to optimize lepus bytecode;
 

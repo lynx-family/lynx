@@ -28,6 +28,19 @@ struct ElementEventInfo {
   base::String value_;
 };
 
+struct Attribute {
+  AttributeBindingType type_;
+
+  base::String key_;
+
+  lepus::Value value_;
+
+  uint32_t slot_index_;
+};
+
+using TemplateAttributes = base::InlineVector<Attribute, 6>;
+using SharedTemplateAttributes = std::shared_ptr<const TemplateAttributes>;
+
 // Element Info
 struct ElementInfo {
   // Make ElementInfo move only
@@ -79,6 +92,13 @@ struct ElementInfo {
   base::String component_id_;
   // css id
   int32_t css_id_{kInvalidCssId};
+
+  SharedTemplateAttributes attributes_;
+  bool has_dynamic_template_attributes_{false};
+
+  base::InlineVector<int32_t, 6> index_;
+
+  int32_t slot_index_{-1};
 };
 
 struct ElementTemplateInfo {

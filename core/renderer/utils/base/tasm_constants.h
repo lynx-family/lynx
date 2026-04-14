@@ -53,6 +53,7 @@ static constexpr const char kElementXInlineTextTag[] = "x-inline-text";
 static constexpr const char kElementInlineImageTag[] = "inline-image";
 static constexpr const char* kElementXImageTag = "x-image";
 static constexpr const char kElementXInlineImageTag[] = "x-inline-image";
+static constexpr const char kElementSlotTag[] = "slot";
 
 // Constant string associated with Element Template
 static constexpr const int kInvalidCssId = -1;
@@ -65,6 +66,8 @@ static constexpr const char* kElementClass = "class";
 static constexpr const char* kElementStyles = "styles";
 static constexpr const char* kElementBuiltinAttributes = "builtinAttributes";
 static constexpr const char* kElementAttributes = "attributes";
+static constexpr const char* kElementAttributesArray = "attributesArray";
+static constexpr const char* kElementSlotIndex = "elementSlotIndex";
 static constexpr const char* kElementEvents = "events";
 static constexpr const char* kElementDataset = "dataset";
 static constexpr const char* kElementIsComponent = "isComponent";

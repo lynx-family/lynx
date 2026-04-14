@@ -601,6 +601,18 @@ bool ElementBinaryReader::DecodeElementRecursively(ElementInfo& info) {
         }
         break;
 
+      case ElementSectionEnum::ELEMENT_ATTRIBUTE_ARRAY:
+        if (!DecodeAttributesArraySection(info)) {
+          return false;
+        }
+        break;
+
+      case ElementSectionEnum::ELEMENT_SLOT_INDEX:
+        if (!DecodeSlotElementIndexSection(info)) {
+          return false;
+        }
+        break;
+
       case ElementSectionEnum::ELEMENT_ID_SELECTOR:
         if (!DecodeIDSelectorSection(info)) {
           return false;
@@ -677,6 +689,43 @@ bool ElementBinaryReader::DecodeBuiltinAttributesSection(ElementInfo& info) {
     DECODE_VALUE_INTO(
         info.builtin_attrs_[static_cast<ElementBuiltInAttributeEnum>(key)]);
   }
+  return true;
+}
+
+bool ElementBinaryReader::DecodeAttributesArraySection(ElementInfo& info) {
+  DECODE_COMPACT_U32(size);
+  TemplateAttributes attributes;
+  attributes.reserve(size);
+  for (uint32_t i = 0; i < size; ++i) {
+    Attribute attr;
+    DECODE_COMPACT_U32(type);
+    attr.type_ = static_cast<AttributeBindingType>(type);
+
+    DECODE_STR_INTO(attr.key_);
+
+    if (attr.type_ == AttributeBindingType::ATTRIBUTE_BINDING_TYPE_STATIC) {
+      DECODE_VALUE_INTO(attr.value_);
+    } else {
+      // Dynamic and spread entries point back to the corresponding attribute
+      // slot in the template invocation payload.
+      info.has_dynamic_template_attributes_ = true;
+      DECODE_COMPACT_U32(index);
+      attr.slot_index_ = static_cast<int32_t>(index);
+      info.index_.emplace_back(attr.slot_index_);
+    }
+
+    attributes.emplace_back(std::move(attr));
+  }
+  info.attributes_ =
+      std::make_shared<const TemplateAttributes>(std::move(attributes));
+  return true;
+}
+
+bool ElementBinaryReader::DecodeSlotElementIndexSection(ElementInfo& info) {
+  // Slot placeholders carry the mount-point index instead of resolving it from
+  // tree position at runtime.
+  DECODE_COMPACT_U32(index);
+  info.slot_index_ = static_cast<int32_t>(index);
   return true;
 }
 

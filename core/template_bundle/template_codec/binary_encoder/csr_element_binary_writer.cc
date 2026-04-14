@@ -38,6 +38,16 @@ bool CheckJSONObjectValid(const rapidjson::Value* element, const char* key) {
   return true;
 }
 
+bool CheckJSONUintValue(const rapidjson::Value* element, const char* key) {
+  auto obj = element->GetObject();
+  auto iter = obj.FindMember(key);
+  if (iter == obj.MemberEnd()) {
+    return false;
+  }
+
+  return iter->value.IsUint();
+}
+
 bool CheckJSONArrayValid(const rapidjson::Value* element, const char* key) {
   auto obj = element->GetObject();
   auto iter = obj.FindMember(key);
@@ -98,10 +108,16 @@ void CSRElementBinaryWriter::EncodeTemplatesBody(
     router.start_offsets_.emplace_or_assign(pair.name.GetString(),
                                             start_offset);
 
-    // Encode Template array
-    WriteCompactU32(pair.value.GetArray().Size());
-    for (const auto& e : pair.value.GetArray()) {
-      EncodeElementRecursively(&e);
+    if (pair.value.IsArray()) {
+      // Encode Template array
+      WriteCompactU32(pair.value.GetArray().Size());
+      for (const auto& e : pair.value.GetArray()) {
+        EncodeElementRecursively(&e);
+      }
+    } else if (pair.value.IsObject()) {
+      // Element template authoring may emit a single root object directly.
+      WriteCompactU32(1);
+      EncodeElementRecursively(&pair.value);
     }
 
     // update start offset
@@ -276,6 +292,11 @@ void CSRElementBinaryWriter::EncodeElementRecursively(
   // 3. Encode tag section - tag section must be the second section.
   EncodeElementTagSection(element);
 
+  // Encode attribute array section
+  EncodeElementAttributeArray(element);
+
+  EncodeSlotElementIndex(element);
+
   // 4. Encode builtin attributes section
   EncodeElementBuiltinAttrSection(element);
 
@@ -336,21 +357,22 @@ void CSRElementBinaryWriter::EncodeElementTagSection(
     const rapidjson::Value* element) {
   static const base::NoDestructor<
       std::unordered_map<std::string, ElementBuiltInTagEnum>>
-      kElementBuiltInTagMap(
-          {{kElementViewTag, ElementBuiltInTagEnum::ELEMENT_VIEW},
-           {kElementComponentTag, ElementBuiltInTagEnum::ELEMENT_COMPONENT},
-           {kElementPageTag, ElementBuiltInTagEnum::ELEMENT_PAGE},
-           {kElementImageTag, ElementBuiltInTagEnum::ELEMENT_IMAGE},
-           {kElementTextTag, ElementBuiltInTagEnum::ELEMENT_TEXT},
-           {kElementXTextTag, ElementBuiltInTagEnum::ELEMENT_X_TEXT},
-           {kElementRawTextTag, ElementBuiltInTagEnum::ELEMENT_RAW_TEXT},
-           {kElementScrollViewTag, ElementBuiltInTagEnum::ELEMENT_SCROLL_VIEW},
-           {kElementXScrollViewTag,
-            ElementBuiltInTagEnum::ELEMENT_X_SCROLL_VIEW},
-           {kElementListTag, ElementBuiltInTagEnum::ELEMENT_LIST},
-           {kElementNoneElementTag, ElementBuiltInTagEnum::ELEMENT_NONE},
-           {kElementWrapperElementTag,
-            ElementBuiltInTagEnum::ELEMENT_WRAPPER}});
+      kElementBuiltInTagMap({
+          {kElementViewTag, ElementBuiltInTagEnum::ELEMENT_VIEW},
+          {kElementComponentTag, ElementBuiltInTagEnum::ELEMENT_COMPONENT},
+          {kElementPageTag, ElementBuiltInTagEnum::ELEMENT_PAGE},
+          {kElementImageTag, ElementBuiltInTagEnum::ELEMENT_IMAGE},
+          {kElementTextTag, ElementBuiltInTagEnum::ELEMENT_TEXT},
+          {kElementXTextTag, ElementBuiltInTagEnum::ELEMENT_X_TEXT},
+          {kElementRawTextTag, ElementBuiltInTagEnum::ELEMENT_RAW_TEXT},
+          {kElementScrollViewTag, ElementBuiltInTagEnum::ELEMENT_SCROLL_VIEW},
+          {kElementXScrollViewTag,
+           ElementBuiltInTagEnum::ELEMENT_X_SCROLL_VIEW},
+          {kElementListTag, ElementBuiltInTagEnum::ELEMENT_LIST},
+          {kElementNoneElementTag, ElementBuiltInTagEnum::ELEMENT_NONE},
+          {kElementWrapperElementTag, ElementBuiltInTagEnum::ELEMENT_WRAPPER},
+          {kElementSlotTag, ElementBuiltInTagEnum::ELEMENT_SLOT},
+      });
 
   auto obj = element->GetObject();
   auto iter = obj.FindMember(kElementType);
@@ -369,6 +391,86 @@ void CSRElementBinaryWriter::EncodeElementTagSection(
     WriteU8(static_cast<uint8_t>(tasm::ElementSectionEnum::ELEMENT_TAG_STR));
     EncodeUtf8Str(tag, tag_len);
   }
+}
+
+void CSRElementBinaryWriter::EncodeElementAttributeArray(
+    const rapidjson::Value* element) {
+  // Examples:
+  // {"kind":"attribute","binding":"static","value":"card"}
+  // {"kind":"attribute","key":"xxx","binding":"slot","attrSlotIndex":0}
+  // {"key":"spread","binding":"slot","attrSlotIndex":1}
+  if (!CheckJSONArrayValid(element, kElementAttributesArray)) {
+    return;
+  }
+
+  auto attributes = element->GetObject()[kElementAttributesArray].GetArray();
+  uint32_t valid_count = 0;
+  for (const auto& raw_object : attributes) {
+    if (raw_object.IsObject()) {
+      ++valid_count;
+    }
+  }
+
+  if (valid_count == 0) {
+    return;
+  }
+
+  WriteU8(
+      static_cast<uint8_t>(tasm::ElementSectionEnum::ELEMENT_ATTRIBUTE_ARRAY));
+  WriteCompactU32(valid_count);
+
+  for (const auto& raw_object : attributes) {
+    if (!raw_object.IsObject()) {
+      continue;
+    }
+
+    const auto& key = raw_object.GetObject().FindMember("key")->value;
+    const auto& binding_type =
+        raw_object.GetObject().FindMember("binding")->value;
+    std::string binding_type_str =
+        std::string(binding_type.GetString(), binding_type.GetStringLength());
+    std::string key_str = std::string(key.GetString(), key.GetStringLength());
+
+    AttributeBindingType enum_binding_type =
+        AttributeBindingType::ATTRIBUTE_BINDING_TYPE_STATIC;
+
+    if (binding_type_str != "static") {
+      enum_binding_type = AttributeBindingType::ATTRIBUTE_BINDING_TYPE_DYNAMIC;
+    }
+    if (key_str == "spread") {
+      enum_binding_type = AttributeBindingType::ATTRIBUTE_BINDING_TYPE_SPREAD;
+    }
+
+    WriteCompactU32(static_cast<uint32_t>(enum_binding_type));
+    EncodeUtf8Str(key.GetString(), key.GetStringLength());
+
+    if (enum_binding_type ==
+            AttributeBindingType::ATTRIBUTE_BINDING_TYPE_DYNAMIC ||
+        enum_binding_type ==
+            AttributeBindingType::ATTRIBUTE_BINDING_TYPE_SPREAD) {
+      // Dynamic and spread entries read from attribute slots at runtime.
+      WriteCompactU32(
+          raw_object.GetObject().FindMember("attrSlotIndex")->value.GetUint());
+    } else {
+      const auto& value = raw_object.GetObject().FindMember("value")->value;
+      const auto& lepus_val = lepus::jsonValueTolepusValue(value);
+      EncodeValue(&lepus_val);
+    }
+  }
+}
+
+void CSRElementBinaryWriter::EncodeSlotElementIndex(
+    const rapidjson::Value* element) {
+  // Example:
+  // {"type":"slot","elementSlotIndex":0}
+  if (!CheckJSONUintValue(element, kElementSlotIndex)) {
+    return;
+  }
+
+  WriteU8(static_cast<uint8_t>(tasm::ElementSectionEnum::ELEMENT_SLOT_INDEX));
+
+  auto slot_index = element->GetObject()[kElementSlotIndex].GetUint();
+  WriteCompactU32(slot_index);
 }
 
 void CSRElementBinaryWriter::EncodeElementBuiltinAttrSection(

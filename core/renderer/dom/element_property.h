@@ -18,6 +18,12 @@ namespace tasm {
 static constexpr int BUILTIN_ATTRIBUTE_MIN_ID = 1000;
 static constexpr int BUILTIN_TAG_EMPTY_ID = 13;
 
+enum AttributeBindingType {
+  ATTRIBUTE_BINDING_TYPE_STATIC = 0,
+  ATTRIBUTE_BINDING_TYPE_DYNAMIC = 1,
+  ATTRIBUTE_BINDING_TYPE_SPREAD = 2,
+};
+
 enum ElementBuiltInTagEnum {
   ELEMENT_VIEW,
   ELEMENT_TEXT,
@@ -38,6 +44,7 @@ enum ElementBuiltInTagEnum {
   ELEMENT_X_INLINE_TEXT,
   ELEMENT_X_NESTED_SCROLL_VIEW,
   ELEMENT_INLINE_IMAGE,
+  ELEMENT_SLOT,
 };
 
 enum class ElementBuiltInAttributeEnum {
@@ -67,6 +74,8 @@ enum class ElementSectionEnum {
   ELEMENT_PARSED_STYLES,
   ELEMENT_PARSED_STYLES_KEY,
   ELEMENT_PIPER_EVENTS,
+  ELEMENT_ATTRIBUTE_ARRAY,
+  ELEMENT_SLOT_INDEX,
 };
 
 class ElementProperty {

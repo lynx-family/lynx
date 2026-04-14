@@ -54,6 +54,17 @@ class CSRElementBinaryWriter : public lepus::ContextBinaryWriter {
 
   void EncodeElementTagSection(const rapidjson::Value* element);
 
+  // Encode the template attribute descriptors that stay outside the regular
+  // builtin/dynamic attribute sections, for example:
+  // {"kind":"attribute","binding":"static","value":"card"}
+  // {"kind":"attribute","key":"xxx","binding":"slot","attrSlotIndex":0}
+  // {"key":"spread","binding":"slot","attrSlotIndex":1}
+  void EncodeElementAttributeArray(const rapidjson::Value* element);
+
+  // Encode the slot index carried by a slot placeholder element, for example:
+  // {"type":"slot","elementSlotIndex":0}
+  void EncodeSlotElementIndex(const rapidjson::Value* element);
+
   void EncodeElementBuiltinAttrSection(const rapidjson::Value* element);
 
   void EncodeElementIDSelectorSection(const rapidjson::Value* element);

@@ -85,7 +85,15 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
   // These are the APIs used for decoding data into element infos.
   bool DecodeTemplates(ElementTemplateInfo& info);
   bool DecodeElementRecursively(ElementInfo& info);
+
   bool DecodeBuiltinAttributesSection(ElementInfo& info);
+  // Decode the pre-normalized template attribute array. Static entries keep the
+  // literal value, while dynamic/spread entries record the source slot index.
+  bool DecodeAttributesArraySection(ElementInfo& info);
+  // Decode the slot index attached to a slot placeholder element so runtime can
+  // map it back to the corresponding element slot mount point.
+  bool DecodeSlotElementIndexSection(ElementInfo& info);
+
   bool DecodeIDSelectorSection(ElementInfo& info);
   bool DecodeInlineStylesSection(ElementInfo& info);
   bool DecodeClassesSection(ElementInfo& info);
