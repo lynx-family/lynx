@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.9.4
+
+- Add `getScrollInfo` method for list.
+
 ## 3.9.3
 
 - Introduce `<scroll-coordinator>` and related element typings.

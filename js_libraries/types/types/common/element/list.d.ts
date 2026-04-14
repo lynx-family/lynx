@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { BaseEvent, BaseMethod, EventHandler } from '../events';
+import { BaseEvent, BaseMethod, EventHandler, Callback } from '../events';
 import { StandardProps } from '../props';
 
 /**
@@ -779,6 +779,48 @@ export interface GetVisibleCellsMethod extends BaseMethod {
 }
 
 /**
+ * Get scroll info
+ * @Android
+ * @iOS
+ * @Harmony
+ * @PC
+ */
+export interface GetScrollInfoMethod extends BaseMethod {
+  method: 'getScrollInfo';
+  success?: Callback<{
+    /**
+     * Content offset on X-axis, in PX
+     * @Android
+     * @iOS
+     * @Harmony
+     * @PC
+     */
+    scrollX: number;
+    /**
+     * Content offset on Y-axis, in PX
+     * @Android
+     * @iOS
+     * @Harmony
+     * @PC
+     */
+    scrollY: number;
+    /**
+     * Content size along orientation, in PX (legacy iOS behavior)
+     * @iOS
+     */
+    scrollRange?: number;
+    /**
+     * Total scrollable range (max scroll offset) along orientation, in PX
+     * @Android
+     * @iOS
+     * @Harmony
+     * @PC
+     */
+    maxScrollOffset?: number;
+  }>;
+}
+
+/**
  * Scroll by specified offset
  * @Android
  * @iOS
@@ -800,4 +842,9 @@ export interface ScrollByMethod extends BaseMethod {
   };
 }
 
-export type ListUIMethods = ScrollToPositionMethod | AutoScrollMethod | GetVisibleCellsMethod | ScrollByMethod;
+export type ListUIMethods =
+  | ScrollToPositionMethod
+  | AutoScrollMethod
+  | GetVisibleCellsMethod
+  | GetScrollInfoMethod
+  | ScrollByMethod;
