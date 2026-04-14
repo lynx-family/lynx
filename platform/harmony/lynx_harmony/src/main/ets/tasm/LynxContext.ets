@@ -262,7 +262,7 @@ export class LynxContext implements IContext {
       this.lynxView.metaData = metaData;
     }
     LLog.i(TAG, 'loadTemplate width url: ' + this.lynxView.url);
-    this.lynxView.reInitTemplateRenderer();
+    this.lynxView.ensureTemplateRendererAndLoadTemplate();
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RE_INIT_TEMPLATE);
   }
 

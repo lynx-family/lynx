@@ -60,6 +60,29 @@ export enum ThreadStrategyForRendering {
 
 const TAG = 'LynxView';
 
+export interface LynxViewBuilder {
+  genericResourceFetcher?: LynxGenericResourceFetcher;
+  mediaResourceFetcher?: LynxMediaResourceFetcher;
+  templateResourceFetcher?: LynxTemplateResourceFetcher;
+  modules?: Map<string, ModuleClassWrapper>;
+  sendableModules?: Map<string, SendableModuleClassWrapper>;
+  behaviors?: BehaviorRegistryMap;
+  screenSize?: Size;
+  uiRendererCreator?: LynxUIRendererCreator;
+  backgroundRuntime?: LynxBackgroundRuntime;
+  platformConfig?: string;
+  clients?: LynxViewClient[];
+  fitContentWidth?: boolean;
+  fitContentHeight?: boolean;
+  experimentalFixFitContent?: boolean;
+  beforeLoadTemplate?: (context: LynxContext) => void;
+  threadMode?: ThreadStrategyForRendering;
+  backgroundRuntimeOptions?: LynxBackgroundRuntimeOptions;
+  enableAirStrictMode?: boolean;
+  lynxImageConfig?: LynxImageConfig;
+  fontScale?: number;
+}
+
 @Builder
 function buildLynxView(params: ESObject) {
   CAPIView({
@@ -145,7 +168,7 @@ export struct LynxView {
   experimentalFixFitContent?: boolean = false;
   private perfController?: PerformanceController;
   private uiRenderer?: LynxUIRenderer;
-  private templateRenderer!: LynxTemplateRenderer;
+  private templateRenderer?: LynxTemplateRenderer;
   private context: LynxContext = new LynxContext();
   private moduleManager: LynxModuleManager = new LynxModuleManager(this.context);
   private sendableModuleManager: SendableLynxModuleManager = new SendableLynxModuleManager();
@@ -166,12 +189,59 @@ export struct LynxView {
   @State translateY: number = 0;
   templateLoaded: boolean = false;
   private measuredSize: Size = { width: 0, height: 0 };
+  private hasAppeared: boolean = false;
   threadMode: ThreadStrategyForRendering = ThreadStrategyForRendering.ALL_ON_UI;
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions = new LynxBackgroundRuntimeOptions();
   enableAirStrictMode? = false;
   lynxImageConfig?: LynxImageConfig;
 
-  reInitTemplateRenderer() {
+  initWithBuilder(builder: LynxViewBuilder) {
+    this.genericResourceFetcher = builder.genericResourceFetcher;
+    this.mediaResourceFetcher = builder.mediaResourceFetcher;
+    this.templateResourceFetcher = builder.templateResourceFetcher;
+    this.modules = builder.modules ?? new Map();
+    this.sendableModules = builder.sendableModules ?? new Map();
+    this.behaviors = builder.behaviors ?? new Map();
+    this.screenSize = builder.screenSize;
+    this.uiRendererCreator = builder.uiRendererCreator;
+    this.backgroundRuntime = builder.backgroundRuntime;
+    this.platformConfig = builder.platformConfig;
+    this.clients = builder.clients ?? [];
+    this.fitContentWidth = builder.fitContentWidth ?? false;
+    this.fitContentHeight = builder.fitContentHeight ?? false;
+    this.experimentalFixFitContent = builder.experimentalFixFitContent ?? false;
+    this.beforeLoadTemplate = builder.beforeLoadTemplate ?? ((context: LynxContext) => {
+    });
+    this.threadMode = builder.threadMode ?? ThreadStrategyForRendering.ALL_ON_UI;
+    this.backgroundRuntimeOptions = new LynxBackgroundRuntimeOptions(builder.backgroundRuntimeOptions);
+    this.enableAirStrictMode = builder.enableAirStrictMode ?? false;
+    this.lynxImageConfig = builder.lynxImageConfig;
+    this.fontScale = builder.fontScale ?? 1.0;
+    if (this.hasAppeared) {
+      LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
+      this.reInitTemplateRenderer(this.hasLoadSource());
+    }
+  }
+
+  private hasLoadSource(): boolean {
+    return !!this.url || !!this.buffer || !!this.templateBundle;
+  }
+
+  ensureTemplateRendererAndLoadTemplate() {
+    if (!!this.templateRenderer && !this.templateLoaded) {
+      this.loadPreparedTemplate();
+    } else {
+      this.reInitTemplateRenderer();
+    }
+  }
+
+  private loadPreparedTemplate() {
+    this.loadingID++;
+    this.beforeLoadTemplate(this.context);
+    this.loadTemplate();
+  }
+
+  reInitTemplateRenderer(shouldLoadTemplate: boolean = true) {
     LynxInfoReporterHelper.reportLynxTemplateEvent(LynxTemplateType.PAGE, this.url);
     if (this.perfController) {
       LLog.d(TAG, 'Destroy perfController before re-init template renderer');
@@ -225,24 +295,28 @@ export struct LynxView {
     }
 
     this.templateLoaded = false;
-    this.beforeLoadTemplate(this.context);
+    if (shouldLoadTemplate) {
+      this.beforeLoadTemplate(this.context);
+    }
     this.loadingID++;
 
     this.prepareForLoadTemplate();
     const initEndTiming = new Date().getTime();
     this.templateRenderer.setTiming(initStartTiming * 1000, TimingConstants.CREATE_LYNX_START);
     this.templateRenderer.setTiming(initEndTiming * 1000, TimingConstants.CREATE_LYNX_END);
-    this.loadTemplate();
+    if (shouldLoadTemplate) {
+      this.loadTemplate();
+    }
   }
 
   onEnterForeground() {
     this.uiRenderer?.onEnterForeground();
-    this.templateRenderer.onEnterForeground();
+    this.templateRenderer?.onEnterForeground();
   }
 
   onEnterBackground() {
     this.uiRenderer?.onEnterBackground();
-    this.templateRenderer.onEnterBackground();
+    this.templateRenderer?.onEnterBackground();
   }
 
   prepareForLoadTemplate() {
@@ -272,6 +346,9 @@ export struct LynxView {
     }
     this.perfController.setPerformanceObserver(this.clients);
 
+    if (!this.templateRenderer) {
+      return;
+    }
     this.templateRenderer.reset(uiDelegate, this.perfController);
 
     this.uiRenderer.updateRefreshRate(LynxEnv.getDisplayInfo().refreshRate);
@@ -289,6 +366,7 @@ export struct LynxView {
 
   aboutToAppear() {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_CREATE);
+    this.hasAppeared = true;
     LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
     this.nodeController =
       this.uiRendererCreator ? this.uiRendererCreator.createNodeController() : new CAPINodeController()
@@ -297,11 +375,13 @@ export struct LynxView {
       this.logBox = LynxDevTool.createLogBox((msg: string) => {
         this.logBoxTitle = msg;
       }, (): Record<string, string> => {
-        return this.templateRenderer.getAllJsSource();
+        return this.templateRenderer?.getAllJsSource() ?? {};
       });
     }
     this.context.setLynxView(this);
-    this.reInitTemplateRenderer();
+    if (this.hasLoadSource()) {
+      this.reInitTemplateRenderer(true);
+    }
     if (this.onCreate) {
       this.onCreate(this.context)
     }
@@ -330,11 +410,13 @@ export struct LynxView {
 
   aboutToDisappear() {
     LLog.d(TAG, 'aboutToDisappear.')
+    this.hasAppeared = false;
     this.perfController?.destroy();
     this.perfController = undefined;
     this.uiRenderer?.aboutToDisappear();
     this.uiRenderer = undefined;
-    this.templateRenderer.aboutToDisappear();
+    this.templateRenderer?.aboutToDisappear();
+    this.templateRenderer = undefined;
     this.nodeController?.dispose();
     this.nodeController = undefined;
     try {
@@ -438,7 +520,7 @@ export struct LynxView {
     }
     if (!couldReuse) {
       LLog.d(TAG, 'can not reuse, so we recreate LynxTemplateRenderer');
-      this.reInitTemplateRenderer();
+      this.reInitTemplateRenderer(this.hasLoadSource());
     }
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_REUSE);
   }
@@ -448,6 +530,9 @@ export struct LynxView {
   }
 
   sendGlobalEvent(name: string, params: Object[]) {
+    if (!this.templateRenderer) {
+      return;
+    }
     if (this.enableAirStrictMode) {
       this.templateRenderer.triggerEventBus(name, params);
     } else {
@@ -519,6 +604,9 @@ export struct LynxView {
   }
 
   private onPageStarted(pipelineOrigin: LynxPipelineOrigin) {
+    if (!this.templateRenderer) {
+      return;
+    }
     const instanceId = this.templateRenderer.getInstanceId();
     LynxEventReporter.updateGenericInfo(LynxEventReporter.PROP_NAME_URL, this.url, instanceId);
     LynxEventReporter.updateGenericInfo(LynxEventReporter.PROP_NAME_RELATIVE_PATH, this.url, instanceId);
@@ -529,6 +617,10 @@ export struct LynxView {
   }
 
   loadTemplate() {
+    if (!this.templateRenderer) {
+      LLog.e(TAG, 'loadTemplate skipped, templateRenderer does not exist.');
+      return;
+    }
     let timingOption: TimingOption = new TimingOption(TimingConstants.LOAD_BUNDLE);
     let loadBundleStartTimestamp = Date.now();
     timingOption.setTiming(TimingConstants.PIPELINE_START, loadBundleStartTimestamp);
@@ -618,6 +710,9 @@ export struct LynxView {
   }
 
   private loadTemplateInternal(timingOption: TimingOption, bundle?: TemplateBundle, buffer?: ArrayBuffer) {
+    if (!this.templateRenderer) {
+      return;
+    }
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_LOAD);
     this.onPageStarted(LynxPipelineOrigin.LynxFirstScreen);
     if (this.metaData.globalProps !== undefined) {
@@ -682,7 +777,7 @@ export struct LynxView {
 
   setupExtensionModules() {
     let module = this.context.getExtensionModule();
-    if (module == undefined) {
+    if (module == undefined || !this.templateRenderer) {
       return;
     }
     this.templateRenderer.setupExtensionDelegate(module.getExtensionDelegatePtr());
