@@ -150,6 +150,10 @@ source_set("common") {
 
   if (enable_skity) {
     deps += [ "../../gfx/skity" ]
+    sources += [
+      "skity_event_tracer_impl.cc",
+      "skity_event_tracer_impl.h",
+    ]
   } else {
     if (!is_android || use_system_icu) {
       deps += [ "../../fml:icu_util" ]

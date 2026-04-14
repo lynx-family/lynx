@@ -47,6 +47,8 @@
 #include "clay/shell/common/shell_common_rendering_backend.h"
 #ifndef ENABLE_SKITY
 #include "clay/shell/common/skia_event_tracer_impl.h"
+#else  // ENABLE_SKITY
+#include "clay/shell/common/skity_event_tracer_impl.h"
 #endif  // ENABLE_SKITY
 #include "clay/shell/common/switches.h"
 #include "clay/shell/common/vsync_waiter.h"
@@ -114,6 +116,8 @@ void PerformInitializationTasks(Settings& settings) {  // NOLINT
       }
     }
 #endif  // USE_SYSTEM_ICU
+#else   // ENABLE_SKITY
+    InitSkityEventTracer();
 #endif  // ENABLE_SKITY
   });
 
