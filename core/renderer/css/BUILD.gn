@@ -75,6 +75,7 @@ unittest_set("css_test_testset") {
     "../../style/transform/quaternion_unittest.cc",
     "../dom/style_resolver_unittest.cc",
     "computed_css_style_css_text_helper_unittest.cc",
+    "computed_css_style_unittest.cc",
     "css_color_unittest.cc",
     "css_font_face_token_unittest.cc",
     "css_fragment_unittest.cc",

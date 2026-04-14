@@ -6,7 +6,9 @@
 #define CORE_RENDERER_CSS_COMPUTED_CSS_STYLE_H_
 
 #include <unordered_map>
+#include <unordered_set>
 
+#include "base/include/auto_create_optional.h"
 #include "base/include/flex_optional.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/css_property.h"
@@ -38,6 +40,7 @@ namespace tasm {
 // methods, at which point all ##nameToLepus methods of ComputedCSSStyle can be
 // deleted, and this forward declaration. will also be removed.
 class PropBundleStyleWriter;
+class StyleResolver;
 class ComputedCSSStyleCssTextHelper;
 class PseudoElement;
 class Element;
@@ -124,7 +127,9 @@ class ComputedCSSStyle {
         physical_pixels_per_layout_unit);
   }
 
-  const tasm::CssMeasureContext& GetMeasureContext() { return length_context_; }
+  const tasm::CssMeasureContext& GetMeasureContext() const {
+    return length_context_;
+  }
 
   void Reset();
   bool ResetValue(tasm::CSSPropertyID id);
@@ -135,6 +140,27 @@ class ComputedCSSStyle {
   }
 
   bool InheritValue(tasm::CSSPropertyID id, const ComputedCSSStyle& from);
+
+  void InheritCustomPropertiesFrom(const ComputedCSSStyle& from);
+  void InheritNormalPropertiesFrom(
+      const ComputedCSSStyle& from,
+      const std::unordered_set<tasm::CSSPropertyID>& inheritable_props);
+
+  void InheritResolvedValuesFrom(
+      const ComputedCSSStyle& from,
+      const std::unordered_set<tasm::CSSPropertyID>& inheritable_props);
+
+  const tasm::StyleMap& GetResolvedValues() const { return *resolved_values_; }
+  void SetResolvedValue(tasm::CSSPropertyID id, const tasm::CSSValue& value);
+  void RemoveResolvedValue(tasm::CSSPropertyID id);
+
+  void SetCustomProperty(const base::String& key, const tasm::CSSValue& value);
+  void FinalizeCustomProperties();
+  const tasm::CustomPropertiesMap* GetRawCustomProperties() const;
+  const tasm::CustomPropertiesMap* GetCustomProperties() const;
+
+  base::flex_optional<tasm::CSSValue> ResolveVariable(
+      const base::String& key) const;
 
   bool HasAnimation() const { return animation_data_.has_value(); }
 
@@ -461,6 +487,12 @@ class ComputedCSSStyle {
   XAnimationColorInterpolationType new_animator_interpolation_ =
       XAnimationColorInterpolationType::kAuto;
 
+  base::auto_create_optional<tasm::CustomPropertiesMapRef>
+      raw_custom_properties_;
+  base::auto_create_optional<tasm::CustomPropertiesMapRef>
+      resolved_custom_properties_;
+  base::auto_create_optional<tasm::StyleMap> resolved_values_;
+
   static constexpr int32_t OVERFLOW_HIDDEN = 0x00;
   static constexpr int32_t OVERFLOW_X = 0x01;
   static constexpr int32_t OVERFLOW_Y = 0x02;
@@ -669,6 +701,7 @@ class ComputedCSSStyle {
   // Write methods, at which point all ##nameToLepus methods of ComputedCSSStyle
   // can be deleted, and this friend class will also be removed.
   friend class tasm::PropBundleStyleWriter;
+  friend class tasm::StyleResolver;
   // TODO(songshourui.null): Ditto,  remove this when all the ##nameToLepus
   // methods are deleted.
   friend class tasm::PseudoElement;

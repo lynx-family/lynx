@@ -595,6 +595,9 @@ void ComputedCSSStyle::CopyFrom(const ComputedCSSStyle& o) {
   image_rendering_ = o.image_rendering_;
   app_region_ = o.app_region_;
   new_animator_interpolation_ = o.new_animator_interpolation_;
+  raw_custom_properties_ = o.raw_custom_properties_;
+  resolved_custom_properties_ = o.resolved_custom_properties_;
+  resolved_values_ = o.resolved_values_;
   origin_overflow_ = o.origin_overflow_;
   overflow_ = o.overflow_;
   overflow_x_ = o.overflow_x_;
@@ -632,6 +635,9 @@ void ComputedCSSStyle::Reset() {
   const float default_font_size =
       length_context_.layouts_unit_per_px_ * DEFAULT_FONT_SIZE_DP;
   SetFontSize(default_font_size, default_font_size);
+  raw_custom_properties_.reset();
+  resolved_custom_properties_.reset();
+  resolved_values_.reset();
 }
 
 bool ComputedCSSStyle::SetValue(tasm::CSSPropertyID id,
@@ -640,6 +646,11 @@ bool ComputedCSSStyle::SetValue(tasm::CSSPropertyID id,
   if (id > tasm::CSSPropertyID::kPropertyStart &&
       id < tasm::CSSPropertyID::kPropertyEnd) {
     if (StyleFunc func = funcMap[id]) {
+      if (reset) {
+        RemoveResolvedValue(id);
+      } else {
+        SetResolvedValue(id, value);
+      }
       if (auto changed = (this->*func)(value, reset); changed) {
         MarkChanged(id);
         return true;
@@ -718,6 +729,7 @@ bool ComputedCSSStyle::ResetValue(tasm::CSSPropertyID id) {
   if (id > tasm::CSSPropertyID::kPropertyStart &&
       id < tasm::CSSPropertyID::kPropertyEnd) {
     if (StyleFunc func = funcMap[id]) {
+      RemoveResolvedValue(id);
       if (auto reset = (this->*func)(tasm::CSSValue(), true); reset) {
         MarkReset(id);
         return true;
@@ -763,6 +775,17 @@ bool ComputedCSSStyle::InheritValue(tasm::CSSPropertyID id,
   }
 
   return false;
+}
+
+void ComputedCSSStyle::SetResolvedValue(tasm::CSSPropertyID id,
+                                        const tasm::CSSValue& value) {
+  resolved_values_->insert_or_assign(id, value);
+}
+
+void ComputedCSSStyle::RemoveResolvedValue(tasm::CSSPropertyID id) {
+  if (resolved_values_) {
+    resolved_values_->erase(id);
+  }
 }
 
 #define SUPPORTED_LENGTH_PROPERTY(V)                                           \
@@ -4458,6 +4481,195 @@ bool ComputedCSSStyle::SetPointerEvents(const tasm::CSSValue& value,
 
 lepus_value ComputedCSSStyle::PointerEventsToLepus() {
   return lepus_value(static_cast<int>(pointer_events_));
+}
+
+void ComputedCSSStyle::InheritCustomPropertiesFrom(
+    const ComputedCSSStyle& from) {
+  raw_custom_properties_ = from.raw_custom_properties_;
+  resolved_custom_properties_ = from.resolved_custom_properties_;
+}
+
+void ComputedCSSStyle::InheritNormalPropertiesFrom(
+    const ComputedCSSStyle& from,
+    const std::unordered_set<tasm::CSSPropertyID>& inheritable_props) {
+  if (inheritable_props.empty()) {
+    return;
+  }
+
+  auto ensure_text_attrs = [&](float default_font_size) -> TextAttributes* {
+    if (!text_attributes_.has_value()) {
+      text_attributes_.emplace(default_font_size);
+    }
+    return &(*text_attributes_);
+  };
+  auto copy_flex_optional = [](auto& dst, const auto& src) {
+    if (src.has_value()) {
+      dst.emplace(*src);
+    } else {
+      dst.reset();
+    }
+  };
+
+  // Since online user normally use default inheritance rule, only consider
+  // property in GetDefaultInheritableProps here. If needed, append extra
+  // property inheritance.
+  for (const auto& id : inheritable_props) {
+    switch (id) {
+      case tasm::kPropertyIDColor:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          copy_flex_optional(attrs->color, from.text_attributes_->color);
+        }
+        break;
+      case tasm::kPropertyIDFontSize:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          attrs->font_size = from.text_attributes_->font_size;
+        }
+        break;
+      case tasm::kPropertyIDFontFamily:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          attrs->font_family = from.text_attributes_->font_family;
+        }
+        break;
+      case tasm::kPropertyIDFontStyle:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          attrs->font_style = from.text_attributes_->font_style;
+        }
+        break;
+      case tasm::kPropertyIDFontWeight:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          attrs->font_weight = from.text_attributes_->font_weight;
+        }
+        break;
+      case tasm::kPropertyIDTextAlign:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          attrs->text_align = from.text_attributes_->text_align;
+        }
+        break;
+      case tasm::kPropertyIDLineHeight:
+        if (from.text_attributes_.has_value()) {
+          InheritLineHeight(from);
+        }
+        break;
+      case tasm::kPropertyIDLineSpacing:
+        if (from.text_attributes_.has_value()) {
+          InheritLineSpacing(from);
+        }
+        break;
+      case tasm::kPropertyIDLetterSpacing:
+        if (from.text_attributes_.has_value()) {
+          InheritLetterSpacing(from);
+        }
+        break;
+      case tasm::kPropertyIDTextDecoration:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          attrs->underline_decoration =
+              from.text_attributes_->underline_decoration;
+          attrs->line_through_decoration =
+              from.text_attributes_->line_through_decoration;
+          attrs->text_decoration_style =
+              from.text_attributes_->text_decoration_style;
+          copy_flex_optional(attrs->text_decoration_color,
+                             from.text_attributes_->text_decoration_color);
+        }
+        break;
+      case tasm::kPropertyIDTextShadow:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          if (from.text_attributes_->text_shadow.has_value()) {
+            copy_flex_optional(attrs->text_shadow,
+                               from.text_attributes_->text_shadow);
+          } else {
+            attrs->text_shadow.reset();
+          }
+        }
+        break;
+      case tasm::kPropertyIDDirection:
+        layout_computed_style_.SetDirection(
+            from.layout_computed_style_.GetDirection());
+        break;
+      case tasm::kPropertyIDCursor:
+        if (from.cursor_.has_value()) {
+          cursor_ = from.cursor_;
+        }
+        break;
+      default:
+        LOGW("Unhandled property in custom inheritance list: "
+             << static_cast<int>(id)
+             << ". This property will not be inherited by child elements.");
+        break;
+    }
+  }
+}
+
+void ComputedCSSStyle::InheritResolvedValuesFrom(
+    const ComputedCSSStyle& from,
+    const std::unordered_set<tasm::CSSPropertyID>& inheritable_props) {
+  if (inheritable_props.empty()) {
+    return;
+  }
+
+  if (!from.resolved_values_.has_value()) {
+    return;
+  }
+  const auto& parent_resolved_values = from.GetResolvedValues();
+  for (const auto id : inheritable_props) {
+    auto it = parent_resolved_values.find(id);
+    if (it != parent_resolved_values.end()) {
+      resolved_values_->insert_or_assign(id, it->second);
+    }
+  }
+}
+
+base::flex_optional<tasm::CSSValue> ComputedCSSStyle::ResolveVariable(
+    const base::String& key) const {
+  if (resolved_custom_properties_ && resolved_custom_properties_.get()->Get()) {
+    const auto& map = resolved_custom_properties_.get()->Get()->Value();
+    auto it = map.find(key);
+    if (it != map.end()) {
+      return it->second;
+    }
+  }
+  return base::flex_optional<tasm::CSSValue>();
+}
+
+void ComputedCSSStyle::SetCustomProperty(const base::String& key,
+                                         const tasm::CSSValue& value) {
+  auto& raw_custom_properties = *raw_custom_properties_;
+  if (!raw_custom_properties.Get()) {
+    raw_custom_properties.Init();
+  }
+  raw_custom_properties.Access()->Value()[key] = value;
+}
+
+void ComputedCSSStyle::FinalizeCustomProperties() {
+  if (!raw_custom_properties_ || !raw_custom_properties_.get()->Get()) {
+    resolved_custom_properties_.reset();
+    return;
+  }
+
+  resolved_custom_properties_ = raw_custom_properties_;
+  tasm::CSSValue::SubstituteAll(
+      resolved_custom_properties_.get()->Access()->Value());
+}
+
+const tasm::CustomPropertiesMap* ComputedCSSStyle::GetRawCustomProperties()
+    const {
+  return raw_custom_properties_ && raw_custom_properties_.get()->Get()
+             ? &raw_custom_properties_.get()->Get()->Value()
+             : nullptr;
+}
+
+const tasm::CustomPropertiesMap* ComputedCSSStyle::GetCustomProperties() const {
+  return resolved_custom_properties_ && resolved_custom_properties_.get()->Get()
+             ? &resolved_custom_properties_.get()->Get()->Value()
+             : nullptr;
 }
 
 }  // namespace starlight
