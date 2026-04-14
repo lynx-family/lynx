@@ -146,7 +146,6 @@ class PersistentCache {
   static void MarkStrategySet() { strategy_set_ = true; }
 
   static constexpr char kSkSLSubdirName[] = "sksl";
-  static constexpr char kAssetFileName[] = "io.flutter.shaders.json";
 
   const std::shared_ptr<fml::UniqueFD> cache_directory() const {
     return cache_directory_;

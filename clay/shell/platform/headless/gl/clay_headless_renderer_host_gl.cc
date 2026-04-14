@@ -222,7 +222,7 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
 #ifdef ENABLE_SKITY
   FML_UNIMPLEMENTED();
 #else
-  TRACE_EVENT("flutter", __FUNCTION__);
+  TRACE_EVENT("clay", __FUNCTION__);
   std::lock_guard<std::mutex> lock(shared_image_sink_mutex_);
   if (!host_gl_surface_ || !shared_image_sink_) {
     return;
@@ -270,7 +270,7 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
     }
 
     {
-      TRACE_EVENT("flutter", "SharedImageBacking::ReadbackToMemory");
+      TRACE_EVENT("clay", "SharedImageBacking::ReadbackToMemory");
 
       // temp trace
       fml::TimePoint start = fml::TimePoint::Now();

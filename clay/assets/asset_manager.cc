@@ -71,8 +71,7 @@ std::unique_ptr<fml::Mapping> AssetManager::GetAsMapping(
   if (asset_name.empty()) {
     return nullptr;
   }
-  TRACE_EVENT("flutter", "AssetManager::GetAsMapping", "name",
-              asset_name.c_str());
+  TRACE_EVENT("clay", "AssetManager::GetAsMapping", "name", asset_name.c_str());
   for (const auto& resolver : resolvers_) {
     auto mapping = resolver->GetAsMapping(asset_name);
     if (mapping != nullptr) {
@@ -91,7 +90,7 @@ std::vector<std::unique_ptr<fml::Mapping>> AssetManager::GetAsMappings(
   if (asset_pattern.empty()) {
     return mappings;
   }
-  TRACE_EVENT("flutter", "AssetManager::GetAsMappings", "pattern",
+  TRACE_EVENT("clay", "AssetManager::GetAsMappings", "pattern",
               asset_pattern.c_str());
   for (const auto& resolver : resolvers_) {
     auto resolver_mappings = resolver->GetAsMappings(asset_pattern, subdir);

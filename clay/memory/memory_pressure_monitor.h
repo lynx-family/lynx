@@ -14,7 +14,7 @@
 namespace clay {
 
 // This monitor is not for OS Android. For Android, see
-// io/flutter/embedding/engine/memory/MemoryPressureMonitor.java
+// com/lynx/clay/embedding/engine/memory/MemoryPressureMonitor.java
 class MemoryPressureMonitor {
  public:
   BASE_DISALLOW_COPY_AND_ASSIGN(MemoryPressureMonitor);

@@ -275,7 +275,7 @@ NSData* currentKeyboardLayoutData() {
  */
 static void CommonInit(ClayViewProvider* controller) {
   if (!controller->_engine) {
-    controller->_engine = [[FlutterEngine alloc] initWithName:@"io.flutter"
+    controller->_engine = [[FlutterEngine alloc] initWithName:@"lynx.clay"
                                        allowHeadlessExecution:NO];
     [controller->_engine setViewProvider:controller];
   }

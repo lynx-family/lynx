@@ -75,10 +75,10 @@ std::vector<std::unique_ptr<fml::Mapping>> DirectoryAssetBundle::GetAsMappings(
   std::regex asset_regex(asset_pattern);
   fml::FileVisitor visitor = [&](const fml::UniqueFD& directory,
                                  const std::string& filename) {
-    TRACE_EVENT("flutter", "DirectoryAssetBundle::GetAsMappings FileVisitor");
+    TRACE_EVENT("clay", "DirectoryAssetBundle::GetAsMappings FileVisitor");
 
     if (std::regex_match(filename, asset_regex)) {
-      TRACE_EVENT("flutter", "Matched File");
+      TRACE_EVENT("clay", "Matched File");
 
       fml::UniqueFD fd = fml::OpenFile(directory, filename.c_str(), false,
                                        fml::FilePermission::kRead);

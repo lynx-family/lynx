@@ -21,7 +21,7 @@ void SkiaConcurrentExecutor::add(fml::closure work) {
     return;
   }
   on_work_([work]() {
-    TRACE_EVENT("flutter", "SkiaExecutor");
+    TRACE_EVENT("clay", "SkiaExecutor");
     work();
   });
 }

@@ -210,7 +210,7 @@ void ImageDecoder::Decode(fml::RefPtr<ImageDescriptor> descriptor_ref_ptr,
   ]() mutable {
         // Decompress the image.
         // On Worker.
-        TRACE_EVENT("clay", "RK::DecodeImage");
+        TRACE_EVENT("clay", "DecodeImage");
         auto decompressed = raw_descriptor->IsCompressed()
                                 ? ImageFromCompressedData(raw_descriptor,  //
                                                           target_width,    //

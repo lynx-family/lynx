@@ -169,7 +169,7 @@ size_t PersistentCache::PrecompileKnownSkSLs(GrDirectContext* context) const {
   // NOLINTNEXTLINE(clang-analyzer-cplusplus.PlacementNew)
   auto known_sksls = LoadSkSLs();
   // A trace must be present even if no pre-compilations have been completed.
-  TRACE_EVENT("flutter", "PersistentCache::PrecompileKnownSkSLs", "count",
+  TRACE_EVENT("clay", "PersistentCache::PrecompileKnownSkSLs", "count",
               known_sksls.size());
 
   if (context == nullptr) {
@@ -178,19 +178,19 @@ size_t PersistentCache::PrecompileKnownSkSLs(GrDirectContext* context) const {
 
   size_t precompiled_count = 0;
   for (const auto& sksl : known_sksls) {
-    TRACE_EVENT("flutter", "PrecompilingSkSL");
+    TRACE_EVENT("clay", "PrecompilingSkSL");
     if (context->precompileShader(*sksl.key, *sksl.value)) {
       precompiled_count++;
     }
   }
 
-  TRACE_COUNTER("flutter", "PersistentCache::PrecompiledSkSLs.Successful",
+  TRACE_COUNTER("clay", "PersistentCache::PrecompiledSkSLs.Successful",
                 precompiled_count);
   return precompiled_count;
 }
 
 std::vector<PersistentCache::SkSLCache> PersistentCache::LoadSkSLs() const {
-  TRACE_EVENT("flutter", "PersistentCache::LoadSkSLs");
+  TRACE_EVENT("clay", "PersistentCache::LoadSkSLs");
   std::vector<PersistentCache::SkSLCache> result;
   fml::FileVisitor visitor = [&result](const fml::UniqueFD& directory,
                                        const std::string& filename) {
@@ -252,7 +252,7 @@ PersistentCache::SkSLCache PersistentCache::LoadFile(
 
 // |GrContextOptions::PersistentCache|
 sk_sp<SkData> PersistentCache::load(const SkData& key) {
-  TRACE_EVENT("flutter", "PersistentCacheLoad");
+  TRACE_EVENT("clay", "PersistentCacheLoad");
   if (!IsValid()) {
     return nullptr;
   }
@@ -263,7 +263,7 @@ sk_sp<SkData> PersistentCache::load(const SkData& key) {
   auto result =
       PersistentCache::LoadFile(*sksl_cache_directory_, file_name, false).value;
   if (result != nullptr) {
-    TRACE_EVENT("flutter", "PersistentCacheLoadHit");
+    TRACE_EVENT("clay", "PersistentCacheLoadHit");
   }
   return result;
 }
@@ -297,7 +297,7 @@ static void PersistentCacheStore(
                                  file_name = std::move(key),  //
                                  mapping = std::move(value)   //
   ]() mutable {
-    TRACE_EVENT("flutter", "PersistentCacheStore");
+    TRACE_EVENT("clay", "PersistentCacheStore");
     if (!fml::WriteAtomically(*cache_directory,   //
                               file_name.c_str(),  //
                               *mapping)           //

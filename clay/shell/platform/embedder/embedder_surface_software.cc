@@ -51,7 +51,7 @@ std::unique_ptr<Surface> EmbedderSurfaceSoftware::CreateGPUSurface(
 // |GPUSurfaceSoftwareDelegate|
 clay::GrSurfacePtr EmbedderSurfaceSoftware::AcquireBackingStore(
     const skity::Vec2& skity_size) {
-  TRACE_EVENT("flutter", "EmbedderSurfaceSoftware::AcquireBackingStore");
+  TRACE_EVENT("clay", "EmbedderSurfaceSoftware::AcquireBackingStore");
   if (!IsValid()) {
     FML_LOG(ERROR)
         << "Could not acquire backing store for the software surface.";

@@ -119,7 +119,7 @@ void MemoryPressureListener::NotifyMemoryPressure(
       MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE) {
     return;
   }
-  TRACE_EVENT("flutter", __PRETTY_FUNCTION__);
+  TRACE_EVENT("clay", __PRETTY_FUNCTION__);
   DoNotifyMemoryPressure(memory_pressure_level);
 }
 
@@ -130,7 +130,7 @@ void MemoryPressureListener::DoNotifyMemoryPressure(
 }
 
 void MemoryPressureListener::Notify(MemoryPressureLevel memory_pressure_level) {
-  TRACE_EVENT("flutter", __PRETTY_FUNCTION__);
+  TRACE_EVENT("clay", __PRETTY_FUNCTION__);
   FML_DCHECK(task_runner_);
   fml::TaskRunner::RunNowOrPostTask(
       task_runner_, [callback = callback_, memory_pressure_level]() {
@@ -143,7 +143,7 @@ void MemoryPressureListener::SyncNotify(
   if (!sync_memory_pressure_callback_) {
     return;
   }
-  TRACE_EVENT("flutter", __PRETTY_FUNCTION__);
+  TRACE_EVENT("clay", __PRETTY_FUNCTION__);
   fml::AutoResetWaitableEvent latch;
   fml::TaskRunner::RunNowOrPostTask(task_runner_,
                                     [callback = sync_memory_pressure_callback_,

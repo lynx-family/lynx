@@ -115,13 +115,13 @@ static fml::RefPtr<fml::TaskRunner> GetCurrentThreadTaskRunner() {
   return fml::MessageLoop::GetCurrent().GetTaskRunner();
 }
 
-constexpr const char* kFlutterThreadName = "io.flutter";
+constexpr const char* kThreadNamePrefix = "lynx.clay";
 
 fml::Thread::ThreadConfig MakeThreadConfig(
     clay::ThreadHost::Type type, fml::Thread::ThreadPriority priority) {
   return fml::Thread::ThreadConfig(
       clay::ThreadHost::ThreadHostConfig::MakeThreadName(type,
-                                                         kFlutterThreadName),
+                                                         kThreadNamePrefix),
       priority);
 }
 
@@ -188,7 +188,7 @@ EmbedderThreadHost::CreateEmbedderManagedThreadHost(
                                 : thread_host.raster_thread->GetTaskRunner();
 
   clay::TaskRunners task_runners(
-      kFlutterThreadName,
+      kThreadNamePrefix,
       platform_task_runner,  // platform
       render_task_runner,    // raster
       ui_task_runner,
@@ -231,7 +231,7 @@ EmbedderThreadHost::CreateEngineManagedThreadHost(
   auto ui_task_runner = platform_task_runner;
 
   clay::TaskRunners task_runners(
-      kFlutterThreadName,
+      kThreadNamePrefix,
       platform_task_runner,                        // platform
       thread_host.raster_thread->GetTaskRunner(),  // raster
       ui_task_runner,                              // ui

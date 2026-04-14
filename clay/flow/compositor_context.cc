@@ -131,7 +131,7 @@ RasterStatus CompositorContext::ScopedFrame::Raster(
       CANVAS_CLIP_RECT(canvas(), *clip_rect);
     }
     if (needs_save_layer) {
-      TRACE_EVENT("clay", "Canvas::saveLayer");
+      TRACE_EVENT("clay", "ScopedFrame::Canvas::saveLayer");
       auto bounds = skity::Rect::MakeSize(layer_tree.frame_size());
       clay::GrPaint paint;
       PAINT_SET_BLEND_MODE(paint, clay::BlendMode::kSrc);

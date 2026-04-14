@@ -294,7 +294,7 @@ void OnKeyboardLayoutChanged(CFNotificationCenterRef center, void* observer, CFS
  */
 static void CommonInit(FlutterViewController* controller) {
   if (!controller->_engine) {
-    controller->_engine = [[FlutterEngine alloc] initWithName:@"io.flutter"
+    controller->_engine = [[FlutterEngine alloc] initWithName:@"lynx.clay"
                                        allowHeadlessExecution:NO];
   }
   controller->_mouseTrackingMode = FlutterMouseTrackingModeInKeyWindow;

@@ -169,7 +169,7 @@ class SkityCanvasDelegate : public LayerStateStack::Delegate {
                  LayerStateStack::RenderingAttributes& attributes,
                  clay::BlendMode blend_mode,
                  const clay::ImageFilter* backdrop) override {
-    TRACE_EVENT("flutter", "Canvas::saveLayer");
+    TRACE_EVENT("clay", "Canvas::saveLayer");
     skity::Paint paint;
     attributes.fill(paint, blend_mode);
     canvas_->SaveLayer(bounds, paint);
