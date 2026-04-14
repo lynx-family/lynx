@@ -1619,7 +1619,8 @@ public class LynxTemplateRender
             && mThreadStrategyForRendering != mLynxEngineRef.getThreadStrategy()) {
           attachEngineToUIThread();
         }
-        if (getLynxView() != null && getLynxView().getCurrentWidthMeasureSpec() >= 0
+        if ((mBodyView instanceof LynxView) && getLynxView() != null
+            && getLynxView().getCurrentWidthMeasureSpec() >= 0
             && getLynxView().getCurrentHeightMeasureSpec() >= 0) {
           updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
               getLynxView().getCurrentHeightMeasureSpec(), false);
@@ -1631,7 +1632,8 @@ public class LynxTemplateRender
       }
       fallbackNewEngine(false);
     } else if (mLynxEngineRef.hasLoaded()) {
-      if (getLynxView() != null && getLynxView().getCurrentWidthMeasureSpec() >= 0
+      if ((mBodyView instanceof LynxView) && getLynxView() != null
+          && getLynxView().getCurrentWidthMeasureSpec() >= 0
           && getLynxView().getCurrentHeightMeasureSpec() >= 0) {
         updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
             getLynxView().getCurrentHeightMeasureSpec(), false);
@@ -1664,7 +1666,7 @@ public class LynxTemplateRender
       return;
     }
 
-    if (mLynxContext.isEmbeddedModeOn() && getLynxView() != null
+    if (mLynxContext.isEmbeddedModeOn() && getLynxView() != null && (mBodyView instanceof LynxView)
         && getLynxView().getCurrentWidthMeasureSpec() >= 0
         && getLynxView().getCurrentHeightMeasureSpec() >= 0) {
       updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
