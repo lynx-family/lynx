@@ -154,6 +154,10 @@ bool HeadlessAngleSurfaceManager::Initialize() {
       EGL_EXPERIMENTAL_PRESENT_PATH_ANGLE,
       EGL_EXPERIMENTAL_PRESENT_PATH_FAST_ANGLE,
 
+      // Request high-performance GPU (discrete GPU) instead of integrated GPU.
+      EGL_POWER_PREFERENCE_ANGLE,
+      EGL_HIGH_POWER_ANGLE,
+
       EGL_NONE,
   };
 
