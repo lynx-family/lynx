@@ -1923,3 +1923,15 @@ enableAnimationForwardUpdatePreservation:
     - Android
     - HarmonyOS
     - iOS
+enableNewStylingPipeline:
+  description: Enable the new styling pipeline for better css and animation support.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  readNative: true
+  author: zhouzhitao
+  since: '3.9'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS

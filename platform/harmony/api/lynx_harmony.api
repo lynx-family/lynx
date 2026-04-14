@@ -1147,6 +1147,7 @@ export enum LynxTrailKey {
   ENABLE_HARMONY_NEW_IMAGE = 'enable_harmony_new_image'
   FIX_FILTER_DYNAMIC_UPDATE_BUG = 'fix_filter_dynamic_update_bug'
   FIX_FIBER_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG = 'fix_fiber_dynamic_update_transition_consume_bug'
+  ENABLE_NEW_STYLING_PIPELINE = 'enable_new_styling_pipeline'
 }
 
 export interface LynxUIRenderer {

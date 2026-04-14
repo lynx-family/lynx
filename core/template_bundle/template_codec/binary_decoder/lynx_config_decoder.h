@@ -901,6 +901,15 @@ class LynxConfigDecoder final {
       page_config->SetEnableAnimationForwardUpdatePreservation(
           LynxEnv::GetInstance().EnableAnimationForwardUpdatePreservation());
     }
+
+    if (doc.HasMember(config::kEnableNewStylingPipeline) &&
+        doc[config::kEnableNewStylingPipeline].IsBool()) {
+      page_config->SetEnableNewStylingPipeline(
+          doc[config::kEnableNewStylingPipeline].GetBool());
+    } else {
+      page_config->SetEnableNewStylingPipeline(
+          LynxEnv::GetInstance().EnableNewStylingPipeline());
+    }
   };
 };
 }  // namespace tasm

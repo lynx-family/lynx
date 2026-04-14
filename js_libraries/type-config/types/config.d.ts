@@ -670,6 +670,17 @@ export interface Config {
   enableNewListContainer?: boolean;
 
   /**
+   * Enable the new styling pipeline for better css and animation support.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.9
+   *
+   * @defaultValue false
+   */
+  enableNewStylingPipeline?: boolean;
+
+  /**
    * If this flag is true, new transform origin algorithm will apply.
    *
    * Supported platform: Android, HarmonyOS, iOS

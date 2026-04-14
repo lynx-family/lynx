@@ -1129,6 +1129,8 @@ class ElementManager : public ElementContextDelegate,
     return enable_animation_forward_update_preservation_;
   }
 
+  bool EnableNewStylingPipeline() const { return enable_new_styling_pipeline_; }
+
   bool CSSFragmentParsingOnTASMWorkerMTSRender();
 
   inline void SetCSSFragmentParsingOnTASMWorkerMTSRender(bool enable) {
@@ -1319,6 +1321,7 @@ class ElementManager : public ElementContextDelegate,
   bool fix_new_fixed_removal_bug_{true};
   bool fix_old_fixed_insert_self_use_render_parent_{false};
   bool enable_animation_forward_update_preservation_{false};
+  bool enable_new_styling_pipeline_{false};
   bool css_fragment_parsing_tasm_worker_thread_{false};
   bool enable_level_order_traversing_{false};
   std::atomic_int pending_level_order_tasks_{0};

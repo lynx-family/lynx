@@ -864,6 +864,7 @@ void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
         config_->GetEnablePropertyBasedSimpleStyle();
     enable_animation_forward_update_preservation_ =
         config_->GetEnableAnimationForwardUpdatePreservation();
+    enable_new_styling_pipeline_ = config_->GetEnableNewStylingPipeline();
   }
 }
 

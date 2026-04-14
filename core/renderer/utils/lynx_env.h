@@ -152,6 +152,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     JS_CALL_NATIVE_FREQUENCY_WINDOW_MS,
     JS_CALL_NATIVE_FREQUENCY_THRESHOLD_COMMON,
     JS_CALL_NATIVE_FREQUENCY_COOLDOWN_MS,
+    ENABLE_NEW_STYLING_PIPELINE,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -318,6 +319,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "fix_filter_dynamic_update_bug"},
             {Key::ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION,
              "enable_animation_forward_update_preservation"},
+            {Key::ENABLE_NEW_STYLING_PIPELINE, "enable_new_styling_pipeline"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -485,6 +487,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixNewFixedRemovalBug();
   bool FixOldFixedInsertSelfUseRenderParent();
   bool EnableAnimationForwardUpdatePreservation();
+  bool EnableNewStylingPipeline();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

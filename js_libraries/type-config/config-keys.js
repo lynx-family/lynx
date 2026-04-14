@@ -93,6 +93,7 @@ const configKeys = [
   'enableNewImage',
   'enableNewIntersectionObserver',
   'enableNewListContainer',
+  'enableNewStylingPipeline',
   'enableNewTransformOrigin',
   'enableParseIntFlex',
   'enablePlatformGesture',
