@@ -166,7 +166,9 @@ export abstract class LynxNodeController extends NodeController {
 }
 
 @Component export class LynxView {
-  reInitTemplateRenderer(): void;
+  initWithBuilder(builder: LynxViewBuilder): void;
+  ensureTemplateRendererAndLoadTemplate(): void;
+  reInitTemplateRenderer(shouldLoadTemplate: boolean): void;
   onEnterForeground(): void;
   onEnterBackground(): void;
   prepareForLoadTemplate(): void;
@@ -219,6 +221,29 @@ export abstract class LynxNodeController extends NodeController {
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions; = new LynxBackgroundRuntimeOptions()
   enableAirStrictMode?: any; = false
   lynxImageConfig?: LynxImageConfig;
+}
+
+export interface LynxViewBuilder {
+  genericResourceFetcher?: LynxGenericResourceFetcher;
+  mediaResourceFetcher?: LynxMediaResourceFetcher;
+  templateResourceFetcher?: LynxTemplateResourceFetcher;
+  modules?: Map<string, ModuleClassWrapper>;
+  sendableModules?: Map<string, SendableModuleClassWrapper>;
+  behaviors?: BehaviorRegistryMap;
+  screenSize?: Size;
+  uiRendererCreator?: LynxUIRendererCreator;
+  backgroundRuntime?: LynxBackgroundRuntime;
+  platformConfig?: string;
+  clients?: LynxViewClient[];
+  fitContentWidth?: boolean;
+  fitContentHeight?: boolean;
+  experimentalFixFitContent?: boolean;
+  beforeLoadTemplate?: (context: LynxContext) => void;
+  threadMode?: ThreadStrategyForRendering;
+  backgroundRuntimeOptions?: LynxBackgroundRuntimeOptions;
+  enableAirStrictMode?: boolean;
+  lynxImageConfig?: LynxImageConfig;
+  fontScale?: number;
 }
 
 export enum MeasureMode {

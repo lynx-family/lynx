@@ -4,7 +4,7 @@
 
 export { TemplateData, MetaData, LynxUpdateMeta, LynxUpdateMode } from './tasm/MetaData';
 
-export { LynxNodeController, LynxView, ThreadStrategyForRendering, MeasureMode } from './tasm/LynxView'
+export { LynxNodeController, LynxView, LynxViewBuilder, ThreadStrategyForRendering, MeasureMode } from './tasm/LynxView'
 
 export { LynxContext } from './tasm/LynxContext'
 export { SessionStorageCallback } from './tasm/SessionStorage'
