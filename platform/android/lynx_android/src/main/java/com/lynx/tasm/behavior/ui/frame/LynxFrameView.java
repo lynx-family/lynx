@@ -91,6 +91,11 @@ public final class LynxFrameView extends UIBodyView {
     if (mEnableMultiAsyncThread != null) {
       builder.setEnableMultiAsyncThread(mEnableMultiAsyncThread);
     }
+    if (mPresetWidth != -1 || mPresetHeight != -1) {
+      builder.setPresetMeasuredSpec(
+          MeasureSpec.makeMeasureSpec(mPresetWidth == -1 ? 0 : mPresetWidth, mWidthMode),
+          MeasureSpec.makeMeasureSpec(mPresetHeight == -1 ? 0 : mPresetHeight, mHeightMode));
+    }
     mLynxUIRender = builder.createLynxUIRenderer();
     mRender = new LynxTemplateRender(mContext, this, builder);
 
@@ -188,10 +193,16 @@ public final class LynxFrameView extends UIBodyView {
   }
 
   void setPresetWidth(int width) {
+    if (width < 0) {
+      return;
+    }
     mPresetWidth = width;
   }
 
   void setPresetHeight(int height) {
+    if (height < 0) {
+      return;
+    }
     mPresetHeight = height;
   }
 
