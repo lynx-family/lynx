@@ -289,6 +289,13 @@ void UIList::InvokeMethod(
   } else if (method == "getVisibleCells") {
     auto array = GetVisibleCells();
     callback(LynxGetUIResult::SUCCESS, lepus_value(array));
+  } else if (method == "getScrollInfo") {
+    const auto& offset = GetScrollOffset();
+    auto scroll_info = lepus::Dictionary::Create();
+    scroll_info->SetValue("scrollX", offset.first);
+    scroll_info->SetValue("scrollY", offset.second);
+    scroll_info->SetValue("maxScrollOffset", GetScrollRange());
+    callback(LynxGetUIResult::SUCCESS, lepus_value(std::move(scroll_info)));
   } else if (method == "scrollBy") {
     if (!args.IsTable()) {
       callback(LynxGetUIResult::PARAM_INVALID,

@@ -8,6 +8,7 @@
 - Add `refresh` element types.
 - Add `font` type for `requestResourcePrefetch`.
 - Add `-x-auto-font-size-line-ranges` CSS property.
+- Add `getScrollInfo` method for list.
 - Add `auto-width` and `auto-height` properties for `frame` element.
 
 ## 3.7.0
