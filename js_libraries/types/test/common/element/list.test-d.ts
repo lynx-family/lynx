@@ -529,4 +529,16 @@ describe('List method test', () => {
       },
     });
   });
+
+  it('should have correct type for getScrollInfo method', () => {
+    invoke<'list'>({
+      method: 'getScrollInfo',
+      success: (e) => {
+        assertType<number>(e.scrollX);
+        assertType<number>(e.scrollY);
+        assertType<number | undefined>(e.scrollRange);
+        assertType<number | undefined>(e.maxScrollOffset);
+      },
+    });
+  });
 });

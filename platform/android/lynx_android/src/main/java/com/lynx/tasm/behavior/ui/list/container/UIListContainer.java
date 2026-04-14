@@ -769,6 +769,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     JavaOnlyMap result = new JavaOnlyMap();
     result.putInt("scrollX", LynxUIHelper.px2dip(mContext, scrollX));
     result.putInt("scrollY", LynxUIHelper.px2dip(mContext, scrollY));
+    result.putInt("maxScrollOffset", LynxUIHelper.px2dip(mContext, mView.getScrollRange()));
     callback.invoke(LynxUIMethodConstants.SUCCESS, result);
   }
 

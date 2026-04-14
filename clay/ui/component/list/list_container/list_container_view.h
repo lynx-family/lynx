@@ -72,6 +72,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
                              std::vector<std::string>& item_key_array);
 
   clay::Value::Array GetVisibleCells();
+  float GetMaxContent() const { return max_content_; }
 
  protected:
   void CalculateOverFlow() override;

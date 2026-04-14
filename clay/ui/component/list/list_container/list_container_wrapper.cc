@@ -6,6 +6,7 @@
 
 #include <math.h>
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <unordered_set>
@@ -224,6 +225,15 @@ void ListContainerWrapper::getScrollInfo(const LynxModuleValues& args,
     map.emplace("isDragging",
                 static_cast<ScrollView*>(view_)->GetScrollStatus() ==
                     ScrollView::ScrollStatus::kDragging);
+    // Align to platform.
+    float content_size = page_view_->ConvertTo<kPixelTypeLogical>(
+        GetListContainerView()->GetMaxContent());
+    float list_size = page_view_->ConvertTo<kPixelTypeLogical>(
+        GetListContainerView()->CanScrollY() ? view_->Height()
+                                             : view_->Width());
+    map.emplace("scrollX", zoomed_offset.x());
+    map.emplace("scrollY", zoomed_offset.y());
+    map.emplace("maxScrollOffset", std::max(content_size - list_size, 0.f));
     callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(map)));
   }
 }

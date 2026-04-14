@@ -19,9 +19,11 @@
 #import <Lynx/LynxPropertyDiffMap.h>
 #import <Lynx/LynxScrollEventManager.h>
 #import <Lynx/LynxScrollView.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUICollection.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUnitUtils.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
@@ -29,10 +31,8 @@
 #import <Lynx/UIScrollView+LynxFadingEdge.h>
 #import <Lynx/UIScrollView+LynxGesture.h>
 #import <Lynx/UIScrollView+Nested.h>
-#import "LynxTemplateRender+Internal.h"
 #import "LynxTraceEventDef.h"
 #import "LynxUI+Gesture.h"
-#import "LynxUIContext+Internal.h"
 
 const NSInteger kScrollEdgeThreshold = 1;
 const NSInteger kInvalidBounceDistance = -1;
@@ -1153,12 +1153,17 @@ LYNX_UI_METHOD(scrollTo) {
  */
 LYNX_UI_METHOD(getScrollInfo) {
   if (callback) {
+    CGFloat contentSize =
+        _enableScrollY ? self.view.contentSize.height : self.view.contentSize.width;
+    CGFloat scrollviewSize =
+        _enableScrollY ? self.view.bounds.size.height : self.view.bounds.size.width;
     callback(
         kUIMethodSuccess, @{
           @"scrollX" : @(self.view.contentOffset.x),
           @"scrollY" : @(self.view.contentOffset.y),
-          @"scrollRange" : _enableScrollY ? @(self.view.contentSize.height)
-                                          : @(self.view.contentSize.width)
+          @"maxScrollOffset" : @(MAX(contentSize - scrollviewSize, 0)),
+          // legacy param, to avoid break change.
+          @"scrollRange" : @(contentSize),
         });
   }
 }
