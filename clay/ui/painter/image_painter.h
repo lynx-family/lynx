@@ -52,7 +52,7 @@ class ImagePainter {
                             const BackgroundImage& bg_image,
                             const skity::Rect& src_rect,
                             const skity::RRect& dst_rrect);
-  GrSamplingOptions GetSamplingOptions() const;
+  GrSamplingOptions GetSamplingOptions(bool mipmapped) const;
 
   void PaintSingleMaskImage(GrCanvas* canvas, const MaskImage& mask_image,
                             const FloatRect& src_rect,
