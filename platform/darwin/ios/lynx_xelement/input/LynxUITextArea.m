@@ -308,6 +308,10 @@ LYNX_UI_METHOD(setValue) {
   return YES;
 }
 
+- (void)didApplyOverflowReplacementForInput:(id<UITextInput>)input {
+  [self textViewDidChange:(UITextView *)input];
+}
+
 - (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text {
   if ([text isEqualToString:@"\n"] && textView.returnKeyType != UIReturnKeyDefault) {
     // If the confirm-type is not "default"(next-line), send confirm manually, cause UITextView do not have the callback of `textFieldShouldReturn:`
