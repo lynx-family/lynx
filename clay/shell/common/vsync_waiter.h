@@ -8,7 +8,6 @@
 #ifndef CLAY_SHELL_COMMON_VSYNC_WAITER_H_
 #define CLAY_SHELL_COMMON_VSYNC_WAITER_H_
 
-#include <atomic>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -41,8 +40,10 @@ class VsyncWaiter : public VariableRefreshRateReporter,
 
   bool HasCallback() { return !!callback_; }
   void ResetCallback() { callback_ = nullptr; }
+  void ResetPendingCallbacks();
 
   bool InsideVsync() const { return inside_vsync_; }
+  void SetEngineIsActive(bool active) { engine_is_active_ = active; }
 
   // To be removed, only use the same one in VsyncWaiterService.
   double GetRefreshRate() const override { return 60.0; };
@@ -59,6 +60,7 @@ class VsyncWaiter : public VariableRefreshRateReporter,
   friend class VsyncWaiterEmbedder;
 
   const fml::RefPtr<fml::TaskRunner> task_runner_;
+  bool IsEngineActive() const { return engine_is_active_; }
 
   explicit VsyncWaiter(fml::RefPtr<fml::TaskRunner> task_runner);
 
@@ -95,6 +97,7 @@ class VsyncWaiter : public VariableRefreshRateReporter,
   Callback callback_;
   std::unordered_map<uintptr_t, fml::closure> secondary_callbacks_;
   bool inside_vsync_ = false;
+  bool engine_is_active_ = true;
   AWaitVSyncCallback await_vsync_callback_;
 
   BASE_DISALLOW_COPY_AND_ASSIGN(VsyncWaiter);

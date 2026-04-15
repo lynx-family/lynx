@@ -141,7 +141,7 @@ void BaseImageView::SetAttribute(const char* attr_c, const clay::Value& value) {
     case KeywordID::kDownsampling: {
       bool down_sampling = attribute_utils::GetBool(value);
       GetRenderImage()->SetDownSampling(down_sampling);
-    }
+    } break;
     case KeywordID::kCapInsets: {
       std::string cap_insets = attribute_utils::GetCString(value);
       SetCapInsets(cap_insets);

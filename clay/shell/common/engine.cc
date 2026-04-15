@@ -119,14 +119,17 @@ void Engine::OnOutputSurfaceDestroyed() {
   view_context_->OnOutputSurfaceDestroyed();
 }
 
+void Engine::PrepareForRecycle() {
+  ui_frame_service_.Act([](auto& impl) { impl.PrepareForRecycle(); });
+}
+
 void Engine::CleanForRecycle() {
   view_context_->CleanLeakedViews();
   page_view_->CleanForRecycle();
   shadow_node_owner_->ClearNodes();
+  ui_frame_service_.Act([](auto& impl) { impl.CleanForRecycle(); });
   pending_layout_ = false;
 }
-
-void Engine::PrepareForRecycle() {}
 
 void Engine::SetViewportMetrics(const ViewportMetrics& metrics) {
   page_view_->SetViewportMetrics(metrics);
@@ -189,9 +192,51 @@ void Engine::DeleteSurroundingText(int before_length, int after_length) {
   page_view_->OnDeleteSurroundingText(before_length, after_length);
 }
 
-void Engine::OnEnterForeground() { page_view_->DispatchEnterForeground(); }
+void Engine::OnEnterForeground() {
+  if (enable_vsync_pause_) {
+    SetVsyncSourceActive(true);
+  }
+  page_view_->DispatchEnterForeground();
+}
 
-void Engine::OnEnterBackground() { page_view_->DispatchEnterBackground(); }
+void Engine::OnEnterBackground() {
+  page_view_->DispatchEnterBackground();
+  if (enable_vsync_pause_) {
+    SetVsyncSourceActive(false);
+  }
+}
+
+void Engine::SetVsyncSourceActive(bool active) {
+  // Activating the UI side may immediately replay a pending frame request, so
+  // it must happen only after raster-side vsync has been unfrozen on the
+  // raster thread. Posting order alone cannot guarantee that across threads,
+  // so bounce back to the UI thread only after raster activation completes.
+  if (active) {
+    raster_frame_service_.Act(
+        [active](auto& impl) {
+          impl.SetVsyncSourceActive(active);
+          return true;
+        },
+        [weak_self = GetWeakPtr(), active](bool) mutable {
+          // `Act(..., callback)` posts the callback back to the caller
+          // (UI) task runner, so this WeakPtr is only dereferenced on the
+          // Engine's originating thread even though it is transported through
+          // the raster task.
+          if (!weak_self) {
+            return;
+          }
+          weak_self->ui_frame_service_.Act(
+              [active](auto& impl) { impl.SetVsyncSourceActive(active); });
+        });
+  } else {
+    // Deactivate in the reverse order so new UI requests stop immediately
+    // before tearing down raster-side scheduling.
+    ui_frame_service_.Act(
+        [active](auto& impl) { impl.SetVsyncSourceActive(active); });
+    raster_frame_service_.Act(
+        [active](auto& impl) { impl.SetVsyncSourceActive(active); });
+  }
+}
 
 void Engine::SetVisible(bool enable) { page_view_->SetVisible(enable); }
 

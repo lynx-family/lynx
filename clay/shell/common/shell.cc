@@ -824,21 +824,25 @@ void Shell::OnPlatformViewDeleteSurroundingText(int before_length,
 void Shell::OnPlatformViewOnEnterForeground() {
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
 
-  task_runners_.GetUITaskRunner()->PostTask([engine = engine_->GetWeakPtr()]() {
-    if (engine) {
-      engine->OnEnterForeground();
-    }
-  });
+  fml::TaskRunner::RunNowOrPostTask(task_runners_.GetUITaskRunner(),
+                                    [engine = engine_->GetWeakPtr()] {
+                                      if (!engine) {
+                                        return;
+                                      }
+                                      engine->OnEnterForeground();
+                                    });
 }
 
 void Shell::OnPlatformViewOnEnterBackground() {
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
 
-  task_runners_.GetUITaskRunner()->PostTask([engine = engine_->GetWeakPtr()]() {
-    if (engine) {
-      engine->OnEnterBackground();
-    }
-  });
+  fml::TaskRunner::RunNowOrPostTask(task_runners_.GetUITaskRunner(),
+                                    [engine = engine_->GetWeakPtr()] {
+                                      if (!engine) {
+                                        return;
+                                      }
+                                      engine->OnEnterBackground();
+                                    });
 }
 
 void Shell::OnPlatformViewSetDefaultFocusRingEnabled(bool enable) {
@@ -1394,10 +1398,7 @@ void Shell::PrepareForRecycle() {
   frame_timing_collector_ = std::make_shared<clay::FrameTimingCollector>(
       task_runners_.GetPlatformTaskRunner());
   fml::TaskRunner::RunNowOrPostTask(
-      task_runners_.GetUITaskRunner(),
-      [this, engine = weak_engine_,
-       ui_task_runner = task_runners_.GetUITaskRunner(),
-       raster_task_runner = task_runners_.GetRasterTaskRunner()] {
+      task_runners_.GetUITaskRunner(), [this, engine = weak_engine_] {
         if (engine) {
           engine->SetFrameTimingCollector(frame_timing_collector_);
           frame_timing_collector_->SetPageView(engine->GetPageView());

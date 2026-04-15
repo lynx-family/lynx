@@ -64,6 +64,27 @@ void RasterFrameService::SetMeaningfulLayout(bool meaningful_layout) {
   scheduler_->SetMeaningfulLayout(meaningful_layout);
 }
 
+void RasterFrameService::SetVsyncSourceActive(bool active) {
+  if (vsync_source_active_ == active) {
+    return;
+  }
+  vsync_source_active_ = active;
+  if (!active && raster_frame_deadline_timer_ &&
+      !raster_frame_deadline_timer_->Stopped()) {
+    raster_frame_deadline_timer_->Stop();
+  }
+  if (!active) {
+    vsync_requested_ = false;
+    ++vsync_request_generation_;
+  }
+  if (vsync_waiter_) {
+    if (!active) {
+      vsync_waiter_->ResetPendingCallbacks();
+    }
+    vsync_waiter_->SetEngineIsActive(active);
+  }
+}
+
 bool RasterFrameService::DemandDrawHw() { return scheduler_->OnDraw(); }
 
 void RasterFrameService::RequestRasterFrame() {
@@ -181,14 +202,22 @@ void RasterFrameService::RequestFrameSignal() {
 
 void RasterFrameService::RequestVsync() {
   FML_DCHECK(!using_sync_compositor_);
+  if (!vsync_source_active_) {
+    return;
+  }
   if (vsync_requested_) {
     return;
   }
   vsync_requested_ = true;
+  const auto request_generation = vsync_request_generation_;
   vsync_waiter_->AsyncWaitForVsync(
-      [weak_self =
-           GetWeakPtr()](std::unique_ptr<FrameTimingsRecorder> recorder) {
+      [weak_self = GetWeakPtr(),
+       request_generation](std::unique_ptr<FrameTimingsRecorder> recorder) {
         if (weak_self) {
+          if (!weak_self->vsync_source_active_ ||
+              weak_self->vsync_request_generation_ != request_generation) {
+            return;
+          }
           weak_self->vsync_requested_ = false;
           weak_self->OnVsync(std::move(recorder));
         }
@@ -323,11 +352,39 @@ void RasterFrameService::ScheduledActionUploadImage() {
   scheduler_->OnImageUploadTaskFinished(left_tasks);
 }
 
-void RasterFrameService::PrepareForRecycle() { scheduler_->Resume(); }
+void RasterFrameService::PrepareForRecycle() {
+  vsync_source_active_ = true;
+  vsync_requested_ = false;
+  ++vsync_request_generation_;
+  if (vsync_waiter_) {
+    vsync_waiter_->ResetPendingCallbacks();
+    vsync_waiter_->SetEngineIsActive(true);
+  }
+  scheduler_->Resume();
+}
 
-void RasterFrameService::CleanForRecycle() { StopSchedulerAndCleanLayerTree(); }
+void RasterFrameService::CleanForRecycle() {
+  if (raster_frame_deadline_timer_ &&
+      !raster_frame_deadline_timer_->Stopped()) {
+    raster_frame_deadline_timer_->Stop();
+  }
+  vsync_source_active_ = false;
+  vsync_requested_ = false;
+  ++vsync_request_generation_;
+  frame_timings_recorder_.reset();
+  committing_recorder_.reset();
+  pending_recorder_.reset();
+  active_recorder_.reset();
+  force_begin_frame_ = false;
+  if (vsync_waiter_) {
+    vsync_waiter_->ResetPendingCallbacks();
+    vsync_waiter_->SetEngineIsActive(false);
+  }
+  StopSchedulerAndCleanLayerTree();
+}
 
 void RasterFrameService::StopSchedulerAndCleanLayerTree() {
+  scheduler_->Reset();
   scheduler_->Stop();
   active_layer_tree_.reset();
   committing_layer_tree_.reset();

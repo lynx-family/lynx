@@ -72,6 +72,7 @@ class SchedulerStateMachine {
   void SetNeedsRasterBeginFrame();
   void SetOutputSurfaceState(OutputSurfaceState output_surface_state);
   void SetMeaningfulLayoutState(MeaningfulLayoutState meaningful_layout_state);
+  void Reset();
 
   Action NextAction() const;
   void WillSendUIBeginFrame();

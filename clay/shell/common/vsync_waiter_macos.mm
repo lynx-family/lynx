@@ -82,6 +82,9 @@ VsyncWaiterMacOS::~VsyncWaiterMacOS() {
 }
 
 void VsyncWaiterMacOS::AwaitVSync() {
+  if (!IsEngineActive()) {
+    return;
+  }
   if (manager_) {
     if (!manager_->callback_) {
       std::weak_ptr<VsyncWaiterMacOS> weak_this =

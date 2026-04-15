@@ -19,6 +19,12 @@ Scheduler::Scheduler(SchedulerClient* scheduler_client,
 
 Scheduler::~Scheduler() {}
 
+void Scheduler::Reset() {
+  state_machine_.Reset();
+  commit_has_no_updates_ = false;
+  sync_compositor_result_ = false;
+}
+
 void Scheduler::SetVisible(bool visible) {
   state_machine_.SetVisible(visible);
   ProcessScheduledAction();

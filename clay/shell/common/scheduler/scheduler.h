@@ -22,6 +22,7 @@ class Scheduler {
 
   void Stop() { stopped_ = true; }
   void Resume() { stopped_ = false; }
+  void Reset();
   void SetVisible(bool visible);
 
   // Do draw for synchronous compositor.

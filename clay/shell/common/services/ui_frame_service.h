@@ -24,6 +24,7 @@ class UIFrameService : public clay::Service<UIFrameService, clay::Owner::kUI> {
   // scheduler to transfer the state machine. The scheduler will schedule to
   // call BeginFrame with appropriate timing.
   void RequestFrame();
+  void SetVsyncSourceActive(bool active);
 
   // Indicates that the PageView has received meaningful layout, which means we
   // can build first frame now.
@@ -41,6 +42,9 @@ class UIFrameService : public clay::Service<UIFrameService, clay::Owner::kUI> {
   // It's used for BeginFrameImmediately in Engine.
   void ForceBeginFrame(std::unique_ptr<clay::FrameTimingsRecorder> recorder);
 
+  void PrepareForRecycle();
+  void CleanForRecycle();
+
  private:
   void CommitWithNoUpdates();
 
@@ -53,6 +57,7 @@ class UIFrameService : public clay::Service<UIFrameService, clay::Owner::kUI> {
   clay::Puppet<clay::Owner::kUI, SyncCompositorService>
       sync_compositor_service_;
   bool using_sync_compositor_ = false;
+  bool vsync_source_active_ = true;
   bool frame_requested_ = false;
   bool inside_ui_frame_ = false;
 };

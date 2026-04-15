@@ -5,6 +5,7 @@
 #ifndef CLAY_SHELL_COMMON_SERVICES_RASTER_FRAME_SERVICE_H_
 #define CLAY_SHELL_COMMON_SERVICES_RASTER_FRAME_SERVICE_H_
 
+#include <cstdint>
 #include <memory>
 
 #include "base/include/fml/time/timer.h"
@@ -27,6 +28,7 @@ class RasterFrameService
 
   void SetOutputSurfaceValid(bool valid);
   void SetMeaningfulLayout(bool meaningful_layout);
+  void SetVsyncSourceActive(bool active);
 
   // Ask the Rasterizer to submit a new Frame synchronously.
   bool DemandDrawHw();
@@ -83,7 +85,9 @@ class RasterFrameService
   std::unique_ptr<Scheduler> scheduler_;
 
   std::shared_ptr<VsyncWaiter> vsync_waiter_;
+  bool vsync_source_active_ = true;
   bool vsync_requested_ = false;
+  uint64_t vsync_request_generation_ = 0;
   std::unique_ptr<FrameTimingsRecorder> frame_timings_recorder_;
   clay::Puppet<clay::Owner::kRaster, SyncCompositorService>
       sync_compositor_service_;
