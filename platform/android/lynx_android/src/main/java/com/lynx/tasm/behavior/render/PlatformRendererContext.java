@@ -3,7 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.render;
 
+import android.graphics.Matrix;
 import android.graphics.PointF;
+import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
@@ -167,19 +169,32 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   public float getMeaningfulPaintingAreaScaleX(int sign) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null || host.getView() == null) {
-      return 1.f;
-    }
-    return host.getView().getScaleX();
+    return getMeaningfulPaintingAreaScale(sign, true);
   }
 
   public float getMeaningfulPaintingAreaScaleY(int sign) {
+    return getMeaningfulPaintingAreaScale(sign, false);
+  }
+
+  private float getMeaningfulPaintingAreaScale(int sign, boolean scaleX) {
     IRendererHost host = mViewHolder.get(sign);
     if (host == null || host.getView() == null) {
       return 1.f;
     }
-    return host.getView().getScaleY();
+    View view = host.getView();
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      Matrix animationMatrix = view.getAnimationMatrix();
+      if (animationMatrix != null && !animationMatrix.isIdentity()) {
+        float[] values = new float[9];
+        // cspell:ignore MSCALE MSKEW
+        animationMatrix.getValues(values);
+        if (scaleX) {
+          return (float) Math.hypot(values[Matrix.MSCALE_X], values[Matrix.MSKEW_Y]);
+        }
+        return (float) Math.hypot(values[Matrix.MSKEW_X], values[Matrix.MSCALE_Y]);
+      }
+    }
+    return scaleX ? view.getScaleX() : view.getScaleY();
   }
 
   @CalledByNative
