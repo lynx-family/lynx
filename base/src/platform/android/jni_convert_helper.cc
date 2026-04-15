@@ -50,11 +50,17 @@ JNIConvertHelper::ConvertToJNIByteArray(JNIEnv* env, const void* data,
 
 std::vector<uint8_t> JNIConvertHelper::ConvertJavaBinary(JNIEnv* env,
                                                          jbyteArray j_binary) {
+  return ConvertJavaBinaryWithExtraCapacity(env, j_binary, 0);
+}
+
+std::vector<uint8_t> JNIConvertHelper::ConvertJavaBinaryWithExtraCapacity(
+    JNIEnv* env, jbyteArray j_binary, size_t extra_capacity) {
   std::vector<uint8_t> binary;
   if (j_binary != nullptr) {
     auto* temp = env->GetByteArrayElements(j_binary, JNI_FALSE);
     size_t len = env->GetArrayLength(j_binary);
     if (len > 0) {
+      binary.reserve(len + extra_capacity);
       auto begin = reinterpret_cast<const uint8_t*>(temp);
       binary.assign(begin, begin + len);
     }

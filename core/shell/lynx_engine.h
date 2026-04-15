@@ -234,7 +234,7 @@ class LynxEngine {
                         const std::string& id_selector,
                         const lepus::Value& args);
 
-  void UpdateCoreJS(std::string core_js);
+  void UpdateCoreJS(std::shared_ptr<runtime::js::Buffer> core_js);
 
   void GetComponentContextDataAsync(const std::string& component_id,
                                     const std::string& key,

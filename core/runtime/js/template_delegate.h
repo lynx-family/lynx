@@ -90,7 +90,8 @@ class TemplateDelegate : public ContextProxy::Delegate,
   virtual std::vector<lynx::shell::CacheDataOp> FetchUpdatedCardData() = 0;
   virtual runtime::js::JsContent GetJSContentFromExternal(
       const std::string& entry_name, const std::string& name, long timeout) = 0;
-  virtual std::string GetLynxJSAsset(const std::string& name) = 0;
+  virtual std::shared_ptr<runtime::js::Buffer> GetLynxJSAsset(
+      const std::string& name) = 0;
 
   virtual void GetComponentContextDataAsync(
       const std::string& component_id, const std::string& key,
@@ -118,7 +119,8 @@ class TemplateDelegate : public ContextProxy::Delegate,
                                      int32_t code) = 0;
   virtual void OnEvaluateJavaScriptEnd(const std::string& url) = 0;
 
-  virtual void OnCoreJSUpdated(std::string core_js) = 0;
+  virtual void OnCoreJSUpdated(
+      std::shared_ptr<runtime::js::Buffer> core_js) = 0;
 
   // for component
   virtual void UpdateComponentData(UpdateDataTask task) = 0;
@@ -223,7 +225,8 @@ class TemplateDelegate : public ContextProxy::Delegate,
   virtual void AddEventListenersToWhiteBoard(
       runtime::ContextProxy* js_context_proxy) = 0;
 
-  virtual std::string LoadJSSource(const std::string& name) = 0;
+  virtual std::shared_ptr<runtime::js::Buffer> LoadJSSource(
+      const std::string& name) = 0;
   virtual std::shared_ptr<runtime::js::Buffer> LoadBytecode(
       const std::string& url) = 0;
 

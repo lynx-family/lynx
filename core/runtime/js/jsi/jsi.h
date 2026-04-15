@@ -73,18 +73,6 @@ class StringBuffer : public Buffer {
   std::string s_;
 };
 
-class StringRefBuffer : public Buffer {
- public:
-  explicit StringRefBuffer(const std::string& s) : s_(s) {}
-  size_t size() const override { return s_.size(); }
-  const uint8_t* data() const override {
-    return reinterpret_cast<const uint8_t*>(s_.data());
-  }
-
- private:
-  const std::string& s_;
-};
-
 class BaseStringBuffer : public Buffer {
  public:
   explicit BaseStringBuffer(const base::String& s) : s_(s) {}
@@ -99,13 +87,34 @@ class BaseStringBuffer : public Buffer {
 
 class ByteBuffer : public Buffer {
  public:
-  explicit ByteBuffer(std::vector<uint8_t>&& data) : data_(std::move(data)) {}
-  size_t size() const override { return data_.size(); }
+  // Raw bytes buffer. Does not modify the payload.
+  //
+  // Use this overload when callers treat the data as opaque bytes and no
+  // NUL-termination is required. `size()` equals `data.size()`.
+  ByteBuffer(std::vector<uint8_t>&& data)
+      : logical_size_(data.size()), data_(std::move(data)) {}
+
+  // Text/parse-friendly buffer. May append a trailing '\0' sentinel.
+  //
+  // `logical_size` is the intended payload length (not including the sentinel).
+  // This overload ensures `data()[size()] == '\0'` for engines/parsers that may
+  // read one byte past the logical end (e.g. lexer).
+  explicit ByteBuffer(size_t logical_size, std::vector<uint8_t>&& data)
+      : logical_size_(logical_size), data_(std::move(data)) {
+    // Ensure `data()[size()] == '\0'` while keeping `size()` as the logical
+    // length excluding that sentinel.
+    if (!data_.empty() && data_.back() != '\0') {
+      data_.push_back('\0');
+    }
+  }
+
+  size_t size() const override { return logical_size_; }
   const uint8_t* data() const override {
     return reinterpret_cast<const uint8_t*>(data_.data());
   }
 
  private:
+  size_t logical_size_ = 0;
   std::vector<uint8_t> data_;
 };
 

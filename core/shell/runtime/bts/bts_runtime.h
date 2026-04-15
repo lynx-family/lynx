@@ -260,7 +260,7 @@ class BTSRuntime final {
 
   // Once the dynamic delivery of core.js is complete, lynx_thread_local should
   // be reset.
-  static thread_local std::string* js_core_source_;
+  static thread_local std::shared_ptr<runtime::js::Buffer> js_core_source_;
 
   State state_ = State::kNotStarted;
 

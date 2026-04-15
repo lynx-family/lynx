@@ -42,9 +42,16 @@ void InvokeCallback(JNIEnv* env, jclass jcaller, jlong response_handler,
           : nullptr;
   if (buffer_ptr != nullptr) {
     jlong capacity = env->GetDirectBufferCapacity(bufferPtr);
-    vec = std::vector<uint8_t>(buffer_ptr, buffer_ptr + capacity);
+    if (capacity > 0) {
+      // Reserve one extra byte so downstream can append a '\0' sentinel without
+      // reallocating/memcpy'ing large buffers (e.g. JS sources).
+      const size_t cap = static_cast<size_t>(capacity);
+      vec.reserve(cap + 1);
+      vec.insert(vec.end(), buffer_ptr, buffer_ptr + cap);
+    }
   } else {
-    vec = JNIConvertHelper::ConvertJavaBinary(env, data);
+    // Reserve one extra byte for a possible '\0' sentinel appended downstream.
+    vec = JNIConvertHelper::ConvertJavaBinaryWithExtraCapacity(env, data, 1);
   }
   handler->HandleResponse(
       std::move(vec),

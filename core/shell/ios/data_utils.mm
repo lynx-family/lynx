@@ -15,6 +15,9 @@ std::vector<uint8_t> ConvertNSBinary(NSData* binary) {
   std::vector<uint8_t> result;
   auto len = binary.length;
   if (len > 0) {
+    // Leave one extra byte capacity so downstream can append a '\0' sentinel
+    // without reallocating/memcpy'ing large buffers (e.g. JS sources).
+    result.reserve(static_cast<size_t>(len) + 1);
     auto begin = reinterpret_cast<const uint8_t*>(binary.bytes);
     result.assign(begin, begin + len);
   }

@@ -46,6 +46,12 @@ class BASE_EXPORT JNIConvertHelper {
   static std::vector<uint8_t> ConvertJavaBinary(JNIEnv* env,
                                                 jbyteArray j_binary);
 
+  // Same as ConvertJavaBinary, but reserves `len + extra_capacity` bytes to
+  // reduce realloc/memcpy when callers need to append extra bytes (e.g. '\0'
+  // sentinel for JS source).
+  static std::vector<uint8_t> ConvertJavaBinaryWithExtraCapacity(
+      JNIEnv* env, jbyteArray j_binary, size_t extra_capacity);
+
   static bool ConvertJavaBinary(JNIEnv* env, jbyteArray j_binary,
                                 std::function<void*(int32_t size)> allocator);
 
