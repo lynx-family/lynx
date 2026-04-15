@@ -8,6 +8,8 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply from: '../../../../platform/android/publish.gradle'
 import org.json.simple.JSONObject
+ext.enableDevtoolLogbox =
+        providers.gradleProperty("devtool_enable_logbox").getOrElse("true").toBoolean()
 
 android {
 
@@ -24,6 +26,12 @@ android {
             exclude 'lib/*/libdebugrouter.so'
             exclude 'lib/*/liblynxbase.so'
             exclude 'lib/*/liblynxtrace.so'
+            if (!project.ext.enableDevtoolLogbox) {
+                exclude 'assets/logbox'
+                exclude 'assets/logbox/**'
+                exclude 'logbox'
+                exclude 'logbox/**'
+            }
         }
     }
 
@@ -87,12 +95,40 @@ task copyResources() {
     doLast {
         exec {
             workingDir '../../'
-            commandLine pythonExec, './resources/copy_resources.py'
+            commandLine pythonExec, './resources/copy_resources.py',
+                    project.ext.enableDevtoolLogbox ? '--enable-logbox' : '--disable-logbox'
+        }
+        if (!project.ext.enableDevtoolLogbox) {
+            delete "$projectDir/src/main/assets/logbox"
         }
     }
 }
 
 preBuild.dependsOn copyResources
+
+project.afterEvaluate {
+    project.android.libraryVariants.each {
+        String flavorName = it.flavorName.capitalize()
+        String buildTypeName = it.buildType.name.capitalize()
+        String variantName = it.name
+        tasks.getByName("package${flavorName}${buildTypeName}Assets") {
+            it.doFirst {
+                if (!project.ext.enableDevtoolLogbox) {
+                    delete "$projectDir/src/main/assets/logbox"
+                    delete "$buildDir/intermediates/library_assets/${variantName}/out/logbox"
+                }
+            }
+        }
+        tasks.getByName("bundle${flavorName}${buildTypeName}Aar") {
+            it.doFirst {
+                if (!project.ext.enableDevtoolLogbox) {
+                    delete "$projectDir/src/main/assets/logbox"
+                    delete "$buildDir/intermediates/library_assets/${variantName}/out/logbox"
+                }
+            }
+        }
+    }
+}
 
 dependencies {
     testImplementation 'junit:junit:4.13.2'

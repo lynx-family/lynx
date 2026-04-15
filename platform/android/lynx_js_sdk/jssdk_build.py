@@ -6,7 +6,8 @@ import argparse
 import os
 import sys
 
-def build(version, jssdk_main_dest_path, jssdk_debug_dest_path, lynx_core_build_tools_path):
+def build(version, jssdk_main_dest_path, jssdk_debug_dest_path, lynx_core_build_tools_path,
+          enable_debug_output):
     """
     Build the JavaScript SDK.
     """
@@ -18,7 +19,14 @@ def build(version, jssdk_main_dest_path, jssdk_debug_dest_path, lynx_core_build_
     # Change to the build tools directory
     os.chdir(lynx_core_build_tools_path)
     # Execute the build script
-    os.system(f"python3 ./build.py --platform android --release_output {jssdk_main_dest_path}/lynx_core.js --dev_output {jssdk_debug_dest_path}/lynx_core_dev.js --version {version}")
+    command = (
+        f"python3 ./build.py --platform android --release_output "
+        f"{jssdk_main_dest_path}/lynx_core.js"
+    )
+    if enable_debug_output:
+        command += f" --dev_output {jssdk_debug_dest_path}/lynx_core_dev.js"
+    command += f" --version {version}"
+    os.system(command)
 
 
 def clear(jssdk_main_dest_path, jssdk_debug_dest_path):
@@ -44,13 +52,19 @@ def main():
     parser.add_argument('--jssdkMainDestPath', required=True, help='Destination path for the main JavaScript SDK')
     parser.add_argument('--jssdkDebugDestPath', required=True, help='Destination path for the debug JavaScript SDK')
     parser.add_argument('--lynxCoreBuildToolsPath', required=True, help='Path to the Lynx core build tools')
+    parser.add_argument('--enableDebugOutput', default='true', help='Whether to generate lynx_core_dev.js')
 
     print(sys.argv)
     args = parser.parse_args()
 
     if args.build:
         print("build")
-        build(args.version, args.jssdkMainDestPath, args.jssdkDebugDestPath, args.lynxCoreBuildToolsPath)
+        build(
+            args.version,
+            args.jssdkMainDestPath,
+            args.jssdkDebugDestPath,
+            args.lynxCoreBuildToolsPath,
+            args.enableDebugOutput.lower() == 'true')
     elif args.clear:
         print("clear")
         clear(args.jssdkMainDestPath, args.jssdkDebugDestPath)

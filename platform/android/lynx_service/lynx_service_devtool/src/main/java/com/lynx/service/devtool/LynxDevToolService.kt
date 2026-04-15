@@ -58,6 +58,9 @@ class LynxDevToolService : ILynxDevToolService {
     }
 
     override fun createLogBox(devtool: LynxDevtool): ILynxLogBox? {
+        if (!BuildConfig.ENABLE_LOGBOX) {
+            return null
+        }
         try {
             return LynxLogBoxWrapper(devtool)
         } catch (e: ClassNotFoundException) {
