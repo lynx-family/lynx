@@ -233,6 +233,8 @@ lynx_core_source_set("cpp") {
     "ui/utils/basic_shape.h",
     "ui/utils/border_radius.cc",
     "ui/utils/border_radius.h",
+    "ui/utils/lynx_offset_calculator.cc",
+    "ui/utils/lynx_offset_calculator.h",
     "ui/utils/lynx_ui_helper.cc",
     "ui/utils/lynx_ui_helper.h",
     "ui/utils/lynx_unit_utils.cc",
