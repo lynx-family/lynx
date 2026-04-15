@@ -99,7 +99,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         dend: Int
       ): CharSequence? {
         if (mReadonly) {
-          return ""
+          return dest?.subSequence(dstart, dend)
         } else {
           return null
         }
