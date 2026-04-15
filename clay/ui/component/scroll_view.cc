@@ -379,8 +379,12 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
       }
     }
   } else if (kw == KeywordID::kBounce || kw == KeywordID::kBounces) {
+    // Align with Android system-rendering behavior, disable bounce effect on
+    // Android platform.
+#if !defined(OS_ANDROID)
     auto enable_bounce = attribute_utils::GetBool(value);
     SetOverscrollEnabled(enable_bounce);
+#endif
   } else if (kw == KeywordID::kScrollForwardMode) {
     scroll_forward_mode_ =
         ParseNestedScrollMode(attribute_utils::GetCString(value));

@@ -49,10 +49,13 @@ class NestedScrollable : public WithTypeInfo<NestedScrollable, Scrollable>,
    *
    * @param delta: the scroll distance that needs to be consumed
    * @param is_dragging is this scroll distance resulting from dragging
+   * @param skip_overscroll whether to skip overscroll handling on the current
+   *     scrollable, usually so an inner scrollable that can overscroll handles
+   *     the effect instead of its parent
    * @return unconsumed distance and the last scrollable that consumes scroll
    */
   std::tuple<FloatPoint, NestedScrollable*> HandleNestedScroll(
-      FloatPoint delta, bool is_dragging = true);
+      FloatPoint delta, bool is_dragging = true, bool skip_overscroll = false);
 
   // The scrollable has been scrolled.
   // Note that you should call this method if you override the DoScroll.
