@@ -85,6 +85,11 @@
 
   [self drain];
 
+  if (CGSizeEqualToSize(_contentSize, size)) {
+    notify();
+    return;
+  }
+
   notify();
 
   _contentSize = CGSizeMake(-1, -1);
