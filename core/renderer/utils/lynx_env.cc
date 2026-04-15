@@ -510,6 +510,10 @@ bool LynxEnv::EnableJSVMRuntime() {
          GetBoolEnv(Key::ENABLE_JSVM_RUNTIME, false, EnvType::LOCAL);
 }
 
+bool LynxEnv::EnableNativeModulePromiseParamType() {
+  return GetBoolEnv(Key::ENABLE_NATIVE_MODULE_PROMISE_PARAM_TYPE, false);
+}
+
 bool LynxEnv::EnableUnifiedPixelPipeline() {
   return GetBoolEnv(Key::ENABLE_UNIFIED_PIXEL_PIPELINE, false);
 }

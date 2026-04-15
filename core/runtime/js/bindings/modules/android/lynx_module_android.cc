@@ -116,7 +116,8 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
         method_name);
   }
   // NativePromise Invoke
-  if (method_invoker->ContainsPromise()) {
+  if (tasm::LynxEnv::GetInstance().EnableNativeModulePromiseParamType() &&
+      method_invoker->ContainsPromise()) {
     auto native_promise = CreateLynxNativePromise(
         method_invoker,
         Java_LynxModuleWrapper_getModule(env, local_ref.Get()).Get(),

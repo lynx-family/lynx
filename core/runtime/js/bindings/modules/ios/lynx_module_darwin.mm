@@ -526,7 +526,8 @@ base::expected<std::unique_ptr<pub::Value>, std::string> LynxModuleDarwin::invok
                             "js value to objc value.");
   }
 
-  if (argumentsCount - ARGS_INDEX_HAS_PROMISE_PARAM_START_OFFSET == count) {
+  if (tasm::LynxEnv::GetInstance().EnableNativeModulePromiseParamType() &&
+      argumentsCount - ARGS_INDEX_HAS_PROMISE_PARAM_START_OFFSET == count) {
     LOGE("NativeModule: LynxModule, invokeObjCMethod, module: " << module_name_ << " method: "
                                                                 << methodName << " is a promise");
     if (lock_delegate) {

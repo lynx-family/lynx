@@ -153,6 +153,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     JS_CALL_NATIVE_FREQUENCY_THRESHOLD_COMMON,
     JS_CALL_NATIVE_FREQUENCY_COOLDOWN_MS,
     ENABLE_NEW_STYLING_PIPELINE,
+    ENABLE_NATIVE_MODULE_PROMISE_PARAM_TYPE,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -235,6 +236,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "js_call_native_frequency_threshold_common"},
             {Key::JS_CALL_NATIVE_FREQUENCY_COOLDOWN_MS,
              "js_call_native_frequency_cooldown_ms"},
+            {Key::ENABLE_NATIVE_MODULE_PROMISE_PARAM_TYPE,
+             "enable_native_module_promise_param_type"},
             {Key::VSYNC_POST_TASK_BY_EMERGENCY,
              "lynx_vsync_post_task_by_emergency"},
             {Key::ENABLE_USE_MAP_BUFFER_FOR_UI_PROPS,
@@ -458,6 +461,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableAnimationInfoReport();
   bool EnableBatchLayoutTaskWithSyncLayout();
   bool EnableJSVMRuntime();
+  bool EnableNativeModulePromiseParamType();
   bool EnableUnifiedPixelPipeline();
   bool EnableReportMTSContextEvent();
   bool EnableFiberElementMemoryReport();
