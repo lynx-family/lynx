@@ -101,22 +101,28 @@ bool NestedScrollable::CanDragScrollOnY() const {
 }
 
 std::tuple<FloatPoint, NestedScrollable*> NestedScrollable::HandleNestedScroll(
-    FloatPoint delta, bool is_dragging) {
+    FloatPoint delta, bool is_dragging, bool skip_overscroll) {
   std::tuple<FloatPoint, NestedScrollable*> result = {delta, this};
   if (delta.IsOrigin()) {
     return result;
   }
-
+  bool is_forward = (CanDragScrollOnX() ? delta.x() : delta.y()) >= 0;
+  // We only enter the overscroll state when dragging. Otherwise, the scroll
+  // is triggered by fling animation. In that case, we should not do
+  // overscroll here, and it will be handled by a bounce animator instead.
+  bool current_can_overscroll =
+      is_dragging && IsScrollEnabled() && IsOverscrollEnabled(is_forward);
   auto handle_parent = [&] {
     if (auto parent_scrollable =
             nested_scroll_manager()->FindOuterScrollable(this)) {
-      result = parent_scrollable->HandleNestedScroll(std::get<0>(result),
-                                                     is_dragging);
+      // Skip parent overscroll effect if the current scrollable can handle it.
+      result = parent_scrollable->HandleNestedScroll(
+          std::get<0>(result), is_dragging,
+          skip_overscroll || current_can_overscroll);
     }
   };
 
   auto& unconsumed = std::get<0>(result);
-  bool is_forward = (CanDragScrollOnX() ? delta.x() : delta.y()) >= 0;
   auto mode = is_forward ? scroll_forward_mode_ : scroll_backward_mode_;
   if (mode == NestedScrollMode::kParentFirst) {
     handle_parent();
@@ -133,23 +139,23 @@ std::tuple<FloatPoint, NestedScrollable*> NestedScrollable::HandleNestedScroll(
     if (unconsumed.IsOrigin()) {
       return result;
     }
-    if (IsOverscrollEnabled(is_forward)) {
-      // We only enter the overscroll state when dragging. Otherwise, the scroll
-      // is triggered by fling animation. In that case, we should not do
-      // overscroll here, and it will be handled by a bounce animator instead.
-      if (is_dragging) {
-        auto old_unconsumed = unconsumed;
-        unconsumed = DoOverscroll(unconsumed);
-        if (unconsumed != old_unconsumed) {
-          nested_scroll_manager()->OnScrollableScroll(this);
-        }
-      }
-      return result;
-    }
   }
 
   if (mode == NestedScrollMode::kSelfFirst) {
     handle_parent();
+    if (unconsumed.IsOrigin()) {
+      return result;
+    }
+  }
+
+  // Let the overscroll effect be handled at last, after all the scroll done
+  // including parent.
+  if (current_can_overscroll && !skip_overscroll) {
+    auto old_unconsumed = unconsumed;
+    unconsumed = DoOverscroll(unconsumed);
+    if (unconsumed != old_unconsumed) {
+      nested_scroll_manager()->OnScrollableScroll(this);
+    }
   }
   return result;
 }
