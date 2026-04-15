@@ -91,6 +91,10 @@ class UIFlattenImage : public UIBase,
       prop_setters_;
   LynxImageEffectProcessor::ImageEffect effect_type_{
       LynxImageEffectProcessor::ImageEffect::kNone};
+  uint64_t load_start_{0};
+  uint64_t load_finish_{0};
+  bool enable_image_load_callback_{false};
+
   ImageDrawable::ImageMode ConvertMode(const std::string& mode);
   void UpdateImageMode(const lepus::Value& value);
   void UpdatePlaceholder(const lepus::Value& value);
@@ -132,6 +136,7 @@ class UIFlattenImage : public UIBase,
   void LoadImageFromURL(bool is_src);
   bool hasAnimationEvent();
   void Render(OH_Drawing_Canvas* canvas) const;
+  void CreateImageLoadInfo(int32_t err_code, const std::string& err_msg);
 };
 
 }  // namespace harmony

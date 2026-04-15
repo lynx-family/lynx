@@ -31,6 +31,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 
 namespace lynx {
@@ -64,6 +65,12 @@ UIFlattenImage::UIFlattenImage(LynxContext* context, int sign,
     : UIBase(context, ARKUI_NODE_CUSTOM, sign, tag),
       mode_(image::kModeScaleToFill) {
   InitAccessibilityAttrs(LynxAccessibilityMode::kEnable, "image");
+  if (context_ && context_->GetUIOwner()) {
+    LynxImageConfig* config = context_->GetUIOwner()->GetLynxImageConfig();
+    if (config && config->GetEnableImageLoadCallback()) {
+      enable_image_load_callback_ = true;
+    }
+  }
 }
 
 void UIFlattenImage::InvokeMethod(
@@ -159,6 +166,8 @@ void UIFlattenImage::HandleImageSuccessCallback(float image_width,
                                                 float image_height) {
   image_width_ = image_width;
   image_height_ = image_height;
+  load_finish_ = lynx::base::CurrentSystemTimeMilliseconds();
+  CreateImageLoadInfo(0, "");
   if (context_) {
     AutoSizeIfNeeded();
     if ((event_flags_ & image::kFlagImageLoadEvent) != 0) {
@@ -176,6 +185,8 @@ void UIFlattenImage::HandleImageFailCallback(float error_code,
                                              const std::string& error_msg) {
   LOGE("UIFlattenImage load image failed error_code = " << error_code
                                                         << " url = " << src_)
+  load_finish_ = lynx::base::CurrentSystemTimeMilliseconds();
+  CreateImageLoadInfo(error_code, error_msg);
   if ((event_flags_ & image::kFlagImageErrorEvent) != 0 && context_) {
     auto dict = lepus::Dictionary::Create();
     dict->SetValue(image::kErrorEventCode, error_code);
@@ -370,6 +381,7 @@ void UIFlattenImage::LoadImageResource(
   if (!resource_loader) {
     return;
   }
+  load_start_ = lynx::base::CurrentSystemTimeMilliseconds();
   auto request = pub::LynxResourceRequest{url, pub::LynxResourceType::kImage};
   resource_loader->LoadResourcePath(
       request, [weak_self = weak_from_this(), handler = std::move(handler),
@@ -641,6 +653,34 @@ void UIFlattenImage::Render(OH_Drawing_Canvas* canvas) const {
   }
   if (src_image_drawable_ && src_image_drawable_->HasContent()) {
     src_image_drawable_->Render(canvas);
+  }
+}
+
+void UIFlattenImage::CreateImageLoadInfo(int32_t error_code,
+                                         const std::string& error_msg) {
+  if (!enable_image_load_callback_) {
+    return;
+  }
+  // Only report load information for network resources (HTTP/HTTPS).
+  if (base::BeginsWith(src_, image::kHttpPrefix)) {
+    auto image_info = lepus::Dictionary::Create();
+    image_info->SetValue("type",
+                         static_cast<int32_t>(pub::LynxResourceType::kImage));
+    image_info->SetValue("src", src_);
+    image_info->SetValue("errCode", error_code);
+    if (error_code == 0) {
+      image_info->SetValue("loadStart", load_start_);
+      image_info->SetValue("loadFinish", load_finish_);
+      image_info->SetValue("cost", load_finish_ - load_start_);
+      image_info->SetValue("width", image_width_);
+      image_info->SetValue("height", image_height_);
+      image_info->SetValue("viewWidth", width_);
+      image_info->SetValue("viewHeight", height_);
+    } else {
+      image_info->SetValue("errMsg", error_msg);
+    }
+
+    UIBase::OnResourceLoadCallback(lepus_value(image_info));
   }
 }
 
