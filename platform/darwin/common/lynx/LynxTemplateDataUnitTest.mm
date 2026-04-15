@@ -2,10 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxTemplateData+Converter.h>
 #import <XCTest/XCTest.h>
-#import "LynxTemplateData+Converter.h"
 #include "base/include/value/base_value.h"
 #include "base/include/value/byte_array.h"
+#include "base/include/value/table.h"
 #include "core/renderer/utils/value_utils.h"
 
 @interface LynxTemplateDataTest : XCTestCase
@@ -427,6 +428,22 @@
   lynx::lepus::Value copiedValue = [copiedTemplateData getDataForJSThread];
 
   lynx::lepus::Value value = [data getDataForJSThread];
+  XCTAssertEqual(value, copiedValue);
+}
+
+- (void)testGetTemplateDataForJSThreadWithLepusSeed {
+  auto dict = lynx::lepus::Dictionary::Create();
+  lynx::lepus::Dictionary::Unsafe::SetValueUniqueKey(*dict, "key1", lynx::lepus::Value(1));
+  lynx::lepus::Dictionary::Unsafe::SetValueUniqueKey(*dict, "key2", lynx::lepus::Value("frame"));
+  lynx::lepus::Value value(dict);
+
+  LynxTemplateData* data = [[LynxTemplateData alloc] initWithLepusValue:value];
+  LynxTemplateData* copiedTemplateData = [data getTemplateDataForJSThread];
+
+  lynx::lepus::Value jsValue = [data getDataForJSThread];
+  lynx::lepus::Value copiedValue = [copiedTemplateData getDataForJSThread];
+
+  XCTAssertEqual(value, jsValue);
   XCTAssertEqual(value, copiedValue);
 }
 

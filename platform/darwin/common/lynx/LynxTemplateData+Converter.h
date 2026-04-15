@@ -24,9 +24,6 @@ lynx::lepus::Value LynxConvertToLepusValue(id data, BOOL useBoolLiterals = NO);
 
 @class LynxTemplateData;
 lynx::lepus::Value *LynxGetLepusValueFromTemplateData(LynxTemplateData *data);
-bool LynxTemplateDataHasNativeTemplateData(LynxTemplateData *data);
-std::shared_ptr<lynx::tasm::TemplateData> LynxGetNativeTemplateDataFromTemplateData(
-    LynxTemplateData *data);
 
 std::shared_ptr<lynx::tasm::TemplateData> ConvertLynxTemplateDataToTemplateData(
     LynxTemplateData *data);
@@ -35,8 +32,7 @@ std::shared_ptr<lynx::tasm::TemplateData> ConvertLynxTemplateDataToTemplateData(
 
 @property(readonly) NSString *processorName;
 
-- (instancetype)initWithNativeTemplateData:
-    (const std::shared_ptr<lynx::tasm::TemplateData> &)nativeTemplateData;
+- (instancetype)initWithLepusValue:(const lynx::lepus::Value &)value;
 - (NSArray *)obtainUpdateActions;
 - (NSArray *)copyUpdateActions;
 

@@ -35,6 +35,9 @@ constexpr char kSrc[] = "src";
 constexpr char kURL[] = "url";
 constexpr char kStatusCode[] = "statusCode";
 constexpr char kStatusMessage[] = "statusMessage";
+constexpr char kData[] = "data";
+constexpr char kGlobalProps[] = "global-props";
+constexpr char kValueKey[] = "value";
 constexpr char kFrameURL[] = "https://lynx.dev/frame.js";
 constexpr char kFailureMessage[] = "load failed";
 
@@ -75,10 +78,12 @@ class FrameElementTest : public ::testing::Test {
                                   kDefaultPhysicalPixelsPerLayoutUnit);
     vsync_monitor_ = std::make_shared<TestVSyncMonitor>();
     vsync_monitor_->BindToCurrentThread();
+    auto platform_impl = std::make_unique<FiberMockPaintingContext>();
+    platform_impl_ = platform_impl.get();
     auto unique_manager = std::make_unique<ElementManager>(
-        std::make_unique<FiberMockPaintingContext>(), &tasm_mediator_,
-        lynx_env_config, PageOptions(), tasm::report::kUnknownInstanceId,
-        vsync_monitor_, std::make_unique<test::MockPlatformImpl>());
+        std::move(platform_impl), &tasm_mediator_, lynx_env_config,
+        PageOptions(), tasm::report::kUnknownInstanceId, vsync_monitor_,
+        std::make_unique<test::MockPlatformImpl>());
     manager_ = unique_manager.get();
 
     tasm_ = std::make_shared<TemplateAssembler>(
@@ -100,6 +105,7 @@ class FrameElementTest : public ::testing::Test {
 
  protected:
   ElementManager* manager_{nullptr};
+  FiberMockPaintingContext* platform_impl_{nullptr};
   ::testing::NiceMock<TrackingFiberElementMockTasmDelegate> tasm_mediator_;
   std::shared_ptr<TemplateAssembler> tasm_;
   std::shared_ptr<TestVSyncMonitor> vsync_monitor_;
@@ -177,6 +183,27 @@ std::shared_ptr<FrameElementData> CreateFrameData(
   auto bundle = with_bundle ? std::make_shared<LynxTemplateBundle>() : nullptr;
   return std::make_shared<FrameElementData>(src, std::move(bundle), error_code,
                                             error_message);
+}
+
+lepus::Value CreateFramePropValue(int32_t value) {
+  auto table = lepus::Dictionary::Create();
+  table->SetValue(BASE_STATIC_STRING(kValueKey), lepus::Value(value));
+  return lepus::Value(table);
+}
+
+lepus::Value* TakeTransferredFrameValue(const PropBundleMock* prop_bundle,
+                                        const std::string& key) {
+  const auto& props = prop_bundle->GetPropsMap();
+  auto it = props.find(key);
+  EXPECT_TRUE(it != props.end());
+  if (it == props.end()) {
+    return nullptr;
+  }
+  EXPECT_TRUE(it->second.IsInt64());
+  if (!it->second.IsInt64()) {
+    return nullptr;
+  }
+  return reinterpret_cast<lepus::Value*>(it->second.Int64());
 }
 
 void ExpectFrameLoadedPayload(const RecordingElementManagerDelegate& delegate,
@@ -302,6 +329,57 @@ TEST_F(FrameElementTest, FrameDeferredLoadTriggersEventsOnceAfterFlush) {
   EXPECT_EQ(tasm_mediator_.last_native_custom_event_param_name_, kDetail);
   ExpectFrameLoadedPayload(delegate, frame.get(), kFrameURL, error::E_SUCCESS,
                            std::string());
+}
+
+TEST_F(FrameElementTest, FrameDataOverwriteBeforeFlushUsesLatestValue) {
+  auto frame = manager_->CreateFiberFrame();
+
+  frame->SetAttribute(kData, CreateFramePropValue(1));
+  frame->SetAttribute(kData, CreateFramePropValue(2));
+
+  ASSERT_TRUE(frame->updated_attr_map_.count(BASE_STATIC_STRING(kData)));
+  EXPECT_TRUE(frame->updated_attr_map_.at(BASE_STATIC_STRING(kData)).IsTable());
+  ASSERT_TRUE(frame->data_);
+  EXPECT_EQ(frame->data_->Table()->GetValue(kValueKey).Number(), 2);
+
+  frame->SetAttributeInternal(
+      BASE_STATIC_STRING(kData),
+      frame->updated_attr_map_.at(BASE_STATIC_STRING(kData)));
+  auto* prop_bundle = static_cast<PropBundleMock*>(frame->prop_bundle_.get());
+  ASSERT_NE(prop_bundle, nullptr);
+  std::unique_ptr<lepus::Value> transferred_value(
+      TakeTransferredFrameValue(prop_bundle, kData));
+  ASSERT_NE(transferred_value, nullptr);
+  ASSERT_TRUE(transferred_value->IsTable());
+  EXPECT_EQ(transferred_value->Table()->GetValue(kValueKey).Number(), 2);
+}
+
+TEST_F(FrameElementTest,
+       FrameGlobalPropsResetBeforeFlushDoesNotDispatchStaleValue) {
+  auto frame = manager_->CreateFiberFrame();
+
+  frame->SetAttribute(kGlobalProps, CreateFramePropValue(1));
+  frame->SetAttribute(kGlobalProps, lepus::Value());
+
+  ASSERT_TRUE(frame->updated_attr_map_.count(BASE_STATIC_STRING(kGlobalProps)));
+  EXPECT_TRUE(
+      frame->updated_attr_map_.at(BASE_STATIC_STRING(kGlobalProps)).IsTable());
+  EXPECT_EQ(frame->global_props_.get(), nullptr);
+
+  frame->SetAttributeInternal(
+      BASE_STATIC_STRING(kGlobalProps),
+      frame->updated_attr_map_.at(BASE_STATIC_STRING(kGlobalProps)));
+  auto* prop_bundle = static_cast<PropBundleMock*>(frame->prop_bundle_.get());
+  ASSERT_NE(prop_bundle, nullptr);
+  auto it = prop_bundle->GetPropsMap().find(kGlobalProps);
+  ASSERT_TRUE(it != prop_bundle->GetPropsMap().end());
+  ASSERT_TRUE(it->second.IsInt64());
+  EXPECT_EQ(it->second.Int64(), 0);
+
+  frame->ResetAttribute(BASE_STATIC_STRING(kGlobalProps));
+  it = prop_bundle->GetPropsMap().find(kGlobalProps);
+  ASSERT_TRUE(it != prop_bundle->GetPropsMap().end());
+  EXPECT_TRUE(it->second.IsEmpty());
 }
 
 }  // namespace testing
