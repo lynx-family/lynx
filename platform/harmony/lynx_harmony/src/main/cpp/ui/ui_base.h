@@ -11,6 +11,7 @@
 #include <native_drawing/drawing_types.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -34,6 +35,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_exposure.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/basic_shape.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/border_radius.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_offset_calculator.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/transform.h"
 
 namespace lynx {
@@ -439,6 +441,11 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetEnableExposureUIClip(const lepus::Value& value);
   void SetDataset(const lepus::Value& value);
   void SetClipPath(const lepus::Value& value);
+  void SetOffsetPath(const lepus::Value& value);
+  void SetOffsetDistance(const lepus::Value& value);
+  void SetOffsetRotate(const lepus::Value& value);
+  void UpdateOffsetPathCacheIfNeeded();
+  std::optional<transforms::Matrix44> GetOffsetMatrix() const;
   void SetPerspective(const lepus::Value& value);
   void SetBlockListEvent(const lepus::Value& value);
   void SetSkipRedirection(const lepus::Value& value);
@@ -519,6 +526,12 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   GestureMap gesture_detectors_;
   GestureHandlerMap gesture_handlers_;
   std::unique_ptr<BasicShape> basic_shape_{nullptr};
+  static constexpr float kOffsetRotateAuto = -1024.0f;
+  std::unique_ptr<BasicShape> offset_basic_shape_{nullptr};
+  std::unique_ptr<LynxOffsetCalculator> lynx_offset_calculator_{nullptr};
+  float offset_distance_{0.f};
+  float offset_rotate_{kOffsetRotateAuto};
+  bool is_auto_offset_rotate_{true};
   std::string accessibility_id_;
   std::string accessibility_label_;
   LynxAccessibilityMode accessibility_mode_{LynxAccessibilityMode::kDisable};

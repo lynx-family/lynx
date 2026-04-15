@@ -63,6 +63,7 @@ constexpr uint32_t kFlagAccessibilityExclusive = 1 << 12;
 constexpr uint32_t kFlagBackgroundColor = 1 << 13;
 constexpr uint32_t kFlagMaskChanged = 1 << 14;
 constexpr uint32_t kFlagRenderGroup = 1 << 15;
+constexpr uint32_t kFlagOffsetChanged = 1 << 16;
 
 // std::sqrt(5.0) is not constexpr in C++17, so we use an approximation
 // to allow this value to be used in compile-time constants.
@@ -144,6 +145,9 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"enable-exposure-ui-clip", &UIBase::SetEnableExposureUIClip},
     {"dataset", &UIBase::SetDataset},
     {"clip-path", &UIBase::SetClipPath},
+    {"offset-path", &UIBase::SetOffsetPath},
+    {"offset-distance", &UIBase::SetOffsetDistance},
+    {"offset-rotate", &UIBase::SetOffsetRotate},
     {"perspective", &UIBase::SetPerspective},
     {"block-list-event", &UIBase::SetBlockListEvent},
     {"skip-redirection", &UIBase::SetSkipRedirection},
@@ -605,6 +609,12 @@ void UIBase::OnNodeReady() {
     }
   }
 
+  if (offset_basic_shape_ &&
+      (dirty_flags_ &
+       (kFlagFrameChanged | kFlagFrameSizeChanged | kFlagOffsetChanged)) != 0) {
+    UpdateOffsetPathCacheIfNeeded();
+  }
+
   if (((dirty_flags_ & (kFlagFrameChanged | kFlagMaskChanged)) != 0) &&
       mask_drawable_) {
     auto parent = NodeManager::Instance().GetParent(DrawNode());
@@ -635,7 +645,8 @@ void UIBase::OnNodeReady() {
         transform_origin_->y.GetValue(height_));
   }
 
-  if ((dirty_flags_ & (kFlagFrameSizeChanged | kFlagTransformChanged)) != 0) {
+  if ((dirty_flags_ & (kFlagFrameSizeChanged | kFlagTransformChanged |
+                       kFlagOffsetChanged)) != 0) {
     ApplyTransform();
     Invalidate();
   }
@@ -764,25 +775,44 @@ void UIBase::SetTransformOrigin(const lepus::Value& value) {
 
 void UIBase::ApplyTransform() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_APPLY_TRANSFORM);
-  if (!transform_) {
-    if ((dirty_flags_ & kFlagTransformChanged) != 0) {
-      NodeManager::Instance().ResetAttribute(DrawNode(), NODE_TRANSFORM);
-      NodeManager::Instance().ResetAttribute(DrawNode(), NODE_Z_INDEX);
-      translation_z_ = .0f;
-    }
+
+  if (offset_basic_shape_) {
+    UpdateOffsetPathCacheIfNeeded();
+  }
+
+  const bool has_offset = lynx_offset_calculator_ != nullptr;
+  const bool has_transform = transform_ != nullptr;
+  const bool has_perspective = !perspective_.IsNil();
+
+  if (!has_transform && !has_offset && !has_perspective) {
+    NodeManager::Instance().ResetAttribute(DrawNode(), NODE_TRANSFORM);
+    NodeManager::Instance().ResetAttribute(DrawNode(), NODE_Z_INDEX);
+    translation_z_ = 0.0f;
     return;
   }
-  if (transform_origin_.has_value()) {
-    transform_->SetTransformOrigin(transform_origin_.value());
+
+  transforms::Matrix44 matrix;
+  if (has_transform) {
+    if (transform_origin_.has_value()) {
+      transform_->SetTransformOrigin(transform_origin_.value());
+    }
+    matrix = transform_->GetTransformMatrix(width_, height_,
+                                            context_->ScaledDensity());
+  } else {
+    matrix.setIdentity();
   }
-  auto matrix = transform_->GetTransformMatrix(width_, height_,
-                                               context_->ScaledDensity());
-  if (!perspective_.IsNil()) {
+
+  if (auto offset_matrix = GetOffsetMatrix(); offset_matrix.has_value()) {
+    matrix.preConcat(*offset_matrix);
+  }
+
+  if (has_perspective) {
     float value = GetPerspectiveValue();
     transforms::Matrix44 per_matrix{};
     per_matrix.setRC(3, 2, value);
     matrix.preConcat(per_matrix);
   }
+
   const float* data = matrix.Data();
   ArkUI_NumberValue xform_value[16];
   for (int i = 0; i < 16; ++i) {
@@ -791,7 +821,8 @@ void UIBase::ApplyTransform() {
   ArkUI_AttributeItem xform =
       (ArkUI_AttributeItem){.value = xform_value, .size = 16};
   NodeManager::Instance().SetAttribute(DrawNode(), NODE_TRANSFORM, &xform);
-  translation_z_ = data[Transform::kIndexTranslationZ];
+
+  translation_z_ = has_transform ? data[Transform::kIndexTranslationZ] : 0.0f;
   NodeManager::Instance().SetAttributeWithNumberValue(DrawNode(), NODE_Z_INDEX,
                                                       translation_z_);
 }
@@ -2540,6 +2571,103 @@ void UIBase::CreateOrUpdateMask() {
 void UIBase::SetClipPath(const lepus::Value& value) {
   basic_shape_ = std::make_unique<BasicShape>(value, context_->ScaledDensity());
   dirty_flags_ |= kFlagClipPathChanged;
+}
+
+void UIBase::SetOffsetPath(const lepus::Value& value) {
+  if (value.IsNil()) {
+    offset_basic_shape_.reset();
+    lynx_offset_calculator_.reset();
+  } else {
+    offset_basic_shape_ =
+        std::make_unique<BasicShape>(value, context_->ScaledDensity());
+    lynx_offset_calculator_.reset();
+  }
+  dirty_flags_ |= kFlagOffsetChanged;
+}
+
+void UIBase::SetOffsetDistance(const lepus::Value& value) {
+  float progress = value.IsNil() ? 0.0f : static_cast<float>(value.Number());
+  offset_distance_ = std::clamp(progress, 0.0f, 1.0f);
+  dirty_flags_ |= kFlagOffsetChanged;
+}
+
+void UIBase::SetOffsetRotate(const lepus::Value& value) {
+  if (value.IsNil()) {
+    offset_rotate_ = kOffsetRotateAuto;
+    is_auto_offset_rotate_ = true;
+  } else {
+    float rotate = static_cast<float>(value.Number());
+    if (base::FloatsEqual(rotate, kOffsetRotateAuto)) {
+      offset_rotate_ = kOffsetRotateAuto;
+      is_auto_offset_rotate_ = true;
+    } else {
+      offset_rotate_ = rotate;
+      is_auto_offset_rotate_ = false;
+    }
+  }
+  dirty_flags_ |= kFlagOffsetChanged;
+}
+
+void UIBase::UpdateOffsetPathCacheIfNeeded() {
+  if (!offset_basic_shape_) {
+    lynx_offset_calculator_.reset();
+    return;
+  }
+
+  // Parse BasicShape with current view size to get concrete path data.
+  offset_basic_shape_->ParsePathWithParentSize(width_, height_);
+  const auto& path_string = offset_basic_shape_->PathString();
+  if (path_string.empty()) {
+    // An empty path string means there is no valid offset-path.
+    lynx_offset_calculator_.reset();
+    return;
+  }
+
+  // At this stage, we only ensure that a LynxOffsetCalculator instance exists.
+  // The actual path parsing and caching is handled inside
+  // LynxOffsetCalculator::PointAtProgress
+  if (!lynx_offset_calculator_) {
+    lynx_offset_calculator_ = std::make_unique<LynxOffsetCalculator>();
+  }
+}
+
+std::optional<transforms::Matrix44> UIBase::GetOffsetMatrix() const {
+  // No basic shape or no calculator instance means no offset-path effect.
+  if (!offset_basic_shape_ || !lynx_offset_calculator_) {
+    return std::nullopt;
+  }
+
+  const auto& path_string = offset_basic_shape_->PathString();
+  if (path_string.empty()) {
+    return std::nullopt;
+  }
+  auto state_opt =
+      lynx_offset_calculator_->PointAtProgress(path_string, offset_distance_);
+  if (!state_opt.has_value()) {
+    return std::nullopt;
+  }
+
+  const auto& state = *state_opt;
+  // state.deg is the tangent angle relative to the +X axis. CSS offset-rotate
+  // uses +Y as reference, hence we convert here.
+  float rotate = is_auto_offset_rotate_ ? (90.0f - state.deg) : offset_rotate_;
+  if (is_auto_offset_rotate_) {
+    rotate = std::fmod(rotate, 360.0f);
+    if (rotate < 0.0f) {
+      rotate += 360.0f;
+    }
+  }
+
+  // Make sure the translation vector is not affected by rotation.
+  // We want: v' = T * R * v (rotate around origin, then translate to path
+  // point).
+  transforms::Matrix44 matrix;
+  matrix.setIdentity();
+  matrix.preTranslate(state.x, state.y, 0);
+  transforms::Matrix44 rotate_matrix;
+  rotate_matrix.setRotateAboutZAxis(rotate);
+  matrix.preConcat(rotate_matrix);
+  return matrix;
 }
 
 void UIBase::SetPerspective(const lepus::Value& value) {
