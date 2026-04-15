@@ -40,19 +40,24 @@ void AnimatedImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
         skity::Texture::FormatFromColorType(pixmap->GetColorType()),
         pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
     gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
-    unref_queue->GetTaskRunner()->PostTask([context = unref_queue->GetContext(),
-                                            image, pixmap,
-                                            weak = weak_from_this()]() {
-      if (auto self = weak.lock()) {
-        auto texture = context->CreateTexture(
-            skity::Texture::FormatFromColorType(pixmap->GetColorType()),
-            pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
-        if (texture) {
-          texture->DeferredUploadImage(std::move(pixmap));
-          image->SetTexture(texture);
-        }
-      }
-    });
+    unref_queue->GetTaskRunner()->PostTask(
+        [context = unref_queue->GetContext(), image, pixmap,
+         mipmapped = mipmapped_, weak = weak_from_this()]() {
+          if (auto self = weak.lock()) {
+            skity::TextureDescriptor desc{};
+            desc.format =
+                skity::Texture::FormatFromColorType(pixmap->GetColorType());
+            desc.width = pixmap->Width();
+            desc.height = pixmap->Height();
+            desc.alpha_type = pixmap->GetAlphaType();
+            desc.mipmapped = mipmapped;
+            auto texture = context->CreateTextureWithDesc(&desc);
+            if (texture) {
+              texture->DeferredUploadImage(std::move(pixmap));
+              image->SetTexture(texture);
+            }
+          }
+        });
   }
 }
 

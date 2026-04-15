@@ -56,6 +56,9 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
 
   bool IsSVG() const { return type_ == ImageType::kSVG; }
 
+  void SetMipmapped(bool mipmapped) { mipmapped_ = mipmapped; }
+  bool IsMipmapped() const { return mipmapped_; }
+
   std::unique_ptr<BaseImageInstance> NewInstance();
   void OnInstanceCreated(BaseImageInstance* instance);
   void OnInstanceDestroyed(BaseImageInstance* instance);
@@ -72,6 +75,7 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
   GPUObject<GraphicsImage> gpu_image_;
   ImageInfo render_info_;
   ImageInfo orig_info_;
+  bool mipmapped_ = false;
 };
 
 }  // namespace clay

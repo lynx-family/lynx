@@ -590,6 +590,13 @@ void BaseImageView::FetchSource() {
         if (!hit_cache) {
           self->TriggerTransitionIfNeeded();
         }
+#if OS_WIN || OS_MAC
+        // FIXME(songchengjiang.real): Theoretically, whether to enable mipmap
+        // should be determined by the Image component. However, this setting is
+        // not currently exposed, so we temporarily enable it on Windows and
+        // macOS.
+        image_instance->GetImage()->SetMipmapped(true);
+#endif
         auto render_image = self->GetRenderImage();
         render_image->SetImage(std::move(image_instance));
         self->ReportImageLoadInfo();
