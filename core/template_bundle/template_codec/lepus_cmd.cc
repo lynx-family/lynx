@@ -253,7 +253,7 @@ std::string MakeEncodeOptionsFromArgs(int args, char** argv) {
 
 int main(int argc, char** argv) {
   // put speedy's input here.
-  const auto compile_options = "";
+  const auto compile_options = lynx::lepus::readFile("");
   lynx::tasm::EncodeResult res = lynx::tasm::encode(compile_options);
   LOGI("Encode status: " << res.status
                          << ". And error message is: " << res.error_msg);

@@ -718,7 +718,7 @@ void TemplateBinaryWriter::EncodeCustomSection() {
         if (content_iter == section_table->end()) {
           return;
         }
-
+        auto content = content_iter->second;
         constexpr char kCustomSectionEncoding[] = "encoding";
         auto encoding_iter = section_table->find(kCustomSectionEncoding);
         CustomSectionEncodingType encoding_type =
@@ -741,11 +741,11 @@ void TemplateBinaryWriter::EncodeCustomSection() {
 
         switch (encoding_type) {
           case CustomSectionEncodingType::STRING:
-            EncodeValue(&content_iter->second, false);
+            EncodeValue(&content, false);
             break;
           case CustomSectionEncodingType::JS_BYTECODE: {
             auto error = lepus::BytecodeGenerator::GenerateBytecode(
-                mts_context(), content_iter->second.StdString(),
+                mts_context(), content.StdString(),
                 compile_options_.target_sdk_version_);
             if (!error.empty()) {
               throw lepus::CompileException(error.c_str());

@@ -5,33 +5,50 @@
 const path = require('path');
 const fs = require('fs');
 
-let task = null;
 function supportNapi(){
   return process.platform === 'darwin' || (process.platform === 'linux' && process.arch === "x64")
 }
 
-function loadModule() {
+function createModule() {
+  // Reusing a single WASM module instance makes repeated encode/decode calls
+  // on JsBytecode custom sections nondeterministic. Use a fresh instance for
+  // codec operations that need stable binary output.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const _loadModule = require('./lepus');
-  if (!task) {
-    task = _loadModule();
+  return require('./lepus')();
+}
+
+function disposeClassHandle(handle) {
+  if (!handle || typeof handle.delete !== 'function') {
+    return;
   }
-  return task;
+  if (typeof handle.isDeleted === 'function' && handle.isDeleted()) {
+    return;
+  }
+  handle.delete();
 }
 
 async function encode_wasm(options) {
-  const m = await loadModule();
+  const m = await createModule();
   /** @type {import('./index').EncodeResult} */
   const res = m._encode(JSON.stringify(options))
-  if (res.status !== 0) {
-    throw new Error(`encode error: ${res.error_msg}`);
-  }
-  const uint8array = new Uint8Array(res.buffer.size());
-  for (let i = 0; i < res.buffer.size(); i++) {
-    uint8array[i] = res.buffer.get(i);
-  }
-  res.buffer = Buffer.from(uint8array);
-  if(options.onTemplateDebugGenerated){
+  const bufferHandle = res.buffer;
+  try {
+    if (res.status !== 0) {
+      throw new Error(`encode error: ${res.error_msg}`);
+    }
+    const out = {
+      status: res.status,
+      error_msg: res.error_msg,
+      lepus_code: res.lepus_code,
+      lepus_debug: res.lepus_debug,
+      section_size: res.section_size,
+    };
+    const uint8array = new Uint8Array(bufferHandle.size());
+    for (let i = 0; i < bufferHandle.size(); i++) {
+      uint8array[i] = bufferHandle.get(i);
+    }
+    out.buffer = Buffer.from(uint8array);
+    if(options.onTemplateDebugGenerated){
       const url = await options.onTemplateDebugGenerated(res.template_debug, options.templateDebugUrl);
       const template_url_ptr = m.allocateUTF8(url);
       const res_str_ptr = m._reencode_template_debug(bufferPtr, bufferLen, template_url_ptr, buffer_pool);
@@ -39,9 +56,13 @@ async function encode_wasm(options) {
       const reEncodedRes = JSON.parse(reEncoded_res_str);
       const reEncodedBufferPtr = m._readBufferPool_data(buffer_pool, reEncodedRes.buffer);
       const reEncodedBufferLen = m._readBufferPool_len(buffer_pool, reEncodedRes.buffer);
-      res.buffer = Array.from(new Uint8Array(m.HEAPU8.buffer, reEncodedBufferPtr, reEncodedBufferLen));
+      out.buffer = Array.from(new Uint8Array(m.HEAPU8.buffer, reEncodedBufferPtr, reEncodedBufferLen));
+    }
+    return out;
+  } finally {
+    disposeClassHandle(bufferHandle);
+    disposeClassHandle(res);
   }
-  return res;
 }
 function encode_napi(options) {
   const lepus = require(`./build/${process.platform}/Release/lepus.node`);
@@ -52,8 +73,8 @@ function encode_napi(options) {
   return res
 }
 
-function lepusCheck(sourceFile, targetSdkVersion, execute = 0) {
-  const m = loadModule();
+async function lepusCheck(sourceFile, targetSdkVersion, execute = 0) {
+  const m = await createModule();
   const _encode = m.cwrap('lepusCheck', 'string', ['string', 'string', 'number']);
   const res = _encode(sourceFile, targetSdkVersion, execute);
   return JSON.parse(res);
@@ -79,14 +100,20 @@ function decrypt(cipher) {
   return res
 }
 
-function encrypt_wasm(plain) {
-  const m = loadModule();
+async function encrypt_wasm(plain) {
+  const m = await createModule();
+  if (typeof m._encrypt !== 'function') {
+    throw new Error('encrypt_wasm is not supported by the current wasm build');
+  }
   const res = m._encrypt(plain)
   return res;
 }
 
-function decrypt_wasm(plain) {
-  const m = loadModule();
+async function decrypt_wasm(plain) {
+  const m = await createModule();
+  if (typeof m._decrypt !== 'function') {
+    throw new Error('decrypt_wasm is not supported by the current wasm build');
+  }
   const res = m._decrypt(plain)
   return res;
 }
@@ -102,7 +129,7 @@ function decode_napi(templateJS) {
 }
 
 async function decode_wasm(buffer) {
-  const Module = await loadModule();
+  const Module = await createModule();
   // console.log(templateJs);
   // const uint8array = new Uint8Array(templateJs.size());
   // const res = m._decode(uint8array);
@@ -116,10 +143,14 @@ async function decode_wasm(buffer) {
   const res = Module._decode(byteArrayPtr, byteArrayLength);
   // Free the allocated memory
   Module._free(byteArrayPtr);
-  if (res.status !== 0) {
-    throw new Error(`decode error: ${res.result}`);
+  try {
+    if (res.status !== 0) {
+      throw new Error(`decode error: ${res.result}`);
+    }
+    return JSON.parse(res.result);
+  } finally {
+    disposeClassHandle(res);
   }
-  return JSON.parse(res.result);
 }
 
 let encode = encode_napi;
@@ -129,7 +160,6 @@ module.exports = {
   encode_napi,
   encode_wasm,
   lepusCheck,
-  loadModule,
   getEncodeMode,
   encrypt,
   decrypt,

@@ -4,8 +4,11 @@
 
 /* eslint-disable */
 export function encode(code: any): Promise<EncodeResult>;
-export function loadModule(): any;
-export function lepusCheck(code: string): any;
+export function lepusCheck(
+  code: string,
+  targetSdkVersion?: string,
+  execute?: number
+): Promise<any>;
 export interface EncodeResult {
   status: number;
   buffer: Buffer;
@@ -18,7 +21,7 @@ export function supportNapi(binary?: string): boolean;
 export function getEncodeMode(binary?: string): (options: any) => Promise<EncodeResult>;
 export function encrypt(token: string): string;
 export function decrypt(token: string): string;
-export function encrypt_wasm(token: string): string;
-export function decrypt_wasm(token: string): string;
+export function encrypt_wasm(token: string): Promise<string>;
+export function decrypt_wasm(token: string): Promise<string>;
 export function decode_napi(template: Uint8Array): any;
-export function decode_wasm(template: Uint8Array): any;
+export function decode_wasm(template: Uint8Array): Promise<any>;

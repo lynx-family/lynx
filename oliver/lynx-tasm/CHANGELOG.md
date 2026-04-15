@@ -1,4 +1,8 @@
 # CHANGELOG
+
+# 0.0.33
+* fix encode JsBytecode issue.
+
 # 0.0.32
 * Support encoding and decoding template attribute arrays, slot indices, and object-form template entries.
 
