@@ -33,7 +33,10 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
     return {"", runtime::js::JsContent::Type::SOURCE};
   }
 
-  std::string GetLynxJSAsset(const std::string& name) override { return ""; };
+  std::shared_ptr<runtime::js::Buffer> GetLynxJSAsset(
+      const std::string& name) override {
+    return nullptr;
+  }
 
   void GetComponentContextDataAsync(
       const std::string& component_id, const std::string& key,
@@ -71,7 +74,7 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
   void OnModuleMethodInvoked(const std::string& module,
                              const std::string& method, int32_t code) override {
   }
-  void OnCoreJSUpdated(std::string core_js) override {}
+  void OnCoreJSUpdated(std::shared_ptr<runtime::js::Buffer> core_js) override {}
   void OnEvaluateJavaScriptEnd(const std::string& url) override {}
 
   // for component
@@ -179,7 +182,10 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
   void AddEventListenersToWhiteBoard(
       runtime::ContextProxy* js_context_proxy) override {}
 
-  std::string LoadJSSource(const std::string& name) override { return ""; }
+  std::shared_ptr<runtime::js::Buffer> LoadJSSource(
+      const std::string& name) override {
+    return nullptr;
+  }
 
   void GetSessionStorageItem(
       const std::string& key,

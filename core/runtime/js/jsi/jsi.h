@@ -58,6 +58,7 @@ class LYNX_EXPORT Buffer {
   LYNX_EXPORT virtual ~Buffer() = default;
   virtual size_t size() const = 0;
   virtual const uint8_t* data() const = 0;
+  virtual bool RequiresCStringCopy() const { return false; }
 };
 
 class StringBuffer : public Buffer {
@@ -71,18 +72,6 @@ class StringBuffer : public Buffer {
 
  private:
   std::string s_;
-};
-
-class StringRefBuffer : public Buffer {
- public:
-  explicit StringRefBuffer(const std::string& s) : s_(s) {}
-  size_t size() const override { return s_.size(); }
-  const uint8_t* data() const override {
-    return reinterpret_cast<const uint8_t*>(s_.data());
-  }
-
- private:
-  const std::string& s_;
 };
 
 class BaseStringBuffer : public Buffer {
@@ -100,10 +89,12 @@ class BaseStringBuffer : public Buffer {
 class ByteBuffer : public Buffer {
  public:
   explicit ByteBuffer(std::vector<uint8_t>&& data) : data_(std::move(data)) {}
+
   size_t size() const override { return data_.size(); }
   const uint8_t* data() const override {
     return reinterpret_cast<const uint8_t*>(data_.data());
   }
+  bool RequiresCStringCopy() const override { return true; }
 
  private:
   std::vector<uint8_t> data_;

@@ -142,7 +142,8 @@ class JSRuntimeDelegateImpl : public runtime::js::JSRuntimeDelegate {
 
 }  // namespace
 
-thread_local std::string* BTSRuntime::js_core_source_ = nullptr;
+thread_local std::shared_ptr<runtime::js::Buffer> BTSRuntime::js_core_source_ =
+    nullptr;
 
 BTSRuntime::BTSRuntime(const std::string& group_id, int32_t instance_id,
                        std::unique_ptr<runtime::TemplateDelegate> delegate,
@@ -309,11 +310,9 @@ void BTSRuntime::ReadPreloadJSSource(
     std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
         ret) {
   for (auto&& path : preload_js_paths) {
-    std::string res = delegate_->LoadJSSource(path);
-    if (res.length() > 0) {
-      ret.emplace_back(
-          std::move(path),
-          std::make_shared<runtime::js::StringBuffer>(std::move(res)));
+    auto buf = delegate_->LoadJSSource(path);
+    if (buf && buf->size() > 0) {
+      ret.emplace_back(std::move(path), std::move(buf));
     }
   }
 }
@@ -321,17 +320,14 @@ void BTSRuntime::ReadPreloadJSSource(
 void BTSRuntime::ReadCoreJS(
     std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
         ret) {
-  if (!js_core_source_ || js_core_source_->length() <= 0 ||
+  if (!js_core_source_ || js_core_source_->size() == 0 ||
       (runtime_flags_ & LynxRuntimeFlags::FORCE_RELOAD_CORE_JS)) {
-    delete js_core_source_;
     static constexpr const char* core_js_name = "assets://lynx_core.js";
-    js_core_source_ = new std::string(delegate_->LoadJSSource(core_js_name));
-    DCHECK(js_core_source_->length() > 0);
-    delegate_->OnCoreJSUpdated(*js_core_source_);
+    js_core_source_ = delegate_->LoadJSSource(core_js_name);
+    DCHECK(js_core_source_ && js_core_source_->size() > 0);
+    delegate_->OnCoreJSUpdated(js_core_source_);
   }
-  ret.emplace_back(
-      runtime::kLynxCoreJSName,
-      std::make_shared<runtime::js::StringRefBuffer>(*js_core_source_));
+  ret.emplace_back(runtime::kLynxCoreJSName, js_core_source_);
 }
 
 void BTSRuntime::UpdateState(State state) {

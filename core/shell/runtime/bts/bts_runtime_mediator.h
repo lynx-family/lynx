@@ -83,7 +83,8 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   runtime::js::JsContent GetJSContentFromExternal(const std::string& entry_name,
                                                   const std::string& name,
                                                   long timeout) override;
-  std::string GetLynxJSAsset(const std::string& name) override;
+  std::shared_ptr<runtime::js::Buffer> GetLynxJSAsset(
+      const std::string& name) override;
 
   void GetComponentContextDataAsync(const std::string& component_id,
                                     const std::string& key,
@@ -146,7 +147,7 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
                               std::string method_name, lepus::Value args,
                               runtime::js::ApiCallBack callback) override;
 
-  void OnCoreJSUpdated(std::string core_js) override;
+  void OnCoreJSUpdated(std::shared_ptr<runtime::js::Buffer> core_js) override;
 
   void RunOnJSThread(base::closure closure) override;
   void RunOnJSThreadWhenIdle(base::closure closure) override;
@@ -212,7 +213,8 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event) override;
 
-  std::string LoadJSSource(const std::string& name) override;
+  std::shared_ptr<runtime::js::Buffer> LoadJSSource(
+      const std::string& name) override;
   std::shared_ptr<runtime::js::Buffer> LoadBytecode(
       const std::string& url) override;
 

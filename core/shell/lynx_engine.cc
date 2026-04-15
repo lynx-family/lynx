@@ -45,8 +45,8 @@ inline bool MergeCacheDataOp(lepus::Value& target,
 }
 
 // ensure access on tasm thread
-inline std::string& GetCoreJS() {
-  static base::NoDestructor<std::string> core_js;
+inline std::shared_ptr<runtime::js::Buffer>& GetCoreJS() {
+  static base::NoDestructor<std::shared_ptr<runtime::js::Buffer>> core_js;
   return *core_js;
 }
 
@@ -437,7 +437,12 @@ void LynxEngine::ScrollStopped(int32_t tag) {
 std::unordered_map<std::string, std::string> LynxEngine::GetAllJsSource() {
   std::unordered_map<std::string, std::string> source;
   tasm_->GetDecodedJSSource(source);
-  source.emplace("core.js", GetCoreJS());
+  const auto& core_js = GetCoreJS();
+  source.emplace(
+      "core.js",
+      core_js ? std::string(reinterpret_cast<const char*>(core_js->data()),
+                            core_js->size())
+              : std::string());
   return source;
 }
 
@@ -591,8 +596,8 @@ void LynxEngine::GetComponentContextDataAsync(
   tasm_->GetComponentContextDataAsync(component_id, key, callback);
 }
 
-void LynxEngine::UpdateCoreJS(std::string core_js) {
-  GetCoreJS().assign(std::move(core_js));
+void LynxEngine::UpdateCoreJS(std::shared_ptr<runtime::js::Buffer> core_js) {
+  GetCoreJS() = std::move(core_js);
 }
 
 void LynxEngine::UpdateI18nResource(const std::string& key,

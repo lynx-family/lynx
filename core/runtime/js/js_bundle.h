@@ -27,7 +27,7 @@ class JsContent {
     ERROR,
   };
 
-  JsContent(std::shared_ptr<StringBuffer> buffer, Type type)
+  JsContent(std::shared_ptr<Buffer> buffer, Type type)
       : buffer_(std::move(buffer)), type_(type) {}
   JsContent(std::string buffer, Type type)
       : buffer_(std::make_shared<StringBuffer>(std::move(buffer))),

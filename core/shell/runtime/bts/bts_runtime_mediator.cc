@@ -93,12 +93,13 @@ std::vector<shell::CacheDataOp> BTSRuntimeMediator::FetchUpdatedCardData() {
   return card_cached_data_mgr_->ObtainCardCacheData();
 }
 
-std::string BTSRuntimeMediator::GetLynxJSAsset(const std::string& name) {
-  std::string resource = LoadJSSource(name);
-  if (resource.empty()) {
+std::shared_ptr<runtime::js::Buffer> BTSRuntimeMediator::GetLynxJSAsset(
+    const std::string& name) {
+  auto buf = LoadJSSource(name);
+  if (!buf || buf->size() == 0) {
     LOGE("GetLynxJSAsset failed, the source_url is: " << name);
   }
-  return resource;
+  return buf;
 }
 
 runtime::js::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
@@ -338,7 +339,8 @@ void BTSRuntimeMediator::ElementAnimateV2(const std::string& component_id,
   });
 }
 
-void BTSRuntimeMediator::OnCoreJSUpdated(std::string core_js) {
+void BTSRuntimeMediator::OnCoreJSUpdated(
+    std::shared_ptr<runtime::js::Buffer> core_js) {
   // TODO(huzhanbo.luc): support devtool
   if (runtime_standalone_mode_) {
     return;
@@ -606,10 +608,10 @@ event::DispatchEventResult BTSRuntimeMediator::DispatchMessageEvent(
   return {event::EventCancelType::kNotCanceled, true};
 }
 
-std::string BTSRuntimeMediator::LoadJSSource(const std::string& name) {
+std::shared_ptr<runtime::js::Buffer> BTSRuntimeMediator::LoadJSSource(
+    const std::string& name) {
   auto result = external_resource_loader_->LoadJSSource(name);
-  std::string str(result.begin(), result.end());
-  return str;
+  return std::make_shared<runtime::js::ByteBuffer>(std::move(result));
 }
 
 std::shared_ptr<runtime::js::Buffer> BTSRuntimeMediator::LoadBytecode(

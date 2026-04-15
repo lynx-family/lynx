@@ -107,9 +107,18 @@ JSCRuntime::evaluatePreparedJavaScript(const PreparedJavaScript& js) {
 base::expected<Value, JSINativeException> JSCRuntime::evaluateJavaScript(
     const std::shared_ptr<const Buffer>& buffer, const std::string& source_url,
     int start_line_offset) {
-  DCHECK(buffer->data()[buffer->size()] == '\0');
-  JSStringRef sourceRef = JSStringCreateWithUTF8CString(
-      reinterpret_cast<const char*>(buffer->data()));
+  const char* source_cstr = "";
+  std::string source_tmp;
+  if (buffer && buffer->size() > 0) {
+    if (buffer->RequiresCStringCopy()) {
+      source_tmp.assign(reinterpret_cast<const char*>(buffer->data()),
+                        buffer->size());
+      source_cstr = source_tmp.c_str();
+    } else {
+      source_cstr = reinterpret_cast<const char*>(buffer->data());
+    }
+  }
+  JSStringRef sourceRef = JSStringCreateWithUTF8CString(source_cstr);
   JSStringRef sourceURLRef = nullptr;
   std::string origin_url;
   if (!source_url.empty()) {
