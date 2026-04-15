@@ -10012,6 +10012,7 @@ public class com::lynx::tasm::TemplateData :  {
   public static TemplateData com.lynx.tasm.TemplateData.empty();
   public static TemplateData com.lynx.tasm.TemplateData.fromString(String json);
   public static TemplateData com.lynx.tasm.TemplateData.fromNativeTemplateDataPtr(long nativePtr);
+  public static void com.lynx.tasm.TemplateData.releaseNativeTemplateDataPtr(long ptr);
   public long com.lynx.tasm.TemplateData.getNativeTemplateDataPtr();
   public long com.lynx.tasm.TemplateData.getNativeTemplateDataPtrAndClear();
   public void com.lynx.tasm.TemplateData.markConcurrent();

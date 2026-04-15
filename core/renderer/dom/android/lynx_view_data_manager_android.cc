@@ -168,6 +168,37 @@ jlong CreateTemplateData(JNIEnv* env, jclass jcaller, jlong data,
   return reinterpret_cast<jlong>(ptr);
 }
 
+jlong CloneDataFromTemplateDataPtr(JNIEnv* env, jclass jcaller, jlong ptr) {
+  if (ptr == 0) {
+    return 0;
+  }
+
+  auto* data_ptr =
+      reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(ptr);
+  if (data_ptr == nullptr || *data_ptr == nullptr) {
+    return 0;
+  }
+
+  auto* new_value = new lynx::lepus::Value;
+  *new_value = lynx::lepus::Value::Clone((*data_ptr)->GetValue());
+  return reinterpret_cast<jlong>(new_value);
+}
+
+jlong RetainTemplateDataPtr(JNIEnv* env, jclass jcaller, jlong ptr) {
+  if (ptr == 0) {
+    return 0;
+  }
+
+  auto* data_ptr =
+      reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(ptr);
+  if (data_ptr == nullptr || *data_ptr == nullptr) {
+    return 0;
+  }
+
+  auto* retained_ptr = new std::shared_ptr<lynx::tasm::TemplateData>(*data_ptr);
+  return reinterpret_cast<jlong>(retained_ptr);
+}
+
 void ReleaseTemplateData(JNIEnv* env, jclass jcaller, jlong ptr) {
   if (ptr == 0) {
     return;

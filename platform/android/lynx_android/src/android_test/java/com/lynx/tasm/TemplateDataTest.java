@@ -729,6 +729,43 @@ public class TemplateDataTest {
   }
 
   @Test
+  public void testGetDataForJSThreadAfterNativeTemplateDataReleased() {
+    TemplateData templateData = TemplateData.fromMap(new HashMap<>());
+    templateData.put("key1", 1);
+    templateData.put("key2", 2);
+    templateData.flush();
+
+    TemplateData nativeTemplateData =
+        TemplateData.fromNativeTemplateDataPtr(TemplateData.createNativeTemplateData(templateData));
+    assertEquals(0, nativeTemplateData.mJsNativeData);
+    nativeTemplateData.recycle();
+
+    Object jsData = TemplateData.nativeGetData(nativeTemplateData.getDataForJSThread());
+    assertNotEquals(0, nativeTemplateData.mJsNativeData);
+    assertEquals(templateData.toMap(), jsData);
+  }
+
+  @Test
+  public void testGetTemplateDataForJSThreadBeforeMaterializeNativeTemplateData() {
+    TemplateData templateData = TemplateData.fromMap(new HashMap<>());
+    templateData.put("key1", 1);
+    templateData.put("key2", 2);
+    templateData.flush();
+
+    TemplateData nativeTemplateData =
+        TemplateData.fromNativeTemplateDataPtr(TemplateData.createNativeTemplateData(templateData));
+    TemplateData copiedJsTemplateData = nativeTemplateData.getTemplateDataForJSThread();
+
+    assertEquals(0, nativeTemplateData.mJsNativeData);
+    assertEquals(0, copiedJsTemplateData.mJsNativeData);
+
+    nativeTemplateData.recycle();
+
+    Object copiedJsData = TemplateData.nativeGetData(copiedJsTemplateData.getDataForJSThread());
+    assertEquals(templateData.toMap(), copiedJsData);
+  }
+
+  @Test
   public void testRemoveData() {
     TemplateData templateData = TemplateData.fromMap(new HashMap<>());
     templateData.put("key1", 1);
