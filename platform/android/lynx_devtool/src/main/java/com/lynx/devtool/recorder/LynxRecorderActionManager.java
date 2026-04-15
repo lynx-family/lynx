@@ -1420,7 +1420,7 @@ public class LynxRecorderActionManager {
         }
       }
     };
-    new Handler(Looper.getMainLooper()).postDelayed(runnable, 1000);
+    mHandler.postDelayed(runnable, 1000);
   }
 
   private String getDumpFilePath() {

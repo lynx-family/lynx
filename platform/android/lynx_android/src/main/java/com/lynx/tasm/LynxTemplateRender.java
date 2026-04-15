@@ -2541,36 +2541,13 @@ public class LynxTemplateRender
     }
     mIsMemoryCollecting = true;
 
-    WeakReference<LynxTemplateRender> weakThis = new WeakReference<>(this);
     long delayMs = PerformanceController.getMemoryAcquisitionDelaySec() * 1000;
     // Since resources are usually loaded asynchronously, such as images downloaded
     // asynchronously
     // from the network, it is necessary to delay the collection of memory so as to
     // collect as much
     // resource memory as possible.
-    UIThreadUtils.runOnUiThread(new Runnable() {
-      @Override
-      public void run() {
-        LynxTemplateRender render = weakThis.get();
-        if (render == null) {
-          return;
-        }
-        render.mIsMemoryCollecting = false;
-        PerformanceController perfController = render.mPerformanceController;
-        if (perfController == null) {
-          return;
-        }
-        ILynxUIRenderer renderer = render.mLynxUIRender;
-        if (renderer == null) {
-          return;
-        }
-        LynxUIOwner uiOwner = renderer.lynxUIOwner();
-        if (uiOwner == null) {
-          return;
-        };
-        perfController.updateMemoryUsage(uiOwner.getMemoryUsage());
-      }
-    }, delayMs);
+    UIThreadUtils.runOnUiThread(new UpdateMemoryUsageTask(this), delayMs);
   }
 
   private class InnerSSRLoadedCallback implements AbsTemplateProvider.Callback {
@@ -4050,6 +4027,36 @@ public class LynxTemplateRender
         mNativeFacade.destroyUiThreadPart();
         mNativeFacade = null;
       }
+    }
+  }
+
+  private static class UpdateMemoryUsageTask implements Runnable {
+    private final WeakReference<LynxTemplateRender> mRenderRef;
+
+    UpdateMemoryUsageTask(LynxTemplateRender render) {
+      mRenderRef = new WeakReference<>(render);
+    }
+
+    @Override
+    public void run() {
+      LynxTemplateRender render = mRenderRef.get();
+      if (render == null) {
+        return;
+      }
+      render.mIsMemoryCollecting = false;
+      PerformanceController perfController = render.mPerformanceController;
+      if (perfController == null) {
+        return;
+      }
+      ILynxUIRenderer renderer = render.mLynxUIRender;
+      if (renderer == null) {
+        return;
+      }
+      LynxUIOwner uiOwner = renderer.lynxUIOwner();
+      if (uiOwner == null) {
+        return;
+      }
+      perfController.updateMemoryUsage(uiOwner.getMemoryUsage());
     }
   }
 
