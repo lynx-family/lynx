@@ -481,6 +481,8 @@ public class LynxTemplateRender
         // meaningless.
         isNeedUpdateViewportOnInit = true;
       }
+    } else if (widthMeasureSpec == 0 && heightMeasureSpec == 0) {
+      isNeedUpdateViewportOnInit = false;
     }
     if (isNeedUpdateViewportOnInit) {
       updateViewport(widthMeasureSpec, heightMeasureSpec);
