@@ -1099,6 +1099,14 @@ void LynxDevToolMediator::getAllTimingInfo(
   });
 }
 
+void LynxDevToolMediator::getAllPerformanceEntries(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnUIThread([sender, message, executor = ui_executor_] {
+    executor->getAllPerformanceEntries(sender, message);
+  });
+}
+
 void LynxDevToolMediator::LogEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

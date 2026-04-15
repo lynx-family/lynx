@@ -58,6 +58,19 @@ std::string ConvertLepusValueToJsonValue(const lynx::lepus::Value& lepus_value,
       result = std::to_string(lepus_value.Number());
       break;
     }
+    case lynx::lepus::ValueType::Value_Array: {
+      std::string array_string;
+      auto array = lepus_value.Array();
+      for (size_t i = 0; i < array->size(); ++i) {
+        array_string += ConvertLepusValueToJsonValue(array->get(i), sort_keys);
+        array_string += ",";
+      }
+      if (!array_string.empty()) {
+        array_string.pop_back();
+      }
+      result = "[" + array_string + "]";
+      break;
+    }
     case lynx::lepus::ValueType::Value_Table: {
       std::string table_string =
           convertLepusTableToDictionaryString(lepus_value, sort_keys);

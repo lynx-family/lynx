@@ -14,6 +14,8 @@ InspectorPerformanceAgent::InspectorPerformanceAgent(
   functions_map_["Performance.disable"] = &InspectorPerformanceAgent::Disable;
   functions_map_["Performance.getAllTimingInfo"] =
       &InspectorPerformanceAgent::getAllTimingInfo;
+  functions_map_["Performance.getAllPerformanceEntries"] =
+      &InspectorPerformanceAgent::getAllPerformanceEntries;
 }
 
 InspectorPerformanceAgent::~InspectorPerformanceAgent() = default;
@@ -31,6 +33,11 @@ void InspectorPerformanceAgent::Disable(
 void InspectorPerformanceAgent::getAllTimingInfo(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   devtool_mediator_->getAllTimingInfo(sender, message);
+}
+
+void InspectorPerformanceAgent::getAllPerformanceEntries(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->getAllPerformanceEntries(sender, message);
 }
 
 void InspectorPerformanceAgent::CallMethod(

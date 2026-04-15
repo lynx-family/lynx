@@ -363,6 +363,7 @@ class LynxShell {
                  tasm::PipelineID pipeline_id) const;
 
   const lepus::Value GetAllTimingInfo() const;
+  const lepus::Value GetAllPerformanceEntries() const;
 
   // TODO(kechenglong): should find a better way to set SSR timing data?
   void SetSSRTimingData(std::string url, uint64_t data_size) const;

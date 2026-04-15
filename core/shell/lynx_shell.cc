@@ -1535,6 +1535,14 @@ LYNX_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllTimingInfo() const {
   });
 }
 
+LYNX_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllPerformanceEntries()
+    const {
+  return perf_controller_actor_->ActSync([](auto& performance) {
+    auto all_performance_entries = performance->GetAllPerformanceEntries();
+    return pub::ValueUtils::ConvertValueToLepusValue(*all_performance_entries);
+  });
+}
+
 void LynxShell::SetSSRTimingData(std::string url, uint64_t data_size) const {
   perf_controller_actor_->ActAsync(
       [url = std::move(url), data_size](auto& performance) {
@@ -1571,9 +1579,8 @@ void LynxShell::OnPipelineStart(
 }
 
 void LynxShell::ResetTimingBeforeReload() const {
-  perf_controller_actor_->ActAsync([](auto& performance) {
-    performance->GetTimingHandler().ResetTimingBeforeReload();
-  });
+  perf_controller_actor_->ActAsync(
+      [](auto& performance) { performance->ResetStateBeforeReload(); });
 }
 
 void LynxShell::SetInspectorElementObserver(

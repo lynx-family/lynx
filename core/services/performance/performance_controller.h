@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "base/include/lynx_actor.h"
 #include "core/public/pub_value.h"
@@ -36,10 +37,10 @@ class PerformanceController : public PerformanceEventSender {
       : PerformanceEventSender(std::make_shared<pub::PubValueFactoryDefault>()),
         instance_id_(instance_id),
         delegate_(std::move(delegate)),
+        js_blocking_monitor_(std::make_shared<JSBlockingMonitor>(this)),
         memory_monitor_(this, instance_id),
         timing_handler_(
-            timing::TimingHandler(std::move(timing_delegate), this)),
-        js_blocking_monitor_(std::make_shared<JSBlockingMonitor>(this)) {}
+            timing::TimingHandler(std::move(timing_delegate), this)) {}
   ~PerformanceController() override;
 
   static fml::RefPtr<fml::TaskRunner> GetTaskRunner();
@@ -71,6 +72,8 @@ class PerformanceController : public PerformanceEventSender {
   std::shared_ptr<JSBlockingMonitor>& GetJSBlockingMonitor() {
     return js_blocking_monitor_;
   }
+  std::unique_ptr<pub::Value> GetAllPerformanceEntries() const;
+  void ResetStateBeforeReload();
 
   void SetInstanceId(int32_t instance_id) { instance_id_ = instance_id; }
 
@@ -85,9 +88,12 @@ class PerformanceController : public PerformanceEventSender {
   int32_t instance_id_ = report::kUninitializedInstanceId;
   std::unique_ptr<PerformanceEventSender> delegate_;
   std::unique_ptr<PerformanceControllerPlatformImpl> platform_impl_;
+  // Keep members touched by OnPerformanceEvent alive until after
+  // MemoryMonitor reports its final teardown event.
+  std::vector<lepus::Value> performance_entries_;
+  std::shared_ptr<JSBlockingMonitor> js_blocking_monitor_;
   MemoryMonitor memory_monitor_;
   timing::TimingHandler timing_handler_;
-  std::shared_ptr<JSBlockingMonitor> js_blocking_monitor_;
 };
 
 }  // namespace performance

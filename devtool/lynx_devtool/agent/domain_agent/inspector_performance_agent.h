@@ -30,6 +30,8 @@ class InspectorPerformanceAgent : public CDPDomainAgentBase {
                const Json::Value& message);
   void getAllTimingInfo(const std::shared_ptr<MessageSender>& sender,
                         const Json::Value& message);
+  void getAllPerformanceEntries(const std::shared_ptr<MessageSender>& sender,
+                                const Json::Value& message);
   std::map<std::string, PerformanceAgentMethod> functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
 };

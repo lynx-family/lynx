@@ -552,9 +552,8 @@ void BTSRuntimeMediator::ResetTimingBeforeReload() {
   if (!perf_controller_actor_) {
     return;
   }
-  perf_controller_actor_->ActAsync([](auto& performance) {
-    performance->GetTimingHandler().ResetTimingBeforeReload();
-  });
+  perf_controller_actor_->ActAsync(
+      [](auto& performance) { performance->ResetStateBeforeReload(); });
 }
 
 void BTSRuntimeMediator::AddJSBlockingTime(uint64_t enqueue_time) {

@@ -62,6 +62,15 @@ TEST(HelperUtilTest, ConvertLepusValueToJsonValueTest) {
   EXPECT_EQ(ConvertLepusValueToJsonValue(dict2, true),
             "{\"a\": null,\"b\": 3.897560,\"f\": {\"c\": 1,\"d\": "
             "\"url_link\",\"e\": 3333335},\"g\": {}}");
+
+  lepus::Value array1(lepus::CArray::Create());
+  array1.SetProperty(0, lepus::Value("foo"));
+  array1.SetProperty(1, lepus::Value(42));
+  lepus::Value array_item(lepus::Dictionary::Create());
+  array_item.SetProperty("ok", lepus::Value(true));
+  array1.SetProperty(2, array_item);
+  EXPECT_EQ(ConvertLepusValueToJsonValue(array1, true),
+            "[\"foo\",42,{\"ok\": 1}]");
 }
 
 TEST(HelperUtilTest, NormalizeAnimationStringTest) {
