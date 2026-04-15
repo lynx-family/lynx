@@ -11,6 +11,7 @@
 #include "clay/fml/mapping.h"
 #include "clay/fml/paths.h"
 #include "clay/net/url/url_helper.h"
+#include "clay/ui/common/isolate.h"
 
 namespace {
 
@@ -66,7 +67,8 @@ void ResourceLoaderEmbedder::Load(
   if (scheme_type == url::UriSchemeType::kNet) {
     LoadByNet(url, callback, resource_type);
   } else if (scheme_type == url::UriSchemeType::kLocalFile) {
-    ui_task_runner_->PostTask(
+    fml::TaskRunner::RunNowOrPostTask(
+        ui_task_runner_,
         [url = std::move(url), callback = std::move(callback)]() {
           std::string file_path =
               fml::paths::AbsolutePath(fml::paths::FromURI(url));
@@ -78,7 +80,8 @@ void ResourceLoaderEmbedder::Load(
           }
         });
   } else {
-    ui_task_runner_->PostTask(
+    fml::TaskRunner::RunNowOrPostTask(
+        ui_task_runner_,
         [callback = std::move(callback)]() { callback(nullptr, 0); });
   }
 }
@@ -109,17 +112,47 @@ void ResourceLoaderEmbedder::LoadByNet(
       fetcher_holder_->GenericFetcher(), fetcher_request, fetcher_response);
 }
 
+RawResource ResourceLoaderEmbedder::LoadSyncByNet(
+    const std::string& url, const ResourceType resource_type) {
+  std::promise<RawResource> promise;
+  std::future<RawResource> future = promise.get_future();
+  lynx_resource_request_t* fetcher_request =
+      lynx_resource_request_create_internal(
+          url, ConvertToLynxResourceType(resource_type));
+  lynx_resource_response_t* fetcher_response =
+      lynx_resource_response_create_internal(fml::MakeCopyable(
+          [promise = std::move(promise)](
+              lynx_resource_response_t* fetcher_response) mutable {
+            lynx_resource_response_t* response =
+                lynx_resource_response_create_swap(fetcher_response);
+            promise.set_value(RawResource::MakeWithCopy(response->data.content,
+                                                        response->data.length));
+            lynx_resource_response_release(response);
+          }));
+  lynx_generic_resource_fetcher_fetch_resource(
+      fetcher_holder_->GenericFetcher(), fetcher_request, fetcher_response);
+  return future.get();
+}
+
 RawResource ResourceLoaderEmbedder::LoadSync(const std::string& src,
                                              const ResourceType resource_type,
                                              bool need_redirect) {
+  std::string url = src;
+  if (need_redirect && intercept_) {
+    url = intercept_->ShouldInterceptUrl(src, false);
+  }
+  if (url::ParseUriScheme(url) == url::UriSchemeType::kNet) {
+    return LoadSyncByNet(url, resource_type);
+  }
+
   std::promise<RawResource> promise;
   std::future<RawResource> future = promise.get_future();
   Load(
-      src,
+      url,
       [&promise](const uint8_t* data, size_t size) {
         promise.set_value(RawResource::MakeWithCopy(data, size));
       },
-      resource_type, need_redirect);
+      resource_type, false);
   return future.get();
 }
 
