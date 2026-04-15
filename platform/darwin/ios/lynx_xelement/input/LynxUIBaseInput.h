@@ -72,6 +72,17 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)sendInputEvent;
 
+- (void)setCollapsedSelectionForInput:(id<UITextInput>)input offset:(NSInteger)offset;
+
+- (BOOL)handleOverflowReplacementForInput:(id<UITextInput>)input
+                              currentText:(NSString *)currentText
+                                    range:(NSRange)range
+                        replacementString:(NSString *)replacementString;
+
+- (void)didApplyOverflowReplacementForInput:(id<UITextInput>)input;
+
+- (NSString *)filterString:(NSString *)source withMaxLength:(NSInteger)maxLength;
+
 @end
 
 NS_ASSUME_NONNULL_END

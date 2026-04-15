@@ -558,6 +558,63 @@ LYNX_UI_METHOD(setSelectionRange) {
   }
 }
 
+- (void)setCollapsedSelectionForInput:(id<UITextInput>)input offset:(NSInteger)offset {
+  UITextPosition *beginning = input.beginningOfDocument;
+  UITextPosition *cursorPosition = [input positionFromPosition:beginning offset:offset];
+  if (!cursorPosition) {
+    return;
+  }
+
+  input.selectedTextRange = [input textRangeFromPosition:cursorPosition toPosition:cursorPosition];
+}
+
+- (void)reapplyCollapsedSelectionForInput:(id<UITextInput>)input offset:(NSInteger)offset {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [self setCollapsedSelectionForInput:input offset:offset];
+    if ([input isKindOfClass:UITextView.class]) {
+      [(UITextView *)input scrollRangeToVisible:NSMakeRange(offset, 0)];
+    }
+  });
+}
+
+- (BOOL)handleOverflowReplacementForInput:(id<UITextInput>)input
+                              currentText:(NSString *)currentText
+                                    range:(NSRange)range
+                        replacementString:(NSString *)replacementString {
+  if (![(id)input respondsToSelector:@selector(setText:)]) {
+    return NO;
+  }
+
+  NSInteger availableLength = self.maxLength - ((NSInteger)currentText.length - (NSInteger)range.length);
+  NSString *acceptedReplacement = availableLength > 0
+                                      ? [self filterString:replacementString withMaxLength:availableLength]
+                                      : @"";
+  if (acceptedReplacement.length == 0 && range.length == 0) {
+    return NO;
+  }
+
+  NSString *nextText = [currentText stringByReplacingCharactersInRange:range withString:acceptedReplacement];
+  [(id)input setText:nextText];
+
+  NSInteger cursorOffset = range.location + acceptedReplacement.length;
+  [self setCollapsedSelectionForInput:input offset:cursorOffset];
+  [self didApplyOverflowReplacementForInput:input];
+
+  NSInteger boundedCursorOffset = MIN(cursorOffset, (NSInteger)[self getText].length);
+  [self setCollapsedSelectionForInput:input offset:boundedCursorOffset];
+  if ([input isKindOfClass:UITextView.class]) {
+    [(UITextView *)input scrollRangeToVisible:NSMakeRange(boundedCursorOffset, 0)];
+  }
+  // UIKit may overwrite the selection when we mutate text inside the delegate and return NO.
+  [self reapplyCollapsedSelectionForInput:input offset:boundedCursorOffset];
+
+  return YES;
+}
+
+- (void)didApplyOverflowReplacementForInput:(id<UITextInput>)input {
+  [self inputViewDidChange:input];
+}
+
 - (BOOL)inputView:(id<UITextInput>)input shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
   if (!self.readonly) {
       [self emitEvent:@"beforeinput" detail:@{
@@ -570,6 +627,12 @@ LYNX_UI_METHOD(setSelectionRange) {
     NSString *currentText = self.getText;
     NSUInteger newLength = [currentText length] + [string length] - range.length;
     if (newLength > self.maxLength) {
+      if ([self handleOverflowReplacementForInput:input
+                                      currentText:currentText
+                                            range:range
+                                replacementString:string ? : @""]) {
+        return NO;
+      }
       // MAX
       return NO;
     }
