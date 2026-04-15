@@ -23,6 +23,9 @@ VsyncWaiterEmbedder::~VsyncWaiterEmbedder() = default;
 
 // |VsyncWaiter|
 void VsyncWaiterEmbedder::AwaitVSync() {
+  if (!IsEngineActive()) {
+    return;
+  }
   auto* weak_waiter = new std::weak_ptr<VsyncWaiter>(shared_from_this());
   intptr_t baton = reinterpret_cast<intptr_t>(weak_waiter);
   vsync_callback_(baton);

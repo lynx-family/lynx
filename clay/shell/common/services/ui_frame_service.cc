@@ -29,6 +29,9 @@ void UIFrameService::RequestFrame() {
     return;
   }
   frame_requested_ = true;
+  if (!vsync_source_active_) {
+    return;
+  }
   if (using_sync_compositor_) {
     sync_compositor_service_.Act([](auto& impl) { impl.Invalidate(false); });
   } else {
@@ -36,6 +39,17 @@ void UIFrameService::RequestFrame() {
         [inside_ui_frame = inside_ui_frame_](auto& impl) {
           impl.RequestUIFrame(inside_ui_frame);
         });
+  }
+}
+
+void UIFrameService::SetVsyncSourceActive(bool active) {
+  if (vsync_source_active_ == active) {
+    return;
+  }
+  vsync_source_active_ = active;
+  if (active && frame_requested_) {
+    frame_requested_ = false;
+    RequestFrame();
   }
 }
 
@@ -106,6 +120,18 @@ void UIFrameService::ForceBeginFrame(
 void UIFrameService::CommitWithNoUpdates() {
   raster_frame_service_->puppet_.Act(
       [](auto& impl) { impl.CommitWithNoUpdates(); });
+}
+
+void UIFrameService::PrepareForRecycle() {
+  vsync_source_active_ = true;
+  frame_requested_ = false;
+  inside_ui_frame_ = false;
+}
+
+void UIFrameService::CleanForRecycle() {
+  vsync_source_active_ = false;
+  frame_requested_ = false;
+  inside_ui_frame_ = false;
 }
 
 void UIFrameService::OnInit(clay::ServiceManager& service_manager,

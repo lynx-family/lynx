@@ -27,6 +27,12 @@ VsyncWaiter::VsyncWaiter(fml::RefPtr<fml::TaskRunner> task_runner)
 
 VsyncWaiter::~VsyncWaiter() = default;
 
+void VsyncWaiter::ResetPendingCallbacks() {
+  std::scoped_lock lock(callback_mutex_);
+  callback_ = nullptr;
+  secondary_callbacks_.clear();
+}
+
 // Public method invoked by the animator.
 void VsyncWaiter::AsyncWaitForVsync(const Callback& callback) {
   if (!callback) {
