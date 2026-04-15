@@ -218,6 +218,7 @@ void ImagePainter::PaintImage(GraphicsContext* context,
     return;
   }
 
+  bool mipmapped = false;
 #ifdef ENABLE_SKITY
   if (!image_data.image_resource->GetImage()) {
     return;
@@ -230,6 +231,8 @@ void ImagePainter::PaintImage(GraphicsContext* context,
            static_cast<int>(
                render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
                    content.height()))});
+
+  mipmapped = image_data.image_resource->GetImage()->IsMipmapped();
 #endif  // ENABLE_SKITY
 
 #ifndef ENABLE_SKITY
@@ -307,8 +310,8 @@ void ImagePainter::PaintImage(GraphicsContext* context,
   skity::RRect round_rect = image_data.round_rect;
   if (repeat == ImageRepeat::kNoRepeat) {
     if (round_rect.IsEmpty() || round_rect.IsRect()) {
-      context->DrawImageRect(image, src_rect, dst_rect, GetSamplingOptions(),
-                             &paint);
+      context->DrawImageRect(image, src_rect, dst_rect,
+                             GetSamplingOptions(mipmapped), &paint);
     } else {
       Paint work_paint = paint;
       work_paint.setDrawStyle(DrawStyle::kFill);
@@ -321,7 +324,8 @@ void ImagePainter::PaintImage(GraphicsContext* context,
       auto shader = ColorSource::MakeImage(
           PaintImage::Make(image), TileMode::kDecal, TileMode::kDecal,
           render_box_->ImageFilterMode() == FilterMode::kLinear
-              ? ImageSampling::kLinear
+              ? (mipmapped ? ImageSampling::kMipmapLinear
+                           : ImageSampling::kLinear)
               : ImageSampling::kNearestNeighbor,
           &local_matrix);
       work_paint.setColorSource(shader);
@@ -337,8 +341,8 @@ void ImagePainter::PaintImage(GraphicsContext* context,
     std::vector<skity::Rect> tiles =
         GenerateImageTileRects(output_rect, dst_rect, repeat);
     for (auto& tile : tiles) {
-      context->DrawImageRect(image, src_rect, tile, GetSamplingOptions(),
-                             &paint);
+      context->DrawImageRect(image, src_rect, tile,
+                             GetSamplingOptions(mipmapped), &paint);
     }
   }
 }
@@ -542,8 +546,10 @@ void ImagePainter::PaintBackgroundImage(GraphicsContext* context,
   }
 }
 
-GrSamplingOptions ImagePainter::GetSamplingOptions() const {
-  return SAMPLING_OPTIONS(render_box_->ImageFilterMode(), 0);
+GrSamplingOptions ImagePainter::GetSamplingOptions(bool mipmapped) const {
+  return SAMPLING_OPTIONS(render_box_->ImageFilterMode(),
+                          mipmapped ? ImageSampling::kMipmapLinear
+                                    : ImageSampling::kNearestNeighbor);
 }
 
 void ImagePainter::PaintMaskImage(GrCanvas* canvas,
@@ -733,7 +739,7 @@ void ImagePainter::PaintSingleMaskImage(
     auto image = image_resource->GetGraphicsImage()->gr_image();
 
     CANVAS_DRAW_IMAGE_SRC_RECT(canvas, image, src_rect, dst_rect,
-                               GetSamplingOptions(), mask_paint);
+                               GetSamplingOptions(false), mask_paint);
   } else if (!mask_image.IsSkImage()) {
     auto color_source =
         GradientFactory::CreateShader(mask_image.GetGradient(), src_rect);
