@@ -647,6 +647,69 @@ TEST_F(ElementHelperTest, SetAttributesAsTextTest) {
   }
 }
 
+TEST_F(ElementHelperTest, GetInheritedCSSRulesOfNodeTest) {
+  auto grand_parent = manager->CreateFiberElement("view");
+  auto comp1 = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  grand_parent->SetAttributeHolder(comp1->attribute_holder());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(grand_parent.get()));
+
+  auto parent = manager->CreateFiberElement("view");
+  auto comp2 = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  parent->SetAttributeHolder(comp2->attribute_holder());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(parent.get()));
+
+  auto child = manager->CreateFiberElement("view");
+  auto comp3 = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  child->SetAttributeHolder(comp3->attribute_holder());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(child.get()));
+
+  grand_parent->AddChildAt(parent, 0);
+  parent->AddChildAt(child, 0);
+
+  // Set inline style for grand_parent
+  lynx::devtool::ElementHelper::SetAttributesAsText(grand_parent.get(), "style",
+                                                    "style=height: 200px;");
+
+  // Set inline style for parent
+  lynx::devtool::ElementHelper::SetAttributesAsText(parent.get(), "style",
+                                                    "style=width: 100px;");
+
+  Json::Value res =
+      lynx::devtool::ElementHelper::GetInheritedCSSRulesOfNode(child.get());
+
+  EXPECT_TRUE(res.isArray());
+  EXPECT_EQ(res.size(), 2);  // Two parents (parent and grand_parent)
+
+  // res[0] is parent (closest)
+  Json::Value parent_inherited = res[0];
+  EXPECT_TRUE(parent_inherited.isMember("inlineStyle"));
+  Json::Value parent_inlineStyle = parent_inherited["inlineStyle"];
+  EXPECT_TRUE(parent_inlineStyle.isMember("cssProperties"));
+  EXPECT_TRUE(parent_inlineStyle["cssProperties"].isArray());
+  EXPECT_EQ(parent_inlineStyle["cssProperties"].size(), 1);
+  EXPECT_EQ(parent_inlineStyle["cssProperties"][0]["name"].asString(), "width");
+  EXPECT_EQ(parent_inlineStyle["cssProperties"][0]["value"].asString(),
+            "100px");
+
+  // res[1] is grand_parent
+  Json::Value grand_parent_inherited = res[1];
+  EXPECT_TRUE(grand_parent_inherited.isMember("inlineStyle"));
+  Json::Value grand_parent_inlineStyle = grand_parent_inherited["inlineStyle"];
+  EXPECT_TRUE(grand_parent_inlineStyle.isMember("cssProperties"));
+  EXPECT_TRUE(grand_parent_inlineStyle["cssProperties"].isArray());
+  EXPECT_EQ(grand_parent_inlineStyle["cssProperties"].size(), 1);
+  EXPECT_EQ(grand_parent_inlineStyle["cssProperties"][0]["name"].asString(),
+            "height");
+  EXPECT_EQ(grand_parent_inlineStyle["cssProperties"][0]["value"].asString(),
+            "200px");
+}
+
 }  // namespace testing
 }  // namespace devtool
 }  // namespace lynx
