@@ -302,12 +302,12 @@ public final class LynxFrameView extends UIBodyView {
       mContext.runOnTasmThread(new Runnable() {
         @Override
         public void run() {
-          TemplateData.fromNativeTemplateDataPtr(nativeTemplateDataPtr).recycle();
+          TemplateData.releaseNativeTemplateDataPtr(nativeTemplateDataPtr);
         }
       });
       return;
     }
-    TemplateData.fromNativeTemplateDataPtr(nativeTemplateDataPtr).recycle();
+    TemplateData.releaseNativeTemplateDataPtr(nativeTemplateDataPtr);
   }
 
   @Override
