@@ -41,6 +41,29 @@ void SchedulerStateMachine::SetMeaningfulLayoutState(
   meaningful_layout_state_ = meaningful_layout_state;
 }
 
+void SchedulerStateMachine::Reset() {
+  const auto output_surface_state = output_surface_state_;
+  const auto visible = visible_;
+  begin_frame_state_ = BeginFrameState::IDLE;
+  output_surface_state_ = output_surface_state;
+  meaningful_layout_state_ = MeaningfulLayoutState::DIRTY;
+  raster_state_ = RasterState::IDLE;
+  image_upload_state_ = ImageUploadState::READY;
+  needs_ui_begin_frame_ = false;
+  needs_raster_begin_frame_ = false;
+  needs_upload_image_ = false;
+  visible_ = visible;
+  ui_begin_frame_is_ready_to_send_ = false;
+  needs_redraw_ = false;
+  has_pending_tree_ = false;
+  pending_tree_is_ready_for_activation_ = false;
+  active_tree_has_been_drawn_ = true;
+  did_draw_layer_tree_ = false;
+  inside_raster_frame_deadline_ = false;
+  first_frame_committed_ = false;
+  first_frame_drawn_ = false;
+}
+
 SchedulerStateMachine::Action SchedulerStateMachine::NextAction() const {
   if (ShouldSendUIBeginFrame()) {
     return Action::BEGIN_FRAME;

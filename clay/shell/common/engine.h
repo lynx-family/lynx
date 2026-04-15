@@ -135,6 +135,7 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
 
   void OnEnterForeground();
   void OnEnterBackground();
+  void SetVsyncSourceActive(bool active);
 
   void SetVisible(bool enable);
   void RequestPaint();
@@ -280,11 +281,18 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
 
   void UnregisterDrawableImage(int64_t id) override;
 
-  void CleanForRecycle() override;
   void PrepareForRecycle() override;
+  void CleanForRecycle() override;
 
  private:
   const std::shared_ptr<clay::ServiceManager> service_manager_;
+  // Control whether vsync request and response should be paused when
+  // app/view is in background.
+#if defined(OS_ANDROID) || defined(OS_IOS)
+  bool enable_vsync_pause_ = true;
+#else
+  bool enable_vsync_pause_ = false;
+#endif
   bool pending_layout_;
   TaskRunners task_runners_;
   const Settings settings_;

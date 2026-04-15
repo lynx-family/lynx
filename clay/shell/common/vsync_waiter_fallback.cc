@@ -63,6 +63,9 @@ VsyncWaiterFallback::~VsyncWaiterFallback() = default;
 
 // |VsyncWaiter|
 void VsyncWaiterFallback::AwaitVSync() {
+  if (!IsEngineActive()) {
+    return;
+  }
   static fml::TimeDelta kSingleFrameInterval =
       fml::TimeDelta::FromSecondsF(1.0 / GetRefreshRate());
   auto frame_start_time =
