@@ -112,7 +112,7 @@ if (is_android) {
 
 if (enable_unittests) {
   base_shared_sources += [ "threading/vsync_monitor_default.cc" ]
-  if (!is_android && !is_ios) {
+  if (!is_android) {
     base_shared_sources += [
       "threading/task_runner_vsync.cc",
       "threading/task_runner_vsync.h",
