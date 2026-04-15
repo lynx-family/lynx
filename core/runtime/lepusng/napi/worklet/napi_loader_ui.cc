@@ -26,6 +26,7 @@ void NapiLoaderUI::OnAttach(Napi::Env env) {
       env, context_->name(),
       static_cast<tasm::TemplateAssembler*>(context_->GetDelegate()));
   constexpr const static char* kGlobalLynxName = "lepusLynx";
+  Napi::HandleScope handle_scope(env);
   env.Global()[kGlobalLynxName] =
       NapiLepusLynx::Wrap(std::unique_ptr<LepusLynx>(lynx_), env);
 }
@@ -63,10 +64,8 @@ lepus::QuickContext* NapiLoaderUI::GetQuickContextFromNapiEnv(Napi::Env env) {
 
 std::unordered_map<napi_env, lepus::QuickContext*>&
 NapiLoaderUI::NapiEnvToContextMap() {
-  static thread_local base::NoDestructor<
-      std::unordered_map<napi_env, lepus::QuickContext*>>
-      map{};
-  return *map;
+  static thread_local std::unordered_map<napi_env, lepus::QuickContext*> map;
+  return map;
 }
 
 void NapiLoaderUI::SetNapiEnvToLEPUSContext(Napi::Env env) {

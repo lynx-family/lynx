@@ -18,6 +18,8 @@ namespace runtime {
 namespace js {
 using Module = NapiEnvironment::Module;
 
+static constexpr char kNotifyRuntimeReadyOnRT[] = "notifyRuntimeReadyOnRT";
+
 NapiLoaderJS::NapiLoaderJS(const std::string& id) : id_(id) {}
 
 #if ENABLE_NAPI_BINDING
@@ -129,7 +131,7 @@ void NapiLoaderJS::OnAttach(Napi::Env env) {
     LOGI("napi OnAttach env: " << raw_env << ", ctx: " << raw_env->ctx
                                << ", id: " << id_);
     Napi::HandleScope scope(env);
-    std::string hook_name("notifyRuntimeReadyOnRT");
+    std::string hook_name(kNotifyRuntimeReadyOnRT);
     hook_name += id_;
     env.Global()[hook_name.c_str()] =
         Napi::Function::New(env, &NotifyRuntimeReadyNapi, hook_name.c_str());
@@ -145,6 +147,10 @@ void NapiLoaderJS::OnDetach(Napi::Env env) {
     }
     LOGI("napi OnDetach env: " << raw_env << ", ctx: " << raw_env->ctx
                                << ", id: " << id_);
+
+    std::string hook_name(kNotifyRuntimeReadyOnRT);
+    hook_name += id_;
+    env.Global().Delete(hook_name.c_str());
   }
 }
 
