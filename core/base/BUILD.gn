@@ -105,6 +105,7 @@ if (is_android) {
 } else if (is_win) {
   base_shared_sources += [
     "threading/js_thread_config_getter.cc",
+    "threading/vsync_monitor_default.cc",
     "utils/paths_win.cc",
     "utils/paths_win.h",
   ]

@@ -74,7 +74,7 @@ lynx_env_shared_sources = [
   "lynx_trail_hub.h",
 ]
 
-if (is_apple || is_android || is_linux) {
+if (is_apple || is_android || is_linux || is_win) {
   lynx_env_shared_sources += [ "sys_lynx_env/sys_env_default.cc" ]
 }
 

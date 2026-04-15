@@ -41,6 +41,9 @@ config("quickjs_private_config") {
     "LYNX_DEV",
     "CONFIG_VERSION=\"2019-09-10\"",
   ]
+  if (is_win && !enable_primjs_prebuilt_lib) {
+    defines += [ "QJS_STATIC_LIBRARY" ]
+  }
   if (is_win) {
     defines += [
       "ALLOCATE_WINDOWS",
@@ -56,6 +59,10 @@ config("quickjs_public_config") {
     "./src/src/interpreter",
   ]
   cflags = []
+  defines = []
+  if (is_win && !enable_primjs_prebuilt_lib) {
+    defines += [ "QJS_STATIC_LIBRARY" ]
+  }
   if (is_win) {
     cflags += [ "-Wno-c99-designator" ]
   }

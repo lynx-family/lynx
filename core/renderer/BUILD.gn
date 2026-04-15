@@ -62,8 +62,10 @@ lynx_core_source_set("tasm") {
       "../resource",
       "../runtime",
       "../shared_data",
-      "../shell",
     ]
+    if (!is_oliver_tasm) {
+      public_deps += [ "../shell" ]
+    }
   }
 
   if (enable_unittests) {

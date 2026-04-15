@@ -36,7 +36,9 @@ declare_args() {
 }
 
 if (is_win) {
-  build_lepus_compile = false
+  if (!(defined(is_oliver_tasm) && is_oliver_tasm)) {
+    build_lepus_compile = false
+  }
 } else if (is_android) {
   declare_args() {
     # gradle will pass these args when building Android.

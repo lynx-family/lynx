@@ -23,12 +23,16 @@ config("napi_config") {
 }
 
 config("private_config") {
+  defines = []
   cflags = [
     "-Wno-sign-compare",
     "-Wno-unused-function",
   ]
+  if (is_win && !enable_primjs_prebuilt_lib) {
+    defines += [ "QJS_STATIC_LIBRARY" ]
+  }
   if (is_win) {
-    defines = [ "OS_WIN" ]
+    defines += [ "OS_WIN" ]
     cflags += [ "-Wno-c99-designator" ]
   }
   include_dirs = [
