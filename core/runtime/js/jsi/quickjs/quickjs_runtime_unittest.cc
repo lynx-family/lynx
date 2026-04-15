@@ -37,7 +37,7 @@ TEST_P(QuickjsRuntimeTest, PrepareJavaScriptTest) {
     lynx_modp_b64_decode(bytecode);
     auto prep = rt.prepareJavaScript(
         std::make_shared<StringBuffer>(std::move(bytecode)), "bytecode.js");
-    auto res = rt.evaluatePreparedJavaScript(prep);
+    auto res = rt.evaluatePreparedJavaScript(*prep);
     EXPECT_TRUE(res.has_value());
     EXPECT_EQ(rt.global().getProperty(rt, "q")->getNumber(), 1);
     CheckPrepareJSEvent("bytecode.js", true, cache::JsScriptType::BINARY, 0ul,

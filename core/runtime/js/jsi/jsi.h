@@ -376,11 +376,9 @@ class LYNX_EXPORT Runtime {
   /// particular concrete type of Runtime from which it was created. It may be
   /// used (via evaluatePreparedJavaScript) in any Runtime of the same concrete
   /// type.
-  /// The PreparedJavaScript object may be passed to multiple VM instances, so
-  /// they can all share and benefit from the prepared script.
   /// As with evaluateJavaScript(), using JavaScript code should be avoided
   /// when the JSI API is sufficient.
-  virtual std::shared_ptr<const PreparedJavaScript> prepareJavaScript(
+  virtual std::unique_ptr<const PreparedJavaScript> prepareJavaScript(
       const std::shared_ptr<const Buffer>& buffer, std::string source_url,
       int start_line_offset = 0) = 0;
 
@@ -389,7 +387,7 @@ class LYNX_EXPORT Runtime {
   /// As with evaluateJavaScript(), using JavaScript code should be avoided
   /// when the JSI API is sufficient.
   virtual base::expected<Value, JSINativeException> evaluatePreparedJavaScript(
-      const std::shared_ptr<const PreparedJavaScript>& js) = 0;
+      const PreparedJavaScript& js) = 0;
 
   /// \return the global object
   virtual Object global() = 0;

@@ -53,12 +53,12 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
       const std::shared_ptr<const Buffer> &buffer,
       const std::string &source_url) override;
 
-  std::shared_ptr<const PreparedJavaScript> prepareJavaScript(
+  std::unique_ptr<const PreparedJavaScript> prepareJavaScript(
       const std::shared_ptr<const Buffer> &buffer, std::string source_url,
       int start_line_offset = 0) override;
 
   base::expected<Value, JSINativeException> evaluatePreparedJavaScript(
-      const std::shared_ptr<const PreparedJavaScript> &js) override;
+      const PreparedJavaScript &js) override;
 
   Object global() override;
 
@@ -211,7 +211,7 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
   std::shared_ptr<QuickjsContextWrapper> CreateContext_(
       std::shared_ptr<VMInstance> vm) const;
 
-  std::shared_ptr<const PreparedJavaScript> PrepareJavaScriptBytecode(
+  std::unique_ptr<const PreparedJavaScript> PrepareJavaScriptBytecode(
       const std::shared_ptr<const Buffer> &buffer, std::string source_url,
       cache::JsCacheErrorCode &error_code);
 

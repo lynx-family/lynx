@@ -289,7 +289,7 @@ void BTSRuntime::TransitionToFullRuntime() {
   runtime::js::Scope scope(*rt);
   for (auto& [url, buffer] : preload_js_sources) {
     auto prep = rt->prepareJavaScript(buffer, url);
-    auto ret = rt->evaluatePreparedJavaScript(prep);
+    auto ret = rt->evaluatePreparedJavaScript(*prep);
     if (!ret.has_value()) {
       rt->reportJSIException(ret.error());
     }

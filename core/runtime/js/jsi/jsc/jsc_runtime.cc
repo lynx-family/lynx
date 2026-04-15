@@ -86,24 +86,22 @@ std::shared_ptr<JSIContext> JSCRuntime::createContext(
 
 std::shared_ptr<JSIContext> JSCRuntime::getSharedContext() { return ctx_; }
 
-std::shared_ptr<const PreparedJavaScript> JSCRuntime::prepareJavaScript(
+std::unique_ptr<const PreparedJavaScript> JSCRuntime::prepareJavaScript(
     const std::shared_ptr<const Buffer>& buffer, std::string source_url,
     int start_line_offset) {
-  return std::make_shared<SourceJavaScriptPreparation>(
+  return std::make_unique<SourceJavaScriptPreparation>(
       buffer, std::move(source_url), start_line_offset);
 }
 
 base::expected<Value, JSINativeException>
-JSCRuntime::evaluatePreparedJavaScript(
-    const std::shared_ptr<const PreparedJavaScript>& js) {
+JSCRuntime::evaluatePreparedJavaScript(const PreparedJavaScript& js) {
   DCHECK(
       // TODO
-      static_cast<const SourceJavaScriptPreparation*>(js.get()) &&
+      static_cast<const SourceJavaScriptPreparation*>(&js) &&
       "preparedJavaScript must be a SourceJavaScriptPreparation");
-  auto sourceJs =
-      std::static_pointer_cast<const SourceJavaScriptPreparation>(js);
-  return evaluateJavaScript(sourceJs, sourceJs->source_url,
-                            sourceJs->start_line_offset);
+  const auto* source_js = static_cast<const SourceJavaScriptPreparation*>(&js);
+  return evaluateJavaScript(source_js->buffer(), source_js->source_url,
+                            source_js->start_line_offset);
 }
 
 base::expected<Value, JSINativeException> JSCRuntime::evaluateJavaScript(

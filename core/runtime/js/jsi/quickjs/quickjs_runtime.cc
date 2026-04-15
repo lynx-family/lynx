@@ -194,7 +194,7 @@ QuickjsRuntime::evaluateJavaScriptBytecode(
   return eval_res;
 }
 
-std::shared_ptr<const PreparedJavaScript> QuickjsRuntime::prepareJavaScript(
+std::unique_ptr<const PreparedJavaScript> QuickjsRuntime::prepareJavaScript(
     const std::shared_ptr<const Buffer> &buffer, std::string source_url,
     int start_line_offset) {
   std::shared_ptr<Buffer> cache;
@@ -217,23 +217,14 @@ std::shared_ptr<const PreparedJavaScript> QuickjsRuntime::prepareJavaScript(
       cache ? cache::JsScriptType::LOCAL_BINARY : cache::JsScriptType::SOURCE,
       base::CurrentTimeMilliseconds() - cost_start, error_code);
 #endif
-  return std::make_shared<QuickjsJavaScriptPreparation>(
+  return std::make_unique<QuickjsJavaScriptPreparation>(
       buffer, cache, std::move(source_url), start_line_offset);
 }
 
 base::expected<Value, JSINativeException>
-QuickjsRuntime::evaluatePreparedJavaScript(
-    const std::shared_ptr<const PreparedJavaScript> &js) {
-  if (!js) {
-    LOGE(
-        "QuickjsRuntime::evaluatePreparedJavaScript failed; PreparedJavaScript "
-        "is null.");
-    return base::unexpected<JSINativeException>(BUILD_JSI_NATIVE_EXCEPTION(
-        "QuickjsRuntime::evaluatePreparedJavaScript failed; "
-        "PreparedJavaScript is null."));
-  }
+QuickjsRuntime::evaluatePreparedJavaScript(const PreparedJavaScript &js) {
   const QuickjsJavaScriptPreparation *preparation =
-      static_cast<const QuickjsJavaScriptPreparation *>(js.get());
+      static_cast<const QuickjsJavaScriptPreparation *>(&js);
   LOGI("QuickjsRuntime::evaluatePreparedJavaScript start: "
        << preparation->source_url);
 
@@ -957,7 +948,7 @@ bool QuickjsRuntime::IsJavaScriptBytecode(
   return quickjs::QuickjsBytecodeProvider::IsBytecode(buffer);
 }
 
-std::shared_ptr<const PreparedJavaScript>
+std::unique_ptr<const PreparedJavaScript>
 QuickjsRuntime::PrepareJavaScriptBytecode(
     const std::shared_ptr<const Buffer> &buffer, std::string source_url,
     cache::JsCacheErrorCode &error_code) {
@@ -978,7 +969,7 @@ QuickjsRuntime::PrepareJavaScriptBytecode(
     return nullptr;
   }
   auto cache = provider.value().GetRawBytecode();
-  return std::make_shared<QuickjsJavaScriptPreparation>(
+  return std::make_unique<QuickjsJavaScriptPreparation>(
       nullptr, std::move(cache), std::move(source_url), 0);
 }
 

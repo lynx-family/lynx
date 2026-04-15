@@ -1225,15 +1225,15 @@ TEST_P(JSITest, PreparedJavaScriptSourceTest) {
   auto prep = rt.prepareJavaScript(std::make_unique<StringBuffer>("q++;"),
                                    "/app-service.js");
   EXPECT_EQ(rt.global().getProperty(rt, "q")->getNumber(), 0);
-  ret = rt.evaluatePreparedJavaScript(prep);
+  ret = rt.evaluatePreparedJavaScript(*prep);
   EXPECT_TRUE(ret.has_value());
   EXPECT_EQ(rt.global().getProperty(rt, "q")->getNumber(), 1);
-  ret = rt.evaluatePreparedJavaScript(prep);
+  ret = rt.evaluatePreparedJavaScript(*prep);
   EXPECT_TRUE(ret.has_value());
   EXPECT_EQ(rt.global().getProperty(rt, "q")->getNumber(), 2);
   prep = rt.prepareJavaScript(std::make_unique<StringBuffer>("q++;"),
                               "/app-service.js");
-  ret = rt.evaluatePreparedJavaScript(prep);
+  ret = rt.evaluatePreparedJavaScript(*prep);
   EXPECT_TRUE(ret.has_value());
   EXPECT_EQ(rt.global().getProperty(rt, "q")->getNumber(), 3);
   rt.SetEnableUserBytecode(false);

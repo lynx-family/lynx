@@ -94,17 +94,17 @@ std::shared_ptr<JSIContext> V8Runtime::createContext(
 
 std::shared_ptr<JSIContext> V8Runtime::getSharedContext() { return context_; }
 
-std::shared_ptr<const PreparedJavaScript> V8Runtime::prepareJavaScript(
+std::unique_ptr<const PreparedJavaScript> V8Runtime::prepareJavaScript(
     const std::shared_ptr<const Buffer>& buffer, std::string source_url,
     int start_line_offset) {
-  return std::make_shared<SourceJavaScriptPreparation>(
+  return std::make_unique<SourceJavaScriptPreparation>(
       buffer, std::move(source_url), start_line_offset);
 }
 
 base::expected<Value, JSINativeException> V8Runtime::evaluatePreparedJavaScript(
-    const std::shared_ptr<const PreparedJavaScript>& js) {
+    const PreparedJavaScript& js) {
   const SourceJavaScriptPreparation* source =
-      static_cast<const SourceJavaScriptPreparation*>(js.get());
+      static_cast<const SourceJavaScriptPreparation*>(&js);
   return evaluateJavaScript(source->buffer(), source->source_url,
                             source->start_line_offset);
 }

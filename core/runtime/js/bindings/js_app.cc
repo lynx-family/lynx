@@ -2203,7 +2203,7 @@ void App::EvaluateScript(const std::string& url, std::string script,
     Scope scope(*rt);
     auto prepared_script = rt->prepareJavaScript(
         std::make_shared<StringBuffer>(std::move(script)), url);
-    auto ret = rt->evaluatePreparedJavaScript(prepared_script);
+    auto ret = rt->evaluatePreparedJavaScript(*prepared_script);
     if (!ret.has_value()) {
       auto error_str = ret.error().ToString();
       auto js_error_value = Value(String::createFromUtf8(
@@ -2933,7 +2933,7 @@ base::expected<Value, JSINativeException> App::loadScript(
 
       auto prep =
           rt->prepareJavaScript(std::move(content).GetBuffer(), source_url);
-      auto ret = rt->evaluatePreparedJavaScript(prep);
+      auto ret = rt->evaluatePreparedJavaScript(*prep);
       if (is_app_service_js) {
         state_ = ret.has_value() ? State::kAppLoaded : State::kAppLoadFailed;
       }
@@ -3701,7 +3701,7 @@ base::expected<Value, JSINativeException> App::LoadCustomSectionScript(
     }
     const auto buffer = std::make_shared<StringBuffer>(std::move(source_code));
     auto prep = rt->prepareJavaScript(buffer, key);
-    return rt->evaluatePreparedJavaScript(prep);
+    return rt->evaluatePreparedJavaScript(*prep);
   }
 }
 
