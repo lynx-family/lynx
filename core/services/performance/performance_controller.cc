@@ -28,6 +28,8 @@ void PerformanceController::SetPlatformImpl(
 void PerformanceController::OnPerformanceEvent(
     std::unique_ptr<pub::Value> entry, EventType type) {
   entry->PushInt32ToMap("instanceId", instance_id_);
+  performance_entries_.emplace_back(
+      pub::ValueUtils::ConvertValueToLepusValue(*entry));
   if ((type & kEventTypePlatform) && platform_impl_) {
     platform_impl_->OnPerformanceEvent(entry);
   }
@@ -35,6 +37,20 @@ void PerformanceController::OnPerformanceEvent(
     js_blocking_monitor_->OnPerformanceEvent(entry);
   }
   delegate_->OnPerformanceEvent(std::move(entry), type);
+}
+
+std::unique_ptr<pub::Value> PerformanceController::GetAllPerformanceEntries()
+    const {
+  auto entries = value_factory_->CreateArray();
+  for (const auto& entry : performance_entries_) {
+    entries->PushValueToArray(pub::ValueImplLepus(entry));
+  }
+  return entries;
+}
+
+void PerformanceController::ResetStateBeforeReload() {
+  timing_handler_.ResetTimingBeforeReload();
+  performance_entries_.clear();
 }
 
 }  // namespace performance

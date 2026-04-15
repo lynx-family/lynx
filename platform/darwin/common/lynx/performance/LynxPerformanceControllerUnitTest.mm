@@ -146,6 +146,46 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
       }];
 }
 
+- (void)testMemoryMonitorTeardownAfterAllocation {
+  NSString *category = @"test";
+  float sizeBytes = 1024;
+
+  [self
+      asyncVerify:^{
+        [self.controller allocateMemory:^LynxMemoryRecord * {
+          return [[LynxMemoryRecord alloc] initWithCategory:category
+                                                  sizeBytes:sizeBytes
+                                                     detail:nil];
+        }];
+      }
+      check:^(LynxPerformanceEntry *entry) {
+        XCTAssertEqualObjects(entry.name, @"memory");
+        XCTAssertEqualObjects(entry.entryType, @"memory");
+      }];
+
+  _actor.reset();
+}
+
+- (void)testResetTimingBeforeReloadClearsPerformanceEntries {
+  [self
+      asyncVerify:^{
+        [self.controller onPerformanceEvent:[[LynxPerformanceEntry alloc] init]];
+      }
+      check:^(LynxPerformanceEntry *entry) {
+        XCTAssertNotNil(entry);
+      }];
+
+  [self.controller resetTimingBeforeReload];
+  _actor->ActSync([](const std::unique_ptr<performance::PerformanceController> &) {});
+
+  size_t entriesCount =
+      _actor->ActSync([](const std::unique_ptr<performance::PerformanceController> &controller) {
+        auto entries = controller->GetAllPerformanceEntries();
+        return static_cast<size_t>(entries->Length());
+      });
+  XCTAssertEqual(entriesCount, 0u);
+}
+
 - (void)testTimingCollectorProtocolMethods {
   NSString *testKey = @"testMark";
   XCTAssertNoThrow([self.controller markTiming:testKey pipelineID:nil]);

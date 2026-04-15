@@ -393,6 +393,15 @@ TEST_F(DevToolMediatorTest, GetAllTimingInfoTest) {
             "{\n   \"id\" : 1\n}\n");
 }
 
+TEST_F(DevToolMediatorTest, GetAllPerformanceEntriesTest) {
+  Json::Value param;
+  param["id"] = 1;
+  devtool_mediator_->getAllPerformanceEntries(message_sender_, param);
+  ui_thread_->Join();
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"id\" : 1\n}\n");
+}
+
 TEST_F(DevToolMediatorTest, AddCDPEventListener) {
   auto listener_sender =
       std::make_shared<devtool::CDPEventListenerSenderMock>();

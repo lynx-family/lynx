@@ -211,7 +211,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
     return;
   }
   [self ActAsync:^(const std::unique_ptr<performance::PerformanceController>& controller) {
-    controller->GetTimingHandler().ResetTimingBeforeReload();
+    controller->ResetStateBeforeReload();
   }];
 }
 

@@ -635,6 +635,28 @@ void InspectorUIExecutor::getAllTimingInfo(
   sender->SendMessage("CDP", response);
 }
 
+void InspectorUIExecutor::getAllPerformanceEntries(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  Json::Value response(Json::ValueType::objectValue);
+  if (!ShellIsDestroyed()) {
+    Json::Value entries;
+    Json::Value result(Json::ValueType::objectValue);
+    Json::Reader reader;
+
+    lynx::lepus::Value all_performance_entries =
+        shell_->GetAllPerformanceEntries();
+    std::string entries_string =
+        lynx::devtool::ConvertLepusValueToJsonValue(all_performance_entries);
+
+    reader.parse(entries_string, entries);
+    result["entries"] = entries;
+    response["result"] = result;
+  }
+  response["id"] = message["id"].asInt64();
+  sender->SendMessage("CDP", response);
+}
+
 // end performance protocol
 
 // start input protocol

@@ -59,5 +59,6 @@ lynx_core_source_set("performance") {
   deps = [
     "../../../base/src:base_log_headers",
     "../../../third_party/rapidjson",
+    "../timing_handler",
   ]
 }
