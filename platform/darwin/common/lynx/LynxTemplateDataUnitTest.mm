@@ -430,6 +430,23 @@
   XCTAssertEqual(value, copiedValue);
 }
 
+- (void)testNativeTemplateDataLazyMaterializeForJSThread {
+  NSDictionary* dictionary = @{@"key1" : @1, @"key2" : @"value"};
+  auto nativeValue = LynxConvertToLepusValue(dictionary);
+  auto nativeTemplateData =
+      std::make_shared<lynx::tasm::TemplateData>(nativeValue, true, "test_processor");
+
+  LynxTemplateData* data = [[LynxTemplateData alloc] initWithNativeTemplateData:nativeTemplateData];
+
+  XCTAssertTrue(LynxTemplateDataHasNativeTemplateData(data));
+  XCTAssertTrue(LynxGetNativeTemplateDataFromTemplateData(data) == nativeTemplateData);
+  XCTAssertTrue(data.isReadOnly);
+
+  LynxTemplateData* copiedTemplateData = [data getTemplateDataForJSThread];
+  XCTAssertEqual(nativeValue, [copiedTemplateData getDataForJSThread]);
+  XCTAssertEqual(nativeValue, [data getDataForJSThread]);
+}
+
 - (void)testRemoveData {
   LynxTemplateData* data = [[LynxTemplateData alloc] initWithDictionary:@{}];
   [data updateDouble:1 forKey:@"key1"];
