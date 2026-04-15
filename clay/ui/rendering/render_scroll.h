@@ -23,7 +23,6 @@ class RenderScroll : public RenderBox {
   const char* GetName() const override;
   void Paint(PaintingContext& context, const FloatPoint& offset) override;
   bool IsRepaintBoundary() const override { return true; }
-  bool HasClip() const override { return true; }
 
   virtual bool ScrollTo(float scroll_x, float scroll_y);
 
