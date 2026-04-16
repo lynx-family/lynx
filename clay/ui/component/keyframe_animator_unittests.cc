@@ -126,6 +126,27 @@ Value CreateKeyFrameData3() {
 
 }  // namespace
 
+TEST_F_UI(KeyFrameTest, SetBoundCouplesTopWithHeightTransition) {
+  animator_view_->SetBound(0, 200, 100, 100);
+
+  TransitionData height_transition;
+  height_transition.property = ClayAnimationPropertyType::kHeight;
+  height_transition.duration = 240;
+  animator_view_->SetTransition({height_transition});
+
+  animator_view_->OnNodeReady();
+  animator_view_->SetBound(0, 100, 100, 200);
+
+  EXPECT_FLOAT_EQ(animator_view_->GetBounds().x(), 0.f);
+  EXPECT_FLOAT_EQ(animator_view_->GetBounds().y(), 200.f);
+  EXPECT_FLOAT_EQ(animator_view_->GetBounds().width(), 100.f);
+  EXPECT_FLOAT_EQ(animator_view_->GetBounds().height(), 100.f);
+  EXPECT_TRUE(animator_view_->TransitionMgr()->IsAnimationRunning(
+      ClayAnimationPropertyType::kHeight));
+  EXPECT_TRUE(animator_view_->TransitionMgr()->IsAnimationRunning(
+      ClayAnimationPropertyType::kTop));
+}
+
 // Test start and default values
 TEST_F_UI(KeyFrameTest, DefaultStartAndEnd) {
   Value keyframes_data = CreateKeyFrameData1();
