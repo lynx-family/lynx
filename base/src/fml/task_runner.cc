@@ -48,19 +48,19 @@ void TaskRunner::BindOnCreate(fml::RefPtr<MessageLoopImpl> loop) {
 }
 
 TaskRunner::~TaskRunner() {
-  if (loop_) {
-    loop_->PostTask(
-        [loop = loop_, queue_id = queue_id_]() {
-          loop->UnBind(queue_id);
-          MessageLoopTaskQueues::GetInstance()->DisposeTasks(queue_id);
-          MessageLoopTaskQueues::GetInstance()->Dispose(queue_id);
-        },
-        fml::TimePoint::Now(), fml::TaskSourceGrade::kEmergency);
-  } else {
-    MessageLoopTaskQueues::GetInstance()->DisposeTasks(queue_id_);
-    MessageLoopTaskQueues::GetInstance()->Dispose(queue_id_);
+  if (loop_ &&
+      loop_->PostTask(
+          [loop = loop_, queue_id = queue_id_]() {
+            loop->UnBind(queue_id);
+            MessageLoopTaskQueues::GetInstance()->DisposeTasks(queue_id);
+            MessageLoopTaskQueues::GetInstance()->Dispose(queue_id);
+          },
+          fml::TimePoint::Now(), fml::TaskSourceGrade::kEmergency)) {
+    return;
   }
-};
+  MessageLoopTaskQueues::GetInstance()->DisposeTasks(queue_id_);
+  MessageLoopTaskQueues::GetInstance()->Dispose(queue_id_);
+}
 
 void TaskRunner::PostTask(base::closure task) {
   if (delegate_) {

@@ -54,7 +54,7 @@ class BASE_EXPORT MessageLoopImpl
 
   virtual void Terminate() = 0;
 
-  void PostTask(base::closure task, fml::TimePoint target_time,
+  bool PostTask(base::closure task, fml::TimePoint target_time,
                 fml::TaskSourceGrade task_source_grade =
                     fml::TaskSourceGrade::kUnspecified,
                 bool instant_task_hint = false);

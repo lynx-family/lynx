@@ -33,7 +33,7 @@ MessageLoopImpl::~MessageLoopImpl() {
   task_queue_->Dispose(internal_queue_id_);
 }
 
-void MessageLoopImpl::PostTask(base::closure task, fml::TimePoint target_time,
+bool MessageLoopImpl::PostTask(base::closure task, fml::TimePoint target_time,
                                fml::TaskSourceGrade task_source_grade,
                                bool instant_task_hint) {
   // TODO(zhengsenyao): Uncomment DCHECK code when DCHECK available.
@@ -41,10 +41,11 @@ void MessageLoopImpl::PostTask(base::closure task, fml::TimePoint target_time,
   if (terminated_) {
     // If the message loop has already been terminated, PostTask should destruct
     // |task| synchronously within this function.
-    return;
+    return false;
   }
   task_queue_->RegisterTask(internal_queue_id_, std::move(task), target_time,
                             task_source_grade, instant_task_hint);
+  return true;
 }
 
 void MessageLoopImpl::AddTaskObserver(intptr_t key, base::closure callback) {
