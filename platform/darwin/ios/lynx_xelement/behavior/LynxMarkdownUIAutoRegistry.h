@@ -1,0 +1,20 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#import <Foundation/Foundation.h>
+#import <Lynx/LynxUI.h>
+#import <XElement/LynxMarkdownShadowNode.h>
+#import <XElement/LynxMarkdownUI.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface LynxMarkdownShadowNodeAutoRegistry : LynxMarkdownShadowNode
+
+@end
+
+@interface LynxMarkdownUIAutoRegistry : LynxMarkdownUI
+
+@end
+
+NS_ASSUME_NONNULL_END

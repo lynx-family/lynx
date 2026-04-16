@@ -43,6 +43,7 @@ podspec_target("XElement_podspec") {
       "ViewPager",
       "SVG",
       "Refresh",
+      "Markdown",
       "Behavior",
     ]
   }
@@ -50,6 +51,7 @@ podspec_target("XElement_podspec") {
   deps = [
     ":Behavior",
     ":Input",
+    ":Markdown",
     ":Overlay",
     ":Refresh",
     ":SVG",
@@ -196,8 +198,43 @@ subspec_target("Refresh") {
   dependency += lynx_dependency
 }
 
+subspec_target("Markdown") {
+  sources = [
+    "markdown/LynxMarkdownShadowNode.h",
+    "markdown/LynxMarkdownShadowNode.m",
+    "markdown/LynxMarkdownUI.h",
+    "markdown/LynxMarkdownUI.m",
+    "markdown/LynxMarkdownView.h",
+    "markdown/LynxMarkdownView.m",
+    "markdown/adaptor/LynxMarkdownBundle.h",
+    "markdown/adaptor/LynxMarkdownBundle.m",
+    "markdown/adaptor/LynxMarkdownEventDispatcher.h",
+    "markdown/adaptor/LynxMarkdownEventDispatcher.m",
+    "markdown/adaptor/LynxMarkdownInlineViewHandle.h",
+    "markdown/adaptor/LynxMarkdownInlineViewHandle.m",
+    "markdown/adaptor/LynxMarkdownResourceLoader.h",
+    "markdown/adaptor/LynxMarkdownResourceLoader.m",
+    "markdown/adaptor/LynxServalMarkdownViewWrapper.h",
+    "markdown/adaptor/LynxServalMarkdownViewWrapper.m",
+  ]
+  public_header_files = [
+    "markdown/LynxMarkdownShadowNode.h",
+    "markdown/LynxMarkdownUI.h",
+    "markdown/LynxMarkdownView.h",
+  ]
+
+  dependency = [ [
+        "ServalMarkdown",
+        "0.0.28-alpha.4",
+      ] ]
+
+  dependency += lynx_dependency
+}
+
 subspec_target("Behavior") {
   sources = [
+    "behavior/LynxMarkdownUIAutoRegistry.h",
+    "behavior/LynxMarkdownUIAutoRegistry.m",
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIInputAutoRegistry.m",
     "behavior/LynxUIOverlayAutoRegistry.h",
@@ -214,6 +251,7 @@ subspec_target("Behavior") {
     "behavior/LynxUIViewPagerAutoRegistry.m",
   ]
   public_header_files = [
+    "behavior/LynxMarkdownUIAutoRegistry.h",
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.h",
     "behavior/LynxUIRefreshAutoRegistry.h",
@@ -226,6 +264,7 @@ subspec_target("Behavior") {
   dependency = lynx_dependency
   dependency += [
     "XElement/Input",
+    "XElement/Markdown",
     "XElement/Overlay",
     "XElement/ScrollCoordinator",
     "XElement/ViewPager",
