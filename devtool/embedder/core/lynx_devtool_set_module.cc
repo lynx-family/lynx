@@ -96,14 +96,18 @@ std::unique_ptr<pub::Value> LynxDevToolSetModule::IsLynxDebugEnabled(
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchLynxDebug(
     std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
+  if (!args) {
+    return nullptr;
+  }
+  auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
+  if (!lepus_args.IsArray() || lepus_args.Array()->size() != 1) {
+    return nullptr;
+  }
+
   // TODO(mitchilling): remove this value set after lifecycle implemented on all
   // platforms
   SetSwitch(std::move(args), tasm::LynxEnv::kLynxDebugEnabled);
   // FIXME(mitchilling): Trying to enable may not take effect.
-  auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
-  if (lepus_args.Array()->size() != 1) {
-    return std::unique_ptr<pub::Value>(nullptr);
-  }
 
   bool switch_value = lepus_args.Array()->get(0).Bool();
   if (switch_value) {
@@ -111,7 +115,7 @@ std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchLynxDebug(
   } else {
     lynx::tasm::DevToolLifecycle::GetInstance().OnDisabled();
   }
-  return std::unique_ptr<pub::Value>(nullptr);
+  return nullptr;
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::IsDevToolEnabled(
