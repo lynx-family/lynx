@@ -166,11 +166,10 @@ void ListEventCallbackManager::NotifyScrolled(
   HandleScrolled(scrolled, offset, current_status);
 }
 
-void ListEventCallbackManager::SendScrollEvent(const char* event_name,
-                                               const FloatPoint& scrolled,
-                                               const FloatPoint& offset,
-                                               const FloatSize& content,
-                                               const bool is_dragging) const {
+void ListEventCallbackManager::SendScrollEvent(
+    const char* event_name, const FloatPoint& scrolled,
+    const FloatPoint& offset, const FloatSize& content, const bool is_dragging,
+    [[maybe_unused]] const EventSource event_source) const {
   std::vector<float> left_array, right_array, top_array, bottom_array;
   std::vector<int> position_array;
   std::vector<std::string> id_array;
@@ -197,6 +196,7 @@ void ListEventCallbackManager::SendScrollEvent(const char* event_name,
     cells_array[i] = clay::Value(std::move(cell));
   }
   args["attachedCells"] = clay::Value(std::move(cells_array));
+  args["eventSource"] = clay::Value(static_cast<int>(event_source));
   page_view_->SendCustomEvent(callback_id_, event_name, std::move(args));
 }
 

@@ -33,8 +33,8 @@ void ListContainerEventCallbackManager::NotifyScrollStateChange(
 
 void ListContainerEventCallbackManager::SendScrollEvent(
     const char* event_name, const FloatPoint& scrolled,
-    const FloatPoint& offset, const FloatSize& content,
-    const bool is_dragging) const {
+    const FloatPoint& offset, const FloatSize& content, const bool is_dragging,
+    [[maybe_unused]] const EventSource event_source) const {
   clay::Value::Array cells_array;
   if (needs_visible_cells_) {
     cells_array = static_cast<ListContainerView*>(view_)->GetVisibleCells();
@@ -42,9 +42,10 @@ void ListContainerEventCallbackManager::SendScrollEvent(
   page_view_->SendEvent(
       callback_id_, event_name,
       {"scrollLeft", "scrollTop", "scrollHeight", "scrollWidth", "deltaX",
-       "deltaY", "isDragging", "attachedCells"},
+       "deltaY", "isDragging", "attachedCells", "eventSource"},
       offset.x(), offset.y(), content.height(), content.width(), scrolled.x(),
-      scrolled.y(), is_dragging, std::move(cells_array));
+      scrolled.y(), is_dragging, std::move(cells_array),
+      static_cast<int>(event_source));
 }
 
 void ListContainerEventCallbackManager::SendScrollStateChangeEvent(
