@@ -179,7 +179,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool IsDescendant(BaseView* a_view) const;
 
   void SetRepaintBoundary(bool repaint_boundary);
-  virtual void SetDirection(int type){};
+  virtual void SetDirection(int type) {}
   virtual void SetX(float x);
   virtual void SetY(float y);
   virtual void SetWidth(float width);
@@ -611,7 +611,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void SetProperty(ClayAnimationPropertyType type,
                    const FilterOperations& value);
   const KeyframesMap* GetKeyframesMap(const std::string& animation_name);
-  FloatSize PercentageResolutionSize() { return {Width(), Height()}; }
+  FloatSize PercentageResolutionSize() const { return {Width(), Height()}; }
 
   void DecodeImagesRecursively();
 
@@ -676,6 +676,10 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   void UpdateRenderObjectTransformOrigin();
   void OnAnimationNodeReady();
+  void OnTransitionAnimationReady();
+  bool IsTransitionAnimationReady() const {
+    return transition_animation_ready_;
+  }
 
 #ifdef ENABLE_ACCESSIBILITY
   // Some views can update its specific semantics data.
@@ -783,6 +787,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   std::vector<BaseView*> sorted_children_;
   bool ignore_size_change_checks_ = false;
+  bool transition_animation_ready_ = false;
   // gesture handler
   GestureMap gesture_detector_map_;
   GestureHandlerMap gesture_handler_map_;

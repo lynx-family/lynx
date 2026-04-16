@@ -59,6 +59,40 @@ class MockAnimatorListener : public AnimatorListener {
 };
 }  // namespace
 
+TEST(TransformOperationsTest, TranslateYPercentageDetectionUsesFirstSlot) {
+  ClayTransformOP op{};
+  op.type = ClayTransformType::kTranslateY;
+  op.value[0] = 1.f;
+  op.unit[0] = ClayPlatformLengthUnit::kPercentage;
+
+  auto keyframe_set = RawTransformKeyframeSet::Create();
+  keyframe_set->AddKeyframe(
+      RawTransformKeyframe::Create(0.f, std::vector<ClayTransformOP>{op},
+                                   Interpolator::CreateDefaultInterpolator()));
+
+  EXPECT_TRUE(keyframe_set->HasPercentageValues());
+}
+
+TEST_F_UI(KeyFrameTest, TransitionStartsAfterNodeReady) {
+  animator_view_->SetBound(0, 0, 100, 0);
+
+  TransitionData height_transition;
+  height_transition.property = ClayAnimationPropertyType::kHeight;
+  height_transition.duration = 240;
+  animator_view_->SetTransition({height_transition});
+
+  animator_view_->SetBound(0, 0, 100, 200);
+
+  EXPECT_FLOAT_EQ(animator_view_->Height(), 200.f);
+
+  animator_view_->OnNodeReady();
+  animator_view_->SetHeight(100);
+
+  EXPECT_FLOAT_EQ(animator_view_->Height(), 200.f);
+  EXPECT_TRUE(animator_view_->TransitionMgr()->IsAnimationRunning(
+      ClayAnimationPropertyType::kHeight));
+}
+
 namespace {
 
 static std::string FractionKeyFromPercent(int percent) {
@@ -101,6 +135,7 @@ TEST_F_UI(KeyFrameTest, DefaultStartAndEnd) {
   animation_data_.clear();
   animation_data_.push_back(start_data_);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   int64_t frame_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
   for (size_t i = 0; i < 10; i++) {
@@ -167,6 +202,7 @@ TEST_F_UI(KeyFrameTest, UpdateAnimation) {
   animation_data_.clear();
   animation_data_.push_back(start_data_);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   int64_t frame_time = 10000;
   for (size_t i = 0; i < 10; i++) {
@@ -179,6 +215,7 @@ TEST_F_UI(KeyFrameTest, UpdateAnimation) {
   animation_data_.clear();
   animation_data_.push_back(update_data);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   EXPECT_EQ(animator_view_->KeyframesMgr()
                 ->animations()
@@ -205,6 +242,7 @@ TEST_F_UI(KeyFrameTest, ChangeFillmode) {
   animation_data_.clear();
   animation_data_.push_back(start_data_);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   int64_t frame_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
   for (size_t i = 0; i <= 10; i++) {
@@ -219,6 +257,7 @@ TEST_F_UI(KeyFrameTest, ChangeFillmode) {
   animation_data_.clear();
   animation_data_.push_back(update_data);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   for (size_t i = 0; i < 10; i++) {
     animator_view_->KeyframesMgr()
@@ -251,6 +290,7 @@ TEST_F_UI(KeyFrameTest, AnimationDelay) {
   animation_data_.clear();
   animation_data_.push_back(start_data);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   int64_t frame_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
   for (size_t i = 0; i < 10; i++) {
@@ -281,6 +321,7 @@ TEST_F_UI(KeyFrameTest, AnimationDelayCombineForwards) {
   animation_data_.clear();
   animation_data_.push_back(start_data);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   int64_t frame_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
   for (size_t i = 0; i < 7; i++) {
@@ -315,6 +356,7 @@ TEST_F_UI(KeyFrameTest, AnimationDelayCombineBackwards) {
   animation_data_.clear();
   animation_data_.push_back(start_data);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   int64_t frame_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
   for (size_t i = 0; i < 7; i++) {
@@ -357,6 +399,7 @@ TEST_F_UI(KeyFrameTest, AnimationStartEvent) {
   animator_view_->SetBound(0, 0, 100, 100);
   animation_data_.push_back(start_data_);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   ValueAnimator* animator =
       animator_view_->KeyframesMgr()->animations_.front().animator.get();
@@ -377,6 +420,7 @@ TEST_F_UI(KeyFrameTest, AnimationStartEvent) {
   animation_data_.clear();
   animation_data_.push_back(update_data1);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   for (size_t i = 0; i < 10; i++) {
     animator_view_->KeyframesMgr()
@@ -389,6 +433,7 @@ TEST_F_UI(KeyFrameTest, AnimationStartEvent) {
   animation_data_.clear();
   animation_data_.push_back(update_data2);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   for (size_t i = 0; i < 10; i++) {
     animator_view_->KeyframesMgr()
@@ -428,6 +473,7 @@ TEST_F_UI(KeyFrameTest, AnimationEndEvent) {
   animator_view_->SetBound(0, 0, 100, 100);
   animation_data_.push_back(start_data_);
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   ValueAnimator* animator =
       animator_view_->KeyframesMgr()->animations_.front().animator.get();
@@ -449,6 +495,7 @@ TEST_F_UI(KeyFrameTest, AnimationEndEvent) {
   animation_data_.push_back(update_data1);
 
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   for (size_t i = 0; i < 10; i++) {
     animator_view_->KeyframesMgr()
@@ -462,6 +509,7 @@ TEST_F_UI(KeyFrameTest, AnimationEndEvent) {
   animation_data_.push_back(update_data2);
 
   animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
 
   for (size_t i = 0; i < 20; i++) {
     animator_view_->KeyframesMgr()
