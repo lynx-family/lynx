@@ -10,6 +10,7 @@ from core.env.env import RTFEnv
 from core.env.trait_template import TraitTemplate
 from core.options.options import Options
 from core.utils.log import Log
+from core.utils.gn_args_helper import inject_flutter_cxx
 from plugins.plugin import Plugin
 from core.base.result import Ok
 
@@ -19,6 +20,8 @@ class FuzzerTestListener(Options.OptionsListener):
         super().__init__()
 
     def did_include(self, options, builders, targets, coverage):
+        inject_flutter_cxx(builders, options.get_bool("disable_flutter_cxx", False))
+
         builder_map = {}
         label = self.generate_label(options.workspace)
         tmp_builder = copy.deepcopy(builders)
@@ -56,6 +59,9 @@ class FuzzerTestPlugin(Plugin):
             with open(template, "r") as template_file:
                 context = RTFContext(RTFEnv.get_project_root_path())
                 context.options = Options(context, args.args)
+                context.insert_variable(
+                    "disable_flutter_cxx", "true" if args.disable_flutter_cxx else "false"
+                )
                 context.options.register_listener(FuzzerTestListener())
                 exec(template_file.read(), context.export())
                 template = TraitTemplate.trait_from_context(context)
@@ -78,7 +84,8 @@ class FuzzerTestPlugin(Plugin):
 
     def __handle_run_command(self, template, args):
         container = NativeUTContainer(
-            template["builder"], template["coverage"], "fuzzer-test"
+            template["builder"], template["coverage"], "fuzzer-test",
+            silent=args.silent
         )
         return container.run(template["targets"], args.target)
 
@@ -115,6 +122,22 @@ class FuzzerTestPlugin(Plugin):
             dest="args",
             default="",
             help='User custom params, eg: --args="args_1=true, args_2=1"',
+        )
+
+        subparser_subparser.add_argument(
+            "--disable-flutter-cxx",
+            dest="disable_flutter_cxx",
+            action="store_true",
+            default=False,
+            help="Disable use_flutter_cxx in GN args. Default: enabled (true)",
+        )
+
+        subparser_subparser.add_argument(
+            "--silent",
+            dest="silent",
+            action="store_true",
+            default=False,
+            help="Suppress build output. Default: off",
         )
 
         subparser_subparser = subparser_subparsers.add_parser(

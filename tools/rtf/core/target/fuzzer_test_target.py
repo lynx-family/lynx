@@ -10,8 +10,8 @@ from core.utils.log import Log
 
 
 class FuzzerTestTarget(NativeUTTarget):
-    def __init__(self, params, name):
-        super().__init__(params, name)
+    def __init__(self, params, name, silent=False):
+        super().__init__(params, name, silent=silent)
 
     def init_self_info(self):
         super().init_self_info()

@@ -7,13 +7,16 @@ from datetime import datetime
 from core.env.env import RTFEnv
 from core.target.target import Target
 from core.utils.log import Log
+from core.utils.shell_runner import run_command_with_error_log
 from core.base.result import Err, Ok
 from core.base.constants import Constants
 from core.base.summary import Summary
 
 
 class NativeUTTarget(Target):
-    def __init__(self, params, name):
+    def __init__(self, params, name, gtest_filter=None, silent=False):
+        self.gtest_filter = gtest_filter
+        self.silent = silent
         super().__init__(params, name)
 
     def init_self_info(self):
@@ -51,11 +54,14 @@ class NativeUTTarget(Target):
             return [self.coverage_data_path]
 
     def get_run_cmd(self):
+        gtest_filter_arg = ""
+        if self.gtest_filter:
+            gtest_filter_arg = f" --gtest_filter={self.gtest_filter}"
         if self.custom_run_cmd is not None:
             return (
-                f'LLVM_PROFILE_FILE="{self.coverage_data_path}" {self.custom_run_cmd}'
+                f'LLVM_PROFILE_FILE="{self.coverage_data_path}" {self.custom_run_cmd}{gtest_filter_arg}'
             )
-        return f'LLVM_PROFILE_FILE="{self.coverage_data_path}" {self.target_path} {" ".join(self.args)}'
+        return f'LLVM_PROFILE_FILE="{self.coverage_data_path}" {self.target_path} {" ".join(self.args)}{gtest_filter_arg}'
 
     def run(self):
         Log.info(f"{self.name} start run")
@@ -70,8 +76,11 @@ class NativeUTTarget(Target):
     def run_pre_actions(self):
         for action in self.pre_actions:
             Log.info(f"Run pre action {action} for {self.name}")
-            result = subprocess.check_call(action, shell=True, cwd=self.cwd)
-            if result != 0:
+            result = run_command_with_error_log(
+                action, cwd=self.cwd, silent=self.silent,
+                error_msg=f"Run pre action ({action}) failed"
+            )
+            if result.returncode != 0:
                 return Err(
                     Constants.CALL_COMMAND_ERR, f"Run pre action ({action}) failed"
                 )

@@ -9,5 +9,5 @@ class Coverage:
     def __init__(self):
         pass
 
-    def gen_report(self, targets: [Target]):
+    def gen_report(self, targets: list, coverage_file: str = None, coverage_format: str = "text"):
         pass

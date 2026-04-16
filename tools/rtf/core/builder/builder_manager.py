@@ -11,17 +11,17 @@ from core.base.result import Err, Ok
 from core.base.constants import Constants
 
 
-def BuilderFactory(builder_meta_data: dict):
+def BuilderFactory(builder_meta_data: dict, silent: bool = False):
     builder_type = builder_meta_data["type"]
     builder = None
     if builder_type == "gn":
         args = builder_meta_data["args"]
         output = builder_meta_data["output"]
-        builder = GnBuilder(args, output)
+        builder = GnBuilder(args, output, silent)
     elif builder_type == "gradle":
         args = builder_meta_data["args"]
         workspace = builder_meta_data["workspace"]
-        builder = GradleBuilder(args, workspace)
+        builder = GradleBuilder(args, workspace, silent)
     if builder is None:
         return Err(
             Constants.BUILDER_BUILD_ERR, f"build type {builder_type} is unsupported!"
@@ -30,13 +30,14 @@ def BuilderFactory(builder_meta_data: dict):
 
 
 class BuilderManager:
-    def __init__(self, builder_params: dict):
+    def __init__(self, builder_params: dict, silent: bool = False):
         self.builders = {}
         self.builder_params = builder_params
+        self.silent = silent
 
     def pre_action(self, skip: Callable[[], bool] = None):
         for builder_name in self.builder_params.keys():
-            builder = BuilderFactory(self.builder_params[builder_name])
+            builder = BuilderFactory(self.builder_params[builder_name], self.silent)
             if builder.is_err():
                 return builder
             else:

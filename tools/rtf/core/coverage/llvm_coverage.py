@@ -15,10 +15,12 @@ from core.base.result import Err, Ok
 
 
 class LLVMCoverage(Coverage):
-    def __init__(self, ignores: [str], output: str):
+    def __init__(self, ignores: [str], output: str, coverage_file: str = None, coverage_format: str = "text"):
         super().__init__()
         self.ignores = ignores
         self.output = output
+        self.coverage_file = coverage_file
+        self.coverage_format = coverage_format
         self.profdata_name = "rtf-ut.profdata"
 
     def __get_profraw_str(self, targets: [Target]):
@@ -112,12 +114,61 @@ class LLVMCoverage(Coverage):
         with open(f"{lcov_report_path}/lcov_summary.txt", "w") as wf:
             wf.write(data.replace(RTFEnv.get_project_root_path(), ""))
 
+    def __gen_file_report(self, targets: [Target]):
+        if not self.coverage_file:
+            return Ok()
+        binary_target_str = self.__get_binary_target_str(targets)
+        if binary_target_str == "":
+            return Ok()
+        profraw_str = self.__get_profraw_str(targets)
+        ignored_str = self.__get_ignored_str()
+        profdata_path = os.path.join(
+            RTFEnv.get_env("project_root_path"), self.output, self.profdata_name
+        )
+
+        merge_cmd = f"llvm-profdata merge -sparse {profraw_str} -o {profdata_path}"
+        try:
+            subprocess.check_call(merge_cmd, shell=True)
+        except Exception as e:
+            return Err(Constants.COVERAGE_GENERATE_ERR, f"Merge coverage data failed: {e}")
+
+        project_root = RTFEnv.get_env("project_root_path")
+        source_path = os.path.join(project_root, self.coverage_file)
+
+        if self.coverage_format == "html":
+            report_output = os.path.join(project_root, self.output, "html_file")
+            if not os.path.exists(report_output):
+                os.makedirs(report_output)
+            report_cmd = (
+                f"llvm-cov show {binary_target_str} -instr-profile={profdata_path} "
+                f"{ignored_str} -format=html -output-dir={report_output} {source_path}"
+            )
+            try:
+                subprocess.check_call(report_cmd, shell=True)
+                Log.success(f"File coverage HTML report generated at {report_output}/index.html")
+            except Exception as e:
+                return Err(Constants.COVERAGE_GENERATE_ERR, f"Generate file coverage HTML failed: {e}")
+        else:
+            report_cmd = (
+                f"llvm-cov report {binary_target_str} -instr-profile={profdata_path} "
+                f"{ignored_str} {source_path}"
+            )
+            try:
+                output = subprocess.check_output(report_cmd, shell=True)
+                Log.info(f"Coverage report for {self.coverage_file}:\n{output.decode('utf-8')}")
+            except Exception as e:
+                return Err(Constants.COVERAGE_GENERATE_ERR, f"Generate file coverage report failed: {e}")
+        return Ok()
+
     def gen_report(self, targets: [Target]):
         Log.info(f"Generate coverage to {self.output}")
         try:
             self.__gen_html_report(targets)
             self.__gen_json_summary(targets)
             self.__gen_lcov_summary(targets)
+            result = self.__gen_file_report(targets)
+            if result.is_err():
+                return result
             return Ok()
         except Exception as e:
             return Err(

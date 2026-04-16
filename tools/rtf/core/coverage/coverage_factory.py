@@ -7,11 +7,13 @@ from core.base.constants import Constants
 from core.base.result import Err, Ok
 
 
-def CoverageFactory(coverage_params):
+def CoverageFactory(coverage_params, coverage_file: str = None, coverage_format: str = "text"):
     coverage_type = coverage_params["type"]
     coverage = None
     if coverage_type == "llvm":
-        coverage = LLVMCoverage(coverage_params["ignores"], coverage_params["output"])
+        coverage = LLVMCoverage(
+            coverage_params["ignores"], coverage_params["output"], coverage_file, coverage_format
+        )
     elif coverage_type == "jacoco":
         coverage = JaCoCoCoverage(
             coverage_params["output"],

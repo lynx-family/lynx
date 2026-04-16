@@ -18,14 +18,18 @@ from core.base.summary import Summary
 
 
 class NativeUTContainer(Container):
-    def __init__(self, builder, coverage, test_type):
+    def __init__(self, builder, coverage, test_type, gtest_filter=None, coverage_file=None, coverage_format="text", silent=False):
         super().__init__()
         self.parallel_queue = []
         self.serial_queue = []
         self.builder_manager_init_params = builder
         self.coverage_init_params = coverage
+        self.gtest_filter = gtest_filter
+        self.coverage_file = coverage_file
+        self.coverage_format = coverage_format
+        self.silent = silent
         self.builder_manager: BuilderManager = BuilderManager(
-            self.builder_manager_init_params
+            self.builder_manager_init_params, self.silent
         )
         self.coverage: Coverage = None
         self.test_type = test_type
@@ -36,7 +40,7 @@ class NativeUTContainer(Container):
         self.observers.append(OwnersObserver())
 
     def before_test(self, targets, filter: str):
-        coverage = CoverageFactory(self.coverage_init_params)
+        coverage = CoverageFactory(self.coverage_init_params, self.coverage_file, self.coverage_format)
         if coverage.is_err():
             return coverage
 
@@ -48,7 +52,7 @@ class NativeUTContainer(Container):
         for t in targets.keys():
             if filter != "all" and t != filter:
                 continue
-            result = TargetFactory(self.test_type, targets[t], t)
+            result = TargetFactory(self.test_type, targets[t], t, self.gtest_filter, self.silent)
             if result.is_err():
                 return result
             target = result.get_value()

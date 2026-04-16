@@ -8,14 +8,14 @@ from core.base.result import Ok, Err
 from core.base.constants import Constants
 
 
-def TargetFactory(target_type: str, params, name: str):
+def TargetFactory(target_type: str, params, name: str, gtest_filter: str = None, silent: bool = False):
     target = None
     if target_type == "native-ut":
-        target = NativeUTTarget(params, name)
+        target = NativeUTTarget(params, name, gtest_filter, silent)
     elif target_type == "android-ut":
         target = AndroidTargetFactory(params, name)
     elif target_type == "fuzzer-test":
-        target = FuzzerTestTarget(params, name)
+        target = FuzzerTestTarget(params, name, silent)
     if target is None:
         return Err(Constants.TARGET_BUILD_ERR, f"Unsupport target_type :{target_type}")
     return Ok(target)
