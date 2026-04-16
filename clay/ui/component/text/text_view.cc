@@ -137,7 +137,8 @@ void TextView::PushInlineViewIndex(int id, int placeholder_id) {
 }
 
 void TextView::SetColor(Color color) {
-  if (TransitionMgr()->Enabled(ClayAnimationPropertyType::kColor) &&
+  if (IsTransitionAnimationReady() &&
+      TransitionMgr()->Enabled(ClayAnimationPropertyType::kColor) &&
       TransitionMgr()->TransitionTo(ClayAnimationPropertyType::kColor, color)) {
     UpdateTransitionRasterAnimation(ClayAnimationPropertyType::kColor);
     return;
