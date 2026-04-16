@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "devtool/base_devtool/native/public/message_sender.h"
+#include "devtool/lynx_devtool/js_debug/lepus/manager/rts_inspector_manager_factory.h"
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
 #pragma mark - LynxDevToolNGDarwinDelegate
@@ -76,6 +77,9 @@ class DevToolMessageHandlerIos : public DevToolMessageHandler {
   self = [super init];
   if (self) {
     session_id_ = 0;
+    // Anchor the RTS inspector factory in iOS static frameworks so its pure
+    // C++ registration object is not dropped by the linker.
+    LynxRegisterRTSInspectorManagerFactory();
     devtool_ng_ = std::make_shared<lynx::devtool::LynxDevToolNG>(static_cast<bool>(debuggable));
   }
   return self;

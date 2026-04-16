@@ -4,6 +4,7 @@
 
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 
+#include "core/runtime/mts_context.h"
 #include "devtool/js_inspect/inspector_const.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -33,7 +34,8 @@ TEST_F(JSDebugHelperTest, CreateRuntimeInspectorManager) {
 }
 
 TEST_F(JSDebugHelperTest, CreateLepusInspectorManager) {
-  EXPECT_EQ(JSDebugHelper::GetInstance()->CreateLepusInspectorManager(),
+  EXPECT_EQ(JSDebugHelper::GetInstance()->CreateLepusInspectorManager(
+                runtime::ContextType::LepusNGContextType),
             nullptr);
 }
 
