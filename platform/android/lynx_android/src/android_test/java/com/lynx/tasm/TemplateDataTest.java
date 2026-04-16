@@ -714,6 +714,59 @@ public class TemplateDataTest {
   }
 
   @Test
+  public void testGetTemplateDataForJSThreadDoesNotConsumeUpdateActions() {
+    TemplateData templateData = TemplateData.fromMap(new HashMap<>());
+    templateData.put("key1", 1);
+    templateData.put("key2", 2);
+    templateData.flush();
+
+    assertEquals(1, templateData.mUpdateActions.size());
+    assertEquals(0, templateData.mJsNativeData);
+
+    TemplateData copiedJsTemplateData = templateData.getTemplateDataForJSThread();
+    assertEquals(1, templateData.mUpdateActions.size());
+    assertEquals(0, templateData.mJsNativeData);
+    assertEquals(1, copiedJsTemplateData.mUpdateActions.size());
+    assertEquals(0, copiedJsTemplateData.mJsNativeData);
+
+    Object copiedJsData = TemplateData.nativeGetData(copiedJsTemplateData.getDataForJSThread());
+    assertEquals(templateData.toMap(), copiedJsData);
+    assertEquals(1, templateData.mUpdateActions.size());
+    assertEquals(0, templateData.mJsNativeData);
+    assertEquals(0, copiedJsTemplateData.mUpdateActions.size());
+    assertNotEquals(0, copiedJsTemplateData.mJsNativeData);
+
+    Object jsData = TemplateData.nativeGetData(templateData.getDataForJSThread());
+    assertEquals(templateData.toMap(), jsData);
+    assertEquals(0, templateData.mUpdateActions.size());
+    assertNotEquals(0, templateData.mJsNativeData);
+  }
+
+  @Test
+  public void testGetTemplateDataForJSThreadWithExistingJsNativeData() {
+    TemplateData templateData = TemplateData.fromMap(new HashMap<>());
+    templateData.put("key1", 1);
+    templateData.put("key2", 2);
+    templateData.flush();
+
+    Object jsData = TemplateData.nativeGetData(templateData.getDataForJSThread());
+    assertEquals(templateData.toMap(), jsData);
+    assertEquals(0, templateData.mUpdateActions.size());
+    assertNotEquals(0, templateData.mJsNativeData);
+
+    TemplateData copiedJsTemplateData = templateData.getTemplateDataForJSThread();
+    assertEquals(0, templateData.mUpdateActions.size());
+    assertNotEquals(0, templateData.mJsNativeData);
+    assertEquals(1, copiedJsTemplateData.mUpdateActions.size());
+    assertNotEquals(0, copiedJsTemplateData.mJsNativeData);
+
+    Object copiedJsData = TemplateData.nativeGetData(copiedJsTemplateData.getDataForJSThread());
+    assertEquals(jsData, copiedJsData);
+    assertEquals(0, copiedJsTemplateData.mUpdateActions.size());
+    assertNotEquals(0, copiedJsTemplateData.mJsNativeData);
+  }
+
+  @Test
   public void testDeepCloneBeforeGetTemplateDataForJSThread() {
     TemplateData templateData = TemplateData.fromMap(new HashMap<>());
     templateData.put("key1", 1);

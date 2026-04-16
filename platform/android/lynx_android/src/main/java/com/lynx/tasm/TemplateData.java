@@ -211,14 +211,14 @@ public final class TemplateData {
     }
   }
 
-  private List<UpdateAction> getUpdateActionsWithJsNativeData() {
+  private List<UpdateAction> copyUpdateActions(boolean consumeSourceActions) {
     if (!mEnableJSData) {
       return null;
     }
     // methods to copy updateActions with jsNativeData considered, it may be called from
     // multiple threads.
     // synchronized with the same lock with `getDataForJSThreadInner` is important.
-    // making sure the getUpdateActionsWithJsNativeData takes all updateActions stored
+    // making sure copyUpdateActions takes all updateActions stored
     // or after consumed by `getDataForJSThreadInner` method, this method will takes a
     // UpdateAction with jsNativeData and type NATIVE_DATA.
     List<UpdateAction> actions = new ArrayList<>();
@@ -234,11 +234,12 @@ public final class TemplateData {
       actions.addAll(mUpdateActions);
     }
 
-    // When `getUpdateActionsWithNativeData` is called, it indicates that the current `TemplateData`
-    // has been deep cloned or updated to another `TemplateData`. At this point, it is highly likely
-    // that the current `TemplateData` will not be consumed by `LynxView`. Therefore, it is
-    // necessary to actively call `consumeUpdateActions` to avoid OOM.
-    consumeUpdateActions();
+    if (consumeSourceActions) {
+      // When update actions are copied to another TemplateData for deep clone or merge, the source
+      // object is unlikely to be consumed by LynxView again. Consume them proactively to avoid
+      // retaining duplicated JS-side actions.
+      consumeUpdateActions();
+    }
     return actions;
   }
 
@@ -317,7 +318,7 @@ public final class TemplateData {
     flush();
     diff.flush();
     // record diff's update actions
-    addUpdateActions(diff.getUpdateActionsWithJsNativeData());
+    addUpdateActions(diff.copyUpdateActions(true));
 
     if (diff.getNativePtr() != 0) {
       nativeMergeTemplateData(this.getNativePtr(), diff.getNativePtr());
@@ -665,7 +666,7 @@ public final class TemplateData {
     data.mIsConcurrent.set(this.mIsConcurrent.get());
 
     // clone data actions
-    data.addUpdateActions(this.getUpdateActionsWithJsNativeData());
+    data.addUpdateActions(this.copyUpdateActions(true));
     return data;
   }
 
@@ -696,7 +697,7 @@ public final class TemplateData {
     data.mIsConcurrent.set(this.mIsConcurrent.get());
 
     // clone data actions
-    data.addUpdateActions(this.getUpdateActionsWithJsNativeData());
+    data.addUpdateActions(this.copyUpdateActions(true));
     TraceEvent.endSection(TraceEventDef.TEMPLATE_DATA_SHALLOW_CLONE);
     return data;
   }
@@ -828,7 +829,7 @@ public final class TemplateData {
     if (mJsNativeData != 0) {
       data.mJsNativeData = nativeClone(mJsNativeData);
     }
-    data.addUpdateActions(getUpdateActionsWithJsNativeData());
+    data.addUpdateActions(copyUpdateActions(false));
     return data;
   }
 
