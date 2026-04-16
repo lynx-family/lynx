@@ -4,6 +4,7 @@
 
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 
+#include "core/runtime/mts_context.h"
 #include "devtool/js_inspect/inspector_const.h"
 
 namespace lynx {
@@ -36,12 +37,16 @@ JSDebugHelper::CreateRuntimeInspectorManager(const std::string& vm_type) {
 }
 
 std::unique_ptr<lepus::LepusInspectorManager>
-JSDebugHelper::CreateLepusInspectorManager() {
+JSDebugHelper::CreateLepusInspectorManager(runtime::ContextType context_type) {
+  if (context_type == runtime::ContextType::RTSContextType &&
+      rts_inspector_manager_creator_) {
+    return rts_inspector_manager_creator_();
+  }
   if (lepus_proxy_ == nullptr) {
     LOGW("js debug: lepus_proxy_ is not set");
     return nullptr;
   }
-  return lepus_proxy_->CreateLepusInspectorManager();
+  return lepus_proxy_->CreateLepusInspectorManager(context_type);
 }
 
 void JSDebugHelper::RegisterNapiRuntimeProxy() {

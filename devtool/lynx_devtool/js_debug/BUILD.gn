@@ -114,6 +114,14 @@ devtool_source_set("devtool_lepus_debug_manager") {
   deps = [ "../../js_inspect/lepus:lepus_debug" ]
 }
 
+devtool_source_set("rts_inspector_manager_factory") {
+  sources = [ "lepus/manager/rts_inspector_manager_factory_stub.cc" ]
+}
+
+devtool_source_set("rts_inspector_manager_factory_stub") {
+  sources = [ "lepus/manager/rts_inspector_manager_factory_stub.cc" ]
+}
+
 devtool_source_set("devtool_lepus_debug") {
   sources = devtool_lepus_debug_sources
   deps = [
