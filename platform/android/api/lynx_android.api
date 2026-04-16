@@ -2508,6 +2508,7 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public int com.lynx.tasm.service.ILynxImageService.getImageOrigin(@NonNull Object imageInfo);
   public void com.lynx.tasm.service.ILynxImageService.setImageSRSize(@NonNull Object builder, int width, int height);
   public void com.lynx.tasm.service.ILynxImageService.setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri);
+  public void com.lynx.tasm.service.ILynxImageService.setSampleSize(@NonNull Object builder, int sampleSize);
 }
 
 public interface com::lynx::tasm::service::ILynxImageServiceExtension {
@@ -5199,6 +5200,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public boolean com.lynx.tasm.LynxEnv.enableImageAsyncLayout();
   public boolean com.lynx.tasm.LynxEnv.enableImageRequestOptimize();
   public boolean com.lynx.tasm.LynxEnv.enableFlattenImageFlickerFix();
+  public boolean com.lynx.tasm.LynxEnv.disableBigImageHelper();
   public boolean com.lynx.tasm.LynxEnv.enableImageMemoryReport();
   public boolean com.lynx.tasm.LynxEnv.enableComponentStatisticReport();
   public boolean com.lynx.tasm.LynxEnv.enableTransformForPositionCalculation();
@@ -5249,6 +5251,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_ASYNC_REQUEST ENABLE_IMAGE_ASYNC_REQUEST;
   public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_REQUEST_OPTIMIZE ENABLE_IMAGE_REQUEST_OPTIMIZE;
   public com.lynx.tasm.LynxEnvKey.ENABLE_FLATTEN_IMAGE_FLICKER_FIX ENABLE_FLATTEN_IMAGE_FLICKER_FIX;
+  public com.lynx.tasm.LynxEnvKey.DISABLE_BIG_IMAGE_HELPER DISABLE_BIG_IMAGE_HELPER;
   public com.lynx.tasm.LynxEnvKey.ENABLE_GENERIC_RESOURCE_FETCHER ENABLE_GENERIC_RESOURCE_FETCHER;
   public com.lynx.tasm.LynxEnvKey.ENABLE_TEXT_BORING_LAYOUT ENABLE_TEXT_BORING_LAYOUT;
   public com.lynx.tasm.LynxEnvKey.ENABLE_REFRESH_RATE_OPT ENABLE_REFRESH_RATE_OPT;

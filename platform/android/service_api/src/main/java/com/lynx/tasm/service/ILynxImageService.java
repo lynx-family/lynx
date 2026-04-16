@@ -209,4 +209,12 @@ public interface ILynxImageService extends IServiceProvider {
    * unavailable), this call becomes a no-op.
    */
   void setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri);
+
+  /**
+   * Set the sample size for the image request builder.
+   *
+   * @param builder The image request builder object.
+   * @param sampleSize The sample size to set.
+   */
+  void setSampleSize(@NonNull Object builder, int sampleSize);
 }

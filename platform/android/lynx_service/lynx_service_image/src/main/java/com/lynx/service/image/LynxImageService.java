@@ -478,4 +478,7 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
 
   @Override
   public void setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri) {}
+
+  @Override
+  public void setSampleSize(@NonNull Object builder, int sampleSize) {}
 }
