@@ -287,5 +287,30 @@ TEST(EncodeCSSParseToken, TestParseStyleVariables1) {
   EXPECT_EQ(tokens->style_variables_.size(), 0);
 }
 
+TEST(CSSParseTokenEncoder, ImportantParsing) {
+  rapidjson::Document doc;
+  doc.SetObject();
+  rapidjson::Value style(rapidjson::kArrayType);
+  rapidjson::Value entry(rapidjson::kObjectType);
+  entry.AddMember("name", "width", doc.GetAllocator());
+  entry.AddMember("value", "100px !important", doc.GetAllocator());
+  style.PushBack(entry, doc.GetAllocator());
+
+  rapidjson::Value style_vars(rapidjson::kObjectType);
+  std::string rule = ".test";
+  tasm::CompileOptions options;
+  options.enable_css_parser_ = true;
+  options.target_sdk_version_ = "3.0";
+
+  encoder::CSSParseToken token(style, rule, "", style_vars, options);
+
+  EXPECT_TRUE(token.GetImportantAttributes().contains(tasm::kPropertyIDWidth));
+  EXPECT_FALSE(token.GetAttributes().contains(tasm::kPropertyIDWidth));
+  EXPECT_EQ(token.GetImportantAttributes()
+                .find(tasm::kPropertyIDWidth)
+                ->second.GetPattern(),
+            tasm::CSSValuePattern::PX);
+}
+
 }  // namespace encoder
 }  // namespace lynx

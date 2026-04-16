@@ -398,16 +398,19 @@ int32_t FiberElement::GetCSSID() const {
   }
 }
 
-bool FiberElement::MergeInlineStyles(StyleMap &new_styles) {
+bool FiberElement::MergeInlineStyles(StyleMap &new_styles,
+                                     StyleMap &important_styles) {
   // Styles stored by full_raw_inline_style_ had already been parsed to
   // current_raw_inline_styles_. So we only handle current_raw_inline_styles_
   // here.
   bool res = false;
-  if (current_raw_inline_styles_.has_value()) {
-    auto &configs = element_manager_->GetCSSParserConfigs();
-    for (const auto &[id, style_value] : *current_raw_inline_styles_) {
+  auto &configs = element_manager_->GetCSSParserConfigs();
+
+  auto process_inline_map = [&](const RawLepusStyleMap &src_map,
+                                StyleMap &dst_map) {
+    for (const auto &[id, style_value] : src_map) {
       bool process_result =
-          UnitHandler::Process(id, style_value, new_styles, configs);
+          UnitHandler::Process(id, style_value, dst_map, configs);
       if (!process_result && IsCSSInlineVariablesEnabled()) {
         base::String style_str = style_value.String();
         CSSStringParser parser{style_str.c_str(),
@@ -415,12 +418,20 @@ bool FiberElement::MergeInlineStyles(StyleMap &new_styles) {
                                configs};
         CSSValue css_value = parser.ParseVariable();
         if (parser.HasMetVarToken()) {
-          new_styles[id] = std::move(css_value);
+          dst_map[id] = std::move(css_value);
           res = true;
         }
       }
     }
+  };
+
+  if (current_raw_inline_styles_.has_value()) {
+    process_inline_map(*current_raw_inline_styles_, new_styles);
   }
+  if (current_raw_important_inline_styles_.has_value()) {
+    process_inline_map(*current_raw_important_inline_styles_, important_styles);
+  }
+
   return res;
 }
 
@@ -3194,16 +3205,23 @@ void FiberElement::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
   current_raw_inline_custom_properties_->clear();
   data_model()->MoveAndClearCSSInlineVariables(changed_css_vars);
 
+  if (current_raw_important_inline_styles_.has_value()) {
+    current_raw_important_inline_styles_->clear();
+  }
+
   ParseStyleDeclarationList(
       str.c_str(), static_cast<uint32_t>(str.size()),
       [this, &configs](const char *key_start, uint32_t key_length,
-                       const char *value_start, uint32_t value_length) {
+                       const char *value_start, uint32_t value_length,
+                       bool important) {
         (void)configs;
         auto id = CSSProperty::GetPropertyID(
             base::static_string::GenericCacheKey(key_start, key_length));
         if (CSSProperty::IsPropertyValid(id)) {
           auto value = lepus::Value(base::String(value_start, value_length));
-          current_raw_inline_styles_->insert_or_assign(id, std::move(value));
+          auto &target_map = important ? current_raw_important_inline_styles_
+                                       : current_raw_inline_styles_;
+          target_map->insert_or_assign(id, std::move(value));
         } else if (IsCSSInlineVariablesEnabled() &&
                    CSSProperty::IsCustomProperty(key_start, key_length)) {
           current_raw_inline_custom_properties_->insert_or_assign(
@@ -3300,7 +3318,8 @@ bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
     parsed_styles_map_ = *extreme_parsed_styles_;
     if (only_selector_extreme_parsed_styles_) {
       ProcessFullRawInlineStyle(nullptr);
-      MergeInlineStyles(parsed_styles_map_);
+      StyleMap important_styles;
+      MergeInlineStyles(parsed_styles_map_, important_styles);
     }
     // Handle CSS variable
     HandleCSSVariables(parsed_styles_map_);

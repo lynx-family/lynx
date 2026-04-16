@@ -157,12 +157,16 @@ class StyleResolver {
   void GetCSSStyleForFiber(FiberElement* node, CSSFragment* style_sheet);
 
   void DidCollectMatchedRules(AttributeHolder* holder, StyleMap& result,
-                              CSSVariableMap* changed_css_vars,
+                              StyleMap& important_result,
+                              CSSVariableMap* changed_css_vars = nullptr,
                               size_t base_reserving_size = 0);
 
   void MergeHigherPriorityCSSStyle(const StyleMap& matched);
+  void MergeHigherPriorityImportantCSSStyle(const StyleMap& matched);
 
   void SetCSSVariableToNode(const CSSVariableMap& matched);
+
+  void MergeToken(CSSParseToken* token);
 
   void GetCSSByRule(CSSSheet::SheetType type, CSSFragment* style_sheet,
                     AttributeHolder* node, const std::string& rule);
@@ -222,6 +226,8 @@ class StyleResolver {
                                     StyleMap& map);
 
   static thread_local MatchedVector<const StyleMap*> matched_style_map;
+  static thread_local MatchedVector<const StyleMap*>
+      matched_important_style_map;
   static thread_local MatchedVector<const CSSVariableMap*> matched_variable_map;
 
   struct NewPipelineCollectedStyleInputs {

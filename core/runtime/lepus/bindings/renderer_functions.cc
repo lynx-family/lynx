@@ -6869,7 +6869,9 @@ static style::DynamicStyleObjectRef CreateDynamicStyleObjectFromValue(
     ParseStyleDeclarationList(
         style_string.data(), static_cast<uint32_t>(style_string.length()),
         [&style_map, &configs](const char* key_start, uint32_t key_length,
-                               const char* value_start, uint32_t value_length) {
+                               const char* value_start, uint32_t value_length,
+                               bool important) {
+          (void)important;
           if (CSSProperty::IsCustomProperty(key_start, key_length)) {
             return;
           }

@@ -133,12 +133,21 @@ void CSSParser::ParseAppTTSS(const rapidjson::Value &value) {
 
 void CSSParser::MergeCSSParseToken(fml::RefPtr<CSSParseToken> &originToken,
                                    fml::RefPtr<CSSParseToken> &newToken) {
-  StyleMap originStyle = originToken->GetAttributes();
-  StyleMap newStyle = newToken->GetAttributes();
-  for (auto iter : newStyle) {
+  originToken->GetAttributes();
+  newToken->GetAttributes();
+  auto &originStyle = originToken->attributes();
+  auto &newStyle = newToken->attributes();
+  for (auto &iter : newStyle) {
     originStyle[iter.first] = std::move(iter.second);
   }
-  originToken->SetAttributes(std::move(originStyle));
+
+  originToken->GetImportantAttributes();
+  newToken->GetImportantAttributes();
+  auto &originImportant = originToken->important_attributes();
+  auto &newImportant = newToken->important_attributes();
+  for (auto &iter : newImportant) {
+    originImportant[iter.first] = std::move(iter.second);
+  }
 }
 
 void CSSParser::ParseCSS(const rapidjson::Value &ttss, const std::string &path,

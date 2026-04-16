@@ -58,7 +58,16 @@ class CSSParseToken : public fml::RefCountedThreadSafeStorage {
   auto& attributes() { return attributes_; }
   LYNX_EXPORT_FOR_DEVTOOL virtual const StyleMap& GetAttributes();
 
+  auto& important_attributes() { return important_attributes_; }
+
+  void SetImportantAttributes(StyleMap&& attributes) {
+    important_attributes_ = std::move(attributes);
+  }
+
+  virtual const StyleMap& GetImportantAttributes();
+
   auto& raw_attributes() { return raw_attributes_; }
+  auto& raw_important_attributes() { return raw_important_attributes_; }
 
   bool IsPseudoStyleToken() const;
   bool IsCascadeSelectorStyleToken() const;
@@ -77,6 +86,8 @@ class CSSParseToken : public fml::RefCountedThreadSafeStorage {
 
   StyleMap attributes_;
   RawStyleMap raw_attributes_;
+  StyleMap important_attributes_;
+  RawStyleMap raw_important_attributes_;
   CSSVariableMap style_variables_;
   CSSParserConfigs parser_configs_;
 

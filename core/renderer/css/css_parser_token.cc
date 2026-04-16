@@ -30,45 +30,55 @@ bool CSSParseToken::IsCascadeSelectorStyleToken() const {
   return sheets_.size() > 1;
 }
 
+namespace {
+inline void ParseRawStyleMap(const RawStyleMap& raw, StyleMap& out,
+                             const CSSParserConfigs& configs) {
+  if (raw.empty()) {
+    return;
+  }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, CSS_PATCH_PROCESS_RAW);
+  size_t capacity = CSSProperty::GetTotalParsedStyleCountFromMap(raw);
+  out.reserve(capacity);
+  raw.for_each([&](const CSSPropertyID& k, const CSSValue& v) {
+    UnitHandler::ProcessCSSValue(k, v, out, configs);
+  });
+}
+}  // namespace
+
 const StyleMap& CSSParseToken::GetAttributes() {
   if (parser_state_.load(std::memory_order_acquire) == ParseState::kParsed) {
-    // If token is already parsed, return the parsed attributes.
     return attributes_;
   }
 
   StyleMap css_attribute;
-  size_t total_pool_capacity = 0;
+  StyleMap css_important_attribute;
 
-  // If raw attributes is not empty, process raw attributes.
-  if (!raw_attributes_.empty()) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, CSS_PATCH_PROCESS_RAW);
-    // Get the total pool capacity of the parsed attributes from raw_attributes.
-    total_pool_capacity =
-        CSSProperty::GetTotalParsedStyleCountFromMap(raw_attributes_);
-    css_attribute.reserve(total_pool_capacity);
-    // Process raw attributes and store them in local variable css_attribute.
-    raw_attributes_.for_each([&](const CSSPropertyID& k, const CSSValue& v) {
-      UnitHandler::ProcessCSSValue(k, v, css_attribute, parser_configs_);
-    });
-  }
+  ParseRawStyleMap(raw_attributes_, css_attribute, parser_configs_);
+  ParseRawStyleMap(raw_important_attributes_, css_important_attribute,
+                   parser_configs_);
 
   int expected = ParseState::kNotParsed;
-  // Try to set the parser state to kParsing.
   while (
       !parser_state_.compare_exchange_strong(expected, ParseState::kParsing) &&
       parser_state_.load(std::memory_order_acquire) != ParseState::kParsed) {
     expected = ParseState::kNotParsed;
   }
 
-  // If the parser state is already kParsed, return the parsed attributes.
   if (parser_state_.load(std::memory_order_acquire) == ParseState::kParsed) {
     return attributes_;
   }
 
   attributes_ = std::move(css_attribute);
-  // Set the parser state to kParsed.
+  important_attributes_ = std::move(css_important_attribute);
   parser_state_.store(ParseState::kParsed, std::memory_order_release);
   return attributes_;
+}
+
+const StyleMap& CSSParseToken::GetImportantAttributes() {
+  if (parser_state_.load(std::memory_order_acquire) != ParseState::kParsed) {
+    GetAttributes();
+  }
+  return important_attributes_;
 }
 
 int CSSParseToken::GetStyleTokenType() const {

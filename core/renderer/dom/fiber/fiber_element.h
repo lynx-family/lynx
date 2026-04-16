@@ -566,7 +566,8 @@ class FiberElement : public Element {
 
   int32_t GetCSSID() const override;
 
-  bool MergeInlineStyles(StyleMap& new_styles) final;
+  bool MergeInlineStyles(StyleMap& new_styles,
+                         StyleMap& important_styles) final;
   void PersistAnimationFillStyles(const StyleMap& styles) override;
   void ClearPersistedAnimationFillStyle(CSSPropertyID id) override;
 

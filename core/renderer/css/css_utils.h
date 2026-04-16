@@ -21,7 +21,34 @@ using RadialGradientShapeType = starlight::RadialGradientShapeType;
 using DeclarationListConsumeFunction =
     base::MoveOnlyClosure<void, const char* /*key_start*/,
                           uint32_t /* key_length*/, const char* /*value_start*/,
-                          uint32_t /*value_length*/>;
+                          uint32_t /*value_length*/, bool /*important*/>;
+
+// Strips trailing "!important" (CSS case-insensitive, optional whitespace).
+// Returns true if "!important" was found and removed.
+// out_value_start/out_value_length point to the trimmed value without
+// !important.
+bool StripImportant(const char* value, uint32_t value_length,
+                    const char** out_value_start, uint32_t* out_value_length);
+
+inline std::string MaybeStripImportant(const std::string& value) {
+  const char* start;
+  uint32_t len;
+  if (StripImportant(value.c_str(), static_cast<uint32_t>(value.length()),
+                     &start, &len)) {
+    return std::string(start, len);
+  }
+  return value;
+}
+
+inline std::string_view MaybeStripImportantAsView(const std::string& value) {
+  const char* start;
+  uint32_t len;
+  if (StripImportant(value.c_str(), static_cast<uint32_t>(value.length()),
+                     &start, &len)) {
+    return std::string_view(start, len);
+  }
+  return std::string_view(value);
+}
 
 std::pair<float, float> GetRadialGradientRadius(
     RadialGradientShapeType shape, RadialGradientSizeType shape_size, float cx,
