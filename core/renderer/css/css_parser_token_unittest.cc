@@ -163,5 +163,25 @@ TEST(CSSParseToken, TestIsPseudoStyleTokenCornerCase) {
 
   EXPECT_FALSE(tokens->IsPseudoStyleToken());
 }
+
+TEST(CSSParseToken, ImportantAttributesStorage) {
+  CSSParserConfigs configs;
+  CSSParseToken token(configs);
+
+  StyleMap normal;
+  normal.insert_or_assign(kPropertyIDWidth,
+                          CSSValue(100.0, CSSValuePattern::PX));
+  token.SetAttributes(std::move(normal));
+
+  StyleMap important;
+  important.insert_or_assign(kPropertyIDHeight,
+                             CSSValue(200.0, CSSValuePattern::PX));
+  token.SetImportantAttributes(std::move(important));
+
+  EXPECT_TRUE(token.GetAttributes().contains(kPropertyIDWidth));
+  EXPECT_TRUE(token.GetImportantAttributes().contains(kPropertyIDHeight));
+  EXPECT_FALSE(token.GetAttributes().contains(kPropertyIDHeight));
+  EXPECT_FALSE(token.GetImportantAttributes().contains(kPropertyIDWidth));
+}
 }  // namespace tasm
 }  // namespace lynx

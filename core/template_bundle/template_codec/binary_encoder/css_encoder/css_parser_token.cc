@@ -11,6 +11,7 @@
 #include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"
+#include "core/renderer/css/css_utils.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/lepus/exception.h"
 
@@ -90,11 +91,26 @@ void CSSParseToken::ParseAttributes(const rapidjson::Value& value) {
       tasm::CSSPropertyID id =
           tasm::CSSProperty::GetPropertyID(name.GetString());
       if (!tasm::CSSProperty::IsPropertyValid(id)) {
-        // TODO(zhongyr): return structural error to compiler.
         return;
       }
-      // FIXME: consider moving these string literals into constexpr static
-      lepus::Value css_value = lepus::jsonValueTolepusValue(value["value"]);
+
+      base::String raw_value =
+          lepus::jsonValueTolepusValue(value["value"]).String();
+      bool is_custom_property = tasm::CSSProperty::IsCustomProperty(
+          name.GetString(), static_cast<uint32_t>(name.GetStringLength()));
+      bool important = false;
+      lepus::Value css_value;
+
+      if (!is_custom_property) {
+        const char* stripped_start;
+        uint32_t stripped_len;
+        important = tasm::StripImportant(raw_value.c_str(), raw_value.length(),
+                                         &stripped_start, &stripped_len);
+        css_value = lepus::Value(base::String(stripped_start, stripped_len));
+      } else {
+        css_value = lepus::Value(raw_value);
+      }
+
       tasm::CSSValueType type = tasm::CSSValueType::DEFAULT;
       if (value["type"] == "css_var") {
         type = tasm::CSSValueType::VARIABLE;
@@ -103,12 +119,17 @@ void CSSParseToken::ParseAttributes(const rapidjson::Value& value) {
       if (value.HasMember("defaultValue")) {
         default_value = value["defaultValue"].GetString();
       }
+
+      auto& target_map = (important && !is_custom_property)
+                             ? important_attributes_
+                             : attributes_;
+
       if (tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
                                         FEATURE_CSS_STYLE_VARIABLES) &&
           compile_options_.enable_css_variable_ &&
           type == tasm::CSSValueType::VARIABLE) {
         auto& target_css_value =
-            *attributes_
+            *target_map
                  .insert_or_assign(
                      id,
                      tasm::CSSValue(css_value, tasm::CSSValuePattern::STRING,
@@ -125,15 +146,16 @@ void CSSParseToken::ParseAttributes(const rapidjson::Value& value) {
         target_css_value.SetDefaultValue(default_value);
         return;
       }
+
       if (tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
                                         FEATURE_CSS_VALUE_VERSION) &&
           compile_options_.enable_css_parser_) {
         auto configs =
             tasm::CSSParserConfigs::GetCSSParserConfigsByComplierOptions(
                 compile_options_);
-        tasm::UnitHandler::Process(id, css_value, attributes_, configs);
+        tasm::UnitHandler::Process(id, css_value, target_map, configs);
       } else {
-        attributes_.insert_or_assign(
+        target_map.insert_or_assign(
             id, tasm::CSSValue(css_value, tasm::CSSValuePattern::STRING));
       }
     };
@@ -281,6 +303,10 @@ const tasm::StyleMap& CSSParseToken::GetAttributes() {
   }
 
   return attributes_;
+}
+
+const tasm::StyleMap& CSSParseToken::GetImportantAttributes() {
+  return important_attributes_;
 }
 }  // namespace encoder
 }  // namespace lynx

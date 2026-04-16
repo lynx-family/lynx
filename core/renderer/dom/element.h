@@ -1209,7 +1209,8 @@ class Element : public lepus::RefCounted,
   void RemoveGestureDetector(const uint32_t gesture_id);
 
   // Returns true if CSS variables were merged and need to be resolved.
-  virtual bool MergeInlineStyles(StyleMap& merged_styles) = 0;
+  virtual bool MergeInlineStyles(StyleMap& merged_styles,
+                                 StyleMap& important_styles) = 0;
   virtual void PersistAnimationFillStyles(const StyleMap& styles) {}
   virtual void ClearPersistedAnimationFillStyle(CSSPropertyID id) {}
   virtual int32_t GetMemoryUsage() const { return sizeof(*this); }
@@ -1558,6 +1559,8 @@ class Element : public lepus::RefCounted,
   base::auto_create_optional<StyleMap> parsed_dynamic_styles_map_;
   base::auto_create_optional<StyleMap> styles_from_attributes_;
   base::auto_create_optional<RawLepusStyleMap> current_raw_inline_styles_;
+  base::auto_create_optional<RawLepusStyleMap>
+      current_raw_important_inline_styles_;
   base::auto_create_optional<StyleMap> extreme_parsed_styles_;
   base::auto_create_optional<StyleMap> inherited_styles_;
   base::auto_create_optional<StyleMap> updated_inherited_styles_;

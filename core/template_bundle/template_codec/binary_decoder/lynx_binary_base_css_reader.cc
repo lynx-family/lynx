@@ -189,6 +189,13 @@ bool LynxBinaryBaseCSSReader::DecodeCSSFragment(SharedCSSFragment* fragment,
 bool LynxBinaryBaseCSSReader::DecodeCSSParseToken(CSSParseToken* token) {
   ERROR_UNLESS(DecodeCSSAttributes(token));
 
+  if (Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
+                              FEATURE_CSS_IMPORTANT)) {
+    ERROR_UNLESS(DecodeCSSAttributes(token->important_attributes(),
+                                     token->raw_important_attributes(),
+                                     token->GetCSSParserConfigs()));
+  }
+
   if (enable_css_variable_) {
     DCHECK(token->style_variables().empty());
     ERROR_UNLESS(DecodeCSSStyleVariables(token->style_variables()));

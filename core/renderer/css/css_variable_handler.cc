@@ -9,6 +9,7 @@
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 

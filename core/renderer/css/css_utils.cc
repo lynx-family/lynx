@@ -5,6 +5,7 @@
 
 #include <cmath>
 
+#include "base/include/string/string_utils.h"
 #include "base/include/vector.h"
 
 namespace lynx {
@@ -213,8 +214,13 @@ bool ParseStyleDeclarationList(const char* content, uint32_t content_length,
     auto value_end = current;
 
     if (key_end < content_length && value_end <= content_length) {
+      const char* stripped_value_start;
+      uint32_t stripped_value_length;
+      bool important =
+          StripImportant(content + value_start, value_end - value_start,
+                         &stripped_value_start, &stripped_value_length);
       consume_func(content + key_start, key_end - key_start,
-                   content + value_start, value_end - value_start);
+                   stripped_value_start, stripped_value_length, important);
     }
   }
   return true;
@@ -247,6 +253,65 @@ ClassList SplitClasses(const char* content, size_t length) {
     i++;
   }
   return output;
+}
+
+bool StripImportant(const char* value, uint32_t value_length,
+                    const char** out_value_start, uint32_t* out_value_length) {
+  constexpr char kImportant[] = "important";
+  constexpr uint32_t kImportantLen = sizeof(kImportant) - 1;
+
+  *out_value_start = value;
+  *out_value_length = value_length;
+
+  if (value_length == 0) {
+    return false;
+  }
+
+  // Trim trailing whitespace
+  uint32_t end = value_length;
+  while (end > 0 && base::IsHTMLSpace(value[end - 1])) {
+    --end;
+  }
+
+  if (end < kImportantLen + 1) {  // need at least "!important" (1 + 9)
+    if (end == 0) {
+      *out_value_length = 0;
+    }
+    return false;
+  }
+
+  // Fast path: check last kImportantLen chars case-insensitively for
+  // "important" Using |0x20 trick for ASCII caseless compare (CSS identifiers
+  // are ASCII).
+  for (uint32_t i = 0; i < kImportantLen; ++i) {
+    if (static_cast<char>(value[end - kImportantLen + i] | 0x20) !=
+        kImportant[i]) {
+      return false;
+    }
+  }
+
+  uint32_t bang_pos = end - kImportantLen;
+  // Skip whitespace before "important"
+  while (bang_pos > 0 && base::IsHTMLSpace(value[bang_pos - 1])) {
+    --bang_pos;
+  }
+
+  if (bang_pos == 0 || value[bang_pos - 1] != '!') {
+    return false;
+  }
+
+  // Trim whitespace before '!'
+  uint32_t value_end = bang_pos - 1;
+  while (value_end > 0 && base::IsHTMLSpace(value[value_end - 1])) {
+    --value_end;
+  }
+
+  if (value_end == 0) {
+    return false;
+  }
+
+  *out_value_length = value_end;
+  return true;
 }
 
 }  // namespace tasm

@@ -130,13 +130,25 @@ void SharedCSSFragment::ImportOtherFragment(const SharedCSSFragment* fragment) {
     const auto& selector = css.first;
     if (css_.find(selector) != css_.end()) {
       auto& depend_attribute = css.second->GetAttributes();
-      StyleMap cur_attribute = css_[selector]->GetAttributes();
+      css_[selector]->GetAttributes();
+      auto& cur_attribute = css_[selector]->attributes();
       for (auto& it : depend_attribute) {
         if (cur_attribute.find(it.first) == cur_attribute.end()) {
           cur_attribute[it.first] = std::move(it.second);
         }
       }
-      css_[selector]->SetAttributes(std::move(cur_attribute));
+
+      // Merge important attributes
+      const auto& depend_important = css.second->GetImportantAttributes();
+      if (!depend_important.empty()) {
+        css_[selector]->GetImportantAttributes();
+        auto& cur_important = css_[selector]->important_attributes();
+        for (const auto& it : depend_important) {
+          if (cur_important.find(it.first) == cur_important.end()) {
+            cur_important[it.first] = it.second;
+          }
+        }
+      }
     } else {
       css_[css.first] = css.second;
     }

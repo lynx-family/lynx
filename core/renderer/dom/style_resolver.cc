@@ -49,6 +49,8 @@ inline std::string GetIDSelectorRule(const std::string& value) {
 
 thread_local StyleResolver::MatchedVector<const StyleMap*>
     StyleResolver::matched_style_map;
+thread_local StyleResolver::MatchedVector<const StyleMap*>
+    StyleResolver::matched_important_style_map;
 thread_local StyleResolver::MatchedVector<const CSSVariableMap*>
     StyleResolver::matched_variable_map;
 
@@ -380,6 +382,8 @@ void StyleResolver::ResolveStyle(StyleMap& result, CSSFragment* fragment,
     return;
   }
 
+  StyleMap important_result;
+
   // Find the selectors that the current `Element` can match.
   if (fragment != nullptr) {
     if (fragment->enable_css_selector()) {
@@ -389,15 +393,25 @@ void StyleResolver::ResolveStyle(StyleMap& result, CSSFragment* fragment,
     }
   }
 
-  DidCollectMatchedRules(element_->data_model(), result, changed_css_vars,
-                         element_->CountInlineStyles());
+  DidCollectMatchedRules(element_->data_model(), result, important_result,
+                         changed_css_vars, element_->CountInlineStyles());
 
   HandleCSSVariables(result);
+  HandleCSSVariables(important_result);
+
   // Inline styles may contain CSS variables that are not present in the other
   // styles. We need to re-resolve CSS variables if they are present in inline
   // styles.
-  if (element_->MergeInlineStyles(result)) {
+  StyleMap important_inline_styles;
+  if (element_->MergeInlineStyles(result, important_inline_styles)) {
     HandleCSSVariables(result);
+    HandleCSSVariables(important_inline_styles);
+  }
+  if (!important_inline_styles.empty()) {
+    important_result.merge(important_inline_styles);
+  }
+  if (!important_result.empty()) {
+    result.merge(important_result);
   }
 }
 
@@ -448,40 +462,60 @@ void StyleResolver::ResolvePseudoElement(PseudoState pseudo_state,
                                          FiberElement* fiber_element,
                                          const char* pseudo_selector) {
   StyleMap result;
+  StyleMap important_result;
   if (fragment->enable_css_selector()) {
     AttributeHolder attribute_holder;
     attribute_holder.AddPseudoState(pseudo_state);
     attribute_holder.SetPseudoElementOwner(fiber_element->data_model());
     GetCSSStyleNew(&attribute_holder, fragment);
-    DidCollectMatchedRules(fiber_element->data_model(), result, nullptr);
+    DidCollectMatchedRules(fiber_element->data_model(), result,
+                           important_result);
   } else {
     ParsePseudoCSSTokensForFiber(fiber_element, fragment, pseudo_selector,
                                  result);
+    // Note: old pseudo token path doesn't have important_attributes_ yet.
   }
 
   if (!result.empty()) {
     HandleCSSVariables(result);
   }
+  if (!important_result.empty()) {
+    HandleCSSVariables(important_result);
+  }
+  result.merge(important_result);
   fiber_element->PrepareOrUpdatePseudoElement(pseudo_state, result);
 }
 
 void StyleResolver::DidCollectMatchedRules(AttributeHolder* holder,
                                            StyleMap& result,
+                                           StyleMap& important_result,
                                            CSSVariableMap* changed_css_vars,
                                            size_t base_reserving_size) {
   {
     auto& tls_matched_style_map = matched_style_map;
+    auto& tls_matched_important_style_map = matched_important_style_map;
 
-    // Precalculate reserve count of result map from matched maps.
+    size_t normal_reserve = base_reserving_size;
+    size_t important_reserve = 0;
     for (auto matched_style_ptr : tls_matched_style_map) {
-      base_reserving_size += matched_style_ptr->size();
+      normal_reserve += matched_style_ptr->size();
     }
-    result.reserve(base_reserving_size);
+    for (auto matched_style_ptr : tls_matched_important_style_map) {
+      important_reserve += matched_style_ptr->size();
+    }
+
+    result.reserve(normal_reserve);
+    important_result.reserve(important_reserve);
 
     for (auto matched_style_ptr : tls_matched_style_map) {
       result.merge(*matched_style_ptr);
     }
     tls_matched_style_map.clear();
+
+    for (auto matched_style_ptr : tls_matched_important_style_map) {
+      important_result.merge(*matched_style_ptr);
+    }
+    tls_matched_important_style_map.clear();
   }
 
   {
@@ -567,6 +601,23 @@ void StyleResolver::MergeHigherPriorityCSSStyle(const StyleMap& matched) {
   matched_style_map.emplace_back(&matched);
 }
 
+void StyleResolver::MergeHigherPriorityImportantCSSStyle(
+    const StyleMap& matched) {
+  if (matched.empty()) {
+    return;
+  }
+  matched_important_style_map.emplace_back(&matched);
+}
+
+void StyleResolver::MergeToken(CSSParseToken* token) {
+  if (!token) {
+    return;
+  }
+  MergeHigherPriorityCSSStyle(token->GetAttributes());
+  MergeHigherPriorityImportantCSSStyle(token->GetImportantAttributes());
+  SetCSSVariableToNode(token->GetStyleVariables());
+}
+
 void StyleResolver::SetCSSVariableToNode(const CSSVariableMap& matched) {
   if (matched.empty()) {
     return;
@@ -623,10 +674,8 @@ void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
 
   for (const auto& matched : matched_rules) {
     if (matched.Data()->Rule()->Token() != nullptr) {
-      MergeHigherPriorityCSSStyle(
-          matched.Data()->Rule()->Token().get()->GetAttributes());
-      SetCSSVariableToNode(
-          matched.Data()->Rule()->Token().get()->GetStyleVariables());
+      auto* token = matched.Data()->Rule()->Token().get();
+      MergeToken(token);
     }
   }
 }
@@ -682,10 +731,7 @@ void StyleResolver::PreSetGlobalPseudoNotCSS(
       if (is_need_use_pseudo_not_style) {
         auto it_pseudo_not = pseudo.find(it.first);
         if (it_pseudo_not != pseudo.end()) {
-          MergeHigherPriorityCSSStyle(
-              it_pseudo_not->second.get()->GetAttributes());
-          SetCSSVariableToNode(
-              it_pseudo_not->second.get()->GetStyleVariables());
+          MergeToken(it_pseudo_not->second.get());
         }
       }
     }
@@ -734,10 +780,7 @@ void StyleResolver::ApplyPseudoNotCSSStyle(
         std::string full_pseudo_key = it.first;
         auto it_pseudo_not = style_sheet->pseudo_map().find(full_pseudo_key);
         if (it_pseudo_not != style_sheet->pseudo_map().end()) {
-          MergeHigherPriorityCSSStyle(
-              it_pseudo_not->second.get()->GetAttributes());
-          SetCSSVariableToNode(
-              it_pseudo_not->second.get()->GetStyleVariables());
+          MergeToken(it_pseudo_not->second.get());
         }
       }
     }
@@ -771,8 +814,7 @@ void StyleResolver::ApplyPseudoClassChildSelectorStyle(
           report::GlobalFeatureCounter::Count(
               report::LynxFeature::CPP_ENABLE_PSEUDO_CHILD_CSS,
               manager_->GetInstanceId());
-          MergeHigherPriorityCSSStyle(it.second.get()->GetAttributes());
-          SetCSSVariableToNode(it.second.get()->GetStyleVariables());
+          MergeToken(it.second.get());
         }
       }
       if (it.first.find(kCSSSelectorLastChild) != std::string::npos) {
@@ -780,8 +822,7 @@ void StyleResolver::ApplyPseudoClassChildSelectorStyle(
           report::GlobalFeatureCounter::Count(
               report::LynxFeature::CPP_ENABLE_PSEUDO_CHILD_CSS,
               manager_->GetInstanceId());
-          MergeHigherPriorityCSSStyle(it.second.get()->GetAttributes());
-          SetCSSVariableToNode(it.second.get()->GetStyleVariables());
+          MergeToken(it.second.get());
         }
       }
     }
@@ -831,10 +872,7 @@ void StyleResolver::GetCSSByRule(CSSSheet::SheetType type,
       token = style_sheet->GetCSSStyle(rule);
   }
 
-  if (token != nullptr) {
-    MergeHigherPriorityCSSStyle(token->GetAttributes());
-    SetCSSVariableToNode(token->GetStyleVariables());
-  }
+  MergeToken(token);
 
   if ((type == CSSSheet::CLASS_SELECT || type == CSSSheet::ID_SELECT) &&
       style_sheet->HasCascadeStyle()) {
@@ -849,10 +887,7 @@ void StyleResolver::MergeHigherCascadeStyles(
       MergeCSSSelector(current_selector, parent_selector);
   CSSParseToken* token_parent =
       style_sheet->GetCascadeStyle(integrated_selector);
-  if (token_parent != nullptr) {
-    MergeHigherPriorityCSSStyle(token_parent->GetAttributes());
-    SetCSSVariableToNode(token_parent->GetStyleVariables());
-  }
+  MergeToken(token_parent);
 }
 
 void StyleResolver::ApplyCascadeStyles(CSSFragment* style_sheet,
@@ -958,8 +993,7 @@ void StyleResolver::GetCSSStyleForFiber(FiberElement* node,
     // process "*" first
     CSSParseToken* token = style_sheet->GetCSSStyle("*");
     if (token) {
-      MergeHigherPriorityCSSStyle(token->GetAttributes());
-      SetCSSVariableToNode(token->GetStyleVariables());
+      MergeToken(token);
     }
 
     // Start by processing the tag selectors first
@@ -974,8 +1008,7 @@ void StyleResolver::GetCSSStyleForFiber(FiberElement* node,
       }
       token = style_sheet->GetCSSStyle(rule_tag_selector);
       if (token) {
-        MergeHigherPriorityCSSStyle(token->GetAttributes());
-        SetCSSVariableToNode(token->GetStyleVariables());
+        MergeToken(token);
       }
       if (has_pseudo_not_style) {
         report::GlobalFeatureCounter::Count(
@@ -999,8 +1032,7 @@ void StyleResolver::GetCSSStyleForFiber(FiberElement* node,
       const std::string rule_class_selector = GetClassSelectorRule(cls);
       token = style_sheet->GetCSSStyle(rule_class_selector);
       if (token) {
-        MergeHigherPriorityCSSStyle(token->GetAttributes());
-        SetCSSVariableToNode(token->GetStyleVariables());
+        MergeToken(token);
       }
       ApplyCascadeStylesForFiber(style_sheet, node, rule_class_selector);
       if (has_pseudo_not_style) {
@@ -1040,8 +1072,7 @@ void StyleResolver::GetCSSStyleForFiber(FiberElement* node,
       }
       token = style_sheet->GetCSSStyle(rule_id_selector);
       if (token) {
-        MergeHigherPriorityCSSStyle(token->GetAttributes());
-        SetCSSVariableToNode(token->GetStyleVariables());
+        MergeToken(token);
       }
       ApplyCascadeStylesForFiber(style_sheet, node, rule_id_selector);
       if (has_pseudo_not_style) {
@@ -1123,10 +1154,7 @@ void StyleResolver::MergeHigherCascadeStylesForFiber(
       MergeCSSSelector(current_selector, parent_selector);
   CSSParseToken* token_parent =
       style_sheet->GetCascadeStyle(integrated_selector);
-  if (token_parent != nullptr) {
-    MergeHigherPriorityCSSStyle(token_parent->GetAttributes());
-    SetCSSVariableToNode(token_parent->GetStyleVariables());
-  }
+  MergeToken(token_parent);
 }
 
 const tasm::CSSParserConfigs& StyleResolver::GetCSSParserConfigs() {

@@ -123,7 +123,8 @@ TEST(CSSUtils, ParseStyleDeclarationList) {
   auto ret = ParseStyleDeclarationList(
       input, static_cast<uint32_t>(strlen(input)),
       [&values](const char* key_start, uint32_t key_len,
-                const char* value_start, uint32_t value_len) {
+                const char* value_start, uint32_t value_len, bool important) {
+        (void)important;
         auto key = std::string(key_start, key_start + key_len);
         auto value = std::string(value_start, value_start + value_len);
         values.insert(std::make_pair(key, value));
@@ -140,7 +141,8 @@ TEST(CSSUtils, ParseStyleDeclarationList) {
   ret = ParseStyleDeclarationList(
       input2, static_cast<uint32_t>(strlen(input2)),
       [&values2](const char* key_start, uint32_t key_len,
-                 const char* value_start, uint32_t value_len) {
+                 const char* value_start, uint32_t value_len, bool important) {
+        (void)important;
         auto key = std::string(key_start, key_start + key_len);
         auto value = std::string(value_start, value_start + value_len);
         values2.insert(std::make_pair(key, value));
@@ -155,7 +157,8 @@ TEST(CSSUtils, ParseStyleDeclarationList) {
   ret = ParseStyleDeclarationList(
       input3, static_cast<uint32_t>(strlen(input3)),
       [&values3](const char* key_start, uint32_t key_len,
-                 const char* value_start, uint32_t value_len) {
+                 const char* value_start, uint32_t value_len, bool important) {
+        (void)important;
         auto key = std::string(key_start, key_start + key_len);
         auto value = std::string(value_start, value_start + value_len);
         values3.insert(std::make_pair(key, value));
@@ -171,7 +174,8 @@ TEST(CSSUtils, ParseStyleDeclarationList) {
   ret = ParseStyleDeclarationList(
       input4, static_cast<uint32_t>(strlen(input4)),
       [&values4](const char* key_start, uint32_t key_len,
-                 const char* value_start, uint32_t value_len) {
+                 const char* value_start, uint32_t value_len, bool important) {
+        (void)important;
         auto key = std::string(key_start, key_start + key_len);
         auto value = std::string(value_start, value_start + value_len);
         values4.insert(std::make_pair(key, value));
@@ -186,7 +190,8 @@ TEST(CSSUtils, ParseStyleDeclarationList) {
   ret = ParseStyleDeclarationList(
       input5, static_cast<uint32_t>(strlen(input5)),
       [&values5](const char* key_start, uint32_t key_len,
-                 const char* value_start, uint32_t value_len) {
+                 const char* value_start, uint32_t value_len, bool important) {
+        (void)important;
         auto key = std::string(key_start, key_start + key_len);
         auto value = std::string(value_start, value_start + value_len);
         values5.insert(std::make_pair(key, value));
@@ -200,13 +205,34 @@ TEST(CSSUtils, ParseStyleDeclarationList) {
   ret = ParseStyleDeclarationList(
       input6, static_cast<uint32_t>(strlen(input6)),
       [&values6](const char* key_start, uint32_t key_len,
-                 const char* value_start, uint32_t value_len) {
+                 const char* value_start, uint32_t value_len, bool important) {
+        (void)important;
         auto key = std::string(key_start, key_start + key_len);
         auto value = std::string(value_start, value_start + value_len);
         values6.insert(std::make_pair(key, value));
       });
 
   EXPECT_TRUE(!ret);
+
+  // Test with !important
+  std::vector<std::tuple<std::string, std::string, bool>> important_results;
+  ret = ParseStyleDeclarationList(
+      "width: 100px !important; height: 200px;", 39,
+      [&important_results](const char* key_start, uint32_t key_length,
+                           const char* value_start, uint32_t value_length,
+                           bool important) {
+        important_results.emplace_back(std::string(key_start, key_length),
+                                       std::string(value_start, value_length),
+                                       important);
+      });
+  EXPECT_TRUE(ret);
+  ASSERT_EQ(important_results.size(), 2u);
+  EXPECT_EQ(std::get<0>(important_results[0]), "width");
+  EXPECT_EQ(std::get<1>(important_results[0]), "100px");
+  EXPECT_TRUE(std::get<2>(important_results[0]));
+  EXPECT_EQ(std::get<0>(important_results[1]), "height");
+  EXPECT_EQ(std::get<1>(important_results[1]), "200px");
+  EXPECT_FALSE(std::get<2>(important_results[1]));
 }
 
 TEST(CSSUtils, ParseStyleDeclarationListCase2) {
@@ -215,7 +241,8 @@ TEST(CSSUtils, ParseStyleDeclarationListCase2) {
   auto ret = ParseStyleDeclarationList(
       input, static_cast<uint32_t>(strlen(input)),
       [&values](const char* key_start, uint32_t key_len,
-                const char* value_start, uint32_t value_len) {
+                const char* value_start, uint32_t value_len, bool important) {
+        (void)important;
         auto key = std::string(key_start, key_start + key_len);
         auto value = std::string(value_start, value_start + value_len);
         values.insert(std::make_pair(key, value));
@@ -256,6 +283,77 @@ TEST(CSSUtils, SplitClasses) {
 
   EXPECT_TRUE(out3.size() == 1);
   EXPECT_TRUE(out3[0] == "dark");
+}
+
+TEST(CSSUtils, StripImportant) {
+  const char* start;
+  uint32_t len;
+
+  EXPECT_TRUE(StripImportant("100px !important", 16, &start, &len));
+  EXPECT_EQ(std::string(start, len), "100px");
+
+  EXPECT_TRUE(StripImportant("100px!important", 15, &start, &len));
+  EXPECT_EQ(std::string(start, len), "100px");
+
+  EXPECT_TRUE(StripImportant("red ! important", 15, &start, &len));
+  EXPECT_EQ(std::string(start, len), "red");
+
+  EXPECT_TRUE(StripImportant("blue !IMPORTANT", 15, &start, &len));
+  EXPECT_EQ(std::string(start, len), "blue");
+
+  EXPECT_TRUE(StripImportant("50%   !  important  ", 20, &start, &len));
+  EXPECT_EQ(std::string(start, len), "50%");
+
+  EXPECT_FALSE(StripImportant("100px", 5, &start, &len));
+  EXPECT_EQ(std::string(start, len), "100px");
+
+  EXPECT_FALSE(StripImportant("important", 9, &start, &len));
+  EXPECT_EQ(std::string(start, len), "important");
+
+  EXPECT_FALSE(StripImportant("!important", 10, &start, &len));
+  EXPECT_EQ(std::string(start, len), "!important");
+
+  EXPECT_FALSE(StripImportant("", 0, &start, &len));
+  EXPECT_EQ(len, 0u);
+
+  // Whitespace-only input
+  EXPECT_FALSE(StripImportant("   ", 3, &start, &len));
+  EXPECT_EQ(len, 0u);
+
+  // '!' without "important"
+  EXPECT_FALSE(StripImportant("100px !", 7, &start, &len));
+  EXPECT_EQ(std::string(start, len), "100px !");
+
+  // "important" without '!'
+  EXPECT_FALSE(StripImportant("100px important", 15, &start, &len));
+  EXPECT_EQ(std::string(start, len), "100px important");
+
+  // Embedded !important (not at end)
+  EXPECT_FALSE(StripImportant("!important 100px", 16, &start, &len));
+  EXPECT_EQ(std::string(start, len), "!important 100px");
+  EXPECT_FALSE(StripImportant("100px !important extra", 22, &start, &len));
+  EXPECT_EQ(std::string(start, len), "100px !important extra");
+
+  // Mixed case variations
+  EXPECT_TRUE(StripImportant("green !ImPoRtAnT", 16, &start, &len));
+  EXPECT_EQ(std::string(start, len), "green");
+
+  EXPECT_TRUE(StripImportant("green !important", 16, &start, &len));
+  EXPECT_EQ(std::string(start, len), "green");
+
+  // Trailing whitespace after important
+  EXPECT_TRUE(StripImportant("12px !important   ", 18, &start, &len));
+  EXPECT_EQ(std::string(start, len), "12px");
+}
+
+TEST(CSSUtils, MaybeStripImportantAsView) {
+  EXPECT_EQ(MaybeStripImportantAsView(std::string("100px !important")),
+            "100px");
+  EXPECT_EQ(MaybeStripImportantAsView(std::string("red")), "red");
+  // Should be a view into the same string, not a copy
+  std::string original = "blue";
+  auto view = MaybeStripImportantAsView(original);
+  EXPECT_EQ(view.data(), original.data());
 }
 
 }  // namespace testing

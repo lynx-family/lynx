@@ -8,6 +8,7 @@
 
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
+#include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/runtime/lepus/json_parser.h"
 
@@ -555,6 +556,18 @@ std::string CSSValue::Substitution(
                       handle_func);
 }
 
+namespace {
+inline std::string StripImportantFromString(std::string value) {
+  const char* stripped_start;
+  uint32_t stripped_len;
+  if (tasm::StripImportant(value.c_str(), static_cast<uint32_t>(value.length()),
+                           &stripped_start, &stripped_len)) {
+    value.resize(stripped_len);
+  }
+  return value;
+}
+}  // namespace
+
 std::string CSSValue::Substitution(
     const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
     const CycleDetector& detector, int max_depth,
@@ -568,7 +581,7 @@ std::string CSSValue::Substitution(
   const auto& var_refs = css_value.optionals_.Get<VarReferenceField>();
 
   if (var_refs.empty()) {
-    return css_value.AsStdString();
+    return raw_value;
   }
 
   std::string result;
@@ -620,8 +633,7 @@ std::string CSSValue::Substitution(
     result.append(raw_value, last_pos);
   }
 
-  // Return by move to avoid copy
-  return result;
+  return StripImportantFromString(std::move(result));
 }
 
 std::string CSSValue::SubstitutionResolved(
@@ -636,7 +648,7 @@ std::string CSSValue::SubstitutionResolved(
   const auto& var_refs = css_value.optionals_.Get<VarReferenceField>();
 
   if (var_refs.empty()) {
-    return css_value.AsStdString();
+    return raw_value;
   }
 
   std::string result;
@@ -681,8 +693,7 @@ std::string CSSValue::SubstitutionResolved(
     result.append(raw_value, last_pos);
   }
 
-  // Return by move to avoid copy
-  return result;
+  return StripImportantFromString(std::move(result));
 }
 
 std::string CSSValue::ResolveFallback(

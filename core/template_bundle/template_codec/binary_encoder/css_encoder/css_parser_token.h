@@ -48,6 +48,8 @@ class CSSParseToken : public tasm::CSSParseToken {
 
   virtual const tasm::StyleMap& GetAttributes() override;
 
+  virtual const tasm::StyleMap& GetImportantAttributes() override;
+
   virtual void SetAttributes(tasm::StyleMap&& attributes) override {
     attributes_ = std::move(attributes);
   }

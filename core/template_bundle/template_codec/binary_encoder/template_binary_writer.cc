@@ -374,6 +374,10 @@ bool TemplateBinaryWriter::EncodeCSSParseToken(CSSParseToken* token) {
   DCHECK(token != nullptr);
   EncodeCSSAttributes(token->GetAttributes());
   if (lynx::tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
+                                          FEATURE_CSS_IMPORTANT)) {
+    EncodeCSSAttributes(token->GetImportantAttributes());
+  }
+  if (lynx::tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
                                           FEATURE_CSS_STYLE_VARIABLES) &&
       compile_options_.enable_css_variable_) {
     EncodeCSSStyleVariables(token->GetStyleVariables());
