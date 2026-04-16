@@ -11,7 +11,7 @@
 namespace lynx {
 namespace devtool {
 
-static int32_t GetFuncNameByStr(const std::string &func_name) {
+static int32_t GetFuncNameByStr(const std::string& func_name) {
   static base::NoDestructor<std::unordered_map<std::string, int>> names_map(
       {{runtime::ConsoleAlog, runtime::CONSOLE_LOG_ALOG},
        {runtime::ConsoleDebug, runtime::CONSOLE_LOG_INFO},
@@ -28,15 +28,17 @@ static int32_t GetFuncNameByStr(const std::string &func_name) {
 }
 
 InspectorLepusObserverImpl::InspectorLepusObserverImpl(
-    const std::shared_ptr<InspectorLepusDebuggerImpl> &debugger)
+    const std::shared_ptr<InspectorLepusDebuggerImpl>& debugger)
     : debugger_wp_(debugger) {}
 
 std::unique_ptr<lepus::LepusInspectorManager>
-InspectorLepusObserverImpl::CreateLepusInspectorManager() {
-  return JSDebugHelper::GetInstance()->CreateLepusInspectorManager();
+InspectorLepusObserverImpl::CreateLepusInspectorManager(
+    runtime::ContextType context_type) {
+  return JSDebugHelper::GetInstance()->CreateLepusInspectorManager(
+      context_type);
 }
 
-std::string InspectorLepusObserverImpl::GetDebugInfo(const std::string &url) {
+std::string InspectorLepusObserverImpl::GetDebugInfo(const std::string& url) {
   auto sp = debugger_wp_.lock();
   if (sp != nullptr) {
     return sp->GetDebugInfo(url);
@@ -44,8 +46,8 @@ std::string InspectorLepusObserverImpl::GetDebugInfo(const std::string &url) {
   return "";
 }
 
-void InspectorLepusObserverImpl::SetDebugInfoUrl(const std::string &url,
-                                                 const std::string &file_name) {
+void InspectorLepusObserverImpl::SetDebugInfoUrl(const std::string& url,
+                                                 const std::string& file_name) {
   auto sp = debugger_wp_.lock();
   if (sp != nullptr) {
     sp->SetDebugInfoUrl(url, file_name);
@@ -53,15 +55,15 @@ void InspectorLepusObserverImpl::SetDebugInfoUrl(const std::string &url,
 }
 
 void InspectorLepusObserverImpl::OnInspectorInited(
-    const std::string &vm_type, const std::string &name,
-    const std::shared_ptr<devtool::InspectorClientNG> &client) {
+    const std::string& vm_type, const std::string& name,
+    const std::shared_ptr<devtool::InspectorClientNG>& client) {
   auto sp = debugger_wp_.lock();
   if (sp != nullptr) {
     sp->OnInspectorInited(vm_type, name, client);
   }
 }
 
-void InspectorLepusObserverImpl::OnContextDestroyed(const std::string &name) {
+void InspectorLepusObserverImpl::OnContextDestroyed(const std::string& name) {
   auto sp = debugger_wp_.lock();
   if (sp != nullptr) {
     sp->OnContextDestroyed(name);
@@ -69,7 +71,7 @@ void InspectorLepusObserverImpl::OnContextDestroyed(const std::string &name) {
 }
 
 void InspectorLepusObserverImpl::TakeOver(
-    const std::shared_ptr<lepus::InspectorLepusObserver> &other) {
+    const std::shared_ptr<lepus::InspectorLepusObserver>& other) {
   if (other == nullptr) {
     return;
   }
@@ -82,8 +84,8 @@ void InspectorLepusObserverImpl::TakeOver(
   CopyMembersFrom(other_impl);
 }
 
-void InspectorLepusObserverImpl::OnConsoleEvent(const std::string &level,
-                                                const std::string &args) {
+void InspectorLepusObserverImpl::OnConsoleEvent(const std::string& level,
+                                                const std::string& args) {
   if (need_post_console_) {
     auto sp = mediator_ptr_.lock();
     if (sp != nullptr) {
@@ -100,7 +102,7 @@ void InspectorLepusObserverImpl::OnConsoleEvent(const std::string &level,
   }
 }
 
-void InspectorLepusObserverImpl::PrepareForScriptEval(const std::string &name) {
+void InspectorLepusObserverImpl::PrepareForScriptEval(const std::string& name) {
   auto sp = debugger_wp_.lock();
   if (sp != nullptr) {
     sp->PrepareForScriptEval(name);
@@ -108,7 +110,7 @@ void InspectorLepusObserverImpl::PrepareForScriptEval(const std::string &name) {
 }
 
 void InspectorLepusObserverImpl::CopyMembersFrom(
-    const std::shared_ptr<InspectorLepusObserverImpl> &other) {
+    const std::shared_ptr<InspectorLepusObserverImpl>& other) {
   auto debugger = debugger_wp_.lock();
   if (debugger == nullptr) {
     return;
