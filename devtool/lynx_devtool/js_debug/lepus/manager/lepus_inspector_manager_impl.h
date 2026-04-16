@@ -5,6 +5,7 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_LEPUS_MANAGER_LEPUS_INSPECTOR_MANAGER_IMPL_H_
 #define DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_LEPUS_MANAGER_LEPUS_INSPECTOR_MANAGER_IMPL_H_
 
+#include <memory>
 #include <unordered_map>
 
 #include "core/inspector/lepus_inspector_manager.h"

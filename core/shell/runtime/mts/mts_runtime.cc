@@ -311,7 +311,8 @@ void MTSRuntime::InitInspector(
     const std::shared_ptr<lepus::InspectorLepusObserver>& observer,
     const std::string& context_name) {
   if (observer != nullptr) {
-    inspector_manager_ = observer->CreateLepusInspectorManager();
+    inspector_manager_ =
+        observer->CreateLepusInspectorManager(mts_context_->Type());
     if (inspector_manager_ != nullptr) {
       mts_context_->set_is_debug_enabled(true);
       inspector_manager_->InitInspector(mts_context_.get(), observer,

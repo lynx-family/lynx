@@ -44,6 +44,12 @@ subspec_target("devtool") {
   ]
   sources += devtool_public_headers
   public_header_files = devtool_public_headers
+  if (defined(enable_rts_runtime) && enable_rts_runtime && is_debug &&
+      !use_flatten_deps) {
+    deps = [ "../../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory" ]
+  } else {
+    deps = [ "../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory_stub" ]
+  }
 }
 
 podspec_target("devtool_podspec") {
@@ -283,6 +289,16 @@ subspec_target("js_debug") {
   }
   deps = JSDebug_deps
   dependency = js_debug_dependency
+  if (defined(enable_rts_runtime) && enable_rts_runtime && is_debug &&
+      !use_flatten_deps) {
+    pod_target_xcconfig.HEADER_SEARCH_PATHS += [ "//PODS_ROOT/PrimTS/src/" ]
+    deps += [
+      "../../../../../devtool/js_inspect/rts:rts_debug",
+      "../../../../../devtool/js_inspect/rts:rts_debug_client",
+      "../../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory",
+    ]
+    dependency += [ "PrimTS/rtsvm-devtool" ]
+  }
   if (!use_flatten_deps) {
     dependency += [ "LynxDevtool/LynxCore" ]
   }

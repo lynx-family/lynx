@@ -14,11 +14,11 @@ namespace lynx {
 namespace devtool {
 
 InspectorClientDelegateBaseImpl::InspectorClientDelegateBaseImpl(
-    const std::string &vm_type)
+    const std::string& vm_type)
     : vm_type_(vm_type) {}
 
 void InspectorClientDelegateBaseImpl::DispatchMessageAsync(
-    const std::string &message, int instance_id) {
+    const std::string& message, int instance_id) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
               INSPECTOR_CLIENT_DELEGATE_BASE_IMPL_DISPATCH_MESSAGE_ASYNC,
               "vm_type", vm_type_, "instance_id", instance_id, "message",
@@ -35,7 +35,7 @@ void InspectorClientDelegateBaseImpl::DispatchMessageAsync(
 }
 
 void InspectorClientDelegateBaseImpl::RunMessageLoopOnPause(
-    const std::string &group_id) {
+    const std::string& group_id) {
   std::unique_lock<std::mutex> lock(mutex_);
   if (paused_) {
     return;
@@ -57,7 +57,7 @@ double InspectorClientDelegateBaseImpl::CurrentTimeMS() {
 }
 
 void InspectorClientDelegateBaseImpl::StartRepeatingTimer(
-    double interval, std::function<void(void *)> callback, void *data) {
+    double interval, std::function<void(void*)> callback, void* data) {
   if (timer_ == nullptr) {
     // Since message_loop.cc may be compiled in different dynamic libraries,
     // which will cause there are different static variables
@@ -73,7 +73,7 @@ void InspectorClientDelegateBaseImpl::StartRepeatingTimer(
   timed_task_ids_.emplace(data, task_id);
 }
 
-void InspectorClientDelegateBaseImpl::CancelTimer(void *data) {
+void InspectorClientDelegateBaseImpl::CancelTimer(void* data) {
   if (timer_ == nullptr) {
     timer_ = std::make_unique<base::TimedTaskManager>();
   }
@@ -94,7 +94,7 @@ void InspectorClientDelegateBaseImpl::StopDebug(int instance_id) {
 }
 
 void InspectorClientDelegateBaseImpl::DispatchMessageAsyncWithLockHeld(
-    const std::string &message, int instance_id) {
+    const std::string& message, int instance_id) {
   message_queue_.emplace(std::make_pair(instance_id, message));
   if (paused_) {
     cv_.notify_all();
@@ -110,7 +110,7 @@ void InspectorClientDelegateBaseImpl::FlushMessageQueue() {
 }
 
 void InspectorClientDelegateBaseImpl::FlushMessageQueueWithLockHeld(
-    std::unique_lock<std::mutex> &lock) {
+    std::unique_lock<std::mutex>& lock) {
   while (!message_queue_.empty()) {
     int instance_id = message_queue_.front().first;
     std::string mes = message_queue_.front().second;
@@ -128,7 +128,7 @@ void InspectorClientDelegateBaseImpl::FlushMessageQueueWithLockHeld(
 }
 
 void InspectorClientDelegateBaseImpl::DispatchInitMessage(
-    int instance_id, const std::unique_ptr<ScriptManagerNG> &script_manager,
+    int instance_id, const std::unique_ptr<ScriptManagerNG>& script_manager,
     bool runtime_enable) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
               INSPECTOR_CLIENT_DELEGATE_BASE_IMPL_DISPATCH_INIT_MESSAGE,
@@ -142,12 +142,12 @@ void InspectorClientDelegateBaseImpl::DispatchInitMessage(
 }
 
 void InspectorClientDelegateBaseImpl::SetBreakpointCached(
-    int instance_id, const std::unique_ptr<ScriptManagerNG> &script_manager) {
+    int instance_id, const std::unique_ptr<ScriptManagerNG>& script_manager) {
   if (script_manager == nullptr) {
     return;
   }
 
-  const std::string &pause_on_exceptions_state =
+  const std::string& pause_on_exceptions_state =
       script_manager->GetPauseOnExceptionsState();
   if (!pause_on_exceptions_state.empty()) {
     auto pause_on_exceptions_mes =
@@ -155,11 +155,11 @@ void InspectorClientDelegateBaseImpl::SetBreakpointCached(
     DispatchMessage(pause_on_exceptions_mes, instance_id);
   }
 
-  auto &breakpoint = script_manager->GetBreakpoints();
+  auto& breakpoint = script_manager->GetBreakpoints();
   if (breakpoint.empty()) {
     return;
   }
-  for (const auto &bp : breakpoint) {
+  for (const auto& bp : breakpoint) {
     auto mes = GenMessageSetBreakpointByUrl(
         bp.second.url_, bp.second.condition_, bp.second.line_number_,
         bp.second.column_number_);
@@ -171,7 +171,7 @@ void InspectorClientDelegateBaseImpl::SetBreakpointCached(
 }
 
 std::string InspectorClientDelegateBaseImpl::PrepareDispatchMessage(
-    rapidjson::Document &message, int instance_id) {
+    rapidjson::Document& message, int instance_id) {
   /*
    * We provide a template here.
    *
@@ -187,7 +187,7 @@ std::string InspectorClientDelegateBaseImpl::PrepareDispatchMessage(
 }
 
 std::string InspectorClientDelegateBaseImpl::PrepareResponseMessage(
-    const std::string &message, int instance_id) {
+    const std::string& message, int instance_id) {
   /*
    * We provide a template here.
    *
@@ -214,8 +214,8 @@ std::string InspectorClientDelegateBaseImpl::PrepareResponseMessage(
 }
 
 void InspectorClientDelegateBaseImpl::CacheBreakpointsByRequestMessage(
-    const rapidjson::Document &message,
-    const std::unique_ptr<ScriptManagerNG> &script_manager) {
+    const rapidjson::Document& message,
+    const std::unique_ptr<ScriptManagerNG>& script_manager) {
   if (script_manager == nullptr) {
     return;
   }
@@ -239,15 +239,15 @@ void InspectorClientDelegateBaseImpl::CacheBreakpointsByRequestMessage(
 }
 
 void InspectorClientDelegateBaseImpl::CacheBreakpointsByResponseMessage(
-    const rapidjson::Document &message,
-    const std::unique_ptr<ScriptManagerNG> &script_manager) {
+    const rapidjson::Document& message,
+    const std::unique_ptr<ScriptManagerNG>& script_manager) {
   if (message.HasMember(kKeyId) && script_manager != nullptr) {
     script_manager->SetBreakpointId(message);
   }
 }
 
 void InspectorClientDelegateBaseImpl::RecordDebuggingInstanceID(
-    const rapidjson::Document &message, int instance_id) {
+    const rapidjson::Document& message, int instance_id) {
   std::string method = message[kKeyMethod].GetString();
   if (method == kMethodDebuggerEnable) {
     debugging_instance_id_ = instance_id;
@@ -258,8 +258,11 @@ void InspectorClientDelegateBaseImpl::RecordDebuggingInstanceID(
 }
 
 bool InspectorClientDelegateBaseImpl::AddEngineTypeParam(
-    rapidjson::Document &message) {
+    rapidjson::Document& message) {
   if (vm_type_ == kKeyEngineLepus) {
+    return false;
+  }
+  if (vm_type_ == kKeyEngineRTS) {
     return false;
   }
   if (!message.HasMember(kKeyResult)) {
@@ -276,7 +279,7 @@ bool InspectorClientDelegateBaseImpl::AddEngineTypeParam(
 }
 
 std::string InspectorClientDelegateBaseImpl::GenSimpleMessage(
-    const std::string &method, int message_id) {
+    const std::string& method, int message_id) {
   rapidjson::Document document(rapidjson::kObjectType);
   document.AddMember(rapidjson::Value(kKeyId, document.GetAllocator()),
                      rapidjson::Value(message_id), document.GetAllocator());
@@ -287,7 +290,7 @@ std::string InspectorClientDelegateBaseImpl::GenSimpleMessage(
 }
 
 std::string InspectorClientDelegateBaseImpl::GenMessageSetBreakpointByUrl(
-    const std::string &url, const std::string &condition, int line, int column,
+    const std::string& url, const std::string& condition, int line, int column,
     int message_id) {
   rapidjson::Document content(rapidjson::kObjectType);
   content.AddMember(rapidjson::Value(kKeyId, content.GetAllocator()),
@@ -332,7 +335,7 @@ std::string InspectorClientDelegateBaseImpl::GenMessageSetBreakpointsActive(
 }
 
 std::string InspectorClientDelegateBaseImpl::GenMessageSetPauseOnExceptions(
-    const std::string &state, int message_id) {
+    const std::string& state, int message_id) {
   rapidjson::Document content(rapidjson::kObjectType);
   content.AddMember(rapidjson::Value(kKeyId, content.GetAllocator()),
                     rapidjson::Value(message_id), content.GetAllocator());
@@ -350,7 +353,7 @@ std::string InspectorClientDelegateBaseImpl::GenMessageSetPauseOnExceptions(
 }
 
 rapidjson::Document InspectorClientDelegateBaseImpl::GenTargetInfo(
-    const std::string &target_id, const std::string &title) {
+    const std::string& target_id, const std::string& title) {
   rapidjson::Document info(rapidjson::kObjectType);
   info.AddMember(rapidjson::Value(kKeyTargetId, info.GetAllocator()),
                  rapidjson::Value(target_id, info.GetAllocator()),
@@ -372,7 +375,7 @@ rapidjson::Document InspectorClientDelegateBaseImpl::GenTargetInfo(
 }
 
 std::string InspectorClientDelegateBaseImpl::GenMessageTargetCreated(
-    const std::string &target_id, const std::string &title) {
+    const std::string& target_id, const std::string& title) {
   rapidjson::Document document(rapidjson::kObjectType);
   document.AddMember(
       rapidjson::Value(kKeyMethod, document.GetAllocator()),
@@ -388,8 +391,8 @@ std::string InspectorClientDelegateBaseImpl::GenMessageTargetCreated(
 }
 
 std::string InspectorClientDelegateBaseImpl::GenMessageAttachedToTarget(
-    const std::string &target_id, const std::string &session_id,
-    const std::string &title) {
+    const std::string& target_id, const std::string& session_id,
+    const std::string& title) {
   rapidjson::Document document(rapidjson::kObjectType);
   document.AddMember(
       rapidjson::Value(kKeyMethod, document.GetAllocator()),
@@ -412,7 +415,7 @@ std::string InspectorClientDelegateBaseImpl::GenMessageAttachedToTarget(
 }
 
 std::string InspectorClientDelegateBaseImpl::GenMessageTargetDestroyed(
-    const std::string &target_id) {
+    const std::string& target_id) {
   rapidjson::Document document(rapidjson::kObjectType);
   document.AddMember(
       rapidjson::Value(kKeyMethod, document.GetAllocator()),
@@ -428,7 +431,7 @@ std::string InspectorClientDelegateBaseImpl::GenMessageTargetDestroyed(
 }
 
 std::string InspectorClientDelegateBaseImpl::GenMessageDetachedFromTarget(
-    const std::string &session_id) {
+    const std::string& session_id) {
   rapidjson::Document document(rapidjson::kObjectType);
   document.AddMember(
       rapidjson::Value(kKeyMethod, document.GetAllocator()),
@@ -444,7 +447,7 @@ std::string InspectorClientDelegateBaseImpl::GenMessageDetachedFromTarget(
 }
 
 bool InspectorClientDelegateBaseImpl::ParseStrToJson(
-    rapidjson::Document &json_mes, const std::string &mes) {
+    rapidjson::Document& json_mes, const std::string& mes) {
   json_mes = base::strToJson(mes.c_str());
   if (json_mes.HasParseError()) {
     LOGE("js debug: parse json str error! original str: " << mes);
@@ -454,7 +457,7 @@ bool InspectorClientDelegateBaseImpl::ParseStrToJson(
 }
 
 void InspectorClientDelegateBaseImpl::RemoveInvalidMembers(
-    rapidjson::Value &message) {
+    rapidjson::Value& message) {
   // V8 can only process CDP messages with the following members:
   // "id", "method", "params" and "sessionId"
   // If there are some other members in a CDP message, then the message won't be
