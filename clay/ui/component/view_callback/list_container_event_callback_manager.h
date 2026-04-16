@@ -15,14 +15,16 @@ class ListContainerEventCallbackManager : public ScrollEventCallbackManager {
  public:
   ListContainerEventCallbackManager(BaseView* view, int32_t callback_id,
                                     PageView* page_view);
-  ~ListContainerEventCallbackManager();
+  ~ListContainerEventCallbackManager() override;
 
   void NotifyScrollStateChange(ScrollState old_state, ScrollState current_state,
                                float velocity, bool is_dragging) const override;
 
   void SendScrollEvent(const char* event_name, const FloatPoint& scrolled,
                        const FloatPoint& offset, const FloatSize& content,
-                       const bool is_dragging) const override;
+                       const bool is_dragging = false,
+                       [[maybe_unused]] const EventSource event_source =
+                           EventSource::kScroll) const override;
 
   void SendScrollStateChangeEvent(ScrollState state) const;
 

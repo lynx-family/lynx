@@ -61,6 +61,13 @@ class ScrollEventCallbackManager {
                  // control
   };
 
+  // MUST align with lynx/core/renderer/ui_component/list/list_types.h
+  enum class EventSource {
+    kDiff = 0,
+    kLayout,
+    kScroll,
+  };
+
   virtual bool AddEventCallback(const std::string& event) {
     if (event.compare(event_attr::kEventScroll) == 0) {
       EnableSendEvent(ScrollEvents::kScrollEvent);
@@ -113,7 +120,9 @@ class ScrollEventCallbackManager {
                                const FloatPoint& scrolled,
                                const FloatPoint& offset,
                                const FloatSize& content,
-                               const bool is_dragging = false) const;
+                               const bool is_dragging = false,
+                               [[maybe_unused]] const EventSource event_source =
+                                   EventSource::kScroll) const;
 
   bool ShouldSendEvent(ScrollEvents event) const { return event_flag_ & event; }
 

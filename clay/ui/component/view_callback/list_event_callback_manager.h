@@ -66,7 +66,9 @@ class ListEventCallbackManager : public ScrollEventCallbackManager {
 
   void SendScrollEvent(const char* event_name, const FloatPoint& scrolled,
                        const FloatPoint& offset, const FloatSize& content,
-                       const bool is_dragging = false) const override;
+                       const bool is_dragging = false,
+                       [[maybe_unused]] const EventSource event_source =
+                           EventSource::kScroll) const override;
 
  private:
   FRIEND_TEST(FocusListViewTest, AppearDisappearEvent);
