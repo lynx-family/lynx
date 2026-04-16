@@ -439,9 +439,28 @@ void BaseView::SetBound(float left, float top, float width, float height) {
   // https://source.chromium.org/chromium/chromium/src/+/main:base/auto_reset.h;l=25;bpv=1;bpt=1?q=AutoReset&ss=chromium%2Fchromium%2Fsrc
   ignore_size_change_checks_ = true;
   SetX(left);
-  SetY(top);
   SetWidth(width);
-  SetHeight(height);
+
+  const bool should_couple_top_with_height_transition =
+      top_ != top && height_ != height && IsTransitionAnimationReady() &&
+      transition_mgr_ &&
+      transition_mgr_->Enabled(ClayAnimationPropertyType::kHeight) &&
+      !transition_mgr_->Enabled(ClayAnimationPropertyType::kTop);
+
+  if (should_couple_top_with_height_transition) {
+    if (transition_mgr_->TransitionTo(ClayAnimationPropertyType::kHeight,
+                                      height)) {
+      transition_mgr_->TransitionWithTiming(ClayAnimationPropertyType::kTop,
+                                            top,
+                                            ClayAnimationPropertyType::kHeight);
+    } else {
+      SetProperty(ClayAnimationPropertyType::kTop, top, false);
+      SetProperty(ClayAnimationPropertyType::kHeight, height, false);
+    }
+  } else {
+    SetY(top);
+    SetHeight(height);
+  }
   ignore_size_change_checks_ = false;
   NotifyBoundChangeIfNeeded(old_bounds);
 
