@@ -9,6 +9,19 @@ machine = "x86_64" if machine == "amd64" else machine
 python_path = "python3"
 if system == "windows":
     python_path = "python"
+is_cq = os.environ.get('LCM_CICD_ENV') == 'CQ' or os.environ.get('CQ_BUILD_TYPE') in ['pre-check', 'dry-run', 'cq-test']
+pnpm_path = os.path.join(root_dir, 'buildtools', 'pnpm', 'pnpm' + ('.exe' if system == 'windows' else ''))
+http_proxy = os.environ.get('http_proxy') or os.environ.get('CDS_PROJ_HTTP_PROXY', '')
+https_proxy = os.environ.get('https_proxy') or os.environ.get('CDS_PROJ_HTTPS_PROXY', '')
+no_proxy = (
+    os.environ.get('NO_PROXY')
+    or os.environ.get('no_proxy')
+    or os.environ.get('CDS_ENV_NO_PROXY')
+    or os.environ.get('CDS_ENV_no_proxy', '')
+)
+public_registry = 'https://registry.npmjs.org/'
+cq_registry = 'https://bnpm.byted.org/'
+cq_no_proxy = '.byted.org,.bytedance.net,localhost,127.0.0.1'
 
 def unzip_webview2():
   zipfile.ZipFile('webview2.nupkg').extractall('Microsoft.Web.WebView2.1.0.902.49')
@@ -70,8 +83,12 @@ deps = {
         "type": "action",
         "commands": [
             "chmod +x buildtools/ninja/ninja",
+            "chmod +x buildtools/pnpm/pnpm",
         ],
-        "require": ["buildtools/ninja"],
+        "require": [
+            "buildtools/ninja",
+            "buildtools/pnpm/pnpm" + (".exe" if system == "windows" else ""),
+        ],
         "condition": system in ['linux', 'darwin']
     },
     'buildtools/gn': {
@@ -266,33 +283,73 @@ deps = {
         "require": ["third_party/webview2/webview2.nupkg"],
         "condition": system in ['windows']
     },
-    'buildtools/corepack/pnpm/7.33.6': {
+    'buildtools/pnpm/pnpm' + (".exe" if system == "windows" else ""): {
         "type": "http",
-        "url": "https://registry.npmjs.org/pnpm/-/pnpm-7.33.6.tgz",
-        "sha256": "f0c52b41f8128da92160f6826b53a105aad31c6c7cdc00b907fde507c5ca09b5",
-        "ignore_in_git": True
+        "url": {
+            "linux-x86_64": "https://github.com/pnpm/pnpm/releases/download/v7.33.6/pnpm-linuxstatic-x64",
+            "linux-arm64": "https://github.com/pnpm/pnpm/releases/download/v7.33.6/pnpm-linuxstatic-arm64",
+            "darwin-arm64": "https://github.com/pnpm/pnpm/releases/download/v7.33.6/pnpm-macos-arm64",
+            "darwin-x86_64": "https://github.com/pnpm/pnpm/releases/download/v7.33.6/pnpm-macos-x64",
+            "windows-x86_64": "https://github.com/pnpm/pnpm/releases/download/v7.33.6/pnpm-win-x64.exe",
+        }.get(f'{system}-{machine}', None),
+        "sha256": {
+            "linux-x86_64": "74b4e94598aa277063e5074582e7a4ca703d55ded544d77d3b1ca56623e173d6",
+            "linux-arm64": "9498d6cb759ff6c4bf09e812124d70a509d299702683ac8e691efeaae595b94c",
+            "darwin-arm64": "d4bd14cd3ebdc398e8a633abf33c446d68246c45949c60018129950d20cd4b30",
+            "darwin-x86_64": "01f55863d5469aae92dd1ff1ee52b024b9e26c7d966bea476b52465e543e15c7",
+            "windows-x86_64": "5ad5f079559acfd80656cb6d631a4237ac0fa7f49e702de3544fd78ada4f0128",
+        }.get(f'{system}-{machine}', None),
+        "decompress": False,
+        "ignore_in_git": True,
+        "condition": system in ['linux', 'darwin', 'windows']
     },
-    # setup corepack and pnpm
-    'setup_corepack_pnpm': {
+    # setup pnpm
+    'setup_pnpm': {
         "type": "action",
         "cwd": root_dir,
         "env": {
-            'NODE_CHANNEL_FD': '1' if not system == 'windows' else '',
-            'COREPACK_HOME': os.path.join(root_dir, 'buildtools', 'corepack'),
-            # Windows does not have `node/bin` dir
-            # And it also use `;` as seperator of PATH
-            'PATH': f"{os.path.join(root_dir, 'buildtools', 'node')};{os.environ.get('PATH')}"
-               if system == "windows"
-               else f"{os.path.join(root_dir, 'buildtools', 'node', 'bin')}:{os.environ.get('PATH')}"
+            'PATH': (
+                f"{os.path.join(root_dir, 'buildtools', 'pnpm')};"
+                f"{os.path.join(root_dir, 'buildtools', 'node')};"
+                f"{os.environ.get('PATH')}"
+            ) if system == "windows" else (
+                f"{os.path.join(root_dir, 'buildtools', 'pnpm')}:"
+                f"{os.path.join(root_dir, 'buildtools', 'node', 'bin')}:"
+                f"{os.environ.get('PATH')}"
+            ),
+            **({
+                'http_proxy': '',
+                'https_proxy': '',
+                'HTTP_PROXY': '',
+                'HTTPS_PROXY': '',
+                'NO_PROXY': cq_no_proxy,
+                'no_proxy': cq_no_proxy,
+                'npm_config_proxy': '',
+                'npm_config_https_proxy': '',
+                'npm_config_noproxy': cq_no_proxy,
+                'npm_config_registry': cq_registry,
+                'NPM_CONFIG_REGISTRY': cq_registry,
+            } if is_cq else {
+                'http_proxy': http_proxy,
+                'https_proxy': https_proxy,
+                'HTTP_PROXY': http_proxy,
+                'HTTPS_PROXY': https_proxy,
+                'NO_PROXY': no_proxy,
+                'no_proxy': no_proxy,
+                'npm_config_proxy': http_proxy,
+                'npm_config_https_proxy': https_proxy,
+                'npm_config_noproxy': no_proxy,
+            }),
         },
         "commands": [
-            "corepack prepare pnpm@7.33.6 --activate",
-            "corepack enable",
-            "pnpm install --frozen-lockfile"
+            f"{pnpm_path} config set registry {cq_registry}"
+            if is_cq else "",
+            f"{pnpm_path} install --frozen-lockfile"
         ],
         "require": [
             "buildtools/node",
-            "buildtools/corepack/pnpm/7.33.6",
+            "buildtools/pnpm/pnpm" + (".exe" if system == "windows" else ""),
+            "change_executable_permission",
         ],
         "condition": system in ['linux', 'darwin', 'windows']
     },
