@@ -12,6 +12,7 @@ inspector_shared_sources = [
   "observer/inspector_element_observer.h",
   "observer/inspector_lepus_observer.h",
   "observer/inspector_runtime_observer_ng.h",
+  "rts_inspector_manager.h",
   "runtime_inspector_manager.h",
   "style_sheet.h",
 ]

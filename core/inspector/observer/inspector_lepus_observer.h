@@ -9,6 +9,7 @@
 #include <string>
 
 #include "core/inspector/lepus_inspector_manager.h"
+#include "core/runtime/mts_context.h"
 
 namespace lynx {
 
@@ -22,7 +23,8 @@ class InspectorLepusObserver {
  public:
   virtual ~InspectorLepusObserver() = default;
 
-  virtual std::unique_ptr<LepusInspectorManager> CreateLepusInspectorManager() {
+  virtual std::unique_ptr<LepusInspectorManager> CreateLepusInspectorManager(
+      runtime::ContextType context_type) {
     return nullptr;
   }
   virtual bool ShouldFetchDebugInfo() { return false; }
