@@ -156,6 +156,13 @@ public class LynxModuleFactory {
     return mModuleCreator.currentContextFinder();
   }
 
+  public void resetContextFinder(@NonNull IContextFinder contextFinder) {
+    if (mModuleCreator == null) {
+      return;
+    }
+    mModuleCreator.resetContextFinder(contextFinder);
+  }
+
   public LynxModuleWrapper getModule(String name) {
     if (mModuleCreator == null) {
       return null;

@@ -4,6 +4,7 @@
 package com.lynx.jsbridge;
 
 import android.content.Context;
+import androidx.annotation.NonNull;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.LLog;
 import java.lang.ref.WeakReference;
@@ -25,6 +26,17 @@ public class SharedModuleCreator implements IModuleCreator {
 
   public SharedModuleCreator(IContextFinder contextFinder) {
     mContextFinder = contextFinder;
+  }
+
+  @Override
+  public void resetContextFinder(@NonNull IContextFinder contextFinder) {
+    mContextFinder = contextFinder;
+    if (mModulesByName == null) {
+      return;
+    }
+    for (LynxModuleWrapper wrapper : mModulesByName.values()) {
+      wrapper.setContextFinder(contextFinder);
+    }
   }
 
   @Override

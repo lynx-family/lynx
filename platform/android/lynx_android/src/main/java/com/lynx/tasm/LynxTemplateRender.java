@@ -606,7 +606,7 @@ public class LynxTemplateRender
           UIThreadUtils.runOnUiThread(factoryRunnable);
         }
       });
-      // bind common module creator
+      // bind common module creator or reset context finder for reused runtime
       IContextFinder contextFinder = new IContextFinder() {
         private WeakReference<Context> mContext = new WeakReference<>(mLynxContext);
 
@@ -620,7 +620,11 @@ public class LynxTemplateRender
         public void registerContext(
             @Nullable String instanceId, @Nullable WeakReference<Context> context) {}
       };
-      mModuleFactory.bind(new CommonModuleCreator(contextFinder));
+      if (mRuntime != null) {
+        mModuleFactory.resetContextFinder(contextFinder);
+      } else {
+        mModuleFactory.bind(new CommonModuleCreator(contextFinder));
+      }
       // set user modules
       setUserModules(mModuleFactory);
       // set internal modules

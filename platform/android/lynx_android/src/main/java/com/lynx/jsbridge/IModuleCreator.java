@@ -4,6 +4,7 @@
 package com.lynx.jsbridge;
 
 import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -24,6 +25,8 @@ public interface IModuleCreator {
   }
 
   IContextFinder currentContextFinder();
+
+  void resetContextFinder(@NonNull IContextFinder contextFinder);
 
   /**
    * create LynxModuleWrapper.

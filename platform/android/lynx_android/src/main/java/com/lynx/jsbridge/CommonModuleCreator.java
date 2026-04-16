@@ -4,6 +4,7 @@
 package com.lynx.jsbridge;
 
 import android.content.Context;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.LLog;
@@ -39,10 +40,21 @@ public class CommonModuleCreator implements IModuleCreator {
   /**
    * find LynxContext by instanceId.
    */
-  private final IContextFinder mContextFinder;
+  private IContextFinder mContextFinder;
 
   public CommonModuleCreator(IContextFinder contextFinder) {
     mContextFinder = contextFinder;
+  }
+
+  @Override
+  public void resetContextFinder(@NonNull IContextFinder contextFinder) {
+    mContextFinder = contextFinder;
+    if (mModulesByName == null) {
+      return;
+    }
+    for (LynxModuleWrapper wrapper : mModulesByName.values()) {
+      wrapper.setContextFinder(contextFinder);
+    }
   }
 
   @Override

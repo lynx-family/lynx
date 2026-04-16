@@ -1281,6 +1281,7 @@ public class com::lynx::tasm::utils::ColorUtils :  {
 
 public class com::lynx::jsbridge::CommonModuleCreator : com.lynx.jsbridge.IModuleCreator {
   public com.lynx.jsbridge.CommonModuleCreator.CommonModuleCreator(IContextFinder contextFinder);
+  public void com.lynx.jsbridge.CommonModuleCreator.resetContextFinder(@NonNull IContextFinder contextFinder);
   public IContextFinder com.lynx.jsbridge.CommonModuleCreator.currentContextFinder();
   public LynxModuleWrapper com.lynx.jsbridge.CommonModuleCreator.create(String name, ConcurrentHashMap< String, ParamWrapper > ClassParams);
   public void com.lynx.jsbridge.CommonModuleCreator.destroy();
@@ -2980,6 +2981,7 @@ public interface com::lynx::tasm::performance::memory::IMemoryRecordBuilder {
 
 public interface com::lynx::jsbridge::IModuleCreator {
   public IContextFinder com.lynx.jsbridge.IModuleCreator.currentContextFinder();
+  public void com.lynx.jsbridge.IModuleCreator.resetContextFinder(@NonNull IContextFinder contextFinder);
   public LynxModuleWrapper com.lynx.jsbridge.IModuleCreator.create(String name, ConcurrentHashMap< String, ParamWrapper > ClassParams);
   public void com.lynx.jsbridge.IModuleCreator.destroy();
   public int com.lynx.jsbridge.IModuleCreator.Type();
@@ -6081,6 +6083,7 @@ public class com::lynx::jsbridge::LynxModuleFactory :  {
   public void com.lynx.jsbridge.LynxModuleFactory.addModuleParamWrapperIfAbsent(List< ParamWrapper > wrappers);
   public void com.lynx.jsbridge.LynxModuleFactory.registerModuleAuthValidator(LynxModule.AuthValidator authValidator);
   public IContextFinder com.lynx.jsbridge.LynxModuleFactory.currentContextFinder();
+  public void com.lynx.jsbridge.LynxModuleFactory.resetContextFinder(@NonNull IContextFinder contextFinder);
   public LynxModuleWrapper com.lynx.jsbridge.LynxModuleFactory.getModule(String name);
   public void com.lynx.jsbridge.LynxModuleFactory.retainJniObject();
   public long com.lynx.jsbridge.LynxModuleFactory.getNativePtr();
@@ -9629,6 +9632,7 @@ public class com::lynx::jsbridge::SharedContextFinder : com.lynx.jsbridge.IConte
 
 public class com::lynx::jsbridge::SharedModuleCreator : com.lynx.jsbridge.IModuleCreator {
   public com.lynx.jsbridge.SharedModuleCreator.SharedModuleCreator(IContextFinder contextFinder);
+  public void com.lynx.jsbridge.SharedModuleCreator.resetContextFinder(@NonNull IContextFinder contextFinder);
   public IContextFinder com.lynx.jsbridge.SharedModuleCreator.currentContextFinder();
   public LynxModuleWrapper com.lynx.jsbridge.SharedModuleCreator.create(String name, ConcurrentHashMap< String, ParamWrapper > ClassParams);
   public void com.lynx.jsbridge.SharedModuleCreator.destroy();
