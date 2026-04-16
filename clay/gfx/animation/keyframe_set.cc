@@ -253,7 +253,7 @@ void RawTransformKeyframeSet::AddKeyframe(
         break;
       case ClayTransformType::kTranslateY:
         has_percentage_values_ |=
-            op.unit[1] == ClayPlatformLengthUnit::kPercentage;
+            op.unit[0] == ClayPlatformLengthUnit::kPercentage;
         break;
       case ClayTransformType::kTranslate:
       case ClayTransformType::kTranslate3d:

@@ -1578,7 +1578,7 @@ void BaseView::TransitionTo(ClayAnimationPropertyType type, float value) {
     case ClayAnimationPropertyType::kWidth:
     case ClayAnimationPropertyType::kHeight:
       // Start property transition animation if it is enabled
-      if (TransitionMgr()->Enabled(type) &&
+      if (IsTransitionAnimationReady() && TransitionMgr()->Enabled(type) &&
           TransitionMgr()->TransitionTo(type, value)) {
         Invalidate();
         return;
@@ -1586,7 +1586,7 @@ void BaseView::TransitionTo(ClayAnimationPropertyType type, float value) {
       SetProperty(type, value, false);
       break;
     case ClayAnimationPropertyType::kOpacity:
-      if (TransitionMgr()->Enabled(type) &&
+      if (IsTransitionAnimationReady() && TransitionMgr()->Enabled(type) &&
           TransitionMgr()->TransitionTo(type, value)) {
         UpdateTransitionRasterAnimation(type);
         return;
@@ -1604,8 +1604,7 @@ void BaseView::TransitionTo(ClayAnimationPropertyType type,
                             const Color& value) {
   switch (type) {
     case ClayAnimationPropertyType::kBackgroundColor:
-      // Start property transition animation if it is enabled
-      if (TransitionMgr()->Enabled(type) &&
+      if (IsTransitionAnimationReady() && TransitionMgr()->Enabled(type) &&
           TransitionMgr()->TransitionTo(type, value)) {
         UpdateTransitionRasterAnimation(type);
         return;
@@ -1623,8 +1622,7 @@ void BaseView::TransitionTo(ClayAnimationPropertyType type,
                             const TransformOperations& value) {
   switch (type) {
     case ClayAnimationPropertyType::kTransform:
-      // Start property transition animation if it is enabled
-      if (TransitionMgr()->Enabled(type) &&
+      if (IsTransitionAnimationReady() && TransitionMgr()->Enabled(type) &&
           TransitionMgr()->TransitionTo(type, value)) {
         UpdateTransitionRasterAnimation(type);
         return;
@@ -1890,9 +1888,6 @@ void BaseView::SetAnimation(const std::vector<AnimationData>& data) {
     SetRepaintBoundary(true);
   }
   animation_ = std::make_optional<std::vector<AnimationData>>(data);
-  // This call of `OnAnimationNodeReady` can be removed if all upper frameworks
-  // will call `UpdateNodeReadyPatching` in future.
-  OnAnimationNodeReady();
 }
 
 void BaseView::OnAnimationNodeReady() {
@@ -1910,6 +1905,10 @@ void BaseView::OnAnimationNodeReady() {
   if (result.state_has_changed) {
     Invalidate();
   }
+}
+
+void BaseView::OnTransitionAnimationReady() {
+  transition_animation_ready_ = true;
 }
 
 void BaseView::SetAnimation(const clay::Value::Array& array) {
@@ -2554,6 +2553,7 @@ void BaseView::DestroyChildrenRecursively(BaseView* view) {
 void BaseView::OnDetachFromTree() {
   FML_DCHECK(attach_to_tree_) << "Node has already detached!";
   attach_to_tree_ = false;
+  transition_animation_ready_ = false;
   for (auto& i : children_) {
     i->OnDetachFromTree();
   }
@@ -3725,7 +3725,10 @@ float BaseView::ToLogical(float value) const {
   return page_view()->ConvertTo<kPixelTypeLogical>(value);
 }
 
-void BaseView::OnNodeReady() { OnAnimationNodeReady(); }
+void BaseView::OnNodeReady() {
+  OnTransitionAnimationReady();
+  OnAnimationNodeReady();
+}
 
 void BaseView::UpdateInlineImageInfo() {
   for (auto child : GetChildren()) {
