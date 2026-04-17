@@ -46,6 +46,8 @@ NS_ASSUME_NONNULL_BEGIN
                    groupThreadName:(NSString *)groupThreadName;
 #endif
 
+- (void)updateRendererType:(NSString *)rendererType;
+
 - (void)onTemplateAssemblerCreated:(intptr_t)ptr;
 
 - (void)onMTSRuntimeCreated:(intptr_t)devtool_pool_ptr;

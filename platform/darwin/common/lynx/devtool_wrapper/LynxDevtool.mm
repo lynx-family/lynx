@@ -30,6 +30,7 @@
   id<LynxBaseInspectorController> _owner;
 
   LynxPageReloadHelper *_reloader;
+  NSString *_rendererType;
 }
 
 - (nonnull instancetype)initWithLynxView:(LynxView *)view debuggable:(BOOL)debuggable {
@@ -64,6 +65,10 @@
   }
 
   return self;
+}
+
+- (void)updateRendererType:(NSString *)rendererType {
+  _rendererType = rendererType;
 }
 
 - (id<LynxBaseInspectorOwner>)baseInspectorOwner {
@@ -168,6 +173,11 @@
 - (void)onTemplateAssemblerCreated:(intptr_t)ptr {
   if (_owner != nil) {
     [_owner onTemplateAssemblerCreated:ptr];
+  }
+  if (_owner != nil && _rendererType != nil) {
+    NSString *message =
+        [NSString stringWithFormat:@"[LynxDevtool] LynxView render type: %@", _rendererType];
+    [_owner showMessageOnConsole:message withLevel:0];
   }
 }
 

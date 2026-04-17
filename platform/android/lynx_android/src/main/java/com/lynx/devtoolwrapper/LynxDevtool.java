@@ -25,8 +25,10 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.PageReloadHelper;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIOwner;
+import com.lynx.tasm.behavior.LynxUIRenderer;
 import com.lynx.tasm.provider.LynxResourceCallback;
 import com.lynx.tasm.service.ILynxDevToolService;
 import com.lynx.tasm.service.LynxServiceCenter;
@@ -48,7 +50,6 @@ public class LynxDevtool {
   private PageReloadHelper mReloader = null;
   private WeakReference<LynxView> mView = null;
   private WeakReference<LynxTemplateRender> mRender = null;
-
   public LynxDevtool(LynxView view, LynxTemplateRender render, boolean debuggable) {
     init(view, render, debuggable, render.getLynxContext().getContext());
   }
@@ -105,6 +106,18 @@ public class LynxDevtool {
       mReloader = null;
     }
     TraceEvent.endSection(TraceEventDef.DEVTOOL_INIT);
+  }
+
+  private String getRendererType(LynxView view) {
+    if (view == null) {
+      return "";
+    }
+    ILynxUIRenderer renderer = view.getLynxUIRendererInternal();
+    if (renderer instanceof LynxUIRenderer) {
+      return "native";
+    } else {
+      return "clay";
+    }
   }
 
   public void attachContext(Context context) {
@@ -187,6 +200,10 @@ public class LynxDevtool {
   public void onTemplateAssemblerCreated(long ptr) {
     if (mOwner != null) {
       mOwner.onTemplateAssemblerCreated(ptr);
+    }
+    if (mOwner != null) {
+      mOwner.showMessageOnConsole(
+          "[LynxDevtool] LynxView render type: " + getRendererType(mView.get()), 0);
     }
   }
 

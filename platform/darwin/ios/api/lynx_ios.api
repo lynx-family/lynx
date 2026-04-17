@@ -1346,6 +1346,7 @@ public class LynxDevtool : NSObject {
   public void LynxDevtool::onResetDataWithTemplateData:(LynxTemplateData *data);
   public void LynxDevtool::onStandaloneRuntimeLoadFromURL:(NSString *url);
   public void LynxDevtool::onBackgroundRuntimeCreated:groupThreadName:(LynxBackgroundRuntime *runtime,[groupThreadName] NSString *groupThreadName);
+  public void LynxDevtool::updateRendererType:(NSString *rendererType);
   public void LynxDevtool::onTemplateAssemblerCreated:(intptr_t ptr);
   public void LynxDevtool::onMTSRuntimeCreated:(intptr_t devtool_pool_ptr);
   public void LynxDevtool::onEnterForeground();

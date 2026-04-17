@@ -529,6 +529,8 @@
                                                              containerView:_containerView
                                                                    builder:builder
                                                           providerRegistry:_providerRegistry];
+  [_devTool updateRendererType:[_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]] ? @"native"
+                                                                                      : @"clay"];
   [_devTool attachLynxUIOwner:[_lynxUIRenderer uiOwner]];
 
   [self setUpShadowNodeOwner];
