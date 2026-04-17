@@ -125,10 +125,13 @@
 }
 
 - (void)onBegin:(CGPoint)point touchEvent:(LynxTouchEvent *_Nullable)touchEvent {
-  if (![self onBeginEnabled] || _isInvokedBegin) {
+  if (_isInvokedBegin) {
     return;
   }
   _isInvokedBegin = YES;
+  if (![self onBeginEnabled]) {
+    return;
+  }
   [self sendGestureEvent:ON_BEGIN params:[self eventParamsInActive:touchEvent]];
 }
 

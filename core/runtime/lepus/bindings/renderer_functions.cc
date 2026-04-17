@@ -453,9 +453,10 @@ GestureDetectorImpl InnerCreateGestureDetector(double gesture_id,
     }
 
     if (callback.IsCallable()) {
-      // Add the extracted gesture callback (name and function) to the vector.
+      // RTS closures need their runtime context to be invoked later when the
+      // gesture callback fires on the native side.
       gesture_callback_vector.emplace_back(name.String(), lepus::Value(),
-                                           callback);
+                                           callback, ctx);
     } else if (callback.IsObject()) {
       gesture_callback_vector.emplace_back(name.String(), callback, ctx);
     }
