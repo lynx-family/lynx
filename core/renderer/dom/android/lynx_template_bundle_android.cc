@@ -50,9 +50,10 @@ std::optional<lynx::base::android::JavaOnlyMap> GetPageConfigMap(
 
 jlong ParseTemplateInternal(JNIEnv* env, jclass jcaller,
                             std::vector<uint8_t>&& binary, jobjectArray options,
-                            jlong devToolPoolPtr) {
+                            jboolean skip_css, jlong devToolPoolPtr) {
   auto reader =
       lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(std::move(binary));
+  reader.SetSkipCSSDecode(skip_css);
   if (reader.Decode()) {
     // decode success.
     lynx::tasm::LynxTemplateBundle* bundle =
@@ -82,16 +83,16 @@ jlong ParseTemplateInternal(JNIEnv* env, jclass jcaller,
 
 jlong ParseTemplateFromByteArray(JNIEnv* env, jclass jcaller,
                                  jbyteArray j_binary, jobjectArray options,
-                                 jlong devToolPoolPtr) {
+                                 jboolean skip_css, jlong devToolPoolPtr) {
   auto binary =
       lynx::base::android::JNIConvertHelper::ConvertJavaBinary(env, j_binary);
   return ParseTemplateInternal(env, jcaller, std::move(binary), options,
-                               devToolPoolPtr);
+                               skip_css, devToolPoolPtr);
 }
 
 jlong ParseTemplateFromByteBuffer(JNIEnv* env, jclass jcaller,
                                   jobject bufferPtr, jobjectArray options,
-                                  jlong devToolPoolPtr) {
+                                  jboolean skip_css, jlong devToolPoolPtr) {
   auto* buffer_ptr =
       static_cast<uint8_t*>(env->GetDirectBufferAddress(bufferPtr));
   if (buffer_ptr == nullptr) {
@@ -107,7 +108,7 @@ jlong ParseTemplateFromByteBuffer(JNIEnv* env, jclass jcaller,
 
   std::vector<uint8_t> buffer(buffer_ptr, buffer_ptr + capacity);
   return ParseTemplateInternal(env, jcaller, std::move(buffer), options,
-                               devToolPoolPtr);
+                               skip_css, devToolPoolPtr);
 }
 
 jobject GetExtraInfo(JNIEnv* env, jclass jcaller, jlong ptr) {

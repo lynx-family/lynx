@@ -3699,6 +3699,7 @@ public class LynxTemplateBundleOption : NSObject {
   public BOOL LynxTemplateBundleOption::enableContextAutoRefill enableContextAutoRefill;
   public NSString* LynxTemplateBundleOption::url url;
   public BOOL LynxTemplateBundleOption::debuggable debuggable;
+  public BOOL LynxTemplateBundleOption::skipCSS skipCSS;
 }
 
 public class LynxTemplateData : NSObject {

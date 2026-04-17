@@ -24,7 +24,10 @@
   return template_bundle_ != nullptr;
 }
 
-- (void)decodeTemplate:(NSData*)tem url:(NSString*)url debuggable:(BOOL)debuggable {
+- (void)decodeTemplate:(NSData*)tem
+                   url:(NSString*)url
+            debuggable:(BOOL)debuggable
+               skipCSS:(BOOL)skipCSS {
   _url = url;
   if ([[LynxEnv sharedInstance] lynxDebugEnabled]) {
     _devtool_pool = [[LynxDevToolPool alloc] initWithURL:url debuggable:debuggable];
@@ -42,6 +45,7 @@
   }
   auto source = ConvertNSBinary(tem);
   auto decoder = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(std::move(source));
+  decoder.SetSkipCSSDecode(skipCSS);
   if (decoder.Decode()) {
     // decode success.
     template_bundle_ =
@@ -58,7 +62,7 @@
                                        url:(NSString*)url
                                 debuggable:(BOOL)debuggable {
   if (self = [super init]) {
-    [self decodeTemplate:tem url:url debuggable:debuggable];
+    [self decodeTemplate:tem url:url debuggable:debuggable skipCSS:NO];
   }
   return self;
 }
@@ -79,7 +83,10 @@
 
 - (instancetype _Nullable)initWithTemplate:(nonnull NSData*)tem
                                     option:(nullable LynxTemplateBundleOption*)option {
-  if (self = [self initWithTemplate:tem url:[option url] debuggable:[option debuggable]]) {
+  BOOL debuggable = option ? [option debuggable] : NO;
+  BOOL skipCSS = option ? [option skipCSS] : NO;
+  if (self = [super init]) {
+    [self decodeTemplate:tem url:[option url] debuggable:debuggable skipCSS:skipCSS];
     [self initWithOption:option];
   }
   return self;
@@ -96,7 +103,8 @@
   }
   NSString* url = option ? [option url] : nil;
   BOOL debuggable = option ? [option debuggable] : NO;
-  [self decodeTemplate:data url:url debuggable:debuggable];
+  BOOL skipCSS = option ? [option skipCSS] : NO;
+  [self decodeTemplate:data url:url debuggable:debuggable skipCSS:skipCSS];
   [self initWithOption:option];
   return self;
 }
