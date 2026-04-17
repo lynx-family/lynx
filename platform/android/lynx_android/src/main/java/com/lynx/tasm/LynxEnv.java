@@ -878,6 +878,11 @@ public class LynxEnv {
     return getBooleanFromExternalEnv(LynxEnvKey.FORCE_LAYOUT_ON_BACKGROUND_THREAD, false);
   }
 
+  public boolean enableSkipUpdateViewportOnInitWhenMeasureSpecEmpty() {
+    return getBooleanFromExternalEnv(
+        LynxEnvKey.ENABLE_SKIP_UPDATE_VIEWPORT_ON_INIT_WHEN_MEASURE_SPEC_EMPTY, false);
+  }
+
   @AnyThread
   public boolean enableFallbackNewEngineRebuild() {
     return getBooleanFromExternalEnv(LynxEnvKey.ENABLE_FALLBACK_NEW_ENGINE_REBUILD, true);

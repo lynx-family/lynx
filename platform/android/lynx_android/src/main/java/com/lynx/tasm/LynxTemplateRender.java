@@ -209,6 +209,8 @@ public class LynxTemplateRender
 
   private boolean mForceLayoutOnBackgroundThread =
       LynxEnv.inst().shouldForceLayoutOnBackgroundThread();
+  private boolean mEnableSkipUpdateViewportOnInitWhenMeasureSpecEmpty =
+      LynxEnv.inst().enableSkipUpdateViewportOnInitWhenMeasureSpecEmpty();
 
   private boolean mEnableJSRuntime;
 
@@ -481,6 +483,9 @@ public class LynxTemplateRender
         // meaningless.
         isNeedUpdateViewportOnInit = true;
       }
+    } else if (mEnableSkipUpdateViewportOnInitWhenMeasureSpecEmpty && widthMeasureSpec == 0
+        && heightMeasureSpec == 0) {
+      isNeedUpdateViewportOnInit = false;
     }
     if (isNeedUpdateViewportOnInit) {
       updateViewport(widthMeasureSpec, heightMeasureSpec);
@@ -2326,7 +2331,8 @@ public class LynxTemplateRender
     if (mPreWidthMeasureSpec == widthMeasureSpec && mPreHeightMeasureSpec == heightMeasureSpec
         && !mShouldUpdateViewport) {
       LLog.i(TAG,
-          "updateViewport is unnecessary, because the size of the cache are the same as the size to be set.");
+          "updateViewport is unnecessary, because the size of the cache are the same as the size "
+              + "to be set.");
       return;
     }
 
@@ -4182,8 +4188,8 @@ public class LynxTemplateRender
         mLynxEngineRef.registerLynxEngineReused();
       } else {
         LLog.e(TAG,
-            "Can not call registerLynxEngineReused, because next pipeline is running. mEmbeddedPipelineCounter:"
-                + mEmbeddedPipelineCounter.get());
+            "Can not call registerLynxEngineReused, because next pipeline is running. "
+                + "mEmbeddedPipelineCounter:" + mEmbeddedPipelineCounter.get());
       }
     }
   }

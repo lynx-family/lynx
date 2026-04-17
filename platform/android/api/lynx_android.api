@@ -5135,6 +5135,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public void com.lynx.tasm.LynxEnv.enableLayoutOnly(boolean enableLayoutOnly);
   public boolean com.lynx.tasm.LynxEnv.enableVSyncAlignedMessageLoopGlobal();
   public boolean com.lynx.tasm.LynxEnv.shouldForceLayoutOnBackgroundThread();
+  public boolean com.lynx.tasm.LynxEnv.enableSkipUpdateViewportOnInitWhenMeasureSpecEmpty();
   public boolean com.lynx.tasm.LynxEnv.enableFallbackNewEngineRebuild();
   public boolean com.lynx.tasm.LynxEnv.isLayoutOnlyEnabled();
   public void com.lynx.tasm.LynxEnv.setRecordEnable(boolean enable);
@@ -5239,6 +5240,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.ENABLE_GENERIC_LYNX_RESOURCE_FETCHER_FONT_KEY ENABLE_GENERIC_LYNX_RESOURCE_FETCHER_FONT_KEY;
   public com.lynx.tasm.LynxEnvKey.ENABLE_VSYNC_ALIGNED_MESSAGE_LOOP_GLOBAL ENABLE_VSYNC_ALIGNED_MESSAGE_LOOP_GLOBAL;
   public com.lynx.tasm.LynxEnvKey.FORCE_LAYOUT_ON_BACKGROUND_THREAD FORCE_LAYOUT_ON_BACKGROUND_THREAD;
+  public com.lynx.tasm.LynxEnvKey.ENABLE_SKIP_UPDATE_VIEWPORT_ON_INIT_WHEN_MEASURE_SPEC_EMPTY ENABLE_SKIP_UPDATE_VIEWPORT_ON_INIT_WHEN_MEASURE_SPEC_EMPTY;
   public com.lynx.tasm.LynxEnvKey.ENABLE_FALLBACK_NEW_ENGINE_REBUILD ENABLE_FALLBACK_NEW_ENGINE_REBUILD;
   public com.lynx.tasm.LynxEnvKey.ENABLE_REPORT_CREATE_ASYNC_TAG ENABLE_REPORT_CREATE_ASYNC_TAG;
   public com.lynx.tasm.LynxEnvKey.ENABLE_SVG_ASYNC ENABLE_SVG_ASYNC;
