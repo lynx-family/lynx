@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxDefines.h>
+#import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTemplateData.h>
 #import <sys/utsname.h>
-#import "LynxTemplateData+Converter.h"
 
 #import <LynxBase/LynxLog.h>
 #include "base/include/value/array.h"
@@ -23,9 +23,13 @@ using namespace lynx::lepus;
 typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
   LynxTemplateDataActionTypeAppend = 0,
   LynxTemplateDataActionTypeRemove,
+  LynxTemplateDataActionTypeLepusSeed,
 };
 
-@interface LynxTemplateDataUpdateAction : NSObject
+@interface LynxTemplateDataUpdateAction : NSObject {
+ @public
+  lynx::lepus::Value seed_value_;
+}
 @property(nonatomic) LynxTemplateDataActionType type;
 @property(nonatomic, strong) id value;
 @end
@@ -36,7 +40,6 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
 @implementation LynxTemplateData {
   lynx::lepus::Value value_;
   lynx::lepus::Value value_for_js_;
-  std::shared_ptr<lynx::tasm::TemplateData> _nativeTemplateData;
   NSString* _processorName;
   BOOL _readOnly;
   NSMutableArray<LynxTemplateDataUpdateAction*>* _updateActions;
@@ -53,21 +56,17 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
   return self;
 }
 
-- (instancetype)initWithNativeTemplateData:
-    (const std::shared_ptr<lynx::tasm::TemplateData>&)nativeTemplateData {
+- (instancetype)initWithLepusValue:(const lynx::lepus::Value&)value {
   if (self = [super init]) {
-    _nativeTemplateData = nativeTemplateData;
+    value_ = value;
     _processorName = nil;
-    _readOnly = false;
+    _readOnly = YES;
     _updateActions = [[NSMutableArray alloc] init];
 
-    if (nativeTemplateData != nullptr) {
-      _readOnly = nativeTemplateData->IsReadOnly();
-      if (!nativeTemplateData->PreprocessorName().empty()) {
-        _processorName =
-            [NSString stringWithUTF8String:nativeTemplateData->PreprocessorName().c_str()];
-      }
-    }
+    LynxTemplateDataUpdateAction* action = [[LynxTemplateDataUpdateAction alloc] init];
+    action.type = LynxTemplateDataActionTypeLepusSeed;
+    action->seed_value_ = lynx::lepus::Value::ShallowCopy(value_);
+    [self addObjectToUpdateActions:action];
   }
   return self;
 }
@@ -187,18 +186,6 @@ lepus_value RecursiveLynxConvertToLepusValue(id data, NSMutableSet* allObjects,
 lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   if (data == nil) return nullptr;
   return &data->value_;
-}
-
-bool LynxTemplateDataHasNativeTemplateData(LynxTemplateData* data) {
-  return data != nil && data->_nativeTemplateData != nullptr;
-}
-
-std::shared_ptr<lynx::tasm::TemplateData> LynxGetNativeTemplateDataFromTemplateData(
-    LynxTemplateData* data) {
-  if (data == nil) {
-    return nullptr;
-  }
-  return data->_nativeTemplateData;
 }
 
 - (instancetype)initWithDictionary:(NSDictionary*)dictionary useBoolLiterals:(BOOL)useBoolLiterals {
@@ -409,6 +396,12 @@ std::shared_ptr<lynx::tasm::TemplateData> LynxGetNativeTemplateDataFromTemplateD
         NSString* key = [action value];
         if (value_for_js_.IsTable()) {
           value_for_js_.Table()->Erase(lynx::base::String([key UTF8String]));
+        }
+        break;
+      }
+      case LynxTemplateDataActionTypeLepusSeed: {
+        if (value_for_js_.IsNil()) {
+          value_for_js_ = lynx::lepus::Value::Clone(action->seed_value_);
         }
         break;
       }
