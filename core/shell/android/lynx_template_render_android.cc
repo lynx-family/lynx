@@ -113,18 +113,6 @@ void AddToJavaMap(JavaOnlyMap& map, const std::string& key, const T& vec) {
   map.PushArray(key, ConvertToJavaArray(vec).get());
 }
 
-std::shared_ptr<lynx::tasm::TemplateData> TakeNativeTemplateDataHolder(
-    jlong native_ptr) {
-  if (native_ptr == 0) {
-    return nullptr;
-  }
-  auto* native_template_data_ptr =
-      reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(native_ptr);
-  auto template_data = std::move(*native_template_data_ptr);
-  delete native_template_data_ptr;
-  return template_data;
-}
-
 std::shared_ptr<lynx::tasm::PipelineOptions> ProcessLoadTemplateTimingOption(
     JNIEnv* env, jlong ptr, jobject j_timing_option, jint options) {
   auto timing_option =
@@ -607,11 +595,13 @@ void LoadTemplateBufferByPreParsedData(
                        timing_option, options);
 }
 
-void LoadTemplateBundleByPreParsedData(
-    JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle, jstring j_url,
-    jlong bundlePtr, jboolean is_pre_painting, jlong data, jlong nativeDataPtr,
-    jboolean readOnly, jstring processorName, jobject android_template_data,
-    jint options, jobject j_timing_option) {
+void LoadTemplateBundleByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
+                                       jlong lifecycle, jstring j_url,
+                                       jlong bundlePtr,
+                                       jboolean is_pre_painting, jlong data,
+                                       jboolean readOnly, jstring processorName,
+                                       jobject android_template_data,
+                                       jint options, jobject j_timing_option) {
   // TODO(songshourui.null): add a method to get template_data with
   // android_template_data
   std::string processor_name =
@@ -622,11 +612,6 @@ void LoadTemplateBundleByPreParsedData(
                            ? nullptr
                            : std::make_shared<lynx::tasm::TemplateData>(
                                  value, readOnly, processor_name);
-  auto native_template_data_holder =
-      TakeNativeTemplateDataHolder(nativeDataPtr);
-  if (native_template_data_holder != nullptr) {
-    template_data = std::move(native_template_data_holder);
-  }
   if (template_data) {
     template_data->SetPlatformData(
         std::make_unique<lynx::tasm::PlatformDataAndroid>(
@@ -718,11 +703,10 @@ void UpdateDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
 }
 
 void UpdateMetaData(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
-                    jlong dataPtr, jlong nativeDataPtr, jstring processorName,
-                    jboolean readOnly, jobject templateData,
-                    jlong globalPropsPtr, jlong nativeGlobalPropsPtr) {
-  auto updated_data = TakeNativeTemplateDataHolder(nativeDataPtr);
-  if (updated_data == nullptr && dataPtr != 0) {
+                    jlong dataPtr, jstring processorName, jboolean readOnly,
+                    jobject templateData, jlong globalPropsPtr) {
+  std::shared_ptr<lynx::tasm::TemplateData> updated_data = nullptr;
+  if (dataPtr != 0) {
     std::string processor_name =
         JNIConvertHelper::ConvertToString(env, processorName);
     const auto& value = *(reinterpret_cast<Value*>(dataPtr));
@@ -736,15 +720,8 @@ void UpdateMetaData(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                                                               templateData)));
   }
 
-  auto updated_global_props = Value();
-  auto native_global_props_holder =
-      TakeNativeTemplateDataHolder(nativeGlobalPropsPtr);
-  if (native_global_props_holder != nullptr) {
-    updated_global_props = native_global_props_holder->value();
-  } else {
-    updated_global_props =
-        globalPropsPtr ? *(reinterpret_cast<Value*>(globalPropsPtr)) : Value();
-  }
+  auto updated_global_props =
+      globalPropsPtr ? *(reinterpret_cast<Value*>(globalPropsPtr)) : Value();
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<lynx::base::AtomicLifecycle*>(lifecycle);
@@ -835,15 +812,8 @@ void UpdateConfig(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
 }
 
 void UpdateGlobalProps(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
-                       jlong j_props, jlong nativeGlobalPropsPtr) {
+                       jlong j_props) {
   auto* props = reinterpret_cast<Value*>(j_props);
-  // Hold the shared_ptr on the stack so the TemplateData (and its value_)
-  // stays alive until after UpdateGlobalProps has consumed the value.
-  auto native_global_props_holder =
-      TakeNativeTemplateDataHolder(nativeGlobalPropsPtr);
-  if (native_global_props_holder != nullptr) {
-    props = &native_global_props_holder->value();
-  }
 
   if (props != nullptr && !props->IsNil()) {
     AtomicLifecycle* lifecycle_ptr =

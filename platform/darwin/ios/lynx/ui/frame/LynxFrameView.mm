@@ -6,6 +6,7 @@
 
 #import <Lynx/LynxFrameShadowNode.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIContext.h>
@@ -81,6 +82,10 @@
   }
 
   LynxLoadMeta *loadMeta = [self buildLoadMetaWithBundle:bundle];
+  if (loadMeta == nil) {
+    _LogE(@"LynxFrameView %p: buildLoadMetaWithBundle failed in setAppBundle", self);
+    return NO;
+  }
   [_render loadTemplate:loadMeta];
   _isBundleLoad = YES;
   return YES;
