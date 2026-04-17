@@ -245,7 +245,7 @@ void UIDelegateClay::OnPageConfigDecoded(
       page_view->SetTapSlop(tap_slop);
     }
     // Set long press duration.
-    uint64_t long_press_duration = config->GetLongPressDuration();
+    int32_t long_press_duration = config->GetLongPressDuration();
     if (long_press_duration > 0) {
       FML_DLOG(INFO)
           << "UIDelegateClay::OnPageConfigDecoded long_press_duration: "
