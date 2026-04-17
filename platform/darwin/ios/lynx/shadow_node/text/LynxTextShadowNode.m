@@ -886,10 +886,16 @@ LYNX_REGISTER_SHADOW_NODE("text")
   self.lineSpacingAdaptation.enableLayoutRefactor = self.enableTextRefactor;
   NSMutableAttributedString *attrString;
   if (self.enableTextRefactor) {
-    attrString = [[NSTextStorage alloc]
-        initWithAttributedString:[self generateAttributedString:nil
-                                              withTextMaxLength:self.maxTextLength
-                                                  withDirection:self.textStyle.direction]];
+    NSAttributedString *rawAttr = [self generateAttributedString:nil
+                                               withTextMaxLength:self.maxTextLength
+                                                   withDirection:self.textStyle.direction];
+    // Step 1: Create NSTextStorage to trigger fixFontAttributeInRange, ensuring correct font
+    // metrics
+    NSTextStorage *tempStorage = [[NSTextStorage alloc] initWithAttributedString:rawAttr];
+
+    // Step 2: Immediately extract as a plain NSMutableAttributedString, and all subsequent
+    // addAttribute: calls will no longer trigger processEditing.
+    attrString = [[NSMutableAttributedString alloc] initWithAttributedString:tempStorage];
   } else {
     attrString = [[self generateAttributedString:nil
                                withTextMaxLength:self.maxTextLength

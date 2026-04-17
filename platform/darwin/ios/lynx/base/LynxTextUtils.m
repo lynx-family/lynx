@@ -42,7 +42,7 @@ NSString *const RTL_MARK = @"\u200F";
   const int LANGUAGE_DETECT_MAX_LENGTH = 20;
   // If the paragraph alignment is natural, decide the alignment according to the locale of content.
   if (physicalAlignment == NSTextAlignmentNatural) {
-    NSString *text = [attrString string];
+    NSString *text = [[attrString string] copy];
 
     if (text.length) {
       NSString *language = nil;
