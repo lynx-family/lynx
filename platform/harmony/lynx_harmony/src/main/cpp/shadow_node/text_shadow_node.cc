@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/text_shadow_node.h"
 
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <stack>
@@ -113,7 +114,18 @@ fml::RefPtr<ParagraphHarmony> TextShadowNode::HandleTextOverflowAndTruncation(
     fml::RefPtr<ParagraphHarmony> paragraph, float width,
     MeasureMode width_mode, float height, MeasureMode height_mode,
     bool final_measure) {
-  auto layout_max_height = ConstructTextHeightConstraint(height_mode, height);
+  float layout_max_height = ConstructTextHeightConstraint(height_mode, height);
+  if (height_mode != MeasureMode::Indefinite && text_props_.has_value() &&
+      static_cast<int64_t>(text_props_->line_height) != kLineHeightNormal) {
+    const float line_height = static_cast<float>(text_props_->line_height);
+    const float line_height_float_error =
+        (std::ceil(line_height - base::EPSILON_PRECISE) - line_height) *
+        paragraph->GetLineCount();
+    if (line_height_float_error > 0.f) {
+      layout_max_height = static_cast<float>(
+          std::ceil(layout_max_height + line_height_float_error));
+    }
+  }
   if (!IsTextOverflow(paragraph.get(), layout_max_height)) {
     // not overflow
     return paragraph;
