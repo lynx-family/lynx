@@ -41,7 +41,8 @@ public class PanGestureHandler extends BaseGestureHandler {
   // record last lynx touch event
   private LynxTouchEvent mLastTouchEvent;
 
-  // is onBegin invoked or not
+  // Tracks whether this gesture has entered the begin phase so start/end can
+  // be dispatched even when onBegin itself is not registered.
   private boolean mIsInvokedBegin = false;
 
   // is onStart invoked or not
@@ -166,10 +167,13 @@ public class PanGestureHandler extends BaseGestureHandler {
 
   @Override
   protected void onBegin(float x, float y, @Nullable LynxTouchEvent event) {
-    if (!isOnBeginEnable() || mIsInvokedBegin) {
+    if (mIsInvokedBegin) {
       return;
     }
     mIsInvokedBegin = true;
+    if (!isOnBeginEnable()) {
+      return;
+    }
     sendGestureEvent(GestureConstants.ON_BEGIN, getEventParamsInActive(event));
   }
 

@@ -36,10 +36,12 @@ struct GestureCallback {
 
   // Parameterized constructor for GestureCallback.
   GestureCallback(const base::String& name, const lepus::Value& lepus_script,
-                  const lepus::Value& lepus_function)
+                  const lepus::Value& lepus_function,
+                  runtime::MTSRuntime* ctx = nullptr)
       : name_(name),
         lepus_script_(lepus_script),
-        lepus_function_(lepus_function) {}
+        lepus_function_(lepus_function),
+        ctx_(ctx) {}
 
   // constructor with lepus object
   GestureCallback(const base::String& name, const lepus::Value& lepus_object,
