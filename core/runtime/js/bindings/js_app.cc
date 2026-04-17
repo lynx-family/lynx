@@ -3599,9 +3599,11 @@ void App::ResumeGcSuppressionMode() {
   }
 }
 
-void App::OnStandaloneScriptAdded(const std::string& url, std::string source) {
-  standalone_js_bundle_.AddJsContent(
-      url, JsContent(std::move(source), JsContent::Type::SOURCE));
+void App::OnStandaloneScriptAdded(
+    const std::unordered_map<std::string, JsContent>& js_files) {
+  for (const auto& [path, content] : js_files) {
+    standalone_js_bundle_.AddJsContent(path, content);
+  }
 }
 
 void App::OnSetPresetData(lepus::Value data) { preset_data_ = std::move(data); }
