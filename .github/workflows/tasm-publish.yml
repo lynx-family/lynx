@@ -136,7 +136,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: Setup Package Managers
         run: |
-          npm install -g npm@latest
+          npm install -g npm@11.10.0
           npm --version
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
