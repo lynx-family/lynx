@@ -44,6 +44,8 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
 
   bool isGlobalInited() { return global_inited_; }
   bool isJSCoreLoaded() { return js_core_loaded_; }
+  bool isCoreJSLoaded() const { return core_js_loaded_; }
+  void setCoreJSLoaded() { core_js_loaded_ = true; }
   void prepareJSEnv(
       std::weak_ptr<runtime::js::Runtime> js_runtime,
       std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
@@ -60,6 +62,11 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
   std::weak_ptr<runtime::js::JSIContext> js_context_;
   bool js_core_loaded_;
   bool global_inited_;
+  // Tracks whether lynx_core.js has actually been evaluated in this JS
+  // context. Unlike js_core_loaded_, this is only set when core js is really
+  // loaded (either in InitExecutor for non-pending runtimes or in
+  // TransitionToFullRuntime).
+  bool core_js_loaded_ = false;
 #if ENABLE_TRACE_PERFETTO
   std::shared_ptr<profile::RuntimeProfiler> runtime_profiler_;
 #endif

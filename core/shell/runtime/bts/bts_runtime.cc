@@ -269,6 +269,13 @@ void BTSRuntime::InitExecutor(bool is_full_runtime,
   js_executor_->loadPreJSBundle(std::move(preload_js_sources_getter), true,
                                 std::move(create_params), page_options_);
   js_executor_->SetObserver(delegate_.get());
+  if (is_full_runtime) {
+    auto* wrapper =
+        runtime::RuntimeManager::Instance()->GetContextWrapper(group_id_);
+    if (wrapper) {
+      wrapper->setCoreJSLoaded();
+    }
+  }
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadCoreEnd);
 }
@@ -278,6 +285,16 @@ void BTSRuntime::TransitionToFullRuntime() {
     return;
   }
   runtime_flags_ &= ~LynxRuntimeFlags::PENDING_CORE_JS_LOAD;
+
+  // If another runtime with the same group_id has already loaded lynx_core.js
+  // into the shared JS context, skip the re-evaluation and only update state.
+  auto* wrapper =
+      runtime::RuntimeManager::Instance()->GetContextWrapper(group_id_);
+  if (wrapper && wrapper->isCoreJSLoaded()) {
+    UpdateState(State::kJsCoreLoaded);
+    return;
+  }
+
   auto rt = GetJSRuntime();
   if (!rt) {
     return;
@@ -293,6 +310,9 @@ void BTSRuntime::TransitionToFullRuntime() {
     if (!ret.has_value()) {
       rt->reportJSIException(ret.error());
     }
+  }
+  if (wrapper) {
+    wrapper->setCoreJSLoaded();
   }
   UpdateState(State::kJsCoreLoaded);
 }
@@ -691,7 +711,9 @@ void BTSRuntime::OnJSSourcePrepared(
     const std::string& url,
     const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
     uint64_t trace_flow_id) {
-  init_global_props_ = global_props;
+  if (!js_app_loaded_) {
+    init_global_props_ = global_props;
+  }
   if (state_ != State::kJsCoreLoaded && state_ != State::kNotStarted &&
       state_ != State::kSsrRuntimeReady) {
     return;
@@ -758,8 +780,11 @@ void BTSRuntime::OnJSSourcePrepared(
       }
 #endif
     }
-    app_->loadApp(std::move(bundle), init_global_props_, dsl,
-                  bundle_module_mode, url, trace_flow_id);
+    if (!js_app_loaded_) {
+      app_->loadApp(std::move(bundle), init_global_props_, dsl,
+                    bundle_module_mode, url, trace_flow_id);
+      js_app_loaded_ = true;
+    }
     tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadBackgroundEnd);
 
     UpdateState(State::kRuntimeReady);
@@ -900,13 +925,21 @@ void BTSRuntime::OnScriptLoaded(const std::string& url, std::string script,
   });
 }
 
-void BTSRuntime::EvaluateScriptStandalone(std::string url, std::string script,
-                                          uint64_t trace_flow_id) {
+void BTSRuntime::EvaluateScriptStandalone(
+    std::string url,
+    const std::unordered_map<std::string, runtime::js::JsContent>& js_files,
+    tasm::PackageInstanceDSL runtime_type, uint64_t trace_flow_id) {
   LOGI("EvaluateScriptStandalone, url: " << url);
   if (state_ != State::kJsCoreLoaded) {
     delegate_->OnErrorOccurred(base::LynxError(
         error::E_BTS_RUNTIME_ERROR,
         "call evaluateJavaScript on invalid state, will be ignored"));
+    return;
+  }
+  if (js_app_loaded_) {
+    delegate_->OnErrorOccurred(base::LynxError(
+        error::E_BTS_RUNTIME_ERROR,
+        "call evaluateJavaScript after app is loaded, will be ignored"));
     return;
   }
 
@@ -917,13 +950,13 @@ void BTSRuntime::EvaluateScriptStandalone(std::string url, std::string script,
       });
 
   // We can safely access app_ here. `EvaluateScriptStandalone`
-  // can only be used in LynxBackgroundRuntime which will
-  // never use pending JS so the app_ is always created.
-  app_->OnStandaloneScriptAdded(url, std::move(script));
-  app_->loadApp(tasm::TasmRuntimeBundle(), init_global_props_,
-                tasm::PackageInstanceDSL::STANDALONE,
+  // can only be used in LynxBackgroundRuntime. Runtime init is enqueued before
+  // evaluate tasks, so the app_ is already created.
+  app_->OnStandaloneScriptAdded(js_files);
+  app_->loadApp(tasm::TasmRuntimeBundle(), init_global_props_, runtime_type,
                 tasm::PackageInstanceBundleModuleMode::RETURN_BY_FUNCTION_MODE,
                 url, trace_flow_id);
+  js_app_loaded_ = true;
   delegate_->OnEvaluateJavaScriptEnd(url);
 }
 
@@ -1112,7 +1145,7 @@ void BTSRuntime::OnSetPresetData(lepus::Value data) {
 void BTSRuntime::OnGlobalPropsUpdated(const lepus::Value& props) {
   // If app is not started, set updated globalProps as init props to reduce
   // updating times
-  if (state_ == State::kNotStarted) {
+  if (!js_app_loaded_) {
     init_global_props_ = props;
   } else {
     auto event = fml::MakeRefCounted<runtime::MessageEvent>(
