@@ -41,7 +41,7 @@ class DevToolLifecycle {
    * Called when the DevTool component is detected (e.g., via reflection).
    * Transition: UNAVAILABLE -> ATTACHED
    */
-  void OnAttached();
+  LYNX_EXPORT_FOR_DEVTOOL void OnAttached();
 
   /**
    * Called when DevTool is enabled (by policy or user switch).
@@ -59,7 +59,7 @@ class DevToolLifecycle {
    * Called when the DevTool env is initialized, i.e. native library is loaded.
    * Transition: ENABLED -> INITIALIZED
    */
-  void OnInitialized();
+  LYNX_EXPORT_FOR_DEVTOOL void OnInitialized();
 
   /**
    * Called when a DevTool client connects.
@@ -71,7 +71,7 @@ class DevToolLifecycle {
    * Called when a DevTool client disconnects.
    * Transition: CONNECTED -> INITIALIZED
    */
-  void OnDisconnected();
+  LYNX_EXPORT_FOR_DEVTOOL void OnDisconnected();
   // Transitions end
 
   // State synchronization

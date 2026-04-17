@@ -94,6 +94,20 @@ export class LynxWhiteBoard {
   constructor();
 }
 
+export class DevToolLifecycleHarmony {
+  static getState: () => number;
+  static isAttached: () => boolean;
+  static isInitialized: () => boolean;
+  static isEnabled: () => boolean;
+  static isConnected: () => boolean;
+  static onAttached: () => void;
+  static onEnabled: () => void;
+  static onDisabled: () => void;
+  static onInitialized: () => void;
+  static onConnected: () => void;
+  static onDisconnected: () => void;
+}
+
 export class LynxTemplateRenderer {
   constructor();
 

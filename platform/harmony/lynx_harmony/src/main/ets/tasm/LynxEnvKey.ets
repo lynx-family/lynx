@@ -4,8 +4,6 @@
 
 export class LynxEnvKey {
   // Keys for devtool.
-  static readonly KEY_LYNX_DEBUG_ENABLED: string = 'lynx_debug_enabled';
-  static readonly KEY_DEVTOOL_COMPONENT_ATTACH: string = 'devtool_component_attach';
   static readonly SP_KEY_ENABLE_DEVTOOL: string = 'enable_devtool';
   static readonly SP_KEY_ENABLE_LOGBOX: string = 'enable_logbox';
   /** @deprecated */
@@ -16,7 +14,6 @@ export class LynxEnvKey {
   static readonly SP_KEY_IGNORE_ERROR_TYPES: string = 'ignore_error_types';
   static readonly SP_KEY_ENABLE_IGNORE_ERROR_CSS: string = 'error_code_css';
   static readonly SP_KEY_ENABLE_PIXEL_COPY: string = 'enable_pixel_copy';
-  static readonly SP_KEY_DEVTOOL_CONNECTED: string = 'devtool_connected';
   static readonly SP_KEY_ENABLE_QUICKJS_DEBUG: string = 'enable_quickjs_debug';
   static readonly SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT: string = 'enable_preview_screen_shot';
   static readonly SP_KEY_ACTIVATED_CDP_DOMAINS: string = 'activated_cdp_domains';

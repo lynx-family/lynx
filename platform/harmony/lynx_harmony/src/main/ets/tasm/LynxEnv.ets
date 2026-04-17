@@ -22,6 +22,7 @@ import { ILynxDevToolService } from '../tasm/service/ILynxDevToolService';
 import { ILynxImageService } from './service/ILynxImageService';
 import { MemoryPressureCallback, MemoryPressureCallbackDispatcher } from '../base/memory/MemoryPressureCallbackDispatcher';
 import { MemoryPressureLevel } from '../base/memory/MemoryPressureLevel';
+import { DevToolLifecycle } from '../devtool_wrapper/DevToolLifecycle';
 
 const TAG = 'LynxEnv';
 
@@ -82,12 +83,21 @@ class LynxEnvironment {
     );
   }
 
+  /** @deprecated */
   public enableLynxDebug(enabled: boolean) {
-    LynxDebugger.setSwitch(LynxEnvKey.KEY_LYNX_DEBUG_ENABLED, enabled);
+    if (!DevToolLifecycle.isAttached()) {
+      return;
+    }
+    if (enabled) {
+      DevToolLifecycle.onEnabled();
+    } else {
+      DevToolLifecycle.onDisabled();
+    }
   }
 
+  /** @deprecated */
   public isLynxDebugEnabled() {
-    return this.isDevtoolComponentAttach() && LynxDebugger.getSwitch(LynxEnvKey.KEY_LYNX_DEBUG_ENABLED);
+    return DevToolLifecycle.isEnabled();
   }
 
   /**
@@ -113,8 +123,10 @@ class LynxEnvironment {
     if (isDevToolModuleLoaded) {
       LLog.i(TAG, "isDevToolModuleLoaded is true");
       this.hasInitLynxDebug = true;
-      this.enableLynxDebug(true);
-      LynxDebugger.setSwitch(LynxEnvKey.KEY_DEVTOOL_COMPONENT_ATTACH, true);
+      DevToolLifecycle.onAttached();
+      DevToolLifecycle.onEnabled();
+      // assume dynamic libraries are ready since modules are imported
+      DevToolLifecycle.onInitialized();
       if (this.appInfo) {
         LynxDebugger.setAppInfo(Array.from(this.appInfo.keys()), Array.from(this.appInfo.values()));
       } else {
@@ -124,11 +136,11 @@ class LynxEnvironment {
   }
 
   public isDevtoolComponentAttach() {
-    return LynxDebugger.getSwitch(LynxEnvKey.KEY_DEVTOOL_COMPONENT_ATTACH);
+    return DevToolLifecycle.isAttached();
   }
 
   public isDevtoolEnabled() {
-    if (!this.isLynxDebugEnabled()) {
+    if (!DevToolLifecycle.isEnabled()) {
       return false;
     }
     let devtoolEnabled = LynxDebugger.getSwitch(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL);
@@ -136,14 +148,14 @@ class LynxEnvironment {
   }
 
   public enableDevtool(enabled: boolean) {
-    if (!this.isLynxDebugEnabled()) {
+    if (!DevToolLifecycle.isEnabled()) {
       return;
     }
     LynxDebugger.setSwitch(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, enabled);
   }
 
   public quickjsDebugEnabled() {
-    if (!this.isLynxDebugEnabled()) {
+    if (!DevToolLifecycle.isEnabled()) {
       return false;
     }
     let quickjsEnabled = LynxDebugger.getSwitch(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG);
@@ -151,7 +163,7 @@ class LynxEnvironment {
   }
 
   public setQuickjsDebugEnabled(enabled: boolean) {
-    if (!this.isLynxDebugEnabled()) {
+    if (!DevToolLifecycle.isEnabled()) {
       return;
     }
     LynxDebugger.setSwitch(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG, enabled);
@@ -171,7 +183,7 @@ class LynxEnvironment {
   }
 
   public isDebugModeEnabled(): boolean {
-    return this.isDevtoolComponentAttach();
+    return DevToolLifecycle.isAttached();
   }
 
   public setLogBoxEnabled(enabled: boolean) {
