@@ -23,6 +23,7 @@
 #include "core/runtime/js/bindings/js_app.h"
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
 #include "core/runtime/js/bindings/modules/lynx_module_timing.h"
+#include "core/runtime/js/js_bundle.h"
 #include "core/runtime/js/js_bundle_holder.h"
 #include "core/runtime/js/js_executor.h"
 #include "core/runtime/js/lynx_api_handler.h"
@@ -117,8 +118,10 @@ class BTSRuntime final {
       const std::shared_ptr<tasm::PipelineOptions>& pipeline_options);
   void EvaluateScript(const std::string& url, std::string script,
                       runtime::js::ApiCallBack callback);
-  void EvaluateScriptStandalone(std::string url, std::string script,
-                                uint64_t trace_flow_id);
+  void EvaluateScriptStandalone(
+      std::string url, runtime::js::JsContent script,
+      std::shared_ptr<const runtime::js::JsBundle> bundle,
+      tasm::PackageInstanceDSL runtime_type, uint64_t trace_flow_id);
 
   void OnScriptLoaded(const std::string& url, std::string script,
                       std::string err_msg, runtime::js::ApiCallBack callback);
@@ -207,6 +210,12 @@ class BTSRuntime final {
                        // when CSR.
   };
 
+  enum class JsAppLoadState {
+    kNotLoaded,
+    kLoadedByJsPrepare,
+    kLoadedByParallelEval,
+  };
+
   void Destroy();
   void DestroyAppAndNapi();
   void ReadPreloadJSSource(
@@ -276,6 +285,7 @@ class BTSRuntime final {
   uint32_t runtime_flags_;
   std::unique_ptr<runtime::RuntimeLifecycleObserverImpl> lifecycle_observer_;
   tasm::PageOptions page_options_;
+  JsAppLoadState js_app_load_state_ = JsAppLoadState::kNotLoaded;
   lepus::Value init_global_props_;
   base::InlineVector<std::unique_ptr<runtime::NativeModuleFactory>, 4>
       cached_native_factories_;

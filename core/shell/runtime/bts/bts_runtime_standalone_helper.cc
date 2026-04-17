@@ -4,10 +4,12 @@
 
 #include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
 
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "core/base/threading/vsync_monitor.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/performance_mediator.h"
 #include "core/shell/common/shell_trace_event_def.h"
@@ -129,37 +131,65 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
 }
 
 void BTSRuntimeStandalone::EvaluateScript(std::string url, std::string script) {
+  auto js_content = runtime::js::JsContent(
+      std::move(script), runtime::js::JsContent::Type::SOURCE);
   uint64_t trace_flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
               [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("url", url);
                 ctx.event()->add_flow_ids(trace_flow_id);
               });
-  runtime_actor_->Act([url = std::move(url), script = std::move(script),
+  runtime_actor_->Act([url = std::move(url), js_content = std::move(js_content),
                        trace_flow_id](auto& runtime) mutable {
-    runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
-                                      trace_flow_id);
+    runtime->EvaluateScriptStandalone(
+        std::move(url), std::move(js_content), nullptr,
+        tasm::PackageInstanceDSL::STANDALONE, trace_flow_id);
   });
 }
 
 void BTSRuntimeStandalone::EvaluateScript(
     std::string url, lynx::tasm::LynxTemplateBundle* bundle,
     std::string js_file) {
+  if (!bundle) {
+    LOGE("EvaluateScript with template bundle failed: bundle is null.");
+    return;
+  }
+  // Only miniapp supports parallel js loading.
+  const bool is_mini_app =
+      bundle->GetCompileOptions().front_end_dsl_ == tasm::FRON_END_DSL_MINI_APP;
+  const auto runtime_type = is_mini_app ? tasm::PackageInstanceDSL::TT
+                                        : tasm::PackageInstanceDSL::STANDALONE;
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
+              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("url", url);
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
+  auto js_bundle =
+      std::make_shared<runtime::js::JsBundle>(bundle->GetJsBundle());
+  auto evaluate_script = [this, url = std::move(url),
+                          js_bundle = std::move(js_bundle), runtime_type,
+                          trace_flow_id](
+                             runtime::js::JsContent js_content) mutable {
+    runtime_actor_->Act([url = std::move(url), js_bundle = std::move(js_bundle),
+                         js_content = std::move(js_content), runtime_type,
+                         trace_flow_id](auto& runtime) mutable {
+      runtime->EvaluateScriptStandalone(std::move(url), std::move(js_content),
+                                        std::move(js_bundle), runtime_type,
+                                        trace_flow_id);
+    });
+  };
   auto js_content = bundle->GetJsBundle().GetJsContent(js_file);
   if (js_content.has_value()) {
     auto js_content_val = js_content->get();
     if (!js_content_val.IsError()) {
       auto buffer = js_content_val.GetBuffer();
       if (buffer && buffer->data()) {
-        EvaluateScript(
-            std::move(url),
-            std::string(reinterpret_cast<const char*>(buffer->data()),
-                        buffer->size()));
+        evaluate_script(std::move(js_content_val));
         return;
       }
     }
   }
-
   auto custom_section = bundle->GetCustomSection(js_file);
   if (!custom_section.IsString()) {
     return;
@@ -168,8 +198,9 @@ void BTSRuntimeStandalone::EvaluateScript(
   if (script.empty()) {
     return;
   }
-
-  EvaluateScript(std::move(url), std::move(script));
+  auto js_content_val = runtime::js::JsContent(
+      std::move(script), runtime::js::JsContent::Type::SOURCE);
+  evaluate_script(std::move(js_content_val));
 }
 
 void BTSRuntimeStandalone::SetPresetData(lepus::Value data) {
