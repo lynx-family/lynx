@@ -667,7 +667,7 @@ public class LynxEnv {
         } else {
           LLog.w(TAG, "DevtoolService not yet registered when initDevtoolEnv");
         }
-      } catch (Exception e) {
+      } catch (Throwable e) {
         LLog.e(TAG, "initDevtoolEnv failed: " + e.toString());
       }
     }
