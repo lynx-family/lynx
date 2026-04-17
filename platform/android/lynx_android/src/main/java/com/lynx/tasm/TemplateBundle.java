@@ -87,8 +87,8 @@ public final class TemplateBundle implements ILynxSecurityTarget {
     return SecurityResult.onSuccess();
   }
 
-  private static TemplateBundle internalBuildTemplate(
-      TemplateBundle bundle, byte[] template, ByteBuffer buffer, String url, boolean debuggable) {
+  private static TemplateBundle internalBuildTemplate(TemplateBundle bundle, byte[] template,
+      ByteBuffer buffer, String url, @Nullable TemplateBundleOption option) {
     TemplateBundle result = bundle == null ? new TemplateBundle() : bundle;
     int length;
     if (template != null || buffer != null) {
@@ -103,6 +103,8 @@ public final class TemplateBundle implements ILynxSecurityTarget {
                 "template verify failed, error message: " + securityResult.getErrorMsg(), null);
             return result;
           }
+          boolean debuggable = option != null && option.getDebuggable();
+          boolean skipCSS = option != null && option.getSkipCSS();
           if (LynxEnv.inst().isLynxDebugEnabled()) {
             devToolPool = new LynxDevToolPool(url, debuggable);
           }
@@ -112,9 +114,9 @@ public final class TemplateBundle implements ILynxSecurityTarget {
           long ptr = 0;
           long devToolPoolPtr = devToolPool != null ? devToolPool.getNativePtr() : 0;
           if (buffer != null) {
-            ptr = nativeParseTemplateFromByteBuffer(buffer, options, devToolPoolPtr);
+            ptr = nativeParseTemplateFromByteBuffer(buffer, options, skipCSS, devToolPoolPtr);
           } else {
-            ptr = nativeParseTemplateFromByteArray(template, options, devToolPoolPtr);
+            ptr = nativeParseTemplateFromByteArray(template, options, skipCSS, devToolPoolPtr);
           }
           result.initialize(ptr, length, url, (String) options[0], (ReadableMap) options[1]);
           if (result.isValid()) {
@@ -147,7 +149,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
     if (template == null) {
       return null;
     }
-    return internalBuildTemplate(new TemplateBundle(), template, null, null, false);
+    return internalBuildTemplate(new TemplateBundle(), template, null, null, null);
   }
 
   /**
@@ -174,9 +176,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
           0, buffer.limit(), url, "TemplateBundle only supports DirectByteBuffer.", null);
       return result;
     }
-    boolean debuggable = option != null && option.getDebuggable();
-    TemplateBundle result =
-        internalBuildTemplate(new TemplateBundle(), null, buffer, url, debuggable);
+    TemplateBundle result = internalBuildTemplate(new TemplateBundle(), null, buffer, url, option);
     result.initWithOption(option);
     return result;
   }
@@ -186,9 +186,8 @@ public final class TemplateBundle implements ILynxSecurityTarget {
       return null;
     }
     String url = option != null ? option.getUrl() : null;
-    boolean debuggable = option != null && option.getDebuggable();
     TemplateBundle result =
-        internalBuildTemplate(new TemplateBundle(), template, null, url, debuggable);
+        internalBuildTemplate(new TemplateBundle(), template, null, url, option);
     result.initWithOption(option);
     return result;
   }
@@ -204,8 +203,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
       return initialize(
           0, buffer.limit(), url, "TemplateBundle only supports DirectByteBuffer.", null);
     }
-    boolean debuggable = option != null && option.getDebuggable();
-    internalBuildTemplate(this, null, buffer, url, debuggable);
+    internalBuildTemplate(this, null, buffer, url, option);
     initWithOption(option);
     return true;
   }
@@ -219,8 +217,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
       return false;
     }
     String url = option != null ? option.getUrl() : null;
-    boolean debuggable = option != null && option.getDebuggable();
-    internalBuildTemplate(this, template, null, url, debuggable);
+    internalBuildTemplate(this, template, null, url, option);
     initWithOption(option);
     return true;
   }
@@ -426,9 +423,9 @@ public final class TemplateBundle implements ILynxSecurityTarget {
       long bundle, String bytecodeSourceUrl, boolean useV8, LynxBytecodeCallback callback);
 
   private static native long nativeParseTemplateFromByteArray(
-      byte[] temp, Object[] options, long devToolPoolPtr);
+      byte[] temp, Object[] options, boolean skipCSS, long devToolPoolPtr);
   private static native long nativeParseTemplateFromByteBuffer(
-      ByteBuffer bytes, Object[] options, long devToolPoolPtr);
+      ByteBuffer bytes, Object[] options, boolean skipCSS, long devToolPoolPtr);
   private static native void nativeReleaseBundle(long ptr);
   private static native Object nativeGetExtraInfo(long ptr);
   private static native boolean nativeGetContainsElementTree(long ptr);

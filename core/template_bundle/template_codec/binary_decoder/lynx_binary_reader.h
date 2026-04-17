@@ -34,10 +34,11 @@ class LynxBinaryReader : public LynxBinaryBaseTemplateReader {
   static LynxBinaryReader CreateLynxBinaryReader(std::vector<uint8_t> binary);
 
   LynxTemplateBundle GetTemplateBundle();
-
   tasm::StringListVec& GetStringList() override;
 
   void SetStringList(const tasm::StringListVec& string_list) override;
+
+  void SetSkipCSSDecode(bool enable) { skip_css_decode_ = enable; }
 
  protected:
   LynxBinaryReader(std::unique_ptr<lepus::InputStream> stream)
@@ -93,6 +94,7 @@ class LynxBinaryReader : public LynxBinaryBaseTemplateReader {
   void RecordBinary();
 
   LynxTemplateBundle template_bundle_;
+  bool skip_css_decode_{false};
 };
 }  // namespace tasm
 }  // namespace lynx

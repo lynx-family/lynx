@@ -39,4 +39,10 @@
  */
 @property(nonatomic, assign) BOOL debuggable;
 
+/**
+ * Whether to skip CSS decoding when constructing TemplateBundle.
+ * Default value: NO
+ */
+@property(nonatomic, assign) BOOL skipCSS;
+
 @end
