@@ -3102,6 +3102,24 @@ bool TemplateAssembler::UseLepusNG() {
   }
 }
 
+bool TemplateAssembler::IsRTS() {
+  auto entry = FindEntry(DEFAULT_ENTRY_NAME);
+  if (!entry) {
+    return false;
+  }
+  auto context = entry->GetVm();
+  return context && context->IsRTSContext();
+}
+
+bool TemplateAssembler::IsRTS2Native() {
+  auto entry = FindEntry(DEFAULT_ENTRY_NAME);
+  if (!entry) {
+    return false;
+  }
+  auto context = entry->GetVm();
+  return context && context->IsRTSNativeContext();
+}
+
 void TemplateAssembler::SetCSSVariables(
     const std::string& component_id, const std::string& id_selector,
     const lepus::Value& properties,

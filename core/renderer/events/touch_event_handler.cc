@@ -272,15 +272,15 @@ void TouchEventHandler::HandleGestureEvent(TemplateAssembler *tasm,
                                            const lepus::Value &params) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_GESTURE_EVENT, "name",
               name.str());
-  // Check if using LepusNG
-  if (!use_lepus_ng_) {
-    LOGE("HandleGestureEvent error: not use lepus ng.");
-    return;
-  }
-
   // Check if tasm and page is not null
   if (!tasm || !tasm->page_proxy()) {
     LOGE("HandleGestureEvent error: tasm or page is null.");
+    return;
+  }
+
+  const bool is_rts_like = tasm->IsRTS() || tasm->IsRTS2Native();
+  if (!use_lepus_ng_ && !is_rts_like) {
+    LOGE("HandleGestureEvent error: not use lepus ng.");
     return;
   }
 
@@ -324,19 +324,6 @@ void TouchEventHandler::HandleGestureEvent(TemplateAssembler *tasm,
     return;
   }
 
-  std::unique_ptr<EventHandler> handler = nullptr;
-  BASE_STATIC_STRING_DECL(kGesture, "Gesture");
-
-  // Create an event handler
-  if (tasm->EnableFiberArch()) {
-    handler = std::make_unique<EventHandler>(kGesture, name, it->lepus_object_,
-                                             it->ctx_);
-    EnsureGestureManager(it->ctx_);
-  } else {
-    handler = std::make_unique<EventHandler>(kGesture, name, it->lepus_script_,
-                                             it->lepus_function_);
-  }
-
   EventContext context = {.event_type = EventType::kGesture,
                           .event_name = name.str(),
                           .page_name = "",
@@ -345,12 +332,32 @@ void TouchEventHandler::HandleGestureEvent(TemplateAssembler *tasm,
                                      .capture_phase_ = false,
                                      .lepus_event_ = true,
                                      .from_frontend_ = false}};
-  FireElementWorklet(
-      context, target_node->ParentComponentIdString(),
-      target_node->ParentComponentEntryName(), tasm, handler.get(),
+  const auto gesture_params =
       GetCustomEventParam(name.str(), "params", context.option, target_node,
-                          target_node, params, false),
-      target_node->impl_id());
+                          target_node, params, false);
+
+  if (is_rts_like) {
+    if (it->ctx_ == nullptr || !it->lepus_function_.IsCallable()) {
+      LOGE("RTS gesture callback is invalid.");
+      return;
+    }
+    it->ctx_->CallClosure(it->lepus_function_, gesture_params);
+    return;
+  }
+
+  std::unique_ptr<EventHandler> handler = nullptr;
+  BASE_STATIC_STRING_DECL(kGesture, "Gesture");
+  if (tasm->EnableFiberArch()) {
+    handler = std::make_unique<EventHandler>(kGesture, name, it->lepus_object_,
+                                             it->ctx_);
+    EnsureGestureManager(it->ctx_);
+  } else {
+    handler = std::make_unique<EventHandler>(kGesture, name, it->lepus_script_,
+                                             it->lepus_function_);
+  }
+  FireElementWorklet(context, target_node->ParentComponentIdString(),
+                     target_node->ParentComponentEntryName(), tasm,
+                     handler.get(), gesture_params, target_node->impl_id());
 }
 
 void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,

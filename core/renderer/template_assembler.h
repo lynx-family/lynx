@@ -734,6 +734,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
                          const std::string& args) override;
 
   bool UseLepusNG();
+  bool IsRTS();
+  bool IsRTS2Native();
 
   void SetCSSVariables(const std::string& component_id,
                        const std::string& id_selector,
