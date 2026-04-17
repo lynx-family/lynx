@@ -10,13 +10,15 @@ package com.lynx.tasm;
 public final class TemplateBundleOption {
   private int mContextPoolSize = 0;
   private boolean mEnableContextAutoRefill = false;
+  private boolean mSkipCSS = false;
   private final String mUrl;
   private boolean mDebuggable = false;
 
-  private TemplateBundleOption(
-      int contextPoolSize, boolean enableContextAutoRefill, String url, boolean debuggable) {
+  private TemplateBundleOption(int contextPoolSize, boolean enableContextAutoRefill,
+      boolean skipCSS, String url, boolean debuggable) {
     mContextPoolSize = contextPoolSize;
     mEnableContextAutoRefill = enableContextAutoRefill;
+    mSkipCSS = skipCSS;
     mUrl = url;
     mDebuggable = debuggable;
   }
@@ -37,11 +39,16 @@ public final class TemplateBundleOption {
     return mDebuggable;
   }
 
+  public boolean getSkipCSS() {
+    return mSkipCSS;
+  }
+
   public static class Builder {
     private String mUrl;
     private int mContextPoolSize = 0;
     private boolean mEnableContextAutoRefill = false;
     private boolean mDebuggable = false;
+    private boolean mSkipCSS = false;
 
     /**
      * Pre-create a certain number of lepus contexts, which could speed up loadTemplateBundle.
@@ -68,6 +75,15 @@ public final class TemplateBundleOption {
     }
 
     /**
+     * Whether to skip CSS decoding when constructing TemplateBundle.
+     * Default value: false
+     */
+    public Builder setSkipCSS(boolean enable) {
+      this.mSkipCSS = enable;
+      return this;
+    }
+
+    /**
      * Set the source-url of the loading template.
      * @param url sourceUrl;
      * @return Builder;
@@ -90,7 +106,7 @@ public final class TemplateBundleOption {
 
     public TemplateBundleOption build() {
       return new TemplateBundleOption(
-          mContextPoolSize, mEnableContextAutoRefill, mUrl, mDebuggable);
+          mContextPoolSize, mEnableContextAutoRefill, mSkipCSS, mUrl, mDebuggable);
     }
   }
 }

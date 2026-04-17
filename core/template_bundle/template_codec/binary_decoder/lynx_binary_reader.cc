@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/log/logging.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
@@ -82,6 +83,13 @@ Themed& LynxBinaryReader::Themed() { return template_bundle().themed_; }
 
 bool LynxBinaryReader::DecodeCSSDescriptor() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, BINARY_READER_DECODE_CSS_DESCRIPTOR);
+  if (skip_css_decode_) {
+    LOGI("LynxBinaryReader skip css decode, decode css descriptor route only");
+    ERROR_UNLESS(DecodeCSSDescriptorRoute());
+    stream_->Seek(css_section_range_.end);
+    return true;
+  }
+
   // decode route
   ERROR_UNLESS(DecodeCSSDescriptorRoute());
 
