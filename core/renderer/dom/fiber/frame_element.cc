@@ -8,7 +8,6 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/value/base_value.h"
-#include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/template_assembler.h"
 #include "core/services/feature_count/global_feature_counter.h"
@@ -27,15 +26,6 @@ constexpr char kStatusCode[] = "statusCode";
 constexpr char kStatusMessage[] = "statusMessage";
 constexpr char kFrameData[] = "data";
 constexpr char kGlobalProps[] = "global-props";
-
-lepus::Value CreateFrameTemplateDataDispatchValue(
-    const std::shared_ptr<TemplateData>& data) {
-  if (!data) {
-    return lepus::Value(static_cast<int64_t>(0));
-  }
-  auto* native_ptr = new std::shared_ptr<TemplateData>(data);
-  return lepus::Value(reinterpret_cast<int64_t>(native_ptr));
-}
 }  // namespace
 
 FrameElement::FrameElement(ElementManager* element_manager)
@@ -56,11 +46,10 @@ void FrameElement::SetAttribute(const base::String& key,
                                 bool need_update_data_model) {
   OnSetSrc(key, value);
   if (key.IsEqual(kFrameData)) {
-    data_ =
-        value.IsEmpty() ? nullptr : std::make_shared<TemplateData>(value, true);
+    data_ = value.IsEmpty() ? nullptr : std::make_unique<lepus::Value>(value);
   } else if (key.IsEqual(kGlobalProps)) {
     global_props_ =
-        value.IsEmpty() ? nullptr : std::make_shared<TemplateData>(value, true);
+        value.IsEmpty() ? nullptr : std::make_unique<lepus::Value>(value);
   }
   FiberElement::SetAttribute(key, value, need_update_data_model);
 }
@@ -77,13 +66,16 @@ void FrameElement::ResetAttribute(const base::String& key) {
 void FrameElement::SetAttributeInternal(const base::String& key,
                                         const lepus::Value& value) {
   if (key.IsEqual(kFrameData)) {
+    auto* transfer_value = data_ ? new lepus::Value(*data_) : nullptr;
     FiberElement::SetAttributeInternal(
-        key, CreateFrameTemplateDataDispatchValue(data_));
+        key, lepus::Value(reinterpret_cast<int64_t>(transfer_value)));
     return;
   }
   if (key.IsEqual(kGlobalProps)) {
+    auto* transfer_value =
+        global_props_ ? new lepus::Value(*global_props_) : nullptr;
     FiberElement::SetAttributeInternal(
-        key, CreateFrameTemplateDataDispatchValue(global_props_));
+        key, lepus::Value(reinterpret_cast<int64_t>(transfer_value)));
     return;
   }
   FiberElement::SetAttributeInternal(key, value);

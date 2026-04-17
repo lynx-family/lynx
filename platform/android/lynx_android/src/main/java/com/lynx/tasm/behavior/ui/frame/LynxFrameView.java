@@ -38,12 +38,13 @@ public final class LynxFrameView extends UIBodyView {
   private int mContentWidth = -1;
   private int mContentHeight = -1;
   private boolean mDestroyed = false;
-  // Keep frame data/global-props as raw native handles until they are actually consumed by
-  // loadBundle/onPropsUpdated. This avoids creating duplicate Java TemplateData wrappers for the
-  // same native holder during async frame creation, while still letting FrameView recycle pending
-  // handles if they are replaced or the view is destroyed before consumption.
+  // setInitData/setGlobalProps may race during frame creation. Keep the raw native ptr first and
+  // only wrap it as TemplateData when the render path actually consumes it, so we don't create
+  // multiple Java owners for the same native data or release it from the setter thread.
   private long mInitDataPtr = 0;
   private long mGlobalPropsPtr = 0;
+  private TemplateData mInitData = null;
+  private TemplateData mGlobalProps = null;
   private boolean mAutoWidth = false;
   private boolean mAutoHeight = false;
   private int mWidthMode = MeasureSpec.EXACTLY;
@@ -141,14 +142,11 @@ public final class LynxFrameView extends UIBodyView {
     LynxLoadMeta.Builder builder = new LynxLoadMeta.Builder();
     builder.setUrl(mUrl);
     builder.setTemplateBundle(bundle);
-    TemplateData initData = consumePendingTemplateData(true);
-    if (initData != null) {
-      builder.setInitialData(initData);
-    }
-    TemplateData globalProps = consumePendingTemplateData(false);
-    if (globalProps != null) {
-      builder.setGlobalProps(globalProps);
-    }
+
+    consumeTemplateDataPtr();
+    builder.setInitialData(mInitData);
+    builder.setGlobalProps(mGlobalProps);
+
     mRender.loadTemplate(builder.build());
     mIsBundleLoaded = true;
     return true;
@@ -212,12 +210,20 @@ public final class LynxFrameView extends UIBodyView {
 
   void setInitData(long dataPtr) {
     TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_INIT_DATA);
-    mInitDataPtr = replacePendingTemplateDataPtr(mInitDataPtr, dataPtr);
+    mInitDataPtr = updateTemplateDataPtr(mInitData, mInitDataPtr, dataPtr);
   }
 
   void setGlobalProps(long dataPtr) {
     TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_GLOBAL_PROPS);
-    mGlobalPropsPtr = replacePendingTemplateDataPtr(mGlobalPropsPtr, dataPtr);
+    mGlobalPropsPtr = updateTemplateDataPtr(mGlobalProps, mGlobalPropsPtr, dataPtr);
+  }
+
+  private long updateTemplateDataPtr(TemplateData consumedData, long current, long dataPtr) {
+    if (current != 0 && current != dataPtr
+        && (consumedData == null || consumedData.getNativePtr() != current)) {
+      recycleTemplateDataPtr(current);
+    }
+    return dataPtr;
   }
 
   void onPropsUpdated() {
@@ -226,19 +232,36 @@ public final class LynxFrameView extends UIBodyView {
       return;
     }
 
-    if (mInitDataPtr == 0 && mGlobalPropsPtr == 0) {
+    if (hasNoPendingTemplateData()) {
       return;
     }
 
-    TemplateData initData = consumePendingTemplateData(true);
-    TemplateData globalProps = consumePendingTemplateData(false);
-
+    consumeTemplateDataPtr();
     LynxUpdateMeta meta =
         new LynxUpdateMeta.Builder()
-            .setUpdatedData(initData == null ? TemplateData.empty() : initData)
-            .setUpdatedGlobalProps(globalProps == null ? TemplateData.empty() : globalProps)
+            .setUpdatedData(mInitData == null ? TemplateData.empty() : mInitData)
+            .setUpdatedGlobalProps(mGlobalProps == null ? TemplateData.empty() : mGlobalProps)
             .build();
     mRender.updateMetaData(meta);
+  }
+
+  private boolean hasNoPendingTemplateData() {
+    return mInitData == null && mGlobalProps == null && mInitDataPtr == 0 && mGlobalPropsPtr == 0;
+  }
+
+  private void consumeTemplateDataPtr() {
+    if (mInitDataPtr != 0) {
+      if (mInitData == null || mInitData.getNativePtr() != mInitDataPtr) {
+        mInitData = TemplateData.fromNativeDataPtr(mInitDataPtr);
+      }
+      mInitDataPtr = 0;
+    }
+    if (mGlobalPropsPtr != 0) {
+      if (mGlobalProps == null || mGlobalProps.getNativePtr() != mGlobalPropsPtr) {
+        mGlobalProps = TemplateData.fromNativeDataPtr(mGlobalPropsPtr);
+      }
+      mGlobalPropsPtr = 0;
+    }
   }
 
   public void setUrl(String url) {
@@ -264,50 +287,35 @@ public final class LynxFrameView extends UIBodyView {
     return width != -1 && height != -1;
   }
 
-  private long replacePendingTemplateDataPtr(long current, long next) {
-    if (current != 0 && current != next) {
-      recyclePendingTemplateDataPtr(current);
-    }
-    return next;
-  }
-
   private void recyclePendingTemplateData() {
-    if (mInitDataPtr != 0) {
-      recyclePendingTemplateDataPtr(mInitDataPtr);
-      mInitDataPtr = 0;
+    recycleTemplateDataPtr(mInitDataPtr);
+    mInitDataPtr = 0;
+    if (mInitData != null) {
+      mInitData.recycle();
+      mInitData = null;
     }
-    if (mGlobalPropsPtr != 0) {
-      recyclePendingTemplateDataPtr(mGlobalPropsPtr);
-      mGlobalPropsPtr = 0;
+    recycleTemplateDataPtr(mGlobalPropsPtr);
+    mGlobalPropsPtr = 0;
+    if (mGlobalProps != null) {
+      mGlobalProps.recycle();
+      mGlobalProps = null;
     }
   }
 
-  private TemplateData consumePendingTemplateData(boolean isInitData) {
-    long nativeTemplateDataPtr = isInitData ? mInitDataPtr : mGlobalPropsPtr;
-    if (isInitData) {
-      mInitDataPtr = 0;
-    } else {
-      mGlobalPropsPtr = 0;
-    }
-    return nativeTemplateDataPtr == 0
-        ? null
-        : TemplateData.fromNativeTemplateDataPtr(nativeTemplateDataPtr);
-  }
-
-  private void recyclePendingTemplateDataPtr(final long nativeTemplateDataPtr) {
-    if (nativeTemplateDataPtr == 0) {
+  private void recycleTemplateDataPtr(long dataPtr) {
+    if (dataPtr == 0) {
       return;
     }
     if (mContext != null) {
       mContext.runOnTasmThread(new Runnable() {
         @Override
         public void run() {
-          TemplateData.fromNativeTemplateDataPtr(nativeTemplateDataPtr).recycle();
+          TemplateData.fromNativeDataPtr(dataPtr).recycle();
         }
       });
       return;
     }
-    TemplateData.fromNativeTemplateDataPtr(nativeTemplateDataPtr).recycle();
+    TemplateData.fromNativeDataPtr(dataPtr).recycle();
   }
 
   @Override

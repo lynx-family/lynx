@@ -24,16 +24,14 @@
 }
 @end
 
-static LynxTemplateData* ConsumeFrameTemplateDataHolder(NSInteger value) {
+static LynxTemplateData* ConsumeFrameLepusValuePtr(NSInteger value) {
   if (value == 0) {
     return nil;
   }
-  auto* native_template_data = reinterpret_cast<std::shared_ptr<lynx::tasm::TemplateData>*>(value);
+  auto* lepus_value = reinterpret_cast<lynx::lepus::Value*>(value);
   LynxTemplateData* template_data =
-      native_template_data
-          ? [[LynxTemplateData alloc] initWithNativeTemplateData:*native_template_data]
-          : nil;
-  delete native_template_data;
+      lepus_value ? [[LynxTemplateData alloc] initWithLepusValue:*lepus_value] : nil;
+  delete lepus_value;
   return template_data;
 }
 
@@ -144,7 +142,7 @@ LYNX_REGISTER_UI("frame")
 }
 
 LYNX_PROP_SETTER("data", updateData, NSInteger) {
-  [[self view] setInitData:requestReset ? nil : ConsumeFrameTemplateDataHolder(value)];
+  [[self view] setInitData:requestReset ? nil : ConsumeFrameLepusValuePtr(value)];
 }
 
 LYNX_PROP_SETTER("src", setUrl, NSString*) {
@@ -154,7 +152,7 @@ LYNX_PROP_SETTER("src", setUrl, NSString*) {
 }
 
 LYNX_PROP_SETTER("global-props", updateGlobalProps, NSInteger) {
-  [[self view] setGlobalProps:requestReset ? nil : ConsumeFrameTemplateDataHolder(value)];
+  [[self view] setGlobalProps:requestReset ? nil : ConsumeFrameLepusValuePtr(value)];
 }
 
 LYNX_PROP_SETTER("embedded-mode", setEmbeddedMode, NSNumber*) {

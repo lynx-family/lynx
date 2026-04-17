@@ -16,7 +16,6 @@
 
 namespace lynx {
 namespace tasm {
-class TemplateData;
 
 struct FrameElementData {
   FrameElementData(const std::string& src,
@@ -60,10 +59,10 @@ class FrameElement : public FiberElement {
   // send load event for `bindload` callback
   void SendLoadEvent(const std::shared_ptr<FrameElementData>& data);
 
+  std::unique_ptr<lepus::Value> data_;
+  std::unique_ptr<lepus::Value> global_props_;
   std::shared_ptr<FrameElementData> bundle_data_{nullptr};
   std::string src_{};
-  std::shared_ptr<TemplateData> data_{nullptr};
-  std::shared_ptr<TemplateData> global_props_{nullptr};
 };
 }  // namespace tasm
 }  // namespace lynx

@@ -3722,7 +3722,7 @@ public class LynxTemplateData : NSObject {
   public void LynxTemplateData::markReadOnly();
   public BOOL LynxTemplateData::isReadOnly();
   public LynxTemplateData * LynxTemplateData::deepClone();
-  public instancetype LynxTemplateData()::initWithNativeTemplateData:(const std::shared_ptr< lynx::tasm::TemplateData > &nativeTemplateData);
+  public instancetype LynxTemplateData()::initWithLepusValue:(const lynx::lepus::Value &value);
   public NSArray * LynxTemplateData()::obtainUpdateActions();
   public NSArray * LynxTemplateData()::copyUpdateActions();
   public lynx::lepus::Value LynxTemplateData()::getDataForJSThread();
@@ -5741,8 +5741,6 @@ public enum LynxFeature {
 
   public lynx::lepus::Value LynxConvertToLepusValue(id data, BOOL useBoolLiterals=NO);
   public lynx::lepus::Value * LynxGetLepusValueFromTemplateData(LynxTemplateData *data);
-  public bool LynxTemplateDataHasNativeTemplateData(LynxTemplateData *data);
-  public std::shared_ptr< lynx::tasm::TemplateData > LynxGetNativeTemplateDataFromTemplateData(LynxTemplateData *data);
   public std::shared_ptr< lynx::tasm::TemplateData > ConvertLynxTemplateDataToTemplateData(LynxTemplateData *data);
 
   using PerformanceControllerActor = 

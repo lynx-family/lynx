@@ -1981,11 +1981,6 @@ public class LynxTemplateRender
    * GlobalProps here.
    */
   private synchronized void internalMergeGlobalPropsSafely(TemplateData newGlobalProps) {
-    if (newGlobalProps.getNativeTemplateDataPtr() != 0) {
-      globalProps = newGlobalProps;
-      return;
-    }
-
     if (globalProps == null) {
       globalProps = TemplateData.fromMap(new HashMap<String, Object>());
     }
@@ -3657,21 +3652,17 @@ public class LynxTemplateRender
     }
 
     long nativePtr = 0;
-    long nativeTemplateDataPtr = 0;
     String processorName = null;
     boolean read_only = false;
     if (initData != null) {
-      nativeTemplateDataPtr = initData.getNativeTemplateDataPtrAndClear();
-      if (nativeTemplateDataPtr == 0) {
-        initData.flush();
-        nativePtr = initData.getNativePtr();
-        processorName = initData.processorName();
-        read_only = initData.isReadOnly();
-        initData.markConsumed();
-      }
+      initData.flush();
+      nativePtr = initData.getNativePtr();
+      processorName = initData.processorName();
+      read_only = initData.isReadOnly();
+      initData.markConsumed();
     }
 
-    if (nativePtr == 0 && nativeTemplateDataPtr == 0) {
+    if (nativePtr == 0) {
       LLog.e(TAG, "LoadTemplateBundle with zero templateData");
     }
 
@@ -3684,8 +3675,8 @@ public class LynxTemplateRender
     PageConfig.attachPageConfig(bundle.getPageConfig(), mLynxContext, mLynxUIRender);
     timingOption.markTiming(TimingConstants.FFI_START);
     nativeLoadTemplateBundleByPreParsedData(mNativePtr, mNativeLifecycle, url,
-        bundle.getNativePtr(), isPrePainting, nativePtr, nativeTemplateDataPtr, read_only,
-        processorName, initData, options, timingOption.toJavaOnlyMap());
+        bundle.getNativePtr(), isPrePainting, nativePtr, read_only, processorName, initData,
+        options, timingOption.toJavaOnlyMap());
   }
 
   private void loadSSRData(byte[] ssr, TemplateData templateData, NativeFacade.Callback callback) {
@@ -3799,16 +3790,13 @@ public class LynxTemplateRender
     if (globalProps == null) {
       return;
     }
-    if (globalProps.getNativeTemplateDataPtr() == 0) {
-      globalProps.flush();
-    }
+    globalProps.flush();
     long propPtr = globalProps.getNativePtr();
-    long nativeTemplateDataPtr = globalProps.getNativeTemplateDataPtrAndClear();
-    if (propPtr == 0 && nativeTemplateDataPtr == 0) {
+    if (propPtr == 0) {
       LLog.e(TAG, "updateGlobalProps with zero templateData");
       return;
     }
-    nativeUpdateGlobalProps(mNativePtr, mNativeLifecycle, propPtr, nativeTemplateDataPtr);
+    nativeUpdateGlobalProps(mNativePtr, mNativeLifecycle, propPtr);
   }
 
   private void attachPiper(LynxBackgroundRuntime runtime, LynxModuleFactory moduleFactory) {
@@ -4132,31 +4120,23 @@ public class LynxTemplateRender
     }
 
     long dataPtr = 0;
-    long dataNativeTemplateDataPtr = 0;
     String processorName = null;
     boolean readOnly = false;
     if (data != null) {
-      dataNativeTemplateDataPtr = data.getNativeTemplateDataPtrAndClear();
-      if (dataNativeTemplateDataPtr == 0) {
-        data.flush();
-        dataPtr = data.getNativePtr();
-        processorName = data.processorName();
-        readOnly = data.isReadOnly();
-      }
+      data.flush();
+      dataPtr = data.getNativePtr();
+      processorName = data.processorName();
+      readOnly = data.isReadOnly();
     }
 
     long globalPropsPtr = 0;
-    long globalPropsNativeTemplateDataPtr = 0;
     if (globalProps != null) {
-      globalPropsNativeTemplateDataPtr = globalProps.getNativeTemplateDataPtrAndClear();
-      if (globalPropsNativeTemplateDataPtr == 0) {
-        globalProps.flush();
-        globalPropsPtr = globalProps.getNativePtr();
-      }
+      globalProps.flush();
+      globalPropsPtr = globalProps.getNativePtr();
     }
 
-    nativeUpdateMetaData(mNativePtr, mNativeLifecycle, dataPtr, dataNativeTemplateDataPtr,
-        processorName, readOnly, data, globalPropsPtr, globalPropsNativeTemplateDataPtr);
+    nativeUpdateMetaData(
+        mNativePtr, mNativeLifecycle, dataPtr, processorName, readOnly, data, globalPropsPtr);
   }
 
   private void setThemeInternal(LynxTheme theme) {
@@ -4372,9 +4352,8 @@ public class LynxTemplateRender
 
   // FIXME(songshourui.null): only use templateData later
   private static native void nativeLoadTemplateBundleByPreParsedData(long ptr, long lifecycle,
-      String url, long bundlePtr, boolean isPrePainting, long data, long nativeTemplateDataPtr,
-      boolean readOnly, String processorName, TemplateData templateData, int options,
-      ReadableMap timingOption);
+      String url, long bundlePtr, boolean isPrePainting, long data, boolean readOnly,
+      String processorName, TemplateData templateData, int options, ReadableMap timingOption);
 
   private static native void nativeLoadTemplateBufferByPreParsedData(long ptr, long lifecycle,
       String url, ByteBuffer temp, boolean isPrePainting, boolean enableRecycleTemplateBundle,
@@ -4392,8 +4371,7 @@ public class LynxTemplateRender
       String processorName, boolean readOnly, TemplateData templateData, boolean is_reuse_engine);
 
   private static native void nativeUpdateMetaData(long ptr, long lifecycle, long dataPtr,
-      long dataNativeTemplateDataPtr, String processorName, boolean readOnly,
-      TemplateData templateData, long globalPropsPtr, long globalPropsNativeTemplateDataPtr);
+      String processorName, boolean readOnly, TemplateData templateData, long globalPropsPtr);
 
   // FIXME(songshourui.null): only use templateData later
   private static native void nativeResetDataByPreParsedData(long ptr, long lifecycle, long dataPtr,
@@ -4407,8 +4385,7 @@ public class LynxTemplateRender
   private static native void nativeUpdateConfig(
       long ptr, long lifecycle, ByteBuffer buffer, int length);
 
-  private static native void nativeUpdateGlobalProps(
-      long ptr, long lifecycle, long data, long nativeTemplateDataPtr);
+  private static native void nativeUpdateGlobalProps(long ptr, long lifecycle, long data);
 
   private static native void nativeUpdateScreenMetrics(
       long ptr, long lifecycle, int width, int height, float scale, long uiDelegate);
