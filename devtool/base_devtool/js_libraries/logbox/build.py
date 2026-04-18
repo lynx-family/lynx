@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 # Get the current directory of the script
 current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -13,8 +14,12 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 # Calculate the root path
 root_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..', '..'))
 
-sys.path.append(root_path)
-from tools.js_tools.pnpm_helper import get_pnpm_env, run_pnpm_command
+# Add lynx/tools to sys.path to import buildtools_helper
+sys.path.append(os.path.join(root_path, 'tools'))
+from buildtools_helper import get_buildtools_path
+
+# Use pnpm wrapper script
+pnpm_wrapper = os.path.join(root_path, 'tools', 'js_tools', 'pnpm_wrapper.py')
 
 # Define the distribution path
 dist_path = os.path.join(current_dir, 'dist')
@@ -40,18 +45,15 @@ def git_root_dir():
     return result.decode('utf-8').strip()
 
 def build():
-    env = get_pnpm_env()
-    env['COREPACK_HOME'] = os.path.join(git_root_dir(), 'buildtools', 'corepack')
-    env['COREPACK_ENABLE_NETWORK'] = '0'
     # Change to the root directory
     os.chdir(root_path)
 
     # Create the distribution directory if it doesn't exist
     os.makedirs(dist_path, exist_ok=True)
 
-    # Run the pnpm build command
-    run_pnpm_command(['pnpm', '--filter', '@lynx-dev/logbox', 'build'],
-                     root_path, env)
+    # Run the pnpm build command using wrapper script
+    subprocess.check_call([sys.executable, pnpm_wrapper, '--filter', '@lynx-dev/logbox', 'build'],
+                         cwd=root_path)
 
     if output and os.path.exists(output):
         target_paths.append(output)

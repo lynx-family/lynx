@@ -11,8 +11,10 @@ import sys
 current_dir = os.path.dirname(os.path.realpath(__file__))
 # Get the root directory
 root_dir = os.path.abspath(os.path.join(current_dir, '../../'))
-sys.path.append(root_dir)
-from tools.js_tools.pnpm_helper import run_pnpm_command
+
+# Add lynx/tools to sys.path to import buildtools_helper
+sys.path.append(os.path.join(root_dir, 'tools'))
+from buildtools_helper import get_buildtools_path
 
 # Define the Lynx example directory name
 LYNX_EXAMPLE_DIR_NAME = "@lynx-example"
@@ -74,9 +76,10 @@ os.makedirs(showcase_macos)
 
 print("========== build showcase page ==========")
 os.chdir(showcase_root_dir)
-# Install dependencies and build
-run_pnpm_command(["pnpm", "install", "--frozen-lockfile"], os.getcwd())
-run_pnpm_command(["pnpm", "run", "build"], os.getcwd())
+# Use pnpm wrapper script
+pnpm_wrapper = os.path.join(root_dir, 'tools', 'js_tools', 'pnpm_wrapper.py')
+subprocess.check_call([sys.executable, pnpm_wrapper, "install", "--frozen-lockfile"], cwd=os.getcwd())
+subprocess.check_call([sys.executable, pnpm_wrapper, "run", "build"], cwd=os.getcwd())
 
 print("========== copy showcase resource ==========")
 # Copy resources from node_modules

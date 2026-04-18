@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+import platform
 
 # Get the current directory of the script
 current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -13,8 +14,9 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 # Calculate the root path
 root_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..', '..'))
 
-sys.path.append(root_path)
-from tools.js_tools.pnpm_helper import run_pnpm_command
+# Add lynx/tools to sys.path to import buildtools_helper
+sys.path.append(os.path.join(root_path, 'tools'))
+from buildtools_helper import get_buildtools_path
 
 # Define the distribution path
 dist_path = os.path.join(root_path, 'devtool', 'lynx_devtool', 'resources',
@@ -37,9 +39,10 @@ def build():
     # Create the distribution directory if it doesn't exist
     os.makedirs(dist_path, exist_ok=True)
 
-    # Run the pnpm build command
-    run_pnpm_command(['pnpm', '--filter', '@lynx-dev/lynx-error-parser', 'build'],
-                     root_path)
+    # Run the pnpm build command via wrapper
+    pnpm_wrapper = os.path.join(root_path, 'tools', 'js_tools', 'pnpm_wrapper.py')
+    subprocess.check_call([sys.executable, pnpm_wrapper, '--filter', '@lynx-dev/lynx-error-parser', 'build'],
+                         cwd=root_path)
 
     # Create target directories and copy file
     source_file = os.path.join(dist_path, "lynx-error-parser.js")

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# pnpm shell shim that forwards all arguments to pnpm_wrapper.py
+# This avoids invoking Python directly in package.json scripts.
+
+# Resolve script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Allow overriding wrapper path via PNPM_WRAPPER env var (for repo splits)
+PNPM_WRAPPER="${PNPM_WRAPPER:-${SCRIPT_DIR}/pnpm_wrapper.py}"
+
+# Pick a Python interpreter
+if [[ -n "${PYTHON:-}" ]]; then
+  PY_EXE="${PYTHON}"
+elif [[ -n "${PYTHON3:-}" ]]; then
+  PY_EXE="${PYTHON3}"
+elif command -v python3 >/dev/null 2>&1; then
+  PY_EXE="python3"
+elif command -v python >/dev/null 2>&1; then
+  PY_EXE="python"
+else
+  echo "Error: no Python interpreter found. Set PYTHON or PYTHON3." >&2
+  exit 1
+fi
+
+exec "${PY_EXE}" "${PNPM_WRAPPER}" "$@"
