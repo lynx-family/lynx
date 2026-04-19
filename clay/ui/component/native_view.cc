@@ -70,6 +70,26 @@ NativeView::NativeView(int id, std::string tag, PageView* page_view)
   SetFocusable(true);
 }
 
+bool NativeView::ShouldIgnoreForTouchHitTest() const {
+  return ignore_for_touch_hit_test_;
+}
+
+bool NativeView::HitTest(const PointerEvent& event, HitTestResult& result) {
+  if (event.device == PointerEvent::DeviceType::kTouch &&
+      ShouldIgnoreForTouchHitTest()) {
+    return false;
+  }
+  return BaseView::HitTest(event, result);
+}
+
+BaseView* NativeView::GetTopViewToAcceptEvent(const FloatPoint& position,
+                                              FloatPoint* relative_position) {
+  if (ShouldIgnoreForTouchHitTest()) {
+    return nullptr;
+  }
+  return BaseView::GetTopViewToAcceptEvent(position, relative_position);
+}
+
 void NativeView::FocusHasChanged(bool focused, bool is_leaf) {
   native_view_plugin_.Act([focused, is_leaf](auto& plugin) {
     plugin.OnFocusChanged(focused, is_leaf);
@@ -92,9 +112,32 @@ void NativeView::SendMotionEvent(const PointerEvent& point_event,
 // currently. Maybe we can reactor this and make the destruction process more
 // unified.
 void NativeView::OnDestroy() {
+  UpdateTouchDispatchState(true, /* action= */ 3);
   native_view_plugin_.Act([](auto& plugin) { return plugin.OnDestroy(); });
   if (tex_id_.has_value()) {
     page_view_->UnregisterDrawableImage(*tex_id_);
+  }
+}
+
+void NativeView::UpdateTouchDispatchState(bool handled, int action) {
+  constexpr int kActionDown = 0;
+  constexpr int kActionUp = 1;
+  constexpr int kActionCancel = 3;
+  constexpr int kActionPointerDown = 5;
+  constexpr int kActionPointerUp = 6;
+
+  switch (action) {
+    case kActionDown:
+    case kActionPointerDown:
+      ignore_for_touch_hit_test_ = !handled;
+      break;
+    case kActionUp:
+    case kActionPointerUp:
+    case kActionCancel:
+      ignore_for_touch_hit_test_ = false;
+      break;
+    default:
+      break;
   }
 }
 

@@ -199,6 +199,7 @@ void PageView::OnDestroy() {
   FML_DLOG(INFO) << "Page OnDestroy; id = " << id_;
   animation_handler_->ClearCallbacks();
   DestroyAllChildren();
+  touch_view_map_.clear();
   image_resource_fetcher_ = nullptr;
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
@@ -1705,6 +1706,7 @@ void PageView::ResetPageView(bool recycle) {
                            static_cast<int32_t>(metrics_.physical_height)});
   animation_handler_->ClearCallbacks();
   animation_handler_->SetOnNewAnimationCallback([this] { RequestNewFrame(); });
+  touch_view_map_.clear();
   frame_builder_ = std::make_unique<FrameBuilder>(
       skity::Vec2{static_cast<int32_t>(metrics_.physical_width),
                   static_cast<int32_t>(metrics_.physical_height)},
