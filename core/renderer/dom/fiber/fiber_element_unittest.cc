@@ -400,7 +400,7 @@ TEST_P(FiberElementTest,
 
 TEST_P(
     FiberElementTest,
-    RendererFunctions_SetDynamicStyleObject_AcceptsMapAndStyleObjectResetCarrier) {
+    RendererFunctions_SetDynamicStyleObject_AcceptsMapStyleObjectAndStringResetCarrier) {
   manager->SetEnableSimpleStyle(true);
   manager->config_->SetEnablePropertyBasedSimpleStyle(true);
   manager->SetConfig(manager->config_);
@@ -507,6 +507,49 @@ TEST_P(
     EXPECT_NEAR(props()[opacity_key].Number(), 0.9, 1e-6);
     expect_dynamic_style(CSSPropertyID::kPropertyIDZIndex, true);
     expect_dynamic_style(CSSPropertyID::kPropertyIDOpacity, false);
+  }
+
+  {
+    lepus::Value argv[] = {
+        lepus::Value(view),
+        lepus::Value(
+            base::String("--bg-color: red; font-family: test-font; z-index: 4; "
+                         "margin: 1px 2px;"))};
+    ::lynx::tasm::RendererFunctions::SetDynamicStyleObject(
+        mts_ctx, argv, static_cast<int>(std::size(argv)));
+    flush();
+
+    EXPECT_EQ(props()[z_index_key].Number(), 4);
+    EXPECT_NEAR(props()[opacity_key].Number(), 0.5, 1e-6);
+    ASSERT_TRUE(view->parsed_dynamic_styles_map_.has_value());
+    EXPECT_EQ(view->parsed_dynamic_styles_map_->size(), 6u);
+    EXPECT_FALSE(view->parsed_dynamic_styles_map_->contains(
+        CSSPropertyID::kPropertyIDOpacity));
+    auto font_family_it = view->parsed_dynamic_styles_map_->find(
+        CSSPropertyID::kPropertyIDFontFamily);
+    ASSERT_TRUE(font_family_it != view->parsed_dynamic_styles_map_->end());
+    EXPECT_TRUE(font_family_it->second.IsString());
+    EXPECT_EQ(font_family_it->second.AsString().str(), "test-font");
+    expect_dynamic_style(CSSPropertyID::kPropertyIDZIndex, false);
+    EXPECT_TRUE(view->parsed_dynamic_styles_map_->contains(
+        CSSPropertyID::kPropertyIDMarginTop));
+    EXPECT_TRUE(view->parsed_dynamic_styles_map_->contains(
+        CSSPropertyID::kPropertyIDMarginRight));
+    EXPECT_TRUE(view->parsed_dynamic_styles_map_->contains(
+        CSSPropertyID::kPropertyIDMarginBottom));
+    EXPECT_TRUE(view->parsed_dynamic_styles_map_->contains(
+        CSSPropertyID::kPropertyIDMarginLeft));
+  }
+
+  {
+    lepus::Value argv[] = {lepus::Value(view), lepus::Value(base::String())};
+    ::lynx::tasm::RendererFunctions::SetDynamicStyleObject(
+        mts_ctx, argv, static_cast<int>(std::size(argv)));
+    flush();
+
+    EXPECT_EQ(props()[z_index_key].Number(), 1);
+    EXPECT_NEAR(props()[opacity_key].Number(), 0.5, 1e-6);
+    EXPECT_FALSE(view->parsed_dynamic_styles_map_.has_value());
   }
 }
 

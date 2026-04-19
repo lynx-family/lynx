@@ -31,6 +31,7 @@
 #include "core/public/common_constants.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/css/css_utils.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/block_element.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -6770,6 +6771,42 @@ static style::DynamicStyleObjectRef CreateDynamicStyleObjectFromValue(
     // original StyleObject instance or its historical element bindings.
     return style::CreateDynamicStyleObjectRef(style_object->Properties());
   }
+  if (value.IsString()) {
+    StyleMap style_map;
+    const auto& configs = tasm->GetPageConfig()->GetCSSParserConfigs();
+    auto style_string = value.StringView();
+    ParseStyleDeclarationList(
+        style_string.data(), static_cast<uint32_t>(style_string.length()),
+        [&style_map, &configs](const char* key_start, uint32_t key_length,
+                               const char* value_start, uint32_t value_length) {
+          if (CSSProperty::IsCustomProperty(key_start, key_length)) {
+            return;
+          }
+
+#ifndef NDEBUG
+          CSSStringParser variable_parser{value_start, value_length, configs};
+          variable_parser.ParseVariable();
+          if (variable_parser.HasMetVarToken()) {
+            RenderWarning(
+                "SetDynamicStyleObject string input contains unsupported css "
+                "variable reference for property %.*s. The frontend should "
+                "filter css variables before emitting this path.",
+                static_cast<int>(key_length), key_start);
+          }
+#endif
+
+          auto id = CSSProperty::GetPropertyID(
+              base::static_string::GenericCacheKey(key_start, key_length));
+          if (!CSSProperty::IsPropertyValid(id)) {
+            return;
+          }
+
+          UnitHandler::Process(
+              id, lepus::Value(base::String(value_start, value_length)),
+              style_map, configs);
+        });
+    return style::CreateDynamicStyleObjectRef(std::move(style_map));
+  }
   if (!value.IsObject()) {
     return nullptr;
   }
@@ -6899,7 +6936,7 @@ RENDERER_FUNCTION_CC(SetDynamicStyleObject) {
   if (!element_ref || element_ref->GetRefType() != lepus::RefType::kElement) {
     RETURN_UNDEFINED();
   }
-  if (!(arg1->IsObject() ||
+  if (!(arg1->IsString() || arg1->IsObject() ||
         (arg1->IsRefCounted() &&
          arg1->RefCounted()->GetRefType() == lepus::RefType::kStyleObject))) {
     RETURN_UNDEFINED();

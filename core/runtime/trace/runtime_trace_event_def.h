@@ -485,11 +485,10 @@ inline constexpr const char* const QUICK_CONTEXT_GET_PROPERTY_CALLBACK =
 inline constexpr const char* const QUICK_CONTEXT_CONVERT_TO_OBJECT_CALLBACK =
     "QuickContext::LepusConvertToObjectCallBack";
 /**
- * @trace_description: Create a QuickContext for executing LepusNG in the
- * runtime.
+ * @trace_description: Create a MTS runtime context.
  */
-inline constexpr const char* const CONTEXT_CREATE_QUICK_CONTEXT =
-    "Context::CreateQuickContext";
+inline constexpr const char* const CONTEXT_CREATE_MTS_RUNTIME =
+    "Context::CreateMTSRuntime";
 /**
  * @trace_description: Create a VM-backed context for executing Lepus in the
  * runtime.

@@ -119,7 +119,7 @@ std::shared_ptr<MTSRuntime> MTSRuntime::CreateContext(
     return nullptr;
 #endif
   } else {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_CREATE_QUICK_CONTEXT);
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_CREATE_MTS_RUNTIME);
     return std::make_shared<MTSRuntime>(type, disable_tracing_gc, runtime_mode,
                                         page_options);
   }
