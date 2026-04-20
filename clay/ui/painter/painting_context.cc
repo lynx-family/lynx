@@ -301,7 +301,13 @@ void PaintingContext::CompositeChild(RenderObject* child,
     if (!child->IsExternalView()) {
       layer->SetOffset(offset);
     } else {
+#if OS_WIN
+      // On Windows, the external view is not full screen by default,
+      // so we need to set the specific offset.
+      layer->SetOffset(offset);
+#else
       layer->SetOffset({});
+#endif
     }
   }
 }

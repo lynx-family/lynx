@@ -35,6 +35,7 @@
 #include "clay/ui/shadow/text_shadow_node.h"
 
 #if (defined(OS_MAC) || defined(OS_WIN))
+#include "clay/ui/component/cover_view.h"
 #include "clay/ui/component/title_bar_view.h"
 #endif
 
@@ -77,6 +78,7 @@ REGISTER_CLAY_ELEMENT("x-input", InputView, EditableShadowNode);
 #endif  // ENABLE_CLAY_LITE
 
 #if (defined(OS_MAC) || defined(OS_WIN))
+REGISTER_CLAY_ELEMENT("cover-view", CoverView, void);
 REGISTER_CLAY_ELEMENT("title-bar-view", TitleBarView, void);
 #endif
 }  // namespace clay

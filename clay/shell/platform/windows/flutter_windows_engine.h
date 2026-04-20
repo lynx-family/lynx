@@ -39,6 +39,13 @@
 namespace clay {
 
 class FlutterWindowsView;
+class OverlayViewManagerService;
+
+// A unique identifier for a view.
+using FlutterViewId = int64_t;
+
+// The ID that the current view will have.
+constexpr FlutterViewId kImplicitViewId = 0;
 
 // Update the thread priority for the Windows engine.
 static void WindowsPlatformThreadPrioritySetter(
@@ -203,6 +210,13 @@ class FlutterWindowsEngine : public PlatformViewEmbedderDelegate,
       const std::list<std::unordered_map<std::string, std::string>>&
           content_files);
 
+  std::unique_ptr<FlutterWindowsView> CreateOverlayView(
+      std::unique_ptr<WindowBindingHandler> window);
+
+  void RemoveOverlayView(FlutterViewId view_id);
+
+  FlutterWindowsView* GetOverlayView(FlutterViewId view_id);
+
  protected:
   // Creates the keyboard key handler.
   //
@@ -270,8 +284,32 @@ class FlutterWindowsEngine : public PlatformViewEmbedderDelegate,
 
   std::unique_ptr<FlutterProjectBundle> project_;
 
+  // The ID that the next view will have.
+  FlutterViewId next_view_id_ = kImplicitViewId;
+
   // The view displaying the content running in this engine, if any.
   FlutterWindowsView* view_ = nullptr;
+
+  // The views displaying the content running in this engine, if any.
+  //
+  // This is read and mutated by the platform thread. This is read by the raster
+  // thread to present content to a view.
+  //
+  // Reads to this object on non-platform threads must be protected
+  // by acquiring a shared lock on |views_mutex_|.
+  //
+  // Writes to this object must only happen on the platform thread
+  // and must be protected by acquiring an exclusive lock on |views_mutex_|.
+  std::unordered_map<FlutterViewId, FlutterWindowsView*> overlay_views_;
+
+  // The mutex that protects the |views_| map.
+  //
+  // The raster thread acquires a shared lock to present to a view.
+  //
+  // The platform thread acquires a shared lock to access the view.
+  // The platform thread acquires an exclusive lock before adding
+  // a view to the engine or after removing a view from the engine.
+  mutable std::shared_mutex views_mutex_;
 
   // Task runner for tasks posted from the engine.
   std::unique_ptr<TaskRunner> task_runner_;
@@ -310,6 +348,8 @@ class FlutterWindowsEngine : public PlatformViewEmbedderDelegate,
   PlatformViewEmbedderDelegate* platform_view_delegate_ = nullptr;
 
   std::shared_ptr<clay::ServiceManager> service_manager_;
+
+  std::shared_ptr<OverlayViewManagerService> overlay_view_manager_service_;
 };
 
 }  // namespace clay

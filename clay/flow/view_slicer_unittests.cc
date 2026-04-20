@@ -24,6 +24,25 @@ void AddSliceOfSize(
   paint.setColor(SkColors::kBlack);
   slices[id]->canvas()->drawRect(clay::ConvertSkityRectToSkRect(rect), paint);
 }
+
+std::unique_ptr<EmbeddedViewParams> MakeParams(
+    skity::Rect rect, EmbeddedViewPresentationKind presentation_kind =
+                          EmbeddedViewPresentationKind::kPlatformView) {
+  return std::make_unique<EmbeddedViewParams>(
+      skity::Matrix::Translate(rect.X(), rect.Y()),
+      skity::Vec2(rect.Width(), rect.Height()), MutatorsStack(),
+      presentation_kind);
+}
+
+const OverlayData* FindOverlay(const std::vector<OverlayData>& overlays,
+                               int64_t view_id) {
+  for (const OverlayData& overlay : overlays) {
+    if (overlay.view_id == view_id) {
+      return &overlay;
+    }
+  }
+  return nullptr;
+}
 }  // namespace
 
 TEST(ViewSlicerTest, CanSlicerNonOverlappingViews) {
@@ -33,11 +52,11 @@ TEST(ViewSlicerTest, CanSlicerNonOverlappingViews) {
   std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(99, 99, 100, 100));
 
-  std::unordered_map<int64_t, skity::Rect> view_rects = {
-      {1, skity::Rect::MakeLTRB(50, 50, 60, 60)}};
+  std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
+  view_params[1] = MakeParams(skity::Rect::MakeLTRB(50, 50, 60, 60));
 
   auto computed_overlays =
-      SliceViews(canvas, composition_order, slices, view_rects);
+      SliceViews(canvas, composition_order, slices, view_params);
 
   EXPECT_TRUE(computed_overlays.empty());
 }
@@ -49,11 +68,11 @@ TEST(ViewSlicerTest, IgnoresFractionalOverlaps) {
   std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 50.49, 50.49));
 
-  std::unordered_map<int64_t, skity::Rect> view_rects = {
-      {1, skity::Rect::MakeLTRB(50.5, 50.5, 100, 100)}};
+  std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
+  view_params[1] = MakeParams(skity::Rect::MakeLTRB(50.5, 50.5, 100, 100));
 
   auto computed_overlays =
-      SliceViews(canvas, composition_order, slices, view_rects);
+      SliceViews(canvas, composition_order, slices, view_params);
 
   EXPECT_TRUE(computed_overlays.empty());
 }
@@ -65,17 +84,58 @@ TEST(ViewSlicerTest, ComputesOverlapWith1PV) {
   std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 50, 50));
 
-  std::unordered_map<int64_t, skity::Rect> view_rects = {
-      {1, skity::Rect::MakeLTRB(0, 0, 100, 100)}};
+  std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
+  view_params[1] = MakeParams(skity::Rect::MakeLTRB(0, 0, 100, 100));
 
   auto computed_overlays =
-      SliceViews(canvas, composition_order, slices, view_rects);
+      SliceViews(canvas, composition_order, slices, view_params);
 
   EXPECT_EQ(computed_overlays.size(), 1u);
-  auto overlay = computed_overlays.find(1);
-  ASSERT_NE(overlay, computed_overlays.end());
+  auto overlay = FindOverlay(computed_overlays, 1);
+  ASSERT_NE(overlay, nullptr);
 
-  EXPECT_EQ(overlay->second, skity::Rect::MakeLTRB(0, 0, 50, 50));
+  EXPECT_EQ(overlay->rect, skity::Rect::MakeLTRB(0, 0, 50, 50));
+}
+
+TEST(ViewSlicerTest, OverlayLayerUsesOwnBounds) {
+  SkPictureRecorder recorder;
+  SkCanvas* canvas = recorder.beginRecording(SkRect::MakeLTRB(0, 0, 100, 100));
+  std::vector<int64_t> composition_order = {1};
+  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
+  AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 10, 10));
+
+  std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
+  view_params[1] = MakeParams(skity::Rect::MakeLTRB(20, 30, 80, 90),
+                              EmbeddedViewPresentationKind::kOverlayLayer);
+
+  auto computed_overlays =
+      SliceViews(canvas, composition_order, slices, view_params);
+
+  EXPECT_EQ(computed_overlays.size(), 1u);
+  auto overlay = FindOverlay(computed_overlays, 1);
+  ASSERT_NE(overlay, nullptr);
+  EXPECT_EQ(overlay->rect, skity::Rect::MakeLTRB(20, 30, 80, 90));
+}
+
+TEST(ViewSlicerTest, OverlayLayerDoesNotParticipateInPlatformIntersections) {
+  SkPictureRecorder recorder;
+  SkCanvas* canvas = recorder.beginRecording(SkRect::MakeLTRB(0, 0, 100, 100));
+  std::vector<int64_t> composition_order = {1, 2};
+  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
+  AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 10, 10));
+  AddSliceOfSize(slices, 2, skity::Rect::MakeLTRB(0, 0, 40, 40));
+
+  std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
+  view_params[1] = MakeParams(skity::Rect::MakeLTRB(0, 0, 40, 40),
+                              EmbeddedViewPresentationKind::kOverlayLayer);
+  view_params[2] = MakeParams(skity::Rect::MakeLTRB(80, 80, 90, 90));
+
+  auto computed_overlays =
+      SliceViews(canvas, composition_order, slices, view_params);
+
+  EXPECT_EQ(computed_overlays.size(), 1u);
+  EXPECT_NE(FindOverlay(computed_overlays, 1), nullptr);
+  EXPECT_EQ(FindOverlay(computed_overlays, 2), nullptr);
 }
 
 TEST(ViewSlicerTest, ComputesOverlapWith2PV) {
@@ -86,24 +146,23 @@ TEST(ViewSlicerTest, ComputesOverlapWith2PV) {
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 50, 50));
   AddSliceOfSize(slices, 2, skity::Rect::MakeLTRB(50, 50, 100, 100));
 
-  std::unordered_map<int64_t, skity::Rect> view_rects = {
-      {1, skity::Rect::MakeLTRB(0, 0, 50, 50)},      //
-      {2, skity::Rect::MakeLTRB(50, 50, 100, 100)},  //
-  };
+  std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
+  view_params[1] = MakeParams(skity::Rect::MakeLTRB(0, 0, 50, 50));
+  view_params[2] = MakeParams(skity::Rect::MakeLTRB(50, 50, 100, 100));
 
   auto computed_overlays =
-      SliceViews(canvas, composition_order, slices, view_rects);
+      SliceViews(canvas, composition_order, slices, view_params);
 
   EXPECT_EQ(computed_overlays.size(), 2u);
 
-  auto overlay = computed_overlays.find(1);
-  ASSERT_NE(overlay, computed_overlays.end());
+  auto overlay = FindOverlay(computed_overlays, 1);
+  ASSERT_NE(overlay, nullptr);
 
-  EXPECT_EQ(overlay->second, skity::Rect::MakeLTRB(0, 0, 50, 50));
+  EXPECT_EQ(overlay->rect, skity::Rect::MakeLTRB(0, 0, 50, 50));
 
-  overlay = computed_overlays.find(2);
-  ASSERT_NE(overlay, computed_overlays.end());
-  EXPECT_EQ(overlay->second, skity::Rect::MakeLTRB(50, 50, 100, 100));
+  overlay = FindOverlay(computed_overlays, 2);
+  ASSERT_NE(overlay, nullptr);
+  EXPECT_EQ(overlay->rect, skity::Rect::MakeLTRB(50, 50, 100, 100));
 }
 
 TEST(ViewSlicerTest, OverlappingTwoPVs) {
@@ -120,21 +179,20 @@ TEST(ViewSlicerTest, OverlappingTwoPVs) {
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 0, 0));
   AddSliceOfSize(slices, 2, skity::Rect::MakeLTRB(0, 0, 100, 100));
 
-  std::unordered_map<int64_t, skity::Rect> view_rects = {
-      {1, skity::Rect::MakeLTRB(0, 0, 50, 50)},      //
-      {2, skity::Rect::MakeLTRB(50, 50, 100, 100)},  //
-  };
+  std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
+  view_params[1] = MakeParams(skity::Rect::MakeLTRB(0, 0, 50, 50));
+  view_params[2] = MakeParams(skity::Rect::MakeLTRB(50, 50, 100, 100));
 
   auto computed_overlays =
-      SliceViews(canvas, composition_order, slices, view_rects);
+      SliceViews(canvas, composition_order, slices, view_params);
 
   EXPECT_EQ(computed_overlays.size(), 1u);
 
-  auto overlay = computed_overlays.find(2);
-  ASSERT_NE(overlay, computed_overlays.end());
+  auto overlay = FindOverlay(computed_overlays, 2);
+  ASSERT_NE(overlay, nullptr);
 
   // We create a single overlay for both overlapping sections.
-  EXPECT_EQ(overlay->second, skity::Rect::MakeLTRB(0, 0, 100, 100));
+  EXPECT_EQ(overlay->rect, skity::Rect::MakeLTRB(0, 0, 100, 100));
 }
 
 }  // namespace testing

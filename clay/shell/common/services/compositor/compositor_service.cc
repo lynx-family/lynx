@@ -37,58 +37,41 @@ bool CompositorService::SubmitFrame(
 
   had_hybrid_composited_ = true;
 
-  // TODO(haoyoufeng.aji) support external overlay views
   bool did_encode = true;
   std::unordered_map<int64_t, OverlayData> platform_overlays;
   std::vector<std::pair<SurfaceFrame::SubmitCallback, SurfaceFrame::SubmitInfo>>
       submit_infos;
   submit_infos.reserve(compositor_state->GetCompositionOrder().size() + 1);
-  std::unordered_map<int64_t, skity::Rect> view_rects;
 
-  for (int64_t view_id : compositor_state->GetCompositionOrder()) {
-    view_rects[view_id] =
-        compositor_state->GetViewParams()[view_id]->finalBoundingRect();
-  }
-
-  std::unordered_map<int64_t, skity::Rect> overlay_layers = SliceViews(
+  std::vector<OverlayData> overlay_render_requests = SliceViews(
       background_frame->GetCanvas(), compositor_state->GetCompositionOrder(),
-      compositor_state->GetSlices(), view_rects);
+      compositor_state->GetSlices(), compositor_state->GetViewParams());
 
   // background frame must come first since it's the "current" surface
   background_frame->set_submit_info({.present_with_transaction = true});
   did_encode &= background_frame->Encode();
   submit_infos.push_back(background_frame->PrepareSubmit());
 
-  size_t required_overlay_layers = 0;
-  for (int64_t view_id : compositor_state->GetCompositionOrder()) {
-    std::unordered_map<int64_t, skity::Rect>::const_iterator overlay =
-        overlay_layers.find(view_id);
-    if (overlay == overlay_layers.end()) {
-      continue;
-    }
-    required_overlay_layers++;
-  }
+  CreateMissingSurfaces(overlay_render_requests.size(), context);
 
-  CreateMissingSurfaces(required_overlay_layers, context);
+  for (OverlayData& overlay_data : overlay_render_requests) {
+    const skity::Rect& overlay_rect = overlay_data.rect;
+    auto& slices = compositor_state->GetSlices();
+    auto slice_it = slices.find(overlay_data.view_id);
 
-  int64_t overlay_id = 0;
-  for (int64_t view_id : compositor_state->GetCompositionOrder()) {
-    std::unordered_map<int64_t, skity::Rect>::const_iterator it =
-        overlay_layers.find(view_id);
-    if (it == overlay_layers.end()) {
-      continue;
-    }
-    auto& [_, overlay_rect] = *it;
     CompositorSurface& compositor_surface = GetCompositorSurface();
-
+    overlay_data.overlay = compositor_surface.platform_overlay;
+    compositor_surface.platform_overlay->PrepareSurface(overlay_data);
     std::unique_ptr<SurfaceFrame> frame =
         compositor_surface.surface->AcquireFrame(
-            compositor_state->GetFrameSize());
+            {overlay_rect.Width(), overlay_rect.Height()});
 
     // If frame is null, AcquireFrame already printed out an error message.
     if (!frame) {
       continue;
     }
+    frame->Prepare(std::make_optional<skity::Rect>(
+        {0, 0, overlay_rect.Width(), overlay_rect.Height()}));
     clay::GrCanvas* overlay_canvas = frame->GetCanvas();
     int restore_count = CANVAS_GET_SAVE_COUNT(overlay_canvas);
     CANVAS_SAVE(overlay_canvas);
@@ -97,20 +80,17 @@ bool CompositorService::SubmitFrame(
         skity::Rect::MakeWH(overlay_rect.Width(), overlay_rect.Height()));
     CANVAS_CLEAR(overlay_canvas, clay::Color::kTransparent());
     CANVAS_TRANSLATE(overlay_canvas, -overlay_rect.X(), -overlay_rect.Y());
-    compositor_state->GetSlices()[view_id]->render_into(overlay_canvas);
+
+    if (slice_it != slices.end() && slice_it->second) {
+      slice_it->second->render_into(overlay_canvas);
+    }
     CANVAS_RESTORE_TO_COUNT(overlay_canvas, restore_count);
 
     frame->set_submit_info({.present_with_transaction = true});
     did_encode &= frame->Encode();
 
-    platform_overlays[view_id] = OverlayData{
-        .rect = overlay_rect,                           //
-        .view_id = view_id,                             //
-        .overlay_id = overlay_id,                       //
-        .overlay = compositor_surface.platform_overlay  //
-    };
+    platform_overlays[overlay_data.view_id] = overlay_data;
     submit_infos.emplace_back(frame->PrepareSubmit());
-    overlay_id++;
   }
 
   std::vector<std::shared_ptr<PlatformOverlay>> unused_overlays =
