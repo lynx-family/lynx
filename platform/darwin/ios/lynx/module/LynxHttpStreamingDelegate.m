@@ -66,8 +66,9 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
     return;
   }
 
-  char temp[i];
+  char temp[i + 1];
   memcpy(temp, bytes, i);
+  temp[i] = '\0';
   *chunkSize = strtoul(temp, NULL, 16);
   *nextIdx = (i + 2);
 }

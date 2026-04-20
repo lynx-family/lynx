@@ -136,7 +136,7 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   XCTAssertEqual(self.buffer.length, 0);
 }
 
-- (void)disable_testProcessChunkedData_MultipleChunks {
+- (void)testProcessChunkedData_MultipleChunks {
   NSString *chunk1 = @"5\r\nHello\r\n";
   NSString *chunk2 = @"6\r\n World\r\n";
   NSString *chunk3 = @"0\r\n\r\n";  // End chunk
@@ -157,7 +157,7 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   XCTAssertEqualObjects(self.eventArray[2][@"event"], @"onEnd");
 }
 
-- (void)disable_testProcessChunkedData_MultipleChunksSingle {
+- (void)testProcessChunkedData_MultipleChunksSingle {
   NSString *chunk1 = @"5\r\nHello\r\n6\r\n World\r\n0\r\n\r\n";
 
   [self.mockDelegate processChunkedData:self.buffer
@@ -170,7 +170,7 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   XCTAssertEqualObjects(self.eventArray[2][@"event"], @"onEnd");
 }
 
-- (void)disable_testProcessChunkedData_IncompleteNumber {
+- (void)testProcessChunkedData_IncompleteNumber {
   NSString *chunk = @"A\r";  // Only part of the chunk
   NSData *data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
 
@@ -188,7 +188,7 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   XCTAssertEqual(self.buffer.length, 0);
 }
 
-- (void)disable_testProcessChunkedData_IncompleteChunk {
+- (void)testProcessChunkedData_IncompleteChunk {
   NSString *chunk = @"A\r\n12345";  // Only part of the chunk
   NSData *data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
 
@@ -206,7 +206,7 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   XCTAssertEqual(self.buffer.length, 0);
 }
 
-- (void)disable_testProcessChunkedData_ZeroLengthChunk {
+- (void)testProcessChunkedData_ZeroLengthChunk {
   NSString *chunk = @"0\r\n\r\n";  // End chunk
   NSData *data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
 
