@@ -7,6 +7,7 @@ package com.lynx.tasm.behavior.ui.frame;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.util.AttributeSet;
+import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.tasm.EmbeddedMode;
@@ -21,13 +22,22 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
+import com.lynx.tasm.event.LynxDetailEvent;
+import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class LynxFrameView extends UIBodyView {
   private static final String TAG = "LynxFrameView";
+  static final String EVENT_LOAD_METRICS = "loadmetrics";
+  private static final String DETAIL_KEY_URL = "url";
+  private static final String DETAIL_KEY_MODE = "mode";
+  private static final String DETAIL_KEY_ENTRY = "entry";
+  private static final String MODE_EMBEDDED = "embedded";
+  private static final String MODE_STANDARD = "standard";
   private LynxTemplateRender mRender;
   private String mUrl;
   private WeakReference<LynxView> mRootView = null;
@@ -54,6 +64,7 @@ public final class LynxFrameView extends UIBodyView {
   private int mPresetWidth = -1;
   private int mPresetHeight = -1;
   private Boolean mEnableMultiAsyncThread = null;
+  private final FramePerformanceClient mFramePerformanceClient = new FramePerformanceClient(this);
 
   public LynxFrameView(Context context) {
     super(context);
@@ -105,6 +116,7 @@ public final class LynxFrameView extends UIBodyView {
       return false;
     }
 
+    attachFramePerformanceClientIfNeeded();
     if (mAttachLynxPageUICallback != null) {
       mRender.setAttachLynxPageUICallback(mAttachLynxPageUICallback);
       mAttachLynxPageUICallback = null;
@@ -418,6 +430,7 @@ public final class LynxFrameView extends UIBodyView {
     LLog.i(TAG, "lynxframeview destroy " + this.toString());
     TraceEvent.beginSection(TraceEventDef.DESTORY_LYNXFRAMEVIEW);
     if (mRender != null) {
+      detachFramePerformanceClientIfNeeded();
       mRender.onDetachedFromWindow();
       mRender.destroy();
       mRender = null;
@@ -439,5 +452,40 @@ public final class LynxFrameView extends UIBodyView {
     if (mRender != null) {
       mRender.sendGlobalEvent(name, params);
     }
+  }
+
+  private void attachFramePerformanceClientIfNeeded() {
+    if (mRender != null) {
+      mRender.addLynxViewClientV2(mFramePerformanceClient);
+    }
+  }
+
+  private void detachFramePerformanceClientIfNeeded() {
+    if (mRender != null) {
+      mRender.removeLynxViewClientV2(mFramePerformanceClient);
+    }
+  }
+
+  static HashMap<String, Object> buildFrameLoadMetricsDetail(
+      @NonNull PerformanceEntry entry, String url, boolean isEmbeddedMode) {
+    HashMap<String, Object> detail = new HashMap<>();
+    detail.put(DETAIL_KEY_URL, url == null ? "" : url);
+    detail.put(DETAIL_KEY_MODE, isEmbeddedMode ? MODE_EMBEDDED : MODE_STANDARD);
+    detail.put(
+        DETAIL_KEY_ENTRY, entry.rawMap == null ? new HashMap<>() : new HashMap<>(entry.rawMap));
+    return detail;
+  }
+
+  void onFrameLoadMetricsEvent(@NonNull PerformanceEntry entry) {
+    if (mContext == null || mContext.getEventEmitter() == null
+        || mContext.getLynxUIOwner() == null) {
+      return;
+    }
+    LynxBaseUI ui = mContext.getLynxUIOwner().findLynxUIBySign(mSign);
+    if (ui == null || ui.getEvents() == null || !ui.getEvents().containsKey(EVENT_LOAD_METRICS)) {
+      return;
+    }
+    mContext.getEventEmitter().sendCustomEvent(new LynxDetailEvent(mSign, EVENT_LOAD_METRICS,
+        buildFrameLoadMetricsDetail(entry, mUrl, EmbeddedMode.isBaseModeEnable(mEmbeddedMode))));
   }
 }

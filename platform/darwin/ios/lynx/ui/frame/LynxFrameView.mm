@@ -4,24 +4,46 @@
 
 #import <Lynx/LynxFrameView.h>
 
+#import <Lynx/LynxEventDetail.h>
 #import <Lynx/LynxFrameShadowNode.h>
+#import <Lynx/LynxLifecycleDispatcher.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIRendererProtocol.h>
 #import <Lynx/LynxViewBuilder.h>
+#import <Lynx/LynxViewClientV2.h>
 #import <Lynx/LynxViewEnum.h>
 #import "LynxTraceEventDef.h"
 
 #include "base/trace/native/trace_defines.h"
 #include "base/trace/native/trace_event.h"
 
+namespace {
+BOOL ShouldHandleFrameLoadMetricsEntry(LynxPerformanceEntry *entry) {
+  return
+      [entry.entryType isEqualToString:@"pipeline"] && [entry.name isEqualToString:@"loadBundle"];
+}
+}  // namespace
+
+static NSString *const kLynxFrameEventLoadMetrics = @"loadmetrics";
+static NSString *const kLynxFrameEventDetailKeyUrl = @"url";
+static NSString *const kLynxFrameEventDetailKeyMode = @"mode";
+static NSString *const kLynxFrameEventDetailKeyEntry = @"entry";
+static NSString *const kLynxFrameEventModeEmbedded = @"embedded";
+static NSString *const kLynxFrameEventModeStandard = @"standard";
+
+@interface LynxFrameView () <LynxViewLifecycleV2>
+@end
+
 #pragma mark - LynxFrameView
 
 @implementation LynxFrameView {
   LynxTemplateRender *_render;
+  LynxLifecycleDispatcher *_lifecycleDispatcher;
   __weak UIView<LUIBodyView> *_rootView;
   attachLynxPageUI _attachLynxPageUICallback;
   NSString *_url;
@@ -45,7 +67,11 @@
 }
 
 - (instancetype)init {
-  self = [super init];
+  return [self initWithFrame:CGRectZero];
+}
+
+- (instancetype)initWithFrame:(CGRect)frame {
+  self = [super initWithFrame:frame];
   if (self) {
     _isIntrinsicSizeConsumed = YES;
     _contentRect = CGRectNull;
@@ -56,6 +82,51 @@
     _presetHeight = -1;
   }
   return self;
+}
+
+- (void)attachFramePerformanceClientIfNeeded {
+  LynxLifecycleDispatcher *dispatcher = [self getLifecycleDispatcher];
+  if (![dispatcher.lifecycleClients containsObject:self]) {
+    [dispatcher addLifecycleClient:self];
+  }
+}
+
+- (void)detachFramePerformanceClientIfNeeded {
+  if (_lifecycleDispatcher && [_lifecycleDispatcher.lifecycleClients containsObject:self]) {
+    [_lifecycleDispatcher removeLifecycleClient:self];
+  }
+}
+
+- (NSMutableDictionary *)buildFrameLoadMetricsDetail:(LynxPerformanceEntry *)entry {
+  NSMutableDictionary *detail = [NSMutableDictionary dictionaryWithCapacity:3];
+  detail[kLynxFrameEventDetailKeyUrl] = _url ?: @"";
+  detail[kLynxFrameEventDetailKeyMode] = (_embeddedMode & LynxEmbeddedModeBase) != 0
+                                             ? kLynxFrameEventModeEmbedded
+                                             : kLynxFrameEventModeStandard;
+  detail[kLynxFrameEventDetailKeyEntry] =
+      entry.rawDictionary == nil
+          ? [NSMutableDictionary dictionary]
+          : [NSMutableDictionary dictionaryWithDictionary:entry.rawDictionary];
+  return detail;
+}
+
+- (void)onFrameLoadMetricsEvent:(LynxPerformanceEntry *)entry {
+  if (entry == nil || self.context == nil || self.context.eventEmitter == nil ||
+      self.context.uiOwner == nil) {
+    return;
+  }
+
+  id ui = [self.context.uiOwner findUIBySign:self.sign];
+  NSDictionary *eventSet = [ui respondsToSelector:@selector(eventSet)] ? [(id)ui eventSet] : nil;
+  if ([eventSet objectForKey:kLynxFrameEventLoadMetrics] == nil) {
+    return;
+  }
+
+  LynxDetailEvent *event =
+      [[LynxDetailEvent alloc] initWithName:kLynxFrameEventLoadMetrics
+                                 targetSign:self.sign
+                                     detail:[self buildFrameLoadMetricsDetail:entry]];
+  [self.context.eventEmitter sendCustomEvent:event];
 }
 
 - (void)initWithRootView:(UIView<LUIBodyView> *)rootView {
@@ -143,6 +214,8 @@
     return NO;
   }
 
+  [self getLifecycleDispatcher].instanceId = [_render instanceId];
+  [self attachFramePerformanceClientIfNeeded];
   [self applyRenderLayoutWithRect:_contentRect
                   layoutWidthMode:_widthMode
                  layoutHeightMode:_heightMode];
@@ -267,10 +340,27 @@
   return _rootView;
 }
 
+- (LynxLifecycleDispatcher *)getLifecycleDispatcher {
+  if (!_lifecycleDispatcher) {
+    _lifecycleDispatcher = [[LynxLifecycleDispatcher alloc] init];
+    if (_render) {
+      _lifecycleDispatcher.instanceId = [_render instanceId];
+    }
+  }
+  return _lifecycleDispatcher;
+}
+
+- (void)onPerformanceEvent:(nonnull LynxPerformanceEntry *)entry {
+  if (ShouldHandleFrameLoadMetricsEntry(entry)) {
+    [self onFrameLoadMetricsEvent:entry];
+  }
+}
+
 - (void)dealloc {
   if (_render) {
     _LogI(@"LynxFrameView %p: destroy", self);
     TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_DESTROY);
+    [self detachFramePerformanceClientIfNeeded];
     [_render.lynxUIRenderer reset];
     _render = nil;
   }

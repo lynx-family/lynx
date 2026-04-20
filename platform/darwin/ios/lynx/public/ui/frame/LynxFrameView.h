@@ -13,6 +13,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class LynxUIContext;
+@class LynxLifecycleDispatcher;
 
 @interface LynxFrameView : UIView <LUIBodyView>
 
@@ -46,6 +47,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame;
 
 - (void)setEmbeddedMode:(LynxEmbeddedMode)embeddedMode;
+
+- (LynxLifecycleDispatcher *_Nullable)getLifecycleDispatcher;
 
 @end
 

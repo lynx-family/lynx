@@ -120,7 +120,7 @@
     lynx::tasm::PaintingContextDarwinUtils::SetPerformanceController(
         painting_context->GetPlatformRef().get(), _performanceController);
     _context.perfController = _performanceController;
-    if (_embeddedMode == LynxEmbeddedModeBase) {
+    if ((_embeddedMode & LynxEmbeddedModeBase) != 0) {
       [_performanceController setEmbeddedModeEnabled:YES];
     }
   }

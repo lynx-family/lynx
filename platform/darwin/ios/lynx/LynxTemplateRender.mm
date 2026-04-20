@@ -1589,7 +1589,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 #pragma mark - Setter & Getter
 
 - (LynxLifecycleDispatcher*)getLifecycleDispatcher {
-  return [[self getLynxView] getLifecycleDispatcher];
+  if ([_containerView isKindOfClass:[LynxView class]]) {
+    return [(LynxView*)_containerView getLifecycleDispatcher];
+  } else if ([_containerView isKindOfClass:[LynxFrameView class]]) {
+    return [(LynxFrameView*)_containerView getLifecycleDispatcher];
+  }
+  return nil;
 };
 
 - (void)setEnableAsyncDisplay:(BOOL)enableAsyncDisplay {

@@ -1943,6 +1943,7 @@ public class LynxFrameView : UIView, <LUIBodyView> {
   public UIView< LUIBodyView > *_Nullable LynxFrameView::getRootView();
   public void LynxFrameView::updateFrame:contentFrame:(CGRect frame,[contentFrame] CGRect contentFrame);
   public void LynxFrameView::setEmbeddedMode:(LynxEmbeddedMode embeddedMode);
+  public LynxLifecycleDispatcher *_Nullable LynxFrameView::getLifecycleDispatcher();
 }
 
 public protocol LynxFrameViewProvider-p : <NSObject> {
