@@ -733,9 +733,15 @@ void TemplateBinaryWriter::EncodeCustomSection() {
                   "CustomSections's encoding:JS_BYTECODE only support "
                   "LepusNG!");
             }
+            section_table->Erase(kCustomSectionEncoding);
+            section_table->SetValue(kCustomSectionEncoding,
+                                    static_cast<int>(encoding_type));
           } else if (encoding_iter->second.IsString() &&
                      encoding_iter->second.StdString() == "CSS") {
             encoding_type = CustomSectionEncodingType::CSS;
+            section_table->Erase(kCustomSectionEncoding);
+            section_table->SetValue(kCustomSectionEncoding,
+                                    static_cast<int>(encoding_type));
           }
         }
 
