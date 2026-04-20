@@ -122,6 +122,30 @@ FlutterWindowsView::~FlutterWindowsView() {
 
 FlutterViewId FlutterWindowsView::view_id() const { return view_id_; }
 
+void FlutterWindowsView::ReleasePointer(int32_t pointer_id) {
+  auto it = pointer_states_.find(pointer_id);
+  if (it == pointer_states_.end()) {
+    return;
+  }
+
+  ClayPointerEvent event = {};
+  event.x = it->second->physical_x;
+  event.y = it->second->physical_y;
+  event.phase = ClayPointerPhase::kClayPointerPhaseRemove;
+  SendPointerEventWithData(event, it->second.get());
+}
+
+void FlutterWindowsView::ReleaseAllPointers() {
+  std::vector<int32_t> pointer_ids;
+  pointer_ids.reserve(pointer_states_.size());
+  for (const auto& entry : pointer_states_) {
+    pointer_ids.push_back(entry.first);
+  }
+  for (int32_t pointer_id : pointer_ids) {
+    ReleasePointer(pointer_id);
+  }
+}
+
 void FlutterWindowsView::SetEngine(FlutterWindowsEngine* engine) {
   engine_ = engine;
 
@@ -236,8 +260,15 @@ void FlutterWindowsView::OnPointerDown(double x, double y,
                                        ClayPointerMouseButtons flutter_button) {
   if (flutter_button != 0) {
     auto state = GetOrCreatePointerState(device_kind, device_id);
+    int32_t pointer_id = state->pointer_id;
+    uint64_t previous_buttons = state->buttons;
     state->buttons |= flutter_button;
-    SendPointerDown(x, y, state);
+    if (!SendPointerDown(x, y, state)) {
+      auto it = pointer_states_.find(pointer_id);
+      if (it != pointer_states_.end()) {
+        it->second->buttons = previous_buttons;
+      }
+    }
   }
 }
 
@@ -246,16 +277,29 @@ void FlutterWindowsView::OnPointerUp(double x, double y,
                                      int32_t device_id,
                                      ClayPointerMouseButtons flutter_button) {
   if (flutter_button != 0) {
-    auto state = GetOrCreatePointerState(device_kind, device_id);
+    auto state = GetPointerState(device_kind, device_id);
+    if (!state) {
+      return;
+    }
+    int32_t pointer_id = state->pointer_id;
+    uint64_t previous_buttons = state->buttons;
     state->buttons &= ~flutter_button;
-    SendPointerUp(x, y, state);
+    if (!SendPointerUp(x, y, state)) {
+      auto it = pointer_states_.find(pointer_id);
+      if (it != pointer_states_.end()) {
+        it->second->buttons = previous_buttons;
+      }
+    }
   }
 }
 
 void FlutterWindowsView::OnPointerLeave(double x, double y,
                                         ClayPointerDeviceKind device_kind,
                                         int32_t device_id) {
-  SendPointerLeave(x, y, GetOrCreatePointerState(device_kind, device_id));
+  PointerState* state = GetPointerState(device_kind, device_id);
+  if (state) {
+    SendPointerLeave(x, y, state);
+  }
 }
 
 void FlutterWindowsView::OnPointerPanZoomStart(int32_t device_id) {
@@ -358,6 +402,16 @@ FlutterWindowsView::PointerState* FlutterWindowsView::GetOrCreatePointerState(
   return it->second.get();
 }
 
+FlutterWindowsView::PointerState* FlutterWindowsView::GetPointerState(
+    ClayPointerDeviceKind device_kind, int32_t device_id) {
+  int32_t pointer_id = (static_cast<int32_t>(device_kind) << 28) | device_id;
+  auto it = pointer_states_.find(pointer_id);
+  if (it == pointer_states_.end()) {
+    return nullptr;
+  }
+  return it->second.get();
+}
+
 // Set's |event_data|'s phase to either kMove or kHover depending on the current
 // primary mouse button state.
 void FlutterWindowsView::SetEventPhaseFromCursorButtonState(
@@ -375,51 +429,57 @@ void FlutterWindowsView::SetEventPhaseFromCursorButtonState(
   }
 }
 
-void FlutterWindowsView::SendPointerMove(double x, double y,
+bool FlutterWindowsView::SendPointerMove(double x, double y,
                                          PointerState* state) {
   ClayPointerEvent event = {};
   event.x = x;
   event.y = y;
 
   SetEventPhaseFromCursorButtonState(&event, state);
-  SendPointerEventWithData(event, state);
+  return SendPointerEventWithData(event, state);
 }
 
-void FlutterWindowsView::SendPointerDown(double x, double y,
+bool FlutterWindowsView::SendPointerDown(double x, double y,
                                          PointerState* state) {
   ClayPointerEvent event = {};
   event.x = x;
   event.y = y;
 
   SetEventPhaseFromCursorButtonState(&event, state);
-  SendPointerEventWithData(event, state);
+  if (!SendPointerEventWithData(event, state)) {
+    return false;
+  }
 
   state->clay_state_is_down = true;
+  return true;
 }
 
-void FlutterWindowsView::SendPointerUp(double x, double y,
+bool FlutterWindowsView::SendPointerUp(double x, double y,
                                        PointerState* state) {
   ClayPointerEvent event = {};
   event.x = x;
   event.y = y;
 
   SetEventPhaseFromCursorButtonState(&event, state);
-  SendPointerEventWithData(event, state);
+  if (!SendPointerEventWithData(event, state)) {
+    return false;
+  }
   if (event.phase == ClayPointerPhase::kClayPointerPhaseUp) {
     state->clay_state_is_down = false;
   }
+  return true;
 }
 
-void FlutterWindowsView::SendPointerLeave(double x, double y,
+bool FlutterWindowsView::SendPointerLeave(double x, double y,
                                           PointerState* state) {
   ClayPointerEvent event = {};
   event.x = x;
   event.y = y;
   event.phase = ClayPointerPhase::kClayPointerPhaseRemove;
-  SendPointerEventWithData(event, state);
+  return SendPointerEventWithData(event, state);
 }
 
-void FlutterWindowsView::SendPointerPanZoomStart(int32_t device_id, double x,
+bool FlutterWindowsView::SendPointerPanZoomStart(int32_t device_id, double x,
                                                  double y) {
   auto state =
       GetOrCreatePointerState(kClayPointerDeviceKindTrackpad, device_id);
@@ -429,10 +489,10 @@ void FlutterWindowsView::SendPointerPanZoomStart(int32_t device_id, double x,
   event.x = x;
   event.y = y;
   event.phase = ClayPointerPhase::kClayPointerPhasePanZoomStart;
-  SendPointerEventWithData(event, state);
+  return SendPointerEventWithData(event, state);
 }
 
-void FlutterWindowsView::SendPointerPanZoomUpdate(int32_t device_id,
+bool FlutterWindowsView::SendPointerPanZoomUpdate(int32_t device_id,
                                                   double pan_x, double pan_y,
                                                   double scale,
                                                   double rotation) {
@@ -446,17 +506,17 @@ void FlutterWindowsView::SendPointerPanZoomUpdate(int32_t device_id,
   event.scale = scale;
   event.rotation = rotation;
   event.phase = ClayPointerPhase::kClayPointerPhasePanZoomUpdate;
-  SendPointerEventWithData(event, state);
+  return SendPointerEventWithData(event, state);
 }
 
-void FlutterWindowsView::SendPointerPanZoomEnd(int32_t device_id) {
+bool FlutterWindowsView::SendPointerPanZoomEnd(int32_t device_id) {
   auto state =
       GetOrCreatePointerState(kClayPointerDeviceKindTrackpad, device_id);
   ClayPointerEvent event = {};
   event.x = state->pan_zoom_start_x;
   event.y = state->pan_zoom_start_y;
   event.phase = ClayPointerPhase::kClayPointerPhasePanZoomEnd;
-  SendPointerEventWithData(event, state);
+  return SendPointerEventWithData(event, state);
 }
 
 void FlutterWindowsView::SendText(const std::u16string& text) {
@@ -494,7 +554,7 @@ void FlutterWindowsView::SendComposeChange(const std::u16string& text,
   engine_->text_input_plugin()->ComposeChangeHook(text, cursor_pos);
 }
 
-void FlutterWindowsView::SendScroll(double x, double y, double delta_x,
+bool FlutterWindowsView::SendScroll(double x, double y, double delta_x,
                                     double delta_y,
                                     int scroll_offset_multiplier,
                                     ClayPointerDeviceKind device_kind,
@@ -509,10 +569,10 @@ void FlutterWindowsView::SendScroll(double x, double y, double delta_x,
   event.scroll_delta_y = delta_y * scroll_offset_multiplier;
   event.is_precise_scroll = 0;
   SetEventPhaseFromCursorButtonState(&event, state);
-  SendPointerEventWithData(event, state);
+  return SendPointerEventWithData(event, state);
 }
 
-void FlutterWindowsView::SendScrollInertiaCancel(int32_t device_id, double x,
+bool FlutterWindowsView::SendScrollInertiaCancel(int32_t device_id, double x,
                                                  double y) {
   auto state =
       GetOrCreatePointerState(kClayPointerDeviceKindTrackpad, device_id);
@@ -523,10 +583,10 @@ void FlutterWindowsView::SendScrollInertiaCancel(int32_t device_id, double x,
   event.signal_kind =
       ClayPointerSignalKind::kClayPointerSignalKindScrollInertiaCancel;
   SetEventPhaseFromCursorButtonState(&event, state);
-  SendPointerEventWithData(event, state);
+  return SendPointerEventWithData(event, state);
 }
 
-void FlutterWindowsView::SendPointerEventWithData(
+bool FlutterWindowsView::SendPointerEventWithData(
     const ClayPointerEvent& event_data, PointerState* state) {
   // If sending anything other than an add, and the pointer isn't already added,
   // synthesize an add to satisfy Flutter's expectations about events.
@@ -537,13 +597,15 @@ void FlutterWindowsView::SendPointerEventWithData(
     event.x = event_data.x;
     event.y = event_data.y;
     event.buttons = 0;
-    SendPointerEventWithData(event, state);
+    if (!SendPointerEventWithData(event, state)) {
+      return false;
+    }
   }
   // Don't double-add (e.g., if events are delivered out of order, so an add has
   // already been synthesized).
   if (state->clay_state_is_added &&
       event_data.phase == ClayPointerPhase::kClayPointerPhaseAdd) {
-    return;
+    return true;
   }
 
   ClayPointerEvent event = event_data;
@@ -559,7 +621,15 @@ void FlutterWindowsView::SendPointerEventWithData(
           .count();
   event.is_precise_scroll = event_data.is_precise_scroll;
 
-  engine_->SendPointerEvent(event);
+  if (!engine_->SendPointerEvent(this, event)) {
+    if (event.phase != ClayPointerPhase::kClayPointerPhaseAdd) {
+      pointer_states_.erase(state->pointer_id);
+    }
+    return false;
+  }
+
+  state->physical_x = event.x;
+  state->physical_y = event.y;
 
   if (event.phase == ClayPointerPhase::kClayPointerPhaseAdd) {
     state->clay_state_is_added = true;
@@ -569,6 +639,7 @@ void FlutterWindowsView::SendPointerEventWithData(
       pointer_states_.erase(it);
     }
   }
+  return true;
 }
 
 bool FlutterWindowsView::MakeCurrent() {

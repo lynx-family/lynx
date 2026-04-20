@@ -48,6 +48,10 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   // Get the view's unique identifier.
   FlutterViewId view_id() const;
 
+  // Sends remove events for pointers currently owned by this view.
+  void ReleasePointer(int32_t pointer_id);
+  void ReleaseAllPointers();
+
   // Configures the window instance with an instance of a running Flutter
   // engine.
   void SetEngine(FlutterWindowsEngine* engine);
@@ -204,6 +208,10 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
 
     // The y position where the last pan/zoom started.
     double pan_zoom_start_y = 0;
+
+    // The last pointer position sent to the engine.
+    double physical_x = 0;
+    double physical_y = 0;
   };
 
   // States a resize event can be in.
@@ -237,27 +245,27 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
                                  double dpi_scale) const;
 
   // Reports a mouse movement to Flutter engine.
-  void SendPointerMove(double x, double y, PointerState* state);
+  bool SendPointerMove(double x, double y, PointerState* state);
 
   // Reports mouse press to Flutter engine.
-  void SendPointerDown(double x, double y, PointerState* state);
+  bool SendPointerDown(double x, double y, PointerState* state);
 
   // Reports mouse release to Flutter engine.
-  void SendPointerUp(double x, double y, PointerState* state);
+  bool SendPointerUp(double x, double y, PointerState* state);
 
   // Reports mouse left the window client area.
   //
   // Win32 api doesn't have "mouse enter" event. Therefore, there is no
   // SendPointerEnter method. A mouse enter event is tracked then the "move"
   // event is called.
-  void SendPointerLeave(double x, double y, PointerState* state);
+  bool SendPointerLeave(double x, double y, PointerState* state);
 
-  void SendPointerPanZoomStart(int32_t device_id, double x, double y);
+  bool SendPointerPanZoomStart(int32_t device_id, double x, double y);
 
-  void SendPointerPanZoomUpdate(int32_t device_id, double pan_x, double pan_y,
+  bool SendPointerPanZoomUpdate(int32_t device_id, double pan_x, double pan_y,
                                 double scale, double rotation);
 
-  void SendPointerPanZoomEnd(int32_t device_id);
+  bool SendPointerPanZoomEnd(int32_t device_id);
 
   // Reports a keyboard character to Flutter engine.
   void SendText(const std::u16string&);
@@ -292,16 +300,20 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   void SendComposeChange(const std::u16string& text, int cursor_pos);
 
   // Reports scroll wheel events to Flutter engine.
-  void SendScroll(double x, double y, double delta_x, double delta_y,
+  bool SendScroll(double x, double y, double delta_x, double delta_y,
                   int scroll_offset_multiplier,
                   ClayPointerDeviceKind device_kind, int32_t device_id);
 
   // Reports scroll inertia cancel events to Flutter engine.
-  void SendScrollInertiaCancel(int32_t device_id, double x, double y);
+  bool SendScrollInertiaCancel(int32_t device_id, double x, double y);
 
   // Creates a PointerState object unless it already exists.
   PointerState* GetOrCreatePointerState(ClayPointerDeviceKind device_kind,
                                         int32_t device_id);
+
+  // Returns a PointerState object if it already exists.
+  PointerState* GetPointerState(ClayPointerDeviceKind device_kind,
+                                int32_t device_id);
 
   // Sets |event_data|'s phase to either kMove or kHover depending on the
   // current primary mouse button state.
@@ -311,7 +323,7 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   // Sends a pointer event to the Flutter engine based on given data.  Since
   // all input messages are passed in physical pixel values, no translation is
   // needed before passing on to engine.
-  void SendPointerEventWithData(const ClayPointerEvent& event_data,
+  bool SendPointerEventWithData(const ClayPointerEvent& event_data,
                                 PointerState* state);
 
   // The view's unique identifier.

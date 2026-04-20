@@ -138,6 +138,8 @@ class FlutterWindowsEngine : public PlatformViewEmbedderDelegate,
 
   // Informs the engine of an incoming pointer event.
   void SendPointerEvent(const ClayPointerEvent& event);
+  bool SendPointerEvent(FlutterWindowsView* source,
+                        const ClayPointerEvent& event);
 
   // Informs the engine of an incoming key event.
   void SendKeyEvent(const ClayKeyEvent& event, ClayKeyEventCallback callback,
@@ -280,6 +282,9 @@ class FlutterWindowsEngine : public PlatformViewEmbedderDelegate,
   // Calling this method again resets the keyboard state.
   void InitializeKeyboard();
 
+  FlutterWindowsView* GetViewById(FlutterViewId view_id);
+  void ClearPointerOwnersForView(FlutterViewId view_id);
+
   std::unique_ptr<EmbedderEngine> engine_;
 
   std::unique_ptr<FlutterProjectBundle> project_;
@@ -301,6 +306,9 @@ class FlutterWindowsEngine : public PlatformViewEmbedderDelegate,
   // Writes to this object must only happen on the platform thread
   // and must be protected by acquiring an exclusive lock on |views_mutex_|.
   std::unordered_map<FlutterViewId, FlutterWindowsView*> overlay_views_;
+
+  // The Windows view ID that currently owns each pointer device.
+  std::unordered_map<int32_t, FlutterViewId> pointer_owner_views_;
 
   // The mutex that protects the |views_| map.
   //

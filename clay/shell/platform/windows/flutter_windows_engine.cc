@@ -327,6 +327,24 @@ void FlutterWindowsEngine::InitializeKeyboard() {
   text_input_plugin_ = std::move(CreateTextInputPlugin());
 }
 
+FlutterWindowsView* FlutterWindowsEngine::GetViewById(FlutterViewId view_id) {
+  if (view_id == kImplicitViewId) {
+    return view_;
+  }
+  return GetOverlayView(view_id);
+}
+
+void FlutterWindowsEngine::ClearPointerOwnersForView(FlutterViewId view_id) {
+  for (auto it = pointer_owner_views_.begin();
+       it != pointer_owner_views_.end();) {
+    if (it->second == view_id) {
+      it = pointer_owner_views_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 std::unique_ptr<KeyboardHandlerBase>
 FlutterWindowsEngine::CreateKeyboardKeyHandler(
     KeyboardKeyEmbedderHandler::GetKeyStateHandler get_key_state,
@@ -373,6 +391,43 @@ void FlutterWindowsEngine::SendPointerEvent(const ClayPointerEvent& event) {
   if (engine_) {
     engine_->SendPointerEvent(&event, 1);
   }
+}
+
+bool FlutterWindowsEngine::SendPointerEvent(FlutterWindowsView* source,
+                                            const ClayPointerEvent& event) {
+  if (!source || !engine_) {
+    return false;
+  }
+
+  const int32_t pointer_id = event.device;
+  const FlutterViewId source_view_id = source->view_id();
+  auto owner_it = pointer_owner_views_.find(pointer_id);
+
+  if (event.phase == ClayPointerPhase::kClayPointerPhaseAdd) {
+    if (owner_it != pointer_owner_views_.end() &&
+        owner_it->second != source_view_id) {
+      if (FlutterWindowsView* owner = GetViewById(owner_it->second)) {
+        owner->ReleasePointer(pointer_id);
+      } else {
+        pointer_owner_views_.erase(owner_it);
+      }
+    }
+    pointer_owner_views_[pointer_id] = source_view_id;
+  } else if (owner_it != pointer_owner_views_.end() &&
+             owner_it->second != source_view_id) {
+    return false;
+  }
+
+  SendPointerEvent(event);
+
+  if (event.phase == ClayPointerPhase::kClayPointerPhaseRemove) {
+    owner_it = pointer_owner_views_.find(pointer_id);
+    if (owner_it != pointer_owner_views_.end() &&
+        owner_it->second == source_view_id) {
+      pointer_owner_views_.erase(owner_it);
+    }
+  }
+  return true;
 }
 
 void FlutterWindowsEngine::SendKeyEvent(const ClayKeyEvent& event,
@@ -719,8 +774,11 @@ std::unique_ptr<FlutterWindowsView> FlutterWindowsEngine::CreateOverlayView(
 
 void FlutterWindowsEngine::RemoveOverlayView(FlutterViewId view_id) {
   std::unique_lock write_lock(views_mutex_);
-  if (overlay_views_.find(view_id) != overlay_views_.end()) {
-    overlay_views_.erase(view_id);
+  auto it = overlay_views_.find(view_id);
+  if (it != overlay_views_.end()) {
+    it->second->ReleaseAllPointers();
+    ClearPointerOwnersForView(view_id);
+    overlay_views_.erase(it);
   }
 }
 
