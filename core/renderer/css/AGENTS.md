@@ -18,6 +18,7 @@ New CSS feature work should target the NG path by default; non-NG code in this a
 - Keep stylesheet, fragment, and computed-style semantics in shared CSS code rather than DOM node classes.
 - New CSS features should land in the `ng/` path by default. Extend non-NG behavior only when the task is explicitly about compatibility or maintenance.
 - Selector or invalidation changes can affect large portions of style recomputation. Treat them as high fan-out changes.
+- **Adopted StyleSheets**: StyleSheet-related features and bug fixes must also account for `adopted_stylesheets_` in `core/renderer/dom/element_manager.h`. These are CSS stylesheets loaded at runtime via DOM API (`AdoptStyleSheet`/`GetAdoptedStyleSheets`) and carry the highest cascade priority. Any change to stylesheet resolution, keyframes lookup, or fragment iteration that only considers statically-bundled stylesheets will miss styles injected through this path.
 
 ## Common Regression Symptoms
 
