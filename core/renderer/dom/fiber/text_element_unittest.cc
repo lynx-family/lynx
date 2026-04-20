@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -682,6 +683,70 @@ TEST_P(TextElementTest, LayoutInElementWrapperTestCase1) {
   // key3: {kPropTextString: "text-content"}
   EXPECT_EQ(std::get<int>(mock_text_prop_array[6]), kPropTextString);
   EXPECT_EQ(std::get<std::string>(mock_text_prop_array[7]), "text-content");
+}
+
+TEST_P(TextElementTest, ResolveAndFlushFontFaces_AdoptedStyleSheet) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  page->InsertNode(text);
+
+  // Create an adopted stylesheet with a font-face rule.
+  CSSFontFaceRuleMap adopted_fontfaces;
+  auto font_rule = std::make_shared<CSSFontFaceRule>(
+      "custom-font", CSSFontFaceAttrsMap{{"src", "url(custom-font.woff2)"}});
+  adopted_fontfaces["custom-font"].push_back(font_rule);
+
+  auto adopted_fragment = std::make_unique<SharedCSSFragment>(
+      -1, std::vector<int32_t>{}, CSSParserTokenMap{}, CSSKeyframesTokenMap{},
+      std::move(adopted_fontfaces));
+
+  auto wrapper =
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(adopted_fragment)));
+  manager->AdoptStyleSheet(wrapper);
+
+  // Verify the adopted sheet has font-face rules and is not yet resolved.
+  ASSERT_FALSE(wrapper->fragment_->GetFontFaceRuleMap().empty());
+  ASSERT_FALSE(wrapper->fragment_->HasFontFacesResolved());
+
+  // Call ResolveAndFlushFontFaces — it should also flush adopted font-faces.
+  text->ResolveAndFlushFontFaces(base::String("custom-font"));
+
+  // After flush, the adopted fragment should be marked as font-faces resolved.
+  EXPECT_TRUE(wrapper->fragment_->HasFontFacesResolved());
+}
+
+TEST_P(TextElementTest,
+       ResolveAndFlushFontFaces_AdoptedStyleSheet_SkipIfAlreadyResolved) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  page->InsertNode(text);
+
+  // Create an adopted stylesheet with a font-face rule, already resolved.
+  CSSFontFaceRuleMap adopted_fontfaces;
+  auto font_rule = std::make_shared<CSSFontFaceRule>(
+      "another-font", CSSFontFaceAttrsMap{{"src", "url(another.woff2)"}});
+  adopted_fontfaces["another-font"].push_back(font_rule);
+
+  auto adopted_fragment = std::make_unique<SharedCSSFragment>(
+      -1, std::vector<int32_t>{}, CSSParserTokenMap{}, CSSKeyframesTokenMap{},
+      std::move(adopted_fontfaces));
+  adopted_fragment->MarkFontFacesResolved(true);
+
+  auto wrapper =
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(adopted_fragment)));
+  manager->AdoptStyleSheet(wrapper);
+
+  // Since font-faces are already resolved, second call should be a no-op.
+  text->ResolveAndFlushFontFaces(base::String("another-font"));
+  EXPECT_TRUE(wrapper->fragment_->HasFontFacesResolved());
 }
 
 }  // namespace testing

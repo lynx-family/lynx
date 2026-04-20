@@ -15,6 +15,7 @@
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/simple_styling/style_object.h"
@@ -405,13 +406,28 @@ void StyleResolver::HandlePseudoElement(CSSFragment* fragment) {
   if (!fragment) {
     return;
   }
-  // Determine whether there are pseudo-elements according to the rule set when
-  // enable_css_selector is true, according to pseudo map when
-  // enable_css_selector is false.
-  if ((fragment->enable_css_selector() &&
-       (!fragment->rule_set() ||
-        fragment->rule_set()->pseudo_rules().empty())) ||
-      (!fragment->enable_css_selector() && fragment->pseudo_map().empty())) {
+
+  if (fragment->enable_css_selector()) {
+    bool has_pseudo_rules =
+        (fragment->rule_set() && !fragment->rule_set()->pseudo_rules().empty());
+    if (!has_pseudo_rules) {
+      ElementManager* em = manager();
+      if (em) {
+        for (const auto& wrapper : em->GetAdoptedStyleSheets()) {
+          if (wrapper && wrapper->fragment_ &&
+              wrapper->fragment_->enable_css_selector() &&
+              wrapper->fragment_->rule_set() &&
+              !wrapper->fragment_->rule_set()->pseudo_rules().empty()) {
+            has_pseudo_rules = true;
+            break;
+          }
+        }
+      }
+    }
+    if (!has_pseudo_rules) {
+      return;
+    }
+  } else if (fragment->pseudo_map().empty()) {
     return;
   }
 
