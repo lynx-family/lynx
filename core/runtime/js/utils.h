@@ -5,6 +5,7 @@
 #ifndef CORE_RUNTIME_JS_UTILS_H_
 #define CORE_RUNTIME_JS_UTILS_H_
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -31,6 +32,12 @@ std::optional<Value> valueFromLepus(
 
 std::optional<Array> arrayFromLepus(Runtime& runtime,
                                     const lepus::CArray& array);
+
+// Evaluate a list of JS sources with (url, buffer) pairs via prepared JS.
+// Returns true if `/lynx_core.js` is included in `sources`.
+bool EvaluatePreloadSources(
+    Runtime& runtime,
+    std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>& sources);
 
 using JSValueCircularArray = base::InlineVector<Object, 32>;
 

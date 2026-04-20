@@ -286,14 +286,15 @@ void BTSRuntime::TransitionToFullRuntime() {
   std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>
       preload_js_sources;
   ReadCoreJS(preload_js_sources);
-  // load the lynx_core.js
-  runtime::js::Scope scope(*rt);
-  for (auto& [url, buffer] : preload_js_sources) {
-    auto prep = rt->prepareJavaScript(buffer, url);
-    auto ret = rt->evaluatePreparedJavaScript(*prep);
-    if (!ret.has_value()) {
-      rt->reportJSIException(ret.error());
+  if (!runtime::RuntimeManager::IsSingleJSContext(group_id_)) {
+    auto* wrapper =
+        runtime::RuntimeManager::Instance()->GetContextWrapper(group_id_);
+    if (wrapper != nullptr) {
+      wrapper->EnsureCoreJSLoaded(*rt, preload_js_sources);
     }
+  } else {
+    // load the lynx_core.js (single context has no shared wrapper entry)
+    runtime::js::EvaluatePreloadSources(*rt, preload_js_sources);
   }
   UpdateState(State::kJsCoreLoaded);
 }

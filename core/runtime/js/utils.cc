@@ -14,10 +14,30 @@
 #include "core/runtime/js/bindings/console.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi_object_wrapper.h"
+#include "core/runtime/js/runtime_constant.h"
 
 namespace lynx {
 namespace runtime {
 namespace js {
+
+bool EvaluatePreloadSources(
+    Runtime& runtime,
+    std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>& sources) {
+  bool has_core_js = false;
+  Scope scope(runtime);
+  for (auto& [url, buffer] : sources) {
+    auto prep = runtime.prepareJavaScript(buffer, url);
+    auto ret = runtime.evaluatePreparedJavaScript(*prep);
+    if (!ret.has_value()) {
+      runtime.reportJSIException(ret.error());
+    }
+    if (runtime::IsCoreJS(url)) {
+      has_core_js = true;
+    }
+  }
+  return has_core_js;
+}
+
 std::optional<Value> valueFromLepus(
     Runtime& runtime, const lepus::Value& data,
     JSIObjectWrapperManager* jsi_object_wrapper_manager) {

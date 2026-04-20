@@ -312,6 +312,14 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
                 RUNTIME_MANAGER_CONTEXT_WRAPPER_PREPARE_JS_ENV);
     context_wrapper->prepareJSEnv(js_runtime, js_pre_sources);
   } else {
+    // Shared context reused. If corejs was deferred on the first creation,
+    // we need to try to load it here to ensure the current runtime runs with
+    // a fully-initialized shared JSIContext.
+    auto* context_wrapper = GetContextWrapper(group_id);
+    if (context_wrapper != nullptr && !context_wrapper->isJSCoreLoaded()) {
+      auto js_pre_sources = js_pre_sources_getter();
+      context_wrapper->EnsureCoreJSLoaded(*js_runtime, js_pre_sources);
+    }
     // share context also need call this, because lynx_runtime is different.
     if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
       runtime_manager_delegate_->OnRuntimeReady(executor, js_runtime, group_id);

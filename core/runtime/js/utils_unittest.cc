@@ -11,6 +11,7 @@
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/jsi_unittest.h"
 #include "core/runtime/js/jsi_object_wrapper.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -18,10 +19,30 @@ namespace runtime {
 namespace js {
 namespace test {
 using runtime::js::ConvertPiperValueToStringVector;
+using runtime::js::EvaluatePreloadSources;
 using runtime::js::JSIObjectWrapperManager;
 using runtime::js::JSValueCircularArray;
 using runtime::js::ParseJSValue;
 class UtilTests : public js::test::JSITestBase {};
+
+TEST_P(UtilTests, EvaluatePreloadSourcesTest) {
+  std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>> sources;
+  sources.emplace_back(runtime::kLynxCoreJSName,
+                       std::make_shared<js::StringBuffer>(
+                           "globalThis.__eval_preload_sources_test = 42;"));
+
+  EXPECT_TRUE(EvaluatePreloadSources(rt, sources));
+
+  js::Function get_value = function(R"(
+function getValue() {
+  return globalThis.__eval_preload_sources_test;
+}
+)");
+  auto value_opt = get_value.call(rt);
+  ASSERT_TRUE(value_opt.has_value());
+  EXPECT_TRUE(value_opt->isNumber());
+  EXPECT_EQ(value_opt->getNumber(), 42);
+}
 
 TEST_P(UtilTests, ValueFromLepusTest) {
   //   lepus::Value empty{};

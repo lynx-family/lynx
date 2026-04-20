@@ -8,6 +8,8 @@
 #include "core/inspector/console_message_postman.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/js/bindings/global.h"
+#include "core/runtime/js/runtime_constant.h"
+#include "core/runtime/js/utils.h"
 #include "core/runtime/profile/runtime_profiler_manager.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 
@@ -16,32 +18,48 @@ namespace runtime {
 
 JSContextWrapper::JSContextWrapper(
     std::shared_ptr<runtime::js::JSIContext> context)
-    : js_context_(context), js_core_loaded_(false), global_inited_(false) {}
+    : js_context_(context),
+      js_env_prepared_(false),
+      js_core_loaded_(false),
+      global_inited_(false) {}
 
-void JSContextWrapper::prepareJSEnv(
-    std::weak_ptr<runtime::js::Runtime> js_runtime,
+void JSContextWrapper::EnsureCoreJSLoaded(
+    runtime::js::Runtime& js_runtime,
     std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
         js_preload) {
   if (js_core_loaded_) {
     return;
   }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
+              JS_CONTEXT_WRAPPER_ENSURE_CORE_JS_LOADED);
+  if (runtime::js::EvaluatePreloadSources(js_runtime, js_preload)) {
+    js_core_loaded_ = true;
+  }
+}
 
+void JSContextWrapper::prepareJSEnv(
+    std::weak_ptr<runtime::js::Runtime> js_runtime,
+    std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
+        js_preload) {
   std::shared_ptr<runtime::js::Runtime> rt = js_runtime.lock();
   if (!rt) {
     return;
   }
 
-  // load the lynx_core.js
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_CONTEXT_WRAPPER_PREPARE_JS_ENV);
-  runtime::js::Scope scope(*rt);
-  for (auto& [url, buffer] : js_preload) {
-    auto prep = rt->prepareJavaScript(buffer, url);
-    auto ret = rt->evaluatePreparedJavaScript(*prep);
-    if (!ret.has_value()) {
-      rt->reportJSIException(ret.error());
-    }
+  // This method may be invoked multiple times (e.g. multiple runtimes created
+  // for the same shared context). We must guarantee the env preparation is
+  // executed only once, while allowing a deferred corejs load to be completed
+  // later without replaying other preload scripts.
+  if (js_env_prepared_) {
+    EnsureCoreJSLoaded(*rt, js_preload);
+    return;
   }
-  js_core_loaded_ = true;
+
+  // Prepare the JS env once per context wrapper.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_CONTEXT_WRAPPER_PREPARE_JS_ENV);
+  bool has_core_js = runtime::js::EvaluatePreloadSources(*rt, js_preload);
+  js_env_prepared_ = true;
+  js_core_loaded_ = has_core_js;
   InitNapi(rt);
 }
 

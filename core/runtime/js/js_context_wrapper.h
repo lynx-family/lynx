@@ -44,6 +44,14 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
 
   bool isGlobalInited() { return global_inited_; }
   bool isJSCoreLoaded() { return js_core_loaded_; }
+
+  // Evaluate all scripts from `js_preload` if corejs hasn't been loaded for
+  // this context wrapper yet. If `/lynx_core.js` is present in the list, this
+  // method will also update the `js_core_loaded_` state.
+  void EnsureCoreJSLoaded(
+      runtime::js::Runtime& js_runtime,
+      std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
+          js_preload);
   void prepareJSEnv(
       std::weak_ptr<runtime::js::Runtime> js_runtime,
       std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
@@ -58,6 +66,9 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
  protected:
   virtual void InitNapi(std::shared_ptr<runtime::js::Runtime>& js_runtime){};
   std::weak_ptr<runtime::js::JSIContext> js_context_;
+  // Whether we've run `prepareJSEnv()` once for this context wrapper.
+  // This is different from `js_core_loaded_` because corejs might be deferred.
+  bool js_env_prepared_;
   bool js_core_loaded_;
   bool global_inited_;
 #if ENABLE_TRACE_PERFETTO

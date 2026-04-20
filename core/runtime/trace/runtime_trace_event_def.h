@@ -420,6 +420,12 @@ inline constexpr const char* const RUNTIME_MANAGER_MAKE_RUNTIME =
 inline constexpr const char* const JS_CONTEXT_WRAPPER_PREPARE_JS_ENV =
     "JSContextWrapper::prepareJSEnv";
 /**
+ * @trace_description: Ensure lynx_core.js (and related preload sources) are
+ * evaluated in the JS runtime for an existing JSContextWrapper.
+ */
+inline constexpr const char* const JS_CONTEXT_WRAPPER_ENSURE_CORE_JS_LOADED =
+    "JSContextWrapper::EnsureCoreJSLoaded";
+/**
  * @trace_description: Notify runtime lifecycle observers that the JS runtime
  * is attached and native modules can bind to it.
  */
