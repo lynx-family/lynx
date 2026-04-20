@@ -253,12 +253,9 @@ MeasureResult TextShadowNode::Measure(const MeasureConstraint& constraint) {
   TRACE_EVENT("clay", "TextShadowNode::Measure");
   CreateTextBundle();
   if (!constraint.IsValid()) {
-    // Only logged on debug, because it may be very frequent.
-    // And it's normal when MeasureConstraint value is zero.
+    // Even when the `MeasureConstraint` value is zero, the text still needs to
+    // be measured Compatible with the end-side rendering behavior.
     FML_DLOG(WARNING) << "Invalid measure metrics.";
-    result.width = 0;
-    result.height = 0;
-    return result;
   }
   width_mode_ = constraint.width_mode;
   auto context = CreateLayoutContext(constraint);
