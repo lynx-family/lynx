@@ -15,7 +15,7 @@
 
 #include "third_party/boringssl/src/include/openssl/sha.h"
 #endif
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(OS_IOS)
 #define __WEAK __attribute__((__weak__))
 extern "C" {
 // cSpell:disable
