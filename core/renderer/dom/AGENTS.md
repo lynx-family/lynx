@@ -18,6 +18,7 @@ This directory contains the core renderer DOM layer: element ownership, attribut
 - Keep generic element ownership and mutation semantics in the root DOM layer; specialized flows should stay in their own subdirectories.
 - DOM changes often couple attributes, style resolution, and layout-node management together. Check all three before landing a "local" fix.
 - Avoid moving renderer-wide helpers into `Element` or manager classes.
+- **Adopted StyleSheets**: StyleSheet-related features and bug fixes must also account for `adopted_stylesheets_` in `element_manager.h`. These are CSS stylesheets loaded at runtime via DOM API (`AdoptStyleSheet`/`GetAdoptedStyleSheets`) and carry the highest cascade priority. Any change to stylesheet resolution, keyframes lookup, or style fragment iteration that only considers statically-bundled stylesheets will miss styles injected through this path.
 
 ## Common Regression Symptoms
 

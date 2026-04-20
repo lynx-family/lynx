@@ -16,6 +16,14 @@ namespace tasm {
 
 // A decorator that lives in each component and takes into account both
 // intra-component styles and external classes.
+//
+// TODO(renzhongyue): Integrate adopted_stylesheets_ (runtime CSS loaded via
+// DOM API, stored in ElementManager) into this decorator so that callers of
+// GetRelatedCSSFragment() automatically get styles from adopted sheets without
+// having to query ElementManager::GetAdoptedStyleSheets() separately. This
+// would centralize the cascade-priority logic and eliminate per-callsite
+// adopted-sheet handling scattered across StyleResolver, Element, and
+// TextElement.
 class CSSFragmentDecorator : public CSSFragment {
  public:
   CSSFragmentDecorator(CSSFragment* intrinsic_style_sheets)

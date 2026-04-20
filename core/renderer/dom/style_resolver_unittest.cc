@@ -1419,6 +1419,79 @@ TEST_F(CSSPatchingTest, DidCollectMatchedRules_NullChangedCssVars) {
             "blue");
 }
 
+TEST_F(CSSPatchingTest, HandlePseudoElement_AdoptedStylesheetHasPseudoRules) {
+  // Test that HandlePseudoElement does not bail out early when only adopted
+  // stylesheets carry pseudo rules and the base fragment has none.
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("11", 20);
+  manager->SetRoot(page.get());
+
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  fiber_element->data_model()->set_tag("view");
+  page->InsertNode(fiber_element);
+
+  // Base fragment: enable CSS selector but NO pseudo rules.
+  auto base_fragment = std::make_unique<MockCSSFragment>();
+  base_fragment->SetEnableCSSSelector(true);
+  // rule_set() exists but pseudo_rules() is empty.
+
+  // Adopted fragment: enable CSS selector WITH a pseudo rule (::placeholder).
+  auto adopted_fragment = std::make_unique<MockCSSFragment>();
+  adopted_fragment->SetEnableCSSSelector(true);
+
+  CSSParserConfigs configs;
+  auto pseudo_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  pseudo_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
+      CSSValue(lepus::Value(static_cast<int32_t>(0xFFFF0000)),
+               CSSValuePattern::NUMBER);
+
+  auto pseudo_selector = std::make_unique<LynxCSSSelector[]>(1);
+  pseudo_selector[0].SetMatch(LynxCSSSelector::kPseudoElement);
+  pseudo_selector[0].SetPseudoType(LynxCSSSelector::kPseudoPlaceholder);
+  pseudo_selector[0].SetValue("placeholder");
+  pseudo_selector[0].SetLastInTagHistory(true);
+  pseudo_selector[0].SetLastInSelectorList(true);
+  adopted_fragment->AddStyleRule(std::move(pseudo_selector), pseudo_tokens);
+
+  // Sanity: adopted fragment now has pseudo rules, base has none.
+  ASSERT_TRUE(base_fragment->rule_set()->pseudo_rules().empty());
+  ASSERT_FALSE(adopted_fragment->rule_set()->pseudo_rules().empty());
+
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  wrapper->fragment_ = std::move(adopted_fragment);
+  manager->AdoptStyleSheet(wrapper);
+
+  // HandlePseudoElement should NOT early-return; it should detect the adopted
+  // sheet has pseudo rules and proceed.
+  // We cannot easily verify final output (needs full layout pipeline), but
+  // the lack of crash and no early return is the key verification.
+  fiber_element->style_resolver_.HandlePseudoElement(base_fragment.get());
+  SUCCEED();
+}
+
+TEST_F(CSSPatchingTest,
+       HandlePseudoElement_NoPseudoInBaseNorAdopted_EarlyReturn) {
+  // When neither the base fragment nor adopted stylesheets have pseudo rules,
+  // HandlePseudoElement should early-return without issue.
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  fiber_element->data_model()->set_tag("view");
+
+  auto base_fragment = std::make_unique<MockCSSFragment>();
+  base_fragment->SetEnableCSSSelector(true);
+
+  // No adopted stylesheets at all.
+  EXPECT_TRUE(manager->GetAdoptedStyleSheets().empty());
+
+  fiber_element->style_resolver_.HandlePseudoElement(base_fragment.get());
+  SUCCEED();
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

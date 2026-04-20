@@ -180,6 +180,17 @@ void TextElement::ResolveAndFlushFontFaces(const base::String& font_family) {
     SetFontFaces(fragment->GetFontFaceRuleMap());
     fragment->MarkFontFacesResolved(true);
   }
+
+  for (const auto& wrapper : element_manager_->GetAdoptedStyleSheets()) {
+    if (wrapper && wrapper->fragment_ &&
+        !wrapper->fragment_->HasFontFacesResolved()) {
+      const auto& font_face_map = wrapper->fragment_->GetFontFaceRuleMap();
+      if (!font_face_map.empty()) {
+        SetFontFaces(font_face_map);
+        wrapper->fragment_->MarkFontFacesResolved(true);
+      }
+    }
+  }
 }
 
 bool TextElement::ResolveStyleValue(CSSPropertyID id,

@@ -8,6 +8,8 @@
 #include "core/renderer/dom/element.h"
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/css/css_keyframes_token.h"
+#include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -433,6 +435,101 @@ TEST_F(ElementTest, LayoutResult) {
   EXPECT_EQ(result.border_[starlight::Direction::kRight], 3.0f);
   EXPECT_EQ(result.border_[starlight::Direction::kTop], 2.0f);
   EXPECT_EQ(result.border_[starlight::Direction::kBottom], 4.0f);
+}
+
+TEST_F(ElementTest, GetCSSKeyframesToken_FromAdoptedStyleSheet) {
+  // Verify that GetCSSKeyframesToken can find keyframes from adopted
+  // stylesheets when the element has no related CSS fragment.
+  CSSParserConfigs configs;
+  auto keyframe_token = fml::AdoptRef(new CSSKeyframesToken(configs));
+  CSSKeyframesTokenMap keyframes_map;
+  keyframes_map.insert({base::String("fade-in"), keyframe_token});
+
+  auto adopted_fragment = std::make_unique<SharedCSSFragment>(
+      -1, std::vector<int32_t>{}, CSSParserTokenMap{}, std::move(keyframes_map),
+      CSSFontFaceRuleMap{});
+
+  auto wrapper =
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(adopted_fragment)));
+  manager->AdoptStyleSheet(wrapper);
+
+  auto element = manager->CreateFiberElement("view");
+  CSSKeyframesToken* result =
+      element->GetCSSKeyframesToken(base::String("fade-in"));
+  EXPECT_NE(result, nullptr);
+  EXPECT_EQ(result, keyframe_token.get());
+
+  // Non-existent keyframes should return nullptr.
+  EXPECT_EQ(element->GetCSSKeyframesToken(base::String("slide-in")), nullptr);
+}
+
+TEST_F(ElementTest, GetCSSKeyframesToken_AdoptedPrioritizedOverRegular) {
+  // Verify that adopted stylesheets have higher priority than the element's
+  // related CSS fragment for keyframes lookup.
+  CSSParserConfigs configs;
+
+  // Create adopted keyframe token.
+  auto adopted_token = fml::AdoptRef(new CSSKeyframesToken(configs));
+  CSSKeyframesTokenMap adopted_keyframes;
+  adopted_keyframes.insert({base::String("bounce"), adopted_token});
+
+  auto adopted_fragment = std::make_unique<SharedCSSFragment>(
+      -1, std::vector<int32_t>{}, CSSParserTokenMap{},
+      std::move(adopted_keyframes), CSSFontFaceRuleMap{});
+  auto wrapper =
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(adopted_fragment)));
+  manager->AdoptStyleSheet(wrapper);
+
+  // Create a regular fragment with a keyframe of the same name.
+  auto regular_token = fml::AdoptRef(new CSSKeyframesToken(configs));
+  CSSKeyframesTokenMap regular_keyframes;
+  regular_keyframes.insert({base::String("bounce"), regular_token});
+
+  auto comp = std::shared_ptr<RadonComponent>(
+      new RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp.get()->attribute_holder());
+
+  // The adopted keyframe should be returned, not the regular one.
+  CSSKeyframesToken* result =
+      element->GetCSSKeyframesToken(base::String("bounce"));
+  EXPECT_NE(result, nullptr);
+  EXPECT_EQ(result, adopted_token.get());
+}
+
+TEST_F(ElementTest, GetCSSKeyframesToken_MultipleAdoptedSheets_ReverseLookup) {
+  // Verify that later adopted stylesheets have higher priority (reverse
+  // iteration order).
+  CSSParserConfigs configs;
+
+  auto token_first = fml::AdoptRef(new CSSKeyframesToken(configs));
+  CSSKeyframesTokenMap keyframes1;
+  keyframes1.insert({base::String("spin"), token_first});
+  auto fragment1 = std::make_unique<SharedCSSFragment>(
+      -1, std::vector<int32_t>{}, CSSParserTokenMap{}, std::move(keyframes1),
+      CSSFontFaceRuleMap{});
+  auto wrapper1 =
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(fragment1)));
+
+  auto token_second = fml::AdoptRef(new CSSKeyframesToken(configs));
+  CSSKeyframesTokenMap keyframes2;
+  keyframes2.insert({base::String("spin"), token_second});
+  auto fragment2 = std::make_unique<SharedCSSFragment>(
+      -1, std::vector<int32_t>{}, CSSParserTokenMap{}, std::move(keyframes2),
+      CSSFontFaceRuleMap{});
+  auto wrapper2 =
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(fragment2)));
+
+  // Adopt in order: wrapper1 first, wrapper2 second.
+  manager->AdoptStyleSheet(wrapper1);
+  manager->AdoptStyleSheet(wrapper2);
+
+  auto element = manager->CreateFiberElement("view");
+  CSSKeyframesToken* result =
+      element->GetCSSKeyframesToken(base::String("spin"));
+  // The last adopted sheet (wrapper2) should be found first (reverse
+  // iteration).
+  EXPECT_EQ(result, token_second.get());
 }
 
 }  // namespace testing
