@@ -120,6 +120,8 @@ source_set("shared_image") {
       "d3d_texture_image_backing.h",
       "utils/angle_get_proc.cc",
       "utils/angle_get_proc.h",
+      "utils/d3d11_device_creator.cc",
+      "utils/d3d11_device_creator.h",
       "utils/dxgi_utils.cc",
       "utils/dxgi_utils.h",
       "utils/functions_angle.cc",
