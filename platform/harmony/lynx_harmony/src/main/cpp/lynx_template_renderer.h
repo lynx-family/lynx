@@ -81,6 +81,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void UpdateGlobalProps(lepus::Value value);
   lepus::Value GetAllTimingInfo() const;
   int32_t GetInstanceId() const;
+  bool ShouldSendEventToMainThread() const;
   void UpdateFontScale(float font_scale);
   void SetEnableBytecode(bool enable, std::string source_url);
   lepus::Value GetPageDataByKey(std::vector<std::string> keys);
@@ -193,6 +194,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value ScrollStopped(napi_env env, napi_callback_info info);
   static napi_value GetAllTimingInfo(napi_env env, napi_callback_info info);
   static napi_value GetInstanceId(napi_env env, napi_callback_info info);
+  static napi_value ShouldSendEventToMainThread(napi_env env,
+                                                napi_callback_info info);
   static napi_value UpdateFontScale(napi_env env, napi_callback_info info);
   static napi_value NativeSetEnableBytecode(napi_env env,
                                             napi_callback_info info);

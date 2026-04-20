@@ -533,7 +533,7 @@ export struct LynxView {
     if (!this.templateRenderer) {
       return;
     }
-    if (this.enableAirStrictMode) {
+    if (this.enableAirStrictMode || this.templateRenderer.shouldSendEventToMainThread()) {
       this.templateRenderer.triggerEventBus(name, params);
     } else {
       this.templateRenderer.callJSFunction('GlobalEventEmitter', 'emit', [name, params]);

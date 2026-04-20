@@ -424,6 +424,11 @@ int32_t LynxTemplateRenderer::GetInstanceId() const {
   return shell_->GetInstanceId();
 }
 
+bool LynxTemplateRenderer::ShouldSendEventToMainThread() const {
+  return shell_ && !shell_->IsDestroyed() &&
+         shell_->ShouldSendEventToMainThread();
+}
+
 void LynxTemplateRenderer::UpdateFontScale(float font_scale) {
   shell_->UpdateFontScale(font_scale);
 }
@@ -570,6 +575,8 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("updateViewport", UpdateViewport),
       DECLARE_NAPI_METHOD("updateScreenMetrics", UpdateScreenMetrics),
       DECLARE_NAPI_METHOD("triggerEventBus", TriggerEventBus),
+      DECLARE_NAPI_METHOD("shouldSendEventToMainThread",
+                          ShouldSendEventToMainThread),
       DECLARE_NAPI_METHOD("callJSFunction", CallJSFunction),
       DECLARE_NAPI_METHOD("callJSApiCallbackWithValue",
                           CallJSApiCallbackWithValue),
@@ -1217,6 +1224,25 @@ napi_value LynxTemplateRenderer::GetInstanceId(napi_env env,
   } else {
     napi_create_int32(env, obj->GetInstanceId(), &result);
   }
+  return result;
+}
+
+napi_value LynxTemplateRenderer::ShouldSendEventToMainThread(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 0;
+  napi_value args[0];
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  napi_value result;
+  napi_get_boolean(env,
+                   CheckNapiUnwrapObject(
+                       status, obj, "ShouldSendEventToMainThread failed") &&
+                       obj->ShouldSendEventToMainThread(),
+                   &result);
   return result;
 }
 

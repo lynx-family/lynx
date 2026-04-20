@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_TEMPLATE_ASSEMBLER_H_
 #define CORE_RENDERER_TEMPLATE_ASSEMBLER_H_
 
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <mutex>
@@ -147,6 +148,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
     virtual void OnPageConfigDecoded(
         const std::shared_ptr<tasm::PageConfig>& config) = 0;
     virtual void OnPageUpdated(bool is_first_screen) = 0;
+    virtual void OnShouldSendEventToMainThreadChanged(
+        bool should_send_event_to_main_thread) {}
 
     // recycle a complete bundle
     virtual void OnTemplateBundleReady(LynxTemplateBundle bundle) {}
@@ -554,17 +557,13 @@ class TemplateAssembler final : public TemplateEntryHolder,
                             CompileOptionAirMode::AIR_MODE_STRICT);
   }
 
-  bool ShouldSendEventToMainThread() {
-    auto& entry = FindEntry(DEFAULT_ENTRY_NAME);
-    if (!entry) {
-      return false;
-    }
-    auto& context = entry->GetVm();
-    if (!context) {
-      return false;
-    }
-    auto* mts_context = context->GetMTSContext();
-    return mts_context && mts_context->EnableSendEventToMainThread();
+  bool ShouldSendEventToMainThread() const {
+    return should_send_event_to_main_thread_.load(std::memory_order_relaxed);
+  }
+
+  void SetShouldSendEventToMainThread(bool enable) {
+    should_send_event_to_main_thread_.store(enable, std::memory_order_relaxed);
+    delegate_.OnShouldSendEventToMainThreadChanged(enable);
   }
 
   bool ShouldPostDataToJs() const {
@@ -1085,6 +1084,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   bool can_use_snapshot_;
   bool template_loaded_;
   std::atomic<bool> has_load_page_;
+  std::atomic_bool should_send_event_to_main_thread_{false};
   bool destroyed_;
   bool is_loading_template_;
   bool enable_pre_update_data_{false};

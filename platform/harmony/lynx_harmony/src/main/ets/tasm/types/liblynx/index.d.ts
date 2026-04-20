@@ -144,6 +144,8 @@ export class LynxTemplateRenderer {
 
   triggerEventBus(name: string, params: Array<Object>): void;
 
+  shouldSendEventToMainThread(): boolean;
+
   callJSApiCallbackWithValue(callbackId: number, params: Object): void;
 
   callJSIntersectionObserver(observerId: number, callbackId: number, params: Array<Object>): void;

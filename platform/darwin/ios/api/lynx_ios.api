@@ -3764,6 +3764,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public void LynxTemplateRender::setResourceFetcherInUIOwner:(id< LynxResourceFetcher > _Nullable resourceFetcher);
   public void LynxTemplateRender::setNeedPendingUIOperation:(BOOL needPendingUIOperation);
   public BOOL LynxTemplateRender::enableAirStrictMode();
+  public BOOL LynxTemplateRender::shouldSendEventToMainThread();
   public BOOL LynxTemplateRender::enableLayoutOnly();
   public BOOL LynxTemplateRender::enableFiberArch();
   public BOOL LynxTemplateRender::enableBackgroundShapeLayer();

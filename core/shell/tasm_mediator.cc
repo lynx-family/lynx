@@ -101,6 +101,13 @@ void TasmMediator::OnConfigUpdated(const lepus::Value& data) {
   facade_actor_->Act([data](auto& facade) { facade->OnConfigUpdated(data); });
 }
 
+void TasmMediator::OnShouldSendEventToMainThreadChanged(
+    bool should_send_event_to_main_thread) {
+  if (auto cache = should_send_event_to_main_thread_cache_.lock()) {
+    cache->store(should_send_event_to_main_thread, std::memory_order_relaxed);
+  }
+}
+
 void TasmMediator::CallPlatformCallbackWithValue(
     const std::shared_ptr<PlatformCallBackHolder>& callback,
     const lepus::Value& value) {

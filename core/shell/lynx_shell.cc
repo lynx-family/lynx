@@ -198,6 +198,8 @@ void LynxShell::BuildEngineActor(
       facade_actor_, card_cached_data_mgr_, layout_actor_,
       std::move(tasm_platform_invoker), perf_controller_actor_);
   tasm_mediator->SetPageOptions(page_options_);
+  tasm_mediator->SetShouldSendEventToMainThreadCache(
+      should_send_event_to_main_thread_cache_);
   tasm_mediator_ = tasm_mediator.get();
   auto element_manager = std::make_unique<lynx::tasm::ElementManager>(
       std::move(painting_context), tasm_mediator.get(),
@@ -344,6 +346,8 @@ void LynxShell::Destroy() {
   LOGI("LynxShell Destroy, this:" << this);
 
   is_destroyed_ = true;
+  should_send_event_to_main_thread_cache_->store(false,
+                                                 std::memory_order_relaxed);
 
 #if ENABLE_TESTBENCH_RECORDER
   tasm::recorder::RecorderController::RemoveRecord(

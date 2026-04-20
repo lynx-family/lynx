@@ -2375,6 +2375,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   return _enableAirStrictMode;
 }
 
+- (BOOL)shouldSendEventToMainThread {
+  return shell_ != nullptr && !shell_->IsDestroyed() && shell_->ShouldSendEventToMainThread();
+}
+
 - (void)preloadLazyBundles:(NSArray* _Nonnull)urls {
   std::vector<std::string> preload_urls;
   for (NSString* url : urls) {
