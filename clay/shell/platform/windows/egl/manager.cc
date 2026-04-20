@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "clay/fml/logging.h"
+#include "clay/gfx/shared_image/utils/d3d11_device_creator.h"
 #include "clay/shell/platform/windows/egl/direct_composition_surface.h"
 #include "clay/shell/platform/windows/egl/egl.h"
 
@@ -253,18 +254,8 @@ bool Manager::TryInitializeD3D11Device() {
 
   std::optional<PFN_D3D11_CREATE_DEVICE> D3D11CreateDevice =
       d3d11_->ResolveFunction<PFN_D3D11_CREATE_DEVICE>("D3D11CreateDevice");
-
-  if (!D3D11CreateDevice.has_value()) {
-    FML_LOG(WARNING) << "Could not retrieve D3D11CreateDevice address.";
-    return false;
-  }
-  D3D_FEATURE_LEVEL feature_levels[] = {D3D_FEATURE_LEVEL_11_1,
-                                        D3D_FEATURE_LEVEL_11_0};
-  HRESULT hr = D3D11CreateDevice.value()(
-      nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, feature_levels,
-      ARRAYSIZE(feature_levels), D3D11_SDK_VERSION, &resolved_device_, nullptr,
-      nullptr);
-  if (FAILED(hr)) {
+  if (FAILED(CreateSafeD3D11Device(D3D11CreateDevice, &resolved_device_,
+                                   nullptr))) {
     FML_LOG(WARNING) << "Could not create D3D11 Device.";
     return false;
   }

@@ -39,6 +39,9 @@ declare_args() {
   enable_software_rendering = false
 
   enable_screenshot_service = enable_inspector
+
+  # Whether use high-performance discrete GPU
+  use_discrete_gpu = false
 }
 
 declare_args() {
@@ -181,4 +184,8 @@ if (enable_screenshot_service) {
 
 if (use_binary_icudtl) {
   feature_defines_list += [ "ENABLE_BINARY_ICUDTL=1" ]
+}
+
+if (is_win && use_discrete_gpu) {
+  feature_defines_list += [ "USE_DISCRETE_GPU=1" ]
 }
