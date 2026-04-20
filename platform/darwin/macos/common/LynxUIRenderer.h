@@ -31,6 +31,9 @@ class LynxUIRendererImpl : public LynxUIRenderer {
 
   void OnEnterBackground() override;
 
+  void EmulateMouseEvent(const char* event_name, float x, float y,
+                         float delta_x, float delta_y) override;
+
   void InjectBubbleEvent(const char* params) override;
 
   void RegisterNativeView(const char* name, lynx_native_view_creator creator,

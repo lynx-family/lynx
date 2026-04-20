@@ -365,3 +365,15 @@ LYNX_EXTERN_C void lynx_view_send_touch_event(lynx_view_t* view,
   view->lynx_template_renderer->SendTouchEvent(name, id, x, y, client_x,
                                                client_y, page_x, page_y);
 }
+
+LYNX_EXTERN_C int lynx_view_get_node_for_location(lynx_view_t* view, int x,
+                                                  int y) {
+  return view->lynx_template_renderer->GetNodeForLocation(x, y);
+}
+
+LYNX_EXTERN_C void lynx_view_emulate_mouse_event(lynx_view_t* view,
+                                                 const char* event_name,
+                                                 float x, float y,
+                                                 float delta_x, float delta_y) {
+  view->lynx_ui_renderer->EmulateMouseEvent(event_name, x, y, delta_x, delta_y);
+}

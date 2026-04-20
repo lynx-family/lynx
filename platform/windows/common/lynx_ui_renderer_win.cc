@@ -6,6 +6,7 @@
 
 #include <Windows.h>
 
+#include <cmath>
 #include <cstdio>
 #include <memory>
 #include <string>
@@ -23,8 +24,6 @@
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_memory_capi.h"
 #if ENABLE_TESTBENCH_REPLAY
-#include <cmath>
-
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
 #include "third_party/rapidjson/reader.h"
@@ -184,6 +183,47 @@ void LynxUIRendererWin::OnEnterForeground() { engine_->OnEnterForeground(); }
 
 void LynxUIRendererWin::OnEnterBackground() { engine_->OnEnterBackground(); }
 
+void LynxUIRendererWin::EmulateMouseEvent(const char* event_name, float x,
+                                          float y, float delta_x,
+                                          float delta_y) {
+  if (!event_name) {
+    return;
+  }
+  std::string name(event_name);
+  POINT point = {static_cast<LONG>(std::round(x)),
+                 static_cast<LONG>(std::round(y))};
+  HWND hwnd = reinterpret_cast<HWND>(GetNativeWindow());
+  if (!ClientToScreen(hwnd, &point)) {
+    return;
+  }
+
+  if (name == "wheel") {
+    int delta =
+        delta_x != 0 ? static_cast<int>(delta_x) : static_cast<int>(delta_y);
+    if (delta != 0) {
+      ::mouse_event(MOUSEEVENTF_WHEEL, 0, 0,
+                    delta > 0 ? (-WHEEL_DELTA) : WHEEL_DELTA, 0);
+    }
+    return;
+  }
+
+  if (name == "mouseenter" || name == "mouseover" || name == "mouseleave" ||
+      name == "mousemove") {
+    ::SetCursorPos(point.x, point.y);
+  } else if (name == "mousedown") {
+    ::mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN, point.x, point.y,
+                  0, 0);
+  } else if (name == "mouseup") {
+    ::mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTUP, point.x, point.y,
+                  0, 0);
+  } else if (name == "mouseclick") {
+    ::mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN, point.x, point.y,
+                  0, 0);
+    ::mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTUP, point.x, point.y,
+                  0, 0);
+  }
+}
+
 void LynxUIRendererWin::InjectBubbleEvent(const char* params) {
 #if ENABLE_TESTBENCH_REPLAY
   rapidjson::Document dom;
@@ -196,7 +236,6 @@ void LynxUIRendererWin::InjectBubbleEvent(const char* params) {
   float pos_y = 0.0f;
   int delta_x = 0;
   int delta_y = 0;
-  int delta = 0;
   if (dom.HasMember("name") && dom["name"].IsString()) {
     name = dom["name"].GetString();
   }
@@ -209,42 +248,12 @@ void LynxUIRendererWin::InjectBubbleEvent(const char* params) {
     }
     if (dom["params"].HasMember("deltaX") && dom["params"]["deltaX"].IsInt()) {
       delta_x = dom["params"]["deltaX"].GetInt();
-      if (delta_x != 0) {
-        delta = delta_x;
-      }
     }
     if (dom["params"].HasMember("deltaY") && dom["params"]["deltaY"].IsInt()) {
       delta_y = dom["params"]["deltaY"].GetInt();
-      if (delta_y != 0) {
-        delta = delta_y;
-      }
     }
   }
-  POINT point = {static_cast<LONG>(std::round(pos_x)),
-                 static_cast<LONG>(std::round(pos_y))};
-  HWND hwnd = reinterpret_cast<HWND>(GetNativeWindow());
-  if (ClientToScreen(hwnd, &point)) {
-    if (name.compare("wheel") == 0) {
-      ::mouse_event(MOUSEEVENTF_WHEEL, 0, 0,
-                    delta > 0 ? (-WHEEL_DELTA) : (WHEEL_DELTA), 0);
-    } else if (name.compare("mouseenter") == 0 ||
-               name.compare("mouseover") == 0 ||
-               name.compare("mouseleave") == 0 ||
-               name.compare("mousemove") == 0) {
-      ::SetCursorPos(point.x, point.y);
-    } else if (name.compare("mousedown") == 0) {
-      ::mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN, point.x,
-                    point.y, 0, 0);
-    } else if (name.compare("mouseup") == 0) {
-      ::mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTUP, point.x, point.y,
-                    0, 0);
-    } else if (name.compare("mouseclick") == 0) {
-      ::mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN, point.x,
-                    point.y, 0, 0);
-      ::mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTUP, point.x, point.y,
-                    0, 0);
-    }
-  }
+  EmulateMouseEvent(name.c_str(), pos_x, pos_y, delta_x, delta_y);
 #endif
 }
 

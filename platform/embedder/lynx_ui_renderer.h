@@ -54,6 +54,9 @@ class LynxUIRenderer {
 
   virtual void OnEnterBackground() = 0;
 
+  virtual void EmulateMouseEvent(const char* event_name, float x, float y,
+                                 float delta_x, float delta_y) {}
+
   virtual void InjectBubbleEvent(const char* params) {}
 
   virtual void RegisterNativeView(const char* name,

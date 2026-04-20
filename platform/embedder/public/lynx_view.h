@@ -246,6 +246,16 @@ class LynxView {
                                client_y, page_x, page_y);
   }
 
+  int GetNodeForLocation(int x, int y) {
+    return lynx_view_get_node_for_location(lynx_view_, x, y);
+  }
+
+  void EmulateMouseEvent(const std::string& event_name, float x, float y,
+                         float delta_x = 0.f, float delta_y = 0.f) {
+    lynx_view_emulate_mouse_event(lynx_view_, event_name.c_str(), x, y, delta_x,
+                                  delta_y);
+  }
+
   /**
    * @apidoc
    * @brief Update the screen metrics of the `LynxView`.

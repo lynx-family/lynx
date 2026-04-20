@@ -16,13 +16,11 @@
 #include "platform/embedder/lynx_view_clients.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_memory_capi.h"
-#if ENABLE_TESTBENCH_REPLAY
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
 #include "third_party/rapidjson/reader.h"
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/rapidjson/writer.h"
-#endif
 
 @interface LynxUIRendererMac : NSObject
 
@@ -69,7 +67,6 @@
   [self.clayViewProvider requestIME:handler arg:arg];
 }
 
-#if ENABLE_TESTBENCH_REPLAY
 - (NSEvent*)generateMouseDownEvent:(NSPoint)locationInWindow {
   NSEvent* downEvent =
       [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
@@ -128,15 +125,15 @@
 
 - (NSEvent*)generateMouseMoveEvent:(NSPoint)locationInWindow {
   NSEvent* moveEvent =
-      [NSEvent enterExitEventWithType:NSEventTypeMouseMoved
-                             location:locationInWindow
-                        modifierFlags:0
-                            timestamp:0
-                         windowNumber:[[self.clayViewProvider.flutterView window] windowNumber]
-                              context:nil
-                          eventNumber:0
-                       trackingNumber:0
-                             userData:NULL];
+      [NSEvent mouseEventWithType:NSEventTypeMouseMoved
+                         location:locationInWindow
+                    modifierFlags:0
+                        timestamp:0
+                     windowNumber:[[self.clayViewProvider.flutterView window] windowNumber]
+                          context:nil
+                      eventNumber:0
+                       clickCount:0
+                         pressure:0];
   return moveEvent;
 }
 
@@ -166,12 +163,42 @@
     [self.clayViewProvider performSelector:@selector(mouseUp:) withObject:event];
   }
 }
-#endif
 
 @end
 
 namespace lynx {
 namespace embedder {
+
+namespace {
+
+void DispatchEmulatedMouseEvent(LynxUIRendererMac* lynx_ui_renderer, const std::string& name,
+                                float x, float y) {
+  if (!lynx_ui_renderer) {
+    return;
+  }
+
+  NSPoint locationInView = NSMakePoint(x, y);
+  NSPoint locationInWindow =
+      [lynx_ui_renderer.clayViewProvider.flutterView convertPoint:locationInView toView:nil];
+  if (name == "mouseclick") {
+    [lynx_ui_renderer emulateMouseDown:[lynx_ui_renderer generateMouseDownEvent:locationInWindow]];
+    [lynx_ui_renderer emulateMouseUp:[lynx_ui_renderer generateMouseUpEvent:locationInWindow]];
+  } else if (name == "mousemove") {
+    [lynx_ui_renderer emulateMouseMoved:[lynx_ui_renderer generateMouseMoveEvent:locationInWindow]];
+  } else if (name == "mouseenter" || name == "mouseover") {
+    [lynx_ui_renderer
+        emulateMouseEntered:[lynx_ui_renderer generateMouseEnterEvent:locationInWindow]];
+  } else if (name == "mouseleave") {
+    [lynx_ui_renderer
+        emulateMouseExited:[lynx_ui_renderer generateMouseExitEvent:locationInWindow]];
+  } else if (name == "mousedown") {
+    [lynx_ui_renderer emulateMouseDown:[lynx_ui_renderer generateMouseDownEvent:locationInWindow]];
+  } else if (name == "mouseup") {
+    [lynx_ui_renderer emulateMouseUp:[lynx_ui_renderer generateMouseUpEvent:locationInWindow]];
+  }
+}
+
+}  // namespace
 
 std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(lynx_view_builder_t* builder) {
   return std::make_unique<LynxUIRendererImpl>(builder);
@@ -303,8 +330,19 @@ void LynxUIRendererImpl::OnEnterBackground() {
   [lynx_ui_renderer.clayViewProvider onEnterBackground];
 }
 
+void LynxUIRendererImpl::EmulateMouseEvent(const char* event_name, float x, float y, float delta_x,
+                                           float delta_y) {
+  (void)delta_x;
+  (void)delta_y;
+  if (!lynx_ui_renderer_ || !event_name) {
+    return;
+  }
+
+  LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+  DispatchEmulatedMouseEvent(lynx_ui_renderer, event_name, x, y);
+}
+
 void LynxUIRendererImpl::InjectBubbleEvent(const char* params) {
-#if ENABLE_TESTBENCH_REPLAY
   if (!lynx_ui_renderer_) {
     return;
   }
@@ -329,26 +367,7 @@ void LynxUIRendererImpl::InjectBubbleEvent(const char* params) {
       y = dom["params"]["pageY"].GetDouble();
     }
   }
-  NSPoint locationInView = NSMakePoint(x, y);
-  NSPoint locationInWindow =
-      [lynx_ui_renderer.clayViewProvider.flutterView convertPoint:locationInView toView:nil];
-  if (name == "mouseclick") {
-    [lynx_ui_renderer emulateMouseDown:[lynx_ui_renderer generateMouseDownEvent:locationInWindow]];
-    [lynx_ui_renderer emulateMouseUp:[lynx_ui_renderer generateMouseUpEvent:locationInWindow]];
-  } else if (name == "mousemove") {
-    [lynx_ui_renderer emulateMouseMoved:[lynx_ui_renderer generateMouseMoveEvent:locationInWindow]];
-  } else if (name == "mouseenter" || name == "mouseover") {
-    [lynx_ui_renderer
-        emulateMouseEntered:[lynx_ui_renderer generateMouseEnterEvent:locationInWindow]];
-  } else if (name == "mouseleave") {
-    [lynx_ui_renderer
-        emulateMouseExited:[lynx_ui_renderer generateMouseExitEvent:locationInWindow]];
-  } else if (name == "mousedown") {
-    [lynx_ui_renderer emulateMouseDown:[lynx_ui_renderer generateMouseDownEvent:locationInWindow]];
-  } else if (name == "mouseup") {
-    [lynx_ui_renderer emulateMouseUp:[lynx_ui_renderer generateMouseUpEvent:locationInWindow]];
-  }
-#endif
+  DispatchEmulatedMouseEvent(lynx_ui_renderer, name, x, y);
 }
 
 void LynxUIRendererImpl::RegisterNativeView(const char* name, lynx_native_view_creator creator,

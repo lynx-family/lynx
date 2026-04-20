@@ -155,6 +155,15 @@ LYNX_CAPI_EXPORT void lynx_view_send_touch_event(lynx_view_t* view,
                                                  float client_x, float client_y,
                                                  float page_x, float page_y);
 
+LYNX_CAPI_EXPORT int lynx_view_get_node_for_location(lynx_view_t* view, int x,
+                                                     int y);
+
+LYNX_CAPI_EXPORT void lynx_view_emulate_mouse_event(lynx_view_t* view,
+                                                    const char* event_name,
+                                                    float x, float y,
+                                                    float delta_x,
+                                                    float delta_y);
+
 LYNX_EXTERN_C_END
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_CAPI_H_
