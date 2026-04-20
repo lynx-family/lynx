@@ -29,11 +29,15 @@ void LynxEngineWrapper::BindShell(lynx::shell::LynxShell *shell) {
       shell->runners_.GetLayoutTaskRunner());
   shell->tasm_mediator_ = this->tasm_mediator_;
   shell->layout_mediator_ = this->layout_mediator_;
+  shell->tasm_mediator_->SetShouldSendEventToMainThreadCache(
+      shell->should_send_event_to_main_thread_cache_);
   shell->tasm_mediator_->ResetMediatorActor(shell->layout_actor_,
                                             shell->facade_actor_,
                                             shell->perf_controller_actor_);
   auto tasm = shell->engine_actor_->Impl()->GetTasm();
   if (tasm) {
+    shell->should_send_event_to_main_thread_cache_->store(
+        tasm->ShouldSendEventToMainThread(), std::memory_order_relaxed);
     tasm->page_proxy()
         ->element_manager()
         ->painting_context()

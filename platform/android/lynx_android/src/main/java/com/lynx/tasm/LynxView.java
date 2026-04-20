@@ -550,8 +550,8 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
               + this.toString());
       return;
     }
-    if (enableAirStrictMode()) {
-      // In Air mode, send global event by triggerEventBus
+    if (enableAirStrictMode() || mLynxTemplateRender.shouldSendEventToMainThread()) {
+      // In Air mode or when MTS handles main-thread events, send global event by triggerEventBus.
       triggerEventBus(name, params);
     } else {
       mLynxTemplateRender.sendGlobalEvent(name, params);

@@ -691,6 +691,11 @@ public class LynxTemplateRender
     return mEnableAirStrictMode;
   }
 
+  public boolean shouldSendEventToMainThread() {
+    return checkIfEnvPrepared() && mNativePtr != 0
+        && nativeShouldSendEventToMainThread(mNativePtr, mNativeLifecycle);
+  }
+
   void showErrorMessage(final LynxError error) {
     if (mDevTool != null) {
       mDevTool.showErrorMessage(error);
@@ -4413,6 +4418,8 @@ public class LynxTemplateRender
 
   private static native void nativeTriggerEventBus(
       long ptr, long lifecycle, String name, ByteBuffer buffer, int length);
+
+  private static native boolean nativeShouldSendEventToMainThread(long ptr, long lifecycle);
 
   // fetch data in native
   private native void nativeGetDataAsync(long ptr, long lifecycle, int tag);

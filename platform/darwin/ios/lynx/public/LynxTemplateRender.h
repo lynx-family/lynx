@@ -60,6 +60,7 @@
 - (void)setResourceFetcherInUIOwner:(id<LynxResourceFetcher> _Nullable)resourceFetcher;
 - (void)setNeedPendingUIOperation:(BOOL)needPendingUIOperation;
 - (BOOL)enableAirStrictMode;
+- (BOOL)shouldSendEventToMainThread;
 - (BOOL)enableLayoutOnly;
 - (BOOL)enableFiberArch;
 - (BOOL)enableBackgroundShapeLayer;

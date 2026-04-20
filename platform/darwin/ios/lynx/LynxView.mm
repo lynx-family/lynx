@@ -769,8 +769,8 @@
                                                     name, [self hash]]
                      withLevel:DevToolLogLevelInfo];
   }
-  if ([_templateRender enableAirStrictMode]) {
-    // In Air mode, send global event by triggerEventBus
+  if ([_templateRender enableAirStrictMode] || [_templateRender shouldSendEventToMainThread]) {
+    // In Air mode or when MTS handles main-thread events, send global event by triggerEventBus.
     [self triggerEventBus:name withParams:params];
   } else {
     RUN_RENDER_SAFELY([_templateRender sendGlobalEvent:name withParams:params];);

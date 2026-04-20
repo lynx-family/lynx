@@ -6719,6 +6719,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public final String com.lynx.tasm.LynxTemplateRender.RENDER_PHASE_UPDATE RENDER_PHASE_UPDATE;
   public com.lynx.tasm.LynxTemplateRender.LynxTemplateRender(Context context, UIBodyView bodyView, LynxViewBuilder builder);
   public boolean com.lynx.tasm.LynxTemplateRender.enableAirStrictMode();
+  public boolean com.lynx.tasm.LynxTemplateRender.shouldSendEventToMainThread();
   public LynxContext com.lynx.tasm.LynxTemplateRender.getLynxContext();
   public PerformanceController com.lynx.tasm.LynxTemplateRender.getPerformanceController();
   public UIGroup< UIBodyView > com.lynx.tasm.LynxTemplateRender.getLynxRootUI();

@@ -981,6 +981,7 @@ void TemplateAssembler::LoadTemplateInternal(
 
   // Get page template entry
   auto card = FindEntry(DEFAULT_ENTRY_NAME);
+  SetShouldSendEventToMainThread(false);
 
   // In radon/radon-diff mode, if template_data == nullptr &&
   // global_props_.IsNil() && page_proxy_.GetDefaultPageData().IsEmpty(), the
@@ -1003,6 +1004,10 @@ void TemplateAssembler::LoadTemplateInternal(
       LOGE("Decoding template failed");
       return;
     }
+    const auto& context = card->GetVm();
+    auto* mts_context = context ? context->GetMTSContext() : nullptr;
+    SetShouldSendEventToMainThread(mts_context &&
+                                   mts_context->EnableSendEventToMainThread());
 
     // After decode template, exec some aftercare
     // 1. ssr actions
@@ -3249,6 +3254,12 @@ void TemplateAssembler::SendGlobalEventToLepus(const std::string& name,
 
 void TemplateAssembler::TriggerEventBus(const std::string& name,
                                         const lepus_value& params) {
+  if (ShouldSendEventToMainThread()) {
+    auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
+    if (context != nullptr) {
+      DispatchEventFromEngineToCoreContext(context, name, name, params);
+    }
+  }
   // lynx air supports lepus
   if (!UseLepusNG() && !EnableLynxAir()) {
     return;

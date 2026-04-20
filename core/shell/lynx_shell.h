@@ -135,6 +135,11 @@ class LynxShell {
   // TODO(heshan): will be deleted after ios platform ready
   bool IsDestroyed();
 
+  bool ShouldSendEventToMainThread() const {
+    return should_send_event_to_main_thread_cache_->load(
+        std::memory_order_relaxed);
+  }
+
   void LoadTemplate(const std::string& url, std::vector<uint8_t> source,
                     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
                     const std::shared_ptr<tasm::TemplateData>& template_data);
@@ -401,6 +406,8 @@ class LynxShell {
   void ConsumeModuleFactory(runtime::js::LynxModuleManager* module_manager);
 
   std::atomic_bool is_destroyed_{false};
+  std::shared_ptr<std::atomic_bool> should_send_event_to_main_thread_cache_{
+      std::make_shared<std::atomic_bool>(false)};
 
   std::shared_ptr<LynxActor<NativeFacade>>
       facade_actor_;  // on platform UI runner
