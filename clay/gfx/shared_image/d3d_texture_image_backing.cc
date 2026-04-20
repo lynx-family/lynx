@@ -21,6 +21,7 @@
 #include "clay/fml/native_library.h"
 #include "clay/gfx/shared_image/d3d_image_representation.h"
 #include "clay/gfx/shared_image/utils/angle_get_proc.h"
+#include "clay/gfx/shared_image/utils/d3d11_device_creator.h"
 
 #if ENABLE_SKITY
 #include "clay/gfx/shared_image/angle_d3d_image_representation.h"
@@ -105,15 +106,8 @@ bool D3DTextureFactory::InitializeD3DDevice() {
 
   std::optional<PFN_D3D11_CREATE_DEVICE> D3D11CreateDevice =
       d3d11_->ResolveFunction<PFN_D3D11_CREATE_DEVICE>("D3D11CreateDevice");
-
-  if (!D3D11CreateDevice.has_value()) {
-    FML_LOG(ERROR) << "Could not retrieve D3D11CreateDevice address.";
-    return false;
-  }
-  HRESULT hr = D3D11CreateDevice.value()(
-      nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0,
-      D3D11_SDK_VERSION, &d3d11_device_, nullptr, nullptr);
-  if (FAILED(hr)) {
+  if (FAILED(
+          CreateSafeD3D11Device(D3D11CreateDevice, &d3d11_device_, nullptr))) {
     FML_LOG(ERROR) << "D3DTextureImageBacking could not create D3D11 Device.";
     return false;
   }
