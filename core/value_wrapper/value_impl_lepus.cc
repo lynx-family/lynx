@@ -13,25 +13,24 @@ namespace lynx {
 namespace pub {
 // PubValueFactory default implementation
 std::unique_ptr<Value> PubValueFactoryDefault::CreateArray() {
-  return std::make_unique<PubLepusValue>(lepus::Value(lepus::CArray::Create()));
+  return std::make_unique<PubLepusValue>(lepus::CArray::Create());
 }
 
 std::unique_ptr<Value> PubValueFactoryDefault::CreateMap() {
-  return std::make_unique<PubLepusValue>(
-      lepus::Value(lepus::Dictionary::Create()));
+  return std::make_unique<PubLepusValue>(lepus::Dictionary::Create());
 }
 
 std::unique_ptr<Value> PubValueFactoryDefault::CreateBool(bool value) {
-  return std::make_unique<PubLepusValue>(lepus::Value(value));
+  return std::make_unique<PubLepusValue>(value);
 }
 
 std::unique_ptr<Value> PubValueFactoryDefault::CreateNumber(double value) {
-  return std::make_unique<PubLepusValue>(lepus::Value(value));
+  return std::make_unique<PubLepusValue>(value);
 }
 
 std::unique_ptr<Value> PubValueFactoryDefault::CreateString(
     const std::string& value) {
-  return std::make_unique<PubLepusValue>(lepus::Value(value));
+  return std::make_unique<PubLepusValue>(value);
 }
 
 std::unique_ptr<Value> PubValueFactoryDefault::CreateArrayBuffer(

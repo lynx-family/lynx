@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -33,11 +34,18 @@ namespace pub {
 // lepus value implementation
 class ValueImplLepus : public Value {
  public:
-  explicit ValueImplLepus(const lepus::Value& value)
-      : Value(ValueBackendType::ValueBackendTypeLepus), backend_value_(value) {}
-  explicit ValueImplLepus(lepus::Value&& value)
+  ValueImplLepus(const ValueImplLepus&) = default;
+  ValueImplLepus(ValueImplLepus&&) noexcept = default;
+  ValueImplLepus& operator=(const ValueImplLepus&) = default;
+  ValueImplLepus& operator=(ValueImplLepus&&) noexcept = default;
+
+  template <typename T,
+            typename = std::enable_if_t<
+                std::is_constructible_v<lepus::Value, T&&> &&
+                !std::is_same_v<std::remove_cvref_t<T>, ValueImplLepus>>>
+  explicit ValueImplLepus(T&& data)
       : Value(ValueBackendType::ValueBackendTypeLepus),
-        backend_value_(std::move(value)) {}
+        backend_value_(std::forward<T>(data)) {}
 
   ~ValueImplLepus() override = default;
 

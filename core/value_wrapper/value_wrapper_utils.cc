@@ -22,7 +22,7 @@ lepus::Value ValueUtils::ConvertValueToLepusValue(
     const Value& value,
     std::vector<std::unique_ptr<pub::Value>>* prev_value_vector, int depth) {
   if (value.backend_type() == pub::ValueBackendType::ValueBackendTypeLepus) {
-    return (reinterpret_cast<const PubLepusValue*>(&value))->backend_value();
+    return (static_cast<const PubLepusValue*>(&value))->backend_value();
   } else {
     lepus::Value res;
     if (value.IsString()) {
