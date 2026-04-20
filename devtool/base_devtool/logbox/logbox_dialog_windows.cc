@@ -7,6 +7,7 @@
 #include <tchar.h>
 #include <winuser.h>
 
+#include <filesystem>
 #include <fstream>
 
 #pragma clang diagnostic push
@@ -123,7 +124,8 @@ void LogBoxDialogWindows::GetFileContent(const std::string& url,
   std::string filePath = GetLogboxFileUrl(url);
   std::wstring w_filePath = base_utils::Utf16FromUtf8(filePath);
 
-  std::ifstream file_stream(w_filePath, std::ios::binary);
+  std::ifstream file_stream(std::filesystem::path(w_filePath),
+                            std::ios::binary);
   if (!file_stream.is_open()) {
     LOGE("Failed to open file: " << filePath);
     return;
