@@ -32,7 +32,7 @@ using VSyncCallback = std::function<void(fml::TimePoint, fml::TimePoint)>;
 }
 
 - (void)destroy {
-  [_displayLink invalidate];
+  // The host may call CADisplayLink invalidate, so we should avoid calling it here.
 }
 
 - (void)onDisplayLink:(CADisplayLink *)link {
