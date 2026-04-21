@@ -599,25 +599,7 @@ void PaintingContextDarwin::ConsumeGesture(int64_t idx, int32_t gesture_id,
  */
 int32_t PaintingContextDarwin::GetTagInfo(const std::string& tag_name) {
   NSString* tagName = [[NSString alloc] initWithUTF8String:tag_name.c_str()];
-  int32_t layout_node_type = 0;
-
-  // Use LynxComponentRegistry directly to get shadow node info
-  BOOL supported = YES;
-  Class clazz = [LynxComponentRegistry shadowNodeClassWithName:tagName accessible:&supported];
-  if (supported) {
-    LynxShadowNode* node = nil;
-    if (clazz) {
-      node = [[clazz alloc] initWithSign:0 tagName:tagName];
-    }
-    if (node != nil) {
-      layout_node_type |= LynxShadowNodeTypeCustom;
-      if ([node isVirtual]) {
-        layout_node_type |= LynxShadowNodeTypeVirtual;
-      }
-    } else {
-      layout_node_type |= LynxShadowNodeTypeCommon;
-    }
-  }
+  int32_t layout_node_type = static_cast<int32_t>([uiOwner_ getTagInfo:tagName]);
 
   bool is_virtual = layout_node_type & LayoutNodeType::VIRTUAL;
   if (is_virtual) {
