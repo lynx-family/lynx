@@ -720,40 +720,60 @@ void LepusElement::Invoke(const Napi::Object& object) {
   int64_t fail_callback_id =
       handler->StoreTask(std::unique_ptr<NapiFuncCallback>(std::move(fail_p)));
 
-  element->Invoke(
-      object.Get(sKeyMethod).ToString().Utf8Value(),
-      pub::ValueImplLepus(
-          ValueConverter::ConvertNapiValueToLepusValue(object.Get(sKeyParams))),
-      [env = NapiEnv(), weak_handler, tasm = tasm_, success_callback_id,
-       fail_callback_id](int32_t code, const pub::Value& data) {
-        auto handler = weak_handler.lock();
-        if (handler == nullptr) {
-          LOGE(
-              "LepusElement::Invoke not callback since task_handler is "
-              "null.");
-          return;
-        }
-        if (tasm == nullptr) {
-          LOGE(
-              "LepusElement::Invoke not callback since task_handler is "
-              "null.");
-          return;
-        }
-        auto result_data = Napi::Object::New(env);
-        result_data.Set("code", Napi::Number::New(env, code));
-        result_data.Set("data",
-                        ValueConverter::ConvertPubValueToNapiObject(env, data));
+  auto invoke_method = object.Get(sKeyMethod).ToString().Utf8Value();
+  auto invoke_params = pub::ValueImplLepus(
+      ValueConverter::ConvertNapiValueToLepusValue(object.Get(sKeyParams)));
+  auto invoke_callback = [env = NapiEnv(), weak_handler, tasm = tasm_,
+                          success_callback_id, fail_callback_id](
+                             int32_t code, const pub::Value& data) {
+    auto handler = weak_handler.lock();
+    if (handler == nullptr) {
+      LOGE(
+          "LepusElement::Invoke not callback since task_handler is "
+          "null.");
+      return;
+    }
+    if (tasm == nullptr) {
+      LOGE(
+          "LepusElement::Invoke not callback since task_handler is "
+          "null.");
+      return;
+    }
+    auto result_data = Napi::Object::New(env);
+    result_data.Set("code", Napi::Number::New(env, code));
+    result_data.Set("data",
+                    ValueConverter::ConvertPubValueToNapiObject(env, data));
 
-        if (code == 0) {
-          handler->InvokeWithTaskID(success_callback_id, result_data, tasm);
-          // remove fail callback when calling invoke success avoid memory leak
-          handler->RemoveTimeTask(fail_callback_id);
-        } else {
-          handler->InvokeWithTaskID(fail_callback_id, result_data, tasm);
-          // remove success callback when calling invoke fail avoid memory leak
-          handler->RemoveTimeTask(success_callback_id);
-        }
-      });
+    if (code == 0) {
+      handler->InvokeWithTaskID(success_callback_id, result_data, tasm);
+      // remove fail callback when calling invoke success avoid memory leak
+      handler->RemoveTimeTask(fail_callback_id);
+    } else {
+      handler->InvokeWithTaskID(fail_callback_id, result_data, tasm);
+      // remove success callback when calling invoke fail avoid memory leak
+      handler->RemoveTimeTask(success_callback_id);
+    }
+  };
+
+  if (tasm_ == nullptr) {
+    element->Invoke(invoke_method, invoke_params, std::move(invoke_callback));
+    return;
+  }
+
+  auto invoke_element = [this, invoke_method = std::move(invoke_method),
+                         invoke_params = std::move(invoke_params),
+                         invoke_callback =
+                             std::move(invoke_callback)]() mutable {
+    auto* current_element = GetElement();
+    if (current_element == nullptr) {
+      LOGE("LepusElement::Invoke failed since element is null when "
+           << "invoke runs.");
+      return;
+    }
+    current_element->Invoke(invoke_method, invoke_params,
+                            std::move(invoke_callback));
+  };
+  tasm_->InvokeOrDefer(std::move(invoke_element));
 }
 }  // namespace worklet
 }  // namespace lynx

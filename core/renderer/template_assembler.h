@@ -825,6 +825,10 @@ class TemplateAssembler final : public TemplateEntryHolder,
   // Start pixel pipeline process;
   void RunPixelPipeline();
 
+  bool IsInPipelineExecution();
+
+  void InvokeOrDefer(base::closure task);
+
   // Called After Layout Ends;
   void OnLayoutAfter(PipelineLayoutData& layout_data);
 
@@ -848,6 +852,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
  private:
   void ExecuteOnLayoutReadyHooks();
   void EnsureOnLayoutReadyHooksFinish();
+  void DrainDeferredTasks();
 
   friend class TemplateBinaryReader;
   friend class TemplateBinaryReaderSSR;
@@ -1071,6 +1076,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   std::unique_ptr<lepus::LynxLepusModuleManager> lepus_module_manager_{nullptr};
 
   base::Vector<base::closure> on_layout_ready_hooks_;
+  base::Vector<base::closure> deferred_tasks_;
 
   base::OnceTaskRefptr<void> execute_on_layout_ready_hooks_{nullptr};
 
