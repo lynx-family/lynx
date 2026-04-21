@@ -1,9 +1,10 @@
 # CHANGELOG
-# 0.0.34
-* optimize lepus bytecode phase 2;
+
+# 0.0.35
+* fix customSections encoding types.
 
 # 0.0.34
-* fix customSections encoding types.
+* optimize lepus bytecode phase 2;
 
 # 0.0.33
 * fix encode JsBytecode issue.
