@@ -478,4 +478,8 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
 
   @Override
   public void setSampleSize(@NonNull Object builder, int sampleSize) {}
+
+  @Override
+  public void setImageDecodeRegion(
+      @NonNull Object builder, @Nullable android.graphics.Rect regionToDecode) {}
 }

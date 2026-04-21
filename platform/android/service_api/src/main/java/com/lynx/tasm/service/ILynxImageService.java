@@ -217,4 +217,16 @@ public interface ILynxImageService extends IServiceProvider {
    * @param sampleSize The sample size to set.
    */
   void setSampleSize(@NonNull Object builder, int sampleSize);
+
+  /**
+   * Set the decode region for this image request.
+   *
+   * <p>The builder is passed as {@link Object} to avoid directly depending on Fresco classes in
+   * service_api.
+   *
+   * @param builder The image request builder object.
+   * @param regionToDecode The region to decode in source pixel coordinates, or null to clear.
+   */
+  void setImageDecodeRegion(
+      @NonNull Object builder, @Nullable android.graphics.Rect regionToDecode);
 }
