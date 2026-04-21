@@ -342,9 +342,6 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
       return;
     }
     ImageRequestBuilder builder = ImageRequestBuilder.newBuilderWithSource(imageUri);
-    ImageDecodeOptionsBuilder decodeOptionsBuilder =
-        new ImageDecodeOptionsBuilder().setBitmapConfig(Bitmap.Config.ARGB_8888);
-    builder.setImageDecodeOptions(decodeOptionsBuilder.build());
     if (cacheString != null && cacheString.equals(CACHE_BITMAP)) {
       prefetchImageToBitmapCache(builder.build(), callerContext, loadListener);
     } else {
