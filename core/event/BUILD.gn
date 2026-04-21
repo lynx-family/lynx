@@ -27,6 +27,12 @@ event_shared_sources = [
 
 lynx_core_source_set("event") {
   sources = event_shared_sources
+  deps = [ "../renderer/trace:renderer_trace" ]
+  public_deps = [
+    "../../base/src:base_group",
+    "../../base/src:base_values",
+    "../../base/trace/native:trace_public_headers",
+  ]
 }
 
 unittest_set("event_testset") {
