@@ -12,8 +12,13 @@ namespace tasm {
 void ScrollElement::OnNodeAdded(FiberElement* child) {
   // Scroll's child should not be layout only.
   child->MarkCanBeLayoutOnly(false);
+  child->MarkAsDirectChildOfScrollElement(true);
 
   UpdateRenderRootElementIfNecessary(child);
+}
+
+void ScrollElement::OnNodeRemoved(FiberElement* child) {
+  child->MarkAsDirectChildOfScrollElement(false);
 }
 
 void ScrollElement::SetAttributeInternal(const base::String& key,

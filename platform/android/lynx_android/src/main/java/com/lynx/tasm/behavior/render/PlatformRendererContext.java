@@ -11,27 +11,35 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.react.bridge.ReadableArray;
+import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
+import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
+import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
+import com.lynx.tasm.event.EventsListener;
+import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlatformRendererContext implements TextMeasurerProvider {
@@ -217,11 +225,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         break;
       }
       case PlatformRendererType.kPage: {
+        LynxUIOwner owner = mContext.getLynxUIOwner();
+        if (owner != null) {
+          owner.setRootSign(sign);
+          owner.setNode(sign, mContext.getUIBody());
+        }
         UIBody.UIBodyView view = mRootView.get();
         if (view != null) {
           view.setWillNotDraw(false);
           view.invalidate();
           Renderer renderer = view.createRenderer(this, sign);
+          renderer.setUIHost((LynxUI) mContext.getUIBody());
           renderer.setRenderHost(view);
           view.setRenderer(renderer);
           mViewHolder.put(sign, view);
@@ -278,6 +292,32 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         }
       }
     }
+
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    if (owner != null) {
+      ReadableMap initialProps = initData != null ? initData.getProps() : null;
+      ReadableArray eventListeners = initData != null ? initData.getEventHandlers() : null;
+      ReadableArray gestureDetectors = initData != null ? initData.getGestures() : null;
+      owner.createView(
+          sign, tagName, initialProps, null, eventListeners, false, sign, gestureDetectors);
+      LynxUI ui = (LynxUI) owner.getNode(sign);
+      if (ui != null) {
+        IRendererHost host = (IRendererHost) ui.getView();
+        if (host instanceof IRendererHost) {
+          Renderer renderer = host.createRenderer(this, sign);
+          renderer.setUIHost(ui);
+          renderer.setRenderHost(host);
+          host.setRenderer(renderer);
+          mViewHolder.put(sign, host);
+          host.getView().setWillNotDraw(false);
+          host.getView().setClipChildren(false);
+          host.getView().invalidate();
+          renderer.updateAttributes(initData);
+          return;
+        }
+      }
+    }
+
     // For extended platform renderers, we need to create a custom view based on the tag name
     // Currently, we'll create a ContainerRenderer as a fallback, but in the future
     // we should look up the actual class based on the tag name
@@ -306,6 +346,12 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void insertPlatformRenderer(int parent, int child, int index) {
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    if (owner != null && owner.getNode(parent) != null && owner.getNode(child) != null) {
+      owner.insert(parent, child, index);
+      return;
+    }
+
     IRendererHost hParent = mViewHolder.get(parent);
     IRendererHost hChild = mViewHolder.get(child);
     if (hParent == null || hChild == null) {
@@ -335,8 +381,16 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     IRendererHost host = mViewHolder.get(sign);
     if (host == null) {
       LLog.d(TAG, "host renderer not found for sign: " + sign);
+      return;
     }
     host.getRenderer().setLynxFrame(needClip, left, top, left + width, top + height, dx, dy);
+
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    if (owner != null && owner.getNode(sign) != null) {
+      owner.updateLayout(
+          sign, left, top, width, height, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null, null, 0, 0);
+    }
+
     host.getView().requestLayout();
     host.getRenderer().invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
   }
@@ -347,6 +401,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     if (host == null) {
       LLog.d(TAG, "host renderer not found for sign: " + sign);
       return;
+    }
+
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner != null && owner.getNode(sign) != null) {
+      ReadableMap props = propBundle != null ? propBundle.getProps() : null;
+      Map<String, EventsListener> listeners = EventsListener.convertEventListeners(
+          propBundle != null ? propBundle.getEventHandlers() : null);
+      Map<Integer, GestureDetector> detectors = GestureDetector.convertGestureDetectors(
+          propBundle != null ? propBundle.getGestures() : null);
+      owner.updateProperties(
+          sign, false, props != null ? new StylesDiffMap(props) : null, listeners, detectors);
     }
 
     // Get the renderer

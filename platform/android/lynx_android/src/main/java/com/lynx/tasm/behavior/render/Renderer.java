@@ -15,6 +15,7 @@ import android.renderscript.Matrix4f;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
+import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.utils.TransformProps;
 
@@ -36,6 +37,7 @@ public class Renderer {
   private DisplayListApplier mDisplayListApplier = null;
   private final DisplayList mDisplayList = new DisplayList();
   private IRendererHost mRenderHost;
+  private LynxUI<ViewGroup> mUIHost;
   private TransformProps mTransformProps = null;
 
   private int mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
@@ -88,6 +90,14 @@ public class Renderer {
 
   int getSign() {
     return mSign;
+  }
+
+  public LynxUI<ViewGroup> getUIHost() {
+    return mUIHost;
+  }
+
+  public void setUIHost(LynxUI<ViewGroup> uiHost) {
+    mUIHost = uiHost;
   }
 
   public void onLayout(boolean changed, int l, int t, int r, int b) {

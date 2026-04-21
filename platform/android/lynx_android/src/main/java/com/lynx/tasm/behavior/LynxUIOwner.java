@@ -1284,6 +1284,12 @@ public class LynxUIOwner {
     return null;
   }
 
+  public void setNode(int sign, LynxBaseUI ui) {
+    if (mUIHolder != null) {
+      mUIHolder.put(sign, ui);
+    }
+  }
+
   /**
    * Finds the component by its component id.
    *
@@ -1911,6 +1917,10 @@ public class LynxUIOwner {
 
   public int getRootSign() {
     return mRootSign;
+  }
+
+  public void setRootSign(int sign) {
+    mRootSign = sign;
   }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)

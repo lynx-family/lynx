@@ -23,6 +23,9 @@ import androidx.core.math.MathUtils;
 import androidx.core.view.ViewCompat;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.behavior.render.IRendererHost;
+import com.lynx.tasm.behavior.render.PlatformRendererContext;
+import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -35,7 +38,8 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 
-public class AndroidScrollView extends NestedScrollView implements IDrawChildHookBinding {
+public class AndroidScrollView
+    extends NestedScrollView implements IDrawChildHookBinding, IRendererHost {
   public static final int HORIZONTAL = 0;
   public static final int VERTICAL = 1;
   private static final int INTERNAL_FOR_SCROLL_END_CHECK = 100; // ms
@@ -60,7 +64,7 @@ public class AndroidScrollView extends NestedScrollView implements IDrawChildHoo
   private int mMeasuredHeight = 0;
   private ArrayList<OnScrollListener> mOnScrollListenerList;
   private IDrawChildHook mDrawChildHook;
-
+  private Renderer mRenderer;
   private Runnable mScrollerEndDetectionTask;
   private int initialPositionY = 0;
   private int initialPositionX = 0;
@@ -269,7 +273,39 @@ public class AndroidScrollView extends NestedScrollView implements IDrawChildHoo
   }
 
   @Override
+  public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+    return new Renderer(platformRendererContext, sign);
+  }
+
+  @Override
+  public void setRenderer(Renderer renderer) {
+    mRenderer = renderer;
+  }
+
+  @Override
+  public Renderer getRenderer() {
+    return mRenderer;
+  }
+
+  @Override
+  public ViewGroup getView() {
+    return this;
+  }
+
+  @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
+    if (mRenderer != null && mRenderer.getUIHost() != null && mLinearLayout != null) {
+      mRenderer.getUIHost().measure();
+      mRenderer.onLayout(changed, l, t, r, b);
+      for (int i = 0; i < mLinearLayout.getChildCount(); i++) {
+        View child = mLinearLayout.getChildAt(i);
+        if (child instanceof IRendererHost) {
+          Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
+          child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+        }
+      }
+    }
+
     super.onLayout(changed, l, t, r, b);
     if (!isHorizontal) {
       final int bounceScrollRange = mBounceGestureHelper.getBounceScrollRange();
@@ -541,6 +577,18 @@ public class AndroidScrollView extends NestedScrollView implements IDrawChildHoo
   }
 
   @Override
+  protected void onDraw(Canvas canvas) {
+    if (mRenderer != null && mRenderer.getUIHost() != null) {
+      requestLayout();
+      mRenderer.getUIHost().layout();
+      mRenderer.onDraw(canvas);
+      return;
+    }
+
+    super.onDraw(canvas);
+  }
+
+  @Override
   protected void dispatchDraw(final Canvas canvas) {
     Drawable drawable = getBackground();
     if (drawable instanceof BackgroundDrawable) {
@@ -582,6 +630,24 @@ public class AndroidScrollView extends NestedScrollView implements IDrawChildHoo
       }
       super.dispatchDraw(canvas);
     }
+
+    if (mRenderer != null) {
+      mRenderer.afterDispatchDraw(canvas);
+    }
+  }
+
+  @Override
+  protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+    if (mRenderer != null) {
+      mRenderer.beforeDrawChild(canvas, child);
+    }
+
+    boolean ret = super.drawChild(canvas, child, drawingTime);
+
+    if (mRenderer != null) {
+      mRenderer.afterDrawChild(canvas, child);
+    }
+    return ret;
   }
 
   public int getContentWidth() {

@@ -10,8 +10,19 @@
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx::tasm {
+
+namespace {
+
+bool IsDirectChildOfScrollViewFromInitData(
+    const fml::RefPtr<PropBundle>& init_data) {
+  return init_data != nullptr &&
+         init_data->Contains(kDirectChildOfScrollViewInitDataKey);
+}
+
+}  // namespace
 
 PlatformRendererAndroid::~PlatformRendererAndroid() { CleanupAndroidView(); }
 
@@ -74,12 +85,16 @@ void PlatformRendererAndroid::InitializeAndroidView(
   if (!context_) {
     return;
   }
-  if (type_ == PlatformRendererType::kUnknown && !tag_name_.empty()) {
+  if (ShouldCreatePlatformExtendedRenderer(init_data)) {
+    is_platform_extended_renderer_ = true;
+    const base::String extended_renderer_tag_name =
+        GetExtendedRendererTagName();
     NativePropBundle* native_bundle =
         static_cast<NativePropBundle*>(init_data.get());
 
     if (!native_bundle) {
-      context_->CreatePlatformExtendedRenderer(GetId(), tag_name_, nullptr);
+      context_->CreatePlatformExtendedRenderer(
+          GetId(), extended_renderer_tag_name, nullptr);
       return;
     }
     // Create PropBundleAndroid from NativePropBundle
@@ -89,12 +104,32 @@ void PlatformRendererAndroid::InitializeAndroidView(
     // Get the Java object from PropBundleAndroid
     jobject j_prop_bundle = prop_bundle_android.jni_object();
 
-    context_->CreatePlatformExtendedRenderer(GetId(), tag_name_, j_prop_bundle);
+    context_->CreatePlatformExtendedRenderer(
+        GetId(), extended_renderer_tag_name, j_prop_bundle);
 
   } else {
     // This is a standard platform renderer with a known type
     context_->CreatePlatformRenderer(GetId(), type_);
   }
+}
+
+bool PlatformRendererAndroid::ShouldCreatePlatformExtendedRenderer(
+    const fml::RefPtr<PropBundle>& init_data) const {
+  if (IsDirectChildOfScrollViewFromInitData(init_data)) {
+    return true;
+  }
+  if (type_ == PlatformRendererType::kText ||
+      type_ == PlatformRendererType::kImage ||
+      type_ == PlatformRendererType::kView) {
+    return false;
+  }
+  if (type_ == PlatformRendererType::kPage) {
+    return false;
+  }
+  if (type_ != PlatformRendererType::kUnknown) {
+    return true;
+  }
+  return !tag_name_.empty();
 }
 
 void PlatformRendererAndroid::CleanupAndroidView() {

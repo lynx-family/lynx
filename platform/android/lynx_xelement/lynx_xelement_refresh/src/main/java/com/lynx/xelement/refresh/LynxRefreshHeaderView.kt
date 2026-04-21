@@ -6,7 +6,6 @@ package com.lynx.xelement.refresh
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.view.View
 import com.lynx.tasm.behavior.ui.view.AndroidView
 import com.scwang.smart.refresh.layout.api.RefreshHeader
 import com.scwang.smart.refresh.layout.api.RefreshKernel
@@ -19,7 +18,7 @@ class LynxRefreshHeaderView(context: Context?) : AndroidView(context), RefreshHe
   override fun onStateChanged(refreshLayout: RefreshLayout, oldState: RefreshState, newState: RefreshState) {
   }
 
-  override fun getView(): View = this
+  override fun getView(): AndroidView = this
 
   override fun getSpinnerStyle(): SpinnerStyle = SpinnerStyle.Translate
 

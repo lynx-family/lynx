@@ -20,6 +20,7 @@
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/style/transform/matrix44.h"
 
 namespace lynx {
@@ -41,8 +42,12 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
     return;
   }
 
-  if ((element()->is_view() || element()->is_text() || element()->is_image()) &&
-      element()->TendToFlatten()) {
+  const bool can_flatten_without_platform_renderer =
+      (!element()->is_direct_child_of_scroll_element() &&
+       (element()->is_text() || element()->is_image() ||
+        element()->is_view())) &&
+      element()->TendToFlatten();
+  if (can_flatten_without_platform_renderer) {
     // If the fragment is a view, text, or image, and it tends to flatten,
     // then it does not need to be layerized.
     return;
@@ -63,7 +68,21 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   }
 
   // TODO(zhongyr): abstract one behavior for layerize.
-  behavior_->CreatePlatformRenderer(init_data);
+  fml::RefPtr<PropBundle> actual_init_data = init_data;
+  if (element()->is_direct_child_of_scroll_element()) {
+    if (actual_init_data == nullptr) {
+      bool use_map_buffer =
+          element()->element_manager()->GetEnableUseMapBuffer();
+      actual_init_data =
+          element()
+              ->element_manager()
+              ->GetPropBundleCreator()
+              ->CreatePropBundle(use_map_buffer,
+                                 element()->EnableFragmentLayerRender());
+    }
+    actual_init_data->SetProps(kDirectChildOfScrollViewInitDataKey, true);
+  }
+  behavior_->CreatePlatformRenderer(actual_init_data);
   has_platform_renderer_ = true;
 }
 

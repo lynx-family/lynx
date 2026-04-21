@@ -46,6 +46,7 @@ static constexpr const char kElementXScrollViewTag[] = "x-scroll-view";
 static constexpr const char kElementXNestedScrollViewTag[] =
     "x-nested-scroll-view";
 static constexpr const char kElementListTag[] = "list";
+static constexpr const char kElementListItemTag[] = "list-item";
 static constexpr const char kElementNoneElementTag[] = "none";
 static constexpr const char kElementWrapperElementTag[] = "wrapper";
 static constexpr const char kElementInlineTextTag[] = "inline-text";
@@ -124,6 +125,8 @@ static constexpr const char kPipelineID[] = "pipelineID";
 static constexpr const char kPipelineOrigin[] = "pipelineOrigin";
 static constexpr const char kPipelineNeedTimestamps[] = "needTimestamps";
 static constexpr const char kPatchOptions[] = "patchOptions";
+static constexpr const char kDirectChildOfScrollViewInitDataKey[] =
+    "__lynx_is_direct_child_of_scroll_view";
 
 // Constant string for worklet
 static constexpr const char* kWorklet = "worklet";
