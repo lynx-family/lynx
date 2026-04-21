@@ -533,9 +533,10 @@ LEPUSRuntimeData::LEPUSRuntimeData(bool disable_tracing_gc, int runtime_mode) {
 }
 
 LEPUSRuntimeData::~LEPUSRuntimeData() {
-  QuickContextEnvWrapper::GetFromJsContext(lepus_context_)->DetachEnv();
+  auto* wrapper = QuickContextEnvWrapper::GetFromJsContext(lepus_context_);
   LEPUS_FreeContext(lepus_context_);
   LEPUS_FreeRuntime(runtime_);
+  wrapper->DetachEnv();
 }
 
 QuickContext::QuickContext(runtime::MTSRuntime* runtime_private,
