@@ -6,7 +6,7 @@
     "strict": true,
     "outDir": "lib",
     "typeRoots": ["./node_modules/@types", "./types"],
-    "types": ["./types/index"],
+    "types": [],
     "jsx": "preserve",
     "module": "esnext",
     "moduleResolution": "Node",
