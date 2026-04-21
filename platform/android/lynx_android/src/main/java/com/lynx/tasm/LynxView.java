@@ -74,6 +74,7 @@ import java.util.concurrent.Callable;
 public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   protected LynxTemplateRender mLynxTemplateRender;
   private boolean mCanDispatchTouchEvent;
+  private boolean mConsumeSlideEvent = false;
   protected boolean mDispatchTouchEventToDev = true;
   private final static String VIEW_TAG = "lynxview";
   private final static String TAG = "LynxView";
@@ -1361,6 +1362,8 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
         // If consumed && mLynxTemplateRender.blockNativeEvent(ev), call
         // getParent().requestDisallowInterceptTouchEvent(true) to consume event;
         if (consumed && mLynxTemplateRender.blockNativeEvent(ev) && getParent() != null) {
+          LLog.i(
+              "Lynx", "LynxView dispatchTouchEvent blockNativeEvent true for lynx " + hashCode());
           getParent().requestDisallowInterceptTouchEvent(true);
         }
       }
@@ -1371,6 +1374,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
               LogBoxLogLevel.Info.ordinal());
         }
         mCanDispatchTouchEvent = false;
+        mConsumeSlideEvent = false;
       }
 
       // If consumed, let ViewGroup call onTouchEvent. Otherwise, return false.
@@ -1383,7 +1387,12 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
         // If not consumeSlideEvent, call super.dispatchTouchEvent let other view consume the
         // events. Otherwise, return true such that only LynxView can consume the events, which
         // means only the consume-slide-event ui can respond the slide events.
-        if (mLynxTemplateRender.consumeSlideEvent(ev)) {
+        if (!mConsumeSlideEvent) {
+          mConsumeSlideEvent = mLynxTemplateRender.consumeSlideEvent(ev);
+        }
+        if (mConsumeSlideEvent) {
+          LLog.i(
+              "Lynx", "LynxView dispatchTouchEvent consumeSlideEvent true for lynx " + hashCode());
           return true;
         } else {
           return super.dispatchTouchEvent(ev);
