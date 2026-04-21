@@ -70,6 +70,54 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+
+bool ContainsLayoutOnlyStyle(const StyleMap &resolved_style_map) {
+  // TODO(zhouzhitao): STUB. Implement layout-only property detection before
+  // enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Scans the resolved style map to determine whether any property is a
+  // layout-only style (e.g., width, height, flex properties). Used in the
+  // new pipeline on first render to decide if a platform update is needed
+  // even when the computed style itself has no diffs. Input: resolved style
+  // map. Output: true if at least one layout-only property is present.
+  return false;
+}
+
+bool DiffCommittedLayoutOnlyStyles(
+    const starlight::ComputedCSSStyle &previous_final_style,
+    const StyleMap &resolved_style_map, StyleMap &changed_layout_only_styles,
+    base::InlineVector<CSSPropertyID, 16> &reset_layout_only_ids) {
+  // TODO(zhouzhitao): STUB. Implement diffing and output population before
+  // enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Computes the diff between previously committed layout-only styles and
+  // the newly resolved style map. Populates `changed_layout_only_styles`
+  // with properties whose values changed, and `reset_layout_only_ids`
+  // with properties that are no longer present. Used in the new pipeline
+  // to detect whether layout-only properties require replaying side effects.
+  // Side effects: clears and fills the two output containers.
+  // Output: true if any layout-only property changed or was reset.
+  return false;
+}
+
+}  // namespace
+
+FiberElement::NewPipelineStyleResolveResult FiberElement::ResolveComputedStyles(
+    const starlight::ComputedCSSStyle *previous_final_style,
+    double old_font_size, double old_root_font_size) {
+  // TODO(zhouzhitao): STUB. This must return a fully-populated
+  // `NewPipelineStyleResolveResult` (non-null `final_style` or
+  // `final_style_uses_platform_style == true`, and a valid
+  // `previous_final_style`) before enabling
+  // `ElementManager::EnableNewStylingPipeline()`. The caller currently
+  // dereferences these fields unconditionally.
+  // Resolves the base computed style by collecting matched CSS rules,
+  // inline styles, and attribute styles. Produces a base ComputedCSSStyle
+  // and a resolved_style_map containing all explicit declarations.
+  // The base style is returned as the final style since animation sampling
+  // is stripped from this barebone pipeline.
+  return {};
+}
+
 FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
     : FiberElement(manager, tag, kInvalidCssId) {}
 
@@ -124,6 +172,8 @@ FiberElement::FiberElement(const FiberElement &element,
   flush_required_ = element.flush_required_;
   full_raw_inline_style_ = element.full_raw_inline_style_;
   current_raw_inline_styles_ = element.current_raw_inline_styles_;
+  current_raw_inline_custom_properties_ =
+      element.current_raw_inline_custom_properties_;
   extreme_parsed_styles_ = element.extreme_parsed_styles_;
   inherited_styles_ = element.inherited_styles_;
   reset_inherited_ids_ = element.reset_inherited_ids_;
@@ -1022,10 +1072,105 @@ void FiberElement::ResolveSimpleStyles() {
   dirty_ &= ~(kDirtyStyleObjects | kDirtyDynamicStyleObjects);
 }
 
+void FiberElement::ResolveCSSStylesNewPipeline(bool &need_update) {
+  // TODO(zhouzhitao): New styling pipeline is currently incomplete and
+  // contains multiple stubbed functions (e.g. `ResolveComputedStyles`,
+  // `StyleResolver::ResolveBaseStyle`, `StyleResolver::ComputeStyleDiff`).
+  // Do NOT enable `ElementManager::EnableNewStylingPipeline()` until all
+  // these stubs are fully implemented and validated.
+  if (dirty_ & (kDirtyStyle | kDirtyRefreshCSSVariables |
+                kDirtyPropagateInherited | kDirtyFontSize)) {
+    const auto *old_final_style = computed_css_style();
+    const auto old_font_size = old_final_style->GetFontSize();
+    const auto old_root_font_size = old_final_style->GetRootFontSize();
+    bool first_render = (dirty_ & kDirtyCreated) > 0;
+    auto resolved_styles = ResolveComputedStyles(old_final_style, old_font_size,
+                                                 old_root_font_size);
+    StyleMap changed_layout_only_styles;
+    base::InlineVector<CSSPropertyID, 16> reset_layout_only_ids;
+
+    // Compute diff to determine if platform update is needed
+    bool style_changed = false;
+    if (first_render) {
+      style_changed =
+          resolved_styles.final_style->IsDirty() ||
+          ContainsLayoutOnlyStyle(resolved_styles.resolved_style_map);
+    } else {
+      style_changed = style_resolver_.ComputeStyleDiff(
+          *resolved_styles.final_style, *resolved_styles.previous_final_style);
+      style_changed = DiffCommittedLayoutOnlyStyles(
+                          *resolved_styles.previous_final_style,
+                          resolved_styles.resolved_style_map,
+                          changed_layout_only_styles, reset_layout_only_ids) ||
+                      style_changed;
+    }
+
+    if (!first_render) {
+      auto custom_properties_changed = [old_final_style, &resolved_styles]() {
+        const auto *new_raw_custom_properties =
+            resolved_styles.final_style->GetRawCustomProperties();
+        const auto *old_raw_custom_properties =
+            old_final_style->GetRawCustomProperties();
+        const auto *new_custom_properties =
+            resolved_styles.final_style->GetCustomProperties();
+        const auto *old_custom_properties =
+            old_final_style->GetCustomProperties();
+        return (new_raw_custom_properties == nullptr) !=
+                   (old_raw_custom_properties == nullptr) ||
+               (new_raw_custom_properties != nullptr &&
+                old_raw_custom_properties != nullptr &&
+                *new_raw_custom_properties != *old_raw_custom_properties) ||
+               (new_custom_properties == nullptr) !=
+                   (old_custom_properties == nullptr) ||
+               (new_custom_properties != nullptr &&
+                old_custom_properties != nullptr &&
+                *new_custom_properties != *old_custom_properties);
+      }();
+
+      if (custom_properties_changed) {
+        HandleBeforeFlushActionsTask(
+            [this]() { RecursivelyMarkCustomPropertiesDirty(); },
+            kFlagGreedyParallel | kFlagLevelOrderParallel);
+      }
+    }
+
+    if (style_changed) {
+      need_update = true;
+      resolved_styles.CommitPlatformStyleIfNeeded(platform_css_style_,
+                                                  style_changed);
+      // Commit font context unconditionally from final computed style.
+      // This ensures layout bundle root_node_font_size is in sync
+      // before any rem/em-sensitive layout styles are replayed.
+      CommitFontContext(*platform_css_style_, old_font_size,
+                        old_root_font_size);
+      ReplayCommitSideEffects(*platform_css_style_,
+                              resolved_styles.resolved_style_map);
+      if (!first_render) {
+        for (const auto &[id, value] : changed_layout_only_styles) {
+          ReplayChangedStyleSideEffect(id, value);
+        }
+      }
+    }
+
+    resolved_styles.PersistBaseStyle(base_css_style_, style_changed);
+
+    // Clear dirty flags consumed by the new styling pipeline.
+    dirty_ &= ~(kDirtyStyle | kDirtyRefreshCSSVariables |
+                kDirtyPropagateInherited | kDirtyFontSize);
+  }
+}
+
 void FiberElement::ResolveCSSStyles(
     StyleMap &parsed_styles,
     base::InlineVector<CSSPropertyID, 16> &reset_style_ids, bool &need_update,
     bool &force_use_current_parsed_style_map) {
+  const bool enable_new_styling_pipeline =
+      element_manager()->EnableNewStylingPipeline();
+  if (enable_new_styling_pipeline) {
+    ResolveCSSStylesNewPipeline(need_update);
+    return;
+  }
+
   if (dirty_ & kDirtyStyle) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_STYLE,
                 [this](lynx::perfetto::EventContext ctx) {
@@ -1531,6 +1676,41 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
   VerifyKeyframePropsChangedHandling();
 
   return []() {};
+}
+
+void FiberElement::ReplayChangedStyleSideEffect(CSSPropertyID id,
+                                                const CSSValue &value) {
+  // Replays the side effects of a changed style property in the new pipeline.
+  // Updates layout node styles for layout-only and layout-wanted properties,
+  // checks fixed/sticky positioning, updates layout tree dirtiness, and
+  // manages flattening flags (layout_only_props_, non_flatten_attrs_).
+  // Called for each changed property during commit side effects replay.
+  // Inputs: property ID and its new computed value. Side effects: mutates
+  // layout node, element flags, and may request layout.
+}
+
+void FiberElement::CommitFontContext(
+    const starlight::ComputedCSSStyle &computed_style, double old_font_size,
+    double old_root_font_size) {
+  // Commits font-size and root-font-size changes after the final computed
+  // style is resolved. Notifies animation system of em/rem unit changes so
+  // that animations can resample with updated units. Propagates font sizes
+  // to all elements and the layout node. Called unconditionally during the
+  // new pipeline commit to ensure layout bundle font context is in sync.
+  // Inputs: final computed style, old font sizes. Side effects: updates
+  // animation units, element font sizes, and layout node font sizes.
+}
+
+void FiberElement::ReplayCommitSideEffects(
+    const starlight::ComputedCSSStyle &computed_style,
+    const StyleMap &resolved_style_map) {
+  // Replays all commit side effects for the new pipeline by iterating over
+  // changed and reset properties in the final computed style. On first render,
+  // processes all explicit resolved styles plus inherited values. On subsequent
+  // renders, processes only diffs, calling ReplayChangedStyleSideEffect or
+  // ReplayResetStyleSideEffect as appropriate. Ensures layout nodes, platform
+  // props bundles, and element flags stay synchronized with the resolved style.
+  // Inputs: final computed style, resolved style map, first-render flag.
 }
 
 void FiberElement::FlushActionsAsRoot() {
@@ -2561,6 +2741,16 @@ void FiberElement::RecursivelyMarkChildrenCSSVariableDirty(
   }
 }
 
+void FiberElement::RecursivelyMarkCustomPropertiesDirty() {
+  for (const auto &child : scoped_children_) {
+    auto *fiber_child = static_cast<FiberElement *>(child.get());
+    if (!fiber_child->is_raw_text()) {
+      fiber_child->MarkStyleDirty(false);
+    }
+    fiber_child->RecursivelyMarkCustomPropertiesDirty();
+  }
+}
+
 void FiberElement::EnsureSLNode() {
   if (EnableLayoutInElementMode() && sl_node_ == nullptr) {
     sl_node_ = std::make_unique<SLNode>(
@@ -2820,6 +3010,11 @@ void FiberElement::UpdateCSSVariable(
 }
 
 void FiberElement::SetFontSize(const tasm::CSSValue &value) {
+  SetFontSize(value, computed_css_style());
+}
+
+void FiberElement::SetFontSize(const tasm::CSSValue &value,
+                               starlight::ComputedCSSStyle *target_style) {
   base::flex_optional<float> result;
   if (!value.IsEmpty()) {
     CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, value, false);
@@ -2855,8 +3050,8 @@ void FiberElement::SetFontSize(const tasm::CSSValue &value) {
     }
 
     if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
-      computed_css_style()->SetValue(
-          kPropertyIDFontSize, CSSValue(*result, CSSValuePattern::NUMBER));
+      target_style->SetValue(kPropertyIDFontSize,
+                             CSSValue(*result, CSSValuePattern::NUMBER));
     }
     // TODO(ZHOUZHITAO): Figure out why need to determine whether it is a page
     if (is_page() && !is_greedy_parallel_flush()) {
@@ -2996,6 +3191,7 @@ void FiberElement::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARSE_RAW_INLINE_STYLES);
   auto &configs = element_manager_->GetCSSParserConfigs();
   const auto &str = full_raw_inline_style_.str();
+  current_raw_inline_custom_properties_->clear();
   data_model()->MoveAndClearCSSInlineVariables(changed_css_vars);
 
   ParseStyleDeclarationList(
@@ -3010,6 +3206,9 @@ void FiberElement::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
           current_raw_inline_styles_->insert_or_assign(id, std::move(value));
         } else if (IsCSSInlineVariablesEnabled() &&
                    CSSProperty::IsCustomProperty(key_start, key_length)) {
+          current_raw_inline_custom_properties_->insert_or_assign(
+              base::String(key_start, key_length),
+              base::String(value_start, value_length));
           data_model()->UpdateCSSInlineVariables(
               base::String(key_start, key_length),
               base::String(value_start, value_length));

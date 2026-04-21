@@ -927,7 +927,23 @@ class Element : public lepus::RefCounted,
     return platform_css_style_.get();
   }
 
+  /**
+   * @brief Returns the base computed CSS style (before animation sampling).
+   */
+  inline starlight::ComputedCSSStyle* base_css_style() {
+    return base_css_style_.get();
+  }
+  inline const starlight::ComputedCSSStyle* base_css_style() const {
+    return base_css_style_.get();
+  }
+
   starlight::ComputedCSSStyle* GetParentComputedCSSStyle();
+
+  /**
+   * @brief Returns the parent's base computed CSS style, skipping wrapper
+   * nodes.
+   */
+  starlight::ComputedCSSStyle* GetParentBaseComputedCSSStyle();
 
   void SetDataToNativeKeyframeAnimator(bool from_resume = false);
   void SetDataToNativeTransitionAnimator();
@@ -1160,6 +1176,14 @@ class Element : public lepus::RefCounted,
   // Check has_value() before usage to avoid unintentional construction.
   const auto& GetCurrentRawInlineStyles() const {
     return current_raw_inline_styles_;
+  }
+
+  /**
+   * @brief Returns the current raw inline custom properties (CSS variables).
+   */
+  const base::auto_create_optional<CSSVariableMap>&
+  GetCurrentRawInlineCustomProperties() const {
+    return current_raw_inline_custom_properties_;
   }
 
   LYNX_EXPORT_FOR_DEVTOOL const base::String& GetRawInlineStyles();
@@ -1468,6 +1492,7 @@ class Element : public lepus::RefCounted,
   // relevant to hierarchy
   Element* parent_{nullptr};
 
+  std::unique_ptr<starlight::ComputedCSSStyle> base_css_style_;
   std::unique_ptr<starlight::ComputedCSSStyle> platform_css_style_;
 
   // for animation
@@ -1548,6 +1573,8 @@ class Element : public lepus::RefCounted,
   base::auto_create_optional<StyleMap> parsed_dynamic_styles_map_;
   base::auto_create_optional<StyleMap> styles_from_attributes_;
   base::auto_create_optional<RawLepusStyleMap> current_raw_inline_styles_;
+  base::auto_create_optional<CSSVariableMap>
+      current_raw_inline_custom_properties_;
   base::auto_create_optional<StyleMap> extreme_parsed_styles_;
   base::auto_create_optional<StyleMap> inherited_styles_;
   base::auto_create_optional<StyleMap> updated_inherited_styles_;

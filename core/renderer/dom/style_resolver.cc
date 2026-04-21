@@ -1250,5 +1250,319 @@ void StyleResolver::ParsePseudoCSSTokensForFiber(FiberElement* element,
   }
 }
 
+std::unique_ptr<starlight::ComputedCSSStyle>
+StyleResolver::CreateInitialComputedStyle(
+    const starlight::ComputedCSSStyle* parent_style,
+    const starlight::ComputedCSSStyle* previous_style) {
+  // TODO(zhouzhitao): STUB. Must allocate and prepare a valid shell style
+  // before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Creates a fresh ComputedCSSStyle shell for the new styling pipeline.
+  // Allocates the underlying platform style and then prepares it by
+  // initializing the shell (viewport, font-scale, etc.) and inheriting from
+  // the parent style. Used as the starting point for both base-style and
+  // final-style resolution.
+  return nullptr;
+}
+
+void StyleResolver::PrepareInitialComputedStyle(
+    starlight::ComputedCSSStyle& style,
+    const starlight::ComputedCSSStyle* parent_style,
+    const starlight::ComputedCSSStyle* previous_style) {
+  // TODO(zhouzhitao): STUB. Must initialize and inherit the computed style
+  // correctly before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Prepares a newly created ComputedCSSStyle for style resolution in the new
+  // pipeline. Initializes the style shell (if not reusing the current style)
+  // and inherits font-size, custom properties, and normal properties from the
+  // parent. Syncs the root font-size from the live page root so rem units
+  // resolve correctly.
+}
+
+void StyleResolver::ResolveBaseStyleInPlace(
+    starlight::ComputedCSSStyle& style,
+    const starlight::ComputedCSSStyle* parent_style,
+    const starlight::ComputedCSSStyle* previous_computed_style,
+    StyleMap* resolved_style_map) {
+  // TODO(zhouzhitao): STUB. Must fully resolve base style and optionally
+  // populate `resolved_style_map` before enabling
+  // `ElementManager::EnableNewStylingPipeline()`.
+  // Resolves the base (static) ComputedCSSStyle for an element in the new
+  // pipeline, mutating the provided style in-place. Prepares the initial
+  // style, collects matched CSS rules, analyzes the matched result into a
+  // resolved StyleMap (including custom properties and logical properties),
+  // and applies the resolved map. Optionally outputs the resolved_style_map
+  // for diffing or caching.
+}
+
+std::unique_ptr<starlight::ComputedCSSStyle> StyleResolver::ResolveBaseStyle(
+    const starlight::ComputedCSSStyle* parent_style,
+    const starlight::ComputedCSSStyle* previous_computed_style,
+    StyleMap* resolved_style_map) {
+  // TODO(zhouzhitao): STUB. Must return a fully resolved base style before
+  // enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Resolves the base (static) ComputedCSSStyle for an element in the new
+  // pipeline, returning a newly allocated style. Creates the initial shell,
+  // collects matched rules, analyzes and resolves all inputs (matched,
+  // inline, attribute styles plus custom properties), and applies them.
+  // Optionally outputs the resolved_style_map.
+  return nullptr;
+}
+
+std::unique_ptr<starlight::ComputedCSSStyle>
+StyleResolver::RebuildFinalStyleFromParent(
+    const starlight::ComputedCSSStyle* parent_style,
+    const starlight::ComputedCSSStyle* previous_style,
+    const CustomPropertiesMap* sampled_custom_property_overrides,
+    const StyleMap* sampled_property_overrides, StyleMap* resolved_style_map) {
+  // TODO(zhouzhitao): STUB. Must rebuild final style with animation/transition
+  // sampling applied before enabling
+  // `ElementManager::EnableNewStylingPipeline()`. Rebuilds the final
+  // ComputedCSSStyle from a parent style in the new pipeline, incorporating
+  // sampled animation / transition overrides. Creates an initial style
+  // inherited from the parent, re-collects and re-analyzes matched rules (with
+  // overrides taken into account), applies the resolved map including the
+  // sampled overrides, and optionally returns the resolved style map. This is
+  // used when dynamic style changes require a full rebuild.
+  return nullptr;
+}
+
+std::unique_ptr<starlight::ComputedCSSStyle>
+StyleResolver::BuildFinalStyleFromBaseFastPath(
+    const starlight::ComputedCSSStyle& base_style,
+    const StyleMap* sampled_property_overrides, StyleMap* resolved_style_map) {
+  // TODO(zhouzhitao): STUB. Must build final style on top of base style before
+  // enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Fast-path final style construction in the new pipeline when the base style
+  // is already known and only sampled normal-property overrides need to be
+  // applied. Copies the base style into a new shell, merges the override map
+  // into the resolved_style_map, and applies high-priority and standard
+  // properties from the overrides. Avoids re-collecting matched rules.
+  return nullptr;
+}
+
+void StyleResolver::InitializeStyleShell(
+    starlight::ComputedCSSStyle& shell_style,
+    const starlight::ComputedCSSStyle* previous_style) {
+  // TODO(zhouzhitao): STUB. Must initialize platform/environment constants
+  // before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Initializes a fresh ComputedCSSStyle shell with platform and environment
+  // constants for the new pipeline. Sets viewport dimensions, z-index support,
+  // font-scale behavior, default font-size, layout units, and CSS parser
+  // configs. This establishes the baseline context before inheritance or
+  // property application.
+}
+
+void StyleResolver::InheritParentStyle(
+    starlight::ComputedCSSStyle& computed_style,
+    const starlight::ComputedCSSStyle* parent_style) {
+  // TODO(zhouzhitao): STUB. Must implement inheritance (font/custom/normal
+  // properties) before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Inherits style values from the parent ComputedCSSStyle in the new pipeline.
+  // Copies the parent’s font-size (as the inherited font-size) and root
+  // font-size, inherits custom properties, and optionally inherits normal
+  // properties and resolved values based on the element’s CSS inheritance
+  // configuration and the dynamic CSS custom inherit list.
+}
+
+void StyleResolver::CollectMatchedRules(CSSFragment* style_sheet) {
+  // TODO(zhouzhitao): STUB. Must collect matched rules into TLS vectors before
+  // enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Collects matched CSS rules for the current element in the new pipeline.
+  // Clears the thread-local matched_style_map and matched_variable_map,
+  // then invokes the legacy CSS matching path (selector-based or fiber-based)
+  // to populate them. These TLS vectors are consumed later by
+  // AnalyzeMatchedResult and cleared after cascading-affecting properties are
+  // fully applied.
+}
+
+void StyleResolver::AnalyzeMatchedResult(
+    starlight::ComputedCSSStyle& new_style, StyleMap& result,
+    size_t base_reserving_size,
+    const CustomPropertiesMap* custom_property_overrides,
+    const StyleMap* property_overrides) {
+  // TODO(zhouzhitao): STUB. Must resolve specified styles and custom
+  // properties (including var() resolution) before enabling
+  // `ElementManager::EnableNewStylingPipeline()`.
+  // Analyzes the collected matched CSS rules and produces a fully resolved
+  // StyleMap for the new pipeline. Orchestrates three phases: collecting
+  // static style inputs (matched, inline, attribute styles and custom
+  // properties), finalizing custom properties (including overrides), and
+  // resolving all collected inputs into the result map. The result is then
+  // ready for ApplyResolvedStyleMap.
+}
+
+void StyleResolver::CollectStaticStyleInputs(
+    starlight::ComputedCSSStyle& new_style,
+    NewPipelineCollectedStyleInputs& inputs, size_t base_reserving_size) {
+  // TODO(zhouzhitao): STUB. Must collect matched/inline/attribute specified
+  // styles and custom properties before enabling
+  // `ElementManager::EnableNewStylingPipeline()`.
+  // Collects all static (non-animated) style inputs for the new pipeline.
+  // Processes raw inline styles, then gathers matched specified styles,
+  // matched custom properties, inline specified styles, attribute specified
+  // styles, inline custom properties, and holder custom properties into the
+  // inputs structure. These inputs are later resolved and applied.
+}
+
+void StyleResolver::FinalizeCustomProperties(
+    starlight::ComputedCSSStyle& new_style,
+    const NewPipelineCollectedStyleInputs& inputs,
+    const CustomPropertiesMap* custom_property_overrides,
+    const StyleMap* property_overrides) {
+  // TODO(zhouzhitao): STUB. Must apply overrides and resolve var() references
+  // before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Finalizes custom properties for the new pipeline. Applies any sampled
+  // custom property overrides onto the style, calls FinalizeCustomProperties
+  // to resolve var() references, and sets the element-manager-level flag
+  // indicating whether CSS variables are required based on the presence of
+  // variable tokens in matched, inline, attribute, or override styles.
+}
+
+void StyleResolver::ResolveCollectedStyleInputs(
+    const starlight::ComputedCSSStyle& new_style,
+    NewPipelineCollectedStyleInputs& inputs, StyleMap& result,
+    const StyleMap* property_overrides) {
+  // TODO(zhouzhitao): STUB. Must merge and resolve all inputs into `result`
+  // before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Resolves all collected static style inputs into a single StyleMap for the
+  // new pipeline. Merges matched, inline, and attribute specified styles
+  // (with CSS variable substitution) into the result, then overlays any
+  // sampled property overrides. This produces the definitive map that
+  // ApplyResolvedStyleMap consumes.
+}
+
+void StyleResolver::CollectMatchedSpecifiedStyles(
+    starlight::ComputedCSSStyle& new_style, StyleMap& result,
+    size_t base_reserving_size) {
+  // TODO(zhouzhitao): STUB. Must collect matched specified styles and resolve
+  // logical properties before enabling
+  // `ElementManager::EnableNewStylingPipeline()`. Collects specified styles
+  // from the matched CSS rules (thread-local matched_style_map) for the new
+  // pipeline. Reserves capacity based on the matched map sizes plus the inline
+  // style count, then iterates the matched styles and inserts each entry into
+  // the result with logical properties resolved to physical ones.
+}
+
+void StyleResolver::CollectInlineSpecifiedStyles(
+    starlight::ComputedCSSStyle& new_style, StyleMap& result) {
+  // TODO(zhouzhitao): STUB. Must parse inline styles (including var() tokens
+  // when enabled) before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Collects inline specified styles from the element’s current raw inline
+  // styles for the new pipeline. Parses variable tokens when CSS inline
+  // variables are enabled, otherwise processes values through UnitHandler.
+  // Each parsed entry is inserted into the result with logical properties
+  // resolved to physical ones.
+}
+
+void StyleResolver::CollectAttributeSpecifiedStyles(
+    starlight::ComputedCSSStyle& new_style, StyleMap& result) {
+  // TODO(zhouzhitao): STUB. Must collect attribute-backed specified styles
+  // before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Collects specified styles committed from element attributes for the new
+  // pipeline. Reads the committed attribute styles (e.g., from JSX style
+  // attributes) and inserts each entry into the result with logical
+  // properties resolved to physical ones.
+}
+
+void StyleResolver::CollectMatchedCustomProperties(
+    starlight::ComputedCSSStyle& new_style) {
+  // TODO(zhouzhitao): STUB. Must collect matched custom properties into
+  // ComputedCSSStyle before enabling
+  // `ElementManager::EnableNewStylingPipeline()`. Collects custom property
+  // declarations from the matched CSS rules for the new pipeline. Iterates the
+  // thread-local matched_variable_map, parses each variable value with
+  // CSSStringParser, and stores the result on the ComputedCSSStyle via
+  // SetCustomProperty.
+}
+
+void StyleResolver::CollectInlineCustomProperties(
+    starlight::ComputedCSSStyle& new_style) {
+  // TODO(zhouzhitao): STUB. Must collect inline custom properties before
+  // enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Collects inline custom property declarations from the element for the new
+  // pipeline. When CSS inline variables are enabled, reads the current raw
+  // inline custom properties, parses each with CSSStringParser, and stores
+  // them on the ComputedCSSStyle via SetCustomProperty.
+}
+
+void StyleResolver::CollectHolderCustomProperties(
+    starlight::ComputedCSSStyle& new_style) {
+  // TODO(zhouzhitao): STUB. Must collect AttributeHolder-level custom
+  // properties before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Collects custom property declarations from the element’s AttributeHolder
+  // data model for the new pipeline. Reads the holder-level CSS inline
+  // variables, parses each with CSSStringParser, and stores them on the
+  // ComputedCSSStyle via SetCustomProperty.
+}
+
+void StyleResolver::ResolveSpecifiedStyleMap(
+    const starlight::ComputedCSSStyle& new_style, StyleMap& source,
+    StyleMap& result) {
+  // TODO(zhouzhitao): STUB. Must resolve var() references and re-parse values
+  // into `result` before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Resolves a source StyleMap into the result StyleMap for the new pipeline.
+  // For each entry, if the value is a CSS variable reference (var()),
+  // substitutes it using the ComputedCSSStyle’s finalized custom properties
+  // and re-parses the resolved value through UnitHandler. Non-variable values
+  // are moved directly into the result.
+}
+
+void StyleResolver::ApplyCascadingAffectingProperties(
+    starlight::ComputedCSSStyle& style, StyleMap& map,
+    const CustomPropertiesMap* custom_property_overrides,
+    const StyleMap* property_overrides) {
+  // TODO(zhouzhitao): STUB. Must handle direction and cascading-affecting
+  // re-resolution before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Applies cascading-affecting properties (e.g., direction) in the new
+  // pipeline. If the direction property changes, updates the style and
+  // re-triggers AnalyzeMatchedResult so that direction-dependent selectors
+  // and logical properties are re-evaluated. Clears the matched rule caches
+  // only after all cascading-affecting properties are stable.
+}
+
+void StyleResolver::ApplyHighPriorityProperties(
+    starlight::ComputedCSSStyle& style, const StyleMap& style_map) {
+  // TODO(zhouzhitao): STUB. Must apply high-priority properties (e.g.
+  // font-size) before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Applies high-priority properties (e.g., font-size) in the new pipeline.
+  // These properties are resolved before standard properties because they
+  // establish context (such as the em unit baseline) needed by downstream
+  // property resolution.
+}
+
+void StyleResolver::ApplyStandardProperties(starlight::ComputedCSSStyle& style,
+                                            const StyleMap& style_map) {
+  // TODO(zhouzhitao): STUB. Must apply standard properties and normalize
+  // text-align before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Applies all standard (non-cascading, non-high-priority) properties in the
+  // new pipeline. Iterates the resolved style map, skipping direction and
+  // font-size (already handled), and writes each property into the
+  // ComputedCSSStyle. Finally normalizes text-align for the current direction.
+}
+
+void StyleResolver::ApplyResolvedStyleMap(
+    starlight::ComputedCSSStyle& style, StyleMap& style_map,
+    const CustomPropertiesMap* custom_property_overrides,
+    const StyleMap* property_overrides) {
+  // TODO(zhouzhitao): STUB. Must apply resolved style map end-to-end before
+  // enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Applies a fully resolved style map to a ComputedCSSStyle in the new
+  // pipeline. Orchestrates four sub-phases: cascading-affecting properties
+  // (e.g., direction), inherited side-effects replay, high-priority
+  // properties (e.g., font-size), and standard properties. This is the
+  // final step of base-style resolution before animation sampling.
+}
+
+bool StyleResolver::ComputeStyleDiff(
+    starlight::ComputedCSSStyle& new_style,
+    const starlight::ComputedCSSStyle& old_style) {
+  // TODO(zhouzhitao): STUB. Must compute accurate diffs and mark changed/reset
+  // properties before enabling `ElementManager::EnableNewStylingPipeline()`.
+  // Computes the property-level diff between a newly resolved style and the
+  // old style in the new pipeline. Walks all layout, visual, text, animation,
+  // and misc data structures, calling MarkChanged for every property that
+  // differs. Returns true if any property changed. This diff drives
+  // incremental layout and paint invalidation.
+  return false;
+}
 }  // namespace tasm
 }  // namespace lynx

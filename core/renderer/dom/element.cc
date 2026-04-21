@@ -206,6 +206,10 @@ Element::Element(const Element& element, bool clone_resolved_props)
       record_parent_font_size_(element.record_parent_font_size_),
       global_bind_target_set_(element.global_bind_target_set_),
       animation_previous_styles_(element.animation_previous_styles_) {
+  if (element.base_css_style() != nullptr) {
+    base_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
+        *(element.base_css_style()));
+  }
   platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
       *(element.computed_css_style()));
 }
@@ -1340,6 +1344,19 @@ starlight::ComputedCSSStyle* Element::GetParentComputedCSSStyle() {
   }
 
   return temp->computed_css_style();
+}
+
+starlight::ComputedCSSStyle* Element::GetParentBaseComputedCSSStyle() {
+  auto temp = parent();
+  while (temp != nullptr && temp->is_wrapper()) {
+    temp = temp->parent();
+  }
+
+  if (temp == nullptr) {
+    return nullptr;
+  }
+
+  return temp->base_css_style();
 }
 
 bool Element::ShouldAvoidFlattenForView() {
@@ -2724,6 +2741,7 @@ void Element::RemoveAllInlineStyles() {
 
   full_raw_inline_style_ = base::String();
   current_raw_inline_styles_.reset();
+  current_raw_inline_custom_properties_.reset();
 
   MarkDirty(kDirtyStyle);
 }
