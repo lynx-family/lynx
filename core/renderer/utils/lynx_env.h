@@ -132,7 +132,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_HARMONY_DRAW_BEHIND,
     ENABLE_HARMONY_NEW_IMAGE,
     ENABLE_UNIFY_FIXED_BEHAVIOR,
-    FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE,
+    ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION,
     // FIXME(dingwang.wxx): remove this config in the next version(remove
     // in 3.8)
     DISABLE_LIST_CALLBACK_IF_DETACHED,
@@ -307,8 +307,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
             {Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT,
              "fix_old_fixed_insert_self_use_render_parent"},
-            {Key::FIX_ANIMATION_FORWARD_DYNAMIC_UPDATE_OVERWRITE,
-             "fix_animation_forward_dynamic_update_overwrite"},
+            {Key::ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION,
+             "enable_animation_forward_update_preservation"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -473,7 +473,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableFetchAPIStreamingStandard();
   bool FixNewFixedRemovalBug();
   bool FixOldFixedInsertSelfUseRenderParent();
-  bool FixAnimationForwardDynamicUpdateOverwrite();
+  bool EnableAnimationForwardUpdatePreservation();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

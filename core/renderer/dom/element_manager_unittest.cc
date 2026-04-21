@@ -534,6 +534,27 @@ TEST_F(ElementManagerTest, AdoptedStylesheets_MultipleAdoption) {
   EXPECT_EQ(manager->GetAdoptedStyleSheets().size(), 1);
 }
 
+TEST_F(ElementManagerTest, EnableAnimationForwardUpdatePreservation_Default) {
+  // Default value should be false (initialized in header)
+  EXPECT_FALSE(manager->EnableAnimationForwardUpdatePreservation());
+}
+
+TEST_F(ElementManagerTest, EnableAnimationForwardUpdatePreservation_True) {
+  // Set config with TRUE_VALUE
+  auto config = std::make_shared<PageConfig>();
+  config->enable_animation_forward_update_preservation_ = true;
+  manager->SetConfig(config);
+  EXPECT_TRUE(manager->EnableAnimationForwardUpdatePreservation());
+}
+
+TEST_F(ElementManagerTest, EnableAnimationForwardUpdatePreservation_False) {
+  // Set config with FALSE_VALUE
+  auto config = std::make_shared<PageConfig>();
+  config->enable_animation_forward_update_preservation_ = false;
+  manager->SetConfig(config);
+  EXPECT_FALSE(manager->EnableAnimationForwardUpdatePreservation());
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx
