@@ -4,7 +4,10 @@
 
 #import <Lynx/DevToolSettings.h>
 #import <Lynx/LynxErrorBehavior.h>
+#import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxLog.h>
+#include <dlfcn.h>
+#include <execinfo.h>
 #include <string>
 #include <unordered_set>
 
@@ -13,6 +16,9 @@
 @interface DevToolSettings ()
 
 @property(nonatomic, strong) NSUserDefaults *defaults;
+
++ (NSArray<NSNumber *> *)buildReportedBacktraceAddresses;
++ (NSString *)buildBacktraceAddressSummary;
 
 @end
 
@@ -29,6 +35,10 @@ static NSString *const SP_KEY_IGNORE_ERROR_TYPES = @"ignore_error_types";
 
 static NSString *const CDP_DOMAIN_KEY_PREFIX = @"enable_cdp_domain_";
 
+#if OS_IOS
+static const NSUInteger kMaxReportedBacktraceFrames = 10;
+#endif
+
 + (instancetype)sharedInstance {
   static DevToolSettings *_instance = nil;
   static dispatch_once_t onceToken;
@@ -36,6 +46,68 @@ static NSString *const CDP_DOMAIN_KEY_PREFIX = @"enable_cdp_domain_";
     _instance = [[DevToolSettings alloc] init];
   });
   return _instance;
+}
+
++ (NSArray<NSNumber *> *)buildReportedBacktraceAddresses {
+#if OS_IOS
+  NSArray<NSNumber *> *returnAddresses = [NSThread callStackReturnAddresses];
+  if (returnAddresses.count > 0) {
+    if (returnAddresses.count <= kMaxReportedBacktraceFrames) {
+      return returnAddresses;
+    }
+    return [returnAddresses subarrayWithRange:NSMakeRange(0, kMaxReportedBacktraceFrames)];
+  }
+
+  void *call_stack[kMaxReportedBacktraceFrames];
+  int frames = backtrace(call_stack, (int)kMaxReportedBacktraceFrames);
+  if (frames <= 0) {
+    return @[];
+  }
+
+  NSMutableArray<NSNumber *> *addresses = [NSMutableArray arrayWithCapacity:frames];
+  for (int i = 0; i < frames; i++) {
+    uintptr_t pc = reinterpret_cast<uintptr_t>(call_stack[i]);
+    [addresses addObject:@(pc)];
+  }
+  return addresses;
+#else
+  return @[];
+#endif
+}
+
++ (NSString *)buildBacktraceAddressSummary {
+#if OS_IOS
+  NSArray<NSNumber *> *addresses = [self buildReportedBacktraceAddresses];
+  if (addresses.count == 0) {
+    return @"Unknown caller";
+  }
+
+  NSMutableArray<NSString *> *entries = [NSMutableArray arrayWithCapacity:addresses.count];
+  for (NSNumber *address in addresses) {
+    uintptr_t pc = (uintptr_t)address.unsignedLongLongValue;
+    Dl_info info = {};
+    const int dladdrResult = dladdr(reinterpret_cast<const void *>(pc), &info);
+
+    NSString *imageName = @"unknown_image";
+    NSString *loadAddress = @"0x0";
+    if (dladdrResult != 0) {
+      if (info.dli_fname != nullptr) {
+        NSString *imagePath = [NSString stringWithUTF8String:info.dli_fname];
+        imageName = imagePath.lastPathComponent ?: imageName;
+      }
+      if (info.dli_fbase != nullptr) {
+        loadAddress = [NSString stringWithFormat:@"%p", info.dli_fbase];
+      }
+    }
+
+    [entries addObject:[NSString stringWithFormat:@"pc=0x%llx image=%@ load=%@",
+                                                  address.unsignedLongLongValue, imageName,
+                                                  loadAddress]];
+  }
+  return [entries componentsJoinedByString:@"\n"];
+#else
+  return @"Unknown caller";
+#endif
 }
 
 - (instancetype)init {
@@ -68,6 +140,7 @@ static NSString *const CDP_DOMAIN_KEY_PREFIX = @"enable_cdp_domain_";
 - (void)setDevToolEnabled:(BOOL)devToolEnabled {
   [self setBool:devToolEnabled forKey:SP_KEY_ENABLE_DEVTOOL];
   [self syncToNative:SP_KEY_ENABLE_DEVTOOL value:devToolEnabled];
+  [self reportEnableEventIfNeeded:@"lynxsdk_enable_devtool_event" enabled:devToolEnabled];
 }
 
 - (BOOL)logBoxEnabled {
@@ -83,6 +156,7 @@ static NSString *const CDP_DOMAIN_KEY_PREFIX = @"enable_cdp_domain_";
 - (void)setLogBoxEnabled:(BOOL)logBoxEnabled {
   [self setBool:logBoxEnabled forKey:SP_KEY_ENABLE_LOGBOX];
   [self syncToNative:SP_KEY_ENABLE_LOGBOX value:logBoxEnabled];
+  [self reportEnableEventIfNeeded:@"lynxsdk_enable_logbox_event" enabled:logBoxEnabled];
 }
 
 - (BOOL)highlightTouchEnabled {
@@ -176,9 +250,9 @@ static NSString *const CDP_DOMAIN_KEY_PREFIX = @"enable_cdp_domain_";
    longPressMenuEnabled
    @note Persistence: YES
    @note Sync to native: NO
-   @note Default: YES
+   @note Default: NO
    */
-  return [self boolForKey:SP_KEY_ENABLE_LONG_PRESS_MENU defaultValue:YES];
+  return [self boolForKey:SP_KEY_ENABLE_LONG_PRESS_MENU defaultValue:NO];
 }
 
 - (void)setLongPressMenuEnabled:(BOOL)longPressMenuEnabled {
@@ -372,6 +446,22 @@ static NSString *const CDP_DOMAIN_KEY_PREFIX = @"enable_cdp_domain_";
   }
   [self setStringSet:enabledDomains forArrayKey:SP_KEY_ACTIVATED_CDP_DOMAINS];
   [self syncEnabledCDPDomainsToNative:enabledDomains];
+}
+
+- (void)reportEnableEventIfNeeded:(NSString *)eventName enabled:(BOOL)enabled {
+  if (!enabled) {
+    return;
+  }
+
+  // Intentionally report this event on iOS only.
+#if OS_IOS
+  NSString *caller = [DevToolSettings buildBacktraceAddressSummary];
+  [LynxEventReporter onEvent:eventName
+                  instanceId:-1
+                propsBuilder:^NSDictionary * {
+                  return @{@"backtrace" : caller};
+                }];
+#endif
 }
 
 @end

@@ -1523,6 +1523,8 @@ public class com::lynx::devtoolwrapper::DevToolSettings :  {
   public final int com.lynx.devtoolwrapper.DevToolSettings.V8_ON V8_ON;
   public final int com.lynx.devtoolwrapper.DevToolSettings.V8_ALIGN_WITH_PROD V8_ALIGN_WITH_PROD;
   public static DevToolSettings com.lynx.devtoolwrapper.DevToolSettings.inst();
+  public static String com.lynx.devtoolwrapper.DevToolSettings.getCallerBacktrace(String ownerClassName, String matchMethodName, String[] directSkippedClassNames, String[] fallbackSkippedClassNames);
+  public static String com.lynx.devtoolwrapper.DevToolSettings.getCallerBacktrace(StackTraceElement[] stackTrace, String ownerClassName, String matchMethodName, String[] directSkippedClassNames, String[] fallbackSkippedClassNames);
   public void com.lynx.devtoolwrapper.DevToolSettings.init(Context context);
   public void com.lynx.devtoolwrapper.DevToolSettings.syncToNative();
   public boolean com.lynx.devtoolwrapper.DevToolSettings.isDevToolEnabled();

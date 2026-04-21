@@ -12,6 +12,7 @@
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnvKey.h>
 #import <Lynx/LynxError.h>
+#import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxLazyRegister.h>
 #import <Lynx/LynxLifecycleDispatcher.h>
 #import <Lynx/LynxService.h>
@@ -54,6 +55,10 @@
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <UIKit/UIKit.h>
 #endif
+
+@interface DevToolSettings (LynxEnvBacktraceInternal)
++ (NSString *)buildBacktraceAddressSummary;
+@end
 
 @interface LynxEnv ()
 
@@ -175,6 +180,16 @@
 // this function is garuanteed to be called after first initialization.
 - (void)setLynxDebugEnabled:(BOOL)lynxDebugEnabled {
   if (lynxDebugEnabled) {
+    // Intentionally report this event on iOS only.
+#if OS_IOS
+    NSString *traceString = [DevToolSettings buildBacktraceAddressSummary];
+    [LynxEventReporter onEvent:@"lynxsdk_enable_lynx_debug_event"
+                    instanceId:-1
+                  propsBuilder:^NSDictionary * {
+                    return @{@"backtrace" : traceString};
+                  }];
+#endif
+
     lynx::tasm::DevToolLifecycle::GetInstance().OnEnabled();
     [self initDevToolEnv];
   } else {

@@ -49,6 +49,7 @@ import com.lynx.tasm.behavior.ui.background.BackgroundImageLoader;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsHolderAutoRegister;
 import com.lynx.tasm.behavior.utils.PropsHolderAutoRegister;
 import com.lynx.tasm.core.VSyncMonitor;
+import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.fluency.FluencySample;
 import com.lynx.tasm.icu.ICURegister;
 import com.lynx.tasm.provider.AbsNetworkingModuleProvider;
@@ -759,6 +760,9 @@ public class LynxEnv {
     if (!DevToolLifecycle.getInstance().isAttached()) {
       // DevTool is UNAVAILABLE (i.e. before ATTACHED)
       // We need to take advantage of preset value.
+      if (enableLynxDebug) {
+        reportEnableEvent("enableLynxDebug", "lynxsdk_enable_lynx_debug_event");
+      }
       if (getDevtoolService() != null) {
         getDevtoolService().setLynxDebugPresetValue(enableLynxDebug);
       }
@@ -768,11 +772,28 @@ public class LynxEnv {
 
     // DevTool is at least ATTACHED
     if (enableLynxDebug) {
+      reportEnableEvent("enableLynxDebug", "lynxsdk_enable_lynx_debug_event");
+
       DevToolLifecycle.getInstance().onEnabled();
       initDevtoolEnv();
     } else {
       DevToolLifecycle.getInstance().onDisabled();
     }
+  }
+
+  private String getDirectCaller(String matchMethodName) {
+    String lynxEnvClassName = LynxEnv.class.getName();
+    return DevToolSettings.getCallerBacktrace(lynxEnvClassName, matchMethodName, new String[0],
+        new String[] {Thread.class.getName(), lynxEnvClassName});
+  }
+
+  private void reportEnableEvent(String matchMethodName, String eventName) {
+    String traceString = getDirectCaller(matchMethodName);
+    LynxEventReporter.onEvent(eventName, -1, () -> {
+      Map<String, Object> props = new HashMap<>();
+      props.put("backtrace", traceString);
+      return props;
+    });
   }
 
   // TODO(mitchilling): rename this method to attachDevToolComponent

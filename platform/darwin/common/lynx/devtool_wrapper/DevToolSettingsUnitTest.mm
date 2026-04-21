@@ -9,6 +9,11 @@
 static NSString *const kDevToolSettingsTestIgnoreErrorTypesKey = @"ignore_error_types";
 static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_cdp_domains";
 
+@interface DevToolSettings (BacktraceInternalForTest)
++ (NSArray<NSNumber *> *)buildReportedBacktraceAddresses;
++ (NSString *)buildBacktraceAddressSummary;
+@end
+
 @interface DevToolSettingsUnitTest : XCTestCase
 @end
 
@@ -51,7 +56,7 @@ static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_
   XCTAssertFalse(settings.perfMetricsEnabled);
   XCTAssertFalse(settings.fspScreenshotEnabled);
   XCTAssertFalse(settings.highlightTouchEnabled);
-  XCTAssertTrue(settings.longPressMenuEnabled);
+  XCTAssertFalse(settings.longPressMenuEnabled);
   XCTAssertTrue(settings.previewScreenshotEnabled);
   XCTAssertFalse([settings isCSSErrorIgnored]);
   XCTAssertTrue([[settings ignoredErrorTypes] count] == 0);
@@ -121,6 +126,20 @@ static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_
 
   [settings setCDPDomain:SP_KEY_ENABLE_CDP_DOMAIN_CSS enabled:NO];
   XCTAssertFalse([settings isCDPDomainEnabled:SP_KEY_ENABLE_CDP_DOMAIN_CSS]);
+}
+
+- (void)testBuildReportedBacktraceAddresses {
+  NSArray<NSNumber *> *addresses = [DevToolSettings buildReportedBacktraceAddresses];
+
+  XCTAssertNotNil(addresses);
+  XCTAssertLessThanOrEqual(addresses.count, 10U);
+}
+
+- (void)testBuildBacktraceAddressSummary {
+  NSString *summary = [DevToolSettings buildBacktraceAddressSummary];
+
+  XCTAssertNotNil(summary);
+  XCTAssertTrue(summary.length > 0);
 }
 
 @end

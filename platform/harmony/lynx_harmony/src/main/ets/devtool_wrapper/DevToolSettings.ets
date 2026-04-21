@@ -133,10 +133,10 @@ export class DevToolSettings {
   /**
    * Persistence: true
    * Sync to native: false
-   * Default: true
+   * Default: false
    */
   public static isLongPressMenuEnabled(): boolean {
-    return DevToolSettings.getPersistedBoolean(DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU, true);
+    return DevToolSettings.getPersistedBoolean(DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU, false);
   }
 
   public static setLongPressMenuEnabled(enabled: boolean): void {

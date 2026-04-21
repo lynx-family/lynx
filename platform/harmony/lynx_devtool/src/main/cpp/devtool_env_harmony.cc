@@ -43,7 +43,7 @@ std::unordered_map<std::string, bool>
         {"enable_dom_tree", true},
         {"enable_launch_record", false},
         {"enable_quickjs_cache", true},
-        {"enable_long_press_menu", true},
+        {"enable_long_press_menu", false},
         {"enable_perf_monitor_debug", true},
         {"error_code_css", false},
         {"enable_pixel_copy", false}};
