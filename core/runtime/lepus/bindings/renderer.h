@@ -177,6 +177,16 @@ constexpr static const char* kCFunctionIsTemplateElement =
 constexpr static const char* kCFunctionMarkPartElement = "__MarkPartElement";
 constexpr static const char* kCFunctionIsPartElement = "__IsPartElement";
 constexpr static const char* kCFunctionGetTemplateParts = "__GetTemplateParts";
+constexpr static const char* kCFunctionCreateElementTemplate =
+    "__CreateElementTemplate";
+constexpr static const char* kCFunctionSetAttributeOfElementTemplate =
+    "__SetAttributeOfElementTemplate";
+constexpr static const char* kCFunctionInsertNodeToElementTemplate =
+    "__InsertNodeToElementTemplate";
+constexpr static const char* kCFunctionRemoveNodeFromElementTemplate =
+    "__RemoveNodeFromElementTemplate";
+constexpr static const char* kCFunctionSerializeElementTemplate =
+    "__SerializeElementTemplate";
 constexpr static const char* kCFunctionCreateElementWithProperties =
     "__CreateElementWithProperties";
 

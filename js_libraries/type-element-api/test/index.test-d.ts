@@ -1,5 +1,15 @@
 import { assertType, describe, expectTypeOf, it } from 'vitest';
-import { AnimationOperation, AnimationTimingOptions, Keyframe, ElementRef, ComponentElementRef, PageElementRef, ListElementRef, ViewElementRef } from '../types/index';
+import {
+  AnimationOperation,
+  AnimationTimingOptions,
+  Keyframe,
+  ElementRef,
+  ComponentElementRef,
+  PageElementRef,
+  ListElementRef,
+  ViewElementRef,
+  SerializedTemplateInstance,
+} from '../types/index';
 
 describe('Test Animation Types', () => {
   it('should have correct AnimationOperation type', () => {
@@ -43,6 +53,11 @@ describe('Test Element API Types', () => {
     expectTypeOf<typeof __CreateView>().toBeFunction();
     expectTypeOf<typeof __CreateText>().toBeFunction();
     expectTypeOf<typeof __ElementAnimate>().toBeFunction();
+    expectTypeOf<typeof __CreateElementTemplate>().toBeFunction();
+    expectTypeOf<typeof __SetAttributeOfElementTemplate>().toBeFunction();
+    expectTypeOf<typeof __InsertNodeToElementTemplate>().toBeFunction();
+    expectTypeOf<typeof __RemoveNodeFromElementTemplate>().toBeFunction();
+    expectTypeOf<typeof __SerializeElementTemplate>().toBeFunction();
   });
 
   it('should test __ElementAnimate function signature', () => {
@@ -67,5 +82,21 @@ describe('Test Element API Types', () => {
 
     // Test that it accepts cancel operation overload
     expectTypeOf<typeof __ElementAnimate>().toBeCallableWith(element, [AnimationOperation.CANCEL, 'test-animation']);
+  });
+
+  it('should test element template api signatures', () => {
+    const child = __CreateView(0);
+    const template = __CreateElementTemplate('todo_card', 'path/to/bundle.js', ['width: 320px;', { completed: false }], [[child]], 'template-uid');
+
+    expectTypeOf<typeof __CreateElementTemplate>().returns.toEqualTypeOf<ElementRef>();
+    expectTypeOf<typeof __SetAttributeOfElementTemplate>().toBeCallableWith(template, 0, { completed: true });
+    expectTypeOf<typeof __InsertNodeToElementTemplate>().toBeCallableWith(template, 1, child, null);
+    expectTypeOf<typeof __RemoveNodeFromElementTemplate>().toBeCallableWith(template, 1, child);
+    expectTypeOf<typeof __SerializeElementTemplate>().returns.toEqualTypeOf<SerializedTemplateInstance>();
+
+    const serialized = __SerializeElementTemplate(template);
+    assertType<SerializedTemplateInstance>(serialized);
+    assertType<SerializedTemplateInstance[][]>(serialized.elementSlots);
+    assertType<any>(serialized.uid);
   });
 });

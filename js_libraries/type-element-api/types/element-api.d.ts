@@ -115,6 +115,13 @@ export interface GestureConfig {
   config?: Record<string, unknown>;
 }
 
+export interface SerializedTemplateInstance {
+  templateKey: string;
+  bundleUrl?: string;
+  attributeSlots: any[];
+  elementSlots: SerializedTemplateInstance[][];
+  uid: any;
+}
 
 declare global {
   function __CreatePage(componentId: string, cssId: number, info?: ElementInfo): PageElementRef;
@@ -281,6 +288,57 @@ declare global {
   ): void;
 
   function __ElementFromBinary(elementTemplateKey: string, parentComponentUniId: number): ElementRef[];
+
+  /**
+   * Create a template instance from the complete initial slot state.
+   * `attributeSlots[i]` maps to `attrSlotIndex = i`.
+   * `elementSlots[i]` maps to `elementSlotIndex = i`.
+   */
+  function __CreateElementTemplate(
+    templateKey: string,
+    bundleUrl: string | null | undefined,
+    attributeSlots: any[] | null | undefined,
+    elementSlots: ElementRef[][] | null | undefined,
+    uid: any,
+  ): ElementRef;
+
+  /**
+   * Update one dynamic attribute slot on an existing template instance.
+   * Passing `null` clears the slot.
+   */
+  function __SetAttributeOfElementTemplate(
+    templateInstance: ElementRef,
+    attrSlotIndex: number,
+    value: any,
+  ): void;
+
+  /**
+   * Insert or move a node into one element slot.
+   * If `referenceNode` is omitted or `null`, append to the slot tail.
+   */
+  function __InsertNodeToElementTemplate(
+    templateInstance: ElementRef,
+    elementSlotIndex: number,
+    node: ElementRef,
+    referenceNode?: ElementRef | null,
+  ): void;
+
+  /**
+   * Remove a node from one element slot.
+   */
+  function __RemoveNodeFromElementTemplate(
+    templateInstance: ElementRef,
+    elementSlotIndex: number,
+    node: ElementRef,
+  ): void;
+
+  /**
+   * Serialize a template instance into a machine-consumable structure used by
+   * hydration and cross-thread transfer.
+   */
+  function __SerializeElementTemplate(
+    templateInstance: ElementRef,
+  ): SerializedTemplateInstance;
 
   function __GetTemplateParts(ele: ElementRef): Record<string, ElementRef>;
 

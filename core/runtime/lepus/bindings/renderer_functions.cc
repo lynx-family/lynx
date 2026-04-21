@@ -3494,6 +3494,96 @@ RENDERER_FUNCTION_CC(FiberGetTemplateParts) {
   RETURN(lepus::Value(std::move(parts_map)));
 }
 
+RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_ELEMENT_TEMPLATE);
+  // Create one Element Template instance from the complete initial slot state.
+  // The runtime entry is registered in this split, while the backing
+  // TemplateElement materialization is landed separately.
+  //
+  // parameter size >= 1
+  // [0] String -> templateKey
+  // [1] String | Null | Undefined -> bundleUrl
+  // [2] Array | Null | Undefined -> attributeSlots
+  // [3] Array | Null | Undefined -> elementSlots
+  // [4] any -> uid
+  CHECK_ARGC_GE(FiberCreateElementTemplate, 1);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, String,
+                                        FiberCreateElementTemplate);
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(FiberSetAttributeOfElementTemplate) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SET_ATTRIBUTE_OF_ELEMENT_TEMPLATE);
+  // Update one dynamic Attribute Slot on an existing template instance.
+  // Implementation is landed in the TemplateElement split.
+  //
+  // parameter size >= 3
+  // [0] RefCounted -> templateInstance
+  // [1] Number -> attrSlotIndex
+  // [2] any | Null -> value
+  CHECK_ARGC_GE(FiberSetAttributeOfElementTemplate, 3);
+  CONVERT_ARG(arg0, 0);
+  CONVERT_ARG(arg1, 1);
+  if (!arg0->IsRefCounted() || !arg1->IsNumber()) {
+    RETURN_UNDEFINED();
+  }
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(FiberInsertNodeToElementTemplate) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_INSERT_NODE_TO_ELEMENT_TEMPLATE);
+  // Insert or move one node into one dynamic Element Slot.
+  // Implementation is landed in the TemplateElement split.
+  //
+  // parameter size >= 3
+  // [0] RefCounted -> templateInstance
+  // [1] Number -> elementSlotIndex
+  // [2] RefCounted -> node
+  // [3] RefCounted | Null | Undefined -> referenceNode
+  CHECK_ARGC_GE(FiberInsertNodeToElementTemplate, 3);
+  CONVERT_ARG(arg0, 0);
+  CONVERT_ARG(arg1, 1);
+  CONVERT_ARG(arg2, 2);
+  if (!arg0->IsRefCounted() || !arg1->IsNumber() || !arg2->IsRefCounted()) {
+    RETURN_UNDEFINED();
+  }
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(FiberRemoveNodeFromElementTemplate) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_REMOVE_NODE_FROM_ELEMENT_TEMPLATE);
+  // Remove one node from one dynamic Element Slot.
+  // Implementation is landed in the TemplateElement split.
+  //
+  // parameter size >= 3
+  // [0] RefCounted -> templateInstance
+  // [1] Number -> elementSlotIndex
+  // [2] RefCounted -> node
+  CHECK_ARGC_GE(FiberRemoveNodeFromElementTemplate, 3);
+  CONVERT_ARG(arg0, 0);
+  CONVERT_ARG(arg1, 1);
+  CONVERT_ARG(arg2, 2);
+  if (!arg0->IsRefCounted() || !arg1->IsNumber() || !arg2->IsRefCounted()) {
+    RETURN_UNDEFINED();
+  }
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(FiberSerializeElementTemplate) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SERIALIZE_ELEMENT_TEMPLATE);
+  // Serialize one template instance into machine-consumable slot-aligned data.
+  // Implementation is landed in the TemplateElement split.
+  //
+  // parameter size >= 1
+  // [0] RefCounted -> templateInstance
+  CHECK_ARGC_GE(FiberSerializeElementTemplate, 1);
+  CONVERT_ARG(arg0, 0);
+  if (!arg0->IsRefCounted()) {
+    RETURN_UNDEFINED();
+  }
+  RETURN_UNDEFINED();
+}
+
 RENDERER_FUNCTION_CC(FiberCloneElement) {
   // parameter size = 2
   // [0] RefCounted -> element

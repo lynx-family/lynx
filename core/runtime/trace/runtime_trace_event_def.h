@@ -912,6 +912,34 @@ inline constexpr const char* const FIBER_MARK_PART_ELEMENT =
 inline constexpr const char* const FIBER_GET_TEMPLATE_PARTS =
     "FiberGetTemplateParts";
 /**
+ * @trace_description: Create an element-template container in the Fiber
+ * runtime for reusable template fragments.
+ */
+inline constexpr const char* const FIBER_CREATE_ELEMENT_TEMPLATE =
+    "FiberCreateElementTemplate";
+/**
+ * @trace_description: Set an attribute on an element-template node in the
+ * Fiber runtime.
+ */
+inline constexpr const char* const FIBER_SET_ATTRIBUTE_OF_ELEMENT_TEMPLATE =
+    "FiberSetAttributeOfElementTemplate";
+/**
+ * @trace_description: Insert a Fiber node into an element-template subtree.
+ */
+inline constexpr const char* const FIBER_INSERT_NODE_TO_ELEMENT_TEMPLATE =
+    "FiberInsertNodeToElementTemplate";
+/**
+ * @trace_description: Remove a Fiber node from an element-template subtree.
+ */
+inline constexpr const char* const FIBER_REMOVE_NODE_FROM_ELEMENT_TEMPLATE =
+    "FiberRemoveNodeFromElementTemplate";
+/**
+ * @trace_description: Serialize an element-template subtree for runtime
+ * transport or caching.
+ */
+inline constexpr const char* const FIBER_SERIALIZE_ELEMENT_TEMPLATE =
+    "FiberSerializeElementTemplate";
+/**
  * @trace_description: Convert a JSON value into a Lepus value for template
  * runtime processing.
  */

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.0.4
+
+### Patch Changes
+
+- Add Element Template APIs.
+
 ## 0.0.3
 
 ### Patch Changes
