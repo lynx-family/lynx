@@ -114,8 +114,10 @@ TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent2) {
   touch_event_handler_->HandleTriggerComponentEvent(tasm_.get(), "xxxx", obj);
   EXPECT_EQ(delegate_->DumpDelegate(),
             "SendPageEvent  onXXXX "
-            "{\"currentTarget\":{\"dataset\":{},\"id\":\"\"},\"detail\":null,"
-            "\"target\":{\"dataset\":{},\"id\":\"\"},\"type\":\"xxxx\"}\n");
+            "{\"currentTarget\":{\"dataset\":{},\"id\":\"\",\"nodeIndex\":1},"
+            "\"detail\":null,"
+            "\"target\":{\"dataset\":{},\"id\":\"\",\"nodeIndex\":1},\"type\":"
+            "\"xxxx\"}\n");
 }
 
 TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent3) {

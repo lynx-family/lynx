@@ -2662,6 +2662,14 @@ RENDERER_FUNCTION_CC(FiberCreateComponent) {
     component_element->SetConfig(arg6->ToLepusValue());
   }
 
+  if (argc >= 8) {
+    CONVERT_ARG(arg7, 7);
+    const auto& nid = arg7->GetProperty(BASE_STATIC_STRING(kNodeIndex));
+    if (nid.IsNumber()) {
+      component_element->SetNodeIndex(nid.Number());
+    }
+  }
+
   ON_NODE_CREATE(component_element);
   RETURN(lepus::Value(std::move(component_element)));
 }
