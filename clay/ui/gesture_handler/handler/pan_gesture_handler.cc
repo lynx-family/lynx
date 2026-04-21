@@ -32,8 +32,19 @@ void PanGestureHandler::HandleConfigMap(const Value& config) {
   if (!config.IsMap()) return;
   const auto& map = config.GetMap();
   if (auto iter = map.find(GestureConstants::MIN_DISTANCE); iter != map.end()) {
-    min_distance_ =
-        page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetFloat());
+    if (iter->second.IsInt()) {
+      min_distance_ =
+          page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetInt());
+    } else if (iter->second.IsFloat()) {
+      min_distance_ =
+          page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetFloat());
+    } else if (iter->second.IsDouble()) {
+      min_distance_ =
+          page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetDouble());
+    } else {
+      FML_DLOG(ERROR) << "Unsupported type:" << iter->second.type()
+                      << " for minDistance";
+    }
   }
 }
 

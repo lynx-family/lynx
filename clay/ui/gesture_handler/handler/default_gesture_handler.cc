@@ -8,6 +8,7 @@
 #include <limits>
 #include <utility>
 
+#include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/event/gesture_event.h"
@@ -33,8 +34,19 @@ void DefaultGestureHandler::HandleConfigMap(const Value& config) {
   if (!config.IsMap()) return;
   const auto& map = config.GetMap();
   if (auto iter = map.find("tapSlop"); iter != map.end()) {
-    tap_slop_ =
-        page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetInt());
+    if (iter->second.IsInt()) {
+      tap_slop_ =
+          page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetInt());
+    } else if (iter->second.IsFloat()) {
+      tap_slop_ =
+          page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetFloat());
+    } else if (iter->second.IsDouble()) {
+      tap_slop_ =
+          page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetDouble());
+    } else {
+      FML_DLOG(ERROR) << "Unsupported type:" << iter->second.type()
+                      << " for tapSlop";
+    }
   }
 }
 

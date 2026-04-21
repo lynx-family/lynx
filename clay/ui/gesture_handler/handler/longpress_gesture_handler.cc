@@ -34,8 +34,19 @@ void LongPressGestureHandler::HandleConfigMap(const Value& config) {
     min_duration_ = iter->second.GetLong();
   }
   if (auto iter = map.find(GestureConstants::MAX_DISTANCE); iter != map.end()) {
-    max_distance_ =
-        page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetFloat());
+    if (iter->second.IsInt()) {
+      max_distance_ =
+          page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetInt());
+    } else if (iter->second.IsFloat()) {
+      max_distance_ =
+          page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetFloat());
+    } else if (iter->second.IsDouble()) {
+      max_distance_ =
+          page_view_->ConvertFrom<kPixelTypeLogical>(iter->second.GetDouble());
+    } else {
+      FML_DLOG(ERROR) << "Unsupported type:" << iter->second.type()
+                      << " for maxDistance";
+    }
   }
 }
 
