@@ -137,8 +137,12 @@ common_lynx_public_headers =
                     "../performance/memory/LynxMemoryRecord.h",
                     "../performance/fsp/LynxFSPTracer.h",
                     "../performance/fsp/LynxMeaningfulContentSnapshot.h",
+                    "../devtool_wrapper/DevToolOverlayDelegate.h",
                     "../devtool_wrapper/LynxDevtool.h",
                     "../devtool_wrapper/LynxBaseInspectorController.h",
+                    "../devtool_wrapper/LynxLogBoxProtocol.h",
+                    "../devtool_wrapper/LynxMemoryListener.h",
+                    "../devtool_wrapper/OverlayService.h",
                   ],
                   "abspath")
 
