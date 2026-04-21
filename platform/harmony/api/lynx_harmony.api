@@ -1189,6 +1189,46 @@ export class LynxDebugger {
   public static addOpenCardCallback(callback: (url: string) => void): void;
 }
 
+export class DevToolSettings {
+  public static initialize(): void;
+  public static isDevToolEnabled(): boolean;
+  public static setDevToolEnabled(enabled: boolean): void;
+  public static isLogBoxEnabled(): boolean;
+  public static setLogBoxEnabled(enabled: boolean): void;
+  public static isDebugModeEnabled(): boolean;
+  public static setDebugModeEnabled(enabled: boolean): void;
+  public static isLaunchRecordEnabled(): boolean;
+  public static setLaunchRecordEnabled(enabled: boolean): void;
+  public static isQuickjsDebugEnabled(): boolean;
+  public static setQuickjsDebugEnabled(enabled: boolean): void;
+  public static isQuickjsCacheEnabled(): boolean;
+  public static setQuickjsCacheEnabled(enabled: boolean): void;
+  public static isDOMTreeEnabled(): boolean;
+  public static setDOMTreeEnabled(enabled: boolean): void;
+  public static isLongPressMenuEnabled(): boolean;
+  public static setLongPressMenuEnabled(enabled: boolean): void;
+  public static isPreviewScreenshotEnabled(): boolean;
+  public static setPreviewScreenshotEnabled(enabled: boolean): void;
+  public static isPixelCopyEnabled(): boolean;
+  public static setPixelCopyEnabled(enabled: boolean): void;
+  public static isPerfMonitorDebugEnabled(): boolean;
+  public static setPerfMonitorDebugEnabled(enabled: boolean): void;
+  public static isCSSErrorIgnored(): boolean;
+  public static setCSSErrorIgnored(ignored: boolean): void;
+  public static readonly SP_KEY_ENABLE_DEVTOOL: string; = 'enable_devtool'
+  public static readonly SP_KEY_ENABLE_LOGBOX: string; = 'enable_logbox'
+  public static readonly SP_KEY_ENABLE_DEBUG_MODE: string; = 'enable_debug_mode'
+  public static readonly SP_KEY_ENABLE_LAUNCH_RECORD: string; = 'enable_launch_record'
+  public static readonly SP_KEY_ENABLE_QUICKJS_DEBUG: string; = 'enable_quickjs_debug'
+  public static readonly SP_KEY_ENABLE_QUICKJS_CACHE: string; = 'enable_quickjs_cache'
+  public static readonly SP_KEY_ENABLE_DOM_TREE: string; = 'enable_dom_tree'
+  public static readonly SP_KEY_ENABLE_LONG_PRESS_MENU: string; = 'enable_long_press_menu'
+  public static readonly SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT: string; = 'enable_preview_screen_shot'
+  public static readonly SP_KEY_ENABLE_PIXEL_COPY: string; = 'enable_pixel_copy'
+  public static readonly SP_KEY_ENABLE_PERF_MONITOR_DEBUG: string; = 'enable_perf_monitor_debug'
+  public static readonly SP_KEY_ENABLE_IGNORE_ERROR_CSS: string; = 'error_code_css'
+}
+
 export interface LynxBaseInspectorOwner {
   setLynxInspectorConsoleDelegate(delegate: LynxInspectorConsoleDelegate): void;
   getConsoleObject(objectId: string, needStringify: boolean, callback: (detail: string) => void): void;

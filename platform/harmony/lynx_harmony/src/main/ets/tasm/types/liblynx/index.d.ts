@@ -108,6 +108,12 @@ export class DevToolLifecycleHarmony {
   static onDisconnected: () => void;
 }
 
+export class DevToolSettingsHarmony {
+  static setPersistedBoolean: (key: string, value: boolean) => void;
+  static getPersistedBoolean: (key: string, defaultValue: boolean) => boolean;
+  static syncBooleanToNative: (key: string, value: boolean) => void;
+}
+
 export class LynxTemplateRenderer {
   constructor();
 

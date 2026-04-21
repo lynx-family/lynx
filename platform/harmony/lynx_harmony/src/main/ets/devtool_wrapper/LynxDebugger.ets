@@ -19,6 +19,7 @@ export class LynxDebugger {
     return false;
   }
 
+  /** @deprecated Use DevToolSettings instead. */
   public static setSwitch(key: string, value: boolean): void {
     const devToolService = LynxServiceCenter.getService<ILynxDevToolService>(LynxServiceType.DevTool);
     if (devToolService?.isDevToolModuleLoaded()) {
@@ -28,6 +29,7 @@ export class LynxDebugger {
     }
   }
 
+  /** @deprecated Use DevToolSettings instead. */
   public static getSwitch(key: string): boolean {
     const devToolService = LynxServiceCenter.getService<ILynxDevToolService>(LynxServiceType.DevTool);
     if (devToolService?.isDevToolModuleLoaded()) {

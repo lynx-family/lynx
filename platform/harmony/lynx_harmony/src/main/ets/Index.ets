@@ -132,6 +132,7 @@ export { LynxUIRendererCreator } from './tasm/LynxUIRendererCreator';
 export { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from './jsbridge/LynxModuleManager'
 
 export { LynxDebugger } from './devtool_wrapper/LynxDebugger'
+export { DevToolSettings } from './devtool_wrapper/DevToolSettings'
 
 export { LynxBaseInspectorOwner } from './devtool_wrapper/LynxBaseInspectorOwner'
 

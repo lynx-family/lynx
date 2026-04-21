@@ -15,8 +15,10 @@ export interface ILynxDevToolService extends IServiceProvider {
 
   initDevToolSetModule(moduleManager: number[]): void
 
+  /** @deprecated Use DevToolSettings instead. */
   devtoolEnvSetSwitch(key: string, value: boolean): void
 
+  /** @deprecated Use DevToolSettings instead. */
   devtoolEnvGetSwitch(key: string): boolean
 
   devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void

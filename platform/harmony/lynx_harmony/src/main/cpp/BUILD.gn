@@ -26,6 +26,8 @@ lynx_core_source_set("cpp") {
     "base/base_trace_backend.h",
     "devtool_lifecycle_harmony.cc",
     "devtool_lifecycle_harmony.h",
+    "devtool_settings_harmony.cc",
+    "devtool_settings_harmony.h",
     "event/custom_event.h",
     "event/event_dispatcher.cc",
     "event/event_dispatcher.h",
@@ -270,6 +272,7 @@ lynx_core_source_set("cpp") {
     "pixelmap",
     "image_packer",
     "ohresmgr",
+    "ohpreferences",
   ]
 }
 

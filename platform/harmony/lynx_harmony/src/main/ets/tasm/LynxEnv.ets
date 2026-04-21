@@ -12,7 +12,6 @@ import { TraceEventDef } from '../base/TraceEventDef';
 import { LynxBaseEnv, LynxBaseServiceCenter, LynxBaseServiceType } from '@lynx/lynx_base';
 import { LynxBaseTraceService } from '../base/LynxBaseTraceService';
 import { LynxEventReporter } from './eventreport/LynxEventReporter';
-import { LynxEnvKey } from './LynxEnvKey';
 import { LynxInfoReporterHelper } from './eventreport/LynxInfoReporterHelper';
 import { DisplayInfo } from './DisplayInfo';
 import { LynxTrailHub } from './LynxTrailHub';
@@ -23,6 +22,7 @@ import { ILynxImageService } from './service/ILynxImageService';
 import { MemoryPressureCallback, MemoryPressureCallbackDispatcher } from '../base/memory/MemoryPressureCallbackDispatcher';
 import { MemoryPressureLevel } from '../base/memory/MemoryPressureLevel';
 import { DevToolLifecycle } from '../devtool_wrapper/DevToolLifecycle';
+import { DevToolSettings } from '../devtool_wrapper/DevToolSettings';
 
 const TAG = 'LynxEnv';
 
@@ -39,6 +39,7 @@ class LynxEnvironment {
     if (this.initialized) {
       return;
     }
+    DevToolSettings.initialize();
     this.initLynxBaseEnv();
     if (!this.performanceEnable) {
       this.setTracingDirPath(context.filesDir);
@@ -143,30 +144,28 @@ class LynxEnvironment {
     if (!DevToolLifecycle.isEnabled()) {
       return false;
     }
-    let devtoolEnabled = LynxDebugger.getSwitch(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL);
-    return devtoolEnabled;
+    return DevToolSettings.isDevToolEnabled();
   }
 
   public enableDevtool(enabled: boolean) {
     if (!DevToolLifecycle.isEnabled()) {
       return;
     }
-    LynxDebugger.setSwitch(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, enabled);
+    DevToolSettings.setDevToolEnabled(enabled);
   }
 
   public quickjsDebugEnabled() {
     if (!DevToolLifecycle.isEnabled()) {
       return false;
     }
-    let quickjsEnabled = LynxDebugger.getSwitch(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG);
-    return quickjsEnabled;
+    return DevToolSettings.isQuickjsDebugEnabled();
   }
 
   public setQuickjsDebugEnabled(enabled: boolean) {
     if (!DevToolLifecycle.isEnabled()) {
       return;
     }
-    LynxDebugger.setSwitch(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG, enabled);
+    DevToolSettings.setQuickjsDebugEnabled(enabled);
   }
 
   public setTracingDirPath(tracingDirPath: string) {
@@ -187,11 +186,11 @@ class LynxEnvironment {
   }
 
   public setLogBoxEnabled(enabled: boolean) {
-    LynxDebugger.setSwitch(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, enabled);
+    DevToolSettings.setLogBoxEnabled(enabled);
   }
 
   public isLogBoxEnabled() {
-    return LynxDebugger.getSwitch(LynxEnvKey.SP_KEY_ENABLE_LOGBOX);
+    return DevToolSettings.isLogBoxEnabled();
   }
 
   private updateAppInfo(appInfo: Map<string, string>) {

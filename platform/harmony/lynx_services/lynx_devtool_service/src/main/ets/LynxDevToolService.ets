@@ -48,6 +48,7 @@ export class LynxDevToolService implements ILynxDevToolService {
     }
   }
 
+  /** @deprecated Use DevToolSettings instead. */
   public devtoolEnvSetSwitch(key: string, value: boolean): void {
     let lynxDevToolEnv: ESObject = LynxDevToolService.devtoolModule?.LynxDevToolEnv;
     if (lynxDevToolEnv) {
@@ -57,6 +58,7 @@ export class LynxDevToolService implements ILynxDevToolService {
     }
   }
 
+  /** @deprecated Use DevToolSettings instead. */
   public devtoolEnvGetSwitch(key: string): boolean {
     let lynxDevToolEnv: ESObject = LynxDevToolService.devtoolModule?.LynxDevToolEnv;
     if (lynxDevToolEnv) {
@@ -122,4 +124,3 @@ export class LynxDevToolService implements ILynxDevToolService {
     }
   }
 }
-

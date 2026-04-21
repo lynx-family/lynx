@@ -18,6 +18,7 @@
 #include "core/services/performance/harmony/performance_controller_harmony.h"
 #include "core/shell/harmony/embedder_platform_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/devtool_lifecycle_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/devtool_settings_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_runtime_wrapper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
@@ -57,6 +58,7 @@ void LynxNapiInit(napi_env env, napi_value exports) {
   lynx::harmony::LynxTemplateBundleHarmony::Init(env, exports);
   lynx::harmony::LynxRuntimeWrapper::Init(env, exports);
   lynx::tasm::harmony::DevToolLifecycleHarmony::Init(env, exports);
+  lynx::tasm::harmony::DevToolSettingsHarmony::Init(env, exports);
 #if LYNX_HARMONY_HAS_RELAX2NATIVE_INIT
   lynx::harmony::StaticTaskNapiBridge::Init(env, exports);
   lynx::runtime::rts::Env rts_env(env);

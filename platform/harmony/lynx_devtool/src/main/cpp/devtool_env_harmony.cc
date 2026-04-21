@@ -29,6 +29,9 @@
 namespace lynx {
 namespace devtool {
 
+// TODO(mitchilling): Keep this native embedder compatibility path until the
+// cross-platform embedder settings refactor migrates macOS, Windows, and
+// Harmony together.
 std::unordered_map<std::string, bool>
     DevToolEnvHarmony::s_persistent_default_value_ = {
         {"enable_devtool", false},
@@ -238,6 +241,8 @@ napi_value DevToolEnvHarmony::InitDevToolSetModule(napi_env env,
   return nullptr;
 }
 
+// TODO(mitchilling): Route EnvEmbedder through the new settings model after the
+// shared embedder refactor covers macOS, Windows, and Harmony.
 void EnvEmbedder::SetSwitch(const std::string &key, bool value) {
   devtool::DevToolEnvHarmony::GetInstance().SetSwitch(
       key, value, devtool::DevToolEnvHarmony::NeedPersistent(key));
