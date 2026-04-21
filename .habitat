@@ -1,4 +1,4 @@
-habitat_version = "0.3.146-alpha.2"
+habitat_version = "0.3.147"
 solutions = [
     {
         'name': '.',
