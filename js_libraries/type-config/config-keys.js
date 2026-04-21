@@ -44,6 +44,7 @@ const configKeys = [
   'disableQuickTracingGC',
   'enableA11y',
   'enableAccessibilityElement',
+  'enableAnimationForwardUpdatePreservation',
   'enableAsyncInitVideoEngine',
   'enableAsyncRequestImage',
   'enableAsyncResolveSubtree',

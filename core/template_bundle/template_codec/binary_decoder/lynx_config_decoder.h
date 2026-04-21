@@ -880,6 +880,15 @@ class LynxConfigDecoder final {
       page_config->SetEnableDisexposureWhenBackground(
           doc[config::kEnableDisexposureWhenBackground].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableAnimationForwardUpdatePreservation) &&
+        doc[config::kEnableAnimationForwardUpdatePreservation].IsBool()) {
+      page_config->SetEnableAnimationForwardUpdatePreservation(
+          doc[config::kEnableAnimationForwardUpdatePreservation].GetBool());
+    } else {
+      page_config->SetEnableAnimationForwardUpdatePreservation(
+          LynxEnv::GetInstance().EnableAnimationForwardUpdatePreservation());
+    }
   };
 };
 }  // namespace tasm

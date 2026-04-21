@@ -46,7 +46,7 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(130);
+    expect(configKeys.length).toBe(131);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
       'alignMouseEventWithW3C',
@@ -59,6 +59,7 @@ describe('type-config index', () => {
       'disableQuickTracingGC',
       'enableA11y',
       'enableAccessibilityElement',
+      'enableAnimationForwardUpdatePreservation',
       'enableAsyncInitVideoEngine',
       'enableAsyncRequestImage',
       'enableAsyncResolveSubtree',
