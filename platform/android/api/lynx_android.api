@@ -10159,13 +10159,16 @@ public class com::lynx::tasm::behavior::shadow::text::TextAttributes :  {
   public TextDirectionHeuristic com.lynx.tasm.behavior.shadow.text.TextAttributes.getDirectionHeuristic();
   public boolean com.lynx.tasm.behavior.shadow.text.TextAttributes.getIsAutoFontSize();
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setAutoFontSize(ReadableArray autoFontSize);
+  public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setAutoFontSize(boolean isAutoFontSize, float minSize, float maxSize, float stepGranularity);
   public float com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizeMaxSize();
   public float com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizeMinSize();
   public float com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizeStepGranularity();
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setAutoFontSizePresetSizes(ReadableArray presetSizes);
+  public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setAutoFontSizePresetSizes(@Nullable float[] presetSizes);
   public float[] com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizePresetSizes();
   public List< AutoFontSizeLineRange > com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizeLineRanges();
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setAutoFontSizeLineRanges(ReadableArray lineRanges);
+  public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setAutoFontSizeLineRanges(@Nullable List< AutoFontSizeLineRange > lineRanges);
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setHasValidTypeface(boolean hasTypefaceUpdated);
   public boolean com.lynx.tasm.behavior.shadow.text.TextAttributes.getHyphen();
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setHyphen(boolean enable);

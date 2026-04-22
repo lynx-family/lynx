@@ -70,6 +70,9 @@ public class TextMeasurer {
   private final static int kTextPropTextDecoration = 14;
   private final static int kTextPropTextAlign = 15;
   private final static int kTextPropVerticalAlign = 16;
+  private final static int kTextPropAutoFontSize = 17;
+  private final static int kTextPropAutoFontSizePresetSizes = 18;
+  private final static int kTextPropAutoFontSizeLineRanges = 19;
 
   // attributes
   private final static int kTextPropTextMaxLine = 99;
@@ -360,6 +363,72 @@ public class TextMeasurer {
           }
           textAttributes = ensureTextAttributes(textAttributes);
           textAttributes.mTextAlign = textAlign;
+          break;
+
+        case kTextPropAutoFontSize:
+          if (!isParagraph) {
+            Log.w("TextMeasurer", "auto-font-size should be set to paragraph");
+            iterator.next().getInt();
+            iterator.next().getDouble();
+            iterator.next().getDouble();
+            iterator.next().getDouble();
+            continue;
+          }
+          textAttributes = ensureTextAttributes(textAttributes);
+          textAttributes.setAutoFontSize(iterator.next().getInt() != 0,
+              (float) iterator.next().getDouble(), (float) iterator.next().getDouble(),
+              (float) iterator.next().getDouble());
+          break;
+
+        case kTextPropAutoFontSizePresetSizes:
+          int presetSizeCount = iterator.next().getInt();
+          if (!isParagraph) {
+            Log.w("TextMeasurer", "auto-font-size-preset-sizes should be set to paragraph");
+            for (int i = 0; i < presetSizeCount; i++) {
+              iterator.next().getDouble();
+            }
+            continue;
+          }
+          textAttributes = ensureTextAttributes(textAttributes);
+          if (presetSizeCount <= 0) {
+            textAttributes.setAutoFontSizePresetSizes((float[]) null);
+            break;
+          }
+          float[] presetSizes = new float[presetSizeCount];
+          for (int i = 0; i < presetSizeCount; i++) {
+            presetSizes[i] = (float) iterator.next().getDouble();
+          }
+          textAttributes.setAutoFontSizePresetSizes(presetSizes);
+          break;
+
+        case kTextPropAutoFontSizeLineRanges:
+          int lineRangeCount = iterator.next().getInt();
+          if (!isParagraph) {
+            Log.w("TextMeasurer", "auto-font-size-line-ranges should be set to paragraph");
+            for (int i = 0; i < lineRangeCount; i++) {
+              iterator.next().getInt();
+              iterator.next().getInt();
+              iterator.next().getDouble();
+              iterator.next().getDouble();
+            }
+            continue;
+          }
+          textAttributes = ensureTextAttributes(textAttributes);
+          if (lineRangeCount <= 0) {
+            textAttributes.setAutoFontSizeLineRanges(
+                (List<TextAttributes.AutoFontSizeLineRange>) null);
+            break;
+          }
+          List<TextAttributes.AutoFontSizeLineRange> lineRanges = new ArrayList<>(lineRangeCount);
+          for (int i = 0; i < lineRangeCount; i++) {
+            int startLine = iterator.next().getInt();
+            int endLine = iterator.next().getInt();
+            float minSize = (float) iterator.next().getDouble();
+            float maxSize = (float) iterator.next().getDouble();
+            lineRanges.add(
+                new TextAttributes.AutoFontSizeLineRange(startLine, endLine, minSize, maxSize));
+          }
+          textAttributes.setAutoFontSizeLineRanges(lineRanges);
           break;
 
         case kPropRectSize:

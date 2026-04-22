@@ -517,10 +517,16 @@ public class TextAttributes {
       mIsAutoFontSize = false;
       return;
     }
-    mIsAutoFontSize = autoFontSize.getBoolean(0);
-    mAutoFontSizeMinSize = (float) autoFontSize.getDouble(1);
-    mAutoFontSizeMaxSize = (float) autoFontSize.getDouble(2);
-    mAutoFontSizeStepGranularity = (float) autoFontSize.getDouble(3);
+    setAutoFontSize(autoFontSize.getBoolean(0), (float) autoFontSize.getDouble(1),
+        (float) autoFontSize.getDouble(2), (float) autoFontSize.getDouble(3));
+  }
+
+  public void setAutoFontSize(
+      boolean isAutoFontSize, float minSize, float maxSize, float stepGranularity) {
+    mIsAutoFontSize = isAutoFontSize;
+    mAutoFontSizeMinSize = minSize;
+    mAutoFontSizeMaxSize = maxSize;
+    mAutoFontSizeStepGranularity = stepGranularity;
   }
 
   public float getAutoFontSizeMaxSize() {
@@ -540,10 +546,15 @@ public class TextAttributes {
       mAutoFontSizePresetSizes = null;
       return;
     }
-    mAutoFontSizePresetSizes = new float[presetSizes.size()];
+    float[] sizes = new float[presetSizes.size()];
     for (int i = 0; i < presetSizes.size(); i++) {
-      mAutoFontSizePresetSizes[i] = (float) presetSizes.getDouble(i);
+      sizes[i] = (float) presetSizes.getDouble(i);
     }
+    setAutoFontSizePresetSizes(sizes);
+  }
+
+  public void setAutoFontSizePresetSizes(@Nullable float[] presetSizes) {
+    mAutoFontSizePresetSizes = presetSizes == null || presetSizes.length == 0 ? null : presetSizes;
   }
 
   public float[] getAutoFontSizePresetSizes() {
@@ -578,7 +589,11 @@ public class TextAttributes {
       float maxSize = (float) range.getDouble(3);
       ranges.add(new AutoFontSizeLineRange(startLine, endLine, minSize, maxSize));
     }
-    mAutoFontSizeLineRanges = ranges.isEmpty() ? null : ranges;
+    setAutoFontSizeLineRanges(ranges);
+  }
+
+  public void setAutoFontSizeLineRanges(@Nullable List<AutoFontSizeLineRange> lineRanges) {
+    mAutoFontSizeLineRanges = lineRanges == null || lineRanges.isEmpty() ? null : lineRanges;
   }
 
   public void setHasValidTypeface(boolean hasTypefaceUpdated) {

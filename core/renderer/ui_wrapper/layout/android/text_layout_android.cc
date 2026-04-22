@@ -479,6 +479,45 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
           props->AddProp(static_cast<int>(text_attributes->text_align));
           break;
 
+        case kPropertyIDXAutoFontSize:
+          props->AddProp(kTextPropAutoFontSize);
+          props->AddProp(text_attributes->is_auto_font_size);
+          props->AddProp(text_attributes->auto_font_size_min_size);
+          props->AddProp(text_attributes->auto_font_size_max_size);
+          props->AddProp(text_attributes->auto_font_size_step_granularity);
+          break;
+
+        case kPropertyIDXAutoFontSizePresetSizes:
+          props->AddProp(kTextPropAutoFontSizePresetSizes);
+          if (text_attributes->auto_font_size_preset_sizes) {
+            const auto& preset_sizes =
+                *text_attributes->auto_font_size_preset_sizes;
+            props->AddProp(static_cast<int>(preset_sizes.size()));
+            for (float size : preset_sizes) {
+              props->AddProp(size);
+            }
+          } else {
+            props->AddProp(0);
+          }
+          break;
+
+        case kPropertyIDXAutoFontSizeLineRanges:
+          props->AddProp(kTextPropAutoFontSizeLineRanges);
+          if (text_attributes->auto_font_size_line_ranges) {
+            const auto& line_ranges =
+                *text_attributes->auto_font_size_line_ranges;
+            props->AddProp(static_cast<int>(line_ranges.size()));
+            for (const auto& range : line_ranges) {
+              props->AddProp(range.start_line);
+              props->AddProp(range.end_line);
+              props->AddProp(range.min_size);
+              props->AddProp(range.max_size);
+            }
+          } else {
+            props->AddProp(0);
+          }
+          break;
+
         case kPropertyIDVerticalAlign:
           props->AddProp(kTextPropVerticalAlign);
           props->AddProp(static_cast<int>(text_attributes->vertical_align));
