@@ -9,11 +9,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxMarkdownShadowNodeAutoRegistry : LynxMarkdownShadowNode
+@interface LynxMarkdownShadowNodeAutoRegistry : LynxMarkdownShadowNodeV2
 
 @end
 
-@interface LynxMarkdownUIAutoRegistry : LynxMarkdownUI
+@interface LynxMarkdownUIAutoRegistry : LynxMarkdownUIV2
 
 @end
 

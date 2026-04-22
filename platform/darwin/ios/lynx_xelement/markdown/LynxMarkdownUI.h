@@ -8,7 +8,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxMarkdownUI : LynxUI <LynxMarkdownView *>
+@interface LynxMarkdownUIV2 : LynxUI <LynxMarkdownViewV2 *>
 
 @end
 

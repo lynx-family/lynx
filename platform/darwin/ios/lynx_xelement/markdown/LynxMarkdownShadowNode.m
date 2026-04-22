@@ -14,8 +14,8 @@
 #import "adaptor/LynxMarkdownResourceLoader.h"
 #import "adaptor/LynxServalMarkdownViewWrapper.h"
 
-@interface LynxMarkdownShadowNode () <LynxMarkdownResourceLoaderHost,
-                                      LynxMarkdownEventDispatcherHost>
+@interface LynxMarkdownShadowNodeV2 () <LynxMarkdownResourceLoaderHost,
+                                        LynxMarkdownEventDispatcherHost>
 @end
 
 static ServalMarkdownLayoutMode LynxMarkdownToServalLayoutMode(LynxMeasureMode mode) {
@@ -37,8 +37,8 @@ static ServalMarkdownAnimationType LynxMarkdownToServalAnimationType(NSString *t
   return kServalMarkdownAnimationTypeNone;
 }
 
-@implementation LynxMarkdownShadowNode {
-  LynxMarkdownBundle *_bundle;
+@implementation LynxMarkdownShadowNodeV2 {
+  LynxMarkdownBundleV2 *_bundle;
   LynxServalMarkdownViewWrapper *_markdownView;
   LynxMarkdownResourceLoader *_resourceLoader;
   LynxMarkdownEventDispatcher *_eventDispatcher;
@@ -53,7 +53,7 @@ static ServalMarkdownAnimationType LynxMarkdownToServalAnimationType(NSString *t
 - (instancetype)initWithSign:(NSInteger)sign tagName:(NSString *)tagName {
   self = [super initWithSign:sign tagName:tagName];
   if (self != nil) {
-    _bundle = [[LynxMarkdownBundle alloc] init];
+    _bundle = [[LynxMarkdownBundleV2 alloc] init];
     _resourceLoader = [[LynxMarkdownResourceLoader alloc] initWithHost:self];
     _eventDispatcher = [[LynxMarkdownEventDispatcher alloc] initWithHost:self];
     _contentID = @"";

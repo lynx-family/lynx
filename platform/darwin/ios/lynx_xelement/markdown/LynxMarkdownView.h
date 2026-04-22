@@ -6,11 +6,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class LynxMarkdownBundle;
+@class LynxMarkdownBundleV2;
 
-@interface LynxMarkdownView : UIView
+@interface LynxMarkdownViewV2 : UIView
 
-- (void)setBundle:(nullable LynxMarkdownBundle *)bundle;
+- (void)setBundle:(nullable LynxMarkdownBundleV2 *)bundle;
 
 @end
 

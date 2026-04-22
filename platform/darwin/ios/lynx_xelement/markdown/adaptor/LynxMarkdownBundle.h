@@ -8,7 +8,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @class LynxServalMarkdownViewWrapper;
 
-@interface LynxMarkdownBundle : NSObject
+@interface LynxMarkdownBundleV2 : NSObject
 
 @property(nonatomic, strong, nullable) LynxServalMarkdownViewWrapper *markdownView;
 

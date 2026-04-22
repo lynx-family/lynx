@@ -4,6 +4,6 @@
 
 #import "LynxMarkdownBundle.h"
 
-@implementation LynxMarkdownBundle
+@implementation LynxMarkdownBundleV2
 
 @end

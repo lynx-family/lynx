@@ -10,16 +10,16 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <ServalMarkdown/ServalMarkdownConstants.h>
 
-#import "LynxMarkdownShadowNode.h"
+#import <XElement/LynxMarkdownShadowNode.h>
 #import "adaptor/LynxMarkdownBundle.h"
 #import "adaptor/LynxServalMarkdownViewWrapper.h"
 
-@implementation LynxMarkdownUI {
-  LynxMarkdownBundle *_bundle;
+@implementation LynxMarkdownUIV2 {
+  LynxMarkdownBundleV2 *_bundle;
 }
 
-- (LynxMarkdownView *)createView {
-  return [[LynxMarkdownView alloc] init];
+- (LynxMarkdownViewV2 *)createView {
+  return [[LynxMarkdownViewV2 alloc] init];
 }
 
 - (void)didInsertChild:(LynxUI *)child atIndex:(NSInteger)index {
@@ -30,8 +30,8 @@
 
 - (void)onReceiveUIOperation:(id)value {
   [super onReceiveUIOperation:value];
-  if (value != nil && [value isKindOfClass:[LynxMarkdownBundle class]]) {
-    _bundle = (LynxMarkdownBundle *)value;
+  if (value != nil && [value isKindOfClass:[LynxMarkdownBundleV2 class]]) {
+    _bundle = (LynxMarkdownBundleV2 *)value;
     [self.view setBundle:_bundle];
   }
 }
@@ -314,8 +314,8 @@ LYNX_UI_METHOD(getParseResult) {
   NSString *contentID = [markdown getContentID];
   if (contentID.length == 0) {
     LynxShadowNode *node = [self.context.nodeOwner nodeWithSign:self.sign];
-    if ([node isKindOfClass:[LynxMarkdownShadowNode class]]) {
-      contentID = [(LynxMarkdownShadowNode *)node currentContentID];
+    if ([node isKindOfClass:[LynxMarkdownShadowNodeV2 class]]) {
+      contentID = [(LynxMarkdownShadowNodeV2 *)node currentContentID];
     }
   }
 

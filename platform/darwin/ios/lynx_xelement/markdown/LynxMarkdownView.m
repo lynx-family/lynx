@@ -7,13 +7,13 @@
 #import "adaptor/LynxMarkdownBundle.h"
 #import "adaptor/LynxServalMarkdownViewWrapper.h"
 
-@interface LynxMarkdownView ()
+@interface LynxMarkdownViewV2 ()
 
 - (void)invalidateDisplayLink;
 
 @end
 
-@implementation LynxMarkdownView {
+@implementation LynxMarkdownViewV2 {
   LynxServalMarkdownViewWrapper *_markdownView;
   CADisplayLink *_displayLink;
 }
@@ -31,7 +31,7 @@
   [self invalidateDisplayLink];
 }
 
-- (void)setBundle:(LynxMarkdownBundle *_Nullable)bundle {
+- (void)setBundle:(LynxMarkdownBundleV2 *_Nullable)bundle {
   LynxServalMarkdownViewWrapper *newMarkdownView = bundle != nil ? bundle.markdownView : nil;
   if (newMarkdownView == _markdownView) {
     [self setNeedsDisplay];

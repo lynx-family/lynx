@@ -12,7 +12,7 @@
   return [self initWithShadowNode:nil];
 }
 
-- (instancetype)initWithShadowNode:(LynxMarkdownShadowNode *_Nullable)shadowNode {
+- (instancetype)initWithShadowNode:(LynxMarkdownShadowNodeV2 *_Nullable)shadowNode {
   self = [super init];
   if (self != nil) {
     _shadowNode = shadowNode;
