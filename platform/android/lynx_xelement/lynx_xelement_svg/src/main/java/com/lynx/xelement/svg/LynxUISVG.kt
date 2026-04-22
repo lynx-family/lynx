@@ -146,6 +146,7 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
           )
           if (TextUtils.isEmpty(svgData)) {
             mView.setImageDrawable(null)
+            mContent = null
             return true
           }
           setServalSVGDrawable(svgData, true)

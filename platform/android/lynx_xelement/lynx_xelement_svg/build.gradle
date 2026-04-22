@@ -37,7 +37,7 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation "androidx.appcompat:appcompat:1.0.0"
-    implementation "org.lynxsdk.lynx:servalsvg:0.0.1-alpha.3"
+    implementation "org.lynxsdk.lynx:servalsvg:0.0.2"
     //remove this after.
     compileOnly('com.facebook.fresco:fresco:1.10.0')
 }
