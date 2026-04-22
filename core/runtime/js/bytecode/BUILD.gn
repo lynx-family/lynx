@@ -26,7 +26,8 @@ lynx_core_source_set("jscache") {
     "meta_data.h",
   ]
 
-  if (enable_unittests || is_oliver_ssr || is_oliver_node_lynx) {
+  if (enable_unittests || is_oliver_ssr || is_oliver_node_lynx ||
+      (is_android && is_headless)) {
     sources += [ "js_cache_manager_mock.cc" ]
   } else if (is_android) {
     sources += [

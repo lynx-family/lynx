@@ -26,6 +26,9 @@ source_set("shared_image") {
   public_deps = [ "../../fml:fml" ]
 
   defines = []
+  if (is_headless) {
+    defines += [ "ENABLE_HEADLESS" ]
+  }
 
   deps = [ "../../common/graphics:gl_scoped_binder" ]
 
@@ -155,25 +158,30 @@ source_set("shared_image") {
     sources += [
       "android/android_hardwarebuffer_utils.cc",
       "android/android_hardwarebuffer_utils.h",
-      "android/scoped_a_native_window.cc",
-      "android/scoped_a_native_window.h",
-      "android/scoped_java_surface.cc",
-      "android/scoped_java_surface.h",
-      "android/surface_texture.cc",
-      "android/surface_texture.h",
-      "android/surface_texture_listener.cc",
-      "android/surface_texture_listener.h",
       "android_egl_image_representation.cc",
       "android_egl_image_representation.h",
       "android_hardwarebuffer_image_backing.cc",
       "android_hardwarebuffer_image_backing.h",
-      "android_surface_texture_image_backing.cc",
-      "android_surface_texture_image_backing.h",
       "egl_image_backing.cc",
       "egl_image_backing.h",
       "vulkan_image_hardwarebuffer_representation.cc",
       "vulkan_image_hardwarebuffer_representation.h",
     ]
+
+    if (!is_headless) {
+      sources += [
+        "android/scoped_a_native_window.cc",
+        "android/scoped_a_native_window.h",
+        "android/scoped_java_surface.cc",
+        "android/scoped_java_surface.h",
+        "android/surface_texture.cc",
+        "android/surface_texture.h",
+        "android/surface_texture_listener.cc",
+        "android/surface_texture_listener.h",
+        "android_surface_texture_image_backing.cc",
+        "android_surface_texture_image_backing.h",
+      ]
+    }
     deps += [ "../../fml:fml" ]
     configs += [ "../../:config" ]
   }

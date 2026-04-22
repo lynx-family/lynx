@@ -28,7 +28,7 @@ source_set("common") {
     "trail_settings.h",
   ]
 
-  if (!is_android) {
+  if (!is_android || is_headless) {
     sources += [ "sys_info.cc" ]
   }
 
@@ -36,7 +36,7 @@ source_set("common") {
 
   include_dirs = [ "//third_party/boringssl/src/include" ]
 
-  if (is_win || is_linux || is_mac) {
+  if (is_win || is_linux || is_mac || (is_android && is_headless)) {
     deps += [ "//third_party/boringssl" ]
   } else if (is_android) {
     deps += [ "//third_party/boringssl:boringssl_asm" ]

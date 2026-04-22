@@ -94,7 +94,7 @@ source_set("common") {
   }
 
   # Use real vsync waiter on mobile platforms, use timer-based fallback on other platforms
-  if (!(is_android || is_harmony || is_ios || is_tvos)) {
+  if (!((is_android && !is_headless) || is_harmony || is_ios || is_tvos)) {
     sources += [
       "vsync_waiter_fallback.cc",
       "vsync_waiter_fallback.h",
@@ -110,7 +110,7 @@ source_set("common") {
     frameworks = [ "QuartzCore.framework" ]
   }
 
-  if (!(is_android || is_ios)) {
+  if (!(is_android || is_ios) || is_headless) {
     sources += [
       "services/compositor/platform_overlay_service_fallback.cc",
       "services/compositor/presenter_service_fallback.cc",

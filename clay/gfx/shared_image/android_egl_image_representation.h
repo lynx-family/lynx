@@ -80,6 +80,7 @@ class NativeBufferEGLImageRepresentation final : public GLImageRepresentation {
   EGLDisplay egl_display_ = nullptr;
 };
 
+#ifndef ENABLE_HEADLESS
 class SurfaceTextureEGLImageRepresentation final
     : public GLImageRepresentation {
  public:
@@ -100,6 +101,7 @@ class SurfaceTextureEGLImageRepresentation final
 
   fml::RefPtr<SurfaceTextureImageBacking> backing_;
 };
+#endif  // ENABLE_HEADLESS
 
 }  // namespace clay
 

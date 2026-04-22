@@ -22,7 +22,7 @@ std::shared_ptr<ResourceLoader> GetOrCreateResourceLoader(
     std::shared_ptr<ResourceLoaderIntercept> intercept, const std::string& url,
     fml::RefPtr<fml::TaskRunner> task_runner,
     std::shared_ptr<ServiceManager> service_manager) {
-#if OS_ANDROID
+#if OS_ANDROID && !ENABLE_HEADLESS
   // Assuming that the `task_runner` will never be changed.
   if (url.compare(0, 5, "data:") == 0) {
     static auto data_loader =

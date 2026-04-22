@@ -78,7 +78,7 @@ if (is_apple || is_android || is_linux) {
   lynx_env_shared_sources += [ "sys_lynx_env/sys_env_default.cc" ]
 }
 
-if (is_android) {
+if (is_android && !is_headless) {
   lynx_env_shared_sources += [
     "android/devtool_lifecycle_android.cc",
     "android/devtool_lifecycle_android.h",
