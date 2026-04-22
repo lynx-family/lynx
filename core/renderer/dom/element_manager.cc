@@ -47,6 +47,25 @@
 constexpr const static char *kEventDomSizeKey = "dom_size";
 namespace lynx {
 namespace tasm {
+namespace {
+
+void PostTaskBatchToConcurrentLoop(
+    const std::shared_ptr<base::Vector<base::closure>> &batch) {
+  if (batch == nullptr || batch->empty()) {
+    return;
+  }
+  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [batch]() {
+        for (const auto &task : *batch) {
+          if (task != nullptr) {
+            task();
+          }
+        }
+      },
+      base::ConcurrentTaskType::HIGH_PRIORITY);
+}
+
+}  // namespace
 #pragma mark ElementManager
 
 ElementManager::ElementManager(
@@ -451,6 +470,27 @@ void ElementManager::DidPatchFinishForFiber() {
   if (EnableFiberElementMemoryReport()) {
     UpdateElementMemoryUsage(CalcTotalMemoryUsageDiff());
   }
+}
+
+void ElementManager::EnqueuePostMTSRenderTask(base::closure task) {
+  if (task == nullptr) {
+    return;
+  }
+  if (pending_post_mts_render_tasks_ == nullptr) {
+    pending_post_mts_render_tasks_ =
+        std::make_shared<PendingPostMTSRenderTasks>();
+  }
+  pending_post_mts_render_tasks_->emplace_back(std::move(task));
+}
+
+void ElementManager::FirePostMTSRenderTasks() {
+  auto batch = pending_post_mts_render_tasks_;
+  pending_post_mts_render_tasks_.reset();
+  if (batch == nullptr || batch->empty()) {
+    return;
+  }
+
+  PostTaskBatchToConcurrentLoop(batch);
 }
 
 void ElementManager::PrepareComponentNodeForInspector(Element *component) {
@@ -1316,6 +1356,7 @@ void ElementManager::OnPatchFinishForFiber(
         [](FiberElement *element) { element->onNodeReload(); });
     catalyzer_->painting_context()->UpdateNodeReloadPatching();
   }
+  FirePostMTSRenderTasks();
   element->FlushActionsAsRoot();
 
   BindTimingFlagToPipelineOptions(options);

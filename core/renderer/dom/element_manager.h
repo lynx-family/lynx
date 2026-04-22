@@ -1218,6 +1218,9 @@ class ElementManager : public ElementContextDelegate,
     require_css_variables_ = require_css_variables;
   }
 
+  void EnqueuePostMTSRenderTask(base::closure task);
+  void FirePostMTSRenderTasks();
+
  protected:
   void TickLayout(const std::shared_ptr<PipelineOptions> &options);
 
@@ -1388,6 +1391,11 @@ class ElementManager : public ElementContextDelegate,
       parallel_resolve_tree_tasks_queue_;
 
   base::ConcurrentQueue<base::String> attribute_timing_flag_list_;
+
+  // Best-effort async warmups fired after MTS Render and before Resolve. The
+  // consuming path must still run/wait on the same OnceTask before using data.
+  using PendingPostMTSRenderTasks = base::Vector<base::closure>;
+  std::shared_ptr<PendingPostMTSRenderTasks> pending_post_mts_render_tasks_;
 
   std::shared_ptr<tasm::TasmWorkerTaskRunner> task_runner_;
 
