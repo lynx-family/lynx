@@ -53,6 +53,16 @@ open class LynxUIInput(context: LynxContext, params:Any?) : LynxUIBaseInput(cont
       return Gravity.CENTER_VERTICAL
     }
 
+    override fun onNodeReady() {
+      super.onNodeReady()
+      val textLayout = LynxInputUtils().getLayoutInEditText(mView.text.toString(),
+        mView,
+        Int.MAX_VALUE,
+        Int.MAX_VALUE)
+  
+      triggerUpdateLayout(textLayout.height)
+    }
+
     override fun afterPropsUpdated(props: StylesDiffMap?) {
         super.afterPropsUpdated(props)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
