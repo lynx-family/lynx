@@ -1102,6 +1102,8 @@ class Element : public lepus::RefCounted,
 
   virtual bool is_list() const { return false; }
 
+  virtual bool is_template() const { return false; }
+
   virtual bool is_wrapper() const { return false; }
 
   virtual bool is_component() const { return false; }

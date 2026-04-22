@@ -5,10 +5,68 @@
 #ifndef CORE_RENDERER_DOM_FIBER_TEMPLATE_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_TEMPLATE_ELEMENT_H_
 
+#include <memory>
+
+#include "core/renderer/dom/fiber/fiber_element.h"
+
 namespace lynx {
 namespace tasm {
 
-// TODO(songshourui.null): Add TemplateElement declaration.
+class TemplateAssembler;
+
+class TemplateElement : public FiberElement {
+ public:
+  explicit TemplateElement(ElementManager* element_manager = nullptr);
+  ~TemplateElement() override;
+
+  fml::RefPtr<FiberElement> CloneElement(
+      bool clone_resolved_props) const override {
+    return fml::AdoptRef<FiberElement>(
+        new TemplateElement(*this, clone_resolved_props));
+  }
+
+  bool is_template() const override { return true; }
+  void SetTASM(TemplateAssembler* tasm) { tasm_ = tasm; }
+  void SetTemplateKey(const base::String& template_key) {
+    template_key_ = template_key;
+  }
+  void SetBundleUrl(const base::String& bundle_url) {
+    bundle_url_ = bundle_url;
+  }
+  void SetAttributeSlots(const lepus::Value& attribute_slots) {
+    attribute_slots_ = attribute_slots;
+  }
+  void SetElementSlots(const lepus::Value& element_slots) {
+    element_slots_ = element_slots;
+  }
+  void SetUid(const lepus::Value& uid) { uid_ = uid; }
+
+  void PrepareAsyncCreateElementTree();
+  fml::RefPtr<FiberElement> GetRoot();
+  lepus::Value Serialize() const;
+
+ private:
+  TemplateElement(const TemplateElement& element, bool clone_resolved_props)
+      : FiberElement(element, clone_resolved_props),
+        tasm_(element.tasm_),
+        template_key_(element.template_key_),
+        bundle_url_(element.bundle_url_),
+        attribute_slots_(element.attribute_slots_),
+        element_slots_(element.element_slots_),
+        uid_(element.uid_) {}
+
+  lepus::Value SerializeElementSlots() const;
+  lepus::Value SerializeElementSlotChildren(
+      const lepus::Value& slot_children) const;
+  lepus::Value SerializeElementSlotChild(const lepus::Value& child) const;
+
+  TemplateAssembler* tasm_{nullptr};
+  base::String template_key_;
+  base::String bundle_url_;
+  lepus::Value attribute_slots_;
+  lepus::Value element_slots_;
+  lepus::Value uid_;
+};
 
 }  // namespace tasm
 }  // namespace lynx

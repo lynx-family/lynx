@@ -35,6 +35,7 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
+#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -9638,6 +9639,95 @@ TEST_P(FiberElementTest, FromTemplateInfoTest) {
   EXPECT_EQ(ref_0_0 && ref_0_0->IsRefCounted(), true);
   auto ref_0_0_0 = map->GetValueOrNull("0_0_0");
   EXPECT_EQ(ref_0_0_0 && ref_0_0_0->IsRefCounted(), true);
+}
+
+TEST_P(FiberElementTest, SerializeTemplateElementRecursively) {
+  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child->SetTemplateKey(base::String("child_template"));
+  child->SetBundleUrl(base::String("child_bundle.js"));
+
+  auto child_attribute_slots = lepus::CArray::Create();
+  child_attribute_slots->emplace_back(lepus::Value(true));
+  child->SetAttributeSlots(lepus::Value(std::move(child_attribute_slots)));
+
+  auto child_element_slots = lepus::CArray::Create();
+  child_element_slots->emplace_back(lepus::Value(lepus::CArray::Create()));
+  child->SetElementSlots(lepus::Value(std::move(child_element_slots)));
+
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTemplateKey(base::String("root_template"));
+  root->SetBundleUrl(base::String("root_bundle.js"));
+
+  auto root_attribute_slots = lepus::CArray::Create();
+  root_attribute_slots->emplace_back(lepus::Value("slot_0"));
+  root_attribute_slots->emplace_back(lepus::Value(42));
+  root->SetAttributeSlots(lepus::Value(std::move(root_attribute_slots)));
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(child));
+  auto root_element_slots = lepus::CArray::Create();
+  root_element_slots->emplace_back(lepus::Value(std::move(slot_children)));
+  root->SetElementSlots(lepus::Value(std::move(root_element_slots)));
+
+  auto serialized = root->Serialize();
+  EXPECT_TRUE(serialized.IsObject());
+  EXPECT_EQ(serialized.GetProperty("templateKey").StdString(), "root_template");
+  EXPECT_EQ(serialized.GetProperty("bundleUrl").StdString(), "root_bundle.js");
+  EXPECT_FALSE(serialized.GetProperty("kind").IsString());
+
+  auto serialized_attribute_slots = serialized.GetProperty("attributeSlots");
+  EXPECT_TRUE(serialized_attribute_slots.IsArrayOrJSArray());
+  ASSERT_EQ(serialized_attribute_slots.GetLength(), 2);
+  EXPECT_EQ(serialized_attribute_slots.GetProperty(0).StdString(), "slot_0");
+  EXPECT_EQ(serialized_attribute_slots.GetProperty(1).Number(), 42);
+
+  auto serialized_element_slots = serialized.GetProperty("elementSlots");
+  EXPECT_TRUE(serialized_element_slots.IsArrayOrJSArray());
+  ASSERT_EQ(serialized_element_slots.GetLength(), 1);
+  auto serialized_slot_children = serialized_element_slots.GetProperty(0);
+  EXPECT_TRUE(serialized_slot_children.IsArrayOrJSArray());
+  ASSERT_EQ(serialized_slot_children.GetLength(), 1);
+
+  auto serialized_child = serialized_slot_children.GetProperty(0);
+  EXPECT_TRUE(serialized_child.IsObject());
+  EXPECT_EQ(serialized_child.GetProperty("templateKey").StdString(),
+            "child_template");
+  EXPECT_EQ(serialized_child.GetProperty("bundleUrl").StdString(),
+            "child_bundle.js");
+  EXPECT_FALSE(serialized_child.GetProperty("kind").IsString());
+  EXPECT_TRUE(
+      serialized_child.GetProperty("attributeSlots").IsArrayOrJSArray());
+  EXPECT_EQ(
+      serialized_child.GetProperty("attributeSlots").GetProperty(0).Bool(),
+      true);
+  EXPECT_TRUE(serialized_child.GetProperty("elementSlots").IsArrayOrJSArray());
+}
+
+TEST_P(FiberElementTest, SerializeTemplateElementSkipsInvalidSlotChildren) {
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTemplateKey(base::String("root_template"));
+  root->SetBundleUrl(base::String("root_bundle.js"));
+
+  auto invalid_slot_children = lepus::CArray::Create();
+  invalid_slot_children->emplace_back(lepus::Value(manager->CreateFiberView()));
+  invalid_slot_children->emplace_back(lepus::Value(1));
+
+  auto root_element_slots = lepus::CArray::Create();
+  root_element_slots->emplace_back(
+      lepus::Value(std::move(invalid_slot_children)));
+  root_element_slots->emplace_back(lepus::Value("invalid_slot_shape"));
+  root->SetElementSlots(lepus::Value(std::move(root_element_slots)));
+
+  auto serialized = root->Serialize();
+  EXPECT_TRUE(serialized.IsObject());
+
+  auto serialized_element_slots = serialized.GetProperty("elementSlots");
+  EXPECT_TRUE(serialized_element_slots.IsArrayOrJSArray());
+  ASSERT_EQ(serialized_element_slots.GetLength(), 2);
+  EXPECT_TRUE(serialized_element_slots.GetProperty(0).IsArrayOrJSArray());
+  EXPECT_EQ(serialized_element_slots.GetProperty(0).GetLength(), 0);
+  EXPECT_EQ(serialized_element_slots.GetProperty(1).StdString(),
+            "invalid_slot_shape");
 }
 
 // CSSVariable Demo Structure
