@@ -338,6 +338,7 @@ public class com::lynx::tasm::behavior::ui::text::AndroidText : com.lynx.tasm.be
 
 public class com::lynx::tasm::behavior::ui::view::AndroidView : ViewGroup, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding, com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook, com.lynx.tasm.behavior.render.IRendererHost {
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setBlurSampling(int sampling);
+  public void com.lynx.tasm.behavior.ui.view.AndroidView.setBlurAutoUpdate(boolean enabled);
   public com.lynx.tasm.behavior.ui.view.AndroidView.AndroidView(Context context);
   public Renderer com.lynx.tasm.behavior.ui.view.AndroidView.createRenderer(PlatformRendererContext platformRendererContext, int sign);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setRenderer(Renderer renderer);
@@ -10559,6 +10560,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.PARAMS PARAMS;
   public final String com.lynx.tasm.base.trace.TraceEventDef.PIPELINE_IDS PIPELINE_IDS;
   public final String com.lynx.tasm.base.trace.TraceEventDef.DUMP_UI_TREE_LAYOUT DUMP_UI_TREE_LAYOUT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.VIEW_BLUR VIEW_BLUR;
   public final String com.lynx.tasm.base.trace.TraceEventDef.PIPELINE_ID PIPELINE_ID;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_KEY TIMING_KEY;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_TIMESTAMP TIMING_TIMESTAMP;
@@ -11391,6 +11393,7 @@ public class com::lynx::tasm::utils::UIThreadUtils :  {
 
 public class com::lynx::tasm::behavior::ui::view::UIView : com.lynx.tasm.behavior.ui.view.UISimpleView< AndroidView > {
   public void com.lynx.tasm.behavior.ui.view.UIView.setBlurSampling(int sampling);
+  public void com.lynx.tasm.behavior.ui.view.UIView.setBlurAutoUpdate(boolean enable);
   public void com.lynx.tasm.behavior.ui.view.UIView.copyable(boolean value);
   public void com.lynx.tasm.behavior.ui.view.UIView.onGestureScrollBy(float deltaX, float deltaY);
   public boolean com.lynx.tasm.behavior.ui.view.UIView.canConsumeGesture(float deltaX, float deltaY);

@@ -14,6 +14,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.render.PlatformRendererContext;
@@ -34,6 +36,7 @@ public class AndroidView extends ViewGroup
   private boolean mPreDrawListenerAdded = false;
   private boolean mNeedUsePreDrawListener = false;
   private boolean mIsAttachToWindow = false;
+  private boolean mEnableBlurAutoUpdate = true;
   // for gesture arena
   private WeakReference<GestureArenaManager> mGestureArenaManager;
 
@@ -44,14 +47,33 @@ public class AndroidView extends ViewGroup
   public void setBlurSampling(int sampling) {
     this.mBlurSampling = sampling;
   }
-  private int mBlurSampling = 1;
-  private final ViewTreeObserver.OnPreDrawListener mPreDrawListener = () -> {
-    // If a bitmap is drawn to a HW accelerated canvas, android will hold its reference. And
-    // update the content of the reference to the screen. We do not invalidate here, just let
-    updateBlur();
-    return true;
-  };
 
+  public void setBlurAutoUpdate(boolean enabled) {
+    mEnableBlurAutoUpdate = enabled;
+    if (enabled && mNeedUsePreDrawListener && mIsAttachToWindow && !mPreDrawListenerAdded) {
+      getViewTreeObserver().addOnPreDrawListener(mPreDrawListener);
+      mPreDrawListenerAdded = true;
+    }
+    invalidate();
+  }
+
+  private int mBlurSampling = 1;
+  private final ViewTreeObserver.OnPreDrawListener mPreDrawListener =
+      new ViewTreeObserver.OnPreDrawListener() {
+        @Override
+        public boolean onPreDraw() {
+          TraceEvent.beginSection(TraceEventDef.VIEW_BLUR);
+          // If a bitmap is drawn to a HW accelerated canvas, android will hold its reference. And
+          // update the content of the reference to the screen. We do not invalidate here, just let
+          updateBlur();
+          TraceEvent.endSection(TraceEventDef.VIEW_BLUR);
+          if (!mEnableBlurAutoUpdate) {
+            getViewTreeObserver().removeOnPreDrawListener(mPreDrawListener);
+            mPreDrawListenerAdded = false;
+          }
+          return true;
+        }
+      };
   private void updateBlur() {
     int w = getWidth();
     int h = getHeight();

@@ -225,6 +225,7 @@ public class TraceEventDef {
   public static final String PARAMS = "params";
   public static final String PIPELINE_IDS = "pipeline_ids";
   public static final String DUMP_UI_TREE_LAYOUT = "DumpUITreeLayout";
+  public static final String VIEW_BLUR = "AndroidView:blur";
 
   // timing
   public static final String PIPELINE_ID = "pipeline_id";
