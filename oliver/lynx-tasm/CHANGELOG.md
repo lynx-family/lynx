@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.36
+* fix segment fault while decode template without pageConfig
+
 # 0.0.35
 * fix customSections encoding types.
 

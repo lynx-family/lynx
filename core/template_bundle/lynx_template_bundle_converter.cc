@@ -148,8 +148,13 @@ LynxTemplateBundleConverter::ConvertTemplateBundleToSerializedString(
 
   // put page config;
   auto page_config = template_bundle.GetPageConfig();
-  main_document.AddMember("page-config", page_config->GetOriginalConfig(),
-                          allocator);
+  if (page_config) {
+    main_document.AddMember("page-config", page_config->GetOriginalConfig(),
+                            allocator);
+  } else {
+    main_document.AddMember("page-config",
+                            rapidjson::Value(rapidjson::kNullType), allocator);
+  }
 
   // css
   rapidjson::Document css_document(&allocator);

@@ -7,6 +7,8 @@
 #include <cassert>
 #include <iostream>
 
+#include "core/template_bundle/lynx_template_bundle_converter.h"
+
 namespace {
 
 void TestEncodeSuccess() {
@@ -62,6 +64,18 @@ void TestEncodeDecodeRoundTrip() {
             << ")" << std::endl;
 }
 
+void TestConvertWithNullPageConfig() {
+  std::cout << "TestConvertWithNullPageConfig..." << std::endl;
+  lynx::tasm::LynxTemplateBundle bundle;
+  // Default-constructed bundle has page_configs_ == nullptr
+  assert(bundle.GetPageConfig() == nullptr);
+  auto result = lynx::tasm::LynxTemplateBundleConverter::
+      ConvertTemplateBundleToSerializedString(bundle);
+  assert(!result.empty());
+  assert(result.find("\"page-config\":null") != std::string::npos);
+  std::cout << "  PASSED" << std::endl;
+}
+
 }  // namespace
 
 int main() {
@@ -72,6 +86,7 @@ int main() {
   TestDecodeInvalidPointer();
   TestDecodeInvalidData();
   TestEncodeDecodeRoundTrip();
+  TestConvertWithNullPageConfig();
 
   std::cout << "=== All tests passed ===" << std::endl;
   return 0;
