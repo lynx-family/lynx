@@ -73,6 +73,16 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
       }
     }
 
+    override fun onNodeReady() {
+      super.onNodeReady()
+      val textLayout = LynxInputUtils().getLayoutInEditText(mView.text.toString(),
+        mView,
+        width,
+        Int.MAX_VALUE)
+  
+      triggerUpdateLayout(textLayout.height)
+    }
+
     override fun afterPropsUpdated(props: StylesDiffMap?) {
         super.afterPropsUpdated(props)
         maxHeightInputFilter?.let {
@@ -151,6 +161,19 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
                 })
         }
     }
+
+  override fun triggerUpdateLayout(updatedHeight: Int) {
+    val placeholderTextLayout = LynxInputUtils().getLayoutInEditText(mView.hint,
+      mView,
+      width,
+      Int.MAX_VALUE)
+
+    lynxContext.findShadowNodeBySign(sign)?.let {
+      if (it is LynxUIBaseInputShadowNode) {
+        it.updateHeightIfNeeded(placeholderTextLayout.height.coerceAtLeast(updatedHeight))
+      }
+    }
+  }
   
     override fun isTextArea(): Boolean {
       return true;
