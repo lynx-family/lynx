@@ -475,10 +475,16 @@ public class TextAttributes {
       mIsAutoFontSize = false;
       return;
     }
-    mIsAutoFontSize = autoFontSize.getBoolean(0);
-    mAutoFontSizeMinSize = (float) autoFontSize.getDouble(1);
-    mAutoFontSizeMaxSize = (float) autoFontSize.getDouble(2);
-    mAutoFontSizeStepGranularity = (float) autoFontSize.getDouble(3);
+    setAutoFontSize(autoFontSize.getBoolean(0), (float) autoFontSize.getDouble(1),
+        (float) autoFontSize.getDouble(2), (float) autoFontSize.getDouble(3));
+  }
+
+  public void setAutoFontSize(
+      boolean isAutoFontSize, float minSize, float maxSize, float stepGranularity) {
+    mIsAutoFontSize = isAutoFontSize;
+    mAutoFontSizeMinSize = minSize;
+    mAutoFontSizeMaxSize = maxSize;
+    mAutoFontSizeStepGranularity = stepGranularity;
   }
 
   public float getAutoFontSizeMaxSize() {
@@ -498,10 +504,11 @@ public class TextAttributes {
       mAutoFontSizePresetSizes = null;
       return;
     }
-    mAutoFontSizePresetSizes = new float[presetSizes.size()];
+    float[] sizes = new float[presetSizes.size()];
     for (int i = 0; i < presetSizes.size(); i++) {
-      mAutoFontSizePresetSizes[i] = (float) presetSizes.getDouble(i);
+      sizes[i] = (float) presetSizes.getDouble(i);
     }
+    mAutoFontSizePresetSizes = sizes;
   }
 
   public float[] getAutoFontSizePresetSizes() {

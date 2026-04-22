@@ -479,6 +479,14 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
           props->AddProp(static_cast<int>(text_attributes->text_align));
           break;
 
+        case kPropertyIDXAutoFontSize:
+          props->AddProp(kTextPropAutoFontSize);
+          props->AddProp(text_attributes->is_auto_font_size);
+          props->AddProp(text_attributes->auto_font_size_min_size);
+          props->AddProp(text_attributes->auto_font_size_max_size);
+          props->AddProp(text_attributes->auto_font_size_step_granularity);
+          break;
+
         case kPropertyIDVerticalAlign:
           props->AddProp(kTextPropVerticalAlign);
           props->AddProp(static_cast<int>(text_attributes->vertical_align));

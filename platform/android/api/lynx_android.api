@@ -9977,6 +9977,7 @@ public class com::lynx::tasm::behavior::shadow::text::TextAttributes :  {
   public TextDirectionHeuristic com.lynx.tasm.behavior.shadow.text.TextAttributes.getDirectionHeuristic();
   public boolean com.lynx.tasm.behavior.shadow.text.TextAttributes.getIsAutoFontSize();
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setAutoFontSize(ReadableArray autoFontSize);
+  public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setAutoFontSize(boolean isAutoFontSize, float minSize, float maxSize, float stepGranularity);
   public float com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizeMaxSize();
   public float com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizeMinSize();
   public float com.lynx.tasm.behavior.shadow.text.TextAttributes.getAutoFontSizeStepGranularity();
