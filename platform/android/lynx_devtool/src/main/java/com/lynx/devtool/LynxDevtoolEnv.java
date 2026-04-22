@@ -13,6 +13,7 @@ import com.lynx.config.LynxLiteConfigs;
 import com.lynx.debugrouter.DebugRouter;
 import com.lynx.devtool.memory.MemoryController;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
+import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxEnvKey;
@@ -113,6 +114,7 @@ public class LynxDevtoolEnv {
     }
     // All initializations are done. Let's notify DevToolLifecycle.
     DevToolLifecycle.getInstance().onInitialized();
+    DevToolSettings.inst().syncToNative();
     if (LynxGlobalDebugBridge.getInstance().isEnabled()) {
       DevToolLifecycle.getInstance().onConnected();
     }
@@ -297,6 +299,9 @@ public class LynxDevtoolEnv {
 
   public void setDevtoolEnv(String key, Object value) {
     try {
+      if (setDevToolSettingsValue(key, value)) {
+        return;
+      }
       boolean persist = needPersist(key);
       boolean syncToNative = needSyncToNative(key);
       KeyType type = getKeyType(key);
@@ -324,6 +329,16 @@ public class LynxDevtoolEnv {
   }
 
   public void setDevtoolEnv(String groupKey, Set<String> newGroupValues) {
+    if (LynxEnvKey.SP_KEY_ACTIVATED_CDP_DOMAINS.equals(groupKey)) {
+      DevToolSettings.inst().setEnabledCDPDomains(
+          newGroupValues == null ? new HashSet<String>() : newGroupValues);
+      return;
+    }
+    if (LynxEnvKey.SP_KEY_IGNORE_ERROR_TYPES.equals(groupKey)) {
+      DevToolSettings.inst().setIgnoredErrorTypes(
+          newGroupValues == null ? new HashSet<String>() : newGroupValues);
+      return;
+    }
     if (mGroupSets == null || newGroupValues == null || newGroupValues.isEmpty()) {
       return;
     }
@@ -348,6 +363,10 @@ public class LynxDevtoolEnv {
   // This function will be called in LynxInspectorOwner when handle GetGlobalSwitch messages.
   Object getDevtoolObjectEnv(String key, Object defaultValue) {
     try {
+      Object settingsValue = getDevToolSettingsValue(key);
+      if (settingsValue != null) {
+        return settingsValue;
+      }
       KeyType type = getKeyType(key);
       switch (type) {
         case NORMAL_KEY:
@@ -372,6 +391,12 @@ public class LynxDevtoolEnv {
   }
 
   public Set<String> getDevtoolEnv(String groupKey) {
+    if (LynxEnvKey.SP_KEY_ACTIVATED_CDP_DOMAINS.equals(groupKey)) {
+      return DevToolSettings.inst().getEnabledCDPDomains();
+    }
+    if (LynxEnvKey.SP_KEY_IGNORE_ERROR_TYPES.equals(groupKey)) {
+      return DevToolSettings.inst().getIgnoredErrorTypes();
+    }
     if (mGroupSets == null) {
       return new HashSet<String>();
     }
@@ -383,6 +408,10 @@ public class LynxDevtoolEnv {
   }
 
   public Object getDefaultValue(String key) {
+    Object settingsDefaultValue = getDevToolSettingsDefaultValue(key);
+    if (settingsDefaultValue != null) {
+      return settingsDefaultValue;
+    }
     if (mSwitchAttrMap == null) {
       return null;
     }
@@ -390,6 +419,196 @@ public class LynxDevtoolEnv {
       return mSwitchAttrMap.get(key).get(2);
     }
     return null;
+  }
+
+  private Object getDevToolSettingsDefaultValue(String key) {
+    if (key == null) {
+      return null;
+    }
+    if (key.startsWith(CDP_DOMAIN_KEY_PREFIX)
+        || LynxEnvKey.SP_KEY_ENABLE_IGNORE_ERROR_CSS.equals(key)) {
+      return false;
+    }
+    switch (key) {
+      case LynxEnvKey.SP_KEY_ENABLE_DEVTOOL:
+      case LynxEnvKey.SP_KEY_ENABLE_HIGHLIGHT_TOUCH:
+      case LynxEnvKey.SP_KEY_ENABLE_FSP_SCREENSHOT:
+      case LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD:
+      case LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE:
+      case ENABLE_PERF_METRICS:
+        return false;
+      case LynxEnvKey.SP_KEY_ENABLE_LOGBOX:
+      case LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG:
+      case LynxEnvKey.SP_KEY_ENABLE_DOM_TREE:
+      case LynxEnvKey.SP_KEY_ENABLE_LONG_PRESS_MENU:
+      case LynxEnvKey.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT:
+      case LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE:
+      case LynxEnvKey.SP_KEY_ENABLE_PIXEL_COPY:
+        return true;
+      case LynxEnvKey.SP_KEY_ENABLE_V8:
+        return V8_ALIGN_WITH_PROD;
+      default:
+        return null;
+    }
+  }
+
+  private boolean setDevToolSettingsValue(String key, Object value) {
+    if (key == null || value == null) {
+      return false;
+    }
+    if (key.startsWith(CDP_DOMAIN_KEY_PREFIX) && value instanceof Boolean) {
+      DevToolSettings.inst().setCDPDomainEnabled(key, (Boolean) value);
+      return true;
+    }
+    if (LynxEnvKey.SP_KEY_ENABLE_IGNORE_ERROR_CSS.equals(key) && value instanceof Boolean) {
+      DevToolSettings.inst().setCSSErrorIgnored((Boolean) value);
+      return true;
+    }
+    switch (key) {
+      case LynxEnvKey.SP_KEY_ENABLE_DEVTOOL:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setDevToolEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_LOGBOX:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setLogBoxEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_HIGHLIGHT_TOUCH:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setHighlightTouchEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_FSP_SCREENSHOT:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setFSPScreenshotEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setLaunchRecordEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setQuickJSDebugEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_DOM_TREE:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setDOMTreeEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_LONG_PRESS_MENU:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setLongPressMenuEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setPreviewScreenshotEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setQuickJSCacheEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_PIXEL_COPY:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setPixelCopyEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setDebugModeEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      case LynxEnvKey.SP_KEY_ENABLE_V8:
+        if (value instanceof Integer) {
+          DevToolSettings.inst().setV8Enabled((Integer) value);
+          return true;
+        }
+        break;
+      case ENABLE_PERF_METRICS:
+        if (value instanceof Boolean) {
+          DevToolSettings.inst().setPerfMetricsEnabled((Boolean) value);
+          return true;
+        }
+        break;
+      default:
+        break;
+    }
+    return false;
+  }
+
+  private Object getDevToolSettingsValue(String key) {
+    if (key == null) {
+      return null;
+    }
+    if (key.startsWith(CDP_DOMAIN_KEY_PREFIX)) {
+      return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isCDPDomainEnabled(key));
+    }
+    if (LynxEnvKey.SP_KEY_ENABLE_IGNORE_ERROR_CSS.equals(key)) {
+      return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isCSSErrorIgnored());
+    }
+    switch (key) {
+      case LynxEnvKey.SP_KEY_ENABLE_DEVTOOL:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isDevToolEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_LOGBOX:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isLogBoxEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_HIGHLIGHT_TOUCH:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isHighlightTouchEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_FSP_SCREENSHOT:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isFSPScreenshotEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isLaunchRecordEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isQuickJSDebugEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_DOM_TREE:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isDOMTreeEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_LONG_PRESS_MENU:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isLongPressMenuEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT:
+        return getMaskedDevToolSettingsValue(
+            key, DevToolSettings.inst().isPreviewScreenshotEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isQuickJSCacheEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_PIXEL_COPY:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isPixelCopyEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isDebugModeEnabled());
+      case LynxEnvKey.SP_KEY_ENABLE_V8:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().getV8Enabled());
+      case ENABLE_PERF_METRICS:
+        return getMaskedDevToolSettingsValue(key, DevToolSettings.inst().isPerfMetricsEnabled());
+      default:
+        return null;
+    }
+  }
+
+  private Object getMaskedDevToolSettingsValue(String key, Object value) {
+    Boolean mask = getDevtoolEnvMask(key);
+    if (value instanceof Boolean) {
+      return (Boolean) value && mask;
+    }
+    if (value instanceof Integer) {
+      return mask ? value : 0;
+    }
+    return value;
   }
 
   private void setDevtoolEnvInternal(
@@ -540,7 +759,7 @@ public class LynxDevtoolEnv {
   }
 
   public void enableQuickjsCache(boolean enabled) {
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE, enabled);
+    DevToolSettings.inst().setQuickJSCacheEnabled(enabled);
   }
 
   public int getV8Enabled() {
@@ -558,7 +777,7 @@ public class LynxDevtoolEnv {
       enabled = V8_OFF;
       LLog.w(TAG, "The value must be 0 or 1 or 2. Change the value to 0!");
     }
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_V8, enabled);
+    DevToolSettings.inst().setV8Enabled(enabled);
   }
 
   public boolean isDomTreeEnabled() {
@@ -566,7 +785,7 @@ public class LynxDevtoolEnv {
   }
 
   public void enableDomTree(boolean enabled) {
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DOM_TREE, enabled);
+    DevToolSettings.inst().setDOMTreeEnabled(enabled);
   }
 
   public boolean isLongPressMenuEnabled() {
@@ -574,15 +793,14 @@ public class LynxDevtoolEnv {
   }
 
   public void enableLongPressMenu(boolean enabled) {
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LONG_PRESS_MENU, enabled);
+    DevToolSettings.inst().setLongPressMenuEnabled(enabled);
   }
 
   public boolean isIgnoreErrorTypeEnabled(final Integer errCode) {
     if (mErrorCodeMap == null || !mErrorCodeMap.containsValue(errCode)) {
       return false;
     }
-    return getDevtoolGroupedEnvInternal(
-        errCode.toString(), LynxEnvKey.SP_KEY_IGNORE_ERROR_TYPES, false);
+    return DevToolSettings.inst().isErrorTypeIgnored(errCode);
   }
 
   private KeyType getKeyType(String key) {
@@ -626,7 +844,7 @@ public class LynxDevtoolEnv {
   }
 
   public void enableQuickjsDebug(boolean enabled) {
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG, enabled);
+    DevToolSettings.inst().setQuickJSDebugEnabled(enabled);
   }
 
   public boolean isQuickjsDebugEnabled() {
@@ -642,7 +860,7 @@ public class LynxDevtoolEnv {
    * @param enable <code>true</code> enable perf metrics report, <code>false</code> otherwise
    */
   public void enablePerfMetrics(boolean enable) {
-    setDevtoolEnv(ENABLE_PERF_METRICS, enable);
+    DevToolSettings.inst().setPerfMetricsEnabled(enable);
   }
 
   public boolean isPerfMetricsEnabled() {
