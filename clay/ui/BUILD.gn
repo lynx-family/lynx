@@ -161,9 +161,6 @@ if (enable_unittests) {
       "component/base_view_unittests.cc",
       "component/editable/textarea_ng_view_unittests.cc",
       "component/keyframe_animator_unittests.cc",
-      "component/list/base_list_view_unittests.cc",
-      "component/list/focus_list_view_unittests.cc",
-      "component/list/list_item_length_cache_unittests.cc",
       "component/native_view_unittests.cc",
       "component/nested_scroll/nested_scrollable_unittests.cc",
       "component/overlay_view_unittests.cc",
@@ -204,6 +201,14 @@ if (enable_unittests) {
       "shadow/text_unittests.cc",
       "testing/test_utils_unittests.cc",
     ]
+
+    if (!enable_native_list) {
+      sources += [
+        "component/list/base_list_view_unittests.cc",
+        "component/list/focus_list_view_unittests.cc",
+        "component/list/list_item_length_cache_unittests.cc",
+      ]
+    }
 
     public_configs = [
       "../:export_dynamic_symbols",

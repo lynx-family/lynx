@@ -323,6 +323,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
           .SetLynxEnvConfig(lynx_env_config)
           .SetEnableElementManagerVsyncMonitor(true)
           .SetEnableLayoutOnly(enable_layout_only)
+          .SetEnableNativeList(ui_delegate->EnableNativeList())
           .SetWhiteBoard(white_board)
           .SetLazyBundleLoader(loader)
           .SetNativeModuleManager(std::move(native_module_manager))
