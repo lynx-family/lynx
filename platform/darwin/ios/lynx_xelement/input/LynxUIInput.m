@@ -94,6 +94,10 @@ LYNX_PROP_SETTER("show-soft-input-on-focus", setShowSoftInputOnFocus, BOOL) {
   }
 }
 
+- (void)setLineHeight:(BOOL)value requestReset:(BOOL)requestReset {
+
+}
+
 - (void)updateFrame:(CGRect)frame withPadding:(UIEdgeInsets)padding border:(UIEdgeInsets)border margin:(UIEdgeInsets)margin withLayoutAnimation:(BOOL)with {
   [super updateFrame:frame withPadding:padding border:border margin:margin withLayoutAnimation:with];
   ((LynxTextFieldLite *)self.view).padding = self.padding;

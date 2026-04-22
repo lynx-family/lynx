@@ -697,30 +697,9 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
 
         }
     }
-
-    override fun onNodeReady() {
-        super.onNodeReady()
-        val textLayout = LynxInputUtils().getLayoutInEditText(mView.text.toString(),
-            mView,
-            Int.MAX_VALUE,
-            Int.MAX_VALUE)
-
-        triggerUpdateLayout(textLayout.height)
-    }
   
-    
-
     open fun triggerUpdateLayout(updatedHeight: Int) {
-        val placeholderTextLayout = LynxInputUtils().getLayoutInEditText(mView.hint,
-                mView,
-                Int.MAX_VALUE,
-                Int.MAX_VALUE)
-
-        lynxContext.findShadowNodeBySign(sign)?.let {
-            if (it is LynxUIBaseInputShadowNode) {
-                it.updateHeightIfNeeded(placeholderTextLayout.height.coerceAtLeast(updatedHeight))
-            }
-        }
+       
     }
 
     open fun customTextAlignSetting(align: Int) : Int = 0
