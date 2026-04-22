@@ -590,6 +590,9 @@ class ElementManager : public ElementContextDelegate,
   }
 
   bool GetCSSInheritance() {
+    if (EnableSimpleStyle()) {
+      return false;
+    }
     if (config_) {
       return config_->GetEnableCSSInheritance();
     }
