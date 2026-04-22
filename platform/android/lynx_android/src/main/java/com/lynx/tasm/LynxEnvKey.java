@@ -80,8 +80,12 @@ public enum LynxEnvKey {
   public static final String SP_KEY_ENABLE_PIXEL_COPY = "enable_pixel_copy";
   public static final String SP_KEY_ENABLE_QUICKJS_DEBUG = "enable_quickjs_debug";
   public static final String SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT = "enable_preview_screen_shot";
+  public static final String SP_KEY_ENABLE_PERF_METRICS = "enable_perf_metrics";
   public static final String SP_KEY_ACTIVATED_CDP_DOMAINS = "activated_cdp_domains";
   public static final String SP_KEY_ENABLE_CDP_DOMAIN_DOM = "enable_cdp_domain_dom";
   public static final String SP_KEY_ENABLE_CDP_DOMAIN_CSS = "enable_cdp_domain_css";
   public static final String SP_KEY_ENABLE_CDP_DOMAIN_PAGE = "enable_cdp_domain_page";
+  public static final String SP_KEY_ENABLE_CDP_DOMAIN_DEBUGGER = "enable_cdp_domain_debugger";
+  public static final String SP_KEY_ENABLE_CDP_DOMAIN_OVERLAY = "enable_cdp_domain_overlay";
+  public static final String SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME = "enable_cdp_domain_runtime";
 }

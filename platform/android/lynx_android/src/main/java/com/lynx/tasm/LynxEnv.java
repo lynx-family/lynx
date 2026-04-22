@@ -24,6 +24,7 @@ import com.lynx.base.IBaseNativeLibraryLoader;
 import com.lynx.base.LynxBaseEnv;
 import com.lynx.config.LynxLiteConfigs;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
+import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.devtoolwrapper.LynxDevToolUtils;
 import com.lynx.jsbridge.LynxBytecodeCallback;
 import com.lynx.jsbridge.LynxModule;
@@ -252,6 +253,8 @@ public class LynxEnv {
     mViewManagerBundle = behaviorBundle;
     mTemplateProvider = templateProvider;
     mLibraryLoader = nativeLibraryLoader;
+
+    DevToolSettings.inst().init(mContext);
 
     // get and set DebugMode form SharedPreferences
     setDebugMode(mContext);
@@ -806,11 +809,14 @@ public class LynxEnv {
     if (!isLynxDebugEnabled()) {
       return false;
     }
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, false);
+    return DevToolSettings.inst().isDevToolEnabled();
   }
 
   // if true, user can debug any lynx view
   public void enableDevtool(boolean enableDevTool) {
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      return;
+    }
     LLog.i(TAG, enableDevTool ? "Turn on devtool" : "Turn off devtool");
     if (enableDevTool) {
       LLog.setMinimumLoggingLevel(LLog.VERBOSE);
@@ -818,7 +824,7 @@ public class LynxEnv {
       LLog.setMinimumLoggingLevel(LLog.INFO);
     }
 
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, enableDevTool);
+    DevToolSettings.inst().setDevToolEnabled(enableDevTool);
   }
 
   /**
@@ -835,7 +841,7 @@ public class LynxEnv {
   // 2. The environment flag 'SP_KEY_ENABLE_LOGBOX' is true (defaults to true if not set).
   // 3. The `logBoxPresetValue` is true (this value can be changed via LynxDevToolService).
   public boolean isLogBoxEnabled() {
-    return isLynxDebugEnabled() && getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, true)
+    return isLynxDebugEnabled() && DevToolSettings.inst().isLogBoxEnabled()
         && (getDevtoolService() != null && getDevtoolService().getLogBoxPresetValue());
   }
 
@@ -849,26 +855,37 @@ public class LynxEnv {
   }
 
   public void enableLogBox(boolean enableLogBox) {
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      return;
+    }
     LLog.i(TAG, enableLogBox ? "Turn on logbox" : "Turn off logbox");
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, enableLogBox);
+    DevToolSettings.inst().setLogBoxEnabled(enableLogBox);
   }
 
   public boolean isPixelCopyEnabled() {
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_PIXEL_COPY, true);
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      return true;
+    }
+    return DevToolSettings.inst().isPixelCopyEnabled();
   }
 
   public void enablePixelCopy(boolean enabled) {
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_PIXEL_COPY, enabled);
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      return;
+    }
+    DevToolSettings.inst().setPixelCopyEnabled(enabled);
   }
 
   public boolean isHighlightTouchEnabled() {
-    return mHighlightTouchEnabled && isLynxDebugEnabled();
+    return DevToolSettings.inst().isHighlightTouchEnabled() && isLynxDebugEnabled();
   }
 
   public void enableHighlightTouch(boolean enableHighlightTouch) {
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      return;
+    }
     LLog.i(TAG, enableHighlightTouch ? "Turn on highlighttouch" : "Turn off highlighttouch");
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_HIGHLIGHT_TOUCH, enableHighlightTouch);
-    mHighlightTouchEnabled = enableHighlightTouch;
+    DevToolSettings.inst().setHighlightTouchEnabled(enableHighlightTouch);
   }
 
   public boolean isDebugModeEnabled() {
@@ -879,6 +896,7 @@ public class LynxEnv {
     LLog.i(TAG, enableDebugMode ? "Turn on DebugMode" : "Turn off DebugMode");
     mDebugModeEnabled = enableDebugMode;
     TraceEvent.markTraceDebugMode(enableDebugMode);
+    DevToolSettings.inst().setDebugModeEnabled(enableDebugMode);
     if (mSharedPreferences == null) {
       LLog.e(TAG, "enableDebugMode() must be called after init()");
       return;
@@ -890,13 +908,19 @@ public class LynxEnv {
 
   // This interface is used by TestBench and is only used to debug.
   public boolean isLaunchRecordEnabled() {
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD, false);
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      return false;
+    }
+    return DevToolSettings.inst().isLaunchRecordEnabled();
   }
 
   // This interface is used by TestBench and is only used to debug.
   public void enableLaunchRecord(boolean enableLaunchRecord) {
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      return;
+    }
     LLog.i(TAG, enableLaunchRecord ? "Turn on launch record" : "Turn off launch record");
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD, enableLaunchRecord);
+    DevToolSettings.inst().setLaunchRecordEnabled(enableLaunchRecord);
   }
 
   public void enableLayoutOnly(boolean enableLayoutOnly) {
@@ -1429,11 +1453,14 @@ public class LynxEnv {
     if (!isLynxDebugEnabled()) {
       return false;
     }
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_FSP_SCREENSHOT, false);
+    return DevToolSettings.inst().isFSPScreenshotEnabled();
   }
 
   public void enableFspScreenshot(boolean value) {
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_FSP_SCREENSHOT, value);
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      return;
+    }
+    DevToolSettings.inst().setFSPScreenshotEnabled(value);
   }
 
   /**
