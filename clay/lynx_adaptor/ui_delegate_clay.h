@@ -64,6 +64,14 @@ class UIDelegateClay : public UIDelegate {
 
   void OnPageConfigDecoded(const std::shared_ptr<PageConfig>& config) override;
 
+  bool EnableNativeList() const override {
+#if (defined(OS_ANDROID) || defined(OS_IOS)) && !defined(ENABLE_HEADLESS)
+    return true;
+#else
+    return false;
+#endif
+  }
+
   clay::ViewContext* GetViewContext() const { return view_context_; }
 
  private:
