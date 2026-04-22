@@ -101,6 +101,12 @@ class NativeUTPlugin(Plugin):
                 )
                 context.options.register_listener(NativeUTListener())
                 exec(template_file.read(), context.export())
+                # did_include only fires when the template calls include().
+                # For templates that define builder/targets directly, we must
+                # inject use_flutter_cxx here so --disable-flutter-cxx works.
+                inject_flutter_cxx(
+                    context.find_variable("builder") or {}, args.disable_flutter_cxx
+                )
                 template = TraitTemplate.trait_from_context(context)
             if args.command == "run":
                 return self.__handle_run_command(template, args)
