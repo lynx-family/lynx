@@ -46,6 +46,7 @@
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
+#include "core/renderer/utils/base/element_template_info.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx {
@@ -1305,6 +1306,15 @@ class Element : public lepus::RefCounted,
 
   bool IsTemplateElement() const { return is_template_; }
 
+  void SetTemplateAttributes(
+      const SharedTemplateAttributes& template_attributes) {
+    template_attributes_ = template_attributes;
+  }
+  const SharedTemplateAttributes& template_attributes() const {
+    return template_attributes_;
+  }
+  bool HasTemplateAttributes() const { return template_attributes_ != nullptr; }
+
   bool IsPartElement() const { return !part_id_.empty(); }
 
   const base::String& GetPartID() const { return part_id_; }
@@ -1577,6 +1587,8 @@ class Element : public lepus::RefCounted,
   bool has_font_size_{false};
   bool is_template_{false};
   bool has_transition_props_{false};
+
+  SharedTemplateAttributes template_attributes_{};
 
   bool flush_required_{true};
   bool is_first_created_{true};

@@ -9730,6 +9730,105 @@ TEST_P(FiberElementTest, SerializeTemplateElementSkipsInvalidSlotChildren) {
             "invalid_slot_shape");
 }
 
+TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("new-class another"));
+  auto style_object = lepus::Dictionary::Create();
+  style_object->SetValue("backgroundColor", lepus::Value("blue"));
+  style_object->SetValue("width", lepus::Value("100px"));
+  attribute_slots->emplace_back(lepus::Value(style_object));
+  attribute_slots->emplace_back(lepus::Value("new-id"));
+  attribute_slots->emplace_back(lepus::Value(456));
+  attribute_slots->emplace_back(lepus::Value("new-generic"));
+
+  auto target = manager->CreateFiberView();
+  target->SetClass("old-class");
+  target->SetRawInlineStyles(base::String("width:10px;"));
+  target->SetIdSelector("old-id");
+  target->SetCSSID(123);
+  target->SetAttribute("data-test", lepus::Value("old-generic"));
+
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("class"),
+                    lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("style"),
+                    lepus::Value(), 1},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("id"),
+                    lepus::Value(), 2},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("cssID"),
+                    lepus::Value(), 3},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 4}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), lepus::Value(std::move(attribute_slots)));
+
+  ASSERT_EQ(target->classes().size(), 2u);
+  EXPECT_EQ(target->classes()[0], "new-class");
+  EXPECT_EQ(target->classes()[1], "another");
+  ASSERT_TRUE(target->current_raw_inline_styles_.has_value());
+  EXPECT_EQ(target->current_raw_inline_styles_->at(
+                CSSPropertyID::kPropertyIDBackgroundColor),
+            lepus::Value("blue"));
+  EXPECT_EQ(
+      target->current_raw_inline_styles_->at(CSSPropertyID::kPropertyIDWidth),
+      lepus::Value("100px"));
+  EXPECT_EQ(target->current_raw_inline_styles_->count(
+                CSSPropertyID::kPropertyIDPosition),
+            0u);
+  EXPECT_EQ(target->GetIdSelector(), "new-id");
+  EXPECT_EQ(target->GetCSSID(), 456);
+  EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
+            "new-generic");
+  EXPECT_EQ(target->data_model_->attributes().count("class"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("style"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("id"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("cssID"), 0u);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateAttributesWithSpreadReappliesStatics) {
+  auto attribute_slots = lepus::CArray::Create();
+  auto spread_object = lepus::Dictionary::Create();
+  spread_object->SetValue("class", lepus::Value("spread-class"));
+  spread_object->SetValue("data-extra", lepus::Value("spread-extra"));
+  spread_object->SetValue("data-later", lepus::Value("spread-later"));
+  spread_object->SetValue("id", lepus::Value("spread-id"));
+  attribute_slots->emplace_back(lepus::Value(spread_object));
+
+  auto target = manager->CreateFiberView();
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("id"),
+                    lepus::Value("static-id"), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("data-static"),
+                    lepus::Value("static-value"), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                    lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("data-later"),
+                    lepus::Value("static-later"), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("id"),
+                    lepus::Value("static-id-after-spread"), 0}});
+  target->SetTemplateAttributes(template_attributes);
+  target->SetIdSelector("static-id-after-spread");
+  target->SetAttribute("data-static", lepus::Value("static-value"));
+  target->SetAttribute("data-later", lepus::Value("static-later"));
+
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), lepus::Value(std::move(attribute_slots)));
+
+  EXPECT_EQ(target->GetIdSelector(), "static-id-after-spread");
+  EXPECT_EQ(target->classes().size(), 1u);
+  EXPECT_EQ(target->classes()[0], "spread-class");
+  EXPECT_EQ(target->data_model_->attributes().at("data-static").StdString(),
+            "static-value");
+  EXPECT_EQ(target->data_model_->attributes().at("data-extra").StdString(),
+            "spread-extra");
+  EXPECT_EQ(target->data_model_->attributes().at("data-later").StdString(),
+            "static-later");
+}
+
 // CSSVariable Demo Structure
 TEST_P(FiberElementTest, CSSVariableOrderTest) {
   // construct css fragment.

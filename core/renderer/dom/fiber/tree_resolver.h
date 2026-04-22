@@ -10,8 +10,10 @@
 #include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/value/base_string.h"
 #include "base/include/value/table.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/fiber/generated_elements_result.h"
 
 namespace lynx {
 namespace tasm {
@@ -71,9 +73,25 @@ class TreeResolver {
   static fml::RefPtr<lepus::Dictionary> GetTemplateParts(
       const fml::RefPtr<FiberElement>& template_element);
 
+  // Re-apply dynamic and spread template attributes to elements recorded in
+  // GeneratedElementsResult::attribute_slot_targets_ when TemplateElement
+  // consumes new attribute slot values.
+  static void ApplyTemplateAttributesToElement(
+      FiberElement* element, const lepus::Value& attribute_slots);
+
   // Construct element tree according to the element-template info.
   static base::Vector<fml::RefPtr<FiberElement>> FromTemplateInfo(
       const ElementTemplateInfo& info);
+
+  // Construct the detached single-root tree used by the new Element Template
+  // create path. Slot target tables are returned together with the root in one
+  // aggregate result so async workers do not mutate TemplateElement directly.
+  static GeneratedElementsResult GenerateElementsFromTemplateInfo(
+      const ElementTemplateInfo& info);
+
+  static void InitElementTree(
+      fml::RefPtr<FiberElement>& elements, int64_t pid, ElementManager* manager,
+      const std::shared_ptr<CSSStyleSheetManager>& style_manager);
 
   static lepus::Value InitElementTree(
       base::Vector<fml::RefPtr<FiberElement>>&& elements, int64_t pid,
@@ -112,6 +130,9 @@ class TreeResolver {
   // Construct element according to the element info.
   static fml::RefPtr<FiberElement> FromElementInfo(int64_t parent_component_id,
                                                    const ElementInfo& info);
+  static fml::RefPtr<FiberElement> FromElementInfo(
+      int64_t parent_component_id, const ElementInfo& info,
+      GeneratedElementsResult* generated);
 
  private:
   static std::list<ParallelFlushReturn> StyleTrees(

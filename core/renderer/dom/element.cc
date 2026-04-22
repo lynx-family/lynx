@@ -206,7 +206,8 @@ Element::Element(const Element& element, bool clone_resolved_props)
       max_height_(element.max_height_),
       record_parent_font_size_(element.record_parent_font_size_),
       global_bind_target_set_(element.global_bind_target_set_),
-      animation_previous_styles_(element.animation_previous_styles_) {
+      animation_previous_styles_(element.animation_previous_styles_),
+      template_attributes_(element.template_attributes_) {
   if (element.base_css_style() != nullptr) {
     base_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
         *(element.base_css_style()));
@@ -2760,7 +2761,7 @@ void Element::RemoveAllInlineStyles() {
   // Only exec the following expr when ENABLE_INSPECTOR, such that devtool can
   // get element's inline style.
   EXEC_EXPR_FOR_INSPECTOR({
-    if (element_manager_->IsDomTreeEnabled() &&
+    if (element_manager_ && element_manager_->IsDomTreeEnabled() &&
         current_raw_inline_styles_.has_value()) {
       for (const auto& pair : *current_raw_inline_styles_) {
         const static base::String kNull;

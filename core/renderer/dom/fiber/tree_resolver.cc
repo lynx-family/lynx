@@ -5,9 +5,12 @@
 #include "core/renderer/dom/fiber/tree_resolver.h"
 
 #include <algorithm>
+#include <cstdint>
 
 #include "base/include/log/logging.h"
+#include "base/include/string/string_utils.h"
 #include "core/base/thread/once_task.h"
+#include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -17,15 +20,204 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
+#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+
+constexpr const char* kElementStyle = "style";
+constexpr const char* kElementId = "id";
+
+void RegisterSlotTarget(base::Vector<fml::RefPtr<FiberElement>>* targets,
+                        int32_t slot_index,
+                        const fml::RefPtr<FiberElement>& element) {
+  if (targets == nullptr || slot_index < 0 || element == nullptr) {
+    return;
+  }
+  auto target_index = static_cast<size_t>(slot_index);
+  if (targets->size() <= target_index) {
+    targets->resize(target_index + 1);
+  }
+  auto& target = (*targets)[target_index];
+  DCHECK(target == nullptr || target.get() == element.get());
+  if (target == nullptr) {
+    target = element;
+  }
+}
+
+void RegisterElementSlotMountPoint(base::Vector<ElementSlotMountPoint>* targets,
+                                   int32_t slot_index,
+                                   const fml::RefPtr<FiberElement>& parent,
+                                   const fml::RefPtr<FiberElement>& ref_node) {
+  if (targets == nullptr || slot_index < 0 || parent == nullptr) {
+    return;
+  }
+  auto target_index = static_cast<size_t>(slot_index);
+  if (targets->size() <= target_index) {
+    targets->resize(target_index + 1);
+  }
+  auto& target = (*targets)[target_index];
+  DCHECK(target.parent_ == nullptr || target.parent_.get() == parent.get());
+  DCHECK(target.ref_node_ == nullptr || ref_node == nullptr ||
+         target.ref_node_.get() == ref_node.get());
+  if (target.parent_ == nullptr) {
+    target.parent_ = parent;
+    target.ref_node_ = ref_node;
+  }
+}
+
+// TODO(songshourui.null): Unify this class application path with Render
+// Functions when both paths can share the same attribute setter.
+void ApplyTemplateClassAttribute(FiberElement* element,
+                                 const lepus::Value& value) {
+  element->RemoveAllClass();
+  if (!value.IsString()) {
+    return;
+  }
+
+  ClassList classes;
+  base::SplitString(value.String().str(), ' ', true,
+                    [&classes](const char* s, size_t length, int index) {
+                      classes.emplace_back(s, length);
+                      return true;
+                    });
+  if (!classes.empty()) {
+    element->SetClasses(std::move(classes));
+  }
+}
+
+// TODO(songshourui.null): Unify this style application path with Render
+// Functions when both paths can share the same attribute setter.
+void ApplyTemplateStyleAttribute(FiberElement* element,
+                                 const lepus::Value& value) {
+  element->RemoveAllInlineStyles();
+  if (value.IsString()) {
+    element->SetRawInlineStyles(base::String(value.String()));
+    return;
+  }
+  if (!value.IsObject()) {
+    return;
+  }
+
+  if (element->IsCSSInlineVariablesEnabled()) {
+    element->data_model()->MoveAndClearCSSInlineVariables(nullptr);
+  }
+  tasm::ForEachLepusValue(value, [element](const lepus::Value& key,
+                                           const lepus::Value& item_value) {
+    auto key_string_view = key.StringView();
+    if (CSSProperty::IsCustomProperty(
+            key_string_view.data(),
+            static_cast<uint32_t>(key_string_view.length()))) {
+      if (element->IsCSSInlineVariablesEnabled()) {
+        element->data_model()->UpdateCSSInlineVariables(
+            key.String(), item_value.IsString()
+                              ? item_value.String()
+                              : base::String(item_value.ToString()));
+      }
+      return;
+    }
+    auto id =
+        CSSProperty::GetPropertyID(base::CamelCaseToDashCase(key_string_view));
+    if (CSSProperty::IsPropertyValid(id)) {
+      element->SetStyle(id, item_value);
+    }
+  });
+}
+
+// TODO(songshourui.null): Unify this dispatch with Render Functions
+// SetAttribute once it supports special attributes through the shared setter.
+bool ApplySpecialTemplateAttribute(FiberElement* element,
+                                   const base::String& key,
+                                   const lepus::Value& value) {
+  if (key == kElementClass) {
+    ApplyTemplateClassAttribute(element, value);
+    return true;
+  }
+  if (key == kElementStyle) {
+    ApplyTemplateStyleAttribute(element, value);
+    return true;
+  }
+  if (key == kElementId) {
+    element->SetIdSelector(value.IsString() ? value.String() : base::String());
+    return true;
+  }
+  if (key == kElementCSSID) {
+    element->SetCSSID(value.IsNumber() ? static_cast<int32_t>(value.Number())
+                                       : kInvalidCssId);
+    return true;
+  }
+  return false;
+}
+
+void ApplyTemplateAttributeValue(FiberElement* element, const base::String& key,
+                                 const lepus::Value& value) {
+  if (ApplySpecialTemplateAttribute(element, key, value)) {
+    return;
+  }
+  element->SetAttribute(key, value);
+}
+
+void ApplyTemplateSpreadAttributes(FiberElement* element,
+                                   const lepus::Value& value) {
+  if (element == nullptr || !value.IsObject()) {
+    return;
+  }
+
+  tasm::ForEachLepusValue(value, [element](const auto& key, const auto& item) {
+    ApplyTemplateAttributeValue(element, key.String(), item);
+  });
+}
+
+lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
+                                       uint32_t slot_index) {
+  if (!attribute_slots.IsArrayOrJSArray() ||
+      slot_index >= static_cast<uint32_t>(attribute_slots.GetLength())) {
+    return lepus::Value();
+  }
+  return attribute_slots.GetProperty(slot_index);
+}
+
+}  // namespace
+
+void TreeResolver::ApplyTemplateAttributesToElement(
+    FiberElement* element, const lepus::Value& attribute_slots) {
+  if (element == nullptr || !element->HasTemplateAttributes()) {
+    return;
+  }
+
+  const auto& template_attributes = element->template_attributes();
+  bool has_applied_spread = false;
+  for (const auto& attr : *template_attributes) {
+    if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
+      ApplyTemplateSpreadAttributes(
+          element,
+          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_));
+      has_applied_spread = true;
+      continue;
+    }
+    if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
+      if (has_applied_spread) {
+        ApplyTemplateAttributeValue(element, attr.key_, attr.value_);
+      }
+      continue;
+    }
+    if (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC) {
+      ApplyTemplateAttributeValue(
+          element, attr.key_,
+          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_));
+      continue;
+    }
+  }
+}
 
 void TreeResolver::NotifyNodeInserted(FiberElement* insertion_point,
                                       FiberElement* node) {
@@ -275,11 +467,35 @@ base::Vector<fml::RefPtr<FiberElement>> TreeResolver::FromTemplateInfo(
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_FROM_TEMPLATE_INFO);
   base::Vector<fml::RefPtr<FiberElement>> res;
   for (const auto& element_info : info.elements_) {
-    auto element_node = FromElementInfo(-1, element_info);
+    auto element_node = FromElementInfo(-1, element_info, nullptr);
     element_node->MarkTemplateElement();
     res.emplace_back(std::move(element_node));
   }
   return res;
+}
+
+GeneratedElementsResult TreeResolver::GenerateElementsFromTemplateInfo(
+    const ElementTemplateInfo& info) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_FROM_TEMPLATE_INFO);
+  GeneratedElementsResult generated;
+  if (info.elements_.empty()) {
+    return generated;
+  }
+  DCHECK_EQ(info.elements_.size(), 1u);
+  generated.result_ = FromElementInfo(-1, info.elements_.front(), &generated);
+  if (generated.result_ != nullptr) {
+    generated.result_->MarkTemplateElement();
+  }
+  return generated;
+}
+
+void TreeResolver::InitElementTree(
+    fml::RefPtr<FiberElement>& element, int64_t pid, ElementManager* manager,
+    const std::shared_ptr<CSSStyleSheetManager>& style_manager) {
+  element->ApplyFunctionRecursive([manager, style_manager](FiberElement* e) {
+    e->AttachToElementManager(manager, style_manager, false);
+  });
+  element->SetParentComponentUniqueIdRecursively(pid);
 }
 
 lepus::Value TreeResolver::InitElementTree(
@@ -350,9 +566,25 @@ void TreeResolver::GetPartsRecursively(
 
 fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
     int64_t parent_component_id, const ElementInfo& info) {
+  return FromElementInfo(parent_component_id, info, nullptr);
+}
+
+fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
+    int64_t parent_component_id, const ElementInfo& info,
+    GeneratedElementsResult* generated) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_FROM_ELEMENT_INFO);
   fml::RefPtr<FiberElement> res =
       ElementManager::StaticCreateFiberElement(info.tag_enum_, info.tag_);
+  if (info.attributes_ != nullptr) {
+    // Keep a shared read-only copy of the template attribute descriptors on
+    // the runtime element so later flush steps can rebuild all template attrs.
+    res->SetTemplateAttributes(info.attributes_);
+  }
+
+  if (generated != nullptr && info.tag_enum_ == ELEMENT_SLOT) {
+    return nullptr;
+  }
+
   if (res->is_component()) {
     auto* component = static_cast<ComponentElement*>(res.get());
     component->set_component_id(info.component_id_);
@@ -401,6 +633,23 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
     res->SetAttribute(pair.first, pair.second);
   }
 
+  if (info.attributes_ != nullptr) {
+    for (const auto& attr : *info.attributes_) {
+      if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
+        ApplyTemplateAttributeValue(res.get(), attr.key_, attr.value_);
+        continue;
+      }
+      if (generated != nullptr &&
+          (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC ||
+           attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD)) {
+        // attrSlotIndex only needs to locate the affected element. Attribute
+        // re-application will happen in a later flush-oriented patch.
+        RegisterSlotTarget(&generated->attribute_slot_targets_,
+                           static_cast<int32_t>(attr.slot_index_), res);
+      }
+    }
+  }
+
   // set dataset
   if (!info.data_set_.IsEmpty()) {
     res->SetDataset(info.data_set_);
@@ -410,8 +659,31 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
   if (info.tag_enum_ == ELEMENT_COMPONENT || info.tag_enum_ == ELEMENT_PAGE) {
     parent_component_id = res->impl_id();
   }
-  for (const auto& child : info.children_) {
-    res->InsertNode(FromElementInfo(parent_component_id, child));
+
+  auto it = info.children_.begin();
+  while (it != info.children_.end()) {
+    base::Vector<int32_t> pending_slot_indices;
+    while (it != info.children_.end() && it->tag_enum_ == ELEMENT_SLOT) {
+      pending_slot_indices.push_back(it->slot_index_);
+      ++it;
+    }
+
+    fml::RefPtr<FiberElement> materialized_child = nullptr;
+    if (it != info.children_.end()) {
+      materialized_child = FromElementInfo(parent_component_id, *it, generated);
+      ++it;
+    }
+
+    if (generated != nullptr) {
+      for (auto slot_index : pending_slot_indices) {
+        RegisterElementSlotMountPoint(&generated->element_slot_targets_,
+                                      slot_index, res, materialized_child);
+      }
+    }
+
+    if (materialized_child != nullptr) {
+      res->InsertNode(materialized_child);
+    }
   }
 
   if (info.css_id_ != kInvalidCssId) {
