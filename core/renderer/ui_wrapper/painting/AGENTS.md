@@ -45,3 +45,7 @@ No standalone exec is defined here. Validate through fragment/display-list and r
 ## Notes
 
 - The iOS subtree already carries painting context unit coverage, but many bugs here still only show up when wrapper consumers exercise the full handoff path.
+- On Android, TextService / Textra handoff is not fragment-layer only:
+  `NativePaintingContextAndroid` can forward bundles through `PlatformRendererContext`,
+  while old `PaintingContextAndroid` may need to bridge text bundles into Java
+  extra-data updates for `UIText` / `FlattenUIText`.

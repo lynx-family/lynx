@@ -39,6 +39,7 @@ import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.event.LynxDetailEvent;
 import com.lynx.tasm.service.ILynxSystemInvokeService;
+import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
@@ -61,6 +62,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   protected PointF mTextTranslateOffset;
   protected boolean mHasImage;
   protected boolean mIsJustify;
+  protected Page mTextraPage;
   private Picture mOverflowPicture;
   private int mOverflow;
   private boolean mOverflowPictureDirty;
@@ -143,6 +145,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   public void setTextBundle(TextUpdateBundle bundle) {
     // First detach old image span
     dispatchDetachImageSpan();
+    mTextraPage = null;
     mTextUpdateBundle = bundle;
     mTextLayout = generateTextLayout(bundle);
     mTextTranslateOffset = bundle.getTextTranslateOffset();
@@ -161,6 +164,26 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     }
     // Enable layout inspector to collect content
     setContentDescription(mTextLayout.getText());
+    invalidate();
+    mOverflowPictureDirty = true;
+  }
+
+  public void setTextBundle(Page page) {
+    dispatchDetachImageSpan();
+    mTextraPage = page;
+    mTextUpdateBundle = null;
+    mTextLayout = null;
+    mTextTranslateOffset = new PointF();
+    mHasImage = false;
+    mNeedDrawStroke = false;
+    mIsJustify = false;
+    mOriginText = null;
+    if (mIsInSelection) {
+      clearSelection();
+    } else {
+      resetSelectionState();
+    }
+    setContentDescription(null);
     invalidate();
     mOverflowPictureDirty = true;
   }
@@ -246,6 +269,22 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   @Keep
   @Override
   protected void onDraw(Canvas canvas) {
+    if (mTextraPage != null) {
+      int paddingLeft = getPaddingLeft();
+      int paddingRight = getPaddingRight();
+      int paddingTop = getPaddingTop();
+      int paddingBottom = getPaddingBottom();
+      canvas.save();
+      if (mOverflow == 0) {
+        canvas.clipRect(
+            paddingLeft, paddingTop, getWidth() - paddingRight, getHeight() - paddingBottom);
+      }
+      canvas.translate(paddingLeft, paddingTop);
+      mTextraPage.drawPageCanvas(canvas, this);
+      canvas.restore();
+      return;
+    }
+
     if (mTextLayout != null) {
       canvas.save();
       // since TextRender only build StaticLayout once
@@ -562,6 +601,10 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
 
   public CharSequence getText() {
     return mTextLayout != null ? mTextLayout.getText() : null;
+  }
+
+  public boolean hasTextraPage() {
+    return mTextraPage != null;
   }
 
   @Nullable

@@ -305,6 +305,7 @@ public class com::lynx::tasm::behavior::ui::scroll::AndroidScrollView : com.lynx
 public class com::lynx::tasm::behavior::ui::text::AndroidText : com.lynx.tasm.behavior.ui.view.AndroidView, ActionMode.Callback {
   public com.lynx.tasm.behavior.ui.text.AndroidText.AndroidText(Context context);
   public void com.lynx.tasm.behavior.ui.text.AndroidText.setTextBundle(TextUpdateBundle bundle);
+  public void com.lynx.tasm.behavior.ui.text.AndroidText.setTextBundle(Page page);
   public CharSequence com.lynx.tasm.behavior.ui.text.AndroidText.getOriginText();
   public void com.lynx.tasm.behavior.ui.text.AndroidText.setTextGradient(String gradient);
   public void com.lynx.tasm.behavior.ui.text.AndroidText.setTextGradient(ReadableArray gradient);
@@ -327,6 +328,7 @@ public class com::lynx::tasm::behavior::ui::text::AndroidText : com.lynx.tasm.be
   public void com.lynx.tasm.behavior.ui.text.AndroidText.onAttachedToWindow();
   public void com.lynx.tasm.behavior.ui.text.AndroidText.onFinishTemporaryDetach();
   public CharSequence com.lynx.tasm.behavior.ui.text.AndroidText.getText();
+  public boolean com.lynx.tasm.behavior.ui.text.AndroidText.hasTextraPage();
   public Layout com.lynx.tasm.behavior.ui.text.AndroidText.getTextLayout();
   public void com.lynx.tasm.behavior.ui.text.AndroidText.setOverflow(int overflow);
   public void com.lynx.tasm.behavior.ui.text.AndroidText.release();
@@ -1927,6 +1929,7 @@ public class com::lynx::tasm::behavior::ui::text::FlattenUIText : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.text.FlattenUIText.updateExtraData(Object data);
   public void com.lynx.tasm.behavior.ui.text.FlattenUIText.onNodeReady();
   public void com.lynx.tasm.behavior.ui.text.FlattenUIText.setTextBundle(final TextUpdateBundle bundle);
+  public void com.lynx.tasm.behavior.ui.text.FlattenUIText.setTextBundle(Page page);
   public CharSequence com.lynx.tasm.behavior.ui.text.FlattenUIText.getOriginText();
   public void com.lynx.tasm.behavior.ui.text.FlattenUIText.onLayoutUpdated();
   public CharSequence com.lynx.tasm.behavior.ui.text.FlattenUIText.getText();
@@ -8363,6 +8366,8 @@ public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior
   public void com.lynx.tasm.behavior.PaintingContext.validate(int sign);
   public void com.lynx.tasm.behavior.PaintingContext.FinishLayoutOperation(int componentId, long operationId, boolean isFirstScreen);
   public void com.lynx.tasm.behavior.PaintingContext.updateExtraData(int signature, Object data);
+  public void com.lynx.tasm.behavior.PaintingContext.updateTextBundle(int sign, long textBundle);
+  public void com.lynx.tasm.behavior.PaintingContext.destroyTextBundle(int sign);
   public float[] com.lynx.tasm.behavior.PaintingContext.getBoundingClientOrigin(int sign);
   public void com.lynx.tasm.behavior.PaintingContext.scrollIntoView(int sign);
   public float[] com.lynx.tasm.behavior.PaintingContext.getWindowSize(int sign);

@@ -35,6 +35,7 @@ import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.handler.BaseGestureHandler;
 import com.lynx.tasm.gesture.handler.GestureConstants;
+import com.lynx.tasm.service.ILynxTextService.Page;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -42,6 +43,7 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
   // key is gesture id, value is gesture handler
   private Map<Integer, BaseGestureHandler> mGestureHandlers;
   private TextUpdateBundle mTextUpdateBundle;
+  private Page mTextraPage;
 
   @Deprecated
   public UIText(Context context) {
@@ -85,7 +87,8 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
 
   @Override
   public MeaningfulContentStatus getMeaningfulContentStatus() {
-    if (mView != null && mView.getTextLayout() != null) {
+    if ((mView != null && (mView.getTextLayout() != null || mView.hasTextraPage()))
+        || mTextraPage != null) {
       return MeaningfulContentStatus.PRESENTED;
     }
     return MeaningfulContentStatus.PENDING;
@@ -112,18 +115,29 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
   public void updateExtraData(Object data) {
     if (data instanceof TextUpdateBundle) {
       mTextUpdateBundle = (TextUpdateBundle) data;
+      mTextraPage = null;
       mView.setTextBundle(mTextUpdateBundle);
       if (mEvents != null) {
         mView.setBindSelectionChange(mEvents.containsKey(SELECTION_CHANGE_EVENT), getSign());
       }
       dispatchLayoutEventIfNeeded();
+    } else if (data instanceof Page) {
+      mTextUpdateBundle = null;
+      mTextraPage = (Page) data;
+      if (mView != null) {
+        mView.setTextBundle(mTextraPage);
+      }
     }
   }
 
   @Override
   public void didEnsureCreateView() {
     super.didEnsureCreateView();
-    mView.setTextBundle(mTextUpdateBundle);
+    if (mTextraPage != null) {
+      mView.setTextBundle(mTextraPage);
+    } else if (mTextUpdateBundle != null) {
+      mView.setTextBundle(mTextUpdateBundle);
+    }
   }
 
   @Override

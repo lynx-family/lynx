@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -412,7 +413,14 @@ LayoutResult TextLayoutTextra::Measure(Element* element, float width,
   // update text bundle
   auto* text_element = static_cast<TextElement*>(element);
   text::Page* page = api_->GetPage(paragraph);
-  text_element->SetTextBundle(reinterpret_cast<intptr_t>(page));
+  intptr_t bundle = reinterpret_cast<intptr_t>(page);
+  if (element->EnableFragmentLayerRender()) {
+    text_element->SetTextBundle(bundle);
+  } else if (auto* manager = element->element_manager();
+             manager && manager->painting_context()) {
+    manager->painting_context()->impl()->UpdateTextBundle(element->impl_id(),
+                                                          bundle);
+  }
 
   return {result.width, result.height, result.baseline};
 }
@@ -481,6 +489,14 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
 }
 
 void TextLayoutTextra::Destroy(Element* element) {
+  if (element && !element->EnableFragmentLayerRender()) {
+    if (auto* manager = element->element_manager();
+        manager && manager->painting_context()) {
+      manager->painting_context()->impl()->DestroyTextBundle(
+          element->impl_id());
+    }
+  }
+
   DestroyParagraph(element->impl_id());
 
   auto it_listener = paragraph_listeners_.find(element->impl_id());
