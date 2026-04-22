@@ -21,9 +21,11 @@ Textra is not responsible for:
 1. `TextLayoutTextra::Measure(...)`
 2. `api_->MeasureParagraph(...)`
 3. `api_->GetPage(paragraph)`
-4. `text_element->SetTextBundle(reinterpret_cast<intptr_t>(page))`
-5. later, fragment painting updates the platform painting context with the text bundle
-6. platform renderer consumes the page and draws it
+4. attach the `Page*` to the platform text pipeline:
+   - fragment-layer render: `text_element->SetTextBundle(reinterpret_cast<intptr_t>(page))`
+   - non-fragment Android old painting path: hand off the bundle through `PaintingContextAndroid`
+5. later, the platform painting / UI bridge updates the renderer or UI extra data with the text bundle
+6. platform renderer or text UI consumes the page and draws it
 
 ## Important Concepts
 
@@ -47,6 +49,9 @@ Textra is not responsible for:
 
 - Android:
   page is consumed by `LynxTextService` and drawn through Android canvas helpers
+  - fragment-layer render uses fragment text-bundle handoff
+  - non-fragment old `PaintingContextAndroid` render uses Java `PaintingContext`
+    extra-data handoff instead of fragment behavior
 - iOS:
   page is consumed by `LynxTextService` and drawn through `LynxTextraLayer` + CoreGraphics
   inline images/views in TextService mode are treated like `InlineView`s so
