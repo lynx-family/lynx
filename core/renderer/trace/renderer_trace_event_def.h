@@ -475,6 +475,8 @@ inline constexpr const char* const
         "FiberElement::ChildrenPrepareForCreateOrUpdate";
 inline constexpr const char* const FIBER_ELEMENT_PREPARE_CHILDREN =
     "FiberElement::PrepareChildren";
+inline constexpr const char* const FIBER_ELEMENT_REPLACE_TEMPLATE_CHILD =
+    "FiberElement::ReplaceTemplateChild";
 inline constexpr const char* const
     FIBER_ELEMENT_PREPARE_AND_GENERATE_CHILDREN_ACTIONS =
         "FiberElement::PrepareAndGenerateChildrenActions";
@@ -594,6 +596,11 @@ inline constexpr const char* const TREE_RESOLVER_CLONE_ELEMENTS =
     "TreeResolver::CloneElements";
 inline constexpr const char* const TREE_RESOLVER_FROM_TEMPLATE_INFO =
     "TreeResolver::FromTemplateInfo";
+inline constexpr const char* const
+    TEMPLATE_ELEMENT_APPLY_INITIAL_ELEMENT_SLOTS =
+        "TemplateElement::ApplyInitialElementSlots";
+inline constexpr const char* const TEMPLATE_ELEMENT_GET_ROOT =
+    "TemplateElement::GetRoot";
 inline constexpr const char* const TREE_RESOLVER_INIT_ELEMENT_TREE =
     "TreeResolver::InitElementTree";
 inline constexpr const char* const TREE_RESOLVER_ATTACH_TO_ELEMENT_MANAGER =
