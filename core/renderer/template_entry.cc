@@ -431,7 +431,10 @@ lepus::Value TemplateEntry::ElementFromBinary(const std::string& key,
       // fix the issue where the subsequent `Element Template` cannot
       // asynchronously create the `Element Tree` when the `Element Template` is
       // reused.
-      template_bundle_.element_template_infos_[key] = result.first;
+      {
+        std::lock_guard<std::mutex> guard(element_template_info_mutex_);
+        template_bundle_.element_template_infos_[key] = result.first;
+      }
       return TreeResolver::InitElementTree(std::move(result.second), pid,
                                            manager, GetStyleSheetManager());
     }
@@ -448,18 +451,48 @@ lepus::Value TemplateEntry::ElementFromBinary(const std::string& key,
                                        pid, manager, GetStyleSheetManager());
 }
 
+std::shared_ptr<ElementTemplateInfo>
+TemplateEntry::GetOrDecodeElementTemplateInfo(const std::string& key) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_GET_ELEMENT_TEMPLATE_INFO);
+  {
+    std::lock_guard<std::mutex> guard(element_template_info_mutex_);
+    auto iter = template_bundle_.element_template_infos_.find(key);
+    if (iter != template_bundle_.element_template_infos_.end()) {
+      return iter->second;
+    }
+  }
+
+  std::shared_ptr<ElementTemplateInfo> info;
+  if (reader_ != nullptr) {
+    auto result = reader_->GetElementTemplateParseResult(key);
+    if (result.first != nullptr && result.first->exist_) {
+      info = std::move(result.first);
+    } else {
+      auto recycler = reader_->CreateRecycler();
+      // TemplateEntry currently installs TemplateBinaryReader as the lazy
+      // reader.
+      auto* dedicated_reader =
+          static_cast<TemplateBinaryReader*>(recycler.get());
+      info = dedicated_reader->DecodeElementTemplateInRender(key);
+    }
+  }
+  if (info == nullptr) {
+    info = std::make_shared<ElementTemplateInfo>();
+  }
+
+  std::lock_guard<std::mutex> guard(element_template_info_mutex_);
+  auto iter = template_bundle_.element_template_infos_.find(key);
+  if (iter != template_bundle_.element_template_infos_.end()) {
+    return iter->second;
+  }
+  auto res =
+      template_bundle_.element_template_infos_.emplace(key, std::move(info));
+  return res.first->second;
+}
+
 const ElementTemplateInfo& TemplateEntry::GetElementTemplateInfo(
     const std::string& key) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_GET_ELEMENT_TEMPLATE_INFO);
-  auto iter = template_bundle_.element_template_infos_.find(key);
-  if (iter == template_bundle_.element_template_infos_.end()) {
-    auto info = reader_ ? reader_->DecodeElementTemplateInRender(key)
-                        : std::make_shared<ElementTemplateInfo>();
-    auto res =
-        template_bundle_.element_template_infos_.emplace(key, std::move(info));
-    return *(res.first->second);
-  }
-  return *(iter->second);
+  return *GetOrDecodeElementTemplateInfo(key);
 }
 
 const std::shared_ptr<ParsedStyles>& TemplateEntry::GetParsedStyles(

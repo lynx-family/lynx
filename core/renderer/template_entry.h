@@ -6,6 +6,7 @@
 #define CORE_RENDERER_TEMPLATE_ENTRY_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -151,6 +152,11 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   lepus::Value ElementFromBinary(const std::string& key, int64_t pid,
                                  ElementManager* manager);
+
+  // Fetch cached Element Template info or decode it. Only the shared cache map
+  // is locked; reader parse/decode work runs outside the cache mutex.
+  std::shared_ptr<ElementTemplateInfo> GetOrDecodeElementTemplateInfo(
+      const std::string& key);
 
   const ElementTemplateInfo& GetElementTemplateInfo(const std::string& key);
 
@@ -319,6 +325,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   std::weak_ptr<lepus::InspectorLepusObserver> lepus_observer_;
   std::unique_ptr<LynxBinaryLazyReaderDelegate> reader_;
+  std::mutex element_template_info_mutex_;
 
   LynxTemplateBundle template_bundle_{};
   // whether the template bundle if from pre-decode, which is complte
