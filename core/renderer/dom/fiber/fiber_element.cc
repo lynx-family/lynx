@@ -40,6 +40,7 @@
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
+#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -71,6 +72,19 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+
+FiberElement *ResolveTemplateRootForAction(Element *element) {
+  if (element == nullptr) {
+    return nullptr;
+  }
+  auto *fiber_element = static_cast<FiberElement *>(element);
+  if (!fiber_element->is_template()) {
+    return fiber_element;
+  }
+
+  auto root = static_cast<TemplateElement *>(fiber_element)->GetRoot();
+  return root != nullptr ? root.get() : fiber_element;
+}
 
 bool ContainsLayoutOnlyStyle(const StyleMap &resolved_style_map) {
   // TODO(zhouzhitao): STUB. Implement layout-only property detection before
@@ -1989,8 +2003,10 @@ void FiberElement::PrepareChildren() {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  for (const auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
+  for (auto iter = scoped_children_.begin(); iter != scoped_children_.end();
+       ++iter) {
+    auto *fiber_child = ReplaceTemplateChildIfNeeded(iter);
+
     if (NeedPropagateInheritedDirtyFlag(false)) {
       // mark propagateInherited when necessary
       fiber_child->MarkDirtyLite(kDirtyPropagateInherited);
@@ -2004,6 +2020,44 @@ void FiberElement::PrepareChildren() {
       fiber_child->PrepareChildren();
     }
   }
+}
+
+FiberElement *FiberElement::ReplaceTemplateChildIfNeeded(
+    base::InlineVector<fml::RefPtr<Element>,
+                       kChildrenInlineVectorSize>::iterator child_iter) {
+  auto *fiber_child = static_cast<FiberElement *>(child_iter->get());
+  if (!fiber_child->is_template()) {
+    return fiber_child;
+  }
+
+  auto *template_child = static_cast<TemplateElement *>(fiber_child);
+  auto root = template_child->GetRoot();
+  if (root == nullptr || root.get() == template_child) {
+    return fiber_child;
+  }
+
+  // Template nodes should hand over child preparation to the materialized root
+  // so the rest of the flush walks the real rendered subtree.
+  fml::RefPtr<TemplateElement> template_ref(template_child);
+  EXEC_EXPR_FOR_INSPECTOR(if (element_manager() != nullptr) {
+    element_manager()->OnElementNodeRemovedForInspector(template_child);
+  });
+  OnNodeRemoved(template_child);
+  TreeResolver::NotifyNodeRemoved(this, template_child);
+  template_child->set_parent(nullptr);
+
+  // TODO(songshourui.null): Keep logical_children_ aligned with the
+  // materialized template root when this becomes observable.
+
+  *child_iter = root;
+  fiber_child = root.get();
+  OnNodeAdded(fiber_child);
+  TreeResolver::NotifyNodeInserted(this, fiber_child);
+  fiber_child->set_parent(this);
+  EXEC_EXPR_FOR_INSPECTOR(if (element_manager() != nullptr) {
+    element_manager()->OnElementNodeAddedForInspector(fiber_child);
+  });
+  return fiber_child;
 }
 
 void FiberElement::PrepareChildForInsertion(FiberElement *child) {
@@ -2059,8 +2113,8 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
     for (const auto &param : action_param_list_) {
       switch (param.type_) {
         case Action::kInsertChildAct: {
-          auto *param_child = static_cast<FiberElement *>(param.child_.get());
-          auto *param_ref = static_cast<FiberElement *>(param.ref_node_);
+          auto *param_child = ResolveTemplateRootForAction(param.child_.get());
+          auto *param_ref = ResolveTemplateRootForAction(param.ref_node_);
           PrepareChildForInsertion(param_child);
           if (!param.is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
             HandleInsertChildAction(param_child, static_cast<int>(param.index_),
@@ -2075,16 +2129,16 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
         } break;
 
         case Action::kRemoveChildAct: {
+          auto *param_child = ResolveTemplateRootForAction(param.child_.get());
           if (!param.is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
-            HandleRemoveChildAction(
-                static_cast<FiberElement *>(param.child_.get()));
+            HandleRemoveChildAction(param_child);
           } else {
-            RemoveFixedElement(static_cast<FiberElement *>(param.child_.get()));
+            RemoveFixedElement(param_child);
           }
         } break;
 
         case Action::kRemoveIntergenerationAct: {
-          auto *param_child = static_cast<FiberElement *>(param.child_.get());
+          auto *param_child = ResolveTemplateRootForAction(param.child_.get());
           if (param_child->parent_ == this) {
             break;
           }

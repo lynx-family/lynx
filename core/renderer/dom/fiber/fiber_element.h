@@ -656,6 +656,9 @@ class FiberElement : public Element {
   void RemoveLogicalChild(const fml::RefPtr<FiberElement>& child);
   void RemoveNodeInternal(const fml::RefPtr<FiberElement>& child, bool destroy,
                           bool update_logical_children);
+  FiberElement* ReplaceTemplateChildIfNeeded(
+      base::InlineVector<fml::RefPtr<Element>,
+                         kChildrenInlineVectorSize>::iterator child_iter);
 
   void ResetDirectionAwareProperty(const CSSPropertyID& id,
                                    const CSSValue& value);

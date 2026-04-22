@@ -44,6 +44,7 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
+#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -453,7 +454,7 @@ GestureDetectorImpl InnerCreateGestureDetector(double gesture_id,
     }
 
     if (callback.IsCallable()) {
-      // RTS closures need their runtime context to be invoked later when the
+      // These closures need their runtime context to be invoked later when the
       // gesture callback fires on the native side.
       gesture_callback_vector.emplace_back(name.String(), lepus::Value(),
                                            callback, ctx);
@@ -3495,11 +3496,10 @@ RENDERER_FUNCTION_CC(FiberGetTemplateParts) {
 }
 
 RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
+  auto* self = GET_TASM_POINTER();
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_ELEMENT_TEMPLATE);
   // Create one Element Template instance from the complete initial slot state.
-  // The runtime entry is registered in this split, while the backing
-  // TemplateElement materialization is landed separately.
-  //
   // parameter size >= 1
   // [0] String -> templateKey
   // [1] String | Null | Undefined -> bundleUrl
@@ -3509,14 +3509,68 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
   CHECK_ARGC_GE(FiberCreateElementTemplate, 1);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, String,
                                         FiberCreateElementTemplate);
-  RETURN_UNDEFINED();
+
+  std::string entry_name = tasm::DEFAULT_ENTRY_NAME;
+  lepus::Value attribute_slots;
+  lepus::Value element_slots;
+  lepus::Value uid;
+
+  if (argc >= 2) {
+    CONVERT_ARG(arg1, 1);
+    if (arg1->IsString()) {
+      entry_name = arg1->StdString();
+    } else if (!arg1->IsNil() && !arg1->IsUndefined()) {
+      ElementAPIError(
+          "FiberCreateElementTemplate param 1 should be String or "
+          "Null or Undefined");
+      RETURN_UNDEFINED();
+    }
+  }
+
+  if (argc >= 3) {
+    CONVERT_ARG(arg2, 2);
+    if (arg2->IsArrayOrJSArray()) {
+      attribute_slots = arg2->ToLepusValue();
+    } else if (!arg2->IsNil() && !arg2->IsUndefined()) {
+      ElementAPIError(
+          "FiberCreateElementTemplate param 2 should be Array or "
+          "Null or Undefined");
+      RETURN_UNDEFINED();
+    }
+  }
+
+  if (argc >= 4) {
+    CONVERT_ARG(arg3, 3);
+    if (arg3->IsArrayOrJSArray()) {
+      element_slots = arg3->ToLepusValue();
+    } else if (!arg3->IsNil() && !arg3->IsUndefined()) {
+      ElementAPIError(
+          "FiberCreateElementTemplate param 3 should be Array or "
+          "Null or Undefined");
+      RETURN_UNDEFINED();
+    }
+  }
+
+  if (argc >= 5) {
+    CONVERT_ARG(arg4, 4);
+    uid = *arg4;
+  }
+
+  auto* manager = self->page_proxy()->element_manager().get();
+  auto element = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  element->SetTASM(self);
+  element->SetTemplateKey(arg0->String());
+  element->SetBundleUrl(base::String(entry_name));
+  element->SetAttributeSlots(attribute_slots);
+  element->SetElementSlots(element_slots);
+  element->SetUid(uid);
+  element->PrepareAsyncCreateElementTree();
+  RETURN(lepus::Value(element));
 }
 
 RENDERER_FUNCTION_CC(FiberSetAttributeOfElementTemplate) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SET_ATTRIBUTE_OF_ELEMENT_TEMPLATE);
   // Update one dynamic Attribute Slot on an existing template instance.
-  // Implementation is landed in the TemplateElement split.
-  //
   // parameter size >= 3
   // [0] RefCounted -> templateInstance
   // [1] Number -> attrSlotIndex
@@ -3533,8 +3587,6 @@ RENDERER_FUNCTION_CC(FiberSetAttributeOfElementTemplate) {
 RENDERER_FUNCTION_CC(FiberInsertNodeToElementTemplate) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_INSERT_NODE_TO_ELEMENT_TEMPLATE);
   // Insert or move one node into one dynamic Element Slot.
-  // Implementation is landed in the TemplateElement split.
-  //
   // parameter size >= 3
   // [0] RefCounted -> templateInstance
   // [1] Number -> elementSlotIndex
@@ -3553,8 +3605,6 @@ RENDERER_FUNCTION_CC(FiberInsertNodeToElementTemplate) {
 RENDERER_FUNCTION_CC(FiberRemoveNodeFromElementTemplate) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_REMOVE_NODE_FROM_ELEMENT_TEMPLATE);
   // Remove one node from one dynamic Element Slot.
-  // Implementation is landed in the TemplateElement split.
-  //
   // parameter size >= 3
   // [0] RefCounted -> templateInstance
   // [1] Number -> elementSlotIndex
@@ -3572,8 +3622,6 @@ RENDERER_FUNCTION_CC(FiberRemoveNodeFromElementTemplate) {
 RENDERER_FUNCTION_CC(FiberSerializeElementTemplate) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SERIALIZE_ELEMENT_TEMPLATE);
   // Serialize one template instance into machine-consumable slot-aligned data.
-  // Implementation is landed in the TemplateElement split.
-  //
   // parameter size >= 1
   // [0] RefCounted -> templateInstance
   CHECK_ARGC_GE(FiberSerializeElementTemplate, 1);
@@ -3581,7 +3629,16 @@ RENDERER_FUNCTION_CC(FiberSerializeElementTemplate) {
   if (!arg0->IsRefCounted()) {
     RETURN_UNDEFINED();
   }
-  RETURN_UNDEFINED();
+  if (arg0->RefCounted()->GetRefType() != lepus::RefType::kElement) {
+    RETURN_UNDEFINED();
+  }
+  auto fiber_element =
+      fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+  if (!fiber_element->is_template()) {
+    RETURN_UNDEFINED();
+  }
+  auto* element = static_cast<TemplateElement*>(fiber_element.get());
+  RETURN(element->Serialize());
 }
 
 RENDERER_FUNCTION_CC(FiberCloneElement) {
