@@ -70,6 +70,7 @@ public class TextMeasurer {
   private final static int kTextPropTextDecoration = 14;
   private final static int kTextPropTextAlign = 15;
   private final static int kTextPropVerticalAlign = 16;
+  private final static int kTextPropAutoFontSize = 17;
 
   // attributes
   private final static int kTextPropTextMaxLine = 99;
@@ -360,6 +361,21 @@ public class TextMeasurer {
           }
           textAttributes = ensureTextAttributes(textAttributes);
           textAttributes.mTextAlign = textAlign;
+          break;
+
+        case kTextPropAutoFontSize:
+          if (!isParagraph) {
+            Log.w("TextMeasurer", "auto-font-size should be set to paragraph");
+            iterator.next().getInt();
+            iterator.next().getDouble();
+            iterator.next().getDouble();
+            iterator.next().getDouble();
+            continue;
+          }
+          textAttributes = ensureTextAttributes(textAttributes);
+          textAttributes.setAutoFontSize(iterator.next().getInt() != 0,
+              (float) iterator.next().getDouble(), (float) iterator.next().getDouble(),
+              (float) iterator.next().getDouble());
           break;
 
         case kPropRectSize:

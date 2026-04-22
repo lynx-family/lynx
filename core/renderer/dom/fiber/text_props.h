@@ -32,6 +32,7 @@ enum TextPropertyKeyID {
   kTextPropTextDecoration = 14,
   kTextPropTextAlign = 15,
   kTextPropVerticalAlign = 16,
+  kTextPropAutoFontSize = 17,
 
   // attributes
   kTextPropTextMaxLine = 99,
@@ -135,7 +136,8 @@ static const uint8_t kUtf8ToUtf16Units[256] = {
   V(TextDecoration, 1)                    \
   V(Overflow, 1)                          \
   V(OverflowX, 1)                         \
-  V(OverflowY, 1)
+  V(OverflowY, 1)                         \
+  V(XAutoFontSize, 1)
 
 inline int IsTextMeasurerWanted(CSSPropertyID id) {
   static const auto& kWantedProperty = []() -> const int(&)[kPropertyEnd] {
