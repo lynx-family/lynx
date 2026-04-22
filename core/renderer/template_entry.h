@@ -153,6 +153,11 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   lepus::Value ElementFromBinary(const std::string& key, int64_t pid,
                                  ElementManager* manager);
 
+  // Fetch cached Element Template info or decode it. Only the shared cache map
+  // is locked; reader parse/decode work runs outside the cache mutex.
+  std::shared_ptr<ElementTemplateInfo> GetOrDecodeElementTemplateInfo(
+      const std::string& key);
+
   const ElementTemplateInfo& GetElementTemplateInfo(const std::string& key);
 
   const std::shared_ptr<ParsedStyles>& GetParsedStyles(const std::string& key);
@@ -298,8 +303,6 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
                         const PageOptions& page_options = PageOptions());
 
   std::string GenerateLepusJSFileName(const std::string& name);
-  std::shared_ptr<ElementTemplateInfo>
-  DecodeOrGetElementTemplateInfoWithDedicatedReader(const std::string& key);
 
   std::string name_;
   bool is_card_{true};
