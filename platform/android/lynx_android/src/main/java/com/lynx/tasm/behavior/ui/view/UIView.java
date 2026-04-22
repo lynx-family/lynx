@@ -124,6 +124,17 @@ public class UIView extends UISimpleView<AndroidView> {
   }
 
   /**
+   * @name: android-enable-auto-blur
+   * @description: whether to enable auto blur update
+   * @standardAction: keep
+   * @supportVersion: 3.9
+   **/
+  @LynxProp(name = "android-enable-auto-blur", defaultBoolean = true)
+  public void setBlurAutoUpdate(boolean enable) {
+    mView.setBlurAutoUpdate(enable);
+  }
+
+  /**
    * @name: copyable
    * @description: Allowing copy LynxUI from one to another at native
    * @category: different
