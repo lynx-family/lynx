@@ -4650,6 +4650,8 @@ public interface com::lynx::tasm::behavior::LynxBehavior {
   public String[] com.lynx.tasm.behavior.LynxBehavior.tagName();
   public boolean com.lynx.tasm.behavior.LynxBehavior.isCreateAsync() default false;
   public boolean com.lynx.tasm.behavior.LynxBehavior.needProcessDirection() default false;
+  public boolean com.lynx.tasm.behavior.LynxBehavior.supportFragmentLayerRender() default false;
+  public Class<? extends IRendererHost > com.lynx.tasm.behavior.LynxBehavior.fragmentLayerRendererHost() default IRendererHost.class;
 }
 
 public enum com::lynx::tasm::LynxBooleanOption {

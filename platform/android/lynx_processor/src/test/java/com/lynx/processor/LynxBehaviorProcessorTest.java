@@ -5,6 +5,7 @@
 package com.lynx.processor;
 
 import static com.google.testing.compile.Compiler.javac;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.google.testing.compile.Compilation;
@@ -23,8 +24,12 @@ public class LynxBehaviorProcessorTest {
               + "public class Behavior {\n"
               + "  public Behavior(String name, boolean flatten, boolean createAsync, boolean "
               + "needProcessDirection) {}\n"
+              + "  public Behavior(String name, boolean flatten, boolean createAsync, boolean "
+              + "needProcessDirection, boolean supportFragmentLayerRender) {}\n"
               + "  public com.lynx.tasm.behavior.ui.LynxUI createUI(LynxContext context) { return "
               + "null; }\n"
+              + "  public com.lynx.tasm.behavior.render.IRendererHost "
+              + "createPlatformRendererHost(LynxContext context) { return null; }\n"
               + "  public com.lynx.tasm.behavior.shadow.ShadowNode createShadowNode() { return "
               + "null; }\n"
               + "}\n");
@@ -47,6 +52,11 @@ public class LynxBehaviorProcessorTest {
           "package com.lynx.tasm.behavior.shadow;\n"
               + "public class ShadowNode {}\n");
 
+  private static final JavaFileObject I_RENDERER_HOST_STUB =
+      JavaFileObjects.forSourceString("com.lynx.tasm.behavior.render.IRendererHost",
+          "package com.lynx.tasm.behavior.render;\n"
+              + "public interface IRendererHost {}\n");
+
   private static final JavaFileObject KEEP_STUB =
       JavaFileObjects.forSourceString("androidx.annotation.Keep",
           "package androidx.annotation;\n"
@@ -56,8 +66,8 @@ public class LynxBehaviorProcessorTest {
               + "public @interface Keep {}\n");
 
   private static JavaFileObject[] getCommonStubs() {
-    return new JavaFileObject[] {
-        BEHAVIOR_STUB, LYNX_CONTEXT_STUB, LYNX_UI_STUB, SHADOW_NODE_STUB, KEEP_STUB};
+    return new JavaFileObject[] {BEHAVIOR_STUB, LYNX_CONTEXT_STUB, LYNX_UI_STUB, SHADOW_NODE_STUB,
+        I_RENDERER_HOST_STUB, KEEP_STUB};
   }
 
   private static String getGeneratedSource(Compilation compilation, String qualifiedName)
@@ -74,7 +84,7 @@ public class LynxBehaviorProcessorTest {
   }
 
   @Test
-  public void testBehaviorDefaultFlags() throws IOException {
+  public void testBehaviorWithoutFragmentLayerRender() throws IOException {
     JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestUI",
         "package com.test;\n"
             + "import com.lynx.tasm.behavior.LynxBehavior;\n"
@@ -92,60 +102,106 @@ public class LynxBehaviorProcessorTest {
     assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
 
     String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
-    assertTrue("Should use 4-arg Behavior constructor with all flags false",
+    assertTrue("Should use 4-arg Behavior constructor",
         source.contains("new Behavior(\"test\", false, false, false)"));
+    assertFalse("Should not contain createPlatformRendererHost",
+        source.contains("createPlatformRendererHost"));
+  }
+
+  @Test
+  public void testBehaviorWithFragmentLayerRender() throws IOException {
+    JavaFileObject rendererHostClass = JavaFileObjects.forSourceString("com.test.TestRendererHost",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.render.IRendererHost;\n"
+            + "public class TestRendererHost implements IRendererHost {\n"
+            + "  public TestRendererHost(LynxContext context) {}\n"
+            + "}\n");
+
+    JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestUI",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxBehavior;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
+            + "@LynxBehavior(tagName = \"test\", supportFragmentLayerRender = true, "
+            + "fragmentLayerRendererHost = TestRendererHost.class)\n"
+            + "public class TestUI extends LynxUI {\n"
+            + "  public TestUI(LynxContext context) { super(context); }\n"
+            + "}\n");
+
+    Compilation compilation = javac()
+                                  .withProcessors(new LynxBehaviorProcessor())
+                                  .compile(merge(getCommonStubs(), rendererHostClass, testClass));
+
+    assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
+
+    String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
+    assertTrue("Should use 5-arg Behavior constructor with true",
+        source.contains("new Behavior(\"test\", false, false, false, true)"));
+    assertTrue(
+        "Should contain createPlatformRendererHost", source.contains("createPlatformRendererHost"));
+    assertTrue(
+        "Should instantiate TestRendererHost", source.contains("new TestRendererHost(context)"));
+  }
+
+  @Test
+  public void testBehaviorWithFragmentLayerRenderButNoRendererHost() throws IOException {
+    JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestUI",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxBehavior;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
+            + "@LynxBehavior(tagName = \"test\", supportFragmentLayerRender = true)\n"
+            + "public class TestUI extends LynxUI {\n"
+            + "  public TestUI(LynxContext context) { super(context); }\n"
+            + "}\n");
+
+    Compilation compilation = javac()
+                                  .withProcessors(new LynxBehaviorProcessor())
+                                  .compile(merge(getCommonStubs(), testClass));
+
+    assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
+
+    String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
+    assertTrue("Should use 5-arg Behavior constructor with true",
+        source.contains("new Behavior(\"test\", false, false, false, true)"));
+    assertFalse("Should not contain createPlatformRendererHost when no host is set",
+        source.contains("createPlatformRendererHost"));
   }
 
   @Test
   public void testBehaviorWithAsyncAndDirection() throws IOException {
+    JavaFileObject rendererHostClass = JavaFileObjects.forSourceString("com.test.TestRendererHost",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.render.IRendererHost;\n"
+            + "public class TestRendererHost implements IRendererHost {\n"
+            + "  public TestRendererHost(LynxContext context) {}\n"
+            + "}\n");
+
     JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestUI",
         "package com.test;\n"
             + "import com.lynx.tasm.behavior.LynxBehavior;\n"
             + "import com.lynx.tasm.behavior.LynxContext;\n"
             + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
             + "@LynxBehavior(tagName = \"test\", isCreateAsync = true, needProcessDirection = "
-            + "true)\n"
+            + "true, supportFragmentLayerRender = true, fragmentLayerRendererHost = "
+            + "TestRendererHost.class)\n"
             + "public class TestUI extends LynxUI {\n"
             + "  public TestUI(LynxContext context) { super(context); }\n"
             + "}\n");
 
     Compilation compilation = javac()
                                   .withProcessors(new LynxBehaviorProcessor())
-                                  .compile(merge(getCommonStubs(), testClass));
+                                  .compile(merge(getCommonStubs(), rendererHostClass, testClass));
 
     assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
 
     String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
-    assertTrue("Should use correct Behavior constructor with async and direction true",
-        source.contains("new Behavior(\"test\", false, true, true)"));
-  }
-
-  @Test
-  public void testBehaviorWithShadowNode() throws IOException {
-    JavaFileObject shadowNodeClass = JavaFileObjects.forSourceString("com.test.TestShadowNode",
-        "package com.test;\n"
-            + "import com.lynx.tasm.behavior.LynxShadowNode;\n"
-            + "@LynxShadowNode(tagName = \"test\")\n"
-            + "public class TestShadowNode extends com.lynx.tasm.behavior.shadow.ShadowNode {}\n");
-
-    JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestUI",
-        "package com.test;\n"
-            + "import com.lynx.tasm.behavior.LynxBehavior;\n"
-            + "import com.lynx.tasm.behavior.LynxContext;\n"
-            + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
-            + "@LynxBehavior(tagName = \"test\")\n"
-            + "public class TestUI extends LynxUI {\n"
-            + "  public TestUI(LynxContext context) { super(context); }\n"
-            + "}\n");
-
-    Compilation compilation = javac()
-                                  .withProcessors(new LynxBehaviorProcessor())
-                                  .compile(merge(getCommonStubs(), shadowNodeClass, testClass));
-
-    assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
-
-    String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
-    assertTrue("Should contain createShadowNode", source.contains("createShadowNode"));
+    assertTrue("Should use correct Behavior constructor with all flags true",
+        source.contains("new Behavior(\"test\", false, true, true, true)"));
+    assertTrue(
+        "Should contain createPlatformRendererHost", source.contains("createPlatformRendererHost"));
   }
 
   private static JavaFileObject[] merge(JavaFileObject[] base, JavaFileObject... extras) {
