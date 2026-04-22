@@ -12,9 +12,12 @@
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/css_property.h"
 #include "clay/ui/component/intersection_observer_manager.h"
-#include "clay/ui/component/list/base_list_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
+
+#ifndef ENABLE_NATIVE_LIST
+#include "clay/ui/component/list/base_list_view.h"
+#endif
 
 namespace clay {
 
@@ -84,7 +87,10 @@ void IntersectionObserverEntry::ComputeIntersectionRect(bool ui_clip_enabled) {
       parent_rect = relative_rect_;
     } else {
       if (parent->GetOverflow() == CSSProperty::OVERFLOW_HIDDEN ||
-          parent->Is<ScrollView>() || parent->Is<BaseListView>() ||
+          parent->Is<ScrollView>() ||
+#ifndef ENABLE_NATIVE_LIST
+          parent->Is<BaseListView>() ||
+#endif
           ui_clip_enabled) {
         parent_rect = BoundingRectWithScroll(parent);
       }

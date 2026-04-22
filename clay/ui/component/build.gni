@@ -52,6 +52,8 @@ ui_component_sources = [
   "list/list_container/list_container_wrapper.h",
   "list/list_item_view.cc",
   "list/list_item_view.h",
+  "list/lynx_list_data.cc",
+  "list/lynx_list_data.h",
   "measurable.h",
   "mouse_cursor.h",
   "native_view.cc",
@@ -127,7 +129,7 @@ if (is_mac || is_win) {
   ]
 }
 
-if (!enable_clay_lite) {
+if (!enable_clay_lite && !enable_native_list) {
   ui_component_sources += [
     "list/base_list_view.cc",
     "list/base_list_view.h",
@@ -163,8 +165,6 @@ if (!enable_clay_lite) {
     "list/list_wrapper.h",
     "list/lynx_list_adapter.cc",
     "list/lynx_list_adapter.h",
-    "list/lynx_list_data.cc",
-    "list/lynx_list_data.h",
     "list/lynx_list_item_view_holder.cc",
     "list/lynx_list_item_view_holder.h",
     "list/macros.h",

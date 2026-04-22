@@ -42,6 +42,10 @@ declare_args() {
 
   # Whether use high-performance discrete GPU
   use_discrete_gpu = false
+
+  # TODO: Clay only uses native list, the deprecated list
+  # will be removed soon.
+  enable_native_list = true
 }
 
 declare_args() {
@@ -188,4 +192,8 @@ if (use_binary_icudtl) {
 
 if (is_win && use_discrete_gpu) {
   feature_defines_list += [ "USE_DISCRETE_GPU=1" ]
+}
+
+if (enable_native_list) {
+  feature_defines_list += [ "ENABLE_NATIVE_LIST=1" ]
 }

@@ -64,6 +64,8 @@ class UIDelegateClay : public UIDelegate {
 
   void OnPageConfigDecoded(const std::shared_ptr<PageConfig>& config) override;
 
+  bool IsClayUIRenderer() const override { return true; }
+
   clay::ViewContext* GetViewContext() const { return view_context_; }
 
  private:

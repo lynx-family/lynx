@@ -16,13 +16,16 @@
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
-#include "clay/ui/component/list/list_wrapper.h"
 #include "clay/ui/component/nested_scroll/nested_scroll_manager.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_wrapper.h"
 #include "clay/ui/event/gesture_event.h"
 #include "clay/ui/gesture/scrollable_direction.h"
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
+
+#ifndef ENABLE_NATIVE_LIST
+#include "clay/ui/component/list/list_wrapper.h"
+#endif
 
 namespace clay {
 
@@ -478,7 +481,7 @@ NestedScrollable* NestedScrollable::GetScrollable(BaseView* view) {
     // TODO(liuguoliang): common method to find scrollable view
     return static_cast<ScrollWrapper*>(view)->GetScrollView();
   }
-#ifndef ENABLE_CLAY_LITE
+#ifndef ENABLE_NATIVE_LIST
   else if (view->Is<ListWrapper>()) {
     return static_cast<ListWrapper*>(view)->GetListView();
   }

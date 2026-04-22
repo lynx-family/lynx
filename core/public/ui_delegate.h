@@ -88,6 +88,9 @@ class UIDelegate {
     return 0;
   }
 
+  // Whether current UIDelegate is backed by Clay renderer.
+  virtual bool IsClayUIRenderer() const { return false; }
+
   // WeakFlag is used to create a weak reference to the UIDelegate instance.
   // This allows checking if the UIDelegate is still alive before accessing it.
   struct WeakFlag : public std::enable_shared_from_this<WeakFlag> {
