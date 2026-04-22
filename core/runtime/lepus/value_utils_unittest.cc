@@ -70,6 +70,29 @@ class LepusValueMethods : public ::testing::Test {
   lepus::Value v1_;
 };
 
+TEST(VMContextSafety, InvalidOpcode_IsReportedAsException) {
+  // Invalid opcode is a bytecode corruption / tampering signal.
+  // The VM should not crash and should surface the error via the existing
+  // `ReportException` mechanism (message + error code).
+  lepus::VMContext vm;
+  vm.Initialize();
+
+  auto fn = lepus::Function::Create();
+  fn->AddInstruction(lepus::Instruction::OpABCCode(0xFF, 0, 0, 0));
+  vm.SetRootFunction(fn);
+
+  lepus::Value ret;
+  ASSERT_TRUE(vm.ExecuteBinaryWithBundle(nullptr, &ret));
+
+  // Execution should stop safely and produce a nil return value.
+  ASSERT_TRUE(ret.IsNil());
+
+  // Validate surfaced exception information.
+  EXPECT_EQ(vm.err_code_, error::E_MTS_RUNTIME_ERROR);
+  EXPECT_NE(vm.exception_info_.find("Invalid Lepus opcode: 255."),
+            std::string::npos);
+}
+
 TEST(LepusShadowEqualTest, SameStringTable) {
   auto lepus_map = lepus::Dictionary::Create();
 

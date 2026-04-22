@@ -41,6 +41,12 @@
 namespace lynx {
 namespace lepus {
 
+// Instruction opcodes are encoded as a single byte.
+// Use a full-byte dispatch table (0..255) so invalid bytecode can't trigger
+// out-of-bounds reads on the computed-goto table.
+#define LEPUS_OPCODE_TABLE_SIZE 256
+#define LEPUS_MAX_OPCODE (LEPUS_OPCODE_TABLE_SIZE - 1)
+
 #define GET_CONST_VALUE(i) (function->GetConstValue(Instruction::GetParamBx(i)))
 #define GET_GLOBAL_VALUE(i) (global()->Get(Instruction::GetParamBx(i)))
 #define GET_BUILTIN_VALUE(i) (builtin()->Get(Instruction::GetParamBx(i)))
@@ -993,16 +999,25 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Label_LeaveBlock() {
 }
 
 void VMContext::RunFrame() {
-  static const void* const dispatch_table[TypeOpCount] = {
+  // NOTE: Instruction opcodes are encoded as a single byte (0..255).
+  // TypeOpCount is smaller than LEPUS_OPCODE_TABLE_SIZE, so we must guard
+  // dispatch against invalid opcodes coming from untrusted bytecode. Use a
+  // LEPUS_OPCODE_TABLE_SIZE-entry table and map all out-of-range opcodes to the
+  // default handler to avoid OOB reads and indirect-branch hijacking.
+  static const void* const dispatch_table[LEPUS_OPCODE_TABLE_SIZE] = {
       &&case_default,
 #define DEF_OPCODE(x) &&case_##x,
 #define DEF_NEW_OPCODE(x) &&case_##x,
 #include "core/runtime/lepus/lepus_bytecode_def.h"
 #undef DEF_OPCODE
 #undef DEF_NEW_OPCODE
+      [TypeOpCount... LEPUS_MAX_OPCODE] = &&case_invalid_opcode,
   };
-  static const void* const debugger_dispatch_table[TypeOpCount] = {
-      &&case_default, [1 ...(TypeOpCount - 1)] = &&case_debug};
+  static const void* const debugger_dispatch_table[LEPUS_OPCODE_TABLE_SIZE] = {
+      &&case_default,
+      [1 ...(TypeOpCount - 1)] = &&case_debug,
+      [TypeOpCount... LEPUS_MAX_OPCODE] = &&case_invalid_opcode,
+  };
   if (current_frame_ == nullptr) return;
   const void** current_dispatch_table;
   if (unlikely(is_debug_enabled_)) {
@@ -2337,8 +2352,6 @@ void VMContext::RunFrame() {
       CASE(TypeOp_CreateBlockContext) : run_frame_ctx.i = i;
       RunFrame_Op_CreateBlockContext(run_frame_ctx);
       BREAK;
-      // default:
-      // BREAK;
     }
   }
   CASE(default) : {
@@ -2355,6 +2368,26 @@ void VMContext::RunFrame() {
       }
     }
     goto* dispatch_table[Instruction::GetOpCode(i)];
+  }
+  CASE(invalid_opcode) : {
+    // Invalid opcode is a bytecode corruption / tampering signal.
+    // Keep this handler off the hot switch body; it is only reached when
+    // untrusted bytecode is corrupted/tampered.
+    if (current_frame_->return_ != nullptr) {
+      current_frame_->return_->SetNil();
+    }
+    const long opcode = Instruction::GetOpCode(i);
+    bool caught = false;
+    {
+      const std::string msg =
+          "Invalid Lepus opcode: " + std::to_string(opcode) + ".";
+      caught =
+          ReportException(msg, pc, length, closure, function, base, regs, true);
+    }
+    if (caught) {
+      BREAK;
+    }
+    return;
   }
 }
 
