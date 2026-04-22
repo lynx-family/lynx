@@ -112,6 +112,8 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
       const std::shared_ptr<PipelineOptions>& options) override;
   void FinishLayoutOperation(
       const std::shared_ptr<PipelineOptions>& options) override;
+  void UpdateTextBundle(int id, intptr_t bundle) override;
+  void DestroyTextBundle(int id) override;
 
   void ConsumeGesture(int64_t id, int32_t gesture_id,
                       const pub::Value& params) override;

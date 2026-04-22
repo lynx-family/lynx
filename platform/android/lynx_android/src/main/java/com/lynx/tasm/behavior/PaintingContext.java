@@ -34,6 +34,7 @@ import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.performance.PerformanceController;
+import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.util.Iterator;
 import java.util.Map;
@@ -95,6 +96,7 @@ public final class PaintingContext implements IPaintingContext {
 
   private long mNativePaintingContextPtr = 0;
   private long mTextra = 0;
+  private ConcurrentHashMap<Integer, Page> mTextraPages = new ConcurrentHashMap<>();
 
   public PaintingContext(LynxUIOwner uiOwner, int threadStrategy) {
     mUIOwner = uiOwner;
@@ -117,6 +119,12 @@ public final class PaintingContext implements IPaintingContext {
   @Override
   public void destroy() {
     mDestroyed = true;
+    for (Page page : mTextraPages.values()) {
+      if (page != null) {
+        page.destroy();
+      }
+    }
+    mTextraPages.clear();
     // TextLayoutTextra owns mTextra and releases it on native teardown.
     mTextra = 0;
   }
@@ -562,6 +570,33 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @CalledByNative
+  public void updateTextBundle(int sign, long textBundle) {
+    if (mDestroyed || mUIOwner.getContext() == null
+        || mUIOwner.getContext().getTextService() == null) {
+      return;
+    }
+
+    Page page = mUIOwner.getContext().getTextService().createPage(textBundle);
+    if (page == null) {
+      return;
+    }
+
+    Page old = mTextraPages.put(sign, page);
+    if (old != null) {
+      old.destroy();
+    }
+    mUIOwner.updateViewExtraData(sign, page);
+  }
+
+  @CalledByNative
+  public void destroyTextBundle(int sign) {
+    Page page = mTextraPages.remove(sign);
+    if (page != null) {
+      page.destroy();
+    }
+  }
+
+  @CalledByNative
   public float[] getBoundingClientOrigin(int sign) {
     float[] res = new float[] {0, 0};
     LynxBaseUI ui = mUIOwner.getNode(sign);
@@ -743,12 +778,20 @@ public final class PaintingContext implements IPaintingContext {
 
   private void updateNodeReadyPatching(int[] readyIds) {
     for (int sign : readyIds) {
+      Page page = mTextraPages.get(sign);
+      if (page != null) {
+        mUIOwner.updateViewExtraData(sign, page);
+      }
       mUIOwner.onNodeReady(sign);
     }
   }
 
   private void updateNodeRemovePatching(int[] removeIds) {
     for (int sign : removeIds) {
+      Page page = mTextraPages.remove(sign);
+      if (page != null) {
+        page.destroy();
+      }
       mUIOwner.onNodeRemoved(sign);
     }
   }
