@@ -77,7 +77,7 @@ source_set("headless") {
       ]
     }
 
-    if (is_harmony) {
+    if (is_harmony || is_android) {
       sources += [
         "gl/clay_headless_renderer_gles.cc",
         "gl/clay_headless_renderer_gles.h",

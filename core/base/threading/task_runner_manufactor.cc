@@ -346,7 +346,7 @@ void TaskRunnerManufactor::CreateTASMRunner(
 #elif defined(OS_LINUX) && !ENABLE_UNITTESTS
   tasm_task_runner_ = ui_task_runner_;
   return;
-#elif defined(OS_HARMONY) && defined(ENABLE_HEADLESS)
+#elif (defined(OS_HARMONY) || defined(OS_ANDROID)) && defined(ENABLE_HEADLESS)
   tasm_task_runner_ = ui_task_runner_;
   return;
 #endif

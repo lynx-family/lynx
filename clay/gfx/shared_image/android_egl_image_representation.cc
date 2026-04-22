@@ -314,6 +314,7 @@ std::unique_ptr<FenceSync> NativeBufferEGLImageRepresentation::ProduceFence() {
   return std::make_unique<DummyFenceSync>();
 }
 
+#ifndef ENABLE_HEADLESS
 SurfaceTextureEGLImageRepresentation::SurfaceTextureEGLImageRepresentation(
     fml::RefPtr<SurfaceTextureImageBacking> backing)
     : GLImageRepresentation(backing), backing_(backing) {}
@@ -364,5 +365,6 @@ bool SurfaceTextureEGLImageRepresentation::UnbindFrameBuffer() {
   // TODO(youfeng) support write to Surface
   return false;
 }
+#endif  // ENABLE_HEADLESS
 
 }  // namespace clay

@@ -34,7 +34,7 @@ void LynxEnv::onPiperInvoked(const std::string& module_name,
                              const std::string& param_str,
                              const std::string& url,
                              const std::string& invoke_session) {
-#if OS_ANDROID
+#if OS_ANDROID && !defined(ENABLE_HEADLESS)
   tasm::LynxEnvAndroid::onPiperInvoked(module_name, method_name, param_str,
                                        url);
 #endif

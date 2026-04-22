@@ -15,7 +15,7 @@ if (is_oliver_ssr) {
 
 if (!is_oliver_ssr && !is_oliver_node_lynx && !enable_unittests) {
   event_report_shared_sources += [ "event_tracker_platform_impl.h" ]
-  if (is_android) {
+  if (is_android && !is_headless) {
     event_report_shared_sources += [ "android/event_tracker_platform_impl.cc" ]
   } else if (is_harmony) {
     event_report_shared_sources += [ "harmony/event_tracker_platform_impl.cc" ]
