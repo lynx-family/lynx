@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.9.5
+
+- Add `current-color` property for `<svg>` element types.
+
 ## 3.9.4
 
 - Add `getScrollInfo` method for list.
