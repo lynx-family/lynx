@@ -21,12 +21,21 @@ export interface SVGProps extends StandardProps {
    */
   'content'?: string;
 
-    /**
-     * SVG Loaded
-     * @Android
-     * @iOS
-     * @Harmony
-     * @PC
-     */
-    bindload?: (e: BaseEvent) => void;
+  /**
+   * Sets the currentColor value used by serval-svg.
+   * This value is consumed when the SVG content uses currentColor.
+   * @iOS
+   * @Android
+   * @Harmony
+   */
+  'current-color'?: string;
+
+  /**
+   * SVG Loaded
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
+   */
+  bindload?: (e: BaseEvent) => void;
 }

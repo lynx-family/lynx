@@ -19,6 +19,7 @@ export class UISVG extends UIBase {
   private svgNodeController: SvgRenderNodeController = new SvgRenderNodeController();
   private src: string | undefined = undefined;
   private allowAntiAlias: boolean = true;
+  private currentColor: string | undefined = undefined;
   private sSvgBase64Scheme:string = "data:image/svg+xml;base64";
 
   layout(x: number, y: number, width: number, height: number, paddingLeft: number, paddingTop: number,
@@ -38,6 +39,16 @@ export class UISVG extends UIBase {
     this.nativeUI?.setFrameNode(this.svgNodeController.makeNode(this.uiContext)!);
   }
 
+  private buildSvgData(width: number, height: number): SvgData {
+    let data = new SvgData();
+    data.width = width;
+    data.height = height;
+    data.density = this.density;
+    data.content = this.content;
+    data.antiAlias = this.allowAntiAlias;
+    return data;
+  }
+
   update(prop: Record<string, Object>, events?: EventHandlerArray[]): void {
     if (prop.content !== undefined && prop.content !== this.content) {
       this.content = prop.content as string;
@@ -48,6 +59,14 @@ export class UISVG extends UIBase {
     }
     if (prop['allow-edge-antialiasing'] !== undefined) {
       this.allowAntiAlias = prop['allow-edge-antialiasing'] as boolean;
+    }
+    if (prop['current-color'] !== undefined) {
+      const colorValue = prop['current-color'];
+      const nextCurrentColor = typeof colorValue === 'string' && colorValue.length > 0 ? colorValue : undefined;
+      if (nextCurrentColor !== this.currentColor) {
+        this.currentColor = nextCurrentColor;
+        this.needUpdateContent = true;
+      }
     }
   }
 
@@ -60,14 +79,8 @@ export class UISVG extends UIBase {
     if (this.needUpdateContent) {
       const roundWidth = Math.round(this.density! * this.width) / this.density!
       const roundHeight = Math.round(this.density! * this.height) / this.density!
-      const data: SvgData = {
-        width: roundWidth,
-        height: roundHeight,
-        density: this.density,
-        content: this.content,
-        antiAlias: this.allowAntiAlias,
-      }
-      this.svgNodeController.updateData(data);
+      const data: SvgData = this.buildSvgData(roundWidth, roundHeight);
+      this.svgNodeController.updateData(data, this.currentColor);
       this.sendCustomEvent('load', { width: roundWidth, height: roundHeight } as SvgLoadEvent, 'detail');
       this.needUpdateContent = false;
     }
@@ -81,14 +94,8 @@ export class UISVG extends UIBase {
         this.content = decoder.decode(uint8Array);
         const roundWidth = Math.round(this.density! * this.width) / this.density!
         const roundHeight = Math.round(this.density! * this.height) / this.density!
-        const data: SvgData = {
-          width: roundWidth,
-          height: roundHeight,
-          density: this.density,
-          content: this.content,
-          antiAlias: this.allowAntiAlias,
-        }
-        this.svgNodeController.updateData(data);
+        const data: SvgData = this.buildSvgData(roundWidth, roundHeight);
+        this.svgNodeController.updateData(data, this.currentColor);
         this.sendCustomEvent('load', { width: roundWidth, height: roundHeight } as SvgLoadEvent, 'detail');
         this.needRequestSrc = false;
         return;
@@ -103,14 +110,8 @@ export class UISVG extends UIBase {
           } else {
             const decoder = util.TextDecoder.create('utf-8', { ignoreBOM: true });
             this.content = decoder.decode(new Uint8Array(res));
-            const data: SvgData = {
-              width: this.width,
-              height: this.height,
-              density: this.density,
-              content: this.content,
-              antiAlias: this.allowAntiAlias,
-            }
-            this.svgNodeController.updateData(data);
+            const data: SvgData = this.buildSvgData(this.width, this.height);
+            this.svgNodeController.updateData(data, this.currentColor);
             this.sendCustomEvent('load', { width: this.width, height: this.height } as SvgLoadEvent, 'detail');
           }
         });

@@ -12,10 +12,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, copy) NSString *src;
 @property(nonatomic, copy) NSString *content;
+@property(nonatomic, copy, nullable) NSString *currentColor;
 @property(atomic, strong) LynxThreadSafeDictionary *imageHolder;
 
 - (void)updateLayoutIfNeed;
 - (UIImage *)processSVGData:(NSData *)data withSize:(CGSize)devSize;
+- (UIImage *)processSVGData:(NSData *)data
+                   withSize:(CGSize)devSize
+               currentColor:(NSString *_Nullable)currentColor;
 - (UIImage *)loadImageFromHref:(NSString *)href withSize:(CGSize)devSize;
 - (void)fetchSVGResource:(NSString *)src
                 complete:(LynxGenericResourceCompletionBlock _Nonnull)callback;

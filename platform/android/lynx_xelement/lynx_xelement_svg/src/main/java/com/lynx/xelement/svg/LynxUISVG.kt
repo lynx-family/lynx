@@ -56,6 +56,9 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
   private var mSVGRender: SVGRender? = null
 
   @Volatile
+  private var mCurrentColor: String? = null
+
+  @Volatile
   private var mIsDestroyed = false
 
   constructor(context: LynxContext) : this(context, null)
@@ -80,6 +83,17 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
       @LynxProp(name = "content")
       fun setContent(content: String?) {
         mContent = content
+        mNeedRender = true
+      }
+
+      @LynxProp(name = "current-color")
+      fun setCurrentColor(color: String?) {
+        val nextColor = if (TextUtils.isEmpty(color)) null else color
+        if (mCurrentColor == nextColor) {
+          return
+        }
+        mCurrentColor = nextColor
+        mSVGRender?.setColor(mCurrentColor)
         mNeedRender = true
       }
 
@@ -146,6 +160,7 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
           )
           if (TextUtils.isEmpty(svgData)) {
             mView.setImageDrawable(null)
+            mContent = null
             return true
           }
           setServalSVGDrawable(svgData, true)
@@ -177,6 +192,7 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
                 })
               }
             })
+            localRender.setColor(mCurrentColor)
             // step 3: set the 'mSVGRender' variable
             mSVGRender = localRender
           }
@@ -192,6 +208,7 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
           override fun run() {
             try {
               mSVGRender?.let {
+                it.setColor(mCurrentColor)
                 val picture: Picture? = mSVGRender!!.renderPicture(
                   content,
                   Rect(0, 0, getWidth(), getHeight())

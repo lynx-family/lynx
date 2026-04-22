@@ -45,6 +45,15 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
   }
 }
 
+LYNX_PROP_SETTER("current-color", setCurrentColor, NSString *) {
+  NSString *nextColor = [value isKindOfClass:[NSString class]] && value.length > 0 ? value : nil;
+  if ((_currentColor == nil && nextColor == nil) || [_currentColor isEqualToString:nextColor]) {
+    return;
+  }
+  _currentColor = [nextColor copy];
+  [self.view invalidate];
+}
+
 // Call on main thread;
 - (void)applyImage:(UIImage *)image {
   if (image == nil || ![NSThread isMainThread]) {
@@ -95,6 +104,12 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
 }
 
 - (UIImage *)processSVGData:(NSData *)data withSize:(CGSize)devSize {
+  return [self processSVGData:data withSize:devSize currentColor:nil];
+}
+
+- (UIImage *)processSVGData:(NSData *)data
+                   withSize:(CGSize)devSize
+               currentColor:(NSString *_Nullable)currentColor {
   if (data == nil || data.length == 0) {
     return nil;
   }
@@ -102,6 +117,7 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
 
   return [self.srSvg getSrSvgDrawImageWithData:data
                                        andSize:devSize
+                                      andColor:currentColor
                                    andCallback:^UIImage *_Nullable(NSString *_Nullable href) {
                                      return [weakSelf loadImageFromHref:href withSize:devSize];
                                    }];
@@ -153,7 +169,9 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
           [self
               displayComplexBackgroundAsynchronouslyWithDisplay:^UIImage *() {
                 __strong typeof(weakSelf) strongSelf = weakSelf;
-                return [strongSelf processSVGData:svgData withSize:devSize];
+                return [strongSelf processSVGData:svgData
+                                         withSize:devSize
+                                     currentColor:strongSelf.currentColor];
               }
               completion:^(UIImage *_Nonnull image) {
                 __strong typeof(weakSelf) strongSelf = weakSelf;
@@ -173,7 +191,9 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
     [self
         displayComplexBackgroundAsynchronouslyWithDisplay:^UIImage *() {
           __strong typeof(weakSelf) strongSelf = weakSelf;
-          return [strongSelf processSVGData:svgData withSize:devSize];
+          return [strongSelf processSVGData:svgData
+                                   withSize:devSize
+                               currentColor:strongSelf.currentColor];
         }
         completion:^(UIImage *_Nonnull image) {
           __strong typeof(weakSelf) strongSelf = weakSelf;
