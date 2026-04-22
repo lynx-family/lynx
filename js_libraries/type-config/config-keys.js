@@ -61,6 +61,7 @@ const configKeys = [
   'enableCSSLazyImport',
   'enableDisexposureWhenBackground',
   'enableDisexposureWhenLynxHidden',
+  'enableDispatchCustomEventForUI',
   'enableEndGestureAtLastFingerUp',
   'enableEventHandleRefactor',
   'enableEventThrough',

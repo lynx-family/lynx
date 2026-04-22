@@ -318,6 +318,17 @@ export interface Config {
   enableDisexposureWhenLynxHidden?: boolean;
 
   /**
+   * Enables the LynxUI dispatchEvent interface to be triggered when a CustomEvent is triggered.
+   *
+   * Supported platform: iOS, Android
+   *
+   * Since: LynxSDK 3.9
+   *
+   * @defaultValue false
+   */
+  enableDispatchCustomEventForUI?: boolean;
+
+  /**
    * Enable the Lynx touch event to be triggered normally after the last finger is lifted in a multi-finger scenario.
    *
    * Supported platform: iOS

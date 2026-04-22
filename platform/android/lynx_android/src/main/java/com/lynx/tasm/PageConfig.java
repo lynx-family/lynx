@@ -81,6 +81,8 @@ public class PageConfig {
   private static final String KEY_ENABLE_TEXT_LAYOUT_CACHE = "enableTextLayoutCache";
   private static final String KEY_ENABLE_TRANSFORMED_TOUCH_POSITION =
       "enableTransformedTouchPosition";
+  private static final String KEY_ENABLE_DISPATCH_CUSTOM_EVENT_FOR_UI =
+      "enableDispatchCustomEventForUI";
 
   private boolean autoExpose = true;
   private boolean enableEventThrough;
@@ -139,6 +141,7 @@ public class PageConfig {
   private double mEnableLynxScrollFluency = -1d;
   private boolean mEnableTextLayoutCache = true;
   private boolean mEnableTransformedTouchPosition = false;
+  private boolean mEnableDispatchCustomEventForUI = false;
 
   public PageConfig(ReadableMap map) {
     autoExpose = true;
@@ -367,6 +370,10 @@ public class PageConfig {
 
       if (map.hasKey(KEY_ENABLE_TRANSFORMED_TOUCH_POSITION)) {
         mEnableTransformedTouchPosition = map.getBoolean(KEY_ENABLE_TRANSFORMED_TOUCH_POSITION);
+      }
+
+      if (map.hasKey(KEY_ENABLE_DISPATCH_CUSTOM_EVENT_FOR_UI)) {
+        mEnableDispatchCustomEventForUI = map.getBoolean(KEY_ENABLE_DISPATCH_CUSTOM_EVENT_FOR_UI);
       }
     }
   }
@@ -597,6 +604,10 @@ public class PageConfig {
 
   public boolean getEnableTransformedTouchPosition() {
     return mEnableTransformedTouchPosition;
+  }
+
+  public boolean getEnableDispatchCustomEventForUI() {
+    return mEnableDispatchCustomEventForUI;
   }
 
   @Override

@@ -910,6 +910,12 @@ class LynxConfigDecoder final {
       page_config->SetEnableNewStylingPipeline(
           LynxEnv::GetInstance().EnableNewStylingPipeline());
     }
+
+    if (doc.HasMember(config::kEnableDispatchCustomEventForUI) &&
+        doc[config::kEnableDispatchCustomEventForUI].IsBool()) {
+      page_config->SetEnableDispatchCustomEventForUI(
+          doc[config::kEnableDispatchCustomEventForUI].GetBool());
+    }
   };
 };
 }  // namespace tasm

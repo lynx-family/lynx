@@ -16,6 +16,7 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.event.EventTargetBase;
 import com.lynx.tasm.common.LepusBuffer;
@@ -109,6 +110,8 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   private boolean mEnableJSRuntime = true;
 
+  private boolean mEnableDispatchCustomEventForUI = false;
+
   private LynxModuleFactory mModuleFactory = null;
 
   public NativeFacade(boolean enableJSRuntime) {
@@ -160,13 +163,14 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
   }
 
   public boolean onLynxEvent(LynxEvent event) {
-    if (mClient == null) {
+    if (mClient == null || event == null) {
       return false;
     }
     LynxContext context = mLynxContext.get();
     if (context == null || context.getLynxUIOwner() == null) {
       return false;
     }
+    LynxUIOwner uiOwner = context.getLynxUIOwner();
 
     if (event.getType() == LynxEvent.LynxEventType.kTouch && event instanceof LynxTouchEvent
         && ((LynxTouchEvent) event).getIsMultiTouch()) {
@@ -174,9 +178,10 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
       for (Iterator<Map.Entry<String, Object>> it = uiTouchMap.entrySet().iterator();
            it.hasNext();) {
         Map.Entry<String, Object> entry = it.next();
-        EventTarget target = (EventTarget) ((LynxTouchEvent) event)
-                                 .getActiveTargetMap()
-                                 .get(Integer.parseInt(entry.getKey()));
+        int targetKey = Integer.parseInt(entry.getKey());
+        EventTarget target =
+            (EventTarget) ((LynxTouchEvent) event).getActiveTargetMap().get(targetKey);
+        target = target == null ? uiOwner.findLynxUIBySign(targetKey) : target;
         if (target == null) {
           continue;
         }
@@ -205,6 +210,9 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
     }
 
     EventTarget target = (EventTarget) event.getTarget();
+    if (mEnableDispatchCustomEventForUI) {
+      target = target == null ? uiOwner.findLynxUIBySign(event.getTag()) : target;
+    }
     if (target == null) {
       return false;
     }
@@ -420,7 +428,9 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
   @CalledByNative
   public void onPageConfigDecoded(ReadableMap map) {
     if (mCallback != null) {
-      mCallback.onPageConfigDecoded(new PageConfig(map));
+      PageConfig pageConfig = new PageConfig(map);
+      mCallback.onPageConfigDecoded(pageConfig);
+      mEnableDispatchCustomEventForUI = pageConfig.getEnableDispatchCustomEventForUI();
     }
   }
 

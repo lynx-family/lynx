@@ -1935,3 +1935,12 @@ enableNewStylingPipeline:
     - Android
     - HarmonyOS
     - iOS
+enableDispatchCustomEventForUI:
+  description: Enables the LynxUI dispatchEvent interface to be triggered when a CustomEvent is triggered.
+  defaultValue: 'false'
+  valueType: bool
+  author: rAY-ooo
+  since: '3.9'
+  supportPlatform:
+    - iOS
+    - Android
