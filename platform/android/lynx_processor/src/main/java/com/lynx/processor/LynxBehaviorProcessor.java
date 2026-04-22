@@ -40,6 +40,8 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.MirroredTypeException;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 
 @AutoService(Processor.class)
@@ -247,28 +249,42 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
   private void generateClassAndMethod(MethodSpec.Builder builder, ClassInfo classInfo) {
     boolean createAsync = classInfo.isCreateAsync;
     boolean needProcessDirection = classInfo.needProcessDirection;
+    boolean supportFragmentLayerRender = classInfo.supportFragmentLayerRender;
 
     for (String tag : classInfo.tagName) {
       ClassName lynxContextCln = ClassName.get("com.lynx.tasm.behavior", "LynxContext");
       ClassName lynxUICln = ClassName.get("com.lynx.tasm.behavior.ui", "LynxUI");
       ClassName lynxShadowCln = ClassName.get("com.lynx.tasm.behavior.shadow", "ShadowNode");
 
+      String behaviorArgs = "$S, false, " + (createAsync ? "true" : "false") + ", "
+          + (needProcessDirection ? "true" : "false");
+      if (supportFragmentLayerRender) {
+        behaviorArgs += ", " + (supportFragmentLayerRender ? "true" : "false");
+      }
+
       if (checkHasContextAndObjectConstructors(classInfo.mElement)) {
-        builder.addCode("result.add(new Behavior($S, false, " + (createAsync ? "true" : "false")
-                + ", " + (needProcessDirection ? "true" : "false") + ") {\n",
-            tag);
+        builder.addCode("result.add(new Behavior(" + behaviorArgs + ") {\n", tag);
         builder.addCode("@Override\n");
         builder.addCode("public $T createUIWithParams($T context, Object params) {\n", lynxUICln,
             lynxContextCln);
         builder.addCode("return new $T(context, params);\n", classInfo.mClassName);
         builder.addCode(" }\n");
       } else {
-        builder.addCode("result.add(new Behavior($S, false, " + (createAsync ? "true" : "false")
-                + ", " + (needProcessDirection ? "true" : "false") + ") {\n",
-            tag);
+        builder.addCode("result.add(new Behavior(" + behaviorArgs + ") {\n", tag);
         builder.addCode("@Override\n");
         builder.addCode("public $T createUI($T context) {\n", lynxUICln, lynxContextCln);
         builder.addCode("return new $T(context);\n", classInfo.mClassName);
+        builder.addCode(" }\n");
+      }
+
+      if (supportFragmentLayerRender && classInfo.fragmentLayerRendererHost != null) {
+        ClassName iRendererHostCln =
+            ClassName.get("com.lynx.tasm.behavior.render", "IRendererHost");
+        ClassName rendererHostCln = ClassName.bestGuess(classInfo.fragmentLayerRendererHost);
+        builder.addCode("@Override\n");
+        builder.addCode("public $T createPlatformRendererHost($T context) {\n", iRendererHostCln,
+            lynxContextCln);
+        builder.addCode("return new $T(context);\n", rendererHostCln);
         builder.addCode(" }\n");
       }
 
@@ -294,6 +310,8 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     classInfo.addBehaviorTag(typeElement);
     classInfo.addBehaviorIsCreateAsync(typeElement);
     classInfo.addBehaviorNeedProcessDirection(typeElement);
+    classInfo.addBehaviorSupportFragmentLayerRender(typeElement);
+    classInfo.addBehaviorFragmentLayerRendererHost(typeElement);
     return classInfo;
   }
 
@@ -326,6 +344,8 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     public boolean isCreateAsync;
     public String shadowNodeTag;
     public boolean needProcessDirection;
+    public boolean supportFragmentLayerRender;
+    public String fragmentLayerRendererHost;
 
     public ClassInfo(ClassName mClassName, TypeElement mElement) {
       this.mClassName = mClassName;
@@ -333,6 +353,8 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
       this.tagName = new ArrayList<>();
       this.isCreateAsync = false;
       this.needProcessDirection = false;
+      this.supportFragmentLayerRender = false;
+      this.fragmentLayerRendererHost = null;
     }
 
     public void addBehaviorTag(Element element) {
@@ -348,6 +370,27 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     public void addBehaviorNeedProcessDirection(Element element) {
       LynxBehavior annotation = element.getAnnotation(LynxBehavior.class);
       needProcessDirection = annotation.needProcessDirection();
+    }
+
+    public void addBehaviorSupportFragmentLayerRender(Element element) {
+      LynxBehavior annotation = element.getAnnotation(LynxBehavior.class);
+      supportFragmentLayerRender = annotation.supportFragmentLayerRender();
+    }
+
+    public void addBehaviorFragmentLayerRendererHost(Element element) {
+      LynxBehavior annotation = element.getAnnotation(LynxBehavior.class);
+      TypeMirror typeMirror = null;
+      try {
+        annotation.fragmentLayerRendererHost();
+      } catch (MirroredTypeException e) {
+        typeMirror = e.getTypeMirror();
+      }
+      if (typeMirror != null) {
+        String typeName = typeMirror.toString();
+        if (!typeName.equals("void")) {
+          fragmentLayerRendererHost = typeName;
+        }
+      }
     }
 
     public void addShadowNodeTag(Element element) {
