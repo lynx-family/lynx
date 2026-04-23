@@ -14,9 +14,11 @@
 
 #include "base/include/log/logging.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
+#include "core/public/page_options.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/tasm_runtime_bundle.h"
+#include "core/renderer/template_themed.h"
 #include "core/renderer/utils/base/element_template_info.h"
 #include "core/runtime/lepus/lepus_global.h"
 #include "core/runtime/lepus/vm_context.h"
@@ -40,6 +42,18 @@ class TemplateAssembler;
 class ElementManager;
 class FiberElement;
 
+class PageConfigger {
+ public:
+  PageConfigger() = default;
+  virtual ~PageConfigger() = default;
+
+  virtual void SetSupportComponentJS(bool support) = 0;
+  virtual void SetTargetSdkVersion(const std::string& targetSdkVersion) = 0;
+  virtual std::shared_ptr<PageConfig> GetPageConfig() = 0;
+  virtual void SetPageConfig(const std::shared_ptr<PageConfig>& config) = 0;
+  virtual Themed& Themed() = 0;
+};
+
 // base class released after dirived class,
 // ensure vm context released after lepus value
 class VmContextHolder {
@@ -62,14 +76,12 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
       std::shared_ptr<runtime::MTSRuntime> context,
       const std::string& targetSdkVersion);
 
-  bool InitWithTemplateBundle(
-      TemplateBinaryReader::PageConfigger* page_configger,
-      LynxTemplateBundle template_bundle,
-      const PageOptions& page_options = PageOptions());
+  bool InitWithTemplateBundle(PageConfigger* page_configger,
+                              LynxTemplateBundle template_bundle,
+                              const PageOptions& page_options = PageOptions());
 
-  bool InitWithPageConfigger(
-      TemplateBinaryReader::PageConfigger* page_configger,
-      const PageOptions& page_options = PageOptions());
+  bool InitWithPageConfigger(PageConfigger* page_configger,
+                             const PageOptions& page_options = PageOptions());
 
   bool ConstructContext(TemplateAssembler* assembler, bool is_lepusng_binary,
                         const runtime::ContextBundle& context_bundle,
@@ -290,8 +302,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   void SetTemplateBundle(LynxTemplateBundle bundle);
 
-  std::shared_ptr<PageConfig> EnsurePageConfig(
-      TemplateBinaryReader::PageConfigger* configger) const;
+  std::shared_ptr<PageConfig> EnsurePageConfig(PageConfigger* configger) const;
 
   bool InitLepusContext(TemplateAssembler* tasm,
                         const std::shared_ptr<PageConfig>& page_config,

@@ -2406,13 +2406,19 @@ bool TemplateAssembler::FromBinary(const std::shared_ptr<TemplateEntry>& entry,
 
   auto input_stream =
       std::make_unique<lepus::ByteArrayInputStream>(std::move(source));
-  auto reader = std::make_unique<TemplateBinaryReader>(this, entry.get(),
-                                                       std::move(input_stream));
+  // Construct reader with entry's bundle, so decode writes directly to entry.
+  auto reader = std::make_unique<TemplateBinaryReader>(
+      std::move(input_stream), &entry->template_bundle());
   reader->SetIsCardType(is_card);
   reader->SetTemplateUrl(url_.substr(0, url_.find("?")));
 
   if (!reader->Decode()) {
     ReportDecodeError(is_card, entry, reader->error_message_);
+    return false;
+  }
+
+  if (!entry->InitWithPageConfigger(this, page_options_)) {
+    ReportDecodeError(is_card, entry, entry->GetErrorMsg());
     return false;
   }
 

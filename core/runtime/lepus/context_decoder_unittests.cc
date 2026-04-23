@@ -220,9 +220,7 @@ class TemplateBinaryReaderTest : public test::DataBindingShell,
                               ? runtime::ContextType::LepusNGContextType
                               : runtime::ContextType::VMContextType),
                       target_sdk_version},
-        TemplateBinaryReader(test::DataBindingShell::tasm_,
-                             static_cast<TemplateEntry*>(this),
-                             std::move(stream)) {
+        TemplateBinaryReader(std::move(stream)) {
     TemplateBinaryReader::compile_options_.target_sdk_version_ =
         target_sdk_version;
     TestUtils::RegisterBuiltin(vm_context_.get());

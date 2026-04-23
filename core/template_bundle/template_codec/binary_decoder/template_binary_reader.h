@@ -28,29 +28,16 @@ namespace tasm {
 
 class VirtualNode;
 class VirtualComponent;
-class TemplateAssembler;
-class TemplateEntry;
-class PageConfig;
-
 class TemplateBinaryReader : public LynxBinaryReader,
                              public LynxBinaryLazyReaderDelegate {
  public:
-  class PageConfigger {
-   public:
-    PageConfigger() = default;
-    virtual ~PageConfigger() = default;
+  explicit TemplateBinaryReader(std::unique_ptr<lepus::InputStream> stream);
 
-    virtual void SetSupportComponentJS(bool support) = 0;
-    virtual void SetTargetSdkVersion(const std::string& targetSdkVersion) = 0;
-    virtual std::shared_ptr<PageConfig> GetPageConfig() = 0;
-    virtual void SetPageConfig(const std::shared_ptr<PageConfig>& config) = 0;
-    virtual struct Themed& Themed() = 0;
-  };
-
-  // TODO(zhoupeng.z): configger_ and entry_ are only used for initialization.
-  // It seems to be a better choice to decouple them from the decoder.
-  TemplateBinaryReader(PageConfigger* configger, TemplateEntry* entry,
-                       std::unique_ptr<lepus::InputStream> stream);
+  // Constructs a reader that decodes directly into the provided bundle.
+  // This is useful for lazy decode scenarios where the bundle is owned by
+  // TemplateEntry.
+  explicit TemplateBinaryReader(std::unique_ptr<lepus::InputStream> stream,
+                                LynxTemplateBundle* template_bundle);
   ~TemplateBinaryReader() override = default;
 
   TemplateBinaryReader(const TemplateBinaryReader&) = delete;
@@ -97,8 +84,6 @@ class TemplateBinaryReader : public LynxBinaryReader,
   bool GetCSSLazyDecode();
   bool GetCSSAsyncDecode();
 
-  virtual bool DidDecodeTemplate() override;
-
   // parsed styles
   bool DecodeParsedStylesSection() override;
 
@@ -112,10 +97,6 @@ class TemplateBinaryReader : public LynxBinaryReader,
   bool DecodeLepusChunk() override;
   bool DecodeLepusChunkAsync(std::shared_ptr<LepusChunkManager> manager);
 
-  // should only be used in DidDecodeTemplate
-  PageConfigger* configger_;
-  TemplateEntry* entry_;
-
  private:
   // create a new template binary reader from binary
   static std::unique_ptr<TemplateBinaryReader> Create(const uint8_t* begin,
@@ -126,6 +107,9 @@ class TemplateBinaryReader : public LynxBinaryReader,
   void EnsureParallelParseTaskScheduler();
 
   std::unique_ptr<ParallelParseTaskScheduler> task_schedular_{nullptr};
+  // When non-null, decode writes directly to this external bundle.
+  // When null, decode writes to the inherited template_bundle_.
+  LynxTemplateBundle* target_template_bundle_{nullptr};
 };
 
 }  // namespace tasm

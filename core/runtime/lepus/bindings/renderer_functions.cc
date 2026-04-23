@@ -95,6 +95,7 @@
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_base_css_reader.h"
+#include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/modp_b64/modp_b64.h"
 
@@ -1344,7 +1345,7 @@ RENDERER_FUNCTION_CC(ReplaceStyleSheetByIdWithBase64) {
   lynx_modp_b64_decode(base64_buffer);
   auto input_stream = std::make_unique<lepus::ByteArrayInputStream>(
       std::vector<uint8_t>(base64_buffer.begin(), base64_buffer.end()));
-  auto reader = TemplateBinaryReader(self, nullptr, std::move(input_stream));
+  auto reader = TemplateBinaryReader(std::move(input_stream));
 
   const auto id = static_cast<int32_t>(arg0->Number());
 

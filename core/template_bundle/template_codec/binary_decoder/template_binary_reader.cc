@@ -17,7 +17,6 @@
 #include "core/renderer/dom/vdom/radon/radon_page.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/tasm/config.h"
-#include "core/renderer/template_assembler.h"
 #include "core/runtime/lepus/function.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/runtime/lepusng/quick_context.h"
@@ -31,11 +30,16 @@ namespace lynx {
 namespace tasm {
 
 TemplateBinaryReader::TemplateBinaryReader(
-    PageConfigger* configger, TemplateEntry* entry,
     std::unique_ptr<lepus::InputStream> stream)
+    : LynxBinaryReader(std::move(stream)) {
+  enable_pre_process_attributes_ = false;
+}
+
+TemplateBinaryReader::TemplateBinaryReader(
+    std::unique_ptr<lepus::InputStream> stream,
+    LynxTemplateBundle* template_bundle)
     : LynxBinaryReader(std::move(stream)),
-      configger_(configger),
-      entry_(entry) {
+      target_template_bundle_(template_bundle) {
   enable_pre_process_attributes_ = false;
 }
 
@@ -209,8 +213,8 @@ std::unique_ptr<TemplateBinaryReader> TemplateBinaryReader::Create(
     const uint8_t* begin, size_t size) {
   auto binary_stream =
       std::make_unique<lepus::ByteArrayInputStream>(begin, size);
-  auto reader = std::make_unique<TemplateBinaryReader>(
-      nullptr, nullptr, std::move(binary_stream));
+  auto reader =
+      std::make_unique<TemplateBinaryReader>(std::move(binary_stream));
   return reader;
 }
 
@@ -295,25 +299,6 @@ bool TemplateBinaryReader::DecodeCSSFragmentByIdInRender(int32_t id) {
                                  it->second.end + css_section_range_.start));
   fragment->SetEnableClassMerge(compile_options_.enable_css_class_merge_);
   manager->AddSharedCSSFragment(std::move(fragment));
-  return true;
-}
-
-bool TemplateBinaryReader::DidDecodeTemplate() {
-  ERROR_UNLESS(LynxBinaryReader::DidDecodeTemplate());
-  // when we construct a TemplateBinaryReader outside of loadTemplate
-  // entry_ may be nullptr. Do nothing here.
-  if (!entry_) {
-    return true;
-  }
-  // different for LynxBinaryReader, TemplateBinaryReader need to init the
-  // entry after decoding
-  if (!entry_->InitWithPageConfigger(
-          configger_,
-          static_cast<TemplateAssembler*>(configger_)->GetPageOptions())) {
-    error_message_ = entry_->GetErrorMsg();
-    return false;
-  }
-
   return true;
 }
 
@@ -426,10 +411,8 @@ bool TemplateBinaryReader::DecodeLepusChunkAsync(
 }
 
 LynxTemplateBundle& TemplateBinaryReader::template_bundle() {
-  // use the template bundle of entry directly, so that there is no need to move
-  // the template_bundle
-  return entry_ ? entry_->template_bundle()
-                : LynxBinaryReader::template_bundle();
+  return target_template_bundle_ ? *target_template_bundle_
+                                 : LynxBinaryReader::template_bundle();
 }
 
 std::unique_ptr<LynxBinaryRecyclerDelegate>
@@ -483,6 +466,11 @@ bool TemplateBinaryReader::CompleteDecode() {
 }
 
 LynxTemplateBundle TemplateBinaryReader::GetCompleteTemplateBundle() {
+  if (target_template_bundle_) {
+    LOGW(
+        "TemplateBinaryReader::GetCompleteTemplateBundle called when decoding "
+        "to external bundle.");
+  }
   return std::move(template_bundle());
 }
 

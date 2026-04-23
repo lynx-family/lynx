@@ -184,9 +184,9 @@ TemplateEntry::ConstructEntryWithNoTemplateAssembler(
   return std::make_unique<TemplateEntry>(context, targetSdkVersion);
 }
 
-bool TemplateEntry::InitWithTemplateBundle(
-    TemplateBinaryReader::PageConfigger* configger,
-    LynxTemplateBundle template_bundle, const PageOptions& page_options) {
+bool TemplateEntry::InitWithTemplateBundle(PageConfigger* configger,
+                                           LynxTemplateBundle template_bundle,
+                                           const PageOptions& page_options) {
   SetTemplateBundle(std::move(template_bundle));
   return InitWithPageConfigger(configger, page_options);
 }
@@ -217,9 +217,8 @@ std::string TemplateEntry::GenerateLepusJSFileName(const std::string& name) {
   return kLepusFilePrefix + name + kLepusFileSuffix;
 }
 
-bool TemplateEntry::InitWithPageConfigger(
-    TemplateBinaryReader::PageConfigger* configger,
-    const PageOptions& page_options) {
+bool TemplateEntry::InitWithPageConfigger(PageConfigger* configger,
+                                          const PageOptions& page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_INIT_WITH_PAGE_CONFIG);
 
   if (is_card_ != template_bundle_.IsCard()) {
@@ -344,7 +343,7 @@ bool TemplateEntry::InitLepusContext(
 }
 
 std::shared_ptr<PageConfig> TemplateEntry::EnsurePageConfig(
-    TemplateBinaryReader::PageConfigger* configger) const {
+    PageConfigger* configger) const {
   if (is_card_) {
     // since native config is supported now, we need to make a clone to
     // pageConfig in order to avoid native config modifies the page config in

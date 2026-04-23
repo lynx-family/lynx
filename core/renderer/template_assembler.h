@@ -45,7 +45,6 @@
 #include "core/services/timing_handler/timing.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
-#include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 #include "core/template_bundle/template_codec/moulds.h"
 #include "third_party/rapidjson/document.h"
 
@@ -125,7 +124,7 @@ class AirTouchEventHandlerBase {
 };
 
 class TemplateAssembler final : public TemplateEntryHolder,
-                                public TemplateBinaryReader::PageConfigger,
+                                public PageConfigger,
                                 public PageProxy::TasmDelegate,
                                 public runtime::MTSRuntime::Delegate {
  public:
