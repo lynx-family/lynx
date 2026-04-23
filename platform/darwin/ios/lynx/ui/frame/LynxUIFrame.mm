@@ -17,12 +17,23 @@
 
 @class LynxTemplateBundle;
 
+@interface LynxFrameView (FrameUICallback)
+- (void)setFrameIntrinsicContentSizeChangeCallback:(void (^)(CGSize size))callback;
+@end
+
 @interface LynxUIFrame () {
   LynxTemplateBundle* _pendingBundle;
   BOOL _isPropsUpdated;
   BOOL _isUrlChanged;
+  BOOL _hasIntrinsicContentSize;
+  CGSize _intrinsicContentSize;
 }
+- (void)frameIntrinsicContentSizeDidChange:(CGSize)size;
 @end
+
+static NSString* const kLynxFrameLayoutChangeDetailKeyFrameUrl = @"frameUrl";
+static NSString* const kLynxFrameLayoutChangeDetailKeyIntrinsicWidth = @"intrinsicWidth";
+static NSString* const kLynxFrameLayoutChangeDetailKeyIntrinsicHeight = @"intrinsicHeight";
 
 static LynxTemplateData* ConsumeFrameLepusValuePtr(NSInteger value) {
   if (value == 0) {
@@ -52,13 +63,21 @@ LYNX_REGISTER_UI("frame")
 
 - (UIView*)createView {
   id<LynxFrameViewProvider> provider = self.context.lynxFrameViewProvider;
+  LynxFrameView* view = nil;
   if (provider) {
-    LynxFrameView* view = [provider getLynxFrameView:self.context];
-    if (view) {
-      return view;
-    }
+    view = [provider getLynxFrameView:self.context];
   }
-  return [[LynxFrameView alloc] init];
+  if (view == nil) {
+    view = [[LynxFrameView alloc] init];
+  }
+
+  __weak typeof(self) weakSelf = self;
+  [view setFrameIntrinsicContentSizeChangeCallback:^(CGSize size) {
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    [strongSelf frameIntrinsicContentSizeDidChange:size];
+  }];
+
+  return view;
 }
 
 - (void)setSign:(NSInteger)sign {
@@ -128,6 +147,27 @@ LYNX_REGISTER_UI("frame")
   }];
 }
 
+- (NSDictionary*)buildLayoutChangeEventDetail {
+  NSMutableDictionary* data = [[super buildLayoutChangeEventDetail] mutableCopy];
+  data[kLynxFrameLayoutChangeDetailKeyFrameUrl] = self.view.url ?: @"";
+  if (_hasIntrinsicContentSize) {
+    data[kLynxFrameLayoutChangeDetailKeyIntrinsicWidth] = @(_intrinsicContentSize.width);
+    data[kLynxFrameLayoutChangeDetailKeyIntrinsicHeight] = @(_intrinsicContentSize.height);
+  }
+  return data;
+}
+
+- (void)frameIntrinsicContentSizeDidChange:(CGSize)size {
+  _hasIntrinsicContentSize = YES;
+  _intrinsicContentSize = size;
+  [self sendLayoutChangeEvent];
+}
+
+- (void)resetIntrinsicContentSize {
+  _hasIntrinsicContentSize = NO;
+  _intrinsicContentSize = CGSizeZero;
+}
+
 - (void)propsDidUpdate {
   [super propsDidUpdate];
   if (_isUrlChanged) {
@@ -148,6 +188,7 @@ LYNX_PROP_SETTER("data", updateData, NSInteger) {
 LYNX_PROP_SETTER("src", setUrl, NSString*) {
   _isUrlChanged = YES;
   _isPropsUpdated = NO;
+  [self resetIntrinsicContentSize];
   [[self view] setUrl:value];
 }
 

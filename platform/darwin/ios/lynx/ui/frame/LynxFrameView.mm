@@ -29,6 +29,10 @@ BOOL ShouldHandleFrameLoadMetricsEntry(LynxPerformanceEntry *entry) {
 }
 }  // namespace
 
+@interface LynxFrameView (FrameUICallback)
+- (void)setFrameIntrinsicContentSizeChangeCallback:(void (^)(CGSize size))callback;
+@end
+
 static NSString *const kLynxFrameEventLoadMetrics = @"loadmetrics";
 static NSString *const kLynxFrameEventDetailKeyUrl = @"url";
 static NSString *const kLynxFrameEventDetailKeyMode = @"mode";
@@ -45,6 +49,7 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
   LynxTemplateRender *_render;
   LynxLifecycleDispatcher *_lifecycleDispatcher;
   __weak UIView<LUIBodyView> *_rootView;
+  void (^_frameIntrinsicContentSizeChangeCallback)(CGSize size);
   attachLynxPageUI _attachLynxPageUICallback;
   NSString *_url;
   BOOL _isChildLynxPage;
@@ -97,6 +102,10 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
   }
 }
 
+- (void)setFrameIntrinsicContentSizeChangeCallback:(void (^)(CGSize size))callback {
+  _frameIntrinsicContentSizeChangeCallback = [callback copy];
+}
+
 - (NSMutableDictionary *)buildFrameLoadMetricsDetail:(LynxPerformanceEntry *)entry {
   NSMutableDictionary *detail = [NSMutableDictionary dictionaryWithCapacity:3];
   detail[kLynxFrameEventDetailKeyUrl] = _url ?: @"";
@@ -127,6 +136,12 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
                                  targetSign:self.sign
                                      detail:[self buildFrameLoadMetricsDetail:entry]];
   [self.context.eventEmitter sendCustomEvent:event];
+}
+
+- (void)onFrameIntrinsicContentSizeChanged:(CGSize)size {
+  if (_frameIntrinsicContentSizeChangeCallback) {
+    _frameIntrinsicContentSizeChangeCallback(size);
+  }
 }
 
 - (void)initWithRootView:(UIView<LUIBodyView> *)rootView {
@@ -419,6 +434,7 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
     ((LynxView *)_rootView).layoutWidthMode = _rootViewWidthMode;
     ((LynxView *)_rootView).layoutHeightMode = _rootViewHeightMode;
     [self setNeedsLayout];
+    [self onFrameIntrinsicContentSizeChanged:size];
   }
 }
 

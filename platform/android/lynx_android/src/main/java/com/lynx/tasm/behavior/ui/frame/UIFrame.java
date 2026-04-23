@@ -6,6 +6,7 @@ package com.lynx.tasm.behavior.ui.frame;
 
 import android.content.Context;
 import android.graphics.Rect;
+import android.util.DisplayMetrics;
 import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
 import com.lynx.tasm.EmbeddedMode;
@@ -22,15 +23,38 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.Map;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @LynxGeneratorName(packageName = "com.lynx.tasm.behavior.ui.frame")
 @LynxBehavior(tagName = "frame", isCreateAsync = false)
 public final class UIFrame extends LynxUI<LynxFrameView> {
   private static final String TAG = "UIFrame";
+  private static final String DETAIL_KEY_FRAME_URL = "frameUrl";
+  private static final String DETAIL_KEY_INTRINSIC_WIDTH = "intrinsicWidth";
+  private static final String DETAIL_KEY_INTRINSIC_HEIGHT = "intrinsicHeight";
   private TemplateBundle mPendingBundle;
   private boolean mIsPropsUpdated = false;
   private boolean mIsUrlChanged = false;
+  private boolean mHasIntrinsicContentSize = false;
+  private double mIntrinsicWidth = 0;
+  private double mIntrinsicHeight = 0;
+
+  private static final class FrameEventCallback implements LynxFrameView.FrameEventCallback {
+    private final WeakReference<UIFrame> mFrameUIRef;
+
+    FrameEventCallback(UIFrame frameUI) {
+      mFrameUIRef = new WeakReference<>(frameUI);
+    }
+
+    @Override
+    public void onIntrinsicContentSizeChanged(int width, int height) {
+      UIFrame frameUI = mFrameUIRef.get();
+      if (frameUI != null) {
+        frameUI.onIntrinsicContentSizeChanged(width, height);
+      }
+    }
+  }
 
   private int convertPresetLengthToPx(String value) {
     if (value == null) {
@@ -70,6 +94,7 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
       frameView = new LynxFrameView(mContext);
     }
     frameView.init(lynxContext);
+    frameView.setFrameEventCallback(new FrameEventCallback(this));
     return frameView;
   }
 
@@ -149,6 +174,7 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     super.destroy();
     LynxFrameView view = getView();
     if (view != null) {
+      view.setFrameEventCallback(null);
       view.destroy();
     }
   }
@@ -173,6 +199,33 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     view.updateLayout(contentWidth, contentHeight);
   }
 
+  @Override
+  protected Map<String, Object> buildLayoutChangeEventDetail() {
+    Map<String, Object> detail = super.buildLayoutChangeEventDetail();
+    LynxFrameView view = getView();
+    detail.put(DETAIL_KEY_FRAME_URL, view == null ? "" : view.getUrl());
+    if (mHasIntrinsicContentSize) {
+      detail.put(DETAIL_KEY_INTRINSIC_WIDTH, mIntrinsicWidth);
+      detail.put(DETAIL_KEY_INTRINSIC_HEIGHT, mIntrinsicHeight);
+    }
+    return detail;
+  }
+
+  void onIntrinsicContentSizeChanged(int width, int height) {
+    DisplayMetrics screenMetrics = getLynxContext().getScreenMetrics();
+    float density = screenMetrics == null ? 0 : screenMetrics.density;
+    mIntrinsicWidth = density > 0 ? width / (double) density : width;
+    mIntrinsicHeight = density > 0 ? height / (double) density : height;
+    mHasIntrinsicContentSize = true;
+    sendLayoutChangeEvent();
+  }
+
+  private void resetIntrinsicContentSize() {
+    mHasIntrinsicContentSize = false;
+    mIntrinsicWidth = 0;
+    mIntrinsicHeight = 0;
+  }
+
   @LynxProp(name = "data")
   public void setData(long value) {
     LynxFrameView view = getView();
@@ -185,6 +238,7 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
   public void setSrc(String value) {
     mIsUrlChanged = true;
     mIsPropsUpdated = false;
+    resetIntrinsicContentSize();
     LynxFrameView view = getView();
     if (view == null) {
       return;

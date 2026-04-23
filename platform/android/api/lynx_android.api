@@ -2062,6 +2062,10 @@ public interface com::lynx::tasm::behavior::ForegroundListener {
   public void com.lynx.tasm.behavior.ForegroundListener.onLynxViewEnterBackground();
 }
 
+public interface com::lynx::tasm::behavior::ui::frame::LynxFrameView::FrameEventCallback {
+  public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.FrameEventCallback.onIntrinsicContentSizeChanged(int width, int height);
+}
+
 public class com::lynx::tasm::behavior::ui::frame::FrameShadowNode : com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode, com.lynx.tasm.behavior.shadow.CustomMeasureFunc {
   public void com.lynx.tasm.behavior.ui.frame.FrameShadowNode.attachNativePtr(long ptr);
   public void com.lynx.tasm.behavior.ui.frame.FrameShadowNode.updateIntrinsicContentSize(int width, int height);

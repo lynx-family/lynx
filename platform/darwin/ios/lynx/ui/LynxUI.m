@@ -16,6 +16,7 @@
 #import <Lynx/LynxConverter+Transform.h>
 #import <Lynx/LynxConverter+UI.h>
 #import <Lynx/LynxEvent.h>
+#import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxGestureArenaMember.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxGlobalObserver.h>
@@ -29,13 +30,16 @@
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceSystemInvokeProtocol.h>
 #import <Lynx/LynxSizeValue.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTransformOriginRaw.h>
 #import <Lynx/LynxTransformRaw.h>
 #import <Lynx/LynxTransitionAnimationManager.h>
 #import <Lynx/LynxUI+Accessibility.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUICollection.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIListContainer.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUIScrollView.h>
@@ -50,15 +54,11 @@
 #import <Lynx/UIView+Lynx.h>
 #import <malloc/malloc.h>
 #import "LBSCoreGraphicsPathParser.h"
-#import "LynxEventHandler+Internal.h"
 #import "LynxFeatureCounter.h"
 #import "LynxFilterUtil.h"
 #import "LynxGestureArenaManager.h"
 #import "LynxOffsetCalculator.h"
-#import "LynxTemplateRender+Internal.h"
 #import "LynxUI+Gesture.h"
-#import "LynxUI+Private.h"
-#import "LynxUIContext+Internal.h"
 #import "LynxUIIntersectionObserver.h"
 
 static const short OVERFLOW_X_VAL = 0x01;
@@ -3492,23 +3492,27 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
   [_transitionAnimationManager assembleTransitions:value];
 }
 
+- (NSDictionary*)buildLayoutChangeEventDetail {
+  CGRect rect = [self getBoundingClientRect];
+  return @{
+    @"id" : _idSelector ?: @"",
+    @"dataset" : _dataset,
+    @"left" : @(rect.origin.x),
+    @"right" : @(rect.origin.x + rect.size.width),
+    @"top" : @(rect.origin.y),
+    @"bottom" : @(rect.origin.y + rect.size.height),
+    @"width" : @(rect.size.width),
+    @"height" : @(rect.size.height)
+  };
+}
+
 - (void)sendLayoutChangeEvent {
   NSString* layoutChangeFunctionName = @"layoutchange";
   if ([self eventSet] && [[self eventSet] valueForKey:layoutChangeFunctionName]) {
-    CGRect rect = [self getBoundingClientRect];
-    NSDictionary* data = @{
-      @"id" : _idSelector ?: @"",
-      @"dataset" : _dataset,
-      @"left" : @(rect.origin.x),
-      @"right" : @(rect.origin.x + rect.size.width),
-      @"top" : @(rect.origin.y),
-      @"bottom" : @(rect.origin.y + rect.size.height),
-      @"width" : @(rect.size.width),
-      @"height" : @(rect.size.height)
-    };
-    LynxCustomEvent* event = [[LynxDetailEvent alloc] initWithName:layoutChangeFunctionName
-                                                        targetSign:[self sign]
-                                                            detail:data];
+    LynxCustomEvent* event =
+        [[LynxDetailEvent alloc] initWithName:layoutChangeFunctionName
+                                   targetSign:[self sign]
+                                       detail:[self buildLayoutChangeEventDetail]];
     [self.context.eventEmitter sendCustomEvent:event];
   }
 }

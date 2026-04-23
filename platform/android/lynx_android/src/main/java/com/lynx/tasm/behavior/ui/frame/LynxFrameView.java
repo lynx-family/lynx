@@ -41,6 +41,7 @@ public final class LynxFrameView extends UIBodyView {
   private LynxTemplateRender mRender;
   private String mUrl;
   private WeakReference<LynxView> mRootView = null;
+  private FrameEventCallback mFrameEventCallback;
   private int mSign;
   private LynxContext mContext;
   private boolean mIsBundleLoaded = false;
@@ -60,6 +61,10 @@ public final class LynxFrameView extends UIBodyView {
   private int mPresetHeight = -1;
   private Boolean mEnableMultiAsyncThread = null;
   private final FramePerformanceClient mFramePerformanceClient = new FramePerformanceClient(this);
+
+  interface FrameEventCallback {
+    void onIntrinsicContentSizeChanged(int width, int height);
+  }
 
   public LynxFrameView(Context context) {
     super(context);
@@ -121,6 +126,10 @@ public final class LynxFrameView extends UIBodyView {
 
   public void setSign(int sign) {
     mSign = sign;
+  }
+
+  void setFrameEventCallback(FrameEventCallback callback) {
+    mFrameEventCallback = callback;
   }
 
   /**
@@ -263,6 +272,10 @@ public final class LynxFrameView extends UIBodyView {
     mUrl = url;
   }
 
+  String getUrl() {
+    return mUrl == null ? "" : mUrl;
+  }
+
   @Override
   public void runOnTasmThread(Runnable runnable) {
     if (mRender != null) {
@@ -368,6 +381,7 @@ public final class LynxFrameView extends UIBodyView {
     });
     mIsIntrinsicSizeConsumed = false;
     super.setIntrinsicContentSize(width, height);
+    onFrameIntrinsicContentSizeChanged(width, height);
   }
 
   @Override
@@ -450,5 +464,12 @@ public final class LynxFrameView extends UIBodyView {
     }
     mContext.getEventEmitter().sendCustomEvent(new LynxDetailEvent(mSign, EVENT_LOAD_METRICS,
         buildFrameLoadMetricsDetail(entry, mUrl, EmbeddedMode.isBaseModeEnable(mEmbeddedMode))));
+  }
+
+  void onFrameIntrinsicContentSizeChanged(int width, int height) {
+    FrameEventCallback callback = mFrameEventCallback;
+    if (callback != null) {
+      callback.onIntrinsicContentSizeChanged(width, height);
+    }
   }
 }

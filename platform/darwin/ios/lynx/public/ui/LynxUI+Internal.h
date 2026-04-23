@@ -109,6 +109,8 @@ FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
 - (BOOL)didSizeChanged;
 - (BOOL)shouldReDoTransform;
 
+- (NSDictionary *)buildLayoutChangeEventDetail;
+
 - (void)setName:(NSString *)name;
 
 - (BOOL)isVisible;

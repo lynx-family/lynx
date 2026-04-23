@@ -2600,12 +2600,15 @@ public abstract class LynxBaseUI
     }
   }
 
-  private void sendLayoutChangeEvent() {
+  protected Map<String, Object> buildLayoutChangeEventDetail() {
+    return getPositionInfo(LynxEnv.inst().enableTransformForPositionCalculation());
+  }
+
+  protected void sendLayoutChangeEvent() {
     Map<String, EventsListener> events = mEvents;
     final String layoutChangeFunctionName = "layoutchange";
     if (events != null && events.containsKey(layoutChangeFunctionName)) {
-      Map<String, Object> data =
-          getPositionInfo(LynxEnv.inst().enableTransformForPositionCalculation());
+      Map<String, Object> data = buildLayoutChangeEventDetail();
       getLynxContext().getEventEmitter().sendCustomEvent(
           new LynxCustomEvent(getSign(), layoutChangeFunctionName, data));
     }

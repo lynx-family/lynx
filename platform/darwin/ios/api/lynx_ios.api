@@ -4423,6 +4423,7 @@ public class LynxUI : <__covariant V UIView> {
   public CGRect LynxUI()::getRectToWindow();
   public BOOL LynxUI()::didSizeChanged();
   public BOOL LynxUI()::shouldReDoTransform();
+  public NSDictionary * LynxUI()::buildLayoutChangeEventDetail();
   public void LynxUI()::setName:(NSString *name);
   public BOOL LynxUI()::isVisible();
   public BOOL LynxUI()::isVisible();

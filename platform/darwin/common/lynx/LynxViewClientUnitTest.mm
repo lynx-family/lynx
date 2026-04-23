@@ -12,6 +12,7 @@
 #import <Lynx/LynxPerformanceController.h>
 #import <Lynx/LynxPerformanceEntryConverter.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxUIFrame.h>
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
@@ -73,18 +74,21 @@
 - (BOOL)ensureRenderCreated;
 - (LynxLifecycleDispatcher *)getLifecycleDispatcher;
 - (void)onFrameLoadMetricsEvent:(nonnull LynxPerformanceEntry *)entry;
+- (void)setIntrinsicContentSize:(CGSize)size;
 
 @end
 
 @interface LynxCustomEventCapturingEmitter : LynxEventEmitter
 
 @property(nonatomic, strong, nullable) LynxCustomEvent *lastEvent;
+@property(nonatomic, assign) NSUInteger eventCount;
 
 @end
 
 @implementation LynxCustomEventCapturingEmitter
 
 - (void)sendCustomEvent:(LynxCustomEvent *)event {
+  self.eventCount += 1;
   self.lastEvent = event;
 }
 
@@ -111,10 +115,8 @@
 
   uiOwner.uiContext.eventEmitter = emitter;
 
-  LynxFrameView *frameView = [[LynxFrameView alloc] init];
-  [frameView initWithRootView:rootView];
-  frameView.context = uiOwner.uiContext;
-  frameView.sign = sign;
+  LynxUIFrame *uiFrame = (LynxUIFrame *)[uiOwner findUIBySign:sign];
+  LynxFrameView *frameView = uiFrame.view;
   [frameView setUrl:@"lynx://frame"];
   return frameView;
 }
@@ -327,5 +329,66 @@
   XCTAssertEqualObjects(emitter.lastEvent.params[@"mode"], @"embedded");
   XCTAssertEqualObjects(emitter.lastEvent.params[@"entry"][@"entryType"], @"pipeline");
   XCTAssertEqualObjects(emitter.lastEvent.params[@"entry"][@"name"], @"loadBundle");
+}
+
+- (void)testFrameViewDispatchesLayoutChangeCustomEventWhenIntrinsicSizeChanges {
+  LynxView *rootView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+  LynxCustomEventCapturingEmitter *emitter = [[LynxCustomEventCapturingEmitter alloc] init];
+  LynxFrameView *frameView = [self frameViewWithRootView:rootView
+                                                    sign:104
+                                                eventSet:[NSSet setWithObject:@"layoutchange"]
+                                                 emitter:emitter];
+
+  [frameView setIntrinsicContentSize:CGSizeMake(321, 181)];
+
+  XCTAssertNotNil(emitter.lastEvent);
+  XCTAssertEqual(emitter.eventCount, 1u);
+  XCTAssertEqualObjects(emitter.lastEvent.eventName, @"layoutchange");
+  XCTAssertEqual(emitter.lastEvent.targetSign, 104);
+  XCTAssertEqualObjects([emitter.lastEvent paramsName], @"detail");
+  XCTAssertNotNil(emitter.lastEvent.params[@"id"]);
+  XCTAssertNotNil(emitter.lastEvent.params[@"dataset"]);
+  XCTAssertNotNil(emitter.lastEvent.params[@"left"]);
+  XCTAssertNotNil(emitter.lastEvent.params[@"top"]);
+  XCTAssertNotNil(emitter.lastEvent.params[@"right"]);
+  XCTAssertNotNil(emitter.lastEvent.params[@"bottom"]);
+  XCTAssertNotNil(emitter.lastEvent.params[@"width"]);
+  XCTAssertNotNil(emitter.lastEvent.params[@"height"]);
+  XCTAssertEqualObjects(emitter.lastEvent.params[@"frameUrl"], @"lynx://frame");
+  XCTAssertEqualObjects(emitter.lastEvent.params[@"intrinsicWidth"], @321);
+  XCTAssertEqualObjects(emitter.lastEvent.params[@"intrinsicHeight"], @181);
+}
+
+- (void)testFrameViewSkipsLayoutChangeCustomEventWhenUnbound {
+  LynxView *rootView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+  LynxCustomEventCapturingEmitter *emitter = [[LynxCustomEventCapturingEmitter alloc] init];
+  LynxFrameView *frameView = [self frameViewWithRootView:rootView
+                                                    sign:105
+                                                eventSet:[NSSet set]
+                                                 emitter:emitter];
+
+  [frameView setIntrinsicContentSize:CGSizeMake(321, 181)];
+
+  XCTAssertNil(emitter.lastEvent);
+  XCTAssertEqual(emitter.eventCount, 0u);
+}
+
+- (void)testFrameViewSkipsDuplicateLayoutChangeCustomEventForSameIntrinsicSize {
+  LynxView *rootView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+  LynxCustomEventCapturingEmitter *emitter = [[LynxCustomEventCapturingEmitter alloc] init];
+  LynxFrameView *frameView = [self frameViewWithRootView:rootView
+                                                    sign:106
+                                                eventSet:[NSSet setWithObject:@"layoutchange"]
+                                                 emitter:emitter];
+
+  [frameView setIntrinsicContentSize:CGSizeMake(321, 181)];
+  [frameView setIntrinsicContentSize:CGSizeMake(321, 181)];
+
+  XCTAssertNotNil(emitter.lastEvent);
+  XCTAssertEqual(emitter.eventCount, 1u);
+  XCTAssertEqualObjects(emitter.lastEvent.eventName, @"layoutchange");
 }
 @end
