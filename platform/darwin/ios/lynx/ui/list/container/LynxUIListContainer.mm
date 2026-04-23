@@ -1209,8 +1209,9 @@ LYNX_UI_METHOD(scrollToPosition) {
   [self.view setContentOffset:self.view.contentOffset animated:NO];
   self.isInScrollToPosition = NO;
 
-  // LynxShell has been destroyed, just return.
-  if (self.context.shellPtr == 0) {
+  auto listNodeInfoFetcher = self.context.fetcher;
+  // LynxShell and NodeInfoFetcher has been destroyed, just return.
+  if (listNodeInfoFetcher == nil) {
     LLogError(@"LynxShell has been destroyed,when invoking scrollToPosition()");
     return;
   }
@@ -1221,14 +1222,11 @@ LYNX_UI_METHOD(scrollToPosition) {
     _listContainerProxy->ScrollToPosition(static_cast<int32_t>(self.sign), (int)position, offset,
                                           align, smooth);
   } else {
-    auto listNodeInfoFetcher = self.context.fetcher;
-    if (listNodeInfoFetcher) {
-      [listNodeInfoFetcher scrollToPosition:static_cast<int32_t>(self.sign)
-                                   position:(int)position
-                                     offset:offset
-                                      align:align
-                                     smooth:smooth];
-    }
+    [listNodeInfoFetcher scrollToPosition:static_cast<int32_t>(self.sign)
+                                 position:(int)position
+                                   offset:offset
+                                    align:align
+                                   smooth:smooth];
   }
 }
 
@@ -1315,13 +1313,13 @@ LYNX_UI_METHOD(getVisibleCells) {
   // If if the contentOffset was updated by targetContentOffset, which means now the contentOffset
   // is exactly the same with elementList, do not reenter ScrollByListContainer
 
-  if (listNodeInfoFetcher && !_shouldBlockScrollByListContainer) {
-    // LynxShell has been destroyed, just return.
-    if (self.context.shellPtr == 0) {
-      LLogError(@"LynxShell has been destroyed,when invoking scrollViewDidScroll()");
-      return;
-    }
+  // LynxShell and NodeInfoFetcher has been destroyed, just return.
+  if (listNodeInfoFetcher == nil) {
+    LLogError(@"LynxShell has been destroyed,when invoking scrollViewDidScroll()");
+    return;
+  }
 
+  if (!_shouldBlockScrollByListContainer) {
     // Before sending scrollByListContainer, previousContentOffset should be updated to avoid
     // scrollViewDidScroll->scrollByListContainer->onNodeReady->setContentOffset->scrollViewDidScroll
     // loop
@@ -1594,17 +1592,17 @@ LYNX_UI_METHOD(getVisibleCells) {
   ((LynxListContainerView *)(self.view)).scrollEstimatedOffset =
       kLynxListContainerInvalidScrollEstimatedOffset;
 
-  // LynxShell has been destroyed, just return.
-  if (self.context.shellPtr == 0) {
+  auto fetcher = self.context.fetcher;
+
+  // LynxShell and NodeInfoFetcher has been destroyed, just return.
+  if (fetcher == nil) {
     LLogError(@"LynxShell has been destroyed,when invoking scrollStopped()");
     return;
   }
 
-  auto fetcher = self.context.fetcher;
-
   if (_listContainerProxy) {
     _listContainerProxy->ScrollStopped(static_cast<int32_t>(self.sign));
-  } else if (fetcher) {
+  } else {
     [fetcher scrollStopped:static_cast<int32_t>(self.sign)];
   }
 }
