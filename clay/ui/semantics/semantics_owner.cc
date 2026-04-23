@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "clay/fml/logging.h"
+#include "clay/ui/component/base_view.h"
 
 namespace clay {
 
@@ -55,9 +56,12 @@ void SemanticsOwner::AddDirtySemanticsForDescendants(BaseView* node) {
   semantics_nodes_to_update_descendants_.insert(node);
 }
 void SemanticsOwner::RemoveDirtySemanticsForDescendants(BaseView* node) {
-  if (!IsSemanticsEnabled()) {
+  if (!IsSemanticsEnabled() || !node) {
     return;
   }
+  node->VisitChildren([this](BaseView* child_view) {
+    RemoveDirtySemanticsForDescendants(child_view);
+  });
   semantics_nodes_to_update_descendants_.erase(node);
 }
 
