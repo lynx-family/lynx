@@ -57,6 +57,7 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   NativeViewCompositionPreference GetCompositionPreference() const {
     return composition_preference_;
   }
+  void UpdateTouchDispatchState(bool handled, int action);
 
  private:
   void OnDestroy() override;
@@ -79,6 +80,7 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   bool ignore_for_touch_hit_test_ = false;
   NativeViewCompositionPreference composition_preference_ =
       NativeViewCompositionPreference::kAuto;
+  bool ignore_for_touch_hit_test_ = false;
 };
 }  // namespace clay
 
