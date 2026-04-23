@@ -111,7 +111,7 @@ class BTSRuntime final {
       uint64_t trace_flow_id);
   void OnGlobalPropsUpdated(const lepus::Value& props);
 
-  void call(base::closure func);
+  void Call(base::closure func);
   void OnAppReload(
       tasm::TemplateData data,
       const std::shared_ptr<tasm::PipelineOptions>& pipeline_options);
@@ -125,7 +125,6 @@ class BTSRuntime final {
 
   void NotifyJSUpdatePageData(uint64_t trace_flow_id);
   void NotifyJSUpdateCardConfigData();
-  void InsertCallbackForDataUpdateFinishedOnRuntime(base::closure callback);
 
   void OnJSIException(const runtime::js::JSIException& exception);
 
@@ -269,9 +268,6 @@ class BTSRuntime final {
   std::vector<base::closure> js_core_state_tasks_;
 
   std::vector<base::closure> ssr_global_event_cached_tasks_;
-
-  // store callbacks that the data has been updated for runtime.
-  std::vector<base::closure> native_update_finished_callbacks_;
 
   std::unordered_map<int64_t, runtime::js::ModuleCallbackFunctionHolder>
       callbacks_;

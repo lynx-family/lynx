@@ -361,7 +361,7 @@ class AppTest : public JSITestBase {
                       std::move(nativeModuleProxy), nullptr, "-1",
                       tasm::PageOptions());
 
-    app->setJsAppObj(Object::createFromHostObject(*runtime, mock_js_app_));
+    app->SetJsAppObj(Object::createFromHostObject(*runtime, mock_js_app_));
   }
 
   void InitModuleManager() {
@@ -461,7 +461,7 @@ TEST_P(AppTest, LoadAppTest) {
   }
 
   // call loadApp
-  app->loadApp(
+  app->LoadApp(
       tasm::TasmRuntimeBundle{
           "",
           "",
@@ -511,7 +511,7 @@ TEST_P(AppTest, OnAppReloadTest) {
   tasm::TemplateData template_data_1(data1, false, processor_name_1);
 
   // call onAppReload
-  app->onAppReload(std::move(template_data_1));
+  app->OnAppReload(std::move(template_data_1));
 
   // check equal
   JSValueCircularArray pre_obj_{};
@@ -796,7 +796,7 @@ function readScriptWithoutArgs(nativeApp) {
   EXPECT_CALL(
       *exception_handler_,
       OnJSIException(HasMessage(
-          "readScript http://example.com/bar.js error:file is not exist.")))
+          "ReadScript http://example.com/bar.js error:file is not exist.")))
       .Times(1);
   result = read_script.call(
       rt, {Object::createFromHostObject(rt, app_proxy),
@@ -811,7 +811,7 @@ function readScriptWithoutArgs(nativeApp) {
           ::testing::Return(JsContent("timeout", JsContent::Type::ERROR)));
   EXPECT_CALL(*exception_handler_,
               OnJSIException(HasMessage(
-                  "readScript http://example.com/bar.js error:timeout")))
+                  "ReadScript http://example.com/bar.js error:timeout")))
       .Times(1);
   result = read_script.call(
       rt,
@@ -888,7 +888,7 @@ TEST_P(AppTest, GetCustomSectionSyncTest) {
       {base::String("s"), lepus::Value{kExceptRes1}},
   })};
 
-  app->loadApp(
+  app->LoadApp(
       std::move(card_bundle), lepus::Value(), tasm::PackageInstanceDSL::TT,
       tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url", 0);
 
@@ -1323,7 +1323,7 @@ TEST_P(AppTest, LoadCustomSectionScriptTest) {
       {base::String("empty"), lepus::Value{""}},
   })};
 
-  app->loadApp(
+  app->LoadApp(
       std::move(card_bundle), lepus::Value(), tasm::PackageInstanceDSL::TT,
       tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url", 0);
 
@@ -1462,7 +1462,7 @@ TEST_P(AppTest, FetchBundleTest) {
   EXPECT_TRUE(app);
   // call loadApp
   tasm::TasmRuntimeBundle card_bundle;
-  app->loadApp(
+  app->LoadApp(
       std::move(card_bundle), lepus::Value(), tasm::PackageInstanceDSL::TT,
       tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url", 0);
 

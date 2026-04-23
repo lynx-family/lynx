@@ -53,7 +53,7 @@ void ContextProxyInJSTest::SetUp() {
       App::Create(0, runtime, &delegate_, exception_handler_,
                   std::move(nativeModule), nullptr, "-1", tasm::PageOptions());
 
-  app_->setJsAppObj(Object::createFromHostObject(*runtime, mock_js_app_));
+  app_->SetJsAppObj(Object::createFromHostObject(*runtime, mock_js_app_));
 
   lynx_proxy_ = std::make_shared<LynxProxy>(app_);
   Object lynx_obj = Object::createFromHostObject(rt, lynx_proxy_);

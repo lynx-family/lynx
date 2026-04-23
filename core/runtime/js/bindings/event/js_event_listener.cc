@@ -127,7 +127,7 @@ Value JSClosureEventListener::ConvertEventToPiperValue(
     obj.setProperty(
         *rt, runtime::kData,
         pub::ValueUtils::ConvertValueToPiperValue(
-            *rt, *message_event->message(), app->jsi_object_wrapper_manager()));
+            *rt, *message_event->message(), app->GetJSIObjectWrapperManager()));
     obj.setProperty(
         *rt, runtime::kOrigin,
         String::createFromUtf8(*rt, message_event->GetOriginString()));

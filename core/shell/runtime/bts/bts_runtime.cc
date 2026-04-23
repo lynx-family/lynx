@@ -427,7 +427,7 @@ void BTSRuntime::NotifyRuntimeReady(void* env, void* lynx) {
 
 #endif
 
-void BTSRuntime::call(base::closure func) { QueueOrExecTask(std::move(func)); }
+void BTSRuntime::Call(base::closure func) { QueueOrExecTask(std::move(func)); }
 
 void BTSRuntime::TryLoadSsrScript(const std::string& ssr_script) {
   if (ssr_script.empty() &&
@@ -759,7 +759,7 @@ void BTSRuntime::OnJSSourcePrepared(
       }
 #endif
     }
-    app_->loadApp(std::move(bundle), init_global_props_, dsl,
+    app_->LoadApp(std::move(bundle), init_global_props_, dsl,
                   bundle_module_mode, url, trace_flow_id);
     tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadBackgroundEnd);
 
@@ -804,7 +804,7 @@ void BTSRuntime::TryToDestroy() {
               *js_runtime,
               runtime::js::Value(*js_runtime,
                                  runtime::js::String::createFromUtf8(
-                                     *js_runtime, app_->getAppGUID()))));
+                                     *js_runtime, app_->GetAppGUID()))));
       native_context_proxy->DispatchEvent(std::move(jsContextEvent));
     } else {
       app_->CallDestroyLifetimeFun();
@@ -843,7 +843,7 @@ void BTSRuntime::DestroyAppAndNapi() {
                                                       << " this: " << this);
   // App destroy might invoke front-page's destroy, which could call a NAPI
   // API, so it's important to call destroy first, and then call NAPI destroy.
-  app_->destroy();
+  app_->Destroy();
   app_ = nullptr;
 #if ENABLE_NAPI_BINDING
   lifecycle_observer_->OnRuntimeDetach();
@@ -880,7 +880,7 @@ void BTSRuntime::OnAppReload(
     tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadCoreEnd);
     tasm::TimingCollector::Instance()->Mark(
         tasm::timing::kReloadBackgroundStart);
-    app_->onAppReload(std::move(data));
+    app_->OnAppReload(std::move(data));
     tasm::TimingCollector::Instance()->Mark(tasm::timing::kReloadBackgroundEnd);
   });
 }
@@ -921,7 +921,7 @@ void BTSRuntime::EvaluateScriptStandalone(std::string url, std::string script,
   // can only be used in LynxBackgroundRuntime which will
   // never use pending JS so the app_ is always created.
   app_->OnStandaloneScriptAdded(url, std::move(script));
-  app_->loadApp(tasm::TasmRuntimeBundle(), init_global_props_,
+  app_->LoadApp(tasm::TasmRuntimeBundle(), init_global_props_,
                 tasm::PackageInstanceDSL::STANDALONE,
                 tasm::PackageInstanceBundleModuleMode::RETURN_BY_FUNCTION_MODE,
                 url, trace_flow_id);
@@ -937,14 +937,6 @@ void BTSRuntime::NotifyJSUpdatePageData(uint64_t trace_flow_id) {
     app_->NotifyUpdatePageData(trace_flow_id);
   });
   return;
-}
-
-void BTSRuntime::InsertCallbackForDataUpdateFinishedOnRuntime(
-    base::closure callback) {
-  if (state_ == State::kDestroying) {
-    return;
-  }
-  native_update_finished_callbacks_.emplace_back(std::move(callback));
 }
 
 void BTSRuntime::NotifyJSUpdateCardConfigData() {

@@ -82,16 +82,16 @@ class App : public std::enable_shared_from_this<App> {
   }
 
   ~App() { LOGI("~App()"); }
-  void destroy();
+  void Destroy();
   void CallDestroyLifetimeFun();
 
-  void setJsAppObj(Object&& obj);
-  std::string getAppGUID() { return app_guid_; }
+  void SetJsAppObj(Object&& obj);
+  std::string GetAppGUID() { return app_guid_; }
 
   const std::string& GetPageUrl() const { return url_; }
 
   // load the app
-  void loadApp(tasm::TasmRuntimeBundle bundle, const lepus::Value& global_props,
+  void LoadApp(tasm::TasmRuntimeBundle bundle, const lepus::Value& global_props,
                tasm::PackageInstanceDSL dsl,
                tasm::PackageInstanceBundleModuleMode bundle_module_mode,
                const std::string& url, uint64_t trace_flow_id);
@@ -106,7 +106,7 @@ class App : public std::enable_shared_from_this<App> {
                       ApiCallBack callback);
 
   // native call to js
-  void onAppReload(tasm::TemplateData init_data);
+  void OnAppReload(tasm::TemplateData init_data);
   void NotifyUpdatePageData(uint64_t trace_flow_id);
   void NotifyUpdateCardConfigData();
   void CallFunction(const std::string& module_id, const std::string& method_id,
@@ -126,10 +126,10 @@ class App : public std::enable_shared_from_this<App> {
                                    Value data);
 
   // component
-  void updateComponentData(const std::string& component_id, lepus_value&& data,
+  void UpdateComponentData(const std::string& component_id, lepus_value&& data,
                            ApiCallBack callback,
                            runtime::UpdateDataType update_data_type);
-  void selectComponent(const std::string& component_id,
+  void SelectComponent(const std::string& component_id,
                        const std::string& id_selector, const bool single,
                        ApiCallBack callBack);
   void InvokeUIMethod(tasm::NodeSelectRoot root,
@@ -151,38 +151,38 @@ class App : public std::enable_shared_from_this<App> {
   void ElementAnimateV2(const std::string& component_id,
                         const std::string& id_selector,
                         const lepus::Value& args);
-  void triggerComponentEvent(const std::string& event_name, lepus_value&& msg);
+  void TriggerComponentEvent(const std::string& event_name, lepus_value&& msg);
 
-  void triggerLepusGlobalEvent(const std::string& event_name,
+  void TriggerLepusGlobalEvent(const std::string& event_name,
                                lepus_value&& msg);
 
-  void triggerWorkletFunction(std::string component_id,
+  void TriggerWorkletFunction(std::string component_id,
                               std::string worklet_module_name,
                               std::string method_name, lepus::Value properties,
                               ApiCallBack callback);
 
   // js call to native
-  void appDataChange(lepus_value&& data, ApiCallBack callback,
+  void AppDataChange(lepus_value&& data, ApiCallBack callback,
                      runtime::UpdateDataType update_data_type);
-  std::optional<JSINativeException> batchedUpdateData(const Value& data);
+  std::optional<JSINativeException> BatchedUpdateData(const Value& data);
 
   void OnAppJSError(const JSIException& exception);
 
-  base::expected<Value, JSINativeException> loadScript(
+  base::expected<Value, JSINativeException> LoadScript(
       const std::string entry_name, const std::string& url, long timeout);
-  base::expected<Value, JSINativeException> readScript(
+  base::expected<Value, JSINativeException> ReadScript(
       const std::string entry_name, const std::string& url, long timeout);
-  Value setTimeout(Function func, int time);
-  Value setInterval(Function func, int time);
-  void clearTimeout(double task);
-  Value nativeModuleProxy();
+  Value SetTimeout(Function func, int time);
+  Value SetInterval(Function func, int time);
+  void ClearTimeout(double task);
+  Value NativeModuleProxy();
 
   void RunOnJSThreadWhenIdle(base::closure closure);
 
-  std::optional<Value> getInitGlobalProps();
-  std::optional<Value> getPresetData();
-  Value getI18nResource();
-  void getContextDataAsync(const std::string& component_id,
+  std::optional<Value> GetInitGlobalProps();
+  std::optional<Value> GetPresetData();
+  Value GetI18nResource();
+  void GetContextDataAsync(const std::string& component_id,
                            const std::string& key, ApiCallBack callback);
 
   void LoadScriptAsync(const std::string& url, ApiCallBack callback);
@@ -194,7 +194,7 @@ class App : public std::enable_shared_from_this<App> {
                       const std::string& id_selector,
                       const lepus::Value& properties);
 
-  void onPiperInvoked(const std::string& module_name,
+  void OnPiperInvoked(const std::string& module_name,
                       const std::string& method_name);
 
   void ReloadFromJS(const lepus::Value& value, ApiCallBack callback);
@@ -236,7 +236,7 @@ class App : public std::enable_shared_from_this<App> {
   std::shared_ptr<ContextProxyInJS> GetContextProxy(
       runtime::ContextProxy::Type type);
 
-  JSIObjectWrapperManager* jsi_object_wrapper_manager() {
+  JSIObjectWrapperManager* GetJSIObjectWrapperManager() {
     return jsi_object_wrapper_manager_ ? jsi_object_wrapper_manager_.get()
                                        : nullptr;
   }
@@ -381,7 +381,7 @@ class App : public std::enable_shared_from_this<App> {
     return (js_app_.isObject() && state_ != State::kAppLoadFailed);
   }
 
-  void handleLoadAppFailed(std::string error_msg);
+  void HandleLoadAppFailed(std::string error_msg);
 
   void OnBTSConsoleEvent(const lepus::Value& args);
 

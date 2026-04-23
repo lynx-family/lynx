@@ -160,7 +160,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
     if (!native_app || native_app->IsDestroying()) {
       return Value::undefined();
     }
-    auto guid = String::createFromUtf8(*rt, native_app->getAppGUID());
+    auto guid = String::createFromUtf8(*rt, native_app->GetAppGUID());
     return Value(*rt, guid);
   } else if (methodName == "__pageUrl") {
     auto native_app = native_app_.lock();
@@ -201,7 +201,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           if (!native_app || native_app->IsDestroying()) {
             return Value::undefined();
           }
-          return native_app->loadScript(entryName, sourceURL->utf8(rt),
+          return native_app->LoadScript(entryName, sourceURL->utf8(rt),
                                         timeout);
         });
   } else if (methodName == "readScript") {
@@ -252,7 +252,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           if (!native_app || native_app->IsDestroying()) {
             return Value::undefined();
           }
-          return native_app->readScript(entry_name, sourceURL->utf8(rt),
+          return native_app->ReadScript(entry_name, sourceURL->utf8(rt),
                                         timeout);
         });
   } else if (methodName == "readDynamicComponentScripts") {
@@ -321,7 +321,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                             "CallbackID", std::to_string(callback.id()));
                         ctx.event()->add_flow_ids(callback.trace_flow_id());
                       });
-          ptr->appDataChange(std::move(*lepus_value_opt), callback,
+          ptr->AppDataChange(std::move(*lepus_value_opt), callback,
                              std::move(update_data_type));
           return Value::undefined();
         });
@@ -341,7 +341,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           auto native_app = native_app_.lock();
           if (native_app && !native_app->IsDestroying()) {
             auto opt_jsi_native_exception =
-                native_app->batchedUpdateData(args[0]);
+                native_app->BatchedUpdateData(args[0]);
             if (opt_jsi_native_exception) {
               ADD_STACK((*opt_jsi_native_exception));
               return base::unexpected(std::move(*opt_jsi_native_exception));
@@ -367,7 +367,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           }
 
           if (args[0].isObject()) {
-            native_app->setJsAppObj(args[0].getObject(rt));
+            native_app->SetJsAppObj(args[0].getObject(rt));
           }
 
           return Value::undefined();
@@ -399,7 +399,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                   "setTimeout args[0] isn't a function."));
             }
-            return native_app->setTimeout(std::move(*callback), interval);
+            return native_app->SetTimeout(std::move(*callback), interval);
           } else {
             return Value::undefined();
           }
@@ -426,7 +426,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                   "setInterval args[0] isn't a function."));
             }
             int interval = std::max(static_cast<int>(args[1].getNumber()), 0);
-            return native_app->setInterval(std::move(*callback), interval);
+            return native_app->SetInterval(std::move(*callback), interval);
           } else {
             return Value::undefined();
           }
@@ -448,7 +448,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           }
 
           if (args[0].isNumber()) {
-            native_app->clearTimeout(args[0].getNumber());
+            native_app->ClearTimeout(args[0].getNumber());
           }
 
           return Value::undefined();
@@ -470,7 +470,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
 
           // also use clearTimeout
           if (args[0].isNumber()) {
-            native_app->clearTimeout(args[0].getNumber());
+            native_app->ClearTimeout(args[0].getNumber());
           }
 
           return Value::undefined();
@@ -481,7 +481,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
       return Value::undefined();
     }
 
-    return native_app->nativeModuleProxy();
+    return native_app->NativeModuleProxy();
   } else if (methodName == "reportException") {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "reportException"), 3,
@@ -622,7 +622,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                       std::to_string(static_cast<uint32_t>(update_data_type)));
                   ctx.event()->add_flow_ids(callback.trace_flow_id());
                 });
-            ptr->updateComponentData(id, std::move(*lepus_value_opt), callback,
+            ptr->UpdateComponentData(id, std::move(*lepus_value_opt), callback,
                                      std::move(update_data_type));
           }
 
@@ -654,7 +654,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                   "ParseJSValueToLepusValue error in triggerLepusGlobalEvent"));
             }
-            ptr->triggerLepusGlobalEvent(event, std::move(*lepus_value_opt));
+            ptr->TriggerLepusGlobalEvent(event, std::move(*lepus_value_opt));
           }
           return Value::undefined();
         });
@@ -684,7 +684,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             }
             TRACE_EVENT(LYNX_TRACE_CATEGORY,
                         APP_PROXY_TRIGGER_COMPONENT_EVENT_TO_TASM);
-            ptr->triggerComponentEvent(id, std::move(*lepus_value_opt));
+            ptr->TriggerComponentEvent(id, std::move(*lepus_value_opt));
           }
 
           return Value::undefined();
@@ -733,7 +733,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 ctx.event()->add_debug_annotations("idSelector", id_selector);
                 ctx.event()->add_flow_ids(flow_id);
               });
-          ptr->selectComponent(comp_id, id_selector, single, callback);
+          ptr->SelectComponent(comp_id, id_selector, single, callback);
           return Value::undefined();
         });
   } else if (methodName == "loadScriptAsync") {
@@ -796,7 +796,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             method_name = args[1].getString(rt).utf8(rt);
           }
 
-          ptr->onPiperInvoked(module_name, method_name);
+          ptr->OnPiperInvoked(module_name, method_name);
           return Value::undefined();
         });
   } else if (methodName == "getPathInfo") {
@@ -1441,7 +1441,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 ctx.event()->add_debug_annotations("methodName", method_name);
                 ctx.event()->add_flow_ids(flow_id);
               });
-          ptr->triggerWorkletFunction(
+          ptr->TriggerWorkletFunction(
               std::move(component_id), std::move(worklet_module_name),
               std::move(method_name), std::move(*lepus_value_opt),
               std::move(callback));
@@ -1931,10 +1931,10 @@ void App::Init() {
           [this](lepus::Value args) { OnBTSConsoleEvent(args); }));
 }
 
-void App::destroy() {
+void App::Destroy() {
   auto rt = rt_.lock();
   if (rt && js_app_.isObject()) {
-    LOGI("App::destroy " << this);
+    LOGI("App::Destroy " << this);
 
     Scope scope(*rt);
 
@@ -1947,7 +1947,7 @@ void App::destroy() {
       Value id_value(*rt, id_str);
       const Value args[1] = {std::move(id_value)};
       destroyCard->call(*rt, args, count);
-      LOGI("App::destroy end " << this);
+      LOGI("App::Destroy end " << this);
     }
   }
 
@@ -1997,7 +1997,7 @@ void App::CallDestroyLifetimeFun() {
   LOGI(" App::CallDestroyLifetimeFun end " << this);
 }
 
-void App::loadApp(tasm::TasmRuntimeBundle bundle,
+void App::LoadApp(tasm::TasmRuntimeBundle bundle,
                   const lepus::Value& global_props,
                   tasm::PackageInstanceDSL dsl,
                   tasm::PackageInstanceBundleModuleMode bundle_module_mode,
@@ -2015,18 +2015,18 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
 
   auto rt = rt_.lock();
   if (!rt) {
-    handleLoadAppFailed("js runtime is null!");
+    HandleLoadAppFailed("js runtime is null!");
     return;
   }
   GCPauseSuppressionMode mode(GetRuntime().get());
 
   Scope scope(*rt.get());
   state_ = State::kStarted;
-  LOGI(" App::loadApp start " << this);
+  LOGI(" App::LoadApp start " << this);
   Object global = rt->global();
   auto load_app_func = global.getPropertyAsFunction(*rt, "loadCard");
   if (!load_app_func) {
-    handleLoadAppFailed("LoadApp fail: get loadCard from js global fail!");
+    HandleLoadAppFailed("LoadApp fail: get loadCard from js global fail!");
     return;
   }
 
@@ -2041,22 +2041,22 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, LEPUS_VALUE_TO_JS_VALUE);
   auto js_encoded_data = valueFromLepus(*rt, encoded_data);
   if (!js_encoded_data) {
-    handleLoadAppFailed(
-        " App::loadApp error! js_encoded_data valueFromLepus fail. ");
+    HandleLoadAppFailed(
+        " App::LoadApp error! js_encoded_data valueFromLepus fail. ");
     return;
   }
 
   auto js_init_data = valueFromLepus(*rt, init_data.GetValue());
   if (!js_init_data) {
-    handleLoadAppFailed(
-        " App::loadApp error! js_init_data valueFromLepus fail. ");
+    HandleLoadAppFailed(
+        " App::LoadApp error! js_init_data valueFromLepus fail. ");
     return;
   }
 
   const auto& cache_data = card_bundle_.cache_data;
   auto js_cache_data = Array::createWithLength(*rt, cache_data.size());
   if (!js_cache_data) {
-    handleLoadAppFailed(" App::loadApp error! init js_cache_data fail. ");
+    HandleLoadAppFailed(" App::LoadApp error! init js_cache_data fail. ");
     return;
   }
   for (size_t i = 0; i < cache_data.size(); ++i) {
@@ -2064,8 +2064,8 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
     Object js_obj(*rt);
     const auto& js_data = valueFromLepus(*rt, data.GetValue());
     if (!js_data) {
-      handleLoadAppFailed(
-          " App::loadApp error! js_data in js_cache_data valueFromLepus "
+      HandleLoadAppFailed(
+          " App::LoadApp error! js_data in js_cache_data valueFromLepus "
           "fail. ");
       return;
     }
@@ -2076,8 +2076,8 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
             *rt, tasm::kProcessorName,
             Value(String::createFromUtf8(*rt, data.PreprocessorName())));
     if (!is_successful) {
-      handleLoadAppFailed(
-          " App::loadApp error! construct js_obj in cache data setProperty "
+      HandleLoadAppFailed(
+          " App::LoadApp error! construct js_obj in cache data setProperty "
           "fail. ");
       return;
     }
@@ -2087,8 +2087,8 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
 
   auto js_init_card_config_data = valueFromLepus(*rt, init_card_config_data);
   if (!js_init_card_config_data) {
-    handleLoadAppFailed(
-        " App::loadApp error! js_init_card_config_data "
+    HandleLoadAppFailed(
+        " App::LoadApp error! js_init_card_config_data "
         "valueFromLepus fail. ");
     return;
   }
@@ -2103,7 +2103,7 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
       !page_config_subset.setProperty(
           *rt, runtime::kEnableFetchAPIStandardStreaming,
           card_bundle_.enable_fetch_api_standard_streaming)) {
-    handleLoadAppFailed(" App::loadApp error! page_config_subset init fail.");
+    HandleLoadAppFailed(" App::LoadApp error! page_config_subset init fail.");
     return;
   }
 
@@ -2114,7 +2114,7 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
   Object params(*rt);
 
   // As long as there is a return value of `setProperty` is false, we consider
-  // the `loadApp` failed.
+  // the `LoadApp` failed.
   bool is_successful =
       params.setProperty(*rt, "initData", *js_encoded_data) &&
       params.setProperty(*rt, "updateData", *js_init_data) &&
@@ -2124,7 +2124,7 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
       params.setProperty(*rt, tasm::kCacheData, *js_cache_data) &&
       params.setProperty(*rt, "initConfig", *js_init_card_config_data) &&
       params.setProperty(*rt, "cardType", card_type) &&
-      params.setProperty(*rt, "appGUID", getAppGUID()) &&
+      params.setProperty(*rt, "appGUID", GetAppGUID()) &&
       params.setProperty(
           *rt, "bundleSupportLoadScript",
           bundle_module_mode ==
@@ -2132,7 +2132,7 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
       params.setProperty(*rt, "srcName", url) &&
       params.setProperty(*rt, "pageConfigSubset", page_config_subset);
   if (!is_successful) {
-    handleLoadAppFailed("LoadApp fail: setProperty fail!");
+    HandleLoadAppFailed("LoadApp fail: setProperty fail!");
     return;
   }
 
@@ -2152,10 +2152,10 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
     LOGE("LoadApp fail: call load_app_func fail!");
     return;
   }
-  LOGI(" App::loadApp end " << this);
+  LOGI(" App::LoadApp end " << this);
 }
 
-void App::handleLoadAppFailed(std::string error_msg) {
+void App::HandleLoadAppFailed(std::string error_msg) {
   state_ = State::kAppLoadFailed;
   auto rt = rt_.lock();
   if (rt) {
@@ -2220,7 +2220,7 @@ void App::EvaluateScript(const std::string& url, std::string script,
   }
 }
 
-void App::onAppReload(tasm::TemplateData init_data) {
+void App::OnAppReload(tasm::TemplateData init_data) {
   auto rt = rt_.lock();
   if (rt && js_app_.isObject()) {
     Scope scope(*rt);
@@ -2240,7 +2240,7 @@ void App::onAppReload(tasm::TemplateData init_data) {
     if (!options.setProperty(
             *rt, tasm::kProcessorName,
             Value(String::createFromUtf8(*rt, init_data.PreprocessorName())))) {
-      LOGE("App::onAppReload since options setProperty failed");
+      LOGE("App::OnAppReload since options setProperty failed");
       return;
     }
 
@@ -2421,7 +2421,7 @@ void App::LoadSsrScript(const std::string& script) {
 
     size_t count = 2;
     Value global_event_emit(*rt, ssr_global_event_emitter_);
-    Value native_modules(*rt, nativeModuleProxy());
+    Value native_modules(*rt, NativeModuleProxy());
     const Value args[2] = {std::move(global_event_emit),
                            std::move(native_modules)};
 
@@ -2685,7 +2685,7 @@ void App::OnAppJSError(const JSIException& exception) {
   }
 }
 
-void App::setJsAppObj(Object&& obj) {
+void App::SetJsAppObj(Object&& obj) {
   auto rt = rt_.lock();
   if (!rt) {
     return;
@@ -2701,7 +2701,7 @@ void App::setJsAppObj(Object&& obj) {
   NotifyUpdatePageData(trace_flow_id);
 }
 
-void App::appDataChange(lepus_value&& data, ApiCallBack callback,
+void App::AppDataChange(lepus_value&& data, ApiCallBack callback,
                         runtime::UpdateDataType update_data_type) {
   auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
   pipeline_options->pipeline_origin = tasm::timing::kUpdateTriggeredByBts;
@@ -2723,7 +2723,7 @@ void App::appDataChange(lepus_value&& data, ApiCallBack callback,
   delegate_->UpdateDataByJS(std::move(task));
 }
 
-std::optional<JSINativeException> App::batchedUpdateData(const Value& args) {
+std::optional<JSINativeException> App::BatchedUpdateData(const Value& args) {
   auto rt = rt_.lock();
   if (!rt || !args.isObject()) {
     return std::optional(BUILD_JSI_NATIVE_EXCEPTION(
@@ -2869,12 +2869,12 @@ std::optional<JSINativeException> App::batchedUpdateData(const Value& args) {
   return std::nullopt;
 }
 
-base::expected<Value, JSINativeException> App::loadScript(
+base::expected<Value, JSINativeException> App::LoadScript(
     const std::string entry_name, const std::string& url, long timeout) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_LOAD_SCRIPT, "url", url, "entry",
               entry_name);
 
-  LOGI("loadScript:" << url);
+  LOGI("LoadScript:" << url);
 
   auto rt = rt_.lock();
   if (rt) {
@@ -2967,9 +2967,9 @@ std::shared_ptr<ContextProxyInJS> App::GetContextProxy(
   return result;
 }
 
-base::expected<Value, JSINativeException> App::readScript(
+base::expected<Value, JSINativeException> App::ReadScript(
     const std::string entry_name, const std::string& url, long timeout) {
-  LOGI("readScript:" << url);
+  LOGI("ReadScript:" << url);
 
   auto rt = rt_.lock();
   if (!rt) {
@@ -2993,13 +2993,13 @@ base::expected<Value, JSINativeException> App::readScript(
                               buffer->size()};
   if (is_error) {
     return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-        std::string("readScript ") + source_url + " error:" + throwing_source));
+        std::string("ReadScript ") + source_url + " error:" + throwing_source));
   } else {
     return Value(String::createFromUtf8(*rt, throwing_source));
   }
 }
 
-Value App::setTimeout(Function func, int time) {
+Value App::SetTimeout(Function func, int time) {
   auto rt = rt_.lock();
   if (!rt || !js_task_adapter_) {
     return Value::undefined();
@@ -3018,7 +3018,7 @@ Value App::setTimeout(Function func, int time) {
   return js_task_adapter_->SetTimeout(std::move(func), time, trace_flow_id);
 }
 
-Value App::setInterval(Function func, int time) {
+Value App::SetInterval(Function func, int time) {
   auto rt = rt_.lock();
   if (!rt || !js_task_adapter_) {
     return Value::undefined();
@@ -3037,7 +3037,7 @@ Value App::setInterval(Function func, int time) {
   return js_task_adapter_->SetInterval(std::move(func), time, trace_flow_id);
 }
 
-void App::clearTimeout(double task) {
+void App::ClearTimeout(double task) {
   if (js_task_adapter_) {
     js_task_adapter_->RemoveTask(static_cast<uint32_t>(task));
   }
@@ -3067,7 +3067,7 @@ void App::RunOnJSThreadWhenIdle(base::closure closure) {
   }
 }
 
-Value App::nativeModuleProxy() {
+Value App::NativeModuleProxy() {
   auto rt = rt_.lock();
   if (!rt) {
     return Value::undefined();
@@ -3075,7 +3075,7 @@ Value App::nativeModuleProxy() {
   return Value(*rt, nativeModuleProxy_);
 }
 
-std::optional<Value> App::getInitGlobalProps() {
+std::optional<Value> App::GetInitGlobalProps() {
   auto rt = rt_.lock();
   if (!rt) {
     return Value::undefined();
@@ -3084,13 +3084,13 @@ std::optional<Value> App::getInitGlobalProps() {
       valueFromLepus(*rt, lepus::Value::ShallowCopy(init_global_props_));
   if (!props) {
     rt->reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "getInitGlobalProps fail! exception happen in valueFromLepus."));
+        "GetInitGlobalProps fail! exception happen in valueFromLepus."));
     return std::optional<Value>();
   }
   return std::move(*props);
 }
 
-std::optional<Value> App::getPresetData() {
+std::optional<Value> App::GetPresetData() {
   auto rt = rt_.lock();
   if (!rt) {
     return Value::undefined();
@@ -3104,7 +3104,7 @@ std::optional<Value> App::getPresetData() {
   return std::move(*props);
 }
 
-Value App::getI18nResource() {
+Value App::GetI18nResource() {
   auto rt = rt_.lock();
   if (!rt) {
     return Value::undefined();
@@ -3113,7 +3113,7 @@ Value App::getI18nResource() {
   return res;
 }
 
-void App::getContextDataAsync(const std::string& component_id,
+void App::GetContextDataAsync(const std::string& component_id,
                               const std::string& key, ApiCallBack callback) {
   auto rt = rt_.lock();
   if (!rt) {
@@ -3227,33 +3227,33 @@ std::optional<Value> App::PublishComponentEvent(const std::string& component_id,
   return std::nullopt;
 }
 
-void App::triggerComponentEvent(const std::string& event_name,
+void App::TriggerComponentEvent(const std::string& event_name,
                                 lepus_value&& msg) {
-  LOGI(" triggerComponentEvent " << event_name << " " << this);
+  LOGI(" TriggerComponentEvent " << event_name << " " << this);
   delegate_->TriggerComponentEvent(event_name, std::move(msg));
 }
 
-void App::triggerLepusGlobalEvent(const std::string& event_name,
+void App::TriggerLepusGlobalEvent(const std::string& event_name,
                                   lepus_value&& msg) {
-  LOGI(" triggerLepusGlobalEvent: " << event_name << " " << this);
+  LOGI(" TriggerLepusGlobalEvent: " << event_name << " " << this);
   delegate_->TriggerLepusGlobalEvent(event_name, std::move(msg));
 }
 
-void App::triggerWorkletFunction(std::string component_id,
+void App::TriggerWorkletFunction(std::string component_id,
                                  std::string worklet_module_name,
                                  std::string method_name, lepus::Value args,
                                  ApiCallBack callback) {
-  LOGI(" triggerWorkletFunction: " << method_name << " " << this);
+  LOGI(" TriggerWorkletFunction: " << method_name << " " << this);
   delegate_->TriggerWorkletFunction(
       std::move(component_id), std::move(worklet_module_name),
       std::move(method_name), std::move(args), std::move(callback));
 }
 
-void App::updateComponentData(const std::string& component_id,
+void App::UpdateComponentData(const std::string& component_id,
                               lepus_value&& data, ApiCallBack callback,
                               runtime::UpdateDataType update_data_type) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, JS_UPDATE_COMPONET_DATA);
-  LOGI(" updateComponentData " << component_id << " " << this);
+  LOGI(" UpdateComponentData " << component_id << " " << this);
   auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
   pipeline_options->pipeline_origin = tasm::timing::kUpdateTriggeredByBts;
   delegate_->OnPipelineStart(pipeline_options->pipeline_id,
@@ -3274,10 +3274,10 @@ void App::updateComponentData(const std::string& component_id,
   delegate_->UpdateComponentData(std::move(task));
 }
 
-void App::selectComponent(const std::string& component_id,
+void App::SelectComponent(const std::string& component_id,
                           const std::string& id_selector, const bool single,
                           ApiCallBack callBack) {
-  LOGI(" selectComponent " << component_id << " " << this);
+  LOGI(" SelectComponent " << component_id << " " << this);
   delegate_->SelectComponent(component_id, id_selector, single, callBack);
 }
 
@@ -3462,7 +3462,7 @@ void App::OnBTSConsoleEvent(const lepus::Value& args) {
 
 void App::I18nResourceChanged(const std::string& msg) { i18_resource_ = msg; }
 
-void App::onPiperInvoked(const std::string& module_name,
+void App::OnPiperInvoked(const std::string& module_name,
                          const std::string& method_name) {
   if (tasm::LynxEnv::GetInstance().IsPiperMonitorEnabled()) {
     time_t timep;

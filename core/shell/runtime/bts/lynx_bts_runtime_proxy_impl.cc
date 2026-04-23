@@ -154,7 +154,7 @@ void LynxBTSRuntimeProxyImpl::CallJSFunction(std::string module_id,
         task();
       }
     } else {
-      runtime->call(std::move((task)));
+      runtime->Call(std::move((task)));
     }
   });
 }

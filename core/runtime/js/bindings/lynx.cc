@@ -29,7 +29,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
     if (!native_app) {
       return Value::undefined();
     }
-    auto global_props_opt = native_app->getInitGlobalProps();
+    auto global_props_opt = native_app->GetInitGlobalProps();
     if (!global_props_opt) {
       // TODO(wujintian): return optional here.
       return Value::undefined();
@@ -42,7 +42,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
     if (!native_app) {
       return Value::undefined();
     }
-    auto data_opt = native_app->getPresetData();
+    auto data_opt = native_app->GetPresetData();
     if (!data_opt) {
       return Value::undefined();
     }
@@ -58,7 +58,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
           if (!native_app) {
             return Value::undefined();
           }
-          return native_app->getI18nResource();
+          return native_app->GetI18nResource();
         });
   }
 
@@ -86,7 +86,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
               callback =
                   ptr->CreateCallBack(args[2].getObject(rt).getFunction(rt));
             }
-            ptr->getContextDataAsync(id, key, callback);
+            ptr->GetContextDataAsync(id, key, callback);
           }
           return Value::undefined();
         });
