@@ -133,6 +133,13 @@ class CSSPatchingTest : public ::testing::Test {
     manager->SetConfig(config);
   }
 
+  fml::RefPtr<PageElement> CreatePageRoot(double font_size) {
+    auto page = manager->CreateFiberPage("page", 0);
+    manager->SetRoot(page.get());
+    page->computed_css_style()->SetFontSize(font_size, font_size);
+    return page;
+  }
+
   std::unique_ptr<lynx::tasm::ElementManager> manager;
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
 };
@@ -1490,6 +1497,167 @@ TEST_F(CSSPatchingTest,
 
   fiber_element->style_resolver_.HandlePseudoElement(base_fragment.get());
   SUCCEED();
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCreateInitialComputedStyleInitializesShellAndOverflowDefault) {
+  constexpr double kRootFontSize = 28.0;
+  manager->lynx_env_config_.viewport_height_ = kHeight;
+  manager->lynx_env_config_.viewport_width_ = kWidth;
+  auto page = CreatePageRoot(kRootFontSize);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle previous_style(*manager->platform_computed_css());
+  previous_style.SetOverflowDefaultVisible(true);
+
+  auto style = element->style_resolver_.CreateInitialComputedStyle(
+      nullptr, &previous_style);
+  ASSERT_NE(style, nullptr);
+
+  EXPECT_EQ(style->GetMeasureContext().viewport_width_,
+            starlight::LayoutUnit(kWidth));
+  EXPECT_EQ(style->GetMeasureContext().viewport_height_,
+            starlight::LayoutUnit(kHeight));
+  EXPECT_EQ(style->GetMeasureContext().screen_width_, kWidth);
+  EXPECT_EQ(style->GetMeasureContext().layouts_unit_per_px_,
+            kDefaultLayoutsUnitPerPx);
+  EXPECT_EQ(style->GetMeasureContext().physical_pixels_per_layout_unit_,
+            kDefaultPhysicalPixelsPerLayoutUnit);
+  EXPECT_DOUBLE_EQ(style->GetFontSize(),
+                   manager->GetLynxEnvConfig().PageDefaultFontSize());
+  EXPECT_DOUBLE_EQ(style->GetRootFontSize(), kRootFontSize);
+  EXPECT_EQ(style->GetDefaultOverflowType(), starlight::OverflowType::kVisible);
+  EXPECT_EQ(style->GetOverflow(), starlight::OverflowType::kVisible);
+  EXPECT_TRUE(style->IsOverflowXY());
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCreateInitialComputedStyleWithNonDefaultFontScale) {
+  constexpr double kRootFontSize = 28.0;
+  constexpr float kFontScale = 1.5f;
+  manager->lynx_env_config_.SetFontScale(kFontScale);
+  manager->lynx_env_config_.viewport_height_ = kHeight;
+  manager->lynx_env_config_.viewport_width_ = kWidth;
+  auto page = CreatePageRoot(kRootFontSize);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  auto style =
+      element->style_resolver_.CreateInitialComputedStyle(nullptr, nullptr);
+  ASSERT_NE(style, nullptr);
+
+  EXPECT_FLOAT_EQ(style->length_context_.font_scale_, kFontScale);
+  EXPECT_DOUBLE_EQ(style->GetFontSize(),
+                   manager->GetLynxEnvConfig().PageDefaultFontSize());
+  EXPECT_DOUBLE_EQ(style->GetRootFontSize(), kRootFontSize);
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCreateInitialComputedStyleInheritsParentAndLiveRootFont) {
+  constexpr double kParentFontSize = 20.0;
+  constexpr double kStaleParentRootFontSize = 12.0;
+  constexpr double kLiveRootFontSize = 32.0;
+  manager->config_->SetEnableCSSInheritance(true);
+  manager->config_->css_configs_.custom_inherit_list_.insert(
+      CSSPropertyID::kPropertyIDDirection);
+
+  auto page = CreatePageRoot(kLiveRootFontSize);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle parent_style(*manager->platform_computed_css());
+  parent_style.SetFontSize(kParentFontSize, kStaleParentRootFontSize);
+  parent_style.SetValue(CSSPropertyID::kPropertyIDDirection,
+                        CSSValue(starlight::DirectionType::kRtl), false);
+  parent_style.SetValue(CSSPropertyID::kPropertyIDOpacity,
+                        CSSValue(0.3, CSSValuePattern::NUMBER), false);
+  parent_style.SetCustomProperty(base::String("--accent"),
+                                 CSSValue::MakePlainString("blue"));
+  parent_style.FinalizeCustomProperties();
+
+  auto style = element->style_resolver_.CreateInitialComputedStyle(
+      &parent_style, nullptr);
+  ASSERT_NE(style, nullptr);
+
+  EXPECT_DOUBLE_EQ(style->GetFontSize(), kParentFontSize);
+  EXPECT_DOUBLE_EQ(style->GetRootFontSize(), kLiveRootFontSize);
+
+  auto inherited_custom = style->ResolveVariable(base::String("--accent"));
+  ASSERT_TRUE(inherited_custom.has_value());
+  EXPECT_EQ(inherited_custom.value().AsStdString(), "blue");
+
+  const auto& resolved_values = style->GetResolvedValues();
+  auto inherited_direction =
+      resolved_values.find(CSSPropertyID::kPropertyIDDirection);
+  ASSERT_TRUE(inherited_direction != resolved_values.end());
+  EXPECT_EQ(inherited_direction->second,
+            CSSValue(starlight::DirectionType::kRtl));
+  EXPECT_FALSE(resolved_values.contains(CSSPropertyID::kPropertyIDOpacity));
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCreateInitialComputedStyleSkipsNormalInheritanceWhenDisabled) {
+  constexpr double kParentFontSize = 20.0;
+  constexpr double kParentRootFontSize = 12.0;
+  constexpr double kLiveRootFontSize = 30.0;
+  manager->config_->SetEnableCSSInheritance(false);
+
+  auto page = CreatePageRoot(kLiveRootFontSize);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle parent_style(*manager->platform_computed_css());
+  parent_style.SetFontSize(kParentFontSize, kParentRootFontSize);
+  parent_style.SetValue(CSSPropertyID::kPropertyIDDirection,
+                        CSSValue(starlight::DirectionType::kRtl), false);
+  parent_style.SetCustomProperty(base::String("--accent"),
+                                 CSSValue::MakePlainString("blue"));
+  parent_style.FinalizeCustomProperties();
+
+  auto style = element->style_resolver_.CreateInitialComputedStyle(
+      &parent_style, nullptr);
+  ASSERT_NE(style, nullptr);
+
+  EXPECT_DOUBLE_EQ(style->GetFontSize(),
+                   manager->GetLynxEnvConfig().PageDefaultFontSize());
+  EXPECT_DOUBLE_EQ(style->GetRootFontSize(), kLiveRootFontSize);
+
+  auto inherited_custom = style->ResolveVariable(base::String("--accent"));
+  ASSERT_TRUE(inherited_custom.has_value());
+  EXPECT_EQ(inherited_custom.value().AsStdString(), "blue");
+  EXPECT_FALSE(
+      style->GetResolvedValues().contains(CSSPropertyID::kPropertyIDDirection));
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingPrepareInitialComputedStyleReusesCurrentShellInPlace) {
+  constexpr double kParentFontSize = 18.0;
+  constexpr double kParentRootFontSize = 16.0;
+  constexpr double kLiveRootFontSize = 36.0;
+  manager->config_->SetEnableCSSInheritance(true);
+
+  auto page = CreatePageRoot(kLiveRootFontSize);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  style.SetViewportWidth(starlight::LayoutUnit(77));
+  style.SetViewportHeight(starlight::LayoutUnit(88));
+  style.SetFontSize(10.0, 10.0);
+
+  starlight::ComputedCSSStyle parent_style(*manager->platform_computed_css());
+  parent_style.SetFontSize(kParentFontSize, kParentRootFontSize);
+
+  element->style_resolver_.PrepareInitialComputedStyle(style, &parent_style,
+                                                       &style);
+
+  EXPECT_EQ(style.GetMeasureContext().viewport_width_,
+            starlight::LayoutUnit(77));
+  EXPECT_EQ(style.GetMeasureContext().viewport_height_,
+            starlight::LayoutUnit(88));
+  EXPECT_DOUBLE_EQ(style.GetFontSize(), kParentFontSize);
+  EXPECT_DOUBLE_EQ(style.GetRootFontSize(), kLiveRootFontSize);
 }
 
 }  // namespace testing

@@ -1298,27 +1298,39 @@ std::unique_ptr<starlight::ComputedCSSStyle>
 StyleResolver::CreateInitialComputedStyle(
     const starlight::ComputedCSSStyle* parent_style,
     const starlight::ComputedCSSStyle* previous_style) {
-  // TODO(zhouzhitao): STUB. Must allocate and prepare a valid shell style
-  // before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Creates a fresh ComputedCSSStyle shell for the new styling pipeline.
-  // Allocates the underlying platform style and then prepares it by
-  // initializing the shell (viewport, font-scale, etc.) and inheriting from
-  // the parent style. Used as the starting point for both base-style and
-  // final-style resolution.
-  return nullptr;
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              STYLE_RESOLVER_CREATE_INITIAL_COMPUTED_STYLE);
+  auto* element_manager = manager();
+  auto style = std::make_unique<starlight::ComputedCSSStyle>(
+      *element_manager->platform_computed_css());
+  PrepareInitialComputedStyle(*style, parent_style, previous_style);
+  return style;
 }
 
 void StyleResolver::PrepareInitialComputedStyle(
     starlight::ComputedCSSStyle& style,
     const starlight::ComputedCSSStyle* parent_style,
     const starlight::ComputedCSSStyle* previous_style) {
-  // TODO(zhouzhitao): STUB. Must initialize and inherit the computed style
-  // correctly before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Prepares a newly created ComputedCSSStyle for style resolution in the new
-  // pipeline. Initializes the style shell (if not reusing the current style)
-  // and inherits font-size, custom properties, and normal properties from the
-  // parent. Syncs the root font-size from the live page root so rem units
-  // resolve correctly.
+  if (previous_style != &style) {
+    InitializeStyleShell(style, previous_style);
+    InheritParentStyle(style, parent_style);
+    if (previous_style != nullptr) {
+      style.default_overflow_visible_ =
+          previous_style->default_overflow_visible_;
+    }
+    style.ResetOverflow();
+  } else {
+    // This path is only used for the first screen. The caller passes in a
+    // brand new shell, so we only need to inherit parent style.
+    InheritParentStyle(style, parent_style);
+  }
+
+  // Sync root font size from live page root for non-page elements.
+  // Descendants must resolve rem against the live page root font-size,
+  // not against a potentially stale parent snapshot.
+  if (!element()->is_page()) {
+    style.SetFontSize(style.GetFontSize(), element()->GetCurrentRootFontSize());
+  }
 }
 
 void StyleResolver::ResolveBaseStyleInPlace(
@@ -1386,25 +1398,50 @@ StyleResolver::BuildFinalStyleFromBaseFastPath(
 void StyleResolver::InitializeStyleShell(
     starlight::ComputedCSSStyle& shell_style,
     const starlight::ComputedCSSStyle* previous_style) {
-  // TODO(zhouzhitao): STUB. Must initialize platform/environment constants
-  // before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Initializes a fresh ComputedCSSStyle shell with platform and environment
-  // constants for the new pipeline. Sets viewport dimensions, z-index support,
-  // font-scale behavior, default font-size, layout units, and CSS parser
-  // configs. This establishes the baseline context before inheritance or
-  // property application.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_INITIALIZE_STYLE_SHELL);
+  auto* element_manager = manager();
+  const auto& env_config = element_manager->GetLynxEnvConfig();
+  shell_style.SetEnableZIndex(element_manager->GetEnableZIndex());
+  shell_style.SetScreenWidth(env_config.ScreenWidth());
+  shell_style.SetViewportHeight(env_config.ViewportHeight());
+  shell_style.SetViewportWidth(env_config.ViewportWidth());
+  shell_style.SetCssAlignLegacyWithW3c(
+      element_manager->GetLayoutConfigs().css_align_with_legacy_w3c_);
+  shell_style.SetFontScaleOnlyEffectiveOnSp(env_config.FontScaleSpOnly());
+  shell_style.SetFontScale(env_config.FontScale());
+  shell_style.SetFontSize(env_config.PageDefaultFontSize(),
+                          env_config.PageDefaultFontSize());
+  shell_style.SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
+                            env_config.LayoutsUnitPerPx());
+  shell_style.SetCSSParserConfigs(element_manager->GetCSSParserConfigs());
 }
 
 void StyleResolver::InheritParentStyle(
     starlight::ComputedCSSStyle& computed_style,
     const starlight::ComputedCSSStyle* parent_style) {
-  // TODO(zhouzhitao): STUB. Must implement inheritance (font/custom/normal
-  // properties) before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Inherits style values from the parent ComputedCSSStyle in the new pipeline.
-  // Copies the parent’s font-size (as the inherited font-size) and root
-  // font-size, inherits custom properties, and optionally inherits normal
-  // properties and resolved values based on the element’s CSS inheritance
-  // configuration and the dynamic CSS custom inherit list.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_INHERIT_PARENT_STYLE);
+  if (parent_style) {
+    const auto inherited_font_size =
+        element()->IsCSSInheritanceEnabled()
+            ? parent_style->GetFontSize()
+            : manager()->GetLynxEnvConfig().PageDefaultFontSize();
+    computed_style.SetFontSize(inherited_font_size,
+                               parent_style->GetRootFontSize());
+    computed_style.InheritCustomPropertiesFrom(*parent_style);
+
+    if (!element()->IsCSSInheritanceEnabled()) {
+      return;
+    }
+
+    const auto& configs = manager()->GetDynamicCSSConfigs();
+    const auto* inheritable_props =
+        configs.custom_inherit_list_.empty()
+            ? &DynamicCSSStylesManager::GetInheritableProps()
+            : &configs.custom_inherit_list_;
+    computed_style.InheritNormalPropertiesFrom(*parent_style,
+                                               *inheritable_props);
+    computed_style.InheritResolvedValuesFrom(*parent_style, *inheritable_props);
+  }
 }
 
 void StyleResolver::CollectMatchedRules(CSSFragment* style_sheet) {

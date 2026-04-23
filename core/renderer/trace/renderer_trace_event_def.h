@@ -312,6 +312,14 @@ inline constexpr const char* const CSS_PATCH_GET_CSS_BY_RULE =
 inline constexpr const char* const CSS_PATCH_APPLY_CASCADE_STYLES =
     "CSSPatching::ApplyCascadeStyles";
 
+inline constexpr const char* const
+    STYLE_RESOLVER_CREATE_INITIAL_COMPUTED_STYLE =
+        "StyleResolver::CreateInitialComputedStyle";
+inline constexpr const char* const STYLE_RESOLVER_INITIALIZE_STYLE_SHELL =
+    "StyleResolver::InitializeStyleShell";
+inline constexpr const char* const STYLE_RESOLVER_INHERIT_PARENT_STYLE =
+    "StyleResolver::InheritParentStyle";
+
 inline constexpr const char* const ELEMENT_CONTAINER_FIND_PARENT =
     "ElementContainer::FindParentForChild";
 inline constexpr const char* const ELEMENT_CONTAINER_TRANSITION =
