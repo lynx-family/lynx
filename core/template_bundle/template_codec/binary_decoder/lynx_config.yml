@@ -3,16 +3,20 @@
 # LICENSE file in the root directory of this source tree.
 compilerOptions:
   targetSdkVersion:
+    description: Sets the engine version used across template encode, binary decode, and runtime initialization for compatibility checks. Higher versions enable newer codec and renderer paths such as CSS value parsing, CSS variables, page-data retention defaults, and Fiber gating, while lower versions keep legacy behavior.
     defaultValue: ''
     valueType: string
   templateDebugUrl:
+    description: Sets the external debug-info URL attached to the generated Lepus or QuickJS bundle during encode and runtime initialization. When set, the runtime exposes this URL to the inspector and appends it to stack traces and JS error reports; when empty, no external debug-info URL is reported.
     defaultValue: ''
     valueType: string
   enableCSSExternalClass:
+    description: Controls whether template compile metadata keeps support for external classes. When enabled, MetaFactory serializes the flag so downstream template and CSS stages can treat external classes as supported; when disabled, that capability flag is cleared.
     defaultValue: 'true'
     valueType: boolean
     since: '1.6'
   useLepusNG:
+    description: Controls whether compile and encode choose the LepusNG runtime context instead of the legacy Lepus VM. When enabled, MetaFactory and `GetContextType()` switch source generation and runtime execution to the LepusNG path; when disabled, template execution stays on the legacy VM context.
     defaultValue: 'false'
     valueType: boolean
     since: '2.1'
@@ -20,13 +24,16 @@ compilerOptions:
       member: enable_lepus_ng
     export: false
   enableCSSClassMerge:
+    description: Controls how the CSS encoder and binary reader handle repeated class or id selectors while building style fragments. When enabled, duplicate selectors merge their declarations into one token; when disabled, later tokens replace earlier ones with the same selector key.
     defaultValue: 'false'
     valueType: boolean
     since: '2.1'
   enableRemoveCSSScope:
+    description: Controls whether runtime component rendering removes the generated CSS scope when building virtual pages. When enabled, the page proxy skips scoped descendant-style isolation for component pages; when disabled, component CSS keeps the generated scope.
     defaultValue: 'false'
     valueType: boolean
   disableMultipleCascadeCSS:
+    description: Controls whether the CSS encoder keeps cascade selectors with three or more selector levels. When enabled, the parser drops those multi-level cascade tokens during encode; when disabled, they remain in the encoded style output.
     defaultValue: 'false'
     valueType: boolean
     since: '2.0'
@@ -34,9 +41,11 @@ compilerOptions:
       - minSDKVersion: LYNX_VERSION_2_0
         value: 'true'
   removeCSSParserLog:
+    description: Controls whether compile metadata asks downstream CSS parsing stages to suppress parser diagnostics. When enabled, MetaFactory serializes a no-parser-log flag into compile options; when disabled, parser logging remains available.
     defaultValue: 'false'
     valueType: boolean
   trialOptions:
+    description: Carries feature-trial metadata from compile input into template encode. When the target SDK enables this feature, MetaFactory decodes the trial payload and the binary writer serializes it for compatibility reads; otherwise the bundle omits this section.
     defaultValue: ''
     valueType: lepus::Value
     jsValueType: Record<string, unknown>
@@ -44,11 +53,14 @@ compilerOptions:
       - NONE
     export: false
   debugInfoOutside:
+    description: Controls whether LepusNG keeps function-level debug info as external debug metadata instead of only inline source metadata. When enabled, encode and runtime keep external debug records for inspector and JS error reporting; when disabled, only the basic inline debug payload is available.
     defaultValue: 'false'
     valueType: boolean
+    since: '2.7'
     nameAs:
       member: lepusng_debuginfo_outside
   enableDynamicComponent:
+    description: Controls whether template compile parses dynamic-component tags into component metadata and generated render code. When enabled, the parser records dynamic component definitions for runtime component loading; when disabled, those entries are not emitted into the bundle metadata.
     defaultValue: 'true'
     valueType: boolean
     since: '1.6'
@@ -64,26 +76,31 @@ compilerOptions:
       - HarmonyOS
       - iOS
   defaultOverflowVisible:
+    description: Controls the default page-level overflow behavior applied during config decode. When enabled and targetSdkVersion is at least 2.0, decoded page config defaults overflow to visible; when disabled, page layout falls back to the legacy hidden-overflow default.
     defaultValue: 'true'
     valueType: boolean
     since: '1.6'
   enableCSSVariable:
+    description: Controls whether CSS custom properties are encoded and decoded in the CSS reader pipeline. When enabled for targetSdkVersion at least 2.0, CSS variable tokens and their default-value payloads are preserved; when disabled, CSS values are treated as plain static values.
     defaultValue: 'true'
     valueType: boolean
     since: '2.0'
   implicitAnimation:
+    description: Controls the default implicit-animation behavior exposed to page config on Darwin. When enabled, background and layer property changes keep implicit Core Animation actions by default; when disabled, layer updates disable implicit actions unless another animation path turns them back on.
     defaultValue: 'false'
     valueType: boolean
     since: '1.4'
     nameAs:
       member: default_implicit_animation
   enableRadon:
+    description: Controls the compile-time architecture mode stored in template info for Radon-capable bundles. When enabled, MetaFactory marks the bundle as `RADON_MODE_RADON`; when disabled, it keeps the legacy DOM-diff mode for compatibility checks.
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   enableKeepPageData:
+    description: Controls whether decoded page config keeps saved page data for render-page reuse. When enabled, page config turns on page-data retention and virtual pages can reuse mould data instead of rebuilding from scratch; when disabled, page data is not retained between renders.
     defaultValue: 'false'
     valueType: boolean
     since: '2.1'
@@ -92,179 +109,201 @@ compilerOptions:
         value: 'true'
     bindMemberTo: enable_keep_page_data
   defaultDisplayLinear:
+    description: Controls the default root layout mode applied during page-config decode. When enabled and targetSdkVersion is at least 2.2, decoded pages default to linear layout; when disabled, the root layout keeps the legacy default.
     defaultValue: 'true'
     valueType: boolean
     since: '2.2'
   enableLynxAir:
+    description: Controls whether compile metadata and decoded page config expose LynxAir support to runtime and reporting. When enabled, MetaFactory marks the bundle as LynxAir-capable and config decode forwards that capability into `PageConfig`; when disabled, LynxAir support stays off.
     defaultValue: 'false'
     valueType: boolean
     since: '2.3'
     export: false
   enableCSSLazyDecode:
+    description: Controls whether CSS fragments are decoded lazily in the template binary reader. When enabled, the reader defers CSS fragment decoding until they are needed; when disabled, CSS is decoded eagerly during descriptor parsing. When unset, runtime falls back to the disable_lazy_css_decode experiment setting.
     defaultValue: FE_OPTION_UNDEFINED
     valueType: FeOption
     jsValueType: boolean
     nameAs:
       member: enable_lazy_css_decode
   enableEventRefactor:
+    description: Controls the event-refactor path written into page config before runtime starts. When enabled, or left unset, the decoder turns on the refactored event behavior; when disabled, runtime falls back to the legacy event path.
     defaultValue: FE_OPTION_UNDEFINED
     valueType: FeOption
     jsValueType: boolean
     since: '2.5'
   forceCalcNewStyle:
+    description: Controls whether page config forces the Radon runtime to recalculate styles instead of using CSS invalidation and cached style diffs. When enabled, nodes rebuild style state on updates; when disabled, Radon can reuse invalidation results and cached styles.
     defaultValue: FE_OPTION_UNDEFINED
     valueType: FeOption
     jsValueType: boolean
     author: DragonDragonDDD
     since: '2.6'
   enableCSSAsyncDecode:
+    description: Controls whether CSS fragments are decoded on a concurrent thread after the CSS descriptor is parsed. When enabled, the binary reader schedules asynchronous CSS fragment decode and treats CSS loading as lazy; when disabled, CSS decoding stays on the synchronous reader path.
     defaultValue: FE_OPTION_UNDEFINED
     valueType: FeOption
     jsValueType: boolean
     nameAs:
       member: enable_async_css_decode
   enableCSSEngine:
+    description: Controls whether compile options bind the dedicated CSS-engine flag into runtime config. When enabled, generated page config carries the CSS engine switch for downstream style parsing and resolution; when disabled, runtime keeps the legacy flag state.
     defaultValue: 'true'
     valueType: boolean
     bindMemberTo: enable_css_engine
   enableComponentConfig:
+    description: Controls whether template metadata carries component-config support into runtime decode. When enabled, generated bundles can expose component config records such as extra-data removal and component-element removal; when disabled, that component-config feature flag is off.
     defaultValue: 'false'
     valueType: boolean
     since: '2.6'
   lynxAirMode:
+    description: Controls which LynxAir architecture mode compile and runtime use for the bundle. MetaFactory uses this value to choose the arch option and validate Fiber compatibility, and runtime readers use the decoded mode to switch Air-specific decode or execution behavior; `AIR_MODE_OFF` keeps the non-Air path.
     defaultValue: AIR_MODE_OFF
     valueType: uint8_t
     jsValueType: CompilerOptionAirMode
     since: '2.11'
     export: false
   enableFiberArch:
+    description: Controls whether template encode and decode switch from the Radon path to the Fiber architecture path. When enabled, MetaFactory validates the SDK gate, the encoder reads Fiber CSS sources, and runtime uses Fiber-specific bundle and page-config behavior; when disabled, templates stay on the Radon path.
     defaultValue: 'false'
     valueType: boolean
+    since: '2.8'
   enableFlexibleTemplate:
-    description: If enable this value, the template will be encoded as flexible template.
+    description: Controls whether the template binary uses the flexible-template body format instead of the legacy section layout. When enabled, the writer emits the flexible template body and the decoder reads that format; when disabled, encode and decode stay on the legacy non-flexible template layout. Fiber and Air arch paths force this on.
     defaultValue: 'false'
     valueType: boolean
     since: '2.8'
   enableCSSSelector:
-    description: This switch will enable the css module in blink standard mode.
+    description: Controls whether compile, CSS encode, and CSS decode keep the Blink-style CSS selector module. When enabled, the parser and binary CSS reader preserve selector tokens for selector matching and invalidation; when disabled, selector parsing stays on the legacy non-selector path.
     defaultValue: 'false'
     valueType: boolean
     since: '2.8'
   enableReuseContext:
-    description: Enable this switch to reuse lepus::Context between DynamicComponent and page can only be used in lepusng.
+    description: Controls whether compile metadata marks LepusNG pages as eligible to reuse a runtime context between the page and dynamic components. When enabled, MetaFactory serializes the reuse-context capability into compile options; when disabled, downstream runtime keeps treating contexts as non-reusable.
     defaultValue: 'false'
     valueType: boolean
     since: '2.18'
     bindMemberTo: enable_reuse_context
     export: false
   enableCSSInvalidation:
-    description: If enable CSS invalidation we use RuleInvalidationSet to gather the selector invalidation.
+    description: Controls whether CSS fragments build selector invalidation data alongside CSS selector rules. When enabled, the CSS reader creates RuleInvalidationSet data and Radon can invalidate affected styles incrementally; when disabled, selector matching skips invalidation metadata and style updates fall back to broader recalculation.
     defaultValue: 'false'
     valueType: boolean
     since: '2.10'
   enableAirRawCSS:
-    description: Enable this switch to use all raw css styles(no parse in encode), not used in runtime.
+    description: Controls whether the Air encode path writes raw parsed CSS values instead of preprocessed style values into the binary. When enabled, `TemplateBinaryWriter` stores the original parsed value maps for Air pages; when disabled, encode writes the processed CSS representation.
     defaultValue: 'true'
     valueType: boolean
     export: false
   experimental_encodeQuickjsBytecode:
-    description: Allow encoding quickjs bytecode instead of source code in template.
+    description: Controls whether the encoder writes QuickJS bytecode into the JS section instead of serializing JS source text. When enabled, the binary writer emits JS bytecode; when disabled, it writes source code strings. The experimental path is intended to be gated by a sufficiently high target SDK.
     defaultValue: 'false'
     valueType: boolean
     since: '2.12'
     bindMemberTo: encode_quickjs_bytecode_
   enableLepusChunkAsyncDecode:
-    description: Allow async decode lepus chunk.
+    description: Controls whether binary decode schedules Lepus chunk deserialization asynchronously instead of decoding the whole chunk on the reader thread. When enabled, `TemplateBinaryReader` concurrently decodes function chunks and waits later; when disabled, Lepus chunk decoding stays synchronous.
     defaultValue: 'false'
     valueType: boolean
     nameAs:
       member: enable_async_lepus_chunk_decode
     export: false
   enableSimpleStyling:
-    description: Using the simplified styling module.
+    description: Controls whether encode and decode use the SimpleStyle path for style objects, keyframes, and font faces. When enabled, MetaFactory collects `styleObjects`, the writer emits simple-style sections, and runtime installs simple-style keyframes and font faces; when disabled, those sections are skipped.
     defaultValue: 'false'
     valueType: boolean
     since: '3.3'
   enableOptLepusBytecode:
-    description: Allow opt lepus bytecode.
+    description: Controls whether the encoder asks the Lepus VM to generate optimized bytecode instead of the default bytecode form. When enabled and targetSdkVersion is at least 3.8, encode turns on SetOptBytecode; when disabled, or below that SDK gate, the VM emits the normal bytecode path.
     defaultValue: 'false'
     valueType: boolean
     since: '3.8'
   bundleModuleMode:
+    description: Carries the compile-time bundle module mode string into template metadata and page config for JS runtime startup. When set, MetaFactory serializes the mode and runtime forwards it to `loadApp`; when empty, runtime uses its default module-mode handling.
     defaultValue: ''
     valueType: string
     codeGen:
       - NONE
     export: false
   enableLepusDebug:
+    description: Controls whether encode writes Lepus debug metadata into the generated context binary. When enabled, `Encoder` and `ContextBinaryWriter` keep extra debug records for inspector and runtime diagnostics; when disabled, that debug payload is omitted.
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   enableParallelElement:
+    description: Controls whether compile metadata marks Fiber pages as using the parallel-element scheduler path. When enabled, MetaFactory records the parallel-element capability and forces the related Fiber CSS parser support; when disabled, bundles keep the normal element scheduling path.
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   silence:
+    description: Controls whether the encoder suppresses progress and diagnostic logging while building the template binary. When enabled, encode and binary-writer logging stays quiet; when disabled, normal encode logs can be emitted.
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   enableTTForFullVersion:
+    description: Controls whether source generation emits the full-version `$ttForRenderList` helper for LepusNG `tt:for` templates. When enabled, source generation adds that helper for pages that use `tt:for`; when disabled, the bundle keeps the older helper path.
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   enableDataSetAttrs:
+    description: Controls whether template compile synthesizes a `dataset` object from `data-*` attributes in addition to keeping the raw attributes. When enabled, the parser adds the aggregated `dataset` payload to element attributes; when disabled, runtime only sees the original `data-*` attrs.
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   skipEncode:
+    description: Controls whether the encoder stops after TTML parse instead of writing a binary template. When enabled, `Encoder` returns after parse and skips binary generation; when disabled, parse continues into the normal binary encode path.
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   enableSSR:
+    description: Controls whether the encoder appends SSR metadata offsets after the main binary sections. When enabled, the binary writer emits the SSR trailer; when disabled, no SSR suffix is written.
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   enableCursor:
+    description: Controls whether the encoder appends cursor-offset metadata after the main binary sections. When enabled, the binary ends with cursor offsets for cursor-based consumption; when disabled, that suffix is omitted.
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   closureFix:
+    description: Controls whether compile and VM execution enable the Lepus closure-fix behavior. When enabled, source generation wraps preprocess helpers differently and runtime bytecode execution turns on closure-fix semantics; when disabled, compile and runtime keep the older closure behavior.
     defaultValue: 'true'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   enableConcurrentElement:
+    description: Controls whether compile metadata marks Fiber pages as eligible for concurrent-element scheduling. When enabled, MetaFactory treats it as the parallel-element capability and records the scheduler flag in template info; when disabled, that capability stays off.
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
     export: false
   contextType:
-    description: Runtime context type used for template execution.
+    description: Selects the numeric template execution context stored in compile options. MetaFactory ingests the value and `GetContextType()` uses it to choose a specific runtime engine; `0` keeps the default context choice unless another compile option selects LepusNG.
     defaultValue: '0'
     valueType: uint8_t
     jsValueType: number
     since: '3.8'
     export: false
   enableKeyframeCustomPropertyDeclaration:
-    description: Enable custom property declaration in keyframe.
+    description: Controls whether CSS encode and decode preserve custom property declarations inside `@keyframes`. When enabled, the writer serializes keyframe custom-property payloads and the CSS reader restores them; when disabled, custom-property declarations inside keyframes are skipped.
     defaultValue: 'false'
     valueType: boolean
     since: '3.9'
@@ -273,7 +312,7 @@ compilerOptions:
 
 # PageConfig start here
 extraInfo:
-  description: user defined extraInfo.
+  description: Carries user-defined `extraInfo` through config decode into `PageConfig` and script-visible config state. When set, the manual binary config decoder stores the `lepus::Value` payload on the page config; when omitted, no extra info object is attached.
   defaultValue: ''
   valueType: lepus::Value
   jsValueType: Record<string, unknown>
@@ -310,7 +349,7 @@ customCSSInheritanceList:
     - HarmonyOS
     - iOS
 version:
-  description: null
+  description: Carries the deprecated frontend page-version string from config decode into runtime reporting and platform bridges. When set, `PageConfig` forwards it to Android or iOS config info and event tracking; when empty, runtime reports no page version.
   defaultValue: ''
   valueType: string
   nameAs:
@@ -337,7 +376,7 @@ cli:
     - HarmonyOS
     - iOS
 reactVersion:
-  description: null
+  description: Carries the deprecated React version string from config decode into platform config info and performance reporting. When set, Android and iOS bridges expose it in config-info payloads and perf metrics; when empty, no React version is reported.
   defaultValue: ''
   valueType: string
   author: Yradex
@@ -348,7 +387,7 @@ reactVersion:
     - HarmonyOS
     - iOS
 customData:
-  description: null
+  description: Carries the deprecated custom-data JSON string from config decode into platform config info and behavior registries. When set, Android, iOS, and Harmony bridges expose the string to platform-side consumers; when empty, no customData payload is forwarded.
   defaultValue: ''
   valueType: string
   author: nhsprite
@@ -364,9 +403,7 @@ debugMetadataUrl:
     - HarmonyOS
     - iOS
 tapSlop:
-  description:
-    Specify the sliding distance threshold at which the tap event is not
-    triggered.
+  description: Controls the movement threshold used by platform gesture recognizers before a tap is canceled. When pointer movement exceeds this distance, Android or Harmony tap handling no longer treats the interaction as a tap; smaller movement keeps the tap path eligible.
   defaultValue: 50px
   valueType: string
   author: rAY-ooo
@@ -375,7 +412,7 @@ tapSlop:
     - Android
     - HarmonyOS
 preferredFps:
-  description: Control the frame rate of CSS animations
+  description: Controls the preferred frame-rate mode requested for animation-driven frame callbacks. `ElementManager` forwards this string to `ElementVsyncProxy`, so values such as `high`, `low`, or `auto` change the vsync cadence used while CSS animations request frames.
   defaultValue: auto
   valueType: string
   author: YellowFishWyfCPP
@@ -385,10 +422,7 @@ preferredFps:
     - HarmonyOS
     - iOS
 quirksMode:
-  description:
-    Supports string value. It is equal to TargetSDKVersion by default.
-    The mode is for compatibility with old pages that do not conform to CSS layout
-    specifications produced.
+  description: Controls the layout compatibility version used by manual config decode for legacy CSS behavior. During decode, boolean or version-string input is converted to a `base::Version` and written into layout configs; older compatibility versions keep legacy layout quirks while newer or default values follow target-SDK behavior.
   defaultValue: base::Version(1, 5)
   valueType: base::Version
   jsValueType: 'boolean | string'
@@ -450,7 +484,7 @@ pipelineSchedulerConfig:
     - Android
     - iOS
 redBoxImageSizeWarningThreshold:
-  description: null
+  description: Carries the deprecated iOS image-size warning threshold from config decode into UI context. When a decoded image exceeds this threshold, iOS red-box diagnostics can warn; when absent, the default warning threshold is used.
   defaultValue: '1000000'
   valueType: uint32_t
   jsValueType: number
@@ -462,9 +496,7 @@ redBoxImageSizeWarningThreshold:
   author: pilipala195
   deprecated: '3.5'
 lepusQuickjsStacksize:
-  description:
-    Set the virtual stack space of the lepusng engine, or use the system
-    default value if it is not set actively
+  description: Controls the virtual stack size applied to LepusNG QuickJS contexts on iOS. When set above zero, `QuickContext::ApplyConfig()` applies that stack limit; when zero, QuickJS keeps the system default stack size.
   defaultValue: '0'
   valueType: uint32_t
   jsValueType: number
@@ -489,7 +521,7 @@ observerFrameRate:
     - HarmonyOS
     - iOS
 longPressDuration:
-  description: Specify the interval for triggering the long press event.
+  description: Controls the platform long-press timeout before Lynx fires a `longpress` event. Smaller values make long-press recognition fire sooner, while the default or negative handling keeps the platform timeout behavior.
   defaultValue: '-1'
   valueType: int32_t
   jsValueType: number
@@ -500,7 +532,7 @@ longPressDuration:
     - HarmonyOS
     - iOS
 useNewImage:
-  description: null
+  description: Controls the deprecated page-level ternary switch that forwards image loading to the newer image pipeline on Android and iOS. When explicitly true or false, the decoded value is exported to platform `PageConfig`; when unset, platform code falls back to newer native flags such as `enableNewImage` or `trailNewImage`.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: liubb0516
@@ -509,7 +541,7 @@ useNewImage:
     - Android
     - iOS
 enableTextBoringLayout:
-  description: Enable using BoringLayout on Android.
+  description: Controls whether Android text measurement can use the BoringLayout fast path for eligible plain text. When enabled, simple text may use BoringLayout; when disabled, text stays on the general layout path.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: Randycn
@@ -517,7 +549,7 @@ enableTextBoringLayout:
   supportPlatform:
     - Android
 enableTextLayerRender:
-  description: Enable using text layer render on iOS.
+  description: Controls whether iOS text renders through the dedicated text-layer path. When enabled, LynxUIText uses layer-based text rendering; when disabled, text stays on the legacy view-backed rendering path.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: Randycn
@@ -525,7 +557,7 @@ enableTextLayerRender:
   supportPlatform:
     - iOS
 enableUseMapBuffer:
-  description: Enable the mapbuffer structure for LynxProps.
+  description: Controls whether UI props and style payloads are stored in MapBuffer instead of the legacy map container. When enabled, fragments and prop bundles can read MapBuffer-backed data; when disabled, runtime keeps the older prop container path. When unset, it falls back to LynxEnv.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readNative: true
@@ -536,7 +568,7 @@ enableUseMapBuffer:
     - HarmonyOS
     - iOS
 enableFiberElementForRadonDiff:
-  description: Indicates whether use FiberElement for RadonDiff Arch.
+  description: Deprecated compatibility field kept so older page configs can still decode a FiberElement-for-RadonDiff flag. Current repo-local runtime no longer branches on this field directly.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: DragonDragonDDD
@@ -551,7 +583,7 @@ enableFiberElementForRadonDiff:
   codeGen:
     - NONE
 enableOptPushStyleToBundle:
-  description: Enable using PropBundleStyleWriter to write style to PropBundle.
+  description: Controls the deprecated style-to-PropBundle optimization flag applied after config decode. When enabled, `ElementManager` turns on the optimized push-style path; when disabled, style payloads keep the older path. When unset, runtime falls back to `LynxEnv`.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: ShouruiSong
@@ -562,7 +594,7 @@ enableOptPushStyleToBundle:
     - HarmonyOS
     - iOS
 enableTextLayoutCache:
-  description: Whether enable text layout cache.
+  description: Controls whether text layout results can be reused from the text renderer cache. When enabled, text shadow nodes can reuse cached renderers for repeated layout specs; when disabled, text layout is recomputed each time. When unset, platform env can still provide the value.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: Randycn
@@ -571,7 +603,7 @@ enableTextLayoutCache:
     - Android
     - iOS
 enableUnifiedPipeline:
-  description: Enable the unified pixel pipeline for Lynx Engine.
+  description: Controls whether runtime enables the unified pixel pipeline after page config is decoded. When true, TemplateAssembler turns on the unified pixel pipeline context and render completion goes through the unified resolve path; when false, it keeps the legacy patch-finish pipeline. When unset, it falls back to the native config source.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: nhsprite
@@ -582,7 +614,7 @@ enableUnifiedPipeline:
     - HarmonyOS
     - iOS
 enableUseContextPool:
-  description: Enable Use Context Pool For LepusNG VM creation.
+  description: Controls whether LepusNG context creation first tries pooled MTS runtimes instead of constructing a fresh runtime immediately. When true, TemplateEntry reuses local or global context pools and template bundles can prefill a local pool; when false, runtime skips pooled reuse and creates a new context directly. When unset, it falls back to LynxEnv.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   codeGen:
@@ -612,7 +644,7 @@ enableCSSLazyImport:
     - HarmonyOS
     - iOS
 enableNewAnimator:
-  description: If this flag is false, will use platform animation ability.
+  description: Controls whether element updates use Lynx's new animator path instead of relying on platform animation behavior. When enabled, page config turns on the new animator for element and Fiber animation branches; when disabled, runtime falls back to platform animation handling. When unset, it falls back to `LynxEnv`.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   codeGen:
@@ -626,9 +658,7 @@ enableNewAnimator:
     - HarmonyOS
     - iOS
 enableComponentAsyncDecode:
-  description:
-    Enable dynamic components to be decoded in child threads before they
-    are delivered into tasm in async-loading.
+  description: Controls whether async-loaded dynamic components are decoded on child threads before they are delivered to TASM. When enabled, TemplateAssembler passes the flag to the component loader so async component bundles decode off the main path; when disabled, component decode stays on the normal delivery path. When unset, it can still fall back to LynxEnv.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   codeGen:
@@ -642,7 +672,7 @@ enableComponentAsyncDecode:
     - HarmonyOS
     - iOS
 enableSignalAPI:
-  description: Enable using native signal API
+  description: Controls whether MTS runtimes register Lynx's native Signal API for the page. When true, page config passes the signal flag into runtime creation and MTS runtime registration exposes signal support to the VM; when false, that signal registration is skipped. When unset, it falls back to the native config source.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readNative: true
@@ -653,7 +683,7 @@ enableSignalAPI:
     - HarmonyOS
     - iOS
 enableNativeScheduleCreateViewAsync:
-  description: Enable create ui async form C++ PaintingContext
+  description: Controls whether Android painting context schedules native `CreatePaintingNode` work asynchronously instead of executing creation immediately. When enabled, `ElementManager` forwards the flag and `PaintingContextAndroid` enqueues async create-view work; when disabled, create-node work stays synchronous. When unset, it falls back to `LynxEnv`.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readNative: true
@@ -662,7 +692,7 @@ enableNativeScheduleCreateViewAsync:
   supportPlatform:
     - Android
 enableNativeList:
-  description: Indicates whether use c++ list.
+  description: Controls whether list rendering prefers the native C++ list implementation instead of the older platform list path. When enabled, list elements resolve to native-list mode in shell or page config; when disabled, runtime keeps the legacy platform implementation. When unset, native config can still decide the flag.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readNative: true
@@ -673,7 +703,7 @@ enableNativeList:
     - HarmonyOS
     - iOS
 trailNewImage:
-  description: Enable the iOS image refactor
+  description: Controls whether iOS turns on the refactored image implementation exposed through trailUseNewImage. When enabled, the iOS UI context uses the newer image pipeline; when disabled, it stays on the legacy image implementation. When unset, it falls back to native config.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readNative: true
@@ -682,7 +712,7 @@ trailNewImage:
   supportPlatform:
     - iOS
 asyncRedirect:
-  description: Enable Android Lynx Image URL asynchronous redirect
+  description: Controls whether Android image URL redirection is resolved asynchronously before request dispatch. When enabled, image fetchers call asyncRedirectUrl; when disabled, they use the synchronous redirect path.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   nameAs:
@@ -695,9 +725,7 @@ asyncRedirect:
   supportPlatform:
     - Android
 enableUIOperationOptimize:
-  description:
-    Enable the optimization about UIOperation batching and CreateViewAsync
-    at Android.
+  description: Controls whether ElementManager enables UI-operation batching for create-view and update work. When enabled, TemplateAssembler turns on UI operation batching and Android UI work can be grouped before flush; when disabled, runtime keeps the normal non-batched path. When unset, LynxEnv can still enable batching.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readNative: true
@@ -708,10 +736,7 @@ enableUIOperationOptimize:
     - HarmonyOS
     - iOS
 enableMicrotaskPromisePolyfill:
-  description:
-    'This configuration item enableMicrotaskPromisePolyfill is used to
-    determine whether to enable the micro - task Promise polyfill. Its value type
-    is TernaryBool, and the default value is TernaryBool::UNDEFINE_VALUE.'
+  description: Controls whether the JS runtime installs Lynx's microtask-based Promise polyfill. When enabled, `TemplateEntry`, JS app startup, and `setup-promise.ts` turn on the polyfill path; when disabled, runtime keeps the existing Promise implementation. When unset, native config can still decide the flag.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readNative: true
@@ -732,9 +757,7 @@ mapContainerType:
     - Android
   export: false
 flatten:
-  description:
-    Control whether the node requires creating a corresponding Android
-    View. Default is true.
+  description: Controls whether Android nodes can stay flattened without a backing platform `View` by default. When true, only nodes that need a real platform view create one; when false, nodes create corresponding Android views more eagerly.
   defaultValue: 'true'
   valueType: bool
   nameAs:
@@ -746,7 +769,7 @@ flatten:
   supportPlatform:
     - Android
 implicit:
-  description: Control whether implicit animations are allowed on the iOS platform.
+  description: Controls the deprecated global iOS implicit-animation default copied into UI config during page decode. When true, layer property changes keep implicit Core Animation actions; when false, iOS disables them by default. For target SDK 2.0 and above, the default override is false.
   defaultValue: 'true'
   valueType: bool
   versionOverrides:
@@ -776,9 +799,7 @@ lepusStrict:
     - iOS
   export: false
 lepusNullPropAsUndef:
-  description:
-    If this is set to true, lepus.js will get undefined instead of null
-    for a nonexistent property on the object; Only available for lepus engine.
+  description: Controls how Lepus property lookup represents missing object properties during code generation and runtime evaluation. When enabled, source generation and VM execution return `undefined` for absent properties; when disabled, the same lookup returns `null`. From target SDK 1.6 onward, the default override is enabled.
   defaultValue: 'false'
   valueType: bool
   versionOverrides:
@@ -820,7 +841,7 @@ enableAsyncDisplay:
   supportPlatform:
     - iOS
 enableImageDownsampling:
-  description: If true,  downsampling will be enabled for all images on this LynxView
+  description: Controls whether iOS image decoding downsamples large images before display. When enabled, `LynxUIImage` and the UI context use downsampling-aware decode paths; when disabled, images keep the normal full-resolution decode path.
   defaultValue: 'false'
   valueType: bool
   author: liubb0516
@@ -828,7 +849,7 @@ enableImageDownsampling:
   supportPlatform:
     - iOS
 enableNewImage:
-  description: Enable load image from image service
+  description: Controls whether image loading uses the newer image-service pipeline. When enabled, the UI context turns on the new image loader; when disabled, image loading stays on the legacy service path.
   defaultValue: 'true'
   valueType: bool
   author: liubb0516
@@ -837,7 +858,7 @@ enableNewImage:
     - Android
     - iOS
 enableTextNonContiguousLayout:
-  description: Whether enable text noncontiguous layout
+  description: Controls whether text layout allows noncontiguous layout on Darwin text renderers. When enabled, text renderers set allowsNonContiguousLayout for eligible text; when disabled, layout stays contiguous.
   defaultValue: 'true'
   valueType: bool
   author: Randycn
@@ -845,9 +866,7 @@ enableTextNonContiguousLayout:
   supportPlatform:
     - iOS
 enableViewReceiveTouch:
-  description:
-    Enable touchesBegan and other methods to be triggered when touching
-    the client-slide custom components.
+  description: Controls whether iOS client-slide views continue receiving raw touch callbacks alongside Lynx gestures. When enabled, gesture recognizers stop canceling touches in view and touchesBegan or touchesEnded can still reach the platform view; when disabled, Lynx gestures keep canceling those raw touch callbacks.
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
@@ -855,9 +874,7 @@ enableViewReceiveTouch:
   supportPlatform:
     - iOS
 enableEventThrough:
-  description:
-    Enable the client-slide touch event penetrate Lynx when touching the
-    root node area of the Lynx page.
+  description: Controls whether touches on the root area can pass through the Lynx page instead of being consumed by Lynx. When enabled, root touch dispatch returns false and overlay or host views underneath can receive the event; when disabled, Lynx keeps normal touch consumption.
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
@@ -880,9 +897,7 @@ removeComponentElement:
     - HarmonyOS
     - iOS
 strictPropType:
-  description:
-    if this flag is true, if component's prop type mismatch, will use default
-    value.
+  description: Controls how component prop type mismatches are handled during component property application. When enabled, `RadonComponent` falls back to the declared default value for mismatched props; when disabled, runtime keeps the older mismatch behavior.
   defaultValue: 'false'
   valueType: bool
   author: nhsprite
@@ -892,10 +907,7 @@ strictPropType:
     - HarmonyOS
     - iOS
 syncImageAttach:
-  description:
-    If true and on the main thread, image requests will be initiated immediately;
-    otherwise, image requests will be posted after the next frame of the main thread
-    to delay the requests.
+  description: Controls the deprecated Android image-attach timing for starting requests from the main thread. When enabled and attach happens on the main thread, image requests start immediately; when disabled, request start is posted to the next main-thread frame.
   defaultValue: 'true'
   valueType: bool
   author: liubb0516
@@ -904,7 +916,7 @@ syncImageAttach:
   supportPlatform:
     - Android
 useImagePostProcessor:
-  description: Whether use image post processor
+  description: Controls whether Android image requests run through the image post-processor path after load. When enabled, PageConfig marks image requests for post-processing; when disabled, images are delivered without that extra processing stage.
   defaultValue: 'false'
   valueType: bool
   author: liubb0516
@@ -912,7 +924,7 @@ useImagePostProcessor:
   supportPlatform:
     - Android
 useNewSwiper:
-  description: Indicates whether to use new swiper
+  description: Controls whether Android pages create the newer x-swiper implementation instead of the deprecated legacy swiper. When enabled, pages use the new swiper path; when disabled, runtime can still create the legacy swiper and logs a deprecation warning.
   defaultValue: 'true'
   valueType: bool
   author: keweibing
@@ -920,7 +932,7 @@ useNewSwiper:
   supportPlatform:
     - Android
 enableAsyncInitVideoEngine:
-  description: Whether to enable asynchronous initialization of videoEngine
+  description: Controls whether Android video engine initialization happens asynchronously instead of blocking the normal page init path. When enabled, video engine startup is deferred to an async init path; when disabled, runtime keeps synchronous initialization.
   defaultValue: 'false'
   valueType: bool
   nameAs:
@@ -941,7 +953,7 @@ enableComponentLifecycleAlignWebview:
     - Android
   export: false
 enableListNewArchitecture:
-  description: Indicates whether to use new architecture for the  platform list
+  description: Controls whether list nodes are created through the newer Radon diff list architecture. When enabled, renderer functions can build RadonDiffListNode2 and decoder falls back to the settings value if the page omits it; when disabled, runtime keeps the older list architecture.
   defaultValue: 'false'
   valueType: bool
   nameAs:
@@ -963,7 +975,7 @@ enableNewListContainer:
   supportPlatform:
     - iOS
 enableListPlug:
-  description: Indicates whether to use list plug
+  description: Controls whether list rendering enables the list plug path in Radon list platform info. When enabled, page config passes the plug flag into list nodes; when disabled, list nodes run without the plug behavior.
   defaultValue: 'false'
   valueType: bool
   nameAs:
@@ -1008,7 +1020,7 @@ enableVsyncAlignedFlush:
     - Android
     - iOS
 enableAccessibilityElement:
-  description: Indicates whether all ui  enable a11y
+  description: Controls the default accessibility-element status for Android Lynx views. When enabled, views whose own a11y status is default inherit important-for-accessibility behavior from page config; when disabled, those views stay out of the default accessibility tree unless explicitly marked.
   defaultValue: 'true'
   valueType: bool
   author: DwwWxx
@@ -1016,7 +1028,7 @@ enableAccessibilityElement:
   supportPlatform:
     - Android
 enableOverlapForAccessibilityElement:
-  description: null
+  description: Controls the deprecated Android accessibility overlap policy for Lynx accessibility elements. When enabled, `LynxAccessibilityNodeProvider` can expose overlapping Lynx nodes to accessibility; when disabled, overlap handling keeps the older filtered behavior.
   defaultValue: 'true'
   valueType: bool
   author: DwwWxx
@@ -1025,7 +1037,7 @@ enableOverlapForAccessibilityElement:
   supportPlatform:
     - Android
 enableNewAccessibility:
-  description: null
+  description: Controls the deprecated Android delegate-based accessibility implementation. When enabled, `LynxAccessibilityWrapper` prefers the newer accessibility delegate path; when disabled, accessibility stays on the older node-provider or helper path.
   defaultValue: 'false'
   valueType: bool
   author: DwwWxx
@@ -1034,7 +1046,7 @@ enableNewAccessibility:
   supportPlatform:
     - Android
 enableNewLayoutOnly:
-  description: null
+  description: Controls the deprecated extra page-config gate for layout-only optimization. When enabled, `ElementManager` combines this flag with TASM's layout-only switch before allowing layout-only nodes; when disabled, page config blocks that optimization even if TASM enables it.
   defaultValue: 'true'
   valueType: bool
   author: zhongyr
@@ -1044,9 +1056,7 @@ enableNewLayoutOnly:
     - HarmonyOS
     - iOS
 enableReactOnlyPropsId:
-  description:
-    If we got propsId, we could only pass propsId and a flag to JS thread.
-    JS thread will use a propsMap to get correct props
+  description: Controls whether React pages pass only `propsId` to the JS thread instead of cloning the full props object. When enabled and `propsId` exists, `PageProxy::ProcessReactPropsForJS()` sends only `propsId` plus the `$$onlyPropsId` marker; when disabled, JS receives the full props payload.
   defaultValue: 'false'
   valueType: bool
   author: colinaaa
@@ -1056,13 +1066,13 @@ enableReactOnlyPropsId:
     - HarmonyOS
     - iOS
 enableGlobalComponentMap:
-  description: null
+  description: Controls the deprecated Radon component-map scope used during component lookup and update. When enabled, `RadonComponent` reads and updates the page-global component map; when disabled, component bookkeeping stays on the per-component map path.
   defaultValue: 'false'
   valueType: bool
   author: DragonDragonDDD
   deprecated: '3.5'
 enableTextRefactor:
-  description: Enable text refactor, with behavior more aligned with web.
+  description: Controls whether text measurement and rendering use the refactored text path that is closer to web behavior. When enabled, text layout specs, baseline handling, and rich-text processing use the refactored rules; when disabled, text keeps the legacy Lynx behavior.
   defaultValue: 'false'
   valueType: bool
   versionOverrides:
@@ -1074,7 +1084,7 @@ enableTextRefactor:
     - Android
     - iOS
 enableTextOverflow:
-  description: Set text overflow as visible if true.
+  description: Controls whether platform text renderers treat text overflow as visible instead of clipping to bounds. When enabled, page config forwards the flag to platform text contexts and iOS or Harmony text rendering allows visible overflow; when disabled, text keeps the older clipped overflow behavior. From target SDK 2.8 onward, the default override is enabled.
   defaultValue: 'false'
   valueType: bool
   versionOverrides:
@@ -1086,7 +1096,7 @@ enableTextOverflow:
     - Android
     - iOS
 enableNewClipMode:
-  description: Whether enable new clip mode.
+  description: Controls whether text and layout clipping use the newer clip-mode behavior. When enabled, text layout specs and UI context use the new clip mode; when disabled, clipping stays on the legacy behavior.
   defaultValue: 'true'
   valueType: bool
   versionOverrides:
@@ -1110,7 +1120,7 @@ autoResumeAnimation:
   author: linxs0211
   deprecated: '3.5'
 enableNewTransformOrigin:
-  description: If this flag is true, new transform origin algorithm will apply.
+  description: Controls whether iOS uses the newer transform-origin calculation for transforms and background positioning. When enabled, `LynxUI`, `LynxConverter+Transform`, and background handling use the new origin algorithm; when disabled, iOS keeps the legacy transform-origin math. From target SDK 2.6 onward, the default override is enabled.
   defaultValue: 'true'
   valueType: bool
   versionOverrides:
@@ -1126,9 +1136,7 @@ enableNewTransformOrigin:
     - HarmonyOS
     - iOS
 enableCircularDataCheck:
-  description:
-    If this flag is true, circular data check will enable when convert
-    js value to other vale.
+  description: Controls whether JS runtime checks for circular references when converting JS values into Lynx values. When enabled, `TemplateEntry` forwards the flag to BTS or JSI runtime and circular structures take the guarded conversion path; when disabled, conversions skip that extra circular-data check.
   defaultValue: 'true'
   valueType: bool
   nameAs:
@@ -1141,9 +1149,7 @@ enableCircularDataCheck:
     - HarmonyOS
     - iOS
 enableReduceInitDataCopy:
-  description:
-    If this flag is true, do not copy init data, instead copy Object.keys
-    of init data for efficiency.
+  description: Controls whether TTML init data passed to JS is reduced to `Object.keys(data)` instead of cloning the full object. When enabled, `PageProxy::ProcessInitDataForJS()` sends only non-nil keys for non-React pages; when disabled, JS receives the full init-data payload.
   defaultValue: 'false'
   valueType: bool
   author: nhsprite
@@ -1153,9 +1159,7 @@ enableReduceInitDataCopy:
     - HarmonyOS
     - iOS
 enableSimultaneousTap:
-  description:
-    Enable the client's tap gesture to be triggered simultaneously with
-    Lynx's tap gesture.
+  description: Controls whether iOS Lynx tap gestures can fire at the same time as outer native tap gestures. When enabled, LynxTap and host tap gestures are allowed to recognize together; when disabled, Lynx keeps the default mutual-exclusion behavior.
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
@@ -1163,7 +1167,7 @@ enableSimultaneousTap:
   supportPlatform:
     - iOS
 enableComponentLayoutOnly:
-  description: null
+  description: Controls the deprecated component-level gate for layout-only optimization. When enabled, component elements can return true from `CanBeLayoutOnly()` and skip backing views when other checks pass; when disabled, components keep real element nodes even if other layout-only conditions match.
   defaultValue: 'false'
   valueType: bool
   versionOverrides:
@@ -1195,7 +1199,7 @@ extendedLayoutOnlyOpt:
     - HarmonyOS
     - iOS
 enableTouchRefactor:
-  description: Enable Lynx's touchend event to be triggered normally.
+  description: Controls whether iOS touch dispatch uses the refactored gesture-conflict path. When enabled, external gestures in possible or began state no longer cancel Lynx touch handling and touchend can complete normally; when disabled, the legacy cancellation behavior remains.
   defaultValue: 'true'
   valueType: bool
   author: rAY-ooo
@@ -1203,9 +1207,7 @@ enableTouchRefactor:
   supportPlatform:
     - iOS
 enableEndGestureAtLastFingerUp:
-  description:
-    Enable the Lynx touch event to be triggered normally after the last
-    finger is lifted in a multi-finger scenario.
+  description: Controls whether iOS multi-finger touch handling ends only after the last finger is lifted. When enabled, the touch recognizer reports ended or cancelled when the final finger leaves; when disabled, the legacy earlier-ending behavior remains.
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
@@ -1239,7 +1241,7 @@ keyboardCallbackPassRelativeHeight:
   supportPlatform:
     - Android
 enableCheckDataWhenUpdatePage:
-  description: null
+  description: Controls the deprecated Radon page data-validation step before `updatePage` applies new data. When enabled, renderer functions set the flag on `RadonPage` and update-page checks whether incoming data actually changed; when disabled, that equality check is skipped.
   defaultValue: 'true'
   valueType: bool
   author: DragonDragonDDD
@@ -1249,9 +1251,7 @@ enableCheckDataWhenUpdatePage:
     - HarmonyOS
     - iOS
 enableBackgroundShapeLayer:
-  description:
-    Enable iOS background manager to apply shape layer optimization. Deprecated
-    and to be removed since this optimization becomes a fixed setting.
+  description: Controls the deprecated iOS background-mask optimization that uses `CAShapeLayer` for rounded background and overflow masks. When enabled, `LynxBackgroundManager` and UI context prefer shape-layer masks; when disabled, iOS falls back to the older mask path. This optimization is effectively fixed in newer implementations.
   defaultValue: 'true'
   valueType: bool
   author: zhongyr
@@ -1260,15 +1260,13 @@ enableBackgroundShapeLayer:
   supportPlatform:
     - iOS
 compileRender:
-  description: null
+  description: Controls the deprecated compile-render component ownership fix inside Radon components. When enabled, `RadonComponent` also rewrites plug subtrees during component reassignment; when disabled, that extra compile-render plug adjustment is skipped.
   defaultValue: 'false'
   valueType: bool
   author: DragonDragonDDD
   deprecated: '3.5'
 enableTextLanguageAlignment:
-  description:
-    Enable a more accurate text alignment judgment method, but it will
-    increase the time taken for text layout.
+  description: Controls whether iOS rich text chooses natural alignment using the text language aware algorithm. When enabled, attributed text applies language-aware natural alignment; when disabled, it keeps the older alignment heuristic.
   defaultValue: 'false'
   valueType: bool
   author: Randycn
@@ -1276,7 +1274,7 @@ enableTextLanguageAlignment:
   supportPlatform:
     - iOS
 enableXTextLayoutReused:
-  description: Whether enable x-text layout reused.
+  description: Controls whether iOS x-text nodes reuse a prepared text layout model instead of rebuilding it for each measure. When enabled, BDX text nodes create and reuse a text model during layout; when disabled, each measure recomputes layout data.
   defaultValue: 'false'
   valueType: bool
   author: Randycn
@@ -1284,9 +1282,7 @@ enableXTextLayoutReused:
   supportPlatform:
     - iOS
 enableRemoveComponentExtraData:
-  description:
-    If this flag is true, remove the globalProps & systemInfo from component
-    data for efficiency.
+  description: Controls whether component data strips `__globalProps` and `SystemInfo` before component render and updates. When enabled, decoder and runtime omit those extra values from component data for `RadonPage` and `RadonComponent`; when disabled, components keep the older extra-data payload.
   defaultValue: 'false'
   valueType: bool
   author: nhsprite
@@ -1296,7 +1292,7 @@ enableRemoveComponentExtraData:
     - HarmonyOS
     - iOS
 enableExposureUIMargin:
-  description: Enable exposure-ui-margin-* properties to take effect.
+  description: Controls whether exposure-ui-margin properties expand the area used for exposure calculation. When enabled, exposure detection uses the adjusted rectangle with UI margins; when disabled, exposure checks use the raw UI bounds.
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
@@ -1305,7 +1301,7 @@ enableExposureUIMargin:
     - Android
     - iOS
 enableNewGesture:
-  description: if want to use gesture handler api, you need to set true
+  description: Controls whether runtime enables the new gesture arena and handler integration instead of the legacy touch-only gesture path. When enabled, platform UI owners initialize new gesture handlers and Radon or Fiber gesture updates take the new path; when disabled, scrolling and touch handling keep the legacy behavior.
   defaultValue: 'false'
   valueType: bool
   author: AdrianLCA
@@ -1315,7 +1311,7 @@ enableNewGesture:
     - HarmonyOS
     - iOS
 enablePlatformGesture:
-  description: Enable shadow platform gesture to handle gesture conflict.
+  description: Controls whether Lynx sets up the platform-gesture bridge for gesture-conflict handling. When enabled, the event handler installs custom platform gestures and delegates; when disabled, that platform-gesture layer is removed.
   defaultValue: 'false'
   valueType: bool
   since: '3.6'
@@ -1324,7 +1320,7 @@ enablePlatformGesture:
     - Android
     - iOS
 enableHarmonyNewOverlay:
-  description: Enable harmony new overlay based overlayManager to handle events pass through.
+  description: Controls whether Harmony overlay components use the newer overlayManager-based overlay path. When enabled, Harmony overlays are shown and removed through overlayManager so pass-through event handling can work; when disabled, overlays keep the legacy path.
   defaultValue: 'false'
   valueType: bool
   since: '3.6'
@@ -1332,7 +1328,7 @@ enableHarmonyNewOverlay:
   supportPlatform:
     - HarmonyOS
 enableCheckLocalImage:
-  description: Determine whether redirection is needed for local image resources.
+  description: Controls whether Android image loading checks local-resource URLs before applying redirect handling. When enabled, page config forwards the local-image check flag to Android image code so local resources can choose the correct redirect path; when disabled, that extra local-resource check is bypassed.
   defaultValue: 'true'
   valueType: bool
   author: liubb0516
@@ -1340,7 +1336,7 @@ enableCheckLocalImage:
   supportPlatform:
     - Android
 enableAsyncRequestImage:
-  description: If true, supports initiating image requests in asynchronous threads.
+  description: Controls whether Android page config exposes the async image-request scheduling flag to `LynxContext`. When enabled, platform image code can start requests from an async worker path; when disabled, image requests keep the normal request-start flow.
   defaultValue: 'false'
   valueType: bool
   author: liubb0516
@@ -1348,9 +1344,7 @@ enableAsyncRequestImage:
   supportPlatform:
     - Android
 enableComponentNullProp:
-  description:
-    Support component can be passed null props, null props only supported
-    in LepusNG now. Open this switch to support lepus use null prop.
+  description: Controls whether LepusNG component props preserve explicit `null` values instead of dropping them during property application. When enabled, page proxy and `RadonComponent` allow `null` props through the LepusNG component path; when disabled, component props keep the older non-null-only behavior.
   defaultValue: 'false'
   valueType: bool
   author: nhsprite
@@ -1371,9 +1365,7 @@ enableCascadePseudo:
     - HarmonyOS
     - iOS
 autoExpose:
-  description:
-    if this flag is true, onShow/onHide will be automatically triggered
-    by attachToView/detachFromWindow calls
+  description: Controls whether page attach and detach automatically drive page-level `onShow` and `onHide` exposure lifecycle. When enabled, platform template renders trigger show or hide during `attachToView` and `detachFromWindow`; when disabled, those lifecycle callbacks only run through explicit exposure flows.
   defaultValue: 'true'
   valueType: bool
   nameAs:
@@ -1395,7 +1387,7 @@ disableQuickTracingGC:
     - HarmonyOS
     - iOS
 fixCSSImportRuleOrder:
-  description: null
+  description: Controls the deprecated CSS import-flattening order used when the binary reader expands `@import` dependencies. When enabled, `CSSStyleSheetManager::FlatDependentCSS()` preserves the newer forward import order; when disabled, imported sheets are flattened in the older reverse order.
   defaultValue: 'true'
   valueType: bool
   author: linxs0211
@@ -1406,7 +1398,7 @@ fixCSSImportRuleOrder:
     - HarmonyOS
     - iOS
 enableReloadLifecycle:
-  description: Enable LynxUI onNodeReload lifecycle.
+  description: Controls whether reload patching triggers the LynxUI onNodeReload lifecycle on affected elements. When enabled, refresh patching walks reloaded elements and calls onNodeReload; when disabled, reload updates skip that lifecycle callback.
   defaultValue: 'false'
   valueType: bool
   author: nhsprite
@@ -1416,7 +1408,7 @@ enableReloadLifecycle:
     - HarmonyOS
     - iOS
 enableA11y:
-  description: Enable Android A11y
+  description: Controls whether Android turns on the helper-based Lynx accessibility path for the page. When enabled, LynxAccessibilityWrapper initializes the accessibility helper and a11y-id based lookup path; when disabled, runtime falls back to the default or delegate-based accessibility behavior.
   defaultValue: 'false'
   valueType: bool
   author: DwwWxx
@@ -1424,7 +1416,7 @@ enableA11y:
   supportPlatform:
     - Android
 enableA11yIDMutationObserver:
-  description: Enable MutationObserver for accessibility.
+  description: Controls the deprecated accessibility mutation-observer path for accessibility-id changes. When enabled, Android and iOS accessibility wrappers watch node mutations and refresh accessibility state when relevant ids or structure change; when disabled, those mutation observers are not installed.
   defaultValue: 'false'
   valueType: bool
   author: MoonfaceX
@@ -1433,9 +1425,7 @@ enableA11yIDMutationObserver:
   since: '2.18'
   deprecated: '3.5'
 enableCheckExposureOptimize:
-  description:
-    Enable exposure detection optimization so that exposure detection is
-    not performed when the page is static.
+  description: Controls whether iOS exposure detection skips repeated checks while the page stays static. When enabled, the exposure observer returns early until UI movement marks the page dirty again; when disabled, exposure checks continue on the normal cadence.
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
@@ -1443,9 +1433,7 @@ enableCheckExposureOptimize:
   supportPlatform:
     - iOS
 enableDisexposureWhenLynxHidden:
-  description:
-    Enables the disexposure event to fire when LynxView is in the hidden
-    state.
+  description: Controls whether Android sends `disexposure` events when `LynxView` becomes hidden without leaving the window. When enabled, `LynxObserverManager` and `UIExposure` emit `disexposure` for views hidden by visibility changes; when disabled, hiding the page does not force that extra event.
   defaultValue: 'true'
   valueType: bool
   author: rAY-ooo
@@ -1453,7 +1441,7 @@ enableDisexposureWhenLynxHidden:
   supportPlatform:
     - Android
 enableExposureWhenLayout:
-  description: Enable exposure check when LynxView is layoutRequest
+  description: Controls whether Android runs exposure checks when LynxView requests layout. When enabled, layout requests can trigger exposure detection; when disabled, exposure checks wait for the normal exposure flow.
   defaultValue: 'false'
   valueType: bool
   author: ShouruiSong
@@ -1461,9 +1449,7 @@ enableExposureWhenLayout:
   supportPlatform:
     - Android
 enableExposureWhenReload:
-  description:
-    Enables exposure and disexposure events to be triggered when reloading
-    the Lynx page.
+  description: Controls whether reload flows emit exposure or disexposure transitions for the old and new page state. When enabled, Android, iOS, and Harmony reload paths send `disexposure` before reload and can re-run exposure after reload init; when disabled, reload does not trigger that extra exposure cycle.
   defaultValue: 'false'
   valueType: bool
   syncTo: platform
@@ -1474,10 +1460,7 @@ enableExposureWhenReload:
   since: '3.5'
   author: rAY-ooo
 enableAirDetectRemovedKeysWhenUpdateData:
-  description:
-    If true, when reload template or update data with option reset_page_data,
-    the keys that do not exist in the new data but exist in the original data will
-    have their values set to undefined in TTML Strict Mode.
+  description: Controls whether TTML strict-mode reloads mark removed data keys as `undefined` during page-data reset or template reload. When enabled, renderer functions explicitly set keys missing from the new payload to `undefined`; when disabled, removed keys keep the older absence-handling behavior.
   defaultValue: 'false'
   valueType: bool
   author: liulixplor
@@ -1488,7 +1471,7 @@ enableAirDetectRemovedKeysWhenUpdateData:
     - iOS
   export: false
 enableJSDataProcessor:
-  description: Enable data processor on JS thread
+  description: Controls whether Fiber pages run the data-processor flow on the JS thread instead of completing it during normal decode. When enabled, TemplateAssembler posts JS earlier and processes template data through the JS-thread processor path; when disabled, data processing stays on the regular decode side.
   defaultValue: 'false'
   valueType: bool
   author: ShouruiSong
@@ -1502,7 +1485,7 @@ enableJSDataProcessor:
     - HarmonyOS
     - iOS
 enableJsBindingApiThrowException:
-  description: Enable js binding api throw exception
+  description: Controls whether JS binding APIs surface binding failures as JS exceptions. When enabled, the runtime bundle turns on throw-exception behavior for JSI bindings; when disabled, bindings keep the older non-throwing behavior.
   defaultValue: 'false'
   valueType: bool
   versionOverrides:
@@ -1515,7 +1498,7 @@ enableJsBindingApiThrowException:
     - HarmonyOS
     - iOS
 enableICU:
-  description: Enable Bind PRIMJS-ICU
+  description: Controls whether the runtime binds PRIMJS ICU support into the JS environment. When enabled, TemplateEntry and BTS runtime install ICU bindings when the context supports them; when disabled, the JS environment runs without those ICU bindings.
   defaultValue: 'false'
   valueType: bool
   syncTo:
@@ -1531,7 +1514,7 @@ enableICU:
     - Android
     - iOS
 enableQueryComponentSync:
-  description: Enable query component sync in background runtime
+  description: Controls whether background runtime can query dynamic components synchronously. When enabled, page config passes a synchronous-query flag into TemplateEntryHolder and JS bundle holders; when disabled, component queries stay asynchronous.
   defaultValue: 'false'
   valueType: bool
   author: nhsprite
@@ -1587,7 +1570,7 @@ enableFixedNew:
     - HarmonyOS
     - iOS
 enableCSSInheritance:
-  description: Enable CSS inheritance
+  description: Controls whether the style system applies the CSS inheritance path during style propagation. When enabled, Fiber style propagation and inherited-property updates respect CSS inheritance; when disabled, inherited style propagation stays off.
   defaultValue: 'false'
   valueType: bool
   bindMemberTo: css_configs_.enable_css_inheritance_
@@ -1617,9 +1600,7 @@ CSSAlignWithLegacyW3C:
     - HarmonyOS
     - iOS
 unifyVWVHBehavior:
-  description:
-    Control whether the vw and vh units dynamically adjust with the viewport
-    in properties like font-size; enabled by default for targetSdkVersion >= 2.3
+  description: Controls whether `vw` and `vh` values use the unified viewport calculation path across layout and dynamic style updates. When enabled, Fiber elements and dynamic CSS updates recompute viewport units from the current viewport consistently; when disabled, some properties keep the older behavior. From target SDK 2.3 onward, the default override is enabled.
   defaultValue: 'false'
   valueType: bool
   versionOverrides:
@@ -1658,9 +1639,7 @@ fontScaleEffectiveOnlyOnSp:
     - HarmonyOS
     - iOS
 enableNewIntersectionObserver:
-  description:
-    Enable the new IntersectionObserver detection logic so that observe
-    can be triggered normally without binding to scroll events.
+  description: Controls whether intersection observers use the newer detection logic instead of the older scroll-bound path. When enabled, intersection managers add observers to the dedicated run loop and observe without depending on scroll-event binding; when disabled, runtime keeps the legacy observer logic. When unset, settings can still decide the flag.
   defaultValue: 'true'
   valueType: bool
   readSettings: true
@@ -1670,7 +1649,7 @@ enableNewIntersectionObserver:
     - Android
     - iOS
 forceCalcNewStyle:
-  description: null
+  description: Controls the deprecated page-level fallback for forcing Radon style recalculation on updates. When the newer compiler option is unset, manual config decode still reads this flag and `RadonNode` can recalculate styles instead of using the incremental style-invalidation path.
   defaultValue: 'true'
   valueType: bool
   codeGen:
@@ -1693,7 +1672,7 @@ enableParseIntFlex:
     - HarmonyOS
     - iOS
 enableGridPlacementShorthands:
-  description: Enable grid-column and grid-row CSS shorthand properties parsing.
+  description: Controls whether the CSS parser accepts grid-column and grid-row shorthand syntax. When enabled, grid shorthand handlers parse placement shorthands into style values; when disabled, those shorthand declarations are rejected.
   defaultValue: 'false'
   valueType: bool
   author: renzhongyue
@@ -1709,9 +1688,7 @@ enableFlexBasisZeroPercent:
     - HarmonyOS
     - iOS
 includeFontPadding:
-  description:
-    Control the top and bottom padding of text on Android, which affects
-    the text's height and vertical centering effect.
+  description: Controls whether Android text measurement includes the font's top and bottom padding. When enabled, page config forwards `includeFontPadding` to text shadow nodes and text height or vertical centering includes font padding; when disabled, text metrics exclude that padding. When omitted, Android falls back to the historical SDK-based default (`true` for 2.4 <= target SDK < 2.9).
   defaultValue: 'false'
   valueType: bool
   codeGen:
@@ -1721,7 +1698,7 @@ includeFontPadding:
   supportPlatform:
     - Android
 removeDescendantSelectorScope:
-  description: If false, descendant selector only works in component scope.
+  description: Controls whether descendant selectors are allowed to cross component scope boundaries during style resolution. When enabled, `AttributeHolder` and `StyleResolver` stop constraining descendant selectors to the current component scope; when disabled, descendant selectors only match inside the component scope. In Fiber, manual decode keeps the default off unless explicitly set.
   defaultValue: 'true'
   valueType: bool
   syncTo:
@@ -1737,9 +1714,7 @@ removeDescendantSelectorScope:
     - HarmonyOS
     - iOS
 enableMultiTouch:
-  description:
-    Enable support multi-finger events so that event parameters can contain
-    information about multiple fingers.
+  description: Controls whether Lynx touch events carry multi-finger state instead of collapsing to single-touch behavior. When enabled, touch events include information for multiple active fingers; when disabled, runtime keeps the single-touch event model.
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
@@ -1750,9 +1725,7 @@ enableMultiTouch:
     - HarmonyOS
     - iOS
 enableMultiTouchParamsCompatible:
-  description:
-    Enable the parameters of multi-finger events compatible with single-finger
-    events
+  description: Controls how multi-touch events populate touches and changedTouches when compatibility with single-touch payloads is needed. When enabled, multi-touch cancel and payload generation keep single-touch compatible fields; when disabled, multi-touch events use the newer native multi-touch parameter shape.
   defaultValue: 'false'
   valueType: bool
   codeGen:
@@ -1766,7 +1739,7 @@ enableMultiTouchParamsCompatible:
     - HarmonyOS
     - iOS
 enableHarmonyVisibleAreaChangeForExposure:
-  description: Enable Harmony to detect exposure with visible area change event.
+  description: Controls whether Harmony exposure detection also tracks the root visible-area-change signal. When enabled, Harmony root visibility depends on the visible-area-change event before exposure is reported; when disabled, exposure only uses the normal visibility checks.
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
@@ -1774,7 +1747,7 @@ enableHarmonyVisibleAreaChangeForExposure:
   supportPlatform:
     - HarmonyOS
 enableTextGradientOpt:
-  description: Enable text gradient optimization for iOS.
+  description: Controls whether iOS text rendering turns on the gradient optimization path. When enabled, LynxUIText records the experiment flag and uses the optimized gradient text path; when disabled, text gradients stay on the legacy rendering flow. When unset, it falls back to external settings or native config.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readSettings: false
@@ -1786,9 +1759,7 @@ enableTextGradientOpt:
   supportPlatform:
     - iOS
 enableEventHandleRefactor:
-  description:
-    Enable new event processing logic to support dynamic registration of
-    event listeners, interception of events, etc.
+  description: Controls whether runtime uses the refactored event-listener and dispatch path. When enabled, element decode, Radon event processing, and touch dispatch use the newer listener registration flow that supports rebinding and interception; when disabled, runtime stays on the legacy event hookup path. If the field is omitted, decoder falls back to the settings source.
   defaultValue: 'false'
   valueType: bool
   since: '3.5'
@@ -1799,7 +1770,7 @@ enableEventHandleRefactor:
     - HarmonyOS
     - iOS
 enableReuseLoadScriptExports:
-  description: Enable reuse loadScript's result.
+  description: Controls whether `loadScript` can reuse cached module exports for the same template URL and path. When enabled, TemplateEntry passes the flag into the JS app runtime and repeated `loadScript` calls can reuse prior exports; when disabled, the cache key is not created and each load runs fresh.
   defaultValue: 'false'
   valueType: bool
   syncTo:
@@ -1811,7 +1782,7 @@ enableReuseLoadScriptExports:
     - HarmonyOS
     - iOS
 enableCSSInlineVariables:
-  description: Enable CSS inline variables.
+  description: Controls whether runtime treats inline style values as CSS variables and resolves them through the inline-variable path. When enabled, decoded page config turns on inline CSS variable support for runtime CSS readers and style resolution; when disabled, inline style values are handled as ordinary static styles. If the field is omitted, the setting can still be driven by native or settings fallback.
   defaultValue: 'false'
   valueType: bool
   readSettings: true
@@ -1824,7 +1795,7 @@ enableCSSInlineVariables:
   author: 'pilipala195'
   since: '3.6'
 enableMTSPreExecute:
-  description: Enable MTS VM pre execute code.
+  description: Controls whether pooled LepusNG MTS runtimes pre-execute their context before the page claims them. When enabled, MTSRuntimePool initializes debug tooling, deserializes the bundle, and calls `TryExecute()` during pool fill; when disabled, pooled contexts wait until normal runtime use to execute.
   defaultValue: 'false'
   valueType: bool
   author: 'lybvinci'
@@ -1864,7 +1835,7 @@ enableTransformedTouchPosition:
     - Android
     - HarmonyOS
 enableBatchLayoutTaskWithSyncLayout:
-  description: Enable batch layout task with sync layout.
+  description: Controls whether Fiber elements batch layout tasks and flush them together during sync layout. When enabled, layout work is enqueued on the element context delegate and flushed at sync-layout boundaries; when disabled, layout tasks run immediately. When omitted, it falls back to settings or native config.
   defaultValue: 'false'
   valueType: bool
   readSettings: true
@@ -1876,7 +1847,7 @@ enableBatchLayoutTaskWithSyncLayout:
     - HarmonyOS
     - iOS
 enableiOSAnimationLayerForExposure:
-  description: Control whether to consider animation layers in position calculation during exposure detection.
+  description: Controls whether iOS exposure position calculations include animation-layer geometry instead of only the base view frame. When enabled, exposure detection measures visibility using animation-layer positions; when disabled, it uses the normal layer position.
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
@@ -1904,7 +1875,7 @@ alignMouseEventWithW3C:
     - macOS
     - Windows
 enableDisexposureWhenBackground:
-  description: Enables the disexposure event to fire when LynxView is in the background.
+  description: Controls whether iOS sends `disexposure` events when the Lynx view enters the background. When enabled, `LynxUIExposure` emits `disexposure` during background transitions; when disabled, backgrounding does not trigger that extra event.
   defaultValue: 'true'
   valueType: bool
   author: rAY-ooo
@@ -1912,7 +1883,7 @@ enableDisexposureWhenBackground:
   supportPlatform:
     - iOS
 enableAnimationForwardUpdatePreservation:
-  description: Enable animation forward update preservation
+  description: Controls whether Fiber keeps animation override styles while forward updates apply new styles. When enabled, animation fill or override styles are preserved across forward updates; when disabled, forward updates can drop those animation-preserved styles. When omitted, it falls back to settings or native config.
   defaultValue: 'false'
   valueType: bool
   readSettings: true
@@ -1924,7 +1895,7 @@ enableAnimationForwardUpdatePreservation:
     - HarmonyOS
     - iOS
 enableNewStylingPipeline:
-  description: Enable the new styling pipeline for better css and animation support.
+  description: Controls whether Fiber elements use the new styling resolution pipeline instead of the legacy style resolver path. When enabled, ElementManager turns on the new styling flag and FiberElement switches to `ResolveCSSStylesNewPipeline`; when disabled, style resolution stays on the existing pipeline. If the field is omitted, native or settings fallback can still decide the flag.
   defaultValue: 'false'
   valueType: bool
   readSettings: true
@@ -1936,7 +1907,7 @@ enableNewStylingPipeline:
     - HarmonyOS
     - iOS
 enableDispatchCustomEventForUI:
-  description: Enables the LynxUI dispatchEvent interface to be triggered when a CustomEvent is triggered.
+  description: Controls whether custom events can be dispatched directly to a `LynxUI` target instead of only bubbling through the page delegate. When enabled, iOS event dispatch resolves the target UI by sign and calls `dispatchEvent:` on it; when disabled, custom events stay on the normal page-level callback path.
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
