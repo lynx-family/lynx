@@ -20,7 +20,7 @@ namespace tasm {
 // Utils class for decode Lynx Config.
 class LynxBinaryConfigDecoder {
  public:
-  LynxBinaryConfigDecoder(const tasm::CompileOptions& compile_option,
+  LynxBinaryConfigDecoder(tasm::CompileOptions& compile_option,
                           const std::string& target_sdk_version,
                           bool is_lepusng_binary, bool enable_css_parser)
       : compile_options_(compile_option),
@@ -52,7 +52,7 @@ class LynxBinaryConfigDecoder {
 
   void UpdateCSSConfigs(const std::shared_ptr<PageConfig>& page_config);
 
-  tasm::CompileOptions compile_options_;
+  tasm::CompileOptions& compile_options_;
   std::string target_sdk_version_;
   bool is_lepusng_binary_{false};
   bool enable_css_parser_{false};
