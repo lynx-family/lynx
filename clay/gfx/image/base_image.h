@@ -60,8 +60,8 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
   bool IsMipmapped() const { return mipmapped_; }
 
   std::unique_ptr<BaseImageInstance> NewInstance();
-  void OnInstanceCreated(BaseImageInstance* instance);
-  void OnInstanceDestroyed(BaseImageInstance* instance);
+  virtual void OnInstanceCreated(BaseImageInstance* instance);
+  virtual void OnInstanceDestroyed(BaseImageInstance* instance);
 
  protected:
   fml::WeakPtr<ImageFetcher> image_fetcher_;
