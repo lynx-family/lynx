@@ -2394,8 +2394,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       // only valid bundles from lazy bundle templates will be passed to the shell
       self->shell_->RegisterLazyBundle(lynx::base::SafeStringConvert([url UTF8String]),
                                        *shared_raw_bundle);
+    } else {
+      errorMsg = @"input bundle is not from a valid template bundle.";
     }
   }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE, "url", [url UTF8String],
+              "error", [errorMsg UTF8String]);
   if (errorMsg != nil) {
     LynxError* lynxError = [LynxError lynxErrorWithCode:ECLynxLazyBundleLoadBadBundle
                                                 message:errorMsg];

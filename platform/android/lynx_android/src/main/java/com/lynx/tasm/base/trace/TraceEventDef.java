@@ -88,6 +88,8 @@ public class TraceEventDef {
       "TemplateRender.renderTemplateBundle";
   public static final String TEMPLATE_RENDER_FALLBACK_NEW_ENGINE =
       "TemplateRender.fallbackNewEngine";
+  public static final String TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE =
+      "TemplateRender.registerLazyBundle";
   public static final String CLIENT_REPORT_COMPONENT_INFO = "Client.onReportComponentInfo";
   public static final String CLIENT_ON_PAGE_START = "Client.onPageStart";
   public static final String CLIENT_ON_LOAD_SUCCESS = "Client.onLoadSuccess";

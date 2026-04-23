@@ -10459,6 +10459,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_TRY_REUSE_ENGINE TEMPLATE_RENDER_TRY_REUSE_ENGINE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_RENDER_TEMPLATE_BUNDLE TEMPLATE_RENDER_RENDER_TEMPLATE_BUNDLE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_FALLBACK_NEW_ENGINE TEMPLATE_RENDER_FALLBACK_NEW_ENGINE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_REPORT_COMPONENT_INFO CLIENT_REPORT_COMPONENT_INFO;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_ON_PAGE_START CLIENT_ON_PAGE_START;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_ON_LOAD_SUCCESS CLIENT_ON_LOAD_SUCCESS;

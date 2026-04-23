@@ -3774,6 +3774,15 @@ public class LynxTemplateRender
                    mNativePtr, mNativeLifecycle, url, bundle.getNativePtr())) {
       errorMsg = "input bundle is not from a valid template bundle.";
     }
+
+    if (TraceEvent.isTracingStarted()) {
+      Map<String, String> traceProps = new HashMap<>();
+      traceProps.put("url", String.valueOf(url));
+      traceProps.put("error", errorMsg);
+      TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT,
+          TraceEventDef.TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE, traceProps);
+    }
+
     if (errorMsg != null) {
       LynxError lynxError = new LynxError(LynxSubErrorCode.E_LAZY_BUNDLE_LOAD_BAD_BUNDLE, errorMsg);
       lynxError.setRootCause(originCause);
