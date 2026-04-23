@@ -98,16 +98,19 @@ bool EmbedderTaskRunner::PostTask(uint64_t baton) {
 
   {
     std::scoped_lock lock(tasks_mutex_);
-    if (thread_host_destroyed_) {
-      FML_LOG(ERROR) << "Embedder attempted to post a task to a destroyed "
-                        "thread host. Maybe leaked.";
-      return false;
-    }
     const auto& found = pending_tasks_.find(baton);
     if (found == pending_tasks_.end()) {
       FML_LOG(ERROR) << "Embedder attempted to post an unknown task.";
       return false;
     }
+
+    if (thread_host_destroyed_) {
+      FML_LOG(ERROR) << "Embedder attempted to post a task to a destroyed "
+                        "thread host. Maybe leaked.";
+      pending_tasks_.erase(found);
+      return false;
+    }
+
     task = std::move(found->second.second);
     pending_tasks_.erase(found);
 
