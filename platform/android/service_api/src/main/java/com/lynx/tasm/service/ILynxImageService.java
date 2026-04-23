@@ -209,4 +209,16 @@ public interface ILynxImageService extends IServiceProvider {
    * unavailable), this call becomes a no-op.
    */
   void setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri);
+
+  /**
+   * Set the decode region for this image request.
+   *
+   * <p>The builder is passed as {@link Object} to avoid directly depending on Fresco classes in
+   * service_api.
+   *
+   * @param builder The image request builder object.
+   * @param regionToDecode The region to decode in source pixel coordinates, or null to clear.
+   */
+  void setImageDecodeRegion(
+      @NonNull Object builder, @Nullable android.graphics.Rect regionToDecode);
 }

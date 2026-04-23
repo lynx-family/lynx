@@ -18,12 +18,12 @@
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIImage.h>
 #import <Lynx/LynxUIUnitUtils.h>
 #import <Lynx/LynxUnitUtils.h>
 #import "LynxConvertUtils.h"
 #import "LynxTraceEventDef.h"
-#import "LynxUI+Private.h"
 
 #import <Lynx/LynxBackgroundUtils.h>
 #import <Lynx/LynxView+Internal.h>
@@ -33,10 +33,10 @@
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceImageProtocol.h>
 #import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxVersion.h>
-#import "LynxUIContext+Internal.h"
 
-#import "LynxContext+Internal.h"
+#import <Lynx/LynxContext+Internal.h>
 
 typedef NS_ENUM(NSInteger, LynxResizeMode) {
   LynxResizeModeCover = UIViewContentModeScaleAspectFill,
@@ -264,6 +264,7 @@ typedef NS_ENUM(NSInteger, LynxImagePlayState) {
 @property(nonatomic, assign) BOOL enableImageLoadCallback;
 @property(nonatomic, assign) LynxImagePlayState playState;
 @property(nonatomic, assign) BOOL keepAnimPlayState;
+@property(nonatomic, assign) CGRect regionToDecode;
 @end
 
 @implementation LynxUIImage {
@@ -299,6 +300,7 @@ LYNX_REGISTER_UI("image")
   _enableReportInfo = false;
   _playState = LynxImagePlayStateDefault;
   _keepAnimPlayState = NO;
+  _regionToDecode = CGRectNull;
 }
 
 - (void)dealloc {
@@ -882,26 +884,32 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   requestUrl.lastRequestUrl = url;
   [self initResourceLoaderInformation];
   [requestUrl initResourceInformation];
+  NSMutableDictionary<NSString*, id>* contextInfo = [@{
+    LynxImageFetcherContextKeyUI : self,
+    LynxImageFetcherContextKeyDownsampling : @(downsampling),
+    LynxImageRequestOptions : [NSNumber numberWithLong:_requestOptions],
+    LynxImageRequestContextModuleExtraData : self.context.lynxModuleExtraData ?: @"",
+    LynxImageSkipRedirection : @(_skipRedirection),
+    LynxImageFixNewImageDownsampling : @(self.context.fixNewImageDownSampling),
+    LynxImageAdditionalCustomInfo : self.additional_custom_info ?: [NSNull null],
+    LynxImagePlaceholderHashConfig : self.placeholder_hash_config ?: [NSNull null],
+    LynxImageEnableSR : @(_enableImageSR),
+    LynxImageCacheChoice : self.cache_choice ?: @"",
+    LynxImageRequestPriority : self.request_priority ?: @"",
+    LynxImageSRScale : @(_superResolutionScale),
+    LynxImageCancelRequest : @(_enableImageCancelRequest),
+    LynxImagePreloadAllFrames : @(NO),
+    LynxImageEnableFetchUIImage : @(_enableFetchUIImage),
+  } mutableCopy];
+
+  if (requestUrl.type == LynxImageRequestSrc && !CGRectIsEmpty(_regionToDecode)) {
+    contextInfo[LynxImageRegionToDecode] = [NSValue valueWithCGRect:_regionToDecode];
+  }
+
   _cancelBlocks[@(requestUrl.type)] = [[LynxImageLoader sharedInstance]
       loadImageFromLynxURL:requestUrl
                       size:size
-               contextInfo:@{
-                 LynxImageFetcherContextKeyUI : self,
-                 LynxImageFetcherContextKeyDownsampling : @(downsampling),
-                 LynxImageRequestOptions : [NSNumber numberWithLong:_requestOptions],
-                 LynxImageRequestContextModuleExtraData : self.context.lynxModuleExtraData ?: @"",
-                 LynxImageSkipRedirection : @(_skipRedirection),
-                 LynxImageFixNewImageDownsampling : @(self.context.fixNewImageDownSampling),
-                 LynxImageAdditionalCustomInfo : self.additional_custom_info ?: [NSNull null],
-                 LynxImagePlaceholderHashConfig : self.placeholder_hash_config ?: [NSNull null],
-                 LynxImageEnableSR : @(_enableImageSR),
-                 LynxImageCacheChoice : self.cache_choice ?: @"",
-                 LynxImageRequestPriority : self.request_priority ?: @"",
-                 LynxImageSRScale : @(_superResolutionScale),
-                 LynxImageCancelRequest : @(_enableImageCancelRequest),
-                 LynxImagePreloadAllFrames : @(NO),
-                 LynxImageEnableFetchUIImage : @(_enableFetchUIImage),
-               }
+               contextInfo:contextInfo
                 processors:processors
               imageFetcher:[self shouldUseNewImage] ? nil : self.context.imageFetcher
                LynxUIImage:self
@@ -1730,6 +1738,44 @@ LYNX_PROP_SETTER("ios-keep-anim-play-state", setKeepImagePlayState, BOOL) {
     value = NO;
   }
   _keepAnimPlayState = value;
+}
+
+/**
+ * @name: region-to-decode
+ * @description: Sets the region of the image to decode and display. By specifying a decode
+ *               region, the image pipeline can optimize memory usage and decoding time by only
+ *               processing the required portion of the image. The region is a map containing
+ *               the parameters: "x", "y", "width", and "height".
+ * @category: different
+ * @standardAction: keep
+ * @supportVersion: 3.9
+ **/
+LYNX_PROP_SETTER("region-to-decode", setRegionToDecode, NSDictionary*) {
+  [self markAsDirty];
+
+  CGRect newRect = CGRectNull;
+  if (!requestReset && [value isKindOfClass:[NSDictionary class]]) {
+    id x = value[@"x"];
+    id y = value[@"y"];
+    id w = value[@"width"];
+    id h = value[@"height"];
+    if ([x isKindOfClass:[NSNumber class]] && [y isKindOfClass:[NSNumber class]] &&
+        [w isKindOfClass:[NSNumber class]] && [h isKindOfClass:[NSNumber class]]) {
+      CGFloat fx = [(NSNumber*)x doubleValue];
+      CGFloat fy = [(NSNumber*)y doubleValue];
+      CGFloat fw = [(NSNumber*)w doubleValue];
+      CGFloat fh = [(NSNumber*)h doubleValue];
+      if (fx >= 0 && fy >= 0 && fw > 0 && fh > 0) {
+        newRect = CGRectMake(fx, fy, fw, fh);
+      }
+    }
+  }
+
+  if (!CGRectEqualToRect(_regionToDecode, newRect)) {
+    _regionToDecode = newRect;
+    self.image = nil;
+    [self resetImage];
+  }
 }
 
 #pragma mark UI_Method

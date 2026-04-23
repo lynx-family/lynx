@@ -35,6 +35,7 @@ NSString* const LynxImageEnableFetchUIImage = @"LynxImageEnableFetchUIImage";
 NSString* const LynxShouldUseImageService = @"LynxShouldUseImageService";
 NSString* const LynxEnableGenericFetcher = @"LynxEnableGenericFetcher";
 NSString* const LynxLoaderInfo = @"LynxLoaderInfo";
+NSString* const LynxImageRegionToDecode = @"LynxImageRegionToDecode";
 
 BOOL LynxImageFetchherSupportsProcessor(id<LynxImageFetcher> fetcher) {
   return [fetcher respondsToSelector:@selector(loadImageWithURL:

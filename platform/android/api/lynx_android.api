@@ -2491,6 +2491,7 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public int com.lynx.tasm.service.ILynxImageService.getImageOrigin(@NonNull Object imageInfo);
   public void com.lynx.tasm.service.ILynxImageService.setImageSRSize(@NonNull Object builder, int width, int height);
   public void com.lynx.tasm.service.ILynxImageService.setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri);
+  public void com.lynx.tasm.service.ILynxImageService.setImageDecodeRegion( @NonNull Object builder, @Nullable android.graphics.Rect regionToDecode);
 }
 
 public interface com::lynx::tasm::service::ILynxImageServiceExtension {
