@@ -5,6 +5,22 @@
 import("../common/config.gni")
 import("./native_module/build.gni")
 
+source_set("resource_loader_embedder") {
+  sources = [
+    "resource_loader_embedder.cc",
+    "resource_loader_embedder.h",
+  ]
+  deps = [
+    "../fml:fml",
+    "../ui:ui",
+  ]
+  public_configs = [
+    "../../clay:config",
+    "../../core:lynx_public_config",
+    "../../platform/embedder:public_api",
+  ]
+}
+
 source_set("lynx_adaptor") {
   sources = [
     "base_def.h",
@@ -52,12 +68,11 @@ source_set("lynx_adaptor") {
     } else {
       sources += [ "native_platform_view.cc" ]
     }
-    sources += [
-      "resource_loader_embedder.cc",
-      "resource_loader_embedder.h",
-    ]
     include_dirs += [ "../../base/include/value" ]
-    public_deps += [ "../../base/src:base_values" ]
+    public_deps += [
+      ":resource_loader_embedder",
+      "../../base/src:base_values",
+    ]
   }
 
   defines = []

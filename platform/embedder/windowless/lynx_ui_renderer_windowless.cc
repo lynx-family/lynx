@@ -87,8 +87,10 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateClay>(
       view_context, std::move(module_factory));
 
+#if defined(OS_WIN) || defined(OS_MAC)
   clay::NativeViewServiceDesktop::SetViewFactories(
       view_context, std::move(builder->native_view_creators));
+#endif
 
   if (builder->generic_fetcher) {
     auto fetcher_holder =

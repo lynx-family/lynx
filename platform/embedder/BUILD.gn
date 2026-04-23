@@ -32,6 +32,12 @@ config("config") {
   }
 }
 
+lynx_core_source_set("lynx_runtime_lifecycle_observer") {
+  sources = [ "lynx_runtime_lifecycle_observer.cc" ]
+  defines = [ "NAPI_CPP_CUSTOM_NAMESPACE=weak_node_api" ]
+  public_configs = [ "../../third_party/weak-node-api:weak_node_api_config" ]
+}
+
 lynx_core_source_set("embedder") {
   sources = [
     "frame_timing_listener_impl.cc",
@@ -43,7 +49,6 @@ lynx_core_source_set("embedder") {
     "lynx_load_meta_priv.h",
     "lynx_log.cc",
     "lynx_native_view.cc",
-    "lynx_runtime_lifecycle_observer.cc",
     "lynx_runtime_lifecycle_observer_priv.h",
     "lynx_template_bundle.cc",
     "lynx_template_bundle_priv.h",
@@ -63,9 +68,13 @@ lynx_core_source_set("embedder") {
     "lynx_vsync_monitor.cc",
     "lynx_vsync_monitor_priv.h",
     "memory/lynx_memory.cc",
-    "native_view/lynx_texture_view.cc",
-    "native_view/lynx_texture_view.h",
   ]
+  if (is_win || is_mac) {
+    sources += [
+      "native_view/lynx_texture_view.cc",
+      "native_view/lynx_texture_view.h",
+    ]
+  }
 
   deps = [
     ":public_headers",
@@ -76,6 +85,7 @@ lynx_core_source_set("embedder") {
   ]
   if (enable_napi_binding) {
     public_deps = [
+      ":lynx_runtime_lifecycle_observer",
       "../../third_party/napi:weak_node_api_host",
       "./module:module",
     ]
@@ -94,7 +104,7 @@ lynx_core_source_set("embedder") {
     ":config",
   ]
 
-  if (!enable_unittests) {
+  if (!enable_unittests && !is_android) {
     sources += [
       "sysinfo_embedder.cc",
       "vsync_monitor_fallback.cc",

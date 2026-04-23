@@ -29,9 +29,5 @@ std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(
     lynx_view_builder_t* builder) {
   return std::make_unique<MockLynxUIRenderer>(builder);
 }
-std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWindowlessUIRenderer(
-    lynx_view_builder_t* builder) {
-  return std::make_unique<MockLynxUIRenderer>(builder);
-}
 }  // namespace embedder
 }  // namespace lynx

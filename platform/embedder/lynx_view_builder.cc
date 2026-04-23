@@ -9,12 +9,14 @@
 LYNX_EXTERN_C lynx_view_builder_t* lynx_view_builder_create() {
   auto builder = new lynx_view_builder_t();
 
+#if defined(OS_WIN) || defined(OS_MAC)
   lynx_view_builder_register_native_view(
       builder, "x-texture-view",
       [](void* opaque) -> lynx_native_view_t* {
         return (new LynxTextureView(opaque))->native_view();
       },
       nullptr);
+#endif
   return builder;
 }
 
