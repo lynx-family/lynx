@@ -33,6 +33,7 @@
 @property (nonatomic, assign) CGFloat avoidKeyboardSpacingInLynxView;
 @property (nonatomic, assign) CGFloat keyboardHeight;
 @property (nonatomic, assign) CGFloat avoidKeyboardDist;
+@property (nonatomic, assign) BOOL wasFocused;
 @property (nonatomic, assign) BOOL enableHoldKeyboard;
 @end
 
@@ -75,13 +76,22 @@
 }
 
 - (CGFloat)handleAvoidKeyboard:(BOOL)keyboardDisplayed {
-  if (self.avoidKeyboardInLynxView && self.view.isFirstResponder) {
+  if (self.avoidKeyboardInLynxView) {
     if (keyboardDisplayed) {
-      CGRect rectInRoot = [self.view convertRect:self.view.bounds toView:nil];
-      CGFloat bottomToScreen = UIScreen.mainScreen.bounds.size.height - CGRectGetMaxY(rectInRoot);
-      CGFloat gap = self.keyboardHeight - bottomToScreen + self.avoidKeyboardSpacingInLynxView;
-      if (self.avoidKeyboardDist == 0) {
-        if (gap > 0) {
+      if (self.view.isFirstResponder) {
+        CGRect rectInRoot = [self.view convertRect:self.view.bounds toView:nil];
+        CGFloat bottomToScreen = UIScreen.mainScreen.bounds.size.height - CGRectGetMaxY(rectInRoot);
+        CGFloat gap = self.keyboardHeight - bottomToScreen + self.avoidKeyboardSpacingInLynxView;
+        if (self.avoidKeyboardDist == 0) {
+          if (gap > 0) {
+            CGRect targetFrame = self.context.rootView.frame;
+            targetFrame.origin.y -= gap;
+            [UIView animateWithDuration:0.3 animations:^{
+              [self.context.rootView setFrame:targetFrame];
+            }];
+            return gap;
+          }
+        } else {
           CGRect targetFrame = self.context.rootView.frame;
           targetFrame.origin.y -= gap;
           [UIView animateWithDuration:0.3 animations:^{
@@ -89,13 +99,6 @@
           }];
           return gap;
         }
-      } else {
-        CGRect targetFrame = self.context.rootView.frame;
-        targetFrame.origin.y -= gap;
-        [UIView animateWithDuration:0.3 animations:^{
-          [self.context.rootView setFrame:targetFrame];
-        }];
-        return gap;
       }
     } else {
       if (self.avoidKeyboardDist != 0) {
@@ -112,6 +115,7 @@
 
 - (void)keyboardWillShow:(CGFloat)keyboardHeight {
   if (self.view.isFirstResponder) {
+    self.wasFocused = NO;
     self.keyboardHeight = keyboardHeight;
     self.avoidKeyboardDist = [self handleAvoidKeyboard:YES];
     [self emitEvent:@"keyboardheightchange" detail:@{@"height" : @(keyboardHeight)}];
@@ -119,10 +123,16 @@
 }
 
 - (void)keyboardWillHide {
-  if (self.view.isFirstResponder) {
-    self.avoidKeyboardDist = [self handleAvoidKeyboard:NO];
-    [self emitEvent:@"keyboardheightchange" detail:@{@"height" : @(0)}];
-  }
+  // Match the hide callback with the input that actually owned the previous
+  // avoid-keyboard offset instead of the new first responder during focus handoff.
+  // Retain self cause that `inputViewDidEndEditing` is triggered after `keyboardWillHide`
+  dispatch_async(dispatch_get_main_queue(), ^{
+    if (self.wasFocused) {
+      self.wasFocused = NO;
+      self.avoidKeyboardDist = [self handleAvoidKeyboard:NO];
+      [self emitEvent:@"keyboardheightchange" detail:@{@"height" : @(0)}];
+    }
+  });
 }
 
 - (void)onFontFaceLoad {
@@ -628,6 +638,7 @@ LYNX_UI_METHOD(setSelectionRange) {
 
 
 - (void)inputViewDidBeginEditing:(id<UITextInput>)input {
+  self.wasFocused = NO;
   [self emitEvent:@"focus" detail:@{
     @"value" : [self getText]
   }];
@@ -637,6 +648,7 @@ LYNX_UI_METHOD(setSelectionRange) {
 }
 
 - (void)inputViewDidEndEditing:(id<UITextInput>)input {
+  self.wasFocused = YES;
   [self emitEvent:@"blur" detail:@{
     @"value" : [self getText]
   }];
