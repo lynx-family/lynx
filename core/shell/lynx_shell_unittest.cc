@@ -14,6 +14,7 @@
 #include "base/include/debug/lynx_error.h"
 #include "base/include/value/base_value.h"
 #include "core/public/pub_value.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/performance/memory_monitor/memory_record.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -32,6 +33,9 @@ class LynxShellTest : public ::testing::Test {
   void SetUp() override {
     base::UIThread::Init();
     lynx::tasm::performance::MemoryMonitor::SetForceEnable(false);
+    auto& env = lynx::tasm::LynxEnv::GetInstance();
+    env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDebugEnabled, false);
+    env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDevToolEnable, false);
     facade_ = new MockNativeFacade;
 
     // FIXME(heshan): tricky, here must ensure manufactor not create thread
@@ -71,6 +75,9 @@ class LynxShellTest : public ::testing::Test {
 
     shell_ = nullptr;
     lynx::tasm::performance::MemoryMonitor::SetForceEnable(false);
+    auto& env = lynx::tasm::LynxEnv::GetInstance();
+    env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDebugEnabled, false);
+    env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDevToolEnable, false);
   }
 
   MockNativeFacade* facade_;
@@ -122,6 +129,10 @@ TEST_F(LynxShellTest, OnUpdateDataWithoutChange) {
 }
 
 TEST_F(LynxShellTest, GetAllPerformanceEntries) {
+  auto& env = lynx::tasm::LynxEnv::GetInstance();
+  env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDebugEnabled, true);
+  env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDevToolEnable, true);
+
   shell_->perf_controller_actor_->ActSync([](auto& controller) {
     auto entry = controller->GetValueFactory()->CreateMap();
     entry->PushStringToMap("entryType", "metric");
@@ -144,7 +155,29 @@ TEST_F(LynxShellTest, GetAllPerformanceEntries) {
             shell_->perf_controller_actor_->GetInstanceId());
 }
 
+TEST_F(LynxShellTest, GetAllPerformanceEntriesReturnsEmptyWhenDevToolDisabled) {
+  auto& env = lynx::tasm::LynxEnv::GetInstance();
+  env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDebugEnabled, false);
+  env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDevToolEnable, false);
+
+  shell_->perf_controller_actor_->ActSync([](auto& controller) {
+    auto entry = controller->GetValueFactory()->CreateMap();
+    entry->PushStringToMap("entryType", "metric");
+    entry->PushStringToMap("name", "testMetric");
+    entry->PushDoubleToMap("startTime", 1.5);
+    controller->OnPerformanceEvent(std::move(entry));
+  });
+
+  lepus::Value entries = shell_->GetAllPerformanceEntries();
+  ASSERT_TRUE(entries.IsArray());
+  ASSERT_EQ(entries.Array()->size(), 0u);
+}
+
 TEST_F(LynxShellTest, MemoryMonitorTeardownAfterAllocation) {
+  auto& env = lynx::tasm::LynxEnv::GetInstance();
+  env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDebugEnabled, true);
+  env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDevToolEnable, true);
+
   lynx::tasm::performance::MemoryMonitor::SetForceEnable(true);
   shell_->perf_controller_actor_->ActSync([](auto& controller) {
     controller->GetMemoryMonitor().AllocateMemory(
@@ -157,6 +190,10 @@ TEST_F(LynxShellTest, MemoryMonitorTeardownAfterAllocation) {
 }
 
 TEST_F(LynxShellTest, ResetTimingBeforeReloadClearsPerformanceEntries) {
+  auto& env = lynx::tasm::LynxEnv::GetInstance();
+  env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDebugEnabled, true);
+  env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDevToolEnable, true);
+
   shell_->perf_controller_actor_->ActSync([](auto& controller) {
     auto entry = controller->GetValueFactory()->CreateMap();
     entry->PushStringToMap("entryType", "metric");

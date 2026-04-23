@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "core/public/performance_controller_platform_impl.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/performance_event_sender.h"
 
@@ -28,8 +29,10 @@ void PerformanceController::SetPlatformImpl(
 void PerformanceController::OnPerformanceEvent(
     std::unique_ptr<pub::Value> entry, EventType type) {
   entry->PushInt32ToMap("instanceId", instance_id_);
-  performance_entries_.emplace_back(
-      pub::ValueUtils::ConvertValueToLepusValue(*entry));
+  if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+    performance_entries_.emplace_back(
+        pub::ValueUtils::ConvertValueToLepusValue(*entry));
+  }
   if ((type & kEventTypePlatform) && platform_impl_) {
     platform_impl_->OnPerformanceEvent(entry);
   }
@@ -42,6 +45,9 @@ void PerformanceController::OnPerformanceEvent(
 std::unique_ptr<pub::Value> PerformanceController::GetAllPerformanceEntries()
     const {
   auto entries = value_factory_->CreateArray();
+  if (!tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+    return entries;
+  }
   for (const auto& entry : performance_entries_) {
     entries->PushValueToArray(pub::ValueImplLepus(entry));
   }
