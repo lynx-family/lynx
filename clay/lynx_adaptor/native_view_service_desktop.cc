@@ -225,7 +225,9 @@ void NativeViewServiceDesktop::SetViewFactories(
   for (auto& pair : factories) {
     native_view_tags.insert(pair.first);
   }
-  view_context->SyncNativeViewTags(native_view_tags);
+  // RegisterNativeView is an explicit embedder API and is allowed to override
+  // built-in Clay elements with the same tag.
+  view_context->SyncNativeViewTags(native_view_tags, native_view_tags);
 
   Puppet<Owner::kUI, NativeViewService> native_view_service =
       view_context->GetPageView()
@@ -273,7 +275,9 @@ void NativeViewServiceDesktop::AddViewFactory(ViewContext* view_context,
       native_view_tags.insert(pair.first);
     }
     native_view_tags.insert(name);
-    view_context->SyncNativeViewTags(native_view_tags);
+    // RegisterNativeView is an explicit embedder API and is allowed to override
+    // built-in Clay elements with the same tag.
+    view_context->SyncNativeViewTags(native_view_tags, native_view_tags);
 
     factories[name] = [creator, opaque]() -> clay::NativePlatformView* {
       auto fx = reinterpret_cast<clay::NativePlatformView* (*)(void*)>(creator);
