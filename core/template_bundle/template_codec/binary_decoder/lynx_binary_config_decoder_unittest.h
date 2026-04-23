@@ -17,7 +17,7 @@ class LynxBinaryConfigDecoderTest : public ::testing::Test {
  public:
   LynxBinaryConfigDecoderTest() {
     config_decoder_ = std::make_unique<LynxBinaryConfigDecoder>(
-        tasm::CompileOptions(), "3.2", true, false);
+        compile_options_, "3.2", true, false);
 
     page_config_ = std::make_shared<PageConfig>();
   };
@@ -25,7 +25,8 @@ class LynxBinaryConfigDecoderTest : public ::testing::Test {
   void SetUp() override {}
   void TearDown() override {}
 
- private:
+ protected:
+  tasm::CompileOptions compile_options_;
   std::unique_ptr<LynxBinaryConfigDecoder> config_decoder_{nullptr};
   std::shared_ptr<PageConfig> page_config_{nullptr};
 };

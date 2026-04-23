@@ -188,6 +188,27 @@ TEST_F(LynxBinaryConfigDecoderTest,
   ASSERT_EQ(string_props.size(), 1u);
   EXPECT_EQ(string_props.at("config_str"), config_str);
 }
+
+TEST_F(LynxBinaryConfigDecoderTest, CompileOptionsPropagatesDerivedCSSFlags) {
+  tasm::CompileOptions options;
+  EXPECT_FALSE(options.enable_parse_int_flex_);
+  EXPECT_FALSE(options.enable_flex_basis_zero_percent_);
+
+  auto decoder =
+      std::make_unique<LynxBinaryConfigDecoder>(options, "3.2", true, false);
+
+  decoder->DecodePageConfig(
+      "{\n"
+      "  \"enableParseIntFlex\": true,\n"
+      "  \"enableFlexBasisZeroPercent\": true,\n"
+      "  \"enableGridPlacementShorthands\": true\n"
+      "}",
+      page_config_);
+
+  EXPECT_TRUE(options.enable_parse_int_flex_);
+  EXPECT_TRUE(options.enable_flex_basis_zero_percent_);
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx
