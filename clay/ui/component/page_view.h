@@ -29,6 +29,7 @@
 #include "clay/ui/common/gap_worker.h"
 #include "clay/ui/common/input_client_manager.h"
 #include "clay/ui/common/isolate.h"
+#include "clay/ui/common/overlay_manager.h"
 #include "clay/ui/common/render_settings.h"
 #include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
@@ -460,9 +461,8 @@ class PageView : public BaseView,
 
   uint64_t PageUniqueId() const { return page_unique_id_; }
 
-#if !defined(ENABLE_CLAY_LITE)
   OverlayManager* overlay_manager() { return overlay_manager_.get(); }
-#endif
+
   void StartFluencyMonitor(uintptr_t id, const std::string& scene,
                            const std::string& scroll_monitor_tag);
   void EndFluencyMonitor(uintptr_t id);
@@ -622,9 +622,8 @@ class PageView : public BaseView,
   const uint64_t page_unique_id_;
   BaseView* pan_zoom_target_ = nullptr;
   BaseView* wheel_target_ = nullptr;
-#if !defined(ENABLE_CLAY_LITE)
   std::unique_ptr<OverlayManager> overlay_manager_;
-#endif
+
   std::unique_ptr<GestureHandlerDispatcher> gesture_handler_dispatcher_;
   bool align_mouse_event_with_w3c_ = false;
   uint8_t default_overflow_ = CSSProperty::OVERFLOW_XY;

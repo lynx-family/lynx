@@ -29,9 +29,6 @@
 #include "clay/ui/common/background_data.h"
 #include "clay/ui/component/base_view_animation_mutator.h"
 #include "clay/ui/component/component_constants.h"
-#include "clay/ui/component/editable/editable_view.h"
-#include "clay/ui/component/editable/textarea_ng_view.h"
-#include "clay/ui/component/editable/textarea_view.h"
 #include "clay/ui/component/expose_manager/expose_observer.h"
 #include "clay/ui/component/inline_image_view.h"
 #include "clay/ui/component/native_view.h"
@@ -48,6 +45,12 @@
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/painter/gradient.h"
 #include "clay/ui/resource/image_resource_fetcher.h"
+
+#ifndef ENABLE_CLAY_LITE
+#include "clay/ui/component/editable/editable_view.h"
+#include "clay/ui/component/editable/textarea_ng_view.h"
+#include "clay/ui/component/editable/textarea_view.h"
+#endif
 
 namespace clay {
 namespace {

@@ -21,6 +21,7 @@ ui_component_sources = [
   "component_constants.h",
   "css_property.cc",
   "css_property.h",
+  "editable/ime_listener.h",
   "expose_manager/expose_observer.cc",
   "expose_manager/expose_observer.h",
   "focus/focus_isolate.cc",
@@ -64,6 +65,8 @@ ui_component_sources = [
   "nested_scroll/overscroll_effect.h",
   "nested_scroll/raster_fling_manager.cc",
   "nested_scroll/raster_fling_manager.h",
+  "overlay_view.cc",
+  "overlay_view.h",
   "page_view.cc",
   "page_view.h",
   "rubberband_distance.cc",
@@ -84,6 +87,10 @@ ui_component_sources = [
   "scroller.h",
   "scroller_animator.cc",
   "scroller_animator.h",
+  "selection_handle_view.cc",
+  "selection_handle_view.h",
+  "selection_popup_view.cc",
+  "selection_popup_view.h",
   "soft_keyboard_resources.cc",
   "soft_keyboard_resources.h",
   "tappable_image_view.h",
@@ -176,7 +183,6 @@ if (!enable_clay_lite) {
 ui_extended_component_sources = [
   "editable/editable_view.cc",
   "editable/editable_view.h",
-  "editable/ime_listener.h",
   "editable/ime_utils.cc",
   "editable/ime_utils.h",
   "editable/input_ng_view.cc",
@@ -194,12 +200,6 @@ ui_extended_component_sources = [
   "editable/textarea_ng_view.h",
   "editable/textarea_view.cc",
   "editable/textarea_view.h",
-  "overlay_view.cc",
-  "overlay_view.h",
-  "selection_handle_view.cc",
-  "selection_handle_view.h",
-  "selection_popup_view.cc",
-  "selection_popup_view.h",
 ]
 
 ui_component_unittests_sources = []

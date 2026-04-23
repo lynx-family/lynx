@@ -23,6 +23,8 @@ ui_common_sources = [
   "json_utils.h",
   "macros.h",
   "measure_constraint.h",
+  "overlay_manager.cc",
+  "overlay_manager.h",
   "render_settings.cc",
   "render_settings.h",
   "text_input_type_traits.h",
@@ -35,10 +37,3 @@ ui_common_sources = [
   "value_utils.cc",
   "value_utils.h",
 ]
-
-if (!enable_clay_lite) {
-  ui_common_sources += [
-    "overlay_manager.cc",
-    "overlay_manager.h",
-  ]
-}
