@@ -19,10 +19,6 @@
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/view_callback/list_container_event_callback_manager.h"
 
-#ifndef ENABLE_CLAY_LITE
-#include "clay/ui/component/view_callback/list_event_callback_manager.h"
-#endif
-
 namespace clay {
 
 class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,

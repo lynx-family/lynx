@@ -138,6 +138,7 @@
           .SetLynxEnvConfig(lynx_env_config)
           .SetEnableElementManagerVsyncMonitor(true)
           .SetEnableLayoutOnly(_enableLayoutOnly)
+          .SetEnableNativeList(ui_delegate->EnableNativeList())
           .SetWhiteBoard(_runtimeOptions.group ? _runtimeOptions.group.whiteBoard : nullptr)
           .SetLazyBundleLoader(loader)
           .SetNativeModuleManager(std::move(mts_native_module_manager))

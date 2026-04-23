@@ -15,7 +15,6 @@
 #include "base/include/fml/memory/weak_ptr.h"
 #include "clay/fml/logging.h"
 #include "clay/ui/component/base_view.h"
-#include "clay/ui/component/list/list_recycler.h"
 
 namespace clay {
 
