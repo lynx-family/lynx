@@ -107,6 +107,32 @@ void NativeView::SendMotionEvent(const PointerEvent& point_event,
       });
 }
 
+bool NativeView::ShouldDispatchTouchEventForHitTest() const {
+  if (!native_view_plugin_) {
+    return false;
+  }
+  auto future = native_view_plugin_.ActWithPromise(
+      [](auto& plugin) { return plugin.ShouldDispatchTouchEventForHitTest(); });
+  auto result = future.get();
+  return result.value_or(false);
+}
+
+bool NativeView::DispatchTouchEventForHitTest(
+    const PointerEvent& point_event, const FloatPoint& transformed_postion) {
+  if (!native_view_plugin_) {
+    return false;
+  }
+  auto future = native_view_plugin_.ActWithPromise(
+      [point_event,
+       transformed_postion = page_view()->ConvertTo<kPixelTypePlatform>(
+           transformed_postion)](auto& plugin) {
+        return plugin.DispatchTouchEventForHitTest(point_event,
+                                                   transformed_postion);
+      });
+  auto result = future.get();
+  return result.value_or(false);
+}
+
 // This function is easily confused with the destructor.
 // Although 'Destroy' will be called first then the destructor  second
 // currently. Maybe we can reactor this and make the destruction process more

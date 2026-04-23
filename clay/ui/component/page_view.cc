@@ -200,6 +200,8 @@ void PageView::OnDestroy() {
   animation_handler_->ClearCallbacks();
   DestroyAllChildren();
   touch_view_map_.clear();
+  platform_view_touch_target_map_.clear();
+  unhandled_platform_view_touch_target_map_.clear();
   image_resource_fetcher_ = nullptr;
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
@@ -807,6 +809,109 @@ void PageView::EnsureSemanticsOwner() {
 }
 #endif
 
+bool PageView::TryDispatchPlatformViewTouchEvent(const PointerEvent& event) {
+  if (event.device != PointerEvent::DeviceType::kTouch) {
+    return false;
+  }
+  if (event.type != PointerEvent::EventType::kDownEvent &&
+      event.type != PointerEvent::EventType::kMoveEvent &&
+      event.type != PointerEvent::EventType::kUpEvent &&
+      event.type != PointerEvent::EventType::kCancel) {
+    return false;
+  }
+
+  auto dispatch_to_target = [&event](BaseView* target) {
+    if (target == nullptr || !target->Is<NativeView>()) {
+      return false;
+    }
+    auto* native_view = static_cast<NativeView*>(target);
+    return native_view->DispatchTouchEventForHitTest(
+        event, native_view->GetPointBySelf(event.position));
+  };
+
+  auto active_target_iter =
+      platform_view_touch_target_map_.find(event.pointer_id);
+  if (active_target_iter != platform_view_touch_target_map_.end()) {
+    BaseView* target = active_target_iter->second.get();
+    if (target != nullptr) {
+      dispatch_to_target(target);
+      if (event.type == PointerEvent::EventType::kUpEvent ||
+          event.type == PointerEvent::EventType::kCancel) {
+        platform_view_touch_target_map_.erase(active_target_iter);
+      }
+      return true;
+    }
+    platform_view_touch_target_map_.erase(active_target_iter);
+  }
+
+  if (event.type == PointerEvent::EventType::kDownEvent &&
+      !platform_view_touch_target_map_.empty()) {
+    auto target_iter = platform_view_touch_target_map_.begin();
+    while (target_iter != platform_view_touch_target_map_.end() &&
+           !target_iter->second) {
+      target_iter = platform_view_touch_target_map_.erase(target_iter);
+    }
+    if (target_iter != platform_view_touch_target_map_.end()) {
+      BaseView* target = target_iter->second.get();
+      if (dispatch_to_target(target)) {
+        platform_view_touch_target_map_[event.pointer_id] =
+            target->GetWeakPtr();
+        return true;
+      }
+    }
+  }
+
+  if (event.type != PointerEvent::EventType::kDownEvent) {
+    return false;
+  }
+
+  FloatPoint relative_position;
+  BaseView* top_view =
+      GetTopViewToAcceptEvent(event.position, &relative_position);
+  if (top_view == nullptr || !top_view->Is<NativeView>()) {
+    return false;
+  }
+
+  auto* native_view = static_cast<NativeView*>(top_view);
+  if (!native_view->ShouldDispatchTouchEventForHitTest()) {
+    return false;
+  }
+
+  if (native_view->DispatchTouchEventForHitTest(event, relative_position)) {
+    platform_view_touch_target_map_[event.pointer_id] =
+        native_view->GetWeakPtr();
+    return true;
+  }
+
+  native_view->UpdateTouchDispatchState(false, kActionDown);
+  unhandled_platform_view_touch_target_map_[event.pointer_id] =
+      native_view->GetWeakPtr();
+  return false;
+}
+
+void PageView::ResetUnhandledPlatformViewTouchTargets(
+    const std::vector<PointerEvent>& events) {
+  for (const auto& event : events) {
+    if (event.device != PointerEvent::DeviceType::kTouch ||
+        (event.type != PointerEvent::EventType::kUpEvent &&
+         event.type != PointerEvent::EventType::kCancel)) {
+      continue;
+    }
+    auto iter =
+        unhandled_platform_view_touch_target_map_.find(event.pointer_id);
+    if (iter == unhandled_platform_view_touch_target_map_.end()) {
+      continue;
+    }
+    BaseView* target = iter->second.get();
+    if (target != nullptr && target->Is<NativeView>()) {
+      static_cast<NativeView*>(target)->UpdateTouchDispatchState(
+          true, event.type == PointerEvent::EventType::kCancel ? kActionCancel
+                                                               : kActionUp);
+    }
+    unhandled_platform_view_touch_target_map_.erase(iter);
+  }
+}
+
 bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
   // The events data is in physical pixels, we need to convert them to clay
   // pixels.
@@ -821,27 +926,44 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
         ConvertFrom<kPixelTypePhysical>(event.scroll_delta_y);
   }
 
-  bool consumed = gesture_manager_->HandlePointerEvents(this, events);
+  bool consumed_by_platform_view = false;
+  std::vector<PointerEvent> clay_events;
+  clay_events.reserve(events.size());
+  for (const auto& event : events) {
+    if (TryDispatchPlatformViewTouchEvent(event)) {
+      consumed_by_platform_view = true;
+    } else {
+      clay_events.emplace_back(event);
+    }
+  }
+
+  bool consumed = false;
+  if (!clay_events.empty()) {
+    consumed = gesture_manager_->HandlePointerEvents(this, clay_events);
+  }
 #if defined(ENABLE_MOUSE_TRACKING)
-  mouse_region_manager_->HandleEvents(this, events);
+  if (!clay_events.empty()) {
+    mouse_region_manager_->HandleEvents(this, clay_events);
+  }
 #endif
 
   // For Lynx event&gesture report
   if (consumed) {
     // if not consumed by clay elements, it should not be consumed by lynx as
     // well.
-    ReportTopViewRawEvents(events);
+    ReportTopViewRawEvents(clay_events);
     isolated_gesture_detector_.DispatchPointerEvent(
-        events, gesture_manager_->GetHitTestResponsiveResult());
+        clay_events, gesture_manager_->GetHitTestResponsiveResult());
   } else {
 #if defined(ENABLE_MOUSE_TRACKING)
-    for (PointerEvent& event : events) {
+    for (PointerEvent& event : clay_events) {
       if (event.type == PointerEvent::EventType::kHoverEvent) {
         ReportTopViewEvent(event);
       }
     }
 #endif
   }
+  ResetUnhandledPlatformViewTouchTargets(clay_events);
 
   if (render_settings_) {
     render_settings_->SetIsTouching(true);
@@ -859,7 +981,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
                               });
     }
   }
-  return consumed;
+  return consumed || consumed_by_platform_view;
 }
 
 void PageView::DispatchEnterForeground() {

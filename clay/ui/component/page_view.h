@@ -536,6 +536,9 @@ class PageView : public BaseView,
 
   void EnsureSemanticsOwner();
   void ResignFirstResponderIfNeeded(BaseView* current_responder);
+  bool TryDispatchPlatformViewTouchEvent(const PointerEvent& event);
+  void ResetUnhandledPlatformViewTouchTargets(
+      const std::vector<PointerEvent>& events);
 
   void UnRegisterUploadTask();
 
@@ -591,6 +594,10 @@ class PageView : public BaseView,
   // view, regardless of whether the touch point remains within the view's
   // boundaries.
   std::unordered_map<int, int> touch_view_map_;
+  std::unordered_map<int, fml::WeakPtr<BaseView>>
+      platform_view_touch_target_map_;
+  std::unordered_map<int, fml::WeakPtr<BaseView>>
+      unhandled_platform_view_touch_target_map_;
 
   std::unique_ptr<GapWorker> gap_worker_;
 

@@ -35,6 +35,9 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
                    float padding_bottom) override;
   void SendMotionEvent(const PointerEvent& point_event,
                        const FloatPoint& transformed_postion);
+  bool ShouldDispatchTouchEventForHitTest() const;
+  bool DispatchTouchEventForHitTest(const PointerEvent& point_event,
+                                    const FloatPoint& transformed_postion);
   void SetAttribute(const char* attr, const clay::Value& value) override;
   void DidUpdateAttributes() override;
   void HandleEvent(const PointerEvent& event) override;

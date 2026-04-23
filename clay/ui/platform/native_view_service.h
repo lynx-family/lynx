@@ -42,6 +42,11 @@ class NativeViewPlugin : public ActorObject<Owner::kPlatform> {
   virtual void OnDestroy() = 0;
   virtual void OnTouchEvent(const PointerEvent& point_event,
                             const FloatPoint& transformed_postion) = 0;
+  virtual bool ShouldDispatchTouchEventForHitTest() { return false; }
+  virtual bool DispatchTouchEventForHitTest(
+      const PointerEvent& point_event, const FloatPoint& transformed_postion) {
+    return false;
+  }
   virtual void OnFocusChanged(bool focused, bool is_leaf) {}
   virtual void LayoutChanged(float left, float top, float width,
                              float height) = 0;
