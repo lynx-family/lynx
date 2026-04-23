@@ -49,7 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak, nullable, readwrite) LynxUIOwner* uiOwner;
 @property(nonatomic, weak) id lynxModuleExtraData;
 @property(nonatomic, assign, readwrite) int64_t shellPtr;
-@property(nonatomic, strong) id<ListNodeInfoFetcherProtocol> fetcher;
+@property(nonatomic, strong, nullable) id<ListNodeInfoFetcherProtocol> fetcher;
 @property(nonatomic, readwrite) LynxScreenMetrics* screenMetrics;
 @property(nonatomic, readonly) LynxUIIntersectionObserverManager* intersectionManager;
 @property(nonatomic) LynxUIExposure* uiExposure;
