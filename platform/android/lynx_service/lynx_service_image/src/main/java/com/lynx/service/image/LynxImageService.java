@@ -478,4 +478,8 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
 
   @Override
   public void setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri) {}
+
+  @Override
+  public void setImageDecodeRegion(
+      @NonNull Object builder, @Nullable android.graphics.Rect regionToDecode) {}
 }

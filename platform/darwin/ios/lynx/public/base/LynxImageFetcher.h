@@ -41,6 +41,7 @@ FOUNDATION_EXPORT NSString* const LynxImageEnableFetchUIImage;
 FOUNDATION_EXPORT NSString* const LynxShouldUseImageService;
 FOUNDATION_EXPORT NSString* const LynxEnableGenericFetcher;
 FOUNDATION_EXPORT NSString* const LynxLoaderInfo;
+FOUNDATION_EXPORT NSString* const LynxImageRegionToDecode;
 
 @protocol LynxImageFetcher <NSObject>
 
