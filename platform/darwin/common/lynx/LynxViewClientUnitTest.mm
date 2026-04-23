@@ -73,18 +73,21 @@
 - (BOOL)ensureRenderCreated;
 - (LynxLifecycleDispatcher *)getLifecycleDispatcher;
 - (void)onFrameLoadMetricsEvent:(nonnull LynxPerformanceEntry *)entry;
+- (void)setIntrinsicContentSize:(CGSize)size;
 
 @end
 
 @interface LynxCustomEventCapturingEmitter : LynxEventEmitter
 
 @property(nonatomic, strong, nullable) LynxCustomEvent *lastEvent;
+@property(nonatomic, assign) NSUInteger eventCount;
 
 @end
 
 @implementation LynxCustomEventCapturingEmitter
 
 - (void)sendCustomEvent:(LynxCustomEvent *)event {
+  self.eventCount += 1;
   self.lastEvent = event;
 }
 
@@ -327,5 +330,58 @@
   XCTAssertEqualObjects(emitter.lastEvent.params[@"mode"], @"embedded");
   XCTAssertEqualObjects(emitter.lastEvent.params[@"entry"][@"entryType"], @"pipeline");
   XCTAssertEqualObjects(emitter.lastEvent.params[@"entry"][@"name"], @"loadBundle");
+}
+
+- (void)testFrameViewDispatchesSizeChangeCustomEventWhenBound {
+  LynxView *rootView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+  LynxCustomEventCapturingEmitter *emitter = [[LynxCustomEventCapturingEmitter alloc] init];
+  LynxFrameView *frameView = [self frameViewWithRootView:rootView
+                                                    sign:104
+                                                eventSet:[NSSet setWithObject:@"sizechange"]
+                                                 emitter:emitter];
+
+  [frameView setIntrinsicContentSize:CGSizeMake(321, 181)];
+
+  XCTAssertNotNil(emitter.lastEvent);
+  XCTAssertEqual(emitter.eventCount, 1u);
+  XCTAssertEqualObjects(emitter.lastEvent.eventName, @"sizechange");
+  XCTAssertEqual(emitter.lastEvent.targetSign, 104);
+  XCTAssertEqualObjects([emitter.lastEvent paramsName], @"detail");
+  XCTAssertEqualObjects(emitter.lastEvent.params[@"url"], @"lynx://frame");
+  XCTAssertEqualObjects(emitter.lastEvent.params[@"width"], @321);
+  XCTAssertEqualObjects(emitter.lastEvent.params[@"height"], @181);
+}
+
+- (void)testFrameViewSkipsSizeChangeCustomEventWhenUnbound {
+  LynxView *rootView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+  LynxCustomEventCapturingEmitter *emitter = [[LynxCustomEventCapturingEmitter alloc] init];
+  LynxFrameView *frameView = [self frameViewWithRootView:rootView
+                                                    sign:105
+                                                eventSet:[NSSet set]
+                                                 emitter:emitter];
+
+  [frameView setIntrinsicContentSize:CGSizeMake(321, 181)];
+
+  XCTAssertNil(emitter.lastEvent);
+  XCTAssertEqual(emitter.eventCount, 0u);
+}
+
+- (void)testFrameViewSkipsDuplicateSizeChangeCustomEventForSameSize {
+  LynxView *rootView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+  LynxCustomEventCapturingEmitter *emitter = [[LynxCustomEventCapturingEmitter alloc] init];
+  LynxFrameView *frameView = [self frameViewWithRootView:rootView
+                                                    sign:106
+                                                eventSet:[NSSet setWithObject:@"sizechange"]
+                                                 emitter:emitter];
+
+  [frameView setIntrinsicContentSize:CGSizeMake(321, 181)];
+  [frameView setIntrinsicContentSize:CGSizeMake(321, 181)];
+
+  XCTAssertNotNil(emitter.lastEvent);
+  XCTAssertEqual(emitter.eventCount, 1u);
+  XCTAssertEqualObjects(emitter.lastEvent.eventName, @"sizechange");
 }
 @end

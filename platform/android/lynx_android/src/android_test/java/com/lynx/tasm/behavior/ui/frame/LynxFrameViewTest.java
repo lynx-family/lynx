@@ -6,10 +6,12 @@ package com.lynx.tasm.behavior.ui.frame;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
+import android.util.DisplayMetrics;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.EmbeddedMode;
@@ -72,6 +74,16 @@ public class LynxFrameViewTest extends TestCase {
   }
 
   @Test
+  public void buildFrameSizeChangeDetailIncludesUrlWidthAndHeight() {
+    HashMap<String, Object> detail =
+        LynxFrameView.buildFrameSizeChangeDetail("lynx://frame", 160.5, 90.5);
+
+    assertEquals("lynx://frame", detail.get("url"));
+    assertEquals(160.5, ((Number) detail.get("width")).doubleValue(), 0.0);
+    assertEquals(90.5, ((Number) detail.get("height")).doubleValue(), 0.0);
+  }
+
+  @Test
   public void dispatchFrameLoadMetricsEventSendsCustomEventWhenBound() {
     Context androidContext = ApplicationProvider.getApplicationContext();
     LynxFrameView frameView = new LynxFrameView(androidContext);
@@ -79,6 +91,8 @@ public class LynxFrameViewTest extends TestCase {
     LynxUIOwner uiOwner = mock(LynxUIOwner.class);
     LynxBaseUI ui = mock(LynxBaseUI.class);
     EventEmitter eventEmitter = mock(EventEmitter.class);
+    DisplayMetrics screenMetrics = new DisplayMetrics();
+    screenMetrics.density = 2.0f;
 
     Map<String, EventsListener> events = new HashMap<>();
     events.put(LynxFrameView.EVENT_LOAD_METRICS,
@@ -88,6 +102,7 @@ public class LynxFrameViewTest extends TestCase {
     when(lynxContext.getUIBodyView()).thenReturn(null);
     when(lynxContext.getLynxUIOwner()).thenReturn(uiOwner);
     when(lynxContext.getEventEmitter()).thenReturn(eventEmitter);
+    when(lynxContext.getScreenMetrics()).thenReturn(screenMetrics);
     when(uiOwner.findLynxUIBySign(100)).thenReturn(ui);
     when(ui.getEvents()).thenReturn(events);
 
@@ -139,5 +154,103 @@ public class LynxFrameViewTest extends TestCase {
     frameView.onFrameLoadMetricsEvent(new PerformanceEntry(props));
 
     verify(eventEmitter, never()).sendCustomEvent(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  public void setIntrinsicContentSizeDispatchesSizeChangeEventWhenBound() {
+    Context androidContext = ApplicationProvider.getApplicationContext();
+    LynxFrameView frameView = new LynxFrameView(androidContext);
+    LynxContext lynxContext = mock(LynxContext.class);
+    LynxUIOwner uiOwner = mock(LynxUIOwner.class);
+    LynxBaseUI ui = mock(LynxBaseUI.class);
+    EventEmitter eventEmitter = mock(EventEmitter.class);
+    DisplayMetrics screenMetrics = new DisplayMetrics();
+    screenMetrics.density = 2.0f;
+
+    Map<String, EventsListener> events = new HashMap<>();
+    events.put(LynxFrameView.EVENT_SIZE_CHANGE,
+        new EventsListener(
+            LynxFrameView.EVENT_SIZE_CHANGE, "bindEvent", "onSizeChange", null, null));
+
+    when(lynxContext.getUIBodyView()).thenReturn(null);
+    when(lynxContext.getLynxUIOwner()).thenReturn(uiOwner);
+    when(lynxContext.getEventEmitter()).thenReturn(eventEmitter);
+    when(lynxContext.getScreenMetrics()).thenReturn(screenMetrics);
+    when(uiOwner.findLynxUIBySign(100)).thenReturn(ui);
+    when(ui.getEvents()).thenReturn(events);
+
+    frameView.init(lynxContext);
+    frameView.setSign(100);
+    frameView.setUrl("lynx://frame");
+
+    frameView.setIntrinsicContentSize(321, 181);
+
+    ArgumentCaptor<LynxCustomEvent> captor = ArgumentCaptor.forClass(LynxCustomEvent.class);
+    verify(eventEmitter).sendCustomEvent(captor.capture());
+    LynxCustomEvent event = captor.getValue();
+    assertEquals(LynxFrameView.EVENT_SIZE_CHANGE, event.getName());
+    assertEquals(100, event.getTag());
+    assertEquals("detail", event.paramsName());
+    assertEquals("lynx://frame", event.eventParams().get("url"));
+    assertEquals(160.5, ((Number) event.eventParams().get("width")).doubleValue(), 0.0);
+    assertEquals(90.5, ((Number) event.eventParams().get("height")).doubleValue(), 0.0);
+  }
+
+  @Test
+  public void setIntrinsicContentSizeSkipsSizeChangeEventWhenUnbound() {
+    Context androidContext = ApplicationProvider.getApplicationContext();
+    LynxFrameView frameView = new LynxFrameView(androidContext);
+    LynxContext lynxContext = mock(LynxContext.class);
+    LynxUIOwner uiOwner = mock(LynxUIOwner.class);
+    LynxBaseUI ui = mock(LynxBaseUI.class);
+    EventEmitter eventEmitter = mock(EventEmitter.class);
+    DisplayMetrics screenMetrics = new DisplayMetrics();
+    screenMetrics.density = 2.0f;
+
+    when(lynxContext.getUIBodyView()).thenReturn(null);
+    when(lynxContext.getLynxUIOwner()).thenReturn(uiOwner);
+    when(lynxContext.getEventEmitter()).thenReturn(eventEmitter);
+    when(lynxContext.getScreenMetrics()).thenReturn(screenMetrics);
+    when(uiOwner.findLynxUIBySign(100)).thenReturn(ui);
+    when(ui.getEvents()).thenReturn(new HashMap<>());
+
+    frameView.init(lynxContext);
+    frameView.setSign(100);
+
+    frameView.setIntrinsicContentSize(320, 180);
+
+    verify(eventEmitter, never()).sendCustomEvent(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  public void setIntrinsicContentSizeDoesNotDispatchDuplicateSizeChangeEventForSameSize() {
+    Context androidContext = ApplicationProvider.getApplicationContext();
+    LynxFrameView frameView = new LynxFrameView(androidContext);
+    LynxContext lynxContext = mock(LynxContext.class);
+    LynxUIOwner uiOwner = mock(LynxUIOwner.class);
+    LynxBaseUI ui = mock(LynxBaseUI.class);
+    EventEmitter eventEmitter = mock(EventEmitter.class);
+    DisplayMetrics screenMetrics = new DisplayMetrics();
+    screenMetrics.density = 2.0f;
+
+    Map<String, EventsListener> events = new HashMap<>();
+    events.put(LynxFrameView.EVENT_SIZE_CHANGE,
+        new EventsListener(
+            LynxFrameView.EVENT_SIZE_CHANGE, "bindEvent", "onSizeChange", null, null));
+
+    when(lynxContext.getUIBodyView()).thenReturn(null);
+    when(lynxContext.getLynxUIOwner()).thenReturn(uiOwner);
+    when(lynxContext.getEventEmitter()).thenReturn(eventEmitter);
+    when(lynxContext.getScreenMetrics()).thenReturn(screenMetrics);
+    when(uiOwner.findLynxUIBySign(100)).thenReturn(ui);
+    when(ui.getEvents()).thenReturn(events);
+
+    frameView.init(lynxContext);
+    frameView.setSign(100);
+
+    frameView.setIntrinsicContentSize(321, 181);
+    frameView.setIntrinsicContentSize(321, 181);
+
+    verify(eventEmitter, times(1)).sendCustomEvent(org.mockito.ArgumentMatchers.any());
   }
 }

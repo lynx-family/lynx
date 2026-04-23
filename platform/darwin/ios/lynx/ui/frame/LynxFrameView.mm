@@ -30,9 +30,12 @@ BOOL ShouldHandleFrameLoadMetricsEntry(LynxPerformanceEntry *entry) {
 }  // namespace
 
 static NSString *const kLynxFrameEventLoadMetrics = @"loadmetrics";
+static NSString *const kLynxFrameEventSizeChange = @"sizechange";
 static NSString *const kLynxFrameEventDetailKeyUrl = @"url";
 static NSString *const kLynxFrameEventDetailKeyMode = @"mode";
 static NSString *const kLynxFrameEventDetailKeyEntry = @"entry";
+static NSString *const kLynxFrameEventDetailKeyWidth = @"width";
+static NSString *const kLynxFrameEventDetailKeyHeight = @"height";
 static NSString *const kLynxFrameEventModeEmbedded = @"embedded";
 static NSString *const kLynxFrameEventModeStandard = @"standard";
 
@@ -126,6 +129,32 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
       [[LynxDetailEvent alloc] initWithName:kLynxFrameEventLoadMetrics
                                  targetSign:self.sign
                                      detail:[self buildFrameLoadMetricsDetail:entry]];
+  [self.context.eventEmitter sendCustomEvent:event];
+}
+
+- (NSMutableDictionary *)buildFrameSizeChangeDetail:(CGSize)size {
+  NSMutableDictionary *detail = [NSMutableDictionary dictionaryWithCapacity:3];
+  detail[kLynxFrameEventDetailKeyUrl] = _url ?: @"";
+  detail[kLynxFrameEventDetailKeyWidth] = @(size.width);
+  detail[kLynxFrameEventDetailKeyHeight] = @(size.height);
+  return detail;
+}
+
+- (void)onFrameSizeChangeEvent:(CGSize)size {
+  if (self.context == nil || self.context.eventEmitter == nil || self.context.uiOwner == nil) {
+    return;
+  }
+
+  id ui = [self.context.uiOwner findUIBySign:self.sign];
+  NSDictionary *eventSet = [ui respondsToSelector:@selector(eventSet)] ? [(id)ui eventSet] : nil;
+  if ([eventSet objectForKey:kLynxFrameEventSizeChange] == nil) {
+    return;
+  }
+
+  LynxDetailEvent *event =
+      [[LynxDetailEvent alloc] initWithName:kLynxFrameEventSizeChange
+                                 targetSign:self.sign
+                                     detail:[self buildFrameSizeChangeDetail:size]];
   [self.context.eventEmitter sendCustomEvent:event];
 }
 
@@ -419,6 +448,7 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
     ((LynxView *)_rootView).layoutWidthMode = _rootViewWidthMode;
     ((LynxView *)_rootView).layoutHeightMode = _rootViewHeightMode;
     [self setNeedsLayout];
+    [self onFrameSizeChangeEvent:size];
   }
 }
 

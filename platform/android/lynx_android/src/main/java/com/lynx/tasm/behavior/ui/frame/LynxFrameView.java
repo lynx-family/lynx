@@ -7,6 +7,7 @@ package com.lynx.tasm.behavior.ui.frame;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
 import com.lynx.react.bridge.JavaOnlyArray;
@@ -33,9 +34,12 @@ import java.util.HashMap;
 public final class LynxFrameView extends UIBodyView {
   private static final String TAG = "LynxFrameView";
   static final String EVENT_LOAD_METRICS = "loadmetrics";
+  static final String EVENT_SIZE_CHANGE = "sizechange";
   private static final String DETAIL_KEY_URL = "url";
   private static final String DETAIL_KEY_MODE = "mode";
   private static final String DETAIL_KEY_ENTRY = "entry";
+  private static final String DETAIL_KEY_WIDTH = "width";
+  private static final String DETAIL_KEY_HEIGHT = "height";
   private static final String MODE_EMBEDDED = "embedded";
   private static final String MODE_STANDARD = "standard";
   private LynxTemplateRender mRender;
@@ -405,6 +409,7 @@ public final class LynxFrameView extends UIBodyView {
     });
     mIsIntrinsicSizeConsumed = false;
     super.setIntrinsicContentSize(width, height);
+    onFrameSizeChangeEvent(width, height);
   }
 
   @Override
@@ -476,6 +481,15 @@ public final class LynxFrameView extends UIBodyView {
     return detail;
   }
 
+  static HashMap<String, Object> buildFrameSizeChangeDetail(
+      String url, double width, double height) {
+    HashMap<String, Object> detail = new HashMap<>();
+    detail.put(DETAIL_KEY_URL, url == null ? "" : url);
+    detail.put(DETAIL_KEY_WIDTH, width);
+    detail.put(DETAIL_KEY_HEIGHT, height);
+    return detail;
+  }
+
   void onFrameLoadMetricsEvent(@NonNull PerformanceEntry entry) {
     if (mContext == null || mContext.getEventEmitter() == null
         || mContext.getLynxUIOwner() == null) {
@@ -487,5 +501,22 @@ public final class LynxFrameView extends UIBodyView {
     }
     mContext.getEventEmitter().sendCustomEvent(new LynxDetailEvent(mSign, EVENT_LOAD_METRICS,
         buildFrameLoadMetricsDetail(entry, mUrl, EmbeddedMode.isBaseModeEnable(mEmbeddedMode))));
+  }
+
+  void onFrameSizeChangeEvent(int width, int height) {
+    if (mContext == null || mContext.getEventEmitter() == null
+        || mContext.getLynxUIOwner() == null) {
+      return;
+    }
+    LynxBaseUI ui = mContext.getLynxUIOwner().findLynxUIBySign(mSign);
+    if (ui == null || ui.getEvents() == null || !ui.getEvents().containsKey(EVENT_SIZE_CHANGE)) {
+      return;
+    }
+    DisplayMetrics screenMetrics = mContext.getScreenMetrics();
+    float density = screenMetrics == null ? 0 : screenMetrics.density;
+    double logicalWidth = density > 0 ? width / density : width;
+    double logicalHeight = density > 0 ? height / density : height;
+    mContext.getEventEmitter().sendCustomEvent(new LynxDetailEvent(
+        mSign, EVENT_SIZE_CHANGE, buildFrameSizeChangeDetail(mUrl, logicalWidth, logicalHeight)));
   }
 }
