@@ -643,14 +643,17 @@ void PageView::FlushSemantics() {
         semantics_owner_->semantics_nodes_to_update_descendants_);
 
     for (auto* node : node_process_descendants) {
-      if (node->IsAccessibilityElement()) {
-        node_to_process.insert(node);
-      }
-      node->VisitChildren([&node_to_process](BaseView* child_view) {
-        if (child_view->IsAccessibilityElement()) {
-          node_to_process.insert(child_view);
+      if (node && node->attach_to_tree()) {
+        if (node->IsAccessibilityElement()) {
+          node_to_process.insert(node);
         }
-      });
+        node->VisitChildren([&node_to_process](BaseView* child_view) {
+          if (child_view && child_view->attach_to_tree() &&
+              child_view->IsAccessibilityElement()) {
+            node_to_process.insert(child_view);
+          }
+        });
+      }
     }
     for (auto* node : node_to_process) {
       if (node->IsAccessibilityElement()) {
