@@ -150,12 +150,8 @@ PageView::PageView(uint32_t id, std::shared_ptr<ServiceManager> service_manager,
       keyboard_bridge_(this),
       unref_queue_(unref_queue),
       service_manager_(service_manager),
-      page_unique_id_(render_object()->element_id().unique_id())
-#if !defined(ENABLE_CLAY_LITE)
-      ,
-      overlay_manager_(std::make_unique<OverlayManager>(this))
-#endif
-      ,
+      page_unique_id_(render_object()->element_id().unique_id()),
+      overlay_manager_(std::make_unique<OverlayManager>(this)),
       gesture_handler_dispatcher_(
           std::make_unique<GestureHandlerDispatcher>(this)) {
   SetupIsolatedGestures();
@@ -203,9 +199,7 @@ void PageView::OnDestroy() {
   image_resource_fetcher_ = nullptr;
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
-#if !defined(ENABLE_CLAY_LITE)
   overlay_manager_ = nullptr;
-#endif
 }
 
 void PageView::CleanForRecycle() { ResetPageView(true); }
@@ -931,13 +925,11 @@ void PageView::SetupIsolatedGestures() {
 bool PageView::HitTest(const PointerEvent& event, HitTestResult& result) {
   PointerEvent converted_event = event;
   bool is_pass_through_from_overlay = false;
-#if !defined(ENABLE_CLAY_LITE)
   auto overlay_result = overlay_manager_->HitTest(
       event, result, is_pass_through_from_overlay, converted_event);
   if (overlay_result) {
     return true;
   }
-#endif
   bool base_view_result = false;
   if (is_pass_through_from_overlay) {
     base_view_result = BaseView::HitTest(converted_event, result);
@@ -951,14 +943,12 @@ BaseView* PageView::GetTopViewToAcceptEvent(const FloatPoint& position,
                                             FloatPoint* relative_position) {
   FloatPoint converted_position = position;
   bool is_pass_through_from_overlay = false;
-#ifndef ENABLE_CLAY_LITE
   auto overlay_result = overlay_manager_->GetTopViewToAcceptEvent(
       position, relative_position, is_pass_through_from_overlay,
       converted_position);
   if (overlay_result) {
     return overlay_result;
   }
-#endif
   if (is_pass_through_from_overlay) {
     return BaseView::GetTopViewToAcceptEvent(converted_position,
                                              relative_position);
@@ -969,9 +959,7 @@ BaseView* PageView::GetTopViewToAcceptEvent(const FloatPoint& position,
 
 void PageView::ReportTopViewEvent(const PointerEvent& event,
                                   ClayEventType type) {
-#ifndef ENABLE_CLAY_LITE
   overlay_manager_->OnReportTopViewEvent(event, type);
-#endif
   auto position = event.position;
   BaseView* top_view = nullptr;
   FloatPoint transformed_position;
@@ -1181,11 +1169,9 @@ void PageView::DispatchKeyEvent(
     std::function<void(bool /* handled */)> callback) {
   FML_DCHECK(event);
   bool keyevent_handled = false;
-#ifndef ENABLE_CLAY_LITE
   if (overlay_manager_->DispatchKeyEvent(event.get())) {
     keyevent_handled = true;
   }
-#endif
 
   // We need to first report the keyevent then handle the focus change
   ReportKeyEvent(*event);
