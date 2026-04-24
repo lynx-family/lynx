@@ -274,8 +274,29 @@ void GestureManager::RegisterSignalRoute(const SignalEventRoute& route) {
   }
 }
 
+void GestureManager::UpdateCxxFoldViewState(bool has_cxx_foldview,
+                                            bool cxx_foldview_is_fold,
+                                            bool cxx_foldview_is_expand) {
+  hit_test_responsive_result_.has_cxx_fold_view = has_cxx_foldview;
+  hit_test_responsive_result_.cxx_foldview_is_fold = cxx_foldview_is_fold;
+  hit_test_responsive_result_.cxx_foldview_is_expanded = cxx_foldview_is_expand;
+  if (gesture_mediate_puppet_) {
+    gesture_mediate_puppet_.Act(
+        [responsive_result = hit_test_responsive_result_](auto& impl) {
+          impl.UpdateResponsiveResult(responsive_result);
+        });
+  }
+}
+
 void GestureManager::ResetHitTestTargetResponsive() {
+  auto origin_value = hit_test_responsive_result_;
   hit_test_responsive_result_ = {};
+  hit_test_responsive_result_.has_cxx_fold_view =
+      origin_value.has_cxx_fold_view;
+  hit_test_responsive_result_.cxx_foldview_is_fold =
+      origin_value.cxx_foldview_is_fold;
+  hit_test_responsive_result_.cxx_foldview_is_expanded =
+      origin_value.cxx_foldview_is_expanded;
   if (gesture_mediate_puppet_) {
     gesture_mediate_puppet_.Act(
         [responsive_result = hit_test_responsive_result_](auto& impl) {

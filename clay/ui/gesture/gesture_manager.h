@@ -59,6 +59,10 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
 
   ArenaManager* arena_manager() const { return arena_manager_.get(); }
 
+  Puppet<Owner::kUI, GestureMediateService> GetGestureMediatePuppet() const {
+    return gesture_mediate_puppet_;
+  }
+
   void SetPixelRatio(float pixel_ratio) { pixel_ratio_ = pixel_ratio; }
 
   float DevicePixelRatio() const override { return pixel_ratio_; }
@@ -76,6 +80,8 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
     return hit_test_responsive_result_;
   }
 
+  void UpdateCxxFoldViewState(bool has_cxx_foldview, bool cxx_foldview_is_fold,
+                              bool cxx_foldview_is_expand);
   void SendSyntheticWheelEventWithPhaseEnd(const PointerEvent&) override;
 
   void EndMouseWheelTransactionByForce();
