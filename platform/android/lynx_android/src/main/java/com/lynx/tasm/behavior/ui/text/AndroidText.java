@@ -237,7 +237,14 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
 
   @Keep
   @Override
-  protected void onLayout(boolean changed, int l, int t, int r, int b) {}
+  protected void onLayout(boolean changed, int l, int t, int r, int b) {
+    if (super.getRenderer() != null) {
+      if (super.getRenderer().getUIHost() != null) {
+        super.getRenderer().getUIHost().measure();
+      }
+      super.getRenderer().onLayout(changed, l, t, r, b);
+    }
+  }
 
   @Override
   public boolean onTouchEvent(MotionEvent event) {
@@ -269,6 +276,11 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   @Keep
   @Override
   protected void onDraw(Canvas canvas) {
+    if (super.getRenderer() != null) {
+      super.getRenderer().onDraw(canvas);
+      return;
+    }
+
     if (mTextraPage != null) {
       int paddingLeft = getPaddingLeft();
       int paddingRight = getPaddingRight();
@@ -282,7 +294,6 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
       canvas.translate(paddingLeft, paddingTop);
       mTextraPage.drawPageCanvas(canvas, this);
       canvas.restore();
-      return;
     }
 
     if (mTextLayout != null) {
@@ -307,6 +318,9 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   @Override
   public void dispatchDraw(Canvas canvas) {
     super.dispatchDraw(canvas);
+    if (super.getRenderer() != null) {
+      return;
+    }
 
     if (!mIsInSelection || mHighlightPath == null || mHighlightPath.isEmpty()) {
       return;

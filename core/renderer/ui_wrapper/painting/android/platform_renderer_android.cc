@@ -16,10 +16,10 @@ namespace lynx::tasm {
 
 namespace {
 
-bool IsDirectChildOfScrollViewFromInitData(
+bool IsDirectChildOfCompatibleComponentFromInitData(
     const fml::RefPtr<PropBundle>& init_data) {
   return init_data != nullptr &&
-         init_data->Contains(kDirectChildOfScrollViewInitDataKey);
+         init_data->Contains(kDirectChildOfCompatibleComponentInitDataKey);
 }
 
 }  // namespace
@@ -115,7 +115,7 @@ void PlatformRendererAndroid::InitializeAndroidView(
 
 bool PlatformRendererAndroid::ShouldCreatePlatformExtendedRenderer(
     const fml::RefPtr<PropBundle>& init_data) const {
-  if (IsDirectChildOfScrollViewFromInitData(init_data)) {
+  if (IsDirectChildOfCompatibleComponentFromInitData(init_data)) {
     return true;
   }
   if (type_ == PlatformRendererType::kText ||

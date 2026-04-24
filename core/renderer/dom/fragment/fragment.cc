@@ -43,7 +43,7 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   }
 
   const bool can_flatten_without_platform_renderer =
-      (!element()->is_direct_child_of_scroll_element() &&
+      (!element()->is_direct_child_of_compatible_component() &&
        (element()->is_text() || element()->is_image() ||
         element()->is_view())) &&
       element()->TendToFlatten();
@@ -69,7 +69,7 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
 
   // TODO(zhongyr): abstract one behavior for layerize.
   fml::RefPtr<PropBundle> actual_init_data = init_data;
-  if (element()->is_direct_child_of_scroll_element()) {
+  if (element()->is_direct_child_of_compatible_component()) {
     if (actual_init_data == nullptr) {
       bool use_map_buffer =
           element()->element_manager()->GetEnableUseMapBuffer();
@@ -80,7 +80,8 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
               ->CreatePropBundle(use_map_buffer,
                                  element()->EnableFragmentLayerRender());
     }
-    actual_init_data->SetProps(kDirectChildOfScrollViewInitDataKey, true);
+    actual_init_data->SetProps(kDirectChildOfCompatibleComponentInitDataKey,
+                               true);
   }
   behavior_->CreatePlatformRenderer(actual_init_data);
   has_platform_renderer_ = true;

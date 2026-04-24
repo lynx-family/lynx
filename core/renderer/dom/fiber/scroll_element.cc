@@ -10,15 +10,10 @@ namespace lynx {
 namespace tasm {
 
 void ScrollElement::OnNodeAdded(FiberElement* child) {
+  FiberElement::OnNodeAdded(child);
+
   // Scroll's child should not be layout only.
   child->MarkCanBeLayoutOnly(false);
-  child->MarkAsDirectChildOfScrollElement(true);
-
-  UpdateRenderRootElementIfNecessary(child);
-}
-
-void ScrollElement::OnNodeRemoved(FiberElement* child) {
-  child->MarkAsDirectChildOfScrollElement(false);
 }
 
 const StyleMap* ScrollElement::PeekCommittedStylesFromAttributes() const {

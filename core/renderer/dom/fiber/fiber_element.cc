@@ -285,6 +285,10 @@ void FiberElement::AttachToElementManager(
 }
 
 void FiberElement::OnNodeAdded(FiberElement *child) {
+  if (child != nullptr) {
+    child->MarkAsDirectChildOfCompatibleComponent(!is_page() && !is_view() &&
+                                                  !is_text() && !is_image());
+  }
   if (IsRadonArch()) {
     if (element_manager_ && element_manager_->FixRadonInlineConvertBug()) {
       if (child != nullptr && is_inline_element() &&
@@ -303,6 +307,12 @@ void FiberElement::OnNodeAdded(FiberElement *child) {
   }
 
   UpdateRenderRootElementIfNecessary(child);
+}
+
+void FiberElement::OnNodeRemoved(FiberElement *child) {
+  if (child != nullptr) {
+    child->MarkAsDirectChildOfCompatibleComponent(false);
+  }
 }
 
 FiberElement::~FiberElement() {

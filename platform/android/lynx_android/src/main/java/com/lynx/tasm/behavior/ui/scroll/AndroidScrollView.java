@@ -294,14 +294,18 @@ public class AndroidScrollView
 
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
-    if (mRenderer != null && mRenderer.getUIHost() != null && mLinearLayout != null) {
-      mRenderer.getUIHost().measure();
+    if (mRenderer != null) {
+      if (mRenderer.getUIHost() != null) {
+        mRenderer.getUIHost().measure();
+      }
       mRenderer.onLayout(changed, l, t, r, b);
-      for (int i = 0; i < mLinearLayout.getChildCount(); i++) {
-        View child = mLinearLayout.getChildAt(i);
-        if (child instanceof IRendererHost) {
-          Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
-          child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+      if (mLinearLayout != null) {
+        for (int i = 0; i < mLinearLayout.getChildCount(); i++) {
+          View child = mLinearLayout.getChildAt(i);
+          if (child instanceof IRendererHost) {
+            Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
+            child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+          }
         }
       }
     }
@@ -578,9 +582,7 @@ public class AndroidScrollView
 
   @Override
   protected void onDraw(Canvas canvas) {
-    if (mRenderer != null && mRenderer.getUIHost() != null) {
-      requestLayout();
-      mRenderer.getUIHost().layout();
+    if (mRenderer != null) {
       mRenderer.onDraw(canvas);
       return;
     }

@@ -127,8 +127,10 @@ public class AndroidView extends ViewGroup
 
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
-    if (mRenderer != null && mRenderer.getUIHost() != null) {
-      mRenderer.getUIHost().measure();
+    if (mRenderer != null) {
+      if (mRenderer.getUIHost() != null) {
+        mRenderer.getUIHost().measure();
+      }
       mRenderer.onLayout(changed, l, t, r, b);
     }
 
@@ -337,8 +339,7 @@ public class AndroidView extends ViewGroup
 
   @Override
   protected void onDraw(Canvas canvas) {
-    if (mRenderer != null && mRenderer.getUIHost() != null) {
-      mRenderer.getUIHost().layout();
+    if (mRenderer != null) {
       mRenderer.onDraw(canvas);
       return;
     }
