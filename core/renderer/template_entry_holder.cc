@@ -80,6 +80,8 @@ void TemplateEntryHolder::InsertLynxTemplateBundle(
   if (template_entries_.find(url) == template_entries_.end()) {
     // TODD(yangguangzhao.solace): JS query component should use preloaded
     // bundle too.
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE,
+                "url", url);
     preload_template_bundles_.try_emplace(url, bundle);
   }
 

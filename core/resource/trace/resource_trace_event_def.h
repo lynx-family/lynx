@@ -19,6 +19,10 @@ inline constexpr const char* const LAZY_BUNDLE_DID_FETCH_BUNDLE =
     "LazyBundle::DidFetchBundle";
 inline constexpr const char* const LAZY_BUNDLE_FETCH_BUNDLE =
     "LazyBundle::FetchBundle";
+inline constexpr const char* const LAZY_BUNDLE_USE_PREREGISTERED_BUNDLE =
+    "LazyBundle::UsePreregisteredBundle";
+inline constexpr const char* const LAZY_BUNDLE_LOADER_INSERT_BUNDLE =
+    "LazyBundleLoader::InsertBundle";
 
 inline constexpr const char* const FETCH_SCRIPT_BY_PROVIDER =
     "FetchScriptByProvider";

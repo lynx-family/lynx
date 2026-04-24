@@ -386,6 +386,9 @@ void LazyBundleLoader::InsertTemplateBundle(const std::string& url,
                                             LynxTemplateBundle bundle) {
   LOGE("LazyBundleLoader::InsertTemplateBundle: " << url.c_str()
                                                   << "this: " << this);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LAZY_BUNDLE_LOADER_INSERT_BUNDLE, "url",
+              url);
+
   std::unique_lock<std::mutex> lock(mutex_);
   loaded_bundles_.emplace(url, bundle);
 }

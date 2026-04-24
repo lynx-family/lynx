@@ -274,6 +274,8 @@ inline constexpr const char* const TEMPLATE_ENTRY_HOLDER_FIND_TEMPLATE_ENTRY =
     "TemplateEntryHolder::FindTemplateEntry";
 inline constexpr const char* const TEMPLATE_ENTRY_HOLDER_FOR_EACH_ENTRY =
     "TemplateEntryHolder::ForEachEntry";
+inline constexpr const char* const TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE =
+    "TemplateRender::RegisterLazyBundle";
 inline constexpr const char* const TEMPLATE_ENTRY_CONSTRUCTOR =
     "TemplateEntry::TemplateEntry";
 inline constexpr const char* const TEMPLATE_ENTRY_INIT_WITH_PAGE_CONFIG =
