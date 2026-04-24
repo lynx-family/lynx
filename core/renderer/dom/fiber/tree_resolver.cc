@@ -186,15 +186,42 @@ lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
   return attribute_slots.GetProperty(slot_index);
 }
 
-}  // namespace
+void ClearPreviousTemplateSpreadAttributes(
+    FiberElement* element, const TemplateAttributes& template_attributes,
+    const lepus::Value& previous_attribute_slots) {
+  if (!previous_attribute_slots.IsArrayOrJSArray()) {
+    return;
+  }
 
-void TreeResolver::ApplyTemplateAttributesToElement(
-    FiberElement* element, const lepus::Value& attribute_slots) {
+  for (const auto& attr : template_attributes) {
+    if (attr.type_ != ATTRIBUTE_BINDING_TYPE_SPREAD) {
+      continue;
+    }
+    auto previous_value =
+        ResolveAttributeSlotValue(previous_attribute_slots, attr.slot_index_);
+    if (!previous_value.IsObject()) {
+      continue;
+    }
+    tasm::ForEachLepusValue(
+        previous_value, [element](const auto& key, const auto&) {
+          ApplyTemplateAttributeValue(element, key.String(), lepus::Value());
+        });
+  }
+}
+
+void ApplyTemplateAttributesToElementInternal(
+    FiberElement* element, const lepus::Value* previous_attribute_slots,
+    const lepus::Value& attribute_slots) {
   if (element == nullptr || !element->HasTemplateAttributes()) {
     return;
   }
 
   const auto& template_attributes = element->template_attributes();
+  const bool rebuild_static_attributes = previous_attribute_slots != nullptr;
+  if (rebuild_static_attributes) {
+    ClearPreviousTemplateSpreadAttributes(element, *template_attributes,
+                                          *previous_attribute_slots);
+  }
   bool has_applied_spread = false;
   for (const auto& attr : *template_attributes) {
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
@@ -205,7 +232,7 @@ void TreeResolver::ApplyTemplateAttributesToElement(
       continue;
     }
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
-      if (has_applied_spread) {
+      if (has_applied_spread || rebuild_static_attributes) {
         ApplyTemplateAttributeValue(element, attr.key_, attr.value_);
       }
       continue;
@@ -217,6 +244,20 @@ void TreeResolver::ApplyTemplateAttributesToElement(
       continue;
     }
   }
+}
+
+}  // namespace
+
+void TreeResolver::ApplyTemplateAttributesToElement(
+    FiberElement* element, const lepus::Value& attribute_slots) {
+  ApplyTemplateAttributesToElementInternal(element, nullptr, attribute_slots);
+}
+
+void TreeResolver::ApplyTemplateAttributesToElement(
+    FiberElement* element, const lepus::Value& previous_attribute_slots,
+    const lepus::Value& attribute_slots) {
+  ApplyTemplateAttributesToElementInternal(element, &previous_attribute_slots,
+                                           attribute_slots);
 }
 
 void TreeResolver::NotifyNodeInserted(FiberElement* insertion_point,

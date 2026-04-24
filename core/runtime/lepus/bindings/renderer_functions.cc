@@ -149,6 +149,22 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
   return GenerateSystemInfo(&config);
 }
 
+fml::RefPtr<FiberElement> GetFiberElementFromValue(const lepus::Value& value) {
+  if (!value.IsRefCounted() ||
+      value.RefCounted()->GetRefType() != lepus::RefType::kElement) {
+    return nullptr;
+  }
+  return fml::static_ref_ptr_cast<FiberElement>(value.RefCounted());
+}
+
+TemplateElement* GetTemplateElementFromValue(const lepus::Value& value) {
+  auto element = GetFiberElementFromValue(value);
+  if (element == nullptr || !element->is_template()) {
+    return nullptr;
+  }
+  return static_cast<TemplateElement*>(element.get());
+}
+
 }  // namespace
 
 #define LEPUS_MTS_CONTEXT() ctx
@@ -3578,15 +3594,20 @@ RENDERER_FUNCTION_CC(FiberSetAttributeOfElementTemplate) {
   CHECK_ARGC_GE(FiberSetAttributeOfElementTemplate, 3);
   CONVERT_ARG(arg0, 0);
   CONVERT_ARG(arg1, 1);
-  if (!arg0->IsRefCounted() || !arg1->IsNumber()) {
+  CONVERT_ARG(arg2, 2);
+  auto* template_element = GetTemplateElementFromValue(*arg0);
+  if (template_element == nullptr || !arg1->IsNumber() || arg1->Number() < 0) {
     RETURN_UNDEFINED();
   }
+  template_element->SetAttributeSlot(static_cast<uint32_t>(arg1->Number()),
+                                     *arg2);
   RETURN_UNDEFINED();
 }
 
 RENDERER_FUNCTION_CC(FiberInsertNodeToElementTemplate) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_INSERT_NODE_TO_ELEMENT_TEMPLATE);
-  // Insert or move one node into one dynamic Element Slot.
+  // Insert one node into one dynamic Element Slot before the reference node, or
+  // append it when the reference node is empty.
   // parameter size >= 3
   // [0] RefCounted -> templateInstance
   // [1] Number -> elementSlotIndex
@@ -3596,9 +3617,26 @@ RENDERER_FUNCTION_CC(FiberInsertNodeToElementTemplate) {
   CONVERT_ARG(arg0, 0);
   CONVERT_ARG(arg1, 1);
   CONVERT_ARG(arg2, 2);
-  if (!arg0->IsRefCounted() || !arg1->IsNumber() || !arg2->IsRefCounted()) {
+  auto* template_element = GetTemplateElementFromValue(*arg0);
+  auto child = GetFiberElementFromValue(*arg2);
+  if (template_element == nullptr || !arg1->IsNumber() || arg1->Number() < 0 ||
+      child == nullptr) {
     RETURN_UNDEFINED();
   }
+  fml::RefPtr<FiberElement> ref_node = nullptr;
+  if (argc >= 4) {
+    CONVERT_ARG(arg3, 3);
+    if (arg3->IsRefCounted()) {
+      ref_node = GetFiberElementFromValue(*arg3);
+      if (ref_node == nullptr) {
+        RETURN_UNDEFINED();
+      }
+    } else if (!arg3->IsNil() && !arg3->IsUndefined()) {
+      RETURN_UNDEFINED();
+    }
+  }
+  template_element->InsertElementSlotChild(
+      static_cast<uint32_t>(arg1->Number()), child, ref_node);
   RETURN_UNDEFINED();
 }
 
@@ -3613,9 +3651,14 @@ RENDERER_FUNCTION_CC(FiberRemoveNodeFromElementTemplate) {
   CONVERT_ARG(arg0, 0);
   CONVERT_ARG(arg1, 1);
   CONVERT_ARG(arg2, 2);
-  if (!arg0->IsRefCounted() || !arg1->IsNumber() || !arg2->IsRefCounted()) {
+  auto* template_element = GetTemplateElementFromValue(*arg0);
+  auto child = GetFiberElementFromValue(*arg2);
+  if (template_element == nullptr || !arg1->IsNumber() || arg1->Number() < 0 ||
+      child == nullptr) {
     RETURN_UNDEFINED();
   }
+  template_element->RemoveElementSlotChild(
+      static_cast<uint32_t>(arg1->Number()), child);
   RETURN_UNDEFINED();
 }
 
@@ -3626,18 +3669,10 @@ RENDERER_FUNCTION_CC(FiberSerializeElementTemplate) {
   // [0] RefCounted -> templateInstance
   CHECK_ARGC_GE(FiberSerializeElementTemplate, 1);
   CONVERT_ARG(arg0, 0);
-  if (!arg0->IsRefCounted()) {
+  auto* element = GetTemplateElementFromValue(*arg0);
+  if (element == nullptr) {
     RETURN_UNDEFINED();
   }
-  if (arg0->RefCounted()->GetRefType() != lepus::RefType::kElement) {
-    RETURN_UNDEFINED();
-  }
-  auto fiber_element =
-      fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-  if (!fiber_element->is_template()) {
-    RETURN_UNDEFINED();
-  }
-  auto* element = static_cast<TemplateElement*>(fiber_element.get());
   RETURN(element->Serialize());
 }
 

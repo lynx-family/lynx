@@ -9730,6 +9730,252 @@ TEST_P(FiberElementTest, SerializeTemplateElementSkipsInvalidSlotChildren) {
             "invalid_slot_shape");
 }
 
+TEST_P(FiberElementTest, ElementTemplateDynamicAPIsCachePendingOpsBeforeRoot) {
+  auto first = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  first->SetTemplateKey(base::String("first_template"));
+
+  auto second = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  second->SetTemplateKey(base::String("second_template"));
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("old_value"));
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(first));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTemplateKey(base::String("root_template"));
+  root->SetAttributeSlots(lepus::Value(attribute_slots));
+  root->SetElementSlots(lepus::Value(element_slots));
+
+  lepus::Value set_attribute_args[] = {lepus::Value(root), lepus::Value(0),
+                                       lepus::Value("new_value")};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
+                                                        set_attribute_args, 3);
+
+  lepus::Value insert_args[] = {lepus::Value(root), lepus::Value(0),
+                                lepus::Value(second), lepus::Value(first)};
+  RendererFunctions::FiberInsertNodeToElementTemplate(nullptr, insert_args, 4);
+
+  lepus::Value remove_args[] = {lepus::Value(root), lepus::Value(0),
+                                lepus::Value(first)};
+  RendererFunctions::FiberRemoveNodeFromElementTemplate(nullptr, remove_args,
+                                                        3);
+
+  ASSERT_EQ(root->pending_operations_.size(), 3u);
+
+  auto serialized = root->Serialize();
+  auto serialized_attribute_slots = serialized.GetProperty("attributeSlots");
+  ASSERT_TRUE(serialized_attribute_slots.IsArrayOrJSArray());
+  EXPECT_EQ(serialized_attribute_slots.GetProperty(0).StdString(), "old_value");
+
+  auto serialized_element_slots = serialized.GetProperty("elementSlots");
+  ASSERT_TRUE(serialized_element_slots.IsArrayOrJSArray());
+  auto serialized_slot_children = serialized_element_slots.GetProperty(0);
+  ASSERT_TRUE(serialized_slot_children.IsArrayOrJSArray());
+  ASSERT_EQ(serialized_slot_children.GetLength(), 1);
+  EXPECT_EQ(serialized_slot_children.GetProperty(0)
+                .GetProperty("templateKey")
+                .StdString(),
+            "first_template");
+}
+
+TEST_P(FiberElementTest, ElementTemplateDynamicAPIsUpdateMaterializedTargets) {
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTemplateKey(base::String("root_template"));
+  root->result_ = manager->CreateFiberView();
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("old_value"));
+  root->SetAttributeSlots(lepus::Value(attribute_slots));
+
+  auto target = manager->CreateFiberView();
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+  target->SetAttribute("data-test", lepus::Value("old_value"));
+  root->attribute_slot_targets_.push_back(target);
+
+  lepus::Value set_attribute_args[] = {lepus::Value(root), lepus::Value(0),
+                                       lepus::Value("new_value")};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
+                                                        set_attribute_args, 3);
+  EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
+            "new_value");
+
+  auto slot_parent = manager->CreateFiberView();
+  auto sentinel = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  slot_parent->InsertNode(first);
+  slot_parent->InsertNode(sentinel);
+  root->element_slot_targets_.push_back(
+      ElementSlotMountPoint{slot_parent, sentinel});
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(first));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+  root->SetElementSlots(lepus::Value(element_slots));
+
+  lepus::Value insert_args[] = {lepus::Value(root), lepus::Value(0),
+                                lepus::Value(second)};
+  RendererFunctions::FiberInsertNodeToElementTemplate(nullptr, insert_args, 3);
+  ASSERT_EQ(slot_parent->children().size(), 3u);
+  EXPECT_EQ(slot_parent->children()[0].get(), first.get());
+  EXPECT_EQ(slot_parent->children()[1].get(), second.get());
+  EXPECT_EQ(slot_parent->children()[2].get(), sentinel.get());
+
+  lepus::Value remove_args[] = {lepus::Value(root), lepus::Value(0),
+                                lepus::Value(first)};
+  RendererFunctions::FiberRemoveNodeFromElementTemplate(nullptr, remove_args,
+                                                        3);
+  ASSERT_EQ(slot_parent->children().size(), 2u);
+  EXPECT_EQ(slot_parent->children()[0].get(), second.get());
+  EXPECT_EQ(slot_parent->children()[1].get(), sentinel.get());
+}
+
+TEST_P(FiberElementTest, ElementTemplateInsertElementSlotChildKeepsOtherSlots) {
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTemplateKey(base::String("root_template"));
+  root->result_ = manager->CreateFiberView();
+
+  auto child_in_other_slot =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child_in_other_slot->SetTemplateKey(base::String("other_template"));
+  auto child_to_insert =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child_to_insert->SetTemplateKey(base::String("inserted_template"));
+  auto ref_node = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  ref_node->SetTemplateKey(base::String("ref_template"));
+
+  auto first_slot_children = lepus::CArray::Create();
+  first_slot_children->emplace_back(lepus::Value(child_in_other_slot));
+  auto second_slot_children = lepus::CArray::Create();
+  second_slot_children->emplace_back(lepus::Value(ref_node));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(first_slot_children));
+  element_slots->emplace_back(lepus::Value(second_slot_children));
+  root->SetElementSlots(lepus::Value(element_slots));
+
+  auto slot_parent = manager->CreateFiberView();
+  auto sentinel = manager->CreateFiberView();
+  slot_parent->InsertNode(ref_node);
+  slot_parent->InsertNode(sentinel);
+  root->element_slot_targets_.push_back(
+      ElementSlotMountPoint{nullptr, nullptr});
+  root->element_slot_targets_.push_back(
+      ElementSlotMountPoint{slot_parent, sentinel});
+
+  lepus::Value insert_args[] = {lepus::Value(root), lepus::Value(1),
+                                lepus::Value(child_to_insert),
+                                lepus::Value(ref_node)};
+  RendererFunctions::FiberInsertNodeToElementTemplate(nullptr, insert_args, 4);
+
+  auto serialized = root->Serialize();
+  auto serialized_slots = serialized.GetProperty("elementSlots");
+  ASSERT_TRUE(serialized_slots.IsArrayOrJSArray());
+  auto first_serialized_slot = serialized_slots.GetProperty(0);
+  ASSERT_TRUE(first_serialized_slot.IsArrayOrJSArray());
+  ASSERT_EQ(first_serialized_slot.GetLength(), 1);
+  EXPECT_EQ(first_serialized_slot.GetProperty(0)
+                .GetProperty("templateKey")
+                .StdString(),
+            "other_template");
+
+  auto second_serialized_slot = serialized_slots.GetProperty(1);
+  ASSERT_TRUE(second_serialized_slot.IsArrayOrJSArray());
+  ASSERT_EQ(second_serialized_slot.GetLength(), 2);
+  EXPECT_EQ(second_serialized_slot.GetProperty(0)
+                .GetProperty("templateKey")
+                .StdString(),
+            "inserted_template");
+  EXPECT_EQ(second_serialized_slot.GetProperty(1)
+                .GetProperty("templateKey")
+                .StdString(),
+            "ref_template");
+  ASSERT_EQ(slot_parent->children().size(), 3u);
+  EXPECT_EQ(slot_parent->children()[0].get(), child_to_insert.get());
+  EXPECT_EQ(slot_parent->children()[1].get(), ref_node.get());
+  EXPECT_EQ(slot_parent->children()[2].get(), sentinel.get());
+}
+
+TEST_P(FiberElementTest, ElementTemplateDynamicAPIsConsumePendingOpsOnGetRoot) {
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTemplateKey(base::String("root_template"));
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("old_value"));
+  root->SetAttributeSlots(lepus::Value(attribute_slots));
+
+  auto target = manager->CreateFiberView();
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+  target->SetAttribute("data-test", lepus::Value("old_value"));
+
+  auto slot_parent = manager->CreateFiberView();
+  auto sentinel = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  slot_parent->InsertNode(sentinel);
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(first));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+  root->SetElementSlots(lepus::Value(element_slots));
+
+  GeneratedElementsResult generated;
+  generated.result_ = manager->CreateFiberView();
+  generated.attribute_slot_targets_.push_back(target);
+  generated.element_slot_targets_.push_back(
+      ElementSlotMountPoint{slot_parent, sentinel});
+  generated.prepared_element_slot_insertions_.push_back(
+      PreparedElementSlotInsertion{0, first});
+
+  std::promise<GeneratedElementsResult> promise;
+  auto future = promise.get_future();
+  root->async_create_task_ =
+      fml::MakeRefCounted<base::OnceTask<GeneratedElementsResult>>(
+          [generated = std::move(generated),
+           promise = std::move(promise)]() mutable {
+            promise.set_value(std::move(generated));
+          },
+          std::move(future));
+
+  lepus::Value set_attribute_args[] = {lepus::Value(root), lepus::Value(0),
+                                       lepus::Value("new_value")};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
+                                                        set_attribute_args, 3);
+
+  lepus::Value insert_args[] = {lepus::Value(root), lepus::Value(0),
+                                lepus::Value(second), lepus::Value(first)};
+  RendererFunctions::FiberInsertNodeToElementTemplate(nullptr, insert_args, 4);
+
+  lepus::Value remove_args[] = {lepus::Value(root), lepus::Value(0),
+                                lepus::Value(first)};
+  RendererFunctions::FiberRemoveNodeFromElementTemplate(nullptr, remove_args,
+                                                        3);
+
+  ASSERT_EQ(root->pending_operations_.size(), 3u);
+
+  root->GetRoot();
+
+  EXPECT_TRUE(root->pending_operations_.empty());
+  EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
+            "new_value");
+  ASSERT_EQ(slot_parent->children().size(), 2u);
+  EXPECT_EQ(slot_parent->children()[0].get(), second.get());
+  EXPECT_EQ(slot_parent->children()[1].get(), sentinel.get());
+}
+
 TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
   auto attribute_slots = lepus::CArray::Create();
   attribute_slots->emplace_back(lepus::Value("new-class another"));

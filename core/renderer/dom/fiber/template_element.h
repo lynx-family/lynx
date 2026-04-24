@@ -5,6 +5,7 @@
 #define CORE_RENDERER_DOM_FIBER_TEMPLATE_ELEMENT_H_
 
 #include <memory>
+#include <utility>
 
 #include "core/base/thread/once_task.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -46,8 +47,38 @@ class TemplateElement : public FiberElement {
   void PrepareAsyncCreateElementTree();
   fml::RefPtr<FiberElement> GetRoot();
   lepus::Value Serialize() const;
+  void SetAttributeSlot(uint32_t slot_index, const lepus::Value& value);
+  void InsertElementSlotChild(uint32_t slot_index,
+                              const fml::RefPtr<FiberElement>& child,
+                              const fml::RefPtr<FiberElement>& ref_node);
+  void RemoveElementSlotChild(uint32_t slot_index,
+                              const fml::RefPtr<FiberElement>& child);
 
  private:
+  struct PendingOperation {
+    enum class Type {
+      kSetAttributeSlot,
+      kInsertElementSlotChild,
+      kRemoveElementSlotChild,
+    };
+
+    PendingOperation(Type type, uint32_t slot_index, lepus::Value value)
+        : type_(type), slot_index_(slot_index), value_(std::move(value)) {}
+    PendingOperation(Type type, uint32_t slot_index,
+                     fml::RefPtr<FiberElement> child,
+                     fml::RefPtr<FiberElement> ref_node = nullptr)
+        : type_(type),
+          slot_index_(slot_index),
+          child_(std::move(child)),
+          ref_node_(std::move(ref_node)) {}
+
+    Type type_{Type::kSetAttributeSlot};
+    uint32_t slot_index_{0};
+    lepus::Value value_;
+    fml::RefPtr<FiberElement> child_;
+    fml::RefPtr<FiberElement> ref_node_;
+  };
+
   TemplateElement(const TemplateElement& element, bool clone_resolved_props)
       : FiberElement(element, clone_resolved_props),
         tasm_(element.tasm_),
@@ -65,9 +96,19 @@ class TemplateElement : public FiberElement {
   CreateAsyncCreateElementTreeTask(TemplateEntry* entry);
   void ResolveGeneratedElements();
   void InitGeneratedElementTree();
+  void ApplyAttributeSlotToTarget(uint32_t slot_index,
+                                  const lepus::Value& previous_attribute_slots);
   void ApplyInitialElementSlots();
+  void ApplyPendingOperations();
   void InsertInitialElementSlotChild(const ElementSlotMountPoint& mount_point,
                                      const fml::RefPtr<FiberElement>& child);
+  void MountElementSlotChild(const ElementSlotMountPoint& mount_point,
+                             const fml::RefPtr<FiberElement>& child,
+                             const fml::RefPtr<FiberElement>& ref_node);
+  void UnmountElementSlotChild(const ElementSlotMountPoint& mount_point,
+                               const fml::RefPtr<FiberElement>& child);
+  lepus::Value GetOrCreateElementSlotChildren(uint32_t slot_index);
+  void RemoveElementSlotChildFromSlot(uint32_t slot_index, FiberElement* child);
   lepus::Value SerializeElementSlots() const;
   lepus::Value SerializeElementSlotChildren(
       const lepus::Value& slot_children) const;
@@ -84,6 +125,7 @@ class TemplateElement : public FiberElement {
   base::Vector<fml::RefPtr<FiberElement>> attribute_slot_targets_;
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
+  base::Vector<PendingOperation> pending_operations_;
   base::OnceTaskRefptr<GeneratedElementsResult> async_create_task_{nullptr};
 };
 
