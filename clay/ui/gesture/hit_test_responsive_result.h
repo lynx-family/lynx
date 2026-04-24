@@ -22,6 +22,9 @@ union HitTestResponsiveResult {
     bool has_consume_slide_event : 1;
     bool slide_event_consumed : 1;
     bool has_longpress_event : 1;
+    bool has_cxx_fold_view : 1;
+    bool cxx_foldview_is_fold : 1;
+    bool cxx_foldview_is_expanded : 1;
   };
 };
 
