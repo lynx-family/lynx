@@ -5,6 +5,7 @@
 #include "clay/lynx_adaptor/native_module/lynx_websocket_module.h"
 
 #include <random>
+#include <string_view>
 #include <thread>
 #include <unordered_map>
 #include <utility>
@@ -108,7 +109,7 @@ class SimpleWebSocket {
     *reinterpret_cast<uint32_t*>(txb + txb_len) = 0;
     txb_len += 4;
 
-    do_write((char*)txb, txb_len);
+    do_write(reinterpret_cast<const char*>(txb), txb_len);
   }
 
   void Write(const std::string& data) {
@@ -117,7 +118,8 @@ class SimpleWebSocket {
     }
     const char* payload = data.data();
     size_t payload_len = data.size();
-    uint8_t* txb = (uint8_t*)alloca(16 + payload_len);
+    std::vector<uint8_t> frame(16 + payload_len);
+    uint8_t* txb = frame.data();
     size_t txb_len = 2;
 
     txb[0] = 1 /*OP_TEXT*/ | 0x80 /*FIN*/;
@@ -147,7 +149,7 @@ class SimpleWebSocket {
     memcpy(txb + txb_len, payload, payload_len);
     txb_len += payload_len;
 
-    do_write((char*)txb, txb_len);
+    do_write(reinterpret_cast<const char*>(txb), txb_len);
   }
 
  private:
@@ -204,28 +206,59 @@ class SimpleWebSocket {
   }
 
   bool Connect() {
-    const char* purl = url_.c_str();
+    std::string_view url_view(url_);
     int port = 80;
     bool wss = false;
-    if (memcmp(purl, "wss://", 6) == 0) {
+    if (url_view.rfind("wss://", 0) == 0) {
       port = 443;
       wss = true;
-      purl += 6;
-    } else if (memcmp(purl, "ws://", 5) == 0) {
-      purl += 5;
+      url_view.remove_prefix(6);
+    } else if (url_view.rfind("ws://", 0) == 0) {
+      url_view.remove_prefix(5);
     } else {
       return false;
     }
 
-    char host[256] = {0};
-    char path[4000] = {0};
-    if (sscanf(purl, "%[^:/]:%d/%s", host, &port, path) == 3) {
-    } else if (sscanf(purl, "%[^:/]/%s", host, path) == 2) {
-    } else if (sscanf(purl, "%[^:/]:%d", host, &port) == 2) {
-    } else if (sscanf(purl, "%[^:/]", host) == 1) {
-    } else {
+    const auto slash_pos = url_view.find('/');
+    const std::string_view authority = slash_pos == std::string_view::npos
+                                           ? url_view
+                                           : url_view.substr(0, slash_pos);
+    const std::string_view path_view = slash_pos == std::string_view::npos
+                                           ? std::string_view()
+                                           : url_view.substr(slash_pos + 1);
+
+    std::string_view host_view = authority;
+    const auto colon_pos = authority.find(':');
+    if (colon_pos != std::string_view::npos) {
+      host_view = authority.substr(0, colon_pos);
+      const std::string_view port_view = authority.substr(colon_pos + 1);
+      if (port_view.empty()) {
+        return false;
+      }
+
+      int parsed_port = 0;
+      for (const char ch : port_view) {
+        if (ch < '0' || ch > '9') {
+          return false;
+        }
+        parsed_port = parsed_port * 10 + (ch - '0');
+        if (parsed_port > 65535) {
+          return false;
+        }
+      }
+      if (parsed_port == 0) {
+        return false;
+      }
+      port = parsed_port;
+    }
+
+    if (host_view.empty() || host_view.size() > 255 ||
+        path_view.size() > 3999) {
       return false;
     }
+
+    const std::string host(host_view);
+    const std::string path(path_view);
 
     struct addrinfo ai, *sai;
     memset(&ai, 0, sizeof ai);
@@ -233,7 +266,7 @@ class SimpleWebSocket {
     ai.ai_socktype = SOCK_STREAM;
     char str_port[16];
     snprintf(str_port, sizeof(str_port), "%d", port);
-    int ret = ::getaddrinfo(host, str_port, &ai, &sai);
+    int ret = ::getaddrinfo(host.c_str(), str_port, &ai, &sai);
     if (ret != 0) {
       return false;
     }
@@ -290,20 +323,33 @@ class SimpleWebSocket {
       headers_str += "\r\n";
     }
 
-    char buf[512 + strlen(path) + strlen(host) + headers_str.size()];
+    constexpr size_t kMaxExtraHeadersBytes = 16 * 1024;
+    if (headers_str.size() > kMaxExtraHeadersBytes) {
+      return false;
+    }
     // Generate `Sec-WebSocket-Key` using random numbers.
     std::string key = GenerateSecWebsocketKey();
-    snprintf(buf, sizeof(buf),
-             "GET /%s HTTP/1.1\r\n"
-             "Host: %s:%d\r\n"
-             "Upgrade: websocket\r\n"
-             "Connection: Upgrade\r\n"
-             "Sec-WebSocket-Key: %s\r\n"
-             "Sec-WebSocket-Version: 13\r\n"
-             "%s\r\n",
-             path, host, port, key.c_str(), headers_str.c_str());
-    do_write(buf, strlen(buf));
+    std::string request;
+    request.reserve(512 + path.size() + host.size() + headers_str.size());
+    request.append("GET /");
+    request.append(path);
+    request.append(" HTTP/1.1\r\n");
+    request.append("Host: ");
+    request.append(host);
+    request.append(":");
+    request.append(std::to_string(port));
+    request.append("\r\n");
+    request.append("Upgrade: websocket\r\n");
+    request.append("Connection: Upgrade\r\n");
+    request.append("Sec-WebSocket-Key: ");
+    request.append(key);
+    request.append("\r\n");
+    request.append("Sec-WebSocket-Version: 13\r\n");
+    request.append(headers_str);
+    request.append("\r\n");
+    do_write(request.data(), request.size());
 
+    char buf[4096];
     int status;
     if (read_line(buf, sizeof(buf)) < 10 ||
         sscanf(buf, "HTTP/1.1 %d Switching Protocols\r\n", &status) != 1 ||
@@ -312,8 +358,13 @@ class SimpleWebSocket {
     }
 
     while (read_line(buf, sizeof(buf)) > 0 && buf[0] != '\r') {
-      auto len = strlen(buf);
-      buf[len - 2] = '\0';  // '\r\n' -> '\0\n'
+      size_t len = strlen(buf);
+      if (len > 0 && buf[len - 1] == '\n') {
+        buf[--len] = '\0';
+      }
+      if (len > 0 && buf[len - 1] == '\r') {
+        buf[--len] = '\0';
+      }
       if (memcmp(buf, "Sec-WebSocket-Protocol: ", 24) == 0) {
         protocol_ = &buf[24];
       }
@@ -369,21 +420,23 @@ class SimpleWebSocket {
   }
 
   int read_line(char* buf, size_t size) {
-    char* out = buf;
-    while (out - buf < size) {
-      int res = do_read(out, 1);
+    if (size == 0) {
+      return 0;
+    }
+
+    size_t written = 0;
+    while (written + 1 < size) {
+      int res = do_read(buf + written, 1);
       if (res == 1) {
-        if (*out++ == '\n') {
+        if (buf[written++] == '\n') {
           break;
         }
-      } else if (res == -1) {
-        // printf("recv errr: %d\n", errno);
+      } else if (res <= 0) {
         break;
       }
     }
-    *out = '\0';
-    // printf("RX: %s [%d bytes]\n", buf, int(out - buf));
-    return out - buf;
+    buf[written] = '\0';
+    return static_cast<int>(written);
   }
 
   int do_read(char* buf, size_t size) {
@@ -393,8 +446,7 @@ class SimpleWebSocket {
     return ::recv(socket_, buf, size, 0);
   }
 
-  int do_write(char* buf, size_t size) {
-    // printf("TX: %s [%d bytes]\n", buf, int(size));
+  int do_write(const char* buf, size_t size) {
     if (ssl_) {
       return SSL_write(ssl_, buf, size);
     }

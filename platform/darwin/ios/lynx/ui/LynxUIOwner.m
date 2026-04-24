@@ -1117,7 +1117,6 @@ extern NSString* const kDefaultComponentID;
   [_foregroundListeners removeAllObjects];
   // reset shellptr to avoid dangling pointer
   _uiContext.shellPtr = 0;
-  _uiContext.fetcher = nil;
   // reset gesture manager in main thread
   [self resetGestureArenaInUIThread];
 
