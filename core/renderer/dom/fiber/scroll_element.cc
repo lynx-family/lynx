@@ -21,6 +21,13 @@ void ScrollElement::OnNodeRemoved(FiberElement* child) {
   child->MarkAsDirectChildOfScrollElement(false);
 }
 
+const StyleMap* ScrollElement::PeekCommittedStylesFromAttributes() const {
+  if (!committed_styles_from_attributes_.has_value()) {
+    return nullptr;
+  }
+  return &*committed_styles_from_attributes_;
+}
+
 void ScrollElement::SetAttributeInternal(const base::String& key,
                                          const lepus::Value& value) {
   FiberElement::SetAttributeInternal(key, value);

@@ -90,6 +90,8 @@ class ListElement : public FiberElement, public tasm::ListNode {
 
   bool is_list() const override { return true; }
 
+  const StyleMap* PeekCommittedStylesFromAttributes() const override;
+
   void TickElement(fml::TimePoint& time) override;
   void AppendComponentInfo(std::unique_ptr<ListComponentInfo> info) override {}
   void RemoveComponent(uint32_t sign) override {}
@@ -222,6 +224,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
   std::unique_ptr<ListMediator> list_mediator_{nullptr};
   std::unique_ptr<ListContainerDelegateInternal>
       list_container_delegate_internal_{nullptr};
+  base::auto_create_optional<StyleMap> committed_styles_from_attributes_;
   list::BatchRenderStrategy batch_render_strategy_{
       list::BatchRenderStrategy::kDefault};
 };

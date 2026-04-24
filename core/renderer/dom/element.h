@@ -298,6 +298,9 @@ class Element : public lepus::RefCounted,
 
   void CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value);
   void CacheStyleFromAttributes(CSSPropertyID id, const lepus::Value& value);
+  virtual const StyleMap* PeekCommittedStylesFromAttributes() const {
+    return nullptr;
+  }
   void DidConsumeStyle();
 
   virtual void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) {}
@@ -1189,11 +1192,15 @@ class Element : public lepus::RefCounted,
     return current_raw_inline_styles_;
   }
 
+  // Check has_value() before usage to avoid unintentional construction.
+  const auto& GetCurrentRawImportantInlineStyles() const {
+    return current_raw_important_inline_styles_;
+  }
+
   /**
    * @brief Returns the current raw inline custom properties (CSS variables).
    */
-  const base::auto_create_optional<CSSVariableMap>&
-  GetCurrentRawInlineCustomProperties() const {
+  const auto& GetCurrentRawInlineCustomProperties() const {
     return current_raw_inline_custom_properties_;
   }
 

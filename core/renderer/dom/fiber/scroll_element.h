@@ -33,6 +33,8 @@ class ScrollElement : public FiberElement {
 
   bool is_scroll_view() const override { return true; }
 
+  const StyleMap* PeekCommittedStylesFromAttributes() const override;
+
  protected:
   void OnNodeAdded(FiberElement* child) override;
   void OnNodeRemoved(FiberElement* child) override;
@@ -45,6 +47,7 @@ class ScrollElement : public FiberElement {
  private:
   void HandleLayoutNodeAttributeUpdate();
   base::String platform_node_tag_{BASE_STATIC_STRING(kElementScrollViewTag)};
+  base::auto_create_optional<StyleMap> committed_styles_from_attributes_;
 };
 
 }  // namespace tasm

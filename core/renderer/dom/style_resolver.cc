@@ -45,6 +45,29 @@ inline std::string GetIDSelectorRule(const base::String& value) {
 inline std::string GetIDSelectorRule(const std::string& value) {
   return "#" + value;
 }
+
+void InsertStyleWithLogicalPropertyResolved(Element* element,
+                                            starlight::ComputedCSSStyle& style,
+                                            CSSPropertyID key,
+                                            const CSSValue& value,
+                                            StyleMap& result) {
+  auto direction_mapping = element->CheckDirectionMapping(key);
+  bool is_direction_aware_property =
+      direction_mapping.ltr_property_ != kPropertyStart ||
+      direction_mapping.rtl_property_ != kPropertyStart;
+  if (is_direction_aware_property) {
+    auto current_direction = style.GetDirection();
+    bool use_rtl_value =
+        (IsRTL(current_direction) && direction_mapping.is_logic_) ||
+        IsLynxRTL(current_direction);
+    auto physical_id = use_rtl_value ? direction_mapping.rtl_property_
+                                     : direction_mapping.ltr_property_;
+    result.insert_or_assign(physical_id, value);
+    return;
+  }
+
+  result.insert_or_assign(key, value);
+}
 }  // namespace
 
 thread_local StyleResolver::MatchedVector<const StyleMap*>
@@ -1445,14 +1468,23 @@ void StyleResolver::InheritParentStyle(
 }
 
 void StyleResolver::CollectMatchedRules(CSSFragment* style_sheet) {
-  // TODO(zhouzhitao): STUB. Must collect matched rules into TLS vectors before
-  // enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Collects matched CSS rules for the current element in the new pipeline.
-  // Clears the thread-local matched_style_map and matched_variable_map,
-  // then invokes the legacy CSS matching path (selector-based or fiber-based)
-  // to populate them. These TLS vectors are consumed later by
-  // AnalyzeMatchedResult and cleared after cascading-affecting properties are
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_COLLECT_MATCHED_RULES);
+  auto* current_element = element();
+  // Reuse the legacy TLS vectors and keep them alive through the new-pipeline
+  // analysis pass. They are cleared after cascading-affecting properties are
   // fully applied.
+  matched_style_map.clear();
+  matched_important_style_map.clear();
+  matched_variable_map.clear();
+
+  if (style_sheet) {
+    if (style_sheet->enable_css_selector()) {
+      GetCSSStyleNew(current_element->data_model(), style_sheet);
+    } else {
+      GetCSSStyleForFiber(static_cast<FiberElement*>(current_element),
+                          style_sheet);
+    }
+  }
 }
 
 void StyleResolver::AnalyzeMatchedResult(
@@ -1460,28 +1492,32 @@ void StyleResolver::AnalyzeMatchedResult(
     size_t base_reserving_size,
     const CustomPropertiesMap* custom_property_overrides,
     const StyleMap* property_overrides) {
-  // TODO(zhouzhitao): STUB. Must resolve specified styles and custom
-  // properties (including var() resolution) before enabling
-  // `ElementManager::EnableNewStylingPipeline()`.
-  // Analyzes the collected matched CSS rules and produces a fully resolved
-  // StyleMap for the new pipeline. Orchestrates three phases: collecting
-  // static style inputs (matched, inline, attribute styles and custom
-  // properties), finalizing custom properties (including overrides), and
-  // resolving all collected inputs into the result map. The result is then
-  // ready for ApplyResolvedStyleMap.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_ANALYZE_MATCHED_RESULT);
+  result.clear();
+
+  NewPipelineCollectedStyleInputs inputs;
+  CollectStaticStyleInputs(new_style, inputs, base_reserving_size);
+  FinalizeCustomProperties(new_style, inputs, custom_property_overrides,
+                           property_overrides);
+  ResolveCollectedStyleInputs(new_style, inputs, result, property_overrides);
 }
 
 void StyleResolver::CollectStaticStyleInputs(
     starlight::ComputedCSSStyle& new_style,
     NewPipelineCollectedStyleInputs& inputs, size_t base_reserving_size) {
-  // TODO(zhouzhitao): STUB. Must collect matched/inline/attribute specified
-  // styles and custom properties before enabling
-  // `ElementManager::EnableNewStylingPipeline()`.
-  // Collects all static (non-animated) style inputs for the new pipeline.
-  // Processes raw inline styles, then gathers matched specified styles,
-  // matched custom properties, inline specified styles, attribute specified
-  // styles, inline custom properties, and holder custom properties into the
-  // inputs structure. These inputs are later resolved and applied.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_COLLECT_STATIC_STYLE_INPUTS);
+  auto* current_element = element();
+  current_element->ProcessFullRawInlineStyle(nullptr);
+  CollectMatchedSpecifiedStyles(new_style, inputs.matched_styles,
+                                base_reserving_size, matched_style_map);
+  CollectMatchedSpecifiedStyles(new_style, inputs.matched_important_styles, 0,
+                                matched_important_style_map);
+  CollectMatchedCustomProperties(new_style);
+  CollectInlineSpecifiedStyles(new_style, inputs.inline_styles, false);
+  CollectInlineSpecifiedStyles(new_style, inputs.inline_important_styles, true);
+  CollectAttributeSpecifiedStyles(new_style, inputs.attribute_styles);
+  CollectInlineCustomProperties(new_style);
+  CollectHolderCustomProperties(new_style);
 }
 
 void StyleResolver::FinalizeCustomProperties(
@@ -1513,66 +1549,148 @@ void StyleResolver::ResolveCollectedStyleInputs(
 
 void StyleResolver::CollectMatchedSpecifiedStyles(
     starlight::ComputedCSSStyle& new_style, StyleMap& result,
-    size_t base_reserving_size) {
-  // TODO(zhouzhitao): STUB. Must collect matched specified styles and resolve
-  // logical properties before enabling
-  // `ElementManager::EnableNewStylingPipeline()`. Collects specified styles
-  // from the matched CSS rules (thread-local matched_style_map) for the new
-  // pipeline. Reserves capacity based on the matched map sizes plus the inline
-  // style count, then iterates the matched styles and inserts each entry into
-  // the result with logical properties resolved to physical ones.
+    size_t base_reserving_size,
+    const MatchedVector<const StyleMap*>& matched_style_maps) {
+  auto* current_element = element();
+
+  for (auto matched_style_ptr : matched_style_maps) {
+    base_reserving_size += matched_style_ptr->size();
+  }
+  result.reserve(base_reserving_size);
+
+  for (auto matched_style_ptr : matched_style_maps) {
+    for (const auto& [key, value] : *matched_style_ptr) {
+      InsertStyleWithLogicalPropertyResolved(current_element, new_style, key,
+                                             value, result);
+    }
+  }
 }
 
 void StyleResolver::CollectInlineSpecifiedStyles(
-    starlight::ComputedCSSStyle& new_style, StyleMap& result) {
-  // TODO(zhouzhitao): STUB. Must parse inline styles (including var() tokens
-  // when enabled) before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Collects inline specified styles from the element’s current raw inline
-  // styles for the new pipeline. Parses variable tokens when CSS inline
-  // variables are enabled, otherwise processes values through UnitHandler.
-  // Each parsed entry is inserted into the result with logical properties
-  // resolved to physical ones.
+    starlight::ComputedCSSStyle& new_style, StyleMap& result, bool important) {
+  auto* current_element = element();
+  const auto& raw_inline_styles =
+      important ? current_element->GetCurrentRawImportantInlineStyles()
+                : current_element->GetCurrentRawInlineStyles();
+  if (!raw_inline_styles || raw_inline_styles->empty()) {
+    return;
+  }
+
+  const auto& configs = manager()->GetCSSParserConfigs();
+  const bool css_inline_enabled =
+      current_element->IsCSSInlineVariablesEnabled();
+  StyleMap inline_parsed_styles;
+  inline_parsed_styles.reserve(raw_inline_styles->size());
+  for (const auto& [key, value] : *raw_inline_styles) {
+    if (css_inline_enabled) {
+      base::String style_str = value.String();
+      CSSStringParser parser{style_str.c_str(),
+                             static_cast<uint32_t>(style_str.length()),
+                             configs};
+      CSSValue css_value = parser.ParseVariable();
+      if (parser.HasMetVarToken()) {
+        inline_parsed_styles.insert_or_assign(key, std::move(css_value));
+        continue;
+      }
+    }
+
+    UnitHandler::Process(key, value, inline_parsed_styles, configs);
+  }
+
+  for (const auto& [key, value] : inline_parsed_styles) {
+    InsertStyleWithLogicalPropertyResolved(current_element, new_style, key,
+                                           value, result);
+  }
 }
 
 void StyleResolver::CollectAttributeSpecifiedStyles(
     starlight::ComputedCSSStyle& new_style, StyleMap& result) {
-  // TODO(zhouzhitao): STUB. Must collect attribute-backed specified styles
-  // before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Collects specified styles committed from element attributes for the new
-  // pipeline. Reads the committed attribute styles (e.g., from JSX style
-  // attributes) and inserts each entry into the result with logical
-  // properties resolved to physical ones.
+  auto* current_element = element();
+  const auto* committed_attribute_styles =
+      current_element->PeekCommittedStylesFromAttributes();
+  if (committed_attribute_styles == nullptr) {
+    return;
+  }
+
+  result.reserve(committed_attribute_styles->size());
+  for (const auto& [key, value] : *committed_attribute_styles) {
+    InsertStyleWithLogicalPropertyResolved(current_element, new_style, key,
+                                           value, result);
+  }
 }
 
 void StyleResolver::CollectMatchedCustomProperties(
     starlight::ComputedCSSStyle& new_style) {
-  // TODO(zhouzhitao): STUB. Must collect matched custom properties into
-  // ComputedCSSStyle before enabling
-  // `ElementManager::EnableNewStylingPipeline()`. Collects custom property
-  // declarations from the matched CSS rules for the new pipeline. Iterates the
-  // thread-local matched_variable_map, parses each variable value with
-  // CSSStringParser, and stores the result on the ComputedCSSStyle via
-  // SetCustomProperty.
+  auto& tls_matched_variable_map = matched_variable_map;
+  if (tls_matched_variable_map.empty()) {
+    return;
+  }
+
+  const auto& configs = manager()->GetCSSParserConfigs();
+  for (auto variable_ptr : tls_matched_variable_map) {
+    for (const auto& [key, value] : *variable_ptr) {
+      CSSStringParser parser{value.c_str(),
+                             static_cast<uint32_t>(value.length()), configs};
+      new_style.SetCustomProperty(key, parser.ParseVariable());
+    }
+  }
 }
 
 void StyleResolver::CollectInlineCustomProperties(
     starlight::ComputedCSSStyle& new_style) {
-  // TODO(zhouzhitao): STUB. Must collect inline custom properties before
-  // enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Collects inline custom property declarations from the element for the new
-  // pipeline. When CSS inline variables are enabled, reads the current raw
-  // inline custom properties, parses each with CSSStringParser, and stores
-  // them on the ComputedCSSStyle via SetCustomProperty.
+  auto* current_element = element();
+  if (!current_element->IsCSSInlineVariablesEnabled()) {
+    return;
+  }
+
+  const auto& inline_custom_properties =
+      current_element->GetCurrentRawInlineCustomProperties();
+  if (!inline_custom_properties.has_value() ||
+      inline_custom_properties->empty()) {
+    return;
+  }
+
+  const auto& configs = manager()->GetCSSParserConfigs();
+  for (const auto& [key, value] : *inline_custom_properties) {
+    CSSStringParser parser{value.c_str(), static_cast<uint32_t>(value.length()),
+                           configs};
+    new_style.SetCustomProperty(key, parser.ParseVariable());
+  }
 }
 
 void StyleResolver::CollectHolderCustomProperties(
     starlight::ComputedCSSStyle& new_style) {
-  // TODO(zhouzhitao): STUB. Must collect AttributeHolder-level custom
-  // properties before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Collects custom property declarations from the element’s AttributeHolder
-  // data model for the new pipeline. Reads the holder-level CSS inline
-  // variables, parses each with CSSStringParser, and stores them on the
-  // ComputedCSSStyle via SetCustomProperty.
+  auto* holder = element()->data_model();
+  if (holder == nullptr) {
+    return;
+  }
+
+  // TODO(zhouzhitao): Split holder-side persistent runtime custom
+  // properties from selector-matched custom properties. The latter should come
+  // from this resolve pass's matched_variable_map; reusing css_variables_map()
+  // here can reapply stale selector variables when a rule no longer matches or
+  // a declaration is removed.
+  auto& matched_custom_properties = holder->css_variables_map();
+  auto& inline_custom_properties = holder->GetCSSInlineVariables();
+  if (matched_custom_properties.empty() && inline_custom_properties.empty()) {
+    return;
+  }
+
+  const auto& configs = manager()->GetCSSParserConfigs();
+  auto apply_custom_properties = [&new_style,
+                                  &configs](const auto& properties) {
+    for (const auto& [key, value] : properties) {
+      CSSStringParser parser{value.c_str(),
+                             static_cast<uint32_t>(value.length()), configs};
+      new_style.SetCustomProperty(key, parser.ParseVariable());
+    }
+  };
+
+  // Holder-backed matched variables include prepared :root declarations and
+  // other selector-derived values that must participate in new-pipeline
+  // inheritance before inline/runtime overrides are applied.
+  apply_custom_properties(matched_custom_properties);
+  apply_custom_properties(inline_custom_properties);
 }
 
 void StyleResolver::ResolveSpecifiedStyleMap(

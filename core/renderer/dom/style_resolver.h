@@ -233,6 +233,8 @@ class StyleResolver {
   struct NewPipelineCollectedStyleInputs {
     StyleMap matched_styles;
     StyleMap inline_styles;
+    StyleMap matched_important_styles;
+    StyleMap inline_important_styles;
     StyleMap attribute_styles;
   };
 
@@ -262,7 +264,8 @@ class StyleResolver {
   /**
    * @brief Collects all static (non-animated) style inputs for resolution.
    * @param new_style The computed style being built.
-   * @param inputs Output structure for matched, inline, and attribute styles.
+   * @param inputs Output structure for matched, inline, important, and
+   * attribute styles.
    * @param base_reserving_size Capacity hint for the result map.
    */
   void CollectStaticStyleInputs(starlight::ComputedCSSStyle& new_style,
@@ -302,9 +305,10 @@ class StyleResolver {
    * @param result Output style map.
    * @param base_reserving_size Capacity hint for the result map.
    */
-  void CollectMatchedSpecifiedStyles(starlight::ComputedCSSStyle& new_style,
-                                     StyleMap& result,
-                                     size_t base_reserving_size);
+  void CollectMatchedSpecifiedStyles(
+      starlight::ComputedCSSStyle& new_style, StyleMap& result,
+      size_t base_reserving_size,
+      const MatchedVector<const StyleMap*>& matched_style_maps);
 
   /**
    * @brief Collects inline specified styles from the element.
@@ -312,7 +316,7 @@ class StyleResolver {
    * @param result Output style map.
    */
   void CollectInlineSpecifiedStyles(starlight::ComputedCSSStyle& new_style,
-                                    StyleMap& result);
+                                    StyleMap& result, bool important);
 
   /**
    * @brief Collects specified styles from element attributes.

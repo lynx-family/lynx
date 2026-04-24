@@ -77,6 +77,13 @@ void ListElement::OnNodeAdded(FiberElement* child) {
   }
 }
 
+const StyleMap* ListElement::PeekCommittedStylesFromAttributes() const {
+  if (!committed_styles_from_attributes_.has_value()) {
+    return nullptr;
+  }
+  return &*committed_styles_from_attributes_;
+}
+
 void ListElement::ParallelFlushAsRoot() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_PARALLEL_FLUSH_AS_ROOT);
   if (!element_manager()->GetEnableParallelElement()) {

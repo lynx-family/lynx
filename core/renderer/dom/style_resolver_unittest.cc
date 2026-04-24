@@ -10,6 +10,10 @@
 #include "base/include/auto_reset.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/ng/parser/css_parser_token_range.h"
+#include "core/renderer/css/ng/parser/css_tokenizer.h"
+#include "core/renderer/css/ng/selector/css_parser_context.h"
+#include "core/renderer/css/ng/selector/css_selector_parser.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
@@ -143,6 +147,45 @@ class CSSPatchingTest : public ::testing::Test {
   std::unique_ptr<lynx::tasm::ElementManager> manager;
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
 };
+
+void ExpectPxStyle(const StyleMap& styles, CSSPropertyID id, double expected) {
+  auto it = styles.find(id);
+  ASSERT_TRUE(it != styles.end());
+  EXPECT_EQ(it->second.GetPattern(), CSSValuePattern::PX);
+  EXPECT_EQ(it->second.AsNumber(), expected);
+}
+
+void ExpectNoStyle(const StyleMap& styles, CSSPropertyID id) {
+  EXPECT_TRUE(styles.find(id) == styles.end());
+}
+
+void ExpectResolvedVariable(starlight::ComputedCSSStyle& style,
+                            const char* name, const char* expected) {
+  style.FinalizeCustomProperties();
+  auto value = style.ResolveVariable(base::String(name));
+  ASSERT_TRUE(value.has_value());
+  EXPECT_EQ(value.value().AsStdString(), expected);
+}
+
+std::unique_ptr<SharedCSSFragment> MakeSelectorFragmentWithToken(
+    const std::string& selector_text, fml::RefPtr<CSSParseToken> token) {
+  auto fragment = std::make_unique<SharedCSSFragment>();
+  fragment->SetEnableCSSSelector();
+
+  css::CSSParserContext context;
+  css::CSSTokenizer tokenizer(selector_text);
+  const auto tokens = tokenizer.TokenizeToEOF();
+  css::CSSParserTokenRange range(tokens);
+  css::LynxCSSSelectorVector vector =
+      css::CSSSelectorParser::ParseSelector(range, &context);
+  size_t flattened_size = css::CSSSelectorParser::FlattenedSize(vector);
+  auto selector_array =
+      std::make_unique<css::LynxCSSSelector[]>(flattened_size);
+  css::CSSSelectorParser::AdoptSelectorVector(vector, selector_array.get(),
+                                              flattened_size);
+  fragment->AddStyleRule(std::move(selector_array), std::move(token));
+  return fragment;
+}
 
 TEST_F(CSSPatchingTest, GetCSSStyleForFiber) {
   auto fiber_element =
@@ -1658,6 +1701,306 @@ TEST_F(CSSPatchingTest,
             starlight::LayoutUnit(88));
   EXPECT_DOUBLE_EQ(style.GetFontSize(), kParentFontSize);
   EXPECT_DOUBLE_EQ(style.GetRootFontSize(), kLiveRootFontSize);
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCollectMatchedRulesPopulatesTlsAndClearsOldState) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  auto* attribute_holder = element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("matched");
+
+  StyleMap stale_matched_styles;
+  stale_matched_styles.insert_or_assign(CSSPropertyID::kPropertyIDHeight,
+                                        CSSValue(999, CSSValuePattern::NUMBER));
+  StyleMap stale_important_styles;
+  stale_important_styles.insert_or_assign(
+      CSSPropertyID::kPropertyIDOpacity,
+      CSSValue(0.5, CSSValuePattern::NUMBER));
+  CSSVariableMap stale_variables;
+  stale_variables.insert_or_assign(base::String("--stale"),
+                                   base::String("orange"));
+  StyleResolver::matched_style_map.push_back(&stale_matched_styles);
+  StyleResolver::matched_important_style_map.push_back(&stale_important_styles);
+  StyleResolver::matched_variable_map.push_back(&stale_variables);
+
+  CSSParserConfigs configs;
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue::MakePlainString("120px");
+  tokens->raw_attributes_[CSSPropertyID::kPropertyIDMarginInlineStart] =
+      CSSValue::MakePlainString("6px");
+  CSSVariableMap matched_variables;
+  matched_variables.insert_or_assign(base::String("--accent"),
+                                     base::String("green"));
+  tokens->SetStyleVariables(std::move(matched_variables));
+
+  std::string key = ".matched";
+  tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+  CSSParserTokenMap css_map;
+  css_map.insert_or_assign(key, tokens);
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  SharedCSSFragment fragment(1, dependent_ids, css_map, keyframes, fontfaces);
+
+  element->style_resolver_.CollectMatchedRules(&fragment);
+  EXPECT_TRUE(StyleResolver::matched_important_style_map.empty());
+  ASSERT_EQ(StyleResolver::matched_style_map.size(), 1u);
+  ASSERT_EQ(StyleResolver::matched_variable_map.size(), 1u);
+  ExpectNoStyle(*StyleResolver::matched_style_map[0],
+                CSSPropertyID::kPropertyIDHeight);
+  EXPECT_TRUE(StyleResolver::matched_variable_map[0]->find(base::String(
+                  "--stale")) == StyleResolver::matched_variable_map[0]->end());
+
+  StyleResolver::matched_style_map.clear();
+  StyleResolver::matched_important_style_map.clear();
+  StyleResolver::matched_variable_map.clear();
+}
+
+TEST_F(CSSPatchingTest, NewStylingCollectMatchedRulesBuildsStaticInputs) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  auto* attribute_holder = element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("matched");
+
+  CSSParserConfigs configs;
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue::MakePlainString("120px");
+  tokens->raw_attributes_[CSSPropertyID::kPropertyIDMarginInlineStart] =
+      CSSValue::MakePlainString("6px");
+  CSSVariableMap matched_variables;
+  matched_variables.insert_or_assign(base::String("--accent"),
+                                     base::String("green"));
+  tokens->SetStyleVariables(std::move(matched_variables));
+
+  std::string key = ".matched";
+  tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+  CSSParserTokenMap css_map;
+  css_map.insert_or_assign(key, tokens);
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  SharedCSSFragment fragment(1, dependent_ids, css_map, keyframes, fontfaces);
+
+  element->style_resolver_.CollectMatchedRules(&fragment);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  style.SetValue(CSSPropertyID::kPropertyIDDirection,
+                 CSSValue(starlight::DirectionType::kRtl), false);
+  StyleResolver::NewPipelineCollectedStyleInputs inputs;
+  element->style_resolver_.CollectStaticStyleInputs(style, inputs, 0);
+
+  ExpectPxStyle(inputs.matched_styles, CSSPropertyID::kPropertyIDWidth, 120);
+  ExpectNoStyle(inputs.matched_styles,
+                CSSPropertyID::kPropertyIDMarginInlineStart);
+  ExpectNoStyle(inputs.matched_styles, CSSPropertyID::kPropertyIDMarginLeft);
+  ExpectPxStyle(inputs.matched_styles, CSSPropertyID::kPropertyIDMarginRight,
+                6);
+  ExpectResolvedVariable(style, "--accent", "green");
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCollectMatchedRulesSupportsSelectorFragments) {
+  auto element = manager->CreateFiberView();
+  auto* attribute_holder = element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("matched");
+
+  CSSParserConfigs configs;
+  auto token = fml::MakeRefCounted<CSSParseToken>(configs);
+  token->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue::MakePlainString("120px");
+  token->raw_important_attributes_[CSSPropertyID::kPropertyIDHeight] =
+      CSSValue::MakePlainString("24px");
+  CSSVariableMap matched_variables;
+  matched_variables.insert_or_assign(base::String("--accent"),
+                                     base::String("green"));
+  token->SetStyleVariables(std::move(matched_variables));
+
+  auto fragment = MakeSelectorFragmentWithToken(".matched", token);
+  element->style_resolver_.CollectMatchedRules(fragment.get());
+
+  ASSERT_EQ(StyleResolver::matched_style_map.size(), 1u);
+  ASSERT_EQ(StyleResolver::matched_important_style_map.size(), 1u);
+  ASSERT_EQ(StyleResolver::matched_variable_map.size(), 1u);
+  ExpectPxStyle(*StyleResolver::matched_style_map[0],
+                CSSPropertyID::kPropertyIDWidth, 120);
+  ExpectPxStyle(*StyleResolver::matched_important_style_map[0],
+                CSSPropertyID::kPropertyIDHeight, 24);
+
+  StyleResolver::matched_style_map.clear();
+  StyleResolver::matched_important_style_map.clear();
+  StyleResolver::matched_variable_map.clear();
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingAnalyzeMatchedResultClearsResultAndCollectsCustomProperties) {
+  auto element = manager->CreateFiberView();
+  StyleMap stale_result;
+  stale_result.insert_or_assign(CSSPropertyID::kPropertyIDHeight,
+                                CSSValue(99, CSSValuePattern::NUMBER));
+  CSSVariableMap matched_variables;
+  matched_variables.insert_or_assign(base::String("--accent"),
+                                     base::String("blue"));
+  StyleResolver::matched_variable_map.push_back(&matched_variables);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  element->style_resolver_.AnalyzeMatchedResult(style, stale_result, 0);
+
+  EXPECT_TRUE(stale_result.empty());
+  ExpectResolvedVariable(style, "--accent", "blue");
+  StyleResolver::matched_variable_map.clear();
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCollectStaticStyleInputsCollectsEachInputSource) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+  auto element = manager->CreateFiberView();
+
+  StyleMap matched_styles;
+  matched_styles.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                                  CSSValue(11, CSSValuePattern::PX));
+  StyleResolver::matched_style_map.push_back(&matched_styles);
+  StyleMap matched_important_styles;
+  matched_important_styles.insert_or_assign(CSSPropertyID::kPropertyIDHeight,
+                                            CSSValue(18, CSSValuePattern::PX));
+  StyleResolver::matched_important_style_map.push_back(
+      &matched_important_styles);
+  CSSVariableMap matched_variables;
+  matched_variables.insert_or_assign(base::String("--matched"),
+                                     base::String("red"));
+  StyleResolver::matched_variable_map.push_back(&matched_variables);
+
+  element->SetRawInlineStyles(
+      "min-width:22px; max-width:44px !important; --inline: green;");
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  StyleResolver::NewPipelineCollectedStyleInputs inputs;
+  element->style_resolver_.CollectStaticStyleInputs(style, inputs, 0);
+
+  ExpectPxStyle(inputs.matched_styles, CSSPropertyID::kPropertyIDWidth, 11);
+  ExpectPxStyle(inputs.matched_important_styles,
+                CSSPropertyID::kPropertyIDHeight, 18);
+  ExpectPxStyle(inputs.inline_styles, CSSPropertyID::kPropertyIDMinWidth, 22);
+  ExpectPxStyle(inputs.inline_important_styles,
+                CSSPropertyID::kPropertyIDMaxWidth, 44);
+  ExpectResolvedVariable(style, "--matched", "red");
+  auto inline_value = style.ResolveVariable(base::String("--inline"));
+  ASSERT_TRUE(inline_value.has_value());
+  EXPECT_EQ(inline_value.value().AsStdString(), "green");
+
+  StyleResolver::matched_style_map.clear();
+  StyleResolver::matched_important_style_map.clear();
+  StyleResolver::matched_variable_map.clear();
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCollectMatchedSpecifiedStylesResolvesLogicalProperties) {
+  auto element = manager->CreateFiberView();
+  StyleMap low_priority;
+  low_priority.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                                CSSValue(10, CSSValuePattern::PX));
+  StyleMap high_priority;
+  high_priority.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                                 CSSValue(20, CSSValuePattern::PX));
+  high_priority.insert_or_assign(CSSPropertyID::kPropertyIDMarginInlineStart,
+                                 CSSValue(7, CSSValuePattern::PX));
+  StyleResolver::matched_style_map.push_back(&low_priority);
+  StyleResolver::matched_style_map.push_back(&high_priority);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  style.SetValue(CSSPropertyID::kPropertyIDDirection,
+                 CSSValue(starlight::DirectionType::kRtl), false);
+  StyleMap result;
+  element->style_resolver_.CollectMatchedSpecifiedStyles(
+      style, result, 0, StyleResolver::matched_style_map);
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDWidth, 20);
+  ExpectNoStyle(result, CSSPropertyID::kPropertyIDMarginInlineStart);
+  ExpectNoStyle(result, CSSPropertyID::kPropertyIDMarginLeft);
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDMarginRight, 7);
+  StyleResolver::matched_style_map.clear();
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCollectInlineSpecifiedStylesParsesRawValuesAndKeepsVarTokens) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("24px"));
+  element->SetStyle(CSSPropertyID::kPropertyIDMarginInlineStart,
+                    lepus::Value("3px"));
+  element->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                    lepus::Value("var(--accent)"));
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  StyleMap result;
+  element->style_resolver_.CollectInlineSpecifiedStyles(style, result, false);
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDWidth, 24);
+  ExpectNoStyle(result, CSSPropertyID::kPropertyIDMarginInlineStart);
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDMarginLeft, 3);
+  auto background = result.find(CSSPropertyID::kPropertyIDBackgroundColor);
+  ASSERT_TRUE(background != result.end());
+  EXPECT_TRUE(background->second.IsVariable());
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCollectMatchedCustomPropertiesParsesTlsVariables) {
+  auto element = manager->CreateFiberView();
+  CSSVariableMap matched_variables;
+  matched_variables.insert_or_assign(base::String("--accent"),
+                                     base::String("purple"));
+  StyleResolver::matched_variable_map.push_back(&matched_variables);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  element->style_resolver_.CollectMatchedCustomProperties(style);
+
+  ExpectResolvedVariable(style, "--accent", "purple");
+  StyleResolver::matched_variable_map.clear();
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingCollectInlineCustomPropertiesRequiresInlineVariableConfig) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+  auto element = manager->CreateFiberView();
+  element->SetRawInlineStyles("--accent: teal;");
+  element->ProcessFullRawInlineStyle(nullptr);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  element->style_resolver_.CollectInlineCustomProperties(style);
+
+  ExpectResolvedVariable(style, "--accent", "teal");
+}
+
+TEST_F(
+    CSSPatchingTest,
+    NewStylingCollectHolderCustomPropertiesAppliesHolderThenInlineVariables) {
+  auto element = manager->CreateFiberView();
+  CSSVariableMap holder_variables;
+  holder_variables.insert_or_assign(base::String("--accent"),
+                                    base::String("red"));
+  holder_variables.insert_or_assign(base::String("--holder-only"),
+                                    base::String("yellow"));
+  element->data_model()->set_css_variables_map(std::move(holder_variables));
+  element->data_model()->UpdateCSSInlineVariables(base::String("--accent"),
+                                                  base::String("green"));
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  element->style_resolver_.CollectHolderCustomProperties(style);
+
+  ExpectResolvedVariable(style, "--accent", "green");
+  auto holder_only = style.ResolveVariable(base::String("--holder-only"));
+  ASSERT_TRUE(holder_only.has_value());
+  EXPECT_EQ(holder_only.value().AsStdString(), "yellow");
 }
 
 }  // namespace testing

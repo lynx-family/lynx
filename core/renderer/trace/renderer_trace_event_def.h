@@ -319,6 +319,12 @@ inline constexpr const char* const STYLE_RESOLVER_INITIALIZE_STYLE_SHELL =
     "StyleResolver::InitializeStyleShell";
 inline constexpr const char* const STYLE_RESOLVER_INHERIT_PARENT_STYLE =
     "StyleResolver::InheritParentStyle";
+inline constexpr const char* const STYLE_RESOLVER_COLLECT_MATCHED_RULES =
+    "StyleResolver::CollectMatchedRules";
+inline constexpr const char* const STYLE_RESOLVER_ANALYZE_MATCHED_RESULT =
+    "StyleResolver::AnalyzeMatchedResult";
+inline constexpr const char* const STYLE_RESOLVER_COLLECT_STATIC_STYLE_INPUTS =
+    "StyleResolver::CollectStaticStyleInputs";
 
 inline constexpr const char* const ELEMENT_CONTAINER_FIND_PARENT =
     "ElementContainer::FindParentForChild";
