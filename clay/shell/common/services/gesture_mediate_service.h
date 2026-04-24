@@ -33,9 +33,17 @@ class GestureMediateService
     return outer_scrollable_direction_;
   }
 
+  void SetNativeFoldViewSlotCanScroll(bool rhs) {
+    native_foldview_slot_can_scroll_ = rhs;
+  }
+  bool NativeFoldViewSlotCanScroll() const {
+    return native_foldview_slot_can_scroll_;
+  }
+
  private:
   HitTestResponsiveResult result_;
   ScrollableDirection outer_scrollable_direction_ = ScrollableDirection::kNone;
+  bool native_foldview_slot_can_scroll_ = false;
 };
 
 }  // namespace clay
