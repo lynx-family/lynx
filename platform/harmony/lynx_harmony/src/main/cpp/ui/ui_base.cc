@@ -2169,15 +2169,15 @@ std::string UIBase::ExposureUIKey(const std::string& unique_id,
 }
 
 void UIBase::GetExposureUIRect(float rect[4]) {
-  rect[0] += exposure_ui_margin_left_;
-  rect[1] += exposure_ui_margin_top_;
+  rect[0] -= exposure_ui_margin_left_;
+  rect[1] -= exposure_ui_margin_top_;
   rect[2] += exposure_ui_margin_right_;
   rect[3] += exposure_ui_margin_bottom_;
 }
 
 void UIBase::GetExposureWindowRect(float rect[4]) {
-  rect[0] += exposure_screen_margin_left_;
-  rect[1] += exposure_screen_margin_top_;
+  rect[0] -= exposure_screen_margin_left_;
+  rect[1] -= exposure_screen_margin_top_;
   rect[2] += exposure_screen_margin_right_;
   rect[3] += exposure_screen_margin_bottom_;
 }

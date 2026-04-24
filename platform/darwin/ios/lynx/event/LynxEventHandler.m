@@ -5,6 +5,7 @@
 #import <Lynx/DevToolLogLevel.h>
 #import <Lynx/LynxCustomGestureRecognizer.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxGestureHandlerTrigger.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
@@ -17,7 +18,6 @@
 #import <Lynx/LynxViewInternal.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <Lynx/UIView+Lynx.h>
-#import "LynxEventHandler+Internal.h"
 #import "LynxTouchHandler+Internal.h"
 
 #pragma mark - LynxEventHandler
@@ -927,7 +927,7 @@
 }
 
 - (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status {
-  if (!self.customPlatformGesture) {
+  if (!_enablePlatformGesture || !self.customPlatformGesture) {
     return;
   }
   void (^work)(void) = ^{

@@ -1661,7 +1661,7 @@ enableNewIntersectionObserver:
   description:
     Enable the new IntersectionObserver detection logic so that observe
     can be triggered normally without binding to scroll events.
-  defaultValue: 'false'
+  defaultValue: 'true'
   valueType: bool
   readSettings: true
   author: rAY-ooo

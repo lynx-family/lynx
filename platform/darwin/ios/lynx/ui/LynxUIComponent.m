@@ -6,6 +6,8 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIComponent.h>
+#import <Lynx/LynxUIListContainer.h>
+#import <Lynx/LynxUIListLight.h>
 
 @implementation LynxUIComponent
 #if LYNX_LAZY_LOAD
@@ -46,5 +48,13 @@ LYNX_PROP_SETTER("z-index", setZIndex, NSInteger) {
                                                   (onAsyncComponentLayoutUpdated:operationID:)]) {
     [self.layoutObserver onAsyncComponentLayoutUpdated:self operationID:operationID];
   }
+}
+
+- (CGRect)getHitTestFrameWithFrame:(CGRect)frame {
+  if ([self.parent isKindOfClass:LynxUIListContainer.class] ||
+      [self.parent isKindOfClass:LynxUIListLight.class]) {
+    return self.view.bounds;
+  }
+  return [super getHitTestFrameWithFrame:frame];
 }
 @end

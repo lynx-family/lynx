@@ -665,7 +665,7 @@ export interface Config {
    *
    * Since: LynxSDK 3.2
    *
-   * @defaultValue false
+   * @defaultValue true
    */
   enableNewIntersectionObserver?: boolean;
 
