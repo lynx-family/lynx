@@ -44,6 +44,7 @@
 #include "core/renderer/utils/value_utils.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lazy_bundle/lazy_bundle_utils.h"
+#include "core/resource/trace/resource_trace_event_def.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/js/bindings/api_call_back.h"
@@ -2706,6 +2707,15 @@ std::shared_ptr<TemplateEntry> TemplateAssembler::RequireTemplateEntry(
   if (entry == nullptr) {
     LOGI("RequireTemplate: Check preloaded bundles: " << url);
     entry = BuildTemplateEntryFromPreload(url);
+    if (entry != nullptr) {
+      TRACE_EVENT_INSTANT(
+          LYNX_TRACE_CATEGORY, LAZY_BUNDLE_USE_PREREGISTERED_BUNDLE,
+          [&url](lynx::perfetto::EventContext ctx) {
+            ctx.event()->add_debug_annotations("lazy_bundle_url", url);
+            ctx.event()->add_debug_annotations("load_scene",
+                                               "require_template_entry");
+          });
+    }
     state = LazyBundleState::STATE_PRELOAD;
   }
 
