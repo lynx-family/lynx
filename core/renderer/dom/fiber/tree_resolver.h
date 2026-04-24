@@ -73,11 +73,15 @@ class TreeResolver {
   static fml::RefPtr<lepus::Dictionary> GetTemplateParts(
       const fml::RefPtr<FiberElement>& template_element);
 
-  // Re-apply dynamic and spread template attributes to elements recorded in
-  // GeneratedElementsResult::attribute_slot_targets_ when TemplateElement
-  // consumes new attribute slot values.
+  // Apply template dynamic/spread attributes on top of the static attributes
+  // initialized by FromElementInfo. The overload with previous slots rebuilds
+  // template attributes after clearing keys that used to come from spread
+  // slots.
   static void ApplyTemplateAttributesToElement(
       FiberElement* element, const lepus::Value& attribute_slots);
+  static void ApplyTemplateAttributesToElement(
+      FiberElement* element, const lepus::Value& previous_attribute_slots,
+      const lepus::Value& attribute_slots);
 
   // Construct element tree according to the element-template info.
   static base::Vector<fml::RefPtr<FiberElement>> FromTemplateInfo(
