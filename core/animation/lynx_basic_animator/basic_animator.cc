@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/animation/animation_curve.h"
 namespace lynx {
 namespace animation {
 namespace basic {
@@ -55,7 +56,8 @@ void LynxBasicAnimator::InitializeAnimator() {
           fml::TimeDelta::FromMillisecondsF(data_.duration),
           static_cast<basic::AnimationEffectTiming::PlaybackDirection>(
               data_.direction),
-          TimingFunction::MakeTimingFunction(data_.timing_func));
+          gfx::CreateTimingFunction(
+              ToGfxTimingFunctionData(data_.timing_func)));
   std::unique_ptr<basic::KeyframeEffect> effect = basic::KeyframeEffect::Create(
       std::move(keyframes), shared_from_this(), std::move(effect_timing));
   animation_ = std::make_shared<basic::Animation>(std::move(effect));

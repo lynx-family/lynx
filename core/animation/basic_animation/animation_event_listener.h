@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "base/include/log/logging.h"
 #include "core/animation/basic_animation/basic_animation.h"
 
 namespace lynx {

@@ -16,6 +16,9 @@
 #include "core/renderer/css/css_property.h"
 
 namespace lynx {
+namespace tasm {
+class Element;
+}
 namespace animation {
 
 class Animation;

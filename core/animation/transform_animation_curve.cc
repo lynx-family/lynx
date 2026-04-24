@@ -18,19 +18,20 @@
 #include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "gfx/animation/animation_utils.h"
 
 namespace lynx {
 namespace animation {
 
 //====== TransformValueAnimator begin =======
 std::unique_ptr<TransformKeyframe> TransformKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
   return std::make_unique<TransformKeyframe>(time, std::move(timing_function));
 }
 
 TransformKeyframe::TransformKeyframe(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function)
-    : Keyframe(time, std::move(timing_function)) {}
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
+    : gfx::Keyframe(time, std::move(timing_function)) {}
 
 void TransformKeyframe::NotifyElementSizeUpdated() {
   if (value_) {
@@ -39,10 +40,10 @@ void TransformKeyframe::NotifyElementSizeUpdated() {
 }
 
 // When view or font size has changed, mark the value 'AutoNLength'.
-void TransformKeyframe::NotifyUnitValuesUpdatedToAnimation(
-    tasm::CSSValuePattern type) {
+void TransformKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
   if (value_) {
-    value_->NotifyUnitValuesUpdatedToAnimation(type);
+    value_->NotifyUnitValuesUpdatedToAnimation(
+        static_cast<tasm::CSSValuePattern>(type));
   }
 }
 
@@ -65,11 +66,24 @@ bool TransformKeyframe::SetValue(tasm::CSSPropertyID id,
   if (!keyframe_transform_value.IsArray()) {
     return false;
   }
-  auto transform = std::make_unique<transforms::TransformOperations>(
-      element, keyframe_transform_value);
-  value_ = std::move(transform);
   css_value_ = value;
-  is_empty_ = false;
+  value_.reset();
+  MarkNonEmpty();
+  return true;
+}
+
+bool TransformKeyframe::EnsureResolvedValue(tasm::CSSPropertyID id,
+                                            tasm::Element* element) {
+  if (value_ && !value_->GetOperations().empty()) {
+    return true;
+  }
+  auto keyframe_transform_value =
+      HandleCSSVariableValueIfNeed(id, css_value_, element);
+  if (!keyframe_transform_value.IsArray()) {
+    return false;
+  }
+  value_ = std::make_unique<transforms::TransformOperations>(
+      element, keyframe_transform_value);
   return true;
 }
 
@@ -96,11 +110,12 @@ tasm::CSSValue KeyframedTransformAnimationCurve::GetValue(
                 curveTypeInfo->set_name("curveType");
                 curveTypeInfo->set_string_value("TransformAnimation");
               });
-  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
-                               t);
-  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
-  double progress =
-      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+  auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
+                                                scaled_duration(), t);
+  DCHECK(sampling.valid);
+  t = sampling.effective_time;
+  size_t i = sampling.index;
+  double progress = sampling.progress;
   TransformKeyframe* keyframe =
       static_cast<TransformKeyframe*>(keyframes_[i].get());
   TransformKeyframe* keyframe_next =
@@ -123,16 +138,17 @@ tasm::CSSValue KeyframedTransformAnimationCurve::GetValue(
         TransformKeyframe::GetTransformKeyframeValueInElement(element_);
   }
 
-  // When view or font size has changed, let start_len and end_len be
-  // 'AutoNLength', and then get The actual Nlength based on the updated size.
-  if (keyframe->Value() && keyframe->Value()->GetOperations().empty()) {
-    keyframe->SetValue(static_cast<tasm::CSSPropertyID>(Type()),
-                       keyframe->CSSValue(), element_);
+  // Keep transform keyframes in raw CSS form until sampling, then parse them
+  // with the current element context before blending.
+  if (!keyframe->IsEmpty() &&
+      !keyframe->EnsureResolvedValue(static_cast<tasm::CSSPropertyID>(Type()),
+                                     element_)) {
+    return keyframe->CSSValue();
   }
-  if (keyframe_next->Value() &&
-      keyframe_next->Value()->GetOperations().empty()) {
-    keyframe_next->SetValue(static_cast<tasm::CSSPropertyID>(Type()),
-                            keyframe_next->CSSValue(), element_);
+  if (!keyframe_next->IsEmpty() &&
+      !keyframe_next->EnsureResolvedValue(
+          static_cast<tasm::CSSPropertyID>(Type()), element_)) {
+    return keyframe_next->CSSValue();
   }
 
   transforms::TransformOperations& start_transform =
@@ -147,7 +163,7 @@ tasm::CSSValue KeyframedTransformAnimationCurve::GetValue(
 
 //====== TransformValueAnimator end =======
 
-std::unique_ptr<Keyframe> TransformAnimationCurve::MakeEmptyKeyframe(
+std::unique_ptr<gfx::Keyframe> TransformAnimationCurve::MakeEmptyKeyframe(
     const fml::TimeDelta& offset) {
   return TransformKeyframe::Create(offset, nullptr);
 }

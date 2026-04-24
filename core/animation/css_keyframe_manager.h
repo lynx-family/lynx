@@ -17,12 +17,12 @@
 #include "core/animation/animation_delegate.h"
 #include "core/animation/keyframe_effect.h"
 #include "core/animation/keyframed_animation_curve.h"
-#include "core/animation/utils/timing_function.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/style/animation_data.h"
+#include "gfx/animation/timing_function.h"
 
 namespace lynx {
 
@@ -77,8 +77,8 @@ class CSSKeyframeManager : public AnimationDelegate {
 
   bool InitCurveAndModelAndKeyframe(
       AnimationCurve::CurveType type, Animation* animation, double offset,
-      std::unique_ptr<TimingFunction> timing_function, tasm::CSSPropertyID id,
-      const tasm::CSSValue& value);
+      std::unique_ptr<gfx::TimingFunction> timing_function,
+      tasm::CSSPropertyID id, const tasm::CSSValue& value);
 
   KeyframeModel* ConstructModel(std::unique_ptr<AnimationCurve> curve,
                                 AnimationCurve::CurveType type,

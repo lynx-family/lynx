@@ -5,21 +5,10 @@
 import("../../../testing/test.gni")
 import("../../Lynx.gni")
 
-animation_utils_shared_sources = [
-  "cubic_bezier.cc",
-  "cubic_bezier.h",
-  "timing_function.cc",
-  "timing_function.h",
-]
-
-lynx_core_source_set("animation_utils") {
-  sources = animation_utils_shared_sources
-}
-
 unittest_set("animation_utils_testset") {
   testonly = true
 
-  public_deps = [ ":animation_utils" ]
+  public_deps = [ "../../../gfx:gfx_animation" ]
 
   deps = [
     "../../renderer:tasm",
@@ -38,8 +27,8 @@ unittest_exec("animation_utils_unittests_exec") {
   testonly = true
   sources = []
   deps = [
-    ":animation_utils",
     ":animation_utils_testset",
+    "../../../gfx:gfx_animation",
     "../../renderer/dom:dom",
   ]
 }

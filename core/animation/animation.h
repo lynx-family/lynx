@@ -63,8 +63,6 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   void BindDelegate(AnimationDelegate* target);
 
-  bool HasFinishedAll(fml::TimePoint& time);
-
   void SetKeyframeEffect(std::unique_ptr<KeyframeEffect> keyframe_effect);
 
   KeyframeEffect* keyframe_effect() { return keyframe_effect_.get(); }
@@ -89,7 +87,7 @@ class Animation : public std::enable_shared_from_this<Animation> {
     return raw_style_set_;
   }
 
-  State GetState() { return state_; }
+  State GetState() const { return state_; }
 
   void SetTransitionFlag() { is_transition_ = true; }
 
@@ -105,8 +103,12 @@ class Animation : public std::enable_shared_from_this<Animation> {
   fml::TimePoint start_time_{fml::TimePoint::Min()};
 
  private:
+  friend class KeyframeEffect;
+
+  void MaybeReportOverTime(fml::TimeDelta active_time);
+  void ReportAnimationOverTime();
   void CreateEventAndSend(const base::String& event);
-  void Tick(fml::TimePoint& time);
+  bool Tick(fml::TimePoint& time);
   void RequestNextFrame();
   AnimationDelegate* animation_delegate_{nullptr};
   base::String name_;
@@ -121,6 +123,7 @@ class Animation : public std::enable_shared_from_this<Animation> {
   State state_{State::kIdle};
 
   bool is_transition_ = false;
+  bool need_report_over_time_{true};
 };
 
 }  // namespace animation

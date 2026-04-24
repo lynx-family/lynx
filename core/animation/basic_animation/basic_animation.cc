@@ -4,6 +4,7 @@
 
 #include "core/animation/basic_animation/basic_animation.h"
 
+#include "base/include/log/logging.h"
 #include "core/animation/basic_animation/animation_event_listener.h"
 #include "core/animation/basic_animation/animation_frame_callback_provider.h"
 #include "core/animation/basic_animation/thread_local_animation_handler.h"

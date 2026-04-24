@@ -17,6 +17,7 @@
 #include "core/animation/basic_animation/animation_effect_timing.h"
 #include "core/animation/basic_animation/animator_target.h"
 #include "core/animation/basic_animation/keyframe.h"
+#include "gfx/animation/timing_function.h"
 
 namespace lynx {
 namespace animation {
@@ -47,9 +48,9 @@ class AnimationCurve {
 
   std::unique_ptr<PropertyValue> GetValue(fml::TimeDelta& t);
 
-  TimingFunction* timing_function() { return timing_function_; }
+  gfx::TimingFunction* timing_function() { return timing_function_; }
 
-  void SetTimingFunction(TimingFunction* timing_function) {
+  void SetTimingFunction(gfx::TimingFunction* timing_function) {
     timing_function_ = timing_function;
   }
 
@@ -67,7 +68,7 @@ class AnimationCurve {
   const std::string& GetCurveType() { return curve_type_; }
 
  protected:
-  TimingFunction* timing_function_;
+  gfx::TimingFunction* timing_function_;
   std::vector<std::unique_ptr<basic::Keyframe>> keyframes_;
 
  private:

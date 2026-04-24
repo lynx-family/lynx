@@ -40,7 +40,7 @@ basic_animation_shared_sources = [
 lynx_core_source_set("basic_animation") {
   sources = basic_animation_shared_sources
 
-  public_deps = [ "../utils:animation_utils" ]
+  public_deps = [ "../../../gfx:gfx_animation" ]
 }
 
 unittest_set("basic_animation_testset") {

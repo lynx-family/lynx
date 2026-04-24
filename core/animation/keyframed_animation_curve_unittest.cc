@@ -12,6 +12,7 @@
 
 #include <memory>
 
+#include "core/animation/css_keyframe_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
@@ -23,6 +24,7 @@
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/style/animation_data.h"
+#include "gfx/animation/animation_utils.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 namespace lynx {
 namespace animation {
@@ -135,6 +137,43 @@ TEST_F(KeyframedAnimationCurveTest, ThreeLayoutKeyframe) {
   EXPECT_FLOAT_EQ(8.f, curve->GetValue(value5).AsNumber());
 }
 
+TEST_F(KeyframedAnimationCurveTest, LayoutAutoFallsBackToDiscreteValue) {
+  std::unique_ptr<KeyframedLayoutAnimationCurve> curve(
+      KeyframedLayoutAnimationCurve::Create());
+  curve->type_ = AnimationCurve::CurveType::LEFT;
+  auto test_element = InitFiberElement();
+  curve->SetElement(test_element.get());
+
+  auto test_frame1 = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
+  EXPECT_TRUE(test_frame1->SetValue(
+      ::lynx::tasm::kPropertyIDLeft,
+      ::lynx::tasm::CSSValue(starlight::LengthValueType::kAuto),
+      test_element.get()));
+  curve->AddKeyframe(std::move(test_frame1));
+
+  auto test_frame2 =
+      LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetLayout(starlight::NLength::MakeUnitNLength(4.f));
+  test_frame2->css_value_ =
+      ::lynx::tasm::CSSValue(4.f, ::lynx::tasm::CSSValuePattern::NUMBER);
+  curve->AddKeyframe(std::move(test_frame2));
+
+  fml::TimeDelta start_value = fml::TimeDelta::FromSecondsF(0.0f);
+  fml::TimeDelta value = fml::TimeDelta::FromSecondsF(0.5f);
+  EXPECT_EQ(::lynx::tasm::CSSValue(starlight::LengthValueType::kAuto),
+            curve->GetValue(start_value));
+  EXPECT_FLOAT_EQ(4.f, curve->GetValue(value).AsNumber());
+}
+
+TEST_F(KeyframedAnimationCurveTest, LayoutFrIsRejected) {
+  auto test_element = InitFiberElement();
+  auto test_frame = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
+  EXPECT_FALSE(test_frame->SetValue(
+      ::lynx::tasm::kPropertyIDWidth,
+      ::lynx::tasm::CSSValue(1.f, ::lynx::tasm::CSSValuePattern::FR),
+      test_element.get()));
+}
+
 // Tests that a layout animation with multiple keys at a given time works
 // sanely.
 TEST_F(KeyframedAnimationCurveTest, RepeatedLayoutKeyTimes) {
@@ -207,6 +246,24 @@ TEST_F(KeyframedAnimationCurveTest, TwoOpacityKeyframe) {
   EXPECT_FLOAT_EQ(1.0f, curve->GetValue(value1).AsNumber());
   EXPECT_FLOAT_EQ(0.5f, curve->GetValue(value2).AsNumber());
   EXPECT_FLOAT_EQ(0.0f, curve->GetValue(value3).AsNumber());
+}
+
+TEST_F(KeyframedAnimationCurveTest, OpacityKeyframeRejectsNonNumberLikeLegacy) {
+  auto test_element = InitFiberElement();
+
+  auto rem_frame = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
+  EXPECT_FALSE(rem_frame->SetValue(
+      ::lynx::tasm::kPropertyIDOpacity,
+      ::lynx::tasm::CSSValue(2.f, ::lynx::tasm::CSSValuePattern::REM),
+      test_element.get()));
+
+  auto calc_frame = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
+  EXPECT_FALSE(calc_frame->SetValue(
+      ::lynx::tasm::kPropertyIDOpacity,
+      ::lynx::tasm::CSSValue("calc(1rem + 10px)",
+                             ::lynx::tasm::CSSValuePattern::CALC,
+                             ::lynx::tasm::CSSValueType::DEFAULT),
+      test_element.get()));
 }
 
 // Tests that a opacity animation with three keyframes works as expected.
@@ -454,7 +511,7 @@ TEST_F(KeyframedAnimationCurveTest, UnsortedKeyframes) {
 
 TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
   {
-    std::vector<std::unique_ptr<Keyframe>> keyframes;
+    std::vector<std::unique_ptr<gfx::Keyframe>> keyframes;
     auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
     test_frame1->SetOpacity(1.0f);
     keyframes.emplace_back(std::move(test_frame1));
@@ -463,19 +520,24 @@ TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
         OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
     test_frame2->SetOpacity(0.0f);
     keyframes.emplace_back(std::move(test_frame2));
-    EXPECT_TRUE(TransformedKeyframeProgress(
-                    keyframes, 0, fml::TimeDelta::FromSecondsF(1), 0) == 1.0);
+    auto s1 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 0,
+                                            fml::TimeDelta::FromSecondsF(1));
+    EXPECT_TRUE(s1.valid);
+    EXPECT_TRUE(s1.progress == 1.0);
 
     auto test_frame3 =
         OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
     test_frame3->SetOpacity(0.0f);
     keyframes.emplace_back(std::move(test_frame3));
-    EXPECT_TRUE(TransformedKeyframeProgress(
-                    keyframes, 1, fml::TimeDelta::FromSecondsF(1), 1) == 1.0);
+    auto s2 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 1,
+                                            fml::TimeDelta::FromSecondsF(1));
+    EXPECT_TRUE(s2.valid);
+    EXPECT_EQ(1u, s2.index);
+    EXPECT_TRUE(s2.progress == 1.0);
   }
 
   {
-    std::vector<std::unique_ptr<Keyframe>> keyframes;
+    std::vector<std::unique_ptr<gfx::Keyframe>> keyframes;
     auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
     test_frame1->SetOpacity(1.0f);
     keyframes.emplace_back(std::move(test_frame1));
@@ -484,16 +546,20 @@ TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
         OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
     test_frame2->SetOpacity(0.0f);
     keyframes.emplace_back(std::move(test_frame2));
-    EXPECT_TRUE(TransformedKeyframeProgress(keyframes, 2,
-                                            fml::TimeDelta::FromSecondsF(0.5),
-                                            0) == 0.25);
+    auto s3 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 2,
+                                            fml::TimeDelta::FromSecondsF(0.5));
+    EXPECT_TRUE(s3.valid);
+    EXPECT_TRUE(s3.progress == 0.25);
 
     auto test_frame3 =
         OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
     test_frame3->SetOpacity(0.0f);
     keyframes.emplace_back(std::move(test_frame3));
-    EXPECT_TRUE(TransformedKeyframeProgress(
-                    keyframes, 2, fml::TimeDelta::FromSecondsF(2), 1) == 1.0);
+    auto s4 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 2,
+                                            fml::TimeDelta::FromSecondsF(2));
+    EXPECT_TRUE(s4.valid);
+    EXPECT_EQ(1u, s4.index);
+    EXPECT_TRUE(s4.progress == 1.0);
   }
 }
 
@@ -552,6 +618,208 @@ TEST_F(KeyframedAnimationCurveTest, HandleCSSVariableValueIfNeed) {
   auto result_value_2 = HandleCSSVariableValueIfNeed(
       ::lynx::tasm::kPropertyIDLeft, test_value_2, test_element.get());
   EXPECT_EQ(result_value_2, var_value);
+}
+
+TEST_F(KeyframedAnimationCurveTest, LayoutUnitPatternInvalidatesResolvedValue) {
+  auto test_frame = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame->css_value_ =
+      ::lynx::tasm::CSSValue(1.f, ::lynx::tasm::CSSValuePattern::REM);
+  test_frame->SetLayout({20.f, gfx::LengthUnit::kNumber});
+  EXPECT_TRUE(test_frame->HasResolvedValue());
+
+  test_frame->NotifyUnitValuesUpdated(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::EM));
+  EXPECT_TRUE(test_frame->HasResolvedValue());
+
+  test_frame->NotifyUnitValuesUpdated(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+  EXPECT_FALSE(test_frame->HasResolvedValue());
+}
+
+TEST_F(KeyframedAnimationCurveTest, FilterKeyframeStoresRawAndResolvesRem) {
+  auto test_element = InitFiberElement();
+  auto start_arr = lepus::CArray::Create();
+  start_arr->emplace_back(static_cast<uint32_t>(starlight::FilterType::kBlur));
+  start_arr->emplace_back(1.f);
+  start_arr->emplace_back(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+  auto end_arr = lepus::CArray::Create();
+  end_arr->emplace_back(static_cast<uint32_t>(starlight::FilterType::kBlur));
+  end_arr->emplace_back(3.f);
+  end_arr->emplace_back(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+
+  auto start_frame = FilterKeyframe::Create(fml::TimeDelta(), nullptr);
+  EXPECT_TRUE(start_frame->SetValue(::lynx::tasm::kPropertyIDFilter,
+                                    ::lynx::tasm::CSSValue(start_arr),
+                                    test_element.get()));
+  auto* start_frame_ptr = start_frame.get();
+  EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM),
+            start_frame->filter_.GetArray()->get(2).UInt32());
+  EXPECT_FALSE(start_frame->HasResolvedValue());
+
+  auto end_frame =
+      FilterKeyframe::Create(fml::TimeDelta::FromSecondsF(1.f), nullptr);
+  EXPECT_TRUE(end_frame->SetValue(::lynx::tasm::kPropertyIDFilter,
+                                  ::lynx::tasm::CSSValue(end_arr),
+                                  test_element.get()));
+  auto* end_frame_ptr = end_frame.get();
+  EXPECT_FALSE(end_frame->HasResolvedValue());
+
+  auto curve = KeyframedFilterAnimationCurve::Create();
+  curve->type_ = AnimationCurve::CurveType::FILTER;
+  curve->SetElement(test_element.get());
+  curve->AddKeyframe(std::move(start_frame));
+  curve->AddKeyframe(std::move(end_frame));
+
+  fml::TimeDelta time = fml::TimeDelta::FromSecondsF(0.5f);
+  auto normalized = curve->GetValue(time).GetArray();
+  const auto& context =
+      CSSKeyframeManager::GetLengthContext(test_element.get());
+  EXPECT_FLOAT_EQ(context.root_node_font_size_ * 2.f,
+                  normalized->get(1).Double());
+  EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::NUMBER),
+            normalized->get(2).UInt32());
+  EXPECT_TRUE(start_frame_ptr->HasResolvedValue());
+  EXPECT_EQ(gfx::UnitTag::kNumber, start_frame_ptr->ResolvedValue().unit);
+  EXPECT_TRUE(end_frame_ptr->HasResolvedValue());
+}
+
+TEST_F(KeyframedAnimationCurveTest, TransformOriginKeyframeResolvesRem) {
+  auto test_element = InitFiberElement();
+  auto start_arr = lepus::CArray::Create();
+  start_arr->emplace_back(1.f);
+  start_arr->emplace_back(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+  start_arr->emplace_back(50.f);
+  start_arr->emplace_back(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::PERCENT));
+  auto end_arr = lepus::CArray::Create();
+  end_arr->emplace_back(3.f);
+  end_arr->emplace_back(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+  end_arr->emplace_back(100.f);
+  end_arr->emplace_back(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::PERCENT));
+
+  auto start_frame = TransformOriginKeyframe::Create(fml::TimeDelta(), nullptr);
+  EXPECT_TRUE(start_frame->SetValue(::lynx::tasm::kPropertyIDTransformOrigin,
+                                    ::lynx::tasm::CSSValue(start_arr),
+                                    test_element.get()));
+  auto* start_frame_ptr = start_frame.get();
+  EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM),
+            start_frame->transform_origin_.GetArray()->get(1).UInt32());
+  EXPECT_FALSE(start_frame->HasResolvedValue());
+
+  auto end_frame = TransformOriginKeyframe::Create(
+      fml::TimeDelta::FromSecondsF(1.f), nullptr);
+  EXPECT_TRUE(end_frame->SetValue(::lynx::tasm::kPropertyIDTransformOrigin,
+                                  ::lynx::tasm::CSSValue(end_arr),
+                                  test_element.get()));
+  auto* end_frame_ptr = end_frame.get();
+  EXPECT_FALSE(end_frame->HasResolvedValue());
+
+  auto curve = KeyframedTransformOriginAnimationCurve::Create();
+  curve->type_ = AnimationCurve::CurveType::TRANSFORM_ORIGIN;
+  curve->SetElement(test_element.get());
+  curve->AddKeyframe(std::move(start_frame));
+  curve->AddKeyframe(std::move(end_frame));
+
+  fml::TimeDelta time = fml::TimeDelta::FromSecondsF(0.5f);
+  auto normalized = curve->GetValue(time).GetArray();
+  const auto& context =
+      CSSKeyframeManager::GetLengthContext(test_element.get());
+  EXPECT_FLOAT_EQ(context.root_node_font_size_ * 2.f,
+                  normalized->get(0).Double());
+  EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::NUMBER),
+            normalized->get(1).UInt32());
+  EXPECT_FLOAT_EQ(75.f, normalized->get(2).Double());
+  EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::PERCENT),
+            normalized->get(3).UInt32());
+  EXPECT_TRUE(start_frame_ptr->HasResolvedValue());
+  EXPECT_EQ(gfx::UnitTag::kNumber, start_frame_ptr->ResolvedValue().x.tag);
+  EXPECT_EQ(gfx::UnitTag::kPercent, start_frame_ptr->ResolvedValue().y.tag);
+  EXPECT_TRUE(end_frame_ptr->HasResolvedValue());
+}
+
+TEST_F(KeyframedAnimationCurveTest, BackgroundPositionKeyframeResolvesUnits) {
+  auto test_element = InitFiberElement();
+  const auto& context =
+      CSSKeyframeManager::GetLengthContext(test_element.get());
+  auto start_position = lepus::CArray::Create();
+  start_position->emplace_back(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+  start_position->emplace_back(1.f);
+  start_position->emplace_back(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+  start_position->emplace_back(2.f);
+  auto end_position = lepus::CArray::Create();
+  end_position->emplace_back(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::PX));
+  end_position->emplace_back(context.root_node_font_size_ * 3.f /
+                             context.layouts_unit_per_px_);
+  end_position->emplace_back(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::PX));
+  end_position->emplace_back(context.root_node_font_size_ * 4.f /
+                             context.layouts_unit_per_px_);
+
+  auto start_outer = lepus::CArray::Create();
+  start_outer->emplace_back(std::move(start_position));
+  auto end_outer = lepus::CArray::Create();
+  end_outer->emplace_back(std::move(end_position));
+
+  auto start_frame =
+      BackgroundPositionKeyframe::Create(fml::TimeDelta(), nullptr);
+  EXPECT_TRUE(start_frame->SetValue(::lynx::tasm::kPropertyIDBackgroundPosition,
+                                    ::lynx::tasm::CSSValue(start_outer),
+                                    test_element.get()));
+  auto* start_frame_ptr = start_frame.get();
+  EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM),
+            start_frame->background_position_.GetArray()
+                ->get(0)
+                .Array()
+                ->get(0)
+                .UInt32());
+  EXPECT_FALSE(start_frame->HasResolvedValue());
+
+  auto end_frame = BackgroundPositionKeyframe::Create(
+      fml::TimeDelta::FromSecondsF(1.f), nullptr);
+  EXPECT_TRUE(end_frame->SetValue(::lynx::tasm::kPropertyIDBackgroundPosition,
+                                  ::lynx::tasm::CSSValue(end_outer),
+                                  test_element.get()));
+  auto* end_frame_ptr = end_frame.get();
+  EXPECT_FALSE(end_frame->HasResolvedValue());
+
+  auto curve = KeyframedBackgroundPositionAnimationCurve::Create();
+  curve->type_ = AnimationCurve::CurveType::BACKGROUND_POSITION;
+  curve->SetElement(test_element.get());
+  curve->AddKeyframe(std::move(start_frame));
+  curve->AddKeyframe(std::move(end_frame));
+
+  fml::TimeDelta time = fml::TimeDelta::FromSecondsF(0.5f);
+  auto output = curve->GetValue(time);
+  auto output_array = output.GetArray();
+  auto normalized = output_array->get(0).Array();
+  EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::NUMBER),
+            normalized->get(0).UInt32());
+  EXPECT_FLOAT_EQ(context.root_node_font_size_ * 2.f,
+                  normalized->get(1).Double());
+  EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::NUMBER),
+            normalized->get(2).UInt32());
+  EXPECT_FLOAT_EQ(context.root_node_font_size_ * 3.f,
+                  normalized->get(3).Double());
+  EXPECT_TRUE(start_frame_ptr->HasResolvedValue());
+  EXPECT_EQ(gfx::UnitTag::kNumber, start_frame_ptr->ResolvedValue().x.tag);
+  EXPECT_FLOAT_EQ(context.root_node_font_size_,
+                  start_frame_ptr->ResolvedValue().x.value);
+  EXPECT_EQ(gfx::UnitTag::kNumber, start_frame_ptr->ResolvedValue().y.tag);
+  EXPECT_FLOAT_EQ(context.root_node_font_size_ * 2.f,
+                  start_frame_ptr->ResolvedValue().y.value);
+  EXPECT_TRUE(end_frame_ptr->HasResolvedValue());
+  EXPECT_FLOAT_EQ(context.root_node_font_size_ * 3.f,
+                  end_frame_ptr->ResolvedValue().x.value);
+  EXPECT_FLOAT_EQ(context.root_node_font_size_ * 4.f,
+                  end_frame_ptr->ResolvedValue().y.value);
 }
 
 TEST_F(KeyframedAnimationCurveTest, FilterInterPolateTest) {

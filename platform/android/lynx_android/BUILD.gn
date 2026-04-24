@@ -43,7 +43,6 @@ group("lynx_android_lib") {
     "../../../core/animation:animation",
     "../../../core/animation/basic_animation:basic_animation",
     "../../../core/animation/lynx_basic_animator:lynx_basic_animator",
-    "../../../core/animation/utils:animation_utils",
     "../../../core/base:base",
     "../../../core/build:build",
     "../../../core/event",

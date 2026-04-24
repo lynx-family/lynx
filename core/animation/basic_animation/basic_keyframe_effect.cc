@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "core/animation/basic_animation/animation_effect.h"
 #include "core/animation/basic_animation/basic_animation.h"
 #include "core/animation/basic_animation/keyframe.h"

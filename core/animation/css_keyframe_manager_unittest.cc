@@ -14,7 +14,6 @@
 #include "core/animation/keyframed_animation_curve.h"
 #include "core/animation/testing/mock_css_keyframe_manager.h"
 #include "core/animation/transform_animation_curve.h"
-#include "core/animation/utils/timing_function.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
@@ -24,6 +23,7 @@
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/style/animation_data.h"
+#include "gfx/animation/timing_function.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -127,12 +127,9 @@ TEST_F(CSSKeyframeManagerTest, ConstructModel) {
       std::move(test_curve), test_type, test_animation.get());
   EXPECT_EQ(test_model->animation_curve()->Type(), test_type);
   EXPECT_EQ(test_model->animation_curve()->timing_function()->GetType(),
-            animation::CubicBezierTimingFunction::MakeTimingFunction(
-                test_animation->animation_data()->timing_func)
-                .get()
-                ->GetType());
+            gfx::TimingFunction::Type::LINEAR);
   EXPECT_EQ(test_model->animation_curve()->scaled_duration(),
-            test_animation->animation_data()->duration / 1000.0);
+            test_animation->get_animation_data().duration / 1000.0);
 }
 
 TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
@@ -147,18 +144,17 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   lynx::tasm::UnitHandler::Process(id1, impl1, output1, configs);
   auto raw_value1 = output1[id1];
   auto test_animation1 = InitTestAnimation();
-  auto test_timing_function1 =
-      animation::CubicBezierTimingFunction::MakeTimingFunction(
-          test_animation1->animation_data()->timing_func);
+  auto test_timing_function1 = gfx::LinearTimingFunction::Create();
   auto test_type1 = animation::AnimationCurve::CurveType::LEFT;
   bool init_success1 = test_manager->InitCurveAndModelAndKeyframe(
       test_type1, test_animation1.get(), test_offset,
       std::move(test_timing_function1), id1, raw_value1);
   EXPECT_EQ(init_success1, true);
-  EXPECT_EQ(*test_animation1->animation_data(),
-            test_animation1->keyframe_effect()
-                ->keyframe_models()[0]
-                ->get_animation_data());
+  auto* model1 = test_animation1->keyframe_effect()->keyframe_models()[0].get();
+  ASSERT_NE(nullptr, model1);
+  EXPECT_TRUE(model1->HasAnimationData());
+  EXPECT_TRUE(model1->get_animation_data() ==
+              test_animation1->get_animation_data());
 
   auto id2 = lynx::tasm::CSSPropertyID::kPropertyIDOpacity;
   lynx::tasm::StyleMap output2;
@@ -166,18 +162,17 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   lynx::tasm::UnitHandler::Process(id2, impl2, output2, configs);
   auto raw_value2 = output2[id2];
   auto test_animation2 = InitTestAnimation();
-  auto test_timing_function2 =
-      animation::CubicBezierTimingFunction::MakeTimingFunction(
-          test_animation2->animation_data()->timing_func);
+  auto test_timing_function2 = gfx::LinearTimingFunction::Create();
   auto test_type2 = animation::AnimationCurve::CurveType::OPACITY;
   bool init_success2 = test_manager->InitCurveAndModelAndKeyframe(
       test_type2, test_animation2.get(), test_offset,
       std::move(test_timing_function2), id2, raw_value2);
   EXPECT_EQ(init_success2, true);
-  EXPECT_EQ(*test_animation2->animation_data(),
-            test_animation2->keyframe_effect()
-                ->keyframe_models()[0]
-                ->get_animation_data());
+  auto* model2 = test_animation2->keyframe_effect()->keyframe_models()[0].get();
+  ASSERT_NE(nullptr, model2);
+  EXPECT_TRUE(model2->HasAnimationData());
+  EXPECT_TRUE(model2->get_animation_data() ==
+              test_animation2->get_animation_data());
 
   auto id3 = lynx::tasm::CSSPropertyID::kPropertyIDColor;
   lynx::tasm::StyleMap output3;
@@ -185,18 +180,17 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   lynx::tasm::UnitHandler::Process(id3, impl3, output3, configs);
   auto raw_value3 = output3[id3];
   auto test_animation3 = InitTestAnimation();
-  auto test_timing_function3 =
-      animation::CubicBezierTimingFunction::MakeTimingFunction(
-          test_animation3->animation_data()->timing_func);
+  auto test_timing_function3 = gfx::LinearTimingFunction::Create();
   auto test_type3 = animation::AnimationCurve::CurveType::TEXTCOLOR;
   bool init_success3 = test_manager->InitCurveAndModelAndKeyframe(
       test_type3, test_animation3.get(), test_offset,
       std::move(test_timing_function3), id3, raw_value3);
   EXPECT_EQ(init_success3, true);
-  EXPECT_EQ(*test_animation3->animation_data(),
-            test_animation3->keyframe_effect()
-                ->keyframe_models()[0]
-                ->get_animation_data());
+  auto* model3 = test_animation3->keyframe_effect()->keyframe_models()[0].get();
+  ASSERT_NE(nullptr, model3);
+  EXPECT_TRUE(model3->HasAnimationData());
+  EXPECT_TRUE(model3->get_animation_data() ==
+              test_animation3->get_animation_data());
 
   auto id4 = lynx::tasm::CSSPropertyID::kPropertyIDColor;
   lynx::tasm::StyleMap output4;
@@ -204,9 +198,7 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   lynx::tasm::UnitHandler::Process(id4, impl4, output4, configs);
   auto raw_value4 = output4[id4];
   auto test_animation4 = InitTestAnimation();
-  auto test_timing_function4 =
-      animation::CubicBezierTimingFunction::MakeTimingFunction(
-          test_animation4->animation_data()->timing_func);
+  auto test_timing_function4 = gfx::LinearTimingFunction::Create();
   auto test_type4 = animation::AnimationCurve::CurveType::UNSUPPORT;
   bool init_success4 = test_manager->InitCurveAndModelAndKeyframe(
       test_type4, test_animation4.get(), test_offset,

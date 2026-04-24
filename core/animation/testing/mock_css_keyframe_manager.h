@@ -17,7 +17,6 @@
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/keyframe_effect.h"
 #include "core/animation/keyframed_animation_curve.h"
-#include "core/animation/utils/timing_function.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"

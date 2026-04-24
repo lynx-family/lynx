@@ -23,7 +23,6 @@ lynx_core_source_set("lynx_basic_animator") {
     "../:animation",
     "../../base",
     "../../shell:shell",
-    "../utils:animation_utils",
   ]
 }
 

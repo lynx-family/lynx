@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/animation/utils/cubic_bezier.h"
+#include "gfx/animation/cubic_bezier.h"
 
 #include <algorithm>
 #include <cmath>
@@ -30,6 +30,8 @@ namespace lynx {
 namespace animation {
 namespace tasm {
 namespace testing {
+
+using CubicBezier = gfx::CubicBezier;
 
 static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;

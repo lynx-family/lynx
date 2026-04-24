@@ -10,79 +10,409 @@
 
 #include <cmath>
 #include <limits>
+#include <optional>
 
 #include "base/include/float_comparison.h"
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_trace_event_def.h"
+#include "core/animation/css_keyframe_manager.h"
+#include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/starlight/types/nlength.h"
+#include "gfx/animation/animation_utils.h"
 
 namespace lynx {
 namespace animation {
 
-// keyframe
-fml::TimeDelta Keyframe::Time() const { return time_; }
+namespace {
 
-Keyframe::Keyframe(fml::TimeDelta time,
-                   std::unique_ptr<TimingFunction> timing_function)
-    : time_(time), timing_function_(std::move(timing_function)) {}
-
-fml::TimeDelta TransformedAnimationTime(
-    const std::vector<std::unique_ptr<Keyframe>>& keyframes,
-    const std::unique_ptr<TimingFunction>& timing_function,
-    double scaled_duration, fml::TimeDelta time) {
-  if (timing_function) {
-    fml::TimeDelta start_time = keyframes.front()->Time() * scaled_duration;
-    fml::TimeDelta duration =
-        (keyframes.back()->Time() - keyframes.front()->Time()) *
-        scaled_duration;
-    double progress = static_cast<double>(time.ToMicroseconds() -
-                                          start_time.ToMicroseconds()) /
-                      static_cast<double>(duration.ToMicroseconds());
-
-    time = (duration * timing_function->GetValue(progress)) + start_time;
+std::optional<gfx::LengthValue> ToLengthValueFromNLength(
+    const starlight::NLength& length, tasm::CSSPropertyID id,
+    tasm::Element* element) {
+  if (length.IsUnit()) {
+    return gfx::LengthValue{length.GetRawValue(), gfx::LengthUnit::kNumber};
   }
-
-  return time;
+  if (length.IsPercent()) {
+    return gfx::LengthValue{length.GetRawValue(), gfx::LengthUnit::kPercent};
+  }
+  if (length.IsCalc()) {
+    if (!element || !element->parent()) {
+      return std::nullopt;
+    }
+    float parent_length = 0.0f;
+    if (GetOnXAxisCurveTypeSet().count(
+            static_cast<AnimationCurve::CurveType>(id)) != 0) {
+      parent_length = element->parent()->width();
+    } else {
+      parent_length = element->parent()->height();
+    }
+    return gfx::LengthValue{starlight::NLengthToLayoutUnit(
+                                length, starlight::LayoutUnit(parent_length))
+                                .ToFloat(),
+                            gfx::LengthUnit::kNumber};
+  }
+  return std::nullopt;
 }
 
-size_t GetActiveKeyframe(
-    const std::vector<std::unique_ptr<Keyframe>>& keyframes,
-    double scaled_duration, fml::TimeDelta time) {
-  DCHECK(keyframes.size() >= 2);
-  size_t i = 0;
-  for (; i < keyframes.size() - 2; ++i) {  // Last keyframe is never active.
-    if (time < (keyframes[i + 1]->Time() * scaled_duration)) break;
+std::optional<gfx::LengthValue> ResolveLayoutLengthValue(
+    tasm::CSSPropertyID id, const tasm::CSSValue& value,
+    tasm::Element* element) {
+  if (element == nullptr) {
+    return std::nullopt;
   }
-
-  return i;
+  auto keyframe_layout_value = HandleCSSVariableValueIfNeed(id, value, element);
+  auto parse_result = starlight::CSSStyleUtils::ToLength(
+      keyframe_layout_value, CSSKeyframeManager::GetLengthContext(element),
+      element->element_manager()->GetCSSParserConfigs());
+  if (!parse_result.second) {
+    return std::nullopt;
+  }
+  return ToLengthValueFromNLength(parse_result.first, id, element);
 }
 
-double TransformedKeyframeProgress(
-    const std::vector<std::unique_ptr<Keyframe>>& keyframes,
-    double scaled_duration, fml::TimeDelta time, size_t i) {
-  double in_time = time.ToNanosecondsF();
-  double time1 = keyframes[i]->Time().ToNanosecondsF() * scaled_duration;
-  double time2 = keyframes[i + 1]->Time().ToNanosecondsF() * scaled_duration;
-
-  // Corner case: If time1 is equal to time2, we should return 100% progress
-  // here directly. Otherwise, we will get a progress value of NaN, because the
-  // difference between time1 and time2 will be used as the divisor later.
-  // FIXME(wujintian): Here is a bad case that if duration is 0 and delay is not
-  // 0 and fill mode is backwards and phase is before now, it should return 0.0
-  // instead of return 1.0.
-  if (std::fabs(time2 - time1) < std::numeric_limits<double>::epsilon()) {
-    return 1.0;
+std::optional<tasm::CSSValue> MakeNonCalcLengthCSSValue(
+    const lepus::Value& value, tasm::CSSValuePattern css_pattern) {
+  // A raw calc expression needs its original CSSValue string; this scalar path
+  // only carries a value plus pattern.
+  if (css_pattern == tasm::CSSValuePattern::CALC) {
+    return std::nullopt;
   }
-  double progress = (in_time - time1) / (time2 - time1);
-
-  if (keyframes[i]->timing_function()) {
-    progress = keyframes[i]->timing_function()->GetValue(progress);
-  }
-
-  return progress;
+  return tasm::CSSValue(value, css_pattern);
 }
+
+struct ResolvedLengthComponent {
+  double value{0.0};
+  tasm::CSSValuePattern css_pattern{tasm::CSSValuePattern::NUMBER};
+};
+
+struct RawFilterValue {
+  starlight::FilterType filter_type{starlight::FilterType::kNone};
+  lepus::Value amount;
+  tasm::CSSValuePattern amount_pattern{tasm::CSSValuePattern::EMPTY};
+};
+
+struct RawVec2Value {
+  tasm::CSSValuePattern x_pattern{tasm::CSSValuePattern::EMPTY};
+  lepus::Value x_value;
+  tasm::CSSValuePattern y_pattern{tasm::CSSValuePattern::EMPTY};
+  lepus::Value y_value;
+};
+
+enum class PositionAxis : uint8_t {
+  kX,
+  kY,
+};
+
+enum class Vec2CSSValueEncoding : uint8_t {
+  kBackgroundPosition,
+  kTransformOrigin,
+};
+
+std::optional<gfx::UnitTag> ToUnitTagFromCSSValuePattern(
+    tasm::CSSValuePattern css_pattern);
+
+std::optional<ResolvedLengthComponent> ResolveLengthComponent(
+    const lepus::Value& value, tasm::CSSValuePattern pattern,
+    tasm::Element* element) {
+  if (element == nullptr) {
+    return std::nullopt;
+  }
+  auto css_value = MakeNonCalcLengthCSSValue(value, pattern);
+  if (!css_value) {
+    return std::nullopt;
+  }
+  auto parse_result = starlight::CSSStyleUtils::ToLength(
+      *css_value, CSSKeyframeManager::GetLengthContext(element),
+      element->element_manager()->GetCSSParserConfigs());
+  if (!parse_result.second) {
+    return std::nullopt;
+  }
+  if (parse_result.first.IsPercent()) {
+    return ResolvedLengthComponent{parse_result.first.GetRawValue(),
+                                   tasm::CSSValuePattern::PERCENT};
+  }
+  if (parse_result.first.IsUnit()) {
+    return ResolvedLengthComponent{parse_result.first.GetRawValue(),
+                                   tasm::CSSValuePattern::NUMBER};
+  }
+  return std::nullopt;
+}
+
+std::optional<tasm::CSSValuePattern> ToCSSValuePatternFromUnitTag(
+    gfx::UnitTag unit) {
+  if (unit == gfx::UnitTag::kNumber) {
+    return tasm::CSSValuePattern::NUMBER;
+  }
+  if (unit == gfx::UnitTag::kPercent) {
+    return tasm::CSSValuePattern::PERCENT;
+  }
+  return std::nullopt;
+}
+
+std::optional<ResolvedLengthComponent> ResolveNumericFilterAmount(
+    const lepus::Value& value, tasm::CSSValuePattern css_pattern) {
+  if (css_pattern == tasm::CSSValuePattern::PERCENT) {
+    return ResolvedLengthComponent{value.Number(),
+                                   tasm::CSSValuePattern::PERCENT};
+  }
+  if (css_pattern == tasm::CSSValuePattern::NUMBER ||
+      css_pattern == tasm::CSSValuePattern::PX) {
+    return ResolvedLengthComponent{value.Number(),
+                                   tasm::CSSValuePattern::NUMBER};
+  }
+  return std::nullopt;
+}
+
+std::optional<ResolvedLengthComponent> ResolveFilterAmount(
+    starlight::FilterType filter_type, const lepus::Value& value,
+    tasm::CSSValuePattern css_pattern, tasm::Element* element) {
+  switch (filter_type) {
+    case starlight::FilterType::kBlur:
+      return ResolveLengthComponent(value, css_pattern, element);
+    case starlight::FilterType::kGrayscale:
+    case starlight::FilterType::kBrightness:
+    case starlight::FilterType::kContrast:
+    case starlight::FilterType::kSaturate:
+      return ResolveNumericFilterAmount(value, css_pattern);
+    case starlight::FilterType::kNone:
+    case starlight::FilterType::kHueRotate:
+      // kHueRotate exists in the enum table, but the current
+      // filter parser and style decoder do not produce it as a supported value.
+      return std::nullopt;
+    default:
+      return std::nullopt;
+  }
+}
+
+std::optional<RawFilterValue> ParseRawFilterValue(
+    const tasm::CSSValue& filter) {
+  if (!filter.IsArray()) {
+    return std::nullopt;
+  }
+  auto arr = filter.GetArray();
+  if (arr->size() != 3) {
+    return std::nullopt;
+  }
+  return RawFilterValue{
+      static_cast<starlight::FilterType>(arr->get(0).UInt32()), arr->get(1),
+      static_cast<tasm::CSSValuePattern>(arr->get(2).UInt32())};
+}
+
+std::optional<gfx::FilterValue> ResolveFilterValue(const RawFilterValue& raw,
+                                                   tasm::Element* element) {
+  auto amount = ResolveFilterAmount(raw.filter_type, raw.amount,
+                                    raw.amount_pattern, element);
+  if (!amount) {
+    return std::nullopt;
+  }
+  auto unit = ToUnitTagFromCSSValuePattern(amount->css_pattern);
+  if (!unit) {
+    return std::nullopt;
+  }
+  return gfx::FilterValue{static_cast<uint32_t>(raw.filter_type), amount->value,
+                          *unit};
+}
+
+std::optional<gfx::FilterValue> GetResolvedFilterValue(
+    FilterKeyframe* keyframe, const RawFilterValue& raw,
+    tasm::Element* element) {
+  if (!keyframe->IsEmpty() && keyframe->HasResolvedValue()) {
+    return keyframe->ResolvedValue();
+  }
+  auto resolved = ResolveFilterValue(raw, element);
+  if (resolved && !keyframe->IsEmpty()) {
+    keyframe->SetResolvedValue(*resolved);
+  }
+  return resolved;
+}
+
+std::pair<tasm::CSSValuePattern, lepus::Value>
+NormalizeBackgroundPositionComponent(uint32_t position_or_pattern,
+                                     const lepus::Value& position_value,
+                                     PositionAxis axis) {
+  auto make_percent = [](double value) {
+    return std::make_pair(tasm::CSSValuePattern::PERCENT, lepus::Value(value));
+  };
+
+  auto position_type =
+      static_cast<starlight::BackgroundPositionType>(position_or_pattern);
+  if (position_type == starlight::BackgroundPositionType::kCenter) {
+    return make_percent(50.0);
+  }
+
+  if (axis == PositionAxis::kX) {
+    if (position_type == starlight::BackgroundPositionType::kLeft) {
+      return make_percent(0.0);
+    }
+    if (position_type == starlight::BackgroundPositionType::kRight) {
+      return make_percent(100.0);
+    }
+  } else {
+    if (position_type == starlight::BackgroundPositionType::kTop) {
+      return make_percent(0.0);
+    }
+    if (position_type == starlight::BackgroundPositionType::kBottom) {
+      return make_percent(100.0);
+    }
+  }
+
+  return std::make_pair(static_cast<tasm::CSSValuePattern>(position_or_pattern),
+                        position_value);
+}
+
+std::optional<RawVec2Value> ParseRawBackgroundPositionValue(
+    const tasm::CSSValue& background_position) {
+  if (!background_position.IsArray()) {
+    return std::nullopt;
+  }
+  auto outer = background_position.GetArray();
+  if (outer->size() == 0 || !outer->get(0).IsArray()) {
+    return std::nullopt;
+  }
+  auto arr = outer->get(0).Array();
+  if (arr->size() < 4) {
+    return std::nullopt;
+  }
+  auto [x_pattern, x_value] = NormalizeBackgroundPositionComponent(
+      static_cast<uint32_t>(arr->get(0).Number()), arr->get(1),
+      PositionAxis::kX);
+  auto [y_pattern, y_value] = NormalizeBackgroundPositionComponent(
+      static_cast<uint32_t>(arr->get(2).Number()), arr->get(3),
+      PositionAxis::kY);
+  return RawVec2Value{x_pattern, x_value, y_pattern, y_value};
+}
+
+std::optional<RawVec2Value> ParseRawTransformOriginValue(
+    const tasm::CSSValue& transform_origin) {
+  if (!transform_origin.IsArray()) {
+    return std::nullopt;
+  }
+  auto arr = transform_origin.GetArray();
+  if (arr->size() < 4) {
+    return std::nullopt;
+  }
+  return RawVec2Value{
+      static_cast<tasm::CSSValuePattern>(arr->get(1).UInt32()), arr->get(0),
+      static_cast<tasm::CSSValuePattern>(arr->get(3).UInt32()), arr->get(2)};
+}
+
+std::optional<gfx::Vec2Tagged> ResolveVec2Value(const RawVec2Value& raw,
+                                                tasm::Element* element) {
+  auto x = ResolveLengthComponent(raw.x_value, raw.x_pattern, element);
+  auto y = ResolveLengthComponent(raw.y_value, raw.y_pattern, element);
+  if (!x || !y) {
+    return std::nullopt;
+  }
+  auto x_tag = ToUnitTagFromCSSValuePattern(x->css_pattern);
+  auto y_tag = ToUnitTagFromCSSValuePattern(y->css_pattern);
+  if (!x_tag || !y_tag) {
+    return std::nullopt;
+  }
+  return gfx::Vec2Tagged{gfx::TaggedNumber{x->value, *x_tag},
+                         gfx::TaggedNumber{y->value, *y_tag}};
+}
+
+std::optional<gfx::UnitTag> ToUnitTagFromCSSValuePattern(
+    tasm::CSSValuePattern css_pattern) {
+  if (css_pattern == tasm::CSSValuePattern::NUMBER) {
+    return gfx::UnitTag::kNumber;
+  }
+  if (css_pattern == tasm::CSSValuePattern::PX) {
+    return gfx::UnitTag::kNumber;
+  }
+  if (css_pattern == tasm::CSSValuePattern::PERCENT) {
+    return gfx::UnitTag::kPercent;
+  }
+  return std::nullopt;
+}
+
+std::optional<tasm::CSSValue> BuildVec2CSSValue(const gfx::Vec2Tagged& value,
+                                                Vec2CSSValueEncoding encoding) {
+  auto x_pattern = ToCSSValuePatternFromUnitTag(value.x.tag);
+  auto y_pattern = ToCSSValuePatternFromUnitTag(value.y.tag);
+  if (!x_pattern || !y_pattern) {
+    return std::nullopt;
+  }
+
+  switch (encoding) {
+    case Vec2CSSValueEncoding::kBackgroundPosition: {
+      auto inner_array = lepus::CArray::Create();
+      inner_array->emplace_back(static_cast<uint32_t>(*x_pattern));
+      inner_array->emplace_back(value.x.value);
+      inner_array->emplace_back(static_cast<uint32_t>(*y_pattern));
+      inner_array->emplace_back(value.y.value);
+
+      auto outer_array = lepus::CArray::Create();
+      outer_array->emplace_back(std::move(inner_array));
+      return tasm::CSSValue(std::move(outer_array));
+    }
+    case Vec2CSSValueEncoding::kTransformOrigin: {
+      auto array = lepus::CArray::Create();
+      array->emplace_back(value.x.value);
+      array->emplace_back(static_cast<uint32_t>(*x_pattern));
+      array->emplace_back(value.y.value);
+      array->emplace_back(static_cast<uint32_t>(*y_pattern));
+      return tasm::CSSValue(std::move(array));
+    }
+  }
+  return std::nullopt;
+}
+
+template <typename KeyframeType>
+std::optional<gfx::Vec2Tagged> GetResolvedVec2Value(KeyframeType* keyframe,
+                                                    const RawVec2Value& raw,
+                                                    tasm::Element* element) {
+  if (!keyframe->IsEmpty() && keyframe->HasResolvedValue()) {
+    return keyframe->ResolvedValue();
+  }
+  auto resolved = ResolveVec2Value(raw, element);
+  if (resolved && !keyframe->IsEmpty()) {
+    keyframe->SetResolvedValue(*resolved);
+  }
+  return resolved;
+}
+
+template <typename KeyframeType>
+tasm::CSSValue InterpolateVec2CSSValue(
+    const tasm::CSSValue& start_css_value, const tasm::CSSValue& end_css_value,
+    const std::optional<RawVec2Value>& start_raw,
+    const std::optional<RawVec2Value>& end_raw, KeyframeType* keyframe,
+    KeyframeType* keyframe_next, double progress, tasm::Element* element,
+    Vec2CSSValueEncoding encoding) {
+  if (start_css_value == tasm::CSSValue() ||
+      end_css_value == tasm::CSSValue()) {
+    return start_css_value;
+  }
+  if (!start_raw || !end_raw) {
+    return start_css_value;
+  }
+
+  if (std::fabs(progress - 0.0f) < std::numeric_limits<float>::epsilon()) {
+    return start_css_value;
+  }
+  if (std::fabs(progress - 1.0f) < std::numeric_limits<float>::epsilon()) {
+    return end_css_value;
+  }
+
+  auto start_value = GetResolvedVec2Value(keyframe, *start_raw, element);
+  auto end_value = GetResolvedVec2Value(keyframe_next, *end_raw, element);
+  if (!start_value || !end_value || start_value->x.tag != end_value->x.tag ||
+      start_value->y.tag != end_value->y.tag) {
+    return start_css_value;
+  }
+
+  auto out = gfx::InterpolateVec2Tagged(*start_value, *end_value, progress,
+                                        gfx::DiscreteFallback::kUseStart);
+  auto css_value = BuildVec2CSSValue(out, encoding);
+  if (!css_value) {
+    return start_css_value;
+  }
+  return std::move(*css_value);
+}
+
+}  // namespace
 
 tasm::CSSValue GetStyleInElement(tasm::CSSPropertyID id,
                                  tasm::Element* element) {
@@ -119,44 +449,59 @@ const std::unordered_set<AnimationCurve::CurveType>& GetOnXAxisCurveTypeSet() {
 //====== LayoutValueAnimator begin =======
 
 std::unique_ptr<LayoutKeyframe> LayoutKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
   return std::make_unique<LayoutKeyframe>(time, std::move(timing_function));
 }
 
-LayoutKeyframe::LayoutKeyframe(fml::TimeDelta time,
-                               std::unique_ptr<TimingFunction> timing_function)
-    : Keyframe(time, std::move(timing_function)),
-      value_(starlight::NLength::MakeAutoNLength()) {}
+LayoutKeyframe::LayoutKeyframe(
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
+    : gfx::LengthKeyframe(time, std::move(timing_function)) {}
 
-// When view or font size has changed, mark the value 'AutoNLength'.
-void LayoutKeyframe::NotifyUnitValuesUpdatedToAnimation(
-    tasm::CSSValuePattern type) {
-  if (css_value_.GetPattern() == type) {
-    value_ = starlight::NLength::MakeAutoNLength();
+void LayoutKeyframe::SetLayout(const starlight::NLength& length) {
+  if (length.IsUnit()) {
+    SetResolvedValue({length.GetRawValue(), gfx::LengthUnit::kNumber});
+    return;
+  }
+  if (length.IsPercent()) {
+    SetResolvedValue({length.GetRawValue(), gfx::LengthUnit::kPercent});
+    return;
+  }
+  ClearResolvedValue();
+}
+
+void LayoutKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
+  if (css_value_.GetPattern() == static_cast<tasm::CSSValuePattern>(type)) {
+    ClearResolvedValue();
   }
 }
 
-std::pair<starlight::NLength, tasm::CSSValue>
+std::pair<std::optional<gfx::LengthValue>, tasm::CSSValue>
 LayoutKeyframe::GetLayoutKeyframeValue(LayoutKeyframe* keyframe,
                                        tasm::CSSPropertyID id,
                                        tasm::Element* element) {
-  // Layout length default value : auto
-  starlight::NLength length = starlight::NLength::MakeAutoNLength();
+  std::optional<gfx::LengthValue> length;
   tasm::CSSValue css_value = tasm::CSSValue(starlight::LengthValueType::kAuto);
   if (keyframe->IsEmpty()) {
     std::optional<tasm::CSSValue> value_opt = element->GetElementStyle(id);
     if (!value_opt) {
-      // return default value
       return std::make_pair(length, css_value);
     }
-    const auto& configs = element->element_manager()->GetCSSParserConfigs();
-    auto parse_result = starlight::CSSStyleUtils::ToLength(
-        *value_opt, CSSKeyframeManager::GetLengthContext(element), configs);
-    length = parse_result.first;
+    auto resolved = ResolveLayoutLengthValue(id, *value_opt, element);
+    if (resolved) {
+      length = *resolved;
+    }
     css_value = std::move(*value_opt);
   } else {
-    length = keyframe->Value();
     css_value = keyframe->CSSValue();
+    if (!keyframe->HasResolvedValue() && !css_value.IsEnum()) {
+      auto resolved = ResolveLayoutLengthValue(id, css_value, element);
+      if (resolved) {
+        keyframe->SetLayout(*resolved);
+        length = keyframe->ResolvedValue();
+      }
+    } else if (keyframe->HasResolvedValue()) {
+      length = keyframe->ResolvedValue();
+    }
   }
   return std::make_pair(length, css_value);
 }
@@ -164,6 +509,7 @@ LayoutKeyframe::GetLayoutKeyframeValue(LayoutKeyframe* keyframe,
 bool LayoutKeyframe::SetValue(tasm::CSSPropertyID id,
                               const tasm::CSSValue& value,
                               tasm::Element* element) {
+  css_value_ = value;
   auto keyframe_layout_value = HandleCSSVariableValueIfNeed(id, value, element);
   auto parse_result = starlight::CSSStyleUtils::ToLength(
       keyframe_layout_value, CSSKeyframeManager::GetLengthContext(element),
@@ -175,9 +521,11 @@ bool LayoutKeyframe::SetValue(tasm::CSSPropertyID id,
       !parse_result.first.IsCalc() && !parse_result.first.IsAuto()) {
     return false;
   }
-  value_ = parse_result.first;
-  css_value_ = value;
-  is_empty_ = false;
+  MarkNonEmpty();
+  // Keep layout keyframes in raw CSS form until sampling. Values such as em,
+  // rem, rpx, vw/vh and calc depend on the element's current measure context;
+  // resolving them when the keyframe is created can cache a stale value.
+  ClearResolvedValue();
   return true;
 }
 
@@ -195,77 +543,53 @@ tasm::CSSValue KeyframedLayoutAnimationCurve::GetValue(
                 curveTypeInfo->set_string_value("LayoutAnimation");
               });
 
-  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
-                               t);
-  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
-  double progress =
-      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+  auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
+                                                scaled_duration(), t);
+  DCHECK(sampling.valid);
+  t = sampling.effective_time;
+  size_t i = sampling.index;
+  double progress = sampling.progress;
 
-  LayoutKeyframe* keyframe =
-      reinterpret_cast<LayoutKeyframe*>(keyframes_[i].get());
-  LayoutKeyframe* keyframe_next =
-      reinterpret_cast<LayoutKeyframe*>(keyframes_[i + 1].get());
-
-  auto start_len = keyframe->Value();
-  auto end_len = keyframe_next->Value();
-  // When view or font size has changed, let start_len and end_len be
-  // 'AutoNLength', and then get The actual Nlength based on the updated size.
-  if (start_len.IsAuto() && !keyframe->CSSValue().IsEnum()) {
-    keyframe->SetValue(static_cast<tasm::CSSPropertyID>(Type()),
-                       keyframe->CSSValue(), element_);
-  }
-  if (end_len.IsAuto() && !keyframe_next->CSSValue().IsEnum()) {
-    keyframe_next->SetValue(static_cast<tasm::CSSPropertyID>(Type()),
-                            keyframe_next->CSSValue(), element_);
-  }
+  auto* keyframe = static_cast<LayoutKeyframe*>(keyframes_[i].get());
+  auto* keyframe_next = static_cast<LayoutKeyframe*>(keyframes_[i + 1].get());
 
   auto start_result = LayoutKeyframe::GetLayoutKeyframeValue(
       keyframe, static_cast<tasm::CSSPropertyID>(Type()), element_);
-  start_len = start_result.first;
   auto end_result = LayoutKeyframe::GetLayoutKeyframeValue(
       keyframe_next, static_cast<tasm::CSSPropertyID>(Type()), element_);
-  end_len = end_result.first;
+  const auto& start_len = start_result.first;
+  const auto& end_len = end_result.first;
 
-  if (((!start_len.IsUnit() && !start_len.IsPercent() && !start_len.IsCalc()) ||
-       (!end_len.IsUnit() && !end_len.IsPercent() && !end_len.IsCalc())) ||
-      (std::fabs(progress - 1.0f) < std::numeric_limits<float>::epsilon())) {
-    return end_result.second;
-  }
   if (std::fabs(progress - 0.0f) < std::numeric_limits<float>::epsilon()) {
     return start_result.second;
   }
+  if ((!start_len.has_value() || !end_len.has_value()) ||
+      (std::fabs(progress - 1.0f) < std::numeric_limits<float>::epsilon())) {
+    return end_result.second;
+  }
 
-  float start_value = 0.0f;
-  float end_value = 0.0f;
-  tasm::CSSValuePattern pattern = tasm::CSSValuePattern::NUMBER;
-  if ((start_len.IsUnit() && end_len.IsPercent()) ||
-      (start_len.IsPercent() && end_len.IsUnit()) ||
-      (start_len.IsCalc() || end_len.IsCalc())) {
+  float start_value = start_len->value;
+  float end_value = end_len->value;
+  tasm::CSSValuePattern pattern = start_len->unit == gfx::LengthUnit::kPercent
+                                      ? tasm::CSSValuePattern::PERCENT
+                                      : tasm::CSSValuePattern::NUMBER;
+  if (start_len->unit != end_len->unit) {
     if (!element_ || !element_->parent()) {
-      return tasm::CSSValue(start_len.GetRawValue(),
-                            start_len.IsCalc() ? tasm::CSSValuePattern::CALC
-                            : start_len.IsUnit()
-                                ? tasm::CSSValuePattern::NUMBER
-                                : tasm::CSSValuePattern::PERCENT);
+      return start_result.second;
     }
-    float parent_length = 0;
+    float parent_length = 0.0f;
     if (GetOnXAxisCurveTypeSet().count(Type()) != 0) {
       parent_length = element_->parent()->width();
     } else {
       parent_length = element_->parent()->height();
     }
-    start_value = starlight::NLengthToLayoutUnit(
-                      start_len, starlight::LayoutUnit(parent_length))
-                      .ToFloat();
-    end_value = starlight::NLengthToLayoutUnit(
-                    end_len, starlight::LayoutUnit(parent_length))
-                    .ToFloat();
+    if (start_len->unit == gfx::LengthUnit::kPercent) {
+      start_value = parent_length * start_len->value / 100.0f;
+    }
+    if (end_len->unit == gfx::LengthUnit::kPercent) {
+      end_value = parent_length * end_len->value / 100.0f;
+    }
     pattern = tasm::CSSValuePattern::NUMBER;
-  } else {
-    start_value = start_len.GetRawValue();
-    end_value = end_len.GetRawValue();
-    pattern = start_len.IsUnit() ? tasm::CSSValuePattern::NUMBER
-                                 : tasm::CSSValuePattern::PERCENT;
   }
   float new_result = start_value + (end_value - start_value) * progress;
   return tasm::CSSValue(new_result, pattern);
@@ -275,13 +599,13 @@ tasm::CSSValue KeyframedLayoutAnimationCurve::GetValue(
 
 //====== OpacityValueAnimator begin =======
 std::unique_ptr<OpacityKeyframe> OpacityKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
   return std::make_unique<OpacityKeyframe>(time, std::move(timing_function));
 }
 
 OpacityKeyframe::OpacityKeyframe(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function)
-    : Keyframe(time, std::move(timing_function)) {}
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
+    : gfx::FloatKeyframe(time, std::move(timing_function)) {}
 
 float OpacityKeyframe::GetOpacityKeyframeValue(OpacityKeyframe* keyframe,
                                                tasm::Element* element) {
@@ -293,7 +617,7 @@ float OpacityKeyframe::GetOpacityKeyframeValue(OpacityKeyframe* keyframe,
       value = static_cast<float>(opacity.AsNumber());
     }
   } else {
-    value = static_cast<float>(keyframe->Value());
+    value = keyframe->gfx::FloatKeyframe::Value();
   }
   return value;
 }
@@ -306,8 +630,7 @@ bool OpacityKeyframe::SetValue(tasm::CSSPropertyID id,
   if (!keyframe_opacity_value.IsNumber()) {
     return false;
   }
-  value_ = keyframe_opacity_value.GetNumber();
-  is_empty_ = false;
+  SetOpacity(static_cast<float>(keyframe_opacity_value.GetNumber()));
   return true;
 }
 
@@ -325,22 +648,27 @@ tasm::CSSValue KeyframedOpacityAnimationCurve::GetValue(
                 curveTypeInfo->set_string_value("OpacityAnimation");
               });
 
-  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
-                               t);
-  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
-  double progress =
-      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+  auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
+                                                scaled_duration(), t);
+  if (!sampling.valid) {
+    return tasm::CSSValue(OpacityKeyframe::kDefaultOpacity,
+                          tasm::CSSValuePattern::NUMBER);
+  }
+  t = sampling.effective_time;
+  size_t i = sampling.index;
+  double progress = sampling.progress;
 
-  OpacityKeyframe* keyframe =
-      reinterpret_cast<OpacityKeyframe*>(keyframes_[i].get());
-  OpacityKeyframe* keyframe_next =
-      reinterpret_cast<OpacityKeyframe*>(keyframes_[i + 1].get());
+  auto* keyframe = static_cast<OpacityKeyframe*>(keyframes_[i].get());
+  auto* keyframe_next = static_cast<OpacityKeyframe*>(keyframes_[i + 1].get());
 
   float start_opacity =
       OpacityKeyframe::GetOpacityKeyframeValue(keyframe, element_);
   float end_opacity =
       OpacityKeyframe::GetOpacityKeyframeValue(keyframe_next, element_);
-  float result_value = start_opacity + (end_opacity - start_opacity) * progress;
+
+  float result_value = static_cast<float>(
+      gfx::InterpolateNumber(static_cast<double>(start_opacity),
+                             static_cast<double>(end_opacity), progress));
 
   if (start_opacity > end_opacity && result_value > 0.0f &&
       base::FloatsEqual(result_value, 0.0f)) {
@@ -357,13 +685,13 @@ tasm::CSSValue KeyframedOpacityAnimationCurve::GetValue(
 
 //====== ColorValueAnimator begin =======
 std::unique_ptr<ColorKeyframe> ColorKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
   return std::make_unique<ColorKeyframe>(time, std::move(timing_function));
 }
 
-ColorKeyframe::ColorKeyframe(fml::TimeDelta time,
-                             std::unique_ptr<TimingFunction> timing_function)
-    : Keyframe(time, std::move(timing_function)) {}
+ColorKeyframe::ColorKeyframe(
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
+    : gfx::ColorKeyframe(time, std::move(timing_function)) {}
 
 uint32_t ColorKeyframe::GetColorKeyframeValue(ColorKeyframe* keyframe,
                                               tasm::CSSPropertyID id,
@@ -377,7 +705,7 @@ uint32_t ColorKeyframe::GetColorKeyframeValue(ColorKeyframe* keyframe,
       value = static_cast<uint32_t>(color.AsNumber());
     }
   } else {
-    value = static_cast<uint32_t>(keyframe->Value());
+    value = keyframe->gfx::ColorKeyframe::Value();
   }
   return value;
 }
@@ -389,8 +717,7 @@ bool ColorKeyframe::SetValue(tasm::CSSPropertyID id,
   if (!keyframe_color_value.IsNumber()) {
     return false;
   }
-  value_ = keyframe_color_value.GetNumber();
-  is_empty_ = false;
+  SetColor(static_cast<uint32_t>(keyframe_color_value.GetNumber()));
   return true;
 }
 
@@ -407,82 +734,54 @@ tasm::CSSValue KeyframedColorAnimationCurve::GetValue(fml::TimeDelta& t) const {
                 curveTypeInfo->set_name("curveType");
                 curveTypeInfo->set_string_value("ColorAnimation");
               });
-  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
-                               t);
-  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
-  double progress =
-      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+  auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
+                                                scaled_duration(), t);
+  if (!sampling.valid) {
+    return tasm::CSSValue(ColorKeyframe::kDefaultBackgroundColor,
+                          tasm::CSSValuePattern::NUMBER);
+  }
+  t = sampling.effective_time;
+  size_t i = sampling.index;
+  double progress = sampling.progress;
 
-  ColorKeyframe* keyframe =
-      reinterpret_cast<ColorKeyframe*>(keyframes_[i].get());
-  ColorKeyframe* keyframe_next =
-      reinterpret_cast<ColorKeyframe*>(keyframes_[i + 1].get());
+  auto* keyframe = static_cast<ColorKeyframe*>(keyframes_[i].get());
+  auto* keyframe_next = static_cast<ColorKeyframe*>(keyframes_[i + 1].get());
 
   uint32_t start_color = ColorKeyframe::GetColorKeyframeValue(
       keyframe, static_cast<tasm::CSSPropertyID>(Type()), element_);
   uint32_t end_color = ColorKeyframe::GetColorKeyframeValue(
       keyframe_next, static_cast<tasm::CSSPropertyID>(Type()), element_);
 
-  double color_space_constant = 1.0;
+  gfx::ColorInterpolation mode = gfx::ColorInterpolation::kAuto;
   if (interpolate_type_ == starlight::XAnimationColorInterpolationType::kAuto) {
-#if !OS_IOS
-    color_space_constant = 2.2;
+#if OS_IOS
+    mode = gfx::ColorInterpolation::kLinearRGB;
+#else
+    mode = gfx::ColorInterpolation::kSRGB;
 #endif
+  } else if (interpolate_type_ ==
+             starlight::XAnimationColorInterpolationType::kLinearRGB) {
+    mode = gfx::ColorInterpolation::kLinearRGB;
   } else {
-    color_space_constant =
-        interpolate_type_ ==
-                starlight::XAnimationColorInterpolationType::kLinearRGB
-            ? 1.0
-            : 2.2;
+    mode = gfx::ColorInterpolation::kSRGB;
   }
 
-  float startA = ((start_color >> 24) & 0xff) / 255.0f;
-  float startR = ((start_color >> 16) & 0xff) / 255.0f;
-  float startG = ((start_color >> 8) & 0xff) / 255.0f;
-  float startB = ((start_color) & 0xff) / 255.0f;
-
-  float endA = ((end_color >> 24) & 0xff) / 255.0f;
-  float endR = ((end_color >> 16) & 0xff) / 255.0f;
-  float endG = ((end_color >> 8) & 0xff) / 255.0f;
-  float endB = ((end_color) & 0xff) / 255.0f;
-
-  // convert RGB to linear
-  startR = static_cast<float>(pow(startR, color_space_constant));
-  startG = static_cast<float>(pow(startG, color_space_constant));
-  startB = static_cast<float>(pow(startB, color_space_constant));
-
-  endR = static_cast<float>(pow(endR, color_space_constant));
-  endG = static_cast<float>(pow(endG, color_space_constant));
-  endB = static_cast<float>(pow(endB, color_space_constant));
-
-  // compute the interpolated color in linear space
-  float a = startA + progress * (endA - startA);
-  float b = startB + progress * (endB - startB);
-  float r = startR + progress * (endR - startR);
-  float g = startG + progress * (endG - startG);
-
-  // convert back to RGB to [0,255] range
-  a = a * 255.0f;
-  r = static_cast<float>(pow(r, 1.0 / color_space_constant)) * 255.0f;
-  g = static_cast<float>(pow(g, 1.0 / color_space_constant)) * 255.0f;
-  b = static_cast<float>(pow(b, 1.0 / color_space_constant)) * 255.0f;
-  uint32_t result_value = static_cast<uint32_t>(round(a)) << 24 |
-                          static_cast<uint32_t>(round(r)) << 16 |
-                          static_cast<uint32_t>(round(g)) << 8 |
-                          static_cast<uint32_t>(round(b));
+  uint32_t result_value = gfx::InterpolateColorARGB32(
+      static_cast<gfx::ColorARGB32>(start_color),
+      static_cast<gfx::ColorARGB32>(end_color), progress, mode);
   return tasm::CSSValue(result_value, tasm::CSSValuePattern::NUMBER);
 }
 //====== ColorValueAnimator end =======
 
 //====== FloatValueAnimator begin =======
 std::unique_ptr<FloatKeyframe> FloatKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
   return std::make_unique<FloatKeyframe>(time, std::move(timing_function));
 }
 
-FloatKeyframe::FloatKeyframe(fml::TimeDelta time,
-                             std::unique_ptr<TimingFunction> timing_function)
-    : Keyframe(time, std::move(timing_function)) {}
+FloatKeyframe::FloatKeyframe(
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
+    : gfx::FloatKeyframe(time, std::move(timing_function)) {}
 
 float FloatKeyframe::GetFloatKeyframeValue(FloatKeyframe* keyframe,
                                            tasm::CSSPropertyID id,
@@ -495,7 +794,7 @@ float FloatKeyframe::GetFloatKeyframeValue(FloatKeyframe* keyframe,
       value = static_cast<float>(float_value.AsNumber());
     }
   } else {
-    value = static_cast<float>(keyframe->Value());
+    value = keyframe->gfx::FloatKeyframe::Value();
   }
   return value;
 }
@@ -507,8 +806,7 @@ bool FloatKeyframe::SetValue(tasm::CSSPropertyID id,
   if (!keyframe_float_value.IsNumber()) {
     return false;
   }
-  value_ = keyframe_float_value.GetNumber();
-  is_empty_ = false;
+  SetFloat(static_cast<float>(keyframe_float_value.GetNumber()));
   return true;
 }
 
@@ -525,22 +823,27 @@ tasm::CSSValue KeyframedFloatAnimationCurve::GetValue(fml::TimeDelta& t) const {
                 curveTypeInfo->set_string_value("FloatAnimation");
               });
 
-  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
-                               t);
-  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
-  double progress =
-      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+  auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
+                                                scaled_duration(), t);
+  if (!sampling.valid) {
+    return tasm::CSSValue(FloatKeyframe::kDefaultFloatValue,
+                          tasm::CSSValuePattern::NUMBER);
+  }
+  t = sampling.effective_time;
+  size_t i = sampling.index;
+  double progress = sampling.progress;
 
-  FloatKeyframe* keyframe =
-      reinterpret_cast<FloatKeyframe*>(keyframes_[i].get());
-  FloatKeyframe* keyframe_next =
-      reinterpret_cast<FloatKeyframe*>(keyframes_[i + 1].get());
+  auto* keyframe = static_cast<FloatKeyframe*>(keyframes_[i].get());
+  auto* keyframe_next = static_cast<FloatKeyframe*>(keyframes_[i + 1].get());
 
   float start_float = FloatKeyframe::GetFloatKeyframeValue(
       keyframe, tasm::kPropertyIDFlexGrow, element_);
   float end_float = FloatKeyframe::GetFloatKeyframeValue(
       keyframe_next, tasm::kPropertyIDFlexGrow, element_);
-  float result_value = start_float + (end_float - start_float) * progress;
+
+  float result_value = static_cast<float>(
+      gfx::InterpolateNumber(static_cast<double>(start_float),
+                             static_cast<double>(end_float), progress));
   return tasm::CSSValue(result_value, tasm::CSSValuePattern::NUMBER);
 }
 
@@ -549,13 +852,13 @@ tasm::CSSValue KeyframedFloatAnimationCurve::GetValue(fml::TimeDelta& t) const {
 //====== FilterValueAnimator begin =======
 
 std::unique_ptr<FilterKeyframe> FilterKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
   return std::make_unique<FilterKeyframe>(time, std::move(timing_function));
 }
 
-FilterKeyframe::FilterKeyframe(fml::TimeDelta time,
-                               std::unique_ptr<TimingFunction> timing_function)
-    : Keyframe(time, std::move(timing_function)) {}
+FilterKeyframe::FilterKeyframe(
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
+    : gfx::FilterKeyframe(time, std::move(timing_function)) {}
 
 tasm::CSSValue FilterKeyframe::GetFilterKeyframeValue(FilterKeyframe* keyframe,
                                                       tasm::CSSPropertyID id,
@@ -574,8 +877,17 @@ bool FilterKeyframe::SetValue(tasm::CSSPropertyID id,
                               tasm::Element* element) {
   auto keyframe_filter_value = HandleCSSVariableValueIfNeed(id, value, element);
   filter_ = keyframe_filter_value;
-  is_empty_ = false;
+  ClearResolvedValue();
+  MarkNonEmpty();
   return true;
+}
+
+void FilterKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
+  auto raw = ParseRawFilterValue(filter_);
+  auto updated_pattern = static_cast<tasm::CSSValuePattern>(type);
+  if (raw && raw->amount_pattern == updated_pattern) {
+    ClearResolvedValue();
+  }
 }
 
 std::unique_ptr<KeyframedFilterAnimationCurve>
@@ -591,15 +903,16 @@ tasm::CSSValue KeyframedFilterAnimationCurve::GetValue(
                 curveTypeInfo->set_name("curveType");
                 curveTypeInfo->set_string_value("FilterAnimation");
               });
-  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
-                               t);
-  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
-  double progress =
-      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
-  FilterKeyframe* keyframe =
-      reinterpret_cast<FilterKeyframe*>(keyframes_[i].get());
-  FilterKeyframe* keyframe_next =
-      reinterpret_cast<FilterKeyframe*>(keyframes_[i + 1].get());
+  auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
+                                                scaled_duration(), t);
+  if (!sampling.valid) {
+    return tasm::CSSValue();
+  }
+  t = sampling.effective_time;
+  size_t i = sampling.index;
+  double progress = sampling.progress;
+  auto* keyframe = static_cast<FilterKeyframe*>(keyframes_[i].get());
+  auto* keyframe_next = static_cast<FilterKeyframe*>(keyframes_[i + 1].get());
 
   tasm::CSSValue start_filter = FilterKeyframe::GetFilterKeyframeValue(
       keyframe, tasm::kPropertyIDFilter, element_);
@@ -608,21 +921,36 @@ tasm::CSSValue KeyframedFilterAnimationCurve::GetValue(
   if (start_filter == tasm::CSSValue() || end_filter == tasm::CSSValue()) {
     return start_filter;
   }
-  double start_filter_value = start_filter.GetArray()->get(1).Double();
-  uint32_t function_type_1 = start_filter.GetArray()->get(0).UInt32();
-  uint32_t pattern_1 = start_filter.GetArray()->get(2).UInt32();
-  double end_filter_value = end_filter.GetArray()->get(1).Double();
-  uint32_t function_type_2 = end_filter.GetArray()->get(0).UInt32();
-  uint32_t pattern_2 = end_filter.GetArray()->get(2).UInt32();
-  if (function_type_1 != function_type_2 || pattern_1 != pattern_2) {
+  auto start_raw = ParseRawFilterValue(start_filter);
+  auto end_raw = ParseRawFilterValue(end_filter);
+  if (!start_raw || !end_raw ||
+      start_raw->filter_type != end_raw->filter_type) {
     return start_filter;
   }
-  double result_filter_value =
-      start_filter_value + (end_filter_value - start_filter_value) * progress;
+
+  if (std::fabs(progress - 0.0f) < std::numeric_limits<float>::epsilon()) {
+    return start_filter;
+  }
+  if (std::fabs(progress - 1.0f) < std::numeric_limits<float>::epsilon()) {
+    return end_filter;
+  }
+
+  auto start_value = GetResolvedFilterValue(keyframe, *start_raw, element_);
+  auto end_value = GetResolvedFilterValue(keyframe_next, *end_raw, element_);
+  if (!start_value || !end_value || start_value->unit != end_value->unit) {
+    return start_filter;
+  }
+
+  auto out = gfx::InterpolateFilterValue(*start_value, *end_value, progress,
+                                         gfx::DiscreteFallback::kUseStart);
+  auto out_pattern = ToCSSValuePatternFromUnitTag(out.unit);
+  if (!out_pattern) {
+    return start_filter;
+  }
   auto res_arr = lepus::CArray::Create();
-  res_arr->emplace_back(function_type_1);
-  res_arr->emplace_back(result_filter_value);
-  res_arr->emplace_back(pattern_1);
+  res_arr->emplace_back(out.function);
+  res_arr->emplace_back(out.value);
+  res_arr->emplace_back(static_cast<uint32_t>(*out_pattern));
   return tasm::CSSValue(std::move(res_arr));
 }
 
@@ -631,8 +959,8 @@ tasm::CSSValue KeyframedFilterAnimationCurve::GetValue(
 //====== BackgroundPositionAnimator begin =======
 
 BackgroundPositionKeyframe::BackgroundPositionKeyframe(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function)
-    : Keyframe(time, std::move(timing_function)) {}
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
+    : gfx::Vec2Keyframe(time, std::move(timing_function)) {}
 
 tasm::CSSValue BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
     BackgroundPositionKeyframe* keyframe, tasm::CSSPropertyID id,
@@ -644,7 +972,7 @@ tasm::CSSValue BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
 }
 
 std::unique_ptr<BackgroundPositionKeyframe> BackgroundPositionKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
   return std::make_unique<BackgroundPositionKeyframe>(
       time, std::move(timing_function));
 }
@@ -658,44 +986,23 @@ bool BackgroundPositionKeyframe::SetValue(tasm::CSSPropertyID id,
     return false;
   }
   background_position_ = keyframe_background_position_value;
-  is_empty_ = false;
+  ClearResolvedValue();
+  MarkNonEmpty();
   return true;
+}
+
+void BackgroundPositionKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
+  auto raw = ParseRawBackgroundPositionValue(background_position_);
+  auto updated_pattern = static_cast<tasm::CSSValuePattern>(type);
+  if (raw && (raw->x_pattern == updated_pattern ||
+              raw->y_pattern == updated_pattern)) {
+    ClearResolvedValue();
+  }
 }
 
 std::unique_ptr<KeyframedBackgroundPositionAnimationCurve>
 KeyframedBackgroundPositionAnimationCurve::Create() {
   return std::make_unique<KeyframedBackgroundPositionAnimationCurve>();
-}
-
-static std::pair<uint32_t, double> ProcessPositionValue(uint32_t position_type,
-                                                        double position_value,
-                                                        bool is_x_axis) {
-  if (position_type ==
-      static_cast<uint32_t>(starlight::BackgroundPositionType::kCenter)) {
-    return {static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT), 50.0};
-  }
-
-  if (is_x_axis) {
-    if (position_type ==
-        static_cast<uint32_t>(starlight::BackgroundPositionType::kLeft)) {
-      return {static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT), 0.0};
-    }
-    if (position_type ==
-        static_cast<uint32_t>(starlight::BackgroundPositionType::kRight)) {
-      return {static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT), 100.0};
-    }
-  } else {
-    if (position_type ==
-        static_cast<uint32_t>(starlight::BackgroundPositionType::kTop)) {
-      return {static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT), 0.0};
-    }
-    if (position_type ==
-        static_cast<uint32_t>(starlight::BackgroundPositionType::kBottom)) {
-      return {static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT), 100.0};
-    }
-  }
-
-  return {position_type, position_value};
 }
 
 tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
@@ -708,11 +1015,14 @@ tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
                 curveTypeInfo->set_string_value("BackgroundPositionAnimation");
               });
 
-  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
-                               t);
-  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
-  double progress =
-      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+  auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
+                                                scaled_duration(), t);
+  if (!sampling.valid) {
+    return tasm::CSSValue();
+  }
+  t = sampling.effective_time;
+  size_t i = sampling.index;
+  double progress = sampling.progress;
 
   BackgroundPositionKeyframe* keyframe =
       static_cast<BackgroundPositionKeyframe*>(keyframes_[i].get());
@@ -726,59 +1036,20 @@ tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
       BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
           keyframe_next, tasm::kPropertyIDBackgroundPosition, element_);
 
-  if (start_background_position == tasm::CSSValue() ||
-      end_background_position == tasm::CSSValue()) {
-    return start_background_position;
-  }
-
-  auto start_background_position_arr =
-      start_background_position.GetArray()->get(0).Array();
-  auto end_background_position_arr =
-      end_background_position.GetArray()->get(0).Array();
-
-  auto [start_x_type, start_x_value] = ProcessPositionValue(
-      static_cast<uint32_t>(start_background_position_arr->get(0).Number()),
-      start_background_position_arr->get(1).Double(), true);
-
-  auto [end_x_type, end_x_value] = ProcessPositionValue(
-      static_cast<uint32_t>(end_background_position_arr->get(0).Number()),
-      end_background_position_arr->get(1).Double(), true);
-
-  auto [start_y_type, start_y_value] = ProcessPositionValue(
-      static_cast<uint32_t>(start_background_position_arr->get(2).Number()),
-      start_background_position_arr->get(3).Double(), false);
-
-  auto [end_y_type, end_y_value] = ProcessPositionValue(
-      static_cast<uint32_t>(end_background_position_arr->get(2).Number()),
-      end_background_position_arr->get(3).Double(), false);
-
-  if (start_x_type != end_x_type || start_y_type != end_y_type) {
-    return start_background_position;
-  }
-
-  double result_x_value =
-      start_x_value + (end_x_value - start_x_value) * progress;
-  double result_y_value =
-      start_y_value + (end_y_value - start_y_value) * progress;
-
-  auto inner_array = lepus::CArray::Create();
-  inner_array->emplace_back(start_x_type);
-  inner_array->emplace_back(result_x_value);
-  inner_array->emplace_back(start_y_type);
-  inner_array->emplace_back(result_y_value);
-
-  auto inner_lepus_value = lepus::Value(std::move(inner_array));
-  auto outer_array = lepus::CArray::Create();
-  outer_array->emplace_back(std::move(inner_lepus_value));
-  return tasm::CSSValue(std::move(outer_array));
+  auto start_raw = ParseRawBackgroundPositionValue(start_background_position);
+  auto end_raw = ParseRawBackgroundPositionValue(end_background_position);
+  return InterpolateVec2CSSValue(start_background_position,
+                                 end_background_position, start_raw, end_raw,
+                                 keyframe, keyframe_next, progress, element_,
+                                 Vec2CSSValueEncoding::kBackgroundPosition);
 }
 
 //====== BackgroundPositionAnimator end =======
 
 //====== TransformOriginAnimator start =======
 TransformOriginKeyframe::TransformOriginKeyframe(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function)
-    : Keyframe(time, std::move(timing_function)) {}
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
+    : gfx::Vec2Keyframe(time, std::move(timing_function)) {}
 
 tasm::CSSValue TransformOriginKeyframe::GetTransformOriginKeyframeValue(
     TransformOriginKeyframe* keyframe, tasm::CSSPropertyID id,
@@ -790,7 +1061,7 @@ tasm::CSSValue TransformOriginKeyframe::GetTransformOriginKeyframeValue(
 }
 
 std::unique_ptr<TransformOriginKeyframe> TransformOriginKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
   return std::make_unique<TransformOriginKeyframe>(time,
                                                    std::move(timing_function));
 }
@@ -804,8 +1075,18 @@ bool TransformOriginKeyframe::SetValue(tasm::CSSPropertyID id,
     return false;
   }
   transform_origin_ = keyframe_transform_origin_value;
-  is_empty_ = false;
+  ClearResolvedValue();
+  MarkNonEmpty();
   return true;
+}
+
+void TransformOriginKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
+  auto raw = ParseRawTransformOriginValue(transform_origin_);
+  auto updated_pattern = static_cast<tasm::CSSValuePattern>(type);
+  if (raw && (raw->x_pattern == updated_pattern ||
+              raw->y_pattern == updated_pattern)) {
+    ClearResolvedValue();
+  }
 }
 
 std::unique_ptr<KeyframedTransformOriginAnimationCurve>
@@ -815,71 +1096,40 @@ KeyframedTransformOriginAnimationCurve::Create() {
 
 tasm::CSSValue KeyframedTransformOriginAnimationCurve::GetValue(
     fml::TimeDelta& t) const {
-  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
-                               t);
-  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
-  double progress =
-      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+  auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
+                                                scaled_duration(), t);
+  if (!sampling.valid) {
+    return tasm::CSSValue();
+  }
+  t = sampling.effective_time;
+  size_t i = sampling.index;
+  double progress = sampling.progress;
 
   TransformOriginKeyframe* keyframe =
       static_cast<TransformOriginKeyframe*>(keyframes_[i].get());
   TransformOriginKeyframe* keyframe_next =
       static_cast<TransformOriginKeyframe*>(keyframes_[i + 1].get());
 
-  tasm::CSSValue start_background_position =
+  tasm::CSSValue start_transform_origin =
       TransformOriginKeyframe::GetTransformOriginKeyframeValue(
           keyframe, tasm::kPropertyIDTransformOrigin, element_);
-  tasm::CSSValue end_background_position =
+  tasm::CSSValue end_transform_origin =
       TransformOriginKeyframe::GetTransformOriginKeyframeValue(
           keyframe_next, tasm::kPropertyIDTransformOrigin, element_);
 
-  if (start_background_position == tasm::CSSValue() ||
-      end_background_position == tasm::CSSValue()) {
-    return start_background_position;
-  }
-
-  auto start_background_position_arr = start_background_position.GetArray();
-  auto end_background_position_arr = end_background_position.GetArray();
-
-  auto start_x_value =
-      static_cast<double>(start_background_position_arr->get(0).Number());
-  auto start_x_type = start_background_position_arr->get(1).Number();
-
-  auto end_x_value =
-      static_cast<double>(end_background_position_arr->get(0).Number());
-  auto end_x_type = end_background_position_arr->get(1).Number();
-
-  auto start_y_value =
-      static_cast<double>(start_background_position_arr->get(2).Number());
-  auto start_y_type = start_background_position_arr->get(3).Number();
-
-  auto end_y_value =
-      static_cast<double>(end_background_position_arr->get(2).Number());
-  auto end_y_type = end_background_position_arr->get(3).Number();
-
-  if (start_x_type != end_x_type || start_y_type != end_y_type) {
-    return start_background_position;
-  }
-
-  double result_x_value =
-      start_x_value + (end_x_value - start_x_value) * progress;
-  double result_y_value =
-      start_y_value + (end_y_value - start_y_value) * progress;
-
-  auto inner_array = lepus::CArray::Create();
-
-  inner_array->emplace_back(result_x_value);
-  inner_array->emplace_back(start_x_type);
-  inner_array->emplace_back(result_y_value);
-  inner_array->emplace_back(start_y_type);
-  return tasm::CSSValue(std::move(inner_array));
+  auto start_raw = ParseRawTransformOriginValue(start_transform_origin);
+  auto end_raw = ParseRawTransformOriginValue(end_transform_origin);
+  return InterpolateVec2CSSValue(start_transform_origin, end_transform_origin,
+                                 start_raw, end_raw, keyframe, keyframe_next,
+                                 progress, element_,
+                                 Vec2CSSValueEncoding::kTransformOrigin);
 }
 //====== TransformOriginAnimator end =======
 
 //====== VisibilityAnimator start =======
 VisibilityKeyframe::VisibilityKeyframe(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function)
-    : Keyframe(time, std::move(timing_function)) {}
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
+    : gfx::Keyframe(time, std::move(timing_function)) {}
 
 starlight::VisibilityType VisibilityKeyframe::GetVisibilityKeyframeValue(
     VisibilityKeyframe* keyframe, tasm::Element* element) {
@@ -895,7 +1145,7 @@ starlight::VisibilityType VisibilityKeyframe::GetVisibilityKeyframeValue(
 }
 
 std::unique_ptr<VisibilityKeyframe> VisibilityKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
   return std::make_unique<VisibilityKeyframe>(time, std::move(timing_function));
 }
 
@@ -908,7 +1158,7 @@ bool VisibilityKeyframe::SetValue(tasm::CSSPropertyID id,
   }
   visibility_ =
       static_cast<starlight::VisibilityType>(visibility_value.AsNumber());
-  is_empty_ = false;
+  MarkNonEmpty();
   return true;
 }
 
@@ -919,11 +1169,12 @@ KeyframedVisibilityAnimationCurve::Create() {
 
 tasm::CSSValue KeyframedVisibilityAnimationCurve::GetValue(
     fml::TimeDelta& t) const {
-  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
-                               t);
-  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
-  double progress =
-      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+  auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
+                                                scaled_duration(), t);
+  DCHECK(sampling.valid);
+  t = sampling.effective_time;
+  size_t i = sampling.index;
+  double progress = sampling.progress;
 
   auto* keyframe = static_cast<VisibilityKeyframe*>(keyframes_[i].get());
   auto* keyframe_next =

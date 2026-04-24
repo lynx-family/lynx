@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/logging.h"
 #include "core/animation/basic_animation/animation_effect.h"
 #include "core/animation/basic_animation/basic_animatable_values/float_property_value.h"
 #include "core/animation/basic_animation/keyframe.h"
@@ -24,7 +25,7 @@ namespace basic {
 
 fml::TimeDelta TransformedAnimationTime(
     const std::vector<std::unique_ptr<Keyframe>>& keyframes,
-    TimingFunction* timing_function, double scaled_duration,
+    gfx::TimingFunction* timing_function, double scaled_duration,
     fml::TimeDelta time) {
   if (timing_function) {
     fml::TimeDelta start_time = keyframes.front()->Time() * scaled_duration;

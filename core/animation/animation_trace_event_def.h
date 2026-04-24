@@ -28,8 +28,8 @@ static constexpr const char* const TRANSITION_MANAGER_NEEDS_ANIMATION_RECALC =
 
 static constexpr const char* const KEYFRAME_EFFECT_TICK_MODEL =
     "KeyframeEffect::TickKeyframeModel";
-static constexpr const char* const KEYFRAME_EFFECT_CHECK_HAS_FINISHED =
-    "KeyframeEffect::CheckHasFinished";
+static constexpr const char* const KEYFRAME_EFFECT_CLEAR_IF_OUT_OF_EFFECT =
+    "KeyframeEffect::ClearEffectIfOutOfEffect";
 static constexpr const char* const KEYFRAME_EFFECT_CLEAR_EFFECT =
     "KeyframeEffect::ClearEffect";
 

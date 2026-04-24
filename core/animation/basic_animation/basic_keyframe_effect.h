@@ -21,7 +21,6 @@
 #include "core/animation/basic_animation/animator_target.h"
 #include "core/animation/basic_animation/basic_keyframe_model.h"
 #include "core/animation/basic_animation/keyframe.h"
-#include "core/animation/utils/timing_function.h"
 
 namespace lynx {
 namespace animation {

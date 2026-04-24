@@ -14,15 +14,16 @@
 #include "core/animation/animation.h"
 #include "core/animation/animation_delegate.h"
 #include "core/animation/animation_trace_event_def.h"
+#include "core/animation/keyframe_model.h"
 #include "core/animation/keyframed_animation_curve.h"
 #include "core/animation/transform_animation_curve.h"
-#include "core/animation/utils/timing_function.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "gfx/animation/timing_function.h"
 
 namespace lynx {
 namespace animation {
@@ -51,12 +52,9 @@ KeyframeModel* CSSKeyframeManager::ConstructModel(
   curve->SetElement(element_);
   // add type here
   curve->type_ = type;
-  curve->SetTimingFunction(
-      TimingFunction::MakeTimingFunction(animation->animation_data()));
-  curve->set_scaled_duration(animation->animation_data()->duration / 1000.0);
   std::unique_ptr<KeyframeModel> new_keyframe_model =
       KeyframeModel::Create(std::move(curve));
-  new_keyframe_model->set_animation_data(animation->animation_data());
+  new_keyframe_model->UpdateAnimationData(&animation->get_animation_data());
   KeyframeModel* keyframe_model = new_keyframe_model.get();
   animation->keyframe_effect()->AddKeyframeModel(std::move(new_keyframe_model));
   return keyframe_model;
@@ -64,25 +62,43 @@ KeyframeModel* CSSKeyframeManager::ConstructModel(
 
 bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
     AnimationCurve::CurveType type, Animation* animation, double offset,
-    std::unique_ptr<TimingFunction> timing_function, tasm::CSSPropertyID id,
-    const tasm::CSSValue& value) {
+    std::unique_ptr<gfx::TimingFunction> timing_function,
+    tasm::CSSPropertyID id, const tasm::CSSValue& value) {
   KeyframeModel* keyframe_model =
       animation->keyframe_effect()->GetKeyframeModelByCurveType(type);
   bool has_model = (keyframe_model != nullptr);
   std::unique_ptr<AnimationCurve> new_curve;
-  std::unique_ptr<Keyframe> keyframe;
+  std::unique_ptr<gfx::Keyframe> keyframe;
+  KeyframeCallbacks keyframe_callbacks;
+  auto init_keyframe = [&](auto factory) -> bool {
+    auto typed_keyframe = factory();
+    if (!typed_keyframe->SetValue(id, value, element_)) {
+      return false;
+    }
+    keyframe_callbacks = MakeKeyframeCallbacks(typed_keyframe.get());
+    keyframe = std::move(typed_keyframe);
+    return true;
+  };
   if (GetLayoutCurveTypeSet().count(type) != 0) {
     if (!has_model) {
       new_curve = KeyframedLayoutAnimationCurve::Create();
     }
-    keyframe = LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
-                                      std::move(timing_function));
+    if (!init_keyframe([&]() {
+          return LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                        std::move(timing_function));
+        })) {
+      return false;
+    }
   } else if (type == AnimationCurve::CurveType::OPACITY) {
     if (!has_model) {
       new_curve = KeyframedOpacityAnimationCurve::Create();
     }
-    keyframe = OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
-                                       std::move(timing_function));
+    if (!init_keyframe([&]() {
+          return OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                         std::move(timing_function));
+        })) {
+      return false;
+    }
   } else if (type == AnimationCurve::CurveType::BGCOLOR ||
              type == AnimationCurve::CurveType::TEXTCOLOR ||
              type == AnimationCurve::CurveType::BORDER_LEFT_COLOR ||
@@ -93,45 +109,73 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
       new_curve = KeyframedColorAnimationCurve::Create(
           element()->computed_css_style()->new_animator_interpolation());
     }
-    keyframe = ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
-                                     std::move(timing_function));
+    if (!init_keyframe([&]() {
+          return ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                       std::move(timing_function));
+        })) {
+      return false;
+    }
   } else if (type == AnimationCurve::CurveType::FLEX_GROW ||
              type == AnimationCurve::CurveType::OFFSET_DISTANCE) {
     if (!has_model) {
       new_curve = KeyframedFloatAnimationCurve::Create();
     }
-    keyframe = FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
-                                     std::move(timing_function));
+    if (!init_keyframe([&]() {
+          return FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                       std::move(timing_function));
+        })) {
+      return false;
+    }
   } else if (type == AnimationCurve::CurveType::FILTER) {
     if (!has_model) {
       new_curve = KeyframedFilterAnimationCurve::Create();
     }
-    keyframe = FilterKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
-                                      std::move(timing_function));
+    if (!init_keyframe([&]() {
+          return FilterKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                        std::move(timing_function));
+        })) {
+      return false;
+    }
   } else if (type == AnimationCurve::CurveType::TRANSFORM) {
     if (!has_model) {
       new_curve = KeyframedTransformAnimationCurve::Create();
     }
-    keyframe = TransformKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
-                                         std::move(timing_function));
+    if (!init_keyframe([&]() {
+          return TransformKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                           std::move(timing_function));
+        })) {
+      return false;
+    }
   } else if (type == AnimationCurve::CurveType::BACKGROUND_POSITION) {
     if (!has_model) {
       new_curve = KeyframedBackgroundPositionAnimationCurve::Create();
     }
-    keyframe = BackgroundPositionKeyframe::Create(
-        fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
+    if (!init_keyframe([&]() {
+          return BackgroundPositionKeyframe::Create(
+              fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
+        })) {
+      return false;
+    }
   } else if (type == AnimationCurve::CurveType::TRANSFORM_ORIGIN) {
     if (!has_model) {
       new_curve = KeyframedTransformOriginAnimationCurve::Create();
     }
-    keyframe = TransformOriginKeyframe::Create(
-        fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
+    if (!init_keyframe([&]() {
+          return TransformOriginKeyframe::Create(
+              fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
+        })) {
+      return false;
+    }
   } else if (type == AnimationCurve::CurveType::VISIBILITY) {
     if (!has_model) {
       new_curve = KeyframedVisibilityAnimationCurve::Create();
     }
-    keyframe = VisibilityKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
-                                          std::move(timing_function));
+    if (!init_keyframe([&]() {
+          return VisibilityKeyframe::Create(
+              fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
+        })) {
+      return false;
+    }
   } else {
     return false;
   }
@@ -139,12 +183,9 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
   if (!has_model) {
     keyframe_model = ConstructModel(std::move(new_curve), type, animation);
   }
-  // set css_value to keyframe
-  if (!keyframe->SetValue(id, value, element_)) {
-    return false;
-  }
   // add keyframe into AnimationCurve
-  keyframe_model->animation_curve()->AddKeyframe(std::move(keyframe));
+  keyframe_model->animation_curve()->AddKeyframe(std::move(keyframe),
+                                                 keyframe_callbacks);
   return true;
 }
 
@@ -257,7 +298,7 @@ void CSSKeyframeManager::MakeKeyframeModel(Animation* animation,
     if (!style_map) {
       continue;
     }
-    std::unique_ptr<TimingFunction> timing_function = nullptr;
+    std::unique_ptr<gfx::TimingFunction> timing_function = nullptr;
     starlight::TimingFunctionData timing_function_for_keyframe;
     const auto& iter =
         style_map->find(tasm::kPropertyIDAnimationTimingFunction);
@@ -271,8 +312,8 @@ void CSSKeyframeManager::MakeKeyframeModel(Animation* animation,
       if (css_value_pair.first == tasm::kPropertyIDAnimationTimingFunction) {
         continue;
       }
-      timing_function =
-          TimingFunction::MakeTimingFunction(timing_function_for_keyframe);
+      timing_function = gfx::CreateTimingFunction(
+          ToGfxTimingFunctionData(timing_function_for_keyframe));
       AnimationCurve::CurveType curve_type =
           static_cast<AnimationCurve::CurveType>(css_value_pair.first);
       if (GetPropertyIDToAnimationPropertyTypeMap().find(

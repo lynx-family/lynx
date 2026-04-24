@@ -745,7 +745,7 @@ subspec_target("animation") {
 }
 
 subspec_target("animation_utils") {
-  deps = [ "../../../../core/animation/utils:animation_utils" ]
+  deps = [ "../../../../gfx:gfx_animation" ]
 }
 
 subspec_target("base") {

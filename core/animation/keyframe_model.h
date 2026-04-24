@@ -14,76 +14,25 @@
 #include <string>
 #include <tuple>
 
-#include "base/include/fml/time/time_point.h"
+#include "core/animation/animation_curve.h"
 #include "core/renderer/css/css_value.h"
-#include "core/renderer/starlight/style/css_type.h"
 #include "core/style/animation_data.h"
+#include "gfx/animation/animation_keyframe_model.h"
 
 namespace lynx {
 namespace animation {
 
-class AnimationCurve;
+class KeyframeEffect;
 
 class KeyframeModel {
  public:
-  enum RunState {
-    STARTING = 0,
-    RUNNING,
-    PAUSED,
-    FINISHED,
-  };
-
-  enum class Phase { BEFORE, ACTIVE, AFTER };
-
   static std::unique_ptr<KeyframeModel> Create(
       std::unique_ptr<AnimationCurve> curve);
 
-  const fml::TimePoint& start_time() const { return start_time_; }
-  const fml::TimePoint& pause_time() const { return pause_time_; }
-  const fml::TimeDelta& total_paused_duration() const {
-    return total_paused_duration_;
-  }
-
-  void set_start_time(fml::TimePoint& monotonic_time) {
-    start_time_ = monotonic_time;
-  }
-  bool has_set_start_time() const { return start_time_ != fml::TimePoint(); }
-
-  double playback_rate() { return playback_rate_; }
-  void set_playback_rate(double playback_rate) {
-    playback_rate_ = playback_rate;
-  }
-
-  fml::TimeDelta GetRepeatDuration() const;
-
-  KeyframeModel::Phase CalculatePhase(fml::TimeDelta local_time) const;
-
-  // LocalTime is relative time
-  fml::TimeDelta ConvertMonotonicTimeToLocalTime(
-      fml::TimePoint monotonic_time) const;
-
-  fml::TimeDelta CalculateActiveTime(fml::TimePoint monotonic_time) const;
-
-  fml::TimeDelta TrimTimeToCurrentIteration(fml::TimePoint monotonic_time,
-                                            int& current_iteration_count,
-                                            bool& need_report_over_time) const;
-
-  AnimationCurve* curve() { return curve_.get(); }
-  const AnimationCurve* curve() const { return curve_.get(); }
-
   bool InEffect(fml::TimePoint monotonic_time) const;
 
-  void SetRunState(RunState run_state, fml::TimePoint monotonic_time);
-  RunState GetRunState() { return run_state_; }
-  bool is_finished() const { return run_state_ == FINISHED; }
-
-  void set_animation_data(starlight::AnimationData* data) {
-    animation_data_ = data;
-  }
-
-  starlight::AnimationData get_animation_data() { return *animation_data_; }
-
-  AnimationCurve* animation_curve() { return curve_.get(); }
+  bool is_finished() const { return gfx_model_->is_finished(); }
+  AnimationCurve* animation_curve() { return curve(); }
 
   void UpdateAnimationData(starlight::AnimationData* data);
 
@@ -91,21 +40,31 @@ class KeyframeModel {
 
   void NotifyElementSizeUpdated();
 
-  void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern);
+  void NotifyUnitValuesUpdated(tasm::CSSValuePattern);
 
-  std::tuple<bool, bool> UpdateState(const fml::TimePoint& monotonic_time);
+  bool HasAnimationData() const {
+    return gfx_model_->animation_data() != nullptr;
+  }
+  starlight::AnimationData get_animation_data() const {
+    return *animation_data_;
+  }
+  bool ShouldPersistFillStyle() const;
 
- public:
-  KeyframeModel(std::unique_ptr<AnimationCurve> curve);
+  explicit KeyframeModel(std::unique_ptr<AnimationCurve> curve);
 
  private:
-  RunState run_state_;
-  starlight::AnimationData* animation_data_;
-  fml::TimePoint start_time_;
-  std::unique_ptr<AnimationCurve> curve_;
-  double playback_rate_;
-  fml::TimePoint pause_time_;
-  fml::TimeDelta total_paused_duration_{fml::TimeDelta()};
+  AnimationCurve* curve() {
+    return static_cast<AnimationCurve*>(gfx_model_->curve());
+  }
+
+  const AnimationCurve* curve() const {
+    return static_cast<const AnimationCurve*>(gfx_model_->curve());
+  }
+
+  friend class KeyframeEffect;
+  std::unique_ptr<lynx::gfx::KeyframeModel> gfx_model_;
+  starlight::AnimationData* animation_data_{nullptr};
+  gfx::AnimationData gfx_animation_data_;
 };
 
 }  // namespace animation

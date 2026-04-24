@@ -11,7 +11,7 @@
 
 #include "base/include/fml/time/time_delta.h"
 #include "base/include/fml/time/time_point.h"
-#include "core/animation/utils/timing_function.h"
+#include "gfx/animation/timing_function.h"
 
 namespace lynx {
 namespace animation {
@@ -31,7 +31,7 @@ class AnimationEffectTiming {
   static std::unique_ptr<AnimationEffectTiming> Create(
       const fml::TimeDelta& delay, FillMode fill, int64_t iterations,
       const fml::TimeDelta& duration, PlaybackDirection direction,
-      std::unique_ptr<TimingFunction> easing) {
+      std::unique_ptr<gfx::TimingFunction> easing) {
     return std::unique_ptr<AnimationEffectTiming>(new AnimationEffectTiming(
         delay, fill, iterations, duration, direction, std::move(easing)));
   }
@@ -56,7 +56,7 @@ class AnimationEffectTiming {
 
   PlaybackDirection direction() const { return direction_; }
 
-  std::unique_ptr<TimingFunction>& easing() { return easing_; }
+  std::unique_ptr<gfx::TimingFunction>& easing() { return easing_; }
 
   double playback_rate() const { return playback_rate_; };
 
@@ -66,7 +66,7 @@ class AnimationEffectTiming {
   AnimationEffectTiming(const fml::TimeDelta& delay, FillMode fill,
                         int64_t iterations, const fml::TimeDelta& duration,
                         PlaybackDirection direction,
-                        std::unique_ptr<TimingFunction> easing)
+                        std::unique_ptr<gfx::TimingFunction> easing)
       : delay_(delay),
         fill_(fill),
         iterations_(iterations),
@@ -87,7 +87,8 @@ class AnimationEffectTiming {
   fml::TimeDelta duration_{fml::TimeDelta::Zero()};
   AnimationEffectTiming::PlaybackDirection direction_{
       PlaybackDirection::kNormal};
-  std::unique_ptr<TimingFunction> easing_{LinearTimingFunction::Create()};
+  std::unique_ptr<gfx::TimingFunction> easing_{
+      gfx::LinearTimingFunction::Create()};
   double playback_rate_{1.0};
 };
 
@@ -100,7 +101,7 @@ struct OptionalAnimationEffectTiming {
   std::optional<double> iterations_;
   std::optional<fml::TimeDelta> duration_;
   std::optional<AnimationEffectTiming::PlaybackDirection> direction_;
-  std::unique_ptr<TimingFunction> easing_;
+  std::unique_ptr<gfx::TimingFunction> easing_;
   double playback_rate_{1.0};
 };
 

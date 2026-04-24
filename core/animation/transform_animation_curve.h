@@ -15,10 +15,12 @@
 
 #include "base/include/fml/time/time_delta.h"
 #include "core/animation/animation_curve.h"
-#include "core/animation/utils/timing_function.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/starlight/types/nlength.h"
+#include "gfx/animation/animation_keyframe.h"
+#include "gfx/animation/animation_utils.h"
+#include "gfx/animation/timing_function.h"
 
 namespace lynx {
 
@@ -32,7 +34,7 @@ class TransformAnimationCurve : public AnimationCurve {
  public:
   ~TransformAnimationCurve() override = default;
 
-  std::unique_ptr<Keyframe> MakeEmptyKeyframe(
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override;
 };
 
@@ -45,33 +47,36 @@ class KeyframedTransformAnimationCurve : public TransformAnimationCurve {
 };
 
 //====Transform keyframe ====
-class TransformKeyframe : public Keyframe {
+class TransformKeyframe : public lynx::gfx::Keyframe {
  public:
   static transforms::TransformOperations GetTransformKeyframeValueInElement(
       tasm::Element*);
   static std::unique_ptr<TransformKeyframe> Create(
-      fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function);
+      fml::TimeDelta time,
+      std::unique_ptr<lynx::gfx::TimingFunction> timing_function);
   ~TransformKeyframe() override = default;
 
   void SetTransform(
       std::unique_ptr<transforms::TransformOperations> transform) {
     value_ = std::move(transform);
-    is_empty_ = false;
+    MarkNonEmpty();
   }
 
   bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
-                tasm::Element* element) override;
+                tasm::Element* element);
+
+  bool EnsureResolvedValue(tasm::CSSPropertyID id, tasm::Element* element);
 
   const std::unique_ptr<transforms::TransformOperations>& Value() const {
     return value_;
   };
 
-  void NotifyElementSizeUpdated() override;
+  void NotifyElementSizeUpdated();
 
-  void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern) override;
+  void NotifyUnitValuesUpdated(uint32_t css_value_pattern);
 
   TransformKeyframe(fml::TimeDelta time,
-                    std::unique_ptr<TimingFunction> timing_function);
+                    std::unique_ptr<gfx::TimingFunction> timing_function);
 
   tasm::CSSValue CSSValue() { return css_value_; }
 

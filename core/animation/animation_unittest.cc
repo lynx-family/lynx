@@ -123,11 +123,11 @@ TEST_F(AnimationTest, SetKeyframeEffect) {
   EXPECT_TRUE(test_animation->keyframe_effect() == temp_effect);
 }
 
-TEST_F(AnimationTest, HasFinishedAll) {
+TEST_F(AnimationTest, CheckHasFinished) {
   {
     auto test_animation = InitTestAnimation();
     auto test_animation_data =
-        InitAnimationData(base::String("test_animation"), 3000, 2000,
+        InitAnimationData(lynx::base::String("test_animation"), 3000, 2000,
                           starlight::TimingFunctionData(), 1,
                           starlight::AnimationFillModeType::kBoth,
                           starlight::AnimationDirectionType::kNormal,
@@ -137,28 +137,28 @@ TEST_F(AnimationTest, HasFinishedAll) {
     fml::TimePoint test_time0 =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(1.0));
     test_animation->DoFrame(test_time0);
-    EXPECT_TRUE(test_animation->HasFinishedAll(test_time0) == false);
+    EXPECT_FALSE(test_animation->keyframe_effect()->HasFinishedAll());
 
     fml::TimePoint test_time1 =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(2.0));
     test_animation->DoFrame(test_time1);
-    EXPECT_TRUE(test_animation->HasFinishedAll(test_time1) == false);
+    EXPECT_FALSE(test_animation->keyframe_effect()->HasFinishedAll());
 
     test_time1 =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(3.1));
     test_animation->DoFrame(test_time1);
-    EXPECT_TRUE(test_animation->HasFinishedAll(test_time1) == false);
+    EXPECT_FALSE(test_animation->keyframe_effect()->HasFinishedAll());
 
     fml::TimePoint test_time2 =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(6.1));
     test_animation->DoFrame(test_time2);
-    EXPECT_TRUE(test_animation->HasFinishedAll(test_time2) == true);
+    EXPECT_TRUE(test_animation->keyframe_effect()->HasFinishedAll());
   }
 
   {
     auto test_animation = InitTestAnimation();
     auto test_animation_data =
-        InitAnimationData(base::String("test_animation"), 1000, 0,
+        InitAnimationData(lynx::base::String("test_animation"), 1000, 0,
                           starlight::TimingFunctionData(), 3,
                           starlight::AnimationFillModeType::kBoth,
                           starlight::AnimationDirectionType::kNormal,
@@ -171,32 +171,32 @@ TEST_F(AnimationTest, HasFinishedAll) {
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(1.1f));
     test_animation->DoFrame(start_time);
     test_animation->DoFrame(test_time0);
-    EXPECT_TRUE(test_animation->HasFinishedAll(test_time0) == false);
+    EXPECT_FALSE(test_animation->keyframe_effect()->HasFinishedAll());
 
     test_time0 =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(2.0));
     test_animation->DoFrame(test_time0);
-    EXPECT_TRUE(test_animation->HasFinishedAll(test_time0) == false);
+    EXPECT_FALSE(test_animation->keyframe_effect()->HasFinishedAll());
 
     test_time0 =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(3.0));
     test_animation->DoFrame(test_time0);
-    EXPECT_TRUE(test_animation->HasFinishedAll(test_time0) == false);
+    EXPECT_FALSE(test_animation->keyframe_effect()->HasFinishedAll());
 
     test_time0 =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(3.9));
     test_animation->DoFrame(test_time0);
-    EXPECT_TRUE(test_animation->HasFinishedAll(test_time0) == false);
+    EXPECT_FALSE(test_animation->keyframe_effect()->HasFinishedAll());
 
     test_time0 =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(4.1));
     test_animation->DoFrame(test_time0);
-    EXPECT_TRUE(test_animation->HasFinishedAll(test_time0) == true);
+    EXPECT_TRUE(test_animation->keyframe_effect()->HasFinishedAll());
 
     test_time0 =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(5.0));
     test_animation->DoFrame(test_time0);
-    EXPECT_TRUE(test_animation->HasFinishedAll(test_time0) == true);
+    EXPECT_TRUE(test_animation->keyframe_effect()->HasFinishedAll());
   }
 }
 
@@ -206,7 +206,7 @@ TEST_F(AnimationTest, UpdateAnimationData) {
   InitTestEffect(*test_effect.get());
   auto test_animation_data = starlight::AnimationData();
   test_animation->UpdateAnimationData(test_animation_data);
-  EXPECT_TRUE(*(test_animation->animation_data()) == test_animation_data);
+  EXPECT_TRUE(test_animation->get_animation_data() == test_animation_data);
 }
 
 TEST_F(AnimationTest, CheckStartTime) {
@@ -222,15 +222,9 @@ TEST_F(AnimationTest, CheckStartTime) {
   test_animation->Play();
   EXPECT_TRUE(test_animation->start_time() ==
               animation::Animation::GetAnimationDummyStartTime());
-  EXPECT_TRUE(
-      test_animation->keyframe_effect()->keyframe_models()[0]->start_time() ==
-      animation::Animation::GetAnimationDummyStartTime());
   fml::TimePoint tick_time = fml::TimePoint::FromTicks(100);
   test_animation->DoFrame(tick_time);
   EXPECT_TRUE(test_animation->start_time() == tick_time);
-  EXPECT_TRUE(
-      test_animation->keyframe_effect()->keyframe_models()[0]->start_time() ==
-      tick_time);
 }
 
 TEST_F(AnimationTest, SendStartEvent) {
@@ -413,6 +407,7 @@ TEST_F(AnimationTest, TestDelayEvent) {
     tasm_mediator->ClearAnimationEvent();
     test_animation->DoFrame(tick_time);
     EXPECT_TRUE(tasm_mediator->only_received_animation_end_event());
+    EXPECT_EQ(test_animation->GetState(), animation::Animation::State::kStop);
   }
 
   // fill mode backwards

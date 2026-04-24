@@ -16,6 +16,7 @@
 #include "core/animation/animation_curve.h"
 #include "core/animation/animation_delegate.h"
 #include "core/animation/keyframe_model.h"
+#include "gfx/animation/animation_keyframe_effect.h"
 
 namespace lynx {
 
@@ -32,7 +33,8 @@ class KeyframeEffect {
   KeyframeEffect();
   virtual ~KeyframeEffect() = default;
 
-  void TickKeyframeModel(fml::TimePoint monotonic_time);
+  gfx::KeyframeEffect::TickResult TickKeyframeModel(
+      fml::TimePoint monotonic_time);
 
   void AddKeyframeModel(std::unique_ptr<KeyframeModel> keyframe_model);
 
@@ -49,13 +51,15 @@ class KeyframeEffect {
     animation_delegate_ = target;
   }
   void BindElement(tasm::Element* element) { element_ = element; }
-  bool CheckHasFinished(fml::TimePoint& time);
+  void ClearEffectIfOutOfEffect(fml::TimePoint& time);
 
   void ClearEffect();
 
   void UpdateAnimationData(starlight::AnimationData* data);
 
   void EnsureFromAndToKeyframe();
+
+  bool HasFinishedAll() const;
 
   Animation* GetAnimation() { return animation_; }
 
@@ -65,16 +69,17 @@ class KeyframeEffect {
 
   void NotifyElementSizeUpdated();
 
-  void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern);
+  void NotifyUnitValuesUpdated(tasm::CSSValuePattern);
 
  private:
-  // The counter records the current iteration_count of the animation.
-  int current_iteration_count_ = 0;
+  friend class Animation;
+  void ApplyTickResult(const gfx::KeyframeEffect::TickResult& tick_result);
+
   tasm::Element* element_{nullptr};
   std::vector<std::unique_ptr<KeyframeModel>> keyframe_models_;
+  std::unique_ptr<lynx::gfx::KeyframeEffect> gfx_effect_;
   AnimationDelegate* animation_delegate_;
   Animation* animation_{nullptr};
-  bool need_report_over_time_ = true;
 };
 
 }  // namespace animation

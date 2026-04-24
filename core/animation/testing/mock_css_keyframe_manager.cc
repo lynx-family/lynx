@@ -13,7 +13,6 @@
 #include "core/animation/animation.h"
 #include "core/animation/animation_delegate.h"
 #include "core/animation/keyframed_animation_curve.h"
-#include "core/animation/utils/timing_function.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_style_utils.h"

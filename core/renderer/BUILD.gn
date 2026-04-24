@@ -35,7 +35,6 @@ lynx_core_source_set("tasm") {
   deps = [ "dom:dom_headers" ]
   public_deps = [
     "../animation",
-    "../animation/utils:animation_utils",
     "../base",
     "../runtime/lepus:lepus",
     "../runtime/lepus/bindings:bindings",

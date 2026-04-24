@@ -32,6 +32,11 @@ static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
 
 class KeyframeEffectTest : public ::testing::Test {
  public:
+  struct GfxEffectBundle {
+    std::unique_ptr<lynx::gfx::KeyframeEffect> effect;
+    std::vector<std::unique_ptr<lynx::gfx::KeyframeModel>> models;
+  };
+
   KeyframeEffectTest() {}
   ~KeyframeEffectTest() override {}
   std::unique_ptr<lynx::tasm::ElementManager> manager;
@@ -115,6 +120,59 @@ class KeyframeEffectTest : public ::testing::Test {
     std::unique_ptr<animation::KeyframeModel> new_model3 =
         animation::KeyframeModel::Create(std::move(test_curve3));
     test_effect->AddKeyframeModel(std::move(new_model3));
+  }
+
+  GfxEffectBundle InitTestGfxEffect() {
+    GfxEffectBundle bundle;
+    bundle.effect = lynx::gfx::KeyframeEffect::Create();
+
+    std::unique_ptr<animation::KeyframedColorAnimationCurve> test_curve1(
+        animation::KeyframedColorAnimationCurve::Create(
+            starlight::XAnimationColorInterpolationType::kSRGB));
+    auto test_frame1 =
+        animation::ColorKeyframe::Create(fml::TimeDelta(), nullptr);
+    test_frame1->SetColor(4294901760);
+    test_curve1->AddKeyframe(std::move(test_frame1));
+    test_curve1->type_ = animation::AnimationCurve::CurveType::OPACITY;
+    auto test_frame2 = animation::ColorKeyframe::Create(
+        fml::TimeDelta::FromSecondsF(4.0), nullptr);
+    test_frame2->SetColor(4278255360);
+    test_curve1->AddKeyframe(std::move(test_frame2));
+    bundle.models.push_back(
+        lynx::gfx::KeyframeModel::Create(std::move(test_curve1)));
+    bundle.effect->AddKeyframeModel(bundle.models.back().get());
+
+    std::unique_ptr<animation::KeyframedLayoutAnimationCurve> test_curve2(
+        animation::KeyframedLayoutAnimationCurve::Create());
+    auto test_frame3 =
+        animation::LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
+    test_frame3->SetLayout(starlight::NLength::MakeUnitNLength(2.f));
+    test_curve2->AddKeyframe(std::move(test_frame3));
+    test_curve2->type_ = animation::AnimationCurve::CurveType::LEFT;
+    auto test_frame4 = animation::LayoutKeyframe::Create(
+        fml::TimeDelta::FromSecondsF(4.0), nullptr);
+    test_frame4->SetLayout(starlight::NLength::MakeUnitNLength(4.f));
+    test_curve2->AddKeyframe(std::move(test_frame4));
+    bundle.models.push_back(
+        lynx::gfx::KeyframeModel::Create(std::move(test_curve2)));
+    bundle.effect->AddKeyframeModel(bundle.models.back().get());
+
+    std::unique_ptr<animation::KeyframedOpacityAnimationCurve> test_curve3(
+        animation::KeyframedOpacityAnimationCurve::Create());
+    auto test_frame5 =
+        animation::OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
+    test_frame5->SetOpacity(1.0f);
+    test_curve3->AddKeyframe(std::move(test_frame5));
+    test_curve3->type_ = animation::AnimationCurve::CurveType::BGCOLOR;
+    auto test_frame6 = animation::OpacityKeyframe::Create(
+        fml::TimeDelta::FromSecondsF(4.0), nullptr);
+    test_frame6->SetOpacity(0.0f);
+    test_curve3->AddKeyframe(std::move(test_frame6));
+    bundle.models.push_back(
+        lynx::gfx::KeyframeModel::Create(std::move(test_curve3)));
+    bundle.effect->AddKeyframeModel(bundle.models.back().get());
+
+    return bundle;
   }
 
   starlight::AnimationData InitAnimationData(
@@ -203,27 +261,26 @@ TEST_F(KeyframeEffectTest, AddKeyframeModel) {
 }
 
 TEST_F(KeyframeEffectTest, SetStartTime) {
-  animation::KeyframeEffect* test_effect = InitTestEffect();
+  auto bundle = InitTestGfxEffect();
   fml::TimePoint test_start_time =
       fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(1.0));
-  test_effect->SetStartTime(test_start_time);
-  for (auto& model : test_effect->keyframe_models()) {
+  bundle.effect->SetStartTime(test_start_time);
+  for (auto& model : bundle.models) {
     EXPECT_EQ(model->start_time(), fml::TimePoint::FromEpochDelta(
                                        fml::TimeDelta::FromSecondsF(1.0)));
-    EXPECT_EQ(model->GetRunState(),
-              animation::KeyframeModel::RunState::STARTING);
+    EXPECT_EQ(model->GetRunState(), gfx::KeyframeModel::STARTING);
   }
 }
 
 TEST_F(KeyframeEffectTest, SetPauseTime) {
-  animation::KeyframeEffect* test_effect = InitTestEffect();
+  auto bundle = InitTestGfxEffect();
   fml::TimePoint test_pause_time =
       fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(2.0));
-  test_effect->SetPauseTime(test_pause_time);
-  for (auto& model : test_effect->keyframe_models()) {
+  bundle.effect->SetPauseTime(test_pause_time);
+  for (auto& model : bundle.models) {
     EXPECT_EQ(model->pause_time(), fml::TimePoint::FromEpochDelta(
                                        fml::TimeDelta::FromSecondsF(2.0)));
-    EXPECT_EQ(model->GetRunState(), animation::KeyframeModel::RunState::PAUSED);
+    EXPECT_EQ(model->GetRunState(), lynx::gfx::KeyframeModel::PAUSED);
   }
 }
 
@@ -252,13 +309,13 @@ TEST_F(KeyframeEffectTest, CheckHasFinished) {
   fml::TimePoint test_time1 =
       fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(2.0));
   test_effect->TickKeyframeModel(test_time1);
-  bool all_finished = test_effect->CheckHasFinished(test_time1);
+  bool all_finished = test_effect->HasFinishedAll();
   EXPECT_EQ(false, all_finished);
 
   fml::TimePoint test_time2 =
       fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(5.0));
   test_effect->TickKeyframeModel(test_time2);
-  all_finished = test_effect->CheckHasFinished(test_time2);
+  all_finished = test_effect->HasFinishedAll();
   EXPECT_EQ(true, all_finished);
 }
 

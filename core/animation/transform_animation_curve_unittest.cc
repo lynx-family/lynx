@@ -25,6 +25,8 @@
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/style/animation_data.h"
+#include "gfx/animation/animation_utils.h"
+#include "gfx/animation/timing_function.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -50,7 +52,7 @@ class MockKeyframedLayoutAnimationCurve : public LayoutAnimationCurve {
     return lynx::tasm::CSSValue();
   };
 
-  std::vector<std::unique_ptr<Keyframe>> GetKeyframes() {
+  std::vector<std::unique_ptr<gfx::Keyframe>> GetKeyframes() {
     return std::move(keyframes_);
   }
 };
@@ -68,7 +70,7 @@ class MockKeyframedTransformAnimationCurve : public TransformAnimationCurve {
     return lynx::tasm::CSSValue();
   }
 
-  std::vector<std::unique_ptr<Keyframe>> GetKeyframes() {
+  std::vector<std::unique_ptr<gfx::Keyframe>> GetKeyframes() {
     return std::move(keyframes_);
   }
 };
@@ -116,18 +118,20 @@ TEST_F(TransformAnimationCurveTest, TransformedAnimationTime) {
   auto test_keyframes = curve->GetKeyframes();
   auto test_scaled_duration = curve->scaled_duration();
   fml::TimeDelta test_time1 = fml::TimeDelta::FromSecondsF(0.5f);
-  auto transformed_time1 = TransformedAnimationTime(
-      std::move(test_keyframes), nullptr, test_scaled_duration, test_time1);
-  EXPECT_EQ(test_time1, transformed_time1);
+  auto sampling1 = gfx::ComputeKeyframedProgress(
+      test_keyframes, nullptr, test_scaled_duration, test_time1);
+  EXPECT_TRUE(sampling1.valid);
+  EXPECT_EQ(test_time1, sampling1.effective_time);
 
   starlight::TimingFunctionData timing_function_data;
   timing_function_data.timing_func = starlight::TimingFunctionType::kEaseIn;
-  auto test_timing_function =
-      TimingFunction::MakeTimingFunction(timing_function_data);
-  auto transformed_time2 =
-      TransformedAnimationTime(std::move(test_keyframes), test_timing_function,
-                               test_scaled_duration, test_time1);
-  EXPECT_EQ(int64_t(315356734), transformed_time2.ToNanoseconds());
+  auto test_timing_function = gfx::CubicBezierTimingFunction::CreatePreset(
+      gfx::CubicBezierTimingFunction::EaseType::EASE_IN);
+  auto sampling2 =
+      gfx::ComputeKeyframedProgress(test_keyframes, test_timing_function.get(),
+                                    test_scaled_duration, test_time1);
+  EXPECT_TRUE(sampling2.valid);
+  EXPECT_EQ(int64_t(315356734), sampling2.effective_time.ToNanoseconds());
 }
 
 TEST_F(TransformAnimationCurveTest, TransformedKeyframeProgress1) {
@@ -146,9 +150,10 @@ TEST_F(TransformAnimationCurveTest, TransformedKeyframeProgress1) {
   auto test_keyframes = curve->GetKeyframes();
   auto test_scaled_duration = curve->scaled_duration();
   fml::TimeDelta test_time1 = fml::TimeDelta::FromSecondsF(0.5f);
-  auto progress1 = TransformedKeyframeProgress(
-      std::move(test_keyframes), test_scaled_duration, test_time1, 0);
-  EXPECT_EQ(progress1, 0.5);
+  auto sampling = gfx::ComputeKeyframedProgress(
+      test_keyframes, nullptr, test_scaled_duration, test_time1);
+  EXPECT_TRUE(sampling.valid);
+  EXPECT_EQ(sampling.progress, 0.5);
 }
 
 TEST_F(TransformAnimationCurveTest, TransformedKeyframeProgress2) {
@@ -158,8 +163,8 @@ TEST_F(TransformAnimationCurveTest, TransformedKeyframeProgress2) {
 
   starlight::TimingFunctionData timing_function_data;
   timing_function_data.timing_func = starlight::TimingFunctionType::kEaseIn;
-  auto test_timing_function =
-      TimingFunction::MakeTimingFunction(timing_function_data);
+  auto test_timing_function = gfx::CubicBezierTimingFunction::CreatePreset(
+      gfx::CubicBezierTimingFunction::EaseType::EASE_IN);
 
   auto test_frame1 =
       LayoutKeyframe::Create(fml::TimeDelta(), std::move(test_timing_function));
@@ -174,9 +179,10 @@ TEST_F(TransformAnimationCurveTest, TransformedKeyframeProgress2) {
   auto test_keyframes = curve->GetKeyframes();
   auto test_scaled_duration = curve->scaled_duration();
   fml::TimeDelta test_time1 = fml::TimeDelta::FromSecondsF(0.5f);
-  auto progress1 = TransformedKeyframeProgress(
-      std::move(test_keyframes), test_scaled_duration, test_time1, 0);
-  EXPECT_EQ(progress1, 0.31535673426536154);
+  auto sampling = gfx::ComputeKeyframedProgress(
+      test_keyframes, nullptr, test_scaled_duration, test_time1);
+  EXPECT_TRUE(sampling.valid);
+  EXPECT_EQ(sampling.progress, 0.31535673426536154);
 }
 
 TEST_F(TransformAnimationCurveTest, GetStyleInElement) {
@@ -220,14 +226,22 @@ TEST_F(TransformAnimationCurveTest, GetActiveKeyframe) {
   fml::TimeDelta value2 = fml::TimeDelta::FromSecondsF(0.5f);
   fml::TimeDelta value3 = fml::TimeDelta::FromSecondsF(1.f);
   fml::TimeDelta value4 = fml::TimeDelta::FromSecondsF(1.5f);
-  EXPECT_EQ(0, GetActiveKeyframe(std::move(keyframes), curve->scaled_duration(),
-                                 value1));
-  EXPECT_EQ(0, GetActiveKeyframe(std::move(keyframes), curve->scaled_duration(),
-                                 value2));
-  EXPECT_EQ(1, GetActiveKeyframe(std::move(keyframes), curve->scaled_duration(),
-                                 value3));
-  EXPECT_EQ(1, GetActiveKeyframe(std::move(keyframes), curve->scaled_duration(),
-                                 value4));
+  auto s1 = gfx::ComputeKeyframedProgress(keyframes, nullptr,
+                                          curve->scaled_duration(), value1);
+  auto s2 = gfx::ComputeKeyframedProgress(keyframes, nullptr,
+                                          curve->scaled_duration(), value2);
+  auto s3 = gfx::ComputeKeyframedProgress(keyframes, nullptr,
+                                          curve->scaled_duration(), value3);
+  auto s4 = gfx::ComputeKeyframedProgress(keyframes, nullptr,
+                                          curve->scaled_duration(), value4);
+  EXPECT_TRUE(s1.valid);
+  EXPECT_TRUE(s2.valid);
+  EXPECT_TRUE(s3.valid);
+  EXPECT_TRUE(s4.valid);
+  EXPECT_EQ(0u, s1.index);
+  EXPECT_EQ(0u, s2.index);
+  EXPECT_EQ(1u, s3.index);
+  EXPECT_EQ(1u, s4.index);
 }
 
 TEST_F(TransformAnimationCurveTest, CreateTransformKeyframe) {
@@ -288,7 +302,6 @@ TEST_F(TransformAnimationCurveTest, CreateTransformAnimationCurve) {
   EXPECT_EQ(test_curve1->Type(), AnimationCurve::CurveType::UNSUPPORT);
   EXPECT_EQ(test_curve1->scaled_duration(), 1.0);
   EXPECT_EQ(test_curve1->timing_function(), nullptr);
-  EXPECT_EQ(test_curve1->get_keyframes_size(), 0);
 }
 
 TEST_F(TransformAnimationCurveTest, GetValue) {

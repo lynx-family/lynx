@@ -14,11 +14,18 @@
 #include <vector>
 
 #include "base/include/fml/time/time_delta.h"
-#include "core/animation/utils/timing_function.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "gfx/animation/animation_keyframe.h"
+#include "gfx/animation/animation_keyframe_curve.h"
+#include "gfx/animation/timing_function.h"
 
 namespace lynx {
+
+namespace starlight {
+struct AnimationData;
+struct TimingFunctionData;
+}  // namespace starlight
 
 namespace tasm {
 class Element;
@@ -31,6 +38,31 @@ class LayoutAnimationCurve;
 class ColorAnimationCurve;
 class FloatAnimationCurve;
 class FilterAnimationCurve;
+class LayoutKeyframe;
+class FilterKeyframe;
+class BackgroundPositionKeyframe;
+class TransformOriginKeyframe;
+class TransformKeyframe;
+
+struct KeyframeCallbacks {
+  using NotifyElementSizeUpdatedCallback = void (*)(gfx::Keyframe*);
+  using NotifyUnitValuesUpdatedCallback = void (*)(gfx::Keyframe*, uint32_t);
+
+  gfx::Keyframe* keyframe{nullptr};
+  NotifyElementSizeUpdatedCallback notify_element_size_updated{nullptr};
+  NotifyUnitValuesUpdatedCallback notify_unit_values_updated{nullptr};
+};
+
+KeyframeCallbacks MakeKeyframeCallbacks(gfx::Keyframe* keyframe);
+KeyframeCallbacks MakeKeyframeCallbacks(LayoutKeyframe* keyframe);
+KeyframeCallbacks MakeKeyframeCallbacks(FilterKeyframe* keyframe);
+KeyframeCallbacks MakeKeyframeCallbacks(BackgroundPositionKeyframe* keyframe);
+KeyframeCallbacks MakeKeyframeCallbacks(TransformOriginKeyframe* keyframe);
+KeyframeCallbacks MakeKeyframeCallbacks(TransformKeyframe* keyframe);
+
+gfx::TimingFunctionData ToGfxTimingFunctionData(
+    const starlight::TimingFunctionData& data);
+gfx::AnimationData ToGfxAnimationData(const starlight::AnimationData& data);
 
 #define ALL_X_AXIS_CURVE_TYPE                                                 \
   AnimationCurve::CurveType::LEFT, AnimationCurve::CurveType::RIGHT,          \
@@ -56,39 +88,7 @@ class FilterAnimationCurve;
       AnimationCurve::CurveType::BORDER_BOTTOM_WIDTH,                       \
       AnimationCurve::CurveType::FLEX_BASIS
 
-class Keyframe {
- public:
-  Keyframe(const Keyframe&) = delete;
-  Keyframe& operator=(const Keyframe&) = delete;
-
-  fml::TimeDelta Time() const;
-  const TimingFunction* timing_function() const {
-    return timing_function_.get();
-  }
-
-  bool IsEmpty() { return is_empty_; }
-
-  virtual ~Keyframe() = default;
-
-  virtual void NotifyElementSizeUpdated(){};
-
-  virtual void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern){};
-
-  virtual bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
-                        tasm::Element* element) = 0;
-
- protected:
-  bool is_empty_{true};
-
-  Keyframe(fml::TimeDelta time,
-           std::unique_ptr<TimingFunction> timing_function);
-
- private:
-  fml::TimeDelta time_;
-  std::unique_ptr<TimingFunction> timing_function_;
-};
-
-class AnimationCurve {
+class AnimationCurve : public gfx::AnimationCurve {
  public:
   enum class CurveType {
     UNSUPPORT = 0,
@@ -133,46 +133,39 @@ class AnimationCurve {
 
   virtual ~AnimationCurve() = default;
   CurveType Type() const { return type_; }
-  fml::TimeDelta Duration() const;
 
   AnimationCurve::CurveType type_;
-  TimingFunction* timing_function() { return timing_function_.get(); }
-  void SetTimingFunction(std::unique_ptr<TimingFunction> timing_function) {
-    timing_function_ = std::move(timing_function);
-  }
-  double scaled_duration() const { return scaled_duration_; }
-  void set_scaled_duration(double scaled_duration) {
-    scaled_duration_ = scaled_duration;
-  }
-
-  size_t get_keyframes_size() { return keyframes_.size(); }
-  void AddKeyframe(std::unique_ptr<Keyframe> keyframe);
 
   void SetElement(tasm::Element* element) { element_ = element; }
 
-  void EnsureFromAndToKeyframe();
+  template <typename T>
+  void AddKeyframe(std::unique_ptr<T> keyframe) {
+    auto callbacks = MakeKeyframeCallbacks(keyframe.get());
+    AddKeyframe(std::unique_ptr<gfx::Keyframe>(std::move(keyframe)), callbacks);
+  }
+
+  void AddKeyframe(std::unique_ptr<gfx::Keyframe> keyframe,
+                   KeyframeCallbacks callbacks = {});
 
   void NotifyElementSizeUpdated();
 
-  void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern);
+  void NotifyUnitValuesUpdated(tasm::CSSValuePattern);
 
-  virtual std::unique_ptr<Keyframe> MakeEmptyKeyframe(
-      const fml::TimeDelta& offset) = 0;
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
+      const fml::TimeDelta& offset) override = 0;
 
   virtual tasm::CSSValue GetValue(fml::TimeDelta& t) const = 0;
 
  protected:
-  std::unique_ptr<TimingFunction> timing_function_;
-  double scaled_duration_{1.0};
-  std::vector<std::unique_ptr<Keyframe>> keyframes_;
   tasm::Element* element_{nullptr};
+  std::vector<KeyframeCallbacks> keyframe_callbacks_;
 };
 
 class LayoutAnimationCurve : public AnimationCurve {
  public:
   ~LayoutAnimationCurve() override = default;
 
-  std::unique_ptr<Keyframe> MakeEmptyKeyframe(
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override;
 };
 
@@ -180,7 +173,7 @@ class OpacityAnimationCurve : public AnimationCurve {
  public:
   ~OpacityAnimationCurve() override = default;
 
-  std::unique_ptr<Keyframe> MakeEmptyKeyframe(
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override;
 };
 
@@ -188,7 +181,7 @@ class ColorAnimationCurve : public AnimationCurve {
  public:
   ~ColorAnimationCurve() override = default;
 
-  std::unique_ptr<Keyframe> MakeEmptyKeyframe(
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override;
 };
 
@@ -196,7 +189,7 @@ class FloatAnimationCurve : public AnimationCurve {
  public:
   ~FloatAnimationCurve() override = default;
 
-  std::unique_ptr<Keyframe> MakeEmptyKeyframe(
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override;
 };
 
@@ -204,7 +197,7 @@ class FilterAnimationCurve : public AnimationCurve {
  public:
   ~FilterAnimationCurve() override = default;
 
-  std::unique_ptr<Keyframe> MakeEmptyKeyframe(
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override;
 };
 
@@ -212,7 +205,7 @@ class BackgroundPositionAnimationCurve : public AnimationCurve {
  public:
   ~BackgroundPositionAnimationCurve() override = default;
 
-  std::unique_ptr<Keyframe> MakeEmptyKeyframe(
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override;
 };
 
@@ -220,7 +213,7 @@ class TransformOriginAnimationCurve : public AnimationCurve {
  public:
   ~TransformOriginAnimationCurve() override = default;
 
-  std::unique_ptr<Keyframe> MakeEmptyKeyframe(
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override;
 };
 
@@ -228,7 +221,7 @@ class VisibilityAnimationCurve : public AnimationCurve {
  public:
   ~VisibilityAnimationCurve() override = default;
 
-  std::unique_ptr<Keyframe> MakeEmptyKeyframe(
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override;
 };
 

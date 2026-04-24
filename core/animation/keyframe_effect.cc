@@ -20,86 +20,87 @@
 namespace lynx {
 namespace animation {
 
-KeyframeEffect::KeyframeEffect() : animation_delegate_(nullptr) {}
+KeyframeEffect::KeyframeEffect()
+    : gfx_effect_(lynx::gfx::KeyframeEffect::Create()),
+      animation_delegate_(nullptr) {}
 
 std::unique_ptr<KeyframeEffect> KeyframeEffect::Create() {
   return std::make_unique<KeyframeEffect>();
 }
 
 void KeyframeEffect::SetStartTime(fml::TimePoint& time) {
-  for (auto& keyframe_model : keyframe_models_) {
-    keyframe_model->set_start_time(time);
-  }
+  gfx_effect_->SetStartTime(time);
 }
 
 void KeyframeEffect::SetPauseTime(fml::TimePoint& time) {
-  for (auto& keyframe_model : keyframe_models_) {
-    keyframe_model->SetRunState(KeyframeModel::PAUSED, time);
-  }
+  gfx_effect_->SetPauseTime(time);
 }
 
 void KeyframeEffect::AddKeyframeModel(
     std::unique_ptr<KeyframeModel> keyframe_model) {
+  if (!keyframe_model) {
+    return;
+  }
+  gfx_effect_->AddKeyframeModel(keyframe_model->gfx_model_.get());
   keyframe_models_.push_back(std::move(keyframe_model));
 }
 
-void KeyframeEffect::TickKeyframeModel(fml::TimePoint monotonic_time) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_EFFECT_TICK_MODEL);
-  // Collect animated style of this animation
+gfx::KeyframeEffect::TickResult KeyframeEffect::TickKeyframeModel(
+    fml::TimePoint monotonic_time) {
+  auto tick_result = gfx_effect_->Tick(monotonic_time);
+  if (animation_ != nullptr && tick_result.active_time) {
+    animation_->MaybeReportOverTime(*tick_result.active_time);
+  }
+  ApplyTickResult(tick_result);
+  return tick_result;
+}
+
+bool KeyframeEffect::HasFinishedAll() const {
+  return gfx_effect_->HasFinishedAll();
+}
+
+void KeyframeEffect::ApplyTickResult(
+    const lynx::gfx::KeyframeEffect::TickResult& tick_result) {
   tasm::StyleMap style_map;
-  bool should_send_start_event = false;
-  bool should_send_end_event = false;
   bool should_persist_fill_styles = false;
   bool should_clear_fill_styles = false;
-  bool has_checked_over_time = false;
-  style_map.reserve(keyframe_models_.size());
   const bool is_transition_effect =
       animation_ != nullptr && animation_->GetTransitionFlag();
-  for (auto& keyframe_model : keyframe_models_) {
-    // #1. Update the model state and collect animation event information.
-    std::tie(should_send_start_event, should_send_end_event) =
-        keyframe_model->UpdateState(monotonic_time);
-    if (!is_transition_effect && should_send_end_event &&
-        keyframe_model->is_finished()) {
-      const auto data = keyframe_model->get_animation_data();
-      if (data.fill_mode == starlight::AnimationFillModeType::kForwards ||
-          data.fill_mode == starlight::AnimationFillModeType::kBoth) {
+  style_map.reserve(keyframe_models_.size());
+
+  if (animation_ != nullptr) {
+    for (int i = 0; i < tick_result.iteration_events_due; ++i) {
+      animation_->SendIterationEvent();
+    }
+  }
+
+  for (const auto& sample : tick_result.samples) {
+    auto* curve = static_cast<AnimationCurve*>(sample.curve);
+    if (curve == nullptr) {
+      continue;
+    }
+    if (animation_delegate_) {
+      fml::TimeDelta t = sample.trimmed_time;
+      tasm::CSSValue value = curve->GetValue(t);
+      animation_delegate_->NotifyClientAnimated(
+          style_map, value, static_cast<tasm::CSSPropertyID>(curve->Type()));
+    }
+  }
+
+  if (!is_transition_effect && tick_result.end_event_due) {
+    for (const auto& keyframe_model : keyframe_models_) {
+      if (!keyframe_model || !keyframe_model->is_finished() ||
+          !keyframe_model->HasAnimationData()) {
+        continue;
+      }
+      if (keyframe_model->ShouldPersistFillStyle()) {
         should_persist_fill_styles = true;
       } else {
         should_clear_fill_styles = true;
       }
     }
-
-    // #2. Collect animation styles
-    if (!keyframe_model->InEffect(monotonic_time)) {
-      continue;
-    }
-    AnimationCurve* curve = keyframe_model->curve();
-    // The counter records whether the iteration_count has changed.
-    int temp_count = current_iteration_count_;
-    // #2.1 Calculate trimmed time to current iteration
-    fml::TimeDelta trimmed;
-    if (has_checked_over_time == false) {
-      trimmed = keyframe_model->TrimTimeToCurrentIteration(
-          monotonic_time, current_iteration_count_, need_report_over_time_);
-      has_checked_over_time = true;
-    } else {
-      bool no_need_report_flag = false;
-      trimmed = keyframe_model->TrimTimeToCurrentIteration(
-          monotonic_time, current_iteration_count_, no_need_report_flag);
-    }
-    if (current_iteration_count_ != temp_count) {
-      animation_->SendIterationEvent();
-    }
-
-    // #2.2 Calculate animation styles according to trimmed time.
-    if (animation_delegate_) {
-      tasm::CSSValue value = curve->GetValue(trimmed);
-      animation_delegate_->NotifyClientAnimated(
-          style_map, value, static_cast<tasm::CSSPropertyID>(curve->Type()));
-    }
   }
-  // #3. Flush all animation styles to element.
+
   if (animation_delegate_ != nullptr && !style_map.empty()) {
     animation_delegate_->UpdateFinalStyleMap(style_map);
   }
@@ -114,32 +115,34 @@ void KeyframeEffect::TickKeyframeModel(fml::TimePoint monotonic_time) {
     }
   }
 
-  // #4. Send animation event.
   if (animation_) {
-    if (should_send_start_event) {
+    if (tick_result.start_event_due) {
       animation_->SendStartEvent();
       LOGI("Lynx Animation play, name is: " << animation_->name().str());
     }
-    if (should_send_end_event) {
+    if (tick_result.end_event_due) {
       animation_->SendEndEvent();
       LOGI("Lynx Animation end, name is: " << animation_->name().str());
     }
   }
 }
 
-bool KeyframeEffect::CheckHasFinished(fml::TimePoint& monotonic_time) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_EFFECT_CHECK_HAS_FINISHED);
-  // As all keyframe models share the same animation parameters, once one of
-  // them finishes, all others will also finish. Therefore, here we only need to
-  // check if the first keyframe model has finished.
-  if (!keyframe_models_.empty()) {
-    if (keyframe_models_[0]->is_finished() &&
-        !keyframe_models_[0]->InEffect(monotonic_time)) {
-      ClearEffect();
+void KeyframeEffect::ClearEffectIfOutOfEffect(fml::TimePoint& monotonic_time) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_EFFECT_CLEAR_IF_OUT_OF_EFFECT);
+  KeyframeModel* first_model = nullptr;
+  for (const auto& keyframe_model : keyframe_models_) {
+    if (keyframe_model) {
+      first_model = keyframe_model.get();
+      break;
     }
-    return keyframe_models_[0]->is_finished();
   }
-  return true;
+  if (first_model == nullptr) {
+    return;
+  }
+  DCHECK(gfx_effect_->HasFinishedAll());
+  if (!first_model->InEffect(monotonic_time)) {
+    ClearEffect();
+  }
 }
 
 void KeyframeEffect::ClearEffect() {
@@ -168,9 +171,7 @@ void KeyframeEffect::UpdateAnimationData(starlight::AnimationData* data) {
 }
 
 void KeyframeEffect::EnsureFromAndToKeyframe() {
-  for (auto& keyframe_model : keyframe_models_) {
-    keyframe_model->EnsureFromAndToKeyframe();
-  }
+  gfx_effect_->EnsureFromAndToKeyframe();
 }
 
 void KeyframeEffect::NotifyElementSizeUpdated() {
@@ -181,11 +182,10 @@ void KeyframeEffect::NotifyElementSizeUpdated() {
   }
 }
 
-void KeyframeEffect::NotifyUnitValuesUpdatedToAnimation(
-    tasm::CSSValuePattern type) {
+void KeyframeEffect::NotifyUnitValuesUpdated(tasm::CSSValuePattern type) {
   for (auto& keyframe_model : keyframe_models_) {
     if (keyframe_model) {
-      keyframe_model->NotifyUnitValuesUpdatedToAnimation(type);
+      keyframe_model->NotifyUnitValuesUpdated(type);
     }
   }
 }

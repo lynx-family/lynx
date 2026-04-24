@@ -1,61 +1,20 @@
 // Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
+//
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/animation/utils/timing_function.h"
+#include "gfx/animation/timing_function.h"
 
 #include <cmath>
 
 namespace lynx {
-namespace animation {
-
-TimingFunction::TimingFunction() = default;
-
-TimingFunction::~TimingFunction() = default;
-
-std::unique_ptr<TimingFunction> TimingFunction::MakeTimingFunction(
-    const starlight::AnimationData* animation_data) {
-  auto timing_function_data = animation_data->timing_func;
-  return MakeTimingFunction(timing_function_data);
-}
-
-std::unique_ptr<TimingFunction> TimingFunction::MakeTimingFunction(
-    const starlight::TimingFunctionData& timing_function_data) {
-  std::unique_ptr<TimingFunction> timing;
-  auto type = timing_function_data.timing_func;
-  if (type == starlight::TimingFunctionType::kLinear) {
-    timing = std::make_unique<LinearTimingFunction>();
-  } else if (type == starlight::TimingFunctionType::kEaseIn) {
-    timing = CubicBezierTimingFunction::CreatePreset(
-        CubicBezierTimingFunction::EaseType::EASE_IN);
-  } else if (type == starlight::TimingFunctionType::kEaseOut) {
-    timing = CubicBezierTimingFunction::CreatePreset(
-        CubicBezierTimingFunction::EaseType::EASE_OUT);
-  } else if (type == starlight::TimingFunctionType::kEaseInEaseOut) {
-    timing = CubicBezierTimingFunction::CreatePreset(
-        CubicBezierTimingFunction::EaseType::EASE_IN_OUT);
-  } else if (type == starlight::TimingFunctionType::kCubicBezier) {
-    timing = CubicBezierTimingFunction::Create(
-        timing_function_data.x1, timing_function_data.y1,
-        timing_function_data.x2, timing_function_data.y2);
-  } else if (type == starlight::TimingFunctionType::kSteps) {
-    timing = StepsTimingFunction::Create(timing_function_data.x1,
-                                         timing_function_data.steps_type);
-  } else {
-    timing = std::make_unique<LinearTimingFunction>();
-  }
-
-  return timing;
-}
+namespace gfx {
 
 std::unique_ptr<CubicBezierTimingFunction>
 CubicBezierTimingFunction::CreatePreset(EaseType ease_type) {
-  // These numbers come from
-  // http://www.w3.org/TR/css3-transitions/#transition-timing-function_tag.
   switch (ease_type) {
     case EaseType::EASE:
       return std::unique_ptr<CubicBezierTimingFunction>(
@@ -68,12 +27,12 @@ CubicBezierTimingFunction::CreatePreset(EaseType ease_type) {
           new CubicBezierTimingFunction(ease_type, 0.0, 0.0, 0.58, 1.0));
     case EaseType::EASE_IN_OUT:
       return std::unique_ptr<CubicBezierTimingFunction>(
-          new CubicBezierTimingFunction(ease_type, 0.42, 0.0, 0.58, 1));
+          new CubicBezierTimingFunction(ease_type, 0.42, 0.0, 0.58, 1.0));
     default:
-      //      NOTREACHED();
       return nullptr;
   }
 }
+
 std::unique_ptr<CubicBezierTimingFunction> CubicBezierTimingFunction::Create(
     double x1, double y1, double x2, double y2) {
   return std::unique_ptr<CubicBezierTimingFunction>(
@@ -91,12 +50,12 @@ TimingFunction::Type CubicBezierTimingFunction::GetType() const {
   return Type::CUBIC_BEZIER;
 }
 
-double CubicBezierTimingFunction::GetValue(double x) const {
-  return bezier_.Solve(x);
+double CubicBezierTimingFunction::GetValue(double time) const {
+  return bezier_.Solve(time);
 }
 
-double CubicBezierTimingFunction::Velocity(double x) const {
-  return bezier_.Slope(x);
+double CubicBezierTimingFunction::Velocity(double time) const {
+  return bezier_.Slope(time);
 }
 
 std::unique_ptr<TimingFunction> CubicBezierTimingFunction::Clone() const {
@@ -104,13 +63,12 @@ std::unique_ptr<TimingFunction> CubicBezierTimingFunction::Clone() const {
 }
 
 std::unique_ptr<StepsTimingFunction> StepsTimingFunction::Create(
-    int steps, starlight::StepsType step_position) {
+    int steps, StepsType step_position) {
   return std::unique_ptr<StepsTimingFunction>(
       new StepsTimingFunction(steps, step_position));
 }
 
-StepsTimingFunction::StepsTimingFunction(int steps,
-                                         starlight::StepsType step_position)
+StepsTimingFunction::StepsTimingFunction(int steps, StepsType step_position)
     : steps_(steps), step_position_(step_position) {}
 
 StepsTimingFunction::~StepsTimingFunction() = default;
@@ -127,38 +85,35 @@ std::unique_ptr<TimingFunction> StepsTimingFunction::Clone() const {
   return std::unique_ptr<TimingFunction>(new StepsTimingFunction(*this));
 }
 
-double StepsTimingFunction::Velocity(double x) const { return 0; }
+double StepsTimingFunction::Velocity(double /*time*/) const { return 0; }
 
 double StepsTimingFunction::GetPreciseValue(double t,
                                             LimitDirection direction) const {
   const double steps = static_cast<double>(steps_);
   double current_step = std::floor((steps * t) + GetStepsStartOffset());
-  // Adjust step if using a left limit at a discontinuous step boundary.
   if (direction == LimitDirection::LEFT &&
       steps * t - std::floor(steps * t) == 0) {
     current_step -= 1;
   }
-  // Jumps may differ from steps based on the number of end-point
-  // discontinuities, which may be 0, 1 or 2.
-  int jumps = NumberOfJumps();
-  if (t >= 0 && current_step < 0) current_step = 0;
-  if (t <= 1 && current_step > jumps) current_step = jumps;
-  return current_step / jumps;
+  const int jumps = NumberOfJumps();
+  if (t >= 0 && current_step < 0) {
+    current_step = 0;
+  }
+  if (t <= 1 && current_step > jumps) {
+    current_step = jumps;
+  }
+  return jumps == 0 ? 0.0 : (current_step / jumps);
 }
 
 int StepsTimingFunction::NumberOfJumps() const {
   switch (step_position_) {
-    case starlight::StepsType::kEnd:
-    case starlight::StepsType::kStart:
+    case StepsType::kEnd:
+    case StepsType::kStart:
       return steps_;
-
-    case starlight::StepsType::kJumpBoth:
+    case StepsType::kJumpBoth:
       return steps_ + 1;
-
-    case starlight::StepsType::kJumpNone:
-      // assert(steps_ > 1);
+    case StepsType::kJumpNone:
       return steps_ - 1;
-
     default:
       return steps_;
   }
@@ -166,14 +121,12 @@ int StepsTimingFunction::NumberOfJumps() const {
 
 float StepsTimingFunction::GetStepsStartOffset() const {
   switch (step_position_) {
-    case starlight::StepsType::kJumpBoth:
-    case starlight::StepsType::kStart:
+    case StepsType::kJumpBoth:
+    case StepsType::kStart:
       return 1;
-
-    case starlight::StepsType::kEnd:
-    case starlight::StepsType::kJumpNone:
+    case StepsType::kEnd:
+    case StepsType::kJumpNone:
       return 0;
-
     default:
       return 1;
   }
@@ -184,20 +137,48 @@ std::unique_ptr<LinearTimingFunction> LinearTimingFunction::Create() {
 }
 
 LinearTimingFunction::LinearTimingFunction() = default;
-
 LinearTimingFunction::~LinearTimingFunction() = default;
 
 TimingFunction::Type LinearTimingFunction::GetType() const {
   return Type::LINEAR;
 }
 
+double LinearTimingFunction::GetValue(double t) const { return t; }
+
 std::unique_ptr<TimingFunction> LinearTimingFunction::Clone() const {
   return std::make_unique<LinearTimingFunction>(*this);
 }
 
-double LinearTimingFunction::Velocity(double x) const { return 0; }
+double LinearTimingFunction::Velocity(double /*time*/) const { return 0; }
 
-double LinearTimingFunction::GetValue(double t) const { return t; }
+std::unique_ptr<TimingFunction> CreateTimingFunction(
+    const TimingFunctionData& timing_function_data) {
+  using TFType = TimingFunctionType;
+  switch (timing_function_data.timing_func) {
+    case TFType::kLinear:
+      return LinearTimingFunction::Create();
+    case TFType::kEaseIn:
+      return CubicBezierTimingFunction::CreatePreset(
+          CubicBezierTimingFunction::EaseType::EASE_IN);
+    case TFType::kEaseOut:
+      return CubicBezierTimingFunction::CreatePreset(
+          CubicBezierTimingFunction::EaseType::EASE_OUT);
+    case TFType::kEaseInEaseOut:
+      return CubicBezierTimingFunction::CreatePreset(
+          CubicBezierTimingFunction::EaseType::EASE_IN_OUT);
+    case TFType::kCubicBezier:
+      return CubicBezierTimingFunction::Create(
+          timing_function_data.x1, timing_function_data.y1,
+          timing_function_data.x2, timing_function_data.y2);
+    case TFType::kSteps:
+      return StepsTimingFunction::Create(
+          static_cast<int>(timing_function_data.x1),
+          timing_function_data.steps_type);
+    case TFType::kSquareBezier:
+    default:
+      return LinearTimingFunction::Create();
+  }
+}
 
-}  // namespace animation
+}  // namespace gfx
 }  // namespace lynx

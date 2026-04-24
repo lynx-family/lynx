@@ -202,11 +202,11 @@ group("lynx_core_native") {
 
 group("lynx_native") {
   deps = [
+    "../gfx",
     "../third_party/rapidjson",
     "animation",
     "animation/basic_animation",
     "animation/lynx_basic_animator:lynx_basic_animator",
-    "animation/utils:animation_utils",
     "base",
     "build:build",
     "event",

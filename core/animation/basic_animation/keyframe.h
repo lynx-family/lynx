@@ -14,7 +14,7 @@
 #include "base/include/fml/time/time_point.h"
 #include "core/animation/basic_animation/basic_animatable_values/float_property_value.h"
 #include "core/animation/basic_animation/property_value.h"
-#include "core/animation/utils/timing_function.h"
+#include "gfx/animation/timing_function.h"
 namespace lynx {
 namespace animation {
 namespace basic {
@@ -36,10 +36,10 @@ class Keyframe {
   const fml::TimeDelta Time() {
     return fml::TimeDelta::FromSecondsF(offset().value_or(0.0));
   }
-  const TimingFunction& easing() const { return *easing_; }
-  TimingFunction* timing_function() const { return easing_; }
+  const gfx::TimingFunction& easing() const { return *easing_; }
+  gfx::TimingFunction* timing_function() const { return easing_; }
 
-  void set_easing(TimingFunction* easing) { easing_ = easing; }
+  void set_easing(gfx::TimingFunction* easing) { easing_ = easing; }
 
   void SetDefaultPropertyValue(const std::string& type,
                                const std::shared_ptr<AnimatorTarget>& target);
@@ -53,7 +53,7 @@ class Keyframe {
 
  protected:
   std::optional<double> offset_;
-  TimingFunction* easing_ = nullptr;
+  gfx::TimingFunction* easing_ = nullptr;
   std::unique_ptr<PropertyValue> property_value_;
 };
 

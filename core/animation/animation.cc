@@ -10,6 +10,7 @@
 
 #include <math.h>
 
+#include <cstdint>
 #include <utility>
 
 #include "base/include/log/logging.h"
@@ -19,9 +20,18 @@
 #include "core/base/lynx_trace_categories.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/utils/lynx_env.h"
+#include "core/services/event_report/event_tracker.h"
+
+namespace {
+
+constexpr int64_t kThirtyMinutesInSeconds = 1800;
+
+}  // namespace
 
 namespace lynx {
 namespace animation {
+
 Animation::Animation(const base::String& name)
     : name_(name), keyframe_effect_(nullptr) {}
 
@@ -108,7 +118,7 @@ void Animation::CreateEventAndSend(const base::String& event) {
   dict->SetValue(kAnimationType,
                  is_transition_ ? BASE_STATIC_STRING(kTransitionAnimationName)
                                 : BASE_STATIC_STRING(kKeyframeAnimationName));
-  dict->SetValue(kAnimationName, this->animation_data()->name);
+  dict->SetValue(kAnimationName, this->get_animation_data().name);
   element_->element_manager()->SendAnimationEvent(
       event.str(), element_->impl_id(), lepus::Value(std::move(dict)));
 }
@@ -116,33 +126,48 @@ void Animation::CreateEventAndSend(const base::String& event) {
 void Animation::SetKeyframeEffect(
     std::unique_ptr<KeyframeEffect> keyframe_effect) {
   keyframe_effect->SetAnimation(this);
+  need_report_over_time_ = true;
   keyframe_effect_ = std::move(keyframe_effect);
 }
 
-void Animation::Tick(fml::TimePoint& time) {
+bool Animation::Tick(fml::TimePoint& time) {
   if (!keyframe_effect_) {
-    return;
+    return true;
   }
-
   // If start_time_ is uninitialized or is a dummy time, we should update it.
   if (start_time_ == fml::TimePoint::Min() ||
       start_time_ == GetAnimationDummyStartTime()) {
     start_time_ = time;
     keyframe_effect_->SetStartTime(time);
   }
+  return keyframe_effect_->TickKeyframeModel(time).has_finished_all;
+}
 
-  keyframe_effect_->TickKeyframeModel(time);
+void Animation::MaybeReportOverTime(fml::TimeDelta active_time) {
+  if (!need_report_over_time_ ||
+      active_time.ToSeconds() <= kThirtyMinutesInSeconds) {
+    return;
+  }
+  need_report_over_time_ = false;
+  ReportAnimationOverTime();
+}
+
+void Animation::ReportAnimationOverTime() {
+  if (!tasm::LynxEnv::GetInstance().EnableAnimationInfoReport()) {
+    return;
+  }
+  tasm::report::EventTracker::OnEvent([css_animation_name =
+                                           animation_data_.name.str()](
+                                          tasm::report::MoveOnlyEvent& event) {
+    event.SetName("lynxsdk_animation_report_event");
+    event.SetProps("report_event_type", "css_animation_time_out_30_minutes");
+    event.SetProps("css_animation_name", css_animation_name);
+    event.SetProps("total_duration_seconds", kThirtyMinutesInSeconds);
+  });
 }
 
 void Animation::BindDelegate(AnimationDelegate* target) {
   animation_delegate_ = target;
-}
-
-bool Animation::HasFinishedAll(fml::TimePoint& time) {
-  if (!keyframe_effect_ || keyframe_effect_->CheckHasFinished(time)) {
-    return true;
-  }
-  return false;
 }
 
 void Animation::RequestNextFrame() {
@@ -161,9 +186,11 @@ void Animation::DoFrame(fml::TimePoint& frame_time) {
                 curveTypeInfo->set_string_value(name_.str());
               });
   if (frame_time != fml::TimePoint::Min()) {
-    Tick(frame_time);
-    if (HasFinishedAll(frame_time)) {
+    if (Tick(frame_time)) {
       Stop();
+      if (keyframe_effect_) {
+        keyframe_effect_->ClearEffectIfOutOfEffect(frame_time);
+      }
       ClearTransitionPreviousEndValue();
     }
   }
@@ -190,7 +217,7 @@ void Animation::NotifyElementSizeUpdated() {
 
 void Animation::NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern type) {
   if (keyframe_effect_) {
-    keyframe_effect_->NotifyUnitValuesUpdatedToAnimation(type);
+    keyframe_effect_->NotifyUnitValuesUpdated(type);
   }
 }
 

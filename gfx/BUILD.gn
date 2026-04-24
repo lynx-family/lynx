@@ -1,0 +1,29 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../core/Lynx.gni")
+
+lynx_core_source_set("gfx_animation") {
+  sources = [
+    "animation/animation_keyframe.h",
+    "animation/animation_keyframe_curve.h",
+    "animation/animation_keyframe_effect.cc",
+    "animation/animation_keyframe_effect.h",
+    "animation/animation_keyframe_model.cc",
+    "animation/animation_keyframe_model.h",
+    "animation/animation_types.h",
+    "animation/animation_utils.cc",
+    "animation/animation_utils.h",
+    "animation/cubic_bezier.cc",
+    "animation/cubic_bezier.h",
+    "animation/timing_function.cc",
+    "animation/timing_function.h",
+  ]
+
+  deps = [ "../base/src:base_log_headers" ]
+}
+
+group("gfx") {
+  deps = [ ":gfx_animation" ]
+}
