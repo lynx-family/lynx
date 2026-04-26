@@ -265,7 +265,7 @@ void ContextBinaryWriter::EncodeArray(fml::RefPtr<CArray> ary) {
 
 void ContextBinaryWriter::EncodeDate(fml::RefPtr<CDate> date) {
   if (!date) return;
-  tm date_ = date->get_date_();
+  const tm_extend& date_ = date->get_date_();
   int ms_ = date->get_ms_();
   int language = date->get_language();
   WriteCompactS32(language);

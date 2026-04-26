@@ -12,8 +12,12 @@ import sys
 machine = platform.machine().lower()
 machine = "x64" if machine == "x86_64" else machine
 
+is_windows = sys.platform == 'win32'
+gn_suffix = '.exe' if is_windows else ''
+ninja_suffix = '.exe' if is_windows else ''
+
 def gn_clean(root_path):
-  gn_path = os.path.join(root_path, 'buildtools', 'gn', 'gn')
+  gn_path = os.path.join(root_path, 'buildtools', 'gn', f'gn{gn_suffix}')
   output_path = os.path.join(root_path, 'out', 'Default')
   if not os.path.exists(output_path):
     return 0
@@ -22,15 +26,17 @@ def gn_clean(root_path):
   return result
 
 def gen_build_file(platform, arch, debug, root_path, type, sysroot, is_static=False):
-  gn_path = os.path.join(root_path, 'buildtools', 'gn', 'gn')
+  gn_path = os.path.join(root_path, 'buildtools', 'gn', f'gn{gn_suffix}')
   output_path = os.path.join(root_path, 'out', 'Default')
   is_debug = 'false'
   if debug:
     is_debug = 'true'
 
-  args = 'disallow_undefined_symbol=false enable_security_protection=false use_flutter_cxx=false is_debug=%s oliver_type=\\\"%s\\\"' % (is_debug, type)
+  args = 'disallow_undefined_symbol=false enable_security_protection=false use_flutter_cxx=false is_debug=%s oliver_type="%s"' % (is_debug, type)
   if platform == 'linux' and len(sysroot) != 0:
-    args += ' target_sysroot=\\\"%s\\\"' % os.path.join(root_path, sysroot)
+    args += ' target_sysroot="%s"' % os.path.join(root_path, sysroot)
+  if platform == 'windows':
+    args += ' is_clang=true'
   if type == 'ssr':
     args += ' build_lepus_compile=true'
   elif type == 'security':
@@ -40,27 +46,27 @@ def gen_build_file(platform, arch, debug, root_path, type, sysroot, is_static=Fa
       enable_inspector=true \
       enable_inspector_test=true \
       build_lynx_lepus_node=true \
-      node_headers_dst_dir=\\\"//oliver/lynx-tasm\\\" '
+      node_headers_dst_dir="//oliver/lynx-tasm" '
     if platform == 'linux':
-      args += ' emsdk_dir=\\\"/root/emsdk\\\"'
+      args += ' emsdk_dir="/root/emsdk"'
     if is_static:
       args += ' enable_lto=false'
   elif type == 'testing':
     args += ' build_lepus_compile=false \
       enable_napi_binding=true \
       enable_lepusng_worklet=true \
-      jsengine_type=\\\"quickjs\\\"'
+      jsengine_type="quickjs"'
 
   if len(arch) > 0:
-    args += " target_cpu=\\\"%s\\\"" % (arch)
+    args += " target_cpu=\"%s\"" % (arch)
 
-  command = "{} gen {} --args=\"{}\"".format(gn_path, output_path, args)
-  print(command)
-  result = subprocess.check_call(command, shell=True)
+  command = [gn_path, 'gen', output_path, f'--args={args}']
+  print(subprocess.list2cmdline(command))
+  result = subprocess.check_call(command)
   return result
 
 def build_by_ninja(root_path, show_log):
-  ninja_path = os.path.join(root_path, 'buildtools', 'ninja', 'ninja')
+  ninja_path = os.path.join(root_path, 'buildtools', 'ninja', f'ninja{ninja_suffix}')
   output_path = os.path.join(root_path, 'out', 'Default')
 
   if show_log:
@@ -71,7 +77,7 @@ def build_by_ninja(root_path, show_log):
   return result
 
 def build_static_lib_by_ninja(root_path, show_log, type):
-  ninja_path = os.path.join(root_path, 'buildtools', 'ninja', 'ninja')
+  ninja_path = os.path.join(root_path, 'buildtools', 'ninja', f'ninja{ninja_suffix}')
   output_path = os.path.join(root_path, 'out', 'Default')
 
   static_lib_target = 'oliver/lynx-tasm:tasm_codec_static'
@@ -105,6 +111,11 @@ def get_output_name(type):
   elif type == 'testing':
     output_name = 'lynx_testing.node'
   return output_name
+
+def get_static_lib_output_name(platform):
+  if platform == 'windows':
+    return 'lynx_tasm_codec.lib'
+  return 'liblynx_tasm_codec.a'
 
 def copy_target(folder_name, arch, debug, root_path, type):
   dst_name = 'Release'
@@ -149,6 +160,9 @@ def build_target(platform, arch, debug, root_path, show_log, type, need_clean, s
   if result != 0:
     return result
 
+  if platform == 'windows' and is_static:
+    return 0
+
   result = build_by_ninja(root_path, show_log)
   if result != 0:
     return result
@@ -173,6 +187,8 @@ def merge_file(folder_name, debug, root_path, type):
   return subprocess.check_call(command, shell=True)
 
 def strip_static_lib(path):
+  if sys.platform == 'win32':
+    return 0
   command = 'strip -X %s' % path
   return subprocess.check_call(command, shell=True)
 
@@ -181,7 +197,7 @@ def copy_static_lib_target(folder_name, arch, debug, root_path, type):
   if debug:
     dst_name = 'Debug'
   type_path = get_type_path(type)
-  output_name = 'liblynx_tasm_codec.a'
+  output_name = get_static_lib_output_name(folder_name)
   dst_path = os.path.join(root_path, 'oliver', type_path, 'build', folder_name, dst_name)
   if len(arch) > 0:
     dst_path = os.path.join(dst_path, arch)
@@ -223,6 +239,14 @@ def build(system, debug, root_path, show_log, type, is_wasm, need_clean, is_loca
       copy_static_lib_target(system, other_machine, debug, root_path, type)
       return 0
     elif system == 'linux':
+      result = build_target(system, '', debug, root_path, show_log, type, need_clean, sysroot, is_static)
+      if result != 0:
+        return result
+      result = build_static_lib_by_ninja(root_path, show_log, type)
+      if result != 0:
+        return result
+      copy_static_lib_target(system, '', debug, root_path, type)
+    elif system == 'windows':
       result = build_target(system, '', debug, root_path, show_log, type, need_clean, sysroot, is_static)
       if result != 0:
         return result

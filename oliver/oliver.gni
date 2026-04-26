@@ -71,6 +71,8 @@ template("oliver_node_lib") {
       sources = [ "$root_out_dir/lib$output_name.dylib" ]
     } else if (is_linux) {
       sources = [ "$root_out_dir/lib$output_name.so" ]
+    } else if (is_win) {
+      sources = [ "$root_out_dir/$output_name.dll" ]
     } else {
       sources = []
     }
