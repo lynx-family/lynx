@@ -940,21 +940,43 @@ bool PageView::HitTest(const PointerEvent& event, HitTestResult& result) {
 }
 
 BaseView* PageView::GetTopViewToAcceptEvent(const FloatPoint& position,
-                                            FloatPoint* relative_position) {
+                                            FloatPoint* relative_position,
+                                            int platform_try_hit_id) {
   FloatPoint converted_position = position;
   bool is_pass_through_from_overlay = false;
   auto overlay_result = overlay_manager_->GetTopViewToAcceptEvent(
       position, relative_position, is_pass_through_from_overlay,
-      converted_position);
+      converted_position, platform_try_hit_id);
   if (overlay_result) {
     return overlay_result;
   }
   if (is_pass_through_from_overlay) {
-    return BaseView::GetTopViewToAcceptEvent(converted_position,
-                                             relative_position);
+    return BaseView::GetTopViewToAcceptEvent(
+        converted_position, relative_position, platform_try_hit_id);
   } else {
-    return BaseView::GetTopViewToAcceptEvent(position, relative_position);
+    return BaseView::GetTopViewToAcceptEvent(position, relative_position,
+                                             platform_try_hit_id);
   }
+}
+
+int PageView::GetHitTestingTargetNativeViewId(const FloatPoint& position,
+                                              int platform_try_hit_id,
+                                              bool* has_hit_target) {
+  FloatPoint unused;
+  BaseView* top_view =
+      GetTopViewToAcceptEvent(position, &unused, platform_try_hit_id);
+  if (has_hit_target != nullptr) {
+    *has_hit_target = top_view != nullptr;
+  }
+  for (BaseView* view = top_view; view; view = view->Parent()) {
+    if (view->Is<NativeView>()) {
+      return view->id();
+    }
+    if (view == this) {
+      break;
+    }
+  }
+  return -1;
 }
 
 void PageView::ReportTopViewEvent(const PointerEvent& event,

@@ -116,10 +116,11 @@ FloatRect ScrollWrapper::GetSemanticsBounds() const {
 }
 #endif
 
-BaseView* ScrollWrapper::GetTopViewToAcceptEvent(
-    const FloatPoint& position, FloatPoint* relative_position) {
-  BaseView* view =
-      BaseView::GetTopViewToAcceptEvent(position, relative_position);
+BaseView* ScrollWrapper::GetTopViewToAcceptEvent(const FloatPoint& position,
+                                                 FloatPoint* relative_position,
+                                                 int platform_try_hit_id) {
+  BaseView* view = BaseView::GetTopViewToAcceptEvent(
+      position, relative_position, platform_try_hit_id);
   if (view == view_) {
     return this;
   }

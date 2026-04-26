@@ -29,7 +29,8 @@ class ScrollWrapper : public WithTypeInfo<ScrollWrapper, ScrollbarWrapper>,
   void SetAttribute(const char* attr_c, const clay::Value& value) override;
 
   BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
-                                    FloatPoint* relative_position) override;
+                                    FloatPoint* relative_position,
+                                    int platform_try_hit_id = -1) override;
 
   bool IsLayoutRootCandidate() const override { return true; }
 

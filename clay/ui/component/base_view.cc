@@ -2639,7 +2639,8 @@ FloatRect BaseView::BoundsRelativeTo(BaseView* view) const {
 }
 
 BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
-                                            FloatPoint* relative_position) {
+                                            FloatPoint* relative_position,
+                                            int platform_try_hit_id) {
   FML_DCHECK(relative_position);
   if (!BaseView::CanAcceptEvent()) {
     return nullptr;
@@ -2662,7 +2663,8 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
     if ((*it)->IsIndependentSubViewTree()) {
       continue;
     }
-    view = (*it)->GetTopViewToAcceptEvent(position, relative_position);
+    view = (*it)->GetTopViewToAcceptEvent(position, relative_position,
+                                          platform_try_hit_id);
     if (view) {
       return view;
     }

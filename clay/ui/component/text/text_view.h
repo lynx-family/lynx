@@ -135,9 +135,11 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
 
  private:
   BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
-                                    FloatPoint* relative_position) override;
+                                    FloatPoint* relative_position,
+                                    int platform_try_hit_id = -1) override;
   BaseView* GetViewAtPosition(const FloatPoint& point_by_paragraph,
-                              const FloatPoint& point_by_page);
+                              const FloatPoint& point_by_page,
+                              int platform_try_hit_id = -1);
   bool ClickOnText(size_t glyph_index, const FloatPoint& point_by_paragraph,
                    txt::Paragraph* paragraph);
   bool is_text_selection_ = false;

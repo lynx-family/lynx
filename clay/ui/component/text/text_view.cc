@@ -474,7 +474,8 @@ void TextView::FocusHasChanged(bool focused, bool is_leaf) {
 }
 
 BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
-                                            FloatPoint* relative_position) {
+                                            FloatPoint* relative_position,
+                                            int platform_try_hit_id) {
   FML_DCHECK(relative_position);
   if (!BaseView::CanAcceptEvent()) {
     // Not layouted yet.
@@ -492,12 +493,13 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
                           -BorderTop() - PaddingTop());
   *relative_position = point_by_paragraph;
   BaseView* view = nullptr;
-  view = GetViewAtPosition(point_by_paragraph, position);
+  view = GetViewAtPosition(point_by_paragraph, position, platform_try_hit_id);
   return view ?: this;
 }
 
 BaseView* TextView::GetViewAtPosition(const FloatPoint& point_by_paragraph,
-                                      const FloatPoint& point_by_page) {
+                                      const FloatPoint& point_by_page,
+                                      int platform_try_hit_id) {
   auto paragraph = GetRenderText()->GetPainter()->GetParagraph();
   if (!paragraph) {
     return nullptr;
@@ -527,8 +529,8 @@ BaseView* TextView::GetViewAtPosition(const FloatPoint& point_by_paragraph,
       if (view_index.second == index) {
         auto view = page_view_->FindViewByViewId(view_index.first);
         FloatPoint relative_position;
-        auto top_view =
-            view->GetTopViewToAcceptEvent(point_by_page, &relative_position);
+        auto top_view = view->GetTopViewToAcceptEvent(
+            point_by_page, &relative_position, platform_try_hit_id);
         return top_view ? top_view : view;
       }
     }
