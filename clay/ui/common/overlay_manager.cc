@@ -192,7 +192,8 @@ void OverlayManager::OnReportTopViewEvent(const PointerEvent& event,
 
 BaseView* OverlayManager::GetTopViewToAcceptEvent(
     const FloatPoint& position, FloatPoint* relative_position,
-    bool& is_pass_through, FloatPoint& converted_position) {
+    bool& is_pass_through, FloatPoint& converted_position,
+    int platform_try_hit_id) {
   FML_DCHECK(relative_position);
   bool found_visible_overlay = false;
   Point offset;
@@ -206,7 +207,8 @@ BaseView* OverlayManager::GetTopViewToAcceptEvent(
       // only record top one
       offset = overlay->GetTouchOffset();
     }
-    auto view = overlay->GetTopViewToAcceptEvent(position, relative_position);
+    auto view = overlay->GetTopViewToAcceptEvent(position, relative_position,
+                                                 platform_try_hit_id);
     if (view) {
       if (view == overlay && overlay->CanEventsPassThroughToViewsBehind()) {
         continue;

@@ -375,7 +375,11 @@ class PageView : public BaseView,
 
   bool HitTest(const PointerEvent& event, HitTestResult& result) override;
   BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
-                                    FloatPoint* relative_position) override;
+                                    FloatPoint* relative_position,
+                                    int platform_try_hit_id = -1) override;
+  int GetHitTestingTargetNativeViewId(const FloatPoint& position,
+                                      int platform_try_hit_id = -1,
+                                      bool* has_hit_target = nullptr);
   int GetViewIdForLocation(int x, int y);
 #ifndef NDEBUG
   std::string ToString() const override;
