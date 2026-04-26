@@ -37,7 +37,8 @@ class OverlayManager {
   BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
                                     FloatPoint* relative_position,
                                     bool& is_pass_through,
-                                    FloatPoint& converted_position);
+                                    FloatPoint& converted_position,
+                                    int platform_try_hit_id = -1);
 
   void OnReportTopViewEvent(const PointerEvent& event, ClayEventType type);
 

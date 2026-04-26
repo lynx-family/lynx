@@ -61,6 +61,12 @@ TEST_F_UI(NativeViewHitTestTest, IgnoreUnhandledTouchSequenceInHitTest) {
     ASSERT_FALSE(result.empty());
     EXPECT_EQ(static_cast<BaseView*>(result.front().get())->id(),
               native_view->id());
+    EXPECT_EQ(page_->GetHitTestingTargetNativeViewId(FloatPoint(50.f, 50.f),
+                                                     native_view->id()),
+              native_view->id());
+    EXPECT_NE(page_->GetHitTestingTargetNativeViewId(FloatPoint(50.f, 50.f),
+                                                     background_view->id()),
+              background_view->id());
   }
 
   native_view->UpdateTouchDispatchState(false, /* action= */ 0);
@@ -78,6 +84,12 @@ TEST_F_UI(NativeViewHitTestTest, IgnoreUnhandledTouchSequenceInHitTest) {
     EXPECT_EQ(page_->GetTopViewToAcceptEvent(FloatPoint(50.f, 50.f),
                                              &relative_position),
               background_view);
+    EXPECT_EQ(page_->GetHitTestingTargetNativeViewId(FloatPoint(50.f, 50.f),
+                                                     native_view->id()),
+              native_view->id());
+    EXPECT_NE(page_->GetHitTestingTargetNativeViewId(FloatPoint(50.f, 50.f),
+                                                     background_view->id()),
+              background_view->id());
   }
 
   native_view->UpdateTouchDispatchState(true, /* action= */ 1);
@@ -87,6 +99,9 @@ TEST_F_UI(NativeViewHitTestTest, IgnoreUnhandledTouchSequenceInHitTest) {
     page_->HitTest(CreateTouchDownPointer(50.f, 50.f), result);
     ASSERT_FALSE(result.empty());
     EXPECT_EQ(static_cast<BaseView*>(result.front().get())->id(),
+              native_view->id());
+    EXPECT_EQ(page_->GetHitTestingTargetNativeViewId(FloatPoint(50.f, 50.f),
+                                                     native_view->id()),
               native_view->id());
   }
 }

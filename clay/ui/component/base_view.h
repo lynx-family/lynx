@@ -422,7 +422,8 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   virtual bool CanAcceptEvent() const;
   virtual BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
-                                            FloatPoint* relative_position);
+                                            FloatPoint* relative_position,
+                                            int platform_try_hit_id = -1);
   // Content bounds (without border and padding) in the viewport.
   FloatRect ContentBoundsInViewport() const;
   // Bounds (including border and padding) relative to an other view (or the

@@ -70,8 +70,8 @@ NativeView::NativeView(int id, std::string tag, PageView* page_view)
   SetFocusable(true);
 }
 
-bool NativeView::ShouldIgnoreForTouchHitTest() const {
-  return ignore_for_touch_hit_test_;
+bool NativeView::ShouldIgnoreForTouchHitTest(int platform_try_hit_id) const {
+  return ignore_for_touch_hit_test_ && platform_try_hit_id != id();
 }
 
 bool NativeView::HitTest(const PointerEvent& event, HitTestResult& result) {
@@ -83,11 +83,13 @@ bool NativeView::HitTest(const PointerEvent& event, HitTestResult& result) {
 }
 
 BaseView* NativeView::GetTopViewToAcceptEvent(const FloatPoint& position,
-                                              FloatPoint* relative_position) {
-  if (ShouldIgnoreForTouchHitTest()) {
+                                              FloatPoint* relative_position,
+                                              int platform_try_hit_id) {
+  if (ShouldIgnoreForTouchHitTest(platform_try_hit_id)) {
     return nullptr;
   }
-  return BaseView::GetTopViewToAcceptEvent(position, relative_position);
+  return BaseView::GetTopViewToAcceptEvent(position, relative_position,
+                                           platform_try_hit_id);
 }
 
 void NativeView::FocusHasChanged(bool focused, bool is_leaf) {
