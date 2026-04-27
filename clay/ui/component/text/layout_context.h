@@ -7,10 +7,12 @@
 #define CLAY_UI_COMPONENT_TEXT_LAYOUT_CONTEXT_H_
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/ui/component/layout_controller.h"
+#include "clay/ui/component/text/inline_emoji_bitmap.h"
 #include "clay/ui/component/text/text_paragraph_builder.h"
 #include "clay/ui/component/text/text_style.h"
 
@@ -43,6 +45,7 @@ class LayoutContextText : public LayoutContext {
   TextParagraphBuilder* builder() { return builder_; }
 
   void AddText(const std::u16string& text, bool need_text_indent = false);
+  void EnsureInitialTextIndentIfNeeded(bool need_text_indent);
 
   void ProcessTextWithIndent();
 
@@ -70,12 +73,22 @@ class LayoutContextText : public LayoutContext {
     return text_.size() + placeholder_num_;
   }
 
+  void AddInlineEmojiInfo(int placeholder_id, InlineEmojiBitmap&& bitmap) {
+    inline_emoji_info_.push_back({placeholder_id, std::move(bitmap)});
+  }
+
+  std::vector<InlineEmojiInfo> TakeInlineEmojiInfo() {
+    return std::move(inline_emoji_info_);
+  }
+
  private:
   TextParagraphBuilder* builder_ = nullptr;
   std::u16string text_;
   size_t placeholder_num_ = 0;
   std::optional<uint32_t> max_length_;
   std::optional<size_t> text_indent_;
+  bool has_added_initial_text_indent_ = false;
+  std::vector<InlineEmojiInfo> inline_emoji_info_;
 };
 
 }  // namespace clay

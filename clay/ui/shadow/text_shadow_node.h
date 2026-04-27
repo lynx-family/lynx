@@ -15,6 +15,7 @@
 #include "clay/gfx/style/color_source.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
 #include "clay/ui/component/measurable.h"
+#include "clay/ui/component/text/inline_emoji_bitmap.h"
 #include "clay/ui/component/text/layout_client.h"
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/shadow/base_text_shadow_node.h"
@@ -89,6 +90,9 @@ class TextShadowNode : public BaseTextShadowNode, public CustomMeasurable {
   ShadowNodeOwner* GetOwner() { return owner_; }
 
   void SetTextPaintAlign(TextAlignment align) { text_paint_align_ = align; }
+  void SetInlineEmojiInfo(std::vector<InlineEmojiInfo>&& inline_emoji_info) {
+    inline_emoji_info_ = std::move(inline_emoji_info);
+  }
   TextAlignment GetResolvedTextAlign();
   void SetNeedSecondLayout(bool need_second_layout) {
     need_second_layout_ = need_second_layout;
@@ -106,6 +110,7 @@ class TextShadowNode : public BaseTextShadowNode, public CustomMeasurable {
   bool need_second_layout_ = false;
   std::vector<InlineImageShadowNode*> inline_images_;
   std::vector<InlineViewShadowNode*> inline_views_;
+  std::vector<InlineEmojiInfo> inline_emoji_info_;
   TextAlignment text_paint_align_ = TextAlignment::kLeft;
 };
 

@@ -223,7 +223,7 @@ std::vector<LineInfo> TextRender::GetLineInfo() {
   if (res.size() == 0) {
     return res;
   }
-  int text_length = static_cast<int>(measure_node_->GetRawText().length());
+  int text_length = static_cast<int>(end_glyph_position_);
   if (res.back().end < text_length) {
     res.back().ellipsis_count = text_length - res.back().end + 1;
   }
@@ -262,6 +262,7 @@ std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
   context_text.SetTextIndent(
       measure_node_->text_style_->text_indent.value_or(0));
   measure_node_->TextLayout(&context_text);
+  measure_node_->SetInlineEmojiInfo(context_text.TakeInlineEmojiInfo());
   auto paragraph = Build(std::move(builder));
   TRACE_EVENT("clay", "TextRender::Layout");
   paragraph->Layout(layout_width);
@@ -682,11 +683,14 @@ void TextRender::ProcessTruncationContent(size_t& display_glyph_num,
                                           ShadowNode* node) {
   for (auto* child : node->GetChildren()) {
     if (child->IsRawTextShadowNode()) {
-      auto text = static_cast<RawTextShadowNode*>(child)->Text();
-      if (text.length() < display_glyph_num) {
-        display_glyph_num = display_glyph_num - text.length();
+      auto* raw_text_node = static_cast<RawTextShadowNode*>(child);
+      auto layout_text_length = raw_text_node->GetLayoutTextLength();
+      if (layout_text_length < display_glyph_num) {
+        display_glyph_num = display_glyph_num - layout_text_length;
       } else {
-        static_cast<RawTextShadowNode*>(child)->SetEndIndex(display_glyph_num);
+        raw_text_node->SetEndIndex(
+            raw_text_node->GetRawEndIndexForLayoutTextLength(
+                display_glyph_num));
         measure_node_->MarkNeedsUpdate(TextUpdateFlag::kUpdateFlagChildren);
         display_glyph_num = 0;
       }

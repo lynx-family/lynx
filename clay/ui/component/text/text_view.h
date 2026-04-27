@@ -20,6 +20,7 @@
 #include "clay/ui/component/selection_handle_view.h"
 #include "clay/ui/component/selection_popup_view.h"
 #include "clay/ui/component/text/base_text_view.h"
+#include "clay/ui/component/text/inline_emoji_bitmap.h"
 #include "clay/ui/component/text/layout_client.h"
 #include "clay/ui/gesture/drag_gesture_recognizer.h"
 #include "clay/ui/gesture/long_press_gesture_recognizer.h"
@@ -39,6 +40,7 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void SetAttribute(const char* attr, const clay::Value& value) override;
   void PushInlineImageIndex(int id, int placeholder_id);
   void PushInlineViewIndex(int id, int placeholder_id);
+  void SetInlineEmojiInfo(std::vector<InlineEmojiInfo> inline_emoji_info);
   void SetBorderWidth(std::vector<Side> sides,
                       std::vector<float> widths) override;
   void SetPaddings(float padding_left, float padding_top, float padding_right,
