@@ -18,6 +18,8 @@
 #include "clay/net/loader/resource_loader_factory.h"
 #include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/net/url/url_helper.h"
+#include "skity/codec/codec.hpp"
+#include "skity/graphic/image.hpp"
 
 namespace clay {
 
@@ -167,6 +169,33 @@ uint64_t ImageFetcher::FetchSVGImageWithContent(const std::string& content,
   active_image_map_.insert({content_md5, svg_image});
   callback(svg_image->NewInstance(), false);
   return fetchID;
+}
+
+std::shared_ptr<skity::Image> ImageFetcher::LoadImage(const std::string& url) {
+  std::string trimmed_url = url::TrimUrl(url);
+  auto loader = GetOrCreateResourceLoader(
+      resource_loader_intercept_, trimmed_url, task_runners_.GetUITaskRunner(),
+      service_manager_);
+  if (!loader) {
+    return nullptr;
+  }
+  auto raw_resource = loader->LoadSync(trimmed_url);
+  if (!raw_resource.data) {
+    return nullptr;
+  }
+  auto data = skity::Data::MakeWithProc(raw_resource.data.get(),
+                                        raw_resource.length, nullptr, nullptr);
+  auto codec = skity::Codec::MakeFromData(data);
+  if (!codec) {
+    return nullptr;
+  }
+  codec->SetData(data);
+  auto pixel = codec->Decode();
+  if (!pixel) {
+    return nullptr;
+  }
+
+  return skity::Image::MakeImage(pixel);
 }
 
 void ImageFetcher::OnFetchFinish(const std::string& trimmed_url,

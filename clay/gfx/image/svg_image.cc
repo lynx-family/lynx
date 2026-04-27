@@ -8,6 +8,7 @@
 #include "clay/gfx/graphics_context.h"
 #include "clay/gfx/image/base_image.h"
 #include "clay/gfx/skity_to_skia_utils.h"
+#include "clay/ui/resource/image_fetcher.h"
 
 namespace clay {
 std::shared_ptr<SVGImage> SVGImage::Make(
@@ -23,7 +24,7 @@ std::shared_ptr<SVGImage> SVGImage::Make(
 SVGImage::SVGImage(const std::string& content) : content_(content) {
   svg_dom_ = SVGDom::Create(
       GrData::MakeWithProc(content_.data(), content_.size(), nullptr, nullptr),
-      [](std::string url) { return nullptr; });
+      [this](std::string url) { return image_fetcher_->LoadImage(url); });
 }
 
 void SVGImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {

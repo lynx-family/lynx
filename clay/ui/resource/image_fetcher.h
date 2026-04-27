@@ -39,6 +39,9 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
                       const ImageCallback& callback);
   uint64_t FetchSVGImageWithContent(const std::string& content,
                                     const ImageCallback& callback);
+
+  std::shared_ptr<skity::Image> LoadImage(const std::string& url);
+
   void TryCancelAsyncFetch(const std::string& original_url, uint64_t fetch_id);
 
   void OnImageHasNoAccessor(BaseImage* image);
