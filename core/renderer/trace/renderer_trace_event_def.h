@@ -315,6 +315,14 @@ inline constexpr const char* const CSS_PATCH_APPLY_CASCADE_STYLES =
 inline constexpr const char* const
     STYLE_RESOLVER_CREATE_INITIAL_COMPUTED_STYLE =
         "StyleResolver::CreateInitialComputedStyle";
+inline constexpr const char* const STYLE_RESOLVER_RESOLVE_BASE_STYLE =
+    "StyleResolver::ResolveBaseStyle";
+inline constexpr const char* const
+    STYLE_RESOLVER_REBUILD_FINAL_STYLE_FROM_PARENT =
+        "StyleResolver::RebuildFinalStyleFromParent";
+inline constexpr const char* const
+    STYLE_RESOLVER_BUILD_FINAL_STYLE_FROM_BASE_FAST_PATH =
+        "StyleResolver::BuildFinalStyleFromBaseFastPath";
 inline constexpr const char* const STYLE_RESOLVER_INITIALIZE_STYLE_SHELL =
     "StyleResolver::InitializeStyleShell";
 inline constexpr const char* const STYLE_RESOLVER_INHERIT_PARENT_STYLE =
@@ -325,6 +333,13 @@ inline constexpr const char* const STYLE_RESOLVER_ANALYZE_MATCHED_RESULT =
     "StyleResolver::AnalyzeMatchedResult";
 inline constexpr const char* const STYLE_RESOLVER_COLLECT_STATIC_STYLE_INPUTS =
     "StyleResolver::CollectStaticStyleInputs";
+inline constexpr const char* const STYLE_RESOLVER_FINALIZE_CUSTOM_PROPERTIES =
+    "StyleResolver::FinalizeCustomProperties";
+inline constexpr const char* const
+    STYLE_RESOLVER_RESOLVE_COLLECTED_STYLE_INPUTS =
+        "StyleResolver::ResolveCollectedStyleInputs";
+inline constexpr const char* const STYLE_RESOLVER_APPLY_RESOLVED_STYLE_MAP =
+    "StyleResolver::ApplyResolvedStyleMap";
 
 inline constexpr const char* const ELEMENT_CONTAINER_FIND_PARENT =
     "ElementContainer::FindParentForChild";

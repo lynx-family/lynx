@@ -32,6 +32,7 @@
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/css/css_variable_handler.h"
 #include "core/renderer/css/dynamic_css_styles_manager.h"
+#include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/ng/invalidation/invalidation_set.h"
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/base_element_container.h"
@@ -975,6 +976,13 @@ class Element : public lepus::RefCounted,
   }
 
   bool EnableLayoutInElementMode() const;
+
+  // Returns true if the property should be written to ComputedCSSStyle's
+  // value map (not just resolved values). Layout-only properties are skipped
+  // unless the element runs in layout-in-element mode.
+  bool ShouldWritePropertyToComputedStyle(CSSPropertyID id) const {
+    return !LayoutProperty::IsLayoutOnly(id) || EnableLayoutInElementMode();
+  }
 
   void EnsureLayoutBundle();
 

@@ -9,15 +9,19 @@
 
 #include "base/include/algorithm.h"
 #include "base/include/log/logging.h"
+#include "base/include/no_destructor.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/css/css_sheet.h"
+#include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/css_value.h"
+#include "core/renderer/css/dynamic_direction_styles_manager.h"
 #include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
-#include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/services/feature_count/global_feature_counter.h"
 
@@ -44,6 +48,117 @@ inline std::string GetIDSelectorRule(const base::String& value) {
 
 inline std::string GetIDSelectorRule(const std::string& value) {
   return "#" + value;
+}
+
+void ApplyResolvedFontSize(Element* element, starlight::ComputedCSSStyle& style,
+                           const CSSValue& value, bool mark_changed) {
+  const auto current_font_size = style.GetFontSize();
+  const auto root_font_size = style.GetRootFontSize();
+  base::flex_optional<float> result;
+  if (!value.IsEmpty()) {
+    auto* em = element->element_manager();
+    const auto& env_config = em->GetLynxEnvConfig();
+    const auto unify_vw_vh_behavior =
+        em->GetDynamicCSSConfigs().unify_vw_vh_behavior_;
+    result = starlight::CSSStyleUtils::ResolveFontSize(
+        value, env_config, unify_vw_vh_behavior, current_font_size,
+        root_font_size, em->GetCSSParserConfigs());
+  } else {
+    result = current_font_size;
+  }
+
+  if (result.has_value()) {
+    style.SetResolvedValue(kPropertyIDFontSize,
+                           CSSValue(*result, CSSValuePattern::NUMBER));
+    style.SetFontSize(*result, element->is_page() ? *result : root_font_size);
+    if (!element->EnableLayoutInElementMode() ||
+        element->IsShadowNodeCustom()) {
+      style.SetValue(kPropertyIDFontSize,
+                     CSSValue(*result, CSSValuePattern::NUMBER));
+    }
+    if (mark_changed) {
+      style.MarkChanged(kPropertyIDFontSize);
+    }
+  } else {
+    style.RemoveResolvedValue(kPropertyIDFontSize);
+  }
+}
+
+void ReplayInheritedStyleSideEffects(Element* element,
+                                     starlight::ComputedCSSStyle& style,
+                                     const StyleMap& explicit_style_map) {
+  if (!element->IsCSSInheritanceEnabled()) {
+    return;
+  }
+  const bool is_first_render = element->IsNewlyCreated();
+  const auto& inherited_resolved_values = style.GetResolvedValues();
+  if (inherited_resolved_values.empty()) {
+    return;
+  }
+  const auto explicit_style_ids = CSSIDBitset::FromKeys(explicit_style_map);
+
+  for (const auto& [id, value] : inherited_resolved_values) {
+    if (!element->IsInheritable(id) || explicit_style_ids.Has(id)) {
+      continue;
+    }
+
+    if (id == kPropertyIDFontSize) {
+      ApplyResolvedFontSize(element, style, value, is_first_render);
+      continue;
+    }
+
+    if (!element->ShouldWritePropertyToComputedStyle(id)) {
+      style.SetResolvedValue(id, value);
+      continue;
+    }
+
+    style.SetValue(id, value);
+    if (is_first_render) {
+      style.MarkChanged(id);
+    }
+  }
+}
+
+void ApplyComputedStyleValue(Element* element,
+                             starlight::ComputedCSSStyle& style,
+                             CSSPropertyID id, const CSSValue& value) {
+  if (id == kPropertyIDFontSize) {
+    ApplyResolvedFontSize(element, style, value, false);
+    return;
+  }
+
+  if (!element->ShouldWritePropertyToComputedStyle(id)) {
+    style.SetResolvedValue(id, value);
+    return;
+  }
+
+  style.SetValue(id, value);
+}
+
+void NormalizeTextAlignForDirection(Element* element,
+                                    starlight::ComputedCSSStyle& style) {
+  if (element == nullptr) {
+    return;
+  }
+  if (!element->is_text() && !element->NeedProcessDirection()) {
+    return;
+  }
+
+  const auto direction = style.GetDirection();
+  if (direction == starlight::DirectionType::kNormal) {
+    return;
+  }
+
+  CSSValue text_align_value(starlight::TextAlignType::kStart);
+  if (const auto& text_attributes = style.GetTextAttributes();
+      text_attributes.has_value()) {
+    text_align_value = CSSValue(text_attributes->text_align);
+  }
+
+  const auto resolved_text_align =
+      ResolveTextAlign(kPropertyIDTextAlign, text_align_value, direction);
+  ApplyComputedStyleValue(element, style, resolved_text_align.first,
+                          resolved_text_align.second);
 }
 
 void InsertStyleWithLogicalPropertyResolved(Element* element,
@@ -1361,15 +1476,21 @@ void StyleResolver::ResolveBaseStyleInPlace(
     const starlight::ComputedCSSStyle* parent_style,
     const starlight::ComputedCSSStyle* previous_computed_style,
     StyleMap* resolved_style_map) {
-  // TODO(zhouzhitao): STUB. Must fully resolve base style and optionally
-  // populate `resolved_style_map` before enabling
-  // `ElementManager::EnableNewStylingPipeline()`.
-  // Resolves the base (static) ComputedCSSStyle for an element in the new
-  // pipeline, mutating the provided style in-place. Prepares the initial
-  // style, collects matched CSS rules, analyzes the matched result into a
-  // resolved StyleMap (including custom properties and logical properties),
-  // and applies the resolved map. Optionally outputs the resolved_style_map
-  // for diffing or caching.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_RESOLVE_BASE_STYLE);
+  auto* current_element = element();
+  PrepareInitialComputedStyle(style, parent_style, previous_computed_style);
+
+  CSSFragment* style_sheet = current_element->GetRelatedCSSFragment();
+  CollectMatchedRules(style_sheet);
+
+  StyleMap style_map;
+  AnalyzeMatchedResult(style, style_map, current_element->CountInlineStyles());
+
+  ApplyResolvedStyleMap(style, style_map);
+
+  if (resolved_style_map != nullptr) {
+    *resolved_style_map = std::move(style_map);
+  }
 }
 
 std::unique_ptr<starlight::ComputedCSSStyle> StyleResolver::ResolveBaseStyle(
@@ -1392,30 +1513,54 @@ StyleResolver::RebuildFinalStyleFromParent(
     const starlight::ComputedCSSStyle* previous_style,
     const CustomPropertiesMap* sampled_custom_property_overrides,
     const StyleMap* sampled_property_overrides, StyleMap* resolved_style_map) {
-  // TODO(zhouzhitao): STUB. Must rebuild final style with animation/transition
-  // sampling applied before enabling
-  // `ElementManager::EnableNewStylingPipeline()`. Rebuilds the final
-  // ComputedCSSStyle from a parent style in the new pipeline, incorporating
-  // sampled animation / transition overrides. Creates an initial style
-  // inherited from the parent, re-collects and re-analyzes matched rules (with
-  // overrides taken into account), applies the resolved map including the
-  // sampled overrides, and optionally returns the resolved style map. This is
-  // used when dynamic style changes require a full rebuild.
-  return nullptr;
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              STYLE_RESOLVER_REBUILD_FINAL_STYLE_FROM_PARENT);
+  auto* current_element = element();
+  auto style = CreateInitialComputedStyle(parent_style, previous_style);
+
+  CSSFragment* style_sheet = current_element->GetRelatedCSSFragment();
+  CollectMatchedRules(style_sheet);
+
+  StyleMap style_map;
+  AnalyzeMatchedResult(*style, style_map, current_element->CountInlineStyles(),
+                       sampled_custom_property_overrides,
+                       sampled_property_overrides);
+
+  ApplyResolvedStyleMap(*style, style_map, sampled_custom_property_overrides,
+                        sampled_property_overrides);
+
+  if (resolved_style_map != nullptr) {
+    *resolved_style_map = std::move(style_map);
+  }
+
+  return style;
 }
 
 std::unique_ptr<starlight::ComputedCSSStyle>
 StyleResolver::BuildFinalStyleFromBaseFastPath(
     const starlight::ComputedCSSStyle& base_style,
     const StyleMap* sampled_property_overrides, StyleMap* resolved_style_map) {
-  // TODO(zhouzhitao): STUB. Must build final style on top of base style before
-  // enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Fast-path final style construction in the new pipeline when the base style
-  // is already known and only sampled normal-property overrides need to be
-  // applied. Copies the base style into a new shell, merges the override map
-  // into the resolved_style_map, and applies high-priority and standard
-  // properties from the overrides. Avoids re-collecting matched rules.
-  return nullptr;
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              STYLE_RESOLVER_BUILD_FINAL_STYLE_FROM_BASE_FAST_PATH);
+  auto style = CreateInitialComputedStyle(nullptr, &base_style);
+  style->CopyFrom(base_style);
+
+  if (sampled_property_overrides == nullptr ||
+      sampled_property_overrides->empty()) {
+    return style;
+  }
+
+  if (resolved_style_map != nullptr) {
+    resolved_style_map->reserve(resolved_style_map->size() +
+                                sampled_property_overrides->size());
+    for (const auto& [key, value] : *sampled_property_overrides) {
+      resolved_style_map->insert_or_assign(key, value);
+    }
+  }
+
+  ApplyHighPriorityProperties(*style, *sampled_property_overrides);
+  ApplyStandardProperties(*style, *sampled_property_overrides);
+  return style;
 }
 
 void StyleResolver::InitializeStyleShell(
@@ -1525,26 +1670,48 @@ void StyleResolver::FinalizeCustomProperties(
     const NewPipelineCollectedStyleInputs& inputs,
     const CustomPropertiesMap* custom_property_overrides,
     const StyleMap* property_overrides) {
-  // TODO(zhouzhitao): STUB. Must apply overrides and resolve var() references
-  // before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Finalizes custom properties for the new pipeline. Applies any sampled
-  // custom property overrides onto the style, calls FinalizeCustomProperties
-  // to resolve var() references, and sets the element-manager-level flag
-  // indicating whether CSS variables are required based on the presence of
-  // variable tokens in matched, inline, attribute, or override styles.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_FINALIZE_CUSTOM_PROPERTIES);
+  auto* current_element = element();
+  auto* element_manager = manager();
+  if (custom_property_overrides != nullptr) {
+    for (const auto& [key, value] : *custom_property_overrides) {
+      new_style.SetCustomProperty(key, value);
+    }
+  }
+  new_style.FinalizeCustomProperties();
+
+  CSSVariableHandler handler;
+  if (current_element->IsCSSInlineVariablesEnabled() ||
+      new_style.GetCustomProperties() ||
+      handler.HasCSSVariableInAnyStyleMap(
+          {&inputs.matched_styles, &inputs.inline_styles,
+           &inputs.attribute_styles, &inputs.inline_important_styles,
+           &inputs.matched_important_styles, property_overrides})) {
+    element_manager->SetRequireCSSVariables(true);
+  }
 }
 
 void StyleResolver::ResolveCollectedStyleInputs(
     const starlight::ComputedCSSStyle& new_style,
     NewPipelineCollectedStyleInputs& inputs, StyleMap& result,
     const StyleMap* property_overrides) {
-  // TODO(zhouzhitao): STUB. Must merge and resolve all inputs into `result`
-  // before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Resolves all collected static style inputs into a single StyleMap for the
-  // new pipeline. Merges matched, inline, and attribute specified styles
-  // (with CSS variable substitution) into the result, then overlays any
-  // sampled property overrides. This produces the definitive map that
-  // ApplyResolvedStyleMap consumes.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              STYLE_RESOLVER_RESOLVE_COLLECTED_STYLE_INPUTS);
+  result.reserve(
+      inputs.matched_styles.size() + inputs.inline_styles.size() +
+      inputs.matched_important_styles.size() +
+      inputs.inline_important_styles.size() + inputs.attribute_styles.size() +
+      (property_overrides != nullptr ? property_overrides->size() : 0));
+  ResolveSpecifiedStyleMap(new_style, inputs.matched_styles, result);
+  ResolveSpecifiedStyleMap(new_style, inputs.inline_styles, result);
+  ResolveSpecifiedStyleMap(new_style, inputs.matched_important_styles, result);
+  ResolveSpecifiedStyleMap(new_style, inputs.inline_important_styles, result);
+  ResolveSpecifiedStyleMap(new_style, inputs.attribute_styles, result);
+  if (property_overrides != nullptr) {
+    for (const auto& [key, value] : *property_overrides) {
+      result.insert_or_assign(key, value);
+    }
+  }
 }
 
 void StyleResolver::CollectMatchedSpecifiedStyles(
@@ -1696,59 +1863,109 @@ void StyleResolver::CollectHolderCustomProperties(
 void StyleResolver::ResolveSpecifiedStyleMap(
     const starlight::ComputedCSSStyle& new_style, StyleMap& source,
     StyleMap& result) {
-  // TODO(zhouzhitao): STUB. Must resolve var() references and re-parse values
-  // into `result` before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Resolves a source StyleMap into the result StyleMap for the new pipeline.
-  // For each entry, if the value is a CSS variable reference (var()),
-  // substitutes it using the ComputedCSSStyle’s finalized custom properties
-  // and re-parses the resolved value through UnitHandler. Non-variable values
-  // are moved directly into the result.
+  static const CustomPropertiesMap empty_custom_properties;
+  const auto* custom_properties = new_style.GetCustomProperties();
+  if (custom_properties == nullptr) {
+    custom_properties = &empty_custom_properties;
+  }
+  auto* current_element = element();
+  const auto& configs = manager()->GetCSSParserConfigs();
+  auto* holder = current_element->data_model();
+  CSSVariableHandler handler(true);
+
+  const auto handle_custom_property_func =
+      [holder](const base::String& name, const base::String& resolved_value) {
+        if (holder != nullptr) {
+          holder->AddCSSVariableRelated(name, resolved_value);
+        }
+      };
+
+  for (auto& [id, value] : source) {
+    if (!value.IsVariable()) {
+      result.insert_or_assign(id, std::move(value));
+      continue;
+    }
+
+    handler.ResolveCSSVariables(id, value, result, custom_properties, configs,
+                                handle_custom_property_func);
+  }
 }
 
 void StyleResolver::ApplyCascadingAffectingProperties(
     starlight::ComputedCSSStyle& style, StyleMap& map,
     const CustomPropertiesMap* custom_property_overrides,
     const StyleMap* property_overrides) {
-  // TODO(zhouzhitao): STUB. Must handle direction and cascading-affecting
-  // re-resolution before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Applies cascading-affecting properties (e.g., direction) in the new
-  // pipeline. If the direction property changes, updates the style and
-  // re-triggers AnalyzeMatchedResult so that direction-dependent selectors
-  // and logical properties are re-evaluated. Clears the matched rule caches
-  // only after all cascading-affecting properties are stable.
+  auto* current_element = element();
+  const bool has_matched_rules = !matched_style_map.empty() ||
+                                 !matched_variable_map.empty() ||
+                                 !matched_important_style_map.empty();
+  const auto& important_inline_styles =
+      current_element->GetCurrentRawImportantInlineStyles();
+  const bool has_reanalyzable_inputs =
+      has_matched_rules || current_element->CountInlineStyles() > 0 ||
+      (important_inline_styles.has_value() &&
+       !important_inline_styles->empty());
+  auto it = map.find(kPropertyIDDirection);
+  if (it != map.end()) {
+    auto direction =
+        static_cast<starlight::DirectionType>(it->second.GetNumber());
+    if (direction != style.GetDirection()) {
+      // Keep inherited custom properties and inherited resolved values on
+      // `style` because the second pass still needs them to resolve var()
+      // references correctly.
+      ApplyComputedStyleValue(current_element, style, kPropertyIDDirection,
+                              it->second);
+      if (has_reanalyzable_inputs) {
+        AnalyzeMatchedResult(style, map, current_element->CountInlineStyles(),
+                             custom_property_overrides, property_overrides);
+      }
+    }
+  }
+
+  // Clear matched rule caches only after cascading-affecting properties are
+  // fully applied, because direction changes may retrigger
+  // AnalyzeMatchedResult.
+  if (has_matched_rules) {
+    matched_style_map.clear();
+    matched_important_style_map.clear();
+    matched_variable_map.clear();
+  }
 }
 
 void StyleResolver::ApplyHighPriorityProperties(
     starlight::ComputedCSSStyle& style, const StyleMap& style_map) {
-  // TODO(zhouzhitao): STUB. Must apply high-priority properties (e.g.
-  // font-size) before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Applies high-priority properties (e.g., font-size) in the new pipeline.
-  // These properties are resolved before standard properties because they
-  // establish context (such as the em unit baseline) needed by downstream
-  // property resolution.
+  auto it = style_map.find(kPropertyIDFontSize);
+  if (it != style_map.end()) {
+    ApplyResolvedFontSize(element(), style, it->second, false);
+  }
 }
 
 void StyleResolver::ApplyStandardProperties(starlight::ComputedCSSStyle& style,
                                             const StyleMap& style_map) {
-  // TODO(zhouzhitao): STUB. Must apply standard properties and normalize
-  // text-align before enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Applies all standard (non-cascading, non-high-priority) properties in the
-  // new pipeline. Iterates the resolved style map, skipping direction and
-  // font-size (already handled), and writes each property into the
-  // ComputedCSSStyle. Finally normalizes text-align for the current direction.
+  for (const auto& [key, value] : style_map) {
+    if (key == kPropertyIDDirection || key == kPropertyIDFontSize) {
+      continue;
+    }
+    ApplyComputedStyleValue(element(), style, key, value);
+  }
+
+  NormalizeTextAlignForDirection(element(), style);
 }
 
 void StyleResolver::ApplyResolvedStyleMap(
     starlight::ComputedCSSStyle& style, StyleMap& style_map,
     const CustomPropertiesMap* custom_property_overrides,
     const StyleMap* property_overrides) {
-  // TODO(zhouzhitao): STUB. Must apply resolved style map end-to-end before
-  // enabling `ElementManager::EnableNewStylingPipeline()`.
-  // Applies a fully resolved style map to a ComputedCSSStyle in the new
-  // pipeline. Orchestrates four sub-phases: cascading-affecting properties
-  // (e.g., direction), inherited side-effects replay, high-priority
-  // properties (e.g., font-size), and standard properties. This is the
-  // final step of base-style resolution before animation sampling.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_APPLY_RESOLVED_STYLE_MAP);
+  if (style_map.empty()) {
+    return;
+  }
+  auto* current_element = element();
+  ApplyCascadingAffectingProperties(style, style_map, custom_property_overrides,
+                                    property_overrides);
+  ReplayInheritedStyleSideEffects(current_element, style, style_map);
+  ApplyHighPriorityProperties(style, style_map);
+  ApplyStandardProperties(style, style_map);
 }
 
 bool StyleResolver::ComputeStyleDiff(

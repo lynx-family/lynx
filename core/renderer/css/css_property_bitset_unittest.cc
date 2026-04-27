@@ -4,6 +4,8 @@
 
 #include "core/renderer/css/css_property_bitset.h"
 
+#include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_value.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -132,6 +134,27 @@ TEST(CSSIDBitsetTest, ConstexprConstructor) {
   }
 
   EXPECT_EQ(expected_ids, actual_ids);
+}
+
+TEST(CSSIDBitsetTest, FromKeys) {
+  StyleMap map;
+  map.insert_or_assign(kPropertyIDTop, CSSValue());
+  map.insert_or_assign(kPropertyIDLeft, CSSValue());
+  map.insert_or_assign(kPropertyIDFontSize, CSSValue());
+
+  CSSIDBitset bits = CSSIDBitset::FromKeys(map);
+
+  EXPECT_TRUE(bits.Has(kPropertyIDTop));
+  EXPECT_TRUE(bits.Has(kPropertyIDLeft));
+  EXPECT_TRUE(bits.Has(kPropertyIDFontSize));
+  EXPECT_FALSE(bits.Has(kPropertyIDWidth));
+  EXPECT_FALSE(bits.Has(kPropertyIDColor));
+}
+
+TEST(CSSIDBitsetTest, FromKeysEmpty) {
+  StyleMap map;
+  CSSIDBitset bits = CSSIDBitset::FromKeys(map);
+  EXPECT_FALSE(bits.HasAny());
 }
 
 }  // namespace test

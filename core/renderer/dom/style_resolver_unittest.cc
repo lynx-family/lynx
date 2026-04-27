@@ -17,6 +17,7 @@
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
+#include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/simple_styling/simple_style_node.h"
 #include "core/renderer/simple_styling/style_object.h"
@@ -152,6 +153,14 @@ void ExpectPxStyle(const StyleMap& styles, CSSPropertyID id, double expected) {
   auto it = styles.find(id);
   ASSERT_TRUE(it != styles.end());
   EXPECT_EQ(it->second.GetPattern(), CSSValuePattern::PX);
+  EXPECT_EQ(it->second.AsNumber(), expected);
+}
+
+void ExpectNumberStyle(const StyleMap& styles, CSSPropertyID id,
+                       double expected) {
+  auto it = styles.find(id);
+  ASSERT_TRUE(it != styles.end());
+  EXPECT_EQ(it->second.GetPattern(), CSSValuePattern::NUMBER);
   EXPECT_EQ(it->second.AsNumber(), expected);
 }
 
@@ -2001,6 +2010,278 @@ TEST_F(
   auto holder_only = style.ResolveVariable(base::String("--holder-only"));
   ASSERT_TRUE(holder_only.has_value());
   EXPECT_EQ(holder_only.value().AsStdString(), "yellow");
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingResolveSpecifiedStyleMapUsesComputedCustomProperties) {
+  auto element = manager->CreateFiberView();
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  style.SetCustomProperty(base::String("--offset"),
+                          CSSValue::MakePlainString("32px"));
+  style.FinalizeCustomProperties();
+
+  CSSValue var_value("{{--offset}}", CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
+  var_value.ToVarReference();
+  StyleMap source;
+  source.insert_or_assign(CSSPropertyID::kPropertyIDTop, var_value);
+
+  StyleMap result;
+  element->style_resolver_.ResolveSpecifiedStyleMap(style, source, result);
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDTop, 32);
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingFinalizeCustomPropertiesAppliesOverridesAndTracksVariables) {
+  auto element = manager->CreateFiberView();
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  StyleResolver::NewPipelineCollectedStyleInputs inputs;
+
+  CustomPropertiesMap custom_property_overrides;
+  custom_property_overrides.insert_or_assign(base::String("--accent"),
+                                             CSSValue::MakePlainString("blue"));
+
+  CSSValue var_value("{{--accent}}", CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
+  var_value.ToVarReference();
+  StyleMap property_overrides;
+  property_overrides.insert_or_assign(CSSPropertyID::kPropertyIDColor,
+                                      var_value);
+
+  element->style_resolver_.FinalizeCustomProperties(
+      style, inputs, &custom_property_overrides, &property_overrides);
+
+  ExpectResolvedVariable(style, "--accent", "blue");
+  EXPECT_TRUE(manager->GetRequireCSSVariables());
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingResolveCollectedStyleInputsResolvesVarsAndOverlaysOverrides) {
+  auto element = manager->CreateFiberView();
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  style.SetCustomProperty(base::String("--offset"),
+                          CSSValue::MakePlainString("8px"));
+  style.FinalizeCustomProperties();
+
+  CSSValue var_value("{{--offset}}", CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
+  var_value.ToVarReference();
+
+  StyleResolver::NewPipelineCollectedStyleInputs inputs;
+  inputs.matched_styles.insert_or_assign(CSSPropertyID::kPropertyIDTop,
+                                         var_value);
+  inputs.inline_styles.insert_or_assign(CSSPropertyID::kPropertyIDLeft,
+                                        CSSValue(2, CSSValuePattern::PX));
+
+  StyleMap property_overrides;
+  property_overrides.insert_or_assign(CSSPropertyID::kPropertyIDTop,
+                                      CSSValue(12, CSSValuePattern::PX));
+
+  StyleMap result;
+  element->style_resolver_.ResolveCollectedStyleInputs(style, inputs, result,
+                                                       &property_overrides);
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDTop, 12);
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDLeft, 2);
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingApplyResolvedStyleMapReplaysInheritedSideEffects) {
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  style.SetFontSize(20.0, 16.0);
+  style.SetResolvedValue(CSSPropertyID::kPropertyIDFontSize,
+                         CSSValue(2, CSSValuePattern::EM));
+
+  StyleMap style_map;
+  style_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                             CSSValue(24, CSSValuePattern::PX));
+
+  element->style_resolver_.ApplyResolvedStyleMap(style, style_map);
+
+  EXPECT_DOUBLE_EQ(style.GetFontSize(), 40.0);
+  EXPECT_TRUE(style.GetChangedBitset().Has(CSSPropertyID::kPropertyIDFontSize));
+  ExpectNumberStyle(style.GetResolvedValues(),
+                    CSSPropertyID::kPropertyIDFontSize, 40);
+  ExpectPxStyle(style.GetResolvedValues(), CSSPropertyID::kPropertyIDWidth, 24);
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingApplyResolvedStyleMapReanalyzesAfterDirectionChange) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  element->data_model()->set_tag("view");
+  element->data_model()->SetClass("matched");
+  element->SetStyle(CSSPropertyID::kPropertyIDDirection, lepus::Value("rtl"));
+
+  CSSParserConfigs configs;
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  tokens->raw_attributes_[CSSPropertyID::kPropertyIDMarginInlineStart] =
+      CSSValue::MakePlainString("6px");
+  std::string key = ".matched";
+  tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+  CSSParserTokenMap css_map;
+  css_map.insert_or_assign(key, tokens);
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  SharedCSSFragment fragment(1, dependent_ids, css_map, keyframes, fontfaces);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  element->style_resolver_.CollectMatchedRules(&fragment);
+  StyleMap result;
+  element->style_resolver_.AnalyzeMatchedResult(style, result, 0);
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDMarginLeft, 6);
+
+  element->style_resolver_.ApplyResolvedStyleMap(style, result);
+
+  EXPECT_EQ(style.GetDirection(), starlight::DirectionType::kRtl);
+  ExpectNoStyle(result, CSSPropertyID::kPropertyIDMarginLeft);
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDMarginRight, 6);
+  EXPECT_TRUE(StyleResolver::matched_style_map.empty());
+  EXPECT_TRUE(StyleResolver::matched_important_style_map.empty());
+  EXPECT_TRUE(StyleResolver::matched_variable_map.empty());
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingApplyResolvedStyleMapReanalyzesInlineAfterDirectionChange) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  element->SetStyle(CSSPropertyID::kPropertyIDDirection, lepus::Value("rtl"));
+  element->SetStyle(CSSPropertyID::kPropertyIDMarginInlineStart,
+                    lepus::Value("6px"));
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  StyleMap result;
+  element->style_resolver_.AnalyzeMatchedResult(style, result, 0);
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDMarginLeft, 6);
+
+  element->style_resolver_.ApplyResolvedStyleMap(style, result);
+
+  EXPECT_EQ(style.GetDirection(), starlight::DirectionType::kRtl);
+  ExpectNoStyle(result, CSSPropertyID::kPropertyIDMarginLeft);
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDMarginRight, 6);
+}
+
+TEST_F(
+    CSSPatchingTest,
+    NewStylingApplyResolvedStyleMapReanalyzesImportantInlineAfterDirectionChange) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  element->SetRawInlineStyles(
+      "direction: rtl !important; margin-inline-start: 6px !important;");
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  StyleMap result;
+  element->style_resolver_.AnalyzeMatchedResult(style, result, 0);
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDMarginLeft, 6);
+
+  element->style_resolver_.ApplyResolvedStyleMap(style, result);
+
+  EXPECT_EQ(style.GetDirection(), starlight::DirectionType::kRtl);
+  ExpectNoStyle(result, CSSPropertyID::kPropertyIDMarginLeft);
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDMarginRight, 6);
+}
+
+TEST_F(CSSPatchingTest, NewStylingApplyResolvedStyleMapNormalizesTextAlign) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberText("text");
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  StyleMap style_map;
+  style_map.insert_or_assign(CSSPropertyID::kPropertyIDDirection,
+                             CSSValue(starlight::DirectionType::kRtl));
+  style_map.insert_or_assign(CSSPropertyID::kPropertyIDTextAlign,
+                             CSSValue(starlight::TextAlignType::kStart));
+
+  element->style_resolver_.ApplyResolvedStyleMap(style, style_map);
+
+  ASSERT_TRUE(style.GetTextAttributes().has_value());
+  EXPECT_EQ(style.GetTextAttributes()->text_align,
+            starlight::TextAlignType::kRight);
+}
+
+TEST_F(CSSPatchingTest, NewStylingResolveBaseStyleInPlaceAppliesInlineStyle) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("40px"));
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  StyleMap resolved_style_map;
+  element->style_resolver_.ResolveBaseStyleInPlace(style, nullptr, nullptr,
+                                                   &resolved_style_map);
+
+  ExpectPxStyle(resolved_style_map, CSSPropertyID::kPropertyIDWidth, 40);
+  ExpectPxStyle(style.GetResolvedValues(), CSSPropertyID::kPropertyIDWidth, 40);
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingBuildFinalStyleFromBaseFastPathAppliesSampledOverrides) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle base_style(*manager->platform_computed_css());
+  base_style.SetFontSize(16.0, 16.0);
+  base_style.SetResolvedValue(CSSPropertyID::kPropertyIDWidth,
+                              CSSValue(10, CSSValuePattern::PX));
+
+  StyleMap sampled_property_overrides;
+  sampled_property_overrides.insert_or_assign(
+      CSSPropertyID::kPropertyIDFontSize, CSSValue(2, CSSValuePattern::EM));
+  sampled_property_overrides.insert_or_assign(
+      CSSPropertyID::kPropertyIDWidth, CSSValue(44, CSSValuePattern::PX));
+
+  StyleMap resolved_style_map;
+  auto final_style = element->style_resolver_.BuildFinalStyleFromBaseFastPath(
+      base_style, &sampled_property_overrides, &resolved_style_map);
+
+  ASSERT_NE(final_style, nullptr);
+  EXPECT_DOUBLE_EQ(final_style->GetFontSize(), 32.0);
+  ExpectPxStyle(final_style->GetResolvedValues(),
+                CSSPropertyID::kPropertyIDWidth, 44);
+  ExpectPxStyle(resolved_style_map, CSSPropertyID::kPropertyIDWidth, 44);
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingRebuildFinalStyleFromParentAppliesSampledOverrides) {
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("12px"));
+
+  starlight::ComputedCSSStyle parent_style(*manager->platform_computed_css());
+  parent_style.SetFontSize(20.0, 16.0);
+
+  StyleMap sampled_property_overrides;
+  sampled_property_overrides.insert_or_assign(
+      CSSPropertyID::kPropertyIDWidth, CSSValue(48, CSSValuePattern::PX));
+
+  StyleMap resolved_style_map;
+  auto final_style = element->style_resolver_.RebuildFinalStyleFromParent(
+      &parent_style, nullptr, nullptr, &sampled_property_overrides,
+      &resolved_style_map);
+
+  ASSERT_NE(final_style, nullptr);
+  EXPECT_DOUBLE_EQ(final_style->GetFontSize(), 20.0);
+  ExpectPxStyle(resolved_style_map, CSSPropertyID::kPropertyIDWidth, 48);
+  ExpectPxStyle(final_style->GetResolvedValues(),
+                CSSPropertyID::kPropertyIDWidth, 48);
 }
 
 }  // namespace testing

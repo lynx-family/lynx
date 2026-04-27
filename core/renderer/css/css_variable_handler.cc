@@ -47,7 +47,11 @@ bool CSSVariableHandler::HandleCSSVariables(StyleMap& map,
       const auto& id = it->first;
       const auto& css_value = it->second;
       if (css_value.NeedsVariableResolution()) {
-        ResolveCSSVariables(id, css_value, style_map, holder, configs);
+        ResolveCSSVariables(
+            id, css_value, style_map, holder->GetCustomProperties(), configs,
+            [holder](const base::String& name, const base::String& value) {
+              holder->AddCSSVariableRelated(name, value);
+            });
         continue;
       }
 
@@ -75,6 +79,16 @@ bool CSSVariableHandler::HandleCSSVariables(StyleMap& map,
 bool CSSVariableHandler::HasCSSVariableInStyleMap(const StyleMap& map) {
   for (const auto& [_, css_value] : map) {
     if (css_value.IsVariable()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool CSSVariableHandler::HasCSSVariableInAnyStyleMap(
+    std::initializer_list<const StyleMap*> maps) {
+  for (const StyleMap* map : maps) {
+    if (map != nullptr && HasCSSVariableInStyleMap(*map)) {
       return true;
     }
   }
@@ -177,33 +191,21 @@ static CustomPropertiesMap* EmptyCustomPropertyMap() {
   return map.get();
 }
 
-void CSSVariableHandler::ResolveCSSVariables(CSSPropertyID id,
-                                             const CSSValue& value,
-                                             StyleMap& style_map,
-                                             AttributeHolder* holder,
-                                             const CSSParserConfigs& configs) {
+void CSSVariableHandler::ResolveCSSVariables(
+    CSSPropertyID id, const CSSValue& value, StyleMap& result,
+    const CustomPropertiesMap* custom_properties,
+    const CSSParserConfigs& configs,
+    const CSSValue::HandleCustomPropertyFunc& on_custom_property) {
   if (!enable_fiber_arch_) {
-    // Resolve CSS variables only in FiberArch.
     return;
   }
-  if (!holder) {
-    LOGE("ResolveCSSVariables: holder is null");
-    return;
+  const CustomPropertiesMap* effective_properties = custom_properties;
+  if (!effective_properties) {
+    effective_properties = EmptyCustomPropertyMap();
   }
-
-  const CustomPropertiesMap* custom_properties = holder->GetCustomProperties();
-  if (!custom_properties) {
-    custom_properties = EmptyCustomPropertyMap();
-  }
-
-  const auto handle_custom_property_func = [holder](const base::String& name,
-                                                    const base::String& value) {
-    holder->AddCSSVariableRelated(name, value);
-  };
-  auto property = CSSValue::SubstitutionResolved(value, *custom_properties,
-                                                 handle_custom_property_func);
-  UnitHandler::Process(id, lepus::Value(std::move(property)), style_map,
-                       configs);
+  auto resolved = CSSValue::SubstitutionResolved(value, *effective_properties,
+                                                 on_custom_property);
+  UnitHandler::Process(id, lepus::Value(std::move(resolved)), result, configs);
 }
 
 }  // namespace tasm

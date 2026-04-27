@@ -5,6 +5,7 @@
 
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/unit_handler.h"
+#include "core/renderer/lynx_env_config.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/style/filter_data.h"
 #include "core/style/transition_data.h"
@@ -182,6 +183,21 @@ TEST(CssStyleUtils, ComputeIntStyle) {
       "int style must be number!", configs);
   EXPECT_TRUE(changed);
   EXPECT_EQ(dest, 100000000);
+}
+
+TEST(CssStyleUtils, ResolveFontSizeSelectsViewportBaseFromUnifyConfig) {
+  tasm::LynxEnvConfig config(1000, 800, 1.f, 1.f);
+  tasm::CSSParserConfigs configs;
+  tasm::CSSValue value(10, tasm::CSSValuePattern::VW);
+
+  auto legacy_result =
+      CSSStyleUtils::ResolveFontSize(value, config, false, 16.0, 16.0, configs);
+  ASSERT_TRUE(legacy_result.has_value());
+  EXPECT_FLOAT_EQ(*legacy_result, 100.0f);
+
+  auto unified_result =
+      CSSStyleUtils::ResolveFontSize(value, config, true, 16.0, 16.0, configs);
+  EXPECT_FALSE(unified_result.has_value());
 }
 
 TEST(CssStyleUtils, GetLengthData) {

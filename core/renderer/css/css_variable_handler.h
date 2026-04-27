@@ -34,12 +34,22 @@ class CSSVariableHandler {
 
   bool HasCSSVariableInStyleMap(const StyleMap& map);
 
+  // Checks multiple StyleMaps for CSS variables. Short-circuits on the
+  // first variable found. Null pointers are skipped.
+  bool HasCSSVariableInAnyStyleMap(std::initializer_list<const StyleMap*> maps);
+
   bool HasCSSVariableInHolder(const AttributeHolder* holder);
 
+  // Resolves a CSS variable value by substituting var() references against
+  // the given custom property map, then re-parses the resolved string through
+  // UnitHandler into the result StyleMap.
+  void ResolveCSSVariables(
+      CSSPropertyID id, const CSSValue& value, StyleMap& result,
+      const CustomPropertiesMap* custom_properties,
+      const CSSParserConfigs& configs,
+      const CSSValue::HandleCustomPropertyFunc& on_custom_property = nullptr);
+
  private:
-  void ResolveCSSVariables(CSSPropertyID id, const CSSValue& value,
-                           StyleMap& style_map, AttributeHolder* holder,
-                           const CSSParserConfigs& configs);
   static base::String GetCSSVariableByRule(
       const std::string& format,
       base::MoveOnlyClosure<base::String, const std::string&> rule_matcher);

@@ -3083,21 +3083,11 @@ void FiberElement::SetFontSize(const tasm::CSSValue &value,
   base::flex_optional<float> result;
   if (!value.IsEmpty()) {
     CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, value, false);
-    // Take care: GetParentFontSize() here is used to computed em, so it must be
-    // parent's fontSize.z
     const auto &env_config = element_manager()->GetLynxEnvConfig();
     auto unify_vw_vh_behavior =
         element_manager()->GetDynamicCSSConfigs().unify_vw_vh_behavior_;
-    const auto &vw_base =
-        unify_vw_vh_behavior
-            ? env_config.ViewportWidth()
-            : env_config.vwbase_for_font_size_to_align_with_legacy_bug();
-    const auto &vh_base =
-        unify_vw_vh_behavior
-            ? env_config.ViewportHeight()
-            : env_config.vhbase_for_font_size_to_align_with_legacy_bug();
     result = starlight::CSSStyleUtils::ResolveFontSize(
-        value, env_config, vw_base, vh_base, GetParentFontSize(),
+        value, env_config, unify_vw_vh_behavior, GetParentFontSize(),
         GetRecordedRootFontSize(), element_manager()->GetCSSParserConfigs());
   } else {
     result = GetParentFontSize();

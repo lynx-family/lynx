@@ -161,6 +161,76 @@ TEST_F(CSSVariableHandlerTest, FormatStringWithRule8) {
   ASSERT_EQ(result, "2px solid red");
 }
 
+TEST_F(CSSVariableHandlerTest, HasCSSVariableInAnyStyleMap) {
+  CSSVariableHandler handler;
+
+  StyleMap map_with_var;
+  CSSValue var_value("{{--test}}", CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
+  var_value.ToVarReference();
+  map_with_var.insert_or_assign(kPropertyIDTop, var_value);
+
+  StyleMap map_without_var;
+  map_without_var.insert_or_assign(kPropertyIDLeft,
+                                   CSSValue(10.0f, CSSValuePattern::NUMBER));
+
+  // True when at least one map contains a variable.
+  EXPECT_TRUE(
+      handler.HasCSSVariableInAnyStyleMap({&map_without_var, &map_with_var}));
+
+  // True on the first map that contains a variable.
+  EXPECT_TRUE(
+      handler.HasCSSVariableInAnyStyleMap({&map_with_var, &map_without_var}));
+
+  // False when no maps contain variables.
+  EXPECT_FALSE(handler.HasCSSVariableInAnyStyleMap(
+      {&map_without_var, &map_without_var}));
+
+  // Null pointers are skipped.
+  EXPECT_TRUE(handler.HasCSSVariableInAnyStyleMap({nullptr, &map_with_var}));
+  EXPECT_FALSE(
+      handler.HasCSSVariableInAnyStyleMap({nullptr, &map_without_var}));
+}
+
+TEST_F(CSSVariableHandlerTest, ResolveCSSVariables) {
+  CSSVariableHandler handler(true);
+
+  CustomPropertiesMap custom_props;
+  custom_props.insert_or_assign(
+      base::String("--test"),
+      CSSValue(lepus::Value("20px"), CSSValuePattern::STRING));
+
+  CSSValue var_value("{{--test}}", CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
+  var_value.ToVarReference();
+
+  StyleMap result;
+  handler.ResolveCSSVariables(kPropertyIDTop, var_value, result, &custom_props,
+                              CSSParserConfigs());
+
+  auto it = result.find(kPropertyIDTop);
+  ASSERT_NE(it, result.end());
+  // UnitHandler::Process should parse "20px" as a length value.
+  EXPECT_TRUE(it->second.IsPx());
+  EXPECT_EQ(it->second.GetNumber(), 20);
+}
+
+TEST_F(CSSVariableHandlerTest, ResolveCSSVariablesNullProps) {
+  CSSVariableHandler handler(true);
+
+  CSSValue var_value("{{--missing}}", CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
+  var_value.ToVarReference();
+
+  StyleMap result;
+  // Passing nullptr custom_properties should not crash (falls back to empty).
+  handler.ResolveCSSVariables(kPropertyIDTop, var_value, result, nullptr,
+                              CSSParserConfigs());
+
+  // Result is empty because the variable cannot be resolved.
+  EXPECT_TRUE(result.empty());
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

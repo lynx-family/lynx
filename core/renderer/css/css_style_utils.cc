@@ -472,6 +472,22 @@ base::flex_optional<float> CSSStyleUtils::ResolveFontSize(
   return result;
 }
 
+base::flex_optional<float> CSSStyleUtils::ResolveFontSize(
+    const tasm::CSSValue& value, const tasm::LynxEnvConfig& config,
+    bool unify_vw_vh_behavior, double cur_node_font_size,
+    double root_node_font_size, const tasm::CSSParserConfigs& configs) {
+  const auto& vw_base =
+      unify_vw_vh_behavior
+          ? config.ViewportWidth()
+          : config.vwbase_for_font_size_to_align_with_legacy_bug();
+  const auto& vh_base =
+      unify_vw_vh_behavior
+          ? config.ViewportHeight()
+          : config.vhbase_for_font_size_to_align_with_legacy_bug();
+  return ResolveFontSize(value, config, vw_base, vh_base, cur_node_font_size,
+                         root_node_font_size, configs);
+}
+
 float CSSStyleUtils::RoundValueToPixelGrid(
     const float value, const float physical_pixels_per_layout_unit) {
   return std::roundf(value * physical_pixels_per_layout_unit) /

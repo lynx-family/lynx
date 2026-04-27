@@ -76,6 +76,11 @@ class CSSStyleUtils {
       const starlight::LayoutUnit& vh_base, double cur_node_font_size,
       double root_node_font_size, const tasm::CSSParserConfigs& configs);
 
+  static base::flex_optional<float> ResolveFontSize(
+      const tasm::CSSValue& value, const tasm::LynxEnvConfig& config,
+      bool unify_vw_vh_behavior, double cur_node_font_size,
+      double root_node_font_size, const tasm::CSSParserConfigs& configs);
+
   static float RoundValueToPixelGrid(
       const float value, const float physical_pixels_per_layout_unit);
 

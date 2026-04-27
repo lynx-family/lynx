@@ -211,6 +211,17 @@ class CSSBitsetBase {
   Iterator begin() const { return Iterator(chunks_.data(), 0, 0); }
   Iterator end() const { return Iterator(chunks_.data(), kChunks, kBits); }
 
+  // Builds a bitset from any container whose entries expose `.first` as a
+  // CSSPropertyID (e.g. StyleMap, std::map<CSSPropertyID, ...>).
+  template <typename Container>
+  static CSSBitsetBase FromKeys(const Container& container) {
+    CSSBitsetBase bitset;
+    for (const auto& entry : container) {
+      bitset.Set(entry.first);
+    }
+    return bitset;
+  }
+
  private:
   std::array<uint64_t, kChunks> chunks_;
 
