@@ -271,6 +271,7 @@ export class LynxContext implements IContext {
   setLynxView(lynxView: LynxView): void;
   sendGlobalEvent(name: string, params: Object[]): void;
   public callJSFunction(moduleName: string, method: string, params: Object[]): void;
+  public initWithBuilder(builder: LynxViewBuilder): void;
   public setSessionStorageItem(key: string, value: TemplateData): void;
   public getSessionStorageItem(key: string, callback: SessionStorageCallback): void;
   public subscribeSessionStorage(key: string, callback: SessionStorageCallback): number;
