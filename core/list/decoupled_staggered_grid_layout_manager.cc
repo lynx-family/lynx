@@ -207,21 +207,22 @@ void StaggeredGridLayoutManager::OnLayoutChildrenInternal(
 
   // step 1. Bind all visible ItemHolders.
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
-                    GRID_LAYOUT_MANAGER_BIND_ALL_VISIBLE_ITEM, "anchor_index",
-                    anchor_info.index_);
-  bool should_fill = BindAllVisibleItemHolders();
-  while (should_fill) {
+                    STAGGERED_GRID_LAYOUT_MANAGER_BIND_ALL_VISIBLE_ITEM,
+                    "anchor_index", anchor_info.index_);
+  auto layout_and_adjust = [this, &anchor_info]() {
     LayoutInvalidItemHolder(0);
     content_size_ = GetTargetContentSize();
     list_anchor_manager_->AdjustContentOffsetWithAnchor(anchor_info,
                                                         content_offset_);
+  };
+  bool should_fill = BindAllVisibleItemHolders();
+  do {
+    layout_and_adjust();
     should_fill = BindAllVisibleItemHolders();
-  }
-  LayoutInvalidItemHolder(0);
-  content_size_ = GetTargetContentSize();
-  list_anchor_manager_->AdjustContentOffsetWithAnchor(anchor_info,
-                                                      content_offset_);
+  } while (should_fill);
+  layout_and_adjust();
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
+
   if (!list_container_->enable_batch_render()) {
     // TODO(dingwang.wxx): If use initial-scroll-index, this may lead to fill
     // from the item 0 to initial-scroll-index. So we can remove this logic.
