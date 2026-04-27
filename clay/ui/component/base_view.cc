@@ -28,6 +28,7 @@
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/background_data.h"
 #include "clay/ui/component/base_view_animation_mutator.h"
+#include "clay/ui/component/base_view_extra_data.h"
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/editable/editable_view.h"
 #include "clay/ui/component/editable/textarea_ng_view.h"
@@ -112,11 +113,11 @@ BaseView::BaseView(std::unique_ptr<RenderObject> render_object,
 BaseView::BaseView(int id, std::string tag_name,
                    std::unique_ptr<RenderObject> render_object,
                    PageView* page_view)
-    : id_(id),
-      tag_(tag_name),
-      page_view_(page_view),
+    : page_view_(page_view),
       render_object_(std::move(render_object)),
       weak_factory_(this),
+      id_(id),
+      tag_(tag_name),
       overflow_(page_view_->DefaultOverflow()) {
   render_object_->SetID(id_);
   render_object_->SetOverflow(overflow_);
@@ -144,6 +145,158 @@ BaseView::BaseView(int id, std::string tag_name,
   }
 }
 
+BaseViewExtraData& BaseView::EnsureExtraData() {
+  if (!extra_data_) {
+    extra_data_ = std::make_unique<BaseViewExtraData>();
+  }
+  return *extra_data_;
+}
+
+BaseViewAnimationExtra& BaseView::EnsureAnimationExtra() {
+  auto& extra = EnsureExtraData();
+  if (!extra.animation) {
+    extra.animation = std::make_unique<BaseViewAnimationExtra>();
+  }
+  return *extra.animation;
+}
+
+BaseViewEventExtra& BaseView::EnsureEventExtra() {
+  auto& extra = EnsureExtraData();
+  if (!extra.event) {
+    extra.event = std::make_unique<BaseViewEventExtra>();
+  }
+  return *extra.event;
+}
+
+BaseViewMetadataExtra& BaseView::EnsureMetadataExtra() {
+  auto& extra = EnsureExtraData();
+  if (!extra.metadata) {
+    extra.metadata = std::make_unique<BaseViewMetadataExtra>();
+  }
+  return *extra.metadata;
+}
+
+BaseViewVisualExtra& BaseView::EnsureVisualExtra() {
+  auto& extra = EnsureExtraData();
+  if (!extra.visual) {
+    extra.visual = std::make_unique<BaseViewVisualExtra>();
+  }
+  return *extra.visual;
+}
+
+BaseViewPlatformExtra& BaseView::EnsurePlatformExtra() {
+  auto& extra = EnsureExtraData();
+  if (!extra.platform) {
+    extra.platform = std::make_unique<BaseViewPlatformExtra>();
+  }
+  return *extra.platform;
+}
+
+BaseViewExtraData* BaseView::GetExtraData() { return extra_data_.get(); }
+
+const BaseViewExtraData* BaseView::GetExtraData() const {
+  return extra_data_.get();
+}
+
+BaseViewAnimationExtra* BaseView::GetAnimationExtra() {
+  return extra_data_ ? extra_data_->animation.get() : nullptr;
+}
+
+const BaseViewAnimationExtra* BaseView::GetAnimationExtra() const {
+  return extra_data_ ? extra_data_->animation.get() : nullptr;
+}
+
+BaseViewEventExtra* BaseView::GetEventExtra() {
+  return extra_data_ ? extra_data_->event.get() : nullptr;
+}
+
+const BaseViewEventExtra* BaseView::GetEventExtra() const {
+  return extra_data_ ? extra_data_->event.get() : nullptr;
+}
+
+BaseViewMetadataExtra* BaseView::GetMetadataExtra() {
+  return extra_data_ ? extra_data_->metadata.get() : nullptr;
+}
+
+const BaseViewMetadataExtra* BaseView::GetMetadataExtra() const {
+  return extra_data_ ? extra_data_->metadata.get() : nullptr;
+}
+
+BaseViewVisualExtra* BaseView::GetVisualExtra() {
+  return extra_data_ ? extra_data_->visual.get() : nullptr;
+}
+
+const BaseViewVisualExtra* BaseView::GetVisualExtra() const {
+  return extra_data_ ? extra_data_->visual.get() : nullptr;
+}
+
+BaseViewPlatformExtra* BaseView::GetPlatformExtra() {
+  return extra_data_ ? extra_data_->platform.get() : nullptr;
+}
+
+const BaseViewPlatformExtra* BaseView::GetPlatformExtra() const {
+  return extra_data_ ? extra_data_->platform.get() : nullptr;
+}
+
+const std::vector<std::string>* BaseView::GetEventCallbacks() const {
+  auto* event_extra = GetEventExtra();
+  if (!event_extra || !event_extra->events) {
+    return nullptr;
+  }
+  return &*event_extra->events;
+}
+
+void BaseView::ResetAnimationExtra() {
+  if (extra_data_) {
+    extra_data_->animation.reset();
+  }
+}
+
+const std::string& BaseView::GetComponentName() const {
+  static const std::string kEmpty;
+  auto* metadata_extra = GetMetadataExtra();
+  return metadata_extra ? metadata_extra->name : kEmpty;
+}
+
+void BaseView::SetComponentName(std::string name) {
+  EnsureMetadataExtra().name = std::move(name);
+}
+
+const std::string& BaseView::GetIdSelector() const {
+  static const std::string kEmpty;
+  auto* metadata_extra = GetMetadataExtra();
+  return metadata_extra ? metadata_extra->id_selector : kEmpty;
+}
+
+void BaseView::SetIdSelector(std::string selector) {
+  EnsureMetadataExtra().id_selector = std::move(selector);
+}
+
+const std::string& BaseView::GetRefIdSelector() const {
+  static const std::string kEmpty;
+  auto* metadata_extra = GetMetadataExtra();
+  return metadata_extra ? metadata_extra->ref_id_selector : kEmpty;
+}
+
+std::optional<bool> BaseView::IgnoreFocus() const {
+  auto* metadata_extra = GetMetadataExtra();
+  return metadata_extra ? metadata_extra->ignore_focus : std::optional<bool>{};
+}
+
+const clay::Value& BaseView::GetDataSet() const {
+  static const clay::Value kEmptyMap = clay::Value(clay::Value::Map());
+  auto* metadata_extra = GetMetadataExtra();
+  return metadata_extra ? metadata_extra->data_set : kEmptyMap;
+}
+
+const std::string& BaseView::FocusId() const { return GetIdSelector(); }
+
+const std::string& BaseView::ItemKey() const {
+  static const std::string kEmpty;
+  auto* metadata_extra = GetMetadataExtra();
+  return metadata_extra ? metadata_extra->item_key : kEmpty;
+}
+
 BaseView::~BaseView() {
   if (page_view() != this) {
     auto mouse_region_manager = page_view()->mouse_region_manager();
@@ -158,7 +311,7 @@ BaseView::~BaseView() {
             layout_controller->RemoveDirtyNode(this->GetWeakPtr());
         if (has_this_node) {
           FML_LOG(ERROR) << "remove a dirty node in destruct, tag:" << tag_
-                         << ", id :" << id_selector_;
+                         << ", id :" << GetIdSelector();
         }
       }
     }
@@ -173,15 +326,42 @@ BaseView::~BaseView() {
     }
 #endif
   }
-  if (destruct_listener_) {
-    destruct_listener_(this);
+  if (auto* event_extra = GetEventExtra();
+      event_extra && event_extra->destruct_listener) {
+    event_extra->destruct_listener(this);
   }
   // Destruct animation manually, this would trigger SetProperty at end of
   // animators.
-  keyframes_mgr_.reset();
-  transition_mgr_.reset();
-  // KeyframesMgr & TransitionMgr refs this, so we need to release it after.
-  animation_mutator_.reset();
+  if (auto* animation_extra = GetAnimationExtra()) {
+    animation_extra->keyframes_mgr.reset();
+    animation_extra->transition_mgr.reset();
+    // KeyframesMgr & TransitionMgr refs this, so we need to release it after.
+    animation_extra->animation_mutator.reset();
+  }
+}
+
+void BaseView::SetDestructListener(const std::function<void(BaseView*)>& func) {
+  EnsureEventExtra().destruct_listener = func;
+}
+
+bool BaseView::HasConsumeSlideEventAngles() const {
+  auto* event_extra = GetEventExtra();
+  return event_extra && !event_extra->consume_slide_event_ranges.empty();
+}
+
+bool BaseView::HasEvent(const std::string& event) const {
+  auto* events = GetEventCallbacks();
+  return events &&
+         std::find(events->begin(), events->end(), event) != events->end();
+}
+
+void BaseView::SetEventThrough(bool event_through) {
+  EnsureEventExtra().event_through = event_through;
+}
+
+std::optional<bool> BaseView::CanEventThrough() const {
+  auto* event_extra = GetEventExtra();
+  return event_extra ? event_extra->event_through : std::optional<bool>{};
 }
 
 void BaseView::Destroy() {
@@ -194,22 +374,27 @@ void BaseView::Destroy() {
   render_object()->Destroy();
   SetFocusable(false);
   // incase of double release
-  data_set_ = clay::Value::Null();
+  EnsureMetadataExtra().data_set = clay::Value::Null();
 }
 
 BaseViewAnimationMutator* BaseView::GetAnimationMutator() {
-  if (!animation_mutator_) {
-    animation_mutator_ = std::make_unique<BaseViewAnimationMutator>(this);
+  auto& animation_extra = EnsureAnimationExtra();
+  if (!animation_extra.animation_mutator) {
+    animation_extra.animation_mutator =
+        std::make_unique<BaseViewAnimationMutator>(this);
   }
-  return animation_mutator_.get();
+  return animation_extra.animation_mutator.get();
 }
 
 bool BaseView::IsAppRegionDraggable() {
-  if (app_region_.compare(attr_value::kAppRegionDrag) == 0) {
+  auto* platform_extra = GetPlatformExtra();
+  const std::string& app_region =
+      platform_extra ? platform_extra->app_region : std::string();
+  if (app_region.compare(attr_value::kAppRegionDrag) == 0) {
     return true;
-  } else if (app_region_.compare(attr_value::kAppRegionNoDrag) == 0) {
+  } else if (app_region.compare(attr_value::kAppRegionNoDrag) == 0) {
     return false;
-  } else if (app_region_.empty() && Parent()) {
+  } else if (app_region.empty() && Parent()) {
     return Parent()->IsAppRegionDraggable();
   }
   return false;
@@ -361,23 +546,31 @@ Scrollable* BaseView::FindAncestorScrollableView(BaseView* child) {
 
 void BaseView::AddGestureRecognizer(
     std::unique_ptr<GestureRecognizer> recognizer) {
-  gesture_recognizers_.push_back(std::move(recognizer));
+  EnsureEventExtra().gesture_recognizers.push_back(std::move(recognizer));
 }
 
 void BaseView::RemoveGestureRecognizer(GestureRecognizer* recognizer) {
   if (!recognizer) {
     return;
   }
-  for (auto it = gesture_recognizers_.begin(); it != gesture_recognizers_.end();
-       it++) {
+  auto* event_extra = GetEventExtra();
+  if (!event_extra) {
+    return;
+  }
+  for (auto it = event_extra->gesture_recognizers.begin();
+       it != event_extra->gesture_recognizers.end(); it++) {
     if (it->get() == recognizer) {
-      gesture_recognizers_.erase(it);
+      event_extra->gesture_recognizers.erase(it);
       return;
     }
   }
 }
 
-void BaseView::ClearGestureRecognizers() { gesture_recognizers_.clear(); }
+void BaseView::ClearGestureRecognizers() {
+  if (auto* event_extra = GetEventExtra()) {
+    event_extra->gesture_recognizers.clear();
+  }
+}
 
 int BaseView::GetChildIndex(BaseView* child) {
   auto it = std::find(children_.begin(), children_.end(), child);
@@ -457,18 +650,21 @@ void BaseView::SetBound(float left, float top, float width, float height) {
   SetX(left);
   SetWidth(width);
 
+  auto* animation_extra = GetAnimationExtra();
   const bool should_couple_top_with_height_transition =
       top_ != top && height_ != height && IsTransitionAnimationReady() &&
-      transition_mgr_ &&
-      transition_mgr_->Enabled(ClayAnimationPropertyType::kHeight) &&
-      !transition_mgr_->Enabled(ClayAnimationPropertyType::kTop);
+      animation_extra && animation_extra->transition_mgr &&
+      animation_extra->transition_mgr->Enabled(
+          ClayAnimationPropertyType::kHeight) &&
+      !animation_extra->transition_mgr->Enabled(
+          ClayAnimationPropertyType::kTop);
 
   if (should_couple_top_with_height_transition) {
-    if (transition_mgr_->TransitionTo(ClayAnimationPropertyType::kHeight,
-                                      height)) {
-      transition_mgr_->TransitionWithTiming(ClayAnimationPropertyType::kTop,
-                                            top,
-                                            ClayAnimationPropertyType::kHeight);
+    auto* transition_mgr = animation_extra->transition_mgr.get();
+    if (transition_mgr->TransitionTo(ClayAnimationPropertyType::kHeight,
+                                     height)) {
+      transition_mgr->TransitionWithTiming(ClayAnimationPropertyType::kTop, top,
+                                           ClayAnimationPropertyType::kHeight);
     } else {
       SetProperty(ClayAnimationPropertyType::kTop, top, false);
       SetProperty(ClayAnimationPropertyType::kHeight, height, false);
@@ -785,7 +981,7 @@ void BaseView::SetBackgroundColor(const Color& color) {
 }
 
 void BaseView::SetCursor(const std::vector<std::string>& vec) {
-  cursor_ = std::make_unique<MouseCursor>(vec);
+  EnsureVisualExtra().cursor = std::make_unique<MouseCursor>(vec);
   auto* mouse_region_manager = page_view_->mouse_region_manager();
   if (mouse_region_manager) {
     mouse_region_manager->AddCursorHolder(this);
@@ -796,7 +992,10 @@ void BaseView::SetCursor(const std::vector<std::string>& vec) {
   }
 }
 
-MouseCursor* BaseView::GetMouseCursor() { return cursor_.get(); }
+MouseCursor* BaseView::GetMouseCursor() {
+  auto* visual_extra = GetVisualExtra();
+  return visual_extra ? visual_extra->cursor.get() : nullptr;
+}
 
 void BaseView::SetCursor(const clay::Value::Array& array) {
   // array like:
@@ -805,7 +1004,8 @@ void BaseView::SetCursor(const clay::Value::Array& array) {
   // 1(uint32_t)
   // keyword(string)
 
-  cursor_ = std::make_unique<MouseCursor>();
+  auto& cursor = EnsureVisualExtra().cursor;
+  cursor = std::make_unique<MouseCursor>();
 
   bool is_parse_error = false;
 
@@ -838,7 +1038,7 @@ void BaseView::SetCursor(const clay::Value::Array& array) {
         // parse y
         auto y = utils::GetInt(url_array[2], 0);
 
-        cursor_->AddCursor({path_type, path, x, y});
+        cursor->AddCursor({path_type, path, x, y});
 
         ++i;
         break;
@@ -847,7 +1047,7 @@ void BaseView::SetCursor(const clay::Value::Array& array) {
         ADD_CHECK_OVERFLOW;
         auto str = utils::GetCString(array[i], "default");
         auto type = CursorTypeUtil::ParseCursorType(str);
-        cursor_->AddCursor({type, str});
+        cursor->AddCursor({type, str});
 
         ++i;
         break;
@@ -861,7 +1061,7 @@ void BaseView::SetCursor(const clay::Value::Array& array) {
     if (is_parse_error) {
       FML_DLOG(ERROR)
           << "error cursor format! Use default cursor or first cursor";
-      cursor_->AddCursor(Cursor(CursorTypes::kBasic, "default"));
+      cursor->AddCursor(Cursor(CursorTypes::kBasic, "default"));
       break;
     }
   }
@@ -869,7 +1069,7 @@ void BaseView::SetCursor(const clay::Value::Array& array) {
 
   // in case of `cursor:none`
   if (array.size() == 0) {
-    cursor_->AddCursor(Cursor(CursorTypes::kNone, "none"));
+    cursor->AddCursor(Cursor(CursorTypes::kNone, "none"));
   }
 
   auto* mouse_region_manager = page_view_->mouse_region_manager();
@@ -906,7 +1106,9 @@ static void AddLameCurveToPath(GrPath& path, float rx, float ry, float cx,
 void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
                                  bool is_clip_path) {
   auto shape_type = static_cast<ClayBasicShapeType>(utils::GetInt(array[0]));
-  auto& path_data = is_clip_path ? clip_path_data_ : offset_path_data_;
+  auto& visual_extra = EnsureVisualExtra();
+  auto& path_data = is_clip_path ? visual_extra.clip_path_data
+                                 : visual_extra.offset_path_data;
   switch (shape_type) {
     case ClayBasicShapeType::kCircle: {
       ClayPlatformLength radius_length, x_pos_length, y_pos_length;
@@ -1089,7 +1291,12 @@ void BaseView::DrawClipPath(bool is_clip_path) {
     render_object()->SetOffsetPath(path); \
   }
 
-  auto& path_data = is_clip_path ? clip_path_data_ : offset_path_data_;
+  auto* visual_extra = GetVisualExtra();
+  if (!visual_extra) {
+    return;
+  }
+  auto& path_data = is_clip_path ? visual_extra->clip_path_data
+                                 : visual_extra->offset_path_data;
   switch (path_data->clip_type) {
     case ClipPathData::ClipType::kCircle: {
       if (path_data->params.size() != 4) {
@@ -1266,12 +1473,16 @@ void BaseView::DrawClipPath(bool is_clip_path) {
 }
 
 void BaseView::ClearClipPath() {
-  clip_path_data_.reset();
+  if (auto* visual_extra = GetVisualExtra()) {
+    visual_extra->clip_path_data.reset();
+  }
   render_object()->ClearClipPath();
 }
 
 void BaseView::ClearOffsetPath() {
-  offset_path_data_.reset();
+  if (auto* visual_extra = GetVisualExtra()) {
+    visual_extra->offset_path_data.reset();
+  }
   render_object()->ClearOffsetPath();
 }
 
@@ -1582,12 +1793,13 @@ void BaseView::SetMaskClip(const clay::Value::Array& array) {
 }
 
 TransitionManager* BaseView::TransitionMgr() {
-  if (!transition_mgr_) {
-    transition_mgr_ =
+  auto& animation_extra = EnsureAnimationExtra();
+  if (!animation_extra.transition_mgr) {
+    animation_extra.transition_mgr =
         std::make_unique<TransitionManager>(GetAnimationMutator());
-    transition_mgr_->SetEventHandler(GetAnimationMutator());
+    animation_extra.transition_mgr->SetEventHandler(GetAnimationMutator());
   }
-  return transition_mgr_.get();
+  return animation_extra.transition_mgr.get();
 }
 
 void BaseView::TransitionTo(ClayAnimationPropertyType type, float value) {
@@ -1748,10 +1960,11 @@ void BaseView::SetTransformOperations(const TransformOperations& value,
   Transform old_transform = GetTransform();
 #endif
   float old_translate_z = render_object()->GetTranslateZ();
-  if (post_translation_.has_value()) {
+  if (auto* visual_extra = GetVisualExtra();
+      visual_extra && visual_extra->post_translation.has_value()) {
     TransformOperations transform;
-    transform.AppendTranslate(post_translation_->x(), post_translation_->y(),
-                              0);
+    transform.AppendTranslate(visual_extra->post_translation->x(),
+                              visual_extra->post_translation->y(), 0);
     transform.Append(value);
     render_object()->SetTransformOperations(transform, is_from_animation);
   } else {
@@ -1895,26 +2108,39 @@ const KeyframesMap* BaseView::GetKeyframesMap(
 }
 
 KeyframesManager* BaseView::KeyframesMgr() {
-  if (!keyframes_mgr_) {
-    keyframes_mgr_ = std::make_unique<KeyframesManager>(GetAnimationMutator());
-    keyframes_mgr_->SetEventHandler(GetAnimationMutator());
+  auto& animation_extra = EnsureAnimationExtra();
+  if (!animation_extra.keyframes_mgr) {
+    animation_extra.keyframes_mgr =
+        std::make_unique<KeyframesManager>(GetAnimationMutator());
+    animation_extra.keyframes_mgr->SetEventHandler(GetAnimationMutator());
   }
-  return keyframes_mgr_.get();
+  return animation_extra.keyframes_mgr.get();
 }
 
 void BaseView::SetAnimation(const std::vector<AnimationData>& data) {
   if (!data.empty()) {
     SetRepaintBoundary(true);
   }
-  animation_ = std::make_optional<std::vector<AnimationData>>(data);
+  EnsureAnimationExtra().animation =
+      std::make_optional<std::vector<AnimationData>>(data);
+}
+
+bool BaseView::HasAnimation() const {
+  auto* animation_extra = GetAnimationExtra();
+  return animation_extra && animation_extra->animation.has_value();
+}
+
+const std::vector<AnimationData>& BaseView::Animation() const {
+  return *GetAnimationExtra()->animation;
 }
 
 void BaseView::OnAnimationNodeReady() {
-  if (!animation_.has_value()) {
+  auto* animation_extra = GetAnimationExtra();
+  if (!animation_extra || !animation_extra->animation.has_value()) {
     return;
   }
 
-  auto result = KeyframesMgr()->UpdateData(*animation_);
+  auto result = KeyframesMgr()->UpdateData(*animation_extra->animation);
   if (result.data_has_changed) {
     // Animations may not play without this
     page_view()->RequestPaint();
@@ -2020,8 +2246,10 @@ void BaseView::SetTransform(const TransformOperations& ops,
 }
 
 void BaseView::SetTransform(const std::vector<TransformRaw>& transform_raw) {
-  transform_raw_ = transform_raw;
-  auto ops = clay::TransformOperations(*transform_raw_, width_, height_);
+  auto& animation_extra = EnsureAnimationExtra();
+  animation_extra.transform_raw = transform_raw;
+  auto ops = clay::TransformOperations(*animation_extra.transform_raw, width_,
+                                       height_);
   TransformOperations old_ops;
   GetProperty(ClayAnimationPropertyType::kTransform, old_ops);
   constexpr float tolerance = 0.001;
@@ -2037,7 +2265,7 @@ void BaseView::SetTransform(const std::vector<TransformRaw>& transform_raw) {
 }
 
 void BaseView::SetTransformOrigin(std::optional<TransformOrigin> origin) {
-  transform_origin_ = std::move(origin);
+  EnsureAnimationExtra().transform_origin = std::move(origin);
   UpdateRenderObjectTransformOrigin();
 }
 
@@ -2083,15 +2311,17 @@ void BaseView::SetPerspective(const clay::Value::Array& array) {
                   CAMERA_DISTANCE_NORMALIZATION_MULTIPLIER *
                   DEFAULT_PERSPECTIVE_FACTOR;
   }
-  if (perspective != perspective_value_) {
-    perspective_value_ = perspective;
-    render_object()->SetPerspective(perspective_value_.value());
+  auto& animation_extra = EnsureAnimationExtra();
+  if (perspective != animation_extra.perspective_value) {
+    animation_extra.perspective_value = perspective;
+    render_object()->SetPerspective(animation_extra.perspective_value.value());
   }
 }
 
 void BaseView::SetConsumeSlideEventDirection(const clay::Value::Array& array) {
   size_t array_size = array.size();
-  consume_slide_event_ranges_.resize(array_size, {0, 0});
+  auto& ranges = EnsureEventExtra().consume_slide_event_ranges;
+  ranges.resize(array_size, {0, 0});
   for (size_t i = 0; i < array_size; i++) {
     if (!array[i].IsArray()) {
       continue;
@@ -2100,13 +2330,16 @@ void BaseView::SetConsumeSlideEventDirection(const clay::Value::Array& array) {
     if (angles.size() != 2) {
       continue;
     }
-    consume_slide_event_ranges_[i] = {utils::GetNum(angles[0]),
-                                      utils::GetNum(angles[1])};
+    ranges[i] = {utils::GetNum(angles[0]), utils::GetNum(angles[1])};
   }
 }
 
 bool BaseView::ConsumeSlideEvent(float angle) {
-  for (const auto& range : consume_slide_event_ranges_) {
+  auto* event_extra = GetEventExtra();
+  if (!event_extra) {
+    return false;
+  }
+  for (const auto& range : event_extra->consume_slide_event_ranges) {
     if (angle >= range.first && angle <= range.second) {
       return true;
     }
@@ -2123,8 +2356,9 @@ Transform BaseView::GetTransform() const {
 }
 
 FloatPoint BaseView::GetTransformOrigin() const {
-  if (transform_origin_.has_value()) {
-    return transform_origin_->GetValue(width_, height_);
+  if (auto* animation_extra = GetAnimationExtra();
+      animation_extra && animation_extra->transform_origin.has_value()) {
+    return animation_extra->transform_origin->GetValue(width_, height_);
   }
   return FloatPoint(width_ / 2.0f, height_ / 2.0f);
 }
@@ -2375,23 +2609,30 @@ void BaseView::OnContentSizeChanged(const FloatRect& old_rect,
     border.UpdateRadius(width_, height_);
     render_object()->MarkNeedsPaint();
   }
-  if (transform_raw_.has_value()) {  // update transform percent values
-    if (transition_mgr_ && transition_mgr_->IsAnimationRunning(
-                               ClayAnimationPropertyType::kTransform)) {
-      transition_mgr_->UpdateAnimationValue(
+  if (auto* animation_extra = GetAnimationExtra();
+      animation_extra && animation_extra->transform_raw.has_value()) {
+    // Update transform percent values when layout size changes.
+    if (animation_extra->transition_mgr &&
+        animation_extra->transition_mgr->IsAnimationRunning(
+            ClayAnimationPropertyType::kTransform)) {
+      animation_extra->transition_mgr->UpdateAnimationValue(
           ClayAnimationPropertyType::kTransform,
-          clay::TransformOperations(*transform_raw_, width_, height_));
+          clay::TransformOperations(*animation_extra->transform_raw, width_,
+                                    height_));
     } else {
       SetProperty(ClayAnimationPropertyType::kTransform,
-                  clay::TransformOperations(*transform_raw_, width_, height_),
+                  clay::TransformOperations(*animation_extra->transform_raw,
+                                            width_, height_),
                   false);
     }
   }
 
-  if (clip_path_data_.has_value()) {
+  if (auto* visual_extra = GetVisualExtra();
+      visual_extra && visual_extra->clip_path_data.has_value()) {
     DrawClipPath(true);
   }
-  if (offset_path_data_.has_value()) {
+  if (auto* visual_extra = GetVisualExtra();
+      visual_extra && visual_extra->offset_path_data.has_value()) {
     DrawClipPath(false);
   }
 
@@ -2400,8 +2641,10 @@ void BaseView::OnContentSizeChanged(const FloatRect& old_rect,
 
 void BaseView::OnBoundsChanged(const FloatRect& old_bounds,
                                const FloatRect& new_bounds) {
-  if (keyframes_mgr_ && old_bounds.size() != new_bounds.size()) {
-    keyframes_mgr_->UpdateLayoutSize();
+  if (auto* animation_extra = GetAnimationExtra();
+      animation_extra && animation_extra->keyframes_mgr &&
+      old_bounds.size() != new_bounds.size()) {
+    animation_extra->keyframes_mgr->UpdateLayoutSize();
   }
   // TODO(wanchen): There may be a better way to deal with incomplete scrolling
   // of scroll-view
@@ -2481,31 +2724,39 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
 void BaseView::HandleEvent(const PointerEvent& event) {
   if (event.type == PointerEvent::EventType::kDownEvent ||
       event.type == PointerEvent::EventType::kPanZoomStartEvent) {
-    if (app_region_.compare(attr_value::kAppRegionDrag) == 0) {
+    auto* platform_extra = GetPlatformExtra();
+    if (platform_extra &&
+        platform_extra->app_region.compare(attr_value::kAppRegionDrag) == 0) {
       FloatPoint relative_position;
       auto top_view =
           GetTopViewToAcceptEvent(event.position, &relative_position);
       if (!top_view || (top_view && top_view->IsAppRegionDraggable())) {
-        event_draggable_ = event;
-        can_draggable_ = true;
+        platform_extra->event_draggable = event;
+        platform_extra->can_draggable = true;
       }
     }
 
-    for (auto& recognizer : gesture_recognizers_) {
-      recognizer->AddPointer(event);
+    if (auto* event_extra = GetEventExtra()) {
+      for (auto& recognizer : event_extra->gesture_recognizers) {
+        recognizer->AddPointer(event);
+      }
     }
   } else if (event.type == PointerEvent::EventType::kMoveEvent ||
              event.type == PointerEvent::EventType::kPanZoomUpdateEvent) {
-    if (can_draggable_) {
+    auto* platform_extra = GetPlatformExtra();
+    if (platform_extra && platform_extra->can_draggable) {
       float pixel_tolerance = FromLogical(8);
       float pixel_distance =
-          (event.position - event_draggable_.position).distance();
+          (event.position - platform_extra->event_draggable.position)
+              .distance();
       if (pixel_distance > pixel_tolerance) {
         page_view_->MoveWindow();
       }
     }
   } else {
-    can_draggable_ = false;
+    if (auto* platform_extra = GetPlatformExtra()) {
+      platform_extra->can_draggable = false;
+    }
   }
 }
 
@@ -2513,7 +2764,11 @@ bool BaseView::HasDragGestureRecognizer(ScrollDirection direction) const {
   GestureRecognizerType type = (direction == ScrollDirection::kVertical)
                                    ? GestureRecognizerType::kVerticalDrag
                                    : GestureRecognizerType::kHorizontalDrag;
-  for (auto& recognizer : gesture_recognizers_) {
+  auto* event_extra = GetEventExtra();
+  if (!event_extra) {
+    return false;
+  }
+  for (auto& recognizer : event_extra->gesture_recognizers) {
     if (recognizer) {
       if (recognizer->getType() == type ||
           recognizer->getType() == GestureRecognizerType::kDragGesture) {
@@ -2525,7 +2780,11 @@ bool BaseView::HasDragGestureRecognizer(ScrollDirection direction) const {
 }
 
 bool BaseView::HasTapGestureRecognizer() const {
-  for (auto& recognizer : gesture_recognizers_) {
+  auto* event_extra = GetEventExtra();
+  if (!event_extra) {
+    return false;
+  }
+  for (auto& recognizer : event_extra->gesture_recognizers) {
     if (recognizer && recognizer->getType() == GestureRecognizerType::kTap) {
       return true;
     }
@@ -2534,7 +2793,11 @@ bool BaseView::HasTapGestureRecognizer() const {
 }
 
 bool BaseView::HasLongPressGestureRecognizer() const {
-  for (auto& recognizer : gesture_recognizers_) {
+  auto* event_extra = GetEventExtra();
+  if (!event_extra) {
+    return false;
+  }
+  for (auto& recognizer : event_extra->gesture_recognizers) {
     if (recognizer &&
         recognizer->getType() == GestureRecognizerType::kLongPress) {
       return true;
@@ -2685,8 +2948,10 @@ FloatPoint BaseView::GetPointBySelf(const FloatPoint& point_by_page) const {
     point.MoveBy(offset);
   }
   point.Move(-Left(), -Top());
-  if (sticky_) {
-    point.Move(-sticky_.value().offset_x, -sticky_.value().offset_y);
+  if (auto* visual_extra = GetVisualExtra();
+      visual_extra && visual_extra->sticky) {
+    point.Move(-visual_extra->sticky->offset_x,
+               -visual_extra->sticky->offset_y);
   }
 
   auto origin = GetTransformOrigin();
@@ -2742,20 +3007,20 @@ bool BaseView::HandleCommonAttribute(const char* attr,
   auto kw = GetKeywordID(attr);
   switch (kw) {
     case KeywordID::kIdselector:
-      id_selector_ = utils::GetCString(value);
+      SetIdSelector(utils::GetCString(value));
       break;
     case KeywordID::kReactRef:
-      ref_id_selector_ = utils::GetCString(value);
+      EnsureMetadataExtra().ref_id_selector = utils::GetCString(value);
       break;
     case KeywordID::kItemKey:
-      item_key_ = utils::GetCString(value);
+      EnsureMetadataExtra().item_key = utils::GetCString(value);
       break;
     case KeywordID::kXAppRegion: {
       int app_region_type = utils::GetInt(value);
       if (app_region_type == app_region_value::kAppRegionDrag) {
-        app_region_ = attr_value::kAppRegionDrag;
+        EnsurePlatformExtra().app_region = attr_value::kAppRegionDrag;
       } else if (app_region_type == app_region_value::kAppRegionNoDrag) {
-        app_region_ = attr_value::kAppRegionNoDrag;
+        EnsurePlatformExtra().app_region = attr_value::kAppRegionNoDrag;
       }
     } break;
     case KeywordID::kFocusable:
@@ -2763,7 +3028,7 @@ bool BaseView::HandleCommonAttribute(const char* attr,
       break;
     case KeywordID::kIgnoreFocus: {
       auto ignore_focus = attribute_utils::GetBool(value);
-      ignore_focus_ = ignore_focus;
+      EnsureMetadataExtra().ignore_focus = ignore_focus;
     } break;
     case KeywordID::kIntersectionObservers: {
       auto* manager = page_view_->intersection_observer_manager();
@@ -2810,14 +3075,14 @@ bool BaseView::HandleCommonAttribute(const char* attr,
       SetEnableNewAnimator(utils::GetBool(value));
       break;
     case KeywordID::kName:
-      name_ = utils::GetCString(value);
+      SetComponentName(utils::GetCString(value));
       break;
     case KeywordID::kDataset:
-      data_set_ = CloneClayValue(value);
+      EnsureMetadataExtra().data_set = CloneClayValue(value);
       break;
     case KeywordID::kEventThrough:
-      event_through_ = utils::GetBool(value);
-      if (event_through_) {
+      SetEventThrough(utils::GetBool(value));
+      if (CanEventThrough()) {
         auto task_runners = page_view_->GetTaskRunners();
         if (task_runners.GetPlatformTaskRunner() !=
             task_runners.GetUITaskRunner()) {
@@ -2920,8 +3185,9 @@ bool BaseView::UpdateExposeAttrs(const char* attr, const clay::Value& value) {
 
 void BaseView::AddEventCallback(const char* event_c) {
   std::string event(event_c);
-  if (!events_) {
-    events_ = std::make_optional<std::vector<std::string>>();
+  auto& events = EnsureEventExtra().events;
+  if (!events) {
+    events = std::make_optional<std::vector<std::string>>();
   }
   if (event.compare(event_attr::kEventLayoutChange) == 0) {
     enable_layout_change_event_ = true;
@@ -2931,7 +3197,7 @@ void BaseView::AddEventCallback(const char* event_c) {
       return;
     }
   }
-  events_->emplace_back(event);
+  events->emplace_back(event);
 }
 
 void BaseView::SetGestureDetectorMap(const GestureMap& gesture_detector_map) {
@@ -3018,8 +3284,8 @@ std::string BaseView::ToString() const {
     ss << " padding=(" << PaddingLeft() << "," << PaddingTop() << ","
        << PaddingRight() << "," << PaddingBottom() << ")";
   }
-  if (!id_selector_.empty()) {
-    ss << " id_selector=" << id_selector_;
+  if (!GetIdSelector().empty()) {
+    ss << " id_selector=" << GetIdSelector();
   }
   if (!Visible()) {
     ss << " hidden";
@@ -3077,7 +3343,7 @@ void BaseView::boundingClientRect(const LynxModuleValues& args,
   map["bottom"] = clay::Value(ToLogical(rect.MaxY()));
   map["width"] = clay::Value(ToLogical(rect.width()));
   map["height"] = clay::Value(ToLogical(rect.height()));
-  map["dataset"] = CloneClayValue(data_set_);
+  map["dataset"] = CloneClayValue(GetDataSet());
   callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(map)));
 }
 
@@ -3325,8 +3591,10 @@ void BaseView::UpdateCacheStrategy() {
 }
 
 void BaseView::EndAllTransitionsRecursively() {
-  if (transition_mgr_ && transition_mgr_->HasAnimationRunning()) {
-    transition_mgr_->EndAllAnimators();
+  if (auto* animation_extra = GetAnimationExtra();
+      animation_extra && animation_extra->transition_mgr &&
+      animation_extra->transition_mgr->HasAnimationRunning()) {
+    animation_extra->transition_mgr->EndAllAnimators();
   }
   for (auto* child : children_) {
     child->EndAllTransitionsRecursively();
@@ -3386,7 +3654,8 @@ void BaseView::UpdateTransitionRasterAnimation(ClayAnimationPropertyType type) {
     bool has_animation = TransitionMgr()->IsAnimationRunning(type);
     render_object_->MarkHasTransition(type, has_animation);
     if (has_animation) {
-      render_object_->SetTransitionManager(transition_mgr_.get());
+      render_object_->SetTransitionManager(
+          GetAnimationExtra()->transition_mgr.get());
       SetRepaintBoundary(true);
     }
     Invalidate();
@@ -3409,7 +3678,8 @@ void BaseView::UpdateKeyframesRasterAnimation() {
             raster_animation_changed;
         render_object_->MarkHasAnimation(type, has_animation);
         if (has_animation && !keyframes_manager_set) {
-          render_object_->SetKeyframesManager(keyframes_mgr_.get());
+          render_object_->SetKeyframesManager(
+              GetAnimationExtra()->keyframes_mgr.get());
           SetRepaintBoundary(true);
           keyframes_manager_set = true;
         }
@@ -3420,9 +3690,10 @@ void BaseView::UpdateKeyframesRasterAnimation() {
 }
 
 void BaseView::UpdateRenderObjectTransformOrigin() {
-  if (transform_origin_.has_value()) {
+  if (auto* animation_extra = GetAnimationExtra();
+      animation_extra && animation_extra->transform_origin.has_value()) {
     render_object()->SetTransformOrigin(
-        (*transform_origin_).GetValue(width_, height_));
+        animation_extra->transform_origin->GetValue(width_, height_));
   } else {
     render_object()->SetTransformOrigin({width_ / 2.0f, height_ / 2.0f});
   }
@@ -3434,10 +3705,17 @@ bool BaseView::IsRasterAnimationEnabled() const {
 
 void BaseView::UpdateSticky(std::optional<StickyInfo> sticky) {
   if (!sticky.has_value()) {
-    sticky_ = std::nullopt;
+    if (auto* visual_extra = GetVisualExtra()) {
+      visual_extra->sticky = std::nullopt;
+      visual_extra->post_translation = std::nullopt;
+    }
     return;
   }
-  sticky_ = sticky;
+  auto& visual_extra = EnsureVisualExtra();
+  visual_extra.sticky = sticky;
+  if (!visual_extra.post_translation.has_value()) {
+    visual_extra.post_translation.emplace(0.f, 0.f);
+  }
 
   if (Parent() && Parent()->Is<ScrollView>()) {
     static_cast<ScrollView*>(Parent())->EnableSticky();
@@ -3445,43 +3723,45 @@ void BaseView::UpdateSticky(std::optional<StickyInfo> sticky) {
 }
 
 void BaseView::CheckStickyOnParentScrollAndReset(int left, int top) {
-  if (!sticky_.has_value()) {
+  auto* visual_extra = GetVisualExtra();
+  if (!visual_extra || !visual_extra->sticky.has_value() ||
+      !visual_extra->post_translation.has_value()) {
     return;
   }
+  auto& sticky = *visual_extra->sticky;
+  auto& post_translation = *visual_extra->post_translation;
 
   float current_left = Left() - left;
   float current_top = Top() - top;
-  if (current_left < sticky_->left) {
-    sticky_->offset_x = sticky_->left - current_left;
+  if (current_left < sticky.left) {
+    sticky.offset_x = sticky.left - current_left;
   } else {
     int parent_width = Parent()->Width();
     float current_right = current_left + Width();
-    if (current_right + sticky_->right > parent_width) {
-      sticky_->offset_x =
-          std::max(parent_width - current_right - sticky_->right,
-                   sticky_->left - current_left);
+    if (current_right + sticky.right > parent_width) {
+      sticky.offset_x = std::max(parent_width - current_right - sticky.right,
+                                 sticky.left - current_left);
     } else {
-      sticky_->offset_x = 0;
+      sticky.offset_x = 0;
     }
   }
 
-  if (current_top < sticky_->top) {
-    sticky_->offset_y = sticky_->top - current_top;
+  if (current_top < sticky.top) {
+    sticky.offset_y = sticky.top - current_top;
   } else {
     int parent_height = Parent()->Height();
     float current_bottom = current_top + Height();
-    if (current_bottom + sticky_->bottom > parent_height) {
-      sticky_->offset_y =
-          std::max(parent_height - current_bottom - sticky_->bottom,
-                   sticky_->top - current_top);
+    if (current_bottom + sticky.bottom > parent_height) {
+      sticky.offset_y = std::max(parent_height - current_bottom - sticky.bottom,
+                                 sticky.top - current_top);
     } else {
-      sticky_->offset_y = 0;
+      sticky.offset_y = 0;
     }
   }
-  post_translation_->SetX(sticky_->offset_x);
-  post_translation_->SetY(sticky_->offset_y);
+  post_translation.SetX(sticky.offset_x);
+  post_translation.SetY(sticky.offset_y);
   TransformOperations transform_ops;
-  transform_ops.AppendTranslate(sticky_->offset_x, sticky_->offset_y, 0);
+  transform_ops.AppendTranslate(sticky.offset_x, sticky.offset_y, 0);
   transform_ops.Append(transform_ops_);
   float old_translate_z = render_object()->GetTranslateZ();
   render_object()->SetTransformOperations(transform_ops, false);
@@ -3616,9 +3896,9 @@ void BaseView::PrepareSemantics(
   // accessibility-elements and its id_selector is not inside it.
   if (!IsAccessibilityElement() ||
       (ancestor_a11y_elements.size() > 0 &&
-       (id_selector_.empty() ||
+       (GetIdSelector().empty() ||
         std::find(ancestor_a11y_elements.begin(), ancestor_a11y_elements.end(),
-                  id_selector_) == ancestor_a11y_elements.end()))) {
+                  GetIdSelector()) == ancestor_a11y_elements.end()))) {
     for (auto* view : children_) {
       view->PrepareSemantics(parent_node, result, ancestor_a11y_elements);
     }

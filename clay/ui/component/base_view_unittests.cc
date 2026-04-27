@@ -3,8 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <memory>
+#include <vector>
 
 #include "clay/fml/logging.h"
+#include "clay/gfx/animation/animation_data.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/view.h"
@@ -21,6 +23,107 @@ PointerEvent CreateDownPointer(float x, float y) {
 }
 
 class BaseViewTest : public UITest {};
+
+namespace {
+class TestableView : public View {
+ public:
+  using View::View;
+
+  bool HasAnimationExtraForTesting() const {
+    return this->GetAnimationExtra() != nullptr;
+  }
+
+  bool HasEventExtraForTesting() const {
+    return this->GetEventExtra() != nullptr;
+  }
+
+  bool HandleCommonAttributeForTesting(const char* attr, const Value& value) {
+    return this->HandleCommonAttribute(attr, value);
+  }
+};
+}  // namespace
+
+TEST_F_UI(BaseViewTest, AnimationExtraIsLazilyAllocated) {
+  TestableView view(0, page_.get());
+
+  EXPECT_FALSE(view.HasAnimation());
+  EXPECT_FALSE(view.HasAnimationExtraForTesting());
+
+  std::vector<AnimationData> animation_data(1);
+  view.SetAnimation(animation_data);
+
+  EXPECT_TRUE(view.HasAnimation());
+  EXPECT_TRUE(view.HasAnimationExtraForTesting());
+  EXPECT_EQ(view.Animation().size(), 1u);
+}
+
+TEST_F_UI(BaseViewTest, MetadataDefaultsAndAccessorsWork) {
+  TestableView view(0, page_.get());
+
+  EXPECT_TRUE(view.GetDataSet().IsMap());
+  EXPECT_TRUE(view.GetDataSet().GetMap().empty());
+  EXPECT_TRUE(view.GetIdSelector().empty());
+  EXPECT_TRUE(view.GetRefIdSelector().empty());
+  EXPECT_TRUE(view.GetComponentName().empty());
+  EXPECT_TRUE(view.ItemKey().empty());
+  EXPECT_FALSE(view.IgnoreFocus().has_value());
+
+  view.SetIdSelector("node-id");
+  view.SetComponentName("node-name");
+  view.HandleCommonAttributeForTesting("react-ref", Value("node-ref"));
+  view.HandleCommonAttributeForTesting("item-key", Value("item-1"));
+  view.HandleCommonAttributeForTesting("ignore-focus", Value(true));
+  view.HandleCommonAttributeForTesting(
+      "dataset", Value{{"scene", Value("feed")},
+                       {"index", Value(static_cast<int32_t>(3))}});
+
+  EXPECT_EQ(view.GetIdSelector(), "node-id");
+  EXPECT_EQ(view.FocusId(), "node-id");
+  EXPECT_EQ(view.GetComponentName(), "node-name");
+  EXPECT_EQ(view.GetRefIdSelector(), "node-ref");
+  EXPECT_EQ(view.ItemKey(), "item-1");
+  ASSERT_TRUE(view.IgnoreFocus().has_value());
+  EXPECT_TRUE(*view.IgnoreFocus());
+  ASSERT_TRUE(view.GetDataSet().IsMap());
+  EXPECT_EQ(view.GetDataSet().GetMap().at("scene").GetString(), "feed");
+  EXPECT_EQ(view.GetDataSet().GetMap().at("index").GetInt(), 3);
+}
+
+TEST_F_UI(BaseViewTest, EventExtraAccessorsWork) {
+  TestableView view(0, page_.get());
+
+  EXPECT_FALSE(view.HasEvent("tap"));
+  EXPECT_FALSE(view.CanEventThrough().has_value());
+  EXPECT_FALSE(view.HasEventExtraForTesting());
+
+  view.AddEventCallback("tap");
+  EXPECT_TRUE(view.HasEvent("tap"));
+  EXPECT_TRUE(view.HasEventExtraForTesting());
+
+  view.SetEventThrough(true);
+  ASSERT_TRUE(view.CanEventThrough().has_value());
+  EXPECT_TRUE(*view.CanEventThrough());
+}
+
+TEST_F_UI(BaseViewTest, AppRegionFallsBackToParent) {
+  auto parent = std::make_unique<TestableView>(0, page_.get());
+  auto child = std::make_unique<TestableView>(1, page_.get());
+  parent->AddChild(child.get());
+
+  EXPECT_FALSE(parent->IsAppRegionDraggable());
+  EXPECT_FALSE(child->IsAppRegionDraggable());
+
+  parent->HandleCommonAttributeForTesting(
+      "-x-app-region",
+      Value(static_cast<int32_t>(app_region_value::kAppRegionDrag)));
+  EXPECT_TRUE(parent->IsAppRegionDraggable());
+  EXPECT_TRUE(child->IsAppRegionDraggable());
+
+  child->HandleCommonAttributeForTesting(
+      "-x-app-region",
+      Value(static_cast<int32_t>(app_region_value::kAppRegionNoDrag)));
+  EXPECT_FALSE(child->IsAppRegionDraggable());
+}
 
 TEST_F_UI(BaseViewTest, TreeManipulation) {
   int view_id = 0;

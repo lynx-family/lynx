@@ -1688,8 +1688,7 @@ void PageView::ResetPageView(bool recycle) {
   padding_top_ = 0.f;
   padding_right_ = 0.f;
   padding_bottom_ = 0.f;
-  keyframes_mgr_.reset();
-  transition_mgr_.reset();
+  ResetAnimationExtra();
 #ifdef ENABLE_ACCESSIBILITY
   semantics_owner_->Reset();
 #endif

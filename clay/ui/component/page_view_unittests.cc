@@ -4,11 +4,24 @@
 
 #include <array>
 #include <memory>
+#include <vector>
 
+#include "clay/gfx/animation/animation_data.h"
 #include "clay/ui/component/page_view.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
+
+namespace {
+class TestablePageView : public PageView {
+ public:
+  using PageView::PageView;
+
+  bool HasAnimationExtraForTesting() const {
+    return this->GetAnimationExtra() != nullptr;
+  }
+};
+}  // namespace
 
 TEST(PageViewTest, EmptyKeyframesData) {
   std::unique_ptr<PageView> page_view =
@@ -81,6 +94,21 @@ TEST(PageViewTest, KeyframesData) {
   page_view->SetKeyframesData(keyframes_data_2);
 
   check_keyframes_map("anim_1");
+}
+
+TEST(PageViewTest, ResetPageViewClearsAnimationExtra) {
+  TestablePageView page_view(0, nullptr, nullptr);
+  std::vector<AnimationData> animation_data(1);
+
+  EXPECT_FALSE(page_view.HasAnimationExtraForTesting());
+
+  page_view.SetAnimation(animation_data);
+  EXPECT_TRUE(page_view.HasAnimation());
+  EXPECT_TRUE(page_view.HasAnimationExtraForTesting());
+
+  page_view.ResetPageView();
+  EXPECT_FALSE(page_view.HasAnimation());
+  EXPECT_FALSE(page_view.HasAnimationExtraForTesting());
 }
 
 }  // namespace clay

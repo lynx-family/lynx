@@ -158,8 +158,8 @@ void NativeView::DidUpdateAttributes() {
   BaseView::DidUpdateAttributes();
   // Apply all attributes which in the cache once.
   clay::Value::Array events;
-  if (events_) {
-    for (const auto& event : *events_) {
+  if (auto* event_callbacks = GetEventCallbacks()) {
+    for (const auto& event : *event_callbacks) {
       events.emplace_back(event);
     }
   }

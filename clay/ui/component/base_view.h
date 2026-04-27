@@ -58,6 +58,12 @@
             const clay::LynxUIMethodCallback& callback);
 
 namespace clay {
+struct BaseViewAnimationExtra;
+struct BaseViewEventExtra;
+struct BaseViewExtraData;
+struct BaseViewMetadataExtra;
+struct BaseViewPlatformExtra;
+struct BaseViewVisualExtra;
 class BaseViewAnimationMutator;
 class InlineSpecStyles;
 class KeyEvent;
@@ -87,9 +93,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   ~BaseView() override;
 
-  void SetDestructListener(const std::function<void(BaseView*)>& func) {
-    destruct_listener_ = func;
-  }
+  void SetDestructListener(const std::function<void(BaseView*)>& func);
 
   bool ShouldPassEventToNative() const override {
     return should_pass_event_for_hittest_;
@@ -162,15 +166,13 @@ class BaseView : public TypeIdentifiable<BaseView>,
   // corresponding Lynx element.
   bool IsAnonymousView() const { return id_ < 0; }
 
-  const std::string& GetComponentName() const { return name_; }
-  void SetComponentName(std::string name) { name_ = std::move(name); }
+  const std::string& GetComponentName() const;
+  void SetComponentName(std::string name);
 
-  const std::string& GetIdSelector() const { return id_selector_; }
-  void SetIdSelector(std::string selector) {
-    id_selector_ = std::move(selector);
-  }
+  const std::string& GetIdSelector() const;
+  void SetIdSelector(std::string selector);
 
-  const std::string& GetRefIdSelector() const { return ref_id_selector_; }
+  const std::string& GetRefIdSelector() const;
 
   BaseView* Parent() const { return parent_; }
 
@@ -211,7 +213,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
                                const FloatSize& left_bottom);
   void SetBorderRadius(size_t index, const std::vector<Length>& array);
   bool IsDelayDestroy() { return delay_destroy_; }
-  std::optional<bool> IgnoreFocus() { return ignore_focus_; }
+  std::optional<bool> IgnoreFocus() const;
   void SetOutline(const OutlineData& outline);
   void SetOutlineStyle(const BorderStyleType style);
   void SetOutlineWidth(int width);
@@ -274,13 +276,13 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void TransitionTo(ClayAnimationPropertyType type,
                     const TransformOperations& ops);
 
-  const clay::Value& GetDataSet() { return data_set_; }
+  const clay::Value& GetDataSet() const;
 
   KeyframesManager* KeyframesMgr();
   void SetAnimation(const std::vector<AnimationData>& data);
   void SetAnimation(const clay::Value::Array& array);
-  bool HasAnimation() const { return animation_.has_value(); }
-  const std::vector<AnimationData>& Animation() const { return *animation_; }
+  bool HasAnimation() const;
+  const std::vector<AnimationData>& Animation() const;
 
   void AppendTransition(const TransitionData& data);
   void SetTransition(const std::vector<TransitionData>& data);
@@ -351,9 +353,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool ShouldBlockNativeEvent() const override {
     return should_block_native_event_;
   }
-  bool HasConsumeSlideEventAngles() const override {
-    return !consume_slide_event_ranges_.empty();
-  }
+  bool HasConsumeSlideEventAngles() const override;
 
   // By default, focus scope self cannot accept focus while traversal.
   FocusBehavior GetFocusBehavior() const override {
@@ -432,7 +432,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   // FocusNode
   FocusManager* GetParentFocusManager() override;
-  const std::string& FocusId() const override { return id_selector_; }
+  const std::string& FocusId() const override;
 
   void FocusHasChanged(bool focus, bool is_leaf) override;
   // Return true if need to propagate scrolling, or false to stop propagate.
@@ -547,11 +547,8 @@ class BaseView : public TypeIdentifiable<BaseView>,
                          ClayAnimationPropertyType property_type);
 
   bool HasAnimationEvent(const ClayEventType& event_type) const;
-  virtual bool HasEvent(const std::string& event) const {
-    return events_ &&
-           std::find(events_->begin(), events_->end(), event) != events_->end();
-  }
-  const std::string& ItemKey() const { return item_key_; }
+  virtual bool HasEvent(const std::string& event) const;
+  const std::string& ItemKey() const;
 
   Scrollable* FindAncestorScrollableView(BaseView* child);
 
@@ -581,9 +578,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void UpdateSticky(std::optional<StickyInfo> sticky);
   void CheckStickyOnParentScrollAndReset(int left, int top);
 
-  void SetEventThrough(bool event_through) { event_through_ = event_through; }
+  void SetEventThrough(bool event_through);
   // this means whether the entire page through the touch events.
-  std::optional<bool> CanEventThrough() const { return event_through_; }
+  std::optional<bool> CanEventThrough() const;
   // this means whether this view node pass through the events to the nodes
   // behind it.
   virtual bool CanEventsPassThroughToViewsBehind() const { return false; }
@@ -647,6 +644,26 @@ class BaseView : public TypeIdentifiable<BaseView>,
   friend class BaseViewAnimationMutator;
 
   BaseViewAnimationMutator* GetAnimationMutator();
+  BaseViewExtraData& EnsureExtraData();
+  BaseViewAnimationExtra& EnsureAnimationExtra();
+  BaseViewEventExtra& EnsureEventExtra();
+  BaseViewMetadataExtra& EnsureMetadataExtra();
+  BaseViewExtraData* GetExtraData();
+  const BaseViewExtraData* GetExtraData() const;
+  BaseViewAnimationExtra* GetAnimationExtra();
+  const BaseViewAnimationExtra* GetAnimationExtra() const;
+  BaseViewEventExtra* GetEventExtra();
+  const BaseViewEventExtra* GetEventExtra() const;
+  BaseViewMetadataExtra* GetMetadataExtra();
+  const BaseViewMetadataExtra* GetMetadataExtra() const;
+  BaseViewVisualExtra& EnsureVisualExtra();
+  BaseViewPlatformExtra& EnsurePlatformExtra();
+  BaseViewVisualExtra* GetVisualExtra();
+  const BaseViewVisualExtra* GetVisualExtra() const;
+  BaseViewPlatformExtra* GetPlatformExtra();
+  const BaseViewPlatformExtra* GetPlatformExtra() const;
+  const std::vector<std::string>* GetEventCallbacks() const;
+  void ResetAnimationExtra();
 
   void DestroyChildrenRecursively(BaseView* view);
   virtual bool IsIndependentSubViewTree() const { return false; }
@@ -700,13 +717,15 @@ class BaseView : public TypeIdentifiable<BaseView>,
   fml::RefPtr<SemanticsNode> semantics_ = nullptr;
 #endif
 
+  BaseView* parent_ = nullptr;
+  PageView* page_view_ = nullptr;
+  std::vector<BaseView*> children_;
+  std::unique_ptr<RenderObject> render_object_;
+  std::unique_ptr<BaseViewExtraData> extra_data_;
+  fml::WeakPtrFactory<BaseView> weak_factory_;
   int id_ = -1;
-  std::string id_selector_;
-  std::string ref_id_selector_;
-  std::string name_;
-  std::string app_region_;
-  bool can_draggable_ = false;
-  PointerEvent event_draggable_;
+  std::string tag_;
+
   // left_ and top_ are relative to the upper left
   // corner of the parent borderbox
   float left_ = 0.f;
@@ -721,58 +740,33 @@ class BaseView : public TypeIdentifiable<BaseView>,
   float margin_top_ = 0.f;
   float margin_right_ = 0.f;
   float margin_bottom_ = 0.f;
-  clay::Value data_set_ = clay::Value(clay::Value::Map());
-  std::string tag_;
-  // FIXME(baiqiang): remove focus&text list then move to component
-  std::string item_key_;
-  bool attach_to_tree_ = false;
-  std::optional<bool> ignore_focus_;
-  BaseView* parent_ = nullptr;
-  PageView* page_view_ = nullptr;
-  std::vector<BaseView*> children_;
-  std::unique_ptr<RenderObject> render_object_;
-  int bg_image_loader_token_ = 0;
-  int mask_image_loader_token_ = 0;
-  std::unique_ptr<KeyframesManager> keyframes_mgr_;
-  std::unique_ptr<TransitionManager> transition_mgr_;
-  std::optional<std::vector<AnimationData>> animation_;
-  bool in_layout_tree_ = false;
-  bool needs_layout_ = false;
-  bool needs_layout_updated_ = false;
-  int ignore_layout_request_count_ = 0;
-  fml::WeakPtrFactory<BaseView> weak_factory_;
-  TransformOperations transform_ops_;
-  FilterOperations color_matrix_ops_;
-  BoxShadowOperations box_shadow_ops_;
-  std::optional<TransformOrigin> transform_origin_;
-  std::optional<std::vector<TransformRaw>> transform_raw_;
-  std::optional<float> perspective_value_;
-  std::optional<std::vector<std::string>> events_;
-  std::unique_ptr<MouseCursor> cursor_ = nullptr;
-  bool is_mouse_hover_ = false;
-  uint8_t overflow_;
-  std::function<void(BaseView*)> destruct_listener_ = nullptr;
-  std::vector<std::unique_ptr<GestureRecognizer>> gesture_recognizers_;
-  bool enable_layout_change_event_ = false;
-  bool is_interactable_ = true;
-  bool should_block_native_event_ = false;
-  bool has_intersection_observer_ = false;
-  std::optional<bool> event_through_;
   // all slop values means extend x px
   float hit_slop_top_ = 0.f;
   float hit_slop_left_ = 0.f;
   float hit_slop_right_ = 0.f;
   float hit_slop_bottom_ = 0.f;
-  std::vector<std::pair<float, float>> consume_slide_event_ranges_;
+
+  TransformOperations transform_ops_;
+  FilterOperations color_matrix_ops_;
+  BoxShadowOperations box_shadow_ops_;
+
+  int bg_image_loader_token_ = 0;
+  int mask_image_loader_token_ = 0;
+  int ignore_layout_request_count_ = 0;
   DirectionType layout_direction_ = DirectionType::kLtr;
-  std::optional<StickyInfo> sticky_ = std::nullopt;
-  std::optional<FloatPoint> post_translation_;
+  uint8_t overflow_;
+  bool attach_to_tree_ = false;
+  bool in_layout_tree_ = false;
+  bool needs_layout_ = false;
+  bool needs_layout_updated_ = false;
+  bool is_mouse_hover_ = false;
+  bool enable_layout_change_event_ = false;
+  bool is_interactable_ = true;
+  bool should_block_native_event_ = false;
+  bool has_intersection_observer_ = false;
   bool enable_new_animator_ = false;
   bool remove_temporarily_ = false;
-  std::optional<ClipPathData> clip_path_data_;
-  std::optional<OffsetPathData> offset_path_data_;
   bool delay_destroy_ = false;
-  std::unique_ptr<BaseViewAnimationMutator> animation_mutator_;
   bool enable_builtin_gesture_recognizer_{true};
 
  private:
@@ -787,14 +781,13 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void DrawClipPath(bool is_clip_path);
 
   std::vector<BaseView*> sorted_children_;
-  bool ignore_size_change_checks_ = false;
-  bool transition_animation_ready_ = false;
-  // gesture handler
   GestureMap gesture_detector_map_;
   GestureHandlerMap gesture_handler_map_;
   int gesture_arena_member_id_{0};
   InterceptGestureStatus intercept_gesture_status_{
       InterceptGestureStatus::Unset};
+  bool ignore_size_change_checks_ = false;
+  bool transition_animation_ready_ = false;
 };
 
 }  // namespace clay
