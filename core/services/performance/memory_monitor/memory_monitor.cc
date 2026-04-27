@@ -175,14 +175,8 @@ uint32_t MemoryMonitor::ScriptingEngineMode() {
 }
 
 MemoryMonitor::~MemoryMonitor() {
-  // Clear records and report 0 memory usage.
-  memory_records_.clear();
-  bool enable = Enable();
-  if (enable) {
-    ReportMemory();
-  }
   LOGI("[memory_monitor.h] ~MemoryMonitor, this:"
-       << this << ", Enable:" << enable
+       << this << ", Enable:" << Enable()
        << ", MemoryChangeThresholdMb:" << MemoryChangeThresholdMb());
 }
 
@@ -257,6 +251,14 @@ void MemoryMonitor::UpdateScriptingEngineMemoryUsage(
     return;
   }
   UpdateMemoryUsage(BuildMemoryRecord(lastElement, std::move(info)));
+}
+
+void MemoryMonitor::ReportZeroMemoryUsage() {
+  // Clear records and report 0 memory usage.
+  memory_records_.clear();
+  if (Enable()) {
+    ReportMemory();
+  }
 }
 
 void MemoryMonitor::ReportMemory() {

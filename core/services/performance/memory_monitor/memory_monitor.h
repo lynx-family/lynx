@@ -53,6 +53,10 @@ class MemoryMonitor {
   void UpdateScriptingEngineMemoryUsage(
       std::unordered_map<std::string, std::string> info);
 
+  /// When the page is exited, an event is reported indicating that the page is
+  /// no longer occupying memory.
+  void ReportZeroMemoryUsage();
+
   // Checks if memory monitoring is enabled.
   // Modules can call this before collecting data to avoid unnecessary
   // collection.
