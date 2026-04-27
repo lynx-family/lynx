@@ -13,7 +13,12 @@ import ForwardDarkIcon from '@assets/images/forward-dark.png?inline';
 import ForwardIcon from '@assets/images/forward.png?inline';
 import LightDarkIcon from '@assets/images/light-dark.png?inline';
 import LightLightIcon from '@assets/images/light.png?inline';
-import { navigateTo, useTheme, useSafeArea } from '@explorer/lib';
+import {
+  navigateTo,
+  isSparklingAvailable,
+  useTheme,
+  useSafeArea,
+} from '@explorer/lib';
 import type { ThemePreference } from '@explorer/lib';
 
 const THEMES: ThemePreference[] = ['Auto', 'Light', 'Dark'];
@@ -170,6 +175,16 @@ export default function SettingsPage(props: SettingsPageProps) {
           <text className={withTheme('text')}>Lynx Engine</text>
           <text className={withTheme('info-value')}>
             {SystemInfo.engineVersion}
+          </text>
+        </view>
+        <view className="info-row">
+          <text className={withTheme('text')}>Sparkling</text>
+          <text
+            className={`${withTheme('info-value')} ${
+              isSparklingAvailable() ? 'sparkling-active' : 'sparkling-inactive'
+            }`}
+          >
+            {isSparklingAvailable() ? 'Active' : 'N/A'}
           </text>
         </view>
       </view>

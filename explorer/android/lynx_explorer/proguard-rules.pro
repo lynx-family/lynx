@@ -32,3 +32,8 @@
 -keep class androidx.fragment.** { *; }
 -keep class androidx.lifecycle.** { *; }
 -keep class androidx.savedstate.** { *; }
+
+# Sparkling SDK's bundled lint-check JARs reference com.android.tools.lint.client.api.Vendor
+# which is only available in AGP 7+. This project uses AGP 4.1.0; suppress the class warning
+# at the R8 level (the lint task itself is suppressed via lintOptions.checkReleaseBuilds=false).
+-dontwarn com.android.tools.lint.**
