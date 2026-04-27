@@ -61,6 +61,13 @@ struct ImageProps {
   Radius radius;
 };
 
+struct AutoFontSize {
+  bool enabled;
+  float min_size;
+  float max_size;
+  float step_granularity;
+};
+
 class ParagraphListener {
  public:
   virtual ~ParagraphListener() = default;
