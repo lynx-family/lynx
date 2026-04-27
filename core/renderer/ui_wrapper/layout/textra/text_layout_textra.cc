@@ -6,7 +6,9 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
+#include "core/renderer/css/text_attributes.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -27,6 +29,22 @@ namespace {
 // For now Textra performs the final destroy to keep teardown ordering correct:
 // ParagraphBuilder/Paragraph state must be released before the API goes away.
 void DestroyTextLayoutAPI(text::TextLayoutAPI* api) { delete api; }
+
+std::vector<float> AutoFontSizePresetSizesToVector(
+    const base::InlineVector<float, 6>& preset_sizes) {
+  return {preset_sizes.begin(), preset_sizes.end()};
+}
+
+std::vector<text::AutoFontSizeLineRange> AutoFontSizeLineRangesToVector(
+    const std::vector<starlight::AutoFontSizeLineRange>& line_ranges) {
+  std::vector<text::AutoFontSizeLineRange> result;
+  result.reserve(line_ranges.size());
+  for (const auto& range : line_ranges) {
+    result.push_back(
+        {range.start_line, range.end_line, range.min_size, range.max_size});
+  }
+  return result;
+}
 
 class TextraInlineView : public text::InlineView {
  public:
@@ -197,6 +215,7 @@ void TextLayoutTextra::ApplyParagraphStyle(TextElement* text_element) {
   const CSSIDBitset& props_set = text_element->property_bits();
   TextProps* text_props = text_element->text_props();
   auto* computed_css_style = text_element->computed_css_style();
+  const auto& text_attributes = computed_css_style->GetTextAttributes();
   if (text_props) {
     if (text_props->text_max_line) {
       auto text_max_line = *text_props->text_max_line;
@@ -205,28 +224,51 @@ void TextLayoutTextra::ApplyParagraphStyle(TextElement* text_element) {
     }
   }
   if (props_set.Has(kPropertyIDTextOverflow)) {
-    auto text_overflow = static_cast<int>(
-        computed_css_style->GetTextAttributes()->text_overflow);
+    auto text_overflow = static_cast<int>(text_attributes->text_overflow);
     paragraph_builder_->SetParagraphStyle(kTextPropTextOverflow,
                                           &(text_overflow), sizeof(int));
   }
   if (props_set.Has(kPropertyIDLineHeight)) {
-    float line_height =
-        computed_css_style->GetTextAttributes()->computed_line_height;
+    float line_height = text_attributes->computed_line_height;
     paragraph_builder_->SetParagraphStyle(kTextPropLineHeight, &(line_height),
                                           sizeof(float));
   }
   if (props_set.Has(kPropertyIDWhiteSpace)) {
-    auto white_space =
-        static_cast<int>(computed_css_style->GetTextAttributes()->white_space);
+    auto white_space = static_cast<int>(text_attributes->white_space);
     paragraph_builder_->SetParagraphStyle(kTextPropWhiteSpace, &(white_space),
                                           sizeof(int));
   }
   if (props_set.Has(kPropertyIDTextAlign)) {
-    auto text_align =
-        static_cast<int>(computed_css_style->GetTextAttributes()->text_align);
+    auto text_align = static_cast<int>(text_attributes->text_align);
     paragraph_builder_->SetParagraphStyle(kTextPropTextAlign, &(text_align),
                                           sizeof(int));
+  }
+  if (props_set.Has(kPropertyIDXAutoFontSize)) {
+    text::AutoFontSize auto_font_size{
+        text_attributes->is_auto_font_size,
+        text_attributes->auto_font_size_min_size,
+        text_attributes->auto_font_size_max_size,
+        text_attributes->auto_font_size_step_granularity};
+    paragraph_builder_->SetParagraphStyle(
+        kTextPropAutoFontSize, &(auto_font_size), sizeof(text::AutoFontSize));
+  }
+  if (props_set.Has(kPropertyIDXAutoFontSizePresetSizes)) {
+    auto preset_sizes = text_attributes->auto_font_size_preset_sizes
+                            ? AutoFontSizePresetSizesToVector(
+                                  *text_attributes->auto_font_size_preset_sizes)
+                            : std::vector<float>();
+    paragraph_builder_->SetParagraphStyle(kTextPropAutoFontSizePresetSizes,
+                                          preset_sizes.data(),
+                                          preset_sizes.size() * sizeof(float));
+  }
+  if (props_set.Has(kPropertyIDXAutoFontSizeLineRanges)) {
+    auto line_ranges = text_attributes->auto_font_size_line_ranges
+                           ? AutoFontSizeLineRangesToVector(
+                                 *text_attributes->auto_font_size_line_ranges)
+                           : std::vector<text::AutoFontSizeLineRange>();
+    paragraph_builder_->SetParagraphStyle(
+        kTextPropAutoFontSizeLineRanges, line_ranges.data(),
+        line_ranges.size() * sizeof(text::AutoFontSizeLineRange));
   }
 }
 
