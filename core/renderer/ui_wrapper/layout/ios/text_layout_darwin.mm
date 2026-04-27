@@ -3,6 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
+#include <vector>
+
+#include "core/renderer/css/text_attributes.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
@@ -17,6 +20,30 @@
 
 namespace lynx {
 namespace tasm {
+namespace {
+
+NSArray<NSNumber*>* AutoFontSizePresetSizesToNSArray(
+    const base::InlineVector<float, 6>& preset_sizes) {
+  NSMutableArray<NSNumber*>* result = [NSMutableArray arrayWithCapacity:preset_sizes.size()];
+  for (float size : preset_sizes) {
+    [result addObject:@(size)];
+  }
+  return result;
+}
+
+NSArray<NSArray<NSNumber*>*>* AutoFontSizeLineRangesToNSArray(
+    const std::vector<starlight::AutoFontSizeLineRange>& line_ranges) {
+  NSMutableArray<NSArray<NSNumber*>*>* result =
+      [NSMutableArray arrayWithCapacity:line_ranges.size()];
+  for (const auto& range : line_ranges) {
+    [result addObject:@[
+      @(range.start_line), @(range.end_line), @(range.min_size), @(range.max_size)
+    ]];
+  }
+  return result;
+}
+
+}  // namespace
 
 LayoutResult TextLayoutDarwin::Measure(Element* element, float width, int width_mode, float height,
                                        int height_mode) {
@@ -117,28 +144,26 @@ void TextLayoutDarwin::HandleParagraphStyle(TextElement* text_element, LynxTextS
   const CSSIDBitset& props_set = text_element->property_bits();
   TextProps* text_props = text_element->text_props();
   auto computed_css_style = text_element->computed_css_style();
+  const auto& text_attributes = computed_css_style->GetTextAttributes();
   if (text_props) {
     if (text_props->text_max_line) {
       textBundle.maxLineNum = *text_props->text_max_line;
     }
   }
   if (props_set.Has(kPropertyIDTextOverflow)) {
-    textBundle.textOverflow =
-        static_cast<LynxTextOverflowType>(computed_css_style->GetTextAttributes()->text_overflow);
+    textBundle.textOverflow = static_cast<LynxTextOverflowType>(text_attributes->text_overflow);
   }
   if (props_set.Has(kPropertyIDLineHeight)) {
     constexpr float kLineHeightNormalSentinelThreshold = 10E8;
-    float line_height = computed_css_style->GetTextAttributes()->computed_line_height;
+    float line_height = text_attributes->computed_line_height;
     textStyle.lineHeight =
         (line_height < kLineHeightNormalSentinelThreshold && line_height >= 0) ? line_height : NAN;
   }
   if (props_set.Has(kPropertyIDWhiteSpace)) {
-    textBundle.whiteSpace =
-        static_cast<LynxWhiteSpaceType>(computed_css_style->GetTextAttributes()->white_space);
+    textBundle.whiteSpace = static_cast<LynxWhiteSpaceType>(text_attributes->white_space);
   }
   if (props_set.Has(kPropertyIDTextAlign)) {
-    auto value =
-        static_cast<LynxTextAlignType>(computed_css_style->GetTextAttributes()->text_align);
+    auto value = static_cast<LynxTextAlignType>(text_attributes->text_align);
     switch (value) {
       case LynxTextAlignLeft:
         textStyle.textAlignment = NSTextAlignmentLeft;
@@ -157,6 +182,24 @@ void TextLayoutDarwin::HandleParagraphStyle(TextElement* text_element, LynxTextS
         textStyle.textAlignment = NSTextAlignmentNatural;
         break;
     }
+  }
+  if (props_set.Has(kPropertyIDXAutoFontSize)) {
+    textStyle.isAutoFontSize = text_attributes->is_auto_font_size;
+    textStyle.autoFontSizeMinSize = text_attributes->auto_font_size_min_size;
+    textStyle.autoFontSizeMaxSize = text_attributes->auto_font_size_max_size;
+    textStyle.autoFontSizeStepGranularity = text_attributes->auto_font_size_step_granularity;
+  }
+  if (props_set.Has(kPropertyIDXAutoFontSizePresetSizes)) {
+    textStyle.autoFontSizePresetSizes =
+        text_attributes->auto_font_size_preset_sizes
+            ? AutoFontSizePresetSizesToNSArray(*text_attributes->auto_font_size_preset_sizes)
+            : nil;
+  }
+  if (props_set.Has(kPropertyIDXAutoFontSizeLineRanges)) {
+    textStyle.autoFontSizeLineRanges =
+        text_attributes->auto_font_size_line_ranges
+            ? AutoFontSizeLineRangesToNSArray(*text_attributes->auto_font_size_line_ranges)
+            : nil;
   }
 }
 
