@@ -15,6 +15,7 @@
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/public/style_types.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/text/inline_emoji_bitmap.h"
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/shadow/bundle.h"
 namespace clay {
@@ -52,6 +53,9 @@ class TextUpdateBundle : public Bundle {
   }
   void SetLineSpacingOffset(double offset) { line_spacing_offset_ = offset; }
   void PushTextInfo(TextInfo& info) { info_.emplace_back(info); }
+  void SetInlineEmojiInfo(std::vector<InlineEmojiInfo> inline_emoji_info) {
+    inline_emoji_info_ = std::move(inline_emoji_info);
+  }
   void UpdateExtraData(BaseView* view) override;
 
  private:
@@ -63,6 +67,7 @@ class TextUpdateBundle : public Bundle {
   std::map<int, std::pair<size_t, size_t>> range_map_;
   std::unordered_map<int, TextStroke> text_stroke_map_;
   std::vector<TextInfo> info_;
+  std::vector<InlineEmojiInfo> inline_emoji_info_;
 };
 
 }  // namespace clay

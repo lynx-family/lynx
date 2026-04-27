@@ -48,12 +48,7 @@ void LayoutContextText::AddText(const std::u16string& text,
       std::u16string newline_string = std::u16string(1, newline_character);
       auto tokens = lynx::base::SplitString<std::u16string>(
           sub_text, newline_string, true);
-      if (text_.length() == 0) {
-        txt::PlaceholderRun placeholder(text_indent_.value_or(0), 0,
-                                        txt::PlaceholderAlignment::kBaseline,
-                                        txt::TextBaseline::kAlphabetic, 0);
-        AddPlaceholder(placeholder);
-      }
+      EnsureInitialTextIndentIfNeeded(need_text_indent);
       for (size_t i = 0; i < tokens.size(); i++) {
         if (i > 0) {
           text_.append(newline_string);
@@ -67,6 +62,19 @@ void LayoutContextText::AddText(const std::u16string& text,
         builder_->AddText(tokens[i]);
       }
     }
+  }
+}
+
+void LayoutContextText::EnsureInitialTextIndentIfNeeded(bool need_text_indent) {
+  if (!builder_ || !need_text_indent || has_added_initial_text_indent_ ||
+      text_.length() != 0) {
+    return;
+  }
+  txt::PlaceholderRun placeholder(text_indent_.value_or(0), 0,
+                                  txt::PlaceholderAlignment::kBaseline,
+                                  txt::TextBaseline::kAlphabetic, 0);
+  if (AddPlaceholder(placeholder) >= 0) {
+    has_added_initial_text_indent_ = true;
   }
 }
 

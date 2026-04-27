@@ -68,6 +68,7 @@ void TextUpdateBundle::UpdateExtraData(BaseView* view) {
       }
     }
     text_view->UpdateInlineImageInfo();
+    text_view->SetInlineEmojiInfo(std::move(inline_emoji_info_));
     text_view->SetParagraph(std::move(paragraph_), text_);
     text_view->GetRenderText()->SetTextStrokeMap(std::move(text_stroke_map_));
     text_view->GetRenderText()->SetGradientShaderMap(

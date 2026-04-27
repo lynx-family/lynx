@@ -17,6 +17,7 @@
 #include "clay/gfx/style/color_source.h"
 #include "clay/gfx/style/tile_mode.h"
 #include "clay/ui/common/text_input_type_traits.h"
+#include "clay/ui/component/text/inline_emoji_bitmap.h"
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/painter/text_painter.h"
 #include "clay/ui/rendering/renderer.h"
@@ -60,6 +61,23 @@ void RenderText::SetTextStrokeMap(
     std::unordered_map<int, TextStroke>&& text_stroke_map) {
   painter_->SetTextStrokeMap(std::move(text_stroke_map));
   MarkNeedsPaint();
+}
+
+void RenderText::SetInlineEmojiInfo(
+    std::vector<InlineEmojiInfo> inline_emoji_info) {
+  inline_emojis_.clear();
+  for (auto& info : inline_emoji_info) {
+    auto image = CreateInlineEmojiGraphicsImage(info.bitmap);
+    if (info.placeholder_id >= 0 && image) {
+      inline_emojis_.emplace(info.placeholder_id,
+                             InlineEmojiRenderInfo{std::move(image)});
+    }
+  }
+  MarkNeedsPaint();
+}
+
+bool RenderText::IsInlineEmojiPlaceholder(int placeholder_id) const {
+  return inline_emojis_.find(placeholder_id) != inline_emojis_.end();
 }
 
 void RenderText::Paint(PaintingContext& context, const FloatPoint& offset) {
@@ -144,12 +162,34 @@ void RenderText::PaintText(GraphicsContext* graphics_context,
   if (HasColorRasterAnimation()) {
     graphics_context->Canvas()->OnDrawDynamicTextBlobsStart();
     painter_->Paint(graphics_context, x_offset, line_spacing_offset_);
+    PaintInlineEmojis(graphics_context, x_offset, line_spacing_offset_);
     graphics_context->Canvas()->OnDrawDynamicTextBlobsEnd();
   } else {
     painter_->Paint(graphics_context, x_offset, line_spacing_offset_);
+    PaintInlineEmojis(graphics_context, x_offset, line_spacing_offset_);
   }
   if (select_end_ != select_start_) {
     PaintSelection(graphics_context);
+  }
+}
+
+void RenderText::PaintInlineEmojis(GraphicsContext* graphics_context,
+                                   double x_offset, double y_offset) {
+  if (!paragraph_ || inline_emojis_.empty()) {
+    return;
+  }
+  class Paint paint;
+  paint.setAntiAlias(false);
+  for (const auto& box : paragraph_->GetRectsForPlaceholders()) {
+    auto it = inline_emojis_.find(static_cast<int>(box.placeholder_id));
+    if (it == inline_emojis_.end() || !it->second.image) {
+      continue;
+    }
+    auto dst = box.rect;
+    dst.Offset(x_offset, y_offset);
+    graphics_context->DrawImageRect(it->second.image, dst,
+                                    SAMPLING_OPTIONS(FilterMode::kNearest, 0),
+                                    &paint);
   }
 }
 

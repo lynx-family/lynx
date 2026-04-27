@@ -98,6 +98,8 @@ ui_component_sources = [
   "tappable_image_view.h",
   "text/base_text_view.cc",
   "text/base_text_view.h",
+  "text/inline_emoji_bitmap.cc",
+  "text/inline_emoji_bitmap.h",
   "text/inline_text_view.cc",
   "text/inline_text_view.h",
   "text/internal_text_view.cc",

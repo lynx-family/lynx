@@ -17,6 +17,7 @@
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
+#include "clay/ui/component/text/inline_emoji_bitmap.h"
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/painter/gradient.h"
 #include "clay/ui/painter/painting_context.h"
@@ -44,6 +45,8 @@ class RenderText : public RenderBox {
       std::map<int, std::pair<size_t, size_t>>&& range_map);
 
   void SetTextStrokeMap(std::unordered_map<int, TextStroke>&& text_stroke_map);
+  void SetInlineEmojiInfo(std::vector<InlineEmojiInfo> inline_emoji_info);
+  bool IsInlineEmojiPlaceholder(int placeholder_id) const;
 
   void Paint(PaintingContext& context, const FloatPoint& offset) override;
 
@@ -98,8 +101,15 @@ class RenderText : public RenderBox {
 
  private:
   void PaintText(GraphicsContext* graphics_context, const FloatPoint& offset);
+  void PaintInlineEmojis(GraphicsContext* graphics_context, double x_offset,
+                         double y_offset);
+
+  struct InlineEmojiRenderInfo {
+    fml::RefPtr<GraphicsImage> image;
+  };
 
   SelectionChangedCallback selection_changed_callback_;
+  std::unordered_map<int, InlineEmojiRenderInfo> inline_emojis_;
 };
 
 }  // namespace clay
