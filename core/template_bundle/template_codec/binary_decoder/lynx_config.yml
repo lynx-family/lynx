@@ -1452,7 +1452,8 @@ enableExposureWhenReload:
   description: Controls whether reload flows emit exposure or disexposure transitions for the old and new page state. When enabled, Android, iOS, and Harmony reload paths send `disexposure` before reload and can re-run exposure after reload init; when disabled, reload does not trigger that extra exposure cycle.
   defaultValue: 'false'
   valueType: bool
-  syncTo: platform
+  syncTo:
+    - platform
   supportPlatform:
     - Android
     - HarmonyOS
@@ -1682,7 +1683,7 @@ enableFlexBasisZeroPercent:
   defaultValue: 'false'
   valueType: bool
   author: renzhongyue
-  since: '3.9'
+  since: '3.8'
   supportPlatform:
     - Android
     - HarmonyOS
@@ -1751,8 +1752,8 @@ enableTextGradientOpt:
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readSettings: false
-  settingsEnv: external
-  syncTo: platform
+  syncTo:
+    - platform
   author: zhongyr
   readNative: true
   since: '3.5'
@@ -1889,7 +1890,7 @@ enableAnimationForwardUpdatePreservation:
   readSettings: true
   readNative: true
   author: usczz
-  since: '3.9'
+  since: '3.8'
   supportPlatform:
     - Android
     - HarmonyOS
