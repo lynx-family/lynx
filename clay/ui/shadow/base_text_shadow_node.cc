@@ -298,7 +298,9 @@ void BaseTextShadowNode::SetLineHeight(float line_height) {
     line_height_ = line_height;
   }
 #else
-  if (text_style_->line_height != line_height) {
+  if (MeasureUtils::isUndefined(line_height)) {
+    text_style_->line_height.reset();
+  } else if (text_style_->line_height != line_height) {
     text_style_->line_height = line_height;
   }
 #endif
