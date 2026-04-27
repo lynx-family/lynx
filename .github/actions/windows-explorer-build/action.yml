@@ -30,10 +30,98 @@ runs:
         key: pnpm-custom-${{ runner.os }}-${{ hashFiles('lynx/pnpm-lock.yaml') }}
         restore-keys: |
           pnpm-custom-${{ runner.os }}-
-    - name: Install Common Dependencies
-      uses: ./lynx/.github/actions/windows-common-deps
+    - name: Get habitat cache key
+      id: hab
+      shell: pwsh
+      run: |
+        if ([string]::IsNullOrEmpty("clay")) {
+          python lynx/tools/ci/habitat_cache_helper.py
+        } else {
+          python lynx/tools/ci/habitat_cache_helper.py --target clay
+        }
+
+    - name: Get habitat cache directory
+      id: hab-cache-dir
+      shell: pwsh
+      run: |
+        $habitat_cache_dir = python -c "import os; import tempfile; print(os.path.join(os.environ.get('HOME', tempfile.gettempdir()), '.habitat_cache'))"
+        echo "ssss"
+        echo $habitat_cache_dir
+        echo "HABITAT_CACHE_DIR=$habitat_cache_dir"
+        echo "HABITAT_CACHE_DIR=$habitat_cache_dir" >> ${env:GITHUB_OUTPUT}
+
+    - name: Get npm cache directory
+      id: npm-cache-dir
+      shell: pwsh
+      run: |
+        $npm_cache_dir = python -c "import os; import pathlib; print(os.path.join(pathlib.Path.home(), '.local', 'share', 'pnpm', 'store'))"
+        echo "ssss"
+        echo $npm_cache_dir
+        echo "NPM_CACHE_DIR=$npm_cache_dir"
+        echo "NPM_CACHE_DIR=$npm_cache_dir" >> ${env:GITHUB_OUTPUT}
+
+    - name: Get Python Cache Directory
+      id: pip
+      shell: pwsh
+      run: |
+        $cache = python -m pip cache dir
+        $correctPath = (Get-Item $cache).FullName
+        echo "ssss"
+        echo $correctPath
+        echo "PIP_CACHE_DIR=$correctPath"
+        echo "PIP_CACHE_DIR=$correctPath" >> ${env:GITHUB_OUTPUT}
+
+    - name: Setup cache action
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
       with:
-        target: 'clay'
+        path: ${{ steps.hab-cache-dir.outputs.HABITAT_CACHE_DIR }}
+        key: hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
+        restore-keys: |
+          hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-
+
+    - name: Setup cache action
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.hab-cache-dir.outputs.HABITAT_CACHE_DIR }}
+        key: hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
+        restore-keys: |
+          hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-
+
+    - name: Python Requirements Cache
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        path: ${{ steps.pip.outputs.PIP_CACHE_DIR }}
+        key: pip-${{ runner.os }}-${{ hashFiles('lynx/tools/vpython_tools/requirements.txt', 'lynx/testing/integration_test/test_script/requirements.txt') }}
+        restore-keys: |
+          pip-${{ runner.os }}-
+
+    - name: Cache pnpm Dependencies
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        # set pnpm store path to a specific value since we can't get it via `pnpm store path` before pnpm is setup.
+        path: ${{ steps.npm-cache-dir.outputs.NPM_CACHE_DIR }}
+        key: pnpm-${{ runner.os }}-${{ hashFiles('lynx/pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-${{ runner.os }}-
+
+    - name: Install Python dependencies
+      shell: pwsh
+      run: |
+        python -m pip install -r lynx/tools/vpython_tools/requirements.txt
+        python -m pip install -r lynx/testing/integration_test/test_script/requirements.txt
+
+    - name: run habitat sync
+      shell: pwsh
+      working-directory: lynx
+      run: |
+        if ([string]::IsNullOrEmpty("clay")) {
+            powershell.exe -Command "& .\tools\hab.ps1 sync ."
+        } else {
+            powershell.exe -Command "& .\tools\hab.ps1 sync . --target clay"
+        }
+      env:
+        HABITAT_CONCURRENCY: 2
+        npm_config_store_dir: ${{ steps.npm-cache-dir.outputs.NPM_CACHE_DIR }}
     - name: Build Explorer App
       shell: pwsh
       run: |-

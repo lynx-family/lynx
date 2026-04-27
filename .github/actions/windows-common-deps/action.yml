@@ -41,6 +41,9 @@ runs:
       shell: pwsh
       run: |
         $habitat_cache_dir = python -c "import os; import tempfile; print(os.path.join(os.environ.get('HOME', tempfile.gettempdir()), '.habitat_cache'))"
+        echo "ssss"
+        echo $habitat_cache_dir
+        echo "HABITAT_CACHE_DIR=$habitat_cache_dir"
         echo "HABITAT_CACHE_DIR=$habitat_cache_dir" >> ${env:GITHUB_OUTPUT}
 
     - name: Get npm cache directory
@@ -48,6 +51,9 @@ runs:
       shell: pwsh
       run: |
         $npm_cache_dir = python -c "import os; import pathlib; print(os.path.join(pathlib.Path.home(), '.local', 'share', 'pnpm', 'store'))"
+        echo "ssss"
+        echo $npm_cache_dir
+        echo "NPM_CACHE_DIR=$npm_cache_dir"
         echo "NPM_CACHE_DIR=$npm_cache_dir" >> ${env:GITHUB_OUTPUT}
 
     - name: Get Python Cache Directory
@@ -57,6 +63,9 @@ runs:
       run: |
         $cache = python -m pip cache dir
         $correctPath = (Get-Item $cache).FullName
+        echo "ssss"
+        echo $correctPath
+        echo "PIP_CACHE_DIR=$correctPath"
         echo "PIP_CACHE_DIR=$correctPath" >> ${env:GITHUB_OUTPUT}
 
     - name: Setup cache action
