@@ -21,12 +21,8 @@ jobs:
           fetch-depth: 1 # latest 1 commit
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
-      - name: Setup Package Managers
-        run: |
-          npm install -g npm@latest
-          npm --version
 
       - name: Check version field change
         id: check
@@ -61,12 +57,8 @@ jobs:
           fetch-depth: 1 # latest 1 commit
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
-      - name: Setup Package Managers
-        run: |
-          npm install -g npm@latest
-          npm --version
       - name: Publish
         run: |-
           pushd $GITHUB_WORKSPACE/lynx/js_libraries/type-element-api
