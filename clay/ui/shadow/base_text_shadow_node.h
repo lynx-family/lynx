@@ -21,6 +21,8 @@
 namespace clay {
 
 class BaseTextShadowNode : public ShadowNode {
+  enum class RichType { kNone, kBracket };
+
  public:
   BaseTextShadowNode(ShadowNodeOwner* owner, std::string tag, int id);
 
@@ -65,6 +67,8 @@ class BaseTextShadowNode : public ShadowNode {
   void SetTextEllipsis(std::u16string ellipsis);
   void SetWordBreak(WordBreak break_type);
   void SetTextSingleLineVerticalAlign(const clay::Value& value);
+  void SetRichType(const std::string& type);
+  bool IsBracketRichType() const { return rich_type_ == RichType::kBracket; }
 
   void RelayoutWhenSetFontFamily(const std::string& font_family);
 
@@ -113,6 +117,7 @@ class BaseTextShadowNode : public ShadowNode {
   void ResetTextColorAndGradient();
 
   fml::WeakPtrFactory<BaseTextShadowNode> weak_factory_;
+  RichType rich_type_ = RichType::kNone;
 };
 
 }  // namespace clay

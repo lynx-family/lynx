@@ -13,7 +13,12 @@ ui_platform_sources = [
   "native_view_service.h",
   "native_view_tag_sync.cc",
   "native_view_tag_sync.h",
+  "text_emoji_provider.h",
 ]
+
+if (!is_android && !is_ios) {
+  ui_platform_sources += [ "text_emoji_provider.cc" ]
+}
 
 ui_net_loader_sources = [
   "common/resource_loader_common_net.cc",

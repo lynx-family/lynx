@@ -136,6 +136,11 @@ void TextView::PushInlineViewIndex(int id, int placeholder_id) {
   inline_views_index_.emplace(id, placeholder_id);
 }
 
+void TextView::SetInlineEmojiInfo(
+    std::vector<InlineEmojiInfo> inline_emoji_info) {
+  GetRenderText()->SetInlineEmojiInfo(std::move(inline_emoji_info));
+}
+
 void TextView::SetColor(Color color) {
   if (IsTransitionAnimationReady() &&
       TransitionMgr()->Enabled(ClayAnimationPropertyType::kColor) &&
@@ -505,6 +510,11 @@ BaseView* TextView::GetViewAtPosition(const FloatPoint& point_by_paragraph,
     if (box.rect.Contains(point_by_paragraph.x(), point_by_paragraph.y())) {
       index = box.placeholder_id;
       break;
+    }
+  }
+  if (index >= 0) {
+    if (GetRenderText()->IsInlineEmojiPlaceholder(index)) {
+      index = -1;
     }
   }
   if (index >= 0) {

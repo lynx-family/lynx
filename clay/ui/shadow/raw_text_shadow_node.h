@@ -5,13 +5,17 @@
 #ifndef CLAY_UI_SHADOW_RAW_TEXT_SHADOW_NODE_H_
 #define CLAY_UI_SHADOW_RAW_TEXT_SHADOW_NODE_H_
 
+#include <cstddef>
 #include <string>
+#include <vector>
 
 #include "clay/ui/shadow/shadow_node.h"
 #include "clay/ui/shadow/text_shadow_node.h"
 
 namespace clay {
 
+class BaseTextShadowNode;
+class LayoutContextText;
 class RenderRawText;
 class RawTextShadowNode : public ShadowNode {
  public:
@@ -31,15 +35,36 @@ class RawTextShadowNode : public ShadowNode {
 
   bool IsRawTextShadowNode() override { return true; }
 
-  std::u16string CollapsesWhitespaces(std::u16string text);
+  std::u16string CollapsesWhitespaces(
+      const std::u16string& text,
+      std::vector<size_t>* layout_text_to_raw_end_indices = nullptr);
 
   TextShadowNode* FindTextShadowNodeAncestor();
+  BaseTextShadowNode* FindBaseTextShadowNodeAncestor();
 
   std::u16string ProcessWordBreakIfNeed(const std::u16string& text);
 
+  void AddTextWithInlineEmoji(LayoutContextText* text_context,
+                              const std::u16string& text,
+                              bool need_text_indent);
+  size_t GetLayoutTextLength() const;
+  size_t GetRawEndIndexForLayoutTextLength(size_t layout_text_length) const;
+
  private:
+  struct InlineEmojiTextRange {
+    size_t start = 0;
+    size_t end = 0;
+  };
+
+  size_t CurrentRawTextEnd() const;
+  size_t LayoutTextLength() const;
+  size_t RawEndIndexForLayoutTextIndex(size_t layout_text_index) const;
+  void BuildIdentityLayoutTextMapping(size_t length);
+
   std::u16string origin_text_;
   std::u16string text_;
+  std::vector<InlineEmojiTextRange> inline_emoji_text_ranges_;
+  std::vector<size_t> layout_text_to_raw_end_indices_;
 };
 
 }  // namespace clay

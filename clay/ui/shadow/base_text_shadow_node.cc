@@ -232,6 +232,9 @@ void BaseTextShadowNode::SetAttribute(KeywordID kw, const char* attr_c,
     case clay::KeywordID::kTextSingleLineVerticalAlign: {
       SetTextSingleLineVerticalAlign(value);
     } break;
+    case KeywordID::kRichtype:
+      SetRichType(utils::GetCString(value));
+      break;
     default:
       if (attr_c) {
         auto kw = GetKeywordID(attr_c);
@@ -535,6 +538,14 @@ void BaseTextShadowNode::SetTextSingleLineVerticalAlign(
   }
   text_style_->enable_text_bounds = true;
   MarkDirty();
+}
+
+void BaseTextShadowNode::SetRichType(const std::string& type) {
+  RichType rich_type = type == "bracket" ? RichType::kBracket : RichType::kNone;
+  if (rich_type_ != rich_type) {
+    rich_type_ = rich_type;
+    MarkDirty();
+  }
 }
 
 void BaseTextShadowNode::PreLayout(PreLayoutContext* context) {

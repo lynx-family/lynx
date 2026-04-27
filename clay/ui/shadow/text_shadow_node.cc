@@ -111,6 +111,7 @@ void TextShadowNode::UpdateBundleData() {
   bundle->SetParagraph(text_render_->MoveParagraph());
   bundle->SetText(GetRawText());
   bundle->SetTextPaintAlign(text_paint_align_);
+  bundle->SetInlineEmojiInfo(inline_emoji_info_);
   if (text_style_) {
     std::map<int, std::shared_ptr<ColorSource>> gradient_shader_map;
     std::map<int, std::pair<size_t, size_t>> gradient_shader_range_map;
