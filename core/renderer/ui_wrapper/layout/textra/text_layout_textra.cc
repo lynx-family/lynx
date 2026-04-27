@@ -193,6 +193,7 @@ void TextLayoutTextra::ApplyParagraphStyle(TextElement* text_element) {
   const CSSIDBitset& props_set = text_element->property_bits();
   TextProps* text_props = text_element->text_props();
   auto* computed_css_style = text_element->computed_css_style();
+  const auto& text_attributes = computed_css_style->GetTextAttributes();
   if (text_props) {
     if (text_props->text_max_line) {
       auto text_max_line = *text_props->text_max_line;
@@ -201,28 +202,33 @@ void TextLayoutTextra::ApplyParagraphStyle(TextElement* text_element) {
     }
   }
   if (props_set.Has(kPropertyIDTextOverflow)) {
-    auto text_overflow = static_cast<int>(
-        computed_css_style->GetTextAttributes()->text_overflow);
+    auto text_overflow = static_cast<int>(text_attributes->text_overflow);
     paragraph_builder_->SetParagraphStyle(kTextPropTextOverflow,
                                           &(text_overflow), sizeof(int));
   }
   if (props_set.Has(kPropertyIDLineHeight)) {
-    float line_height =
-        computed_css_style->GetTextAttributes()->computed_line_height;
+    float line_height = text_attributes->computed_line_height;
     paragraph_builder_->SetParagraphStyle(kTextPropLineHeight, &(line_height),
                                           sizeof(float));
   }
   if (props_set.Has(kPropertyIDWhiteSpace)) {
-    auto white_space =
-        static_cast<int>(computed_css_style->GetTextAttributes()->white_space);
+    auto white_space = static_cast<int>(text_attributes->white_space);
     paragraph_builder_->SetParagraphStyle(kTextPropWhiteSpace, &(white_space),
                                           sizeof(int));
   }
   if (props_set.Has(kPropertyIDTextAlign)) {
-    auto text_align =
-        static_cast<int>(computed_css_style->GetTextAttributes()->text_align);
+    auto text_align = static_cast<int>(text_attributes->text_align);
     paragraph_builder_->SetParagraphStyle(kTextPropTextAlign, &(text_align),
                                           sizeof(int));
+  }
+  if (props_set.Has(kPropertyIDXAutoFontSize)) {
+    text::AutoFontSize auto_font_size{
+        text_attributes->is_auto_font_size,
+        text_attributes->auto_font_size_min_size,
+        text_attributes->auto_font_size_max_size,
+        text_attributes->auto_font_size_step_granularity};
+    paragraph_builder_->SetParagraphStyle(
+        kTextPropAutoFontSize, &(auto_font_size), sizeof(text::AutoFontSize));
   }
 }
 
