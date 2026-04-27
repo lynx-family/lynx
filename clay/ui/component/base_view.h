@@ -342,6 +342,8 @@ class BaseView : public TypeIdentifiable<BaseView>,
     return overflow_ != CSSProperty::OVERFLOW_HIDDEN;
   }
   bool HitTest(const PointerEvent& event, HitTestResult& result) override;
+  virtual bool HitTestChildren(const PointerEvent& event,
+                               HitTestResult& result);
   void HandleEvent(const PointerEvent& event) override;
   bool HasDragGestureRecognizer(ScrollDirection direction) const override;
   bool HasTapGestureRecognizer() const override;
