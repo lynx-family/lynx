@@ -22,6 +22,9 @@
     "pnpm": "7.33.6"
   },
   "devDependencies": {
+    "@sparklingjs/runtime": "2.1.0-rc.12",
+    "sparkling-method": "2.1.0-rc.12",
+    "sparkling-navigation": "2.1.0-rc.12",
     "prettier": "2.2.1",
     "typescript": "4.9.4"
   },

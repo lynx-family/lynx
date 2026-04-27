@@ -29,7 +29,9 @@
 		2B948FBA2C2DA16A00535C96 /* Resource in Resources */ = {isa = PBXBuildFile; fileRef = 2B948FB92C2DA16A00535C96 /* Resource */; };
 		2BB78AD32D1D18FA00060E1C /* LynxSettingManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 2BB78AD22D1D18FA00060E1C /* LynxSettingManager.m */; };
 		2BEA8AEA2E0002C9001BCB2C /* LynxRecorderDefaultActionCallback.m in Sources */ = {isa = PBXBuildFile; fileRef = 2BEA8AE92E0002C9001BCB2C /* LynxRecorderDefaultActionCallback.m */; };
+		7B50D0B31E2C18D34E941800 /* SPKServiceRegistrar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CEA873C7121D005AC53896 /* SPKServiceRegistrar.swift */; };
 		A23CCB95FBE20D42B3997A39 /* libPods-LynxExplorerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 011C744AFEFCED61B507153A /* libPods-LynxExplorerTests.a */; };
+		BD8C210A0F8DB920B1AEEAFA /* RouterServiceImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 788EA02E6300A547EB752932 /* RouterServiceImpl.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,6 +88,9 @@
 		461E327EC254B23C9BB10F60 /* Pods-LynxExplorer.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorer.debug.xcconfig"; path = "Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer.debug.xcconfig"; sourceTree = "<group>"; };
 		4CC9E3EB55E7D31B79118F01 /* Pods-LynxExplorerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorerTests.debug.xcconfig"; path = "Target Support Files/Pods-LynxExplorerTests/Pods-LynxExplorerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		53A63837146418FF38D8D252 /* Pods-LynxExplorer.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorer.release.xcconfig"; path = "Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer.release.xcconfig"; sourceTree = "<group>"; };
+		788EA02E6300A547EB752932 /* RouterServiceImpl.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RouterServiceImpl.swift; sourceTree = "<group>"; };
+		D6CEA873C7121D005AC53896 /* SPKServiceRegistrar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SPKServiceRegistrar.swift; sourceTree = "<group>"; };
+		DF169EBBCC082EC6EA23B30F /* LynxExplorer-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "LynxExplorer-Bridging-Header.h"; sourceTree = "<group>"; };
 		EC5EF18233EB06BDEB0D28F9 /* Pods_LynxExplorer.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LynxExplorer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -226,6 +231,9 @@
 				2B2AA43C2CA14AC200DB0C3E /* TasmDispatcher.m */,
 				2B382D752D17B86300C67770 /* LynxInitProcessor.h */,
 				2B382D762D17B86300C67770 /* LynxInitProcessor.m */,
+				D6CEA873C7121D005AC53896 /* SPKServiceRegistrar.swift */,
+				788EA02E6300A547EB752932 /* RouterServiceImpl.swift */,
+				DF169EBBCC082EC6EA23B30F /* LynxExplorer-Bridging-Header.h */,
 			);
 			path = LynxExplorer;
 			sourceTree = "<group>";
@@ -386,13 +394,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -451,6 +455,8 @@
 				2B382D7E2D17BD1500C67770 /* ExplorerModule.m in Sources */,
 				2B2AA43D2CA14AC200DB0C3E /* TasmDispatcher.m in Sources */,
 				2B382D772D17B86300C67770 /* LynxInitProcessor.m in Sources */,
+				7B50D0B31E2C18D34E941800 /* SPKServiceRegistrar.swift in Sources */,
+				BD8C210A0F8DB920B1AEEAFA /* RouterServiceImpl.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -680,6 +686,8 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "LynxExplorer/LynxExplorer-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -714,6 +722,8 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "LynxExplorer/LynxExplorer-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
