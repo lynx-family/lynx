@@ -18,7 +18,7 @@ import {
   LynxEnv,
   LynxGenericResourceFetcher,
   LynxMediaResourceFetcher,
-  LynxResourceLoadInfo,
+  LynxViewBuilder,
   LynxViewClient,
   TemplateBundle
 } from '../Index';
@@ -112,6 +112,10 @@ export class LynxContext implements IContext {
 
   public callJSFunction(moduleName: string, method: string, params: Object[]) {
     this.renderer?.callJSFunction(moduleName, method, params);
+  }
+  
+  public initWithBuilder(builder: LynxViewBuilder){
+    this.lynxView?.initWithBuilder(builder);
   }
 
   /**
