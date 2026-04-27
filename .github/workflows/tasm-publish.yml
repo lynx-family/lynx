@@ -132,12 +132,8 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
-      - name: Setup Package Managers
-        run: |
-          npm install -g npm@11.10.0
-          npm --version
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:

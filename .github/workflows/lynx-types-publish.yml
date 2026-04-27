@@ -30,12 +30,8 @@ jobs:
           cache-backend: github
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
-      - name: Setup Package Managers
-        run: |
-          npm install -g npm@latest
-          npm --version
       - name: Build
         run: |-
           cd $GITHUB_WORKSPACE/lynx
