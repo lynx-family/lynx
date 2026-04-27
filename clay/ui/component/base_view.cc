@@ -2463,15 +2463,7 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
     return false;
   }
 
-  bool founded = false;
-  RebuildSortedChildrenIfNeeded();
-  for (auto it = sorted_children_.rbegin(); it != sorted_children_.rend();
-       it++) {
-    if ((*it)->HitTest(event, result)) {
-      founded = true;
-      break;  // if a view is hit, skip hitting its siblings
-    }
-  }
+  bool founded = HitTestChildren(event, result);
 
   if (beyond_self) {
     return founded;
@@ -2479,6 +2471,18 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   should_pass_event_for_hittest_ = ShouldPassEventToNativeInherited(this);
   result.emplace_back(GetHitTestTargetWeakPtr());
   return true;
+}
+
+bool BaseView::HitTestChildren(const PointerEvent& event,
+                               HitTestResult& result) {
+  RebuildSortedChildrenIfNeeded();
+  for (auto it = sorted_children_.rbegin(); it != sorted_children_.rend();
+       ++it) {
+    if ((*it)->HitTest(event, result)) {
+      return true;  // if a view is hit, skip hitting its siblings
+    }
+  }
+  return false;
 }
 
 void BaseView::HandleEvent(const PointerEvent& event) {
