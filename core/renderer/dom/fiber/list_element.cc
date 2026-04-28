@@ -84,6 +84,27 @@ const StyleMap* ListElement::PeekCommittedStylesFromAttributes() const {
   return &*committed_styles_from_attributes_;
 }
 
+void ListElement::CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                                    const CSSValue& value) {
+  committed_styles_from_attributes_->insert_or_assign(id, value);
+}
+
+void ListElement::CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                                    const lepus::Value& value) {
+  UnitHandler::Process(id, value, *committed_styles_from_attributes_,
+                       element_manager()->GetCSSParserConfigs());
+}
+
+void ListElement::RemoveCommittedStyleFromAttributes(CSSPropertyID id) {
+  if (!committed_styles_from_attributes_.has_value()) {
+    return;
+  }
+  committed_styles_from_attributes_->erase(id);
+  if (committed_styles_from_attributes_->empty()) {
+    committed_styles_from_attributes_.reset();
+  }
+}
+
 void ListElement::ParallelFlushAsRoot() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_PARALLEL_FLUSH_AS_ROOT);
   if (!element_manager()->GetEnableParallelElement()) {

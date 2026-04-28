@@ -299,9 +299,26 @@ class Element : public lepus::RefCounted,
 
   void CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value);
   void CacheStyleFromAttributes(CSSPropertyID id, const lepus::Value& value);
+  void RemoveStyleFromAttributes(CSSPropertyID id) {
+    if (styles_from_attributes_.has_value()) {
+      styles_from_attributes_->erase(id);
+      if (styles_from_attributes_->empty()) {
+        styles_from_attributes_.reset();
+      }
+    }
+    RemoveCommittedStyleFromAttributes(id);
+  }
+  const StyleMap* PeekCachedStylesFromAttributes() const {
+    if (!styles_from_attributes_.has_value() ||
+        styles_from_attributes_->empty()) {
+      return nullptr;
+    }
+    return &*styles_from_attributes_;
+  }
   virtual const StyleMap* PeekCommittedStylesFromAttributes() const {
     return nullptr;
   }
+  void ClearCachedStylesFromAttributes() { styles_from_attributes_.reset(); }
   void DidConsumeStyle();
 
   virtual void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) {}
@@ -1386,6 +1403,12 @@ class Element : public lepus::RefCounted,
 
   // Mark flush_required without recursively mark parent element
   inline void MarkRequireFlush() { flush_required_ = true; }
+
+  virtual void CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                                 const CSSValue& value) {}
+  virtual void CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                                 const lepus::Value& value) {}
+  virtual void RemoveCommittedStyleFromAttributes(CSSPropertyID id) {}
 
   // Check if class change should be transmitted
   bool NeedForceClassChangeTransmit() const {

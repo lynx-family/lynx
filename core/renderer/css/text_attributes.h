@@ -5,7 +5,6 @@
 #define CORE_RENDERER_CSS_TEXT_ATTRIBUTES_H_
 
 #include <optional>
-#include <tuple>
 #include <vector>
 
 #include "base/include/flex_optional.h"
@@ -122,57 +121,46 @@ class TextAttributes {
   void Reset() {}
 
   bool operator==(const TextAttributes& rhs) const {
-    bool base_equal =
-        std::tie(font_size, color, text_gradient, decoration_color, white_space,
-                 text_overflow, font_weight, font_style, font_family,
-                 vertical_align_length, computed_line_height,
-                 line_height_factor, letter_spacing, line_spacing,
-                 text_stroke_width, auto_font_size_min_size,
-                 auto_font_size_max_size, auto_font_size_step_granularity,
-                 text_stroke_color, text_shadow, text_align, word_break,
-                 hyphens, enable_font_scaling, underline_decoration,
-                 line_through_decoration, is_auto_font_size,
-                 text_decoration_color, text_decoration_style, text_indent,
-                 auto_font_size_preset_sizes, auto_font_size_line_ranges,
-                 vertical_align, font_optical_sizing) ==
-        std::tie(rhs.font_size, rhs.color, rhs.text_gradient,
-                 rhs.decoration_color, rhs.white_space, rhs.text_overflow,
-                 rhs.font_weight, rhs.font_style, rhs.font_family,
-                 rhs.vertical_align_length, rhs.computed_line_height,
-                 rhs.line_height_factor, rhs.letter_spacing, rhs.line_spacing,
-                 rhs.text_stroke_width, rhs.auto_font_size_min_size,
-                 rhs.auto_font_size_max_size,
-                 rhs.auto_font_size_step_granularity, rhs.text_stroke_color,
-                 rhs.text_shadow, rhs.text_align, rhs.word_break, rhs.hyphens,
-                 rhs.enable_font_scaling, rhs.underline_decoration,
-                 rhs.line_through_decoration, rhs.is_auto_font_size,
-                 rhs.text_decoration_color, rhs.text_decoration_style,
-                 rhs.text_indent, rhs.auto_font_size_preset_sizes,
-                 rhs.auto_font_size_line_ranges, rhs.vertical_align,
-                 rhs.font_optical_sizing);
-    if (!base_equal) {
-      return false;
-    }
+    return font_size == rhs.font_size && color == rhs.color &&
+           text_gradient == rhs.text_gradient &&
+           decoration_color == rhs.decoration_color &&
+           white_space == rhs.white_space &&
+           text_overflow == rhs.text_overflow &&
+           font_weight == rhs.font_weight && font_style == rhs.font_style &&
+           font_family == rhs.font_family &&
+           vertical_align_length == rhs.vertical_align_length &&
+           computed_line_height == rhs.computed_line_height &&
+           line_height_factor == rhs.line_height_factor &&
+           letter_spacing == rhs.letter_spacing &&
+           line_spacing == rhs.line_spacing &&
+           text_stroke_width == rhs.text_stroke_width &&
+           auto_font_size_min_size == rhs.auto_font_size_min_size &&
+           auto_font_size_max_size == rhs.auto_font_size_max_size &&
+           auto_font_size_step_granularity ==
+               rhs.auto_font_size_step_granularity &&
+           text_stroke_color == rhs.text_stroke_color &&
+           text_shadow == rhs.text_shadow && text_align == rhs.text_align &&
+           word_break == rhs.word_break && hyphens == rhs.hyphens &&
+           enable_font_scaling == rhs.enable_font_scaling &&
+           underline_decoration == rhs.underline_decoration &&
+           line_through_decoration == rhs.line_through_decoration &&
+           is_auto_font_size == rhs.is_auto_font_size &&
+           text_decoration_color == rhs.text_decoration_color &&
+           text_decoration_style == rhs.text_decoration_style &&
+           text_indent == rhs.text_indent &&
+           auto_font_size_preset_sizes == rhs.auto_font_size_preset_sizes &&
+           auto_font_size_line_ranges == rhs.auto_font_size_line_ranges &&
+           vertical_align == rhs.vertical_align &&
+           font_optical_sizing == rhs.font_optical_sizing &&
+           RefPtrEqual(font_variation_settings, rhs.font_variation_settings) &&
+           RefPtrEqual(font_feature_settings, rhs.font_feature_settings);
+  }
 
-    if (font_variation_settings == rhs.font_variation_settings) {
-    } else if (font_variation_settings && rhs.font_variation_settings) {
-      if (*font_variation_settings != *rhs.font_variation_settings) {
-        return false;
-      }
-    } else {
-      return false;
-    }
-
-    if (font_feature_settings == rhs.font_feature_settings) {
-    } else if (font_feature_settings && rhs.font_feature_settings) {
-      if (*font_feature_settings != *rhs.font_feature_settings) {
-        return false;
-      }
-    } else {
-      return false;
-    }
-
-    return true;
+  static bool RefPtrEqual(const fml::RefPtr<lepus::CArray>& lhs,
+                          const fml::RefPtr<lepus::CArray>& rhs) {
+    if (lhs == rhs) return true;
+    if (!lhs || !rhs) return false;
+    return *lhs == *rhs;
   }
 
   bool operator!=(const TextAttributes& rhs) const { return !(*this == rhs); }

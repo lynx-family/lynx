@@ -55,6 +55,28 @@ class SSRListElement : public ::testing::Test {
   }
 };
 
+TEST_F(SSRListElement, AttributeStyleCacheMirrorsCommittedStyleCache) {
+  list_element_->CacheStyleFromAttributes(CSSPropertyID::kPropertyIDWidth,
+                                          CSSValue(120, CSSValuePattern::PX));
+
+  const auto* cached_styles = list_element_->PeekCachedStylesFromAttributes();
+  ASSERT_NE(cached_styles, nullptr);
+  auto cached_it = cached_styles->find(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(cached_it != cached_styles->end());
+  EXPECT_EQ(cached_it->second, CSSValue(120, CSSValuePattern::PX));
+
+  const auto* committed_styles =
+      list_element_->PeekCommittedStylesFromAttributes();
+  ASSERT_NE(committed_styles, nullptr);
+  auto committed_it = committed_styles->find(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(committed_it != committed_styles->end());
+  EXPECT_EQ(committed_it->second, CSSValue(120, CSSValuePattern::PX));
+
+  list_element_->RemoveStyleFromAttributes(CSSPropertyID::kPropertyIDWidth);
+  EXPECT_EQ(list_element_->PeekCachedStylesFromAttributes(), nullptr);
+  EXPECT_EQ(list_element_->PeekCommittedStylesFromAttributes(), nullptr);
+}
+
 TEST_F(SSRListElement, ListElementSSRHelper_ComponentAtIndexInSSR) {
   auto items = std::vector<fml::RefPtr<FiberElement>>();
   ListElementSSRHelper ssr_helper(list_element_.get());

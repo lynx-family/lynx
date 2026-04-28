@@ -37,6 +37,12 @@ class ScrollElement : public FiberElement {
 
  protected:
   void OnNodeAdded(FiberElement* child) override;
+  void ResetAttribute(const base::String& key) override;
+  void CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                         const CSSValue& value) override;
+  void CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                         const lepus::Value& value) override;
+  void RemoveCommittedStyleFromAttributes(CSSPropertyID id) override;
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
 

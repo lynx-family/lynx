@@ -220,6 +220,34 @@ TEST_P(TextElementTest, TestSetTextOverflow) {
       lepus::Value(static_cast<int>(starlight::TextOverflowType::kClip)));
 }
 
+TEST_P(TextElementTest, AttributeStyleCacheMirrorsCommittedStyleCache) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto text = manager->CreateFiberText("text");
+  text->SetAttributeInternal("text-overflow", lepus::Value("ellipsis"));
+
+  const auto* cached_styles = text->PeekCachedStylesFromAttributes();
+  ASSERT_NE(cached_styles, nullptr);
+  auto cached_it = cached_styles->find(CSSPropertyID::kPropertyIDTextOverflow);
+  ASSERT_TRUE(cached_it != cached_styles->end());
+  EXPECT_EQ(cached_it->second,
+            CSSValue(starlight::TextOverflowType::kEllipsis));
+
+  const auto* committed_styles = text->PeekCommittedStylesFromAttributes();
+  ASSERT_NE(committed_styles, nullptr);
+  auto committed_it =
+      committed_styles->find(CSSPropertyID::kPropertyIDTextOverflow);
+  ASSERT_TRUE(committed_it != committed_styles->end());
+  EXPECT_EQ(committed_it->second,
+            CSSValue(starlight::TextOverflowType::kEllipsis));
+
+  text->ResetAttribute("text-overflow");
+  EXPECT_EQ(text->PeekCachedStylesFromAttributes(), nullptr);
+  EXPECT_EQ(text->PeekCommittedStylesFromAttributes(), nullptr);
+}
+
 TEST_P(TextElementTest, TestConvertContent) {
   EXPECT_EQ(TextElement::ConvertContent(lepus::Value("test")),
             base::String("test"));

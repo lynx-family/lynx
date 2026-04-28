@@ -314,34 +314,80 @@ inline constexpr const char* const CSS_PATCH_GET_CSS_BY_RULE =
 inline constexpr const char* const CSS_PATCH_APPLY_CASCADE_STYLES =
     "CSSPatching::ApplyCascadeStyles";
 
+/**
+ * @trace_description: Create the initial computed style for an element.
+ */
 inline constexpr const char* const
     STYLE_RESOLVER_CREATE_INITIAL_COMPUTED_STYLE =
         "StyleResolver::CreateInitialComputedStyle";
+/**
+ * @trace_description: Resolve base styles(style without animation) for an
+ * element..
+ */
 inline constexpr const char* const STYLE_RESOLVER_RESOLVE_BASE_STYLE =
     "StyleResolver::ResolveBaseStyle";
+/**
+ * @trace_description: Rebuild final computed styles from parent for inherited
+ * properties.
+ */
 inline constexpr const char* const
     STYLE_RESOLVER_REBUILD_FINAL_STYLE_FROM_PARENT =
         "StyleResolver::RebuildFinalStyleFromParent";
+/**
+ * @trace_description: Build final computed style from base style in fast path
+ * (no inherited changes).
+ */
 inline constexpr const char* const
     STYLE_RESOLVER_BUILD_FINAL_STYLE_FROM_BASE_FAST_PATH =
         "StyleResolver::BuildFinalStyleFromBaseFastPath";
+/**
+ * @trace_description: Initialize a style shell for a new element.
+ */
 inline constexpr const char* const STYLE_RESOLVER_INITIALIZE_STYLE_SHELL =
     "StyleResolver::InitializeStyleShell";
+/**
+ * @trace_description: Inherit styles from parent element to child.
+ */
 inline constexpr const char* const STYLE_RESOLVER_INHERIT_PARENT_STYLE =
     "StyleResolver::InheritParentStyle";
+/**
+ * @trace_description: Collect all matched CSS rules for an element.
+ */
 inline constexpr const char* const STYLE_RESOLVER_COLLECT_MATCHED_RULES =
     "StyleResolver::CollectMatchedRules";
+/**
+ * @trace_description: Analyze matched CSS rules and determine styling
+ * strategies.
+ */
 inline constexpr const char* const STYLE_RESOLVER_ANALYZE_MATCHED_RESULT =
     "StyleResolver::AnalyzeMatchedResult";
+/**
+ * @trace_description: Collect static style inputs (inline styles, ID styles,
+ * etc).
+ */
 inline constexpr const char* const STYLE_RESOLVER_COLLECT_STATIC_STYLE_INPUTS =
     "StyleResolver::CollectStaticStyleInputs";
+/**
+ * @trace_description: Finalize custom CSS properties (variables) resolution.
+ */
 inline constexpr const char* const STYLE_RESOLVER_FINALIZE_CUSTOM_PROPERTIES =
     "StyleResolver::FinalizeCustomProperties";
+/**
+ * @trace_description: Resolve all collected style inputs into final values.
+ */
 inline constexpr const char* const
     STYLE_RESOLVER_RESOLVE_COLLECTED_STYLE_INPUTS =
         "StyleResolver::ResolveCollectedStyleInputs";
+/**
+ * @trace_description: Apply the resolved style map to the element.
+ */
 inline constexpr const char* const STYLE_RESOLVER_APPLY_RESOLVED_STYLE_MAP =
     "StyleResolver::ApplyResolvedStyleMap";
+/**
+ * @trace_description: Compute the difference between old and new styles.
+ */
+inline constexpr const char* const STYLE_RESOLVER_COMPUTE_STYLE_DIFF =
+    "StyleResolver::ComputeStyleDiff";
 
 inline constexpr const char* const ELEMENT_CONTAINER_FIND_PARENT =
     "ElementContainer::FindParentForChild";

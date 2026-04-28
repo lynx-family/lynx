@@ -251,6 +251,8 @@ class ComputedCSSStyle {
     css_align_with_legacy_w3c_ = value;
   }
 
+  bool GetCssAlignLegacyWithW3c() const { return css_align_with_legacy_w3c_; }
+
   void SetCSSParserConfigs(const tasm::CSSParserConfigs& configs) {
     parser_configs_ = configs;
   }

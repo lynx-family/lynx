@@ -1121,6 +1121,11 @@ void FiberElement::ResolveCSSStylesNewPipeline(bool &need_update) {
     bool first_render = (dirty_ & kDirtyCreated) > 0;
     auto resolved_styles = ResolveComputedStyles(old_final_style, old_font_size,
                                                  old_root_font_size);
+
+    // Resolve pseudo-element styles for the new pipeline.
+    style_resolver_.ResolvePseudoElementsForNewPipeline(
+        GetRelatedCSSFragment());
+
     StyleMap changed_layout_only_styles;
     base::InlineVector<CSSPropertyID, 16> reset_layout_only_ids;
 

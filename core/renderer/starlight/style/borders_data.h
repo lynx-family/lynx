@@ -7,7 +7,6 @@
 
 #include <array>
 #include <optional>
-#include <tuple>
 
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/types/nlength.h"
@@ -45,21 +44,20 @@ class BordersData {
   bool css_align_with_legacy_w3c_ = false;
 
   bool operator==(const BordersData& rhs) const {
-    return std::tie(width_top, width_right, width_bottom, width_left,
-                    radius_x_top_left, radius_x_top_right,
-                    radius_x_bottom_right, radius_x_bottom_left,
-                    radius_y_top_left, radius_y_top_right,
-                    radius_y_bottom_right, radius_y_bottom_left, color_top,
-                    color_right, color_bottom, color_left, style_top,
-                    style_right, style_bottom, style_left) ==
-           std::tie(rhs.width_top, rhs.width_right, rhs.width_bottom,
-                    rhs.width_left, rhs.radius_x_top_left,
-                    rhs.radius_x_top_right, rhs.radius_x_bottom_right,
-                    rhs.radius_x_bottom_left, rhs.radius_y_top_left,
-                    rhs.radius_y_top_right, rhs.radius_y_bottom_right,
-                    rhs.radius_y_bottom_left, rhs.color_top, rhs.color_right,
-                    rhs.color_bottom, rhs.color_left, rhs.style_top,
-                    rhs.style_right, rhs.style_bottom, rhs.style_left);
+    return width_top == rhs.width_top && width_right == rhs.width_right &&
+           width_bottom == rhs.width_bottom && width_left == rhs.width_left &&
+           radius_x_top_left == rhs.radius_x_top_left &&
+           radius_x_top_right == rhs.radius_x_top_right &&
+           radius_x_bottom_right == rhs.radius_x_bottom_right &&
+           radius_x_bottom_left == rhs.radius_x_bottom_left &&
+           radius_y_top_left == rhs.radius_y_top_left &&
+           radius_y_top_right == rhs.radius_y_top_right &&
+           radius_y_bottom_right == rhs.radius_y_bottom_right &&
+           radius_y_bottom_left == rhs.radius_y_bottom_left &&
+           color_top == rhs.color_top && color_right == rhs.color_right &&
+           color_bottom == rhs.color_bottom && color_left == rhs.color_left &&
+           style_top == rhs.style_top && style_right == rhs.style_right &&
+           style_bottom == rhs.style_bottom && style_left == rhs.style_left;
   }
 };
 }  // namespace starlight

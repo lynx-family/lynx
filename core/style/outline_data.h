@@ -4,8 +4,6 @@
 #ifndef CORE_STYLE_OUTLINE_DATA_H_
 #define CORE_STYLE_OUTLINE_DATA_H_
 
-#include <tuple>
-
 #include "core/renderer/starlight/style/css_type.h"
 
 namespace lynx {
@@ -17,8 +15,7 @@ struct OutLineData {
   unsigned int color;
   BorderStyleType style;
   bool operator==(const OutLineData& rhs) const {
-    return std::tie(width, style, color) ==
-           std::tie(rhs.width, rhs.style, rhs.color);
+    return width == rhs.width && style == rhs.style && color == rhs.color;
   }
 
   // A flag telling `base::flex_optional<>` to save memory.

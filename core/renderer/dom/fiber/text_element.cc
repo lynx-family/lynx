@@ -9,6 +9,7 @@
 
 #include "base/include/value/base_string.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -108,9 +109,40 @@ void TextElement::SetAttributeInternal(const base::String& key,
 }
 
 void TextElement::ResetAttribute(const base::String& key) {
+  if (!EnableLayoutInElementMode() && key.IsEqual(kTextOverflowAttr)) {
+    RemoveStyleFromAttributes(kPropertyIDTextOverflow);
+  }
   if (!EnableLayoutInElementMode() ||
       !ProcessAttributeForLayoutInElement(key, lepus::Value(), true)) {
     FiberElement::ResetAttribute(key);
+  }
+}
+
+const StyleMap* TextElement::PeekCommittedStylesFromAttributes() const {
+  if (!committed_styles_from_attributes_.has_value()) {
+    return nullptr;
+  }
+  return &*committed_styles_from_attributes_;
+}
+
+void TextElement::CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                                    const CSSValue& value) {
+  committed_styles_from_attributes_->insert_or_assign(id, value);
+}
+
+void TextElement::CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                                    const lepus::Value& value) {
+  UnitHandler::Process(id, value, *committed_styles_from_attributes_,
+                       element_manager()->GetCSSParserConfigs());
+}
+
+void TextElement::RemoveCommittedStyleFromAttributes(CSSPropertyID id) {
+  if (!committed_styles_from_attributes_.has_value()) {
+    return;
+  }
+  committed_styles_from_attributes_->erase(id);
+  if (committed_styles_from_attributes_->empty()) {
+    committed_styles_from_attributes_.reset();
   }
 }
 

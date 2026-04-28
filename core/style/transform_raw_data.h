@@ -6,7 +6,6 @@
 #define CORE_STYLE_TRANSFORM_RAW_DATA_H_
 
 #include <array>
-#include <tuple>
 
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/starlight/style/css_type.h"
@@ -52,8 +51,8 @@ struct TransformRawData {
   bool matrix_empty = true;
 
   bool operator==(const TransformRawData& rhs) const {
-    return std::tie(type, p0, p1, p2, matrix) ==
-           std::tie(rhs.type, rhs.p0, rhs.p1, rhs.p2, rhs.matrix);
+    return type == rhs.type && p0 == rhs.p0 && p1 == rhs.p1 && p2 == rhs.p2 &&
+           matrix == rhs.matrix;
   }
 
   bool operator!=(const TransformRawData& rhs) const { return !(*this == rhs); }

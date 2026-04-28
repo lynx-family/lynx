@@ -4,8 +4,6 @@
 #ifndef CORE_STYLE_TRANSFORM_ORIGIN_DATA_H_
 #define CORE_STYLE_TRANSFORM_ORIGIN_DATA_H_
 
-#include <tuple>
-
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/types/nlength.h"
 
@@ -25,7 +23,7 @@ struct TransformOriginData {
   void Reset();
 
   bool operator==(const TransformOriginData& rhs) const {
-    return std::tie(x, y) == std::tie(rhs.x, rhs.y);
+    return x == rhs.x && y == rhs.y;
   }
 
   // A flag telling `base::flex_optional<>` to save memory.

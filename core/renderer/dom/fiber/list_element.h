@@ -198,6 +198,11 @@ class ListElement : public FiberElement, public tasm::ListNode {
   }
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
+  void CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                         const CSSValue& value) override;
+  void CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                         const lepus::Value& value) override;
+  void RemoveCommittedStyleFromAttributes(CSSPropertyID id) override;
 
  private:
   void ResolveEnableNativeList();

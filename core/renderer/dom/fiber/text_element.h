@@ -57,6 +57,8 @@ class TextElement : public FiberElement {
 
   void ResetAttribute(const base::String& key) override;
 
+  const StyleMap* PeekCommittedStylesFromAttributes() const override;
+
   LayoutResult Measure(float width, int32_t width_mode, float height,
                        int32_t height_mode, bool final_measure);
 
@@ -125,6 +127,11 @@ class TextElement : public FiberElement {
                                           bool is_reset = false);
   bool ProcessAttributeForNormalLayoutMode(const base::String& key,
                                            const lepus::Value& value);
+  void CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                         const CSSValue& value) override;
+  void CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                         const lepus::Value& value) override;
+  void RemoveCommittedStyleFromAttributes(CSSPropertyID id) override;
 
   void EnsureTextProps() {
     if (!text_props_) {
@@ -144,6 +151,7 @@ class TextElement : public FiberElement {
   // Line layout information from text measurement (null-terminated array)
   TextLineInfoArray line_layout_info_;
   int line_layout_count_{0};
+  base::auto_create_optional<StyleMap> committed_styles_from_attributes_;
 };
 
 }  // namespace tasm

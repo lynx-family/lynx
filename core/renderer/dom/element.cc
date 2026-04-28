@@ -2779,11 +2779,13 @@ void Element::RemoveAllInlineStyles() {
 }
 
 void Element::CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value) {
+  CacheCommittedStyleFromAttributes(id, value);
   styles_from_attributes_->insert_or_assign(id, std::move(value));
 }
 
 void Element::CacheStyleFromAttributes(CSSPropertyID id,
                                        const lepus::Value& value) {
+  CacheCommittedStyleFromAttributes(id, value);
   UnitHandler::Process(id, value, *styles_from_attributes_,
                        element_manager()->GetCSSParserConfigs());
 }

@@ -17,6 +17,7 @@
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
+#include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/simple_styling/simple_style_node.h"
@@ -166,6 +167,11 @@ void ExpectNumberStyle(const StyleMap& styles, CSSPropertyID id,
 
 void ExpectNoStyle(const StyleMap& styles, CSSPropertyID id) {
   EXPECT_TRUE(styles.find(id) == styles.end());
+}
+
+bool HasChanged(const starlight::ComputedCSSStyle& style, CSSPropertyID id) {
+  return const_cast<starlight::ComputedCSSStyle&>(style).GetChangedBitset().Has(
+      id);
 }
 
 void ExpectResolvedVariable(starlight::ComputedCSSStyle& style,
@@ -2227,6 +2233,178 @@ TEST_F(CSSPatchingTest, NewStylingResolveBaseStyleInPlaceAppliesInlineStyle) {
 
   ExpectPxStyle(resolved_style_map, CSSPropertyID::kPropertyIDWidth, 40);
   ExpectPxStyle(style.GetResolvedValues(), CSSPropertyID::kPropertyIDWidth, 40);
+}
+
+TEST_F(CSSPatchingTest, NewStylingResolveBaseStyleReturnsResolvedStyle) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("40px"));
+
+  StyleMap resolved_style_map;
+  auto style = element->style_resolver_.ResolveBaseStyle(nullptr, nullptr,
+                                                         &resolved_style_map);
+
+  ASSERT_NE(style, nullptr);
+  ExpectPxStyle(resolved_style_map, CSSPropertyID::kPropertyIDWidth, 40);
+  ExpectPxStyle(style->GetResolvedValues(), CSSPropertyID::kPropertyIDWidth,
+                40);
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingResolveBaseStyleConsumesCommittedAttributeStyles) {
+  auto page = CreatePageRoot(16.0);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  page->InsertNode(scroll);
+  scroll->SetAttribute("scroll-x", lepus::Value("true"));
+  page->FlushActionsAsRoot();
+
+  StyleMap resolved_style_map;
+  auto style = scroll->style_resolver_.ResolveBaseStyle(nullptr, nullptr,
+                                                        &resolved_style_map);
+
+  ASSERT_NE(style, nullptr);
+  auto it =
+      resolved_style_map.find(CSSPropertyID::kPropertyIDLinearOrientation);
+  ASSERT_TRUE(it != resolved_style_map.end());
+  EXPECT_EQ(it->second,
+            CSSValue(starlight::LinearOrientationType::kHorizontal));
+  auto resolved_it = style->GetResolvedValues().find(
+      CSSPropertyID::kPropertyIDLinearOrientation);
+  ASSERT_TRUE(resolved_it != style->GetResolvedValues().end());
+  EXPECT_EQ(resolved_it->second,
+            CSSValue(starlight::LinearOrientationType::kHorizontal));
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingResolvePseudoElementsUsesRegisteredPredicates) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  element->has_placeholder_ = true;
+  element->has_text_selection_ = true;
+
+  SharedCSSFragment fragment;
+  CSSParserConfigs configs;
+  auto placeholder_token = fml::MakeRefCounted<CSSParseToken>(configs);
+  placeholder_token->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
+      CSSValue::MakePlainString("blue");
+  fragment.pseudo_map_.emplace(kCSSSelectorPlaceholder, placeholder_token);
+
+  auto selection_token = fml::MakeRefCounted<CSSParseToken>(configs);
+  selection_token->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
+      CSSValue::MakePlainString("red");
+  fragment.pseudo_map_.emplace(kCSSSelectorSelection, selection_token);
+
+  element->style_resolver_.ResolvePseudoElementsForNewPipeline(&fragment);
+
+  ASSERT_TRUE(element->pseudo_elements_.has_value());
+  auto placeholder_it =
+      element->pseudo_elements_->find(kPseudoStatePlaceHolder);
+  ASSERT_TRUE(placeholder_it != element->pseudo_elements_->end());
+  EXPECT_TRUE(placeholder_it->second->style_map_.contains(kPropertyIDColor));
+
+  auto selection_it = element->pseudo_elements_->find(kPseudoStateSelection);
+  ASSERT_TRUE(selection_it != element->pseudo_elements_->end());
+  EXPECT_TRUE(
+      selection_it->second->style_map_.contains(kPropertyIDBackgroundColor));
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingResolvePseudoElementsUsesAdoptedStylesheetPseudoRules) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  element->has_placeholder_ = true;
+
+  MockCSSFragment base_fragment;
+  base_fragment.SetEnableCSSSelector(true);
+
+  auto adopted_fragment = std::make_unique<MockCSSFragment>();
+  adopted_fragment->SetEnableCSSSelector(true);
+
+  CSSParserConfigs configs;
+  auto placeholder_token = fml::MakeRefCounted<CSSParseToken>(configs);
+  placeholder_token->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
+      CSSValue::MakePlainString("blue");
+
+  auto placeholder_selector = std::make_unique<LynxCSSSelector[]>(1);
+  placeholder_selector[0].SetMatch(LynxCSSSelector::kPseudoElement);
+  placeholder_selector[0].SetPseudoType(LynxCSSSelector::kPseudoPlaceholder);
+  placeholder_selector[0].SetValue("placeholder");
+  placeholder_selector[0].SetLastInTagHistory(true);
+  placeholder_selector[0].SetLastInSelectorList(true);
+  adopted_fragment->AddStyleRule(std::move(placeholder_selector),
+                                 placeholder_token);
+
+  ASSERT_TRUE(base_fragment.rule_set()->pseudo_rules().empty());
+  ASSERT_FALSE(adopted_fragment->rule_set()->pseudo_rules().empty());
+
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  wrapper->fragment_ = std::move(adopted_fragment);
+  manager->AdoptStyleSheet(wrapper);
+
+  element->style_resolver_.ResolvePseudoElementsForNewPipeline(&base_fragment);
+
+  ASSERT_TRUE(element->pseudo_elements_.has_value());
+  auto placeholder_it =
+      element->pseudo_elements_->find(kPseudoStatePlaceHolder);
+  ASSERT_TRUE(placeholder_it != element->pseudo_elements_->end());
+  EXPECT_TRUE(placeholder_it->second->style_map_.contains(kPropertyIDColor));
+}
+
+TEST_F(CSSPatchingTest, NewStylingComputeStyleDiffIgnoresEqualCopiedData) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle old_style(*manager->platform_computed_css());
+  old_style.SetValue(CSSPropertyID::kPropertyIDWidth,
+                     CSSValue(20, CSSValuePattern::PX), false);
+  old_style.ClearChanged();
+  old_style.ClearReset();
+
+  starlight::ComputedCSSStyle new_style(*manager->platform_computed_css());
+  new_style.CopyFrom(old_style);
+  new_style.ClearChanged();
+  new_style.ClearReset();
+
+  EXPECT_FALSE(element->style_resolver_.ComputeStyleDiff(new_style, old_style));
+  EXPECT_FALSE(new_style.IsDirty());
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingComputeStyleDiffMarksLayoutVisualTextAndPlaceholderChanges) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle old_style(*manager->platform_computed_css());
+  starlight::ComputedCSSStyle new_style(*manager->platform_computed_css());
+  new_style.CopyFrom(old_style);
+  new_style.SetValue(CSSPropertyID::kPropertyIDWidth,
+                     CSSValue(20, CSSValuePattern::PX), false);
+  new_style.SetValue(CSSPropertyID::kPropertyIDOpacity,
+                     CSSValue(0.5, CSSValuePattern::NUMBER), false);
+  new_style.SetValue(
+      CSSPropertyID::kPropertyIDColor,
+      CSSValue(static_cast<uint32_t>(0xff0000ff), CSSValuePattern::NUMBER),
+      false);
+  new_style.SetValue(CSSPropertyID::kPropertyIDXPlaceholderFontSize,
+                     CSSValue(18, CSSValuePattern::PX), false);
+  new_style.SetCustomProperty(base::String("--accent"),
+                              CSSValue::MakePlainString("red"));
+  new_style.FinalizeCustomProperties();
+  new_style.ClearChanged();
+  new_style.ClearReset();
+
+  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(new_style, old_style));
+  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDWidth));
+  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDOpacity));
+  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDColor));
+  EXPECT_TRUE(
+      HasChanged(new_style, CSSPropertyID::kPropertyIDXPlaceholderFontSize));
 }
 
 TEST_F(CSSPatchingTest,

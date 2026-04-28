@@ -5,8 +5,6 @@
 #ifndef CORE_STYLE_FILTER_DATA_H_
 #define CORE_STYLE_FILTER_DATA_H_
 
-#include <tuple>
-
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/types/nlength.h"
 
@@ -23,7 +21,7 @@ struct FilterData {
   ~FilterData() = default;
 
   bool operator==(const FilterData& rhs) const {
-    return std::tie(type, amount) == std::tie(rhs.type, rhs.amount);
+    return type == rhs.type && amount == rhs.amount;
   };
 
   bool operator!=(const FilterData& rhs) const { return !(*this == rhs); }

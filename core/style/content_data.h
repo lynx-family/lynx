@@ -5,8 +5,6 @@
 #ifndef CORE_STYLE_CONTENT_DATA_H_
 #define CORE_STYLE_CONTENT_DATA_H_
 
-#include <tuple>
-
 #include "base/include/value/base_value.h"
 #include "core/renderer/starlight/style/css_type.h"
 
@@ -18,8 +16,8 @@ struct ContentData {
   ContentType type;
   base::String content_data;
 
-  bool operator==(const Content& rhs) const {
-    return std::tie(type, content_data) == std::tie(rhs.type, rhs.content_data);
+  bool operator==(const ContentData& rhs) const {
+    return type == rhs.type && content_data == rhs.content_data;
   }
 };
 }  // namespace starlight

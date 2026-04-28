@@ -5,8 +5,6 @@
 #ifndef CORE_STYLE_SHADOW_DATA_H_
 #define CORE_STYLE_SHADOW_DATA_H_
 
-#include <tuple>
-
 #include "core/renderer/starlight/style/css_type.h"
 
 namespace lynx {
@@ -26,9 +24,9 @@ struct ShadowData {
   void Reset();
 
   bool operator==(const ShadowData& rhs) const {
-    return std::tie(h_offset, v_offset, blur, spread, color, option) ==
-           std::tie(rhs.h_offset, rhs.v_offset, rhs.blur, rhs.spread, rhs.color,
-                    rhs.option);
+    return h_offset == rhs.h_offset && v_offset == rhs.v_offset &&
+           blur == rhs.blur && spread == rhs.spread && color == rhs.color &&
+           option == rhs.option;
   }
 
   bool operator!=(const ShadowData& rhs) const { return !(*this == rhs); }

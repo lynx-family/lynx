@@ -24,11 +24,11 @@ struct AnimationData {
   AnimationPlayStateType play_state;
 
   bool operator==(const AnimationData& rhs) const {
-    return std::tie(name, timing_func, iteration_count, fill_mode, duration,
-                    delay, direction, play_state) ==
-           std::tie(rhs.name, rhs.timing_func, rhs.iteration_count,
-                    rhs.fill_mode, rhs.duration, rhs.delay, rhs.direction,
-                    rhs.play_state);
+    return name == rhs.name && timing_func == rhs.timing_func &&
+           iteration_count == rhs.iteration_count &&
+           fill_mode == rhs.fill_mode && duration == rhs.duration &&
+           delay == rhs.delay && direction == rhs.direction &&
+           play_state == rhs.play_state;
   }
 
   bool operator!=(const AnimationData& rhs) const { return !operator==(rhs); }

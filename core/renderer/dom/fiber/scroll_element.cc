@@ -23,6 +23,27 @@ const StyleMap* ScrollElement::PeekCommittedStylesFromAttributes() const {
   return &*committed_styles_from_attributes_;
 }
 
+void ScrollElement::CacheCommittedStyleFromAttributes(CSSPropertyID id,
+                                                      const CSSValue& value) {
+  committed_styles_from_attributes_->insert_or_assign(id, value);
+}
+
+void ScrollElement::CacheCommittedStyleFromAttributes(
+    CSSPropertyID id, const lepus::Value& value) {
+  UnitHandler::Process(id, value, *committed_styles_from_attributes_,
+                       element_manager()->GetCSSParserConfigs());
+}
+
+void ScrollElement::RemoveCommittedStyleFromAttributes(CSSPropertyID id) {
+  if (!committed_styles_from_attributes_.has_value()) {
+    return;
+  }
+  committed_styles_from_attributes_->erase(id);
+  if (committed_styles_from_attributes_->empty()) {
+    committed_styles_from_attributes_.reset();
+  }
+}
+
 void ScrollElement::SetAttributeInternal(const base::String& key,
                                          const lepus::Value& value) {
   FiberElement::SetAttributeInternal(key, value);
@@ -64,6 +85,17 @@ void ScrollElement::SetAttributeInternal(const base::String& key,
     HandleLayoutNodeAttributeUpdate();
   } else if (key.IsEquals(kScrollNewArch) && value_str == kTrue) {
     platform_node_tag_ = BASE_STATIC_STRING(kScrollNewArch);
+  }
+}
+
+void ScrollElement::ResetAttribute(const base::String& key) {
+  FiberElement::ResetAttribute(key);
+
+  if (key.IsEquals(kScrollX) || key.IsEquals(kScrollY) ||
+      key.IsEquals(kScrollOrientation) || key.IsEquals(kScrollXReverse) ||
+      key.IsEquals(kScrollYReverse)) {
+    RemoveStyleFromAttributes(kPropertyIDLinearOrientation);
+    MarkStyleDirty(false);
   }
 }
 

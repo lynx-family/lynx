@@ -64,6 +64,37 @@ TEST_F(ScrollElementTest, TestCreate) {
   EXPECT_FALSE(scroll_view->CanHasLayoutOnlyChildren());
 }
 
+TEST_F(ScrollElementTest,
+       ScrollAttributeCachesAndRemovesCommittedLinearOrientationStyle) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto scroll_view = manager->CreateFiberScrollView("scroll-view");
+  scroll_view->SetAttributeInternal("scroll-x", lepus::Value("true"));
+
+  const auto* cached_styles = scroll_view->PeekCachedStylesFromAttributes();
+  ASSERT_NE(cached_styles, nullptr);
+  auto cached_it =
+      cached_styles->find(CSSPropertyID::kPropertyIDLinearOrientation);
+  ASSERT_TRUE(cached_it != cached_styles->end());
+  EXPECT_EQ(cached_it->second,
+            CSSValue(starlight::LinearOrientationType::kHorizontal));
+
+  const auto* committed_styles =
+      scroll_view->PeekCommittedStylesFromAttributes();
+  ASSERT_NE(committed_styles, nullptr);
+  auto committed_it =
+      committed_styles->find(CSSPropertyID::kPropertyIDLinearOrientation);
+  ASSERT_TRUE(committed_it != committed_styles->end());
+  EXPECT_EQ(committed_it->second,
+            CSSValue(starlight::LinearOrientationType::kHorizontal));
+
+  scroll_view->ResetAttribute("scroll-x");
+  EXPECT_EQ(scroll_view->PeekCachedStylesFromAttributes(), nullptr);
+  EXPECT_EQ(scroll_view->PeekCommittedStylesFromAttributes(), nullptr);
+}
+
 TEST_F(ScrollElementTest, TestChildInsert0) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);

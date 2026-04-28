@@ -5,8 +5,6 @@
 #ifndef CORE_STYLE_LAYOUT_ANIMATION_DATA_H_
 #define CORE_STYLE_LAYOUT_ANIMATION_DATA_H_
 
-#include <tuple>
-
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/style/timing_function_data.h"
 
@@ -22,8 +20,8 @@ struct BaseLayoutAnimationData {
   ~BaseLayoutAnimationData() = default;
   void Reset();
   bool operator==(const BaseLayoutAnimationData& rhs) const {
-    return std::tie(duration, delay, property, timing_function) ==
-           std::tie(rhs.duration, rhs.delay, rhs.property, rhs.timing_function);
+    return duration == rhs.duration && delay == rhs.delay &&
+           property == rhs.property && timing_function == rhs.timing_function;
   }
 };
 
@@ -36,8 +34,8 @@ struct LayoutAnimationData {
   BaseLayoutAnimationData delete_ani;
 
   bool operator==(const LayoutAnimationData& rhs) const {
-    return std::tie(create_ani, update_ani, delete_ani) ==
-           std::tie(rhs.create_ani, rhs.update_ani, rhs.delete_ani);
+    return create_ani == rhs.create_ani && update_ani == rhs.update_ani &&
+           delete_ani == rhs.delete_ani;
   }
 };
 
