@@ -110,7 +110,6 @@
   if (!_isEngineInitFromReusePool) {
     painting_context = ui_delegate->CreatePaintingContext();
     if ([_lynxUIRenderer needPaintingContextProxy]) {
-      painting_context = ui_delegate->CreatePaintingContext();
       _paintingContextProxy =
           [[PaintingContextProxy alloc] initWithPaintingContext:painting_context.get()];
       [_shadowNodeOwner setDelegate:_paintingContextProxy];
