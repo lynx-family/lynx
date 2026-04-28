@@ -86,15 +86,12 @@ namespace ir {
 //     Passes (exact order):
 //       SimplifyCFG -> LoadNullEliminationPass -> InstCombinePass ->
 //       DCE -> CSE -> LoadStoreElimination -> DCE -> LoadStoreElimination ->
-//       SimplifyCFG -> InstCombinePass -> DCE -> ConstAggregateTemplatePass ->
-//       SimplifyCFG -> DCE
+//       SimplifyCFG -> InstCombinePass -> DCE -> SimplifyCFG -> DCE
 //       Requires: SSA validity; CFG/def-use available
 //       Guarantees:
 //         - canonical CFG / instruction shapes for downstream RA
 //         - redundant loads / stores / dead code removed as much as possible
-//         - const aggregate templates are formed only after the main MIR
-//           cleanup pipeline settles, and then we run a final SimplifyCFG to
-//           canonicalize CFG changes introduced by aggregation
+//         - final SimplifyCFG keeps CFG canonical after late MIR cleanup
 //
 //   Stage G (SM_REG_ALLOC): register allocation
 //     Passes: RegisterAllocationPass -> VerifyCallRegisterPass ->
@@ -159,7 +156,6 @@ static void AddMIRPasses(PassManager& pm) {
   pm.AddSimplifyCFG();
   pm.AddInstCombinePass();
   pm.AddDCE();
-  pm.AddConstAggregateTemplatePass();
   pm.AddSimplifyCFG();
   pm.AddDCE();
 }

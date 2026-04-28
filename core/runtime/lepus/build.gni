@@ -147,7 +147,6 @@ lynx_lepus_ir_compile_files = [
   "ir/transformer/mir/dump_opcode_before_opt.cc",
   "ir/transformer/mir/inst_combine/inst_combine.h",
   "ir/transformer/mir/inst_combine/inst_combine.cc",
-  "ir/transformer/mir/const_aggregate_template_pass.cc",
   "ir/transformer/mir/update_toplevel_vars_reg.cc",
   "ir/transformer/mir/function_to_builtin.cc",
   "ir/transformer/mir/process_special_mov.h",

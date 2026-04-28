@@ -1,4 +1,6 @@
 # CHANGELOG
+# 0.0.37
+* delete aggregate template pass in lepus ir pass to optimize parse time.
 
 # 0.0.36
 * fix segment fault while decode template without pageConfig
