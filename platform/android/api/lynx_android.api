@@ -9326,6 +9326,7 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public com.lynx.tasm.behavior.LynxContext com.lynx.tasm.behavior.render.Renderer.getLynxContext();
   public LynxUI< ViewGroup > com.lynx.tasm.behavior.render.Renderer.getUIHost();
   public void com.lynx.tasm.behavior.render.Renderer.setUIHost(LynxUI< ViewGroup > uiHost);
+  public void com.lynx.tasm.behavior.render.Renderer.onMeasure(int widthMeasureSpec, int heightMeasureSpec);
   public void com.lynx.tasm.behavior.render.Renderer.onLayout(boolean changed, int l, int t, int r, int b);
   public void com.lynx.tasm.behavior.render.Renderer.onDraw(Canvas canvas);
   public void com.lynx.tasm.behavior.render.Renderer.beforeDrawChild(Canvas canvas, View child);

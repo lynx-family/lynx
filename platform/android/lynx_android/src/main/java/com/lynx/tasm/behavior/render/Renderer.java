@@ -100,6 +100,19 @@ public class Renderer {
     mUIHost = uiHost;
   }
 
+  public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    ViewGroup view = mRenderHost.getView();
+    for (int i = 0; i < view.getChildCount(); i++) {
+      View child = view.getChildAt(i);
+      if (child instanceof IRendererHost) {
+        Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
+        child.measure(
+            View.MeasureSpec.makeMeasureSpec(childFrame.width(), View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(childFrame.height(), View.MeasureSpec.EXACTLY));
+      }
+    }
+  }
+
   public void onLayout(boolean changed, int l, int t, int r, int b) {
     ViewGroup view = mRenderHost.getView();
     for (int i = 0; i < view.getChildCount(); i++) {
