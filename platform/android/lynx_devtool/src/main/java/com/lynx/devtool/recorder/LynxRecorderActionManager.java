@@ -39,6 +39,8 @@ import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.BuiltInBehavior;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.render.ContainerRenderer;
+import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.shadow.text.RawTextShadowNode;
 import com.lynx.tasm.behavior.ui.LynxUI;
@@ -822,12 +824,18 @@ public class LynxRecorderActionManager {
             }
           });
         } else {
-          builder.addBehavior(new Behavior(name, (type & IS_FLATTEN_NODE) != 0) {
-            @Override
-            public LynxUI createUIWithParams(LynxContext context, Object params) {
-              return new UIView(context, params);
-            }
-          });
+          builder.addBehavior(
+              new Behavior(name, (type & IS_FLATTEN_NODE) != 0, false, false, true) {
+                @Override
+                public LynxUI createUIWithParams(LynxContext context, Object params) {
+                  return new UIView(context, params);
+                }
+
+                @Override
+                public IRendererHost createPlatformRendererHost(LynxContext context) {
+                  return new ContainerRenderer(context);
+                }
+              });
         }
 
       } catch (JSONException e) {

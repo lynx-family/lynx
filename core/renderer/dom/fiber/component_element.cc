@@ -5,6 +5,8 @@
 #include "core/renderer/dom/fiber/component_element.h"
 
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/dom/fragment/view_fragment_behavior.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/base/tasm_constants.h"
@@ -294,6 +296,9 @@ void ComponentElement::OnNodeRemoved(FiberElement* child) {
   } else {
     return FiberElement::OnNodeRemoved(child);
   }
+}
+void ComponentElement::SetupFragmentBehavior(Fragment* fragment) {
+  fragment->SetBehavior(std::make_unique<ViewFragmentBehavior>(fragment));
 }
 
 }  // namespace tasm

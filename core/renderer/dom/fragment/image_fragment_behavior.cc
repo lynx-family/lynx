@@ -45,6 +45,7 @@ void ImageFragmentBehavior::OnUpdateLayout(
     painting_context_->CreateImage(
         fragment_->id(), image_url_, layout_info.GetContentBoxWidth(),
         layout_info.GetContentBoxHeight(), event_mask_);
+    fragment_->InvalidateForRedraw();
   }
 }
 
