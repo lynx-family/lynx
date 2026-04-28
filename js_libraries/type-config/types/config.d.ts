@@ -87,6 +87,17 @@ export interface Config {
   dataStrictMode?: boolean;
 
   /**
+   * Debug metadata URL for template diagnostics.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue ""
+   */
+  debugMetadataUrl?: string;
+
+  /**
    * Prevent the long press event from being triggered during inertial scrolling.
    *
    * Supported platform: iOS
@@ -135,7 +146,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 3.9
+   * Since: LynxSDK 3.8
    *
    * @defaultValue false
    */
@@ -399,7 +410,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 3.9
+   * Since: LynxSDK 3.8
    *
    * @defaultValue false
    */
