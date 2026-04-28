@@ -1103,6 +1103,9 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
 
     if (lynxUIRenderer != null) {
+      boolean shouldInvokeNativeViewMethod = lynxUIRenderer.shouldInvokeNativeViewMethod();
+      boolean isFragmentLayerRender =
+          getLynxContext() != null && getLynxContext().isFragmentLayerRenderOn();
       if (mLynxTemplateRender.isEnableReuseEngine()) {
         UIGroup<UIBodyView> rootUI = getLynxUIRoot();
         if (rootUI instanceof UIBody) {
@@ -1110,7 +1113,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
         }
       }
       mLynxTemplateRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
-      if (lynxUIRenderer.shouldInvokeNativeViewMethod()) {
+      if (shouldInvokeNativeViewMethod || isFragmentLayerRender) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
       }
     } else {

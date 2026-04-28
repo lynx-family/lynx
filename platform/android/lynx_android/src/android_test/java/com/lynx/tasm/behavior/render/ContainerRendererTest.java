@@ -141,6 +141,40 @@ public class ContainerRendererTest {
   }
 
   @Test
+  public void testOnMeasure_UsesLynxFrameSize() {
+    containerRenderer.getRenderer().setLynxFrame(
+        false, TEST_LEFT, TEST_TOP, TEST_RIGHT, TEST_BOTTOM, 0, 0);
+
+    containerRenderer.measure(View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
+        View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY));
+
+    assertEquals("Measured width should use LynxFrame width", TEST_RIGHT - TEST_LEFT,
+        containerRenderer.getMeasuredWidth());
+    assertEquals("Measured height should use LynxFrame height", TEST_BOTTOM - TEST_TOP,
+        containerRenderer.getMeasuredHeight());
+  }
+
+  @Test
+  public void testOnMeasure_MeasuresRendererChildrenWithExactLynxFrameSize() {
+    ContainerRenderer child = new ContainerRenderer(realLynxContext);
+    Renderer renderer = child.createRenderer(mockPlatformRendererContext, TEST_SIGN + 1);
+    renderer.setRenderHost(child);
+    child.setRenderer(renderer);
+    child.getRenderer().setLynxFrame(false, 5, 10, 50, 60, 0, 0);
+
+    containerRenderer.addView(child);
+    containerRenderer.getRenderer().setLynxFrame(false, 0, 0, 100, 100, 0, 0);
+
+    containerRenderer.measure(View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
+        View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY));
+
+    assertEquals(
+        "Child measured width should use child LynxFrame width", 45, child.getMeasuredWidth());
+    assertEquals(
+        "Child measured height should use child LynxFrame height", 50, child.getMeasuredHeight());
+  }
+
+  @Test
   public void testOnLayout_WithContainerRendererChildren() {
     // Create a real ContainerRenderer child instead of mocking it
     ContainerRenderer child = new ContainerRenderer(realLynxContext);

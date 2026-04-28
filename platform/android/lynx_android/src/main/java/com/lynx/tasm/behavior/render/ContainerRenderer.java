@@ -41,6 +41,13 @@ public class ContainerRenderer extends ViewGroup implements IRendererHost {
   }
 
   @Override
+  protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    Rect frame = mRenderer.getLynxFrame();
+    setMeasuredDimension(frame.width(), frame.height());
+    mRenderer.onMeasure(widthMeasureSpec, heightMeasureSpec);
+  }
+
+  @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
     mRenderer.onLayout(changed, l, t, r, b);
   }
