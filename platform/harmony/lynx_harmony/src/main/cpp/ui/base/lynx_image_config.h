@@ -14,9 +14,12 @@ class LynxImageConfig {
   ~LynxImageConfig() = default;
   void SetEnableImageLoadCallback(bool enable);
   bool GetEnableImageLoadCallback();
+  void SetEnableTransformUrl(bool enable);
+  bool GetTransformUrl();
 
  private:
   bool enable_image_load_callback_{false};
+  bool enable_transform_url_{false};
 };
 
 }  // namespace harmony

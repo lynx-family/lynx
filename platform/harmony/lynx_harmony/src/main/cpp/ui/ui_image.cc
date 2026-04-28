@@ -96,8 +96,13 @@ UIImage::UIImage(LynxContext* context, int sign, const std::string& tag)
   InitAccessibilityAttrs(LynxAccessibilityMode::kEnable, "image");
   if (context_ && context_->GetUIOwner()) {
     LynxImageConfig* config = context_->GetUIOwner()->GetLynxImageConfig();
-    if (config && config->GetEnableImageLoadCallback()) {
-      enable_image_load_callback_ = true;
+    if (config) {
+      if (config->GetEnableImageLoadCallback()) {
+        enable_image_load_callback_ = true;
+      }
+      if (config->GetTransformUrl()) {
+        enable_transform_url_ = true;
+      }
     }
   }
 }
@@ -273,6 +278,38 @@ void UIImage::SetImageSrcFromPath(const std::string& url, bool placeholder) {
   free(result);
 }
 
+void UIImage::LoadImageWithRedirection(const std::string& url,
+                                       bool placeholder) {
+  load_start_ = lynx::base::CurrentSystemTimeMilliseconds();
+  if (enable_transform_url_ && !placeholder &&
+      base::BeginsWith(url, image::kHttpPrefix)) {
+    auto request = pub::LynxResourceRequest{url, pub::LynxResourceType::kImage};
+    context_->GetUIOwner()->TransformImageUrl(
+        request,
+        [weak_self = weak_from_this(), url](pub::LynxPathResponse& response) {
+          auto self = weak_self.lock();
+          if (!self) {
+            return;
+          }
+          auto ui_image = std::static_pointer_cast<UIImage>(self);
+          if (ui_image->GetSrc() == url) {
+            if (!response.path.empty()) {
+              ui_image->transformed_src_ = response.path;
+              ui_image.get()->LoadImageResource(
+                  response.path, &UIImage::HandleImageSrcResponse);
+            } else {
+              ui_image.get()->LoadImageResource(
+                  url, &UIImage::HandleImageSrcResponse);
+            }
+          }
+        });
+  } else {
+    LoadImageResource(url, placeholder
+                               ? &UIImage::HandleImagePlaceholderResponse
+                               : &UIImage::HandleImageSrcResponse);
+  }
+}
+
 void UIImage::LoadImageFromURL(bool placeholder) {
   const std::string& url = placeholder ? place_holder_ : src_;
   bool is_base64 = base::BeginsWith(url, image::kBase64Scheme);
@@ -289,9 +326,7 @@ void UIImage::LoadImageFromURL(bool placeholder) {
   }
 
   if (SkipRedirection()) {
-    LoadImageResource(url, placeholder
-                               ? &UIImage::HandleImagePlaceholderResponse
-                               : &UIImage::HandleImageSrcResponse);
+    LoadImageWithRedirection(url, placeholder);
     return;
   }
 
@@ -308,9 +343,7 @@ void UIImage::LoadImageFromURL(bool placeholder) {
       SetImageSrcAttribute(redirect_url, false);
     }
   } else {
-    LoadImageResource(url, placeholder
-                               ? &UIImage::HandleImagePlaceholderResponse
-                               : &UIImage::HandleImageSrcResponse);
+    LoadImageWithRedirection(url, placeholder);
   }
 }
 
@@ -416,7 +449,6 @@ void UIImage::LoadImageResource(const std::string& url,
     return;
   }
   auto request = pub::LynxResourceRequest{url, pub::LynxResourceType::kImage};
-  load_start_ = lynx::base::CurrentSystemTimeMilliseconds();
   resource_loader->LoadResourcePath(
       request, [weak_self = weak_from_this(), handler = std::move(handler),
                 url](pub::LynxPathResponse& response) {
@@ -425,7 +457,8 @@ void UIImage::LoadImageResource(const std::string& url,
           return;
         }
         auto ui_image = std::static_pointer_cast<UIImage>(self);
-        if (ui_image->GetSrc() == url || ui_image->GetPlaceholder() == url) {
+        if (ui_image->transformed_src_ == url || ui_image->GetSrc() == url ||
+            ui_image->GetPlaceholder() == url) {
           (ui_image.get()->*handler)(response);
         }
       });
@@ -583,11 +616,12 @@ void UIImage::CreateImageLoadInfo(int32_t error_code,
     return;
   }
   // Only report load information for network resources (HTTP/HTTPS).
-  if (base::BeginsWith(src_, image::kHttpPrefix)) {
+  std::string final_src = transformed_src_.empty() ? src_ : transformed_src_;
+  if (base::BeginsWith(final_src, image::kHttpPrefix)) {
     auto image_info = lepus::Dictionary::Create();
     image_info->SetValue("type",
                          static_cast<int32_t>(pub::LynxResourceType::kImage));
-    image_info->SetValue("src", src_);
+    image_info->SetValue("src", final_src);
     image_info->SetValue("errCode", error_code);
     if (error_code == 0) {
       image_info->SetValue("loadStart", load_start_);

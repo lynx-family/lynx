@@ -189,6 +189,9 @@ class UIOwner {
   void AddKeyboardEventObserver(int32_t sign);
   void OnResourceLoadCallback(const lepus::Value& value) const;
   LynxImageConfig* GetLynxImageConfig() const;
+  void TransformImageUrl(
+      const lynx::pub::LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, lynx::pub::LynxPathResponse&> path_callback);
 
  private:
   static const std::unordered_map<std::string, UICreatorFunc> behaviors_;
@@ -210,7 +213,8 @@ class UIOwner {
   void MarkHasUIOperationsBottomUp(UIBase* ui);
   void RequestLayout();
   void UpdateComponentIdMap(UIBase* ui, PropBundleHarmony* painting_data);
-  void InitLynxImageConfig(bool enableImageLoadCallback);
+  void InitLynxImageConfig(bool enableImageLoadCallback,
+                           bool enableTransformUrl);
 
   int GetJSNodeType(int sign, const std::string& tag) const;
   std::unordered_map<int32_t, std::shared_ptr<UIBase>> ui_holder_;
@@ -230,6 +234,7 @@ class UIOwner {
   napi_ref on_avoid_keyboard_callback_{nullptr};
   napi_ref js_get_node_type_{nullptr};
   napi_ref on_resource_load_callback_{nullptr};
+  napi_ref transform_url_{nullptr};
 
   std::shared_ptr<LynxContext> context_{nullptr};
   std::unique_ptr<EventDispatcher> event_dispatcher_ =

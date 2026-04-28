@@ -1285,6 +1285,8 @@ export interface RuntimeLifecycleListener {
 
 export interface LynxImageConfig {
   enableImageLoadCallback?: boolean;
+  enableTransformUrl?: boolean;
+  transformUrl?: (request: LynxResourceRequest, callback: AsyncCallback<string>) => void;
 }
 
 export interface LynxImageLoadInfo {

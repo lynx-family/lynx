@@ -49,6 +49,7 @@ class UIImage : public UIBase {
 
  private:
   std::string src_;
+  std::string transformed_src_;
   std::string place_holder_;
   std::string mode_;
   bool auto_size_{false};
@@ -77,6 +78,7 @@ class UIImage : public UIBase {
   uint64_t load_start_{0};
   uint64_t load_finish_{0};
   bool enable_image_load_callback_{false};
+  bool enable_transform_url_{false};
 
   ArkUI_ObjectFit ConvertMode(const std::string& mode);
   void UpdateImageMode(const lepus::Value& value);
@@ -100,6 +102,7 @@ class UIImage : public UIBase {
   void HandleImageWithProcessor(const std::string& url, bool is_base64,
                                 LynxImageEffectProcessor::ImageEffect effect_type,
                                 const LynxImageEffectProcessor::EffectParams& params);
+  void LoadImageWithRedirection(const std::string& url, bool placeholder);
   void LoadImageFromURL(bool placeholder = false);
   void SetImageSrcFromPath(const std::string& url, bool placeholder = false);
   void CreateImageLoadInfo(int32_t err_code, const std::string& err_msg);

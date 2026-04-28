@@ -59,6 +59,7 @@ class UIFlattenImage : public UIBase,
 
  private:
   std::string src_;
+  std::string transformed_src_;
   std::string place_holder_;
   std::string mode_;
   std::unique_ptr<ImageDrawable> src_image_drawable_;
@@ -94,6 +95,7 @@ class UIFlattenImage : public UIBase,
   uint64_t load_start_{0};
   uint64_t load_finish_{0};
   bool enable_image_load_callback_{false};
+  bool enable_transform_url_{false};
 
   ImageDrawable::ImageMode ConvertMode(const std::string& mode);
   void UpdateImageMode(const lepus::Value& value);
@@ -133,6 +135,7 @@ class UIFlattenImage : public UIBase,
       const std::string& url, bool is_base64,
       LynxImageEffectProcessor::ImageEffect effect_type,
       const LynxImageEffectProcessor::EffectParams& params, bool is_src);
+  void LoadImageWithRedirection(const std::string& url, bool is_src);
   void LoadImageFromURL(bool is_src);
   bool hasAnimationEvent();
   void Render(OH_Drawing_Canvas* canvas) const;

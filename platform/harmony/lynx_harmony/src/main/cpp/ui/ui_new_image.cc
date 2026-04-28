@@ -110,13 +110,14 @@ void UINewImage::OnImageLoadSuccess(float image_width, float image_height) {
 }
 
 void UINewImage::OnImageMonitorInfo(const ImageMonitorInfo& data) {
+  std::string final_src = transformed_src_.empty() ? src_ : transformed_src_;
   if (enable_image_load_callback_ &&
-      base::BeginsWith(src_, image::kHttpPrefix)) {
+      base::BeginsWith(final_src, image::kHttpPrefix)) {
     // Report image monitoring information to the native side
     auto image_info = lepus::Dictionary::Create();
     image_info->SetValue("type",
                          static_cast<int32_t>(pub::LynxResourceType::kImage));
-    image_info->SetValue("src", src_);
+    image_info->SetValue("src", final_src);
     image_info->SetValue("loadStart", data.load_start);
     image_info->SetValue("loadFinish", data.load_finish);
     image_info->SetValue("cost", data.load_finish - data.load_start);
@@ -132,7 +133,7 @@ void UINewImage::OnImageMonitorInfo(const ImageMonitorInfo& data) {
     if ((event_flags_ & image::kFlagImageLoadEvent) != 0 &&
         enable_report_info_) {
       auto dict = lepus::Dictionary::Create();
-      dict->SetValue("src", src_);
+      dict->SetValue("src", final_src);
       dict->SetValue(image::kLoadEventImageHeight, image_height_);
       dict->SetValue(image::kLoadEventImageWidth, image_width_);
       dict->SetValue("view_height", height_);
@@ -153,12 +154,13 @@ void UINewImage::OnImageLoadFailure(int error_code,
                                     const std::string& error_msg) {
   LOGE("Load image failed error_code: " << error_code
                                         << ", error_msg: " << error_msg);
-  if (enable_image_load_callback_ &&
-      base::BeginsWith(src_, image::kHttpPrefix)) {
+  std::string final_src = transformed_src_.empty() ? src_ : transformed_src_;
+  if (enable_image_load_callback_ && has_src_ &&
+      base::BeginsWith(final_src, image::kHttpPrefix)) {
     auto image_info = lepus::Dictionary::Create();
     image_info->SetValue("type",
                          static_cast<int32_t>(pub::LynxResourceType::kImage));
-    image_info->SetValue("src", src_);
+    image_info->SetValue("src", final_src);
     image_info->SetValue("errCode", error_code);
     image_info->SetValue("errMsg", error_msg);
     UIBase::OnResourceLoadCallback(lepus_value(image_info));
@@ -206,10 +208,15 @@ UINewImage::UINewImage(LynxContext* context, int sign, const std::string& tag)
   InitNode(image_node_->GetNodeHandle());
   InitAccessibilityAttrs(LynxAccessibilityMode::kEnable, "image");
 
-  if (context_->GetUIOwner()) {
+  if (context_ && context_->GetUIOwner()) {
     LynxImageConfig* config = context_->GetUIOwner()->GetLynxImageConfig();
-    if (config && config->GetEnableImageLoadCallback()) {
-      enable_image_load_callback_ = true;
+    if (config) {
+      if (config->GetEnableImageLoadCallback()) {
+        enable_image_load_callback_ = true;
+      }
+      if (config->GetTransformUrl()) {
+        enable_transform_url_ = true;
+      }
     }
   }
 }
@@ -367,7 +374,7 @@ void UINewImage::LoadImage() {
     return;
   }
   if (SkipRedirection()) {
-    LoadImageFromService(src_, placeholder_);
+    LoadImageWithRedirection(src_, placeholder_);
     return;
   }
 
@@ -375,7 +382,7 @@ void UINewImage::LoadImage() {
       LynxImageHelper::GetRedirectUrl(src_, context_->GetResourceLoader());
   std::string final_placeholder = LynxImageHelper::GetRedirectUrl(
       placeholder_, context_->GetResourceLoader());
-  LoadImageFromService(final_src, final_placeholder);
+  LoadImageWithRedirection(final_src, final_placeholder);
 }
 
 void UINewImage::OnNodeReady() {
@@ -481,6 +488,32 @@ void UINewImage::SetEvents(const std::vector<lepus::Value>& events) {
   }
 }
 
+void UINewImage::LoadImageWithRedirection(const std::string& url,
+                                          const std::string& placeholder) {
+  if (enable_transform_url_ && base::BeginsWith(url, image::kHttpPrefix)) {
+    auto request = pub::LynxResourceRequest{url, pub::LynxResourceType::kImage};
+    context_->GetUIOwner()->TransformImageUrl(
+        request, [weak_self = weak_from_this(), url,
+                  placeholder](pub::LynxPathResponse& response) {
+          auto self = weak_self.lock();
+          if (!self) {
+            return;
+          }
+          auto ui_image = std::static_pointer_cast<UINewImage>(self);
+          if (ui_image->src_ == url) {
+            if (!response.path.empty()) {
+              ui_image->transformed_src_ = response.path;
+              ui_image->LoadImageFromService(response.path, placeholder);
+            } else {
+              ui_image->LoadImageFromService(url, placeholder);
+            }
+          }
+        });
+  } else {
+    LoadImageFromService(url, placeholder);
+  }
+}
+
 void UINewImage::LoadImageFromService(const std::string& url,
                                       const std::string& placeholder) {
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
@@ -494,6 +527,7 @@ void UINewImage::LoadImageFromService(const std::string& url,
   OH_ArkUI_NodeUtils_AddCustomProperty(node_, "auto-size",
                                        auto_size_ ? "true" : "false");
 #endif
+
   has_src_ = !url.empty();
   if (url.empty() && placeholder.empty()) {
     LOGE("LoadImageFromService empty source return");

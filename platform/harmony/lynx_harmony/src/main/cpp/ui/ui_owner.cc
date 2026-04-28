@@ -15,6 +15,7 @@
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/resource/lynx_resource_loader_harmony.h"
 #include "core/services/fluency/fluency_tracer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
@@ -535,6 +536,9 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   napi_delete_reference(env, obj->post_draw_end_timing_frame_callback_);
   napi_delete_reference(env, obj->on_avoid_keyboard_callback_);
   napi_delete_reference(env, obj->on_resource_load_callback_);
+  if (obj->transform_url_ != nullptr) {
+    napi_delete_reference(env, obj->transform_url_);
+  }
   napi_delete_reference(env, obj->js_this_);
   obj->js_create_ = nullptr;
   obj->js_create_node_content_ = nullptr;
@@ -542,6 +546,7 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->post_draw_end_timing_frame_callback_ = nullptr;
   obj->on_avoid_keyboard_callback_ = nullptr;
   obj->on_resource_load_callback_ = nullptr;
+  obj->transform_url_ = nullptr;
   obj->js_this_ = nullptr;
   obj->env_ = nullptr;
   obj->destroyed_ = true;
@@ -633,16 +638,34 @@ napi_value UIOwner::SetLynxImageConfig(napi_env env, napi_callback_info info) {
     return nullptr;
   }
 
-  lepus_value image_config =
-      base::NapiConvertHelper::JSONToLepusValue(env, argv[0]);
-  if (image_config.IsObject()) {
+  napi_valuetype type;
+  napi_typeof(env, argv[0], &type);
+  if (type == napi_object) {
     bool enable_callback = false;
-    lepus_value enable_value =
-        image_config.GetProperty("enableImageLoadCallback");
-    if (enable_value.IsBool()) {
-      enable_callback = enable_value.Bool();
+    bool enable_transform_url = false;
+
+    napi_value value;
+    napi_get_named_property(env, argv[0], "enableImageLoadCallback", &value);
+    napi_typeof(env, value, &type);
+    if (type == napi_boolean) {
+      napi_get_value_bool(env, value, &enable_callback);
     }
-    owner->InitLynxImageConfig(enable_callback);
+
+    napi_get_named_property(env, argv[0], "enableTransformUrl", &value);
+    napi_typeof(env, value, &type);
+    if (type == napi_boolean) {
+      napi_get_value_bool(env, value, &enable_transform_url);
+    }
+
+    napi_get_named_property(env, argv[0], "transformUrl", &value);
+    napi_typeof(env, value, &type);
+    if (type == napi_function) {
+      napi_create_reference(env, value, 1, &owner->transform_url_);
+    } else {
+      enable_transform_url = false;
+    }
+
+    owner->InitLynxImageConfig(enable_callback, enable_transform_url);
   }
 
   return nullptr;
@@ -1231,11 +1254,13 @@ void UIOwner::ResetAccessibilityAttrs() {
   }
 }
 
-void UIOwner::InitLynxImageConfig(bool enableImageLoadCallback) {
+void UIOwner::InitLynxImageConfig(bool enableImageLoadCallback,
+                                  bool enableTransformUrl) {
   if (image_config_ == nullptr) {
     image_config_ = std::make_unique<LynxImageConfig>();
   }
   image_config_->SetEnableImageLoadCallback(enableImageLoadCallback);
+  image_config_->SetEnableTransformUrl(enableTransformUrl);
 }
 
 LynxImageConfig* UIOwner::GetLynxImageConfig() const {
@@ -1245,6 +1270,79 @@ LynxImageConfig* UIOwner::GetLynxImageConfig() const {
   return image_config_.get();
 }
 
+void UIOwner::TransformImageUrl(
+    const lynx::pub::LynxResourceRequest& request,
+    base::MoveOnlyClosure<void, lynx::pub::LynxPathResponse&> path_callback) {
+  auto runnable = [context = std::weak_ptr<LynxContext>(context_),
+                   url = request.url, resourceType = request.type,
+                   callback = std::move(path_callback)]() mutable {
+    auto strong_context = context.lock();
+    if (!strong_context) {
+      lynx::pub::LynxPathResponse response{
+          .path = url, .err_code = -1, .err_msg = "LynxContext is destroyed"};
+      callback(response);
+      return;
+    }
+    auto* owner = strong_context->GetUIOwner();
+    if (!owner || owner->Destroyed()) {
+      lynx::pub::LynxPathResponse response{
+          .path = url, .err_code = -1, .err_msg = "UIOwner is destroyed"};
+      callback(response);
+      return;
+    }
+    if (!owner->js_this_) {
+      lynx::pub::LynxPathResponse response{
+          .path = url, .err_code = -1, .err_msg = "js_this_ is null"};
+      callback(response);
+      return;
+    }
+    base::NapiHandleScope scope(owner->env_);
+    napi_value js_recv =
+        base::NapiUtil::GetReferenceNapiValue(owner->env_, owner->js_this_);
+    napi_value transform_url_func = base::NapiUtil::GetReferenceNapiValue(
+        owner->env_, owner->transform_url_);
+    if (!js_recv || !transform_url_func) {
+      lynx::pub::LynxPathResponse response{
+          .path = url, .err_code = -1, .err_msg = "transform_url_func is null"};
+      callback(response);
+      return;
+    }
+
+    napi_value call_args[2];
+    napi_create_object(owner->env_, &call_args[0]);
+
+    napi_value url_value;
+    napi_create_string_utf8(owner->env_, url.c_str(), NAPI_AUTO_LENGTH,
+                            &url_value);
+    napi_set_named_property(owner->env_, call_args[0], "url", url_value);
+
+    napi_value type_value;
+    napi_create_int32(owner->env_, static_cast<int32_t>(resourceType),
+                      &type_value);
+    napi_set_named_property(owner->env_, call_args[0], "type", type_value);
+
+    auto* callback_handler =
+        new lynx::harmony::LynxResourceLoaderHarmony::CallbackHandler(
+            std::move(callback), lynx::pub::ResourceLoadTiming{}, url);
+    napi_create_function(owner->env_, "callback", NAPI_AUTO_LENGTH,
+                         lynx::harmony::LynxResourceLoaderHarmony::
+                             CallbackHandler::HandlePathRequestCallback,
+                         callback_handler, &call_args[1]);
+
+    napi_value result;
+    napi_status status = napi_call_function(
+        owner->env_, js_recv, transform_url_func, 2, call_args, &result);
+    if (status != napi_ok) {
+      lynx::pub::LynxPathResponse response{
+          .path = url, .err_code = -1, .err_msg = "napi_call_function failed"};
+      callback(response);
+      delete callback_handler;
+      LOGE("Call transform url failed. url: " << url);
+    }
+  };
+
+  PostTaskOnUIThread(std::move(runnable));
+}
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

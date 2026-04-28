@@ -14,6 +14,11 @@ void LynxImageConfig::SetEnableImageLoadCallback(bool enable) {
 bool LynxImageConfig::GetEnableImageLoadCallback() {
   return enable_image_load_callback_;
 }
+
+void LynxImageConfig::SetEnableTransformUrl(bool enable) {
+  enable_transform_url_ = enable;
+}
+bool LynxImageConfig::GetTransformUrl() { return enable_transform_url_; }
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx
