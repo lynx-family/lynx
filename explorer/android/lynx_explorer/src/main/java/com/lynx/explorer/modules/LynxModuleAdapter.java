@@ -3,15 +3,16 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.explorer.modules;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
 import androidx.annotation.Nullable;
+import com.lynx.devtool.recorder.LynxRecorderActivity;
 import com.lynx.devtoolwrapper.LynxDevtoolCardListener;
 import com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper;
 import com.lynx.explorer.LynxViewShellActivity;
@@ -20,10 +21,14 @@ import com.lynx.explorer.shell.TemplateDispatcher;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.WritableMap;
 import com.lynx.tasm.LynxEnv;
+import java.lang.ref.WeakReference;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 
 public class LynxModuleAdapter {
   private Context mContext;
   private Handler mHandler;
+  private WeakReference<Activity> mTopActivity = new WeakReference<>(null);
 
   private LynxDevtoolCardListener mListener = new LynxDevtoolCardListener() {
     @Override
@@ -72,6 +77,43 @@ public class LynxModuleAdapter {
     mHandler.sendMessage(msg);
   }
 
+  public void onActivityResumed(Activity activity) {
+    mTopActivity = new WeakReference<>(activity);
+  }
+
+  public void onActivityPaused(Activity activity) {
+    Activity topActivity = mTopActivity.get();
+    if (topActivity == activity) {
+      mTopActivity.clear();
+    }
+  }
+
+  public boolean hasClosablePage() {
+    Activity activity = mTopActivity.get();
+    return isClosableExplorerActivity(activity) && !isActivityUnavailable(activity);
+  }
+
+  public void openSchemaSync(String url) {
+    executeOnMainThread(() -> {
+      startFromUrl(url);
+      return null;
+    });
+  }
+
+  public void closeCurrentPageSync() {
+    executeOnMainThread(() -> {
+      Activity activity = mTopActivity.get();
+      if (!isClosableExplorerActivity(activity)) {
+        throw new IllegalStateException("No closable Explorer page is active.");
+      }
+      if (isActivityUnavailable(activity)) {
+        throw new IllegalStateException("Current Explorer page is already closing.");
+      }
+      activity.finish();
+      return null;
+    });
+  }
+
   public void setThreadMode(int threadMode) {
     LynxSettingManager.getInstance().setThreadStrategy(threadMode);
   }
@@ -109,6 +151,45 @@ public class LynxModuleAdapter {
   private void startFromUrlSingleTop(String url) {
     TemplateDispatcher.dispatchUrl(
         mContext, url, Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+  }
+
+  private boolean isClosableExplorerActivity(@Nullable Activity activity) {
+    return activity instanceof LynxViewShellActivity || activity instanceof QRScanActivity
+        || activity instanceof LynxRecorderActivity;
+  }
+
+  private boolean isActivityUnavailable(@Nullable Activity activity) {
+    return activity == null || activity.isFinishing()
+        || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed());
+  }
+
+  private void executeOnMainThread(ThrowingCallable callable) {
+    if (mHandler == null) {
+      throw new IllegalStateException("LynxModuleAdapter is not initialized.");
+    }
+    if (Looper.myLooper() == Looper.getMainLooper()) {
+      callable.call();
+      return;
+    }
+
+    FutureTask<Void> task = new FutureTask<>(() -> callable.call());
+    mHandler.post(task);
+    try {
+      task.get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while waiting for main-thread execution.", e);
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException) {
+        throw (RuntimeException) cause;
+      }
+      throw new IllegalStateException("Main-thread execution failed.", cause);
+    }
+  }
+
+  private interface ThrowingCallable {
+    Void call();
   }
 
   public void saveThemePreferences(String theme, String value) {

@@ -3,12 +3,16 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.explorer;
 
+import android.app.Activity;
 import android.app.Application;
+import android.os.Bundle;
 import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.imagepipeline.core.ImagePipelineConfig;
 import com.facebook.imagepipeline.memory.PoolConfig;
 import com.facebook.imagepipeline.memory.PoolFactory;
+import com.lynx.debugrouter.DebugRouter;
 import com.lynx.devtool.recorder.LynxRecorderPageManager;
+import com.lynx.explorer.modules.ExplorerAppMessageHandler;
 import com.lynx.explorer.modules.LynxModuleAdapter;
 import com.lynx.explorer.provider.DemoTemplateProvider;
 import com.lynx.explorer.shell.LynxRecorderDefaultActionCallback;
@@ -28,6 +32,8 @@ public class ExplorerApplication extends Application {
     initLynxService();
     initLynxEnv();
     installLynxJSModule(); // register native module.
+    initDebugRouterHandlers();
+    initActivityTracker();
     initFresco();
     initLynxRecorder();
   }
@@ -54,6 +60,40 @@ public class ExplorerApplication extends Application {
     LynxDevToolService.getINSTANCE().setLogBoxPresetValue(true);
     LynxDevToolService.getINSTANCE().setLoadQJSBridge(true);
     LynxDevToolService.getINSTANCE().setLoadV8Bridge(true);
+  }
+
+  private void initDebugRouterHandlers() {
+    DebugRouter.getInstance().addMessageHandler(ExplorerAppMessageHandler.createOpenPageHandler());
+    DebugRouter.getInstance().addMessageHandler(ExplorerAppMessageHandler.createClosePageHandler());
+  }
+
+  private void initActivityTracker() {
+    registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+      @Override
+      public void onActivityCreated(Activity activity, Bundle savedInstanceState) {}
+
+      @Override
+      public void onActivityStarted(Activity activity) {}
+
+      @Override
+      public void onActivityResumed(Activity activity) {
+        LynxModuleAdapter.getInstance().onActivityResumed(activity);
+      }
+
+      @Override
+      public void onActivityPaused(Activity activity) {
+        LynxModuleAdapter.getInstance().onActivityPaused(activity);
+      }
+
+      @Override
+      public void onActivityStopped(Activity activity) {}
+
+      @Override
+      public void onActivitySaveInstanceState(Activity activity, Bundle outState) {}
+
+      @Override
+      public void onActivityDestroyed(Activity activity) {}
+    });
   }
 
   // merge it into InitProcessor later.
