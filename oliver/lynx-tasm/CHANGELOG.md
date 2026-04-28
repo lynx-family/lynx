@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.37
+* Support CSS !important in parsing, cascade, and inline styles
+
 # 0.0.36
 * fix segment fault while decode template without pageConfig
 
