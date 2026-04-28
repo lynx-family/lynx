@@ -40,6 +40,7 @@ const configKeys = [
   'CSSAlignWithLegacyW3C',
   'customCSSInheritanceList',
   'dataStrictMode',
+  'debugMetadataUrl',
   'disableLongpressAfterScroll',
   'disableQuickTracingGC',
   'enableA11y',

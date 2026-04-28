@@ -347,6 +347,16 @@ customData:
   valueType: string
   author: nhsprite
   deprecated: '3.5'
+debugMetadataUrl:
+  description: Debug metadata URL for template diagnostics.
+  defaultValue: ''
+  valueType: string
+  author: songshourui.null
+  since: '3.8'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 tapSlop:
   description:
     Specify the sliding distance threshold at which the tap event is not
@@ -1450,7 +1460,8 @@ enableExposureWhenReload:
     the Lynx page.
   defaultValue: 'false'
   valueType: bool
-  syncTo: platform
+  syncTo:
+    - platform
   supportPlatform:
     - Android
     - HarmonyOS
@@ -1681,7 +1692,7 @@ enableFlexBasisZeroPercent:
   defaultValue: 'false'
   valueType: bool
   author: renzhongyue
-  since: '3.9'
+  since: '3.8'
   supportPlatform:
     - Android
     - HarmonyOS
@@ -1756,8 +1767,8 @@ enableTextGradientOpt:
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readSettings: false
-  settingsEnv: external
-  syncTo: platform
+  syncTo:
+    - platform
   author: zhongyr
   readNative: true
   since: '3.5'
@@ -1896,7 +1907,7 @@ enableAnimationForwardUpdatePreservation:
   readSettings: true
   readNative: true
   author: usczz
-  since: '3.9'
+  since: '3.8'
   supportPlatform:
     - Android
     - HarmonyOS

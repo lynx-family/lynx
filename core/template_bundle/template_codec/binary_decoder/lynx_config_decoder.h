@@ -47,6 +47,12 @@ class LynxConfigDecoder final {
       page_config->SetCustomData(doc[config::kCustomData].GetString());
     }
 
+    if (doc.HasMember(config::kDebugMetadataUrl) &&
+        doc[config::kDebugMetadataUrl].IsString()) {
+      page_config->SetDebugMetadataUrl(
+          doc[config::kDebugMetadataUrl].GetString());
+    }
+
     if (doc.HasMember(config::kTapSlop) && doc[config::kTapSlop].IsString()) {
       page_config->SetTapSlop(doc[config::kTapSlop].GetString());
     }
