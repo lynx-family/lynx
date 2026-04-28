@@ -395,6 +395,7 @@ void RenderImage::Paint(PaintingContext& context, const FloatPoint& offset) {
     }
 #endif  // ENABLE_SKITY
   }
+  PaintChildren(context, offset);
 }
 
 void RenderImage::SetImageOpacity(float opacity) {
