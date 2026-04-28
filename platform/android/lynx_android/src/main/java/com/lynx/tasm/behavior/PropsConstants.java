@@ -287,4 +287,6 @@ public class PropsConstants {
   public static final String IMAGE_ENABLE_SUPER_RESOLUTION = "enable-super-resolution";
 
   public static final String IMAGE_SUPER_RESOLUTION_SCALE = "super-resolution-scale";
+
+  public static final String REGION_TO_DECODE = "region-to-decode";
 }

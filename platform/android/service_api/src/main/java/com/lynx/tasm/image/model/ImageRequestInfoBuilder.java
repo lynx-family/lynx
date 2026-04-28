@@ -57,8 +57,19 @@ public class ImageRequestInfoBuilder {
 
   private float mImageSRScale = 0;
 
+  private android.graphics.Rect mRegionToDecode = null;
+
   public static ImageRequestInfoBuilder newBuilderWithSource(String url) {
     return new ImageRequestInfoBuilder().setUrl(url);
+  }
+
+  public ImageRequestInfoBuilder setRegionToDecode(android.graphics.Rect regionToDecode) {
+    this.mRegionToDecode = regionToDecode;
+    return this;
+  }
+
+  public android.graphics.Rect getRegionToDecode() {
+    return mRegionToDecode;
   }
 
   public boolean isEnableDownSampling() {

@@ -4,9 +4,13 @@
 package com.lynx.tasm.image;
 
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.text.TextUtils;
+import androidx.annotation.Nullable;
 import com.lynx.react.bridge.Dynamic;
+import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableType;
+import com.lynx.tasm.base.LLog;
 
 public class ImageUtils {
   public static final int ALPHA_8_BYTES_ONE_PIXEL = 1;
@@ -70,5 +74,37 @@ public class ImageUtils {
 
   public static int getSizeInByteForBitmap(int width, int height, Bitmap.Config bitmapConfig) {
     return width * height * getPixelSizeForBitmapConfig(bitmapConfig);
+  }
+
+  public static @Nullable Rect parseRegionToDecode(@Nullable ReadableMap region) {
+    if (region == null) {
+      return null;
+    }
+
+    Rect rect = null;
+    try {
+      if (region.hasKey("x") && region.hasKey("y") && region.hasKey("width")
+          && region.hasKey("height")) {
+        int left = (int) region.getDouble("x");
+        int top = (int) region.getDouble("y");
+        int width = (int) region.getDouble("width");
+        int height = (int) region.getDouble("height");
+        rect = new Rect(left, top, left + width, top + height);
+      }
+    } catch (Throwable e) {
+      LLog.e("ImageUtils", "parseRegionToDecode error: " + e.getMessage());
+    }
+
+    if (rect == null) {
+      LLog.w("ImageUtils", "parseRegionToDecode: rect is null");
+      return null;
+    }
+
+    if (rect.left < 0 || rect.top < 0 || rect.right <= rect.left || rect.bottom <= rect.top) {
+      LLog.w("ImageUtils", "parseRegionToDecode: invalid rect " + rect);
+      return null;
+    }
+
+    return rect;
   }
 }

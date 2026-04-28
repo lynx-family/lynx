@@ -54,6 +54,8 @@ public class ImageRequestInfo {
 
   private float mImageSRScale = 0;
 
+  private final android.graphics.Rect mRegionToDecode;
+
   // Whether an image needs premultiplication: Libraries like Fresco default to premultiplying
   // decoded images, but a switch lets you disable this and handle it yourself when needed.
   // This should NOT be set to false for images to be directly drawn by the view system or through a
@@ -88,6 +90,7 @@ public class ImageRequestInfo {
     mEnableReportInfo = builder.isEnableReportInfo();
     mCacheKeyPathOnly = builder.isCacheKeyPathOnly();
     mImageSRScale = builder.getmImageSRScale();
+    mRegionToDecode = builder.getRegionToDecode();
   }
 
   public String getUrl() {
@@ -182,6 +185,10 @@ public class ImageRequestInfo {
     return mImageSRScale;
   }
 
+  public android.graphics.Rect getRegionToDecode() {
+    return mRegionToDecode;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o)
@@ -207,6 +214,8 @@ public class ImageRequestInfo {
       return false;
     if (mConfig != that.mConfig)
       return false;
+    if (!Objects.equals(mRegionToDecode, that.mRegionToDecode))
+      return false;
     return Objects.equals(mProcessors, that.mProcessors);
   }
 
@@ -221,6 +230,7 @@ public class ImageRequestInfo {
     result = 31 * result + (mEnableDownSampling ? 1 : 0);
     result = 31 * result + (mEnableAsyncRequest ? 1 : 0);
     result = 31 * result + (mProcessors != null ? mProcessors.hashCode() : 0);
+    result = 31 * result + (mRegionToDecode != null ? mRegionToDecode.hashCode() : 0);
     return result;
   }
 }

@@ -2902,12 +2902,15 @@ public class com::lynx::tasm::image::model::ImageRequestInfo :  {
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableReportInfo();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isCacheKeyPathOnly();
   public float com.lynx.tasm.image.model.ImageRequestInfo.getImageSRScale();
+  public android.graphics.Rect com.lynx.tasm.image.model.ImageRequestInfo.getRegionToDecode();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.equals(Object o);
   public int com.lynx.tasm.image.model.ImageRequestInfo.hashCode();
 }
 
 public class com::lynx::tasm::image::model::ImageRequestInfoBuilder :  {
   public static ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.newBuilderWithSource(String url);
+  public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setRegionToDecode(android.graphics.Rect regionToDecode);
+  public android.graphics.Rect com.lynx.tasm.image.model.ImageRequestInfoBuilder.getRegionToDecode();
   public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isEnableDownSampling();
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setEnableDownSampling(boolean mEnableDownSampling);
   public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isEnableAnimationAutoPlay();
@@ -2972,6 +2975,7 @@ public class com::lynx::tasm::image::ImageUtils :  {
   public final int com.lynx.tasm.image.ImageUtils.RGB_565_BYTES_ONE_PIXEL RGB_565_BYTES_ONE_PIXEL;
   public static LocalCacheState com.lynx.tasm.image.ImageUtils.parseLocalCache(Dynamic localCache);
   public static int com.lynx.tasm.image.ImageUtils.getSizeInByteForBitmap(int width, int height, Bitmap.Config bitmapConfig);
+  public static Rect com.lynx.tasm.image.ImageUtils.parseRegionToDecode(@Nullable ReadableMap region);
 }
 
 public interface com::lynx::tasm::performance::fsp::IMeaningfulContentSnapshotCaptureHandler {
@@ -9119,6 +9123,7 @@ public class com::lynx::tasm::behavior::PropsConstants :  {
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_ADDITIONAL_CUSTOM_INFO IMAGE_ADDITIONAL_CUSTOM_INFO;
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_ENABLE_SUPER_RESOLUTION IMAGE_ENABLE_SUPER_RESOLUTION;
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_SUPER_RESOLUTION_SCALE IMAGE_SUPER_RESOLUTION_SCALE;
+  public final String com.lynx.tasm.behavior.PropsConstants.REGION_TO_DECODE REGION_TO_DECODE;
 }
 
 public class com::lynx::tasm::behavior::utils::PropsHolderAutoRegister :  {

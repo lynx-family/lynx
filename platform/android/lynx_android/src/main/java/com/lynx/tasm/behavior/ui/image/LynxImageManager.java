@@ -101,6 +101,8 @@ public class LynxImageManager implements Drawable.Callback {
 
   private static final long BORDER_RADIUS_CHANGED = (1 << 12);
 
+  private static final long REGION_TO_DECODE_CHANGED = (1 << 13);
+
   private final LynxContext mContext;
 
   private final LynxImageLoader mImageLoader;
@@ -241,6 +243,8 @@ public class LynxImageManager implements Drawable.Callback {
   private float mImageSRScale = 0;
 
   private boolean mCacheKeyPathOnly = false;
+
+  private @Nullable Rect mRegionToDecode;
 
   private static class ImageRequestHandle implements ImageLoadListener {
     private final ImageLoadListener mSrcLoadListenerImpl;
@@ -731,6 +735,9 @@ public class LynxImageManager implements Drawable.Callback {
         case PropsConstants.ANDROID_CACHE_KEY_PATH_ONLY:
           setCacheKeyPathOnly(props.getBoolean(name, false));
           break;
+        case PropsConstants.REGION_TO_DECODE:
+          setRegionToDecode(props.getMap(name));
+          break;
       }
     }
     updateRedirectCheckResult();
@@ -933,8 +940,8 @@ public class LynxImageManager implements Drawable.Callback {
       updatePlaceholderSource();
     }
 
-    if (isDirty(SRC_CHANGED) || isDirty(BLUR_RADIUS_CHANGED)
-        || isDirty(DOWN_SAMPLING_SCALE_CHANGED)) {
+    if (isDirty(SRC_CHANGED) || isDirty(BLUR_RADIUS_CHANGED) || isDirty(DOWN_SAMPLING_SCALE_CHANGED)
+        || isDirty(REGION_TO_DECODE_CHANGED)) {
       if (!mDeferInvalidation) {
         releaseImage(mCurImageRequest); // TODO(linxs:) to be removed!
         releaseDrawable(mImageDrawable); // TODO(linxs:) it's better to move to ImageContent to do
@@ -1030,6 +1037,9 @@ public class LynxImageManager implements Drawable.Callback {
         postProcessors.add(postProcessor);
         builder.setBitmapPostProcessor(postProcessors);
       }
+    }
+    if (mRegionToDecode != null) {
+      builder.setRegionToDecode(mRegionToDecode);
     }
     return builder.build();
   }
@@ -1426,5 +1436,13 @@ public class LynxImageManager implements Drawable.Callback {
 
   private void setCacheKeyPathOnly(boolean enable) {
     mCacheKeyPathOnly = enable;
+  }
+
+  void setRegionToDecode(ReadableMap region) {
+    Rect rect = ImageUtils.parseRegionToDecode(region);
+    if (!Objects.equals(rect, mRegionToDecode)) {
+      mRegionToDecode = rect;
+      dirtyFlags |= REGION_TO_DECODE_CHANGED;
+    }
   }
 }
