@@ -100,6 +100,7 @@ class ComponentElement : public WrapperElement, public BaseComponent {
       ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
+  void SetupFragmentBehavior(Fragment* fragment) override;
 
  protected:
   ComponentElement(const ComponentElement& element, bool clone_resolved_props);
