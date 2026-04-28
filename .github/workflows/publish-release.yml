@@ -338,6 +338,14 @@ jobs:
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
           fetch-depth: 0
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/windows-common-deps
+        with:
+          target: 'clay'
       - name: Build windows Explorer
         uses: ./lynx/.github/actions/windows-explorer-build
         with:

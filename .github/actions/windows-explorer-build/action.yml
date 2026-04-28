@@ -9,10 +9,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Python Setup
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
     - name: Setup Node.js 18.20.0
       uses: actions/setup-node@v6
       with:
@@ -22,6 +18,7 @@ runs:
       shell: pwsh
       run: |
         $npm_custom_cache_dir = python -c "import os; import pathlib; print(os.path.join(pathlib.Path.home(), '.pnpm', 'v3'))"
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         echo "NPM_CUSTOM_CACHE_DIR=$npm_custom_cache_dir" >> ${env:GITHUB_OUTPUT}
     - name: Cache pnpm Dependencies
       uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
@@ -30,10 +27,6 @@ runs:
         key: pnpm-custom-${{ runner.os }}-${{ hashFiles('lynx/pnpm-lock.yaml') }}
         restore-keys: |
           pnpm-custom-${{ runner.os }}-
-    - name: Install Common Dependencies
-      uses: ./lynx/.github/actions/windows-common-deps
-      with:
-        target: 'clay'
     - name: Build Explorer App
       shell: pwsh
       run: |-
@@ -46,8 +39,14 @@ runs:
         # .\buildtools\node\pnpm install
         $PSNativeCommandArgumentPassing = 'Legacy'
         .\buildtools\gn\gn.exe gen out\Default --args='target_cpu=\"${{ inputs.build-arch }}\" desktop_enable_embedder_layer=true enable_clay_standalone=true disable_visibility_hidden=true use_ndk_static_cxx=false enable_linker_map=false enable_clay=true is_headless=true skia_enable_flutter_defines=true skia_use_dng_sdk=false skia_use_sfntly=false skia_enable_pdf=false skia_enable_svg=true enable_svg=true skia_enable_skottie=true skia_use_x11=false skia_use_wuffs=true skia_use_expat=true skia_use_fontconfig=false clay_enable_skshaper=true skia_use_icu=true allow_deprecated_api_calls=true stripped_symbols=true is_official_build=true enable_lto=false is_clang=true enable_lepusng_worklet=true enable_napi_binding=true is_debug=false enable_inspector=true enable_libcpp_abi_namespace_cr=true jsengine_type=\"quickjs\"' --ide=vs
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         .\buildtools\ninja\ninja.exe -C out\Default explorer\windows\lynx_explorer:copy_resources
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         .\buildtools\ninja\ninja.exe -C out\Default explorer\windows\lynx_explorer:copy_devtool_resources
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         .\buildtools\ninja\ninja.exe -C out\Default explorer\windows\lynx_explorer:build_card_resources
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         .\buildtools\ninja\ninja.exe -C out\Default explorer platform\windows:package_sdk
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         tar --strip-components 3 -czvf LynxExplorer-windows-${{ inputs.build-arch }}.tar.gz out/Default/lynx_explorer
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
