@@ -17,6 +17,17 @@
 			</array>
 		</dict>
 	</array>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.lynx.explorer.showcase</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Showcase</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeCompose</string>
+		</dict>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
