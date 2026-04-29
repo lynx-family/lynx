@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"
@@ -59,6 +60,15 @@
 #endif
 
 namespace clay {
+
+static bool ForceUseXElement(const std::string& tag) {
+#ifdef OS_IOS
+  return tag == "x-input";  // use xinput of xelement in iOS platform to avoid
+                            // some issues.
+#else
+  return false;
+#endif
+}
 
 ViewContext::ViewContext(PageView* root, ShadowNodeOwner* shadow_node_owner)
     : page_view_(root),
@@ -691,6 +701,7 @@ void ViewContext::UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
   for (auto id : ready_ids) {
     auto view = FindViewByViewId(id);
     if (view) {
+      view->OnLayoutFinish();
       view->OnNodeReady();
     }
   }
@@ -1024,7 +1035,8 @@ void ViewContext::SyncNativeViewTags(
     std::unordered_set<std::string> bootstrap_tags) {
   for (const auto& tag : tags) {
     if (ViewRegistry::GetInstance()->HasView(tag) &&
-        bootstrap_tags.find(tag) == bootstrap_tags.end()) {
+        bootstrap_tags.find(tag) == bootstrap_tags.end() &&
+        !ForceUseXElement(tag)) {
       continue;
     }
     ViewRegistry::GetInstance()->RegisterView(

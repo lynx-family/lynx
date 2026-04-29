@@ -45,6 +45,9 @@ class NativeViewPlugin : public ActorObject<Owner::kPlatform> {
   virtual void OnFocusChanged(bool focused, bool is_leaf) {}
   virtual void LayoutChanged(float left, float top, float width,
                              float height) = 0;
+  // Triggered by C++ node-ready patching just before node-ready so wrapped
+  // native views can flush per-layout callbacks through the platform layer.
+  virtual void OnLayoutFinish() {}
   // Triggered by C++ node-ready patching (end-of-layout flush), not Android
   // View#layout.
   virtual void OnNodeReady() {}

@@ -27,6 +27,7 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   void OnPainting() override;
   void OnAttachToTree() override;
   void OnDetachFromTree() override;
+  void OnLayoutFinish() override;
   void OnNodeReady() override;
   bool HitTest(const PointerEvent& event, HitTestResult& result) override;
   BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
