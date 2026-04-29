@@ -651,11 +651,16 @@ void PageView::FlushSemantics() {
     }
     for (auto* node : node_to_process) {
       if (node->IsAccessibilityElement()) {
-        FML_DCHECK(node->GetSemantics());
+        auto semantics = node->GetSemantics();
+        // The view can be accessibility-visible by type but absent from the
+        // current semantics tree when filtered by ancestor
+        // accessibility-elements.
+        if (!semantics || !semantics->Attached()) {
+          continue;
+        }
         BaseView* parent_node_view =
-            node->GetSemantics()->Parent()
-                ? static_cast<SemanticsNode*>(node->GetSemantics()->Parent())
-                      ->OwnerView()
+            semantics->Parent()
+                ? static_cast<SemanticsNode*>(semantics->Parent())->OwnerView()
                 : nullptr;
         node->UpdateSemantics({}, parent_node_view, false);
       }
