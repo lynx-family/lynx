@@ -25,7 +25,7 @@ import java.util.HashMap;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @LynxGeneratorName(packageName = "com.lynx.tasm.behavior.ui.frame")
-@LynxBehavior(tagName = "frame", isCreateAsync = true)
+@LynxBehavior(tagName = "frame", isCreateAsync = false)
 public final class UIFrame extends LynxUI<LynxFrameView> {
   private static final String TAG = "UIFrame";
   private TemplateBundle mPendingBundle;
