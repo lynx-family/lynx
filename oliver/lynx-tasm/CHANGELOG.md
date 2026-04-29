@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.38
+* Include custom section CSS in diagnostics output
+
 # 0.0.37
 * Support CSS !important in parsing, cascade, and inline styles
 

@@ -205,6 +205,34 @@ TEST(CSSParser, MergeCSSParseTokenPreservesImportantAttributes) {
       origin->GetImportantAttributes().contains(tasm::kPropertyIDWidth));
 }
 
+TEST(CSSParserDiagnostics, ParseExternalFragmentCollectsDiagnostics) {
+  CompileOptions options;
+  CSSParser parser(options);
+
+  std::string rule_list_json = R"([{
+    "type": "StyleRule",
+    "selectorText": {"value": ".custom", "loc": {"line": 1, "column": 1}},
+    "style": [
+      {"name": "unknown-custom-prop", "value": "1px", "keyLoc": {"line": 2, "column": 3}}
+    ],
+    "variables": {}
+  }])";
+
+  rapidjson::Document doc;
+  doc.Parse(rule_list_json.c_str());
+  ASSERT_FALSE(doc.HasParseError());
+
+  auto fragment = parser.ParseExternalFragment(doc, "/custom.css");
+  ASSERT_NE(fragment, nullptr);
+
+  const auto& diags = parser.css_diagnostics();
+  ASSERT_EQ(diags.size(), 1);
+  EXPECT_EQ(diags[0].type, "property");
+  EXPECT_EQ(diags[0].name, "unknown-custom-prop");
+  EXPECT_EQ(diags[0].line, 2);
+  EXPECT_EQ(diags[0].column, 3);
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx
