@@ -46,6 +46,8 @@ include ':LynxXElement:Markdown'
 project(":LynxXElement:Markdown").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_markdown')
 include ':LynxXElement:Refresh'
 project(":LynxXElement:Refresh").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_refresh')
+include ':LynxXElement:BlurView'
+project(":LynxXElement:BlurView").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_blur_view')
 
 include ':ServiceAPI'
 project(':ServiceAPI').projectDir = new File(rootProject.projectDir, '../../platform/android/service_api')
