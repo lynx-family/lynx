@@ -10,6 +10,7 @@ import com.lynx.tasm.performance.IPerformanceObserver;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
 import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import java.util.Set;
+import org.json.JSONObject;
 
 /**
  * Give the host application a chance to take control when a lynx template is about to be loaded in
@@ -152,4 +153,13 @@ public class LynxViewClientV2 implements IPerformanceObserver {
    * @param info information about the resource load result
    */
   public void onResourceLoaded(@NonNull LynxResourceLoadInfo info) {}
+
+  /**
+   * Notify the client that a Lynx frame has been recorded.
+   *
+   * Note: This method runs on the report thread. Avoid heavy work or direct UI mutation.
+   *
+   * @param frame recorded frame data
+   */
+  public void onLynxFrame(@NonNull JSONObject frame) {}
 }

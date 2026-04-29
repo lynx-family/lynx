@@ -205,6 +205,8 @@ class TemplateDelegate : public ContextProxy::Delegate,
       std::shared_ptr<tasm::PipelineOptions> pipeline_options) = 0;
 
   virtual void ReloadFromJS(UpdateDataTask task) = 0;
+  virtual void StartRecording(const lepus::Value& value) = 0;
+  virtual void StopRecording(const lepus::Value& value) = 0;
 
   // for Fiber
   virtual void CallLepusMethod(const std::string& method_name,

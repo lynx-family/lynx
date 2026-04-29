@@ -458,6 +458,30 @@ void BTSRuntimeMediator::ReloadFromJS(runtime::UpdateDataTask task) {
   });
 }
 
+void BTSRuntimeMediator::StartRecording(const lepus::Value& value) {
+  if (runtime_standalone_mode_) {
+    REPORT_JSI_NATIVE_EXCEPTION(
+        "StartRecording not supported on runtime standalone mode");
+    return;
+  }
+  facade_actor_->ActAsync(
+      [value = lepus::Value::ShallowCopy(value)](auto& facade) mutable {
+        facade->StartRecording(value);
+      });
+}
+
+void BTSRuntimeMediator::StopRecording(const lepus::Value& value) {
+  if (runtime_standalone_mode_) {
+    REPORT_JSI_NATIVE_EXCEPTION(
+        "StopRecording not supported on runtime standalone mode");
+    return;
+  }
+  facade_actor_->ActAsync(
+      [value = lepus::Value::ShallowCopy(value)](auto& facade) mutable {
+        facade->StopRecording(value);
+      });
+}
+
 void BTSRuntimeMediator::SetTiming(tasm::Timing timing) {
   if (!perf_controller_actor_) {
     return;

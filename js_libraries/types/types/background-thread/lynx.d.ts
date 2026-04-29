@@ -122,6 +122,10 @@ export interface Lynx extends CommonLynx {
 
   reload(value: object, callback: () => void): void;
 
+  startRecording(value: object): void;
+  
+  stopRecording(value: object): void;
+
   requestResourcePrefetch(
     data: ResourcePrefetchData,
     callback: (res: ResourcePrefetchResult) => void,

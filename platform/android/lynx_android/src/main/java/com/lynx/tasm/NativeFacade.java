@@ -564,6 +564,12 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
   }
 
   @CalledByNative
+  private void startRecording(ReadableMap params) {}
+
+  @CalledByNative
+  private void stopRecording(ReadableMap params) {}
+
+  @CalledByNative
   private void onTemplateBundleReady(TemplateBundle bundle) {
     if (mCallback != null) {
       mCallback.onTemplateBundleReady(bundle);

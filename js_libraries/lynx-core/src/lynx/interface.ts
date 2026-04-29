@@ -45,6 +45,8 @@ export interface NativeLynxProxy extends BackgroundLynx {
 
   getCustomSectionSync<T = any>(key: string, bundleName?: string): T;
   reload(value: object, callback: () => void): void;
+  startRecording(value: object): void;
+  stopRecording(value: object): void;
 
   fetch: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 

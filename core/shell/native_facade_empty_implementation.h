@@ -82,6 +82,10 @@ class NativeFacadeEmptyImpl : public NativeFacade {
                            int64_t event_id) override {}
 
   virtual void OnLynxEvent(const lepus::Value& event_detail) override {}
+
+  virtual void StartRecording(const lepus::Value& value) override {}
+
+  virtual void StopRecording(const lepus::Value& value) override {}
 };
 
 }  // namespace shell

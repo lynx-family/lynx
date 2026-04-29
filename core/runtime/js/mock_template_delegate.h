@@ -154,6 +154,8 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
       std::shared_ptr<tasm::PipelineOptions> pipeline_options) override {}
 
   void ReloadFromJS(lynx::runtime::UpdateDataTask task) override {}
+  void StartRecording(const lepus::Value& value) override {}
+  void StopRecording(const lepus::Value& value) override {}
 
   // for Fiber
   void CallLepusMethod(const std::string& method_name, lepus::Value value,

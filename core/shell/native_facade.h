@@ -125,6 +125,10 @@ class NativeFacade {
 
   virtual void OnLynxEvent(const lepus::Value& event_detail) = 0;
 
+  virtual void StartRecording(const lepus::Value& value) = 0;
+
+  virtual void StopRecording(const lepus::Value& value) = 0;
+
  protected:
   PlatformCallBackManager call_back_manager_;
 };

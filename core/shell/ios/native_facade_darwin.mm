@@ -232,5 +232,9 @@ void NativeFacadeDarwin::OnLynxEvent(const lepus::Value& event_detail) {
   [render onLynxEventWithDictionary:lynx::tasm::convertLepusValueToNSObject(event_detail)];
 }
 
+void NativeFacadeDarwin::StartRecording(const lepus::Value& value) {}
+
+void NativeFacadeDarwin::StopRecording(const lepus::Value& value) {}
+
 }  // namespace shell
 }  // namespace lynx

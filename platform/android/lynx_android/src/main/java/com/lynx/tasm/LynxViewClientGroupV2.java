@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.json.JSONObject;
 
 public class LynxViewClientGroupV2 extends LynxViewClientV2 {
   private CopyOnWriteArrayList<LynxViewClientV2> mClients = new CopyOnWriteArrayList<>();
@@ -48,6 +49,13 @@ public class LynxViewClientGroupV2 extends LynxViewClientV2 {
   public void onResourceLoaded(@NonNull LynxResourceLoadInfo info) {
     for (LynxViewClientV2 client : mClients) {
       client.onResourceLoaded(info);
+    }
+  }
+
+  @Override
+  public void onLynxFrame(@NonNull JSONObject frame) {
+    for (LynxViewClientV2 client : mClients) {
+      client.onLynxFrame(frame);
     }
   }
 }

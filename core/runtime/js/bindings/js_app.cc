@@ -3503,6 +3503,20 @@ void App::ReloadFromJS(const lepus::Value& value, ApiCallBack callback) {
   }
 }
 
+void App::StartRecording(const lepus::Value& value) {
+  auto rt = rt_.lock();
+  if (rt) {
+    delegate_->StartRecording(value);
+  }
+}
+
+void App::StopRecording(const lepus::Value& value) {
+  auto rt = rt_.lock();
+  if (rt) {
+    delegate_->StopRecording(value);
+  }
+}
+
 void App::CallLepusMethod(const std::string& method_name, lepus::Value args,
                           const ApiCallBack& callback, std::string stacks) {
   // This `trace_flow_id` is used to trace the flow of CallLepusMethod.

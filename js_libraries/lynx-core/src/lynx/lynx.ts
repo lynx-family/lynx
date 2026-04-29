@@ -347,6 +347,14 @@ export class Lynx {
     this.getNativeLynx().reload(value, callback);
   };
 
+  startRecording = (value: object) => {
+    this.getNativeLynx().startRecording(value);
+  };
+
+  stopRecording = (value: object) => {
+    this.getNativeLynx().stopRecording(value);
+  };
+
   createIntersectionObserver: CreateIntersectionObserverFunc;
 
   fetchDynamicComponent = (

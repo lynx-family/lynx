@@ -87,6 +87,10 @@ class NativeFacadeImpl : public shell::NativeFacade {
 
   void OnLynxEvent(const lepus::Value& event_detail) override;
 
+  void StartRecording(const lepus::Value& value) override;
+
+  void StopRecording(const lepus::Value& value) override;
+
  private:
   LynxTemplateRenderer* renderer_ = nullptr;
 };

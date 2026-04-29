@@ -7628,12 +7628,14 @@ public class com::lynx::tasm::LynxViewClientGroupV2 : com.lynx.tasm.LynxViewClie
   public void com.lynx.tasm.LynxViewClientGroupV2.onPageStarted(@Nullable LynxView lynxView, @NonNull LynxPipelineInfo info);
   public void com.lynx.tasm.LynxViewClientGroupV2.onPerformanceEvent(@NonNull PerformanceEntry entry);
   public void com.lynx.tasm.LynxViewClientGroupV2.onResourceLoaded(@NonNull LynxResourceLoadInfo info);
+  public void com.lynx.tasm.LynxViewClientGroupV2.onLynxFrame(@NonNull JSONObject frame);
 }
 
 public class com::lynx::tasm::LynxViewClientV2 : com.lynx.tasm.performance.IPerformanceObserver {
   public void com.lynx.tasm.LynxViewClientV2.onPageStarted(@Nullable LynxView lynxView, @NonNull LynxPipelineInfo info);
   public void com.lynx.tasm.LynxViewClientV2.onPerformanceEvent(@NonNull PerformanceEntry entry);
   public void com.lynx.tasm.LynxViewClientV2.onResourceLoaded(@NonNull LynxResourceLoadInfo info);
+  public void com.lynx.tasm.LynxViewClientV2.onLynxFrame(@NonNull JSONObject frame);
 }
 
 public interface com::lynx::tasm::navigator::LynxViewCreationListener {

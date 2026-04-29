@@ -114,5 +114,9 @@ void NativeFacadeHarmony::OnEventFire(long target_id, bool is_stop,
 
 void NativeFacadeHarmony::OnLynxEvent(const lepus::Value& event_detail) {}
 
+void NativeFacadeHarmony::StartRecording(const lepus::Value& value) {}
+
+void NativeFacadeHarmony::StopRecording(const lepus::Value& value) {}
+
 }  // namespace harmony
 }  // namespace lynx

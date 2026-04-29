@@ -131,5 +131,9 @@ void NativeFacadeImpl::OnEventFire(long target_id, bool is_stop,
 
 void NativeFacadeImpl::OnLynxEvent(const lepus::Value& event_detail) {}
 
+void NativeFacadeImpl::StartRecording(const lepus::Value& value) {}
+
+void NativeFacadeImpl::StopRecording(const lepus::Value& value) {}
+
 }  // namespace embedder
 }  // namespace lynx

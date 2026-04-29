@@ -198,6 +198,8 @@ class App : public std::enable_shared_from_this<App> {
                       const std::string& method_name);
 
   void ReloadFromJS(const lepus::Value& value, ApiCallBack callback);
+  void StartRecording(const lepus::Value& value);
+  void StopRecording(const lepus::Value& value);
 
   void ReportException(runtime::JSErrorInfo error_info);
   void AddReporterCustomInfo(

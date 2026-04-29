@@ -207,6 +207,66 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
         });
   }
 
+  if (methodName == "startRecording") {
+    return Function::createFromHostFunction(
+        *rt, PropNameID::forAscii(*rt, "startRecording"), 1,
+        [this](Runtime &rt, const Value &thisVal, const Value *args,
+               size_t count) -> base::expected<Value, JSINativeException> {
+          auto ptr = native_app_.lock();
+          if (ptr) {
+            lepus::Value value(lepus::Dictionary::Create());
+            if (count > 0) {
+              if (!args[0].isObject()) {
+                return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                    "lynx.startRecording's first params must be object."));
+              }
+              auto lepus_value_opt =
+                  ptr->ParseJSValueToLepusValue(args[0], PAGE_GROUP_ID);
+              if (!lepus_value_opt) {
+                return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                    "ParseJSValueToLepusValue error in lynx.startRecording."));
+              }
+              if (!lepus_value_opt->IsObject()) {
+                return Value::undefined();
+              }
+              value = std::move(*lepus_value_opt);
+            }
+            ptr->StartRecording(value);
+          }
+          return Value::undefined();
+        });
+  }
+
+  if (methodName == "stopRecording") {
+    return Function::createFromHostFunction(
+        *rt, PropNameID::forAscii(*rt, "stopRecording"), 1,
+        [this](Runtime &rt, const Value &thisVal, const Value *args,
+               size_t count) -> base::expected<Value, JSINativeException> {
+          auto ptr = native_app_.lock();
+          if (ptr) {
+            lepus::Value value(lepus::Dictionary::Create());
+            if (count > 0) {
+              if (!args[0].isObject()) {
+                return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                    "lynx.stopRecording's first params must be object."));
+              }
+              auto lepus_value_opt =
+                  ptr->ParseJSValueToLepusValue(args[0], PAGE_GROUP_ID);
+              if (!lepus_value_opt) {
+                return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                    "ParseJSValueToLepusValue error in lynx.stopRecording."));
+              }
+              if (!lepus_value_opt->IsObject()) {
+                return Value::undefined();
+              }
+              value = std::move(*lepus_value_opt);
+            }
+            ptr->StopRecording(value);
+          }
+          return Value::undefined();
+        });
+  }
+
   if (methodName == "QueryComponent") {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "QueryComponent"), 2,

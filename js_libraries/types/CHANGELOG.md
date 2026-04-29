@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.9.5
+
+- Add `startRecording` and `stopRecording` methods for lynx.
+
 ## 3.9.4
 
 - Add `getScrollInfo` method for list.

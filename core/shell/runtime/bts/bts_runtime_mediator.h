@@ -183,6 +183,8 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
       std::shared_ptr<tasm::PipelineOptions> pipeline_options) override;
 
   void ReloadFromJS(runtime::UpdateDataTask task) override;
+  void StartRecording(const lepus::Value& value) override;
+  void StopRecording(const lepus::Value& value) override;
 
   void SetTiming(tasm::Timing timing) override;
   void SetTimingWithTimingFlag(const tasm::timing::TimingFlag& timing_flag,
