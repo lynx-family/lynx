@@ -333,6 +333,9 @@ void BoxPainter::SetBorder(const BordersData& borders_data,
 
 void BoxPainter::Paint(GraphicsContext* context, const FloatPoint& offset) {
   auto rect = render_object_->GetFrameRect();
+  if (rect.IsEmpty()) {
+    return;
+  }
   // remove left and top
   rect.SetX(0);
   rect.SetY(0);
