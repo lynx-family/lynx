@@ -269,14 +269,7 @@ void BaseView::AddChild(BaseView* child, int index) {
   }
 }
 
-void BaseView::OnLayoutFinish(BaseView* view) {
-  if (view == nullptr) {
-    return;
-  }
-  if (view->Is<NativeView>()) {
-    view->OnNodeReady();
-  }
-}
+void BaseView::OnLayoutFinish(BaseView* view) {}
 
 void BaseView::RemoveChild(BaseView* child) {
   std::vector<BaseView*>::iterator iter(

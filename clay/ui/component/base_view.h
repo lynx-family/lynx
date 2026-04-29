@@ -131,6 +131,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
     return GetScrollOffset();
   }
 
+  virtual void OnLayoutFinish() {}
   virtual void OnNodeReady();
 
   void UpdateInlineImageInfo();
