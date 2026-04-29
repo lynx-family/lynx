@@ -268,9 +268,14 @@ void NativeView::OnDetachFromTree() {
   page_view_->GetViewTreeObserver()->RemoveOnPaintingListener(this);
 }
 
+void NativeView::OnLayoutFinish() {
+  ApplyUpdateChanged();
+  native_view_plugin_.Act([](auto& plugin) { plugin.OnLayoutFinish(); });
+}
+
 void NativeView::OnNodeReady() {
-  // Ensure layout info is pushed before the layout-finish signal, so Java side
-  // can receive onLayout (size/position) earlier than node-ready.
+  // Re-run the layout sync in case node-ready is triggered without a preceding
+  // layout-finish flush for this native view.
   ApplyUpdateChanged();
   native_view_plugin_.Act([](auto& plugin) { plugin.OnNodeReady(); });
 }
