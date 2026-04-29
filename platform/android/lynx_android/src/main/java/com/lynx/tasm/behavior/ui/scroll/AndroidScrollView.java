@@ -639,6 +639,31 @@ public class AndroidScrollView
     }
   }
 
+  public void applyOverflowClipState(int overflow, boolean enableOverflowHiddenPaddingVisible) {
+    if (!enableOverflowHiddenPaddingVisible) {
+      boolean overflowVisible = overflow != LynxBaseUI.OVERFLOW_HIDDEN;
+      setClipChildren(!overflowVisible);
+      if (mHorizontalScrollView != null) {
+        mHorizontalScrollView.setClipChildren(!overflowVisible);
+      }
+      if (mLinearLayout != null) {
+        mLinearLayout.setClipChildren(true);
+        mLinearLayout.setClipToPadding(!overflowVisible);
+      }
+      return;
+    }
+
+    boolean overflowVisible = overflow != LynxBaseUI.OVERFLOW_HIDDEN;
+    setClipChildren(!overflowVisible);
+    if (mHorizontalScrollView != null) {
+      mHorizontalScrollView.setClipChildren(!overflowVisible);
+    }
+    if (mLinearLayout != null) {
+      mLinearLayout.setClipChildren(!overflowVisible);
+      mLinearLayout.setClipToPadding(!(overflowVisible || enableOverflowHiddenPaddingVisible));
+    }
+  }
+
   @Override
   protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
     if (mRenderer != null) {

@@ -100,6 +100,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   private boolean mEnableScroll = true;
 
   private boolean mUsePagingTouchSlop = false;
+  private boolean mEnableOverflowHiddenPaddingVisible = true;
 
   private int mFadingEdgeLength = 0;
 
@@ -113,6 +114,8 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   // value may not be the latest as reused UI with same prop will not update mPropMap. Instead, it
   // will update through onNodeReady
   private HashMap<String, Integer> mPropMap = new HashMap<>();
+  private int mLastAppliedOverflowForClipState = Integer.MIN_VALUE;
+  @Nullable private Boolean mLastAppliedOverflowHiddenPaddingVisible;
 
   public UIScrollView(LynxContext context) {
     this(context, null);
@@ -336,15 +339,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
 
   @Override
   public void layout() {
-    if (getOverflow() != OVERFLOW_HIDDEN) {
-      mView.setClipChildren(false);
-      if (mView.getHScrollView() != null) {
-        mView.getHScrollView().setClipChildren(false);
-      }
-      if (mView.getLinearLayout() != null) {
-        mView.getLinearLayout().setClipToPadding(false);
-      }
-    }
+    mView.applyOverflowClipState(getOverflow(), mEnableOverflowHiddenPaddingVisible);
     // Note: we should set scroll range and bounce scroll range before invoking super.layout().
     // In view#onLayout(), bounce scroll range will be consumed.
     if (mEnableNewBounce && !mEnableScrollY) {
@@ -368,6 +363,20 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
         mPendingScrollOffset = 0;
       }
     }
+  }
+
+  private void syncOverflowClipStateIfNeeded() {
+    if (mView == null) {
+      return;
+    }
+    if (mLastAppliedOverflowForClipState == getOverflow()
+        && mLastAppliedOverflowHiddenPaddingVisible != null
+        && mLastAppliedOverflowHiddenPaddingVisible == mEnableOverflowHiddenPaddingVisible) {
+      return;
+    }
+    mLastAppliedOverflowForClipState = getOverflow();
+    mLastAppliedOverflowHiddenPaddingVisible = mEnableOverflowHiddenPaddingVisible;
+    mView.applyOverflowClipState(getOverflow(), mEnableOverflowHiddenPaddingVisible);
   }
 
   @Override
@@ -1096,6 +1105,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   @Override
   public void onPropsUpdated() {
     super.onPropsUpdated();
+    syncOverflowClipStateIfNeeded();
     if (mEnableScrollY) {
       mView.setEnableNewBounce(mEnableNewBounce);
     } else {
@@ -1469,6 +1479,18 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   @LynxProp(name = "android-enable-new-bounce", defaultBoolean = false)
   public void setEnableNewBounce(boolean value) {
     mEnableNewBounce = value;
+  }
+
+  /**
+   * @name: android-enable-overflow-hidden-padding-visible
+   * @description: Keep scroll-view padding area visible on Android even when overflow is hidden.
+   * @category: different
+   * @standardAction: offline
+   * @supportVersion: 4.0
+   **/
+  @LynxProp(name = "android-enable-overflow-hidden-padding-visible", defaultBoolean = true)
+  public void setEnableOverflowHiddenPaddingVisible(boolean value) {
+    mEnableOverflowHiddenPaddingVisible = value;
   }
 
   @Override

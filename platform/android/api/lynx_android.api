@@ -267,6 +267,7 @@ public class com::lynx::tasm::behavior::ui::scroll::AndroidScrollView : com.lynx
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.removeAllViews();
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.computeScroll();
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.sendScrollToEdgeEvent(int l, int t);
+  public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.applyOverflowClipState(int overflow, boolean enableOverflowHiddenPaddingVisible);
   public int com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getContentWidth();
   public int com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getContentHeight();
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.dispatchTouchEvent(MotionEvent ev);
@@ -11244,6 +11245,7 @@ public interface com::lynx::tasm::behavior::ui::UIParent {
 public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm.behavior.ui.scroll.AbsLynxUIScroll< AndroidScrollView >, com.lynx.tasm.behavior.ui.scroll.IScrollSticky {
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setPreferenceConsumeGesture(boolean value);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setEnableNewBounce(boolean value);
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setEnableOverflowHiddenPaddingVisible(boolean value);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onListCellAppear(String itemKey, LynxBaseUI list);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onListCellPrepareForReuse(String itemKey, LynxBaseUI list);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.resetOffset();
