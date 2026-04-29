@@ -112,6 +112,7 @@ std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchLynxDebug(
   bool switch_value = lepus_args.Array()->get(0).Bool();
   if (switch_value) {
     lynx::tasm::DevToolLifecycle::GetInstance().OnEnabled();
+    lynx::tasm::DevToolLifecycle::GetInstance().OnInitialized();
   } else {
     lynx::tasm::DevToolLifecycle::GetInstance().OnDisabled();
   }

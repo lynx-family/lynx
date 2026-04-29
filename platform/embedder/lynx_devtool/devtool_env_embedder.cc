@@ -49,6 +49,11 @@ DevToolEnvEmbedder::DevToolEnvEmbedder() {
         arr[0] ? SwitchPersist::GetValueFromPersistent(key, arr[1]) : arr[1];
     tasm::LynxEnv::GetInstance().SetBoolLocalEnv(key, value);
   }
+
+  auto& lifecycle = lynx::tasm::DevToolLifecycle::GetInstance();
+  lifecycle.OnAttached();
+  lifecycle.OnEnabled();
+  lifecycle.OnInitialized();
 }
 
 bool DevToolEnvEmbedder::NeedPersist(std::string key) {
@@ -65,6 +70,7 @@ void DevToolEnvEmbedder::EnableLynxDebug(bool enable) {
   SetDevToolSwitch(tasm::LynxEnv::kLynxDebugEnabled, enable);
   if (enable) {
     lynx::tasm::DevToolLifecycle::GetInstance().OnEnabled();
+    lynx::tasm::DevToolLifecycle::GetInstance().OnInitialized();
   } else {
     lynx::tasm::DevToolLifecycle::GetInstance().OnDisabled();
   }
