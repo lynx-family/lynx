@@ -46,10 +46,15 @@ void FrameElement::SetAttribute(const base::String& key,
                                 bool need_update_data_model) {
   OnSetSrc(key, value);
   if (key.IsEqual(kFrameData)) {
-    data_ = value.IsEmpty() ? nullptr : std::make_unique<lepus::Value>(value);
+    data_ =
+        value.IsEmpty()
+            ? nullptr
+            : std::make_unique<lepus::Value>(lepus::Value::ShallowCopy(value));
   } else if (key.IsEqual(kGlobalProps)) {
     global_props_ =
-        value.IsEmpty() ? nullptr : std::make_unique<lepus::Value>(value);
+        value.IsEmpty()
+            ? nullptr
+            : std::make_unique<lepus::Value>(lepus::Value::ShallowCopy(value));
   }
   FiberElement::SetAttribute(key, value, need_update_data_model);
 }
