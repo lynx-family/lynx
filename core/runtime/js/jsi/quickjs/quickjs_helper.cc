@@ -229,7 +229,8 @@ base::expected<Value, JSINativeException> QuickjsHelper::evalBuf(
     QuickjsRuntime *rt, LEPUSContext *ctx, const char *buf, size_t buf_len,
     const char *filename, int eval_flags, int start_line_offset) {
 #ifdef OS_IOS
-  if (!tasm::LynxEnv::GetInstance().IsDevToolEnabled() &&
+  if (!(tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
+        rt->GetPageOptions().GetDebuggable()) &&
       !tasm::LynxEnv::GetInstance().DisableJSModeStrip()) {
     eval_flags |= LEPUS_EVAL_FLAG_STRIP;
   }

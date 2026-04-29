@@ -193,12 +193,10 @@ std::string JsCacheManager::MakePath(const std::string &filename) {
 }
 
 bool JsCacheManager::IsCacheEnabled() {
-  auto is_devtool_enable = tasm::LynxEnv::GetInstance().IsDevToolEnabled();
   auto is_bytecode_enabled = tasm::LynxEnv::GetInstance().IsBytecodeEnabled();
-  auto ret = !is_devtool_enable && is_bytecode_enabled && can_create_cache_;
-  LOGI("bytecode enable status: is_devtool_enable:"
-       << is_devtool_enable << " is_bytecode_enabled:" << is_bytecode_enabled
-       << " can_create_cache_:" << can_create_cache_
+  auto ret = is_bytecode_enabled && can_create_cache_;
+  LOGI("bytecode enable status: is_bytecode_enabled:"
+       << is_bytecode_enabled << " can_create_cache_:" << can_create_cache_
        << " final result:" << ret);
   return ret;
 }

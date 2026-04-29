@@ -291,7 +291,7 @@ class LYNX_EXPORT Runtime {
   void SetPageOptions(const tasm::PageOptions& options) {
     page_options_ = options;
   }
-  const tasm::PageOptions& GetPageOptions() { return page_options_; }
+  const tasm::PageOptions& GetPageOptions() const { return page_options_; }
   const std::string& getGroupId() { return external_params_.group_id; }
   LYNX_EXPORT_FOR_DEVTOOL void setGroupId(const std::string& group_id) {
     external_params_.group_id = group_id;

@@ -860,7 +860,10 @@ std::shared_ptr<Buffer> QuickjsRuntime::GetBytecode(
   std::shared_ptr<Buffer> cache;
 #if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
     defined(QUICKJS_CACHE_UNITTEST)
-  if (runtime::IsKernelJs(source_url) || GetEnableUserBytecode()) {
+  if ((runtime::IsKernelJs(source_url) &&
+       !tasm::LynxEnv::GetInstance().IsDevToolEnabled() &&
+       !GetPageOptions().GetDebuggable()) ||
+      GetEnableUserBytecode()) {
     LOGI("using new bytecode");
     auto &instance = cache::JsCacheManager::GetQuickjsInstance();
     auto generator =
