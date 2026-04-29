@@ -3582,6 +3582,9 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
   element->SetElementSlots(element_slots);
   element->SetUid(uid);
   element->PrepareAsyncCreateElementTree();
+
+  ON_NODE_CREATE(element);
+
   RETURN(lepus::Value(element));
 }
 
