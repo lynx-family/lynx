@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_xelement/registry.h"
 
+#include "platform/harmony/lynx_xelement/blur_view/ui_blur_view.h"
 #include "platform/harmony/lynx_xelement/input/input_shadow_node.h"
 #include "platform/harmony/lynx_xelement/input/ui_input.h"
 #include "platform/harmony/lynx_xelement/input/ui_textarea.h"
@@ -21,6 +22,7 @@ namespace harmony {
 
 void XElementRegistry::Initialize() {
   auto& map = LynxContext::GetCAPINodeInfoMap();
+  map["blur-view"] = {UIBlurView::Make};
   map["input"] = {UIInput::Make, InputShadowNode::Make, LayoutNodeType::CUSTOM};
   map["textarea"] = {UITextArea::Make, InputShadowNode::Make,
                      LayoutNodeType::CUSTOM};

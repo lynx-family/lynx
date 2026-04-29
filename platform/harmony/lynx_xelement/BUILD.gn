@@ -7,6 +7,8 @@ import("../../../core/base_targets.gni")
 
 lynx_core_source_set("lynx_xelement") {
   sources = [
+    "blur_view/ui_blur_view.cc",
+    "blur_view/ui_blur_view.h",
     "input/input_shadow_node.cc",
     "input/input_shadow_node.h",
     "input/ui_base_input.cc",
