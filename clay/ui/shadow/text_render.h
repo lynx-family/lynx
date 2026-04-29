@@ -103,6 +103,9 @@ class TextRender {
   std::unique_ptr<txt::Paragraph> cache_paragraph_;
   size_t end_glyph_position_ = 0;
   TextDirection truncation_direction_ = TextDirection::kLtr;
+  // Override ellipsis count for inline truncation because line metrics are
+  // based on the rebuilt truncated paragraph.
+  int inline_truncation_hidden_count_ = -1;
 };
 
 }  // namespace clay
