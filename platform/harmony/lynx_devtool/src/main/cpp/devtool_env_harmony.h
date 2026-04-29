@@ -7,7 +7,6 @@
 
 #include <database/preferences/oh_preferences.h>
 
-#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -21,6 +20,7 @@ class DevToolEnvHarmony {
   DevToolEnvHarmony();
   ~DevToolEnvHarmony();
   static napi_value Init(napi_env env, napi_value exports);
+  static void InitDevToolEnv();
   static DevToolEnvHarmony &GetInstance();
   void SetSwitch(const std::string &key, bool value,
                  bool is_persistent = false);
@@ -38,6 +38,7 @@ class DevToolEnvHarmony {
   static napi_value Constructor(napi_env env, napi_callback_info info);
   static napi_value SetSwitchNAPI(napi_env env, napi_callback_info info);
   static napi_value GetSwitchNAPI(napi_env env, napi_callback_info info);
+  static napi_value InitDevToolEnvNAPI(napi_env env, napi_callback_info info);
   static napi_value SetAppInfo(napi_env env, napi_callback_info info);
   static napi_value InitDevToolSetModule(napi_env env, napi_callback_info info);
 

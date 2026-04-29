@@ -48,6 +48,15 @@ export class LynxDevToolService implements ILynxDevToolService {
     }
   }
 
+  public initDevToolEnv(): void {
+    let lynxDevToolEnv: ESObject = LynxDevToolService.devtoolModule?.LynxDevToolEnv;
+    if (lynxDevToolEnv) {
+      lynxDevToolEnv.initDevToolEnv();
+    } else {
+      LLog.i(LynxDevToolService.TAG, "initDevToolEnv lynxDevToolEnv is null");
+    }
+  }
+
   /** @deprecated Use DevToolSettings instead. */
   public devtoolEnvSetSwitch(key: string, value: boolean): void {
     let lynxDevToolEnv: ESObject = LynxDevToolService.devtoolModule?.LynxDevToolEnv;

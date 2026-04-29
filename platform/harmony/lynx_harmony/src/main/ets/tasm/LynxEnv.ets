@@ -119,11 +119,11 @@ class LynxEnvironment {
     if (this.hasInitLynxDebug) {
       return;
     }
-    let isDevToolModuleLoaded =
-      LynxServiceCenter.getService<ILynxDevToolService>(LynxServiceType.DevTool)?.isDevToolModuleLoaded();
-    if (isDevToolModuleLoaded) {
+    let devToolService = LynxServiceCenter.getService<ILynxDevToolService>(LynxServiceType.DevTool);
+    if (devToolService?.isDevToolModuleLoaded()) {
       LLog.i(TAG, "isDevToolModuleLoaded is true");
       this.hasInitLynxDebug = true;
+      devToolService.initDevToolEnv?.();
       DevToolLifecycle.onAttached();
       DevToolLifecycle.onEnabled();
       // assume dynamic libraries are ready since modules are imported

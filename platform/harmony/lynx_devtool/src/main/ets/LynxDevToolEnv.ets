@@ -5,6 +5,10 @@
 import lynxdevtool from 'liblynxdevtool.so';
 
 export class LynxDevToolEnv {
+  public static initDevToolEnv(): void {
+    lynxdevtool.LynxDevToolEnvHarmony.initDevToolEnv();
+  }
+
   /** @deprecated Use DevToolSettings in @lynx/lynx instead. */
   public static setSwitch(key: string, value: boolean) {
     lynxdevtool.LynxDevToolEnvHarmony.setSwitch(key, value);

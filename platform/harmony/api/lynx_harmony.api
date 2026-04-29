@@ -44,6 +44,7 @@ export interface HarmonyStateListener {
 }
 
 export class LynxDevToolEnv {
+  public static initDevToolEnv(): void;
   public static setSwitch(key: string, value: boolean): void;
   public static getSwitch(key: string): boolean;
   public static setAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
@@ -93,6 +94,7 @@ export class LynxDevToolService implements ILynxDevToolService {
   public isDevToolModuleLoaded(): boolean;
   public connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean;
   public initDevToolSetModule(moduleManager: number[]): void;
+  public initDevToolEnv(): void;
   public devtoolEnvSetSwitch(key: string, value: boolean): void;
   public devtoolEnvGetSwitch(key: string): boolean;
   public devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
@@ -1357,6 +1359,7 @@ export interface ILynxDevToolService {
   isDevToolModuleLoaded(): boolean;
   connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean;
   initDevToolSetModule(moduleManager: number[]): void;
+  initDevToolEnv(): void;
   devtoolEnvSetSwitch(key: string, value: boolean): void;
   devtoolEnvGetSwitch(key: string): boolean;
   devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;

@@ -12,10 +12,13 @@
 #include <cassert>
 #include <cstring>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <utility>
 #include <vector>
 
+#include "base/include/log/logging.h"
+#include "base/include/no_destructor.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/public/jsb/native_module_factory.h"
@@ -47,7 +50,6 @@ std::unordered_map<std::string, bool>
         {"enable_pixel_copy", false}};
 
 DevToolEnvHarmony::DevToolEnvHarmony() {
-  debugrouter::common::DebugRouter::GetInstance().EnableAllSessions();
   if (!InitPreferences()) {
     LOGW("InitPreferences failed");
   }
@@ -56,8 +58,9 @@ DevToolEnvHarmony::DevToolEnvHarmony() {
     std::string key = it.first;
     bool defaultValue = it.second;
     bool value = false;
-    auto result = OH_Preferences_GetBool(preference_, key.c_str(), &value);
-    if (result == OH_Preferences_ErrCode::PREFERENCES_OK) {
+    if (preference_ != nullptr &&
+        OH_Preferences_GetBool(preference_, key.c_str(), &value) ==
+            OH_Preferences_ErrCode::PREFERENCES_OK) {
       tasm::LynxEnv::GetInstance().SetBoolLocalEnv(key, value);
     } else {
       tasm::LynxEnv::GetInstance().SetBoolLocalEnv(key, defaultValue);
@@ -107,6 +110,7 @@ napi_value DevToolEnvHarmony::Init(napi_env env, napi_value exports) {
   {(name), nullptr, (func), nullptr, nullptr, nullptr, napi_static, nullptr}
 
   napi_property_descriptor properties[] = {
+      DECLARE_NAPI_STATIC_FUNCTION("initDevToolEnv", InitDevToolEnvNAPI),
       DECLARE_NAPI_STATIC_FUNCTION("setSwitch", SetSwitchNAPI),
       DECLARE_NAPI_STATIC_FUNCTION("getSwitch", GetSwitchNAPI),
       DECLARE_NAPI_STATIC_FUNCTION("setAppInfo", SetAppInfo),
@@ -122,6 +126,10 @@ napi_value DevToolEnvHarmony::Init(napi_env env, napi_value exports) {
   assert(status == napi_ok);
   status = napi_set_named_property(env, exports, "LynxDevToolEnvHarmony", cons);
   assert(status == napi_ok);
+  // Native module registration is the earliest reliable point where
+  // lynx_devtool is loaded, so initialize DebugRouter sessions here instead of
+  // depending on DevToolEnvHarmony's constructor being touched by a switch API.
+  InitDevToolEnv();
   return exports;
 }
 
@@ -132,9 +140,25 @@ napi_value DevToolEnvHarmony::Constructor(napi_env env,
   return js_this;
 }
 
+void DevToolEnvHarmony::InitDevToolEnv() {
+  static std::once_flag once;
+  std::call_once(once, []() {
+    debugrouter::common::DebugRouter::GetInstance().EnableAllSessions();
+    // Keep the legacy EnvEmbedder path ready by loading persisted switch values
+    // into LynxEnv during explicit devtool init, not on first switch access.
+    (void)DevToolEnvHarmony::GetInstance();
+  });
+}
+
 DevToolEnvHarmony &DevToolEnvHarmony::GetInstance() {
   static base::NoDestructor<DevToolEnvHarmony> instance;
   return *instance;
+}
+
+napi_value DevToolEnvHarmony::InitDevToolEnvNAPI(napi_env env,
+                                                 napi_callback_info info) {
+  InitDevToolEnv();
+  return nullptr;
 }
 
 napi_value DevToolEnvHarmony::SetSwitchNAPI(napi_env env,
@@ -176,6 +200,9 @@ bool DevToolEnvHarmony::NeedPersistent(const std::string &key) {
 
 bool DevToolEnvHarmony::SetPersistentSwitch(const std::string &key,
                                             bool value) {
+  if (preference_ == nullptr) {
+    return false;
+  }
   auto ret = OH_Preferences_SetBool(preference_, key.c_str(), value);
   if (ret != PREFERENCES_OK) {
     return false;
@@ -192,7 +219,7 @@ void DevToolEnvHarmony::SetSwitch(const std::string &key, bool value,
 }
 
 bool DevToolEnvHarmony::GetSwitch(const std::string &key) {
-  if (!tasm::LynxEnv::GetInstance().ContainKey(key)) {
+  if (!tasm::LynxEnv::GetInstance().ContainKey(key) && preference_ != nullptr) {
     bool value = false;
     auto result = OH_Preferences_GetBool(preference_, key.c_str(), &value);
     if (result == OH_Preferences_ErrCode::PREFERENCES_OK) {

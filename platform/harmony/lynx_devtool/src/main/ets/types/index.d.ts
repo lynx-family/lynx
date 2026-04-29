@@ -19,6 +19,7 @@ export class InspectorOwnerHarmony {
 }
 
 export class LynxDevToolEnvHarmony {
+  static initDevToolEnv: () => void;
   /** @deprecated Use DevToolSettings in @lynx/lynx instead. */
   static setSwitch: (key: string, value: boolean) => void;
   /** @deprecated Use DevToolSettings in @lynx/lynx instead. */
