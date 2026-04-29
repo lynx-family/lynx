@@ -4168,6 +4168,11 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
           std::make_unique<event::ClosureEventListener>(
               [](lepus::Value args) {}, event_options,
               event::ClosureEventListener::ClosureType::kJS));
+      element->RemoveEventListener(
+          name->StdString(),
+          std::make_unique<event::ClosureEventListener>(
+              [](lepus::Value args) {}, event_options,
+              event::ClosureEventListener::ClosureType::kCore));
     }
   } else if (callback->IsString()) {
     element->SetJSEventHandler(name->String(), type->String(),

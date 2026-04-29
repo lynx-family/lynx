@@ -1354,6 +1354,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
               LogBoxLogLevel.Info.ordinal());
         }
         mCanDispatchTouchEvent = true;
+        mConsumeSlideEvent = false;
       }
 
       boolean consumed = false;
@@ -1377,7 +1378,6 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
               LogBoxLogLevel.Info.ordinal());
         }
         mCanDispatchTouchEvent = false;
-        mConsumeSlideEvent = false;
       }
 
       // If consumed, let ViewGroup call onTouchEvent. Otherwise, return false.
