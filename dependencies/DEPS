@@ -10,9 +10,11 @@ python_path = "python3"
 if system == "windows":
     python_path = "python"
 
+
 def unzip_webview2():
   zipfile.ZipFile('webview2.nupkg').extractall('Microsoft.Web.WebView2.1.0.902.49')
   os.remove('webview2.nupkg')
+
 
 deps = {
     'platform/android/gradle/wrapper/gradle-6.7.1-all.zip': {

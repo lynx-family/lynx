@@ -23,7 +23,7 @@ else {
     $HABITAT_DOWNLOAD_URL = "${HABITAT_RELEASE_BASE_URL}/download/$HABITAT_VERSION/hab.exe"
 }
 
-$HABITAT_CACHE_DIR = "${HOME}\.habitat\bin"
+$HABITAT_CACHE_DIR = "${HOME}\.habitat_cache\hab"
 $HABITAT_BIN = "${HABITAT_CACHE_DIR}\hab-${HABITAT_VERSION}.exe"
 
 function install() {
