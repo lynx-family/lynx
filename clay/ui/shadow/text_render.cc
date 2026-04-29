@@ -183,6 +183,7 @@ TextAlignment TextRender::EffectAlign() {
 
 void TextRender::Measure(const MeasureConstraint& constraint,
                          ShadowLayoutContextMeasure* context) {
+  inline_truncation_hidden_count_ = -1;
   BuildTextLayout(constraint, context);
 
   if (constraint.width_mode == TextMeasureMode::kIndefinite &&
@@ -226,6 +227,9 @@ std::vector<LineInfo> TextRender::GetLineInfo() {
   int text_length = static_cast<int>(end_glyph_position_);
   if (res.back().end < text_length) {
     res.back().ellipsis_count = text_length - res.back().end + 1;
+  }
+  if (inline_truncation_hidden_count_ >= 0) {
+    res.back().ellipsis_count = inline_truncation_hidden_count_;
   }
   return res;
 }
@@ -657,7 +661,12 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
             display_glyph_num = end_glyph_index.position - 1;
           }
         }
+        const size_t visible_glyph_num = display_glyph_num;
         ProcessTruncationContent(display_glyph_num, measure_node_);
+        inline_truncation_hidden_count_ =
+            static_cast<int>(end_glyph_position_ > visible_glyph_num
+                                 ? end_glyph_position_ - visible_glyph_num
+                                 : 0);
         measure_node_->text_style_->overflow = TextOverflow::kClip;
         update_flag_ = TextUpdateFlag::kUpdateFlagStyle;
         BuildTextLayout(constraint, context);
