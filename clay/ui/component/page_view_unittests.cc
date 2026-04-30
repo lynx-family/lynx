@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "clay/ui/component/page_view.h"
+#include "clay/ui/component/view.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
@@ -81,6 +82,48 @@ TEST(PageViewTest, KeyframesData) {
   page_view->SetKeyframesData(keyframes_data_2);
 
   check_keyframes_map("anim_1");
+}
+
+TEST(PageViewTest, IgnoreFocusInheritance) {
+  std::unique_ptr<PageView> page_view =
+      std::make_unique<PageView>(0, nullptr, nullptr);
+
+  auto* parent = new View(1, page_view.get());
+  auto* child = new View(2, page_view.get());
+  auto* grandchild = new View(3, page_view.get());
+  auto* sibling = new View(4, page_view.get());
+
+  page_view->AddChild(parent);
+  parent->AddChild(child);
+  child->AddChild(grandchild);
+  page_view->AddChild(sibling);
+
+  parent->SetAttribute("ignore-focus", Value(true));
+  EXPECT_TRUE(parent->ShouldIgnoreFocus());
+  EXPECT_TRUE(child->ShouldIgnoreFocus());
+  EXPECT_TRUE(grandchild->ShouldIgnoreFocus());
+
+  child->SetAttribute("ignore-focus", Value(false));
+  EXPECT_FALSE(child->ShouldIgnoreFocus());
+  EXPECT_FALSE(grandchild->ShouldIgnoreFocus());
+  EXPECT_FALSE(sibling->ShouldIgnoreFocus());
+}
+
+TEST(PageViewTest, AncestorTouchTargetDoesNotPreserveFocusedChild) {
+  std::unique_ptr<PageView> page_view =
+      std::make_unique<PageView>(0, nullptr, nullptr);
+
+  auto* parent = new View(1, page_view.get());
+  auto* child = new View(2, page_view.get());
+
+  page_view->AddChild(parent);
+  parent->AddChild(child);
+
+  child->SetFocusable(true);
+  child->RequestFocus();
+
+  EXPECT_FALSE(page_view->ShouldPreserveFocusForTouchTarget(parent));
+  EXPECT_TRUE(page_view->ShouldPreserveFocusForTouchTarget(child));
 }
 
 }  // namespace clay

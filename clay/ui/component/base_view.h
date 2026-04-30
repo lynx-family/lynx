@@ -212,7 +212,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
                                const FloatSize& left_bottom);
   void SetBorderRadius(size_t index, const std::vector<Length>& array);
   bool IsDelayDestroy() { return delay_destroy_; }
-  std::optional<bool> IgnoreFocus() { return ignore_focus_; }
+  bool ShouldIgnoreFocus() const;
   void SetOutline(const OutlineData& outline);
   void SetOutlineStyle(const BorderStyleType style);
   void SetOutlineWidth(int width);

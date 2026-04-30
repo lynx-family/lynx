@@ -21,6 +21,13 @@ PointerEvent CreateTouchDownPointer(float x, float y) {
   return event;
 }
 
+PointerEvent CreateMouseDownPointer(float x, float y) {
+  PointerEvent event(PointerEvent::EventType::kDownEvent);
+  event.device = PointerEvent::DeviceType::kMouse;
+  event.position = {x, y};
+  return event;
+}
+
 }  // namespace
 
 TEST(NativeViewTest, TextureRegistry) {
@@ -104,6 +111,120 @@ TEST_F_UI(NativeViewHitTestTest, IgnoreUnhandledTouchSequenceInHitTest) {
                                                      native_view->id()),
               native_view->id());
   }
+}
+
+class NativeViewFocusTest : public UITest {
+ protected:
+  void SetUpEditableScene() {
+    background_view_ = new View(1, page_.get());
+    native_view_ = new NativeView(2, "test-platform", page_.get());
+
+    page_->AddChild(background_view_);
+    page_->AddChild(native_view_);
+
+    page_->SetWidth(100.f);
+    page_->SetHeight(100.f);
+
+    background_view_->SetWidth(100.f);
+    background_view_->SetHeight(100.f);
+
+    native_view_->SetWidth(40.f);
+    native_view_->SetHeight(100.f);
+
+    background_view_->OnLayoutUpdated();
+    native_view_->OnLayoutUpdated();
+  }
+
+  View* background_view_ = nullptr;
+  NativeView* native_view_ = nullptr;
+};
+
+TEST_F_UI(NativeViewFocusTest, SelfTapKeepsEditingFocus) {
+  SetUpEditableScene();
+
+  native_view_->MarkAsEditing();
+  ASSERT_EQ(page_->GetFocusManager()->GetLeafFocusedNode(), native_view_);
+
+  DispatchTapEvent(FloatPoint(20.f, 50.f));
+
+  EXPECT_EQ(page_->GetFocusManager()->GetLeafFocusedNode(), native_view_);
+}
+
+TEST_F_UI(NativeViewFocusTest, IgnoreFocusTargetKeepsEditingFocus) {
+  SetUpEditableScene();
+
+  auto* ignore_focus_parent = new View(3, page_.get());
+  auto* ignore_focus_child = new View(4, page_.get());
+  page_->AddChild(ignore_focus_parent);
+  ignore_focus_parent->AddChild(ignore_focus_child);
+
+  ignore_focus_parent->SetX(40.f);
+  ignore_focus_parent->SetWidth(60.f);
+  ignore_focus_parent->SetHeight(100.f);
+  ignore_focus_parent->SetAttribute("ignore-focus", Value(true));
+
+  ignore_focus_child->SetWidth(60.f);
+  ignore_focus_child->SetHeight(100.f);
+
+  ignore_focus_parent->OnLayoutUpdated();
+  ignore_focus_child->OnLayoutUpdated();
+
+  native_view_->MarkAsEditing();
+  ASSERT_EQ(page_->GetFocusManager()->GetLeafFocusedNode(), native_view_);
+
+  DispatchTapEvent(FloatPoint(70.f, 50.f));
+
+  EXPECT_EQ(page_->GetFocusManager()->GetLeafFocusedNode(), native_view_);
+}
+
+TEST_F_UI(NativeViewFocusTest, ExplicitFalseOverrideClearsEditingFocus) {
+  SetUpEditableScene();
+
+  auto* ignore_focus_parent = new View(3, page_.get());
+  auto* override_child = new View(4, page_.get());
+  page_->AddChild(ignore_focus_parent);
+  ignore_focus_parent->AddChild(override_child);
+
+  ignore_focus_parent->SetX(40.f);
+  ignore_focus_parent->SetWidth(60.f);
+  ignore_focus_parent->SetHeight(100.f);
+  ignore_focus_parent->SetAttribute("ignore-focus", Value(true));
+
+  override_child->SetWidth(60.f);
+  override_child->SetHeight(100.f);
+  override_child->SetAttribute("ignore-focus", Value(false));
+
+  ignore_focus_parent->OnLayoutUpdated();
+  override_child->OnLayoutUpdated();
+
+  native_view_->MarkAsEditing();
+  ASSERT_EQ(page_->GetFocusManager()->GetLeafFocusedNode(), native_view_);
+
+  DispatchTapEvent(FloatPoint(70.f, 50.f));
+
+  EXPECT_EQ(page_->GetFocusManager()->GetLeafFocusedNode(), nullptr);
+}
+
+TEST_F_UI(NativeViewFocusTest, NormalTouchTargetClearsEditingFocus) {
+  SetUpEditableScene();
+
+  native_view_->MarkAsEditing();
+  ASSERT_EQ(page_->GetFocusManager()->GetLeafFocusedNode(), native_view_);
+
+  DispatchTapEvent(FloatPoint(70.f, 50.f));
+
+  EXPECT_EQ(page_->GetFocusManager()->GetLeafFocusedNode(), nullptr);
+}
+
+TEST_F_UI(NativeViewFocusTest, NormalMouseTargetClearsEditingFocus) {
+  SetUpEditableScene();
+
+  native_view_->MarkAsEditing();
+  ASSERT_EQ(page_->GetFocusManager()->GetLeafFocusedNode(), native_view_);
+
+  page_->DispatchPointerEvent({CreateMouseDownPointer(70.f, 50.f)});
+
+  EXPECT_EQ(page_->GetFocusManager()->GetLeafFocusedNode(), nullptr);
 }
 
 }  // namespace clay

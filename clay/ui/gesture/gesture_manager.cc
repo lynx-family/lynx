@@ -89,6 +89,12 @@ bool GestureManager::HandlePointerEvent(HitTestable* root,
                                            GestureRecognizerType::kNone);
     root->HitTest(event, hit_tests_[event.pointer_id]);
 
+    if (event.type == PointerEvent::EventType::kDownEvent &&
+        pointer_down_after_hit_test_listener_) {
+      pointer_down_after_hit_test_listener_(event,
+                                            hit_tests_[event.pointer_id]);
+    }
+
     auto& hit_test_result = hit_tests_[event.pointer_id];
     auto iter = hit_test_result.begin();
     while (iter != hit_test_result.end()) {

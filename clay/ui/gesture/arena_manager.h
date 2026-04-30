@@ -54,11 +54,6 @@ class ArenaManager final {
   void Hold(int pointer_id);
   void Release(int pointer_id);
 
-  void SetListenerForNotCaredPointer(
-      std::function<void(const PointerEvent&)> cb) {
-    on_pointer_not_cared_ = cb;
-  }
-
   void SetHasOuterGestures(bool value) { has_outer_gestures_ = value; }
 
  private:
@@ -67,7 +62,7 @@ class ArenaManager final {
                GestureDisposition disposition);
 
   // Called in Resolve when someone rejected
-  void TryResolve(const PointerEvent& event, Arena* arena);
+  void TryResolve(int pointer_id, Arena* arena);
   // Called when only one member left (not rejected), make it winner.
   void ResolveByDefault(int pointer_id, Arena* arena);
   // Reject all members except the favor one
@@ -76,14 +71,8 @@ class ArenaManager final {
 
   std::unique_ptr<Arena> TakeArenaOwnership(int pointer_id);
 
-  void OnPointerNotCared(const PointerEvent& event);
-
  private:
-  // For those primary pointers which haven't been converted to a gesture that
-  // some view cares.
-  std::function<void(const PointerEvent&)> on_pointer_not_cared_;
   std::map<int, std::unique_ptr<Arena>> arenas_;
-  std::map<int, PointerEvent> recording_events_;
   bool has_outer_gestures_ = false;
 };
 

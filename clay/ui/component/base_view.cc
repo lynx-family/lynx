@@ -411,6 +411,13 @@ bool BaseView::IsDescendant(BaseView* a_view) const {
   return false;
 }
 
+bool BaseView::ShouldIgnoreFocus() const {
+  if (ignore_focus_.has_value()) {
+    return *ignore_focus_;
+  }
+  return Parent() ? Parent()->ShouldIgnoreFocus() : false;
+}
+
 void BaseView::SetRepaintBoundary(bool repaint_boundary) {
   render_object()->SetRepaintBoundary(repaint_boundary);
 }

@@ -93,6 +93,9 @@ BaseView* NativeView::GetTopViewToAcceptEvent(const FloatPoint& position,
 }
 
 void NativeView::FocusHasChanged(bool focused, bool is_leaf) {
+  if (!focused && is_leaf && is_editing_) {
+    ResignFirstResponder();
+  }
   native_view_plugin_.Act([focused, is_leaf](auto& plugin) {
     plugin.OnFocusChanged(focused, is_leaf);
   });
@@ -259,10 +262,6 @@ void NativeView::OnAttachToTree() {
 }
 
 void NativeView::OnDetachFromTree() {
-  if (is_editing_) {
-    is_editing_ = false;
-    page_view_->SetEditingPlatformView(nullptr);
-  }
   BaseView::OnDetachFromTree();
   native_view_plugin_.Act([](auto& plugin) { return plugin.OnDetach(); });
   page_view_->GetViewTreeObserver()->RemoveOnPaintingListener(this);
@@ -313,9 +312,10 @@ void NativeView::MarkLayoutDirty() {
 }
 
 void NativeView::MarkAsEditing() {
-  if (is_editing_) return;
-  is_editing_ = true;
-  page_view_->SetEditingPlatformView(this);
+  if (!is_editing_) {
+    is_editing_ = true;
+  }
+  RequestFocus();
 }
 
 void NativeView::OnInsert(int parent_id, int index) {
@@ -324,6 +324,9 @@ void NativeView::OnInsert(int parent_id, int index) {
 }
 
 void NativeView::ResignFirstResponder() {
+  if (!is_editing_) {
+    return;
+  }
   is_editing_ = false;
   native_view_plugin_.Act([](auto& plugin) { plugin.ResignFirstResponder(); });
 }

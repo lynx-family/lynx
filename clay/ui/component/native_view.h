@@ -53,7 +53,6 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   void MarkLayoutDirty();
 
   void MarkAsEditing();
-  void ResignFirstResponder();
   void OnInsert(int parent_id, int index);
   void UpdateTouchDispatchState(bool handled, int action);
   NativeViewCompositionPreference GetCompositionPreference() const {
@@ -63,6 +62,7 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
  private:
   void OnDestroy() override;
   void FocusHasChanged(bool focused, bool is_leaf) override;
+  void ResignFirstResponder();
 
   void ApplyUpdateChanged();
   bool ShouldIgnoreForTouchHitTest(int platform_try_hit_id = -1) const;

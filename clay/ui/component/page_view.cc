@@ -73,18 +73,6 @@
 namespace clay {
 namespace {
 
-bool ShouldIgnoreFocus(BaseView* view) {
-  if (view == nullptr) {
-    return false;
-  } else if (view->IgnoreFocus().has_value()) {
-    return *view->IgnoreFocus();
-  } else if (view->Parent() != nullptr) {
-    return ShouldIgnoreFocus(view->Parent());
-  } else {
-    return false;
-  }
-}
-
 clay::Value CreateExposeArray(
     ExposureDataList& data_arr,
     std::vector<fml::WeakPtr<BaseView>>& data_set_arr) {
@@ -204,28 +192,16 @@ void PageView::OnDestroy() {
 
 void PageView::CleanForRecycle() { ResetPageView(true); }
 
-bool PageView::ShouldIgnoreFocusChange(const PointerEvent& event) {
-  FloatPoint relative_pos;
-  auto target = GetTopViewToAcceptEvent(event.position, &relative_pos);
-  if (target == nullptr) {
-    return false;
-  }
-  return ShouldIgnoreFocus(target);
-}
-
 void PageView::InitManagers() {
   // init focus manager
   focus_manager_.SetIsRootScope();
-  gesture_manager_->SetListenerForNotCaredPointer(
-      [this](const PointerEvent& event) {
-        if (ShouldIgnoreFocusChange(event)) {
+  gesture_manager_->SetListenerForPointerDownAfterHitTest(
+      [this](const PointerEvent& event, const HitTestResult& result) {
+        if (event.device != PointerEvent::DeviceType::kTouch &&
+            event.device != PointerEvent::DeviceType::kMouse) {
           return;
         }
-
-        auto* focus_node = GetFocusManager()->GetLeafFocusedNode();
-        if (focus_node) {
-          focus_node->ClearFocus();
-        }
+        ResignFirstResponderIfNeeded(GetFirstNonAnonymousHitTestTarget(result));
       });
   gesture_manager_->SetGestureHandlerDispatcher(
       gesture_handler_dispatcher_.get());
@@ -1026,7 +1002,6 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
         FML_DCHECK(touch_view_map_.find(event.pointer_id) ==
                    touch_view_map_.end());
         touch_view_map_[event.pointer_id] = top_view->id();
-        ResignFirstResponderIfNeeded(top_view);
       }
 
       bool is_raw_events =
@@ -1951,10 +1926,6 @@ bool PageView::MarkDrawableImageFrameAvailable(int64_t image_id) {
   return true;
 }
 
-void PageView::SetEditingPlatformView(NativeView* view) {
-  editing_native_view_ = view;
-}
-
 void PageView::OnPlatformUpdateEditState(int client_id, uint64_t selection_base,
                                          uint64_t composing_extent,
                                          const char* selection_affinity,
@@ -2009,18 +1980,40 @@ void PageView::EndFluencyMonitor(uintptr_t id) {
   }
 }
 
+BaseView* PageView::GetFirstNonAnonymousHitTestTarget(
+    const HitTestResult& result) const {
+  for (const auto& target : result) {
+    auto* view = static_cast<BaseView*>(target.get());
+    if (view && !view->IsAnonymousView()) {
+      return view;
+    }
+  }
+  return nullptr;
+}
+
+bool PageView::ShouldPreserveFocusForTouchTarget(BaseView* target) {
+  if (!target) {
+    return false;
+  }
+  if (target->ShouldIgnoreFocus()) {
+    return true;
+  }
+
+  auto* focused = static_cast<BaseView*>(focus_manager_.GetLeafFocusedNode());
+  if (!focused) {
+    return false;
+  }
+
+  return focused->IsDescendant(target);
+}
+
 void PageView::ResignFirstResponderIfNeeded(BaseView* current_responder) {
-  if (!editing_native_view_) {
+  if (ShouldPreserveFocusForTouchTarget(current_responder)) {
     return;
   }
 
-  if (current_responder && ShouldIgnoreFocus(current_responder)) {
-    return;
-  }
-
-  if (editing_native_view_ != current_responder) {
-    editing_native_view_->ResignFirstResponder();
-    editing_native_view_ = nullptr;
+  if (auto* focus_node = focus_manager_.GetLeafFocusedNode()) {
+    focus_node->ClearFocus();
   }
 }
 

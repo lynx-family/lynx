@@ -220,6 +220,29 @@ TEST_F(GestureManagerTest, NoConflict_Tap_Test) {
   }
 }
 
+TEST_F(GestureManagerTest, PointerDownAfterHitTestListenerRunsForRecognizer) {
+  auto target_with_tap = std::make_unique<MultiRecognizerHitTestTarget>();
+  auto tap_recognizer =
+      std::make_unique<TapGestureRecognizer>(gesture_manager());
+  target_with_tap->recognizers_.emplace_back(std::move(tap_recognizer));
+  AddHitTestTarget(target_with_tap.get());
+
+  int pointer_down_after_hit_test_count = 0;
+  size_t last_hit_test_size = 0;
+
+  gesture_manager()->SetListenerForPointerDownAfterHitTest(
+      [&](const PointerEvent&, const HitTestResult& hit_test_result) {
+        ++pointer_down_after_hit_test_count;
+        last_hit_test_size = hit_test_result.size();
+      });
+
+  auto pointers = CreatePointer(ID(), PointerEvent::EventType::kDownEvent);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+
+  EXPECT_EQ(pointer_down_after_hit_test_count, 1);
+  EXPECT_EQ(last_hit_test_size, 1u);
+}
+
 enum LongPressStatus : uint32_t {
   kNoLongPressStatus = 0,
   kLongPressDown = 1 << 0,

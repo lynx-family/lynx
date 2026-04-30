@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
@@ -67,9 +68,9 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
 
   float DevicePixelRatio() const override { return pixel_ratio_; }
 
-  void SetListenerForNotCaredPointer(
-      std::function<void(const PointerEvent&)> cb) {
-    arena_manager_->SetListenerForNotCaredPointer(cb);
+  void SetListenerForPointerDownAfterHitTest(
+      std::function<void(const PointerEvent&, const HitTestResult&)> cb) {
+    pointer_down_after_hit_test_listener_ = std::move(cb);
   }
 
   const fml::RefPtr<fml::TaskRunner>& GetTaskRunner() { return task_runner_; }
@@ -123,6 +124,8 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
   Puppet<Owner::kUI, GestureMediateService> gesture_mediate_puppet_;
   MouseWheelPhaseHandler mouse_wheel_phase_handler_;
   GestureHandlerDispatcher* gesture_handler_dispatcher_{nullptr};
+  std::function<void(const PointerEvent&, const HitTestResult&)>
+      pointer_down_after_hit_test_listener_;
   FRIEND_TEST(ScrollViewTest, NestedScrollGestureOnPC);
 };
 

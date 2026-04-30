@@ -443,13 +443,6 @@ class PageView : public BaseView,
 
   void CleanForRecycle() override;
 
-  // When using `input-view` or `textarea-view` backed by platform view, we
-  // record corresponding platform view when it begins to edit. If user touch
-  // any places other than `input-view` or `textarea-view`, we notity the
-  // platform view to resign first responder. Maybe we can combine this feature
-  // with focus system in the furture.
-  void SetEditingPlatformView(NativeView* view);
-
   void OnPlatformUpdateEditState(int client_id, uint64_t selection_base,
                                  uint64_t composing_extent,
                                  const char* selection_affinity,
@@ -490,11 +483,11 @@ class PageView : public BaseView,
 
   void SetTapSlop(float slop);
   void SetLongPressDuration(uint64_t duration);
+  bool ShouldPreserveFocusForTouchTarget(BaseView* target);
 
  protected:
   void OnDestroy() override;
 
-  bool ShouldIgnoreFocusChange(const PointerEvent& event);
   void InitManagers();
   void Invalidate() override;
   void LayoutInternal();
@@ -539,6 +532,8 @@ class PageView : public BaseView,
   void HandleA11yLongPressEvent(BaseView* view);
 
   void EnsureSemanticsOwner();
+  BaseView* GetFirstNonAnonymousHitTestTarget(
+      const HitTestResult& result) const;
   void ResignFirstResponderIfNeeded(BaseView* current_responder);
 
   void UnRegisterUploadTask();
@@ -621,7 +616,6 @@ class PageView : public BaseView,
 #endif
 
   const std::shared_ptr<ServiceManager> service_manager_;
-  NativeView* editing_native_view_ = nullptr;
 
   const uint64_t page_unique_id_;
   BaseView* pan_zoom_target_ = nullptr;

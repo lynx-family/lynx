@@ -31,17 +31,15 @@ void ArenaEntry::Resolve(GestureDisposition disposition) {
 
 void ArenaManager::Close(const PointerEvent& event) {
   int pointer_id = event.pointer_id;
-  recording_events_.emplace(pointer_id, event);
   auto iter = arenas_.find(pointer_id);
   if (iter == arenas_.end()) {
-    OnPointerNotCared(event);
     return;
   }
 
   Arena* arena = iter->second.get();
   FML_DCHECK(arena->is_open);
   arena->is_open = false;
-  TryResolve(event, arena);
+  TryResolve(pointer_id, arena);
 }
 
 void ArenaManager::Sweep(int pointer_id) {
@@ -126,18 +124,6 @@ void ArenaManager::Resolve(int pointer_id,
               << (disposition == GestureDisposition::kAccept ? "accept"
                                                              : "reject");
 
-  PointerEvent event;
-  if (recording_events_.find(pointer_id) != recording_events_.end()) {
-    event = recording_events_[pointer_id];
-  } else {
-    // we pass the point event to TryResolve function in order to let the
-    //   OnPointerNotCared callback has a chance to know the positions, then to
-    //  find the ignore-focus nodes. in this exectue path , we only exceute the
-    // callback when there is no areas, so no nodes gesture will be handled, and
-    // the positions is uselesss;
-    event = PointerEvent();
-    event.pointer_id = pointer_id;
-  }
   // FML_DCHECK(arena->members.find(member) != arena->members.end());
   if (disposition == GestureDisposition::kReject) {
     arena->RemoveMember(member);
@@ -145,7 +131,7 @@ void ArenaManager::Resolve(int pointer_id,
                 << " was removed. Members count: " << arena->members.size();
     member->OnGestureRejected(pointer_id);
     if (!arena->is_open) {
-      TryResolve(event, arena);
+      TryResolve(pointer_id, arena);
     }
   } else {
     if (arena->is_open) {
@@ -162,15 +148,12 @@ void ArenaManager::Resolve(int pointer_id,
   }
 }
 
-void ArenaManager::TryResolve(const PointerEvent& event, Arena* arena) {
-  int pointer_id = event.pointer_id;
+void ArenaManager::TryResolve(int pointer_id, Arena* arena) {
   if (arena->members.size() == 1 && !has_outer_gestures_) {
     ResolveByDefault(pointer_id, arena);
   } else if (arena->members.empty()) {
     GESTURE_LOG << "arena has no members, remove it.";
     arenas_.erase(pointer_id);
-    recording_events_.erase(pointer_id);
-    OnPointerNotCared(event);
   } else if (arena->eager_winner) {
     ResolveInFavorOf(pointer_id, arena, arena->eager_winner);
   }
@@ -220,12 +203,6 @@ std::unique_ptr<Arena> ArenaManager::TakeArenaOwnership(int pointer_id) {
   owner.swap(iter->second);
   arenas_.erase(iter);
   return owner;
-}
-
-void ArenaManager::OnPointerNotCared(const PointerEvent& event) {
-  if (on_pointer_not_cared_) {
-    on_pointer_not_cared_(event);
-  }
 }
 
 }  // namespace clay
