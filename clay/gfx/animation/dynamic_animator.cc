@@ -64,7 +64,7 @@ void DynamicAnimator::EndAnimationInternal(bool canceled) {
   }
 }
 
-bool DynamicAnimator::DoAnimationFrame(int64_t frame_time) {
+bool DynamicAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
   FML_DCHECK(last_frame_time_ > 0) << "last_frame_time_ should be set on start";
   int64_t delta_time = frame_time - last_frame_time_;
   last_frame_time_ = frame_time;

@@ -71,6 +71,15 @@ AnimationHandler* BaseViewAnimationMutator::GetAnimationHandler() {
   return view_->GetAnimationHandler();
 }
 
+bool BaseViewAnimationMutator::IsVisibleForAnimationTick() {
+  return view_->IsVisibleForAnimationTick();
+}
+
+bool BaseViewAnimationMutator::HasAnimationEvent(
+    ClayEventType event_type) const {
+  return view_->HasAnimationEvent(event_type);
+}
+
 FloatSize BaseViewAnimationMutator::PercentageResolutionSize() {
   return view_->PercentageResolutionSize();
 }

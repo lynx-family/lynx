@@ -33,6 +33,8 @@
 
 namespace clay {
 
+class AnimatorTarget;
+
 /**
  * This class provides a simple timing engine for running animations
  * which calculate animated values and set them on target objects.
@@ -154,7 +156,9 @@ class ValueAnimator : public Animator,
 
   bool IsInitialized() override { return initialized_; }
 
-  bool DoAnimationFrame(int64_t frame_time) override;
+  bool DoAnimationFrame(int64_t frame_time, bool update_values = true) override;
+  bool ShouldReceiveAnimationFrame(int64_t current_time,
+                                   int64_t* next_lifecycle_time) override;
 
   void RestartAnimationIfNeeded(int64_t current_time);
 
@@ -296,6 +300,7 @@ class ValueAnimator : public Animator,
   // Sets the animation handler used to schedule updates for this animator
   // or null to use the default handler.
   void SetAnimationHandler(AnimationHandler* animation_handler);
+  void SetAnimationTarget(AnimatorTarget* target) { target_ = target; }
 
   /**
    * Overrides the global duration scale by a custom value.
@@ -374,17 +379,19 @@ class ValueAnimator : public Animator,
   void StartAnimation();
   bool IsPulsingInternal();
   bool AnimateBasedOnTime(int64_t current_time);
+  bool AnimateBasedOnTime(int64_t current_time, bool update_values);
+  void CommitStartTimeOnSkippedFrame(int64_t frame_time);
 
   void AnimateValue(float fraction);
 
   void AddOneShotCommitCallback();
   void RemoveAnimationCallback();
 
-  float ResolveDurationScale() {
+  float ResolveDurationScale() const {
     return duration_scale_ >= 0.f ? duration_scale_ : duration_scale_s_;
   }
 
-  int64_t GetScaledDuration() {
+  int64_t GetScaledDuration() const {
     return (int64_t)(duration_ * ResolveDurationScale());
   }
 
@@ -420,17 +427,11 @@ class ValueAnimator : public Animator,
   float seek_fraction_ = -1;
 
   /**
-   * Set on the next frame after pause() is called, used to calculate a new
-   * startTime or delayStartTime which allows the animator to continue from the
-   * point at which it was paused. If negative, has not yet been set.
+   * Set when pause() is called, used to calculate a new startTime or
+   * delayStartTime which allows the animator to continue from the point at
+   * which it was paused. If negative, has not yet been set.
    */
-  int64_t pause_time_;
-
-  /**
-   * Set when an animator is resumed. This triggers logic in the next frame
-   * which actually resumes the animator.
-   */
-  bool resumed_ = false;
+  int64_t pause_time_ = -1;
 
   /**
    * Flag to indicate whether this animator is playing in reverse mode,
@@ -551,6 +552,7 @@ class ValueAnimator : public Animator,
    * Animation handler used to schedule updates for this animation.
    */
   AnimationHandler* animation_handler_ = nullptr;
+  AnimatorTarget* target_ = nullptr;
 
   /**
    * If set to non-negative value, this will override duration_scale_s_.

@@ -47,5 +47,28 @@ TEST(ValueAnimatorTest, AnimatorUpdateEvents) {
   EXPECT_EQ(handler->GetAnimationCount(), 0);
 }
 
+TEST(ValueAnimatorTest, ForwardsFillDoesNotRequestFrameAfterVisibleEnd) {
+  MockAnimatorUpdateListener update_listener;
+  EXPECT_CALL(update_listener, OnAnimationUpdate(::testing::_)).Times(4);
+
+  std::unique_ptr<AnimationHandler> handler =
+      std::make_unique<AnimationHandler>();
+
+  ValueAnimator animator;
+  animator.SetAnimationHandler(handler.get());
+  animator.SetDuration(16);
+  animator.SetFillMode(ValueAnimator::kForwards);
+  animator.AddUpdateListener(&update_listener);
+  animator.Start();
+
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
+  handler->DoAnimationFrame(0);
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
+  EXPECT_FALSE(handler->DoAnimationFrame(16));
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
+  EXPECT_FALSE(handler->DoAnimationFrame(32));
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
+}
+
 }  // namespace testing
 }  // namespace clay
