@@ -24,6 +24,7 @@ constexpr base::Version kFlexAutoMarginFixedVersion(2, 14);
 constexpr base::Version kAbsoluteAndFixedBoxInfoFixedVersion(2, 16);
 constexpr base::Version kGridNewVersion(3, 1);
 constexpr base::Version kFixedNodeWithDisplayNoneFixedVersion(3, 5);
+constexpr base::Version kLinearLayoutCrossAxisMarginAutoFixedVersion(3, 8);
 
 namespace starlight {
 
@@ -51,6 +52,8 @@ struct LayoutConfigs {
     is_grid_new_quirks_mode_ = !IsVersionHigherOrEqual(kGridNewVersion);
     is_fixed_node_with_display_none_quirks_mode_ =
         !IsVersionHigherOrEqual(kFixedNodeWithDisplayNoneFixedVersion);
+    is_linear_layout_cross_axis_margin_auto_fixed_quirks_mode_ =
+        !IsVersionHigherOrEqual(kLinearLayoutCrossAxisMarginAutoFixedVersion);
   }
   const base::Version& GetQuirksMode() const { return quirks_mode_; }
   void SetTargetSDKVersion(const std::string& target_sdk_version) {
@@ -136,6 +139,17 @@ struct LayoutConfigs {
   bool IsFixedNodeWithDisplayNoneQuirksMode() const {
     return is_fixed_node_with_display_none_quirks_mode_;
   }
+  // LinearLayout: When
+  // is_linear_layout_cross_axis_margin_auto_fixed_quirks_mode_ is set to false,
+  // LinearLayout fixes a bug with margin: auto on the cross axis. Before the
+  // fix, the auto margin was calculated using the container's border area size
+  // minus the child's margin area size. After the fix, it correctly uses the
+  // container's content area size minus the child's margin area size. What's
+  // more, auto margins, because they effectively adjust the size of the margin
+  // area, take precedence over align-self.
+  bool IsLinearLayoutCrossAxisMarginAutoQuirksMode() const {
+    return is_linear_layout_cross_axis_margin_auto_fixed_quirks_mode_;
+  }
 
   bool is_absolute_in_content_bound_ = false;
   bool css_align_with_legacy_w3c_ = false;
@@ -162,6 +176,7 @@ struct LayoutConfigs {
   bool is_absolute_and_fixed_box_info_fixed_quirks_mode_ = true;
   bool is_grid_new_quirks_mode_ = true;
   bool is_fixed_node_with_display_none_quirks_mode_ = true;
+  bool is_linear_layout_cross_axis_margin_auto_fixed_quirks_mode_ = true;
 };
 
 }  // namespace starlight
