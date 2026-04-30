@@ -267,9 +267,22 @@ void LinearLayoutAlgorithm::CrossAxisAlignment(LayoutObject* item) {
                         item, CrossAxis())) /
                    2.f;
   }
-  if (!container_->GetLayoutConfigs().IsFullQuirksMode()) {
+
+  if (!container_->GetLayoutConfigs().IsFullQuirksMode() &&
+      (logic_direction_utils::GetMargin(item_style, CrossBack()).IsAuto() ||
+       logic_direction_utils::GetMargin(item_style, CrossFront()).IsAuto())) {
     float content_size = logic_direction_utils::GetBorderBoundDimensionSize(
         container_, CrossAxis());
+    // After the fix, it correctly uses the container's content area size minus
+    // the child's margin area size. What's more, auto margins, because they
+    // effectively adjust the size of the margin area, take precedence over
+    // align-self.
+    if (!container_->GetLayoutConfigs()
+             .IsLinearLayoutCrossAxisMarginAutoQuirksMode()) {
+      content_size = logic_direction_utils::GetContentBoundDimensionSize(
+          container_, CrossAxis());
+      cross_offset = 0.f;
+    }
     logic_direction_utils::ResolveAutoMargins(item, content_size, CrossAxis());
   }
 
