@@ -24,8 +24,10 @@ void AnimationHandler::AddAnimationFrameCallback(
     }
     callback_delay_time_map_[callback] = delay;
     animation_callbacks_.push_front(callback);
-    if (on_new_animation_callback_) {
-      on_new_animation_callback_();
+    const bool should_receive_frame =
+        callback->ShouldReceiveAnimationFrame(0, nullptr);
+    if (animation_callback_ && should_receive_frame) {
+      animation_callback_(-1);
     }
   }
 }
@@ -50,12 +52,65 @@ void AnimationHandler::RemoveCallback(AnimationFrameCallback* callback) {
   }
 }
 
-void AnimationHandler::DoAnimationFrame(int64_t frame_time) {
-  int64_t current_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+bool AnimationHandler::DoAnimationFrame(int64_t frame_time,
+                                        bool lifecycle_only) {
+  if (lifecycle_only) {
+    scheduled_lifecycle_time_ = -1;
+  }
+  const int64_t current_time =
+      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
   last_frame_time_ = frame_time;
-  for (auto& callback : animation_callbacks_) {
-    if (callback && IsCallbackDue(callback, current_time)) {
-      callback->DoAnimationFrame(frame_time);
+  bool has_visible_callback = false;
+  int64_t next_lifecycle_time_to_schedule = -1;
+  for (AnimationFrameCallback*& callback : animation_callbacks_) {
+    if (!callback) {
+      continue;
+    }
+    auto* current_callback = callback;
+    int64_t next_lifecycle_time = -1;
+    const bool should_receive_frame =
+        current_callback->ShouldReceiveAnimationFrame(current_time,
+                                                      &next_lifecycle_time);
+    if (!IsCallbackDue(current_callback, current_time)) {
+      has_visible_callback |= should_receive_frame;
+      if (!should_receive_frame && next_lifecycle_time >= 0 &&
+          (next_lifecycle_time_to_schedule < 0 ||
+           next_lifecycle_time < next_lifecycle_time_to_schedule)) {
+        next_lifecycle_time_to_schedule = next_lifecycle_time;
+      }
+      continue;
+    }
+    if (should_receive_frame) {
+      if (lifecycle_only) {
+        // A lifecycle task may wake after the callback becomes visible. Leave
+        // value updates to the next normal animation frame.
+        has_visible_callback = true;
+        continue;
+      }
+      const bool finished = current_callback->DoAnimationFrame(frame_time);
+      // DoAnimationFrame may remove itself, which nulls this list slot.
+      has_visible_callback |= callback != nullptr && !finished;
+      continue;
+    }
+
+    if (next_lifecycle_time < 0 || next_lifecycle_time > current_time) {
+      if (next_lifecycle_time >= 0 &&
+          (next_lifecycle_time_to_schedule < 0 ||
+           next_lifecycle_time < next_lifecycle_time_to_schedule)) {
+        next_lifecycle_time_to_schedule = next_lifecycle_time;
+      }
+      continue;
+    }
+    current_callback->DoAnimationFrame(next_lifecycle_time, false);
+    if (callback) {
+      int64_t next_time = -1;
+      if (!current_callback->ShouldReceiveAnimationFrame(current_time,
+                                                         &next_time) &&
+          next_time >= 0 &&
+          (next_lifecycle_time_to_schedule < 0 ||
+           next_time < next_lifecycle_time_to_schedule)) {
+        next_lifecycle_time_to_schedule = next_time;
+      }
     }
   }
   // clean up removed callbacks
@@ -63,6 +118,54 @@ void AnimationHandler::DoAnimationFrame(int64_t frame_time) {
     callback_list_dirty_ = false;
     animation_callbacks_.remove(nullptr);
   }
+  ScheduleLifecycleCallbackAt(next_lifecycle_time_to_schedule, current_time);
+  return has_visible_callback;
+}
+
+void AnimationHandler::ScheduleLifecycleCallback(int64_t current_time) {
+  if (!animation_callback_) {
+    return;
+  }
+
+  int64_t next_lifecycle_time = -1;
+  for (auto* callback : animation_callbacks_) {
+    if (!callback) {
+      continue;
+    }
+    int64_t callback_time = -1;
+    if (callback->ShouldReceiveAnimationFrame(current_time, &callback_time)) {
+      continue;
+    }
+    if (callback_time < 0) {
+      continue;
+    }
+    if (next_lifecycle_time < 0 || callback_time < next_lifecycle_time) {
+      next_lifecycle_time = callback_time;
+    }
+  }
+
+  ScheduleLifecycleCallbackAt(next_lifecycle_time, current_time);
+}
+
+void AnimationHandler::ScheduleLifecycleCallbackAt(int64_t next_lifecycle_time,
+                                                   int64_t current_time) {
+  if (!animation_callback_) {
+    return;
+  }
+
+  if (next_lifecycle_time < 0) {
+    scheduled_lifecycle_time_ = -1;
+    return;
+  }
+
+  if (scheduled_lifecycle_time_ >= 0 &&
+      scheduled_lifecycle_time_ <= next_lifecycle_time) {
+    return;
+  }
+
+  scheduled_lifecycle_time_ = next_lifecycle_time;
+  animation_callback_(
+      std::max(static_cast<int64_t>(0), next_lifecycle_time - current_time));
 }
 
 /**
