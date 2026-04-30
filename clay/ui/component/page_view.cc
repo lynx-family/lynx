@@ -148,7 +148,7 @@ PageView::PageView(uint32_t id, std::shared_ptr<ServiceManager> service_manager,
                   static_cast<int32_t>(metrics_.physical_height)},
       metrics_.device_pixel_ratio, unref_queue_);
   animation_handler_ = std::make_unique<AnimationHandler>();
-  animation_handler_->SetOnNewAnimationCallback([this] { RequestNewFrame(); });
+  SetupAnimationCallback();
   renderer_ = std::make_unique<Renderer>(this, unref_queue_);
   renderer_->SetRoot(render_object_.get());
 
@@ -323,9 +323,11 @@ bool PageView::BeginFrame(
     ScopedTimingRecorder scoped_animation_timing(
         *recorder, FrameTimingKey::kDoAnimationStart,
         FrameTimingKey::kDoAnimationEnd);
-    RequestNewFrame();
-    animation_handler_->DoAnimationFrame(
+    bool has_visible_animation = animation_handler_->DoAnimationFrame(
         recorder->GetVsyncTargetTime().ToEpochDelta().ToMilliseconds());
+    if (has_visible_animation) {
+      RequestNewFrame();
+    }
     scoped_animation_timing.MarkRecordEnd();
   }
 
@@ -1305,6 +1307,31 @@ void PageView::RequestNewFrame() {
   }
 }
 
+void PageView::SetupAnimationCallback() {
+  animation_handler_->SetAnimationCallback([this](int64_t delay) {
+    if (delay < 0) {
+      RequestNewFrame();
+      return;
+    }
+    auto task_runner = task_runners_.GetUITaskRunner();
+    if (!task_runner) {
+      return;
+    }
+    task_runner->PostDelayedTask(
+        [weak = GetWeakPtr()]() {
+          if (!weak) {
+            return;
+          }
+          auto* page_view = static_cast<PageView*>(weak.get());
+          int64_t now = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+          if (page_view->animation_handler_->DoAnimationFrame(now, true)) {
+            page_view->RequestNewFrame();
+          }
+        },
+        fml::TimeDelta::FromMilliseconds(delay));
+  });
+}
+
 // It is used when decode with priority enabled to notify the scheduler that
 // the image is decoded.
 void PageView::RegisterUploadTask(OneShotCallback<>&& task, int image_id) {
@@ -1696,7 +1723,7 @@ void PageView::ResetPageView(bool recycle) {
   renderer_->SetFrameSize({static_cast<int32_t>(metrics_.physical_width),
                            static_cast<int32_t>(metrics_.physical_height)});
   animation_handler_->ClearCallbacks();
-  animation_handler_->SetOnNewAnimationCallback([this] { RequestNewFrame(); });
+  SetupAnimationCallback();
   touch_view_map_.clear();
   frame_builder_ = std::make_unique<FrameBuilder>(
       skity::Vec2{static_cast<int32_t>(metrics_.physical_width),

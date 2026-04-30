@@ -136,6 +136,7 @@ bool TransitionManager::TransitionWithTiming(
       animator->AddUpdateListener(active_transitions_[type].second.get());
       animator->AddListener(active_transitions_[type].second.get());
       animator->SetAnimationHandler(target_->GetAnimationHandler());
+      animator->SetAnimationTarget(target_);
       animator->Start();
       return true;
     }

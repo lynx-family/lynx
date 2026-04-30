@@ -160,6 +160,7 @@ std::unique_ptr<TransitionManager> TransitionManager::CloneForRasterAnimation(
       return nullptr;
     }
     auto animator = iter->second.first->Clone();
+    animator->SetAnimationTarget(target);
     animator->AddListener(listener.get());
     animator->AddUpdateListener(listener.get());
     clone->active_transitions_.emplace(

@@ -31,6 +31,7 @@
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/expose_manager/expose_observer.h"
 #include "clay/ui/component/inline_image_view.h"
+#include "clay/ui/component/intersection_observer.h"
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
@@ -2740,6 +2741,18 @@ void BaseView::SetVisible(bool visible) {
 }
 
 bool BaseView::Visible() const { return render_object()->Visible(); }
+
+bool BaseView::IsVisibleForAnimationTick() {
+  BaseView* view = this;
+  while (view) {
+    if (!view->attach_to_tree() || !view->Visible()) {
+      return false;
+    }
+    view = view->Parent();
+  }
+
+  return IsViewIntersecting(this, page_view(), false);
+}
 
 void BaseView::SetAttribute(const char* attr, const clay::Value& value) {
   // NOTE: new attributes should be added to `HandleCommonAttribute`

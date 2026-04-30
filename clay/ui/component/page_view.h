@@ -503,6 +503,7 @@ class PageView : public BaseView,
   void SendUpdatedSemantics(const SemanticsUpdateNodes& update_nodes);
 #endif
   void RequestNewFrame() override;
+  void SetupAnimationCallback();
   RenderPhase GetRenderPhase() const override { return render_phase_; }
   void DispatchViewportMetricsUpdate();
 

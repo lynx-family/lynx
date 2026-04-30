@@ -23,6 +23,8 @@ namespace clay {
 
 namespace utils = attribute_utils;
 
+namespace {
+
 float TryGetFloatFromMap(const std::string& key, const clay::Value::Map& map,
                          float default_value) {
   const auto& iter = map.find(key);
@@ -66,25 +68,26 @@ FloatRect BoundingRectWithScroll(BaseView* view) {
   return FloatRect(location.x(), location.y(), view->Width(), view->Height());
 }
 
-void IntersectionObserverEntry::ComputeIntersectionRect(bool ui_clip_enabled) {
-  if (relative_rect_.IsEmpty() || bounding_client_rect_.IsEmpty()) {
-    intersection_rect_ = FloatRect();
-    return;
+FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
+                              FloatRect bounding_client_rect,
+                              FloatRect relative_rect, bool ui_clip_enabled) {
+  if (!target_view || !root || relative_rect.IsEmpty() ||
+      bounding_client_rect.IsEmpty()) {
+    return FloatRect();
   }
 
-  intersection_rect_ = bounding_client_rect_;
+  FloatRect intersection_rect = bounding_client_rect;
   bool at_root = false;
-  BaseView* parent = target_view_->Parent();
+  BaseView* parent = target_view->Parent();
   while (!at_root && parent) {
     if (!parent->Visible()) {
-      intersection_rect_ = FloatRect();
-      return;
+      return FloatRect();
     }
 
     FloatRect parent_rect;
-    if (parent == root_) {
+    if (parent == root) {
       at_root = true;
-      parent_rect = relative_rect_;
+      parent_rect = relative_rect;
     } else {
       if (parent->GetOverflow() == CSSProperty::OVERFLOW_HIDDEN ||
           parent->Is<ScrollView>() ||
@@ -97,15 +100,32 @@ void IntersectionObserverEntry::ComputeIntersectionRect(bool ui_clip_enabled) {
     }
 
     if (!parent_rect.IsEmpty()) {
-      if (intersection_rect_.Intersects(parent_rect)) {
-        intersection_rect_.Intersect(parent_rect);
+      if (intersection_rect.Intersects(parent_rect)) {
+        intersection_rect.Intersect(parent_rect);
       } else {
-        intersection_rect_ = FloatRect();
+        intersection_rect = FloatRect();
       }
     }
 
     parent = parent->Parent();
   }
+
+  return intersection_rect;
+}
+
+}  // namespace
+
+void IntersectionObserverEntry::ComputeIntersectionRect(bool ui_clip_enabled) {
+  intersection_rect_ =
+      ComputeIntersection(target_view_, root_, bounding_client_rect_,
+                          relative_rect_, ui_clip_enabled);
+}
+
+bool IsViewIntersecting(BaseView* view, BaseView* root, bool ui_clip_enabled) {
+  return view && root &&
+         !ComputeIntersection(view, root, BoundingRectWithScroll(view),
+                              BoundingRectWithScroll(root), ui_clip_enabled)
+              .IsEmpty();
 }
 
 clay::Value::Map IntersectionObserverEntry::ToMap() {

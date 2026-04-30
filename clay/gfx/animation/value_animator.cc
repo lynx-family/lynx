@@ -25,9 +25,11 @@
 #include <optional>
 #include <utility>
 
+#include "base/include/fml/time/time_point.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animation_handler.h"
+#include "clay/gfx/animation/animator_target.h"
 #include "clay/gfx/animation/interpolator.h"
 
 namespace clay {
@@ -332,19 +334,33 @@ void ValueAnimator::Start(bool play_backwards) {
   start_time_ = -1;
   AddAnimationCallback(0);
 
+  const bool should_apply_initial_value =
+      !self_pulse_ || ShouldReceiveAnimationFrame(0, nullptr);
   if (start_delay_ == 0 || seek_fraction_ >= 0 || reversing_) {
     // If there's no start delay, init the animation and notify start listeners
     // right away to be consistent with the previous behavior. Otherwise,
     // postpone this until the first frame after the start delay.
     StartAnimation();
-    if (seek_fraction_ == -1) {
-      // No seek, start at play time 0. Note that the reason we are not using
-      // fraction 0 is because for animations with 0 duration, we want to be
-      // consistent with pre-N behavior: skip to the final value immediately.
-      SetCurrentPlayTime(0);
-    } else {
-      SetCurrentFraction(seek_fraction_);
+    if (should_apply_initial_value) {
+      if (seek_fraction_ == -1) {
+        // No seek, start at play time 0. Note that the reason we are not using
+        // fraction 0 is because for animations with 0 duration, we want to be
+        // consistent with pre-N behavior: skip to the final value immediately.
+        SetCurrentPlayTime(0);
+      } else {
+        SetCurrentFraction(seek_fraction_);
+      }
     }
+  }
+
+  if (self_pulse_ && !should_apply_initial_value) {
+    // Hidden self-pulsing animations do not request an initial frame. Commit
+    // after the SetCurrentPlayTime(0) path above so the first visible frame
+    // uses elapsed real time instead of restarting from zero.
+    const int64_t current_time =
+        fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+    CommitStartTimeOnSkippedFrame(current_time);
+    GetAnimationHandler()->ScheduleLifecycleCallback(current_time);
   }
 }
 
@@ -399,21 +415,37 @@ void ValueAnimator::End() {
 }
 
 void ValueAnimator::Resume() {
-  if (paused_ && !resumed_) {
-    resumed_ = true;
-    if (pause_time_ > 0) {
-      AddAnimationCallback(0);
-    }
-  }
+  const bool was_paused = paused_;
   Animator::Resume();
+  if (!was_paused || paused_) {
+    return;
+  }
+
+  const int64_t current_time =
+      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+  if (pause_time_ > 0 && start_time_ >= 0) {
+    start_time_ += current_time - pause_time_;
+  }
+  pause_time_ = -1;
+
+  if (!self_pulse_) {
+    return;
+  }
+  RemoveAnimationCallback();
+  AddAnimationCallback(0);
+  if (!ShouldReceiveAnimationFrame(current_time, nullptr)) {
+    GetAnimationHandler()->ScheduleLifecycleCallback(current_time);
+  }
 }
 
 void ValueAnimator::Pause() {
   bool previouslyPaused = paused_;
   Animator::Pause();
   if (!previouslyPaused && paused_) {
-    pause_time_ = -1;
-    resumed_ = false;
+    pause_time_ = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+    if (!target_ || target_->IsVisibleForAnimationTick()) {
+      DoAnimationFrame(pause_time_);
+    }
   }
 }
 
@@ -448,7 +480,6 @@ std::unique_ptr<ValueAnimator> ValueAnimator::Clone() const {
   clone->start_time_committed_ = start_time_committed_;
   clone->seek_fraction_ = seek_fraction_;
   clone->pause_time_ = pause_time_;
-  clone->resumed_ = resumed_;
   clone->reversing_ = reversing_;
   clone->overall_fraction_ = overall_fraction_;
   clone->current_fraction_ = current_fraction_;
@@ -559,6 +590,11 @@ bool ValueAnimator::IsPulsingInternal() { return last_frame_time_ >= 0; }
  * <code>repeatCount</code> has been exceeded and the animation should be ended.
  */
 bool ValueAnimator::AnimateBasedOnTime(int64_t current_time) {
+  return AnimateBasedOnTime(current_time, true);
+}
+
+bool ValueAnimator::AnimateBasedOnTime(int64_t current_time,
+                                       bool update_values) {
   bool done = false;
   if (running_) {
     int64_t scaledDuration = GetScaledDuration();
@@ -583,9 +619,11 @@ bool ValueAnimator::AnimateBasedOnTime(int64_t current_time) {
       done = true;
     }
     overall_fraction_ = ClampFraction(fraction);
-    float currentIterationFraction =
-        GetCurrentIterationFraction(overall_fraction_, reversing_);
-    AnimateValue(currentIterationFraction);
+    if (update_values) {
+      float currentIterationFraction =
+          GetCurrentIterationFraction(overall_fraction_, reversing_);
+      AnimateValue(currentIterationFraction);
+    }
   }
   return done;
 }
@@ -655,6 +693,85 @@ void ValueAnimator::SkipToEndValue(bool in_reverse) {
   AnimateValue(endFraction);
 }
 
+bool ValueAnimator::ShouldReceiveAnimationFrame(int64_t current_time,
+                                                int64_t* next_lifecycle_time) {
+  if (next_lifecycle_time) {
+    *next_lifecycle_time = -1;
+  }
+  if (!started_ || animation_end_requested_ || paused_) {
+    return false;
+  }
+  if (!target_ || target_->IsVisibleForAnimationTick()) {
+    return true;
+  }
+  if (end_listeners_called_) {
+    return false;
+  }
+  if (!next_lifecycle_time) {
+    return false;
+  }
+
+  int64_t lifecycle_start_time = start_time_;
+  if (lifecycle_start_time < 0) {
+    lifecycle_start_time =
+        reversing_
+            ? current_time
+            : current_time +
+                  static_cast<int64_t>(start_delay_ * ResolveDurationScale());
+  }
+  if (!running_) {
+    *next_lifecycle_time = lifecycle_start_time;
+    return false;
+  }
+
+  int64_t scaled_duration = GetScaledDuration();
+  if (scaled_duration <= 0) {
+    *next_lifecycle_time = current_time;
+    return false;
+  }
+
+  int64_t end_time = -1;
+  if (repeat_count_ != kInfinite) {
+    end_time = lifecycle_start_time + scaled_duration * (repeat_count_ + 1);
+  }
+
+  if (repeat_count_ != 0 &&
+      target_->HasAnimationEvent(kClayEventTypeAnimationRepeat)) {
+    int64_t next_iteration =
+        static_cast<int64_t>(std::floor(overall_fraction_)) + 1;
+    if (repeat_count_ == kInfinite || next_iteration <= repeat_count_) {
+      int64_t repeat_time =
+          lifecycle_start_time + next_iteration * scaled_duration;
+      if (end_time < 0 || repeat_time < end_time) {
+        *next_lifecycle_time = repeat_time;
+        return false;
+      }
+    }
+  }
+
+  *next_lifecycle_time = end_time;
+  return false;
+}
+
+void ValueAnimator::CommitStartTimeOnSkippedFrame(int64_t frame_time) {
+  if (start_time_ < 0) {
+    start_time_ = std::max(
+        static_cast<int64_t>(0),
+        reversing_ ? frame_time
+                   : frame_time + static_cast<int64_t>(start_delay_ *
+                                                       ResolveDurationScale()));
+    start_time_committed_ = true;
+  }
+
+  if (last_frame_time_ < 0 && seek_fraction_ >= 0) {
+    int64_t seekTime =
+        static_cast<int64_t>(GetScaledDuration() * seek_fraction_);
+    start_time_ = frame_time - seekTime;
+    start_time_committed_ = true;
+    seek_fraction_ = -1;
+  }
+}
+
 /**
  * Processes a frame of the animation, adjusting the start time if needed.
  *
@@ -662,7 +779,31 @@ void ValueAnimator::SkipToEndValue(bool in_reverse) {
  * @return true if the animation has ended.
  * @hide
  */
-bool ValueAnimator::DoAnimationFrame(int64_t frame_time) {
+bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
+  if (!update_values) {
+    if (started_ && !animation_end_requested_ && !end_listeners_called_) {
+      CommitStartTimeOnSkippedFrame(frame_time);
+
+      bool fill_backwards = fill_mode_ & kBackward;
+      if (!running_) {
+        if (!fill_backwards && start_time_ > frame_time &&
+            seek_fraction_ == -1) {
+          return false;
+        }
+        StartAnimation();
+      }
+
+      last_frame_time_ = frame_time;
+
+      bool finished =
+          AnimateBasedOnTime(std::max(frame_time, start_time_), false);
+      if (finished) {
+        EndAnimation(!(fill_mode_ & kForwards));
+      }
+    }
+    return false;
+  }
+
   if (start_time_ < 0) {
     // First frame. If there is start delay, start delay count down will happen
     // *after* this frame.
@@ -687,12 +828,6 @@ bool ValueAnimator::DoAnimationFrame(int64_t frame_time) {
       AnimateBasedOnTime(std::max(pause_time_, start_time_));
     }
     return false;
-  } else if (resumed_) {
-    resumed_ = false;
-    if (pause_time_ > 0) {
-      // Offset by the duration that the animation was paused
-      start_time_ += (frame_time - pause_time_);
-    }
   }
 
   if (!running_) {
