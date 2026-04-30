@@ -375,6 +375,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   void SetVisible(bool visible);
   bool Visible() const;
+  bool IsVisibleForAnimationTick();
 
   float Left() const { return left_; }
   float Top() const { return top_; }

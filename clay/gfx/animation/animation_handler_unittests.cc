@@ -15,7 +15,8 @@ namespace {
 class MockAnimationFrameCallback
     : public AnimationHandler::AnimationFrameCallback {
  public:
-  MOCK_METHOD(bool, DoAnimationFrame, (int64_t frame_time), (override));
+  MOCK_METHOD(bool, DoAnimationFrame, (int64_t frame_time, bool update_values),
+              (override));
 };
 }  // namespace
 
@@ -44,7 +45,7 @@ TEST(AnimationHandlerTest, AnimationFrameCallback) {
 
     for (int i = 1; i <= 10; i++) {
       frame_time += 16;
-      EXPECT_CALL(anim1, DoAnimationFrame(frame_time))
+      EXPECT_CALL(anim1, DoAnimationFrame(frame_time, true))
           .Times(1)
           .RetiresOnSaturation();
     }
@@ -57,7 +58,7 @@ TEST(AnimationHandlerTest, AnimationFrameCallback) {
     for (int i = 1; i <= 10; i++) {
       frame_time += 16;
       if (i >= 6) {
-        EXPECT_CALL(anim2, DoAnimationFrame(frame_time))
+        EXPECT_CALL(anim2, DoAnimationFrame(frame_time, true))
             .Times(1)
             .RetiresOnSaturation();
       }

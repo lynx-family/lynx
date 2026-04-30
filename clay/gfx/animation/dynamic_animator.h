@@ -197,7 +197,7 @@ class DynamicAnimator : public AnimationHandler::AnimationFrameCallback {
    * reaches equilibrium, the animation will come to its end, and end listeners
    * will be notified, if any.
    */
-  bool DoAnimationFrame(int64_t frame_time) override;
+  bool DoAnimationFrame(int64_t frame_time, bool update_values = true) override;
 
   // Return time in milliseconds
   int64_t GetLastAnimationTime() const { return last_frame_time_; }

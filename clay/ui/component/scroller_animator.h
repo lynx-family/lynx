@@ -19,7 +19,7 @@ class ScrollerAnimator : public AnimationHandler::AnimationFrameCallback {
                    AnimationHandler* handler);
   ~ScrollerAnimator() override;
 
-  bool DoAnimationFrame(int64_t frame_time) override;
+  bool DoAnimationFrame(int64_t frame_time, bool update_values = true) override;
 
   void Start();
   void Stop();

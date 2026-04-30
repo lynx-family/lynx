@@ -16,7 +16,10 @@
 #include "clay/ui/component/css_property.h"
 
 namespace clay {
+class BaseView;
 class IntersectionObserverManager;
+
+bool IsViewIntersecting(BaseView* view, BaseView* root, bool ui_clip_enabled);
 
 class IntersectionObserverEntry {
  public:

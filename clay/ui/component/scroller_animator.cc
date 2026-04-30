@@ -21,7 +21,8 @@ ScrollerAnimator::ScrollerAnimator(
 
 ScrollerAnimator::~ScrollerAnimator() { Stop(); }
 
-bool ScrollerAnimator::DoAnimationFrame(int64_t frame_time) {
+bool ScrollerAnimator::DoAnimationFrame(int64_t frame_time,
+                                        bool update_values) {
   return on_animation_(frame_time);
 }
 
