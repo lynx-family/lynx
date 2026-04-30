@@ -13,6 +13,56 @@
 
 LYNX_EXTERN_C_BEGIN
 
+/* ----- Global UI Task Runner Configuration ----- */
+// These APIs provide a way to inject a host-provided task runner for Lynx's
+// global UI thread. This is useful when embedding Lynx in a windowless mode
+// where the host wants to control the UI thread execution.
+//
+// These functions are process-global and should be called only once, before
+// any windowless renderer is created. After the first windowless renderer is
+// initialized, subsequent calls will have no effect.
+
+// Callback function type for checking if the current thread is the UI thread.
+// Should return true if the calling thread is the UI thread where tasks should
+// be executed.
+typedef bool (*lynx_windowless_ui_task_runner_runs_on_current_thread_callback)(
+    void* user_data);
+
+// Callback function type for posting a task to the UI thread.
+// The target_time_nanos is the absolute time (in nanoseconds since epoch)
+// when the task should be executed.
+typedef void (*lynx_windowless_ui_task_runner_post_task_callback)(
+    lynx_task_t task, uint64_t target_time_nanos, void* user_data);
+
+// Configuration structure for the global UI task runner.
+// This structure must be zero-initialized before use.
+typedef struct lynx_windowless_ui_task_runner_config_t {
+  // The size of this struct. Must be set to
+  // sizeof(lynx_windowless_ui_task_runner_config_t).
+  size_t struct_size;
+  // User data pointer that will be passed to the callbacks.
+  void* user_data;
+  // Callback to check if current thread is UI thread.
+  lynx_windowless_ui_task_runner_runs_on_current_thread_callback
+      runs_on_current_thread_callback;
+  // Callback to post a task to the UI thread.
+  lynx_windowless_ui_task_runner_post_task_callback post_task_callback;
+} lynx_windowless_ui_task_runner_config_t;
+
+// Configures the global UI task runner for windowless mode.
+// This function must be called before creating any windowless renderer.
+// Returns true if the configuration was successfully set, false if it was
+// already set or UIThread has already been initialized.
+LYNX_CAPI_EXPORT bool lynx_windowless_set_global_ui_task_runner(
+    const lynx_windowless_ui_task_runner_config_t* config);
+
+// Runs a UI task that was posted via the global UI task runner.
+// This function should be called by the host on the UI thread.
+// Returns true if the task was found and executed successfully.
+LYNX_CAPI_EXPORT bool lynx_windowless_run_ui_task(lynx_task_t task);
+
+/* ----- End of Global UI Task Runner Configuration ----- */
+
 // The type of the windowless renderer.
 typedef enum lynx_windowless_renderer_type_e {
   // The software renderer type that renders content on CPU.

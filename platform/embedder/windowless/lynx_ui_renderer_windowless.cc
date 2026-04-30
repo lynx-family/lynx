@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
 #include "clay/lynx_adaptor/native_view_service_desktop.h"
 #include "clay/lynx_adaptor/resource_loader_embedder.h"

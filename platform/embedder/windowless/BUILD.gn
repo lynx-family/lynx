@@ -10,6 +10,8 @@ lynx_core_source_set("windowless") {
     "lynx_ui_renderer_windowless.h",
     "lynx_windowless_renderer.cc",
     "lynx_windowless_renderer_priv.h",
+    "windowless_ui_task_runner_delegate.cc",
+    "windowless_ui_task_runner_delegate.h",
   ]
   configs = [
     "../:config",

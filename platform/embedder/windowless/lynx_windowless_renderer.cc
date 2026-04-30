@@ -2,8 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "base/include/log/logging.h"
 #include "build/build_config.h"
 #include "platform/embedder/windowless/lynx_windowless_renderer_priv.h"
+#include "platform/embedder/windowless/windowless_ui_task_runner_delegate.h"
 
 LYNX_EXTERN_C lynx_windowless_renderer_t*
 lynx_windowless_renderer_create_with_finalizer(
@@ -150,6 +152,27 @@ LYNX_EXTERN_C void lynx_windowless_renderer_bind_set_editable_transform(
     set_editable_transform set_editable_transform) {
   reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer)
       ->set_editable_transform = set_editable_transform;
+}
+
+LYNX_EXTERN_C bool lynx_windowless_set_global_ui_task_runner(
+    const lynx_windowless_ui_task_runner_config_t* config) {
+  LOGD("[lynx_windowless_set_global_ui_task_runner] Called");
+  bool result = lynx::embedder::SetGlobalUITaskRunnerDelegate(config);
+  LOGD("[lynx_windowless_set_global_ui_task_runner] Returning");
+  return result;
+}
+
+LYNX_EXTERN_C bool lynx_windowless_run_ui_task(lynx_task_t task) {
+  LOGD("[lynx_windowless_run_ui_task] Called");
+  lynx::embedder::WindowlessUITaskRunnerDelegate* delegate =
+      lynx::embedder::GetGlobalUITaskRunnerDelegate();
+  if (!delegate) {
+    LOGW("[lynx_windowless_run_ui_task] delegate is null");
+    return false;
+  }
+  bool result = delegate->RunTask(task.task);
+  LOGD("[lynx_windowless_run_ui_task] Returning");
+  return result;
 }
 
 LYNX_EXTERN_C void lynx_windowless_renderer_release(
