@@ -123,6 +123,7 @@ std::unique_ptr<KeyframesManager> KeyframesManager::CloneForRasterAnimation(
         iter != animation.keyframes_map.end()) {
       KeyframeAnimation clone_animation;
       clone_animation.animator = animation.animator->Clone();
+      clone_animation.animator->SetAnimationTarget(target);
       std::unique_ptr<KeyframeSet> clone_keyframe_set =
           iter->second->Clone(clone.get());
       if (!IsMixedAnimation(animation)) {
@@ -207,6 +208,7 @@ std::unique_ptr<ValueAnimator> KeyframesManager::CreateAnimator(
   std::unique_ptr<ValueAnimator> animator =
       std::make_unique<ValueAnimator>(data);
   animator->SetAnimationHandler(target_->GetAnimationHandler());
+  animator->SetAnimationTarget(target_);
   return animator;
 }
 

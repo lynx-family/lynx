@@ -46,6 +46,10 @@ class AnimatorTarget {
                            const BoxShadowOperations& value) {}
 
   virtual AnimationHandler* GetAnimationHandler() { return nullptr; }
+  virtual bool IsVisibleForAnimationTick() { return true; }
+  virtual bool HasAnimationEvent(ClayEventType event_type) const {
+    return false;
+  }
   virtual const KeyframesMap* GetKeyframesMap(
       const std::string& animation_name) {
     return nullptr;

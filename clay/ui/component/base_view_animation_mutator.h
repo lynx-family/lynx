@@ -49,6 +49,8 @@ class BaseViewAnimationMutator : public AnimatorTarget,
                    BoxShadowOperations& value) override;
 
   AnimationHandler* GetAnimationHandler() override;
+  bool IsVisibleForAnimationTick() override;
+  bool HasAnimationEvent(ClayEventType event_type) const override;
 
   FloatSize PercentageResolutionSize() override;
 
