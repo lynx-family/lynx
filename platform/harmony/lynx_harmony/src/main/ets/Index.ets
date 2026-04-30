@@ -61,6 +61,7 @@ export { NativeContent,
   ConsumeGestureOption,
   CommonCallbackNG,
   registerStaticTask,
+  ConsumeGestureOption,
   unregisterStaticTask } from 'liblynx.so'
 
 export {
