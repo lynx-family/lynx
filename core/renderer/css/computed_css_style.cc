@@ -2897,6 +2897,7 @@ bool ComputedCSSStyle::SetZIndex(const tasm::CSSValue& value,
     return false;
   }
 
+  bool old_has_z_index = has_z_index_;
   has_z_index_ = !reset;
 
   // TODO(songshourui.null): A z-index can be 0, but an initial value of 0
@@ -2905,8 +2906,12 @@ bool ComputedCSSStyle::SetZIndex(const tasm::CSSValue& value,
   // store the z-index. If the optional has no value, it would mean z-index is
   // not set. This change would also require modifications at the platform
   // layer.
-  return CSSStyleUtils::ComputeIntStyle(
+  bool value_changed = CSSStyleUtils::ComputeIntStyle(
       value, reset, z_index_, 0, "z-index must be a number!", parser_configs_);
+
+  // Return true if either the numeric value changed OR the "has z-index"
+  // semantic state changed (e.g. unset → z-index:0 or z-index:0 → unset).
+  return value_changed || (old_has_z_index != has_z_index_);
 }
 
 bool ComputedCSSStyle::SetBorderRadius(const tasm::CSSValue& value,

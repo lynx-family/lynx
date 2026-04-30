@@ -33,8 +33,10 @@ TEST(CssStyleUtils, SetZIndex) {
   z_index_raw_value = lepus::Value("0");
   z_index = tasm::UnitHandler::Process(tasm::kPropertyIDZIndex,
                                        z_index_raw_value, configs);
-  EXPECT_FALSE(computed_css_style.SetValue(tasm::kPropertyIDZIndex,
-                                           z_index[tasm::kPropertyIDZIndex]));
+  // Setting z-index:0 from default must now return true because has_z_index_
+  // transitions from false → true.
+  EXPECT_TRUE(computed_css_style.SetValue(tasm::kPropertyIDZIndex,
+                                          z_index[tasm::kPropertyIDZIndex]));
   EXPECT_TRUE(computed_css_style.HasZIndex());
 
   z_index_raw_value = lepus::Value("1");
