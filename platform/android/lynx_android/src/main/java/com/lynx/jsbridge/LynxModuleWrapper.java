@@ -30,7 +30,7 @@ public class LynxModuleWrapper {
   private LynxModule.AuthValidator mAuthValidator;
   private static final ConcurrentHashMap<Class<? extends LynxModule>, ArrayList<MethodDescriptor>>
       mMethodsCache = new ConcurrentHashMap<>();
-  private IContextFinder mContextFinder;
+  private volatile IContextFinder mContextFinder;
 
   public LynxModuleWrapper(String name, LynxModule module) {
     mName = name;
