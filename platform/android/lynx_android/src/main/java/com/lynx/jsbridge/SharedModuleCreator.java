@@ -9,8 +9,6 @@ import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.LLog;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -21,8 +19,9 @@ public class SharedModuleCreator implements IModuleCreator {
   /**
    * mModulesByName is used to store LynxModuleWrapper by module name.
    */
-  private Map<String, LynxModuleWrapper> mModulesByName;
-  private IContextFinder mContextFinder;
+  private final ConcurrentHashMap<String, LynxModuleWrapper> mModulesByName =
+      new ConcurrentHashMap<>();
+  private volatile IContextFinder mContextFinder;
 
   public SharedModuleCreator(IContextFinder contextFinder) {
     mContextFinder = contextFinder;
@@ -31,9 +30,6 @@ public class SharedModuleCreator implements IModuleCreator {
   @Override
   public void resetContextFinder(@NonNull IContextFinder contextFinder) {
     mContextFinder = contextFinder;
-    if (mModulesByName == null) {
-      return;
-    }
     for (LynxModuleWrapper wrapper : mModulesByName.values()) {
       wrapper.setContextFinder(contextFinder);
     }
@@ -51,15 +47,20 @@ public class SharedModuleCreator implements IModuleCreator {
       LLog.e("LynxModuleFactory:" + TAG, "getModule failed, name is null");
       return null;
     }
-    // use cache
-    if (mModulesByName == null) {
-      mModulesByName = new HashMap<>();
+    LynxModuleWrapper moduleWrapper = mModulesByName.get(name);
+    if (moduleWrapper != null) {
+      return moduleWrapper;
     }
-    if (mModulesByName.get(name) != null) {
-      LLog.v("LynxModuleFactory:" + TAG, "GetModule success, name: " + name);
-      return mModulesByName.get(name);
+    LynxModuleWrapper createdModuleWrapper = createModuleWrapper(name, ClassParams);
+    if (createdModuleWrapper == null) {
+      return null;
     }
+    mModulesByName.put(name, createdModuleWrapper);
+    return createdModuleWrapper;
+  }
 
+  private LynxModuleWrapper createModuleWrapper(
+      String name, ConcurrentHashMap<String, ParamWrapper> ClassParams) {
     // create new module wrapper
     ParamWrapper wrapper = ClassParams.get(name);
     if (wrapper == null) {
@@ -107,20 +108,15 @@ public class SharedModuleCreator implements IModuleCreator {
     // cache module wrapper
     LynxModuleWrapper moduleWrapper = new LynxModuleWrapper(name, module);
     moduleWrapper.setContextFinder(mContextFinder);
-    mModulesByName.put(name, moduleWrapper);
     return moduleWrapper;
   }
 
   @Override
   public void destroy() {
-    if (mModulesByName == null) {
-      return;
-    }
     for (LynxModuleWrapper wrapper : mModulesByName.values()) {
       wrapper.destroy();
     }
     mModulesByName.clear();
-    mModulesByName = null;
   }
 
   @Override
