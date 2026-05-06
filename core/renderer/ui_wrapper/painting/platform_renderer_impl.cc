@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx::tasm {
 
@@ -15,6 +16,30 @@ PlatformRendererImpl::PlatformRendererImpl(int id, PlatformRendererType type,
     : id_(id), type_(type), tag_name_(tag), opacity_{} {
   is_platform_extended_renderer_ =
       (type_ == PlatformRendererType::kUnknown && !tag_name_.empty());
+}
+
+base::String PlatformRendererImpl::GetExtendedRendererTagName() const {
+  if (!tag_name_.empty()) {
+    return tag_name_;
+  }
+  switch (type_) {
+    case PlatformRendererType::kScroll:
+      return base::String(BASE_STATIC_STRING(kElementScrollViewTag));
+    case PlatformRendererType::kList:
+      return base::String(BASE_STATIC_STRING(kElementListTag));
+    case PlatformRendererType::kListItem:
+      return base::String(BASE_STATIC_STRING(kElementListItemTag));
+    case PlatformRendererType::kView:
+      return base::String(BASE_STATIC_STRING(kElementViewTag));
+    case PlatformRendererType::kImage:
+      return base::String(BASE_STATIC_STRING(kElementImageTag));
+    case PlatformRendererType::kText:
+      return base::String(BASE_STATIC_STRING(kElementTextTag));
+    case PlatformRendererType::kPage:
+      return base::String(BASE_STATIC_STRING(kElementPageTag));
+    default:
+      return base::String();
+  }
 }
 
 void PlatformRendererImpl::UpdateDisplayList(DisplayList display_list) {

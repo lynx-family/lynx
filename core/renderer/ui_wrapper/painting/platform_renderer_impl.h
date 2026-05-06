@@ -50,6 +50,8 @@ class PlatformRendererImpl : public PlatformRenderer {
   int GetId() const override { return id_; }
   const base::String& GetTagName() const { return tag_name_; }
 
+  base::String GetExtendedRendererTagName() const override;
+
  protected:
   void ReleaseSelf() const override;
 

@@ -17,6 +17,9 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.render.IRendererHost;
+import com.lynx.tasm.behavior.render.PlatformRendererContext;
+import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook;
@@ -25,8 +28,8 @@ import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.utils.BlurUtils;
 import java.lang.ref.WeakReference;
 
-public class AndroidView
-    extends ViewGroup implements IDrawChildHookBinding, IMeaningfulPaintingAreaInvalidateHook {
+public class AndroidView extends ViewGroup
+    implements IDrawChildHookBinding, IMeaningfulPaintingAreaInvalidateHook, IRendererHost {
   private Bitmap mBlurBitmap;
   private Canvas mBlurCanvas;
   private float mBlurRadius = 0;
@@ -112,6 +115,7 @@ public class AndroidView
   }
   private String mImpressionId;
   protected IDrawChildHook mDrawChildHook;
+  private Renderer mRenderer;
   private boolean mConsumeHoverEvent = false;
   private boolean nativeInteractionEnabled = false;
   private boolean mPanInterceptSelf = false;
@@ -124,7 +128,34 @@ public class AndroidView
   }
 
   @Override
+  public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+    return new Renderer(platformRendererContext, sign);
+  }
+
+  @Override
+  public void setRenderer(Renderer renderer) {
+    mRenderer = renderer;
+  }
+
+  @Override
+  public Renderer getRenderer() {
+    return mRenderer;
+  }
+
+  @Override
+  public ViewGroup getView() {
+    return this;
+  }
+
+  @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
+    if (mRenderer != null) {
+      if (mRenderer.getUIHost() != null) {
+        mRenderer.getUIHost().measure();
+      }
+      mRenderer.onLayout(changed, l, t, r, b);
+    }
+
     // no-op since UIGroup handles actually laying out children.
     if (!getRootView().isLayoutRequested() && mDrawChildHook != null) {
       // it means this onLayout is not from rootview's performTraversals, it may be triggered from
@@ -322,6 +353,20 @@ public class AndroidView
     if (mDrawChildHook != null) {
       mDrawChildHook.afterDispatchDraw(canvas);
     }
+
+    if (mRenderer != null) {
+      mRenderer.afterDispatchDraw(canvas);
+    }
+  }
+
+  @Override
+  protected void onDraw(Canvas canvas) {
+    if (mRenderer != null) {
+      mRenderer.onDraw(canvas);
+      return;
+    }
+
+    super.onDraw(canvas);
   }
 
   @Override
@@ -329,6 +374,9 @@ public class AndroidView
     Rect bound = null;
     if (mDrawChildHook != null) {
       bound = mDrawChildHook.beforeDrawChild(canvas, child, drawingTime);
+    }
+    if (mRenderer != null) {
+      mRenderer.beforeDrawChild(canvas, child);
     }
     boolean ret;
     if (bound != null) {
@@ -342,6 +390,9 @@ public class AndroidView
 
     if (mDrawChildHook != null) {
       mDrawChildHook.afterDrawChild(canvas, child, drawingTime);
+    }
+    if (mRenderer != null) {
+      mRenderer.afterDrawChild(canvas, child);
     }
 
     return ret;

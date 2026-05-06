@@ -43,6 +43,8 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
                                    kChildrenInlineVectorSize>&
   Children() const = 0;
 
+  virtual base::String GetExtendedRendererTagName() const = 0;
+
   void ReleaseSelf() const override = 0;
 };
 

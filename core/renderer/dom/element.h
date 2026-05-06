@@ -1096,6 +1096,14 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkAsListItem() { is_list_item_ = true; }
 
+  void MarkAsDirectChildOfCompatibleComponent(bool flag) {
+    is_direct_child_of_compatible_component_ = flag;
+  }
+
+  bool is_direct_child_of_compatible_component() const {
+    return is_direct_child_of_compatible_component_;
+  }
+
   virtual int32_t GetBuiltInNodeInfo() const { return 0; }
 
   bool is_list_item() const { return is_list_item_; }
@@ -1399,6 +1407,8 @@ class Element : public lepus::RefCounted,
 
   // indicate this element is a list's sub element.
   bool is_list_item_{false};
+
+  bool is_direct_child_of_compatible_component_{false};
 
   bool allow_layoutnode_inline_{false};
 
