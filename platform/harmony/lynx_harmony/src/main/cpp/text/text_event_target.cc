@@ -8,13 +8,11 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 void TextEventTarget::AddChild(const std::shared_ptr<TextEventTarget>& child) {
-  child->parent_ = this;
+  // The child's parent pointer should be a weak_ptr to this.
+  // As this class inherits from enable_shared_from_this, we can get a weak_ptr.
+  child->SetParent(weak_from_this());
   children_.push_back(child);
 }
-
-EventTarget* TextEventTarget::ParentTarget() { return parent_; }
-
-void TextEventTarget::SetParent(EventTarget* parent) { parent_ = parent; }
 
 LynxPointerEventsValue TextEventTarget::PointerEvents() {
   if (pointer_events_ != LynxPointerEventsValue::kUnset) {

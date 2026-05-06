@@ -126,7 +126,7 @@ void UIText::UpdateExtraData(
     const fml::RefPtr<fml::RefCountedThreadSafeStorage>& bundle) {
   auto* paragraph = reinterpret_cast<ParagraphHarmony*>(bundle.get());
   paragraph_ = fml::RefPtr<ParagraphHarmony>(paragraph);
-  paragraph_->SetEventTargetParent(this);
+  paragraph_->SetEventTargetParent(weak_from_this());
 
   ClearSelection();
   Invalidate();
