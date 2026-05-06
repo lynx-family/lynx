@@ -58,6 +58,7 @@ export { NativeContent,
   ShadowNode as NativeShadowNode,
   RendererFunctionNG,
   FiberEventListenerOption,
+  ConsumeGestureOption,
   CommonCallbackNG,
   registerStaticTask,
   unregisterStaticTask } from 'liblynx.so'

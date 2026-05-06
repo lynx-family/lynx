@@ -396,4 +396,4 @@ export const registerStaticTask: (
 
 export const unregisterStaticTask: (taskId: string) => boolean;
 
-export { RendererFunctionNG, FiberEventListenerOption, CommonCallbackNG } from './HarmonyRendererFunctionNG';
+export { RendererFunctionNG, FiberEventListenerOption, ConsumeGestureOption, CommonCallbackNG } from './HarmonyRendererFunctionNG';
