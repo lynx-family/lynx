@@ -49,7 +49,7 @@ T GetNumber(const clay::Value& value, T default_val = 0) {
       FML_DLOG(ERROR) << "Failed convert " << value.GetString() << " to double";
     }
   } else {
-    FML_UNREACHABLE();
+    FML_LOG(ERROR) << "Failed to convert value to number: " << value.type();
   }
   return default_val;
 }
