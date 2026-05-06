@@ -241,7 +241,7 @@ class ParagraphHarmony : public fml::RefCountedThreadSafeStorage {
 
     return nullptr;
   }
-  void SetEventTargetParent(EventTarget* parent) {
+  void SetEventTargetParent(const std::weak_ptr<EventTarget>& parent) {
     for (auto event_target : event_target_roots_) {
       event_target->SetParent(parent);
     }
