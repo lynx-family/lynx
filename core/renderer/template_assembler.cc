@@ -1434,11 +1434,12 @@ void TemplateAssembler::LoadComponentWithCallbackInfo(
          &callback_info](const std::shared_ptr<TemplateEntry>& entry) -> bool {
           component_loader_->StartRecordDecodeTime(url);
 
-          bool res = callback_info.bundle
-                         ? entry->InitWithTemplateBundle(
-                               this, *callback_info.bundle, page_options_)
-                         : this->FromBinary(
-                               entry, std::move(callback_info.data), false);
+          bool res =
+              callback_info.bundle
+                  ? entry->InitWithTemplateBundle(
+                        this, std::move(*callback_info.bundle), page_options_)
+                  : this->FromBinary(entry, std::move(callback_info.data),
+                                     false);
           if (!res) {
             return false;
           }
