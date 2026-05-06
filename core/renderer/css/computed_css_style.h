@@ -417,6 +417,20 @@ class ComputedCSSStyle {
 
   bool IsClean() { return !IsDirty(); }
 
+  template <typename Callback>
+  void ForEachChangedProperty(const Callback& callback) const {
+    for (const auto id : changed_bitset_) {
+      callback(id);
+    }
+  }
+
+  template <typename Callback>
+  void ForEachResetProperty(const Callback& callback) const {
+    for (const auto id : reset_bitset_) {
+      callback(id);
+    }
+  }
+
   void MarkChanged(tasm::CSSPropertyID id) {
     changed_bitset_.Set(id);
     reset_bitset_.Reset(id);

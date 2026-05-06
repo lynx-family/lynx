@@ -389,6 +389,20 @@ inline constexpr const char* const STYLE_RESOLVER_APPLY_RESOLVED_STYLE_MAP =
 inline constexpr const char* const STYLE_RESOLVER_COMPUTE_STYLE_DIFF =
     "StyleResolver::ComputeStyleDiff";
 
+/**
+ * @trace_description: Replay commit side effects for changed and reset
+ *     style properties in the new styling pipeline.
+ */
+inline constexpr const char* const FIBER_ELEMENT_REPLAY_COMMIT_SIDE_EFFECTS =
+    "FiberElement::ReplayCommitSideEffects";
+
+/**
+ * @trace_description: Resolve final style as ComputedCSSStyle in the
+ *   new styling pipeline.
+ */
+inline constexpr const char* const FIBER_ELEMENT_RESOLVE_COMPUTED_STYLES =
+    "FiberElement::ResolveComputedStyles";
+
 inline constexpr const char* const ELEMENT_CONTAINER_FIND_PARENT =
     "ElementContainer::FindParentForChild";
 inline constexpr const char* const ELEMENT_CONTAINER_TRANSITION =
