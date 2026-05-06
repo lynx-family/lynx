@@ -8,6 +8,7 @@
 #include <limits>
 
 #include "base/include/float_comparison.h"
+#include "base/include/log/logging.h"
 #include "base/include/platform/harmony/harmony_vsync_manager.h"
 #include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
@@ -197,15 +198,36 @@ void UIScroll::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
   float content_height = height_;
   // set the layout_constraint for the container view.
   ArkUI_LayoutConstraint* constraint = OH_ArkUI_LayoutConstraint_Create();
+  if (!constraint) {
+    LOGE("UIScroll::OnMeasure create layout constraint failed, sign: "
+         << Sign() << ", tag: " << Tag());
+    return;
+  }
   OH_ArkUI_LayoutConstraint_SetMinHeight(constraint, 0);
   OH_ArkUI_LayoutConstraint_SetMaxHeight(constraint,
                                          std::numeric_limits<int32_t>::max());
   OH_ArkUI_LayoutConstraint_SetMinWidth(constraint, 0);
   OH_ArkUI_LayoutConstraint_SetMaxWidth(constraint,
                                         std::numeric_limits<int32_t>::max());
+
+  auto measure_child = [this, constraint](UIBase* child,
+                                          const char* child_type) -> bool {
+    if (!child) {
+      return false;
+    }
+    auto node = child->DrawNode();
+    if (!node) {
+      LOGE("UIScroll::OnMeasure skip measure for invalid child node, scroll "
+           << "sign: " << Sign() << ", scroll tag: " << Tag()
+           << ", child sign: " << child->Sign() << ", child tag: "
+           << child->Tag() << ", child type: " << child_type);
+      return false;
+    }
+    NodeManager::Instance().MeasureNode(node, constraint);
+    return true;
+  };
   for (const auto child : children_) {
-    if (child) {
-      NodeManager::Instance().MeasureNode(child->DrawNode(), constraint);
+    if (measure_child(child, "content")) {
       if (IsHorizontal()) {
         content_width =
             std::max(content_width, child->width_ + child->left_ +
@@ -218,21 +240,21 @@ void UIScroll::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
     }
   }
   if (start_bounce_view_ != nullptr) {
-    NodeManager::Instance().MeasureNode(start_bounce_view_->DrawNode(),
-                                        constraint);
-    NodeManager::Instance().SetAttributeWithNumberValue(
-        start_bounce_view_->DrawNode(), NODE_POSITION,
-        IsHorizontal() ? -start_bounce_view_->width_ : 0,
-        IsHorizontal() ? 0 : -start_bounce_view_->height_);
+    auto node = start_bounce_view_->DrawNode();
+    if (measure_child(start_bounce_view_, "start_bounce")) {
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          node, NODE_POSITION, IsHorizontal() ? -start_bounce_view_->width_ : 0,
+          IsHorizontal() ? 0 : -start_bounce_view_->height_);
+    }
   }
 
   if (end_bounce_view_ != nullptr) {
-    NodeManager::Instance().MeasureNode(end_bounce_view_->DrawNode(),
-                                        constraint);
-    NodeManager::Instance().SetAttributeWithNumberValue(
-        end_bounce_view_->DrawNode(), NODE_POSITION,
-        IsHorizontal() ? content_width : 0,
-        IsHorizontal() ? 0 : content_height);
+    auto node = end_bounce_view_->DrawNode();
+    if (measure_child(end_bounce_view_, "end_bounce")) {
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          node, NODE_POSITION, IsHorizontal() ? content_width : 0,
+          IsHorizontal() ? 0 : content_height);
+    }
   }
   OH_ArkUI_LayoutConstraint_Dispose(constraint);
   if (!base::FloatsEqual(content_width, content_width_) ||
@@ -363,11 +385,9 @@ void UIScroll::SetEvents(const std::vector<lepus::Value>& events) {
 void UIScroll::AddChild(lynx::tasm::harmony::UIBase* child, int index) {
   bool is_bounce_view =
       child->Tag() == "bounce-view" || child->Tag() == "x-bounce-view";
-  if (index == -1) {
-    children_.emplace_back(child);
-  } else if (!is_bounce_view) {
-    children_.insert(children_.begin() + index, child);
-  }
+
+  child->SetParent(this);
+
   if (is_bounce_view) {
     if (static_cast<UIBounce*>(child)->is_lower_) {
       start_bounce_view_ = child;
@@ -379,7 +399,13 @@ void UIScroll::AddChild(lynx::tasm::harmony::UIBase* child, int index) {
     layout_changed_ = true;
     return;
   }
-  child->SetParent(this);
+
+  if (index == -1) {
+    children_.emplace_back(child);
+  } else {
+    children_.insert(children_.begin() + index, child);
+  }
+
   NodeManager::Instance().InsertNode(container_layout_, child->DrawNode(),
                                      index);
   layout_changed_ = true;
