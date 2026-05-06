@@ -56,10 +56,17 @@ if (enable_unittests) {
   ]
 }
 if (is_android && !enable_unittests) {
-  base_devtool_shared_sources += [
-    "android/devtool_global_slot_android.cc",
-    "android/devtool_slot_android.cc",
-  ]
+  if (!is_headless) {
+    base_devtool_shared_sources += [
+      "android/devtool_global_slot_android.cc",
+      "android/devtool_slot_android.cc",
+    ]
+  } else {
+    not_needed([
+                 "android/devtool_global_slot_android.cc",
+                 "android/devtool_slot_android.cc",
+               ])
+  }
 }
 if (is_ios && !enable_unittests) {
   base_devtool_shared_sources += [
@@ -114,7 +121,7 @@ base_devtool_source_set("base_devtool") {
     "../../../third_party/jsoncpp/include/",
     "//",
   ]
-  if (is_android && !enable_unittests) {
+  if (is_android && !enable_unittests && !is_headless) {
     deps += [
       ":android_jni",
       "../../../core/build:build",

@@ -87,19 +87,35 @@ devtool_agent_ng_sources = [
 ]
 
 if (is_android) {
-  devtool_agent_shared_sources += [
-    "../android/cdp_event_listener_sender_android.cc",
-    "../android/cdp_event_listener_sender_android.h",
-    "../android/devtool_message_handler_android.cc",
-    "../android/devtool_message_handler_android.h",
-    "../android/invoke_cdp_from_sdk_sender_android.cc",
-    "../android/invoke_cdp_from_sdk_sender_android.h",
-    "../android/lynx_devtool_ng_android.cc",
-    "android/devtool_platform_android.cc",
-    "android/devtool_platform_android.h",
-    "android/global_devtool_platform_android.cc",
-    "android/global_devtool_platform_android.h",
-  ]
+  if (!is_headless) {
+    devtool_agent_shared_sources += [
+      "../android/cdp_event_listener_sender_android.cc",
+      "../android/cdp_event_listener_sender_android.h",
+      "../android/devtool_message_handler_android.cc",
+      "../android/devtool_message_handler_android.h",
+      "../android/invoke_cdp_from_sdk_sender_android.cc",
+      "../android/invoke_cdp_from_sdk_sender_android.h",
+      "../android/lynx_devtool_ng_android.cc",
+      "android/devtool_platform_android.cc",
+      "android/devtool_platform_android.h",
+      "android/global_devtool_platform_android.cc",
+      "android/global_devtool_platform_android.h",
+    ]
+  } else {
+    not_needed([
+                 "../android/cdp_event_listener_sender_android.cc",
+                 "../android/cdp_event_listener_sender_android.h",
+                 "../android/devtool_message_handler_android.cc",
+                 "../android/devtool_message_handler_android.h",
+                 "../android/invoke_cdp_from_sdk_sender_android.cc",
+                 "../android/invoke_cdp_from_sdk_sender_android.h",
+                 "../android/lynx_devtool_ng_android.cc",
+                 "android/devtool_platform_android.cc",
+                 "android/devtool_platform_android.h",
+                 "android/global_devtool_platform_android.cc",
+                 "android/global_devtool_platform_android.h",
+               ])
+  }
 }
 
 #devtool_agent_shared_sources end

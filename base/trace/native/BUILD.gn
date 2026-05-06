@@ -134,7 +134,11 @@ source_set("trace") {
   }
 
   if (is_android) {
-    public_deps += [ "../android:trace_jni_files" ]
+    if (!is_headless) {
+      public_deps += [ "../android:trace_jni_files" ]
+    } else {
+      not_needed([ "../android:trace_jni_files" ])
+    }
   }
 
   if (enable_trace == "perfetto") {

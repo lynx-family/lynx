@@ -23,12 +23,21 @@ devtool_source_set("element") {
 
   if (is_android) {
     # liblynx.so does not export symbols in following two files
-    sources += [
-      "../../../core/renderer/css/css_color.cc",
-      "../../../core/renderer/css/css_color.h",
-      "../../../core/renderer/css/css_keywords.cc",
-      "../../../core/renderer/css/css_keywords.h",
-    ]
+    if (!is_headless) {
+      sources += [
+        "../../../core/renderer/css/css_color.cc",
+        "../../../core/renderer/css/css_color.h",
+        "../../../core/renderer/css/css_keywords.cc",
+        "../../../core/renderer/css/css_keywords.h",
+      ]
+    } else {
+      not_needed([
+                   "../../../core/renderer/css/css_color.cc",
+                   "../../../core/renderer/css/css_color.h",
+                   "../../../core/renderer/css/css_keywords.cc",
+                   "../../../core/renderer/css/css_keywords.h",
+                 ])
+    }
   }
   deps = [ "../../../base/src:base_log_headers" ]
 }

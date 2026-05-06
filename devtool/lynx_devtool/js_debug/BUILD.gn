@@ -143,7 +143,7 @@ devtool_source_set("js_debug") {
     ":devtool_lepus_debug",
     "../../../third_party/rapidjson:rapidjson",
   ]
-  if (!is_android && !enable_unittests) {
+  if ((!is_android || is_headless) && !enable_unittests) {
     deps += [ ":devtool_qjs_bridge" ]
     if (jsengine_type == "v8") {
       deps += [ ":devtool_v8_bridge" ]
@@ -158,7 +158,7 @@ devtool_source_set("devtool_qjs_bridge") {
     "lepus/proxy/js_debug_proxy_lepus.cc",
     "lepus/proxy/js_debug_proxy_lepus.h",
   ]
-  if (is_android) {
+  if (is_android && !is_headless) {
     sources += [ "../android/devtool_qjs_bridge.cc" ]
   }
   deps = [
@@ -172,7 +172,7 @@ devtool_source_set("devtool_v8_bridge") {
     "js/v8/proxy/js_debug_proxy_v8.cc",
     "js/v8/proxy/js_debug_proxy_v8.h",
   ]
-  if (is_android) {
+  if (is_android && !is_headless) {
     sources += [ "../android/devtool_v8_bridge.cc" ]
   }
   deps = [ ":devtool_v8_debug" ]
