@@ -44,7 +44,10 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
     return children_;
   }
 
-  EventTarget* ParentTarget() override;
+  EventTarget* ParentTarget() override {
+    auto p = parent_.lock();
+    return p ? p.get() : nullptr;
+  }
   void GetPointInTarget(float res[2], EventTarget* parent_target,
                         float point[2]) override{};
   LynxPointerEventsValue PointerEvents() override;
@@ -59,8 +62,10 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
   void OnResponseChain() override {}
   void OffResponseChain() override {}
   bool IsOnResponseChain() override { return false; };
-  bool IsInterceptGesture() override { return false; }
-  void SetParent(EventTarget* parent);
+  bool IsInterceptGesture() override { return false; };
+  void SetParent(const std::weak_ptr<EventTarget>& parent) {
+    parent_ = parent;
+  };
   void AddRect(float left, float top, float right, float bottom);
 
   int Sign() const override { return sign_; };
@@ -73,7 +78,7 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
 
  private:
   std::list<std::shared_ptr<TextEventTarget>> children_;
-  EventTarget* parent_;
+  std::weak_ptr<EventTarget> parent_;
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
   LynxPointerEventsValue pointer_events_{LynxPointerEventsValue::kUnset};
