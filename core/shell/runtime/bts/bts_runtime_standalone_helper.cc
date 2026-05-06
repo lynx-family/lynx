@@ -287,11 +287,10 @@ void BTSRuntimeStandalone::DestroyRuntime() {
             instance_id);
       });
 
-  runtime_actor_->ActAsync([runtime_actor = runtime_actor_,
-                            js_group_thread_name = group_name_](auto& runtime) {
-    lynx::shell::LynxShell::TriggerDestroyRuntime(runtime_actor,
-                                                  js_group_thread_name);
-  });
+  runtime_actor_->ActAsync(
+      [instance_id = runtime_actor_->GetInstanceId()](auto& runtime) {
+        lynx::shell::LynxShell::DestroyRuntime(instance_id, runtime);
+      });
 }
 
 }  // namespace shell

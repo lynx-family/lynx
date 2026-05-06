@@ -153,8 +153,6 @@ class BTSRuntime final {
 
   void I18nResourceChanged(const std::string& msg);
 
-  void TryToDestroy();
-
   std::shared_ptr<runtime::IVSyncObserver> GetVSyncObserver() {
     return delegate_->GetVSyncObserver();
   }
@@ -216,8 +214,8 @@ class BTSRuntime final {
     kLoadedByParallelEval,
   };
 
-  void Destroy();
   void DestroyAppAndNapi();
+  void Destroy();
   void ReadPreloadJSSource(
       std::vector<std::string> preload_js_paths,
       std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&

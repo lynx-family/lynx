@@ -777,10 +777,12 @@ void BTSRuntime::OnJSSourcePrepared(
   }
 }
 
-void BTSRuntime::TryToDestroy() {
-  if (state_ == State::kNotStarted) {
+void BTSRuntime::Destroy() {
+  if (state_ == State::kNotStarted || state_ == State::kDestroying) {
     return;
   }
+  LOGI("LynxRuntime::Destroy, runtime_id: " << GetRuntimeId()
+                                            << " this: " << this);
   state_ = State::kDestroying;
 
   // Firstly, clear all JSB callbacks that registered before destroy.
@@ -824,20 +826,6 @@ void BTSRuntime::TryToDestroy() {
   }
 
   DestroyAppAndNapi();
-
-  callbacks_.clear();
-}
-
-void BTSRuntime::Destroy() {
-  LOGI("LynxRuntime::Destroy, runtime_id: " << GetRuntimeId()
-                                            << " this: " << this);
-  if (state_ == State::kNotStarted) {
-    return;
-  }
-  cached_tasks_.clear();
-  ssr_global_event_cached_tasks_.clear();
-  callbacks_.clear();
-
   js_executor_->SetObserver(nullptr);
   js_executor_->Destroy();
   js_executor_ = nullptr;

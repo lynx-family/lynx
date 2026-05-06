@@ -405,9 +405,8 @@ void LynxShell::Destroy() {
       });
   if (runtime_actor_) {
     runtime_actor_->ActAsync(
-        [runtime_actor = runtime_actor_,
-         js_group_thread_name = js_group_thread_name_](auto& runtime) {
-          TriggerDestroyRuntime(runtime_actor, js_group_thread_name);
+        [instance_id = runtime_actor_->GetInstanceId()](auto& runtime) {
+          DestroyRuntime(instance_id, runtime);
         });
   }
 
@@ -597,21 +596,10 @@ void LynxShell::StartJsRuntime() {
   }
 }
 
-void LynxShell::TriggerDestroyRuntime(
-    const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor,
-    std::string js_group_thread_name) {
-  if (!runtime_actor) {
-    return;
-  }
-  auto instance_id = runtime_actor->GetInstanceId();
-  auto* runtime = runtime_actor->Impl();
-  if (runtime != nullptr) {
-    runtime->TryToDestroy();
-  }
-  runtime_actor->Act([instance_id](auto& runtime) {
-    runtime = nullptr;
-    tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
-  });
+void LynxShell::DestroyRuntime(int32_t instance_id,
+                               std::unique_ptr<BTSRuntime>& runtime) {
+  runtime = nullptr;
+  tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
 }
 
 bool LynxShell::IsDestroyed() { return is_destroyed_; }
