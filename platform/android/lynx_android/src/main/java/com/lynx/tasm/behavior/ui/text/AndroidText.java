@@ -214,7 +214,14 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
 
   @Keep
   @Override
-  protected void onLayout(boolean changed, int l, int t, int r, int b) {}
+  protected void onLayout(boolean changed, int l, int t, int r, int b) {
+    if (super.getRenderer() != null) {
+      if (super.getRenderer().getUIHost() != null) {
+        super.getRenderer().getUIHost().measure();
+      }
+      super.getRenderer().onLayout(changed, l, t, r, b);
+    }
+  }
 
   @Override
   public boolean onTouchEvent(MotionEvent event) {
@@ -246,6 +253,11 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   @Keep
   @Override
   protected void onDraw(Canvas canvas) {
+    if (super.getRenderer() != null) {
+      super.getRenderer().onDraw(canvas);
+      return;
+    }
+
     if (mTextLayout != null) {
       canvas.save();
       // since TextRender only build StaticLayout once
@@ -268,6 +280,9 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   @Override
   public void dispatchDraw(Canvas canvas) {
     super.dispatchDraw(canvas);
+    if (super.getRenderer() != null) {
+      return;
+    }
 
     if (!mIsInSelection || mHighlightPath == null || mHighlightPath.isEmpty()) {
       return;

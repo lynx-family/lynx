@@ -19,10 +19,14 @@ import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.view.ViewCompat;
+import com.lynx.tasm.behavior.render.IRendererHost;
+import com.lynx.tasm.behavior.render.PlatformRendererContext;
+import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.utils.PixelUtils;
 
-class SwiperView extends FrameLayout implements IDrawChildHook.IDrawChildHookBinding {
+class SwiperView
+    extends FrameLayout implements IDrawChildHook.IDrawChildHookBinding, IRendererHost {
   public static final String TAG = "LynxSwiperUI#SwiperView";
   public static final boolean DEBUG = false;
   private final ViewPager mViewPager;
@@ -35,6 +39,7 @@ class SwiperView extends FrameLayout implements IDrawChildHook.IDrawChildHookBin
   public static final int ORIENTATION_VERTICAL = 1;
   private int mOrientation = ORIENTATION_HORIZONTAL;
   private IDrawChildHook mDrawChildHook;
+  private Renderer mRenderer;
 
   public SwiperView(@NonNull Context context) {
     this(context, null);
@@ -48,6 +53,26 @@ class SwiperView extends FrameLayout implements IDrawChildHook.IDrawChildHookBin
         new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     mIndicators = new LinearLayout(context);
     updateIndicators(ORIENTATION_HORIZONTAL);
+  }
+
+  @Override
+  public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+    return new Renderer(platformRendererContext, sign);
+  }
+
+  @Override
+  public void setRenderer(Renderer renderer) {
+    mRenderer = renderer;
+  }
+
+  @Override
+  public Renderer getRenderer() {
+    return mRenderer;
+  }
+
+  @Override
+  public ViewGroup getView() {
+    return this;
   }
 
   private void updateIndicators(int orientation) {
@@ -178,9 +203,45 @@ class SwiperView extends FrameLayout implements IDrawChildHook.IDrawChildHookBin
   }
 
   @Override
+  protected void onLayout(boolean changed, int l, int t, int r, int b) {
+    if (mRenderer != null) {
+      if (mRenderer.getUIHost() != null) {
+        mRenderer.getUIHost().measure();
+      }
+      mRenderer.onLayout(changed, l, t, r, b);
+    }
+    super.onLayout(changed, l, t, r, b);
+  }
+
+  @Override
+  protected void onDraw(Canvas canvas) {
+    if (mRenderer != null) {
+      mRenderer.onDraw(canvas);
+      return;
+    }
+    super.onDraw(canvas);
+  }
+
+  @Override
   protected void dispatchDraw(Canvas canvas) {
-    // Clip radius before dispatchDraw
-    mDrawChildHook.beforeDispatchDraw(canvas);
+    if (mDrawChildHook != null) {
+      mDrawChildHook.beforeDispatchDraw(canvas);
+    }
     super.dispatchDraw(canvas);
+    if (mRenderer != null) {
+      mRenderer.afterDispatchDraw(canvas);
+    }
+  }
+
+  @Override
+  protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+    if (mRenderer != null) {
+      mRenderer.beforeDrawChild(canvas, child);
+    }
+    boolean ret = super.drawChild(canvas, child, drawingTime);
+    if (mRenderer != null) {
+      mRenderer.afterDrawChild(canvas, child);
+    }
+    return ret;
   }
 }
