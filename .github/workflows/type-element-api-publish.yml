@@ -23,6 +23,10 @@ jobs:
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
+      - name: Setup Package Managers
+        run: |
+          npm install -g npm@11.10.0
+          npm --version
 
       - name: Check version field change
         id: check
@@ -59,6 +63,10 @@ jobs:
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
+      - name: Setup Package Managers
+        run: |
+          npm install -g npm@11.10.0
+          npm --version
       - name: Publish
         run: |-
           pushd $GITHUB_WORKSPACE/lynx/js_libraries/type-element-api
