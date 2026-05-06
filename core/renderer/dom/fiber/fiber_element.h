@@ -392,6 +392,7 @@ class FiberElement : public Element {
    * @param value The new computed value.
    */
   void ReplayChangedStyleSideEffect(CSSPropertyID id, const CSSValue& value);
+  void ReplayResetStyleSideEffect(CSSPropertyID id);
 
   /**
    * @brief Commits font-size and root-font-size changes after style resolution.

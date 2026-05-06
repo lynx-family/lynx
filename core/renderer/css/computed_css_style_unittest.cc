@@ -43,6 +43,31 @@ TEST(ComputedCSSStyleTest, TracksResolvedValuesOnSetAndReset) {
       style.GetResolvedValues().contains(CSSPropertyID::kPropertyIDFontSize));
 }
 
+TEST(ComputedCSSStyleTest, IteratesChangedAndResetProperties) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+
+  style.MarkChanged(CSSPropertyID::kPropertyIDWidth);
+  style.MarkChanged(CSSPropertyID::kPropertyIDOpacity);
+  style.MarkReset(CSSPropertyID::kPropertyIDHeight);
+
+  std::unordered_set<CSSPropertyID> changed_properties;
+  style.ForEachChangedProperty(
+      [&](CSSPropertyID id) { changed_properties.insert(id); });
+
+  std::unordered_set<CSSPropertyID> reset_properties;
+  style.ForEachResetProperty(
+      [&](CSSPropertyID id) { reset_properties.insert(id); });
+
+  EXPECT_EQ(changed_properties.size(), 2U);
+  EXPECT_TRUE(changed_properties.find(CSSPropertyID::kPropertyIDWidth) !=
+              changed_properties.end());
+  EXPECT_TRUE(changed_properties.find(CSSPropertyID::kPropertyIDOpacity) !=
+              changed_properties.end());
+  EXPECT_EQ(reset_properties.size(), 1U);
+  EXPECT_TRUE(reset_properties.find(CSSPropertyID::kPropertyIDHeight) !=
+              reset_properties.end());
+}
+
 TEST(ComputedCSSStyleTest, FinalizeCustomPropertiesResolvesVariables) {
   starlight::ComputedCSSStyle style{1.f, 1.f};
 

@@ -81,6 +81,38 @@ style::DynamicStyleObjectRef MakeDynamicStyleObjectRef(StyleMap style_map) {
   return style::DynamicStyleObjectRef(
       new style::DynamicStyleObject(std::move(style_map)));
 }
+
+bool StyleMapHasValue(const StyleMap& style_map, CSSPropertyID id,
+                      const CSSValue& value) {
+  auto it = style_map.find(id);
+  return it != style_map.end() && it->second == value;
+}
+
+bool LayoutBundleHasStyle(const std::unique_ptr<LayoutBundle>& layout_bundle,
+                          CSSPropertyID id, const CSSValue& value) {
+  if (layout_bundle == nullptr) {
+    return false;
+  }
+  for (const auto& [style_id, style_value] : layout_bundle->styles) {
+    if (style_id == id && style_value == value) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool LayoutBundleHasResetStyle(
+    const std::unique_ptr<LayoutBundle>& layout_bundle, CSSPropertyID id) {
+  if (layout_bundle == nullptr) {
+    return false;
+  }
+  for (const auto reset_id : layout_bundle->reset_styles) {
+    if (reset_id == id) {
+      return true;
+    }
+  }
+  return false;
+}
 }  // namespace
 
 static std::unordered_map<std::string, uint32_t> kTestColorMap = {
@@ -17204,6 +17236,163 @@ TEST_P(FiberElementTest, RemoveNode_LastChild_NoCrash) {
   // Remove the only child — should not crash even with adjacent rules.
   page->RemoveNode(child1);
   SUCCEED();
+}
+
+TEST_P(FiberElementTest,
+       NewStylingResolveComputedStylesBindsFirstRenderAndUpdateStorage) {
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("40px"));
+  const auto* previous_style = element->computed_css_style();
+  auto first_result = element->ResolveComputedStyles(
+      previous_style, previous_style->GetFontSize(),
+      previous_style->GetRootFontSize());
+
+  EXPECT_EQ(first_result.previous_final_style, previous_style);
+  EXPECT_EQ(first_result.parent_inheritance_style, page->computed_css_style());
+  EXPECT_EQ(first_result.final_style, element->platform_css_style_.get());
+  EXPECT_EQ(first_result.base_style, element->platform_css_style_.get());
+  EXPECT_EQ(first_result.owned_base_style, nullptr);
+  EXPECT_TRUE(StyleMapHasValue(first_result.resolved_style_map,
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(40, CSSValuePattern::PX)));
+  EXPECT_TRUE(StyleMapHasValue(first_result.final_style->GetResolvedValues(),
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(40, CSSValuePattern::PX)));
+
+  element->ResetAllDirtyBits();
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("56px"));
+  auto update_result = element->ResolveComputedStyles(
+      previous_style, previous_style->GetFontSize(),
+      previous_style->GetRootFontSize());
+
+  ASSERT_NE(update_result.owned_base_style, nullptr);
+  EXPECT_EQ(update_result.final_style, update_result.owned_base_style.get());
+  EXPECT_EQ(update_result.base_style, update_result.owned_base_style.get());
+  EXPECT_TRUE(StyleMapHasValue(update_result.resolved_style_map,
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(56, CSSValuePattern::PX)));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingReplaySingleChangedAndResetStyleSideEffects) {
+  auto element = manager->CreateFiberView();
+
+  element->ReplayChangedStyleSideEffect(CSSPropertyID::kPropertyIDWidth,
+                                        CSSValue(1, CSSValuePattern::VW));
+
+  EXPECT_TRUE(LayoutBundleHasStyle(element->layout_bundle_,
+                                   CSSPropertyID::kPropertyIDWidth,
+                                   CSSValue(1, CSSValuePattern::VW)));
+  EXPECT_TRUE(element->dynamic_style_flags_ &
+              DynamicCSSStylesManager::kUpdateViewport);
+
+  element->has_layout_only_props_ = true;
+  element->ReplayChangedStyleSideEffect(CSSPropertyID::kPropertyIDOpacity,
+                                        CSSValue(0.5, CSSValuePattern::NUMBER));
+  EXPECT_FALSE(element->has_layout_only_props_);
+
+  element->has_non_flatten_attrs_ = false;
+  element->ReplayChangedStyleSideEffect(CSSPropertyID::kPropertyIDTransform,
+                                        CSSValue::MakePlainString("test"));
+  EXPECT_TRUE(element->has_non_flatten_attrs_);
+
+  element->layout_bundle_.reset();
+  element->is_fixed_ = true;
+  element->is_sticky_ = true;
+  element->fixed_changed_ = false;
+  element->dynamic_style_flags_ = DynamicCSSStylesManager::kUpdateViewport;
+
+  element->ReplayResetStyleSideEffect(CSSPropertyID::kPropertyIDPosition);
+
+  EXPECT_TRUE(LayoutBundleHasResetStyle(element->layout_bundle_,
+                                        CSSPropertyID::kPropertyIDPosition));
+  EXPECT_TRUE(element->fixed_changed_);
+  EXPECT_FALSE(element->is_fixed_);
+  EXPECT_FALSE(element->is_sticky_);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingReplayCommitSideEffectsIncludesInheritedFirstRenderValues) {
+  manager->config_->SetEnableCSSInheritance(true);
+  auto element = manager->CreateFiberView();
+  element->dirty_ = Element::kDirtyCreated;
+
+  starlight::ComputedCSSStyle computed_style(*manager->platform_computed_css());
+  computed_style.SetResolvedValue(CSSPropertyID::kPropertyIDWidth,
+                                  CSSValue(32, CSSValuePattern::PX));
+  computed_style.SetResolvedValue(CSSPropertyID::kPropertyIDDirection,
+                                  CSSValue(starlight::DirectionType::kRtl));
+
+  StyleMap resolved_style_map;
+  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                                      CSSValue(32, CSSValuePattern::PX));
+
+  element->ReplayCommitSideEffects(computed_style, resolved_style_map);
+
+  EXPECT_TRUE(LayoutBundleHasStyle(element->layout_bundle_,
+                                   CSSPropertyID::kPropertyIDWidth,
+                                   CSSValue(32, CSSValuePattern::PX)));
+  EXPECT_TRUE(LayoutBundleHasStyle(element->layout_bundle_,
+                                   CSSPropertyID::kPropertyIDDirection,
+                                   CSSValue(starlight::DirectionType::kRtl)));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingReplayCommitSideEffectsUsesResolvedValuesAndResetsOnUpdate) {
+  auto element = manager->CreateFiberView();
+  element->ResetAllDirtyBits();
+
+  starlight::ComputedCSSStyle computed_style(*manager->platform_computed_css());
+  computed_style.SetResolvedValue(CSSPropertyID::kPropertyIDDirection,
+                                  CSSValue(starlight::DirectionType::kRtl));
+  computed_style.MarkChanged(CSSPropertyID::kPropertyIDWidth);
+  computed_style.MarkChanged(CSSPropertyID::kPropertyIDDirection);
+  computed_style.MarkReset(CSSPropertyID::kPropertyIDHeight);
+  computed_style.MarkReset(CSSPropertyID::kPropertyIDPaddingTop);
+
+  StyleMap resolved_style_map;
+  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                                      CSSValue(44, CSSValuePattern::PX));
+  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDPaddingTop,
+                                      CSSValue(8, CSSValuePattern::PX));
+
+  element->ReplayCommitSideEffects(computed_style, resolved_style_map);
+
+  EXPECT_TRUE(LayoutBundleHasStyle(element->layout_bundle_,
+                                   CSSPropertyID::kPropertyIDWidth,
+                                   CSSValue(44, CSSValuePattern::PX)));
+  EXPECT_TRUE(LayoutBundleHasStyle(element->layout_bundle_,
+                                   CSSPropertyID::kPropertyIDDirection,
+                                   CSSValue(starlight::DirectionType::kRtl)));
+  EXPECT_TRUE(LayoutBundleHasResetStyle(element->layout_bundle_,
+                                        CSSPropertyID::kPropertyIDHeight));
+  EXPECT_FALSE(LayoutBundleHasResetStyle(element->layout_bundle_,
+                                         CSSPropertyID::kPropertyIDPaddingTop));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingResolveCSSStylesNewPipelineReplaysLayoutOnlyResets) {
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  element->platform_css_style_->SetResolvedValue(
+      CSSPropertyID::kPropertyIDWidth, CSSValue(20, CSSValuePattern::PX));
+  element->platform_css_style_->ClearChanged();
+  element->platform_css_style_->ClearReset();
+  element->dirty_ = Element::kDirtyStyle;
+
+  bool need_update = false;
+  element->ResolveCSSStylesNewPipeline(need_update);
+
+  EXPECT_TRUE(need_update);
+  EXPECT_TRUE(LayoutBundleHasResetStyle(element->layout_bundle_,
+                                        CSSPropertyID::kPropertyIDWidth));
 }
 
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
