@@ -2010,7 +2010,15 @@ void PageView::EndFluencyMonitor(uintptr_t id) {
 }
 
 void PageView::ResignFirstResponderIfNeeded(BaseView* current_responder) {
-  if (editing_native_view_ && editing_native_view_ != current_responder) {
+  if (!editing_native_view_) {
+    return;
+  }
+
+  if (current_responder && ShouldIgnoreFocus(current_responder)) {
+    return;
+  }
+
+  if (editing_native_view_ != current_responder) {
     editing_native_view_->ResignFirstResponder();
     editing_native_view_ = nullptr;
   }
