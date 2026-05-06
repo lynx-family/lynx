@@ -212,6 +212,7 @@ void RadonListBase::RenderComponentAtIndex(uint32_t index,
   if (comp != nullptr) {
     auto config = tasm_->page_proxy()->GetConfig();
     comp->UpdateSystemInfo(GenerateSystemInfo(&config));
+    comp->SetTasm(tasm_);
     SyncComponentExtraInfo(comp, index, operation_id);
   }
   // FIXME(heshan):invoke RenderComponentAtIndex in LynxEngine
