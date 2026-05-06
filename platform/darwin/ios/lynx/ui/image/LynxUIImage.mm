@@ -459,10 +459,13 @@ LYNX_REGISTER_UI("image")
         CGSize size = requestURL.imageSize;
         if (![strongSelf isLayoutFlick:strongSelf.prevSize withAnotherSize:strongSelf.frame.size]) {
           strongSelf.prevSize = strongSelf.frame.size;
-          [strongSelf.context findShadowNodeAndRunTask:strongSelf.sign
-                                                  task:^(LynxShadowNode* node) {
-                                                    [(LynxImageShadowNode*)node setImageSize:size];
-                                                  }];
+          [strongSelf.context
+              findShadowNodeAndRunTask:strongSelf.sign
+                                  task:^(LynxShadowNode* node) {
+                                    if ([node isKindOfClass:[LynxImageShadowNode class]]) {
+                                      [(LynxImageShadowNode*)node setImageSize:size];
+                                    }
+                                  }];
         }
       } else {
         LynxShadowNodeOwner* owner = strongSelf.context.nodeOwner;
