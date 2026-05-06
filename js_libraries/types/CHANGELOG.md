@@ -1,27 +1,12 @@
 # CHANGELOG
 
-## 3.9.5
-
-- Add `startRecording` and `stopRecording` methods for lynx.
-
-## 3.9.4
-
-- Add `getScrollInfo` method for list.
-
-## 3.9.3
-
-- Introduce `<scroll-coordinator>` and related element typings.
-
-## 3.9.2
-
-- Add `bindmouseenter` and `bindmouseleave` typings for mouse events.
-
-## 3.9.1
-
-- lynx.requestResourcePrefetch support awaitComplete options.
-
 ## 3.9.0
 
+- Add `startRecording` and `stopRecording` methods for lynx.
+- Add `getScrollInfo` method for list.
+- Introduce `<scroll-coordinator>` and related element typings.
+- Add `bindmouseenter` and `bindmouseleave` typings for mouse events.
+- lynx.requestResourcePrefetch support awaitComplete options.
 - Introduce `<viewpager>`.
 
 ## 3.8.0
