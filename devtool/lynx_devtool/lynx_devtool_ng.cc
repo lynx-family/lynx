@@ -34,7 +34,7 @@
 #include "devtool/lynx_devtool/message_handler/fetch_debug_info_handler.h"
 #include "devtool/lynx_devtool/message_handler/stop_at_entry_handler.h"
 
-#if !OS_ANDROID && !ENABLE_UNITTESTS
+#if (!OS_ANDROID || defined(ENABLE_HEADLESS)) && !ENABLE_UNITTESTS
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 #include "devtool/lynx_devtool/js_debug/js/quickjs/proxy/js_debug_proxy_quickjs.h"
 #include "devtool/lynx_devtool/js_debug/lepus/proxy/js_debug_proxy_lepus.h"
@@ -72,7 +72,7 @@ LynxDevToolNG::LynxDevToolNG(bool debuggable)
     global_dispatcher.RegisterMessageHandler(
         kTypeSetFetchDebugInfo, std::make_unique<FetchDebugInfoHandler>());
 
-#if !OS_ANDROID && !ENABLE_UNITTESTS
+#if (!OS_ANDROID || defined(ENABLE_HEADLESS)) && !ENABLE_UNITTESTS
     auto quickjs_proxy = std::make_unique<JSDebugProxyQuickJS>();
     JSDebugHelper::GetInstance()->SetQuickJSProxy(std::move(quickjs_proxy));
     auto lepus_proxy = std::make_unique<JSDebugProxyLepus>();

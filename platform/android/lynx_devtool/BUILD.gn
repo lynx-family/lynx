@@ -83,8 +83,16 @@ config("devtool_common_defines") {
   ]
 
   # TODO(tangyongjie): Remove trace related macros from devtool.
+  if (!is_headless) {
+    defines += [ "ENABLE_TRACE_PERFETTO=1" ]
+  } else {
+    if (enable_trace == "perfetto") {
+      defines += [ "ENABLE_TRACE_PERFETTO=1" ]
+    } else if (enable_trace == "systrace") {
+      defines += [ "ENABLE_TRACE_SYSTRACE=1" ]
+    }
+  }
 
-  defines += [ "ENABLE_TRACE_PERFETTO=1" ]
   if (!is_debug) {
     defines += [
       "ENABLE_LOGGING=0",

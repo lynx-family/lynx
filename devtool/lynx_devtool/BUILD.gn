@@ -36,6 +36,10 @@ config("devtool_common_config") {
   configs = [ "../../third_party/rapidjson:rapidjson_config" ]
   defines = []
 
+  if (is_headless) {
+    defines += [ "ENABLE_HEADLESS" ]
+  }
+
   if (enable_trace == "perfetto") {
     defines += [ "ENABLE_TRACE_PERFETTO=1" ]
   } else if (enable_trace == "systrace") {
