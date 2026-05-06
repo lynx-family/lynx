@@ -417,17 +417,6 @@ export interface Config {
   enableFlexBasisZeroPercent?: boolean;
 
   /**
-   * Enable grid-column and grid-row CSS shorthand properties parsing.
-   *
-   * Supported platform: Android, iOS, HarmonyOS
-   *
-   * Since: LynxSDK 3.9
-   *
-   * @defaultValue false
-   */
-  enableGridPlacementShorthands?: boolean;
-
-  /**
    * Enable harmony new overlay based overlayManager to handle events pass through.
    *
    * Supported platform: HarmonyOS

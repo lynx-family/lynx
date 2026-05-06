@@ -1,6 +1,6 @@
 [
     {
-        "count": 228
+        "count": 226
     },
     {
         "id": 1,
@@ -905,13 +905,5 @@
     {
         "id": 226,
         "name": "-x-auto-font-size-line-ranges"
-    },
-    {
-        "id": 227,
-        "name": "grid-column"
-    },
-    {
-        "id": 228,
-        "name": "grid-row"
     }
 ]

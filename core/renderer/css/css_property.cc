@@ -187,8 +187,6 @@ size_t CSSProperty::GetShorthandExpand(CSSPropertyID id) {
     (*kPropertyIdShorthand)[kPropertyIDTransition] = 5;
     (*kPropertyIdShorthand)[kPropertyIDMask] = 8;
     (*kPropertyIdShorthand)[kPropertyIDAnimation] = 9;
-    (*kPropertyIdShorthand)[kPropertyIDGridColumn] = 2;
-    (*kPropertyIdShorthand)[kPropertyIDGridRow] = 2;
   });
   if (id >= kPropertyStart && id <= kPropertyEnd) {
     return (*kPropertyIdShorthand)[id];
@@ -203,8 +201,7 @@ const std::unordered_set<CSSPropertyID> shorthandCSSProperties{
     kPropertyIDBorderRadius, kPropertyIDBorderColor, kPropertyIDBorderStyle,
     kPropertyIDBorderRight,  kPropertyIDBorderLeft,  kPropertyIDBorderTop,
     kPropertyIDBorderBottom, kPropertyIDOutline,     kPropertyIDFlexFlow,
-    kPropertyIDTransition,   kPropertyIDMask,        kPropertyIDAnimation,
-    kPropertyIDGridColumn,   kPropertyIDGridRow};
+    kPropertyIDTransition,   kPropertyIDMask,        kPropertyIDAnimation};
 
 bool CSSProperty::IsShorthandProperty(CSSPropertyID id) {
   return shorthandCSSProperties.find(id) != shorthandCSSProperties.end();
