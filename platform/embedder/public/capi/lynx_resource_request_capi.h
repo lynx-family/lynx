@@ -28,6 +28,7 @@ typedef enum lynx_resource_type_e {
   kLynxResourceTypeTheme,
   kLynxResourceTypeExternalJSSource,
   kLynxResourceTypeExternalByteCode,
+  kLynxResourceTypeAssets,
 } lynx_resource_type_e;
 
 typedef uint64_t lynx_resource_request_id;

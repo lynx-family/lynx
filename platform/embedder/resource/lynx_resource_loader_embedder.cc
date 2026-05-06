@@ -32,6 +32,8 @@ static lynx_resource_type_e ConvertResourceType(
       return kLynxResourceTypeI18NText;
     case lynx::pub::LynxResourceType::kExternalJs:
       return kLynxResourceTypeExternalJSSource;
+    case lynx::pub::LynxResourceType::kAssets:
+      return kLynxResourceTypeAssets;
     default:
       return kLynxResourceTypeGeneric;
   }
