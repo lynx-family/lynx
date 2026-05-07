@@ -4,17 +4,23 @@
 package com.lynx.xelement.viewpager
 
 import android.content.Context
+import android.graphics.Canvas
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import com.lynx.tasm.behavior.StyleConstants
+import com.lynx.tasm.behavior.render.IRendererHost
+import com.lynx.tasm.behavior.render.PlatformRendererContext
+import com.lynx.tasm.behavior.render.Renderer
 import com.lynx.xelement.viewpager.childitem.LynxViewpagerItem
 import com.lynx.xelement.viewpager.viewpager.BaseCustomViewPager
-import com.lynx.tasm.behavior.StyleConstants
 import java.util.*
 
 // Copyright 2020 The Lynx Authors. All rights reserved.
 
-abstract class Pager<T : BaseCustomViewPager> (var mViewPager: T, context: Context) : LinearLayout(context) {
+abstract class Pager<T : BaseCustomViewPager>(var mViewPager: T, context: Context) :
+  LinearLayout(context),
+  IRendererHost {
   companion object {
     const val TAG = "Foldview#BaseViewPagerImpl"
   }
@@ -25,6 +31,7 @@ abstract class Pager<T : BaseCustomViewPager> (var mViewPager: T, context: Conte
 
   private val children: MutableList<LynxViewpagerItem> = ArrayList()
   protected val mPendingChildren: MutableList<LynxViewpagerItem> = ArrayList()
+  private var mRenderer: Renderer? = null
   private var selectIndex: Int = 0
   private val mAdapter = Adapter()
   var isRTLMode = false
@@ -42,6 +49,49 @@ abstract class Pager<T : BaseCustomViewPager> (var mViewPager: T, context: Conte
       ViewGroup.LayoutParams.MATCH_PARENT
     )
     this.addView(mViewPager, 0)
+  }
+
+  override fun createRenderer(platformRendererContext: PlatformRendererContext, sign: Int): Renderer {
+    return Renderer(platformRendererContext, sign)
+  }
+
+  override fun setRenderer(renderer: Renderer) {
+    mRenderer = renderer
+  }
+
+  override fun getRenderer(): Renderer? {
+    return mRenderer
+  }
+
+  override fun getView(): View {
+    return this
+  }
+
+  override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+    mRenderer?.let {
+      it.uiHost?.measure()
+    }
+    super.onLayout(changed, l, t, r, b)
+  }
+
+  override fun onDraw(canvas: Canvas) {
+    mRenderer?.let {
+      it.onDraw(canvas)
+      return
+    }
+    super.onDraw(canvas)
+  }
+
+  override fun dispatchDraw(canvas: Canvas) {
+    super.dispatchDraw(canvas)
+    mRenderer?.afterDispatchDraw(canvas)
+  }
+
+  override fun drawChild(canvas: Canvas, child: View, drawingTime: Long): Boolean {
+    mRenderer?.beforeDrawChild(canvas, child)
+    val ret = super.drawChild(canvas, child, drawingTime)
+    mRenderer?.afterDrawChild(canvas, child)
+    return ret
   }
 
   private fun updateRTLStatus(boolean: Boolean) {

@@ -133,6 +133,64 @@ void PlatformRendererContext::DestroyTextBundle(int32_t id) {
   Java_PlatformRendererContext_destroyTextBundle(env, local_ref.Get(), id);
 }
 
+void PlatformRendererContext::InsertListItemPaintingNode(int32_t list_sign,
+                                                         int32_t child_sign) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_insertListItemPaintingNode(
+      env, local_ref.Get(), list_sign, child_sign);
+}
+
+void PlatformRendererContext::RemoveListItemPaintingNode(int32_t list_sign,
+                                                         int32_t child_sign) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_removeListItemPaintingNode(
+      env, local_ref.Get(), list_sign, child_sign);
+}
+
+void PlatformRendererContext::UpdateContentOffsetForListContainer(
+    int32_t container_id, float content_size, float delta_x, float delta_y,
+    bool is_init_scroll_offset, bool from_layout) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_updateContentOffsetForListContainer(
+      env, local_ref.Get(), container_id, content_size, delta_x, delta_y,
+      is_init_scroll_offset, from_layout);
+}
+
+void PlatformRendererContext::FinishTasmOperation(int64_t operation_id) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_finishTasmOperation(
+      env, local_ref.Get(), static_cast<jlong>(operation_id));
+}
+
+void PlatformRendererContext::FinishLayoutOperation(int32_t component_id,
+                                                    int64_t operation_id,
+                                                    bool is_first_screen) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_finishLayoutOperation(
+      env, local_ref.Get(), component_id, static_cast<jlong>(operation_id),
+      is_first_screen);
+}
+
 PlatformRendererAndroid* PlatformRendererContext::GetPlatformRenderer(
     int32_t id) {
   auto it = renderer_registry_.find(id);

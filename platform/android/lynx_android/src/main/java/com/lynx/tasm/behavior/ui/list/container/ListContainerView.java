@@ -17,12 +17,15 @@ import com.lynx.tasm.IListNodeInfoFetcher;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.behavior.render.IRendererHost;
+import com.lynx.tasm.behavior.render.PlatformRendererContext;
+import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.utils.FloatUtils;
 
-public class ListContainerView
-    extends NestedScrollContainerView implements IDrawChildHook.IDrawChildHookBinding {
+public class ListContainerView extends NestedScrollContainerView
+    implements IDrawChildHook.IDrawChildHookBinding, IRendererHost {
   static class CalcFlingOffsetResult {
     private boolean mAvailable = true;
     private float mOffset = 0.f;
@@ -59,6 +62,7 @@ public class ListContainerView
   private boolean mPanInterceptAncestors = false;
   private boolean mPanInterceptDescendants = false;
   private float mMaxFlingDistanceRatio = -1;
+  private Renderer mRenderer;
 
   public ListContainerView(@NonNull Context context, UIListContainer uiListContainer) {
     super(context);
@@ -66,6 +70,26 @@ public class ListContainerView
     createCustomLinearLayoutIfNeeded();
     addView(mCustomLinearLayout,
         new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+  }
+
+  @Override
+  public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+    return new Renderer(platformRendererContext, sign);
+  }
+
+  @Override
+  public void setRenderer(Renderer renderer) {
+    mRenderer = renderer;
+  }
+
+  @Override
+  public Renderer getRenderer() {
+    return mRenderer;
+  }
+
+  @Override
+  public View getView() {
+    return this;
   }
 
   private void createCustomLinearLayoutIfNeeded() {
@@ -310,6 +334,56 @@ public class ListContainerView
   @Override
   public void bindDrawChildHook(IDrawChildHook hook) {
     mDrawChildHook = hook;
+  }
+
+  @Override
+  protected void onLayout(boolean changed, int l, int t, int r, int b) {
+    if (mRenderer != null) {
+      if (mRenderer.getUIHost() != null) {
+        mRenderer.getUIHost().measure();
+      }
+    }
+
+    super.onLayout(changed, l, t, r, b);
+
+    if (mRenderer != null && mCustomLinearLayout != null) {
+      for (int i = 0; i < mCustomLinearLayout.getChildCount(); i++) {
+        View child = mCustomLinearLayout.getChildAt(i);
+        if (child instanceof IRendererHost) {
+          Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
+          child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+        }
+      }
+    }
+  }
+
+  @Override
+  protected void onDraw(Canvas canvas) {
+    if (mRenderer != null) {
+      mRenderer.onDraw(canvas);
+      return;
+    }
+    super.onDraw(canvas);
+  }
+
+  @Override
+  protected void dispatchDraw(Canvas canvas) {
+    super.dispatchDraw(canvas);
+    if (mRenderer != null) {
+      mRenderer.afterDispatchDraw(canvas);
+    }
+  }
+
+  @Override
+  protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+    if (mRenderer != null) {
+      mRenderer.beforeDrawChild(canvas, child);
+    }
+    boolean ret = super.drawChild(canvas, child, drawingTime);
+    if (mRenderer != null) {
+      mRenderer.afterDrawChild(canvas, child);
+    }
+    return ret;
   }
 
   public void setOrientation(int orientation) {

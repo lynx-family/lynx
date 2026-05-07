@@ -254,7 +254,7 @@ public class com::lynx::tasm::behavior::ui::scroll::AndroidScrollView : com.lynx
   public Renderer com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.createRenderer(PlatformRendererContext platformRendererContext, int sign);
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.setRenderer(Renderer renderer);
   public Renderer com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getRenderer();
-  public ViewGroup com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getView();
+  public View com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getView();
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.onTouchEvent(MotionEvent ev);
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.bindDrawChildHook(IDrawChildHook hook);
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.addView(View child);
@@ -345,7 +345,7 @@ public class com::lynx::tasm::behavior::ui::view::AndroidView : ViewGroup, com.l
   public Renderer com.lynx.tasm.behavior.ui.view.AndroidView.createRenderer(PlatformRendererContext platformRendererContext, int sign);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setRenderer(Renderer renderer);
   public Renderer com.lynx.tasm.behavior.ui.view.AndroidView.getRenderer();
-  public ViewGroup com.lynx.tasm.behavior.ui.view.AndroidView.getView();
+  public View com.lynx.tasm.behavior.ui.view.AndroidView.getView();
   public void com.lynx.tasm.behavior.ui.view.AndroidView.interceptGesture(boolean interceptGesture);
   public boolean com.lynx.tasm.behavior.ui.view.AndroidView.dispatchTouchEvent(MotionEvent event);
   public boolean com.lynx.tasm.behavior.ui.view.AndroidView.onInterceptTouchEvent(MotionEvent ev);
@@ -1334,7 +1334,7 @@ public class com::lynx::tasm::behavior::render::ContainerRenderer : ViewGroup, c
   public Renderer com.lynx.tasm.behavior.render.ContainerRenderer.createRenderer(PlatformRendererContext platformRendererContext, int sign);
   public void com.lynx.tasm.behavior.render.ContainerRenderer.setRenderer(Renderer renderer);
   public Renderer com.lynx.tasm.behavior.render.ContainerRenderer.getRenderer();
-  public ViewGroup com.lynx.tasm.behavior.render.ContainerRenderer.getView();
+  public View com.lynx.tasm.behavior.render.ContainerRenderer.getView();
   public com.lynx.tasm.behavior.render.ContainerRenderer.ContainerRenderer(LynxContext context);
 }
 
@@ -3141,7 +3141,7 @@ public interface com::lynx::tasm::behavior::ui::IProcessViewInfoHook {
 public interface com::lynx::tasm::behavior::render::IRendererHost {
   public void com.lynx.tasm.behavior.render.IRendererHost.setRenderer(Renderer renderer);
   public Renderer com.lynx.tasm.behavior.render.IRendererHost.getRenderer();
-  public ViewGroup com.lynx.tasm.behavior.render.IRendererHost.getView();
+  public View com.lynx.tasm.behavior.render.IRendererHost.getView();
   public Renderer com.lynx.tasm.behavior.render.IRendererHost.createRenderer(PlatformRendererContext platformRendererContext, int sign);
 }
 
@@ -3567,8 +3567,12 @@ public class com::lynx::tasm::behavior::ui::list::container::ListContainerProxy 
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerProxy.destroy();
 }
 
-public class com::lynx::tasm::behavior::ui::list::container::ListContainerView : com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
+public class com::lynx::tasm::behavior::ui::list::container::ListContainerView : com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding, com.lynx.tasm.behavior.render.IRendererHost {
   public com.lynx.tasm.behavior.ui.list.container.ListContainerView.ListContainerView(@NonNull Context context, UIListContainer uiListContainer);
+  public Renderer com.lynx.tasm.behavior.ui.list.container.ListContainerView.createRenderer(PlatformRendererContext platformRendererContext, int sign);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setRenderer(Renderer renderer);
+  public Renderer com.lynx.tasm.behavior.ui.list.container.ListContainerView.getRenderer();
+  public View com.lynx.tasm.behavior.ui.list.container.ListContainerView.getView();
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.onInterceptTouchEvent(MotionEvent e);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.dispatchTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.onTouchEvent(MotionEvent ev);
@@ -8590,6 +8594,10 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updateTextBundle(int sign, long textBundle);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyTextBundle(final int sign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertListItemPaintingNode(int listSign, int childSign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.removeListItemPaintingNode(int listSign, int childSign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.updateContentOffsetForListContainer(int listSign, float contentSize, float deltaX, float deltaY, boolean isInitScrollOffset, boolean fromLayout);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.finishLayoutOperation(int componentId, long operationId, boolean isFirstScreen);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.removePlatformRendererFromParent(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDisplayList(int id, DisplayList displayList);
   public TextLayout com.lynx.tasm.behavior.render.PlatformRendererContext.getTextLayout();
@@ -10773,7 +10781,7 @@ public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.U
 public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding, com.lynx.tasm.behavior.render.IRendererHost {
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setRenderer(Renderer renderer);
   public Renderer com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getRenderer();
-  public ViewGroup com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getView();
+  public View com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getView();
   public Renderer com.lynx.tasm.behavior.ui.UIBody.UIBodyView.createRenderer(PlatformRendererContext context, int sign);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.sendGlobalEvent(String name, JavaOnlyArray params);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context);
