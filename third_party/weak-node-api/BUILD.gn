@@ -49,6 +49,7 @@ if (is_debug) {
 }
 
 config("weak_node_api_config") {
+  include_dirs = [ weak_node_api_pkg_root ]
   defines = [
     "NAPI_DISABLE_CPP_EXCEPTIONS",
     "NAPI_DISABLE_CPP_RTTI",
