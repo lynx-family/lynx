@@ -29,6 +29,7 @@ import { SVGProps } from './svg';
 import { TitleBarViewProps } from './title-bar-view';
 import { RefreshProps, RefreshUIMethods } from './refresh';
 import { ViewPagerItemProps, ViewPagerProps, ViewPagerUIMethods } from './viewpager';
+import { BlurViewProps } from './blur-view';
 
 
 export interface UIMethods {
@@ -76,6 +77,7 @@ export interface IntrinsicElements {
   'scroll-coordinator-toolbar': ScrollCoordinatorToolbarProps;
   'viewpager': ViewPagerProps;
   'viewpager-item': ViewPagerItemProps;
+  'blur-view': BlurViewProps;
 }
 
 declare module 'react' {
@@ -111,6 +113,7 @@ declare module 'react' {
       'scroll-coordinator-toolbar': ScrollCoordinatorToolbarProps;
       'viewpager': ViewPagerProps;
       'viewpager-item': ViewPagerItemProps;
+      'blur-view': BlurViewProps;
     }
   }
 }

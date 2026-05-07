@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.10.0
+- Introduce `<blur-view>`.
+
 ## 3.9.0
 
 - Add `startRecording` and `stopRecording` methods for lynx.
