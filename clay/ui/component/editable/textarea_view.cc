@@ -106,8 +106,10 @@ void TextAreaView::OnLayout(LayoutContext* context) {
     // does not currently support opening asynchronous threads.
     auto node =
         static_cast<EditableShadowNode*>(page_view()->GetShadowNodeById(id()));
-    node->SetTextHeight(std::max(editable_view_->GetParagraph()->GetHeight(),
-                                 editable_view_->GetPlaceholderHeight()));
+    if (node) {
+      node->SetTextHeight(std::max(editable_view_->GetParagraph()->GetHeight(),
+                                   editable_view_->GetPlaceholderHeight()));
+    }
     page_view()->PostUIMethodTask([weak_ptr = GetWeakPtr()] {
       if (weak_ptr) {
         auto editable_text_view = static_cast<TextAreaView*>(weak_ptr.get());
