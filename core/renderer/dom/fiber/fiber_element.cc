@@ -401,7 +401,8 @@ CSSFragment *FiberElement::GetRelatedCSSFragment() {
           css_style_sheet_manager_
               ? css_style_sheet_manager_->GetCSSStyleSheetForComponent(css_id_)
               : nullptr;
-      style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment);
+      style_sheet_ =
+          std::make_unique<CSSFragmentDecorator>(fragment, element_manager());
       if (style_sheet_ && style_sheet_->HasTouchPseudoToken()) {
         element_manager()->UpdateTouchPseudoStatus(true);
       }

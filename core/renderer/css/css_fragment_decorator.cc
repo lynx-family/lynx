@@ -8,9 +8,22 @@
 
 #include "base/include/no_destructor.h"
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/dom/element_manager.h"
 
 namespace lynx {
 namespace tasm {
+
+CSSFragmentDecorator::CSSFragmentDecorator(CSSFragment* intrinsic_style_sheets)
+    : CSSFragmentDecorator(intrinsic_style_sheets, nullptr) {}
+
+CSSFragmentDecorator::CSSFragmentDecorator(CSSFragment* intrinsic_style_sheets,
+                                           ElementManager* element_manager)
+    : intrinsic_style_sheets_(intrinsic_style_sheets),
+      element_manager_(element_manager) {
+  if (intrinsic_style_sheets) {
+    enable_css_lazy_import_ = intrinsic_style_sheets->GetEnableCSSLazyImport();
+  }
+}
 
 CSSFragmentDecorator::~CSSFragmentDecorator() = default;
 
@@ -207,6 +220,82 @@ GET_PARSER_TOKEN_STYLE(Id)
 GET_PARSER_TOKEN_STYLE(Tag)
 GET_PARSER_TOKEN_STYLE(Universal)
 #undef GET_PARSER_TOKEN_STYLE
+
+bool CSSFragmentDecorator::enable_css_selector() {
+  if (intrinsic_style_sheets_ &&
+      intrinsic_style_sheets_->enable_css_selector()) {
+    return true;
+  }
+  if (element_manager_) {
+    for (const auto& wrapper : element_manager_->GetAdoptedStyleSheets()) {
+      if (wrapper && wrapper->fragment_ &&
+          wrapper->fragment_->enable_css_selector()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool CSSFragmentDecorator::enable_css_invalidation() {
+  if (intrinsic_style_sheets_ &&
+      intrinsic_style_sheets_->enable_css_invalidation()) {
+    return true;
+  }
+  if (element_manager_) {
+    for (const auto& wrapper : element_manager_->GetAdoptedStyleSheets()) {
+      if (wrapper && wrapper->fragment_ &&
+          wrapper->fragment_->enable_css_invalidation()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void CSSFragmentDecorator::CollectInvalidationSetsForId(
+    css::InvalidationLists& lists, const std::string& id) {
+  if (intrinsic_style_sheets_) {
+    intrinsic_style_sheets_->CollectInvalidationSetsForId(lists, id);
+  }
+  if (element_manager_) {
+    for (const auto& wrapper : element_manager_->GetAdoptedStyleSheets()) {
+      if (wrapper && wrapper->fragment_) {
+        wrapper->fragment_->CollectInvalidationSetsForId(lists, id);
+      }
+    }
+  }
+}
+
+void CSSFragmentDecorator::CollectInvalidationSetsForClass(
+    css::InvalidationLists& lists, const std::string& class_name) {
+  if (intrinsic_style_sheets_) {
+    intrinsic_style_sheets_->CollectInvalidationSetsForClass(lists, class_name);
+  }
+  if (element_manager_) {
+    for (const auto& wrapper : element_manager_->GetAdoptedStyleSheets()) {
+      if (wrapper && wrapper->fragment_) {
+        wrapper->fragment_->CollectInvalidationSetsForClass(lists, class_name);
+      }
+    }
+  }
+}
+
+void CSSFragmentDecorator::CollectInvalidationSetsForPseudoClass(
+    css::InvalidationLists& lists, css::LynxCSSSelector::PseudoType pseudo) {
+  if (intrinsic_style_sheets_) {
+    intrinsic_style_sheets_->CollectInvalidationSetsForPseudoClass(lists,
+                                                                   pseudo);
+  }
+  if (element_manager_) {
+    for (const auto& wrapper : element_manager_->GetAdoptedStyleSheets()) {
+      if (wrapper && wrapper->fragment_) {
+        wrapper->fragment_->CollectInvalidationSetsForPseudoClass(lists,
+                                                                  pseudo);
+      }
+    }
+  }
+}
 
 }  // namespace tasm
 }  // namespace lynx

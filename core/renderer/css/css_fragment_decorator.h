@@ -14,6 +14,8 @@
 namespace lynx {
 namespace tasm {
 
+class ElementManager;
+
 // A decorator that lives in each component and takes into account both
 // intra-component styles and external classes.
 //
@@ -26,13 +28,9 @@ namespace tasm {
 // TextElement.
 class CSSFragmentDecorator : public CSSFragment {
  public:
-  CSSFragmentDecorator(CSSFragment* intrinsic_style_sheets)
-      : intrinsic_style_sheets_(intrinsic_style_sheets) {
-    if (intrinsic_style_sheets) {
-      enable_css_lazy_import_ =
-          intrinsic_style_sheets->GetEnableCSSLazyImport();
-    }
-  }
+  CSSFragmentDecorator(CSSFragment* intrinsic_style_sheets);
+  CSSFragmentDecorator(CSSFragment* intrinsic_style_sheets,
+                       ElementManager* element_manager);
   ~CSSFragmentDecorator() override;
 
   const CSSParserTokenMap& css() override;
@@ -63,36 +61,16 @@ class CSSFragmentDecorator : public CSSFragment {
   void AddExternalStyle(const std::string& key,
                         fml::RefPtr<CSSParseToken> value);
 
-  inline bool enable_css_selector() override {
-    return intrinsic_style_sheets_ &&
-           intrinsic_style_sheets_->enable_css_selector();
-  }
-
-  inline bool enable_css_invalidation() override {
-    return intrinsic_style_sheets_ &&
-           intrinsic_style_sheets_->enable_css_invalidation();
-  }
+  bool enable_css_selector() override;
+  bool enable_css_invalidation() override;
 
   void CollectInvalidationSetsForId(css::InvalidationLists& lists,
-                                    const std::string& id) override {
-    if (intrinsic_style_sheets_)
-      intrinsic_style_sheets_->CollectInvalidationSetsForId(lists, id);
-  }
-
+                                    const std::string& id) override;
   void CollectInvalidationSetsForClass(css::InvalidationLists& lists,
-                                       const std::string& class_name) override {
-    if (intrinsic_style_sheets_)
-      intrinsic_style_sheets_->CollectInvalidationSetsForClass(lists,
-                                                               class_name);
-  }
-
+                                       const std::string& class_name) override;
   void CollectInvalidationSetsForPseudoClass(
       css::InvalidationLists& lists,
-      css::LynxCSSSelector::PseudoType pseudo) override {
-    if (intrinsic_style_sheets_)
-      intrinsic_style_sheets_->CollectInvalidationSetsForPseudoClass(lists,
-                                                                     pseudo);
-  }
+      css::LynxCSSSelector::PseudoType pseudo) override;
 
   bool IntrinsicStyleSheetHasTouchPseudoToken() {
     if (intrinsic_style_sheets_) {
@@ -103,6 +81,7 @@ class CSSFragmentDecorator : public CSSFragment {
 
  private:
   CSSFragment* intrinsic_style_sheets_ = nullptr;
+  ElementManager* element_manager_ = nullptr;
   CSSParserTokenMap external_css_;
 };
 
