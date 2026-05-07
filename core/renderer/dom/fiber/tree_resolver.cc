@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <string_view>
 
 #include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
@@ -25,6 +26,7 @@
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
+#include "core/renderer/events/events.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/base/tasm_constants.h"
@@ -36,6 +38,55 @@ namespace {
 
 constexpr const char* kElementStyle = "style";
 constexpr const char* kElementId = "id";
+constexpr std::string_view kBindEventPrefix = "bind";
+constexpr std::string_view kCatchEventPrefix = "catch";
+constexpr std::string_view kCaptureBindEventPrefix = "capture-bind";
+constexpr std::string_view kCaptureCatchEventPrefix = "capture-catch";
+constexpr std::string_view kGlobalBindEventPrefix = "global-bind";
+// Element Template dynamic/spread attributes intentionally parse native event
+// prefixes that can appear in runtime input. Non-event main-thread:* keys fall
+// through to normal attribute handling.
+constexpr std::string_view kMainThreadEventPrefix = "main-thread:";
+
+bool StartsWith(std::string_view value, std::string_view prefix) {
+  return value.size() >= prefix.size() &&
+         value.compare(0, prefix.size(), prefix) == 0;
+}
+
+bool ParseTemplateEventAttribute(std::string_view key, base::String* type,
+                                 base::String* name) {
+  if (StartsWith(key, kMainThreadEventPrefix)) {
+    key.remove_prefix(kMainThreadEventPrefix.size());
+  }
+
+  auto parse_with_prefix = [key, type, name](std::string_view prefix,
+                                             const char* event_type) {
+    if (!StartsWith(key, prefix) || key.size() <= prefix.size()) {
+      return false;
+    }
+    auto event_name = key.substr(prefix.size());
+    *type = base::String(event_type);
+    *name = base::String(event_name.data(), event_name.size());
+    return true;
+  };
+
+  if (parse_with_prefix(kCaptureCatchEventPrefix, kEventCaptureCatch) ||
+      parse_with_prefix(kCaptureBindEventPrefix, kEventCaptureBind) ||
+      parse_with_prefix(kGlobalBindEventPrefix, kEventGlobalBind) ||
+      parse_with_prefix(kCatchEventPrefix, kEventCatchEvent) ||
+      parse_with_prefix(kBindEventPrefix, kEventBindEvent)) {
+    return true;
+  }
+
+  return false;
+}
+
+bool IsTemplateEventAttribute(const base::String& key) {
+  base::String event_type;
+  base::String event_name;
+  return ParseTemplateEventAttribute(key.string_view(), &event_type,
+                                     &event_name);
+}
 
 void RegisterSlotTarget(base::Vector<fml::RefPtr<FiberElement>>* targets,
                         int32_t slot_index,
@@ -158,9 +209,27 @@ bool ApplySpecialTemplateAttribute(FiberElement* element,
   return false;
 }
 
+bool ApplyTemplateEventAttribute(FiberElement* element, const base::String& key,
+                                 const lepus::Value& value) {
+  base::String event_type;
+  base::String event_name;
+  if (!ParseTemplateEventAttribute(key.string_view(), &event_type,
+                                   &event_name)) {
+    return false;
+  }
+
+  // Element Template is only used by RL3, whose template event handlers are
+  // always registered under the default entry context.
+  element->FiberAddEvent(event_type, event_name, value, DEFAULT_ENTRY_NAME);
+  return true;
+}
+
 void ApplyTemplateAttributeValue(FiberElement* element, const base::String& key,
                                  const lepus::Value& value) {
   if (ApplySpecialTemplateAttribute(element, key, value)) {
+    return;
+  }
+  if (ApplyTemplateEventAttribute(element, key, value)) {
     return;
   }
   element->SetAttribute(key, value);
@@ -258,6 +327,20 @@ void TreeResolver::ApplyTemplateAttributesToElement(
     const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(element, &previous_attribute_slots,
                                            attribute_slots);
+}
+
+void TreeResolver::ApplyStaticTemplateEventAttributesToElement(
+    FiberElement* element) {
+  if (element == nullptr || !element->HasTemplateAttributes()) {
+    return;
+  }
+
+  for (const auto& attr : *element->template_attributes()) {
+    if (attr.type_ != ATTRIBUTE_BINDING_TYPE_STATIC) {
+      continue;
+    }
+    ApplyTemplateEventAttribute(element, attr.key_, attr.value_);
+  }
 }
 
 void TreeResolver::NotifyNodeInserted(FiberElement* insertion_point,
@@ -675,8 +758,12 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
   }
 
   if (info.attributes_ != nullptr) {
+    bool has_static_template_event = false;
     for (const auto& attr : *info.attributes_) {
       if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
+        if (generated != nullptr && IsTemplateEventAttribute(attr.key_)) {
+          has_static_template_event = true;
+        }
         ApplyTemplateAttributeValue(res.get(), attr.key_, attr.value_);
         continue;
       }
@@ -688,6 +775,9 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
         RegisterSlotTarget(&generated->attribute_slot_targets_,
                            static_cast<int32_t>(attr.slot_index_), res);
       }
+    }
+    if (has_static_template_event) {
+      generated->static_event_targets_.emplace_back(res);
     }
   }
 

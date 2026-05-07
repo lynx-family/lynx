@@ -28,12 +28,15 @@ struct PreparedElementSlotInsertion {
 // - attribute_slot_targets_[i] records the element affected by attrSlotIndex=i
 // - element_slot_targets_[i] records where elementSlotIndex=i should mount into
 //   the generated tree
+// - static_event_targets_ records elements whose static event attrs need
+//   listener replay after the generated tree is attached
 //
 // The result is returned from the async task first, then moved into
 // TemplateElement on the consuming thread.
 struct GeneratedElementsResult {
   fml::RefPtr<FiberElement> result_;
   base::Vector<fml::RefPtr<FiberElement>> attribute_slot_targets_;
+  base::Vector<fml::RefPtr<FiberElement>> static_event_targets_;
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
 };
