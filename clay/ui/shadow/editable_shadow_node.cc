@@ -9,6 +9,9 @@
 
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/measure_constraint.h"
+#include "clay/ui/component/base_view.h"
+#include "clay/ui/component/editable/editable_view.h"
+#include "clay/ui/component/editable/textarea_ng_view.h"
 #include "clay/ui/component/editable/textarea_view.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/shadow/shadow_node.h"
@@ -18,6 +21,27 @@ namespace clay {
 namespace {
 
 constexpr float kDefaultLineHeightFactor = 1.2f;
+
+bool MeasureMountedEditableView(BaseView* view,
+                                const MeasureConstraint& constraint,
+                                MeasureResult& result) {
+  if (!view) {
+    return false;
+  }
+  if (view->Is<TextAreaView>()) {
+    static_cast<TextAreaView*>(view)->Measure(constraint, result);
+    return true;
+  }
+  if (view->Is<TextAreaNGView>()) {
+    static_cast<TextAreaNGView*>(view)->Measure(constraint, result);
+    return true;
+  }
+  if (view->Is<EditableView>()) {
+    static_cast<EditableView*>(view)->Measure(constraint, result);
+    return true;
+  }
+  return false;
+}
 
 }  // namespace
 
@@ -72,28 +96,32 @@ void EditableShadowNode::SetTextHeight(float text_height) {
 void EditableShadowNode::Measure(const MeasureConstraint& constraint,
                                  MeasureResult& result) {
   bool infinite = max_lines_ == std::numeric_limits<uint32_t>::max();
+  auto estimated_height = [this, infinite]() {
+    float line_height = line_height_.has_value()
+                            ? std::max(kDefaultLineHeightFactor * font_size_,
+                                       line_height_.value())
+                            : kDefaultLineHeightFactor * font_size_;
+    return line_height * (infinite ? 1 : max_lines_);
+  };
+
   if (constraint.height_mode == MeasureMode::kDefinite) {
     result.height = *constraint.height;
   } else {
     // Currently the autoheight attribute does not support asynchronous
     if (min_height_ >= 0 && max_height_ >= 0 && max_height_ >= min_height_) {
       if (owner_->GetUITaskRunner()->RunsTasksOnCurrentThread()) {
-        auto editable_view =
-            static_cast<TextAreaView*>(owner_->FindViewByViewId(id()));
-        editable_view->Measure(constraint, result);
-        result.height = std::clamp(result.height, min_height_, max_height_);
-        return;
+        if (MeasureMountedEditableView(owner_->FindViewByViewId(id()),
+                                       constraint, result)) {
+          result.height = std::clamp(result.height, min_height_, max_height_);
+          return;
+        }
       } else {
         FML_DCHECK(false);
       }
+      result.height = text_height_ > 0 ? text_height_ : estimated_height();
+      result.height = std::clamp(result.height, min_height_, max_height_);
     } else {
-      if (line_height_.has_value()) {
-        result.height = std::max(kDefaultLineHeightFactor * font_size_,
-                                 line_height_.value());
-      } else {
-        result.height = kDefaultLineHeightFactor * font_size_;
-      }
-      result.height = result.height * (infinite ? 1 : max_lines_);
+      result.height = estimated_height();
     }
   }
   if (constraint.width_mode == MeasureMode::kIndefinite ||
