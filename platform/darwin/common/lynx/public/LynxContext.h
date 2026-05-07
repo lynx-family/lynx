@@ -41,6 +41,10 @@ FOUNDATION_EXPORT NSString *const kDefaultComponentID;
 @property(nonatomic, assign) BOOL hasCustomMediaFetcher;
 @property(nonatomic, assign) BOOL hasCustomTemplateFetcher;
 @property(nonatomic, assign) BOOL hasLynxViewDestroyed;
+
+// LynxFrameViewProvider support
+@property(nonatomic, strong, nullable) id<LynxFrameViewProvider> lynxFrameViewProvider;
+
 - (void)addKeyboardEventObserver:(id)observer;
 
 - (void)setEmbeddedMode:(LynxEmbeddedMode)mode;
