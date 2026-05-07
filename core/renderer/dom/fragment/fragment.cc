@@ -280,34 +280,39 @@ void Fragment::UpdatePaintingNode(
 }
 
 void Fragment::InsertListItemPaintingNode(int32_t child_id) {
-  if (behavior_ == nullptr) {
-    LOGE(
-        "Fragment::InsertListItemPaintingNode failed since behavior_ is null.");
-    return;
-  }
-  // TODO(songshourui.null): impl this method later.
+  painting_context()->impl()->CastToNativeCtx()->InsertListItemPaintingNode(
+      id(), child_id);
 }
 
 void Fragment::RemoveListItemPaintingNode(int32_t child_id) {
-  if (behavior_ == nullptr) {
-    LOGE(
-        "Fragment::RemoveListItemPaintingNode failed since behavior_ is null.");
-    return;
-  }
-  // TODO(songshourui.null): impl this method later.
+  painting_context()->impl()->CastToNativeCtx()->RemoveListItemPaintingNode(
+      id(), child_id);
 }
 
 void Fragment::UpdateContentOffsetForListContainer(float content_size,
                                                    float delta_x, float delta_y,
                                                    bool is_init_scroll_offset,
                                                    bool from_layout) {
-  if (behavior_ == nullptr) {
-    LOGE(
-        "Fragment::UpdateContentOffsetForListContainer failed since behavior_ "
-        "is null.");
-    return;
-  }
-  // TODO(songshourui.null): impl this method later.
+  painting_context()
+      ->impl()
+      ->CastToNativeCtx()
+      ->UpdateContentOffsetForListContainer(id(), content_size, delta_x,
+                                            delta_y, is_init_scroll_offset,
+                                            from_layout);
+}
+
+void Fragment::OnFirstScreen() {
+  painting_context()->impl()->CastToNativeCtx()->OnFirstScreen();
+}
+
+void Fragment::FinishTasmOperation(
+    const std::shared_ptr<PipelineOptions>& options) {
+  painting_context()->impl()->CastToNativeCtx()->FinishTasmOperation(options);
+}
+
+void Fragment::FinishLayoutOperation(
+    const std::shared_ptr<PipelineOptions>& options) {
+  painting_context()->impl()->CastToNativeCtx()->FinishLayoutOperation(options);
 }
 
 void Fragment::UpdateLayout(

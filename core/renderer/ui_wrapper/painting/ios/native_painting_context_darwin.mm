@@ -167,6 +167,8 @@ void NativePaintingCtxDarwin::FinishLayoutOperation(
 
 void NativePaintingCtxDarwin::Flush() { queue_->Flush(); }
 
+void NativePaintingCtxDarwin::OnFirstScreen() {}
+
 void NativePaintingCtxDarwin::CreatePlatformRenderer(int id, PlatformRendererType type,
                                                      const fml::RefPtr<PropBundle> &init_data) {
   Enqueue([ref = platform_ref_, id, type, init_data]() {
@@ -208,6 +210,16 @@ void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
     }
   });
 }
+
+void NativePaintingCtxDarwin::InsertListItemPaintingNode(int32_t list_id, int32_t child_id) {}
+
+void NativePaintingCtxDarwin::RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) {}
+
+void NativePaintingCtxDarwin::UpdateContentOffsetForListContainer(int32_t container_id,
+                                                                  float content_size, float delta_x,
+                                                                  float delta_y,
+                                                                  bool is_init_scroll_offset,
+                                                                  bool from_layout) {}
 
 void NativePaintingCtxDarwin::ReconstructEventTargetTreeRecursively() {
   Enqueue([ref = platform_ref_]() {

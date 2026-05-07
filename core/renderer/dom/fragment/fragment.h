@@ -80,6 +80,11 @@ class Fragment : public BaseElementContainer {
                                            float delta_y,
                                            bool is_init_scroll_offset,
                                            bool from_layout) override;
+  void OnFirstScreen() override;
+  void FinishTasmOperation(
+      const std::shared_ptr<PipelineOptions>& options) override;
+  void FinishLayoutOperation(
+      const std::shared_ptr<PipelineOptions>& options) override;
 
   void CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data);
   void HandleAttributes(const fml::RefPtr<PropBundle>& painting_data) const;

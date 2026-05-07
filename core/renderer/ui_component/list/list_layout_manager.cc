@@ -490,11 +490,9 @@ void ListLayoutManager::HandleLayoutOrScrollResult(bool is_layout) {
       [list_adapter,
        list_element = list_container_->element()](ItemHolder* item_holder) {
         Element* list_item = list_adapter->GetListItemElement(item_holder);
-        if (list_item) {
-          list_element->element_manager()
-              ->painting_context()
-              ->InsertListItemPaintingNode(list_element->impl_id(),
-                                           list_item->impl_id());
+        if (list_item && list_element->element_container()) {
+          list_element->element_container()->InsertListItemPaintingNode(
+              list_item->impl_id());
         }
         return false;
       };

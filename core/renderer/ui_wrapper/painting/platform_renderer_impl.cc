@@ -26,7 +26,7 @@ base::String PlatformRendererImpl::GetExtendedRendererTagName() const {
     case PlatformRendererType::kScroll:
       return base::String(BASE_STATIC_STRING(kElementScrollViewTag));
     case PlatformRendererType::kList:
-      return base::String(BASE_STATIC_STRING(kElementListTag));
+      return base::String(BASE_STATIC_STRING(kElementListContainerTag));
     case PlatformRendererType::kListItem:
       return base::String(BASE_STATIC_STRING(kElementListItemTag));
     case PlatformRendererType::kView:
