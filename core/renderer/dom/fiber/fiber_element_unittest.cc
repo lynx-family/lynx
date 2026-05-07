@@ -12286,6 +12286,25 @@ TEST_P(FiberElementTest, EventTest0) {
   EXPECT_TRUE(page->global_bind_event_map().empty());
 }
 
+TEST_P(FiberElementTest, FiberAddWorkletEventUsesRegisterContextName) {
+  auto page = manager->CreateFiberPage("page", 11);
+  auto worklet_info = lepus::Dictionary::Create();
+  BASE_STATIC_STRING_DECL(kType, "type");
+  BASE_STATIC_STRING_DECL(kValue, "value");
+  BASE_STATIC_STRING_DECL(kTap, "tap");
+  BASE_STATIC_STRING_DECL(kBindEvent, "bindEvent");
+  worklet_info->SetValue(kType, lepus::Value(tasm::kWorklet));
+  worklet_info->SetValue(kValue, lepus::Value("worklet"));
+  auto* context = tasm->FindEntry(DEFAULT_ENTRY_NAME)->GetVm().get();
+
+  page->FiberAddEvent(kBindEvent, kTap, lepus::Value(worklet_info),
+                      DEFAULT_ENTRY_NAME);
+
+  auto it = page->lepus_event_map().find(kTap);
+  ASSERT_NE(it, page->lepus_event_map().end());
+  EXPECT_EQ(context, it->second->lepus_context());
+}
+
 TEST_P(FiberElementTest, EventTest1) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);

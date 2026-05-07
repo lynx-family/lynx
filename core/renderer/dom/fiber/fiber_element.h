@@ -16,6 +16,7 @@
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/thread/once_task.h"
+#include "core/event/event_listener.h"
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
@@ -216,6 +217,10 @@ class FiberElement : public Element {
    */
   void UpdateCSSVariable(const lepus::Value& variables,
                          std::shared_ptr<PipelineOptions>& pipeline_option);
+
+  void FiberAddEvent(const base::String& type, const base::String& name,
+                     const lepus::Value& callback,
+                     const std::string& context_name);
 
   /**
    * Element API for setNativeProps
@@ -646,6 +651,9 @@ class FiberElement : public Element {
   friend class WrapperElement;
   friend class ComponentElement;
   friend class BlockElement;
+
+  static event::EventListener::Options GetEventListenerOptions(
+      const base::String& type);
 
   FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
                                          FiberElement* node);

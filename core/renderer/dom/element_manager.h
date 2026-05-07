@@ -54,8 +54,15 @@ namespace lynx {
 namespace base {
 class VSyncMonitor;
 }  // namespace base
+namespace runtime {
+class MTSRuntime;
+}  // namespace runtime
+namespace worklet {
+class LepusApiHandler;
+}  // namespace worklet
 namespace tasm {
 
+enum class EventResult : int;
 struct PseudoPlaceHolderStyles;
 class PaintingContext;
 class PropBundle;
@@ -1084,6 +1091,18 @@ class ElementManager : public ElementContextDelegate,
   ElementManagerDelegate *element_manager_delegate() {
     return element_manager_delegate_;
   }
+
+  bool EnableEventHandleRefactor() const;
+  bool SupportComponentJS() const;
+  runtime::MTSRuntime *GetDefaultEntryRuntime() const;
+  runtime::MTSRuntime *GetEntryRuntime(const std::string &entry_name) const;
+  std::string GetDefaultEntryLogicalName() const;
+  EventResult FireElementWorkletAndRequestResolve(
+      const std::string &component_id, const std::string &entry_name,
+      const lepus::Value &callback, const lepus::Value &event_detail,
+      const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
+      int32_t element_id,
+      std::shared_ptr<PipelineOptions> &pipeline_options) const;
 
   void LegacyHandleLayoutTask(FiberElement *target,
                               base::MoveOnlyClosure<void> operation);
