@@ -227,6 +227,12 @@ void UIScroll::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
     return true;
   };
   for (const auto child : children_) {
+    // Bounce views share the lifecycle tree with content children, but their
+    // size/position are managed by the dedicated bounce branches below.
+    if (child &&
+        (child->Tag() == "bounce-view" || child->Tag() == "x-bounce-view")) {
+      continue;
+    }
     if (measure_child(child, "content")) {
       if (IsHorizontal()) {
         content_width =
@@ -239,6 +245,7 @@ void UIScroll::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
       }
     }
   }
+
   if (start_bounce_view_ != nullptr) {
     auto node = start_bounce_view_->DrawNode();
     if (measure_child(start_bounce_view_, "start_bounce")) {
@@ -388,6 +395,14 @@ void UIScroll::AddChild(lynx::tasm::harmony::UIBase* child, int index) {
 
   child->SetParent(this);
 
+  // Keep bounce views in children_ so subtree destruction follows the same
+  // lifecycle path as regular content children.
+  if (index == -1) {
+    children_.emplace_back(child);
+  } else {
+    children_.insert(children_.begin() + index, child);
+  }
+
   if (is_bounce_view) {
     if (static_cast<UIBounce*>(child)->is_lower_) {
       start_bounce_view_ = child;
@@ -398,12 +413,6 @@ void UIScroll::AddChild(lynx::tasm::harmony::UIBase* child, int index) {
                                        index);
     layout_changed_ = true;
     return;
-  }
-
-  if (index == -1) {
-    children_.emplace_back(child);
-  } else {
-    children_.insert(children_.begin() + index, child);
   }
 
   NodeManager::Instance().InsertNode(container_layout_, child->DrawNode(),
