@@ -1,7 +1,7 @@
 # Copyright 2020 The Lynx Authors. All rights reserved.
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
-script_executable = rebase_path("//.venv/bin/python3")
+script_executable = "python3"
 
 buildconfig = "//build/config/BUILDCONFIG.gn"
 

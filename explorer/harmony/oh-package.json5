@@ -7,10 +7,10 @@
   "description": "A Powerful Cross-Platform Framework that builds native Apps with Web technologies",
   "main": "",
   "scripts": {
-    "prepare": "../../../.venv/bin/python3 ./script/build.py --build_lynx_core --build_bundle --debug --verbose",
-    "dev": "../../../.venv/bin/python3 ./script/build.py --debug --verbose",
-    "build": "../../../.venv/bin/python3 ./script/build.py --debug --build_lynx_core --build_hap --verbose",
-    "build:release": "../../../.venv/bin/python3 ./script/build.py --build_lynx_core --build_hap --verbose",
+    "prepare": "python3 ./script/build.py --build_lynx_core --build_bundle --debug --verbose",
+    "dev": "python3 ./script/build.py --debug --verbose",
+    "build": "python3 ./script/build.py --debug --build_lynx_core --build_hap --verbose",
+    "build:release": "python3 ./script/build.py --build_lynx_core --build_hap --verbose",
   },
   "version": "0.0.1",
   "dependencies": {

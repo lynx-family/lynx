@@ -12,7 +12,10 @@ from doxmlparser import compound as compound_parser
 from metadata_def import BaseObject
 from env_setup import ANDROID_API_PATH, IOS_API_PATH, API_DOC_ANNOTATION, TOOLS_PATH
 from .doxygen_config import DoxygenConfig
+from .doxmlparser_etree_compat import patch_doxmlparser_etree
 from . import compounddef_parse
+
+patch_doxmlparser_etree(index_parser, compound_parser)
 
 
 class DoxygenParser:
