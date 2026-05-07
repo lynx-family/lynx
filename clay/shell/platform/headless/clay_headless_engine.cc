@@ -134,13 +134,18 @@ bool ClayHeadlessEngine::RunEngine(
       [this](float x, float y, float width, float height) {
         SetMarkedTextRect(x, y, width, height);
       };
-
+  platform_dispatch_table.textinput.update_caret_position_callback =
+      [this](float x, float y, float width, float height) {
+        UpdateCaretPosition(x, y, width, height);
+      };
   platform_dispatch_table.textinput.show_text_input_callback = [this]() {
     ShowTextInput();
   };
   platform_dispatch_table.textinput.hide_text_input_callback = [this]() {
     HideTextInput();
   };
+  platform_dispatch_table.textinput.cursor_position_callback =
+      [this](int position) { SetCursorPosition(position); };
   platform_dispatch_table.activate_system_cursor_callback =
       [this](int type, const std::string& path) {
         ActivateSystemCursor(type, path.c_str());
@@ -226,6 +231,14 @@ void ClayHeadlessEngine::ActivateSystemCursor(int type, const char* path) {
   delegate_->ActivateSystemCursor(type, path);
 }
 
+void ClayHeadlessEngine::UpdateCaretPosition(float x, float y, float width,
+                                             float height) {
+  if (!delegate_) {
+    return;
+  }
+  delegate_->UpdateCaretPosition(x, y, width, height);
+}
+
 void ClayHeadlessEngine::ShowTextInput() {
   if (!delegate_) {
     return;
@@ -238,6 +251,13 @@ void ClayHeadlessEngine::HideTextInput() {
     return;
   }
   delegate_->HideTextInput();
+}
+
+void ClayHeadlessEngine::SetCursorPosition(int position) {
+  if (!delegate_) {
+    return;
+  }
+  delegate_->SetCursorPosition(position);
 }
 
 void ClayHeadlessEngine::SetMarkedTextRect(float x, float y, float width,

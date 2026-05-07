@@ -71,10 +71,13 @@ class RenderDelegate {
                                uint64_t selection_extent,
                                uint64_t composing_base) = 0;
   virtual void SetCaretRect(float x, float y, float width, float height) = 0;
+  virtual void UpdateCaretPosition(float x, float y, float width,
+                                   float height) = 0;
   virtual void setMarkedTextRect(float x, float y, float width,
                                  float height) = 0;
   virtual void ShowTextInput() = 0;
   virtual void HideTextInput() = 0;
+  virtual void SetCursorPosition(int position) = 0;
   // Text input related functions End.
   virtual void WindowMove() = 0;
   virtual void ActivateSystemCursor(int type, const std::string& path) = 0;

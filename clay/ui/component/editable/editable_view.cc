@@ -528,6 +528,15 @@ void EditableView::RelayoutWhenSetFontFamily(const std::string& font_family) {
   }
 }
 
+void EditableView::UpdateCaretPosition() {
+  auto point = AbsoluteLocationWithScroll();
+  auto caret_rect = GetRenderEditable()->ComputeCaretRect();
+  text_input_controller_->UpdateCaretPosition(
+      point.x() + caret_rect.x() + ContentInsetLeft(),
+      point.y() + caret_rect.y() + ContentInsetTop(), caret_rect.width(),
+      caret_rect.height());
+}
+
 void EditableView::OnValueChanged(const TextEditingValue& value,
                                   const TextEditingController*) {
   TwinkleCaretPeriodically();
@@ -540,6 +549,7 @@ void EditableView::OnValueChanged(const TextEditingValue& value,
 void EditableView::OnSelectionChanged(const TextEditingValue& value,
                                       const TextEditingController*) {
   TwinkleCaretPeriodically();
+  UpdateCaretPosition();
   page_view()->SendEvent(callback_id_, event_attr::kEventEditSelectionChange,
                          {"start", "end"},
                          static_cast<int>(value.selection().start()),
@@ -1039,13 +1049,15 @@ void EditableView::FocusHasChanged(bool focused, bool is_leaf) {
   if (focused && text_editing_controller_->MoveSelectionToEndIfNeeded()) {
     UpdateRemoteStateIfNeeded(GetTextEditingValue());
   }
-  const auto& text_editing_value = GetTextEditingValue();
+  auto text_editing_value = GetTextEditingValue();
 
   // collapse selection when losing focus.
   if (!focused) {
     if (!text_editing_value.selection().collapsed()) {
-      GetRenderEditable()->SetSelection(text_editing_value.selection().end(),
-                                        text_editing_value.selection().end());
+      text_editing_value.SetSelection(
+          TextRange(text_editing_value.selection().end(),
+                    text_editing_value.selection().end()));
+      SetTextEditingValue(text_editing_value);
     }
   }
 
@@ -1054,6 +1066,9 @@ void EditableView::FocusHasChanged(bool focused, bool is_leaf) {
   }
 
   auto str = text_editing_value.GetText();
+  if (focused) {
+    UpdateCaretPosition();
+  }
   page_view()->SendEvent(
       callback_id_, focused ? event_attr::kEventFocus : event_attr::kEventBlur,
       {"value"}, str.c_str());
@@ -1322,7 +1337,9 @@ void EditableView::HandleWinCtrlAndMacCommandHotKey(
     }
     case KeyCode::kKeyA: {
       // Select all.
-      GetRenderEditable()->SetSelection(text_editing_value.text_range());
+      auto text_editing_value = GetTextEditingValue();
+      text_editing_value.SetSelection(text_editing_value.text_range());
+      SetTextEditingValue(text_editing_value);
       break;
     }
     case KeyCode::kKeyZ: {
@@ -1338,7 +1355,7 @@ void EditableView::HandleWinCtrlAndMacCommandHotKey(
 
 bool EditableView::HandleShiftHotKey(LogicalKeyboardKey key_code) {
   // Move 'extent' value left/right/up/down.
-  const auto& text_editing_value = GetTextEditingValue();
+  auto text_editing_value = GetTextEditingValue();
   auto current_selection = TextRange(text_editing_value.selection());
   switch (key_code) {
     case KeyCode::kArrowLeft: {
@@ -1347,8 +1364,9 @@ bool EditableView::HandleShiftHotKey(LogicalKeyboardKey key_code) {
         break;
       }
       auto prev = FindNextOrPrevCharacterSelection(true);
-      GetRenderEditable()->SetSelection(
+      text_editing_value.SetSelection(
           TextRange(current_selection.base(), prev.start()));
+      SetTextEditingValue(text_editing_value);
       break;
     }
     case KeyCode::kArrowRight: {
@@ -1357,8 +1375,9 @@ bool EditableView::HandleShiftHotKey(LogicalKeyboardKey key_code) {
         break;
       }
       auto next = FindNextOrPrevCharacterSelection(false);
-      GetRenderEditable()->SetSelection(
+      text_editing_value.SetSelection(
           TextRange(current_selection.base(), next.end()));
+      SetTextEditingValue(text_editing_value);
       break;
     }
     case KeyCode::kArrowUp:
@@ -1472,6 +1491,7 @@ void EditableView::SetTextEditingValue(const TextEditingValue& value,
   if (text_editing_history_state_ && text_changed) {
     text_editing_history_state_->Push();
   }
+  UpdateCursorPositionIfNeeded(value.selection());
 }
 
 void EditableView::UpdateEditingState(std::string text, TextSelection selection,
@@ -1580,6 +1600,14 @@ bool EditableView::IsPointerAllowed(const GestureRecognizer& gesture_recognizer,
                     << gesture_recognizer.GetMemberTag();
     return true;
   }
+}
+
+void EditableView::UpdateCursorPositionIfNeeded(const TextRange& range) {
+#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+  if (range.collapsed()) {
+    page_view_->SetCursorPosition(range.base());
+  }
+#endif
 }
 
 TextEditingHistoryState::TextEditingHistoryState(EditableView* editable_view)

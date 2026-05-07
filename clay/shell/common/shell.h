@@ -379,6 +379,11 @@ class Shell final : public PlatformView::Delegate,
     platform_view_->SetCaretRect(x, y, width, height);
   }
 
+  void UpdateCaretPosition(float x, float y, float width,
+                           float height) override {
+    platform_view_->UpdateCaretPosition(x, y, width, height);
+  }
+
   void setMarkedTextRect(float x, float y, float width, float height) override {
     platform_view_->setMarkedTextRect(x, y, width, height);
   }
@@ -386,6 +391,10 @@ class Shell final : public PlatformView::Delegate,
   void ShowTextInput() override { platform_view_->ShowTextInput(); }
 
   void HideTextInput() override { platform_view_->HideTextInput(); }
+
+  void SetCursorPosition(int position) override {
+    platform_view_->SetCursorPosition(position);
+  }
   // Text input related functions End.
   void WindowMove() override { platform_view_->WindowMove(); }
   void ActivateSystemCursor(int type, const std::string& path) override {

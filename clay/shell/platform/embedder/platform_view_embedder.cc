@@ -181,6 +181,16 @@ void PlatformViewEmbedder::SetCaretRect(float x, float y, float width,
 }
 
 // |PlatformView|
+void PlatformViewEmbedder::UpdateCaretPosition(float x, float y, float width,
+                                               float height) {
+  if (platform_dispatch_table_.textinput.update_caret_position_callback !=
+      nullptr) {
+    platform_dispatch_table_.textinput.update_caret_position_callback(
+        x, y, width, height);
+  }
+}
+
+// |PlatformView|
 void PlatformViewEmbedder::setMarkedTextRect(float x, float y, float width,
                                              float height) {
   if (platform_dispatch_table_.textinput.set_marked_text_rect_callback !=
@@ -201,6 +211,13 @@ void PlatformViewEmbedder::ShowTextInput() {
 void PlatformViewEmbedder::HideTextInput() {
   if (platform_dispatch_table_.textinput.hide_text_input_callback != nullptr) {
     platform_dispatch_table_.textinput.hide_text_input_callback();
+  }
+}
+
+// |PlatformView|
+void PlatformViewEmbedder::SetCursorPosition(int position) {
+  if (platform_dispatch_table_.textinput.cursor_position_callback != nullptr) {
+    platform_dispatch_table_.textinput.cursor_position_callback(position);
   }
 }
 

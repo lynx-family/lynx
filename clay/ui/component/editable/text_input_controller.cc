@@ -107,6 +107,13 @@ void TextInputController::SetEditingState(
 #endif
 }
 
+void TextInputController::UpdateCaretPosition(float x, float y, float width,
+                                              float height) {
+#if defined(ENABLE_HEADLESS)
+  page_view_->UpdateCaretPosition(x, y, width, height);
+#endif
+}
+
 void TextInputController::SetCaretRect(FloatRect rect) {
 #if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
   page_view_->SetCaretRect(rect.x(), rect.y(), rect.width(), rect.height());

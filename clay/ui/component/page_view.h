@@ -336,8 +336,16 @@ class PageView : public BaseView,
     render_delegate_->SetCaretRect(x, y, width, height);
   }
 
+  void UpdateCaretPosition(float x, float y, float width, float height) {
+    render_delegate_->UpdateCaretPosition(x, y, width, height);
+  }
+
   void setMarkedTextRect(float x, float y, float width, float height) {
     render_delegate_->setMarkedTextRect(x, y, width, height);
+  }
+
+  void SetCursorPosition(int position) {
+    render_delegate_->SetCursorPosition(position);
   }
 
   void ShowTextInput() { render_delegate_->ShowTextInput(); }

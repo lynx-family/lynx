@@ -88,6 +88,9 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
                                  uint64_t selection_extent,
                                  uint64_t composing_base) = 0;
     virtual void SetCaretRect(float x, float y, float width, float height) = 0;
+    virtual void UpdateCaretPosition(float x, float y, float width,
+                                     float height) = 0;
+    virtual void SetCursorPosition(int position) = 0;
     virtual void setMarkedTextRect(float x, float y, float width,
                                    float height) = 0;
     virtual void ShowTextInput() = 0;
@@ -241,6 +244,11 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
     delegate_->SetCaretRect(x, y, width, height);
   }
 
+  void UpdateCaretPosition(float x, float y, float width,
+                           float height) override {
+    delegate_->UpdateCaretPosition(x, y, width, height);
+  }
+
   void setMarkedTextRect(float x, float y, float width, float height) override {
     delegate_->setMarkedTextRect(x, y, width, height);
   }
@@ -248,6 +256,9 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
   void ShowTextInput() override { delegate_->ShowTextInput(); }
 
   void HideTextInput() override { delegate_->HideTextInput(); }
+  void SetCursorPosition(int position) override {
+    delegate_->SetCursorPosition(position);
+  }
   // Text input related functions End.
   void WindowMove() override { delegate_->WindowMove(); }
   void ActivateSystemCursor(int type, const std::string& path) override {

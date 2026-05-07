@@ -42,6 +42,8 @@ class MockDelegate : public clay::RenderDelegate {
                           const char* input_type) override {}
   void ClearTextInputClient() override {}
   void SetEditableTransform(const float transform_matrix[16]) override {}
+  void UpdateCaretPosition(float x, float y, float width,
+                           float height) override {}
   void SetEditingState(uint64_t selection_base, uint64_t composing_extent,
                        const std::string& selection_affinity,
                        const std::string& text, bool selection_directional,
@@ -52,6 +54,7 @@ class MockDelegate : public clay::RenderDelegate {
   }
   void ShowTextInput() override {}
   void HideTextInput() override {}
+  void SetCursorPosition(int position) override {}
   void WindowMove() override {}
   void ActivateSystemCursor(int type, const std::string& path) override {}
 #endif

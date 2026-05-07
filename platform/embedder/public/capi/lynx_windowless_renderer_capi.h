@@ -180,6 +180,9 @@ typedef void (*activate_system_cursor)(lynx_windowless_renderer_t*,
                                        lynx_cursor_type_e type,
                                        const char* path);
 typedef void (*show_text_input)(lynx_windowless_renderer_t*, bool show);
+typedef void (*update_caret_position)(lynx_windowless_renderer_t*, float x,
+                                      float y, float width, float height);
+typedef void (*set_cursor_position)(lynx_windowless_renderer_t*, int position);
 typedef void (*set_marked_text_rect)(lynx_windowless_renderer_t*, float x,
                                      float y, float width, float height);
 typedef void (*set_editable_transform)(lynx_windowless_renderer_t*,
@@ -192,6 +195,10 @@ LYNX_CAPI_EXPORT void lynx_windowless_renderer_bind_activate_system_cursor(
     lynx_windowless_renderer_t*, activate_system_cursor);
 LYNX_CAPI_EXPORT void lynx_windowless_renderer_bind_show_text_input(
     lynx_windowless_renderer_t*, show_text_input);
+LYNX_CAPI_EXPORT void lynx_windowless_renderer_bind_update_caret_position(
+    lynx_windowless_renderer_t*, update_caret_position);
+LYNX_CAPI_EXPORT void lynx_windowless_renderer_bind_set_cursor_position(
+    lynx_windowless_renderer_t*, set_cursor_position);
 LYNX_CAPI_EXPORT void lynx_windowless_renderer_bind_set_marked_text_rect(
     lynx_windowless_renderer_t*, set_marked_text_rect);
 LYNX_CAPI_EXPORT void lynx_windowless_renderer_bind_set_editable_transform(

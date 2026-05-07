@@ -170,6 +170,27 @@ class LynxWindowlessRenderer
             renderer_wrapper->ShowTextInput(show);
           }
         });
+    lynx_windowless_renderer_bind_update_caret_position(
+        windowless_renderer_,
+        [](lynx_windowless_renderer_t* renderer, float x, float y, float w,
+           float h) -> void {
+          std::shared_ptr<LynxWindowlessRenderer> renderer_wrapper =
+              LynxWindowlessRenderer::Unwrap(
+                  lynx_windowless_renderer_get_user_data(renderer));
+          if (renderer_wrapper) {
+            renderer_wrapper->UpdateCaretPosition(x, y, w, h);
+          }
+        });
+    lynx_windowless_renderer_bind_set_cursor_position(
+        windowless_renderer_,
+        [](lynx_windowless_renderer_t* renderer, int position) -> void {
+          std::shared_ptr<LynxWindowlessRenderer> renderer_wrapper =
+              LynxWindowlessRenderer::Unwrap(
+                  lynx_windowless_renderer_get_user_data(renderer));
+          if (renderer_wrapper) {
+            renderer_wrapper->SetCursorPosition(position);
+          }
+        });
     lynx_windowless_renderer_bind_set_marked_text_rect(
         windowless_renderer_,
         [](lynx_windowless_renderer_t* renderer, float x, float y, float w,
@@ -253,6 +274,9 @@ class LynxWindowlessRenderer
   virtual void ActivateSystemCursor(lynx_cursor_type_e cursor_type,
                                     const char* path) {}
   virtual void ShowTextInput(bool show) {}
+  virtual void UpdateCaretPosition(float x, float y, float width,
+                                   float height) {}
+  virtual void SetCursorPosition(int position) {}
   virtual void SetMarkedTextRect(float x, float y, float width, float height) {}
   virtual void SetEditableTransform(const float transform[16]) {}
   /* ----- Callbacks for platform function ----- */
