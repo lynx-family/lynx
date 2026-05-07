@@ -5,16 +5,30 @@
 #ifndef CORE_RENDERER_DOM_ELEMENT_MANAGER_DELEGATE_H_
 #define CORE_RENDERER_DOM_ELEMENT_MANAGER_DELEGATE_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
+#include "base/include/fml/memory/ref_ptr.h"
+#include "core/event/event_dispatch_result.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
+namespace runtime {
+class MessageEvent;
+class MTSRuntime;
+}  // namespace runtime
+
+namespace worklet {
+class LepusApiHandler;
+}  // namespace worklet
+
 namespace tasm {
 
+enum class EventResult : int;
 class FrameElement;
+struct PipelineOptions;
 class PipelineContext;
 struct PipelineLayoutData;
 
@@ -54,6 +68,28 @@ class ElementManagerDelegate {
   // Call for sending Lepus global event.
   virtual void TriggerLepusGlobalEvent(const std::string &event,
                                        const lepus::Value &info) = 0;
+
+  // Call for dispatching message event.
+  virtual event::DispatchEventResult DispatchMessageEvent(
+      fml::RefPtr<runtime::MessageEvent> event) = 0;
+
+  virtual bool EnableEventHandleRefactor() const = 0;
+
+  virtual bool SupportComponentJS() const = 0;
+
+  virtual runtime::MTSRuntime *GetDefaultEntryRuntime() const = 0;
+
+  virtual runtime::MTSRuntime *GetEntryRuntime(
+      const std::string &entry_name) const = 0;
+
+  virtual std::string GetDefaultEntryLogicalName() const = 0;
+
+  virtual EventResult FireElementWorkletAndRequestResolve(
+      const std::string &component_id, const std::string &entry_name,
+      const lepus::Value &callback, const lepus::Value &event_detail,
+      const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
+      int32_t element_id,
+      std::shared_ptr<PipelineOptions> &pipeline_options) = 0;
 
   virtual void OnLayoutAfter(PipelineLayoutData &data) = 0;
 };

@@ -50,6 +50,27 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
   void TriggerLepusGlobalEvent(const std::string &event,
                                const lepus::Value &info) override;
 
+  event::DispatchEventResult DispatchMessageEvent(
+      fml::RefPtr<runtime::MessageEvent> event) override;
+
+  bool EnableEventHandleRefactor() const override;
+
+  bool SupportComponentJS() const override;
+
+  runtime::MTSRuntime *GetDefaultEntryRuntime() const override;
+
+  runtime::MTSRuntime *GetEntryRuntime(
+      const std::string &entry_name) const override;
+
+  std::string GetDefaultEntryLogicalName() const override;
+
+  EventResult FireElementWorkletAndRequestResolve(
+      const std::string &component_id, const std::string &entry_name,
+      const lepus::Value &callback, const lepus::Value &event_detail,
+      const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
+      int32_t element_id,
+      std::shared_ptr<PipelineOptions> &pipeline_options) override;
+
   void OnLayoutAfter(PipelineLayoutData &data) override;
 
  private:

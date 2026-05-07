@@ -14,6 +14,7 @@
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/dom/testing/fiber_mock_painting_context.h"
+#include "core/renderer/events/touch_event_handler.h"
 #include "core/renderer/pipeline/pipeline_context.h"
 #include "core/renderer/template_assembler.h"
 #include "core/shell/testing/mock_layout_platform.h"
@@ -141,6 +142,37 @@ class RecordingElementManagerDelegate : public ElementManagerDelegate {
     ++trigger_lepus_global_event_count_;
     last_triggered_event_ = event;
     last_triggered_info_ = info;
+  }
+
+  event::DispatchEventResult DispatchMessageEvent(
+      fml::RefPtr<runtime::MessageEvent> event) override {
+    return {event::EventCancelType::kNotCanceled, false};
+  }
+
+  bool EnableEventHandleRefactor() const override { return false; }
+
+  bool SupportComponentJS() const override { return false; }
+
+  runtime::MTSRuntime* GetDefaultEntryRuntime() const override {
+    return nullptr;
+  }
+
+  runtime::MTSRuntime* GetEntryRuntime(
+      const std::string& entry_name) const override {
+    return nullptr;
+  }
+
+  std::string GetDefaultEntryLogicalName() const override {
+    return std::string();
+  }
+
+  EventResult FireElementWorkletAndRequestResolve(
+      const std::string& component_id, const std::string& entry_name,
+      const lepus::Value& callback, const lepus::Value& event_detail,
+      const std::shared_ptr<worklet::LepusApiHandler>& task_handler,
+      int32_t element_id,
+      std::shared_ptr<PipelineOptions>& pipeline_options) override {
+    return EventResult::kDefault;
   }
 
   void OnLayoutAfter(PipelineLayoutData& data) override {}

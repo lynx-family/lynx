@@ -50,6 +50,7 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/renderer/utils/value_utils.h"
+#include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/java_script_element.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
@@ -894,6 +895,27 @@ void Element::SetWorkletEventHandler(const base::String& name,
 
   data_model_->SetWorkletEvent(type, name, worklet_info, ctx);
   MarkDirty(kDirtyEvent);
+}
+
+void Element::SetWorkletEventHandler(const base::String& name,
+                                     const base::String& type,
+                                     const lepus::Value& worklet_info,
+                                     const std::string& context_name) {
+  auto* context = element_manager_ == nullptr
+                      ? nullptr
+                      : element_manager_->GetEntryRuntime(context_name);
+  SetWorkletEventHandler(name, type, worklet_info, context);
+}
+
+event::DispatchEventResult Element::DispatchMessageEvent(
+    fml::RefPtr<runtime::MessageEvent> event) {
+  auto* delegate = element_manager_ == nullptr
+                       ? nullptr
+                       : element_manager_->element_manager_delegate();
+  if (delegate == nullptr) {
+    return {event::EventCancelType::kNotCanceled, false};
+  }
+  return delegate->DispatchMessageEvent(std::move(event));
 }
 
 void Element::RemoveEvent(const base::String& name, const base::String& type) {

@@ -51,6 +51,10 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx {
+namespace runtime {
+class MessageEvent;
+}  // namespace runtime
+
 namespace tasm {
 
 class AttributeHolder;
@@ -417,6 +421,13 @@ class Element : public lepus::RefCounted,
                               const base::String& type,
                               const lepus::Value& worklet_info,
                               runtime::MTSRuntime* ctx);
+  void SetWorkletEventHandler(const base::String& name,
+                              const base::String& type,
+                              const lepus::Value& worklet_info,
+                              const std::string& context_name);
+
+  event::DispatchEventResult DispatchMessageEvent(
+      fml::RefPtr<runtime::MessageEvent> event);
 
   /**
    * Element API for removing specific event
