@@ -179,11 +179,11 @@ declare global {
 
   function __InsertElementBefore(parent: ElementRef, current: ElementRef, marker?: ElementRef): ElementRef;
 
-  function __SwapElement(a: ElementRef, b: ElementRef): void;
+  function __SwapElement(left: ElementRef, right: ElementRef): void;
 
-  function __ReplaceElement(a: ElementRef, b: ElementRef): void;
+  function __ReplaceElement(newElement: ElementRef, oldElement: ElementRef): void;
 
-  function __ReplaceElements(parent: ElementRef, a: ElementRef | ElementRef[] | undefined, b: ElementRef | ElementRef[] | undefined): void;
+  function __ReplaceElements(parent: ElementRef, insertedChildren: ElementRef | ElementRef[] | undefined, removedChildren: ElementRef | ElementRef[] | undefined): void;
 
   function __GetParent(current: ElementRef): ElementRef;
 
@@ -313,23 +313,23 @@ declare global {
   ): void;
 
   /**
-   * Insert or move a node into one element slot.
-   * If `referenceNode` is omitted or `null`, append to the slot tail.
+   * Insert or move a child into one element slot.
+   * If `referenceChild` is omitted or `null`, append to the slot tail.
    */
   function __InsertNodeToElementTemplate(
     templateInstance: ElementRef,
     elementSlotIndex: number,
-    node: ElementRef,
-    referenceNode?: ElementRef | null,
+    child: ElementRef,
+    referenceChild?: ElementRef | null,
   ): void;
 
   /**
-   * Remove a node from one element slot.
+   * Remove a child from one element slot.
    */
   function __RemoveNodeFromElementTemplate(
     templateInstance: ElementRef,
     elementSlotIndex: number,
-    node: ElementRef,
+    child: ElementRef,
   ): void;
 
   /**
