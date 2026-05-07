@@ -13,7 +13,7 @@
 #include "clay/ui/component/editable/editable_view.h"
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
 #include "clay/ui/rendering/render_container.h"
-#include "clay/ui/shadow/editable_ng_shadow_node.h"
+#include "clay/ui/shadow/editable_shadow_node.h"
 
 namespace clay {
 namespace {
@@ -71,7 +71,7 @@ void TextAreaNGView::OnLayout(LayoutContext* context) {
   editable_view_->SetHeight(
       std::max(ContentHeight(), editable_view_->EstimateHeightWithMaxLines()));
   auto node =
-      static_cast<EditableNGShadowNode*>(page_view()->GetShadowNodeById(id()));
+      static_cast<EditableShadowNode*>(page_view()->GetShadowNodeById(id()));
   if (node) {
     node->SetTextHeight(editable_view_->GetParagraph()->GetHeight());
   }
