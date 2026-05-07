@@ -49,6 +49,7 @@
 
 #if OS_IOS
 #import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxTextRendererCache.h>
 #import <Lynx/LynxUICollection.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <UIKit/UIKit.h>
@@ -811,6 +812,9 @@
       break;
     case LynxMemoryPressureLevelCritical:
       level = lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_CRITICAL;
+#if OS_IOS
+      [[LynxTextRendererCache cache] clearCache];
+#endif
       break;
     case LynxMemoryPressureLevelNone:
     default:

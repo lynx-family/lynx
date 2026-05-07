@@ -6954,8 +6954,6 @@ public enum LynxOverflow {
   public const NSInteger LynxNumberNotSet LynxNumberNotSet;
   public BOOL LynxSameMeasureMode(LynxMeasureMode left, LynxMeasureMode right);
 
-  public NS_ASSUME_NONNULL_BEGIN BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager);
-
   typedef void(^ LynxImageLoadCompletionBlock) (UIImage *_Nullable image, NSError *_Nullable error, NSURL *_Nullable imageURL)
 
   typedef void(^ RestoreNativeStateBlock) (void)

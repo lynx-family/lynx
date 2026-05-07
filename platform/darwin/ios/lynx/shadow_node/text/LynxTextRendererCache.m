@@ -6,60 +6,10 @@
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxTextRendererCache.h>
 
-#pragma mark - Helper Functino
+#pragma mark - Helper Functions
 
-#define LYNX_EPSILON 0.0001
-#define TOTAL_COST_LIMIT (10 * 1024)  // 10K charaters for global Text Render
-NSString *const kLynxSDKTextRenderCacheEvent = @"lynxsdk_text_render_cache_hit";
-
-static bool compareNearlyEqual(CGFloat a, CGFloat b) {
-  float epsilon;
-  if (a == b) return true;
-  if (a > b) {
-    epsilon = a * LYNX_EPSILON;
-  } else {
-    epsilon = b * LYNX_EPSILON;
-  }
-  return fabs(a - b) < epsilon;
-}
-
-extern BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
-  NSTextContainer *container = layoutManager.textContainers.firstObject;
-  NSUInteger numberOfGlyphs = [layoutManager numberOfGlyphs];
-  __block NSRange truncatedRange;
-  __block NSUInteger maxRange = NSMaxRange([layoutManager glyphRangeForTextContainer:container]);
-  [layoutManager enumerateLineFragmentsForGlyphRange:NSMakeRange(0, numberOfGlyphs)
-                                          usingBlock:^(CGRect rect, CGRect usedRect,
-                                                       NSTextContainer *_Nonnull textContainer,
-                                                       NSRange glyphRange, BOOL *_Nonnull stop) {
-                                            truncatedRange = [layoutManager
-                                                truncatedGlyphRangeInLineFragmentForGlyphAtIndex:
-                                                    glyphRange.location];
-                                            if (truncatedRange.location != NSNotFound) {
-                                              maxRange = truncatedRange.location;
-                                              *stop = YES;
-                                            }
-                                          }];
-  return numberOfGlyphs > maxRange;
-}
-
-static BOOL layoutManagerIsSingleLine(NSLayoutManager *layoutManager) {
-  NSUInteger index = 0;
-  NSUInteger numberOfGlyphs = [layoutManager numberOfGlyphs];
-  NSRange lineRange;
-  [layoutManager lineFragmentRectForGlyphAtIndex:index effectiveRange:&lineRange];
-  return NSMaxRange(lineRange) == numberOfGlyphs;
-}
-
-static NSUInteger layoutManagerLineCount(NSLayoutManager *layoutManager) {
-  NSUInteger numberOfLines, index, numberOfGlyphs = [layoutManager numberOfGlyphs];
-  NSRange lineRange;
-  for (numberOfLines = 0, index = 0; index < numberOfGlyphs; numberOfLines++) {
-    (void)[layoutManager lineFragmentRectForGlyphAtIndex:index effectiveRange:&lineRange];
-    index = NSMaxRange(lineRange);
-  }
-  return numberOfLines;
-}
+static NSUInteger kLynxTextCacheTotalCost = (10 * 1024);  // 10K charaters for global Text Render
+static NSString *const kLynxSDKTextRenderCacheEvent = @"lynxsdk_text_render_cache_hit";
 
 #pragma mark - LynxTextRendererKey
 
@@ -105,6 +55,7 @@ static NSUInteger layoutManagerLineCount(NSLayoutManager *layoutManager) {
 @end
 
 #pragma mark - Cache
+
 @interface LynxTextRendererCache ()
 @property(nonatomic) NSInteger hitCount;
 @property(nonatomic) NSInteger missCount;
@@ -113,8 +64,6 @@ static NSUInteger layoutManagerLineCount(NSLayoutManager *layoutManager) {
 
 @implementation LynxTextRendererCache {
   NSCache<LynxTextRendererKey *, LynxTextRenderer *> *_cache;
-  NSMutableDictionary<NSAttributedString *, NSMutableArray<LynxTextRenderer *> *>
-      *_attrStringRenderers;
 }
 
 + (instancetype)cache {
@@ -131,7 +80,6 @@ static NSUInteger layoutManagerLineCount(NSLayoutManager *layoutManager) {
     _cache = [[NSCache alloc] init];
     _cache.totalCostLimit = [self totalCostLimitFromSettings];
     _cache.delegate = self;
-    _attrStringRenderers = [[NSMutableDictionary alloc] init];
     [self startTimeCounter];
   }
   return self;
@@ -141,54 +89,7 @@ static NSUInteger layoutManagerLineCount(NSLayoutManager *layoutManager) {
 }
 
 - (void)clearCache {
-  [_attrStringRenderers removeAllObjects];
   [_cache removeAllObjects];
-}
-
-- (LynxTextRenderer *)_suitableRendererWithString:(NSAttributedString *)str
-                                       layoutSpec:(LynxLayoutSpec *)spec {
-  BOOL widthUndifined = spec.widthMode == LynxMeasureModeIndefinite;
-  BOOL heightUndifined = spec.heightMode == LynxMeasureModeIndefinite;
-  for (LynxTextRenderer *renderer in [_attrStringRenderers objectForKey:str]) {
-    NSLayoutManager *layoutManager = renderer.layoutManager;
-    NSTextContainer *container = layoutManager.textContainers.firstObject;
-    CGSize textSize = [layoutManager usedRectForTextContainer:container].size;
-    LynxLayoutSpec *storedSpec = renderer.layoutSpec;
-    if ([spec isEqualToSpec:storedSpec]) {
-      return renderer;
-    }
-    // If two renderer have different LynxBackgroundGradient, we cannot reuse them.
-    if (!LynxSameLynxGradient(storedSpec.textStyle.textGradient, spec.textStyle.textGradient)) {
-      continue;
-    }
-    if (storedSpec.textOverflow != spec.textOverflow) continue;
-    if (layoutManagerIsSingleLine(layoutManager)) {
-      if (([storedSpec widthUndifined] || !layoutManagerIsTruncated(layoutManager)) &&
-          (widthUndifined || textSize.width <= spec.width + LYNX_EPSILON) &&
-          (!widthUndifined && ABS(spec.width - storedSpec.width) < LYNX_EPSILON) &&
-          ((heightUndifined && storedSpec.heightUndifined) ||
-           (spec.height <= storedSpec.height + LYNX_EPSILON))) {
-        return renderer;
-      }
-    } else {
-      if (!LynxSameMeasureMode(spec.widthMode, storedSpec.widthMode) ||
-          !compareNearlyEqual(spec.width, storedSpec.width) ||
-          spec.maxLineNum != storedSpec.maxLineNum) {
-        continue;
-      }
-      if ((NSUInteger)spec.maxLineNum == layoutManagerLineCount(layoutManager)) {
-        continue;
-      }
-      if (((heightUndifined && storedSpec.heightUndifined) ||
-           compareNearlyEqual(spec.height, storedSpec.height)) &&
-          (storedSpec.whiteSpace == spec.whiteSpace)) {
-        return renderer;
-      } else {
-        continue;
-      }
-    }
-  }
-  return nil;
 }
 
 - (BOOL)isEnableCache:(LynxLayoutSpec *)spec {
@@ -268,7 +169,7 @@ static NSUInteger layoutManagerLineCount(NSLayoutManager *layoutManager) {
     cacheLimit = MIN(10000, MAX(10, cacheLimit));
     return cacheLimit * 1024;
   }
-  return TOTAL_COST_LIMIT;
+  return kLynxTextCacheTotalCost;
 }
 
 - (void)startTimeCounter {

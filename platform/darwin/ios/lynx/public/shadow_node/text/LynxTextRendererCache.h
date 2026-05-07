@@ -6,8 +6,6 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-extern BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager);
-
 @interface LynxTextRendererCache : NSObject <NSCacheDelegate>
 
 + (instancetype)cache;

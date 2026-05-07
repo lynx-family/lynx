@@ -17,6 +17,26 @@
 #import "LynxTraceEventDef.h"
 #import "base/include/compiler_specific.h"
 
+static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
+  NSTextContainer *container = layoutManager.textContainers.firstObject;
+  NSUInteger numberOfGlyphs = [layoutManager numberOfGlyphs];
+  __block NSRange truncatedRange;
+  __block NSUInteger maxRange = NSMaxRange([layoutManager glyphRangeForTextContainer:container]);
+  [layoutManager enumerateLineFragmentsForGlyphRange:NSMakeRange(0, numberOfGlyphs)
+                                          usingBlock:^(CGRect rect, CGRect usedRect,
+                                                       NSTextContainer *_Nonnull textContainer,
+                                                       NSRange glyphRange, BOOL *_Nonnull stop) {
+                                            truncatedRange = [layoutManager
+                                                truncatedGlyphRangeInLineFragmentForGlyphAtIndex:
+                                                    glyphRange.location];
+                                            if (truncatedRange.location != NSNotFound) {
+                                              maxRange = truncatedRange.location;
+                                              *stop = YES;
+                                            }
+                                          }];
+  return numberOfGlyphs > maxRange;
+}
+
 @implementation LynxTextAttachmentInfo
 
 - (instancetype)initWithSign:(NSInteger)sign andFrame:(CGRect)frame {
