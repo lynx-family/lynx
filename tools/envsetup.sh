@@ -19,15 +19,8 @@ posix_absolute_path() {
 lynx_envsetup() {
   local SCRIPT_ABSOLUTE_PATH="$(posix_absolute_path $1)"
   local TOOLS_ABSOLUTE_PATH="$(dirname $SCRIPT_ABSOLUTE_PATH)"
-  export LYNX_DIR="$(dirname $TOOLS_ABSOLUTE_PATH)"
-  export BUILDTOOLS_DIR="${LYNX_DIR}/buildtools"
-  export PATH="${BUILDTOOLS_DIR}/llvm/bin:${BUILDTOOLS_DIR}/gn:${BUILDTOOLS_DIR}/ninja:${TOOLS_ABSOLUTE_PATH}/gn_tools:$PATH"
-  # setup node version
-  export PATH=${BUILDTOOLS_DIR}/node/bin:$PATH
-  # setup corepack
-  export COREPACK_HOME="${BUILDTOOLS_DIR}/corepack"
-
-  export PATH="${LYNX_DIR}/tools_shared:$PATH"
+  # shellcheck disable=SC1091
+  source "${TOOLS_ABSOLUTE_PATH}/env.sh" -- || exit 1
 }
 
 function android_env_setup() {
@@ -65,13 +58,6 @@ function harmony_home_setup_for_ci() {
     echo "harmony_home_setup_for_ci done"
 }
 
-function python_env_setup() {
-  VENV_PATH=$LYNX_DIR/.venv
-  python3 $LYNX_DIR/tools/vpython_tools/vpython_env_setup.py --root_dir $LYNX_DIR
-  source $VENV_PATH/bin/activate
-}
-
 lynx_envsetup "${BASH_SOURCE:-$0}"
 android_env_setup "${BASH_SOURCE:-$0}"
 harmony_home_setup_for_ci
-python_env_setup

@@ -20,7 +20,10 @@ buildscript {
         value = project.properties["abiList"]
         abiList = value? value.toString().split(",") : ["arm64-v8a"]
 
-        pythonExec = project.file(python_exec).absolutePath
+        pythonExec = python_exec
+        if (python_exec.contains("/") || python_exec.contains("\\")) {
+            pythonExec = project.file(python_exec).absolutePath
+        }
 
         if (project.hasProperty("IntegrationTest")) {
             buildIntegrationDemo = true
