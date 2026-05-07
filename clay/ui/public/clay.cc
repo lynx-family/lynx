@@ -162,6 +162,11 @@ void DecodeImage(
   fml::RefPtr<clay::ImageDescriptor> image_descriptor =
       clay::ImageDescriptor::Create(std::move(data));
 
+  if (!image_descriptor) {
+    callback("Invalid image data.", nullptr);
+    return;
+  }
+
   // It seems that the GetImageDecoder is not thread safe
   // so we post the task to UI thread first
   fml::TaskRunner::RunNowOrPostTask(
