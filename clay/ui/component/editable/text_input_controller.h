@@ -43,6 +43,7 @@ class TextInputController {
   void SetEditableTransform(const Transform& transform);
   void SetEditingState(const TextEditingValue& text_editing_value);
   void SetCaretRect(FloatRect rect);
+  void UpdateCaretPosition(float x, float y, float width, float height);
   void SetComposingRect(FloatRect rect);
   void Show();
   void Hide();

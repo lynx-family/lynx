@@ -11,8 +11,11 @@ class HeadlessDelegate {
   virtual const char* GetClipboardData() const = 0;
   virtual void SetClipboardData(const char* data) = 0;
   virtual void ActivateSystemCursor(int type, const char* path) = 0;
+  virtual void UpdateCaretPosition(float x, float y, float width,
+                                   float height) = 0;
   virtual void ShowTextInput() = 0;
   virtual void HideTextInput() = 0;
+  virtual void SetCursorPosition(int position) = 0;
   virtual void SetMarkedTextRect(float x, float y, float width,
                                  float height) = 0;
   virtual void SetEditableTransform(const float transform_matrix[16]) = 0;

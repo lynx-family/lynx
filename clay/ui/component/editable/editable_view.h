@@ -189,6 +189,9 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
                            bool need_update_remote = true);
   void OnCommitText(std::string text) override;
 
+  void UpdateCaretPosition();
+  void UpdateCursorPositionIfNeeded(const TextRange& range);
+
   virtual void BeginEditingIfNeeded();
   void BeginEditing();
   void QuitEditing();

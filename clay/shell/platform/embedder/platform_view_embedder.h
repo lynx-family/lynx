@@ -53,12 +53,15 @@ class PlatformViewEmbedder final : public PlatformView {
                          uint64_t selection_extent, uint64_t composing_base)>;
   using SetCaretRectCallback =
       std::function<void(float x, float y, float width, float height)>;
+  using UpdateCaretPositionCallback =
+      std::function<void(float x, float y, float width, float height)>;
   using SetMarkedTextRectCallback =
       std::function<void(float x, float y, float width, float height)>;
   using ShowTextInputCallback = std::function<void()>;
   using HideTextInputCallback = std::function<void()>;
   using FilterInputCallback =
       std::function<std::string(const std::string&, const std::string&)>;
+  using SetCursorPositionCallback = std::function<void(int position)>;
   using WindowMoveCallback = std::function<void()>;
   using ActivateSystemCursorCallback =
       std::function<void(int type, const std::string& path)>;
@@ -79,10 +82,12 @@ class PlatformViewEmbedder final : public PlatformView {
       SetEditableTransformCallback set_editable_transform_callback;
       SetEditingStateCallback set_editing_state_callback;
       SetCaretRectCallback set_caret_rect_callback;
+      UpdateCaretPositionCallback update_caret_position_callback;
       SetMarkedTextRectCallback set_marked_text_rect_callback;
       ShowTextInputCallback show_text_input_callback;
       HideTextInputCallback hide_text_input_callback;
       FilterInputCallback input_filter_callback;
+      SetCursorPositionCallback cursor_position_callback;
     } textinput;
     WindowMoveCallback window_move_callback;
     ActivateSystemCursorCallback activate_system_cursor_callback;
@@ -160,11 +165,16 @@ class PlatformViewEmbedder final : public PlatformView {
   // |PlatformView|
   void SetCaretRect(float x, float y, float width, float height) override;
   // |PlatformView|
+  void UpdateCaretPosition(float x, float y, float width,
+                           float height) override;
+  // |PlatformView|
   void setMarkedTextRect(float x, float y, float width, float height) override;
   // |PlatformView|
   void ShowTextInput() override;
   // |PlatformView|
   void HideTextInput() override;
+  // |PlatformView|
+  void SetCursorPosition(int position) override;
   // |PlatformView|
   std::string InputFilter(const std::string& input,
                           const std::string& pattern) override;

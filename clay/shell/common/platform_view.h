@@ -336,6 +336,7 @@ class PlatformView {
 
   virtual void ShowSoftInput(int type, int action) {}
   virtual void HideSoftInput() {}
+  virtual void SetCursorPosition(int position) {}
 
   virtual std::string ShouldInterceptUrl(const std::string& origin_url,
                                          bool should_decode) {
@@ -366,6 +367,8 @@ class PlatformView {
                                uint64_t selection_extent,
                                uint64_t composing_base) {}
   virtual void SetCaretRect(float x, float y, float width, float height) {}
+  virtual void UpdateCaretPosition(float x, float y, float width,
+                                   float height) {}
   virtual void setMarkedTextRect(float x, float y, float width, float height) {}
   virtual void ShowTextInput() {}
   virtual void HideTextInput() {}

@@ -140,6 +140,20 @@ LYNX_EXTERN_C void lynx_windowless_renderer_bind_show_text_input(
       ->show_text_input = show_text_input;
 }
 
+LYNX_EXTERN_C void lynx_windowless_renderer_bind_update_caret_position(
+    lynx_windowless_renderer_t* renderer,
+    update_caret_position update_caret_position) {
+  reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer)
+      ->update_caret_position = update_caret_position;
+}
+
+LYNX_EXTERN_C void lynx_windowless_renderer_bind_set_cursor_position(
+    lynx_windowless_renderer_t* renderer,
+    set_cursor_position set_cursor_position) {
+  reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer)
+      ->set_cursor_position = set_cursor_position;
+}
+
 LYNX_EXTERN_C void lynx_windowless_renderer_bind_set_marked_text_rect(
     lynx_windowless_renderer_t* renderer,
     set_marked_text_rect set_marked_text_rect) {
