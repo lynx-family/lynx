@@ -84,8 +84,10 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
   const char* GetClipboardData() const;
   void SetClipboardData(const char* data);
   void ActivateSystemCursor(int type, const char* path);
+  void UpdateCaretPosition(float x, float y, float width, float height);
   void ShowTextInput();
   void HideTextInput();
+  void SetCursorPosition(int position);
   void SetMarkedTextRect(float x, float y, float width, float height);
   void SetEditableTransform(const float transform_matrix[16]);
   void SetTextInputClient(int client_id, const char* input_action,

@@ -33,6 +33,8 @@ class LynxWindowlessRenderer
   set_clipboard_data set_clipboard_data = nullptr;
   activate_system_cursor activate_system_cursor = nullptr;
   show_text_input show_text_input = nullptr;
+  update_caret_position update_caret_position = nullptr;
+  set_cursor_position set_cursor_position = nullptr;
   set_marked_text_rect set_marked_text_rect = nullptr;
   set_editable_transform set_editable_transform = nullptr;
 

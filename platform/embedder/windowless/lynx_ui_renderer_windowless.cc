@@ -215,6 +215,23 @@ void LynxUIRendererWindowless::HideTextInput() {
         false);
   }
 }
+void LynxUIRendererWindowless::UpdateCaretPosition(float x, float y,
+                                                   float width, float height) {
+  if (windowless_renderer_ && windowless_renderer_->update_caret_position) {
+    windowless_renderer_->update_caret_position(
+        reinterpret_cast<lynx_windowless_renderer_t*>(
+            windowless_renderer_.get()),
+        x, y, width, height);
+  }
+}
+void LynxUIRendererWindowless::SetCursorPosition(int position) {
+  if (windowless_renderer_ && windowless_renderer_->set_cursor_position) {
+    windowless_renderer_->set_cursor_position(
+        reinterpret_cast<lynx_windowless_renderer_t*>(
+            windowless_renderer_.get()),
+        position);
+  }
+}
 void LynxUIRendererWindowless::SetMarkedTextRect(float x, float y, float width,
                                                  float height) {
   if (windowless_renderer_ && windowless_renderer_->set_marked_text_rect) {

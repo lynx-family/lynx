@@ -50,8 +50,11 @@ class LynxUIRendererWindowless : public LynxUIRenderer,
   void ActivateSystemCursor(int type, const char* path) override;
   void ShowTextInput() override;
   void HideTextInput() override;
+  void UpdateCaretPosition(float x, float y, float width,
+                           float height) override;
   void SetMarkedTextRect(float x, float y, float width, float height) override;
   void SetEditableTransform(const float transform_matrix[16]) override;
+  void SetCursorPosition(int position) override;
 
  private:
   lynx::fml::RefPtr<LynxWindowlessRenderer> windowless_renderer_;
