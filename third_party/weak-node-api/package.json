@@ -1,5 +1,5 @@
 {
-  "name": "weak-node-api",
+  "name": "@lynx-dev/weak-node-api-deps",
   "version": "1.0.0",
   "scripts": {
     "clean": "rm -rf generated headers prebuilt node_modules pnpm-lock.yaml"
