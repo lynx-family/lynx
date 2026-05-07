@@ -48,6 +48,7 @@
 
 #if OS_OSX
   _pageViewController = [[UIViewController alloc] init];
+  _pageViewController.view = [[NSView alloc] init];
   return _pageViewController;
 #endif
 
