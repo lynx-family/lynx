@@ -1166,6 +1166,13 @@ void EditableView::SetTextDirection(TextDirection text_direction) {
   }
 }
 
+void EditableView::SetLineSpacing(float line_spacing) {
+  if (text_style_.line_spacing != line_spacing) {
+    text_style_.line_spacing = line_spacing;
+    MarkNeedsLayout();
+  }
+}
+
 void EditableView::SetReadOnly(bool read_only) {
   if (editing_) {
     QuitEditing();

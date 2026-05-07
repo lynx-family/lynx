@@ -110,6 +110,8 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   void SetTextAlign(TextAlignment text_alignment);
   void SetReadOnly(bool read_only);
   void SetTextDirection(TextDirection text_direction);
+  // Only wired by TextAreaNGView for now.
+  void SetLineSpacing(float line_spacing);
   void SetFontFamily(const std::string& font_family);
   void SetPlaceholder(const std::string& placeholder);
   void SetPlaceholderFontSize(float font_size);

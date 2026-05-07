@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/editable/editable_view.h"
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
 #include "clay/ui/rendering/render_container.h"
@@ -56,7 +57,9 @@ void TextAreaNGView::OnDestroy() {
 void TextAreaNGView::SetAttribute(const char* attr_c,
                                   const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
-  if (editable_view_->MatchNGAttrSettings(kw)) {
+  if (kw == KeywordID::kLineSpacing) {
+    editable_view_->SetLineSpacing(attribute_utils::GetDouble(value));
+  } else if (editable_view_->MatchNGAttrSettings(kw)) {
     editable_view_->SetAttribute(attr_c, value);
   } else {
     BaseView::SetAttribute(attr_c, value);
