@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_H_
 
+#include <memory>
+
 #include "base/include/value/base_string.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/platform_renderer_type.h"
@@ -16,6 +18,11 @@ class NativePaintingContext {
  public:
   NativePaintingContext() = default;
   virtual ~NativePaintingContext() = default;
+  virtual void OnFirstScreen() = 0;
+  virtual void FinishTasmOperation(
+      const std::shared_ptr<PipelineOptions>& options) = 0;
+  virtual void FinishLayoutOperation(
+      const std::shared_ptr<PipelineOptions>& options) = 0;
   virtual void CreatePlatformRenderer(
       int id, PlatformRendererType type,
       const fml::RefPtr<PropBundle>& init_data) = 0;
@@ -27,6 +34,15 @@ class NativePaintingContext {
                            int32_t event_mask = 0) = 0;
   virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
   virtual void DestroyTextBundle(int id) = 0;
+  virtual void InsertListItemPaintingNode(int32_t list_id,
+                                          int32_t child_id) = 0;
+  virtual void RemoveListItemPaintingNode(int32_t list_id,
+                                          int32_t child_id) = 0;
+  virtual void UpdateContentOffsetForListContainer(int32_t container_id,
+                                                   float content_size,
+                                                   float delta_x, float delta_y,
+                                                   bool is_init_scroll_offset,
+                                                   bool from_layout) = 0;
   virtual void ReconstructEventTargetTreeRecursively() = 0;
   virtual void UpdatePlatformEventBundle(int id,
                                          PlatformEventBundle bundle) = 0;

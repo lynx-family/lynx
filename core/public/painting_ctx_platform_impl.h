@@ -150,6 +150,7 @@ class PaintingCtxPlatformImpl {
   virtual bool NeedAnimationProps() = 0;
 
   virtual void UpdateLayoutPatching() {}
+  virtual void OnFirstScreen() {}
   virtual void OnFirstMeaningfulLayout() {}
 
   // TODO(liting.src): remove this method after ui operation queue refactor.

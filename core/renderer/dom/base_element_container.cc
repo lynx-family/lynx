@@ -137,6 +137,11 @@ void BaseElementContainer::OnFirstScreen() {
   painting_context()->OnFirstScreen();
 }
 
+void BaseElementContainer::FinishTasmOperation(
+    const std::shared_ptr<PipelineOptions>& options) {
+  painting_context()->FinishTasmOperation(options);
+}
+
 void BaseElementContainer::AppendOptionsForTiming(
     const std::shared_ptr<PipelineOptions>& options) {
   painting_context()->AppendOptionsForTiming(options);

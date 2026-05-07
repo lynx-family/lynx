@@ -143,7 +143,7 @@ public class AndroidView extends ViewGroup
   }
 
   @Override
-  public ViewGroup getView() {
+  public View getView() {
     return this;
   }
 
