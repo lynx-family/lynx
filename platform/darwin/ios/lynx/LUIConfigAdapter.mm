@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #import <Lynx/LUIConfigAdapter.h>
-#import "LynxEnv+Internal.h"
+#import <Lynx/LynxEnv+Internal.h>
 
 @implementation LUIConfigAdapter {
   lynx::tasm::PageConfig* _config;
@@ -79,7 +79,7 @@
 - (bool)enableTextLayerRenderer {
   if (_config->GetEnableTextLayerRender() == lynx::tasm::TernaryBool::UNDEFINE_VALUE) {
     auto new_value = [[LynxEnv sharedInstance] boolFromExternalEnv:LynxEnvEnableTextLayerRender
-                                                      defaultValue:NO];
+                                                      defaultValue:YES];
     _config->SetEnableTextLayerRender(new_value ? lynx::tasm::TernaryBool::TRUE_VALUE
                                                 : lynx::tasm::TernaryBool::FALSE_VALUE);
   }
