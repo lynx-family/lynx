@@ -41,6 +41,7 @@ namespace tasm {
 class TemplateAssembler;
 class ElementManager;
 class FiberElement;
+class LynxBinaryRecyclerDelegate;
 
 class PageConfigger {
  public:
@@ -214,10 +215,6 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
     return template_bundle_.compile_options_.template_debug_url_;
   }
 
-  void SetLazyReader(std::unique_ptr<LynxBinaryLazyReaderDelegate> reader) {
-    reader_ = std::move(reader);
-  }
-
   void SetEnableJsBindingApiThrowException(bool enable) {
     enable_js_binding_api_throw_exception_ = enable;
   }
@@ -233,6 +230,10 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   void SetEnableFetchApiStandard(bool enable) {
     enable_fetch_api_standard_ = enable;
+  }
+
+  void SetLazyReader(std::shared_ptr<LynxBinaryLazyReaderDelegate> reader) {
+    reader_ = std::move(reader);
   }
 
   LynxBinaryLazyReaderDelegate* GetReader() { return reader_.get(); }
@@ -300,8 +301,6 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   void SetTemplateAssembler(TemplateAssembler* assembler);
 
-  void SetTemplateBundle(LynxTemplateBundle bundle);
-
   std::shared_ptr<PageConfig> EnsurePageConfig(PageConfigger* configger) const;
 
   bool InitLepusContext(TemplateAssembler* tasm,
@@ -332,7 +331,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   bool enable_circular_data_check_ = true;
 
   std::weak_ptr<lepus::InspectorLepusObserver> lepus_observer_;
-  std::unique_ptr<LynxBinaryLazyReaderDelegate> reader_;
+  std::shared_ptr<LynxBinaryLazyReaderDelegate> reader_;
   std::mutex element_template_info_mutex_;
 
   LynxTemplateBundle template_bundle_{};

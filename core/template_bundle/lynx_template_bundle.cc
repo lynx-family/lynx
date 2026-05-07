@@ -7,10 +7,31 @@
 #include <algorithm>
 
 #include "core/renderer/simple_styling/style_object.h"
+#include "core/runtime/lepus/binary_input_stream.h"
 #include "core/template_bundle/template_codec/binary_decoder/element_binary_reader.h"
+#include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 
 namespace lynx {
 namespace tasm {
+
+std::string LynxTemplateBundle::FromBinary(std::vector<uint8_t> binary,
+                                           bool is_card,
+                                           const std::string &template_url) {
+  auto input_stream =
+      std::make_unique<lepus::ByteArrayInputStream>(std::move(binary));
+  auto reader =
+      std::make_unique<TemplateBinaryReader>(std::move(input_stream), this);
+  reader->SetIsCardType(is_card);
+  reader->SetTemplateUrl(template_url);
+
+  if (!reader->Decode()) {
+    return reader->error_message_;
+  }
+
+  lazy_reader_ =
+      std::shared_ptr<LynxBinaryLazyReaderDelegate>(std::move(reader));
+  return "";
+}
 
 std::optional<std::shared_ptr<runtime::ContextBundle>>
 LepusChunkManager::GetLepusChunk(const std::string &chunk_key) {

@@ -39,6 +39,8 @@ class DevToolPool;
 }
 
 namespace tasm {
+class LynxBinaryLazyReaderDelegate;
+
 class LepusChunkManager {
  public:
   using LepusChunkMap =
@@ -69,6 +71,14 @@ class LepusChunkManager {
 //
 class LynxTemplateBundle final {
  public:
+  // Decodes the provided binary template data directly into this bundle.
+  // It performs a complete decode operation and stores a lazy reader delegate
+  // for potential future lazy decoding operations (e.g., CSS fragments,
+  // element templates, parsed styles).
+  // Returns an empty string on success, or an error message on failure.
+  std::string FromBinary(std::vector<uint8_t> binary, bool is_card,
+                         const std::string& template_url);
+
   LynxTemplateBundle()
       : css_style_manager_(std::make_shared<CSSStyleSheetManager>(nullptr)),
         string_list_(std::make_shared<std::vector<base::String>>()),
@@ -284,6 +294,7 @@ class LynxTemplateBundle final {
   std::shared_ptr<ParallelParseTaskScheduler> task_schedular_{nullptr};
 
   std::shared_ptr<devtool::DevToolPool> devtool_pool_;
+  std::shared_ptr<LynxBinaryLazyReaderDelegate> lazy_reader_{nullptr};
 
   friend class LynxBinaryReader;
   friend class TemplateAssembler;

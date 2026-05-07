@@ -7,7 +7,10 @@
 #include <cassert>
 #include <iostream>
 
+#include "core/renderer/template_entry.h"
+#include "core/template_bundle/lynx_template_bundle.h"
 #include "core/template_bundle/lynx_template_bundle_converter.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_lazy_reader_delegate.h"
 
 namespace {
 
@@ -76,6 +79,21 @@ void TestConvertWithNullPageConfig() {
   std::cout << "  PASSED" << std::endl;
 }
 
+void TestFromBinary() {
+  std::cout << "TestFromBinary..." << std::endl;
+  std::string valid_json =
+      R"({"source":"<div>lazy reader test</div>","config":{}})";
+  auto encode_res = lynx::tasm::codec::Encode(valid_json);
+  assert(encode_res.status == 0);
+
+  lynx::tasm::LynxTemplateBundle bundle;
+  std::string error =
+      bundle.FromBinary(std::move(encode_res.buffer), true, "test://bundle");
+  assert(error.empty());
+  assert(bundle.Size() > 0);
+  std::cout << "  PASSED" << std::endl;
+}
+
 }  // namespace
 
 int main() {
@@ -87,6 +105,7 @@ int main() {
   TestDecodeInvalidData();
   TestEncodeDecodeRoundTrip();
   TestConvertWithNullPageConfig();
+  TestFromBinary();
 
   std::cout << "=== All tests passed ===" << std::endl;
   return 0;

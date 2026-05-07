@@ -50,7 +50,6 @@
 #include "core/runtime/js/bindings/api_call_back.h"
 #include "core/runtime/js/bindings/modules/lynx_module.h"
 #include "core/runtime/js/runtime_constant.h"
-#include "core/runtime/lepus/binary_input_stream.h"
 #include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/builtin.h"
 #include "core/runtime/lepus/json_parser.h"
@@ -66,7 +65,6 @@
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/shared_data/white_board_tasm_delegate.h"
-#include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 #if ENABLE_LEPUSNG_WORKLET
@@ -2410,16 +2408,10 @@ bool TemplateAssembler::FromBinary(const std::shared_ptr<TemplateEntry>& entry,
     return false;
   }
 
-  auto input_stream =
-      std::make_unique<lepus::ByteArrayInputStream>(std::move(source));
-  // Construct reader with entry's bundle, so decode writes directly to entry.
-  auto reader = std::make_unique<TemplateBinaryReader>(
-      std::move(input_stream), &entry->template_bundle());
-  reader->SetIsCardType(is_card);
-  reader->SetTemplateUrl(url_.substr(0, url_.find("?")));
-
-  if (!reader->Decode()) {
-    ReportDecodeError(is_card, entry, reader->error_message_);
+  std::string error_message = entry->template_bundle().FromBinary(
+      std::move(source), is_card, url_.substr(0, url_.find("?")));
+  if (!error_message.empty()) {
+    ReportDecodeError(is_card, entry, error_message);
     return false;
   }
 
@@ -2427,8 +2419,6 @@ bool TemplateAssembler::FromBinary(const std::shared_ptr<TemplateEntry>& entry,
     ReportDecodeError(is_card, entry, entry->GetErrorMsg());
     return false;
   }
-
-  entry->SetLazyReader(std::move(reader));
   return true;
 }
 

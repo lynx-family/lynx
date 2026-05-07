@@ -187,18 +187,8 @@ TemplateEntry::ConstructEntryWithNoTemplateAssembler(
 bool TemplateEntry::InitWithTemplateBundle(PageConfigger* configger,
                                            LynxTemplateBundle template_bundle,
                                            const PageOptions& page_options) {
-  SetTemplateBundle(std::move(template_bundle));
-  return InitWithPageConfigger(configger, page_options);
-}
-
-void TemplateEntry::SetTemplateBundle(LynxTemplateBundle template_bundle) {
   template_bundle_ = std::move(template_bundle);
 
-  // TODO(zhoupeng): CSSStyleSheetManager needs to lock when trying to get a css
-  // fragment, so we should not use this manager directly, but only copy the
-  // data in it. CSSStyleSheetManager as a runtime manager contains a lot of
-  // unnecessary logic. Or it shouldn't be in the template bundle. Optimize it
-  // later.
   auto css_manager = std::make_shared<CSSStyleSheetManager>(nullptr);
   css_manager->CopyFrom(*template_bundle_.css_style_manager_);
   template_bundle_.css_style_manager_ = std::move(css_manager);
@@ -209,6 +199,8 @@ void TemplateEntry::SetTemplateBundle(LynxTemplateBundle template_bundle) {
         TernaryBool::FALSE_VALUE);
   }
   is_template_bundle_complete_ = true;
+
+  return InitWithPageConfigger(configger, page_options);
 }
 
 std::string TemplateEntry::GenerateLepusJSFileName(const std::string& name) {
@@ -220,6 +212,13 @@ std::string TemplateEntry::GenerateLepusJSFileName(const std::string& name) {
 bool TemplateEntry::InitWithPageConfigger(PageConfigger* configger,
                                           const PageOptions& page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_INIT_WITH_PAGE_CONFIG);
+
+  // TODO(nihao.royal): This is a workaround. reader_ should be fully inlined
+  // into LynxTemplateBundle, and TemplateEntry should not maintain a separate
+  // reader pointer.
+  if (!reader_ && template_bundle_.lazy_reader_) {
+    reader_ = std::move(template_bundle_.lazy_reader_);
+  }
 
   if (is_card_ != template_bundle_.IsCard()) {
     // expected type does not match actual type
