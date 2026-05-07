@@ -46,6 +46,7 @@ static constexpr const char kElementXScrollViewTag[] = "x-scroll-view";
 static constexpr const char kElementXNestedScrollViewTag[] =
     "x-nested-scroll-view";
 static constexpr const char kElementListTag[] = "list";
+static constexpr const char kElementListContainerTag[] = "list-container";
 static constexpr const char kElementListItemTag[] = "list-item";
 static constexpr const char kElementNoneElementTag[] = "none";
 static constexpr const char kElementWrapperElementTag[] = "wrapper";

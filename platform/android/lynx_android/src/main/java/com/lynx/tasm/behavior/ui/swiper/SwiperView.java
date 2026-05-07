@@ -71,7 +71,7 @@ class SwiperView
   }
 
   @Override
-  public ViewGroup getView() {
+  public View getView() {
     return this;
   }
 
@@ -208,7 +208,6 @@ class SwiperView
       if (mRenderer.getUIHost() != null) {
         mRenderer.getUIHost().measure();
       }
-      mRenderer.onLayout(changed, l, t, r, b);
     }
     super.onLayout(changed, l, t, r, b);
   }

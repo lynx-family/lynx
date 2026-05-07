@@ -101,9 +101,13 @@ public class Renderer {
   }
 
   public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    ViewGroup view = mRenderHost.getView();
-    for (int i = 0; i < view.getChildCount(); i++) {
-      View child = view.getChildAt(i);
+    View view = mRenderHost.getView();
+    if (!(view instanceof ViewGroup)) {
+      return;
+    }
+    ViewGroup viewGroup = (ViewGroup) view;
+    for (int i = 0; i < viewGroup.getChildCount(); i++) {
+      View child = viewGroup.getChildAt(i);
       if (child instanceof IRendererHost) {
         Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
         child.measure(
@@ -114,9 +118,13 @@ public class Renderer {
   }
 
   public void onLayout(boolean changed, int l, int t, int r, int b) {
-    ViewGroup view = mRenderHost.getView();
-    for (int i = 0; i < view.getChildCount(); i++) {
-      View child = view.getChildAt(i);
+    View view = mRenderHost.getView();
+    if (!(view instanceof ViewGroup)) {
+      return;
+    }
+    ViewGroup viewGroup = (ViewGroup) view;
+    for (int i = 0; i < viewGroup.getChildCount(); i++) {
+      View child = viewGroup.getChildAt(i);
       if (child instanceof IRendererHost) {
         Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
         child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);

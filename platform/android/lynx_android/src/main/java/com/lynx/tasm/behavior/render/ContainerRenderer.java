@@ -30,7 +30,7 @@ public class ContainerRenderer extends ViewGroup implements IRendererHost {
   }
 
   @Override
-  public ViewGroup getView() {
+  public View getView() {
     return this;
   }
 

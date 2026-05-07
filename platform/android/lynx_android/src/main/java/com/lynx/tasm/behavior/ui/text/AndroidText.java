@@ -294,6 +294,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
       canvas.translate(paddingLeft, paddingTop);
       mTextraPage.drawPageCanvas(canvas, this);
       canvas.restore();
+      return;
     }
 
     if (mTextLayout != null) {

@@ -270,10 +270,15 @@ void LayoutMediator::HandlePendingLayoutTask(
   }
 
   catalyzer->painting_context()->MarkLayoutUIOperationQueueFlushStartIfNeed();
+  auto *root = catalyzer->get_root();
   if (layout_changed) {
     catalyzer->UpdateLayoutRecursively();
     catalyzer->painting_context()->UpdateLayoutPatching();
-    catalyzer->painting_context()->OnFirstScreen();
+    if (root && root->EnableFragmentLayerRender()) {
+      root->element_container()->OnFirstScreen();
+    } else {
+      catalyzer->painting_context()->OnFirstScreen();
+    }
   } else {
     catalyzer->UpdateLayoutRecursivelyWithoutChange();
   }
@@ -281,7 +286,11 @@ void LayoutMediator::HandlePendingLayoutTask(
   catalyzer->painting_context()->UpdateNodeReadyPatching();
 
   // ensure FinishLayoutOperation in the end before Flush
-  catalyzer->painting_context()->FinishLayoutOperation(options);
+  if (root && root->EnableFragmentLayerRender()) {
+    root->element_container()->FinishLayoutOperation(options);
+  } else {
+    catalyzer->painting_context()->FinishLayoutOperation(options);
+  }
 
   if (current_pipeline_context &&
       current_pipeline_context->EnableUnifiedPipelineContext()) {

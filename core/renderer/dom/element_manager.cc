@@ -1414,7 +1414,11 @@ void ElementManager::OnPatchFinishForFiber(
         base::CurrentTimeMicroseconds();
   }
 
-  catalyzer_->painting_context()->FinishTasmOperation(options);
+  if (root() && root()->EnableFragmentLayerRender()) {
+    root()->element_container()->FinishTasmOperation(options);
+  } else {
+    catalyzer_->painting_context()->FinishTasmOperation(options);
+  }
 
   // if flush_option do not need layout or options do not need layout, skip
   // layout.
@@ -1435,7 +1439,11 @@ void ElementManager::OnPatchFinishForFiber(
       root()->element_container()->CastToFragment()->Draw();
       root()->element_container()->Flush();
     }
-    catalyzer_->painting_context()->FinishLayoutOperation(options);
+    if (root() && root()->EnableFragmentLayerRender()) {
+      root()->element_container()->FinishLayoutOperation(options);
+    } else {
+      catalyzer_->painting_context()->FinishLayoutOperation(options);
+    }
     delegate_->OnUpdateDataWithoutChange();
     patch_finish_callback(false);
   } else {

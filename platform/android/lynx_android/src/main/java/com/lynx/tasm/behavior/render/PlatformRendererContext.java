@@ -26,11 +26,14 @@ import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
+import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.service.ILynxTextService.Page;
@@ -301,20 +304,20 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       owner.createView(
           sign, tagName, initialProps, null, eventListeners, false, sign, gestureDetectors);
       LynxUI ui = (LynxUI) owner.getNode(sign);
-      if (ui != null) {
+      if (ui != null && ui.getView() instanceof IRendererHost) {
         IRendererHost host = (IRendererHost) ui.getView();
-        if (host instanceof IRendererHost) {
-          Renderer renderer = host.createRenderer(this, sign);
-          renderer.setUIHost(ui);
-          renderer.setRenderHost(host);
-          host.setRenderer(renderer);
-          mViewHolder.put(sign, host);
-          host.getView().setWillNotDraw(false);
-          host.getView().setClipChildren(false);
-          host.getView().invalidate();
-          renderer.updateAttributes(initData);
-          return;
+        Renderer renderer = host.createRenderer(this, sign);
+        renderer.setUIHost(ui);
+        renderer.setRenderHost(host);
+        host.setRenderer(renderer);
+        mViewHolder.put(sign, host);
+        host.getView().setWillNotDraw(false);
+        if (host.getView() instanceof ViewGroup) {
+          ((ViewGroup) host.getView()).setClipChildren(false);
         }
+        host.getView().invalidate();
+        renderer.updateAttributes(initData);
+        return;
       }
     }
 
@@ -331,6 +334,19 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void destroyPlatformRenderer(int sign) {
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    if (owner != null && owner.getNode(sign) != null) {
+      LynxBaseUI child = owner.getNode(sign);
+      if (child.getParent() instanceof LynxBaseUI) {
+        LynxBaseUI parent = (LynxBaseUI) child.getParent();
+        if (parent == null) {
+          return;
+        }
+        owner.destroy(parent.getSign(), child.getSign());
+      }
+      return;
+    }
+
     IRendererHost host = mViewHolder.get(sign);
     try {
       if (host != null) {
@@ -357,8 +373,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     if (hParent == null || hChild == null) {
       return;
     }
-    ViewGroup parentView = hParent.getView();
-    ViewGroup childView = hChild.getView();
+    if (!(hParent.getView() instanceof ViewGroup)) {
+      return;
+    }
+    ViewGroup parentView = (ViewGroup) hParent.getView();
+    View childView = hChild.getView();
     int count = parentView.getChildCount();
     if (index == -1 || index >= count) {
       parentView.addView(childView);
@@ -387,8 +406,12 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
     LynxUIOwner owner = mContext.getLynxUIOwner();
     if (owner != null && owner.getNode(sign) != null) {
-      owner.updateLayout(
-          sign, left, top, width, height, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null, null, 0, 0);
+      com.lynx.tasm.behavior.ui.LynxBaseUI node = owner.getNode(sign);
+      owner.updateLayout(sign, left, top, width, height, node.getPaddingLeft(),
+          node.getPaddingTop(), node.getPaddingRight(), node.getPaddingBottom(),
+          node.getMarginLeft(), node.getMarginTop(), node.getMarginRight(), node.getMarginBottom(),
+          node.getBorderLeftWidth(), node.getBorderTopWidth(), node.getBorderRightWidth(),
+          node.getBorderBottomWidth(), null, null, 0, sign);
     }
 
     host.getView().requestLayout();
@@ -512,12 +535,82 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
+  public void insertListItemPaintingNode(int listSign, int childSign) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner == null) {
+      return;
+    }
+    LynxBaseUI parent = owner.getNode(listSign);
+    LynxBaseUI child = owner.getNode(childSign);
+    if (parent instanceof UIListContainer && child instanceof UIComponent) {
+      ((UIListContainer) parent).insertListItemNode(child);
+    }
+  }
+
+  @CalledByNative
+  public void removeListItemPaintingNode(int listSign, int childSign) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner == null) {
+      return;
+    }
+    LynxBaseUI parent = owner.getNode(listSign);
+    LynxBaseUI child = owner.getNode(childSign);
+    if (parent instanceof UIListContainer && child instanceof UIComponent) {
+      ((UIListContainer) parent).removeView(child);
+    }
+  }
+
+  @CalledByNative
+  public void updateContentOffsetForListContainer(int listSign, float contentSize, float deltaX,
+      float deltaY, boolean isInitScrollOffset, boolean fromLayout) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner == null) {
+      return;
+    }
+    LynxBaseUI parent = owner.getNode(listSign);
+    if (parent instanceof UIListContainer) {
+      ((UIListContainer) parent).updateContentSizeAndOffset(contentSize, deltaX, deltaY);
+    }
+  }
+
+  @CalledByNative
+  public void finishLayoutOperation(int componentId, long operationId, boolean isFirstScreen) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner == null) {
+      return;
+    }
+    owner.onLayoutFinish(componentId, operationId);
+  }
+
+  @CalledByNative
+  private void finishTasmOperation(long operationId) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner == null) {
+      return;
+    }
+    owner.onTasmFinish(operationId);
+  }
+
+  @CalledByNative
   public void removePlatformRendererFromParent(int sign) {
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    if (owner != null && owner.getNode(sign) != null) {
+      LynxBaseUI child = owner.getNode(sign);
+      if (child.getParent() instanceof LynxBaseUI) {
+        LynxBaseUI parent = (LynxBaseUI) child.getParent();
+        if (parent == null) {
+          return;
+        }
+        owner.remove(parent.getSign(), child.getSign());
+      }
+      return;
+    }
+
     IRendererHost host = mViewHolder.get(sign);
     if (host != null) {
-      ViewGroup parent = (ViewGroup) host.getView().getParent();
-      if (parent != null) {
-        parent.removeView(host.getView());
+      View parent = (View) host.getView().getParent();
+      if (parent instanceof ViewGroup) {
+        ((ViewGroup) parent).removeView(host.getView());
       }
     }
   }

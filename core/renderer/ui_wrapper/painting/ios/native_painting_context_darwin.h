@@ -95,6 +95,8 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 
 #pragma region NativePaintingContext
 
+  void OnFirstScreen() override;
+
   void CreatePlatformRenderer(int id, PlatformRendererType type,
                               const fml::RefPtr<PropBundle> &init_data) override;
   void CreatePlatformExtendedRenderer(int id, const base::String &tag_name,
@@ -105,6 +107,14 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
   void UpdateTextBundle(int id, intptr_t bundle) override;
 
   void DestroyTextBundle(int id) override;
+
+  void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override;
+
+  void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) override;
+
+  void UpdateContentOffsetForListContainer(int32_t container_id, float content_size, float delta_x,
+                                           float delta_y, bool is_init_scroll_offset,
+                                           bool from_layout) override;
 
   void ReconstructEventTargetTreeRecursively() override;
 
