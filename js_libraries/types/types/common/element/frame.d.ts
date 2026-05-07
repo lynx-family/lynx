@@ -3,7 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 import { StandardProps } from '../props';
-import { BaseEvent, BaseEventOrig, Target } from '../events';
+import { BaseEvent } from '../events';
+import type { LoadBundleEntry } from '../../background-thread/lynx-performance-entry';
 
 export interface FrameProps extends StandardProps {
   /**
@@ -31,6 +32,14 @@ export interface FrameProps extends StandardProps {
   bindload?: (e: FrameLoadEvent) => void;
 
   /**
+   * Bind frame load metrics event callback.
+   * @iOS
+   * @Android
+   * @since 3.9
+   */
+  bindloadmetrics?: (e: FrameLoadMetricsEvent) => void;
+
+  /**
    * Passes `globalProps` to the Lynx page embedded in the frame. The embedded page can read it via `lynx.__globalProps`.
    * @iOS
    * @Android
@@ -55,6 +64,31 @@ export interface FrameProps extends StandardProps {
    * @since 3.8
    */
   'auto-height'?: boolean;
+
+  /**
+   * Sets the preset width used before the embedded Lynx page receives an initialized content rect.
+   * @iOS
+   * @Android
+   * @since 3.9
+   */
+  'preset-width'?: `${number}px` | `${number}rpx`;
+
+  /**
+   * Sets the preset height used before the embedded Lynx page receives an initialized content rect.
+   * @iOS
+   * @Android
+   * @since 3.9
+   */
+  'preset-height'?: `${number}px` | `${number}rpx`;
+
+  /**
+   * Overrides whether the embedded Lynx page uses multiple asynchronous threads. When omitted, the frame inherits the host setting.
+   * @defaultValue false
+   * @iOS
+   * @Android
+   * @since 3.9
+   */
+  'enable-multi-async-thread'?: boolean;
 }
 
 export interface BaseFrameLoadInfo {
@@ -84,3 +118,33 @@ export interface BaseFrameLoadInfo {
 }
 
 export type FrameLoadEvent = BaseEvent<'bindload', BaseFrameLoadInfo>;
+
+export type FrameLoadMetricsEntry = Partial<LoadBundleEntry> & Record<string, unknown>;
+
+export interface BaseFrameLoadMetricsInfo {
+  /**
+   * The loaded url of the frame.
+   * @Android
+   * @iOS
+   * @since 3.9
+   */
+  url: string;
+
+  /**
+   * The frame loading mode.
+   * @Android
+   * @iOS
+   * @since 3.9
+   */
+  mode: string;
+
+  /**
+   * The raw loadBundle performance entry emitted by the embedded Lynx page.
+   * @Android
+   * @iOS
+   * @since 3.9
+   */
+  entry: FrameLoadMetricsEntry;
+}
+
+export type FrameLoadMetricsEvent = BaseEvent<'bindloadmetrics', BaseFrameLoadMetricsInfo>;

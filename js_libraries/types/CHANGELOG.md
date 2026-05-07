@@ -11,6 +11,7 @@
 - Add `bindmouseenter` and `bindmouseleave` typings for mouse events.
 - lynx.requestResourcePrefetch support awaitComplete options.
 - Introduce `<viewpager>`.
+- Add `preset-width`, `preset-height`, `enable-multi-async-thread` and `bindloadmetrics` typings for `frame` element.
 
 ## 3.8.0
 
