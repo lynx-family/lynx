@@ -82,6 +82,8 @@ class TreeResolver {
   static void ApplyTemplateAttributesToElement(
       FiberElement* element, const lepus::Value& previous_attribute_slots,
       const lepus::Value& attribute_slots);
+  static void ApplyStaticTemplateEventAttributesToElement(
+      FiberElement* element);
 
   // Construct element tree according to the element-template info.
   static base::Vector<fml::RefPtr<FiberElement>> FromTemplateInfo(

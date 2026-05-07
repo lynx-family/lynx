@@ -78,21 +78,31 @@ size_t FindSlotChildIndex(const lepus::Value& slot_children,
   return static_cast<size_t>(slot_children.GetLength());
 }
 
-void PrepareGeneratedElementsResult(GeneratedElementsResult* generated,
-                                    const lepus::Value& attribute_slots,
-                                    const lepus::Value& element_slots) {
-  if (generated == nullptr) {
-    return;
-  }
+void ApplyInitialAttributeSlots(
+    const base::Vector<fml::RefPtr<FiberElement>>& targets,
+    const lepus::Value& attribute_slots) {
   FiberElement* previous_element = nullptr;
-  // Attribute slot values can be applied before the generated tree is attached.
-  for (const auto& target : generated->attribute_slot_targets_) {
+  for (const auto& target : targets) {
     auto* element = target.get();
     if (element == nullptr || element == previous_element) {
       continue;
     }
     TreeResolver::ApplyTemplateAttributesToElement(element, attribute_slots);
     previous_element = element;
+  }
+}
+
+void ApplyStaticEventAttributes(
+    const base::Vector<fml::RefPtr<FiberElement>>& targets) {
+  for (const auto& target : targets) {
+    TreeResolver::ApplyStaticTemplateEventAttributesToElement(target.get());
+  }
+}
+
+void PrepareGeneratedElementsResult(GeneratedElementsResult* generated,
+                                    const lepus::Value& element_slots) {
+  if (generated == nullptr) {
+    return;
   }
 
   if (!element_slots.IsArrayOrJSArray()) {
@@ -129,13 +139,13 @@ void PrepareGeneratedElementsResult(GeneratedElementsResult* generated,
 
 GeneratedElementsResult GeneratePreparedElementsResult(
     TemplateEntry* entry, const base::String& template_key,
-    const lepus::Value& attribute_slots, const lepus::Value& element_slots) {
+    const lepus::Value& element_slots) {
   GeneratedElementsResult generated;
   if (entry != nullptr) {
     auto& info = entry->GetElementTemplateInfo(template_key.str());
     generated = TreeResolver::GenerateElementsFromTemplateInfo(info);
   }
-  PrepareGeneratedElementsResult(&generated, attribute_slots, element_slots);
+  PrepareGeneratedElementsResult(&generated, element_slots);
   return generated;
 }
 
@@ -172,15 +182,13 @@ TemplateElement::CreateAsyncCreateElementTreeTask(TemplateEntry* entry) {
   std::promise<GeneratedElementsResult> promise;
   auto future = promise.get_future();
   auto template_key = template_key_;
-  auto attribute_slots = attribute_slots_;
   auto element_slots = element_slots_;
   return fml::MakeRefCounted<base::OnceTask<GeneratedElementsResult>>(
       [entry, template_key = std::move(template_key),
-       attribute_slots = std::move(attribute_slots),
        element_slots = std::move(element_slots),
        promise = std::move(promise)]() mutable {
-        promise.set_value(GeneratePreparedElementsResult(
-            entry, template_key, attribute_slots, element_slots));
+        promise.set_value(
+            GeneratePreparedElementsResult(entry, template_key, element_slots));
       },
       std::move(future));
 }
@@ -202,6 +210,7 @@ void TemplateElement::ResolveGeneratedElements() {
   async_create_task_ = nullptr;
   result_ = std::move(generated.result_);
   attribute_slot_targets_ = std::move(generated.attribute_slot_targets_);
+  static_event_targets_ = std::move(generated.static_event_targets_);
   element_slot_targets_ = std::move(generated.element_slot_targets_);
   prepared_element_slot_insertions_ =
       std::move(generated.prepared_element_slot_insertions_);
@@ -221,6 +230,10 @@ void TemplateElement::InitGeneratedElementTree() {
   auto* root = manager->root();
   TreeResolver::InitElementTree(result_, root != nullptr ? root->impl_id() : -1,
                                 manager, entry_->GetStyleSheetManager());
+  // Event attributes must be applied after the generated tree is attached so
+  // FiberAddEvent can sync EventListenerMap when event-refactor is enabled.
+  ApplyStaticEventAttributes(static_event_targets_);
+  ApplyInitialAttributeSlots(attribute_slot_targets_, attribute_slots_);
 }
 
 void TemplateElement::ApplyAttributeSlotToTarget(
