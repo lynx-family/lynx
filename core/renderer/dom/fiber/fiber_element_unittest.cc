@@ -16,6 +16,8 @@
 #include "core/animation/css_transition_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/event/event_dispatcher.h"
+#include "core/event/touch_event.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_decoder.h"
@@ -9937,23 +9939,35 @@ TEST_P(FiberElementTest, ElementTemplateInsertElementSlotChildKeepsOtherSlots) {
 }
 
 TEST_P(FiberElementTest, ElementTemplateDynamicAPIsConsumePendingOpsOnGetRoot) {
+  manager->config_->SetEnableEventHandleRefactor(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto default_entry = std::make_shared<TemplateEntry>();
+  default_entry->SetName(DEFAULT_ENTRY_NAME);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
+
   auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->entry_ = default_entry.get();
   root->SetTemplateKey(base::String("root_template"));
 
   auto attribute_slots = lepus::CArray::Create();
   attribute_slots->emplace_back(lepus::Value("old_value"));
+  attribute_slots->emplace_back(lepus::Value("onTap"));
   root->SetAttributeSlots(lepus::Value(attribute_slots));
 
-  auto target = manager->CreateFiberView();
+  auto target = ElementManager::StaticCreateFiberElement(ELEMENT_VIEW);
   auto template_attributes =
       std::make_shared<const TemplateAttributes>(TemplateAttributes{
           Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
-                    lepus::Value(), 0}});
+                    lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("bindtap"),
+                    lepus::Value(), 1}});
   target->SetTemplateAttributes(template_attributes);
   target->SetAttribute("data-test", lepus::Value("old_value"));
 
-  auto slot_parent = manager->CreateFiberView();
-  auto sentinel = manager->CreateFiberView();
+  auto slot_parent = ElementManager::StaticCreateFiberElement(ELEMENT_VIEW);
+  auto sentinel = ElementManager::StaticCreateFiberElement(ELEMENT_VIEW);
   auto first = manager->CreateFiberView();
   auto second = manager->CreateFiberView();
   slot_parent->InsertNode(sentinel);
@@ -9965,7 +9979,9 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsConsumePendingOpsOnGetRoot) {
   root->SetElementSlots(lepus::Value(element_slots));
 
   GeneratedElementsResult generated;
-  generated.result_ = manager->CreateFiberView();
+  generated.result_ = ElementManager::StaticCreateFiberElement(ELEMENT_VIEW);
+  generated.result_->InsertNode(target);
+  generated.result_->InsertNode(slot_parent);
   generated.attribute_slot_targets_.push_back(target);
   generated.element_slot_targets_.push_back(
       ElementSlotMountPoint{slot_parent, sentinel});
@@ -9997,15 +10013,73 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsConsumePendingOpsOnGetRoot) {
                                                         3);
 
   ASSERT_EQ(root->pending_operations_.size(), 3u);
+  EXPECT_EQ(target->element_manager(), nullptr);
 
   root->GetRoot();
 
   EXPECT_TRUE(root->pending_operations_.empty());
+  EXPECT_EQ(target->element_manager(), manager);
   EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
             "new_value");
+  auto* listeners = target->GetEventListenerMap()->Find("tap");
+  ASSERT_NE(listeners, nullptr);
+  ASSERT_EQ(listeners->size(), 1u);
   ASSERT_EQ(slot_parent->children().size(), 2u);
   EXPECT_EQ(slot_parent->children()[0].get(), second.get());
   EXPECT_EQ(slot_parent->children()[1].get(), sentinel.get());
+}
+
+TEST_P(FiberElementTest, ElementTemplateStaticEventsSyncAfterAttach) {
+  manager->config_->SetEnableEventHandleRefactor(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto default_entry = std::make_shared<TemplateEntry>();
+  default_entry->SetName(DEFAULT_ENTRY_NAME);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
+
+  ElementTemplateInfo template_info;
+  template_info.exist_ = true;
+  template_info.key_ = "root_template";
+
+  auto target_info = ElementInfo();
+  target_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+  target_info.attributes_ =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("bindtap"),
+                    lepus::Value("onStaticTap"), 0}});
+  template_info.elements_.emplace_back(std::move(target_info));
+
+  auto generated =
+      TreeResolver::GenerateElementsFromTemplateInfo(template_info);
+  auto* target = generated.result_.get();
+  ASSERT_NE(target, nullptr);
+  ASSERT_EQ(generated.static_event_targets_.size(), 1u);
+  EXPECT_EQ(generated.static_event_targets_[0].get(), target);
+  ASSERT_NE(target->event_map().find("tap"), target->event_map().end());
+  EXPECT_EQ(target->GetEventListenerMap()->Find("tap"), nullptr);
+
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->entry_ = default_entry.get();
+  std::promise<GeneratedElementsResult> promise;
+  auto future = promise.get_future();
+  root->async_create_task_ =
+      fml::MakeRefCounted<base::OnceTask<GeneratedElementsResult>>(
+          [generated = std::move(generated),
+           promise = std::move(promise)]() mutable {
+            promise.set_value(std::move(generated));
+          },
+          std::move(future));
+
+  auto resolved = root->GetRoot();
+
+  EXPECT_EQ(resolved.get(), target);
+  EXPECT_EQ(target->element_manager(), manager);
+  auto* listeners = target->GetEventListenerMap()->Find("tap");
+  ASSERT_NE(listeners, nullptr);
+  ASSERT_EQ(listeners->size(), 1u);
+  EXPECT_FALSE(listeners->front()->GetOptions().IsCapture());
+  EXPECT_FALSE(listeners->front()->GetOptions().IsCatch());
 }
 
 TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
@@ -10064,6 +10138,187 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
   EXPECT_EQ(target->data_model_->attributes().count("style"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("id"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("cssID"), 0u);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateAttributesEventKeys) {
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("onTap"));
+  attribute_slots->emplace_back(lepus::Value("onCatchTap"));
+  attribute_slots->emplace_back(lepus::Value("onFocus"));
+  attribute_slots->emplace_back(lepus::Value("ordinary-value"));
+  attribute_slots->emplace_back(lepus::Value("onGlobalTap"));
+
+  auto target = manager->CreateFiberView();
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("bindtap"),
+                    lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("catchtap"),
+                    lepus::Value(), 1},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("main-thread:bindfocus"), lepus::Value(), 2},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 3},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("global-bindtap"), lepus::Value(), 4}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), lepus::Value(std::move(attribute_slots)));
+
+  auto event_iter = target->event_map().find("tap");
+  ASSERT_NE(event_iter, target->event_map().end());
+  EXPECT_EQ(event_iter->second->type(), "catchEvent");
+  EXPECT_EQ(event_iter->second->function(), "onCatchTap");
+  auto main_thread_event_iter = target->event_map().find("focus");
+  ASSERT_NE(main_thread_event_iter, target->event_map().end());
+  EXPECT_EQ(main_thread_event_iter->second->type(), "bindEvent");
+  EXPECT_EQ(main_thread_event_iter->second->function(), "onFocus");
+  EXPECT_EQ(target->data_model_->attributes().count("bindtap"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("catchtap"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("main-thread:bindfocus"),
+            0u);
+  EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
+            "ordinary-value");
+  EXPECT_EQ(target->data_model_->attributes().count("global-bindtap"), 0u);
+  auto global_event_iter = target->global_bind_event_map().find("tap");
+  ASSERT_NE(global_event_iter, target->global_bind_event_map().end());
+  EXPECT_EQ(global_event_iter->second->type(), "global-bindEvent");
+  EXPECT_EQ(global_event_iter->second->function(), "onGlobalTap");
+
+  auto capture_attribute_slots = lepus::CArray::Create();
+  capture_attribute_slots->emplace_back(lepus::Value("onCaptureTap"));
+  capture_attribute_slots->emplace_back(lepus::Value("onCaptureCatchTap"));
+
+  auto capture_target = manager->CreateFiberView();
+  auto capture_template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("capture-bindtap"), lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("capture-catchtap"), lepus::Value(), 1}});
+  capture_target->SetTemplateAttributes(capture_template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(
+      capture_target.get(), lepus::Value(std::move(capture_attribute_slots)));
+
+  auto capture_event_iter = capture_target->event_map().find("tap");
+  ASSERT_NE(capture_event_iter, capture_target->event_map().end());
+  EXPECT_EQ(capture_event_iter->second->type(), "capture-catch");
+  EXPECT_EQ(capture_event_iter->second->function(), "onCaptureCatchTap");
+  EXPECT_EQ(capture_target->data_model_->attributes().count("capture-bindtap"),
+            0u);
+  EXPECT_EQ(capture_target->data_model_->attributes().count("capture-catchtap"),
+            0u);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateAttributesEventKeysSyncsEventListeners) {
+  manager->config_->SetEnableEventHandleRefactor(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto default_entry = std::make_shared<TemplateEntry>();
+  default_entry->SetName(DEFAULT_ENTRY_NAME);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto target = manager->CreateFiberView();
+  page->InsertNode(target);
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("onTap"));
+
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("bindtap"),
+                    lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(target.get(),
+                                                 lepus::Value(attribute_slots));
+
+  auto* listener_map = target->GetEventListenerMap();
+  auto* listeners = listener_map->Find("tap");
+  ASSERT_NE(listeners, nullptr);
+  ASSERT_EQ(listeners->size(), 1u);
+  EXPECT_FALSE(listeners->front()->GetOptions().IsCapture());
+  EXPECT_FALSE(listeners->front()->GetOptions().IsCatch());
+
+  auto event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  auto result = event::EventDispatcher::DispatchEvent(*target, event);
+  EXPECT_TRUE(result.consumed);
+  EXPECT_NE(tasm_mediator.DumpDelegate().find("SendPageEvent"),
+            std::string::npos);
+
+  auto empty_slots = lepus::CArray::Create();
+  empty_slots->emplace_back(lepus::Value());
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), lepus::Value(attribute_slots), lepus::Value(empty_slots));
+
+  listeners = listener_map->Find("tap");
+  EXPECT_TRUE(listeners == nullptr || listeners->empty());
+  event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  result = event::EventDispatcher::DispatchEvent(*target, event);
+  EXPECT_FALSE(result.consumed);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateSpreadEventKeysClearsPreviousEvents) {
+  auto previous_attribute_slots = lepus::CArray::Create();
+  auto previous_spread_object = lepus::Dictionary::Create();
+  previous_spread_object->SetValue("bindtap", lepus::Value("onTap"));
+  previous_spread_object->SetValue("data-test", lepus::Value("old-value"));
+  previous_attribute_slots->emplace_back(lepus::Value(previous_spread_object));
+
+  auto attribute_slots = lepus::CArray::Create();
+  auto spread_object = lepus::Dictionary::Create();
+  spread_object->SetValue("data-test", lepus::Value("new-value"));
+  attribute_slots->emplace_back(lepus::Value(spread_object));
+
+  auto target = manager->CreateFiberView();
+  auto template_attributes = std::make_shared<const TemplateAttributes>(
+      TemplateAttributes{Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD,
+                                   base::String("spread"), lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+  target->SetJSEventHandler("tap", "bindEvent", "onTap");
+  target->SetAttribute("data-test", lepus::Value("old-value"));
+
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), lepus::Value(std::move(previous_attribute_slots)),
+      lepus::Value(std::move(attribute_slots)));
+
+  EXPECT_EQ(target->event_map().count("tap"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
+            "new-value");
+}
+
+TEST_P(FiberElementTest, ApplyTemplateSpreadMainThreadNonEventKeys) {
+  auto attribute_slots = lepus::CArray::Create();
+  auto spread_object = lepus::Dictionary::Create();
+  spread_object->SetValue("main-thread:ref", lepus::Value("ref-value"));
+  spread_object->SetValue("main-thread:gesture", lepus::Value("gesture-value"));
+  spread_object->SetValue("main-thread:bindtap", lepus::Value("onTap"));
+  attribute_slots->emplace_back(lepus::Value(spread_object));
+
+  auto target = manager->CreateFiberView();
+  auto template_attributes = std::make_shared<const TemplateAttributes>(
+      TemplateAttributes{Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD,
+                                   base::String("spread"), lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), lepus::Value(std::move(attribute_slots)));
+
+  EXPECT_EQ(target->data_model_->attributes().at("main-thread:ref").StdString(),
+            "ref-value");
+  EXPECT_EQ(
+      target->data_model_->attributes().at("main-thread:gesture").StdString(),
+      "gesture-value");
+  EXPECT_EQ(target->data_model_->attributes().count("main-thread:bindtap"), 0u);
+  auto event_iter = target->event_map().find("tap");
+  ASSERT_NE(event_iter, target->event_map().end());
+  EXPECT_EQ(event_iter->second->type(), "bindEvent");
+  EXPECT_EQ(event_iter->second->function(), "onTap");
 }
 
 TEST_P(FiberElementTest, ApplyTemplateAttributesWithSpreadReappliesStatics) {

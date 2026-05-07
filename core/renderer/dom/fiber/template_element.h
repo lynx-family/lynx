@@ -123,6 +123,7 @@ class TemplateElement : public FiberElement {
   lepus::Value uid_;
   fml::RefPtr<FiberElement> result_{nullptr};
   base::Vector<fml::RefPtr<FiberElement>> attribute_slot_targets_;
+  base::Vector<fml::RefPtr<FiberElement>> static_event_targets_;
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
   base::Vector<PendingOperation> pending_operations_;
