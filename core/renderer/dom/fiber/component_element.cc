@@ -105,7 +105,8 @@ CSSFragment* ComponentElement::GetCSSFragment() {
     if (css_style_sheet_manager_) {
       style_sheet_ = std::make_unique<CSSFragmentDecorator>(
           css_style_sheet_manager_->GetCSSStyleSheetForComponent(
-              component_css_id_));
+              component_css_id_),
+          element_manager());
     }
     if (style_sheet_) {
       // for css variable in `:root` css
