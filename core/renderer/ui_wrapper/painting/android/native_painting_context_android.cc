@@ -279,11 +279,45 @@ void NativePaintingCtxAndroid::Flush() { queue_->Flush(); }
 
 void NativePaintingCtxAndroid::HandleValidate(int tag) {}
 
+void NativePaintingCtxAndroid::OnFirstScreen() { has_first_screen_ = true; }
+
 void NativePaintingCtxAndroid::FinishTasmOperation(
-    const std::shared_ptr<PipelineOptions> &options) {}
+    const std::shared_ptr<PipelineOptions> &options) {
+  if (view_manager_) {
+    Enqueue([view_manager = view_manager_.get(), options]() {
+      view_manager->FinishTasmOperation(options->operation_id);
+    });
+  }
+  if (options->native_update_data_order_ ==
+      queue_->GetNativeUpdateDataOrder()) {
+    queue_->UpdateStatus(shell::UIOperationStatus::TASM_FINISH);
+  }
+}
 
 void NativePaintingCtxAndroid::FinishLayoutOperation(
-    const std::shared_ptr<PipelineOptions> &options) {}
+    const std::shared_ptr<PipelineOptions> &options) {
+  if (view_manager_ && has_first_screen_) {
+    Enqueue([view_manager = view_manager_.get(), options]() {
+      view_manager->FinishLayoutOperation(options->list_comp_id_,
+                                          options->operation_id,
+                                          options->is_first_screen);
+    });
+  }
+
+  Enqueue([weak_queue = std::weak_ptr<shell::DynamicUIOperationQueue>(queue_),
+           native_update_data_order = options->native_update_data_order_]() {
+    if (auto queue = weak_queue.lock()) {
+      if (native_update_data_order == queue->GetNativeUpdateDataOrder()) {
+        queue->UpdateStatus(shell::UIOperationStatus::ALL_FINISH);
+      }
+    }
+  });
+
+  if (options->native_update_data_order_ ==
+      queue_->GetNativeUpdateDataOrder()) {
+    queue_->UpdateStatus(shell::UIOperationStatus::LAYOUT_FINISH);
+  }
+}
 
 std::vector<float> NativePaintingCtxAndroid::getBoundingClientOrigin(int id) {
   return std::vector<float>();
@@ -399,6 +433,40 @@ void NativePaintingCtxAndroid::DestroyTextBundle(int id) {
   if (view_manager_) {
     view_manager_->DestroyTextBundle(id);
   }
+}
+
+void NativePaintingCtxAndroid::InsertListItemPaintingNode(int32_t list_id,
+                                                          int32_t child_id) {
+  if (!view_manager_) {
+    return;
+  }
+  Enqueue([view_manager = view_manager_.get(), list_id, child_id]() {
+    view_manager->InsertListItemPaintingNode(list_id, child_id);
+  });
+}
+
+void NativePaintingCtxAndroid::RemoveListItemPaintingNode(int32_t list_id,
+                                                          int32_t child_id) {
+  if (!view_manager_) {
+    return;
+  }
+  Enqueue([view_manager = view_manager_.get(), list_id, child_id]() {
+    view_manager->RemoveListItemPaintingNode(list_id, child_id);
+  });
+}
+
+void NativePaintingCtxAndroid::UpdateContentOffsetForListContainer(
+    int32_t container_id, float content_size, float delta_x, float delta_y,
+    bool is_init_scroll_offset, bool from_layout) {
+  if (!view_manager_) {
+    return;
+  }
+  Enqueue([view_manager = view_manager_.get(), container_id, content_size,
+           delta_x, delta_y, is_init_scroll_offset, from_layout]() {
+    view_manager->UpdateContentOffsetForListContainer(
+        container_id, content_size, delta_x, delta_y, is_init_scroll_offset,
+        from_layout);
+  });
 }
 
 }  // namespace tasm

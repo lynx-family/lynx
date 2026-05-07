@@ -95,6 +95,8 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 
   bool EnableUIOperationQueue() override { return true; }
 
+  void OnFirstScreen() override;
+
 #pragma region NativePaintingContext
 
   void CreatePlatformRenderer(
@@ -116,6 +118,16 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 
   void DestroyTextBundle(int id) override;
 
+  void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override;
+
+  void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) override;
+
+  void UpdateContentOffsetForListContainer(int32_t container_id,
+                                           float content_size, float delta_x,
+                                           float delta_y,
+                                           bool is_init_scroll_offset,
+                                           bool from_layout) override;
+
   void ReconstructEventTargetTreeRecursively() override;
 #pragma endregion  // NativePaintingContext
 
@@ -124,6 +136,7 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
     queue_->EnqueueUIOperation(std::move(op));
   }
 
+  bool has_first_screen_ = false;
   std::unique_ptr<PlatformRendererContext> view_manager_;
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
 };

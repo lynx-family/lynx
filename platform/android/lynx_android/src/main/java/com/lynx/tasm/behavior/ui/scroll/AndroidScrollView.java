@@ -288,7 +288,7 @@ public class AndroidScrollView
   }
 
   @Override
-  public ViewGroup getView() {
+  public View getView() {
     return this;
   }
 
@@ -298,19 +298,20 @@ public class AndroidScrollView
       if (mRenderer.getUIHost() != null) {
         mRenderer.getUIHost().measure();
       }
-      mRenderer.onLayout(changed, l, t, r, b);
-      if (mLinearLayout != null) {
-        for (int i = 0; i < mLinearLayout.getChildCount(); i++) {
-          View child = mLinearLayout.getChildAt(i);
-          if (child instanceof IRendererHost) {
-            Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
-            child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
-          }
+    }
+
+    super.onLayout(changed, l, t, r, b);
+
+    if (mRenderer != null && mLinearLayout != null) {
+      for (int i = 0; i < mLinearLayout.getChildCount(); i++) {
+        View child = mLinearLayout.getChildAt(i);
+        if (child instanceof IRendererHost) {
+          Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
+          child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
         }
       }
     }
 
-    super.onLayout(changed, l, t, r, b);
     if (!isHorizontal) {
       final int bounceScrollRange = mBounceGestureHelper.getBounceScrollRange();
       if (mEnableNewBounce && bounceScrollRange > 0 && bounceScrollRange != getScrollY()) {

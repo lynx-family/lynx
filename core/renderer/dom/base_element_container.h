@@ -145,6 +145,8 @@ class BaseElementContainer {
   virtual void FlushImmediately();
 
   virtual void OnFirstScreen();
+  virtual void FinishTasmOperation(
+      const std::shared_ptr<PipelineOptions>& options);
   virtual void AppendOptionsForTiming(
       const std::shared_ptr<PipelineOptions>& options);
   virtual void FinishLayoutOperation(

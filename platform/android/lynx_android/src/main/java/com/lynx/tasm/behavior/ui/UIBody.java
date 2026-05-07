@@ -476,7 +476,7 @@ public class UIBody extends UIGroup<UIBodyView> {
     }
 
     @Override
-    public ViewGroup getView() {
+    public View getView() {
       return this;
     }
 

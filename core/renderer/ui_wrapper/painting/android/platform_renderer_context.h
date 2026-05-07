@@ -67,6 +67,21 @@ class PlatformRendererContext {
 
   void DestroyTextBundle(int32_t id);
 
+  void InsertListItemPaintingNode(int32_t list_sign, int32_t child_sign);
+
+  void RemoveListItemPaintingNode(int32_t list_sign, int32_t child_sign);
+
+  void UpdateContentOffsetForListContainer(int32_t container_id,
+                                           float content_size, float delta_x,
+                                           float delta_y,
+                                           bool is_init_scroll_offset,
+                                           bool from_layout);
+
+  void FinishTasmOperation(int64_t operation_id);
+
+  void FinishLayoutOperation(int32_t component_id, int64_t operation_id,
+                             bool is_first_screen);
+
   int32_t GetTagInfo(const std::string& tag_name);
 
   std::vector<float> GetRootViewLocationOnScreen();
