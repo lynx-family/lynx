@@ -19,6 +19,7 @@
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/dom/element_layout_node_manager.h"
+#include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -34,6 +35,7 @@
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/vdom/radon/radon_list_base.h"
+#include "core/renderer/events/touch_event_handler.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
@@ -464,6 +466,48 @@ void ElementManager::RequestResolve(
   } else {
     OnPatchFinish(pipeline_options);
   }
+}
+
+bool ElementManager::EnableEventHandleRefactor() const {
+  return element_manager_delegate_ != nullptr &&
+         element_manager_delegate_->EnableEventHandleRefactor();
+}
+
+bool ElementManager::SupportComponentJS() const {
+  return element_manager_delegate_ != nullptr &&
+         element_manager_delegate_->SupportComponentJS();
+}
+
+runtime::MTSRuntime *ElementManager::GetDefaultEntryRuntime() const {
+  return element_manager_delegate_ == nullptr
+             ? nullptr
+             : element_manager_delegate_->GetDefaultEntryRuntime();
+}
+
+runtime::MTSRuntime *ElementManager::GetEntryRuntime(
+    const std::string &entry_name) const {
+  return element_manager_delegate_ == nullptr
+             ? nullptr
+             : element_manager_delegate_->GetEntryRuntime(entry_name);
+}
+
+std::string ElementManager::GetDefaultEntryLogicalName() const {
+  return element_manager_delegate_ == nullptr
+             ? std::string()
+             : element_manager_delegate_->GetDefaultEntryLogicalName();
+}
+
+EventResult ElementManager::FireElementWorkletAndRequestResolve(
+    const std::string &component_id, const std::string &entry_name,
+    const lepus::Value &callback, const lepus::Value &event_detail,
+    const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
+    int32_t element_id,
+    std::shared_ptr<PipelineOptions> &pipeline_options) const {
+  return element_manager_delegate_ == nullptr
+             ? EventResult::kDefault
+             : element_manager_delegate_->FireElementWorkletAndRequestResolve(
+                   component_id, entry_name, callback, event_detail,
+                   task_handler, element_id, pipeline_options);
 }
 
 void ElementManager::DidPatchFinishForFiber() {

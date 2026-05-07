@@ -14,6 +14,12 @@
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
+#if ENABLE_LEPUSNG_WORKLET
+#include "core/renderer/pipeline/pipeline_scope.h"
+#include "core/renderer/worklet/lepus_element.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
+#endif
+
 namespace lynx {
 namespace tasm {
 
@@ -94,6 +100,67 @@ void ElementManagerDelegateImpl::TriggerLepusGlobalEvent(
     return;
   }
   tasm_->TriggerLepusGlobalEvent(event, info);
+}
+
+event::DispatchEventResult ElementManagerDelegateImpl::DispatchMessageEvent(
+    fml::RefPtr<runtime::MessageEvent> event) {
+  if (tasm_ == nullptr) {
+    return {event::EventCancelType::kNotCanceled, false};
+  }
+  return tasm_->DispatchMessageEvent(std::move(event));
+}
+
+bool ElementManagerDelegateImpl::EnableEventHandleRefactor() const {
+  return tasm_ != nullptr && tasm_->EnableEventHandleRefactor();
+}
+
+bool ElementManagerDelegateImpl::SupportComponentJS() const {
+  return tasm_ != nullptr && tasm_->SupportComponentJS();
+}
+
+runtime::MTSRuntime *ElementManagerDelegateImpl::GetDefaultEntryRuntime()
+    const {
+  return GetEntryRuntime(DEFAULT_ENTRY_NAME);
+}
+
+runtime::MTSRuntime *ElementManagerDelegateImpl::GetEntryRuntime(
+    const std::string &entry_name) const {
+  if (tasm_ == nullptr) {
+    return nullptr;
+  }
+  const auto &entry = tasm_->FindTemplateEntry(entry_name);
+  return entry == nullptr ? nullptr : entry->GetVm().get();
+}
+
+std::string ElementManagerDelegateImpl::GetDefaultEntryLogicalName() const {
+  if (tasm_ == nullptr) {
+    return std::string();
+  }
+  // The card entry is stored by DEFAULT_ENTRY_NAME, but its logical name may be
+  // the app name. JS event messages historically use the logical entry name.
+  const auto &entry = tasm_->FindEntry(DEFAULT_ENTRY_NAME);
+  return entry == nullptr ? std::string() : entry->GetName();
+}
+
+EventResult ElementManagerDelegateImpl::FireElementWorkletAndRequestResolve(
+    const std::string &component_id, const std::string &entry_name,
+    const lepus::Value &callback, const lepus::Value &event_detail,
+    const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
+    int32_t element_id, std::shared_ptr<PipelineOptions> &pipeline_options) {
+#if ENABLE_LEPUSNG_WORKLET
+  if (tasm_ == nullptr) {
+    return EventResult::kDefault;
+  }
+  PipelineScope pipeline_scope(tasm_, pipeline_options);
+  EventResult result = worklet::LepusElement::FireElementWorklet(
+      component_id, entry_name, tasm_, callback, lepus::Value(), event_detail,
+      task_handler, element_id, EventType::kTouch);
+  tasm_->page_proxy()->element_manager()->SetNeedsLayout();
+  tasm_->page_proxy()->element_manager()->RequestResolve(pipeline_options);
+  return result;
+#else
+  return EventResult::kDefault;
+#endif
 }
 
 void ElementManagerDelegateImpl::OnLayoutAfter(PipelineLayoutData &data) {
