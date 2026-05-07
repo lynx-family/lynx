@@ -1,0 +1,10 @@
+doxmlparser-1.14.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
+doxmlparser-1.14.0.dist-info/METADATA,sha256=f5lM2XEqptvLp1xagbzYvHG53pXnR6953UxGNDOei4o,2092
+doxmlparser-1.14.0.dist-info/RECORD,,
+doxmlparser-1.14.0.dist-info/REQUESTED,sha256=47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU,0
+doxmlparser-1.14.0.dist-info/WHEEL,sha256=zaaOINJESkSfm_4HQVc5ssNzHCPXhJm0kEUakpsEHaU,91
+doxmlparser-1.14.0.dist-info/licenses/LICENSE,sha256=8jql5JStfG01ijNLfGXYDn3UpuggBXIvwPgg0VQKlZk,1058
+doxmlparser-1.14.0.dist-info/top_level.txt,sha256=HIIf8e3It_45WLP3Kvwa3XHIDHf0WYbwuNXcpmvMBDc,12
+doxmlparser/__init__.py,sha256=Tmxid3UuSOLteXyF31IgsmGJo4PkK3z97NO_EHW5bRo,45
+doxmlparser/compound.py,sha256=izDpBq-xaYX_t8kC-8s1oeOtUITDSAaLJDjvuw0PuSU,1284358
+doxmlparser/index.py,sha256=yCPbnnoaWXJO75rCFJgVtv25-JC_a6usinPLizoKhPE,64628
