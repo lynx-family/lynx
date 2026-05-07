@@ -92,7 +92,7 @@ void JSExecutor::invokeCallback(std::shared_ptr<ModuleCallback> callback,
   callback->Invoke(js_runtime_.get(), holder);
 }
 
-std::shared_ptr<App> JSExecutor::createNativeAppInstance(
+base::UnsafeOwningPtr<App> JSExecutor::createNativeAppInstance(
     int64_t rt_id, runtime::TemplateDelegate* delegate,
     std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
     std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,

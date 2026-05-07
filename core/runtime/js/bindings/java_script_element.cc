@@ -25,7 +25,7 @@ Value JavaScriptElement::get(Runtime *rt, const PropNameID &name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "NativeElement.animate args count must be 4"));
           }
-          auto ptr = native_app_.lock();
+          auto *ptr = native_app_.Lock();
           if (ptr) {
             auto props = lepus::CArray::Create();
             auto maybe_operation = args[0].asNumber(rt);
@@ -72,7 +72,7 @@ Value JavaScriptElement::get(Runtime *rt, const PropNameID &name) {
         *rt, PropNameID::forAscii(*rt, "setProperty"), 2,
         [this](Runtime &rt, const Value &this_val, const Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto *ptr = native_app_.Lock();
           if (!ptr || ptr->IsDestroying()) {
             return Value::undefined();
           }

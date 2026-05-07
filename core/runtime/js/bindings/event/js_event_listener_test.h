@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/bindings/event/js_event_listener.h"
 #include "core/runtime/js/jsi/jsi_unittest.h"
 #include "core/runtime/js/mock_template_delegate.h"
@@ -28,7 +29,7 @@ class JSClosureEventListenerTest : public JSITestBase {
   void TearDown() override {}
 
  protected:
-  std::shared_ptr<App> app_;
+  base::UnsafeOwningPtr<App> app_;
   runtime::test::MockTemplateDelegate delegate_;
 };
 

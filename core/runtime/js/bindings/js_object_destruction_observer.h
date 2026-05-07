@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/bindings/js_app.h"
 #include "core/runtime/js/jsi/jsi.h"
 
@@ -25,7 +26,7 @@ namespace js {
  */
 class JSObjectDestructionObserver final : public HostObject {
  public:
-  explicit JSObjectDestructionObserver(std::weak_ptr<App> app,
+  explicit JSObjectDestructionObserver(base::UnsafeWeakPtr<App> app,
                                        ApiCallBack destruction_callback)
       : native_app_(std::move(app)),
         destruction_callback_(std::move(destruction_callback)) {}
@@ -35,18 +36,18 @@ class JSObjectDestructionObserver final : public HostObject {
  private:
   // Can only be called once at destruction.
   void CallDestructionCallback() {
-    if (auto app = native_app_.lock()) {
+    if (auto* app = native_app_.Lock()) {
       app->RunOnJSThreadWhenIdle(
           [destruction_callback = std::move(destruction_callback_),
            weak_app = std::move(native_app_)]() {
-            if (auto app = weak_app.lock()) {
+            if (auto* app = weak_app.Lock()) {
               app->InvokeApiCallBack(destruction_callback);
             }
           });
     }
   }
 
-  std::weak_ptr<App> native_app_;
+  base::UnsafeWeakPtr<App> native_app_;
   ApiCallBack destruction_callback_;
 };
 }  // namespace js

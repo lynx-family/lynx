@@ -46,10 +46,10 @@ function onEvent(e) {
 }
 )--");
 
-  auto listener_1_1 =
-      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function_1));
-  auto listener_1_2 =
-      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function_1));
+  auto listener_1_1 = std::make_unique<JSClosureEventListener>(
+      app_->GetWeakPtr(), Value(rt, js_function_1));
+  auto listener_1_2 = std::make_unique<JSClosureEventListener>(
+      app_->GetWeakPtr(), Value(rt, js_function_1));
 
   EXPECT_TRUE(listener_1_1->Matches(listener_1_2.get()));
   EXPECT_TRUE(listener_1_1->Matches(listener_1_1.get()));
@@ -59,8 +59,8 @@ function onEvent(e) {
       nullptr, Value(rt, js_function_2));
   EXPECT_FALSE(listener_1_1->Matches(listener_2_1.get()));
 
-  auto listener_2_2 =
-      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function_2));
+  auto listener_2_2 = std::make_unique<JSClosureEventListener>(
+      app_->GetWeakPtr(), Value(rt, js_function_2));
   EXPECT_FALSE(listener_1_1->Matches(listener_2_2.get()));
 
   event::test::MockEventListener mock_listener(
@@ -82,13 +82,14 @@ function onEvent(e) {
           ->getObject(another_rt)
           .getFunction(another_rt);
   auto another_js_function_value = Value(another_rt, another_js_function);
-  auto another_js_listener =
-      std::make_unique<JSClosureEventListener>(app_, another_js_function_value);
+  auto another_js_listener = std::make_unique<JSClosureEventListener>(
+      app_->GetWeakPtr(), another_js_function_value);
   EXPECT_FALSE(listener_1_1->Matches(another_js_listener.get()));
 
   auto copy_runtime = runtime;
   auto listener_1_1_from_copy_runtime =
-      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function_1));
+      std::make_unique<JSClosureEventListener>(app_->GetWeakPtr(),
+                                               Value(rt, js_function_1));
   EXPECT_TRUE(listener_1_1->Matches(listener_1_1_from_copy_runtime.get()));
 }
 
@@ -110,8 +111,8 @@ function onEvent(e) {
 }
 )--");
 
-  auto listener =
-      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function));
+  auto listener = std::make_unique<JSClosureEventListener>(
+      app_->GetWeakPtr(), Value(rt, js_function));
   listener->Invoke(nullptr);
   count = runtime->global().getProperty(rt, "count");
   EXPECT_EQ(count->asNumber(rt), 1);
@@ -122,7 +123,8 @@ function onEvent(e) {
   count = runtime->global().getProperty(rt, "count");
   EXPECT_EQ(count->asNumber(rt), 1);
 
-  listener = std::make_unique<JSClosureEventListener>(app_, *count);
+  listener =
+      std::make_unique<JSClosureEventListener>(app_->GetWeakPtr(), *count);
   listener->Invoke(nullptr);
   count = runtime->global().getProperty(rt, "count");
   EXPECT_EQ(count->asNumber(rt), 1);
@@ -136,8 +138,8 @@ function onEvent(e) {
 }
 )--");
 
-  auto listener_1 =
-      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function));
+  auto listener_1 = std::make_unique<JSClosureEventListener>(
+      app_->GetWeakPtr(), Value(rt, js_function));
   auto listener_2 =
       std::make_unique<JSClosureEventListener>(nullptr, Value(rt, js_function));
 
@@ -159,8 +161,8 @@ function onEvent(e) {
   return;
 }
 )--");
-  auto listener_1 =
-      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function));
+  auto listener_1 = std::make_unique<JSClosureEventListener>(
+      app_->GetWeakPtr(), Value(rt, js_function));
 
   auto res_1 = listener_1->ConvertEventToPiperValue(message_event);
   EXPECT_TRUE(res_1.isObject());

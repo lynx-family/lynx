@@ -14,6 +14,7 @@
 
 #include "base/include/closure.h"
 #include "base/include/log/logging.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/public/page_options.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
@@ -50,8 +51,8 @@ class LynxProxy;
 // now this do nothing!
 class AppProxy : public HostObject {
  public:
-  AppProxy(std::weak_ptr<Runtime> rt, std::weak_ptr<App> app)
-      : rt_(rt), native_app_(app) {}
+  AppProxy(std::weak_ptr<Runtime> rt, base::UnsafeWeakPtr<App> app)
+      : rt_(rt), native_app_(std::move(app)) {}
   ~AppProxy() { LOGI("LYNX ~AppProxy destroy"); }
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -62,24 +63,29 @@ class AppProxy : public HostObject {
 
  protected:
   std::weak_ptr<Runtime> rt_;
-  std::weak_ptr<App> native_app_;
+  base::UnsafeWeakPtr<App> native_app_;
 };
 
-class App : public std::enable_shared_from_this<App> {
+class App {
  public:
-  static std::shared_ptr<App> Create(
+  static base::UnsafeOwningPtr<App> Create(
       int64_t rt_id, std::weak_ptr<Runtime> rt,
       runtime::TemplateDelegate* delegate,
       std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
       Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const std::string& group_id, const tasm::PageOptions& page_options) {
-    auto app = std::shared_ptr<App>(new App(
+    auto app = base::UnsafeOwningPtr<App>(new App(
         rt_id, rt, delegate, runtime_delegate, std::move(nativeModuleProxy),
         std::move(api_handler), group_id, page_options));
+    // Expose a weak self-reference so App internals can hand out observers
+    // without relying on enable_shared_from_this.
+    app->weak_self_ = app.GetWeakPtr();
     app->Init();
     return app;
   }
+
+  base::UnsafeWeakPtr<App> GetWeakPtr() const { return weak_self_; }
 
   ~App() { LOGI("~App()"); }
   void Destroy();
@@ -342,6 +348,7 @@ class App : public std::enable_shared_from_this<App> {
   };
   State state_ = State::kNotStarted;
 
+  base::UnsafeWeakPtr<App> weak_self_;
   std::string app_guid_;
   std::weak_ptr<Runtime> rt_;
   std::string i18_resource_;

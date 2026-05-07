@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/common/bindings/resource/response_handler_proxy.h"
 #include "core/runtime/js/jsi/jsi.h"
 
@@ -27,7 +28,7 @@ class ResponseHandlerInJS
   ResponseHandlerInJS(Delegate&, const std::string& url,
                       const std::shared_ptr<
                           runtime::ResponsePromise<tasm::BundleResourceInfo>>&,
-                      std::weak_ptr<App>);
+                      base::UnsafeWeakPtr<App>);
 
   virtual ~ResponseHandlerInJS() override = default;
 
@@ -44,10 +45,10 @@ class ResponseHandlerInJS
   Value AddListenerForResponse(Runtime& rt);
 
   static Value ConvertBundleInfoToPiperValue(
-      std::shared_ptr<App> native_app,
+      const base::UnsafeWeakPtr<App>& native_app,
       const tasm::BundleResourceInfo& bundle_info);
 
-  std::weak_ptr<App> native_app_;
+  base::UnsafeWeakPtr<App> native_app_;
 };
 
 }  // namespace js

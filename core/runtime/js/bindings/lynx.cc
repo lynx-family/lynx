@@ -25,7 +25,7 @@ namespace js {
 Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
   auto methodName = name.utf8(*rt);
   if (methodName == "__globalProps") {
-    auto native_app = native_app_.lock();
+    auto *native_app = native_app_.Lock();
     if (!native_app) {
       return Value::undefined();
     }
@@ -38,7 +38,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
   }
 
   if (methodName == "__presetData") {
-    auto native_app = native_app_.lock();
+    auto *native_app = native_app_.Lock();
     if (!native_app) {
       return Value::undefined();
     }
@@ -54,7 +54,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
         *rt, PropNameID::forAscii(*rt, "getI18nResource"), 0,
         [this](Runtime &rt, const Value &this_val, const Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto native_app = native_app_.lock();
+          auto *native_app = native_app_.Lock();
           if (!native_app) {
             return Value::undefined();
           }
@@ -71,7 +71,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "lynx.getComponentContext args count must be 3"));
           }
-          auto ptr = native_app_.lock();
+          auto *ptr = native_app_.Lock();
           if (ptr && !ptr->IsDestroying()) {
             std::string id;
             if (args[0].isString()) {
@@ -127,7 +127,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
                 "be no less than 3"));
           }
 
-          auto ptr = native_app_.lock();
+          auto *ptr = native_app_.Lock();
           if (ptr) {
             std::string url;
             ApiCallBack callback;
@@ -169,7 +169,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
         *rt, PropNameID::forAscii(*rt, "reload"), 2,
         [this](Runtime &rt, const Value &thisVal, const Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto *ptr = native_app_.Lock();
           if (ptr) {
             lepus::Value value(lepus::Dictionary::Create());
             ApiCallBack callback;
@@ -212,7 +212,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
         *rt, PropNameID::forAscii(*rt, "startRecording"), 1,
         [this](Runtime &rt, const Value &thisVal, const Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto *ptr = native_app_.Lock();
           if (ptr) {
             lepus::Value value(lepus::Dictionary::Create());
             if (count > 0) {
@@ -242,7 +242,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
         *rt, PropNameID::forAscii(*rt, "stopRecording"), 1,
         [this](Runtime &rt, const Value &thisVal, const Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto *ptr = native_app_.Lock();
           if (ptr) {
             lepus::Value value(lepus::Dictionary::Create());
             if (count > 0) {
@@ -272,7 +272,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
         *rt, PropNameID::forAscii(*rt, "QueryComponent"), 2,
         [this](Runtime &rt, const Value &thisVal, const Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto *ptr = native_app_.Lock();
           if (ptr) {
             std::string url;
             ApiCallBack callback;
@@ -300,7 +300,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
         *rt, PropNameID::forAscii(*rt, "addFont"), 2,
         [this](Runtime &rt, const Value &thisVal, const Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto *ptr = native_app_.Lock();
           if (!ptr) {
             return Value::undefined();
           }
@@ -342,7 +342,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
         [this, methodName = std::move(methodName)](
             Runtime &rt, const Value &thisVal, const Value *args,
             size_t count) -> base::expected<Value, JSINativeException> {
-          auto app = native_app_.lock();
+          auto *app = native_app_.Lock();
           if (!app) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "lynx." + methodName +
@@ -390,7 +390,7 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "queueMicrotask args count must = 1"));
           }
-          auto native_app = native_app_.lock();
+          auto *native_app = native_app_.Lock();
           if (!native_app || native_app->IsDestroying()) {
             return Value::undefined();
           }
@@ -433,7 +433,7 @@ Value LynxProxy::GetCustomSectionSync(Runtime &rt, const char *prop_name) {
               "'s args must has 'key' argument."));
         }
 
-        auto native_app = native_app_.lock();
+        auto *native_app = native_app_.Lock();
         if (native_app) {
           std::string url;
           if (!args[0].isString()) {
@@ -465,7 +465,7 @@ Value LynxProxy::LoadScript(Runtime &rt) {
       rt, PropNameID::forAscii(rt, tasm::kLoadScript), 1,
       [this](Runtime &rt, const Value &thisVal, const Value *args,
              size_t count) -> base::expected<Value, JSINativeException> {
-        auto native_app = native_app_.lock();
+        auto *native_app = native_app_.Lock();
         if (!native_app || native_app->IsDestroying()) {
           return Value::undefined();
         }
@@ -504,7 +504,7 @@ Value LynxProxy::FetchBundle(Runtime &rt) {
       rt, PropNameID::forAscii(rt, tasm::kFetchBundle), 1,
       [this](Runtime &rt, const Value &thisVal, const Value *args,
              size_t count) -> base::expected<Value, JSINativeException> {
-        auto native_app = native_app_.lock();
+        auto *native_app = native_app_.Lock();
         if (!native_app || native_app->IsDestroying()) {
           return Value::undefined();
         }

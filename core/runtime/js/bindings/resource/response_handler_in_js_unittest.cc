@@ -59,9 +59,9 @@ TEST_P(ResponseHandlerInJSTest, ThenCallbackFiresWithoutHoldingHandler) {
                   nullptr, "-1", tasm::PageOptions());
   bool resource_callback_called = false;
   {
-    auto handler =
-        std::make_shared<ResponseHandlerInJS>(delegate,
-                                              /*url=*/"test-url", promise, app);
+    auto handler = std::make_shared<ResponseHandlerInJS>(
+        delegate,
+        /*url=*/"test-url", promise, app->GetWeakPtr());
 
     handler->AddResourceListener(
         [&resource_callback_called](tasm::BundleResourceInfo info) {

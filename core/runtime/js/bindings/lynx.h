@@ -6,8 +6,10 @@
 #define CORE_RUNTIME_JS_BINDINGS_LYNX_H_
 
 #include <memory>
+#include <utility>
 #include <vector>
 
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/bindings/js_app.h"
 #include "core/runtime/js/jsi/jsi.h"
 
@@ -16,7 +18,7 @@ namespace runtime {
 namespace js {
 class LynxProxy : public HostObject {
  public:
-  LynxProxy(std::weak_ptr<App> app) : native_app_(app){};
+  LynxProxy(base::UnsafeWeakPtr<App> app) : native_app_(std::move(app)){};
   ~LynxProxy() = default;
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -25,7 +27,7 @@ class LynxProxy : public HostObject {
   virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
 
  private:
-  std::weak_ptr<App> native_app_;
+  base::UnsafeWeakPtr<App> native_app_;
 
   Value GetCustomSectionSync(Runtime& rt, const char* prop_name);
   Value LoadScript(Runtime& rt);

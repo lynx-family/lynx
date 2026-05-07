@@ -52,13 +52,13 @@ PropType ConvertPropStringToPropType(const std::string &str) {
 
 ContextProxyInJS::ContextProxyInJS(runtime::ContextProxy::Delegate &delegate,
                                    runtime::ContextProxy::Type target_type,
-                                   std::weak_ptr<App> native_app)
+                                   base::UnsafeWeakPtr<App> native_app)
     : runtime::ContextProxy(delegate, runtime::ContextProxy::Type::kJSContext,
                             target_type),
-      native_app_(native_app) {}
+      native_app_(std::move(native_app)) {}
 
 void ContextProxyInJS::ReportError(base::LynxError error) {
-  auto app = native_app_.lock();
+  auto *app = native_app_.Lock();
   if (!app) {
     return;
   }
@@ -66,7 +66,8 @@ void ContextProxyInJS::ReportError(base::LynxError error) {
 }
 
 fml::RefPtr<runtime::MessageEvent> ContextProxyInJS::CreateMessageEvent(
-    Runtime &rt, std::shared_ptr<App> native_app, const Value &event) {
+    Runtime &rt, const base::UnsafeWeakPtr<App> &native_app,
+    const Value &event) {
   return fml::MakeRefCounted<runtime::MessageEvent>(
       event.getObject(rt)
           .getProperty(rt, runtime::kType)
@@ -101,7 +102,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
                   " failed, since the args count must >= 1!"));
             }
 
-            auto app = native_app_.lock();
+            auto *app = native_app_.Lock();
             if (!app) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                   "ContextProxy's " + method_name +
@@ -124,7 +125,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
                   " failed, since the args count must >= 1!"));
             }
 
-            auto app = native_app_.lock();
+            auto *app = native_app_.Lock();
             if (!app) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                   "ContextProxy's " + method_name +
@@ -152,7 +153,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
                   " failed, since arg0 must contain data property!"));
             }
 
-            auto message_event = CreateMessageEvent(rt, app, event);
+            auto message_event = CreateMessageEvent(rt, native_app_, event);
             auto result = DispatchEvent(std::move(message_event));
             return Value(static_cast<int>(result.cancel_type));
           } else if (type == PropType::kAddEventListener) {
@@ -162,7 +163,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
                   " failed, since the args count must >= 2!"));
             }
 
-            auto app = native_app_.lock();
+            auto *app = native_app_.Lock();
             if (!app || app->IsDestroying()) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                   "ContextProxy's " + method_name +
@@ -183,7 +184,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
 
             AddEventListener(
                 args[0].asString(rt)->utf8(rt),
-                std::make_unique<JSClosureEventListener>(app, args[1]));
+                std::make_unique<JSClosureEventListener>(native_app_, args[1]));
 
             return Value::undefined();
           } else if (type == PropType::kRemoveEventListener) {
@@ -193,7 +194,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
                   " failed, since the args count must >= 2!"));
             }
 
-            auto app = native_app_.lock();
+            auto *app = native_app_.Lock();
             if (!app) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                   "ContextProxy's " + method_name +
@@ -214,7 +215,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
 
             RemoveEventListener(
                 args[0].asString(rt)->utf8(rt),
-                std::make_unique<JSClosureEventListener>(app, args[1]));
+                std::make_unique<JSClosureEventListener>(native_app_, args[1]));
 
             return Value::undefined();
           }
@@ -237,15 +238,15 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
 
 void ContextProxyInJS::set(Runtime *rt, const PropNameID &name,
                            const Value &value) {
-  auto app = native_app_.lock();
+  auto *app = native_app_.Lock();
   if (rt == nullptr || !app || app->IsDestroying()) {
     return;
   }
 
   auto name_str = name.utf8(*rt);
   if (name_str == runtime::kOnTriggerEvent) {
-    SetListenerBeforePublishEvent(
-        std::make_unique<JSClosureEventListener>(app, Value(*rt, value)));
+    SetListenerBeforePublishEvent(std::make_unique<JSClosureEventListener>(
+        native_app_, Value(*rt, value)));
   }
   return;
 }

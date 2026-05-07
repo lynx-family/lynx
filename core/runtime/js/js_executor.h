@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "core/base/lynx_export.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/public/page_options.h"
 #include "core/runtime/js/bindings/global.h"
 #include "core/runtime/js/bindings/js_app.h"
@@ -61,7 +62,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
   runtime::RuntimeManager* runtimeManagerInstance();
 
-  std::shared_ptr<App> createNativeAppInstance(
+  base::UnsafeOwningPtr<App> createNativeAppInstance(
       int64_t rt_id, runtime::TemplateDelegate*,
       std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,

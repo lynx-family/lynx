@@ -1076,9 +1076,8 @@ void BTSRuntime::SetEnableBytecode(bool enable,
 
 void BTSRuntime::SetPageOptions(const tasm::PageOptions& page_options) {
   page_options_ = page_options;
-  auto app = app_;
-  if (app) {
-    app->SetPageOptions(page_options);
+  if (app_) {
+    app_->SetPageOptions(page_options);
   }
 }
 

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/include/fml/message_loop.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/bindings/event/context_proxy_in_js.h"
 #include "core/runtime/js/bindings/js_app.h"
 #include "core/runtime/js/bindings/lynx.h"
@@ -59,7 +60,7 @@ class ContextProxyInJSTest : public JSITestBase {
   void TearDown() override {}
 
   std::shared_ptr<JSRuntimeTestMockJSApp> mock_js_app_;
-  std::shared_ptr<App> app_;
+  base::UnsafeOwningPtr<App> app_;
   std::shared_ptr<LynxProxy> lynx_proxy_;
 
   JSRuntimeTestMockDelegate delegate_;

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/include/value/base_value.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/common/bindings/event/context_proxy.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/jsi/jsi.h"
@@ -24,11 +25,12 @@ class Runtime;
 class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
  public:
   ContextProxyInJS(runtime::ContextProxy::Delegate&,
-                   runtime::ContextProxy::Type, std::weak_ptr<App>);
+                   runtime::ContextProxy::Type, base::UnsafeWeakPtr<App>);
   virtual ~ContextProxyInJS() override = default;
 
   fml::RefPtr<runtime::MessageEvent> CreateMessageEvent(
-      Runtime& rt, std::shared_ptr<App> native_app, const Value& event);
+      Runtime& rt, const base::UnsafeWeakPtr<App>& native_app,
+      const Value& event);
 
   virtual Value get(Runtime*, const PropNameID& name) override;
   virtual void set(Runtime*, const PropNameID& name,
@@ -41,7 +43,7 @@ class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
  protected:
   void ReportError(base::LynxError error) override;
 
-  std::weak_ptr<App> native_app_;
+  base::UnsafeWeakPtr<App> native_app_;
 };
 
 }  // namespace js

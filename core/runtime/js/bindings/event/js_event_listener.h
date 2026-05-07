@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "base/include/value/base_value.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/event/event_listener.h"
 #include "core/runtime/common/bindings/event/context_proxy.h"
 #include "core/runtime/js/bindings/js_app.h"
@@ -19,7 +20,7 @@ namespace js {
 class JSClosureEventListener : public event::EventListener {
  public:
   JSClosureEventListener(
-      std::shared_ptr<App>, const Value&,
+      base::UnsafeWeakPtr<App>, const Value&,
       const EventListener::Options& options = EventListener::Options());
   ~JSClosureEventListener() override = default;
 
@@ -32,7 +33,7 @@ class JSClosureEventListener : public event::EventListener {
  private:
   Value ConvertEventToPiperValue(fml::RefPtr<event::Event> event);
 
-  std::weak_ptr<App> native_app_;
+  base::UnsafeWeakPtr<App> native_app_;
   Value closure_;
 };
 

@@ -15,6 +15,7 @@
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/debug/lynx_error.h"
 #include "base/include/vector.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/public/jsb/native_module_factory.h"
 #include "core/public/page_options.h"
@@ -252,7 +253,7 @@ class BTSRuntime final {
   const int32_t instance_id_;
   const std::unique_ptr<runtime::TemplateDelegate> delegate_;
   std::unique_ptr<lynx::runtime::js::JSExecutor> js_executor_;
-  std::shared_ptr<runtime::js::App> app_;
+  base::UnsafeOwningPtr<runtime::js::App> app_;
 #if ENABLE_NAPI_BINDING
   std::unique_ptr<runtime::js::NapiEnvironment> napi_environment_;
   std::unique_ptr<runtime::js::NapiEnvironment> napi_restricted_environment_;

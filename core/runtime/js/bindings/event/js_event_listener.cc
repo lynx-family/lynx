@@ -4,6 +4,8 @@
 
 #include "core/runtime/js/bindings/event/js_event_listener.h"
 
+#include <utility>
+
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/runtime/common/bindings/event/message_event.h"
@@ -17,15 +19,16 @@ namespace lynx {
 namespace runtime {
 namespace js {
 JSClosureEventListener::JSClosureEventListener(
-    std::shared_ptr<App> app, const Value& closure,
+    base::UnsafeWeakPtr<App> app, const Value& closure,
     const EventListener::Options& options)
     : event::EventListener(event::EventListener::Type::kJSClosureEventListener,
                            options),
-      native_app_(app) {
-  if (!app) {
+      native_app_(std::move(app)) {
+  auto* native_app = native_app_.Lock();
+  if (!native_app) {
     return;
   }
-  auto rt = app->GetRuntime();
+  auto rt = native_app->GetRuntime();
   if (rt == nullptr) {
     return;
   }
@@ -41,7 +44,7 @@ void JSClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
     return;
   }
 
-  auto app = native_app_.lock();
+  auto* app = native_app_.Lock();
   if (!app || app->IsDestroying()) {
     LOGE(
         "JSClosureEventListener::Invoke error: the app is null or destroying.");
@@ -78,11 +81,11 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
 
   std::shared_ptr<Runtime> other_rt = nullptr;
   std::shared_ptr<Runtime> rt = nullptr;
-  auto other_native_app = other->native_app_.lock();
+  auto* other_native_app = other->native_app_.Lock();
   if (other_native_app) {
     other_rt = other_native_app->GetRuntime();
   }
-  auto native_app = native_app_.lock();
+  auto* native_app = native_app_.Lock();
   if (native_app) {
     rt = native_app->GetRuntime();
   }
@@ -96,7 +99,7 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
 }
 
 Value JSClosureEventListener::GetClosure() {
-  auto native_app = native_app_.lock();
+  auto* native_app = native_app_.Lock();
   std::shared_ptr<Runtime> rt = nullptr;
   if (native_app && !native_app->IsDestroying()) {
     rt = native_app->GetRuntime();
@@ -111,7 +114,7 @@ Value JSClosureEventListener::ConvertEventToPiperValue(
     fml::RefPtr<event::Event> event) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               CLOSURE_EVENT_LISTENER_CONVERT_TO_PIPER_VALUE);
-  auto app = native_app_.lock();
+  auto* app = native_app_.Lock();
   std::shared_ptr<Runtime> rt = nullptr;
   if (app && !app->IsDestroying()) {
     rt = app->GetRuntime();

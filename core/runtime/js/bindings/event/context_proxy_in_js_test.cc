@@ -55,7 +55,7 @@ void ContextProxyInJSTest::SetUp() {
 
   app_->SetJsAppObj(Object::createFromHostObject(*runtime, mock_js_app_));
 
-  lynx_proxy_ = std::make_shared<LynxProxy>(app_);
+  lynx_proxy_ = std::make_shared<LynxProxy>(app_->GetWeakPtr());
   Object lynx_obj = Object::createFromHostObject(rt, lynx_proxy_);
   function(R"--(
     function registerLynx(lynx) {
@@ -309,9 +309,9 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSOnTriggerEventTest) {
       .call(rt, Value::undefined());
 
   auto compare_event_listener = std::make_unique<JSClosureEventListener>(
-      app_, *(runtime->global().getProperty(rt, "onEvent")));
+      app_->GetWeakPtr(), *(runtime->global().getProperty(rt, "onEvent")));
   auto compare_event_listener_1 = std::make_unique<JSClosureEventListener>(
-      app_, *(runtime->global().getProperty(rt, "onEvent_1")));
+      app_->GetWeakPtr(), *(runtime->global().getProperty(rt, "onEvent_1")));
 
   EXPECT_TRUE(app_
                   ->context_proxy_vector_[static_cast<int32_t>(

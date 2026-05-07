@@ -20,9 +20,9 @@ ResponseHandlerInJS::ResponseHandlerInJS(
     Delegate& delegate, const std::string& url,
     const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
         promise,
-    std::weak_ptr<App> native_app)
+    base::UnsafeWeakPtr<App> native_app)
     : runtime::ResponseHandlerProxy(delegate, url, promise),
-      native_app_(native_app) {}
+      native_app_(std::move(native_app)) {}
 
 Value ResponseHandlerInJS::get(Runtime* rt, const PropNameID& name) {
   if (rt == nullptr) {
@@ -45,7 +45,7 @@ void ResponseHandlerInJS::AddResourceListener(
   promise_->AddCallback(
       [native_app = native_app_, closure = std::move(closure)](
           tasm::BundleResourceInfo bundle_info) mutable {
-        auto ptr = native_app.lock();
+        auto* ptr = native_app.Lock();
         if (ptr && !ptr->IsDestroying()) {
           ptr->GetDelegate().InvokeResponsePromiseCallback(
               [bundle_info = std::move(bundle_info),
@@ -65,7 +65,7 @@ Value ResponseHandlerInJS::WaitingForResponse(Runtime& rt) {
           return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
               "ResponseHandler.wait's args count must be 1."));
         }
-        auto ptr = native_app_.lock();
+        auto* ptr = native_app_.Lock();
         if (ptr && !ptr->IsDestroying()) {
           if (!args[0].isNumber()) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
@@ -74,7 +74,7 @@ Value ResponseHandlerInJS::WaitingForResponse(Runtime& rt) {
 
           double timeout = args[0].getNumber();
           auto result = WaitAndGetResource(timeout);
-          return ConvertBundleInfoToPiperValue(ptr, result);
+          return ConvertBundleInfoToPiperValue(native_app_, result);
         }
         return Value::undefined();
       });
@@ -89,7 +89,7 @@ Value ResponseHandlerInJS::AddListenerForResponse(Runtime& rt) {
           return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
               "ResponseHandler.then's args count must be 1."));
         }
-        auto ptr = native_app_.lock();
+        auto* ptr = native_app_.Lock();
         if (ptr && !ptr->IsDestroying()) {
           if (!args[0].isObject() || !args[0].getObject(rt).isFunction(rt)) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
@@ -101,31 +101,32 @@ Value ResponseHandlerInJS::AddListenerForResponse(Runtime& rt) {
             callback =
                 ptr->CreateCallBack(args[0].getObject(rt).getFunction(rt));
           }
-          AddResourceListener(
-              [native_app = native_app_, callback = std::move(callback)](
-                  tasm::BundleResourceInfo info) mutable {
-                auto ptr = native_app.lock();
-                if (ptr && !ptr->IsDestroying()) {
-                  auto rt = ptr->GetRuntime();
-                  if (rt != nullptr) {
-                    ptr->InvokeApiCallBackWithValue(
-                        callback, ConvertBundleInfoToPiperValue(ptr, info));
-                  }
-                }
-              });
+          AddResourceListener([native_app = native_app_,
+                               callback = std::move(callback)](
+                                  tasm::BundleResourceInfo info) mutable {
+            auto* ptr = native_app.Lock();
+            if (ptr && !ptr->IsDestroying()) {
+              auto rt = ptr->GetRuntime();
+              if (rt != nullptr) {
+                ptr->InvokeApiCallBackWithValue(
+                    callback, ConvertBundleInfoToPiperValue(native_app, info));
+              }
+            }
+          });
         }
         return Value::undefined();
       });
 }
 
 Value ResponseHandlerInJS::ConvertBundleInfoToPiperValue(
-    std::shared_ptr<App> native_app,
+    const base::UnsafeWeakPtr<App>& native_app,
     const tasm::BundleResourceInfo& bundle_info) {
-  std::shared_ptr<Runtime> rt = nullptr;
-  if (native_app && !native_app->IsDestroying()) {
-    rt = native_app->GetRuntime();
+  auto* app = native_app.Lock();
+  if (app == nullptr || app->IsDestroying()) {
+    return Value::undefined();
   }
-  if (rt == nullptr || native_app == nullptr) {
+  auto rt = app->GetRuntime();
+  if (rt == nullptr) {
     return Value::undefined();
   }
   Object obj(*rt);

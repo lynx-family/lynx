@@ -7,8 +7,10 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
@@ -21,9 +23,11 @@ class JavaScriptElement : public HostObject {
  public:
   enum AnimationOperation : int32_t { START = 0, PLAY, PAUSE, CANCEL, FINISH };
 
-  JavaScriptElement(std::weak_ptr<App> app, const std::string& root_id,
+  JavaScriptElement(base::UnsafeWeakPtr<App> app, const std::string& root_id,
                     const std::string& selector_id)
-      : native_app_(app), root_id_(root_id), selector_id_(selector_id){};
+      : native_app_(std::move(app)),
+        root_id_(root_id),
+        selector_id_(selector_id){};
   virtual ~JavaScriptElement() override {
     LOGI("LYNX ~NativeElement destroy");
   };
@@ -34,7 +38,7 @@ class JavaScriptElement : public HostObject {
   virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
 
  private:
-  std::weak_ptr<App> native_app_;
+  base::UnsafeWeakPtr<App> native_app_;
   std::string root_id_;
   std::string selector_id_;
 };
