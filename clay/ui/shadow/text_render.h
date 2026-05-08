@@ -83,7 +83,8 @@ class TextRender {
   // support inline-truncation
   void HandleInlineTruncation(const MeasureConstraint& constraint,
                               ShadowLayoutContextMeasure* context);
-  void ProcessTruncationContent(size_t& display_glyph_num, ShadowNode* node);
+  void ProcessTruncationContent(size_t& display_glyph_num, ShadowNode* node,
+                                size_t* visible_text_length_utf32 = nullptr);
 
   static clay::Value GetTextInfo(const char* text, const clay::Value& params);
 
@@ -102,6 +103,7 @@ class TextRender {
   int measured_height_;
   std::unique_ptr<txt::Paragraph> cache_paragraph_;
   size_t end_glyph_position_ = 0;
+  size_t end_glyph_position_utf32_ = 0;
   TextDirection truncation_direction_ = TextDirection::kLtr;
   // Override ellipsis count for inline truncation because line metrics are
   // based on the rebuilt truncated paragraph.

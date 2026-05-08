@@ -47,7 +47,13 @@ class RawTextShadowNode : public ShadowNode {
   void AddTextWithInlineEmoji(LayoutContextText* text_context,
                               const std::u16string& text,
                               bool need_text_indent);
+  // Returns the paragraph layout length. Text indices use UTF-16 code units.
   size_t GetLayoutTextLength() const;
+  // Converts a paragraph UTF-16 layout length to logical UTF-32 length for
+  // layout-event hidden counts.
+  size_t GetLayoutTextLengthForUtf16Length(size_t layout_text_length) const;
+  // Maps a paragraph layout length back to a raw UTF-16 end index. The returned
+  // index is clamped to a code point boundary so surrogate pairs stay intact.
   size_t GetRawEndIndexForLayoutTextLength(size_t layout_text_length) const;
 
  private:
@@ -59,7 +65,7 @@ class RawTextShadowNode : public ShadowNode {
   size_t CurrentRawTextEnd() const;
   size_t LayoutTextLength() const;
   size_t RawEndIndexForLayoutTextIndex(size_t layout_text_index) const;
-  void BuildIdentityLayoutTextMapping(size_t length);
+  void BuildIdentityLayoutTextMapping(const std::u16string& text);
 
   std::u16string origin_text_;
   std::u16string text_;

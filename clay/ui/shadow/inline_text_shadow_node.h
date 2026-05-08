@@ -24,7 +24,7 @@ class InlineTextShadowNode : public BaseTextShadowNode {
 
   void TextLayout(LayoutContext* context) override;
 
-  // Add a range [start, end).
+  // Add a paragraph range [start, end).
   void AddTextRange(size_t start, size_t end);
 
   void LayoutRange(txt::Paragraph* paragraph);

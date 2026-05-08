@@ -47,6 +47,7 @@ namespace clay {
 namespace {
 
 static constexpr float kDefaultFontSizeInDip = 14.f;
+static constexpr float kSecondLayoutWidthTolerance = 1.f;
 
 }  // namespace
 
@@ -304,6 +305,12 @@ MeasureResult TextShadowNode::Measure(const MeasureConstraint& constraint) {
 
   if (need_second_layout_) {
     need_second_layout_ = false;
+    if (constraint.width_mode == TextMeasureMode::kIndefinite) {
+      // The second layout is only used to give non-left-aligned text a finite
+      // paragraph width for painting. Keep a small tolerance so max-content RTL
+      // text does not wrap at a rounded intrinsic-width boundary.
+      result.width += kSecondLayoutWidthTolerance;
+    }
     auto constraint =
         MeasureConstraint({result.width, TextMeasureMode::kDefinite,
                            result.height, TextMeasureMode::kDefinite});

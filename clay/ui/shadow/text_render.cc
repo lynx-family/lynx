@@ -40,6 +40,17 @@ namespace utils = attribute_utils;
 constexpr float kLayoutTolerance = 1.f;
 static constexpr float kDefaultFontSizeInDip = 14.f;
 
+static bool DidTextOverflowForInlineTruncation(
+    txt::Paragraph* paragraph, const MeasureConstraint& constraint) {
+  if (!paragraph) {
+    return false;
+  }
+  return paragraph->DidExceedMaxLines() ||
+         (constraint.height_mode != MeasureMode::kIndefinite &&
+          paragraph->GetHeight() > constraint.height &&
+          paragraph->GetLineMetrics().size() > 1);
+}
+
 clay::Value TextRender::GetTextInfo(const char* text,
                                     const clay::Value& params) {
   const auto& info = utils::GetMap(params);
@@ -271,6 +282,8 @@ std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
   TRACE_EVENT("clay", "TextRender::Layout");
   paragraph->Layout(layout_width);
   end_glyph_position_ = context_text.TextSizeIncludingPlaceholders();
+  end_glyph_position_utf32_ =
+      context_text.TextSizeIncludingPlaceholdersInUtf32();
   return paragraph;
 }
 
@@ -617,11 +630,8 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
   for (auto child : measure_node_->GetChildren()) {
     if (child->IsInlineTruncationShadowNode()) {
       auto truncation_node = static_cast<InlineTruncationShadowNode*>(child);
-      if (cache_paragraph_ &&
-          (cache_paragraph_->DidExceedMaxLines() ||
-           (constraint.height_mode != MeasureMode::kIndefinite &&
-            cache_paragraph_->GetHeight() > constraint.height &&
-            cache_paragraph_->GetLineMetrics().size() > 1))) {
+      if (DidTextOverflowForInlineTruncation(cache_paragraph_.get(),
+                                             constraint)) {
         FloatSize truncation_size = truncation_node->CalculateTruncatedSize();
         if (truncation_size.width() > constraint.width) {
           truncation_node->SetNeedMount(false);
@@ -629,12 +639,14 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
         }
         truncation_node->SetNeedLayout(true);
         truncation_node->SetNeedMount(true);
+        auto reserved_truncation_width =
+            truncation_size.width() + kLayoutTolerance;
 #ifndef CLAY_ENABLE_TTTEXT
         auto end_dx = truncation_direction_ == TextDirection::kRtl
-                          ? truncation_size.width()
-                          : prev_layout_width_ - truncation_size.width();
+                          ? reserved_truncation_width
+                          : prev_layout_width_ - reserved_truncation_width;
 #else
-        auto end_dx = prev_layout_width_ - truncation_size.width();
+        auto end_dx = prev_layout_width_ - reserved_truncation_width;
 #endif
         auto line_metrics = cache_paragraph_->GetLineMetrics();
         if (line_metrics.empty()) {
@@ -646,30 +658,63 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
                           ? cache_paragraph_->GetHeight()
                           : std::min<double>(cache_paragraph_->GetHeight(),
                                              constraint.height.value_or(0)) -
-                                last_line_height;
+                                last_line_height + kLayoutTolerance;
         auto end_glyph_index =
             cache_paragraph_->GetGlyphPositionAtCoordinate(end_dx, end_dy);
-        auto end_glyph_boxes = cache_paragraph_->GetRectsForRange(
-            end_glyph_index.position - 1, end_glyph_index.position,
-            txt::Paragraph::RectHeightStyle::kTight,
-            txt::Paragraph::RectWidthStyle::kTight);
         size_t display_glyph_num = end_glyph_index.position;
-        if (!end_glyph_boxes.empty()) {
-          auto glyph_box = end_glyph_boxes.front();
-          if (glyph_box.rect.Right() >
-              prev_layout_width_ - truncation_size.width()) {
-            display_glyph_num = end_glyph_index.position - 1;
+        if (end_glyph_index.position > 0) {
+          auto end_glyph_boxes = cache_paragraph_->GetRectsForRange(
+              end_glyph_index.position - 1, end_glyph_index.position,
+              txt::Paragraph::RectHeightStyle::kTight,
+              txt::Paragraph::RectWidthStyle::kTight);
+          if (!end_glyph_boxes.empty()) {
+            auto glyph_box = end_glyph_boxes.front();
+            if (glyph_box.rect.Right() >
+                prev_layout_width_ - reserved_truncation_width) {
+              display_glyph_num = end_glyph_index.position - 1;
+            }
           }
         }
-        const size_t visible_glyph_num = display_glyph_num;
-        ProcessTruncationContent(display_glyph_num, measure_node_);
-        inline_truncation_hidden_count_ =
-            static_cast<int>(end_glyph_position_ > visible_glyph_num
-                                 ? end_glyph_position_ - visible_glyph_num
-                                 : 0);
-        measure_node_->text_style_->overflow = TextOverflow::kClip;
-        update_flag_ = TextUpdateFlag::kUpdateFlagStyle;
-        BuildTextLayout(constraint, context);
+        const size_t original_end_glyph_position = end_glyph_position_;
+        const size_t original_end_glyph_position_utf32 =
+            end_glyph_position_utf32_;
+        while (true) {
+          const size_t visible_glyph_num = display_glyph_num;
+          // Paragraph hit-testing uses UTF-16 positions. Only convert the
+          // hidden count exposed by layout events when surrogate pairs are
+          // present.
+          size_t visible_text_length_utf32 = 0;
+          size_t* visible_text_length_utf32_ptr =
+              original_end_glyph_position_utf32 != original_end_glyph_position
+                  ? &visible_text_length_utf32
+                  : nullptr;
+          auto remaining_display_glyph_num = display_glyph_num;
+          measure_node_->ResetEndIndex();
+          ProcessTruncationContent(remaining_display_glyph_num, measure_node_,
+                                   visible_text_length_utf32_ptr);
+          if (visible_text_length_utf32_ptr) {
+            auto hidden_count =
+                original_end_glyph_position_utf32 > visible_text_length_utf32
+                    ? original_end_glyph_position_utf32 -
+                          visible_text_length_utf32
+                    : 0;
+            inline_truncation_hidden_count_ = static_cast<int>(hidden_count);
+          } else {
+            inline_truncation_hidden_count_ = static_cast<int>(
+                original_end_glyph_position > visible_glyph_num
+                    ? original_end_glyph_position - visible_glyph_num
+                    : 0);
+          }
+          measure_node_->text_style_->overflow = TextOverflow::kClip;
+          update_flag_ = TextUpdateFlag::kUpdateFlagStyle;
+          BuildTextLayout(constraint, context);
+          if (!DidTextOverflowForInlineTruncation(cache_paragraph_.get(),
+                                                  constraint) ||
+              display_glyph_num == 0) {
+            break;
+          }
+          --display_glyph_num;
+        }
         for (auto truncation_child : child->GetChildren()) {
           if (truncation_child->IsInlineTextShadowNode()) {
             static_cast<InlineTextShadowNode*>(truncation_child)
@@ -689,14 +734,25 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
 }
 
 void TextRender::ProcessTruncationContent(size_t& display_glyph_num,
-                                          ShadowNode* node) {
+                                          ShadowNode* node,
+                                          size_t* visible_text_length_utf32) {
   for (auto* child : node->GetChildren()) {
     if (child->IsRawTextShadowNode()) {
       auto* raw_text_node = static_cast<RawTextShadowNode*>(child);
       auto layout_text_length = raw_text_node->GetLayoutTextLength();
       if (layout_text_length < display_glyph_num) {
+        if (visible_text_length_utf32) {
+          *visible_text_length_utf32 +=
+              raw_text_node->GetLayoutTextLengthForUtf16Length(
+                  layout_text_length);
+        }
         display_glyph_num = display_glyph_num - layout_text_length;
       } else {
+        if (visible_text_length_utf32) {
+          *visible_text_length_utf32 +=
+              raw_text_node->GetLayoutTextLengthForUtf16Length(
+                  display_glyph_num);
+        }
         raw_text_node->SetEndIndex(
             raw_text_node->GetRawEndIndexForLayoutTextLength(
                 display_glyph_num));
@@ -704,11 +760,15 @@ void TextRender::ProcessTruncationContent(size_t& display_glyph_num,
         display_glyph_num = 0;
       }
     } else if (child->IsInlineTextShadowNode()) {
-      ProcessTruncationContent(display_glyph_num, child);
+      ProcessTruncationContent(display_glyph_num, child,
+                               visible_text_length_utf32);
     } else if (child->IsInlineImageShadowNode() ||
                child->IsInlineViewShadowNode()) {
       if (display_glyph_num > 0) {
         display_glyph_num--;
+        if (visible_text_length_utf32) {
+          ++*visible_text_length_utf32;
+        }
       } else {
         child->SetEndIndex(0);
       }
