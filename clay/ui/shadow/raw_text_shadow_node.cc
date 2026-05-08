@@ -32,6 +32,53 @@ static const char16_t kZeroWidthWordJoinerCharacter = u'\u2060';
 
 namespace {
 
+size_t NextUtf16CodePointEnd(const std::u16string& text, size_t index) {
+  if (index >= text.size()) {
+    return text.size();
+  }
+  if (index + 1 < text.size() && lynx::base::IsLeadingSurrogate(text[index]) &&
+      lynx::base::IsTrailingSurrogate(text[index + 1])) {
+    return index + 2;
+  }
+  return index + 1;
+}
+
+size_t Utf32LengthFromUtf16Prefix(const std::u16string& text,
+                                  size_t utf16_end_index) {
+  size_t bounded_end = std::min(utf16_end_index, text.size());
+  size_t utf16_index = 0;
+  size_t utf32_length = 0;
+  while (utf16_index < bounded_end) {
+    utf16_index = NextUtf16CodePointEnd(text, utf16_index);
+    ++utf32_length;
+  }
+  return utf32_length;
+}
+
+size_t Utf16EndIndexForUtf32Length(const std::u16string& text,
+                                   size_t utf32_length, size_t utf16_limit) {
+  size_t bounded_limit = std::min(utf16_limit, text.size());
+  size_t utf16_index = 0;
+  size_t current_utf32_length = 0;
+  while (utf16_index < bounded_limit && current_utf32_length < utf32_length) {
+    utf16_index = NextUtf16CodePointEnd(text, utf16_index);
+    ++current_utf32_length;
+  }
+  return utf16_index;
+}
+
+size_t ClampUtf16IndexToCodePointEnd(const std::u16string& text,
+                                     size_t utf16_index, size_t utf16_limit) {
+  size_t bounded_limit = std::min(utf16_limit, text.size());
+  size_t bounded_index = std::min(utf16_index, bounded_limit);
+  if (bounded_index < bounded_limit && bounded_index > 0 &&
+      lynx::base::IsTrailingSurrogate(text[bounded_index]) &&
+      lynx::base::IsLeadingSurrogate(text[bounded_index - 1])) {
+    return bounded_index + 1;
+  }
+  return bounded_index;
+}
+
 bool IsBracketEmojiCandidate(const std::u16string& text, size_t start,
                              size_t* end) {
   if (start >= text.size() || text[start] != u'[') {
@@ -97,8 +144,9 @@ void RawTextShadowNode::TextLayout(LayoutContext* context) {
   auto need_text_indent = IfNeedTextIndent();
   LayoutContextText* text_context = static_cast<LayoutContextText*>(context);
   inline_emoji_text_ranges_.clear();
-  layout_text_to_raw_end_indices_.clear();
-  auto start = text_context->TextSizeIncludingPlaceholders();
+  layout_text_utf16_to_raw_end_indices_.clear();
+  layout_text_utf32_to_raw_end_indices_.clear();
+  auto start = text_context->TextSizeIncludingPlaceholdersInUtf32();
   auto parent_text_shadow_node = FindTextShadowNodeAncestor();
   std::optional<TextStyle> text_style = std::nullopt;
   if (parent_text_shadow_node) {
@@ -108,15 +156,16 @@ void RawTextShadowNode::TextLayout(LayoutContext* context) {
       (text_style->white_space == WhiteSpace::kNoWrap ||
        text_style->white_space == WhiteSpace::kNormal)) {
     auto text = CollapsesWhitespaces(text_.substr(0, GetEndIndex()),
-                                     &layout_text_to_raw_end_indices_);
+                                     &layout_text_utf16_to_raw_end_indices_,
+                                     &layout_text_utf32_to_raw_end_indices_);
     AddTextWithInlineEmoji(text_context, text, need_text_indent);
   } else {
     auto text = text_.substr(0, GetEndIndex());
-    BuildIdentityLayoutTextMapping(text.length());
+    BuildIdentityLayoutTextMapping(text);
     AddTextWithInlineEmoji(text_context, text, need_text_indent);
   }
   if (parent_ && parent_->IsInlineTextShadowNode()) {
-    auto end = text_context->TextSizeIncludingPlaceholders();
+    auto end = text_context->TextSizeIncludingPlaceholdersInUtf32();
     static_cast<InlineTextShadowNode*>(parent_)->AddTextRange(start, end);
   }
 }
@@ -205,29 +254,40 @@ void RawTextShadowNode::AddTextWithInlineEmoji(LayoutContextText* text_context,
       reinterpret_cast<uintptr_t>(owner_ ? owner_->GetViewContext() : nullptr);
 
   size_t cursor = 0;
+  size_t cursor_utf32 = 0;
   while (cursor < text.size()) {
     size_t emoji_start = text.find(u'[', cursor);
     if (emoji_start == std::u16string::npos) {
       text_context->AddText(text.substr(cursor), need_text_indent);
+      cursor_utf32 += Utf32LengthFromUtf16Prefix(text, text.size()) -
+                      Utf32LengthFromUtf16Prefix(text, cursor);
       return;
     }
     if (emoji_start > cursor) {
       text_context->AddText(text.substr(cursor, emoji_start - cursor),
                             need_text_indent);
+      cursor_utf32 += Utf32LengthFromUtf16Prefix(
+          text.substr(cursor, emoji_start - cursor), emoji_start - cursor);
     }
 
     size_t emoji_end = emoji_start;
     if (!IsBracketEmojiCandidate(text, emoji_start, &emoji_end)) {
       text_context->AddText(text.substr(emoji_start, 1), need_text_indent);
       cursor = emoji_start + 1;
+      ++cursor_utf32;
       continue;
     }
 
     auto emoji_text = text.substr(emoji_start, emoji_end - emoji_start);
+    size_t emoji_start_utf32 = cursor_utf32;
+    size_t emoji_end_utf32 =
+        emoji_start_utf32 +
+        Utf32LengthFromUtf16Prefix(emoji_text, emoji_text.size());
     auto bitmap = ResolveInlineEmojiBitmap(view_context, emoji_text, font_size);
     if (!bitmap.has_value()) {
       text_context->AddText(emoji_text, need_text_indent);
       cursor = emoji_end;
+      cursor_utf32 = emoji_end_utf32;
       continue;
     }
 
@@ -238,11 +298,13 @@ void RawTextShadowNode::AddTextWithInlineEmoji(LayoutContextText* text_context,
     int placeholder_id = text_context->AddPlaceholder(placeholder);
     if (placeholder_id >= 0) {
       text_context->AddInlineEmojiInfo(placeholder_id, std::move(*bitmap));
-      inline_emoji_text_ranges_.push_back({emoji_start, emoji_end});
+      inline_emoji_text_ranges_.push_back(
+          {emoji_start, emoji_end, emoji_start_utf32, emoji_end_utf32});
     } else {
       text_context->AddText(emoji_text, need_text_indent);
     }
     cursor = emoji_end;
+    cursor_utf32 = emoji_end_utf32;
   }
 }
 
@@ -250,74 +312,201 @@ size_t RawTextShadowNode::CurrentRawTextEnd() const {
   return std::min(truncated_index_, text_.length());
 }
 
-size_t RawTextShadowNode::LayoutTextLength() const {
-  if (!layout_text_to_raw_end_indices_.empty()) {
-    return layout_text_to_raw_end_indices_.size() - 1;
+size_t RawTextShadowNode::LayoutTextUtf16Length() const {
+  if (!layout_text_utf16_to_raw_end_indices_.empty()) {
+    return layout_text_utf16_to_raw_end_indices_.size() - 1;
   }
   return CurrentRawTextEnd();
 }
 
-size_t RawTextShadowNode::RawEndIndexForLayoutTextIndex(
-    size_t layout_text_index) const {
-  if (!layout_text_to_raw_end_indices_.empty()) {
-    return layout_text_to_raw_end_indices_[std::min(
-        layout_text_index, layout_text_to_raw_end_indices_.size() - 1)];
+size_t RawTextShadowNode::RawEndIndexForLayoutTextUtf16Index(
+    size_t layout_text_utf16_index) const {
+  if (!layout_text_utf16_to_raw_end_indices_.empty()) {
+    return layout_text_utf16_to_raw_end_indices_[std::min(
+        layout_text_utf16_index,
+        layout_text_utf16_to_raw_end_indices_.size() - 1)];
   }
-  return std::min(layout_text_index, CurrentRawTextEnd());
+  return ClampUtf16IndexToCodePointEnd(text_, layout_text_utf16_index,
+                                       CurrentRawTextEnd());
 }
 
-void RawTextShadowNode::BuildIdentityLayoutTextMapping(size_t length) {
-  layout_text_to_raw_end_indices_.reserve(length + 1);
-  for (size_t i = 0; i <= length; ++i) {
-    layout_text_to_raw_end_indices_.push_back(i);
+size_t RawTextShadowNode::RawEndIndexForLayoutTextUtf32Index(
+    size_t layout_text_utf32_index) const {
+  if (!layout_text_utf32_to_raw_end_indices_.empty()) {
+    return layout_text_utf32_to_raw_end_indices_[std::min(
+        layout_text_utf32_index,
+        layout_text_utf32_to_raw_end_indices_.size() - 1)];
+  }
+  return Utf16EndIndexForUtf32Length(text_, layout_text_utf32_index,
+                                     CurrentRawTextEnd());
+}
+
+void RawTextShadowNode::BuildIdentityLayoutTextMapping(
+    const std::u16string& text) {
+  layout_text_utf16_to_raw_end_indices_.clear();
+  layout_text_utf32_to_raw_end_indices_.clear();
+  layout_text_utf16_to_raw_end_indices_.push_back(0);
+  layout_text_utf32_to_raw_end_indices_.push_back(0);
+  size_t index = 0;
+  while (index < text.size()) {
+    size_t next = NextUtf16CodePointEnd(text, index);
+    for (size_t i = index; i < next; ++i) {
+      layout_text_utf16_to_raw_end_indices_.push_back(next);
+    }
+    layout_text_utf32_to_raw_end_indices_.push_back(next);
+    index = next;
   }
 }
 
 size_t RawTextShadowNode::GetLayoutTextLength() const {
-  size_t base_length = LayoutTextLength();
+  size_t base_length =
+      layout_text_utf32_to_raw_end_indices_.empty()
+          ? Utf32LengthFromUtf16Prefix(text_, CurrentRawTextEnd())
+          : layout_text_utf32_to_raw_end_indices_.size() - 1;
   size_t layout_length = base_length;
   for (const auto& range : inline_emoji_text_ranges_) {
-    if (range.start >= base_length || range.end <= range.start) {
+    if (range.start_utf32 >= base_length ||
+        range.end_utf32 <= range.start_utf32) {
       continue;
     }
-    size_t range_end = std::min(range.end, base_length);
-    layout_length -= range_end - range.start;
+    size_t range_end = std::min(range.end_utf32, base_length);
+    layout_length -= range_end - range.start_utf32;
     layout_length += 1;
   }
   return layout_length;
 }
 
+size_t RawTextShadowNode::GetLayoutTextLengthForUtf16Length(
+    size_t layout_text_utf16_length) const {
+  size_t base_length = LayoutTextUtf16Length();
+  size_t target_length = std::min(layout_text_utf16_length, base_length);
+  size_t text_cursor = 0;
+  size_t layout_cursor = 0;
+  size_t converted_length = 0;
+  for (const auto& range : inline_emoji_text_ranges_) {
+    if (range.start_utf16 >= base_length ||
+        range.end_utf16 <= range.start_utf16) {
+      continue;
+    }
+    size_t range_start = std::max(text_cursor, range.start_utf16);
+    size_t normal_text_length = range_start - text_cursor;
+    if (target_length <= layout_cursor + normal_text_length) {
+      size_t raw_start = RawEndIndexForLayoutTextUtf16Index(text_cursor);
+      size_t raw_end = RawEndIndexForLayoutTextUtf16Index(
+          text_cursor + (target_length - layout_cursor));
+      return converted_length + Utf32LengthFromUtf16Prefix(text_, raw_end) -
+             Utf32LengthFromUtf16Prefix(text_, raw_start);
+    }
+
+    size_t raw_start = RawEndIndexForLayoutTextUtf16Index(text_cursor);
+    size_t raw_end = RawEndIndexForLayoutTextUtf16Index(range_start);
+    converted_length += Utf32LengthFromUtf16Prefix(text_, raw_end) -
+                        Utf32LengthFromUtf16Prefix(text_, raw_start);
+    layout_cursor += normal_text_length;
+    text_cursor = range_start;
+
+    if (target_length <= layout_cursor + 1) {
+      return converted_length + 1;
+    }
+    ++converted_length;
+    ++layout_cursor;
+    text_cursor = std::min(range.end_utf16, base_length);
+  }
+
+  if (target_length <= layout_cursor + base_length - text_cursor) {
+    size_t raw_start = RawEndIndexForLayoutTextUtf16Index(text_cursor);
+    size_t raw_end = RawEndIndexForLayoutTextUtf16Index(
+        text_cursor + (target_length - layout_cursor));
+    return converted_length + Utf32LengthFromUtf16Prefix(text_, raw_end) -
+           Utf32LengthFromUtf16Prefix(text_, raw_start);
+  }
+  return GetLayoutTextLength();
+}
+
 size_t RawTextShadowNode::GetRawEndIndexForLayoutTextLength(
     size_t layout_text_length) const {
-  size_t base_length = LayoutTextLength();
+  size_t base_length =
+      layout_text_utf32_to_raw_end_indices_.empty()
+          ? Utf32LengthFromUtf16Prefix(text_, CurrentRawTextEnd())
+          : layout_text_utf32_to_raw_end_indices_.size() - 1;
   size_t text_cursor = 0;
   size_t layout_cursor = 0;
   for (const auto& range : inline_emoji_text_ranges_) {
-    if (range.start >= base_length || range.end <= range.start) {
+    if (range.start_utf32 >= base_length ||
+        range.end_utf32 <= range.start_utf32) {
       continue;
     }
-    size_t range_start = std::max(text_cursor, range.start);
+    size_t range_start = std::max(text_cursor, range.start_utf32);
     size_t normal_text_length = range_start - text_cursor;
     if (layout_text_length <= layout_cursor + normal_text_length) {
-      return RawEndIndexForLayoutTextIndex(
+      return RawEndIndexForLayoutTextUtf32Index(
           text_cursor + (layout_text_length - layout_cursor));
     }
     layout_cursor += normal_text_length;
     text_cursor = range_start;
 
-    size_t range_end = std::min(range.end, base_length);
+    size_t range_end = std::min(range.end_utf32, base_length);
     if (layout_text_length <= layout_cursor + 1) {
-      return RawEndIndexForLayoutTextIndex(range_end);
+      return RawEndIndexForLayoutTextUtf32Index(range_end);
     }
     ++layout_cursor;
     text_cursor = range_end;
   }
 
   if (layout_text_length <= layout_cursor + base_length - text_cursor) {
-    return RawEndIndexForLayoutTextIndex(text_cursor +
-                                         (layout_text_length - layout_cursor));
+    return RawEndIndexForLayoutTextUtf32Index(
+        text_cursor + (layout_text_length - layout_cursor));
   }
-  return RawEndIndexForLayoutTextIndex(base_length);
+  return RawEndIndexForLayoutTextUtf32Index(base_length);
+}
+
+size_t RawTextShadowNode::GetLayoutTextUtf16Length() const {
+  size_t base_length = LayoutTextUtf16Length();
+  size_t layout_length = base_length;
+  for (const auto& range : inline_emoji_text_ranges_) {
+    if (range.start_utf16 >= base_length ||
+        range.end_utf16 <= range.start_utf16) {
+      continue;
+    }
+    size_t range_end = std::min(range.end_utf16, base_length);
+    layout_length -= range_end - range.start_utf16;
+    layout_length += 1;
+  }
+  return layout_length;
+}
+
+size_t RawTextShadowNode::GetRawEndIndexForLayoutTextUtf16Length(
+    size_t layout_text_utf16_length) const {
+  size_t base_length = LayoutTextUtf16Length();
+  size_t text_cursor = 0;
+  size_t layout_cursor = 0;
+  for (const auto& range : inline_emoji_text_ranges_) {
+    if (range.start_utf16 >= base_length ||
+        range.end_utf16 <= range.start_utf16) {
+      continue;
+    }
+    size_t range_start = std::max(text_cursor, range.start_utf16);
+    size_t normal_text_length = range_start - text_cursor;
+    if (layout_text_utf16_length <= layout_cursor + normal_text_length) {
+      return RawEndIndexForLayoutTextUtf16Index(
+          text_cursor + (layout_text_utf16_length - layout_cursor));
+    }
+    layout_cursor += normal_text_length;
+    text_cursor = range_start;
+
+    size_t range_end = std::min(range.end_utf16, base_length);
+    if (layout_text_utf16_length <= layout_cursor + 1) {
+      return RawEndIndexForLayoutTextUtf16Index(range_end);
+    }
+    ++layout_cursor;
+    text_cursor = range_end;
+  }
+
+  if (layout_text_utf16_length <= layout_cursor + base_length - text_cursor) {
+    return RawEndIndexForLayoutTextUtf16Index(
+        text_cursor + (layout_text_utf16_length - layout_cursor));
+  }
+  return RawEndIndexForLayoutTextUtf16Index(base_length);
 }
 
 bool RawTextShadowNode::IfNeedTextIndent() {
@@ -335,12 +524,17 @@ bool RawTextShadowNode::IfNeedTextIndent() {
 
 std::u16string RawTextShadowNode::CollapsesWhitespaces(
     const std::u16string& text,
-    std::vector<size_t>* layout_text_to_raw_end_indices) {
+    std::vector<size_t>* layout_text_utf16_to_raw_end_indices,
+    std::vector<size_t>* layout_text_utf32_to_raw_end_indices) {
   std::u16string result;
   result.reserve(text.length());
-  if (layout_text_to_raw_end_indices) {
-    layout_text_to_raw_end_indices->clear();
-    layout_text_to_raw_end_indices->push_back(0);
+  if (layout_text_utf16_to_raw_end_indices) {
+    layout_text_utf16_to_raw_end_indices->clear();
+    layout_text_utf16_to_raw_end_indices->push_back(0);
+  }
+  if (layout_text_utf32_to_raw_end_indices) {
+    layout_text_utf32_to_raw_end_indices->clear();
+    layout_text_utf32_to_raw_end_indices->push_back(0);
   }
 
   size_t index = 0;
@@ -350,12 +544,24 @@ std::u16string RawTextShadowNode::CollapsesWhitespaces(
         ++index;
       } while (index < text.length() && iswspace(text[index]));
       result.push_back(u' ');
+      if (layout_text_utf16_to_raw_end_indices) {
+        layout_text_utf16_to_raw_end_indices->push_back(index);
+      }
+      if (layout_text_utf32_to_raw_end_indices) {
+        layout_text_utf32_to_raw_end_indices->push_back(index);
+      }
     } else {
-      result.push_back(text[index]);
-      ++index;
-    }
-    if (layout_text_to_raw_end_indices) {
-      layout_text_to_raw_end_indices->push_back(index);
+      size_t next = NextUtf16CodePointEnd(text, index);
+      result.append(text.substr(index, next - index));
+      if (layout_text_utf16_to_raw_end_indices) {
+        for (size_t i = index; i < next; ++i) {
+          layout_text_utf16_to_raw_end_indices->push_back(next);
+        }
+      }
+      if (layout_text_utf32_to_raw_end_indices) {
+        layout_text_utf32_to_raw_end_indices->push_back(next);
+      }
+      index = next;
     }
   }
   return result;
