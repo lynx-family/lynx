@@ -738,13 +738,13 @@ TEST_P(TextElementTest, ResolveAndFlushFontFaces_AdoptedStyleSheet) {
 
   // Verify the adopted sheet has font-face rules and is not yet resolved.
   ASSERT_FALSE(wrapper->fragment_->GetFontFaceRuleMap().empty());
-  ASSERT_FALSE(wrapper->fragment_->HasFontFacesResolved());
+  ASSERT_FALSE(wrapper->HasFontFacesResolved());
 
   // Call ResolveAndFlushFontFaces — it should also flush adopted font-faces.
   text->ResolveAndFlushFontFaces(base::String("custom-font"));
 
-  // After flush, the adopted fragment should be marked as font-faces resolved.
-  EXPECT_TRUE(wrapper->fragment_->HasFontFacesResolved());
+  // After flush, the wrapper should be marked as font-faces resolved.
+  EXPECT_TRUE(wrapper->HasFontFacesResolved());
 }
 
 TEST_P(TextElementTest,
@@ -766,15 +766,15 @@ TEST_P(TextElementTest,
   auto adopted_fragment = std::make_unique<SharedCSSFragment>(
       -1, std::vector<int32_t>{}, CSSParserTokenMap{}, CSSKeyframesTokenMap{},
       std::move(adopted_fontfaces));
-  adopted_fragment->MarkFontFacesResolved(true);
 
   auto wrapper =
       fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(adopted_fragment)));
+  wrapper->MarkFontFacesResolved(true);
   manager->AdoptStyleSheet(wrapper);
 
   // Since font-faces are already resolved, second call should be a no-op.
   text->ResolveAndFlushFontFaces(base::String("another-font"));
-  EXPECT_TRUE(wrapper->fragment_->HasFontFacesResolved());
+  EXPECT_TRUE(wrapper->HasFontFacesResolved());
 }
 
 }  // namespace testing
