@@ -2,6 +2,8 @@
 
 ## 3.10.0
 - Introduce `<blur-view>`.
+- Add missing `lynx.loadScript<T>(sectionName, { bundleName }): T` declaration on `CommonLynx`. The platform API has existed since LynxSDK 3.7; this is a types-only fix.
+- Fix `ResponseHandler.then` signature: was `(info: BundleInfo) => {}`, corrected to `(callback: (info: BundleInfo) => void) => void` to match the runtime contract.
 
 ## 3.9.0
 

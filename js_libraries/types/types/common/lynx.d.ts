@@ -14,7 +14,7 @@ export interface TextMetrics {
   content?: Array<string>;
 }
 
-export type DispatchEventResult = 
+export type DispatchEventResult =
   // 'NotCanceled'
   // Event was not canceled by event handler or default event handler.
   | 0
@@ -61,8 +61,21 @@ export interface BundleInfo {
 }
 
 export interface ResponseHandler {
+  /**
+   * Synchronously block until the bundle resolves, with a timeout in
+   * SECONDS. Returns the resolved {@link BundleInfo}; on timeout the
+   * returned info has a non-zero `code`.
+   */
   wait: (timeout: number) => BundleInfo;
-  then: (info: BundleInfo) => {}
+  /**
+   * Register a callback to receive the resolved {@link BundleInfo} when
+   * the fetch completes (asynchronously).
+   *
+   * Note: this is NOT a standard Promise `then` — it accepts a single
+   * callback and does not return a chainable thenable. Use the platform
+   * adapter to wrap it in a real Promise if needed.
+   */
+  then: (callback: (info: BundleInfo) => void) => void;
 }
 
 /*
@@ -92,6 +105,17 @@ export interface CommonLynx {
   getNative(): ContextProxy;
   getEngine(): ContextProxy;
   fetchBundle(url: string, options?: {}): ResponseHandler;
+  /**
+   * @description Synchronously evaluate a customSection inside a bundle
+   * previously fetched by {@link CommonLynx.fetchBundle}, identified by
+   * the bundle's URL via `options.bundleName`. Returns the section's
+   * `module.exports`.
+   * @since LynxSDK 3.7
+   */
+  loadScript<T = unknown>(
+    sectionName: string,
+    options?: { bundleName?: string }
+  ): T;
   stopExposure(options?: { sendEvent: boolean }): void;
   resumeExposure(): void;
 }
