@@ -5,6 +5,7 @@
 #include "clay/ui/shadow/inner_text_shadow_node.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <unordered_map>
@@ -17,6 +18,7 @@
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/painter/gradient_factory.h"
 #include "clay/ui/shadow/inner_inline_text_shadow_node.h"
+#include "clay/ui/shadow/measure_utils.h"
 
 namespace clay {
 
@@ -26,7 +28,7 @@ constexpr float kLayoutTolerance = 1.f;
 
 void InnerTextShadowNode::ProcessParagraph(
     ShadowLayoutContextMeasure* context_measure,
-    std::unique_ptr<txt::Paragraph> paragraph) {
+    std::unique_ptr<txt::Paragraph> paragraph, double layout_width) {
   // layout inline text
   for (auto child : children_) {
     if (child->IsInlineTextShadowNode()) {
@@ -36,8 +38,8 @@ void InnerTextShadowNode::ProcessParagraph(
   }
 
   if (context_measure) {
-    measured_width_ = std::ceil(paragraph->GetMaxIntrinsicWidth());
-    measured_height_ = std::ceil(paragraph->GetHeight());
+    measured_width_ = GetMeasuredParagraphWidth(paragraph.get(), layout_width);
+    measured_height_ = paragraph->GetHeight();
   }
   SetCacheParagraph(std::move(paragraph));
 }
@@ -64,7 +66,7 @@ void InnerTextShadowNode::TextLayout(LayoutContext* context) {
     builder->Pop();
     paragraph = Build(std::move(builder));
     paragraph->Layout(layout_width);
-    ProcessParagraph(context_measure, std::move(paragraph));
+    ProcessParagraph(context_measure, std::move(paragraph), layout_width);
   }
 
   if (context_measure) {
@@ -129,17 +131,15 @@ MeasureResult InnerTextShadowNode::Measure(
   if (constraint.width_mode == TextMeasureMode::kDefinite) {
     result.width = *constraint.width;
   } else if (constraint.width_mode == TextMeasureMode::kIndefinite) {
-    result.width = std::ceil(context.measured_width_);
+    result.width = context.measured_width_;
   } else {
-    result.width =
-        std::min(std::ceil(static_cast<float>(context.measured_width_)),
-                 *constraint.width);
+    result.width = std::min(context.measured_width_, *constraint.width);
   }
 
   auto desired_height = context.measured_height_;
   switch (constraint.height_mode) {
     case TextMeasureMode::kIndefinite: {
-      result.height = desired_height;
+      result.height = std::ceil(desired_height);
       break;
     }
     case TextMeasureMode::kDefinite: {
