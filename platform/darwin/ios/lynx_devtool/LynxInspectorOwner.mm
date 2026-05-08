@@ -70,12 +70,16 @@
 
   LynxTemplateData* _globalProps;
   LynxTemplateData* _templateData;
+
+  // record Debuggable flag
+  BOOL _debuggable;
 }
 
 - (instancetype)initWithDebuggable:(BOOL)debuggable {
   self = [super init];
   // LynxDevToolNGDarwinDelegate
   _devtoolNG = [[LynxDevToolNGDarwinDelegate alloc] initWithDebuggable:debuggable];
+  _debuggable = debuggable;
   return self;
 }
 
@@ -103,6 +107,8 @@
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
     [[LynxFrameViewTrace shareInstance] attachView:view];
 #endif
+
+    _debuggable = debuggable;
   }
   return self;
 }
@@ -283,6 +289,9 @@
   if (_devtoolNG != nil) {
     if ((![_devtoolNG isAttachToDebugRouter])) {
       int sessionId = [_devtoolNG attachToDebug:url];
+      if (_debuggable) {
+        [[DebugRouter instance] enableSingleSession:sessionId];
+      }
       LynxView* lynxView = [self getLynxView];
       if (sessionId > 0 && lynxView != nil) {
         [[DebugRouter instance] setSessionId:sessionId ofView:lynxView];
