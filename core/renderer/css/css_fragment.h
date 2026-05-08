@@ -97,9 +97,44 @@ class CSSFragment {
 
   virtual bool HasCSSStyle() = 0;
 
+  // Check if this stylesheet (including adopted sheets for decorators)
+  // contains pseudo rules.
+  virtual bool HasPseudoRules() {
+    auto* rs = rule_set();
+    return rs && !rs->pseudo_rules().empty();
+  }
+
+  // Check if this stylesheet (including adopted sheets for decorators)
+  // contains adjacent-sibling rules.
+  virtual bool HasAdjacentSiblingRules() {
+    auto* rs = rule_set();
+    return rs && rs->HasAdjacentSiblingRules();
+  }
+
   bool HasPseudoStyle() { return !pseudo_map().empty(); }
 
   bool HasCascadeStyle() { return !cascade_map().empty(); }
+
+  // Iterate all keyframes maps that contribute to this stylesheet.
+  // For CSSFragmentDecorator, this includes adopted stylesheets.
+  virtual void ForEachKeyframesMap(
+      void (*visitor)(const CSSKeyframesTokenMap&)) {
+    visitor(GetKeyframesRuleMap());
+  }
+
+  // Iterate all font-face maps that contribute to this stylesheet.
+  // For CSSFragmentDecorator, this includes adopted stylesheets.
+  virtual void ForEachFontFaceMap(void (*visitor)(const CSSFontFaceRuleMap&)) {
+    visitor(GetFontFaceRuleMap());
+  }
+
+  // Iterate all rule sets that contribute to this stylesheet.
+  // For CSSFragmentDecorator, this includes adopted stylesheets.
+  virtual void ForEachRuleSet(void (*visitor)(css::RuleSet*)) {
+    if (auto* rs = rule_set()) {
+      visitor(rs);
+    }
+  }
 
   bool HasFontFacesResolved() const { return has_font_faces_resolved_; }
 
