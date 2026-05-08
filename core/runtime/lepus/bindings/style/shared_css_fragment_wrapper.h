@@ -20,9 +20,17 @@ class SharedCSSFragmentWrapper : public lepus::RefCounted {
       : fragment_(std::move(fragment)) {}
   std::unique_ptr<SharedCSSFragment> fragment_;
 
+  bool HasFontFacesResolved() const { return has_font_faces_resolved_; }
+  void MarkFontFacesResolved(bool resolved) {
+    has_font_faces_resolved_ = resolved;
+  }
+
   lepus::RefType GetRefType() const override {
     return lepus::RefType::kCSSFragment;
   }
+
+ private:
+  bool has_font_faces_resolved_{false};
 };
 
 }  // namespace tasm
