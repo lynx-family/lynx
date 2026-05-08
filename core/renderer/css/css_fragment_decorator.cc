@@ -8,11 +8,39 @@
 
 #include "base/include/no_destructor.h"
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/dom/element_manager.h"
 
 namespace lynx {
 namespace tasm {
 
+CSSFragmentDecorator::CSSFragmentDecorator(CSSFragment* intrinsic_style_sheets)
+    : CSSFragmentDecorator(intrinsic_style_sheets, nullptr) {}
+
+CSSFragmentDecorator::CSSFragmentDecorator(CSSFragment* intrinsic_style_sheets,
+                                           ElementManager* element_manager)
+    : intrinsic_style_sheets_(intrinsic_style_sheets),
+      element_manager_(element_manager) {
+  if (intrinsic_style_sheets) {
+    enable_css_lazy_import_ = intrinsic_style_sheets->GetEnableCSSLazyImport();
+  }
+}
+
 CSSFragmentDecorator::~CSSFragmentDecorator() = default;
+
+template <typename Func>
+void CSSFragmentDecorator::ForEachAdoptedFragment(Func&& func,
+                                                  bool reverse) const {
+  if (element_manager_) {
+    element_manager_->ForEachAdoptedStyleSheet(
+        [&func](const auto& wrapper) {
+          if (wrapper && wrapper->fragment_) {
+            return func(*wrapper->fragment_);
+          }
+          return true;
+        },
+        reverse);
+  }
+}
 
 const CSSParserTokenMap& CSSFragmentDecorator::pseudo_map() {
   if (!intrinsic_style_sheets_) {
@@ -125,14 +153,6 @@ CSSParseToken* CSSFragmentDecorator::GetCSSStyle(const std::string& key) {
   return nullptr;
 }
 
-CSSKeyframesToken* CSSFragmentDecorator::GetKeyframesRule(
-    const base::String& key) {
-  if (!intrinsic_style_sheets_) {
-    return nullptr;
-  }
-  return intrinsic_style_sheets_->GetKeyframesRule(key);
-}
-
 const std::vector<std::shared_ptr<CSSFontFaceRule>>&
 CSSFragmentDecorator::GetFontFaceRule(const std::string& key) {
   if (!intrinsic_style_sheets_) {
@@ -207,6 +227,156 @@ GET_PARSER_TOKEN_STYLE(Id)
 GET_PARSER_TOKEN_STYLE(Tag)
 GET_PARSER_TOKEN_STYLE(Universal)
 #undef GET_PARSER_TOKEN_STYLE
+
+bool CSSFragmentDecorator::enable_css_selector() {
+  return intrinsic_style_sheets_ &&
+         intrinsic_style_sheets_->enable_css_selector();
+}
+
+bool CSSFragmentDecorator::enable_css_invalidation() {
+  return intrinsic_style_sheets_ &&
+         intrinsic_style_sheets_->enable_css_invalidation();
+}
+
+template <typename Predicate>
+bool CSSFragmentDecorator::HasInAdopted(Predicate pred) {
+  bool found = false;
+  ForEachAdoptedFragment([&found, &pred](CSSFragment& fragment) {
+    if (fragment.enable_css_selector() && pred(fragment)) {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+  return found;
+}
+
+bool CSSFragmentDecorator::HasPseudoRules() {
+  if (CSSFragment::HasPseudoRules()) {
+    return true;
+  }
+  return HasInAdopted([](CSSFragment& f) {
+    return f.rule_set() && !f.rule_set()->pseudo_rules().empty();
+  });
+}
+
+bool CSSFragmentDecorator::HasAdjacentSiblingRules() {
+  if (CSSFragment::HasAdjacentSiblingRules()) {
+    return true;
+  }
+  return HasInAdopted([](CSSFragment& f) {
+    return f.rule_set() && f.rule_set()->HasAdjacentSiblingRules();
+  });
+}
+
+CSSKeyframesToken* CSSFragmentDecorator::GetKeyframesRule(
+    const base::String& key) {
+  CSSKeyframesToken* result = nullptr;
+  ForEachAdoptedFragment(
+      [&result, &key](CSSFragment& fragment) {
+        if (auto* token = fragment.GetKeyframesRule(key)) {
+          result = token;
+          return false;
+        }
+        return true;
+      },
+      true);
+  if (result) {
+    return result;
+  }
+  if (intrinsic_style_sheets_) {
+    return intrinsic_style_sheets_->GetKeyframesRule(key);
+  }
+  return nullptr;
+}
+
+void CSSFragmentDecorator::ForEachKeyframesMap(
+    ForEachKeyframesMapVisitor visitor, void* cb_data) {
+  struct Ctx {
+    ForEachKeyframesMapVisitor visitor;
+    void* cb_data;
+  };
+  Ctx ctx{visitor, cb_data};
+  ForEachAdoptedFragment(
+      [&ctx](CSSFragment& fragment) {
+        ctx.visitor(fragment.GetKeyframesRuleMap(), ctx.cb_data);
+        return true;
+      },
+      true);
+  if (intrinsic_style_sheets_) {
+    visitor(intrinsic_style_sheets_->GetKeyframesRuleMap(), cb_data);
+  }
+}
+
+void CSSFragmentDecorator::ForEachFontFaceMap(ForEachFontFaceMapVisitor visitor,
+                                              void* cb_data) {
+  struct Ctx {
+    ForEachFontFaceMapVisitor visitor;
+    void* cb_data;
+  };
+  Ctx ctx{visitor, cb_data};
+  ForEachAdoptedFragment([&ctx](CSSFragment& fragment) {
+    ctx.visitor(fragment.GetFontFaceRuleMap(), ctx.cb_data);
+    return true;
+  });
+  if (intrinsic_style_sheets_) {
+    visitor(intrinsic_style_sheets_->GetFontFaceRuleMap(), cb_data);
+  }
+}
+
+void CSSFragmentDecorator::ForEachRuleSet(ForEachRuleSetVisitor visitor,
+                                          void* cb_data) {
+  if (intrinsic_style_sheets_ && intrinsic_style_sheets_->rule_set()) {
+    visitor(intrinsic_style_sheets_->rule_set(), cb_data);
+  }
+  struct Ctx {
+    ForEachRuleSetVisitor visitor;
+    void* cb_data;
+  };
+  Ctx ctx{visitor, cb_data};
+  ForEachAdoptedFragment([&ctx](CSSFragment& fragment) {
+    if (fragment.enable_css_selector()) {
+      if (auto* rs = fragment.rule_set()) {
+        ctx.visitor(rs, ctx.cb_data);
+      }
+    }
+    return true;
+  });
+}
+
+void CSSFragmentDecorator::CollectInvalidationSetsForId(
+    css::InvalidationLists& lists, const std::string& id) {
+  if (intrinsic_style_sheets_) {
+    intrinsic_style_sheets_->CollectInvalidationSetsForId(lists, id);
+  }
+  ForEachAdoptedFragment([&lists, &id](CSSFragment& fragment) {
+    fragment.CollectInvalidationSetsForId(lists, id);
+    return true;
+  });
+}
+
+void CSSFragmentDecorator::CollectInvalidationSetsForClass(
+    css::InvalidationLists& lists, const std::string& class_name) {
+  if (intrinsic_style_sheets_) {
+    intrinsic_style_sheets_->CollectInvalidationSetsForClass(lists, class_name);
+  }
+  ForEachAdoptedFragment([&lists, &class_name](CSSFragment& fragment) {
+    fragment.CollectInvalidationSetsForClass(lists, class_name);
+    return true;
+  });
+}
+
+void CSSFragmentDecorator::CollectInvalidationSetsForPseudoClass(
+    css::InvalidationLists& lists, css::LynxCSSSelector::PseudoType pseudo) {
+  if (intrinsic_style_sheets_) {
+    intrinsic_style_sheets_->CollectInvalidationSetsForPseudoClass(lists,
+                                                                   pseudo);
+  }
+  ForEachAdoptedFragment([&lists, pseudo](CSSFragment& fragment) {
+    fragment.CollectInvalidationSetsForPseudoClass(lists, pseudo);
+    return true;
+  });
+}
 
 }  // namespace tasm
 }  // namespace lynx
