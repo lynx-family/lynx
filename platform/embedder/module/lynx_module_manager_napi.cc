@@ -42,8 +42,7 @@ class EmbedderRuntimeLifecycleListenerDelegate
 };
 
 LynxModuleManagerNAPI::LynxModuleManagerNAPI(
-    void* context,
-    std::shared_ptr<runtime::js::LynxModuleManager> module_manager,
+    void* context, std::weak_ptr<runtime::js::LynxModuleManager> module_manager,
     std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
         module_creators)
     : view_context_(context),
@@ -99,8 +98,10 @@ void LynxModuleManagerNAPI::OnRuntimeAttach(Napi::Env env) {
 
   auto module_factory =
       std::make_unique<LynxModuleFactoryNAPI>(env, std::move(module_creators_));
-  module_factory_ = module_factory.get();
-  module_manager_->SetModuleFactory(std::move(module_factory));
+  if (auto module_manager = module_manager_.lock()) {
+    module_factory_ = module_factory.get();
+    module_manager->SetModuleFactory(std::move(module_factory));
+  }
 }
 
 void LynxModuleManagerNAPI::Detach() {

@@ -38,22 +38,19 @@ void PrepareEnvWidthScreenSize(int width, int height, float density,
 LynxTemplateRenderer::LynxTemplateRenderer(
     const LynxTemplateRenderer::Settings& settings,
     tasm::UIDelegate* ui_delegate,
-    std::shared_ptr<runtime::js::LynxModuleManager> module_manager,
     std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>
         perf_controller_ptr)
-    : LynxTemplateRenderer(settings, ui_delegate, module_manager,
+    : LynxTemplateRenderer(settings, ui_delegate,
                            std::move(perf_controller_ptr), nullptr) {}
 
 LynxTemplateRenderer::LynxTemplateRenderer(
     const Settings& settings, tasm::UIDelegate* ui_delegate,
-    std::shared_ptr<runtime::js::LynxModuleManager> module_manager,
     std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>
         perf_controller_ptr,
     RuntimeProxyCallback runtime_proxy_callback)
     : settings_(settings),
       ui_delegate_(ui_delegate),
       weak_flag_(std::make_shared<WeakFlag>(this)),
-      preset_module_manager_(module_manager),
       perf_controller_ptr_(std::move(perf_controller_ptr)),
       runtime_proxy_callback_(runtime_proxy_callback) {
   if (!perf_controller_ptr_) {
@@ -146,11 +143,8 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
       std::make_shared<shell::LynxLayoutProxyImpl>(shell_->GetLayoutActor());
 
   // InitJSBridge
-  module_manager_ = preset_module_manager_;
-  if (!module_manager_) {
-    module_manager_ = std::make_shared<runtime::js::LynxModuleManager>();
-  }
-  module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
+  auto module_manager = std::make_shared<runtime::js::LynxModuleManager>();
+  module_manager->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
 #if ENABLE_INSPECTOR
   if (is_devtool_enabled) {
     if (!devtools_) {
@@ -163,19 +157,19 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
       std::make_unique<runtime::NativeModuleFactory>();
   devtool_module_factory_->Register(devtool::LynxDevToolSetModule::GetName(),
                                     devtool::LynxDevToolSetModule::Create);
-  module_manager_->SetModuleFactory(std::move(devtool_module_factory_));
+  module_manager->SetModuleFactory(std::move(devtool_module_factory_));
 #endif
-  auto on_runtime_actor_created = [this](auto& actor) {
+  auto on_runtime_actor_created = [this, module_manager](auto& actor) {
     auto module_delegate = std::make_shared<shell::ModuleDelegateImpl>(
         shell_->GetRuntimeActor(), shell_->GetFacadeActor());
-    module_manager_->initBindingPtr(module_manager_, module_delegate);
+    module_manager->initBindingPtr(module_manager, module_delegate);
     runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor);
-    module_manager_->runtime_proxy = runtime_proxy_;
+    module_manager->runtime_proxy = runtime_proxy_;
     if (runtime_proxy_callback_) {
       // There's cases that need to inject runtime life cycle before JSRuntime
       // creating, so add an early callback here.
       // e.g. inject JSB `LynxRecorderReplayDataModule` for testbench.
-      runtime_proxy_callback_(engine_proxy_, runtime_proxy_, module_manager_,
+      runtime_proxy_callback_(engine_proxy_, runtime_proxy_, module_manager,
                               shell_->GetRunners()->GetJSTaskRunner());
     }
   };
@@ -187,7 +181,7 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
   auto runtime_flags = shell::CalcRuntimeFlags(
       false, settings_.use_quickjs, false, settings_.enable_bytecode);
   shell_->InitRuntime(settings_.group_id, settings_.resource_loader,
-                      module_manager_, std::move(on_runtime_actor_created),
+                      module_manager, std::move(on_runtime_actor_created),
                       std::move(settings_.preload_js_paths), runtime_flags,
                       settings_.bytecode_source_url,
                       settings_.vsync_monitor_platform_impl);
@@ -595,11 +589,6 @@ void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
 std::shared_ptr<shell::LynxRuntimeProxy> LynxTemplateRenderer::GetRuntimeProxy()
     const {
   return runtime_proxy_;
-}
-
-std::shared_ptr<runtime::js::LynxModuleManager>
-LynxTemplateRenderer::GetModuleManager() const {
-  return module_manager_;
 }
 
 std::vector<uint8_t> LynxTemplateRenderer::LoadJSSource(

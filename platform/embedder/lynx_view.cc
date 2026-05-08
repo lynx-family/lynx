@@ -81,12 +81,12 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
 
   auto lynx_template_renderer = std::make_unique<
       lynx::embedder::LynxTemplateRenderer>(
-      settings, ui_delegate, nullptr, nullptr,
+      settings, ui_delegate, nullptr,
 #if ENABLE_NAPI_BINDING
       [view, native_modules = builder->native_modules](
           std::shared_ptr<lynx::shell::LynxEngineProxy>,
           std::shared_ptr<lynx::shell::LynxRuntimeProxy> proxy,
-          std::shared_ptr<lynx::runtime::js::LynxModuleManager> module_manager,
+          std::weak_ptr<lynx::runtime::js::LynxModuleManager> module_manager,
           const fml::RefPtr<fml::TaskRunner>& js_runner) {
         // napi NativeModuleFactory.
         std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
@@ -99,7 +99,9 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                 view, module_manager, std::move(module_creators));
         // Setup the runtime lifecycle listener.
         view->lynx_module_manager->SetupRuntimeLifecycleListener(proxy);
-        module_manager->SetExtensionModuleFactory(view->extension_factory_);
+        if (auto manager = module_manager.lock()) {
+          manager->SetExtensionModuleFactory(view->extension_factory_);
+        }
         view->extension_factory_->OnRuntimeInit(js_runner);
       }
 #else

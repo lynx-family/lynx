@@ -22,7 +22,7 @@ class LynxModuleManagerNAPI
  public:
   LynxModuleManagerNAPI(
       void* context,
-      std::shared_ptr<runtime::js::LynxModuleManager> module_manager,
+      std::weak_ptr<runtime::js::LynxModuleManager> module_manager,
       std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
           module_creators);
   void SetupRuntimeLifecycleListener(
@@ -35,7 +35,7 @@ class LynxModuleManagerNAPI
 
  private:
   void* view_context_;
-  std::shared_ptr<runtime::js::LynxModuleManager> module_manager_;
+  std::weak_ptr<runtime::js::LynxModuleManager> module_manager_;
   std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
       module_creators_;
   LynxModuleFactoryNAPI* module_factory_ = nullptr;
