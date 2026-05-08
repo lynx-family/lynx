@@ -71,13 +71,23 @@ class LepusChunkManager {
 //
 class LynxTemplateBundle final {
  public:
-  // Decodes the provided binary template data directly into this bundle.
-  // It performs a complete decode operation and stores a lazy reader delegate
-  // for potential future lazy decoding operations (e.g., CSS fragments,
-  // element templates, parsed styles).
+  // Decodes using TemplateBinaryReader. Suitable for rendering paths where
+  // lazy/async decoding (CSS fragments, element templates, parsed styles,
+  // lepus chunks) is desired. Stores a lazy reader delegate in this bundle.
   // Returns an empty string on success, or an error message on failure.
   std::string FromBinary(std::vector<uint8_t> binary, bool is_card,
                          const std::string& template_url);
+
+  // Decodes using LynxBinaryReader. Suitable for non-rendering paths where
+  // all content must be decoded immediately (no lazy/async delegation).
+  // If is_card is set, the decoder will verify the bundle's app type matches
+  // the expectation (card vs dynamic component). Pass std::nullopt to skip
+  // this check (the default behavior for most platform callers).
+  // Returns an empty string on success, or an error message on failure.
+  std::string FromBinaryGreedy(std::vector<uint8_t> binary,
+                               const std::string& template_url,
+                               bool skip_css_decode = false,
+                               std::optional<bool> is_card = std::nullopt);
 
   LynxTemplateBundle()
       : css_style_manager_(std::make_shared<CSSStyleSheetManager>(nullptr)),

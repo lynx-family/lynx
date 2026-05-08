@@ -11,7 +11,6 @@
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #import "core/shell/ios/data_utils.h"
-#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 
 @implementation LynxTemplateBundle {
   std::shared_ptr<lynx::tasm::LynxTemplateBundle> template_bundle_;
@@ -44,17 +43,16 @@
     }
   }
   auto source = ConvertNSBinary(tem);
-  auto decoder = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(std::move(source));
-  decoder.SetSkipCSSDecode(skipCSS);
-  if (decoder.Decode()) {
+  auto template_bundle = std::make_shared<lynx::tasm::LynxTemplateBundle>();
+  std::string error = template_bundle->FromBinaryGreedy(std::move(source), "", skipCSS);
+  if (error.empty()) {
     // decode success.
-    template_bundle_ =
-        std::make_shared<lynx::tasm::LynxTemplateBundle>(decoder.GetTemplateBundle());
+    template_bundle_ = std::move(template_bundle);
     [_devtool_pool onTemplateBundleCreated:reinterpret_cast<intptr_t>(template_bundle_.get())];
     template_bundle_->PrepareVMByConfigs();
   } else {
     // decode failed.
-    _error = [NSString stringWithUTF8String:decoder.error_message_.c_str()];
+    _error = [NSString stringWithUTF8String:error.c_str()];
   }
 }
 

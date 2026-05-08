@@ -19,7 +19,6 @@
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #include "core/template_bundle/lynx_template_bundle.h"
-#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 
 namespace lynx {
 
@@ -129,16 +128,16 @@ napi_value LynxTemplateBundleHarmony::ParseTemplate(napi_env env,
   }
 
   napi_value error_value = nullptr;
-  auto decoder = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(
-      std::move(template_buffer));
-  if (!decoder.Decode()) {
-    status =
-        napi_create_string_utf8(env, decoder.error_message_.c_str(),
-                                decoder.error_message_.length(), &error_value);
+  lynx::tasm::LynxTemplateBundle template_bundle;
+  std::string error =
+      template_bundle.FromBinaryGreedy(std::move(template_buffer), "");
+  if (!error.empty()) {
+    status = napi_create_string_utf8(env, error.c_str(), error.length(),
+                                     &error_value);
     return error_value;
   }
 
-  bundle->SetBundle(decoder.GetTemplateBundle());
+  bundle->SetBundle(std::move(template_bundle));
   napi_create_string_utf8(env, "", 0, &error_value);
 
   return error_value;
@@ -196,12 +195,12 @@ napi_value LynxTemplateBundleHarmony::AsyncParseTemplate(
     AsyncParseTemplateContext* context =
         static_cast<AsyncParseTemplateContext*>(data);
     if (context) {
-      auto decoder = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(
-          std::move(context->template_buffer));
-      context->decode_success = decoder.Decode();
-      context->error_msg = std::move(decoder.error_message_);
+      lynx::tasm::LynxTemplateBundle template_bundle;
+      context->error_msg = template_bundle.FromBinaryGreedy(
+          std::move(context->template_buffer), "");
+      context->decode_success = context->error_msg.empty();
       if (context->decode_success) {
-        context->bundle_result = decoder.GetTemplateBundle();
+        context->bundle_result = std::move(template_bundle);
       }
     }
   };

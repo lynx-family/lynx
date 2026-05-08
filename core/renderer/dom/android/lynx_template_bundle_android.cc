@@ -16,7 +16,6 @@
 #include "core/runtime/js/bytecode/android/bytecode_callback.h"
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #include "core/shell/android/tasm_platform_invoker_android.h"
-#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TemplateBundle_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TemplateBundle_register_jni.h"
 
@@ -51,31 +50,29 @@ std::optional<lynx::base::android::JavaOnlyMap> GetPageConfigMap(
 jlong ParseTemplateInternal(JNIEnv* env, jclass jcaller,
                             std::vector<uint8_t>&& binary, jobjectArray options,
                             jboolean skip_css, jlong devToolPoolPtr) {
-  auto reader =
-      lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(std::move(binary));
-  reader.SetSkipCSSDecode(skip_css);
-  if (reader.Decode()) {
+  lynx::tasm::LynxTemplateBundle bundle;
+  std::string error = bundle.FromBinaryGreedy(std::move(binary), "", skip_css);
+  if (error.empty()) {
     // decode success.
-    lynx::tasm::LynxTemplateBundle* bundle =
-        new lynx::tasm::LynxTemplateBundle(reader.GetTemplateBundle());
+    auto* native_bundle = new lynx::tasm::LynxTemplateBundle(std::move(bundle));
     auto* devtool_pool_ptr =
         reinterpret_cast<std::shared_ptr<lynx::devtool::DevToolPool>*>(
             devToolPoolPtr);
     if (devtool_pool_ptr != nullptr) {
       auto devtool_pool = *devtool_pool_ptr;
-      bundle->SetDevToolPool(devtool_pool);
+      native_bundle->SetDevToolPool(devtool_pool);
     }
-    bundle->PrepareVMByConfigs();
-    auto page_config = GetPageConfigMap(env, bundle);
+    native_bundle->PrepareVMByConfigs();
+    auto page_config = GetPageConfigMap(env, native_bundle);
     env->SetObjectArrayElement(
         options, 1, page_config ? page_config->jni_object() : nullptr);
-    return reinterpret_cast<int64_t>(bundle);
+    return reinterpret_cast<int64_t>(native_bundle);
   } else {
     // decode failed.
-    LOGE("ParseTemplate failed. error_msg is : " << reader.error_message_);
+    LOGE("ParseTemplate failed. error_msg is : " << error);
     auto j_err_str =
-        lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
-            env, reader.error_message_);
+        lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env,
+                                                                     error);
     env->SetObjectArrayElement(options, 0, j_err_str.Get());
     return 0;
   }

@@ -3,8 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "base/include/log/logging.h"
-#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
-#include "lynx_service/lynx_security_service_priv.h"
 #include "platform/embedder/lynx_service/lynx_security_service_priv.h"
 #include "platform/embedder/lynx_service/lynx_service_center_priv.h"
 #include "platform/embedder/lynx_template_bundle_priv.h"
@@ -32,16 +30,15 @@ LYNX_EXTERN_C lynx_template_bundle_t* lynx_template_bundle_create(
     if (dtor) {
       dtor(content, length, opaque);
     }
-    auto decoder =
-        lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(std::move(source));
-    if (!decoder.Decode()) {
+    auto template_bundle = std::make_shared<lynx::tasm::LynxTemplateBundle>();
+    std::string error =
+        template_bundle->FromBinaryGreedy(std::move(source), "");
+    if (!error.empty()) {
       // decode failed.
-      bundle->error = decoder.error_message_;
+      bundle->error = error;
     } else {
       // decode success.
-      bundle->template_bundle =
-          std::make_shared<lynx::tasm::LynxTemplateBundle>(
-              decoder.GetTemplateBundle());
+      bundle->template_bundle = std::move(template_bundle);
     }
   }
 

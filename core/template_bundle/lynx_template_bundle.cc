@@ -9,6 +9,7 @@
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/runtime/lepus/binary_input_stream.h"
 #include "core/template_bundle/template_codec/binary_decoder/element_binary_reader.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 
 namespace lynx {
@@ -30,6 +31,22 @@ std::string LynxTemplateBundle::FromBinary(std::vector<uint8_t> binary,
 
   lazy_reader_ =
       std::shared_ptr<LynxBinaryLazyReaderDelegate>(std::move(reader));
+  return "";
+}
+
+std::string LynxTemplateBundle::FromBinaryGreedy(
+    std::vector<uint8_t> binary, const std::string &template_url,
+    bool skip_css_decode, std::optional<bool> is_card) {
+  auto reader = LynxBinaryReader::CreateLynxBinaryReader(std::move(binary));
+  if (is_card.has_value()) {
+    reader.SetIsCardType(*is_card);
+  }
+  reader.SetTemplateUrl(template_url);
+  reader.SetSkipCSSDecode(skip_css_decode);
+  if (!reader.Decode()) {
+    return reader.error_message_;
+  }
+  *this = reader.GetTemplateBundle();
   return "";
 }
 

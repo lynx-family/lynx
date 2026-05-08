@@ -14,7 +14,6 @@
 #ifdef OS_ANDROID
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #endif
-#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 
 namespace lynx {
 namespace tasm {
@@ -34,15 +33,15 @@ void DecodeBundle(LazyBundleLoader::CallBackInfo& callback_info, bool is_card) {
     return;
   }
   if (callback_info.Success()) {
-    auto reader =
-        LynxBinaryReader::CreateLynxBinaryReader(std::move(callback_info.data));
-    reader.SetIsCardType(is_card);
-    if (reader.Decode()) {
-      callback_info.bundle = reader.GetTemplateBundle();
+    lynx::tasm::LynxTemplateBundle bundle;
+    std::string error = bundle.FromBinaryGreedy(std::move(callback_info.data),
+                                                "", false, is_card);
+    if (error.empty()) {
+      callback_info.bundle = std::move(bundle);
     } else {
       callback_info.error_code = error::E_LAZY_BUNDLE_LOAD_DECODE_FAILED;
       callback_info.error_msg =
-          ConstructErrorMessage("Decoder error: " + reader.error_message_);
+          ConstructErrorMessage("Decoder error: " + error);
     }
   }
 }

@@ -8,7 +8,6 @@
 #include <cstring>
 
 #include "core/template_bundle/lynx_template_bundle_converter.h"
-#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "core/template_bundle/template_codec/public/tasm_codec_capi.h"
 
@@ -161,17 +160,17 @@ DecodeResult Decode(const uint8_t* data, size_t len) {
     return out;
   }
 
-  auto reader = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(
-      std::vector<uint8_t>(data, data + len));
-  if (!reader.Decode()) {
-    out.error_msg = reader.error_message_;
+  lynx::tasm::LynxTemplateBundle bundle;
+  std::string error =
+      bundle.FromBinaryGreedy(std::vector<uint8_t>(data, data + len), "");
+  if (!error.empty()) {
+    out.error_msg = error;
     return out;
   }
 
-  auto template_bundle = reader.GetTemplateBundle();
   out.status = 0;
   out.result = lynx::tasm::LynxTemplateBundleConverter::
-      ConvertTemplateBundleToSerializedString(template_bundle);
+      ConvertTemplateBundleToSerializedString(bundle);
   return out;
 }
 
