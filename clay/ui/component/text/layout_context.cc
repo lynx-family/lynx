@@ -78,4 +78,8 @@ void LayoutContextText::EnsureInitialTextIndentIfNeeded(bool need_text_indent) {
   }
 }
 
+size_t LayoutContextText::TextSizeIncludingPlaceholdersInUtf32() {
+  return lynx::base::U16StringToU32(text_).size() + placeholder_num_;
+}
+
 }  // namespace clay

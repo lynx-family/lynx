@@ -73,6 +73,8 @@ class LayoutContextText : public LayoutContext {
     return text_.size() + placeholder_num_;
   }
 
+  size_t TextSizeIncludingPlaceholdersInUtf32();
+
   void AddInlineEmojiInfo(int placeholder_id, InlineEmojiBitmap&& bitmap) {
     inline_emoji_info_.push_back({placeholder_id, std::move(bitmap)});
   }

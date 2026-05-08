@@ -632,9 +632,11 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
 #ifndef CLAY_ENABLE_TTTEXT
         auto end_dx = truncation_direction_ == TextDirection::kRtl
                           ? truncation_size.width()
-                          : prev_layout_width_ - truncation_size.width();
+                          : cache_paragraph_->GetMaxIntrinsicWidth() -
+                                truncation_size.width();
 #else
-        auto end_dx = prev_layout_width_ - truncation_size.width();
+        auto end_dx =
+            cache_paragraph_->GetMaxIntrinsicWidth() - truncation_size.width();
 #endif
         auto line_metrics = cache_paragraph_->GetLineMetrics();
         if (line_metrics.empty()) {
@@ -646,7 +648,7 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
                           ? cache_paragraph_->GetHeight()
                           : std::min<double>(cache_paragraph_->GetHeight(),
                                              constraint.height.value_or(0)) -
-                                last_line_height;
+                                last_line_height + kLayoutTolerance;
         auto end_glyph_index =
             cache_paragraph_->GetGlyphPositionAtCoordinate(end_dx, end_dy);
         auto end_glyph_boxes = cache_paragraph_->GetRectsForRange(
