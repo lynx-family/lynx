@@ -558,10 +558,14 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
 
   auto* style_root = inspector_attribute->style_root_;
   auto* element_manager = element->element_manager();
-  const auto* adopted_sheets =
-      element_manager ? &element_manager->GetAdoptedStyleSheets() : nullptr;
+  const auto adopted_sheets =
+      element_manager
+          ? element_manager->GetAdoptedStyleSheets()
+          : std::vector<fml::RefPtr<lynx::tasm::SharedCSSFragmentWrapper>>{};
+  const auto* adopted_sheets_ptr =
+      adopted_sheets.empty() ? nullptr : &adopted_sheets;
   auto matched_rules = lynx::tasm::StyleResolver::GetCSSMatchedRule(
-      attribute_holder, style_sheet, adopted_sheets);
+      attribute_holder, style_sheet, adopted_sheets_ptr);
   for (const auto& matched : matched_rules) {
     if (matched.Data()->Rule()->Token() != nullptr) {
       std::string name = matched.Data()->Selector().ToString();

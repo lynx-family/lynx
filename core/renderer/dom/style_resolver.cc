@@ -850,9 +850,12 @@ void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
                                    CSSFragment* style_sheet) {
   // Then process regular styles
   ElementManager* element_manager = manager();
-  const std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>* adopted_sheets =
-      element_manager ? &element_manager->GetAdoptedStyleSheets() : nullptr;
-  auto matched_rules = GetCSSMatchedRule(node, style_sheet, adopted_sheets);
+  const auto adopted_sheets =
+      element_manager ? element_manager->GetAdoptedStyleSheets()
+                      : std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>{};
+  const auto* adopted_sheets_ptr =
+      adopted_sheets.empty() ? nullptr : &adopted_sheets;
+  auto matched_rules = GetCSSMatchedRule(node, style_sheet, adopted_sheets_ptr);
 
   for (const auto& matched : matched_rules) {
     if (matched.Data()->Rule()->Token() != nullptr) {

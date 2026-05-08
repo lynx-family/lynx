@@ -12,6 +12,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <shared_mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -430,15 +431,45 @@ class ElementManager : public ElementContextDelegate,
     return *kDefaultCSSConfigs;
   }
 
-  // Adopted stylesheets management for runtime CSS adoption
+  // Thread-safe adopted stylesheet accessors using a read-write lock.
+  // Writers (Adopt/Clear) take an exclusive lock.
+  // Readers (Get) take a shared lock.
   void AdoptStyleSheet(fml::RefPtr<tasm::SharedCSSFragmentWrapper> wrapper) {
+    std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
     adopted_stylesheets_.push_back(std::move(wrapper));
   }
 
-  void ClearAdoptedStyleSheets() { adopted_stylesheets_.clear(); }
+  void ClearAdoptedStyleSheets() {
+    std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+    adopted_stylesheets_.clear();
+  }
 
-  const std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>> &
+  // Iterates adopted stylesheets under a shared lock without copying.
+  // Visitor returns true to continue, false to stop early.
+  template <typename Visitor>
+  void ForEachAdoptedStyleSheet(Visitor &&visitor, bool reverse = false) const {
+    std::shared_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+    if (reverse) {
+      for (auto it = adopted_stylesheets_.rbegin();
+           it != adopted_stylesheets_.rend(); ++it) {
+        if (!visitor(*it)) return;
+      }
+    } else {
+      for (const auto &wrapper : adopted_stylesheets_) {
+        if (!visitor(wrapper)) return;
+      }
+    }
+  }
+
+  bool HasAdoptedStyleSheets() const {
+    std::shared_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+    return !adopted_stylesheets_.empty();
+  }
+
+  // Returns a copy under the shared lock.
+  std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>>
   GetAdoptedStyleSheets() const {
+    std::shared_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
     return adopted_stylesheets_;
   }
 
@@ -1424,6 +1455,7 @@ class ElementManager : public ElementContextDelegate,
   std::shared_ptr<CSSKeyframesTokenMap> key_frames_;
 
   // Adopted stylesheets for runtime CSS adoption with highest cascade priority
+  mutable std::shared_mutex adopted_style_sheets_mutex_;
   std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>> adopted_stylesheets_;
 
   base::MoveOnlyClosure<void, int> vm_update_outer_obj_size_callback_{};

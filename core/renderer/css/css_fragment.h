@@ -97,9 +97,49 @@ class CSSFragment {
 
   virtual bool HasCSSStyle() = 0;
 
+  // Check if this stylesheet (including adopted sheets for decorators)
+  // contains pseudo rules.
+  virtual bool HasPseudoRules() {
+    auto* rs = rule_set();
+    return rs && !rs->pseudo_rules().empty();
+  }
+
+  // Check if this stylesheet (including adopted sheets for decorators)
+  // contains adjacent-sibling rules.
+  virtual bool HasAdjacentSiblingRules() {
+    auto* rs = rule_set();
+    return rs && rs->HasAdjacentSiblingRules();
+  }
+
   bool HasPseudoStyle() { return !pseudo_map().empty(); }
 
   bool HasCascadeStyle() { return !cascade_map().empty(); }
+
+  // Iterate all keyframes maps that contribute to this stylesheet.
+  // For CSSFragmentDecorator, this includes adopted stylesheets.
+  using ForEachKeyframesMapVisitor = void (*)(const CSSKeyframesTokenMap&,
+                                              void*);
+  virtual void ForEachKeyframesMap(ForEachKeyframesMapVisitor visitor,
+                                   void* cb_data) {
+    visitor(GetKeyframesRuleMap(), cb_data);
+  }
+
+  // Iterate all font-face maps that contribute to this stylesheet.
+  // For CSSFragmentDecorator, this includes adopted stylesheets.
+  using ForEachFontFaceMapVisitor = void (*)(const CSSFontFaceRuleMap&, void*);
+  virtual void ForEachFontFaceMap(ForEachFontFaceMapVisitor visitor,
+                                  void* cb_data) {
+    visitor(GetFontFaceRuleMap(), cb_data);
+  }
+
+  // Iterate all rule sets that contribute to this stylesheet.
+  // For CSSFragmentDecorator, this includes adopted stylesheets.
+  using ForEachRuleSetVisitor = void (*)(css::RuleSet*, void*);
+  virtual void ForEachRuleSet(ForEachRuleSetVisitor visitor, void* cb_data) {
+    if (auto* rs = rule_set()) {
+      visitor(rs, cb_data);
+    }
+  }
 
   bool HasFontFacesResolved() const { return has_font_faces_resolved_; }
 
