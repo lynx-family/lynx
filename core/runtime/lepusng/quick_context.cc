@@ -1051,10 +1051,10 @@ LEPUSValue QuickContext::NewBindingFunction(CFunction func) {
 void QuickContext::RegisterGlobalFunction(
     const runtime::RenderBindingFunction* funcs, size_t size) {
   for (size_t i = 0; i < size; ++i) {
-    if (!funcs->for_lepusng) {
+    auto& func = funcs[i];
+    if (!func.for_lepusng) {
       continue;
     }
-    auto& func = funcs[i];
     auto c_func = NewBindingFunction(func.function);
     HandleScope block_scope{lepus_context_, &c_func, HANDLE_TYPE_LEPUS_VALUE};
     RegisterGlobalProperty(func.name, c_func);
@@ -1066,10 +1066,10 @@ void QuickContext::RegisterObjectFunction(
     lepus::Value& obj, const runtime::RenderBindingFunction* funcs,
     size_t size) {
   for (size_t i = 0; i < size; ++i) {
-    if (!funcs->for_lepusng) {
+    auto& func = funcs[i];
+    if (!func.for_lepusng) {
       continue;
     }
-    auto& func = funcs[i];
     auto c_func = NewBindingFunction(func.function);
     HandleScope block_scope{lepus_context_, &c_func, HANDLE_TYPE_LEPUS_VALUE};
     LEPUSValueHelper::SetProperty(lepus_context_, WRAP_AS_JS_VALUE(obj.value()),

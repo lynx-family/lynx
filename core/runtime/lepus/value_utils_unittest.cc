@@ -31,6 +31,21 @@ extern LEPUSValue js_map_get_size(LEPUSContext* ctx, LEPUSValueConst this_val,
 namespace lynx {
 namespace base {
 
+namespace {
+
+lepus::Value TestRenderBindingFunction(runtime::MTSContext*, lepus::Value*,
+                                       int) {
+  return lepus::Value();
+}
+
+void FreeLEPUSValueIfNeeded(LEPUSContext* ctx, LEPUSValue value) {
+  if (!LEPUS_IsGCMode(ctx)) {
+    LEPUS_FreeValue(ctx, value);
+  }
+}
+
+}  // namespace
+
 class LepusValueMethods : public ::testing::Test {
  public:
   class TestRefCountedClass : public lepus::RefCounted {
@@ -91,6 +106,67 @@ TEST(VMContextSafety, InvalidOpcode_IsReportedAsException) {
   EXPECT_EQ(vm.err_code_, error::E_MTS_RUNTIME_ERROR);
   EXPECT_NE(vm.exception_info_.find("Invalid Lepus opcode: 255."),
             std::string::npos);
+}
+
+TEST(RenderBindingFunctionRegistration, VMContextFiltersEachEntry) {
+  static const runtime::RenderBindingFunction funcs[] = {
+      {"vm_skipped_first", &TestRenderBindingFunction, false, true},
+      {"vm_registered", &TestRenderBindingFunction, true, true},
+      {"vm_skipped_tail", &TestRenderBindingFunction, false, true},
+  };
+
+  lepus::VMContext vm;
+  vm.Initialize();
+
+  vm.RegisterGlobalFunction(funcs, sizeof(funcs) / sizeof(funcs[0]));
+  EXPECT_EQ(nullptr, vm.SearchGlobalData("vm_skipped_first"));
+  EXPECT_TRUE(vm.GetGlobalData("vm_registered").IsCFunction());
+  EXPECT_EQ(nullptr, vm.SearchGlobalData("vm_skipped_tail"));
+
+  lepus::Value obj(lepus::Dictionary::Create());
+  vm.RegisterObjectFunction(obj, funcs, sizeof(funcs) / sizeof(funcs[0]));
+  EXPECT_TRUE(obj.GetProperty("vm_skipped_first").IsNil());
+  EXPECT_TRUE(obj.GetProperty("vm_registered").IsCFunction());
+  EXPECT_TRUE(obj.GetProperty("vm_skipped_tail").IsNil());
+}
+
+TEST(RenderBindingFunctionRegistration, QuickContextFiltersEachEntry) {
+  static const runtime::RenderBindingFunction funcs[] = {
+      {"quick_skipped_first", &TestRenderBindingFunction, true, false},
+      {"quick_registered", &TestRenderBindingFunction, true, true},
+      {"quick_skipped_tail", &TestRenderBindingFunction, true, false},
+  };
+
+  lepus::QuickContext qctx;
+  qctx.Initialize();
+  LEPUSContext* ctx = qctx.context();
+
+  qctx.RegisterGlobalFunction(funcs, sizeof(funcs) / sizeof(funcs[0]));
+  LEPUSValue skipped_first = qctx.SearchGlobalData("quick_skipped_first");
+  EXPECT_TRUE(LEPUS_IsUndefined(skipped_first));
+  FreeLEPUSValueIfNeeded(ctx, skipped_first);
+  LEPUSValue registered = qctx.SearchGlobalData("quick_registered");
+  EXPECT_TRUE(LEPUS_IsFunction(ctx, registered));
+  FreeLEPUSValueIfNeeded(ctx, registered);
+  LEPUSValue skipped_tail = qctx.SearchGlobalData("quick_skipped_tail");
+  EXPECT_TRUE(LEPUS_IsUndefined(skipped_tail));
+  FreeLEPUSValueIfNeeded(ctx, skipped_tail);
+
+  lepus::Value obj = MK_JS_LEPUS_VALUE(ctx, LEPUS_NewObject(ctx));
+  qctx.RegisterObjectFunction(obj, funcs, sizeof(funcs) / sizeof(funcs[0]));
+  LEPUSValue js_obj = WRAP_AS_JS_VALUE(obj.value());
+  skipped_first = lepus::LEPUSValueHelper::GetPropertyJsValue(
+      ctx, js_obj, "quick_skipped_first");
+  EXPECT_TRUE(LEPUS_IsUndefined(skipped_first));
+  FreeLEPUSValueIfNeeded(ctx, skipped_first);
+  registered = lepus::LEPUSValueHelper::GetPropertyJsValue(ctx, js_obj,
+                                                           "quick_registered");
+  EXPECT_TRUE(LEPUS_IsFunction(ctx, registered));
+  FreeLEPUSValueIfNeeded(ctx, registered);
+  skipped_tail = lepus::LEPUSValueHelper::GetPropertyJsValue(
+      ctx, js_obj, "quick_skipped_tail");
+  EXPECT_TRUE(LEPUS_IsUndefined(skipped_tail));
+  FreeLEPUSValueIfNeeded(ctx, skipped_tail);
 }
 
 TEST(LepusShadowEqualTest, SameStringTable) {
