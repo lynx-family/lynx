@@ -4,6 +4,8 @@
 
 #include "core/renderer/dom/fiber/component_element.h"
 
+#include <utility>
+
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/view_fragment_behavior.h"
@@ -102,14 +104,17 @@ ComponentElement::~ComponentElement() {
 
 CSSFragment* ComponentElement::GetCSSFragment() {
   if (!style_sheet_) {
+    CSSFragment* intrinsic = nullptr;
     if (css_style_sheet_manager_) {
-      style_sheet_ = std::make_unique<CSSFragmentDecorator>(
-          css_style_sheet_manager_->GetCSSStyleSheetForComponent(
-              component_css_id_));
+      intrinsic = css_style_sheet_manager_->GetCSSStyleSheetForComponent(
+          component_css_id_);
     }
-    if (style_sheet_) {
-      // for css variable in `:root` css
-      PrepareForRootCSSVariables();
+    if (intrinsic || element_manager()->HasAdoptedStyleSheets()) {
+      style_sheet_ =
+          std::make_unique<CSSFragmentDecorator>(intrinsic, element_manager());
+      if (intrinsic) {
+        PrepareForRootCSSVariables();
+      }
       PrepareForFontFaceIfNeeded();
     }
   }

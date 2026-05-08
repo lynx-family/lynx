@@ -251,6 +251,18 @@ bool CSSFragmentDecorator::HasInAdopted(Predicate pred) {
   return found;
 }
 
+void CSSFragmentDecorator::MarkFontFacesResolved(bool resolved) {
+  CSSFragment::MarkFontFacesResolved(resolved);
+  if (element_manager_) {
+    element_manager_->ForEachAdoptedStyleSheet([resolved](const auto& wrapper) {
+      if (wrapper) {
+        wrapper->MarkFontFacesResolved(resolved);
+      }
+      return true;
+    });
+  }
+}
+
 bool CSSFragmentDecorator::HasPseudoRules() {
   if (CSSFragment::HasPseudoRules()) {
     return true;

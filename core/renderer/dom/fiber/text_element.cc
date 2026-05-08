@@ -205,23 +205,18 @@ void TextElement::ConvertToInlineElement() {
 
 void TextElement::ResolveAndFlushFontFaces(const base::String& font_family) {
   auto* fragment = GetRelatedCSSFragment();
-  if (fragment && !fragment->GetFontFaceRuleMap().empty() &&
-      !fragment->HasFontFacesResolved()) {
-    // FIXME(linxs): parse the font face according to font_family, instead of
-    // flushing all font faces
-    SetFontFaces(fragment->GetFontFaceRuleMap());
+  if (fragment) {
+    fragment->ForEachFontFaceMap(
+        [](const CSSFontFaceRuleMap& font_face_map, void* cb_data) {
+          auto* self = static_cast<TextElement*>(cb_data);
+          if (!font_face_map.empty()) {
+            // FIXME(linxs): parse the font face according to font_family,
+            // instead of flushing all font faces
+            self->SetFontFaces(font_face_map);
+          }
+        },
+        this);
     fragment->MarkFontFacesResolved(true);
-  }
-
-  for (const auto& wrapper : element_manager_->GetAdoptedStyleSheets()) {
-    if (wrapper && wrapper->fragment_ &&
-        !wrapper->fragment_->HasFontFacesResolved()) {
-      const auto& font_face_map = wrapper->fragment_->GetFontFaceRuleMap();
-      if (!font_face_map.empty()) {
-        SetFontFaces(font_face_map);
-        wrapper->fragment_->MarkFontFacesResolved(true);
-      }
-    }
   }
 }
 
