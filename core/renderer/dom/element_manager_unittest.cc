@@ -480,15 +480,19 @@ TEST_F(ElementManagerTest, AdoptStyleSheet_NullWrapper) {
   SUCCEED();
 }
 
-TEST_F(ElementManagerTest, GetAdoptedStyleSheets_ConstReference) {
+TEST_F(ElementManagerTest, GetAdoptedStyleSheets_ThreadSafeCopy) {
   auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
       new MockSharedCSSFragmentWrapper());
   manager->AdoptStyleSheet(wrapper);
 
-  const auto& sheets1 = manager->GetAdoptedStyleSheets();
-  const auto& sheets2 = manager->GetAdoptedStyleSheets();
+  const auto sheets1 = manager->GetAdoptedStyleSheets();
+  const auto sheets2 = manager->GetAdoptedStyleSheets();
 
-  EXPECT_EQ(&sheets1, &sheets2);
+  // GetAdoptedStyleSheets returns a copy under the shared lock for thread
+  // safety, so each call produces a distinct vector object.
+  EXPECT_NE(&sheets1, &sheets2);
+  EXPECT_EQ(sheets1.size(), sheets2.size());
+  EXPECT_EQ(sheets1.size(), 1u);
 }
 
 TEST_F(ElementManagerTest, AdoptedStylesheets_IntegrationWithFiberElement) {
