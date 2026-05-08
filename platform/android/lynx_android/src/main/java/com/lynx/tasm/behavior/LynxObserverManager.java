@@ -27,6 +27,8 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
+import com.lynx.tasm.behavior.ui.scroll.UIScrollView;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -388,7 +390,12 @@ public abstract class LynxObserverManager {
       if (realLynxUI != null) {
         View parent = ((LynxUI) realLynxUI).getView();
         getLeftAndTopOfBoundsInScreen(parent, outBounds);
-        outBounds.offset(-parent.getScrollX(), -parent.getScrollY());
+        if (realLynxUI instanceof UIScrollView) {
+          outBounds.offset(-((AndroidScrollView) parent).getRealScrollX(),
+              -((AndroidScrollView) parent).getRealScrollY());
+        } else {
+          outBounds.offset(-parent.getScrollX(), -parent.getScrollY());
+        }
         outBounds.offset(ui.getLeft(), ui.getTop());
         outBounds.set(outBounds.left, outBounds.top, outBounds.left + ui.getWidth(),
             outBounds.top + ui.getHeight());
