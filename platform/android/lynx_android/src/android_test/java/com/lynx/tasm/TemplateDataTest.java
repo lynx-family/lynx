@@ -800,6 +800,75 @@ public class TemplateDataTest {
   }
 
   @Test
+  public void testConcurrentGetTemplateDataForJSThread() throws Exception {
+    TemplateData data = TemplateData.fromMap(new HashMap<>());
+    data.put("seed", 1);
+    data.flush();
+
+    Object initialJsData = TemplateData.nativeGetData(data.getDataForJSThread());
+    assertTrue(initialJsData instanceof Map);
+    assertEquals(1, ((Map<?, ?>) initialJsData).get("seed"));
+
+    int writerCount = 2;
+    int readerCount = 4;
+    int opsPerWriter = 200;
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch doneLatch = new CountDownLatch(writerCount + readerCount);
+    ExecutorService pool = Executors.newFixedThreadPool(writerCount + readerCount);
+
+    // Writer threads: update source JS data continuously so getTemplateDataForJSThread()
+    // clones mJsNativeData while it is being refreshed.
+    for (int t = 0; t < writerCount; t++) {
+      final int threadId = t;
+      pool.submit(() -> {
+        try {
+          startLatch.await();
+          for (int i = 0; i < opsPerWriter; i++) {
+            data.put("key-" + threadId + "-" + i, i);
+            data.flush();
+            Object jsData = TemplateData.nativeGetData(data.getDataForJSThread());
+            assertTrue(jsData instanceof Map);
+            assertEquals(1, ((Map<?, ?>) jsData).get("seed"));
+          }
+        } catch (Exception e) {
+          fail(e.getMessage());
+        } finally {
+          doneLatch.countDown();
+        }
+      });
+    }
+
+    // Reader threads: continuously clone JS thread data and verify the clone is usable.
+    for (int t = 0; t < readerCount; t++) {
+      pool.submit(() -> {
+        try {
+          startLatch.await();
+          for (int i = 0; i < opsPerWriter; i++) {
+            TemplateData jsData = data.getTemplateDataForJSThread();
+            assertNotNull(jsData);
+            Object copiedJsData = TemplateData.nativeGetData(jsData.getDataForJSThread());
+            assertTrue(copiedJsData instanceof Map);
+            assertEquals(1, ((Map<?, ?>) copiedJsData).get("seed"));
+          }
+        } catch (Exception e) {
+          fail(e.getMessage());
+        } finally {
+          doneLatch.countDown();
+        }
+      });
+    }
+
+    startLatch.countDown();
+    doneLatch.await();
+    pool.shutdown();
+
+    TemplateData copiedJsTemplateData = data.getTemplateDataForJSThread();
+    Object copiedJsData = TemplateData.nativeGetData(copiedJsTemplateData.getDataForJSThread());
+    assertTrue(copiedJsData instanceof Map);
+    assertEquals(1, ((Map<?, ?>) copiedJsData).get("seed"));
+  }
+
+  @Test
   public void testConcurrentPut() throws Exception {
     TemplateData data = TemplateData.empty();
     data.markConcurrent();
