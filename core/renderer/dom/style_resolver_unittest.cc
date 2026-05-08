@@ -813,13 +813,16 @@ TEST_F(CSSPatchingTest, AdoptedStylesheets_MergeLogic) {
   regular_selector[0].SetLastInSelectorList(true);
   regular_fragment->AddStyleRule(std::move(regular_selector), regular_tokens);
 
-  // 3. Resolve style
+  // 3. Wrap regular fragment in decorator so adopted sheets are visible
+  CSSFragmentDecorator decorator(regular_fragment.get(), manager.get());
+
+  // 4. Resolve style
   StyleMap result;
   CSSVariableMap changed_css_vars;
-  fiber_element->style_resolver_.ResolveStyle(result, regular_fragment.get(),
+  fiber_element->style_resolver_.ResolveStyle(result, &decorator,
                                               &changed_css_vars);
 
-  // 4. Verify cascade priority: adopted stylesheet should override regular
+  // 5. Verify cascade priority: adopted stylesheet should override regular
   // stylesheet, even if regular stylesheet has higher specificity
   auto it = result.find(CSSPropertyID::kPropertyIDFontSize);
   ASSERT_TRUE(it != result.end());
@@ -1026,13 +1029,16 @@ TEST_F(CSSPatchingTest,
   wrapper->fragment_ = std::move(adopted_css_fragment);
   manager->AdoptStyleSheet(wrapper);
 
-  // 3. Resolve style
+  // 3. Wrap base fragment in decorator so adopted sheets participate
+  CSSFragmentDecorator decorator(base_fragment.get(), manager.get());
+
+  // 4. Resolve style
   StyleMap result;
   CSSVariableMap changed_css_vars;
-  fiber_element->style_resolver_.ResolveStyle(result, base_fragment.get(),
+  fiber_element->style_resolver_.ResolveStyle(result, &decorator,
                                               &changed_css_vars);
 
-  // 4. Verify cascade priority: adopted stylesheet should win because it has
+  // 5. Verify cascade priority: adopted stylesheet should win because it has
   // higher cascade priority (higher position value due to shared level counter)
   auto it = result.find(CSSPropertyID::kPropertyIDFontSize);
   ASSERT_TRUE(it != result.end());
@@ -2345,7 +2351,8 @@ TEST_F(CSSPatchingTest,
   wrapper->fragment_ = std::move(adopted_fragment);
   manager->AdoptStyleSheet(wrapper);
 
-  element->style_resolver_.ResolvePseudoElementsForNewPipeline(&base_fragment);
+  CSSFragmentDecorator decorator(&base_fragment, manager.get());
+  element->style_resolver_.ResolvePseudoElementsForNewPipeline(&decorator);
 
   ASSERT_TRUE(element->pseudo_elements_.has_value());
   auto placeholder_it =

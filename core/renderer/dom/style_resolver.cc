@@ -122,22 +122,8 @@ void ReplayInheritedStyleSideEffects(Element* element,
   }
 }
 
-bool HasPseudoRulesInStyleSheets(CSSFragment* fragment, ElementManager* em) {
-  if (fragment->rule_set() && !fragment->rule_set()->pseudo_rules().empty()) {
-    return true;
-  }
-  if (!em) {
-    return false;
-  }
-  for (const auto& wrapper : em->GetAdoptedStyleSheets()) {
-    if (wrapper && wrapper->fragment_ &&
-        wrapper->fragment_->enable_css_selector() &&
-        wrapper->fragment_->rule_set() &&
-        !wrapper->fragment_->rule_set()->pseudo_rules().empty()) {
-      return true;
-    }
-  }
-  return false;
+bool HasPseudoRulesInStyleSheets(CSSFragment* fragment) {
+  return fragment && fragment->HasPseudoRules();
 }
 
 void ApplyComputedStyleValue(Element* element,
@@ -581,7 +567,7 @@ void StyleResolver::HandlePseudoElement(CSSFragment* fragment) {
   }
 
   if (fragment->enable_css_selector()) {
-    if (!HasPseudoRulesInStyleSheets(fragment, manager())) {
+    if (!HasPseudoRulesInStyleSheets(fragment)) {
       return;
     }
   } else if (fragment->pseudo_map().empty()) {
@@ -614,7 +600,7 @@ void StyleResolver::ResolvePseudoElementsForNewPipeline(CSSFragment* fragment) {
     return;
   }
   if ((fragment->enable_css_selector() &&
-       !HasPseudoRulesInStyleSheets(fragment, manager())) ||
+       !HasPseudoRulesInStyleSheets(fragment)) ||
       (!fragment->enable_css_selector() && fragment->pseudo_map().empty())) {
     return;
   }
@@ -817,29 +803,22 @@ static bool CompareRules(const css::MatchedRule& matched_rule1,
 }
 
 StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
-    AttributeHolder* node, CSSFragment* style_sheet,
-    const std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>* adopted_sheets) {
+    AttributeHolder* node, CSSFragment* style_sheet) {
   MatchedVector<css::MatchedRule> matched_rules;
   unsigned level = 0;
-  if (style_sheet && style_sheet->rule_set()) {
-    style_sheet->rule_set()->MatchStyles(node, level, matched_rules);
-  }
-
-  // Check for adopted stylesheets with higher cascade priority
-  // The priority is ensured by the level. In the MatchStyles methods,
-  // each rule set will internally increase it. Thus the later rule_set that
-  // execute the match will have higher priority than the former ones.
-  if (adopted_sheets) {
-    for (const auto& wrapper : *adopted_sheets) {
-      if (wrapper && wrapper->fragment_ &&
-          wrapper->fragment_->enable_css_selector()) {
-        auto* adopted_style_sheet = wrapper->fragment_.get();
-        if (adopted_style_sheet->rule_set()) {
-          adopted_style_sheet->rule_set()->MatchStyles(node, level,
-                                                       matched_rules);
-        }
-      }
-    }
+  if (style_sheet) {
+    struct Ctx {
+      AttributeHolder* node;
+      unsigned* level;
+      MatchedVector<css::MatchedRule>* matched_rules;
+    };
+    Ctx ctx{node, &level, &matched_rules};
+    style_sheet->ForEachRuleSet(
+        [](css::RuleSet* rule_set, void* cb_data) {
+          auto* c = static_cast<Ctx*>(cb_data);
+          rule_set->MatchStyles(c->node, *c->level, *c->matched_rules);
+        },
+        &ctx);
   }
 
   base::InsertionSort(matched_rules.data(), matched_rules.size(), CompareRules);
@@ -848,14 +827,7 @@ StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
 
 void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
                                    CSSFragment* style_sheet) {
-  // Then process regular styles
-  ElementManager* element_manager = manager();
-  const auto adopted_sheets =
-      element_manager ? element_manager->GetAdoptedStyleSheets()
-                      : std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>{};
-  const auto* adopted_sheets_ptr =
-      adopted_sheets.empty() ? nullptr : &adopted_sheets;
-  auto matched_rules = GetCSSMatchedRule(node, style_sheet, adopted_sheets_ptr);
+  auto matched_rules = GetCSSMatchedRule(node, style_sheet);
 
   for (const auto& matched : matched_rules) {
     if (matched.Data()->Rule()->Token() != nullptr) {

@@ -39,10 +39,7 @@ class StyleResolver {
   using MatchedVector = base::InlineVector<T, kDefaultMatchedSize>;
 
   LYNX_EXPORT_FOR_DEVTOOL static MatchedVector<css::MatchedRule>
-  GetCSSMatchedRule(
-      AttributeHolder* node, CSSFragment* style_sheet,
-      const std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>>*
-          adopted_sheets = nullptr);
+  GetCSSMatchedRule(AttributeHolder* node, CSSFragment* style_sheet);
 
   void ResolveStyle(StyleMap& result, CSSFragment* fragment,
                     CSSVariableMap* changed_css_vars = nullptr);
