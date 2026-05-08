@@ -14,7 +14,8 @@ namespace testing {
 namespace utils {
 
 std::unique_ptr<lynx::runtime::js::Runtime> makeJSRuntime(
-    std::shared_ptr<lynx::runtime::js::JSRuntimeDelegate> delegate = nullptr);
+    ::lynx::base::UnsafeWeakPtr<::lynx::runtime::js::JSRuntimeDelegate>
+        delegate = nullptr);
 
 }
 }  // namespace testing

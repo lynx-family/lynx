@@ -209,7 +209,7 @@ bool JsCacheManager::IsCacheEnabled() {
 std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
     const std::string &source_url, const std::string &template_url,
     int64_t runtime_id, std::unique_ptr<CacheGenerator> cache_generator,
-    std::shared_ptr<JSRuntimeDelegate> runtime_delegate) {
+    base::UnsafeWeakPtr<JSRuntimeDelegate> runtime_delegate) {
   if (!cache_generator) {
     return nullptr;
   }
@@ -249,9 +249,9 @@ std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
   }
   auto identifier = BuildIdentifier(source_url, template_url);
   // try get bytecode from external
-  if (runtime_delegate) {
+  if (auto *delegate = runtime_delegate.Lock()) {
     auto cache_url = GetCacheUrlFromIdentifier(identifier);
-    auto maybe_bytecode = runtime_delegate->GetBytecode(cache_url);
+    auto maybe_bytecode = delegate->GetBytecode(cache_url);
     if (maybe_bytecode) {
       LOGI("cache loaded from external,cache_url:" << cache_url << " size: "
                                                    << maybe_bytecode->size());

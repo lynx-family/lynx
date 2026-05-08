@@ -33,6 +33,7 @@
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
 #include "core/base/lynx_export.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/inspector/console_message_postman.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
@@ -118,7 +119,7 @@ struct JSRuntimeExternalParams {
   bool enable_js_call_timeout_guard = false;
   uint32_t js_call_timeout_ms = 0;
   std::string bytecode_source_url;
-  std::weak_ptr<JSRuntimeDelegate> delegate;
+  base::UnsafeWeakPtr<JSRuntimeDelegate> delegate;
 };
 
 /// PreparedJavaScript is a base class repesenting JavaScript which is in a form
@@ -429,12 +430,12 @@ class LYNX_EXPORT Runtime {
   void SetPageUrl(const std::string& url) { page_url_ = url; }
   const std::string& GetPageUrl() const { return page_url_; }
 
-  void SetRuntimeDelegate(std::shared_ptr<JSRuntimeDelegate> delegate) {
+  void SetRuntimeDelegate(base::UnsafeWeakPtr<JSRuntimeDelegate> delegate) {
     external_params_.delegate = std::move(delegate);
   }
 
-  std::shared_ptr<JSRuntimeDelegate> GetRuntimeDelegate() const {
-    return external_params_.delegate.lock();
+  base::UnsafeWeakPtr<JSRuntimeDelegate> GetRuntimeDelegateWeakPtr() const {
+    return external_params_.delegate;
   }
 
   void SetExternalParams(JSRuntimeExternalParams external_params) {

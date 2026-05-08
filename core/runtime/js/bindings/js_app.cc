@@ -1961,7 +1961,9 @@ void App::Destroy() {
     }
   }
 
-  runtime_delegate_->Destroy();
+  if (auto* runtime_delegate = runtime_delegate_.Lock()) {
+    runtime_delegate->Destroy();
+  }
 }
 
 void App::CallDestroyLifetimeFun() {

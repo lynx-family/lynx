@@ -71,7 +71,7 @@ class App {
   static base::UnsafeOwningPtr<App> Create(
       int64_t rt_id, std::weak_ptr<Runtime> rt,
       runtime::TemplateDelegate* delegate,
-      std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
+      base::UnsafeWeakPtr<JSRuntimeDelegate> runtime_delegate,
       Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const std::string& group_id, const tasm::PageOptions& page_options) {
@@ -299,7 +299,7 @@ class App {
  private:
   App(int64_t rt_id, std::weak_ptr<Runtime> rt,
       runtime::TemplateDelegate* delegate,
-      std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
+      base::UnsafeWeakPtr<JSRuntimeDelegate> runtime_delegate,
       Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const std::string& group_id, const tasm::PageOptions& page_options)
@@ -354,7 +354,7 @@ class App {
   std::string i18_resource_;
   Value js_app_;
   runtime::TemplateDelegate* const delegate_;
-  std::shared_ptr<JSRuntimeDelegate> runtime_delegate_;
+  base::UnsafeWeakPtr<JSRuntimeDelegate> runtime_delegate_;
   std::unique_ptr<JsTaskAdapter> js_task_adapter_;
   Object nativeModuleProxy_;
   ApiCallBackManager api_callback_manager_;

@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_api.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_context_wrapper.h"
@@ -40,8 +41,8 @@ class MockHandler : public runtime::js::JSRuntimeDelegate {
 };
 
 TEST(QuickjsRuntimeProfilerTest, QuickjsRuntimeProfilerTotalTest) {
-  auto handler = std::make_shared<MockHandler>();
-  auto rt = ::testing::utils::makeJSRuntime(handler);
+  auto handler = base::MakeUnsafeOwning<MockHandler>();
+  auto rt = ::testing::utils::makeJSRuntime(handler.GetWeakPtr());
   auto ctx = rt->getSharedContext();
   auto quickjs_context =
       std::static_pointer_cast<runtime::js::QuickjsContextWrapper>(ctx);

@@ -10,14 +10,14 @@ namespace testing {
 namespace utils {
 
 std::unique_ptr<lynx::runtime::js::Runtime> makeJSRuntime(
-    std::shared_ptr<lynx::runtime::js::JSRuntimeDelegate> delegate) {
+    lynx::base::UnsafeWeakPtr<lynx::runtime::js::JSRuntimeDelegate> delegate) {
   std::unique_ptr<lynx::runtime::js::Runtime> rt =
       lynx::runtime::js::makeQuickJsRuntime();
   lynx::runtime::js::StartupData data{};
   auto vm = rt->createVM(&data);
   auto ctx = rt->createContext(vm);
   lynx::runtime::js::JSRuntimeExternalParams external_params;
-  external_params.delegate = delegate;
+  external_params.delegate = std::move(delegate);
   rt->SetExternalParams(std::move(external_params));
   rt->InitRuntime(ctx);
   return rt;

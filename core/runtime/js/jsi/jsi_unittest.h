@@ -33,20 +33,20 @@ namespace js {
 class Runtime;
 namespace test {
 
-using RuntimeFactory =
-    std::function<std::unique_ptr<Runtime>(std::shared_ptr<JSRuntimeDelegate>)>;
+using RuntimeFactory = std::function<std::unique_ptr<Runtime>(
+    base::UnsafeWeakPtr<JSRuntimeDelegate>)>;
 
 template <typename T,
           typename = std::enable_if_t<std::is_base_of_v<Runtime, T>>>
 std::unique_ptr<Runtime> MakeRuntimeFactory(
-    std::shared_ptr<JSRuntimeDelegate> runtime_delegate) {
+    base::UnsafeWeakPtr<JSRuntimeDelegate> runtime_delegate) {
   auto rt = std::make_unique<T>();
 
   auto vm = rt->createVM(nullptr);
   auto context = rt->createContext(vm);
 
   runtime::js::JSRuntimeExternalParams external_params;
-  external_params.delegate = runtime_delegate;
+  external_params.delegate = std::move(runtime_delegate);
   rt->SetExternalParams(std::move(external_params));
   rt->InitRuntime(context);
   return rt;
@@ -85,9 +85,9 @@ class MockExceptionHandler : public JSRuntimeDelegate {
 class JSITestBase : public ::testing::TestWithParam<RuntimeFactory> {
  public:
   JSITestBase()
-      : exception_handler_(std::make_shared<MockExceptionHandler>()),
+      : exception_handler_(base::MakeUnsafeOwning<MockExceptionHandler>()),
         factory(GetParam()),
-        runtime(factory(exception_handler_)),
+        runtime(factory(exception_handler_.GetWeakPtr())),
         rt(*runtime) {}
 
   std::optional<Value> eval(const char* code) {
@@ -104,7 +104,7 @@ class JSITestBase : public ::testing::TestWithParam<RuntimeFactory> {
         ->getBool();
   }
 
-  std::shared_ptr<MockExceptionHandler> exception_handler_;
+  base::UnsafeOwningPtr<MockExceptionHandler> exception_handler_;
   RuntimeFactory factory;
   std::shared_ptr<Runtime> runtime;
   Runtime& rt;

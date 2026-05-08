@@ -86,7 +86,7 @@ class JsCacheManager {
   std::shared_ptr<Buffer> TryGetCache(
       const std::string &source_url, const std::string &template_url,
       int64_t runtime_id, std::unique_ptr<CacheGenerator> cache_generator,
-      std::shared_ptr<JSRuntimeDelegate> runtime_delegate = nullptr);
+      base::UnsafeWeakPtr<JSRuntimeDelegate> runtime_delegate = nullptr);
 
   /**
    * Request to generate a new cache file if it's not already existed. It's not
