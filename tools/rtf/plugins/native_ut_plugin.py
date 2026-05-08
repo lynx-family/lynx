@@ -96,8 +96,9 @@ class NativeUTPlugin(Plugin):
             with open(template, "r") as template_file:
                 context = RTFContext(RTFEnv.get_project_root_path())
                 context.options = Options(context, args.args)
+                disable_flutter_cxx = getattr(args, "disable_flutter_cxx", False)
                 context.insert_variable(
-                    "disable_flutter_cxx", "true" if args.disable_flutter_cxx else "false"
+                    "disable_flutter_cxx", "true" if disable_flutter_cxx else "false"
                 )
                 context.options.register_listener(NativeUTListener())
                 exec(template_file.read(), context.export())
@@ -105,7 +106,7 @@ class NativeUTPlugin(Plugin):
                 # For templates that define builder/targets directly, we must
                 # inject use_flutter_cxx here so --disable-flutter-cxx works.
                 inject_flutter_cxx(
-                    context.find_variable("builder") or {}, args.disable_flutter_cxx
+                    context.find_variable("builder") or {}, disable_flutter_cxx
                 )
                 template = TraitTemplate.trait_from_context(context)
             if args.command == "run":
