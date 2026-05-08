@@ -115,6 +115,15 @@ bool LayoutBundleHasResetStyle(
   }
   return false;
 }
+
+const lepus::Value* DatasetValue(const FiberElement* element,
+                                 const base::String& key) {
+  auto it = element->data_model_->dataset().find(key);
+  if (it == element->data_model_->dataset().end()) {
+    return nullptr;
+  }
+  return &it->second;
+}
 }  // namespace
 
 static std::unordered_map<std::string, uint32_t> kTestColorMap = {
@@ -9831,15 +9840,17 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsUpdateMaterializedTargets) {
           Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
                     lepus::Value(), 0}});
   target->SetTemplateAttributes(template_attributes);
-  target->SetAttribute("data-test", lepus::Value("old_value"));
+  target->AddDataset("test", lepus::Value("old_value"));
   root->attribute_slot_targets_.push_back(target);
 
   lepus::Value set_attribute_args[] = {lepus::Value(root), lepus::Value(0),
                                        lepus::Value("new_value")};
   RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
                                                         set_attribute_args, 3);
-  EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
-            "new_value");
+  auto* test_data = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "new_value");
+  EXPECT_EQ(target->data_model_->attributes().count("data-test"), 0u);
 
   auto slot_parent = manager->CreateFiberView();
   auto sentinel = manager->CreateFiberView();
@@ -9964,7 +9975,7 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsConsumePendingOpsOnGetRoot) {
           Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("bindtap"),
                     lepus::Value(), 1}});
   target->SetTemplateAttributes(template_attributes);
-  target->SetAttribute("data-test", lepus::Value("old_value"));
+  target->AddDataset("test", lepus::Value("old_value"));
 
   auto slot_parent = ElementManager::StaticCreateFiberElement(ELEMENT_VIEW);
   auto sentinel = ElementManager::StaticCreateFiberElement(ELEMENT_VIEW);
@@ -10019,8 +10030,10 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsConsumePendingOpsOnGetRoot) {
 
   EXPECT_TRUE(root->pending_operations_.empty());
   EXPECT_EQ(target->element_manager(), manager);
-  EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
-            "new_value");
+  auto* test_data = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "new_value");
+  EXPECT_EQ(target->data_model_->attributes().count("data-test"), 0u);
   auto* listeners = target->GetEventListenerMap()->Find("tap");
   ASSERT_NE(listeners, nullptr);
   ASSERT_EQ(listeners->size(), 1u);
@@ -10092,13 +10105,14 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
   attribute_slots->emplace_back(lepus::Value("new-id"));
   attribute_slots->emplace_back(lepus::Value(456));
   attribute_slots->emplace_back(lepus::Value("new-generic"));
+  attribute_slots->emplace_back(lepus::Value(true));
 
   auto target = manager->CreateFiberView();
   target->SetClass("old-class");
   target->SetRawInlineStyles(base::String("width:10px;"));
   target->SetIdSelector("old-id");
   target->SetCSSID(123);
-  target->SetAttribute("data-test", lepus::Value("old-generic"));
+  target->AddDataset("test", lepus::Value("old-generic"));
 
   auto template_attributes =
       std::make_shared<const TemplateAttributes>(TemplateAttributes{
@@ -10111,7 +10125,9 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
           Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("cssID"),
                     lepus::Value(), 3},
           Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
-                    lepus::Value(), 4}});
+                    lepus::Value(), 4},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("data-enabled"), lepus::Value(), 5}});
   target->SetTemplateAttributes(template_attributes);
 
   TreeResolver::ApplyTemplateAttributesToElement(
@@ -10132,12 +10148,39 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
             0u);
   EXPECT_EQ(target->GetIdSelector(), "new-id");
   EXPECT_EQ(target->GetCSSID(), 456);
-  EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
-            "new-generic");
+  auto* test_data = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "new-generic");
+  auto* enabled_data = DatasetValue(target.get(), "enabled");
+  ASSERT_NE(enabled_data, nullptr);
+  EXPECT_TRUE(enabled_data->Bool());
+  EXPECT_EQ(target->data_model_->attributes().count("data-test"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("data-enabled"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("class"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("style"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("id"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("cssID"), 0u);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateDataAttributePreservesEmptyValue) {
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value());
+
+  auto target = manager->CreateFiberView();
+  target->AddDataset("test", lepus::Value("old-value"));
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), lepus::Value(std::move(attribute_slots)));
+
+  auto* test_data = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_TRUE(test_data->IsEmpty());
+  EXPECT_EQ(target->data_model_->attributes().count("data-test"), 0u);
 }
 
 TEST_P(FiberElementTest, ApplyTemplateAttributesEventKeys) {
@@ -10178,8 +10221,10 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesEventKeys) {
   EXPECT_EQ(target->data_model_->attributes().count("catchtap"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("main-thread:bindfocus"),
             0u);
-  EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
-            "ordinary-value");
+  EXPECT_EQ(target->data_model_->attributes().count("data-test"), 0u);
+  auto* test_data = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "ordinary-value");
   EXPECT_EQ(target->data_model_->attributes().count("global-bindtap"), 0u);
   auto global_event_iter = target->global_bind_event_map().find("tap");
   ASSERT_NE(global_event_iter, target->global_bind_event_map().end());
@@ -10263,16 +10308,19 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesEventKeysSyncsEventListeners) {
   EXPECT_FALSE(result.consumed);
 }
 
-TEST_P(FiberElementTest, ApplyTemplateSpreadEventKeysClearsPreviousEvents) {
+TEST_P(FiberElementTest,
+       ApplyTemplateSpreadEventAndDataKeysClearsPreviousValues) {
   auto previous_attribute_slots = lepus::CArray::Create();
   auto previous_spread_object = lepus::Dictionary::Create();
   previous_spread_object->SetValue("bindtap", lepus::Value("onTap"));
   previous_spread_object->SetValue("data-test", lepus::Value("old-value"));
+  previous_spread_object->SetValue("data-foo-bar",
+                                   lepus::Value("old-kebab-value"));
   previous_attribute_slots->emplace_back(lepus::Value(previous_spread_object));
 
   auto attribute_slots = lepus::CArray::Create();
   auto spread_object = lepus::Dictionary::Create();
-  spread_object->SetValue("data-test", lepus::Value("new-value"));
+  spread_object->SetValue("data-foo-bar", lepus::Value("new-kebab-value"));
   attribute_slots->emplace_back(lepus::Value(spread_object));
 
   auto target = manager->CreateFiberView();
@@ -10281,15 +10329,20 @@ TEST_P(FiberElementTest, ApplyTemplateSpreadEventKeysClearsPreviousEvents) {
                                    base::String("spread"), lepus::Value(), 0}});
   target->SetTemplateAttributes(template_attributes);
   target->SetJSEventHandler("tap", "bindEvent", "onTap");
-  target->SetAttribute("data-test", lepus::Value("old-value"));
+  target->AddDataset("test", lepus::Value("old-value"));
+  target->AddDataset("foo-bar", lepus::Value("old-kebab-value"));
 
   TreeResolver::ApplyTemplateAttributesToElement(
       target.get(), lepus::Value(std::move(previous_attribute_slots)),
       lepus::Value(std::move(attribute_slots)));
 
   EXPECT_EQ(target->event_map().count("tap"), 0u);
-  EXPECT_EQ(target->data_model_->attributes().at("data-test").StdString(),
-            "new-value");
+  EXPECT_EQ(target->data_model_->dataset().count("test"), 0u);
+  auto* kebab_data = DatasetValue(target.get(), "foo-bar");
+  ASSERT_NE(kebab_data, nullptr);
+  EXPECT_EQ(kebab_data->StdString(), "new-kebab-value");
+  EXPECT_EQ(target->data_model_->attributes().count("data-test"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("data-foo-bar"), 0u);
 }
 
 TEST_P(FiberElementTest, ApplyTemplateSpreadMainThreadNonEventKeys) {
@@ -10345,8 +10398,8 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesWithSpreadReappliesStatics) {
                     lepus::Value("static-id-after-spread"), 0}});
   target->SetTemplateAttributes(template_attributes);
   target->SetIdSelector("static-id-after-spread");
-  target->SetAttribute("data-static", lepus::Value("static-value"));
-  target->SetAttribute("data-later", lepus::Value("static-later"));
+  target->AddDataset("static", lepus::Value("static-value"));
+  target->AddDataset("later", lepus::Value("static-later"));
 
   TreeResolver::ApplyTemplateAttributesToElement(
       target.get(), lepus::Value(std::move(attribute_slots)));
@@ -10354,12 +10407,18 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesWithSpreadReappliesStatics) {
   EXPECT_EQ(target->GetIdSelector(), "static-id-after-spread");
   EXPECT_EQ(target->classes().size(), 1u);
   EXPECT_EQ(target->classes()[0], "spread-class");
-  EXPECT_EQ(target->data_model_->attributes().at("data-static").StdString(),
-            "static-value");
-  EXPECT_EQ(target->data_model_->attributes().at("data-extra").StdString(),
-            "spread-extra");
-  EXPECT_EQ(target->data_model_->attributes().at("data-later").StdString(),
-            "static-later");
+  auto* static_data = DatasetValue(target.get(), "static");
+  ASSERT_NE(static_data, nullptr);
+  EXPECT_EQ(static_data->StdString(), "static-value");
+  auto* extra_data = DatasetValue(target.get(), "extra");
+  ASSERT_NE(extra_data, nullptr);
+  EXPECT_EQ(extra_data->StdString(), "spread-extra");
+  auto* later_data = DatasetValue(target.get(), "later");
+  ASSERT_NE(later_data, nullptr);
+  EXPECT_EQ(later_data->StdString(), "static-later");
+  EXPECT_EQ(target->data_model_->attributes().count("data-static"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("data-extra"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("data-later"), 0u);
 }
 
 // CSSVariable Demo Structure

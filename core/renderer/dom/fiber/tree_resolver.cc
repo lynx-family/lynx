@@ -43,6 +43,7 @@ constexpr std::string_view kCatchEventPrefix = "catch";
 constexpr std::string_view kCaptureBindEventPrefix = "capture-bind";
 constexpr std::string_view kCaptureCatchEventPrefix = "capture-catch";
 constexpr std::string_view kGlobalBindEventPrefix = "global-bind";
+constexpr std::string_view kDataAttributePrefix = "data-";
 // Element Template dynamic/spread attributes intentionally parse native event
 // prefixes that can appear in runtime input. Non-event main-thread:* keys fall
 // through to normal attribute handling.
@@ -79,6 +80,17 @@ bool ParseTemplateEventAttribute(std::string_view key, base::String* type,
   }
 
   return false;
+}
+
+bool ParseTemplateDataAttribute(std::string_view key, base::String* name) {
+  if (!StartsWith(key, kDataAttributePrefix) ||
+      key.size() <= kDataAttributePrefix.size()) {
+    return false;
+  }
+
+  auto data_name = key.substr(kDataAttributePrefix.size());
+  *name = base::String(data_name.data(), data_name.size());
+  return true;
 }
 
 bool IsTemplateEventAttribute(const base::String& key) {
@@ -224,12 +236,39 @@ bool ApplyTemplateEventAttribute(FiberElement* element, const base::String& key,
   return true;
 }
 
+bool ApplyTemplateDataAttribute(FiberElement* element, const base::String& key,
+                                const lepus::Value& value) {
+  base::String data_name;
+  if (!ParseTemplateDataAttribute(key.string_view(), &data_name)) {
+    return false;
+  }
+
+  // Element Template receives raw RL3 attribute-array keys at runtime. Match
+  // __AddDataset semantics: strip only "data-" and keep kebab-case unchanged.
+  element->AddDataset(data_name, value);
+  return true;
+}
+
+bool RemoveTemplateDataAttribute(FiberElement* element,
+                                 const base::String& key) {
+  base::String data_name;
+  if (!ParseTemplateDataAttribute(key.string_view(), &data_name)) {
+    return false;
+  }
+
+  element->RemoveDataset(data_name);
+  return true;
+}
+
 void ApplyTemplateAttributeValue(FiberElement* element, const base::String& key,
                                  const lepus::Value& value) {
   if (ApplySpecialTemplateAttribute(element, key, value)) {
     return;
   }
   if (ApplyTemplateEventAttribute(element, key, value)) {
+    return;
+  }
+  if (ApplyTemplateDataAttribute(element, key, value)) {
     return;
   }
   element->SetAttribute(key, value);
@@ -273,6 +312,12 @@ void ClearPreviousTemplateSpreadAttributes(
     }
     tasm::ForEachLepusValue(
         previous_value, [element](const auto& key, const auto&) {
+          if (RemoveTemplateDataAttribute(element, key.String())) {
+            return;
+          }
+          // Re-apply previous spread keys with an empty value to clear keys
+          // that disappeared from the current spread object. data-* is handled
+          // above because __AddDataset preserves empty values.
           ApplyTemplateAttributeValue(element, key.String(), lepus::Value());
         });
   }
