@@ -10,6 +10,11 @@
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_v8_factory.h"
 
+namespace v8 {
+class Isolate;
+class Locker;
+}  // namespace v8
+
 namespace lynx {
 namespace runtime {
 namespace js {
@@ -22,6 +27,7 @@ class NapiRuntimeProxyV8 : public NapiRuntimeProxy {
       runtime::TemplateDelegate *delegate = nullptr);
   NapiRuntimeProxyV8(std::shared_ptr<V8ContextWrapper> context,
                      runtime::TemplateDelegate *delegate);
+  ~NapiRuntimeProxyV8() override;
 
   void Attach() override;
   void Detach() override;
@@ -29,6 +35,8 @@ class NapiRuntimeProxyV8 : public NapiRuntimeProxy {
  private:
   // weak_ptr is a workaround for context leak in shared context mode.
   std::weak_ptr<V8ContextWrapper> context_;
+  v8::Isolate *isolate_ = nullptr;
+  std::unique_ptr<v8::Locker> locker_;
 };
 
 class NapiRuntimeProxyV8FactoryImpl : public NapiRuntimeProxyV8Factory {
