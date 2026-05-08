@@ -384,6 +384,7 @@ class Element : public lepus::RefCounted,
   // For dataset op
   void SetDataSet(const tasm::DataMap& data);
   void AddDataset(const base::String& key, const lepus::Value& value);
+  void RemoveDataset(const base::String& key);
   void SetDataset(const lepus::Value& data_set);
   // For event handler
   virtual void SetEventHandler(const base::String& name, EventHandler* handler);

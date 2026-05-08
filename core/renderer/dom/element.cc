@@ -861,6 +861,14 @@ void Element::AddDataset(const base::String& key, const lepus::Value& value) {
   MarkDirty(kDirtyDataset);
 }
 
+void Element::RemoveDataset(const base::String& key) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_DATA_SET);
+
+  if (data_model_->RemoveDataSet(key)) {
+    MarkDirty(kDirtyDataset);
+  }
+}
+
 void Element::SetDataset(const lepus::Value& data_set) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_DATA_SET);
 

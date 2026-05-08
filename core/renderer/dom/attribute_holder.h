@@ -139,6 +139,10 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     data_set_->insert_or_assign(key, value);
   }
 
+  bool RemoveDataSet(const base::String& key) {
+    return data_set_.has_value() && data_set_->erase(key) > 0;
+  }
+
   void SetDataSet(const lepus::Value& data_set);
 
   // Update CSSVariable From Render.
