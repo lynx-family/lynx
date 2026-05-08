@@ -915,8 +915,13 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   public void updateNodeProps() {
+    // Clear DOWN_SAMPLING_SCALE_CHANGED to avoid duplicate requests on size changes when resize is
+    // disabled (via enable-resource-hint/auto-size/disable-default-resize). mCurImageRequest !=
+    // null ensures we only intercept duplicate requests, preventing accidental drops of the
+    // deferred first request missing layout size.
     if (isDirty(DOWN_SAMPLING_SCALE_CHANGED)
-        && (mDisableDefaultResize || mAutoSize || mEnableResourceHint)) {
+        && (mDisableDefaultResize || mAutoSize || mEnableResourceHint)
+        && mCurImageRequest != null) {
       dirtyFlags &= ~DOWN_SAMPLING_SCALE_CHANGED;
     }
     if (isDirty(MODE_CHANGED) && mImageDrawable != null) {
