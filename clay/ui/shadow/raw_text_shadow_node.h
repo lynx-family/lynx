@@ -37,7 +37,8 @@ class RawTextShadowNode : public ShadowNode {
 
   std::u16string CollapsesWhitespaces(
       const std::u16string& text,
-      std::vector<size_t>* layout_text_to_raw_end_indices = nullptr);
+      std::vector<size_t>* layout_text_utf16_to_raw_end_indices = nullptr,
+      std::vector<size_t>* layout_text_utf32_to_raw_end_indices = nullptr);
 
   TextShadowNode* FindTextShadowNodeAncestor();
   BaseTextShadowNode* FindBaseTextShadowNodeAncestor();
@@ -47,24 +48,39 @@ class RawTextShadowNode : public ShadowNode {
   void AddTextWithInlineEmoji(LayoutContextText* text_context,
                               const std::u16string& text,
                               bool need_text_indent);
+  // Returns the layout text length in UTF-32 code points.
   size_t GetLayoutTextLength() const;
+  // Converts a UTF-16 layout text length to the corresponding UTF-32 length.
+  size_t GetLayoutTextLengthForUtf16Length(
+      size_t layout_text_utf16_length) const;
+  // Maps a UTF-32 layout text length back to the raw UTF-16 end index.
   size_t GetRawEndIndexForLayoutTextLength(size_t layout_text_length) const;
+  // These helpers keep UTF-16 semantics for paragraph/txt indices.
+  size_t GetLayoutTextUtf16Length() const;
+  size_t GetRawEndIndexForLayoutTextUtf16Length(
+      size_t layout_text_utf16_length) const;
 
  private:
   struct InlineEmojiTextRange {
-    size_t start = 0;
-    size_t end = 0;
+    size_t start_utf16 = 0;
+    size_t end_utf16 = 0;
+    size_t start_utf32 = 0;
+    size_t end_utf32 = 0;
   };
 
   size_t CurrentRawTextEnd() const;
-  size_t LayoutTextLength() const;
-  size_t RawEndIndexForLayoutTextIndex(size_t layout_text_index) const;
-  void BuildIdentityLayoutTextMapping(size_t length);
+  size_t LayoutTextUtf16Length() const;
+  size_t RawEndIndexForLayoutTextUtf16Index(
+      size_t layout_text_utf16_index) const;
+  size_t RawEndIndexForLayoutTextUtf32Index(
+      size_t layout_text_utf32_index) const;
+  void BuildIdentityLayoutTextMapping(const std::u16string& text);
 
   std::u16string origin_text_;
   std::u16string text_;
   std::vector<InlineEmojiTextRange> inline_emoji_text_ranges_;
-  std::vector<size_t> layout_text_to_raw_end_indices_;
+  std::vector<size_t> layout_text_utf16_to_raw_end_indices_;
+  std::vector<size_t> layout_text_utf32_to_raw_end_indices_;
 };
 
 }  // namespace clay
