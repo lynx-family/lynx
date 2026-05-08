@@ -839,7 +839,7 @@ void ViewContext::UpdateContentOffsetForListContainer(
     int id, float content_size, float target_content_offset_x,
     float target_content_offset_y) {
   auto it = view_map_.find(id);
-  if (it != view_map_.end()) {
+  if (it != view_map_.end() && it->second->Is<ListContainerWrapper>()) {
     auto list_container_view = static_cast<ListContainerWrapper*>(it->second);
     list_container_view->UpdateContentOffsetForListContainer(
         content_size, target_content_offset_x, target_content_offset_y);
@@ -849,7 +849,7 @@ void ViewContext::UpdateContentOffsetForListContainer(
 void ViewContext::UpdateScrollInfo(int id, bool smooth, float estimated_offset,
                                    bool scrolling) {
   auto it = view_map_.find(id);
-  if (it != view_map_.end()) {
+  if (it != view_map_.end() && it->second->Is<ListContainerWrapper>()) {
     auto list_container_view = static_cast<ListContainerWrapper*>(it->second);
     list_container_view->UpdateScrollInfo(smooth, estimated_offset, scrolling);
   }
@@ -857,8 +857,8 @@ void ViewContext::UpdateScrollInfo(int id, bool smooth, float estimated_offset,
 
 void ViewContext::FinishLayoutOperation(int child_view_id, int parent_view_id) {
   auto parent = view_map_.find(parent_view_id);
-  auto child = view_map_.find(child_view_id);
-  if (parent != view_map_.end()) {
+  if (parent != view_map_.end() && parent->second->Is<ListContainerWrapper>()) {
+    auto child = view_map_.find(child_view_id);
     parent->second->OnLayoutFinish(child != view_map_.end() ? child->second
                                                             : nullptr);
   }

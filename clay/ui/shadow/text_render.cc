@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <limits>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -636,24 +637,30 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
         }
         truncation_node->SetNeedLayout(true);
         truncation_node->SetNeedMount(true);
-#ifndef CLAY_ENABLE_TTTEXT
-        auto end_dx = truncation_direction_ == TextDirection::kRtl
-                          ? truncation_size.width()
-                          : prev_layout_width_ - truncation_size.width();
-#else
-        auto end_dx = prev_layout_width_ - truncation_size.width();
-#endif
         auto line_metrics = cache_paragraph_->GetLineMetrics();
         if (line_metrics.empty()) {
           truncation_node->SetNeedMount(false);
           return;
         }
+        const bool has_hard_break = std::any_of(
+            line_metrics.begin(), line_metrics.end(),
+            [](const auto& line_metric) { return line_metric.hard_break; });
+        const double truncation_layout_width =
+            has_hard_break ? prev_layout_width_
+                           : cache_paragraph_->GetMaxIntrinsicWidth();
+#ifndef CLAY_ENABLE_TTTEXT
+        auto end_dx = truncation_direction_ == TextDirection::kRtl
+                          ? truncation_size.width()
+                          : truncation_layout_width - truncation_size.width();
+#else
+        auto end_dx = truncation_layout_width - truncation_size.width();
+#endif
         auto last_line_height = line_metrics.back().height;
         auto end_dy = constraint.height_mode == MeasureMode::kIndefinite
                           ? cache_paragraph_->GetHeight()
                           : std::min<double>(cache_paragraph_->GetHeight(),
                                              constraint.height.value_or(0)) -
-                                last_line_height;
+                                last_line_height + kLayoutTolerance;
         auto end_glyph_index =
             cache_paragraph_->GetGlyphPositionAtCoordinate(end_dx, end_dy);
         auto end_glyph_boxes = cache_paragraph_->GetRectsForRange(
@@ -674,9 +681,12 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
             static_cast<int>(end_glyph_position_ > visible_glyph_num
                                  ? end_glyph_position_ - visible_glyph_num
                                  : 0);
+        const std::optional<TextOverflow> overflow =
+            measure_node_->text_style_->overflow;
         measure_node_->text_style_->overflow = TextOverflow::kClip;
         update_flag_ = TextUpdateFlag::kUpdateFlagStyle;
         BuildTextLayout(constraint, context);
+        measure_node_->text_style_->overflow = overflow;
         for (auto truncation_child : child->GetChildren()) {
           if (truncation_child->IsInlineTextShadowNode()) {
             static_cast<InlineTextShadowNode*>(truncation_child)
@@ -686,6 +696,7 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
         truncation_node->UpdateTruncatedSize(truncation_size.width(),
                                              truncation_size.height());
         truncation_node->SetNeedLayout(false);
+        measure_node_->SetNeedSecondLayout(false);
         return;
       } else {
         truncation_node->SetNeedMount(false);

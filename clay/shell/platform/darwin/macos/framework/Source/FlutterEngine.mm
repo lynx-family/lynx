@@ -21,6 +21,7 @@
 #include "clay/common/service/service_manager.h"
 #include "clay/fml/logging.h"
 #include "clay/shell/common/services/drag_drop_service.h"
+#include "clay/shell/common/services/gesture_mediate_service.h"
 #include "clay/shell/common/switches.h"
 #include "clay/shell/platform/common/engine_switches.h"
 #include "clay/shell/platform/darwin/common/clay_service_manager_service_darwin.h"
@@ -363,6 +364,15 @@ class ClayPlatformViewMacDelegate : public clay::PlatformViewEmbedderDelegate {
     FML_LOG(ERROR) << "Failed to initialize Flutter engine";
     return NO;
   }
+
+  _service_manager = _engine->GetServiceManager();
+  if (!_service_manager) {
+    FML_LOG(ERROR) << "Failed to get clay service manager";
+    return NO;
+  }
+  _service_manager->RegisterService<clay::GestureMediateService>(
+      std::make_shared<clay::GestureMediateService>());
+
   // The engine must not already be running. Initialize may only be called
   // once on an engine instance.
   if (_engine->IsValid()) {
@@ -381,12 +391,6 @@ class ClayPlatformViewMacDelegate : public clay::PlatformViewEmbedderDelegate {
     FML_LOG(ERROR) << "Could not create platform view components.";
     return NO;
   }
-  _service_manager = _engine->GetServiceManager();
-  if (!_service_manager) {
-    FML_LOG(ERROR) << "Failed to get clay service manager";
-    return NO;
-  }
-
   _service_manager->RegisterService<clay::ClayServiceManagerServiceDarwin>(
       std::make_shared<clay::ClayServiceManagerServiceDarwin>(
           [_clayViewProvider GetClayServiceManager]));
