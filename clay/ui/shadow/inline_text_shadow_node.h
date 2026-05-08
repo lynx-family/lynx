@@ -24,8 +24,8 @@ class InlineTextShadowNode : public BaseTextShadowNode {
 
   void TextLayout(LayoutContext* context) override;
 
-  // Add a range [start, end).
-  void AddTextRange(size_t start, size_t end);
+  // Add ranges [start, end) for logical UTF-32 positions.
+  void AddTextRange(size_t start_utf32, size_t end_utf32);
 
   void LayoutRange(txt::Paragraph* paragraph);
 
