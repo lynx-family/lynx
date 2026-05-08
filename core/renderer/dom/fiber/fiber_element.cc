@@ -675,7 +675,8 @@ CSSFragment *FiberElement::GetRelatedCSSFragment() {
           css_style_sheet_manager_
               ? css_style_sheet_manager_->GetCSSStyleSheetForComponent(css_id_)
               : nullptr;
-      style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment);
+      style_sheet_ =
+          std::make_unique<CSSFragmentDecorator>(fragment, element_manager());
       if (style_sheet_ && style_sheet_->HasTouchPseudoToken()) {
         element_manager()->UpdateTouchPseudoStatus(true);
       }
@@ -683,19 +684,25 @@ CSSFragment *FiberElement::GetRelatedCSSFragment() {
     return style_sheet_.get();
   } else {
     auto *parent_component = GetParentComponentElement();
+    CSSFragment *result = nullptr;
     if (parent_component) {
-      auto css_fragment =
+      result =
           static_cast<ComponentElement *>(parent_component)->GetCSSFragment();
-      auto css_fragment_decorator =
-          static_cast<CSSFragmentDecorator *>(css_fragment);
+      auto css_fragment_decorator = static_cast<CSSFragmentDecorator *>(result);
       if (css_fragment_decorator &&
           css_fragment_decorator->IntrinsicStyleSheetHasTouchPseudoToken()) {
         element_manager()->UpdateTouchPseudoStatus(true);
       }
-      return css_fragment;
-    } else {
-      return nullptr;
     }
+    if (!result && element_manager_ &&
+        element_manager_->HasAdoptedStyleSheets()) {
+      if (!style_sheet_) {
+        style_sheet_ =
+            std::make_unique<CSSFragmentDecorator>(nullptr, element_manager());
+      }
+      result = style_sheet_.get();
+    }
+    return result;
   }
 }
 
@@ -4658,24 +4665,8 @@ bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
 // removal so we don't dirty siblings when no such rules exist.
 bool FiberElement::HasAdjacentSiblingRulesInStyleSheets() {
   auto *css_fragment = GetRelatedCSSFragment();
-  if (!css_fragment || !css_fragment->enable_css_selector()) {
-    return false;
-  }
-  if (css_fragment->rule_set() &&
-      css_fragment->rule_set()->HasAdjacentSiblingRules()) {
-    return true;
-  }
-  if (element_manager_) {
-    for (const auto &wrapper : element_manager_->GetAdoptedStyleSheets()) {
-      if (wrapper && wrapper->fragment_ &&
-          wrapper->fragment_->enable_css_selector() &&
-          wrapper->fragment_->rule_set() &&
-          wrapper->fragment_->rule_set()->HasAdjacentSiblingRules()) {
-        return true;
-      }
-    }
-  }
-  return false;
+  return css_fragment && css_fragment->enable_css_selector() &&
+         css_fragment->HasAdjacentSiblingRules();
 }
 
 void FiberElement::InvalidateChildrenIfNeeded() {

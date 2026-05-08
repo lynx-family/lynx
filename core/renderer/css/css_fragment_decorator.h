@@ -59,6 +59,8 @@ class CSSFragmentDecorator : public CSSFragment {
   bool HasPseudoRules() override;
   bool HasAdjacentSiblingRules() override;
 
+  void MarkFontFacesResolved(bool resolved) override;
+
   void ForEachKeyframesMap(ForEachKeyframesMapVisitor visitor,
                            void* cb_data) override;
   void ForEachFontFaceMap(ForEachFontFaceMapVisitor visitor,

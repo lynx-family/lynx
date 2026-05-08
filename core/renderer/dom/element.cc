@@ -52,6 +52,7 @@
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/java_script_element.h"
+#include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
@@ -2067,22 +2068,6 @@ CSSKeyframesToken* Element::GetCSSKeyframesToken(
     return GetSimpleStyleKeyframesToken(animation_name);
   }
 
-  if (manager) {
-    const auto& adopted_sheets = manager->GetAdoptedStyleSheets();
-    if (!adopted_sheets.empty()) {
-      for (auto it = adopted_sheets.rbegin(); it != adopted_sheets.rend();
-           ++it) {
-        if (*it && (*it)->fragment_) {
-          if (CSSKeyframesToken* keyframes_token =
-                  (*it)->fragment_->GetKeyframesRule(animation_name);
-              keyframes_token != nullptr) {
-            return keyframes_token;
-          }
-        }
-      }
-    }
-  }
-
   tasm::CSSFragment* style_sheet = GetRelatedCSSFragment();
   if (style_sheet) {
     return style_sheet->GetKeyframesRule(animation_name);
@@ -2106,22 +2091,23 @@ void Element::ResolveAndFlushKeyframes() {
     return;
   }
 
-  const auto& adopted_sheets = element_manager_->GetAdoptedStyleSheets();
-  for (auto it = adopted_sheets.rbegin(); it != adopted_sheets.rend(); ++it) {
-    if (*it && (*it)->fragment_) {
-      const auto& keyframes_map = (*it)->fragment_->GetKeyframesRuleMap();
-      if (!keyframes_map.empty()) {
-        SetKeyframesByNames(lepus::Value(animation_names), keyframes_map,
-                            false);
-      }
-    }
-  }
-
   CSSFragment* css_fragment = GetRelatedCSSFragment();
-  if (css_fragment && !css_fragment->GetKeyframesRuleMap().empty()) {
-    SetKeyframesByNames(lepus::Value(animation_names),
-                        css_fragment->GetKeyframesRuleMap(), false);
-  } else if (element_manager_->GetSimpleStyleKeyframes()) {
+  if (css_fragment) {
+    struct Ctx {
+      Element* self;
+      const fml::RefPtr<lepus::CArray>* animation_names;
+    };
+    Ctx ctx{this, &animation_names};
+    css_fragment->ForEachKeyframesMap(
+        [](const CSSKeyframesTokenMap& keyframes_map, void* cb_data) {
+          auto* c = static_cast<Ctx*>(cb_data);
+          if (!keyframes_map.empty()) {
+            c->self->SetKeyframesByNames(lepus::Value(*c->animation_names),
+                                         keyframes_map, false);
+          }
+        },
+        &ctx);
+  } else if (element_manager_ && element_manager_->GetSimpleStyleKeyframes()) {
     SetKeyframesByNames(lepus::Value(animation_names),
                         *(element_manager_->GetSimpleStyleKeyframes().get()),
                         false);

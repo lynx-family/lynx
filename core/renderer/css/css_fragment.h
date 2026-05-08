@@ -143,7 +143,7 @@ class CSSFragment {
 
   bool HasFontFacesResolved() const { return has_font_faces_resolved_; }
 
-  void MarkFontFacesResolved(bool resolved) {
+  virtual void MarkFontFacesResolved(bool resolved) {
     has_font_faces_resolved_ = resolved;
   }
 
