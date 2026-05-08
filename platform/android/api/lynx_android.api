@@ -4862,6 +4862,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableFiberArch();
   public boolean com.lynx.tasm.behavior.LynxContext.getCssAlignWithLegacyW3c();
   public boolean com.lynx.tasm.behavior.LynxContext.isEnableNewGesture();
+  public boolean com.lynx.tasm.behavior.LynxContext.getEnableMultiTouch();
+  public boolean com.lynx.tasm.behavior.LynxContext.isEnablePlatformGesture();
   public FluencyTraceHelper com.lynx.tasm.behavior.LynxContext.getFluencyTraceHelper();
   public DisplayMetrics com.lynx.tasm.behavior.LynxContext.getScreenMetrics();
   public void com.lynx.tasm.behavior.LynxContext.updateScreenSize(int screenWidth, int screenHeight);
@@ -7203,6 +7205,11 @@ public class com::lynx::tasm::event::LynxTouchEvent : com.lynx.tasm.event.LynxEv
   public ArrayList< Object > com.lynx.tasm.event.LynxTouchEvent.getEventParams();
 }
 
+public interface com::lynx::tasm::LynxTransferListener {
+  public boolean com.lynx.tasm.LynxTransferListener.onCreate(@NonNull String id, @NonNull View view);
+  public void com.lynx.tasm.LynxTransferListener.onRemove(@NonNull String id, @NonNull View view);
+}
+
 public class abstract com::lynx::tasm::behavior::ui::LynxUI : com.lynx.tasm.behavior.ui.LynxBaseUI, com.lynx.tasm.behavior.ui.IProcessViewInfoHook {
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setDrawHead(LynxBaseUI ui);
   public LynxBaseUI com.lynx.tasm.behavior.ui.LynxUI< T extends View >.getDrawHead();
@@ -7594,6 +7601,10 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public int com.lynx.tasm.LynxView.getLynxViewId();
   public void com.lynx.tasm.LynxView.initWithLynxViewBuilder(LynxViewBuilder builder);
   public LynxContext com.lynx.tasm.LynxView.getLynxContext();
+  public void com.lynx.tasm.LynxView.registerTransferListener(@NonNull LynxTransferListener listener);
+  public void com.lynx.tasm.LynxView.unregisterTransferListener(@NonNull LynxTransferListener listener);
+  public boolean com.lynx.tasm.LynxView.dispatchTransferCreate( @NonNull String id, @NonNull UITransfer owner, @NonNull View view);
+  public void com.lynx.tasm.LynxView.dispatchTransferRemove(@NonNull String id, @NonNull View view);
   public void com.lynx.tasm.LynxView.reloadAndInit();
   public Object com.lynx.tasm.LynxView.getTag();
   public boolean com.lynx.tasm.LynxView.isAccessibilityDisabled();
@@ -10715,6 +10726,7 @@ public class com::lynx::tasm::behavior::TouchEventDispatcher :  {
   public final float com.lynx.tasm.behavior.TouchEventDispatcher.mTapSlopFloatDefault mTapSlopFloatDefault;
   public com.lynx.tasm.behavior.TouchEventDispatcher.TouchEventDispatcher(@NonNull LynxUIOwner owner);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.attachContext(Context context);
+  public void com.lynx.tasm.behavior.TouchEventDispatcher.setTouchEventSource(@Nullable View view);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.onGestureRecognized();
   public void com.lynx.tasm.behavior.TouchEventDispatcher.setGestureArenaManager(GestureArenaManager manager);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.onGestureRecognized(LynxBaseUI ui);
@@ -10920,6 +10932,20 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.VIEW_LAYOUT_TICK_TRIGGER_LAYOUT VIEW_LAYOUT_TICK_TRIGGER_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_REQUEST_LAYOUT CHOREOGRAPHER_LAYOUT_TICK_REQUEST_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT;
+}
+
+public class com::lynx::tasm::behavior::ui::transfer::UITransfer::TransferHostView : com.lynx.tasm.behavior.ui.view.AndroidView {
+  public void com.lynx.tasm.behavior.ui.transfer.UITransfer.TransferHostView.addView(View child, int index, ViewGroup.LayoutParams params);
+  public void com.lynx.tasm.behavior.ui.transfer.UITransfer.TransferHostView.removeView(View view);
+  public void com.lynx.tasm.behavior.ui.transfer.UITransfer.TransferHostView.removeViewAt(int index);
+  public void com.lynx.tasm.behavior.ui.transfer.UITransfer.TransferHostView.removeAllViews();
+}
+
+public class com::lynx::tasm::behavior::ui::transfer::TransferShadowNode : com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode, com.lynx.tasm.behavior.shadow.CustomMeasureFunc {
+  public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.attachNativePtr(long ptr);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.updateHostConstraints(float width, MeasureMode widthMode, float height, MeasureMode heightMode);
+  public MeasureResult com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.measure(MeasureParam param, MeasureContext context);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.align(AlignParam param, AlignContext context);
 }
 
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {
@@ -11738,6 +11764,17 @@ public class com::lynx::tasm::utils::UIThreadUtils :  {
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThread(Runnable runnable, long delayMs);
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThreadAtTime(Runnable runnable, Object token, long uptimeMillis);
   public static void com.lynx.tasm.utils.UIThreadUtils.removeCallbacks(Runnable r, Object token);
+}
+
+public class com::lynx::tasm::behavior::ui::transfer::UITransfer : com::lynx::tasm::behavior::ui::UIGroup< UITransfer.TransferHostView > {
+  public com.lynx.tasm.behavior.ui.transfer.UITransfer.UITransfer(LynxContext context);
+  public com.lynx.tasm.behavior.ui.transfer.UITransfer.UITransfer(LynxContext context, Object params);
+  public TouchEventDispatcher com.lynx.tasm.behavior.ui.transfer.UITransfer.getTouchEventDispatcher();
+  public void com.lynx.tasm.behavior.ui.transfer.UITransfer.setTransferId(String transferId);
+  public boolean com.lynx.tasm.behavior.ui.transfer.UITransfer.canHaveFlattenChild();
+  public void com.lynx.tasm.behavior.ui.transfer.UITransfer.onNodeReady();
+  public void com.lynx.tasm.behavior.ui.transfer.UITransfer.onNodeRemoved();
+  public void com.lynx.tasm.behavior.ui.transfer.UITransfer.destroy();
 }
 
 public class com::lynx::tasm::behavior::ui::view::UIView : com.lynx.tasm.behavior.ui.view.UISimpleView< AndroidView > {

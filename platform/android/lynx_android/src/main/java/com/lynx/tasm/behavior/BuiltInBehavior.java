@@ -16,6 +16,8 @@ import com.lynx.tasm.behavior.ui.scroll.UIBounceView;
 import com.lynx.tasm.behavior.ui.scroll.UIScrollView;
 import com.lynx.tasm.behavior.ui.text.FlattenUIText;
 import com.lynx.tasm.behavior.ui.text.UIText;
+import com.lynx.tasm.behavior.ui.transfer.TransferShadowNode;
+import com.lynx.tasm.behavior.ui.transfer.UITransfer;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import java.util.ArrayList;
@@ -120,6 +122,17 @@ public class BuiltInBehavior implements BehaviorBundle {
       @Override
       public ShadowNode createShadowNode() {
         return new FrameShadowNode();
+      }
+    });
+    bc.add(new Behavior("transfer-view", false, true) {
+      @Override
+      public LynxUI createUIWithParams(LynxContext context, Object params) {
+        return new UITransfer(context, params);
+      }
+
+      @Override
+      public ShadowNode createShadowNode() {
+        return new TransferShadowNode();
       }
     });
     return bc;

@@ -545,6 +545,20 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return false;
   }
 
+  public boolean getEnableMultiTouch() {
+    if (null != mPageConfig) {
+      return mPageConfig.getEnableMultiTouch();
+    }
+    return false;
+  }
+
+  public boolean isEnablePlatformGesture() {
+    if (null != mPageConfig) {
+      return mPageConfig.isEnablePlatformGesture();
+    }
+    return false;
+  }
+
   public FluencyTraceHelper getFluencyTraceHelper() {
     if (mFluencyTraceHelper == null) {
       mFluencyTraceHelper = new FluencyTraceHelper(this);
