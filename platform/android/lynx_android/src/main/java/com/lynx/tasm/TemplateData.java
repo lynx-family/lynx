@@ -808,8 +808,10 @@ public final class TemplateData {
   TemplateData getTemplateDataForJSThread() {
     TemplateData data = TemplateData.empty();
     data.mEnableJSData = true;
-    if (mJsNativeData != 0) {
-      data.mJsNativeData = nativeClone(mJsNativeData);
+    synchronized (mJsNativeDataLock) {
+      if (mJsNativeData != 0) {
+        data.mJsNativeData = nativeClone(mJsNativeData);
+      }
     }
     data.addUpdateActions(getUpdateActionsWithJsNativeData());
     return data;
