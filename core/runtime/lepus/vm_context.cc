@@ -371,7 +371,7 @@ void VMContext::Dump() {
 void VMContext::RegisterGlobalFunction(
     const runtime::RenderBindingFunction* funcs, size_t size) {
   for (size_t i = 0; i < size; ++i) {
-    if (!funcs->for_lepus) {
+    if (!funcs[i].for_lepus) {
       continue;
     }
     SetGlobalData(funcs[i].name, lepus::Value(funcs[i].function));
@@ -386,7 +386,7 @@ void VMContext::RegisterObjectFunction(
   }
   auto table = obj.Table();
   for (size_t i = 0; i < size; ++i) {
-    if (!funcs->for_lepus) {
+    if (!funcs[i].for_lepus) {
       continue;
     }
     table->SetValue(funcs[i].name, funcs[i].function);
