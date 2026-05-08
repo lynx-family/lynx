@@ -284,11 +284,9 @@ MeasureResult TextShadowNode::Measure(const MeasureConstraint& constraint) {
   if (constraint.width_mode == TextMeasureMode::kDefinite) {
     result.width = *constraint.width;
   } else if (constraint.width_mode == TextMeasureMode::kIndefinite) {
-    result.width = std::ceil(context.measured_width_);
+    result.width = context.measured_width_;
   } else {
-    result.width =
-        std::min(std::ceil(static_cast<float>(context.measured_width_)),
-                 *constraint.width);
+    result.width = std::min(context.measured_width_, *constraint.width);
   }
 
   auto desired_height = context.measured_height_;

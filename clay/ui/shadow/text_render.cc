@@ -210,8 +210,8 @@ clay::Value TextRender::GetTextInfo(const char* text, const clay::Value& params,
     content_array[i] = std::move(value);
   }
   clay::Value::Map ret;
-  auto measured_width =
-      std::min(layout_width, paragraph->GetMaxIntrinsicWidth());
+  auto measured_width = std::min(
+      layout_width, GetMeasuredParagraphWidth(paragraph.get(), layout_width));
   ret.emplace("width",
               clay::Value(page_view ? page_view->ConvertTo<kPixelTypeLogical>(
                                           measured_width)
@@ -246,7 +246,8 @@ void TextRender::MeasureText(const std::string& text, bool show_content,
                             : std::numeric_limits<double>::max();
   paragraph->Layout(layout_width);
   if (measured_width) {
-    *measured_width = std::min(layout_width, paragraph->GetMaxIntrinsicWidth());
+    *measured_width = std::min(
+        layout_width, GetMeasuredParagraphWidth(paragraph.get(), layout_width));
   }
   if (measured_height) {
     if (text_style.line_spacing.has_value() &&
@@ -450,7 +451,8 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
     }
     paragraph = LayoutParagraph(layout_width);
     cache_paragraph_ = std::move(paragraph);
-    measured_width_ = std::ceil(cache_paragraph_->GetMaxIntrinsicWidth());
+    measured_width_ =
+        GetMeasuredParagraphWidth(cache_paragraph_.get(), layout_width);
     if (measure_node_->text_style_->line_spacing.has_value() &&
         cache_paragraph_->GetLineMetrics().size() > 0) {
 #ifndef CLAY_ENABLE_TTTEXT
@@ -459,13 +461,12 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
                        cache_paragraph_->GetLineMetrics().begin()->ascent -
                        cache_paragraph_->GetLineMetrics().begin()->descent,
                    0.0);
-      measured_height_ =
-          std::ceil(cache_paragraph_->GetHeight() - line_spacing);
+      measured_height_ = cache_paragraph_->GetHeight() - line_spacing;
 #else
-      measured_height_ = std::ceil(cache_paragraph_->GetHeight());
+      measured_height_ = cache_paragraph_->GetHeight();
 #endif
     } else {
-      measured_height_ = std::ceil(cache_paragraph_->GetHeight());
+      measured_height_ = cache_paragraph_->GetHeight();
     }
   }
 
