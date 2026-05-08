@@ -132,6 +132,8 @@ void ParagraphTTText::Layout(double width) {
     metrics.line_number = k;
     metrics.start_index = text_line->GetStartCharPos();
     metrics.end_index = text_line->GetEndCharPos();
+    metrics.hard_break =
+        paragraph_->GetContentString(text_line->GetEndCharPos(), 1) == "\n";
   }
 }
 
