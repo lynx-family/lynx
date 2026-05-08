@@ -65,7 +65,7 @@ void LynxBTSRuntimeProxyImpl::CallJSFunction(std::string module_id,
     auto task = [&runtime, enqueue_info, module_id = std::move(module_id),
                  method_id = std::move(method_id), getter = std::move(getter),
                  flow_id] {
-      auto js_runtime = runtime->GetJSRuntime();
+      auto* js_runtime = runtime->GetJSRuntimeWeak().Lock();
       if (js_runtime == nullptr) {
         LOGE(
             "try call js module before js context is ready! "
@@ -168,7 +168,7 @@ void LynxBTSRuntimeProxyImpl::CallJSApiCallbackWithValue(int32_t callback_id,
   actor_->Act([enqueue_info, callback_id,
                getter = std::move(getter)](auto& runtime) {
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-    auto js_runtime = runtime->GetJSRuntime();
+    auto* js_runtime = runtime->GetJSRuntimeWeak().Lock();
     if (js_runtime == nullptr) {
       LOGR(
           "try CallJSApiCallbackWithValue before js context is ready "
@@ -209,7 +209,7 @@ void LynxBTSRuntimeProxyImpl::CallJSIntersectionObserver(int32_t observer_id,
 
   actor_->Act([enqueue_info, observer_id, callback_id,
                getter = std::move(getter), flow_id](auto& runtime) {
-    auto js_runtime = runtime->GetJSRuntime();
+    auto* js_runtime = runtime->GetJSRuntimeWeak().Lock();
     if (js_runtime == nullptr) {
       LOGE(
           "try CallJSIntersectionObserver before js context is ready "

@@ -12,7 +12,7 @@
 namespace lynx {
 namespace runtime {
 namespace js {
-LYNX_EXPORT std::shared_ptr<Runtime> makeJSVMRuntime();
+LYNX_EXPORT std::unique_ptr<Runtime> makeJSVMRuntime();
 
 LYNX_EXPORT std::shared_ptr<lynx::runtime::profile::RuntimeProfiler>
 makeJSVMRuntimeProfiler(std::shared_ptr<JSIContext> js_context);

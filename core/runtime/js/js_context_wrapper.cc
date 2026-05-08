@@ -38,11 +38,11 @@ void JSContextWrapper::EnsureCoreJSLoaded(
 }
 
 void JSContextWrapper::prepareJSEnv(
-    std::weak_ptr<runtime::js::Runtime> js_runtime,
+    base::UnsafeWeakPtr<runtime::js::Runtime> js_runtime,
     std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
         js_preload) {
-  std::shared_ptr<runtime::js::Runtime> rt = js_runtime.lock();
-  if (!rt) {
+  auto* rt = js_runtime.Lock();
+  if (rt == nullptr) {
     return;
   }
 
@@ -60,7 +60,7 @@ void JSContextWrapper::prepareJSEnv(
   bool has_core_js = runtime::js::EvaluatePreloadSources(*rt, js_preload);
   js_env_prepared_ = true;
   js_core_loaded_ = has_core_js;
-  InitNapi(rt);
+  InitNapi(std::move(js_runtime));
 }
 
 #if ENABLE_TRACE_PERFETTO
@@ -115,7 +115,7 @@ void SharedJSContextWrapper::EnsureConsole(
 }
 
 void SharedJSContextWrapper::initGlobal(
-    std::shared_ptr<runtime::js::Runtime>& rt,
+    base::UnsafeOwningPtr<runtime::js::Runtime>& rt,
     std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
     const tasm::PageOptions& page_options) {
   if (global_inited_) {
@@ -129,15 +129,21 @@ void SharedJSContextWrapper::initGlobal(
 }
 
 void SharedJSContextWrapper::InitNapi(
-    std::shared_ptr<runtime::js::Runtime>& js_runtime) {
+    base::UnsafeWeakPtr<runtime::js::Runtime> js_runtime) {
 #if ENABLE_NAPI_BINDING
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_VITALS, PREPARE_NAPI_ENV);
   napi_environment_ = std::make_unique<runtime::js::NapiEnvironment>(
       std::make_unique<runtime::js::NapiEnvironment::Delegate>());
-  auto proxy = runtime::js::NapiRuntimeProxy::Create(js_runtime, nullptr);
-  proxy->MarkSafeNapi();
-  LOGI("napi attaching with proxy: " << proxy.get());
+  auto* runtime = js_runtime.Lock();
+  if (runtime == nullptr) {
+    TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
+    return;
+  }
+  auto proxy = runtime::js::NapiRuntimeProxy::Create(*runtime, nullptr);
   if (proxy) {
+    proxy->SetJSRuntime(std::move(js_runtime));
+    proxy->MarkSafeNapi();
+    LOGI("napi attaching with proxy: " << proxy.get());
     napi_environment_->SetRuntimeProxy(std::move(proxy));
     napi_environment_->Attach();
   }
@@ -183,7 +189,7 @@ void NoneSharedJSContextWrapper::EnsureConsole(
 }
 
 void NoneSharedJSContextWrapper::initGlobal(
-    std::shared_ptr<runtime::js::Runtime>& js_runtime,
+    base::UnsafeOwningPtr<runtime::js::Runtime>& js_runtime,
     std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
     const tasm::PageOptions& page_options) {
   if (global_inited_) {

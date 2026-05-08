@@ -170,7 +170,7 @@ bool RuntimeManager::IsSingleJSContext(const std::string& group_id) {
   return group_id == "-1";
 }
 
-std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
+base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
     base::MoveOnlyClosure<std::vector<
         std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
         js_pre_sources_getter,
@@ -187,7 +187,7 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
         force_use_lightweight_js_engine);
   }
   bool is_single_context = IsSingleJSContext(group_id);
-  std::shared_ptr<runtime::js::Runtime> js_runtime;
+  base::UnsafeOwningPtr<runtime::js::Runtime> js_runtime;
   std::shared_ptr<runtime::js::JSIContext> js_context;
   // This variable indicates 'false' only when it has been created previously
   // and the context is being shared.
@@ -197,7 +197,7 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
                 RUNTIME_MANAGER_CREATE_SINGLE_CONTEXT_RUNTIME);
     js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
                                false, std::move(create_params));
-    js_context = CreateJSIContext(js_runtime, group_id);
+    js_context = CreateJSIContext(*js_runtime, group_id);
     LOGI("create single_context:" << js_context.get());
   } else {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
@@ -251,7 +251,7 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
       // share context first create.
       js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
                                  false, std::move(create_params));
-      js_context = CreateJSIContext(js_runtime, group_id);
+      js_context = CreateJSIContext(*js_runtime, group_id);
       LOGI("get shared_context failed, create context:"
            << js_context.get() << ", group:" << group_id);
     }
@@ -263,11 +263,10 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   // none share context and first create share context.
   if (need_create_context_wrapper) {
     std::shared_ptr<JSContextWrapper> context_wrapper;
-    std::shared_ptr<runtime::js::Runtime> global_runtime;
+    base::UnsafeOwningPtr<runtime::js::Runtime> owned_global_runtime;
     if (is_single_context) {
       context_wrapper = std::make_shared<NoneSharedJSContextWrapper>(
           js_context, runtime_manager_delegate_ == nullptr ? this : nullptr);
-      global_runtime = js_runtime;
     } else {
       context_wrapper =
           std::make_shared<SharedJSContextWrapper>(js_context, group_id, this);
@@ -276,14 +275,21 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
         runtime_manager_delegate_->AfterSharedContextCreate(group_id,
                                                             js_runtime->type());
       }
-      global_runtime =
+      // In shared-context mode the global runtime is a SEPARATE runtime
+      // instance owned by SharedJSContextWrapper.
+      auto unique_global =
           MakeRuntime(js_runtime->type() == runtime::js::JSRuntimeType::quickjs,
                       false, page_options);
+      owned_global_runtime =
+          base::UnsafeOwningPtr<runtime::js::Runtime>(unique_global.release());
       runtime::js::JSRuntimeExternalParams global_external_params{};
       global_external_params.group_id = group_id;
-      global_runtime->SetExternalParams(std::move(global_external_params));
-      global_runtime->InitRuntime(js_context);
+      owned_global_runtime->SetExternalParams(
+          std::move(global_external_params));
+      owned_global_runtime->InitRuntime(js_context);
     }
+    auto& global_runtime =
+        is_single_context ? js_runtime : owned_global_runtime;
 #if ENABLE_TRACE_PERFETTO
     auto runtime_profiler = MakeRuntimeProfiler(
         js_context, force_use_lightweight_js_engine, page_options);
@@ -303,14 +309,15 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
 
     // should call brefore loadPreJS.
     if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-      runtime_manager_delegate_->OnRuntimeReady(executor, js_runtime, group_id);
+      runtime_manager_delegate_->OnRuntimeReady(executor, *js_runtime,
+                                                group_id);
     }
 
-    runtime::js::GCPauseSuppressionMode mode(global_runtime.get());
+    runtime::js::GCPauseSuppressionMode mode(js_runtime.get());
     auto js_pre_sources = js_pre_sources_getter();
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
                 RUNTIME_MANAGER_CONTEXT_WRAPPER_PREPARE_JS_ENV);
-    context_wrapper->prepareJSEnv(js_runtime, js_pre_sources);
+    context_wrapper->prepareJSEnv(js_runtime.GetWeakPtr(), js_pre_sources);
   } else {
     // Shared context reused. If corejs was deferred on the first creation,
     // we need to try to load it here to ensure the current runtime runs with
@@ -322,46 +329,48 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
     }
     // share context also need call this, because lynx_runtime is different.
     if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-      runtime_manager_delegate_->OnRuntimeReady(executor, js_runtime, group_id);
+      runtime_manager_delegate_->OnRuntimeReady(executor, *js_runtime,
+                                                group_id);
     }
   }
 
   return js_runtime;
 }
 
-std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
+base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
     bool force_use_lightweight_js_engine, const tasm::PageOptions& page_options,
     bool use_shared_context,
     runtime::js::JSRuntimeExternalParams external_params) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RUNTIME_MANAGER_CREATE_RUNTIME);
-  auto js_runtime = MakeRuntime(force_use_lightweight_js_engine,
-                                use_shared_context, page_options);
+  auto unique_runtime = MakeRuntime(force_use_lightweight_js_engine,
+                                    use_shared_context, page_options);
+  base::UnsafeOwningPtr<runtime::js::Runtime> js_runtime(
+      unique_runtime.release());
   if (!memory_task_runner_) {
     memory_task_runner_ = fml::MessageLoop::GetCurrent().GetTaskRunner();
   }
-  TrackRuntimeForMemoryPressure(js_runtime);
+  TrackRuntimeForMemoryPressure(js_runtime.GetWeakPtr());
   js_runtime->SetPageOptions(page_options);
   js_runtime->SetExternalParams(std::move(external_params));
   return js_runtime;
 }
 
 void RuntimeManager::TrackRuntimeForMemoryPressure(
-    const std::shared_ptr<runtime::js::Runtime>& runtime) {
+    base::UnsafeWeakPtr<runtime::js::Runtime> runtime) {
   if (!memory_task_runner_) {
     return;
   }
-  memory_task_runner_->PostTask(
-      [this, w = std::weak_ptr<runtime::js::Runtime>(runtime)]() mutable {
-        weak_runtimes_.emplace_back(std::move(w));
-        CompactWeakRuntimes();
-      });
+  memory_task_runner_->PostTask([this, w = std::move(runtime)]() mutable {
+    weak_runtimes_.emplace_back(std::move(w));
+    CompactWeakRuntimes();
+  });
 }
 
 void RuntimeManager::CompactWeakRuntimes() {
-  std::vector<std::weak_ptr<runtime::js::Runtime>> alive;
+  std::vector<base::UnsafeWeakPtr<runtime::js::Runtime>> alive;
   alive.reserve(weak_runtimes_.size());
   for (auto& w : weak_runtimes_) {
-    if (!w.expired()) {
+    if (!w.Expired()) {
       alive.emplace_back(w);
     }
   }
@@ -395,40 +404,40 @@ std::shared_ptr<runtime::js::JSIContext> RuntimeManager::GetSharedJSContext(
 }
 
 std::shared_ptr<runtime::js::JSIContext> RuntimeManager::CreateJSIContext(
-    std::shared_ptr<runtime::js::Runtime>& rt, const std::string& group_id) {
+    runtime::js::Runtime& rt, const std::string& group_id) {
   std::shared_ptr<runtime::js::JSIContext> js_context;
   bool need_create_vm = false;
-  if (rt->type() == runtime::js::JSRuntimeType::jsc ||
-      rt->type() == runtime::js::JSRuntimeType::quickjs) {
+  if (rt.type() == runtime::js::JSRuntimeType::jsc ||
+      rt.type() == runtime::js::JSRuntimeType::quickjs) {
     need_create_vm = true;
 #if JS_ENGINE_TYPE == 1 || JS_ENGINE_TYPE == 2
-    auto vm_instance = VMInstancePool::Instance().TakeVMInstance(rt->type());
-    return rt->createContext(vm_instance == nullptr ? rt->createVM(nullptr)
-                                                    : vm_instance);
+    auto vm_instance = VMInstancePool::Instance().TakeVMInstance(rt.type());
+    return rt.createContext(vm_instance == nullptr ? rt.createVM(nullptr)
+                                                   : vm_instance);
 #else
-    return rt->createContext(rt->createVM(nullptr));
+    return rt.createContext(rt.createVM(nullptr));
 #endif
   } else {
     need_create_vm = EnsureVM(rt);
-    js_context = rt->createContext(mVMContainer_[rt->type()]);
+    js_context = rt.createContext(mVMContainer_[rt.type()]);
   }
   InitJSRuntimeCreatedType(need_create_vm, rt);
   return js_context;
 }
 
-void RuntimeManager::InitJSRuntimeCreatedType(
-    bool need_create_vm, std::shared_ptr<runtime::js::Runtime>& rt) {
+void RuntimeManager::InitJSRuntimeCreatedType(bool need_create_vm,
+                                              runtime::js::Runtime& rt) {
   runtime::js::JSRuntimeCreatedType type =
       need_create_vm ? runtime::js::JSRuntimeCreatedType::vm_context
                      : runtime::js::JSRuntimeCreatedType::context;
-  rt->setCreatedType(type);
+  rt.setCreatedType(type);
 }
 
-bool RuntimeManager::EnsureVM(std::shared_ptr<runtime::js::Runtime>& rt) {
-  if (mVMContainer_.find(rt->type()) == mVMContainer_.end()) {
+bool RuntimeManager::EnsureVM(runtime::js::Runtime& rt) {
+  if (mVMContainer_.find(rt.type()) == mVMContainer_.end()) {
     runtime::js::StartupData* data = nullptr;
 
-    mVMContainer_.insert(std::make_pair(rt->type(), rt->createVM(data)));
+    mVMContainer_.insert(std::make_pair(rt.type(), rt.createVM(data)));
     return true;
   }
   return false;
@@ -452,7 +461,7 @@ void RuntimeManager::EnsureConsolePostMan(
   }
 }
 
-std::shared_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
+std::unique_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
     bool force_use_lightweight_js_engine, bool use_shared_context,
     const tasm::PageOptions& page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RUNTIME_MANAGER_MAKE_RUNTIME);
@@ -589,10 +598,10 @@ void RuntimeManager::OnMemoryPressure(lynx::base::MemoryPressureLevel level) {
     return;
   }
   memory_task_runner_->PostTask([this]() {
-    std::vector<std::weak_ptr<runtime::js::Runtime>> alive;
+    std::vector<base::UnsafeWeakPtr<runtime::js::Runtime>> alive;
     std::unordered_set<std::string> seen_groups;
     for (auto& w : weak_runtimes_) {
-      auto rt = w.lock();
+      auto* rt = w.Lock();
       if (!rt) {
         continue;
       }
@@ -604,7 +613,7 @@ void RuntimeManager::OnMemoryPressure(lynx::base::MemoryPressureLevel level) {
           rt->RequestGC();
         }
       }
-      alive.emplace_back(rt);
+      alive.emplace_back(w);
     }
     weak_runtimes_.swap(alive);
   });

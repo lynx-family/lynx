@@ -28,7 +28,7 @@ JSClosureEventListener::JSClosureEventListener(
   if (!native_app) {
     return;
   }
-  auto rt = native_app->GetRuntime();
+  auto* rt = native_app->GetRuntimeWeak().Lock();
   if (rt == nullptr) {
     return;
   }
@@ -50,7 +50,7 @@ void JSClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
         "JSClosureEventListener::Invoke error: the app is null or destroying.");
     return;
   }
-  auto rt = app->GetRuntime();
+  auto* rt = app->GetRuntimeWeak().Lock();
   if (!rt) {
     LOGE("JSClosureEventListener::Invoke error: the runtime is null.");
     return;
@@ -79,15 +79,15 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
   }
   auto* other = static_cast<JSClosureEventListener*>(listener);
 
-  std::shared_ptr<Runtime> other_rt = nullptr;
-  std::shared_ptr<Runtime> rt = nullptr;
+  Runtime* other_rt = nullptr;
+  Runtime* rt = nullptr;
   auto* other_native_app = other->native_app_.Lock();
   if (other_native_app) {
-    other_rt = other_native_app->GetRuntime();
+    other_rt = other_native_app->GetRuntimeWeak().Lock();
   }
   auto* native_app = native_app_.Lock();
   if (native_app) {
-    rt = native_app->GetRuntime();
+    rt = native_app->GetRuntimeWeak().Lock();
   }
 
   if (!rt || rt != other_rt) {
@@ -100,9 +100,9 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
 
 Value JSClosureEventListener::GetClosure() {
   auto* native_app = native_app_.Lock();
-  std::shared_ptr<Runtime> rt = nullptr;
+  Runtime* rt = nullptr;
   if (native_app && !native_app->IsDestroying()) {
-    rt = native_app->GetRuntime();
+    rt = native_app->GetRuntimeWeak().Lock();
   }
   if (rt == nullptr) {
     return Value::undefined();
@@ -115,9 +115,9 @@ Value JSClosureEventListener::ConvertEventToPiperValue(
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               CLOSURE_EVENT_LISTENER_CONVERT_TO_PIPER_VALUE);
   auto* app = native_app_.Lock();
-  std::shared_ptr<Runtime> rt = nullptr;
+  Runtime* rt = nullptr;
   if (app && !app->IsDestroying()) {
-    rt = app->GetRuntime();
+    rt = app->GetRuntimeWeak().Lock();
   }
   if (rt == nullptr || event == nullptr || app == nullptr) {
     return Value::undefined();

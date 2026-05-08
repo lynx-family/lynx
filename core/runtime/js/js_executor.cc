@@ -42,7 +42,7 @@ void JSExecutor::Destroy() {
   // Destroy the runtime in the JS thread
   LOGI("JSExecutor::Destroy");
 
-  js_runtime_.reset();
+  js_runtime_.Reset();
 }
 
 runtime::RuntimeManager* JSExecutor::runtimeManagerInstance() {
@@ -116,9 +116,9 @@ base::UnsafeOwningPtr<App> JSExecutor::createNativeAppInstance(
         *js_runtime_, module_manager_testBench_.get()->bindingPtr);
   }
 #endif
-  return App::Create(rt_id, js_runtime_, delegate, runtime_delegate,
-                     std::move(nativeModuleProxy), std::move(api_handler),
-                     group_id_, page_options);
+  return App::Create(rt_id, js_runtime_.GetWeakPtr(), delegate,
+                     runtime_delegate, std::move(nativeModuleProxy),
+                     std::move(api_handler), group_id_, page_options);
 }
 
 JSRuntimeCreatedType JSExecutor::getJSRuntimeType() {
@@ -128,7 +128,9 @@ JSRuntimeCreatedType JSExecutor::getJSRuntimeType() {
   return JSRuntimeCreatedType::unknown;
 }
 
-std::shared_ptr<Runtime> JSExecutor::GetJSRuntime() { return js_runtime_; }
+base::UnsafeWeakPtr<Runtime> JSExecutor::GetJSRuntime() {
+  return js_runtime_.GetWeakPtr();
+}
 
 void JSExecutor::SetUrl(const std::string& url) {
   module_manager_->SetTemplateUrl(url);

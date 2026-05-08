@@ -45,12 +45,12 @@ std::vector<PropNameID> JSRuntimeTestMockJSApp::getPropertyNames(Runtime& rt) {
 void ContextProxyInJSTest::SetUp() {
   fml::MessageLoop::EnsureInitializedForCurrentThread();
 
-  mock_js_app_ = std::make_shared<JSRuntimeTestMockJSApp>(runtime);
+  mock_js_app_ = std::make_shared<JSRuntimeTestMockJSApp>(runtime.GetWeakPtr());
 
   auto nativeModule =
       eval("(function() { return {}; })()")->asObject(rt).value();
   app_ =
-      App::Create(0, runtime, &delegate_, exception_handler_,
+      App::Create(0, runtime.GetWeakPtr(), &delegate_, exception_handler_,
                   std::move(nativeModule), nullptr, "-1", tasm::PageOptions());
 
   app_->SetJsAppObj(Object::createFromHostObject(*runtime, mock_js_app_));

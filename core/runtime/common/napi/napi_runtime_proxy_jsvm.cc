@@ -45,14 +45,12 @@ void NapiRuntimeProxyJSVM::Detach() {
 }
 
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyJSVMFactoryImpl::Create(
-    std::shared_ptr<Runtime> runtime, runtime::TemplateDelegate* delegate) {
+    Runtime& runtime, runtime::TemplateDelegate* delegate) {
   LOGI("Creating napi proxy jsvm");
-  auto jsvm_runtime = std::static_pointer_cast<JSVMRuntime>(runtime);
+  auto* jsvm_runtime = static_cast<JSVMRuntime*>(&runtime);
   auto jsvm_context = std::static_pointer_cast<JSVMContextWrapper>(
       jsvm_runtime->getSharedContext());
-  auto proxy_jsvm = NapiRuntimeProxyJSVM::Create(jsvm_context, delegate);
-  proxy_jsvm->SetJSRuntime(runtime);
-  return proxy_jsvm;
+  return NapiRuntimeProxyJSVM::Create(jsvm_context, delegate);
 }
 }  // namespace js
 }  // namespace runtime

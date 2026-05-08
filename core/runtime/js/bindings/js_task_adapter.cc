@@ -45,14 +45,14 @@ class AdapterTask {
 
 }  // namespace
 
-JsTaskAdapter::JsTaskAdapter(const std::weak_ptr<Runtime>& rt,
+JsTaskAdapter::JsTaskAdapter(base::UnsafeWeakPtr<Runtime> rt,
                              const tasm::PageOptions& page_options)
     : manager_(std::make_unique<base::TimedTaskManager>()),
       micro_tasks_(
           std::make_shared<std::unordered_map<uint64_t, base::closure>>()),
       current_micro_task_id_(0),
       runner_(fml::MessageLoop::GetCurrent().GetTaskRunner()),
-      rt_(rt),
+      rt_(std::move(rt)),
       page_options_(page_options) {}
 
 JsTaskAdapter::~JsTaskAdapter() { manager_->StopAllTasks(); }
@@ -95,7 +95,7 @@ base::closure JsTaskAdapter::MakeTask(Function func, TaskType task_type,
                                       uint64_t trace_flow_id) {
   return fml::MakeCopyable([weak_rt = rt_, func = std::move(func), task_type,
                             trace_flow_id, page_options = page_options_]() {
-    auto rt = weak_rt.lock();
+    auto* rt = weak_rt.Lock();
     if (rt) {
       std::string task_name;
       switch (task_type) {

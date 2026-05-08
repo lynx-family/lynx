@@ -34,8 +34,7 @@ class NapiRuntimeProxyJSVM : public NapiRuntimeProxy {
 class NapiRuntimeProxyJSVMFactoryImpl : public NapiRuntimeProxyJSVMFactory {
  public:
   std::unique_ptr<NapiRuntimeProxy> Create(
-      std::shared_ptr<Runtime> runtime,
-      runtime::TemplateDelegate* delegate = nullptr) override;
+      Runtime& runtime, runtime::TemplateDelegate* delegate = nullptr) override;
 };
 }  // namespace js
 }  // namespace runtime

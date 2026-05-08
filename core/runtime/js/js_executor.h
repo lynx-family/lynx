@@ -70,7 +70,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
   JSRuntimeCreatedType getJSRuntimeType();
 
-  std::shared_ptr<Runtime> GetJSRuntime();
+  base::UnsafeWeakPtr<Runtime> GetJSRuntime();
 
   void SetUrl(const std::string& url);
 
@@ -101,7 +101,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 #endif
 
   // set by  the child class
-  std::shared_ptr<Runtime> js_runtime_;
+  base::UnsafeOwningPtr<Runtime> js_runtime_;
 };
 
 }  // namespace js

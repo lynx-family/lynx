@@ -15,7 +15,7 @@ JSDebugProxyQuickJS::CreateRuntimeInspectorManager() {
   return std::make_unique<runtime::js::QuickjsInspectorManagerImpl>();
 }
 
-std::shared_ptr<runtime::js::Runtime> JSDebugProxyQuickJS::MakeRuntime() {
+std::unique_ptr<runtime::js::Runtime> JSDebugProxyQuickJS::MakeRuntime() {
   LOGI("js debug: make QuickJS runtime");
   return runtime::js::makeQuickJsRuntime();
 }

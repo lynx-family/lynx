@@ -47,8 +47,8 @@ void NapiRuntimeProxyV8::Detach() {
 }
 
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyV8FactoryImpl::Create(
-    std::shared_ptr<Runtime> runtime, runtime::TemplateDelegate *delegate) {
-  auto v8_runtime = std::static_pointer_cast<V8Runtime>(runtime);
+    Runtime &runtime, runtime::TemplateDelegate *delegate) {
+  auto *v8_runtime = static_cast<V8Runtime *>(&runtime);
   auto context = v8_runtime->getSharedContext();
   auto v8_context = std::static_pointer_cast<V8ContextWrapper>(context);
   return NapiRuntimeProxyV8::Create(v8_context, delegate);

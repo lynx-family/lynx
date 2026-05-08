@@ -8,6 +8,7 @@
 #include <mutex>
 #include <string>
 
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
@@ -20,7 +21,7 @@ class Global : public HostGlobal {
   Global() = default;
   ~Global() override;
 
-  void Init(std::shared_ptr<Runtime>& js_runtime_,
+  void Init(base::UnsafeOwningPtr<Runtime>& js_runtime_,
             std::shared_ptr<ConsoleMessagePostMan>& post_man,
             const tasm::PageOptions& page_options) override;
   void Release() override;
@@ -28,8 +29,8 @@ class Global : public HostGlobal {
                      const tasm::PageOptions& page_options);
 
  private:
-  virtual void SetJSRuntime(std::shared_ptr<Runtime> js_runtime_) = 0;
-  virtual std::shared_ptr<Runtime> GetJSRuntime() = 0;
+  virtual void SetJSRuntime(base::UnsafeOwningPtr<Runtime>& js_runtime_) = 0;
+  virtual Runtime* GetJSRuntime() = 0;
 };
 
 class SharedContextGlobal : public Global {
@@ -40,9 +41,10 @@ class SharedContextGlobal : public Global {
   void Release() override;
 
  private:
-  virtual void SetJSRuntime(std::shared_ptr<Runtime> js_runtime_) override;
-  virtual std::shared_ptr<Runtime> GetJSRuntime() override;
-  std::shared_ptr<Runtime> js_runtime_;
+  virtual void SetJSRuntime(
+      base::UnsafeOwningPtr<Runtime>& js_runtime_) override;
+  virtual Runtime* GetJSRuntime() override;
+  base::UnsafeOwningPtr<Runtime> js_runtime_;
 };
 
 class SingleGlobal : public Global {
@@ -53,9 +55,10 @@ class SingleGlobal : public Global {
   void Release() override;
 
  private:
-  virtual void SetJSRuntime(std::shared_ptr<Runtime> js_runtime_) override;
-  virtual std::shared_ptr<Runtime> GetJSRuntime() override;
-  std::weak_ptr<Runtime> js_runtime_;
+  virtual void SetJSRuntime(
+      base::UnsafeOwningPtr<Runtime>& js_runtime_) override;
+  virtual Runtime* GetJSRuntime() override;
+  base::UnsafeWeakPtr<Runtime> js_runtime_;
 };
 
 }  // namespace js

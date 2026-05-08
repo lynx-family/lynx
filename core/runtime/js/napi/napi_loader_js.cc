@@ -30,7 +30,7 @@ NapiLoaderJS::NapiLoaderJS(
 #endif
 
 Napi::Value TriggerGC(const Napi::CallbackInfo& info) {
-  auto runtime = NapiEnvironment::From(info.Env())->GetJSRuntime().lock();
+  auto* runtime = NapiEnvironment::From(info.Env())->GetJSRuntime().Lock();
 
   if (runtime) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, TRIGGER_GC);
@@ -41,7 +41,7 @@ Napi::Value TriggerGC(const Napi::CallbackInfo& info) {
 }
 
 Napi::Value TriggerGCForTesting(const Napi::CallbackInfo& info) {
-  auto runtime = NapiEnvironment::From(info.Env())->GetJSRuntime().lock();
+  auto* runtime = NapiEnvironment::From(info.Env())->GetJSRuntime().Lock();
 
   if (runtime) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, TRIGGER_GC_FOR_TESTING);

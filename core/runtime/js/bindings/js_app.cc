@@ -173,7 +173,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
         *rt, PropNameID::forAscii(*rt, "loadScript"), 1,
         [this](Runtime& rt, const Value& thisVal, const Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          std::shared_ptr<Runtime> js_runtime = rt_.lock();
+          Runtime* js_runtime = rt_.Lock();
           if (!js_runtime) {
             return Value::undefined();
           }
@@ -209,7 +209,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
         *rt, PropNameID::forAscii(*rt, "readScript"), 1,
         [this](Runtime& rt, const Value& thisVal, const Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          std::shared_ptr<Runtime> js_runtime = rt_.lock();
+          Runtime* js_runtime = rt_.Lock();
           if (!js_runtime) {
             return Value::undefined();
           }
@@ -487,7 +487,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
         *rt, PropNameID::forAscii(*rt, "reportException"), 3,
         [this](Runtime& rt, const Value& thisVal, const Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          std::shared_ptr<Runtime> js_runtime = rt_.lock();
+          Runtime* js_runtime = rt_.Lock();
           if (!js_runtime) {
             return Value::undefined();
           }
@@ -1843,7 +1843,7 @@ std::vector<PropNameID> AppProxy::getPropertyNames(Runtime& rt) {
 void App::SetCSSVariable(const std::string& component_id,
                          const std::string& id_selector,
                          const lepus::Value& properties) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return;
   }
@@ -1932,7 +1932,7 @@ void App::Init() {
 }
 
 void App::Destroy() {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && js_app_.isObject()) {
     LOGI("App::Destroy " << this);
 
@@ -1969,7 +1969,7 @@ void App::CallDestroyLifetimeFun() {
 
   LOGI(" App::CallDestroyLifetimeFun start " << this);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_CALL_DESTROY_LIFE_TIME_FUNC);
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && js_app_.isObject()) {
     Scope scope(*rt);
 
@@ -2013,14 +2013,14 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
   bundle_module_mode_ = bundle_module_mode;
   url_ = url;
 
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     HandleLoadAppFailed("js runtime is null!");
     return;
   }
-  GCPauseSuppressionMode mode(GetRuntime().get());
+  GCPauseSuppressionMode mode(rt);
 
-  Scope scope(*rt.get());
+  Scope scope(*rt);
   state_ = State::kStarted;
   LOGI(" App::LoadApp start " << this);
   Object global = rt->global();
@@ -2030,7 +2030,7 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
     return;
   }
 
-  auto page_proxy = std::make_shared<AppProxy>(rt, GetWeakPtr());
+  auto page_proxy = std::make_shared<AppProxy>(rt_, GetWeakPtr());
   Object page_object = Object::createFromHostObject(*rt, page_proxy);
 
   lepus::Value encoded_data = card_bundle_.encoded_data;
@@ -2157,7 +2157,7 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
 
 void App::HandleLoadAppFailed(std::string error_msg) {
   state_ = State::kAppLoadFailed;
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     rt->reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(error_msg));
   }
@@ -2172,7 +2172,7 @@ void App::OnScriptLoaded(const std::string& url, std::string script,
                          std::string err_msg, ApiCallBack callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_ON_SCRIPT_LOADED, "url", url);
   if (!err_msg.empty()) {
-    auto rt = rt_.lock();
+    auto rt = rt_.Lock();
     if (rt) {
       Scope scope(*rt);
       auto js_error_value = Value(String::createFromUtf8(
@@ -2181,7 +2181,7 @@ void App::OnScriptLoaded(const std::string& url, std::string script,
       rt->reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
           "load external js script failed! url: " + url +
           " error: " + err_msg));
-      return api_callback_manager_.InvokeWithValue(rt.get(), callback.id(),
+      return api_callback_manager_.InvokeWithValue(rt, callback.id(),
                                                    std::move(js_error_value));
     }
   } else {
@@ -2198,7 +2198,7 @@ void App::EvaluateScript(const std::string& url, std::string script,
       url.c_str(), script.c_str(), record_id_);
 #endif
 
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     Scope scope(*rt);
     auto prepared_script = rt->prepareJavaScript(
@@ -2211,17 +2211,17 @@ void App::EvaluateScript(const std::string& url, std::string script,
                    " error:" + error_str));
       rt->reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
           "eval external js script failed! url: " + url + error_str));
-      return api_callback_manager_.InvokeWithValue(rt.get(), callback.id(),
+      return api_callback_manager_.InvokeWithValue(rt, callback.id(),
                                                    std::move(js_error_value));
     }
 
     return api_callback_manager_.InvokeWithValue(
-        rt.get(), callback.id(), Value::null(), std::move(ret.value()));
+        rt, callback.id(), Value::null(), std::move(ret.value()));
   }
 }
 
 void App::OnAppReload(tasm::TemplateData init_data) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && js_app_.isObject()) {
     Scope scope(*rt);
     auto js_app = js_app_.getObject(*rt);
@@ -2273,7 +2273,6 @@ void App::CallJSFunctionInLepusEvent(const std::string& component_id,
   // if callback id is negative, means no need to callback
   if (callbackId >= 0) {
     if (res.has_value()) {
-      auto rt = rt_.lock();
       auto data_lepusValue = ParseJSValueToLepusValue(*res, PAGE_GROUP_ID);
       if (data_lepusValue.has_value()) {
         delegate_->InvokeLepusComponentCallback(
@@ -2291,7 +2290,7 @@ void App::CallJSFunctionInLepusEvent(const std::string& component_id,
 std::optional<Value> App::SendPageEvent(const std::string& page_name,
                                         const std::string& handler,
                                         const lepus::Value& info) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && IsJsAppStateValid()) {
     tasm::timing::LongTaskMonitor::Scope long_task_scope(
         GetPageOptions(), tasm::timing::kJSFuncTask,
@@ -2335,7 +2334,7 @@ void App::SendGlobalEvent(const std::string& name,
                           const lepus::Value& arguments) {
   constexpr char kGlobalEventModuleName[] = "GlobalEventEmitter";
   constexpr char kGlobalEventMethodName[] = "emit";
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && IsJsAppStateValid()) {
     Scope scope(*rt);
     auto param = Array::createWithLength(*rt, 1);
@@ -2366,7 +2365,7 @@ void App::SendGlobalEvent(const std::string& name,
 
 void App::SetupSsrJsEnv() {
   constexpr char kCreateGlobalEventEmitter[] = "__createEventEmitter";
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     Scope scope(*rt);
     Object global = rt->global();
@@ -2395,7 +2394,7 @@ void App::SetupSsrJsEnv() {
 //  }}})();
 void App::LoadSsrScript(const std::string& script) {
   LOGI("LoadSsrScript: " << script);
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     Scope scope(*rt);
     auto script_result = rt->evaluateJavaScript(
@@ -2438,7 +2437,7 @@ void App::LoadSsrScript(const std::string& script) {
 void App::SendSsrGlobalEvent(const std::string& name,
                              const lepus::Value& arguments) {
   constexpr char kSsrGlobalEventEmitterFun[] = "emit";
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     Scope scope(*rt);
 
@@ -2486,7 +2485,7 @@ void App::SendSsrGlobalEvent(const std::string& name,
 
 void App::CallFunction(const std::string& module_id,
                        const std::string& method_id, const Array& arguments) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && IsJsAppStateValid() && js_app_.isObject()) {
     Scope scope(*rt);
     Object js_app = js_app_.getObject(*rt);
@@ -2530,29 +2529,29 @@ void App::CallFunction(const std::string& module_id,
 }
 
 void App::InvokeApiCallBack(ApiCallBack id) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
-    api_callback_manager_.InvokeWithValue(rt.get(), id);
+    api_callback_manager_.InvokeWithValue(rt, id);
   }
 }
 
 void App::InvokeApiCallBackWithValue(ApiCallBack id, const lepus::Value& value,
                                      bool persist) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return;
   }
   if (persist) {
-    api_callback_manager_.InvokeWithValuePersist(rt.get(), id, value);
+    api_callback_manager_.InvokeWithValuePersist(rt, id, value);
   } else {
-    api_callback_manager_.InvokeWithValue(rt.get(), id, value);
+    api_callback_manager_.InvokeWithValue(rt, id, value);
   }
 }
 
 void App::InvokeApiCallBackWithValue(ApiCallBack id, Value value) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
-    api_callback_manager_.InvokeWithValue(rt.get(), id, std::move(value));
+    api_callback_manager_.InvokeWithValue(rt, id, std::move(value));
   }
 }
 
@@ -2569,7 +2568,7 @@ void App::NotifyUpdatePageData(uint64_t trace_flow_id) {
               [trace_flow_id](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_flow_ids(trace_flow_id);
               });
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && IsJsAppStateValid()) {
     auto updated_card_data = delegate_->FetchUpdatedCardData();
 
@@ -2625,7 +2624,7 @@ void App::NotifyUpdatePageData(uint64_t trace_flow_id) {
 
 void App::NotifyUpdateCardConfigData() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_JS_UPDATE_CARD_CONFIG_DATA);
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && IsJsAppStateValid()) {
     Scope scope(*rt);
     LOGI("App::updateCardConfigData" << this);
@@ -2657,7 +2656,7 @@ void App::NotifyUpdateCardConfigData() {
 void App::OnAppJSError(const JSIException& exception) {
   const std::string& msg = exception.message();
   LOGE("app::onAppJSError:" << exception.ToString());
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && js_app_.isObject()) {
     Scope scope(*rt);
     Object js_app = js_app_.getObject(*rt);
@@ -2686,7 +2685,7 @@ void App::OnAppJSError(const JSIException& exception) {
 }
 
 void App::SetJsAppObj(Object&& obj) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return;
   }
@@ -2724,7 +2723,7 @@ void App::AppDataChange(lepus_value&& data, ApiCallBack callback,
 }
 
 std::optional<JSINativeException> App::BatchedUpdateData(const Value& args) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt || !args.isObject()) {
     return std::optional(BUILD_JSI_NATIVE_EXCEPTION(
         "runtime is destroy or batchedUpdateData's args isn't an object."));
@@ -2876,7 +2875,7 @@ base::expected<Value, JSINativeException> App::LoadScript(
 
   LOGI("LoadScript:" << url);
 
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     tasm::timing::LongTaskTiming* timing =
         tasm::timing::LongTaskMonitor::Instance()->GetTopTimingPtr();
@@ -2970,7 +2969,7 @@ base::expected<Value, JSINativeException> App::ReadScript(
     const std::string entry_name, const std::string& url, long timeout) {
   LOGI("ReadScript:" << url);
 
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return Value::undefined();
   }
@@ -2999,7 +2998,7 @@ base::expected<Value, JSINativeException> App::ReadScript(
 }
 
 Value App::SetTimeout(Function func, int time) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt || !js_task_adapter_) {
     return Value::undefined();
   }
@@ -3018,7 +3017,7 @@ Value App::SetTimeout(Function func, int time) {
 }
 
 Value App::SetInterval(Function func, int time) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt || !js_task_adapter_) {
     return Value::undefined();
   }
@@ -3043,7 +3042,7 @@ void App::ClearTimeout(double task) {
 }
 
 void App::QueueMicrotask(Function func) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt || !js_task_adapter_) {
     return;
   }
@@ -3061,13 +3060,13 @@ void App::QueueMicrotask(Function func) {
 }
 
 void App::RunOnJSThreadWhenIdle(base::closure closure) {
-  if (auto rt = rt_.lock()) {
+  if (auto rt = rt_.Lock()) {
     delegate_->RunOnJSThreadWhenIdle(std::move(closure));
   }
 }
 
 Value App::NativeModuleProxy() {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return Value::undefined();
   }
@@ -3075,7 +3074,7 @@ Value App::NativeModuleProxy() {
 }
 
 std::optional<Value> App::GetInitGlobalProps() {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return Value::undefined();
   }
@@ -3090,7 +3089,7 @@ std::optional<Value> App::GetInitGlobalProps() {
 }
 
 std::optional<Value> App::GetPresetData() {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return Value::undefined();
   }
@@ -3104,7 +3103,7 @@ std::optional<Value> App::GetPresetData() {
 }
 
 Value App::GetI18nResource() {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return Value::undefined();
   }
@@ -3114,7 +3113,7 @@ Value App::GetI18nResource() {
 
 void App::GetContextDataAsync(const std::string& component_id,
                               const std::string& key, ApiCallBack callback) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return;
   }
@@ -3152,7 +3151,7 @@ void App::QueryComponent(const std::string& url, ApiCallBack callback,
 }
 
 void App::AddFont(const lepus::Value& font, ApiCallBack callback) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return;
   }
@@ -3161,7 +3160,7 @@ void App::AddFont(const lepus::Value& font, ApiCallBack callback) {
 
 void App::OnIntersectionObserverEvent(int32_t observer_id, int32_t callback_id,
                                       Value data) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && IsJsAppStateValid()) {
     Scope scope(*rt);
     Object js_app = js_app_.getObject(*rt);
@@ -3184,7 +3183,7 @@ void App::OnIntersectionObserverEvent(int32_t observer_id, int32_t callback_id,
 std::optional<Value> App::PublishComponentEvent(const std::string& component_id,
                                                 const std::string& handler,
                                                 const lepus::Value& info) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && IsJsAppStateValid() && card_bundle_.support_component_js) {
     tasm::timing::LongTaskMonitor::Scope long_task_scope(
         GetPageOptions(), tasm::timing::kUpdateTriggeredByBts,
@@ -3288,7 +3287,7 @@ void App::InvokeUIMethod(tasm::NodeSelectRoot root,
   LOGI(" InvokeUIMethod with root: " << root_str << ", node: " << node_str
                                      << ", method: " << method
                                      << ", App: " << this);
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     if (js_call_native_frequency_monitor_) {
       std::string monitor_method_name = method;
@@ -3401,12 +3400,12 @@ void App::AddReporterCustomInfo(
   js_error_reporter_.AddCustomInfoToError(info);
 }
 
-std::shared_ptr<Runtime> App::GetRuntime() { return rt_.lock(); }
+base::UnsafeWeakPtr<Runtime> App::GetRuntimeWeak() { return rt_; }
 
 std::optional<lepus_value> App::ParseJSValueToLepusValue(
     const Value& data, const std::string& component_id) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, JS_VALUE_TO_LEPUS_VALUE);
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     // only React dsl support parse js function
     // TT dsl don't support use js function as the prroperties of component
@@ -3423,14 +3422,14 @@ std::optional<lepus_value> App::ParseJSValueToLepusValue(
 }
 
 void App::OnBTSConsoleEvent(const lepus::Value& args) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt && args.IsTable()) {
     auto dict = args.Table();
     BASE_STATIC_STRING_DECL(kFuncName, "func_name");
     BASE_STATIC_STRING_DECL(kParams, "params");
     auto func_name = dict->GetValue(kFuncName).StdString();
     auto params = dict->GetValue(kParams).StdString();
-    Scope scope(*rt.get());
+    Scope scope(*rt);
     Object global = rt->global();
     auto console = global.getProperty(*rt, "nativeConsole");
     if (console && console->isObject()) {
@@ -3474,7 +3473,7 @@ void App::OnPiperInvoked(const std::string& module_name,
 }
 
 void App::ReloadFromJS(const lepus::Value& value, ApiCallBack callback) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     delegate_->ResetTimingBeforeReload();
     runtime::UpdateDataType update_data_type;
@@ -3503,14 +3502,14 @@ void App::ReloadFromJS(const lepus::Value& value, ApiCallBack callback) {
 }
 
 void App::StartRecording(const lepus::Value& value) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     delegate_->StartRecording(value);
   }
 }
 
 void App::StopRecording(const lepus::Value& value) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (rt) {
     delegate_->StopRecording(value);
   }
@@ -3601,8 +3600,10 @@ void App::MarkPipelineTiming(const tasm::PipelineID& pipeline_id,
 
 void App::PauseGcSuppressionMode() {
   if (!gc_pause_suppression_mode_) {
-    gc_pause_suppression_mode_ =
-        std::make_unique<GCPauseSuppressionMode>(GetRuntime().get());
+    if (auto* runtime = rt_.Lock()) {
+      gc_pause_suppression_mode_ =
+          std::make_unique<GCPauseSuppressionMode>(runtime);
+    }
   }
 }
 
@@ -3694,7 +3695,7 @@ lepus::Value App::GetCustomSectionSync(const std::string& key,
 base::expected<Value, JSINativeException> App::LoadCustomSectionScript(
     const std::string& key, const std::string& bundle_name,
     bool use_module_wrapper) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     return Value::undefined();
   }
@@ -3729,7 +3730,7 @@ void App::FetchBundle(
     const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
         response_promise) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "FetchBundle", "bundle_url", bundle_url);
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!rt) {
     response_promise->SetValue(
         {.url = std::move(bundle_url),
@@ -3748,7 +3749,7 @@ std::string App::GetSourceMapRelease(const std::string url) {
 }
 
 Value App::RequestAnimationFrame(Function func) {
-  auto rt = rt_.lock();
+  auto rt = rt_.Lock();
   if (!animation_frame_handler_ || !rt) {
     return Value::undefined();
     //
@@ -3785,7 +3786,7 @@ void App::DoFrame(int64_t time_stamp) {
     // W3C window.requestAnimationFrame request milliseconds
     TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_DO_FRAME, "timestamp", time_stamp);
     animation_frame_handler_->DoFrame(time_stamp / kNanoSecondsPerMilliSecond,
-                                      rt_.lock().get());
+                                      rt_.Lock());
     fluency_tracer_.Trigger(time_stamp);
   }
 }

@@ -79,7 +79,7 @@ class NapiEnvironment {
     proxy_ = std::move(proxy);
   }
 
-  std::weak_ptr<Runtime> GetJSRuntime() { return proxy_->GetJSRuntime(); }
+  base::UnsafeWeakPtr<Runtime> GetJSRuntime() { return proxy_->GetJSRuntime(); }
 
   LYNX_EXPORT void RegisterModule(const std::string& name,
                                   std::unique_ptr<Module> module);

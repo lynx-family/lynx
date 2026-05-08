@@ -14,6 +14,7 @@
 #include "base/include/fml/task_runner.h"
 #include "core/base/lynx_export.h"
 #include "core/base/memory/memory_pressure_callback.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/public/page_options.h"
 #include "core/runtime/js/js_context_wrapper.h"
 #include "core/runtime/js/jsi/jsi.h"
@@ -37,10 +38,9 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManagerDelegate {
   virtual ~RuntimeManagerDelegate() = default;
 
   virtual void BeforeRuntimeCreate(bool force_use_lightweight_js_engine) = 0;
-  virtual void OnRuntimeReady(
-      runtime::js::JSExecutor& executor,
-      std::shared_ptr<runtime::js::Runtime>& current_runtime,
-      const std::string& group_id) = 0;
+  virtual void OnRuntimeReady(runtime::js::JSExecutor& executor,
+                              runtime::js::Runtime& current_runtime,
+                              const std::string& group_id) = 0;
   virtual void AfterSharedContextCreate(const std::string& group_id,
                                         runtime::js::JSRuntimeType type) = 0;
   virtual void OnRelease(const std::string& group_id) = 0;
@@ -51,7 +51,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManagerDelegate {
   // InspectorJavaScriptDebugger to determine the type. After refactoring,
   // LynxDevtool will use the switch "enable_v8" together with this parameter to
   // determine the type.
-  virtual std::shared_ptr<runtime::js::Runtime> MakeRuntime(
+  virtual std::unique_ptr<runtime::js::Runtime> MakeRuntime(
       bool force_use_lightweight_js_engine, bool use_shared_context,
       const tasm::PageOptions& page_options) = 0;
 #if ENABLE_TRACE_PERFETTO
@@ -81,7 +81,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
 
   static bool IsSingleJSContext(const std::string& group_id);
 
-  std::shared_ptr<runtime::js::Runtime> CreateJSRuntime(
+  base::UnsafeOwningPtr<runtime::js::Runtime> CreateJSRuntime(
       base::MoveOnlyClosure<std::vector<
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
           js_pre_sources_getter,
@@ -105,7 +105,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
 
  private:
   RuntimeManager();
-  std::shared_ptr<runtime::js::Runtime> CreateRuntime(
+  base::UnsafeOwningPtr<runtime::js::Runtime> CreateRuntime(
       bool force_use_lightweight_js_engine,
       const tasm::PageOptions& page_options, bool use_shared_context,
       runtime::js::JSRuntimeExternalParams external_params = {});
@@ -114,9 +114,9 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
       const std::string& group_id);
 
   std::shared_ptr<runtime::js::JSIContext> CreateJSIContext(
-      std::shared_ptr<runtime::js::Runtime>& rt, const std::string& group_id);
+      runtime::js::Runtime& rt, const std::string& group_id);
 
-  std::shared_ptr<runtime::js::Runtime> MakeRuntime(
+  std::unique_ptr<runtime::js::Runtime> MakeRuntime(
       bool force_use_lightweight_js_engine, bool use_shared_context,
       const tasm::PageOptions& page_options);
 #if ENABLE_TRACE_PERFETTO
@@ -126,20 +126,19 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
       const tasm::PageOptions& page_options);
 #endif
 
-  bool EnsureVM(std::shared_ptr<runtime::js::Runtime>& rt);
+  bool EnsureVM(runtime::js::Runtime& rt);
   void EnsureConsolePostMan(std::shared_ptr<runtime::js::JSIContext>& context,
                             runtime::js::JSExecutor& executor,
                             bool force_use_lightweight_js_engine,
                             const tasm::PageOptions& page_options);
 
-  void InitJSRuntimeCreatedType(bool need_create_vm,
-                                std::shared_ptr<runtime::js::Runtime>& rt);
+  void InitJSRuntimeCreatedType(bool need_create_vm, runtime::js::Runtime& rt);
 
   bool IsInspectEnabled(bool force_use_lightweight_js_engine,
                         const tasm::PageOptions& page_options);
 
   void TrackRuntimeForMemoryPressure(
-      const std::shared_ptr<runtime::js::Runtime>& runtime);
+      base::UnsafeWeakPtr<runtime::js::Runtime> runtime);
   void CompactWeakRuntimes();
 
   void OnMemoryPressure(lynx::base::MemoryPressureLevel level);
@@ -151,7 +150,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   std::unique_ptr<RuntimeManagerDelegate> runtime_manager_delegate_;
 
   // for memory pressure callback
-  std::vector<std::weak_ptr<runtime::js::Runtime>> weak_runtimes_;
+  std::vector<base::UnsafeWeakPtr<runtime::js::Runtime>> weak_runtimes_;
   fml::RefPtr<fml::TaskRunner> memory_task_runner_;
   std::unique_ptr<lynx::base::MemoryPressureCallback> memory_pressure_callback_;
 };

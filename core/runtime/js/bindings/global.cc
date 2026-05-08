@@ -52,12 +52,12 @@ static Value GetSystemInfo(Runtime& rt) {
 
 Global::~Global() { LOGI("lynx ~Global()"); }
 
-void Global::Init(std::shared_ptr<Runtime>& runtime,
+void Global::Init(base::UnsafeOwningPtr<Runtime>& runtime,
                   std::shared_ptr<ConsoleMessagePostMan>& post_man,
                   const tasm::PageOptions& page_options) {
   SetJSRuntime(runtime);
-  auto js_runtime_ = GetJSRuntime();
-  if (!js_runtime_) {
+  auto* js_runtime_ = GetJSRuntime();
+  if (js_runtime_ == nullptr) {
     return;
   }
 
@@ -92,8 +92,8 @@ void Global::Init(std::shared_ptr<Runtime>& runtime,
 
 void Global::EnsureConsole(std::shared_ptr<ConsoleMessagePostMan>& post_man,
                            const tasm::PageOptions& page_options) {
-  auto js_runtime = GetJSRuntime();
-  if (!js_runtime) {
+  auto* js_runtime = GetJSRuntime();
+  if (js_runtime == nullptr) {
     return;
   }
   Scope scope(*js_runtime);
@@ -109,25 +109,22 @@ void Global::EnsureConsole(std::shared_ptr<ConsoleMessagePostMan>& post_man,
 
 void Global::Release() { LOGI("lynx Global::Release"); }
 
-void SharedContextGlobal::SetJSRuntime(std::shared_ptr<Runtime> js_runtime) {
-  js_runtime_ = js_runtime;
+void SharedContextGlobal::SetJSRuntime(
+    base::UnsafeOwningPtr<Runtime>& js_runtime) {
+  js_runtime_ = std::move(js_runtime);
 }
 
-std::shared_ptr<Runtime> SharedContextGlobal::GetJSRuntime() {
-  return js_runtime_;
-}
+Runtime* SharedContextGlobal::GetJSRuntime() { return js_runtime_.get(); }
 
-void SharedContextGlobal::Release() { js_runtime_.reset(); }
+void SharedContextGlobal::Release() { js_runtime_.Reset(); }
 
 SingleGlobal::~SingleGlobal() { LOGI("lynx ~SingleGlobal"); }
 
-void SingleGlobal::SetJSRuntime(std::shared_ptr<Runtime> js_runtime) {
-  js_runtime_ = js_runtime;
+void SingleGlobal::SetJSRuntime(base::UnsafeOwningPtr<Runtime>& js_runtime) {
+  js_runtime_ = js_runtime.GetWeakPtr();
 }
 
-std::shared_ptr<Runtime> SingleGlobal::GetJSRuntime() {
-  return js_runtime_.lock();
-}
+Runtime* SingleGlobal::GetJSRuntime() { return js_runtime_.Lock(); }
 
 void SingleGlobal::Release() {}
 

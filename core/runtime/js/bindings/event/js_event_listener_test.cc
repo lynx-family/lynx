@@ -27,7 +27,7 @@ void JSClosureEventListenerTest::SetUp() {
   auto nativeModule =
       eval("(function() { return {}; })()")->asObject(rt).value();
   app_ =
-      App::Create(0, runtime, &delegate_, exception_handler_,
+      App::Create(0, runtime.GetWeakPtr(), &delegate_, exception_handler_,
                   std::move(nativeModule), nullptr, "-1", tasm::PageOptions());
 }
 
@@ -67,7 +67,7 @@ function onEvent(e) {
       event::EventListener::Type::kLepusClosureEventListener, "1");
   EXPECT_FALSE(listener_1_1->Matches(&mock_listener));
 
-  std::shared_ptr<Runtime> another_runtime(
+  base::UnsafeOwningPtr<Runtime> another_runtime(
       factory(exception_handler_).release());
   auto& another_rt = *another_runtime;
   auto another_js_function_str = std::string(R"--(
@@ -86,7 +86,7 @@ function onEvent(e) {
       app_->GetWeakPtr(), another_js_function_value);
   EXPECT_FALSE(listener_1_1->Matches(another_js_listener.get()));
 
-  auto copy_runtime = runtime;
+  auto copy_runtime = runtime.GetWeakPtr();
   auto listener_1_1_from_copy_runtime =
       std::make_unique<JSClosureEventListener>(app_->GetWeakPtr(),
                                                Value(rt, js_function_1));

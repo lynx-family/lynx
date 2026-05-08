@@ -14,8 +14,7 @@ namespace js {
 class NapiRuntimeProxyJSVMFactory {
  public:
   LYNX_EXPORT virtual std::unique_ptr<NapiRuntimeProxy> Create(
-      std::shared_ptr<Runtime> runtime,
-      runtime::TemplateDelegate *delegate = nullptr) = 0;
+      Runtime& runtime, runtime::TemplateDelegate* delegate = nullptr) = 0;
 };
 }  // namespace js
 }  // namespace runtime

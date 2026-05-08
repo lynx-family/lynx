@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
@@ -87,7 +88,8 @@ class JSITestBase : public ::testing::TestWithParam<RuntimeFactory> {
   JSITestBase()
       : exception_handler_(std::make_shared<MockExceptionHandler>()),
         factory(GetParam()),
-        runtime(factory(exception_handler_)),
+        runtime(base::UnsafeOwningPtr<Runtime>(
+            factory(exception_handler_).release())),
         rt(*runtime) {}
 
   std::optional<Value> eval(const char* code) {
@@ -106,7 +108,7 @@ class JSITestBase : public ::testing::TestWithParam<RuntimeFactory> {
 
   std::shared_ptr<MockExceptionHandler> exception_handler_;
   RuntimeFactory factory;
-  std::shared_ptr<Runtime> runtime;
+  base::UnsafeOwningPtr<Runtime> runtime;
   Runtime& rt;
 };
 

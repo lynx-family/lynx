@@ -298,7 +298,7 @@ class MockTestPlatformModule : public LynxNativeModule {
 
 class MockJsApp : public HostObject {
  public:
-  MockJsApp(std::weak_ptr<Runtime> rt) : rt_(rt) {}
+  MockJsApp(base::UnsafeWeakPtr<Runtime> rt) : rt_(std::move(rt)) {}
   ~MockJsApp() = default;
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -311,7 +311,7 @@ class MockJsApp : public HostObject {
   std::vector<std::vector<Value>> args_ary;
 
  private:
-  std::weak_ptr<Runtime> rt_;
+  base::UnsafeWeakPtr<Runtime> rt_;
 };
 
 Value MockJsApp::get(Runtime* rt, const PropNameID& name) {
@@ -344,7 +344,7 @@ std::vector<PropNameID> MockJsApp::getPropertyNames(Runtime& rt) {
 
 class AppTest : public JSITestBase {
  public:
-  AppTest() : mock_js_app_(std::make_shared<MockJsApp>(runtime)) {}
+  AppTest() : mock_js_app_(std::make_shared<MockJsApp>(runtime.GetWeakPtr())) {}
 
   base::UnsafeOwningPtr<App> app;
 
@@ -357,7 +357,7 @@ class AppTest : public JSITestBase {
     Object nativeModuleProxy = Object::createFromHostObject(
         *runtime, module_manager_.get()->bindingPtr);
 
-    app = App::Create(0, runtime, &delegate_, exception_handler_,
+    app = App::Create(0, runtime.GetWeakPtr(), &delegate_, exception_handler_,
                       std::move(nativeModuleProxy), nullptr, "-1",
                       tasm::PageOptions());
 
@@ -602,7 +602,7 @@ TEST_P(AppTest, NotifyUpdatePageData) {
 
 TEST_P(AppTest, GetEnvTest) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   auto js_function = function(R"--(
 function getEnv(nativeApp, key) {
   return nativeApp.getEnv(key);
@@ -620,7 +620,7 @@ function getEnv(nativeApp, key) {
 
 TEST_P(AppTest, GetEnvArgsCheckTest) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function getEnv(nativeApp) {
@@ -640,7 +640,7 @@ function getEnv(nativeApp) {
 
 TEST_P(AppTest, GetEnvFailedTest) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function getEnv(nativeApp, key) {
@@ -684,7 +684,8 @@ TEST_P(AppTest, JSObjectDestructionObserver) {
 }
 
 TEST_P(AppTest, ReadScriptTest) {
-  auto app_proxy = std::make_shared<AppProxy>(runtime, app->GetWeakPtr());
+  auto app_proxy =
+      std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr());
   auto read_script = function(R"--(
 function readScript(nativeApp, url, params) {
   return nativeApp.readScript(url, params);
@@ -824,7 +825,7 @@ function readScriptWithoutArgs(nativeApp) {
 
 TEST_P(AppTest, ReportExceptionTest) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   auto js_function = function(R"--(
 function reportException(nativeApp, message, stack, errorCode, errorLevel) {
   return nativeApp.reportException(message, stack, errorCode, errorLevel);
@@ -841,7 +842,7 @@ function reportException(nativeApp, message, stack, errorCode, errorLevel) {
 
 TEST_P(AppTest, ReportExceptionArgsCheckTest) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function reportException(nativeApp) {
@@ -862,7 +863,7 @@ function reportException(nativeApp) {
 
 TEST_P(AppTest, ReportExceptionFailedTest) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function reportException(nativeApp, message, stack, errorCode, errorLevel) {
@@ -964,7 +965,7 @@ TEST(AppTest, GenerateDynamicComponentSourceUrl) {
 
 TEST_P(AppTest, RequestAnimationFrame) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function requestAnimationFrameError(nativeApp, arg) {
@@ -995,7 +996,7 @@ function requestAnimationFrameError(nativeApp, arg) {
   EXPECT_TRUE(result->isUndefined());
 
   native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   EXPECT_CALL(*exception_handler_,
               OnJSIException(HasMessage("Args[0] must be a function.")))
       .Times(0);
@@ -1003,7 +1004,7 @@ function requestAnimationFrameError(nativeApp, arg) {
   EXPECT_TRUE(result->isUndefined());
 
   native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   EXPECT_CALL(*exception_handler_,
               OnJSIException(HasMessage("Args[0] must be a function.")))
       .Times(1);
@@ -1011,14 +1012,14 @@ function requestAnimationFrameError(nativeApp, arg) {
   EXPECT_TRUE(result->isUndefined());
 
   native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   result = js_function.call(rt, {native_app, 3});
   EXPECT_TRUE(result->isNumber());
 }
 
 TEST_P(AppTest, CancelAnimationFrame) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function cancelAnimationFrameError(nativeApp, arg) {
@@ -1038,14 +1039,14 @@ function cancelAnimationFrameError(nativeApp, arg) {
   EXPECT_TRUE(result->isUndefined());
 
   native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   result = js_function.call(rt, {native_app, 1});
   EXPECT_TRUE(result->isUndefined());
 }
 
 TEST_P(AppTest, AddReporterCustomInfo) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function reportException(nativeApp) {
@@ -1065,7 +1066,7 @@ function reportException(nativeApp) {
 
 TEST_P(AppTest, ModuleCheck) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function checkModule(nativeApp) {
@@ -1080,7 +1081,7 @@ function checkModule(nativeApp) {
 
 TEST_P(AppTest, ModuleLevelCheck) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function checkModule(nativeApp) {
@@ -1095,7 +1096,7 @@ function checkModule(nativeApp) {
 
 TEST_P(AppTest, ModuleGetBool) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function getString(nativeApp) {
@@ -1110,7 +1111,7 @@ function getString(nativeApp) {
 
 TEST_P(AppTest, ModuleGetString) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function getString(nativeApp) {
@@ -1131,25 +1132,25 @@ function getNumber(nativeApp, num) {
 )--");
 
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   auto result = js_function.call(rt, {native_app, 1});
   EXPECT_TRUE(result->isNumber());
   EXPECT_EQ(static_cast<int>(result->getNumber()), 1);
 
   native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   result = js_function.call(rt, {native_app, -1});
   EXPECT_TRUE(result->isNumber());
   EXPECT_EQ(static_cast<int>(result->getNumber()), -1);
 
   native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   result = js_function.call(rt, {native_app, 0});
   EXPECT_TRUE(result->isNumber());
   EXPECT_EQ(static_cast<int>(result->getNumber()), 0);
 
   native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   result = js_function.call(rt, {native_app, 3.1415926});
   EXPECT_TRUE(result->isNumber());
   EXPECT_EQ(result->getNumber(), 3.1415926);
@@ -1157,7 +1158,7 @@ function getNumber(nativeApp, num) {
 
 TEST_P(AppTest, ModuleGetArray) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function getArray(nativeApp) {
@@ -1200,7 +1201,7 @@ function getArray(nativeApp) {
 
 TEST_P(AppTest, ModuleGetObject) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function getObject(nativeApp) {
@@ -1253,7 +1254,7 @@ function getObject(nativeApp) {
 
 TEST_P(AppTest, ModuleSyncCallback) {
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
 
   auto js_function = function(R"--(
 function syncCb(nativeApp) {
@@ -1280,7 +1281,7 @@ function tryError(nativeApp, code) {
   const std::string method_name = "tryError";
 
   auto native_app = Object::createFromHostObject(
-      rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
   EXPECT_CALL(*module_delegate_, OnErrorOccurred(::testing::_)).Times(0);
   EXPECT_CALL(*module_delegate_,
               OnMethodInvoked(::testing::Eq("ut_module"),
@@ -1290,7 +1291,8 @@ function tryError(nativeApp, code) {
 
   for (int i = 1; i < ERROR_CODE_SIZE; i++) {
     native_app = Object::createFromHostObject(
-        rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+        rt,
+        std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
     EXPECT_CALL(*module_delegate_,
                 OnErrorOccurred(::testing::Field(&base::LynxError::error_code_,
                                                  ::testing::Eq(ERROR_CODE[i]))))
@@ -1499,7 +1501,8 @@ TEST_P(AppTest, FetchBundleTest) {
 // TODO(liyanbo.monster): open this when pub value support this.
 // TEST_P(AppTest, ModuleGetCircleObject) {
 //   auto native_app = Object::createFromHostObject(
-//       rt, std::make_shared<AppProxy>(runtime, app->GetWeakPtr()));
+//       rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(),
+//       app->GetWeakPtr()));
 //
 //   auto js_function = function(R"--(
 // function getString(nativeApp) {

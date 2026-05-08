@@ -31,7 +31,7 @@ void JSDebugProxyV8::RegisterNapiRuntimeProxy() {
 #endif
 }
 
-std::shared_ptr<runtime::js::Runtime> JSDebugProxyV8::MakeRuntime() {
+std::unique_ptr<runtime::js::Runtime> JSDebugProxyV8::MakeRuntime() {
   LOGI("js debug: make V8 runtime");
   return runtime::js::makeV8Runtime();
 }

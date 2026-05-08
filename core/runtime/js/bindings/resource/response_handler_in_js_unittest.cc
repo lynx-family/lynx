@@ -26,8 +26,8 @@ class ResponseHandlerInJSTest : public test::JSITestBase {
     base::UIThread::Init();
 
     // Lazily create adapter to ensure fml is initialized
-    adapter =
-        std::make_shared<JsTaskAdapter>(runtime, "-1", tasm::PageOptions());
+    adapter = std::make_shared<JsTaskAdapter>(runtime.GetWeakPtr(),
+                                              tasm::PageOptions());
   }
   std::shared_ptr<JsTaskAdapter> adapter;
 };
@@ -54,9 +54,9 @@ TEST_P(ResponseHandlerInJSTest, ThenCallbackFiresWithoutHoldingHandler) {
 
   Object nativeModuleProxy = Object::createFromHostObject(*runtime, nullptr);
 
-  auto app =
-      App::Create(0, runtime, &delegate, nullptr, std::move(nativeModuleProxy),
-                  nullptr, "-1", tasm::PageOptions());
+  auto app = App::Create(0, runtime.GetWeakPtr(), &delegate, nullptr,
+                         std::move(nativeModuleProxy), nullptr, "-1",
+                         tasm::PageOptions());
   bool resource_callback_called = false;
   {
     auto handler = std::make_shared<ResponseHandlerInJS>(

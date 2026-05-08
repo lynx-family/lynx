@@ -41,47 +41,39 @@ namespace runtime {
 namespace js {
 // static
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxy::Create(
-    std::shared_ptr<Runtime> runtime, runtime::TemplateDelegate *delegate) {
-  switch (runtime->type()) {
+    Runtime &runtime, runtime::TemplateDelegate *delegate) {
+  switch (runtime.type()) {
     case JSRuntimeType::v8: {
       LOGI("Creating napi proxy using v8 factory: " << s_factory);
       if (s_factory) {
-        auto proxy_v8 = s_factory->Create(runtime, delegate);
-        proxy_v8->SetJSRuntime(runtime);
-        return proxy_v8;
+        return s_factory->Create(runtime, delegate);
       }
       return nullptr;
     }
     case JSRuntimeType::jsc: {
 #if defined(OS_IOS) || defined(OS_OSX)
       LOGI("Creating napi proxy jsc");
-      auto jsc_runtime = std::static_pointer_cast<JSCRuntime>(runtime);
+      auto *jsc_runtime = static_cast<JSCRuntime *>(&runtime);
       auto context = jsc_runtime->getSharedContext();
       auto jsc_context = std::static_pointer_cast<JSCContextWrapper>(context);
-      auto proxy_jsc = NapiRuntimeProxyJSC::Create(jsc_context, delegate);
-      proxy_jsc->SetJSRuntime(runtime);
-      return proxy_jsc;
+      return NapiRuntimeProxyJSC::Create(jsc_context, delegate);
 #else
       return nullptr;
 #endif
     }
     case JSRuntimeType::quickjs: {
       LOGI("Creating napi proxy quickjs");
-      auto qjs_runtime = std::static_pointer_cast<QuickjsRuntime>(runtime);
+      auto *qjs_runtime = static_cast<QuickjsRuntime *>(&runtime);
       auto context = qjs_runtime->getSharedContext();
       auto qjs_context =
           std::static_pointer_cast<QuickjsContextWrapper>(context);
-      auto proxy_qjs =
-          NapiRuntimeProxyQuickjs::Create(qjs_context->getContext(), delegate);
-      proxy_qjs->SetJSRuntime(runtime);
-      return proxy_qjs;
+      return NapiRuntimeProxyQuickjs::Create(qjs_context->getContext(),
+                                             delegate);
     }
     case JSRuntimeType::jsvm: {
       LOGI("Creating napi proxy using jsvm factory: " << s_jsvm_factory);
       if (s_jsvm_factory) {
-        auto proxy_jsvm = s_jsvm_factory->Create(runtime, delegate);
-        proxy_jsvm->SetJSRuntime(runtime);
-        return proxy_jsvm;
+        return s_jsvm_factory->Create(runtime, delegate);
       }
       return nullptr;
     }
@@ -120,7 +112,7 @@ void NapiRuntimeProxy::Attach() {}
 void NapiRuntimeProxy::Detach() { napi_detach_runtime(env_); }
 
 void NapiRuntimeProxy::SetupLoader() {
-  auto runtime = GetJSRuntime().lock();
+  auto *runtime = GetJSRuntime().Lock();
   napi_env raw_env = env_;
   if (runtime && raw_env && raw_env->ctx) {
     Napi::ContextScope context_scope(env_);
@@ -289,7 +281,7 @@ napi_status LynxHookedNapiGetGlobal(napi_env env, napi_value *result) {
 // their own injected modules. For the modules loaded by this loader, the
 // abilities of running scripts and getting the global object are disabled.
 void RestrictedNapiRuntimeProxyDecorator::SetupLoader() {
-  auto runtime = GetJSRuntime().lock();
+  auto *runtime = GetJSRuntime().Lock();
   Napi::Env env = Env();
   napi_env raw_env = env;
 

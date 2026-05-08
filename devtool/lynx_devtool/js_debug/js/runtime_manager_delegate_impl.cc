@@ -27,14 +27,13 @@ void RuntimeManagerDelegateImpl::BeforeRuntimeCreate(
 }
 
 void RuntimeManagerDelegateImpl::OnRuntimeReady(
-    runtime::js::JSExecutor& executor,
-    std::shared_ptr<runtime::js::Runtime>& current_runtime,
+    runtime::js::JSExecutor& executor, runtime::js::Runtime& current_runtime,
     const std::string& group_id) {
   // `enable_bytecode` and `bytecode_source_url` parameters are ignored
   // since bytecode is not allowed to work with devtool.
-  current_runtime->SetEnableUserBytecode(false);
-  current_runtime->SetBytecodeSourceUrl("");
-  current_runtime->InitInspector(executor.GetRuntimeObserver());
+  current_runtime.SetEnableUserBytecode(false);
+  current_runtime.SetBytecodeSourceUrl("");
+  current_runtime.InitInspector(executor.GetRuntimeObserver());
 }
 
 void RuntimeManagerDelegateImpl::AfterSharedContextCreate(
@@ -52,7 +51,7 @@ void RuntimeManagerDelegateImpl::OnRelease(const std::string& group_id) {
   }
 }
 
-std::shared_ptr<runtime::js::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
+std::unique_ptr<runtime::js::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
     bool force_use_lightweight_js_engine, bool use_shared_context,
     const tasm::PageOptions& page_options) {
   // When using a shared js context, create a runtime of the same type as the
@@ -82,7 +81,7 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
   return nullptr;
 }
 
-std::shared_ptr<runtime::js::Runtime>
+std::unique_ptr<runtime::js::Runtime>
 RuntimeManagerDelegateImpl::MakeRuntimeForSharedContext(
     bool force_use_lightweight_js_engine) {
   LOGI("js debug: create runtime for shared js context!")

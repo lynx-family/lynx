@@ -5,6 +5,7 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_RUNTIME_MANAGER_DELEGATE_IMPL_H_
 #define DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_RUNTIME_MANAGER_DELEGATE_IMPL_H_
 
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/runtime_manager.h"
 
 namespace lynx {
@@ -17,12 +18,12 @@ class RuntimeManagerDelegateImpl : public runtime::RuntimeManagerDelegate {
 
   void BeforeRuntimeCreate(bool force_use_lightweight_js_engine) override;
   void OnRuntimeReady(runtime::js::JSExecutor& executor,
-                      std::shared_ptr<runtime::js::Runtime>& current_runtime,
+                      runtime::js::Runtime& current_runtime,
                       const std::string& group_id) override;
   void AfterSharedContextCreate(const std::string& group_id,
                                 runtime::js::JSRuntimeType type) override;
   void OnRelease(const std::string& group_id) override;
-  std::shared_ptr<runtime::js::Runtime> MakeRuntime(
+  std::unique_ptr<runtime::js::Runtime> MakeRuntime(
       bool force_use_lightweight_js_engine, bool use_shared_context = false,
       const tasm::PageOptions& page_options = tasm::PageOptions()) override;
 #if ENABLE_TRACE_PERFETTO
@@ -39,7 +40,7 @@ class RuntimeManagerDelegateImpl : public runtime::RuntimeManagerDelegate {
                             const ReleaseVMCallback& callback) override;
 
  private:
-  std::shared_ptr<runtime::js::Runtime> MakeRuntimeForSharedContext(
+  std::unique_ptr<runtime::js::Runtime> MakeRuntimeForSharedContext(
       bool force_use_lightweight_js_engine);
 
   std::unordered_map<runtime::js::JSRuntimeType, ReleaseVMCallback>

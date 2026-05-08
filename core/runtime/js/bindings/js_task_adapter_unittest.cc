@@ -28,7 +28,8 @@ class JsTaskTest : public JSITestBase {
     base::UIThread::Init();
 
     // Lazily create adapter to ensure fml is initialized
-    adapter = std::make_shared<JsTaskAdapter>(runtime, tasm::PageOptions());
+    adapter = std::make_shared<JsTaskAdapter>(runtime.GetWeakPtr(),
+                                              tasm::PageOptions());
   }
   std::shared_ptr<JsTaskAdapter> adapter;
 };

@@ -106,7 +106,7 @@ Value ResponseHandlerInJS::AddListenerForResponse(Runtime& rt) {
                                   tasm::BundleResourceInfo info) mutable {
             auto* ptr = native_app.Lock();
             if (ptr && !ptr->IsDestroying()) {
-              auto rt = ptr->GetRuntime();
+              auto* rt = ptr->GetRuntimeWeak().Lock();
               if (rt != nullptr) {
                 ptr->InvokeApiCallBackWithValue(
                     callback, ConvertBundleInfoToPiperValue(native_app, info));
@@ -125,7 +125,7 @@ Value ResponseHandlerInJS::ConvertBundleInfoToPiperValue(
   if (app == nullptr || app->IsDestroying()) {
     return Value::undefined();
   }
-  auto rt = app->GetRuntime();
+  auto* rt = app->GetRuntimeWeak().Lock();
   if (rt == nullptr) {
     return Value::undefined();
   }

@@ -29,8 +29,8 @@ namespace runtime {
 namespace js {
 using detail::JSVMHelper;
 
-std::shared_ptr<Runtime> makeJSVMRuntime() {
-  return std::make_shared<JSVMRuntime>();
+std::unique_ptr<Runtime> makeJSVMRuntime() {
+  return std::make_unique<JSVMRuntime>();
 }
 
 std::shared_ptr<lynx::runtime::profile::RuntimeProfiler>

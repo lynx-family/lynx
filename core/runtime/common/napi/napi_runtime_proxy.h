@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "core/base/lynx_export.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/template_delegate.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
@@ -44,8 +45,8 @@ class LYNX_EXPORT NapiRuntimeProxyInterface {
   virtual void Attach() = 0;
   virtual void Detach() = 0;
   virtual Napi::Env Env() = 0;
-  virtual void SetJSRuntime(std::shared_ptr<Runtime> runtime) = 0;
-  virtual std::weak_ptr<Runtime> GetJSRuntime() = 0;
+  virtual void SetJSRuntime(base::UnsafeWeakPtr<Runtime> runtime) = 0;
+  virtual base::UnsafeWeakPtr<Runtime> GetJSRuntime() = 0;
   virtual void SetupLoader() = 0;
   virtual void RemoveLoader() = 0;
   virtual void SetUncaughtExceptionHandler() = 0;
@@ -54,8 +55,7 @@ class LYNX_EXPORT NapiRuntimeProxyInterface {
 class LYNX_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
-      std::shared_ptr<Runtime> runtime,
-      runtime::TemplateDelegate* delegate = nullptr);
+      Runtime& runtime, runtime::TemplateDelegate* delegate = nullptr);
   NapiRuntimeProxy(runtime::TemplateDelegate* delegate);
   virtual ~NapiRuntimeProxy();
 
@@ -63,12 +63,12 @@ class LYNX_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
   void Detach() override;
 
   Napi::Env Env() override { return env_; }
-  void SetJSRuntime(std::shared_ptr<Runtime> runtime) override {
-    js_runtime_ = runtime;
+  void SetJSRuntime(base::UnsafeWeakPtr<Runtime> runtime) override {
+    js_runtime_ = std::move(runtime);
   }
   void MarkSafeNapi() { is_safe_napi_ = true; }
 
-  std::weak_ptr<Runtime> GetJSRuntime() override { return js_runtime_; }
+  base::UnsafeWeakPtr<Runtime> GetJSRuntime() override { return js_runtime_; }
 
   static void SetFactory(NapiRuntimeProxyV8Factory* factory);
   static void SetQuickjsFactory(NapiRuntimeProxyQuickjsFactory* factory);
@@ -82,7 +82,7 @@ class LYNX_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
  protected:
   Napi::Env env_;
   std::shared_ptr<DelegateObserver> delegate_observer_;
-  std::weak_ptr<Runtime> js_runtime_;
+  base::UnsafeWeakPtr<Runtime> js_runtime_;
   std::string loader_;
 
  private:
@@ -103,10 +103,10 @@ class RestrictedNapiRuntimeProxyDecorator : public NapiRuntimeProxyInterface {
   void Attach() override { proxy_->Attach(); }
   void Detach() override { proxy_->Detach(); }
   Napi::Env Env() override { return proxy_->Env(); }
-  void SetJSRuntime(std::shared_ptr<Runtime> runtime) override {
+  void SetJSRuntime(base::UnsafeWeakPtr<Runtime> runtime) override {
     proxy_->SetJSRuntime(std::move(runtime));
   }
-  std::weak_ptr<Runtime> GetJSRuntime() override {
+  base::UnsafeWeakPtr<Runtime> GetJSRuntime() override {
     return proxy_->GetJSRuntime();
   }
   void SetupLoader() override;

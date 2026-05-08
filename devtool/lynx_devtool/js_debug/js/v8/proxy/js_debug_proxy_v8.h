@@ -22,7 +22,7 @@ class JSDebugProxyV8 : public JSDebugProxy {
   CreateRuntimeInspectorManager() override;
 
   void RegisterNapiRuntimeProxy() override;
-  std::shared_ptr<runtime::js::Runtime> MakeRuntime() override;
+  std::unique_ptr<runtime::js::Runtime> MakeRuntime() override;
 #if ENABLE_TRACE_PERFETTO
   std::shared_ptr<runtime::profile::RuntimeProfiler> MakeRuntimeProfiler(
       std::shared_ptr<runtime::js::JSIContext> js_context) override;

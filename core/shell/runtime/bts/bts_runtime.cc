@@ -278,7 +278,7 @@ void BTSRuntime::TransitionToFullRuntime() {
     return;
   }
   runtime_flags_ &= ~LynxRuntimeFlags::PENDING_CORE_JS_LOAD;
-  auto rt = GetJSRuntime();
+  auto* rt = GetJSRuntimeWeak().Lock();
   if (!rt) {
     return;
   }
@@ -369,11 +369,15 @@ void BTSRuntime::PrepareNapiEnvironment() {
                 static_cast<void*>(static_cast<napi_env>(env)),
                 static_cast<void*>(static_cast<napi_value>(lynx)));
           }));
-  auto proxy =
-      runtime::js::NapiRuntimeProxy::Create(GetJSRuntime(), delegate_.get());
-  LOGI("napi attaching with proxy: " << proxy.get()
-                                     << ", id: " << GetRuntimeId());
+  auto runtime = GetJSRuntimeWeak();
+  auto* raw_runtime = runtime.Lock();
+  auto proxy = raw_runtime == nullptr ? nullptr
+                                      : runtime::js::NapiRuntimeProxy::Create(
+                                            *raw_runtime, delegate_.get());
   if (proxy) {
+    proxy->SetJSRuntime(std::move(runtime));
+    LOGI("napi attaching with proxy: " << proxy.get()
+                                       << ", id: " << GetRuntimeId());
     napi_environment_->SetRuntimeProxy(std::move(proxy));
     napi_environment_->Attach();
   }
@@ -393,13 +397,22 @@ void BTSRuntime::PrepareRestrictedNapiEnvironment() {
   // Create a restricted environment with an dummy delegate.
   napi_restricted_environment_ = std::make_unique<runtime::js::NapiEnvironment>(
       std::make_unique<runtime::js::NapiEnvironment::Delegate>());
-  auto proxy =
-      std::make_unique<runtime::js::RestrictedNapiRuntimeProxyDecorator>(
-          runtime::js::NapiRuntimeProxy::Create(GetJSRuntime(),
-                                                delegate_.get()));
+  auto runtime = GetJSRuntimeWeak();
+  auto* raw_runtime = runtime.Lock();
+  std::unique_ptr<runtime::js::RestrictedNapiRuntimeProxyDecorator> proxy;
+  if (raw_runtime != nullptr) {
+    auto base_proxy =
+        runtime::js::NapiRuntimeProxy::Create(*raw_runtime, delegate_.get());
+    if (base_proxy) {
+      base_proxy->SetJSRuntime(std::move(runtime));
+      proxy =
+          std::make_unique<runtime::js::RestrictedNapiRuntimeProxyDecorator>(
+              std::move(base_proxy));
+    }
+  }
   LOGI("napi attaching with restricted proxy: " << proxy.get()
                                                 << ", id: " << GetRuntimeId());
-  if (proxy) {
+  if (proxy != nullptr) {
     napi_restricted_environment_->SetRuntimeProxy(std::move(proxy));
     napi_restricted_environment_->Attach();
   }
@@ -464,7 +477,7 @@ void BTSRuntime::CallJSFunction(const std::string& module_id,
   LynxFatal(arguments.IsArrayOrJSArray(), error::E_BTS_RUNTIME_ERROR,
             "the arguments should be array when CallJSFunction!");
   QueueOrExecTask([this, module_id, method_id, arguments]() {
-    auto js_runtime = GetJSRuntime();
+    auto* js_runtime = GetJSRuntimeWeak().Lock();
     if (!js_runtime) {
       LOGE("js_runtime is nullptr!");
       return;
@@ -607,7 +620,7 @@ void BTSRuntime::CallFunction(const std::string& module_id,
   if (state_ == State::kDestroying) {
     return;
   }
-  auto js_runtime = GetJSRuntime();
+  auto* js_runtime = GetJSRuntimeWeak().Lock();
   if (!js_runtime) {
     LOGW("js_runtime is nullptr!");
     return;
@@ -624,7 +637,7 @@ void BTSRuntime::CallFunction(const std::string& module_id,
         }
       }
       tasm::recorder::NativeModuleRecorder::GetInstance().RecordGlobalEvent(
-          module_id, method_id, values, *size, js_runtime.get(), record_id_);
+          module_id, method_id, values, *size, js_runtime, record_id_);
     }
   }
 #endif
@@ -714,7 +727,7 @@ void BTSRuntime::OnJSSourcePrepared(
     tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadBackgroundStart);
     // We should set enable_circular_data_check flag to js runtime ahead of load
     // app_service.js, so we can check all js data updated if necessary.
-    auto js_runtime = GetJSRuntime();
+    auto* js_runtime = GetJSRuntimeWeak().Lock();
     if (js_runtime) {
       // If devtool is enabled, enable circular data check always.
       bool enable_circular_data_check =
@@ -796,7 +809,7 @@ void BTSRuntime::Destroy() {
   // the app_ object. But in shared context mode, we must check the validity of
   // the JSRuntime in case it is release by its shell owner or other Lynx
   // instance.
-  auto js_runtime = GetJSRuntime();
+  auto* js_runtime = GetJSRuntimeWeak().Lock();
   if (js_runtime && js_runtime->Valid()) {
     auto native_context_proxy =
         app_->GetContextProxy(runtime::ContextProxy::Type::kNative);
@@ -978,7 +991,9 @@ void BTSRuntime::OnRuntimeReady() {
 
   // TODO(liyanbo.monster): delete this when jsc crash fixed.
 #if OS_IOS
-  if (js_executor_->GetJSRuntime()->type() == runtime::js::JSRuntimeType::jsc) {
+  auto* js_rt_for_type = js_executor_->GetJSRuntime().Lock();
+  if (js_rt_for_type != nullptr &&
+      js_rt_for_type->type() == runtime::js::JSRuntimeType::jsc) {
     auto task_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
     task_runner->PostDelayedTask(
         fml::MakeCopyable(
@@ -1053,8 +1068,9 @@ void BTSRuntime::OnModuleMethodInvoked(const std::string& module,
   delegate_->OnModuleMethodInvoked(module, method, code);
 }
 
-std::shared_ptr<runtime::js::Runtime> BTSRuntime::GetJSRuntime() {
-  return js_executor_ ? js_executor_->GetJSRuntime() : nullptr;
+base::UnsafeWeakPtr<runtime::js::Runtime> BTSRuntime::GetJSRuntimeWeak() {
+  return js_executor_ ? js_executor_->GetJSRuntime()
+                      : base::UnsafeWeakPtr<runtime::js::Runtime>();
 }
 
 int64_t BTSRuntime::GenerateRuntimeId() {
@@ -1067,7 +1083,7 @@ void BTSRuntime::SetEnableBytecode(bool enable,
   QueueOrExecAppTask([this, enable, bytecode_source_url]() {
     LOGI("LynxRuntime::SetEnableBytecode, enable: "
          << enable << " bytecode_source_url: " << bytecode_source_url);
-    if (auto rt = GetJSRuntime()) {
+    if (auto* rt = GetJSRuntimeWeak().Lock()) {
       rt->SetEnableUserBytecode(enable);
       rt->SetBytecodeSourceUrl(bytecode_source_url);
     }

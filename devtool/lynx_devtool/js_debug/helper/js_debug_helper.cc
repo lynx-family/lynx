@@ -52,7 +52,7 @@ void JSDebugHelper::RegisterNapiRuntimeProxy() {
   v8_proxy_->RegisterNapiRuntimeProxy();
 }
 
-std::shared_ptr<runtime::js::Runtime> JSDebugHelper::MakeRuntime(
+std::unique_ptr<runtime::js::Runtime> JSDebugHelper::MakeRuntime(
     const std::string& vm_type) {
   if (vm_type == kKeyEngineV8) {
     if (v8_proxy_ != nullptr) {

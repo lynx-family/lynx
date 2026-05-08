@@ -51,8 +51,8 @@ class LynxProxy;
 // now this do nothing!
 class AppProxy : public HostObject {
  public:
-  AppProxy(std::weak_ptr<Runtime> rt, base::UnsafeWeakPtr<App> app)
-      : rt_(rt), native_app_(std::move(app)) {}
+  AppProxy(base::UnsafeWeakPtr<Runtime> rt, base::UnsafeWeakPtr<App> app)
+      : rt_(std::move(rt)), native_app_(std::move(app)) {}
   ~AppProxy() { LOGI("LYNX ~AppProxy destroy"); }
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -62,22 +62,23 @@ class AppProxy : public HostObject {
   enum AnimationOperation : int32_t { START = 0, PLAY, PAUSE, CANCEL, FINISH };
 
  protected:
-  std::weak_ptr<Runtime> rt_;
+  base::UnsafeWeakPtr<Runtime> rt_;
   base::UnsafeWeakPtr<App> native_app_;
 };
 
 class App {
  public:
   static base::UnsafeOwningPtr<App> Create(
-      int64_t rt_id, std::weak_ptr<Runtime> rt,
+      int64_t rt_id, base::UnsafeWeakPtr<Runtime> rt,
       runtime::TemplateDelegate* delegate,
       std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
       Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const std::string& group_id, const tasm::PageOptions& page_options) {
-    auto app = base::UnsafeOwningPtr<App>(new App(
-        rt_id, rt, delegate, runtime_delegate, std::move(nativeModuleProxy),
-        std::move(api_handler), group_id, page_options));
+    auto app = base::UnsafeOwningPtr<App>(
+        new App(rt_id, std::move(rt), delegate, runtime_delegate,
+                std::move(nativeModuleProxy), std::move(api_handler), group_id,
+                page_options));
     // Expose a weak self-reference so App internals can hand out observers
     // without relying on enable_shared_from_this.
     app->weak_self_ = app.GetWeakPtr();
@@ -211,7 +212,7 @@ class App {
   void AddReporterCustomInfo(
       const std::unordered_map<std::string, std::string>& info);
 
-  std::shared_ptr<Runtime> GetRuntime();
+  base::UnsafeWeakPtr<Runtime> GetRuntimeWeak();
   std::optional<lepus_value> ParseJSValueToLepusValue(
       const Value& data, const std::string& component_id);
 
@@ -297,18 +298,18 @@ class App {
 #endif
 
  private:
-  App(int64_t rt_id, std::weak_ptr<Runtime> rt,
+  App(int64_t rt_id, base::UnsafeWeakPtr<Runtime> rt,
       runtime::TemplateDelegate* delegate,
       std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
       Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const std::string& group_id, const tasm::PageOptions& page_options)
       : app_guid_(std::to_string(rt_id)),
-        rt_(rt),
+        rt_(std::move(rt)),
         js_app_(),
         delegate_(delegate),
         runtime_delegate_(std::move(runtime_delegate)),
-        js_task_adapter_(std::make_unique<JsTaskAdapter>(rt, page_options)),
+        js_task_adapter_(std::make_unique<JsTaskAdapter>(rt_, page_options)),
         nativeModuleProxy_(std::move(nativeModuleProxy)),
         api_handler_(std::move(api_handler)),
         jsi_object_wrapper_manager_(
@@ -350,7 +351,7 @@ class App {
 
   base::UnsafeWeakPtr<App> weak_self_;
   std::string app_guid_;
-  std::weak_ptr<Runtime> rt_;
+  base::UnsafeWeakPtr<Runtime> rt_;
   std::string i18_resource_;
   Value js_app_;
   runtime::TemplateDelegate* const delegate_;

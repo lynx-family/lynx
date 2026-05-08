@@ -139,7 +139,7 @@ class BTSRuntime final {
   void OnModuleMethodInvoked(const std::string& module,
                              const std::string& method, int32_t error_code);
 
-  std::shared_ptr<runtime::js::Runtime> GetJSRuntime();
+  base::UnsafeWeakPtr<runtime::js::Runtime> GetJSRuntimeWeak();
   int64_t GetRuntimeId() const { return instance_id_; }
 
 #if ENABLE_NAPI_BINDING

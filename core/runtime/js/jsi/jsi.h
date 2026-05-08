@@ -33,6 +33,7 @@
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
 #include "core/base/lynx_export.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/inspector/console_message_postman.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
@@ -1734,7 +1735,10 @@ class VMInstance {
 
 class HostGlobal {
  public:
-  virtual void Init(std::shared_ptr<Runtime>& js_runtime_,
+  // Initialize the host-global bindings using the selected "global runtime".
+  // In shared-context mode the concrete Global may take ownership from
+  // `js_runtime`; in single-context mode it should only keep a weak observer.
+  virtual void Init(lynx::base::UnsafeOwningPtr<Runtime>& js_runtime,
                     std::shared_ptr<ConsoleMessagePostMan>& post_man,
                     const tasm::PageOptions& page_options) = 0;
   virtual void Release() = 0;

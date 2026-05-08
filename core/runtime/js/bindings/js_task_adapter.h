@@ -13,6 +13,7 @@
 
 #include "base/include/closure.h"
 #include "base/include/thread/timed_task.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/public/page_options.h"
 #include "core/runtime/js/jsi/jsi.h"
 
@@ -22,7 +23,7 @@ namespace js {
 // Ownered by js_app
 class JsTaskAdapter {
  public:
-  explicit JsTaskAdapter(const std::weak_ptr<Runtime>& rt,
+  explicit JsTaskAdapter(base::UnsafeWeakPtr<Runtime> rt,
                          const tasm::PageOptions& page_options);
   ~JsTaskAdapter();
 
@@ -59,7 +60,7 @@ class JsTaskAdapter {
   // bind to thread which JsTaskAdapter created.
   fml::RefPtr<fml::TaskRunner> runner_;
 
-  std::weak_ptr<Runtime> rt_;
+  base::UnsafeWeakPtr<Runtime> rt_;
 
   tasm::PageOptions page_options_;
 };

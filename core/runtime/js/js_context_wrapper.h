@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "core/base/lynx_export.h"
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/js/bindings/global.h"
 #include "core/runtime/js/jsi/jsi.h"
@@ -33,7 +34,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
       std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
       const tasm::PageOptions& page_options) = 0;
   virtual void initGlobal(
-      std::shared_ptr<runtime::js::Runtime>& js_runtime,
+      base::UnsafeOwningPtr<runtime::js::Runtime>& js_runtime,
       std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
       const tasm::PageOptions& page_options) = 0;
   virtual void AddLifecycleListener(
@@ -53,7 +54,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
       std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
           js_preload);
   void prepareJSEnv(
-      std::weak_ptr<runtime::js::Runtime> js_runtime,
+      base::UnsafeWeakPtr<runtime::js::Runtime> js_runtime,
       std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
           js_preload);
   std::shared_ptr<runtime::js::JSIContext> getJSContext() {
@@ -64,7 +65,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
       std::shared_ptr<profile::RuntimeProfiler> runtime_profiler);
 #endif
  protected:
-  virtual void InitNapi(std::shared_ptr<runtime::js::Runtime>& js_runtime){};
+  virtual void InitNapi(base::UnsafeWeakPtr<runtime::js::Runtime> js_runtime){};
   std::weak_ptr<runtime::js::JSIContext> js_context_;
   // Whether we've run `prepareJSEnv()` once for this context wrapper.
   // This is different from `js_core_loaded_` because corejs might be deferred.
@@ -93,7 +94,7 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedJSContextWrapper : public JSContextWrapper {
       std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
       const tasm::PageOptions& page_options) override;
 
-  void initGlobal(std::shared_ptr<runtime::js::Runtime>& rt,
+  void initGlobal(base::UnsafeOwningPtr<runtime::js::Runtime>& rt,
                   std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
                   const tasm::PageOptions& page_options) override;
 
@@ -108,7 +109,7 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedJSContextWrapper : public JSContextWrapper {
   };
 
  protected:
-  void InitNapi(std::shared_ptr<runtime::js::Runtime>& js_runtime) override;
+  void InitNapi(base::UnsafeWeakPtr<runtime::js::Runtime> js_runtime) override;
   std::shared_ptr<runtime::js::SharedContextGlobal> global_;
   std::string group_id_;
   ReleaseListener* listener_;
@@ -131,7 +132,7 @@ class LYNX_EXPORT_FOR_DEVTOOL NoneSharedJSContextWrapper
       std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
       const tasm::PageOptions& page_options) override;
 
-  void initGlobal(std::shared_ptr<runtime::js::Runtime>& js_runtime,
+  void initGlobal(base::UnsafeOwningPtr<runtime::js::Runtime>& js_runtime,
                   std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
                   const tasm::PageOptions& page_options) override;
 
