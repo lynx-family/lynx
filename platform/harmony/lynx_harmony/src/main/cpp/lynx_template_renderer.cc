@@ -186,34 +186,35 @@ void LynxTemplateRenderer::SetUpLynxShell(
   engine_proxy_ =
       std::make_shared<shell::LynxEngineProxyImpl>(shell_->GetEngineActor());
   if (runtime_wrapper) {
-    module_manager_ = runtime_wrapper->GetModuleManager();
-    module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
+    if (auto module_manager = runtime_wrapper->GetModuleManager().lock()) {
+      module_manager->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
+    }
     runtime_wrapper->SetAttached(true);
     shell_->AttachRuntime();
     runtime_proxy_ = runtime_wrapper->GetRuntimeProxy();
   } else {
     // InitJSBridge
-    module_manager_ = std::make_shared<runtime::js::LynxModuleManager>();
-    module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
-    module_manager_->SetModuleFactory(std::move(module_factory));
+    auto module_manager = std::make_shared<runtime::js::LynxModuleManager>();
+    module_manager->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
+    module_manager->SetModuleFactory(std::move(module_factory));
     napi_value module_param[1];
     module_param[0] = base::NapiUtil::CreatePtrArray(
-        env, reinterpret_cast<uintptr_t>(module_manager_.get()));
+        env, reinterpret_cast<uintptr_t>(module_manager.get()));
     base::NapiUtil::InvokeJsMethod(env_, template_renderer_ref_,
                                    "initNativeSetModule", 1, module_param,
                                    nullptr);
 
-    auto on_runtime_actor_created = [this](auto& actor) {
+    auto on_runtime_actor_created = [this, module_manager](auto& actor) {
       auto module_delegate = std::make_shared<shell::ModuleDelegateImpl>(
           shell_->GetRuntimeActor(), shell_->GetFacadeActor());
-      module_manager_->initBindingPtr(module_manager_, module_delegate);
+      module_manager->initBindingPtr(module_manager, module_delegate);
       runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor);
-      module_manager_->runtime_proxy = runtime_proxy_;
+      module_manager->runtime_proxy = runtime_proxy_;
     };
 
     auto runtime_flags =
         shell::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
-    shell_->InitRuntime(group_id, resource_loader_, module_manager_,
+    shell_->InitRuntime(group_id, resource_loader_, module_manager,
                         std::move(on_runtime_actor_created),
                         std::move(preload_js_paths), runtime_flags,
                         bytecode_source_url);

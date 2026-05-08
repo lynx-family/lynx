@@ -123,7 +123,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
     return *runtime_standalone_;
   }
 
-  std::shared_ptr<runtime::js::LynxModuleManager> GetModuleManager() {
+  std::weak_ptr<runtime::js::LynxModuleManager> GetModuleManager() {
     return module_manager_;
   }
 
@@ -161,8 +161,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   void DestroyRuntime();
   std::unique_ptr<shell::BTSRuntimeStandalone> runtime_standalone_;
   std::shared_ptr<shell::LynxBTSRuntimeProxyImpl> runtime_proxy_;
-  // TODO(liyanbo.monster): use weak_ptr instead of shared_ptr
-  std::shared_ptr<runtime::js::LynxModuleManager> module_manager_;
+  std::weak_ptr<runtime::js::LynxModuleManager> module_manager_;
   bool is_attached_{false};
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
   std::unordered_map<int32_t, napi_ref> session_storage_callback_refs_;

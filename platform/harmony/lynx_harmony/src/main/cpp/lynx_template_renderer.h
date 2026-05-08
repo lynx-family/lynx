@@ -240,8 +240,6 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::shared_ptr<shell::LynxLayoutProxy> layout_proxy_;
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
   std::shared_ptr<shell::LynxShell> shell_;
-  // TODO(liyanbo.monster): use weak_ptr instead of shared_ptr
-  std::shared_ptr<runtime::js::LynxModuleManager> module_manager_;
   tasm::UIDelegate* ui_delegate_;
   std::shared_ptr<LynxResourceLoaderHarmony> resource_loader_;
   std::shared_ptr<WeakFlag> weak_flag_;

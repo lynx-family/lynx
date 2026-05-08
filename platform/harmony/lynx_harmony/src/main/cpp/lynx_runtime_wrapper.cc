@@ -151,16 +151,19 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
         inspector_owner_->OnBackgroundRuntimeCreated(group_name);
   }
 
-  // Init module manager
-  module_manager_ = std::make_shared<runtime::js::LynxModuleManager>();
-  module_manager_->SetModuleFactory(std::move(module_factory));
+  // Keep the standalone runtime's module manager alive through runtime init,
+  // but expose it to attach-time callers only as a weak reference.
+  auto module_manager = std::make_shared<runtime::js::LynxModuleManager>();
+  module_manager_ = module_manager;
+  module_manager->SetModuleFactory(std::move(module_factory));
 
-  auto on_runtime_actor_created = [this](auto& actor, auto& facade_actor) {
-    module_manager_->initBindingPtr(
-        module_manager_,
+  auto on_runtime_actor_created = [this, module_manager](auto& actor,
+                                                         auto& facade_actor) {
+    module_manager->initBindingPtr(
+        module_manager,
         std::make_shared<shell::ModuleDelegateImpl>(actor, facade_actor));
     runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor);
-    module_manager_->runtime_proxy = runtime_proxy_;
+    module_manager->runtime_proxy = runtime_proxy_;
   };
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board = nullptr;
 
@@ -170,7 +173,7 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
   runtime_standalone_ =
       lynx::shell::BTSRuntimeStandalone::InitRuntimeStandalone(
           group_name, group_id, std::move(native_facade_runtime),
-          std::move(inspector_observer), resource_loader, module_manager_,
+          std::move(inspector_observer), resource_loader, module_manager,
           bundle_creator, white_board, on_runtime_actor_created,
           std::move(preload_js_paths), bytecode_source_url, runtime_flags,
           &global_props);
