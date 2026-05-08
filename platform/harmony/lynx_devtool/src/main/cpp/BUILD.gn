@@ -15,6 +15,7 @@ devtool_source_set("cpp") {
     "devtool_env_harmony.cc",
     "devtool_env_harmony.h",
     "entry.cc",
+    "env_embedder.cc",
     "harmony_global_handler.cc",
     "harmony_global_handler.h",
     "harmony_session_handler.cc",

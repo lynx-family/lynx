@@ -25,7 +25,6 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "devtool/embedder/core/debug_bridge_embedder.h"
-#include "devtool/embedder/core/env_embedder.h"
 #include "devtool/embedder/core/lynx_devtool_set_module.h"
 #include "third_party/debug_router/src/debug_router/common/debug_router.h"
 
@@ -266,17 +265,6 @@ napi_value DevToolEnvHarmony::InitDevToolSetModule(napi_env env,
   module_manager->SetModuleFactory(std::move(devtool_module_factory_));
 
   return nullptr;
-}
-
-// TODO(mitchilling): Route EnvEmbedder through the new settings model after the
-// shared embedder refactor covers macOS, Windows, and Harmony.
-void EnvEmbedder::SetSwitch(const std::string &key, bool value) {
-  devtool::DevToolEnvHarmony::GetInstance().SetSwitch(
-      key, value, devtool::DevToolEnvHarmony::NeedPersistent(key));
-}
-
-bool EnvEmbedder::GetSwitch(const std::string &key) {
-  return devtool::DevToolEnvHarmony::GetInstance().GetSwitch(key);
 }
 
 }  // namespace devtool

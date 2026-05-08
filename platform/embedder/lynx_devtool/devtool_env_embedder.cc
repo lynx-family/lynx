@@ -7,7 +7,6 @@
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "devtool/embedder/core/debug_bridge_embedder.h"
-#include "devtool/embedder/core/env_embedder.h"
 #include "platform/embedder/lynx_devtool/switch_persist.h"
 #include "third_party/debug_router/src/debug_router/common/debug_router.h"
 
@@ -120,15 +119,4 @@ void DevToolEnvEmbedder::SetAppInfo(
 }
 
 }  // namespace embedder
-
-namespace devtool {
-void EnvEmbedder::SetSwitch(const std::string& key, bool value) {
-  embedder::DevToolEnvEmbedder::GetInstance().SetDevToolSwitch(key, value);
-}
-
-bool EnvEmbedder::GetSwitch(const std::string& key) {
-  return embedder::DevToolEnvEmbedder::GetInstance().GetDevToolSwitch(key);
-}
-
-}  // namespace devtool
 }  // namespace lynx

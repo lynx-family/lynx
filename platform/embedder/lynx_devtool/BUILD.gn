@@ -14,6 +14,7 @@ devtool_source_set("lynx_devtool") {
   sources = [
     "devtool_env_embedder.cc",
     "devtool_env_embedder.h",
+    "env_embedder.cc",
   ]
   if (is_mac) {
     sources += [ "SwitchPersist.mm" ]
