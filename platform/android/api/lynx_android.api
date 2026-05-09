@@ -3930,6 +3930,21 @@ public enum com::lynx::tasm::animation::keyframe::LynxKeyframeAnimator::LynxAnim
 public interface com::lynx::jsbridge::LynxAttribute {
 }
 
+public interface com::lynx::tasm::behavior::LynxAutolinkElement {
+  public String com.lynx.tasm.behavior.LynxAutolinkElement.name();
+  public boolean com.lynx.tasm.behavior.LynxAutolinkElement.isCreateAsync() default false;
+  public boolean com.lynx.tasm.behavior.LynxAutolinkElement.needProcessDirection() default false;
+  public boolean com.lynx.tasm.behavior.LynxAutolinkElement.supportFragmentLayerRender() default false;
+  public Class<? extends IRendererHost > com.lynx.tasm.behavior.LynxAutolinkElement.fragmentLayerRendererHost() default IRendererHost.class;
+}
+
+public interface com::lynx::jsbridge::LynxAutolinkNativeModule {
+  public String com.lynx.jsbridge.LynxAutolinkNativeModule.name();
+}
+
+public interface com::lynx::tasm::service::LynxAutolinkService {
+}
+
 public class com::lynx::tasm::behavior::ui::utils::LynxBackground : LynxDrawableManager< BackgroundDrawable > {
   public com.lynx.tasm.behavior.ui.utils.LynxBackground.LynxBackground(LynxContext context);
   public void com.lynx.tasm.behavior.ui.utils.LynxBackground.setBackgroundColor(int color);
@@ -5548,6 +5563,21 @@ public class abstract com::lynx::jsbridge::LynxExtensionModule :  {
   public abstract void com.lynx.jsbridge.LynxExtensionModule.setUp();
   public abstract void com.lynx.jsbridge.LynxExtensionModule.onTemplateLoad(String url);
   public abstract void com.lynx.jsbridge.LynxExtensionModule.destroy();
+}
+
+public interface com::lynx::tasm::extension::LynxExtensionProvider {
+  public void com.lynx.tasm.extension.LynxExtensionProvider.register(@NonNull LynxExtensionRegistry registry);
+}
+
+public class com::lynx::tasm::extension::LynxExtensionRegistry :  {
+  public static void com.lynx.tasm.extension.LynxExtensionRegistry.setupGlobal(@NonNull Context context, @NonNull String[] providerClassNames);
+  public static void com.lynx.tasm.extension.LynxExtensionRegistry.setup(@NonNull LynxViewBuilder builder, @NonNull String[] providerClassNames);
+  public void com.lynx.tasm.extension.LynxExtensionRegistry.addBehaviors(@Nullable List< Behavior > behaviors);
+  public void com.lynx.tasm.extension.LynxExtensionRegistry.registerModule( @NonNull String name, @NonNull Class<? extends LynxModule > moduleClass);
+  public void com.lynx.tasm.extension.LynxExtensionRegistry.registerModule(@NonNull String name, @NonNull Class<? extends LynxModule > moduleClass, @Nullable Object param);
+  public void com.lynx.tasm.extension.LynxExtensionRegistry.registerService(@NonNull Class<? extends IServiceProvider > serviceClass);
+  public void com.lynx.tasm.extension.LynxExtensionRegistry.registerService(@NonNull IServiceProvider service);
+  public Context com.lynx.tasm.extension.LynxExtensionRegistry.getContextOrThrow();
 }
 
 public class com::lynx::tasm::provider::LynxExternalResourceFetcherWrapper :  {

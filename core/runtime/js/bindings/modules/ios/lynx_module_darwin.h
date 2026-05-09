@@ -32,6 +32,7 @@ base::expected<std::unique_ptr<pub::Value>, std::string> PerformMethodInvocation
 class LynxModuleDarwin : public LynxNativeModule {
  public:
   LynxModuleDarwin(id<LynxModule> module);
+  LynxModuleDarwin(id<LynxModule> module, NSString *moduleName);
   void Destroy() override;
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
