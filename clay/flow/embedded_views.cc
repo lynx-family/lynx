@@ -7,6 +7,7 @@
 
 #include "clay/flow/embedded_views.h"
 
+#include "base/trace/native/trace_event.h"
 #ifndef ENABLE_SKITY
 #include "clay/gfx/skity_to_skia_utils.h"
 #endif
@@ -42,6 +43,7 @@ SkPictureEmbedderViewSlice::searchNonOverlappingDrawnRects(
 }
 
 void SkPictureEmbedderViewSlice::render_into(SkCanvas* canvas) {
+  TRACE_EVENT("clay", "SkPictureEmbedderViewSlice::render_into");
   canvas->drawPicture(picture_);
 }
 #else
@@ -71,6 +73,7 @@ SkityPictureEmbedderViewSlice::searchNonOverlappingDrawnRects(
 }
 
 void SkityPictureEmbedderViewSlice::render_into(skity::Canvas* canvas) {
+  TRACE_EVENT("clay", "SkityPictureEmbedderViewSlice::render_into");
   picture_->Draw(canvas);
 }
 #endif  // ENABLE_SKITY
