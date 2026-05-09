@@ -42,6 +42,7 @@ podspec_target("XElement_podspec") {
       "Overlay",
       "ScrollCoordinator",
       "ViewPager",
+      "WebView",
       "SVG",
       "Refresh",
       "Markdown",
@@ -59,6 +60,7 @@ podspec_target("XElement_podspec") {
     ":SVG",
     ":ScrollCoordinator",
     ":ViewPager",
+    ":WebView",
   ]
 }
 
@@ -171,6 +173,21 @@ subspec_target("ViewPager") {
   dependency = lynx_dependency
 }
 
+subspec_target("WebView") {
+  sources = [
+    "webview/LynxUIWebView.h",
+    "webview/LynxUIWebView.m",
+    "webview/LynxWebViewDefaultLoader.h",
+    "webview/LynxWebViewDefaultLoader.m",
+    "webview/LynxWebViewDefaultLoaderProvider.m",
+  ]
+  public_header_files = [
+    "webview/LynxUIWebView.h",
+    "webview/LynxWebViewDefaultLoader.h",
+  ]
+  dependency = lynx_dependency
+}
+
 subspec_target("SVG") {
   sources = [
     "svg/LynxSVGView.h",
@@ -267,6 +284,8 @@ subspec_target("Behavior") {
     "behavior/LynxUITextAreaAutoRegistry.m",
     "behavior/LynxUIViewPagerAutoRegistry.h",
     "behavior/LynxUIViewPagerAutoRegistry.m",
+    "behavior/LynxUIWebViewAutoRegistry.h",
+    "behavior/LynxUIWebViewAutoRegistry.m",
   ]
   public_header_files = [
     "behavior/LynxUIBlurViewAutoRegistry.h",
@@ -278,6 +297,7 @@ subspec_target("Behavior") {
     "behavior/LynxUIViewPagerAutoRegistry.h",
     "behavior/LynxUISVGAutoRegistry.h",
     "behavior/LynxUITextAreaAutoRegistry.h",
+    "behavior/LynxUIWebViewAutoRegistry.h",
   ]
 
   dependency = lynx_dependency
@@ -288,6 +308,7 @@ subspec_target("Behavior") {
     "XElement/Overlay",
     "XElement/ScrollCoordinator",
     "XElement/ViewPager",
+    "XElement/WebView",
     "XElement/SVG",
     "XElement/Refresh",
   ]
