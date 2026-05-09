@@ -95,6 +95,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)getLepusDebugInfoUrl:(NSString *_Nonnull)filename;
 
 - (void)emulateTouch:(std::shared_ptr<lynx::devtool::MouseEvent>)input;
+- (void)insertText:(nullable NSString *)text;
 - (void)emulateTouch:(nonnull NSString *)type
          coordinateX:(int)x
          coordinateY:(int)y

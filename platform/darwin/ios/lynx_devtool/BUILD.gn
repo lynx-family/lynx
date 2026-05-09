@@ -359,6 +359,7 @@ subspec_target("UnitTests") {
   sources = [
     "../../common/lynx_devtool/LynxDebugBridgeUnitTest.mm",
     "ConsoleDelegateManagerUnitTest.mm",
+    "DevToolPlatformDarwinDelegateUnitTest.mm",
     "Helper/LepusDebugInfoHelperUnitTest.mm",
     "Helper/LynxUITreeHelperUnitTest.m",
     "LynxDevToolErrorUtilsUnitTest.m",

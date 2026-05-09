@@ -23,6 +23,10 @@
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
 #include "devtool/lynx_devtool/element/element_inspector.h"
 
+@interface DevToolPlatformDarwinDelegate ()
+- (nullable UIView*)firstResponderInView:(nullable UIView*)view;
+@end
+
 #pragma mark - DevToolPlatformDarwin
 namespace lynx {
 namespace devtool {
@@ -223,6 +227,16 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin != nil) {
       [darwin emulateTouch:input];
+    }
+  }
+
+  void InsertText(const std::string& text) override {
+    __strong typeof(_darwin) darwin = _darwin;
+    if (darwin != nil) {
+      NSString* nsText = [[NSString alloc] initWithBytes:text.data()
+                                                  length:text.size()
+                                                encoding:NSUTF8StringEncoding];
+      [darwin insertText:nsText];
     }
   }
 
@@ -582,6 +596,34 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
               deltaY:input->delta_y_
            modifiers:input->modifiers_
           clickCount:input->click_count_];
+}
+
+- (void)insertText:(nullable NSString*)text {
+  if (text == nil) {
+    return;
+  }
+  __strong typeof(_lynxView) lynxView = _lynxView;
+  UIView* firstResponder = [self firstResponderInView:lynxView];
+  if ([firstResponder conformsToProtocol:@protocol(UITextInput)] &&
+      [firstResponder respondsToSelector:@selector(insertText:)]) {
+    [(id<UITextInput>)firstResponder insertText:text];
+  }
+}
+
+- (nullable UIView*)firstResponderInView:(nullable UIView*)view {
+  if (view == nil) {
+    return nil;
+  }
+  if (view.isFirstResponder) {
+    return view;
+  }
+  for (UIView* subview in view.subviews) {
+    UIView* firstResponder = [self firstResponderInView:subview];
+    if (firstResponder != nil) {
+      return firstResponder;
+    }
+  }
+  return nil;
 }
 
 - (void)emulateTouch:(nonnull NSString*)type
