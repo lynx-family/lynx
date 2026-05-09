@@ -1,0 +1,11 @@
+{
+  "module": {
+    "name": "xelement_webview",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet",
+      "2in1"
+    ]
+  }
+}
