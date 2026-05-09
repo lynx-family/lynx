@@ -1,0 +1,13 @@
+{
+  "name": "@lynx/xelement_webview",
+  "version": "@param:dependencies.lynx_version",
+  "description": "Lynx XElement WebView",
+  "main": "Index.ets",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/lynx-family/lynx",
+  "author": "lynx",
+  "dependencies": {
+    "@lynx/lynx_base": "@param:dependencies.lynx_version",
+    "@lynx/lynx": "@param:dependencies.lynx_version",
+  }
+}
