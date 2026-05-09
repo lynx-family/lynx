@@ -9,6 +9,7 @@
 
 #include <list>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/flow/embedded_views.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/rendering_backend.h"
@@ -21,6 +22,7 @@ std::unordered_map<int64_t, skity::Rect> SliceViews(
     const std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
         slices,
     const std::unordered_map<int64_t, skity::Rect>& view_rects) {
+  TRACE_EVENT("clay", "SliceViews");
   std::unordered_map<int64_t, skity::Rect> overlay_layers;
 
   auto current_frame_view_count = composition_order.size();

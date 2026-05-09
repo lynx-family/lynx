@@ -598,7 +598,7 @@ TEST_F(ClipRRectLayerTest, NoSaveLayerShouldNotCache) {
   EXPECT_EQ(clip_cache_item->cache_state(), RasterCacheItem::CacheState::kNone);
 }
 
-TEST_F(ClipRRectLayerTest, EmptyClipDoesNotCullPlatformView) {
+TEST_F(ClipRRectLayerTest, EmptyClipCullsPlatformView) {
   const skity::Vec2 view_offset = skity::Vec2(0.0f, 0.0f);
   const skity::Vec2 view_size = skity::Vec2(8.0f, 8.0f);
   const int64_t view_id = 42;
@@ -615,12 +615,9 @@ TEST_F(ClipRRectLayerTest, EmptyClipDoesNotCullPlatformView) {
   paint_context().compositor_state = &compositor_state;
 
   clip->Preroll(preroll_context());
-  EXPECT_EQ(compositor_state.GetCompositionOrder(),
-            std::vector<int64_t>({view_id}));
-
-  clip->Paint(paint_context());
-  EXPECT_EQ(paint_context().canvas,
-            compositor_state.GetSlices()[view_id]->canvas());
+  EXPECT_TRUE(compositor_state.GetCompositionOrder().empty());
+  EXPECT_FALSE(clip->subtree_has_platform_view());
+  EXPECT_FALSE(clip->needs_painting(paint_context()));
 }
 
 }  // namespace testing
