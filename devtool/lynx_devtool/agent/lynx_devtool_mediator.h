@@ -142,6 +142,7 @@ class LynxDevToolMediator
 
   // Input domain -> ui executor
   DECLARE_DEVTOOL_METHOD(EmulateTouchFromMouseEvent)
+  DECLARE_DEVTOOL_METHOD(InsertText)
 
   // Inspector domain -> devtools executor
   DECLARE_DEVTOOL_METHOD(InspectorEnable)

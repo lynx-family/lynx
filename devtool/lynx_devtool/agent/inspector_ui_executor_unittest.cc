@@ -151,5 +151,23 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
   }
 }
 
+TEST_F(InspectorUIExecutorTest, InsertTextTest) {
+  std::shared_ptr<testing::DevToolPlatformFacadeMock> facade =
+      std::make_shared<testing::DevToolPlatformFacadeMock>();
+  ui_executor_->SetDevToolPlatformFacade(facade);
+
+  Json::Value message;
+  message["id"] = 41;
+  Json::Value params;
+  params["text"] = "hello";
+  message["params"] = params;
+
+  ui_executor_->InsertText(message_sender_, message);
+
+  EXPECT_EQ(facade->inserted_text_, "hello");
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"id\" : 41,\n   \"result\" : {}\n}\n");
+}
+
 }  // namespace testing
 }  // namespace lynx

@@ -30,6 +30,8 @@ class InspectorInputAgent : public CDPDomainAgentBase {
 
   void EmulateTouchFromMouseEvent(const std::shared_ptr<MessageSender>& sender,
                                   const Json::Value& message);
+  void InsertText(const std::shared_ptr<MessageSender>& sender,
+                  const Json::Value& message);
 
   std::map<std::string, InputAgentMethod> functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;

@@ -68,6 +68,7 @@ class InspectorUIExecutor
 
   // Input domain
   DECLARE_DEVTOOL_METHOD(EmulateTouchFromMouseEvent)
+  DECLARE_DEVTOOL_METHOD(InsertText)
 
   // event
  public:

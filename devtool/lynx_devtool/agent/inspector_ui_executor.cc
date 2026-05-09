@@ -688,6 +688,22 @@ void InspectorUIExecutor::EmulateTouchFromMouseEvent(
   sender->SendMessage("CDP", response);
 }
 
+void InspectorUIExecutor::InsertText(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  Json::Value response(Json::ValueType::objectValue);
+  Json::Value content(Json::ValueType::objectValue);
+  Json::Value params = message["params"];
+
+  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
+                            "devtool_platform_facade_ is null");
+  devtool_platform_facade_->InsertText(params["text"].asString());
+
+  response["result"] = content;
+  response["id"] = message["id"].asInt64();
+  sender->SendMessage("CDP", response);
+}
+
 // end input protocol
 
 // The following three functions are used for handling Layout Nodes
