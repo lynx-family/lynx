@@ -868,10 +868,9 @@ std::shared_ptr<Buffer> QuickjsRuntime::GetBytecode(
     auto &instance = cache::JsCacheManager::GetQuickjsInstance();
     auto generator =
         std::make_unique<cache::QuickjsCacheGenerator>(source_url, buffer);
-    auto runtime_delegate = GetRuntimeDelegate();
     cache =
         instance.TryGetCache(source_url, GetBytecodeSourceUrl(), getRuntimeId(),
-                             std::move(generator), runtime_delegate);
+                             std::move(generator), GetRuntimeDelegateWeakPtr());
   } else if (!GetEnableUserBytecode()) {
     cache::JsCacheTracker::OnGetBytecodeDisable(
         getRuntimeId(), JSRuntimeType::quickjs, source_url, false, false);

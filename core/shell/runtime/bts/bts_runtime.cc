@@ -199,7 +199,7 @@ void BTSRuntime::Init(
     }
     cached_native_factories_.clear();
   }
-  runtime_delegate_ = std::make_shared<JSRuntimeDelegateImpl>(this);
+  runtime_delegate_ = base::MakeUnsafeOwning<JSRuntimeDelegateImpl>(this);
   js_executor_ = std::make_unique<lynx::runtime::js::JSExecutor>(
       group_id_, module_manager, runtime_observer,
       runtime_flags_ & LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
@@ -219,7 +219,7 @@ void BTSRuntime::Init(
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, CREATE_AND_LOAD_APP);
   app_ = js_executor_->createNativeAppInstance(
-      GetRuntimeId(), delegate_.get(), runtime_delegate_,
+      GetRuntimeId(), delegate_.get(), runtime_delegate_.GetWeakPtr(),
       std::make_unique<runtime::LynxApiHandler>(), page_options_);
 #if ENABLE_TESTBENCH_RECORDER
   app_->SetRecordId(record_id_);
@@ -261,7 +261,7 @@ void BTSRuntime::InitExecutor(bool is_full_runtime,
   create_params.enable_user_bytecode =
       (runtime_flags_ & LynxRuntimeFlags::ENABLE_USER_BYTECODE);
   create_params.bytecode_source_url = bytecode_source_url_;
-  create_params.delegate = runtime_delegate_;
+  create_params.delegate = runtime_delegate_.GetWeakPtr();
 
   // FIXME(wangboyong):invoke before decode...in fact in 1.4
   // here NeedGlobalConsole always return true...

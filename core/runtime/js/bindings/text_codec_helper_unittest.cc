@@ -4,6 +4,7 @@
 
 #include "core/runtime/js/bindings/text_codec_helper.h"
 
+#include "core/base/memory/unsafe_owning_ptr.h"
 #include "testing/utils/make_js_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -35,8 +36,8 @@ class MockHandler : public JSRuntimeDelegate {
 };
 
 TEST(TextCodecHelper, TestTextCodecHelper) {
-  auto handler = std::make_shared<MockHandler>();
-  auto rt = testing::utils::makeJSRuntime(handler);
+  auto handler = base::MakeUnsafeOwning<MockHandler>();
+  auto rt = testing::utils::makeJSRuntime(handler.GetWeakPtr());
 
   auto global = rt->global();
   Object helper_obj =

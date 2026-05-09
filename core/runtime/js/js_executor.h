@@ -64,7 +64,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
   base::UnsafeOwningPtr<App> createNativeAppInstance(
       int64_t rt_id, runtime::TemplateDelegate*,
-      std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
+      base::UnsafeWeakPtr<JSRuntimeDelegate> runtime_delegate,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const tasm::PageOptions& page_options);
 
