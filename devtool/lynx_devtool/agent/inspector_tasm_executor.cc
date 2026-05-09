@@ -954,6 +954,48 @@ void InspectorTasmExecutor::ScrollIntoViewIfNeeded(
   sender->SendMessage("CDP", response.toStyledString());
 }
 
+void InspectorTasmExecutor::DOM_Focus(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  Json::Value response(Json::ValueType::objectValue);
+  Json::Value content(Json::ValueType::objectValue);
+  response["id"] = message["id"].asInt64();
+
+  const Json::Value& params = message["params"];
+  if (!params.isObject() || !params.isMember("nodeId") ||
+      (!params["nodeId"].isInt() && !params["nodeId"].isUInt())) {
+    Json::Value error(Json::ValueType::objectValue);
+    error["code"] = kInvalidParams;
+    error["message"] = "DOM.focus requires a numeric nodeId parameter.";
+    response["error"] = error;
+    sender->SendMessage("CDP", response);
+    return;
+  }
+
+  const Json::Value& node_id_value = params["nodeId"];
+  Element* current_element = GetElementById(node_id_value.asInt());
+  while (current_element != nullptr && (current_element->is_virtual() ||
+                                        current_element->CanBeLayoutOnly())) {
+    current_element = current_element->parent();
+  }
+  if (current_element == nullptr) {
+    Json::Value error(Json::ValueType::objectValue);
+    error["code"] = kServerError;
+    error["message"] = "Element not found.";
+    response["error"] = error;
+    sender->SendMessage("CDP", response);
+    return;
+  }
+
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
+
+  devtool_mediator->Focus(ElementInspector::NodeId(current_element));
+
+  response["result"] = content;
+  sender->SendMessage("CDP", response);
+}
+
 void InspectorTasmExecutor::WhiteBoardEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

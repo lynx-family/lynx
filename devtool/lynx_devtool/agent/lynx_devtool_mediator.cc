@@ -477,6 +477,14 @@ void LynxDevToolMediator::ScrollIntoViewIfNeeded(
   });
 }
 
+void LynxDevToolMediator::DOM_Focus(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnTASMThread([sender, message, executor = element_executor_] {
+    executor->DOM_Focus(sender, message);
+  });
+}
+
 void LynxDevToolMediator::DOMEnableDomTree(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
@@ -497,6 +505,11 @@ void LynxDevToolMediator::ScrollIntoView(int node_id) {
   RunOnUIThread([executor = ui_executor_, node_id] {
     executor->ScrollIntoView(node_id);
   });
+}
+
+void LynxDevToolMediator::Focus(int node_id) {
+  RunOnUIThread(
+      [executor = ui_executor_, node_id] { executor->Focus(node_id); });
 }
 
 void LynxDevToolMediator::PageReload(bool ignore_cache) {

@@ -83,6 +83,7 @@ class InspectorUIExecutor
 
   // task run on ui thread
   void ScrollIntoView(int node_id);
+  void Focus(int node_id);
   void PageReload(bool ignore_cache, const std::string& template_binary = "",
                   const std::string& reload_url = "",
                   bool from_template_fragments = false,

@@ -86,6 +86,12 @@ void InspectorUIExecutor::ScrollIntoView(int node_id) {
   devtool_platform_facade_->ScrollIntoView(node_id);
 }
 
+void InspectorUIExecutor::Focus(int node_id) {
+  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
+                            "devtool_platform_facade_ is null");
+  devtool_platform_facade_->Focus(node_id);
+}
+
 void InspectorUIExecutor::PageReload(bool ignore_cache,
                                      const std::string& template_binary,
                                      const std::string& reload_url,

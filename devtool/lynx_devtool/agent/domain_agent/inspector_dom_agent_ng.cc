@@ -48,6 +48,7 @@ InspectorDOMAgentNG::InspectorDOMAgentNG(
       &InspectorDOMAgentNG::DiscardSearchResults;
   functions_map_["DOM.scrollIntoViewIfNeeded"] =
       &InspectorDOMAgentNG::ScrollIntoViewIfNeeded;
+  functions_map_["DOM.focus"] = &InspectorDOMAgentNG::Focus;
   functions_map_["DOM.getOriginalNodeIndex"] =
       &InspectorDOMAgentNG::GetOriginalNodeIndex;
 }
@@ -187,6 +188,11 @@ void InspectorDOMAgentNG::DiscardSearchResults(
 void InspectorDOMAgentNG::ScrollIntoViewIfNeeded(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   devtool_mediator_->ScrollIntoViewIfNeeded(sender, message);
+}
+
+void InspectorDOMAgentNG::Focus(const std::shared_ptr<MessageSender>& sender,
+                                const Json::Value& message) {
+  devtool_mediator_->DOM_Focus(sender, message);
 }
 
 void InspectorDOMAgentNG::GetOriginalNodeIndex(

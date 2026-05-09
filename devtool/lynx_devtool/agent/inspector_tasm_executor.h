@@ -117,6 +117,7 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(GetSearchResults)
   DECLARE_DEVTOOL_METHOD(DiscardSearchResults)
   DECLARE_DEVTOOL_METHOD(GetOriginalNodeIndex)
+  DECLARE_DEVTOOL_METHOD(DOM_Focus)
 
   // css domain
   DECLARE_DEVTOOL_METHOD(CSS_Enable)

@@ -84,6 +84,8 @@ class InspectorDOMAgentNG : public CDPDomainAgentBase {
                             const Json::Value& message);
   void ScrollIntoViewIfNeeded(const std::shared_ptr<MessageSender>& sender,
                               const Json::Value& message);
+  void Focus(const std::shared_ptr<MessageSender>& sender,
+             const Json::Value& message);
   void GetOriginalNodeIndex(const std::shared_ptr<MessageSender>& sender,
                             const Json::Value& message);
 

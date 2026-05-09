@@ -113,6 +113,7 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(DiscardSearchResults);
   DECLARE_DEVTOOL_METHOD(GetOriginalNodeIndex);
   DECLARE_DEVTOOL_METHOD(ScrollIntoViewIfNeeded);
+  DECLARE_DEVTOOL_METHOD(DOM_Focus);
   DECLARE_DEVTOOL_METHOD(DOMEnableDomTree);
   DECLARE_DEVTOOL_METHOD(DOMDisableDomTree);
   DECLARE_DEVTOOL_METHOD(GetNodeForLocation);
@@ -248,6 +249,7 @@ class LynxDevToolMediator
 
   // implemented by ui executor
   void ScrollIntoView(int node_id);
+  void Focus(int node_id);
   void PageReload(bool ignore_cache);
 
   void InitWhiteBoardInspector(

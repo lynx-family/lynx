@@ -41,6 +41,7 @@ class DevToolPlatformFacade
 
   virtual std::string GetDebugInfoByUrl(const std::string& url) = 0;
   virtual void ScrollIntoView(int node_id) = 0;
+  virtual void Focus(int node_id) {}
   virtual int FindNodeIdForLocation(float x, float y,
                                     std::string screen_shot_mode) = 0;
   virtual void StartScreenCast(ScreenshotRequest request) = 0;
