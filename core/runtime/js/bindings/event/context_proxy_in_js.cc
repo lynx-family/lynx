@@ -50,14 +50,15 @@ PropType ConvertPropStringToPropType(const std::string &str) {
 
 }  // namespace
 
-ContextProxyInJS::ContextProxyInJS(runtime::ContextProxy::Delegate &delegate,
-                                   runtime::ContextProxy::Type target_type,
-                                   base::UnsafeWeakPtr<App> native_app)
+ContextProxyInJSImpl::ContextProxyInJSImpl(
+    runtime::ContextProxy::Delegate &delegate,
+    runtime::ContextProxy::Type target_type,
+    base::UnsafeWeakPtr<App> native_app)
     : runtime::ContextProxy(delegate, runtime::ContextProxy::Type::kJSContext,
                             target_type),
       native_app_(std::move(native_app)) {}
 
-void ContextProxyInJS::ReportError(base::LynxError error) {
+void ContextProxyInJSImpl::ReportError(base::LynxError error) {
   auto *app = native_app_.Lock();
   if (!app) {
     return;
@@ -65,9 +66,8 @@ void ContextProxyInJS::ReportError(base::LynxError error) {
   app->GetDelegate().OnErrorOccurred(std::move(error));
 }
 
-fml::RefPtr<runtime::MessageEvent> ContextProxyInJS::CreateMessageEvent(
-    Runtime &rt, const base::UnsafeWeakPtr<App> &native_app,
-    const Value &event) {
+fml::RefPtr<runtime::MessageEvent> ContextProxyInJSImpl::CreateMessageEvent(
+    Runtime &rt, const Value &event) {
   return fml::MakeRefCounted<runtime::MessageEvent>(
       event.getObject(rt)
           .getProperty(rt, runtime::kType)
@@ -78,177 +78,255 @@ fml::RefPtr<runtime::MessageEvent> ContextProxyInJS::CreateMessageEvent(
           rt, *(event.getObject(rt).getProperty(rt, runtime::kData))));
 }
 
+base::expected<Value, JSINativeException>
+ContextProxyInJSImpl::PostMessageFromJS(Runtime &rt,
+                                        const std::string &method_name,
+                                        const Value *args, size_t count) {
+  if (count < 1) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since the args count must >= 1!"));
+  }
+
+  auto *app = native_app_.Lock();
+  if (!app) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since native_app_ is nullptr!"));
+  }
+
+  auto option_value =
+      app->ParseJSValueToLepusValue(std::move(args[0]), PAGE_GROUP_ID);
+  if (!option_value.has_value()) {
+    return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+        "ContextProxy's " + method_name +
+        " failed, since convert arg0 to lepus::Value failed!"));
+  }
+
+  PostMessage(*option_value);
+  return Value::undefined();
+}
+
+base::expected<Value, JSINativeException>
+ContextProxyInJSImpl::DispatchEventFromJS(Runtime &rt,
+                                          const std::string &method_name,
+                                          const Value *args, size_t count) {
+  if (count < 1) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since the args count must >= 1!"));
+  }
+
+  auto *app = native_app_.Lock();
+  if (!app) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since native_app_ is nullptr!"));
+  }
+
+  if (!args[0].isObject()) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since arg0 must be object!"));
+  }
+
+  auto event = args[0].getObject(rt);
+  if (!event.hasProperty(rt, runtime::kType) ||
+      !event.getProperty(rt, runtime::kType)->isString()) {
+    return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+        "ContextProxy's " + method_name +
+        " failed, since arg0 must contain type property and the value must "
+        "be string!"));
+  }
+
+  if (!event.hasProperty(rt, runtime::kData)) {
+    return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+        "ContextProxy's " + method_name +
+        " failed, since arg0 must contain data property!"));
+  }
+
+  auto message_event = CreateMessageEvent(rt, event);
+  auto result = DispatchEvent(std::move(message_event));
+  return Value(static_cast<int>(result.cancel_type));
+}
+
+base::expected<Value, JSINativeException>
+ContextProxyInJSImpl::AddEventListenerFromJS(Runtime &rt,
+                                             const std::string &method_name,
+                                             const Value *args, size_t count) {
+  if (count < 2) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since the args count must >= 2!"));
+  }
+
+  auto *app = native_app_.Lock();
+  if (!app || app->IsDestroying()) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since native_app_ is nullptr!"));
+  }
+
+  if (!args[0].isString()) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since the arg0 must be string!"));
+  }
+
+  if (!args[1].isObject() || !args[1].asObject(rt)->isFunction(rt)) {
+    return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+        "ContextProxy's " + method_name +
+        " failed, since the arg1 must be closure or function!"));
+  }
+
+  AddEventListener(
+      args[0].asString(rt)->utf8(rt),
+      std::make_unique<JSClosureEventListener>(native_app_, args[1]));
+  return Value::undefined();
+}
+
+base::expected<Value, JSINativeException>
+ContextProxyInJSImpl::RemoveEventListenerFromJS(Runtime &rt,
+                                                const std::string &method_name,
+                                                const Value *args,
+                                                size_t count) {
+  if (count < 2) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since the args count must >= 2!"));
+  }
+
+  auto *app = native_app_.Lock();
+  if (!app) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since native_app_ is nullptr!"));
+  }
+
+  if (!args[0].isString()) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("ContextProxy's " + method_name +
+                                   " failed, since the arg0 must be string!"));
+  }
+
+  if (!args[1].isObject() || !args[1].asObject(rt)->isFunction(rt)) {
+    return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+        "ContextProxy's " + method_name +
+        " failed, since the arg1 must be closure or function!"));
+  }
+
+  RemoveEventListener(
+      args[0].asString(rt)->utf8(rt),
+      std::make_unique<JSClosureEventListener>(native_app_, args[1]));
+  return Value::undefined();
+}
+
+Value ContextProxyInJSImpl::GetOnTriggerEvent(Runtime &rt) {
+  if (event_listener_ == nullptr ||
+      event_listener_->type() !=
+          event::EventListener::Type::kJSClosureEventListener) {
+    return Value::undefined();
+  }
+
+  auto *event_listener_ptr =
+      static_cast<JSClosureEventListener *>(event_listener_.get());
+  return event_listener_ptr->GetClosure();
+}
+
+void ContextProxyInJSImpl::SetOnTriggerEvent(Runtime &rt, const Value &value) {
+  auto *app = native_app_.Lock();
+  if (!app || app->IsDestroying()) {
+    return;
+  }
+
+  SetListenerBeforePublishEvent(
+      std::make_unique<JSClosureEventListener>(native_app_, Value(rt, value)));
+}
+
+ContextProxyInJS::ContextProxyInJS(runtime::ContextProxy::Type type,
+                                   base::UnsafeWeakPtr<App> native_app)
+    : type_(type), native_app_(std::move(native_app)) {}
+
+ContextProxyInJSImpl *ContextProxyInJS::GetContextProxyImpl() const {
+  auto *app = native_app_.Lock();
+  if (!app) {
+    return nullptr;
+  }
+  return app->GetOrCreateContextProxyImpl(type_);
+}
+
 Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
   if (rt == nullptr) {
     return Value::undefined();
   }
 
   auto method_name = name.utf8(*rt);
-  auto type = ConvertPropStringToPropType(name.utf8(*rt));
+  auto type = ConvertPropStringToPropType(method_name);
   if (type < PropType::kPostMessage || type >= PropType::kUnknown) {
     return Value::undefined();
   }
 
   if (type < PropType::kFunctionPropEnd) {
+    auto type_for_host_object = type_;
+    auto native_app = native_app_;
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, method_name), 0,
-        [this, method_name = std::move(method_name), type](
-            Runtime &rt, const Value &this_val, const Value *args,
-            size_t count) -> base::expected<Value, JSINativeException> {
+        [native_app, type_for_host_object, method_name = std::move(method_name),
+         type](Runtime &rt, const Value &this_val, const Value *args,
+               size_t count) -> base::expected<Value, JSINativeException> {
+          auto *app = native_app.Lock();
+          if (!app) {
+            return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                "ContextProxy's " + method_name +
+                " failed, since native_app_ is nullptr!"));
+          }
+
+          auto *impl = app->GetOrCreateContextProxyImpl(type_for_host_object);
+          if (!impl) {
+            return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                "ContextProxy's " + method_name +
+                " failed, since context proxy impl is nullptr!"));
+          }
+
           if (type == PropType::kPostMessage) {
-            if (count < 1) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since the args count must >= 1!"));
-            }
-
-            auto *app = native_app_.Lock();
-            if (!app) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since native_app_ is nullptr!"));
-            }
-            auto option_value = app->ParseJSValueToLepusValue(
-                std::move(args[0]), PAGE_GROUP_ID);
-            if (!option_value.has_value()) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since convert arg0 to lepus::Value failed!"));
-            }
-
-            PostMessage(*option_value);
-            return Value::undefined();
-          } else if (type == PropType::kDispatchEvent) {
-            if (count < 1) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since the args count must >= 1!"));
-            }
-
-            auto *app = native_app_.Lock();
-            if (!app) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since native_app_ is nullptr!"));
-            }
-
-            if (!args[0].isObject()) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since arg0 must be object!"));
-            }
-
-            auto event = args[0].getObject(rt);
-            if (!event.hasProperty(rt, runtime::kType) ||
-                !event.getProperty(rt, runtime::kType)->isString()) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since arg0 must contain type "
-                  "property and the value must be string!"));
-            }
-
-            if (!event.hasProperty(rt, runtime::kData)) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since arg0 must contain data property!"));
-            }
-
-            auto message_event = CreateMessageEvent(rt, native_app_, event);
-            auto result = DispatchEvent(std::move(message_event));
-            return Value(static_cast<int>(result.cancel_type));
-          } else if (type == PropType::kAddEventListener) {
-            if (count < 2) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since the args count must >= 2!"));
-            }
-
-            auto *app = native_app_.Lock();
-            if (!app || app->IsDestroying()) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since native_app_ is nullptr!"));
-            }
-
-            if (!args[0].isString()) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since the arg0 must be string!"));
-            }
-
-            if (!args[1].isObject() || !args[1].asObject(rt)->isFunction(rt)) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since the arg1 must be closure or function!"));
-            }
-
-            AddEventListener(
-                args[0].asString(rt)->utf8(rt),
-                std::make_unique<JSClosureEventListener>(native_app_, args[1]));
-
-            return Value::undefined();
-          } else if (type == PropType::kRemoveEventListener) {
-            if (count < 2) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since the args count must >= 2!"));
-            }
-
-            auto *app = native_app_.Lock();
-            if (!app) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since native_app_ is nullptr!"));
-            }
-
-            if (!args[0].isString()) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since the arg0 must be string!"));
-            }
-
-            if (!args[1].isObject() || !args[1].asObject(rt)->isFunction(rt)) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "ContextProxy's " + method_name +
-                  " failed, since the arg1 must be closure or function!"));
-            }
-
-            RemoveEventListener(
-                args[0].asString(rt)->utf8(rt),
-                std::make_unique<JSClosureEventListener>(native_app_, args[1]));
-
-            return Value::undefined();
+            return impl->PostMessageFromJS(rt, method_name, args, count);
+          }
+          if (type == PropType::kDispatchEvent) {
+            return impl->DispatchEventFromJS(rt, method_name, args, count);
+          }
+          if (type == PropType::kAddEventListener) {
+            return impl->AddEventListenerFromJS(rt, method_name, args, count);
+          }
+          if (type == PropType::kRemoveEventListener) {
+            return impl->RemoveEventListenerFromJS(rt, method_name, args,
+                                                   count);
           }
           return Value::undefined();
         });
   }
-  if (type == PropType::kOnTriggerEvent) {
-    if (event_listener_ == nullptr ||
-        event_listener_->type() !=
-            event::EventListener::Type::kJSClosureEventListener) {
-      return Value::undefined();
-    }
 
-    auto event_listener_ptr =
-        static_cast<JSClosureEventListener *>(event_listener_.get());
-    return event_listener_ptr->GetClosure();
+  if (type == PropType::kOnTriggerEvent) {
+    auto *impl = GetContextProxyImpl();
+    return impl ? impl->GetOnTriggerEvent(*rt) : Value::undefined();
   }
   return Value::undefined();
 }
 
 void ContextProxyInJS::set(Runtime *rt, const PropNameID &name,
                            const Value &value) {
-  auto *app = native_app_.Lock();
-  if (rt == nullptr || !app || app->IsDestroying()) {
+  if (rt == nullptr) {
+    return;
+  }
+
+  auto *impl = GetContextProxyImpl();
+  if (!impl) {
     return;
   }
 
   auto name_str = name.utf8(*rt);
   if (name_str == runtime::kOnTriggerEvent) {
-    SetListenerBeforePublishEvent(std::make_unique<JSClosureEventListener>(
-        native_app_, Value(*rt, value)));
+    impl->SetOnTriggerEvent(*rt, value);
   }
-  return;
 }
 
 std::vector<PropNameID> ContextProxyInJS::getPropertyNames(Runtime &rt) {
@@ -261,7 +339,9 @@ std::vector<PropNameID> ContextProxyInJS::getPropertyNames(Runtime &rt) {
   return vec;
 }
 
-void ContextProxyInJS::Destroy() { event_listener_map_.reset(); }
+runtime::ContextProxy::Type ContextProxyInJS::GetTargetType() const {
+  return type_;
+}
 
 }  // namespace js
 

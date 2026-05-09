@@ -364,14 +364,15 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
             type = runtime::ContextProxy::Type::kEngine;
           }
 
-          auto proxy = app->GetContextProxy(type);
-          if (proxy == nullptr) {
+          auto *context_proxy_impl = app->GetOrCreateContextProxyImpl(type);
+          if (context_proxy_impl == nullptr) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "lynx." + methodName +
-                " failed, since GetContextProxy return nullptr"));
+                " failed, since GetOrCreateContextProxyImpl return nullptr"));
           }
 
-          return Object::createFromHostObject(rt, proxy);
+          return Object::createFromHostObject(
+              rt, std::make_shared<ContextProxyInJS>(type, app->GetWeakPtr()));
         });
   }
 

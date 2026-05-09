@@ -241,7 +241,7 @@ class App {
   static std::string GenerateDynamicComponentSourceUrl(
       const std::string& entry_name, const std::string& source_url);
 
-  std::shared_ptr<ContextProxyInJS> GetContextProxy(
+  ContextProxyInJSImpl* GetOrCreateContextProxyImpl(
       runtime::ContextProxy::Type type);
 
   JSIObjectWrapperManager* GetJSIObjectWrapperManager() {
@@ -338,7 +338,6 @@ class App {
   std::optional<Value> PublishComponentEvent(const std::string& component_id,
                                              const std::string& handler,
                                              const lepus::Value& info);
-
   enum class State {
     kNotStarted,     // only app created
     kStarted,        // app started loadApp
@@ -368,8 +367,9 @@ class App {
   Value ssr_global_event_emitter_;
   std::unique_ptr<GCPauseSuppressionMode> gc_pause_suppression_mode_{nullptr};
 
-  std::shared_ptr<ContextProxyInJS> context_proxy_vector_[static_cast<int32_t>(
-      runtime::ContextProxy::Type::kUnknown)] = {nullptr};
+  std::unique_ptr<ContextProxyInJSImpl>
+      context_proxy_vector_[static_cast<int32_t>(
+          runtime::ContextProxy::Type::kUnknown)] = {nullptr};
 
   tasm::TasmRuntimeBundle card_bundle_;
   std::unordered_map<std::string, tasm::TasmRuntimeBundle> component_bundles_;

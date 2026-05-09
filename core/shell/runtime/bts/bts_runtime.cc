@@ -629,7 +629,7 @@ void BTSRuntime::CallFunction(const std::string& module_id,
   }
 #endif
   auto native_context_proxy =
-      app_->GetContextProxy(runtime::ContextProxy::Type::kNative);
+      app_->GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kNative);
   if (native_context_proxy != nullptr &&
       native_context_proxy->HasEventListener(
           runtime::kMessageEventTypeGlobalEvent) &&
@@ -799,7 +799,7 @@ void BTSRuntime::Destroy() {
   auto js_runtime = GetJSRuntime();
   if (js_runtime && js_runtime->Valid()) {
     auto native_context_proxy =
-        app_->GetContextProxy(runtime::ContextProxy::Type::kNative);
+        app_->GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kNative);
     if (native_context_proxy != nullptr &&
         native_context_proxy->HasEventListener(
             runtime::kMessageEventTypeDestroyLifetime)) {
@@ -1000,8 +1000,8 @@ void BTSRuntime::OnRuntimeReady() {
 }
 
 void BTSRuntime::AddEventListeners() {
-  auto core_context_proxy =
-      app_->GetContextProxy(runtime::ContextProxy::Type::kCoreContext);
+  auto core_context_proxy = app_->GetOrCreateContextProxyImpl(
+      runtime::ContextProxy::Type::kCoreContext);
   if (core_context_proxy != nullptr) {
     core_context_proxy->AddEventListener(
         runtime::kMessageEventTypeOnAppEnterForeground,
@@ -1020,11 +1020,11 @@ void BTSRuntime::AddEventListeners() {
             }));
   }
 
-  auto js_context_proxy =
-      app_->GetContextProxy(runtime::ContextProxy::Type::kJSContext);
+  auto js_context_proxy = app_->GetOrCreateContextProxyImpl(
+      runtime::ContextProxy::Type::kJSContext);
 
   if (js_context_proxy != nullptr) {
-    delegate_->AddEventListenersToWhiteBoard(js_context_proxy.get());
+    delegate_->AddEventListenersToWhiteBoard(js_context_proxy);
   }
 }
 
@@ -1092,7 +1092,7 @@ void BTSRuntime::OnReceiveMessageEvent(
   }
 
   QueueOrExecTask([this, event = std::move(event)]() mutable {
-    auto proxy = app_->GetContextProxy(event->GetOriginType());
+    auto proxy = app_->GetOrCreateContextProxyImpl(event->GetOriginType());
     if (proxy != nullptr) {
       proxy->DispatchEvent(std::move(event));
     }

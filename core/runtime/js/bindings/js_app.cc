@@ -1857,8 +1857,8 @@ void App::SetCSSVariable(const std::string& component_id,
 }
 
 void App::Init() {
-  auto js_context_proxy =
-      GetContextProxy(runtime::ContextProxy::Type::kJSContext);
+  auto* js_context_proxy =
+      GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kJSContext);
   if (js_context_proxy != nullptr) {
     js_context_proxy->AddEventListener(
         runtime::kMessageEventTypeForceGcJSIObjectWrapper,
@@ -1867,8 +1867,8 @@ void App::Init() {
               jsi_object_wrapper_manager_->ForceGcOnJSThread();
             }));
   }
-  auto core_context_proxy =
-      GetContextProxy(runtime::ContextProxy::Type::kCoreContext);
+  auto* core_context_proxy =
+      GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kCoreContext);
   if (core_context_proxy == nullptr) {
     return;
   }
@@ -1954,13 +1954,6 @@ void App::Destroy() {
   if (jsi_object_wrapper_manager_) {
     jsi_object_wrapper_manager_->DestroyOnJSThread();
   }
-  // clear js object
-  for (auto ptr : context_proxy_vector_) {
-    if (ptr) {
-      ptr->Destroy();
-    }
-  }
-
   runtime_delegate_->Destroy();
 }
 
@@ -2952,18 +2945,20 @@ std::string App::GenerateDynamicComponentSourceUrl(
   return dynamic_component_source_url;
 }
 
-std::shared_ptr<ContextProxyInJS> App::GetContextProxy(
+ContextProxyInJSImpl* App::GetOrCreateContextProxyImpl(
     runtime::ContextProxy::Type type) {
   if (type >= runtime::ContextProxy::Type::kUnknown ||
       type < runtime::ContextProxy::Type::kJSContext) {
     return nullptr;
   }
-  auto result = context_proxy_vector_[static_cast<int32_t>(type)];
+
+  auto index = static_cast<int32_t>(type);
+  auto& result = context_proxy_vector_[index];
   if (result == nullptr) {
-    result = std::make_shared<ContextProxyInJS>(*delegate_, type, GetWeakPtr());
-    context_proxy_vector_[static_cast<int32_t>(type)] = result;
+    result =
+        std::make_unique<ContextProxyInJSImpl>(*delegate_, type, GetWeakPtr());
   }
-  return result;
+  return result.get();
 }
 
 base::expected<Value, JSINativeException> App::ReadScript(

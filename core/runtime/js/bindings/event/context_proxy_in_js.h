@@ -22,27 +22,51 @@ namespace js {
 class App;
 class Runtime;
 
-class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
+class ContextProxyInJSImpl : public runtime::ContextProxy {
  public:
-  ContextProxyInJS(runtime::ContextProxy::Delegate&,
-                   runtime::ContextProxy::Type, base::UnsafeWeakPtr<App>);
-  virtual ~ContextProxyInJS() override = default;
+  ContextProxyInJSImpl(runtime::ContextProxy::Delegate&,
+                       runtime::ContextProxy::Type, base::UnsafeWeakPtr<App>);
+  ~ContextProxyInJSImpl() override = default;
 
-  fml::RefPtr<runtime::MessageEvent> CreateMessageEvent(
-      Runtime& rt, const base::UnsafeWeakPtr<App>& native_app,
-      const Value& event);
+  base::expected<Value, JSINativeException> PostMessageFromJS(
+      Runtime& rt, const std::string& method_name, const Value* args,
+      size_t count);
+  base::expected<Value, JSINativeException> DispatchEventFromJS(
+      Runtime& rt, const std::string& method_name, const Value* args,
+      size_t count);
+  base::expected<Value, JSINativeException> AddEventListenerFromJS(
+      Runtime& rt, const std::string& method_name, const Value* args,
+      size_t count);
+  base::expected<Value, JSINativeException> RemoveEventListenerFromJS(
+      Runtime& rt, const std::string& method_name, const Value* args,
+      size_t count);
+  Value GetOnTriggerEvent(Runtime& rt);
+  void SetOnTriggerEvent(Runtime& rt, const Value& value);
 
-  virtual Value get(Runtime*, const PropNameID& name) override;
-  virtual void set(Runtime*, const PropNameID& name,
-                   const Value& value) override;
-  virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
-
-  // clear js object
-  void Destroy();
+  fml::RefPtr<runtime::MessageEvent> CreateMessageEvent(Runtime& rt,
+                                                        const Value& event);
 
  protected:
   void ReportError(base::LynxError error) override;
 
+ private:
+  base::UnsafeWeakPtr<App> native_app_;
+};
+
+class ContextProxyInJS : public HostObject {
+ public:
+  ContextProxyInJS(runtime::ContextProxy::Type type, base::UnsafeWeakPtr<App>);
+  ~ContextProxyInJS() override = default;
+
+  Value get(Runtime*, const PropNameID& name) override;
+  void set(Runtime*, const PropNameID& name, const Value& value) override;
+  std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
+  runtime::ContextProxy::Type GetTargetType() const;
+
+ private:
+  ContextProxyInJSImpl* GetContextProxyImpl() const;
+
+  runtime::ContextProxy::Type type_;
   base::UnsafeWeakPtr<App> native_app_;
 };
 

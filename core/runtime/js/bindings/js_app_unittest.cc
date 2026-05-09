@@ -401,28 +401,32 @@ TEST_P(AppTest, NativeLynxContextProxyTest) {
   auto res1 =
       function("function(lynx) { return lynx.getDevtool(); }").call(rt, obj);
   EXPECT_TRUE(res1->isObject());
-  auto proxy = app->GetContextProxy(runtime::ContextProxy::Type::kDevTool);
+  auto* proxy =
+      app->GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kDevTool);
   EXPECT_TRUE(proxy != nullptr);
   EXPECT_EQ(proxy->GetTargetType(), runtime::ContextProxy::Type::kDevTool);
 
   auto res2 =
       function("function(lynx) { return lynx.getJSContext(); }").call(rt, obj);
   EXPECT_TRUE(res2->isObject());
-  proxy = app->GetContextProxy(runtime::ContextProxy::Type::kJSContext);
+  proxy =
+      app->GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kJSContext);
   EXPECT_TRUE(proxy != nullptr);
   EXPECT_EQ(proxy->GetTargetType(), runtime::ContextProxy::Type::kJSContext);
 
   auto res3 = function("function(lynx) { return lynx.getCoreContext(); }")
                   .call(rt, obj);
   EXPECT_TRUE(res3->isObject());
-  proxy = app->GetContextProxy(runtime::ContextProxy::Type::kCoreContext);
+  proxy = app->GetOrCreateContextProxyImpl(
+      runtime::ContextProxy::Type::kCoreContext);
   EXPECT_TRUE(proxy != nullptr);
   EXPECT_EQ(proxy->GetTargetType(), runtime::ContextProxy::Type::kCoreContext);
 
   auto res4 =
       function("function(lynx) { return lynx.getUIContext(); }").call(rt, obj);
   EXPECT_TRUE(res4->isObject());
-  proxy = app->GetContextProxy(runtime::ContextProxy::Type::kUIContext);
+  proxy =
+      app->GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kUIContext);
   EXPECT_TRUE(proxy != nullptr);
   EXPECT_EQ(proxy->GetTargetType(), runtime::ContextProxy::Type::kUIContext);
 }
