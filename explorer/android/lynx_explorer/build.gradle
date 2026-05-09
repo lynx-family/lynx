@@ -130,6 +130,7 @@ dependencies {
     implementation project(':LynxXElement:Markdown')
     implementation project(':LynxXElement:Refresh')
     implementation project(':LynxXElement:BlurView')
+    implementation project(':LynxXElement:WebView')
 
     kapt project(':LynxProcessor')
     compileOnly project(':LynxProcessor')
