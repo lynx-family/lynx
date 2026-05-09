@@ -4,6 +4,10 @@
 package com.lynx.devtool;
 
 import android.text.TextUtils;
+import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
+import android.widget.EditText;
 import android.widget.Toast;
 import androidx.annotation.Keep;
 import com.lynx.devtool.helper.EmulateTouchHelper;
@@ -365,6 +369,42 @@ public class DevToolPlatformAndroidDelegate {
             "DOM.focus failed for nodeId " + nodeId + ", code: " + args[0] + ", data: " + detail);
       }
     });
+  }
+
+  @CalledByNative
+  public void insertText(final String text) {
+    if (text == null) {
+      return;
+    }
+    LynxView lynxView = mLynxView.get();
+    if (lynxView == null) {
+      return;
+    }
+    View focusedView = lynxView.findFocus();
+    if (focusedView == null && lynxView.getRootView() != null) {
+      focusedView = lynxView.getRootView().findFocus();
+    }
+    if (!(focusedView instanceof EditText)) {
+      LLog.w(TAG, "Input.insertText ignored because no EditText is focused.");
+      return;
+    }
+
+    EditText editText = (EditText) focusedView;
+    InputConnection inputConnection = editText.onCreateInputConnection(new EditorInfo());
+    if (inputConnection != null && inputConnection.commitText(text, 1)) {
+      return;
+    }
+
+    int selectionStart = editText.getSelectionStart();
+    int selectionEnd = editText.getSelectionEnd();
+    if (selectionStart < 0 || selectionEnd < 0) {
+      editText.getText().append(text);
+      return;
+    }
+    int textLength = editText.getText().length();
+    int start = Math.min(textLength, Math.max(0, Math.min(selectionStart, selectionEnd)));
+    int end = Math.min(textLength, Math.max(0, Math.max(selectionStart, selectionEnd)));
+    editText.getText().replace(start, end, text);
   }
 
   @CalledByNative

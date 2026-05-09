@@ -40,6 +40,7 @@ class DevToolPlatformAndroid : public DevToolPlatformFacade {
 
   void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent> input) override;
   void Focus(int node_id) override;
+  void InsertText(const std::string& text) override;
 
   std::vector<float> GetRectToWindow() const override;
   std::string GetLynxVersion() const override;
