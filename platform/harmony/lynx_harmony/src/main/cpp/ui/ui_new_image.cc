@@ -110,13 +110,14 @@ void UINewImage::OnImageLoadSuccess(float image_width, float image_height) {
 }
 
 void UINewImage::OnImageMonitorInfo(const ImageMonitorInfo& data) {
+  std::string final_src = redirected_src_.empty() ? src_ : redirected_src_;
   if (enable_image_load_callback_ &&
-      base::BeginsWith(src_, image::kHttpPrefix)) {
+      base::BeginsWith(final_src, image::kHttpPrefix)) {
     // Report image monitoring information to the native side
     auto image_info = lepus::Dictionary::Create();
     image_info->SetValue("type",
                          static_cast<int32_t>(pub::LynxResourceType::kImage));
-    image_info->SetValue("src", src_);
+    image_info->SetValue("src", final_src);
     image_info->SetValue("loadStart", data.load_start);
     image_info->SetValue("loadFinish", data.load_finish);
     image_info->SetValue("cost", data.load_finish - data.load_start);
@@ -132,7 +133,7 @@ void UINewImage::OnImageMonitorInfo(const ImageMonitorInfo& data) {
     if ((event_flags_ & image::kFlagImageLoadEvent) != 0 &&
         enable_report_info_) {
       auto dict = lepus::Dictionary::Create();
-      dict->SetValue("src", src_);
+      dict->SetValue("src", final_src);
       dict->SetValue(image::kLoadEventImageHeight, image_height_);
       dict->SetValue(image::kLoadEventImageWidth, image_width_);
       dict->SetValue("view_height", height_);
@@ -153,12 +154,13 @@ void UINewImage::OnImageLoadFailure(int error_code,
                                     const std::string& error_msg) {
   LOGE("Load image failed error_code: " << error_code
                                         << ", error_msg: " << error_msg);
+  std::string final_src = redirected_src_.empty() ? src_ : redirected_src_;
   if (enable_image_load_callback_ &&
-      base::BeginsWith(src_, image::kHttpPrefix)) {
+      base::BeginsWith(final_src, image::kHttpPrefix)) {
     auto image_info = lepus::Dictionary::Create();
     image_info->SetValue("type",
                          static_cast<int32_t>(pub::LynxResourceType::kImage));
-    image_info->SetValue("src", src_);
+    image_info->SetValue("src", final_src);
     image_info->SetValue("errCode", error_code);
     image_info->SetValue("errMsg", error_msg);
     UIBase::OnResourceLoadCallback(lepus_value(image_info));
@@ -208,8 +210,9 @@ UINewImage::UINewImage(LynxContext* context, int sign, const std::string& tag)
 
   if (context_->GetUIOwner()) {
     LynxImageConfig* config = context_->GetUIOwner()->GetLynxImageConfig();
-    if (config && config->GetEnableImageLoadCallback()) {
-      enable_image_load_callback_ = true;
+    if (config) {
+      enable_image_load_callback_ = config->GetEnableImageLoadCallback();
+      enable_redirect_url_ = config->GetEnableRedirectUrl();
     }
   }
 }
@@ -231,6 +234,7 @@ void UINewImage::UpdateImageSource(const lepus::Value& value) {
   const auto& value_str = value.StdString();
   if (src_ != value_str) {
     src_ = value_str;
+    redirected_src_.clear();
     dirty_flags_ |= image::kFlagSrcChanged;
   }
 }
@@ -358,6 +362,39 @@ void UINewImage::ResumeAnimation(
   callback(LynxGetUIResult::SUCCESS, lepus_value(""));
 }
 
+// This interface is primarily used to satisfy scenarios where the native side
+// needs to intercept, process, or transform the image URL before the actual
+// loading begins.
+void UINewImage::LoadImageWithTransform(const std::string& url,
+                                        const std::string& placeholder) {
+  if (enable_redirect_url_ && base::BeginsWith(url, image::kHttpPrefix)) {
+    auto resource_loader = context_->GetResourceLoader();
+    if (!resource_loader) {
+      return;
+    }
+    auto request = pub::LynxResourceRequest{url, pub::LynxResourceType::kImage};
+    resource_loader->ShouldRedirectUrlAsync(
+        request, [weak_self = weak_from_this(), url,
+                  placeholder](pub::LynxPathResponse& response) {
+          auto self = weak_self.lock();
+          if (!self) {
+            return;
+          }
+          auto ui_image = std::static_pointer_cast<UINewImage>(self);
+          if (ui_image->src_ == url) {
+            if (!response.path.empty()) {
+              ui_image->redirected_src_ = response.path;
+              ui_image->LoadImageFromService(response.path, placeholder);
+            } else {
+              ui_image->LoadImageFromService(url, placeholder);
+            }
+          }
+        });
+  } else {
+    LoadImageFromService(url, placeholder);
+  }
+}
+
 void UINewImage::LoadImage() {
   // When using a processor, the view size is used as the cache key.
   // Requests can be deferred until the size is available to avoid the processor
@@ -367,7 +404,7 @@ void UINewImage::LoadImage() {
     return;
   }
   if (SkipRedirection()) {
-    LoadImageFromService(src_, placeholder_);
+    LoadImageWithTransform(src_, placeholder_);
     return;
   }
 
@@ -375,7 +412,7 @@ void UINewImage::LoadImage() {
       LynxImageHelper::GetRedirectUrl(src_, context_->GetResourceLoader());
   std::string final_placeholder = LynxImageHelper::GetRedirectUrl(
       placeholder_, context_->GetResourceLoader());
-  LoadImageFromService(final_src, final_placeholder);
+  LoadImageWithTransform(final_src, final_placeholder);
 }
 
 void UINewImage::OnNodeReady() {

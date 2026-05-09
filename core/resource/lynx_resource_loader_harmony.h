@@ -85,6 +85,11 @@ class LynxResourceLoaderHarmony : public pub::LynxResourceLoader {
   std::string ShouldRedirectUrl(
       const pub::LynxResourceRequest& request) override;
 
+  void ShouldRedirectUrlAsync(
+      const pub::LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, pub::LynxPathResponse&> path_callback)
+      override;
+
   void DeleteRef();
 
   static NativeResourceManager* resource_manager;

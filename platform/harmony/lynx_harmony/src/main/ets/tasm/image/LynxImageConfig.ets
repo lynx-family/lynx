@@ -7,4 +7,6 @@ export interface LynxImageConfig {
    * Whether to enable image load callback.
    */
   enableImageLoadCallback?: boolean;
+
+  enableRedirectUrl?: boolean;
 }

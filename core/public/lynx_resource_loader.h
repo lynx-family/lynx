@@ -122,6 +122,16 @@ class LYNX_EXPORT LynxResourceLoader
     return request.url;
   }
 
+  virtual void ShouldRedirectUrlAsync(
+      const LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, LynxPathResponse&> path_callback) {
+    pub::LynxPathResponse resp;
+    resp.path = request.url;
+    resp.err_code = -1;
+    resp.err_msg = "ShouldRedirectUrlAsync is not supported.";
+    path_callback(resp);
+  }
+
  protected:
   virtual void LoadResourceInternal(
       const LynxResourceRequest& request,

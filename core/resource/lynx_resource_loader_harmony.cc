@@ -706,5 +706,71 @@ std::string LynxResourceLoaderHarmony::ShouldRedirectUrl(
   return url;
 }
 
+void LynxResourceLoaderHarmony::ShouldRedirectUrlAsync(
+    const pub::LynxResourceRequest& request,
+    base::MoveOnlyClosure<void, pub::LynxPathResponse&> path_callback) {
+  if (!ui_task_runner_) {
+    pub::LynxPathResponse response{
+        .path = request.url,
+        .err_code = LocalErrorCode,
+        .err_msg = std::string(
+            "The ui task runner of LynxResourceLoaderHarmony is nil")};
+    path_callback(response);
+    return;
+  }
+
+  PostTaskOnUIThread([weak_this = weak_from_this(),
+                      url = std::move(request.url), resourceType = request.type,
+                      callback = std::move(path_callback)]() mutable {
+    auto shared_this =
+        std::static_pointer_cast<LynxResourceLoaderHarmony>(weak_this.lock());
+    if (!shared_this) {
+      pub::LynxPathResponse response{
+          .path = url, .err_code = LocalErrorCode, .err_msg = LocalErrorMsg};
+      callback(response);
+      return;
+    }
+    napi_env env = shared_this->env_;
+    base::NapiHandleScope scope(env);
+    napi_value media_fetcher = nullptr;
+    if (shared_this->media_fetcher_) {
+      media_fetcher = base::NapiUtil::GetReferenceNapiValue(
+          env, shared_this->media_fetcher_);
+    }
+    if (!media_fetcher) {
+      pub::LynxPathResponse response{.path = url, .err_code = LocalErrorCode};
+      callback(response);
+      return;
+    }
+
+    napi_value call_args[2];
+    napi_create_object(env, &call_args[0]);
+    BuildResourceRequestValue(env, call_args[0], url,
+                              static_cast<uint32_t>(resourceType));
+
+    napi_valuetype type;
+    napi_typeof(env, media_fetcher, &type);
+    if (type == napi_undefined) {
+      pub::LynxPathResponse response{.path = url, .err_code = LocalErrorCode};
+      callback(response);
+      return;
+    }
+
+    pub::ResourceLoadTiming timing;
+    auto* callback_handler =
+        new CallbackHandler(std::move(callback), std::move(timing), url);
+    napi_create_function(env, "callback", NAPI_AUTO_LENGTH,
+                         CallbackHandler::HandlePathRequestCallback,
+                         callback_handler, &call_args[1]);
+    napi_status status = base::NapiUtil::InvokeJsMethod(
+        env, media_fetcher, "shouldRedirectUrlAsync", 2, call_args);
+    if (status != napi_ok) {
+      pub::LynxPathResponse response{.path = url, .err_code = LocalErrorCode};
+      callback_handler->path_callback_(response);
+      delete callback_handler;
+      LOGE("Call shouldRedirectUrlAsync failed. url: " << url);
+    };
+  });
+}
 }  // namespace harmony
 }  // namespace lynx

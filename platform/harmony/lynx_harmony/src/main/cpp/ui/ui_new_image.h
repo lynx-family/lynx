@@ -57,6 +57,7 @@ class UINewImage : public UIBase,
 
  private:
   std::string src_;
+  std::string redirected_src_;
   std::string placeholder_;
   std::string mode_;
   bool auto_size_{false};
@@ -88,6 +89,7 @@ class UINewImage : public UIBase,
   bool has_src_{false};
   bool enable_image_load_callback_{false};  // for native side
   bool enable_report_info_{false};          // for frontend
+  bool enable_redirect_url_{false};
 
   static std::unordered_map<std::string,
                             void (UINewImage::*)(const lepus::Value& value)>
@@ -111,6 +113,8 @@ class UINewImage : public UIBase,
   void LoadImage();
   void LoadImageFromService(const std::string& url,
                             const std::string& placeholder);
+  void LoadImageWithTransform(const std::string& url,
+                              const std::string& placeholder);
 
   LynxImageEffectProcessor::CommonViewParams GenerateCommonViewParams();
   void InitAnimationListener();

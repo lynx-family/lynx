@@ -4,6 +4,7 @@
 
 import { LynxResourceRequest } from './LynxResourceRequest';
 import { LynxResourceProvider } from './LynxResourceProvider';
+import { AsyncCallback } from '@ohos.base';
 
 export enum LynxOptionalBool {
   TRUE,
@@ -39,6 +40,18 @@ export abstract class LynxMediaResourceFetcher implements LynxResourceProvider {
   isLocalResource(url: string): LynxOptionalBool {
     return LynxOptionalBool.UNDEFINED
   };
+
+  /**
+   * `LynxEngine` redirects the image path asynchronously by calling this method internally.
+   * The redirected URL should be returned via the callback.
+   *
+   * @apidoc
+   * @param request Request to be redirected.
+   * @param callback The callback to return the target url.
+   */
+  shouldRedirectUrlAsync(request: LynxResourceRequest, callback: AsyncCallback<string>) {
+    callback(undefined, request.url);
+  }
 
   // TODO(nihao.royal): support fetchImage api.
 }

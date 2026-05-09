@@ -67,8 +67,9 @@ UIFlattenImage::UIFlattenImage(LynxContext* context, int sign,
   InitAccessibilityAttrs(LynxAccessibilityMode::kEnable, "image");
   if (context_ && context_->GetUIOwner()) {
     LynxImageConfig* config = context_->GetUIOwner()->GetLynxImageConfig();
-    if (config && config->GetEnableImageLoadCallback()) {
-      enable_image_load_callback_ = true;
+    if (config) {
+      enable_image_load_callback_ = config->GetEnableImageLoadCallback();
+      enable_redirect_url_ = config->GetEnableRedirectUrl();
     }
   }
 }
@@ -107,6 +108,7 @@ void UIFlattenImage::UpdateImageSource(const lepus::Value& value) {
   const auto& value_str = value.StdString();
   if (src_ != value_str) {
     src_ = value_str;
+    redirected_src_.clear();
     dirty_flags_ |= image::kFlagSrcChanged;
   }
 }
@@ -226,6 +228,43 @@ void UIFlattenImage::UpdateBlurRadius(const lepus::Value& value) {
   }
 }
 
+void UIFlattenImage::LoadImageWithTransform(const std::string& url,
+                                            bool is_src) {
+  load_start_ = lynx::base::CurrentSystemTimeMilliseconds();
+  if (enable_redirect_url_ && is_src &&
+      base::BeginsWith(url, image::kHttpPrefix)) {
+    auto resource_loader = context_->GetResourceLoader();
+    if (!resource_loader) {
+      return;
+    }
+    auto request =
+        pub::LynxResourceRequest{src_, pub::LynxResourceType::kImage};
+    resource_loader->ShouldRedirectUrlAsync(
+        request,
+        [weak_self = weak_from_this(), url](pub::LynxPathResponse& response) {
+          auto self = weak_self.lock();
+          if (!self) {
+            return;
+          }
+          auto ui_image = std::static_pointer_cast<UIFlattenImage>(self);
+          if (ui_image->GetSrc() == url) {
+            if (!response.path.empty()) {
+              ui_image->redirected_src_ = response.path;
+              ui_image.get()->LoadImageResource(
+                  response.path, &UIFlattenImage::HandleImageSrcResponse);
+            } else {
+              ui_image.get()->LoadImageResource(
+                  url, &UIFlattenImage::HandleImageSrcResponse);
+            }
+          }
+        });
+  } else {
+    LoadImageResource(url,
+                      is_src ? &UIFlattenImage::HandleImageSrcResponse
+                             : &UIFlattenImage::HandleImagePlaceholderResponse);
+  }
+}
+
 void UIFlattenImage::LoadImageFromURL(bool is_src) {
   const std::string& url = is_src ? src_ : place_holder_;
   bool is_base64 = base::BeginsWith(url, image::kBase64Scheme);
@@ -237,9 +276,7 @@ void UIFlattenImage::LoadImageFromURL(bool is_src) {
   }
 
   if (SkipRedirection()) {
-    LoadImageResource(url,
-                      is_src ? &UIFlattenImage::HandleImageSrcResponse
-                             : &UIFlattenImage::HandleImagePlaceholderResponse);
+    LoadImageWithTransform(url, is_src);
     return;
   }
 
@@ -253,9 +290,7 @@ void UIFlattenImage::LoadImageFromURL(bool is_src) {
     // local resource
     SetImageAttribute(redirect_url, false, is_src);
   } else {
-    LoadImageResource(url,
-                      is_src ? &UIFlattenImage::HandleImageSrcResponse
-                             : &UIFlattenImage::HandleImagePlaceholderResponse);
+    LoadImageWithTransform(url, is_src);
   }
 }
 
@@ -381,7 +416,6 @@ void UIFlattenImage::LoadImageResource(
   if (!resource_loader) {
     return;
   }
-  load_start_ = lynx::base::CurrentSystemTimeMilliseconds();
   auto request = pub::LynxResourceRequest{url, pub::LynxResourceType::kImage};
   resource_loader->LoadResourcePath(
       request, [weak_self = weak_from_this(), handler = std::move(handler),
@@ -391,7 +425,8 @@ void UIFlattenImage::LoadImageResource(
           return;
         }
         auto ui_image = std::static_pointer_cast<UIFlattenImage>(self);
-        if (ui_image->GetSrc() == url || ui_image->GetPlaceholder() == url) {
+        if (ui_image->redirected_src_ == url || ui_image->GetSrc() == url ||
+            ui_image->GetPlaceholder() == url) {
           (ui_image.get()->*handler)(response);
         }
       });
@@ -662,11 +697,12 @@ void UIFlattenImage::CreateImageLoadInfo(int32_t error_code,
     return;
   }
   // Only report load information for network resources (HTTP/HTTPS).
-  if (base::BeginsWith(src_, image::kHttpPrefix)) {
+  std::string final_src = redirected_src_.empty() ? src_ : redirected_src_;
+  if (base::BeginsWith(final_src, image::kHttpPrefix)) {
     auto image_info = lepus::Dictionary::Create();
     image_info->SetValue("type",
                          static_cast<int32_t>(pub::LynxResourceType::kImage));
-    image_info->SetValue("src", src_);
+    image_info->SetValue("src", final_src);
     image_info->SetValue("errCode", error_code);
     if (error_code == 0) {
       image_info->SetValue("loadStart", load_start_);

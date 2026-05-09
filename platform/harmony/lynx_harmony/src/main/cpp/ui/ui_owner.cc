@@ -637,12 +637,17 @@ napi_value UIOwner::SetLynxImageConfig(napi_env env, napi_callback_info info) {
       base::NapiConvertHelper::JSONToLepusValue(env, argv[0]);
   if (image_config.IsObject()) {
     bool enable_callback = false;
+    bool enable_redirect_url = false;
     lepus_value enable_value =
         image_config.GetProperty("enableImageLoadCallback");
     if (enable_value.IsBool()) {
       enable_callback = enable_value.Bool();
     }
-    owner->InitLynxImageConfig(enable_callback);
+    enable_value = image_config.GetProperty("enableRedirectUrl");
+    if (enable_value.IsBool()) {
+      enable_redirect_url = enable_value.Bool();
+    }
+    owner->InitLynxImageConfig(enable_callback, enable_redirect_url);
   }
 
   return nullptr;
@@ -1231,11 +1236,13 @@ void UIOwner::ResetAccessibilityAttrs() {
   }
 }
 
-void UIOwner::InitLynxImageConfig(bool enableImageLoadCallback) {
+void UIOwner::InitLynxImageConfig(bool enable_image_load_callback,
+                                  bool enable_redirect_url) {
   if (image_config_ == nullptr) {
     image_config_ = std::make_unique<LynxImageConfig>();
   }
-  image_config_->SetEnableImageLoadCallback(enableImageLoadCallback);
+  image_config_->SetEnableImageLoadCallback(enable_image_load_callback);
+  image_config_->SetEnableRedirectUrl(enable_redirect_url);
 }
 
 LynxImageConfig* UIOwner::GetLynxImageConfig() const {

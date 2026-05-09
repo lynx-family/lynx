@@ -210,7 +210,8 @@ class UIOwner {
   void MarkHasUIOperationsBottomUp(UIBase* ui);
   void RequestLayout();
   void UpdateComponentIdMap(UIBase* ui, PropBundleHarmony* painting_data);
-  void InitLynxImageConfig(bool enableImageLoadCallback);
+  void InitLynxImageConfig(bool enable_image_load_callback,
+                           bool enable_redirect_url);
 
   int GetJSNodeType(int sign, const std::string& tag) const;
   std::unordered_map<int32_t, std::shared_ptr<UIBase>> ui_holder_;
