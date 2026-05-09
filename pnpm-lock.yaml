@@ -276,6 +276,12 @@ importers:
       appium-ios-simulator: 6.2.6
       appium-xcuitest-driver: 7.24.18_appium@2.11.2
 
+  third_party/weak-node-api:
+    specifiers:
+      '@lynx-js/weak-node-api': 0.0.6
+    dependencies:
+      '@lynx-js/weak-node-api': 0.0.6
+
   tools/api/parser/ts_morph:
     specifiers:
       '@types/node': ^18.13.0
@@ -1952,6 +1958,12 @@ packages:
     resolution: {integrity: sha512-URUszZQBFGumpNDXm4FoLMMSSZAgH+NBvBOaERe8UWrnH0XB9Z8N2sAj28jfg57G+eZpRasbvu/ZR6NzFe5feQ==}
     dependencies:
       csstype: 3.1.3
+
+  /@lynx-js/weak-node-api/0.0.6:
+    resolution: {integrity: sha512-l6twk+iUk4uPQOvEWP1//lM2526Ffiyyg8JM7pMeUBitEl/4FxrHegCif87vhlzDllooa0pqorQSoYMnef7gDQ==}
+    dependencies:
+      node-addon-api: 7.1.0
+    dev: false
 
   /@lynx-js/web-style-transformer/0.3.0:
     resolution: {integrity: sha512-UpXNSVOYH+CYUJuv5VU0xCf1iUiMNhY8Scj8OSS/Ny+D4dylu0L8J1hUklqvTiCvCopiE+yQCFCqXemFCZlKcg==}
@@ -6549,6 +6561,11 @@ packages:
   /negotiator/0.6.3:
     resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
     engines: {node: '>= 0.6'}
+
+  /node-addon-api/7.1.0:
+    resolution: {integrity: sha512-mNcltoe1R8o7STTegSOHdnJNN7s5EUvhoS7ShnTHDyOSd+8H+UdWODq6qSv67PjC8Zc5JRT8+oLAMCr0SIXw7g==}
+    engines: {node: ^16 || ^18 || >= 20}
+    dev: false
 
   /node-releases/2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
