@@ -1003,6 +1003,10 @@ void TemplateAssembler::LoadTemplateInternal(
       LOGE("Decoding template failed");
       return;
     }
+
+    if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker()) {
+      BindMTSRuntimeThread();
+    }
     const auto& context = card->GetVm();
     auto* mts_context = context ? context->GetMTSContext() : nullptr;
     SetShouldSendEventToMainThread(mts_context &&
