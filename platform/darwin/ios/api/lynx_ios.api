@@ -1083,6 +1083,8 @@ public class LynxConfig : NSObject {
   public instancetype LynxConfig::initWithProvider:(nullable id< LynxTemplateProvider > provider);
   public void LynxConfig::registerModule:(Class< LynxModule > module);
   public void LynxConfig::registerModule:param:(Class< LynxModule > module,[param] nullable id param);
+  public void LynxConfig::registerModule:withName:(Class< LynxModule > module,[withName] NSString *name);
+  public void LynxConfig::registerModule:withName:param:(Class< LynxModule > module,[withName] NSString *name,[param] nullable id param);
   public void LynxConfig::registerUI:withName:(Class ui,[withName] NSString *name);
   public void LynxConfig::registerShadowNode:withName:(Class node,[withName] NSString *name);
   public void LynxConfig::registerMethodAuth:(LynxMethodBlock authBlock);
