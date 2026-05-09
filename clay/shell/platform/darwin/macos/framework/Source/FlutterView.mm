@@ -11,6 +11,7 @@
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterSurfaceManager.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterThreadSynchronizer.h"
 
+#import <Carbon/Carbon.h>
 #import <QuartzCore/QuartzCore.h>
 
 @interface FlutterView () <FlutterSurfaceManagerDelegate> {
@@ -147,6 +148,45 @@
 }
 
 #pragma mark - NSResponder
+
+- (void)dispatchCommandKeyActionToProviderWithCharacters:(NSString*)characters
+                                                 keyCode:(unsigned short)keyCode {
+  if (!self.provider) {
+    return;
+  }
+
+  NSEvent* event = [NSApp currentEvent];
+  BOOL shouldReuseCurrentEvent =
+      event != nil && [event type] == NSEventTypeKeyDown &&
+      ([event modifierFlags] & NSEventModifierFlagCommand) != 0 &&
+      [[[event charactersIgnoringModifiers] lowercaseString] isEqualToString:characters];
+  if (shouldReuseCurrentEvent) {
+    [self.provider keyDown:event];
+    return;
+  }
+
+  NSEvent* syntheticEvent = [NSEvent keyEventWithType:NSEventTypeKeyDown
+                                             location:NSZeroPoint
+                                        modifierFlags:NSEventModifierFlagCommand
+                                            timestamp:[[NSProcessInfo processInfo] systemUptime]
+                                         windowNumber:self.window.windowNumber
+                                              context:nil
+                                           characters:characters
+                          charactersIgnoringModifiers:characters
+                                            isARepeat:NO
+                                              keyCode:keyCode];
+  [self.provider keyDown:syntheticEvent];
+}
+
+- (void)copy:(id)sender {
+  (void)sender;
+  [self dispatchCommandKeyActionToProviderWithCharacters:@"c" keyCode:kVK_ANSI_C];
+}
+
+- (void)selectAll:(id)sender {
+  (void)sender;
+  [self dispatchCommandKeyActionToProviderWithCharacters:@"a" keyCode:kVK_ANSI_A];
+}
 
 #define DELEGATE_EVENT_TO_PROVIDER_OR_SUPER(METHOD) \
   self.provider ? [self.provider METHOD:event] : [super METHOD:event]

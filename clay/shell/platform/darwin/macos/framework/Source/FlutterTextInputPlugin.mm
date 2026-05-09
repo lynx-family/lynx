@@ -10,6 +10,7 @@
 #include "clay/shell/platform/darwin/macos/framework/Headers/ClayViewProvider.h"
 #include "clay/shell/platform/darwin/macos/framework/Headers/FlutterView.h"
 
+#import <Carbon/Carbon.h>
 #import <Foundation/Foundation.h>
 #import <objc/message.h>
 
@@ -515,6 +516,48 @@ static char markerKey;
 
 #pragma mark -
 #pragma mark NSResponder
+
+- (BOOL)dispatchCommandKeyActionToClayProviderWithCharacters:(NSString*)characters
+                                                     keyCode:(unsigned short)keyCode {
+  if (!self.clayProvider) {
+    return NO;
+  }
+
+  NSEvent* event = [NSApp currentEvent];
+  BOOL shouldReuseCurrentEvent =
+      event != nil && [event type] == NSEventTypeKeyDown &&
+      ([event modifierFlags] & NSEventModifierFlagCommand) != 0 &&
+      [[[event charactersIgnoringModifiers] lowercaseString] isEqualToString:characters];
+  if (shouldReuseCurrentEvent) {
+    [self.clayProvider keyDown:event];
+    return YES;
+  }
+
+  NSEvent* syntheticEvent = [NSEvent keyEventWithType:NSEventTypeKeyDown
+                                             location:NSZeroPoint
+                                        modifierFlags:NSEventModifierFlagCommand
+                                            timestamp:[[NSProcessInfo processInfo] systemUptime]
+                                         windowNumber:self.window.windowNumber
+                                              context:nil
+                                           characters:characters
+                          charactersIgnoringModifiers:characters
+                                            isARepeat:NO
+                                              keyCode:keyCode];
+  [self.clayProvider keyDown:syntheticEvent];
+  return YES;
+}
+
+- (void)copy:(id)sender {
+  if (![self dispatchCommandKeyActionToClayProviderWithCharacters:@"c" keyCode:kVK_ANSI_C]) {
+    [super copy:sender];
+  }
+}
+
+- (void)selectAll:(id)sender {
+  if (![self dispatchCommandKeyActionToClayProviderWithCharacters:@"a" keyCode:kVK_ANSI_A]) {
+    [super selectAll:sender];
+  }
+}
 
 - (void)keyDown:(NSEvent*)event {
   [self.clayProvider keyDown:event];
