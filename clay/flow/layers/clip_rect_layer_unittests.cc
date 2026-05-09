@@ -546,7 +546,7 @@ TEST_F(ClipRectLayerTest, LayerCached) {
                                    cache_canvas, &paint));
 }
 
-TEST_F(ClipRectLayerTest, EmptyClipDoesNotCullPlatformView) {
+TEST_F(ClipRectLayerTest, EmptyClipCullsPlatformView) {
   const skity::Vec2 view_offset = skity::Vec2(0.0f, 0.0f);
   const skity::Vec2 view_size = skity::Vec2(8.0f, 8.0f);
   const int64_t view_id = 42;
@@ -561,13 +561,9 @@ TEST_F(ClipRectLayerTest, EmptyClipDoesNotCullPlatformView) {
   paint_context().compositor_state = &compositor_state;
 
   clip->Preroll(preroll_context());
-  // cspell:words prerolled
-  EXPECT_EQ(compositor_state.GetCompositionOrder(),
-            std::vector<int64_t>({view_id}));
-
-  clip->Paint(paint_context());
-  EXPECT_EQ(paint_context().canvas,
-            compositor_state.GetSlices()[view_id]->canvas());
+  EXPECT_TRUE(compositor_state.GetCompositionOrder().empty());
+  EXPECT_FALSE(clip->subtree_has_platform_view());
+  EXPECT_FALSE(clip->needs_painting(paint_context()));
 }
 
 }  // namespace testing

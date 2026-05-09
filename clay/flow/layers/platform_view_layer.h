@@ -30,6 +30,7 @@ class PlatformViewLayer : public Layer {
   skity::Vec2 offset_;
   skity::Vec2 size_;
   int64_t view_id_;
+  bool is_culled_in_preroll_ = false;
 
   BASE_DISALLOW_COPY_AND_ASSIGN(PlatformViewLayer);
 };
