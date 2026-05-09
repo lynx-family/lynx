@@ -63,6 +63,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   protected boolean mHasImage;
   protected boolean mIsJustify;
   protected Page mTextraPage;
+  private int mTextServiceTextLength = 0;
   private Picture mOverflowPicture;
   private int mOverflow;
   private boolean mOverflowPictureDirty;
@@ -100,6 +101,9 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   private boolean mShouldResponseMove = false;
   private boolean mIsShowStartHandle = true;
   private boolean mIsShowEndHandle = true;
+  private final ArrayList<RectF> mTextServiceSelectionBoxes = new ArrayList<>();
+  private int mTextServiceSelectionStart = -1;
+  private int mTextServiceSelectionEnd = -1;
 
   // save weak reference of selecting AndroidText to ensure that only one AndroidText is selected at
   // a time.
@@ -116,10 +120,15 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
 
     @Override
     public void run() {
+      int offset = getOffsetForPosition(mX, mY);
+      if (offset < 0) {
+        mCheckForLongPress = null;
+        return;
+      }
       mIsInSelection = true;
       mSelectStartPos.set(mX, mY);
       mSelectEndPos.set(mX, mY);
-      mSelectEnd = mSelectStart = getOffsetForPosition(mX, mY);
+      mSelectEnd = mSelectStart = offset;
       mIsAdjustEndPos = true;
       requestDisallowInterceptTouchEvent(true);
 
@@ -146,6 +155,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     // First detach old image span
     dispatchDetachImageSpan();
     mTextraPage = null;
+    mTextServiceTextLength = 0;
     mTextUpdateBundle = bundle;
     mTextLayout = generateTextLayout(bundle);
     mTextTranslateOffset = bundle.getTextTranslateOffset();
@@ -171,6 +181,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   public void setTextBundle(Page page) {
     dispatchDetachImageSpan();
     mTextraPage = page;
+    mTextServiceTextLength = page != null ? page.getTextLength() : 0;
     mTextUpdateBundle = null;
     mTextLayout = null;
     mTextTranslateOffset = new PointF();
@@ -194,6 +205,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     mIsShowStartHandle = mIsShowEndHandle = true;
     mSelectStartPos.set(-1.f, -1.f);
     mSelectEndPos.set(-1.f, -1.f);
+    invalidateTextServiceSelectionBoxes();
   }
 
   public CharSequence getOriginText() {
@@ -248,7 +260,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
 
   @Override
   public boolean onTouchEvent(MotionEvent event) {
-    if (mTextLayout == null || !mEnableTextSelection || mEnableCustomTextSelection) {
+    if (!hasTextSelectionContent() || !mEnableTextSelection || mEnableCustomTextSelection) {
       return super.onTouchEvent(event);
     }
     float x = event.getX() - getPaddingLeft();
@@ -278,6 +290,9 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   protected void onDraw(Canvas canvas) {
     if (super.getRenderer() != null) {
       super.getRenderer().onDraw(canvas);
+      if (mTextraPage != null) {
+        drawHighlightWithTextOffset(canvas);
+      }
       return;
     }
 
@@ -292,6 +307,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
             paddingLeft, paddingTop, getWidth() - paddingRight, getHeight() - paddingBottom);
       }
       canvas.translate(paddingLeft, paddingTop);
+      drawHighlight(canvas);
       mTextraPage.drawPageCanvas(canvas, this);
       canvas.restore();
       return;
@@ -319,6 +335,11 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   @Override
   public void dispatchDraw(Canvas canvas) {
     super.dispatchDraw(canvas);
+    if (mTextraPage != null) {
+      drawTextServiceSelectHandle(canvas);
+      return;
+    }
+
     if (super.getRenderer() != null) {
       return;
     }
@@ -330,6 +351,31 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     canvas.translate(
         getPaddingLeft() + mTextTranslateOffset.x, getPaddingTop() + mTextTranslateOffset.y);
     drawSelectHandle(canvas);
+    canvas.restore();
+  }
+
+  private void drawTextServiceSelectHandle(Canvas canvas) {
+    if (!mIsInSelection || mSelectionLeftCursor == null || mSelectionRightCursor == null) {
+      return;
+    }
+    canvas.save();
+    canvas.translate(getTextDrawOffsetX(), getTextDrawOffsetY());
+    drawSelectHandle(canvas);
+    canvas.restore();
+  }
+
+  private float getTextDrawOffsetX() {
+    return getPaddingLeft() + (mTextTranslateOffset != null ? mTextTranslateOffset.x : 0);
+  }
+
+  private float getTextDrawOffsetY() {
+    return getPaddingTop() + (mTextTranslateOffset != null ? mTextTranslateOffset.y : 0);
+  }
+
+  private void drawHighlightWithTextOffset(Canvas canvas) {
+    canvas.save();
+    canvas.translate(getTextDrawOffsetX(), getTextDrawOffsetY());
+    drawHighlight(canvas);
     canvas.restore();
   }
 
@@ -345,14 +391,21 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     if (!mIsInSelection || mHighlightPath == null || mHighlightPaint == null) {
       return;
     }
-    mHighlightPath.reset();
     int selectStart = Math.min(mSelectStart, mSelectEnd);
     int selectEnd = Math.max(mSelectStart, mSelectEnd);
-    mTextLayout.getSelectionPath(selectStart, selectEnd, mHighlightPath);
-    if (!mHighlightPath.isEmpty()) {
-      // Using draw (Canvas canvas, Path highlight, Paint highlightPaint,int cursorOffsetVertical)
-      // method does not draw highlighting on some Android phones.
-      canvas.drawPath(mHighlightPath, mHighlightPaint);
+    if (mTextraPage != null) {
+      ArrayList<RectF> boxes = getTextServiceSelectionBoxes(selectStart, selectEnd);
+      for (int i = 0; i < boxes.size(); i++) {
+        canvas.drawRect(boxes.get(i), mHighlightPaint);
+      }
+    } else if (mTextLayout != null) {
+      mHighlightPath.reset();
+      mTextLayout.getSelectionPath(selectStart, selectEnd, mHighlightPath);
+      if (!mHighlightPath.isEmpty()) {
+        // Using draw (Canvas canvas, Path highlight, Paint highlightPaint,int cursorOffsetVertical)
+        // method does not draw highlighting on some Android phones.
+        canvas.drawPath(mHighlightPath, mHighlightPaint);
+      }
     }
   }
 
@@ -373,7 +426,15 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
    */
   public ArrayList<RectF> getTextBoundingBoxes(int start, int end) {
     ArrayList<RectF> boxes = new ArrayList<>();
-    if (mTextLayout == null || mTextLayout.getText().length() < end || start > end || start < 0) {
+    if (start > end || start < 0) {
+      return boxes;
+    }
+
+    if (mTextraPage != null) {
+      return new ArrayList<>(getTextServiceSelectionBoxes(start, end));
+    }
+
+    if (mTextLayout == null || mTextLayout.getText().length() < end) {
       return boxes;
     }
 
@@ -437,6 +498,11 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
    */
   public ArrayList<RectF> setTextSelection(float startX, float startY, float endX, float endY,
       boolean showStartHandle, boolean showEndHandle) {
+    if (mTextraPage != null) {
+      return setTextServiceTextSelection(
+          startX, startY, endX, endY, showStartHandle, showEndHandle);
+    }
+
     invalidate();
     if (startX < 0 || startY < 0 || endX < 0 || endY < 0) {
       clearSelection();
@@ -466,6 +532,43 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     return getTextBoundingBoxes(mSelectStart, mSelectEnd);
   }
 
+  private ArrayList<RectF> setTextServiceTextSelection(float startX, float startY, float endX,
+      float endY, boolean showStartHandle, boolean showEndHandle) {
+    invalidate();
+    if (startX < 0 || startY < 0 || endX < 0 || endY < 0) {
+      clearSelection();
+      return new ArrayList<>();
+    }
+    int startIndex = getOffsetForPosition(startX, startY);
+    int endIndex = getOffsetForPosition(endX, endY);
+    if (startIndex < 0 || endIndex < 0) {
+      clearSelection();
+      return new ArrayList<>();
+    }
+    if (startIndex == endIndex) {
+      endIndex++;
+      if (getTextBoundingBoxes(startIndex, endIndex).isEmpty() && startIndex > 0) {
+        startIndex--;
+        endIndex--;
+      }
+    }
+
+    ArrayList<RectF> boxes =
+        getTextBoundingBoxes(Math.min(startIndex, endIndex), Math.max(startIndex, endIndex));
+    if (boxes.isEmpty()) {
+      clearSelection();
+      return boxes;
+    }
+
+    mIsShowStartHandle = showStartHandle;
+    mIsShowEndHandle = showEndHandle;
+    mIsInSelection = true;
+
+    updateSelectionRange(startIndex, endIndex);
+    updateSelectStartEnd();
+    return boxes;
+  }
+
   /**
    * Get position and default response click radius of handles.
    * @return Handles list
@@ -493,7 +596,10 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
    * @return Selected string
    */
   public String getSelectedText() {
-    if (mSelectStart >= 0 && mSelectEnd > 0 && mSelectEnd > mSelectStart
+    if (mTextraPage != null && mSelectStart >= 0 && mSelectEnd > mSelectStart) {
+      return mTextraPage.getSelectedText(mSelectStart, mSelectEnd);
+    }
+    if (mTextLayout != null && mSelectStart >= 0 && mSelectEnd > 0 && mSelectEnd > mSelectStart
         && mSelectEnd <= mTextLayout.getText().length()) {
       return mTextLayout.getText().subSequence(mSelectStart, mSelectEnd).toString();
     }
@@ -710,10 +816,13 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   }
 
   private int getOffsetForPosition(float x, float y) {
+    if (mTextraPage != null) {
+      return mTextraPage.getSelectionCharIndex(x, y);
+    }
+
     if (mTextLayout == null) {
       return -1;
     }
-
     int line = getLineAtCoordinate(y);
 
     return getOffsetAtCoordinate(line, x);
@@ -733,7 +842,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   }
 
   private void showToolbar() {
-    if (mEnableCustomContextMenu) {
+    if (mEnableCustomContextMenu || !hasTextSelectionContent()) {
       return;
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -769,6 +878,15 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     mSelectStart = selectStart;
     mSelectEnd = selectEnd;
 
+    if (mTextraPage != null) {
+      if (mSelectStart >= 0 && mSelectEnd >= 0) {
+        updateSelectionHandlePositionFromBoxes(
+            Math.min(mSelectStart, mSelectEnd), Math.max(mSelectStart, mSelectEnd));
+        clearOtherSelection();
+      }
+      return;
+    }
+
     if (mSelectStart >= 0 && mSelectStart <= mTextLayout.getText().length() && mSelectEnd >= 0
         && mSelectEnd <= mTextLayout.getText().length()) {
       if (mTextLayout.getText() instanceof Spannable) {
@@ -787,6 +905,23 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
         Selection.removeSelection((Spannable) mTextLayout.getText());
       }
     }
+  }
+
+  private void updateSelectionHandlePositionFromBoxes(int selectStart, int selectEnd) {
+    ArrayList<RectF> boxes = mTextraPage != null
+        ? getTextServiceSelectionBoxes(selectStart, selectEnd)
+        : getTextBoundingBoxes(selectStart, selectEnd);
+    if (boxes.isEmpty()) {
+      return;
+    }
+    RectF startRect = boxes.get(0);
+    RectF endRect = boxes.get(boxes.size() - 1);
+    mSelectStartPos.set(startRect.left, startRect.bottom);
+    mSelectEndPos.set(endRect.right, endRect.bottom);
+    mStartHandlerPos.set(mSelectStartPos.x - mSelectionLeftCursor.getBounds().width() / 2.f,
+        mSelectStartPos.y + mSelectionLeftCursor.getBounds().height() / 2.f);
+    mEndHandlerPos.set(mSelectEndPos.x + mSelectionRightCursor.getBounds().width() / 2.f,
+        mSelectEndPos.y + mSelectionRightCursor.getBounds().height() / 2.f);
   }
 
   /**
@@ -814,6 +949,11 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     mSelectEnd = Math.max(mSelectStart, mSelectEnd);
     mSelectStart = minIndex;
     onSelectionChange();
+
+    if (mTextraPage != null) {
+      updateSelectionHandlePositionFromBoxes(mSelectStart, mSelectEnd);
+      return;
+    }
 
     mSelectStartPos.set(getBottomPositionForOffset(mSelectStart, true));
     mSelectEndPos.set(getBottomPositionForOffset(mSelectEnd, false));
@@ -844,9 +984,12 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   private void adjustStartPosition(float x, float y) {
     mIsAdjustStartPos = true;
     int selectStart = getOffsetForPosition(x, y);
+    if (selectStart < 0) {
+      return;
+    }
 
     if (mSelectEnd == selectStart) {
-      if (selectStart == mTextLayout.getText().length()
+      if ((mTextraPage == null && selectStart == mTextLayout.getText().length())
           || (x < mSelectEndPos.x && selectStart > 0)) {
         selectStart--;
       } else {
@@ -860,9 +1003,13 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   private void adjustEndPosition(float x, float y) {
     mIsAdjustEndPos = true;
     int selectEnd = getOffsetForPosition(x, y);
+    if (selectEnd < 0) {
+      return;
+    }
 
     if (selectEnd == mSelectStart) {
-      if (selectEnd == mTextLayout.getText().length() || (x < mSelectStartPos.x && selectEnd > 0)) {
+      if ((mTextraPage == null && selectEnd == mTextLayout.getText().length())
+          || (x < mSelectStartPos.x && selectEnd > 0)) {
         selectEnd--;
       } else {
         selectEnd++;
@@ -935,6 +1082,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     mSelectEnd = -1;
     mLastSelectStart = -1;
     mLastSelectEnd = -1;
+    invalidateTextServiceSelectionBoxes();
     if (mIsInSelection) {
       onSelectionChange();
     }
@@ -962,39 +1110,88 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   }
 
   private void performCopy() {
-    if (mSelectStart >= 0 && mSelectEnd > mSelectStart
+    if (mTextraPage != null) {
+      String selectedText = getSelectedText();
+      if (!selectedText.isEmpty()) {
+        copyToClipboard(selectedText);
+      }
+    } else if (mSelectStart >= 0 && mSelectEnd > mSelectStart
         && mSelectEnd <= mTextLayout.getText().length()) {
       CharSequence selectedText = mTextLayout.getText().subSequence(mSelectStart, mSelectEnd);
-      ClipData clipped = ClipData.newPlainText("Lynx-clipboard", selectedText);
-
-      ILynxSystemInvokeService systemInvokeService =
-          LynxServiceCenter.inst().getService(ILynxSystemInvokeService.class);
-      if (systemInvokeService != null) {
-        try {
-          systemInvokeService.setPrimaryClip(clipped);
-        } catch (RemoteException e) {
-          LLog.e("AndroidText",
-              "A RemoteException was encountered while calling systemInvokeService. "
-                  + e.getMessage());
-        }
-      } else {
-        ClipboardManager clipManager;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-          clipManager = (ClipboardManager) getContext().getSystemService(ClipboardManager.class);
-        } else {
-          clipManager = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
-        }
-
-        clipManager.setPrimaryClip(clipped);
-      }
+      copyToClipboard(selectedText);
     }
 
     clearSelection();
   }
 
+  private void copyToClipboard(CharSequence selectedText) {
+    ClipData clipped = ClipData.newPlainText("Lynx-clipboard", selectedText);
+
+    ILynxSystemInvokeService systemInvokeService =
+        LynxServiceCenter.inst().getService(ILynxSystemInvokeService.class);
+    if (systemInvokeService != null) {
+      try {
+        systemInvokeService.setPrimaryClip(clipped);
+      } catch (RemoteException e) {
+        LLog.e("AndroidText",
+            "A RemoteException was encountered while calling systemInvokeService. "
+                + e.getMessage());
+      }
+    } else {
+      ClipboardManager clipManager;
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+        clipManager = (ClipboardManager) getContext().getSystemService(ClipboardManager.class);
+      } else {
+        clipManager = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+      }
+
+      clipManager.setPrimaryClip(clipped);
+    }
+  }
+
   private void performSelectAll() {
+    if (mTextraPage != null) {
+      if (mTextServiceTextLength <= 0) {
+        return;
+      }
+      updateSelectionRange(0, mTextServiceTextLength);
+      updateSelectStartEnd();
+      return;
+    }
     updateSelectionRange(0, mTextLayout.getText().length());
     updateSelectStartEnd();
+  }
+
+  private boolean hasTextSelectionContent() {
+    return mTextLayout != null || (mTextraPage != null && mTextServiceTextLength > 0);
+  }
+
+  private ArrayList<RectF> getTextServiceSelectionBoxes(int start, int end) {
+    if (start > end || start < 0 || mTextraPage == null) {
+      invalidateTextServiceSelectionBoxes();
+      return mTextServiceSelectionBoxes;
+    }
+    if (mTextServiceSelectionStart == start && mTextServiceSelectionEnd == end) {
+      return mTextServiceSelectionBoxes;
+    }
+    mTextServiceSelectionBoxes.clear();
+    mTextServiceSelectionStart = start;
+    mTextServiceSelectionEnd = end;
+    float[] rects = mTextraPage.getSelectionRects(start, end);
+    if (rects == null || rects.length % 4 != 0) {
+      return mTextServiceSelectionBoxes;
+    }
+    for (int i = 0; i < rects.length; i += 4) {
+      mTextServiceSelectionBoxes.add(
+          new RectF(rects[i], rects[i + 1], rects[i] + rects[i + 2], rects[i + 1] + rects[i + 3]));
+    }
+    return mTextServiceSelectionBoxes;
+  }
+
+  private void invalidateTextServiceSelectionBoxes() {
+    mTextServiceSelectionBoxes.clear();
+    mTextServiceSelectionStart = -1;
+    mTextServiceSelectionEnd = -1;
   }
 
   @Override

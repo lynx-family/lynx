@@ -30,6 +30,7 @@ import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.accessibility.CustomAccessibilityDelegateCompat;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
+import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.detector.GestureDetector;
@@ -127,6 +128,7 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
       if (mView != null) {
         mView.setTextBundle(mTextraPage);
       }
+      updateSelectionChangeBinding();
     }
   }
 
@@ -135,9 +137,26 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
     super.didEnsureCreateView();
     if (mTextraPage != null) {
       mView.setTextBundle(mTextraPage);
+      updateSelectionChangeBinding();
     } else if (mTextUpdateBundle != null) {
       mView.setTextBundle(mTextUpdateBundle);
     }
+  }
+
+  @Override
+  public void setEvents(Map<String, EventsListener> events) {
+    super.setEvents(events);
+    if (mTextraPage != null) {
+      updateSelectionChangeBinding();
+    }
+  }
+
+  private void updateSelectionChangeBinding() {
+    if (mView == null) {
+      return;
+    }
+    mView.setBindSelectionChange(
+        mEvents != null && mEvents.containsKey(SELECTION_CHANGE_EVENT), getSign());
   }
 
   @Override
