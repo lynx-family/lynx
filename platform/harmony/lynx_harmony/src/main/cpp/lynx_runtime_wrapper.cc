@@ -11,6 +11,7 @@
 
 #include "base/harmony/napi_convert_helper.h"
 #include "base/include/platform/harmony/napi_util.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
@@ -107,18 +108,30 @@ RuntimeLifecycleListenerDelegateHarmony::
       listener_ref_(listener_ref) {}
 
 void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeAttach(void* env_ptr) {
-  base::NapiHandleScope scope(static_cast<napi_env>(env_ptr));
-  napi_value param[1];
-  param[0] = base::NapiUtil::CreatePtrArray(
-      env_, reinterpret_cast<uintptr_t>(static_cast<napi_env>(env_ptr)));
-  base::NapiUtil::AsyncInvokeJsMethod(env_, listener_ref_, "onRuntimeAttach", 1,
-                                      param);
+  auto ui_runner = base::UIThread::GetRunner();
+  if (!ui_runner) {
+    return;
+  }
+  ui_runner->PostTask([env = env_, listener_ref = listener_ref_, env_ptr]() {
+    base::NapiHandleScope scope(static_cast<napi_env>(env));
+    napi_value param[1];
+    param[0] = base::NapiUtil::CreatePtrArray(
+        env, reinterpret_cast<uintptr_t>(static_cast<napi_env>(env_ptr)));
+    base::NapiUtil::AsyncInvokeJsMethod(env, listener_ref, "onRuntimeAttach", 1,
+                                        param);
+  });
 }
 
 void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeDetach() {
-  base::NapiHandleScope scope(env_);
-  base::NapiUtil::AsyncInvokeJsMethod(env_, listener_ref_, "onRuntimeDetach", 0,
-                                      nullptr);
+  auto ui_runner = base::UIThread::GetRunner();
+  if (!ui_runner) {
+    return;
+  }
+  ui_runner->PostTask([env = env_, listener_ref = listener_ref_]() {
+    base::NapiHandleScope scope(env);
+    base::NapiUtil::AsyncInvokeJsMethod(env, listener_ref, "onRuntimeDetach", 0,
+                                        nullptr);
+  });
 }
 
 // LynxRuntimeWrapper
