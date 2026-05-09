@@ -66,6 +66,22 @@ public interface ILynxTextService extends IServiceProvider {
     float[] getSelectionRects(int start, int end);
 
     /**
+     * Get page text length.
+     *
+     * @return text length in selection index units
+     */
+    int getTextLength();
+
+    /**
+     * Get selected text content by char range.
+     *
+     * @param start char index of selected range start
+     * @param end char index of selected range end
+     * @return selected text
+     */
+    String getSelectedText(int start, int end);
+
+    /**
      * destroy native page
      */
     void destroy();

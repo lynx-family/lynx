@@ -8289,6 +8289,8 @@ public interface com::lynx::tasm::service::ILynxTextService::Page {
   public void com.lynx.tasm.service.ILynxTextService.Page.drawPageCanvas(Canvas canvas, Drawable.Callback callback);
   public int com.lynx.tasm.service.ILynxTextService.Page.getSelectionCharIndex(float touchX, float touchY);
   public float[] com.lynx.tasm.service.ILynxTextService.Page.getSelectionRects(int start, int end);
+  public int com.lynx.tasm.service.ILynxTextService.Page.getTextLength();
+  public String com.lynx.tasm.service.ILynxTextService.Page.getSelectedText(int start, int end);
   public void com.lynx.tasm.service.ILynxTextService.Page.destroy();
 }
 
@@ -11395,6 +11397,7 @@ public class com::lynx::tasm::behavior::ui::text::UIText : com::lynx::tasm::beha
   public EventTarget com.lynx.tasm.behavior.ui.text.UIText.hitTest(float x, float y, boolean ignoreUserInteraction);
   public void com.lynx.tasm.behavior.ui.text.UIText.updateExtraData(Object data);
   public void com.lynx.tasm.behavior.ui.text.UIText.didEnsureCreateView();
+  public void com.lynx.tasm.behavior.ui.text.UIText.setEvents(Map< String, EventsListener > events);
   public void com.lynx.tasm.behavior.ui.text.UIText.onNodeReady();
   public CharSequence com.lynx.tasm.behavior.ui.text.UIText.getOriginText();
   public void com.lynx.tasm.behavior.ui.text.UIText.onLayoutUpdated();
