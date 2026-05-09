@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (std::shared_ptr<lynx::devtool::DevToolPlatformFacade>)getNativePtr;
 
 - (void)scrollIntoView:(int)node_index;
+- (void)focus:(int)node_index;
 
 - (int)findNodeIdForLocationWithX:(float)x withY:(float)y mode:(NSString *)mode;
 

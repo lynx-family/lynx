@@ -5,6 +5,7 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIMethodProcessor.h>
 #import <LynxDevtool/LynxScreenCastHelper.h>
 #import <LynxDevtool/LynxUITreeHelper.h>
 #import <objc/message.h>
@@ -53,6 +54,22 @@
   __strong typeof(_uiOwner) uiOwner = _uiOwner;
   LynxUI* ui = [uiOwner findUIBySign:node_id];
   [ui scrollIntoViewWithSmooth:false blockType:@"center" inlineType:@"center" callback:nil];
+}
+
+- (void)focus:(int)node_id {
+  __strong typeof(_uiOwner) uiOwner = _uiOwner;
+  if (uiOwner == nil) {
+    return;
+  }
+  [uiOwner invokeUIMethodForSelectorQuery:@"focus"
+                                   params:@{}
+                                 callback:^(int code, id _Nullable data) {
+                                   if (code != kUIMethodSuccess) {
+                                     LLogWarn(@"DOM.focus failed for nodeId:%d code:%d data:%@",
+                                              node_id, code, data);
+                                   }
+                                 }
+                                   toNode:node_id];
 }
 
 - (NSString*)dictionaryToJson:(NSMutableDictionary*)dict {

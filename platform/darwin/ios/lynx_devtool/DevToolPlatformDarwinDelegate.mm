@@ -60,6 +60,13 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     }
   }
 
+  void Focus(int node_index) override {
+    __strong typeof(_darwin) darwin = _darwin;
+    if (darwin) {
+      [darwin focus:node_index];
+    }
+  }
+
   void OnConsoleMessage(const std::string& message) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin) {
@@ -348,6 +355,12 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
 - (void)scrollIntoView:(int)node_index {
   if (_uiTreeHelper) {
     return [_uiTreeHelper scrollIntoView:node_index];
+  }
+}
+
+- (void)focus:(int)node_index {
+  if (_uiTreeHelper) {
+    [_uiTreeHelper focus:node_index];
   }
 }
 
