@@ -40,7 +40,7 @@ TEST_F(PlatformViewLayerTest, NullViewEmbedderDoesntPrerollCompositeOrPaint) {
   EXPECT_EQ(mock_canvas().draw_calls(), std::vector<MockCanvas::DrawCall>());
 }
 
-TEST_F(PlatformViewLayerTest, ClippedPlatformViewPrerollsAndPaintsNothing) {
+TEST_F(PlatformViewLayerTest, ClippedPlatformViewDoesNotComposite) {
   const skity::Vec2 layer_offset = skity::Vec2(0.0f, 0.0f);
   const skity::Vec2 layer_size = skity::Vec2(8.0f, 8.0f);
   const skity::Rect child_clip =
@@ -61,36 +61,70 @@ TEST_F(PlatformViewLayerTest, ClippedPlatformViewPrerollsAndPaintsNothing) {
   preroll_context()->compositor_state = &compositor_state;
 
   parent_clip_layer->Preroll(preroll_context());
-  EXPECT_TRUE(preroll_context()->has_platform_view);
+  EXPECT_FALSE(preroll_context()->has_platform_view);
+  EXPECT_TRUE(compositor_state.GetCompositionOrder().empty());
   EXPECT_EQ(layer->paint_bounds(),
             skity::Rect::MakeSize({layer_size.x, layer_size.y})
                 .MakeOffset(layer_offset.x, layer_offset.y));
-  EXPECT_TRUE(layer->needs_painting(paint_context()));
-  EXPECT_TRUE(child_clip_layer->needs_painting(paint_context()));
-  EXPECT_TRUE(parent_clip_layer->needs_painting(paint_context()));
-  EXPECT_TRUE(layer->subtree_has_platform_view());
-  EXPECT_TRUE(child_clip_layer->subtree_has_platform_view());
-  EXPECT_TRUE(parent_clip_layer->subtree_has_platform_view());
+  EXPECT_FALSE(layer->subtree_has_platform_view());
+  EXPECT_FALSE(child_clip_layer->subtree_has_platform_view());
+  EXPECT_FALSE(parent_clip_layer->subtree_has_platform_view());
+  EXPECT_FALSE(parent_clip_layer->needs_painting(paint_context()));
+}
 
-  parent_clip_layer->Paint(paint_context());
+TEST_F(PlatformViewLayerTest, OffscreenPlatformViewDoesNotComposite) {
+  const skity::Vec2 layer_offset = skity::Vec2(80.0f, 80.0f);
+  const skity::Vec2 layer_size = skity::Vec2(8.0f, 8.0f);
+  const int64_t view_id = 0;
+  auto layer =
+      std::make_shared<PlatformViewLayer>(layer_offset, layer_size, view_id);
+
+  CompositorState compositor_state({64, 64});
+  preroll_context()->compositor_state = &compositor_state;
+  preroll_context()->state_stack.set_preroll_delegate(
+      skity::Rect::MakeLTRB(0.0f, 0.0f, 64.0f, 64.0f));
+
+  layer->Preroll(preroll_context());
+  EXPECT_FALSE(preroll_context()->has_platform_view);
+  EXPECT_TRUE(compositor_state.GetCompositionOrder().empty());
+  EXPECT_FALSE(layer->subtree_has_platform_view());
+
+  layer->Paint(paint_context());
   EXPECT_EQ(paint_context().canvas, &mock_canvas());
-  EXPECT_EQ(
-      mock_canvas().draw_calls(),
-      std::vector(
-          {MockCanvas::DrawCall{0, MockCanvas::SaveData{1}},
-           MockCanvas::DrawCall{
-               1,
-               MockCanvas::ClipRectData{
-                   clay::ConvertSkityRectToSkRect(parent_clip),
-                   SkClipOp::kIntersect, MockCanvas::kHard_ClipEdgeStyle}},
-           MockCanvas::DrawCall{1, MockCanvas::SaveData{2}},
-           MockCanvas::DrawCall{
-               2,
-               MockCanvas::ClipRectData{
-                   clay::ConvertSkityRectToSkRect(child_clip),
-                   SkClipOp::kIntersect, MockCanvas::kHard_ClipEdgeStyle}},
-           MockCanvas::DrawCall{2, MockCanvas::RestoreData{1}},
-           MockCanvas::DrawCall{1, MockCanvas::RestoreData{0}}}));
+}
+
+TEST_F(PlatformViewLayerTest, CulledPlatformViewCanCompositeAgain) {
+  const skity::Vec2 layer_offset = skity::Vec2(80.0f, 80.0f);
+  const skity::Vec2 layer_size = skity::Vec2(8.0f, 8.0f);
+  const int64_t view_id = 0;
+  auto layer =
+      std::make_shared<PlatformViewLayer>(layer_offset, layer_size, view_id);
+
+  CompositorState culled_compositor_state({64, 64});
+  preroll_context()->compositor_state = &culled_compositor_state;
+  preroll_context()->state_stack.set_preroll_delegate(
+      skity::Rect::MakeLTRB(0.0f, 0.0f, 64.0f, 64.0f));
+
+  layer->Preroll(preroll_context());
+  EXPECT_FALSE(preroll_context()->has_platform_view);
+  EXPECT_TRUE(culled_compositor_state.GetCompositionOrder().empty());
+  EXPECT_FALSE(layer->subtree_has_platform_view());
+
+  CompositorState visible_compositor_state({128, 128});
+  preroll_context()->compositor_state = &visible_compositor_state;
+  preroll_context()->state_stack.set_preroll_delegate(
+      skity::Rect::MakeLTRB(0.0f, 0.0f, 128.0f, 128.0f));
+
+  layer->Preroll(preroll_context());
+  EXPECT_TRUE(preroll_context()->has_platform_view);
+  EXPECT_EQ(visible_compositor_state.GetCompositionOrder(),
+            std::vector<int64_t>({view_id}));
+  EXPECT_TRUE(layer->subtree_has_platform_view());
+
+  paint_context().compositor_state = &visible_compositor_state;
+  layer->Paint(paint_context());
+  EXPECT_EQ(paint_context().canvas,
+            visible_compositor_state.GetSlices()[view_id]->canvas());
 }
 
 TEST_F(PlatformViewLayerTest, OpacityInheritance) {

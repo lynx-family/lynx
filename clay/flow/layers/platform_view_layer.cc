@@ -19,12 +19,23 @@ PlatformViewLayer::PlatformViewLayer(const skity::Vec2& offset,
 void PlatformViewLayer::Preroll(PrerollContext* context) {
   set_paint_bounds(
       skity::Rect::MakeXYWH(offset_.x, offset_.y, size_.x, size_.y));
+  is_culled_in_preroll_ = false;
+  set_subtree_has_platform_view(false);
 
   if (context->compositor_state == nullptr) {
     FML_DLOG(ERROR) << "Trying to embed a platform view but the PrerollContext "
                        "does not support embedding";
     return;
   }
+
+  if (context->state_stack.content_culled(paint_bounds())) {
+    is_culled_in_preroll_ = true;
+    FML_LOG(INFO) << "PlatformViewLayer skip preroll composite because "
+                     "content is fully culled view_id="
+                  << view_id_;
+    return;
+  }
+
   context->has_platform_view = true;
   context->paints_into_platform_view_slice = true;
   set_subtree_has_platform_view(true);
@@ -33,16 +44,25 @@ void PlatformViewLayer::Preroll(PrerollContext* context) {
   std::unique_ptr<EmbeddedViewParams> params =
       std::make_unique<EmbeddedViewParams>(context->state_stack.transform_4x4(),
                                            size_, mutators);
+
   context->compositor_state->PrerollCompositeEmbeddedView(view_id_,
                                                           std::move(params));
 }
 
 void PlatformViewLayer::Paint(PaintContext& context) const {
+  if (is_culled_in_preroll_) {
+    FML_LOG(INFO) << "PlatformViewLayer skip paint because it was culled in "
+                     "preroll view_id="
+                  << view_id_;
+    return;
+  }
+
   if (context.compositor_state == nullptr) {
     FML_DLOG(ERROR) << "Trying to embed a platform view but the PaintContext "
                        "does not support embedding";
     return;
   }
+
   clay::GrCanvas* canvas =
       context.compositor_state->CompositeEmbeddedView(view_id_);
   context.canvas = canvas;
