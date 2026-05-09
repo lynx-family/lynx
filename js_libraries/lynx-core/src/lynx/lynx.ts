@@ -305,7 +305,7 @@ export class Lynx {
     const nativeMethod = this.getNativeApp().nativeModuleProxy
       .LynxResourceModule?.requestResourcePrefetch;
     if (nativeMethod) {
-      nativeMethod(data, callback, config);
+      nativeMethod(data, callback, config ?? {});
     }
   };
 
