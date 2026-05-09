@@ -196,8 +196,16 @@ public class NestedScrollContainerView
         mInitialMotionX = mLastMotionX = (int) (event.getX() + 0.5f);
         mInitialMotionY = mLastMotionY = (int) (event.getY() + 0.5f);
         if (mScrollState == SCROLL_STATE_FLING || mScrollState == SCROLL_STATE_SCROLL_ANIMATION) {
-          getParent().requestDisallowInterceptTouchEvent(true);
-          setScrollState(SCROLL_STATE_DRAGGING);
+          // If in flinging or scroll animation, and user touches the screen, initiate drag.
+          // Note: If no fling is in progress, or if it is not a fling state entered by itself
+          // (for example, as a nested scrolling parent it may also be passively in a fling state),
+          // do not mistakenly enter the dragging state, and preserve normal event dispatch.
+          if (!mScrollHelper.isFinished()) {
+            getParent().requestDisallowInterceptTouchEvent(true);
+            setScrollState(SCROLL_STATE_DRAGGING);
+          } else {
+            setScrollState(SCROLL_STATE_IDLE);
+          }
         }
         // Clear the nested offsets
         mNestedOffsets[0] = mNestedOffsets[1] = 0;
@@ -613,6 +621,14 @@ public class NestedScrollContainerView
         mCustomScrollHook.onSmoothScrollEnd();
         mCustomScrollHook = null;
       }
+    }
+
+    private boolean isFinished() {
+      // Scroller updates its finished state lazily while advancing the animation. Refresh the
+      // current scroll state by computeScrollOffset first, then check whether the fling is still
+      // running.
+      mScroller.computeScrollOffset();
+      return mScroller.isFinished();
     }
 
     @Override
