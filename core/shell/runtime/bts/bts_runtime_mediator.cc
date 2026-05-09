@@ -203,8 +203,9 @@ void BTSRuntimeMediator::OnRuntimeReady() {
 }
 
 void BTSRuntimeMediator::OnErrorOccurred(base::LynxError error) {
-  facade_actor_->ActAsync(
-      [error = std::move(error)](auto& facade) { facade->ReportError(error); });
+  facade_actor_->ActAsync([error = std::move(error)](auto& facade) mutable {
+    facade->ReportError(std::move(error));
+  });
 }
 
 void BTSRuntimeMediator::OnModuleMethodInvoked(const std::string& module,

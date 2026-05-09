@@ -45,7 +45,7 @@ class NativeFacadeEmptyImpl : public NativeFacade {
 
   virtual void OnRuntimeReady() override {}
 
-  virtual void ReportError(const base::LynxError& error) override {}
+  virtual void ReportError(base::LynxError&& error) override {}
 
   virtual void OnModuleMethodInvoked(const std::string& module,
                                      const std::string& method,

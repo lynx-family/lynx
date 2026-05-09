@@ -39,7 +39,7 @@ class NativeFacadeHarmony : public shell::NativeFacade {
 
   void OnRuntimeReady() override;
 
-  void ReportError(const base::LynxError& error) override;
+  void ReportError(base::LynxError&& error) override;
 
   void OnModuleMethodInvoked(const std::string& module,
                              const std::string& method, int32_t code) override;

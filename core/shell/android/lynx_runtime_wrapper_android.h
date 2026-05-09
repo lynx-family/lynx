@@ -22,7 +22,7 @@ class NativeRuntimeFacadeAndroid : public NativeFacadeEmptyImpl {
   NativeRuntimeFacadeAndroid(JNIEnv* env, jobject jni_object)
       : jni_object_(env, jni_object) {}
   ~NativeRuntimeFacadeAndroid() override = default;
-  void ReportError(const base::LynxError& error) override;
+  void ReportError(base::LynxError&& error) override;
   void OnModuleMethodInvoked(const std::string& module,
                              const std::string& method, int32_t code) override;
   void OnEvaluateJavaScriptEnd(const std::string& url) override;

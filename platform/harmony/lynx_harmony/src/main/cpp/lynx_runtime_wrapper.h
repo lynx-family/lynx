@@ -38,7 +38,7 @@ class NativeRuntimeFacadeHarmony : public shell::NativeFacadeEmptyImpl {
   explicit NativeRuntimeFacadeHarmony(LynxRuntimeWrapper* runtime_wrapper)
       : runtime_wrapper_(runtime_wrapper) {}
   ~NativeRuntimeFacadeHarmony() override { runtime_wrapper_ = nullptr; }
-  void ReportError(const base::LynxError& error) override;
+  void ReportError(base::LynxError&& error) override;
   void OnModuleMethodInvoked(const std::string& module,
                              const std::string& method, int32_t code) override;
   void OnEvaluateJavaScriptEnd(const std::string& url) override;
@@ -50,8 +50,9 @@ class NativeRuntimeFacadeHarmony : public shell::NativeFacadeEmptyImpl {
 class RuntimeLifecycleListenerDelegateHarmony
     : public runtime::RuntimeLifecycleListenerDelegate {
  public:
-  explicit RuntimeLifecycleListenerDelegateHarmony(napi_env env,
-                                                   napi_ref listener_ref);
+  explicit RuntimeLifecycleListenerDelegateHarmony(
+      napi_env env, napi_ref listener_ref,
+      std::shared_ptr<shell::LynxActor<shell::NativeFacade>> facade_actor);
   ~RuntimeLifecycleListenerDelegateHarmony() override = default;
   void OnRuntimeCreate(
       std::shared_ptr<runtime::IVSyncObserver> observer) override {}
@@ -64,6 +65,7 @@ class RuntimeLifecycleListenerDelegateHarmony
  private:
   napi_env env_;
   napi_ref listener_ref_;
+  std::shared_ptr<shell::LynxActor<shell::NativeFacade>> facade_actor_;
 };
 
 class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {

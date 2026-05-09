@@ -10,7 +10,7 @@
 namespace lynx {
 namespace shell {
 
-void NativeRuntimeFacadeDarwin::ReportError(const base::LynxError& error) {
+void NativeRuntimeFacadeDarwin::ReportError(base::LynxError&& error) {
   __strong LynxBackgroundRuntime* runtime = _runtime;
   NSMutableDictionary* customInfo = [NSMutableDictionary new];
   for (const auto& [key, value] : error.custom_info_) {

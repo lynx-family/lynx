@@ -72,8 +72,9 @@ void TasmMediator::OnSSRHydrateFinished(const std::string& url) {
 }
 
 void TasmMediator::OnErrorOccurred(base::LynxError error) {
-  facade_actor_->ActAsync(
-      [error = std::move(error)](auto& facade) { facade->ReportError(error); });
+  facade_actor_->ActAsync([error = std::move(error)](auto& facade) mutable {
+    facade->ReportError(std::move(error));
+  });
 }
 void TasmMediator::TriggerLepusngGc(base::closure func) {
   // TODO: the api will be implemented for performance in the future.

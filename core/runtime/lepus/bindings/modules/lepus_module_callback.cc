@@ -68,7 +68,7 @@ void LepusModuleDelegate::OnErrorOccurred(const std::string& module_name,
        << "ErrorOccur, module_name: " << module_name << ", method_name: "
        << method_name << ", error: " << error.error_message_);
   if (facade_actor_ != nullptr) {
-    facade_actor_->Act([error = std::move(error)](auto& facade) {
+    facade_actor_->Act([error = std::move(error)](auto& facade) mutable {
       facade->ReportError(std::move(error));
     });
   }

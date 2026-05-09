@@ -262,7 +262,7 @@ void LynxShell::OnLynxEngineBuilt(
   ui_operation_queue_->SetErrorCallback(
       [facade_actor = facade_actor_](base::LynxError error) {
         facade_actor->Act([error = std::move(error)](auto& facade) mutable {
-          facade->ReportError(error);
+          facade->ReportError(std::move(error));
         });
       });
 

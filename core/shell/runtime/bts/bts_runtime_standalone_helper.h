@@ -100,6 +100,11 @@ class BTSRuntimeStandalone {
     return perf_controller_actor_;
   }
 
+  const std::shared_ptr<LynxActor<NativeFacade>>&
+  GetNativeRuntimeFacadeActor() {
+    return native_runtime_facade_;
+  }
+
   void TransitionToFullRuntime();
 
   int32_t GetRuntimeId() const { return runtime_id_; }

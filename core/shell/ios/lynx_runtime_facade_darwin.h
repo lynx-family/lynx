@@ -30,7 +30,7 @@ class NativeRuntimeFacadeDarwin : public NativeFacadeEmptyImpl {
  public:
   NativeRuntimeFacadeDarwin(LynxBackgroundRuntime* runtime) : _runtime(runtime) {}
   ~NativeRuntimeFacadeDarwin() override = default;
-  void ReportError(const base::LynxError& error) override;
+  void ReportError(base::LynxError&& error) override;
   void OnEvaluateJavaScriptEnd(const std::string& url) override;
 
  private:

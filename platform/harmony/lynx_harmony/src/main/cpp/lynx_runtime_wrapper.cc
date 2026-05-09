@@ -42,27 +42,41 @@ bool CheckNapiUnwrapObject(napi_status status, void* obj, const char* message) {
 }  // namespace
 
 // NativeRuntimeFacadeHarmony
-void NativeRuntimeFacadeHarmony::ReportError(const base::LynxError& error) {
+void NativeRuntimeFacadeHarmony::ReportError(base::LynxError&& error) {
   if (!runtime_wrapper_) {
     return;
   }
-  base::NapiHandleScope scope(runtime_wrapper_->env_);
-  std::string level_str =
-      base::LynxError::GetLevelString(static_cast<int32_t>(error.error_level_));
-  napi_value param[6];
-  napi_create_string_utf8(runtime_wrapper_->env_, level_str.c_str(),
-                          level_str.length(), &param[0]);
-  napi_create_int32(runtime_wrapper_->env_, error.error_code_, &param[1]);
-  napi_create_string_utf8(runtime_wrapper_->env_, error.error_message_.c_str(),
-                          error.error_message_.length(), &param[2]);
-  napi_create_string_utf8(runtime_wrapper_->env_, error.fix_suggestion_.c_str(),
-                          error.fix_suggestion_.length(), &param[3]);
-  param[4] =
-      base::NapiUtil::CreateMap(runtime_wrapper_->env_, error.custom_info_);
-  napi_get_boolean(runtime_wrapper_->env_, error.is_logbox_only_, &param[5]);
-  base::NapiUtil::AsyncInvokeJsMethod(runtime_wrapper_->env_,
-                                      runtime_wrapper_->runtime_wrapper_ref_,
-                                      "onErrorOccurred", 6, param);
+  auto facade_actor =
+      runtime_wrapper_->RuntimeStandalone().GetNativeRuntimeFacadeActor();
+  if (!facade_actor) {
+    return;
+  }
+  facade_actor->Act([error = std::move(error)](auto& facade) mutable {
+    auto* harmony_facade =
+        static_cast<NativeRuntimeFacadeHarmony*>(facade.get());
+    if (!harmony_facade || !harmony_facade->runtime_wrapper_) {
+      return;
+    }
+    auto* runtime_wrapper = harmony_facade->runtime_wrapper_;
+    base::NapiHandleScope scope(runtime_wrapper->env_);
+    std::string level_str = base::LynxError::GetLevelString(
+        static_cast<int32_t>(error.error_level_));
+    napi_value param[6];
+    napi_create_string_utf8(runtime_wrapper->env_, level_str.c_str(),
+                            level_str.length(), &param[0]);
+    napi_create_int32(runtime_wrapper->env_, error.error_code_, &param[1]);
+    napi_create_string_utf8(runtime_wrapper->env_, error.error_message_.c_str(),
+                            error.error_message_.length(), &param[2]);
+    napi_create_string_utf8(runtime_wrapper->env_,
+                            error.fix_suggestion_.c_str(),
+                            error.fix_suggestion_.length(), &param[3]);
+    param[4] =
+        base::NapiUtil::CreateMap(runtime_wrapper->env_, error.custom_info_);
+    napi_get_boolean(runtime_wrapper->env_, error.is_logbox_only_, &param[5]);
+    base::NapiUtil::AsyncInvokeJsMethod(runtime_wrapper->env_,
+                                        runtime_wrapper->runtime_wrapper_ref_,
+                                        "onErrorOccurred", 6, param);
+  });
 }
 
 void NativeRuntimeFacadeHarmony::OnModuleMethodInvoked(
@@ -70,17 +84,30 @@ void NativeRuntimeFacadeHarmony::OnModuleMethodInvoked(
   if (!runtime_wrapper_) {
     return;
   }
-  base::NapiHandleScope scope(runtime_wrapper_->env_);
-  int argc = 3;
-  napi_value param[argc];
-  napi_create_string_utf8(runtime_wrapper_->env_, module.c_str(),
-                          module.length(), &param[0]);
-  napi_create_string_utf8(runtime_wrapper_->env_, method.c_str(),
-                          method.length(), &param[1]);
-  napi_create_int32(runtime_wrapper_->env_, code, &param[2]);
-  base::NapiUtil::AsyncInvokeJsMethod(runtime_wrapper_->env_,
-                                      runtime_wrapper_->runtime_wrapper_ref_,
-                                      "onModuleMethodInvoked", argc, param);
+  auto facade_actor =
+      runtime_wrapper_->RuntimeStandalone().GetNativeRuntimeFacadeActor();
+  if (!facade_actor) {
+    return;
+  }
+  facade_actor->Act([module, method, code](auto& facade) {
+    auto* harmony_facade =
+        static_cast<NativeRuntimeFacadeHarmony*>(facade.get());
+    if (!harmony_facade || !harmony_facade->runtime_wrapper_) {
+      return;
+    }
+    auto* runtime_wrapper = harmony_facade->runtime_wrapper_;
+    base::NapiHandleScope scope(runtime_wrapper->env_);
+    int argc = 3;
+    napi_value param[argc];
+    napi_create_string_utf8(runtime_wrapper->env_, module.c_str(),
+                            module.length(), &param[0]);
+    napi_create_string_utf8(runtime_wrapper->env_, method.c_str(),
+                            method.length(), &param[1]);
+    napi_create_int32(runtime_wrapper->env_, code, &param[2]);
+    base::NapiUtil::AsyncInvokeJsMethod(runtime_wrapper->env_,
+                                        runtime_wrapper->runtime_wrapper_ref_,
+                                        "onModuleMethodInvoked", argc, param);
+  });
 }
 
 void NativeRuntimeFacadeHarmony::OnEvaluateJavaScriptEnd(
@@ -88,37 +115,64 @@ void NativeRuntimeFacadeHarmony::OnEvaluateJavaScriptEnd(
   if (!runtime_wrapper_) {
     return;
   }
-  base::NapiHandleScope scope(runtime_wrapper_->env_);
-  int argc = 1;
-  napi_value param[argc];
-  napi_create_string_utf8(runtime_wrapper_->env_, url.c_str(), url.length(),
-                          &param[0]);
-  base::NapiUtil::AsyncInvokeJsMethod(runtime_wrapper_->env_,
-                                      runtime_wrapper_->runtime_wrapper_ref_,
-                                      "onEvaluateJavaScriptEnd", argc, param);
+  auto facade_actor =
+      runtime_wrapper_->RuntimeStandalone().GetNativeRuntimeFacadeActor();
+  if (!facade_actor) {
+    return;
+  }
+  facade_actor->Act([url](auto& facade) {
+    auto* harmony_facade =
+        static_cast<NativeRuntimeFacadeHarmony*>(facade.get());
+    if (!harmony_facade || !harmony_facade->runtime_wrapper_) {
+      return;
+    }
+    auto* runtime_wrapper = harmony_facade->runtime_wrapper_;
+    base::NapiHandleScope scope(runtime_wrapper->env_);
+    int argc = 1;
+    napi_value param[argc];
+    napi_create_string_utf8(runtime_wrapper->env_, url.c_str(), url.length(),
+                            &param[0]);
+    base::NapiUtil::AsyncInvokeJsMethod(runtime_wrapper->env_,
+                                        runtime_wrapper->runtime_wrapper_ref_,
+                                        "onEvaluateJavaScriptEnd", argc, param);
+  });
 }
 
 // RuntimeLifecycleListenerDelegateHarmony
 RuntimeLifecycleListenerDelegateHarmony::
-    RuntimeLifecycleListenerDelegateHarmony(napi_env env, napi_ref listener_ref)
+    RuntimeLifecycleListenerDelegateHarmony(
+        napi_env env, napi_ref listener_ref,
+        std::shared_ptr<shell::LynxActor<shell::NativeFacade>> facade_actor)
     : RuntimeLifecycleListenerDelegate(
           RuntimeLifecycleListenerDelegate::DelegateType::PART),
       env_(env),
-      listener_ref_(listener_ref) {}
+      listener_ref_(listener_ref),
+      facade_actor_(std::move(facade_actor)) {}
 
 void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeAttach(void* env_ptr) {
-  base::NapiHandleScope scope(static_cast<napi_env>(env_ptr));
-  napi_value param[1];
-  param[0] = base::NapiUtil::CreatePtrArray(
-      env_, reinterpret_cast<uintptr_t>(static_cast<napi_env>(env_ptr)));
-  base::NapiUtil::AsyncInvokeJsMethod(env_, listener_ref_, "onRuntimeAttach", 1,
-                                      param);
+  if (!facade_actor_) {
+    return;
+  }
+  facade_actor_->Act(
+      [env = env_, listener_ref = listener_ref_, env_ptr](auto&) {
+        base::NapiHandleScope scope(env);
+        napi_value param[1];
+        param[0] = base::NapiUtil::CreatePtrArray(
+            env, reinterpret_cast<uintptr_t>(static_cast<napi_env>(env_ptr)));
+        base::NapiUtil::AsyncInvokeJsMethod(env, listener_ref,
+                                            "onRuntimeAttach", 1, param);
+      });
 }
 
 void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeDetach() {
-  base::NapiHandleScope scope(env_);
-  base::NapiUtil::AsyncInvokeJsMethod(env_, listener_ref_, "onRuntimeDetach", 0,
-                                      nullptr);
+  if (!facade_actor_) {
+    return;
+  }
+  facade_actor_->Act([env = env_, listener_ref = listener_ref_](auto&) {
+    base::NapiHandleScope scope(env);
+    base::NapiUtil::AsyncInvokeJsMethod(env, listener_ref, "onRuntimeDetach", 0,
+                                        nullptr);
+  });
 }
 
 // LynxRuntimeWrapper
@@ -199,7 +253,8 @@ void LynxRuntimeWrapper::SetAttached(bool is_attached) {
 void LynxRuntimeWrapper::AddRuntimeLifecycleListener(napi_env env,
                                                      napi_ref ref) {
   runtime_proxy_->AddLifecycleListener(
-      std::make_unique<RuntimeLifecycleListenerDelegateHarmony>(env, ref));
+      std::make_unique<RuntimeLifecycleListenerDelegateHarmony>(
+          env, ref, runtime_standalone_->GetNativeRuntimeFacadeActor()));
 }
 
 napi_value LynxRuntimeWrapper::Init(napi_env env, napi_value exports) {

@@ -48,7 +48,7 @@ void MockNativeFacade::OnTasmFinishByNative() {
   arwe->Signal();
 }
 
-void MockNativeFacade::ReportError(const base::LynxError& error) {
+void MockNativeFacade::ReportError(base::LynxError&& error) {
   result.on_correct_thread = IsOnUIThread();
   result["error_code"] = error.error_code_;
   result["msg"] = error.error_message_;

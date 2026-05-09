@@ -216,7 +216,7 @@ jint GetRuntimeId(JNIEnv *env, jobject jcaller, jlong ptr) {
 namespace lynx {
 namespace shell {
 
-void NativeRuntimeFacadeAndroid::ReportError(const base::LynxError &error) {
+void NativeRuntimeFacadeAndroid::ReportError(base::LynxError &&error) {
   JNIEnv *env = AttachCurrentThread();
   lynx::base::android::ScopedLocalJavaRef<jobject> local_ref(jni_object_);
   if (local_ref.IsNull()) {

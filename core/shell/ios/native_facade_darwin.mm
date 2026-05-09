@@ -63,7 +63,7 @@ void NativeFacadeDarwin::OnRuntimeReady() {
   [render onRuntimeReady];
 }
 
-void NativeFacadeDarwin::ReportError(const base::LynxError& error) {
+void NativeFacadeDarwin::ReportError(base::LynxError&& error) {
   __strong id<TemplateRenderCallbackProtocol> render = _render;
   NSMutableDictionary* customInfo = [NSMutableDictionary new];
   for (const auto& [key, value] : error.custom_info_) {

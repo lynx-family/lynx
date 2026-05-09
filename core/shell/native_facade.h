@@ -49,7 +49,7 @@ class NativeFacade {
 
   virtual void OnRuntimeReady() = 0;
 
-  virtual void ReportError(const base::LynxError& error) = 0;
+  virtual void ReportError(base::LynxError&& error) = 0;
 
   virtual void OnModuleMethodInvoked(const std::string& module,
                                      const std::string& method,

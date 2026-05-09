@@ -143,7 +143,7 @@ void NativeFacadeAndroid::OnRuntimeReady() {
   Java_NativeFacade_onRuntimeReady(AttachCurrentThread(), jni_object_.Get());
 }
 
-void NativeFacadeAndroid::ReportError(const base::LynxError& error) {
+void NativeFacadeAndroid::ReportError(base::LynxError&& error) {
   JNIEnv* env = AttachCurrentThread();
   base::android::LynxErrorAndroid error_android(
       error.error_code_, error.error_message_, error.fix_suggestion_,
