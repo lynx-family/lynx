@@ -225,6 +225,15 @@ void DevToolPlatformAndroid::EmulateTouch(
       env, ref.Get(), type.Get(), x, y, deltaX, deltaY, button.Get());
 }
 
+void DevToolPlatformAndroid::Focus(int node_id) {
+  JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return;
+  }
+  Java_DevToolPlatformAndroidDelegate_focus(env, ref.Get(), node_id);
+}
+
 void DevToolPlatformAndroid::OnConsoleMessage(const std::string& message) {
   std::lock_guard<std::mutex> lock(mutex_);
   JNIEnv* env = lynx::base::android::AttachCurrentThread();

@@ -20,6 +20,7 @@ import com.lynx.tasm.LynxView;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.PageReloadHelper;
+import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.LynxUIOwner;
 import java.lang.ref.WeakReference;
 
@@ -340,6 +341,30 @@ public class DevToolPlatformAndroidDelegate {
       mTouchHelper.emulateTouch(type, (int) (x * scale + 0.5f), (int) (y * scale + 0.5f),
           deltaX * scale + 0.5f, deltaY * scale + 0.5f, button, mDevToolDelegate);
     }
+  }
+
+  @CalledByNative
+  public void focus(final int nodeId) {
+    LynxView lynxView = mLynxView.get();
+    if (lynxView == null || lynxView.getLynxContext() == null) {
+      return;
+    }
+    LynxUIOwner uiOwner = lynxView.getLynxContext().getLynxUIOwner();
+    if (uiOwner == null) {
+      return;
+    }
+    uiOwner.invokeUIMethodForSelectorQuery(nodeId, "focus", new JavaOnlyMap(), new Callback() {
+      @Override
+      public void invoke(Object... args) {
+        if (args == null || args.length == 0 || !(args[0] instanceof Integer)
+            || ((Integer) args[0]) == LynxUIMethodConstants.SUCCESS) {
+          return;
+        }
+        Object detail = args.length > 1 ? args[1] : "";
+        LLog.w(TAG,
+            "DOM.focus failed for nodeId " + nodeId + ", code: " + args[0] + ", data: " + detail);
+      }
+    });
   }
 
   @CalledByNative
