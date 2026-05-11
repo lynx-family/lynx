@@ -115,6 +115,7 @@ enum class KeywordID {
   kVerticalAlign,
   kTextSingleLineVerticalAlign,
   kEnableFontScaling,
+  kEnableScrollBar,
   kXAutoFontSize,
   kXAutoFontSizePresetSizes,
   kXAppRegion,
