@@ -98,6 +98,7 @@ word-break
 vertical-align
 text-single-line-vertical-align
 enable-font-scaling
+enable-scroll-bar
 -x-auto-font-size
 -x-auto-font-size-preset-sizes
 -x-app-region
