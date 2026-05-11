@@ -26,10 +26,10 @@ ROOT_DIR = SCRIPT_DIR.parent.parent
 # Platform-specific paths
 IS_WINDOWS = sys.platform == "win32"
 PYTHON_EXECUTABLE = Path(sys.executable) if sys.executable else Path("python3")
-ENVSETUP_SCRIPT = (
-    ROOT_DIR / "tools" / "envsetup.ps1"
+ENV_SCRIPT = (
+    ROOT_DIR / "tools" / "env.ps1"
     if IS_WINDOWS
-    else ROOT_DIR / "tools" / "envsetup.sh"
+    else ROOT_DIR / "tools" / "env.sh"
 )
 GEN_CONFIG_SCRIPT = SCRIPT_DIR / "gen_config.py"
 
@@ -79,7 +79,7 @@ def build_fallback_command(params: List[str]) -> Tuple[Union[str, List[str]], bo
         safe_params = " ".join(f"'{p}'" for p in params)
 
         ps_command = (
-            f"& '{ENVSETUP_SCRIPT}'; & '{PYTHON_EXECUTABLE}' '{GEN_CONFIG_SCRIPT}' {safe_params}"
+            f"& '{ENV_SCRIPT}' -- '{PYTHON_EXECUTABLE}' '{GEN_CONFIG_SCRIPT}' {safe_params}"
         ).strip()
 
         # Return list for shell=False
@@ -94,14 +94,14 @@ def build_fallback_command(params: List[str]) -> Tuple[Union[str, List[str]], bo
     else:
         # Bash command
         # Use shlex to safely quote paths and arguments
-        # base_cmd = f"source {ENVSETUP_SCRIPT} && {PYTHON_EXECUTABLE} {GEN_CONFIG_SCRIPT}"
+        # base_cmd = f"source {ENV_SCRIPT} -- && {PYTHON_EXECUTABLE} {GEN_CONFIG_SCRIPT}"
 
-        safe_envsetup = shlex.quote(str(ENVSETUP_SCRIPT))
+        safe_env = shlex.quote(str(ENV_SCRIPT))
         safe_python = shlex.quote(str(PYTHON_EXECUTABLE))
         safe_gen_config = shlex.quote(str(GEN_CONFIG_SCRIPT))
         safe_params = " ".join(shlex.quote(p) for p in params)
 
-        full_cmd = f"source {safe_envsetup} && {safe_python} {safe_gen_config} {safe_params}".strip()
+        full_cmd = f"source {safe_env} -- && {safe_python} {safe_gen_config} {safe_params}".strip()
 
         # Return string for shell=True (needed for 'source')
         return f'/bin/bash -c "{full_cmd}"', True

@@ -51,7 +51,7 @@ function gnPlugin(): HvigorPlugin {
                 } else {
                   console.log('---gn-build---');
                   execSync(
-                    'source ../../tools/envsetup.sh' +
+                    'source ../../tools/env.sh -- ' +
                       `&& python3 ./script/build.py ${
                         mode === 'skipBundle'
                           ? ''
