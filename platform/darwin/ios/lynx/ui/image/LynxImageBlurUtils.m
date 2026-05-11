@@ -97,6 +97,11 @@
   if (radius <= 0 || !inputImage) {
     return inputImage;
   }
+  static CIContext *sharedContext = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    sharedContext = [CIContext contextWithOptions:nil];
+  });
 
   CIImage *inputCIImage = [[CIImage alloc] initWithImage:inputImage];
   CIFilter *filter = [CIFilter filterWithName:@"CIGaussianBlur"];
@@ -105,8 +110,8 @@
   [filter setValue:@(inputRadius) forKey:kCIInputRadiusKey];
   CIImage *outputCIImage = [filter outputImage];
 
-  CIContext *context = [CIContext contextWithOptions:nil];
-  CGImageRef outputCGImage = [context createCGImage:outputCIImage fromRect:[inputCIImage extent]];
+  CGImageRef outputCGImage = [sharedContext createCGImage:outputCIImage
+                                                 fromRect:[inputCIImage extent]];
   if (outputCGImage == nil) {
     return inputImage;
   }
