@@ -54,11 +54,11 @@ class ApiCallBackManager {
   void Destroy();
 
  private:
-  std::unordered_map<int, std::shared_ptr<CallBackHolder>> callback_map_;
+  std::unordered_map<int, std::unique_ptr<CallBackHolder>> callback_map_;
   int next_timer_index_;
 };
 
-class CallBackHolder : public std::enable_shared_from_this<CallBackHolder> {
+class CallBackHolder {
  public:
   CallBackHolder(Function func);
 

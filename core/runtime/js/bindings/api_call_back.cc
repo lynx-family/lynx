@@ -16,9 +16,7 @@ namespace js {
 ApiCallBack ApiCallBackManager::createCallbackImpl(Function func) {
   int id = next_timer_index_++;
   const auto &callback = ApiCallBack(id);
-  std::shared_ptr<CallBackHolder> holder =
-      std::make_shared<CallBackHolder>(std::move(func));
-  callback_map_.insert(std::make_pair(id, holder));
+  callback_map_.emplace(id, std::make_unique<CallBackHolder>(std::move(func)));
   return callback;
 }
 
