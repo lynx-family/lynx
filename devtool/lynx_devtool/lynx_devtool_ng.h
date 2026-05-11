@@ -45,11 +45,8 @@ class LynxDevToolNG : public lynx::devtool::AbstractDevTool,
 
  protected:
   std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
-  int32_t session_id_ = -1;
-  int32_t instance_id_ = -1;
 
  private:
-  void UpdateSessionInfo();
   static void RegisterGlobalDomainAgents(
       DevToolMessageDispatcher& global_dispatcher);
   static void RegisterGlobalDomainAgents(

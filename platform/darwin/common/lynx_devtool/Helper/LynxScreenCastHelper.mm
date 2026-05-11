@@ -3,8 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <CoreGraphics/CoreGraphics.h>
-#import <Lynx/LynxEnv.h>
-#import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxView.h>
@@ -326,12 +324,6 @@ int const ScreenshotPreviewDelayTime = 1500;
   __strong typeof(_lynxView) lynxView = _lynxView;
   if (!lynxView || lynxView.frame.size.width <= 0 || lynxView.frame.size.height <= 0) {
     LLogWarn(@"failed to take snapshot and the _lynxView is %p", _lynxView);
-    if (LynxEnv.sharedInstance.devtoolEnabled) {
-      // Only report the event when LynxDebug is enabled.
-      [LynxEventReporter onEvent:@"lynxsdk_snapshot_lynxView_failed"
-                      instanceId:[_lynxView instanceId] ?: kUnknownInstanceId
-                           props:@{@"reason" : @"lynxView is invalid"}];
-    }
     return nil;
   }
 
@@ -339,32 +331,12 @@ int const ScreenshotPreviewDelayTime = 1500;
 #if OS_IOS
   if (isPreview) {
     image = [self createImageOfView:lynxView forCardPreview:true];
-
-    if (image == nil) {
-      LLogWarn(@"failed to get preview snapshot caused by nil image");
-      if (LynxEnv.sharedInstance.devtoolEnabled) {
-        // Only report the event when LynxDebug is enabled.
-        [LynxEventReporter onEvent:@"lynxsdk_preview_snapshot_failed"
-                        instanceId:[_lynxView instanceId] ?: -1
-                             props:@{@"reason" : @"image is nil"}];
-      }
-    }
   } else if (lynxView.window) {
     // only view on screen can take screenshot repeatedly
     if ([screenshot_mode_ isEqualToString:ScreenshotModeLynxView]) {
       image = [self createImageOfView:lynxView forCardPreview:false];
     } else {  // fullscreen
       image = [self createImageOfScreen:lynxView];
-    }
-
-    if (image == nil) {
-      LLogWarn(@"failed to take snapshot caused by nil image");
-      if (LynxEnv.sharedInstance.devtoolEnabled) {
-        // Only report the event when LynxDebug is enabled.
-        [LynxEventReporter onEvent:@"lynxsdk_screencast_snapshot_failed"
-                        instanceId:[_lynxView instanceId] ?: -1
-                             props:@{@"reason" : @"image is nil"}];
-      }
     }
   }
 #elif OS_OSX
@@ -376,6 +348,10 @@ int const ScreenshotPreviewDelayTime = 1500;
   }
 #endif
 
+  if (image == nil) {
+    LLogWarn(@"failed to tack snapshot caused by nil image");
+    return nil;
+  }
   return image;
 }
 
