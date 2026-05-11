@@ -110,8 +110,12 @@ void ReplayInheritedStyleSideEffects(Element* element,
       continue;
     }
 
-    if (!element->ShouldWritePropertyToComputedStyle(id)) {
+    if (!element->ShouldWritePropertyToComputedStyle(id) ||
+        element->IsInheritable(id)) {
       style.SetResolvedValue(id, value);
+    }
+
+    if (!element->ShouldWritePropertyToComputedStyle(id)) {
       continue;
     }
 
@@ -148,8 +152,12 @@ void ApplyComputedStyleValue(Element* element,
     return;
   }
 
-  if (!element->ShouldWritePropertyToComputedStyle(id)) {
+  if (element->IsInheritable(id) ||
+      !element->ShouldWritePropertyToComputedStyle(id)) {
     style.SetResolvedValue(id, value);
+  }
+
+  if (!element->ShouldWritePropertyToComputedStyle(id)) {
     return;
   }
 
@@ -2013,10 +2021,12 @@ void StyleResolver::ApplyResolvedStyleMap(
     const CustomPropertiesMap* custom_property_overrides,
     const StyleMap* property_overrides) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_APPLY_RESOLVED_STYLE_MAP);
+  auto* current_element = element();
   if (style_map.empty()) {
+    ReplayInheritedStyleSideEffects(current_element, style, style_map);
+    NormalizeTextAlignForDirection(current_element, style);
     return;
   }
-  auto* current_element = element();
   ApplyCascadingAffectingProperties(style, style_map, custom_property_overrides,
                                     property_overrides);
   ReplayInheritedStyleSideEffects(current_element, style, style_map);
@@ -2725,5 +2735,10 @@ bool StyleResolver::ComputeStyleDiff(
 #undef VISUAL_SCALAR_DIFF_FIELDS
 #undef TEXT_DIFF_FIELDS
 #undef PLACEHOLDER_TEXT_DIFF_FIELDS
+
+bool StyleResolver::HasPropertyDiff(const starlight::ComputedCSSStyle& style,
+                                    CSSPropertyID id) const {
+  return style.changed_bitset_.Has(id) || style.reset_bitset_.Has(id);
+}
 }  // namespace tasm
 }  // namespace lynx

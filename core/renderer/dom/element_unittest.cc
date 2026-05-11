@@ -532,6 +532,19 @@ TEST_F(ElementTest, GetCSSKeyframesToken_MultipleAdoptedSheets_ReverseLookup) {
   EXPECT_EQ(result, token_second.get());
 }
 
+TEST_F(ElementTest, ResolveStyleValueKeepsInheritedResolvedValue) {
+  auto element = manager->CreateFiberElement("view");
+  const auto value = CSSValue(18, CSSValuePattern::NUMBER);
+
+  element->ResolveStyleValue(CSSPropertyID::kPropertyIDFontSize, value);
+
+  const auto& resolved_values =
+      element->computed_css_style()->GetResolvedValues();
+  auto it = resolved_values.find(CSSPropertyID::kPropertyIDFontSize);
+  ASSERT_TRUE(it != resolved_values.end());
+  EXPECT_EQ(it->second, value);
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

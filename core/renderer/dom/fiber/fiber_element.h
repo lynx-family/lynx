@@ -19,6 +19,7 @@
 #include "core/event/event_listener.h"
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/dom/attribute_holder.h"
@@ -307,6 +308,8 @@ class FiberElement : public Element {
   }
 
   void MarkFontSizeInvalidateRecursively();
+  void InvalidateChildrenFontSizeRecursively();
+  void InvalidateChildrenInheritedStylesRecursively();
 
   // if child's related css variable is updated, invalidate child's style.
   void RecursivelyMarkChildrenCSSVariableDirty(
@@ -411,6 +414,19 @@ class FiberElement : public Element {
   /**
    * @brief Result of resolving computed styles in the new pipeline.
    */
+  struct NewPipelineResolveRequest {
+    bool force_resolve{false};
+    bool force_platform_update{false};
+    DynamicCSSStylesManager::StyleUpdateFlags dynamic_update_flags{0};
+  };
+
+  struct NewPipelineResolveOutcome {
+    bool need_update{false};
+    bool force_children{false};
+    DynamicCSSStylesManager::StyleUpdateFlags dynamic_style_flags{0};
+    DynamicCSSStylesManager::StyleUpdateFlags child_update_flags{0};
+  };
+
   struct NewPipelineStyleResolveResult {
     // final_style and base_style are the semantic results that downstream
     // logic should read after ResolveComputedStyles() returns. They are raw
@@ -508,7 +524,15 @@ class FiberElement : public Element {
    */
   void ReplayCommitSideEffects(
       const starlight::ComputedCSSStyle& computed_style,
-      const StyleMap& resolved_style_map);
+      const StyleMap& resolved_style_map, CSSIDBitset* replayed_ids = nullptr);
+  void ReplayDynamicResolvedStyleSideEffects(
+      const StyleMap& resolved_style_map,
+      DynamicCSSStylesManager::StyleUpdateFlags update_flags,
+      const CSSIDBitset& replayed_ids);
+  DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
+      const StyleMap& resolved_style_map) const;
+  NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
+      const NewPipelineResolveRequest& request);
 
   void RequestLayout() override;
 
@@ -602,6 +626,7 @@ class FiberElement : public Element {
   bool CollectCustomProperties(AttributeHolder* holder);
 
   void PrepareSelfForThreadedElementResolution();
+  bool ShouldFallbackToSerialForNewStylingPipeline() const;
 
   void InvalidateChildrenIfNeeded();
   bool HasAdjacentSiblingRulesInStyleSheets();
@@ -699,6 +724,9 @@ class FiberElement : public Element {
   void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
 
   void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
+  void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
+                                               bool& inner_force_update);
+  void UpdateDynamicChildrenStyleRecursively(uint32_t style, bool force_update);
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);

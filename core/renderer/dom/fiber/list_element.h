@@ -198,6 +198,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
   }
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
+  void ResetAttribute(const base::String& key) override;
   void CacheCommittedStyleFromAttributes(CSSPropertyID id,
                                          const CSSValue& value) override;
   void CacheCommittedStyleFromAttributes(CSSPropertyID id,
@@ -211,6 +212,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
   bool NeedAsyncResolveListItem();
   bool UseDecoupledList() const;
   bool UseInternalList() const;
+  void SetListOrientation(starlight::LinearOrientationType orientation);
   list::BatchRenderStrategy
   ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
       uint64_t pipeline_scheduler_config, bool enable_parallel_element);

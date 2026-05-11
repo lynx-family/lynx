@@ -110,6 +110,9 @@ void ListElement::ParallelFlushAsRoot() {
   if (!element_manager()->GetEnableParallelElement()) {
     return;
   }
+  if (ShouldFallbackToSerialForNewStylingPipeline()) {
+    return;
+  }
   if (!NeedAsyncResolveListItem()) {
     FiberElement::ParallelFlushAsRoot();
     return;
@@ -488,39 +491,37 @@ void ListElement::SetAttributeInternal(const base::String& key,
     // layout node should use column-count to compute width.
     UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kColumnCount, value);
   }
-  StyleMap attr_styles;
   if (key.IsEquals(kScrollOrientation) && value.IsString()) {
     const auto& value_str = value.StdString();
     if (value_str == kVertical) {
-      attr_styles.insert_or_assign(
-          kPropertyIDLinearOrientation,
-          CSSValue(starlight::LinearOrientationType::kVertical));
-      UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
-                                lepus::Value(true));
+      SetListOrientation(starlight::LinearOrientationType::kVertical);
     } else if (value_str == kHorizontal) {
-      attr_styles.insert_or_assign(
-          kPropertyIDLinearOrientation,
-          CSSValue(starlight::LinearOrientationType::kHorizontal));
-      UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
-                                lepus::Value(true));
+      SetListOrientation(starlight::LinearOrientationType::kHorizontal);
     }
   } else if (key.IsEquals(kVerticalOrientation)) {
     const auto& value_str = value.StdString();
     if (value_str == kTrue) {
-      attr_styles.insert_or_assign(
-          kPropertyIDLinearOrientation,
-          CSSValue(starlight::LinearOrientationType::kVertical));
-      UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
-                                lepus::Value(true));
+      SetListOrientation(starlight::LinearOrientationType::kVertical);
     } else if (value_str == kFalse) {
-      attr_styles.insert_or_assign(
-          kPropertyIDLinearOrientation,
-          CSSValue(starlight::LinearOrientationType::kHorizontal));
-      UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
-                                lepus::Value(true));
+      SetListOrientation(starlight::LinearOrientationType::kHorizontal);
     }
   }
-  ConsumeStyle(attr_styles, nullptr);
+}
+
+void ListElement::SetListOrientation(
+    starlight::LinearOrientationType orientation) {
+  CacheStyleFromAttributes(kPropertyIDLinearOrientation, CSSValue(orientation));
+  UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
+                            lepus::Value(true));
+}
+
+void ListElement::ResetAttribute(const base::String& key) {
+  FiberElement::ResetAttribute(key);
+
+  if (key.IsEquals(kScrollOrientation) || key.IsEquals(kVerticalOrientation)) {
+    RemoveStyleFromAttributes(kPropertyIDLinearOrientation);
+    MarkStyleDirty(false);
+  }
 }
 
 void ListElement::PropsUpdateFinish() {

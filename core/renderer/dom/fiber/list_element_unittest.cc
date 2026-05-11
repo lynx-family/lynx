@@ -77,6 +77,31 @@ TEST_F(SSRListElement, AttributeStyleCacheMirrorsCommittedStyleCache) {
   EXPECT_EQ(list_element_->PeekCommittedStylesFromAttributes(), nullptr);
 }
 
+TEST_F(SSRListElement, ScrollOrientationAttributeUsesAttributeStyleCache) {
+  list_element_->SetAttributeInternal(base::String("scroll-orientation"),
+                                      lepus::Value("horizontal"));
+
+  const auto* cached_styles = list_element_->PeekCachedStylesFromAttributes();
+  ASSERT_NE(cached_styles, nullptr);
+  auto cached_it =
+      cached_styles->find(CSSPropertyID::kPropertyIDLinearOrientation);
+  ASSERT_TRUE(cached_it != cached_styles->end());
+  EXPECT_EQ(cached_it->second,
+            CSSValue(starlight::LinearOrientationType::kHorizontal));
+
+  const auto* committed_styles =
+      list_element_->PeekCommittedStylesFromAttributes();
+  ASSERT_NE(committed_styles, nullptr);
+  auto committed_it =
+      committed_styles->find(CSSPropertyID::kPropertyIDLinearOrientation);
+  ASSERT_TRUE(committed_it != committed_styles->end());
+  EXPECT_EQ(committed_it->second,
+            CSSValue(starlight::LinearOrientationType::kHorizontal));
+  EXPECT_TRUE(list_element_->parsed_styles_map_.find(
+                  CSSPropertyID::kPropertyIDLinearOrientation) ==
+              list_element_->parsed_styles_map_.end());
+}
+
 TEST_F(SSRListElement, ListElementSSRHelper_ComponentAtIndexInSSR) {
   auto items = std::vector<fml::RefPtr<FiberElement>>();
   ListElementSSRHelper ssr_helper(list_element_.get());

@@ -2119,6 +2119,34 @@ TEST_F(CSSPatchingTest,
 }
 
 TEST_F(CSSPatchingTest,
+       NewStylingApplyResolvedStyleMapEmptyInputReplaysInheritedSideEffects) {
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberText("text");
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  style.SetFontSize(20.0, 16.0);
+  style.SetValue(CSSPropertyID::kPropertyIDDirection,
+                 CSSValue(starlight::DirectionType::kRtl));
+  style.SetValue(CSSPropertyID::kPropertyIDTextAlign,
+                 CSSValue(starlight::TextAlignType::kStart));
+  style.SetResolvedValue(CSSPropertyID::kPropertyIDFontSize,
+                         CSSValue(2, CSSValuePattern::EM));
+
+  StyleMap style_map;
+  element->style_resolver_.ApplyResolvedStyleMap(style, style_map);
+
+  EXPECT_DOUBLE_EQ(style.GetFontSize(), 40.0);
+  EXPECT_TRUE(style.GetChangedBitset().Has(CSSPropertyID::kPropertyIDFontSize));
+  ExpectNumberStyle(style.GetResolvedValues(),
+                    CSSPropertyID::kPropertyIDFontSize, 40);
+  ASSERT_TRUE(style.GetTextAttributes().has_value());
+  EXPECT_EQ(style.GetTextAttributes()->text_align,
+            starlight::TextAlignType::kRight);
+}
+
+TEST_F(CSSPatchingTest,
        NewStylingApplyResolvedStyleMapReanalyzesAfterDirectionChange) {
   auto page = CreatePageRoot(16.0);
   auto element = manager->CreateFiberView();

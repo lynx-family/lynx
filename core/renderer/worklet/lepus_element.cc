@@ -506,15 +506,30 @@ Napi::Object LepusElement::GetComputedStyles(
     return res;
   }
 
-  const auto& styles = element->GetStylesForWorklet();
-  for (const auto& key : keys) {
-    auto iter = styles.find(tasm::CSSProperty::GetPropertyID(key.Utf8Value()));
-    if (iter == styles.end()) {
-      res.Set(key, NapiEnv().Undefined());
-    } else {
-      res.Set(key,
-              Napi::String::New(NapiEnv(), tasm::CSSDecoder::CSSValueToString(
-                                               iter->first, iter->second)));
+  if (element->element_manager()->EnableNewStylingPipeline()) {
+    for (const auto& key : keys) {
+      auto key_string = key.Utf8Value();
+      auto property_id = tasm::CSSProperty::GetPropertyID(key_string);
+      if (property_id == tasm::CSSPropertyID::kPropertyEnd) {
+        res.Set(key, NapiEnv().Undefined());
+        continue;
+      }
+      auto value =
+          element->GetComputedStyleByKey(base::String(std::move(key_string)));
+      res.Set(key, Napi::String::New(NapiEnv(), value.StdString()));
+    }
+  } else {
+    const auto& styles = element->GetStylesForWorklet();
+    for (const auto& key : keys) {
+      auto iter =
+          styles.find(tasm::CSSProperty::GetPropertyID(key.Utf8Value()));
+      if (iter == styles.end()) {
+        res.Set(key, NapiEnv().Undefined());
+      } else {
+        res.Set(key,
+                Napi::String::New(NapiEnv(), tasm::CSSDecoder::CSSValueToString(
+                                                 iter->first, iter->second)));
+      }
     }
   }
 

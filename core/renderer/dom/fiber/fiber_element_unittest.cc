@@ -17728,6 +17728,221 @@ TEST_P(FiberElementTest,
                                         CSSPropertyID::kPropertyIDWidth));
 }
 
+TEST_P(FiberElementTest,
+       NewStylingReplayDynamicResolvedStyleSideEffectsSkipsCommittedIds) {
+  auto element = manager->CreateFiberView();
+
+  StyleMap resolved_style_map;
+  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                                      CSSValue(1, CSSValuePattern::VW));
+  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDTop,
+                                      CSSValue(2, CSSValuePattern::VW));
+  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDFontSize,
+                                      CSSValue(3, CSSValuePattern::VW));
+
+  CSSIDBitset replayed_ids;
+  replayed_ids.Set(CSSPropertyID::kPropertyIDWidth);
+  element->ReplayDynamicResolvedStyleSideEffects(
+      resolved_style_map, DynamicCSSStylesManager::kUpdateViewport,
+      replayed_ids);
+
+  EXPECT_FALSE(LayoutBundleHasStyle(element->layout_bundle_,
+                                    CSSPropertyID::kPropertyIDWidth,
+                                    CSSValue(1, CSSValuePattern::VW)));
+  EXPECT_TRUE(LayoutBundleHasStyle(element->layout_bundle_,
+                                   CSSPropertyID::kPropertyIDTop,
+                                   CSSValue(2, CSSValuePattern::VW)));
+  EXPECT_FALSE(LayoutBundleHasStyle(element->layout_bundle_,
+                                    CSSPropertyID::kPropertyIDFontSize,
+                                    CSSValue(3, CSSValuePattern::VW)));
+}
+
+TEST_P(FiberElementTest, NewStylingCollectDynamicFlagsForResolvedStyleMap) {
+  auto element = manager->CreateFiberView();
+
+  StyleMap resolved_style_map;
+  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                                      CSSValue(10, CSSValuePattern::VW));
+  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDHeight,
+                                      CSSValue(20, CSSValuePattern::PX));
+
+  const auto flags =
+      element->CollectDynamicFlagsForNewPipeline(resolved_style_map);
+
+  EXPECT_TRUE(flags & DynamicCSSStylesManager::kUpdateViewport);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingCollectsDynamicFlagsFromInheritedResolvedValues) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  parent->SetStyle(CSSPropertyID::kPropertyIDLineHeight, lepus::Value("10vw"));
+
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(parent->dynamic_style_flags_ &
+              DynamicCSSStylesManager::kUpdateViewport);
+  EXPECT_TRUE(child->dynamic_style_flags_ &
+              DynamicCSSStylesManager::kUpdateViewport);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingExplicitStyleOverridesInheritedDynamicFlags) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  parent->SetStyle(CSSPropertyID::kPropertyIDLineHeight, lepus::Value("10vw"));
+  child->SetStyle(CSSPropertyID::kPropertyIDLineHeight, lepus::Value("18px"));
+
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(parent->dynamic_style_flags_ &
+              DynamicCSSStylesManager::kUpdateViewport);
+  EXPECT_FALSE(child->dynamic_style_flags_ &
+               DynamicCSSStylesManager::kUpdateViewport);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingInheritedPropertyUpdatePropagatesToChildren) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("red"));
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  const auto first_child_color = child->GetComputedStyleByKey("color");
+  EXPECT_EQ(first_child_color.StdString(),
+            parent->GetComputedStyleByKey("color").StdString());
+
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
+  page->FlushActionsAsRoot();
+
+  const auto updated_child_color = child->GetComputedStyleByKey("color");
+  EXPECT_EQ(updated_child_color.StdString(),
+            parent->GetComputedStyleByKey("color").StdString());
+  EXPECT_NE(first_child_color.StdString(), updated_child_color.StdString());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingInheritedPropertyUpdateKeepsChildExplicitStyle) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("red"));
+  child->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("green"));
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  const auto explicit_child_color = child->GetComputedStyleByKey("color");
+
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(explicit_child_color.StdString(),
+            child->GetComputedStyleByKey("color").StdString());
+  EXPECT_NE(parent->GetComputedStyleByKey("color").StdString(),
+            child->GetComputedStyleByKey("color").StdString());
+}
+
+TEST_P(FiberElementTest, NewStylingSideApisReadCommittedInheritedStyle) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("red"));
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  auto inherited_color =
+      child->GetElementStyle(CSSPropertyID::kPropertyIDColor);
+  ASSERT_TRUE(inherited_color.has_value());
+  EXPECT_TRUE(StyleMapHasValue(child->GetStylesForWorklet(),
+                               CSSPropertyID::kPropertyIDColor,
+                               *inherited_color));
+
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
+  page->FlushActionsAsRoot();
+
+  auto updated_color = child->GetElementStyle(CSSPropertyID::kPropertyIDColor);
+  ASSERT_TRUE(updated_color.has_value());
+  EXPECT_TRUE(StyleMapHasValue(child->GetStylesForWorklet(),
+                               CSSPropertyID::kPropertyIDColor,
+                               *updated_color));
+  EXPECT_NE(CSSDecoder::CSSValueToString(CSSPropertyID::kPropertyIDColor,
+                                         *inherited_color),
+            CSSDecoder::CSSValueToString(CSSPropertyID::kPropertyIDColor,
+                                         *updated_color));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingResolveCoreReportsFontSizeChangesForChildren) {
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  element->ResetAllDirtyBits();
+  element->SetStyle(CSSPropertyID::kPropertyIDFontSize, lepus::Value("20px"));
+
+  FiberElement::NewPipelineResolveRequest request;
+  auto outcome = element->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.need_update);
+  EXPECT_TRUE(outcome.force_children);
+  EXPECT_TRUE(outcome.child_update_flags & DynamicCSSStylesManager::kUpdateEm);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingParallelFlushFallsBackWithoutLevelOrderTraversing) {
+  auto page = manager->CreateFiberPage("page", 11);
+
+  manager->SetEnableParallelElement(true);
+  manager->enable_new_styling_pipeline_ = true;
+  manager->SetEnableLevelOrderTraversing(false);
+  EXPECT_TRUE(page->ShouldFallbackToSerialForNewStylingPipeline());
+
+  manager->SetEnableLevelOrderTraversing(true);
+  EXPECT_FALSE(page->ShouldFallbackToSerialForNewStylingPipeline());
+
+  manager->SetEnableParallelElement(false);
+  manager->SetEnableLevelOrderTraversing(false);
+  EXPECT_FALSE(page->ShouldFallbackToSerialForNewStylingPipeline());
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 

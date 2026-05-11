@@ -485,6 +485,9 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
 
 bool Element::ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value) {
   bool resolve_success = false;
+  if (IsInheritable(id)) {
+    computed_css_style()->SetResolvedValue(id, value);
+  }
   if (computed_css_style()->SetValue(id, value)) {
     // The properties of transition and keyframe no need to be pushed to bundle
     // separately here. Those properties will be pushed to bundle together
@@ -2909,6 +2912,15 @@ void Element::FlushAnimatedStyleInternal(tasm::CSSPropertyID id,
 }
 
 std::optional<CSSValue> Element::GetElementStyle(tasm::CSSPropertyID css_id) {
+  if (element_manager_ && element_manager_->EnableNewStylingPipeline()) {
+    const auto& resolved_values = computed_css_style()->GetResolvedValues();
+    auto iter = resolved_values.find(css_id);
+    if (iter != resolved_values.end()) {
+      return iter->second;
+    }
+    return {};
+  }
+
   auto iter = parsed_styles_map_.find(css_id);
   if (iter != parsed_styles_map_.end()) {
     return iter->second;
