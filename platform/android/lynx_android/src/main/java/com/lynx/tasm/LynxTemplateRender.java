@@ -113,6 +113,60 @@ public class LynxTemplateRender
     implements ILynxEngine, ILynxErrorReceiver, EventEmitter.LynxEventFallback {
   private static final String TAG = "LynxTemplateRender";
 
+  private static final class RenderLynxContext extends LynxContext {
+    private final WeakReference<LynxTemplateRender> mRenderRef;
+
+    RenderLynxContext(Context base, DisplayMetrics screenMetrics, LynxTemplateRender render) {
+      super(base, screenMetrics);
+      mRenderRef = new WeakReference<>(render);
+    }
+
+    @Override
+    public void handleException(Exception e) {
+      LynxTemplateRender render = mRenderRef.get();
+      if (render != null) {
+        render.onExceptionOccurred(LynxSubErrorCode.E_EXCEPTION_PLATFORM, e, null);
+      }
+    }
+
+    @Override
+    public void handleException(Exception e, JSONObject userDefinedInfo) {
+      LynxTemplateRender render = mRenderRef.get();
+      if (render != null) {
+        render.onExceptionOccurred(LynxSubErrorCode.E_EXCEPTION_PLATFORM, e, userDefinedInfo);
+      }
+    }
+
+    @Deprecated
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    @Override
+    public void handleException(Exception e, int errCode) {
+      LynxTemplateRender render = mRenderRef.get();
+      if (render != null) {
+        render.onExceptionOccurred(errCode, e, null);
+      }
+    }
+
+    @Deprecated
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    @Override
+    public void handleException(Exception e, int errCode, JSONObject userDefinedInfo) {
+      LynxTemplateRender render = mRenderRef.get();
+      if (render != null) {
+        render.onExceptionOccurred(errCode, e, userDefinedInfo);
+      }
+    }
+
+    @Override
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    public void handleLynxError(LynxError error) {
+      LynxTemplateRender render = mRenderRef.get();
+      if (render != null) {
+        render.onErrorOccurred(error);
+      }
+    }
+  }
+
   private final TemplateAssembler mTemplateAssembler = new TemplateAssembler();
 
   private InnerPageLoadListener mPageLoadListener;
@@ -390,38 +444,8 @@ public class LynxTemplateRender
     }
 
     // Prepare for env
-    mLynxContext =
-        new LynxContext(context != null ? context : LynxEnv.inst().getAppContext(), screenMetrics) {
-          @Override
-          public void handleException(Exception e) {
-            onExceptionOccurred(LynxSubErrorCode.E_EXCEPTION_PLATFORM, e, null);
-          }
-
-          @Override
-          public void handleException(Exception e, JSONObject userDefinedInfo) {
-            onExceptionOccurred(LynxSubErrorCode.E_EXCEPTION_PLATFORM, e, userDefinedInfo);
-          }
-
-          @Deprecated
-          @RestrictTo(RestrictTo.Scope.LIBRARY)
-          @Override
-          public void handleException(Exception e, int errCode) {
-            onExceptionOccurred(errCode, e, null);
-          }
-
-          @Deprecated
-          @RestrictTo(RestrictTo.Scope.LIBRARY)
-          @Override
-          public void handleException(Exception e, int errCode, JSONObject userDefinedInfo) {
-            onExceptionOccurred(errCode, e, userDefinedInfo);
-          }
-
-          @Override
-          @RestrictTo(RestrictTo.Scope.LIBRARY)
-          public void handleLynxError(LynxError error) {
-            onErrorOccurred(error);
-          }
-        };
+    mLynxContext = new RenderLynxContext(
+        context != null ? context : LynxEnv.inst().getAppContext(), screenMetrics, this);
     mLynxContext.setRuntimeCacheManager(this.mCacheManager);
     mTemplateAssembler.setLynxContext(mLynxContext);
 
