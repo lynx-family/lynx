@@ -48,8 +48,8 @@ class AdapterTask {
 JsTaskAdapter::JsTaskAdapter(base::UnsafeWeakPtr<Runtime> rt,
                              const tasm::PageOptions& page_options)
     : manager_(std::make_unique<base::TimedTaskManager>()),
-      micro_tasks_(
-          std::make_shared<std::unordered_map<uint64_t, base::closure>>()),
+      micro_tasks_(base::MakeUnsafeOwning<
+                   std::unordered_map<uint64_t, base::closure>>()),
       current_micro_task_id_(0),
       runner_(fml::MessageLoop::GetCurrent().GetTaskRunner()),
       rt_(std::move(rt)),
@@ -77,10 +77,8 @@ void JsTaskAdapter::QueueMicrotask(Function func, uint64_t trace_flow_id) {
   auto current_id = current_micro_task_id_++;
   micro_tasks_->emplace(current_id, std::move(task));
   runner_->PostMicroTask(fml::MakeCopyable(
-      [current_id,
-       weak_tasks = std::weak_ptr<std::unordered_map<uint64_t, base::closure>>(
-           micro_tasks_)]() mutable {
-        auto tasks = weak_tasks.lock();
+      [current_id, weak_tasks = micro_tasks_.GetWeakPtr()]() mutable {
+        auto* tasks = weak_tasks.Lock();
         if (tasks) {
           auto it = tasks->find(current_id);
           if (it != tasks->end()) {

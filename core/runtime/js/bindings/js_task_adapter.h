@@ -54,7 +54,8 @@ class JsTaskAdapter {
                          uint64_t trace_flow_id);
 
   std::unique_ptr<base::TimedTaskManager> manager_;
-  std::shared_ptr<std::unordered_map<uint64_t, base::closure>> micro_tasks_;
+  base::UnsafeOwningPtr<std::unordered_map<uint64_t, base::closure>>
+      micro_tasks_;
   uint64_t current_micro_task_id_;
 
   // bind to thread which JsTaskAdapter created.
