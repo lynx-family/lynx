@@ -172,6 +172,9 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
       mTruncationSpannableString = new SpannableStringBuilder();
       buildSpannableString(
           (SpannableStringBuilder) mTruncationSpannableString, mTruncationShadowNode);
+      getTextAttributes().mHasImageSpan |= mTruncationShadowNode.getTextAttributes().mHasImageSpan;
+      getTextAttributes().mHasInlineViewSpan |=
+          mTruncationShadowNode.getTextAttributes().mHasInlineViewSpan;
 
       getTextAttributes().setTextOverflow(TEXTOVERFLOW_CLIP);
     }
