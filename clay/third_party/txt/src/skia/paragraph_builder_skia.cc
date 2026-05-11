@@ -42,6 +42,18 @@ SkFontStyle MakeSkFontStyle(txt::FontWeight font_weight,
                                            : SkFontStyle::Slant::kItalic_Slant);
 }
 
+skt::WordBreak ToSkiaWordBreak(txt::WordBreak word_break) {
+  switch (word_break) {
+    case txt::kNormal:
+      return skt::WordBreak::kNormal;
+    case txt::kBreakAll:
+      return skt::WordBreak::kBreakAll;
+    case txt::kKeepAll:
+      return skt::WordBreak::kKeepAll;
+  }
+  return skt::WordBreak::kNormal;
+}
+
 }  // anonymous namespace
 
 ParagraphBuilderSkia::ParagraphBuilderSkia(
@@ -160,6 +172,7 @@ skt::TextStyle ParagraphBuilderSkia::TxtToSkia(const TextStyle& txt) {
   skia.setFontSize(SkDoubleToScalar(txt.font_size));
   skia.setLetterSpacing(SkDoubleToScalar(txt.letter_spacing));
   skia.setWordSpacing(SkDoubleToScalar(txt.word_spacing));
+  skia.setWordBreak(ToSkiaWordBreak(txt.word_break));
   skia.setHeight(SkDoubleToScalar(txt.height));
   skia.setHeightOverride(txt.has_height_override);
 

@@ -4,19 +4,17 @@
 
 #include "clay/ui/gesture/multi_tap_gesture_recognizer.h"
 
+#include <algorithm>
 #include <memory>
 
+#include "clay/fml/logging.h"
 #include "clay/ui/common/isolate.h"
 #include "clay/ui/gesture/gesture_manager.h"
 #include "clay/ui/gesture/macros.h"
 
 namespace clay {
 
-#if (defined(OS_MAC) || defined(OS_WIN))
-constexpr float kMultiTapSlop = 2.5f;
-#else
 constexpr float kMultiTapSlop = 18.f;
-#endif
 constexpr uint64_t kMultiTapTimeout = 300;
 
 TapTracker::TapTracker(GestureManager* gesture_manager,
@@ -53,8 +51,10 @@ void TapTracker::Resolve(GestureDisposition disposition) {
 
 void MultiTapGestureRecognizer::AddAllowedPointer(const PointerEvent& pointer) {
   if (last_tap_) {
+    int platform_tap_count = pointer.platform_data;
     if ((first_tap_position_ - pointer.position).distance() >=
-        gesture_manager_->ConvertFrom<kPixelTypeLogical>(kMultiTapSlop)) {
+            gesture_manager_->ConvertFrom<kPixelTypeLogical>(kMultiTapSlop) &&
+        platform_tap_count <= current_taps_) {
       // Don't reject. Just abandon this tap as latter taps can trigger gesture.
       GESTURE_LOG << "New pointer's position is too far from the first tap. "
                      "Discard this pointer.";
@@ -103,7 +103,7 @@ void MultiTapGestureRecognizer::HandleMultiTap(
     GESTURE_LOG << "MultiTap timeout!";
     Reset();
   });
-  current_taps_++;
+  current_taps_ = std::max(current_taps_ + 1, tracker->pointer().platform_data);
   if (last_tap_) {
     last_tap_->Resolve(GestureDisposition::kAccept);
   } else {

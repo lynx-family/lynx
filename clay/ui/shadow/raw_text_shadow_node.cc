@@ -10,7 +10,6 @@
 #include <optional>
 #include <utility>
 
-#include "base/include/string/string_utils.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/text/layout_context.h"
@@ -26,8 +25,6 @@
 
 namespace clay {
 
-static const char16_t kZeroWidthJoinerCharacter = u'\u200D';
-static const char16_t kZeroWidthSpaceCharacter = u'\u200B';
 static const char16_t kZeroWidthWordJoinerCharacter = u'\u2060';
 
 namespace {
@@ -134,17 +131,7 @@ std::u16string RawTextShadowNode::ProcessWordBreakIfNeed(
     parent = parent->Parent();
   }
   if (word_break == WordBreak::kBreakAll) {
-    std::u16string res;
-    res.reserve(text.length());
-    for (size_t i = 0; i < text.length(); i++) {
-      res.push_back(text[i]);
-      if (i < text.length() - 1 && !lynx::base::IsLeadingSurrogate(text[i]) &&
-          text[i + 1] != kZeroWidthJoinerCharacter &&
-          text[i] != kZeroWidthJoinerCharacter) {
-        res.push_back(kZeroWidthSpaceCharacter);
-      }
-    }
-    return res;
+    return text;
   } else if (word_break == WordBreak::kKeepAll) {
     std::u16string res;
     res.reserve(text.length());

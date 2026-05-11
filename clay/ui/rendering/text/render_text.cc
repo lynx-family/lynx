@@ -13,6 +13,7 @@
 
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rect.h"
+#include "clay/gfx/paint.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/style/color_source.h"
 #include "clay/gfx/style/tile_mode.h"
@@ -26,7 +27,9 @@ namespace clay {
 
 namespace {
 
+constexpr float kCaretWidth = 1.0f;
 constexpr uint32_t kSelectionColor = 0x402196F3;  // material blue[200]
+constexpr uint32_t kCaretColor = 0xff000000;
 
 }  // namespace
 
@@ -171,6 +174,7 @@ void RenderText::PaintText(GraphicsContext* graphics_context,
   if (select_end_ != select_start_) {
     PaintSelection(graphics_context);
   }
+  PaintCaret(graphics_context);
 }
 
 void RenderText::PaintInlineEmojis(GraphicsContext* graphics_context,
@@ -203,6 +207,13 @@ void RenderText::SetSelection(const TextRange& range) {
   MarkNeedsPaint();
 }
 
+void RenderText::SetCaretVisible(bool visible) {
+  if (caret_visible_ != visible) {
+    caret_visible_ = visible;
+    MarkNeedsPaint();
+  }
+}
+
 void RenderText::SetAllSelection() {
   SetSelection(TextRange(0, text_.length()));
 }
@@ -219,6 +230,63 @@ void RenderText::PaintSelection(GraphicsContext* context) {
     PATH_ADD_RECT(path, box.rect);
   }
   context->DrawPath(path, paint);
+}
+
+void RenderText::PaintCaret(GraphicsContext* context) {
+  if (!caret_visible_ || !IsCollapsed() || select_end_ < 0 || !paragraph_) {
+    return;
+  }
+  auto caret_rect = ComputeCaretRect();
+  if (caret_rect.IsEmpty()) {
+    return;
+  }
+  class Paint paint;
+  paint.setColor(kCaretColor);
+  context->DrawRect(caret_rect, paint);
+}
+
+FloatRect RenderText::ComputeCaretRect() const {
+  if (!painter_ || !paragraph_) {
+    return FloatRect();
+  }
+
+  int caret_offset =
+      std::clamp(select_end_, 0, static_cast<int>(text_.length()));
+  if (!text_.empty() && caret_offset < static_cast<int>(text_.length())) {
+    auto boxes = painter_->GetRectsForRange(caret_offset, caret_offset + 1,
+                                            RectHeightStyle::kStrut,
+                                            RectWidthStyle::kTight);
+    if (!boxes.empty()) {
+      const auto& rect = boxes.front().rect;
+      return FloatRect(rect.x(), rect.y(), kCaretWidth, rect.height());
+    }
+  }
+
+  if (caret_offset > 0) {
+    auto boxes = painter_->GetRectsForRange(caret_offset - 1, caret_offset,
+                                            RectHeightStyle::kMax,
+                                            RectWidthStyle::kTight);
+    if (!boxes.empty()) {
+      const auto& rect = boxes.back().rect;
+      return FloatRect(rect.MaxX(), rect.y(), kCaretWidth, rect.height());
+    }
+  }
+
+  double line_height = painter_->GetLineHeightForPosition(caret_offset);
+  if (line_height <= 0 && !text_.empty()) {
+    line_height =
+        painter_->GetLineHeightForPosition(std::max(caret_offset - 1, 0));
+  }
+  if (line_height <= 0) {
+    auto metrics = paragraph_->GetLineMetrics();
+    if (!metrics.empty()) {
+      line_height = metrics.front().height;
+    }
+  }
+  if (line_height <= 0) {
+    return FloatRect();
+  }
+  return FloatRect(0, 0, kCaretWidth, line_height);
 }
 
 std::u16string RenderText::GetSelectionString() const {

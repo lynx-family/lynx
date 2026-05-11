@@ -56,6 +56,7 @@ class RenderText : public RenderBox {
   void SetAllSelection();
 
   void PaintSelection(GraphicsContext* context);
+  void PaintCaret(GraphicsContext* context);
 
   std::u16string GetSelectionString() const;
 
@@ -81,6 +82,8 @@ class RenderText : public RenderBox {
 
   bool IsCollapsed() { return select_start_ == select_end_; }
 
+  void SetCaretVisible(bool visible);
+
   TextBox GetLeftTextBox();
   TextBox GetRightTextBox();
   TextBox GetEndTextPositionTopAndBottom() const;
@@ -103,6 +106,7 @@ class RenderText : public RenderBox {
   void PaintText(GraphicsContext* graphics_context, const FloatPoint& offset);
   void PaintInlineEmojis(GraphicsContext* graphics_context, double x_offset,
                          double y_offset);
+  FloatRect ComputeCaretRect() const;
 
   struct InlineEmojiRenderInfo {
     fml::RefPtr<GraphicsImage> image;
@@ -110,6 +114,7 @@ class RenderText : public RenderBox {
 
   SelectionChangedCallback selection_changed_callback_;
   std::unordered_map<int, InlineEmojiRenderInfo> inline_emojis_;
+  bool caret_visible_ = false;
 };
 
 }  // namespace clay

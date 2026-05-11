@@ -153,6 +153,23 @@ NSData* currentKeyboardLayoutData() {
   return (__bridge_transfer NSData*)CFRetain(layout_data);
 }
 
+NSInteger GetClickCountIfAvailable(NSEvent* event) {
+  switch (event.type) {
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeRightMouseDragged:
+    case NSEventTypeOtherMouseDown:
+    case NSEventTypeOtherMouseUp:
+    case NSEventTypeOtherMouseDragged:
+      return event.clickCount;
+    default:
+      return 0;
+  }
+}
+
 }  // namespace
 
 #pragma mark - Private interface declaration.
@@ -514,6 +531,8 @@ static void CommonInit(ClayViewProvider* controller) {
 }
 
 - (void)dispatchMouseEvent:(NSEvent*)event phase:(ClayPointerPhase)phase {
+  NSInteger clickCount = GetClickCountIfAvailable(event);
+
   // There are edge cases where the system will deliver enter out of order relative to other
   // events (e.g., drag out and back in, release, then click; mouseDown: will be called before
   // mouseEntered:). Discard those events, since the add will already have been synthesized.
@@ -599,6 +618,7 @@ static void CommonInit(ClayViewProvider* controller) {
       // If a click triggered a synthesized kAdd, don't pass the buttons in that event.
       .buttons = phase == kClayPointerPhaseAdd ? 0 : _mouseState.buttons,
       .is_precise_scroll = 1,
+      .platform_data = clickCount,
   };
 
   if (phase == kClayPointerPhasePanZoomUpdate) {

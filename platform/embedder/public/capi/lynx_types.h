@@ -672,6 +672,9 @@ typedef struct lynx_pointer_event_t {
   double rotation;
   /// Whether the event is triggered by the touchpad
   size_t is_precise_scroll;
+  /// Platform-specific pointer metadata. macOS uses this for NSEvent
+  /// clickCount.
+  int64_t platform_data;
 } lynx_pointer_event_t;
 
 /// A structure to represent a key event.

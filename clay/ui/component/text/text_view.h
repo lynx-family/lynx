@@ -77,8 +77,9 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void PerformMoveSelection(FloatPoint point,
                             SelectionHandleView* handle_bar = nullptr);
   void PerformCancelSelection();
-
-  TextRange SelectWord(size_t pos);
+  void MoveCaretTo(FloatPoint point);
+  void SelectWordAt(FloatPoint point);
+  void SelectLineAt(FloatPoint point);
 
   void OnSelectionChanged(int selection_start, int selection_end);
 
@@ -143,8 +144,8 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   bool ClickOnText(size_t glyph_index, const FloatPoint& point_by_paragraph,
                    txt::Paragraph* paragraph);
   bool is_text_selection_ = false;
+  MultiTapGestureRecognizer* multi_tap_recognizer_ = nullptr;
 #if defined(OS_ANDROID) || defined(OS_IOS)
-  MultiTapGestureRecognizer* double_tap_recognizer_ = nullptr;
   LongPressGestureRecognizer* long_press_recognizer_ = nullptr;
 #else
   DragGestureRecognizer* drag_recognizer_ = nullptr;

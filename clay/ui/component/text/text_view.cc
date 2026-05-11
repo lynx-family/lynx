@@ -7,10 +7,12 @@
 #include <algorithm>
 #include <cstddef>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
+#include "base/include/string/string_utils.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rect.h"
@@ -42,6 +44,9 @@ LYNX_UI_METHOD_BEGIN(TextView) {
 LYNX_UI_METHOD_END(TextView);
 
 constexpr int kDefaultContentDistance = 12;
+
+constexpr int kDoubleTapCount = 2;
+constexpr int kTripleTapCount = 3;
 
 // Hot key tags.
 constexpr uint32_t kTagCommand = 1;
@@ -199,10 +204,10 @@ void TextView::UpdateHotKeyTag(LogicalKeyboardKey key_code, bool is_up) {
 }
 
 void TextView::ClearGestureRecognizers() {
+  RemoveGestureRecognizer(multi_tap_recognizer_);
+  multi_tap_recognizer_ = nullptr;
 #if defined(OS_ANDROID) || defined(OS_IOS)
   RemoveGestureRecognizer(long_press_recognizer_);
-  RemoveGestureRecognizer(double_tap_recognizer_);
-  double_tap_recognizer_ = nullptr;
   long_press_recognizer_ = nullptr;
 #else
   RemoveGestureRecognizer(drag_recognizer_);
@@ -242,31 +247,43 @@ void TextView::HandleWinCtrlAndMacCommandHotKey(LogicalKeyboardKey key_code) {
 
 void TextView::ResetGestureRecognizers() {
   ClearGestureRecognizers();
-#if defined(OS_ANDROID) || defined(OS_IOS)
 #ifndef ENABLE_CLAY_LITE
-  auto double_tap_recognizer = std::make_unique<MultiTapGestureRecognizer>(
+  auto multi_tap_recognizer = std::make_unique<MultiTapGestureRecognizer>(
       page_view()->gesture_manager());
-  double_tap_recognizer_ = double_tap_recognizer.get();
-  double_tap_recognizer->SetMultiTapCallback(
+  multi_tap_recognizer_ = multi_tap_recognizer.get();
+  multi_tap_recognizer->SetMultiTapCallback(
       [this](const PointerEvent& up_event, int tap_counts) {
-        if (tap_counts == 2) {
-          auto point = up_event.position - BoundsRelativeTo(nullptr).location();
-          RequestFocus();
-          auto render_text = GetRenderText();
-          auto glyph_pos =
-              render_text->GetPainter()->GetGlyphPositionAtCoordinate(
-                  point.x(), point.y());
-          auto word = SelectWord(glyph_pos.first);
-          render_text->SetSelection(word);
-          auto range = GetRenderText()->GetSelection();
-          selection_start_pos_ = range.start();
-          selection_end_pos_ = range.end();
+        auto point = up_event.position - BoundsRelativeTo(nullptr).location();
+        if (tap_counts == 1) {
+#if !defined(OS_ANDROID) && !defined(OS_IOS)
+          MoveCaretTo(point);
+#endif
+          return;
+        }
+        if (tap_counts == kDoubleTapCount) {
+          SelectWordAt(point);
+#if defined(OS_ANDROID) || defined(OS_IOS)
           ShowSelectionHandle();
           if (!custom_context_menu_) {
             ShowSelectionPopup();
           }
+#endif
+          return;
+        }
+        if (tap_counts == kTripleTapCount) {
+          SelectLineAt(point);
+#if defined(OS_ANDROID) || defined(OS_IOS)
+          ShowSelectionHandle();
+          if (!custom_context_menu_) {
+            ShowSelectionPopup();
+          }
+#endif
         }
       });
+  AddGestureRecognizer(std::move(multi_tap_recognizer));
+#endif
+#if defined(OS_ANDROID) || defined(OS_IOS)
+#ifndef ENABLE_CLAY_LITE
   auto long_press_recognizer = std::make_unique<LongPressGestureRecognizer>(
       page_view()->gesture_manager());
   long_press_recognizer_ = long_press_recognizer.get();
@@ -283,7 +300,6 @@ void TextView::ResetGestureRecognizers() {
         }
       });
   AddGestureRecognizer(std::move(long_press_recognizer));
-  AddGestureRecognizer(std::move(double_tap_recognizer));
 #endif
 #else
   auto drag_recognizer =
@@ -303,13 +319,6 @@ void TextView::ResetGestureRecognizers() {
       [this]() { PerformCancelSelection(); });
   AddGestureRecognizer(std::move(drag_recognizer));
 #endif
-}
-
-TextRange TextView::SelectWord(size_t pos) {
-  auto painter = GetRenderText()->GetPainter();
-  auto word_range = painter->GetWordBoundary(pos);
-  GetRenderText()->SetSelection(word_range);
-  return word_range;
 }
 
 void TextView::PerformBeginSelection(FloatPoint point) {
@@ -345,6 +354,54 @@ void TextView::PerformMoveSelection(FloatPoint point,
 void TextView::PerformCancelSelection() {
   HideSelectionPopup();
   HideSelectionHandle();
+}
+
+void TextView::MoveCaretTo(FloatPoint point) {
+#ifndef ENABLE_CLAY_LITE
+  RequestFocus();
+  auto render_text = GetRenderText();
+  auto glyph_pos = render_text->GetPainter()->GetGlyphPositionAtCoordinate(
+      point.x(), point.y());
+  selection_start_pos_ = glyph_pos.first;
+  selection_end_pos_ = selection_start_pos_;
+  render_text->SetCaretVisible(true);
+  render_text->SetSelection(
+      TextRange(selection_start_pos_, selection_end_pos_));
+  HideSelectionPopup();
+  HideSelectionHandle();
+#endif
+}
+
+void TextView::SelectWordAt(FloatPoint point) {
+#ifndef ENABLE_CLAY_LITE
+  RequestFocus();
+  auto render_text = GetRenderText();
+  auto glyph_pos = render_text->GetPainter()->GetGlyphPositionAtCoordinate(
+      point.x(), point.y());
+  auto word = render_text->GetPainter()->GetWordBoundary(glyph_pos.first);
+  if (word.collapsed() && glyph_pos.first > 0) {
+    word = render_text->GetPainter()->GetWordBoundary(glyph_pos.first - 1);
+  }
+  render_text->SetSelection(word);
+  render_text->SetCaretVisible(false);
+  selection_start_pos_ = word.start();
+  selection_end_pos_ = word.end();
+#endif
+}
+
+void TextView::SelectLineAt(FloatPoint point) {
+#ifndef ENABLE_CLAY_LITE
+  RequestFocus();
+  auto render_text = GetRenderText();
+  auto glyph_pos = render_text->GetPainter()->GetGlyphPositionAtCoordinate(
+      point.x(), point.y());
+  auto line =
+      render_text->GetPainter()->GetLineRangeForPosition(glyph_pos.first);
+  render_text->SetCaretVisible(false);
+  render_text->SetSelection(line);
+  selection_start_pos_ = line.start();
+  selection_end_pos_ = line.end();
+#endif
 }
 
 void TextView::OnSelectionChanged(int selection_start, int selection_end) {
@@ -467,6 +524,7 @@ void TextView::FocusHasChanged(bool focused, bool is_leaf) {
 #ifndef ENABLE_CLAY_LITE
   GetRenderText()->SetSelection(
       TextRange(selection_end_pos_, selection_end_pos_));
+  GetRenderText()->SetCaretVisible(focused && selection_end_pos_ >= 0);
 #endif
   BaseView::FocusHasChanged(focused, is_leaf);
   HideSelectionPopup();
@@ -853,6 +911,7 @@ void TextView::HandleCopy() {
   page_view()->SetClipboardData(editing_text);
   GetRenderText()->SetSelection(
       TextRange(selection_end_pos_, selection_end_pos_));
+  GetRenderText()->SetCaretVisible(true);
   page_view()->GetTaskRunner()->PostTask([weak = weak_factory_.GetWeakPtr()]() {
     if (weak) {
       weak->HideSelectionPopup();

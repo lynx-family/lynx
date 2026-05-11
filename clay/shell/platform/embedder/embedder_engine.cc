@@ -355,6 +355,7 @@ bool EmbedderEngine::SendPointerEvent(const ClayPointerEvent* pointers,
     pointer_data.rotation = SAFE_ACCESS(current, rotation, 0.0);
     pointer_data.is_precise_scroll =
         SAFE_ACCESS(current, is_precise_scroll, true);
+    pointer_data.platformData = SAFE_ACCESS(current, platform_data, 0);
     packet->SetPointerData(i, pointer_data);
     current = reinterpret_cast<const ClayPointerEvent*>(
         reinterpret_cast<const uint8_t*>(current) + current->struct_size);
