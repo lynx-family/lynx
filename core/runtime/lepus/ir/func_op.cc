@@ -140,7 +140,7 @@ Value* FuncOp::GetClosureVarGivenReg(uint32_t closure_reg) {
 long FuncOp::GetClosureVarToplevelReg(long index) {
   auto it = upvalue_index_to_toplevel_reg_.find(index);
   if (it == upvalue_index_to_toplevel_reg_.end()) {
-    return -1;
+    return static_cast<long>(constants::kInvalidSignedValue);
   }
   return it->second;
 }

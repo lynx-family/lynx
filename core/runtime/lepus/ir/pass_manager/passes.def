@@ -35,6 +35,7 @@ PASS(LoadNullEliminationPass, "load-null-elimination", "eliminate redundant Load
 PASS(CSE, "cse", "Common subexpression elimination")
 PASS(LoadStoreElimination, "load-store-elimination", "eliminate redundant heap load and stores")
 PASS(SpecialProcessForUnaryOperatorInst, "special-process-for-unary-operator-inst", "special process for unary operator inst")
+PASS(LoadConstRematerializationPass, "load-const-rematerialization", "adaptively rematerialize long-lived scalar const loads near aggregate uses")
 
 
 PASS(RegisterAllocationPass, "reg-alloc-pass", "register allocation")

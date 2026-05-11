@@ -113,8 +113,11 @@ TEST_F(LEPUSIRTestLoadStoreEliminationComplex, CrossTypeLiteralAliasing) {
                                     0, "entry");
   builder.SetInsertionPointToEnd(entry);
 
-  auto* obj = builder.Create<GetGlobalInst>(0, builder.GetLiteralUint32(0),
-                                            TypeOp::CreateAnyType(&builder));
+  // Store-to-load forwarding is only sound when the receiver kind is known.
+  // Use a fresh table here so LSE can safely prove the receiver really accepts
+  // string property stores, while still exercising cross-representation key
+  // matching between LoadConstInst(string) and const-string-key index.
+  auto* obj = builder.Create<NewTableInst>(0);
 
   // LoadConst with string "1"
   auto* key_str = builder.Create<LoadConstInst>(
@@ -225,8 +228,12 @@ TEST_F(LEPUSIRTestLoadStoreEliminationComplex,
                                     0, "entry");
   builder.SetInsertionPointToEnd(entry);
 
-  auto* obj = builder.Create<GetGlobalInst>(0, builder.GetLiteralUint32(0),
-                                            TypeOp::CreateAnyType(&builder));
+  // This case verifies key canonicalization between:
+  //   - SetTableInst(obj, LoadConstInst("foo"), value)
+  //   - GetTableConstStringKeyInst(obj, foo_idx)
+  // Store-to-load forwarding is only sound when receiver kind is known, so use
+  // a fresh table instead of an `any`-typed global object.
+  auto* obj = builder.Create<NewTableInst>(0);
   auto* key_lit = builder.GetLiteralUint32(foo_idx);
   auto* key_load_const =
       builder.Create<LoadConstInst>(0, key_lit, TypeOp::CreateString(&builder));

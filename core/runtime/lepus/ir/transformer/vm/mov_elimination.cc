@@ -426,9 +426,10 @@ bool MovEliminationPass::EliminateCallFuncMov(FuncOp* func,
       unsigned src_reg_idx = ra->GetRegister(src_inst).GetIndex();
 
       if (dst_reg_idx == src_reg_idx) {
-        throw ::lynx::lepus::CompileException(
-            "Lepus IR error: MovEliminationPass::EliminateCallFuncMov "
-            "call-func MOV has dst_reg == src_reg");
+        // Post-RA rewrites may coalesce the call-func MOV into a self-move.
+        // Let RemoveMovWithSameSrcAndDst() canonicalize and erase it in the
+        // same iteration instead of treating it as a hard invariant violation.
+        continue;
       }
 
       // Conservative safety: avoid assigning to the same register as any

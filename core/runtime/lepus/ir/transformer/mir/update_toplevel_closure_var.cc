@@ -8,10 +8,27 @@
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/transformer/vm/reg_alloc.h"
 #include "core/runtime/lepus/ir/type_op.h"
+#include "core/runtime/lepus/vm_context.h"
 
 namespace lynx {
 namespace lepus {
 namespace ir {
+
+long ResolveRootFuncDeoptSlotByName(VMContext* vm_ctx,
+                                    const UpvalueInfo* upvalue) {
+  // In root-function deopt mode, child closures reconnect to the VMContext's
+  // logical toplevel slots by variable name instead of the optimized root
+  // function's physical registers.
+  const auto& toplevel_vars = vm_ctx->GetToplevelVariables();
+  auto it = toplevel_vars.find(upvalue->name_);
+  if (it == toplevel_vars.end()) {
+    throw ::lynx::lepus::CompileException(
+        "Lepus IR error: UpdateToplevelClosureVar failed to resolve root "
+        "function deopt slot for child upvalue by name");
+  }
+  return it->second;
+}
+
 void UpdateToplevelClosureVar::ProcessChildFunction(FuncOp* parent_func_op) {
   if (!parent_func_op) return;
   auto parent_func = parent_func_op->GetLepusFunction();
@@ -60,8 +77,12 @@ bool UpdateToplevelClosureVar::RunOnModule(ModuleOp* mod) {
         "Lepus IR error: UpdateToplevelClosureVar requires RegisterAllocator "
         "analysis");
   }
+  auto* target_ctx = ir_ctx_->GetTargetContext();
+  target_ctx->PlanRootFuncDeopt(mod);
+  bool root_func_deopt = target_ctx->IsRootFuncDeopt();
 
-  if (LEPUS_UNLIKELY(toplevel_func_op_->GetClosureVarReg2ValueMap().size() !=
+  if (!root_func_deopt &&
+      LEPUS_UNLIKELY(toplevel_func_op_->GetClosureVarReg2ValueMap().size() !=
                      toplevel_func_op_->GetToplevelClosureVarRegs().size())) {
     throw ::lynx::lepus::CompileException(
         "Lepus IR error: UpdateToplevelClosureVar detected mismatch in global "
@@ -75,6 +96,7 @@ bool UpdateToplevelClosureVar::RunOnModule(ModuleOp* mod) {
         "have no upvalues");
   }
 
+  auto* vm_ctx = ir_ctx_->GetVMContext();
   for (auto child : lepus_function->GetChildFunction()) {
     auto* child_func_op = ir_ctx_->GetFuncOp(child);
     if (LEPUS_UNLIKELY(!child_func_op)) {
@@ -91,23 +113,27 @@ bool UpdateToplevelClosureVar::RunOnModule(ModuleOp* mod) {
       }
 
       auto old_reg = upvalue->register_;
-      auto value = toplevel_func_op_->GetClosureVarGivenReg(old_reg);
-      if (LEPUS_UNLIKELY(!value)) {
-        throw ::lynx::lepus::CompileException(
-            "Lepus IR error: UpdateToplevelClosureVar failed to find closure "
-            "value for old reg");
+      long new_reg = old_reg;
+      if (root_func_deopt) {
+        new_reg = ResolveRootFuncDeoptSlotByName(vm_ctx, upvalue);
+      } else {
+        auto value = toplevel_func_op_->GetClosureVarGivenReg(old_reg);
+        if (LEPUS_UNLIKELY(!value)) {
+          throw ::lynx::lepus::CompileException(
+              "Lepus IR error: UpdateToplevelClosureVar failed to find closure "
+              "value for old reg");
+        }
+        if (LEPUS_UNLIKELY(!(value->GetClosureVarReg() == old_reg ||
+                             value->GetToplevelVarReg() == old_reg))) {
+          throw ::lynx::lepus::CompileException(
+              "Lepus IR error: UpdateToplevelClosureVar detected inconsistent "
+              "closure var mapping");
+        }
+        new_reg = static_cast<long>(ra_->GetRegister(value).GetIndex());
       }
-      // `ChangeSpecialAttributePass` may clear `ClosureVarReg` when it is
-      // redundant with `ToplevelVarReg`. Also accept cases where the mapping
-      // key is still correct but `ClosureVarReg` is not attached to `value`.
-      if (LEPUS_UNLIKELY(!(value->GetClosureVarReg() == old_reg ||
-                           value->GetToplevelVarReg() == old_reg))) {
-        throw ::lynx::lepus::CompileException(
-            "Lepus IR error: UpdateToplevelClosureVar detected inconsistent "
-            "closure var mapping");
-      }
-      auto new_reg = ra_->GetRegister(value).GetIndex();
 
+      // This side table stores either the optimized root physical register or
+      // the resolved root-function deopt slot, depending on the selected path.
       child_func_op->RecordUpvalueIndex2ToplevelReg(i, new_reg);
     }
 

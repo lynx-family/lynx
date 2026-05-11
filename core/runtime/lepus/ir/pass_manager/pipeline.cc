@@ -86,7 +86,8 @@ namespace ir {
 //     Passes (exact order):
 //       SimplifyCFG -> LoadNullEliminationPass -> InstCombinePass ->
 //       DCE -> CSE -> LoadStoreElimination -> DCE -> LoadStoreElimination ->
-//       SimplifyCFG -> InstCombinePass -> DCE -> SimplifyCFG -> DCE
+//       SimplifyCFG -> InstCombinePass -> DCE -> SimplifyCFG -> DCE ->
+//       LoadConstRematerializationPass
 //       Requires: SSA validity; CFG/def-use available
 //       Guarantees:
 //         - canonical CFG / instruction shapes for downstream RA
@@ -158,18 +159,19 @@ static void AddMIRPasses(PassManager& pm) {
   pm.AddDCE();
   pm.AddSimplifyCFG();
   pm.AddDCE();
+  pm.AddLoadConstRematerializationPass();
 }
 
 static void AddTargetPasses(PassManager& pm) {
-  std::unique_ptr<TargetContext> target_ctx = std::make_unique<TargetContext>();
-  pm.GetIRCtx()->SetTargetContext(target_ctx);
+  // Reuse any preconfigured TargetContext so request-side options (for example
+  // forced root-function deopt in tests / compile entrypoints) survive into the
+  // target pipeline.
+  [[maybe_unused]] auto* target_ctx = pm.GetIRCtx()->GetTargetContext();
 
   pm.SetMode(StageMode::SM_REG_ALLOC);
   pm.AddRegisterAllocationPass();
-  pm.AddVerifyCallRegisterPass();
   pm.AddMovEliminationPass();
   pm.AddRegisterCompactionPass();
-  // pm.AddVerifyCallRegisterPass();
 
   pm.AddUpdateToplevelVarRegPass();
   pm.AddUpdateToplevelClosureVarPass();

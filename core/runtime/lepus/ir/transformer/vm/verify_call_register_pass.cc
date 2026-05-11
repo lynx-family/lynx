@@ -91,15 +91,27 @@ bool VerifyCallRegisterPass::RunOnFunction(FuncOp* func) {
       if (func->IsToplevelFunc() && call_inst->GetNumArguments() > 0) {
         auto& toplevel_vars = ir_ctx_->GetToplevelVariables();
         for (auto& kv : toplevel_vars) {
-          if (ra->IsAllocated(kv.second)) {
-            unsigned r = ra->GetRegister(kv.second).GetIndex();
-            if (r >= clobber_lo && r <= clobber_hi &&
-                !allowed_dest_regs.count(r)) {
-              max_conflict_reg = std::max(max_conflict_reg, r);
-              throw ::lynx::lepus::CompileException(
-                  "Lepus IR error: VerifyCallRegisterPass detected call "
-                  "clobbers a toplevel variable register");
+          unsigned r = 0;
+          bool has_reg = false;
+
+          if (auto* set_toplevel_var_inst =
+                  llvh::dyn_cast<SetToplevelVarInst>(kv.second)) {
+            if (auto* lit = llvh::dyn_cast<LiteralUint32>(
+                    set_toplevel_var_inst->GetToplevelReg())) {
+              r = lit->GetValue();
+              has_reg = true;
             }
+          } else if (ra->IsAllocated(kv.second)) {
+            r = ra->GetRegister(kv.second).GetIndex();
+            has_reg = true;
+          }
+
+          if (has_reg && r >= clobber_lo && r <= clobber_hi &&
+              !allowed_dest_regs.count(r)) {
+            max_conflict_reg = std::max(max_conflict_reg, r);
+            throw ::lynx::lepus::CompileException(
+                "Lepus IR error: VerifyCallRegisterPass detected call "
+                "clobbers a toplevel variable register");
           }
         }
       }

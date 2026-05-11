@@ -152,6 +152,64 @@ TEST(LEPUS_IR_VMContext, DeepClone_ArrayIndependence) {
   EXPECT_EQ(ret.Number(), 1);
 }
 
+TEST(LEPUS_IR_VMContext, DeepClone_TableIndependence) {
+  auto fn = Function::Create();
+
+  auto src_tbl = Dictionary::Create({{base::String("k"), Value(1)}});
+  const auto src_tbl_idx = fn->AddConstValue(Value(src_tbl));
+  const auto key_idx = fn->AddConstString(base::String("k"));
+  const auto v99_idx = fn->AddConstNumber(99);
+
+  // r0 = {"k": 1}
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 0, src_tbl_idx));
+  // r1 = clone(r0)
+  fn->AddInstruction(Instruction::ABCode(TypeOp_DeepClone, 1, 0));
+  // r2 = "k"
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 2, key_idx));
+  // r3 = 99
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 3, v99_idx));
+  // r1["k"] = 99
+  fn->AddInstruction(Instruction::ABCCode(TypeOp_SetTable, 1, 2, 3));
+  // r4 = r0["k"]
+  fn->AddInstruction(Instruction::ABCCode(TypeOp_GetTableString, 4, 0, 2));
+  // return r4
+  fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 4));
+
+  auto ret = RunFunctionAsClosure(fn);
+  ASSERT_TRUE(ret.IsNumber());
+  EXPECT_EQ(ret.Number(), 1);
+}
+
+TEST(LEPUS_IR_VMContext, DeepClone_PrimitivePassthrough) {
+  auto fn = Function::Create();
+
+  const auto num_idx = fn->AddConstNumber(123);
+  // r0 = 123
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 0, num_idx));
+  // r1 = clone(r0)
+  fn->AddInstruction(Instruction::ABCode(TypeOp_DeepClone, 1, 0));
+  // return r1
+  fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 1));
+
+  auto ret = RunFunctionAsClosure(fn);
+  ASSERT_TRUE(ret.IsNumber());
+  EXPECT_EQ(ret.Number(), 123);
+}
+
+TEST(LEPUS_IR_VMContext, DeepClone_NullPassthrough) {
+  auto fn = Function::Create();
+
+  // r0 = null
+  fn->AddInstruction(Instruction::ACode(TypeOp_LoadNil, 0));
+  // r1 = clone(r0)
+  fn->AddInstruction(Instruction::ABCode(TypeOp_DeepClone, 1, 0));
+  // return r1
+  fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 1));
+
+  auto ret = RunFunctionAsClosure(fn);
+  EXPECT_TRUE(ret.IsNil());
+}
+
 TEST(LEPUS_IR_VMContext, LoadConstAndClone_ArrayIndependenceFromConstPool) {
   auto fn = Function::Create();
 

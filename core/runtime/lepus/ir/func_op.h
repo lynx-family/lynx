@@ -67,9 +67,11 @@ class FuncOp : public llvh::ilist_node<FuncOp>, public Operation {
   void RecordClosureVarRegAndValue(uint32_t closure_reg, Value* value);
   Value* GetClosureVarGivenReg(uint32_t closure_reg);
 
-  // for toplevel closure var: record upvalue index -> toplevel physical reg.
-  // Produced/consumed by IR passes (e.g. UpdateToplevelClosureVarPass) and
-  // instruction selection.
+  // for toplevel closure var: record upvalue index -> toplevel shared slot.
+  // Usually this is the physical register index after root/toplevel RA.
+  // When root-function deopt is enabled, this instead stores the root-function
+  // deopt slot so nested optimized functions can still interoperate with the
+  // deoptimized root frame.
   void RecordUpvalueIndex2ToplevelReg(long index, long reg_index);
   long GetClosureVarToplevelReg(long index);
 
@@ -84,6 +86,15 @@ class FuncOp : public llvh::ilist_node<FuncOp>, public Operation {
   }
   llvh::SmallDenseSet<unsigned, 8>& GetToplevelClosureVarRegs() {
     return toplevel_closure_var_regs_;
+  }
+  // DeepClone's body can usually skip instruction selection because direct
+  // builtin lowering handles its common call sites. Some transformed call
+  // patterns still require emitting the function body explicitly.
+  void MarkDeepCloneLoweringRequired() {
+    can_skip_deep_clone_lowering_ = false;
+  }
+  bool CanSkipDeepCloneLowering() const {
+    return can_skip_deep_clone_lowering_;
   }
 
  private:
@@ -101,6 +112,7 @@ class FuncOp : public llvh::ilist_node<FuncOp>, public Operation {
   // key: upvalue index in this function
   // value: physical register index in the toplevel function
   std::unordered_map<long, long> upvalue_index_to_toplevel_reg_;
+  bool can_skip_deep_clone_lowering_ = true;
 };
 }  // namespace ir
 }  // namespace lepus

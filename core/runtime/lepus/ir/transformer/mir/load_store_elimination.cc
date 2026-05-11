@@ -539,6 +539,14 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
             "Lepus IR error: LSE encountered special instruction attributes on "
             "SetTableInst");
       }
+      if (!CanTrackTableStore(set_table_inst->GetObject(),
+                              set_table_inst->GetProp(),
+                              /*key_is_const_string_index*/ false)) {
+        InvalidateTables(available, set_table_inst->GetObject(),
+                         set_table_inst->GetProp(),
+                         /*written_key_is_const_index*/ false);
+        continue;
+      }
       TableKey key{set_table_inst->GetObject(), set_table_inst->GetProp(),
                    /*key_is_const_string_index*/ false};
       Value* val = set_table_inst->GetStoreVal();
@@ -560,6 +568,14 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
         throw ::lynx::lepus::CompileException(
             "Lepus IR error: LSE encountered special instruction attributes on "
             "SetTableConstStringKeyInst");
+      }
+      if (!CanTrackTableStore(set_table_const_key->GetObject(),
+                              set_table_const_key->GetConstIndex(),
+                              /*key_is_const_string_index*/ true)) {
+        InvalidateTables(available, set_table_const_key->GetObject(),
+                         set_table_const_key->GetConstIndex(),
+                         /*written_key_is_const_index*/ true);
+        continue;
       }
       // const_index is a const-table index (uint32) for a string key.
       // We treat it as a normal table store with a canonicalized (obj, key).
@@ -708,6 +724,131 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
   return changed;
 }
 
+LoadStoreElimination::PropertyReceiverKind
+LoadStoreElimination::GetPropertyReceiverKind(Value* object) {
+  llvh::DenseMap<Value*, PropertyReceiverKind> memo;
+  llvh::SmallPtrSet<Value*, 16> visiting;
+
+  auto resolve = [&](auto&& self, Value* value) -> PropertyReceiverKind {
+    if (!value) return PropertyReceiverKind::kUnknown;
+
+    auto it = memo.find(value);
+    if (it != memo.end()) return it->second;
+
+    if (!visiting.insert(value).second) {
+      memo[value] = PropertyReceiverKind::kUnknown;
+      return PropertyReceiverKind::kUnknown;
+    }
+
+    PropertyReceiverKind result = PropertyReceiverKind::kUnknown;
+    if (auto* type = value->GetType()) {
+      if (type->IsTableType()) {
+        result = PropertyReceiverKind::kTable;
+      } else if (type->IsArrayType()) {
+        result = PropertyReceiverKind::kArray;
+      }
+    }
+
+    if (result == PropertyReceiverKind::kUnknown) {
+      if (llvh::isa<NewTableInst>(value)) {
+        result = PropertyReceiverKind::kTable;
+      } else if (llvh::isa<NewArrayInst>(value)) {
+        result = PropertyReceiverKind::kArray;
+      } else if (auto* phi = llvh::dyn_cast<PhiInst>(value)) {
+        // Preserve array/table precision through CFG joins only when every
+        // incoming value agrees. Mixed or cyclic inputs must fall back to
+        // unknown so later invalidation stays conservative.
+        const unsigned n = phi->GetNumEntries();
+        if (n > 0) {
+          result = self(self, phi->GetEntry(0).first);
+          if (result != PropertyReceiverKind::kUnknown) {
+            for (unsigned i = 1; i < n; ++i) {
+              if (self(self, phi->GetEntry(i).first) != result) {
+                result = PropertyReceiverKind::kUnknown;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    visiting.erase(value);
+    memo[value] = result;
+    return result;
+  };
+
+  return resolve(resolve, object);
+}
+
+bool LoadStoreElimination::CanTrackTableStore(Value* object, Value* key,
+                                              bool key_is_const_string_index) {
+  PropertyReceiverKind receiver_kind = GetPropertyReceiverKind(object);
+  if (receiver_kind == PropertyReceiverKind::kUnknown) {
+    return false;
+  }
+
+  bool key_is_string = false;
+  bool key_is_number = false;
+  lepus::Value key_value = key_is_const_string_index
+                               ? GetConstTableValueFromIndex(key)
+                               : GetLepusValue(key);
+  if (!key_value.IsNil()) {
+    key_is_string = key_value.IsString();
+    key_is_number = key_value.IsNumber();
+  } else if (key_is_const_string_index) {
+    key_is_string = true;
+  } else if (auto* key_type = key ? key->GetType() : nullptr) {
+    key_is_string = key_type->IsStringType();
+    key_is_number = key_type->IsNumberType();
+  }
+
+  if (receiver_kind == PropertyReceiverKind::kTable) {
+    // Plain tables treat both numeric and string keys as normal properties, so
+    // LSE can keep tracking either representation.
+    return key_is_string || key_is_number;
+  }
+  if (receiver_kind == PropertyReceiverKind::kArray) {
+    // Arrays are only tracked for numeric-element stores. String-key writes
+    // (for example "length") participate in array-specific semantics and need
+    // broader invalidation than the local table cache can model precisely.
+    return key_is_number;
+  }
+  return false;
+}
+
+bool LoadStoreElimination::KeyMayBeString(Value* key,
+                                          bool key_is_const_string_index) {
+  if (!key) return true;
+  lepus::Value key_value = key_is_const_string_index
+                               ? GetConstTableValueFromIndex(key)
+                               : GetLepusValue(key);
+  if (!key_value.IsNil()) {
+    return key_value.IsString();
+  }
+  if (key_is_const_string_index) return true;
+  if (auto* key_type = key->GetType()) {
+    return key_type->IsAnyType() || key_type->IsStringType();
+  }
+  return true;
+}
+
+bool LoadStoreElimination::KeyMayBeNumber(Value* key,
+                                          bool key_is_const_string_index) {
+  if (!key) return true;
+  lepus::Value key_value = key_is_const_string_index
+                               ? GetConstTableValueFromIndex(key)
+                               : GetLepusValue(key);
+  if (!key_value.IsNil()) {
+    return key_value.IsNumber();
+  }
+  if (key_is_const_string_index) return false;
+  if (auto* key_type = key->GetType()) {
+    return key_type->IsAnyType() || key_type->IsNumberType();
+  }
+  return true;
+}
+
 void LoadStoreElimination::InvalidateTables(AvailableValues& available,
                                             Value* written_object,
                                             Value* written_key,
@@ -728,14 +869,32 @@ void LoadStoreElimination::InvalidateTables(AvailableValues& available,
         "key");
   }
 
+  const PropertyReceiverKind receiver_kind =
+      GetPropertyReceiverKind(written_object);
+  const bool numeric_write =
+      KeyMayBeNumber(written_key, written_key_is_const_index);
+  // A numeric write may also invalidate cached string reads on arrays, most
+  // notably "length", because array element stores can update array metadata.
+  const bool may_touch_array_string_reads =
+      numeric_write && receiver_kind != PropertyReceiverKind::kTable;
+
   // Fresh allocation objects cannot alias any previously cached object. At the
   // current program point, `available.tables` only contains entries produced by
   // earlier instructions, so only entries on the same object may be affected.
   if (IsAlloc(written_object)) {
     for (auto it = available.tables.begin(); it != available.tables.end();) {
-      if (it->first.object == written_object &&
-          KeysMayAlias(it->first.key, it->first.key_is_const_string_index,
-                       written_key, written_key_is_const_index)) {
+      bool should_erase = false;
+      if (it->first.object == written_object) {
+        if (KeysMayAlias(it->first.key, it->first.key_is_const_string_index,
+                         written_key, written_key_is_const_index)) {
+          should_erase = true;
+        } else if (may_touch_array_string_reads &&
+                   KeyMayBeString(it->first.key,
+                                  it->first.key_is_const_string_index)) {
+          should_erase = true;
+        }
+      }
+      if (should_erase) {
         it = available.tables.erase(it);
       } else {
         ++it;
@@ -750,7 +909,9 @@ void LoadStoreElimination::InvalidateTables(AvailableValues& available,
       continue;
     }
     if (KeysMayAlias(it->first.key, it->first.key_is_const_string_index,
-                     written_key, written_key_is_const_index)) {
+                     written_key, written_key_is_const_index) ||
+        (may_touch_array_string_reads &&
+         KeyMayBeString(it->first.key, it->first.key_is_const_string_index))) {
       auto to_erase = it++;
       available.tables.erase(to_erase);
     } else {
