@@ -45,7 +45,7 @@ class InspectorRuntimeObserverImplTest : public ::testing::Test {
 
 TEST_F(InspectorRuntimeObserverImplTest, CreateRuntimeManagerDelegate) {
   auto runtime_manager_delegate = observer_->CreateRuntimeManagerDelegate();
-  EXPECT_EQ(runtime_manager_delegate, nullptr);
+  EXPECT_NE(runtime_manager_delegate, nullptr);
 }
 
 TEST_F(InspectorRuntimeObserverImplTest, OnRuntimeCreated) {

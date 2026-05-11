@@ -143,8 +143,13 @@ devtool_source_set("js_debug") {
     ":devtool_lepus_debug",
     "../../../third_party/rapidjson:rapidjson",
   ]
-  if ((!is_android || is_headless) && !enable_unittests) {
-    deps += [ ":devtool_qjs_bridge" ]
+  if (!is_android || is_headless) {
+    deps += [
+      ":devtool_qjs_bridge",
+
+      # TODO: Remove after splitting internal/OSS lepus_debug targets.
+      "//${lynx_dir}/devtool/js_inspect/lepus:lepus_debug",
+    ]
     if (jsengine_type == "v8") {
       deps += [ ":devtool_v8_bridge" ]
     }
