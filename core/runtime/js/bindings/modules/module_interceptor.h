@@ -73,7 +73,7 @@ class GroupInterceptor : public ModuleInterceptor {
   void AddInterceptor(std::unique_ptr<ModuleInterceptor> interceptor);
 
  private:
-  base::InlineVector<std::shared_ptr<ModuleInterceptor>, 4> interceptors_;
+  base::InlineVector<std::unique_ptr<ModuleInterceptor>, 4> interceptors_;
 };
 
 }  // namespace js
