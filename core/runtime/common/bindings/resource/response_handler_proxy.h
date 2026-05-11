@@ -45,7 +45,10 @@ class ResponseHandlerProxy {
       return *result;
     }
     return tasm::BundleResourceInfo(
-        {.url = url_, .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_TIMEOUT});
+        {.url = url_,
+         .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_TIMEOUT,
+         .error_msg = "ResponsePromise wait timeout after " +
+                      std::to_string(timeout) + " seconds for url: " + url_});
   }
 
   /**
