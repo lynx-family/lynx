@@ -111,6 +111,7 @@ unittest_set("css_ng_testset") {
     "ng/invalidation/invalidation_set_test.cc",
     "ng/invalidation/rule_invalidation_set_test.cc",
     "ng/matcher/selector_matcher_test.cc",
+    "ng/media_query/media_query_test.cc",
     "ng/parser/css_parser_token_stream_test.cc",
     "ng/parser/css_tokenizer_test.cc",
     "ng/selector/css_selector_parser_test.cc",
