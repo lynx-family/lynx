@@ -628,6 +628,7 @@ void PaintingContextDarwin::Invoke(
   auto block = callback;
   __weak LynxUIOwner* owner = uiOwner_;
   auto lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
+  NSString* method_name = [[NSString alloc] initWithUTF8String:method.c_str()];
   auto runnable = ^{
     auto callback = ^(int code, id _Nullable data) {
       // exec the following block on main thread.
@@ -648,7 +649,7 @@ void PaintingContextDarwin::Invoke(
       callback(kUIMethodNoUiForNode, msg);
       return;
     }
-    [LynxUIMethodProcessor invokeMethod:[[NSString alloc] initWithUTF8String:method.c_str()]
+    [LynxUIMethodProcessor invokeMethod:method_name
                              withParams:convertLepusValueToNSObject(lepus_params)
                              withResult:^(int code, id _Nullable data) {
                                if (dispatch_queue_get_label(DISPATCH_CURRENT_QUEUE_LABEL) ==
