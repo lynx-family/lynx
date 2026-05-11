@@ -5,7 +5,7 @@ Lynx XElement WebView for the harmony platform.
 
 ## Overview
 
-Lynx XElement WebView provides `<x-webview>` on harmony.
+Lynx XElement WebView provides `<webview>` on harmony.
 
 ## Installation
 

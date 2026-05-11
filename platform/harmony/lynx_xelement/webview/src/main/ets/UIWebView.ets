@@ -6,8 +6,6 @@ import { webview } from '@kit.ArkWeb';
 import { LynxUIMethodConstants, UIBase } from '@lynx/lynx';
 import { BuilderNode, NodeController, UIContext } from '@kit.ArkUI';
 
-const TAG = 'x-webview';
-
 interface LynxWebViewErrorEvent {
   errorCode: number,
   errorMsg: string,

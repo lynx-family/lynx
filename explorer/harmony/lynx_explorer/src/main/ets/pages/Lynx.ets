@@ -7,6 +7,7 @@ import url from '@ohos.url';
 import { display } from '@kit.ArkUI';
 import {
   Behavior,
+  BehaviorRegistryMap,
   LLog,
   LynxContext,
   LynxExtraTiming,
@@ -19,9 +20,9 @@ import {
   SendableModuleClassWrapper,
   TemplateData
 } from '@lynx/lynx';
+import { UISVG } from '@lynx/xelement_svg';
+import { UIWebView } from '@lynx/xelement_webview';
 import Constants from '../common/constants';
-import { UIClickView } from '../component/UIClickView';
-import { ClickShadowNode } from '../component/UIClickShadowNode';
 import { EntryLynxClient } from '../client/EntryLynxClient';
 import { ExampleGenericResourceFetcher } from '../provider/ExampleGenericResourceFetcher';
 import { ExampleMediaResourceFetcher } from '../provider/ExampleMediaResourceFetcher';
@@ -63,6 +64,9 @@ struct Lynx {
   private heightPixel: number = 0;
   private widthPixel: number = 0;
   private extraTiming: LynxExtraTiming = new LynxExtraTiming();
+  private behaviors: BehaviorRegistryMap = new Map([
+    ['svg',  new Behavior(UISVG, undefined)],
+    ['webview', new Behavior(UIWebView, undefined)]]);
 
   aboutToAppear() {
     this.modules.set('ExplorerModule', {
@@ -118,6 +122,7 @@ struct Lynx {
         templateResourceFetcher: this.templateFetcher,
         modules: this.modules,
         sendableModules: this.sendableModules,
+        behaviors: this.behaviors,
         metaData: this.metaData,
         onCreate: (context: LynxContext) => {
           let param: Param = new Param(this.url);

@@ -132,7 +132,19 @@
         {
           "name": "default",
           "applyToProducts": [
-          "default"
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xelement_webview",
+      "srcPath": "../../platform/harmony/lynx_xelement/webview",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
           ]
         }
       ]
