@@ -620,56 +620,73 @@ bool PaintingContextDarwin::IsFlatten(base::MoveOnlyClosure<bool, bool> func) {
   return false;
 }
 
+shell::UIOperation PaintingContextDarwin::CreateInvokeUIMethodOperation(
+    int64_t element_id, std::string method, lepus::Value lepus_params,
+    std::function<void(int32_t code, const pub::Value& data)> callback) {
+  __weak LynxUIOwner* owner = uiOwner_;
+  // needs to be passed by copying instead of passing a reference, because
+  // OC's block and C++'s callback are not compatible.
+  auto block = std::move(callback);
+  return [owner, element_id, method = std::move(method), lepus_params = std::move(lepus_params),
+          block = std::move(block)]() {
+    auto runnable = ^{
+      auto callback = ^(int code, id _Nullable data) {
+        if (owner == nil) {
+          return;
+        }
+
+        [owner.uiContext.lynxContext runOnTasmThread:^{
+          block(code, PubLepusValue(LynxConvertToLepusValue(data)));
+        }];
+      };
+
+      LynxUI* ui = [owner findUIBySign:(int)element_id];
+      if (!ui) {
+        NSString* msg =
+            [NSString stringWithFormat:@"Worklet: node %lld does not have a LynxUI", element_id];
+        callback(kUIMethodNoUiForNode, msg);
+        return;
+      }
+      [LynxUIMethodProcessor invokeMethod:[[NSString alloc] initWithUTF8String:method.c_str()]
+                               withParams:convertLepusValueToNSObject(lepus_params)
+                               withResult:^(int code, id _Nullable data) {
+                                 if (dispatch_queue_get_label(DISPATCH_CURRENT_QUEUE_LABEL) ==
+                                     dispatch_queue_get_label(dispatch_get_main_queue())) {
+                                   callback(code, data);
+                                 } else {
+                                   dispatch_async(dispatch_get_main_queue(), ^{
+                                     callback(code, data);
+                                   });
+                                 }
+                               }
+                                    forUI:ui];
+    };
+
+    if (dispatch_queue_get_label(DISPATCH_CURRENT_QUEUE_LABEL) ==
+        dispatch_queue_get_label(dispatch_get_main_queue())) {
+      runnable();
+    } else {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        runnable();
+      });
+    }
+  };
+}
+
 void PaintingContextDarwin::Invoke(
     int64_t element_id, const std::string& method, const pub::Value& params,
     const std::function<void(int32_t code, const pub::Value& data)>& callback) {
-  // needs to be passed by copying instead of passing a reference, because OC's block and C++'s
-  // callback are not compatible.
-  auto block = callback;
-  __weak LynxUIOwner* owner = uiOwner_;
   auto lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
-  auto runnable = ^{
-    auto callback = ^(int code, id _Nullable data) {
-      // exec the following block on main thread.
-      if (owner == nil) {
-        return;
-      }
+  auto operation =
+      CreateInvokeUIMethodOperation(element_id, method, std::move(lepus_params), callback);
+  operation();
+}
 
-      [owner.uiContext.lynxContext runOnTasmThread:^{
-        // exec the block on tasm thread.
-        block(code, PubLepusValue(LynxConvertToLepusValue(data)));
-      }];
-    };
-
-    LynxUI* ui = [owner findUIBySign:(int)element_id];
-    if (!ui) {
-      NSString* msg =
-          [NSString stringWithFormat:@"Worklet: node %lld does not have a LynxUI", element_id];
-      callback(kUIMethodNoUiForNode, msg);
-      return;
-    }
-    [LynxUIMethodProcessor invokeMethod:[[NSString alloc] initWithUTF8String:method.c_str()]
-                             withParams:convertLepusValueToNSObject(lepus_params)
-                             withResult:^(int code, id _Nullable data) {
-                               if (dispatch_queue_get_label(DISPATCH_CURRENT_QUEUE_LABEL) ==
-                                   dispatch_queue_get_label(dispatch_get_main_queue())) {
-                                 callback(code, data);
-                               } else {
-                                 dispatch_async(dispatch_get_main_queue(), ^{
-                                   callback(code, data);
-                                 });
-                               }
-                             }
-                                  forUI:ui];
-  };
-  if (dispatch_queue_get_label(DISPATCH_CURRENT_QUEUE_LABEL) ==
-      dispatch_queue_get_label(dispatch_get_main_queue())) {
-    runnable();
-  } else {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      runnable();
-    });
-  }
+void PaintingContextDarwin::EnqueueInvoke(
+    int64_t element_id, const std::string& method, const pub::Value& params,
+    const std::function<void(int32_t code, const pub::Value& data)>& callback) {
+  auto lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
+  Enqueue(CreateInvokeUIMethodOperation(element_id, method, std::move(lepus_params), callback));
 }
 
 void PaintingContextDarwin::OnFirstMeaningfulLayout() {}
@@ -720,7 +737,7 @@ void PaintingContextDarwin::ForceFlush() { queue_->ForceFlush(); }
 
 template <typename F>
 void PaintingContextDarwin::Enqueue(F&& func) {
-  queue_->EnqueueUIOperation([func = std::move(func)]() {
+  queue_->EnqueueUIOperation([func = std::move(func)]() mutable {
     @autoreleasepool {
       PaintingContextDarwinUtils::ExecuteSafely(func);
     }
@@ -729,7 +746,7 @@ void PaintingContextDarwin::Enqueue(F&& func) {
 
 template <typename F>
 void PaintingContextDarwin::EnqueueHighPriorityUIOperation(F&& func) {
-  queue_->EnqueueHighPriorityUIOperation([func = std::move(func)]() {
+  queue_->EnqueueHighPriorityUIOperation([func = std::move(func)]() mutable {
     @autoreleasepool {
       PaintingContextDarwinUtils::ExecuteSafely(func);
     }

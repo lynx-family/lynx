@@ -49,6 +49,10 @@ class Catalyzer {
   void Invoke(int64_t id, const std::string& method, const pub::Value& params,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback);
+  void EnqueueInvoke(
+      int64_t id, const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>&
+          callback);
   inline int32_t GetInstanceId() { return instance_id_; }
 
  private:

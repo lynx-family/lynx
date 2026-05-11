@@ -720,8 +720,8 @@ void LepusElement::Invoke(const Napi::Object& object) {
   int64_t fail_callback_id =
       handler->StoreTask(std::unique_ptr<NapiFuncCallback>(std::move(fail_p)));
 
-  auto invoke_method = object.Get(sKeyMethod).ToString().Utf8Value();
-  auto invoke_params = pub::ValueImplLepus(
+  auto method = object.Get(sKeyMethod).ToString().Utf8Value();
+  auto params = pub::ValueImplLepus(
       ValueConverter::ConvertNapiValueToLepusValue(object.Get(sKeyParams)));
   auto invoke_callback = [env = NapiEnv(), weak_handler, tasm = tasm_,
                           success_callback_id, fail_callback_id](
@@ -755,25 +755,17 @@ void LepusElement::Invoke(const Napi::Object& object) {
     }
   };
 
-  if (tasm_ == nullptr) {
-    element->Invoke(invoke_method, invoke_params, std::move(invoke_callback));
-    return;
+  auto page_config = tasm_ ? tasm_->GetPageConfig() : nullptr;
+  if (page_config && page_config->GetEnableUnifiedPipeline() ==
+                         tasm::TernaryBool::TRUE_VALUE) {
+    element->AppendPendingInvokeTask([element, method = std::move(method),
+                                      params = std::move(params),
+                                      invoke_callback]() mutable {
+      element->EnqueueInvoke(method, params, invoke_callback);
+    });
+  } else {
+    element->Invoke(method, params, invoke_callback);
   }
-
-  auto invoke_element = [this, invoke_method = std::move(invoke_method),
-                         invoke_params = std::move(invoke_params),
-                         invoke_callback =
-                             std::move(invoke_callback)]() mutable {
-    auto* current_element = GetElement();
-    if (current_element == nullptr) {
-      LOGE("LepusElement::Invoke failed since element is null when "
-           << "invoke runs.");
-      return;
-    }
-    current_element->Invoke(invoke_method, invoke_params,
-                            std::move(invoke_callback));
-  };
-  tasm_->InvokeOrDefer(std::move(invoke_element));
 }
 }  // namespace worklet
 }  // namespace lynx

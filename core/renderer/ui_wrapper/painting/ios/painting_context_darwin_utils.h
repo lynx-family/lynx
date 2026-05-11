@@ -23,14 +23,14 @@ class PaintingCtxPlatformRef;
 class PaintingContextDarwinUtils {
  public:
   template <typename F>
-  static void ExecuteSafely(const F& func);
+  static void ExecuteSafely(F&& func);
 
   static void SetPerformanceController(PaintingCtxPlatformRef* platform_ref,
                                        LynxPerformanceController* performance_controller);
 };
 
 template <typename F>
-void PaintingContextDarwinUtils::ExecuteSafely(const F& func) {
+void PaintingContextDarwinUtils::ExecuteSafely(F&& func) {
   @try {
     func();
   } @catch (NSException* e) {

@@ -143,6 +143,10 @@ class PaintingCtxPlatformImpl {
       int64_t id, const std::string& method, const pub::Value& params,
       const std::function<void(int32_t code, const pub::Value& data)>&
           callback) = 0;
+  virtual void EnqueueInvoke(
+      int64_t id, const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>&
+          callback) = 0;
 
   virtual int32_t GetTagInfo(const std::string& tag_name) = 0;
   virtual bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) = 0;
