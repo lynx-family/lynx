@@ -6,9 +6,32 @@
 
 #include "clay/fml/logging.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
 
 namespace clay {
+namespace {
+
+// Must match the tag name used to register the platform view factory
+// (see `[LynxView registerViewFactory:@"x-webview"
+// withClass:LynxWebView.class]`). When the hit-tested top view is this native
+// view, the platform WKWebView should own the cursor exclusively. If Clay also
+// dispatches a cursor via
+// `[NSCursor set]`, the two owners fight on every mouse-move event and the
+// cursor flickers between the CSS "pointer" and the default arrow.
+constexpr const char kXWebViewTag[] = "x-webview";
+
+bool IsCursorOwnedByPlatformView(BaseView* top_view) {
+  if (top_view == nullptr) {
+    return false;
+  }
+  if (!top_view->Is<NativeView>()) {
+    return false;
+  }
+  return top_view->GetName() == kXWebViewTag;
+}
+
+}  // namespace
 
 void MouseRegionManager::RegisterEnterCallback(BaseView* target,
                                                EnterCallback callback) {
@@ -70,7 +93,15 @@ void MouseRegionManager::HandleEvent(BaseView* root,
     }
   }
 
-  mouse_cursor_manager_->HandleHitTestResult(view_chain);
+  // If the cursor is currently over a platform-owned native view (e.g.
+  // x-webview / WKWebView), skip the cursor dispatch so the platform view
+  // remains the sole cursor owner and no flickering occurs. Enter, leave,
+  // and hover region routing still updates "prev_chain_" normally, so the
+  // Clay-computed cursor is restored on the next event after the pointer
+  // leaves the x-webview area.
+  if (!IsCursorOwnedByPlatformView(top_view)) {
+    mouse_cursor_manager_->HandleHitTestResult(view_chain);
+  }
 
   if (prev_chain_ == view_chain) {
     // stay in the same mouse region
@@ -143,6 +174,16 @@ void MouseRegionManager::AddCursorHolder(BaseView* holder) {
 }
 
 void MouseRegionManager::ForceUpdateCursor() {
+  // Mirror the guard in HandleEvent: while the cursor hovers over an
+  // x-webview, suppress any forced cursor refresh triggered by SetCursor so
+  // Clay does not fight WKWebView's own cursor updates.
+  if (prev_chain_.empty()) {
+    return;
+  }
+  BaseView* top_view = prev_chain_.front().get();
+  if (IsCursorOwnedByPlatformView(top_view)) {
+    return;
+  }
   mouse_cursor_manager_->HandleHitTestResult(prev_chain_);
 }
 
