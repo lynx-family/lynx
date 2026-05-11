@@ -538,16 +538,11 @@ TEST_F(LEPUSIRTestUpdateToplevel,
 }
 
 TEST_F(LEPUSIRTestUpdateToplevel,
-       RedundantSetEliminationClosureSingleUseProducer) {
-  // Coverage test for SetToplevelClosureVarInst path:
-  // If `src` has a single use (the SetToplevelClosureVarInst) and is safe to
-  // move, it should be forced into the same physical register chosen for the
-  // closure anchor value.
-
+       DeadOverwrittenSetToplevelVarIsKeptWhenReadIntervenes) {
   OpBuilder builder;
   builder.SetModuleOp(mod);
 
-  std::string name = "test_closure_single_use";
+  std::string name = "test_dead_overwritten_set_toplevel_read_barrier";
   FuncOp* func = nullptr;
   CreateTestFuncOp(name, func);
   func->SetTopLevelFunction();
@@ -559,44 +554,93 @@ TEST_F(LEPUSIRTestUpdateToplevel,
   }
   builder.SetInsertionPointToStart(entry);
 
-  // Create a closure anchor value and record it.
-  constexpr uint32_t kOldClosureReg = 20;
-  auto* anchor_src = builder.Create<LoadConstInst>(
-      1, builder.GetLiteralInt32(0), TypeOp::CreateInt32(&builder));
-  auto* closure_anchor = builder.Create<MovInst>(2, anchor_src);
-  closure_anchor->SetClosureVarReg(kOldClosureReg);
-  func->RecordClosureVarRegAndValue(kOldClosureReg, closure_anchor);
+  // This test is intentionally scoped to the phase-1 dead-overwrite logic.
+  // Use a literal source here so the whole-pass result still keeps `set1`.
+  // If we use an Instruction source, phase 2 (redundant/coalescing cleanup)
+  // may legally erase `set1` even though phase 1 correctly stops at the
+  // intervening read barrier.
+  auto* set1 = builder.Create<SetToplevelVarInst>(
+      1, builder.GetLiteralUint32(0), builder.GetLiteralInt32(1));
+  ir_ctx->InsertToplevelValue(set1, 0);
 
-  // Single-use producer stored into the closure variable.
-  auto* src = builder.Create<LoadConstInst>(3, builder.GetLiteralInt32(42),
-                                            TypeOp::CreateInt32(&builder));
-  auto* set_closure = builder.Create<SetToplevelClosureVarInst>(
-      4, builder.GetLiteralUint32(kOldClosureReg), src);
-  builder.Create<ReturnInst>(5, closure_anchor);
+  auto* get = builder.Create<GetToplevelVarInst>(
+      2, builder.GetLiteralUint32(0), TypeOp::CreateAnyType(&builder));
+  auto* set2 = builder.Create<SetToplevelVarInst>(
+      3, builder.GetLiteralUint32(0), builder.GetLiteralInt32(7));
+  builder.Create<ReturnInst>(4, get);
 
-  // Run RA.
   RegisterAllocationPass ra_pass(ir_ctx.get());
   ra_pass.RunOnFunction(func);
-  auto* ra = ir_ctx->GetTargetContext()->GetRegisterAllocAnalysis(func);
-  ASSERT_NE(nullptr, ra);
-  ASSERT_TRUE(ra->IsAllocated(closure_anchor));
-  unsigned target_reg = ra->GetRegister(closure_anchor).GetIndex();
 
-  // Run redundant Set elimination.
-  {
-    ToplevelStoreOptimizationPass pass(ir_ctx.get());
-    pass.RunOnModule(mod);
-  }
+  ToplevelStoreOptimizationPass pass(ir_ctx.get());
+  pass.RunOnModule(mod);
 
-  // Verify: the Set is removed and src is forced into target_reg.
-  bool set_exists = false;
+  bool set1_exists = false;
+  bool set2_exists = false;
   for (auto& op : *entry) {
-    if (&op == set_closure) set_exists = true;
+    if (&op == set1) set1_exists = true;
+    if (&op == set2) set2_exists = true;
   }
-  EXPECT_FALSE(set_exists);
-  EXPECT_TRUE(src->IsFixReg());
-  EXPECT_TRUE(ra->IsAllocated(src));
-  EXPECT_EQ(ra->GetRegister(src).GetIndex(), target_reg);
+  EXPECT_TRUE(set1_exists);
+  EXPECT_TRUE(set2_exists);
+}
+
+TEST_F(LEPUSIRTestUpdateToplevel,
+       ReadBarrierStopsDeadOverwriteButPhase2MayStillEraseStore) {
+  // Companion regression test for the case above:
+  // - phase 1 must treat the intervening GetToplevelVarInst as a read barrier,
+  //   so `set1` is NOT a dead-overwritten store;
+  // - but after that, phase 2 may still legally erase `set1` by folding its
+  //   producer (`init`) into the target toplevel register.
+
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+
+  std::string name = "test_read_barrier_then_phase2_eliminate";
+  FuncOp* func = nullptr;
+  CreateTestFuncOp(name, func);
+  func->SetTopLevelFunction();
+  mod->SetRootFunction(func);
+
+  Block* entry = &*func->begin();
+  while (!entry->empty()) {
+    entry->Erase(entry->Front());
+  }
+  builder.SetInsertionPointToStart(entry);
+
+  auto* init =
+      builder.Create<LoadNullOrUndefinedInst>(1, builder.GetLiteralInt8(0));
+  auto* set1 =
+      builder.Create<SetToplevelVarInst>(2, builder.GetLiteralUint32(0), init);
+  ir_ctx->InsertToplevelValue(set1, 0);
+
+  auto* get = builder.Create<GetToplevelVarInst>(
+      3, builder.GetLiteralUint32(0), TypeOp::CreateAnyType(&builder));
+  auto* set2 = builder.Create<SetToplevelVarInst>(
+      4, builder.GetLiteralUint32(0), builder.GetLiteralInt32(7));
+  builder.Create<ReturnInst>(5, get);
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ra_pass.RunOnFunction(func);
+
+  ToplevelStoreOptimizationPass pass(ir_ctx.get());
+  pass.RunOnModule(mod);
+
+  bool set1_exists = false;
+  bool set2_exists = false;
+  for (auto& op : *entry) {
+    if (&op == set1) set1_exists = true;
+    if (&op == set2) set2_exists = true;
+  }
+
+  // `set1` survives phase 1 because of the read barrier, but phase 2 can still
+  // eliminate it by coalescing/redundant-store cleanup.
+  EXPECT_FALSE(set1_exists);
+  EXPECT_TRUE(set2_exists);
+
+  auto it = ir_ctx->GetToplevelVariables().find(0);
+  ASSERT_NE(it, ir_ctx->GetToplevelVariables().end());
+  EXPECT_EQ(it->second, init);
 }
 
 TEST_F(LEPUSIRTestUpdateToplevel, ReplaceToplevelVarWithSyncInsts) {

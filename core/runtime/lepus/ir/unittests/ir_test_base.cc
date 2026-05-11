@@ -16,6 +16,20 @@ namespace ir {
 static const char* kCFuncPrint = "print";
 static void PrintValue(lepus::Value* val, std::ostream& output);
 
+FuncOp* FindFuncOpByName(ModuleOp* mod, const std::string& name) {
+  if (mod == nullptr) {
+    return nullptr;
+  }
+  for (auto* func : *mod) {
+    if (!func) continue;
+    auto f = func->GetLepusFunction();
+    if (f && f->GetFunctionName() == name) {
+      return func;
+    }
+  }
+  return nullptr;
+}
+
 static void DumpTable(lepus::Value* val, std::ostream& output) {
   auto it = val->Table()->begin();
   output << "{ " << std::endl;

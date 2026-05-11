@@ -118,10 +118,20 @@ void IRContext::CollectChildFuncs(const fml::RefPtr<Function>& function) {
 }
 
 void IRContext::SetTargetContext(std::unique_ptr<TargetContext>& target_ctx) {
+  if (target_context_) {
+    // Preserve a previously requested root-function deopt override when the
+    // pipeline swaps in a fresh TargetContext instance.
+    target_ctx->SetForceRootFuncDeopt(target_context_->GetForceRootFuncDeopt());
+  }
   target_context_ = std::move(target_ctx);
 }
 
-TargetContext* IRContext::GetTargetContext() { return target_context_.get(); }
+TargetContext* IRContext::GetTargetContext() {
+  if (!target_context_) {
+    target_context_ = std::make_unique<TargetContext>();
+  }
+  return target_context_.get();
+}
 
 void IRContext::Init(fml::RefPtr<Function>& root_function, VMContext* context) {
   if (LEPUS_UNLIKELY(!root_function->IsToplevelFunction())) {

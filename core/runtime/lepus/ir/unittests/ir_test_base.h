@@ -69,6 +69,8 @@ class IRTestBase : public ::testing::Test {
   std::unique_ptr<IRContext> ir_ctx;
 };
 
+FuncOp* FindFuncOpByName(ModuleOp* mod, const std::string& name);
+
 }  // namespace ir
 }  // namespace lepus
 }  // namespace lynx

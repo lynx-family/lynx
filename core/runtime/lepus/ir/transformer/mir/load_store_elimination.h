@@ -148,6 +148,17 @@ class LoadStoreElimination : public FunctionPass {
   Value* ResolveReplacement(Value* v);
 
  private:
+  enum class PropertyReceiverKind : uint8_t {
+    kUnknown,
+    kTable,
+    kArray,
+  };
+
+  PropertyReceiverKind GetPropertyReceiverKind(Value* object);
+  bool CanTrackTableStore(Value* object, Value* key,
+                          bool key_is_const_string_index);
+  bool KeyMayBeString(Value* key, bool key_is_const_string_index);
+  bool KeyMayBeNumber(Value* key, bool key_is_const_string_index);
   void InvalidateTables(AvailableValues& available, Value* written_object,
                         Value* written_key, bool written_key_is_const_index);
   bool ObjectsMustNotAlias(Value* o1, Value* o2);

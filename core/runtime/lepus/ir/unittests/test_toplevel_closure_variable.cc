@@ -82,6 +82,16 @@ static ModuleOp* CompileToIRAndRunMIRUntilSecondLSE(lepus::VMContext* context,
   ir_ctx->Init(root_func, context);
   auto* mod = ir_ctx->GetMainMod();
 
+  // PassManager now consults TargetContext for root-function deopt
+  // planning.
+  // This test builds an ad-hoc IR pipeline directly, so make sure a default
+  // TargetContext exists just like the normal compile pipeline does.
+  if (!ir_ctx->GetTargetContext()) {
+    std::unique_ptr<TargetContext> target_ctx =
+        std::make_unique<TargetContext>();
+    ir_ctx->SetTargetContext(target_ctx);
+  }
+
   // Mirror the MIR part of -O1 pipeline, and stop right after the 2nd LSE.
   PassManager pm(mod->GetIRCtx());
   pm.SetMode(StageMode::SM_MIR);
@@ -128,6 +138,30 @@ static bool IsConstStringKey(Value* v, const std::string& key, FuncOp* func) {
   lepus::Value* cv = lepus_func->GetConstValue(u32->GetValue());
   if (!cv || !cv->IsString()) return false;
   return cv->StdString() == key;
+}
+
+static bool CompileAndExecuteAndCaptureResult(const std::string& source,
+                                              bool opt_bytecode,
+                                              std::string* out_result) {
+  if (!out_result) return false;
+  g_test_result = "";
+
+  lepus::VMContext* context = new lepus::VMContext();
+  context->Initialize();
+  RegisterBuiltinForTest(context);
+  context->SetClosureFix(true);
+  context->SetOptBytecode(opt_bytecode);
+
+  auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
+      context, source, "3.8", "", nullptr);
+  if (!error.empty()) {
+    delete context;
+    return false;
+  }
+  context->Execute();
+  *out_result = g_test_result;
+  delete context;
+  return true;
 }
 
 // Test 1: Simple closure variable read
@@ -1716,8 +1750,6 @@ TEST(LEPUSIRTestToplevelClosureVariable, complex2) {
   delete context;
 }
 
-namespace {
-
 static fml::RefPtr<lynx::lepus::Function> FindFunctionByName(
     const fml::RefPtr<lynx::lepus::Function>& func, const std::string& name) {
   if (!func) return nullptr;
@@ -1727,7 +1759,6 @@ static fml::RefPtr<lynx::lepus::Function> FindFunctionByName(
   }
   return nullptr;
 }
-}  // namespace
 
 TEST(LEPUSIRTestTryCatchSkipOpt, try_function_skips_ir_opt_only_for_itself) {
   // Ensure try/catch functions can go through IR pipeline and keep semantics.
@@ -1786,6 +1817,45 @@ CaptureResult(noTry() + withTry());
 
   delete ctx_noopt;
   delete ctx_opt;
+}
+
+TEST(LEPUSIRTestOptBytecodeConsistency,
+     array_string_property_behavior_consistent) {
+  static const char* source = R"(
+let a = [1, 2, 3];
+a = a == null ? {} : a;
+a.data = 1;
+var result = a.data;
+CaptureResult(result);
+)";
+
+  std::string noopt_result;
+  std::string opt_result;
+  ASSERT_TRUE(CompileAndExecuteAndCaptureResult(source, /*opt_bytecode=*/false,
+                                                &noopt_result));
+  ASSERT_TRUE(CompileAndExecuteAndCaptureResult(source, /*opt_bytecode=*/true,
+                                                &opt_result));
+  EXPECT_EQ(noopt_result, opt_result);
+}
+
+TEST(LEPUSIRTestOptBytecodeConsistency,
+     array_length_after_numeric_store_consistent) {
+  static const char* source = R"(
+let a = [1, 2, 3];
+let before = a.length;
+a[5] = 1;
+var result = a.length;
+CaptureResult(result);
+)";
+
+  std::string noopt_result;
+  std::string opt_result;
+  ASSERT_TRUE(CompileAndExecuteAndCaptureResult(source, /*opt_bytecode=*/false,
+                                                &noopt_result));
+  ASSERT_TRUE(CompileAndExecuteAndCaptureResult(source, /*opt_bytecode=*/true,
+                                                &opt_result));
+  EXPECT_EQ(noopt_result, opt_result);
+  EXPECT_EQ(opt_result, "6");
 }
 
 static bool ContainsOpcode(const fml::RefPtr<lynx::lepus::Function>& func,

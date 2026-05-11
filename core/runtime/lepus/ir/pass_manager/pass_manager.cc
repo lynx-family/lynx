@@ -8,6 +8,7 @@
 #include "core/runtime/lepus/ir/ir_base.h"
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/module_op.h"
+#include "core/runtime/lepus/ir/target_context.h"
 
 namespace lynx {
 namespace lepus {
@@ -33,14 +34,25 @@ void PassManager::Run(FuncOp* func_op) {
 
 void PassManager::Run(ModuleOp* mod) {
   uint32_t pass_idx = 0;
+  auto* target_ctx = ir_ctx_->GetTargetContext();
   for (std::unique_ptr<Pass>& pass : pipeline_) {
     /// Handle function passes:
     if (auto* func_pass = llvh::dyn_cast<FunctionPass>(pass.get())) {
+      const bool root_func_deopt = target_ctx->IsRootFuncDeopt();
       for (auto* func_op : *mod) {
+        // Once the root function falls back to the deopt path, later function
+        // passes should keep optimizing only nested functions.
+        if (root_func_deopt && func_op->IsToplevelFunc()) {
+          continue;
+        }
         func_pass->RunOnFunction(func_op);
       }
     } else if (auto* mod_pass = llvh::dyn_cast<ModulePass>(pass.get())) {
       mod_pass->RunOnModule(mod);
+    }
+
+    if (pass->GetName() == "reg-compact-pass") {
+      target_ctx->PlanRootFuncDeopt(mod);
     }
 
     // IR dump is only available when LEPUS_TEST is enabled.

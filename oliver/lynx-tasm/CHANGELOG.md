@@ -1,8 +1,11 @@
 # CHANGELOG
-# 0.0.39
+# 0.0.41
+* fix lepus bytecode optimization register overflow and add debug prints when Lepus bytecode optimization flag is set
+
+# 0.0.40
 * Support CSR attributesArray entries using the kind-based static, slot, and spread schema.
 
-# 0.0.37
+# 0.0.39
 * delete aggregate template pass in lepus ir pass to optimize parse time.
 
 # 0.0.38

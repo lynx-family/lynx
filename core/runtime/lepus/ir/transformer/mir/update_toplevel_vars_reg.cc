@@ -44,6 +44,11 @@ bool UpdateToplevelVarReg::RunOnModule(ModuleOp* mod) {
         "Lepus IR error: UpdateToplevelVarReg requires RegisterAllocator "
         "analysis");
   }
+  auto* target_ctx = ir_ctx_->GetTargetContext();
+  target_ctx->PlanRootFuncDeopt(mod);
+  if (target_ctx->IsRootFuncDeopt()) {
+    return false;
+  }
   OpBuilder* builder = ir_ctx_->GetOpBuilder();
 
   auto& toplevel_vars = ir_ctx_->GetToplevelVariables();

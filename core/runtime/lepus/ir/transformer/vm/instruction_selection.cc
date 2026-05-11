@@ -6,12 +6,16 @@
 
 #include <algorithm>
 #include <limits>
+#include <string>
 
 #include "base/include/value/base_string.h"
 #include "core/runtime/lepus/function.h"
 #include "core/runtime/lepus/ir/analysis/analysis.h"
 #include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/ir_context.h"
+#include "core/runtime/lepus/ir/llvh/include/llvh/ADT/DenseMap.h"
+#include "core/runtime/lepus/ir/llvh/include/llvh/ADT/DenseSet.h"
+#include "core/runtime/lepus/ir/llvh/include/llvh/ADT/SmallPtrSet.h"
 #include "core/runtime/lepus/ir/transformer/vm/reg_alloc.h"
 #include "core/runtime/lepus/op_code.h"
 #include "core/runtime/lepus/vm_context.h"
@@ -47,6 +51,56 @@ static inline bool TryGetSignedInt16Immediate(const lepus::Value& v,
   }
   *out = static_cast<int16_t>(as_i64);
   return true;
+}
+
+static inline bool CanSpecializeTableStoreReceiver(Value* receiver) {
+  if (!receiver) {
+    return false;
+  }
+  if (receiver->GetType() && receiver->GetType()->IsTableType()) {
+    return true;
+  }
+
+  llvh::DenseMap<Value*, bool> memo;
+  llvh::SmallPtrSet<Value*, 16> visiting;
+  auto resolve_fresh_table = [&](auto&& self, Value* value) -> bool {
+    if (!value) {
+      return false;
+    }
+
+    auto it = memo.find(value);
+    if (it != memo.end()) {
+      return it->second;
+    }
+
+    if (!visiting.insert(value).second) {
+      memo[value] = false;
+      return false;
+    }
+
+    bool result = false;
+    if (llvh::isa<NewTableInst>(value)) {
+      result = true;
+    } else if (auto* phi = llvh::dyn_cast<PhiInst>(value)) {
+      const unsigned n = phi->GetNumEntries();
+      if (n > 0) {
+        result = true;
+        for (unsigned i = 0; i < n; ++i) {
+          auto entry = phi->GetEntry(i);
+          if (!self(self, entry.first)) {
+            result = false;
+            break;
+          }
+        }
+      }
+    }
+
+    visiting.erase(value);
+    memo[value] = result;
+    return result;
+  };
+
+  return resolve_fresh_table(resolve_fresh_table, receiver);
 }
 
 InstructionSelectionPass::InstructionSelectionPass(IRContext* ir_ctx)
@@ -141,6 +195,11 @@ static bool IsCmpJmpInstruction(lynx::lepus::Instruction& i) {
   auto opcode = lynx::lepus::Instruction::GetOpCode(i);
   return opcode == TypeOp_EqualJmpTrue || opcode == TypeOp_EqualJmpFalse ||
          opcode == TypeOp_UnEqualJmpTrue || opcode == TypeOp_UnEqualJmpFalse;
+}
+
+static bool IsNoOpJmpInstruction(lynx::lepus::Instruction& i) {
+  return lynx::lepus::Instruction::GetOpCode(i) == TypeOp_Jmp &&
+         lynx::lepus::Instruction::GetParamsBx(i) == 1;
 }
 
 bool InstructionSelectionPass::ResolveRelocationsInternal() {
@@ -313,8 +372,138 @@ void InstructionSelectionPass::CompactConstPoolAndRewriteConstIndices() {
   lepus_function_->ResetConstValues(std::move(new_consts));
 }
 
+void InstructionSelectionPass::CompactNoOpJumpsAndRewriteOffsets() {
+  const size_t old_size = op_codes_.size();
+  if (old_size == 0) {
+    return;
+  }
+
+  std::vector<uint8_t> relocated_jmp(old_size, 0);
+  std::vector<uint8_t> relocated_cmp_jmp(old_size, 0);
+  std::vector<uint8_t> removable_no_op_jmp(old_size, 0);
+  for (const auto& relocation : relocations_) {
+    if (relocation.loc >= old_size) {
+      continue;
+    }
+    if (relocation.type == Relocation::RelocationType::Jmp) {
+      relocated_jmp[relocation.loc] = 1;
+      if (IsNoOpJmpInstruction(op_codes_[relocation.loc])) {
+        removable_no_op_jmp[relocation.loc] = 1;
+      }
+    } else if (relocation.type == Relocation::RelocationType::CmpJmp) {
+      relocated_cmp_jmp[relocation.loc] = 1;
+    }
+  }
+
+  std::vector<uint32_t> old_to_new(old_size + 1, 0);
+  uint32_t removed_count = 0;
+  for (size_t pc = 0; pc < old_size; ++pc) {
+    old_to_new[pc] = static_cast<uint32_t>(pc) - removed_count;
+    if (removable_no_op_jmp[pc]) {
+      ++removed_count;
+    }
+  }
+  old_to_new[old_size] = static_cast<uint32_t>(old_size) - removed_count;
+
+  if (removed_count == 0) {
+    return;
+  }
+
+  auto map_target = [&](int old_target) -> uint32_t {
+    if (LEPUS_UNLIKELY(old_target < 0 ||
+                       old_target > static_cast<int>(old_size))) {
+      throw ::lynx::lepus::CompileException(
+          "Lepus IR error: no-op jmp compaction found invalid target");
+    }
+    while (old_target < static_cast<int>(old_size) &&
+           removable_no_op_jmp[static_cast<size_t>(old_target)]) {
+      old_target += lynx::lepus::Instruction::GetParamsBx(
+          op_codes_[static_cast<size_t>(old_target)]);
+      if (LEPUS_UNLIKELY(old_target < 0 ||
+                         old_target > static_cast<int>(old_size))) {
+        throw ::lynx::lepus::CompileException(
+            "Lepus IR error: no-op jmp compaction found invalid no-op jmp "
+            "target");
+      }
+    }
+    return old_to_new[static_cast<size_t>(old_target)];
+  };
+
+  base::Vector<lynx::lepus::Instruction> new_op_codes;
+  std::vector<int64_t> new_debug_line_col;
+  new_op_codes.reserve(old_size - removed_count);
+  new_debug_line_col.reserve(old_size - removed_count);
+
+  for (size_t old_pc = 0; old_pc < old_size; ++old_pc) {
+    auto inst = op_codes_[old_pc];
+    if (removable_no_op_jmp[old_pc]) {
+      continue;
+    }
+
+    const uint32_t new_pc = old_to_new[old_pc];
+    if (relocated_jmp[old_pc]) {
+      const auto old_offset = lynx::lepus::Instruction::GetParamsBx(inst);
+      if (old_offset == 0) {
+        new_op_codes.push_back(inst);
+        new_debug_line_col.push_back(debug_line_col_[old_pc]);
+        continue;
+      }
+      const int old_target = static_cast<int>(old_pc) + old_offset;
+      const int new_offset =
+          static_cast<int>(map_target(old_target)) - static_cast<int>(new_pc);
+      if (LEPUS_UNLIKELY(new_offset == 0 || new_offset < -32768 ||
+                         new_offset > 32767)) {
+        throw ::lynx::lepus::CompileException(
+            "Lepus IR error: no-op jmp compaction produced out-of-range jmp "
+            "offset");
+      }
+      inst.RefillsBx(static_cast<short>(new_offset));
+    } else if (relocated_cmp_jmp[old_pc]) {
+      const auto old_offset =
+          static_cast<int8_t>(lynx::lepus::Instruction::GetParamB(inst));
+      const int old_target = static_cast<int>(old_pc) + old_offset;
+      const int new_offset =
+          static_cast<int>(map_target(old_target)) - static_cast<int>(new_pc);
+      if (LEPUS_UNLIKELY(new_offset == 0 || new_offset < -128 ||
+                         new_offset > 127)) {
+        throw ::lynx::lepus::CompileException(
+            "Lepus IR error: no-op jmp compaction produced out-of-range "
+            "cmp-jmp offset");
+      }
+      inst.RefillsB(static_cast<long>(new_offset));
+    }
+
+    new_op_codes.push_back(inst);
+    new_debug_line_col.push_back(debug_line_col_[old_pc]);
+  }
+
+  op_codes_ = std::move(new_op_codes);
+  debug_line_col_ = std::move(new_debug_line_col);
+}
+
 void InstructionSelectionPass::BytecodeGenerateComplete() {
+  CompactNoOpJumpsAndRewriteOffsets();
+
   CompactConstPoolAndRewriteConstIndices();
+
+  // `Function::register_count_` stores the highest register index, not the
+  // number of registers. IR O1 may renumber registers after the legacy
+  // bytecode generator already populated this metadata. If we only replace
+  // opcodes here and keep the stale max register index, the VM can allocate a
+  // stack frame that is too small for the newly selected bytecode registers,
+  // which then corrupts later register reads/writes at runtime.
+  long max_allocated_reg_index = -1;
+  if (ra_ != nullptr) {
+    const unsigned max_usage = ra_->GetMaxRegisterUsage();
+    if (max_usage > 0) {
+      max_allocated_reg_index = static_cast<long>(max_usage - 1);
+    }
+  }
+  max_allocated_reg_index =
+      std::max(max_allocated_reg_index, extra_temp_max_reg_index_);
+  if (lepus_function_->GetRegisterCount() < max_allocated_reg_index) {
+    lepus_function_->SetRegisterCount(max_allocated_reg_index);
+  }
 
   lepus_function_->ResetOpcodes(op_codes_, debug_line_col_);
 }
@@ -324,6 +513,7 @@ void InstructionSelectionPass::Reset(FuncOp* func) {
   basic_block_map_.clear();
   op_codes_.clear();
   debug_line_col_.clear();
+  extra_temp_max_reg_index_ = -1;
   func_op_ = func;
   ra_ = ir_ctx_->GetTargetContext()->GetRegisterAllocAnalysis(func);
   if (LEPUS_UNLIKELY(!ra_)) {
@@ -338,13 +528,20 @@ void InstructionSelectionPass::Reset(FuncOp* func) {
         "LepusFunction");
   }
   lepus_function_->ClearOpCodes();
-  // after ir optimization, upvalues are not used any more.
+  root_func_deopt_ = ir_ctx_->GetTargetContext()->IsRootFuncDeopt();
+  // UpdateToplevelClosureVarPass resolves child-function upvalue indices to the
+  // final root shared slot and records that mapping on FuncOp. Instruction
+  // selection then lowers those accesses to explicit
+  // Get/SetToplevelClosureVar bytecode. This invariant is required for both
+  // normal root layout and root-function deopt fallback, so serialized upvalue
+  // metadata is no longer needed after lowering.
   lepus_function_->ClearUpvalues();
 }
 
 bool InstructionSelectionPass::RunOnFunction(FuncOp* func) {
   Reset(func);
-  if (func->GetName() == constants::kDeepCloneName) {
+  if (func->GetName() == constants::kDeepCloneName &&
+      func->CanSkipDeepCloneLowering() && !root_func_deopt_) {
     // since DeepClone is only used in builtin and we don't want to generate
     // bytecode for it, we can skip it in instruction selection pass.
     return true;
@@ -395,6 +592,50 @@ static bool IsEqNeqCmpJmpInstruction(lynx::lepus::Instruction& i,
     default:
       return false;
   }
+}
+
+int InstructionSelectionPass::FindCmpJmpFallbackRegister(
+    Instruction* branch_inst, uint8_t lhs_reg, uint8_t rhs_reg) const {
+  if (!ra_ || !branch_inst || !ra_->HasInstructionNumber(branch_inst)) {
+    return static_cast<int>(lhs_reg);
+  }
+
+  const unsigned branch_idx = ra_->GetInstructionNumber(branch_inst);
+  Segment branch_point(branch_idx + 1, branch_idx + 2);
+
+  // Single O(N) pass: collect all registers live at the branch point.
+  llvh::SmallDenseSet<unsigned, 16> live_regs;
+  for (auto& bb : *func_op_) {
+    for (auto& op : bb) {
+      auto* inst = llvh::dyn_cast<Instruction>(&op);
+      if (!inst || inst == branch_inst || !ra_->IsAllocated(inst) ||
+          !ra_->HasInstructionNumber(inst)) {
+        continue;
+      }
+      if (ra_->GetInstructionInterval(inst).Intersects(branch_point)) {
+        live_regs.insert(ra_->GetRegister(inst).GetIndex());
+      }
+    }
+  }
+  // Parameters are conservatively treated as always-live.
+  for (auto* param : func_op_->GetParams()) {
+    if (!param || !ra_->IsAllocated(param)) continue;
+    live_regs.insert(ra_->GetRegister(param).GetIndex());
+  }
+
+  // Prefer reusing lhs_reg if it is dead at the branch point.
+  if (live_regs.count(lhs_reg) == 0) {
+    return static_cast<int>(lhs_reg);
+  }
+
+  // Otherwise, find the first available register not conflicting with lhs/rhs.
+  for (unsigned reg = 0; reg < Register::kMaxRegistersLimit; ++reg) {
+    if (reg == lhs_reg || reg == rhs_reg) continue;
+    if (live_regs.count(reg) == 0) {
+      return static_cast<int>(reg);
+    }
+  }
+  return -1;
 }
 
 void InstructionSelectionPass::FixOutOfRangeCmpJmpRelocations() {
@@ -469,14 +710,27 @@ void InstructionSelectionPass::FixOutOfRangeCmpJmpRelocations() {
       continue;
     }
 
-    // Replace cmp-jmp at `loc` with a compare writing into reg `a`.
-    op_codes_[loc] = lynx::lepus::Instruction::ABCCode(cmp_op, a, a, c);
+    const int temp_reg =
+        FindCmpJmpFallbackRegister(r.source_inst, r.lhs_reg, r.rhs_reg);
+    if (LEPUS_UNLIKELY(temp_reg < 0)) {
+      throw ::lynx::lepus::CompileException(
+          "Lepus IR error: out-of-range cmp-jmp widening cannot find a "
+          "scratch register");
+    }
+
+    // Replace cmp-jmp at `loc` with a compare writing into a register that is
+    // dead after the branch site, so widening preserves the original lhs value
+    // when it stays live across successors.
+    op_codes_[loc] = lynx::lepus::Instruction::ABCCode(cmp_op, temp_reg, a, c);
 
     // Insert a wide BoolJmp instruction right after.
-    op_codes_.insert(op_codes_.begin() + static_cast<long>(loc + 1),
-                     lynx::lepus::Instruction::ABxCode(bool_jmp_op, a, 0));
+    op_codes_.insert(
+        op_codes_.begin() + static_cast<long>(loc + 1),
+        lynx::lepus::Instruction::ABxCode(bool_jmp_op, temp_reg, 0));
     debug_line_col_.insert(debug_line_col_.begin() + static_cast<long>(loc + 1),
                            debug_line_col_[loc]);
+    extra_temp_max_reg_index_ =
+        std::max(extra_temp_max_reg_index_, static_cast<long>(temp_reg));
 
     // All subsequent offsets and relocation sites move by +1.
     shift_after(loc, 1);
@@ -505,27 +759,25 @@ void InstructionSelectionPass::GeneratePhiInst(PhiInst* inst, Block* next_bb) {
   // Nothing to do here.
 }
 
-void InstructionSelectionPass::GenerateEqCondBranchInst(EqCondBranchInst* inst,
-                                                        Block* next_bb) {
-  auto left = EncodeValue(inst->GetLeftHandSide());
-  auto right = EncodeValue(inst->GetRightHandSide());
-
-  Block* true_bb = inst->GetTrueDest();
-  Block* false_bb = inst->GetFalseDest();
+void InstructionSelectionPass::GenerateEqNeqCondBranch(
+    Instruction* inst, Value* lhs, Value* rhs, Block* true_bb, Block* false_bb,
+    Block* next_bb, TypeOpCode true_opcode, TypeOpCode false_opcode) {
+  auto left = EncodeValue(lhs);
+  auto right = EncodeValue(rhs);
 
   auto loc = GetCurrentOffset();
   if (next_bb == true_bb) {
     // Emit a conditional jump to the 'False' destination and a fall-through to
     // the 'True' side.
-    ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABCCode(
-                              TypeOp_EqualJmpFalse, left, 0, right));
-    RegisterCmpJmp(loc, false_bb);
+    ADD_INSTRUCTION(
+        inst, lynx::lepus::Instruction::ABCCode(false_opcode, left, 0, right));
+    RegisterCmpJmp(loc, false_bb, inst, left, right);
     return;
   }
 
-  ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABCCode(TypeOp_EqualJmpTrue,
-                                                          left, 0, right));
-  RegisterCmpJmp(loc, true_bb);
+  ADD_INSTRUCTION(
+      inst, lynx::lepus::Instruction::ABCCode(true_opcode, left, 0, right));
+  RegisterCmpJmp(loc, true_bb, inst, left, right);
 
   if (next_bb == false_bb) {
     return;
@@ -536,35 +788,20 @@ void InstructionSelectionPass::GenerateEqCondBranchInst(EqCondBranchInst* inst,
   RegisterJmp(loc, false_bb);
 }
 
+void InstructionSelectionPass::GenerateEqCondBranchInst(EqCondBranchInst* inst,
+                                                        Block* next_bb) {
+  GenerateEqNeqCondBranch(inst, inst->GetLeftHandSide(),
+                          inst->GetRightHandSide(), inst->GetTrueDest(),
+                          inst->GetFalseDest(), next_bb, TypeOp_EqualJmpTrue,
+                          TypeOp_EqualJmpFalse);
+}
+
 void InstructionSelectionPass::GenerateNeqCondBranchInst(
     NeqCondBranchInst* inst, Block* next_bb) {
-  auto left = EncodeValue(inst->GetLeftHandSide());
-  auto right = EncodeValue(inst->GetRightHandSide());
-
-  Block* true_bb = inst->GetTrueDest();
-  Block* false_bb = inst->GetFalseDest();
-
-  auto loc = GetCurrentOffset();
-  if (next_bb == true_bb) {
-    // Emit a conditional jump to the 'False' destination and a fall-through to
-    // the 'True' side.
-    ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABCCode(
-                              TypeOp_UnEqualJmpFalse, left, 0, right));
-    RegisterCmpJmp(loc, false_bb);
-    return;
-  }
-
-  ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABCCode(TypeOp_UnEqualJmpTrue,
-                                                          left, 0, right));
-  RegisterCmpJmp(loc, true_bb);
-
-  if (next_bb == false_bb) {
-    return;
-  }
-
-  loc = GetCurrentOffset();
-  ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABxCode(TypeOp_Jmp, 0, 0));
-  RegisterJmp(loc, false_bb);
+  GenerateEqNeqCondBranch(inst, inst->GetLeftHandSide(),
+                          inst->GetRightHandSide(), inst->GetTrueDest(),
+                          inst->GetFalseDest(), next_bb, TypeOp_UnEqualJmpTrue,
+                          TypeOp_UnEqualJmpFalse);
 }
 
 void InstructionSelectionPass::GenerateCondBranchInst(CondBranchInst* inst,
@@ -616,8 +853,12 @@ void InstructionSelectionPass::RegisterJmp(uint32_t loc, Block* target_bb) {
   relocations_.push_back({loc, Relocation::RelocationType::Jmp, target_bb});
 }
 
-void InstructionSelectionPass::RegisterCmpJmp(uint32_t loc, Block* target_bb) {
-  relocations_.push_back({loc, Relocation::RelocationType::CmpJmp, target_bb});
+void InstructionSelectionPass::RegisterCmpJmp(uint32_t loc, Block* target_bb,
+                                              Instruction* source_inst,
+                                              uint8_t lhs_reg,
+                                              uint8_t rhs_reg) {
+  relocations_.push_back({loc, Relocation::RelocationType::CmpJmp, target_bb,
+                          source_inst, lhs_reg, rhs_reg});
 }
 
 void InstructionSelectionPass::GenerateBranchInst(BranchInst* inst,
@@ -804,7 +1045,7 @@ void InstructionSelectionPass::GenerateUnaryOperatorInst(
 uint8_t InstructionSelectionPass::EncodeValue(Value* value) {
   if (llvh::isa<Instruction>(value) || llvh::isa<Parameter>(value)) {
     auto res = ra_->GetRegister(value).GetIndex();
-    if (res >= Register::kMaxRegistersLimit) {
+    if (LEPUS_UNLIKELY(res >= Register::kMaxRegistersLimit)) {
       throw ::lynx::lepus::CompileException(
           "Lepus IR error: InstructionSelectionPass register index exceeds "
           "255");
@@ -917,6 +1158,10 @@ void InstructionSelectionPass::GenerateGetTableInst(GetTableInst* inst,
 void InstructionSelectionPass::GenerateSetTableConstStringKeyInst(
     SetTableConstStringKeyInst* inst, Block* next_bb) {
   auto obj_val = inst->GetObject();
+  if (LEPUS_UNLIKELY(!CanSpecializeTableStoreReceiver(obj_val))) {
+    throw ::lynx::lepus::CompileException(
+        "Lepus IR error: SetTableConstStringKey requires table receiver");
+  }
   auto key_const_index =
       llvh::cast<LiteralUint32>(inst->GetConstIndex())->GetValue();
   if (LEPUS_UNLIKELY(key_const_index > 0xFF)) {
@@ -941,10 +1186,8 @@ void InstructionSelectionPass::GenerateSetTableInst(SetTableInst* inst,
   if (obj_val->GetType()->IsArrayType() && key_val->GetType()->IsStringType()) {
     ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABCCode(TypeOp_SetTable,
                                                             obj, key, val));
-  } else if ((obj_val->GetType()->IsTableType() &&
-              key_val->GetType()->IsStringType()) ||
-             (obj_val->GetType()->IsAnyType() &&
-              key_val->GetType()->IsStringType())) {
+  } else if (CanSpecializeTableStoreReceiver(obj_val) &&
+             key_val->GetType()->IsStringType()) {
     ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABCCode(
                               TypeOp_SetObjectString, obj, key, val));
   } else if (obj_val->GetType()->IsTableType() &&
@@ -1233,59 +1476,127 @@ void InstructionSelectionPass::GenerateCreateClosureInst(
                             TypeOp_Closure, dst_reg, child_func_index));
 }
 
+uint8_t InstructionSelectionPass::GetLiteralUint8Value(
+    Value* value, const char* inst_name) const {
+  if (!llvh::isa<LiteralUint8>(value)) {
+    throw ::lynx::lepus::CompileException((std::string("Lepus IR error: ") +
+                                           inst_name +
+                                           " expects LiteralUint8 index")
+                                              .c_str());
+  }
+  return llvh::cast<LiteralUint8>(value)->GetValue();
+}
+
+uint32_t InstructionSelectionPass::GetLiteralUint32Value(
+    Value* value, const char* inst_name, const char* value_desc) const {
+  if (!llvh::isa<LiteralUint32>(value)) {
+    throw ::lynx::lepus::CompileException(
+        (std::string("Lepus IR error: ") + inst_name +
+         " expects LiteralUint32 " + value_desc)
+            .c_str());
+  }
+  return llvh::cast<LiteralUint32>(value)->GetValue();
+}
+
+uint8_t InstructionSelectionPass::RequireSpecialRegisterIndex(long reg) const {
+  if (LEPUS_UNLIKELY(reg >= Register::kMaxRegistersLimit)) {
+    throw ::lynx::lepus::CompileException(
+        "Lepus IR error: InstructionSelectionPass special register index "
+        "exceeds 255");
+  }
+  return static_cast<uint8_t>(reg);
+}
+
+long InstructionSelectionPass::ResolveUpvalueToplevelRegister(
+    FuncOp* current_func, uint8_t index, const char* inst_name) const {
+  auto toplevel_reg = current_func->GetClosureVarToplevelReg(index);
+  if (toplevel_reg == constants::kInvalidSignedValue) {
+    throw ::lynx::lepus::CompileException(
+        (std::string("Lepus IR error: ") + inst_name +
+         " requires resolved toplevel reg mapping")
+            .c_str());
+  }
+  return toplevel_reg;
+}
+
+long InstructionSelectionPass::ResolveToplevelClosurePhysicalRegister(
+    uint32_t original_closure_reg, const char* inst_name) const {
+  auto* mod = ir_ctx_->GetMainMod();
+  auto* toplevel_func_op = mod->GetRootFunction();
+  if (!toplevel_func_op) {
+    throw ::lynx::lepus::CompileException((std::string("Lepus IR error: ") +
+                                           inst_name +
+                                           " found nullptr toplevel function")
+                                              .c_str());
+  }
+
+  long physical_reg = original_closure_reg;
+  if (!root_func_deopt_) {
+    auto closure_value =
+        toplevel_func_op->GetClosureVarGivenReg(original_closure_reg);
+    if (!closure_value) {
+      throw ::lynx::lepus::CompileException((std::string("Lepus IR error: ") +
+                                             inst_name +
+                                             " found nullptr closure value")
+                                                .c_str());
+    }
+
+    auto* target_ctx = ir_ctx_->GetTargetContext();
+    auto* toplevel_ra = target_ctx->GetRegisterAllocAnalysis(toplevel_func_op);
+    if (!toplevel_ra) {
+      throw ::lynx::lepus::CompileException(
+          (std::string("Lepus IR error: ") + inst_name +
+           " found nullptr toplevel register allocator")
+              .c_str());
+    }
+    physical_reg =
+        static_cast<long>(toplevel_ra->GetRegister(closure_value).GetIndex());
+  }
+
+  RequireSpecialRegisterIndex(physical_reg);
+  return physical_reg;
+}
+
 void InstructionSelectionPass::GenerateGetUpvalueInst(GetUpvalueInst* inst,
                                                       Block* next_bb) {
   auto dst_reg = EncodeValue(inst);
   auto current_func = inst->GetFunc();
-  auto index_literal = inst->GetIndex();
-  if (!llvh::isa<LiteralUint8>(index_literal)) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: InstructionSelectionPass::GenerateGetUpvalueInst "
-        "expects LiteralUint8 index");
-  }
-  auto index = llvh::cast<LiteralUint8>(index_literal)->GetValue();
+  auto index = GetLiteralUint8Value(
+      inst->GetIndex(), "InstructionSelectionPass::GenerateGetUpvalueInst");
+  auto toplevel_reg = ResolveUpvalueToplevelRegister(
+      current_func, index, "InstructionSelectionPass::GenerateGetUpvalueInst");
 
-  auto toplevel_reg = current_func->GetClosureVarToplevelReg(index);
+  // GetUpvalueInst should only reach VM lowering after
+  // UpdateToplevelClosureVarPass has resolved its upvalue index to a concrete
+  // root shared slot. In root-function deopt fallback that recorded register is
+  // the root-function-deopt slot; otherwise it is the optimized physical
+  // register.
+  auto encoded_toplevel_reg = RequireSpecialRegisterIndex(toplevel_reg);
 
-  // All upvalues in this context should be toplevel closure variables
-  if (toplevel_reg == constants::kInvalidSignedValue) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: InstructionSelectionPass::GenerateGetUpvalueInst "
-        "found invalid toplevel_reg");
-  }
-
-  ADD_INSTRUCTION(inst,
-                  lynx::lepus::Instruction::ABCode(TypeOp_GetToplevelClosureVar,
-                                                   dst_reg, toplevel_reg));
+  ADD_INSTRUCTION(
+      inst, lynx::lepus::Instruction::ABCode(TypeOp_GetToplevelClosureVar,
+                                             dst_reg, encoded_toplevel_reg));
 }
 
 void InstructionSelectionPass::GenerateSetUpvalueInst(SetUpvalueInst* inst,
                                                       Block* next_bb) {
   auto current_func = inst->GetFunc();
-  auto index_literal = inst->GetIndex();
-  if (!llvh::isa<LiteralUint8>(index_literal)) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: InstructionSelectionPass::GenerateSetUpvalueInst "
-        "expects LiteralUint8 index");
-  }
-  auto index = llvh::cast<LiteralUint8>(index_literal)->GetValue();
+  auto index = GetLiteralUint8Value(
+      inst->GetIndex(), "InstructionSelectionPass::GenerateSetUpvalueInst");
   auto src = EncodeValue(inst->GetSrc());
-
-  auto toplevel_reg = current_func->GetClosureVarToplevelReg(index);
-
-  // All upvalues in this context should be toplevel closure variables
-  if (toplevel_reg == constants::kInvalidSignedValue) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: InstructionSelectionPass::GenerateSetUpvalueInst "
-        "found invalid toplevel_reg");
-  }
+  auto toplevel_reg = ResolveUpvalueToplevelRegister(
+      current_func, index, "InstructionSelectionPass::GenerateSetUpvalueInst");
+  auto encoded_toplevel_reg = RequireSpecialRegisterIndex(toplevel_reg);
 
   auto* toplevel_func_op = ir_ctx_->GetMainMod()->GetRootFunction();
-  if (toplevel_reg == src && func_op_ == toplevel_func_op) {
+  // Only the root function can prove that writing a shared closure slot back
+  // to the exact same root register is a no-op.
+  if (encoded_toplevel_reg == src && func_op_ == toplevel_func_op) {
     return;
   }
-  ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABCode(
-                            TypeOp_SetToplevelClosureVar, src, toplevel_reg));
+  ADD_INSTRUCTION(
+      inst, lynx::lepus::Instruction::ABCode(TypeOp_SetToplevelClosureVar, src,
+                                             encoded_toplevel_reg));
 }
 
 bool InstructionSelectionPass::TryLowerDeepCloneCall(CallInst* inst,
@@ -1308,49 +1619,21 @@ bool InstructionSelectionPass::TryLowerDeepCloneCall(CallInst* inst,
 void InstructionSelectionPass::GenerateGetToplevelClosureVarInst(
     GetToplevelClosureVarInst* inst, Block* next_bb) {
   auto dst = EncodeValue(inst);
-  auto original_closure_reg =
-      llvh::cast<LiteralUint32>(inst->GetClosureReg())->GetValue();
+  auto original_closure_reg = GetLiteralUint32Value(
+      inst->GetClosureReg(),
+      "InstructionSelectionPass::GenerateGetToplevelClosureVarInst",
+      "original closure reg");
   if (original_closure_reg == constants::kInvalidSignedValue) {
     throw ::lynx::lepus::CompileException(
         "Lepus IR error: "
         "InstructionSelectionPass::GenerateGetToplevelClosureVarInst found "
         "invalid original closure reg");
   }
-
-  // Get the toplevel function to find the closure variable
-  auto* mod = ir_ctx_->GetMainMod();
-  auto* toplevel_func_op = mod->GetRootFunction();
-  if (!toplevel_func_op) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: "
-        "InstructionSelectionPass::GenerateGetToplevelClosureVarInst found "
-        "nullptr toplevel function");
-  }
-
-  // Find the IR Value corresponding to the original closure register
-  auto closure_value =
-      toplevel_func_op->GetClosureVarGivenReg(original_closure_reg);
-  if (!closure_value) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: "
-        "InstructionSelectionPass::GenerateGetToplevelClosureVarInst found "
-        "nullptr closure value");
-  }
-
-  // Get the register allocator for toplevel function
-  auto toplevel_ra =
-      ir_ctx_->GetTargetContext()->GetRegisterAllocAnalysis(toplevel_func_op);
-  if (!toplevel_ra) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: "
-        "InstructionSelectionPass::GenerateGetToplevelClosureVarInst found "
-        "nullptr toplevel register allocator");
-  }
-
-  // Get the physical register assigned to the closure variable after
-  // optimization
-  auto physical_reg = toplevel_ra->GetRegister(closure_value).GetIndex();
-
+  // In the normal path this is a root physical register; in root-function
+  // deopt mode it is already the resolved shared slot recorded earlier.
+  auto physical_reg = ResolveToplevelClosurePhysicalRegister(
+      original_closure_reg,
+      "InstructionSelectionPass::GenerateGetToplevelClosureVarInst");
   // Generate GetToplevelClosureVar instruction to read from the physical
   // register
   ADD_INSTRUCTION(inst, lynx::lepus::Instruction::ABCode(
@@ -1360,13 +1643,9 @@ void InstructionSelectionPass::GenerateGetToplevelClosureVarInst(
 void InstructionSelectionPass::GenerateSetToplevelVarInst(
     SetToplevelVarInst* inst, Block* next_bb) {
   auto src = EncodeValue(inst->GetSrc());
-  if (!llvh::isa<LiteralUint32>(inst->GetToplevelReg())) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: InstructionSelectionPass::GenerateSetToplevelVarInst "
-        "expects LiteralUint32 toplevel reg");
-  }
-  auto toplevel_reg =
-      llvh::cast<LiteralUint32>(inst->GetToplevelReg())->GetValue();
+  auto toplevel_reg = RequireSpecialRegisterIndex(GetLiteralUint32Value(
+      inst->GetToplevelReg(),
+      "InstructionSelectionPass::GenerateSetToplevelVarInst", "toplevel reg"));
   if (src != toplevel_reg)
     ADD_INSTRUCTION(
         inst, lynx::lepus::Instruction::ABCode(TypeOp_Move, toplevel_reg, src));
@@ -1375,13 +1654,9 @@ void InstructionSelectionPass::GenerateSetToplevelVarInst(
 void InstructionSelectionPass::GenerateGetToplevelVarInst(
     GetToplevelVarInst* inst, Block* next_bb) {
   auto dst = EncodeValue(inst);
-  if (!llvh::isa<LiteralUint32>(inst->GetToplevelReg())) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: InstructionSelectionPass::GenerateGetToplevelVarInst "
-        "expects LiteralUint32 toplevel reg");
-  }
-  auto toplevel_reg =
-      llvh::cast<LiteralUint32>(inst->GetToplevelReg())->GetValue();
+  auto toplevel_reg = RequireSpecialRegisterIndex(GetLiteralUint32Value(
+      inst->GetToplevelReg(),
+      "InstructionSelectionPass::GenerateGetToplevelVarInst", "toplevel reg"));
   if (toplevel_reg != dst) {
     ADD_INSTRUCTION(
         inst, lynx::lepus::Instruction::ABCode(TypeOp_Move, dst, toplevel_reg));
@@ -1391,57 +1666,20 @@ void InstructionSelectionPass::GenerateGetToplevelVarInst(
 void InstructionSelectionPass::GenerateSetToplevelClosureVarInst(
     SetToplevelClosureVarInst* inst, Block* next_bb) {
   auto src = EncodeValue(inst->GetSrc());
-
-  auto original_closure_reg_val = inst->GetClosureReg();
-  if (!llvh::isa<LiteralUint32>(original_closure_reg_val)) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: "
-        "InstructionSelectionPass::GenerateSetToplevelClosureVarInst expects "
-        "LiteralUint32 original closure reg");
-  }
-  auto original_closure_reg =
-      llvh::cast<LiteralUint32>(original_closure_reg_val)->GetValue();
+  auto original_closure_reg = GetLiteralUint32Value(
+      inst->GetClosureReg(),
+      "InstructionSelectionPass::GenerateSetToplevelClosureVarInst",
+      "original closure reg");
   if (original_closure_reg == constants::kInvalidSignedValue) {
     throw ::lynx::lepus::CompileException(
         "Lepus IR error: "
         "InstructionSelectionPass::GenerateSetToplevelClosureVarInst found "
         "invalid original closure reg");
   }
-
-  // Get the toplevel function to find the closure variable
-  auto* mod = ir_ctx_->GetMainMod();
-  auto* toplevel_func_op = mod->GetRootFunction();
-  if (!toplevel_func_op) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: "
-        "InstructionSelectionPass::GenerateSetToplevelClosureVarInst found "
-        "nullptr toplevel function");
-  }
-
-  // Find the IR Value corresponding to the original closure register
-  auto closure_value =
-      toplevel_func_op->GetClosureVarGivenReg(original_closure_reg);
-  if (!closure_value) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: "
-        "InstructionSelectionPass::GenerateSetToplevelClosureVarInst found "
-        "nullptr closure value");
-  }
-
-  // Get the register allocator for toplevel function
-  auto toplevel_ra =
-      ir_ctx_->GetTargetContext()->GetRegisterAllocAnalysis(toplevel_func_op);
-  if (!toplevel_ra) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: "
-        "InstructionSelectionPass::GenerateSetToplevelClosureVarInst found "
-        "nullptr toplevel register allocator");
-  }
-
-  // Get the physical register assigned to the closure variable after
-  // optimization
-  auto physical_reg = toplevel_ra->GetRegister(closure_value).GetIndex();
-
+  auto* toplevel_func_op = ir_ctx_->GetMainMod()->GetRootFunction();
+  auto physical_reg = ResolveToplevelClosurePhysicalRegister(
+      original_closure_reg,
+      "InstructionSelectionPass::GenerateSetToplevelClosureVarInst");
   if (physical_reg == src && toplevel_func_op == func_op_) {
     return;
   }

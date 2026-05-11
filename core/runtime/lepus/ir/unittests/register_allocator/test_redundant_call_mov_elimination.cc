@@ -1597,6 +1597,114 @@ TEST_F(LEPUSIRRedundantMovEliminationTest,
   EXPECT_FALSE(mov1_exists);
 }
 
+TEST_F(LEPUSIRRedundantMovEliminationTest,
+       RegisterCompactionIsNoOpWhenRegistersAlreadyDense) {
+  auto* func = createTestFunction("test_reg_compact_already_dense");
+  auto builder = ir_ctx->GetOpBuilder();
+  Block* block = &func->Front();
+  builder->SetInsertionPointToEnd(block);
+
+  // Build a simple sequence with naturally dense registers.
+  auto* v1 = builder->Create<LoadConstInst>(0, builder->GetLiteralInt32(1),
+                                            TypeOp::CreateInt32(builder));
+  auto* v2 = builder->Create<LoadConstInst>(0, builder->GetLiteralInt32(2),
+                                            TypeOp::CreateInt32(builder));
+  auto* add = builder->Create<BinaryOperatorInst>(
+      0, v1, v2, ValueKind::BinaryAddInstKind, TypeOp::CreateInt32(builder));
+  builder->Create<ReturnInst>(0, add);
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ra_pass.RunOnFunction(func);
+
+  auto* ra = ir_ctx->GetTargetContext()->GetRegisterAllocAnalysis(func);
+  ASSERT_NE(nullptr, ra);
+
+  // Snapshot original register assignment.
+  llvh::DenseMap<Value*, unsigned> original_regs;
+  for (const auto& kv : ra->GetAllocatedMap()) {
+    if (kv.second.IsValid()) {
+      original_regs[kv.first] = kv.second.GetIndex();
+    }
+  }
+
+  // Run compaction - should be no-op since registers are already dense.
+  RegisterCompactionPass compact(ir_ctx.get());
+  EXPECT_FALSE(compact.RunOnFunction(func));
+
+  // Verify all registers are unchanged.
+  for (const auto& kv : ra->GetAllocatedMap()) {
+    if (!kv.second.IsValid()) continue;
+    auto it = original_regs.find(kv.first);
+    ASSERT_NE(it, original_regs.end());
+    EXPECT_EQ(kv.second.GetIndex(), it->second);
+  }
+}
+
+TEST_F(LEPUSIRRedundantMovEliminationTest,
+       RegisterCompactionPreservesOrderWithMultipleGaps) {
+  auto* func = createTestFunction("test_reg_compact_multi_gap");
+  auto builder = ir_ctx->GetOpBuilder();
+  Block* block = &func->Front();
+  builder->SetInsertionPointToEnd(block);
+
+  // Build values.
+  auto* v1 = builder->Create<LoadConstInst>(0, builder->GetLiteralInt32(10),
+                                            TypeOp::CreateInt32(builder));
+  auto* v2 = builder->Create<LoadConstInst>(0, builder->GetLiteralInt32(20),
+                                            TypeOp::CreateInt32(builder));
+  auto* v3 = builder->Create<LoadConstInst>(0, builder->GetLiteralInt32(30),
+                                            TypeOp::CreateInt32(builder));
+  auto* sum12 = builder->Create<BinaryOperatorInst>(
+      0, v1, v2, ValueKind::BinaryAddInstKind, TypeOp::CreateInt32(builder));
+  auto* sum123 = builder->Create<BinaryOperatorInst>(
+      0, sum12, v3, ValueKind::BinaryAddInstKind, TypeOp::CreateInt32(builder));
+  builder->Create<ReturnInst>(0, sum123);
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ra_pass.RunOnFunction(func);
+
+  auto* ra = ir_ctx->GetTargetContext()->GetRegisterAllocAnalysis(func);
+  ASSERT_NE(nullptr, ra);
+
+  // Introduce large gaps: assign sparse register indices.
+  const unsigned prefix = static_cast<unsigned>(func->GetParamSize());
+  ra->UpdateRegister(v1, Register(prefix + 5));
+  ra->UpdateRegister(v2, Register(prefix + 15));
+  ra->UpdateRegister(v3, Register(prefix + 25));
+
+  // Record order before compaction.
+  unsigned v1_before = ra->GetRegister(v1).GetIndex();
+  unsigned v2_before = ra->GetRegister(v2).GetIndex();
+  unsigned v3_before = ra->GetRegister(v3).GetIndex();
+  ASSERT_LT(v1_before, v2_before);
+  ASSERT_LT(v2_before, v3_before);
+
+  // Run compaction.
+  RegisterCompactionPass compact(ir_ctx.get());
+  EXPECT_TRUE(compact.RunOnFunction(func));
+
+  // Verify order is preserved after compaction.
+  unsigned v1_after = ra->GetRegister(v1).GetIndex();
+  unsigned v2_after = ra->GetRegister(v2).GetIndex();
+  unsigned v3_after = ra->GetRegister(v3).GetIndex();
+  EXPECT_LT(v1_after, v2_after);
+  EXPECT_LT(v2_after, v3_after);
+
+  // Verify registers form a dense range starting from prefix.
+  llvh::SmallDenseSet<unsigned, 32> used;
+  unsigned max_used = 0;
+  for (const auto& kv : ra->GetAllocatedMap()) {
+    if (!kv.second.IsValid()) continue;
+    unsigned idx = kv.second.GetIndex();
+    if (idx < prefix) continue;
+    used.insert(idx);
+    max_used = std::max(max_used, idx);
+  }
+  for (unsigned r = prefix; r <= max_used; ++r) {
+    EXPECT_TRUE(used.count(r));
+  }
+}
+
 }  // namespace ir
 }  // namespace lepus
 }  // namespace lynx
