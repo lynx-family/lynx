@@ -243,6 +243,8 @@ lynx_css_parser_sources = [
   "ng/parser/css_tokenizer.h",
   "ng/parser/css_tokenizer_input_stream.cc",
   "ng/parser/css_tokenizer_input_stream.h",
+  "ng/parser/media_query_parser.cc",
+  "ng/parser/media_query_parser.h",
   "ng/parser/string_to_number.cc",
   "ng/selector/css_parser_context.h",
   "ng/selector/css_selector_parser.cc",

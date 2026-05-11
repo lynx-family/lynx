@@ -114,6 +114,7 @@ unittest_set("css_ng_testset") {
     "ng/media_query/media_query_test.cc",
     "ng/parser/css_parser_token_stream_test.cc",
     "ng/parser/css_tokenizer_test.cc",
+    "ng/parser/media_query_parser_test.cc",
     "ng/selector/css_selector_parser_test.cc",
     "ng/selector/lynx_css_selector_test.cc",
     "ng/style/rule_set_unittest.cc",
