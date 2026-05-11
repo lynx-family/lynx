@@ -18,7 +18,12 @@ bool ToplevelStoreOptimizationPass::InitForModule(ModuleOp* mod) {
   root_ = mod ? mod->GetRootFunction() : nullptr;
   if (!root_) return false;
 
-  ra_ = ir_ctx_->GetTargetContext()->GetRegisterAllocAnalysis(root_);
+  auto* target_ctx = ir_ctx_->GetTargetContext();
+  if (target_ctx->IsRootFuncDeopt()) {
+    return false;
+  }
+
+  ra_ = target_ctx->GetRegisterAllocAnalysis(root_);
   if (!ra_) return false;
 
   physical_reg_to_values_.clear();
@@ -284,7 +289,6 @@ void ToplevelStoreOptimizationPass::RefreshClosureUpvalueMapIfNeeded() {
   auto root_lepus_func = root_->GetLepusFunction();
   if (!root_lepus_func) return;
   auto& closure_map = root_->GetClosureVarReg2ValueMap();
-
   auto refresh_descendants = [&](auto&& self, FuncOp* parent_func_op) -> void {
     if (!parent_func_op) return;
     auto parent = parent_func_op->GetLepusFunction();
@@ -297,7 +301,9 @@ void ToplevelStoreOptimizationPass::RefreshClosureUpvalueMapIfNeeded() {
         if (!upvalue || !upvalue->in_parent_vars_) continue;
         auto new_reg =
             parent_func_op->GetClosureVarToplevelReg(upvalue->register_);
-        if (new_reg == -1) continue;
+        if (new_reg == static_cast<long>(constants::kInvalidSignedValue)) {
+          continue;
+        }
         child_func_op->RecordUpvalueIndex2ToplevelReg(i, new_reg);
       }
       self(self, child_func_op);

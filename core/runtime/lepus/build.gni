@@ -172,6 +172,8 @@ lynx_lepus_ir_compile_files = [
   "ir/transformer/vm/mov_elimination.cc",
   "ir/transformer/vm/register_compaction_pass.h",
   "ir/transformer/vm/register_compaction_pass.cc",
+  "ir/transformer/vm/load_const_rematerialization.h",
+  "ir/transformer/vm/load_const_rematerialization.cc",
   "ir/transformer/vm/toplevel_store_optimization.h",
   "ir/transformer/vm/toplevel_store_optimization.cc",
   "ir/transformer/vm/instruction_selection.h",

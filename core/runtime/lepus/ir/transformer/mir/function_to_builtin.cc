@@ -9,12 +9,112 @@
 #include "core/runtime/lepus/ir/ir_base.h"
 #include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/pass_manager/pass.h"
-#include "core/runtime/lepus/ir/transformer/vm/reg_alloc.h"
-#include "core/runtime/lepus/vm_context.h"
 
 namespace lynx {
 namespace lepus {
 namespace ir {
+
+Value* StripToDefiningValue(Value* v) {
+  // Peel through trivial register moves and toplevel store wrappers so builtin
+  // matching sees the original producer instead of the forwarding chain.
+  while (auto* mov = llvh::dyn_cast_or_null<MovInst>(v)) {
+    v = mov->GetSingleOperand();
+  }
+  if (auto* set_tv = llvh::dyn_cast_or_null<SetToplevelVarInst>(v)) {
+    v = set_tv->GetSrc();
+  }
+  if (auto* set_tc = llvh::dyn_cast_or_null<SetToplevelClosureVarInst>(v)) {
+    v = set_tc->GetSrc();
+  }
+  while (auto* mov = llvh::dyn_cast_or_null<MovInst>(v)) {
+    v = mov->GetSingleOperand();
+  }
+  return v;
+}
+
+FuncOp* FindDeepCloneFunc(IRContext* ir_ctx) {
+  if (ir_ctx == nullptr || ir_ctx->GetMainMod() == nullptr) {
+    return nullptr;
+  }
+  for (auto* func : *ir_ctx->GetMainMod()) {
+    if (func == nullptr || func->GetLepusFunction() == nullptr) {
+      continue;
+    }
+    if (func->GetLepusFunction()->GetFunctionName() ==
+        constants::kDeepCloneName) {
+      return func;
+    }
+  }
+  return nullptr;
+}
+
+bool IsDirectDeepCloneToplevelClosure(Value* v, IRContext* ir_ctx) {
+  auto* def_val = StripToDefiningValue(v);
+  auto* create_closure = llvh::dyn_cast_or_null<CreateClosureInst>(def_val);
+  if (create_closure == nullptr || ir_ctx == nullptr ||
+      ir_ctx->GetMainMod() == nullptr) {
+    return false;
+  }
+
+  auto* root_func_op = ir_ctx->GetMainMod()->GetRootFunction();
+  // Only root-function child closures are considered here. The deep-clone
+  // builtin is materialized as a root child function before later lowering
+  // rewrites closure accesses to their final runtime representation.
+  if (root_func_op == nullptr ||
+      create_closure->GetFunction() != root_func_op) {
+    return false;
+  }
+
+  auto root_func = root_func_op->GetLepusFunction();
+  if (root_func == nullptr) {
+    return false;
+  }
+
+  const auto child_idx = create_closure->GetChildrenIndex();
+  if (child_idx >= root_func->GetChildFunction().size()) {
+    return false;
+  }
+  const auto& child_func = root_func->GetChildFunction()[child_idx];
+  return child_func != nullptr &&
+         child_func->GetFunctionName() == constants::kDeepCloneName;
+}
+
+bool IsDirectDeepCloneUpvalue(Value* v, FuncOp* owner_func) {
+  auto* def_val = StripToDefiningValue(v);
+  auto* get_upvalue = llvh::dyn_cast_or_null<GetUpvalueInst>(def_val);
+  if (get_upvalue == nullptr) {
+    return false;
+  }
+
+  auto* idx = get_upvalue->GetIndex();
+  if (!llvh::isa<LiteralUint8>(idx)) {
+    return false;
+  }
+
+  auto* current_func = get_upvalue->GetFunc();
+  if (current_func == nullptr) {
+    current_func = owner_func;
+  }
+  if (current_func == nullptr || current_func->GetLepusFunction() == nullptr) {
+    return false;
+  }
+
+  const auto upvalue_index = llvh::cast<LiteralUint8>(idx)->GetValue();
+  if (upvalue_index >= current_func->GetLepusFunction()->UpvaluesSize()) {
+    return false;
+  }
+  // Match the original captured symbol name here. This pass runs before
+  // instruction selection rewrites closure accesses to final shared slots.
+  auto* upvalue_info =
+      current_func->GetLepusFunction()->GetUpvalue(upvalue_index);
+  return upvalue_info != nullptr &&
+         upvalue_info->name_ == constants::kDeepCloneName;
+}
+
+bool IsDirectDeepCloneValue(Value* v, FuncOp* owner_func, IRContext* ir_ctx) {
+  return IsDirectDeepCloneToplevelClosure(v, ir_ctx) ||
+         IsDirectDeepCloneUpvalue(v, owner_func);
+}
 
 class FunctionToBuiltInPass : public FunctionPass {
  public:
@@ -23,71 +123,6 @@ class FunctionToBuiltInPass : public FunctionPass {
   ~FunctionToBuiltInPass() override = default;
 
   bool RunOnFunction(FuncOp* func) override;
-
- private:
-  static Value* StripToDefiningValue(Value* v) {
-    if (v == nullptr) {
-      return nullptr;
-    }
-    while (auto* mov = llvh::dyn_cast<MovInst>(v)) {
-      v = mov->GetSingleOperand();
-    }
-    if (auto* set_tv = llvh::dyn_cast<SetToplevelVarInst>(v)) {
-      v = set_tv->GetSrc();
-      while (auto* mov = llvh::dyn_cast<MovInst>(v)) {
-        v = mov->GetSingleOperand();
-      }
-    }
-    if (auto* set_tc = llvh::dyn_cast<SetToplevelClosureVarInst>(v)) {
-      v = set_tc->GetSrc();
-      while (auto* mov = llvh::dyn_cast<MovInst>(v)) {
-        v = mov->GetSingleOperand();
-      }
-    }
-    return v;
-  }
-
-  bool IsDeepCloneViaPhysicalClosureReg(uint32_t physical_reg) const {
-    auto* toplevel_func_op = ir_ctx_->GetMainMod()->GetRootFunction();
-    if (toplevel_func_op == nullptr) {
-      return false;
-    }
-
-    auto* ra =
-        ir_ctx_->GetTargetContext()->GetRegisterAllocAnalysis(toplevel_func_op);
-    if (ra == nullptr) {
-      return false;
-    }
-
-    auto root_func = toplevel_func_op->GetLepusFunction();
-    if (root_func == nullptr) {
-      return false;
-    }
-
-    // Iterate all toplevel closure anchors and find the one that:
-    // - is allocated to `physical_reg`
-    // - defines a closure whose child function name is `$deepClone`
-    auto& closure_var_reg_map = toplevel_func_op->GetClosureVarReg2ValueMap();
-    for (const auto& kv : closure_var_reg_map) {
-      Value* anchor = kv.second;
-      if (anchor == nullptr) continue;
-      if (!ra->IsAllocated(anchor)) continue;
-      if (ra->GetRegister(anchor).GetIndex() != physical_reg) continue;
-
-      auto* def_val = StripToDefiningValue(anchor);
-      auto* create_closure = llvh::dyn_cast_or_null<CreateClosureInst>(def_val);
-      if (create_closure == nullptr) continue;
-
-      const auto child_idx = create_closure->GetChildrenIndex();
-      if (child_idx >= root_func->GetChildFunction().size()) continue;
-      const auto& child_func = root_func->GetChildFunction()[child_idx];
-      if (child_func != nullptr &&
-          child_func->GetFunctionName() == constants::kDeepCloneName) {
-        return true;
-      }
-    }
-    return false;
-  }
 };
 
 bool FunctionToBuiltInPass::RunOnFunction(FuncOp* func) {
@@ -95,55 +130,37 @@ bool FunctionToBuiltInPass::RunOnFunction(FuncOp* func) {
     return false;
   }
 
+  auto* deep_clone_func = FindDeepCloneFunc(ir_ctx_);
+  if (deep_clone_func == nullptr) {
+    return false;
+  }
+
   bool changed = false;
-
   for (auto& bb : *func) {
-    for (auto it = bb.InstBegin(); it != bb.InstEnd(); ++it) {
-      auto* inst = *it;
-      auto* call = llvh::dyn_cast<CallInst>(inst);
-      if (call == nullptr) {
-        continue;
-      }
-      if (call->GetNumArguments() != 1) {
-        continue;
-      }
-      if (call->IsDeepCloneCall()) {
+    for (auto& inst : bb) {
+      auto* value = llvh::dyn_cast<Instruction>(&inst);
+      if (value == nullptr || !IsDirectDeepCloneValue(value, func, ir_ctx_)) {
         continue;
       }
 
-      Value* callee = call->GetFunction();
-      while (auto* mov = llvh::dyn_cast<MovInst>(callee)) {
-        callee = mov->GetSingleOperand();
-      }
-
-      // 1) Nested function calls `$deepClone` via GetUpvalueInst.
-      if (auto* get_upvalue = llvh::dyn_cast<GetUpvalueInst>(callee)) {
-        auto* idx = get_upvalue->GetIndex();
-        if (!llvh::isa<LiteralUint8>(idx)) {
-          continue;
-        }
-        const auto upvalue_index = llvh::cast<LiteralUint8>(idx)->GetValue();
-
-        // UpdateToplevelClosureVarPass records a mapping:
-        //   (upvalue_index) -> (toplevel physical reg)
-        // on FuncOp. This is the same mapping used by instruction selection to
-        // emit GetToplevelClosureVar.
-        auto* current_func_op = get_upvalue->GetFunc();
-        if (current_func_op == nullptr) {
-          continue;
-        }
-        const long toplevel_reg =
-            current_func_op->GetClosureVarToplevelReg(upvalue_index);
-        if (toplevel_reg < 0) {
+      for (auto* user : value->GetUsers()) {
+        // The fast path only handles the canonical builtin shape:
+        //   callee == $deepClone value
+        //   exactly one payload argument
+        // Anything else means the function escapes as a first-class value.
+        auto* call = llvh::dyn_cast<CallInst>(user);
+        if (call != nullptr && call->GetFunction() == value &&
+            call->GetNumArguments() == 1) {
+          if (!call->IsDeepCloneCall()) {
+            call->SetDeepCloneCall(true);
+            changed = true;
+          }
           continue;
         }
 
-        if (IsDeepCloneViaPhysicalClosureReg(
-                static_cast<uint32_t>(toplevel_reg))) {
-          call->SetDeepCloneCall(true);
-          changed = true;
-        }
-        continue;
+        // Any first-class use other than the recognized direct builtin call
+        // needs the real $deepClone function body to survive lowering.
+        deep_clone_func->MarkDeepCloneLoweringRequired();
       }
     }
   }

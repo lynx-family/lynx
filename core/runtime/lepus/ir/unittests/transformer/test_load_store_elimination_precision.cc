@@ -241,9 +241,7 @@ TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
                                     0, "entry");
   builder.SetInsertionPointToEnd(entry);
 
-  auto* obj =
-      builder.Create<GetGlobalInst>(0, (Literal*)builder.GetLiteralUint32(0),
-                                    TypeOp::CreateAnyType(&builder));
+  auto* obj = builder.Create<NewTableInst>(0);
 
   // 1. Load non-numeric string key "foo"
   uint32_t foo_idx = lepus_func->AddConstString("foo");
@@ -271,6 +269,151 @@ TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
   EXPECT_TRUE(found_get2)
       << "Redundant load of non-numeric string key should NOT be eliminated "
          "after numeric store (conservative)";
+}
+
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       AnyReceiverStringPropertyStoreDoesNotForwardLoad) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  auto* obj = builder.Create<GetGlobalInst>(0, builder.GetLiteralUint32(0),
+                                            TypeOp::CreateAnyType(&builder));
+  uint32_t data_idx = lepus_func->AddConstString("data");
+  auto* key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(data_idx), TypeOp::CreateString(&builder));
+  auto* stored = builder.GetLiteralInt32(1);
+
+  builder.Create<SetTableInst>(0, obj, key, stored);
+  auto* reload = builder.Create<GetTableInst>(0, obj, key);
+  builder.Create<ReturnInst>(0, reload);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_reload = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == reload) found_reload = true;
+  }
+  EXPECT_TRUE(found_reload)
+      << "Generic string property reload must not be forwarded when the "
+         "receiver is only typed as any";
+}
+
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       AnyReceiverRepeatedStringLoadCanBeEliminated) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  auto* obj = builder.Create<GetGlobalInst>(0, builder.GetLiteralUint32(0),
+                                            TypeOp::CreateAnyType(&builder));
+  uint32_t data_idx = lepus_func->AddConstString("data");
+  auto* key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(data_idx), TypeOp::CreateString(&builder));
+
+  builder.Create<GetTableInst>(0, obj, key);
+  auto* reload = builder.Create<GetTableInst>(0, obj, key);
+  builder.Create<ReturnInst>(0, reload);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_reload = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == reload) found_reload = true;
+  }
+  EXPECT_FALSE(found_reload)
+      << "Repeated string load on any receiver should still be eliminate when "
+         "there is no intervening mutation";
+}
+
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       ArrayLengthLoadInvalidatedByNumericStore) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  auto* arr = builder.Create<NewArrayInst>(0, ArgList{});
+  uint32_t length_idx = lepus_func->AddConstString("length");
+  auto* length_key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(length_idx), TypeOp::CreateString(&builder));
+  auto* numeric_key = builder.GetLiteralInt32(5);
+
+  builder.Create<GetTableInst>(0, arr, length_key);
+  auto* store = builder.Create<SetTableInst>(0, arr, numeric_key,
+                                             builder.GetLiteralInt32(1));
+  (void)store;
+  auto* reload = builder.Create<GetTableInst>(0, arr, length_key);
+  builder.Create<ReturnInst>(0, reload);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_reload = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == reload) found_reload = true;
+  }
+  EXPECT_TRUE(found_reload)
+      << "Array length load must be invalidated by numeric element store";
+}
+
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       AnyReceiverLengthLoadInvalidatedByNumericStore) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  auto* obj = builder.Create<GetGlobalInst>(0, builder.GetLiteralUint32(0),
+                                            TypeOp::CreateAnyType(&builder));
+  uint32_t length_idx = lepus_func->AddConstString("length");
+  auto* length_key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(length_idx), TypeOp::CreateString(&builder));
+  auto* numeric_key = builder.GetLiteralInt32(5);
+
+  builder.Create<GetTableInst>(0, obj, length_key);
+  builder.Create<SetTableInst>(0, obj, numeric_key, builder.GetLiteralInt32(1));
+  auto* reload = builder.Create<GetTableInst>(0, obj, length_key);
+  builder.Create<ReturnInst>(0, reload);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_reload = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == reload) found_reload = true;
+  }
+  EXPECT_TRUE(found_reload)
+      << "Unknown receiver length load must stay when numeric store may hit an "
+         "array at runtime";
 }
 
 // Test ToplevelClosureVar Store-to-Load Forwarding
@@ -574,9 +717,7 @@ TEST_F(LEPUSIRTestLoadStoreEliminationPrecision, PreciseConstantAliasAnalysis) {
                                     0, "entry");
   builder.SetInsertionPointToEnd(entry);
 
-  auto* obj =
-      builder.Create<GetGlobalInst>(0, (Literal*)builder.GetLiteralUint32(0),
-                                    TypeOp::CreateAnyType(&builder));
+  auto* obj = builder.Create<NewTableInst>(0);
 
   // 1. Load from "foo"
   uint32_t foo_idx = lepus_func->AddConstString("foo");

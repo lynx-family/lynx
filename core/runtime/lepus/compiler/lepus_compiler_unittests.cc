@@ -26,6 +26,9 @@
 
 using namespace lynx;  // NOLINT
 
+bool g_dump_ir = false;
+bool g_force_root_func_deopt = false;
+
 bool HasLepusNullPropAsUndefMarker(const std::string& source) {
   std::string kLepusNullPropAsUndefMarker = "//lepusNullPropAsUndef";
   size_t len = kLepusNullPropAsUndefMarker.size();
@@ -313,7 +316,8 @@ class TestLepus : private TestLepusContextHolder,
     lynx::runtime::MTSRuntime::ToVMContext(context())->SetNullPropAsUndef(
         HasLepusNullPropAsUndefMarker(lepus_resource));
     auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(
-        context()->GetMTSContext(), lepus_resource, "2.6", "", ir_dump_path);
+        context()->GetMTSContext(), lepus_resource, "2.6", "", ir_dump_path,
+        g_force_root_func_deopt);
 
     if (!error.empty()) {
       LOGE("error: compile  failed:" << error << "\n");
@@ -521,8 +525,6 @@ std::vector<uint8_t> ReadBinary(std::string full_path) {
   return data;
 }
 
-static bool g_dump_ir = false;
-
 void CustomInit(int argc, char** argv) {
   // Keep historical behavior: if `argv[1]` provides an input file path, only
   // compile that single file.
@@ -539,6 +541,10 @@ void CustomInit(int argc, char** argv) {
     if (strcmp(arg, "--dump-ir") == 0 || strcmp(arg, "--dump-ir=1") == 0 ||
         strcmp(arg, "--dump-ir=true") == 0) {
       g_dump_ir = true;
+    } else if (strcmp(arg, "--force-root-func-deopt") == 0 ||
+               strcmp(arg, "--force-root-func-deopt=1") == 0 ||
+               strcmp(arg, "--force-root-func-deopt=true") == 0) {
+      g_force_root_func_deopt = true;
     }
   }
 }
@@ -589,7 +595,7 @@ static bool CompileAndExecuteAndReadResult(const std::string& src,
   vm->SetEnableStrictCheck(strict_check);
 
   auto err = lepus::BytecodeGenerator::GenerateBytecode(
-      rt->GetMTSContext(), src, "2.6", "", nullptr);
+      rt->GetMTSContext(), src, "2.6", "", nullptr, g_force_root_func_deopt);
   if (!err.empty()) return false;
   if (!rt->Execute(nullptr)) return false;
 

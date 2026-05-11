@@ -47,6 +47,9 @@ class InstructionSelectionPass : public FunctionPass {
     /// if the type is basic block, pointer is the pointer to it.
     /// if the type is catch instruction, pointer is the pointer to it.
     Value* pointer;
+    Instruction* source_inst{nullptr};
+    uint8_t lhs_reg{0};
+    uint8_t rhs_reg{0};
   };
 
   InstructionSelectionPass(IRContext* ir_ctx);
@@ -56,16 +59,31 @@ class InstructionSelectionPass : public FunctionPass {
 
  private:
   void Generate(Block* bb, Block* next);
+  void GenerateEqNeqCondBranch(Instruction* inst, Value* lhs, Value* rhs,
+                               Block* true_bb, Block* false_bb, Block* next_bb,
+                               TypeOpCode true_opcode, TypeOpCode false_opcode);
   bool ResolveRelocationsInternal();
   void ResolveRelocations();
   void BytecodeGenerateComplete();
   void CompactConstPoolAndRewriteConstIndices();
+  void CompactNoOpJumpsAndRewriteOffsets();
   void FixOutOfRangeCmpJmpRelocations();
+  uint8_t GetLiteralUint8Value(Value* value, const char* inst_name) const;
+  uint32_t GetLiteralUint32Value(Value* value, const char* inst_name,
+                                 const char* value_desc) const;
+  int FindCmpJmpFallbackRegister(Instruction* branch_inst, uint8_t lhs_reg,
+                                 uint8_t rhs_reg) const;
+  uint8_t RequireSpecialRegisterIndex(long reg) const;
+  long ResolveUpvalueToplevelRegister(FuncOp* current_func, uint8_t index,
+                                      const char* inst_name) const;
+  long ResolveToplevelClosurePhysicalRegister(uint32_t original_closure_reg,
+                                              const char* inst_name) const;
   uint32_t GetCurrentOffset() const;
   uint8_t EncodeValue(Value* value);
   void Generate(Instruction* ii, Block* next);
   void RegisterJmp(uint32_t loc, Block* target);
-  void RegisterCmpJmp(uint32_t loc, Block* target);
+  void RegisterCmpJmp(uint32_t loc, Block* target, Instruction* source_inst,
+                      uint8_t lhs_reg, uint8_t rhs_reg);
   lynx::lepus::Instruction* GetInstruction(uint32_t loc);
 
   static bool IsInCmpJmpRange(int32_t diff);
@@ -91,6 +109,8 @@ class InstructionSelectionPass : public FunctionPass {
   llvh::SmallVector<Relocation, 8> relocations_{};
   llvh::DenseMap<Block*, std::pair<uint32_t, Block*>> basic_block_map_{};
   RegisterAllocator* ra_;
+  bool root_func_deopt_ = false;
+  long extra_temp_max_reg_index_ = -1;
 };
 
 }  // namespace ir

@@ -807,6 +807,58 @@ TEST_F(LEPUSIRTestIROpts,
   EXPECT_TRUE(has_cmp_jmp);
 }
 
+TEST_F(LEPUSIRTestIROpts, InstructionSelectionRemovesNoOpJmp) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "isel_remove_no_op_jmp";
+  auto* func = builder.Create<FuncOp>(0, name);
+  auto lepus_func = lynx::lepus::Function::Create();
+  func->Init(lepus_func);
+
+  Block* entry =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  Block* branch =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  Block* empty =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  Block* exit =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+
+  builder.SetInsertionPointToStart(entry);
+  auto* cond = func->CreateParam(0);
+  builder.Create<CondBranchInst>(0, cond, branch, empty);
+
+  builder.SetInsertionPointToStart(branch);
+  builder.Create<BranchInst>(0, exit);
+
+  builder.SetInsertionPointToStart(empty);
+  builder.Create<BranchInst>(0, exit);
+
+  builder.SetInsertionPointToStart(exit);
+  const uint32_t c1 = static_cast<uint32_t>(lepus_func->AddConstNumber(1));
+  auto* ret_value = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(c1), TypeOp::CreateInt32(&builder));
+  builder.Create<ReturnInst>(0, ret_value);
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ra_pass.RunOnFunction(func);
+
+  InstructionSelectionPass isel(ir_ctx.get());
+  ASSERT_TRUE(isel.RunOnFunction(func));
+
+  const auto* ops = lepus_func->GetOpCodes();
+  ASSERT_NE(ops, nullptr);
+  const size_t n = lepus_func->OpCodeSize();
+  for (size_t pc = 0; pc < n; pc++) {
+    const auto op = lynx::lepus::Instruction::GetOpCode(ops[pc]);
+    if (op == TypeOp_Jmp) {
+      EXPECT_NE(lynx::lepus::Instruction::GetParamBx(ops[pc]), 1);
+    }
+  }
+}
+
 TEST_F(LEPUSIRTestIROpts,
        InstructionSelectionEqCondBranchOutOfRangeCmpJmpDegradeToFalse) {
   // Force `next_bb == true_bb` for EqCondBranchInst so it initially emits
@@ -888,6 +940,421 @@ TEST_F(LEPUSIRTestIROpts,
   EXPECT_FALSE(has_cmp_jmp);
   EXPECT_TRUE(has_equal);
   EXPECT_TRUE(has_bool_jmp_false);
+}
+
+TEST_F(LEPUSIRTestIROpts,
+       InstructionSelectionEqCondBranchOutOfRangeCmpJmpKeepsLiveLhsForFalse) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "isel_eq_cond_wide_preserve_live_lhs_false";
+  auto* func = builder.Create<FuncOp>(0, name);
+  auto lepus_func = lynx::lepus::Function::Create();
+  const uint32_t c0 = static_cast<uint32_t>(lepus_func->AddConstNumber(0));
+  const uint32_t c1 = static_cast<uint32_t>(lepus_func->AddConstNumber(1));
+  func->Init(lepus_func);
+
+  Block* entry =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  Block* cond =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  constexpr int kTrueBlocks = 220;
+  Block* t[kTrueBlocks];
+  for (int i = 0; i < kTrueBlocks; i++) {
+    t[i] = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  }
+  Block* false_bb =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+
+  builder.SetInsertionPointToStart(entry);
+  builder.Create<BranchInst>(0, cond);
+
+  builder.SetInsertionPointToStart(cond);
+  auto* lhs = builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c1),
+                                            TypeOp::CreateInt32(&builder));
+  auto* rhs = builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c1),
+                                            TypeOp::CreateInt32(&builder));
+  builder.Create<EqCondBranchInst>(0, lhs, rhs, t[0], false_bb);
+
+  for (int i = 0; i < kTrueBlocks; i++) {
+    builder.SetInsertionPointToStart(t[i]);
+    builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c0),
+                                  TypeOp::CreateInt32(&builder));
+    if (i + 1 < kTrueBlocks) {
+      builder.Create<BranchInst>(0, t[i + 1]);
+    } else {
+      builder.Create<ReturnInst>(0, lhs);
+    }
+  }
+
+  builder.SetInsertionPointToStart(false_bb);
+  builder.Create<ReturnInst>(0, lhs);
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ra_pass.RunOnFunction(func);
+
+  InstructionSelectionPass isel(ir_ctx.get());
+  ASSERT_TRUE(isel.RunOnFunction(func));
+
+  const auto* ops = lepus_func->GetOpCodes();
+  ASSERT_NE(ops, nullptr);
+  const size_t n = lepus_func->OpCodeSize();
+  bool found_widened_pair = false;
+  for (size_t pc = 0; pc + 1 < n; ++pc) {
+    if (lynx::lepus::Instruction::GetOpCode(ops[pc]) != TypeOp_Equal ||
+        lynx::lepus::Instruction::GetOpCode(ops[pc + 1]) !=
+            TypeOp_BoolJmpFalse) {
+      continue;
+    }
+    const long dst_reg = lynx::lepus::Instruction::GetParamA(ops[pc]);
+    const long lhs_reg = lynx::lepus::Instruction::GetParamB(ops[pc]);
+    const long bool_reg = lynx::lepus::Instruction::GetParamA(ops[pc + 1]);
+    EXPECT_NE(dst_reg, lhs_reg);
+    EXPECT_EQ(bool_reg, dst_reg);
+
+    bool has_ret_using_lhs = false;
+    for (size_t i = 0; i < n; ++i) {
+      if (lynx::lepus::Instruction::GetOpCode(ops[i]) == TypeOp_Ret &&
+          lynx::lepus::Instruction::GetParamA(ops[i]) == lhs_reg) {
+        has_ret_using_lhs = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(has_ret_using_lhs);
+    found_widened_pair = true;
+    break;
+  }
+  EXPECT_TRUE(found_widened_pair);
+}
+
+TEST_F(LEPUSIRTestIROpts,
+       InstructionSelectionEqCondBranchOutOfRangeCmpJmpKeepsLiveLhsForTrue) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "isel_eq_cond_wide_preserve_live_lhs_true";
+  auto* func = builder.Create<FuncOp>(0, name);
+  auto lepus_func = lynx::lepus::Function::Create();
+  const uint32_t c0 = static_cast<uint32_t>(lepus_func->AddConstNumber(0));
+  const uint32_t c1 = static_cast<uint32_t>(lepus_func->AddConstNumber(1));
+  func->Init(lepus_func);
+
+  Block* entry =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  Block* header =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  constexpr int kBodyBlocks = 180;
+  Block* body[kBodyBlocks];
+  for (int i = 0; i < kBodyBlocks; i++) {
+    body[i] =
+        builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  }
+  Block* latch =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  Block* exit =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+
+  builder.SetInsertionPointToStart(entry);
+  auto* entry_c = func->CreateParam(0);
+  builder.Create<CondBranchInst>(0, entry_c, exit, header);
+
+  builder.SetInsertionPointToStart(header);
+  builder.Create<BranchInst>(0, body[0]);
+
+  for (int i = 0; i < kBodyBlocks; i++) {
+    builder.SetInsertionPointToStart(body[i]);
+    builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c0),
+                                  TypeOp::CreateInt32(&builder));
+    builder.Create<BranchInst>(0, (i + 1 < kBodyBlocks) ? body[i + 1] : latch);
+  }
+
+  builder.SetInsertionPointToStart(latch);
+  auto* lhs = builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c1),
+                                            TypeOp::CreateInt32(&builder));
+  auto* rhs = builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c1),
+                                            TypeOp::CreateInt32(&builder));
+  builder.Create<EqCondBranchInst>(0, lhs, rhs, header, exit);
+
+  builder.SetInsertionPointToStart(exit);
+  builder.Create<ReturnInst>(0, lhs);
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ra_pass.RunOnFunction(func);
+
+  InstructionSelectionPass isel(ir_ctx.get());
+  ASSERT_TRUE(isel.RunOnFunction(func));
+
+  const auto* ops = lepus_func->GetOpCodes();
+  ASSERT_NE(ops, nullptr);
+  const size_t n = lepus_func->OpCodeSize();
+  bool found_widened_pair = false;
+  for (size_t pc = 0; pc + 1 < n; ++pc) {
+    if (lynx::lepus::Instruction::GetOpCode(ops[pc]) != TypeOp_Equal ||
+        lynx::lepus::Instruction::GetOpCode(ops[pc + 1]) !=
+            TypeOp_BoolJmpTrue) {
+      continue;
+    }
+    const long dst_reg = lynx::lepus::Instruction::GetParamA(ops[pc]);
+    const long lhs_reg = lynx::lepus::Instruction::GetParamB(ops[pc]);
+    const long bool_reg = lynx::lepus::Instruction::GetParamA(ops[pc + 1]);
+    EXPECT_NE(dst_reg, lhs_reg);
+    EXPECT_EQ(bool_reg, dst_reg);
+
+    bool has_ret_using_lhs = false;
+    for (size_t i = 0; i < n; ++i) {
+      if (lynx::lepus::Instruction::GetOpCode(ops[i]) == TypeOp_Ret &&
+          lynx::lepus::Instruction::GetParamA(ops[i]) == lhs_reg) {
+        has_ret_using_lhs = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(has_ret_using_lhs);
+    found_widened_pair = true;
+    break;
+  }
+  EXPECT_TRUE(found_widened_pair);
+}
+
+TEST_F(LEPUSIRTestIROpts, FindCmpJmpFallbackRegisterReusesDeadLhs) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "isel_fallback_reuses_dead_lhs";
+  auto* func = builder.Create<FuncOp>(0, name);
+  auto lepus_func = lynx::lepus::Function::Create();
+  const uint32_t c0 = static_cast<uint32_t>(lepus_func->AddConstNumber(0));
+  const uint32_t c1 = static_cast<uint32_t>(lepus_func->AddConstNumber(1));
+  func->Init(lepus_func);
+
+  Block* entry =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  Block* cond =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  constexpr int kTrueBlocks = 220;
+  Block* t[kTrueBlocks];
+  for (int i = 0; i < kTrueBlocks; i++) {
+    t[i] = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  }
+  Block* false_bb =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+
+  builder.SetInsertionPointToStart(entry);
+  builder.Create<BranchInst>(0, cond);
+
+  builder.SetInsertionPointToStart(cond);
+  auto* lhs = builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c1),
+                                            TypeOp::CreateInt32(&builder));
+  auto* rhs = builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c1),
+                                            TypeOp::CreateInt32(&builder));
+  builder.Create<EqCondBranchInst>(0, lhs, rhs, t[0], false_bb);
+
+  for (int i = 0; i < kTrueBlocks; i++) {
+    builder.SetInsertionPointToStart(t[i]);
+    builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c0),
+                                  TypeOp::CreateInt32(&builder));
+    if (i + 1 < kTrueBlocks) {
+      builder.Create<BranchInst>(0, t[i + 1]);
+    } else {
+      // Use rhs but NOT lhs, making lhs dead after branch.
+      builder.Create<ReturnInst>(0, rhs);
+    }
+  }
+
+  builder.SetInsertionPointToStart(false_bb);
+  // Use rhs but NOT lhs, making lhs dead after branch.
+  builder.Create<ReturnInst>(0, rhs);
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ra_pass.RunOnFunction(func);
+
+  InstructionSelectionPass isel(ir_ctx.get());
+  ASSERT_TRUE(isel.RunOnFunction(func));
+
+  const auto* ops = lepus_func->GetOpCodes();
+  ASSERT_NE(ops, nullptr);
+  const size_t n = lepus_func->OpCodeSize();
+  bool found_widened_pair = false;
+  for (size_t pc = 0; pc + 1 < n; ++pc) {
+    if (lynx::lepus::Instruction::GetOpCode(ops[pc]) != TypeOp_Equal ||
+        lynx::lepus::Instruction::GetOpCode(ops[pc + 1]) !=
+            TypeOp_BoolJmpFalse) {
+      continue;
+    }
+    const long dst_reg = lynx::lepus::Instruction::GetParamA(ops[pc]);
+    const long lhs_reg = lynx::lepus::Instruction::GetParamB(ops[pc]);
+    const long bool_reg = lynx::lepus::Instruction::GetParamA(ops[pc + 1]);
+    // lhs is dead after branch, so fallback should reuse it.
+    EXPECT_EQ(dst_reg, lhs_reg);
+    EXPECT_EQ(bool_reg, dst_reg);
+    found_widened_pair = true;
+    break;
+  }
+  EXPECT_TRUE(found_widened_pair);
+}
+
+TEST_F(LEPUSIRTestIROpts, FindCmpJmpFallbackRegisterChoosesLowAvailableReg) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "isel_fallback_avoids_live_lhs_and_rhs";
+  auto* func = builder.Create<FuncOp>(0, name);
+  auto lepus_func = lynx::lepus::Function::Create();
+  const uint32_t c0 = static_cast<uint32_t>(lepus_func->AddConstNumber(0));
+  const uint32_t c1 = static_cast<uint32_t>(lepus_func->AddConstNumber(1));
+  func->Init(lepus_func);
+
+  Block* entry =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  Block* cond =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  constexpr int kTrueBlocks = 220;
+  Block* t[kTrueBlocks];
+  for (int i = 0; i < kTrueBlocks; i++) {
+    t[i] = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  }
+  Block* false_bb =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+
+  builder.SetInsertionPointToStart(entry);
+  builder.Create<BranchInst>(0, cond);
+
+  builder.SetInsertionPointToStart(cond);
+  auto* lhs = builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c1),
+                                            TypeOp::CreateInt32(&builder));
+  auto* rhs = builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c1),
+                                            TypeOp::CreateInt32(&builder));
+  builder.Create<EqCondBranchInst>(0, lhs, rhs, t[0], false_bb);
+
+  for (int i = 0; i < kTrueBlocks; i++) {
+    builder.SetInsertionPointToStart(t[i]);
+    builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c0),
+                                  TypeOp::CreateInt32(&builder));
+    if (i + 1 < kTrueBlocks) {
+      builder.Create<BranchInst>(0, t[i + 1]);
+    } else {
+      // Use BOTH lhs and rhs to keep them live across the branch.
+      auto* add = builder.Create<BinaryOperatorInst>(
+          0, lhs, rhs, ValueKind::BinaryAddInstKind,
+          TypeOp::CreateInt32(&builder));
+      builder.Create<ReturnInst>(0, add);
+    }
+  }
+
+  builder.SetInsertionPointToStart(false_bb);
+  // Use BOTH lhs and rhs to keep them live across the branch.
+  auto* add2 = builder.Create<BinaryOperatorInst>(
+      0, lhs, rhs, ValueKind::BinaryAddInstKind, TypeOp::CreateInt32(&builder));
+  builder.Create<ReturnInst>(0, add2);
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ra_pass.RunOnFunction(func);
+
+  InstructionSelectionPass isel(ir_ctx.get());
+  ASSERT_TRUE(isel.RunOnFunction(func));
+
+  const auto* ops = lepus_func->GetOpCodes();
+  ASSERT_NE(ops, nullptr);
+  const size_t n = lepus_func->OpCodeSize();
+  bool found_widened_pair = false;
+  for (size_t pc = 0; pc + 1 < n; ++pc) {
+    if (lynx::lepus::Instruction::GetOpCode(ops[pc]) != TypeOp_Equal ||
+        lynx::lepus::Instruction::GetOpCode(ops[pc + 1]) !=
+            TypeOp_BoolJmpFalse) {
+      continue;
+    }
+    const long dst_reg = lynx::lepus::Instruction::GetParamA(ops[pc]);
+    const long lhs_reg = lynx::lepus::Instruction::GetParamB(ops[pc]);
+    const long rhs_reg = lynx::lepus::Instruction::GetParamC(ops[pc]);
+    const long bool_reg = lynx::lepus::Instruction::GetParamA(ops[pc + 1]);
+    // Both lhs and rhs are live, so fallback must choose a different register.
+    EXPECT_NE(dst_reg, lhs_reg);
+    EXPECT_NE(dst_reg, rhs_reg);
+    EXPECT_EQ(bool_reg, dst_reg);
+    found_widened_pair = true;
+    break;
+  }
+  EXPECT_TRUE(found_widened_pair);
+}
+
+TEST_F(LEPUSIRTestIROpts, FindCmpJmpFallbackNeqCondBranch) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "isel_neq_cond_wide_preserve_live_lhs";
+  auto* func = builder.Create<FuncOp>(0, name);
+  auto lepus_func = lynx::lepus::Function::Create();
+  const uint32_t c0 = static_cast<uint32_t>(lepus_func->AddConstNumber(0));
+  const uint32_t c1 = static_cast<uint32_t>(lepus_func->AddConstNumber(1));
+  func->Init(lepus_func);
+
+  Block* entry =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  Block* cond =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  constexpr int kTrueBlocks = 220;
+  Block* t[kTrueBlocks];
+  for (int i = 0; i < kTrueBlocks; i++) {
+    t[i] = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  }
+  Block* false_bb =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+
+  builder.SetInsertionPointToStart(entry);
+  builder.Create<BranchInst>(0, cond);
+
+  builder.SetInsertionPointToStart(cond);
+  auto* lhs = builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c1),
+                                            TypeOp::CreateInt32(&builder));
+  auto* rhs = builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c1),
+                                            TypeOp::CreateInt32(&builder));
+  // Use NeqCondBranchInst instead of EqCondBranchInst.
+  builder.Create<NeqCondBranchInst>(0, lhs, rhs, t[0], false_bb);
+
+  for (int i = 0; i < kTrueBlocks; i++) {
+    builder.SetInsertionPointToStart(t[i]);
+    builder.Create<LoadConstInst>(0, builder.GetLiteralUint32(c0),
+                                  TypeOp::CreateInt32(&builder));
+    if (i + 1 < kTrueBlocks) {
+      builder.Create<BranchInst>(0, t[i + 1]);
+    } else {
+      builder.Create<ReturnInst>(0, lhs);
+    }
+  }
+
+  builder.SetInsertionPointToStart(false_bb);
+  builder.Create<ReturnInst>(0, lhs);  // keeps lhs live
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ra_pass.RunOnFunction(func);
+
+  InstructionSelectionPass isel(ir_ctx.get());
+  ASSERT_TRUE(isel.RunOnFunction(func));
+
+  const auto* ops = lepus_func->GetOpCodes();
+  ASSERT_NE(ops, nullptr);
+  const size_t n = lepus_func->OpCodeSize();
+  bool found_widened_pair = false;
+  for (size_t pc = 0; pc + 1 < n; ++pc) {
+    if (lynx::lepus::Instruction::GetOpCode(ops[pc]) != TypeOp_UnEqual ||
+        lynx::lepus::Instruction::GetOpCode(ops[pc + 1]) !=
+            TypeOp_BoolJmpFalse) {
+      continue;
+    }
+    const long dst_reg = lynx::lepus::Instruction::GetParamA(ops[pc]);
+    const long lhs_reg = lynx::lepus::Instruction::GetParamB(ops[pc]);
+    const long bool_reg = lynx::lepus::Instruction::GetParamA(ops[pc + 1]);
+    // lhs is live after branch, so fallback must choose a different register.
+    EXPECT_NE(dst_reg, lhs_reg);
+    EXPECT_EQ(bool_reg, dst_reg);
+    found_widened_pair = true;
+    break;
+  }
+  EXPECT_TRUE(found_widened_pair);
 }
 
 TEST_F(LEPUSIRTestIROpts, SimplifyCFGIndirectJumpPattern2) {
@@ -1840,6 +2307,68 @@ TEST_F(LEPUSIRTestIROpts,
   // The const pool entry used only by the lowered LoadSmallInt should be
   // removed.
   EXPECT_EQ(lepus_func->GetConstValue().size(), 0u);
+}
+
+TEST_F(LEPUSIRTestIROpts,
+       InstructionSelectionSyncsRegisterCountWithPostRARegisters) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_isel_updates_register_count";
+  auto* func = builder.Create<FuncOp>(0, name);
+  auto lepus_func = lepus::Function::Create();
+  func->Init(lepus_func);
+
+  auto* entry =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  builder.SetInsertionPointToStart(entry);
+
+  auto* table = builder.Create<NewTableInst>(0);
+  const uint32_t key_idx = static_cast<uint32_t>(lepus_func->AddConstNumber(1));
+  const uint32_t value_idx =
+      static_cast<uint32_t>(lepus_func->AddConstNumber(2));
+  auto* key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(key_idx), TypeOp::CreateInt64(&builder));
+  auto* value = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(value_idx), TypeOp::CreateInt64(&builder));
+  builder.Create<SetTableInst>(0, table, key, value);
+  builder.Create<ReturnInst>(0, table);
+
+  RegisterAllocationPass ra_pass(ir_ctx.get());
+  ASSERT_TRUE(ra_pass.RunOnFunction(func));
+
+  auto* ra = ir_ctx->GetTargetContext()->GetRegisterAllocAnalysis(func);
+  ASSERT_NE(ra, nullptr);
+
+  // Simulate a post-RA optimization that remaps an already-selected value to a
+  // higher physical register. InstructionSelection must propagate this updated
+  // max register index back to the Lepus Function metadata.
+  ra->UpdateRegister(table, Register(10));
+  ra->RebuildRegisterFileFromAllocated();
+
+  InstructionSelectionPass is_pass(ir_ctx.get());
+  ASSERT_TRUE(is_pass.RunOnFunction(func));
+
+  EXPECT_EQ(lepus_func->GetRegisterCount(), 10);
+
+  bool found_new_table = false;
+  bool found_set_object_number = false;
+  for (size_t i = 0; i < lepus_func->OpCodeSize(); ++i) {
+    auto* inst = lepus_func->GetInstruction(i);
+    ASSERT_NE(inst, nullptr);
+    const long op = lepus::Instruction::GetOpCode(*inst);
+    if (op == lepus::TypeOp_NewTable) {
+      found_new_table = true;
+      EXPECT_EQ(lepus::Instruction::GetParamA(*inst), 10);
+    }
+    if (op == lepus::TypeOp_SetObjectNumber) {
+      found_set_object_number = true;
+      EXPECT_EQ(lepus::Instruction::GetParamA(*inst), 10);
+    }
+  }
+  EXPECT_TRUE(found_new_table);
+  EXPECT_TRUE(found_set_object_number);
 }
 
 TEST_F(LEPUSIRTestIROpts,

@@ -45,9 +45,12 @@ bool DCE::DeleteUselessInst(Instruction* inst) {
 
 bool DCE::PerformFunctionDCE(FuncOp* func) {
   bool changed = false;
+  // PostOrderAnalysis only depends on CFG structure (block successors), which
+  // DCE never modifies (terminators are always skipped). Compute once outside
+  // the fixpoint loop.
+  PostOrderAnalysis po(func);
   do {
     changed = false;
-    PostOrderAnalysis po(func);
 
     // Scan the function in post order (from end to start). We want to visit the
     // uses of the instruction before we visit the instruction itself in order

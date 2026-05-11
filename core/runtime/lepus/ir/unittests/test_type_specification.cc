@@ -88,6 +88,16 @@ static ModuleOp* CompileToIRWithOptimization(lepus::VMContext* context,
   ir_ctx->Init(root_func, context);
   auto mod = ir_ctx->GetMainMod();
 
+  // PassManager now depends on TargetContext for root-function deopt
+  // planning.
+  // This helper constructs a custom MIR-only pipeline, so initialize the same
+  // default TargetContext that the normal compile pipeline would provide.
+  if (!ir_ctx->GetTargetContext()) {
+    std::unique_ptr<TargetContext> target_ctx =
+        std::make_unique<TargetContext>();
+    ir_ctx->SetTargetContext(target_ctx);
+  }
+
   // For type-specification unit tests, we only need MIR-level passes.
   // Target-level passes (regalloc / isel) may rewrite instruction forms and
   // are not required for validating type inference correctness.

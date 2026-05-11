@@ -247,6 +247,122 @@ TEST_F(LEPUSIRTestEnhancedOpts, LoadNullEliminationRespectsFirstInBlockPrefix) {
   EXPECT_EQ(nil_count, 1);
 }
 
+TEST_F(LEPUSIRTestEnhancedOpts, LoadNullEliminationIsNoOpWithSingleLoad) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_load_null_single_noop";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+
+  Block* entry =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  builder.SetInsertionPointToStart(entry);
+
+  // Single LoadNullOrUndefined - nothing to eliminate.
+  auto* t = builder.GetLiteralInt8(0);
+  auto* load = builder.Create<LoadNullOrUndefinedInst>(0, t);
+  builder.Create<ReturnInst>(0, load);
+
+  LoadNullEliminationPass pass(ir_ctx.get());
+  EXPECT_FALSE(pass.RunOnFunction(func));
+
+  // The single load should remain in place.
+  int nil_count = 0;
+  for (auto* inst : entry->InstRange()) {
+    if (llvh::isa<LoadNullOrUndefinedInst>(inst)) nil_count++;
+  }
+  EXPECT_EQ(nil_count, 1);
+}
+
+TEST_F(LEPUSIRTestEnhancedOpts, LoadNullEliminationDeduplicatesSameBlockLoads) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_load_null_same_block_deduplicate";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+
+  Block* entry =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  builder.SetInsertionPointToStart(entry);
+
+  // Three loads of the same type in the same block should be merged into one.
+  auto* t = builder.GetLiteralInt8(0);
+  auto* n1 = builder.Create<LoadNullOrUndefinedInst>(0, t);
+  auto* n2 = builder.Create<LoadNullOrUndefinedInst>(0, t);
+  auto* n3 = builder.Create<LoadNullOrUndefinedInst>(0, t);
+  // Keep all alive.
+  auto* sum = builder.Create<BinaryOperatorInst>(
+      0, n1, n2, ValueKind::BinaryAddInstKind, TypeOp::CreateAnyType(&builder));
+  auto* sum2 = builder.Create<BinaryOperatorInst>(
+      0, sum, n3, ValueKind::BinaryAddInstKind,
+      TypeOp::CreateAnyType(&builder));
+  builder.Create<ReturnInst>(0, sum2);
+
+  LoadNullEliminationPass pass(ir_ctx.get());
+  EXPECT_TRUE(pass.RunOnFunction(func));
+
+  // Only one LoadNullOrUndefinedInst should remain.
+  int nil_count = 0;
+  for (auto* inst : entry->InstRange()) {
+    if (llvh::isa<LoadNullOrUndefinedInst>(inst)) nil_count++;
+  }
+  EXPECT_EQ(nil_count, 1);
+}
+
+TEST_F(LEPUSIRTestEnhancedOpts,
+       LoadNullEliminationHandlesNullAndUndefinedIndependently) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_load_null_vs_undefined";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+
+  Block* entry =
+      builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
+  builder.SetInsertionPointToStart(entry);
+
+  // Two type-0 (null) loads and two type-1 (undefined) loads.
+  auto* type_null = builder.GetLiteralInt8(0);
+  auto* type_undef = builder.GetLiteralInt8(1);
+  auto* null1 = builder.Create<LoadNullOrUndefinedInst>(0, type_null);
+  auto* null2 = builder.Create<LoadNullOrUndefinedInst>(0, type_null);
+  auto* undef1 = builder.Create<LoadNullOrUndefinedInst>(0, type_undef);
+  auto* undef2 = builder.Create<LoadNullOrUndefinedInst>(0, type_undef);
+
+  // Keep all alive.
+  auto* sum_null = builder.Create<BinaryOperatorInst>(
+      0, null1, null2, ValueKind::BinaryAddInstKind,
+      TypeOp::CreateAnyType(&builder));
+  auto* sum_undef = builder.Create<BinaryOperatorInst>(
+      0, undef1, undef2, ValueKind::BinaryAddInstKind,
+      TypeOp::CreateAnyType(&builder));
+  auto* final_val = builder.Create<BinaryOperatorInst>(
+      0, sum_null, sum_undef, ValueKind::BinaryAddInstKind,
+      TypeOp::CreateAnyType(&builder));
+  builder.Create<ReturnInst>(0, final_val);
+
+  LoadNullEliminationPass pass(ir_ctx.get());
+  EXPECT_TRUE(pass.RunOnFunction(func));
+
+  // Each type should have exactly one instance remaining.
+  int type0_count = 0;
+  int type1_count = 0;
+  for (auto* inst : entry->InstRange()) {
+    auto* load = llvh::dyn_cast<LoadNullOrUndefinedInst>(inst);
+    if (!load) continue;
+    if (load->GetLoadNilType()->GetValue() == 0) type0_count++;
+    if (load->GetLoadNilType()->GetValue() == 1) type1_count++;
+  }
+  EXPECT_EQ(type0_count, 1);
+  EXPECT_EQ(type1_count, 1);
+}
+
 }  // namespace ir
 }  // namespace lepus
 }  // namespace lynx
