@@ -138,7 +138,10 @@ public class LynxUIWebView<T extends LynxWebViewContainer> extends UISimpleView<
   public void onNodeReady() {
     super.onNodeReady();
     if (webViewService == null) {
-      webViewService = provider == null ? null : provider.getLynxWebViewService(type, mContext);
+      if (provider == null) {
+        provider = new LynxWebViewServiceProviderImpl();
+      }
+      webViewService = provider.getLynxWebViewService(type, mContext);
       if (webViewService != null) {
         webViewService.setParams(webViewParams);
         webViewService.initWebView();
