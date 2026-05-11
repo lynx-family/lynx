@@ -10,6 +10,8 @@
 #include <string>
 #include <utility>
 
+#include "clay/ui/common/attribute_utils.h"
+#include "clay/ui/component/css_property.h"
 #include "clay/ui/component/editable/editable_view.h"
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
 #include "clay/ui/rendering/render_container.h"
@@ -17,6 +19,17 @@
 
 namespace clay {
 namespace {
+class TextAreaNGScrollWrapper : public ScrollWrapper {
+ public:
+  TextAreaNGScrollWrapper(int id, ScrollDirection direction,
+                          PageView* page_view)
+      : ScrollWrapper(id, direction, page_view) {
+    SetRepaintBoundary(false);
+  }
+
+  bool IsLayoutRootCandidate() const override { return false; }
+};
+
 LYNX_UI_METHOD_BEGIN(TextAreaNGView) {
   LYNX_UI_METHOD(TextAreaNGView, setValue);
   LYNX_UI_METHOD(TextAreaNGView, getValue);
@@ -34,9 +47,11 @@ TextAreaNGView::TextAreaNGView(int id, PageView* page_view)
   editable_view_->SetKeyboardAction(KeyboardAction::kMultiLine);
   editable_view_->SetFocusable(true);
   editable_view_->SetMaxLines(std::numeric_limits<uint32_t>::max());
-  editable_scroll_ = new ScrollView(-1, ScrollDirection::kVertical, page_view);
-  editable_scroll_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
-  BaseView::AddChild(editable_scroll_);
+  editable_scroll_wrapper_ =
+      new TextAreaNGScrollWrapper(-1, ScrollDirection::kVertical, page_view);
+  editable_scroll_ = editable_scroll_wrapper_->GetScrollView();
+  editable_scroll_wrapper_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
+  BaseView::AddChild(editable_scroll_wrapper_);
   editable_scroll_->BaseView::AddChild(editable_view_);
   ResetGestureRecognizers();
 
@@ -50,13 +65,17 @@ TextAreaNGView::~TextAreaNGView() = default;
 void TextAreaNGView::OnDestroy() {
   DestroyAllChildren();
   editable_view_ = nullptr;
+  editable_scroll_wrapper_ = nullptr;
   editable_scroll_ = nullptr;
 }
 
 void TextAreaNGView::SetAttribute(const char* attr_c,
                                   const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
-  if (editable_view_->MatchNGAttrSettings(kw)) {
+  if (kw == KeywordID::kEnableScrollBar) {
+    editable_scroll_wrapper_->SetScrollbarEnabled(
+        attribute_utils::GetBool(value));
+  } else if (editable_view_->MatchNGAttrSettings(kw)) {
     editable_view_->SetAttribute(attr_c, value);
   } else {
     BaseView::SetAttribute(attr_c, value);
@@ -64,8 +83,8 @@ void TextAreaNGView::SetAttribute(const char* attr_c,
 }
 
 void TextAreaNGView::OnLayout(LayoutContext* context) {
-  editable_scroll_->SetWidth(ContentWidth());
-  editable_scroll_->SetHeight(ContentHeight());
+  editable_scroll_wrapper_->SetWidth(ContentWidth());
+  editable_scroll_wrapper_->SetHeight(ContentHeight());
   editable_view_->SetWidth(ContentWidth());
   BaseView::OnLayout(context);
   editable_view_->SetHeight(
@@ -91,10 +110,17 @@ void TextAreaNGView::Measure(const MeasureConstraint& constraint,
 void TextAreaNGView::SetBound(float left, float top, float width,
                               float height) {
   BaseView::SetBound(left, top, width, height);
-  editable_scroll_->SetBound(0, 0, ContentWidth(), ContentHeight());
+  editable_scroll_wrapper_->SetBound(0, 0, ContentWidth(), ContentHeight());
   editable_view_->SetHeight(
       std::max(ContentHeight(), editable_view_->EstimateHeightWithMaxLines()));
   editable_view_->SetWidth(ContentWidth());
+}
+
+void TextAreaNGView::SetOverflow(int overflow) {
+  BaseView::SetOverflow(overflow);
+  if (editable_scroll_wrapper_) {
+    editable_scroll_wrapper_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
+  }
 }
 
 void TextAreaNGView::ScheduleCaretOnScreen() {

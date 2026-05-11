@@ -8,7 +8,7 @@
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/editable/editable_view.h"
 #include "clay/ui/component/measurable.h"
-#include "clay/ui/component/scroll_view.h"
+#include "clay/ui/component/scroll_wrapper.h"
 
 namespace clay {
 
@@ -23,6 +23,7 @@ class TextAreaNGView : public WithTypeInfo<TextAreaNGView, BaseView>,
   void Measure(const MeasureConstraint& constraint,
                MeasureResult& result) override;
   void SetBound(float left, float top, float width, float height) override;
+  void SetOverflow(int overflow) override;
 
   void ScheduleCaretOnScreen();
 
@@ -44,9 +45,11 @@ class TextAreaNGView : public WithTypeInfo<TextAreaNGView, BaseView>,
 
  private:
   FRIEND_TEST(TextAreaNGViewTest, scroll);
+  FRIEND_TEST(TextAreaNGViewTest, enableScrollBar);
   void OnDestroy() override;
 
   EditableView* editable_view_ = nullptr;
+  ScrollWrapper* editable_scroll_wrapper_ = nullptr;
   ScrollView* editable_scroll_ = nullptr;
   GestureRecognizer* tap_recognizer_ = nullptr;
 };
