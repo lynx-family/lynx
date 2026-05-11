@@ -19,6 +19,7 @@ export * from './refresh';
 export * from './scroll-coordinator';
 export * from './viewpager';
 export * from './blur-view';
+export * from './webview';
 export * from './element';
 export * from './methods';
 export * from './attributes';

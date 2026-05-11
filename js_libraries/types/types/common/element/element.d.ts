@@ -30,6 +30,7 @@ import { TitleBarViewProps } from './title-bar-view';
 import { RefreshProps, RefreshUIMethods } from './refresh';
 import { ViewPagerItemProps, ViewPagerProps, ViewPagerUIMethods } from './viewpager';
 import { BlurViewProps } from './blur-view';
+import { WebviewProps, WebviewUIMethods } from './webview';
 
 
 export interface UIMethods {
@@ -42,6 +43,7 @@ export interface UIMethods {
   'refresh': RefreshUIMethods;
   'scroll-coordinator': ScrollCoordinatorUIMethods;
   'viewpager': ViewPagerUIMethods;
+  'webview': WebviewUIMethods;
 }
 
 type LynxComponentProps = ComponentProps;
@@ -78,6 +80,7 @@ export interface IntrinsicElements {
   'viewpager': ViewPagerProps;
   'viewpager-item': ViewPagerItemProps;
   'blur-view': BlurViewProps;
+  'webview': WebviewProps;
 }
 
 declare module 'react' {
@@ -114,6 +117,7 @@ declare module 'react' {
       'viewpager': ViewPagerProps;
       'viewpager-item': ViewPagerItemProps;
       'blur-view': BlurViewProps;
+      'webview': WebviewProps;
     }
   }
 }

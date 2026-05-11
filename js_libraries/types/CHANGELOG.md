@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.10.1
+- Introduce `<webview>`.
+
 ## 3.10.0
 - Introduce `<blur-view>`.
 
