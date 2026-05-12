@@ -214,9 +214,6 @@ class FiberElement : public Element {
 
   bool CollectCustomProperties(AttributeHolder* holder);
 
-  void PrepareSelfForThreadedElementResolution();
-  bool ShouldFallbackToSerialForNewStylingPipeline() const;
-
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 

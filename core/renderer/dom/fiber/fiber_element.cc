@@ -2334,17 +2334,17 @@ void FiberElement::OnParallelFlushAsRoot(PerfStatistic &stats) {
   stats.total_processing_start_ = base::CurrentTimeMicroseconds();
 }
 
-void FiberElement::PrepareSelfForThreadedElementResolution() {
+void Element::PrepareSelfForThreadedElementResolution() {
   // Get Tag info
   EnsureTagInfo();
   // Decode first
   GetRelatedCSSFragment();
-  if (is_component()) {
+  if (is_fiber_element_ && is_component()) {
     static_cast<ComponentElement *>(this)->GetCSSFragment();
   }
 }
 
-bool FiberElement::ShouldFallbackToSerialForNewStylingPipeline() const {
+bool Element::ShouldFallbackToSerialForNewStylingPipeline() const {
   return element_manager()->GetEnableParallelElement() &&
          element_manager()->EnableNewStylingPipeline() &&
          !element_manager()->EnableLevelOrderTraversing();

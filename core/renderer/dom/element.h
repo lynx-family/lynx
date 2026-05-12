@@ -752,6 +752,8 @@ class Element : public lepus::RefCounted,
 
   void MarkAttrDirtyForPseudoElement() { dirty_ |= kDirtyAttr; }
   void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
+  void PrepareSelfForThreadedElementResolution();
+  bool ShouldFallbackToSerialForNewStylingPipeline() const;
 
   void UpdateLayout(float left, float top, float width, float height,
                     const std::array<float, 4>& paddings,
