@@ -726,7 +726,7 @@ void FiberElement::SetStyleObjects(
   MarkDirty(kDirtyForceUpdate | kDirtyStyleObjects);
 }
 
-void FiberElement::ReplaceDynamicSimpleStyles(
+void Element::ReplaceDynamicSimpleStyles(
     style::DynamicStyleObjectRef new_style_object) {
   const bool has_committed_dynamic = parsed_dynamic_styles_map_.has_value() &&
                                      !parsed_dynamic_styles_map_->empty();
@@ -740,7 +740,7 @@ void FiberElement::ReplaceDynamicSimpleStyles(
   MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
 }
 
-void FiberElement::AddDynamicSimpleStyles(tasm::StyleMap &&new_styles) {
+void Element::AddDynamicSimpleStyles(tasm::StyleMap &&new_styles) {
   if (new_styles.empty()) {
     return;
   }
@@ -765,7 +765,7 @@ void FiberElement::AddDynamicSimpleStyles(tasm::StyleMap &&new_styles) {
   MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
 }
 
-void FiberElement::RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id) {
+void Element::RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id) {
   if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
       !parsed_dynamic_styles_map_->empty()) {
     dynamic_simple_object_ =
@@ -785,8 +785,8 @@ void FiberElement::RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id) {
   MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
 }
 
-void FiberElement::AddDynamicSimpleStyleKV(tasm::CSSPropertyID id,
-                                           tasm::CSSValue &&value) {
+void Element::AddDynamicSimpleStyleKV(tasm::CSSPropertyID id,
+                                      tasm::CSSValue &&value) {
   if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
       !parsed_dynamic_styles_map_->empty()) {
     dynamic_simple_object_ =

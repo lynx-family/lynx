@@ -197,13 +197,6 @@ class FiberElement : public Element {
   void ResetSimpleStyle(const tasm::CSSPropertyID id,
                         const tasm::CSSValue& value) override final;
   void ResetSimpleStyle(const tasm::CSSPropertyID id) override final;
-  // Update the dynamic simple style source object. The resolved dynamic layer
-  // will be applied during flush in ResolveSimpleStyles().
-  void ReplaceDynamicSimpleStyles(
-      style::DynamicStyleObjectRef new_style_object);
-  void AddDynamicSimpleStyles(tasm::StyleMap&& new_styles);
-  void RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id);
-  void AddDynamicSimpleStyleKV(tasm::CSSPropertyID id, tasm::CSSValue&& value);
   void ResolveCSSStyles(StyleMap& parsed_styles,
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
