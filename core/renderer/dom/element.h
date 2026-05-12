@@ -1241,7 +1241,7 @@ class Element : public lepus::RefCounted,
   bool ConsumeTransitionStylesInAdvance(const StyleMap& styles,
                                         bool force_reset = false);
 
-  virtual void MarkAsLayoutRoot() = 0;
+  virtual void MarkAsLayoutRoot();
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) = 0;
   virtual void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props) = 0;
   virtual void UpdateLayoutNodeStyle(CSSPropertyID css_id,

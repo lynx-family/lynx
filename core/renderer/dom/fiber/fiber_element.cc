@@ -3353,7 +3353,7 @@ void FiberElement::SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func) {
   }
 }
 
-void FiberElement::MarkAsLayoutRoot() {
+void Element::MarkAsLayoutRoot() {
   if (EnableLayoutInElementMode()) {
     EnsureSLNode();
     // The default flex direction is column for root

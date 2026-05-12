@@ -165,7 +165,6 @@ class FiberElement : public Element {
     return AttributeHolder::EventBundle::DefaultEmptyEventMap();
   }
 
-  virtual void MarkAsLayoutRoot() override;
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
   virtual void UpdateLayoutNodeProps(
       const fml::RefPtr<PropBundle>& props) override;
