@@ -31,6 +31,7 @@ DEFAULT_MODULES = [
     'lynx_log_service',
     'lynx_http_service',
     'lynx_image_service',
+    'xelement_markdown',
 ]
 
 
@@ -182,7 +183,7 @@ def delete_gitignore_file():
     gitignore_paths = [
         os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'src', 'main', 'ets', 'tasm', 'gen', '.gitignore'),
         os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'rawfile', '.gitignore')
-    ]    
+    ]
     for gitignore_path in gitignore_paths:
         if os.path.exists(gitignore_path):
             os.remove(gitignore_path)

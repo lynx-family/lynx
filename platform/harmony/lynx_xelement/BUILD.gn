@@ -4,6 +4,7 @@
 
 import("../../../core/Lynx.gni")
 import("../../../core/base_targets.gni")
+import("../harmony.gni")
 
 lynx_core_source_set("lynx_xelement") {
   sources = [
@@ -17,6 +18,8 @@ lynx_core_source_set("lynx_xelement") {
     "input/ui_input.h",
     "input/ui_textarea.cc",
     "input/ui_textarea.h",
+    "markdown/src/main/cpp/registry/markdown_registry.cc",
+    "markdown/src/main/cpp/registry/markdown_registry.h",
     "overlay/overlay_shadow_node.cc",
     "overlay/overlay_shadow_node.h",
     "overlay/ui_overlay.cc",
@@ -35,4 +38,16 @@ lynx_core_source_set("lynx_xelement") {
     "viewpager/ui_viewpager_item.h",
   ]
   deps = [ "../lynx_harmony:native" ]
+  defines = []
+
+  sources += [
+    "markdown/src/main/cpp/impl/markdown_view_bundle.h",
+    "markdown/src/main/cpp/impl/shadow_node/markdown_shadow_node.cc",
+    "markdown/src/main/cpp/impl/shadow_node/markdown_shadow_node.h",
+    "markdown/src/main/cpp/impl/ui/ui_markdown.cc",
+    "markdown/src/main/cpp/impl/ui/ui_markdown.h",
+    "markdown/src/main/cpp/impl/utils/markdown_lepus_value.h",
+  ]
+  deps += [ "markdown:serval_markdown" ]
+  defines += [ "LYNX_XELEMENT_MARKDOWN_BUILTIN=1" ]
 }

@@ -8,6 +8,7 @@
 #include "platform/harmony/lynx_xelement/input/input_shadow_node.h"
 #include "platform/harmony/lynx_xelement/input/ui_input.h"
 #include "platform/harmony/lynx_xelement/input/ui_textarea.h"
+#include "platform/harmony/lynx_xelement/markdown/src/main/cpp/registry/markdown_registry.h"
 #include "platform/harmony/lynx_xelement/overlay/overlay_shadow_node.h"
 #include "platform/harmony/lynx_xelement/overlay/ui_overlay.h"
 #include "platform/harmony/lynx_xelement/refresh/refresh_shadow_node.h"
@@ -38,6 +39,7 @@ void XElementRegistry::Initialize() {
   map["scroll-coordinator-slot-drag"] = {UIScrollCoordinatorSlotDrag::Make};
   map["viewpager"] = {UIViewPager::Make};
   map["viewpager-item"] = {UIViewPagerItem::Make};
+  MarkdownRegistry::Initialize();
 }
 }  // namespace harmony
 }  // namespace tasm
