@@ -9,6 +9,7 @@
 #define CLAY_SHELL_PLATFORM_WINDOWS_EGL_SURFACE_H_
 
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 
 #include <optional>
 #include <vector>
@@ -67,12 +68,24 @@ class Surface {
   // Get the raw EGL surface.
   virtual const EGLSurface& GetHandle() const;
 
+  // Buffer damage used before rendering. The base EGL surface does not
+  // implement EGL_KHR_partial_update; DirectComposition overrides this to open
+  // the draw surface for the current backbuffer.
   virtual void SetDamageRegion(const clay::Rect& region);
 
-  std::optional<clay::Rect> GetDamageRegion() const;
+  // Frame damage used for present dirty rects and buffer-age history.
+  virtual void SetPresentDamageRegion(const clay::Rect& region);
+
+  virtual std::optional<clay::Rect> GetDamageRegion() const;
+
+  virtual bool RequiresYAxisFlip() const { return false; }
 
  protected:
   void AddDamageRegion(const clay::Rect& rect);
+  // For surfaces that own their swapchain rotation instead of relying on EGL.
+  void AddDamageRegionWithManualBufferRotation(const clay::Rect& rect);
+  bool SupportsBufferAge() const;
+  bool SupportsSwapBuffersWithDamage() const;
 
   bool is_valid_ = true;
 
@@ -81,7 +94,11 @@ class Surface {
   EGLSurface surface_ = EGL_NO_SURFACE;
 
   std::vector<BufferInfo> buffers_;
+  std::vector<clay::Rect> damage_history_;
   int current_buffer_index_ = 0;
+  std::optional<clay::Rect> pending_present_damage_region_;
+  bool supports_buffer_age_ = false;
+  PFNEGLSWAPBUFFERSWITHDAMAGEEXTPROC swap_buffers_with_damage_ = nullptr;
 
   BASE_DISALLOW_COPY_AND_ASSIGN(Surface);
 };
