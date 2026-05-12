@@ -18,11 +18,16 @@ import com.lynx.tasm.service.IServiceProvider;
 import com.lynx.tasm.service.LynxServiceCenter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Keep
 public final class LynxExtensionRegistry {
   private static final String TAG = "LynxExtensionRegistry";
+  private static final Set<String> sRegisteredGlobalProviders =
+      Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
 
   @Nullable private final Context mContext;
   @Nullable private final LynxViewBuilder mBuilder;
@@ -34,7 +39,7 @@ public final class LynxExtensionRegistry {
 
   public static void setupGlobal(@NonNull Context context, @NonNull String[] providerClassNames) {
     LynxExtensionRegistry registry = new LynxExtensionRegistry(context, null);
-    setup(registry, providerClassNames);
+    setupGlobal(registry, providerClassNames);
     Context appContext = context.getApplicationContext();
     if (appContext instanceof Application) {
       LynxServiceCenter.inst().initialize((Application) appContext);
@@ -87,20 +92,42 @@ public final class LynxExtensionRegistry {
       if (providerClassName == null || providerClassName.length() == 0) {
         continue;
       }
-      try {
-        Class<?> cls = Class.forName(providerClassName);
-        Constructor<?> constructor = cls.getDeclaredConstructor();
-        constructor.setAccessible(true);
-        Object instance = constructor.newInstance();
-        if (instance instanceof LynxExtensionProvider) {
-          ((LynxExtensionProvider) instance).register(registry);
-        } else {
-          LLog.e(TAG, providerClassName + " does not implement LynxExtensionProvider");
-        }
-      } catch (Throwable t) {
-        LLog.w(TAG, "Skip unavailable Lynx extension provider " + providerClassName + ": " + t);
+      setupProvider(registry, providerClassName);
+    }
+  }
+
+  private static void setupGlobal(
+      @NonNull LynxExtensionRegistry registry, @NonNull String[] providerClassNames) {
+    for (String providerClassName : providerClassNames) {
+      if (providerClassName == null || providerClassName.length() == 0) {
+        continue;
+      }
+      if (!sRegisteredGlobalProviders.add(providerClassName)) {
+        continue;
+      }
+      if (!setupProvider(registry, providerClassName)) {
+        sRegisteredGlobalProviders.remove(providerClassName);
       }
     }
+  }
+
+  private static boolean setupProvider(
+      @NonNull LynxExtensionRegistry registry, @NonNull String providerClassName) {
+    try {
+      Class<?> cls = Class.forName(providerClassName);
+      Constructor<?> constructor = cls.getDeclaredConstructor();
+      constructor.setAccessible(true);
+      Object instance = constructor.newInstance();
+      if (instance instanceof LynxExtensionProvider) {
+        ((LynxExtensionProvider) instance).register(registry);
+        return true;
+      } else {
+        LLog.e(TAG, providerClassName + " does not implement LynxExtensionProvider");
+      }
+    } catch (Throwable t) {
+      LLog.w(TAG, "Skip unavailable Lynx extension provider " + providerClassName + ": " + t);
+    }
+    return false;
   }
 
   @Nullable
