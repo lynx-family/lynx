@@ -1064,6 +1064,7 @@ class Element : public lepus::RefCounted,
   NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
       const NewPipelineResolveRequest& request);
   void ResolveCSSStylesNewPipeline(bool& need_update);
+  void ResolveSimpleStyles();
   void HandleKeyframePropsChange();
 #if ENABLE_TRACE_PERFETTO
   virtual void UpdateTraceDebugInfo(TraceEvent* event);

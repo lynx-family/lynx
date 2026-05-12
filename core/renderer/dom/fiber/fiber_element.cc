@@ -1295,7 +1295,7 @@ void Element::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
   }
 }
 
-void FiberElement::ResolveSimpleStyles() {
+void Element::ResolveSimpleStyles() {
   const bool static_dirty = (dirty_ & kDirtyStyleObjects) != 0;
   const bool dynamic_dirty = (dirty_ & kDirtyDynamicStyleObjects) != 0;
   if (!static_dirty && !dynamic_dirty) {
