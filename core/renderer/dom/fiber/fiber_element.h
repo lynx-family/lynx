@@ -198,8 +198,6 @@ class FiberElement : public Element {
   void StoreLayoutNode(FiberElement* child, FiberElement* ref);
   void RestoreLayoutNode(FiberElement* child);
 
-  void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
-
   // The text element can call this function to convert child fiber elements
   // into inline elements. Currently, only view, text, image and wrapper
   // elements may be converted into inline elements.
@@ -247,11 +245,6 @@ class FiberElement : public Element {
   void RemoveFixedElement(FiberElement* child);
 
   PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
-
-  void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
-  void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
-                                               bool& inner_force_update);
-  void UpdateDynamicChildrenStyleRecursively(uint32_t style, bool force_update);
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);

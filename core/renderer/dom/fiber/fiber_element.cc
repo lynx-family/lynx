@@ -4262,8 +4262,12 @@ void Element::VisitChildren(
   }
 }
 
-void FiberElement::UpdateDynamicElementStyleForNewPipeline(
+void Element::UpdateDynamicElementStyleForNewPipeline(
     uint32_t &style, bool &inner_force_update) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {
     NotifyUnitValuesUpdatedToAnimation(style);
     const auto &env_config = element_manager()->GetLynxEnvConfig();
@@ -4331,17 +4335,26 @@ void FiberElement::UpdateDynamicElementStyleForNewPipeline(
   }
 }
 
-void FiberElement::UpdateDynamicChildrenStyleRecursively(uint32_t style,
-                                                         bool force_update) {
+void Element::UpdateDynamicChildrenStyleRecursively(uint32_t style,
+                                                    bool force_update) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   auto *child = static_cast<FiberElement *>(first_render_child_);
   while (child) {
-    child->UpdateDynamicElementStyleRecursively(style, force_update);
+    static_cast<Element *>(child)->UpdateDynamicElementStyleRecursively(
+        style, force_update);
     child = static_cast<FiberElement *>(child->next_render_sibling_);
   }
 }
 
-void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
-                                                        bool force_update) {
+void Element::UpdateDynamicElementStyleRecursively(uint32_t style,
+                                                   bool force_update) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   if (is_raw_text()) {
     return;
   }
@@ -4467,8 +4480,11 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
   UpdateDynamicChildrenStyleRecursively(style, inner_force_update);
 }
 
-void FiberElement::UpdateDynamicElementStyle(uint32_t style,
-                                             bool force_update) {
+void Element::UpdateDynamicElementStyle(uint32_t style, bool force_update) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   UpdateDynamicElementStyleRecursively(style, force_update);
   if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
     element_context_delegate_->FlushEnqueuedTasks();

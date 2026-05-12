@@ -852,7 +852,7 @@ class Element : public lepus::RefCounted,
 
   ContentData* content_data() const { return content_data_.get(); }
 
-  virtual void UpdateDynamicElementStyle(uint32_t style, bool force_update) = 0;
+  virtual void UpdateDynamicElementStyle(uint32_t style, bool force_update);
 
   bool HasPlaceHolder() { return has_placeholder_; }
   bool HasTextSelection() { return has_text_selection_; }
@@ -1736,6 +1736,10 @@ class Element : public lepus::RefCounted,
                                     const ClassList& new_classes);
   void InvalidateChildren(css::InvalidationSet* invalidation_set);
   void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
+  void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
+  void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
+                                               bool& inner_force_update);
+  void UpdateDynamicChildrenStyleRecursively(uint32_t style, bool force_update);
 
   base::String tag_;
 
