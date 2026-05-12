@@ -159,7 +159,7 @@ struct NewPipelineDynamicStyleInputs {
 };
 
 NewPipelineDynamicStyleInputs BuildDynamicStyleInputsForNewPipeline(
-    const FiberElement &element, const starlight::ComputedCSSStyle &final_style,
+    const Element &element, const starlight::ComputedCSSStyle &final_style,
     const StyleMap &explicit_resolved_style_map) {
   NewPipelineDynamicStyleInputs result;
   result.resolved_style_map = explicit_resolved_style_map;
@@ -1336,8 +1336,7 @@ Element::CollectDynamicFlagsForNewPipeline(
   return flags;
 }
 
-FiberElement::NewPipelineResolveOutcome
-FiberElement::ResolveCSSStylesNewPipelineCore(
+Element::NewPipelineResolveOutcome Element::ResolveCSSStylesNewPipelineCore(
     const NewPipelineResolveRequest &request) {
   NewPipelineResolveOutcome outcome;
   const bool has_cached_styles_from_attributes =

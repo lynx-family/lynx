@@ -283,9 +283,6 @@ class FiberElement : public Element {
 
   void HandleKeyframePropsChange();
 
-  NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
-      const NewPipelineResolveRequest& request);
-
   void RequestLayout() override;
 
   void RequestNextFrame() override;

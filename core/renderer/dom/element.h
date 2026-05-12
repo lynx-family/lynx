@@ -1045,6 +1045,8 @@ class Element : public lepus::RefCounted,
   NewPipelineStyleResolveResult ResolveComputedStyles(
       const starlight::ComputedCSSStyle* previous_final_style,
       double old_font_size, double old_root_font_size);
+  NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
+      const NewPipelineResolveRequest& request);
 
   void SetPlaceHolderStylesInternal(const PseudoPlaceHolderStyles& styles);
 
