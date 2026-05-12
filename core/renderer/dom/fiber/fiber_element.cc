@@ -4185,8 +4185,12 @@ void Element::CheckDynamicUnit(CSSPropertyID id, const CSSValue &value,
       element_manager()->FixFilterDynamicUpdateBug());
 }
 
-bool FiberElement::CheckHasInvalidationForId(const std::string &old_id,
-                                             const std::string &new_id) {
+bool Element::CheckHasInvalidationForId(const std::string &old_id,
+                                        const std::string &new_id) {
+  if (!is_fiber_element_) {
+    return false;
+  }
+
   auto *css_fragment = GetRelatedCSSFragment();
   // resolve styles from css fragment
   if (!css_fragment || !css_fragment->enable_css_invalidation()) {
@@ -4198,8 +4202,12 @@ bool FiberElement::CheckHasInvalidationForId(const std::string &old_id,
   return invalidation_lists_.descendants.size() != old_size;
 }
 
-bool FiberElement::CheckHasInvalidationForClass(const ClassList &old_classes,
-                                                const ClassList &new_classes) {
+bool Element::CheckHasInvalidationForClass(const ClassList &old_classes,
+                                           const ClassList &new_classes) {
+  if (!is_fiber_element_) {
+    return false;
+  }
+
   auto *css_fragment = GetRelatedCSSFragment();
   // resolve styles from css fragment
   if (!css_fragment || !css_fragment->enable_css_invalidation()) {

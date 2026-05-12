@@ -258,11 +258,6 @@ class FiberElement : public Element {
   void InsertFixedElement(FiberElement* child, FiberElement* ref_node);
   void RemoveFixedElement(FiberElement* child);
 
-  bool CheckHasInvalidationForId(const std::string& old_id,
-                                 const std::string& new_id) override;
-
-  bool CheckHasInvalidationForClass(const ClassList& old_classes,
-                                    const ClassList& new_classes);
   void InvalidateChildren(css::InvalidationSet* invalidation_set);
   void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
 

@@ -1721,12 +1721,11 @@ class Element : public lepus::RefCounted,
     return enable_class_change_transmit_ && !(dirty_ & kDirtyCreated);
   }
 
-  // Check if there's invalidation for id selector change. Override in
-  // FiberElement.
+  // Check if there's invalidation for id/class selector change.
   virtual bool CheckHasInvalidationForId(const std::string& old_id,
-                                         const std::string& new_id) {
-    return false;
-  }
+                                         const std::string& new_id);
+  bool CheckHasInvalidationForClass(const ClassList& old_classes,
+                                    const ClassList& new_classes);
 
   base::String tag_;
 
