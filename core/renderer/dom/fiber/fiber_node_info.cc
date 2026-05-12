@@ -9,7 +9,7 @@
 namespace lynx {
 namespace tasm {
 lepus::Value FiberNodeInfo::GetNodesInfo(
-    const std::vector<FiberElement *> &nodes,
+    const std::vector<Element *> &nodes,
     const std::vector<std::string> &fields) {
   auto ret = lepus::CArray::Create();
   for (auto node : nodes) {
@@ -19,7 +19,7 @@ lepus::Value FiberNodeInfo::GetNodesInfo(
 }
 
 lepus::Value FiberNodeInfo::GetNodeInfo(
-    FiberElement *node, const std::vector<std::string> &fields) {
+    Element *node, const std::vector<std::string> &fields) {
   auto ret = lepus::Dictionary::Create();
   if (node == nullptr) {
     return lepus::Value(std::move(ret));
@@ -50,10 +50,9 @@ lepus::Value FiberNodeInfo::GetNodeInfo(
         ret->SetValue(kName, iter->second);
       }
     } else if (field == "index") {
-      auto index =
-          node->parent()
-              ? static_cast<FiberElement *>(node->parent())->IndexOf(node)
-              : 0;
+      auto index = node->parent()
+                       ? static_cast<Element *>(node->parent())->IndexOf(node)
+                       : 0;
       BASE_STATIC_STRING_DECL(kIndex, "index");
       ret->SetValue(kIndex, index);
     } else if (field == "class") {
@@ -84,11 +83,11 @@ lepus::Value FiberNodeInfo::GetNodeInfo(
   return lepus::Value(std::move(ret));
 }
 
-std::vector<FiberElement *> FiberNodeInfo::PathToRoot(FiberElement *base) {
-  std::vector<FiberElement *> path;
+std::vector<Element *> FiberNodeInfo::PathToRoot(Element *base) {
+  std::vector<Element *> path;
   while (base) {
     path.push_back(base);
-    base = static_cast<FiberElement *>(base->parent());
+    base = static_cast<Element *>(base->parent());
   }
   return path;
 }

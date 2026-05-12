@@ -5,7 +5,6 @@
 #ifndef CORE_RENDERER_DOM_FIBER_FIBER_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_FIBER_ELEMENT_H_
 
-#include <list>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -15,7 +14,6 @@
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
-#include "core/base/thread/once_task.h"
 #include "core/event/event_listener.h"
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_property.h"
@@ -36,28 +34,6 @@ namespace lynx {
 namespace tasm {
 class NodeManager;
 class PlatformLayoutFunctionWrapper;
-using ParallelFlushReturn = base::closure;
-using ParallelReduceTaskQueue =
-    std::list<base::OnceTaskRefptr<ParallelFlushReturn>>;
-
-enum NodeInfoBits : int32_t {
-  // Mask for layout node type, using lower 16 bits.
-  kLayoutNodeTypeMask = 0x0000FFFF,
-  // Mask for async creation flag.
-  kCreateAsyncMask = 0x00010000,
-};
-
-constexpr const int32_t kCommonBuiltInNodeInfo =
-    (static_cast<int32_t>(LayoutNodeType::COMMON) &
-     NodeInfoBits::kLayoutNodeTypeMask) |
-    NodeInfoBits::kCreateAsyncMask;
-constexpr const int32_t kVirtualBuiltInNodeInfo =
-    (static_cast<int32_t>(LayoutNodeType::VIRTUAL) &
-     NodeInfoBits::kLayoutNodeTypeMask);
-constexpr const int32_t kCustomBuiltInNodeInfo =
-    (static_cast<int32_t>(LayoutNodeType::CUSTOM) &
-     NodeInfoBits::kLayoutNodeTypeMask) |
-    NodeInfoBits::kCreateAsyncMask;
 
 class FiberElement : public Element {
  public:
