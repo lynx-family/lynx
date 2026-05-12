@@ -399,14 +399,6 @@ class FiberElement : public Element {
       const starlight::ComputedCSSStyle* previous_final_style,
       double old_font_size, double old_root_font_size);
 
-  /**
-   * @brief Replays all commit side effects after style resolution.
-   * @param computed_style The final computed style.
-   * @param resolved_style_map The fully resolved style map.
-   */
-  void ReplayCommitSideEffects(
-      const starlight::ComputedCSSStyle& computed_style,
-      const StyleMap& resolved_style_map, CSSIDBitset* replayed_ids = nullptr);
   NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
       const NewPipelineResolveRequest& request);
 

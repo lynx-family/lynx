@@ -2119,7 +2119,7 @@ void Element::CommitFontContext(
   UpdateLayoutNodeFontSize(new_font_size, new_root_font_size);
 }
 
-void FiberElement::ReplayCommitSideEffects(
+void Element::ReplayCommitSideEffects(
     const starlight::ComputedCSSStyle &computed_style,
     const StyleMap &resolved_style_map, CSSIDBitset *replayed_ids) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_REPLAY_COMMIT_SIDE_EFFECTS);
