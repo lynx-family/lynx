@@ -13,7 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)attachLynxUIOwner:(nullable LynxUIOwner *)uiOwner;
 
 - (void)scrollIntoView:(int)node_id;
-- (void)focus:(int)node_id;
+- (void)focus:(int)node_id
+    completion:(void (^)(BOOL success, NSString *_Nullable errorMessage))completion;
 
 - (CGRect)getRectToWindow;
 

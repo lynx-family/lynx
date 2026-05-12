@@ -5,6 +5,7 @@
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 
 #include <regex>
+#include <utility>
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/runtime/lepus/json_parser.h"
@@ -86,10 +87,16 @@ void InspectorUIExecutor::ScrollIntoView(int node_id) {
   devtool_platform_facade_->ScrollIntoView(node_id);
 }
 
-void InspectorUIExecutor::Focus(int node_id) {
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
-  devtool_platform_facade_->Focus(node_id);
+void InspectorUIExecutor::Focus(int node_id,
+                                DevToolPlatformFocusCallback callback) {
+  if (!devtool_platform_facade_) {
+    LOGE("devtool_platform_facade_ is null");
+    if (callback) {
+      callback(true, "");
+    }
+    return;
+  }
+  devtool_platform_facade_->Focus(node_id, std::move(callback));
 }
 
 void InspectorUIExecutor::PageReload(bool ignore_cache,

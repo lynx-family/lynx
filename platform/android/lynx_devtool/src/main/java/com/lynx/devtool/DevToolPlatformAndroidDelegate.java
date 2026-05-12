@@ -344,13 +344,15 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   @CalledByNative
-  public void focus(final int nodeId) {
+  public void focus(final int nodeId, final long callbackPtr) {
     LynxView lynxView = mLynxView.get();
     if (lynxView == null || lynxView.getLynxContext() == null) {
+      reportFocusResult(callbackPtr, true, "");
       return;
     }
     LynxUIOwner uiOwner = lynxView.getLynxContext().getLynxUIOwner();
     if (uiOwner == null) {
+      reportFocusResult(callbackPtr, true, "");
       return;
     }
     uiOwner.invokeUIMethodForSelectorQuery(nodeId, "focus", new JavaOnlyMap(), new Callback() {
@@ -358,13 +360,22 @@ public class DevToolPlatformAndroidDelegate {
       public void invoke(Object... args) {
         if (args == null || args.length == 0 || !(args[0] instanceof Integer)
             || ((Integer) args[0]) == LynxUIMethodConstants.SUCCESS) {
+          reportFocusResult(callbackPtr, true, "");
           return;
         }
-        Object detail = args.length > 1 ? args[1] : "";
-        LLog.w(TAG,
-            "DOM.focus failed for nodeId " + nodeId + ", code: " + args[0] + ", data: " + detail);
+        Object detail = args.length > 1 && args[1] != null ? args[1] : "";
+        String errorMessage = "code: " + args[0] + ", data: " + detail;
+        LLog.w(TAG, "DOM.focus failed for nodeId " + nodeId + ", " + errorMessage);
+        reportFocusResult(callbackPtr, false, errorMessage);
       }
     });
+  }
+
+  private static void reportFocusResult(long callbackPtr, boolean success, String errorMessage) {
+    if (callbackPtr == 0) {
+      return;
+    }
+    nativeReportFocusResult(callbackPtr, success, errorMessage == null ? "" : errorMessage);
   }
 
   @CalledByNative
@@ -433,4 +444,6 @@ public class DevToolPlatformAndroidDelegate {
   private native void nativeSendLayerTreeDidChangeEvent(long facadePtr);
   private native String nativeGetLepusDebugInfoUrl(long facadePtr, String fileName);
   private native void nativeSendCDPEvent(long facadePtr, String message);
+  private static native void nativeReportFocusResult(
+      long callbackPtr, boolean success, String errorMessage);
 }

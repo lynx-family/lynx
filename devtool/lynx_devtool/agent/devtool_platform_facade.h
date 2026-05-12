@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/value/base_value.h"
 #include "core/renderer/dom/element.h"
 #include "devtool/lynx_devtool/base/mouse_event.h"
@@ -16,6 +17,9 @@
 
 namespace lynx {
 namespace devtool {
+
+using DevToolPlatformFocusCallback =
+    lynx::base::MoveOnlyClosure<void, bool, const std::string&>;
 
 class LynxDevToolMediator;
 class InspectorUIExecutor;
@@ -41,7 +45,11 @@ class DevToolPlatformFacade
 
   virtual std::string GetDebugInfoByUrl(const std::string& url) = 0;
   virtual void ScrollIntoView(int node_id) = 0;
-  virtual void Focus(int node_id) {}
+  virtual void Focus(int node_id, DevToolPlatformFocusCallback callback) {
+    if (callback) {
+      callback(true, "");
+    }
+  }
   virtual int FindNodeIdForLocation(float x, float y,
                                     std::string screen_shot_mode) = 0;
   virtual void StartScreenCast(ScreenshotRequest request) = 0;

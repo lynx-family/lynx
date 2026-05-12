@@ -507,9 +507,18 @@ void LynxDevToolMediator::ScrollIntoView(int node_id) {
   });
 }
 
-void LynxDevToolMediator::Focus(int node_id) {
-  RunOnUIThread(
-      [executor = ui_executor_, node_id] { executor->Focus(node_id); });
+void LynxDevToolMediator::Focus(int node_id,
+                                DevToolPlatformFocusCallback callback) {
+  if (!ui_task_runner_) {
+    if (callback) {
+      callback(true, "");
+    }
+    return;
+  }
+  RunOnUIThread([executor = ui_executor_, node_id,
+                 callback = std::move(callback)]() mutable {
+    executor->Focus(node_id, std::move(callback));
+  });
 }
 
 void LynxDevToolMediator::PageReload(bool ignore_cache) {

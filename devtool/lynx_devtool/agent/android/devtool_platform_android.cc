@@ -6,6 +6,8 @@
 
 #include <sys/system_properties.h>
 
+#include <utility>
+
 #include "core/base/android/jni_helper.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
@@ -133,6 +135,25 @@ void SendCDPEvent(JNIEnv* env, jobject jcaller, jlong facadePtr,
       lynx::base::android::JNIConvertHelper::ConvertToString(env, message));
 }
 
+void ReportFocusResult(JNIEnv* env, jclass /*jcaller*/, jlong callbackPtr,
+                       jboolean success, jstring errorMessage) {
+  auto* callback =
+      reinterpret_cast<lynx::devtool::DevToolPlatformFocusCallback*>(
+          callbackPtr);
+  if (!callback) {
+    return;
+  }
+  std::string error_message;
+  if (errorMessage != nullptr) {
+    error_message = lynx::base::android::JNIConvertHelper::ConvertToString(
+        env, errorMessage);
+  }
+  if (*callback) {
+    (*callback)(success, error_message);
+  }
+  delete callback;
+}
+
 namespace lynx {
 namespace devtool {
 DevToolPlatformAndroid::DevToolPlatformAndroid(JNIEnv* env, jobject owner)
@@ -225,13 +246,19 @@ void DevToolPlatformAndroid::EmulateTouch(
       env, ref.Get(), type.Get(), x, y, deltaX, deltaY, button.Get());
 }
 
-void DevToolPlatformAndroid::Focus(int node_id) {
+void DevToolPlatformAndroid::Focus(int node_id,
+                                   DevToolPlatformFocusCallback callback) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
   lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
   if (ref.IsNull()) {
+    if (callback) {
+      callback(true, "");
+    }
     return;
   }
-  Java_DevToolPlatformAndroidDelegate_focus(env, ref.Get(), node_id);
+  auto* callback_ptr = new DevToolPlatformFocusCallback(std::move(callback));
+  Java_DevToolPlatformAndroidDelegate_focus(
+      env, ref.Get(), node_id, reinterpret_cast<jlong>(callback_ptr));
 }
 
 void DevToolPlatformAndroid::OnConsoleMessage(const std::string& message) {

@@ -56,17 +56,24 @@
   [ui scrollIntoViewWithSmooth:false blockType:@"center" inlineType:@"center" callback:nil];
 }
 
-- (void)focus:(int)node_id {
+- (void)focus:(int)node_id
+    completion:(void (^)(BOOL success, NSString* _Nullable errorMessage))completion {
   __strong typeof(_uiOwner) uiOwner = _uiOwner;
   if (uiOwner == nil) {
+    completion(YES, nil);
     return;
   }
   [uiOwner invokeUIMethodForSelectorQuery:@"focus"
                                    params:@{}
                                  callback:^(int code, id _Nullable data) {
-                                   if (code != kUIMethodSuccess) {
-                                     LLogWarn(@"DOM.focus failed for nodeId:%d code:%d data:%@",
-                                              node_id, code, data);
+                                   if (code == kUIMethodSuccess) {
+                                     completion(YES, nil);
+                                   } else {
+                                     NSString* errorMessage = [NSString
+                                         stringWithFormat:@"code: %d, data: %@", code, data ?: @""];
+                                     LLogWarn(@"DOM.focus failed for nodeId:%d %@", node_id,
+                                              errorMessage);
+                                     completion(NO, errorMessage);
                                    }
                                  }
                                    toNode:node_id];
