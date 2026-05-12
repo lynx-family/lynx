@@ -1931,7 +1931,8 @@ void App::Init() {
           [this](lepus::Value args) { OnBTSConsoleEvent(args); }));
 }
 
-void App::Destroy() {
+App::~App() {
+  LOGI("~App()");
   auto rt = rt_.Lock();
   if (rt && js_app_.isObject()) {
     LOGI("App::Destroy " << this);
@@ -1954,7 +1955,9 @@ void App::Destroy() {
   if (jsi_object_wrapper_manager_) {
     jsi_object_wrapper_manager_->DestroyOnJSThread();
   }
-  runtime_delegate_->Destroy();
+  if (runtime_delegate_) {
+    runtime_delegate_->Destroy();
+  }
 }
 
 void App::CallDestroyLifetimeFun() {

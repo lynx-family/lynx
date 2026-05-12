@@ -88,8 +88,7 @@ class App {
 
   base::UnsafeWeakPtr<App> GetWeakPtr() const { return weak_self_; }
 
-  ~App() { LOGI("~App()"); }
-  void Destroy();
+  ~App();
   void CallDestroyLifetimeFun();
 
   void SetJsAppObj(Object&& obj);

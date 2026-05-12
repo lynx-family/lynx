@@ -847,9 +847,7 @@ void BTSRuntime::Destroy() {
 void BTSRuntime::DestroyAppAndNapi() {
   LOGI("LynxRuntime::DestroyAppAndNapi, runtime_id: " << GetRuntimeId()
                                                       << " this: " << this);
-  // App destroy might invoke front-page's destroy, which could call a NAPI
-  // API, so it's important to call destroy first, and then call NAPI destroy.
-  app_->Destroy();
+  // Releasing app_ runs App teardown before NAPI detaches.
   app_ = nullptr;
 #if ENABLE_NAPI_BINDING
   lifecycle_observer_->OnRuntimeDetach();
