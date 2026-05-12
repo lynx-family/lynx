@@ -21,6 +21,7 @@
 #include "base/include/value/ref_type.h"
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
+#include "base/trace/native/trace_event.h"
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/lynx_export.h"
@@ -1047,6 +1048,9 @@ class Element : public lepus::RefCounted,
       const NewPipelineResolveRequest& request);
   void ResolveCSSStylesNewPipeline(bool& need_update);
   void HandleKeyframePropsChange();
+#if ENABLE_TRACE_PERFETTO
+  virtual void UpdateTraceDebugInfo(TraceEvent* event);
+#endif
   void SetStyleObjects(
       std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
           style_objects) override;

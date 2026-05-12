@@ -13,7 +13,6 @@
 #include "base/include/auto_create_optional.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/vector.h"
-#include "base/trace/native/trace_event.h"
 #include "core/event/event_listener.h"
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_property.h"
@@ -303,11 +302,6 @@ class FiberElement : public Element {
   void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
                         bool reset) override;
   void WillResetCSSValue(CSSPropertyID& id) override;
-
-  // FIXME(liujilong.me): unify trace relative macros.
-#if ENABLE_TRACE_PERFETTO
-  virtual void UpdateTraceDebugInfo(TraceEvent* event);
-#endif
 
   // The text element can call this function to convert child fiber elements
   // into inline elements. Currently, only view, text, image and wrapper

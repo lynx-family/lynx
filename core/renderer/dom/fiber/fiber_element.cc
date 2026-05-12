@@ -4738,7 +4738,7 @@ void FiberElement::DispatchLayoutBefore() {
 }
 
 #if ENABLE_TRACE_PERFETTO
-void FiberElement::UpdateTraceDebugInfo(TraceEvent *event) {
+void Element::UpdateTraceDebugInfo(TraceEvent *event) {
   auto *tagInfo = event->add_debug_annotations();
   tagInfo->set_name("tagName");
   tagInfo->set_string_value(tag_.str());
