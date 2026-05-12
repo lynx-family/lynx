@@ -265,6 +265,7 @@ napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
   // providers
   auto resource_loader =
       std::make_shared<LynxResourceLoaderHarmony>(env, args[0]);
+  resource_loader->SetUITaskRunner(base::UIThread::GetRunner());
 
   // runtime options
   // js group
