@@ -24,6 +24,7 @@
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/lynx_export.h"
+#include "core/base/thread/once_task.h"
 #include "core/event/event_target.h"
 #include "core/inspector/style_sheet.h"
 #include "core/public/common_constants.h"
@@ -44,6 +45,7 @@
 #include "core/renderer/simple_styling/simple_style_node.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/starlight/types/layout_result.h"
+#include "core/renderer/ui_component/list/list_types.h"
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
@@ -72,6 +74,28 @@ class PlatformLayoutFunctionWrapper;
 
 using ElementChildrenArray =
     base::InlineVector<Element*, kChildrenInlineVectorSize>;
+using ParallelFlushReturn = base::closure;
+using ParallelReduceTaskQueue =
+    std::list<base::OnceTaskRefptr<ParallelFlushReturn>>;
+
+enum NodeInfoBits : int32_t {
+  // Mask for layout node type, using lower 16 bits.
+  kLayoutNodeTypeMask = 0x0000FFFF,
+  // Mask for async creation flag.
+  kCreateAsyncMask = 0x00010000,
+};
+
+constexpr const int32_t kCommonBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::COMMON) &
+     NodeInfoBits::kLayoutNodeTypeMask) |
+    NodeInfoBits::kCreateAsyncMask;
+constexpr const int32_t kVirtualBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::VIRTUAL) &
+     NodeInfoBits::kLayoutNodeTypeMask);
+constexpr const int32_t kCustomBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::CUSTOM) &
+     NodeInfoBits::kLayoutNodeTypeMask) |
+    NodeInfoBits::kCreateAsyncMask;
 
 enum ElementArchTypeEnum : uint8_t {
   FiberArch = 0,
