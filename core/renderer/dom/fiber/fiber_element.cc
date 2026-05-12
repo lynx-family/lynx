@@ -887,13 +887,13 @@ void Element::FinalizeSimpleStyleUpdate() {
   MarkDirty(kDirtyForceUpdate);
 }
 
-void FiberElement::UpdateSimpleStyles(tasm::StyleMap &&style_map) {
+void Element::UpdateSimpleStyles(tasm::StyleMap &&style_map) {
   parsed_styles_map_ = std::move(style_map);
   ApplySimpleStylesWithoutTail(parsed_styles_map_);
   FinalizeSimpleStyleUpdate();
 }
 
-void FiberElement::UpdateStaticAndDynamicSimpleStyles(
+void Element::UpdateStaticAndDynamicSimpleStyles(
     tasm::StyleMap &&style_map, tasm::StyleMap &&dynamic_style_map) {
   parsed_styles_map_ = std::move(style_map);
   if (dynamic_style_map.empty()) {
@@ -910,7 +910,7 @@ void FiberElement::UpdateStaticAndDynamicSimpleStyles(
   FinalizeSimpleStyleUpdate();
 }
 
-void FiberElement::UpdateDynamicSimpleStyles(tasm::StyleMap &&style_map) {
+void Element::UpdateDynamicSimpleStyles(tasm::StyleMap &&style_map) {
   if (style_map.empty()) {
     parsed_dynamic_styles_map_.reset();
   } else {
@@ -924,17 +924,17 @@ void FiberElement::UpdateDynamicSimpleStyles(tasm::StyleMap &&style_map) {
   FinalizeSimpleStyleUpdate();
 }
 
-void FiberElement::UpdateSimpleStyles(const tasm::StyleMap &style_map) {
+void Element::UpdateSimpleStyles(const tasm::StyleMap &style_map) {
   ApplySimpleStylesWithoutTail(style_map);
   FinalizeSimpleStyleUpdate();
 }
 
-void FiberElement::ResetSimpleStyle(const tasm::CSSPropertyID id,
-                                    const tasm::CSSValue &value) {
+void Element::ResetSimpleStyle(const tasm::CSSPropertyID id,
+                               const tasm::CSSValue &value) {
   ApplySimpleStyleWithoutTail(id, value);
 }
 
-void FiberElement::ResetSimpleStyle(const tasm::CSSPropertyID id) {
+void Element::ResetSimpleStyle(const tasm::CSSPropertyID id) {
   ApplySimpleStyleWithoutTail(id, CSSValue());
 }
 

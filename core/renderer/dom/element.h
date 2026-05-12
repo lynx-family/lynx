@@ -1075,6 +1075,15 @@ class Element : public lepus::RefCounted,
   void ApplyDynamicSimpleStylesWithoutTail(
       const tasm::StyleMap& dynamic_style_map,
       const tasm::StyleMap& base_style_map);
+  void UpdateSimpleStyles(const tasm::StyleMap& style_map) final;
+  void UpdateSimpleStyles(tasm::StyleMap&& style_map) final;
+  void UpdateStaticAndDynamicSimpleStyles(
+      tasm::StyleMap&& style_map,
+      tasm::StyleMap&& dynamic_style_map) override final;
+  void UpdateDynamicSimpleStyles(tasm::StyleMap&& style_map) override final;
+  void ResetSimpleStyle(const tasm::CSSPropertyID id,
+                        const tasm::CSSValue& value) override final;
+  void ResetSimpleStyle(const tasm::CSSPropertyID id) override final;
   void SetStyleObjects(
       std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
           style_objects) override;

@@ -146,52 +146,6 @@ class FiberElement : public Element {
   void UpdateCSSVariable(const lepus::Value& variables,
                          std::shared_ptr<PipelineOptions>& pipeline_option);
 
-  /**
-   * @brief Set the style objects for the current element.
-   *
-   * This method is used to assign a list of style objects to the element.
-   * The object list is managed by a custom deleter, which will be called
-   * when the unique pointer goes out of scope.
-   * @note This function is not implemented yet.
-   * @param object_list A unique pointer to an array of StyleObject pointers,
-   *                    along with a custom deleter function for the array.
-   */
-  /**
-   * @brief Update the simple styles of the current element.
-   *
-   * This method is used to update the simple styles of the element based on
-   * the provided style map. The style map contains key-value pairs representing
-   * CSS properties and their values.
-   *
-   * @note This function is not implemented yet.
-   *
-   * @param style_map A constant reference to a tasm::StyleMap containing the
-   *                  styles to be updated.
-   */
-  void UpdateSimpleStyles(const tasm::StyleMap& style_map) final;
-
-  void UpdateSimpleStyles(tasm::StyleMap&& style_map) final;
-
-  void UpdateStaticAndDynamicSimpleStyles(
-      tasm::StyleMap&& style_map,
-      tasm::StyleMap&& dynamic_style_map) override final;
-
-  void UpdateDynamicSimpleStyles(tasm::StyleMap&& style_map) override final;
-
-  /**
-   * @brief Reset the simple style associated with the specified CSS property
-   * ID.
-   *
-   * This method is intended to reset the simple style of the current element
-   * corresponding to the given CSS property ID.
-   *
-   * @note This function is not implemented yet.
-   *
-   * @param id The CSS property ID of the style to be reset.
-   */
-  void ResetSimpleStyle(const tasm::CSSPropertyID id,
-                        const tasm::CSSValue& value) override final;
-  void ResetSimpleStyle(const tasm::CSSPropertyID id) override final;
   void ResolveCSSStyles(StyleMap& parsed_styles,
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
