@@ -109,6 +109,29 @@ public class LynxBehaviorProcessorTest {
   }
 
   @Test
+  public void testLynxAutolinkElementAnnotation() throws IOException {
+    JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestElement",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxAutolinkElement;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
+            + "@LynxAutolinkElement(name = \"test-element\", isCreateAsync = true)\n"
+            + "public class TestElement extends LynxUI {\n"
+            + "  public TestElement(LynxContext context) { super(context); }\n"
+            + "}\n");
+
+    Compilation compilation = javac()
+                                  .withProcessors(new LynxBehaviorProcessor())
+                                  .compile(merge(getCommonStubs(), testClass));
+
+    assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
+
+    String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
+    assertTrue("Should use LynxAutolinkElement name",
+        source.contains("new Behavior(\"test-element\", false, true, false)"));
+  }
+
+  @Test
   public void testBehaviorWithFragmentLayerRender() throws IOException {
     JavaFileObject rendererHostClass = JavaFileObjects.forSourceString("com.test.TestRendererHost",
         "package com.test;\n"
@@ -166,6 +189,56 @@ public class LynxBehaviorProcessorTest {
     assertTrue("Should use 5-arg Behavior constructor with true",
         source.contains("new Behavior(\"test\", false, false, false, true)"));
     assertFalse("Should not contain createPlatformRendererHost when no host is set",
+        source.contains("createPlatformRendererHost"));
+  }
+
+  @Test
+  public void testBehaviorWithDefaultRendererHostSentinel() throws IOException {
+    JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestUI",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxBehavior;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.render.IRendererHost;\n"
+            + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
+            + "@LynxBehavior(tagName = \"test\", supportFragmentLayerRender = true, "
+            + "fragmentLayerRendererHost = IRendererHost.class)\n"
+            + "public class TestUI extends LynxUI {\n"
+            + "  public TestUI(LynxContext context) { super(context); }\n"
+            + "}\n");
+
+    Compilation compilation = javac()
+                                  .withProcessors(new LynxBehaviorProcessor())
+                                  .compile(merge(getCommonStubs(), testClass));
+
+    assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
+
+    String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
+    assertFalse("Should not instantiate the default IRendererHost sentinel",
+        source.contains("createPlatformRendererHost"));
+  }
+
+  @Test
+  public void testAutolinkElementWithDefaultRendererHostSentinel() throws IOException {
+    JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestElement",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxAutolinkElement;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.render.IRendererHost;\n"
+            + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
+            + "@LynxAutolinkElement(name = \"test\", supportFragmentLayerRender = true, "
+            + "fragmentLayerRendererHost = IRendererHost.class)\n"
+            + "public class TestElement extends LynxUI {\n"
+            + "  public TestElement(LynxContext context) { super(context); }\n"
+            + "}\n");
+
+    Compilation compilation = javac()
+                                  .withProcessors(new LynxBehaviorProcessor())
+                                  .compile(merge(getCommonStubs(), testClass));
+
+    assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
+
+    String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
+    assertFalse("Should not instantiate the default IRendererHost sentinel",
         source.contains("createPlatformRendererHost"));
   }
 

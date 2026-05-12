@@ -12,6 +12,7 @@ import static javax.tools.Diagnostic.Kind.WARNING;
 
 import androidx.annotation.Keep;
 import com.google.auto.service.AutoService;
+import com.lynx.tasm.behavior.LynxAutolinkElement;
 import com.lynx.tasm.behavior.LynxBehavior;
 import com.lynx.tasm.behavior.LynxGeneratorName;
 import com.lynx.tasm.behavior.LynxShadowNode;
@@ -46,6 +47,10 @@ import javax.lang.model.util.Types;
 
 @AutoService(Processor.class)
 public class LynxBehaviorProcessor extends AbstractProcessor {
+  private static final String DEFAULT_RENDERER_HOST_TYPE_NAME =
+      "com.lynx.tasm.behavior.render.IRendererHost";
+  private static final String VOID_TYPE_NAME = "void";
+
   private Filer mFiler;
   private Messager mMessager;
   private Types mTypes;
@@ -68,6 +73,7 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
   public Set<String> getSupportedAnnotationTypes() {
     Set<String> types = new HashSet<>();
     types.add(LynxBehavior.class.getCanonicalName());
+    types.add(LynxAutolinkElement.class.getCanonicalName());
     types.add(LynxShadowNode.class.getCanonicalName());
     types.add(LynxGeneratorName.class.getCanonicalName());
     return types;
@@ -112,6 +118,24 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
           TypeElement classType = (TypeElement) element;
           ClassName className = ClassName.get(classType);
           ClassInfo classInfo = parseBehaviorClass(className, classType);
+          if (packageName.isEmpty()) {
+            packageName = className.packageName();
+          }
+          mBehaviorClasses.put(className, classInfo);
+        } catch (Exception e) {
+          error(element, e.getMessage());
+        }
+      }
+    }
+
+    Set<? extends Element> elementAnnotatedClasses =
+        roundEnvironment.getElementsAnnotatedWith(LynxAutolinkElement.class);
+    if (elementAnnotatedClasses != null) {
+      for (Element element : elementAnnotatedClasses) {
+        try {
+          TypeElement classType = (TypeElement) element;
+          ClassName className = ClassName.get(classType);
+          ClassInfo classInfo = parseAutolinkElementClass(className, classType);
           if (packageName.isEmpty()) {
             packageName = className.packageName();
           }
@@ -315,6 +339,16 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     return classInfo;
   }
 
+  private ClassInfo parseAutolinkElementClass(ClassName className, TypeElement typeElement) {
+    ClassInfo classInfo = new ClassInfo(className, typeElement);
+    classInfo.addAutolinkElementTag(typeElement);
+    classInfo.addAutolinkElementIsCreateAsync(typeElement);
+    classInfo.addAutolinkElementNeedProcessDirection(typeElement);
+    classInfo.addAutolinkElementSupportFragmentLayerRender(typeElement);
+    classInfo.addAutolinkElementFragmentLayerRendererHost(typeElement);
+    return classInfo;
+  }
+
   private ClassInfo parseShadowNodeClass(ClassName className, TypeElement typeElement) {
     ClassInfo classInfo = new ClassInfo(className, typeElement);
     classInfo.addShadowNodeTag(typeElement);
@@ -362,8 +396,18 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
       tagName.addAll(Arrays.asList(annotation.tagName()));
     }
 
+    public void addAutolinkElementTag(Element element) {
+      LynxAutolinkElement annotation = element.getAnnotation(LynxAutolinkElement.class);
+      tagName.add(annotation.name());
+    }
+
     public void addBehaviorIsCreateAsync(Element element) {
       LynxBehavior annotation = element.getAnnotation(LynxBehavior.class);
+      isCreateAsync = annotation.isCreateAsync();
+    }
+
+    public void addAutolinkElementIsCreateAsync(Element element) {
+      LynxAutolinkElement annotation = element.getAnnotation(LynxAutolinkElement.class);
       isCreateAsync = annotation.isCreateAsync();
     }
 
@@ -372,8 +416,18 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
       needProcessDirection = annotation.needProcessDirection();
     }
 
+    public void addAutolinkElementNeedProcessDirection(Element element) {
+      LynxAutolinkElement annotation = element.getAnnotation(LynxAutolinkElement.class);
+      needProcessDirection = annotation.needProcessDirection();
+    }
+
     public void addBehaviorSupportFragmentLayerRender(Element element) {
       LynxBehavior annotation = element.getAnnotation(LynxBehavior.class);
+      supportFragmentLayerRender = annotation.supportFragmentLayerRender();
+    }
+
+    public void addAutolinkElementSupportFragmentLayerRender(Element element) {
+      LynxAutolinkElement annotation = element.getAnnotation(LynxAutolinkElement.class);
       supportFragmentLayerRender = annotation.supportFragmentLayerRender();
     }
 
@@ -387,7 +441,23 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
       }
       if (typeMirror != null) {
         String typeName = typeMirror.toString();
-        if (!typeName.equals("void")) {
+        if (isFragmentLayerRendererHostSet(typeName)) {
+          fragmentLayerRendererHost = typeName;
+        }
+      }
+    }
+
+    public void addAutolinkElementFragmentLayerRendererHost(Element element) {
+      LynxAutolinkElement annotation = element.getAnnotation(LynxAutolinkElement.class);
+      TypeMirror typeMirror = null;
+      try {
+        annotation.fragmentLayerRendererHost();
+      } catch (MirroredTypeException e) {
+        typeMirror = e.getTypeMirror();
+      }
+      if (typeMirror != null) {
+        String typeName = typeMirror.toString();
+        if (isFragmentLayerRendererHostSet(typeName)) {
           fragmentLayerRendererHost = typeName;
         }
       }
@@ -397,5 +467,9 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
       LynxShadowNode annotation = element.getAnnotation(LynxShadowNode.class);
       shadowNodeTag = annotation.tagName();
     }
+  }
+
+  private static boolean isFragmentLayerRendererHostSet(String typeName) {
+    return !VOID_TYPE_NAME.equals(typeName) && !DEFAULT_RENDERER_HOST_TYPE_NAME.equals(typeName);
   }
 }
