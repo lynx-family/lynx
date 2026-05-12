@@ -3280,8 +3280,12 @@ void FiberElement::FlushProps() {
 }
 
 // if child's related css variable is updated, invalidate child's style.
-void FiberElement::RecursivelyMarkChildrenCSSVariableDirty(
+void Element::RecursivelyMarkChildrenCSSVariableDirty(
     const lepus::Value &css_variable_updated) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   for (const auto &child : scoped_children_) {
     auto *fiber_child = static_cast<FiberElement *>(child.get());
     if (IsCSSInlineVariablesEnabled()) {
@@ -3521,12 +3525,15 @@ void Element::UpdateFiberElement() {
   }
 }
 
-bool FiberElement::IsRelatedCSSVariableUpdated(
+bool Element::IsRelatedCSSVariableUpdated(
     AttributeHolder *holder, const lepus::Value changing_css_variables) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_IS_RELATED_CSS_UPDATED,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
+  if (!is_fiber_element_) {
+    return false;
+  }
 
   bool changed = false;
   ForEachLepusValue(

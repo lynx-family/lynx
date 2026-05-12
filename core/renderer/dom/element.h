@@ -1591,6 +1591,10 @@ class Element : public lepus::RefCounted,
   void InvalidateChildrenFontSizeRecursively();
   void InvalidateChildrenInheritedStylesRecursively();
   void RecursivelyMarkCustomPropertiesDirty();
+  void RecursivelyMarkChildrenCSSVariableDirty(
+      const lepus::Value& css_variable_updated);
+  bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
+                                   const lepus::Value changing_css_variables);
 
   void MarkTemplateElement() { is_template_ = true; }
 

@@ -161,10 +161,6 @@ class FiberElement : public Element {
     }
   }
 
-  // if child's related css variable is updated, invalidate child's style.
-  void RecursivelyMarkChildrenCSSVariableDirty(
-      const lepus::Value& css_variable_updated);
-
   void ConsumeStyle(const StyleMap& styles,
                     const StyleMap* inherit_styles) override;
 
@@ -205,9 +201,6 @@ class FiberElement : public Element {
   void RequestLayout() override;
 
   void RequestNextFrame() override;
-
-  bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
-                                   const lepus::Value changing_css_variables);
 
   void ResetSheetRecursively(
       const std::shared_ptr<CSSStyleSheetManager>& manager);
