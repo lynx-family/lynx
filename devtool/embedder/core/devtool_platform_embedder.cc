@@ -191,11 +191,20 @@ void DevtoolPlatformEmbedder::Init(
   devtool_platform_facade_ =
       std::make_shared<DevtoolPlatformImpl>(shared_from_this());
   weak_owner_ = owner;
-  cast_helper_ =
-      std::make_unique<ScreenCastHelperEmbedder>(proxy, shared_from_this());
-  reload_helper_ = std::make_unique<PageReloadHelperEmbedder>(proxy);
-  proxy_ = proxy;
+  cast_helper_ = std::make_unique<ScreenCastHelperEmbedder>(shared_from_this());
+  reload_helper_ = std::make_unique<PageReloadHelperEmbedder>();
   debug_info_helper_ = std::make_unique<DebugInfoHelper>();
+  AttachProxy(proxy);
+}
+
+void DevtoolPlatformEmbedder::AttachProxy(devtool::LynxDevToolProxy* proxy) {
+  proxy_ = proxy;
+  if (cast_helper_) {
+    cast_helper_->AttachProxy(proxy);
+  }
+  if (reload_helper_) {
+    reload_helper_->AttachProxy(proxy);
+  }
 }
 
 DevtoolPlatformEmbedder::~DevtoolPlatformEmbedder() {}

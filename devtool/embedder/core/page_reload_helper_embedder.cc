@@ -11,9 +11,7 @@
 namespace lynx {
 namespace devtool {
 
-PageReloadHelperEmbedder::PageReloadHelperEmbedder(
-    devtool::LynxDevToolProxy* proxy)
-    : proxy_(proxy), init_data_(nullptr) {}
+PageReloadHelperEmbedder::PageReloadHelperEmbedder() : init_data_(nullptr) {}
 
 void PageReloadHelperEmbedder::OnLoadTemplate(
     const std::string& url, const std::vector<uint8_t>& tem,
@@ -53,6 +51,10 @@ void PageReloadHelperEmbedder::Navigate(const std::string& url) {
   if (proxy_ != nullptr) {
     proxy_->LoadTemplateFromURL(url);
   }
+}
+
+void PageReloadHelperEmbedder::AttachProxy(devtool::LynxDevToolProxy* proxy) {
+  proxy_ = proxy;
 }
 
 std::shared_ptr<tasm::TemplateData>

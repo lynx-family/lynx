@@ -47,6 +47,7 @@ class InspectorOwnerEmbedder
 
   void Init(devtool::LynxDevToolProxy* proxy,
             const std::shared_ptr<LynxInspectorOwner>& shared_self) override;
+  void AttachProxy(devtool::LynxDevToolProxy* proxy);
   void InitDevToolNGDelegate();
   void DispatchDocumentUpdated();
   void DispatchScreencastVisibilityChanged(bool status);

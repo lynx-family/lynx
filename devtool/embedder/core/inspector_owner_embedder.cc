@@ -47,12 +47,23 @@ void InspectorOwnerEmbedder::Init(
     devtool::LynxDevToolProxy* proxy,
     const std::shared_ptr<devtool::LynxInspectorOwner>& shared_self) {
   weak_self_ = std::static_pointer_cast<InspectorOwnerEmbedder>(shared_self);
+  AttachProxy(proxy);
+  InitDevToolNGDelegate();
+}
+
+void InspectorOwnerEmbedder::AttachProxy(devtool::LynxDevToolProxy* proxy) {
   embedder_proxy_ = proxy;
+  if (embedder_proxy_ == nullptr) {
+    return;
+  }
   embedder_proxy_->SetInspectorOwner(this);
 
-  platform_embedder_ = std::make_shared<DevtoolPlatformEmbedder>();
-  platform_embedder_->Init(proxy, weak_self_.lock());
-  InitDevToolNGDelegate();
+  if (!platform_embedder_) {
+    platform_embedder_ = std::make_shared<DevtoolPlatformEmbedder>();
+    platform_embedder_->Init(proxy, weak_self_.lock());
+  } else {
+    platform_embedder_->AttachProxy(proxy);
+  }
 }
 
 void InspectorOwnerEmbedder::InitDevToolNGDelegate() {

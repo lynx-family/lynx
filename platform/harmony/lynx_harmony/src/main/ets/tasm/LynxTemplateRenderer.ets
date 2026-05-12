@@ -145,12 +145,20 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     });
   }
 
-  createDevTool(embedderProxy: number[]) {
-    this.lynxDevTool = new LynxDevTool(embedderProxy);
-  }
-
   getDevTool() {
     return this.lynxDevTool;
+  }
+
+  prepareDevTool(embedderProxy: number[]) {
+    const runtimeDevTool = this.lynxView?.backgroundRuntime?.getDevTool?.();
+    if (runtimeDevTool) {
+      this.lynxDevTool = runtimeDevTool;
+      this.lynxDevTool.attachProxy(embedderProxy);
+      return;
+    }
+    if (!this.lynxDevTool) {
+      this.lynxDevTool = new LynxDevTool(embedderProxy);
+    }
   }
 
   //TODO(zhengyuwei.123): Optimize this implementation to use ModuleFactory instead of moduleManager.

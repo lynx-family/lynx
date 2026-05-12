@@ -81,12 +81,6 @@ LynxTemplateRenderer::LynxTemplateRenderer(napi_env env, napi_value js_this,
       display_density_(display_density),
       weak_flag_(std::make_shared<WeakFlag>(this)) {
   napi_create_reference(env, js_this, 0, &template_renderer_ref_);
-
-  napi_value param[1];
-  param[0] =
-      base::NapiUtil::CreatePtrArray(env, reinterpret_cast<uintptr_t>(this));
-  base::NapiUtil::InvokeJsMethod(env_, template_renderer_ref_, "createDevTool",
-                                 1, param, nullptr);
 }
 
 LynxTemplateRenderer::~LynxTemplateRenderer() {
@@ -828,6 +822,13 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
                              "LynxTemplateRenderer NativeReset failed")) {
     return nullptr;
   }
+
+  napi_value devtool_param[1];
+  devtool_param[0] =
+      base::NapiUtil::CreatePtrArray(env, reinterpret_cast<uintptr_t>(obj));
+  base::NapiUtil::InvokeJsMethod(env, js_this, "prepareDevTool", 1,
+                                 devtool_param, nullptr);
+
   obj->SetUpLynxShell(
       env, delegate_ptr, resource_loader, static_cast<float>(screen_width),
       static_cast<float>(screen_height), is_host_renderer,
