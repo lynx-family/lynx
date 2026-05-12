@@ -24,6 +24,9 @@
 }
 @end
 
+static NSString* const kLynxFramePropNameData = @"data";
+static NSString* const kLynxFramePropNameGlobalProps = @"global-props";
+
 static LynxTemplateData* ConsumeFrameLepusValuePtr(NSInteger value) {
   if (value == 0) {
     return nil;
@@ -130,6 +133,8 @@ LYNX_REGISTER_UI("frame")
 
 - (void)propsDidUpdate {
   [super propsDidUpdate];
+  [self.lynxProps removeObjectForKey:kLynxFramePropNameData];
+  [self.lynxProps removeObjectForKey:kLynxFramePropNameGlobalProps];
   if (_isUrlChanged) {
     if (_pendingBundle && [self loadBundle:_pendingBundle]) {
       _pendingBundle = nil;
