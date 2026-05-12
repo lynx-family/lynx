@@ -27,6 +27,7 @@
 
 @property(readwrite) XCTestExpectation *onPageStartedExpectation;
 @property(readwrite) NSArray *onPageStartedExpectationArray;
+@property(nonatomic, assign) NSInteger count;
 
 - (instancetype)initWithLynxView:(nullable LynxView *)view;
 
@@ -38,6 +39,7 @@
   self = [super init];
   if (self) {
     [self setLynxView:view];
+    self.count = 0;
   }
   return self;
 }
@@ -46,8 +48,8 @@
                  withPipelineInfo:(nonnull LynxPipelineInfo *)info {
   XCTAssertTrue(_lynxView == lynxView);
   XCTAssertEqualObjects([_lynxView url], [info url]);
-  static int count = 0;
-  XCTAssertTrue([_onPageStartedExpectationArray[count++] integerValue] & [info pipelineOrigin]);
+  XCTAssertTrue([_onPageStartedExpectationArray[self.count++] integerValue] &
+                [info pipelineOrigin]);
   [_onPageStartedExpectation fulfill];
 }
 
@@ -90,6 +92,21 @@
 - (void)sendCustomEvent:(LynxCustomEvent *)event {
   self.eventCount += 1;
   self.lastEvent = event;
+}
+
+@end
+
+@interface LynxViewClientV2DispatchCounter : NSObject <LynxViewLifecycleV2>
+
+@property(nonatomic, assign) NSInteger onPageStartedCount;
+
+@end
+
+@implementation LynxViewClientV2DispatchCounter
+
+- (void)onPageStartedWithLynxView:(nonnull LynxView *)lynxView
+                 withPipelineInfo:(nonnull LynxPipelineInfo *)info {
+  self.onPageStartedCount += 1;
 }
 
 @end
@@ -171,6 +188,38 @@
   [lynxView loadTemplate:data withURL:url];
   [lynxView reloadTemplateWithTemplateData:[[LynxTemplateData alloc] initWithDictionary:@{}]];
   [lynxView loadTemplate:data withURL:url];
+
+  [self waitForExpectationsWithTimeout:5 handler:nil];
+}
+
+- (void)testDispatchViewDidStartLoadingCalledOnce {
+  LynxView *lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+
+  LynxViewClientV2DispatchCounter *counter = [[LynxViewClientV2DispatchCounter alloc] init];
+  [lynxView addLifecycleClient:counter];
+
+  NSString *url = @"hello-world.js";
+  NSData *data = [LynxUnitTest getNSData:url];
+  [lynxView loadTemplate:data withURL:url];
+
+  XCTAssertEqual(counter.onPageStartedCount, 1);
+}
+
+- (void)testDispatchViewDidStartLoadingCalledOnceForTemplateBundle {
+  LynxView *lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+
+  LynxViewClientV2Tester *client = [[LynxViewClientV2Tester alloc] initWithLynxView:lynxView];
+  XCTestExpectation *onPageStartedExpectation = [self expectationWithDescription:@"onPageStarted"];
+  [client setOnPageStartedExpectation:onPageStartedExpectation];
+  [client setOnPageStartedExpectationArray:@[ @(LynxFirstScreen) ]];
+  [lynxView addLifecycleClient:client];
+
+  NSString *url = @"hello-world.js";
+  NSData *data = [LynxUnitTest getNSData:url];
+  LynxTemplateBundle *bundle = [[LynxTemplateBundle alloc] initWithTemplate:data];
+  [lynxView loadTemplateBundle:bundle withURL:url initData:nil];
 
   [self waitForExpectationsWithTimeout:5 handler:nil];
 }
