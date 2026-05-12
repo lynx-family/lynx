@@ -6,7 +6,6 @@ package org.lynxsdk.extension
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.GradleException
 import org.gradle.api.tasks.compile.JavaCompile
 
 class LynxExtensionBuildPlugin implements Plugin<Project> {
@@ -61,40 +60,41 @@ class LynxExtensionBuildPlugin implements Plugin<Project> {
             return
         }
 
-        File generatedDir = new File(project.buildDir, 'generated/source/lynxExtensionRegistry')
-        project.tasks.register('generateLynxExtensionRegistry') { task ->
+        android.applicationVariants.all { variant ->
+            configureAndroidVariant(project, variant, extensions)
+        }
+    }
+
+    private static void configureAndroidVariant(
+        Project project, Object variant, List<LynxExtensionInfo> extensions) {
+        String variantName = variant.name
+        String taskName = "generate${variantName.capitalize()}LynxExtensionRegistry"
+        File generatedDir = new File(
+            project.buildDir, "generated/source/lynxExtensionRegistry/${variantName}")
+        def taskProvider = project.tasks.register(taskName) { task ->
             task.outputs.dir(generatedDir)
             task.doLast {
-                String packageName = resolvePackageName(project, android)
                 File packageDir = new File(generatedDir,
-                    "${packageName.replace('.', '/')}/generated/extensions")
+                    LynxExtensionRegistryGenerator.REGISTRY_PACKAGE_NAME.replace('.', '/'))
                 packageDir.mkdirs()
-                File output = new File(packageDir, 'ExtensionRegistry.java')
-                output.text = LynxExtensionRegistryGenerator.generate(packageName, extensions)
+                File output = new File(packageDir,
+                    "${LynxExtensionRegistryGenerator.REGISTRY_CLASS_NAME}.java")
+                output.text = LynxExtensionRegistryGenerator.generate(extensions)
             }
         }
+        variant.registerJavaGeneratingTask(taskProvider.get(), generatedDir)
+        wireGeneratedRegistrySource(project, variantName, taskProvider, generatedDir)
+    }
 
-        android.sourceSets.main.java.srcDir(generatedDir)
-        project.tasks.matching { it.name == 'preBuild' }.configureEach {
-            it.dependsOn(project.tasks.named('generateLynxExtensionRegistry'))
+    private static void wireGeneratedRegistrySource(
+        Project project, String variantName, Object taskProvider, File generatedDir) {
+        String compileTaskName = "compile${variantName.capitalize()}JavaWithJavac"
+        project.tasks.withType(JavaCompile).matching { JavaCompile task ->
+            task.name == compileTaskName
+        }.configureEach { JavaCompile task ->
+            task.dependsOn(taskProvider)
+            task.source(generatedDir)
         }
     }
 
-    private static String resolvePackageName(Project project, Object android) {
-        if (android.hasProperty('namespace') && android.namespace) {
-            return android.namespace
-        }
-        if (android.defaultConfig?.applicationId) {
-            return android.defaultConfig.applicationId
-        }
-        File manifest = new File(project.projectDir, 'src/main/AndroidManifest.xml')
-        if (manifest.isFile()) {
-            def matcher = manifest.text =~ /package\s*=\s*"([^"]+)"/
-            if (matcher.find()) {
-                return matcher.group(1)
-            }
-        }
-        throw new GradleException(
-            "Unable to resolve Android package name for Lynx ExtensionRegistry in ${project.path}")
-    }
 }

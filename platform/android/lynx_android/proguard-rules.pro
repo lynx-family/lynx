@@ -50,6 +50,23 @@
     @com.lynx.jsbridge.LynxMethod <methods>;
 }
 
+# Autolink generated global entry is loaded reflectively from LynxEnv.
+-keep class com.lynx.tasm.extension.LynxAutolinkGenerated {
+    public static void setupGlobal(android.content.Context);
+}
+-keep class * implements com.lynx.tasm.extension.LynxExtensionProvider {
+    *;
+}
+-keep @com.lynx.tasm.behavior.LynxAutolinkElement class * {
+    *;
+}
+-keep @com.lynx.jsbridge.LynxAutolinkNativeModule class * {
+    *;
+}
+-keep @com.lynx.tasm.service.LynxAutolinkService class * {
+    *;
+}
+
 -keepclassmembers class *  {
     @com.lynx.tasm.behavior.LynxProp <methods>;
     @com.lynx.tasm.behavior.LynxPropGroup <methods>;

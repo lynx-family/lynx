@@ -82,6 +82,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class LynxEnv {
   protected static final String TAG = "LynxEnv";
   public static final String SP_NAME = "lynx_env_config";
+  private static final String AUTOLINK_GENERATED_CLASS_NAME =
+      "com.lynx.tasm.extension.LynxAutolinkGenerated";
+  private static final String AUTOLINK_SETUP_GLOBAL_METHOD = "setupGlobal";
 
   protected static volatile LynxEnv sInstance;
 
@@ -259,6 +262,7 @@ public class LynxEnv {
 
     // init Behaviors and warm behaviors
     initBehaviors();
+    setupAutolinkGlobal(context);
 
     // Calling sequence:
     // initDevtoolEnv() > loadNativeLibraries()
@@ -356,6 +360,48 @@ public class LynxEnv {
   protected void setDebugMode(Context context) {
     mDebugModeEnabled = DevToolSettings.inst().isDebugModeEnabled();
     TraceEvent.markTraceDebugMode(mDebugModeEnabled);
+  }
+
+  void setupAutolinkGlobal(@NonNull Context context) {
+    setupAutolinkGlobal(context, AUTOLINK_GENERATED_CLASS_NAME);
+  }
+
+  boolean setupAutolinkGlobal(@NonNull Context context, @NonNull String generatedClassName) {
+    try {
+      Class<?> generatedClass = findAutolinkGeneratedClass(context, generatedClassName);
+      Method setupGlobalMethod =
+          generatedClass.getDeclaredMethod(AUTOLINK_SETUP_GLOBAL_METHOD, Context.class);
+      setupGlobalMethod.setAccessible(true);
+      setupGlobalMethod.invoke(null, context);
+      return true;
+    } catch (ClassNotFoundException | NoSuchMethodException e) {
+      LLog.d(TAG, "Lynx autolink generated entry is unavailable: " + generatedClassName);
+      return false;
+    } catch (IllegalAccessException e) {
+      LLog.e(TAG, "Failed to access Lynx autolink generated entry: " + e.getMessage());
+    } catch (InvocationTargetException e) {
+      Throwable target = e.getTargetException();
+      LLog.e(TAG,
+          "Failed to setup Lynx autolink generated entry: "
+              + (target != null ? target.toString() : e.toString()));
+    } catch (Throwable t) {
+      LLog.e(TAG, "Failed to load Lynx autolink generated entry: " + t);
+    }
+    return true;
+  }
+
+  private Class<?> findAutolinkGeneratedClass(
+      @NonNull Context context, @NonNull String generatedClassName) throws ClassNotFoundException {
+    ClassLoader contextClassLoader = context.getClassLoader();
+    try {
+      return Class.forName(generatedClassName, true, contextClassLoader);
+    } catch (ClassNotFoundException e) {
+      ClassLoader threadClassLoader = Thread.currentThread().getContextClassLoader();
+      if (threadClassLoader == null || threadClassLoader == contextClassLoader) {
+        throw e;
+      }
+      return Class.forName(generatedClassName, true, threadClassLoader);
+    }
   }
 
   /**
