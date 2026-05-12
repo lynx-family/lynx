@@ -841,6 +841,8 @@ class Element : public lepus::RefCounted,
 
   virtual void OnPseudoStatusChanged(PseudoState prev_status,
                                      PseudoState current_status) {}
+  void OnClassChanged(const ClassList& old_classes,
+                      const ClassList& new_classes);
 
   ContentData* content_data() const { return content_data_.get(); }
 

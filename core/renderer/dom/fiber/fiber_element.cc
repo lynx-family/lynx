@@ -3939,8 +3939,12 @@ bool Element::RefreshStyle(StyleMap &parsed_styles,
   return ret;
 }
 
-void FiberElement::OnClassChanged(const ClassList &old_classes,
-                                  const ClassList &new_classes) {
+void Element::OnClassChanged(const ClassList &old_classes,
+                             const ClassList &new_classes) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   if (element_manager() && element_manager()->GetEnableStandardCSSSelector()) {
     if (element_manager()->CSSFragmentParsingOnTASMWorkerMTSRender()) {
       element_manager()->GetTasmWorkerTaskRunner()->PostTask(

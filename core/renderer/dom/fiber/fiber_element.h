@@ -204,9 +204,6 @@ class FiberElement : public Element {
   void OnPseudoStatusChanged(PseudoState prev_status,
                              PseudoState current_status) override;
 
-  void OnClassChanged(const ClassList& old_classes,
-                      const ClassList& new_classes);
-
   void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
 
   // The text element can call this function to convert child fiber elements
