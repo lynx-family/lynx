@@ -770,10 +770,18 @@ class Element : public lepus::RefCounted,
 
   virtual int32_t IndexOf(const Element* child) const;
 
-  virtual void InsertNode(const fml::RefPtr<Element>& child) = 0;
-  virtual void InsertNode(const fml::RefPtr<Element>& child, int32_t index) = 0;
+  virtual void InsertNode(const fml::RefPtr<Element>& child);
+  virtual void InsertNode(const fml::RefPtr<Element>& child, int32_t index);
   virtual void RemoveNode(const fml::RefPtr<Element>& child,
-                          bool destroy = true) = 0;
+                          bool destroy = true);
+  void InsertNodeBefore(const fml::RefPtr<Element>& child,
+                        const fml::RefPtr<Element>& reference_child);
+  void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
+                                Element* ref_node);
+  void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
+                                Element* ref_node,
+                                bool update_logical_children);
+  void AddChildAt(fml::RefPtr<Element> child, int index);
 
   inline bool CanHasLayoutOnlyChildren() {
     return can_has_layout_only_children_;
@@ -1388,6 +1396,12 @@ class Element : public lepus::RefCounted,
   virtual bool IsDetached() const { return state_ == State::kDetached; }
   virtual void SetupFragmentBehavior(Fragment* fragment);
 
+  // current element is inserted to DOM tree
+  virtual void InsertedInto(Element* insertion_point);
+
+  // current element is removed from DOM tree
+  virtual void RemovedFrom(Element* insertion_point);
+
   void SetDefaultOverflow(bool visible);
 
   /**
@@ -1592,6 +1606,18 @@ class Element : public lepus::RefCounted,
    */
   friend class StyleResolver;
   StyleResolver style_resolver_;
+
+  friend class WrapperElement;
+  friend class ComponentElement;
+  friend class BlockElement;
+
+  Element* FindEnclosingNoneWrapper(Element* parent, Element* node);
+  void HandleContainerInsertion(Element* parent, Element* child, Element* ref);
+  void InsertLogicalChildBefore(const fml::RefPtr<Element>& child,
+                                Element* ref_node);
+  void RemoveLogicalChild(const fml::RefPtr<Element>& child);
+  void RemoveNodeInternal(const fml::RefPtr<Element>& child, bool destroy,
+                          bool update_logical_children);
 
   // relevant to layout and frame
   float width_{0};

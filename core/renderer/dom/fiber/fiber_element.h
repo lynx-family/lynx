@@ -36,6 +36,8 @@ class NodeManager;
 class PlatformLayoutFunctionWrapper;
 
 class FiberElement : public Element {
+  friend class Element;
+
  public:
   using Action = Element::Action;
   using ActionParam = Element::ActionParam;
@@ -132,12 +134,6 @@ class FiberElement : public Element {
                         FiberElement* render_parent);
 
   /**
-   * Element API for inserting child
-   * @param child refCounted child
-   */
-  virtual void InsertNode(const fml::RefPtr<Element>& child) override;
-
-  /**
    * Element API for replacing elements
    * @param inserted inserted elements
    * @param removed removed elements
@@ -145,28 +141,6 @@ class FiberElement : public Element {
   void ReplaceElements(const base::Vector<fml::RefPtr<FiberElement>>& inserted,
                        const base::Vector<fml::RefPtr<FiberElement>>& removed,
                        FiberElement* ref_node);
-
-  /**
-   * Element API for InsertingNodeBefore reference child
-   * @param child the child Element need to be inserted
-   * @param reference_child the reference child
-   */
-  void InsertNodeBefore(const fml::RefPtr<FiberElement>& child,
-                        const fml::RefPtr<FiberElement>& reference_child);
-  /**
-   * Element API for removing the specific child Element
-   * @param child the Element to be removed
-   */
-  virtual void RemoveNode(const fml::RefPtr<Element>& child,
-                          bool destroy = true) override;
-
-  /**
-   * Deprecated: Inset child Element to the specific index
-   * @param child the Element to be inserted
-   * @param index the index where the child Element to be inserted
-   */
-  virtual void InsertNode(const fml::RefPtr<Element>& child,
-                          int32_t index) override;
 
   /**
    * Element API for updating css variables
@@ -281,14 +255,6 @@ class FiberElement : public Element {
     }
     return AttributeHolder::EventBundle::DefaultEmptyEventMap();
   }
-
-  // TODO(linxs): to check if this APIs can be deleted
-  void InsertNodeBeforeInternal(const fml::RefPtr<FiberElement>& child,
-                                FiberElement* ref_node);
-  void InsertNodeBeforeInternal(const fml::RefPtr<FiberElement>& child,
-                                FiberElement* ref_node,
-                                bool update_logical_children);
-  void AddChildAt(fml::RefPtr<FiberElement> child, int index);
 
   /**
    * Special API for processing Font size
@@ -522,12 +488,6 @@ class FiberElement : public Element {
   // into inline elements. Currently, only view, text, image and wrapper
   // elements may be converted into inline elements.
 
-  // current element is inserted to DOM tree
-  virtual void InsertedInto(FiberElement* insertion_point);
-
-  // current element is removed from DOM tree
-  virtual void RemovedFrom(FiberElement* insertion_point);
-
   // The element object created using the clone interface of FiberElement is not
   // attached to the element manager. Use this function to attach it to the
   // element manager.
@@ -601,20 +561,6 @@ class FiberElement : public Element {
                         starlight::SLAlignmentFunc alignment_func);
 
  private:
-  friend class WrapperElement;
-  friend class ComponentElement;
-  friend class BlockElement;
-
-  FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
-                                         FiberElement* node);
-
-  void HandleContainerInsertion(FiberElement* parent, FiberElement* child,
-                                FiberElement* ref);
-  void InsertLogicalChildBefore(const fml::RefPtr<FiberElement>& child,
-                                FiberElement* ref_node);
-  void RemoveLogicalChild(const fml::RefPtr<FiberElement>& child);
-  void RemoveNodeInternal(const fml::RefPtr<FiberElement>& child, bool destroy,
-                          bool update_logical_children);
   FiberElement* ReplaceTemplateChildIfNeeded(
       base::InlineVector<fml::RefPtr<Element>,
                          kChildrenInlineVectorSize>::iterator child_iter);
