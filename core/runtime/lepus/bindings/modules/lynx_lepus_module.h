@@ -23,11 +23,10 @@ class LynxLepusModule : public lepus::RefCounted {
  public:
   LynxLepusModule(
       const std::string& name,
-      const std::shared_ptr<lynx::runtime::LynxNativeModule>& native_module) {
-    value_factory_ = std::make_shared<pub::PubValueFactoryDefault>();
-    native_module_ = native_module;
-    name_ = name;
-  }
+      const std::shared_ptr<lynx::runtime::LynxNativeModule>& native_module)
+      : native_module_(native_module),
+        value_factory_(std::make_unique<pub::PubValueFactoryDefault>()),
+        name_(name) {}
   virtual ~LynxLepusModule() = default;
 
   // Invoke method of LynxModule, which is a method of NativeModule
@@ -53,7 +52,7 @@ class LynxLepusModule : public lepus::RefCounted {
  private:
   // The object that actually calls LynxModule
   std::shared_ptr<runtime::LynxNativeModule> native_module_ = nullptr;
-  std::shared_ptr<pub::PubValueFactory> value_factory_;
+  std::unique_ptr<pub::PubValueFactory> value_factory_;
   // Module name
   std::string name_;
   // Delegate
