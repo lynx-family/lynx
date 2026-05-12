@@ -26,6 +26,7 @@ class InspectorOwnerHarmony {
 
  private:
   static napi_value Constructor(napi_env env, napi_callback_info info);
+  static napi_value AttachProxy(napi_env env, napi_callback_info info);
   static napi_value Destroy(napi_env env, napi_callback_info info);
   static napi_value GetSessionId(napi_env env, napi_callback_info info);
   static napi_value FlushConsoleMessages(napi_env env, napi_callback_info info);
