@@ -1250,7 +1250,7 @@ class Element : public lepus::RefCounted,
   virtual void UpdateLayoutNodeFontSize(double cur_node_font_size,
                                         double root_node_font_size);
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
-                                         const lepus::Value& value) = 0;
+                                         const lepus::Value& value);
 
   virtual bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value);
 

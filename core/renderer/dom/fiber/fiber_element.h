@@ -168,8 +168,6 @@ class FiberElement : public Element {
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
   virtual void UpdateLayoutNodeProps(
       const fml::RefPtr<PropBundle>& props) override;
-  virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
-                                         const lepus::Value& value) override;
 
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;

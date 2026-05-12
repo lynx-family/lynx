@@ -3430,8 +3430,8 @@ void Element::UpdateLayoutNodeFontSize(double cur_node_font_size,
   layout_bundle_->root_node_font_size = root_node_font_size;
 }
 
-void FiberElement::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
-                                             const lepus::Value &value) {
+void Element::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
+                                        const lepus::Value &value) {
   if (EnableLayoutInElementMode()) {
     EnsureSLNode();
     bool changed = false;
