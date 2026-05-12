@@ -1502,7 +1502,7 @@ Element::NewPipelineResolveOutcome Element::ResolveCSSStylesNewPipelineCore(
   return outcome;
 }
 
-void FiberElement::ResolveCSSStylesNewPipeline(bool &need_update) {
+void Element::ResolveCSSStylesNewPipeline(bool &need_update) {
   NewPipelineResolveRequest request;
   auto outcome = ResolveCSSStylesNewPipelineCore(request);
   need_update |= outcome.need_update;

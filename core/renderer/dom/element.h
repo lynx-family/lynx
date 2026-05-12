@@ -1047,6 +1047,7 @@ class Element : public lepus::RefCounted,
       double old_font_size, double old_root_font_size);
   NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
       const NewPipelineResolveRequest& request);
+  void ResolveCSSStylesNewPipeline(bool& need_update);
 
   void SetPlaceHolderStylesInternal(const PseudoPlaceHolderStyles& styles);
 
