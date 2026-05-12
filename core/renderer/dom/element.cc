@@ -45,6 +45,7 @@
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
 #include "core/renderer/starlight/types/layout_result.h"
+#include "core/renderer/tasm/config.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -161,7 +162,74 @@ Element::Element(const base::String& tag, ElementManager* manager,
   }
 }
 
-Element::~Element() = default;
+Element::Element(ElementManager* manager, const base::String& tag)
+    : Element(manager, tag, kInvalidCssId) {}
+
+Element::Element(ElementManager* manager, const base::String& tag,
+                 int32_t css_id)
+    : Element(tag, manager, kInvalidNodeIndex) {
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSTRUCTOR, "tag",
+                      tag.c_str(), "id", id_);
+  is_fiber_element_ = true;
+  dirty_ = kDirtyCreated;
+  css_id_ = css_id;
+  InitLayoutBundle();
+  SetAttributeHolder(fml::MakeRefCounted<AttributeHolder>(this));
+
+  if (tag.IsEquals("x-overlay-ng") || tag.IsEquals("overlay")) {
+    can_has_layout_only_children_ = false;
+  }
+
+  if (manager == nullptr) {
+    return;
+  }
+
+  element_context_delegate_ = manager;
+
+  const auto& env_config = manager->GetLynxEnvConfig();
+
+  computed_css_style()->SetFontScale(env_config.FontScale());
+  if (Config::DefaultFontScale() != env_config.FontScale()) {
+    SetComputedFontSize(env_config.PageDefaultFontSize(),
+                        env_config.PageDefaultFontSize());
+  }
+
+  if (element_manager_->GetEnableStandardCSSSelector()) {
+    // in new selector, mark style dirty while Created.
+    MarkDirty(kDirtyStyle);
+  }
+}
+
+Element::~Element() {
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_DESTRUCTOR, "id", id_);
+  if (!ShouldDestroy() || (!IsFiberArch() && !is_fiber_element_)) {
+    return;
+  }
+  element_manager_->EraseGlobalBindElementId(global_bind_event_map(),
+                                             impl_id());
+  element_manager()->NotifyElementDestroy(this);
+  DestroyPlatformNode();
+  if (!EnableLayoutInElementMode()) {
+    EnqueueLayoutTask([manager = element_manager(), id = impl_id()]() {
+      manager->DestroyLayoutNode(id);
+    });
+  } else if (customized_layout_node_) {
+    EnqueueLayoutTask([layout_node_ = std::move(customized_layout_node_),
+                       manager = element_manager(), id = impl_id()]() mutable {
+      manager->DestroyLayoutNode(id);
+      if (layout_node_) {
+        layout_node_->Destroy();
+      }
+    });
+  }
+  element_manager()->node_manager()->Erase(id_);
+  // If Element to be destroyed is the root of its ElementContext, remove the
+  // corresponding ElementContext from the tree.
+  if (element_context_delegate_ &&
+      element_context_delegate_->GetElementContextRoot() == this) {
+    element_context_delegate_->RemoveSelf();
+  }
+}
 
 // The copy constructor of the element is now only used for copying fiber
 // elements. If you want to use it to copy radon elements, you need to check the
@@ -172,6 +240,7 @@ Element::Element(const Element& element, bool clone_resolved_props)
       id_(element.id_),
       node_index_(element.node_index_),
       arch_type_(element.arch_type_),
+      is_fiber_element_(element.is_fiber_element_),
       is_fixed_(element.is_fixed_),
       is_sticky_(element.is_sticky_),
       // Because is_fixed_ is false by default, if is_fixed_ is true, it means
@@ -216,6 +285,61 @@ Element::Element(const Element& element, bool clone_resolved_props)
   }
   platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
       *(element.computed_css_style()));
+
+  invalidation_lists_ = element.invalidation_lists_;
+  parent_component_unique_id_ = element.parent_component_unique_id_;
+  dirty_ = element.dirty_ | kDirtyCreated | kDirtyCloned;
+  css_id_ = element.css_id_;
+  dynamic_style_flags_ = element.dynamic_style_flags_;
+  has_extreme_parsed_styles_ = element.has_extreme_parsed_styles_;
+  only_selector_extreme_parsed_styles_ =
+      element.only_selector_extreme_parsed_styles_;
+  can_be_layout_only_ = element.can_be_layout_only_;
+  is_template_ = element.is_template_;
+  flush_required_ = element.flush_required_;
+  full_raw_inline_style_ = element.full_raw_inline_style_;
+  current_raw_inline_styles_ = element.current_raw_inline_styles_;
+  current_raw_inline_custom_properties_ =
+      element.current_raw_inline_custom_properties_;
+  extreme_parsed_styles_ = element.extreme_parsed_styles_;
+  inherited_styles_ = element.inherited_styles_;
+  reset_inherited_ids_ = element.reset_inherited_ids_;
+  custom_properties_ = element.custom_properties_;
+  updated_attr_map_ = element.updated_attr_map_;
+  builtin_attr_map_ = element.builtin_attr_map_;
+  reset_attr_vec_ = element.reset_attr_vec_;
+  part_id_ = element.part_id_;
+  SetAttributeHolder(
+      fml::MakeRefCounted<AttributeHolder>(*element.data_model()));
+  data_model_->SetCSSVariableBundle(*element.data_model());
+
+  if (clone_resolved_props) {
+    parsed_styles_map_ = element.parsed_styles_map_;
+    updated_inherited_styles_ = element.updated_inherited_styles_;
+    layout_styles_ = element.layout_styles_;
+    // clone_resolved_props only carries committed resolved state. The dynamic
+    // source object is treated as a mutation carrier and will be rebuilt lazily
+    // from parsed_dynamic_styles_map_ when a post-clone incremental update
+    // happens.
+    parsed_dynamic_styles_map_ = element.parsed_dynamic_styles_map_;
+
+    // FIXME(wujintian): The prop bundle stores the style of incremental
+    // updates. If the element flush props has been executed multiple times
+    // before cloning the element, then this prop bundle cannot represent all
+    // the stock styles since the element was created.
+    if (element.pre_prop_bundle_) {
+      prop_bundle_ = element.pre_prop_bundle_->ShallowCopy();
+    } else if (element.prop_bundle_) {
+      prop_bundle_ = element.prop_bundle_->ShallowCopy();
+    }
+  }
+
+  if (element.config().IsTable() && element.config().GetLength() > 0) {
+    config_ = lepus::Value::ShallowCopy(element.config()).Table();
+  }
+
+  element_context_delegate_ = element.element_context_delegate_;
+  // TODO(wujintian): Clone animation-related objects.
 }
 
 void Element::AttachToElementManager(

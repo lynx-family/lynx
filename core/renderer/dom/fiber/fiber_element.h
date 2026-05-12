@@ -59,11 +59,7 @@ class FiberElement : public Element {
         new FiberElement(*this, clone_resolved_props));
   }
 
-  void SetupFragmentBehavior(Fragment* fragment) override;
-
-  ~FiberElement() override;
-
-  void ReleaseSelf() const override { delete this; }
+  ~FiberElement() override = default;
 
   struct InheritedProperty {
     // indicate it's children has been marked to propagate inherited properties.
@@ -652,9 +648,6 @@ class FiberElement : public Element {
   friend class WrapperElement;
   friend class ComponentElement;
   friend class BlockElement;
-
-  static event::EventListener::Options GetEventListenerOptions(
-      const base::String& type);
 
   FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
                                          FiberElement* node);

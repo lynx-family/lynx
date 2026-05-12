@@ -25,6 +25,7 @@
 #include "core/animation/css_transition_manager.h"
 #include "core/base/lynx_export.h"
 #include "core/base/thread/once_task.h"
+#include "core/event/event_listener.h"
 #include "core/event/event_target.h"
 #include "core/inspector/style_sheet.h"
 #include "core/public/common_constants.h"
@@ -157,6 +158,8 @@ class Element : public lepus::RefCounted,
  public:
   Element(const base::String& tag, ElementManager* element_manager,
           uint32_t node_index);
+  Element(ElementManager* manager, const base::String& tag);
+  Element(ElementManager* manager, const base::String& tag, int32_t css_id);
 
   Element& operator=(const Element&) = delete;
 
@@ -320,6 +323,7 @@ class Element : public lepus::RefCounted,
   std::pair<bool, CSSPropertyID> ConvertRtlCSSPropertyID(CSSPropertyID id);
 
   virtual ~Element();
+  void ReleaseSelf() const override { delete this; }
 
   // For style op
   LYNX_EXPORT_FOR_DEVTOOL virtual void ConsumeStyle(
@@ -450,6 +454,8 @@ class Element : public lepus::RefCounted,
                               const base::String& type,
                               const lepus::Value& worklet_info,
                               const std::string& context_name);
+  static event::EventListener::Options GetEventListenerOptions(
+      const base::String& type);
 
   event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event);
@@ -1353,7 +1359,7 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkDetached() { state_ = State::kDetached; }
   virtual bool IsDetached() const { return state_ == State::kDetached; }
-  virtual void SetupFragmentBehavior(Fragment* fragment) {}
+  virtual void SetupFragmentBehavior(Fragment* fragment);
 
   void SetDefaultOverflow(bool visible);
 
@@ -1479,6 +1485,7 @@ class Element : public lepus::RefCounted,
   int pseudo_type_{0};
 
   ElementArchTypeEnum arch_type_;
+  bool is_fiber_element_{false};
 
   bool will_destroy_{false};
 
