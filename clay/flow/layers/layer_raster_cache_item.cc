@@ -126,7 +126,13 @@ bool Rasterize(RasterCacheItem::CacheState cache_state, Layer* layer,
       .raster_time                   = paint_context.raster_time,
       .ui_time                       = paint_context.ui_time,
       .drawable_image_registry       = paint_context.drawable_image_registry,
+#ifndef ENABLE_SKITY
+      // FIXME(jiangsongcheng.real): disable subtrees raster cache for skity.
+      // because skity flip y axis when rasterize in GL backend.
+      // the subtrees ratser cache flip multiple times when rasterize.
+      // so we temporarily disable raster cache for the subtrees.
       .raster_cache                  = paint_context.raster_cache,
+#endif  // ENABLE_SKITY
       .frame_device_pixel_ratio      = paint_context.frame_device_pixel_ratio,
       // clang-format on
   };
