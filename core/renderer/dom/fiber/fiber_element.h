@@ -212,8 +212,6 @@ class FiberElement : public Element {
 
   void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
 
-  bool CollectCustomProperties(AttributeHolder* holder);
-
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 

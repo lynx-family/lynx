@@ -4868,7 +4868,7 @@ bool FiberElement::IsEventPathCatch(event::EventTarget *target,
   return Element::IsEventPathCatch(target, event);
 }
 
-bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
+bool Element::CollectCustomProperties(AttributeHolder *holder) {
   if (custom_properties_.Get() != nullptr) {
     return true;
   }
@@ -4877,8 +4877,7 @@ bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
     return false;
   }
 
-  if (FiberElement *real_parent = static_cast<FiberElement *>(parent());
-      real_parent) {
+  if (Element *real_parent = parent(); real_parent) {
     if (!real_parent->CollectCustomProperties(real_parent->data_model())) {
       return false;
     }

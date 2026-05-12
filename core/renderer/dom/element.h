@@ -754,6 +754,7 @@ class Element : public lepus::RefCounted,
   void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
   void PrepareSelfForThreadedElementResolution();
   bool ShouldFallbackToSerialForNewStylingPipeline() const;
+  bool CollectCustomProperties(AttributeHolder* holder);
 
   void UpdateLayout(float left, float top, float width, float height,
                     const std::array<float, 4>& paddings,
