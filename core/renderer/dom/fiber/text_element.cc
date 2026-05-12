@@ -67,7 +67,7 @@ void TextElement::SetStyleInternal(CSSPropertyID id,
 
 void TextElement::OnNodeAdded(Element* child) {
   child->ConvertToInlineElement();
-  UpdateRenderRootElementIfNecessary(static_cast<FiberElement*>(child));
+  UpdateRenderRootElementIfNecessary(child);
   if (!child->is_raw_text()) {
     has_inline_child_ = true;
   }

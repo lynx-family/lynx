@@ -39,6 +39,7 @@
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -547,8 +548,7 @@ void Element::OnNodeAdded(Element *child) {
     }
   }
 
-  static_cast<FiberElement *>(this)->UpdateRenderRootElementIfNecessary(
-      static_cast<FiberElement *>(child));
+  UpdateRenderRootElementIfNecessary(child);
 }
 
 void Element::OnNodeRemoved(Element *child) {
@@ -4441,20 +4441,20 @@ PseudoElement *FiberElement::CreatePseudoElementIfNeed(PseudoState state) {
   return result;
 }
 
-void FiberElement::RecursivelyMarkRenderRootElement(FiberElement *render_root) {
+void Element::RecursivelyMarkRenderRootElement(Element *render_root) {
   render_root_element_ = render_root;
   if (render_root) {
     element_context_delegate_ = render_root->element_context_delegate_;
   }
   for (const auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
-    if (!fiber_child->is_list_item()) {
-      fiber_child->RecursivelyMarkRenderRootElement(render_root);
+    auto *child_element = child.get();
+    if (!child_element->is_list_item()) {
+      child_element->RecursivelyMarkRenderRootElement(render_root);
     }
   }
 }
 
-void FiberElement::UpdateRenderRootElementIfNecessary(FiberElement *child) {
+void Element::UpdateRenderRootElementIfNecessary(Element *child) {
   if (child->render_root_element_ == this->render_root_element_) {
     // 1. Child has same render root as parent, indicating tree mutation inside
     // same render root, no need to propagate change
@@ -4463,8 +4463,7 @@ void FiberElement::UpdateRenderRootElementIfNecessary(FiberElement *child) {
   if (child->render_root_element_ == nullptr) {
     // 2. child doesn't hava valid render_root_element, propagate parent's
     // render_root_element to child subtree
-    child->RecursivelyMarkRenderRootElement(
-        static_cast<FiberElement *>(this->render_root_element_));
+    child->RecursivelyMarkRenderRootElement(this->render_root_element_);
     return;
   }
   if (this->render_root_element_ == nullptr) {
@@ -4475,11 +4474,10 @@ void FiberElement::UpdateRenderRootElementIfNecessary(FiberElement *child) {
   }
   // 4.child and parent have different valid render_root_elements, throw warning
   LOGW(
-      "FiberElement move element to a different render root, inefficient "
+      "Element move element to a different render root, inefficient "
       "operation");
   // Update child subtree render root with parent render root
-  child->RecursivelyMarkRenderRootElement(
-      static_cast<FiberElement *>(this->render_root_element_));
+  child->RecursivelyMarkRenderRootElement(this->render_root_element_);
 }
 
 void FiberElement::SetFontSizeForAllElement(double cur_node_font_size,
@@ -4570,19 +4568,20 @@ void FiberElement::AsyncResolveSubtreeProperty() {
   }
 }
 
-void FiberElement::CreateListItemScheduler(
+void Element::CreateListItemScheduler(
     list::BatchRenderStrategy batch_render_strategy,
     ElementContextDelegate *parent_context, bool continuous_resolve_tree) {
   if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
     std::shared_ptr<ElementContextDelegate> element_context_delegate_ptr =
-        std::make_shared<ListItemSchedulerAdapter>(this, batch_render_strategy,
-                                                   parent_context,
-                                                   continuous_resolve_tree);
+        std::make_shared<ListItemSchedulerAdapter>(
+            static_cast<FiberElement *>(this), batch_render_strategy,
+            parent_context, continuous_resolve_tree);
     element_context_delegate_ = element_context_delegate_ptr.get();
     parent_context->OnChildElementContextAdded(element_context_delegate_ptr);
   } else {
     scheduler_adapter_ = std::make_unique<ListItemSchedulerAdapter>(
-        this, batch_render_strategy, parent_context, continuous_resolve_tree);
+        static_cast<FiberElement *>(this), batch_render_strategy,
+        parent_context, continuous_resolve_tree);
   }
 }
 

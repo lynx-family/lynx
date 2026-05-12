@@ -67,14 +67,13 @@ void ListElement::OnNodeAdded(Element* child) {
   child->MarkAsListItem();
   // Create scheduler for each list-item
   if (NeedAsyncResolveListItem()) {
-    auto* fiber_child = static_cast<FiberElement*>(child);
-    fiber_child->CreateListItemScheduler(batch_render_strategy_,
-                                         element_context_delegate_,
-                                         continuous_resolve_tree_);
+    child->CreateListItemScheduler(batch_render_strategy_,
+                                   element_context_delegate_,
+                                   continuous_resolve_tree_);
     // Mark inserted child as render_root of its subtree
     // TODO: Override UpdateRenderRootElementIfNecessary when list-item-element
     // concept is introduced.
-    fiber_child->RecursivelyMarkRenderRootElement(fiber_child);
+    child->RecursivelyMarkRenderRootElement(child);
   }
 }
 

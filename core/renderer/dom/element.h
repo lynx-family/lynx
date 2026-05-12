@@ -782,6 +782,17 @@ class Element : public lepus::RefCounted,
                                 Element* ref_node,
                                 bool update_logical_children);
   void AddChildAt(fml::RefPtr<Element> child, int index);
+  void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
+                               ElementContextDelegate* parent_context,
+                               bool continuous_resolve_tree);
+  void RecursivelyMarkRenderRootElement(Element* render_root);
+  void UpdateRenderRootElementIfNecessary(Element* child);
+  ListItemSchedulerAdapter* GetSchedulerAdapter() {
+    if (scheduler_adapter_) {
+      return scheduler_adapter_.get();
+    }
+    return nullptr;
+  }
 
   inline bool CanHasLayoutOnlyChildren() {
     return can_has_layout_only_children_;

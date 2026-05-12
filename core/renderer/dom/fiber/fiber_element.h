@@ -501,21 +501,6 @@ class FiberElement : public Element {
 
   void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
 
-  void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
-                               ElementContextDelegate* parent_context,
-                               bool continuous_resolve_tree);
-
-  void RecursivelyMarkRenderRootElement(FiberElement* render_root);
-
-  void UpdateRenderRootElementIfNecessary(FiberElement* child);
-
-  ListItemSchedulerAdapter* GetSchedulerAdapter() {
-    if (scheduler_adapter_) {
-      return scheduler_adapter_.get();
-    }
-    return nullptr;
-  }
-
   bool IsEventPathCatch(event::EventTarget* target,
                         event::Event* event) override;
 
