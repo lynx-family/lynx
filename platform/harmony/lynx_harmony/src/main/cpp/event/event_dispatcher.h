@@ -23,6 +23,8 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+static constexpr int kGestureInterrupterUserDataSupportVersion = 18;
+
 class UIOwner;
 class UIRoot;
 class UIBase;
@@ -107,6 +109,8 @@ class EventDispatcher {
   ConsumeSlideDirection ShouldConsumeSlideEvent();
 
   void AttachGesturesToRoot(UIBase* root);
+
+  void DetachGesturesFromRoot(UIBase* root);
 
   bool CanConsumeTouchEvent(float point[2]);
 

@@ -73,6 +73,10 @@ void UIOverlay::ShowDialog(bool show_dialog) {
 UIOverlay::~UIOverlay() {
   LOGI("overlay destruction sign=" << Sign() << " this="
                                    << static_cast<const void*>(this));
+  if (are_gestures_attached_) {
+    context_->DetachGesturesFromRoot(this);
+    are_gestures_attached_ = false;
+  }
   if (native_dialog_ != nullptr) {
     LOGI("overlay destruction close dialog sign="
          << Sign() << " this=" << static_cast<const void*>(this)

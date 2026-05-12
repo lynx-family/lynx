@@ -2290,7 +2290,6 @@ bool UIBase::IsVisibleForExposure(
       context_->ScreenSize(size);
       window_rect[2] = size[0];
       window_rect[3] = size[1];
-      GetExposureWindowRect(window_rect);
       auto& rect = it->second.ui_rect;
       rect[0] = window_rect[0];
       rect[1] = window_rect[1];
@@ -2303,7 +2302,6 @@ bool UIBase::IsVisibleForExposure(
     context_->ScreenSize(size);
     window_rect[2] = size[0];
     window_rect[3] = size[1];
-    GetExposureWindowRect(window_rect);
     UIExposure::CommonAncestorUIRect rect = {.ui_count = 1,
                                              .ui_rect_updated = true,
                                              .ui_rect[0] = window_rect[0],
@@ -2312,6 +2310,7 @@ bool UIBase::IsVisibleForExposure(
                                              .ui_rect[3] = window_rect[3]};
     common_ancestor_ui_rect_map.emplace(-10, std::move(rect));
   }
+  GetExposureWindowRect(window_rect);
 
   bool is_root_intersect_with_window =
       LynxUIHelper::CheckViewportIntersectWithRatio(root_rect, window_rect, 0);

@@ -4,10 +4,15 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_dispatcher.h"
 
+#include <deviceinfo.h>
+#include <dlfcn.h>
+
 #include <memory>
 #include <utility>
 
 #include "base/include/float_comparison.h"
+#include "core/base/harmony/harmony_function_loader.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_emitter.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
@@ -20,6 +25,24 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
+static void* GetGestureInterrupterGetUserDataFunc() {
+  if (OH_GetSdkApiVersion() < kGestureInterrupterUserDataSupportVersion) {
+    return nullptr;
+  }
+  void* handle =
+      base::harmony::GetSharedObjectHandler(base::harmony::kAceNdkSoName);
+  if (handle == nullptr) {
+    return nullptr;
+  }
+  return dlsym(handle, "OH_ArkUI_GestureInterrupter_GetUserData");
+}
+
+static void* GestureInterrupterGetUserDataFuncHandle() {
+  static void* handle = GetGestureInterrupterGetUserDataFunc();
+  return handle;
+}
+
 GestureReceiver EventDispatcher::long_press_receiver_callback_ =
     [](ArkUI_GestureEvent* event, void* user_data) {
       if (!user_data) {
@@ -51,7 +74,20 @@ GestureReceiver EventDispatcher::velocity_tracker_pan_receiver_callback_ =
 
 GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
     [](ArkUI_GestureInterruptInfo* info) -> ArkUI_GestureInterruptResult {
-  auto event_dispatcher = NodeManager::Instance().GetEventDispatcher();
+  EventDispatcher* event_dispatcher =
+      NodeManager::Instance().GetEventDispatcher();
+  if (LynxEnv::GetInstance().EnableHarmonyGestureInterrupterUserData() &&
+      OH_GetSdkApiVersion() >= kGestureInterrupterUserDataSupportVersion) {
+    void* func = GestureInterrupterGetUserDataFuncHandle();
+    if (func != nullptr) {
+      using OhGetUserData = void* (*)(ArkUI_GestureInterruptInfo*);
+      auto* event_dispatcher_from_user_data = static_cast<EventDispatcher*>(
+          reinterpret_cast<OhGetUserData>(func)(info));
+      if (event_dispatcher_from_user_data != nullptr) {
+        event_dispatcher = event_dispatcher_from_user_data;
+      }
+    }
+  }
   if (!event_dispatcher) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
@@ -234,7 +270,46 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
                                            PARALLEL, NORMAL_GESTURE_MASK);
 
   NodeManager::Instance().SetGestureInterrupterToNode(
-      root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_);
+      root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_,
+      this);
+}
+
+void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
+  if (!root || !root->RootNode()) {
+    return;
+  }
+  auto* root_node = root->RootNode();
+  NodeManager::Instance().SetGestureInterrupterToNode(root_node, nullptr);
+  if (long_press_gesture_) {
+    NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                  long_press_gesture_);
+  }
+  if (tap_gesture_) {
+    NodeManager::Instance().RemoveGestureFromNode(root_node, tap_gesture_);
+  }
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                block_outer_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(
+      root_node, consume_horizontal_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_vertical_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_up_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_right_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_down_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_left_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_all_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                native_gesture_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                velocity_tracker_pan_gesture_);
+  if (root_target_.lock().get() == root) {
+    root_target_.reset();
+  }
 }
 
 void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {

@@ -132,6 +132,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     LYNX_DEBUG_ENABLED,
     ENABLE_HARMONY_DRAW_BEHIND,
     ENABLE_HARMONY_NEW_IMAGE,
+    ENABLE_HARMONY_GESTURE_INTERRUPTER_USER_DATA,
     ENABLE_UNIFY_FIXED_BEHAVIOR,
     ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION,
     // FIXME(dingwang.wxx): remove this config in the next version(remove
@@ -299,6 +300,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_level_order_traversing"},
             {Key::ENABLE_HARMONY_DRAW_BEHIND, "enable_harmony_draw_behind"},
             {Key::ENABLE_HARMONY_NEW_IMAGE, "enable_harmony_new_image"},
+            {Key::ENABLE_HARMONY_GESTURE_INTERRUPTER_USER_DATA,
+             "enable_harmony_gesture_interrupter_user_data"},
             {Key::ENABLE_UNIFY_FIXED_BEHAVIOR, "enable_unify_fixed_behavior"},
             {Key::ENABLE_SHARE_CONTEXT_ICU, "enable_share_context_icu"},
             {Key::FIX_RADON_INLINE_CONVERT_BUG, "fix_radon_inline_convert_bug"},
@@ -478,6 +481,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableLevelOrderTraversing();
   bool EnableHarmonyDrawBehind();
   bool EnableHarmonyNewImage();
+  bool EnableHarmonyGestureInterrupterUserData();
   bool EnableUnifyFixedBehavior();
   bool FixRadonInlineConvertBug();
   bool FixDynamicUpdateTransitionConsumeBug();

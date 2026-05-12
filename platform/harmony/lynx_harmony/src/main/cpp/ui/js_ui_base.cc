@@ -224,6 +224,30 @@ napi_value JSUIBase::AttachGestureToNode(napi_env env,
   return nullptr;
 }
 
+napi_value JSUIBase::DetachGestureFromNode(napi_env env,
+                                           napi_callback_info info) {
+  /*
+   * 0 - nativeContent: NativeContent
+   */
+  size_t argc = 1;
+  napi_value argv[argc];
+  napi_value js_this;
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+  NativeNodeContent* content{nullptr};
+  napi_unwrap(env, argv[0], reinterpret_cast<void**>(&content));
+  auto* node = content;
+  if (node && node->UI()) {
+    JSUIBase* ui;
+    if (const napi_status status =
+            napi_unwrap(env, js_this, reinterpret_cast<void**>(&ui));
+        status != napi_ok || !ui) {
+      return nullptr;
+    }
+    ui->context_->DetachGesturesFromRoot(node->UI());
+  }
+  return nullptr;
+}
+
 napi_value JSUIBase::GetUIFromNativeContent(napi_env env,
                                             napi_callback_info info) {
   /*
@@ -387,6 +411,7 @@ napi_value JSUIBase::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("setChildrenManagementFuncs",
                             SetChildrenManagementFuncs),
       DECLARE_NAPI_FUNCTION("attachGestureToNode", AttachGestureToNode),
+      DECLARE_NAPI_FUNCTION("detachGestureFromNode", DetachGestureFromNode),
       DECLARE_NAPI_STATIC_FUNCTION("getUIFromNativeContent",
                                    GetUIFromNativeContent),
       DECLARE_NAPI_STATIC_FUNCTION("getContentSize", GetContentSize),

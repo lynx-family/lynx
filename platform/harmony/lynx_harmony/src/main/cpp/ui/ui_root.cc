@@ -52,6 +52,10 @@ UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
 }
 
 UIRoot::~UIRoot() {
+  if (are_gestures_attached_) {
+    context_->DetachGesturesFromRoot(this);
+    are_gestures_attached_ = false;
+  }
   if (node_content_) {
     OH_ArkUI_NodeContent_RemoveNode(node_content_->NodeContentHandle(),
                                     root_proxy_);

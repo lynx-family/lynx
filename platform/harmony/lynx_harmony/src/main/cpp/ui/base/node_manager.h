@@ -142,13 +142,18 @@ class BASE_EXPORT NodeManager {
       void (*target_receiver)(ArkUI_GestureEvent* event, void* extra_params));
 
   LYNX_EXPORT void SetGestureInterrupterToNode(
-      ArkUI_NodeHandle node, ArkUI_GestureInterruptResult (*interrupter)(
-                                 ArkUI_GestureInterruptInfo* info));
+      ArkUI_NodeHandle node,
+      ArkUI_GestureInterruptResult (*interrupter)(
+          ArkUI_GestureInterruptInfo* info),
+      void* user_data = nullptr);
 
   LYNX_EXPORT void AddGestureToNode(ArkUI_NodeHandle node,
                                     ArkUI_GestureRecognizer* recognizer,
                                     ArkUI_GesturePriority mode,
                                     ArkUI_GestureMask mask);
+
+  LYNX_EXPORT void RemoveGestureFromNode(ArkUI_NodeHandle node,
+                                         ArkUI_GestureRecognizer* recognizer);
 
   LYNX_EXPORT void DisposeGesture(ArkUI_GestureRecognizer* recognizer);
 
@@ -267,6 +272,7 @@ class BASE_EXPORT NodeManager {
 
   ArkUI_NativeNodeAPI_1* native_node_api_{nullptr};
   ArkUI_NativeGestureAPI_1* native_gesture_api_{nullptr};
+  void* native_gesture_api_2{nullptr};
   EventDispatcher* event_dispatcher_{nullptr};
 };
 }  // namespace harmony

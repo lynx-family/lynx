@@ -120,6 +120,7 @@ class UIOwner {
   void SetFocusedTarget(const std::weak_ptr<EventTarget>& focused_target);
   void UnsetFocusedTarget(const std::weak_ptr<EventTarget>& focused_target);
   void AttachGesturesToRoot(UIBase* root);
+  void DetachGesturesFromRoot(UIBase* root);
   void OnGestureRecognized(UIBase* ui);
   void OnGestureRecognizedWithSign(int sign);
   void UpdateNativeInteractionEnabledForTree(UIBase* root);
