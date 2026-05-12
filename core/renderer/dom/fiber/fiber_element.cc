@@ -1254,8 +1254,8 @@ static bool DiffStyleImpl(StyleMap &old_map, StyleMap &new_map,
   return need_update;
 }
 
-void FiberElement::ResetDirectionAwareProperty(const CSSPropertyID &id,
-                                               const CSSValue &value) {
+void Element::ResetDirectionAwareProperty(const CSSPropertyID &id,
+                                          const CSSValue &value) {
   auto css_id = id;
   auto direction_mapping = CheckDirectionMapping(css_id);
   auto is_direction_aware_property =
@@ -3833,7 +3833,7 @@ void FiberElement::DoFullCSSResolving() {
   }
 }
 
-const tasm::CSSValue &FiberElement::ResolveCurrentStyleValue(
+const tasm::CSSValue &Element::ResolveCurrentStyleValue(
     const CSSPropertyID &key, const tasm::CSSValue &default_value) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_CURRENT_STYLE);
   auto iter = parsed_styles_map_.find(key);
@@ -3975,7 +3975,7 @@ void FiberElement::OnPseudoStatusChanged(PseudoState prev_status,
   element_manager_->RequestResolve(pipeline_options);
 }
 
-bool FiberElement::TryResolveLogicStyleAndSaveDirectionRelatedStyle(
+bool Element::TryResolveLogicStyleAndSaveDirectionRelatedStyle(
     CSSPropertyID id, const CSSValue &value) {
   if (!IsDirectionChangedEnabled()) {
     return false;
@@ -4002,9 +4002,9 @@ bool FiberElement::TryResolveLogicStyleAndSaveDirectionRelatedStyle(
 }
 
 // try to Resolve Direction css
-void FiberElement::TryDoDirectionRelatedCSSChange(CSSPropertyID id,
-                                                  const CSSValue &value,
-                                                  IsLogic is_logic_style) {
+void Element::TryDoDirectionRelatedCSSChange(CSSPropertyID id,
+                                             const CSSValue &value,
+                                             IsLogic is_logic_style) {
   CSSPropertyID trans_id = id;
   auto current_direction = computed_css_style()->GetDirection();
   if ((IsRTL(current_direction) && is_logic_style) ||
@@ -4021,8 +4021,7 @@ void FiberElement::TryDoDirectionRelatedCSSChange(CSSPropertyID id,
   SetStyleInternal(trans_id, value);
 }
 
-void FiberElement::ResetTextAlign(StyleMap &update_map,
-                                  bool direction_changed) {
+void Element::ResetTextAlign(StyleMap &update_map, bool direction_changed) {
   // If direction has been changed in current render loop, text_align will be
   // reset when handling direction change. Thus when reset text align,
   // set kPropertyIDTextAlign to kStart only when direction is not changed.

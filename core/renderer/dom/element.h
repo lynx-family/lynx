@@ -1065,6 +1065,15 @@ class Element : public lepus::RefCounted,
       const NewPipelineResolveRequest& request);
   void ResolveCSSStylesNewPipeline(bool& need_update);
   void ResolveSimpleStyles();
+  void ResetDirectionAwareProperty(const CSSPropertyID& id,
+                                   const CSSValue& value);
+  const tasm::CSSValue& ResolveCurrentStyleValue(
+      const CSSPropertyID& key, const tasm::CSSValue& default_value);
+  bool TryResolveLogicStyleAndSaveDirectionRelatedStyle(CSSPropertyID id,
+                                                        const CSSValue& value);
+  void TryDoDirectionRelatedCSSChange(CSSPropertyID id, const CSSValue& value,
+                                      IsLogic is_logic_style);
+  void ResetTextAlign(StyleMap& update_map, bool direction_changed);
   void HandleKeyframePropsChange();
 #if ENABLE_TRACE_PERFETTO
   virtual void UpdateTraceDebugInfo(TraceEvent* event);

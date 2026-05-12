@@ -293,20 +293,9 @@ class FiberElement : public Element {
       base::InlineVector<fml::RefPtr<Element>,
                          kChildrenInlineVectorSize>::iterator child_iter);
 
-  void ResetDirectionAwareProperty(const CSSPropertyID& id,
-                                   const CSSValue& value);
-
-  void TryDoDirectionRelatedCSSChange(CSSPropertyID id, const CSSValue& value,
-                                      IsLogic is_logic_style);
-
-  bool TryResolveLogicStyleAndSaveDirectionRelatedStyle(CSSPropertyID id,
-                                                        const CSSValue& value);
-
   void HandleSelfFixedChange();
   void InsertFixedElement(FiberElement* child, FiberElement* ref_node);
   void RemoveFixedElement(FiberElement* child);
-
-  void ResetTextAlign(StyleMap& update_map, bool direction_reset);
 
   bool CheckHasInvalidationForId(const std::string& old_id,
                                  const std::string& new_id) override;
@@ -327,8 +316,6 @@ class FiberElement : public Element {
   void PrepareRootCSSVariables(AttributeHolder* holder);
   void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
   void DoFullCSSResolving();
-  const tasm::CSSValue& ResolveCurrentStyleValue(
-      const CSSPropertyID& key, const tasm::CSSValue& default_value);
 
   void UpdateLayoutInfo();
 
