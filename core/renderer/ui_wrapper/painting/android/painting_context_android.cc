@@ -405,6 +405,39 @@ void PaintingContextAndroid::SetUIOperationQueue(
   queue_ = std::static_pointer_cast<shell::DynamicUIOperationQueue>(queue);
 }
 
+void PaintingContextAndroid::UpdateTextBundle(int id, intptr_t bundle) {
+  if (!queue_) {
+    return;
+  }
+
+  Enqueue([impl = impl_, id, bundle]() {
+    JNIEnv* env = base::android::AttachCurrentThread();
+    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
+    if (local_ref.IsNull()) {
+      return;
+    }
+
+    Java_PaintingContext_updateTextBundle(env, local_ref.Get(), id,
+                                          static_cast<jlong>(bundle));
+  });
+}
+
+void PaintingContextAndroid::DestroyTextBundle(int id) {
+  if (!queue_) {
+    return;
+  }
+
+  Enqueue([impl = impl_, id]() {
+    JNIEnv* env = base::android::AttachCurrentThread();
+    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
+    if (local_ref.IsNull()) {
+      return;
+    }
+
+    Java_PaintingContext_destroyTextBundle(env, local_ref.Get(), id);
+  });
+}
+
 void PaintingContextAndroid::InvokeNativeRunnable(
     const base::android::ScopedGlobalJavaRef<jobject>& runnable, JNIEnv* env) {
   static const base::android::ScopedGlobalJavaRef<jclass> kRunnableClassRef =

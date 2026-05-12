@@ -205,6 +205,10 @@ class PaintingCtxPlatformImpl {
     }
   }
 
+  virtual void UpdateTextBundle(int id, intptr_t bundle) {}
+
+  virtual void DestroyTextBundle(int id) {}
+
   virtual NativePaintingContext* CastToNativeCtx() { return nullptr; }
 
   void MarkUIOperationQueueFlushForRecreateEngine(bool enable);

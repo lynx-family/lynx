@@ -30,6 +30,7 @@ import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.ViewInfo;
+import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 
@@ -41,6 +42,7 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
   private boolean mIsJustify;
   private CharSequence mOriginText;
   private TextUpdateBundle mTextBundle;
+  private Page mTextraPage;
 
   @Deprecated
   public FlattenUIText(Context context) {
@@ -63,6 +65,8 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
     if (data instanceof TextUpdateBundle) {
       setTextBundle((TextUpdateBundle) data);
       dispatchLayoutEventIfNeeded();
+    } else if (data instanceof Page) {
+      setTextBundle((Page) data);
     }
   }
 
@@ -85,6 +89,7 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
 
   public void setTextBundle(final TextUpdateBundle bundle) {
     mTextBundle = bundle;
+    mTextraPage = null;
     // First detach old image span
     dispatchDetachImageSpan();
     mTextLayout = bundle.getTextLayout();
@@ -97,6 +102,19 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
       Spanned spannable = (Spanned) getText();
       AbsInlineImageSpan.possiblyUpdateInlineImageSpans(spannable, new DrawableCallback(this));
     }
+    invalidate();
+  }
+
+  public void setTextBundle(Page page) {
+    mTextraPage = page;
+    mTextBundle = null;
+    dispatchDetachImageSpan();
+    mTextLayout = null;
+    mTextTranslateOffset = new PointF();
+    mHasImage = false;
+    mNeedDrawStroke = false;
+    mIsJustify = false;
+    mOriginText = null;
     invalidate();
   }
 
@@ -169,7 +187,34 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
   public void onDraw(final Canvas canvas) {
     TraceEvent.beginSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
     super.onDraw(canvas);
-    if (mTextLayout == null || isDetachedWithView()) {
+    if (isDetachedWithView()) {
+      TraceEvent.endSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
+      return;
+    }
+
+    if (mTextraPage != null) {
+      int paddingLeft = mPaddingLeft + mBorderLeftWidth;
+      int paddingRight = mPaddingRight + mBorderRightWidth;
+      int paddingTop = mPaddingTop + mBorderTopWidth;
+      int paddingBottom = mPaddingBottom + mBorderBottomWidth;
+      canvas.save();
+      if (getOverflow() != 0) {
+        Rect clipRect = getBoundRectForOverflow();
+        if (clipRect != null) {
+          canvas.clipRect(clipRect);
+        }
+      } else if (!mContext.isTextOverflowEnabled()) {
+        canvas.clipRect(
+            paddingLeft, paddingTop, getWidth() - paddingRight, getHeight() - paddingBottom);
+      }
+      canvas.translate(paddingLeft, paddingTop);
+      mTextraPage.drawPageCanvas(canvas, new DrawableCallback(this));
+      canvas.restore();
+      TraceEvent.endSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
+      return;
+    }
+
+    if (mTextLayout == null) {
       TraceEvent.endSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
       return;
     }
@@ -209,7 +254,7 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
 
   @Override
   public MeaningfulContentStatus getMeaningfulContentStatus() {
-    if (mTextLayout != null) {
+    if (mTextLayout != null || mTextraPage != null) {
       return MeaningfulContentStatus.PRESENTED;
     }
     return MeaningfulContentStatus.PENDING;
