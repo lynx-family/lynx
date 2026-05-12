@@ -82,6 +82,10 @@ void UIDelegateClay::OnLynxCreate(
     bool is_embedded_mode) {
   perf_controller_ =
       std::make_shared<PerfControllerClay>(perf_controller_proxy, instance_id);
+  if (platform_enable_fluency_monitor_.has_value()) {
+    perf_controller_->SetEnableFluencyMonitor(
+        platform_enable_fluency_monitor_.value());
+  }
   if (painting_context_) {
     painting_context_->SetListEngineProxy(list_engine_proxy);
     painting_context_->SetEngineProxy(engine_proxy);
@@ -105,6 +109,13 @@ void UIDelegateClay::OnLynxCreate(
   if (event_tracker_proxy) {
     event_tracker_proxy->UpdateGenericInfo(instance_id, "renderer_type",
                                            "clay");
+  }
+}
+
+void UIDelegateClay::SetEnableFluencyMonitor(bool enable) {
+  platform_enable_fluency_monitor_ = enable;
+  if (perf_controller_) {
+    perf_controller_->SetEnableFluencyMonitor(enable);
   }
 }
 
