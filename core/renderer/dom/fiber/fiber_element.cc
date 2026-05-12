@@ -639,8 +639,12 @@ int32_t Element::GetCSSID() const {
   }
 }
 
-bool FiberElement::MergeInlineStyles(StyleMap &new_styles,
-                                     StyleMap &important_styles) {
+bool Element::MergeInlineStyles(StyleMap &new_styles,
+                                StyleMap &important_styles) {
+  if (!is_fiber_element_) {
+    return false;
+  }
+
   // Styles stored by full_raw_inline_style_ had already been parsed to
   // current_raw_inline_styles_. So we only handle current_raw_inline_styles_
   // here.

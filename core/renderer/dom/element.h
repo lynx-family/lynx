@@ -1521,7 +1521,7 @@ class Element : public lepus::RefCounted,
 
   // Returns true if CSS variables were merged and need to be resolved.
   virtual bool MergeInlineStyles(StyleMap& merged_styles,
-                                 StyleMap& important_styles) = 0;
+                                 StyleMap& important_styles);
   virtual void PersistAnimationFillStyles(const StyleMap& styles);
   virtual void ClearPersistedAnimationFillStyle(CSSPropertyID id);
   virtual int32_t GetMemoryUsage() const { return sizeof(*this); }

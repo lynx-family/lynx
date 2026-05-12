@@ -247,8 +247,6 @@ class FiberElement : public Element {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
-  bool MergeInlineStyles(StyleMap& new_styles,
-                         StyleMap& important_styles) final;
   void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
 
   bool IsEventPathCatch(event::EventTarget* target,
