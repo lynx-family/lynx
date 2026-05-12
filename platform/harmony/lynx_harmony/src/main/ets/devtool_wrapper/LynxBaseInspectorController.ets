@@ -5,6 +5,8 @@
 import { LynxView } from '../tasm/LynxView';
 
 export interface LynxBaseInspectorController {
+  attachProxy(embedderProxy: number[]): void;
+
   onLoaded(lynxView: LynxView): void;
 
   destroy(lynxView: LynxView): void;

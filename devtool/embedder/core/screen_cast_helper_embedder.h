@@ -16,8 +16,7 @@ class DevtoolPlatformEmbedder;
 
 class ScreenCastHelperEmbedder {
  public:
-  ScreenCastHelperEmbedder(
-      devtool::LynxDevToolProxy* proxy,
+  explicit ScreenCastHelperEmbedder(
       const std::shared_ptr<DevtoolPlatformEmbedder>& platform_embedder);
   ~ScreenCastHelperEmbedder();
 
@@ -26,6 +25,7 @@ class ScreenCastHelperEmbedder {
   void ContinueCasting();
   void PauseCasting();
   void GetLynxScreenShot();
+  void AttachProxy(devtool::LynxDevToolProxy* proxy);
 
  private:
   bool paused_;

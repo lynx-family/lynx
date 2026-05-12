@@ -8,6 +8,7 @@
 
 export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspectorController {
   constructor(embedderProxy: number[]);
+  public attachProxy(embedderProxy: number[]): void;
   public onLoaded(lynxView: LynxView): void;
   public destroy(lynxView: LynxView): void;
   public setLynxInspectorConsoleDelegate(delegate: LynxInspectorConsoleDelegate): void;
