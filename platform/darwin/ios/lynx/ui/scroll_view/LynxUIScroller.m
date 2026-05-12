@@ -40,6 +40,14 @@ const NSInteger kScrollToCallBackNonChange = -1;
 static const CGFloat SCROLL_BY_EPSILON = 0.1f;
 
 typedef void (^LynxUIScrollToCallBack)(int code, id _Nullable data);
+typedef void (^ScrollReadyBlock)(void);
+
+static NSString *const kScrollReadyDirectionKey = @"direction";
+static NSString *const kScrollReadyInitialOffsetKey = @"initial-offset";
+static NSString *const kScrollReadyInitialIndexKey = @"initial-index";
+static NSString *const kScrollReadyScrollLeftKey = @"scroll-left";
+static NSString *const kScrollReadyScrollTopKey = @"scroll-top";
+static NSString *const kScrollReadyScrollToIndexKey = @"scroll-to-index";
 
 @interface LynxUIScrollerProxy : NSObject
 @property(nonatomic, weak) LynxUIScroller *scroller;
@@ -146,6 +154,7 @@ typedef void (^LynxUIScrollToCallBack)(int code, id _Nullable data);
   // value may not be the latest as reused UI with same prop will not update propMap. Instead, it
   // will update through onNodeReady
   LynxPropertyDiffMap *_propMap;
+  NSMutableDictionary<NSString *, ScrollReadyBlock> *_scrollReadyBlockMap;
 }
 
 #if LYNX_LAZY_LOAD
@@ -212,6 +221,31 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
   return scrollView;
 }
 
+- (NSMutableDictionary<NSString *, ScrollReadyBlock> *)scrollReadyBlockMap {
+  if (!_scrollReadyBlockMap) {
+    _scrollReadyBlockMap = [NSMutableDictionary dictionary];
+  }
+  return _scrollReadyBlockMap;
+}
+
+- (void)setScrollReadyBlock:(ScrollReadyBlock)block forKey:(NSString *)key {
+  if (!key) {
+    return;
+  }
+  if (block) {
+    self.scrollReadyBlockMap[key] = [block copy];
+  } else {
+    [self.scrollReadyBlockMap removeObjectForKey:key];
+  }
+}
+
+- (void)consumeScrollReadyBlockForKey:(NSString *)key
+                            fromSlots:(NSDictionary<NSString *, ScrollReadyBlock> *)slots {
+  if (key && slots[key]) {
+    slots[key]();
+  }
+}
+
 - (void)adjustContentOffsetForRTL:(CGFloat)prevXOffset {
   // for update, the content offset should be reset to old position instead of edge.
   if (!_enableScrollY && self.isRtl) {
@@ -262,6 +296,20 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 
 - (void)onNodeReady {
   [super onNodeReady];
+
+  if (_scrollReadyBlockMap) {
+    NSDictionary<NSString *, ScrollReadyBlock> *blockSlots = [_scrollReadyBlockMap copy];
+    _scrollReadyBlockMap = nil;
+    [self consumeScrollReadyBlockForKey:kScrollReadyDirectionKey fromSlots:blockSlots];
+    if (self.enableScrollY) {
+      [self consumeScrollReadyBlockForKey:kScrollReadyScrollTopKey fromSlots:blockSlots];
+    } else {
+      [self consumeScrollReadyBlockForKey:kScrollReadyScrollLeftKey fromSlots:blockSlots];
+    }
+    [self consumeScrollReadyBlockForKey:kScrollReadyScrollToIndexKey fromSlots:blockSlots];
+    [self consumeScrollReadyBlockForKey:kScrollReadyInitialOffsetKey fromSlots:blockSlots];
+    [self consumeScrollReadyBlockForKey:kScrollReadyInitialIndexKey fromSlots:blockSlots];
+  }
 
   [self.view updateFadingEdgeWithSize:_fadingEdge horizontal:!self.enableScrollY];
   // Handle enable-nested
@@ -424,22 +472,32 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
   if (requestReset) {
     value = 0;
   }
-
-  [self.nodeReadyBlockArray addObject:^(LynxUI *ui) {
-    LynxUIScroller *scroll = (LynxUIScroller *)ui;
-    scroll.view.contentOffset = [scroll clampScrollToPosition:value callback:nil isSmooth:NO];
-  }];
+  __weak typeof(self) weakSelf = self;
+  [self
+      setScrollReadyBlock:^{
+        LynxUIScroller *scroll = weakSelf;
+        if (!scroll) {
+          return;
+        }
+        scroll.view.contentOffset = [scroll clampScrollToPosition:value callback:nil isSmooth:NO];
+      }
+                   forKey:kScrollReadyScrollLeftKey];
 }
 
 - (void)setScrollTop:(int)value requestReset:(BOOL)requestReset {
   if (requestReset) {
     value = 0;
   }
-
-  [self.nodeReadyBlockArray addObject:^(LynxUI *ui) {
-    LynxUIScroller *scroll = (LynxUIScroller *)ui;
-    scroll.view.contentOffset = [scroll clampScrollToPosition:value callback:nil isSmooth:NO];
-  }];
+  __weak typeof(self) weakSelf = self;
+  [self
+      setScrollReadyBlock:^{
+        LynxUIScroller *scroll = weakSelf;
+        if (!scroll) {
+          return;
+        }
+        scroll.view.contentOffset = [scroll clampScrollToPosition:value callback:nil isSmooth:NO];
+      }
+                   forKey:kScrollReadyScrollTopKey];
 }
 
 - (void)initialScrollOffsetInner:(int)value {
@@ -456,37 +514,48 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
     // once before the first render.
     [_propMap putValue:@(value) forKey:LynxScrollViewInitialScrollOffset];
   }
-  [self.nodeReadyBlockArray addObject:^(LynxUI *ui) {
-    LynxUIScroller *scroll = (LynxUIScroller *)ui;
-    // This UI is first rendering or it is inside list-item and reused, and this
-    // spot(itemKey-idSelector) in list is first rendering
-    if (scroll.firstRender ||
-        (!requestReset && ![scroll initialPropsFlushed:LynxScrollViewInitialScrollOffset])) {
-      [scroll setInitialPropsHasFlushed:LynxScrollViewInitialScrollOffset];
-      [scroll initialScrollOffsetInner:value];
-    }
-  }];
+  __weak typeof(self) weakSelf = self;
+  [self
+      setScrollReadyBlock:^{
+        LynxUIScroller *scroll = weakSelf;
+        if (!scroll) {
+          return;
+        }
+        // This UI is first rendering or it is inside list-item and reused, and this
+        // spot(itemKey-idSelector) in list is first rendering
+        if (scroll.firstRender ||
+            (!requestReset && ![scroll initialPropsFlushed:LynxScrollViewInitialScrollOffset])) {
+          [scroll setInitialPropsHasFlushed:LynxScrollViewInitialScrollOffset];
+          [scroll initialScrollOffsetInner:value];
+        }
+      }
+                   forKey:kScrollReadyInitialOffsetKey];
 }
 
 - (void)setScrollToIndex:(int)value requestReset:(BOOL)requestReset {
   if (requestReset) {
     value = 0;
   }
-
-  [self.nodeReadyBlockArray addObject:^(LynxUI *ui) {
-    LynxUIScroller *scroll = (LynxUIScroller *)ui;
-    if ([scroll view].subviews.count == 0 || value < 0) {
-      return;
-    }
-    if (value >= 0 && (NSUInteger)value < [scroll.children count]) {
-      LynxUI *target = [scroll.children objectAtIndex:value];
-      CGPoint targetOffset =
-          scroll.enableScrollY
-              ? [scroll clampScrollToPosition:target.view.frame.origin.y callback:nil isSmooth:NO]
-              : [scroll clampScrollToPosition:target.view.frame.origin.x callback:nil isSmooth:NO];
-      [scroll.view setContentOffset:targetOffset];
-    }
-  }];
+  __weak typeof(self) weakSelf = self;
+  [self
+      setScrollReadyBlock:^{
+        LynxUIScroller *scroll = weakSelf;
+        if (!scroll || [scroll view].subviews.count == 0 || value < 0) {
+          return;
+        }
+        if (value >= 0 && (NSUInteger)value < [scroll.children count]) {
+          LynxUI *target = [scroll.children objectAtIndex:value];
+          CGPoint targetOffset = scroll.enableScrollY
+                                     ? [scroll clampScrollToPosition:target.view.frame.origin.y
+                                                            callback:nil
+                                                            isSmooth:NO]
+                                     : [scroll clampScrollToPosition:target.view.frame.origin.x
+                                                            callback:nil
+                                                            isSmooth:NO];
+          [scroll.view setContentOffset:targetOffset];
+        }
+      }
+                   forKey:kScrollReadyScrollToIndexKey];
 }
 
 - (void)initialScrollToIndexInner:(int)value {
@@ -513,14 +582,20 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
     // than once before the first render.
     [_propMap putValue:@(value) forKey:LynxScrollViewInitialScrollIndex];
   }
-  [self.nodeReadyBlockArray addObject:^(LynxUI *ui) {
-    LynxUIScroller *scroll = (LynxUIScroller *)ui;
-    if (scroll.firstRender ||
-        (!requestReset && ![scroll initialPropsFlushed:LynxScrollViewInitialScrollIndex])) {
-      [scroll setInitialPropsHasFlushed:LynxScrollViewInitialScrollIndex];
-      [scroll initialScrollToIndexInner:value];
-    }
-  }];
+  __weak typeof(self) weakSelf = self;
+  [self
+      setScrollReadyBlock:^{
+        LynxUIScroller *scroll = weakSelf;
+        if (!scroll) {
+          return;
+        }
+        if (scroll.firstRender ||
+            (!requestReset && ![scroll initialPropsFlushed:LynxScrollViewInitialScrollIndex])) {
+          [scroll setInitialPropsHasFlushed:LynxScrollViewInitialScrollIndex];
+          [scroll initialScrollToIndexInner:value];
+        }
+      }
+                   forKey:kScrollReadyInitialIndexKey];
 }
 
 - (void)setEnableScrollMonitor:(BOOL)value requestReset:(BOOL)requestReset {
@@ -1055,6 +1130,27 @@ LYNX_PROP_DEFINE("ios-recognized-view-tag", setIosRecognizedViewTag, NSInteger) 
     value = 0;
   }
   ((LynxScrollView *)self.view).recognizedViewTag = value;
+}
+
+LYNX_PROP_SETTER("direction", setLynxDirection, LynxDirectionType) {
+  if (requestReset) {
+    self.directionType = LynxDirectionLtr;
+    // Note: clear old block from scrollRangeBlock
+    [self setScrollReadyBlock:nil forKey:kScrollReadyDirectionKey];
+  } else {
+    self.directionType = value;
+    __weak typeof(self) weakSelf = self;
+    [self
+        setScrollReadyBlock:^{
+          LynxUIScroller *scroll = weakSelf;
+          if (!scroll) {
+            return;
+          }
+          [scroll resetContentOffset];
+          [scroll applyRTL:value == LynxDirectionRtl];
+        }
+                     forKey:kScrollReadyDirectionKey];
+  }
 }
 
 LYNX_UI_METHOD(scrollBy) {
