@@ -294,15 +294,6 @@ class FiberElement : public Element {
   void HandleKeyframePropsChange();
 
   /**
-   * @brief Commits font-size and root-font-size changes after style resolution.
-   * @param computed_style The final computed style.
-   * @param old_font_size The previous font size.
-   * @param old_root_font_size The previous root font size.
-   */
-  void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
-                         double old_font_size, double old_root_font_size);
-
-  /**
    * @brief Result of resolving computed styles in the new pipeline.
    */
   struct NewPipelineResolveRequest {

@@ -2102,7 +2102,7 @@ void Element::ReplayResetStyleSideEffect(CSSPropertyID id) {
   }
 }
 
-void FiberElement::CommitFontContext(
+void Element::CommitFontContext(
     const starlight::ComputedCSSStyle &computed_style, double old_font_size,
     double old_root_font_size) {
   const auto new_font_size = computed_style.GetFontSize();

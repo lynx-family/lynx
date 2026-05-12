@@ -1505,6 +1505,8 @@ class Element : public lepus::RefCounted,
   void SetFontSizeForAllElement(double cur_node_font_size,
                                 double root_node_font_size);
   void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
+  void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
+                         double old_font_size, double old_root_font_size);
 
   /**
    * This function will be called before add node.
