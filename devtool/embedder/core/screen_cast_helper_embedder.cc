@@ -22,8 +22,7 @@ class ScreenCastHelper : public FrameCapturerEmbedder,
                          public FrameCapturerEmbedderDelegate,
                          public std::enable_shared_from_this<ScreenCastHelper> {
  public:
-  ScreenCastHelper(
-      devtool::LynxDevToolProxy* proxy,
+  explicit ScreenCastHelper(
       const std::shared_ptr<DevtoolPlatformEmbedder>& platform_embedder);
   ~ScreenCastHelper() override;
 
@@ -43,6 +42,7 @@ class ScreenCastHelper : public FrameCapturerEmbedder,
   void ClearSnapshotCache();
 
   void OnEngineDestroy();
+  void SetProxy(devtool::LynxDevToolProxy* proxy);
 
   double GetScreenScaleFactor();
 
@@ -52,17 +52,15 @@ class ScreenCastHelper : public FrameCapturerEmbedder,
   int32_t max_height_;
   int32_t max_width_;
   int32_t quality_;
-  devtool::LynxDevToolProxy* embedder_proxy_;
+  devtool::LynxDevToolProxy* embedder_proxy_{nullptr};
   std::weak_ptr<DevtoolPlatformEmbedder> weak_platform_embedder_;
 };
 
 ScreenCastHelper::ScreenCastHelper(
-    devtool::LynxDevToolProxy* proxy,
     const std::shared_ptr<DevtoolPlatformEmbedder>& platform_embedder)
     : max_height_(0),
       max_width_(0),
       quality_(0),
-      embedder_proxy_(proxy),
       weak_platform_embedder_(platform_embedder) {}
 
 ScreenCastHelper::~ScreenCastHelper(){};
@@ -143,12 +141,14 @@ void ScreenCastHelper::OnFrameChanged() { TriggerNextCapture(); }
 
 void ScreenCastHelper::OnEngineDestroy() { embedder_proxy_ = nullptr; }
 
+void ScreenCastHelper::SetProxy(devtool::LynxDevToolProxy* proxy) {
+  embedder_proxy_ = proxy;
+}
+
 ScreenCastHelperEmbedder::ScreenCastHelperEmbedder(
-    devtool::LynxDevToolProxy* proxy,
     const std::shared_ptr<DevtoolPlatformEmbedder>& platform_embedder)
     : paused_(false), weak_platform_embedder_(platform_embedder) {
-  screen_cast_helper_ =
-      std::make_shared<ScreenCastHelper>(proxy, platform_embedder);
+  screen_cast_helper_ = std::make_shared<ScreenCastHelper>(platform_embedder);
   screen_cast_helper_->SetDelegate(screen_cast_helper_);
   screen_cast_helper_->Init(screen_cast_helper_);
 }
@@ -199,6 +199,10 @@ void ScreenCastHelperEmbedder::StopCasting() {
 
 void ScreenCastHelperEmbedder::GetLynxScreenShot() {
   screen_cast_helper_->GetLynxScreenShot();
+}
+
+void ScreenCastHelperEmbedder::AttachProxy(devtool::LynxDevToolProxy* proxy) {
+  screen_cast_helper_->SetProxy(proxy);
 }
 
 }  // namespace devtool

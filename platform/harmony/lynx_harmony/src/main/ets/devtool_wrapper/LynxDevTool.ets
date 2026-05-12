@@ -33,6 +33,10 @@ export class LynxDevTool {
     return this.owner as ESObject as LynxBaseInspectorOwner;
   }
 
+  public attachProxy(embedderProxy: number[]) {
+    this.owner?.attachProxy(embedderProxy);
+  }
+
   public onLoaded(lynxView: LynxView) {
     if (this.owner) {
       this.owner.onLoaded(lynxView);

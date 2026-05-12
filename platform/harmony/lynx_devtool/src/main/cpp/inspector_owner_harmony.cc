@@ -19,6 +19,7 @@ napi_value InspectorOwnerHarmony::Init(napi_env env, napi_value exports) {
 #define DECLARE_NAPI_FUNCTION(name, func) \
   {(name), nullptr, (func), nullptr, nullptr, nullptr, napi_default, nullptr}
   napi_property_descriptor properties[] = {
+      DECLARE_NAPI_FUNCTION("attachProxy", AttachProxy),
       DECLARE_NAPI_FUNCTION("destroy", Destroy),
       DECLARE_NAPI_FUNCTION("getSessionId", GetSessionId),
       DECLARE_NAPI_FUNCTION("flushConsoleMessages", FlushConsoleMessages),
@@ -55,6 +56,30 @@ napi_value InspectorOwnerHarmony::Constructor(napi_env env,
       env, js_this, owner_harmony_ptr, [](napi_env env, void *data, void *) {},
       nullptr, nullptr);
   return js_this;
+}
+
+napi_value InspectorOwnerHarmony::AttachProxy(napi_env env,
+                                              napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  InspectorOwnerHarmony *owner_harmony_ptr = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void **>(&owner_harmony_ptr));
+  NAPI_THROW_IF_FAILED_NULL(env, status,
+                            "InspectorOwnerHarmony AttachProxy failed!");
+
+  if (!owner_harmony_ptr) {
+    LOGE("napi unwrap object is null when AttachProxy");
+    return nullptr;
+  }
+
+  uint64_t proxy_num = base::NapiUtil::ConvertToPtr(env, args[0]);
+  owner_harmony_ptr->owner_->AttachProxy(
+      reinterpret_cast<LynxDevToolProxy *>(proxy_num));
+  return nullptr;
 }
 
 napi_value InspectorOwnerHarmony::Destroy(napi_env env,

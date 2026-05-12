@@ -10,6 +10,7 @@ export class DebugBridgeHarmony {
 export class InspectorOwnerHarmony {
   constructor(owner: LynxInspectorOwner, embedderProxy: number[]);
 
+  attachProxy: (embedderProxy: number[]) => void;
   getSessionId: () => number;
   destroy: () => void;
   flushConsoleMessages: () => void;

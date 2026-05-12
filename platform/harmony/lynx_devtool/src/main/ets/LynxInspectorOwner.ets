@@ -19,6 +19,10 @@ export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspe
     this.consoleDelegateManager = new ConsoleDelegateManager();
   }
 
+  public attachProxy(embedderProxy: number[]): void {
+    this.nativeOwner.attachProxy(embedderProxy);
+  }
+
   public onLoaded(lynxView: LynxView) {
     this.sessionId = this.nativeOwner.getSessionId();
     DebugRouter.setSessionIdOfView(lynxView, this.sessionId);
