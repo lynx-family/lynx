@@ -187,9 +187,6 @@ class FiberElement : public Element {
 
   void RequestNextFrame() override;
 
-  void ResetSheetRecursively(
-      const std::shared_ptr<CSSStyleSheetManager>& manager);
-
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
   void InsertLayoutNode(FiberElement* child, FiberElement* ref);

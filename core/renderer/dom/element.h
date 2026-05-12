@@ -737,6 +737,8 @@ class Element : public lepus::RefCounted,
     return css_style_sheet_manager_;
   }
 
+  void ResetSheetRecursively(
+      const std::shared_ptr<CSSStyleSheetManager>& manager);
   void ResetStyleSheet();
 
   void set_attached_to_layout_parent(bool has) {

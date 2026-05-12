@@ -4491,7 +4491,7 @@ void Element::UpdateDynamicElementStyle(uint32_t style, bool force_update) {
   }
 }
 
-void FiberElement::ResetSheetRecursively(
+void Element::ResetSheetRecursively(
     const std::shared_ptr<CSSStyleSheetManager> &manager) {
   if (is_page() || is_component() || css_id_ != kInvalidCssId) {
     set_style_sheet_manager(manager);
@@ -4500,7 +4500,7 @@ void FiberElement::ResetSheetRecursively(
   // reset style sheet.
   ResetStyleSheet();
   for (const auto &child : children()) {
-    static_cast<FiberElement *>(child.get())->ResetSheetRecursively(manager);
+    child->ResetSheetRecursively(manager);
   }
 }
 
