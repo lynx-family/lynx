@@ -1275,7 +1275,7 @@ void FiberElement::ResetDirectionAwareProperty(const CSSPropertyID &id,
   }
 }
 
-void FiberElement::HandleKeyframePropsChange() {
+void Element::HandleKeyframePropsChange() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_KEYFRAME_PROPS_CHANGE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -1288,7 +1288,7 @@ void FiberElement::HandleKeyframePropsChange() {
   has_keyframe_props_changed_ = false;
 }
 
-void FiberElement::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
+void Element::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
   if (this->is_parallel_flush()) {
     parallel_reduce_tasks_->emplace_back(std::move(operation));
   } else {

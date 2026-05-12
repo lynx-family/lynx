@@ -267,10 +267,6 @@ class FiberElement : public Element {
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
 
-  void HandleDelayTask(base::MoveOnlyClosure<void> operation) override;
-
-  void HandleKeyframePropsChange();
-
   void RequestLayout() override;
 
   void RequestNextFrame() override;

@@ -869,9 +869,7 @@ class Element : public lepus::RefCounted,
 
   virtual void EnqueueLayoutTask(base::MoveOnlyClosure<void> operation);
 
-  virtual void HandleDelayTask(base::MoveOnlyClosure<void> operation) {
-    operation();
-  }
+  virtual void HandleDelayTask(base::MoveOnlyClosure<void> operation);
   void set_parent(Element* parent) { parent_ = parent; }
   bool EnableTriggerGlobalEvent() const { return trigger_global_event_; }
 
@@ -1048,6 +1046,7 @@ class Element : public lepus::RefCounted,
   NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
       const NewPipelineResolveRequest& request);
   void ResolveCSSStylesNewPipeline(bool& need_update);
+  void HandleKeyframePropsChange();
   void SetStyleObjects(
       std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
           style_objects) override;
