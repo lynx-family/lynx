@@ -169,11 +169,6 @@ class FiberElement : public Element {
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
   virtual void UpdateLayoutNodeProps(
       const fml::RefPtr<PropBundle>& props) override;
-  virtual void UpdateLayoutNodeStyle(CSSPropertyID css_id,
-                                     const tasm::CSSValue& value) override;
-  virtual void ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) override;
-  virtual void UpdateLayoutNodeFontSize(double cur_node_font_size,
-                                        double root_node_font_size) override;
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                          const lepus::Value& value) override;
 

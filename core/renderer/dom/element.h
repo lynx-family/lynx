@@ -1245,10 +1245,10 @@ class Element : public lepus::RefCounted,
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) = 0;
   virtual void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props) = 0;
   virtual void UpdateLayoutNodeStyle(CSSPropertyID css_id,
-                                     const tasm::CSSValue& value) = 0;
-  virtual void ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) = 0;
+                                     const tasm::CSSValue& value);
+  virtual void ResetLayoutNodeStyle(tasm::CSSPropertyID css_id);
   virtual void UpdateLayoutNodeFontSize(double cur_node_font_size,
-                                        double root_node_font_size) = 0;
+                                        double root_node_font_size);
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                          const lepus::Value& value) = 0;
 

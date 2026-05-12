@@ -3399,8 +3399,8 @@ void FiberElement::UpdateLayoutNodeProps(const fml::RefPtr<PropBundle> &props) {
   layout_bundle_->update_prop_bundles.emplace_back(props);
 }
 
-void FiberElement::UpdateLayoutNodeStyle(CSSPropertyID css_id,
-                                         const tasm::CSSValue &value) {
+void Element::UpdateLayoutNodeStyle(CSSPropertyID css_id,
+                                    const tasm::CSSValue &value) {
   if (EnableLayoutInElementMode()) {
     return;
   }
@@ -3409,7 +3409,7 @@ void FiberElement::UpdateLayoutNodeStyle(CSSPropertyID css_id,
   layout_bundle_->styles.emplace_back(css_id, value);
 }
 
-void FiberElement::ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) {
+void Element::ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) {
   if (EnableLayoutInElementMode()) {
     return;
   }
@@ -3418,8 +3418,8 @@ void FiberElement::ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) {
   layout_bundle_->reset_styles.emplace_back(css_id);
 }
 
-void FiberElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
-                                            double root_node_font_size) {
+void Element::UpdateLayoutNodeFontSize(double cur_node_font_size,
+                                       double root_node_font_size) {
   if (EnableLayoutInElementMode()) {
     return;
   }
