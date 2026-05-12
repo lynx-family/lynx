@@ -809,6 +809,23 @@ class Element : public lepus::RefCounted,
    */
   LYNX_EXPORT_FOR_DEVTOOL virtual double GetFontSize();
 
+  /**
+   * Special API for processing Font size
+   * font size should be handled at the beginning
+   */
+  void SetFontSize(const tasm::CSSValue& value);
+
+  /**
+   * @brief Sets font-size on a specific target ComputedCSSStyle rather than
+   * the element's own platform style.
+   * @param value The font-size CSS value.
+   * @param target_style The ComputedCSSStyle to update.
+   */
+  void SetFontSize(const tasm::CSSValue& value,
+                   starlight::ComputedCSSStyle* target_style);
+
+  void ResetFontSize();
+
   /*
    * return the font size of parent.
    */

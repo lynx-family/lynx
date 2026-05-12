@@ -3569,12 +3569,12 @@ void FiberElement::UpdateCSSVariable(
   }
 }
 
-void FiberElement::SetFontSize(const tasm::CSSValue &value) {
+void Element::SetFontSize(const tasm::CSSValue &value) {
   SetFontSize(value, computed_css_style());
 }
 
-void FiberElement::SetFontSize(const tasm::CSSValue &value,
-                               starlight::ComputedCSSStyle *target_style) {
+void Element::SetFontSize(const tasm::CSSValue &value,
+                          starlight::ComputedCSSStyle *target_style) {
   base::flex_optional<float> result;
   const auto current_font_size = target_style->GetFontSize();
   const auto root_font_size = target_style->GetRootFontSize();
@@ -3635,7 +3635,7 @@ void FiberElement::SetFontSize(const tasm::CSSValue &value,
   }
 }
 
-void FiberElement::ResetFontSize() {
+void Element::ResetFontSize() {
   CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, CSSValue(), true);
   // root_font_size_&font_size_ here are used to computed rem&rem
   auto font_size = element_manager()->GetLynxEnvConfig().PageDefaultFontSize();

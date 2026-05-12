@@ -231,23 +231,6 @@ class FiberElement : public Element {
     return AttributeHolder::EventBundle::DefaultEmptyEventMap();
   }
 
-  /**
-   * Special API for processing Font size
-   * font size should be handled at the beginning
-   */
-  void SetFontSize(const tasm::CSSValue& value);
-
-  /**
-   * @brief Sets font-size on a specific target ComputedCSSStyle rather than
-   * the element's own platform style.
-   * @param value The font-size CSS value.
-   * @param target_style The ComputedCSSStyle to update.
-   */
-  void SetFontSize(const tasm::CSSValue& value,
-                   starlight::ComputedCSSStyle* target_style);
-
-  void ResetFontSize();
-
   virtual void MarkAsLayoutRoot() override;
   virtual void MarkLayoutDirty() override;
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
