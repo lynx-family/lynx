@@ -5,6 +5,7 @@
 #ifndef CLAY_LYNX_ADAPTOR_PERF_CONTROLLER_CLAY_H_
 #define CLAY_LYNX_ADAPTOR_PERF_CONTROLLER_CLAY_H_
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -37,6 +38,7 @@ class PerfControllerClay
   }
 
   void SetPageConfigProbability(double probability);
+  void SetEnableFluencyMonitor(bool enable);
 
   /**
    * @brief Mark paint-end timing event
@@ -89,6 +91,14 @@ class PerfControllerClay
                      int64_t frame_end_time_nanos) override;
 
  private:
+  enum class ForceFluencyMonitorStatus : uint8_t {
+    FORCED_ON,
+    FORCED_OFF,
+    NON_FORCED
+  };
+
+  void UpdateEnableFluencyMonitor();
+
   const std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
 
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
@@ -99,8 +109,10 @@ class PerfControllerClay
   std::map<int, std::unique_ptr<clay::FpsTracer>> fps_tracers_;
   // Map to track session IDs for each fluency monitor
   std::map<int, uint64_t> fluency_monitor_session_ids_;
-  // TODO: Get this value from config.
   bool enable_fluency_monitor_ = false;
+  bool default_enable_fluency_monitor_ = false;
+  ForceFluencyMonitorStatus force_fluency_monitor_status_ =
+      ForceFluencyMonitorStatus::NON_FORCED;
   double page_config_probability_ = -1.0;
 };
 
