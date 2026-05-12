@@ -1515,10 +1515,14 @@ void Element::ResolveCSSStylesNewPipeline(bool &need_update) {
   need_update |= outcome.need_update;
 }
 
-void FiberElement::ResolveCSSStyles(
+void Element::ResolveCSSStyles(
     StyleMap &parsed_styles,
     base::InlineVector<CSSPropertyID, 16> &reset_style_ids, bool &need_update,
     bool &force_use_current_parsed_style_map) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   const bool enable_new_styling_pipeline =
       element_manager()->EnableNewStylingPipeline();
   if (enable_new_styling_pipeline) {

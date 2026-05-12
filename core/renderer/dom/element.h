@@ -1599,6 +1599,10 @@ class Element : public lepus::RefCounted,
   bool RefreshStyle(StyleMap& parsed_styles,
                     base::Vector<CSSPropertyID>& reset_ids,
                     bool force_use_parsed_styles_map = false);
+  void ResolveCSSStyles(StyleMap& parsed_styles,
+                        base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
+                        bool& need_update,
+                        bool& force_use_current_parsed_style_map);
 
   void MarkTemplateElement() { is_template_ = true; }
 
