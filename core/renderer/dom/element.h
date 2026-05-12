@@ -378,9 +378,7 @@ class Element : public lepus::RefCounted,
   virtual void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars);
   virtual void ConsumeStyleInternal(
       const StyleMap& styles, const StyleMap* inherit_styles,
-      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip) {
-    ConsumeStyle(styles, inherit_styles);
-  }
+      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip);
 
   virtual void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value);
 

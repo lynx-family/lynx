@@ -2885,9 +2885,14 @@ void FiberElement::ConsumeStyle(const StyleMap &styles,
   DidConsumeStyle();
 }
 
-void FiberElement::ConsumeStyleInternal(
+void Element::ConsumeStyleInternal(
     const StyleMap &styles, const StyleMap *inherit_styles,
     std::function<bool(CSSPropertyID, const tasm::CSSValue &)> should_skip) {
+  if (!is_fiber_element_) {
+    ConsumeStyle(styles, inherit_styles);
+    return;
+  }
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSUME_STYLE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());

@@ -249,11 +249,6 @@ class FiberElement : public Element {
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 
-  void ConsumeStyleInternal(
-      const StyleMap& styles, const StyleMap* inherit_styles,
-      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip)
-      override;
-
   ParallelFlushReturn CreateParallelTaskHandler();
 
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
