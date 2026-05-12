@@ -30,6 +30,8 @@ import java.util.Map;
 @LynxBehavior(tagName = "frame", isCreateAsync = false)
 public final class UIFrame extends LynxUI<LynxFrameView> {
   private static final String TAG = "UIFrame";
+  private static final String PROP_DATA = "data";
+  private static final String PROP_GLOBAL_PROPS = "global-props";
   private static final String DETAIL_KEY_FRAME_URL = "frameUrl";
   private static final String DETAIL_KEY_INTRINSIC_WIDTH = "intrinsicWidth";
   private static final String DETAIL_KEY_INTRINSIC_HEIGHT = "intrinsicHeight";
@@ -226,12 +228,13 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     mIntrinsicHeight = 0;
   }
 
-  @LynxProp(name = "data")
+  @LynxProp(name = PROP_DATA)
   public void setData(long value) {
     LynxFrameView view = getView();
     if (view != null) {
       view.setInitData(value);
     }
+    mProps.remove(PROP_DATA);
   }
 
   @LynxProp(name = "src")
@@ -246,12 +249,13 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     view.setUrl(value);
   }
 
-  @LynxProp(name = "global-props")
+  @LynxProp(name = PROP_GLOBAL_PROPS)
   public void setGlobalProps(long value) {
     LynxFrameView view = getView();
     if (view != null) {
       view.setGlobalProps(value);
     }
+    mProps.remove(PROP_GLOBAL_PROPS);
   }
 
   @LynxProp(name = "embedded-mode")
