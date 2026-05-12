@@ -693,7 +693,11 @@ void Element::ClearPersistedAnimationFillStyle(CSSPropertyID id) {
   animation_override_styles_map_->erase(id);
 }
 
-void FiberElement::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
+void Element::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   // If self has raw inline styles, parse to current_raw_inline_styles_ but do
   // not process to final style map. Inline styles will be merged finally by
   // MergeInlineStyles.
@@ -3753,7 +3757,7 @@ void FiberElement::RestoreLayoutNode(FiberElement *node) {
   node->next_render_sibling_ = nullptr;
 }
 
-void FiberElement::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
+void Element::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARSE_RAW_INLINE_STYLES);
   auto &configs = element_manager_->GetCSSParserConfigs();
   const auto &str = full_raw_inline_style_.str();

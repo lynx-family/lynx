@@ -375,7 +375,7 @@ class Element : public lepus::RefCounted,
   void ClearCachedStylesFromAttributes() { styles_from_attributes_.reset(); }
   void DidConsumeStyle();
 
-  virtual void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) {}
+  virtual void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars);
   virtual void ConsumeStyleInternal(
       const StyleMap& styles, const StyleMap* inherit_styles,
       std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip) {
@@ -1065,6 +1065,7 @@ class Element : public lepus::RefCounted,
       const NewPipelineResolveRequest& request);
   void ResolveCSSStylesNewPipeline(bool& need_update);
   void ResolveSimpleStyles();
+  void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
   void ResetDirectionAwareProperty(const CSSPropertyID& id,
                                    const CSSValue& value);
   const tasm::CSSValue& ResolveCurrentStyleValue(

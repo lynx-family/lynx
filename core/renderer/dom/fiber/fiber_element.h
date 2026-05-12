@@ -272,8 +272,6 @@ class FiberElement : public Element {
       std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip)
       override;
 
-  void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) override;
-
   ParallelFlushReturn CreateParallelTaskHandler();
 
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
@@ -310,7 +308,6 @@ class FiberElement : public Element {
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
-  void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
   void DoFullCSSResolving();
 
   void UpdateLayoutInfo();
