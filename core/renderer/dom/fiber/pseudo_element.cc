@@ -4,8 +4,8 @@
 
 #include "core/renderer/dom/fiber/pseudo_element.h"
 
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
 
 namespace lynx {
@@ -37,7 +37,7 @@ PlaceHolderPseudoElementStyleNames() {
   return *kPlaceHolderPseudoElementStyleName;
 }
 
-PseudoElement::PseudoElement(PseudoState state, FiberElement* holder_element)
+PseudoElement::PseudoElement(PseudoState state, Element* holder_element)
     : state_(state), holder_element_(holder_element) {
   platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
       *holder_element->computed_css_style());
