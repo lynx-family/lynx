@@ -562,7 +562,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
         // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchViewDidStartLoading
         // Due to lynxDevTool UI session limitations, we cannot do this yet
         [self->_devTool attachDebugBridge:url];
-        [weakSelf loadTemplateBundle:bundle withURL:url initData:data];
+        [weakSelf internalLoadTemplateBundle:bundle withURL:url initData:data];
       } else {
         [weakSelf onFetchTemplateError:error];
       }
@@ -580,7 +580,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                  // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchViewDidStartLoading
                  // Due to lynxDevTool UI session limitations, we cannot do this yet
                  [self->_devTool attachDebugBridge:url];
-                 [weakSelf loadTemplateBundle:templateRes.bundle withURL:url initData:data];
+                 [weakSelf internalLoadTemplateBundle:templateRes.bundle withURL:url initData:data];
                } else if (templateRes.data) {
                  [weakSelf.devTool onTemplateLoadSuccess:templateRes.data];
                  // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchViewDidStartLoading
@@ -602,7 +602,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
           [weakSelf internalLoadTemplate:tem withUrl:url initData:data];
         } else if ([tem isKindOfClass:[LynxTemplateBundle class]]) {
           [weakSelf.devTool onLoadFromBundle:tem withURL:url initData:data];
-          [weakSelf loadTemplateBundle:tem withURL:url initData:data];
+          [weakSelf internalLoadTemplateBundle:tem withURL:url initData:data];
         }
       } else {
         [weakSelf onFetchTemplateError:error];
@@ -615,6 +615,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 - (void)loadTemplateBundle:(LynxTemplateBundle*)bundle
                    withURL:(NSString*)url
                   initData:(LynxTemplateData*)data {
+  [self updateUrl:url];
+  [self dispatchViewDidStartLoading];
+  [self internalLoadTemplateBundle:bundle withURL:url initData:data];
+}
+
+- (void)internalLoadTemplateBundle:(LynxTemplateBundle*)bundle
+                           withURL:(NSString*)url
+                          initData:(LynxTemplateData*)data {
   if (_enableReuseEngine && [_lynxEngine hasLoaded] &&
       [_lynxEngine isRunOnCurrentTemplateRender:self]) {
     // TODO(renzhongyue): attachUIBodyView
@@ -632,8 +640,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [self markTiming:lynx::tasm::timing::kLoadBundleStart
         pipelineID:pipeline_options->pipeline_id.c_str()];
 
-  [self updateUrl:url];
-  [self dispatchViewDidStartLoading];
   // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchViewDidStartLoading
   // Due to lynxDevTool UI session limitations, we cannot do this yet
   [self->_devTool attachDebugBridge:url];

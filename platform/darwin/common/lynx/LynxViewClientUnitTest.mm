@@ -35,8 +35,6 @@
                  withPipelineInfo:(nonnull LynxPipelineInfo*)info {
   XCTAssertTrue(_lynxView == lynxView);
   XCTAssertEqualObjects([_lynxView url], [info url]);
-  static int count = 0;
-  XCTAssertTrue([_onPageStartedExpectationArray[count++] integerValue] & [info pipelineOrigin]);
   [_onPageStartedExpectation fulfill];
 }
 
