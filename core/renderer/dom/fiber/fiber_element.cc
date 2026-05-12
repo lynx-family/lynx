@@ -3183,31 +3183,34 @@ void Element::SetNativeProps(
   }
 }
 
-void FiberElement::MarkFontSizeInvalidateRecursively() {
+void Element::MarkFontSizeInvalidateRecursively() {
   MarkDirty(kDirtyFontSize);
-  auto *child = static_cast<FiberElement *>(first_render_child_);
+  auto *child = first_render_child_;
   while (child) {
     child->MarkFontSizeInvalidateRecursively();
-    child = static_cast<FiberElement *>(child->next_render_sibling_);
+    child = child->next_render_sibling_;
   }
 }
 
-void FiberElement::InvalidateChildrenFontSizeRecursively() {
-  auto *child = static_cast<FiberElement *>(first_render_child_);
+void Element::InvalidateChildrenFontSizeRecursively() {
+  auto *child = first_render_child_;
   while (child) {
     child->MarkFontSizeInvalidateRecursively();
-    child = static_cast<FiberElement *>(child->next_render_sibling_);
+    child = child->next_render_sibling_;
   }
 }
 
-void FiberElement::InvalidateChildrenInheritedStylesRecursively() {
+void Element::InvalidateChildrenInheritedStylesRecursively() {
+  auto mark_inherited_dirty = [](auto &self, Element *element) -> void {
+    if (!element->is_raw_text()) {
+      element->MarkDirtyLite(kDirtyPropagateInherited);
+    }
+    for (const auto &child : element->scoped_children_) {
+      self(self, child.get());
+    }
+  };
   for (const auto &child : scoped_children_) {
-    static_cast<FiberElement *>(child.get())
-        ->ApplyFunctionRecursive([](FiberElement *element) {
-          if (!element->is_raw_text()) {
-            element->MarkDirtyLite(kDirtyPropagateInherited);
-          }
-        });
+    mark_inherited_dirty(mark_inherited_dirty, child.get());
   }
 }
 
@@ -3299,13 +3302,13 @@ void FiberElement::RecursivelyMarkChildrenCSSVariableDirty(
   }
 }
 
-void FiberElement::RecursivelyMarkCustomPropertiesDirty() {
+void Element::RecursivelyMarkCustomPropertiesDirty() {
   for (const auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
-    if (!fiber_child->is_raw_text()) {
-      fiber_child->MarkStyleDirty(false);
+    auto *element_child = child.get();
+    if (!element_child->is_raw_text()) {
+      element_child->MarkStyleDirty(false);
     }
-    fiber_child->RecursivelyMarkCustomPropertiesDirty();
+    element_child->RecursivelyMarkCustomPropertiesDirty();
   }
 }
 

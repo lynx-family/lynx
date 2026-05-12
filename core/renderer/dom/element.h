@@ -1531,6 +1531,10 @@ class Element : public lepus::RefCounted,
 
   // Mark style dirty, optionally recursively for children
   void MarkStyleDirty(bool recursive = false);
+  void MarkFontSizeInvalidateRecursively();
+  void InvalidateChildrenFontSizeRecursively();
+  void InvalidateChildrenInheritedStylesRecursively();
+  void RecursivelyMarkCustomPropertiesDirty();
 
   void MarkTemplateElement() { is_template_ = true; }
 

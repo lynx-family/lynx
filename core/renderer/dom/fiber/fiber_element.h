@@ -221,19 +221,9 @@ class FiberElement : public Element {
     }
   }
 
-  void MarkFontSizeInvalidateRecursively();
-  void InvalidateChildrenFontSizeRecursively();
-  void InvalidateChildrenInheritedStylesRecursively();
-
   // if child's related css variable is updated, invalidate child's style.
   void RecursivelyMarkChildrenCSSVariableDirty(
       const lepus::Value& css_variable_updated);
-
-  /**
-   * @brief Recursively marks all scoped children as style-dirty when custom
-   * properties change on this element.
-   */
-  void RecursivelyMarkCustomPropertiesDirty();
 
   void ConsumeStyle(const StyleMap& styles,
                     const StyleMap* inherit_styles) override;
