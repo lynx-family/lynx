@@ -1066,6 +1066,7 @@ class Element : public lepus::RefCounted,
   void ResolveCSSStylesNewPipeline(bool& need_update);
   void ResolveSimpleStyles();
   void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
+  void DoFullCSSResolving();
   void ResetDirectionAwareProperty(const CSSPropertyID& id,
                                    const CSSValue& value);
   const tasm::CSSValue& ResolveCurrentStyleValue(

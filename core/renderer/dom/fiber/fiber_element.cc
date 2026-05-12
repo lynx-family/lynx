@@ -3821,7 +3821,11 @@ void Element::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
   });
 }
 
-void FiberElement::DoFullCSSResolving() {
+void Element::DoFullCSSResolving() {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_DO_FULL_STYLE_RESOLVE);
 
   CSSVariableMap changed_css_vars;

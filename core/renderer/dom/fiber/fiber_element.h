@@ -299,7 +299,6 @@ class FiberElement : public Element {
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
-  void DoFullCSSResolving();
 
   void UpdateLayoutInfo();
 
