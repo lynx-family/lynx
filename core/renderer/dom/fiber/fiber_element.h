@@ -139,13 +139,6 @@ class FiberElement : public Element {
                        const base::Vector<fml::RefPtr<FiberElement>>& removed,
                        FiberElement* ref_node);
 
-  /**
-   * Element API for updating css variables
-   * @param variables the css variables to be updated from JS.
-   */
-  void UpdateCSSVariable(const lepus::Value& variables,
-                         std::shared_ptr<PipelineOptions>& pipeline_option);
-
   void TraversalInsertFixedElementOfTree();
 
   template <typename F>

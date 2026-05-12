@@ -3563,9 +3563,13 @@ bool Element::IsRelatedCSSVariableUpdated(
   return changed;
 }
 
-void FiberElement::UpdateCSSVariable(
+void Element::UpdateCSSVariable(
     const lepus::Value &css_variable_updated,
     std::shared_ptr<PipelineOptions> &pipeline_option) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_CSS_VARIABLE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());

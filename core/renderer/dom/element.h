@@ -1594,6 +1594,12 @@ class Element : public lepus::RefCounted,
       const lepus::Value& css_variable_updated);
   bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
                                    const lepus::Value changing_css_variables);
+  /**
+   * Element API for updating css variables
+   * @param variables the css variables to be updated from JS.
+   */
+  void UpdateCSSVariable(const lepus::Value& variables,
+                         std::shared_ptr<PipelineOptions>& pipeline_option);
   bool RefreshStyle(StyleMap& parsed_styles,
                     base::Vector<CSSPropertyID>& reset_ids,
                     bool force_use_parsed_styles_map = false);
