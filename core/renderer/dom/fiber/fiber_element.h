@@ -271,8 +271,6 @@ class FiberElement : public Element {
 
   void ResetFontSize();
 
-  void UpdateFiberElement();
-
   virtual void MarkAsLayoutRoot() override;
   virtual void MarkLayoutDirty() override;
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
@@ -285,11 +283,6 @@ class FiberElement : public Element {
                                         double root_node_font_size) override;
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                          const lepus::Value& value) override;
-
-  /**
-   * Interface used to create/update LayoutNode for FiberElement.
-   */
-  void UpdateLayoutNodeByBundle();
 
   virtual void CheckHasInlineContainer(Element* parent) override;
 
@@ -583,8 +576,6 @@ class FiberElement : public Element {
   void UpdateLayoutInfo();
 
   void MarkLayoutDirtyLite() override;
-
-  void EnsureSLNode();
 
   virtual void DispatchLayoutBefore();
 

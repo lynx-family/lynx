@@ -2991,7 +2991,6 @@ bool Element::ConsumeAllAttributes() {
 void Element::PerformElementContainerCreateOrUpdate(bool need_update,
                                                     bool need_reset) {
   PushStyleToBundle();
-  auto *fiber_element = static_cast<FiberElement *>(this);
 
   if (dirty_ & kDirtyCreated) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_CRATE,
@@ -3007,8 +3006,7 @@ void Element::PerformElementContainerCreateOrUpdate(bool need_update,
       UpdateLayoutNodeProps(prop_bundle_);
 
       if (!is_virtual()) {
-        // Temporary while layout update helpers still live on FiberElement.
-        fiber_element->UpdateFiberElement();
+        UpdateFiberElement();
       }
     }
 
@@ -3020,8 +3018,7 @@ void Element::PerformElementContainerCreateOrUpdate(bool need_update,
   }
   dirty_ &= ~kDirtyForceUpdate;
 
-  // Temporary while layout update helpers still live on FiberElement.
-  fiber_element->UpdateLayoutNodeByBundle();
+  UpdateLayoutNodeByBundle();
 
   if (need_reset) {
     ResetPropBundle();
@@ -3312,7 +3309,7 @@ void FiberElement::RecursivelyMarkCustomPropertiesDirty() {
   }
 }
 
-void FiberElement::EnsureSLNode() {
+void Element::EnsureSLNode() {
   if (EnableLayoutInElementMode() && sl_node_ == nullptr) {
     sl_node_ = std::make_unique<SLNode>(
         element_manager()->GetLayoutConfigs(),
@@ -3446,7 +3443,7 @@ void FiberElement::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
   layout_bundle_->attrs.emplace_back(std::make_pair(key, value));
 }
 
-void FiberElement::UpdateLayoutNodeByBundle() {
+void Element::UpdateLayoutNodeByBundle() {
   if (EnableLayoutInElementMode()) {
     EnsureSLNode();
     return;
@@ -3494,7 +3491,7 @@ void FiberElement::RequestNextFrame() {
   HandleDelayTask([this]() { element_manager()->RequestNextFrame(this); });
 }
 
-void FiberElement::UpdateFiberElement() {
+void Element::UpdateFiberElement() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_FIBER_ELEMENT,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());

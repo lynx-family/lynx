@@ -876,6 +876,10 @@ class Element : public lepus::RefCounted,
 
   void PreparePropBundleIfNeed();
 
+  void UpdateFiberElement();
+
+  void UpdateLayoutNodeByBundle();
+
   bool GetEnableZIndex();
 
   virtual void MarkLayoutDirty();
@@ -1486,6 +1490,8 @@ class Element : public lepus::RefCounted,
   bool ConsumeAllAttributes();
 
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
+
+  void EnsureSLNode();
 
   /**
    * This function will be called before add node.
