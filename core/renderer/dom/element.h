@@ -156,6 +156,16 @@ class Element : public lepus::RefCounted,
                 public SelectorItem,
                 public style::SimpleStyleNode {
  public:
+  struct InheritedProperty {
+    // Indicates that children have been marked to propagate inherited
+    // properties.
+    bool children_propagate_inherited_styles_flag_{false};
+
+    const StyleMap* inherited_styles_{nullptr};
+    const base::Vector<tasm::CSSPropertyID>* reset_inherited_ids_{nullptr};
+    const CustomPropertiesMap* custom_properties_{nullptr};
+  };
+
   Element(const base::String& tag, ElementManager* element_manager,
           uint32_t node_index);
   Element(ElementManager* manager, const base::String& tag);
@@ -457,6 +467,9 @@ class Element : public lepus::RefCounted,
   static event::EventListener::Options GetEventListenerOptions(
       const base::String& type);
 
+  virtual const InheritedProperty GetInheritedProperty();
+  const InheritedProperty GetParentInheritedProperty();
+
   event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event);
 
@@ -529,7 +542,11 @@ class Element : public lepus::RefCounted,
   // For JS API setNativeProps
   virtual void SetNativeProps(
       const lepus::Value& args,
-      std::shared_ptr<PipelineOptions>& pipeline_options) = 0;
+      std::shared_ptr<PipelineOptions>& pipeline_options);
+
+  void FiberAddEvent(const base::String& type, const base::String& name,
+                     const lepus::Value& callback,
+                     const std::string& context_name);
 
   // Get List Node
   virtual ListNode* GetListNode() = 0;
@@ -863,7 +880,7 @@ class Element : public lepus::RefCounted,
   // TTML NoDiff, the implementation of worklets no longer relies on these
   // capabilities. After the 2.0 worklet services are phased out, the following
   // two APIs will also be removed.
-  virtual StyleMap GetStylesForWorklet() = 0;
+  virtual StyleMap GetStylesForWorklet();
   virtual const AttrMap& GetAttributesForWorklet();
 
   inline const auto& GlobalBindTarget() { return global_bind_target_set_; }
@@ -1082,7 +1099,7 @@ class Element : public lepus::RefCounted,
 
   CSSKeyframesToken* GetCSSKeyframesToken(const base::String& animation_name);
 
-  virtual CSSFragment* GetRelatedCSSFragment() = 0;
+  virtual CSSFragment* GetRelatedCSSFragment();
 
   virtual void FlushProps() = 0;
 
@@ -1107,7 +1124,7 @@ class Element : public lepus::RefCounted,
 
   virtual void OnPatchFinish(std::shared_ptr<PipelineOptions>& option);
 
-  virtual int32_t GetCSSID() const = 0;
+  virtual int32_t GetCSSID() const;
 
   virtual void SetCSSID(int32_t id);
 
@@ -1438,6 +1455,16 @@ class Element : public lepus::RefCounted,
       ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
+
+  bool ConsumeAllAttributes();
+
+  void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
+
+  virtual void SetAttributeInternal(const base::String& key,
+                                    const lepus::Value& value);
+
+  virtual void MarkHasLayoutOnlyPropsIfNecessary(
+      const base::String& attribute_key);
 
   virtual void PushStyleToBundle();
 

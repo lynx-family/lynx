@@ -61,15 +61,6 @@ class FiberElement : public Element {
 
   ~FiberElement() override = default;
 
-  struct InheritedProperty {
-    // indicate it's children has been marked to propagate inherited properties.
-    bool children_propagate_inherited_styles_flag_{false};
-
-    const StyleMap* inherited_styles_{nullptr};
-    const base::Vector<tasm::CSSPropertyID>* reset_inherited_ids_{nullptr};
-    const CustomPropertiesMap* custom_properties_{nullptr};
-  };
-
   struct PerfStatistic {
     PerfStatistic(uint32_t total_task_count)
         : total_task_count_(total_task_count) {}
@@ -84,12 +75,6 @@ class FiberElement : public Element {
     uint64_t total_processing_start_{0};
     uint64_t total_waiting_time_{0};
   };
-
-  // for Fiber specific
-
-  virtual const InheritedProperty GetInheritedProperty();
-
-  const InheritedProperty GetParentInheritedProperty();
 
   /**
    * A key function to GetListNode
@@ -190,20 +175,6 @@ class FiberElement : public Element {
    */
   void UpdateCSSVariable(const lepus::Value& variables,
                          std::shared_ptr<PipelineOptions>& pipeline_option);
-
-  void FiberAddEvent(const base::String& type, const base::String& name,
-                     const lepus::Value& callback,
-                     const std::string& context_name);
-
-  /**
-   * Element API for setNativeProps
-   *  @param native_props the props that updated from js.
-   */
-  void SetNativeProps(
-      const lepus::Value& native_props,
-      std::shared_ptr<PipelineOptions>& pipeline_options) override;
-
-  virtual StyleMap GetStylesForWorklet() override;
 
   /**
    * @brief Set the style objects for the current element.
@@ -566,8 +537,6 @@ class FiberElement : public Element {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
-  int32_t GetCSSID() const override;
-
   bool MergeInlineStyles(StyleMap& new_styles,
                          StyleMap& important_styles) final;
   void PersistAnimationFillStyles(const StyleMap& styles) override;
@@ -613,10 +582,6 @@ class FiberElement : public Element {
 
   void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) override;
 
-  bool ConsumeAllAttributes();
-
-  void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
-
   ParallelFlushReturn CreateParallelTaskHandler();
 
   /**
@@ -627,14 +592,6 @@ class FiberElement : public Element {
 
   // called when a child element is removed
   virtual void OnNodeRemoved(FiberElement* child);
-
-  virtual void SetAttributeInternal(const base::String& key,
-                                    const lepus::Value& value);
-
-  virtual CSSFragment* GetRelatedCSSFragment() override;
-
-  virtual void MarkHasLayoutOnlyPropsIfNecessary(
-      const base::String& attribute_key);
 
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
 

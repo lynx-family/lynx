@@ -232,10 +232,9 @@ FiberElement::FiberElement(const FiberElement &element,
                            bool clone_resolved_props)
     : Element(element, clone_resolved_props) {}
 
-void FiberElement::FiberAddEvent(const base::String &type,
-                                 const base::String &name,
-                                 const lepus::Value &callback,
-                                 const std::string &context_name) {
+void Element::FiberAddEvent(const base::String &type, const base::String &name,
+                            const lepus::Value &callback,
+                            const std::string &context_name) {
   auto event_options = GetEventListenerOptions(type);
   auto event_name = name.str();
   auto *manager = element_manager();
@@ -557,15 +556,14 @@ void FiberElement::OnNodeRemoved(FiberElement *child) {
   }
 }
 
-const FiberElement::InheritedProperty FiberElement::GetInheritedProperty() {
+const Element::InheritedProperty Element::GetInheritedProperty() {
   return {
       children_propagate_inherited_styles_flag_, inherited_styles_.get(),
       reset_inherited_ids_.get(),
       custom_properties_.Get() ? &custom_properties_.Get()->Value() : nullptr};
 }
 
-const FiberElement::InheritedProperty
-FiberElement::GetParentInheritedProperty() {
+const Element::InheritedProperty Element::GetParentInheritedProperty() {
   // If in a parallel flush process or if the parent is null, return
   // empty InheritedProperty indicating that it is not necessary to consider the
   // inheritance logic at this time.
@@ -575,7 +573,7 @@ FiberElement::GetParentInheritedProperty() {
                                      : nullptr};
   }
 
-  FiberElement *real_parent = static_cast<FiberElement *>(parent());
+  Element *real_parent = parent();
   if (real_parent == nullptr) {
     return InheritedProperty();
   }
@@ -583,7 +581,7 @@ FiberElement::GetParentInheritedProperty() {
   return real_parent->GetInheritedProperty();
 }
 
-CSSFragment *FiberElement::GetRelatedCSSFragment() {
+CSSFragment *Element::GetRelatedCSSFragment() {
   if (css_id_ != kInvalidCssId) {
     if (!style_sheet_) {
       if (!css_style_sheet_manager_ && GetParentComponentElement()) {
@@ -626,7 +624,7 @@ CSSFragment *FiberElement::GetRelatedCSSFragment() {
   }
 }
 
-int32_t FiberElement::GetCSSID() const {
+int32_t Element::GetCSSID() const {
   if (css_id_ != kInvalidCssId) {
     return css_id_;
   } else {
@@ -1209,7 +1207,7 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
   MarkDetached();
 }
 
-StyleMap FiberElement::GetStylesForWorklet() {
+StyleMap Element::GetStylesForWorklet() {
   if (element_manager()->EnableNewStylingPipeline()) {
     return computed_css_style()->GetResolvedValues();
   }
@@ -2967,7 +2965,7 @@ void FiberElement::ConsumeStyleInternal(
   consume_func(styles, false);
 }
 
-bool FiberElement::ConsumeAllAttributes() {
+bool Element::ConsumeAllAttributes() {
   bool need_update = false;
   if (dirty_ & kDirtyAttr) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_ATTR,
@@ -2995,9 +2993,10 @@ bool FiberElement::ConsumeAllAttributes() {
   return need_update;
 }
 
-void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update,
-                                                         bool need_reset) {
+void Element::PerformElementContainerCreateOrUpdate(bool need_update,
+                                                    bool need_reset) {
   PushStyleToBundle();
+  auto *fiber_element = static_cast<FiberElement *>(this);
 
   if (dirty_ & kDirtyCreated) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_CRATE,
@@ -3013,7 +3012,8 @@ void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update,
       UpdateLayoutNodeProps(prop_bundle_);
 
       if (!is_virtual()) {
-        UpdateFiberElement();
+        // Temporary while layout update helpers still live on FiberElement.
+        fiber_element->UpdateFiberElement();
       }
     }
 
@@ -3025,7 +3025,8 @@ void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update,
   }
   dirty_ &= ~kDirtyForceUpdate;
 
-  UpdateLayoutNodeByBundle();
+  // Temporary while layout update helpers still live on FiberElement.
+  fiber_element->UpdateLayoutNodeByBundle();
 
   if (need_reset) {
     ResetPropBundle();
@@ -3056,14 +3057,14 @@ ParallelFlushReturn FiberElement::CreateParallelTaskHandler() {
   };
 }
 
-void FiberElement::MarkHasLayoutOnlyPropsIfNecessary(
+void Element::MarkHasLayoutOnlyPropsIfNecessary(
     const base::String &attribute_key) {
   // Any attribute will cause has_layout_only_props_ = false
   has_layout_only_props_ = false;
 }
 
-void FiberElement::SetAttributeInternal(const base::String &key,
-                                        const lepus::Value &value) {
+void Element::SetAttributeInternal(const base::String &key,
+                                   const lepus::Value &value) {
   WillConsumeAttribute(key, value);
 
   PreparePropBundleIfNeed();
@@ -3140,7 +3141,7 @@ void FiberElement::SetAttributeInternal(const base::String &key,
 #endif
 }
 
-void FiberElement::SetNativeProps(
+void Element::SetNativeProps(
     const lepus::Value &native_props,
     std::shared_ptr<PipelineOptions> &pipeline_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_NATIVE_PROPS,
@@ -3186,7 +3187,7 @@ void FiberElement::SetNativeProps(
       element_manager()->OnPatchFinish(pipeline_options, this);
     }
   } else {
-    LOGE("FiberElement::SetNativeProps to an detached element!");
+    LOGE("Element::SetNativeProps to an detached element!");
   }
 }
 
