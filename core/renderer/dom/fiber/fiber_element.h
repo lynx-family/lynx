@@ -219,10 +219,6 @@ class FiberElement : public Element {
   void OnPseudoStatusChanged(PseudoState prev_status,
                              PseudoState current_status) override;
 
-  bool RefreshStyle(StyleMap& parsed_styles,
-                    base::Vector<CSSPropertyID>& reset_ids,
-                    bool force_use_parsed_styles_map = false);
-
   void OnClassChanged(const ClassList& old_classes,
                       const ClassList& new_classes);
 

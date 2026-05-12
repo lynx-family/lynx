@@ -3871,9 +3871,13 @@ const tasm::CSSValue &Element::ResolveCurrentStyleValue(
   return default_value;
 }
 
-bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
-                                base::Vector<CSSPropertyID> &reset_ids,
-                                bool force_use_parsed_styles_map) {
+bool Element::RefreshStyle(StyleMap &parsed_styles,
+                           base::Vector<CSSPropertyID> &reset_ids,
+                           bool force_use_parsed_styles_map) {
+  if (!is_fiber_element_) {
+    return false;
+  }
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_REFRESH_STYLE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
