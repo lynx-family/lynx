@@ -15,6 +15,9 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.render.IRendererHost;
+import com.lynx.tasm.behavior.render.PlatformRendererContext;
+import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook;
@@ -23,8 +26,8 @@ import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.utils.BlurUtils;
 import java.lang.ref.WeakReference;
 
-public class AndroidView
-    extends ViewGroup implements IDrawChildHookBinding, IMeaningfulPaintingAreaInvalidateHook {
+public class AndroidView extends ViewGroup
+    implements IDrawChildHookBinding, IMeaningfulPaintingAreaInvalidateHook, IRendererHost {
   private Bitmap mBlurBitmap;
   private Canvas mBlurCanvas;
   private float mBlurRadius = 0;
@@ -96,9 +99,30 @@ public class AndroidView
   private boolean mPanInterceptAncestors = false;
   private boolean mHasSetPanInterceptAncestors = false;
   private boolean mPanInterceptDescendants = false;
+  private Renderer mRenderer;
 
   public AndroidView(Context context) {
     super(context);
+  }
+
+  @Override
+  public void setRenderer(Renderer renderer) {
+    mRenderer = renderer;
+  }
+
+  @Override
+  public Renderer getRenderer() {
+    return mRenderer;
+  }
+
+  @Override
+  public ViewGroup getView() {
+    return this;
+  }
+
+  @Override
+  public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+    return new Renderer(platformRendererContext, sign);
   }
 
   @Override
