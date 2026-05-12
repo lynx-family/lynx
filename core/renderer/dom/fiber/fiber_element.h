@@ -198,9 +198,6 @@ class FiberElement : public Element {
   void StoreLayoutNode(FiberElement* child, FiberElement* ref);
   void RestoreLayoutNode(FiberElement* child);
 
-  // For snapshot test
-  void DumpStyle(StyleMap& parsed_styles);
-
   void OnPseudoStatusChanged(PseudoState prev_status,
                              PseudoState current_status) override;
 

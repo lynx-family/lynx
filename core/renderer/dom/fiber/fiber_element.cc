@@ -3958,7 +3958,11 @@ void Element::OnClassChanged(const ClassList &old_classes,
 }
 
 // For snapshot test
-void FiberElement::DumpStyle(StyleMap &computed_styles) {
+void Element::DumpStyle(StyleMap &computed_styles) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   if (element_manager()->EnableNewStylingPipeline()) {
     computed_styles = computed_css_style()->GetResolvedValues();
     return;

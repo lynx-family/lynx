@@ -844,6 +844,9 @@ class Element : public lepus::RefCounted,
   void OnClassChanged(const ClassList& old_classes,
                       const ClassList& new_classes);
 
+  // For snapshot test
+  void DumpStyle(StyleMap& parsed_styles);
+
   ContentData* content_data() const { return content_data_.get(); }
 
   virtual void UpdateDynamicElementStyle(uint32_t style, bool force_update) = 0;
