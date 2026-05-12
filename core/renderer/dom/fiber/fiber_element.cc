@@ -863,7 +863,7 @@ void FiberElement::ApplyDynamicSimpleStylesWithoutTail(
                 });
 }
 
-void FiberElement::FinalizeSimpleStyleUpdate() {
+void Element::FinalizeSimpleStyleUpdate() {
   if (has_keyframe_props_changed_) {
     HandleDelayTask([this]() { HandleKeyframePropsChange(); });
     if (!enable_new_animator()) {

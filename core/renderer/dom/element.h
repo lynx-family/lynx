@@ -1051,6 +1051,7 @@ class Element : public lepus::RefCounted,
 #if ENABLE_TRACE_PERFETTO
   virtual void UpdateTraceDebugInfo(TraceEvent* event);
 #endif
+  void FinalizeSimpleStyleUpdate();
   void SetStyleObjects(
       std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
           style_objects) override;

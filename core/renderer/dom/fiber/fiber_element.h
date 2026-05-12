@@ -406,7 +406,6 @@ class FiberElement : public Element {
   void ApplyDynamicSimpleStylesWithoutTail(
       const tasm::StyleMap& dynamic_style_map,
       const tasm::StyleMap& base_style_map);
-  void FinalizeSimpleStyleUpdate();
 };
 
 }  // namespace tasm
