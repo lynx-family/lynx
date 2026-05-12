@@ -676,7 +676,7 @@ bool FiberElement::MergeInlineStyles(StyleMap &new_styles,
   return res;
 }
 
-void FiberElement::PersistAnimationFillStyles(const StyleMap &styles) {
+void Element::PersistAnimationFillStyles(const StyleMap &styles) {
   if (!element_manager()->EnableAnimationForwardUpdatePreservation() ||
       !enable_new_animator() || styles.empty()) {
     return;
@@ -686,7 +686,7 @@ void FiberElement::PersistAnimationFillStyles(const StyleMap &styles) {
   }
 }
 
-void FiberElement::ClearPersistedAnimationFillStyle(CSSPropertyID id) {
+void Element::ClearPersistedAnimationFillStyle(CSSPropertyID id) {
   if (!animation_override_styles_map_.has_value()) {
     return;
   }

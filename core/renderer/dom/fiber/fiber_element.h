@@ -327,9 +327,6 @@ class FiberElement : public Element {
 
   bool MergeInlineStyles(StyleMap& new_styles,
                          StyleMap& important_styles) final;
-  void PersistAnimationFillStyles(const StyleMap& styles) override;
-  void ClearPersistedAnimationFillStyle(CSSPropertyID id) override;
-
   void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
 
   bool IsEventPathCatch(event::EventTarget* target,
