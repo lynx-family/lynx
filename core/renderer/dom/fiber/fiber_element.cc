@@ -716,7 +716,7 @@ void FiberElement::DispatchAsyncResolveProperty() {
 
 #pragma region simple styling
 
-void FiberElement::SetStyleObjects(
+void Element::SetStyleObjects(
     std::unique_ptr<style::StyleObject *, style::StyleObjectArrayDeleter>
         style_objects) {
   last_style_objects_ = std::move(style_objects_);

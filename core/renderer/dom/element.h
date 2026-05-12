@@ -1048,6 +1048,9 @@ class Element : public lepus::RefCounted,
   NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
       const NewPipelineResolveRequest& request);
   void ResolveCSSStylesNewPipeline(bool& need_update);
+  void SetStyleObjects(
+      std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
+          style_objects) override;
   void ReplaceDynamicSimpleStyles(
       style::DynamicStyleObjectRef new_style_object);
   void AddDynamicSimpleStyles(tasm::StyleMap&& new_styles);

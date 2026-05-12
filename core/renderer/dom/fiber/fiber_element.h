@@ -157,10 +157,6 @@ class FiberElement : public Element {
    * @param object_list A unique pointer to an array of StyleObject pointers,
    *                    along with a custom deleter function for the array.
    */
-  void SetStyleObjects(
-      std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
-          object_list) override final;
-
   /**
    * @brief Update the simple styles of the current element.
    *
