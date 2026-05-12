@@ -1509,6 +1509,10 @@ class Element : public lepus::RefCounted,
                          double old_font_size, double old_root_font_size);
   DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
       const StyleMap& resolved_style_map) const;
+  void ReplayDynamicResolvedStyleSideEffects(
+      const StyleMap& resolved_style_map,
+      DynamicCSSStylesManager::StyleUpdateFlags update_flags,
+      const CSSIDBitset& replayed_ids);
 
   /**
    * This function will be called before add node.

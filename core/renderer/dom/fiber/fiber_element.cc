@@ -2180,7 +2180,7 @@ void FiberElement::ReplayCommitSideEffects(
   }
 }
 
-void FiberElement::ReplayDynamicResolvedStyleSideEffects(
+void Element::ReplayDynamicResolvedStyleSideEffects(
     const StyleMap &resolved_style_map,
     DynamicCSSStylesManager::StyleUpdateFlags update_flags,
     const CSSIDBitset &replayed_ids) {

@@ -407,10 +407,6 @@ class FiberElement : public Element {
   void ReplayCommitSideEffects(
       const starlight::ComputedCSSStyle& computed_style,
       const StyleMap& resolved_style_map, CSSIDBitset* replayed_ids = nullptr);
-  void ReplayDynamicResolvedStyleSideEffects(
-      const StyleMap& resolved_style_map,
-      DynamicCSSStylesManager::StyleUpdateFlags update_flags,
-      const CSSIDBitset& replayed_ids);
   NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
       const NewPipelineResolveRequest& request);
 
