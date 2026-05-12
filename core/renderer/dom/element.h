@@ -847,6 +847,8 @@ class Element : public lepus::RefCounted,
 
   // For snapshot test
   void DumpStyle(StyleMap& parsed_styles);
+  void InvalidateChildrenIfNeeded();
+  bool HasAdjacentSiblingRulesInStyleSheets();
 
   ContentData* content_data() const { return content_data_.get(); }
 

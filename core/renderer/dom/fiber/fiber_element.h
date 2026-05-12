@@ -224,9 +224,6 @@ class FiberElement : public Element {
   void PrepareSelfForThreadedElementResolution();
   bool ShouldFallbackToSerialForNewStylingPipeline() const;
 
-  void InvalidateChildrenIfNeeded();
-  bool HasAdjacentSiblingRulesInStyleSheets();
-
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 

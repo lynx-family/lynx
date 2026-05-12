@@ -4910,13 +4910,21 @@ bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
 // adopted stylesheet from the element manager) contains a next-sibling
 // combinator rule (A + B). Used to guard sibling invalidation on insertion /
 // removal so we don't dirty siblings when no such rules exist.
-bool FiberElement::HasAdjacentSiblingRulesInStyleSheets() {
+bool Element::HasAdjacentSiblingRulesInStyleSheets() {
+  if (!is_fiber_element_) {
+    return false;
+  }
+
   auto *css_fragment = GetRelatedCSSFragment();
   return css_fragment && css_fragment->enable_css_selector() &&
          css_fragment->HasAdjacentSiblingRules();
 }
 
-void FiberElement::InvalidateChildrenIfNeeded() {
+void Element::InvalidateChildrenIfNeeded() {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   for (auto *invalidation_set : invalidation_lists_.descendants) {
     InvalidateChildren(invalidation_set);
   }
