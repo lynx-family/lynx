@@ -636,6 +636,12 @@ bool Element::HasUIPrimitive() const {
 }
 
 void Element::CheckHasInlineContainer(Element* parent) {
+  if (is_fiber_element_) {
+    EnsureLayoutBundle();
+    allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
+    return;
+  }
+
   if (parent) {
     allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
   }
@@ -1848,7 +1854,20 @@ PaintingContext* Element::painting_context() {
   return catalyzer_->painting_context();
 }
 
-void Element::MarkLayoutDirty() { element_manager_->MarkLayoutDirty(id_); }
+void Element::MarkLayoutDirty() {
+  if (is_fiber_element_) {
+    if (EnableLayoutInElementMode()) {
+      MarkLayoutDirtyLite();
+      return;
+    }
+
+    EnsureLayoutBundle();
+    layout_bundle_->is_dirty = true;
+    return;
+  }
+
+  element_manager_->MarkLayoutDirty(id_);
+}
 
 void Element::RequireFlush() {
   if (flush_required_) {

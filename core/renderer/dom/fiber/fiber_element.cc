@@ -3371,16 +3371,6 @@ void FiberElement::MarkAsLayoutRoot() {
   layout_bundle_->is_root = true;
 }
 
-void FiberElement::MarkLayoutDirty() {
-  if (EnableLayoutInElementMode()) {
-    MarkLayoutDirtyLite();
-    return;
-  }
-
-  EnsureLayoutBundle();
-  layout_bundle_->is_dirty = true;
-}
-
 void FiberElement::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
   if (EnableLayoutInElementMode()) {
     if (IsShadowNodeCustom()) {
@@ -3483,11 +3473,6 @@ void Element::UpdateLayoutNodeByBundle() {
     element_manager->UpdateLayoutNodeByBundle(id, std::move(layout_bundle));
   });
   layout_bundle_ = nullptr;
-}
-
-void FiberElement::CheckHasInlineContainer(Element *parent) {
-  EnsureLayoutBundle();
-  allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
 }
 
 void FiberElement::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {

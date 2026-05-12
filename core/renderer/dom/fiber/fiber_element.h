@@ -166,7 +166,6 @@ class FiberElement : public Element {
   }
 
   virtual void MarkAsLayoutRoot() override;
-  virtual void MarkLayoutDirty() override;
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
   virtual void UpdateLayoutNodeProps(
       const fml::RefPtr<PropBundle>& props) override;
@@ -177,8 +176,6 @@ class FiberElement : public Element {
                                         double root_node_font_size) override;
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                          const lepus::Value& value) override;
-
-  virtual void CheckHasInlineContainer(Element* parent) override;
 
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
