@@ -74,6 +74,7 @@ class LynxEnvConfig;
 class ListItemSchedulerAdapter;
 class ElementContextDelegate;
 class PlatformLayoutFunctionWrapper;
+class FiberElement;
 
 using ElementChildrenArray =
     base::InlineVector<Element*, kChildrenInlineVectorSize>;
@@ -840,7 +841,7 @@ class Element : public lepus::RefCounted,
   double GetCurrentRootFontSize();
 
   virtual void OnPseudoStatusChanged(PseudoState prev_status,
-                                     PseudoState current_status) {}
+                                     PseudoState current_status);
   void OnClassChanged(const ClassList& old_classes,
                       const ClassList& new_classes);
 
@@ -1731,6 +1732,8 @@ class Element : public lepus::RefCounted,
                                          const std::string& new_id);
   bool CheckHasInvalidationForClass(const ClassList& old_classes,
                                     const ClassList& new_classes);
+  void InvalidateChildren(css::InvalidationSet* invalidation_set);
+  void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
 
   base::String tag_;
 

@@ -3974,8 +3974,12 @@ void Element::DumpStyle(StyleMap &computed_styles) {
   computed_styles = parsed_styles_map_;
 }
 
-void FiberElement::OnPseudoStatusChanged(PseudoState prev_status,
-                                         PseudoState current_status) {
+void Element::OnPseudoStatusChanged(PseudoState prev_status,
+                                    PseudoState current_status) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PSEUDO_CHANGED,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -4227,7 +4231,11 @@ bool Element::CheckHasInvalidationForClass(const ClassList &old_classes,
   return invalidation_lists_.descendants.size() != old_size;
 }
 
-void FiberElement::InvalidateChildren(css::InvalidationSet *invalidation_set) {
+void Element::InvalidateChildren(css::InvalidationSet *invalidation_set) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   if (invalidation_set->WholeSubtreeInvalid() || !invalidation_set->IsEmpty()) {
     VisitChildren([invalidation_set](FiberElement *child) {
       if (!child->StyleDirty() && !child->is_raw_text() &&
@@ -4238,14 +4246,18 @@ void FiberElement::InvalidateChildren(css::InvalidationSet *invalidation_set) {
   }
 }
 
-void FiberElement::VisitChildren(
+void Element::VisitChildren(
     const base::MoveOnlyClosure<void, FiberElement *> &visitor) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   for (auto &child : scoped_children_) {
     auto *fiber_child = static_cast<FiberElement *>(child.get());
     // In fiber mode, we skip the children in component
     if (!fiber_child->is_component()) {
       visitor(fiber_child);
-      fiber_child->VisitChildren(visitor);
+      static_cast<Element *>(fiber_child)->VisitChildren(visitor);
     }
   }
 }

@@ -198,9 +198,6 @@ class FiberElement : public Element {
   void StoreLayoutNode(FiberElement* child, FiberElement* ref);
   void RestoreLayoutNode(FiberElement* child);
 
-  void OnPseudoStatusChanged(PseudoState prev_status,
-                             PseudoState current_status) override;
-
   void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
 
   // The text element can call this function to convert child fiber elements
@@ -251,9 +248,6 @@ class FiberElement : public Element {
   void HandleSelfFixedChange();
   void InsertFixedElement(FiberElement* child, FiberElement* ref_node);
   void RemoveFixedElement(FiberElement* child);
-
-  void InvalidateChildren(css::InvalidationSet* invalidation_set);
-  void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
 
   PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
 
