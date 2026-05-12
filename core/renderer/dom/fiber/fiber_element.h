@@ -207,8 +207,6 @@ class FiberElement : public Element {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
-  void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
-
   bool IsEventPathCatch(event::EventTarget* target,
                         event::Event* event) override;
 
@@ -240,8 +238,6 @@ class FiberElement : public Element {
   void HandleSelfFixedChange();
   void InsertFixedElement(FiberElement* child, FiberElement* ref_node);
   void RemoveFixedElement(FiberElement* child);
-
-  PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);

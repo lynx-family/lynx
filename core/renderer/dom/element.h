@@ -751,6 +751,7 @@ class Element : public lepus::RefCounted,
   }
 
   void MarkAttrDirtyForPseudoElement() { dirty_ |= kDirtyAttr; }
+  void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
 
   void UpdateLayout(float left, float top, float width, float height,
                     const std::array<float, 4>& paddings,
@@ -1452,6 +1453,7 @@ class Element : public lepus::RefCounted,
                     CSSVariableMap* changed_css_vars = nullptr);
 
   void HandlePseudoElement();
+  PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
 
   void HandleCSSVariables(StyleMap& styles);
 

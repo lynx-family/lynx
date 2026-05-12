@@ -4504,8 +4504,8 @@ void Element::ResetSheetRecursively(
   }
 }
 
-void FiberElement::PrepareOrUpdatePseudoElement(PseudoState state,
-                                                StyleMap &style_map) {
+void Element::PrepareOrUpdatePseudoElement(PseudoState state,
+                                           StyleMap &style_map) {
   if (style_map.empty() &&
       (!pseudo_elements_.has_value() ||
        pseudo_elements_->find(state) == pseudo_elements_->end())) {
@@ -4516,7 +4516,7 @@ void FiberElement::PrepareOrUpdatePseudoElement(PseudoState state,
   pseudo_element->UpdateStyleMap(style_map);
 }
 
-PseudoElement *FiberElement::CreatePseudoElementIfNeed(PseudoState state) {
+PseudoElement *Element::CreatePseudoElementIfNeed(PseudoState state) {
   if (pseudo_elements_.has_value()) {
     auto it = pseudo_elements_->find(state);
     if (it != pseudo_elements_->end()) {
