@@ -202,7 +202,7 @@ event::EventListener::Options Element::GetEventListenerOptions(
       is_capture_catch || is_bubble_catch, is_global_bind);
 }
 
-FiberElement::NewPipelineStyleResolveResult FiberElement::ResolveComputedStyles(
+Element::NewPipelineStyleResolveResult Element::ResolveComputedStyles(
     const starlight::ComputedCSSStyle *previous_final_style,
     double old_font_size, double old_root_font_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_COMPUTED_STYLES);

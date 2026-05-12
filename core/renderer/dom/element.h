@@ -951,6 +951,101 @@ class Element : public lepus::RefCounted,
   void ReplayChangedStyleSideEffect(CSSPropertyID id, const CSSValue& value);
   void ReplayResetStyleSideEffect(CSSPropertyID id);
 
+  struct NewPipelineResolveRequest {
+    bool force_resolve{false};
+    bool force_platform_update{false};
+    DynamicCSSStylesManager::StyleUpdateFlags dynamic_update_flags{0};
+  };
+
+  struct NewPipelineResolveOutcome {
+    bool need_update{false};
+    bool force_children{false};
+    DynamicCSSStylesManager::StyleUpdateFlags dynamic_style_flags{0};
+    DynamicCSSStylesManager::StyleUpdateFlags child_update_flags{0};
+  };
+
+  struct NewPipelineStyleResolveResult {
+    // final_style and base_style are the semantic results that downstream
+    // logic should read after ResolveComputedStyles() returns. They are raw
+    // pointers on purpose: they may alias owned_final_style,
+    // owned_base_style, or the element's existing platform_css_style_ when no
+    // newly owned snapshot is needed.
+    StyleMap resolved_style_map;
+    // TODO(zhouzhitao): get rid of underlying_layout_only_styles if
+    // layout_in_element is fully rolled out
+    StyleMap underlying_layout_only_styles;
+    const starlight::ComputedCSSStyle* parent_inheritance_style{nullptr};
+    const starlight::ComputedCSSStyle* previous_final_style{nullptr};
+    starlight::ComputedCSSStyle* final_style{nullptr};
+    starlight::ComputedCSSStyle* base_style{nullptr};
+    // owned_* carry the transient storage backing those semantic views until
+    // the caller decides whether this resolution pass actually commits. They
+    // cannot be replaced by final_style/base_style because commit-time code
+    // needs move ownership into platform_css_style_ / base_css_style_, while
+    // final_style/base_style may also alias existing external storage.
+    // Owns the resolved unanimated base snapshot when it cannot stay in
+    // base_css_style_ / platform_css_style_ directly during resolution.
+    std::unique_ptr<starlight::ComputedCSSStyle> owned_base_style;
+    // Owns the resolved animated final snapshot before it is committed into
+    // platform_css_style_.
+    std::unique_ptr<starlight::ComputedCSSStyle> owned_final_style;
+
+    // Publishes the semantic final/base style views after ownership has been
+    // decided. Callers should read final_style/base_style and ignore owned_*.
+    void BindResolvedStyles(starlight::ComputedCSSStyle* platform_style) {
+      DCHECK(platform_style != nullptr);
+      final_style = owned_final_style != nullptr  ? owned_final_style.get()
+                    : owned_base_style != nullptr ? owned_base_style.get()
+                                                  : platform_style;
+      base_style =
+          owned_base_style != nullptr ? owned_base_style.get() : final_style;
+      DCHECK(final_style != nullptr);
+      DCHECK(base_style != nullptr);
+    }
+
+    // Commits the resolved final style into platform_css_style_ when a platform
+    // update is required. This moves whichever owned snapshot currently backs
+    // final_style and leaves platform_css_style_ unchanged when final_style
+    // already aliases the existing platform slot.
+    void CommitPlatformStyleIfNeeded(
+        std::unique_ptr<starlight::ComputedCSSStyle>& platform_css_style,
+        bool style_changed) {
+      if (!style_changed) {
+        return;
+      }
+      if (final_style == owned_final_style.get()) {
+        platform_css_style = std::move(owned_final_style);
+      } else if (final_style == owned_base_style.get()) {
+        platform_css_style = std::move(owned_base_style);
+      }
+    }
+
+    // Persists the unanimated base snapshot into base_css_style_ after the
+    // final style has been committed. If final_style reuses owned_base_style,
+    // the base slot is only kept when no platform update happened.
+    void PersistBaseStyle(
+        std::unique_ptr<starlight::ComputedCSSStyle>& base_css_style,
+        bool style_changed) {
+      if (owned_base_style == nullptr) {
+        base_css_style.reset();
+        return;
+      }
+      if (final_style == owned_base_style.get()) {
+        if (style_changed) {
+          base_css_style.reset();
+        } else {
+          base_css_style = std::move(owned_base_style);
+        }
+        return;
+      }
+      base_css_style = std::move(owned_base_style);
+    }
+  };
+
+  NewPipelineStyleResolveResult ResolveComputedStyles(
+      const starlight::ComputedCSSStyle* previous_final_style,
+      double old_font_size, double old_root_font_size);
+
   void SetPlaceHolderStylesInternal(const PseudoPlaceHolderStyles& styles);
 
   void ResetStyleInternal(CSSPropertyID id);
