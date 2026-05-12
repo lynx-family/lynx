@@ -4477,8 +4477,8 @@ void Element::UpdateRenderRootElementIfNecessary(Element *child) {
   child->RecursivelyMarkRenderRootElement(this->render_root_element_);
 }
 
-void FiberElement::SetFontSizeForAllElement(double cur_node_font_size,
-                                            double root_node_font_size) {
+void Element::SetFontSizeForAllElement(double cur_node_font_size,
+                                       double root_node_font_size) {
   computed_css_style()->SetFontSize(cur_node_font_size, root_node_font_size);
 
   if (pseudo_elements_.has_value()) {
@@ -4488,7 +4488,7 @@ void FiberElement::SetFontSizeForAllElement(double cur_node_font_size,
   }
 }
 
-void FiberElement::UpdateLengthContextValueForAllElement(
+void Element::UpdateLengthContextValueForAllElement(
     const LynxEnvConfig &env_config) {
   computed_css_style()->SetFontScale(env_config.FontScale());
   computed_css_style()->SetViewportWidth(env_config.ViewportWidth());

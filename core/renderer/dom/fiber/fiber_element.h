@@ -557,10 +557,6 @@ class FiberElement : public Element {
 
   PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
 
-  void SetFontSizeForAllElement(double cur_node_font_size,
-                                double root_node_font_size);
-  void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
-
   void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
   void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
                                                bool& inner_force_update);

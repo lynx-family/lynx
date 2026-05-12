@@ -69,6 +69,7 @@ class Fragment;
 class CSSFragmentDecorator;
 struct LayoutBundle;
 class PseudoElement;
+class LynxEnvConfig;
 class ListItemSchedulerAdapter;
 class ElementContextDelegate;
 class PlatformLayoutFunctionWrapper;
@@ -1492,6 +1493,10 @@ class Element : public lepus::RefCounted,
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
 
   void EnsureSLNode();
+
+  void SetFontSizeForAllElement(double cur_node_font_size,
+                                double root_node_font_size);
+  void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
 
   /**
    * This function will be called before add node.
