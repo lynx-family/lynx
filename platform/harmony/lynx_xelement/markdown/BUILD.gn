@@ -1,0 +1,57 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../config.gni")
+import("../../../../core/Lynx.gni")
+import("../../../../core/base_targets.gni")
+import("../../harmony.gni")
+
+assert(is_harmony)
+
+declare_args() {
+  # Path to the @lynx/serval_markdown package. Markdown native code is linked
+  # into liblynx.so, so use the dependencies installed for @lynx/lynx.
+  serval_markdown_package_root =
+      "../../lynx_harmony/oh_modules/@lynx/serval_markdown"
+
+  # Path to the @lynx/lynxtextra package. @lynx/serval_markdown depends on it,
+  # and liblynx.so links tttext symbols through the serval markdown C++ API.
+  lynxtextra_root = "../../lynx_harmony/oh_modules/@lynx/lynxtextra"
+}
+
+config("serval_markdown_public_config") {
+  include_dirs = [
+    "//",
+    "../../../..",
+    "$serval_markdown_package_root/include",
+    "$lynxtextra_root/include",
+  ]
+
+  cflags_cc = [ "-Wno-overloaded-virtual" ]
+
+  lib_dirs = [
+    "$serval_markdown_package_root/libs/${harmony_app_abi}",
+    "$lynxtextra_root/libs/${harmony_app_abi}",
+  ]
+  libs = [
+    "serval_markdown",
+    "lynxtextra",
+    "ace_napi.z",
+    "ace_ndk.z",
+    "hitrace_ndk.z",
+    "hilog_ndk.z",
+    "native_drawing",
+    "native_display_manager",
+    "native_vsync",
+    "uv",
+  ]
+}
+
+lynx_core_source_set("serval_markdown") {
+  public_configs = [ ":serval_markdown_public_config" ]
+}
+
+group("xelement_markdown") {
+  deps = [ ":serval_markdown" ]
+}

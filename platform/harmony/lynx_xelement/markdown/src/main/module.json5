@@ -1,0 +1,11 @@
+{
+  "module": {
+    "name": "xelement_markdown",
+    "type": "har",
+    "deviceTypes": [
+      "phone",
+      "tablet",
+      "2in1"
+    ]
+  }
+}

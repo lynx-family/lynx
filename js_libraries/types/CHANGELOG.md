@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.10.4
+- Introduce `<markdown>` element types.
+
 ## 3.10.3
 - Add `takeContentScreenshot` method typings for `<scroll-view>`.
 

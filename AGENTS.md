@@ -11,3 +11,5 @@ When working in this repository, please consult the contents of the **[`agents/`
 - **Coding Standards**: Project-specific conventions that supplement general best practices.
 
 **Action**: Before proposing significant changes or architectural updates, read the relevant documents in `agents/` to align with the project's established patterns.
+
+For Harmony XElement work, also consult [`agents/harmony_xelement.md`](./agents/harmony_xelement.md), especially the native C++ registration direction for `markdown`.

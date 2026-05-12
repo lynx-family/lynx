@@ -31,6 +31,7 @@ import { RefreshProps, RefreshUIMethods } from './refresh';
 import { ViewPagerItemProps, ViewPagerProps, ViewPagerUIMethods } from './viewpager';
 import { BlurViewProps } from './blur-view';
 import { WebviewProps, WebviewUIMethods } from './webview';
+import { MarkdownProps, MarkdownUIMethods } from './markdown';
 
 
 export interface UIMethods {
@@ -44,6 +45,7 @@ export interface UIMethods {
   'scroll-coordinator': ScrollCoordinatorUIMethods;
   'viewpager': ViewPagerUIMethods;
   'webview': WebviewUIMethods;
+  'markdown': MarkdownUIMethods;
 }
 
 type LynxComponentProps = ComponentProps;
@@ -81,6 +83,7 @@ export interface IntrinsicElements {
   'viewpager-item': ViewPagerItemProps;
   'blur-view': BlurViewProps;
   'webview': WebviewProps;
+  'markdown': MarkdownProps;
 }
 
 declare module 'react' {
@@ -118,6 +121,7 @@ declare module 'react' {
       'viewpager-item': ViewPagerItemProps;
       'blur-view': BlurViewProps;
       'webview': WebviewProps;
+      'markdown': MarkdownProps;
     }
   }
 }

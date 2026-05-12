@@ -126,6 +126,18 @@
       ]
     },
     {
+      "name": "xelement_markdown",
+      "srcPath": "../../platform/harmony/lynx_xelement/markdown",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
       "name": "xelement_svg",
       "srcPath": "../../platform/harmony/lynx_xelement/svg",
       "targets": [
