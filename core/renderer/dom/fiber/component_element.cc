@@ -287,19 +287,19 @@ void ComponentElement::SetAttribute(const base::String& key,
   }
 }
 
-void ComponentElement::OnNodeAdded(FiberElement* child) {
+void ComponentElement::OnNodeAdded(Element* child) {
   if (is_wrapper()) {
     return WrapperElement::OnNodeAdded(child);
   } else {
-    return FiberElement::OnNodeAdded(child);
+    return Element::OnNodeAdded(child);
   }
 }
 
-void ComponentElement::OnNodeRemoved(FiberElement* child) {
+void ComponentElement::OnNodeRemoved(Element* child) {
   if (is_wrapper()) {
     return WrapperElement::OnNodeRemoved(child);
   } else {
-    return FiberElement::OnNodeRemoved(child);
+    return Element::OnNodeRemoved(child);
   }
 }
 void ComponentElement::SetupFragmentBehavior(Fragment* fragment) {

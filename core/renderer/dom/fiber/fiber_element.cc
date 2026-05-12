@@ -525,7 +525,7 @@ void FiberElement::AttachToElementManager(
   element_context_delegate_ = manager;
 }
 
-void FiberElement::OnNodeAdded(FiberElement *child) {
+void Element::OnNodeAdded(Element *child) {
   if (child != nullptr) {
     child->MarkAsDirectChildOfCompatibleComponent(!is_page() && !is_view() &&
                                                   !is_text() && !is_image());
@@ -547,10 +547,11 @@ void FiberElement::OnNodeAdded(FiberElement *child) {
     }
   }
 
-  UpdateRenderRootElementIfNecessary(child);
+  static_cast<FiberElement *>(this)->UpdateRenderRootElementIfNecessary(
+      static_cast<FiberElement *>(child));
 }
 
-void FiberElement::OnNodeRemoved(FiberElement *child) {
+void Element::OnNodeRemoved(Element *child) {
   if (child != nullptr) {
     child->MarkAsDirectChildOfCompatibleComponent(false);
   }
@@ -1020,8 +1021,7 @@ void Element::RemoveLogicalChild(const fml::RefPtr<Element> &child) {
   }
 }
 
-void Element::InsertNode(const fml::RefPtr<Element> &raw_child,
-                         int32_t index) {
+void Element::InsertNode(const fml::RefPtr<Element> &raw_child, int32_t index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_INSERT_NODE);
   auto child = raw_child;
 
@@ -1030,10 +1030,9 @@ void Element::InsertNode(const fml::RefPtr<Element> &raw_child,
          << index << ",size:" << scoped_children_.size());
     return;
   }
-  Element *ref =
-      (index < static_cast<int>(scoped_children_.size()))
-          ? scoped_children_[index].get()
-          : nullptr;
+  Element *ref = (index < static_cast<int>(scoped_children_.size()))
+                     ? scoped_children_[index].get()
+                     : nullptr;
   // reserve parent node for block element in AirModeFiber
   if (element_manager() && element_manager()->IsAirModeFiberEnabled() &&
       child->is_block()) {
@@ -1090,8 +1089,8 @@ void Element::InsertNodeBeforeInternal(const fml::RefPtr<Element> &child,
   }
 
   // Invalidate ref_node for next-sibling combinator (A + B).
-  if (ref_node &&
-      static_cast<FiberElement *>(this)->HasAdjacentSiblingRulesInStyleSheets()) {
+  if (ref_node && static_cast<FiberElement *>(this)
+                      ->HasAdjacentSiblingRulesInStyleSheets()) {
     ref_node->MarkStyleDirty(false);
   }
 
@@ -1108,8 +1107,7 @@ void Element::RemoveNode(const fml::RefPtr<Element> &raw_child, bool destroy) {
 }
 
 void Element::RemoveNodeInternal(const fml::RefPtr<Element> &child,
-                                 bool destroy,
-                                 bool update_logical_children) {
+                                 bool destroy, bool update_logical_children) {
   // FIXME(linxs): to use linked node to avoid the index calculation asap!
   int index = IndexOf(child.get());
   if (index >= static_cast<int>(scoped_children_.size()) || index < 0) {
@@ -1129,8 +1127,7 @@ void Element::RemoveNodeInternal(const fml::RefPtr<Element> &child,
   }
 
   // take care: NotifyNodeRemoved after removeAction inserted!
-  static_cast<FiberElement *>(this)->OnNodeRemoved(
-      static_cast<FiberElement *>(child.get()));
+  OnNodeRemoved(child.get());
   TreeResolver::NotifyNodeRemoved(static_cast<FiberElement *>(this),
                                   static_cast<FiberElement *>(child.get()));
 
@@ -1142,8 +1139,8 @@ void Element::RemoveNodeInternal(const fml::RefPtr<Element> &child,
   removed->set_parent(nullptr);
 
   // Invalidate next sibling for next-sibling combinator (A + B).
-  if (next_sibling_of_removed &&
-      static_cast<FiberElement *>(this)->HasAdjacentSiblingRulesInStyleSheets()) {
+  if (next_sibling_of_removed && static_cast<FiberElement *>(this)
+                                     ->HasAdjacentSiblingRulesInStyleSheets()) {
     next_sibling_of_removed->MarkStyleDirty(false);
   }
 
@@ -2817,8 +2814,7 @@ void Element::AddChildAt(fml::RefPtr<Element> child, int index) {
   } else {
     scoped_children_.insert(scoped_children_.begin() + index, child);
   }
-  static_cast<FiberElement *>(this)->OnNodeAdded(
-      static_cast<FiberElement *>(child.get()));
+  OnNodeAdded(child.get());
   TreeResolver::NotifyNodeInserted(static_cast<FiberElement *>(this),
                                    static_cast<FiberElement *>(child.get()));
   child->set_parent(this);

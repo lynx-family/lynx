@@ -58,7 +58,7 @@ bool ListElement::NeedAsyncResolveListItem() {
              list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree;
 }
 
-void ListElement::OnNodeAdded(FiberElement* child) {
+void ListElement::OnNodeAdded(Element* child) {
   // List's child should not be flatten.
   child->set_config_flatten(false);
   // List's child should not be layout only.
@@ -67,13 +67,14 @@ void ListElement::OnNodeAdded(FiberElement* child) {
   child->MarkAsListItem();
   // Create scheduler for each list-item
   if (NeedAsyncResolveListItem()) {
-    child->CreateListItemScheduler(batch_render_strategy_,
-                                   element_context_delegate_,
-                                   continuous_resolve_tree_);
+    auto* fiber_child = static_cast<FiberElement*>(child);
+    fiber_child->CreateListItemScheduler(batch_render_strategy_,
+                                         element_context_delegate_,
+                                         continuous_resolve_tree_);
     // Mark inserted child as render_root of its subtree
     // TODO: Override UpdateRenderRootElementIfNecessary when list-item-element
     // concept is introduced.
-    child->RecursivelyMarkRenderRootElement(child);
+    fiber_child->RecursivelyMarkRenderRootElement(fiber_child);
   }
 }
 

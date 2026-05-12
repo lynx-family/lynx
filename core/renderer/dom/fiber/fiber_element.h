@@ -36,8 +36,6 @@ class NodeManager;
 class PlatformLayoutFunctionWrapper;
 
 class FiberElement : public Element {
-  friend class Element;
-
  public:
   using Action = Element::Action;
   using ActionParam = Element::ActionParam;
@@ -542,15 +540,6 @@ class FiberElement : public Element {
   void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) override;
 
   ParallelFlushReturn CreateParallelTaskHandler();
-
-  /**
-   * This function will be called before add node.
-   * @param child the added node
-   */
-  virtual void OnNodeAdded(FiberElement* child);
-
-  // called when a child element is removed
-  virtual void OnNodeRemoved(FiberElement* child);
 
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
 

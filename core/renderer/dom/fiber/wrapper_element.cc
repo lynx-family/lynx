@@ -71,8 +71,8 @@ void WrapperElement::SetAttribute(const base::String& key,
   }
 }
 
-void WrapperElement::OnNodeAdded(FiberElement* child) {
-  FiberElement::OnNodeAdded(child);
+void WrapperElement::OnNodeAdded(Element* child) {
+  Element::OnNodeAdded(child);
   if (is_list_item()) {
     child->MarkAsListItem();
   }
@@ -84,8 +84,8 @@ void WrapperElement::OnNodeAdded(FiberElement* child) {
   }
 }
 
-void WrapperElement::OnNodeRemoved(FiberElement* child) {
-  FiberElement::OnNodeRemoved(child);
+void WrapperElement::OnNodeRemoved(Element* child) {
+  Element::OnNodeRemoved(child);
 
   if (type_ & kTouchable) {
     for (auto& it : data_model_->attributes()) {

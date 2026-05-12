@@ -1476,6 +1476,15 @@ class Element : public lepus::RefCounted,
 
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
 
+  /**
+   * This function will be called before add node.
+   * @param child the added node
+   */
+  virtual void OnNodeAdded(Element* child);
+
+  // called when a child element is removed
+  virtual void OnNodeRemoved(Element* child);
+
   virtual void SetAttributeInternal(const base::String& key,
                                     const lepus::Value& value);
 
