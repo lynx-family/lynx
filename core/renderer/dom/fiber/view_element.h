@@ -19,8 +19,7 @@ class ViewElement : public FiberElement {
  public:
   ViewElement(ElementManager* manager);
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
     return fml::AdoptRef<FiberElement>(
         new ViewElement(*this, clone_resolved_props));
   }

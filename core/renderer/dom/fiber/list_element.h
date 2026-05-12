@@ -65,8 +65,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
               const lepus::Value& enqueue_component,
               const lepus::Value& component_at_indexes);
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
     return fml::AdoptRef<FiberElement>(
         new ListElement(*this, clone_resolved_props));
   }

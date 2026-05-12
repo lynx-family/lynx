@@ -173,6 +173,16 @@ class Element : public lepus::RefCounted,
 
   Element& operator=(const Element&) = delete;
 
+  virtual fml::RefPtr<Element> CloneElement(
+      bool clone_resolved_props) const = 0;
+
+  // The element object created using the clone interface is not attached to the
+  // element manager. Use this function to attach it to the element manager.
+  virtual void AttachToElementManager(
+      ElementManager* manager,
+      const std::shared_ptr<CSSStyleSheetManager>& style_manager,
+      bool keep_element_id);
+
   // Element state, used to indicate whether the current Element is on the root
   // Dom tree.
   enum class State : uint8_t {
@@ -1447,14 +1457,6 @@ class Element : public lepus::RefCounted,
 
  protected:
   Element(const Element&, bool clone_resolved_props);
-
-  // The element object created using the clone interface of FiberElement is
-  // not attached to the element manager. Use this function to attach it to
-  // the element manager.
-  virtual void AttachToElementManager(
-      ElementManager* manager,
-      const std::shared_ptr<CSSStyleSheetManager>& style_manager,
-      bool keep_element_id);
 
   bool ConsumeAllAttributes();
 

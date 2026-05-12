@@ -609,7 +609,8 @@ fml::RefPtr<FiberElement> TreeResolver::CloneElements(
     bool clone_resolved_props, CloningDepth cloning_depth) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_CLONE_ELEMENTS);
 
-  fml::RefPtr<FiberElement> res = root->CloneElement(clone_resolved_props);
+  fml::RefPtr<FiberElement> res = fml::static_ref_ptr_cast<FiberElement>(
+      root->CloneElement(clone_resolved_props));
   res->AttachToElementManager(root->element_manager(), style_manager, false);
 
   if (cloning_depth == CloningDepth::kSingle) {
@@ -685,7 +686,8 @@ lepus::Value TreeResolver::InitElementTree(
 
 fml::RefPtr<FiberElement> TreeResolver::CloneElementRecursively(
     const FiberElement* element, bool clone_resolved_props) {
-  fml::RefPtr<FiberElement> res = element->CloneElement(clone_resolved_props);
+  fml::RefPtr<FiberElement> res = fml::static_ref_ptr_cast<FiberElement>(
+      element->CloneElement(clone_resolved_props));
 
   // construct children
   for (const auto& c : element->children()) {

@@ -30,8 +30,7 @@ class ComponentElement : public WrapperElement, public BaseComponent {
 
   virtual ~ComponentElement();
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
     return fml::AdoptRef<FiberElement>(
         new ComponentElement(*this, clone_resolved_props));
   }

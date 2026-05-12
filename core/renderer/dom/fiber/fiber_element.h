@@ -48,8 +48,7 @@ class FiberElement : public Element {
   // This function will clone an incomplete fiber element that is not attached
   // to the element manager. Before using this fiber element, it needs to be
   // attached to the element manager first.
-  virtual fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const {
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
     // Because the performance of the copy constructor is better than the
     // combination of default construction and assignment operation, we choose
     // to use the copy constructor to copy the element here. To minimize the

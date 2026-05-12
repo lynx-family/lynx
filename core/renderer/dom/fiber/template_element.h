@@ -22,8 +22,7 @@ class TemplateElement : public FiberElement {
   explicit TemplateElement(ElementManager* element_manager = nullptr);
   ~TemplateElement() override;
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
     return fml::AdoptRef<FiberElement>(
         new TemplateElement(*this, clone_resolved_props));
   }

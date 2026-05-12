@@ -32,8 +32,7 @@ class TextElement : public FiberElement {
   TextElement(ElementManager* manager, const base::String& tag);
   ~TextElement() override;
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
     return fml::AdoptRef<FiberElement>(
         new TextElement(*this, clone_resolved_props));
   }

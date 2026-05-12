@@ -424,7 +424,7 @@ TEST_P(FiberElementTest,
   ASSERT_TRUE(view->parsed_dynamic_styles_map_.has_value());
   ASSERT_FALSE(view->parsed_dynamic_styles_map_->empty());
 
-  auto cloned = view->CloneElement(true);
+  auto cloned = fml::static_ref_ptr_cast<ViewElement>(view->CloneElement(true));
   ASSERT_TRUE(cloned);
   EXPECT_FALSE(cloned->dynamic_simple_object_);
   ASSERT_TRUE(cloned->parsed_dynamic_styles_map_.has_value());
