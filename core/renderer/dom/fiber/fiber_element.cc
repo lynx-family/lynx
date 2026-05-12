@@ -2027,8 +2027,8 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
   return []() {};
 }
 
-void FiberElement::ReplayChangedStyleSideEffect(CSSPropertyID id,
-                                                const CSSValue &value) {
+void Element::ReplayChangedStyleSideEffect(CSSPropertyID id,
+                                           const CSSValue &value) {
   CheckDynamicUnit(id, value, false);
 
   const bool is_layout_only = LayoutProperty::IsLayoutOnly(id);
@@ -2066,7 +2066,7 @@ void FiberElement::ReplayChangedStyleSideEffect(CSSPropertyID id,
   }
 }
 
-void FiberElement::ReplayResetStyleSideEffect(CSSPropertyID id) {
+void Element::ReplayResetStyleSideEffect(CSSPropertyID id) {
   if (id == kPropertyIDFontSize) {
     return;
   }

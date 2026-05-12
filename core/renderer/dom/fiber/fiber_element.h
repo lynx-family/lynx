@@ -294,14 +294,6 @@ class FiberElement : public Element {
   void HandleKeyframePropsChange();
 
   /**
-   * @brief Replays the side effects of a single changed style property.
-   * @param id The CSS property that changed.
-   * @param value The new computed value.
-   */
-  void ReplayChangedStyleSideEffect(CSSPropertyID id, const CSSValue& value);
-  void ReplayResetStyleSideEffect(CSSPropertyID id);
-
-  /**
    * @brief Commits font-size and root-font-size changes after style resolution.
    * @param computed_style The final computed style.
    * @param old_font_size The previous font size.

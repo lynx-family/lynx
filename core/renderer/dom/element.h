@@ -943,6 +943,14 @@ class Element : public lepus::RefCounted,
 
   void SetComputedFontSize(double font_size, double root_font_size);
 
+  /**
+   * Replays the side effects of a single changed style property.
+   * @param id The CSS property that changed.
+   * @param value The new computed value.
+   */
+  void ReplayChangedStyleSideEffect(CSSPropertyID id, const CSSValue& value);
+  void ReplayResetStyleSideEffect(CSSPropertyID id);
+
   void SetPlaceHolderStylesInternal(const PseudoPlaceHolderStyles& styles);
 
   void ResetStyleInternal(CSSPropertyID id);
