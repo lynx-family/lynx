@@ -1507,6 +1507,8 @@ class Element : public lepus::RefCounted,
   void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
   void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
                          double old_font_size, double old_root_font_size);
+  DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
+      const StyleMap& resolved_style_map) const;
 
   /**
    * This function will be called before add node.

@@ -1324,7 +1324,7 @@ void FiberElement::ResolveSimpleStyles() {
 }
 
 DynamicCSSStylesManager::StyleUpdateFlags
-FiberElement::CollectDynamicFlagsForNewPipeline(
+Element::CollectDynamicFlagsForNewPipeline(
     const StyleMap &resolved_style_map) const {
   DynamicCSSStylesManager::StyleUpdateFlags flags = 0;
   const auto &css_config = element_manager()->GetDynamicCSSConfigs();

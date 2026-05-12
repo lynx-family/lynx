@@ -411,8 +411,6 @@ class FiberElement : public Element {
       const StyleMap& resolved_style_map,
       DynamicCSSStylesManager::StyleUpdateFlags update_flags,
       const CSSIDBitset& replayed_ids);
-  DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
-      const StyleMap& resolved_style_map) const;
   NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
       const NewPipelineResolveRequest& request);
 
