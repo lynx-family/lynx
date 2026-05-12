@@ -21,7 +21,7 @@ class LynxDevToolProxy;
 
 class PageReloadHelperEmbedder {
  public:
-  explicit PageReloadHelperEmbedder(devtool::LynxDevToolProxy* proxy);
+  PageReloadHelperEmbedder();
   ~PageReloadHelperEmbedder() = default;
 
   void OnLoadTemplate(const std::string& url, const std::vector<uint8_t>& tem,
@@ -33,11 +33,12 @@ class PageReloadHelperEmbedder {
               const std::string& reload_url = "",
               bool from_template_fragments = false, int32_t template_size = 0);
   void Navigate(const std::string& url);
+  void AttachProxy(devtool::LynxDevToolProxy* proxy);
 
   std::shared_ptr<tasm::TemplateData> GetTemplateData();
 
  private:
-  devtool::LynxDevToolProxy* proxy_;
+  devtool::LynxDevToolProxy* proxy_{nullptr};
   std::vector<uint8_t> binary_;
   std::string url_;
   std::shared_ptr<tasm::TemplateData> init_data_;
