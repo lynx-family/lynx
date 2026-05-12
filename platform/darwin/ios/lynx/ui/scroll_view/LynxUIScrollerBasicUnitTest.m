@@ -24,6 +24,27 @@
 @end
 
 @implementation LynxUIScrollerBasicUnitTest
+// Builds a horizontal scroller but defers onNodeReady so tests can control the ready flush order.
+- (LynxUIScroller *)mockHorizontalScrollerForInitialScrollTest:(LynxUIMockContext **)context {
+  LynxUIMockContext *mockContext =
+      [LynxUIUnitTestUtils initUIMockContextWithUI:[[LynxUIScroller alloc] init]];
+  LynxUIScroller *scroller = (LynxUIScroller *)mockContext.mockUI;
+  [scroller updateFrame:CGRectMake(0, 0, 428.0f, 100.0f)
+              withPadding:UIEdgeInsetsZero
+                   border:UIEdgeInsetsZero
+      withLayoutAnimation:NO];
+  [LynxPropsProcessor updateProp:@YES withKey:@"scroll-x" forUI:scroller];
+  [scroller propsDidUpdate];
+  [LynxUIScrollerUnitTestUtils mockChildren:10
+                                    context:mockContext
+                                    scrollY:NO
+                                       size:CGSizeMake(100.0f, 100.0f)];
+  if (context) {
+    *context = mockContext;
+  }
+  return scroller;
+}
+
 - (void)testScrollTopNormal {
   LynxUIMockContext *mockContext =
       [LynxUIScrollerUnitTestUtils updateUIMockContext:nil
@@ -331,6 +352,65 @@
   [scroller onNodeReadyForUIOwner];
   // children's total width - scrollView's width
   XCTAssert(CGPointEqualToPoint(scroller.view.contentOffset, CGPointMake(10 * 100 - 428, 0)));
+}
+
+// Validates that keyed ready slots make final initial-scroll-to-index independent of prop order.
+- (void)testInitialScrollToIndexWinsWhenSetBeforeDirection {
+  LynxUIMockContext *mockContext;
+  LynxUIScroller *scroller = [self mockHorizontalScrollerForInitialScrollTest:&mockContext];
+
+  [LynxPropsProcessor updateProp:@3 withKey:@"initial-scroll-to-index" forUI:scroller];
+  [LynxPropsProcessor updateProp:@2 withKey:@"direction" forUI:scroller];
+  [scroller propsDidUpdate];
+  [scroller onNodeReadyForUIOwner];
+
+  XCTAssertTrue(CGPointEqualToPoint(scroller.view.contentOffset, CGPointMake(300.0f, 0.0f)));
+  XCTAssertTrue(((UIScrollView *)scroller.view).isRTL);
+  XCTAssertEqual(mockContext.mockUI, scroller);
+}
+
+// Covers the inverse prop order to prove onNodeReady consumes the slots in fixed priority order.
+- (void)testInitialScrollToIndexWinsWhenSetAfterDirection {
+  LynxUIMockContext *mockContext;
+  LynxUIScroller *scroller = [self mockHorizontalScrollerForInitialScrollTest:&mockContext];
+
+  [LynxPropsProcessor updateProp:@2 withKey:@"direction" forUI:scroller];
+  [LynxPropsProcessor updateProp:@3 withKey:@"initial-scroll-to-index" forUI:scroller];
+  [scroller propsDidUpdate];
+  [scroller onNodeReadyForUIOwner];
+
+  XCTAssertTrue(CGPointEqualToPoint(scroller.view.contentOffset, CGPointMake(300.0f, 0.0f)));
+  XCTAssertTrue(((UIScrollView *)scroller.view).isRTL);
+  XCTAssertEqual(mockContext.mockUI, scroller);
+}
+
+// Confirms initial-scroll-to-index has higher priority than initial-scroll-offset at ready time.
+- (void)testInitialScrollToIndexOverridesInitialScrollOffset {
+  LynxUIMockContext *mockContext;
+  LynxUIScroller *scroller = [self mockHorizontalScrollerForInitialScrollTest:&mockContext];
+
+  [LynxPropsProcessor updateProp:@4 withKey:@"initial-scroll-to-index" forUI:scroller];
+  [LynxPropsProcessor updateProp:@200 withKey:@"initial-scroll-offset" forUI:scroller];
+  [scroller propsDidUpdate];
+  [scroller onNodeReadyForUIOwner];
+
+  XCTAssertTrue(CGPointEqualToPoint(scroller.view.contentOffset, CGPointMake(400.0f, 0.0f)));
+  XCTAssertEqual(mockContext.mockUI, scroller);
+}
+
+// Ensures resetting direction removes the stale ready block so an earlier rtl write does not leak.
+- (void)testDirectionResetClearsStaleReadyBlock {
+  LynxUIMockContext *mockContext;
+  LynxUIScroller *scroller = [self mockHorizontalScrollerForInitialScrollTest:&mockContext];
+
+  [LynxPropsProcessor updateProp:@2 withKey:@"direction" forUI:scroller];
+  [LynxPropsProcessor updateProp:[NSNull null] withKey:@"direction" forUI:scroller];
+  [scroller propsDidUpdate];
+  [scroller onNodeReadyForUIOwner];
+
+  XCTAssertTrue(CGPointEqualToPoint(scroller.view.contentOffset, CGPointZero));
+  XCTAssertFalse(((UIScrollView *)scroller.view).isRTL);
+  XCTAssertEqual(mockContext.mockUI, scroller);
 }
 
 #pragma mark props setting or judge functions
