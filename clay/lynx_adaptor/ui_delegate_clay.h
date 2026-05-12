@@ -6,6 +6,7 @@
 #define CLAY_LYNX_ADAPTOR_UI_DELEGATE_CLAY_H_
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "clay/lynx_adaptor/lynx_event_dispatcher.h"
@@ -62,6 +63,8 @@ class UIDelegateClay : public UIDelegate {
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
 
+  void SetEnableFluencyMonitor(bool enable);
+
   void OnPageConfigDecoded(const std::shared_ptr<PageConfig>& config) override;
 
   bool EnableNativeList() const override {
@@ -84,6 +87,7 @@ class UIDelegateClay : public UIDelegate {
   PaintingContextClay* painting_context_ = nullptr;
   LayoutContextClay* layout_context_ = nullptr;
   std::shared_ptr<PerfControllerClay> perf_controller_;
+  std::optional<bool> platform_enable_fluency_monitor_;
 };
 
 }  // namespace tasm

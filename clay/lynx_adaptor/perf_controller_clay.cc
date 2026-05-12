@@ -10,6 +10,9 @@
 
 #include "base/include/fml/task_runner.h"
 #include "base/trace/native/trace_event.h"
+#if defined(OS_IOS)
+#include "core/renderer/utils/lynx_env.h"
+#endif
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/trace/service_trace_event_def.h"
 
@@ -67,8 +70,35 @@ void PerfControllerClay::SetPageConfigProbability(double probability) {
     // Enable fluency monitor if random value is less than or equal to the
     // probability
     if (random_value <= page_config_probability_) {
-      enable_fluency_monitor_ = true;
+      force_fluency_monitor_status_ = ForceFluencyMonitorStatus::FORCED_ON;
+    } else {
+      force_fluency_monitor_status_ = ForceFluencyMonitorStatus::FORCED_OFF;
     }
+  } else {
+    // TODO(zuojinglong): This is a temporary split handling for Android/iOS.
+    // Unify the default fluency monitor strategy across all Clay platforms.
+#if defined(OS_IOS)
+    default_enable_fluency_monitor_ =
+        lynx::tasm::LynxEnv::GetInstance().GetBoolEnv(
+            lynx::tasm::LynxEnv::Key::ENABLE_FLUENCY_TRACE, false);
+#endif
+  }
+  UpdateEnableFluencyMonitor();
+}
+
+void PerfControllerClay::SetEnableFluencyMonitor(bool enable) {
+  default_enable_fluency_monitor_ = enable;
+  UpdateEnableFluencyMonitor();
+}
+
+void PerfControllerClay::UpdateEnableFluencyMonitor() {
+  if (force_fluency_monitor_status_ == ForceFluencyMonitorStatus::FORCED_ON) {
+    enable_fluency_monitor_ = true;
+  } else if (force_fluency_monitor_status_ ==
+             ForceFluencyMonitorStatus::FORCED_OFF) {
+    enable_fluency_monitor_ = false;
+  } else {
+    enable_fluency_monitor_ = default_enable_fluency_monitor_;
   }
 }
 
