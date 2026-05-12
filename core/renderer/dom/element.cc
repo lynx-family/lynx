@@ -858,7 +858,7 @@ void Element::MarkStyleDirty(bool recursive) {
   MarkDirty(kDirtyStyle);
   if (recursive) {
     for (const auto& child : scoped_children_) {
-      static_cast<FiberElement*>(child.get())->MarkStyleDirty(recursive);
+      child->MarkStyleDirty(recursive);
     }
   }
 }
@@ -2029,7 +2029,7 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
   }
   if (need_mark_props_dirty) {
     if (tasm::LynxEnv::GetInstance().EnableNewAnimatorOnPatchFinishOpt()) {
-      static_cast<FiberElement*>(this)->MarkPropsDirty();
+      MarkPropsDirty();
     } else {
       element_manager_->OnFinishUpdateProps(this, options);
     }
