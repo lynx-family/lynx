@@ -2839,8 +2839,12 @@ void Element::AddChildAt(fml::RefPtr<Element> child, int index) {
 // 2. Skip all transition styles in the later process if they have been consume
 // in advance.
 // 3. Check every property to determine whether to intercept this update.
-void FiberElement::ConsumeStyle(const StyleMap &styles,
-                                const StyleMap *inherit_styles) {
+void Element::ConsumeStyle(const StyleMap &styles,
+                           const StyleMap *inherit_styles) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSUME_STYLE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());

@@ -156,9 +156,6 @@ class FiberElement : public Element {
     }
   }
 
-  void ConsumeStyle(const StyleMap& styles,
-                    const StyleMap* inherit_styles) override;
-
   // Flush style and attribute to platform shadow node, platform painting node
   // will be created if has not been created,
   void FlushProps() override;
