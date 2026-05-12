@@ -1069,6 +1069,12 @@ class Element : public lepus::RefCounted,
   virtual void UpdateTraceDebugInfo(TraceEvent* event);
 #endif
   void FinalizeSimpleStyleUpdate();
+  void ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
+                                   const tasm::CSSValue& value);
+  void ApplySimpleStylesWithoutTail(const tasm::StyleMap& style_map);
+  void ApplyDynamicSimpleStylesWithoutTail(
+      const tasm::StyleMap& dynamic_style_map,
+      const tasm::StyleMap& base_style_map);
   void SetStyleObjects(
       std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
           style_objects) override;

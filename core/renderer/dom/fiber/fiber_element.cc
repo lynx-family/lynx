@@ -806,8 +806,8 @@ void Element::AddDynamicSimpleStyleKV(tasm::CSSPropertyID id,
   MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
 }
 
-void FiberElement::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
-                                               const tasm::CSSValue &value) {
+void Element::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
+                                          const tasm::CSSValue &value) {
   EXEC_EXPR_FOR_INSPECTOR(
       if (element_manager_ && element_manager_->IsDomTreeEnabled()) {
         if (value.IsEmpty()) {
@@ -833,15 +833,14 @@ void FiberElement::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
   }
 }
 
-void FiberElement::ApplySimpleStylesWithoutTail(
-    const tasm::StyleMap &style_map) {
+void Element::ApplySimpleStylesWithoutTail(const tasm::StyleMap &style_map) {
   std::for_each(style_map.begin(), style_map.end(),
                 [this](const auto &pair) -> void {
                   ApplySimpleStyleWithoutTail(pair.first, pair.second);
                 });
 }
 
-void FiberElement::ApplyDynamicSimpleStylesWithoutTail(
+void Element::ApplyDynamicSimpleStylesWithoutTail(
     const tasm::StyleMap &dynamic_style_map,
     const tasm::StyleMap &base_style_map) {
   std::for_each(dynamic_style_map.begin(), dynamic_style_map.end(),
