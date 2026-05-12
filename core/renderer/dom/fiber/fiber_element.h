@@ -235,10 +235,6 @@ class FiberElement : public Element {
 
   void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
 
-  void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
-                        bool reset) override;
-  void WillResetCSSValue(CSSPropertyID& id) override;
-
   // The text element can call this function to convert child fiber elements
   // into inline elements. Currently, only view, text, image and wrapper
   // elements may be converted into inline elements.

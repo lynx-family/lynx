@@ -1241,9 +1241,7 @@ class Element : public lepus::RefCounted,
   virtual bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value);
 
   virtual void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
-                                bool reset) {
-    // currently, radon element do no need to such kind of check
-  }
+                                bool reset);
 
   bool EnableLayoutInElementMode() const;
 
@@ -1268,7 +1266,7 @@ class Element : public lepus::RefCounted,
 
   bool EnableFragmentLayerRender() const;
 
-  virtual void WillResetCSSValue(CSSPropertyID& id) {}
+  virtual void WillResetCSSValue(CSSPropertyID& id);
 
   virtual bool ResetCSSValue(CSSPropertyID id);
   virtual void ConsumeTransitionStylesInAdvanceInternal(

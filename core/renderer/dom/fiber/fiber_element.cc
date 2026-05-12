@@ -4031,7 +4031,11 @@ void Element::ResetTextAlign(StyleMap &update_map, bool direction_changed) {
   }
 }
 
-void FiberElement::WillResetCSSValue(CSSPropertyID &css_id) {
+void Element::WillResetCSSValue(CSSPropertyID &css_id) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   if (css_id == CSSPropertyID::kPropertyIDFontSize) {
     ResetFontSize();
   }
@@ -4123,8 +4127,12 @@ void FiberElement::RemoveFixedElement(FiberElement *child) {
   child->fixed_changed_ = false;
 }
 
-void FiberElement::CheckDynamicUnit(CSSPropertyID id, const CSSValue &value,
-                                    bool reset) {
+void Element::CheckDynamicUnit(CSSPropertyID id, const CSSValue &value,
+                               bool reset) {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   if (reset && parsed_styles_map_.empty()) {
     // TODO(linxs): try to clear dynamic_style_flags_ here
     dynamic_style_flags_ = 0;
