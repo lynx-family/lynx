@@ -3371,7 +3371,7 @@ void Element::MarkAsLayoutRoot() {
   layout_bundle_->is_root = true;
 }
 
-void FiberElement::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
+void Element::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
   if (EnableLayoutInElementMode()) {
     if (IsShadowNodeCustom()) {
       customized_layout_node_ =
@@ -3387,7 +3387,7 @@ void FiberElement::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
   layout_bundle_->allow_inline = allow_layoutnode_inline_;
 }
 
-void FiberElement::UpdateLayoutNodeProps(const fml::RefPtr<PropBundle> &props) {
+void Element::UpdateLayoutNodeProps(const fml::RefPtr<PropBundle> &props) {
   if (EnableLayoutInElementMode()) {
     if (customized_layout_node_) {
       customized_layout_node_->UpdateLayoutNodeProps(props);

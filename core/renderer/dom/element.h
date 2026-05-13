@@ -1242,8 +1242,8 @@ class Element : public lepus::RefCounted,
                                         bool force_reset = false);
 
   virtual void MarkAsLayoutRoot();
-  virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) = 0;
-  virtual void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props) = 0;
+  virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props);
+  virtual void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props);
   virtual void UpdateLayoutNodeStyle(CSSPropertyID css_id,
                                      const tasm::CSSValue& value);
   virtual void ResetLayoutNodeStyle(tasm::CSSPropertyID css_id);
