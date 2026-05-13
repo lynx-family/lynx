@@ -1,6 +1,22 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+apply from: new File(settingsDir, "lynx_extension_plugin_loader.gradle")
+apply plugin: loadLynxExtensionPluginClass(settingsDir,
+        "org.lynxsdk.extension.LynxExtensionSettingsPlugin",
+        ["LynxExtensionSettingsPlugin.groovy"])
+Class lynxExtensionBuildPluginClass = loadLynxExtensionPluginClass(settingsDir,
+        "org.lynxsdk.extension.LynxExtensionBuildPlugin",
+        [
+                "LynxExtensionRegistryGenerator.groovy",
+                "LynxExtensionBuildPlugin.groovy",
+        ])
+gradle.beforeProject { project ->
+    if (project == gradle.rootProject) {
+        project.apply plugin: lynxExtensionBuildPluginClass
+    }
+}
+
 rootProject.name = "Explorer"
 include ':LynxExplorer'
 project(":LynxExplorer").projectDir = new File(rootProject.projectDir, './lynx_explorer')

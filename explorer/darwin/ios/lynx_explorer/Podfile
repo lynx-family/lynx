@@ -1,6 +1,11 @@
 source 'https://cdn.cocoapods.org/'
 project './LynxExplorer.xcodeproj'
 
+lynx_root = File.expand_path('../../../..', __dir__)
+lynx_extension_plugin_dir = File.join(lynx_root, 'tools/ios_tools/cocoapods-lynx-extension/lib')
+$LOAD_PATH.unshift lynx_extension_plugin_dir
+load File.join(lynx_extension_plugin_dir, 'cocoapods_plugin.rb')
+
 platform :ios, '12.0'
 
 install!'cocoapods',:deterministic_uuids=>false,
@@ -44,6 +49,11 @@ target 'LynxExplorer' do
     'Core'
   ]
 
+  use_lynx_extension!(
+    :root => __dir__,
+    :output_dir => File.join(__dir__, 'generated/lynx-extension')
+  )
+
   pod 'XElement', :path => '../../../..', :subspecs => [
     'Behavior',
   ]
@@ -61,7 +71,6 @@ target 'LynxExplorer' do
   # Requires Swift 5.10+ (Xcode 15.3+). Skipped on GitHub Actions OSS CI which
   # uses Xcode 15.1. All Sparkling ObjC/Swift code is guarded by
   # #if HAS_SPARKLING / #if canImport(SparklingMethod).
-  lynx_root = File.expand_path('../../../..', __dir__)
   node_modules = File.join(lynx_root, 'node_modules')
 
   sparkling_pods = {
