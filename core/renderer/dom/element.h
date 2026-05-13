@@ -1693,6 +1693,7 @@ class Element : public lepus::RefCounted,
                         starlight::SLAlignmentFunc alignment_func);
   void DispatchLayoutBeforeRecursively();
   virtual void DispatchLayoutBefore();
+  void UpdateLayoutInfoRecursively(PipelineOptions* options);
   void UpdateLayoutInfo();
 
   void SetFontSizeForAllElement(double cur_node_font_size,

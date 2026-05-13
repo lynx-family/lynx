@@ -198,8 +198,6 @@ class FiberElement : public Element {
 
   ParallelFlushReturn CreateParallelTaskHandler();
 
-  void UpdateLayoutInfoRecursively(PipelineOptions* options);
-
   void SetMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
 
  private:

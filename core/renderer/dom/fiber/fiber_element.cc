@@ -4717,7 +4717,7 @@ void FiberElement::MarkLayoutDirtyLite() {
 /**
  * Reference {@link LayoutContext#LayoutRecursively }
  */
-void FiberElement::UpdateLayoutInfoRecursively(PipelineOptions *options) {
+void Element::UpdateLayoutInfoRecursively(PipelineOptions *options) {
   if (!is_wrapper()) {
     if (sl_node_ == nullptr || !(sl_node_->IsDirty())) {
       return;
@@ -4735,8 +4735,7 @@ void FiberElement::UpdateLayoutInfoRecursively(PipelineOptions *options) {
   }
 
   for (auto &child : scoped_children_) {
-    static_cast<FiberElement *>(child.get())
-        ->UpdateLayoutInfoRecursively(options);
+    child->UpdateLayoutInfoRecursively(options);
   }
 }
 
