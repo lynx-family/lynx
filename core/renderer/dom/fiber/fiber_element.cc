@@ -2276,7 +2276,10 @@ void FiberElement::FlushActionsAsRoot() {
   }
 }
 
-void FiberElement::FlushSelf() {
+void Element::FlushSelf() {
+  if (!is_fiber_element_) {
+    return;
+  }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_SELF,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());

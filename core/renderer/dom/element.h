@@ -900,6 +900,8 @@ class Element : public lepus::RefCounted,
 
   virtual void ParallelFlushAsRoot();
 
+  void FlushSelf();
+
   void ParallelFlushRecursively();
 
   void TraversalInsertFixedElementOfTree();

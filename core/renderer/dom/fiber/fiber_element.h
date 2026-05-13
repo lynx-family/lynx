@@ -65,8 +65,6 @@ class FiberElement : public Element {
    */
   void FlushActions();
 
-  void FlushSelf();
-
   void PrepareChildren();
 
   void PrepareChildForInsertion(FiberElement* child);
