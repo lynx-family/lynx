@@ -68,6 +68,7 @@ GPUSurfaceGLSkity::~GPUSurfaceGLSkity() {
     return;
   }
   gpu_surface_ = nullptr;
+  gpu_surface_map_.clear();
   fbo_id_ = 0;
   gpu_context_ = nullptr;
   delegate_->GLContextClearCurrent();
@@ -224,6 +225,7 @@ bool GPUSurfaceGLSkity::PresentSurface(const SurfaceFrame& frame) {
 
   if (delegate_->GLContextFBOResetAfterPresent()) {
     gpu_surface_ = nullptr;
+    gpu_surface_map_.erase(fbo_id_);
     fbo_id_ = 0;
     existing_damage_ = {};
   }
