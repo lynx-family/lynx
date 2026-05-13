@@ -23,6 +23,30 @@ static_assert(__has_feature(objc_arc), "ARC must be enabled.");
 namespace clay {
 
 namespace {
+
+class ScopedMTLTextureInfo {
+ public:
+  explicit ScopedMTLTextureInfo(GPUMTLTextureInfo texture) : texture_(texture) {}
+
+  ScopedMTLTextureInfo(const ScopedMTLTextureInfo&) = delete;
+  ScopedMTLTextureInfo& operator=(const ScopedMTLTextureInfo&) = delete;
+
+  ~ScopedMTLTextureInfo() {
+    if (texture_.destruction_callback) {
+      texture_.destruction_callback(texture_.destruction_context);
+    }
+  }
+
+  const GPUMTLTextureInfo& texture_info() const { return texture_; }
+
+  int64_t texture_id() const { return texture_.texture_id; }
+
+  id<MTLTexture> texture() const { return (__bridge id<MTLTexture>)(texture_.texture); }
+
+ private:
+  GPUMTLTextureInfo texture_;
+};
+
 std::shared_ptr<skity::GPUSurface> CreateSurfaceFromMetalTexture(
     std::shared_ptr<skity::GPUContext> context, const skity::Vec2& size, id<MTLTexture> texture,
     uint32_t sample_cnt) {
@@ -34,6 +58,20 @@ std::shared_ptr<skity::GPUSurface> CreateSurfaceFromMetalTexture(
       texture};
   return context->CreateSurface(&descriptor);
 }
+
+std::shared_ptr<skity::GPUSurface> KeepMTLTextureAliveWithSurface(
+    std::shared_ptr<skity::GPUSurface> surface,
+    std::shared_ptr<ScopedMTLTextureInfo> texture_lifetime) {
+  struct SurfaceAndTextureLifetime {
+    std::shared_ptr<ScopedMTLTextureInfo> texture_lifetime;
+    std::shared_ptr<skity::GPUSurface> surface;
+  };
+
+  auto holder = std::make_shared<SurfaceAndTextureLifetime>(
+      SurfaceAndTextureLifetime{std::move(texture_lifetime), std::move(surface)});
+  return std::shared_ptr<skity::GPUSurface>(holder, holder->surface.get());
+}
+
 }  // namespace
 
 GPUSurfaceMetalSkity::GPUSurfaceMetalSkity(GPUSurfaceMetalDelegate* delegate,
@@ -165,8 +203,9 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromCAMetalLayer
 
 std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
     const skity::Vec2& frame_info) {
-  GPUMTLTextureInfo texture = delegate_->GetMTLTexture(frame_info);
-  id<MTLTexture> mtl_texture = (__bridge id<MTLTexture>)(texture.texture);
+  auto texture_lifetime =
+      std::make_shared<ScopedMTLTextureInfo>(delegate_->GetMTLTexture(frame_info));
+  id<MTLTexture> mtl_texture = texture_lifetime->texture();
 
   if (!mtl_texture) {
     FML_LOG(ERROR) << "Invalid MTLTexture given by the embedder.";
@@ -179,9 +218,11 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
     FML_LOG(ERROR) << "Could not create gpuSurface from the CAMetalLayer.";
     return nullptr;
   }
+  int64_t texture_id = texture_lifetime->texture_id();
+  surface = KeepMTLTextureAliveWithSurface(std::move(surface), texture_lifetime);
 
-  auto encode_callback = [this, texture, surface](SurfaceFrame& surface_frame,
-                                                  skity::Canvas* canvas) -> bool {
+  auto encode_callback = [this, texture_id, surface](SurfaceFrame& surface_frame,
+                                                     skity::Canvas* canvas) -> bool {
     if (!canvas) {
       FML_LOG(ERROR) << "skity Canvas is null.";
       return false;
@@ -192,7 +233,7 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
 
     if (delegate_->EnablePartialRepaint()) {
       for (auto& entry : damage_) {
-        if (entry.first != texture.texture_id) {
+        if (entry.first != texture_id) {
           // Accumulate damage for other framebuffers
           if (surface_frame.submit_info().frame_damage) {
             entry.second.Join(*surface_frame.submit_info().frame_damage);
@@ -200,17 +241,17 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
         }
       }
       // Reset accumulated damage for current framebuffer
-      damage_[texture.texture_id] = skity::Rect::MakeEmpty();
+      damage_[texture_id] = skity::Rect::MakeEmpty();
     }
 
     return true;
   };
 
   // This code path is only used on Mac platform, which ensures rasterizer teardown before shell,
-  // thus safe to cauptre this
-  auto submit_callback = [this, texture](const SurfaceFrame::SubmitInfo&) -> bool {
+  // thus safe to capture this.
+  auto submit_callback = [this, texture_lifetime](const SurfaceFrame::SubmitInfo&) -> bool {
     TRACE_EVENT("clay", "GPUSurfaceMetal::PresentTexture");
-    return delegate_->PresentTexture(texture);
+    return delegate_->PresentTexture(texture_lifetime->texture_info());
   };
 
   SurfaceFrame::FramebufferInfo framebuffer_info;
@@ -222,7 +263,7 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
   }
 
   if (delegate_->EnablePartialRepaint()) {
-    auto i = damage_.find(texture.texture_id);
+    auto i = damage_.find(texture_id);
     if (i != damage_.end()) {
       framebuffer_info.existing_damage = i->second;
     }
