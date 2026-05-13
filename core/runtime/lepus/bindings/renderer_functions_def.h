@@ -98,6 +98,7 @@
   V(FiberInsertNodeToElementTemplate)   \
   V(FiberRemoveNodeFromElementTemplate) \
   V(FiberSerializeElementTemplate)      \
+  V(FiberCreateTypedElementTemplate)    \
   V(FiberElementIsEqual)                \
   V(FiberGetElementUniqueID)            \
   V(FiberGetTag)                        \

@@ -3588,6 +3588,47 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
   RETURN(lepus::Value(element));
 }
 
+RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
+  auto* self = GET_TASM_POINTER();
+
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_TYPED_ELEMENT_TEMPLATE);
+  // Create one typed Element Template instance from its root tag and complete
+  // initial state. Attributes are reserved for a follow-up generic path.
+  // parameter size >= 4
+  // [0] String -> tag
+  // [1] Object | Null | Undefined -> attributes
+  // [2] Array | Null | Undefined -> elementSlots
+  // [3] any -> uid
+  CHECK_ARGC_GE(FiberCreateTypedElementTemplate, 4);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, String,
+                                        FiberCreateTypedElementTemplate);
+  // TODO(songshourui.null): Consume param 1 attributes through the generic
+  // TemplateElement attribute path.
+  CONVERT_ARG(arg2, 2);
+  CONVERT_ARG(arg3, 3);
+
+  lepus::Value element_slots;
+  if (arg2->IsArrayOrJSArray()) {
+    element_slots = arg2->ToLepusValue();
+  } else if (!arg2->IsNil() && !arg2->IsUndefined()) {
+    ElementAPIError(
+        "FiberCreateTypedElementTemplate param 2 should be Array or "
+        "Null or Undefined");
+    RETURN_UNDEFINED();
+  }
+
+  auto* manager = self->page_proxy()->element_manager().get();
+  auto element = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  element->SetTASM(self);
+  element->SetElementSlots(element_slots);
+  element->SetUid(*arg3);
+  element->SetTypedTag(arg0->String());
+
+  ON_NODE_CREATE(element);
+
+  RETURN(lepus::Value(element));
+}
+
 RENDERER_FUNCTION_CC(FiberSetAttributeOfElementTemplate) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SET_ATTRIBUTE_OF_ELEMENT_TEMPLATE);
   // Update one dynamic Attribute Slot on an existing template instance.
