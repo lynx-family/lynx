@@ -4743,7 +4743,7 @@ void FiberElement::UpdateLayoutInfoRecursively(PipelineOptions *options) {
 /**
  * Reference {@link LayoutContext#UpdateLayoutInfo }
  */
-void FiberElement::UpdateLayoutInfo() {
+void Element::UpdateLayoutInfo() {
   const auto &layout_result = sl_node_->GetLayoutResult();
   width_ = layout_result.size_.width_;
   height_ = layout_result.size_.height_;

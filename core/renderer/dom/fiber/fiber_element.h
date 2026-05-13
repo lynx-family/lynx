@@ -214,8 +214,6 @@ class FiberElement : public Element {
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
 
-  void UpdateLayoutInfo();
-
   void MarkLayoutDirtyLite() override;
 };
 
