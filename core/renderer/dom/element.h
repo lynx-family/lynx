@@ -365,7 +365,7 @@ class Element : public lepus::RefCounted,
    * Element API for setting class names to Element
    * @param classes the vector contains the name of class selector
    */
-  void SetClasses(ClassList&& classes);
+  LYNX_EXPORT_FOR_DEVTOOL void SetClasses(ClassList&& classes);
 
   /**
    * Element API for removing all classes of
@@ -379,7 +379,7 @@ class Element : public lepus::RefCounted,
    * Element API for setting id for element
    * @param idSelector the id of the element
    */
-  void SetIdSelector(const base::String& idSelector);
+  LYNX_EXPORT_FOR_DEVTOOL void SetIdSelector(const base::String& idSelector);
 
   // For dataset op
   void SetDataSet(const tasm::DataMap& data);
@@ -1242,7 +1242,7 @@ class Element : public lepus::RefCounted,
   }
 
   LYNX_EXPORT_FOR_DEVTOOL const base::String& GetRawInlineStyles();
-  void SetRawInlineStyles(base::String value);
+  LYNX_EXPORT_FOR_DEVTOOL void SetRawInlineStyles(base::String value);
 
   /**
    * Element API for appending css style to element
@@ -1256,6 +1256,11 @@ class Element : public lepus::RefCounted,
    * Element API for removing all inline styles.
    */
   LYNX_EXPORT_FOR_DEVTOOL void RemoveAllInlineStyles();
+
+  /**
+   * Element API for removing all important inline styles.
+   */
+  LYNX_EXPORT_FOR_DEVTOOL void RemoveAllImportantInlineStyles();
 
   /**
    * Element API for setting compile stage parsed style
@@ -1340,7 +1345,7 @@ class Element : public lepus::RefCounted,
   virtual void MarkPlatformNodeDestroyed();
 
   // Mark style dirty, optionally recursively for children
-  void MarkStyleDirty(bool recursive = false);
+  LYNX_EXPORT_FOR_DEVTOOL void MarkStyleDirty(bool recursive = false);
 
   void MarkTemplateElement() { is_template_ = true; }
 

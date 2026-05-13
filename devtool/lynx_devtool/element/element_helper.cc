@@ -5,11 +5,19 @@
 #include "devtool/lynx_devtool/element/element_helper.h"
 
 #include <string>
+#include <string_view>
+#include <unordered_map>
 
 #include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
 #include "core/inspector/style_sheet.h"
+#include "core/public/pipeline_option.h"
 #include "core/renderer/css/css_decoder.h"
+#include "core/renderer/css/css_parser_token.h"
+#include "core/renderer/css/css_property.h"
+#include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/css/unit_handler.h"
+#include "core/renderer/dom/fiber/fiber_element.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/element/helper_util.h"
 #include "devtool/lynx_devtool/element/inspector_css_helper.h"
@@ -85,6 +93,78 @@ Element* ElementHelper::GetPreviousNode(Element* ptr) {
 
 namespace {
 
+bool StripTrailingImportantForDevtool(std::string_view value,
+                                      std::string* stripped_value) {
+  constexpr char kImportant[] = "important";
+  constexpr size_t kImportantLen = sizeof(kImportant) - 1;
+
+  // Step 1: Skip trailing whitespace after "important" (if any).
+  size_t end = value.size();
+  while (end > 0 && base::IsHTMLSpace(value[end - 1])) {
+    --end;
+  }
+
+  // After trimming trailing whitespace, the remaining string is too short to
+  // contain both '!' and "important" (minimum 10 chars). Not !important.
+  if (end < kImportantLen + 1) {
+    stripped_value->assign(value.data(), value.size());
+    return false;
+  }
+
+  // Step 2: Check if the last 9 characters spell "important"
+  // (case-insensitive).
+  for (size_t i = 0; i < kImportantLen; ++i) {
+    if (static_cast<char>(value[end - kImportantLen + i] | 0x20) !=
+        kImportant[i]) {
+      // The suffix is not "important" (e.g., "100px", "red"). Not !important.
+      stripped_value->assign(value.data(), value.size());
+      return false;
+    }
+  }
+
+  // Step 3: Skip optional whitespace between '!' and "important"
+  // (CSS allows "! important").
+  size_t bang_pos = end - kImportantLen;
+  while (bang_pos > 0 && base::IsHTMLSpace(value[bang_pos - 1])) {
+    --bang_pos;
+  }
+
+  // After skipping middle whitespace, there must be a '!' before "important".
+  // If we hit the start of string or the char is not '!', this is not
+  // !important (e.g., "important" without '!').
+  if (bang_pos == 0 || value[bang_pos - 1] != '!') {
+    stripped_value->assign(value.data(), value.size());
+    return false;
+  }
+
+  // Step 4: Skip optional whitespace between the value and '!'.
+  size_t value_end = bang_pos - 1;
+  while (value_end > 0 && base::IsHTMLSpace(value[value_end - 1])) {
+    --value_end;
+  }
+
+  // There must be an actual value before '!'. If value_end reached 0, the
+  // entire string was just whitespace + !important (e.g., "!important"),
+  // which is invalid / meaningless.
+  if (value_end == 0) {
+    stripped_value->assign(value.data(), value.size());
+    return false;
+  }
+
+  // All checks passed: non-empty value + optional ws + '!' + optional ws +
+  // "important" + optional trailing ws.
+  stripped_value->assign(value.data(), value_end);
+  return true;
+}
+
+bool HasCSSVariableTokenForDevtool(
+    std::string_view value, const lynx::tasm::CSSParserConfigs& configs) {
+  lynx::tasm::CSSStringParser parser{
+      value.data(), static_cast<uint32_t>(value.length()), configs};
+  parser.ParseVariable();
+  return parser.HasMetVarToken();
+}
+
 void SetDocumentChildren(Json::Value& res, Element* ptr, int depth) {
   res["childNodeCount"] = static_cast<int>(ptr->GetChildren().size());
   if (depth == 0) {
@@ -97,6 +177,252 @@ void SetDocumentChildren(Json::Value& res, Element* ptr, int depth) {
     res["children"].append(
         ElementHelper::GetDocumentBodyFromNode(child, next_depth));
   }
+}
+
+bool IsNewStylingPipelineEnabled(Element* element) {
+  return element != nullptr && element->element_manager() != nullptr &&
+         element->element_manager()->EnableNewStylingPipeline();
+}
+
+void FlushFiberStyleMutation(Element* element) {
+  CHECK_NULL_AND_LOG_RETURN(element, "element is null");
+  auto* fiber_element = static_cast<lynx::tasm::FiberElement*>(element);
+  if (fiber_element->parent() != nullptr) {
+    fiber_element->FlushActionsAsRoot();
+    return;
+  }
+  if (element->element_manager() == nullptr ||
+      element->element_manager()->root() != element) {
+    return;
+  }
+
+  auto options = std::make_shared<lynx::tasm::PipelineOptions>();
+  element->element_manager()->OnPatchFinish(options, fiber_element);
+}
+
+Element* GetFlushRootForStyleMutation(Element* element,
+                                      Element* preferred_root) {
+  if (preferred_root) {
+    return preferred_root;
+  }
+  if (element && element->element_manager()) {
+    return element->element_manager()->root();
+  }
+  return element;
+}
+
+void SyncAttributeSourceForNewPipeline(Element* element,
+                                       const std::string& name,
+                                       const std::string& value) {
+  CHECK_NULL_AND_LOG_RETURN(element, "element is null");
+  if (name == "class") {
+    if (value.empty()) {
+      element->RemoveAllClass();
+      return;
+    }
+    lynx::tasm::ClassList classes;
+    std::string class_name;
+    for (const char& c : value) {
+      if (c != ' ') {
+        class_name += c;
+      } else if (!class_name.empty()) {
+        classes.emplace_back(class_name.c_str(),
+                             static_cast<uint32_t>(class_name.length()));
+        class_name.clear();
+      }
+    }
+    if (!class_name.empty()) {
+      classes.emplace_back(class_name.c_str(),
+                           static_cast<uint32_t>(class_name.length()));
+    }
+    element->SetClasses(std::move(classes));
+  } else if (name == "id") {
+    element->SetIdSelector(lynx::base::String(
+        value.c_str(), static_cast<uint32_t>(value.length())));
+  } else {
+    // Generic attributes are synced as attributes only. Attribute-selector
+    // rematching is outside the current new-pipeline devtool bridge scope.
+    element->SetAttribute(
+        lynx::base::String(name.c_str(), static_cast<uint32_t>(name.length())),
+        lynx::lepus::Value(value));
+    element->MarkStyleDirty(false);
+  }
+}
+
+void SyncInlineStyleSourceForNewPipeline(
+    Element* element, const InspectorStyleSheet& style_sheet) {
+  CHECK_NULL_AND_LOG_RETURN(element, "element is null");
+  auto* element_manager = element->element_manager();
+  CHECK_NULL_AND_LOG_RETURN(element_manager, "element_manager is null");
+  const auto& configs = element_manager->GetCSSParserConfigs();
+  element->RemoveAllInlineStyles();
+  element->RemoveAllImportantInlineStyles();
+  if (element->data_model() != nullptr) {
+    element->data_model()->MoveAndClearCSSInlineVariables(nullptr);
+  }
+
+  std::string filtered_css_text;
+  std::unordered_map<std::string, size_t> consumed_properties;
+  for (const auto& name : style_sheet.property_order_) {
+    auto iter_range = style_sheet.css_properties_.equal_range(name);
+    auto it = iter_range.first;
+    const auto consumed_count = consumed_properties[name]++;
+    for (size_t i = 0; it != iter_range.second && i < consumed_count;
+         ++i, ++it) {
+    }
+    if (it == iter_range.second) {
+      continue;
+    }
+    const auto& property = it->second;
+    std::string stripped_value;
+    const bool important =
+        StripTrailingImportantForDevtool(property.value_, &stripped_value);
+    const bool is_custom_property = lynx::tasm::CSSProperty::IsCustomProperty(
+        property.name_.c_str(), static_cast<uint32_t>(property.name_.length()));
+    if (property.disabled_) {
+      continue;
+    }
+    const bool has_variable_token =
+        !property.parsed_ok_ && !is_custom_property &&
+        HasCSSVariableTokenForDevtool(stripped_value, configs);
+    if (!property.parsed_ok_ && !important && !is_custom_property &&
+        !has_variable_token) {
+      continue;
+    }
+    filtered_css_text +=
+        property.name_ + ":" + stripped_value +
+        (important && !is_custom_property ? " !important;" : ";");
+  }
+
+  if (style_sheet.property_order_.empty()) {
+    for (const auto& property : style_sheet.css_properties_) {
+      const auto& p = property.second;
+      std::string stripped_value;
+      const bool important =
+          StripTrailingImportantForDevtool(p.value_, &stripped_value);
+      const bool is_custom_property = lynx::tasm::CSSProperty::IsCustomProperty(
+          p.name_.c_str(), static_cast<uint32_t>(p.name_.length()));
+      if (p.disabled_) {
+        continue;
+      }
+      const bool has_variable_token =
+          !p.parsed_ok_ && !is_custom_property &&
+          HasCSSVariableTokenForDevtool(stripped_value, configs);
+      if (!p.parsed_ok_ && !important && !is_custom_property &&
+          !has_variable_token) {
+        continue;
+      }
+      filtered_css_text +=
+          p.name_ + ":" + stripped_value +
+          (important && !is_custom_property ? " !important;" : ";");
+    }
+  }
+
+  if (!filtered_css_text.empty()) {
+    element->SetRawInlineStyles(
+        lynx::base::String(filtered_css_text.c_str(),
+                           static_cast<uint32_t>(filtered_css_text.length())));
+    element->ProcessFullRawInlineStyle(nullptr);
+  }
+  element->MarkStyleDirty();
+}
+
+void AddPropertyDetailToStyleSources(Element* element,
+                                     const CSSPropertyDetail& property,
+                                     lynx::tasm::StyleMap& parsed_styles,
+                                     lynx::tasm::StyleMap& important_styles,
+                                     lynx::tasm::CSSVariableMap& css_vars) {
+  if (property.disabled_) {
+    return;
+  }
+
+  std::string value;
+  const bool important =
+      StripTrailingImportantForDevtool(property.value_, &value);
+  if (!important) {
+    value = property.value_;
+  }
+  const bool is_custom_property = lynx::tasm::CSSProperty::IsCustomProperty(
+      property.name_.c_str(), static_cast<uint32_t>(property.name_.length()));
+
+  auto* element_manager = element->element_manager();
+  CHECK_NULL_AND_LOG_RETURN(element_manager, "element_manager is null");
+  const auto& configs = element_manager->GetCSSParserConfigs();
+  const bool has_variable_token = !property.parsed_ok_ && !is_custom_property &&
+                                  HasCSSVariableTokenForDevtool(value, configs);
+  if (!property.parsed_ok_ && !important && !is_custom_property &&
+      !has_variable_token) {
+    return;
+  }
+
+  const auto& name = property.name_;
+  auto id = lynx::tasm::CSSProperty::GetPropertyID(name);
+  if (lynx::tasm::CSSProperty::IsPropertyValid(id)) {
+    auto value_string = lynx::base::String(
+        value.c_str(), static_cast<uint32_t>(value.length()));
+    auto& target_styles = important ? important_styles : parsed_styles;
+    if (!lynx::tasm::UnitHandler::Process(id, lynx::lepus::Value(value_string),
+                                          target_styles, configs)) {
+      lynx::tasm::CSSStringParser parser{
+          value.c_str(), static_cast<uint32_t>(value.length()), configs};
+      auto css_value = parser.ParseVariable();
+      if (parser.HasMetVarToken()) {
+        target_styles.insert_or_assign(id, std::move(css_value));
+      }
+    }
+  } else if (is_custom_property) {
+    css_vars.insert_or_assign(
+        lynx::base::String(name.c_str(), static_cast<uint32_t>(name.length())),
+        lynx::base::String(value.c_str(),
+                           static_cast<uint32_t>(value.length())));
+  }
+}
+
+void CollectStyleSheetSourcesForNewPipeline(
+    Element* element, const InspectorStyleSheet& style_sheet,
+    lynx::tasm::StyleMap& parsed_styles, lynx::tasm::StyleMap& important_styles,
+    lynx::tasm::CSSVariableMap& css_vars) {
+  CHECK_NULL_AND_LOG_RETURN(element, "element is null");
+
+  std::unordered_map<std::string, size_t> consumed_properties;
+  for (const auto& name : style_sheet.property_order_) {
+    auto iter_range = style_sheet.css_properties_.equal_range(name);
+    auto it = iter_range.first;
+    const auto consumed_count = consumed_properties[name]++;
+    for (size_t i = 0; it != iter_range.second && i < consumed_count;
+         ++i, ++it) {
+    }
+    if (it == iter_range.second) {
+      continue;
+    }
+    AddPropertyDetailToStyleSources(element, it->second, parsed_styles,
+                                    important_styles, css_vars);
+  }
+
+  if (!style_sheet.property_order_.empty()) {
+    return;
+  }
+
+  for (const auto& property : style_sheet.css_properties_) {
+    AddPropertyDetailToStyleSources(element, property.second, parsed_styles,
+                                    important_styles, css_vars);
+  }
+}
+
+void SyncSelectorStyleTokenForNewPipeline(
+    Element* element, lynx::tasm::CSSParseToken* token,
+    const InspectorStyleSheet& style_sheet) {
+  CHECK_NULL_AND_LOG_RETURN(element, "element is null");
+  CHECK_NULL_AND_LOG_RETURN(token, "token is null");
+
+  lynx::tasm::StyleMap parsed_styles;
+  lynx::tasm::StyleMap important_styles;
+  lynx::tasm::CSSVariableMap css_vars;
+  CollectStyleSheetSourcesForNewPipeline(element, style_sheet, parsed_styles,
+                                         important_styles, css_vars);
+  token->SetAttributes(std::move(parsed_styles));
+  token->SetImportantAttributes(std::move(important_styles));
+  token->SetStyleVariables(std::move(css_vars));
 }
 
 }  // namespace
@@ -773,19 +1099,31 @@ Json::Value ElementHelper::GetStyleSheetAsTextOfNode(
 }
 
 void ElementHelper::SetInlineStyleTexts(Element* ptr, const std::string& text,
-                                        const Range& range) {
+                                        const Range& range, Element* root) {
   InspectorStyleSheet pre_style_sheet =
       ElementInspector::GetInlineStyleSheet(ptr);
   InspectorStyleSheet modified_style_sheet =
       StyleTextParser(ptr, text, pre_style_sheet);
   ElementInspector::SetInlineStyleSheet(ptr, modified_style_sheet);
+  if (IsNewStylingPipelineEnabled(ptr)) {
+    SyncInlineStyleSourceForNewPipeline(ptr, modified_style_sheet);
+    Element* flush_root = GetFlushRootForStyleMutation(ptr, root);
+    FlushFiberStyleMutation(flush_root);
+    return;
+  }
   ElementInspector::Flush(ptr);
-  return;
 }
 
-void ElementHelper::SetInlineStyleSheet(
-    Element* ptr, const InspectorStyleSheet& style_sheet) {
+void ElementHelper::SetInlineStyleSheet(Element* ptr,
+                                        const InspectorStyleSheet& style_sheet,
+                                        Element* root) {
   ElementInspector::SetInlineStyleSheet(ptr, style_sheet);
+  if (IsNewStylingPipelineEnabled(ptr)) {
+    SyncInlineStyleSourceForNewPipeline(ptr, style_sheet);
+    Element* flush_root = GetFlushRootForStyleMutation(ptr, root);
+    FlushFiberStyleMutation(flush_root);
+    return;
+  }
   ElementInspector::Flush(ptr);
 }
 
@@ -797,16 +1135,43 @@ void ElementHelper::SetSelectorStyleTexts(Element* root, Element* ptr,
   CHECK_NULL_AND_LOG_RETURN(style_root, "style_root is null");
   std::unordered_multimap<std::string, InspectorStyleSheet>& map =
       ElementInspector::GetStyleSheetMap(style_root);
-  for (const auto& item : map) {
-    const InspectorStyleSheet& cur_style_sheet = item.second;
+  for (auto iter = map.begin(); iter != map.end(); ++iter) {
+    const auto& selector_name = iter->first;
+    const InspectorStyleSheet& cur_style_sheet = iter->second;
     if (cur_style_sheet.style_value_range_.start_line_ == range.start_line_) {
       InspectorStyleSheet modified_style_sheet =
           StyleTextParser(ptr, text, cur_style_sheet);
-      ElementInspector::SetStyleSheetByName(ptr, item.first,
-                                            modified_style_sheet);
-      std::vector<Element*> ptr_vec;
-      GetElementPtrMatchingStyleSheet(ptr_vec, root, item.first);
-      for (Element* temp_ptr : ptr_vec) ElementInspector::Flush(temp_ptr);
+      const bool enable_new_styling_pipeline = IsNewStylingPipelineEnabled(ptr);
+      auto* source_token = enable_new_styling_pipeline
+                               ? ElementInspector::GetStyleSheetSourceToken(
+                                     style_root, cur_style_sheet)
+                               : nullptr;
+      if (enable_new_styling_pipeline) {
+        iter->second = modified_style_sheet;
+        if (source_token != nullptr) {
+          SyncSelectorStyleTokenForNewPipeline(root ? root : ptr, source_token,
+                                               modified_style_sheet);
+          ElementInspector::RecordStyleSheetSourceToken(
+              style_root, modified_style_sheet, source_token);
+        } else {
+          LOGE("new pipeline devtool selector edit has no source token: "
+               << selector_name);
+        }
+        std::vector<Element*> ptr_vec =
+            ElementInspector::SelectElementAll(root, selector_name);
+        for (Element* temp_ptr : ptr_vec) {
+          temp_ptr->MarkStyleDirty();
+        }
+        Element* flush_root =
+            GetFlushRootForStyleMutation(root ? root : ptr, nullptr);
+        FlushFiberStyleMutation(flush_root);
+      } else {
+        ElementInspector::SetStyleSheetByName(ptr, selector_name,
+                                              modified_style_sheet);
+        std::vector<Element*> ptr_vec;
+        GetElementPtrMatchingStyleSheet(ptr_vec, root, selector_name);
+        for (Element* temp_ptr : ptr_vec) ElementInspector::Flush(temp_ptr);
+      }
       break;
     }
   }
@@ -877,7 +1242,7 @@ void ElementHelper::SetStyleTexts(Element* root, Element* ptr,
   if (ElementInspector::Type(ptr) == InspectorElementType::STYLEVALUE) {
     SetSelectorStyleTexts(root, ptr, text, range);
   } else {
-    SetInlineStyleTexts(ptr, text, range);
+    SetInlineStyleTexts(ptr, text, range, root);
   }
 }
 
@@ -885,7 +1250,11 @@ void ElementHelper::SetAttributes(Element* ptr, const std::string& name,
                                   const std::string& text) {
   if (name == "style") {
     SetInlineStyleTexts(ptr, text, Range());
-  } else if (name == "class") {
+    return;
+  }
+
+  // Step 1: Update inspector_attribute (both pipelines need this).
+  if (name == "class") {
     std::vector<std::string> class_order;
     std::string class_name;
     std::string temp = ".";
@@ -916,6 +1285,14 @@ void ElementHelper::SetAttributes(Element* ptr, const std::string& name,
     ElementInspector::SetAttrOrder(ptr, attr_order);
     ElementInspector::SetAttrMap(ptr, attr_map);
   }
+
+  // Step 2: Sync to engine and flush.
+  if (IsNewStylingPipelineEnabled(ptr)) {
+    SyncAttributeSourceForNewPipeline(ptr, name, text);
+    FlushFiberStyleMutation(GetFlushRootForStyleMutation(ptr, nullptr));
+    return;
+  }
+
   ElementInspector::Flush(ptr);
 }
 
@@ -927,8 +1304,12 @@ void ElementHelper::RemoveAttributes(Element* ptr, const std::string& name) {
     sheet.shorthand_entries_.clear();
     sheet.property_order_.clear();
     sheet.style_value_range_ = sheet.style_name_range_;
-    ElementInspector::SetInlineStyleSheet(ptr, sheet);
-  } else if (name == "class") {
+    SetInlineStyleSheet(ptr, sheet);
+    return;
+  }
+
+  // Step 1: Update inspector_attribute (both pipelines need this).
+  if (name == "class") {
     ElementInspector::SetClassOrder(ptr, std::vector<std::string>());
   } else if (name == "id") {
     ElementInspector::SetSelectorId(ptr, "");
@@ -947,6 +1328,25 @@ void ElementHelper::RemoveAttributes(Element* ptr, const std::string& name) {
     ElementInspector::SetAttrOrder(ptr, attr_order);
     ElementInspector::SetAttrMap(ptr, attr_map);
   }
+
+  // Step 2: Sync to engine and flush.
+  if (IsNewStylingPipelineEnabled(ptr)) {
+    if (name == "class") {
+      ptr->RemoveAllClass();
+    } else if (name == "id") {
+      ptr->SetIdSelector(lynx::base::String());
+    } else {
+      // Generic attributes are synced as attributes only. Attribute-selector
+      // rematching is outside the current new-pipeline devtool bridge scope.
+      ptr->SetAttribute(lynx::base::String(
+                            name.c_str(), static_cast<uint32_t>(name.length())),
+                        lynx::lepus::Value());
+      ptr->MarkStyleDirty(false);
+    }
+    FlushFiberStyleMutation(GetFlushRootForStyleMutation(ptr, nullptr));
+    return;
+  }
+
   ElementInspector::Flush(ptr);
 }
 

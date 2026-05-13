@@ -17,9 +17,10 @@ using lynx::tasm::LayoutNode;
 namespace lynx {
 namespace tasm {
 
+class CSSParseToken;
 class CSSFragment;
 
-}
+}  // namespace tasm
 }  // namespace lynx
 
 namespace lynx {
@@ -282,6 +283,13 @@ class ElementInspector {
       Element* element, std::string name);
   static lynx::devtool::InspectorStyleSheet GetStyleSheetByName(
       Element* element, const std::string& name);
+  static void RecordStyleSheetSourceToken(
+      Element* style_root,
+      const lynx::devtool::InspectorStyleSheet& style_sheet,
+      lynx::tasm::CSSParseToken* token);
+  static lynx::tasm::CSSParseToken* GetStyleSheetSourceToken(
+      Element* style_root,
+      const lynx::devtool::InspectorStyleSheet& style_sheet);
   static std::vector<lynx::devtool::InspectorKeyframe>
   GetAnimationKeyframeByName(Element* element, const std::string& name);
 

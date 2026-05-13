@@ -7,13 +7,16 @@
 
 #include "devtool/lynx_devtool/element/element_helper.h"
 
+#include "base/include/auto_reset.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/ng/parser/css_parser_token_range.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
@@ -32,6 +35,13 @@ static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
+
+lynx::tasm::CSSValue ParseVariableValue(const char* raw_value) {
+  lynx::tasm::CSSParserConfigs configs;
+  lynx::lepus::Value value(raw_value);
+  auto parser = lynx::tasm::CSSStringParser::FromLepusString(value, configs);
+  return parser.ParseVariable();
+}
 
 std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateSelectorCSSFragment(
     const std::string& selector, lynx::tasm::CSSPropertyID property_id,
@@ -602,6 +612,391 @@ TEST_F(ElementHelperTest, SetStyleTextsTest) {
   EXPECT_EQ(res, json_value);
 }
 
+TEST_F(ElementHelperTest,
+       SetInlineStyleTextsNewPipelineSyncsAndClearsInlineVariables) {
+  manager->enable_new_styling_pipeline_ = true;
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  auto page = manager->CreateFiberPage("page", 0);
+
+  auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp->attribute_holder());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  page->InsertNode(element);
+
+  lynx::devtool::ElementHelper::SetInlineStyleTexts(
+      element.get(), "--brand:red;color:var(--brand)", Range(), page.get());
+
+  EXPECT_EQ(lynx::devtool::ElementInspector::GetInlineStyleSheet(element.get())
+                .css_text_,
+            "--brand:red;color:var(--brand);");
+  EXPECT_TRUE(element->GetRawInlineStyles().str().empty());
+  auto inline_vars = element->data_model()->GetCSSInlineVariables();
+  auto brand_it = inline_vars.find(lynx::base::String("--brand"));
+  ASSERT_TRUE(brand_it != inline_vars.end());
+  EXPECT_EQ(brand_it->second.str(), "red");
+
+  lynx::devtool::ElementHelper::RemoveAttributes(element.get(), "style");
+
+  EXPECT_TRUE(element->GetRawInlineStyles().str().empty());
+  EXPECT_TRUE(element->data_model()->GetCSSInlineVariables().empty());
+}
+
+TEST_F(ElementHelperTest,
+       SetSelectorStyleTextsNewPipelineKeepsLastDuplicateProperty) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+  auto selector_fragment = CreateSelectorCSSFragment(
+      "view", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px");
+  page->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+
+  lynx::base::String component_id("21");
+  int32_t css_id = 100;
+  lynx::base::String entry_name("__Card__");
+  lynx::base::String component_name("TestComp");
+  lynx::base::String path("/index/components/TestComp");
+  auto component = manager->CreateFiberComponent(
+      component_id, css_id, entry_name, component_name, path);
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(component.get()));
+  page->InsertNode(component);
+
+  auto styled_element = manager->CreateFiberElement("view");
+  auto styled_comp = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  styled_element->SetAttributeHolder(styled_comp->attribute_holder());
+  styled_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  component->InsertNode(styled_element);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(styled_element.get()));
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(styled_element.get(), style_root.get()));
+
+  auto initial_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
+      styled_element.get(), "view");
+  ASSERT_FALSE(initial_sheet.empty);
+
+  lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
+                                              "width:10px;width:20px;",
+                                              initial_sheet.style_value_range_);
+
+  auto token =
+      styled_element->GetRelatedCSSFragment()->GetSharedCSSStyle("view");
+  ASSERT_NE(token, nullptr);
+
+  const auto& attributes = token->GetAttributes();
+  auto width_it = attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(width_it != attributes.end());
+  EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
+                lynx::tasm::CSSPropertyID::kPropertyIDWidth, width_it->second),
+            "20px");
+}
+
+TEST_F(ElementHelperTest,
+       SetSelectorStyleTextsNewPipelineUpdatesDescendantSelectorToken) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+  auto selector_fragment = CreateSelectorCSSFragment(
+      ".card .title", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px");
+  page->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+
+  lynx::base::String component_id("21");
+  int32_t css_id = 100;
+  lynx::base::String entry_name("__Card__");
+  lynx::base::String component_name("TestComp");
+  lynx::base::String path("/index/components/TestComp");
+  auto component = manager->CreateFiberComponent(
+      component_id, css_id, entry_name, component_name, path);
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(component.get()));
+  page->InsertNode(component);
+
+  auto parent = manager->CreateFiberElement("view");
+  parent->data_model()->SetClass("card");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(parent.get()));
+  component->InsertNode(parent);
+
+  auto styled_element = manager->CreateFiberElement("view");
+  styled_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  styled_element->data_model()->SetClass("title");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(styled_element.get()));
+  parent->InsertNode(styled_element);
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(styled_element.get(), style_root.get()));
+
+  auto matched_styles = lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+      styled_element.get());
+  ASSERT_EQ(matched_styles.size(), 1U);
+  EXPECT_EQ(matched_styles[0].style_name_, ".card .title");
+
+  auto initial_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
+      styled_element.get(), ".card .title");
+  ASSERT_FALSE(initial_sheet.empty);
+
+  lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
+                                              "width:20px;",
+                                              initial_sheet.style_value_range_);
+
+  auto token = styled_element->GetRelatedCSSFragment()->GetSharedCSSStyle(
+      ".card .title");
+  ASSERT_NE(token, nullptr);
+
+  const auto& attributes = token->GetAttributes();
+  auto width_it = attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(width_it != attributes.end());
+  EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
+                lynx::tasm::CSSPropertyID::kPropertyIDWidth, width_it->second),
+            "20px");
+}
+
+TEST_F(ElementHelperTest,
+       SetSelectorStyleTextsNewPipelineKeepsComponentSelectorTokenIsolated) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+
+  auto first_fragment = CreateSelectorCSSFragment(
+      ".title", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px");
+  auto second_fragment = CreateSelectorCSSFragment(
+      ".title", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "40px");
+
+  lynx::base::String first_component_id("21");
+  lynx::base::String first_entry_name("__CardA__");
+  lynx::base::String first_component_name("TestCompA");
+  lynx::base::String first_path("/index/components/TestCompA");
+  auto first_component =
+      manager->CreateFiberComponent(first_component_id, 100, first_entry_name,
+                                    first_component_name, first_path);
+  first_component->style_sheet_ =
+      std::make_unique<lynx::tasm::CSSFragmentDecorator>(first_fragment.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(first_component.get()));
+  page->InsertNode(first_component);
+
+  auto first_element = manager->CreateFiberElement("view");
+  first_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(first_component->impl_id()));
+  first_element->data_model()->SetClass("title");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(first_element.get()));
+  first_component->InsertNode(first_element);
+
+  lynx::base::String second_component_id("22");
+  lynx::base::String second_entry_name("__CardB__");
+  lynx::base::String second_component_name("TestCompB");
+  lynx::base::String second_path("/index/components/TestCompB");
+  auto second_component =
+      manager->CreateFiberComponent(second_component_id, 200, second_entry_name,
+                                    second_component_name, second_path);
+  second_component->style_sheet_ =
+      std::make_unique<lynx::tasm::CSSFragmentDecorator>(second_fragment.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(second_component.get()));
+  page->InsertNode(second_component);
+
+  auto second_element = manager->CreateFiberElement("view");
+  second_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(second_component->impl_id()));
+  second_element->data_model()->SetClass("title");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(second_element.get()));
+  second_component->InsertNode(second_element);
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(first_element.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(second_element.get(), style_root.get()));
+
+  auto matched_styles = lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+      first_element.get());
+  ASSERT_EQ(matched_styles.size(), 1U);
+  EXPECT_EQ(matched_styles[0].style_name_, ".title");
+  auto second_matched_styles =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+          second_element.get());
+  ASSERT_EQ(second_matched_styles.size(), 1U);
+  EXPECT_EQ(second_matched_styles[0].style_name_, ".title");
+  EXPECT_NE(matched_styles[0].style_value_range_.start_line_,
+            second_matched_styles[0].style_value_range_.start_line_);
+
+  lynx::devtool::ElementHelper::SetStyleTexts(
+      page.get(), style_root.get(), "width:20px;",
+      matched_styles[0].style_value_range_);
+
+  auto first_token =
+      first_element->GetRelatedCSSFragment()->GetSharedCSSStyle(".title");
+  ASSERT_NE(first_token, nullptr);
+  auto second_token =
+      second_element->GetRelatedCSSFragment()->GetSharedCSSStyle(".title");
+  ASSERT_NE(second_token, nullptr);
+
+  const auto& first_attributes = first_token->GetAttributes();
+  auto first_width_it =
+      first_attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(first_width_it != first_attributes.end());
+  EXPECT_EQ(
+      lynx::tasm::CSSDecoder::CSSValueToString(
+          lynx::tasm::CSSPropertyID::kPropertyIDWidth, first_width_it->second),
+      "20px");
+
+  const auto& second_attributes = second_token->GetAttributes();
+  auto second_width_it =
+      second_attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(second_width_it != second_attributes.end());
+  EXPECT_EQ(
+      lynx::tasm::CSSDecoder::CSSValueToString(
+          lynx::tasm::CSSPropertyID::kPropertyIDWidth, second_width_it->second),
+      "40px");
+}
+
+TEST_F(ElementHelperTest,
+       SetSelectorStyleTextsNewPipelineUpdatesAdoptedSelectorToken) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+
+  lynx::tasm::CSSParserConfigs parser_configs;
+  auto adopted_token =
+      fml::MakeRefCounted<lynx::tasm::CSSParseToken>(parser_configs);
+  adopted_token->raw_attributes_[lynx::tasm::CSSPropertyID::kPropertyIDWidth] =
+      lynx::tasm::CSSValue::MakePlainString("10px");
+
+  auto sheet = std::make_shared<lynx::tasm::CSSSheet>(".adopted");
+  adopted_token->sheets().emplace_back(sheet);
+
+  lynx::tasm::CSSParserTokenMap token_map;
+  token_map.insert(std::make_pair(".adopted", adopted_token));
+
+  auto adopted_fragment = std::make_unique<lynx::tasm::SharedCSSFragment>(
+      1, std::vector<int32_t>{}, token_map, lynx::tasm::CSSKeyframesTokenMap{},
+      lynx::tasm::CSSFontFaceRuleMap{});
+  adopted_fragment->SetEnableCSSSelector();
+
+  lynx::css::CSSParserContext context;
+  lynx::css::CSSTokenizer tokenizer(".adopted");
+  auto parser_tokens = tokenizer.TokenizeToEOF();
+  lynx::css::CSSParserTokenRange range(parser_tokens);
+  auto selector_vector =
+      lynx::css::CSSSelectorParser::ParseSelector(range, &context);
+  size_t flattened_size =
+      lynx::css::CSSSelectorParser::FlattenedSize(selector_vector);
+  auto selector_arr =
+      std::make_unique<lynx::css::LynxCSSSelector[]>(flattened_size);
+  lynx::css::CSSSelectorParser::AdoptSelectorVector(
+      selector_vector, selector_arr.get(), flattened_size);
+  adopted_fragment->AddStyleRule(std::move(selector_arr), adopted_token);
+
+  auto wrapper = fml::AdoptRef(
+      new lynx::tasm::SharedCSSFragmentWrapper(std::move(adopted_fragment)));
+  manager->AdoptStyleSheet(wrapper);
+
+  auto element = manager->CreateFiberElement("view");
+  element->data_model()->SetClass("adopted");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  page->InsertNode(element);
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(element.get(), style_root.get()));
+
+  auto matched_styles =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(element.get());
+  ASSERT_EQ(matched_styles.size(), 1U);
+  EXPECT_EQ(matched_styles[0].style_name_, ".adopted");
+
+  auto initial_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
+      element.get(), ".adopted");
+  ASSERT_FALSE(initial_sheet.empty);
+
+  EXPECT_EQ(element->GetRelatedCSSFragment()->GetSharedCSSStyle(".adopted"),
+            nullptr);
+
+  lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
+                                              "width:20px;",
+                                              initial_sheet.style_value_range_);
+
+  const auto& attributes = adopted_token->GetAttributes();
+  auto width_it = attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(width_it != attributes.end());
+  EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
+                lynx::tasm::CSSPropertyID::kPropertyIDWidth, width_it->second),
+            "20px");
+}
+
+TEST_F(ElementHelperTest,
+       GetCssByStyleMapNewPipelineUsesResolvedCustomProperties) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp->attribute_holder());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+
+  auto* style = element->base_css_style() ? element->base_css_style()
+                                          : element->computed_css_style();
+  style->SetCustomProperty(lynx::base::String("--font"),
+                           lynx::tasm::CSSValue::MakePlainString("PingFang"));
+  style->FinalizeCustomProperties();
+
+  lynx::tasm::StyleMap style_map;
+  style_map.insert_or_assign(lynx::tasm::CSSPropertyID::kPropertyIDFontFamily,
+                             ParseVariableValue("var(--font)"));
+
+  auto css = lynx::devtool::ElementInspector::GetCssByStyleMap(element.get(),
+                                                               style_map);
+  auto font_it = css.find("font-family");
+  ASSERT_TRUE(font_it != css.end());
+  EXPECT_EQ(font_it->second, "PingFang");
+}
+
 TEST_F(ElementHelperTest, InitStyleSheetTest) {
   auto element = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));
@@ -863,6 +1258,306 @@ TEST_F(ElementHelperTest, GetMatchedStyleSheetTest) {
   auto width_iter = res2[0].css_properties_.find("width");
   ASSERT_NE(width_iter, res2[0].css_properties_.end());
   EXPECT_EQ(width_iter->second.value_, "10px");
+}
+
+TEST_F(ElementHelperTest,
+       SetInlineStyleTextsNewPipelineSyncsImportantDeclarations) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  auto element = manager->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  page->InsertNode(element);
+
+  // Set inline style with mixed !important and normal declarations.
+  lynx::devtool::ElementHelper::SetInlineStyleTexts(
+      element.get(), "width:100px !important;height:200px;", Range(),
+      page.get());
+
+  // The inspector sheet still contains the original text (legacy parity).
+  EXPECT_EQ(lynx::devtool::ElementInspector::GetInlineStyleSheet(element.get())
+                .css_text_,
+            "width:100px !important;height:200px;");
+
+  // ProcessFullRawInlineStyle drains full_raw_inline_style_ into the current
+  // inline maps. Important declarations should be preserved in the important
+  // map instead of being dropped by the devtool bridge.
+  EXPECT_TRUE(element->GetRawInlineStyles().str().empty());
+  const auto& inline_styles = element->GetCurrentRawInlineStyles();
+  ASSERT_TRUE(inline_styles.has_value());
+  EXPECT_EQ(inline_styles->count(lynx::tasm::CSSPropertyID::kPropertyIDWidth),
+            0U);
+  auto height_it =
+      inline_styles->find(lynx::tasm::CSSPropertyID::kPropertyIDHeight);
+  ASSERT_TRUE(height_it != inline_styles->end());
+  EXPECT_EQ(height_it->second.StdString(), "200px");
+
+  const auto& important_inline_styles =
+      element->GetCurrentRawImportantInlineStyles();
+  ASSERT_TRUE(important_inline_styles.has_value());
+  auto width_it = important_inline_styles->find(
+      lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(width_it != important_inline_styles->end());
+  EXPECT_EQ(width_it->second.StdString(), "100px");
+
+  lynx::devtool::ElementHelper::SetInlineStyleTexts(
+      element.get(), "width:150px;", Range(), page.get());
+
+  const auto& updated_inline_styles = element->GetCurrentRawInlineStyles();
+  ASSERT_TRUE(updated_inline_styles.has_value());
+  auto updated_width_it =
+      updated_inline_styles->find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(updated_width_it != updated_inline_styles->end());
+  EXPECT_EQ(updated_width_it->second.StdString(), "150px");
+  const auto& updated_important_inline_styles =
+      element->GetCurrentRawImportantInlineStyles();
+  EXPECT_TRUE(!updated_important_inline_styles.has_value() ||
+              updated_important_inline_styles->find(
+                  lynx::tasm::CSSPropertyID::kPropertyIDWidth) ==
+                  updated_important_inline_styles->end());
+}
+
+TEST_F(ElementHelperTest,
+       SetInlineStyleTextsNewPipelinePreservesImportantCustomProperty) {
+  manager->enable_new_styling_pipeline_ = true;
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  auto page = manager->CreateFiberPage("page", 0);
+  auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp->attribute_holder());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  page->InsertNode(element);
+
+  lynx::devtool::ElementHelper::SetInlineStyleTexts(
+      element.get(), "--theme:red !important;color:var(--theme);", Range(),
+      page.get());
+
+  // Inspector retains the original text.
+  EXPECT_EQ(lynx::devtool::ElementInspector::GetInlineStyleSheet(element.get())
+                .css_text_,
+            "--theme:red !important;color:var(--theme);");
+
+  // Element inline styles keep the var() user, while the custom property is
+  // preserved without its !important suffix.
+  EXPECT_TRUE(element->GetRawInlineStyles().str().empty());
+  const auto& inline_styles = element->GetCurrentRawInlineStyles();
+  ASSERT_TRUE(inline_styles.has_value());
+  EXPECT_EQ(inline_styles->count(lynx::tasm::CSSPropertyID::kPropertyIDColor),
+            1U);
+
+  auto inline_vars = element->data_model()->GetCSSInlineVariables();
+  auto theme_it = inline_vars.find(lynx::base::String("--theme"));
+  ASSERT_TRUE(theme_it != inline_vars.end());
+  EXPECT_EQ(theme_it->second.str(), "red");
+}
+
+TEST_F(ElementHelperTest,
+       SetSelectorStyleTextsNewPipelineSyncsImportantDeclarations) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+  auto selector_fragment = CreateSelectorCSSFragment(
+      "view", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px");
+  page->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+
+  lynx::base::String component_id("21");
+  int32_t css_id = 100;
+  lynx::base::String entry_name("__Card__");
+  lynx::base::String component_name("TestComp");
+  lynx::base::String path("/index/components/TestComp");
+  auto component = manager->CreateFiberComponent(
+      component_id, css_id, entry_name, component_name, path);
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(component.get()));
+  page->InsertNode(component);
+
+  auto styled_element = manager->CreateFiberElement("view");
+  auto styled_comp = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  styled_element->SetAttributeHolder(styled_comp->attribute_holder());
+  styled_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  component->InsertNode(styled_element);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(styled_element.get()));
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(styled_element.get(), style_root.get()));
+
+  auto initial_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
+      styled_element.get(), "view");
+  ASSERT_FALSE(initial_sheet.empty);
+
+  auto token =
+      styled_element->GetRelatedCSSFragment()->GetSharedCSSStyle("view");
+  ASSERT_NE(token, nullptr);
+  lynx::tasm::StyleMap stale_important_styles;
+  stale_important_styles.insert_or_assign(
+      lynx::tasm::CSSPropertyID::kPropertyIDWidth,
+      lynx::tasm::CSSValue(10, lynx::tasm::CSSValuePattern::PX));
+  token->SetImportantAttributes(std::move(stale_important_styles));
+
+  // Edit selector style to move width out of !important and add height as a new
+  // important declaration. The old important width must not keep overriding,
+  // and important custom properties should be preserved without their suffix.
+  lynx::devtool::ElementHelper::SetStyleTexts(
+      page.get(), style_root.get(),
+      "--theme:red !important;color:var(--theme);width:20px;"
+      "height:30px !important;",
+      initial_sheet.style_value_range_);
+
+  const auto& attributes = token->GetAttributes();
+  auto color_it = attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDColor);
+  ASSERT_TRUE(color_it != attributes.end());
+  auto width_it = attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(width_it != attributes.end());
+  EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
+                lynx::tasm::CSSPropertyID::kPropertyIDWidth, width_it->second),
+            "20px");
+
+  const auto& important_attributes = token->GetImportantAttributes();
+  EXPECT_TRUE(
+      important_attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth) ==
+      important_attributes.end());
+  auto height_it =
+      important_attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDHeight);
+  ASSERT_TRUE(height_it != important_attributes.end());
+  EXPECT_EQ(
+      lynx::tasm::CSSDecoder::CSSValueToString(
+          lynx::tasm::CSSPropertyID::kPropertyIDHeight, height_it->second),
+      "30px");
+
+  const auto& style_variables = token->GetStyleVariables();
+  auto theme_it = style_variables.find(lynx::base::String("--theme"));
+  ASSERT_TRUE(theme_it != style_variables.end());
+  EXPECT_EQ(theme_it->second.str(), "red");
+}
+
+TEST_F(ElementHelperTest, SetAttributesClassNewPipeline) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+  auto selector_fragment = CreateSelectorCSSFragment(
+      ".foo", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px");
+  page->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+
+  lynx::base::String component_id("21");
+  int32_t css_id = 100;
+  lynx::base::String entry_name("__Card__");
+  lynx::base::String component_name("TestComp");
+  lynx::base::String path("/index/components/TestComp");
+  auto component = manager->CreateFiberComponent(
+      component_id, css_id, entry_name, component_name, path);
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(component.get()));
+  page->InsertNode(component);
+
+  auto element = manager->CreateFiberElement("view");
+  element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  component->InsertNode(element);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+
+  // Set class via devtool.
+  lynx::devtool::ElementHelper::SetAttributes(element.get(), "class", "foo");
+
+  // AttributeHolder should have the class.
+  ASSERT_EQ(element->data_model()->classes().size(), 1U);
+  EXPECT_EQ(element->data_model()->classes()[0].str(), "foo");
+
+  // Computed style should reflect the .foo rule.
+  auto resolved = element->computed_css_style()->GetResolvedValues();
+  auto width_it = resolved.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(width_it != resolved.end());
+  EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
+                lynx::tasm::CSSPropertyID::kPropertyIDWidth, width_it->second),
+            "10px");
+
+  // Remove class via devtool.
+  lynx::devtool::ElementHelper::RemoveAttributes(element.get(), "class");
+
+  EXPECT_TRUE(element->data_model()->classes().empty());
+
+  // After removal, width should fall back to default (not present in resolved).
+  auto resolved_after = element->computed_css_style()->GetResolvedValues();
+  EXPECT_TRUE(
+      resolved_after.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth) ==
+      resolved_after.end());
+}
+
+TEST_F(ElementHelperTest, SetAttributesIdNewPipeline) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+  auto selector_fragment = CreateSelectorCSSFragment(
+      "#bar", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "20px");
+  page->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+
+  lynx::base::String component_id("21");
+  int32_t css_id = 100;
+  lynx::base::String entry_name("__Card__");
+  lynx::base::String component_name("TestComp");
+  lynx::base::String path("/index/components/TestComp");
+  auto component = manager->CreateFiberComponent(
+      component_id, css_id, entry_name, component_name, path);
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(component.get()));
+  page->InsertNode(component);
+
+  auto element = manager->CreateFiberElement("view");
+  element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  component->InsertNode(element);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+
+  // Set id via devtool.
+  lynx::devtool::ElementHelper::SetAttributes(element.get(), "id", "bar");
+
+  EXPECT_EQ(element->data_model()->idSelector().str(), "bar");
+
+  auto resolved = element->computed_css_style()->GetResolvedValues();
+  auto width_it = resolved.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(width_it != resolved.end());
+  EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
+                lynx::tasm::CSSPropertyID::kPropertyIDWidth, width_it->second),
+            "20px");
+
+  // Remove id via devtool.
+  lynx::devtool::ElementHelper::RemoveAttributes(element.get(), "id");
+
+  EXPECT_TRUE(element->data_model()->idSelector().empty());
+
+  auto resolved_after = element->computed_css_style()->GetResolvedValues();
+  EXPECT_TRUE(
+      resolved_after.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth) ==
+      resolved_after.end());
 }
 
 }  // namespace testing

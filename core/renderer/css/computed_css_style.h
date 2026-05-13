@@ -11,6 +11,7 @@
 #include "base/include/auto_create_optional.h"
 #include "base/include/flex_optional.h"
 #include "base/include/vector.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/css/css_property_id.h"
@@ -157,7 +158,8 @@ class ComputedCSSStyle {
   void SetCustomProperty(const base::String& key, const tasm::CSSValue& value);
   void FinalizeCustomProperties();
   const tasm::CustomPropertiesMap* GetRawCustomProperties() const;
-  const tasm::CustomPropertiesMap* GetCustomProperties() const;
+  LYNX_EXPORT_FOR_DEVTOOL const tasm::CustomPropertiesMap* GetCustomProperties()
+      const;
 
   base::flex_optional<tasm::CSSValue> ResolveVariable(
       const base::String& key) const;

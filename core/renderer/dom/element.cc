@@ -2797,6 +2797,22 @@ void Element::RemoveAllInlineStyles() {
   MarkDirty(kDirtyStyle);
 }
 
+void Element::RemoveAllImportantInlineStyles() {
+  EXEC_EXPR_FOR_INSPECTOR({
+    if (element_manager_ && element_manager_->IsDomTreeEnabled() &&
+        current_raw_important_inline_styles_.has_value()) {
+      for (const auto& pair : *current_raw_important_inline_styles_) {
+        const static base::String kNull;
+        data_model()->SetInlineStyle(pair.first, kNull,
+                                     element_manager_->GetCSSParserConfigs());
+      }
+    }
+  });
+
+  current_raw_important_inline_styles_.reset();
+  MarkDirty(kDirtyStyle);
+}
+
 void Element::CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value) {
   CacheCommittedStyleFromAttributes(id, value);
   styles_from_attributes_->insert_or_assign(id, std::move(value));

@@ -68,9 +68,10 @@ class ElementHelper {
                                        const std::string& style_sheet_id);
 
   static void SetInlineStyleTexts(Element* ptr, const std::string& text,
-                                  const Range& range);
+                                  const Range& range, Element* root = nullptr);
   static void SetInlineStyleSheet(Element* ptr,
-                                  const InspectorStyleSheet& style_sheet);
+                                  const InspectorStyleSheet& style_sheet,
+                                  Element* root = nullptr);
   static void SetSelectorStyleTexts(Element* root, Element* ptr,
                                     const std::string& text,
                                     const Range& range);

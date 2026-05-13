@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "base/include/vector.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_keywords.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
@@ -171,7 +172,7 @@ class CSSStringParser final {
   /// [ [ <url> [ <x> <y> ]? , ]* [ auto | default | none | ... ] ]
   CSSValue ParseCursor();
 
-  CSSValue ParseVariable();
+  LYNX_EXPORT_FOR_DEVTOOL CSSValue ParseVariable();
 
   static bool IsVariable(const char* name, uint32_t len) {
     return len > 3 && name[0] == 'v' && name[1] == 'a' && name[2] == 'r';

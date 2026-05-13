@@ -4,7 +4,10 @@
 
 #include "devtool/lynx_devtool/element/element_inspector.h"
 
+#include <cstdint>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 #include "core/base/utils/any.h"
 #include "core/inspector/style_sheet.h"
@@ -89,6 +92,27 @@ GetInspectorTagElementTypeMap() {
            {"component", InspectorElementType::COMPONENT},
            {"stylevalue", InspectorElementType::STYLEVALUE}}};
   return *s_inspector_tag_element_type_map;
+}
+
+std::string BuildStyleSheetSourceTokenKey(
+    Element* style_root, const InspectorStyleSheet& style_sheet) {
+  return std::to_string(reinterpret_cast<uintptr_t>(style_root)) + "|" +
+         style_sheet.style_name_ + "|" + std::to_string(style_sheet.position_) +
+         "|" + std::to_string(style_sheet.style_value_range_.start_line_) +
+         "|" + std::to_string(style_sheet.style_value_range_.start_column_);
+}
+
+std::unordered_map<std::string, lynx::tasm::CSSParseToken*>&
+StyleSheetSourceTokenMap() {
+  static lynx::base::NoDestructor<
+      std::unordered_map<std::string, lynx::tasm::CSSParseToken*>>
+      s_style_sheet_source_token_map;
+  return *s_style_sheet_source_token_map;
+}
+
+bool ShouldRecordStyleSheetSourceToken(Element* element) {
+  return element != nullptr && element->element_manager() != nullptr &&
+         element->element_manager()->EnableNewStylingPipeline();
 }
 
 }  // namespace
@@ -366,6 +390,29 @@ lynx::devtool::InspectorStyleSheet ElementInspector::InitStyleSheet(
   return res;
 }
 
+void ElementInspector::RecordStyleSheetSourceToken(
+    Element* style_root, const InspectorStyleSheet& style_sheet,
+    lynx::tasm::CSSParseToken* token) {
+  if (style_root == nullptr || token == nullptr || style_sheet.empty) {
+    return;
+  }
+  StyleSheetSourceTokenMap()[BuildStyleSheetSourceTokenKey(
+      style_root, style_sheet)] = token;
+}
+
+lynx::tasm::CSSParseToken* ElementInspector::GetStyleSheetSourceToken(
+    Element* style_root, const InspectorStyleSheet& style_sheet) {
+  if (style_root == nullptr || style_sheet.empty) {
+    return nullptr;
+  }
+  auto iter = StyleSheetSourceTokenMap().find(
+      BuildStyleSheetSourceTokenKey(style_root, style_sheet));
+  if (iter == StyleSheetSourceTokenMap().end()) {
+    return nullptr;
+  }
+  return iter->second;
+}
+
 Element* ElementInspector::GetParentComponentElementFromDataModel(
     Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", nullptr);
@@ -487,14 +534,35 @@ std::unordered_map<std::string, std::string> ElementInspector::GetCssByStyleMap(
     const auto& name = lynx::tasm::CSSProperty::GetPropertyName(pair.first);
 
     if (pair.second.GetValueType() == lynx::tasm::CSSValueType::VARIABLE) {
-      Value value_expr = pair.second.GetValue();
-      String property = pair.second.GetDefaultValue();
-      auto default_value_map = pair.second.GetDefaultValueMapOpt();
-      if (element && value_expr.IsString()) {
-        lynx::tasm::CSSVariableHandler handler;
-        property = handler.GetCSSVariableByRule(value_expr.StdString(),
-                                                element->data_model(), property,
-                                                default_value_map);
+      String property;
+      if (element != nullptr && element->element_manager() != nullptr &&
+          element->element_manager()->EnableNewStylingPipeline()) {
+        // New styling pipeline: resolved custom properties live in
+        // ComputedCSSStyle, not AttributeHolder.
+        const lynx::tasm::CustomPropertiesMap* custom_properties = nullptr;
+        if (element->base_css_style() != nullptr) {
+          custom_properties = element->base_css_style()->GetCustomProperties();
+        } else if (element->computed_css_style() != nullptr) {
+          custom_properties =
+              element->computed_css_style()->GetCustomProperties();
+        }
+        if (custom_properties != nullptr) {
+          property = lynx::tasm::CSSValue::SubstitutionResolved(
+              pair.second, *custom_properties);
+        } else {
+          property = pair.second.GetDefaultValue();
+        }
+      } else {
+        // Legacy pipeline: use AttributeHolder's css_variables_.
+        Value value_expr = pair.second.GetValue();
+        property = pair.second.GetDefaultValue();
+        auto default_value_map = pair.second.GetDefaultValueMapOpt();
+        if (element && value_expr.IsString()) {
+          lynx::tasm::CSSVariableHandler handler;
+          property = handler.GetCSSVariableByRule(value_expr.StdString(),
+                                                  element->data_model(),
+                                                  property, default_value_map);
+        }
       }
       lynx::tasm::CSSValue modified_value(Value(std::move(property)),
                                           pair.second.GetPattern());
@@ -560,7 +628,8 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
   auto matched_rules = lynx::tasm::StyleResolver::GetCSSMatchedRule(
       attribute_holder, style_sheet);
   for (const auto& matched : matched_rules) {
-    if (matched.Data()->Rule()->Token() != nullptr) {
+    auto* matched_token = matched.Data()->Rule()->Token().get();
+    if (matched_token != nullptr) {
       std::string name = matched.Data()->Selector().ToString();
       if (style_root != nullptr) {
         auto map = GetStyleSheetMap(style_root);
@@ -569,18 +638,31 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
         for (; iter != range.second; ++iter) {
           auto field = iter->second;
           if (matched.Position() == field.position_) {
+            if (ShouldRecordStyleSheetSourceToken(element)) {
+              auto* recorded_token =
+                  GetStyleSheetSourceToken(style_root, field);
+              if (recorded_token != nullptr &&
+                  recorded_token != matched_token) {
+                continue;
+              }
+              RecordStyleSheetSourceToken(style_root, field, matched_token);
+            }
             res.push_back(field);
             break;
           }
         }
         if (iter == range.second) {
-          std::unordered_map<std::string, std::string> css = GetCSSByParseToken(
-              element, matched.Data()->Rule()->Token().get());
+          std::unordered_map<std::string, std::string> css =
+              GetCSSByParseToken(element, matched_token);
           auto* inspector_attribute = style_root->inspector_attribute();
           if (inspector_attribute && !css.empty()) {
             lynx::devtool::InspectorStyleSheet style_sheet =
                 InitStyleSheet(style_root, inspector_attribute->start_line_++,
                                name, css, matched.Position());
+            if (ShouldRecordStyleSheetSourceToken(element)) {
+              RecordStyleSheetSourceToken(style_root, style_sheet,
+                                          matched_token);
+            }
             res.push_back(style_sheet);
             inspector_attribute->style_sheet_map_.insert({name, style_sheet});
             inspector_attribute->node_value_ =
@@ -632,7 +714,25 @@ lynx::devtool::InspectorStyleSheet ElementInspector::GetStyleSheetByName(
                                   res);
   auto map = GetStyleSheetMap(style_root);
   if (map.find(name) != map.end()) {
+    auto* style_sheet = ShouldRecordStyleSheetSourceToken(element)
+                            ? element->GetRelatedCSSFragment()
+                            : nullptr;
+    fml::RefPtr<lynx::tasm::CSSParseToken> token = nullptr;
+    if (style_sheet != nullptr) {
+      token = style_sheet->GetSharedCSSStyle(name);
+    }
+    auto range = map.equal_range(name);
+    if (token != nullptr) {
+      for (auto iter = range.first; iter != range.second; ++iter) {
+        if (GetStyleSheetSourceToken(style_root, iter->second) == token.get()) {
+          return iter->second;
+        }
+      }
+    }
     res = map.find(name)->second;
+    if (token != nullptr && map.count(name) == 1) {
+      RecordStyleSheetSourceToken(style_root, res, token.get());
+    }
   } else {
     std::unordered_map<std::string, std::string> css =
         GetCSSByName(element, name);
@@ -640,6 +740,15 @@ lynx::devtool::InspectorStyleSheet ElementInspector::GetStyleSheetByName(
     if (inspector_attribute && !css.empty()) {
       res = InitStyleSheet(style_root, inspector_attribute->start_line_++, name,
                            css);
+      if (ShouldRecordStyleSheetSourceToken(element)) {
+        auto* style_sheet = element->GetRelatedCSSFragment();
+        if (style_sheet != nullptr) {
+          auto token = style_sheet->GetSharedCSSStyle(name);
+          if (token != nullptr) {
+            RecordStyleSheetSourceToken(style_root, res, token.get());
+          }
+        }
+      }
       inspector_attribute->style_sheet_map_.insert({name, res});
       inspector_attribute->node_value_ =
           inspector_attribute->node_value_ + name + "{" + res.css_text_ + "}\n";
