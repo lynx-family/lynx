@@ -150,19 +150,6 @@ class FiberElement : public Element {
   // Flush style and attribute to platform shadow node, platform painting node
   // will be created if has not been created,
   void FlushProps() override;
-  const EventMap& event_map() const override {
-    if (data_model_) {
-      return data_model_->static_events();
-    }
-    return AttributeHolder::EventBundle::DefaultEmptyEventMap();
-  }
-  const EventMap& lepus_event_map() override {
-    if (data_model_) {
-      return data_model_->lepus_events();
-    }
-    return AttributeHolder::EventBundle::DefaultEmptyEventMap();
-  }
-
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
 
