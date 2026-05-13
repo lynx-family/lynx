@@ -2444,8 +2444,11 @@ void FiberElement::DidParallelFlushAsRoot(PerfStatistic &stats) {
   }
 }
 
-void FiberElement::PostResolveTaskToThreadPool(
-    bool is_engine_thread, ParallelReduceTaskQueue &task_queue) {
+void Element::PostResolveTaskToThreadPool(bool is_engine_thread,
+                                          ParallelReduceTaskQueue &task_queue) {
+  if (!is_fiber_element_) {
+    return;
+  }
   UpdateResolveStatus(AsyncResolveStatus::kPreparing);
   PrepareSelfForThreadedElementResolution();
 

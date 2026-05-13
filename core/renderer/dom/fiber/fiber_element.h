@@ -79,9 +79,6 @@ class FiberElement : public Element {
 
   void ParallelFlushRecursively();
 
-  virtual void PostResolveTaskToThreadPool(
-      bool is_engine_thread, ParallelReduceTaskQueue& task_queue) override;
-
   void AsyncResolveSubtreeProperty();
 
   void DispatchAsyncResolveSubtreeProperty();
@@ -123,7 +120,7 @@ class FiberElement : public Element {
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
 
-  virtual ParallelFlushReturn PrepareForCreateOrUpdate();
+  ParallelFlushReturn PrepareForCreateOrUpdate() override;
 
   void InsertLayoutNode(FiberElement* child, FiberElement* ref);
   void RemoveLayoutNode(FiberElement* child);

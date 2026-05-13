@@ -896,6 +896,8 @@ class Element : public lepus::RefCounted,
   virtual void PostResolveTaskToThreadPool(bool is_engine_thread,
                                            ParallelReduceTaskQueue& task_queue);
 
+  virtual ParallelFlushReturn PrepareForCreateOrUpdate();
+
   void DispatchAsyncResolveProperty();
 
   void AsyncPostResolveTaskToThreadPool();
