@@ -4782,8 +4782,8 @@ void FiberElement::SetMeasureFunc(void *context,
   sl_node_->SetSLMeasureFunc(std::move(measure_func));
 }
 
-void FiberElement::SetAlignmentFunc(void *context,
-                                    starlight::SLAlignmentFunc alignment_func) {
+void Element::SetAlignmentFunc(void *context,
+                               starlight::SLAlignmentFunc alignment_func) {
   sl_node_->SetSLAlignmentFunc(std::move(alignment_func));
 }
 

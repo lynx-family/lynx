@@ -203,8 +203,6 @@ class FiberElement : public Element {
   void DispatchLayoutBeforeRecursively();
 
   void SetMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
-  void SetAlignmentFunc(void* context,
-                        starlight::SLAlignmentFunc alignment_func);
 
  private:
   FiberElement* ReplaceTemplateChildIfNeeded(
