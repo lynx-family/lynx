@@ -28,7 +28,7 @@ class SimpleStyleNode;
 class StyleObject;
 }  // namespace style
 namespace tasm {
-class FiberElement;
+class Element;
 class ElementManager;
 
 class StyleResolver {
@@ -159,7 +159,7 @@ class StyleResolver {
 
   void GetCSSStyleNew(AttributeHolder* node, CSSFragment* style_sheet);
 
-  void GetCSSStyleForFiber(FiberElement* node, CSSFragment* style_sheet);
+  void GetCSSStyleForFiber(Element* node, CSSFragment* style_sheet);
 
   void DidCollectMatchedRules(AttributeHolder* holder, StyleMap& result,
                               StyleMap& important_result,
@@ -179,7 +179,7 @@ class StyleResolver {
   void ApplyCascadeStyles(CSSFragment* style_sheet, AttributeHolder* node,
                           const std::string& rule);
 
-  void ApplyCascadeStylesForFiber(CSSFragment* style_sheet, FiberElement* node,
+  void ApplyCascadeStylesForFiber(CSSFragment* style_sheet, Element* node,
                                   const std::string& rule);
 
   void MergeHigherCascadeStyles(const std::string& current_selector,
@@ -223,12 +223,11 @@ class StyleResolver {
                                          const char* selector);
 
   void ResolvePseudoElement(PseudoState state, CSSFragment* fragment,
-                            FiberElement* fiber_element,
+                            Element* fiber_element,
                             const char* pseudo_selector);
 
-  void ParsePseudoCSSTokensForFiber(FiberElement* element,
-                                    CSSFragment* fragment, const char* selector,
-                                    StyleMap& map);
+  void ParsePseudoCSSTokensForFiber(Element* element, CSSFragment* fragment,
+                                    const char* selector, StyleMap& map);
 
   static thread_local MatchedVector<const StyleMap*> matched_style_map;
   static thread_local MatchedVector<const StyleMap*>

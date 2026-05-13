@@ -10,7 +10,7 @@ namespace tasm {
 constexpr const static char kNoneElementTag[] = "view";
 
 NoneElement::NoneElement(ElementManager* manager)
-    : FiberElement(manager, BASE_STATIC_STRING(kNoneElementTag)) {
+    : Element(manager, BASE_STATIC_STRING(kNoneElementTag)) {
   is_layout_only_ = true;
   BASE_STATIC_STRING_DECL(kAbsolute, "absolute");
   BASE_STATIC_STRING_DECL(kNone, "none");
@@ -19,7 +19,7 @@ NoneElement::NoneElement(ElementManager* manager)
 }
 
 NoneElement::NoneElement(const NoneElement& element, bool clone_resolved_props)
-    : FiberElement(element, clone_resolved_props) {
+    : Element(element, clone_resolved_props) {
   is_layout_only_ = true;
 }
 

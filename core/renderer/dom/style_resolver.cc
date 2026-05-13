@@ -24,7 +24,6 @@
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/services/feature_count/global_feature_counter.h"
 
@@ -542,7 +541,7 @@ void StyleResolver::ResolveStyle(StyleMap& result, CSSFragment* fragment,
     if (fragment->enable_css_selector()) {
       GetCSSStyleNew(element_->data_model(), fragment);
     } else {
-      GetCSSStyleForFiber(static_cast<FiberElement*>(element_), fragment);
+      GetCSSStyleForFiber(static_cast<Element*>(element_), fragment);
     }
   }
 
@@ -582,7 +581,7 @@ void StyleResolver::HandlePseudoElement(CSSFragment* fragment) {
     return;
   }
 
-  auto fiber_element = static_cast<FiberElement*>(element_);
+  auto fiber_element = static_cast<Element*>(element_);
   if (fiber_element->HasTextSelection() &&
       !fiber_element->is_inline_element()) {
     ResolvePseudoElement(kPseudoStateSelection, fragment, fiber_element,
@@ -598,7 +597,7 @@ namespace {
 struct PseudoElementDescriptor {
   PseudoState state;
   const char* selector;
-  bool (*predicate)(FiberElement*);
+  bool (*predicate)(Element*);
 };
 }  // namespace
 
@@ -613,16 +612,16 @@ void StyleResolver::ResolvePseudoElementsForNewPipeline(CSSFragment* fragment) {
     return;
   }
 
-  auto fiber_element = static_cast<FiberElement*>(current_element);
+  auto fiber_element = static_cast<Element*>(current_element);
 
   static constexpr std::array<PseudoElementDescriptor, 2>
       kPseudoElementRegistry = {{
           {kPseudoStateSelection, kCSSSelectorSelection,
-           [](FiberElement* fe) {
+           [](Element* fe) {
              return fe->HasTextSelection() && !fe->is_inline_element();
            }},
           {kPseudoStatePlaceHolder, kCSSSelectorPlaceholder,
-           [](FiberElement* fe) { return fe->HasPlaceHolder(); }},
+           [](Element* fe) { return fe->HasPlaceHolder(); }},
       }};
 
   for (const auto& descriptor : kPseudoElementRegistry) {
@@ -635,7 +634,7 @@ void StyleResolver::ResolvePseudoElementsForNewPipeline(CSSFragment* fragment) {
 
 void StyleResolver::ResolvePseudoElement(PseudoState pseudo_state,
                                          CSSFragment* fragment,
-                                         FiberElement* fiber_element,
+                                         Element* fiber_element,
                                          const char* pseudo_selector) {
   StyleMap result;
   StyleMap important_result;
@@ -753,11 +752,11 @@ void StyleResolver::HandleCSSVariables(StyleMap& styles) {
          handler.HasCSSVariableInHolder(element_->data_model()))) {
       // mark need refresh style in parallel flush with css variables in
       // StyleMap
-      static_cast<FiberElement*>(element_)->MarkRefreshCSSStyles();
+      static_cast<Element*>(element_)->MarkRefreshCSSStyles();
     }
   } else {
     if (is_css_inline_variables_enabled) {
-      static_cast<FiberElement*>(element_)->CollectCustomProperties(
+      static_cast<Element*>(element_)->CollectCustomProperties(
           element_->data_model());
     }
 
@@ -1147,7 +1146,7 @@ void StyleResolver::GetPseudoClassStyle(PseudoClassType pseudo_type,
   }
 }
 
-void StyleResolver::GetCSSStyleForFiber(FiberElement* node,
+void StyleResolver::GetCSSStyleForFiber(Element* node,
                                         CSSFragment* style_sheet) {
   ElementManager* manager_ = manager();
   style_sheet->InitPseudoNotStyle();
@@ -1261,12 +1260,12 @@ void StyleResolver::GetCSSStyleForFiber(FiberElement* node,
 }
 
 void StyleResolver::ApplyCascadeStylesForFiber(CSSFragment* style_sheet,
-                                               FiberElement* node,
+                                               Element* node,
                                                const std::string& rule) {
   // for descendant selector, we just find the parent class in current
   // component scope!
   if (style_sheet->HasCascadeStyle()) {
-    FiberElement* node_parent = static_cast<FiberElement*>(node->parent());
+    Element* node_parent = static_cast<Element*>(node->parent());
     while (node_parent) {
       // TTML: all the element in the same scope
       // React:  decided by react runtime
@@ -1307,7 +1306,7 @@ void StyleResolver::ApplyCascadeStylesForFiber(CSSFragment* style_sheet,
         // descendant selector only works in current component scope!
         break;
       }
-      node_parent = static_cast<FiberElement*>(node_parent->parent());
+      node_parent = static_cast<Element*>(node_parent->parent());
     }
   }
 }
@@ -1412,7 +1411,7 @@ StyleResolver::InlineTokenVector StyleResolver::ParsePseudoCSSTokens(
   return tokens;
 }
 
-void StyleResolver::ParsePseudoCSSTokensForFiber(FiberElement* element,
+void StyleResolver::ParsePseudoCSSTokensForFiber(Element* element,
                                                  CSSFragment* fragment,
                                                  const char* selector,
                                                  StyleMap& map) {
@@ -1662,8 +1661,7 @@ void StyleResolver::CollectMatchedRules(CSSFragment* style_sheet) {
     if (style_sheet->enable_css_selector()) {
       GetCSSStyleNew(current_element->data_model(), style_sheet);
     } else {
-      GetCSSStyleForFiber(static_cast<FiberElement*>(current_element),
-                          style_sheet);
+      GetCSSStyleForFiber(static_cast<Element*>(current_element), style_sheet);
     }
   }
 }

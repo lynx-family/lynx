@@ -11,7 +11,7 @@ namespace lynx {
 namespace tasm {
 
 RawTextElement::RawTextElement(ElementManager* manager)
-    : FiberElement(manager, BASE_STATIC_STRING(kRawTextTag)) {}
+    : Element(manager, BASE_STATIC_STRING(kRawTextTag)) {}
 
 void RawTextElement::SetText(const lepus::Value& text) {
   if (!EnableLayoutInElementMode()) {
@@ -43,7 +43,7 @@ void RawTextElement::SetAttributeInternal(const base::String& key,
       return;
     }
   }
-  FiberElement::SetAttributeInternal(key, value);
+  Element::SetAttributeInternal(key, value);
 }
 
 ParallelFlushReturn RawTextElement::PrepareForCreateOrUpdate() {

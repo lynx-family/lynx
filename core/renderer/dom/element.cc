@@ -200,6 +200,15 @@ Element::Element(ElementManager* manager, const base::String& tag,
   }
 }
 
+fml::RefPtr<Element> Element::CloneElement(bool clone_resolved_props) const {
+  // Because the performance of the copy constructor is better than the
+  // combination of default construction and assignment operation, we choose
+  // to use the copy constructor to copy the element here. To minimize the
+  // impact caused by exposing the copy constructor, we have made it protected
+  // and encapsulated it in CloneElement.
+  return fml::AdoptRef<Element>(new Element(*this, clone_resolved_props));
+}
+
 Element::~Element() {
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_DESTRUCTOR, "id", id_);
   if (!ShouldDestroy() || (!IsFiberArch() && !is_fiber_element_)) {
@@ -378,6 +387,54 @@ void Element::AttachToElementManager(
   } else {
     element_container_ = std::make_unique<ElementContainer>(this);
   }
+
+  const auto& env_config = manager->GetLynxEnvConfig();
+  if (platform_css_style_ == nullptr) {
+    platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
+        *manager->platform_computed_css());
+  }
+  record_parent_font_size_ = env_config.PageDefaultFontSize();
+
+  // ComputedCSSStyle
+  platform_css_style_->SetScreenWidth(env_config.ScreenWidth());
+  platform_css_style_->SetViewportHeight(env_config.ViewportHeight());
+  platform_css_style_->SetViewportWidth(env_config.ViewportWidth());
+  platform_css_style_->SetCssAlignLegacyWithW3c(
+      manager->GetLayoutConfigs().css_align_with_legacy_w3c_);
+  platform_css_style_->SetFontScaleOnlyEffectiveOnSp(
+      manager->GetLynxEnvConfig().FontScaleSpOnly());
+  platform_css_style_->SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
+                                     env_config.LayoutsUnitPerPx());
+
+  computed_css_style()->SetEnableZIndex(manager->GetEnableZIndex());
+
+  // Create layout node and update layout styles
+  InitLayoutBundle();
+  UpdateLayoutNodeFontSize(GetFontSize(), GetRecordedRootFontSize());
+
+  if (layout_styles_.has_value()) {
+    for (auto& layout_style : *layout_styles_) {
+      UpdateLayoutNodeStyle(layout_style.first, layout_style.second);
+    }
+  }
+
+  SetFontSizeForAllElement(GetFontSize(), GetRecordedRootFontSize());
+
+  if (Config::DefaultFontScale() != env_config.FontScale()) {
+    computed_css_style()->SetFontScale(env_config.FontScale());
+  }
+
+  if (Config::DefaultFontScale() != env_config.FontScale()) {
+    SetComputedFontSize(env_config.PageDefaultFontSize(),
+                        env_config.PageDefaultFontSize());
+  }
+
+  if (element_manager_->GetEnableStandardCSSSelector()) {
+    // In new selector, mark style dirty while created.
+    MarkDirty(kDirtyStyle);
+  }
+
+  element_context_delegate_ = manager;
 }
 
 void Element::PushStyleToBundle() {
@@ -1210,10 +1267,6 @@ void Element::UpdateElement() {
     TransitionToNativeView();
   }
   element_container()->StyleChanged();
-}
-
-ParallelFlushReturn Element::PrepareForCreateOrUpdate() {
-  return []() {};
 }
 
 void Element::OnNodeReady() {
@@ -2293,7 +2346,11 @@ void Element::TransitionToNativeView() {
 }
 
 void Element::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
-  operation();
+  if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
+    element_context_delegate_->EnqueueTask(std::move(operation));
+  } else {
+    element_manager()->LegacyHandleLayoutTask(this, std::move(operation));
+  }
 }
 
 bool Element::IsExtendedLayoutOnlyProps(CSSPropertyID css_id) {
@@ -2343,7 +2400,7 @@ bool Element::IsFixedUnifiedOnly() const {
 bool Element::IsEventPathCatch(event::EventTarget* target,
                                event::Event* event) {
   if (is_fiber_element_ && IsDetached()) {
-    LOGE("FiberElement::IsEventPathCatch error: the target is detached.");
+    LOGE("Element::IsEventPathCatch error: the target is detached.");
     return true;
   }
 
@@ -2779,7 +2836,7 @@ Element* Element::last_child() const {
 }
 
 void Element::LogNodeInfo() {
-  LOGE("FiberElement node ,this:"
+  LOGE("Element node ,this:"
        << this << ", tag:" << tag_.str() << ",id:" << id_
        << (!data_model_->idSelector().empty() ? data_model_->idSelector().str()
                                               : "")

@@ -6,8 +6,8 @@
 #include <memory>
 #include <utility>
 
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 
 namespace lynx {
 namespace tasm {
@@ -93,9 +93,8 @@ void ElementLayoutNodeManager::DestroyPlatformLayoutNodes() {
   }
 }
 
-FiberElement* ElementLayoutNodeManager::GetFiberElement(int32_t id) const {
-  return reinterpret_cast<FiberElement*>(
-      element_manager_.node_manager()->Get(id));
+Element* ElementLayoutNodeManager::GetFiberElement(int32_t id) const {
+  return reinterpret_cast<Element*>(element_manager_.node_manager()->Get(id));
 }
 
 }  // namespace tasm

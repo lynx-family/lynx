@@ -2,8 +2,6 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/renderer/dom/fiber/fiber_element.h"
-
 #include <algorithm>
 #include <deque>
 #include <memory>
@@ -33,6 +31,7 @@
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/fiber/block_element.h"
@@ -42,6 +41,7 @@
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
+#include "core/renderer/dom/fiber/pseudo_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/template_element.h"
@@ -99,11 +99,11 @@ void ApplyEventResult(fml::RefPtr<event::Event> event, EventResult result) {
   }
 }
 
-FiberElement *ResolveTemplateRootForAction(Element *element) {
+Element *ResolveTemplateRootForAction(Element *element) {
   if (element == nullptr) {
     return nullptr;
   }
-  auto *fiber_element = static_cast<FiberElement *>(element);
+  auto *fiber_element = static_cast<Element *>(element);
   if (!fiber_element->is_template()) {
     return fiber_element;
   }
@@ -222,17 +222,6 @@ Element::NewPipelineStyleResolveResult Element::ResolveComputedStyles(
   return resolve_result;
 }
 
-FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
-    : FiberElement(manager, tag, kInvalidCssId) {}
-
-FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
-                           int32_t css_id)
-    : Element(manager, tag, css_id) {}
-
-FiberElement::FiberElement(const FiberElement &element,
-                           bool clone_resolved_props)
-    : Element(element, clone_resolved_props) {}
-
 void Element::FiberAddEvent(const base::String &type, const base::String &name,
                             const lepus::Value &callback,
                             const std::string &context_name) {
@@ -292,10 +281,9 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
                       !event->current_target()) {
                     return;
                   }
-                  auto *target =
-                      static_cast<FiberElement *>(event->target().get());
-                  auto *current_target = static_cast<FiberElement *>(
-                      event->current_target().get());
+                  auto *target = static_cast<Element *>(event->target().get());
+                  auto *current_target =
+                      static_cast<Element *>(event->current_target().get());
                   auto *parent_component =
                       current_target->GetParentComponentElement();
                   if (default_vm_context == nullptr) {
@@ -469,61 +457,6 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
   LOGW(
       "FiberAddEvent's 3rd parameter must be undefined, null, string or "
       "callable.");
-}
-
-void FiberElement::AttachToElementManager(
-    ElementManager *manager,
-    const std::shared_ptr<CSSStyleSheetManager> &style_manager,
-    bool keep_element_id) {
-  Element::AttachToElementManager(manager, style_manager, keep_element_id);
-
-  const auto &env_config = manager->GetLynxEnvConfig();
-  if (platform_css_style_ == nullptr) {
-    platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
-        *manager->platform_computed_css());
-  }
-  record_parent_font_size_ = env_config.PageDefaultFontSize();
-
-  // ComputedCSSStyle
-  platform_css_style_->SetScreenWidth(env_config.ScreenWidth());
-  platform_css_style_->SetViewportHeight(env_config.ViewportHeight());
-  platform_css_style_->SetViewportWidth(env_config.ViewportWidth());
-  platform_css_style_->SetCssAlignLegacyWithW3c(
-      manager->GetLayoutConfigs().css_align_with_legacy_w3c_);
-  platform_css_style_->SetFontScaleOnlyEffectiveOnSp(
-      manager->GetLynxEnvConfig().FontScaleSpOnly());
-  platform_css_style_->SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
-                                     env_config.LayoutsUnitPerPx());
-
-  computed_css_style()->SetEnableZIndex(manager->GetEnableZIndex());
-
-  // Create layout node and update layout styles
-  InitLayoutBundle();
-  UpdateLayoutNodeFontSize(GetFontSize(), GetRecordedRootFontSize());
-
-  if (layout_styles_.has_value()) {
-    for (auto &layout_style : *layout_styles_) {
-      UpdateLayoutNodeStyle(layout_style.first, layout_style.second);
-    }
-  }
-
-  SetFontSizeForAllElement(GetFontSize(), GetRecordedRootFontSize());
-
-  if (Config::DefaultFontScale() != env_config.FontScale()) {
-    computed_css_style()->SetFontScale(env_config.FontScale());
-  }
-
-  if (Config::DefaultFontScale() != env_config.FontScale()) {
-    SetComputedFontSize(env_config.PageDefaultFontSize(),
-                        env_config.PageDefaultFontSize());
-  }
-
-  if (element_manager_->GetEnableStandardCSSSelector()) {
-    // in new selector, mark style dirty while Created.
-    MarkDirty(kDirtyStyle);
-  }
-
-  element_context_delegate_ = manager;
 }
 
 void Element::OnNodeAdded(Element *child) {
@@ -981,9 +914,9 @@ void Element::AsyncPostResolveTaskToThreadPool() {
   }
 }
 
-void FiberElement::ReplaceElements(
-    const base::Vector<fml::RefPtr<FiberElement>> &inserted,
-    const base::Vector<fml::RefPtr<FiberElement>> &removed, FiberElement *ref) {
+void Element::ReplaceElements(
+    const base::Vector<fml::RefPtr<Element>> &inserted,
+    const base::Vector<fml::RefPtr<Element>> &removed, Element *ref) {
   if (removed.empty()) {
     for (const auto &child : inserted) {
       InsertNodeBeforeInternal(child, ref);
@@ -1042,7 +975,7 @@ void Element::InsertNode(const fml::RefPtr<Element> &raw_child, int32_t index) {
   auto child = raw_child;
 
   if (index < 0 || index > static_cast<int>(scoped_children_.size())) {
-    LOGE("[FiberElement] InsertNode index is out of bounds, index:"
+    LOGE("[Element] InsertNode index is out of bounds, index:"
          << index << ",size:" << scoped_children_.size());
     return;
   }
@@ -1079,7 +1012,7 @@ void Element::InsertNodeBeforeInternal(const fml::RefPtr<Element> &child,
   }
   if (child->parent_ != nullptr) {
     LOGE(
-        "FiberElement re-insert node, try to do remove node from old parent "
+        "Element re-insert node, try to do remove node from old parent "
         "first");
     this->LogNodeInfo();
     child->LogNodeInfo();
@@ -1105,8 +1038,8 @@ void Element::InsertNodeBeforeInternal(const fml::RefPtr<Element> &child,
   }
 
   // Invalidate ref_node for next-sibling combinator (A + B).
-  if (ref_node && static_cast<FiberElement *>(this)
-                      ->HasAdjacentSiblingRulesInStyleSheets()) {
+  if (ref_node &&
+      static_cast<Element *>(this)->HasAdjacentSiblingRulesInStyleSheets()) {
     ref_node->MarkStyleDirty(false);
   }
 
@@ -1127,7 +1060,7 @@ void Element::RemoveNodeInternal(const fml::RefPtr<Element> &child,
   // FIXME(linxs): to use linked node to avoid the index calculation asap!
   int index = IndexOf(child.get());
   if (index >= static_cast<int>(scoped_children_.size()) || index < 0) {
-    LOGE("FiberElement RemoveNode got wrong child index!!");
+    LOGE("Element RemoveNode got wrong child index!!");
     return;
   }
 
@@ -1144,8 +1077,8 @@ void Element::RemoveNodeInternal(const fml::RefPtr<Element> &child,
 
   // take care: NotifyNodeRemoved after removeAction inserted!
   OnNodeRemoved(child.get());
-  TreeResolver::NotifyNodeRemoved(static_cast<FiberElement *>(this),
-                                  static_cast<FiberElement *>(child.get()));
+  TreeResolver::NotifyNodeRemoved(static_cast<Element *>(this),
+                                  static_cast<Element *>(child.get()));
 
   Element *removed = scoped_children_[index].get();
   scoped_children_.erase(scoped_children_.begin() + index);
@@ -1155,8 +1088,8 @@ void Element::RemoveNodeInternal(const fml::RefPtr<Element> &child,
   removed->set_parent(nullptr);
 
   // Invalidate next sibling for next-sibling combinator (A + B).
-  if (next_sibling_of_removed && static_cast<FiberElement *>(this)
-                                     ->HasAdjacentSiblingRulesInStyleSheets()) {
+  if (next_sibling_of_removed &&
+      static_cast<Element *>(this)->HasAdjacentSiblingRulesInStyleSheets()) {
     next_sibling_of_removed->MarkStyleDirty(false);
   }
 
@@ -1946,7 +1879,7 @@ void Element::ResolveCSSStyles(
   }
 }
 
-ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
+ParallelFlushReturn Element::PrepareForCreateOrUpdate() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PREPARE_FOR_CRATE_OR_UPDATE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2223,22 +2156,22 @@ void Element::ReplayDynamicResolvedStyleSideEffects(
   }
 }
 
-void FiberElement::FlushActionsAsRoot() {
+void Element::FlushActionsAsRoot() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_ACTIONS_AS_ROOT,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
   if (parent() == nullptr) {
-    LOGE("FiberElement::FlushActionsAsRoot failed since parent is nullptr");
+    LOGE("Element::FlushActionsAsRoot failed since parent is nullptr");
     return;
   }
 
   // find the first non wrapper && non dirty parent to get the flush option
-  auto *flush_parent = static_cast<FiberElement *>(parent());
+  auto *flush_parent = static_cast<Element *>(parent());
 
   // find the first non dirty parent to do flush,if flush from subtree
   if (flush_parent->dirty_) {
-    LOGW("FiberElement::FlushActionsAsRoot maybe from a wrong parent, this tag:"
+    LOGW("Element::FlushActionsAsRoot maybe from a wrong parent, this tag:"
          << tag_.str() << ",component:" << ParentComponentEntryName());
     return flush_parent->FlushActionsAsRoot();
   }
@@ -2251,19 +2184,19 @@ void FiberElement::FlushActionsAsRoot() {
 
   // find the first non wrapper parent to get the flush option
   while (flush_parent && flush_parent->is_wrapper()) {
-    flush_parent = static_cast<FiberElement *>(flush_parent->parent());
+    flush_parent = static_cast<Element *>(flush_parent->parent());
   }
 
   if (!flush_parent) {
     LOGE(
-        "FiberElement::FlushActionsAsRoot failed since can not find a clean "
+        "Element::FlushActionsAsRoot failed since can not find a clean "
         "flush parent!");
     return;
   }
 
   if (IsDetached()) {
     LOGE(
-        "FiberElement::FlushActionsAsRoot failed since current node is "
+        "Element::FlushActionsAsRoot failed since current node is "
         "detached!");
     return;
   }
@@ -2304,7 +2237,7 @@ void Element::FlushSelf() {
 }
 
 // need parent's option
-void FiberElement::FlushActions() {
+void Element::FlushActions() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_ACTIONS,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2326,7 +2259,7 @@ void FiberElement::FlushActions() {
 
   // Step III: recursively call FlushActions for each child
   for (const auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
+    auto *fiber_child = static_cast<Element *>(child.get());
     if (NeedPropagateInheritedDirtyFlag(false)) {
       fiber_child->MarkDirtyLite(kDirtyPropagateInherited);
     }
@@ -2378,7 +2311,7 @@ void Element::ParallelFlushAsRoot() {
   }
   if (element_manager()->GetEnableParallelElement() &&
       element_manager()->EnableLevelOrderTraversing()) {
-    TreeResolver::TraverseDom(static_cast<FiberElement *>(this),
+    TreeResolver::TraverseDom(static_cast<Element *>(this),
                               TreeResolver::kWorkUnitSize);
     element_manager()->FlushLevelOrderTasks();
     element_manager()->WaitForAllLevelOrderResolveTasks();
@@ -2538,11 +2471,11 @@ void Element::PrepareChildren() {
   }
 }
 
-FiberElement *Element::ReplaceTemplateChildIfNeeded(
+Element *Element::ReplaceTemplateChildIfNeeded(
     base::InlineVector<fml::RefPtr<Element>,
                        kChildrenInlineVectorSize>::iterator child_iter) {
-  auto *fiber_this = static_cast<FiberElement *>(this);
-  auto *fiber_child = static_cast<FiberElement *>(child_iter->get());
+  auto *fiber_this = static_cast<Element *>(this);
+  auto *fiber_child = static_cast<Element *>(child_iter->get());
   if (!fiber_child->is_template()) {
     return fiber_child;
   }
@@ -2577,20 +2510,20 @@ FiberElement *Element::ReplaceTemplateChildIfNeeded(
   return fiber_child;
 }
 
-void Element::PrepareChildForInsertion(FiberElement *child) {
+void Element::PrepareChildForInsertion(Element *child) {
   if (!is_fiber_element_) {
     return;
   }
-  if (child->dirty() & FiberElement::kDirtyCreated) {
+  if (child->dirty() & Element::kDirtyCreated) {
     // make sure the child has been created,before insert op
     if (NeedPropagateInheritedDirtyFlag(false)) {
-      child->MarkDirtyLite(FiberElement::kDirtyPropagateInherited);
+      child->MarkDirtyLite(Element::kDirtyPropagateInherited);
     }
     child->PrepareForCreateOrUpdate();
   }
   if (child->IsLayoutOnly() && !child->is_raw_text()) {
     for (const auto &grand : child->children()) {
-      child->PrepareChildForInsertion(static_cast<FiberElement *>(grand.get()));
+      child->PrepareChildForInsertion(static_cast<Element *>(grand.get()));
     }
   }
 }
@@ -2599,7 +2532,7 @@ void Element::PrepareAndGenerateChildrenActions() {
   if (!is_fiber_element_) {
     return;
   }
-  auto *fiber_this = static_cast<FiberElement *>(this);
+  auto *fiber_this = static_cast<Element *>(this);
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               FIBER_ELEMENT_PREPARE_AND_GENERATE_CHILDREN_ACTIONS,
               [this](lynx::perfetto::EventContext ctx) {
@@ -2618,7 +2551,7 @@ void Element::PrepareAndGenerateChildrenActions() {
                 });
     if (!has_to_store_insert_remove_actions_) {
       for (const auto &child : scoped_children_) {
-        auto *fiber_child = static_cast<FiberElement *>(child.get());
+        auto *fiber_child = static_cast<Element *>(child.get());
         if (!fiber_child->render_parent_) {
           // if no pending tree actions, we just do insertion here
           if (!fiber_child->is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
@@ -2674,7 +2607,7 @@ void Element::PrepareAndGenerateChildrenActions() {
               // parent.
               param_child->HandleRemoveSelf(
                   fiber_this,
-                  static_cast<FiberElement *>(param_child->render_parent_));
+                  static_cast<Element *>(param_child->render_parent_));
             } else {
               // node with z-index only needs remove its element container.
               element_container()->RemoveElementContainerAccordingToElement(
@@ -2705,22 +2638,21 @@ void Element::PrepareAndGenerateChildrenActions() {
         // When new fixed is enabled, layout node should be re-inserted to its
         // render_parent, with an full insertion call.
         if (parent_) {
-          static_cast<FiberElement *>(parent_)->HandleInsertChildAction(
-              fiber_this, 0, static_cast<FiberElement *>(next_render_sibling_));
+          static_cast<Element *>(parent_)->HandleInsertChildAction(
+              fiber_this, 0, static_cast<Element *>(next_render_sibling_));
         }
       } else {
         // z-index only has to insert its element container again.
-        HandleContainerInsertion(
-            static_cast<FiberElement *>(render_parent_), this,
-            static_cast<FiberElement *>(next_render_sibling_));
+        HandleContainerInsertion(static_cast<Element *>(render_parent_), this,
+                                 static_cast<Element *>(next_render_sibling_));
       }
     }
     dirty_ &= ~kDirtyReAttachContainer;
   }
 }
 
-void FiberElement::HandleInsertChildAction(FiberElement *child, int to_index,
-                                           FiberElement *ref_node) {
+void Element::HandleInsertChildAction(Element *child, int to_index,
+                                      Element *ref_node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_INSERT_CHILD_ACTION,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2730,7 +2662,7 @@ void FiberElement::HandleInsertChildAction(FiberElement *child, int to_index,
   child->element_container()->UpdateGlobalInsertionOrder();
 
   if (child->render_parent_ != nullptr) {
-    LOGE("FiberElement do re-insert child action");
+    LOGE("Element do re-insert child action");
     this->LogNodeInfo();
     child->LogNodeInfo();
   }
@@ -2744,7 +2676,7 @@ void FiberElement::HandleInsertChildAction(FiberElement *child, int to_index,
       // 2. `ref_node` changed from fixed to non-fixed; since
       // `ref_node->HandleSelfFixedChange` was not executed, also find its
       // `next_sibling`.
-      ref_node = static_cast<FiberElement *>(ref_node->next_sibling());
+      ref_node = static_cast<Element *>(ref_node->next_sibling());
     }
   }
 
@@ -2765,7 +2697,7 @@ void FiberElement::HandleInsertChildAction(FiberElement *child, int to_index,
   HandleContainerInsertion(parent, child, ref_node);
 }
 
-void FiberElement::HandleRemoveChildAction(FiberElement *child) {
+void Element::HandleRemoveChildAction(Element *child) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_REMOVE_CHILD_ACTION,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2774,7 +2706,7 @@ void FiberElement::HandleRemoveChildAction(FiberElement *child) {
   auto *parent = this;
 
   if (child->render_parent_ != this) {
-    LOGE("FiberElement remove wrong child node !");
+    LOGE("Element remove wrong child node !");
     parent->LogNodeInfo();
     child->LogNodeInfo();
     return;
@@ -2798,7 +2730,7 @@ void FiberElement::HandleRemoveChildAction(FiberElement *child) {
   if (UNLIKELY(parent->is_wrapper() || parent->wrapper_element_count_ > 0) ||
       child->is_wrapper()) {
     if (child->enclosing_none_wrapper_) {
-      static_cast<FiberElement *>(child->enclosing_none_wrapper_)
+      static_cast<Element *>(child->enclosing_none_wrapper_)
           ->wrapper_element_count_--;
     }
     TreeResolver::RemoveFromParentForWrapperChild(parent, child);
@@ -2809,8 +2741,7 @@ void FiberElement::HandleRemoveChildAction(FiberElement *child) {
   element_container()->RemoveElementContainerAccordingToElement(child, false);
 }
 
-void FiberElement::HandleRemoveSelf(FiberElement *removal_point,
-                                    FiberElement *render_parent) {
+void Element::HandleRemoveSelf(Element *removal_point, Element *render_parent) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_REMOVE_SELF,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2823,7 +2754,7 @@ void FiberElement::HandleRemoveSelf(FiberElement *removal_point,
   if (render_parent == nullptr) {
     removal_point->element_container()
         ->RemoveElementContainerAccordingToElement(this, false);
-    LOGE("FiberElement double remove child node!");
+    LOGE("Element double remove child node!");
     this->LogNodeInfo();
     return;
   }
@@ -2852,7 +2783,7 @@ Element *Element::FindEnclosingNoneWrapper(Element *parent, Element *node) {
       parent->wrapper_element_count_++;
       break;
     }
-    parent = static_cast<FiberElement *>(parent->parent_);
+    parent = static_cast<Element *>(parent->parent_);
   }
   return parent;
 }
@@ -2864,8 +2795,8 @@ void Element::AddChildAt(fml::RefPtr<Element> child, int index) {
     scoped_children_.insert(scoped_children_.begin() + index, child);
   }
   OnNodeAdded(child.get());
-  TreeResolver::NotifyNodeInserted(static_cast<FiberElement *>(this),
-                                   static_cast<FiberElement *>(child.get()));
+  TreeResolver::NotifyNodeInserted(static_cast<Element *>(this),
+                                   static_cast<Element *>(child.get()));
   child->set_parent(this);
 }
 
@@ -3083,7 +3014,7 @@ void Element::PerformElementContainerCreateOrUpdate(bool need_update,
   }
 }
 
-ParallelFlushReturn FiberElement::CreateParallelTaskHandler() {
+ParallelFlushReturn Element::CreateParallelTaskHandler() {
   // Remaining Layout Task should be returned to be executed in threaded flush
   // or sync resolving(i.e. PageElement) scenario
   this->ResetParallelFlushFlag();
@@ -3136,7 +3067,7 @@ void Element::SetAttributeInternal(const base::String &key,
   // kFullSpan's value to ListComponentInfo::Type and synchronize it to
   // LayoutNode.
   constexpr const static char kFullSpan[] = "full-span";
-  if (parent() != nullptr && static_cast<FiberElement *>(parent())->is_list()) {
+  if (parent() != nullptr && static_cast<Element *>(parent())->is_list()) {
     if (key.IsEquals(kFullSpan)) {
       ListComponentInfo::Type type = ListComponentInfo::Type::DEFAULT;
       if (value.IsBool() && value.Bool()) {
@@ -3272,7 +3203,7 @@ void Element::InvalidateChildrenInheritedStylesRecursively() {
   }
 }
 
-void FiberElement::FlushProps() {
+void Element::FlushProps() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_PROPS,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -3295,11 +3226,11 @@ void FiberElement::FlushProps() {
 
     // check is in inlineContainer before attachLayoutNode
     auto *real_parent =
-        static_cast<FiberElement *>((!is_fixed_ || IsFixedNewOrUnifiedEnabled())
-                                        ? parent_
-                                        : element_manager_->root());
+        static_cast<Element *>((!is_fixed_ || IsFixedNewOrUnifiedEnabled())
+                                   ? parent_
+                                   : element_manager_->root());
     while (real_parent && real_parent->is_wrapper()) {
-      real_parent = static_cast<FiberElement *>(real_parent->parent());
+      real_parent = static_cast<Element *>(real_parent->parent());
     }
     if (real_parent) {
       CheckHasInlineContainer(real_parent);
@@ -3339,7 +3270,7 @@ void Element::RecursivelyMarkChildrenCSSVariableDirty(
   }
 
   for (const auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
+    auto *fiber_child = static_cast<Element *>(child.get());
     if (IsCSSInlineVariablesEnabled()) {
       // Entering RecursivelyMarkChildrenCSSVariableDirty means current
       // element's CSS variables changed.
@@ -3512,14 +3443,6 @@ void Element::UpdateLayoutNodeByBundle() {
     element_manager->UpdateLayoutNodeByBundle(id, std::move(layout_bundle));
   });
   layout_bundle_ = nullptr;
-}
-
-void FiberElement::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
-  if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
-    element_context_delegate_->EnqueueTask(std::move(operation));
-  } else {
-    element_manager()->LegacyHandleLayoutTask(this, std::move(operation));
-  }
 }
 
 void Element::RequestLayout() {
@@ -3706,18 +3629,17 @@ void Element::ResetFontSize() {
   }
 }
 
-void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
+void Element::InsertLayoutNode(Element *child, Element *ref) {
   DCHECK(!ref || !ref->is_wrapper());
   if (EnableLayoutInElementMode()) {
-    FiberElement *container =
-        static_cast<FiberElement *>(FindFirstNonVirtualRenderAncestor());
+    Element *container =
+        static_cast<Element *>(FindFirstNonVirtualRenderAncestor());
     bool inserted = false;
     if (container && !child->is_virtual()) {
       container->EnsureSLNode();
       child->EnsureSLNode();
-      FiberElement *ref_node =
-          ref ? static_cast<FiberElement *>(
-                    ref->FindFirstNonVirtualRenderSibling())
+      Element *ref_node =
+          ref ? static_cast<Element *>(ref->FindFirstNonVirtualRenderSibling())
               : nullptr;
       if (ref_node) {
         ref_node->EnsureSLNode();
@@ -3732,7 +3654,7 @@ void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
   }
 
   if (child->attached_to_layout_parent_) {
-    LOGE("FiberElement layout node already inserted !");
+    LOGE("Element layout node already inserted !");
     this->LogNodeInfo();
     child->LogNodeInfo();
   }
@@ -3744,7 +3666,7 @@ void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
   child->attached_to_layout_parent_ = true;
 }
 
-void FiberElement::RemoveLayoutNode(FiberElement *child) {
+void Element::RemoveLayoutNode(Element *child) {
   if (EnableLayoutInElementMode()) {
     if (auto *child_layout_node = child->slnode();
         child_layout_node && child_layout_node->parent()) {
@@ -3769,13 +3691,13 @@ void FiberElement::RemoveLayoutNode(FiberElement *child) {
   child->attached_to_layout_parent_ = false;
 }
 
-void FiberElement::StoreLayoutNode(FiberElement *child, FiberElement *ref) {
+void Element::StoreLayoutNode(Element *child, Element *ref) {
   child->render_parent_ = this;
-  FiberElement *next_layout_sibling = ref;
-  FiberElement *previous_layout_sibling =
-      next_layout_sibling ? static_cast<FiberElement *>(
+  Element *next_layout_sibling = ref;
+  Element *previous_layout_sibling =
+      next_layout_sibling ? static_cast<Element *>(
                                 next_layout_sibling->previous_render_sibling_)
-                          : static_cast<FiberElement *>(last_render_child_);
+                          : static_cast<Element *>(last_render_child_);
   if (previous_layout_sibling) {
     previous_layout_sibling->next_render_sibling_ = child;
   } else {
@@ -3791,15 +3713,15 @@ void FiberElement::StoreLayoutNode(FiberElement *child, FiberElement *ref) {
   child->next_render_sibling_ = next_layout_sibling;
 }
 
-void FiberElement::RestoreLayoutNode(FiberElement *node) {
+void Element::RestoreLayoutNode(Element *node) {
   if (node->previous_render_sibling_) {
-    static_cast<FiberElement *>(node->previous_render_sibling_)
+    static_cast<Element *>(node->previous_render_sibling_)
         ->next_render_sibling_ = node->next_render_sibling_;
   } else {
     first_render_child_ = node->next_render_sibling_;
   }
   if (node->next_render_sibling_) {
-    static_cast<FiberElement *>(node->next_render_sibling_)
+    static_cast<Element *>(node->next_render_sibling_)
         ->previous_render_sibling_ = node->previous_render_sibling_;
   } else {
     last_render_child_ = node->previous_render_sibling_;
@@ -4148,7 +4070,7 @@ void Element::HandleSelfFixedChange() {
   if (!is_fiber_element_) {
     return;
   }
-  auto *fiber_this = static_cast<FiberElement *>(this);
+  auto *fiber_this = static_cast<Element *>(this);
   // 1. If enableFixedNew is `true`, return directly.
   if (IsFixedNewOrUnifiedEnabled()) {
     return;
@@ -4169,47 +4091,47 @@ void Element::HandleSelfFixedChange() {
 
   if (is_fixed_) {
     // non-fixed to fixed
-    auto *parent = static_cast<FiberElement *>(render_parent_);
+    auto *parent = static_cast<Element *>(render_parent_);
     if (!IsFiberArch() && !parent) {
       parent = element_manager()->GetPageElement();
     } else if (parent) {
       parent->HandleRemoveChildAction(fiber_this);
     }
-    parent->InsertFixedElement(
-        fiber_this, static_cast<FiberElement *>(next_render_sibling_));
+    parent->InsertFixedElement(fiber_this,
+                               static_cast<Element *>(next_render_sibling_));
   } else {
     // fixed to non-fixed
     RemoveFixedElement(fiber_this);
-    auto *parent = static_cast<FiberElement *>(this->parent_);
+    auto *parent = static_cast<Element *>(this->parent_);
     auto index = parent->IndexOf(this);
-    auto *ref_node = static_cast<FiberElement *>(parent->GetChildAt(index + 1));
+    auto *ref_node = static_cast<Element *>(parent->GetChildAt(index + 1));
     parent->HandleInsertChildAction(fiber_this, -1, ref_node);
   }
 }
 
-void Element::InsertFixedElement(FiberElement *child, FiberElement *ref_node) {
+void Element::InsertFixedElement(Element *child, Element *ref_node) {
   if (!is_fiber_element_) {
     return;
   }
   DCHECK(child->is_fixed_);
   // FIXME(linxs): insert fixed child, to be refined later, currently always
   // insert to the end
-  auto *parent = static_cast<FiberElement *>(element_manager_->root());
+  auto *parent = static_cast<Element *>(element_manager_->root());
   parent->HandleInsertChildAction(child, 0, nullptr);
   child->fixed_changed_ = false;
 }
 
-void Element::RemoveFixedElement(FiberElement *child) {
+void Element::RemoveFixedElement(Element *child) {
   if (!is_fiber_element_) {
     return;
   }
   // FIXME(linxs): remove fixed child, to be refined later
   if (child->render_parent_ != element_manager_->root()) {
-    LOGE("FiberElement::RemoveFixedElement got error for wrong render parent");
+    LOGE("Element::RemoveFixedElement got error for wrong render parent");
     return;
   }
 
-  auto *parent = static_cast<FiberElement *>(element_manager_->root());
+  auto *parent = static_cast<Element *>(element_manager_->root());
   parent->HandleRemoveChildAction(child);
   child->fixed_changed_ = false;
 }
@@ -4272,7 +4194,7 @@ void Element::InvalidateChildren(css::InvalidationSet *invalidation_set) {
   }
 
   if (invalidation_set->WholeSubtreeInvalid() || !invalidation_set->IsEmpty()) {
-    VisitChildren([invalidation_set](FiberElement *child) {
+    VisitChildren([invalidation_set](Element *child) {
       if (!child->StyleDirty() && !child->is_raw_text() &&
           invalidation_set->InvalidatesElement(*child->data_model())) {
         child->MarkStyleDirty(false);
@@ -4282,13 +4204,13 @@ void Element::InvalidateChildren(css::InvalidationSet *invalidation_set) {
 }
 
 void Element::VisitChildren(
-    const base::MoveOnlyClosure<void, FiberElement *> &visitor) {
+    const base::MoveOnlyClosure<void, Element *> &visitor) {
   if (!is_fiber_element_) {
     return;
   }
 
   for (auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
+    auto *fiber_child = static_cast<Element *>(child.get());
     // In fiber mode, we skip the children in component
     if (!fiber_child->is_component()) {
       visitor(fiber_child);
@@ -4376,11 +4298,11 @@ void Element::UpdateDynamicChildrenStyleRecursively(uint32_t style,
     return;
   }
 
-  auto *child = static_cast<FiberElement *>(first_render_child_);
+  auto *child = static_cast<Element *>(first_render_child_);
   while (child) {
     static_cast<Element *>(child)->UpdateDynamicElementStyleRecursively(
         style, force_update);
-    child = static_cast<FiberElement *>(child->next_render_sibling_);
+    child = static_cast<Element *>(child->next_render_sibling_);
   }
 }
 
@@ -4643,7 +4565,7 @@ void Element::UpdateLengthContextValueForAllElement(
 
 // TODO: Move this method out of fiber_element when a more general render root
 // is introduced.
-void FiberElement::AsyncResolveSubtreeProperty() {
+void Element::AsyncResolveSubtreeProperty() {
   if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
     if (element_manager()->GetEnableParallelElement() &&
         ((dirty_ & ~kDirtyTree) != 0) && element_context_delegate_ &&
@@ -4698,23 +4620,23 @@ void Element::CreateListItemScheduler(
   if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
     std::shared_ptr<ElementContextDelegate> element_context_delegate_ptr =
         std::make_shared<ListItemSchedulerAdapter>(
-            static_cast<FiberElement *>(this), batch_render_strategy,
-            parent_context, continuous_resolve_tree);
+            static_cast<Element *>(this), batch_render_strategy, parent_context,
+            continuous_resolve_tree);
     element_context_delegate_ = element_context_delegate_ptr.get();
     parent_context->OnChildElementContextAdded(element_context_delegate_ptr);
   } else {
     scheduler_adapter_ = std::make_unique<ListItemSchedulerAdapter>(
-        static_cast<FiberElement *>(this), batch_render_strategy,
-        parent_context, continuous_resolve_tree);
+        static_cast<Element *>(this), batch_render_strategy, parent_context,
+        continuous_resolve_tree);
   }
 }
 
-void FiberElement::DispatchAsyncResolveSubtreeProperty() {
+void Element::DispatchAsyncResolveSubtreeProperty() {
   if (element_manager()->GetEnableParallelElement() &&
       ((dirty_ & ~kDirtyTree) != 0) && this->IsAttached()) {
     UpdateResolveStatus(AsyncResolveStatus::kPrepareTriggered);
     element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
-      std::deque<FiberElement *> queue;
+      std::deque<Element *> queue;
       auto root = this;
       queue.emplace_back(root);
       while (!queue.empty()) {
@@ -4735,7 +4657,7 @@ void FiberElement::DispatchAsyncResolveSubtreeProperty() {
               false, element_manager()->ParallelTasks());
         }
         for (const auto &child : current->children()) {
-          queue.emplace_back(static_cast<FiberElement *>(child.get()));
+          queue.emplace_back(static_cast<Element *>(child.get()));
         }
         queue.pop_front();
       }

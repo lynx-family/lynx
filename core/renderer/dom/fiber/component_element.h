@@ -11,7 +11,7 @@
 #include "core/base/lynx_export.h"
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/dom/vdom/radon/base_component.h"
 
@@ -31,7 +31,7 @@ class ComponentElement : public WrapperElement, public BaseComponent {
   virtual ~ComponentElement();
 
   fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
+    return fml::AdoptRef<Element>(
         new ComponentElement(*this, clone_resolved_props));
   }
 

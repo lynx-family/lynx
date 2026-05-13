@@ -753,15 +753,15 @@ inline constexpr const char* const CREATE_VIRTUAL_LIST_NODE =
  */
 inline constexpr const char* const SEND_GLOBAL_EVENT = "SendGlobalEvent";
 /**
- * @trace_description: Create a Fiber element node via FiberElement API.
+ * @trace_description: Create a Fiber element node via Element API.
  */
 inline constexpr const char* const FIBER_CREATE_ELEMENT = "FiberCreateElement";
 /**
- * @trace_description: Create a Fiber page root node via FiberElement API.
+ * @trace_description: Create a Fiber page root node via Element API.
  */
 inline constexpr const char* const FIBER_CREATE_PAGE = "FiberCreatePage";
 /**
- * @trace_description: Get the page root element from FiberElement API.
+ * @trace_description: Get the page root element from Element API.
  */
 inline constexpr const char* const FIBER_GET_PAGE_ELEMENT =
     "FiberGetPageElement";
@@ -1483,7 +1483,7 @@ inline constexpr const char* const QUICK_CONTEXT_GET_AND_CALL =
 
 /**
  * @trace_description: Create a <wrapper/> element, a special
- * element provided by the FiberElement API designed to serve as a low-cost
+ * element provided by the Element API designed to serve as a low-cost
  * container.
  */
 inline constexpr const char* const FIBER_ELEMENT_CREATE_WRAPPER_ELEMENT =

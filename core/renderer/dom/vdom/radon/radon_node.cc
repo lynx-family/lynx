@@ -160,7 +160,7 @@ void RadonNode::DispatchFirstTime() {
   if (it != attributes().end()) {
     need_transmit_class_dirty_ = it->second.Bool();
   }
-  auto* fiber_element = static_cast<FiberElement*>(element_.get());
+  auto* fiber_element = static_cast<Element*>(element_.get());
   // Using JSValue across multiple threads
   // is not allowed. Therefore, JSValue needs to be converted to LepusValue
   // before the parallel flush to prevent conversion through LepusContext
@@ -195,23 +195,23 @@ void RadonNode::DispatchFirstTime() {
 
   // Data set
   if (!data_set().empty()) {
-    fiber_element->MarkDirty(FiberElement::kDirtyDataset);
+    fiber_element->MarkDirty(Element::kDirtyDataset);
   }
 
   // Gesture
   if (!gesture_detectors().empty()) {
-    fiber_element->MarkDirty(FiberElement::kDirtyGesture);
+    fiber_element->MarkDirty(Element::kDirtyGesture);
   }
 
   // Event
   if (!static_events().empty()) {
-    fiber_element->MarkDirty(FiberElement::kDirtyEvent);
+    fiber_element->MarkDirty(Element::kDirtyEvent);
   }
   if (!lepus_events().empty()) {
-    fiber_element->MarkDirty(FiberElement::kDirtyEvent);
+    fiber_element->MarkDirty(Element::kDirtyEvent);
   }
   if (!global_bind_events().empty()) {
-    fiber_element->MarkDirty(FiberElement::kDirtyEvent);
+    fiber_element->MarkDirty(Element::kDirtyEvent);
   }
 
   // Raw Inline Styles
@@ -223,7 +223,7 @@ void RadonNode::DispatchFirstTime() {
         fiber_element->SetStyle(key, value);
       }
     }
-    // After setting the raw_inline_style in FiberElement,
+    // After setting the raw_inline_style in Element,
     // inline styles will be set in the AttributeHolder for use by DevTool.
     // Therefore, it is necessary to call NotifyElementNodeSetted to notify
     // the Inspector.
@@ -766,9 +766,9 @@ void RadonNode::SetEventListeners(
                         return;
                       }
                       auto* target =
-                          static_cast<FiberElement*>(event->target().get());
-                      auto* current_target = static_cast<FiberElement*>(
-                          event->current_target().get());
+                          static_cast<Element*>(event->target().get());
+                      auto* current_target =
+                          static_cast<Element*>(event->current_target().get());
                       auto* parent_component =
                           current_target->GetParentComponentElement();
                       auto vm_context =
@@ -906,7 +906,7 @@ bool RadonNode::ShouldFlushStyle(RadonNode* old_radon_node,
               });
   bool style_updated = false;
   attribute_holder_->SetCSSVariableBundle(*old_radon_node->attribute_holder());
-  auto* fiber_element = static_cast<FiberElement*>(element_.get());
+  auto* fiber_element = static_cast<Element*>(element_.get());
   if (id_dirty_) {
     style_updated = true;
     fiber_element->SetIdSelector(id_selector());
@@ -1022,8 +1022,7 @@ bool RadonNode::DiffRawStyleForFiber(const RawLepusStyleMap& old_map,
     // style does not exist in new_map, delete it
     if (it_new_map == new_map.end()) {
       need_update = true;
-      static_cast<FiberElement*>(element())->SetStyle(it->first,
-                                                      lepus::Value());
+      static_cast<Element*>(element())->SetStyle(it->first, lepus::Value());
     }
   }
   // Using JSValue across multiple threads
@@ -1060,8 +1059,8 @@ bool RadonNode::DiffAttrMapForFiber(const AttrMap& old_map,
     // style does not exist in new_map, delete it
     if (it_new_map == new_map.end()) {
       need_update = true;
-      static_cast<FiberElement*>(element())->SetAttribute(
-          it->first, lepus::Value(), false);
+      static_cast<Element*>(element())->SetAttribute(it->first, lepus::Value(),
+                                                     false);
     }
   }
   // Using JSValue across multiple threads
@@ -1404,7 +1403,7 @@ void RadonNode::CheckAndProcessComponentRemoveViewForInspector(
         if (parent->IsRadonComponent() && !parent->element()) {
           // TODO(kechenglong): FiberComponent also creates an element.
           // CheckAndProcessComponentRemoveViewForInspector can be removed after
-          // switching to FiberElement in RadonDiff.
+          // switching to Element in RadonDiff.
           fml::RefPtr<Element> component_element = nullptr;
           auto* parent_component = static_cast<RadonComponent*>(parent);
           auto fiber_element =

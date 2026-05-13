@@ -6,7 +6,7 @@
 
 #include "base/include/fml/concurrent_message_loop.h"
 #include "base/trace/native/trace_event.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/utils/base/element_template_info.h"

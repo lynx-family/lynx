@@ -394,14 +394,14 @@ inline constexpr const char* const STYLE_RESOLVER_COMPUTE_STYLE_DIFF =
  *     style properties in the new styling pipeline.
  */
 inline constexpr const char* const FIBER_ELEMENT_REPLAY_COMMIT_SIDE_EFFECTS =
-    "FiberElement::ReplayCommitSideEffects";
+    "Element::ReplayCommitSideEffects";
 
 /**
  * @trace_description: Resolve final style as ComputedCSSStyle in the
  *   new styling pipeline.
  */
 inline constexpr const char* const FIBER_ELEMENT_RESOLVE_COMPUTED_STYLES =
-    "FiberElement::ResolveComputedStyles";
+    "Element::ResolveComputedStyles";
 
 inline constexpr const char* const ELEMENT_CONTAINER_FIND_PARENT =
     "ElementContainer::FindParentForChild";
@@ -495,142 +495,142 @@ inline constexpr const char* const LEPUS_DECODER_WRITE_JS_VALUE =
  * At the same time, it will also generate platform UI operations.
  */
 inline constexpr const char* const FIBER_ELEMENT_CONSTRUCTOR =
-    "FiberElement::Constructor";
+    "Element::Constructor";
 inline constexpr const char* const FIBER_ELEMENT_DESTRUCTOR =
-    "FiberElement::Destructor";
+    "Element::Destructor";
 inline constexpr const char* const FIBER_ELEMENT_FLUSH_ACTIONS =
-    "FiberElement::FlushActions";
+    "Element::FlushActions";
 inline constexpr const char* const COMPONENT_ELEMENT_PREPARE_ROOT_CSS =
     "ComponentElement::PrepareForRootCSSVariables";
 inline constexpr const char* const FIBER_ELEMENT_RESOLVE_PARENT_COMPONENT =
-    "FiberElement::ResolveParentComponentElement";
+    "Element::ResolveParentComponentElement";
 inline constexpr const char* const FIBER_ELEMENT_ASYNC_RESOLVE_PROPERTY =
-    "FiberElement::AsyncResolveProperty";
+    "Element::AsyncResolveProperty";
 inline constexpr const char* const FIBER_ELEMENT_INSERT_NODE =
-    "FiberElement::InsertNode";
+    "Element::InsertNode";
 inline constexpr const char* const FIBER_ELEMENT_SET_CLASS =
-    "FiberElement::SetClass";
+    "Element::SetClass";
 inline constexpr const char* const FIBER_ELEMENT_SET_CLASSES =
-    "FiberElement::SetClasses";
+    "Element::SetClasses";
 inline constexpr const char* const FIBER_ELEMENT_SET_STYLE =
-    "FiberElement::SetStyle";
+    "Element::SetStyle";
 inline constexpr const char* const FIBER_ELEMENT_SET_ATTRIBUTE =
-    "FiberElement::SetAttribute";
+    "Element::SetAttribute";
 inline constexpr const char* const FIBER_ELEMENT_SET_ID_SELECTOR =
-    "FiberElement::SetIdSelector";
+    "Element::SetIdSelector";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_KEYFRAME_PROPS_CHANGE =
-    "FiberElement::HandleKeyframePropsChange";
+    "Element::HandleKeyframePropsChange";
 inline constexpr const char* const FIBER_ELEMENT_PREPARE_FOR_CRATE_OR_UPDATE =
-    "FiberElement::PrepareForCreateOrUpdate";
+    "Element::PrepareForCreateOrUpdate";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_STYLE =
-    "FiberElement::HandleStyle";
+    "Element::HandleStyle";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_STYLE_OBJECTS =
-    "FiberElement::HandleStyleObjects";
+    "Element::HandleStyleObjects";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_PROPAGATE_INHERITED =
-    "FiberElement::HandlePropagateInherited";
+    "Element::HandlePropagateInherited";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_DIRECTION_CHANGED =
-    "FiberElement::HandleDirectionChanged";
+    "Element::HandleDirectionChanged";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_SET_STYLE =
-    "FiberElement::HandleSetStyle";
+    "Element::HandleSetStyle";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_FONT_SIZE_CHANGE =
-    "FiberElement::HandleFontSizeChange";
+    "Element::HandleFontSizeChange";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_TRANSITION_PROPS =
-    "FiberElement::HandleTransitionProps";
+    "Element::HandleTransitionProps";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_EVENTS =
-    "FiberElement::HandleEvents";
+    "Element::HandleEvents";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_GESTURES =
-    "FiberElement::HandleGestures";
+    "Element::HandleGestures";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_DATASET =
-    "FiberElement::HandleDataset";
+    "Element::HandleDataset";
 inline constexpr const char* const FIBER_ELEMENT_FLUSH_ACTIONS_AS_ROOT =
-    "FiberElement::FlushActionsAsRoot";
+    "Element::FlushActionsAsRoot";
 inline constexpr const char* const FIBER_ELEMENT_FLUSH_SELF =
-    "FiberElement::FlushSelf";
+    "Element::FlushSelf";
 inline constexpr const char* const FIBER_ELEMENT_PARALLEL_FLUSH_AS_ROOT =
-    "FiberElement::ParallelFlushAsRoot";
+    "Element::ParallelFlushAsRoot";
 inline constexpr const char* const FIBER_ELEMENT_CONSUME_PARALLEL_TASK =
-    "FiberElement::ConsumeParallelTask";
+    "Element::ConsumeParallelTask";
 inline constexpr const char* const FIBER_ELEMENT_CONSUME_LEFT_ITER =
-    "FiberElement::ConsumeLeftIter";
+    "Element::ConsumeLeftIter";
 inline constexpr const char* const FIBER_ELEMENT_WAIT_LEFT_ITER =
-    "FiberElement::WaitLeftIter";
+    "Element::WaitLeftIter";
 inline constexpr const char* const FIBER_ELEMENT_CONSUME_RIGHT_ITER =
-    "FiberElement::ConsumeRightIter";
+    "Element::ConsumeRightIter";
 inline constexpr const char* const
     FIBER_ELEMENT_PREPARE_FOR_CRATE_OR_UPDATE_ASYNC =
-        "FiberElement::PrepareForCreateOrUpdateAsync";
+        "Element::PrepareForCreateOrUpdateAsync";
 inline constexpr const char* const FIBER_ELEMENT_PARALLEL_FLUSH_RECURSIVELY =
-    "FiberElement::ParallelFlushRecursively";
+    "Element::ParallelFlushRecursively";
 inline constexpr const char* const
     FIBER_ELEMENT_CHILD_PREPARE_FOR_CRATE_OR_UPDATE =
-        "FiberElement::ChildrenPrepareForCreateOrUpdate";
+        "Element::ChildrenPrepareForCreateOrUpdate";
 inline constexpr const char* const FIBER_ELEMENT_PREPARE_CHILDREN =
-    "FiberElement::PrepareChildren";
+    "Element::PrepareChildren";
 inline constexpr const char* const FIBER_ELEMENT_REPLACE_TEMPLATE_CHILD =
-    "FiberElement::ReplaceTemplateChild";
+    "Element::ReplaceTemplateChild";
 inline constexpr const char* const
     FIBER_ELEMENT_PREPARE_AND_GENERATE_CHILDREN_ACTIONS =
-        "FiberElement::PrepareAndGenerateChildrenActions";
+        "Element::PrepareAndGenerateChildrenActions";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_CHILDREN_ACTION =
-    "FiberElement::HandleChildrenAction";
+    "Element::HandleChildrenAction";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_INSERT_CHILD_ACTION =
-    "FiberElement::HandleInsertChildAction";
+    "Element::HandleInsertChildAction";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_REMOVE_CHILD_ACTION =
-    "FiberElement::HandleRemoveChildAction";
+    "Element::HandleRemoveChildAction";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_REMOVE_SELF =
-    "FiberElement::HandleRemoveSelf";
+    "Element::HandleRemoveSelf";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_CONTAINER_INSERTION =
-    "FiberElement::HandleContainerInsertion";
+    "Element::HandleContainerInsertion";
 inline constexpr const char* const FIBER_ELEMENT_CONSUME_STYLE =
-    "FiberElement::ConsumeStyle";
+    "Element::ConsumeStyle";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_ATTR =
-    "FiberElement::HandleAttr";
+    "Element::HandleAttr";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_CRATE =
-    "FiberElement::HandleCreate";
+    "Element::HandleCreate";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_PARALLEL_REDUCE_TASKS =
-    "FiberElement::HandleParallelReduceTasks";
+    "Element::HandleParallelReduceTasks";
 inline constexpr const char* const FIBER_ELEMENT_ADD_DATA_SET =
-    "FiberElement::AddDataset";
+    "Element::AddDataset";
 inline constexpr const char* const FIBER_ELEMENT_SET_DATA_SET =
-    "FiberElement::SetDataset";
+    "Element::SetDataset";
 inline constexpr const char* const FIBER_ELEMENT_SET_JS_EVENT_HANDLER =
-    "FiberElement::SetJSEventHandler";
+    "Element::SetJSEventHandler";
 inline constexpr const char* const FIBER_ELEMENT_SET_LEPUS_EVENT_HANDLER =
-    "FiberElement::SetLepusEventHandler";
+    "Element::SetLepusEventHandler";
 inline constexpr const char* const FIBER_ELEMENT_SET_WORKLET_EVENT_HANDLER =
-    "FiberElement::SetWorkletEventHandler";
+    "Element::SetWorkletEventHandler";
 inline constexpr const char* const FIBER_ELEMENT_SET_NATIVE_PROPS =
-    "FiberElement::SetNativeProps";
+    "Element::SetNativeProps";
 inline constexpr const char* const FIBER_ELEMENT_SET_PARSED_STYLES =
-    "FiberElement::SetParsedStyles";
+    "Element::SetParsedStyles";
 inline constexpr const char* const FIBER_ELEMENT_ADD_CONFIG =
-    "FiberElement::AddConfig";
+    "Element::AddConfig";
 inline constexpr const char* const FIBER_ELEMENT_SET_CONFIG =
-    "FiberElement::SetConfig";
+    "Element::SetConfig";
 inline constexpr const char* const FIBER_ELEMENT_FLUSH_PROPS =
-    "FiberElement::FlushProps";
+    "Element::FlushProps";
 inline constexpr const char* const FIBER_ELEMENT_UPDATE_FIBER_ELEMENT =
-    "FiberElement::UpdateFiberElement";
+    "Element::UpdateFiberElement";
 inline constexpr const char* const FIBER_ELEMENT_UPDATE_PAINTING_NODE =
-    "FiberElement::UpdatePaintingNode";
+    "Element::UpdatePaintingNode";
 inline constexpr const char* const FIBER_ELEMENT_TRANSITION_TO_NATIVE_VIEW =
-    "FiberElement::TransitionToNativeView";
+    "Element::TransitionToNativeView";
 inline constexpr const char* const FIBER_ELEMENT_IS_RELATED_CSS_UPDATED =
-    "FiberElement::IsRelatedCSSVariableUpdated";
+    "Element::IsRelatedCSSVariableUpdated";
 inline constexpr const char* const FIBER_ELEMENT_UPDATE_CSS_VARIABLE =
-    "FiberElement::UpdateCSSVariable";
+    "Element::UpdateCSSVariable";
 inline constexpr const char* const FIBER_ELEMENT_PARSE_RAW_INLINE_STYLES =
-    "FiberElement::ParseRawInlineStyles";
+    "Element::ParseRawInlineStyles";
 inline constexpr const char* const FIBER_ELEMENT_DO_FULL_STYLE_RESOLVE =
-    "FiberElement::DoFullStyleResolve";
+    "Element::DoFullStyleResolve";
 inline constexpr const char* const FIBER_ELEMENT_RESOLVE_CURRENT_STYLE =
-    "FiberElement::ResolveCurrentStyleValue";
+    "Element::ResolveCurrentStyleValue";
 inline constexpr const char* const FIBER_ELEMENT_REFRESH_STYLE =
-    "FiberElement::RefreshStyle";
+    "Element::RefreshStyle";
 inline constexpr const char* const FIBER_ELEMENT_PSEUDO_CHANGED =
-    "FiberElement::OnPseudoStatusChanged";
+    "Element::OnPseudoStatusChanged";
 inline constexpr const char* const FIBER_ELEMENT_FLUSH_ANIMATED_STYLE =
-    "FiberElement::FlushAnimatedStyleInternal";
+    "Element::FlushAnimatedStyleInternal";
 inline constexpr const char* const CATALYZER_NO_PAINTING_NODE =
     "Catalyzer::FlushProps::NoPaintingNode";
 inline constexpr const char* const CATALYZER_HAS_PAINTING_NODE =

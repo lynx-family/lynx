@@ -74,7 +74,7 @@ class LynxEnvConfig;
 class ListItemSchedulerAdapter;
 class ElementContextDelegate;
 class PlatformLayoutFunctionWrapper;
-class FiberElement;
+class Element;
 
 using ElementChildrenArray =
     base::InlineVector<Element*, kChildrenInlineVectorSize>;
@@ -176,8 +176,7 @@ class Element : public lepus::RefCounted,
 
   Element& operator=(const Element&) = delete;
 
-  virtual fml::RefPtr<Element> CloneElement(
-      bool clone_resolved_props) const = 0;
+  virtual fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const;
 
   // The element object created using the clone interface is not attached to the
   // element manager. Use this function to attach it to the element manager.
@@ -904,7 +903,7 @@ class Element : public lepus::RefCounted,
 
   void PrepareChildren();
 
-  void PrepareChildForInsertion(FiberElement* child);
+  void PrepareChildForInsertion(Element* child);
 
   void PrepareAndGenerateChildrenActions();
 
@@ -952,6 +951,43 @@ class Element : public lepus::RefCounted,
   void UpdateFiberElement();
 
   void UpdateLayoutNodeByBundle();
+
+  /**
+   * A key function to flush the tree with the current element as the root node.
+   */
+  virtual void FlushActionsAsRoot();
+
+  /**
+   * A key function for flush all pending actions for current Element.
+   */
+  void FlushActions();
+
+  void AsyncResolveSubtreeProperty();
+
+  void DispatchAsyncResolveSubtreeProperty();
+
+  virtual void HandleInsertChildAction(Element* child, int index,
+                                       Element* ref_node);
+  virtual void HandleRemoveChildAction(Element* child);
+
+  void HandleRemoveSelf(Element* removal_point, Element* render_parent);
+
+  /**
+   * Element API for replacing elements.
+   * @param inserted inserted elements
+   * @param removed removed elements
+   */
+  void ReplaceElements(const base::Vector<fml::RefPtr<Element>>& inserted,
+                       const base::Vector<fml::RefPtr<Element>>& removed,
+                       Element* ref_node);
+
+  template <typename F>
+  void ApplyFunctionRecursive(F&& func) {
+    func(this);
+    for (const auto& child : scoped_children_) {
+      child->ApplyFunctionRecursive(func);
+    }
+  }
 
   void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
 
@@ -1353,7 +1389,7 @@ class Element : public lepus::RefCounted,
 
   virtual CSSFragment* GetRelatedCSSFragment();
 
-  virtual void FlushProps() = 0;
+  virtual void FlushProps();
 
   virtual void set_will_destroy(bool destroy);
 
@@ -1391,7 +1427,7 @@ class Element : public lepus::RefCounted,
   }
 
   // TODO(dingwang.wxx): Interfaces in Element about list should be moved to
-  // ListElement after unifying the RadonElement and FiberElement.
+  // ListElement after unifying the RadonElement and Element.
   // When the list element changes, this method will be invoked. For example, if
   // the list's width or height changes, or if the List itself has new diff
   // information.
@@ -1725,6 +1761,12 @@ class Element : public lepus::RefCounted,
    */
   bool IfNeedsUpdateLayoutInfo();
 
+  void InsertLayoutNode(Element* child, Element* ref);
+  void RemoveLayoutNode(Element* child);
+
+  void StoreLayoutNode(Element* child, Element* ref);
+  void RestoreLayoutNode(Element* child);
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 
@@ -1743,6 +1785,8 @@ class Element : public lepus::RefCounted,
 
   void SetFontSizeForAllElement(double cur_node_font_size,
                                 double root_node_font_size);
+
+  ParallelFlushReturn CreateParallelTaskHandler();
   void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
   void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
                          double old_font_size, double old_root_font_size);
@@ -1795,7 +1839,7 @@ class Element : public lepus::RefCounted,
   bool CheckHasInvalidationForClass(const ClassList& old_classes,
                                     const ClassList& new_classes);
   void InvalidateChildren(css::InvalidationSet* invalidation_set);
-  void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
+  void VisitChildren(const base::MoveOnlyClosure<void, Element*>& visitor);
   void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
   void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
                                                bool& inner_force_update);
@@ -1908,9 +1952,9 @@ class Element : public lepus::RefCounted,
   Element* FindEnclosingNoneWrapper(Element* parent, Element* node);
   void HandleContainerInsertion(Element* parent, Element* child, Element* ref);
   void HandleSelfFixedChange();
-  void InsertFixedElement(FiberElement* child, FiberElement* ref_node);
-  void RemoveFixedElement(FiberElement* child);
-  FiberElement* ReplaceTemplateChildIfNeeded(
+  void InsertFixedElement(Element* child, Element* ref_node);
+  void RemoveFixedElement(Element* child);
+  Element* ReplaceTemplateChildIfNeeded(
       base::InlineVector<fml::RefPtr<Element>,
                          kChildrenInlineVectorSize>::iterator child_iter);
   void InsertLogicalChildBefore(const fml::RefPtr<Element>& child,

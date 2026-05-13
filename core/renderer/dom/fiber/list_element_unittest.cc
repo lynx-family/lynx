@@ -103,7 +103,7 @@ TEST_F(SSRListElement, ScrollOrientationAttributeUsesAttributeStyleCache) {
 }
 
 TEST_F(SSRListElement, ListElementSSRHelper_ComponentAtIndexInSSR) {
-  auto items = std::vector<fml::RefPtr<FiberElement>>();
+  auto items = std::vector<fml::RefPtr<Element>>();
   ListElementSSRHelper ssr_helper(list_element_.get());
 
   static const size_t kItemCounts = 10;

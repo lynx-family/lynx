@@ -681,7 +681,7 @@ export interface Config {
   enableNewListContainer?: boolean;
 
   /**
-   * Controls whether Fiber elements use the new styling resolution pipeline instead of the legacy style resolver path. When enabled, ElementManager turns on the new styling flag and FiberElement switches to `ResolveCSSStylesNewPipeline`; when disabled, style resolution stays on the existing pipeline. If the field is omitted, native or settings fallback can still decide the flag.
+   * Controls whether Fiber elements use the new styling resolution pipeline instead of the legacy style resolver path. When enabled, ElementManager turns on the new styling flag and Element uses `ResolveCSSStylesNewPipeline`; when disabled, style resolution stays on the existing pipeline. If the field is omitted, native or settings fallback can still decide the flag.
    *
    * Supported platform: Android, HarmonyOS, iOS
    *

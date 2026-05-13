@@ -9,7 +9,7 @@
 #include "base/include/concurrent_queue.h"
 namespace lynx {
 namespace tasm {
-class FiberElement;
+class Element;
 class ElementContextTaskQueue {
  public:
   ElementContextTaskQueue(base::MoveOnlyClosure<bool> predicate) {

@@ -32,8 +32,7 @@ static constexpr const char kTemplateAttributeSlots[] = "attributeSlots";
 static constexpr const char kTemplateElementSlots[] = "elementSlots";
 static constexpr const char kTemplateUid[] = "uid";
 
-fml::RefPtr<FiberElement> ResolveInitialElementSlotChild(
-    const lepus::Value& child) {
+fml::RefPtr<Element> ResolveInitialElementSlotChild(const lepus::Value& child) {
   if (!child.IsRefCounted()) {
     return nullptr;
   }
@@ -43,11 +42,11 @@ fml::RefPtr<FiberElement> ResolveInitialElementSlotChild(
     return nullptr;
   }
 
-  return fml::static_ref_ptr_cast<FiberElement>(ref_counted);
+  return fml::static_ref_ptr_cast<Element>(ref_counted);
 }
 
 void RemoveElementFromSlotChildren(lepus::Value* slot_children,
-                                   FiberElement* child) {
+                                   Element* child) {
   if (slot_children == nullptr || child == nullptr ||
       !slot_children->IsArray()) {
     return;
@@ -63,8 +62,7 @@ void RemoveElementFromSlotChildren(lepus::Value* slot_children,
   }
 }
 
-size_t FindSlotChildIndex(const lepus::Value& slot_children,
-                          FiberElement* child) {
+size_t FindSlotChildIndex(const lepus::Value& slot_children, Element* child) {
   if (child == nullptr || !slot_children.IsArray()) {
     return static_cast<size_t>(slot_children.GetLength());
   }
@@ -79,9 +77,9 @@ size_t FindSlotChildIndex(const lepus::Value& slot_children,
 }
 
 void ApplyInitialAttributeSlots(
-    const base::Vector<fml::RefPtr<FiberElement>>& targets,
+    const base::Vector<fml::RefPtr<Element>>& targets,
     const lepus::Value& attribute_slots) {
-  FiberElement* previous_element = nullptr;
+  Element* previous_element = nullptr;
   for (const auto& target : targets) {
     auto* element = target.get();
     if (element == nullptr || element == previous_element) {
@@ -93,7 +91,7 @@ void ApplyInitialAttributeSlots(
 }
 
 void ApplyStaticEventAttributes(
-    const base::Vector<fml::RefPtr<FiberElement>>& targets) {
+    const base::Vector<fml::RefPtr<Element>>& targets) {
   for (const auto& target : targets) {
     TreeResolver::ApplyStaticTemplateEventAttributesToElement(target.get());
   }
@@ -152,7 +150,7 @@ GeneratedElementsResult GeneratePreparedElementsResult(
 }  // namespace
 
 TemplateElement::TemplateElement(ElementManager* element_manager)
-    : FiberElement(element_manager, BASE_STATIC_STRING(kTemplateTag)),
+    : Element(element_manager, BASE_STATIC_STRING(kTemplateTag)),
       bundle_url_(BASE_STATIC_STRING(kDefaultTemplateBundleUrl)) {
   MarkTemplateElement();
 }
@@ -289,7 +287,7 @@ void TemplateElement::ApplyInitialElementSlots() {
 
 void TemplateElement::InsertInitialElementSlotChild(
     const ElementSlotMountPoint& mount_point,
-    const fml::RefPtr<FiberElement>& child) {
+    const fml::RefPtr<Element>& child) {
   if (mount_point.parent_ == nullptr || child == nullptr) {
     return;
   }
@@ -301,9 +299,8 @@ void TemplateElement::InsertInitialElementSlotChild(
 }
 
 void TemplateElement::MountElementSlotChild(
-    const ElementSlotMountPoint& mount_point,
-    const fml::RefPtr<FiberElement>& child,
-    const fml::RefPtr<FiberElement>& ref_node) {
+    const ElementSlotMountPoint& mount_point, const fml::RefPtr<Element>& child,
+    const fml::RefPtr<Element>& ref_node) {
   if (mount_point.parent_ == nullptr || child == nullptr) {
     return;
   }
@@ -335,7 +332,7 @@ void TemplateElement::MountElementSlotChild(
 
 void TemplateElement::UnmountElementSlotChild(
     const ElementSlotMountPoint& mount_point,
-    const fml::RefPtr<FiberElement>& child) {
+    const fml::RefPtr<Element>& child) {
   if (mount_point.parent_ == nullptr || child == nullptr) {
     return;
   }
@@ -367,7 +364,7 @@ lepus::Value TemplateElement::GetOrCreateElementSlotChildren(
 }
 
 void TemplateElement::RemoveElementSlotChildFromSlot(uint32_t slot_index,
-                                                     FiberElement* child) {
+                                                     Element* child) {
   if (child == nullptr || !element_slots_.IsArray() ||
       slot_index >= static_cast<uint32_t>(element_slots_.GetLength())) {
     return;
@@ -445,8 +442,7 @@ lepus::Value TemplateElement::SerializeElementSlotChild(
     return lepus::Value();
   }
 
-  auto element =
-      fml::static_ref_ptr_cast<FiberElement>(ref_counted).strongify();
+  auto element = fml::static_ref_ptr_cast<Element>(ref_counted).strongify();
   if (element == nullptr || !element->is_template()) {
     LOGE(
         "SerializeElementTemplate only supports TemplateElement children in "
@@ -457,7 +453,7 @@ lepus::Value TemplateElement::SerializeElementSlotChild(
   return template_element->Serialize();
 }
 
-fml::RefPtr<FiberElement> TemplateElement::GetRoot() {
+fml::RefPtr<Element> TemplateElement::GetRoot() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ELEMENT_GET_ROOT, "template_key",
               template_key_.str(), "bundle_url", bundle_url_.str());
   ResolveGeneratedElements();
@@ -466,11 +462,11 @@ fml::RefPtr<FiberElement> TemplateElement::GetRoot() {
       auto* manager = element_manager();
       if (result_ != nullptr && manager != nullptr &&
           manager->GetDevToolFlag() && manager->IsDomTreeEnabled()) {
-        std::function<void(FiberElement*)> prepare_node_f =
-            [manager, &prepare_node_f](FiberElement* element) {
+        std::function<void(Element*)> prepare_node_f =
+            [manager, &prepare_node_f](Element* element) {
               manager->PrepareNodeForInspector(element);
               for (const auto& child : element->children()) {
-                prepare_node_f(static_cast<FiberElement*>(child.get()));
+                prepare_node_f(static_cast<Element*>(child.get()));
               }
             };
         prepare_node_f(result_.get());
@@ -497,8 +493,8 @@ void TemplateElement::SetAttributeSlot(uint32_t slot_index,
 }
 
 void TemplateElement::InsertElementSlotChild(
-    uint32_t slot_index, const fml::RefPtr<FiberElement>& child,
-    const fml::RefPtr<FiberElement>& ref_node) {
+    uint32_t slot_index, const fml::RefPtr<Element>& child,
+    const fml::RefPtr<Element>& ref_node) {
   if (child == nullptr || child.get() == ref_node.get()) {
     return;
   }
@@ -526,7 +522,7 @@ void TemplateElement::InsertElementSlotChild(
 }
 
 void TemplateElement::RemoveElementSlotChild(
-    uint32_t slot_index, const fml::RefPtr<FiberElement>& child) {
+    uint32_t slot_index, const fml::RefPtr<Element>& child) {
   if (child == nullptr) {
     return;
   }

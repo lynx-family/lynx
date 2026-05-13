@@ -22,10 +22,10 @@
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
 #include "core/renderer/dom/fiber/component_element.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -306,17 +306,17 @@ void ElementManager::RunDevToolFunction(
   });
 }
 
-void ElementManager::FiberAttachToInspectorRecursively(FiberElement *root) {
+void ElementManager::FiberAttachToInspectorRecursively(Element *root) {
   EXEC_EXPR_FOR_INSPECTOR({
     if (!devtool_flag_ || !IsDomTreeEnabled()) {
       return;
     }
     TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_FIBER_ATTACH_TO_INSPECTOR);
-    std::function<void(FiberElement *)> prepare_and_add_node_f =
-        [this, &prepare_and_add_node_f](FiberElement *element) {
+    std::function<void(Element *)> prepare_and_add_node_f =
+        [this, &prepare_and_add_node_f](Element *element) {
           PrepareNodeForInspector(element);
           for (const auto &child : element->children()) {
-            prepare_and_add_node_f(static_cast<FiberElement *>(child.get()));
+            prepare_and_add_node_f(static_cast<Element *>(child.get()));
           }
           CheckAndProcessSlotForInspector(element);
           OnElementNodeAddedForInspector(element);
@@ -348,18 +348,18 @@ void ElementManager::CheckAndProcessSlotForInspector(Element *element) {
       return;
     }
     // Check if element is plug.
-    FiberElement *current = static_cast<FiberElement *>(element);
+    Element *current = static_cast<Element *>(element);
     // If current is nullptr, return.
     if (current == nullptr) {
       return;
     }
-    FiberElement *parent = static_cast<FiberElement *>(current->parent());
+    Element *parent = static_cast<Element *>(current->parent());
     // If parent is nullptr, return.
     if (parent == nullptr) {
       return;
     }
-    FiberElement *component_element =
-        static_cast<FiberElement *>(current->GetParentComponentElement());
+    Element *component_element =
+        static_cast<Element *>(current->GetParentComponentElement());
     // If current's component_element is nullptr, return.
     if (component_element == nullptr) {
       return;
@@ -373,8 +373,8 @@ void ElementManager::CheckAndProcessSlotForInspector(Element *element) {
 
     // If parent's component_element == current's component_element, current
     // must not be plug, then return
-    FiberElement *parent_component_element =
-        static_cast<FiberElement *>(parent->GetParentComponentElement());
+    Element *parent_component_element =
+        static_cast<Element *>(parent->GetParentComponentElement());
     if (!parent_component_element ||
         (!parent->is_component() &&
          component_element == parent_component_element) ||
@@ -543,12 +543,12 @@ void ElementManager::PrepareComponentNodeForInspector(Element *component) {
 
     const auto &create_element = [this, component](const std::string &tag) {
       Element *element = nullptr;
-      element = new FiberElement(this, tag);
+      element = new Element(this, tag);
       // The additional element created by the inspector needs to
       // maintain a null data model to indicate that this element is
       // created by inspector.
-      static_cast<FiberElement *>(element)->ResetDataModel();
-      static_cast<FiberElement *>(element)->SetParentComponentUniqueIdForFiber(
+      static_cast<Element *>(element)->ResetDataModel();
+      static_cast<Element *>(element)->SetParentComponentUniqueIdForFiber(
           component->impl_id());
       return element;
     };
@@ -579,7 +579,7 @@ void ElementManager::PrepareComponentNodeForInspector(Element *component) {
                          std::make_tuple(component, style_value));
     }
 
-    if (static_cast<FiberElement *>(component)->is_wrapper()) {
+    if (static_cast<Element *>(component)->is_wrapper()) {
       component->inspector_attribute()->wrapper_component_ = true;
     }
 
@@ -656,7 +656,7 @@ void ElementManager::OnFinishUpdateProps(
     Element *node, std::shared_ptr<PipelineOptions> &options) {
   // target_node is nullptr for radon by default;
   Element *target_node = nullptr;
-  static_cast<FiberElement *>(node)->MarkPropsDirty();
+  static_cast<Element *>(node)->MarkPropsDirty();
   target_node = node;
 
   // TODO(nihao.royal): use `enable_unified_pixel_pipeline` to switch multi
@@ -993,7 +993,7 @@ void ElementManager::TickAllElement(fml::TimePoint &frame_time) {
     animation_element_set_.clear_keep_buffer();
     bool has_layout_animated_style = false;
     for (auto iter : temp_element_set) {
-      if (static_cast<FiberElement *>(iter)->IsDetached()) {
+      if (static_cast<Element *>(iter)->IsDetached()) {
         continue;
       }
       // tick element, for List.
@@ -1011,8 +1011,8 @@ void ElementManager::TickAllElement(fml::TimePoint &frame_time) {
       // Optimization: If there is only an element need to be ticked, take
       // it as root to flush action.
       if (temp_element_set.size() == 1) {
-        OnPatchFinish(options, static_cast<tasm::FiberElement *>(
-                                   *temp_element_set.begin()));
+        OnPatchFinish(options,
+                      static_cast<tasm::Element *>(*temp_element_set.begin()));
       } else {
         OnPatchFinish(options);
       }
@@ -1083,22 +1083,22 @@ bool ElementManager::Hydrate(AttributeHolder *node, Element *shadow_node) {
   return true;
 }
 
-fml::RefPtr<FiberElement> ElementManager::CreateFiberElement(
+fml::RefPtr<Element> ElementManager::CreateFiberElement(
     const base::String &raw_tag) {
   return CreateFiberElement(ElementProperty::ConvertStringTagToEnumTag(raw_tag),
                             raw_tag);
 }
 
-fml::RefPtr<FiberElement> ElementManager::CreateFiberElement(
+fml::RefPtr<Element> ElementManager::CreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
   auto result = StaticCreateFiberElement(enum_tag, raw_tag);
   result->AttachToElementManager(this, nullptr, false);
   return result;
 }
 
-fml::RefPtr<FiberElement> ElementManager::StaticCreateFiberElement(
+fml::RefPtr<Element> ElementManager::StaticCreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
-  fml::RefPtr<FiberElement> element = nullptr;
+  fml::RefPtr<Element> element = nullptr;
   switch (enum_tag) {
     case ELEMENT_VIEW:
       element = fml::AdoptRef<ViewElement>(new ViewElement(nullptr));
@@ -1174,14 +1174,13 @@ fml::RefPtr<FiberElement> ElementManager::StaticCreateFiberElement(
           new PageElement(nullptr, base::String(), -1));
       break;
     default:
-      element = fml::AdoptRef<FiberElement>(new FiberElement(nullptr, raw_tag));
+      element = fml::AdoptRef<Element>(new Element(nullptr, raw_tag));
   }
   return element;
 }
 
-fml::RefPtr<FiberElement> ElementManager::CreateFiberNode(
-    const base::String &tag) {
-  auto res = fml::AdoptRef<FiberElement>(new FiberElement(this, tag));
+fml::RefPtr<Element> ElementManager::CreateFiberNode(const base::String &tag) {
+  auto res = fml::AdoptRef<Element>(new Element(this, tag));
   return res;
 }
 
@@ -1311,7 +1310,7 @@ void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
       };
   // in fiber, do element style resolve and request layout;
   OnPatchFinishForFiber(option, std::move(patch_finish_callback),
-                        static_cast<FiberElement *>(element));
+                        static_cast<Element *>(element));
   if (option->need_timestamps && EnableEventReporter()) {
     report::EventTracker::UpdateGenericInfo(
         instance_id_, kEventDomSizeKey,
@@ -1348,7 +1347,7 @@ void ElementManager::ResolveStyle(std::shared_ptr<PipelineOptions> &option,
       };
   // in fiber, do element style resolve and request layout;
   OnPatchFinishForFiber(option, std::move(patch_finish_callback),
-                        static_cast<FiberElement *>(element));
+                        static_cast<Element *>(element));
   if (option->need_timestamps && EnableEventReporter()) {
     report::EventTracker::UpdateGenericInfo(
         instance_id_, kEventDomSizeKey,
@@ -1358,8 +1357,7 @@ void ElementManager::ResolveStyle(std::shared_ptr<PipelineOptions> &option,
 
 void ElementManager::OnPatchFinishForFiber(
     std::shared_ptr<PipelineOptions> &options,
-    base::MoveOnlyClosure<void, bool> patch_finish_callback,
-    FiberElement *element) {
+    base::MoveOnlyClosure<void, bool> patch_finish_callback, Element *element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_ON_PATCH_FINISH_FOR_FIBER);
   if (options->need_timestamps && !page_options_.IsEmbeddedModeOn()) {
     painting_context()->MarkUIOperationQueueFlushTiming(
@@ -1385,7 +1383,7 @@ void ElementManager::OnPatchFinishForFiber(
   if (options->force_update_style_sheet_) {
     // When force_update_style_sheet_ is true, need recursively traverse the
     // entire tree to mark dirty and reset style sheet.
-    element->ApplyFunctionRecursive([](FiberElement *element) {
+    element->ApplyFunctionRecursive([](Element *element) {
       element->ResetStyleSheet();
       element->MarkStyleDirty();
     });
@@ -1397,7 +1395,7 @@ void ElementManager::OnPatchFinishForFiber(
   if (options->is_reload_template && config_ &&
       config_->GetEnableReloadLifecycle()) {
     element->ApplyFunctionRecursive(
-        [](FiberElement *element) { element->onNodeReload(); });
+        [](Element *element) { element->onNodeReload(); });
     catalyzer_->painting_context()->UpdateNodeReloadPatching();
   }
   FirePostMTSRenderTasks();
@@ -1564,16 +1562,16 @@ void ElementManager::SetEnableOptPushStyleToBundle(TernaryBool value) {
 }
 
 void ElementManager::LegacyHandleLayoutTask(
-    FiberElement *target, base::MoveOnlyClosure<void> operation) {
+    Element *target, base::MoveOnlyClosure<void> operation) {
   // Dispatch operation according to batch rendering state
   auto *parent = target;
   if (parent->GetRenderRootElement() != nullptr &&
-      static_cast<FiberElement *>(parent->GetRenderRootElement())
+      static_cast<Element *>(parent->GetRenderRootElement())
           ->GetSchedulerAdapter() &&
-      static_cast<FiberElement *>(parent->GetRenderRootElement())
+      static_cast<Element *>(parent->GetRenderRootElement())
           ->GetSchedulerAdapter()
           ->IsBatchResolvingTree()) {
-    static_cast<FiberElement *>(parent->GetRenderRootElement())
+    static_cast<Element *>(parent->GetRenderRootElement())
         ->GetSchedulerAdapter()
         ->resolve_element_tree_queue()
         .emplace_back(std::move(operation));
@@ -1610,18 +1608,17 @@ int32_t ElementManager::CalcTotalMemoryUsageDiff() {
 }
 
 namespace {
-void ClearExtremeParsedStylesRecursively(FiberElement *cur) {
+void ClearExtremeParsedStylesRecursively(Element *cur) {
   cur->ClearExtremeParsedStyles();
   for (auto &child : cur->children()) {
-    ClearExtremeParsedStylesRecursively(
-        static_cast<FiberElement *>(child.get()));
+    ClearExtremeParsedStylesRecursively(static_cast<Element *>(child.get()));
   }
 }
 }  // namespace
 
 void ElementManager::ClearExtremeParsedStyles() {
   if (likely(root_)) {
-    ClearExtremeParsedStylesRecursively(static_cast<FiberElement *>(root()));
+    ClearExtremeParsedStylesRecursively(static_cast<Element *>(root()));
   }
 }
 
