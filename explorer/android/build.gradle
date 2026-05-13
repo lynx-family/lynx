@@ -20,11 +20,6 @@ buildscript {
         value = project.properties["abiList"]
         abiList = value? value.toString().split(",") : ["arm64-v8a"]
 
-        pythonExec = python_exec
-        if (python_exec.contains("/") || python_exec.contains("\\")) {
-            pythonExec = project.file(python_exec).absolutePath
-        }
-
         if (project.hasProperty("IntegrationTest")) {
             buildIntegrationDemo = true
         } else {
@@ -50,6 +45,8 @@ buildscript {
 plugins {
     id "org.jetbrains.kotlin.android" version "1.6.21" apply false
 }
+ext.pythonEnvScriptPath = "../../tools/env.sh"
+apply from: file("../../tools/android_tools/gradle/python_env.gradle")
 
 allprojects {
     repositories {
@@ -102,7 +99,7 @@ ext.getFlavorNamesAndBuildTypes = { Project project ->
 ext.writeGnArgs = { String gnArgs ->
     exec {
         workingDir "../../"
-        commandLine pythonExec, "tools_shared/android_tools/write_gn_args.py", "--gn-args", gnArgs.replaceAll('"', '#')
+        rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/write_gn_args.py", "--gn-args", gnArgs.replaceAll('"', '#'))
     }
 }
 
@@ -141,7 +138,7 @@ task generateAllGnCmakeTargets {
     }
     exec {
         workingDir "../../"
-        commandLine pythonExec, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py"
+        rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
         println commandLine
     }
 }
@@ -150,7 +147,7 @@ task buildHomePage {
     description "Build home page card."
     exec {
         workingDir "../homepage"
-        commandLine pythonExec, "build.py"
+        rootProject.ext.configurePythonExec(delegate, "build.py")
         println commandLine
     }
     copy {
@@ -167,7 +164,7 @@ task buildShowcase {
     description "Build showcase card."
     exec {
         workingDir "../showcase"
-        commandLine pythonExec, "./build_and_copy.py"
+        rootProject.ext.configurePythonExec(delegate, "./build_and_copy.py")
         println commandLine
     }
 }
@@ -179,7 +176,7 @@ if (buildIntegrationDemo) {
         description "Build Integeration Test Demo Card."
         exec {
             workingDir "../../testing/integration_test/demo_pages"
-            commandLine pythonExec, "./build_and_copy.py"
+            rootProject.ext.configurePythonExec(delegate, "./build_and_copy.py")
             println commandLine
         }
     }
@@ -191,7 +188,7 @@ task clean(type: Delete) {
     doLast {
         exec {
             workingDir "../../"
-            commandLine pythonExec, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py", "--clean"
+            rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py", "--clean")
             println commandLine
         }
     }

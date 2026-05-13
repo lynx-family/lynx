@@ -102,10 +102,10 @@ afterEvaluate {
                     println "========= execute jssdk build in ${task.name} =========="
                     ignoreExitValue true
                     workingDir '../../'
-                    commandLine pythonExec, "./android/lynx_js_sdk/jssdk_build.py", "--build", "--version", VERSION, \
+                    rootProject.ext.configurePythonExec(delegate, "./android/lynx_js_sdk/jssdk_build.py", "--build", "--version", VERSION, \
                                 "--jssdkMainDestPath", jssdkMainDestPath, \
                                 "--jssdkDebugDestPath", jssdkDebugDestPath, \
-                                "--lynxCoreBuildToolsPath", lynxCoreBuildToolsPath
+                                "--lynxCoreBuildToolsPath", lynxCoreBuildToolsPath)
                 }
                 if (result.exitValue != 0) {
                     throw new GradleException("jssdk build error, please check build log")
@@ -120,10 +120,10 @@ afterEvaluate {
                     ExecResult result = exec {
                         workingDir '../../'
                         ignoreExitValue true
-                        commandLine pythonExec, "./android/lynx_js_sdk/jssdk_build.py", "--clear", "--version", VERSION, \
+                        rootProject.ext.configurePythonExec(delegate, "./android/lynx_js_sdk/jssdk_build.py", "--clear", "--version", VERSION, \
                                 "--jssdkMainDestPath", jssdkMainDestPath, \
                                 "--jssdkDebugDestPath", jssdkDebugDestPath, \
-                                "--lynxCoreBuildToolsPath", lynxCoreBuildToolsPath
+                                "--lynxCoreBuildToolsPath", lynxCoreBuildToolsPath)
                     }
                     if (result.exitValue != 0) {
                         throw new GradleException("jssdk clear error, please check build log")

@@ -1,0 +1,31 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+import org.gradle.process.ExecSpec
+
+if (!rootProject.ext.has("pythonEnvScriptPath")) {
+    throw new GradleException("pythonEnvScriptPath must be configured before applying python_env.gradle")
+}
+
+def pythonEnvScriptFile = rootProject.file(rootProject.ext.pythonEnvScriptPath.toString())
+if (!pythonEnvScriptFile.isFile()) {
+    throw new GradleException("Python env script not found: ${pythonEnvScriptFile}")
+}
+
+def pythonExecValue = (rootProject.findProperty("python_exec") ?: "python3").toString()
+if (pythonExecValue.contains("/") || pythonExecValue.contains("\\")) {
+    pythonExecValue = rootProject.file(pythonExecValue).absolutePath
+}
+
+rootProject.ext.pythonExec = pythonExecValue
+rootProject.ext.pythonEnvScript = pythonEnvScriptFile.absolutePath
+
+// Keep IDE-launched Gradle Python calls on the same environment path as CLI builds.
+rootProject.ext.configurePythonExec = { ExecSpec execSpec, Object... pythonArgs ->
+    execSpec.executable rootProject.ext.pythonEnvScript
+    execSpec.args([rootProject.ext.pythonExec] + pythonArgs.toList())
+}

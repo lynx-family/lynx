@@ -87,7 +87,7 @@ task copyResources() {
     doLast {
         exec {
             workingDir '../../'
-            commandLine pythonExec, './resources/copy_resources.py'
+            rootProject.ext.configurePythonExec(delegate, './resources/copy_resources.py')
         }
     }
 }

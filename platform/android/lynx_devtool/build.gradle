@@ -232,7 +232,7 @@ task copyResources() {
     doLast {
         exec {
             workingDir '../../../'
-            commandLine pythonExec, './devtool/lynx_devtool/resources/copy_resources.py'
+            rootProject.ext.configurePythonExec(delegate, './devtool/lynx_devtool/resources/copy_resources.py')
         }
     }
 }

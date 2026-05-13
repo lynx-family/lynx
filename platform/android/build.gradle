@@ -18,10 +18,6 @@ buildscript {
         }
         value = project.properties["abiList"]
         abiList = value? value.toString().split(",") : ["arm64-v8a"]
-        pythonExec = python_exec
-        if (python_exec.contains("/") || python_exec.contains("\\")) {
-            pythonExec = project.file(python_exec).absolutePath
-        }
         enable_coverage_bool = (enable_coverage == 'true')
     }
     repositories {
@@ -45,6 +41,8 @@ plugins {
     id "org.jetbrains.kotlin.android" version "1.6.21" apply false
 }
 apply from: file("./package.gradle")
+ext.pythonEnvScriptPath = "../../tools/env.sh"
+apply from: file("../../tools/android_tools/gradle/python_env.gradle")
 
 allprojects {
     repositories {
@@ -107,7 +105,7 @@ ext.getFlavorNamesAndBuildTypes = { Project project ->
 ext.writeGnArgs = { String gnArgs ->
     exec {
         workingDir "../../"
-        commandLine pythonExec, "tools_shared/android_tools/write_gn_args.py", "--gn-args", gnArgs.replaceAll('"', '#')
+        rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/write_gn_args.py", "--gn-args", gnArgs.replaceAll('"', '#'))
     }
 }
 
@@ -146,7 +144,7 @@ task generateAllGnCmakeTargets {
     }
     exec {
         workingDir "../../"
-        commandLine pythonExec, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py"
+        rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
         println commandLine
     }
 }
@@ -157,7 +155,7 @@ task clean(type: Delete) {
     doLast {
         exec {
             workingDir "../../"
-            commandLine pythonExec, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py", "--clean"
+            rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py", "--clean")
             println commandLine
         }
     }
