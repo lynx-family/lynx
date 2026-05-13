@@ -3058,7 +3058,7 @@ void App::QueueMicrotask(Function func) {
 }
 
 void App::RunOnJSThreadWhenIdle(base::closure closure) {
-  if (auto rt = rt_.Lock()) {
+  if (rt_.Lock()) {
     delegate_->RunOnJSThreadWhenIdle(std::move(closure));
   }
 }
