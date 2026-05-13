@@ -65,10 +65,6 @@ class FiberElement : public Element {
    */
   void FlushActions();
 
-  void PrepareChildren();
-
-  void PrepareChildForInsertion(FiberElement* child);
-
   void AsyncResolveSubtreeProperty();
 
   void DispatchAsyncResolveSubtreeProperty();
@@ -134,10 +130,6 @@ class FiberElement : public Element {
   ParallelFlushReturn CreateParallelTaskHandler();
 
  private:
-  FiberElement* ReplaceTemplateChildIfNeeded(
-      base::InlineVector<fml::RefPtr<Element>,
-                         kChildrenInlineVectorSize>::iterator child_iter);
-
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
 };

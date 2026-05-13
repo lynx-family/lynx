@@ -2511,7 +2511,10 @@ void Element::ParallelFlushRecursively() {
   }
 }
 
-void FiberElement::PrepareChildren() {
+void Element::PrepareChildren() {
+  if (!is_fiber_element_) {
+    return;
+  }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PREPARE_CHILDREN,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2535,9 +2538,10 @@ void FiberElement::PrepareChildren() {
   }
 }
 
-FiberElement *FiberElement::ReplaceTemplateChildIfNeeded(
+FiberElement *Element::ReplaceTemplateChildIfNeeded(
     base::InlineVector<fml::RefPtr<Element>,
                        kChildrenInlineVectorSize>::iterator child_iter) {
+  auto *fiber_this = static_cast<FiberElement *>(this);
   auto *fiber_child = static_cast<FiberElement *>(child_iter->get());
   if (!fiber_child->is_template()) {
     return fiber_child;
@@ -2556,7 +2560,7 @@ FiberElement *FiberElement::ReplaceTemplateChildIfNeeded(
     element_manager()->OnElementNodeRemovedForInspector(template_child);
   });
   OnNodeRemoved(template_child);
-  TreeResolver::NotifyNodeRemoved(this, template_child);
+  TreeResolver::NotifyNodeRemoved(fiber_this, template_child);
   template_child->set_parent(nullptr);
 
   // TODO(songshourui.null): Keep logical_children_ aligned with the
@@ -2565,7 +2569,7 @@ FiberElement *FiberElement::ReplaceTemplateChildIfNeeded(
   *child_iter = root;
   fiber_child = root.get();
   OnNodeAdded(fiber_child);
-  TreeResolver::NotifyNodeInserted(this, fiber_child);
+  TreeResolver::NotifyNodeInserted(fiber_this, fiber_child);
   fiber_child->set_parent(this);
   EXEC_EXPR_FOR_INSPECTOR(if (element_manager() != nullptr) {
     element_manager()->OnElementNodeAddedForInspector(fiber_child);
@@ -2573,7 +2577,10 @@ FiberElement *FiberElement::ReplaceTemplateChildIfNeeded(
   return fiber_child;
 }
 
-void FiberElement::PrepareChildForInsertion(FiberElement *child) {
+void Element::PrepareChildForInsertion(FiberElement *child) {
+  if (!is_fiber_element_) {
+    return;
+  }
   if (child->dirty() & FiberElement::kDirtyCreated) {
     // make sure the child has been created,before insert op
     if (NeedPropagateInheritedDirtyFlag(false)) {

@@ -902,6 +902,10 @@ class Element : public lepus::RefCounted,
 
   void FlushSelf();
 
+  void PrepareChildren();
+
+  void PrepareChildForInsertion(FiberElement* child);
+
   void ParallelFlushRecursively();
 
   void TraversalInsertFixedElementOfTree();
@@ -1904,6 +1908,9 @@ class Element : public lepus::RefCounted,
   void HandleSelfFixedChange();
   void InsertFixedElement(FiberElement* child, FiberElement* ref_node);
   void RemoveFixedElement(FiberElement* child);
+  FiberElement* ReplaceTemplateChildIfNeeded(
+      base::InlineVector<fml::RefPtr<Element>,
+                         kChildrenInlineVectorSize>::iterator child_iter);
   void InsertLogicalChildBefore(const fml::RefPtr<Element>& child,
                                 Element* ref_node);
   void RemoveLogicalChild(const fml::RefPtr<Element>& child);
