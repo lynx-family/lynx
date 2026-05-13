@@ -71,8 +71,6 @@ class FiberElement : public Element {
 
   void PrepareChildForInsertion(FiberElement* child);
 
-  virtual void ParallelFlushAsRoot();
-
   void AsyncResolveSubtreeProperty();
 
   void DispatchAsyncResolveSubtreeProperty();

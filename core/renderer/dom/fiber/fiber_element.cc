@@ -2362,7 +2362,10 @@ bool Element::ShouldFallbackToSerialForNewStylingPipeline() const {
          !element_manager()->EnableLevelOrderTraversing();
 }
 
-void FiberElement::ParallelFlushAsRoot() {
+void Element::ParallelFlushAsRoot() {
+  if (!is_fiber_element_) {
+    return;
+  }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARALLEL_FLUSH_AS_ROOT);
   if (!element_manager()->GetEnableParallelElement()) {
     return;
@@ -2372,7 +2375,8 @@ void FiberElement::ParallelFlushAsRoot() {
   }
   if (element_manager()->GetEnableParallelElement() &&
       element_manager()->EnableLevelOrderTraversing()) {
-    TreeResolver::TraverseDom(this, TreeResolver::kWorkUnitSize);
+    TreeResolver::TraverseDom(static_cast<FiberElement *>(this),
+                              TreeResolver::kWorkUnitSize);
     element_manager()->FlushLevelOrderTasks();
     element_manager()->WaitForAllLevelOrderResolveTasks();
     return;

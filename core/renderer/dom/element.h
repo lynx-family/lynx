@@ -898,6 +898,8 @@ class Element : public lepus::RefCounted,
 
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
+  virtual void ParallelFlushAsRoot();
+
   void ParallelFlushRecursively();
 
   void DidParallelFlushAsRoot(PerfStatistic& stats);
