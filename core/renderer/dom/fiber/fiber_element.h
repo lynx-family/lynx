@@ -149,8 +149,6 @@ class FiberElement : public Element {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
-  using Element::SetMeasureFunc;
-
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 
