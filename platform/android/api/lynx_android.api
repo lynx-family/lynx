@@ -5732,6 +5732,8 @@ public class com::lynx::tasm::LynxGroup :  {
   public String com.lynx.tasm.LynxGroup.getID();
   public String[] com.lynx.tasm.LynxGroup.getPreloadJSPaths();
   public boolean com.lynx.tasm.LynxGroup.enableJSGroupThread();
+  public String com.lynx.tasm.LynxGroup.getJSGroupThreadName();
+  public String com.lynx.tasm.LynxGroup.getJSGroupThreadNameOrDefault();
   public void com.lynx.tasm.LynxGroup.setEnableJSGroupThread(boolean enable);
   public boolean com.lynx.tasm.LynxGroup.enableV8();
   public String com.lynx.tasm.LynxGroup.getStringConfig(String key);
@@ -5746,6 +5748,7 @@ public class com::lynx::tasm::LynxGroup::LynxGroupBuilder :  {
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setID(String id);
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setPreloadJSPaths(String[] preloadJSPaths);
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setEnableJSGroupThread(Boolean enableJSGroupThread);
+  public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setJSGroupThreadName(@Nullable String jsGroupThreadName);
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setEnableWhiteBoard(boolean enableWhiteBoard);
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setEnableV8(boolean enableV8);
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setStringConfig(String key, String value);

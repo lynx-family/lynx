@@ -2096,6 +2096,7 @@ public class LynxGroup : NSObject {
   public NSString* LynxGroup::groupName groupName;
   public NSString* LynxGroup::identification identification;
   public NSArray* LynxGroup::preloadJSPaths preloadJSPaths;
+  public NSString* LynxGroup::jsGroupThreadName jsGroupThreadName;
   public std::shared_ptr<lynx::tasm::WhiteBoard> LynxGroup()::whiteBoard whiteBoard;
   public nonnull NSString * LynxGroup::singleGroupTag();
   public NSString * LynxGroup()::groupNameForLynxGroupOrDefault:(LynxGroup *group);

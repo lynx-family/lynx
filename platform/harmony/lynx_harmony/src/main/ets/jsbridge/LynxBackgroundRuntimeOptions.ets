@@ -25,6 +25,10 @@ export class LynxBackgroundRuntimeOptions {
     return this.lynxGroup ? this.lynxGroup.getGroupID() : LynxGroup.SINGLE_GROUP;
   }
 
+  getJSGroupThreadName(): string {
+    return this.lynxGroup ? this.lynxGroup.getJSGroupThreadNameOrDefault() : '';
+  }
+
   getPreloadJSPath(): string[] {
     return this.lynxGroup ? this.lynxGroup.preloadJSPaths : [];
   }

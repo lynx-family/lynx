@@ -138,16 +138,17 @@ void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeDetach() {
 LynxRuntimeWrapper::LynxRuntimeWrapper(
     napi_env env, napi_value js_this,
     const std::shared_ptr<LynxResourceLoaderHarmony>& resource_loader,
-    std::string group_id, bool use_quickjs, bool enable_js_group_thread,
-    std::vector<std::string> preload_js_paths, bool enable_bytecode,
-    std::string bytecode_source_url,
+    std::string group_id, std::string js_group_thread_name, bool use_quickjs,
+    bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
+    bool enable_bytecode, std::string bytecode_source_url,
     std::unique_ptr<ModuleFactoryHarmony> module_factory,
     std::shared_ptr<tasm::TemplateData> template_data,
     lepus::Value global_props)
     : env_(env) {
   napi_create_reference(env, js_this, 0, &runtime_wrapper_ref_);
 
-  const std::string group_name = enable_js_group_thread ? group_id : "";
+  const std::string group_name =
+      enable_js_group_thread ? js_group_thread_name : "";
   auto native_facade_runtime =
       std::make_unique<NativeRuntimeFacadeHarmony>(this);
   auto bundle_creator = std::make_shared<tasm::PropBundleCreatorHarmony>();
@@ -258,8 +259,8 @@ napi_value LynxRuntimeWrapper::New(napi_env env, napi_callback_info info) {
 napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
                                             napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 13;
-  napi_value args[13] = {nullptr};
+  size_t argc = 14;
+  napi_value args[14] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // providers
@@ -270,38 +271,41 @@ napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
   // runtime options
   // js group
   std::string group_id = base::NapiUtil::ConvertToString(env, args[1]);
+  std::string js_group_thread_name =
+      base::NapiUtil::ConvertToString(env, args[2]);
   bool use_quickjs;
-  napi_get_value_bool(env, args[2], &use_quickjs);
+  napi_get_value_bool(env, args[3], &use_quickjs);
   bool enable_js_group_thread;
-  napi_get_value_bool(env, args[3], &enable_js_group_thread);
+  napi_get_value_bool(env, args[4], &enable_js_group_thread);
   std::vector<std::string> preload_js_paths;
-  base::NapiUtil::ConvertToArrayString(env, args[4], preload_js_paths);
+  base::NapiUtil::ConvertToArrayString(env, args[5], preload_js_paths);
 
   // bytecode
   bool enable_bytecode = false;
-  napi_get_value_bool(env, args[5], &enable_bytecode);
+  napi_get_value_bool(env, args[6], &enable_bytecode);
   std::string bytecode_source_url =
-      base::NapiUtil::ConvertToString(env, args[6]);
+      base::NapiUtil::ConvertToString(env, args[7]);
 
   // module
   static constexpr uint32_t kArgsSize = 4;
   napi_value module_args[kArgsSize];
-  base::NapiUtil::ConvertToArray(env, args[7], module_args, kArgsSize);
+  base::NapiUtil::ConvertToArray(env, args[8], module_args, kArgsSize);
   napi_value sendable_module_args[kArgsSize];
-  base::NapiUtil::ConvertToArray(env, args[8], sendable_module_args, kArgsSize);
+  base::NapiUtil::ConvertToArray(env, args[9], sendable_module_args, kArgsSize);
   auto module_factory = std::make_unique<ModuleFactoryHarmony>(
       env, module_args, sendable_module_args);
 
   auto template_data = tasm::TemplateDataHarmony::GenerateTemplateData(
-      env, args[10], args[11], args[9]);
+      env, args[11], args[12], args[10]);
 
   lepus_value global_props =
-      base::NapiConvertHelper::JSONToLepusValue(env, args[12]);
+      base::NapiConvertHelper::JSONToLepusValue(env, args[13]);
 
   // LynxTemplateRenderer
   LynxRuntimeWrapper* wrapper = new LynxRuntimeWrapper(
-      env, js_this, resource_loader, std::move(group_id), use_quickjs,
-      enable_js_group_thread, std::move(preload_js_paths), enable_bytecode,
+      env, js_this, resource_loader, std::move(group_id),
+      std::move(js_group_thread_name), use_quickjs, enable_js_group_thread,
+      std::move(preload_js_paths), enable_bytecode,
       std::move(bytecode_source_url), std::move(module_factory),
       std::move(template_data), std::move(global_props));
 

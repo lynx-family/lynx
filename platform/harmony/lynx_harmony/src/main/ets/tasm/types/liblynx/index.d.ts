@@ -121,7 +121,7 @@ export class LynxTemplateRenderer {
 
   nativeReset(ui_delegate: number[], providers: (Object | undefined)[], width: number, height: number,
     isHostRenderer: boolean, perfController: PerformanceCollector, threadMode: number, groupId: string,
-    useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
+    jsGroupThreadName: string, useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, enableJSRuntime: boolean, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime,
     whiteBoard?: LynxWhiteBoard): void;
@@ -367,7 +367,7 @@ export class LynxRuntimeWrapper {
   constructor();
 
   protected nativeCreate(providers: (Object | undefined)[], groupId: string,
-    useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
+    jsGroupThreadName: string, useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], processor?: string, data?: Object | string, readonly?: boolean,
     props?: Object | string): void;

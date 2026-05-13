@@ -147,7 +147,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       float width, float height, bool is_host_renderer,
       tasm::performance::PerformanceControllerHarmonyJSWrapper*
           js_perf_controller_wrapper,
-      int32_t thread_mode, std::string group_id, bool use_quickjs,
+      int32_t thread_mode, std::string group_id,
+      std::string js_group_thread_name, bool use_quickjs,
       bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
       bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
       std::unique_ptr<ModuleFactoryHarmony> module_factory,

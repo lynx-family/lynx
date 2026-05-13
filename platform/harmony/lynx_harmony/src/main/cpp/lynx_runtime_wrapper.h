@@ -71,9 +71,9 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   LynxRuntimeWrapper(
       napi_env env, napi_value js_this,
       const std::shared_ptr<LynxResourceLoaderHarmony>& resource_loader,
-      std::string group_id, bool use_quickjs, bool enable_js_group_thread,
-      std::vector<std::string> preload_js_paths, bool enable_bytecode,
-      std::string bytecode_source_url,
+      std::string group_id, std::string js_group_thread_name, bool use_quickjs,
+      bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
+      bool enable_bytecode, std::string bytecode_source_url,
       std::unique_ptr<ModuleFactoryHarmony> module_factory,
       std::shared_ptr<tasm::TemplateData> template_data,
       lepus::Value global_props);
