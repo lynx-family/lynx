@@ -247,14 +247,11 @@
   auto resource_loader = std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(
       _providerRegistry, _fetcher, self, templateResourceFetcher, genericResourceFetcher);
 
-  auto on_runtime_actor_created =
-      [&native_module_manager,
-       js_group_thread_name =
-           [[LynxGroup jsThreadNameForLynxGroupOrDefault:_group] UTF8String]](auto& actor) {
-        std::shared_ptr<lynx::runtime::js::ModuleDelegate> module_delegate =
-            std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
-        native_module_manager->SetModuleDelegate(module_delegate);
-      };
+  auto on_runtime_actor_created = [&native_module_manager](auto& actor) {
+    std::shared_ptr<lynx::runtime::js::ModuleDelegate> module_delegate =
+        std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
+    native_module_manager->SetModuleDelegate(module_delegate);
+  };
 
   // Init Runtime
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_INIT_RUNTIME);
@@ -485,7 +482,7 @@
   option.enable_js_ = self.enableJSRuntime;
   option.enable_js_group_thread_ = _enableJSGroupThread;
   if (_enableJSGroupThread) {
-    option.js_group_thread_name_ = [_runtimeOptions groupID];
+    option.js_group_thread_name_ = [_runtimeOptions groupThreadName];
   }
   option.enable_multi_tasm_thread_ =
       _enableMultiAsyncThread ||

@@ -37,6 +37,7 @@ public class LynxGroup {
   @Nullable private String[] mPreloadJSPaths;
 
   private boolean mEnableJSGroupThread;
+  @Nullable private String mJSGroupThreadName;
 
   private LynxWhiteBoard mWhiteBoard;
 
@@ -53,6 +54,7 @@ public class LynxGroup {
     } else {
       this.mEnableJSGroupThread = builder.mEnableJSGroupThread;
     }
+    this.mJSGroupThreadName = builder.mJSGroupThreadName;
 
     this.mEnableV8 = builder.mEnableV8;
     this.mConfig = builder.mConfig;
@@ -91,6 +93,15 @@ public class LynxGroup {
 
   public boolean enableJSGroupThread() {
     return mEnableJSGroupThread;
+  }
+
+  @Nullable
+  public String getJSGroupThreadName() {
+    return mJSGroupThreadName;
+  }
+
+  public String getJSGroupThreadNameOrDefault() {
+    return mJSGroupThreadName != null && !mJSGroupThreadName.isEmpty() ? mJSGroupThreadName : mID;
   }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
@@ -144,6 +155,7 @@ public class LynxGroup {
     protected String[] mPreloadJSPaths;
     protected boolean mEnableV8;
     protected Boolean mEnableJSGroupThread;
+    protected String mJSGroupThreadName;
     protected boolean mEnableWhiteBoard;
     protected Map<String, Object> mConfig;
 
@@ -173,6 +185,11 @@ public class LynxGroup {
 
     public LynxGroupBuilder setEnableJSGroupThread(Boolean enableJSGroupThread) {
       this.mEnableJSGroupThread = enableJSGroupThread;
+      return this;
+    }
+
+    public LynxGroupBuilder setJSGroupThreadName(@Nullable String jsGroupThreadName) {
+      this.mJSGroupThreadName = jsGroupThreadName;
       return this;
     }
 

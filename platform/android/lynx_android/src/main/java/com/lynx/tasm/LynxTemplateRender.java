@@ -3912,7 +3912,7 @@ public class LynxTemplateRender
 
   private String getJSGroupThreadNameIfNeed() {
     if (mGroup != null && mGroup.enableJSGroupThread()) {
-      return getGroupID();
+      return mGroup.getJSGroupThreadNameOrDefault();
     }
     return "";
   }

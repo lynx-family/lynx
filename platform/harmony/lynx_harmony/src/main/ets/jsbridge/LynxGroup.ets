@@ -14,6 +14,7 @@ export class LynxGroup {
   public enableDynamicV8: boolean = false;
   public enableHarmonyJSVM: boolean = false;
   public enableJSGroupThread: boolean = false;
+  public jsGroupThreadName?: string = undefined;
   private id: string;
   private whiteBoard: lynx.LynxWhiteBoard | undefined = undefined;
 
@@ -35,6 +36,7 @@ export class LynxGroup {
       group.enableDynamicV8 = other.enableDynamicV8;
       group.enableHarmonyJSVM = other.enableHarmonyJSVM;
       group.enableJSGroupThread = other.enableJSGroupThread;
+      group.jsGroupThreadName = other.jsGroupThreadName;
       group.whiteBoard = other.whiteBoard;
     }
     return group;
@@ -62,9 +64,14 @@ export class LynxGroup {
     return this.id;
   }
 
+  public getJSGroupThreadNameOrDefault(): string {
+    return this.jsGroupThreadName !== undefined && this.jsGroupThreadName.length > 0
+      ? this.jsGroupThreadName
+      : this.id;
+  }
+
   /** @internal */
   public getWhiteBoard(): lynx.LynxWhiteBoard | undefined {
     return this.whiteBoard;
   }
 }
-
