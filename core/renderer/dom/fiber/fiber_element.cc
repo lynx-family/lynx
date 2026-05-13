@@ -4806,7 +4806,7 @@ void FiberElement::DispatchLayoutBeforeRecursively() {
   }
 }
 
-void FiberElement::DispatchLayoutBefore() {
+void Element::DispatchLayoutBefore() {
   if (customized_layout_node_) {
     customized_layout_node_->OnLayoutBefore();
   }

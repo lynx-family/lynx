@@ -219,8 +219,6 @@ class FiberElement : public Element {
   void UpdateLayoutInfo();
 
   void MarkLayoutDirtyLite() override;
-
-  virtual void DispatchLayoutBefore();
 };
 
 }  // namespace tasm
