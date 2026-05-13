@@ -76,6 +76,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     this.nativeReset(uiDelegate, this.providers, this.displayInfo.screenWidth, this.displayInfo.screenHeight,
       this.isHostRenderer, this.perfController.native, this.threadMode,
       this.backgroundRuntimeOptions.getGroupID(),
+      this.backgroundRuntimeOptions.getJSGroupThreadName(),
       this.backgroundRuntimeOptions.useQuickJSEngine(),
       this.backgroundRuntimeOptions.enableJSGroupThread(),
       this.backgroundRuntimeOptions.getPreloadJSPath(),
