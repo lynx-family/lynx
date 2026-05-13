@@ -40,9 +40,10 @@ class CSSParserTokenStream;
 
 class MediaQueryParser {
  public:
-  // Parses a full media-query-list. Never returns null; an invalid or empty
-  // input produces an empty MediaQuerySet, matching the "not all" behavior
-  // required by the spec (callers can treat empty as "never matches").
+  // Parses a full media-query-list. Never returns null.
+  //   * Empty / whitespace-only input -> empty set (spec: matches all).
+  //   * Wholly invalid input          -> single `not all` entry.
+  //   * Mixed list                    -> invalid entries dropped.
   static fml::RefPtr<MediaQuerySet> ParseMediaQuerySet(const std::string& text);
 
   // Parses a single <media-condition> (without a media-type). Returns null

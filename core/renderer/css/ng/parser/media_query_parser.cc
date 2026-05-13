@@ -129,11 +129,13 @@ MediaFeatureUnit ResolveUnit(const std::u16string& unit_u16) {
 fml::RefPtr<MediaQuerySet> MediaQueryParser::ParseMediaQuerySet(
     const std::string& text) {
   auto result = fml::MakeRefCounted<MediaQuerySet>();
+  // Empty / whitespace-only input is a valid empty list (spec: matches all).
   if (text.empty()) return result;
 
   CSSTokenizer tokenizer(text);
   CSSParserTokenStream stream(tokenizer);
   stream.ConsumeWhitespace();
+  if (stream.AtEnd()) return result;
 
   auto skip_to_comma = [&stream]() {
     while (!stream.AtEnd() && stream.Peek().GetType() != kCommaToken) {
@@ -158,6 +160,13 @@ fml::RefPtr<MediaQuerySet> MediaQueryParser::ParseMediaQuerySet(
       stream.Consume();
       stream.ConsumeWhitespace();
     }
+  }
+
+  // Non-empty but wholly invalid input is replaced by `not all` per spec.
+  if (result->IsEmpty()) {
+    result->Append(fml::MakeRefCounted<MediaQuery>(
+        MediaQueryRestrictor::kNot, std::string(MediaQuery::kTypeAll),
+        nullptr));
   }
   return result;
 }

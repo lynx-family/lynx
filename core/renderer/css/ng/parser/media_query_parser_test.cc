@@ -16,14 +16,41 @@
 namespace lynx {
 namespace css {
 
+namespace {
+
+// Returns true if `set` is the spec-mandated `not all` placeholder used
+// by the parser to encode wholly invalid input.
+bool IsNotAllSet(const MediaQuerySet& set) {
+  if (set.Queries().size() != 1u) return false;
+  const auto& q = *set.Queries()[0];
+  return q.Restrictor() == MediaQueryRestrictor::kNot &&
+         q.MediaType() == MediaQuery::kTypeAll && q.Condition() == nullptr;
+}
+
+}  // namespace
+
 // ---------------------------------------------------------------------------
 // ParseMediaQuerySet — basic structural tests
 // ---------------------------------------------------------------------------
 
 TEST(MediaQueryParserTest, EmptyInput) {
+  // Empty input -> valid empty list (spec: matches all).
   auto set = MediaQueryParser::ParseMediaQuerySet("");
   ASSERT_NE(set, nullptr);
   EXPECT_TRUE(set->IsEmpty());
+}
+
+TEST(MediaQueryParserTest, WhitespaceOnlyInput) {
+  auto set = MediaQueryParser::ParseMediaQuerySet("   \t\n  ");
+  ASSERT_NE(set, nullptr);
+  EXPECT_TRUE(set->IsEmpty());
+}
+
+TEST(MediaQueryParserTest, WhollyInvalidInputProducesNotAllPlaceholder) {
+  // Wholly invalid input -> `not all` placeholder (spec).
+  auto set = MediaQueryParser::ParseMediaQuerySet("(invalid!)");
+  ASSERT_NE(set, nullptr);
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, SingleMediaType) {
@@ -456,7 +483,7 @@ TEST(MediaQueryParserTest, RangeOpEq) {
 TEST(MediaQueryParserTest, DoubleEqualsInvalid) {
   auto set = MediaQueryParser::ParseMediaQuerySet("(width == 100px)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 // ---------------------------------------------------------------------------
@@ -494,19 +521,19 @@ TEST(MediaQueryParserTest, RangeFormBLeadingValueGt) {
 TEST(MediaQueryParserTest, RangeFormBRejectsIdentLeadingValue) {
   auto set = MediaQueryParser::ParseMediaQuerySet("(foo < bar)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, DoubleRangeMixedDirectionInvalid) {
   auto set = MediaQueryParser::ParseMediaQuerySet("(100px < width > 500px)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, DoubleRangeEqChainInvalid) {
   auto set = MediaQueryParser::ParseMediaQuerySet("(100px = width < 200px)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 // ---------------------------------------------------------------------------
@@ -517,21 +544,21 @@ TEST(MediaQueryParserTest, MixingAndOrFails) {
   auto set =
       MediaQueryParser::ParseMediaQuerySet("(a: 1) and (b: 2) or (c: 3)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, ConditionWithoutOrConstraint) {
   auto set =
       MediaQueryParser::ParseMediaQuerySet("screen and (a: 1) or (b: 2)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, MediaTypeAndRangeOrMixed) {
   auto set = MediaQueryParser::ParseMediaQuerySet(
       "screen and (width > 100px) or (color)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 // ---------------------------------------------------------------------------
@@ -629,13 +656,13 @@ TEST(MediaQueryParserTest, FeatureWithUnknownUnitFallback) {
 TEST(MediaQueryParserTest, EmptyParensInvalid) {
   auto set = MediaQueryParser::ParseMediaQuerySet("()");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, MissingValueAfterColon) {
   auto set = MediaQueryParser::ParseMediaQuerySet("(min-width:)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, UnclosedParen) {
@@ -652,43 +679,43 @@ TEST(MediaQueryParserTest, UnclosedParen) {
 TEST(MediaQueryParserTest, ExtraTokensInsideParens) {
   auto set = MediaQueryParser::ParseMediaQuerySet("(width: 100px foo)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, JustComma) {
   auto set = MediaQueryParser::ParseMediaQuerySet(",");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, RandomGarbage) {
   auto set = MediaQueryParser::ParseMediaQuerySet("!@#$%^&");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, MissingMediaTypeAfterNot) {
   auto set = MediaQueryParser::ParseMediaQuerySet("not");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, MissingMediaTypeAfterOnly) {
   auto set = MediaQueryParser::ParseMediaQuerySet("only");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, ReservedKeywordAndAsMediaType) {
   auto set = MediaQueryParser::ParseMediaQuerySet("and and (color)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, ReservedKeywordOrAsMediaType) {
   auto set = MediaQueryParser::ParseMediaQuerySet("or");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, InvalidRecoveryInList) {
@@ -732,7 +759,7 @@ TEST(MediaQueryParserTest, AspectRatioWithInvalidDenominator) {
       MediaQueryParser::ParseMediaQuerySet("(aspect-ratio: 16 / landscape)");
   ASSERT_NE(set, nullptr);
   // This currently produces an empty set (query rejected).
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, AspectRatioValidRatio) {
@@ -751,13 +778,13 @@ TEST(MediaQueryParserTest, AspectRatioValidRatio) {
 TEST(MediaQueryParserTest, AspectRatioTrailingTokenAfterRatio) {
   auto set = MediaQueryParser::ParseMediaQuerySet("(aspect-ratio: 16/9 extra)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, AspectRatioWithNegativeDenominator) {
   auto set = MediaQueryParser::ParseMediaQuerySet("(aspect-ratio: 16 / -2)");
   ASSERT_NE(set, nullptr);
-  EXPECT_TRUE(set->IsEmpty());
+  EXPECT_TRUE(IsNotAllSet(*set));
 }
 
 TEST(MediaQueryParserTest, FeatureWithVwUnit) {
