@@ -1,0 +1,24 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+// Explorer still runs on Gradle 6.7.1/AGP 4.1.0. Gradle 6.x cannot resolve a
+// settings plugin from pluginManagement { includeBuild(...) }, and a clean
+// checkout does not contain a prebuilt lynx_extension_plugin jar. Load the local
+// plugin sources directly so extension builds can be included before project
+// evaluation.
+ClassLoader lynxExtensionPluginLoaderParent = this.class.classLoader
+
+ext.loadLynxExtensionPluginClass = { File explorerAndroidDir, String pluginClassName,
+        List<String> pluginSourceFiles ->
+    File sourceDir = new File(explorerAndroidDir,
+            "../../platform/android/lynx_extension_plugin/src/main/groovy/org/lynxsdk/extension")
+    GroovyClassLoader loader = new GroovyClassLoader(lynxExtensionPluginLoaderParent)
+    ([
+            "LynxExtensionInfo.groovy",
+            "LynxExtensionScanner.groovy",
+    ] + pluginSourceFiles).each { String sourceName ->
+        loader.parseClass(new File(sourceDir, sourceName))
+    }
+    loader.loadClass(pluginClassName)
+}

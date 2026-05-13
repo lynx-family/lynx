@@ -84,6 +84,7 @@ core/runtime/jsi/v8/CMakeLists_impl/
 
 explorer/darwin/ios/lynx_explorer/Podfile.lock
 explorer/darwin/ios/lynx_explorer/Pods
+explorer/darwin/ios/lynx_explorer/generated/lynx-extension/
 explorer/darwin/ios/lynx_explorer/LynxExplorer.xcworkspace/*
 explorer/darwin/ios/lynx_explorer/LynxExplorer.xcodeproj/**
 !explorer/darwin/ios/lynx_explorer/LynxExplorer.xcodeproj/
