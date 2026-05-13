@@ -223,6 +223,7 @@ export abstract class LynxNodeController extends NodeController {
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions; = new LynxBackgroundRuntimeOptions()
   enableAirStrictMode?: any; = false
   lynxImageConfig?: LynxImageConfig;
+  enableSyncFlush: boolean; = false
 }
 
 export interface LynxViewBuilder {
@@ -246,6 +247,7 @@ export interface LynxViewBuilder {
   enableAirStrictMode?: boolean;
   lynxImageConfig?: LynxImageConfig;
   fontScale?: number;
+  enableSyncFlush?: boolean;
 }
 
 export enum MeasureMode {

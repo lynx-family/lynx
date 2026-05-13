@@ -81,6 +81,7 @@ export interface LynxViewBuilder {
   enableAirStrictMode?: boolean;
   lynxImageConfig?: LynxImageConfig;
   fontScale?: number;
+  enableSyncFlush?: boolean;
 }
 
 @Builder
@@ -194,6 +195,7 @@ export struct LynxView {
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions = new LynxBackgroundRuntimeOptions();
   enableAirStrictMode? = false;
   lynxImageConfig?: LynxImageConfig;
+  enableSyncFlush: boolean = false;
 
   initWithBuilder(builder: LynxViewBuilder) {
     this.genericResourceFetcher = builder.genericResourceFetcher;
@@ -217,6 +219,7 @@ export struct LynxView {
     this.enableAirStrictMode = builder.enableAirStrictMode ?? false;
     this.lynxImageConfig = builder.lynxImageConfig;
     this.fontScale = builder.fontScale ?? 1.0;
+    this.enableSyncFlush = builder.enableSyncFlush ?? false;
     if (this.hasAppeared) {
       LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
       this.reInitTemplateRenderer(this.hasLoadSource());
@@ -518,6 +521,9 @@ export struct LynxView {
       this.fontScale = params.fontScale;
       couldReuse = false;
     }
+    if (params.enableSyncFlush !== undefined && this.enableSyncFlush !== params.enableSyncFlush) {
+      this.enableSyncFlush = params.enableSyncFlush;
+    }
     if (!couldReuse) {
       LLog.d(TAG, 'can not reuse, so we recreate LynxTemplateRenderer');
       this.reInitTemplateRenderer(this.hasLoadSource());
@@ -567,6 +573,10 @@ export struct LynxView {
     if (childResult && result.width !== childResult.width && childResult.width !== 0) {
       result.width = childResult.width;
     }
+    // syncFlush: block UI thread until TASM and Layout threads finish, avoiding flicker
+    if (this.enableSyncFlush && this.threadMode !== ThreadStrategyForRendering.ALL_ON_UI) {
+      this.templateRenderer?.syncFlush();
+    }
     // trigger native layout here, and rootSize will updated.
     this.updateViewport(result.width, result.height);
     if (this.fitContentWidth) {
@@ -591,6 +601,7 @@ export struct LynxView {
       return;
     }
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_RELOAD);
+    this.templateRenderer?.markDirty();
     let timingOption: TimingOption = new TimingOption(TimingConstants.RELOAD_BUNDLE_FROM_NATIVE);
     let nowStartTimestamp = Date.now();
     timingOption.setTiming(TimingConstants.PIPELINE_START, nowStartTimestamp);
@@ -714,6 +725,7 @@ export struct LynxView {
       return;
     }
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_LOAD);
+    this.templateRenderer?.markDirty();
     this.onPageStarted(LynxPipelineOrigin.LynxFirstScreen);
     if (this.metaData.globalProps !== undefined) {
       this.templateRenderer.updateGlobalProps(this.metaData.globalProps?.data);

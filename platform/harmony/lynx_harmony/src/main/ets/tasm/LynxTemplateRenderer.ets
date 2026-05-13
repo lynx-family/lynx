@@ -255,4 +255,18 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     }
     super.invokeLepusCallback(id, entryName, args);
   }
+
+  syncFlush() {
+    if (this.destroyed) {
+      return;
+    }
+    this.nativeSyncFlush();
+  }
+
+  markDirty() {
+    if (this.destroyed) {
+      return;
+    }
+    this.nativeMarkDirty();
+  }
 }

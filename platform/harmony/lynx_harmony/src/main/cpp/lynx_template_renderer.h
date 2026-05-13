@@ -83,6 +83,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   int32_t GetInstanceId() const;
   bool ShouldSendEventToMainThread() const;
   void UpdateFontScale(float font_scale);
+  void SyncFlush();
+  void MarkDirty();
   void SetEnableBytecode(bool enable, std::string source_url);
   lepus::Value GetPageDataByKey(std::vector<std::string> keys);
 
@@ -215,6 +217,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
   static napi_value GetAllJsSource(napi_env env, napi_callback_info info);
   static napi_value InvokeLepusCallback(napi_env env, napi_callback_info info);
+  static napi_value NativeSyncFlush(napi_env env, napi_callback_info info);
+  static napi_value NativeMarkDirty(napi_env env, napi_callback_info info);
 
   struct WeakFlag : public std::enable_shared_from_this<WeakFlag> {
     explicit WeakFlag(LynxTemplateRenderer* template_renderer)
