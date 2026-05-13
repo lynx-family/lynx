@@ -2480,7 +2480,10 @@ void Element::PostResolveTaskToThreadPool(bool is_engine_thread,
   task_queue.emplace_back(std::move(task_info_ptr));
 }
 
-void FiberElement::ParallelFlushRecursively() {
+void Element::ParallelFlushRecursively() {
+  if (!is_fiber_element_) {
+    return;
+  }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARALLEL_FLUSH_RECURSIVELY);
   if (!flush_required_) {
     return;
@@ -2491,7 +2494,7 @@ void FiberElement::ParallelFlushRecursively() {
   }
 
   for (const auto &child : scoped_children_) {
-    static_cast<FiberElement *>(child.get())->ParallelFlushRecursively();
+    child->ParallelFlushRecursively();
   }
 }
 

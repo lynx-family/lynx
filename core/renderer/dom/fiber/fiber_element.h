@@ -77,8 +77,6 @@ class FiberElement : public Element {
 
   void OnParallelFlushAsRoot(PerfStatistic& stats);
 
-  void ParallelFlushRecursively();
-
   void AsyncResolveSubtreeProperty();
 
   void DispatchAsyncResolveSubtreeProperty();

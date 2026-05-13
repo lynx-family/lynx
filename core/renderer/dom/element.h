@@ -898,6 +898,8 @@ class Element : public lepus::RefCounted,
 
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
+  void ParallelFlushRecursively();
+
   void DispatchAsyncResolveProperty();
 
   void AsyncPostResolveTaskToThreadPool();
