@@ -15,7 +15,7 @@ class LynxExtensionAutolinkTest < Minitest::Test
 
       assert_equal 1, extensions.size
       assert_equal 'demo-ext', extensions.first.npm_name
-      assert_equal File.join(dir, 'node_modules/demo-ext/ios/DemoExt.podspec'),
+      assert_equal File.realpath(File.join(dir, 'node_modules/demo-ext/ios/DemoExt.podspec')),
                    extensions.first.podspec_path
     end
   end
@@ -115,6 +115,122 @@ class LynxExtensionAutolinkTest < Minitest::Test
 
       error = assert_raises(RuntimeError) { Lynx::Extension::Autolink.scan(dir) }
       assert_includes error.message, 'No iOS podspec found'
+    end
+  end
+
+  def test_manifest_rejects_source_dir_outside_package
+    Dir.mktmpdir do |dir|
+      package_dir = File.join(dir, 'node_modules/bad-ext')
+      FileUtils.mkdir_p(package_dir)
+      File.write(File.join(package_dir, 'lynx.ext.json'),
+                 '{"platforms":{"ios":{"sourceDir":"../shared-ios"}}}')
+      FileUtils.mkdir_p(File.join(dir, 'node_modules/shared-ios'))
+
+      error = assert_raises(RuntimeError) { Lynx::Extension::Autolink.scan(dir) }
+      assert_includes error.message, "iOS sourceDir '../shared-ios' must stay within package directory"
+    end
+  end
+
+  def test_manifest_rejects_podspec_path_outside_package
+    Dir.mktmpdir do |dir|
+      package_dir = File.join(dir, 'node_modules/bad-ext')
+      FileUtils.mkdir_p(File.join(package_dir, 'ios'))
+      File.write(File.join(package_dir, 'lynx.ext.json'),
+                 '{"platforms":{"ios":{"podspecPath":"../shared/Shared.podspec"}}}')
+      shared_dir = File.join(dir, 'node_modules/shared')
+      FileUtils.mkdir_p(shared_dir)
+      File.write(File.join(shared_dir, 'Shared.podspec'), <<~PODSPEC)
+        Pod::Spec.new do |s|
+          s.name = 'Shared'
+        end
+      PODSPEC
+
+      error = assert_raises(RuntimeError) { Lynx::Extension::Autolink.scan(dir) }
+      assert_includes error.message,
+                      "iOS podspecPath '../shared/Shared.podspec' must stay within package directory"
+    end
+  end
+
+  def test_manifest_rejects_source_dir_symlink_outside_package
+    Dir.mktmpdir do |dir|
+      package_dir = File.join(dir, 'node_modules/bad-ext')
+      outside_dir = File.join(dir, 'outside-ios')
+      FileUtils.mkdir_p(package_dir)
+      FileUtils.mkdir_p(outside_dir)
+      File.symlink(outside_dir, File.join(package_dir, 'ios-link'))
+      File.write(File.join(package_dir, 'lynx.ext.json'),
+                 '{"platforms":{"ios":{"sourceDir":"ios-link"}}}')
+
+      error = assert_raises(RuntimeError) { Lynx::Extension::Autolink.scan(dir) }
+      assert_includes error.message, "iOS sourceDir 'ios-link' must stay within package directory"
+    end
+  end
+
+  def test_manifest_rejects_podspec_path_symlink_outside_package
+    Dir.mktmpdir do |dir|
+      package_dir = File.join(dir, 'node_modules/bad-ext')
+      outside_dir = File.join(dir, 'outside-ios')
+      FileUtils.mkdir_p(File.join(package_dir, 'ios'))
+      FileUtils.mkdir_p(outside_dir)
+      File.write(File.join(outside_dir, 'Outside.podspec'), <<~PODSPEC)
+        Pod::Spec.new do |s|
+          s.name = 'Outside'
+        end
+      PODSPEC
+      File.symlink(File.join(outside_dir, 'Outside.podspec'),
+                   File.join(package_dir, 'ios/Outside.podspec'))
+      File.write(File.join(package_dir, 'lynx.ext.json'),
+                 '{"platforms":{"ios":{"podspecPath":"ios/Outside.podspec"}}}')
+
+      error = assert_raises(RuntimeError) { Lynx::Extension::Autolink.scan(dir) }
+      assert_includes error.message,
+                      "iOS podspecPath 'ios/Outside.podspec' must stay within package directory"
+    end
+  end
+
+  def test_manifest_rejects_default_podspec_symlink_outside_package
+    Dir.mktmpdir do |dir|
+      package_dir = File.join(dir, 'node_modules/bad-ext')
+      outside_dir = File.join(dir, 'outside-ios')
+      FileUtils.mkdir_p(File.join(package_dir, 'ios'))
+      FileUtils.mkdir_p(outside_dir)
+      File.write(File.join(outside_dir, 'Outside.podspec'), <<~PODSPEC)
+        Pod::Spec.new do |s|
+          s.name = 'Outside'
+        end
+      PODSPEC
+      File.symlink(File.join(outside_dir, 'Outside.podspec'),
+                   File.join(package_dir, 'ios/Outside.podspec'))
+      File.write(File.join(package_dir, 'lynx.ext.json'), '{"platforms":{"ios":{}}}')
+
+      error = assert_raises(RuntimeError) { Lynx::Extension::Autolink.scan(dir) }
+      assert_includes error.message, 'must stay within package directory'
+    end
+  end
+
+  def test_manifest_ignores_symlinked_directories_during_default_podspec_discovery
+    Dir.mktmpdir do |dir|
+      package_dir = File.join(dir, 'node_modules/demo-ext')
+      outside_dir = File.join(dir, 'outside-ios')
+      FileUtils.mkdir_p(File.join(package_dir, 'ios'))
+      FileUtils.mkdir_p(outside_dir)
+      File.write(File.join(outside_dir, 'AOutside.podspec'), <<~PODSPEC)
+        Pod::Spec.new do |s|
+          s.name = 'Outside'
+        end
+      PODSPEC
+      File.write(File.join(package_dir, 'ios/DemoExt.podspec'), <<~PODSPEC)
+        Pod::Spec.new do |s|
+          s.name = 'DemoExt'
+        end
+      PODSPEC
+      File.symlink(outside_dir, File.join(package_dir, 'ios/linked'))
+      File.write(File.join(package_dir, 'lynx.ext.json'), '{"platforms":{"ios":{}}}')
+
+      extensions = Lynx::Extension::Autolink.scan(dir)
+
+      assert_equal File.realpath(File.join(package_dir, 'ios/DemoExt.podspec')),
+                   extensions.first.podspec_path
     end
   end
 
