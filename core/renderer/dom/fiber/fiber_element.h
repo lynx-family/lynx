@@ -79,18 +79,12 @@ class FiberElement : public Element {
 
   void ParallelFlushRecursively();
 
-  void AsyncResolveProperty();
-
-  virtual void PostResolveTaskToThreadPool(bool is_engine_thread,
-                                           ParallelReduceTaskQueue& task_queue);
+  virtual void PostResolveTaskToThreadPool(
+      bool is_engine_thread, ParallelReduceTaskQueue& task_queue) override;
 
   void AsyncResolveSubtreeProperty();
 
   void DispatchAsyncResolveSubtreeProperty();
-
-  void DispatchAsyncResolveProperty();
-
-  void AsyncPostResolveTaskToThreadPool();
 
   /**
    * A key function for generating children's actions.

@@ -891,6 +891,15 @@ class Element : public lepus::RefCounted,
 
   void UpdateElement();
 
+  void AsyncResolveProperty();
+
+  virtual void PostResolveTaskToThreadPool(bool is_engine_thread,
+                                           ParallelReduceTaskQueue& task_queue);
+
+  void DispatchAsyncResolveProperty();
+
+  void AsyncPostResolveTaskToThreadPool();
+
   int ZIndex() {
     return GetEnableZIndex() ? computed_css_style()->GetZIndex() : 0;
   }

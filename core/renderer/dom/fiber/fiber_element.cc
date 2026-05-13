@@ -711,7 +711,10 @@ void Element::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
   }
 }
 
-void FiberElement::DispatchAsyncResolveProperty() {
+void Element::DispatchAsyncResolveProperty() {
+  if (!is_fiber_element_) {
+    return;
+  }
   if ((dirty_ & ~kDirtyTree) != 0 && IsAttached()) {
     UpdateResolveStatus(AsyncResolveStatus::kPreparing);
     ResolveParentComponentElement();
@@ -948,7 +951,10 @@ void Element::ResetSimpleStyle(const tasm::CSSPropertyID id) {
 
 #pragma endregion  // simple styling
 
-void FiberElement::AsyncResolveProperty() {
+void Element::AsyncResolveProperty() {
+  if (!is_fiber_element_) {
+    return;
+  }
   if ((dirty_ & ~kDirtyTree) != 0) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_ASYNC_RESOLVE_PROPERTY);
     UpdateResolveStatus(AsyncResolveStatus::kPrepareRequested);
@@ -958,7 +964,10 @@ void FiberElement::AsyncResolveProperty() {
   }
 }
 
-void FiberElement::AsyncPostResolveTaskToThreadPool() {
+void Element::AsyncPostResolveTaskToThreadPool() {
+  if (!is_fiber_element_) {
+    return;
+  }
   if ((dirty_ & ~kDirtyTree) != 0) {
     UpdateResolveStatus(AsyncResolveStatus::kPrepareTriggered);
     element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
@@ -1157,7 +1166,7 @@ void Element::RemoveNodeInternal(const fml::RefPtr<Element> &child,
 void Element::InsertedInto(Element *insertion_point) {
   MarkAttached();
   if (resolve_status_ == AsyncResolveStatus::kPrepareRequested) {
-    static_cast<FiberElement *>(this)->AsyncPostResolveTaskToThreadPool();
+    AsyncPostResolveTaskToThreadPool();
   }
   EXEC_EXPR_FOR_INSPECTOR(if (element_manager() != nullptr) {
     element_manager()->RunDevToolFunction(

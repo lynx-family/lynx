@@ -1212,6 +1212,9 @@ void Element::UpdateElement() {
   element_container()->StyleChanged();
 }
 
+void Element::PostResolveTaskToThreadPool(
+    bool is_engine_thread, ParallelReduceTaskQueue& task_queue) {}
+
 void Element::OnNodeReady() {
   if (element_container() == nullptr) {
     return;
