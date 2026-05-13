@@ -2337,7 +2337,10 @@ void FiberElement::FlushActions() {
   is_async_flush_root_ = false;
 }
 
-void FiberElement::OnParallelFlushAsRoot(PerfStatistic &stats) {
+void Element::OnParallelFlushAsRoot(PerfStatistic &stats) {
+  if (!is_fiber_element_) {
+    return;
+  }
   stats.enable_report_stats_ =
       element_manager()->GetEnableReportThreadedElementFlushStatistic();
   stats.total_processing_start_ = base::CurrentTimeMicroseconds();
@@ -2423,7 +2426,10 @@ void FiberElement::ParallelFlushAsRoot() {
   DidParallelFlushAsRoot(perf_stats);
 }
 
-void FiberElement::DidParallelFlushAsRoot(PerfStatistic &stats) {
+void Element::DidParallelFlushAsRoot(PerfStatistic &stats) {
+  if (!is_fiber_element_) {
+    return;
+  }
   if (stats.enable_report_stats_) {
     uint64_t total_processing_end = base::CurrentTimeMicroseconds();
     report::EventTracker::OnEvent(

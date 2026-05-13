@@ -73,10 +73,6 @@ class FiberElement : public Element {
 
   virtual void ParallelFlushAsRoot();
 
-  void DidParallelFlushAsRoot(PerfStatistic& stats);
-
-  void OnParallelFlushAsRoot(PerfStatistic& stats);
-
   void AsyncResolveSubtreeProperty();
 
   void DispatchAsyncResolveSubtreeProperty();

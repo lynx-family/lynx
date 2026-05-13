@@ -900,6 +900,10 @@ class Element : public lepus::RefCounted,
 
   void ParallelFlushRecursively();
 
+  void DidParallelFlushAsRoot(PerfStatistic& stats);
+
+  void OnParallelFlushAsRoot(PerfStatistic& stats);
+
   void DispatchAsyncResolveProperty();
 
   void AsyncPostResolveTaskToThreadPool();
