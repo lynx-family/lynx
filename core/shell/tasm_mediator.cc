@@ -106,6 +106,13 @@ void TasmMediator::OnShouldSendEventToMainThreadChanged(
   if (auto cache = should_send_event_to_main_thread_cache_.lock()) {
     cache->store(should_send_event_to_main_thread, std::memory_order_relaxed);
   }
+  const bool enable = should_send_event_to_main_thread ||
+                      should_enable_air_performance_callback_;
+  if (perf_actor_) {
+    perf_actor_->ActAsync([enable](auto& performance) mutable {
+      performance->SetEnableMainThreadCallback(enable);
+    });
+  }
 }
 
 void TasmMediator::CallPlatformCallbackWithValue(
@@ -126,14 +133,18 @@ void TasmMediator::OnPageConfigDecoded(
     const std::shared_ptr<tasm::PageConfig>& config) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_MEDIATOR_CALL_ON_PAGE_CONFIG_DECODED);
   tasm_platform_invoker_->OnPageConfigDecoded(config);
-  // default enableAirStrictMode in timing_handler is false,
-  // avoid using post task to send duplicate false value
-  if (perf_actor_ && (config->GetLynxAirMode() ==
-                          tasm::CompileOptionAirMode::AIR_MODE_STRICT ||
-                      config->GetLynxAirMode() ==
-                          tasm::CompileOptionAirMode::AIR_MODE_FIBER)) {
-    perf_actor_->ActAsync([](auto& performance) mutable {
-      performance->SetEnableMainThreadCallback(true);
+  should_enable_air_performance_callback_ =
+      config->GetLynxAirMode() == tasm::CompileOptionAirMode::AIR_MODE_STRICT ||
+      config->GetLynxAirMode() == tasm::CompileOptionAirMode::AIR_MODE_FIBER;
+  bool should_send_event_to_main_thread = false;
+  if (auto cache = should_send_event_to_main_thread_cache_.lock()) {
+    should_send_event_to_main_thread = cache->load(std::memory_order_relaxed);
+  }
+  const bool enable = should_send_event_to_main_thread ||
+                      should_enable_air_performance_callback_;
+  if (perf_actor_) {
+    perf_actor_->ActAsync([enable](auto& performance) mutable {
+      performance->SetEnableMainThreadCallback(enable);
     });
   }
 }
@@ -202,6 +213,17 @@ void TasmMediator::ResetMediatorActor(
   layout_actor_ = layout_actor;
   facade_actor_ = facade_actor;
   perf_actor_ = perf_actor;
+  bool should_send_event_to_main_thread = false;
+  if (auto cache = should_send_event_to_main_thread_cache_.lock()) {
+    should_send_event_to_main_thread = cache->load(std::memory_order_relaxed);
+  }
+  const bool enable = should_send_event_to_main_thread ||
+                      should_enable_air_performance_callback_;
+  if (perf_actor_) {
+    perf_actor_->ActAsync([enable](auto& performance) mutable {
+      performance->SetEnableMainThreadCallback(enable);
+    });
+  }
 }
 
 lepus::Value TasmMediator::TriggerLepusMethod(const std::string& method_name,

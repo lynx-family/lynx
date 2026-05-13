@@ -285,6 +285,7 @@ class TasmMediator : public LynxEngine::Delegate {
   std::shared_ptr<LynxActor<tasm::LayoutContext>> layout_actor_;
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;
   std::weak_ptr<std::atomic_bool> should_send_event_to_main_thread_cache_;
+  bool should_enable_air_performance_callback_{false};
   std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
       perf_actor_;
 
