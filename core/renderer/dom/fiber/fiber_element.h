@@ -36,10 +36,6 @@ class PlatformLayoutFunctionWrapper;
 
 class FiberElement : public Element {
  public:
-  using Action = Element::Action;
-  using ActionParam = Element::ActionParam;
-  using AsyncResolveStatus = Element::AsyncResolveStatus;
-
   FiberElement(ElementManager* manager, const base::String& tag);
   FiberElement(ElementManager* manager, const base::String& tag,
                int32_t css_id);
