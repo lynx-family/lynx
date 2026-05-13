@@ -69,11 +69,6 @@ class FiberElement : public Element {
 
   void DispatchAsyncResolveSubtreeProperty();
 
-  /**
-   * A key function for generating children's actions.
-   */
-  void PrepareAndGenerateChildrenActions();
-
   virtual void HandleInsertChildAction(FiberElement* child, int index,
                                        FiberElement* ref_node);
   virtual void HandleRemoveChildAction(FiberElement* child);

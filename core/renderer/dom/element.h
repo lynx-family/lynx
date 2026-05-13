@@ -906,6 +906,8 @@ class Element : public lepus::RefCounted,
 
   void PrepareChildForInsertion(FiberElement* child);
 
+  void PrepareAndGenerateChildrenActions();
+
   void ParallelFlushRecursively();
 
   void TraversalInsertFixedElementOfTree();

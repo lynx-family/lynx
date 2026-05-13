@@ -2595,7 +2595,11 @@ void Element::PrepareChildForInsertion(FiberElement *child) {
   }
 }
 
-void FiberElement::PrepareAndGenerateChildrenActions() {
+void Element::PrepareAndGenerateChildrenActions() {
+  if (!is_fiber_element_) {
+    return;
+  }
+  auto *fiber_this = static_cast<FiberElement *>(this);
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               FIBER_ELEMENT_PREPARE_AND_GENERATE_CHILDREN_ACTIONS,
               [this](lynx::perfetto::EventContext ctx) {
@@ -2618,7 +2622,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
         if (!fiber_child->render_parent_) {
           // if no pending tree actions, we just do insertion here
           if (!fiber_child->is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
-            this->HandleInsertChildAction(fiber_child, -1, nullptr);
+            fiber_this->HandleInsertChildAction(fiber_child, -1, nullptr);
           } else {
             if (IsFiberArch()) {
               InsertFixedElement(fiber_child, nullptr);
@@ -2637,8 +2641,8 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
           auto *param_ref = ResolveTemplateRootForAction(param.ref_node_);
           PrepareChildForInsertion(param_child);
           if (!param.is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
-            HandleInsertChildAction(param_child, static_cast<int>(param.index_),
-                                    param_ref);
+            fiber_this->HandleInsertChildAction(
+                param_child, static_cast<int>(param.index_), param_ref);
           } else {
             if (IsFiberArch()) {
               InsertFixedElement(param_child, param_ref);
@@ -2651,7 +2655,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
         case Action::kRemoveChildAct: {
           auto *param_child = ResolveTemplateRootForAction(param.child_.get());
           if (!param.is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
-            HandleRemoveChildAction(param_child);
+            fiber_this->HandleRemoveChildAction(param_child);
           } else {
             RemoveFixedElement(param_child);
           }
@@ -2669,7 +2673,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
               // new fixed, remove fixed node and its layout node from its
               // parent.
               param_child->HandleRemoveSelf(
-                  this,
+                  fiber_this,
                   static_cast<FiberElement *>(param_child->render_parent_));
             } else {
               // node with z-index only needs remove its element container.
@@ -2694,7 +2698,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
 
   if (dirty_ & kDirtyReAttachContainer) {
     if (is_fixed_ && !IsFixedNewOrUnifiedEnabled()) {
-      InsertFixedElement(this, nullptr);
+      InsertFixedElement(fiber_this, nullptr);
     } else if (ZIndex() != 0 || is_fixed_) {
       // new fixed.
       if (is_fixed_) {
@@ -2702,7 +2706,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
         // render_parent, with an full insertion call.
         if (parent_) {
           static_cast<FiberElement *>(parent_)->HandleInsertChildAction(
-              this, 0, static_cast<FiberElement *>(next_render_sibling_));
+              fiber_this, 0, static_cast<FiberElement *>(next_render_sibling_));
         }
       } else {
         // z-index only has to insert its element container again.
