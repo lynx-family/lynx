@@ -4847,15 +4847,6 @@ void Element::UpdateTraceDebugInfo(TraceEvent *event) {
 }
 #endif
 
-bool FiberElement::IsEventPathCatch(event::EventTarget *target,
-                                    event::Event *event) {
-  if (IsDetached()) {
-    LOGE("FiberElement::IsEventPathCatch error: the target is detached.");
-    return true;
-  }
-  return Element::IsEventPathCatch(target, event);
-}
-
 bool Element::CollectCustomProperties(AttributeHolder *holder) {
   if (custom_properties_.Get() != nullptr) {
     return true;

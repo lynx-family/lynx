@@ -168,9 +168,6 @@ class FiberElement : public Element {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
-  bool IsEventPathCatch(event::EventTarget* target,
-                        event::Event* event) override;
-
   using Element::SetMeasureFunc;
 
  protected:

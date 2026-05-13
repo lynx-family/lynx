@@ -2338,6 +2338,11 @@ bool Element::IsFixedUnifiedOnly() const {
 
 bool Element::IsEventPathCatch(event::EventTarget* target,
                                event::Event* event) {
+  if (is_fiber_element_ && IsDetached()) {
+    LOGE("FiberElement::IsEventPathCatch error: the target is detached.");
+    return true;
+  }
+
   if (event && event->from_frontend() && target != this) {
     auto root_component =
         static_cast<Element*>(target)->GetParentComponentElement();
