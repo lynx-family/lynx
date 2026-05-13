@@ -4,7 +4,6 @@
 
 require 'fileutils'
 require 'json'
-require 'pathname'
 
 module Lynx
   module Extension
@@ -92,15 +91,17 @@ module Lynx
           raise "Invalid ios platform entry in #{manifest_file}" unless ios.is_a?(Hash)
 
           package_dir = File.dirname(manifest_file)
+          package_realpath = File.realpath(package_dir)
           source_dir_name = ios['sourceDir'] || 'ios'
-          source_dir = File.expand_path(source_dir_name, package_dir)
+          source_dir = resolve_package_path(package_realpath, source_dir_name, manifest_file, 'sourceDir')
           raise "iOS sourceDir '#{source_dir_name}' does not exist for #{manifest_file}" unless
             File.directory?(source_dir)
 
           podspec_path = if ios['podspecPath']
-                           File.expand_path(ios['podspecPath'], package_dir)
+                           resolve_package_path(package_realpath, ios['podspecPath'], manifest_file, 'podspecPath')
                          else
-                           Dir[File.join(source_dir, '**/*.podspec')].sort.first
+                           path = podspec_files(source_dir, package_realpath).first
+                           validate_package_path(package_realpath, path, manifest_file, 'podspecPath') if path
                          end
           raise "No iOS podspec found for #{manifest_file}" unless
             podspec_path && File.file?(podspec_path)
@@ -118,6 +119,41 @@ module Lynx
           match = content.match(/\.name\s*=\s*['"]([^'"]+)['"]/)
           raise "Unable to read pod name from #{podspec_path}" unless match
           match[1]
+        end
+
+        def resolve_package_path(package_realpath, configured_path, manifest_file, field_name)
+          path = File.expand_path(configured_path, package_realpath)
+          validate_package_path(package_realpath, path, manifest_file, field_name, configured_path)
+        end
+
+        def validate_package_path(package_realpath, path, manifest_file, field_name, configured_path = path)
+          path = File.realpath(path) if File.exist?(path)
+          return path if package_path?(package_realpath, path)
+
+          raise "iOS #{field_name} '#{configured_path}' must stay within package directory for #{manifest_file}"
+        end
+
+        def package_path?(package_realpath, path)
+          path == package_realpath || path.start_with?("#{package_realpath}#{File::SEPARATOR}")
+        end
+
+        def podspec_files(source_dir, package_realpath)
+          files = []
+          dirs = [source_dir]
+          until dirs.empty?
+            dir = dirs.pop
+            Dir.children(dir).each do |name|
+              path = File.join(dir, name)
+              if File.symlink?(path)
+                files << path if name.end_with?('.podspec')
+              elsif File.directory?(path)
+                dirs << path if package_path?(package_realpath, File.realpath(path))
+              elsif File.file?(path) && name.end_with?('.podspec')
+                files << path
+              end
+            end
+          end
+          files.sort
         end
 
         def source_files(source_dir)
