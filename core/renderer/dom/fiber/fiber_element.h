@@ -172,10 +172,6 @@ class FiberElement : public Element {
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
 
-  void RequestLayout() override;
-
-  void RequestNextFrame() override;
-
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
   void InsertLayoutNode(FiberElement* child, FiberElement* ref);

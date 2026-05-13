@@ -3483,7 +3483,7 @@ void FiberElement::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
   }
 }
 
-void FiberElement::RequestLayout() {
+void Element::RequestLayout() {
   if (EnableLayoutInElementMode()) {
     HandleBeforeFlushActionsTask(
         [manager = element_manager(), this]() {
@@ -3498,7 +3498,7 @@ void FiberElement::RequestLayout() {
       [manager = element_manager()]() { manager->SetNeedsLayout(); });
 }
 
-void FiberElement::RequestNextFrame() {
+void Element::RequestNextFrame() {
   HandleDelayTask([this]() { element_manager()->RequestNextFrame(this); });
 }
 

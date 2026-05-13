@@ -1322,9 +1322,9 @@ class Element : public lepus::RefCounted,
 
   void ClearTransitionPreviousEndValue(const base::String&);
 
-  virtual void RequestLayout() = 0;
+  virtual void RequestLayout();
 
-  virtual void RequestNextFrame() = 0;
+  virtual void RequestNextFrame();
 
   void UpdateFinalStyleMap(const StyleMap& styles);
 
