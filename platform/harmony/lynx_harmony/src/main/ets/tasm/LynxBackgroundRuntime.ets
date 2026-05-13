@@ -50,6 +50,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
       this.sendableModuleManager.registerModule(k, v);
     });
     this.nativeCreate(this.providers,  this.backgroundRuntimeOptions.getGroupID(),
+      this.backgroundRuntimeOptions.getJSGroupThreadName(),
       this.backgroundRuntimeOptions.useQuickJSEngine(),
       this.backgroundRuntimeOptions.enableJSGroupThread(),
       this.backgroundRuntimeOptions.getPreloadJSPath(),
