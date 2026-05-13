@@ -909,6 +909,8 @@ class Element : public lepus::RefCounted,
 
   void UpdateLayoutNodeByBundle();
 
+  void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
+
   bool GetEnableZIndex();
 
   virtual void MarkLayoutDirty();

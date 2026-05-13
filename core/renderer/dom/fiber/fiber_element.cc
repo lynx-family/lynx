@@ -3347,7 +3347,7 @@ void Element::EnsureSLNode() {
   }
 }
 
-void FiberElement::SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func) {
+void Element::SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func) {
   if (customized_layout_node_ != nullptr) {
     customized_layout_node_->SetMeasureFunc(std::move(measure_func));
   }

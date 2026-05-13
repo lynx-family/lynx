@@ -191,7 +191,7 @@ class FiberElement : public Element {
   bool IsEventPathCatch(event::EventTarget* target,
                         event::Event* event) override;
 
-  void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
+  using Element::SetMeasureFunc;
 
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
