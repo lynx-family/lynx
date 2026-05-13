@@ -112,9 +112,10 @@ void LynxTemplateRenderer::SetUpLynxShell(
     float width, float height, bool is_host_renderer,
     tasm::performance::PerformanceControllerHarmonyJSWrapper*
         js_perf_controller_wrapper,
-    int32_t thread_mode, std::string group_id, bool use_quickjs,
-    bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
-    bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
+    int32_t thread_mode, std::string group_id, std::string js_group_thread_name,
+    bool use_quickjs, bool enable_js_group_thread,
+    std::vector<std::string> preload_js_paths, bool enable_bytecode,
+    std::string bytecode_source_url, bool enable_js,
     std::unique_ptr<ModuleFactoryHarmony> module_factory,
     LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board) {
   ui_delegate_ = ui_delegate;
@@ -133,7 +134,8 @@ void LynxTemplateRenderer::SetUpLynxShell(
   auto loader = std::make_shared<tasm::LazyBundleLoader>(resource_loader);
 
   shell::ShellOption shell_option;
-  shell_option.js_group_thread_name_ = enable_js_group_thread ? group_id : "";
+  shell_option.js_group_thread_name_ =
+      enable_js_group_thread ? js_group_thread_name : "";
   shell_option.enable_js_group_thread_ = enable_js_group_thread;
   shell_option.enable_js_ = enable_js;
   shell_option.instance_id_ =
@@ -744,8 +746,8 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
 napi_value LynxTemplateRenderer::NativeReset(napi_env env,
                                              napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 18;
-  napi_value args[18] = {nullptr};
+  size_t argc = 19;
+  napi_value args[19] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // UIDelegate
@@ -778,39 +780,41 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
 
   // js group
   std::string group_id = base::NapiUtil::ConvertToString(env, args[7]);
+  std::string js_group_thread_name =
+      base::NapiUtil::ConvertToString(env, args[8]);
   bool use_quickjs;
-  napi_get_value_bool(env, args[8], &use_quickjs);
+  napi_get_value_bool(env, args[9], &use_quickjs);
   bool enable_js_group_thread;
-  napi_get_value_bool(env, args[9], &enable_js_group_thread);
+  napi_get_value_bool(env, args[10], &enable_js_group_thread);
   std::vector<std::string> preload_js_paths;
-  base::NapiUtil::ConvertToArrayString(env, args[10], preload_js_paths);
+  base::NapiUtil::ConvertToArrayString(env, args[11], preload_js_paths);
 
   // bytecode
   bool enable_bytecode = false;
-  napi_get_value_bool(env, args[11], &enable_bytecode);
+  napi_get_value_bool(env, args[12], &enable_bytecode);
   std::string bytecode_source_url =
-      base::NapiUtil::ConvertToString(env, args[12]);
+      base::NapiUtil::ConvertToString(env, args[13]);
 
   bool enable_js = true;
-  napi_get_value_bool(env, args[13], &enable_js);
+  napi_get_value_bool(env, args[14], &enable_js);
 
   // module
   static constexpr uint32_t kArgsSize = 4;
   napi_value module_args[kArgsSize];
-  base::NapiUtil::ConvertToArray(env, args[14], module_args, kArgsSize);
+  base::NapiUtil::ConvertToArray(env, args[15], module_args, kArgsSize);
   napi_value sendable_module_args[kArgsSize];
-  base::NapiUtil::ConvertToArray(env, args[15], sendable_module_args,
+  base::NapiUtil::ConvertToArray(env, args[16], sendable_module_args,
                                  kArgsSize);
   auto module_factory = std::make_unique<ModuleFactoryHarmony>(
       env, module_args, sendable_module_args);
 
   // LynxRuntimeWrapper
   LynxRuntimeWrapper* runtime_wrapper = nullptr;
-  napi_unwrap(env, args[16], reinterpret_cast<void**>(&runtime_wrapper));
+  napi_unwrap(env, args[17], reinterpret_cast<void**>(&runtime_wrapper));
 
   LynxWhiteBoard* white_board = nullptr;
-  if (argc > 17) {
-    napi_unwrap(env, args[17], reinterpret_cast<void**>(&white_board));
+  if (argc > 18) {
+    napi_unwrap(env, args[18], reinterpret_cast<void**>(&white_board));
   }
 
   LynxTemplateRenderer* obj = nullptr;
@@ -823,8 +827,9 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
   obj->SetUpLynxShell(
       env, delegate_ptr, resource_loader, static_cast<float>(screen_width),
       static_cast<float>(screen_height), is_host_renderer,
-      js_perf_controller_wrapper, thread_mode, std::move(group_id), use_quickjs,
-      enable_js_group_thread, std::move(preload_js_paths), enable_bytecode,
+      js_perf_controller_wrapper, thread_mode, std::move(group_id),
+      std::move(js_group_thread_name), use_quickjs, enable_js_group_thread,
+      std::move(preload_js_paths), enable_bytecode,
       std::move(bytecode_source_url), enable_js, std::move(module_factory),
       runtime_wrapper, white_board);
   return nullptr;

@@ -890,6 +890,7 @@ export class LynxBackgroundRuntimeOptions {
   constructor(options: LynxBackgroundRuntimeOptions);
   useQuickJSEngine(): boolean;
   getGroupID(): string;
+  getJSGroupThreadName(): string;
   getPreloadJSPath(): string[];
   enableJSGroupThread(): boolean;
   merge(other: LynxBackgroundRuntimeOptions): void;
@@ -904,12 +905,14 @@ export class LynxGroup {
   static createSharedLynxGroup(): LynxGroup;
   public isSingleGroup(): boolean;
   public getGroupID(): string;
+  public getJSGroupThreadNameOrDefault(): string;
   public getWhiteBoard(): lynx.LynxWhiteBoard | undefined;
   public static SINGLE_GROUP: string; = "-1"
   public preloadJSPaths: string[]; = []
   public enableDynamicV8: boolean; = false
   public enableHarmonyJSVM: boolean; = false
   public enableJSGroupThread: boolean; = false
+  public jsGroupThreadName?: string; = undefined
 }
 
 export class TemplateBundle extends lynx.TemplateBundle {

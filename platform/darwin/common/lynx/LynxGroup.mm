@@ -110,7 +110,7 @@ static NSString *sSingleGroupTag = @"-1";
 
 + (NSString *)jsThreadNameForLynxGroupOrDefault:(LynxGroup *)group {
   if (group.enableJSGroupThread) {
-    return [group groupName];
+    return group.jsGroupThreadName.length > 0 ? group.jsGroupThreadName : [group groupName];
   }
 
   return @"";

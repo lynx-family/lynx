@@ -132,7 +132,8 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     String groupId = group != null ? group.getID() : LynxGroup.SINGNLE_GROUP;
     String[] preloadJSPaths = group != null ? group.getPreloadJSPaths() : null;
     boolean enableJSGroupThread = group != null && group.enableJSGroupThread();
-    String groupName = enableJSGroupThread ? groupId : "";
+    String groupName =
+        enableJSGroupThread && group != null ? group.getJSGroupThreadNameOrDefault() : "";
 
     mResourceLoader = new LynxResourceLoader(
         options, null, this, options.templateResourceFetcher, options.genericResourceFetcher);
@@ -409,9 +410,10 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     mDevTool = new LynxDevtool(context, debuggable);
 
     LynxGroup group = mOptions.getLynxGroup();
-    String groupId = group != null ? group.getID() : LynxGroup.SINGNLE_GROUP;
     boolean enableJSGroupThread = group != null && group.enableJSGroupThread();
-    mInspectorObserverPtr = mDevTool.onBackgroundRuntimeCreated(enableJSGroupThread ? groupId : "");
+    String groupThreadName =
+        enableJSGroupThread && group != null ? group.getJSGroupThreadNameOrDefault() : "";
+    mInspectorObserverPtr = mDevTool.onBackgroundRuntimeCreated(groupThreadName);
   }
 
   /**

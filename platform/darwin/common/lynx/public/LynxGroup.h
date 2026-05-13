@@ -34,6 +34,7 @@
  */
 @property(nonatomic, readonly, nonnull) NSString *identification;
 @property(nonatomic, readonly, nullable) NSArray *preloadJSPaths;
+@property(nonatomic, copy, nullable) NSString *jsGroupThreadName;
 
 /**
  * The return value of the function is the tag of the LynxView which doesn't belong to any group.
