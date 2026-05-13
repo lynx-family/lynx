@@ -9773,6 +9773,168 @@ TEST_P(FiberElementTest, SerializeTemplateElementSkipsInvalidSlotChildren) {
             "invalid_slot_shape");
 }
 
+TEST_P(FiberElementTest, SerializeTypedTemplateElement) {
+  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child->SetTypedTag(base::String("raw-text"));
+  child->SetUid(lepus::Value("child_uid"));
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(child));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetElementSlots(lepus::Value(element_slots));
+  root->SetUid(lepus::Value("root_uid"));
+  root->SetTypedTag(base::String("view"));
+
+  auto serialized = root->Serialize();
+  EXPECT_TRUE(serialized.IsObject());
+  EXPECT_FALSE(serialized.GetProperty("templateKey").IsString());
+  EXPECT_EQ(serialized.GetProperty("tag").StdString(), "view");
+  EXPECT_EQ(serialized.GetProperty("uid").StdString(), "root_uid");
+  EXPECT_TRUE(serialized.GetProperty("attributes").IsEmpty());
+
+  auto serialized_slots = serialized.GetProperty("elementSlots");
+  EXPECT_TRUE(serialized_slots.IsArrayOrJSArray());
+  ASSERT_EQ(serialized_slots.GetLength(), 1);
+  auto serialized_child = serialized_slots.GetProperty(0).GetProperty(0);
+  EXPECT_EQ(serialized_child.GetProperty("tag").StdString(), "raw-text");
+  EXPECT_EQ(serialized_child.GetProperty("uid").StdString(), "child_uid");
+}
+
+TEST_P(FiberElementTest, TypedTemplateElementResolvesListRootAndSlotChildren) {
+  auto slot_child = manager->CreateFiberView();
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(slot_child));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTASM(tasm.get());
+  root->SetElementSlots(lepus::Value(element_slots));
+  root->SetTypedTag(base::String("list"));
+
+  EXPECT_EQ(root->result_, nullptr);
+  EXPECT_EQ(root->async_create_task_, nullptr);
+  auto resolved = root->GetRoot();
+
+  ASSERT_NE(resolved, nullptr);
+  EXPECT_TRUE(resolved->is_list());
+  ASSERT_EQ(resolved->children().size(), 1u);
+  EXPECT_EQ(resolved->children()[0].get(), slot_child.get());
+  EXPECT_TRUE(slot_child->is_list_item());
+}
+
+TEST_P(FiberElementTest, TypedTemplateElementDefersSlotMountUntilResolve) {
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(first));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTASM(tasm.get());
+  root->SetElementSlots(lepus::Value(element_slots));
+  root->SetTypedTag(base::String("view"));
+
+  EXPECT_EQ(root->result_, nullptr);
+
+  root->InsertElementSlotChild(0, second, first);
+  root->RemoveElementSlotChild(0, first);
+
+  EXPECT_EQ(root->result_, nullptr);
+  ASSERT_EQ(root->pending_operations_.size(), 2u);
+
+  auto resolved = root->GetRoot();
+
+  ASSERT_NE(resolved, nullptr);
+  ASSERT_EQ(resolved->children().size(), 1u);
+  EXPECT_EQ(resolved->children()[0].get(), second.get());
+  EXPECT_TRUE(root->pending_operations_.empty());
+}
+
+TEST_P(FiberElementTest, CloneTypedTemplateElementCreatesRoot) {
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTypedTag(base::String("raw-text"));
+
+  auto cloned_element = TreeResolver::CloneElements(
+      root, tasm->style_sheet_manager(DEFAULT_ENTRY_NAME), false,
+      TreeResolver::CloningDepth::kSingle);
+
+  ASSERT_NE(cloned_element, nullptr);
+  ASSERT_TRUE(cloned_element->is_template());
+  auto* cloned = static_cast<TemplateElement*>(cloned_element.get());
+  EXPECT_EQ(cloned->async_create_task_, nullptr);
+
+  auto cloned_root = cloned->GetRoot();
+
+  ASSERT_NE(cloned_root, nullptr);
+  EXPECT_TRUE(cloned_root->is_raw_text());
+  EXPECT_EQ(cloned->async_create_task_, nullptr);
+}
+
+TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child->SetTypedTag(base::String("raw-text"));
+  child->SetUid(lepus::Value("child_uid"));
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(child));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+
+  lepus::Value args[] = {lepus::Value("view"),
+                         lepus::Value(lepus::Dictionary::Create()),
+                         lepus::Value(element_slots), lepus::Value("root_uid")};
+  auto created_value =
+      RendererFunctions::FiberCreateTypedElementTemplate(mts_ctx, args, 4);
+
+  ASSERT_TRUE(created_value.IsRefCounted());
+  auto created_element =
+      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+          .strongify();
+  ASSERT_NE(created_element, nullptr);
+  ASSERT_TRUE(created_element->is_template());
+  auto* typed_template = static_cast<TemplateElement*>(created_element.get());
+  EXPECT_EQ(typed_template->result_, nullptr);
+  EXPECT_EQ(typed_template->async_create_task_, nullptr);
+
+  auto root = typed_template->GetRoot();
+  ASSERT_NE(root, nullptr);
+  EXPECT_TRUE(root->is_view());
+  ASSERT_EQ(root->children().size(), 1u);
+  auto* mounted_child = static_cast<FiberElement*>(root->children()[0].get());
+  ASSERT_NE(mounted_child, nullptr);
+  EXPECT_EQ(mounted_child, child.get());
+  EXPECT_TRUE(mounted_child->is_template());
+  EXPECT_EQ(child->result_, nullptr);
+
+  auto serialized = typed_template->Serialize();
+  EXPECT_EQ(serialized.GetProperty("tag").StdString(), "view");
+  EXPECT_EQ(serialized.GetProperty("uid").StdString(), "root_uid");
+  EXPECT_TRUE(serialized.GetProperty("attributes").IsEmpty());
+  EXPECT_EQ(serialized.GetProperty("elementSlots")
+                .GetProperty(0)
+                .GetProperty(0)
+                .GetProperty("tag")
+                .StdString(),
+            "raw-text");
+}
+
 TEST_P(FiberElementTest, ElementTemplateDynamicAPIsCachePendingOpsBeforeRoot) {
   auto first = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   first->SetTemplateKey(base::String("first_template"));

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.0.6
+
+### Patch Changes
+
+- Add typed Element Template API declarations.
+
 ## 0.0.5
 
 ### Patch Changes

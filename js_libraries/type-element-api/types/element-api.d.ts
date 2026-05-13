@@ -115,12 +115,24 @@ export interface GestureConfig {
   config?: Record<string, unknown>;
 }
 
-export interface SerializedTemplateInstance {
+export type SerializableValue = any;
+
+export type SerializedTemplateInstance =
+  | SerializedCompiledTemplateInstance
+  | SerializedTypedTemplateInstance;
+
+export interface SerializedCompiledTemplateInstance {
   templateKey: string;
   bundleUrl?: string;
-  attributeSlots: any[];
-  elementSlots: SerializedTemplateInstance[][];
-  uid: any;
+  attributeSlots?: SerializableValue[] | null;
+  elementSlots?: SerializedTemplateInstance[][] | null;
+  uid: number | string;
+}
+
+export interface SerializedTypedTemplateInstance {
+  tag: string;
+  elementSlots?: SerializedTemplateInstance[][] | null;
+  uid: number | string;
 }
 
 declare global {
@@ -299,7 +311,17 @@ declare global {
     bundleUrl: string | null | undefined,
     attributeSlots: any[] | null | undefined,
     elementSlots: ElementRef[][] | null | undefined,
-    uid: any,
+    uid: number | string,
+  ): ElementRef;
+
+  /**
+   * Create a typed template instance. `elementSlots[0]` is mounted as the root element's children.
+   */
+  function __CreateTypedElementTemplate(
+    tag: string,
+    attributes: Record<string, SerializableValue> | null | undefined,
+    elementSlots: ElementRef[][] | null | undefined,
+    uid: number | string,
   ): ElementRef;
 
   /**

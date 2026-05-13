@@ -36,6 +36,7 @@ class TemplateElement : public FiberElement {
   void SetBundleUrl(const base::String& bundle_url) {
     bundle_url_ = bundle_url;
   }
+  void SetTypedTag(const base::String& typed_tag);
   void SetAttributeSlots(const lepus::Value& attribute_slots) {
     attribute_slots_ = attribute_slots;
   }
@@ -85,6 +86,7 @@ class TemplateElement : public FiberElement {
         entry_(element.entry_),
         template_key_(element.template_key_),
         bundle_url_(element.bundle_url_),
+        typed_tag_(element.typed_tag_),
         attribute_slots_(element.attribute_slots_),
         element_slots_(element.element_slots_),
         uid_(element.uid_) {}
@@ -98,6 +100,8 @@ class TemplateElement : public FiberElement {
   void InitGeneratedElementTree();
   void ApplyAttributeSlotToTarget(uint32_t slot_index,
                                   const lepus::Value& previous_attribute_slots);
+  bool IsTypedTemplate() const { return !typed_tag_.empty(); }
+  void InitTypedRoot();
   void ApplyInitialElementSlots();
   void ApplyPendingOperations();
   void InsertInitialElementSlotChild(const ElementSlotMountPoint& mount_point,
@@ -110,6 +114,8 @@ class TemplateElement : public FiberElement {
   lepus::Value GetOrCreateElementSlotChildren(uint32_t slot_index);
   void RemoveElementSlotChildFromSlot(uint32_t slot_index, FiberElement* child);
   lepus::Value SerializeElementSlots() const;
+  lepus::Value SerializeTypedTemplate() const;
+  lepus::Value SerializeCompiledTemplate() const;
   lepus::Value SerializeElementSlotChildren(
       const lepus::Value& slot_children) const;
   lepus::Value SerializeElementSlotChild(const lepus::Value& child) const;
@@ -118,6 +124,7 @@ class TemplateElement : public FiberElement {
   TemplateEntry* entry_{nullptr};
   base::String template_key_;
   base::String bundle_url_;
+  base::String typed_tag_;
   lepus::Value attribute_slots_;
   lepus::Value element_slots_;
   lepus::Value uid_;

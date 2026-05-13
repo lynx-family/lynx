@@ -918,6 +918,12 @@ inline constexpr const char* const FIBER_GET_TEMPLATE_PARTS =
 inline constexpr const char* const FIBER_CREATE_ELEMENT_TEMPLATE =
     "FiberCreateElementTemplate";
 /**
+ * @trace_description: Create a typed element-template container in the Fiber
+ * runtime.
+ */
+inline constexpr const char* const FIBER_CREATE_TYPED_ELEMENT_TEMPLATE =
+    "FiberCreateTypedElementTemplate";
+/**
  * @trace_description: Set an attribute on an element-template node in the
  * Fiber runtime.
  */

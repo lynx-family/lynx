@@ -179,6 +179,8 @@ constexpr static const char* kCFunctionIsPartElement = "__IsPartElement";
 constexpr static const char* kCFunctionGetTemplateParts = "__GetTemplateParts";
 constexpr static const char* kCFunctionCreateElementTemplate =
     "__CreateElementTemplate";
+constexpr static const char* kCFunctionCreateTypedElementTemplate =
+    "__CreateTypedElementTemplate";
 constexpr static const char* kCFunctionSetAttributeOfElementTemplate =
     "__SetAttributeOfElementTemplate";
 constexpr static const char* kCFunctionInsertNodeToElementTemplate =

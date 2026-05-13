@@ -27,10 +27,12 @@ namespace {
 static constexpr const char kTemplateTag[] = "template";
 static constexpr const char kDefaultTemplateBundleUrl[] = "__Card__";
 static constexpr const char kTemplateKey[] = "templateKey";
+static constexpr const char kTemplateTypedTag[] = "tag";
 static constexpr const char kTemplateBundleUrl[] = "bundleUrl";
 static constexpr const char kTemplateAttributeSlots[] = "attributeSlots";
 static constexpr const char kTemplateElementSlots[] = "elementSlots";
 static constexpr const char kTemplateUid[] = "uid";
+static constexpr uint32_t kTypedTemplateRootSlotIndex = 0;
 
 fml::RefPtr<FiberElement> ResolveInitialElementSlotChild(
     const lepus::Value& child) {
@@ -159,7 +161,14 @@ TemplateElement::TemplateElement(ElementManager* element_manager)
 
 TemplateElement::~TemplateElement() = default;
 
+void TemplateElement::SetTypedTag(const base::String& typed_tag) {
+  typed_tag_ = typed_tag;
+}
+
 void TemplateElement::PrepareAsyncCreateElementTree() {
+  if (IsTypedTemplate()) {
+    return;
+  }
   if (result_ != nullptr || async_create_task_ != nullptr) {
     return;
   }
@@ -195,6 +204,20 @@ TemplateElement::CreateAsyncCreateElementTreeTask(TemplateEntry* entry) {
 
 void TemplateElement::ResolveGeneratedElements() {
   if (result_ != nullptr) {
+    return;
+  }
+
+  if (IsTypedTemplate()) {
+    InitTypedRoot();
+    if (result_ == nullptr) {
+      return;
+    }
+    GeneratedElementsResult generated;
+    PrepareGeneratedElementsResult(&generated, element_slots_);
+    prepared_element_slot_insertions_ =
+        std::move(generated.prepared_element_slot_insertions_);
+    ApplyInitialElementSlots();
+    ApplyPendingOperations();
     return;
   }
 
@@ -234,6 +257,26 @@ void TemplateElement::InitGeneratedElementTree() {
   // FiberAddEvent can sync EventListenerMap when event-refactor is enabled.
   ApplyStaticEventAttributes(static_event_targets_);
   ApplyInitialAttributeSlots(attribute_slot_targets_, attribute_slots_);
+}
+
+void TemplateElement::InitTypedRoot() {
+  if (!IsTypedTemplate() || result_ != nullptr) {
+    return;
+  }
+
+  auto* manager = element_manager();
+  if (manager == nullptr) {
+    return;
+  }
+
+  result_ = manager->CreateFiberElement(typed_tag_);
+  if (result_ == nullptr) {
+    return;
+  }
+  result_->MarkTemplateElement();
+
+  element_slot_targets_.clear();
+  element_slot_targets_.push_back(ElementSlotMountPoint{result_, nullptr});
 }
 
 void TemplateElement::ApplyAttributeSlotToTarget(
@@ -381,6 +424,24 @@ void TemplateElement::RemoveElementSlotChildFromSlot(uint32_t slot_index,
 }
 
 lepus::Value TemplateElement::Serialize() const {
+  if (IsTypedTemplate()) {
+    return SerializeTypedTemplate();
+  }
+  return SerializeCompiledTemplate();
+}
+
+lepus::Value TemplateElement::SerializeTypedTemplate() const {
+  auto serialized = lepus::Dictionary::Create();
+  serialized->SetValue(BASE_STATIC_STRING(kTemplateTypedTag), typed_tag_);
+  // TODO(songshourui.null): Support typed template attributes through the
+  // generic TemplateElement attribute path.
+  serialized->SetValue(BASE_STATIC_STRING(kTemplateElementSlots),
+                       SerializeElementSlots());
+  serialized->SetValue(BASE_STATIC_STRING(kTemplateUid), uid_);
+  return lepus::Value(std::move(serialized));
+}
+
+lepus::Value TemplateElement::SerializeCompiledTemplate() const {
   auto serialized = lepus::Dictionary::Create();
   serialized->SetValue(BASE_STATIC_STRING(kTemplateKey), template_key_);
   serialized->SetValue(BASE_STATIC_STRING(kTemplateBundleUrl), bundle_url_);
@@ -480,6 +541,9 @@ fml::RefPtr<FiberElement> TemplateElement::GetRoot() {
 
 void TemplateElement::SetAttributeSlot(uint32_t slot_index,
                                        const lepus::Value& value) {
+  if (IsTypedTemplate()) {
+    return;
+  }
   const bool should_apply_to_result = result_ != nullptr;
   if (!should_apply_to_result) {
     pending_operations_.emplace_back(PendingOperation::Type::kSetAttributeSlot,
@@ -500,6 +564,9 @@ void TemplateElement::InsertElementSlotChild(
     uint32_t slot_index, const fml::RefPtr<FiberElement>& child,
     const fml::RefPtr<FiberElement>& ref_node) {
   if (child == nullptr || child.get() == ref_node.get()) {
+    return;
+  }
+  if (IsTypedTemplate() && slot_index != kTypedTemplateRootSlotIndex) {
     return;
   }
 
@@ -528,6 +595,9 @@ void TemplateElement::InsertElementSlotChild(
 void TemplateElement::RemoveElementSlotChild(
     uint32_t slot_index, const fml::RefPtr<FiberElement>& child) {
   if (child == nullptr) {
+    return;
+  }
+  if (IsTypedTemplate() && slot_index != kTypedTemplateRootSlotIndex) {
     return;
   }
 

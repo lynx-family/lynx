@@ -96,7 +96,16 @@ describe('Test Element API Types', () => {
 
     const serialized = __SerializeElementTemplate(template);
     assertType<SerializedTemplateInstance>(serialized);
-    assertType<SerializedTemplateInstance[][]>(serialized.elementSlots);
-    assertType<any>(serialized.uid);
+    assertType<SerializedTemplateInstance[][] | null | undefined>(serialized.elementSlots);
+    assertType<number | string>(serialized.uid);
+
+    const typed = __CreateTypedElementTemplate('list', { 'enable-layout': true }, [[child]], 1001);
+    expectTypeOf<typeof __CreateTypedElementTemplate>().returns.toEqualTypeOf<ElementRef>();
+    expectTypeOf<typeof __CreateTypedElementTemplate>().toBeCallableWith('raw-text', null, null, 'typed-uid');
+
+    const serializedTyped = __SerializeElementTemplate(typed);
+    assertType<SerializedTemplateInstance>(serializedTyped);
+    assertType<SerializedTemplateInstance[][] | null | undefined>(serializedTyped.elementSlots);
+    assertType<number | string>(serializedTyped.uid);
   });
 });
