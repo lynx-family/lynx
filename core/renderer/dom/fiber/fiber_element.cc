@@ -4790,7 +4790,7 @@ void Element::SetAlignmentFunc(void *context,
 /**
  * Reference {@link LayoutContext#DispatchLayoutBeforeRecursively }
  */
-void FiberElement::DispatchLayoutBeforeRecursively() {
+void Element::DispatchLayoutBeforeRecursively() {
   if (!is_wrapper()) {
     if (sl_node_ == nullptr || !(sl_node_->IsDirty())) {
       return;
@@ -4802,7 +4802,7 @@ void FiberElement::DispatchLayoutBeforeRecursively() {
   }
 
   for (auto &child : scoped_children_) {
-    static_cast<FiberElement *>(child.get())->DispatchLayoutBeforeRecursively();
+    child->DispatchLayoutBeforeRecursively();
   }
 }
 

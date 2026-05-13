@@ -200,8 +200,6 @@ class FiberElement : public Element {
 
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
 
-  void DispatchLayoutBeforeRecursively();
-
   void SetMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
 
  private:

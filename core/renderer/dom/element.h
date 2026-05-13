@@ -1691,6 +1691,7 @@ class Element : public lepus::RefCounted,
   void EnsureSLNode();
   void SetAlignmentFunc(void* context,
                         starlight::SLAlignmentFunc alignment_func);
+  void DispatchLayoutBeforeRecursively();
   virtual void DispatchLayoutBefore();
 
   void SetFontSizeForAllElement(double cur_node_font_size,
