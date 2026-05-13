@@ -33,6 +33,9 @@
 #include "clay/ui/shadow/measure_utils.h"
 #include "clay/ui/shadow/raw_text_shadow_node.h"
 #include "clay/ui/shadow/text_shadow_node.h"
+#if defined(CLAY_ENABLE_TTTEXT)
+#include "clay/third_party/txt/src/tttext/paragraph_tt_text.h"
+#endif
 
 namespace clay {
 namespace utils = attribute_utils;
@@ -269,6 +272,10 @@ std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
   measure_node_->SetInlineEmojiInfo(context_text.TakeInlineEmojiInfo());
   auto paragraph = Build(std::move(builder));
   TRACE_EVENT("clay", "TextRender::Layout");
+#if defined(CLAY_ENABLE_TTTEXT) && (defined(OS_WIN) || defined(OS_MAC))
+  auto* impl = static_cast<txt::ParagraphTTText*>(paragraph.get());
+  impl->SetNeedTrimSpace(true);
+#endif
   paragraph->Layout(layout_width);
   end_glyph_position_ = context_text.TextSizeIncludingPlaceholders();
   return paragraph;
