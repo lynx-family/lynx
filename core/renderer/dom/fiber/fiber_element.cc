@@ -4698,18 +4698,22 @@ bool Element::CanBeLayoutOnly() const {
          has_layout_only_props_ && computed_css_style()->IsOverflowXY();
 }
 
-void FiberElement::MarkLayoutDirtyLite() {
+void Element::MarkLayoutDirtyLite() {
+  if (!is_fiber_element_) {
+    return;
+  }
+
   if (!is_virtual_) {
     EnsureSLNode();
     sl_node_->MarkDirtyAndRequestLayout();
   } else {
-    auto *parent = static_cast<FiberElement *>(render_parent_);
+    auto *parent = render_parent_;
     while (parent) {
       if (!parent->is_virtual_) {
         parent->MarkLayoutDirtyLite();
         break;
       }
-      parent = static_cast<FiberElement *>(parent->render_parent_);
+      parent = parent->render_parent_;
     }
   }
 }

@@ -915,7 +915,7 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkLayoutDirty();
 
-  virtual void MarkLayoutDirtyLite(){};
+  virtual void MarkLayoutDirtyLite();
 
   // Dirty flag primitives
   int32_t dirty() const { return dirty_; }

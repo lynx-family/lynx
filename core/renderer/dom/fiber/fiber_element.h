@@ -207,8 +207,6 @@ class FiberElement : public Element {
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
-
-  void MarkLayoutDirtyLite() override;
 };
 
 }  // namespace tasm
