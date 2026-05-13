@@ -43,8 +43,7 @@ class MediaQuerySet : public fml::RefCountedThreadSafeStorage {
 
   // Serialization helpers for the template binary. The lepus_value shape is
   // simply `[ query0, query1, ... ]`, mirroring how LynxCSSSelectorList is
-  // encoded. `FromLepus` returns null on non-array input so the caller can
-  // treat it as an empty set ("not all") which never matches.
+  // encoded. `FromLepus` returns null on non-array input.
   lepus_value ToLepus() const;
   static fml::RefPtr<const MediaQuerySet> FromLepus(const lepus_value& value);
 
