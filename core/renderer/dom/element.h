@@ -268,6 +268,21 @@ class Element : public lepus::RefCounted,
     kUpdated,
   };
 
+  struct PerfStatistic {
+    PerfStatistic(uint32_t total_task_count)
+        : total_task_count_(total_task_count) {}
+
+    // true if enable reporting stats
+    bool enable_report_stats_{false};
+
+    // count of tasks executing on engine thread
+    uint32_t engine_thread_task_count_{0};
+    uint32_t total_task_count_{0};
+
+    uint64_t total_processing_start_{0};
+    uint64_t total_waiting_time_{0};
+  };
+
   constexpr static const char* kFiberParallelPrepareMode = "ParallelPrepare";
 
   static const uint32_t kFlagGreedyParallel = 0x01 << 0;
