@@ -75,11 +75,6 @@ class FiberElement : public Element {
   };
 
   /**
-   * A key function to GetListNode
-   */
-  virtual ListNode* GetListNode() override { return nullptr; };
-
-  /**
    * A key function to flush the tree with the current element as the root node.
    */
   virtual void FlushActionsAsRoot();

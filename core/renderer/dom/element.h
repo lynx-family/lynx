@@ -560,7 +560,7 @@ class Element : public lepus::RefCounted,
                      const std::string& context_name);
 
   // Get List Node
-  virtual ListNode* GetListNode() = 0;
+  virtual ListNode* GetListNode() { return nullptr; };
 
   /**
    * A key function to get parent component's element
