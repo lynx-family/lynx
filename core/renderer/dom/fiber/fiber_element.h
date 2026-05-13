@@ -84,8 +84,6 @@ class FiberElement : public Element {
    */
   virtual void FlushActionsAsRoot();
 
-  virtual bool CanBeLayoutOnly() const override;
-
   /**
    * A key function for flush all pending actions for current Element
    */

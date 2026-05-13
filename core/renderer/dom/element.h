@@ -948,7 +948,7 @@ class Element : public lepus::RefCounted,
   virtual const AttrMap& GetAttributesForWorklet();
 
   inline const auto& GlobalBindTarget() { return global_bind_target_set_; }
-  virtual bool CanBeLayoutOnly() const = 0;
+  virtual bool CanBeLayoutOnly() const;
 
   LYNX_EXPORT_FOR_DEVTOOL bool HasUIPrimitive() const;
 

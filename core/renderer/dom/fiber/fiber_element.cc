@@ -4693,7 +4693,7 @@ void FiberElement::DispatchAsyncResolveSubtreeProperty() {
   }
 }
 
-bool FiberElement::CanBeLayoutOnly() const {
+bool Element::CanBeLayoutOnly() const {
   return can_be_layout_only_ && element_manager()->GetEnableLayoutOnly() &&
          has_layout_only_props_ && computed_css_style()->IsOverflowXY();
 }
