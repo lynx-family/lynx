@@ -1689,6 +1689,7 @@ class Element : public lepus::RefCounted,
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
 
   void EnsureSLNode();
+  void SetSLMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
   void SetAlignmentFunc(void* context,
                         starlight::SLAlignmentFunc alignment_func);
   void DispatchLayoutBeforeRecursively();

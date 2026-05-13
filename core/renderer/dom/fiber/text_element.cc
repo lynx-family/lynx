@@ -282,7 +282,7 @@ void TextElement::Align() {
 
 void TextElement::OnLayoutObjectCreated() {
   if (!is_inline_element()) {
-    SetMeasureFunc(
+    SetSLMeasureFunc(
         this, [](void* context, const starlight::Constraints& constraints,
                  bool final_measure) {
           TextElement* element = static_cast<TextElement*>(context);

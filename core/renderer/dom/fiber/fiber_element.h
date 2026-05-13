@@ -198,8 +198,6 @@ class FiberElement : public Element {
 
   ParallelFlushReturn CreateParallelTaskHandler();
 
-  void SetMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
-
  private:
   FiberElement* ReplaceTemplateChildIfNeeded(
       base::InlineVector<fml::RefPtr<Element>,

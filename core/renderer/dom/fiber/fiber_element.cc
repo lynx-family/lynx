@@ -4775,8 +4775,8 @@ void Element::UpdateLayoutInfo() {
   frame_changed_ = true;
 }
 
-void FiberElement::SetMeasureFunc(void *context,
-                                  starlight::SLMeasureFunc measure_func) {
+void Element::SetSLMeasureFunc(void *context,
+                               starlight::SLMeasureFunc measure_func) {
   sl_node_->SetContext(context);
   sl_node_->SetSLMeasureFunc(std::move(measure_func));
 }
