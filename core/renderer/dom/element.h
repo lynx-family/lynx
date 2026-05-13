@@ -902,6 +902,8 @@ class Element : public lepus::RefCounted,
 
   void ParallelFlushRecursively();
 
+  void TraversalInsertFixedElementOfTree();
+
   void DidParallelFlushAsRoot(PerfStatistic& stats);
 
   void OnParallelFlushAsRoot(PerfStatistic& stats);
@@ -1897,6 +1899,9 @@ class Element : public lepus::RefCounted,
 
   Element* FindEnclosingNoneWrapper(Element* parent, Element* node);
   void HandleContainerInsertion(Element* parent, Element* child, Element* ref);
+  void HandleSelfFixedChange();
+  void InsertFixedElement(FiberElement* child, FiberElement* ref_node);
+  void RemoveFixedElement(FiberElement* child);
   void InsertLogicalChildBefore(const fml::RefPtr<Element>& child,
                                 Element* ref_node);
   void RemoveLogicalChild(const fml::RefPtr<Element>& child);

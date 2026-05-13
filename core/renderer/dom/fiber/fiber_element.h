@@ -96,8 +96,6 @@ class FiberElement : public Element {
                        const base::Vector<fml::RefPtr<FiberElement>>& removed,
                        FiberElement* ref_node);
 
-  void TraversalInsertFixedElementOfTree();
-
   template <typename F>
   void ApplyFunctionRecursive(F&& func) {
     func(this);
@@ -141,10 +139,6 @@ class FiberElement : public Element {
   FiberElement* ReplaceTemplateChildIfNeeded(
       base::InlineVector<fml::RefPtr<Element>,
                          kChildrenInlineVectorSize>::iterator child_iter);
-
-  void HandleSelfFixedChange();
-  void InsertFixedElement(FiberElement* child, FiberElement* ref_node);
-  void RemoveFixedElement(FiberElement* child);
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);

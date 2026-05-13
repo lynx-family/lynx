@@ -4113,7 +4113,10 @@ void Element::WillResetCSSValue(CSSPropertyID &css_id) {
   }
 }
 
-void FiberElement::TraversalInsertFixedElementOfTree() {
+void Element::TraversalInsertFixedElementOfTree() {
+  if (!is_fiber_element_) {
+    return;
+  }
   if (IsFixedUnifiedEnabled()) {
     return;
   }
@@ -4123,12 +4126,15 @@ void FiberElement::TraversalInsertFixedElementOfTree() {
     need_handle_fixed_ = false;
   }
   for (auto child : scoped_children_) {
-    static_cast<FiberElement *>(child.get())
-        ->TraversalInsertFixedElementOfTree();
+    child->TraversalInsertFixedElementOfTree();
   }
 }
 
-void FiberElement::HandleSelfFixedChange() {
+void Element::HandleSelfFixedChange() {
+  if (!is_fiber_element_) {
+    return;
+  }
+  auto *fiber_this = static_cast<FiberElement *>(this);
   // 1. If enableFixedNew is `true`, return directly.
   if (IsFixedNewOrUnifiedEnabled()) {
     return;
@@ -4153,22 +4159,24 @@ void FiberElement::HandleSelfFixedChange() {
     if (!IsFiberArch() && !parent) {
       parent = element_manager()->GetPageElement();
     } else if (parent) {
-      parent->HandleRemoveChildAction(this);
+      parent->HandleRemoveChildAction(fiber_this);
     }
     parent->InsertFixedElement(
-        this, static_cast<FiberElement *>(next_render_sibling_));
+        fiber_this, static_cast<FiberElement *>(next_render_sibling_));
   } else {
     // fixed to non-fixed
-    RemoveFixedElement(this);
+    RemoveFixedElement(fiber_this);
     auto *parent = static_cast<FiberElement *>(this->parent_);
     auto index = parent->IndexOf(this);
     auto *ref_node = static_cast<FiberElement *>(parent->GetChildAt(index + 1));
-    parent->HandleInsertChildAction(this, -1, ref_node);
+    parent->HandleInsertChildAction(fiber_this, -1, ref_node);
   }
 }
 
-void FiberElement::InsertFixedElement(FiberElement *child,
-                                      FiberElement *ref_node) {
+void Element::InsertFixedElement(FiberElement *child, FiberElement *ref_node) {
+  if (!is_fiber_element_) {
+    return;
+  }
   DCHECK(child->is_fixed_);
   // FIXME(linxs): insert fixed child, to be refined later, currently always
   // insert to the end
@@ -4177,7 +4185,10 @@ void FiberElement::InsertFixedElement(FiberElement *child,
   child->fixed_changed_ = false;
 }
 
-void FiberElement::RemoveFixedElement(FiberElement *child) {
+void Element::RemoveFixedElement(FiberElement *child) {
+  if (!is_fiber_element_) {
+    return;
+  }
   // FIXME(linxs): remove fixed child, to be refined later
   if (child->render_parent_ != element_manager_->root()) {
     LOGE("FiberElement::RemoveFixedElement got error for wrong render parent");
