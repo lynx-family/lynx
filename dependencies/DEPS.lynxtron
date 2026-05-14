@@ -198,6 +198,12 @@ deps = {
         'commit': 'f91b6b42b1b9854772a90ae9501464a161707d1e',
         "ignore_in_git": True,
     },
+    'clay/shell/platform/windows/resources/chromium_cursors': {
+      "type": "http",
+      "url": f"https://lf-lynx.tiktok-cdns.com/obj/lynx-artifacts-oss-sg/clay/chromium_cursors.zip",
+      "decompress": True,
+      'condition': system == 'windows',
+    },
     'gen_feature_count': {
        "type": "action",
         "cwd": root_dir,
