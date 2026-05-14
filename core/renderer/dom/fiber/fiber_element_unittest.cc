@@ -9787,13 +9787,18 @@ TEST_P(FiberElementTest, SerializeTypedTemplateElement) {
   root->SetElementSlots(lepus::Value(element_slots));
   root->SetUid(lepus::Value("root_uid"));
   root->SetTypedTag(base::String("view"));
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue(base::String("data-test"), lepus::Value("root_attr"));
+  root->SetRootAttributes(lepus::Value(attributes));
 
   auto serialized = root->Serialize();
   EXPECT_TRUE(serialized.IsObject());
   EXPECT_FALSE(serialized.GetProperty("templateKey").IsString());
   EXPECT_EQ(serialized.GetProperty("tag").StdString(), "view");
   EXPECT_EQ(serialized.GetProperty("uid").StdString(), "root_uid");
-  EXPECT_TRUE(serialized.GetProperty("attributes").IsEmpty());
+  EXPECT_EQ(
+      serialized.GetProperty("attributes").GetProperty("data-test").StdString(),
+      "root_attr");
 
   auto serialized_slots = serialized.GetProperty("elementSlots");
   EXPECT_TRUE(serialized_slots.IsArrayOrJSArray());
@@ -9801,6 +9806,67 @@ TEST_P(FiberElementTest, SerializeTypedTemplateElement) {
   auto serialized_child = serialized_slots.GetProperty(0).GetProperty(0);
   EXPECT_EQ(serialized_child.GetProperty("tag").StdString(), "raw-text");
   EXPECT_EQ(serialized_child.GetProperty("uid").StdString(), "child_uid");
+}
+
+TEST_P(FiberElementTest, TypedTemplateElementAppliesRootAttributesAsSpread) {
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTypedTag(base::String("view"));
+
+  auto initial_attributes = lepus::Dictionary::Create();
+  initial_attributes->SetValue(base::String("data-test"),
+                               lepus::Value("before"));
+  initial_attributes->SetValue(base::String("data-stale"),
+                               lepus::Value("stale"));
+  root->SetRootAttributes(lepus::Value(initial_attributes));
+  EXPECT_EQ(root->result_, nullptr);
+
+  auto updated_attributes = lepus::Dictionary::Create();
+  updated_attributes->SetValue(base::String("data-test"),
+                               lepus::Value("after"));
+  updated_attributes->SetValue(base::String("data-added"),
+                               lepus::Value("added"));
+  updated_attributes->SetValue(base::String("bindtap"), lepus::Value("onTap"));
+  root->SetRootAttributes(lepus::Value(updated_attributes));
+  EXPECT_EQ(root->result_, nullptr);
+
+  auto serialized_before_resolve = root->Serialize();
+  EXPECT_EQ(serialized_before_resolve.GetProperty("attributes")
+                .GetProperty("data-test")
+                .StdString(),
+            "after");
+  EXPECT_EQ(serialized_before_resolve.GetProperty("attributes")
+                .GetProperty("data-added")
+                .StdString(),
+            "added");
+  EXPECT_FALSE(serialized_before_resolve.GetProperty("attributes")
+                   .Contains(base::String("data-stale")));
+
+  auto resolved = root->GetRoot();
+  ASSERT_NE(resolved, nullptr);
+  auto* test_data = DatasetValue(resolved.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "after");
+  auto* added_data = DatasetValue(resolved.get(), "added");
+  ASSERT_NE(added_data, nullptr);
+  EXPECT_EQ(added_data->StdString(), "added");
+  EXPECT_EQ(DatasetValue(resolved.get(), "stale"), nullptr);
+  EXPECT_EQ(resolved->data_model_->attributes().count("data-test"), 0u);
+  EXPECT_EQ(resolved->event_map().count("tap"), 1u);
+
+  auto reset_attributes = lepus::Dictionary::Create();
+  reset_attributes->SetValue(base::String("data-added"),
+                             lepus::Value("updated"));
+  root->SetRootAttributes(lepus::Value(reset_attributes));
+
+  EXPECT_EQ(DatasetValue(resolved.get(), "test"), nullptr);
+  added_data = DatasetValue(resolved.get(), "added");
+  ASSERT_NE(added_data, nullptr);
+  EXPECT_EQ(added_data->StdString(), "updated");
+  EXPECT_EQ(resolved->event_map().count("tap"), 0u);
+
+  root->SetRootAttributes(lepus::Value(lepus::Dictionary::Create()));
+  EXPECT_EQ(DatasetValue(resolved.get(), "added"), nullptr);
+  EXPECT_TRUE(root->Serialize().GetProperty("attributes").IsEmpty());
 }
 
 TEST_P(FiberElementTest, TypedTemplateElementResolvesListRootAndSlotChildren) {
@@ -9847,6 +9913,17 @@ TEST_P(FiberElementTest, TypedTemplateElementDefersSlotMountUntilResolve) {
   root->RemoveElementSlotChild(0, first);
 
   EXPECT_EQ(root->result_, nullptr);
+  ASSERT_EQ(root->pending_operations_.size(), 2u);
+
+  auto third = manager->CreateFiberView();
+  lepus::Value invalid_insert_args[] = {lepus::Value(root), lepus::Value(1),
+                                        lepus::Value(third)};
+  RendererFunctions::FiberInsertNodeToElementTemplate(nullptr,
+                                                      invalid_insert_args, 3);
+  lepus::Value invalid_remove_args[] = {lepus::Value(root), lepus::Value(1),
+                                        lepus::Value(second)};
+  RendererFunctions::FiberRemoveNodeFromElementTemplate(nullptr,
+                                                        invalid_remove_args, 3);
   ASSERT_EQ(root->pending_operations_.size(), 2u);
 
   auto resolved = root->GetRoot();
@@ -9897,8 +9974,9 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
   auto element_slots = lepus::CArray::Create();
   element_slots->emplace_back(lepus::Value(slot_children));
 
-  lepus::Value args[] = {lepus::Value("view"),
-                         lepus::Value(lepus::Dictionary::Create()),
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue(base::String("data-test"), lepus::Value("root_attr"));
+  lepus::Value args[] = {lepus::Value("view"), lepus::Value(attributes),
                          lepus::Value(element_slots), lepus::Value("root_uid")};
   auto created_value =
       RendererFunctions::FiberCreateTypedElementTemplate(mts_ctx, args, 4);
@@ -9913,9 +9991,51 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
   EXPECT_EQ(typed_template->result_, nullptr);
   EXPECT_EQ(typed_template->async_create_task_, nullptr);
 
+  auto updated_attributes = lepus::Dictionary::Create();
+  updated_attributes->SetValue(base::String("data-test"),
+                               lepus::Value("updated_attr"));
+  updated_attributes->SetValue(base::String("data-added"),
+                               lepus::Value("added_attr"));
+  lepus::Value update_args[] = {lepus::Value(created_element), lepus::Value(0),
+                                lepus::Value(updated_attributes)};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr, update_args,
+                                                        3);
+  EXPECT_EQ(typed_template->result_, nullptr);
+
+  auto serialized_before_resolve = typed_template->Serialize();
+  EXPECT_EQ(serialized_before_resolve.GetProperty("attributes")
+                .GetProperty("data-test")
+                .StdString(),
+            "updated_attr");
+  EXPECT_EQ(serialized_before_resolve.GetProperty("attributes")
+                .GetProperty("data-added")
+                .StdString(),
+            "added_attr");
+
+  auto invalid_attributes = lepus::Dictionary::Create();
+  invalid_attributes->SetValue(base::String("data-test"),
+                               lepus::Value("invalid_attr"));
+  lepus::Value invalid_update_args[] = {lepus::Value(created_element),
+                                        lepus::Value(1),
+                                        lepus::Value(invalid_attributes)};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
+                                                        invalid_update_args, 3);
+  EXPECT_EQ(typed_template->Serialize()
+                .GetProperty("attributes")
+                .GetProperty("data-test")
+                .StdString(),
+            "updated_attr");
+
   auto root = typed_template->GetRoot();
   ASSERT_NE(root, nullptr);
   EXPECT_TRUE(root->is_view());
+  auto* test_data = DatasetValue(root.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "updated_attr");
+  auto* added_data = DatasetValue(root.get(), "added");
+  ASSERT_NE(added_data, nullptr);
+  EXPECT_EQ(added_data->StdString(), "added_attr");
+  EXPECT_EQ(root->data_model_->attributes().count("data-test"), 0u);
   ASSERT_EQ(root->children().size(), 1u);
   auto* mounted_child = static_cast<FiberElement*>(root->children()[0].get());
   ASSERT_NE(mounted_child, nullptr);
@@ -9926,7 +10046,13 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
   auto serialized = typed_template->Serialize();
   EXPECT_EQ(serialized.GetProperty("tag").StdString(), "view");
   EXPECT_EQ(serialized.GetProperty("uid").StdString(), "root_uid");
-  EXPECT_TRUE(serialized.GetProperty("attributes").IsEmpty());
+  EXPECT_EQ(
+      serialized.GetProperty("attributes").GetProperty("data-test").StdString(),
+      "updated_attr");
+  EXPECT_EQ(serialized.GetProperty("attributes")
+                .GetProperty("data-added")
+                .StdString(),
+            "added_attr");
   EXPECT_EQ(serialized.GetProperty("elementSlots")
                 .GetProperty(0)
                 .GetProperty(0)

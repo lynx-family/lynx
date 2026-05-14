@@ -10,6 +10,7 @@ import {
   ViewElementRef,
   SerializedTemplateInstance,
 } from '../types/index';
+import type { SerializableValue, SerializedTypedTemplateInstance } from '../types/index';
 
 describe('Test Animation Types', () => {
   it('should have correct AnimationOperation type', () => {
@@ -105,6 +106,7 @@ describe('Test Element API Types', () => {
 
     const serializedTyped = __SerializeElementTemplate(typed);
     assertType<SerializedTemplateInstance>(serializedTyped);
+    expectTypeOf<SerializedTypedTemplateInstance['attributes']>().toEqualTypeOf<Record<string, SerializableValue> | null | undefined>();
     assertType<SerializedTemplateInstance[][] | null | undefined>(serializedTyped.elementSlots);
     assertType<number | string>(serializedTyped.uid);
   });
