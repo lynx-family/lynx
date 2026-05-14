@@ -13,6 +13,35 @@ config("relative_angle_headers") {
   include_dirs = [ "//third_party/angle/include" ]
 }
 
+chromium_cursor_resources = [
+  "resources/chromium_cursors/aliasb.cur",
+  "resources/chromium_cursors/cell.cur",
+  "resources/chromium_cursors/col_resize.cur",
+  "resources/chromium_cursors/copy.cur",
+  "resources/chromium_cursors/hand_grab.cur",
+  "resources/chromium_cursors/hand_grabbing.cur",
+  "resources/chromium_cursors/pan_east.cur",
+  "resources/chromium_cursors/pan_middle.cur",
+  "resources/chromium_cursors/pan_middle_horizontal.cur",
+  "resources/chromium_cursors/pan_middle_vertical.cur",
+  "resources/chromium_cursors/pan_north.cur",
+  "resources/chromium_cursors/pan_north_east.cur",
+  "resources/chromium_cursors/pan_north_west.cur",
+  "resources/chromium_cursors/pan_south.cur",
+  "resources/chromium_cursors/pan_south_east.cur",
+  "resources/chromium_cursors/pan_south_west.cur",
+  "resources/chromium_cursors/pan_west.cur",
+  "resources/chromium_cursors/row_resize.cur",
+  "resources/chromium_cursors/vertical_text.cur",
+  "resources/chromium_cursors/zoom_in.cur",
+  "resources/chromium_cursors/zoom_out.cur",
+]
+
+copy("chromium_cursor_resources") {
+  sources = chromium_cursor_resources
+  outputs = [ "$root_out_dir/resources/cursors/chromium/{{source_file_part}}" ]
+}
+
 source_set("flutter_windows_utils") {
   sources = [
     "dpi_utils.cc",
@@ -113,6 +142,7 @@ source_set("flutter_windows_source") {
   }
 
   deps = [
+    ":chromium_cursor_resources",
     ":flutter_windows_utils",
     "../../../../third_party/rapidjson",
     "../../../common/graphics:gl_scoped_binder",

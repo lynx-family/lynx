@@ -12,9 +12,13 @@
 
 #include <chrono>
 #include <map>
+#include <string>
 #include <utility>
 
+#include "clay/fml/file.h"
 #include "clay/fml/logging.h"
+#include "clay/fml/paths.h"
+#include "clay/fml/platform/win/wstring_conversion.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_size.h"
 #include "clay/shell/platform/windows/flutter_windows_engine.h"
@@ -30,47 +34,151 @@ namespace {
 // constant for machines running at 100% scaling.
 constexpr int base_dpi = 96;
 
+struct CursorResourceMapping {
+  const wchar_t* system_cursor;
+  const char* chromium_asset;
+};
+
+constexpr char kChromiumCursorResourceDir[] = "resources/cursors/chromium";
+
+const CursorResourceMapping* FindCursorResourceMapping(
+    clay::CursorTypes cursor_type) {
+  static const auto* mappings =
+      new std::map<clay::CursorTypes, CursorResourceMapping>{
+          {clay::CursorTypes::kAlias, {nullptr, "aliasb.cur"}},
+          {clay::CursorTypes::kBasic, {IDC_ARROW, nullptr}},
+          {clay::CursorTypes::kCell, {nullptr, "cell.cur"}},
+          {clay::CursorTypes::kClick, {IDC_HAND, nullptr}},
+          {clay::CursorTypes::kForbidden, {IDC_NO, nullptr}},
+          {clay::CursorTypes::kGrab, {nullptr, "hand_grab.cur"}},
+          {clay::CursorTypes::kGrabbing, {nullptr, "hand_grabbing.cur"}},
+          {clay::CursorTypes::kHelp, {IDC_HELP, nullptr}},
+          {clay::CursorTypes::kMove, {IDC_SIZEALL, nullptr}},
+          {clay::CursorTypes::kNone, {nullptr, nullptr}},
+          {clay::CursorTypes::kNodrop, {IDC_NO, nullptr}},
+          {clay::CursorTypes::kPrecise, {IDC_CROSS, nullptr}},
+          {clay::CursorTypes::kProgress, {IDC_APPSTARTING, nullptr}},
+          {clay::CursorTypes::kResizedown, {IDC_SIZENS, nullptr}},
+          {clay::CursorTypes::kResizedownleft, {IDC_SIZENESW, nullptr}},
+          {clay::CursorTypes::kResizedownright, {IDC_SIZENWSE, nullptr}},
+          {clay::CursorTypes::kResizeleft, {IDC_SIZEWE, nullptr}},
+          {clay::CursorTypes::kResizeleftright, {IDC_SIZEWE, nullptr}},
+          {clay::CursorTypes::kResizeright, {IDC_SIZEWE, nullptr}},
+          {clay::CursorTypes::kResizeup, {IDC_SIZENS, nullptr}},
+          {clay::CursorTypes::kResizeupdown, {IDC_SIZENS, nullptr}},
+          {clay::CursorTypes::kResizeupleft, {IDC_SIZENWSE, nullptr}},
+          {clay::CursorTypes::kResizeupleftdownright, {IDC_SIZENWSE, nullptr}},
+          {clay::CursorTypes::kResizeupright, {IDC_SIZENESW, nullptr}},
+          {clay::CursorTypes::kResizeuprightdownleft, {IDC_SIZENESW, nullptr}},
+          {clay::CursorTypes::kResizecolumn, {IDC_SIZEWE, "col_resize.cur"}},
+          {clay::CursorTypes::kResizerow, {IDC_SIZENS, "row_resize.cur"}},
+          {clay::CursorTypes::kSystemmousecursor, {nullptr, "copy.cur"}},
+          {clay::CursorTypes::kText, {IDC_IBEAM, nullptr}},
+          {clay::CursorTypes::kVerticaltext, {nullptr, "vertical_text.cur"}},
+          {clay::CursorTypes::kWait, {IDC_WAIT, nullptr}},
+          {clay::CursorTypes::kZoomin, {nullptr, "zoom_in.cur"}},
+          {clay::CursorTypes::kZoomout, {nullptr, "zoom_out.cur"}},
+      };
+
+  auto it = mappings->find(cursor_type);
+  return it == mappings->end() ? nullptr : &it->second;
+}
+
+bool DirectoryExists(const std::string& path) {
+  auto directory =
+      fml::OpenDirectory(path.c_str(), false, fml::FilePermission::kRead);
+  return directory.is_valid();
+}
+
+std::string FindChromiumCursorDirectory() {
+  static const auto* cursor_directory = new std::string([] {
+    auto executable_directory = fml::paths::GetExecutableDirectoryPath();
+    if (!executable_directory.first || executable_directory.second.empty()) {
+      return std::string();
+    }
+
+    const auto direct_path = fml::paths::JoinPaths(
+        {executable_directory.second, kChromiumCursorResourceDir});
+    const auto parent_path = fml::paths::JoinPaths(
+        {fml::paths::GetDirectoryName(executable_directory.second),
+         kChromiumCursorResourceDir});
+    const auto candidates = {direct_path, parent_path};
+
+    for (const auto& candidate : candidates) {
+      if (DirectoryExists(candidate)) {
+        return candidate;
+      }
+    }
+    return std::string();
+  }());
+  return *cursor_directory;
+}
+
+HCURSOR LoadChromiumCursor(const char* asset_name) {
+  if (asset_name == nullptr) {
+    return nullptr;
+  }
+
+  static auto* cached_cursors = new std::map<std::string, HCURSOR>();
+  auto it = cached_cursors->find(asset_name);
+  if (it != cached_cursors->end()) {
+    return it->second;
+  }
+
+  const auto cursor_directory = FindChromiumCursorDirectory();
+  if (cursor_directory.empty()) {
+    return nullptr;
+  }
+
+  const auto cursor_path =
+      fml::paths::JoinPaths({cursor_directory, asset_name});
+  if (!fml::IsFile(cursor_path)) {
+    return nullptr;
+  }
+
+  auto cursor = reinterpret_cast<HCURSOR>(
+      ::LoadImageW(nullptr, fml::Utf8ToWideString(cursor_path).c_str(),
+                   IMAGE_CURSOR, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE));
+  if (cursor == nullptr) {
+    FML_LOG(WARNING) << "Failed to load Chromium cursor asset";
+    return nullptr;
+  }
+
+  cached_cursors->emplace(asset_name, cursor);
+  return cursor;
+}
+
 // Maps a Flutter cursor name to an HCURSOR.
 //
 // Returns the arrow cursor for unknown constants.
 //
 // This map must be kept in sync with Flutter framework's
 // services/mouse_cursor.dart.
-
 static HCURSOR GetCursorByType(clay::CursorTypes cursor_type) {
-  static auto* cursors = new std::map<clay::CursorTypes, const wchar_t*>{
-      {clay::CursorTypes::kClick, IDC_HAND},
-      {clay::CursorTypes::kForbidden, IDC_NO},
-      {clay::CursorTypes::kHelp, IDC_HELP},
-      {clay::CursorTypes::kMove, IDC_SIZEALL},
-      {clay::CursorTypes::kNone, nullptr},
-      {clay::CursorTypes::kNodrop, IDC_NO},
-      {clay::CursorTypes::kPrecise, IDC_CROSS},
-      {clay::CursorTypes::kProgress, IDC_APPSTARTING},
-      {clay::CursorTypes::kText, IDC_IBEAM},
-      {clay::CursorTypes::kResizecolumn, IDC_SIZEWE},
-      {clay::CursorTypes::kResizedown, IDC_SIZENS},
-      {clay::CursorTypes::kResizedownleft, IDC_SIZENESW},
-      {clay::CursorTypes::kResizedownright, IDC_SIZENWSE},
-      {clay::CursorTypes::kResizeleft, IDC_SIZEWE},
-      {clay::CursorTypes::kResizeleftright, IDC_SIZEWE},
-      {clay::CursorTypes::kResizeright, IDC_SIZEWE},
-      {clay::CursorTypes::kResizerow, IDC_SIZENS},
-      {clay::CursorTypes::kResizeup, IDC_SIZENS},
-      {clay::CursorTypes::kResizeupdown, IDC_SIZENS},
-      {clay::CursorTypes::kResizeupleft, IDC_SIZENWSE},
-      {clay::CursorTypes::kResizeupright, IDC_SIZENESW},
-      {clay::CursorTypes::kResizeupleftdownright, IDC_SIZENWSE},
-      {clay::CursorTypes::kResizeuprightdownleft, IDC_SIZENESW},
-      {clay::CursorTypes::kWait, IDC_WAIT},
-  };
-
-  const wchar_t* idc_name = IDC_ARROW;
-  auto it = cursors->find(cursor_type);
-  if (it != cursors->end()) {
-    idc_name = it->second;
+  const auto* mapping = FindCursorResourceMapping(cursor_type);
+  if (mapping == nullptr) {
+    return ::LoadCursor(nullptr, IDC_ARROW);
   }
-  return ::LoadCursor(nullptr, idc_name);
+
+  if (mapping->system_cursor != nullptr) {
+    auto cursor = ::LoadCursor(nullptr, mapping->system_cursor);
+    if (cursor != nullptr) {
+      return cursor;
+    }
+  }
+
+  if (mapping->chromium_asset != nullptr) {
+    auto cursor = LoadChromiumCursor(mapping->chromium_asset);
+    if (cursor != nullptr) {
+      return cursor;
+    }
+  }
+
+  if (cursor_type == clay::CursorTypes::kNone) {
+    return nullptr;
+  }
+
+  return ::LoadCursor(nullptr, IDC_ARROW);
 }
 
 }  // namespace

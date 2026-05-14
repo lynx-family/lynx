@@ -241,6 +241,13 @@ deps = {
         "ignore_in_git": True,
         "decompress": True,
     },
+    'clay/shell/platform/windows/resources/chromium_cursors': {
+        "type": "http",
+        'url': f"https://lf-lynx.tiktok-cdns.com/obj/lynx-artifacts-oss-sg/clay/chromium_cursors.zip",
+        "ignore_in_git": True,
+        "decompress": True,
+        'condition': system == 'windows',
+    },
     'clay/third_party/txt/third_party/fonts': {
         "type": "http",
         'url': f"https://lf-lynx.tiktok-cdns.com/obj/lynx-artifacts-oss-sg/clay/roboto-bold.ttf.zip",
