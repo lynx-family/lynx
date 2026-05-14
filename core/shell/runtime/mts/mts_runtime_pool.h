@@ -5,6 +5,7 @@
 #ifndef CORE_SHELL_RUNTIME_MTS_MTS_RUNTIME_POOL_H_
 #define CORE_SHELL_RUNTIME_MTS_MTS_RUNTIME_POOL_H_
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -34,7 +35,7 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
       const tasm::CompileOptions& compile_options,
       tasm::PageConfig* page_configs);
 
-  ~MTSRuntimePool() = default;
+  ~MTSRuntimePool();
 
   MTSRuntimePool(const MTSRuntimePool&) = delete;
   MTSRuntimePool& operator=(const MTSRuntimePool&) = delete;
@@ -93,6 +94,7 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
   const tasm::ArchOption arch_option_{tasm::RADON_ARCH};
   const bool enable_mts_pre_execute_{false};
 
+  std::atomic<bool> is_destroying_{false};
   std::mutex mtx_;
   base::InlineVector<std::shared_ptr<runtime::MTSRuntime>, 8> mts_runtimes_;
 

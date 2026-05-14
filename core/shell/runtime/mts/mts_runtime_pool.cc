@@ -27,22 +27,30 @@ std::shared_ptr<MTSRuntimePool> MTSRuntimePool::Create(
                          compile_options, page_configs));
 }
 
+MTSRuntimePool::~MTSRuntimePool() {
+  is_destroying_.store(true, std::memory_order_release);
+}
+
 void MTSRuntimePool::FillPool(int32_t count) {
-  if (count <= 0) {
+  if (count <= 0 || is_destroying_.load(std::memory_order_acquire)) {
     return;
   }
   base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
       [count, weak_pool =
                   std::weak_ptr<MTSRuntimePool>(shared_from_this())]() mutable {
         auto pool = weak_pool.lock();
-        if (pool) {
-          pool->AddMTSRuntimeSafely(count);
+        if (!pool || pool->is_destroying_.load(std::memory_order_acquire)) {
+          return;
         }
+        pool->AddMTSRuntimeSafely(count);
       },
       base::ConcurrentTaskType::NORMAL_PRIORITY);
 }
 
 void MTSRuntimePool::AddMTSRuntimeSafely(int32_t count) {
+  if (is_destroying_.load(std::memory_order_acquire)) {
+    return;
+  }
   decltype(mts_runtimes_) temp_mts_runtimes;
   uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
   for (; count > 0; --count) {
@@ -110,7 +118,8 @@ std::shared_ptr<runtime::MTSRuntime> MTSRuntimePool::TakeMTSRuntimeSafely() {
   }
 
   // generate a new context
-  if (enable_auto_generate_) {
+  if (enable_auto_generate_ &&
+      !is_destroying_.load(std::memory_order_acquire)) {
     FillPool(1);
   }
 
