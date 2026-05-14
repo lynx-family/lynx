@@ -71,6 +71,40 @@ TEST_F(LepusCallbackManagerTest, InvokeTask) {
   EXPECT_TRUE(!lepus_callback_manager->task_map_.empty());
 }
 
+TEST_F(LepusCallbackManagerTest, StateReleasedAfterDestroy) {
+  std::weak_ptr<tasm::LepusCallbackManager::State> weak_state;
+
+  {
+    auto manager = std::make_unique<tasm::LepusCallbackManager>();
+    weak_state = manager->state_;
+    EXPECT_TRUE(weak_state.lock());
+  }
+
+  EXPECT_FALSE(weak_state.lock());
+}
+
+TEST_F(LepusCallbackManagerTest, WeakPtrPreventsExecutionAfterDestroy) {
+  auto state = std::make_shared<tasm::LepusCallbackManager::State>();
+  auto weak_state = std::weak_ptr<tasm::LepusCallbackManager::State>(state);
+
+  bool executed = false;
+  auto task = [weak_state, &executed]() {
+    if (!weak_state.lock()) {
+      return;
+    }
+    executed = true;
+  };
+
+  task();
+  EXPECT_TRUE(executed);
+
+  executed = false;
+  state.reset();
+
+  task();
+  EXPECT_FALSE(executed);
+}
+
 }  // namespace testing
 }  // namespace air
 }  // namespace lynx
