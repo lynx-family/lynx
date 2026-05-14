@@ -24,6 +24,7 @@ import androidx.annotation.Nullable;
 import com.lynx.tasm.image.model.AnimationListener;
 import com.lynx.tasm.image.model.ImageLoadListener;
 import com.lynx.tasm.image.model.ImageRequestInfo;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -160,14 +161,6 @@ public interface ILynxImageService extends IServiceProvider {
   /**
    * Deprecated and does not require implementation.
    *
-   * @param cacheChoice The cache choice for the image.
-   * @param builder The builder object.
-   */
-  @Deprecated void setImageCacheChoice(@NonNull String cacheChoice, @NonNull Object builder);
-
-  /**
-   * Deprecated and does not require implementation.
-   *
    * @param hierarchy The hierarchy object.
    * @param request The image request object.
    * @param scaleType The scale type for the image.
@@ -192,41 +185,39 @@ public interface ILynxImageService extends IServiceProvider {
    */
   @Deprecated int getImageOrigin(@NonNull Object imageInfo);
 
-  /**
-   * Deprecated and does not require implementation.
-   *
-   * @param builder The image request builder object.
-   * @param width The width for the super-resolution image.
-   * @param height The height for the super-resolution image.
-   */
-  @Deprecated void setImageSRSize(@NonNull Object builder, int width, int height);
+  enum ImageOp {
+    SET_IMAGE_DECODE_REGION,
+    SET_SAMPLE_SIZE,
+    SET_CACHE_KEY_URI,
+    SET_IMAGE_SR_SIZE,
+    SET_IMAGE_CACHE_CHOICE
+  }
+
+  final class ImageRequestOp {
+    @NonNull private final ImageOp mOp;
+    @Nullable private final Object mParam;
+
+    public ImageRequestOp(@NonNull ImageOp op, @Nullable Object param) {
+      mOp = op;
+      mParam = param;
+    }
+
+    @NonNull
+    public ImageOp getOp() {
+      return mOp;
+    }
+
+    @Nullable
+    public Object getParam() {
+      return mParam;
+    }
+  }
 
   /**
-   * Set a custom {@code cacheKeyUri} for this single request builder.
-   *
-   * <p>This API is mainly used to customize Fresco cache key behavior per request.
-   * Requires Fresco version >= 1.27.1. On lower versions (or when the underlying API is
-   * unavailable), this call becomes a no-op.
-   */
-  void setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri);
-
-  /**
-   * Set the sample size for the image request builder.
+   * Process a list of operations on the image request builder.
    *
    * @param builder The image request builder object.
-   * @param sampleSize The sample size to set.
+   * @param ops The operations to perform, in order.
    */
-  void setSampleSize(@NonNull Object builder, int sampleSize);
-
-  /**
-   * Set the decode region for this image request.
-   *
-   * <p>The builder is passed as {@link Object} to avoid directly depending on Fresco classes in
-   * service_api.
-   *
-   * @param builder The image request builder object.
-   * @param regionToDecode The region to decode in source pixel coordinates, or null to clear.
-   */
-  void setImageDecodeRegion(
-      @NonNull Object builder, @Nullable android.graphics.Rect regionToDecode);
+  void processImageRequestOps(@NonNull Object builder, @NonNull List<ImageRequestOp> ops);
 }

@@ -455,10 +455,6 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
 
   @Deprecated
   @Override
-  public void setImageCacheChoice(@NonNull String cacheChoice, @NonNull Object builder) {}
-
-  @Deprecated
-  @Override
   public void setImagePlaceHolderHash(@NonNull Object hierarchy, @NonNull Object request,
       @NonNull Object scaleType, @NonNull String hash, @Nullable String metaData, int width,
       int height, int radius, int iterations, boolean isPreView) {}
@@ -469,17 +465,6 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
     return -1;
   }
 
-  @Deprecated
   @Override
-  public void setImageSRSize(@NonNull Object builder, int width, int height) {}
-
-  @Override
-  public void setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri) {}
-
-  @Override
-  public void setSampleSize(@NonNull Object builder, int sampleSize) {}
-
-  @Override
-  public void setImageDecodeRegion(
-      @NonNull Object builder, @Nullable android.graphics.Rect regionToDecode) {}
+  public void processImageRequestOps(@NonNull Object builder, @NonNull List<ImageRequestOp> ops) {}
 }

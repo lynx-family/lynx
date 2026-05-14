@@ -2521,13 +2521,9 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public void com.lynx.tasm.service.ILynxImageService.setCustomImageDecoder(@NonNull Object builder);
   public Object com.lynx.tasm.service.ILynxImageService.getImageSRPostProcessor();
   public void com.lynx.tasm.service.ILynxImageService.setImageSRSize(@NonNull Object request, @NonNull View view);
-  public void com.lynx.tasm.service.ILynxImageService.setImageCacheChoice(@NonNull String cacheChoice, @NonNull Object builder);
   public void com.lynx.tasm.service.ILynxImageService.setImagePlaceHolderHash(@NonNull Object hierarchy, @NonNull Object request, @NonNull Object scaleType, @NonNull String hash, @Nullable String metaData, int width, int height, int radius, int iterations, boolean isPreView);
   public int com.lynx.tasm.service.ILynxImageService.getImageOrigin(@NonNull Object imageInfo);
-  public void com.lynx.tasm.service.ILynxImageService.setImageSRSize(@NonNull Object builder, int width, int height);
-  public void com.lynx.tasm.service.ILynxImageService.setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri);
-  public void com.lynx.tasm.service.ILynxImageService.setSampleSize(@NonNull Object builder, int sampleSize);
-  public void com.lynx.tasm.service.ILynxImageService.setImageDecodeRegion( @NonNull Object builder, @Nullable android.graphics.Rect regionToDecode);
+  public void com.lynx.tasm.service.ILynxImageService.processImageRequestOps(@NonNull Object builder, @NonNull List< ImageRequestOp > ops);
 }
 
 public interface com::lynx::tasm::service::ILynxImageServiceExtension {
@@ -2881,6 +2877,14 @@ public interface com::lynx::tasm::image::model::ImageLoadListener {
   public void com.lynx.tasm.image.model.ImageLoadListener.onImageMonitorInfo(JSONObject monitorInfo);
 }
 
+public enum com::lynx::tasm::service::ILynxImageService::ImageOp {
+  public com.lynx.tasm.service.ILynxImageService.ImageOp.SET_IMAGE_DECODE_REGION SET_IMAGE_DECODE_REGION;
+  public com.lynx.tasm.service.ILynxImageService.ImageOp.SET_SAMPLE_SIZE SET_SAMPLE_SIZE;
+  public com.lynx.tasm.service.ILynxImageService.ImageOp.SET_CACHE_KEY_URI SET_CACHE_KEY_URI;
+  public com.lynx.tasm.service.ILynxImageService.ImageOp.SET_IMAGE_SR_SIZE SET_IMAGE_SR_SIZE;
+  public com.lynx.tasm.service.ILynxImageService.ImageOp.SET_IMAGE_CACHE_CHOICE SET_IMAGE_CACHE_CHOICE;
+}
+
 public class com::lynx::tasm::image::model::ImageRequestInfo :  {
   public com.lynx.tasm.image.model.ImageRequestInfo.ImageRequestInfo(ImageRequestInfoBuilder builder);
   public String com.lynx.tasm.image.model.ImageRequestInfo.getUrl();
@@ -2964,6 +2968,12 @@ public class com::lynx::tasm::image::model::ImageRequestInfoBuilder :  {
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setImageSRScale(float scale);
   public float com.lynx.tasm.image.model.ImageRequestInfoBuilder.getmImageSRScale();
   public ImageRequestInfo com.lynx.tasm.image.model.ImageRequestInfoBuilder.build();
+}
+
+public class com::lynx::tasm::service::ILynxImageService::ImageRequestOp :  {
+  public com.lynx.tasm.service.ILynxImageService.ImageRequestOp.ImageRequestOp(@NonNull ImageOp op, @Nullable Object param);
+  public ImageOp com.lynx.tasm.service.ILynxImageService.ImageRequestOp.getOp();
+  public Object com.lynx.tasm.service.ILynxImageService.ImageRequestOp.getParam();
 }
 
 public class com::lynx::tasm::behavior::ui::image::ImageUrlRedirectUtils :  {
