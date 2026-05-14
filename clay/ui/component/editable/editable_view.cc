@@ -291,8 +291,14 @@ void EditableView::OnLayout(LayoutContext* context) {
     SetPlaceholderHeight(paragraph_->GetHeight());
   } else {
     // Layout content
-    auto builder = std::make_unique<TextParagraphBuilder>(true, text_style_);
-    BuildTextSpan(text_style_)->Build(*builder);
+    TextStyle temp_style = text_style_;
+#if defined(CLAY_ENABLE_TTTEXT) && (defined(OS_WIN) || defined(OS_MAC))
+    temp_style.line_height =
+        *temp_style.font_size *
+        text_style_.line_height.value_or(kDefaultLineHeight);
+#endif
+    auto builder = std::make_unique<TextParagraphBuilder>(true, temp_style);
+    BuildTextSpan(temp_style)->Build(*builder);
     paragraph_ = Build(std::move(builder));
 #if defined(CLAY_ENABLE_TTTEXT)
     auto* impl = static_cast<txt::ParagraphTTText*>(paragraph_.get());
