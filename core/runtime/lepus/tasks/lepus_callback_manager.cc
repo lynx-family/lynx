@@ -72,8 +72,12 @@ uint32_t LepusCallbackManager::SetTimeTask(
     runtime::MTSRuntime* context, std::unique_ptr<lepus::Value> closure,
     int64_t delay_time, bool is_interval) {
   EnsureTimerTaskInvokerInited(context);
-  auto task = [func =
+  auto task = [weak_state = std::weak_ptr<State>(state_),
+               func =
                    std::make_unique<FuncTask>(context, std::move(closure))]() {
+    if (!weak_state.lock()) {
+      return;
+    }
     func->Execute({lepus::Value(lepus::Dictionary::Create())});
   };
   if (is_interval) {
