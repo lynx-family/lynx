@@ -21,9 +21,12 @@
 #include "base/include/value/ref_type.h"
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
+#include "base/trace/native/trace_event.h"
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/lynx_export.h"
+#include "core/base/thread/once_task.h"
+#include "core/event/event_listener.h"
 #include "core/event/event_target.h"
 #include "core/inspector/style_sheet.h"
 #include "core/public/common_constants.h"
@@ -44,6 +47,7 @@
 #include "core/renderer/simple_styling/simple_style_node.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/starlight/types/layout_result.h"
+#include "core/renderer/ui_component/list/list_types.h"
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
@@ -66,12 +70,36 @@ class Fragment;
 class CSSFragmentDecorator;
 struct LayoutBundle;
 class PseudoElement;
+class LynxEnvConfig;
 class ListItemSchedulerAdapter;
 class ElementContextDelegate;
 class PlatformLayoutFunctionWrapper;
+class Element;
 
 using ElementChildrenArray =
     base::InlineVector<Element*, kChildrenInlineVectorSize>;
+using ParallelFlushReturn = base::closure;
+using ParallelReduceTaskQueue =
+    std::list<base::OnceTaskRefptr<ParallelFlushReturn>>;
+
+enum NodeInfoBits : int32_t {
+  // Mask for layout node type, using lower 16 bits.
+  kLayoutNodeTypeMask = 0x0000FFFF,
+  // Mask for async creation flag.
+  kCreateAsyncMask = 0x00010000,
+};
+
+constexpr const int32_t kCommonBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::COMMON) &
+     NodeInfoBits::kLayoutNodeTypeMask) |
+    NodeInfoBits::kCreateAsyncMask;
+constexpr const int32_t kVirtualBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::VIRTUAL) &
+     NodeInfoBits::kLayoutNodeTypeMask);
+constexpr const int32_t kCustomBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::CUSTOM) &
+     NodeInfoBits::kLayoutNodeTypeMask) |
+    NodeInfoBits::kCreateAsyncMask;
 
 enum ElementArchTypeEnum : uint8_t {
   FiberArch = 0,
@@ -131,10 +159,31 @@ class Element : public lepus::RefCounted,
                 public SelectorItem,
                 public style::SimpleStyleNode {
  public:
+  struct InheritedProperty {
+    // Indicates that children have been marked to propagate inherited
+    // properties.
+    bool children_propagate_inherited_styles_flag_{false};
+
+    const StyleMap* inherited_styles_{nullptr};
+    const base::Vector<tasm::CSSPropertyID>* reset_inherited_ids_{nullptr};
+    const CustomPropertiesMap* custom_properties_{nullptr};
+  };
+
   Element(const base::String& tag, ElementManager* element_manager,
           uint32_t node_index);
+  Element(ElementManager* manager, const base::String& tag);
+  Element(ElementManager* manager, const base::String& tag, int32_t css_id);
 
   Element& operator=(const Element&) = delete;
+
+  virtual fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const;
+
+  // The element object created using the clone interface is not attached to the
+  // element manager. Use this function to attach it to the element manager.
+  virtual void AttachToElementManager(
+      ElementManager* manager,
+      const std::shared_ptr<CSSStyleSheetManager>& style_manager,
+      bool keep_element_id);
 
   // Element state, used to indicate whether the current Element is on the root
   // Dom tree.
@@ -218,6 +267,21 @@ class Element : public lepus::RefCounted,
     kUpdated,
   };
 
+  struct PerfStatistic {
+    PerfStatistic(uint32_t total_task_count)
+        : total_task_count_(total_task_count) {}
+
+    // true if enable reporting stats
+    bool enable_report_stats_{false};
+
+    // count of tasks executing on engine thread
+    uint32_t engine_thread_task_count_{0};
+    uint32_t total_task_count_{0};
+
+    uint64_t total_processing_start_{0};
+    uint64_t total_waiting_time_{0};
+  };
+
   constexpr static const char* kFiberParallelPrepareMode = "ParallelPrepare";
 
   static const uint32_t kFlagGreedyParallel = 0x01 << 0;
@@ -296,10 +360,11 @@ class Element : public lepus::RefCounted,
   std::pair<bool, CSSPropertyID> ConvertRtlCSSPropertyID(CSSPropertyID id);
 
   virtual ~Element();
+  void ReleaseSelf() const override { delete this; }
 
   // For style op
   LYNX_EXPORT_FOR_DEVTOOL virtual void ConsumeStyle(
-      const StyleMap& styles, const StyleMap* inherit_styles = nullptr) = 0;
+      const StyleMap& styles, const StyleMap* inherit_styles = nullptr);
 
   void CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value);
   void CacheStyleFromAttributes(CSSPropertyID id, const lepus::Value& value);
@@ -325,12 +390,10 @@ class Element : public lepus::RefCounted,
   void ClearCachedStylesFromAttributes() { styles_from_attributes_.reset(); }
   void DidConsumeStyle();
 
-  virtual void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) {}
+  virtual void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars);
   virtual void ConsumeStyleInternal(
       const StyleMap& styles, const StyleMap* inherit_styles,
-      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip) {
-    ConsumeStyle(styles, inherit_styles);
-  }
+      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip);
 
   virtual void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value);
 
@@ -426,6 +489,11 @@ class Element : public lepus::RefCounted,
                               const base::String& type,
                               const lepus::Value& worklet_info,
                               const std::string& context_name);
+  static event::EventListener::Options GetEventListenerOptions(
+      const base::String& type);
+
+  virtual const InheritedProperty GetInheritedProperty();
+  const InheritedProperty GetParentInheritedProperty();
 
   event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event);
@@ -499,10 +567,14 @@ class Element : public lepus::RefCounted,
   // For JS API setNativeProps
   virtual void SetNativeProps(
       const lepus::Value& args,
-      std::shared_ptr<PipelineOptions>& pipeline_options) = 0;
+      std::shared_ptr<PipelineOptions>& pipeline_options);
+
+  void FiberAddEvent(const base::String& type, const base::String& name,
+                     const lepus::Value& callback,
+                     const std::string& context_name);
 
   // Get List Node
-  virtual ListNode* GetListNode() = 0;
+  virtual ListNode* GetListNode() { return nullptr; };
 
   /**
    * A key function to get parent component's element
@@ -679,6 +751,8 @@ class Element : public lepus::RefCounted,
     return css_style_sheet_manager_;
   }
 
+  void ResetSheetRecursively(
+      const std::shared_ptr<CSSStyleSheetManager>& manager);
   void ResetStyleSheet();
 
   void set_attached_to_layout_parent(bool has) {
@@ -691,6 +765,10 @@ class Element : public lepus::RefCounted,
   }
 
   void MarkAttrDirtyForPseudoElement() { dirty_ |= kDirtyAttr; }
+  void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
+  void PrepareSelfForThreadedElementResolution();
+  bool ShouldFallbackToSerialForNewStylingPipeline() const;
+  bool CollectCustomProperties(AttributeHolder* holder);
 
   void UpdateLayout(float left, float top, float width, float height,
                     const std::array<float, 4>& paddings,
@@ -713,10 +791,29 @@ class Element : public lepus::RefCounted,
 
   virtual int32_t IndexOf(const Element* child) const;
 
-  virtual void InsertNode(const fml::RefPtr<Element>& child) = 0;
-  virtual void InsertNode(const fml::RefPtr<Element>& child, int32_t index) = 0;
+  virtual void InsertNode(const fml::RefPtr<Element>& child);
+  virtual void InsertNode(const fml::RefPtr<Element>& child, int32_t index);
   virtual void RemoveNode(const fml::RefPtr<Element>& child,
-                          bool destroy = true) = 0;
+                          bool destroy = true);
+  void InsertNodeBefore(const fml::RefPtr<Element>& child,
+                        const fml::RefPtr<Element>& reference_child);
+  void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
+                                Element* ref_node);
+  void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
+                                Element* ref_node,
+                                bool update_logical_children);
+  void AddChildAt(fml::RefPtr<Element> child, int index);
+  void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
+                               ElementContextDelegate* parent_context,
+                               bool continuous_resolve_tree);
+  void RecursivelyMarkRenderRootElement(Element* render_root);
+  void UpdateRenderRootElementIfNecessary(Element* child);
+  ListItemSchedulerAdapter* GetSchedulerAdapter() {
+    if (scheduler_adapter_) {
+      return scheduler_adapter_.get();
+    }
+    return nullptr;
+  }
 
   inline bool CanHasLayoutOnlyChildren() {
     return can_has_layout_only_children_;
@@ -730,6 +827,23 @@ class Element : public lepus::RefCounted,
    * return the font size from platform_css_style_.
    */
   LYNX_EXPORT_FOR_DEVTOOL virtual double GetFontSize();
+
+  /**
+   * Special API for processing Font size
+   * font size should be handled at the beginning
+   */
+  void SetFontSize(const tasm::CSSValue& value);
+
+  /**
+   * @brief Sets font-size on a specific target ComputedCSSStyle rather than
+   * the element's own platform style.
+   * @param value The font-size CSS value.
+   * @param target_style The ComputedCSSStyle to update.
+   */
+  void SetFontSize(const tasm::CSSValue& value,
+                   starlight::ComputedCSSStyle* target_style);
+
+  void ResetFontSize();
 
   /*
    * return the font size of parent.
@@ -747,11 +861,18 @@ class Element : public lepus::RefCounted,
   double GetCurrentRootFontSize();
 
   virtual void OnPseudoStatusChanged(PseudoState prev_status,
-                                     PseudoState current_status) {}
+                                     PseudoState current_status);
+  void OnClassChanged(const ClassList& old_classes,
+                      const ClassList& new_classes);
+
+  // For snapshot test
+  void DumpStyle(StyleMap& parsed_styles);
+  void InvalidateChildrenIfNeeded();
+  bool HasAdjacentSiblingRulesInStyleSheets();
 
   ContentData* content_data() const { return content_data_.get(); }
 
-  virtual void UpdateDynamicElementStyle(uint32_t style, bool force_update) = 0;
+  virtual void UpdateDynamicElementStyle(uint32_t style, bool force_update);
 
   bool HasPlaceHolder() { return has_placeholder_; }
   bool HasTextSelection() { return has_text_selection_; }
@@ -768,6 +889,35 @@ class Element : public lepus::RefCounted,
   virtual const base::String& GetPlatformNodeTag() const { return tag_; }
 
   void UpdateElement();
+
+  void AsyncResolveProperty();
+
+  virtual void PostResolveTaskToThreadPool(bool is_engine_thread,
+                                           ParallelReduceTaskQueue& task_queue);
+
+  virtual ParallelFlushReturn PrepareForCreateOrUpdate();
+
+  virtual void ParallelFlushAsRoot();
+
+  void FlushSelf();
+
+  void PrepareChildren();
+
+  void PrepareChildForInsertion(Element* child);
+
+  void PrepareAndGenerateChildrenActions();
+
+  void ParallelFlushRecursively();
+
+  void TraversalInsertFixedElementOfTree();
+
+  void DidParallelFlushAsRoot(PerfStatistic& stats);
+
+  void OnParallelFlushAsRoot(PerfStatistic& stats);
+
+  void DispatchAsyncResolveProperty();
+
+  void AsyncPostResolveTaskToThreadPool();
 
   int ZIndex() {
     return GetEnableZIndex() ? computed_css_style()->GetZIndex() : 0;
@@ -792,19 +942,60 @@ class Element : public lepus::RefCounted,
 
   virtual void EnqueueLayoutTask(base::MoveOnlyClosure<void> operation);
 
-  virtual void HandleDelayTask(base::MoveOnlyClosure<void> operation) {
-    operation();
-  }
+  virtual void HandleDelayTask(base::MoveOnlyClosure<void> operation);
   void set_parent(Element* parent) { parent_ = parent; }
   bool EnableTriggerGlobalEvent() const { return trigger_global_event_; }
 
   void PreparePropBundleIfNeed();
 
+  void UpdateFiberElement();
+
+  void UpdateLayoutNodeByBundle();
+
+  /**
+   * A key function to flush the tree with the current element as the root node.
+   */
+  virtual void FlushActionsAsRoot();
+
+  /**
+   * A key function for flush all pending actions for current Element.
+   */
+  void FlushActions();
+
+  void AsyncResolveSubtreeProperty();
+
+  void DispatchAsyncResolveSubtreeProperty();
+
+  virtual void HandleInsertChildAction(Element* child, int index,
+                                       Element* ref_node);
+  virtual void HandleRemoveChildAction(Element* child);
+
+  void HandleRemoveSelf(Element* removal_point, Element* render_parent);
+
+  /**
+   * Element API for replacing elements.
+   * @param inserted inserted elements
+   * @param removed removed elements
+   */
+  void ReplaceElements(const base::Vector<fml::RefPtr<Element>>& inserted,
+                       const base::Vector<fml::RefPtr<Element>>& removed,
+                       Element* ref_node);
+
+  template <typename F>
+  void ApplyFunctionRecursive(F&& func) {
+    func(this);
+    for (const auto& child : scoped_children_) {
+      child->ApplyFunctionRecursive(func);
+    }
+  }
+
+  void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
+
   bool GetEnableZIndex();
 
   virtual void MarkLayoutDirty();
 
-  virtual void MarkLayoutDirtyLite(){};
+  virtual void MarkLayoutDirtyLite();
 
   // Dirty flag primitives
   int32_t dirty() const { return dirty_; }
@@ -833,11 +1024,11 @@ class Element : public lepus::RefCounted,
   // TTML NoDiff, the implementation of worklets no longer relies on these
   // capabilities. After the 2.0 worklet services are phased out, the following
   // two APIs will also be removed.
-  virtual StyleMap GetStylesForWorklet() = 0;
+  virtual StyleMap GetStylesForWorklet();
   virtual const AttrMap& GetAttributesForWorklet();
 
   inline const auto& GlobalBindTarget() { return global_bind_target_set_; }
-  virtual bool CanBeLayoutOnly() const = 0;
+  virtual bool CanBeLayoutOnly() const;
 
   LYNX_EXPORT_FOR_DEVTOOL bool HasUIPrimitive() const;
 
@@ -861,6 +1052,152 @@ class Element : public lepus::RefCounted,
   PropertiesResolvingStatus GenerateRootPropertyStatus() const;
 
   void SetComputedFontSize(double font_size, double root_font_size);
+
+  /**
+   * Replays the side effects of a single changed style property.
+   * @param id The CSS property that changed.
+   * @param value The new computed value.
+   */
+  void ReplayChangedStyleSideEffect(CSSPropertyID id, const CSSValue& value);
+  void ReplayResetStyleSideEffect(CSSPropertyID id);
+
+  struct NewPipelineResolveRequest {
+    bool force_resolve{false};
+    bool force_platform_update{false};
+    DynamicCSSStylesManager::StyleUpdateFlags dynamic_update_flags{0};
+  };
+
+  struct NewPipelineResolveOutcome {
+    bool need_update{false};
+    bool force_children{false};
+    DynamicCSSStylesManager::StyleUpdateFlags dynamic_style_flags{0};
+    DynamicCSSStylesManager::StyleUpdateFlags child_update_flags{0};
+  };
+
+  struct NewPipelineStyleResolveResult {
+    // final_style and base_style are the semantic results that downstream
+    // logic should read after ResolveComputedStyles() returns. They are raw
+    // pointers on purpose: they may alias owned_final_style,
+    // owned_base_style, or the element's existing platform_css_style_ when no
+    // newly owned snapshot is needed.
+    StyleMap resolved_style_map;
+    // TODO(zhouzhitao): get rid of underlying_layout_only_styles if
+    // layout_in_element is fully rolled out
+    StyleMap underlying_layout_only_styles;
+    const starlight::ComputedCSSStyle* parent_inheritance_style{nullptr};
+    const starlight::ComputedCSSStyle* previous_final_style{nullptr};
+    starlight::ComputedCSSStyle* final_style{nullptr};
+    starlight::ComputedCSSStyle* base_style{nullptr};
+    // owned_* carry the transient storage backing those semantic views until
+    // the caller decides whether this resolution pass actually commits. They
+    // cannot be replaced by final_style/base_style because commit-time code
+    // needs move ownership into platform_css_style_ / base_css_style_, while
+    // final_style/base_style may also alias existing external storage.
+    // Owns the resolved unanimated base snapshot when it cannot stay in
+    // base_css_style_ / platform_css_style_ directly during resolution.
+    std::unique_ptr<starlight::ComputedCSSStyle> owned_base_style;
+    // Owns the resolved animated final snapshot before it is committed into
+    // platform_css_style_.
+    std::unique_ptr<starlight::ComputedCSSStyle> owned_final_style;
+
+    // Publishes the semantic final/base style views after ownership has been
+    // decided. Callers should read final_style/base_style and ignore owned_*.
+    void BindResolvedStyles(starlight::ComputedCSSStyle* platform_style) {
+      DCHECK(platform_style != nullptr);
+      final_style = owned_final_style != nullptr  ? owned_final_style.get()
+                    : owned_base_style != nullptr ? owned_base_style.get()
+                                                  : platform_style;
+      base_style =
+          owned_base_style != nullptr ? owned_base_style.get() : final_style;
+      DCHECK(final_style != nullptr);
+      DCHECK(base_style != nullptr);
+    }
+
+    // Commits the resolved final style into platform_css_style_ when a platform
+    // update is required. This moves whichever owned snapshot currently backs
+    // final_style and leaves platform_css_style_ unchanged when final_style
+    // already aliases the existing platform slot.
+    void CommitPlatformStyleIfNeeded(
+        std::unique_ptr<starlight::ComputedCSSStyle>& platform_css_style,
+        bool style_changed) {
+      if (!style_changed) {
+        return;
+      }
+      if (final_style == owned_final_style.get()) {
+        platform_css_style = std::move(owned_final_style);
+      } else if (final_style == owned_base_style.get()) {
+        platform_css_style = std::move(owned_base_style);
+      }
+    }
+
+    // Persists the unanimated base snapshot into base_css_style_ after the
+    // final style has been committed. If final_style reuses owned_base_style,
+    // the base slot is only kept when no platform update happened.
+    void PersistBaseStyle(
+        std::unique_ptr<starlight::ComputedCSSStyle>& base_css_style,
+        bool style_changed) {
+      if (owned_base_style == nullptr) {
+        base_css_style.reset();
+        return;
+      }
+      if (final_style == owned_base_style.get()) {
+        if (style_changed) {
+          base_css_style.reset();
+        } else {
+          base_css_style = std::move(owned_base_style);
+        }
+        return;
+      }
+      base_css_style = std::move(owned_base_style);
+    }
+  };
+
+  NewPipelineStyleResolveResult ResolveComputedStyles(
+      const starlight::ComputedCSSStyle* previous_final_style,
+      double old_font_size, double old_root_font_size);
+  NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
+      const NewPipelineResolveRequest& request);
+  void ResolveCSSStylesNewPipeline(bool& need_update);
+  void ResolveSimpleStyles();
+  void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
+  void DoFullCSSResolving();
+  void ResetDirectionAwareProperty(const CSSPropertyID& id,
+                                   const CSSValue& value);
+  const tasm::CSSValue& ResolveCurrentStyleValue(
+      const CSSPropertyID& key, const tasm::CSSValue& default_value);
+  bool TryResolveLogicStyleAndSaveDirectionRelatedStyle(CSSPropertyID id,
+                                                        const CSSValue& value);
+  void TryDoDirectionRelatedCSSChange(CSSPropertyID id, const CSSValue& value,
+                                      IsLogic is_logic_style);
+  void ResetTextAlign(StyleMap& update_map, bool direction_changed);
+  void HandleKeyframePropsChange();
+#if ENABLE_TRACE_PERFETTO
+  virtual void UpdateTraceDebugInfo(TraceEvent* event);
+#endif
+  void FinalizeSimpleStyleUpdate();
+  void ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
+                                   const tasm::CSSValue& value);
+  void ApplySimpleStylesWithoutTail(const tasm::StyleMap& style_map);
+  void ApplyDynamicSimpleStylesWithoutTail(
+      const tasm::StyleMap& dynamic_style_map,
+      const tasm::StyleMap& base_style_map);
+  void UpdateSimpleStyles(const tasm::StyleMap& style_map) final;
+  void UpdateSimpleStyles(tasm::StyleMap&& style_map) final;
+  void UpdateStaticAndDynamicSimpleStyles(
+      tasm::StyleMap&& style_map,
+      tasm::StyleMap&& dynamic_style_map) override final;
+  void UpdateDynamicSimpleStyles(tasm::StyleMap&& style_map) override final;
+  void ResetSimpleStyle(const tasm::CSSPropertyID id,
+                        const tasm::CSSValue& value) override final;
+  void ResetSimpleStyle(const tasm::CSSPropertyID id) override final;
+  void SetStyleObjects(
+      std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
+          style_objects) override;
+  void ReplaceDynamicSimpleStyles(
+      style::DynamicStyleObjectRef new_style_object);
+  void AddDynamicSimpleStyles(tasm::StyleMap&& new_styles);
+  void RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id);
+  void AddDynamicSimpleStyleKV(tasm::CSSPropertyID id, tasm::CSSValue&& value);
 
   void SetPlaceHolderStylesInternal(const PseudoPlaceHolderStyles& styles);
 
@@ -986,23 +1323,21 @@ class Element : public lepus::RefCounted,
   bool ConsumeTransitionStylesInAdvance(const StyleMap& styles,
                                         bool force_reset = false);
 
-  virtual void MarkAsLayoutRoot() = 0;
-  virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) = 0;
-  virtual void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props) = 0;
+  virtual void MarkAsLayoutRoot();
+  virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props);
+  virtual void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props);
   virtual void UpdateLayoutNodeStyle(CSSPropertyID css_id,
-                                     const tasm::CSSValue& value) = 0;
-  virtual void ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) = 0;
+                                     const tasm::CSSValue& value);
+  virtual void ResetLayoutNodeStyle(tasm::CSSPropertyID css_id);
   virtual void UpdateLayoutNodeFontSize(double cur_node_font_size,
-                                        double root_node_font_size) = 0;
+                                        double root_node_font_size);
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
-                                         const lepus::Value& value) = 0;
+                                         const lepus::Value& value);
 
   virtual bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value);
 
   virtual void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
-                                bool reset) {
-    // currently, radon element do no need to such kind of check
-  }
+                                bool reset);
 
   bool EnableLayoutInElementMode() const;
 
@@ -1027,7 +1362,7 @@ class Element : public lepus::RefCounted,
 
   bool EnableFragmentLayerRender() const;
 
-  virtual void WillResetCSSValue(CSSPropertyID& id) {}
+  virtual void WillResetCSSValue(CSSPropertyID& id);
 
   virtual bool ResetCSSValue(CSSPropertyID id);
   virtual void ConsumeTransitionStylesInAdvanceInternal(
@@ -1052,9 +1387,9 @@ class Element : public lepus::RefCounted,
 
   CSSKeyframesToken* GetCSSKeyframesToken(const base::String& animation_name);
 
-  virtual CSSFragment* GetRelatedCSSFragment() = 0;
+  virtual CSSFragment* GetRelatedCSSFragment();
 
-  virtual void FlushProps() = 0;
+  virtual void FlushProps();
 
   virtual void set_will_destroy(bool destroy);
 
@@ -1069,15 +1404,15 @@ class Element : public lepus::RefCounted,
 
   void ClearTransitionPreviousEndValue(const base::String&);
 
-  virtual void RequestLayout() = 0;
+  virtual void RequestLayout();
 
-  virtual void RequestNextFrame() = 0;
+  virtual void RequestNextFrame();
 
   void UpdateFinalStyleMap(const StyleMap& styles);
 
   virtual void OnPatchFinish(std::shared_ptr<PipelineOptions>& option);
 
-  virtual int32_t GetCSSID() const = 0;
+  virtual int32_t GetCSSID() const;
 
   virtual void SetCSSID(int32_t id);
 
@@ -1092,7 +1427,7 @@ class Element : public lepus::RefCounted,
   }
 
   // TODO(dingwang.wxx): Interfaces in Element about list should be moved to
-  // ListElement after unifying the RadonElement and FiberElement.
+  // ListElement after unifying the RadonElement and Element.
   // When the list element changes, this method will be invoked. For example, if
   // the list's width or height changes, or if the List itself has new diff
   // information.
@@ -1203,6 +1538,7 @@ class Element : public lepus::RefCounted,
                     CSSVariableMap* changed_css_vars = nullptr);
 
   void HandlePseudoElement();
+  PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
 
   void HandleCSSVariables(StyleMap& styles);
 
@@ -1286,9 +1622,9 @@ class Element : public lepus::RefCounted,
 
   // Returns true if CSS variables were merged and need to be resolved.
   virtual bool MergeInlineStyles(StyleMap& merged_styles,
-                                 StyleMap& important_styles) = 0;
-  virtual void PersistAnimationFillStyles(const StyleMap& styles) {}
-  virtual void ClearPersistedAnimationFillStyle(CSSPropertyID id) {}
+                                 StyleMap& important_styles);
+  virtual void PersistAnimationFillStyles(const StyleMap& styles);
+  virtual void ClearPersistedAnimationFillStyle(CSSPropertyID id);
   virtual int32_t GetMemoryUsage() const { return sizeof(*this); }
 
   virtual bool is_page() const { return false; }
@@ -1334,7 +1670,13 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkDetached() { state_ = State::kDetached; }
   virtual bool IsDetached() const { return state_ == State::kDetached; }
-  virtual void SetupFragmentBehavior(Fragment* fragment) {}
+  virtual void SetupFragmentBehavior(Fragment* fragment);
+
+  // current element is inserted to DOM tree
+  virtual void InsertedInto(Element* insertion_point);
+
+  // current element is removed from DOM tree
+  virtual void RemovedFrom(Element* insertion_point);
 
   void SetDefaultOverflow(bool visible);
 
@@ -1346,6 +1688,27 @@ class Element : public lepus::RefCounted,
 
   // Mark style dirty, optionally recursively for children
   LYNX_EXPORT_FOR_DEVTOOL void MarkStyleDirty(bool recursive = false);
+  void MarkFontSizeInvalidateRecursively();
+  void InvalidateChildrenFontSizeRecursively();
+  void InvalidateChildrenInheritedStylesRecursively();
+  void RecursivelyMarkCustomPropertiesDirty();
+  void RecursivelyMarkChildrenCSSVariableDirty(
+      const lepus::Value& css_variable_updated);
+  bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
+                                   const lepus::Value changing_css_variables);
+  /**
+   * Element API for updating css variables
+   * @param variables the css variables to be updated from JS.
+   */
+  void UpdateCSSVariable(const lepus::Value& variables,
+                         std::shared_ptr<PipelineOptions>& pipeline_option);
+  bool RefreshStyle(StyleMap& parsed_styles,
+                    base::Vector<CSSPropertyID>& reset_ids,
+                    bool force_use_parsed_styles_map = false);
+  void ResolveCSSStyles(StyleMap& parsed_styles,
+                        base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
+                        bool& need_update,
+                        bool& force_use_current_parsed_style_map);
 
   void MarkTemplateElement() { is_template_ = true; }
 
@@ -1403,16 +1766,59 @@ class Element : public lepus::RefCounted,
    */
   bool IfNeedsUpdateLayoutInfo();
 
+  void InsertLayoutNode(Element* child, Element* ref);
+  void RemoveLayoutNode(Element* child);
+
+  void StoreLayoutNode(Element* child, Element* ref);
+  void RestoreLayoutNode(Element* child);
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 
-  // The element object created using the clone interface of FiberElement is
-  // not attached to the element manager. Use this function to attach it to
-  // the element manager.
-  virtual void AttachToElementManager(
-      ElementManager* manager,
-      const std::shared_ptr<CSSStyleSheetManager>& style_manager,
-      bool keep_element_id);
+  bool ConsumeAllAttributes();
+
+  void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
+
+  void EnsureSLNode();
+  void SetSLMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
+  void SetAlignmentFunc(void* context,
+                        starlight::SLAlignmentFunc alignment_func);
+  void DispatchLayoutBeforeRecursively();
+  virtual void DispatchLayoutBefore();
+  void UpdateLayoutInfoRecursively(PipelineOptions* options);
+  void UpdateLayoutInfo();
+
+  void SetFontSizeForAllElement(double cur_node_font_size,
+                                double root_node_font_size);
+
+  ParallelFlushReturn CreateParallelTaskHandler();
+  void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
+  void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
+                         double old_font_size, double old_root_font_size);
+  void ReplayCommitSideEffects(
+      const starlight::ComputedCSSStyle& computed_style,
+      const StyleMap& resolved_style_map, CSSIDBitset* replayed_ids = nullptr);
+  DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
+      const StyleMap& resolved_style_map) const;
+  void ReplayDynamicResolvedStyleSideEffects(
+      const StyleMap& resolved_style_map,
+      DynamicCSSStylesManager::StyleUpdateFlags update_flags,
+      const CSSIDBitset& replayed_ids);
+
+  /**
+   * This function will be called before add node.
+   * @param child the added node
+   */
+  virtual void OnNodeAdded(Element* child);
+
+  // called when a child element is removed
+  virtual void OnNodeRemoved(Element* child);
+
+  virtual void SetAttributeInternal(const base::String& key,
+                                    const lepus::Value& value);
+
+  virtual void MarkHasLayoutOnlyPropsIfNecessary(
+      const base::String& attribute_key);
 
   virtual void PushStyleToBundle();
 
@@ -1432,12 +1838,17 @@ class Element : public lepus::RefCounted,
     return enable_class_change_transmit_ && !(dirty_ & kDirtyCreated);
   }
 
-  // Check if there's invalidation for id selector change. Override in
-  // FiberElement.
+  // Check if there's invalidation for id/class selector change.
   virtual bool CheckHasInvalidationForId(const std::string& old_id,
-                                         const std::string& new_id) {
-    return false;
-  }
+                                         const std::string& new_id);
+  bool CheckHasInvalidationForClass(const ClassList& old_classes,
+                                    const ClassList& new_classes);
+  void InvalidateChildren(css::InvalidationSet* invalidation_set);
+  void VisitChildren(const base::MoveOnlyClosure<void, Element*>& visitor);
+  void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
+  void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
+                                               bool& inner_force_update);
+  void UpdateDynamicChildrenStyleRecursively(uint32_t style, bool force_update);
 
   base::String tag_;
 
@@ -1460,6 +1871,7 @@ class Element : public lepus::RefCounted,
   int pseudo_type_{0};
 
   ElementArchTypeEnum arch_type_;
+  bool is_fiber_element_{false};
 
   bool will_destroy_{false};
 
@@ -1537,6 +1949,24 @@ class Element : public lepus::RefCounted,
    */
   friend class StyleResolver;
   StyleResolver style_resolver_;
+
+  friend class WrapperElement;
+  friend class ComponentElement;
+  friend class BlockElement;
+
+  Element* FindEnclosingNoneWrapper(Element* parent, Element* node);
+  void HandleContainerInsertion(Element* parent, Element* child, Element* ref);
+  void HandleSelfFixedChange();
+  void InsertFixedElement(Element* child, Element* ref_node);
+  void RemoveFixedElement(Element* child);
+  Element* ReplaceTemplateChildIfNeeded(
+      base::InlineVector<fml::RefPtr<Element>,
+                         kChildrenInlineVectorSize>::iterator child_iter);
+  void InsertLogicalChildBefore(const fml::RefPtr<Element>& child,
+                                Element* ref_node);
+  void RemoveLogicalChild(const fml::RefPtr<Element>& child);
+  void RemoveNodeInternal(const fml::RefPtr<Element>& child, bool destroy,
+                          bool update_logical_children);
 
   // relevant to layout and frame
   float width_{0};

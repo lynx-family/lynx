@@ -568,7 +568,7 @@ enableUseMapBuffer:
     - HarmonyOS
     - iOS
 enableFiberElementForRadonDiff:
-  description: Deprecated compatibility field kept so older page configs can still decode a FiberElement-for-RadonDiff flag. Current repo-local runtime no longer branches on this field directly.
+  description: Deprecated compatibility field kept so older page configs can still decode the historical Fiber-for-RadonDiff flag. Current repo-local runtime no longer branches on this field directly.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: DragonDragonDDD
@@ -1896,7 +1896,7 @@ enableAnimationForwardUpdatePreservation:
     - HarmonyOS
     - iOS
 enableNewStylingPipeline:
-  description: Controls whether Fiber elements use the new styling resolution pipeline instead of the legacy style resolver path. When enabled, ElementManager turns on the new styling flag and FiberElement switches to `ResolveCSSStylesNewPipeline`; when disabled, style resolution stays on the existing pipeline. If the field is omitted, native or settings fallback can still decide the flag.
+  description: Controls whether Fiber elements use the new styling resolution pipeline instead of the legacy style resolver path. When enabled, ElementManager turns on the new styling flag and Element uses `ResolveCSSStylesNewPipeline`; when disabled, style resolution stays on the existing pipeline. If the field is omitted, native or settings fallback can still decide the flag.
   defaultValue: 'false'
   valueType: bool
   readSettings: true

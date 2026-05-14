@@ -12,7 +12,7 @@
 
 namespace lynx {
 namespace tasm {
-class FiberElement;
+class Element;
 
 /// The object for scheduling tasks generated but not necessarily need to be
 /// consumed in elemeent resolution. This class also serves as a tree node for
@@ -21,7 +21,7 @@ class FiberElement;
 class ElementContextDelegate {
  public:
   ElementContextDelegate(ElementContextDelegate* parent_element_context,
-                         FiberElement* context_root);
+                         Element* context_root);
   virtual ~ElementContextDelegate() = default;
 
   void EnqueueTask(base::MoveOnlyClosure<void> operation);
@@ -30,7 +30,7 @@ class ElementContextDelegate {
       std::shared_ptr<ElementContextDelegate>& child_element_context);
   /// Type specific check for list item element context.
   virtual bool IsListItemElementContext();
-  FiberElement* GetElementContextRoot() { return element_context_root_; }
+  Element* GetElementContextRoot() { return element_context_root_; }
   /// Remove self from ElementContext tree.
   void RemoveSelf();
 
@@ -46,7 +46,7 @@ class ElementContextDelegate {
   std::vector<std::shared_ptr<ElementContextDelegate>>
       scoped_children_element_contexts_{};
   ElementContextDelegate* parent_element_context_{nullptr};
-  FiberElement* element_context_root_{nullptr};
+  Element* element_context_root_{nullptr};
 };
 }  // namespace tasm
 }  // namespace lynx

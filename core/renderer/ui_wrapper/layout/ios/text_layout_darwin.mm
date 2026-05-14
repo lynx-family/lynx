@@ -6,8 +6,8 @@
 #include <vector>
 
 #include "core/renderer/css/text_attributes.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -78,7 +78,7 @@ void TextLayoutDarwin::MeasureChildrenRecursively(Element* element,
     if (child->is_text()) {
       MeasureChildrenRecursively(child, constraints, final_measure, childrenLayoutResultDic);
     } else if (child->is_view() || child->is_image()) {
-      FiberElement* fiber_element = static_cast<FiberElement*>(child);
+      Element* fiber_element = static_cast<Element*>(child);
       FloatSize size = fiber_element->slnode()->UpdateMeasureByPlatform(constraints, final_measure);
       [childrenLayoutResultDic setObject:@[ @(size.width_), @(size.height_), @(size.baseline_) ]
                                   forKey:@(fiber_element->impl_id())];
@@ -96,7 +96,7 @@ void TextLayoutDarwin::AlignChildrenRecursively(Element* element, NSDictionary* 
     if (child->is_text()) {
       AlignChildrenRecursively(child, offsetDic);
     } else if (child->is_view() || child->is_image()) {
-      FiberElement* fiber_element = static_cast<FiberElement*>(child);
+      Element* fiber_element = static_cast<Element*>(child);
       id value = [offsetDic objectForKey:@(fiber_element->impl_id())];
       if (value) {
         CGPoint offset = [value CGPointValue];
@@ -219,13 +219,13 @@ void TextLayoutDarwin::GenerateAttributedString(
     }
   }
   for (auto* child = element->first_render_child(); child; child = child->next_render_sibling()) {
-    ProcessChildAttribute(attributedString, static_cast<FiberElement*>(child), baseAttributes,
+    ProcessChildAttribute(attributedString, static_cast<Element*>(child), baseAttributes,
                           inlineElementSigns, hasViewOrImage);
   }
 }
 
 void TextLayoutDarwin::ProcessChildAttribute(
-    NSMutableAttributedString* attributedString, FiberElement* child,
+    NSMutableAttributedString* attributedString, Element* child,
     NSDictionary<NSAttributedStringKey, id>* baseAttributes, NSMutableSet* inlineElementSigns,
     Boolean* hasViewOrImage) {
   if (child->is_raw_text()) {
@@ -250,7 +250,7 @@ void TextLayoutDarwin::ProcessChildAttribute(
                              hasViewOrImage);
   } else if (child->is_image() || child->is_view()) {
     *hasViewOrImage = YES;
-    FiberElement* placeholder_element = static_cast<FiberElement*>(child);
+    Element* placeholder_element = static_cast<Element*>(child);
     LynxTextAttachment* textAttachment = [[LynxTextAttachment alloc] init];
     textAttachment.sign = placeholder_element->impl_id();
     const auto& text_attributes = placeholder_element->computed_css_style()->GetTextAttributes();
@@ -274,8 +274,8 @@ void TextLayoutDarwin::ProcessChildAttribute(
   } else if (child->is_wrapper()) {
     for (auto* wrap_child = child->first_render_child(); wrap_child;
          wrap_child = wrap_child->next_render_sibling()) {
-      ProcessChildAttribute(attributedString, static_cast<FiberElement*>(wrap_child),
-                            baseAttributes, inlineElementSigns, hasViewOrImage);
+      ProcessChildAttribute(attributedString, static_cast<Element*>(wrap_child), baseAttributes,
+                            inlineElementSigns, hasViewOrImage);
     }
   }
 }

@@ -10,7 +10,6 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_property.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -74,7 +73,7 @@ TEST_F(ElementManagerTest, TestCalcTotalMemoryDiff) {
   int32_t average_element_memory_size = 0;
 
   int32_t expect_counter = 10;
-  std::vector<fml::RefPtr<FiberElement>> fiber_elements;
+  std::vector<fml::RefPtr<Element>> fiber_elements;
   EXPECT_EQ(manager->total_memory_, 0);
   for (int i = 0; i < expect_counter; i++) {
     auto fiber_element = manager->CreateFiberNode("view");

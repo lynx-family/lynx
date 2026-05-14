@@ -7,15 +7,15 @@
 #include <deque>
 #include <utility>
 
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
 namespace tasm {
 
 ListItemSchedulerAdapter::ListItemSchedulerAdapter(
-    FiberElement* sub_root, list::BatchRenderStrategy batch_render_strategy,
+    Element* sub_root, list::BatchRenderStrategy batch_render_strategy,
     ElementContextDelegate* parent_context, bool continuous_resolve_tree)
     : ElementContextDelegate(parent_context, sub_root),
       render_root_(sub_root),
@@ -31,7 +31,7 @@ ListItemSchedulerAdapter::ListItemSchedulerAdapter(
 }
 
 void ListItemSchedulerAdapter::ResolveSubtreeProperty() {
-  std::deque<FiberElement*> queue;
+  std::deque<Element*> queue;
   queue.emplace_back(render_root_);
   while (!queue.empty()) {
     auto current = queue.front();
@@ -47,7 +47,7 @@ void ListItemSchedulerAdapter::ResolveSubtreeProperty() {
     for (const auto& child : current->children()) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
                   LIST_SCHEDULER_ADAPTER_SUBTREE_ASYNC_ENQUEUE);
-      queue.emplace_back(static_cast<FiberElement*>(child.get()));
+      queue.emplace_back(static_cast<Element*>(child.get()));
     }
     queue.pop_front();
   }

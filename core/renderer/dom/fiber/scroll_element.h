@@ -5,21 +5,20 @@
 #ifndef CORE_RENDERER_DOM_FIBER_SCROLL_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_SCROLL_ELEMENT_H_
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
 
-class ScrollElement : public FiberElement {
+class ScrollElement : public Element {
  public:
   ScrollElement(ElementManager* manager, const base::String& tag)
-      : FiberElement(manager, tag) {
+      : Element(manager, tag) {
     can_has_layout_only_children_ = false;
   }
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(
         new ScrollElement(*this, clone_resolved_props));
   }
 
@@ -36,7 +35,7 @@ class ScrollElement : public FiberElement {
   const StyleMap* PeekCommittedStylesFromAttributes() const override;
 
  protected:
-  void OnNodeAdded(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
   void ResetAttribute(const base::String& key) override;
   void CacheCommittedStyleFromAttributes(CSSPropertyID id,
                                          const CSSValue& value) override;
@@ -47,7 +46,7 @@ class ScrollElement : public FiberElement {
                             const lepus::Value& value) override;
 
   ScrollElement(const ScrollElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {}
+      : Element(element, clone_resolved_props) {}
 
  private:
   void HandleLayoutNodeAttributeUpdate();

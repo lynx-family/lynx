@@ -15,14 +15,14 @@ namespace lynx {
 namespace tasm {
 
 ImageElement::ImageElement(ElementManager* manager, const base::String& tag)
-    : FiberElement(manager, tag) {
+    : Element(manager, tag) {
   if (element_manager_ == nullptr) {
     return;
   }
   element_manager_->IncreaseImageElementCount();
 }
 
-void ImageElement::OnNodeAdded(FiberElement* child) {
+void ImageElement::OnNodeAdded(Element* child) {
   LOGE("image element can not insert any child!!!");
 }
 
@@ -36,7 +36,7 @@ void ImageElement::ConvertToInlineElement() {
   }
   data_model()->set_tag(tag_);
   UpdateTagToLayoutBundle();
-  FiberElement::ConvertToInlineElement();
+  Element::ConvertToInlineElement();
 }
 
 void ImageElement::SetAttributeInternal(const base::String& key,
@@ -47,7 +47,7 @@ void ImageElement::SetAttributeInternal(const base::String& key,
     ProcessAttributeForLayoutInElement(key, value);
     attr_map_[key] = value;
   }
-  FiberElement::SetAttributeInternal(key, value);
+  Element::SetAttributeInternal(key, value);
 }
 
 void ImageElement::ProcessAttributeForLayoutInElement(
@@ -63,7 +63,7 @@ void ImageElement::ResetAttribute(const base::String& key) {
   if (EnableLayoutInElementMode()) {
     attr_map_[key] = lepus::Value();
   }
-  FiberElement::ResetAttribute(key);
+  Element::ResetAttribute(key);
 }
 
 int32_t ImageElement::GetBuiltInNodeInfo() const {

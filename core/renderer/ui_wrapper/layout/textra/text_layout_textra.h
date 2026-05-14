@@ -14,7 +14,7 @@
 namespace lynx {
 namespace tasm {
 class TextElement;
-class FiberElement;
+class Element;
 
 namespace text {
 class TextLayoutAPI;

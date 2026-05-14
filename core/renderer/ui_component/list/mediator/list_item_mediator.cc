@@ -4,8 +4,8 @@
 
 #include "core/renderer/ui_component/list/mediator/list_item_mediator.h"
 
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 
 namespace lynx {
 namespace tasm {

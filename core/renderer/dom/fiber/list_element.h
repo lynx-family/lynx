@@ -11,8 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/ui_component/list/list_container_delegate_internal.h"
 #include "core/renderer/ui_component/list/mediator/list_mediator.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
@@ -41,7 +41,7 @@ class ListElementSSRHelper {
   int32_t ComponentAtIndexInSSR(uint32_t index, int64_t operationId);
 
   bool HasHydrate() { return has_hydrate_; }
-  void AppendChild(fml::RefPtr<FiberElement> child) {
+  void AppendChild(fml::RefPtr<Element> child) {
     ssr_elements_.push_back({child, SSRItemStatus::kWaitingRender});
   }
 
@@ -54,21 +54,18 @@ class ListElementSSRHelper {
 
   bool has_hydrate_ = false;
   ListElement* list_element_;
-  std::vector<std::pair<fml::RefPtr<FiberElement>, SSRItemStatus>>
-      ssr_elements_;
+  std::vector<std::pair<fml::RefPtr<Element>, SSRItemStatus>> ssr_elements_;
 };
 
-class ListElement : public FiberElement, public tasm::ListNode {
+class ListElement : public Element, public tasm::ListNode {
  public:
   ListElement(ElementManager* manager, const base::String& tag,
               const lepus::Value& component_at_index,
               const lepus::Value& enqueue_component,
               const lepus::Value& component_at_indexes);
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
-        new ListElement(*this, clone_resolved_props));
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(new ListElement(*this, clone_resolved_props));
   }
   void visitor(void* rt, void* func, uint64_t trace_tool) override {
     LEPUSRuntime* runtime = reinterpret_cast<LEPUSRuntime*>(rt);
@@ -79,7 +76,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
     mark_func(runtime, v, trace_tool);
     v = WRAP_AS_JS_VALUE(enqueue_component_.value());
     mark_func(runtime, v, trace_tool);
-    FiberElement::visitor(rt, reinterpret_cast<void*>(mark_func), trace_tool);
+    Element::visitor(rt, reinterpret_cast<void*>(mark_func), trace_tool);
   }
 
   ~ListElement() override = default;
@@ -112,7 +109,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
                        const lepus::Value& enqueue_component,
                        const lepus::Value& component_at_indexes);
 
-  void NotifyListReuseNode(const fml::RefPtr<FiberElement>& child,
+  void NotifyListReuseNode(const fml::RefPtr<Element>& child,
                            const base::String& item_key);
 
   void OnListItemBatchFinished(
@@ -186,9 +183,9 @@ class ListElement : public FiberElement, public tasm::ListNode {
   // empty implementation.
   // TODO(WUJINTIAN): copy fiber list element
   ListElement(const ListElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {}
+      : Element(element, clone_resolved_props) {}
 
-  void OnNodeAdded(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
   void FilterComponents(
       std::vector<std::unique_ptr<ListComponentInfo>>& components,
       tasm::TemplateAssembler* tasm) override {}

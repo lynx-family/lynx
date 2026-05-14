@@ -4,7 +4,7 @@
 #include "core/renderer/dom/element_context_task_queue.h"
 
 #include "base/trace/native/trace_event.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/utils/lynx_env.h"
 namespace lynx {
 namespace tasm {

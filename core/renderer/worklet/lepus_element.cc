@@ -446,7 +446,7 @@ void LepusElement::SetStyles(const Napi::Object& styles) {
     LOGE("LepusElement::SetStyles failed, since input para is not object.");
     return;
   }
-  auto* fiber_element = static_cast<tasm::FiberElement*>(element);
+  auto* fiber_element = static_cast<tasm::Element*>(element);
   for (const auto& pair : *(lepus_v.Table())) {
     const auto& key = tasm::CSSProperty::GetPropertyID(pair.first);
     const auto& val = pair.second;

@@ -720,7 +720,7 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
 
   // If the fiber element is currently in the detached state, then do not
   // generate the corresponding chain.
-  if (static_cast<FiberElement *>(target_node)->IsDetached()) {
+  if (static_cast<Element *>(target_node)->IsDetached()) {
     LOGE(
         "TouchEventHandler::GenerateResponseChain failed since the target node "
         << target_node->GetTag().str()
@@ -735,13 +735,13 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
       // TODO(songshourui.null): When using RadonDiff + RadonElement, the fixed
       // element must be root's child and the chain will not contain the
       // elements between root and fixed element. However, when using RadonDiff
-      // + FiberElement, fixed element's postion will not be changed and the
+      // + Element, fixed element's postion will not be changed and the
       // chain will contain the elements between root and fixed element. Thus,
       // when in radon arch, to avoid break, we need to
       // stop the while loop when target node is fixed. And the following code
       // will be removed when there is no RadonDiff online. Not that we can add
       // a bubble_parent interface to the Element class. Then RadonElement can
-      // return parent by default, while FiberElement implements compatible
+      // return parent by default, while Element implements compatible
       // logic. This approach avoids the need to modify the TouchEventHandler
       // itself.
       if (target_node->IsRadonArch() && target_node->is_fixed()) {
@@ -773,7 +773,7 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
   // If the fiber element is currently in the detached state, then do not
   // generate the corresponding chain.
   if (component->IsFiberArch() &&
-      static_cast<FiberElement *>(component)->IsDetached()) {
+      static_cast<Element *>(component)->IsDetached()) {
     LOGE(
         "TouchEventHandler::GenerateResponseChain failed since the component "
         "with sign: "
@@ -1060,10 +1060,9 @@ lepus::Value TouchEventHandler::GetTargetInfo(int32_t impl_id,
   // element ref needed in fiber element worklet
   if (element != nullptr && !is_js_event) {
     BASE_STATIC_STRING_DECL(kElementRefptr, "elementRefptr");
-    FiberElement *fiberElement =
-        static_cast<FiberElement *>(const_cast<Element *>(element));
-    dict.get()->SetValue(kElementRefptr,
-                         fml::RefPtr<FiberElement>(fiberElement));
+    Element *fiberElement =
+        static_cast<Element *>(const_cast<Element *>(element));
+    dict.get()->SetValue(kElementRefptr, fml::RefPtr<Element>(fiberElement));
   }
 
   return lepus::Value(std::move(dict));
@@ -1185,7 +1184,7 @@ bool TouchEventHandler::HandleEventInternal(
         continue;
       }
 
-      if (static_cast<FiberElement *>(cur_target)->IsDetached()) {
+      if (static_cast<Element *>(cur_target)->IsDetached()) {
         LOGI(
             "TouchEventHandler::HandleEventInternal global bind current target "
             "is detached, id is "

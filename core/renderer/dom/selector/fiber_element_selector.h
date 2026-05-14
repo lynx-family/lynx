@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "core/base/lynx_export.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/component_element.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/dom/selector/element_selector.h"
 #include "core/renderer/dom/selector/select_result.h"
@@ -25,16 +25,16 @@ class LynxGetUIResult;
 class SelectElementToken;
 
 template <>
-inline int32_t NodeSelectResult<FiberElement>::GetImplId(FiberElement *node) {
+inline int32_t NodeSelectResult<Element>::GetImplId(Element *node) {
   return node ? node->impl_id() : kInvalidImplId;
 }
 
 class FiberElementSelector : public ElementSelector {
  public:
-  using ElementSelectResult = NodeSelectResult<FiberElement>;
+  using ElementSelectResult = NodeSelectResult<Element>;
 
   LYNX_EXPORT_FOR_DEVTOOL static ElementSelectResult Select(
-      FiberElement *root, const NodeSelectOptions &options);
+      Element *root, const NodeSelectOptions &options);
   LYNX_EXPORT_FOR_DEVTOOL static ElementSelectResult Select(
       const std::unique_ptr<ElementManager> &element_manager,
       const NodeSelectRoot &root, const NodeSelectOptions &options);
@@ -44,10 +44,10 @@ class FiberElementSelector : public ElementSelector {
                           const std::vector<SelectElementToken> &tokens,
                           size_t token_pos,
                           const SelectImplOptions &options) override;
-  void SelectImplRecursive(FiberElement *element,
+  void SelectImplRecursive(Element *element,
                            const std::vector<SelectElementToken> &tokens,
                            size_t token_pos, const SelectImplOptions &options);
-  bool IsTokenSatisfied(FiberElement *base, const SelectElementToken &token);
+  bool IsTokenSatisfied(Element *base, const SelectElementToken &token);
 
   virtual void SelectByElementId(SelectorItem *root,
                                  const NodeSelectOptions &options) override;
@@ -55,14 +55,14 @@ class FiberElementSelector : public ElementSelector {
   virtual void InsertResult(SelectorItem *base) override;
   virtual bool FoundElement() override;
 
-  void SelectInSlots(FiberElement *element,
+  void SelectInSlots(Element *element,
                      const std::vector<SelectElementToken> &tokens,
                      size_t token_pos, const SelectImplOptions &options,
                      const std::string &parent_component_id);
 
-  void UniqueAndSortResult(FiberElement *root);
+  void UniqueAndSortResult(Element *root);
 
-  std::vector<FiberElement *> result_;
+  std::vector<Element *> result_;
 };
 }  // namespace tasm
 }  // namespace lynx
