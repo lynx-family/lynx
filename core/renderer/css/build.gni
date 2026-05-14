@@ -153,6 +153,8 @@ lynx_css_core_sources = [
   "parser/length_handler.h",
   "parser/list_gap_handler.cc",
   "parser/list_gap_handler.h",
+  "parser/mask_composite_handler.cc",
+  "parser/mask_composite_handler.h",
   "parser/mask_shorthand_handler.cc",
   "parser/mask_shorthand_handler.h",
   "parser/number_handler.cc",

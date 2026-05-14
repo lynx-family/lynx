@@ -73,6 +73,8 @@ class CSSStringParser final {
         static_cast<uint32_t>(starlight::BackgroundOriginType::kPaddingBox);
     uint32_t clip =
         static_cast<uint32_t>(starlight::BackgroundClipType::kPaddingBox);
+    uint32_t composite =
+        static_cast<uint32_t>(starlight::MaskCompositeType::kAdd);
 
     std::optional<StackValue> image;
     std::optional<uint32_t> color;
@@ -107,6 +109,7 @@ class CSSStringParser final {
     BG_CLIP_BOX = 1 << 3,
     BG_ORIGIN = 1 << 4,
     BG_COLOR = 1 << 5,
+    BG_COMPOSITE = 1 << 6,
   };
 
  public:
@@ -146,6 +149,9 @@ class CSSStringParser final {
   /// <bg-repeat> = <repeat-style> = repeat-x | repeat-y | [ repeat | space |
   ///               round | no-repeat ]{1,2}
   CSSValue ParseBackgroundRepeat();
+  /// <compositing-operator> [, <compositing-operator>]*
+  /// <compositing-operator> = add | subtract | intersect | exclude
+  CSSValue ParseMaskComposite();
   /// <text-color> = <color> | <linear-gradient> | <radial-gradient>
   CSSValue ParseBool();
 
@@ -311,6 +317,7 @@ class CSSStringParser final {
   bool BackgroundSize(CSSValue& x, CSSValue& y);
   /// <repeat-style> = repeat-x | repeat-y | [ repeat | no-repeat] {1, 2}
   bool BackgroundRepeatStyle(uint32_t& x, uint32_t& y);
+  bool MaskComposite(uint32_t& composite);
   /// <text-decoration-line> = none | [underline || line-through]
   bool TextDecorationLine();
   /// <text-decoration-style> = solid | double | dotted | dashed | wavy
@@ -443,13 +450,11 @@ class CSSStringParser final {
       const Token& token);
   static CSSValue ConsumeTimingFunction(const Token& token,
                                         const CSSParserConfigs& configs);
-  static void BackgroundLayerToArray(const CSSBackgroundLayer& layer,
-                                     lepus::CArray* image_array,
-                                     lepus::CArray* position_array,
-                                     lepus::CArray* size_array,
-                                     lepus::CArray* origin_array,
-                                     lepus::CArray* repeat_array,
-                                     lepus::CArray* clip_array);
+  static void BackgroundLayerToArray(
+      const CSSBackgroundLayer& layer, lepus::CArray* image_array,
+      lepus::CArray* position_array, lepus::CArray* size_array,
+      lepus::CArray* origin_array, lepus::CArray* repeat_array,
+      lepus::CArray* clip_array, lepus::CArray* composite_array);
   static void ClampColorAndStopList(base::Vector<uint32_t>& colors,
                                     base::Vector<float>& stops);
   static void ClampColorAndStopListAtFront(base::Vector<uint32_t>& colors,

@@ -1520,6 +1520,18 @@ void BaseView::SetMaskImage(const clay::Value::Array& array) {
     return;
   }
 
+  const auto first_type =
+      static_cast<ClayMaskImageType>(utils::GetUint(array[0]));
+  if (array.size() == 1 && first_type == ClayMaskImageType::kNone) {
+    ClearMask();
+    return;
+  }
+
+  if (array.size() % 2 != 0) {
+    FML_DCHECK(false);
+    return;
+  }
+
   render_object()->ResizeMask(array.size() / 2);
   for (size_t i = 0; i < array.size(); i = i + 2) {
     const auto& type = static_cast<ClayMaskImageType>(utils::GetUint(array[i]));
@@ -1553,6 +1565,11 @@ void BaseView::SetMaskImage(const clay::Value::Array& array) {
   }
 }
 
+void BaseView::ClearMask() {
+  ++mask_image_loader_token_;
+  render_object()->ClearMask();
+}
+
 void BaseView::SetMaskPosition(const std::vector<MaskPosition>& positions) {
   render_object()->SetMaskPosition(positions);
 }
@@ -1562,6 +1579,10 @@ void BaseView::SetMaskRepeat(const clay::Value::Array& array) {
   for (size_t i = 0; i < array.size(); i++) {
     repeats[i] = static_cast<ClayMaskRepeatType>(utils::GetInt(array[i]));
   }
+  SetMaskRepeat(std::move(repeats));
+}
+
+void BaseView::SetMaskRepeat(std::vector<ClayMaskRepeatType>&& repeats) {
   render_object()->SetMaskRepeat(repeats);
 }
 
@@ -1570,6 +1591,10 @@ void BaseView::SetMaskOrigin(const clay::Value::Array& array) {
   for (size_t i = 0; i < array.size(); i++) {
     origins[i] = static_cast<ClayMaskOriginType>(utils::GetInt(array[i]));
   }
+  SetMaskOrigin(std::move(origins));
+}
+
+void BaseView::SetMaskOrigin(std::vector<ClayMaskOriginType>&& origins) {
   render_object()->SetMaskOrigin(origins);
 }
 
@@ -1582,7 +1607,19 @@ void BaseView::SetMaskClip(const clay::Value::Array& array) {
   for (size_t i = 0; i < array.size(); i++) {
     clips[i] = static_cast<ClayMaskClipType>(utils::GetInt(array[i]));
   }
+  SetMaskClip(std::move(clips));
+}
+
+void BaseView::SetMaskClip(std::vector<ClayMaskClipType>&& clips) {
   render_object()->SetMaskClip(clips);
+}
+
+void BaseView::SetMaskComposite(const clay::Value::Array& array) {
+  std::vector<ClayMaskCompositeType> composites(array.size());
+  for (size_t i = 0; i < array.size(); i++) {
+    composites[i] = static_cast<ClayMaskCompositeType>(utils::GetInt(array[i]));
+  }
+  render_object()->SetMaskComposite(composites);
 }
 
 TransitionManager* BaseView::TransitionMgr() {

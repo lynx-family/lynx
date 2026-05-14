@@ -56,7 +56,7 @@ class ImagePainter {
 
   void PaintSingleMaskImage(GrCanvas* canvas, const MaskImage& mask_image,
                             const FloatRect& src_rect,
-                            const FloatRect& dst_rect,
+                            const FloatRect& dst_rect, BlendMode blend_mode,
                             fml::RefPtr<GPUUnrefQueue> unref_queue);
 
   RenderBox* render_box_ = nullptr;

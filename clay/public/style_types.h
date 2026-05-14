@@ -112,6 +112,13 @@ enum class ClayMaskClipType {
   kContentBox = 2,
 };
 
+enum class ClayMaskCompositeType {
+  kAdd = 0,
+  kSubtract = 1,
+  kIntersect = 2,
+  kExclude = 3,
+};
+
 using ClayMaskImageType = ClayBackgroundImageType;
 using ClayMaskOriginType = ClayBackgroundOriginType;
 using ClayMaskRepeatType = ClayBackgroundRepeatType;

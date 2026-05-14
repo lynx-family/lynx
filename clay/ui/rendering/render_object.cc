@@ -371,6 +371,14 @@ void RenderObject::ResizeMask(size_t size) {
   }
 }
 
+void RenderObject::ClearMask() {
+  if (!mask_data_.has_value()) {
+    return;
+  }
+  mask_data_.reset();
+  MarkNeedsPaint();
+}
+
 #ifndef ENABLE_SKITY
 void RenderObject::SetBackgroundImage(size_t index,
                                       std::unique_ptr<ImageResource> resource) {
@@ -519,6 +527,13 @@ void RenderObject::SetMaskSize(const std::vector<MaskSize>& mask_sizes) {
 void RenderObject::SetMaskClip(const std::vector<ClayMaskClipType>& clips) {
   ENSURE_MASKIMAGE();
   mask_data_->clips = clips;
+  MarkNeedsPaint();
+}
+
+void RenderObject::SetMaskComposite(
+    const std::vector<ClayMaskCompositeType>& composites) {
+  ENSURE_MASKIMAGE();
+  mask_data_->composites = composites;
   MarkNeedsPaint();
 }
 

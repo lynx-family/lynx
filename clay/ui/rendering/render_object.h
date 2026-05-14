@@ -269,6 +269,7 @@ class RenderObject : public AbstractNode {
   const BackgroundData& Background() const { return *background_data_; }
   void ResizeBackground(size_t size);
   void ResizeMask(size_t size);
+  void ClearMask();
 
   bool HasMask() const { return mask_data_.has_value(); }
   const MaskData& Mask() const { return *mask_data_; }
@@ -299,6 +300,7 @@ class RenderObject : public AbstractNode {
   void SetMaskOrigin(const std::vector<ClayMaskOriginType>& origins);
   void SetMaskSize(const std::vector<MaskSize>& mask_sizes);
   void SetMaskClip(const std::vector<ClayMaskClipType>& clips);
+  void SetMaskComposite(const std::vector<ClayMaskCompositeType>& composites);
 
   void SetHasDefaultFocusRing(bool has_default_focus_ring);
   bool HasDefaultFocusRing() const { return has_default_focus_ring_; }

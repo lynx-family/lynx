@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "clay/gfx/geometry/float_rounded_rect.h"
 #ifndef ENABLE_SKITY
 #ifdef ENABLE_SVG
 #include "third_party/skia/modules/svg/include/SkSVGDOM.h"
@@ -162,6 +163,8 @@ using GrPicturePtr = sk_sp<SkPicture>;
   canvas->clipRect(clay::ConvertSkityRectToSkRect(rect))
 #define CANVAS_CLIP_RECT_WITH_OP(canvas, rect, op) \
   canvas->clipRect(clay::ConvertSkityRectToSkRect(rect), op)
+#define CANVAS_CLIP_RRECT_WITH_OP(canvas, rect, op) \
+  canvas->clipRRect(clay::ConvertSkityRRectToSkia(rect), op, true)
 #define CANVAS_DRAW_PAINT(canvas, paint) canvas->drawPaint(paint)
 #define CANVAS_DRAW_IMAGE(canvas, image, bound, sampling_options, paint) \
   canvas->drawImage(image, bound.Left(), bound.Top(), sampling_options, paint)
@@ -400,6 +403,7 @@ using GrPicturePtr = std::shared_ptr<skity::DisplayList>;
 #define CANVAS_DRAW_PATH(canvas, path, paint) canvas->DrawPath(path, paint)
 #define CANVAS_CLIP_RECT(canvas, rect) canvas->ClipRect(rect)
 #define CANVAS_CLIP_RECT_WITH_OP(canvas, rect, op) canvas->ClipRect(rect, op)
+#define CANVAS_CLIP_RRECT_WITH_OP(canvas, rect, op) canvas->ClipRRect(rect, op)
 #define CANVAS_DRAW_PAINT(canvas, paint) canvas->DrawPaint(paint)
 #define CANVAS_DRAW_IMAGE(canvas, image, bound, sampling_options, paint) \
   canvas->DrawImage(image, bound, sampling_options, paint)

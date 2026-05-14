@@ -53,6 +53,7 @@
 #include "core/renderer/css/parser/handler_defines.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/parser/list_gap_handler.h"
+#include "core/renderer/css/parser/mask_composite_handler.h"
 #include "core/renderer/css/parser/mask_shorthand_handler.h"
 #include "core/renderer/css/parser/number_handler.h"
 #include "core/renderer/css/parser/offset_rotate_handler.h"
@@ -237,6 +238,7 @@ UnitHandler::UnitHandler() {
   BackgroundRepeatHandler::Register(interceptors_);
   BackgroundSizeHandler::Register(interceptors_);
   MaskShorthandHandler::Register(interceptors_);
+  MaskCompositeHandler::Register(interceptors_);
   FilterHandler::Register(interceptors_);
   VerticalAlignHandler::Register(interceptors_);
   RelativeAlignHandler::Register(interceptors_);

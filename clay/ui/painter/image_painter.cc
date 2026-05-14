@@ -12,6 +12,7 @@
 
 #include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
+#include "clay/gfx/geometry/float_rounded_rect.h"
 #include "clay/gfx/image/image_resource.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/ui/common/background_data.h"
@@ -133,6 +134,67 @@ FloatRect GetPaintingBox(RenderBox* render_box, const FloatRect& frame_rect,
   return FloatRect(output_x, output_y, output_w, output_h);
 }
 
+FloatRoundedRect GetMaskClipRoundedRect(RenderBox* render_box,
+                                        const FloatRect& frame_rect,
+                                        ClayMaskClipType clip) {
+  float top_inset = 0.f;
+  float right_inset = 0.f;
+  float bottom_inset = 0.f;
+  float left_inset = 0.f;
+
+  if (clip == ClayMaskClipType::kPaddingBox ||
+      clip == ClayMaskClipType::kContentBox) {
+    top_inset += render_box->BorderTop();
+    right_inset += render_box->BorderRight();
+    bottom_inset += render_box->BorderBottom();
+    left_inset += render_box->BorderLeft();
+  }
+
+  if (clip == ClayMaskClipType::kContentBox) {
+    top_inset += render_box->PaddingTop();
+    right_inset += render_box->PaddingRight();
+    bottom_inset += render_box->PaddingBottom();
+    left_inset += render_box->PaddingLeft();
+  }
+
+  FloatRect clip_rect = frame_rect;
+  clip_rect.Expand(-top_inset, -right_inset, -bottom_inset, -left_inset);
+
+  if (!render_box->HasBorder() || !render_box->Border().HasBorderRadius()) {
+    return FloatRoundedRect(clip_rect);
+  }
+
+  const auto& border = render_box->Border();
+  FloatRoundedRect outer_rounded_rect(
+      frame_rect,
+      FloatRoundedRect::Radii(
+          FloatSize(border.radius_x_top_left_, border.radius_y_top_left_),
+          FloatSize(border.radius_x_top_right_, border.radius_y_top_right_),
+          FloatSize(border.radius_x_bottom_left_, border.radius_y_bottom_left_),
+          FloatSize(border.radius_x_bottom_right_,
+                    border.radius_y_bottom_right_)));
+  outer_rounded_rect.ConstraintRadii();
+
+  auto clip_radii = outer_rounded_rect.radii();
+  if (!clip_radii.IsZero()) {
+    clip_radii.Shrink(top_inset, right_inset, bottom_inset, left_inset);
+  }
+
+  FloatRoundedRect clip_rounded_rect(clip_rect, clip_radii);
+  clip_rounded_rect.ConstraintRadii();
+  return clip_rounded_rect;
+}
+
+void ClipMaskLayer(GrCanvas* canvas,
+                   const FloatRoundedRect& clip_rounded_rect) {
+  if (!clip_rounded_rect.IsRounded()) {
+    CANVAS_CLIP_RECT(canvas, clip_rounded_rect.rect());
+    return;
+  }
+
+  CANVAS_CLIP_RRECT_WITH_OP(canvas, clip_rounded_rect, GrClipOp::kIntersect);
+}
+
 FloatSize GetBackgroundSize(float width, float height,
                             const BackgroundSize& size_x,
                             const BackgroundSize& size_y, float output_w,
@@ -175,6 +237,21 @@ inline float GetPixelRatio(Renderer* renderer) {
   }
   return renderer->GetPixelRatio<kPixelTypeLogical, kPixelTypeClay>();
 }
+
+BlendMode MaskCompositeToBlendMode(ClayMaskCompositeType composite) {
+  switch (composite) {
+    case ClayMaskCompositeType::kAdd:
+      return BlendMode::kSrcOver;
+    case ClayMaskCompositeType::kSubtract:
+      return BlendMode::kSrcOut;
+    case ClayMaskCompositeType::kIntersect:
+      return BlendMode::kSrcIn;
+    case ClayMaskCompositeType::kExclude:
+      return BlendMode::kXor;
+  }
+  return BlendMode::kSrcOver;
+}
+
 }  // namespace
 
 skity::Vec2 ImagePainter::CalculateSize(FillMode mode,
@@ -560,10 +637,10 @@ void ImagePainter::PaintMaskImage(GrCanvas* canvas,
   auto frame_rect = render_box_->GetFrameRect();
   frame_rect.SetX(0);
   frame_rect.SetY(0);
-  for (size_t index = 0; index < mask.images.size(); index++) {
+  auto paint_layer = [&](size_t index, BlendMode blend_mode) -> bool {
     const MaskImage& mask_image = mask.images[index];
     if (mask_image.IsEmpty()) {
-      continue;
+      return true;
     }
 
     // Consider origin.
@@ -601,7 +678,7 @@ void ImagePainter::PaintMaskImage(GrCanvas* canvas,
       width = size.width();
       height = size.height();
       if (width < 1 || height < 1) {
-        return;
+        return false;
       }
       // linear-gradient size should be updated by mask-size.
       if (!mask_image.IsSkImage()) {
@@ -611,29 +688,14 @@ void ImagePainter::PaintMaskImage(GrCanvas* canvas,
     }
 
     // Consider clip.
-    FloatRect clip_rect;
-    FloatPoint offset(render_box_->location());
     ClayMaskClipType clip_type = ClayMaskClipType::kBorderBox;
     if (!mask.clips.empty()) {
       auto clip_index = index % mask.clips.size();
       clip_type = mask.clips[clip_index];
     }
-    switch (clip_type) {
-      case ClayMaskClipType::kBorderBox: {
-        clip_rect = frame_rect;
-        break;
-      }
-      case ClayMaskClipType::kPaddingBox: {
-        clip_rect = render_box_->PaddingRect();
-        clip_rect.Move(-offset.x(), -offset.y());
-        break;
-      }
-      case ClayMaskClipType::kContentBox: {
-        clip_rect = render_box_->ContentRect();
-        clip_rect.Move(-offset.x(), -offset.y());
-        break;
-      }
-    }
+    FloatRoundedRect clip_rounded_rect =
+        GetMaskClipRoundedRect(render_box_, frame_rect, clip_type);
+    const FloatRect& clip_rect = clip_rounded_rect.rect();
 
     // Consider positions.
     float offset_x = painting_box.x(), offset_y = painting_box.y();
@@ -665,12 +727,13 @@ void ImagePainter::PaintMaskImage(GrCanvas* canvas,
     FloatRect src_rect = FloatRect(0, 0, image_width, image_height);
     FloatRect dst_rect = FloatRect(0, 0, width, height);
     int save_count = CANVAS_GET_SAVE_COUNT(canvas);
-    CANVAS_CLIP_RECT(canvas, clip_rect);
+    ClipMaskLayer(canvas, clip_rounded_rect);
     if (repeat_x == ClayBackgroundRepeatType::kNoRepeat &&
         repeat_y == ClayBackgroundRepeatType::kNoRepeat) {
       CANVAS_SAVE(canvas);
       CANVAS_TRANSLATE(canvas, offset_x, offset_y);
-      PaintSingleMaskImage(canvas, mask_image, src_rect, dst_rect, unref_queue);
+      PaintSingleMaskImage(canvas, mask_image, src_rect, dst_rect, blend_mode,
+                           unref_queue);
       CANVAS_RESTORE(canvas);
     } else {
       float end_x = std::max(painting_box.x() + painting_box.width(),
@@ -694,7 +757,7 @@ void ImagePainter::PaintMaskImage(GrCanvas* canvas,
           CANVAS_SAVE(canvas);
           CANVAS_TRANSLATE(canvas, x, y);
           PaintSingleMaskImage(canvas, mask_image, src_rect, dst_rect,
-                               unref_queue);
+                               blend_mode, unref_queue);
           CANVAS_RESTORE(canvas);
           if (repeat_y == ClayBackgroundRepeatType::kNoRepeat) {
             break;
@@ -707,15 +770,51 @@ void ImagePainter::PaintMaskImage(GrCanvas* canvas,
       CANVAS_RESTORE(canvas);
     }
     CANVAS_RESTORE_TO_COUNT(canvas, save_count);
+    return true;
+  };
+
+  if (mask.composites.empty()) {
+    for (size_t index = 0; index < mask.images.size(); index++) {
+      if (!paint_layer(index, BlendMode::kPlus)) {
+        return;
+      }
+    }
+    return;
+  }
+
+  for (size_t reverse_index = mask.images.size(); reverse_index > 0;
+       reverse_index--) {
+    const size_t index = reverse_index - 1;
+    if (index == mask.images.size() - 1) {
+      if (!paint_layer(index, BlendMode::kSrc)) {
+        return;
+      }
+      continue;
+    }
+    // Porter-Duff mask compositing must run over the full mask bounds. Drawing
+    // the source directly only affects covered source pixels, which leaves
+    // stale destination pixels for operators such as subtract and intersect.
+    GrPaint composite_paint;
+    PAINT_SET_BLEND_MODE(composite_paint,
+                         MaskCompositeToBlendMode(
+                             mask.composites[index % mask.composites.size()]));
+    int save_count = CANVAS_GET_SAVE_COUNT(canvas);
+    CANVAS_SAVELAYER(canvas, frame_rect, composite_paint);
+    bool success = paint_layer(index, BlendMode::kSrc);
+    CANVAS_RESTORE_TO_COUNT(canvas, save_count);
+    if (!success) {
+      return;
+    }
   }
 }
 
 void ImagePainter::PaintSingleMaskImage(
     GrCanvas* canvas, const MaskImage& mask_image, const FloatRect& src_rect,
-    const FloatRect& dst_rect, fml::RefPtr<GPUUnrefQueue> unref_queue) {
+    const FloatRect& dst_rect, BlendMode blend_mode,
+    fml::RefPtr<GPUUnrefQueue> unref_queue) {
   auto image_resource = mask_image.GetImageResource();
   GrPaint mask_paint;
-  PAINT_SET_BLEND_MODE(mask_paint, BlendMode::kPlus);
+  PAINT_SET_BLEND_MODE(mask_paint, blend_mode);
 
 #ifdef ENABLE_SKITY
   if (image_resource) {

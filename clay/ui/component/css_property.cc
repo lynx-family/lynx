@@ -37,6 +37,96 @@ static std::vector<Length> GetBorderRadius(const clay::Value::Array& array) {
   return values;
 }
 
+static void AppendMaskPositions(std::vector<MaskPosition>& positions,
+                                const clay::Value::Array& array) {
+  FML_DCHECK(array.size() % 2 == 0);
+  if (array.size() % 2 != 0) {
+    return;
+  }
+  for (size_t i = 0; i < array.size(); i += 2) {
+    positions.emplace_back(
+        utils::GetDouble(array[i]),
+        static_cast<ClayPlatformLengthUnit>(utils::GetInt(array[i + 1])));
+  }
+}
+
+static void SetMaskPosition(BaseView* view, const clay::Value::Array& array) {
+  std::vector<MaskPosition> positions;
+  if (!array.empty() && array.front().IsArray()) {
+    for (const auto& layer : array) {
+      AppendMaskPositions(positions, utils::GetArray(layer));
+    }
+  } else {
+    AppendMaskPositions(positions, array);
+  }
+  view->SetMaskPosition(positions);
+}
+
+static void AppendMaskSizes(std::vector<MaskSize>& sizes,
+                            const clay::Value::Array& array) {
+  FML_DCHECK(array.size() % 2 == 0);
+  if (array.size() % 2 != 0) {
+    return;
+  }
+  for (size_t i = 0; i < array.size(); i += 2) {
+    sizes.emplace_back(
+        utils::GetDouble(array[i]),
+        static_cast<ClayPlatformLengthUnit>(utils::GetInt(array[i + 1])));
+  }
+}
+
+static void SetMaskSize(BaseView* view, const clay::Value::Array& array) {
+  std::vector<MaskSize> sizes;
+  if (!array.empty() && array.front().IsArray()) {
+    for (const auto& layer : array) {
+      AppendMaskSizes(sizes, utils::GetArray(layer));
+    }
+  } else {
+    AppendMaskSizes(sizes, array);
+  }
+  view->SetMaskSize(sizes);
+}
+
+static void SetMaskRepeat(BaseView* view, const clay::Value::Array& array) {
+  std::vector<ClayMaskRepeatType> repeats;
+  if (!array.empty() && array.front().IsArray()) {
+    for (const auto& layer : array) {
+      for (const auto& item : utils::GetArray(layer)) {
+        repeats.emplace_back(
+            static_cast<ClayMaskRepeatType>(utils::GetInt(item)));
+      }
+    }
+  } else {
+    for (const auto& item : array) {
+      repeats.emplace_back(
+          static_cast<ClayMaskRepeatType>(utils::GetInt(item)));
+    }
+  }
+  view->SetMaskRepeat(std::move(repeats));
+}
+
+static void SetMaskOrigin(BaseView* view, const clay::Value::Array& array) {
+  std::vector<ClayMaskOriginType> origins;
+  for (const auto& item : array) {
+    origins.emplace_back(static_cast<ClayMaskOriginType>(utils::GetInt(item)));
+  }
+  view->SetMaskOrigin(std::move(origins));
+}
+
+static void SetMaskClip(BaseView* view, const clay::Value::Array& array) {
+  std::vector<ClayMaskClipType> clips;
+  for (const auto& item : array) {
+    clips.emplace_back(static_cast<ClayMaskClipType>(utils::GetInt(item)));
+  }
+  view->SetMaskClip(std::move(clips));
+}
+
+static bool IsMaskImageNone(const clay::Value::Array& array) {
+  return array.size() == 1 &&
+         static_cast<ClayMaskImageType>(utils::GetUint(array[0])) ==
+             ClayMaskImageType::kNone;
+}
+
 bool CSSProperty::SetAttribute(BaseView* view, KeywordID property_id,
                                const clay::Value& value) {
   switch (property_id) {
@@ -92,26 +182,30 @@ bool CSSProperty::SetAttribute(BaseView* view, KeywordID property_id,
         view->SetBackgroundSize(std::move(sizes));
       }
     } break;
-
+    case KeywordID::kMask: {
+      const auto& array = utils::GetArray(value);
+      if (array.size() >= 7) {
+        const auto& mask_images = utils::GetArray(array[1]);
+        if (IsMaskImageNone(mask_images)) {
+          view->ClearMask();
+          break;
+        }
+        view->SetMaskImage(mask_images);
+        SetMaskPosition(view, utils::GetArray(array[2]));
+        SetMaskSize(view, utils::GetArray(array[3]));
+        SetMaskRepeat(view, utils::GetArray(array[4]));
+        SetMaskOrigin(view, utils::GetArray(array[5]));
+        SetMaskClip(view, utils::GetArray(array[6]));
+        if (array.size() >= 8) {
+          view->SetMaskComposite(utils::GetArray(array[7]));
+        }
+      }
+    } break;
     case KeywordID::kMaskImage: {
       view->SetMaskImage(utils::GetArray(value));
     } break;
     case KeywordID::kMaskPosition: {
-      const auto& array = utils::GetArray(value);
-      FML_DCHECK(array.size() % 2 == 0);
-      if (array.size() % 2 == 0) {
-        std::vector<MaskPosition> positions;
-        for (size_t i = 0; i < array.size(); i += 2) {
-          // For keyword values, Lynx is responsible for converting them to
-          // {value, kPercent} format. For example, 'top' would be converted to
-          // {0.f, kPercent}
-          double value = utils::GetDouble(array[i]);
-          ClayPlatformLengthUnit type =
-              static_cast<ClayPlatformLengthUnit>(utils::GetInt(array[i + 1]));
-          positions.emplace_back(value, type);
-        }
-        view->SetMaskPosition(std::move(positions));
-      }
+      SetMaskPosition(view, utils::GetArray(value));
     } break;
     case KeywordID::kMaskOrigin: {
       view->SetMaskOrigin(utils::GetArray(value));
@@ -120,21 +214,13 @@ bool CSSProperty::SetAttribute(BaseView* view, KeywordID property_id,
       view->SetMaskRepeat(utils::GetArray(value));
     } break;
     case KeywordID::kMaskSize: {
-      const auto& array = utils::GetArray(value);
-      FML_DCHECK(array.size() % 2 == 0);
-      if (array.size() % 2 == 0) {
-        std::vector<MaskSize> sizes;
-        for (size_t i = 0; i < array.size(); i += 2) {
-          double value = utils::GetDouble(array[i]);
-          ClayPlatformLengthUnit type =
-              static_cast<ClayPlatformLengthUnit>(utils::GetInt(array[i + 1]));
-          sizes.emplace_back(value, type);
-        }
-        view->SetMaskSize(std::move(sizes));
-      }
+      SetMaskSize(view, utils::GetArray(value));
     } break;
     case KeywordID::kMaskClip: {
       view->SetMaskClip(utils::GetArray(value));
+    } break;
+    case KeywordID::kMaskComposite: {
+      view->SetMaskComposite(utils::GetArray(value));
     } break;
     case KeywordID::kBorderColor: {
       view->SetBorderColor({Side::kAll}, {utils::GetUint(value)});
