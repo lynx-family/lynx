@@ -1,0 +1,171 @@
+lynx/core/animation/css_keyframe_manager.cc
+  0a009f64ef04bc41 330,333 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a058dd86af5bacee25f1820","tool_type":"agent","tool_id":"SearchReplace","line_ranges":[{"Single":330},{"Single":333}]}]}
+lynx/core/animation/keyframed_animation_curve.h
+  0a009f64ef04bc41 306-307 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a058dd86af5bacee25f1820","tool_type":"agent","tool_id":"SearchReplace","line_ranges":[{"Range":[306,307]}]}]}
+lynx/core/animation/keyframed_animation_curve.cc
+  0a009f64ef04bc41 884,887-892,894,932,934,937-948,951 gitai:{"mixed_line_ranges":[{"Single":942}],"operations":[{"operation_id":"6a058dd86af5bacee25f1820","tool_type":"agent","tool_id":"SearchReplace","line_ranges":[{"Single":884},{"Range":[887,892]},{"Single":894},{"Single":932},{"Single":934},{"Range":[937,948]},{"Single":951}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "cbf8be5f465c5ada8dc69478e11bda6c7695b16b",
+  "prompts": {
+    "0a009f64ef04bc41": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a0587416af5bacee25f1694",
+        "model": "c_o_new_thinking__dev"
+      },
+      "human_author": "baiqiang <baiqiang@bytedance.com>",
+      "messages": [],
+      "total_additions": 27,
+      "total_deletions": 45,
+      "accepted_lines": 26,
+      "overriden_lines": 1
+    }
+  },
+  "attestation_metadata": {
+    "lynx/core/animation/css_keyframe_manager.cc": [
+      {
+        "hash": "0a009f64ef04bc41",
+        "line_ranges": [
+          {
+            "Single": 330
+          },
+          {
+            "Single": 333
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a058dd86af5bacee25f1820",
+            "tool_type": "agent",
+            "tool_id": "SearchReplace",
+            "line_ranges": [
+              {
+                "Single": 330
+              },
+              {
+                "Single": 333
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "lynx/core/animation/keyframed_animation_curve.cc": [
+      {
+        "hash": "0a009f64ef04bc41",
+        "line_ranges": [
+          {
+            "Single": 884
+          },
+          {
+            "Range": [
+              887,
+              892
+            ]
+          },
+          {
+            "Single": 894
+          },
+          {
+            "Single": 932
+          },
+          {
+            "Single": 934
+          },
+          {
+            "Range": [
+              937,
+              948
+            ]
+          },
+          {
+            "Single": 951
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 942
+          }
+        ],
+        "operations": [
+          {
+            "operation_id": "6a058dd86af5bacee25f1820",
+            "tool_type": "agent",
+            "tool_id": "SearchReplace",
+            "line_ranges": [
+              {
+                "Single": 884
+              },
+              {
+                "Range": [
+                  887,
+                  892
+                ]
+              },
+              {
+                "Single": 894
+              },
+              {
+                "Single": 932
+              },
+              {
+                "Single": 934
+              },
+              {
+                "Range": [
+                  937,
+                  948
+                ]
+              },
+              {
+                "Single": 951
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "lynx/core/animation/keyframed_animation_curve.h": [
+      {
+        "hash": "0a009f64ef04bc41",
+        "line_ranges": [
+          {
+            "Range": [
+              306,
+              307
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a058dd86af5bacee25f1820",
+            "tool_type": "agent",
+            "tool_id": "SearchReplace",
+            "line_ranges": [
+              {
+                "Range": [
+                  306,
+                  307
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "0a009f64ef04bc41": {
+      "tool": "trae",
+      "conversation_id": "6a0587416af5bacee25f1694",
+      "session_id": "6a0587416af5bacee25f1694",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
