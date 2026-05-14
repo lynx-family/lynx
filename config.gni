@@ -103,6 +103,9 @@ declare_args() {
 
   # Controls whether to enable RTS NG
   disable_rts_ng = false
+
+  # Controls whether to disable RTS DevTool integration
+  disable_rts_devtool = false
 }
 
 declare_args() {
