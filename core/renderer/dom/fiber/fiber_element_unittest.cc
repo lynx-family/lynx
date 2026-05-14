@@ -9808,6 +9808,118 @@ TEST_P(FiberElementTest, SerializeTypedTemplateElement) {
   EXPECT_EQ(serialized_child.GetProperty("uid").StdString(), "child_uid");
 }
 
+TEST_P(FiberElementTest, CreateElementTemplateDoesNotPrepareBeforeTree) {
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  lepus::Value args[] = {lepus::Value("root_template")};
+  auto created_value =
+      RendererFunctions::FiberCreateElementTemplate(mts_ctx, args, 1);
+
+  ASSERT_TRUE(created_value.IsRefCounted());
+  auto created_element =
+      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+          .strongify();
+  ASSERT_NE(created_element, nullptr);
+  ASSERT_TRUE(created_element->is_template());
+  auto* created_template = static_cast<TemplateElement*>(created_element.get());
+  EXPECT_FALSE(created_template->is_in_template_tree_);
+  EXPECT_EQ(created_template->async_create_task_, nullptr);
+}
+
+TEST_P(FiberElementTest, PageTemplateElementSlotsPrepareChildrenRecursively) {
+  auto compiled_child =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  compiled_child->SetTemplateKey(base::String("compiled_child"));
+
+  auto typed_parent =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  typed_parent->SetTypedTag(base::String("list"));
+  auto typed_parent_slot_children = lepus::CArray::Create();
+  typed_parent_slot_children->emplace_back(lepus::Value(compiled_child));
+  auto typed_parent_slots = lepus::CArray::Create();
+  typed_parent_slots->emplace_back(lepus::Value(typed_parent_slot_children));
+  typed_parent->SetElementSlots(lepus::Value(typed_parent_slots));
+
+  EXPECT_FALSE(typed_parent->is_in_template_tree_);
+  EXPECT_FALSE(compiled_child->is_in_template_tree_);
+  EXPECT_EQ(compiled_child->async_create_task_, nullptr);
+
+  auto page = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  page->SetTypedTag(base::String("page"));
+  auto page_slot_children = lepus::CArray::Create();
+  page_slot_children->emplace_back(lepus::Value(typed_parent));
+  auto page_slots = lepus::CArray::Create();
+  page_slots->emplace_back(lepus::Value(page_slot_children));
+  page->SetElementSlots(lepus::Value(page_slots));
+
+  EXPECT_TRUE(page->is_in_template_tree_);
+  EXPECT_TRUE(typed_parent->is_in_template_tree_);
+  EXPECT_TRUE(compiled_child->is_in_template_tree_);
+  EXPECT_EQ(page->async_create_task_, nullptr);
+  EXPECT_EQ(typed_parent->async_create_task_, nullptr);
+  EXPECT_NE(compiled_child->async_create_task_, nullptr);
+}
+
+TEST_P(FiberElementTest, NonPageTemplateElementSlotsDoNotPrepareBeforeTree) {
+  auto compiled_child =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  compiled_child->SetTemplateKey(base::String("compiled_child"));
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(compiled_child));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+
+  auto typed_parent =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  typed_parent->SetTypedTag(base::String("list"));
+  typed_parent->SetElementSlots(lepus::Value(element_slots));
+
+  EXPECT_FALSE(typed_parent->is_in_template_tree_);
+  EXPECT_FALSE(compiled_child->is_in_template_tree_);
+  EXPECT_EQ(compiled_child->async_create_task_, nullptr);
+}
+
+TEST_P(FiberElementTest, InsertElementSlotChildMarksChildInTreeBeforeResolve) {
+  auto grandchild =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  grandchild->SetTemplateKey(base::String("grandchild_template"));
+
+  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child->SetTypedTag(base::String("list"));
+  auto child_slot_children = lepus::CArray::Create();
+  child_slot_children->emplace_back(lepus::Value(grandchild));
+  auto child_slots = lepus::CArray::Create();
+  child_slots->emplace_back(lepus::Value(child_slot_children));
+  child->SetElementSlots(lepus::Value(child_slots));
+
+  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  parent->SetTypedTag(base::String("page"));
+  parent->SetElementSlots(lepus::Value(lepus::CArray::Create()));
+  ASSERT_TRUE(parent->is_in_template_tree_);
+
+  parent->InsertElementSlotChild(0, child, nullptr);
+
+  EXPECT_EQ(parent->result_, nullptr);
+  ASSERT_EQ(parent->pending_operations_.size(), 1u);
+  EXPECT_TRUE(child->is_in_template_tree_);
+  EXPECT_TRUE(grandchild->is_in_template_tree_);
+  EXPECT_EQ(child->async_create_task_, nullptr);
+  EXPECT_NE(grandchild->async_create_task_, nullptr);
+
+  parent->RemoveElementSlotChild(0, child);
+  EXPECT_TRUE(child->is_in_template_tree_);
+  EXPECT_TRUE(grandchild->is_in_template_tree_);
+}
+
 TEST_P(FiberElementTest, TypedTemplateElementAppliesRootAttributesAsSpread) {
   auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   root->SetTypedTag(base::String("view"));

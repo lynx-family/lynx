@@ -42,9 +42,7 @@ class TemplateElement : public FiberElement {
   void SetAttributeSlots(const lepus::Value& attribute_slots) {
     attribute_slots_ = attribute_slots;
   }
-  void SetElementSlots(const lepus::Value& element_slots) {
-    element_slots_ = element_slots;
-  }
+  void SetElementSlots(const lepus::Value& element_slots);
   void SetUid(const lepus::Value& uid) { uid_ = uid; }
 
   void PrepareAsyncCreateElementTree();
@@ -104,6 +102,10 @@ class TemplateElement : public FiberElement {
   void ApplyAttributeSlotToTarget(uint32_t slot_index,
                                   const lepus::Value& previous_attribute_slots);
   void InitTypedRoot();
+  bool IsPageTemplate() const;
+  void MarkInTemplateTreeAndPrepare();
+  void MarkInTemplateTreeAndPrepareRecursively();
+  void MarkTemplateChildrenInElementSlotsInTree();
   void ApplyRootAttributes(const lepus::Value& previous_root_attributes);
   void ApplyInitialElementSlots();
   void ApplyPendingOperations();
@@ -140,6 +142,7 @@ class TemplateElement : public FiberElement {
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
   base::Vector<PendingOperation> pending_operations_;
   base::OnceTaskRefptr<GeneratedElementsResult> async_create_task_{nullptr};
+  bool is_in_template_tree_{false};
 };
 
 }  // namespace tasm

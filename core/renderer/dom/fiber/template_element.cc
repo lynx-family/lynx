@@ -17,6 +17,7 @@
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/template_entry.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/value_utils.h"
 
 namespace lynx {
@@ -181,6 +182,12 @@ TemplateElement::~TemplateElement() = default;
 
 void TemplateElement::SetTypedTag(const base::String& typed_tag) {
   typed_tag_ = typed_tag;
+  if (IsPageTemplate()) {
+    MarkInTemplateTreeAndPrepare();
+  }
+  if (is_in_template_tree_) {
+    MarkTemplateChildrenInElementSlotsInTree();
+  }
 }
 
 void TemplateElement::SetRootAttributes(const lepus::Value& attributes) {
@@ -193,6 +200,16 @@ void TemplateElement::SetRootAttributes(const lepus::Value& attributes) {
                          ? lepus::Value::Clone(attributes.ToLepusValue())
                          : lepus::Value();
   ApplyRootAttributes(previous_root_attributes);
+}
+
+void TemplateElement::SetElementSlots(const lepus::Value& element_slots) {
+  element_slots_ = element_slots;
+  if (IsPageTemplate()) {
+    MarkInTemplateTreeAndPrepare();
+  }
+  if (is_in_template_tree_) {
+    MarkTemplateChildrenInElementSlotsInTree();
+  }
 }
 
 void TemplateElement::PrepareAsyncCreateElementTree() {
@@ -309,6 +326,54 @@ void TemplateElement::InitTypedRoot() {
 
   element_slot_targets_.clear();
   element_slot_targets_.push_back(ElementSlotMountPoint{result_, nullptr});
+}
+
+bool TemplateElement::IsPageTemplate() const {
+  return IsTypedTemplate() && typed_tag_.IsEqual(kElementPageTag);
+}
+
+void TemplateElement::MarkInTemplateTreeAndPrepare() {
+  if (is_in_template_tree_) {
+    return;
+  }
+  is_in_template_tree_ = true;
+  PrepareAsyncCreateElementTree();
+}
+
+void TemplateElement::MarkInTemplateTreeAndPrepareRecursively() {
+  if (is_in_template_tree_) {
+    return;
+  }
+  MarkInTemplateTreeAndPrepare();
+  MarkTemplateChildrenInElementSlotsInTree();
+}
+
+void TemplateElement::MarkTemplateChildrenInElementSlotsInTree() {
+  if (!element_slots_.IsArrayOrJSArray()) {
+    return;
+  }
+
+  for (size_t slot_index = 0;
+       slot_index < static_cast<size_t>(element_slots_.GetLength());
+       ++slot_index) {
+    auto slot_children =
+        element_slots_.GetProperty(static_cast<uint32_t>(slot_index));
+    if (!slot_children.IsArrayOrJSArray()) {
+      continue;
+    }
+
+    for (size_t child_index = 0;
+         child_index < static_cast<size_t>(slot_children.GetLength());
+         ++child_index) {
+      auto child = ResolveInitialElementSlotChild(
+          slot_children.GetProperty(static_cast<uint32_t>(child_index)));
+      if (child == nullptr || !child->is_template()) {
+        continue;
+      }
+      static_cast<TemplateElement*>(child.get())
+          ->MarkInTemplateTreeAndPrepareRecursively();
+    }
+  }
 }
 
 void TemplateElement::ApplyRootAttributes(
@@ -631,6 +696,11 @@ void TemplateElement::InsertElementSlotChild(
   }
   if (IsTypedTemplate() && slot_index != kTypedTemplateRootSlotIndex) {
     return;
+  }
+
+  if (is_in_template_tree_ && child->is_template()) {
+    static_cast<TemplateElement*>(child.get())
+        ->MarkInTemplateTreeAndPrepareRecursively();
   }
 
   const bool should_apply_to_result = result_ != nullptr;
