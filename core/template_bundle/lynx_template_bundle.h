@@ -103,10 +103,8 @@ class LynxTemplateBundle final {
     return context_bundle_;
   }
 
-  inline std::optional<std::shared_ptr<runtime::ContextBundle>> GetLepusChunk(
-      const std::string& chunk_key) const {
-    return lepus_chunk_manager_->GetLepusChunk(chunk_key);
-  }
+  std::optional<std::shared_ptr<runtime::ContextBundle>> GetLepusChunk(
+      const std::string& chunk_key);
 
   bool IsCard() const { return app_type_ == APP_TYPE_CARD; }
   bool GetContainsElementTree() const { return element_bundle_.IsValid(); };

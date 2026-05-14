@@ -9,6 +9,7 @@
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/runtime/lepus/binary_input_stream.h"
 #include "core/template_bundle/template_codec/binary_decoder/element_binary_reader.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_lazy_reader_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 
@@ -206,6 +207,16 @@ CSSFontFaceRuleMap &LynxTemplateBundle::InitFontFacesMap(size_t size) {
   }
   font_face_rules_.reserve(size);
   return font_face_rules_;
+}
+
+std::optional<std::shared_ptr<runtime::ContextBundle>>
+LynxTemplateBundle::GetLepusChunk(const std::string &chunk_key) {
+  auto chunk = lepus_chunk_manager_->GetLepusChunk(chunk_key);
+  if (!chunk && lazy_reader_) {
+    lazy_reader_->DecodeContextBundleInRender(chunk_key);
+    chunk = lepus_chunk_manager_->GetLepusChunk(chunk_key);
+  }
+  return chunk;
 }
 
 }  // namespace tasm

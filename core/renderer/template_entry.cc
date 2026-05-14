@@ -213,11 +213,12 @@ bool TemplateEntry::InitWithPageConfigger(PageConfigger* configger,
                                           const PageOptions& page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_INIT_WITH_PAGE_CONFIG);
 
-  // TODO(nihao.royal): This is a workaround. reader_ should be fully inlined
-  // into LynxTemplateBundle, and TemplateEntry should not maintain a separate
-  // reader pointer.
+  // TODO(nihao.royal): TemplateEntry should not maintain a separate reader
+  // pointer. This is a temporary workaround to keep both LynxTemplateBundle
+  // and TemplateEntry referencing the same reader until all lazy reader usages
+  // are fully migrated from TemplateEntry to LynxTemplateBundle.
   if (!reader_ && template_bundle_.lazy_reader_) {
-    reader_ = std::move(template_bundle_.lazy_reader_);
+    reader_ = template_bundle_.lazy_reader_;
   }
 
   if (is_card_ != template_bundle_.IsCard()) {
@@ -644,28 +645,20 @@ bool TemplateEntry::LoadLepusChunk(const std::string& entry_path,
                                    const lepus::Value& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_LOAD_LEPUS_CHUNK);
 
-  LynxTemplateBundle& template_bundle = template_bundle_;
-
-  auto lepus_chunk_opt = template_bundle.GetLepusChunk(entry_path);
-  lepus::Value lepus_chunk_eval_result{};
-
+  auto lepus_chunk_opt = template_bundle_.GetLepusChunk(entry_path);
   if (!lepus_chunk_opt) {
-    if (reader_ && reader_->DecodeContextBundleInRender(entry_path)) {
-      lepus_chunk_opt = template_bundle.GetLepusChunk(entry_path);
-    }
+    return false;
   }
 
-  if (lepus_chunk_opt) {
-    std::stringstream ss;
-    ss << name_ << '/' << entry_path;
-    std::string file_name = GenerateLepusJSFileName(ss.str());
-    vm_context_->SetDebugInfoURL(compile_options().template_debug_url_,
-                                 file_name);
-    GetVm()->DeSerialize(*lepus_chunk_opt->get(), true,
-                         &lepus_chunk_eval_result, file_name.c_str());
-    return true;
-  }
-  return false;
+  std::stringstream ss;
+  ss << name_ << '/' << entry_path;
+  std::string file_name = GenerateLepusJSFileName(ss.str());
+  vm_context_->SetDebugInfoURL(compile_options().template_debug_url_,
+                               file_name);
+  lepus::Value lepus_chunk_eval_result{};
+  GetVm()->DeSerialize(*lepus_chunk_opt->get(), true, &lepus_chunk_eval_result,
+                       file_name.c_str());
+  return true;
 }
 
 std::unique_ptr<LynxBinaryRecyclerDelegate>
