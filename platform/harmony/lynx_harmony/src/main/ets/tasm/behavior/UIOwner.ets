@@ -16,7 +16,7 @@ import { LynxResourceLoadInfo, LynxViewClient } from '../LynxViewClient';
 
 export class UIOwner {
   native: lynx.UIOwner;
-  uiContext?: UIContext;
+  uiContext: UIContext;
   behaviors: BehaviorRegistryMap;
   private perfController: PerformanceController;
   private readonly id: string;
