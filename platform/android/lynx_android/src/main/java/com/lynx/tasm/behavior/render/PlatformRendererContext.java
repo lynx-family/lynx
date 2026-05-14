@@ -339,12 +339,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       LynxBaseUI child = owner.getNode(sign);
       if (child.getParent() instanceof LynxBaseUI) {
         LynxBaseUI parent = (LynxBaseUI) child.getParent();
-        if (parent == null) {
-          return;
+        if (parent != null) {
+          owner.destroy(parent.getSign(), child.getSign());
         }
-        owner.destroy(parent.getSign(), child.getSign());
       }
-      return;
     }
 
     IRendererHost host = mViewHolder.get(sign);
