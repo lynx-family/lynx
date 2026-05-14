@@ -881,16 +881,17 @@ VisibilityKeyframe::VisibilityKeyframe(
     fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function)
     : Keyframe(time, std::move(timing_function)) {}
 
-float VisibilityKeyframe::GetVisibilityKeyframeValue(
+starlight::VisibilityType VisibilityKeyframe::GetVisibilityKeyframeValue(
     VisibilityKeyframe* keyframe, tasm::Element* element) {
-  float value;
   if (keyframe->IsEmpty()) {
-    const auto& opacity = GetStyleInElement(tasm::kPropertyIDOpacity, element);
-    value = opacity.IsNumber() ? opacity.AsNumber() : 1.f;
-  } else {
-    value = keyframe->Value();
+    const auto& value = GetStyleInElement(tasm::kPropertyIDVisibility, element);
+    if (value.IsEnum()) {
+      return static_cast<starlight::VisibilityType>(
+          static_cast<int>(value.AsNumber()));
+    }
+    return starlight::VisibilityType::kVisible;
   }
-  return value;
+  return keyframe->Visibility();
 }
 
 std::unique_ptr<VisibilityKeyframe> VisibilityKeyframe::Create(
@@ -907,10 +908,6 @@ bool VisibilityKeyframe::SetValue(tasm::CSSPropertyID id,
   }
   visibility_ =
       static_cast<starlight::VisibilityType>(visibility_value.AsNumber());
-  const auto& element_opacity =
-      GetStyleInElement(tasm::kPropertyIDOpacity, element);
-  float opacity = element_opacity.IsNumber() ? element_opacity.AsNumber() : 1.f;
-  opacity_ = visibility_ == starlight::VisibilityType::kVisible ? opacity : 0.f;
   is_empty_ = false;
   return true;
 }
@@ -932,29 +929,26 @@ tasm::CSSValue KeyframedVisibilityAnimationCurve::GetValue(
   auto* keyframe_next =
       static_cast<VisibilityKeyframe*>(keyframes_[i + 1].get());
 
-  float start_opacity =
+  starlight::VisibilityType start_vis =
       VisibilityKeyframe::GetVisibilityKeyframeValue(keyframe, element_);
-  float end_opacity =
+  starlight::VisibilityType end_vis =
       VisibilityKeyframe::GetVisibilityKeyframeValue(keyframe_next, element_);
-  float result_value = start_opacity + (end_opacity - start_opacity) * progress;
 
-  if (start_opacity > end_opacity && result_value > 0.0f &&
-      base::FloatsEqual(result_value, 0.0f)) {
-    result_value = 0.0f;
-  } else if (start_opacity < end_opacity && result_value < 1.0f &&
-             base::FloatsEqual(result_value, 1.0f)) {
-    result_value = 1.0f;
+  starlight::VisibilityType result;
+  if (start_vis == starlight::VisibilityType::kVisible ||
+      end_vis == starlight::VisibilityType::kVisible) {
+    if (progress <= 0.0) {
+      result = start_vis;
+    } else if (base::FloatsLargerOrEqual(progress, 1.0f)) {
+      result = end_vis;
+    } else {
+      result = starlight::VisibilityType::kVisible;
+    }
+  } else {
+    result = progress < 0.5 ? start_vis : end_vis;
   }
 
-  auto result = lepus::CArray::Create();
-  result->push_back(result_value);
-  if (base::FloatsEqual(progress, 0.f)) {
-    result->push_back(static_cast<int>(starlight::VisibilityType::kVisible));
-  } else if (base::FloatsEqual(progress, 1.f)) {
-    result->push_back(static_cast<int>(keyframe_next->Visibility()));
-  }
-
-  return tasm::CSSValue(std::move(result));
+  return tasm::CSSValue(static_cast<int>(result), tasm::CSSValuePattern::ENUM);
 }
 //====== VisibilityAnimator end =======
 }  // namespace animation
