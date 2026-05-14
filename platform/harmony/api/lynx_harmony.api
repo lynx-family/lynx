@@ -299,6 +299,8 @@ export class LynxContext implements IContext {
   public getMediaResourceFetcher(): LynxMediaResourceFetcher | undefined;
   public getDensity(): number;
   public getRectangleById(id: string): void;
+  public getComponentSnapshot(id: string, options: componentSnapshot.SnapshotOptions): Promise<image.PixelMap>;
+  public getComponentSnapshotSync(id: string, options: componentSnapshot.SnapshotOptions): image.PixelMap | undefined;
   public canConsumeTouchEvent(x: number, y: number): boolean;
   public updateRootTarget(content: NativeContent): void;
   public getPageDataByKey(keys: string[]): void;
