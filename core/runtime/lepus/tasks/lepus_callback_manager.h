@@ -56,8 +56,11 @@ class LepusCallbackManager {
   TaskMap task_map_;
   int64_t current_task_id_{0};
 
+  struct State {};
+
   // time task for _SetTimeout , _SetTimeInterval
   std::unique_ptr<base::TimedTaskManager> timer_task_manager_{nullptr};
+  std::shared_ptr<State> state_ = std::make_shared<State>();
   // The return type depends on TimedTaskManager。
   uint32_t SetTimeTask(runtime::MTSRuntime* context,
                        std::unique_ptr<lepus::Value> closure,
