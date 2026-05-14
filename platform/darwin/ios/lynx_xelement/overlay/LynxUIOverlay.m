@@ -421,6 +421,10 @@ LYNX_PROP_SETTER("pointer-events", setPointerEvents, NSInteger) {
       scrollview.contentSize.width > scrollview.bounds.size.width) {
     return NO;
   }
+  if (!scrollview.alwaysBounceVertical &&
+      scrollview.contentSize.height <= scrollview.bounds.size.height) {
+    return NO;
+  }
   return YES;
 }
 
