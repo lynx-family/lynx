@@ -453,12 +453,14 @@ void UIIntersectionObserverManager::AddUIIntersectionObserver(
   }
   if (intersection_observers_.find(intersection_observer_id) ==
       intersection_observers_.end()) {
+    int parsed_js_component_id = -1;
+    if (!js_component_id.empty()) {
+      base::StringToInt(js_component_id, &parsed_js_component_id, 10);
+    }
     intersection_observers_.emplace(
         intersection_observer_id,
-        UIIntersectionObserver(
-            this, ui_owner_, intersection_observer_id,
-            !js_component_id.empty() ? std::stoi(js_component_id) : -1,
-            options));
+        UIIntersectionObserver(this, ui_owner_, intersection_observer_id,
+                               parsed_js_component_id, options));
   }
 }
 
