@@ -7,13 +7,13 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 
 namespace lynx {
 namespace tasm {
 ElementContextDelegate::ElementContextDelegate(
-    ElementContextDelegate* parent_element_context, FiberElement* context_root)
+    ElementContextDelegate* parent_element_context, Element* context_root)
     : parent_element_context_(parent_element_context),
       element_context_root_(context_root) {}
 

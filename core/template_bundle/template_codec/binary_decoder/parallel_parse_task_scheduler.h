@@ -22,10 +22,10 @@ class StyleObject;
 }
 namespace tasm {
 
-class FiberElement;
+class Element;
 class ElementBinaryReader;
 struct ElementTemplateInfo;
-using Elements = base::Vector<fml::RefPtr<FiberElement>>;
+using Elements = base::Vector<fml::RefPtr<Element>>;
 using ElementTemplateResult =
     std::pair<std::shared_ptr<ElementTemplateInfo>, Elements>;
 

@@ -241,11 +241,11 @@ std::vector<std::string> PageProxy::SelectComponent(
     std::transform(components.begin(), components.end(),
                    std::back_inserter(result), unary_op);
   } else if (client_ && client_->GetEnableFiberArch()) {
-    auto unary_op = [](FiberElement *base) {
+    auto unary_op = [](Element *base) {
       return static_cast<ComponentElement *>(base)->component_id().str();
     };
-    FiberElement *component =
-        static_cast<FiberElement *>(element_manager()->GetComponent(comp_id));
+    Element *component =
+        static_cast<Element *>(element_manager()->GetComponent(comp_id));
     if (component == nullptr) {
       return result;
     }
@@ -271,9 +271,7 @@ std::vector<Element *> PageProxy::SelectElements(
     std::transform(bases.begin(), bases.end(), std::back_inserter(targets),
                    unary_op);
   } else if (client_ && client_->GetEnableFiberArch()) {
-    auto unary_op = [](FiberElement *base) {
-      return static_cast<Element *>(base);
-    };
+    auto unary_op = [](Element *base) { return static_cast<Element *>(base); };
     auto elements =
         FiberElementSelector::Select(element_manager(), root, options).nodes;
     std::transform(elements.begin(), elements.end(),
@@ -478,7 +476,7 @@ void PageProxy::SetCSSVariables(
     auto result =
         FiberElementSelector::Select(element_manager(), root, options);
     if (result.Success()) {
-      FiberElement *node = result.GetOneNode();
+      Element *node = result.GetOneNode();
       node->UpdateCSSVariable(properties, pipeline_options);
     }
   }

@@ -76,12 +76,11 @@ std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
 
   auto layout_obj = devtool_mediator_->GetLayoutObjectForElement(element);
   if (element->is_virtual() ||
-      (static_cast<lynx::tasm::FiberElement*>(element)->is_wrapper())) {
+      (static_cast<lynx::tasm::Element*>(element)->is_wrapper())) {
     auto temp_parent = element->parent();
-    while (
-        temp_parent &&
-        (temp_parent->is_virtual() ||
-         (static_cast<lynx::tasm::FiberElement*>(temp_parent)->is_wrapper()))) {
+    while (temp_parent &&
+           (temp_parent->is_virtual() ||
+            (static_cast<lynx::tasm::Element*>(temp_parent)->is_wrapper()))) {
       temp_parent = temp_parent->parent();
     }
     if (temp_parent) {
@@ -133,7 +132,7 @@ std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
         do {
           current = current->parent();
         } while (current != nullptr &&
-                 static_cast<lynx::tasm::FiberElement*>(current)->is_wrapper());
+                 static_cast<lynx::tasm::Element*>(current)->is_wrapper());
       }
       if (current != nullptr) {
         auto current_layout_obj =

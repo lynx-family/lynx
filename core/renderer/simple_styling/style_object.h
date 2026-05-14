@@ -101,7 +101,7 @@ class DynamicStyleObject : public StyleObject {
   // Deprecated API kept for the historical notify-on-update path.
   void UpdateStyleMap(const tasm::StyleMap& style_map);
   // Mutate the carrier only. The new dynamic simple style pipeline resolves
-  // and applies through StyleResolver/FiberElement later, so these KV helpers
+  // and applies through StyleResolver/Element later, so these KV helpers
   // must not notify bound elements directly.
   void UpdateStyleMap(tasm::CSSPropertyID id, tasm::CSSValue&& value);
   void MergeStyleMap(tasm::StyleMap&& style_map);

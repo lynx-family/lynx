@@ -5,18 +5,17 @@
 #ifndef CORE_RENDERER_DOM_FIBER_RAW_TEXT_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_RAW_TEXT_ELEMENT_H_
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
 
-class RawTextElement : public FiberElement {
+class RawTextElement : public Element {
  public:
   RawTextElement(ElementManager* manager);
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(
         new RawTextElement(*this, clone_resolved_props));
   }
 
@@ -39,7 +38,7 @@ class RawTextElement : public FiberElement {
 
  protected:
   RawTextElement(const RawTextElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {}
+      : Element(element, clone_resolved_props) {}
 
  private:
   base::String content_;

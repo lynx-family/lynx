@@ -899,7 +899,7 @@ extern NSString* const kDefaultComponentID;
       [self markHasUIOperations:parent];
     }
   }
-  // FiberElement may be referenced by JS engine. Just clear the parent-son relationship.
+  // Element may be referenced by JS engine. Just clear the parent-son relationship.
   if (![_uiContext enableFiberArch]) {
     [self removeUIFromHolderRecursively:child];
   } else {

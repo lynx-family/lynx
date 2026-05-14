@@ -11,20 +11,19 @@ namespace lynx {
 namespace tasm {
 
 void BlockElement::InsertNode(const fml::RefPtr<Element> &raw_child) {
-  auto child = fml::static_ref_ptr_cast<FiberElement>(raw_child);
+  auto child = fml::static_ref_ptr_cast<Element>(raw_child);
 
   child->set_virtual_parent(this);
   if (parent_) {
-    auto *parent = static_cast<FiberElement *>(parent_);
+    auto *parent = static_cast<Element *>(parent_);
     if (child->is_block()) {
       child->set_parent(parent);
       parent->scoped_virtual_children_->push_back(child);
     } else {
       size_t index = FindInsertIndex(child);
-      auto *ref_node =
-          index < parent->children().size()
-              ? static_cast<FiberElement *>(parent->GetChildAt(index))
-              : nullptr;
+      auto *ref_node = index < parent->children().size()
+                           ? static_cast<Element *>(parent->GetChildAt(index))
+                           : nullptr;
       parent->InsertNodeBeforeInternal(child, ref_node, false);
     }
   }
@@ -33,13 +32,13 @@ void BlockElement::InsertNode(const fml::RefPtr<Element> &raw_child) {
 
 void BlockElement::RemoveNode(const fml::RefPtr<Element> &raw_child,
                               bool destroy) {
-  auto child = fml::static_ref_ptr_cast<FiberElement>(raw_child);
+  auto child = fml::static_ref_ptr_cast<Element>(raw_child);
 
   if (child->is_block()) {
     static_cast<BlockElement *>(child.get())->RemoveAllBlockNodes();
     // Remove this BlockElement from parent's scoped_virtual_children_
     if (parent_) {
-      auto parent_fiber = static_cast<FiberElement *>(parent_);
+      auto parent_fiber = static_cast<Element *>(parent_);
       parent_fiber->RemoveLogicalChild(child);
       if (parent_fiber->scoped_virtual_children_.has_value()) {
         auto &virtual_children = *parent_fiber->scoped_virtual_children_;
@@ -53,8 +52,7 @@ void BlockElement::RemoveNode(const fml::RefPtr<Element> &raw_child,
       }
     }
   } else if (parent_) {
-    static_cast<FiberElement *>(parent_)->RemoveNodeInternal(child, destroy,
-                                                             false);
+    static_cast<Element *>(parent_)->RemoveNodeInternal(child, destroy, false);
   }
   child->set_virtual_parent(nullptr);
   child->set_parent(nullptr);
@@ -71,7 +69,7 @@ void BlockElement::RemoveAllBlockNodes() {
   }
 }
 
-size_t BlockElement::FindInsertIndex(const fml::RefPtr<FiberElement> &child) {
+size_t BlockElement::FindInsertIndex(const fml::RefPtr<Element> &child) {
   size_t local_offset = 0;
   BlockElement *virtual_parent =
       static_cast<BlockElement *>(this->virtual_parent());
@@ -130,7 +128,7 @@ size_t BlockElement::GetAllNodeCountExcludeBlock() {
   return count;
 }
 
-void BlockElement::AddBlockChildAt(const fml::RefPtr<FiberElement> &child,
+void BlockElement::AddBlockChildAt(const fml::RefPtr<Element> &child,
                                    size_t index) {
   block_children_.insert(block_children_.begin() + index, child);
 }
@@ -141,7 +139,7 @@ void BlockElement::RemoveBlockChildAt(size_t index) {
   }
 }
 
-size_t BlockElement::IndexOfBlockChild(const fml::RefPtr<FiberElement> &child) {
+size_t BlockElement::IndexOfBlockChild(const fml::RefPtr<Element> &child) {
   for (size_t index = 0; index < block_children_.size(); ++index) {
     if (block_children_[index].get() == child.get()) {
       return index;
@@ -151,7 +149,7 @@ size_t BlockElement::IndexOfBlockChild(const fml::RefPtr<FiberElement> &child) {
 }
 
 void BlockElement::RemoveBlockChildrenFromParent(BlockElement *block,
-                                                 FiberElement *parent) {
+                                                 Element *parent) {
   for (const auto &block_child : block->block_children_) {
     if (block_child->is_block()) {
       RemoveBlockChildrenFromParent(
@@ -163,8 +161,7 @@ void BlockElement::RemoveBlockChildrenFromParent(BlockElement *block,
 }
 
 void BlockElement::InsertBlockChildrenBefore(BlockElement *block,
-                                             FiberElement *parent,
-                                             FiberElement *ref) {
+                                             Element *parent, Element *ref) {
   for (const auto &block_child : block->block_children_) {
     block_child->set_virtual_parent(block);
     if (block_child->is_block()) {
@@ -176,10 +173,9 @@ void BlockElement::InsertBlockChildrenBefore(BlockElement *block,
         parent->InsertNodeBeforeInternal(block_child, ref, false);
       } else {
         size_t index = block->FindInsertIndex(block_child);
-        auto *ref_node =
-            index < parent->children().size()
-                ? static_cast<FiberElement *>(parent->GetChildAt(index))
-                : nullptr;
+        auto *ref_node = index < parent->children().size()
+                             ? static_cast<Element *>(parent->GetChildAt(index))
+                             : nullptr;
         parent->InsertNodeBeforeInternal(block_child, ref_node, false);
       }
     }
@@ -187,18 +183,18 @@ void BlockElement::InsertBlockChildrenBefore(BlockElement *block,
 }
 
 void BlockElement::ReplaceElements(
-    const base::Vector<fml::RefPtr<FiberElement>> &inserted,
-    const base::Vector<fml::RefPtr<FiberElement>> &removed) {
+    const base::Vector<fml::RefPtr<Element>> &inserted,
+    const base::Vector<fml::RefPtr<Element>> &removed) {
   // Find the ref node
-  FiberElement *last_old_element = nullptr;
+  Element *last_old_element = nullptr;
   if (!removed.empty()) {
     for (auto iter = removed.rbegin(); iter != removed.rend(); ++iter) {
-      FiberElement *element = (*iter).get();
+      Element *element = (*iter).get();
       if (!element->is_block()) {
         last_old_element = element;
         break;
       }
-      FiberElement *last_child =
+      Element *last_child =
           static_cast<BlockElement *>(element)->LastFlattenedNode();
       if (last_child) {
         last_old_element = last_child;
@@ -206,13 +202,12 @@ void BlockElement::ReplaceElements(
       }
     }
   }
-  auto *ref =
-      last_old_element
-          ? static_cast<FiberElement *>(last_old_element->next_sibling())
-          : nullptr;
+  auto *ref = last_old_element
+                  ? static_cast<Element *>(last_old_element->next_sibling())
+                  : nullptr;
   // Remove elements present in 'removed' but missing from 'inserted'.
-  std::unordered_set<fml::RefPtr<FiberElement>> inserted_set(inserted.begin(),
-                                                             inserted.end());
+  std::unordered_set<fml::RefPtr<Element>> inserted_set(inserted.begin(),
+                                                        inserted.end());
   for (const auto &child : removed) {
     if (inserted_set.find(child) == inserted_set.end()) {
       RemoveNode(child);
@@ -228,10 +223,10 @@ void BlockElement::ReplaceElements(
     return;
   }
 
-  FiberElement *parent = static_cast<FiberElement *>(parent_);
+  Element *parent = static_cast<Element *>(parent_);
 
-  std::unordered_set<fml::RefPtr<FiberElement>> removed_set(removed.begin(),
-                                                            removed.end());
+  std::unordered_set<fml::RefPtr<Element>> removed_set(removed.begin(),
+                                                       removed.end());
 
   // Traverse 'inserted', detach elements needing movement, then re-insert.
   for (const auto &child : inserted) {
@@ -273,10 +268,9 @@ void BlockElement::ReplaceElements(
         parent->InsertNodeBeforeInternal(child, ref, false);
       } else {
         size_t index = FindInsertIndex(child);
-        auto *ref_node =
-            index < parent->children().size()
-                ? static_cast<FiberElement *>(parent->GetChildAt(index))
-                : nullptr;
+        auto *ref_node = index < parent->children().size()
+                             ? static_cast<Element *>(parent->GetChildAt(index))
+                             : nullptr;
         parent->InsertNodeBeforeInternal(child, ref_node, false);
       }
       AddBlockChildAt(child, block_children_.size());
@@ -284,9 +278,9 @@ void BlockElement::ReplaceElements(
   }
 }
 
-FiberElement *BlockElement::FirstFlattenedNode() {
+Element *BlockElement::FirstFlattenedNode() {
   for (const auto &child : block_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
+    auto *fiber_child = static_cast<Element *>(child.get());
     if (!fiber_child->is_block()) {
       return fiber_child;
     }
@@ -300,8 +294,7 @@ FiberElement *BlockElement::FirstFlattenedNode() {
   return nullptr;
 }
 
-FiberElement *BlockElement::FindNearestRightLogicalRenderedSibling(
-    FiberElement *parent) {
+Element *BlockElement::FindNearestRightLogicalRenderedSibling(Element *parent) {
   const auto &logical_children = parent->logical_children();
   auto it = std::find_if(logical_children.begin(), logical_children.end(),
                          [this](const fml::RefPtr<Element> &logical_child) {
@@ -312,7 +305,7 @@ FiberElement *BlockElement::FindNearestRightLogicalRenderedSibling(
   }
 
   for (++it; it != logical_children.end(); ++it) {
-    auto *sibling = static_cast<FiberElement *>((*it).get());
+    auto *sibling = static_cast<Element *>((*it).get());
     if (!sibling->is_block()) {
       return sibling;
     }
@@ -326,8 +319,7 @@ FiberElement *BlockElement::FindNearestRightLogicalRenderedSibling(
   return nullptr;
 }
 
-FiberElement *BlockElement::FindNearestLeftLogicalRenderedSibling(
-    FiberElement *parent) {
+Element *BlockElement::FindNearestLeftLogicalRenderedSibling(Element *parent) {
   const auto &logical_children = parent->logical_children();
   auto it = std::find_if(logical_children.begin(), logical_children.end(),
                          [this](const fml::RefPtr<Element> &logical_child) {
@@ -339,7 +331,7 @@ FiberElement *BlockElement::FindNearestLeftLogicalRenderedSibling(
 
   while (it != logical_children.begin()) {
     --it;
-    auto *sibling = static_cast<FiberElement *>((*it).get());
+    auto *sibling = static_cast<Element *>((*it).get());
     if (!sibling->is_block()) {
       return sibling;
     }
@@ -354,7 +346,7 @@ FiberElement *BlockElement::FindNearestLeftLogicalRenderedSibling(
 }
 
 size_t BlockElement::GetFlattenStartIndexInParent() {
-  auto *parent = static_cast<FiberElement *>(parent_);
+  auto *parent = static_cast<Element *>(parent_);
   auto *first = FirstFlattenedNode();
 
   if (first != nullptr) {
@@ -381,9 +373,9 @@ size_t BlockElement::GetFlattenStartIndexInParent() {
   return parent->children().size();
 }
 
-FiberElement *BlockElement::LastFlattenedNode() {
+Element *BlockElement::LastFlattenedNode() {
   for (auto it = block_children_.rbegin(); it != block_children_.rend(); ++it) {
-    auto *fiber_child = static_cast<FiberElement *>((*it).get());
+    auto *fiber_child = static_cast<Element *>((*it).get());
     if (!fiber_child->is_block()) {
       return fiber_child;
     }

@@ -11,7 +11,6 @@
 #include "core/renderer/css/text_attributes.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -49,7 +48,7 @@ std::vector<text::AutoFontSizeLineRange> AutoFontSizeLineRangesToVector(
 class TextraInlineView : public text::InlineView {
  public:
   explicit TextraInlineView(Element* child)
-      : child_(static_cast<FiberElement*>(child)) {}
+      : child_(static_cast<Element*>(child)) {}
   ~TextraInlineView() override = default;
   text::MeasureResult Measure(const text::MeasureParams& params) override {
     starlight::Constraints constraints;
@@ -77,7 +76,7 @@ class TextraInlineView : public text::InlineView {
   }
 
  private:
-  FiberElement* child_;
+  Element* child_;
 };
 
 class TextraParagraphListener : public text::ParagraphListener {
@@ -383,7 +382,7 @@ void TextLayoutTextra::HandleInlineImageProps(Element* element) {
 }
 
 void TextLayoutTextra::HandleInlineViewProps(Element* element) {
-  auto* child = static_cast<FiberElement*>(element);
+  auto* child = static_cast<Element*>(element);
   auto inline_view = std::make_unique<TextraInlineView>(child);
   const auto& text_attributes =
       child->computed_css_style()->GetTextAttributes();
@@ -403,7 +402,7 @@ void TextLayoutTextra::HandleInlineViewProps(Element* element) {
 
 void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
                                                  bool& has_inline_view) {
-  auto* child = static_cast<FiberElement*>(element);
+  auto* child = static_cast<Element*>(element);
   if (child->is_raw_text()) {
     RawTextElement* rawText = static_cast<RawTextElement*>(child);
     paragraph_builder_->AddText(rawText->content().c_str(),

@@ -723,7 +723,7 @@ void TemplateAssembler::RenderTemplateForFiber(
   render_options.SetProperty(BASE_STATIC_STRING(kPipelineOptions),
                              PipelineOptionsToLepusValue(pipeline_options));
 
-  fml::RefPtr<FiberElement> element_cache = card->TryToGetElementCache();
+  fml::RefPtr<Element> element_cache = card->TryToGetElementCache();
   if (element_cache.get()) {
     TreeResolver::AttachRootToElementManager(
         element_cache, page_proxy()->element_manager().get(),

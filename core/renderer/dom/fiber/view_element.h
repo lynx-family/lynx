@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
@@ -15,14 +15,12 @@ namespace tasm {
 class ElementManager;
 class Fragment;
 
-class ViewElement : public FiberElement {
+class ViewElement : public Element {
  public:
   ViewElement(ElementManager* manager);
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
-        new ViewElement(*this, clone_resolved_props));
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(new ViewElement(*this, clone_resolved_props));
   }
 
   bool is_view() const override { return true; }
@@ -38,10 +36,10 @@ class ViewElement : public FiberElement {
   void SetupFragmentBehavior(Fragment* fragment) override;
 
  protected:
-  void OnNodeAdded(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
 
   ViewElement(const ViewElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {
+      : Element(element, clone_resolved_props) {
     MarkCanBeLayoutOnly(true);
   }
 };

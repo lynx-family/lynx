@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
@@ -25,7 +25,7 @@ struct SSRHydrateInfo {
   // hydrate info only for reactlynx ssr now.
   std::string custom_hydrate_info_ = "";
   // ssr list element.
-  std::vector<fml::RefPtr<FiberElement>> list_node_ref_;
+  std::vector<fml::RefPtr<Element>> list_node_ref_;
 };
 
 }  // namespace tasm

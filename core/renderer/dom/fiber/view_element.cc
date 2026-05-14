@@ -14,7 +14,7 @@ namespace lynx {
 namespace tasm {
 
 ViewElement::ViewElement(ElementManager* manager)
-    : FiberElement(manager, BASE_STATIC_STRING(kElementViewTag)) {
+    : Element(manager, BASE_STATIC_STRING(kElementViewTag)) {
   MarkCanBeLayoutOnly(true);
   if (element_manager_ == nullptr) {
     return;
@@ -25,7 +25,7 @@ ViewElement::ViewElement(ElementManager* manager)
 
 void ViewElement::ConvertToInlineElement() { MarkAsInline(); }
 
-void ViewElement::OnNodeAdded(FiberElement* child) {
+void ViewElement::OnNodeAdded(Element* child) {
   UpdateRenderRootElementIfNecessary(child);
 }
 
@@ -33,7 +33,7 @@ void ViewElement::AttachToElementManager(
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
-  FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
+  Element::AttachToElementManager(manager, style_manager, keep_element_id);
   SetDefaultOverflow(element_manager_->GetDefaultOverflowVisible());
 }
 
