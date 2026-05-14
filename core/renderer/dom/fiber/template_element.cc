@@ -17,6 +17,7 @@
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/template_entry.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/utils/value_utils.h"
 
 namespace lynx {
 namespace tasm {
@@ -28,10 +29,12 @@ static constexpr const char kTemplateTag[] = "template";
 static constexpr const char kDefaultTemplateBundleUrl[] = "__Card__";
 static constexpr const char kTemplateKey[] = "templateKey";
 static constexpr const char kTemplateTypedTag[] = "tag";
+static constexpr const char kTemplateAttributes[] = "attributes";
 static constexpr const char kTemplateBundleUrl[] = "bundleUrl";
 static constexpr const char kTemplateAttributeSlots[] = "attributeSlots";
 static constexpr const char kTemplateElementSlots[] = "elementSlots";
 static constexpr const char kTemplateUid[] = "uid";
+static constexpr const char kTemplateRootAttributeSpread[] = "rootAttributes";
 static constexpr uint32_t kTypedTemplateRootSlotIndex = 0;
 
 fml::RefPtr<FiberElement> ResolveInitialElementSlotChild(
@@ -78,6 +81,21 @@ size_t FindSlotChildIndex(const lepus::Value& slot_children,
     }
   }
   return static_cast<size_t>(slot_children.GetLength());
+}
+
+lepus::Value CreateRootAttributeSlots(const lepus::Value& root_attributes) {
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(root_attributes.IsObject()
+                                    ? lepus::Value::Clone(root_attributes)
+                                    : lepus::Value());
+  return lepus::Value(std::move(attribute_slots));
+}
+
+SharedTemplateAttributes CreateRootSpreadTemplateAttributes() {
+  return std::make_shared<const TemplateAttributes>(TemplateAttributes{
+      Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD,
+                BASE_STATIC_STRING(kTemplateRootAttributeSpread),
+                lepus::Value(), kTypedTemplateRootSlotIndex}});
 }
 
 void ApplyInitialAttributeSlots(
@@ -165,6 +183,18 @@ void TemplateElement::SetTypedTag(const base::String& typed_tag) {
   typed_tag_ = typed_tag;
 }
 
+void TemplateElement::SetRootAttributes(const lepus::Value& attributes) {
+  if (!attributes.IsObject() && !attributes.IsNil() &&
+      !attributes.IsUndefined()) {
+    return;
+  }
+  auto previous_root_attributes = root_attributes_;
+  root_attributes_ = attributes.IsObject()
+                         ? lepus::Value::Clone(attributes.ToLepusValue())
+                         : lepus::Value();
+  ApplyRootAttributes(previous_root_attributes);
+}
+
 void TemplateElement::PrepareAsyncCreateElementTree() {
   if (IsTypedTemplate()) {
     return;
@@ -216,6 +246,7 @@ void TemplateElement::ResolveGeneratedElements() {
     PrepareGeneratedElementsResult(&generated, element_slots_);
     prepared_element_slot_insertions_ =
         std::move(generated.prepared_element_slot_insertions_);
+    ApplyRootAttributes(lepus::Value());
     ApplyInitialElementSlots();
     ApplyPendingOperations();
     return;
@@ -241,6 +272,7 @@ void TemplateElement::ResolveGeneratedElements() {
   // Attach generated elements and mount slot children only when the template is
   // actually materialized into the Fiber tree.
   InitGeneratedElementTree();
+  ApplyRootAttributes(lepus::Value());
   ApplyInitialElementSlots();
   ApplyPendingOperations();
 }
@@ -277,6 +309,24 @@ void TemplateElement::InitTypedRoot() {
 
   element_slot_targets_.clear();
   element_slot_targets_.push_back(ElementSlotMountPoint{result_, nullptr});
+}
+
+void TemplateElement::ApplyRootAttributes(
+    const lepus::Value& previous_root_attributes) {
+  if (result_ == nullptr ||
+      (!previous_root_attributes.IsObject() && !root_attributes_.IsObject())) {
+    return;
+  }
+
+  result_->SetTemplateAttributes(CreateRootSpreadTemplateAttributes());
+  if (previous_root_attributes.IsObject()) {
+    TreeResolver::ApplyTemplateAttributesToElement(
+        result_.get(), CreateRootAttributeSlots(previous_root_attributes),
+        CreateRootAttributeSlots(root_attributes_));
+    return;
+  }
+  TreeResolver::ApplyTemplateAttributesToElement(
+      result_.get(), CreateRootAttributeSlots(root_attributes_));
 }
 
 void TemplateElement::ApplyAttributeSlotToTarget(
@@ -433,12 +483,22 @@ lepus::Value TemplateElement::Serialize() const {
 lepus::Value TemplateElement::SerializeTypedTemplate() const {
   auto serialized = lepus::Dictionary::Create();
   serialized->SetValue(BASE_STATIC_STRING(kTemplateTypedTag), typed_tag_);
-  // TODO(songshourui.null): Support typed template attributes through the
-  // generic TemplateElement attribute path.
+  auto attributes = SerializeRootAttributes();
+  if (!attributes.IsEmpty()) {
+    serialized->SetValue(BASE_STATIC_STRING(kTemplateAttributes),
+                         std::move(attributes));
+  }
   serialized->SetValue(BASE_STATIC_STRING(kTemplateElementSlots),
                        SerializeElementSlots());
   serialized->SetValue(BASE_STATIC_STRING(kTemplateUid), uid_);
   return lepus::Value(std::move(serialized));
+}
+
+lepus::Value TemplateElement::SerializeRootAttributes() const {
+  if (!root_attributes_.IsObject() || root_attributes_.GetLength() == 0) {
+    return lepus::Value();
+  }
+  return root_attributes_;
 }
 
 lepus::Value TemplateElement::SerializeCompiledTemplate() const {
@@ -542,6 +602,9 @@ fml::RefPtr<FiberElement> TemplateElement::GetRoot() {
 void TemplateElement::SetAttributeSlot(uint32_t slot_index,
                                        const lepus::Value& value) {
   if (IsTypedTemplate()) {
+    if (slot_index == kTypedTemplateRootSlotIndex) {
+      SetRootAttributes(value);
+    }
     return;
   }
   const bool should_apply_to_result = result_ != nullptr;

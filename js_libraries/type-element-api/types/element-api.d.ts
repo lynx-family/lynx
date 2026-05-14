@@ -131,6 +131,7 @@ export interface SerializedCompiledTemplateInstance {
 
 export interface SerializedTypedTemplateInstance {
   tag: string;
+  attributes?: Record<string, SerializableValue> | null;
   elementSlots?: SerializedTemplateInstance[][] | null;
   uid: number | string;
 }
@@ -325,8 +326,11 @@ declare global {
   ): ElementRef;
 
   /**
-   * Update one dynamic attribute slot on an existing template instance.
-   * Passing `null` clears the slot.
+   * Update one dynamic attribute slot on an existing compiled template instance.
+   *
+   * For typed template instances, `attrSlotIndex === 0` applies `value` as
+   * the root spread attributes. Passing `null` or `undefined` clears the
+   * previously applied root spread attributes.
    */
   function __SetAttributeOfElementTemplate(
     templateInstance: ElementRef,
