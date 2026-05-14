@@ -2,20 +2,20 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "paragraph_tt_text.h"
+#include "clay/third_party/txt/src/tttext/paragraph_tt_text.h"
 
 #include <textra/layout_drawer.h>
 #include <textra/layout_region.h>
 #include <textra/text_layout.h>
 #include <textra/text_line.h>
 #include "base/include/string/string_utils.h"
-#include "txt/placeholder_run.h"
+#include "clay/third_party/txt/src/txt/placeholder_run.h"
 #ifdef ENABLE_SKITY
-#include "txt/font_collection_skity.h"
+#include "clay/third_party/txt/src/txt/font_collection_skity.h"
 #else
+#include "clay/third_party/txt/src/txt/font_collection_skia.h"
 #include "third_party/textlayout/textra/public/textra/platform/skia/skia_canvas_helper.h"
 #include "third_party/textlayout/textra/public/textra/run_delegate.h"
-#include "txt/font_collection_skia.h"
 #endif
 
 namespace txt {
@@ -69,14 +69,13 @@ double ParagraphTTText::GetAlphabeticBaseline() {
   if (region_ == nullptr || region_->GetLineCount() == 0) {
     return 0;
   }
-  return region_->GetLine(0)->GetMaxAscent();
+  return region_->GetLine(0)->GetLineBaseLine();
 }
 double ParagraphTTText::GetIdeographicBaseline() {
   if (region_ == nullptr || region_->GetLineCount() == 0) {
     return 0;
   }
-  return region_->GetLine(0)->GetMaxAscent() +
-         region_->GetLine(0)->GetMaxDescent();
+  return region_->GetLine(0)->GetLineBottom();
 }
 std::vector<LineMetrics>& ParagraphTTText::GetLineMetrics() {
   return line_metrics_;
@@ -122,13 +121,13 @@ void ParagraphTTText::Layout(double width) {
   for (uint32_t k = 0; k < region_->GetLineCount(); k++) {
     auto* text_line = region_->GetLine(k);
     auto& metrics = line_metrics_[k];
-    metrics.ascent = text_line->GetMaxAscent();
-    metrics.descent = text_line->GetMaxDescent();
+    metrics.baseline = text_line->GetLineBaseLine();
+    metrics.ascent = metrics.baseline - text_line->GetLineTop();
+    metrics.descent = text_line->GetLineBottom() - metrics.baseline;
     float rect_ltwh[4];
     text_line->GetBoundingRectForLine(rect_ltwh);
     metrics.width = rect_ltwh[2];
-    metrics.height = rect_ltwh[3];
-    metrics.baseline = text_line->GetLineTop() + text_line->GetMaxAscent();
+    metrics.height = text_line->GetLineBottom();
     metrics.line_number = k;
     metrics.start_index = text_line->GetStartCharPos();
     metrics.end_index = text_line->GetEndCharPos();
