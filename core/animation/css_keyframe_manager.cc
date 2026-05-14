@@ -327,20 +327,10 @@ void CSSKeyframeManager::NotifyClientAnimated(tasm::StyleMap& styles,
       break;
     }
     case tasm::kPropertyIDVisibility: {
-      if (!value.IsArray()) {
+      if (!value.IsEnum()) {
         break;
       }
-      const auto& array = value.GetArray();
-      float opacity = array->get(0).Number();
-      styles.insert_or_assign(
-          tasm::kPropertyIDOpacity,
-          tasm::CSSValue(opacity, tasm::CSSValuePattern::NUMBER));
-      if (array->size() > 1) {
-        int visibility = array->get(1).Number();
-        styles.insert_or_assign(
-            css_id, tasm::CSSValue(visibility, tasm::CSSValuePattern::ENUM));
-      }
-      return;
+      break;
     }
     default: {
       break;

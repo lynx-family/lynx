@@ -303,8 +303,8 @@ class KeyframedTransformOriginAnimationCurve
 //====visibility keyframe ====
 class VisibilityKeyframe : public Keyframe {
  public:
-  static float GetVisibilityKeyframeValue(VisibilityKeyframe* keyframe,
-                                          tasm::Element* element);
+  static starlight::VisibilityType GetVisibilityKeyframeValue(
+      VisibilityKeyframe* keyframe, tasm::Element* element);
 
   static std::unique_ptr<VisibilityKeyframe> Create(
       fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function);
@@ -313,14 +313,12 @@ class VisibilityKeyframe : public Keyframe {
   bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
                 tasm::Element* element) override;
 
-  float Value() const { return opacity_; }
   starlight::VisibilityType Visibility() const { return visibility_; }
 
   VisibilityKeyframe(fml::TimeDelta time,
                      std::unique_ptr<TimingFunction> timing_function);
 
  private:
-  float opacity_{1.f};
   starlight::VisibilityType visibility_{starlight::VisibilityType::kVisible};
 };
 
