@@ -22,7 +22,8 @@ import {
   LynxViewClient,
   TemplateBundle
 } from '../Index';
-import { componentUtils } from '@kit.ArkUI';
+import { componentUtils, componentSnapshot } from '@kit.ArkUI';
+import { image } from '@kit.ImageKit';
 import { IContext } from './IContext';
 import { LynxExtensionModule } from '../extension/LynxExtensionModule';
 import { TimingOption } from './performance/timing/TimingOption';
@@ -359,6 +360,24 @@ export class LynxContext implements IContext {
 
   public getRectangleById(id: string) {
     return componentUtils.getRectangleById(this.uiOwner?.getId() + id);
+  }
+
+  public getComponentSnapshot(id: string,
+    options?: componentSnapshot.SnapshotOptions): Promise<image.PixelMap> {
+    if (!this.uiOwner) {
+      return Promise.reject(new Error('Lynx UIOwner not available'));
+    }
+    const snapshot = this.uiOwner.uiContext.getComponentSnapshot();
+    return snapshot.get(this.uiOwner.getId() + id, options);
+  }
+
+  public getComponentSnapshotSync(id: string,
+    options?: componentSnapshot.SnapshotOptions): image.PixelMap | undefined {
+    if (!this.uiOwner) {
+      return;
+    }
+    const snapshot = this.uiOwner.uiContext.getComponentSnapshot();
+    return snapshot.getSync(this.uiOwner.getId() + id, options);
   }
 
   public canConsumeTouchEvent(x: number, y: number): boolean {
