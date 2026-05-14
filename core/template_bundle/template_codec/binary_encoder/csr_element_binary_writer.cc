@@ -396,9 +396,9 @@ void CSRElementBinaryWriter::EncodeElementTagSection(
 void CSRElementBinaryWriter::EncodeElementAttributeArray(
     const rapidjson::Value* element) {
   // Examples:
-  // {"kind":"attribute","binding":"static","value":"card"}
-  // {"kind":"attribute","key":"xxx","binding":"slot","attrSlotIndex":0}
-  // {"key":"spread","binding":"slot","attrSlotIndex":1}
+  // {"kind":"static","key":"key1","value":"card"}
+  // {"kind":"slot","key":"xxx","attrSlotIndex":0}
+  // {"kind":"spread","attrSlotIndex":1}
   if (!CheckJSONArrayValid(element, kElementAttributesArray)) {
     return;
   }
@@ -424,25 +424,29 @@ void CSRElementBinaryWriter::EncodeElementAttributeArray(
       continue;
     }
 
-    const auto& key = raw_object.GetObject().FindMember("key")->value;
-    const auto& binding_type =
-        raw_object.GetObject().FindMember("binding")->value;
-    std::string binding_type_str =
-        std::string(binding_type.GetString(), binding_type.GetStringLength());
-    std::string key_str = std::string(key.GetString(), key.GetStringLength());
+    const auto& kind = raw_object.GetObject().FindMember("kind")->value;
+    std::string kind_str =
+        std::string(kind.GetString(), kind.GetStringLength());
 
     AttributeBindingType enum_binding_type =
         AttributeBindingType::ATTRIBUTE_BINDING_TYPE_STATIC;
 
-    if (binding_type_str != "static") {
+    if (kind_str == "slot") {
       enum_binding_type = AttributeBindingType::ATTRIBUTE_BINDING_TYPE_DYNAMIC;
     }
-    if (key_str == "spread") {
+    if (kind_str == "spread") {
       enum_binding_type = AttributeBindingType::ATTRIBUTE_BINDING_TYPE_SPREAD;
     }
 
     WriteCompactU32(static_cast<uint32_t>(enum_binding_type));
-    EncodeUtf8Str(key.GetString(), key.GetStringLength());
+    if (enum_binding_type ==
+        AttributeBindingType::ATTRIBUTE_BINDING_TYPE_SPREAD) {
+      constexpr const static char kSpreadKey[] = "spread";
+      EncodeUtf8Str(kSpreadKey, sizeof(kSpreadKey) - 1);
+    } else {
+      const auto& key = raw_object.GetObject().FindMember("key")->value;
+      EncodeUtf8Str(key.GetString(), key.GetStringLength());
+    }
 
     if (enum_binding_type ==
             AttributeBindingType::ATTRIBUTE_BINDING_TYPE_DYNAMIC ||

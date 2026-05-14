@@ -1,4 +1,7 @@
 # CHANGELOG
+# 0.0.39
+* Support CSR attributesArray entries using the kind-based static, slot, and spread schema.
+
 # 0.0.37
 * delete aggregate template pass in lepus ir pass to optimize parse time.
 
