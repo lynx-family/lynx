@@ -892,6 +892,10 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           tasm::NodeSelectOptions::IdentifierType identifier_type =
               static_cast<tasm::NodeSelectOptions::IdentifierType>(
                   args[0].getNumber());
+          if (!args[1].isString()) {
+            return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                "invokeUIMethod args identifier is not string"));
+          }
           std::string identifier = args[1].getString(rt).utf8(rt);
           std::string component_id = args[2].getString(rt).utf8(rt);
           std::string method = args[3].getString(rt).utf8(rt);
