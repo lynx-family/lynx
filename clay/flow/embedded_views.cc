@@ -48,7 +48,9 @@ void SkPictureEmbedderViewSlice::render_into(SkCanvas* canvas) {
 SkityPictureEmbedderViewSlice::SkityPictureEmbedderViewSlice(
     skity::Rect view_bounds) {
   recorder_ = std::make_unique<skity::PictureRecorder>();
-  recorder_->BeginRecording();
+  skity::DisplayListBuildOptions options;
+  options.build_rtree = true;
+  recorder_->BeginRecording(view_bounds, options);
 }
 
 skity::Canvas* SkityPictureEmbedderViewSlice::canvas() {
@@ -62,7 +64,10 @@ void SkityPictureEmbedderViewSlice::end_recording() {
 std::list<skity::Rect>
 SkityPictureEmbedderViewSlice::searchNonOverlappingDrawnRects(
     const skity::Rect& query) const {
-  return {query};
+  std::list<skity::Rect> result;
+  auto skity_result = picture_->SearchNonOverlappingDrawnRects(query);
+  result.insert(result.end(), skity_result.begin(), skity_result.end());
+  return result;
 }
 
 void SkityPictureEmbedderViewSlice::render_into(skity::Canvas* canvas) {
