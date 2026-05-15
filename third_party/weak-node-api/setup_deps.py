@@ -31,7 +31,7 @@ def main():
     # Copy the directory contents directly to current directory
     try:
         # Only copy specific files/directories
-        items_to_copy = ["generated", "headers", "prebuilt"]
+        items_to_copy = ["generated", "headers", "prebuilt", "shim"]
         missing_items = []
 
         for item in items_to_copy:

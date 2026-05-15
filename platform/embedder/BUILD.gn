@@ -34,7 +34,6 @@ config("config") {
 
 lynx_core_source_set("lynx_runtime_lifecycle_observer") {
   sources = [ "lynx_runtime_lifecycle_observer.cc" ]
-  defines = [ "NAPI_CPP_CUSTOM_NAMESPACE=weak_node_api" ]
   public_configs = [ "../../third_party/weak-node-api:weak_node_api_config" ]
 }
 
@@ -88,11 +87,6 @@ lynx_core_source_set("embedder") {
       ":lynx_runtime_lifecycle_observer",
       "../../third_party/napi:weak_node_api_host",
       "./module:module",
-    ]
-    defines = [
-      "NAPI_CPP_CUSTOM_NAMESPACE=weak_node_api",
-      "NAPI_DISABLE_CPP_EXCEPTIONS",
-      "NAPI_DISABLE_CPP_RTTI",
     ]
   }
   if (is_headless) {
