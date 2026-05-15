@@ -388,6 +388,8 @@ void PaintingContextClay::SetAttribute(clay::ViewContext* view_context,
 
   auto& map = pda->mutable_map();
 
+  view_context->BeforeSetAttribute(sign, map);
+
   clay::Value trans{};
   auto iter = map.find(kPropertyNameTransition);
   if (iter != map.end()) {  // Has transition

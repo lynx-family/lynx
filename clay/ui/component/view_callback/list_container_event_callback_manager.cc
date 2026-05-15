@@ -31,6 +31,16 @@ void ListContainerEventCallbackManager::NotifyScrollStateChange(
   }
 }
 
+bool ListContainerEventCallbackManager::ShouldSendEvent(
+    ScrollEvents event) const {
+  if (disable_platform_scroll_event_ &&
+      (event == kScrollEvent || event == kScrollToUpper ||
+       event == kScrollToLower)) {
+    return false;
+  }
+  return ScrollEventCallbackManager::ShouldSendEvent(event);
+}
+
 void ListContainerEventCallbackManager::SendScrollEvent(
     const char* event_name, const FloatPoint& scrolled,
     const FloatPoint& offset, const FloatSize& content, const bool is_dragging,
