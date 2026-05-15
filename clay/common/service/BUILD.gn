@@ -17,4 +17,8 @@ source_set("service") {
   # target containing graphics sources that embedders can depend on. Any
   # additions here could result in added app sizes across embeddings.
   public_deps = [ "../../fml:fml" ]
+
+  if (is_headless) {
+    defines = [ "ENABLE_HEADLESS" ]
+  }
 }
