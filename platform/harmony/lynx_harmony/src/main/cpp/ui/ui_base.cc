@@ -912,11 +912,11 @@ void UIBase::ApplyOverflowClip() {
   if (!overflow_.overflow_x && !overflow_.overflow_y) {
     // overflow: hidden
     if (CanDrawBehind() && !HasContent()) {
-      if (!background_drawable_ || !background_drawable_->UseClipPath()) {
-        NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP,
-                                                            1);
+      if (background_drawable_ && background_drawable_->UseClipPath()) {
+        // Use canvas clip in BackgroundDrawable::Render
+        NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
       }
-      // Use canvas clip in BackgroundDrawable::Render
+      NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 1);
       return;
     }
     if (background_drawable_ &&
