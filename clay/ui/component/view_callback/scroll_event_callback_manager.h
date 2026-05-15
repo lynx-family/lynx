@@ -124,7 +124,9 @@ class ScrollEventCallbackManager {
                                [[maybe_unused]] const EventSource event_source =
                                    EventSource::kScroll) const;
 
-  bool ShouldSendEvent(ScrollEvents event) const { return event_flag_ & event; }
+  virtual bool ShouldSendEvent(ScrollEvents event) const {
+    return event_flag_ & event;
+  }
 
   PageView* page_view_ = nullptr;
   BaseView* view_ = nullptr;

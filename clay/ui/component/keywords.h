@@ -133,6 +133,7 @@ enum class KeywordID {
   kEnableScroll,
   kScrollMonitorTag,
   kListContainerInfo,
+  kClayDisablePlatformScrollEvent,
   kItemkeys,
   kEnableNestedScroll,
   kEnableNewAnimator,

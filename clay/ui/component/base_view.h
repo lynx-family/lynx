@@ -316,6 +316,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   virtual void NotifyLowMemory() {}
 
   virtual void SetAttribute(const char* attr, const clay::Value& value);
+  virtual void BeforeSetAttribute(const clay::Value::Map&) {}
   virtual void AddEventCallback(const char* event);
 
   // Gesture handler methods

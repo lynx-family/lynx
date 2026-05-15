@@ -56,6 +56,8 @@ const std::unordered_set<KeywordID> kProxyAttributes = {
     KeywordID::kNeedVisibleItemInfo,
     KeywordID::kNeedsVisibleCells};
 constexpr char kListContainerWrapperTag[] = "list-container-wrapper";
+constexpr char kClayDisablePlatformScrollEvent[] =
+    "clay-disable-platform-scroll-event";
 
 LYNX_UI_METHOD_BEGIN(ListContainerWrapper) {
   LYNX_UI_METHOD(ListContainerWrapper, scrollToPosition);
@@ -161,7 +163,11 @@ void ListContainerWrapper::RemoveListItemPaintingNode(BaseView* view) {
 void ListContainerWrapper::SetAttribute(const char* attr_c,
                                         const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
-  if (kProxyAttributes.find(kw) != kProxyAttributes.end()) {
+  if (kw == KeywordID::kClayDisablePlatformScrollEvent) {
+    // kClayDisablePlatformScrollEvent is handle in BeforeSetAttribute.
+    // No need to set this attribute on the view.
+    return;
+  } else if (kProxyAttributes.find(kw) != kProxyAttributes.end()) {
     view_->SetAttribute(attr_c, value);
     if (kw == KeywordID::kScrollX || kw == KeywordID::kScrollY ||
         kw == KeywordID::kScrollOrientation ||
@@ -171,6 +177,16 @@ void ListContainerWrapper::SetAttribute(const char* attr_c,
     }
   } else {
     ScrollbarWrapper::SetAttribute(attr_c, value);
+  }
+}
+
+void ListContainerWrapper::BeforeSetAttribute(
+    const clay::Value::Map& attributes) {
+  if (auto it = attributes.find(kClayDisablePlatformScrollEvent);
+      it != attributes.end()) {
+    GetListContainerView()
+        ->GetEventCallbackManager()
+        ->SetDisablePlatformScrollEvent(attribute_utils::GetBool(it->second));
   }
 }
 

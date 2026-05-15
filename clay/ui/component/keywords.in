@@ -116,6 +116,7 @@ next-scrollable
 enable-scroll
 scroll-monitor-tag
 list-container-info
+clay-disable-platform-scroll-event
 itemkeys
 enable-nested-scroll
 enable-new-animator

@@ -598,6 +598,12 @@ void ViewContext::SetAttribute(int id, const char* attr,
   }
 }
 
+void ViewContext::BeforeSetAttribute(int id,
+                                     const clay::Value::Map& attributes) {
+  FIND_VIEW_WITH_ID_OR_RET;
+  view->BeforeSetAttribute(attributes);
+}
+
 const clay::ViewportMetrics& ViewContext::GetViewportMetrics() const {
   return page_view_->GetViewportMetrics();
 }

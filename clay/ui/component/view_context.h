@@ -26,6 +26,7 @@
 #include "clay/public/clay.h"
 #include "clay/public/event_delegate.h"
 #include "clay/public/ui_component_delegate.h"
+#include "clay/public/value.h"
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
 #include "clay/ui/platform/native_view_service.h"
@@ -202,6 +203,9 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   void AppendShadow(int id, const Shadow& shadow);
 
   void SetAttribute(int id, const char* attr, const clay::Value& value);
+
+  void BeforeSetAttribute(int id, const clay::Value::Map& attributes);
+
   const clay::ViewportMetrics& GetViewportMetrics() const;
 
   void DidUpdateAttributes(int id);

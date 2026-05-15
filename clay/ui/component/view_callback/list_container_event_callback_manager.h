@@ -30,8 +30,16 @@ class ListContainerEventCallbackManager : public ScrollEventCallbackManager {
 
   void SetNeedsVisibleCells(bool enable) { needs_visible_cells_ = enable; }
 
+  void SetDisablePlatformScrollEvent(bool disable) {
+    disable_platform_scroll_event_ = disable;
+  }
+
+ protected:
+  bool ShouldSendEvent(ScrollEvents event) const override;
+
  private:
-  bool needs_visible_cells_ = false;
+  bool needs_visible_cells_{false};
+  bool disable_platform_scroll_event_{true};
 };
 
 }  // namespace clay
