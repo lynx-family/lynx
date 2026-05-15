@@ -103,7 +103,8 @@ void ServiceManager::Detach() {
   services.clear();
 }
 
-#if OS_LINUX || OS_MAC || OS_WIN
+#if defined(OS_LINUX) || defined(OS_MAC) || defined(OS_WIN) || \
+    (defined(OS_ANDROID) && defined(ENABLE_HEADLESS))
 template void ServiceManager::Attach<Owner::kPlatform>(
     ServiceContext<Owner::kPlatform> context);
 template void ServiceManager::Attach<Owner::kUI>(
