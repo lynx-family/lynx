@@ -166,6 +166,20 @@ jobs:
           stage_headers core            Lynx
           stage_headers base            LynxBase
           stage_headers service_api     LynxServiceAPI
+          # Lynx code does `#include "third_party/rapidjson/document.h"`
+          # etc. from within `core/...` headers. We stage third_party
+          # under the Lynx namespace so `-I <staged>/Lynx` covers
+          # those resolves. Mirrors the iOS xtask staging layout
+          # (CocoaPods source pods bundle third_party inside the pod).
+          # PrimJS itself is excluded — it has its own namespace.
+          stage_third_party() {
+            local dst="$STAGE/headers/Lynx/third_party"
+            mkdir -p "$dst"
+            find third_party -name '*.h' -not -path 'third_party/primjs/*' -print0 | \
+              tar -cf - --null --files-from=- | \
+              (cd "$STAGE/headers/Lynx" && tar -xf -)
+          }
+          stage_third_party
           # PrimJS lives under third_party/primjs/. The bridge
           # references `<staged>/PrimJS/src/...` directly, so strip
           # the `third_party/primjs/` wrapping but keep `src/` etc.
