@@ -148,20 +148,27 @@ jobs:
           done
 
           # C++ headers used by whisker-driver-sys/build.rs's cc-rs
-          # compilation. Layout: <staged>/<NamespaceDir>/<lynx-relative
-          # subdir>. Only .h files (cc-rs doesn't need .cc).
+          # compilation. The bridge code includes paths like
+          # `"core/shell/lynx_shell.h"` and is compiled with
+          # `-I <staged>/Lynx`, so the file must end up at
+          # `<staged>/Lynx/core/shell/lynx_shell.h`. That is — the
+          # `core/` (or `base/`, `service_api/`) directory name is
+          # preserved INSIDE the namespace dir. Tarring from `find
+          # "$src" …` (not from inside $src) keeps the wrapping
+          # component.
           stage_headers() {
             local src="$1"; local dst="$STAGE/headers/$2"
             mkdir -p "$dst"
-            (cd "$src" && find . -name '*.h' -print0) | \
-              tar -cf - --null --files-from=- -C "$src" | \
+            find "$src" -name '*.h' -print0 | \
+              tar -cf - --null --files-from=- | \
               (cd "$dst" && tar -xf -)
           }
           stage_headers core            Lynx
           stage_headers base            LynxBase
           stage_headers service_api     LynxServiceAPI
-          # PrimJS lives under third_party/primjs/. The bridge include
-          # path is `<staged>/PrimJS/src/...`; preserve that prefix.
+          # PrimJS lives under third_party/primjs/. The bridge
+          # references `<staged>/PrimJS/src/...` directly, so strip
+          # the `third_party/primjs/` wrapping but keep `src/` etc.
           if [ -d third_party/primjs ]; then
             mkdir -p "$STAGE/headers/PrimJS"
             (cd third_party/primjs && find . -name '*.h' -print0) | \
