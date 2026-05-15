@@ -862,6 +862,18 @@ RENDERER_FUNCTION_CC(LoadStyleSheet) {
   auto page_config = tasm->GetPageConfig();
   auto entry = tasm->FindTemplateEntry(DEFAULT_ENTRY_NAME);
   CompileOptions options = entry->compile_options();
+  // These fields are derived from page config at compile/decode time and are
+  // not serialized into the template header. See
+  // LynxBinaryConfigDecoder::UpdateCSSConfigs().
+  // TODO: Unify this with UpdateCSSConfigs() to avoid config drift between
+  // normal template decoding and runtime stylesheet loading.
+  if (page_config) {
+    options.enable_parse_int_flex_ = page_config->GetEnableParseIntFlex();
+    options.enable_flex_basis_zero_percent_ =
+        page_config->GetEnableFlexBasisZeroPercent();
+    options.enable_grid_placement_shorthands_ =
+        page_config->GetEnableGridPlacementShorthands();
+  }
 
   auto bundle = tasm->FindTemplateBundle(bundle_name);
   if (bundle) {
