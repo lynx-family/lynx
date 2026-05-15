@@ -143,7 +143,12 @@ config("lynx_android_public_config") {
   cflags += [
     "-fno-short-enums",
     "-fno-strict-aliasing",
-    "-fvisibility=hidden",
+    # Whisker patch: lynx_android_public_config is applied to every
+    # lynx_core_source_set (core/shell, core/renderer/*, …) on Android.
+    # Default visibility here makes LynxShell::RunOnTasmThread, the
+    # Element manager's CreateFiber* helpers, and FiberElement::* land
+    # in liblynx.so's .dynsym so the Rust bridge can call them.
+    "-fvisibility=default",
     "-fvisibility-inlines-hidden",
     "-Wno-unused-parameter",
     "-Wno-unknown-warning-option",
@@ -238,7 +243,11 @@ config("lynx_android_public_config") {
 # This config is only used in lynx_android target.
 config("lynx_android_private_config") {
   ldflags = [
-    "-Wl,--exclude-libs,ALL,--gc-sections",
+    # Whisker patch: keep --gc-sections but drop --exclude-libs,ALL so the
+    # symbols we made visible via -fvisibility=default (disable_visibility_hidden)
+    # actually land in liblynx.so's .dynsym. Without this, the linker
+    # re-hides every symbol coming from input static archives.
+    "-Wl,--gc-sections",
     "-Wl,--build-id=sha1",
     "-fuse-ld=lld",
     "-Xlinker",
