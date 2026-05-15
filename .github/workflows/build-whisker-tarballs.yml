@@ -216,29 +216,69 @@ jobs:
             whisker-lynx-android-*.tar.gz
             whisker-lynx-android-*.tar.gz.sha256
 
-  # iOS job placeholder. The iOS Lynx framework build relies on a
-  # CocoaPods source-pod carrier project (current home: whisker repo's
-  # `xtask/src/ios/build_lynx_frameworks.rs`). Port that into a
-  # standalone script under `.whisker/ios/` and uncomment the job
-  # below to start producing the iOS tarball.
-  #
-  # ios:
-  #   runs-on: macos-14
-  #   timeout-minutes: 90
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Install xcodegen + CocoaPods
-  #       run: |
-  #         brew install xcodegen
-  #         gem install cocoapods --no-document
-  #     - name: Build xcframeworks
-  #       run: .whisker/ios/build-xcframeworks.sh
-  #     - name: Stage + pack
-  #       run: .whisker/ios/pack-tarball.sh
-  #     - name: Upload to release
-  #       if: startsWith(github.ref, 'refs/tags/')
-  #       uses: softprops/action-gh-release@v2
-  #       with:
-  #         files: |
-  #           whisker-lynx-ios-*.tar.gz
-  #           whisker-lynx-ios-*.tar.gz.sha256
+  ios:
+    runs-on: macos-14
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        # macos-14 runners have multiple Xcode installs. Pin to a
+        # known-good major to keep the pbxproj objectVersion the
+        # Whisker template assumes (77 = Xcode 15+). The runner image
+        # always has at least Xcode 15.4.
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Install xcodegen + CocoaPods
+        run: |
+          set -e
+          brew install xcodegen
+          gem install cocoapods -v 1.15.2 --no-document
+
+      - name: Resolve release version
+        id: ver
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VER="${GITHUB_REF_NAME#v}"
+          else
+            VER="${INPUT_TAG#v}"
+            if [ -z "$VER" ]; then VER="0.0.0-whisker.dev"; fi
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Build Lynx + PrimJS xcframeworks
+        # See .whisker/ios/build-xcframeworks.sh — sets up a carrier
+        # Xcode project, pod-installs the upstream Lynx 3.7.0 +
+        # PrimJS 3.7.0 source pods, xcodebuilds for iOS device +
+        # simulator with `use_frameworks!` (dynamic), then assembles
+        # 4 xcframeworks. Lynx's category-method registration relies
+        # on dynamic linkage (see the comment in build-xcframeworks.sh).
+        run: .whisker/ios/build-xcframeworks.sh
+        env:
+          BUILD_DIR: ${{ github.workspace }}/lynx-build
+          OUT_DIR: ${{ github.workspace }}/lynx-ios
+
+      - name: Stage + pack tarball
+        run: .whisker/ios/stage-tarball.sh
+        env:
+          LYNX_BUILD_OUT: ${{ github.workspace }}/lynx-ios
+          VERSION: ${{ steps.ver.outputs.version }}
+
+      - name: Upload artifact (workflow_dispatch)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisker-lynx-ios
+          path: |
+            whisker-lynx-ios-*.tar.gz
+            whisker-lynx-ios-*.tar.gz.sha256
+
+      - name: Upload to release (tag push)
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            whisker-lynx-ios-*.tar.gz
+            whisker-lynx-ios-*.tar.gz.sha256
