@@ -61,23 +61,23 @@ jobs:
 
       - name: Apply Whisker buildroot patch (visibility + libc++_shared)
         working-directory: lynx
+        # `git apply` reads paths relative to the dir given by `-C`,
+        # but our patch file lives in the parent repo. The shell
+        # below uses an absolute path to the patch so resolution is
+        # unambiguous.
         run: |
           set -e
           if [ ! -d build ]; then
             echo "::error::Expected build/ to exist after hab sync, but it doesn't"
             exit 1
           fi
+          PATCH="$PWD/.whisker/patches/buildroot.patch"
           # Idempotent: reverse-check first → already applied means no-op.
-          if git -C build apply --reverse --check .whisker/patches/buildroot.patch 2>/dev/null; then
+          if git -C build apply --reverse --check "$PATCH" 2>/dev/null; then
             echo "buildroot.patch already applied"
           else
-            git -C build apply .whisker/patches/buildroot.patch
+            git -C build apply "$PATCH"
           fi
-        env:
-          # `git apply` reads paths relative to the dir given by `-C`,
-          # but our patch file lives in the parent repo. The shell
-          # substitution above resolves it correctly.
-          NULL: ''
 
       - name: Build Android AARs
         working-directory: lynx
