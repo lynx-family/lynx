@@ -41,6 +41,7 @@ struct ImageRequestInfo {
   bool downsampling = true;
   std::vector<std::unique_ptr<ImageProcessor>> processors;
   std::unordered_map<std::string, std::string> custom_param;
+  std::vector<std::string> fallback_urls;
 };
 
 enum class LynxImageOrigin : int32_t {

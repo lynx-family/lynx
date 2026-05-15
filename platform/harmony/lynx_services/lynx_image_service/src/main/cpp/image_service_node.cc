@@ -94,6 +94,7 @@ void ImageServiceNode::FetchImage(tasm::harmony::ImageRequestInfo info) {
                     image_knife_option_->loadSrc);
   UpdateImageSource(service_, image_knife_option_, info.placeholder,
                     image_knife_option_->placeholderSrc);
+  image_knife_option_->fallbackUrls = std::move(info.fallback_urls);
   if (info.processors.empty()) {
     image_knife_option_->transformation = nullptr;
   } else {

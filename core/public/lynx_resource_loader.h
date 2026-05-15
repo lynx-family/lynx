@@ -77,6 +77,9 @@ struct LynxPathResponse {
   int32_t err_code = 0;
   std::string err_msg;
   ResourceLoadTiming timing;
+  // Fallback paths to be used when the primary path is invalid or fails to
+  // download.
+  std::vector<std::string> fallback_paths;
 
   bool Success() const { return err_code == 0; }
 };

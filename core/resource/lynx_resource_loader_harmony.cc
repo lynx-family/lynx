@@ -560,7 +560,16 @@ LynxResourceLoaderHarmony::CallbackHandler::HandlePathRequestCallback(
     callback_handler->path_callback_(response);
     delete callback_handler;
   } else {
-    response.path = base::NapiUtil::ConvertToString(env, argv[1]);
+    if (base::NapiUtil::IsArray(env, argv[1])) {
+      base::NapiUtil::ConvertToArrayString(env, argv[1],
+                                           response.fallback_paths);
+      if (!response.fallback_paths.empty()) {
+        response.path = std::move(response.fallback_paths.front());
+        response.fallback_paths.erase(response.fallback_paths.begin());
+      }
+    } else {
+      response.path = base::NapiUtil::ConvertToString(env, argv[1]);
+    }
     response.timing.response_trigger_callback = base::CurrentTimeMicroseconds();
     callback_handler->path_callback_(response);
     delete callback_handler;

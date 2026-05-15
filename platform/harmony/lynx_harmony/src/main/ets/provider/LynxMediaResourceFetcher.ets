@@ -42,14 +42,14 @@ export abstract class LynxMediaResourceFetcher implements LynxResourceProvider {
   };
 
   /**
-   * `LynxEngine` redirects the image path asynchronously by calling this method internally.
-   * The redirected URL should be returned via the callback.
+   * `LynxEngine` redirects the image URL asynchronously by calling this method internally.
+   * The redirected URL, or an array of URLs including fallback URLs, should be returned via the callback.
    *
    * @apidoc
    * @param request Request to be redirected.
-   * @param callback The callback to return the target url.
+   * @param callback The callback used to return the target URL string or an array of URL strings (primary URL and fallback URLs).
    */
-  shouldRedirectUrlAsync(request: LynxResourceRequest, callback: AsyncCallback<string>) {
+  shouldRedirectUrlAsync(request: LynxResourceRequest, callback: AsyncCallback<string | Array<string>>) {
     callback(undefined, request.url);
   }
 

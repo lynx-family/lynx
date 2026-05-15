@@ -112,7 +112,8 @@ class UINewImage : public UIBase,
   void AutoSizeIfNeeded();
   void LoadImage();
   void LoadImageFromService(const std::string& url,
-                            const std::string& placeholder);
+                            const std::string& placeholder,
+                            std::vector<std::string> fallback_urls = {});
   void LoadImageWithTransform(const std::string& url,
                               const std::string& placeholder);
 

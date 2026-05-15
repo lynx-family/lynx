@@ -408,7 +408,7 @@ export abstract class LynxGenericResourceFetcher implements LynxResourceProvider
 export abstract class LynxMediaResourceFetcher implements LynxResourceProvider {
   abstract shouldRedirectUrl(request: LynxResourceRequest): string;
   isLocalResource(url: string): LynxOptionalBool;
-  shouldRedirectUrlAsync(request: LynxResourceRequest, callback: AsyncCallback<string>): void;
+  shouldRedirectUrlAsync(request: LynxResourceRequest, callback: AsyncCallback<string | Array<string>>): void;
 }
 
 export enum LynxOptionalBool {
