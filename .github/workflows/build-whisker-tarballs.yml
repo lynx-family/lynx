@@ -96,12 +96,18 @@ jobs:
 
       - name: Resolve release version
         id: ver
+        env:
+          # `github.event.inputs.tag` is the universally-available form
+          # — `inputs.*` is only valid on workflow_dispatch / call /
+          # run events, so referencing it on a tag push fails workflow
+          # validation. `event.inputs` evaluates to an empty string on
+          # push events and we cope with that below.
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
             VER="${GITHUB_REF_NAME#v}"
           else
-            VER="${{ inputs.tag }}"
-            VER="${VER#v}"
+            VER="${INPUT_TAG#v}"
             if [ -z "$VER" ]; then VER="0.0.0-whisker.dev"; fi
           fi
           echo "version=$VER" >> "$GITHUB_OUTPUT"
