@@ -68,6 +68,8 @@ void Global::Init(base::UnsafeOwningPtr<Runtime>& runtime,
       *js_runtime_,
       std::make_shared<Console>(post_man, page_options.GetDebuggable()));
   global.setProperty(*js_runtime_, "nativeConsole", console_obj);
+  global.setProperty(*js_runtime_, "__lynxDisableModuleCache",
+                     page_options.GetDebuggable());
 
   Value system_info = GetSystemInfo(*js_runtime_);
   global.setProperty(*js_runtime_, "SystemInfo", std::move(system_info));

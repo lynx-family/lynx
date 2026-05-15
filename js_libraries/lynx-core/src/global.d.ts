@@ -7,6 +7,7 @@ declare let nativeConsole: typeof console & {
   alog?(message?: string): void;
   report?(message?: string): void;
 };
+declare let __lynxDisableModuleCache: boolean | undefined;
 
 declare let __BUILD_VERSION__: string;
 declare let __VERSION__: string;

@@ -550,7 +550,7 @@ export abstract class BaseApp<
     options?: { timeout: number }
   ): T {
     const init = BaseApp._$factoryCache[path];
-    if (NODE_ENV !== 'development' && init) {
+    if (this.shouldUseModuleCache() && init) {
       // cache hit
       return this._$executeInit<T>({ init }, { path, entryName });
     }
@@ -586,7 +586,7 @@ export abstract class BaseApp<
     callback: (error?: Error, exports?: T) => void
   ): void {
     const init = BaseApp._$factoryCache[path];
-    if (NODE_ENV !== 'development' && init) {
+    if (this.shouldUseModuleCache() && init) {
       // cache hit
       callback(null, this._$executeInit<T>({ init }, { path }));
       return;
@@ -759,7 +759,7 @@ export abstract class BaseApp<
       true
     );
     let exports: BundleInitReturnObj | object = tryGetLoadScriptCache(cacheKey);
-    if (NODE_ENV === 'development' || !exports) {
+    if (!this.shouldUseModuleCache() || !exports) {
       let maybeExports = this.lynx.getNativeLynx().loadScript(url, options);
       if (maybeExports && typeof (maybeExports as any).init === 'function') {
         exports = maybeExports as BundleInitReturnObj;
@@ -1002,7 +1002,7 @@ export abstract class BaseApp<
   ): string | undefined {
     if (
       !templateUrl ||
-      NODE_ENV === 'development' ||
+      !this.shouldUseModuleCache() ||
       (!this.params?.pageConfigSubset?.enableReuseLoadScriptExports &&
         !ignoreConfig)
     ) {
@@ -1013,6 +1013,17 @@ export abstract class BaseApp<
       cacheKey = templateUrl + cacheKey;
     }
     return cacheKey;
+  }
+
+  private shouldUseModuleCache(): boolean {
+    return NODE_ENV !== 'development' && !this.isModuleCacheDisabled();
+  }
+
+  private isModuleCacheDisabled(): boolean {
+    return (
+      typeof __lynxDisableModuleCache !== 'undefined' &&
+      __lynxDisableModuleCache === true
+    );
   }
 
   /**
