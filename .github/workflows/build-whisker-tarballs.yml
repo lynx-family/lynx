@@ -223,11 +223,22 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Select Xcode
-        # macos-14 runners have multiple Xcode installs. Pin to a
-        # known-good major to keep the pbxproj objectVersion the
-        # Whisker template assumes (77 = Xcode 15+). The runner image
-        # always has at least Xcode 15.4.
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+        # macos-14 runners ship multiple Xcode installs. Need 16+
+        # because xcodegen (and our Whisker pbxproj template) produce
+        # `objectVersion = 77`, which Xcode 15.x rejects with "future
+        # Xcode project file format". Pick the highest 16.x present
+        # so the choice doesn't drift as the runner image updates.
+        run: |
+          set -e
+          CHOSEN=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort | tail -1)
+          if [ -z "$CHOSEN" ]; then
+            echo "::error::no Xcode 16.x found in /Applications. Available:"
+            ls -d /Applications/Xcode*.app 2>&1 || true
+            exit 1
+          fi
+          echo "Selecting $CHOSEN"
+          sudo xcode-select -s "$CHOSEN"
+          xcodebuild -version
 
       - name: Install xcodegen + CocoaPods
         run: |
