@@ -5,13 +5,13 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PAINTING_CONTEXT_DARWIN_H_
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxPerformanceController.h>
 #import <Lynx/LynxUIOwner.h>
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#import "LynxPerformanceController.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
@@ -116,6 +116,10 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
   void Invoke(int64_t id, const std::string& method, const pub::Value& params,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback) override;
+  void EnqueueInvoke(
+      int64_t id, const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>& callback)
+      override;
   int32_t GetTagInfo(const std::string& tag_name) override;
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
 
@@ -145,6 +149,10 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
 
   int32_t instance_id_ = 0;
+
+  shell::UIOperation CreateInvokeUIMethodOperation(
+      int64_t element_id, std::string method, lepus::Value lepus_params,
+      std::function<void(int32_t code, const pub::Value& data)> callback);
 
   template <typename F>
   void Enqueue(F&& func);

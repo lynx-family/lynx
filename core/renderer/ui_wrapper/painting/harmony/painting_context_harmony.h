@@ -120,6 +120,10 @@ class PaintingContextHarmony : public PaintingCtxPlatformImpl {
   void Invoke(int64_t id, const std::string& method, const pub::Value& params,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback) override;
+  void EnqueueInvoke(
+      int64_t id, const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>& callback)
+      override;
   int32_t GetTagInfo(const std::string& tag_name) override;
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
   void UpdatePlatformExtraBundle(int32_t id,

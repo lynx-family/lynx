@@ -114,6 +114,10 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   void Invoke(int64_t id, const std::string& method, const pub::Value& params,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback) override;
+  void EnqueueInvoke(
+      int64_t id, const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>& callback)
+      override;
 
   void getAbsolutePosition(int id, float* position) override;
 

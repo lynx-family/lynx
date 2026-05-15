@@ -126,8 +126,10 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   void Invoke(int64_t id, const std::string& method, const pub::Value& params,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback) override;
-  void InvokeUIMethodCallback(int32_t id, int32_t code,
-                              const lepus::Value params);
+  void EnqueueInvoke(
+      int64_t id, const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>& callback)
+      override;
 
   int32_t GetTagInfo(const std::string& tag_name) override;
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
@@ -167,6 +169,10 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   }
 
  private:
+  shell::UIOperation CreateInvokeUIMethodOperation(
+      int64_t id, std::string method, lepus::Value lepus_params,
+      std::function<void(int32_t code, const pub::Value& data)> callback);
+
   enum class IntValueIndex {
     LEFT,
     TOP,
@@ -220,9 +226,6 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   std::shared_ptr<base::android::ScopedWeakGlobalJavaRef<jobject>> impl_;
   PaintingContextAndroid(const PaintingContextAndroid&) = delete;
   PaintingContextAndroid& operator=(const PaintingContextAndroid&) = delete;
-  std::unordered_map<int32_t,
-                     std::function<void(int32_t code, const pub::Value& data)>>
-      invoke_callback_maps_;
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
   bool enable_vsync_aligned_flush_ = false;
   jint thread_strategy_;
