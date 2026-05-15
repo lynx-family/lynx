@@ -1778,7 +1778,7 @@ public protocol LynxExtensionModule-p : <NSObject> {
 
 public class LynxExternalResourceFetcherWrapper : NSObject {
   public instancetype LynxExternalResourceFetcherWrapper::initWithDynamicComponentFetcher:(id< LynxDynamicComponentFetcher > fetcher);
-  public BOOL LynxExternalResourceFetcherWrapper::fetchResource:withLoadedBlock:sync:(NSString *url,[withLoadedBlock] LoadedBlock block,[sync] BOOL sync);
+  public BOOL LynxExternalResourceFetcherWrapper::fetchResource:withLoadedBlock:(NSString *url,[withLoadedBlock] LoadedBlock block);
 }
 
 public class LynxExtraTiming : NSObject {
