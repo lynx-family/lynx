@@ -49,10 +49,14 @@ if (is_debug) {
 }
 
 config("weak_node_api_config") {
-  include_dirs = [ weak_node_api_pkg_root ]
+  include_dirs = [
+    weak_node_api_pkg_root,
+    weak_node_api_pkg_root + "/shim",
+  ]
   defines = [
     "NAPI_DISABLE_CPP_EXCEPTIONS",
     "NAPI_DISABLE_CPP_RTTI",
+    "NAPI_CPP_CUSTOM_NAMESPACE=weak_node_api",
   ]
   if (use_primjs_napi) {
     defines += [ "USE_PRIMJS_NAPI" ]
@@ -63,6 +67,7 @@ config("weak_node_api_config") {
 }
 
 config("private_config") {
+  include_dirs = [ weak_node_api_pkg_root + "/shim" ]
   cflags = [
     "-Wno-sign-compare",
     "-Wno-unused-function",

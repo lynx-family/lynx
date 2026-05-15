@@ -2,4 +2,5 @@ generated/
 headers/
 prebuilt/
 node_modules/
+shim/
 pnpm-lock.yaml
