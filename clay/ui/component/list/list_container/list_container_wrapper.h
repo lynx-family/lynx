@@ -20,6 +20,7 @@ class ListContainerWrapper
   ListContainerWrapper(int32_t id, PageView* page_view);
 
   void SetAttribute(const char* attr_c, const clay::Value& value) override;
+  void BeforeSetAttribute(const clay::Value::Map& attributes) override;
   void DidUpdateAttributes() override;
 
   void UpdateContentOffsetForListContainer(float content_size,
