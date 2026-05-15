@@ -42,13 +42,6 @@ jobs:
           distribution: temurin
           java-version: 11
 
-      - name: Set up Android NDK 21.1.6352462
-        id: ndk
-        uses: nttld/setup-ndk@v1
-        with:
-          ndk-version: r21e
-          add-to-path: false
-
       - name: Python Setup (for hab + py_deps)
         uses: actions/setup-python@v5
         with:
@@ -58,6 +51,20 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
         with:
           cache-backend: github
+
+      - name: Install Android NDK 21.1.6352462 + platforms/build-tools
+        # Lynx pins ndk 21.1.6352462 inside `gradle.properties` and
+        # reads it via `ndk.dir = $ANDROID_HOME/ndk/<version>`, so
+        # we install into that canonical location rather than relying
+        # on the runner's pre-installed NDKs (which don't include r21).
+        # Lynx ships its own installer that uses the sdkmanager
+        # buildtools the prior step's `tools/hab sync . -f --target
+        # dev` already staged.
+        working-directory: lynx
+        run: |
+          set -e
+          tools/hab sync . -f --target dev --target-only
+          python3 tools/android_tools/prepare_android_build.py
 
       - name: Apply Whisker buildroot patch (visibility + libc++_shared)
         working-directory: lynx
@@ -81,8 +88,15 @@ jobs:
 
       - name: Build Android AARs
         working-directory: lynx
+        # NDK env vars point at the sdkmanager-installed NDK rather
+        # than the pre-installed-but-stale GHA runner one. Lynx's
+        # build expects exactly 21.1.6352462; mismatching paths cause
+        # `local.properties`'s ndk.dir to resolve to an empty dir
+        # ("Location specified by ndk.dir did not contain a valid NDK").
         run: |
           set -e
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/21.1.6352462"
+          export ANDROID_NDK="$ANDROID_NDK_HOME"
           source tools/envsetup.sh
           cd platform/android
           ./gradlew --no-daemon \
@@ -90,9 +104,6 @@ jobs:
             :LynxTrace:assembleNoasanRelease \
             :LynxAndroid:assembleNoasanRelease \
             :ServiceAPI:assembleNoasanRelease
-        env:
-          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
-          ANDROID_NDK: ${{ steps.ndk.outputs.ndk-path }}
 
       - name: Resolve release version
         id: ver
