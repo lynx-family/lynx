@@ -47,6 +47,7 @@ group("lynx_android_lib") {
     "../../../core/base:base",
     "../../../core/build:build",
     "../../../core/event",
+    "../../../core/native_renderer_capi:native_renderer_capi",
     "../../../core/renderer:tasm",
     "../../../core/renderer/css:css",
     "../../../core/renderer/data:data",
@@ -143,12 +144,12 @@ config("lynx_android_public_config") {
   cflags += [
     "-fno-short-enums",
     "-fno-strict-aliasing",
-    # Whisker patch: lynx_android_public_config is applied to every
-    # lynx_core_source_set (core/shell, core/renderer/*, …) on Android.
-    # Default visibility here makes LynxShell::RunOnTasmThread, the
-    # Element manager's CreateFiber* helpers, and FiberElement::* land
-    # in liblynx.so's .dynsym so the Rust bridge can call them.
-    "-fvisibility=default",
+    # Default hidden visibility. Whisker's native renderer C API
+    # (core/native_renderer_capi/) tags its individual functions
+    # with LYNX_CAPI_EXPORT (= __attribute__((visibility("default"))))
+    # so only those land in liblynx.so's .dynsym. Lynx's internal
+    # C++ classes stay hidden, which is what upstream wants.
+    "-fvisibility=hidden",
     "-fvisibility-inlines-hidden",
     "-Wno-unused-parameter",
     "-Wno-unknown-warning-option",

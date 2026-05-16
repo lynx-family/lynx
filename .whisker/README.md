@@ -1,27 +1,37 @@
 # Whisker fork bits
 
-This subtree is everything the Whisker fork adds on top of upstream
-Lynx. Keep additions here narrow — patches live under `.whisker/patches/`
-as files that CI applies at build time, and the build glue stays
-under `.whisker/ios/` (for the iOS CocoaPods carrier project) once
-that lands.
+Everything the Whisker fork adds on top of upstream Lynx. The fork is
+intentionally minimal — **no patches against upstream source** as of
+v3.7.0-whisker.1. The fork's value is the new C ABI Whisker consumes
+(`core/native_renderer_capi/`) plus CI that ships prebuilt tarballs.
 
 ## Structure
 
 ```
 .whisker/
-├── patches/
-│   ├── buildroot.patch    — applied to build/ after `tools/hab sync`
-│   │                        in the build-whisker-tarballs workflow
-│   └── README.md          — what each patch does + why upstreaming is hard
-└── README.md              — this file
+├── ios/
+│   ├── build-xcframeworks.sh   — pod-install + xcodebuild Lynx pods
+│   └── stage-tarball.sh        — pack the iOS half of the release
+└── README.md                   — this file
+
+core/native_renderer_capi/      — additions, not patches
+├── BUILD.gn
+├── lynx_native_renderer.cc     — thin extern "C" wrappers over Lynx C++
+└── public/
+    └── lynx_native_renderer_capi.h
 ```
+
+The native renderer C API exposes the subset of Lynx internals that
+Whisker drives (LynxShell + ElementManager + FiberElement family),
+plus `lynx_aslr_reference()` as a subsecond hot-patch anchor. Lives
+under `core/` rather than `platform/embedder/` because the LynxAndroid
+AAR build doesn't include `platform/embedder/`; this way the new C
+API is linked into the same `liblynx.so` Whisker depends on.
 
 ## Companion repo: whiskerrs/whisker
 
-The Whisker repo at `whiskerrs/whisker` pins this fork's release
-tag in `crates/whisker-build/src/lynx.rs`. After cutting a release
-here:
+The Whisker repo at `whiskerrs/whisker` pins this fork's release tag
+in `crates/whisker-build/src/lynx.rs`. After cutting a release here:
 
 1. Get the SHA-256 of each tarball from the release page (or the
    `.sha256` sidecar files attached to the release).
@@ -35,24 +45,18 @@ here:
 ## Cutting a release
 
 ```bash
-# From this repo
 git checkout whisker/main
-git tag v3.7.0-whisker.0
-git push origin v3.7.0-whisker.0
+git tag v3.7.0-whisker.1
+git push origin v3.7.0-whisker.1
 ```
 
-The `build-whisker-tarballs.yml` workflow runs automatically on
-the tag push. Wait for it to complete, then check the resulting
-release page for the tarballs.
+The `build-whisker-tarballs.yml` workflow runs automatically on the
+tag push (Android + iOS jobs in parallel). Wait for it to complete,
+then check the resulting release page for the tarballs.
 
-## Direct-from-source iOS build (not yet)
+## Upstream relationship
 
-The iOS Lynx framework build is currently driven from
-`whiskerrs/whisker`'s `xtask/src/ios/build_lynx_frameworks.rs`,
-which sets up a CocoaPods carrier project, pod-installs Lynx +
-PrimJS source pods, and `xcodebuild`s xcframeworks. That logic
-needs to be ported into `.whisker/ios/` so this fork's CI can
-build iOS too. Until then the iOS half of the
-`build-whisker-tarballs` workflow is commented out, and Whisker
-users on iOS still need a Whisker contributor's local build (set
-via `WHISKER_LYNX_DIR` env var).
+Since v3.7.0-whisker.1 there are **no source patches** against
+upstream — only the additive `core/native_renderer_capi/` subtree.
+That makes a future PR to lynx-family/lynx straightforward: the
+diff is a new file, no behavior change for upstream consumers.
