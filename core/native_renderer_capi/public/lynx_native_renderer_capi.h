@@ -31,9 +31,23 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "platform/embedder/public/capi/lynx_export.h"
+// Self-contained export macros. The rest of Lynx uses
+// `platform/embedder/public/capi/lynx_export.h` for the same purpose,
+// but this header has to compile in embedder builds (Whisker) where
+// `platform/embedder/` isn't on the include path — the prebuilt
+// LynxAndroid AAR / Lynx.xcframework only ship the `core/`, `base/`,
+// and `service_api/` subtrees. Keeping the macros inline avoids any
+// cross-subtree include from a public header.
+#if defined(__GNUC__) || defined(__clang__)
+#define LYNX_NATIVE_RENDERER_CAPI_EXPORT \
+  __attribute__((visibility("default")))
+#else
+#define LYNX_NATIVE_RENDERER_CAPI_EXPORT
+#endif
 
-LYNX_EXTERN_C_BEGIN
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // ----- Opaque handle types --------------------------------------------------
 
@@ -69,10 +83,10 @@ typedef enum lynx_element_tag_e {
 // Returns NULL if `native_shell_ptr` is NULL. The handle wraps but
 // does NOT own the underlying shell — callers must not outlive the
 // LynxView that created it. Pair with lynx_shell_release() when done.
-LYNX_CAPI_EXPORT lynx_shell_t* lynx_shell_from_native_ptr(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT lynx_shell_t* lynx_shell_from_native_ptr(
     void* native_shell_ptr);
 
-LYNX_CAPI_EXPORT void lynx_shell_release(lynx_shell_t* shell);
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_shell_release(lynx_shell_t* shell);
 
 // ----- Thread dispatch ------------------------------------------------------
 
@@ -82,7 +96,7 @@ typedef void (*lynx_tasm_callback_t)(void* user_data);
 // On first call, the shell is configured for fiber-arch mode and the
 // ElementManager becomes available; subsequent calls just dispatch.
 // Returns false if the shell is null or the callback is null.
-LYNX_CAPI_EXPORT bool lynx_shell_run_on_tasm_thread(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT bool lynx_shell_run_on_tasm_thread(
     lynx_shell_t* shell,
     lynx_tasm_callback_t callback,
     void* user_data);
@@ -96,38 +110,38 @@ LYNX_CAPI_EXPORT bool lynx_shell_run_on_tasm_thread(
 //
 // The returned handle owns one strong reference; release with
 // lynx_element_release() when the embedder no longer needs it.
-LYNX_CAPI_EXPORT lynx_fiber_element_t* lynx_create_fiber_element(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT lynx_fiber_element_t* lynx_create_fiber_element(
     lynx_shell_t* shell,
     lynx_element_tag_e tag);
 
-LYNX_CAPI_EXPORT void lynx_element_release(lynx_fiber_element_t* element);
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_release(lynx_fiber_element_t* element);
 
 // Return the stable per-element id (Lynx calls this `impl_id`).
 // Useful for routing events back from the platform event emitter to
 // the embedder's registry. Returns 0 if `element` is NULL.
-LYNX_CAPI_EXPORT int32_t lynx_element_id(lynx_fiber_element_t* element);
+LYNX_NATIVE_RENDERER_CAPI_EXPORT int32_t lynx_element_id(lynx_fiber_element_t* element);
 
 // ----- Element manipulation -------------------------------------------------
 
 // Set a string-valued attribute. UTF-8. Both `key` and `value` must
 // be non-null.
-LYNX_CAPI_EXPORT void lynx_element_set_attribute(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_set_attribute(
     lynx_fiber_element_t* element,
     const char* key,
     const char* value);
 
 // Set raw inline CSS (as if `style="..."` were declared in template).
-LYNX_CAPI_EXPORT void lynx_element_set_inline_styles(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_set_inline_styles(
     lynx_fiber_element_t* element,
     const char* css);
 
 // Append `child` to `parent`'s children list.
-LYNX_CAPI_EXPORT void lynx_element_append_child(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_append_child(
     lynx_fiber_element_t* parent,
     lynx_fiber_element_t* child);
 
 // Remove `child` from `parent`'s children list.
-LYNX_CAPI_EXPORT void lynx_element_remove_child(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_remove_child(
     lynx_fiber_element_t* parent,
     lynx_fiber_element_t* child);
 
@@ -135,14 +149,14 @@ LYNX_CAPI_EXPORT void lynx_element_remove_child(
 
 // Install `page` as the shell's root PageElement. `page` MUST have
 // been created with LYNX_ELEMENT_TAG_PAGE.
-LYNX_CAPI_EXPORT void lynx_shell_set_root_element(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_shell_set_root_element(
     lynx_shell_t* shell,
     lynx_fiber_element_t* page);
 
 // Commit the current element tree — flush fiber actions, run patch
 // finalization, schedule layout + paint. Must be called from inside
 // the TASM thread callback.
-LYNX_CAPI_EXPORT void lynx_shell_flush(lynx_shell_t* shell);
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_shell_flush(lynx_shell_t* shell);
 
 // ----- subsecond ASLR anchor ------------------------------------------------
 
@@ -154,8 +168,10 @@ LYNX_CAPI_EXPORT void lynx_shell_flush(lynx_shell_t* shell);
 // Stable across Lynx versions by contract — DO NOT remove or
 // rename. This symbol exists *because* a hot-patch framework needs
 // some reliably-exported Lynx symbol to dlsym against.
-LYNX_CAPI_EXPORT void lynx_aslr_reference(void);
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_aslr_reference(void);
 
-LYNX_EXTERN_C_END
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 #endif  // CORE_NATIVE_RENDERER_CAPI_PUBLIC_LYNX_NATIVE_RENDERER_CAPI_H_

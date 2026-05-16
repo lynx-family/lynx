@@ -9,7 +9,7 @@
 // and forwards. By living inside liblynx.so itself, the wrappers
 // retain access to the internal classes without forcing
 // `-fvisibility=default` on the entire engine: only the
-// LYNX_CAPI_EXPORT-tagged functions in this file land in `.dynsym`.
+// LYNX_NATIVE_RENDERER_CAPI_EXPORT-tagged functions in this file land in `.dynsym`.
 //
 // Shell extraction (JNI reflection on Android, Obj-C ivar access on
 // iOS) stays on the embedder side — this file just wraps a raw
@@ -56,7 +56,7 @@ struct lynx_fiber_element_t {
 
 // ----- Shell wrapping + lifecycle -------------------------------------------
 
-LYNX_CAPI_EXPORT lynx_shell_t* lynx_shell_from_native_ptr(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT lynx_shell_t* lynx_shell_from_native_ptr(
     void* native_shell_ptr) {
   if (native_shell_ptr == nullptr) {
     return nullptr;
@@ -67,7 +67,7 @@ LYNX_CAPI_EXPORT lynx_shell_t* lynx_shell_from_native_ptr(
 }
 
 
-LYNX_CAPI_EXPORT void lynx_shell_release(lynx_shell_t* shell) {
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_shell_release(lynx_shell_t* shell) {
   if (shell == nullptr) return;
   // Drop the page first to avoid a dangling FiberElement → ElementManager
   // back-pointer if the caller has already torn down the LynxView.
@@ -77,7 +77,7 @@ LYNX_CAPI_EXPORT void lynx_shell_release(lynx_shell_t* shell) {
 
 // ----- Thread dispatch ------------------------------------------------------
 
-LYNX_CAPI_EXPORT bool lynx_shell_run_on_tasm_thread(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT bool lynx_shell_run_on_tasm_thread(
     lynx_shell_t* shell,
     lynx_tasm_callback_t callback,
     void* user_data) {
@@ -143,7 +143,7 @@ fml::RefPtr<lynx::tasm::FiberElement> CreateForTag(
 
 }  // namespace
 
-LYNX_CAPI_EXPORT lynx_fiber_element_t* lynx_create_fiber_element(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT lynx_fiber_element_t* lynx_create_fiber_element(
     lynx_shell_t* shell,
     lynx_element_tag_e tag) {
   if (shell == nullptr || shell->manager == nullptr) return nullptr;
@@ -152,18 +152,18 @@ LYNX_CAPI_EXPORT lynx_fiber_element_t* lynx_create_fiber_element(
   return new lynx_fiber_element_t{std::move(ref)};
 }
 
-LYNX_CAPI_EXPORT void lynx_element_release(lynx_fiber_element_t* element) {
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_release(lynx_fiber_element_t* element) {
   delete element;
 }
 
-LYNX_CAPI_EXPORT int32_t lynx_element_id(lynx_fiber_element_t* element) {
+LYNX_NATIVE_RENDERER_CAPI_EXPORT int32_t lynx_element_id(lynx_fiber_element_t* element) {
   if (element == nullptr || !element->ref) return 0;
   return element->ref->impl_id();
 }
 
 // ----- Element manipulation -------------------------------------------------
 
-LYNX_CAPI_EXPORT void lynx_element_set_attribute(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_set_attribute(
     lynx_fiber_element_t* element,
     const char* key,
     const char* value) {
@@ -176,14 +176,14 @@ LYNX_CAPI_EXPORT void lynx_element_set_attribute(
       lynx::lepus::Value(lynx::base::String(value)));
 }
 
-LYNX_CAPI_EXPORT void lynx_element_set_inline_styles(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_set_inline_styles(
     lynx_fiber_element_t* element,
     const char* css) {
   if (element == nullptr || !element->ref || css == nullptr) return;
   element->ref->SetRawInlineStyles(lynx::base::String(css));
 }
 
-LYNX_CAPI_EXPORT void lynx_element_append_child(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_append_child(
     lynx_fiber_element_t* parent,
     lynx_fiber_element_t* child) {
   if (parent == nullptr || child == nullptr || !parent->ref || !child->ref) {
@@ -192,7 +192,7 @@ LYNX_CAPI_EXPORT void lynx_element_append_child(
   parent->ref->InsertNode(child->ref);
 }
 
-LYNX_CAPI_EXPORT void lynx_element_remove_child(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_remove_child(
     lynx_fiber_element_t* parent,
     lynx_fiber_element_t* child) {
   if (parent == nullptr || child == nullptr || !parent->ref || !child->ref) {
@@ -203,7 +203,7 @@ LYNX_CAPI_EXPORT void lynx_element_remove_child(
 
 // ----- Pipeline -------------------------------------------------------------
 
-LYNX_CAPI_EXPORT void lynx_shell_set_root_element(
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_shell_set_root_element(
     lynx_shell_t* shell,
     lynx_fiber_element_t* page) {
   if (shell == nullptr || shell->manager == nullptr || page == nullptr ||
@@ -216,7 +216,7 @@ LYNX_CAPI_EXPORT void lynx_shell_set_root_element(
   shell->root_page = std::move(page_ref);
 }
 
-LYNX_CAPI_EXPORT void lynx_shell_flush(lynx_shell_t* shell) {
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_shell_flush(lynx_shell_t* shell) {
   if (shell == nullptr || shell->manager == nullptr || !shell->root_page) {
     return;
   }
@@ -230,7 +230,7 @@ LYNX_CAPI_EXPORT void lynx_shell_flush(lynx_shell_t* shell) {
 // Intentionally non-empty so the linker doesn't merge it with other
 // trivially-empty functions or strip it. The volatile keeps the
 // compiler honest about the assignment having an observable effect.
-LYNX_CAPI_EXPORT void lynx_aslr_reference(void) {
+LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_aslr_reference(void) {
   static volatile int marker = 0;
   marker = marker + 1;
 }
