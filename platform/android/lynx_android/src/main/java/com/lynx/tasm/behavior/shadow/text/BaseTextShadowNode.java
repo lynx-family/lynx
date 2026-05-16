@@ -480,9 +480,6 @@ public class BaseTextShadowNode extends ShadowNode {
   }
 
   protected void generateStyleSpan(SpannableStringBuilder sb, List<SetSpanOperation> ops) {
-    mTextAttributes.mHasImageSpan = false;
-    mTextAttributes.mHasInlineViewSpan = false;
-    mNeedDrawStroke = false;
     int start = sb.length();
 
     if (getChildCount() == 0 && mText != null) {
