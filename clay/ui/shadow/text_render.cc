@@ -5,9 +5,11 @@
 #include "clay/ui/shadow/text_render.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <limits>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -39,6 +41,68 @@ namespace utils = attribute_utils;
 
 constexpr float kLayoutTolerance = 1.f;
 static constexpr float kDefaultFontSizeInDip = 14.f;
+
+static bool InlineTruncationTextBoxesFit(txt::Paragraph* paragraph,
+                                         ShadowNode* node, double layout_width,
+                                         double visible_bottom,
+                                         std::optional<double>& first_box_top) {
+  if (!paragraph || !node) {
+    return false;
+  }
+
+  if (node->IsInlineTextShadowNode()) {
+    auto* inline_text_node = static_cast<InlineTextShadowNode*>(node);
+    size_t visible_text_end = 0;
+    auto line_metrics = paragraph->GetLineMetrics();
+    if (!line_metrics.empty()) {
+      visible_text_end = line_metrics.back().end_index;
+    }
+    for (const auto& range : inline_text_node->range_in_paragraph_) {
+      if (range.end() > visible_text_end) {
+        return false;
+      }
+      if (range.end() > range.start()) {
+        auto last_boxes =
+            paragraph->GetRectsForRange(range.end() - 1, range.end(),
+                                        txt::Paragraph::RectHeightStyle::kTight,
+                                        txt::Paragraph::RectWidthStyle::kTight);
+        if (last_boxes.empty()) {
+          return false;
+        }
+      }
+      auto boxes = paragraph->GetRectsForRange(
+          range.start(), range.end(), txt::Paragraph::RectHeightStyle::kTight,
+          txt::Paragraph::RectWidthStyle::kTight);
+      for (const auto& box : boxes) {
+        if (box.rect.Width() <= kLayoutTolerance &&
+            box.rect.Height() <= kLayoutTolerance) {
+          continue;
+        }
+        if (box.rect.Left() < -kLayoutTolerance ||
+            box.rect.Right() > layout_width + kLayoutTolerance ||
+            box.rect.Bottom() > visible_bottom + kLayoutTolerance) {
+          return false;
+        }
+        if (first_box_top.has_value() &&
+            std::abs(box.rect.Top() - first_box_top.value()) >
+                kLayoutTolerance) {
+          return false;
+        }
+        if (!first_box_top.has_value()) {
+          first_box_top = box.rect.Top();
+        }
+      }
+    }
+  }
+
+  for (auto* child : node->GetChildren()) {
+    if (!InlineTruncationTextBoxesFit(paragraph, child, layout_width,
+                                      visible_bottom, first_box_top)) {
+      return false;
+    }
+  }
+  return true;
+}
 
 clay::Value TextRender::GetTextInfo(const char* text,
                                     const clay::Value& params) {
@@ -629,56 +693,94 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
         }
         truncation_node->SetNeedLayout(true);
         truncation_node->SetNeedMount(true);
-#ifndef CLAY_ENABLE_TTTEXT
-        auto end_dx = truncation_direction_ == TextDirection::kRtl
-                          ? truncation_size.width()
-                          : prev_layout_width_ - truncation_size.width();
-#else
-        auto end_dx = prev_layout_width_ - truncation_size.width();
-#endif
         auto line_metrics = cache_paragraph_->GetLineMetrics();
         if (line_metrics.empty()) {
           truncation_node->SetNeedMount(false);
           return;
         }
+        const bool has_hard_break = std::any_of(
+            line_metrics.begin(), line_metrics.end(),
+            [](const auto& line_metric) { return line_metric.hard_break; });
+        const double truncation_layout_width =
+            has_hard_break ? prev_layout_width_
+                           : cache_paragraph_->GetMaxIntrinsicWidth();
+#ifndef CLAY_ENABLE_TTTEXT
+        auto end_dx = truncation_direction_ == TextDirection::kRtl
+                          ? truncation_size.width()
+                          : truncation_layout_width - truncation_size.width();
+#else
+        auto end_dx = truncation_layout_width - truncation_size.width();
+#endif
         auto last_line_height = line_metrics.back().height;
         auto end_dy = constraint.height_mode == MeasureMode::kIndefinite
                           ? cache_paragraph_->GetHeight()
                           : std::min<double>(cache_paragraph_->GetHeight(),
                                              constraint.height.value_or(0)) -
-                                last_line_height;
+                                last_line_height + kLayoutTolerance;
         auto end_glyph_index =
             cache_paragraph_->GetGlyphPositionAtCoordinate(end_dx, end_dy);
-        auto end_glyph_boxes = cache_paragraph_->GetRectsForRange(
-            end_glyph_index.position - 1, end_glyph_index.position,
-            txt::Paragraph::RectHeightStyle::kTight,
-            txt::Paragraph::RectWidthStyle::kTight);
+        auto end_glyph_boxes =
+            end_glyph_index.position > 0
+                ? cache_paragraph_->GetRectsForRange(
+                      end_glyph_index.position - 1, end_glyph_index.position,
+                      txt::Paragraph::RectHeightStyle::kTight,
+                      txt::Paragraph::RectWidthStyle::kTight)
+                : std::vector<txt::Paragraph::TextBox>{};
         size_t display_glyph_num = end_glyph_index.position;
         if (!end_glyph_boxes.empty()) {
           auto glyph_box = end_glyph_boxes.front();
           if (glyph_box.rect.Right() >
               prev_layout_width_ - truncation_size.width()) {
-            display_glyph_num = end_glyph_index.position - 1;
+            display_glyph_num =
+                end_glyph_index.position > 0 ? end_glyph_index.position - 1 : 0;
           }
         }
-        const size_t visible_glyph_num = display_glyph_num;
-        ProcessTruncationContent(display_glyph_num, measure_node_);
-        inline_truncation_hidden_count_ =
-            static_cast<int>(end_glyph_position_ > visible_glyph_num
-                                 ? end_glyph_position_ - visible_glyph_num
-                                 : 0);
-        measure_node_->text_style_->overflow = TextOverflow::kClip;
-        update_flag_ = TextUpdateFlag::kUpdateFlagStyle;
-        BuildTextLayout(constraint, context);
-        for (auto truncation_child : child->GetChildren()) {
-          if (truncation_child->IsInlineTextShadowNode()) {
-            static_cast<InlineTextShadowNode*>(truncation_child)
-                ->LayoutRange(cache_paragraph_.get());
+        const size_t max_visible_glyph_num = display_glyph_num;
+        const size_t original_end_glyph_position = end_glyph_position_;
+        const std::optional<TextOverflow> overflow =
+            measure_node_->text_style_->overflow;
+
+        auto rebuild_with_visible_glyph_num = [&](size_t visible_glyph_num) {
+          measure_node_->ResetEndIndex();
+          truncation_node->SetNeedLayout(true);
+          size_t remaining_glyph_num = visible_glyph_num;
+          ProcessTruncationContent(remaining_glyph_num, measure_node_);
+          inline_truncation_hidden_count_ = static_cast<int>(
+              original_end_glyph_position > visible_glyph_num
+                  ? original_end_glyph_position - visible_glyph_num
+                  : 0);
+          measure_node_->text_style_->overflow = TextOverflow::kClip;
+          update_flag_ = TextUpdateFlag::kUpdateFlagStyle;
+          BuildTextLayout(constraint, context);
+          measure_node_->text_style_->overflow = overflow;
+          for (auto truncation_child : child->GetChildren()) {
+            if (truncation_child->IsInlineTextShadowNode()) {
+              static_cast<InlineTextShadowNode*>(truncation_child)
+                  ->LayoutRange(cache_paragraph_.get());
+            }
           }
+          double visible_bottom = cache_paragraph_->GetHeight();
+          if (constraint.height_mode != MeasureMode::kIndefinite) {
+            visible_bottom =
+                std::min<double>(visible_bottom, constraint.height.value_or(0));
+          }
+          std::optional<double> first_box_top;
+          return InlineTruncationTextBoxesFit(
+              cache_paragraph_.get(), truncation_node, prev_layout_width_,
+              visible_bottom, first_box_top);
+        };
+
+        size_t visible_glyph_num = max_visible_glyph_num;
+        // Line breaking can change non-monotonically as text is removed, so
+        // back off from the original cut point and keep the closest fit.
+        while (!rebuild_with_visible_glyph_num(visible_glyph_num) &&
+               visible_glyph_num > 0) {
+          --visible_glyph_num;
         }
         truncation_node->UpdateTruncatedSize(truncation_size.width(),
                                              truncation_size.height());
         truncation_node->SetNeedLayout(false);
+        measure_node_->SetNeedSecondLayout(false);
         return;
       } else {
         truncation_node->SetNeedMount(false);

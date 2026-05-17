@@ -18,8 +18,8 @@ InlineTextShadowNode::InlineTextShadowNode(ShadowNodeOwner* owner,
 
 InlineTextShadowNode::~InlineTextShadowNode() = default;
 
-void InlineTextShadowNode::AddTextRange(size_t start, size_t end) {
-  range_in_paragraph_.emplace_back(start, end);
+void InlineTextShadowNode::AddTextRange(size_t start_utf32, size_t end_utf32) {
+  range_in_paragraph_.emplace_back(start_utf32, end_utf32);
 }
 
 void InlineTextShadowNode::LayoutRange(txt::Paragraph* paragraph) {
