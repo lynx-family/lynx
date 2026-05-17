@@ -26,6 +26,7 @@ android {
         buildConfigField("Boolean","disable_nanbox", disable_nanbox)
         buildConfigField("Boolean","enable_lite_production", enable_lite_production)
         buildConfigField("Boolean","enable_lite",enable_lite)
+        buildConfigField("Boolean","enable_packrel",enable_packrel)
 
         multiDexEnabled true
 
@@ -282,6 +283,7 @@ task configGnCompileParas {
             gnBuildArgs_list.put("compiler_optimization_level", "\"$compiler_optimization_level\"")
             // enable 16 kb by default
             gnBuildArgs_list.put("enable_16kb_align", "true")
+            gnBuildArgs_list.put("enable_packrel", "\"$enable_packrel\"")
             if (buildType == "release") {
                 gnBuildArgs_list.put("is_debug", "false")
                 gnBuildArgs_list.put("enable_replay_release", "\"$enable_replay_release\"")
