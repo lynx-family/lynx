@@ -146,7 +146,11 @@ void RawTextShadowNode::TextLayout(LayoutContext* context) {
   inline_emoji_text_ranges_.clear();
   layout_text_utf16_to_raw_end_indices_.clear();
   layout_text_utf32_to_raw_end_indices_.clear();
+#if defined(CLAY_ENABLE_TTTEXT)
   auto start = text_context->TextSizeIncludingPlaceholdersInUtf32();
+#else
+  auto start = text_context->TextSizeIncludingPlaceholders();
+#endif
   auto parent_text_shadow_node = FindTextShadowNodeAncestor();
   std::optional<TextStyle> text_style = std::nullopt;
   if (parent_text_shadow_node) {
@@ -165,7 +169,11 @@ void RawTextShadowNode::TextLayout(LayoutContext* context) {
     AddTextWithInlineEmoji(text_context, text, need_text_indent);
   }
   if (parent_ && parent_->IsInlineTextShadowNode()) {
+#if defined(CLAY_ENABLE_TTTEXT)
     auto end = text_context->TextSizeIncludingPlaceholdersInUtf32();
+#else
+    auto end = text_context->TextSizeIncludingPlaceholders();
+#endif
     static_cast<InlineTextShadowNode*>(parent_)->AddTextRange(start, end);
   }
 }
