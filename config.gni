@@ -78,6 +78,9 @@ declare_args() {
   # enable 16kb align for android
   enable_16kb_align = false
 
+  # Whether enable relocations packing optimization
+  enable_packrel = false
+
   # compiler optimization level
   compiler_optimization_level = "Oz"
 
