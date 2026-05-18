@@ -111,6 +111,15 @@ constexpr const char kEnableFetchAPIStandardStreaming[] =
     "enableFetchAPIStandardStreaming";
 
 /**
+ * @name: enableReleaseAppInstance
+ * @description: Use for controlling hooks module appInstance release on
+ * component/app destroy.
+ * @platform: Both
+ * @supportVersion: 3.8
+ **/
+constexpr const char kEnableReleaseAppInstance[] = "enableReleaseAppInstance";
+
+/**
  * Check if the given url indicates lynx_core.js.
  * @param url the url to check
  * @return true if the given url indicates lynx_core.js.
