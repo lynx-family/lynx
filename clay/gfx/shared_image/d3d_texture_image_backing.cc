@@ -115,9 +115,11 @@ bool D3DTextureFactory::InitializeD3DDevice() {
 
   std::optional<PFN_D3D11_CREATE_DEVICE> D3D11CreateDevice =
       d3d11_->ResolveFunction<PFN_D3D11_CREATE_DEVICE>("D3D11CreateDevice");
-  if (FAILED(
-          CreateSafeD3D11Device(D3D11CreateDevice, &d3d11_device_, nullptr))) {
-    FML_LOG(ERROR) << "D3DTextureImageBacking could not create D3D11 Device.";
+  HRESULT hr =
+      CreateSafeD3D11Device(D3D11CreateDevice, &d3d11_device_, nullptr);
+  if (FAILED(hr)) {
+    FML_LOG(ERROR)
+        << "D3DTextureImageBacking could not create D3D11 Device. hr=" << hr;
     return false;
   }
   return true;
@@ -163,31 +165,46 @@ bool CreateD3DTextureSharedHandle(ID3D11Device** device_ptr,
   ID3D11Device* device = *device_ptr;
   HRESULT result = device->CreateTexture2D(&desc, nullptr, &d3d11_texture);
   if (FAILED(result)) {
-    FML_LOG(ERROR) << "Could not create D3D texture2D. result:" << result;
+    FML_LOG(ERROR) << "Could not create D3D texture2D. width=" << desc.Width
+                   << ", height=" << desc.Height << ", format=" << desc.Format
+                   << ", hr=" << result;
     return false;
   }
 
   d3d11_texture.CopyTo(out_texture);
 
-  if (Microsoft::WRL::ComPtr<IDXGIResource1> dxgi_resource1;
-      SUCCEEDED(d3d11_texture.As(&dxgi_resource1))) {
-    if (SUCCEEDED(dxgi_resource1->CreateSharedHandle(
-            nullptr, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE,
-            nullptr, out_handle))) {
+  Microsoft::WRL::ComPtr<IDXGIResource1> dxgi_resource1;
+  HRESULT resource1_hr = d3d11_texture.As(&dxgi_resource1);
+  if (SUCCEEDED(resource1_hr)) {
+    HRESULT handle_hr = dxgi_resource1->CreateSharedHandle(
+        nullptr, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE,
+        nullptr, out_handle);
+    if (SUCCEEDED(handle_hr)) {
       *is_nt_handle = true;
       return true;
     } else {
-      FML_LOG(ERROR) << "Could not create shared handle from IDXGIResource1.";
+      FML_LOG(ERROR)
+          << "Could not create shared handle from IDXGIResource1. hr="
+          << handle_hr;
     }
+  } else {
+    FML_LOG(ERROR) << "Could not query IDXGIResource1 from D3D texture. hr="
+                   << resource1_hr;
   }
 
-  if (Microsoft::WRL::ComPtr<IDXGIResource> dxgi_resource;
-      SUCCEEDED(d3d11_texture.As(&dxgi_resource))) {
-    if (SUCCEEDED(dxgi_resource->GetSharedHandle(out_handle))) {
+  Microsoft::WRL::ComPtr<IDXGIResource> dxgi_resource;
+  HRESULT resource_hr = d3d11_texture.As(&dxgi_resource);
+  if (SUCCEEDED(resource_hr)) {
+    HRESULT handle_hr = dxgi_resource->GetSharedHandle(out_handle);
+    if (SUCCEEDED(handle_hr)) {
       return true;
     } else {
-      FML_LOG(ERROR) << "Could not create shared handle from IDXGIResource.";
+      FML_LOG(ERROR) << "Could not create shared handle from IDXGIResource. hr="
+                     << handle_hr;
     }
+  } else {
+    FML_LOG(ERROR) << "Could not query IDXGIResource from D3D texture. hr="
+                   << resource_hr;
   }
 
   return false;
@@ -202,6 +219,7 @@ bool isDeviceLostError(ID3D11Device* device) {
     case DXGI_ERROR_DEVICE_RESET:
     case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
     case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE:
+      FML_LOG(ERROR) << "D3D device lost. reason=" << reason;
       return true;
     default:
       return false;
@@ -248,16 +266,27 @@ bool OpenD3DSharedHandle(ID3D11Device* device, HANDLE shared_handle,
   if (SUCCEEDED(hr)) {
     return true;
   }
+  const HRESULT open_shared_resource_hr = hr;
 
   Microsoft::WRL::ComPtr<ID3D11Device1> d3d11_device1;
-  device->QueryInterface(__uuidof(ID3D11Device1), &d3d11_device1);
+  HRESULT device1_hr =
+      device->QueryInterface(__uuidof(ID3D11Device1), &d3d11_device1);
   if (d3d11_device1) {
     hr = d3d11_device1->OpenSharedResource1(
         shared_handle, __uuidof(ID3D11Texture2D),
         reinterpret_cast<void**>(out_texture));
-    return SUCCEEDED(hr);
+    if (SUCCEEDED(hr)) {
+      return true;
+    }
+    FML_LOG(ERROR) << "Failed to open D3D shared handle. "
+                   << "OpenSharedResource hr=" << open_shared_resource_hr
+                   << ", OpenSharedResource1 hr=" << hr;
+    return false;
   }
 
+  FML_LOG(ERROR) << "Failed to open D3D shared handle. OpenSharedResource hr="
+                 << open_shared_resource_hr
+                 << ", QueryInterface ID3D11Device1 hr=" << device1_hr;
   return false;
 }
 }  // namespace
@@ -270,18 +299,27 @@ D3DTextureImageBacking::D3DTextureImageBacking(
       D3DTextureFactory::Instance().GetDeviceScoped();
   ID3D11Device* d3d11_device = scoped_device.GetDevice();
   if (gfx_handle) {
-    DuplicateHandle(GetCurrentProcess(), static_cast<HANDLE>(*gfx_handle),
-                    GetCurrentProcess(), &shared_handle_, 0, FALSE,
-                    DUPLICATE_SAME_ACCESS);
+    if (!DuplicateHandle(GetCurrentProcess(), static_cast<HANDLE>(*gfx_handle),
+                         GetCurrentProcess(), &shared_handle_, 0, FALSE,
+                         DUPLICATE_SAME_ACCESS)) {
+      FML_LOG(ERROR) << "Failed to duplicate D3D shared handle. error="
+                     << GetLastError();
+      return;
+    }
     owned_nt_handle_ = true;
     bool result =
         OpenD3DSharedHandle(d3d11_device, shared_handle_, &d3d11_texture_);
+    if (!result) {
+      FML_LOG(ERROR) << "Failed to open duplicated D3D shared handle.";
+      return;
+    }
   } else {
     bool result = TryCreateD3DTextureSharedHandle(
         &d3d11_device, pixel_format, size, &d3d11_texture_, &shared_handle_,
         &owned_nt_handle_);
     if (!result) {
       FML_LOG(ERROR) << "Failed to TryCreateD3DTextureSharedHandle.";
+      return;
     }
   }
   if (d3d11_texture_) {
@@ -322,8 +360,9 @@ bool D3DTextureImageBacking::OpenForDevice(
     return false;
   }
   if (HasKeyedMutex()) {
-    if (FAILED(d3d11_texture.As(&keyed_mutex))) {
-      FML_LOG(ERROR) << "Failed to get keyed mutex.";
+    HRESULT hr = d3d11_texture.As(&keyed_mutex);
+    if (FAILED(hr)) {
+      FML_LOG(ERROR) << "Failed to get keyed mutex. hr=" << hr;
       return false;
     }
   }
@@ -435,14 +474,13 @@ bool D3DTextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
     HRESULT hr =
         d3d11_device->QueryInterface(__uuidof(ID3D11Device3), &device3);
     if (FAILED(hr)) {
-      FML_LOG(ERROR) << "Failed to retrieve ID3D11Device3. hr=" << std::hex
-                     << hr;
+      FML_LOG(ERROR) << "Failed to retrieve ID3D11Device3. hr=" << hr;
       return false;
     }
     hr = device_context->Map(d3d11_texture_.Get(), 0, D3D11_MAP_READ, 0,
                              nullptr);
     if (FAILED(hr)) {
-      FML_LOG(ERROR) << "Failed to map texture for read. hr=" << std::hex << hr;
+      FML_LOG(ERROR) << "Failed to map texture for read. hr=" << hr;
       return false;
     }
 
@@ -463,8 +501,8 @@ bool D3DTextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
       std::optional<ScopedDXGIKeyedMutex> scoped_keyed_mutex;
       if (keyed_mutex) {
         scoped_keyed_mutex.emplace(keyed_mutex);
-        FML_LOG(ERROR) << "Failed to init scoped_keyed_mutex";
         if (!scoped_keyed_mutex->Valid()) {
+          FML_LOG(ERROR) << "Failed to init scoped_keyed_mutex.";
           return false;
         }
       }
@@ -476,7 +514,7 @@ bool D3DTextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
     HRESULT hr = device_context->Map(staging_texture, 0, D3D11_MAP_READ, 0,
                                      &mapped_resource);
     if (FAILED(hr)) {
-      FML_LOG(ERROR) << "Failed to map texture for read. hr=" << std::hex << hr;
+      FML_LOG(ERROR) << "Failed to map texture for read. hr=" << hr;
       return false;
     }
 
@@ -521,8 +559,7 @@ ID3D11Texture2D* D3DTextureImageBacking::GetOrCreateStagingTexture(
     HRESULT hr =
         device->CreateTexture2D(&staging_desc, nullptr, &staging_texture_);
     if (FAILED(hr)) {
-      FML_LOG(ERROR) << "Failed to create staging texture. hr=" << std::hex
-                     << hr;
+      FML_LOG(ERROR) << "Failed to create staging texture. hr=" << hr;
       return nullptr;
     }
 
@@ -541,8 +578,9 @@ IDXGIKeyedMutex* D3DTextureImageBacking::GetOrCreateKeyedMutex() {
     return nullptr;
   }
   if (!keyed_mutex_) {
-    if (FAILED(d3d11_texture_.As(&keyed_mutex_))) {
-      FML_LOG(ERROR) << "Failed to get keyed mutex.";
+    HRESULT hr = d3d11_texture_.As(&keyed_mutex_);
+    if (FAILED(hr)) {
+      FML_LOG(ERROR) << "Failed to get keyed mutex. hr=" << hr;
     }
   }
   return keyed_mutex_.Get();
