@@ -10,6 +10,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.app.Application;
 import android.content.Context;
 import android.graphics.Rect;
 import android.util.DisplayMetrics;
@@ -17,6 +18,8 @@ import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.EventEmitter;
+import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.LynxConsumer;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIOwner;
@@ -25,9 +28,11 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import junit.framework.TestCase;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -35,6 +40,14 @@ import org.mockito.ArgumentCaptor;
 @RunWith(AndroidJUnit4.class)
 public class LynxFrameViewTest extends TestCase {
   private static final String EVENT_LAYOUT_CHANGE = "layoutchange";
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    Context context = ApplicationProvider.getApplicationContext();
+    LynxEnv.inst().init((Application) context, null, null, null, null);
+  }
 
   private LynxContext createLynxContext(
       DisplayMetrics screenMetrics, EventEmitter eventEmitter, LynxUIOwner uiOwner) {
@@ -72,6 +85,12 @@ public class LynxFrameViewTest extends TestCase {
     events.put(EVENT_LAYOUT_CHANGE,
         new EventsListener(EVENT_LAYOUT_CHANGE, "bindEvent", "onLayoutChange", null, null));
     return events;
+  }
+
+  private TemplateData getPendingInitData(LynxFrameView frameView) throws Exception {
+    Field field = LynxFrameView.class.getDeclaredField("mInitData");
+    field.setAccessible(true);
+    return (TemplateData) field.get(frameView);
   }
 
   @Test
@@ -215,5 +234,29 @@ public class LynxFrameViewTest extends TestCase {
     uiFrame.getView().setIntrinsicContentSize(321, 181);
 
     verify(eventEmitter, times(1)).sendCustomEvent(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  public void replayedInitDataHandleKeepsCurrentPendingTemplateData() throws Exception {
+    LynxUIOwner uiOwner = mock(LynxUIOwner.class);
+    EventEmitter eventEmitter = mock(EventEmitter.class);
+    UIFrame uiFrame = createFrameUI(eventEmitter, uiOwner);
+    LynxFrameView frameView = uiFrame.getView();
+
+    HashMap<String, Object> map = new HashMap<>();
+    map.put("value", 1);
+    TemplateData source = TemplateData.fromMap(map);
+    long handle = TemplateData.createNativeFrameDataTransferHandle(source);
+    assertTrue(handle != 0);
+
+    frameView.setInitData(handle);
+    TemplateData firstPendingData = getPendingInitData(frameView);
+    assertNotNull(firstPendingData);
+
+    frameView.setInitData(handle);
+    assertSame(firstPendingData, getPendingInitData(frameView));
+
+    source.recycle();
+    firstPendingData.recycle();
   }
 }

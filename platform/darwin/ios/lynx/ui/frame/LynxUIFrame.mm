@@ -15,6 +15,8 @@
 #import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIContext.h>
 
+#include "core/renderer/dom/fiber/frame_data_transfer.h"
+
 @class LynxTemplateBundle;
 
 @interface LynxFrameView (FrameUICallback)
@@ -37,15 +39,12 @@ static NSString* const kLynxFrameLayoutChangeDetailKeyIntrinsicHeight = @"intrin
 static NSString* const kLynxFramePropNameData = @"data";
 static NSString* const kLynxFramePropNameGlobalProps = @"global-props";
 
-static LynxTemplateData* ConsumeFrameLepusValuePtr(NSInteger value) {
-  if (value == 0) {
+static LynxTemplateData* ConsumeFrameDataTransferHandle(NSInteger handle) {
+  if (handle == 0) {
     return nil;
   }
-  auto* lepus_value = reinterpret_cast<lynx::lepus::Value*>(value);
-  LynxTemplateData* template_data =
-      lepus_value ? [[LynxTemplateData alloc] initWithLepusValue:*lepus_value] : nil;
-  delete lepus_value;
-  return template_data;
+  auto lepus_value = lynx::tasm::ConsumeFrameDataTransferValue(static_cast<int64_t>(handle));
+  return lepus_value ? [[LynxTemplateData alloc] initWithLepusValue:*lepus_value] : nil;
 }
 
 static CGFloat ConvertPresetLengthToPt(LynxUIFrame* ui, NSString* value) {
@@ -186,7 +185,7 @@ LYNX_REGISTER_UI("frame")
 }
 
 LYNX_PROP_SETTER("data", updateData, NSInteger) {
-  [[self view] setInitData:requestReset ? nil : ConsumeFrameLepusValuePtr(value)];
+  [[self view] setInitData:requestReset ? nil : ConsumeFrameDataTransferHandle(value)];
 }
 
 LYNX_PROP_SETTER("src", setUrl, NSString*) {
@@ -197,7 +196,7 @@ LYNX_PROP_SETTER("src", setUrl, NSString*) {
 }
 
 LYNX_PROP_SETTER("global-props", updateGlobalProps, NSInteger) {
-  [[self view] setGlobalProps:requestReset ? nil : ConsumeFrameLepusValuePtr(value)];
+  [[self view] setGlobalProps:requestReset ? nil : ConsumeFrameDataTransferHandle(value)];
 }
 
 LYNX_PROP_SETTER("embedded-mode", setEmbeddedMode, NSNumber*) {

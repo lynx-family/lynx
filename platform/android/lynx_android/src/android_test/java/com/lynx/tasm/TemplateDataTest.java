@@ -53,6 +53,26 @@ public class TemplateDataTest {
   }
 
   @Test
+  public void frameDataTransferHandleConsumesOnce() {
+    Map<String, Object> map = new HashMap<>();
+    map.put("value", 1);
+    TemplateData source = TemplateData.fromMap(map);
+    long handle = TemplateData.createNativeFrameDataTransferHandle(source);
+    assertTrue(handle != 0);
+
+    TemplateData transferred = TemplateData.fromNativeFrameDataHandle(handle);
+    assertNotNull(transferred);
+    Map<Object, Object> transferredMap = transferred.toMap();
+    assertNotNull(transferredMap);
+    assertEquals(1.0, ((Number) transferredMap.get("value")).doubleValue(), 0.0);
+
+    assertNull(TemplateData.fromNativeFrameDataHandle(handle));
+
+    source.recycle();
+    transferred.recycle();
+  }
+
+  @Test
   public void markReadOnly() {
     TemplateData templateData = TemplateData.empty();
     assertFalse(templateData.isReadOnly());

@@ -16,6 +16,8 @@ fiber_shared_sources = [
   "fiber_node_info.h",
   "for_element.cc",
   "for_element.h",
+  "frame_data_transfer.cc",
+  "frame_data_transfer.h",
   "frame_element.cc",
   "frame_element.h",
   "generated_elements_result.h",

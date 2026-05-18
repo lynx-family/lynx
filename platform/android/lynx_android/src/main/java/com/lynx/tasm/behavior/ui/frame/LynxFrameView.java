@@ -227,24 +227,31 @@ public final class LynxFrameView extends UIBodyView {
     mEnableMultiAsyncThread = value;
   }
 
-  void setInitData(long dataPtr) {
+  void setInitData(long dataHandle) {
     TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_INIT_DATA);
-    mInitData = updatePendingTemplateData(mInitData, dataPtr);
+    mInitData = updatePendingTemplateData(mInitData, dataHandle);
   }
 
-  void setGlobalProps(long dataPtr) {
+  void setGlobalProps(long dataHandle) {
     TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_GLOBAL_PROPS);
-    mGlobalProps = updatePendingTemplateData(mGlobalProps, dataPtr);
+    mGlobalProps = updatePendingTemplateData(mGlobalProps, dataHandle);
   }
 
-  private TemplateData updatePendingTemplateData(TemplateData currentData, long dataPtr) {
-    if (currentData != null) {
-      if (currentData.getNativePtr() == dataPtr) {
-        return currentData;
+  private TemplateData updatePendingTemplateData(TemplateData currentData, long dataHandle) {
+    if (dataHandle == 0) {
+      if (currentData != null) {
+        currentData.recycle();
       }
+      return null;
+    }
+    TemplateData data = TemplateData.fromNativeFrameDataHandle(dataHandle);
+    if (data == null) {
+      return currentData;
+    }
+    if (currentData != null) {
       currentData.recycle();
     }
-    return dataPtr == 0 ? null : TemplateData.fromNativeDataPtr(dataPtr);
+    return data;
   }
 
   void onPropsUpdated() {

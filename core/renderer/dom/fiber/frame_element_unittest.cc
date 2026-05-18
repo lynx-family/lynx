@@ -7,11 +7,13 @@
 
 #include "core/renderer/dom/fiber/frame_element.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
 #include "core/public/page_options.h"
 #include "core/renderer/dom/element_manager_delegate.h"
+#include "core/renderer/dom/fiber/frame_data_transfer.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/dom/testing/fiber_mock_painting_context.h"
 #include "core/renderer/events/touch_event_handler.h"
@@ -223,19 +225,19 @@ lepus::Value CreateFramePropValue(int32_t value) {
   return lepus::Value(table);
 }
 
-lepus::Value* TakeTransferredFrameValue(const PropBundleMock* prop_bundle,
-                                        const std::string& key) {
+int64_t TakeTransferredFrameDataHandle(const PropBundleMock* prop_bundle,
+                                       const std::string& key) {
   const auto& props = prop_bundle->GetPropsMap();
   auto it = props.find(key);
   EXPECT_TRUE(it != props.end());
   if (it == props.end()) {
-    return nullptr;
+    return 0;
   }
   EXPECT_TRUE(it->second.IsInt64());
   if (!it->second.IsInt64()) {
-    return nullptr;
+    return 0;
   }
-  return reinterpret_cast<lepus::Value*>(it->second.Int64());
+  return it->second.Int64();
 }
 
 void ExpectFrameLoadedPayload(const RecordingElementManagerDelegate& delegate,
@@ -379,11 +381,40 @@ TEST_F(FrameElementTest, FrameDataOverwriteBeforeFlushUsesLatestValue) {
       frame->updated_attr_map_.at(BASE_STATIC_STRING(kData)));
   auto* prop_bundle = static_cast<PropBundleMock*>(frame->prop_bundle_.get());
   ASSERT_NE(prop_bundle, nullptr);
-  std::unique_ptr<lepus::Value> transferred_value(
-      TakeTransferredFrameValue(prop_bundle, kData));
+  int64_t handle = TakeTransferredFrameDataHandle(prop_bundle, kData);
+  ASSERT_NE(handle, 0);
+  std::unique_ptr<lepus::Value> transferred_value =
+      ConsumeFrameDataTransferValue(handle);
   ASSERT_NE(transferred_value, nullptr);
   ASSERT_TRUE(transferred_value->IsTable());
   EXPECT_EQ(transferred_value->Table()->GetValue(kValueKey).Number(), 2);
+
+  std::unique_ptr<lepus::Value> replayed_value =
+      ConsumeFrameDataTransferValue(handle);
+  EXPECT_FALSE(replayed_value);
+}
+
+TEST_F(FrameElementTest, FrameGlobalPropsTransferHandleConsumesOnce) {
+  auto frame = manager_->CreateFiberFrame();
+
+  frame->SetAttribute(kGlobalProps, CreateFramePropValue(3));
+  frame->SetAttributeInternal(
+      BASE_STATIC_STRING(kGlobalProps),
+      frame->updated_attr_map_.at(BASE_STATIC_STRING(kGlobalProps)));
+
+  auto* prop_bundle = static_cast<PropBundleMock*>(frame->prop_bundle_.get());
+  ASSERT_NE(prop_bundle, nullptr);
+  int64_t handle = TakeTransferredFrameDataHandle(prop_bundle, kGlobalProps);
+  ASSERT_NE(handle, 0);
+  std::unique_ptr<lepus::Value> transferred_value =
+      ConsumeFrameDataTransferValue(handle);
+  ASSERT_NE(transferred_value, nullptr);
+  ASSERT_TRUE(transferred_value->IsTable());
+  EXPECT_EQ(transferred_value->Table()->GetValue(kValueKey).Number(), 3);
+
+  std::unique_ptr<lepus::Value> replayed_value =
+      ConsumeFrameDataTransferValue(handle);
+  EXPECT_FALSE(replayed_value);
 }
 
 TEST_F(FrameElementTest,
