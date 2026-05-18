@@ -95,11 +95,14 @@ bool D3D9TextureFactory::InitializeD3D9Device() {
 
   HRESULT hr = Direct3DCreate9ExFn.value()(D3D_SDK_VERSION, &d3d9ex_api);
   if (FAILED(hr)) {
-    FML_LOG(ERROR) << "D3D9TextureImageBacking could not create D3D9Ex api.";
+    FML_LOG(ERROR) << "D3D9TextureImageBacking could not create D3D9Ex api. hr="
+                   << hr;
     return false;
   }
-  if (FAILED(d3d9ex_api.As(&d3d9_api_))) {
-    FML_LOG(ERROR) << "D3D9TextureImageBacking could not create D3D9 api.";
+  hr = d3d9ex_api.As(&d3d9_api_);
+  if (FAILED(hr)) {
+    FML_LOG(ERROR) << "D3D9TextureImageBacking could not create D3D9 api. hr="
+                   << hr;
     return false;
   }
   D3DPRESENT_PARAMETERS present_parameters = {};
@@ -127,7 +130,8 @@ bool D3D9TextureFactory::InitializeD3D9Device() {
           D3DCREATE_PUREDEVICE,
       &present_parameters, &d3d9_device_);
   if (FAILED(hr)) {
-    FML_LOG(ERROR) << "D3D9TextureImageBacking could not create D3D9Ex Device.";
+    FML_LOG(ERROR)
+        << "D3D9TextureImageBacking could not create D3D9Ex Device. hr=" << hr;
     return false;
   }
   return true;
@@ -155,7 +159,9 @@ bool CreateD3D9TextureSharedHandle(IDirect3DDevice9* device, D3DFORMAT format,
       device->CreateTexture(size.x, size.y, 1, D3DUSAGE_RENDERTARGET, format,
                             D3DPOOL_DEFAULT, out_texture, out_handle);
   if (FAILED(hr)) {
-    FML_LOG(ERROR) << "Failed to create D3D9 texture.";
+    FML_LOG(ERROR) << "Failed to create D3D9 texture. width=" << size.x
+                   << ", height=" << size.y << ", format=" << format
+                   << ", hr=" << hr;
     return false;
   }
   return true;
@@ -178,7 +184,9 @@ bool OpenD3D9SharedHandle(IDirect3DDevice9* device, D3DFORMAT format,
       device->CreateTexture(size.x, size.y, 1, D3DUSAGE_RENDERTARGET, format,
                             D3DPOOL_DEFAULT, out_texture, &shared_handle);
   if (FAILED(hr)) {
-    FML_LOG(ERROR) << "Failed to open D3D9 texture.";
+    FML_LOG(ERROR) << "Failed to open D3D9 texture. width=" << size.x
+                   << ", height=" << size.y << ", format=" << format
+                   << ", hr=" << hr;
     return false;
   }
   return true;
@@ -313,15 +321,23 @@ bool D3D9TextureImageBacking::ReadbackToMemory(
 
   for (int plane = 0; plane < planes; ++plane) {
     Microsoft::WRL::ComPtr<IDirect3DSurface9> src_surface, dst_surface;
-    if (FAILED(d3d9_texture_->GetSurfaceLevel(plane, &src_surface)) ||
-        FAILED(staging_texture->GetSurfaceLevel(plane, &dst_surface))) {
-      FML_LOG(ERROR) << "Failed to get surface.";
+    HRESULT hr = d3d9_texture_->GetSurfaceLevel(plane, &src_surface);
+    if (FAILED(hr)) {
+      FML_LOG(ERROR) << "Failed to get D3D9 source surface. plane=" << plane
+                     << ", hr=" << hr;
       return false;
     }
-    HRESULT hr =
+    hr = staging_texture->GetSurfaceLevel(plane, &dst_surface);
+    if (FAILED(hr)) {
+      FML_LOG(ERROR) << "Failed to get D3D9 destination surface. plane="
+                     << plane << ", hr=" << hr;
+      return false;
+    }
+    hr =
         d3d9_device_->GetRenderTargetData(src_surface.Get(), dst_surface.Get());
     if (FAILED(hr)) {
-      FML_LOG(ERROR) << "Failed to update texture.";
+      FML_LOG(ERROR) << "Failed to update texture. plane=" << plane
+                     << ", hr=" << hr;
       return false;
     }
 
@@ -330,7 +346,8 @@ bool D3D9TextureImageBacking::ReadbackToMemory(
 
     if (FAILED(hr)) {
       staging_texture->UnlockRect(plane);
-      FML_LOG(ERROR) << "Failed to lock texture.";
+      FML_LOG(ERROR) << "Failed to lock texture. plane=" << plane
+                     << ", hr=" << hr;
       return false;
     }
 
@@ -345,7 +362,8 @@ bool D3D9TextureImageBacking::ReadbackToMemory(
 
     hr = staging_texture->UnlockRect(plane);
     if (FAILED(hr)) {
-      FML_LOG(ERROR) << "Failed to unlock texture.";
+      FML_LOG(ERROR) << "Failed to unlock texture. plane=" << plane
+                     << ", hr=" << hr;
       return false;
     }
   }
@@ -359,7 +377,9 @@ IDirect3DTexture9* D3D9TextureImageBacking::GetOrCreateStagingTexture() {
                                              d3d_format_, D3DPOOL_SYSTEMMEM,
                                              &staging_texture_, nullptr);
     if (FAILED(hr)) {
-      FML_LOG(ERROR) << "Failed to create staging texture.";
+      FML_LOG(ERROR) << "Failed to create staging texture. width=" << size_.x
+                     << ", height=" << size_.y << ", format=" << d3d_format_
+                     << ", hr=" << hr;
       return nullptr;
     }
   }
