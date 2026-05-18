@@ -105,6 +105,10 @@ class FrameElementTest : public ::testing::Test {
   }
 
  protected:
+  void SetEnableFrameNativeData(bool enabled) {
+    manager_->GetConfig()->SetEnableFrameNativeData(enabled);
+  }
+
   ElementManager* manager_{nullptr};
   FiberMockPaintingContext* platform_impl_{nullptr};
   ::testing::NiceMock<TrackingFiberElementMockTasmDelegate> tasm_mediator_;
@@ -364,6 +368,7 @@ TEST_F(FrameElementTest, FrameDeferredLoadTriggersEventsOnceAfterFlush) {
 }
 
 TEST_F(FrameElementTest, FrameDataOverwriteBeforeFlushUsesLatestValue) {
+  SetEnableFrameNativeData(true);
   auto frame = manager_->CreateFiberFrame();
 
   frame->SetAttribute(kData, CreateFramePropValue(1));
@@ -386,8 +391,29 @@ TEST_F(FrameElementTest, FrameDataOverwriteBeforeFlushUsesLatestValue) {
   EXPECT_EQ(transferred_value->Table()->GetValue(kValueKey).Number(), 2);
 }
 
+TEST_F(FrameElementTest, FrameDataUsesLegacyValueWhenNativeDataDisabled) {
+  auto frame = manager_->CreateFiberFrame();
+
+  frame->SetAttribute(kData, CreateFramePropValue(7));
+
+  ASSERT_TRUE(frame->updated_attr_map_.count(BASE_STATIC_STRING(kData)));
+  ASSERT_FALSE(frame->data_);
+
+  frame->SetAttributeInternal(
+      BASE_STATIC_STRING(kData),
+      frame->updated_attr_map_.at(BASE_STATIC_STRING(kData)));
+  auto* prop_bundle = static_cast<PropBundleMock*>(frame->prop_bundle_.get());
+  ASSERT_NE(prop_bundle, nullptr);
+  const auto& props = prop_bundle->GetPropsMap();
+  auto it = props.find(kData);
+  ASSERT_TRUE(it != props.end());
+  ASSERT_TRUE(it->second.IsTable());
+  EXPECT_EQ(it->second.Table()->GetValue(kValueKey).Number(), 7);
+}
+
 TEST_F(FrameElementTest,
        FrameGlobalPropsResetBeforeFlushDoesNotDispatchStaleValue) {
+  SetEnableFrameNativeData(true);
   auto frame = manager_->CreateFiberFrame();
 
   frame->SetAttribute(kGlobalProps, CreateFramePropValue(1));
