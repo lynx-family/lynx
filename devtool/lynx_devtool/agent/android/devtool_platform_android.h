@@ -27,7 +27,6 @@ class DevToolPlatformAndroid : public DevToolPlatformFacade {
   void OnAckReceived() override;
   void StopScreenCast() override;
   void GetLynxScreenShot() override;
-  std::vector<double> GetBoxModel(tasm::Element* element) override;
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
 

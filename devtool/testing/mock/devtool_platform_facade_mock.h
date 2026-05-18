@@ -38,6 +38,12 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
                      const std::string& data) override;
   std::vector<float> GetRectToWindow() const override;
 
+  std::vector<double> GetBoxModel(
+      const devtool::InspectorBoxModelQuery& query) override;
+  std::vector<float> GetTransformValue(
+      int identifier,
+      const std::vector<float>& pad_border_margin_layout) override;
+
   void StartScreenCast(devtool::ScreenshotRequest request) override;
   void StopScreenCast() override;
   void OnAckReceived() override;
@@ -66,6 +72,11 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
 
   std::unordered_map<std::string, bool> devtools_switch_;
   std::string inserted_text_;
+  std::vector<devtool::InspectorBoxModelQuery> box_model_queries_;
+  std::vector<double> box_model_response_;
+  std::vector<int> transform_value_ids_;
+  std::vector<std::vector<float>> transform_value_inputs_;
+  std::vector<float> transform_value_response_;
 };
 
 }  // namespace testing

@@ -526,12 +526,11 @@ void InspectorUIExecutor::SendLynxScreenshotCapturedEvent(
   devtool_mediator->SendCDPEvent(event);
 }
 
-std::vector<double> InspectorUIExecutor::GetBoxModel(tasm::Element* element) {
-  // Forward the request to get the box model for the given element
-  // to the platform-specific implementation
+std::vector<double> InspectorUIExecutor::GetBoxModel(
+    const InspectorBoxModelQuery& query) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(devtool_platform_facade_,
                                   "devtool_platform_facade_ is null", {});
-  return devtool_platform_facade_->GetBoxModel(element);
+  return devtool_platform_facade_->GetBoxModel(query);
 }
 
 void InspectorUIExecutor::LynxSendEventToVM(
@@ -729,17 +728,6 @@ void InspectorUIExecutor::OnComponentUselessUpdate(
   auto devtool_mediator = devtool_mediator_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
   devtool_mediator->SendCDPEvent(msg);
-}
-
-SLNode* InspectorUIExecutor::GetLayoutObjectForElement(
-    lynx::tasm::Element* element) {
-  // IsDecoupleLayoutNode is an AB switch, in next version(Maybe 2.13), the Else
-  // branch can be deleted.
-  CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", nullptr);
-  if (auto node = element->GetLayoutObject()) {
-    return node;
-  }
-  return GetLayoutObjectById(element->impl_id());
 }
 
 SLNode* InspectorUIExecutor::GetLayoutObjectById(int32_t id) {

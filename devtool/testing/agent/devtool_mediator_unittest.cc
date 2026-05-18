@@ -7,8 +7,12 @@
 #define private public
 #define protected public
 
+#include <chrono>
+#include <future>
 #include <memory>
 #include <thread>
+#include <utility>
+#include <vector>
 
 #include "base/include/log/logging.h"
 #include "core/renderer/dom/fiber/block_element.h"
@@ -226,6 +230,34 @@ TEST_F(DevToolMediatorTest, LogEnable) {
   EXPECT_TRUE(
       devtool_mediator_->devtool_executor_->console_msg_manager_->enable_);
 }
+
+TEST_F(DevToolMediatorTest, GetBoxModelsRunsOnUIExecutorCase) {
+  facade_->box_model_response_ = std::vector<double>(34, 12);
+
+  std::vector<devtool::InspectorBoxModelQuery> queries(2);
+  queries[0].layout_object.id = 101;
+  queries[0].transform_node.id = 201;
+  queries[1].layout_object.id = 102;
+  queries[1].transform_node.id = 202;
+
+  std::promise<std::vector<std::vector<double>>> promise;
+  auto future = promise.get_future();
+  devtool_mediator_->GetBoxModels(
+      queries, [&promise](std::vector<std::vector<double>> box_models) {
+        promise.set_value(std::move(box_models));
+      });
+
+  ASSERT_EQ(future.wait_for(std::chrono::seconds(5)),
+            std::future_status::ready);
+  std::vector<std::vector<double>> box_models = future.get();
+  ASSERT_EQ(box_models.size(), 2U);
+  EXPECT_EQ(box_models[0], facade_->box_model_response_);
+  EXPECT_EQ(box_models[1], facade_->box_model_response_);
+  ASSERT_EQ(facade_->box_model_queries_.size(), 2U);
+  EXPECT_EQ(facade_->box_model_queries_[0].layout_object.id, 101);
+  EXPECT_EQ(facade_->box_model_queries_[1].transform_node.id, 202);
+}
+
 TEST_F(DevToolMediatorTest, LynxGetPropertyElementNull) {
   Json::Value param;
   devtool_mediator_->LynxGetProperties(message_sender_, param);
