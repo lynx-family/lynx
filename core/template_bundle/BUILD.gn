@@ -14,6 +14,8 @@ lynx_core_source_set("template_bundle") {
 
   public_deps = [
     "../devtool_wrapper:devtool_wrapper",
+    "../renderer/css:css",
+    "../runtime/lepusng:lepus_ng",
     "template_codec:template_decoder",
   ]
 }

@@ -89,6 +89,8 @@ class LynxTemplateBundle final {
                                bool skip_css_decode = false,
                                std::optional<bool> is_card = std::nullopt);
 
+  std::string FromJSON(const std::string& json);
+
   LynxTemplateBundle()
       : css_style_manager_(std::make_shared<CSSStyleSheetManager>(nullptr)),
         string_list_(std::make_shared<std::vector<base::String>>()),

@@ -306,9 +306,19 @@ class QuickContextBundle final : public runtime::ContextBundle {
   std::vector<uint8_t>& lepus_code() { return lepusng_code_; }
   uint64_t& lepusng_code_len() { return lepusng_code_len_; }
 
+  void SetSourceCode(const std::string& source) {
+    lepus_source_code_ = source;
+    is_source_mode_ = true;
+  }
+  bool IsSourceMode() const { return is_source_mode_; }
+  const std::string& GetSourceCode() const { return lepus_source_code_; }
+
  private:
   std::vector<uint8_t> lepusng_code_{};
   uint64_t lepusng_code_len_{0};
+  std::string lepus_source_code_{};
+  bool is_source_mode_{false};
+
   friend class QuickContextDecoder;
   friend class QuickContext;
 };

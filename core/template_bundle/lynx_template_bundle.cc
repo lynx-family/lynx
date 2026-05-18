@@ -6,12 +6,19 @@
 
 #include <algorithm>
 
+#include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_sheet.h"
+#include "core/renderer/css/css_style_sheet_manager.h"
+#include "core/renderer/css/shared_css_fragment.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/runtime/lepus/binary_input_stream.h"
+#include "core/runtime/lepusng/quick_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/element_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_lazy_reader_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
+#include "third_party/rapidjson/document.h"
 
 namespace lynx {
 namespace tasm {
@@ -217,6 +224,134 @@ LynxTemplateBundle::GetLepusChunk(const std::string &chunk_key) {
     chunk = lepus_chunk_manager_->GetLepusChunk(chunk_key);
   }
   return chunk;
+}
+
+static bool ParseCSSFromJSON(const std::string &css_json,
+                             CSSParserTokenMap &css,
+                             CSSKeyframesTokenMap &keyframes,
+                             CSSFontFaceRuleMap &fontfaces) {
+  if (css_json.empty()) {
+    return true;
+  }
+
+  rapidjson::Document document;
+  document.Parse(css_json.c_str());
+  if (document.HasParseError() || !document.IsArray()) {
+    return false;
+  }
+
+  CSSParserConfigs configs;
+  for (const auto &rule : document.GetArray()) {
+    if (!rule.IsObject()) {
+      continue;
+    }
+
+    if (!rule.HasMember("type") || !rule["type"].IsString() ||
+        std::string("StyleRule") != rule["type"].GetString()) {
+      continue;
+    }
+
+    if (!rule.HasMember("selectorText") || !rule["selectorText"].IsObject() ||
+        !rule["selectorText"].HasMember("value") ||
+        !rule["selectorText"]["value"].IsString()) {
+      continue;
+    }
+    std::string selector = rule["selectorText"]["value"].GetString();
+
+    if (!rule.HasMember("style") || !rule["style"].IsArray()) {
+      continue;
+    }
+
+    auto token = fml::MakeRefCounted<CSSParseToken>(configs);
+    const auto &style_array = rule["style"].GetArray();
+    for (const auto &attr : style_array) {
+      if (!attr.IsObject() || !attr.HasMember("name") ||
+          !attr["name"].IsString() || !attr.HasMember("value") ||
+          !attr["value"].IsString()) {
+        continue;
+      }
+
+      CSSPropertyID id = CSSProperty::GetPropertyID(attr["name"].GetString());
+      if (!CSSProperty::IsPropertyValid(id)) {
+        continue;
+      }
+
+      lepus::Value css_value(attr["value"].GetString());
+      StyleMap output;
+      UnitHandler::Process(id, css_value, output, configs);
+      if (!output.empty()) {
+        for (auto &pair : output) {
+          token->attributes()[pair.first] = std::move(pair.second);
+        }
+      }
+    }
+
+    auto sheet = std::make_shared<CSSSheet>(selector);
+    token->sheets().push_back(sheet);
+    css.emplace(std::move(selector), std::move(token));
+  }
+
+  return true;
+}
+
+std::string LynxTemplateBundle::FromJSON(const std::string &json) {
+  rapidjson::Document document;
+  document.Parse(json.c_str());
+  if (document.HasParseError() || !document.IsObject()) {
+    return "Failed to parse JSON";
+  }
+
+  std::string css_json;
+  std::string lepus_source;
+  std::string js_source;
+
+  if (document.HasMember("css") && document["css"].IsString()) {
+    css_json = document["css"].GetString();
+  }
+  if (document.HasMember("lepus.js") && document["lepus.js"].IsString()) {
+    lepus_source = document["lepus.js"].GetString();
+  }
+  if (document.HasMember("app-service.js") &&
+      document["app-service.js"].IsString()) {
+    js_source = document["app-service.js"].GetString();
+  }
+
+  compile_options_.enable_fiber_arch_ = true;
+  compile_options_.arch_option_ = ArchOption::FIBER_ARCH;
+  compile_options_.enable_flexible_template_ = true;
+  compile_options_.target_sdk_version_ = "3.0";
+  is_lepusng_binary_ = true;
+  context_type_ = runtime::ContextType::LepusNGContextType;
+  app_type_ = APP_TYPE_CARD;
+  page_configs_ = std::make_shared<PageConfig>();
+
+  context_bundle_ =
+      runtime::ContextBundle::Create(runtime::ContextType::LepusNGContextType);
+  auto *quick_bundle =
+      static_cast<lepus::QuickContextBundle *>(context_bundle_.get());
+  quick_bundle->SetSourceCode(lepus_source);
+
+  js_bundle_.AddJsContent(
+      "/app-service.js",
+      runtime::js::JsContent(std::move(js_source),
+                             runtime::js::JsContent::Type::SOURCE));
+
+  CSSParserTokenMap css;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  if (!ParseCSSFromJSON(css_json, css, keyframes, fontfaces)) {
+    return "Failed to parse CSS JSON";
+  }
+
+  if (!css.empty()) {
+    auto fragment = std::make_unique<SharedCSSFragment>(
+        0, std::vector<int32_t>(), std::move(css), std::move(keyframes),
+        std::move(fontfaces), css_style_manager_.get());
+    css_style_manager_->AddSharedCSSFragment(std::move(fragment));
+    css_style_manager_->FlattenAllCSSFragment();
+  }
+
+  return "";
 }
 
 }  // namespace tasm
