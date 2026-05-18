@@ -916,6 +916,15 @@ class LynxConfigDecoder final {
       page_config->SetEnableDispatchCustomEventForUI(
           doc[config::kEnableDispatchCustomEventForUI].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableFrameNativeData) &&
+        doc[config::kEnableFrameNativeData].IsBool()) {
+      page_config->SetEnableFrameNativeData(
+          doc[config::kEnableFrameNativeData].GetBool());
+    } else {
+      page_config->SetEnableFrameNativeData(
+          LynxEnv::GetInstance().EnableFrameNativeData());
+    }
   };
 };
 }  // namespace tasm

@@ -1916,3 +1916,13 @@ enableDispatchCustomEventForUI:
   supportPlatform:
     - iOS
     - Android
+enableFrameNativeData:
+  description: Controls whether `<frame>` data and global-props are transferred through native lepus value pointers instead of the legacy platform map path. When enabled, Android and iOS consume the native pointer to build TemplateData; when disabled, frame data and global props continue to be delivered as platform maps.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  author: 'pilipala195'
+  since: '3.8'
+  supportPlatform:
+    - Android
+    - iOS
