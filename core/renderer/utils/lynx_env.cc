@@ -635,5 +635,9 @@ bool LynxEnv::FixOldFixedInsertSelfUseRenderParent() {
 bool LynxEnv::EnableAnimationForwardUpdatePreservation() {
   return GetBoolEnv(Key::ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION, false);
 }
+
+bool LynxEnv::EnableFrameNativeData() {
+  return GetBoolEnv(Key::ENABLE_FRAME_NATIVE_DATA, false);
+}
 }  // namespace tasm
 }  // namespace lynx
