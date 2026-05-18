@@ -2102,7 +2102,11 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
           card_bundle_.enable_reuse_load_script_exports) ||
       !page_config_subset.setProperty(
           *rt, runtime::kEnableFetchAPIStandardStreaming,
-          card_bundle_.enable_fetch_api_standard_streaming)) {
+          card_bundle_.enable_fetch_api_standard_streaming) ||
+      !page_config_subset.setProperty(
+          *rt, runtime::kEnableReleaseAppInstance,
+          tasm::LynxEnv::GetInstance().GetBoolEnv(
+              tasm::LynxEnv::Key::ENABLE_RELEASE_APP_INSTANCE, true))) {
     HandleLoadAppFailed(" App::LoadApp error! page_config_subset init fail.");
     return;
   }
