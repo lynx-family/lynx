@@ -108,7 +108,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
   void UpdateStickyInfoForDeletedChild(
       BaseView* child, std::unordered_map<int, Component*>& sticky_items);
   void UpdateStickyInfoForUpdatedChild(
-      Component* child, std::unordered_map<int, Component*> sticky_items,
+      Component* child, std::unordered_map<int, Component*>& sticky_items,
       const std::vector<int>& sticky_indexes, int index);
 
   void ResetStickyItem(Component* child);
