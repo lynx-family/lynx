@@ -120,6 +120,15 @@ constexpr const char kEnableFetchAPIStandardStreaming[] =
 constexpr const char kEnableReleaseAppInstance[] = "enableReleaseAppInstance";
 
 /**
+ * @name: enableReadableStreamMemFix
+ * @description: Enable the Lynx ReadableStream memory fix
+ * @platform: Both
+ * @supportVersion: 3.8
+ **/
+constexpr const char kEnableReadableStreamMemFix[] =
+    "enableReadableStreamMemoryFix";
+
+/**
  * Check if the given url indicates lynx_core.js.
  * @param url the url to check
  * @return true if the given url indicates lynx_core.js.
