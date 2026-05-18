@@ -490,6 +490,7 @@ subspec_target("UnitTests") {
     "ui/LynxUIUnitTestUtils.h",
     "ui/LynxUIUnitTestUtils.m",
     "ui/UIScrollView+LynxUnitTest.m",
+    "ui/frame/LynxUIFrameUnitTest.mm",
     "ui/image/LynxUIImageUnitTest.m",
     "ui/list/container/LynxUIListContainerUnitTest.m",
     "ui/list/list_light/layout/LynxListLayoutManagerUnitTest.mm",

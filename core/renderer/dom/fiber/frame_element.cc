@@ -26,6 +26,14 @@ constexpr char kStatusCode[] = "statusCode";
 constexpr char kStatusMessage[] = "statusMessage";
 constexpr char kFrameData[] = "data";
 constexpr char kGlobalProps[] = "global-props";
+
+bool ShouldUseFrameNativeData(ElementManager* element_manager) {
+  if (!element_manager) {
+    return false;
+  }
+  const auto& config = element_manager->GetConfig();
+  return config && config->GetEnableFrameNativeData();
+}
 }  // namespace
 
 FrameElement::FrameElement(ElementManager* element_manager)
@@ -45,16 +53,18 @@ void FrameElement::SetAttribute(const base::String& key,
                                 const lepus::Value& value,
                                 bool need_update_data_model) {
   OnSetSrc(key, value);
+  const bool use_frame_native_data =
+      ShouldUseFrameNativeData(element_manager());
   if (key.IsEqual(kFrameData)) {
     data_ =
-        value.IsEmpty()
-            ? nullptr
-            : std::make_unique<lepus::Value>(lepus::Value::ShallowCopy(value));
+        use_frame_native_data && !value.IsEmpty()
+            ? std::make_unique<lepus::Value>(lepus::Value::ShallowCopy(value))
+            : nullptr;
   } else if (key.IsEqual(kGlobalProps)) {
     global_props_ =
-        value.IsEmpty()
-            ? nullptr
-            : std::make_unique<lepus::Value>(lepus::Value::ShallowCopy(value));
+        use_frame_native_data && !value.IsEmpty()
+            ? std::make_unique<lepus::Value>(lepus::Value::ShallowCopy(value))
+            : nullptr;
   }
   FiberElement::SetAttribute(key, value, need_update_data_model);
 }
@@ -70,6 +80,10 @@ void FrameElement::ResetAttribute(const base::String& key) {
 
 void FrameElement::SetAttributeInternal(const base::String& key,
                                         const lepus::Value& value) {
+  if (!ShouldUseFrameNativeData(element_manager())) {
+    FiberElement::SetAttributeInternal(key, value);
+    return;
+  }
   if (key.IsEqual(kFrameData)) {
     auto* transfer_value = data_ ? new lepus::Value(*data_) : nullptr;
     FiberElement::SetAttributeInternal(

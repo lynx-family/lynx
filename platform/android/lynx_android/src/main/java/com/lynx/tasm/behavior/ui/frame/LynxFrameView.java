@@ -232,9 +232,19 @@ public final class LynxFrameView extends UIBodyView {
     mInitData = updatePendingTemplateData(mInitData, dataPtr);
   }
 
+  void setInitData(TemplateData data) {
+    TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_INIT_DATA);
+    mInitData = data;
+  }
+
   void setGlobalProps(long dataPtr) {
     TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_GLOBAL_PROPS);
     mGlobalProps = updatePendingTemplateData(mGlobalProps, dataPtr);
+  }
+
+  void setGlobalProps(TemplateData data) {
+    TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_GLOBAL_PROPS);
+    mGlobalProps = data;
   }
 
   private TemplateData updatePendingTemplateData(TemplateData currentData, long dataPtr) {

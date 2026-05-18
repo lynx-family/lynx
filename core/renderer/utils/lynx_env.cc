@@ -653,5 +653,9 @@ bool LynxEnv::EnableAnimationForwardUpdatePreservation() {
 bool LynxEnv::EnableNewStylingPipeline() {
   return GetBoolEnv(Key::ENABLE_NEW_STYLING_PIPELINE, false);
 }
+
+bool LynxEnv::EnableFrameNativeData() {
+  return GetBoolEnv(Key::ENABLE_FRAME_NATIVE_DATA, false);
+}
 }  // namespace tasm
 }  // namespace lynx

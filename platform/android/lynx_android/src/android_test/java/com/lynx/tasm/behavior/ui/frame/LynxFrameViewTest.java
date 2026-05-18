@@ -15,8 +15,11 @@ import android.graphics.Rect;
 import android.util.DisplayMetrics;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import com.lynx.react.bridge.DynamicFromMap;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.EventEmitter;
+import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.LynxConsumer;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIOwner;
@@ -25,6 +28,7 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import junit.framework.TestCase;
@@ -72,6 +76,12 @@ public class LynxFrameViewTest extends TestCase {
     events.put(EVENT_LAYOUT_CHANGE,
         new EventsListener(EVENT_LAYOUT_CHANGE, "bindEvent", "onLayoutChange", null, null));
     return events;
+  }
+
+  private TemplateData getPendingInitData(LynxFrameView frameView) throws Exception {
+    Field field = LynxFrameView.class.getDeclaredField("mInitData");
+    field.setAccessible(true);
+    return (TemplateData) field.get(frameView);
   }
 
   @Test
@@ -215,5 +225,25 @@ public class LynxFrameViewTest extends TestCase {
     uiFrame.getView().setIntrinsicContentSize(321, 181);
 
     verify(eventEmitter, times(1)).sendCustomEvent(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  public void setDataMapStoresPendingTemplateData() throws Exception {
+    LynxUIOwner uiOwner = mock(LynxUIOwner.class);
+    EventEmitter eventEmitter = mock(EventEmitter.class);
+    UIFrame uiFrame = createFrameUI(eventEmitter, uiOwner);
+
+    JavaOnlyMap data = new JavaOnlyMap();
+    data.putInt("value", 2);
+    JavaOnlyMap props = new JavaOnlyMap();
+    props.putMap("data", data);
+
+    uiFrame.setData(new DynamicFromMap(props, "data"));
+
+    TemplateData pendingData = getPendingInitData(uiFrame.getView());
+    assertNotNull(pendingData);
+    Map<Object, Object> pendingMap = pendingData.toMap();
+    assertEquals(2.0, ((Number) pendingMap.get("value")).doubleValue(), 0.0);
+    pendingData.recycle();
   }
 }

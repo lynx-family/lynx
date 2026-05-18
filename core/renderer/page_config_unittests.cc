@@ -5,6 +5,7 @@
 #define private public
 #define protected public
 
+#include "core/template_bundle/template_codec/binary_decoder/lynx_config_decoder.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -39,6 +40,32 @@ TEST(PageConfigTest, EnableParallelParseElementTemplate) {
 
 TEST(PageConfigTest, EnableUseContextPool) {
   CHECK_CONFIG_VALUE(EnableUseContextPool, true, true, false);
+}
+
+TEST(PageConfigTest, EnableFrameNativeData) {
+  auto& env = LynxEnv::GetInstance();
+  env.external_env_map_.erase(LynxEnv::Key::ENABLE_FRAME_NATIVE_DATA);
+
+  rapidjson::Document empty_doc;
+  empty_doc.Parse("{}");
+  std::shared_ptr<PageConfig> default_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(default_config, empty_doc, "");
+  EXPECT_FALSE(default_config->GetEnableFrameNativeData());
+
+  env.external_env_map_[LynxEnv::Key::ENABLE_FRAME_NATIVE_DATA] = "true";
+  std::shared_ptr<PageConfig> settings_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(settings_config, empty_doc, "");
+  EXPECT_TRUE(settings_config->GetEnableFrameNativeData());
+
+  rapidjson::Document explicit_false_doc;
+  explicit_false_doc.Parse("{\"enableFrameNativeData\": false}");
+  std::shared_ptr<PageConfig> explicit_false_config =
+      std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(explicit_false_config, explicit_false_doc,
+                                      "");
+  EXPECT_FALSE(explicit_false_config->GetEnableFrameNativeData());
+
+  env.external_env_map_.erase(LynxEnv::Key::ENABLE_FRAME_NATIVE_DATA);
 }
 
 TEST(PageConfigTest, EnableComponentAsyncDecode) {

@@ -185,8 +185,29 @@ LYNX_REGISTER_UI("frame")
   [[self view] propsDidUpdate];
 }
 
-LYNX_PROP_SETTER("data", updateData, NSInteger) {
-  [[self view] setInitData:requestReset ? nil : ConsumeFrameLepusValuePtr(value)];
+- (void)setFrameTemplateData:(id)value
+                requestReset:(BOOL)requestReset
+               isGlobalProps:(BOOL)isGlobalProps {
+  LynxTemplateData* data = nil;
+  if (requestReset || value == nil || [value isEqual:[NSNull null]]) {
+    data = nil;
+  } else if ([value isKindOfClass:[NSDictionary class]]) {
+    data = [[LynxTemplateData alloc] initWithDictionary:value];
+  } else if ([value isKindOfClass:[NSNumber class]]) {
+    data = ConsumeFrameLepusValuePtr([(NSNumber*)value integerValue]);
+  } else {
+    return;
+  }
+
+  if (isGlobalProps) {
+    [[self view] setGlobalProps:data];
+  } else {
+    [[self view] setInitData:data];
+  }
+}
+
+LYNX_PROP_SETTER("data", updateData, id) {
+  [self setFrameTemplateData:value requestReset:requestReset isGlobalProps:NO];
 }
 
 LYNX_PROP_SETTER("src", setUrl, NSString*) {
@@ -196,8 +217,8 @@ LYNX_PROP_SETTER("src", setUrl, NSString*) {
   [[self view] setUrl:value];
 }
 
-LYNX_PROP_SETTER("global-props", updateGlobalProps, NSInteger) {
-  [[self view] setGlobalProps:requestReset ? nil : ConsumeFrameLepusValuePtr(value)];
+LYNX_PROP_SETTER("global-props", updateGlobalProps, id) {
+  [self setFrameTemplateData:value requestReset:requestReset isGlobalProps:YES];
 }
 
 LYNX_PROP_SETTER("embedded-mode", setEmbeddedMode, NSNumber*) {

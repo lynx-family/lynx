@@ -8,9 +8,14 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.util.DisplayMetrics;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
+import com.lynx.react.bridge.Dynamic;
+import com.lynx.react.bridge.ReadableMap;
+import com.lynx.react.bridge.ReadableType;
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.TemplateBundle;
+import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.behavior.LynxBehavior;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxFrameViewProvider;
@@ -228,11 +233,27 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     mIntrinsicHeight = 0;
   }
 
+  @Nullable
+  private TemplateData createTemplateDataFromDynamic(Dynamic value) {
+    if (value == null || value.isNull()) {
+      return null;
+    }
+    if (value.getType() != ReadableType.Map) {
+      return null;
+    }
+    ReadableMap map = value.asMap();
+    return map == null ? null : TemplateData.fromMap(map.asHashMap());
+  }
+
   @LynxProp(name = PROP_DATA)
-  public void setData(long value) {
+  public void setData(Dynamic value) {
     LynxFrameView view = getView();
     if (view != null) {
-      view.setInitData(value);
+      if (value != null && value.getType() == ReadableType.Long) {
+        view.setInitData(value.asLong());
+      } else {
+        view.setInitData(createTemplateDataFromDynamic(value));
+      }
     }
     mProps.remove(PROP_DATA);
   }
@@ -250,10 +271,14 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
   }
 
   @LynxProp(name = PROP_GLOBAL_PROPS)
-  public void setGlobalProps(long value) {
+  public void setGlobalProps(Dynamic value) {
     LynxFrameView view = getView();
     if (view != null) {
-      view.setGlobalProps(value);
+      if (value != null && value.getType() == ReadableType.Long) {
+        view.setGlobalProps(value.asLong());
+      } else {
+        view.setGlobalProps(createTemplateDataFromDynamic(value));
+      }
     }
     mProps.remove(PROP_GLOBAL_PROPS);
   }
