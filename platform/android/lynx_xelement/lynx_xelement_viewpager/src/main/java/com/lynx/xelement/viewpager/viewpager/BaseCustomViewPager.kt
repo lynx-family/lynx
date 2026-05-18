@@ -54,15 +54,16 @@ open class BaseCustomViewPager(context: Context) : androidx.viewpager.widget.Vie
     }
   }
 
-  // 当viewpager嵌套使用时，内层的viewpager触发populate时可能未添加windowToken为空，因此在attach之后再触发一次
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
     try {
       val populate = superclass?.getDeclaredMethod("populate")
       populate?.isAccessible = true
       populate?.invoke(this)
-    } catch (e: NoSuchMethodException) {
+    } catch (e: Throwable) {
       LLog.e(Pager.TAG, "populate failed")
+      // Fallback to a new layout pass so ViewPager can populate after attach.
+      requestLayout()
     }
   }
 
