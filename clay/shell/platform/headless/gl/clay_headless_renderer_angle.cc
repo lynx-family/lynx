@@ -8,6 +8,7 @@
 #include "clay/shell/platform/headless/gl/clay_headless_renderer_angle.h"
 
 #include <Windows.h>
+#include <dxgi.h>
 
 #include <string>
 #include <vector>
@@ -18,12 +19,34 @@
 
 namespace clay {
 
+constexpr int kD3D11CreateDeviceRetryDelayMs = 500;
+constexpr int kAngleInitializationRetryDelayMs = 100;
+constexpr int kMaxDeviceLostRetries = 1;
+constexpr int kMaxAngleInitializationRetries = 3;
+
 // Logs an EGL error to stderr. This automatically calls eglGetError()
 // and logs the error code.
 static void LogEglError(std::string message) {
   EGLint error = eglGetError();
   FML_LOG(ERROR) << "EGL:" << message
                  << ", EGL: eglGetError returned: " << error;
+}
+
+static bool IsDeviceLostError(HRESULT hr) {
+  switch (hr) {
+    case DXGI_ERROR_DEVICE_HUNG:
+    case DXGI_ERROR_DEVICE_REMOVED:
+    case DXGI_ERROR_DEVICE_RESET:
+    case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+    case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static bool IsRetriableD3D11CreateError(HRESULT hr) {
+  return IsDeviceLostError(hr) || hr == E_OUTOFMEMORY;
 }
 
 std::unique_ptr<HeadlessAngleSurfaceManager>
@@ -95,9 +118,29 @@ bool HeadlessAngleSurfaceManager::TryInitializeD3D11Device() {
 
   std::optional<PFN_D3D11_CREATE_DEVICE> D3D11CreateDevice =
       d3d11_->ResolveFunction<PFN_D3D11_CREATE_DEVICE>("D3D11CreateDevice");
-  if (FAILED(CreateSafeD3D11Device(D3D11CreateDevice, &resolved_device_,
-                                   nullptr))) {
-    FML_LOG(WARNING) << "Could not create D3D11 Device.";
+  auto create_device = [&]() {
+    resolved_device_.Reset();
+    return CreateSafeD3D11Device(D3D11CreateDevice, &resolved_device_, nullptr);
+  };
+
+  HRESULT hr = create_device();
+  for (int retry = 0; FAILED(hr) && IsRetriableD3D11CreateError(hr) &&
+                      retry < kMaxDeviceLostRetries;
+       ++retry) {
+    FML_LOG(WARNING)
+        << "HeadlessAngleSurfaceManager::TryInitializeD3D11Device, transient "
+           "error while creating D3D11 Device, retry "
+        << (retry + 1) << "/" << kMaxDeviceLostRetries << " after "
+        << kD3D11CreateDeviceRetryDelayMs << "ms, hr:" << hr;
+    ::Sleep(kD3D11CreateDeviceRetryDelayMs);
+    hr = create_device();
+  }
+
+  if (FAILED(hr)) {
+    FML_LOG(WARNING)
+        << "HeadlessAngleSurfaceManager::TryInitializeD3D11Device, Could not "
+           "create D3D11 Device, hr:"
+        << hr << ", device_lost:" << IsDeviceLostError(hr);
     return false;
   }
 
@@ -209,10 +252,25 @@ bool HeadlessAngleSurfaceManager::Initialize() {
 
   // Attempt to initialize ANGLE's renderer in order of: D3D11, D3D11 Feature
   // Level 9_3 and finally D3D11 WARP.
-  for (auto config : display_attributes_configs) {
-    bool should_log = (config == display_attributes_configs.back());
-    if (InitializeEGL(egl_get_platform_display_EXT, config, should_log)) {
-      break;
+  bool initialized = false;
+  for (int attempt = 0;
+       !initialized && attempt <= kMaxAngleInitializationRetries; ++attempt) {
+    if (attempt > 0) {
+      FML_LOG(INFO)
+          << "HeadlessAngleSurfaceManager::Initialize, retrying ANGLE display "
+             "configs, retry "
+          << attempt << "/" << kMaxAngleInitializationRetries << " after "
+          << kAngleInitializationRetryDelayMs << "ms.";
+      ::Sleep(kAngleInitializationRetryDelayMs);
+    }
+
+    for (auto config : display_attributes_configs) {
+      bool should_log = (attempt == kMaxAngleInitializationRetries &&
+                         config == display_attributes_configs.back());
+      if (InitializeEGL(egl_get_platform_display_EXT, config, should_log)) {
+        initialized = true;
+        break;
+      }
     }
   }
 
