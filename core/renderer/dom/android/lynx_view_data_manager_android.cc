@@ -18,6 +18,7 @@
 #include "core/renderer/data/platform_data.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
+#include "core/renderer/dom/fiber/frame_data_transfer.h"
 #include "core/renderer/utils/value_utils.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TemplateData_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TemplateData_register_jni.h"
@@ -140,6 +141,23 @@ jlong ShallowCopy(JNIEnv* env, jclass jcaller, jlong nativePtr) {
     *new_value = lynx::lepus::Value(lynx::lepus::Dictionary::Create());
   }
   return reinterpret_cast<int64_t>(new_value);
+}
+
+jlong ConsumeFrameDataTransferHandle(JNIEnv* env, jclass jcaller,
+                                     jlong handle) {
+  auto value = lynx::tasm::ConsumeFrameDataTransferValue(handle);
+  return reinterpret_cast<int64_t>(value.release());
+}
+
+jlong CreateFrameDataTransferHandle(JNIEnv* env, jclass jcaller,
+                                    jlong nativePtr) {
+  if (nativePtr == 0) {
+    return 0;
+  }
+  auto base_value = reinterpret_cast<lynx::lepus::Value*>(nativePtr);
+  return lynx::tasm::RegisterFrameDataTransferValue(
+      std::make_unique<lynx::lepus::Value>(
+          lynx::lepus::Value::ShallowCopy(*base_value)));
 }
 
 jlong CreateObject(JNIEnv* env, jclass jcaller) {

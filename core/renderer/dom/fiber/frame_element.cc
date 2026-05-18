@@ -9,6 +9,7 @@
 #include "base/include/log/logging.h"
 #include "base/include/value/base_value.h"
 #include "core/renderer/dom/element_manager_delegate.h"
+#include "core/renderer/dom/fiber/frame_data_transfer.h"
 #include "core/renderer/template_assembler.h"
 #include "core/services/feature_count/global_feature_counter.h"
 
@@ -71,16 +72,16 @@ void FrameElement::ResetAttribute(const base::String& key) {
 void FrameElement::SetAttributeInternal(const base::String& key,
                                         const lepus::Value& value) {
   if (key.IsEqual(kFrameData)) {
-    auto* transfer_value = data_ ? new lepus::Value(*data_) : nullptr;
-    FiberElement::SetAttributeInternal(
-        key, lepus::Value(reinterpret_cast<int64_t>(transfer_value)));
+    auto handle = RegisterFrameDataTransferValue(
+        data_ ? std::make_unique<lepus::Value>(*data_) : nullptr);
+    FiberElement::SetAttributeInternal(key, lepus::Value(handle));
     return;
   }
   if (key.IsEqual(kGlobalProps)) {
-    auto* transfer_value =
-        global_props_ ? new lepus::Value(*global_props_) : nullptr;
-    FiberElement::SetAttributeInternal(
-        key, lepus::Value(reinterpret_cast<int64_t>(transfer_value)));
+    auto handle = RegisterFrameDataTransferValue(
+        global_props_ ? std::make_unique<lepus::Value>(*global_props_)
+                      : nullptr);
+    FiberElement::SetAttributeInternal(key, lepus::Value(handle));
     return;
   }
   FiberElement::SetAttributeInternal(key, value);

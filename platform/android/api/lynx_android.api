@@ -10102,6 +10102,8 @@ public class com::lynx::tasm::TemplateData :  {
   public static TemplateData com.lynx.tasm.TemplateData.empty();
   public static TemplateData com.lynx.tasm.TemplateData.fromString(String json);
   public static TemplateData com.lynx.tasm.TemplateData.fromNativeDataPtr(long nativePtr);
+  public static TemplateData com.lynx.tasm.TemplateData.fromNativeFrameDataHandle(long handle);
+  public static long com.lynx.tasm.TemplateData.createNativeFrameDataTransferHandle(TemplateData data);
   public void com.lynx.tasm.TemplateData.markConcurrent();
   public long com.lynx.tasm.TemplateData.getNativePtr();
   public void com.lynx.tasm.TemplateData.removeKey(String key);

@@ -5,6 +5,7 @@ package com.lynx.tasm;
 
 import android.text.TextUtils;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
@@ -166,6 +167,25 @@ public final class TemplateData {
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public static TemplateData fromNativeDataPtr(long nativePtr) {
     return new TemplateData(nativePtr);
+  }
+
+  @Nullable
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public static TemplateData fromNativeFrameDataHandle(long handle) {
+    if (!checkIfEnvPrepared()) {
+      return null;
+    }
+    long nativePtr = nativeConsumeFrameDataTransferHandle(handle);
+    return nativePtr == 0 ? null : new TemplateData(nativePtr);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public static long createNativeFrameDataTransferHandle(TemplateData data) {
+    if (data == null || !checkIfEnvPrepared()) {
+      return 0;
+    }
+    data.flush();
+    return nativeCreateFrameDataTransferHandle(data.getNativePtr());
   }
 
   private void addUpdateActions(List<UpdateAction> actions) {
@@ -839,6 +859,8 @@ public final class TemplateData {
   static native Object nativeGetData(long nativePtr);
   private static native long nativeClone(long nativePtr);
   private static native long nativeShallowCopy(long nativePtr);
+  private static native long nativeConsumeFrameDataTransferHandle(long handle);
+  private static native long nativeCreateFrameDataTransferHandle(long nativePtr);
   private static native long nativeCreateObject();
   static native void nativeMergeTemplateData(long destPtr, long srcPtr);
 
