@@ -173,8 +173,13 @@ void ListContainerView::InsertListItemPaintingNode(BaseView* view) {
   // engine, so we cannot add child view to the list until getting the real
   // layout info of the child component.
   // TODO(dongjiajian): considering async layout here.
+  if (!view) {
+    return;
+  }
   InsertListItemPaintingNodeInternal(view);
-  view->render_object()->SetRepaintBoundary(true);
+  if (auto* render_object = view->render_object()) {
+    render_object->SetRepaintBoundary(true);
+  }
   if (view->Is<Component>()) {
     auto component = static_cast<Component*>(view);
     if (enable_list_sticky_) {
@@ -300,7 +305,7 @@ void ListContainerView::UpdateStickyInfoForDeletedChild(
 }
 
 void ListContainerView::UpdateStickyInfoForUpdatedChild(
-    Component* child, std::unordered_map<int, Component*> sticky_items,
+    Component* child, std::unordered_map<int, Component*>& sticky_items,
     const std::vector<int>& sticky_indexes, int index) {
   if (!enable_list_sticky_ || !child || !child->Is<Component>()) {
     return;
@@ -431,18 +436,16 @@ void ListContainerView::UpdateStickyItemMap(
   if (component && !component->ItemKey().empty()) {
     if (is_sticky_item) {
       std::string item_key = component->ItemKey();
-      auto it = sticky_item_map.find(item_key);
-      if (it != sticky_item_map.end() && it->second == component) {
-        return;
-      }
-      for (auto iter = sticky_item_map.begin(); iter != sticky_item_map.end();
-           ++iter) {
+      for (auto iter = sticky_item_map.begin();
+           iter != sticky_item_map.end();) {
         if (iter->second == component && iter->first != item_key) {
-          sticky_item_map.erase(iter);
-          sticky_item_map[item_key] = component;
-          break;
+          iter = sticky_item_map.erase(iter);
+        } else {
+          ++iter;
         }
       }
+      sticky_item_map[item_key] = component;
+      component->SetNodeReadyListener(this);
     } else {
       // The component is not sticky top or bottom list item, remove it from
       // map.
@@ -576,6 +579,17 @@ void ListContainerView::GenerateStickyItemKeySet(
       it = sticky_item_map.erase(it);
     } else {
       ++it;
+    }
+  }
+  for (auto* child : children_) {
+    if (!child || !child->Is<Component>()) {
+      continue;
+    }
+    auto* component = static_cast<Component*>(child);
+    const auto& item_key = component->ItemKey();
+    if (!item_key.empty() && sticky_item_key_set.count(item_key)) {
+      sticky_item_map[item_key] = component;
+      component->SetNodeReadyListener(this);
     }
   }
 }

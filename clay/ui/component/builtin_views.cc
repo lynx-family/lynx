@@ -15,11 +15,10 @@
 
 #ifndef ENABLE_NATIVE_LIST
 #include "clay/ui/component/list/list_wrapper.h"
-#else
-#include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #endif  // ENABLE_NATIVE_LIST
 
 #include "clay/ui/component/image_view.h"
+#include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/list/list_item_view.h"
 #include "clay/ui/component/scroll_wrapper.h"
 #include "clay/ui/component/text/inline_text_view.h"
@@ -60,8 +59,8 @@ REGISTER_CLAY_ELEMENT("list-item", ListItemView, void);
 REGISTER_CLAY_ELEMENT("list", ListWrapper, void);
 #else
 REGISTER_CLAY_ELEMENT("list", ListContainerWrapper, void);
-REGISTER_CLAY_ELEMENT("list-container", ListContainerWrapper, void);
 #endif
+REGISTER_CLAY_ELEMENT("list-container", ListContainerWrapper, void);
 
 #ifndef ENABLE_CLAY_LITE
 REGISTER_CLAY_ELEMENT("x-input-ng", InputNGView, EditableShadowNode);
