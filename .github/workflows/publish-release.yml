@@ -214,6 +214,81 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           component: all
 
+  cocoapods-lynx-extension-publish:
+    timeout-minutes: 30
+    runs-on: ubuntu-22.04
+    needs: get-version
+    environment: rubygems
+    permissions:
+      contents: read
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.event.inputs.commitId || github.ref }}
+          fetch-depth: 0
+          path: lynx
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+      - name: Resolve gem version
+        id: gem_version
+        env:
+          RELEASE_VERSION: ${{ needs.get-version.outputs.version }}
+        run: |-
+          gem_version=$(ruby -e "puts Gem::Version.new(ENV.fetch('RELEASE_VERSION')).to_s")
+          echo "Gem version: $gem_version"
+          echo "version=$gem_version" >> "$GITHUB_OUTPUT"
+      - name: Check published version
+        id: published_version
+        run: |-
+          versions=$(gem list --remote --exact --all cocoapods-lynx-extension || true)
+          echo "Published versions: ${versions:-none}"
+          if echo "$versions" | tr '(), ' '\n' | grep -Fx "${{ steps.gem_version.outputs.version }}" > /dev/null; then
+            echo "publish_needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish_needed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Test
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx/tools/ios_tools/cocoapods-lynx-extension
+          ruby -Itest test/autolink_test.rb
+      - name: Build
+        id: build_gem
+        env:
+          GEM_VERSION: ${{ steps.gem_version.outputs.version }}
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx/tools/ios_tools/cocoapods-lynx-extension
+          ruby <<'RUBY'
+          path = 'cocoapods-lynx-extension.gemspec'
+          version = ENV.fetch('GEM_VERSION')
+          content = File.read(path)
+          updated = content.sub(/spec\.version\s*=\s*['"][^'"]+['"]/, "spec.version = '#{version}'")
+          abort "Unable to update #{path} version" if updated == content
+          File.write(path, updated)
+          RUBY
+          gem build cocoapods-lynx-extension.gemspec | tee gem-build.log
+          gem_file=$(awk -F': ' '/File:/ {print $2}' gem-build.log | tail -n 1)
+          echo "gem_file=$gem_file" >> "$GITHUB_OUTPUT"
+          ruby -rrubygems/package -e 'spec = Gem::Package.new(ARGV.fetch(0)).spec; puts "#{spec.name} #{spec.version}"; puts spec.summary' "$gem_file"
+      - name: Upload gem artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cocoapods-lynx-extension-${{ steps.gem_version.outputs.version }}
+          path: lynx/tools/ios_tools/cocoapods-lynx-extension/${{ steps.build_gem.outputs.gem_file }}
+      - name: Publish CocoaPods plugin
+        if: steps.published_version.outputs.publish_needed == 'true'
+        env:
+          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx/tools/ios_tools/cocoapods-lynx-extension
+          if [ -z "$GEM_HOST_API_KEY" ]; then
+            echo "RUBYGEMS_API_KEY is required to publish cocoapods-lynx-extension."
+            exit 1
+          fi
+          gem push "${{ steps.build_gem.outputs.gem_file }}"
+
   harmony-sdk-publish:
     name: Publish Harmony SDK (${{ matrix.label }})
     runs-on: lynx-custom-container
