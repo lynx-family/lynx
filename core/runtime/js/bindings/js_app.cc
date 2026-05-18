@@ -2110,7 +2110,10 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
       !page_config_subset.setProperty(
           *rt, runtime::kEnableReleaseAppInstance,
           tasm::LynxEnv::GetInstance().GetBoolEnv(
-              tasm::LynxEnv::Key::ENABLE_RELEASE_APP_INSTANCE, true))) {
+              tasm::LynxEnv::Key::ENABLE_RELEASE_APP_INSTANCE, true)) ||
+      !page_config_subset.setProperty(
+          *rt, runtime::kEnableReadableStreamMemFix,
+          tasm::LynxEnv::GetInstance().EnableReadableStreamMemFix())) {
     handleLoadAppFailed(" App::LoadApp error! page_config_subset init fail.");
     return;
   }

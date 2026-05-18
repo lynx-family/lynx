@@ -639,5 +639,9 @@ bool LynxEnv::EnableAnimationForwardUpdatePreservation() {
 bool LynxEnv::EnableFrameNativeData() {
   return GetBoolEnv(Key::ENABLE_FRAME_NATIVE_DATA, false);
 }
+
+bool LynxEnv::EnableReadableStreamMemFix() {
+  return GetBoolEnv(Key::ENABLE_READABLE_STREAM_MEM_FIX, true);
+}
 }  // namespace tasm
 }  // namespace lynx
