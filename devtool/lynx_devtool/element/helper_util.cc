@@ -74,7 +74,8 @@ std::string ConvertLepusValueToJsonValue(const lynx::lepus::Value& lepus_value,
     case lynx::lepus::ValueType::Value_Table: {
       std::string table_string =
           convertLepusTableToDictionaryString(lepus_value, sort_keys);
-      if (table_string[table_string.length() - 1] == ',')
+      if (!table_string.empty() &&
+          table_string[table_string.length() - 1] == ',')
         table_string.erase(table_string.length() - 1);
       result = "{" + table_string + "}";
       break;
