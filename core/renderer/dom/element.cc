@@ -22,6 +22,7 @@
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_keyframes_token.h"
+#include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/parser/length_handler.h"

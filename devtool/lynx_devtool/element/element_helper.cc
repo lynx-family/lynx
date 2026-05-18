@@ -410,10 +410,10 @@ void CollectStyleSheetSourcesForNewPipeline(
 }
 
 void SyncSelectorStyleTokenForNewPipeline(
-    Element* element, lynx::tasm::CSSParseToken* token,
+    Element* element, const fml::RefPtr<lynx::tasm::CSSParseToken>& token,
     const InspectorStyleSheet& style_sheet) {
   CHECK_NULL_AND_LOG_RETURN(element, "element is null");
-  CHECK_NULL_AND_LOG_RETURN(token, "token is null");
+  CHECK_NULL_AND_LOG_RETURN(token.get(), "token is null");
 
   lynx::tasm::StyleMap parsed_styles;
   lynx::tasm::StyleMap important_styles;
@@ -1142,11 +1142,13 @@ void ElementHelper::SetSelectorStyleTexts(Element* root, Element* ptr,
       InspectorStyleSheet modified_style_sheet =
           StyleTextParser(ptr, text, cur_style_sheet);
       const bool enable_new_styling_pipeline = IsNewStylingPipelineEnabled(ptr);
-      auto* source_token = enable_new_styling_pipeline
-                               ? ElementInspector::GetStyleSheetSourceToken(
-                                     style_root, cur_style_sheet)
-                               : nullptr;
+      auto source_token = enable_new_styling_pipeline
+                              ? ElementInspector::GetStyleSheetSourceToken(
+                                    style_root, cur_style_sheet)
+                              : nullptr;
       if (enable_new_styling_pipeline) {
+        ElementInspector::EraseStyleSheetSourceToken(style_root,
+                                                     cur_style_sheet);
         iter->second = modified_style_sheet;
         if (source_token != nullptr) {
           SyncSelectorStyleTokenForNewPipeline(root ? root : ptr, source_token,

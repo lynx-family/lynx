@@ -7,6 +7,7 @@
 
 #include <tuple>
 
+#include "base/include/fml/memory/ref_ptr.h"
 #include "core/base/utils/any.h"
 #include "core/renderer/dom/element.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
@@ -286,8 +287,11 @@ class ElementInspector {
   static void RecordStyleSheetSourceToken(
       Element* style_root,
       const lynx::devtool::InspectorStyleSheet& style_sheet,
-      lynx::tasm::CSSParseToken* token);
-  static lynx::tasm::CSSParseToken* GetStyleSheetSourceToken(
+      fml::RefPtr<lynx::tasm::CSSParseToken> token);
+  static fml::RefPtr<lynx::tasm::CSSParseToken> GetStyleSheetSourceToken(
+      Element* style_root,
+      const lynx::devtool::InspectorStyleSheet& style_sheet);
+  static void EraseStyleSheetSourceToken(
       Element* style_root,
       const lynx::devtool::InspectorStyleSheet& style_sheet);
   static std::vector<lynx::devtool::InspectorKeyframe>

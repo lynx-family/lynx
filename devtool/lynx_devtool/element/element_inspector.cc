@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "core/base/utils/any.h"
 #include "core/inspector/style_sheet.h"
@@ -95,19 +96,18 @@ GetInspectorTagElementTypeMap() {
 }
 
 std::string BuildStyleSheetSourceTokenKey(
-    Element* style_root, const InspectorStyleSheet& style_sheet) {
-  return std::to_string(reinterpret_cast<uintptr_t>(style_root)) + "|" +
-         style_sheet.style_name_ + "|" + std::to_string(style_sheet.position_) +
+    const InspectorStyleSheet& style_sheet) {
+  return style_sheet.style_name_ + "|" + std::to_string(style_sheet.position_) +
          "|" + std::to_string(style_sheet.style_value_range_.start_line_) +
          "|" + std::to_string(style_sheet.style_value_range_.start_column_);
 }
 
-std::unordered_map<std::string, lynx::tasm::CSSParseToken*>&
-StyleSheetSourceTokenMap() {
-  static lynx::base::NoDestructor<
-      std::unordered_map<std::string, lynx::tasm::CSSParseToken*>>
-      s_style_sheet_source_token_map;
-  return *s_style_sheet_source_token_map;
+std::unordered_map<std::string, fml::RefPtr<lynx::tasm::CSSParseToken>>*
+StyleSheetSourceTokenMap(Element* style_root) {
+  if (style_root == nullptr || style_root->inspector_attribute() == nullptr) {
+    return nullptr;
+  }
+  return &style_root->inspector_attribute()->style_sheet_source_token_map_;
 }
 
 bool ShouldRecordStyleSheetSourceToken(Element* element) {
@@ -392,25 +392,44 @@ lynx::devtool::InspectorStyleSheet ElementInspector::InitStyleSheet(
 
 void ElementInspector::RecordStyleSheetSourceToken(
     Element* style_root, const InspectorStyleSheet& style_sheet,
-    lynx::tasm::CSSParseToken* token) {
+    fml::RefPtr<lynx::tasm::CSSParseToken> token) {
   if (style_root == nullptr || token == nullptr || style_sheet.empty) {
     return;
   }
-  StyleSheetSourceTokenMap()[BuildStyleSheetSourceTokenKey(
-      style_root, style_sheet)] = token;
+  auto* map = StyleSheetSourceTokenMap(style_root);
+  if (map == nullptr) {
+    return;
+  }
+  (*map)[BuildStyleSheetSourceTokenKey(style_sheet)] = std::move(token);
 }
 
-lynx::tasm::CSSParseToken* ElementInspector::GetStyleSheetSourceToken(
+fml::RefPtr<lynx::tasm::CSSParseToken>
+ElementInspector::GetStyleSheetSourceToken(
     Element* style_root, const InspectorStyleSheet& style_sheet) {
   if (style_root == nullptr || style_sheet.empty) {
     return nullptr;
   }
-  auto iter = StyleSheetSourceTokenMap().find(
-      BuildStyleSheetSourceTokenKey(style_root, style_sheet));
-  if (iter == StyleSheetSourceTokenMap().end()) {
+  auto* map = StyleSheetSourceTokenMap(style_root);
+  if (map == nullptr) {
+    return nullptr;
+  }
+  auto iter = map->find(BuildStyleSheetSourceTokenKey(style_sheet));
+  if (iter == map->end()) {
     return nullptr;
   }
   return iter->second;
+}
+
+void ElementInspector::EraseStyleSheetSourceToken(
+    Element* style_root, const InspectorStyleSheet& style_sheet) {
+  if (style_root == nullptr || style_sheet.empty) {
+    return;
+  }
+  auto* map = StyleSheetSourceTokenMap(style_root);
+  if (map == nullptr) {
+    return;
+  }
+  map->erase(BuildStyleSheetSourceTokenKey(style_sheet));
 }
 
 Element* ElementInspector::GetParentComponentElementFromDataModel(
@@ -628,7 +647,7 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
   auto matched_rules = lynx::tasm::StyleResolver::GetCSSMatchedRule(
       attribute_holder, style_sheet);
   for (const auto& matched : matched_rules) {
-    auto* matched_token = matched.Data()->Rule()->Token().get();
+    auto matched_token = matched.Data()->Rule()->Token();
     if (matched_token != nullptr) {
       std::string name = matched.Data()->Selector().ToString();
       if (style_root != nullptr) {
@@ -639,10 +658,9 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
           auto field = iter->second;
           if (matched.Position() == field.position_) {
             if (ShouldRecordStyleSheetSourceToken(element)) {
-              auto* recorded_token =
-                  GetStyleSheetSourceToken(style_root, field);
+              auto recorded_token = GetStyleSheetSourceToken(style_root, field);
               if (recorded_token != nullptr &&
-                  recorded_token != matched_token) {
+                  recorded_token.get() != matched_token.get()) {
                 continue;
               }
               RecordStyleSheetSourceToken(style_root, field, matched_token);
@@ -653,7 +671,7 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
         }
         if (iter == range.second) {
           std::unordered_map<std::string, std::string> css =
-              GetCSSByParseToken(element, matched_token);
+              GetCSSByParseToken(element, matched_token.get());
           auto* inspector_attribute = style_root->inspector_attribute();
           if (inspector_attribute && !css.empty()) {
             lynx::devtool::InspectorStyleSheet style_sheet =
@@ -724,14 +742,15 @@ lynx::devtool::InspectorStyleSheet ElementInspector::GetStyleSheetByName(
     auto range = map.equal_range(name);
     if (token != nullptr) {
       for (auto iter = range.first; iter != range.second; ++iter) {
-        if (GetStyleSheetSourceToken(style_root, iter->second) == token.get()) {
+        auto source_token = GetStyleSheetSourceToken(style_root, iter->second);
+        if (source_token != nullptr && source_token.get() == token.get()) {
           return iter->second;
         }
       }
     }
     res = map.find(name)->second;
     if (token != nullptr && map.count(name) == 1) {
-      RecordStyleSheetSourceToken(style_root, res, token.get());
+      RecordStyleSheetSourceToken(style_root, res, token);
     }
   } else {
     std::unordered_map<std::string, std::string> css =
@@ -745,7 +764,7 @@ lynx::devtool::InspectorStyleSheet ElementInspector::GetStyleSheetByName(
         if (style_sheet != nullptr) {
           auto token = style_sheet->GetSharedCSSStyle(name);
           if (token != nullptr) {
-            RecordStyleSheetSourceToken(style_root, res, token.get());
+            RecordStyleSheetSourceToken(style_root, res, token);
           }
         }
       }

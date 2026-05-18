@@ -81,6 +81,18 @@ std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateSelectorCSSFragment(
   return fragment;
 }
 
+class LifetimeObservedCSSParseToken : public lynx::tasm::CSSParseToken {
+ public:
+  LifetimeObservedCSSParseToken(
+      const lynx::tasm::CSSParserConfigs& parser_configs, bool* destroyed)
+      : CSSParseToken(parser_configs), destroyed_(destroyed) {}
+
+  ~LifetimeObservedCSSParseToken() override { *destroyed_ = true; }
+
+ private:
+  bool* destroyed_;
+};
+
 class ElementHelperTest : public ::testing::Test {
  public:
   ElementHelperTest() {}
@@ -710,6 +722,37 @@ TEST_F(ElementHelperTest,
 }
 
 TEST_F(ElementHelperTest,
+       StyleSheetSourceTokenCacheKeepsTokenAliveUntilStyleRootDestroyed) {
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+
+  lynx::devtool::InspectorStyleSheet style_sheet;
+  style_sheet.empty = false;
+  style_sheet.style_name_ = ".owned";
+  style_sheet.position_ = 1;
+  style_sheet.style_value_range_ = {1, 1, 0, 6};
+
+  bool destroyed = false;
+  {
+    lynx::tasm::CSSParserConfigs parser_configs;
+    auto token = fml::MakeRefCounted<LifetimeObservedCSSParseToken>(
+        parser_configs, &destroyed);
+    lynx::devtool::ElementInspector::RecordStyleSheetSourceToken(
+        style_root.get(), style_sheet, token);
+    ASSERT_NE(lynx::devtool::ElementInspector::GetStyleSheetSourceToken(
+                  style_root.get(), style_sheet),
+              nullptr);
+  }
+
+  EXPECT_FALSE(destroyed);
+  style_root = nullptr;
+  EXPECT_TRUE(destroyed);
+}
+
+TEST_F(ElementHelperTest,
        SetSelectorStyleTextsNewPipelineUpdatesDescendantSelectorToken) {
   manager->enable_new_styling_pipeline_ = true;
 
@@ -886,6 +929,32 @@ TEST_F(ElementHelperTest,
       lynx::tasm::CSSDecoder::CSSValueToString(
           lynx::tasm::CSSPropertyID::kPropertyIDWidth, second_width_it->second),
       "40px");
+
+  auto first_updated_sheet =
+      lynx::devtool::ElementInspector::GetStyleSheetByName(first_element.get(),
+                                                           ".title");
+  ASSERT_FALSE(first_updated_sheet.empty);
+  EXPECT_EQ(first_updated_sheet.css_text_, "width:20px;");
+  EXPECT_EQ(first_updated_sheet.style_value_range_.start_line_,
+            matched_styles[0].style_value_range_.start_line_);
+  auto first_recorded_token =
+      lynx::devtool::ElementInspector::GetStyleSheetSourceToken(
+          style_root.get(), first_updated_sheet);
+  ASSERT_NE(first_recorded_token, nullptr);
+  EXPECT_EQ(first_recorded_token.get(), first_token.get());
+
+  auto second_updated_sheet =
+      lynx::devtool::ElementInspector::GetStyleSheetByName(second_element.get(),
+                                                           ".title");
+  ASSERT_FALSE(second_updated_sheet.empty);
+  EXPECT_EQ(second_updated_sheet.css_text_, "width:40px;");
+  EXPECT_EQ(second_updated_sheet.style_value_range_.start_line_,
+            second_matched_styles[0].style_value_range_.start_line_);
+  auto second_recorded_token =
+      lynx::devtool::ElementInspector::GetStyleSheetSourceToken(
+          style_root.get(), second_updated_sheet);
+  ASSERT_NE(second_recorded_token, nullptr);
+  EXPECT_EQ(second_recorded_token.get(), second_token.get());
 }
 
 TEST_F(ElementHelperTest,

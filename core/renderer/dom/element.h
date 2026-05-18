@@ -17,6 +17,7 @@
 
 #include "base/include/auto_create_optional.h"
 #include "base/include/closure.h"
+#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/no_destructor.h"
 #include "base/include/value/ref_type.h"
 #include "base/include/value/table.h"
@@ -64,6 +65,7 @@ class HierarchyObserver;
 class ListNode;
 class Fragment;
 class CSSFragmentDecorator;
+class CSSParseToken;
 struct LayoutBundle;
 class PseudoElement;
 class ListItemSchedulerAdapter;
@@ -110,6 +112,10 @@ class InspectorAttribute {
   int start_line_;
   std::unordered_multimap<std::string, lynx::devtool::InspectorStyleSheet>
       style_sheet_map_;
+  // DevTool selector edits need the exact source token. Keep the cache on the
+  // style root so cached tokens cannot outlive the inspected DOM lifetime.
+  std::unordered_map<std::string, fml::RefPtr<CSSParseToken>>
+      style_sheet_source_token_map_;
   std::unordered_map<std::string, std::vector<lynx::devtool::InspectorKeyframe>>
       animation_map_;
 
