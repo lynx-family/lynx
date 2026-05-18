@@ -5,6 +5,12 @@ interface StreamDelegate {
   onEnd(): void;
   onError(error: string): void;
 }
+
+type PromiseProvider =
+  | PromiseConstructor
+  | {
+      getPromise: () => PromiseConstructor;
+    };
 /**
  * Serves as a stable type identifier across different Promise constructor environments
  *
@@ -13,10 +19,18 @@ interface StreamDelegate {
  */
 export abstract class LynxReadableStream {}
 
-export function createReadableStreamClass(Promise: PromiseConstructor): any {
+function resolvePromiseCtor(provider: PromiseProvider): PromiseConstructor {
+  if (typeof provider === 'function') {
+    return provider;
+  }
+  return provider.getPromise();
+}
+
+export function createReadableStreamClass(provider: PromiseProvider): any {
   return class ReadableStream
     extends LynxReadableStream
     implements StreamDelegate {
+    private __Promise: PromiseConstructor;
     private __eventCenter: EventEmitter;
     private __dataReceived: ArrayBuffer[];
     private __done: boolean;
@@ -25,6 +39,7 @@ export function createReadableStreamClass(Promise: PromiseConstructor): any {
     private __error: Error;
     constructor() {
       super();
+      this.__Promise = resolvePromiseCtor(provider);
       this.__dataReceived = [];
       this.__done = false;
       this.__cancelled = false;
@@ -69,7 +84,7 @@ export function createReadableStreamClass(Promise: PromiseConstructor): any {
       this.__eventCenter.addListener('waitSignal', waitSignal, this);
     }
     public __read() {
-      return new Promise((resolve, reject) => {
+      return new this.__Promise((resolve, reject) => {
         this.processRead(resolve, reject);
       });
     }
@@ -80,7 +95,7 @@ export function createReadableStreamClass(Promise: PromiseConstructor): any {
       this.__cancelled = true;
       this.__dataReceived = null;
       this.__eventCenter.emit('waitSignal', null);
-      return Promise.resolve(reason);
+      return this.__Promise.resolve(reason);
     }
     public getReader() {
       if (this.__locked) {
