@@ -138,6 +138,11 @@ class PageView : public BaseView,
 
   void RequestPaint();
   void RequestPaintBase();
+#if OS_IOS
+  // Runs at the start of the next BeginFrame. The caller must already be in a
+  // path that will schedule another frame.
+  void RunAtNextBeginFrame(fml::closure task);
+#endif
   bool BeginFrame(std::unique_ptr<clay::FrameTimingsRecorder>);
   void SetRefreshRate(uint32_t refresh_rate);
   void SetRenderSettings(fml::RefPtr<RenderSettings> render_settings);
@@ -589,6 +594,9 @@ class PageView : public BaseView,
   std::unique_ptr<ViewTreeObserver> view_tree_observer_;
   std::shared_ptr<FrameTimingCollector> frame_timing_collector_;
   std::unique_ptr<IntersectionObserverManager> intersection_observer_manager_;
+#if OS_IOS
+  std::vector<fml::closure> next_begin_frame_tasks_;
+#endif
   std::vector<std::function<void()>> ui_method_tasks_;
   bool raster_animation_enabled_ = true;
   std::string base_uri_;

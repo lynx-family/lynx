@@ -12,6 +12,7 @@
 #include "clay/common/graphics/drawable_image.h"
 #include "clay/common/graphics/shared_image_external_texture.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
+#include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
@@ -117,6 +118,9 @@ void NativeView::SendMotionEvent(const PointerEvent& point_event,
 // currently. Maybe we can reactor this and make the destruction process more
 // unified.
 void NativeView::OnDestroy() {
+#if OS_IOS
+  CancelPendingPlatformFocus();
+#endif
   UpdateTouchDispatchState(true, /* action= */ 3);
   native_view_plugin_.Act([](auto& plugin) { return plugin.OnDestroy(); });
   if (tex_id_.has_value()) {
@@ -216,6 +220,15 @@ void NativeView::InvokePlatformMethod(const std::string& method_name,
 }
 
 void NativeView::SetAttribute(const char* attr, const clay::Value& value) {
+#if OS_IOS
+  if (ShouldDeferFocusAttribute(attr)) {
+    if (attribute_utils::GetBool(value)) {
+      DeferPlatformFocus();
+      return;
+    }
+    CancelPendingPlatformFocus();
+  }
+#endif
   if (!HandleCommonAttribute(attr, value)) {
     staging_attrs_.emplace(attr, CloneClayValue(value));
   } else if (GetKeywordID(attr) == KeywordID::kName) {
@@ -263,6 +276,10 @@ void NativeView::OnAttachToTree() {
 
 void NativeView::OnDetachFromTree() {
   BaseView::OnDetachFromTree();
+#if OS_IOS
+  CancelPendingPlatformFocus();
+  has_layout_finished_ = false;
+#endif
   native_view_plugin_.Act([](auto& plugin) { return plugin.OnDetach(); });
   page_view_->GetViewTreeObserver()->RemoveOnPaintingListener(this);
 }
@@ -270,6 +287,12 @@ void NativeView::OnDetachFromTree() {
 void NativeView::OnLayoutFinish() {
   ApplyUpdateChanged();
   native_view_plugin_.Act([](auto& plugin) { plugin.OnLayoutFinish(); });
+#if OS_IOS
+  has_layout_finished_ = true;
+  if (pending_platform_focus_) {
+    SchedulePendingPlatformFocus();
+  }
+#endif
 }
 
 void NativeView::OnNodeReady() {
@@ -278,6 +301,63 @@ void NativeView::OnNodeReady() {
   ApplyUpdateChanged();
   native_view_plugin_.Act([](auto& plugin) { plugin.OnNodeReady(); });
 }
+
+#if OS_IOS
+bool NativeView::ShouldDeferFocusAttribute(const char* attr) const {
+  // On iOS, x-input focus calls into UIKit to make a UITextField first
+  // responder. Keyboard startup can be expensive and may contend with Clay
+  // layout transitions when the platform view itself is moving. Keep this
+  // deferral scoped to x-input so other native views keep their immediate
+  // attribute semantics.
+  return attr != nullptr && GetKeywordID(attr) == KeywordID::kFocus &&
+         GetName() == "x-input";
+}
+
+void NativeView::CancelPendingPlatformFocus() {
+  pending_platform_focus_ = false;
+  platform_focus_scheduled_ = false;
+}
+
+void NativeView::DeferPlatformFocus() {
+  pending_platform_focus_ = true;
+  platform_focus_scheduled_ = false;
+  if (has_layout_finished_) {
+    SchedulePendingPlatformFocus();
+    return;
+  }
+  // Wait for the native view's first layout finish. That keeps focus from
+  // racing ahead of layout transitions created by the same update.
+}
+
+void NativeView::SchedulePendingPlatformFocus() {
+  if (!has_layout_finished_ || platform_focus_scheduled_) {
+    return;
+  }
+  platform_focus_scheduled_ = true;
+  RunAfterBoundsTransitionEnd(
+      [weak_self = fml::WeakPtr<NativeView>(GetWeakPtr())]() {
+        if (!weak_self) {
+          return;
+        }
+        weak_self->FlushPlatformFocus();
+      });
+}
+
+void NativeView::FlushPlatformFocus() {
+  if (!pending_platform_focus_) {
+    return;
+  }
+  pending_platform_focus_ = false;
+  platform_focus_scheduled_ = false;
+  // Replay the x-input `focus` prop through the original platform-attribute
+  // path.
+  native_view_plugin_.Act([](auto& plugin) {
+    clay::Value::Map attrs;
+    attrs.emplace("focus", clay::Value(true));
+    plugin.UpdatePlatformAttributes(attrs, clay::Value::Array{});
+  });
+}
+#endif
 
 MeasureResult NativeView::Measure(const MeasureConstraint& constraint) {
   MeasureConstraint platform_constraint = constraint;

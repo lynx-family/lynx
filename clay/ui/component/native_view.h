@@ -6,6 +6,7 @@
 #define CLAY_UI_COMPONENT_NATIVE_VIEW_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "clay/gfx/geometry/float_point.h"
@@ -65,6 +66,13 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   void ResignFirstResponder();
 
   void ApplyUpdateChanged();
+#if OS_IOS
+  bool ShouldDeferFocusAttribute(const char* attr) const;
+  void CancelPendingPlatformFocus();
+  void DeferPlatformFocus();
+  void SchedulePendingPlatformFocus();
+  void FlushPlatformFocus();
+#endif
   bool ShouldIgnoreForTouchHitTest(int platform_try_hit_id = -1) const;
 
   Puppet<Owner::kUI, std::unique_ptr<NativeViewPlugin>> native_view_plugin_;
@@ -79,6 +87,13 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   bool is_editing_ = false;
   bool is_available_ = false;
   bool ignore_for_touch_hit_test_ = false;
+#if OS_IOS
+  bool has_layout_finished_ = false;
+  // Pending platform focus is kept outside staging_attrs_ until it can be
+  // forwarded without overlapping a layout transition.
+  bool pending_platform_focus_ = false;
+  bool platform_focus_scheduled_ = false;
+#endif
   NativeViewCompositionPreference composition_preference_ =
       NativeViewCompositionPreference::kAuto;
 };

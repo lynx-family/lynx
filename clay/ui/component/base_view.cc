@@ -80,6 +80,20 @@ bool ShouldPassEventToNativeInherited(BaseView* view) {
   }
 }
 
+#if OS_IOS
+bool IsBoundsTransitionProperty(ClayAnimationPropertyType type) {
+  switch (type) {
+    case ClayAnimationPropertyType::kLeft:
+    case ClayAnimationPropertyType::kTop:
+    case ClayAnimationPropertyType::kWidth:
+    case ClayAnimationPropertyType::kHeight:
+      return true;
+    default:
+      return false;
+  }
+}
+#endif
+
 const int PLATFORM_PERSPECTIVE_UNIT_NUMBER = 0;
 const int PLATFORM_PERSPECTIVE_UNIT_VW = 1;
 const int PLATFORM_PERSPECTIVE_UNIT_VH = 2;
@@ -1630,6 +1644,115 @@ TransitionManager* BaseView::TransitionMgr() {
   }
   return transition_mgr_.get();
 }
+
+#if OS_IOS
+bool BaseView::HasBoundsTransition() {
+  return transition_mgr_ != nullptr &&
+         (transition_mgr_->IsAnimationRunning(
+              ClayAnimationPropertyType::kLeft) ||
+          transition_mgr_->IsAnimationRunning(
+              ClayAnimationPropertyType::kTop) ||
+          transition_mgr_->IsAnimationRunning(
+              ClayAnimationPropertyType::kWidth) ||
+          transition_mgr_->IsAnimationRunning(
+              ClayAnimationPropertyType::kHeight));
+}
+
+std::vector<BaseView*> BaseView::GetBoundsTransitionViews() {
+  std::vector<BaseView*> running_views;
+  for (BaseView* view = this; view != nullptr; view = view->parent_) {
+    if (view->HasBoundsTransition()) {
+      running_views.emplace_back(view);
+    }
+  }
+  return running_views;
+}
+
+void BaseView::RunAfterBoundsTransitionEnd(std::function<void()> task) {
+  if (!task) {
+    return;
+  }
+  auto running_transition_views = GetBoundsTransitionViews();
+  if (running_transition_views.empty()) {
+    task();
+    return;
+  }
+
+  struct EndTaskState {
+    fml::WeakPtr<BaseView> view;
+    std::function<void()> task;
+    size_t pending_count = 0;
+  };
+  auto state = std::make_shared<EndTaskState>(EndTaskState{
+      GetWeakPtr(), std::move(task), running_transition_views.size()});
+  for (BaseView* view : running_transition_views) {
+    view->QueueBoundsTransitionEndTask([state]() mutable {
+      if (!state->view || state->pending_count == 0) {
+        return;
+      }
+      --state->pending_count;
+      // Trigger only after every active bounds transition has ended.
+      if (state->pending_count == 0) {
+        state->view->page_view()->RunAtNextBeginFrame([state]() mutable {
+          if (!state->view || !state->task) {
+            return;
+          }
+          auto platform_runner = state->view->page_view()
+                                     ->GetTaskRunners()
+                                     .GetPlatformTaskRunner();
+          platform_runner->PostTask([state]() mutable {
+            if (!state->view || !state->task) {
+              return;
+            }
+            // The next BeginFrame is scheduled after the previous raster task
+            // yields. Run native focus from there so keyboard work does not
+            // overlap the final bounds-transition frame.
+            auto task = std::move(state->task);
+            state->task = {};
+            task();
+          });
+        });
+      }
+    });
+  }
+}
+
+void BaseView::QueueBoundsTransitionEndTask(std::function<void()> task) {
+  if (!task) {
+    return;
+  }
+  if (!HasBoundsTransition()) {
+    task();
+    return;
+  }
+  bounds_transition_end_tasks_.emplace_back(std::move(task));
+  FlushBoundsTransitionEndTasks();
+}
+
+void BaseView::FlushBoundsTransitionEndTasks(bool force_post) {
+  if (bounds_transition_end_tasks_.empty() ||
+      bounds_transition_end_task_posted_ ||
+      (!force_post && HasBoundsTransition())) {
+    return;
+  }
+  bounds_transition_end_task_posted_ = true;
+  page_view()->GetTaskRunners().GetUITaskRunner()->PostTask(
+      [weak_self = GetWeakPtr()]() mutable {
+        if (!weak_self) {
+          return;
+        }
+        weak_self->bounds_transition_end_task_posted_ = false;
+        if (weak_self->HasBoundsTransition()) {
+          return;
+        }
+        std::vector<std::function<void()>> tasks;
+        tasks.swap(weak_self->bounds_transition_end_tasks_);
+        for (auto& task : tasks) {
+          task();
+        }
+      });
+}
+#endif
 
 void BaseView::TransitionTo(ClayAnimationPropertyType type, float value) {
   switch (type) {
@@ -3294,6 +3417,15 @@ void BaseView::OnTransitionEvent(const AnimationParams& animation_params,
   }
 #ifdef ENABLE_RASTER_CACHE_SCALE
   UpdateCacheStrategy();
+#endif
+#if OS_IOS
+  if (event_type == kClayEventTypeTransitionEnd &&
+      IsBoundsTransitionProperty(property_type)) {
+    // Currently this is a workaround for preventing jank when
+    // on iOS `x-input` component or its ancestors have bounds transition
+    // animations running.
+    FlushBoundsTransitionEndTasks(true);
+  }
 #endif
   if (has_event && !(page_view_->IsRasterAnimationEnabled() &&
                      IsRasterAnimationProperty(property_type))) {

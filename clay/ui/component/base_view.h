@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_COMPONENT_BASE_VIEW_H_
 #define CLAY_UI_COMPONENT_BASE_VIEW_H_
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -667,6 +668,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   virtual void OnAttachToTree();
   virtual void Invalidate();
   void LayoutUpdated();
+#if OS_IOS
+  void RunAfterBoundsTransitionEnd(std::function<void()> task);
+#endif
   void ScrollToFocus();
   virtual void ScrollChildViewToVisible(const FloatRect& rect) {}
   int GetCurrentImageLoaderToken() const { return bg_image_loader_token_; }
@@ -796,6 +800,15 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void RebuildSortedChildrenIfNeeded();
   void NotifyBoundChangeIfNeeded(const FloatRect& old_bounds);
   void DrawClipPath(bool is_clip_path);
+#if OS_IOS
+  bool HasBoundsTransition();
+  std::vector<BaseView*> GetBoundsTransitionViews();
+  void QueueBoundsTransitionEndTask(std::function<void()> task);
+  void FlushBoundsTransitionEndTasks(bool force_post = false);
+
+  std::vector<std::function<void()>> bounds_transition_end_tasks_;
+  bool bounds_transition_end_task_posted_ = false;
+#endif
 
   std::vector<BaseView*> sorted_children_;
   bool ignore_size_change_checks_ = false;

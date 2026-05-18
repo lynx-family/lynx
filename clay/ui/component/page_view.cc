@@ -299,6 +299,16 @@ bool PageView::BeginFrame(
     return false;
   }
 
+#if OS_IOS
+  if (!next_begin_frame_tasks_.empty()) {
+    std::vector<fml::closure> tasks;
+    tasks.swap(next_begin_frame_tasks_);
+    for (auto& task : tasks) {
+      task();
+    }
+  }
+#endif
+
   TriggerFirstPaintCallback();
   render_phase_ = RenderPhase::kLayout;
   if (frame_timing_collector_ &&
@@ -1167,6 +1177,14 @@ void PageView::DispatchTransitionEvent(
 }
 void PageView::RequestPaint() { Invalidate(); }
 void PageView::RequestPaintBase() { BaseView::Invalidate(); }
+
+#if OS_IOS
+void PageView::RunAtNextBeginFrame(fml::closure task) {
+  if (task) {
+    next_begin_frame_tasks_.emplace_back(std::move(task));
+  }
+}
+#endif
 
 void PageView::DispatchKeyEvent(
     std::unique_ptr<KeyEvent> event,
