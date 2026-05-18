@@ -33,6 +33,7 @@ HANDLER_IMPL() {
   output.emplace_or_assign(kPropertyIDMaskRepeat, mask->get(4).Array());
   output.emplace_or_assign(kPropertyIDMaskOrigin, mask->get(5).Array());
   output.emplace_or_assign(kPropertyIDMaskClip, mask->get(6).Array());
+  output.emplace_or_assign(kPropertyIDMaskComposite, mask->get(7).Array());
   return true;
 }
 HANDLER_REGISTER_IMPL() { array[kPropertyIDMask] = &Handle; }

@@ -12,6 +12,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <memory>
 #include <string>
@@ -90,6 +91,24 @@ void SizeAddLegacyValue(fml::RefPtr<lepus::CArray> &arr, const CSSValue &size) {
   arr->emplace_back(static_cast<uint32_t>(size.GetPattern()));
   arr->emplace_back(size.GetValue());
 }
+
+bool TokenTextEquals(const Token &token, const char *keyword) {
+  const size_t keyword_length = std::strlen(keyword);
+  if (token.length != keyword_length || token.start == nullptr) {
+    return false;
+  }
+  for (size_t i = 0; i < keyword_length; ++i) {
+    char current = token.start[i];
+    if (current >= 'A' && current <= 'Z') {
+      current = static_cast<char>(current - 'A' + 'a');
+    }
+    if (current != keyword[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace
 
 bool CSSStringParser::AtEnd() {
@@ -106,6 +125,7 @@ CSSValue CSSStringParser::ParseBackgroundOrMask(bool mask) {
   auto origin_array = lepus::CArray::Create();
   auto repeat_array = lepus::CArray::Create();
   auto clip_array = lepus::CArray::Create();
+  auto composite_array = lepus::CArray::Create();
 
   std::optional<uint32_t> color;
   do {
@@ -124,12 +144,13 @@ CSSValue CSSStringParser::ParseBackgroundOrMask(bool mask) {
     }
     BackgroundLayerToArray(layer, image_array.get(), position_array.get(),
                            size_array.get(), origin_array.get(),
-                           repeat_array.get(), clip_array.get());
+                           repeat_array.get(), clip_array.get(),
+                           mask ? composite_array.get() : nullptr);
   } while (!AtEnd() && Consume(TokenType::COMMA));
 
   auto bg_array = lepus::CArray::Create();
   if (!legacy_parser_) {
-    bg_array->reserve(7);
+    bg_array->reserve(mask ? 8 : 7);
   }
   bg_array->emplace_back(color.has_value() ? *color : 0);
   bg_array->emplace_back(std::move(image_array));
@@ -141,6 +162,9 @@ CSSValue CSSStringParser::ParseBackgroundOrMask(bool mask) {
     bg_array->emplace_back(std::move(repeat_array));
     bg_array->emplace_back(std::move(origin_array));
     bg_array->emplace_back(std::move(clip_array));
+    if (mask) {
+      bg_array->emplace_back(std::move(composite_array));
+    }
   }
 
   return CSSValue(std::move(bg_array));
@@ -361,6 +385,24 @@ CSSValue CSSStringParser::ParseBackgroundRepeat() {
     repeat->emplace_back(repeat_x);
     repeat->emplace_back(repeat_y);
     arr->emplace_back(std::move(repeat));
+  } while (Consume(TokenType::COMMA));
+
+  if (!AtEnd()) {
+    return CSSValue();
+  }
+  return CSSValue(std::move(arr));
+}
+
+CSSValue CSSStringParser::ParseMaskComposite() {
+  Advance();
+
+  auto arr = lepus::CArray::Create();
+  do {
+    uint32_t composite;
+    if (!MaskComposite(composite)) {
+      return CSSValue();
+    }
+    arr->emplace_back(composite);
   } while (Consume(TokenType::COMMA));
 
   if (!AtEnd()) {
@@ -716,6 +758,9 @@ lepus::Value CSSStringParser::NumberOnly(bool nonnegative) {
 bool CSSStringParser::BackgroundLayer(CSSBackgroundLayer &layer, bool mask) {
   uint8_t full_byte = BG_ORIGIN | BG_CLIP_BOX | BG_IMAGE |
                       BG_POSITION_AND_SIZE | BG_REPEAT | BG_COLOR;
+  if (mask) {
+    full_byte |= BG_COMPOSITE;
+  }
 
   uint8_t byte = full_byte;
 
@@ -781,6 +826,15 @@ bool CSSStringParser::BackgroundLayer(CSSBackgroundLayer &layer, bool mask) {
         return false;
       }
       curr_byte &= ~BG_REPEAT;
+      byte = curr_byte;
+      continue;
+    }
+
+    if (mask && MaskComposite(layer.composite)) {
+      if ((curr_byte & BG_COMPOSITE) == 0) {
+        return false;
+      }
+      curr_byte &= ~BG_COMPOSITE;
       byte = curr_byte;
       continue;
     }
@@ -1085,6 +1139,24 @@ bool CSSStringParser::BackgroundRepeatStyle(uint32_t &x, uint32_t &y) {
   } else {
     y = x;
   }
+  return true;
+}
+
+bool CSSStringParser::MaskComposite(uint32_t &composite) {
+  SkipWhitespaceToken();
+  Token token = current_token_;
+  if (TokenTextEquals(token, "add")) {
+    composite = static_cast<uint32_t>(starlight::MaskCompositeType::kAdd);
+  } else if (TokenTextEquals(token, "subtract")) {
+    composite = static_cast<uint32_t>(starlight::MaskCompositeType::kSubtract);
+  } else if (TokenTextEquals(token, "intersect")) {
+    composite = static_cast<uint32_t>(starlight::MaskCompositeType::kIntersect);
+  } else if (TokenTextEquals(token, "exclude")) {
+    composite = static_cast<uint32_t>(starlight::MaskCompositeType::kExclude);
+  } else {
+    return false;
+  }
+  Advance();
   return true;
 }
 
@@ -2637,13 +2709,11 @@ starlight::TimingFunctionType CSSStringParser::TokenToTimingFunctionType(
   }
 }
 
-void CSSStringParser::BackgroundLayerToArray(const CSSBackgroundLayer &layer,
-                                             lepus::CArray *image_array,
-                                             lepus::CArray *position_array,
-                                             lepus::CArray *size_array,
-                                             lepus::CArray *origin_array,
-                                             lepus::CArray *repeat_array,
-                                             lepus::CArray *clip_array) {
+void CSSStringParser::BackgroundLayerToArray(
+    const CSSBackgroundLayer &layer, lepus::CArray *image_array,
+    lepus::CArray *position_array, lepus::CArray *size_array,
+    lepus::CArray *origin_array, lepus::CArray *repeat_array,
+    lepus::CArray *clip_array, lepus::CArray *composite_array) {
   image_array->emplace_back(TokenTypeToENUM(layer.image->value_type));
   if (layer.image->value) {
     image_array->emplace_back(*layer.image->value);
@@ -2681,6 +2751,11 @@ void CSSStringParser::BackgroundLayerToArray(const CSSBackgroundLayer &layer,
 
   // clip
   clip_array->emplace_back(layer.clip);
+
+  // composite
+  if (composite_array != nullptr) {
+    composite_array->emplace_back(layer.composite);
+  }
 }
 
 void CSSStringParser::ClampColorAndStopList(base::Vector<uint32_t> &colors,

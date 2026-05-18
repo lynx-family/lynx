@@ -44,6 +44,7 @@ unittest_set("css_parser_testset") {
     "grid_template_handler_unittest.cc",
     "length_handler_unittest.cc",
     "list_gap_handler_unittest.cc",
+    "mask_composite_handler_unittest.cc",
     "number_handler_unittest.cc",
     "shadow_handler_unittest.cc",
     "string_handler_unittest.cc",

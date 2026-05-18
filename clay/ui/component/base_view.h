@@ -262,12 +262,17 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void SetBackgroundRepeat(const clay::Value::Array& array);
   void SetBackgroundSize(const std::vector<BackgroundSize>& sizes);
 
+  void ClearMask();
   void SetMaskImage(const clay::Value::Array& array);
   void SetMaskPosition(const std::vector<MaskPosition>& positions);
   void SetMaskOrigin(const clay::Value::Array& array);
+  void SetMaskOrigin(std::vector<ClayMaskOriginType>&& origins);
   void SetMaskRepeat(const clay::Value::Array& array);
+  void SetMaskRepeat(std::vector<ClayMaskRepeatType>&& repeats);
   void SetMaskSize(const std::vector<MaskSize>& mask_sizes);
   void SetMaskClip(const clay::Value::Array& array);
+  void SetMaskClip(std::vector<ClayMaskClipType>&& clips);
+  void SetMaskComposite(const clay::Value::Array& array);
 
   TransitionManager* TransitionMgr();
   void TransitionTo(ClayAnimationPropertyType type, float value);

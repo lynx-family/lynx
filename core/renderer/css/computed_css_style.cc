@@ -408,6 +408,29 @@ bool SetBackgroundOrMaskRepeat(base::flex_optional<BackgroundData>& data,
   return old_value != image_data->repeat;
 }
 
+bool SetBackgroundOrMaskComposite(base::flex_optional<BackgroundData>& data,
+                                  const tasm::CSSValue& value,
+                                  const bool reset) {
+  CSSStyleUtils::PrepareOptional(data);
+  CSSStyleUtils::PrepareOptional(data->image_data);
+  auto& image_data = data->image_data;
+  auto old_value = image_data->composite;
+  image_data->composite.clear();
+  if (!reset) {
+    if (!value.IsArray()) {
+      return false;
+    }
+    auto composite_arr = value.GetArray();
+    for (size_t i = 0; i < composite_arr->size(); i++) {
+      auto composite_type =
+          static_cast<uint32_t>(composite_arr->get(i).Number());
+      image_data->composite.emplace_back(
+          static_cast<MaskCompositeType>(composite_type));
+    }
+  }
+  return old_value != image_data->composite;
+}
+
 }  // namespace
 
 lepus::Value ComputedCSSStyleUtilsMethod::BackgroundOrMaskClipToLepus(
@@ -524,6 +547,19 @@ lepus::Value ComputedCSSStyleUtilsMethod::BackgroundOrMaskSizeToLepus(
     auto array = lepus::CArray::Create();
     for (const auto& size : data->image_data->size) {
       CSSStyleUtils::AddLengthToArray(array, size);
+    }
+    return lepus::Value{std::move(array)};
+  } else {
+    return lepus::Value{lepus::CArray::Create()};
+  }
+}
+
+lepus::Value ComputedCSSStyleUtilsMethod::BackgroundOrMaskCompositeToLepus(
+    const base::flex_optional<BackgroundData>& data) {
+  if (data && data->image_data && !data->image_data->composite.empty()) {
+    auto array = lepus::CArray::Create();
+    for (const auto& composite : data->image_data->composite) {
+      array->emplace_back(static_cast<int32_t>(composite));
     }
     return lepus::Value{std::move(array)};
   } else {
@@ -4301,6 +4337,11 @@ bool ComputedCSSStyle::SetMaskRepeat(const tasm::CSSValue& value,
   return SetBackgroundOrMaskRepeat(mask_data_, value, reset);
 }
 
+bool ComputedCSSStyle::SetMaskComposite(const tasm::CSSValue& value,
+                                        const bool reset) {
+  return SetBackgroundOrMaskComposite(mask_data_, value, reset);
+}
+
 bool ComputedCSSStyle::SetMask(const tasm::CSSValue& value, const bool reset) {
   return false;
 }
@@ -4329,6 +4370,11 @@ lepus_value ComputedCSSStyle::MaskPositionToLepus() {
 
 lepus_value ComputedCSSStyle::MaskRepeatToLepus() {
   return ComputedCSSStyleUtilsMethod::BackgroundOrMaskRepeatToLepus(mask_data_);
+}
+
+lepus_value ComputedCSSStyle::MaskCompositeToLepus() {
+  return ComputedCSSStyleUtilsMethod::BackgroundOrMaskCompositeToLepus(
+      mask_data_);
 }
 
 bool ComputedCSSStyle::SetImageRendering(const tasm::CSSValue& value,

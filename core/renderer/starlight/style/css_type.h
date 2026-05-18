@@ -307,6 +307,13 @@ enum class BackgroundClipType : uint8_t {
   kBorderArea = 4   // version: 3.6
 };
 
+enum class MaskCompositeType : uint8_t {
+  kAdd = 0,
+  kSubtract = 1,
+  kIntersect = 2,
+  kExclude = 3,
+};
+
 enum class RadialGradientShapeType : uint8_t {
   kEllipse = 0,
   kCircle,
