@@ -87,7 +87,7 @@ export abstract class BaseApp<
   clearTimeout: (timeoutId: number) => void;
 
   _createReadableStreamClass: (
-    Promise: PromiseConstructor
+    provider: PromiseConstructor | { getPromise: () => PromiseConstructor }
   ) => ReturnType<typeof createReadableStreamClass>;
   _ReadableStreamClass: ReturnType<typeof createReadableStreamClass>;
 
@@ -294,6 +294,8 @@ export abstract class BaseApp<
   setupFetchAPI(Promise: PromiseConstructor) {
     this._createReadableStreamClass = createReadableStreamClass;
     this._ReadableStreamClass = createReadableStreamClass(Promise);
+    const enableReadableStreamMemoryFix =
+      this.params?.pageConfigSubset?.enableReadableStreamMemoryFix ?? true;
     if (!nativeGlobal.Request) {
       nativeGlobal.Request = Request;
     }
@@ -301,7 +303,32 @@ export abstract class BaseApp<
       nativeGlobal.Response = Response;
     }
     if (!nativeGlobal.ReadableStream) {
-      nativeGlobal.ReadableStream = this._ReadableStreamClass;
+      if (!enableReadableStreamMemoryFix) {
+        nativeGlobal.ReadableStream = this._ReadableStreamClass;
+        return;
+      }
+      // Global ReadableStream still caches
+      // Object.values(nativeGlobal.multiApps)[0].lynx.Promise on the first
+      // `new ReadableStream()` call. This is a short-term mitigation and does
+      // not guarantee binding to the current caller app. When multiple apps
+      // share one context, the global API may still bind to the first app.
+      // The long-term migration target is `lynx.ReadableStream`.
+      let fixedPromise: PromiseConstructor | undefined;
+      nativeGlobal.ReadableStream = createReadableStreamClass({
+        getPromise: () => {
+          if (fixedPromise) {
+            return fixedPromise;
+          }
+          const app = Object.values(nativeGlobal.multiApps)[0] as
+            | BaseApp
+            | undefined;
+          if (!app?.lynx?.Promise) {
+            throw new Error('ReadableStream Promise is unavailable');
+          }
+          fixedPromise = app.lynx.Promise;
+          return fixedPromise;
+        },
+      });
     }
   }
 

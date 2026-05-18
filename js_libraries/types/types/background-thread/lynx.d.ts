@@ -82,6 +82,22 @@ export interface FontFace {
 
 export type GetElementByIdFunc = (id: string) => AnimationElement;
 
+export interface LynxReadableStreamReadResult<T = ArrayBuffer> {
+  done: boolean;
+  value: T | undefined;
+}
+
+export interface LynxReadableStreamDefaultReader<T = ArrayBuffer> {
+  read(): Promise<LynxReadableStreamReadResult<T>>;
+  cancel(reason?: any): Promise<any>;
+}
+
+export interface LynxReadableStream<T = ArrayBuffer> {
+  readonly locked: boolean;
+  cancel(reason?: any): Promise<any>;
+  getReader(): LynxReadableStreamDefaultReader<T> | null;
+}
+
 /**
  * Lynx provide `background-thread lynx` public api.
  */
@@ -154,6 +170,13 @@ export interface Lynx extends CommonLynx {
    * @since 3.5
    */
   EventSource: EventSource;
+
+  /**
+   * @description app-scoped ReadableStream constructor
+   */
+  ReadableStream: {
+    new (): LynxReadableStream;
+  };
 
   /**
    * @description subset of Fetch API
