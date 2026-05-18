@@ -961,8 +961,13 @@ size_t ListContainerView::GetVisibleItemsInfo(
     std::vector<int>& position, std::vector<std::string>& id_array,
     std::vector<std::string>& item_key_array) {
   std::vector<BaseView*> visible_children;
+  FloatRect viewport(0, 0, Width(), Height());
   for (BaseView* child : children_) {
-    if (child && child->Width() != 0 && child->Height() != 0) {
+    if (!child) {
+      continue;
+    }
+    auto item_rect = child->BoundsRelativeTo(this);
+    if (item_rect.Intersects(viewport)) {
       visible_children.emplace_back(child);
     }
   }
@@ -975,12 +980,12 @@ size_t ListContainerView::GetVisibleItemsInfo(
     for (size_t i = 0; i < visible_children.size(); ++i) {
       auto item = visible_children[i];
       position.push_back(GetIndexFromItemKey(item->ItemKey()));
-      auto rect = page_view_->ConvertTo<kPixelTypeLogical>(
-          item->BoundsRelativeTo(this));
-      top_array.push_back(rect.y());
-      bottom_array.push_back(rect.MaxY());
-      left_array.push_back(rect.x());
-      right_array.push_back(rect.MaxX());
+      auto rect = item->BoundsRelativeTo(this);
+      auto logical_rect = page_view_->ConvertTo<kPixelTypeLogical>(rect);
+      top_array.push_back(logical_rect.y());
+      bottom_array.push_back(logical_rect.MaxY());
+      left_array.push_back(logical_rect.x());
+      right_array.push_back(logical_rect.MaxX());
       id_array.push_back(item->GetIdSelector());
       item_key_array.push_back(item->ItemKey());
     }
