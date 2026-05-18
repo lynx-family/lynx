@@ -834,6 +834,20 @@ inline constexpr const char* const FIBER_REMOVE_ELEMENT = "FiberRemoveElement";
 inline constexpr const char* const FIBER_INSERT_ELEMENT_BEFORE =
     "FiberInsertElementBefore";
 /**
+ * @trace_description: Insert a Fiber element at a child index.
+ */
+inline constexpr const char* const FIBER_INSERT_ELEMENT_AT =
+    "FiberInsertElementAt";
+/**
+ * @trace_description: Remove Fiber elements from a child index range.
+ */
+inline constexpr const char* const FIBER_REMOVE_ELEMENTS_AT =
+    "FiberRemoveElementsAt";
+/**
+ * @trace_description: Move Fiber elements between child indexes.
+ */
+inline constexpr const char* const FIBER_MOVE_ELEMENTS = "FiberMoveElements";
+/**
  * @trace_description: Get the first child element of a Fiber element.
  */
 inline constexpr const char* const FIBER_FIRST_ELEMENT = "FiberFirstElement";

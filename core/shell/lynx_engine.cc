@@ -6,7 +6,9 @@
 
 #include <memory>
 
+#include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
+#include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/event/event_dispatcher.h"
@@ -78,6 +80,7 @@ void LynxEngine::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,
     const std::shared_ptr<tasm::TemplateData>& template_data,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options) {
+  const auto load_template_start_us = base::CurrentTimeMicroseconds();
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENGINE_LOAD_TEMPLATE, "url", url,
               INSTANCE_ID, instance_id_);
   tasm::TimingCollector::Scope<Delegate> scope(delegate_.get(),
@@ -87,6 +90,12 @@ void LynxEngine::LoadTemplate(
       tasm_->GetPageOptions(), tasm::timing::kLoadTemplateTask,
       tasm::timing::kTaskNameLynxEngineLoadTemplate);
   tasm_->LoadTemplate(url, std::move(source), template_data, pipeline_options);
+  const auto load_template_duration_us =
+      base::CurrentTimeMicroseconds() - load_template_start_us;
+  LOGI("LynxEngine::LoadTemplate duration_us="
+       << load_template_duration_us
+       << ", duration_ms=" << load_template_duration_us / 1000.0
+       << ", instance_id=" << instance_id_ << ", url=" << url);
 }
 
 void LynxEngine::LoadTemplateBundle(

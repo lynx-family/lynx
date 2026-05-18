@@ -259,6 +259,36 @@ Constraints LayoutAlgorithm::GenerateDefaultConstraint(
                                                     container_constraints_);
 }
 
+DimensionValue<float> LayoutAlgorithm::PropagatedMinConstraintsForInFlowItem()
+    const {
+  DimensionValue<float> propagated_min_constraints{};
+  if (container_style_->GetXPropagateMinConstraints() !=
+      XPropagateMinConstraintsType::kSelf) {
+    return propagated_min_constraints;
+  }
+
+  for (Dimension dimension : {kHorizontal, kVertical}) {
+    if (IsSLDefiniteMode(container_constraints_[dimension].Mode())) {
+      propagated_min_constraints[dimension] =
+          container_constraints_[dimension].Size();
+    } else {
+      propagated_min_constraints[dimension] =
+          std::max(container_->GetEffectiveMinSize(dimension) -
+                       logic_direction_utils::GetPaddingAndBorderDimensionSize(
+                           container_, dimension),
+                   0.f);
+    }
+  }
+  return propagated_min_constraints;
+}
+
+FloatSize LayoutAlgorithm::MeasureInFlowItem(LayoutObject* item,
+                                             const Constraints& constraints,
+                                             bool final_measure) const {
+  return item->UpdateMeasureWithPropagatedMinConstraints(
+      constraints, final_measure, PropagatedMinConstraintsForInFlowItem());
+}
+
 float LayoutAlgorithm::CalculateFloatSizeFromLength(
     const NLength& length, const LayoutUnit& percent_base) {
   return NLengthToLayoutUnit(length, percent_base)

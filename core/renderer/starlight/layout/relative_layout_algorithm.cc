@@ -145,8 +145,8 @@ void RelativeLayoutAlgorithm::UpdateChildrenSize() {
           ComputeConstraints(current_to_measure, position_constraints,
                              !do_once && (dimension != kVertical));
       FloatSize result;
-      result = child->UpdateMeasure(child_constraints,
-                                    container_->GetFinalMeasure());
+      result = MeasureInFlowItem(child, child_constraints,
+                                 container_->GetFinalMeasure());
 
       layout_results_[current_to_measure] = result;
       if (do_once) {

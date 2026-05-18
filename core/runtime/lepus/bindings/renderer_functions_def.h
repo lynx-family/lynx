@@ -79,6 +79,9 @@
   V(FiberAppendElement)                 \
   V(FiberRemoveElement)                 \
   V(FiberInsertElementBefore)           \
+  V(FiberInsertElementAt)               \
+  V(FiberRemoveElementsAt)              \
+  V(FiberMoveElements)                  \
   V(FiberFirstElement)                  \
   V(FiberLastElement)                   \
   V(FiberNextElement)                   \

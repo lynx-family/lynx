@@ -65,6 +65,8 @@ static bool ToDisplayType(std::string_view str, int& result) {
     type = DisplayType::kBlock;
   } else if (str == "auto") {
     type = DisplayType::kAuto;
+  } else if (str == "box") {
+    type = DisplayType::kBox;
   } else {
     return false;
   }
@@ -584,6 +586,20 @@ static bool ToPointerEventsType(std::string_view str, int& result) {
   return true;
 }
 
+using starlight::XPropagateMinConstraintsType;
+static bool ToXPropagateMinConstraintsType(std::string_view str, int& result) {
+  XPropagateMinConstraintsType type = XPropagateMinConstraintsType::kNone;
+  if (str == "none") {
+    type = XPropagateMinConstraintsType::kNone;
+  } else if (str == "self") {
+    type = XPropagateMinConstraintsType::kSelf;
+  } else {
+    return false;
+  }
+  result = static_cast<int>(type);
+  return true;
+}
+
 // AUTO INSERT END, DON'T CHANGE IT!
 
 using starlight::FlexAlignType;
@@ -784,6 +800,9 @@ HANDLER_IMPL() {
     case kPropertyIDPointerEvents:
       success = ToPointerEventsType(str, result);
       break;
+    case kPropertyIDXPropagateMinConstraints:
+      success = ToXPropagateMinConstraintsType(str, result);
+      break;
     // AUTO INSERT END, DON'T CHANGE IT!
     case kPropertyIDLinearDirection:
       success = ToLinearOrientationType(str, result);
@@ -845,6 +864,7 @@ HANDLER_REGISTER_IMPL() {
   array[kPropertyIDXPlaceholderFontWeight] = &Handle;
   array[kPropertyIDXPlaceholderFontStyle] = &Handle;
   array[kPropertyIDPointerEvents] = &Handle;
+  array[kPropertyIDXPropagateMinConstraints] = &Handle;
   // AUTO INSERT END, DON'T CHANGE IT!
   array[kPropertyIDLinearDirection] = &Handle;
   array[kPropertyIDAlignItems] = &Handle;

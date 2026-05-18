@@ -1,0 +1,24 @@
+{
+  "name": "-x-propagate-min-constraints",
+  "id": 230,
+  "type": "enum",
+  "default_value": "none",
+  "version": "3.9",
+  "author": "songshourui",
+  "consumption_status": "layout-only",
+  "desc": "Controls whether a layout node propagates its own resolved minimum constraints to direct in-flow children.",
+  "values": [
+    {
+      "value": "none",
+      "version": "3.9",
+      "desc": "Do not propagate minimum constraints to children."
+    },
+    {
+      "value": "self",
+      "version": "3.9",
+      "desc": "Propagate the node's own resolved minimum constraints to direct in-flow children."
+    }
+  ],
+  "formal_syntax": "none | self",
+  "is_shorthand": false
+}

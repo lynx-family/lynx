@@ -796,7 +796,7 @@ void GridLayoutAlgorithm::CalcInlineAxisSizeContributions(
 
     auto child_constraints =
         property_utils::GenerateDefaultConstraints(*child, constraints);
-    FloatSize layout_size = child->UpdateMeasure(child_constraints, false);
+    FloatSize layout_size = MeasureInFlowItem(child, child_constraints, false);
 
     child->GetBoxInfo()->UpdateBoxData(constraints, *child,
                                        child->GetLayoutConfigs());
@@ -830,7 +830,7 @@ void GridLayoutAlgorithm::CalcBlockAxisSizeContributions(
       auto child_constraints =
           property_utils::GenerateDefaultConstraints(*child, constraints);
       const FloatSize layout_size =
-          child->UpdateMeasure(child_constraints, false);
+          MeasureInFlowItem(child, child_constraints, false);
       item_size.SetMaxContentBorderSize(BlockAxis(), layout_size.height_);
       item_size.SetMinContentBorderSize(BlockAxis(), 0.f);
     }
@@ -1976,7 +1976,7 @@ void GridLayoutAlgorithm::MeasureGridItems() {
       }
     }
 
-    child->UpdateMeasure(child_constraints, true);
+    MeasureInFlowItem(child, child_constraints, true);
     //  resolve margin auto
     ResolveAutoMargins(child, container_constraints[InlineAxis()].Size(),
                        InlineAxis());

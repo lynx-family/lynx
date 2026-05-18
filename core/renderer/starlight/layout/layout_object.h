@@ -246,6 +246,7 @@ class LayoutObject : public ContainerNode {
 
   float ClampExactWidth(float width) const;
   float ClampExactHeight(float height) const;
+  float GetEffectiveMinSize(Dimension dimension) const;
 
   float GetInnerWidthFromBorderBoxWidth(float width) const;
   float GetInnerHeightFromBorderBoxHeight(float height) const;
@@ -266,6 +267,9 @@ class LayoutObject : public ContainerNode {
   virtual FloatSize UpdateMeasure(const Constraints& constraints,
                                   bool final_measure,
                                   const SLNodeSet* fixed_node_set = nullptr);
+  FloatSize UpdateMeasureWithPropagatedMinConstraints(
+      const Constraints& constraints, bool final_measure,
+      const DimensionValue<float>& propagated_min_constraints);
   virtual void UpdateAlignment();
   void LayoutDisplayNone();
   std::vector<double> GetBoxModel();
@@ -326,6 +330,7 @@ class LayoutObject : public ContainerNode {
 
   bool FetchEarlyReturnResultForMeasure(const Constraints& constraints,
                                         bool is_trying, FloatSize& result);
+  bool HasPropagatedMinConstraints() const;
 
   const LayoutConfigs& configs_;
 
@@ -344,6 +349,7 @@ class LayoutObject : public ContainerNode {
   LayoutComputedStyle* css_style_;
 
   BoxInfo box_info_;
+  DimensionValue<float> propagated_min_constraints_{};
   base::Position measured_position_;
   mutable DimensionValue<std::optional<bool>> cached_can_reuse_layout_result_;
   LayoutResultForRendering layout_result_;

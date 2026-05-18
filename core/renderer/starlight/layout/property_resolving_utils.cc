@@ -227,7 +227,7 @@ float ApplyMinMaxToSpecificSize(float size, const LayoutObject* item,
   const float max_size =
       box_info->max_size_[dimension] - border_and_padding_size;
   const float min_size =
-      box_info->min_size_[dimension] - border_and_padding_size;
+      item->GetEffectiveMinSize(dimension) - border_and_padding_size;
 
   size = std::min(size, max_size);
   size = std::max(size, min_size);

@@ -10284,6 +10284,95 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsUpdateMaterializedTargets) {
   EXPECT_EQ(slot_parent->children()[1].get(), sentinel.get());
 }
 
+TEST_P(FiberElementTest, ElementIndexAPIsInsertAndRemoveChildrenByIndex) {
+  auto parent = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  auto inserted = manager->CreateFiberView();
+
+  parent->InsertNode(first);
+  parent->InsertNode(second);
+
+  lepus::Value insert_args[] = {lepus::Value(parent), lepus::Value(inserted),
+                                lepus::Value(1)};
+  RendererFunctions::FiberInsertElementAt(nullptr, insert_args, 3);
+
+  ASSERT_EQ(parent->GetChildCount(), 3u);
+  EXPECT_EQ(parent->GetChildAt(0), first.get());
+  EXPECT_EQ(parent->GetChildAt(1), inserted.get());
+  EXPECT_EQ(parent->GetChildAt(2), second.get());
+
+  lepus::Value remove_args[] = {lepus::Value(parent), lepus::Value(1),
+                                lepus::Value(2)};
+  RendererFunctions::FiberRemoveElementsAt(nullptr, remove_args, 3);
+
+  ASSERT_EQ(parent->GetChildCount(), 1u);
+  EXPECT_EQ(parent->GetChildAt(0), first.get());
+}
+
+TEST_P(FiberElementTest, ElementIndexAPIsMoveChildrenByComposeSemantics) {
+  auto parent = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  auto third = manager->CreateFiberView();
+  auto fourth = manager->CreateFiberView();
+  auto fifth = manager->CreateFiberView();
+
+  parent->InsertNode(first);
+  parent->InsertNode(second);
+  parent->InsertNode(third);
+  parent->InsertNode(fourth);
+  parent->InsertNode(fifth);
+
+  lepus::Value move_forward_args[] = {lepus::Value(parent), lepus::Value(1),
+                                      lepus::Value(3), lepus::Value(1)};
+  RendererFunctions::FiberMoveElements(nullptr, move_forward_args, 4);
+
+  ASSERT_EQ(parent->GetChildCount(), 5u);
+  EXPECT_EQ(parent->GetChildAt(0), first.get());
+  EXPECT_EQ(parent->GetChildAt(1), third.get());
+  EXPECT_EQ(parent->GetChildAt(2), second.get());
+  EXPECT_EQ(parent->GetChildAt(3), fourth.get());
+  EXPECT_EQ(parent->GetChildAt(4), fifth.get());
+
+  lepus::Value move_backward_args[] = {lepus::Value(parent), lepus::Value(3),
+                                       lepus::Value(1), lepus::Value(1)};
+  RendererFunctions::FiberMoveElements(nullptr, move_backward_args, 4);
+
+  ASSERT_EQ(parent->GetChildCount(), 5u);
+  EXPECT_EQ(parent->GetChildAt(0), first.get());
+  EXPECT_EQ(parent->GetChildAt(1), fourth.get());
+  EXPECT_EQ(parent->GetChildAt(2), third.get());
+  EXPECT_EQ(parent->GetChildAt(3), second.get());
+  EXPECT_EQ(parent->GetChildAt(4), fifth.get());
+}
+
+TEST_P(FiberElementTest, ElementIndexAPIsMoveRangeKeepsOrder) {
+  auto parent = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  auto third = manager->CreateFiberView();
+  auto fourth = manager->CreateFiberView();
+  auto fifth = manager->CreateFiberView();
+
+  parent->InsertNode(first);
+  parent->InsertNode(second);
+  parent->InsertNode(third);
+  parent->InsertNode(fourth);
+  parent->InsertNode(fifth);
+
+  lepus::Value move_args[] = {lepus::Value(parent), lepus::Value(1),
+                              lepus::Value(5), lepus::Value(2)};
+  RendererFunctions::FiberMoveElements(nullptr, move_args, 4);
+
+  ASSERT_EQ(parent->GetChildCount(), 5u);
+  EXPECT_EQ(parent->GetChildAt(0), first.get());
+  EXPECT_EQ(parent->GetChildAt(1), fourth.get());
+  EXPECT_EQ(parent->GetChildAt(2), fifth.get());
+  EXPECT_EQ(parent->GetChildAt(3), second.get());
+  EXPECT_EQ(parent->GetChildAt(4), third.get());
+}
+
 TEST_P(FiberElementTest, ElementTemplateInsertElementSlotChildKeepsOtherSlots) {
   auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   root->SetTemplateKey(base::String("root_template"));

@@ -46,6 +46,9 @@ class LayoutComputedStyle {
   PositionType GetPosition() const { return position_; }
   DisplayType GetDisplay(const LayoutConfigs& configs,
                          const AttributesMap& attributes) const;
+  XPropagateMinConstraintsType GetXPropagateMinConstraints() const {
+    return x_propagate_min_constraints_;
+  }
 
   DataRef<BoxData> box_data_;
   DataRef<FlexData> flex_data_;
@@ -58,6 +61,8 @@ class LayoutComputedStyle {
   DisplayType display_{DefaultLayoutStyle::SL_DEFAULT_DISPLAY};
   PositionType position_{DefaultLayoutStyle::SL_DEFAULT_POSITION};
   DirectionType direction_{DefaultLayoutStyle::SL_DEFAULT_DIRECTION};
+  XPropagateMinConstraintsType x_propagate_min_constraints_{
+      DefaultLayoutStyle::SL_DEFAULT_X_PROPAGATE_MIN_CONSTRAINTS};
 
   // BoxData
   const NLength& GetWidth() const { return box_data_->width_; }
@@ -324,6 +329,8 @@ class LayoutComputedStyle {
   V(Direction, DirectionType, direction_, DIRECTION)                           \
   V(Display, DisplayType, display_, DISPLAY)                                   \
   V(BoxSizing, BoxSizingType, box_sizing_, BOX_SIZING)                         \
+  V(XPropagateMinConstraints, XPropagateMinConstraintsType,                    \
+    x_propagate_min_constraints_, X_PROPAGATE_MIN_CONSTRAINTS)                 \
   V(Order, int32_t, flex_data_.Access()->order_, ORDER)                        \
   V(LinearOrientation, LinearOrientationType,                                  \
     linear_data_.Access()->linear_orientation_, LINEAR_ORIENTATION)            \

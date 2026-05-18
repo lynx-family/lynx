@@ -146,7 +146,7 @@ float FlexLayoutAlgorithm::ChildCalculateFlexBasis(int32_t idx) {
         OneSideConstraint::Definite(child_constraints[CrossAxis()].Size());
   }
 
-  FloatSize result = child->UpdateMeasure(child_constraints, false);
+  FloatSize result = MeasureInFlowItem(child, child_constraints, false);
   return is_row ? result.width_ : result.height_;
 }
 
@@ -352,8 +352,8 @@ void FlexLayoutAlgorithm::DetermineHypotheticalCrossSize() {
         result.width_ = child_constraints[CrossAxis()].Size();
       }
     } else {
-      result = inflow_items_[idx]->UpdateMeasure(child_constraints,
-                                                 container_->GetFinalMeasure());
+      result = MeasureInFlowItem(inflow_items_[idx], child_constraints,
+                                 container_->GetFinalMeasure());
     }
 
     flex_info_.hypothetical_cross_size_[idx] =
@@ -462,8 +462,8 @@ void FlexLayoutAlgorithm::DetermineUsedCrossSizeOfEachFlexItem() {
         child_constraint[MainAxis()] =
             OneSideConstraint::Definite(flex_info_.flex_main_size_[idx]);
         FloatSize result;
-        result = item->UpdateMeasure(child_constraint,
-                                     container_->GetFinalMeasure());
+        result = MeasureInFlowItem(item, child_constraint,
+                                   container_->GetFinalMeasure());
 
         flex_info_.flex_cross_size_[idx] =
             logic_direction_utils::SizeDimension(result, CrossAxis());

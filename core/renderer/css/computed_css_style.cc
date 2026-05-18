@@ -1264,6 +1264,14 @@ bool ComputedCSSStyle::SetDisplay(const tasm::CSSValue& value,
       parser_configs_);
 }
 
+bool ComputedCSSStyle::SetXPropagateMinConstraints(const tasm::CSSValue& value,
+                                                   const bool reset) {
+  return CSSStyleUtils::ComputeEnumStyle<XPropagateMinConstraintsType>(
+      value, reset, layout_computed_style_.x_propagate_min_constraints_,
+      DefaultLayoutStyle::SL_DEFAULT_X_PROPAGATE_MIN_CONSTRAINTS,
+      "-x-propagate-min-constraints must be an enum!", parser_configs_);
+}
+
 bool ComputedCSSStyle::SetLinearOrientation(const tasm::CSSValue& value,
                                             const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<LinearOrientationType>(

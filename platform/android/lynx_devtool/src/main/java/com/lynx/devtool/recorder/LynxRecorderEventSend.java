@@ -45,12 +45,16 @@ public class LynxRecorderEventSend {
     JavaOnlyMap result = new JavaOnlyMap();
     while (iterator.hasNext()) {
       String key = iterator.next().toString();
-      if (obj.opt(key) instanceof JSONArray) {
-        result.put(key, jsonArrayToJavaOnlyArray((JSONArray) obj.opt(key)));
-      } else if (obj.opt(key) instanceof JSONObject) {
-        result.put(key, jsonObjectToJavaOnlyMap((JSONObject) obj.opt(key)));
+      Object value = obj.opt(key);
+      if (isJsonNull(value)) {
+        continue;
+      }
+      if (value instanceof JSONArray) {
+        result.put(key, jsonArrayToJavaOnlyArray((JSONArray) value));
+      } else if (value instanceof JSONObject) {
+        result.put(key, jsonObjectToJavaOnlyMap((JSONObject) value));
       } else {
-        result.put(key, obj.opt(key));
+        result.put(key, value);
       }
     }
     return result;
@@ -59,15 +63,23 @@ public class LynxRecorderEventSend {
   private static JavaOnlyArray jsonArrayToJavaOnlyArray(JSONArray array) {
     JavaOnlyArray result = new JavaOnlyArray();
     for (int index = 0; index < array.length(); index++) {
-      if (array.opt(index) instanceof JSONArray) {
-        result.add(jsonArrayToJavaOnlyArray((JSONArray) array.opt(index)));
-      } else if (array.opt(index) instanceof JSONObject) {
-        result.add(jsonObjectToJavaOnlyMap((JSONObject) array.opt(index)));
+      Object value = array.opt(index);
+      if (isJsonNull(value)) {
+        continue;
+      }
+      if (value instanceof JSONArray) {
+        result.add(jsonArrayToJavaOnlyArray((JSONArray) value));
+      } else if (value instanceof JSONObject) {
+        result.add(jsonObjectToJavaOnlyMap((JSONObject) value));
       } else {
-        result.add(array.opt(index));
+        result.add(value);
       }
     }
     return result;
+  }
+
+  private static boolean isJsonNull(Object value) {
+    return value == null || value == JSONObject.NULL;
   }
 
   // send tap/longtap/drag.etc native gesture event

@@ -20,6 +20,11 @@
 namespace lynx {
 namespace runtime {
 namespace js {
+namespace {
+bool EnableWasmGC(v8::Local<v8::Context> context) { return true; }
+bool EnableWasmExceptions(v8::Local<v8::Context> context) { return true; }
+}  // namespace
+
 V8IsolateInstanceImpl::V8IsolateInstanceImpl() = default;
 
 V8IsolateInstanceImpl::~V8IsolateInstanceImpl() {
@@ -33,6 +38,10 @@ std::once_flag flag;
 void V8IsolateInstanceImpl::InitIsolate(const char* arg, bool useSnapshot) {
   LOGI("lynx V8IsolateInstanceImpl::InitIsolate");
   std::call_once(flag, []() {
+    static constexpr char kKotlinWasmFlags[] =
+        "--experimental-wasm-gc --experimental-wasm-stringref "
+        "--experimental-wasm-typed-funcref --wasm-final-types";
+    v8::V8::SetFlagsFromString(kKotlinWasmFlags, sizeof(kKotlinWasmFlags) - 1);
     v8::V8::InitializeICU();
 #if defined(OS_WIN)
     auto [_, path] = lynx::base::GetModuleDirectoryPath();
@@ -50,6 +59,8 @@ void V8IsolateInstanceImpl::InitIsolate(const char* arg, bool useSnapshot) {
   create_params.array_buffer_allocator =
       v8::ArrayBuffer::Allocator::NewDefaultAllocator();
   isolate_ = v8::Isolate::New(create_params);
+  isolate_->SetWasmGCEnabledCallback(EnableWasmGC);
+  isolate_->SetWasmExceptionsEnabledCallback(EnableWasmExceptions);
 }
 
 v8::Isolate* V8IsolateInstanceImpl::Isolate() const { return isolate_; }

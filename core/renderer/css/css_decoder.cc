@@ -261,6 +261,9 @@ std::string CSSDecoder::CSSValueEnumToString(
     case lynx::tasm::kPropertyIDXAnimationColorInterpolation:
       return ToXAnimationColorInterpolationType(
           value.GetEnum<XAnimationColorInterpolationType>());
+    case lynx::tasm::kPropertyIDXPropagateMinConstraints:
+      return ToXPropagateMinConstraintsType(
+          value.GetEnum<XPropagateMinConstraintsType>());
     case lynx::tasm::kPropertyIDFontOpticalSizing:
       return ToFontOpticalSizingType(value.GetEnum<FontOpticalSizingType>());
       // TODO(liyanbo): this will support when parser support.
@@ -1883,6 +1886,16 @@ std::string CSSDecoder::ToGridAutoFlowType(GridAutoFlowType type) {
       return "row dense";
     case GridAutoFlowType::kColumnDense:
       return "column dense";
+  }
+}
+
+std::string CSSDecoder::ToXPropagateMinConstraintsType(
+    XPropagateMinConstraintsType type) {
+  switch (type) {
+    case XPropagateMinConstraintsType::kNone:
+      return "none";
+    case XPropagateMinConstraintsType::kSelf:
+      return "self";
   }
 }
 

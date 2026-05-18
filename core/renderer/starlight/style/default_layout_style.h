@@ -81,6 +81,9 @@ struct DefaultLayoutStyle {
   static constexpr JustifyType SL_DEFAULT_JUSTIFY_ITEMS = JustifyType::kStretch;
   static constexpr GridAutoFlowType SL_DEFAULT_GRID_AUTO_FLOW =
       GridAutoFlowType::kRow;
+  static constexpr XPropagateMinConstraintsType
+      SL_DEFAULT_X_PROPAGATE_MIN_CONSTRAINTS =
+          XPropagateMinConstraintsType::kNone;
 
   static const NLength& SL_DEFAULT_AUTO_LENGTH() {
     static base::NoDestructor<NLength> l{NLength::MakeAutoNLength()};

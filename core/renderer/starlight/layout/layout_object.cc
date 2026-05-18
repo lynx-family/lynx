@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "core/renderer/starlight/layout/box_layout_algorithm.h"
 #include "core/renderer/starlight/layout/flex_layout_algorithm.h"
 #include "core/renderer/starlight/layout/grid_layout_algorithm.h"
 #include "core/renderer/starlight/layout/layout_algorithm.h"
@@ -506,15 +507,25 @@ void LayoutObject::SetBaseline(float offset_baseline) {
 }
 
 float LayoutObject::ClampExactHeight(float height) const {
-  height = std::max(height, box_info_.min_size_[kVertical]);
+  height = std::max(height, GetEffectiveMinSize(kVertical));
   height = std::min(height, box_info_.max_size_[kVertical]);
   return std::max(GetPaddingAndBorderVertical(), height);
 }
 
 float LayoutObject::ClampExactWidth(float width) const {
-  width = std::max(width, box_info_.min_size_[kHorizontal]);
+  width = std::max(width, GetEffectiveMinSize(kHorizontal));
   width = std::min(width, box_info_.max_size_[kHorizontal]);
   return std::max(GetPaddingAndBorderHorizontal(), width);
+}
+
+float LayoutObject::GetEffectiveMinSize(Dimension dimension) const {
+  return std::max(box_info_.min_size_[dimension],
+                  propagated_min_constraints_[dimension]);
+}
+
+bool LayoutObject::HasPropagatedMinConstraints() const {
+  return base::FloatsLarger(propagated_min_constraints_[kHorizontal], 0.f) ||
+         base::FloatsLarger(propagated_min_constraints_[kVertical], 0.f);
 }
 
 bool LayoutObject::FetchEarlyReturnResultForMeasure(
@@ -560,6 +571,19 @@ bool LayoutObject::FetchEarlyReturnResultForMeasure(
     return true;
   }
   return false;
+}
+
+FloatSize LayoutObject::UpdateMeasureWithPropagatedMinConstraints(
+    const Constraints& constraints, bool final_measure,
+    const DimensionValue<float>& propagated_min_constraints) {
+  DimensionValue<float> previous = propagated_min_constraints_;
+  propagated_min_constraints_[kHorizontal] =
+      std::max(propagated_min_constraints[kHorizontal], 0.f);
+  propagated_min_constraints_[kVertical] =
+      std::max(propagated_min_constraints[kVertical], 0.f);
+  FloatSize result = UpdateMeasure(constraints, final_measure);
+  propagated_min_constraints_ = previous;
+  return result;
 }
 
 bool LayoutObject::CanReuseLayoutWithSameSizeAsGivenConstraint(
@@ -661,24 +685,29 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
                                       const SLNodeSet* fixed_node_set) {
   Constraints constraints = given_constraints;
   property_utils::ApplyMinMaxToConstraints(constraints, *this);
+  const bool has_propagated_min_constraints = HasPropagatedMinConstraints();
 
   final_measure_ = final_measure;
 
   FloatSize result;
-  if (FetchEarlyReturnResultForMeasure(constraints, !final_measure, result)) {
+  if (!has_propagated_min_constraints &&
+      FetchEarlyReturnResultForMeasure(constraints, !final_measure, result)) {
     result.baseline_ = GetBaseline();
     return result;
   }
 
-  const auto ReturnCurrentSizeAndInsertToCache = [this, &constraints]() {
-    FloatSize size;
-    cache_manager_.InsertCacheEntry(constraints, GetBorderBoundWidth(),
-                                    GetBorderBoundHeight());
-    size.width_ = GetBorderBoundWidth();
-    size.height_ = GetBorderBoundHeight();
-    size.baseline_ = GetBaseline();
-    return size;
-  };
+  const auto ReturnCurrentSizeAndInsertToCache =
+      [this, &constraints, has_propagated_min_constraints]() {
+        FloatSize size;
+        if (!has_propagated_min_constraints) {
+          cache_manager_.InsertCacheEntry(constraints, GetBorderBoundWidth(),
+                                          GetBorderBoundHeight());
+        }
+        size.width_ = GetBorderBoundWidth();
+        size.height_ = GetBorderBoundHeight();
+        size.baseline_ = GetBaseline();
+        return size;
+      };
 
   if (measure_func_) {
     UpdateMeasureWithMeasureFunc(constraints, final_measure);
@@ -723,6 +752,8 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
     } else if (type == DisplayType::kGrid) {
       SendLayoutEvent(LayoutEventType::FeatureCountOnGridDisplay);
       algorithm_ = new GridLayoutAlgorithm(this);
+    } else if (type == DisplayType::kBox) {
+      algorithm_ = new BoxLayoutAlgorithm(this);
     }
 
     DCHECK(algorithm_);

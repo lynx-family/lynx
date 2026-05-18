@@ -28,6 +28,9 @@ class LayoutAlgorithm : public DirectionSelector {
   }
 
   Constraints GenerateDefaultConstraint(const LayoutObject& child) const;
+  FloatSize MeasureInFlowItem(LayoutObject* item,
+                              const Constraints& constraints,
+                              bool final_measure) const;
   bool IsInflowSubTreeInSync() const;
 
   const LayoutComputedStyle* GetCSSStyle() const { return container_style_; }
@@ -64,6 +67,7 @@ class LayoutAlgorithm : public DirectionSelector {
 
   // TODO(zzz):unified handle process
   virtual void SizeDeterminationByAlgorithm() = 0;
+  DimensionValue<float> PropagatedMinConstraintsForInFlowItem() const;
 
   LayoutObject* container_;
   const LayoutComputedStyle* container_style_;

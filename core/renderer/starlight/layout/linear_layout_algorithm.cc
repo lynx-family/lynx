@@ -188,8 +188,8 @@ void LinearLayoutAlgorithm::UpdateChildSizeInternal(
 
   FloatSize result;
   // Make sure every child will only be measured once.
-  result =
-      child->UpdateMeasure(child_constraints, container_->GetFinalMeasure());
+  result = MeasureInFlowItem(child, child_constraints,
+                             container_->GetFinalMeasure());
 
   main_size_[idx] = is_row ? result.width_ : result.height_;
   cross_size_[idx] = is_row ? result.height_ : result.width_;
