@@ -273,6 +273,19 @@ void EditableView::OnLayout(LayoutContext* context) {
     // Layout placeholder
     TextStyle temp_style = text_style_;
     temp_style.strut_enabled = std::nullopt;
+#if defined(CLAY_ENABLE_TTTEXT) && (defined(OS_WIN) || defined(OS_MAC))
+    temp_style.font_size =
+        placeholder_font_size_.value_or(GetDefaultFontSize());
+    temp_style.text_color =
+        placeholder_color_.value_or(Color(kDefaultPlaceholderColor));
+    temp_style.font_weight =
+        placeholder_font_weight_.value_or(FontWeight::kNormal);
+    if (temp_style.font_size.has_value() &&
+        temp_style.line_height.has_value()) {
+      temp_style.line_height = *temp_style.font_size * *temp_style.line_height;
+    }
+    auto builder = std::make_unique<TextParagraphBuilder>(true, temp_style);
+#else
     auto builder = std::make_unique<TextParagraphBuilder>(true, temp_style);
     temp_style.font_size =
         placeholder_font_size_.value_or(GetDefaultFontSize());
@@ -280,6 +293,7 @@ void EditableView::OnLayout(LayoutContext* context) {
         placeholder_color_.value_or(Color(kDefaultPlaceholderColor));
     temp_style.font_weight =
         placeholder_font_weight_.value_or(FontWeight::kNormal);
+#endif
     builder->PushStyle(temp_style);
     builder->AddText(lynx::base::U8StringToU16(GetPlaceholder()));
     builder->Pop();
