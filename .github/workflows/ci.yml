@@ -157,6 +157,41 @@ jobs:
           ./xctestrunner --xctestrun `pwd`/Build/Products/LynxExplorerTests_UTTest_iphonesimulator$(cat sdk.txt)-arm64.xctestrun --work_dir `pwd` --output_dir `pwd`/iOSCoreBuild/DerivedData simulator_test
           popd
 
+  cocoapods-lynx-extension-build:
+    timeout-minutes: 10
+    runs-on: lynx-ubuntu-22.04-medium
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+      - name: Test
+        run: |-
+          cd tools/ios_tools/cocoapods-lynx-extension
+          ruby -Itest test/autolink_test.rb
+      - name: Build gem
+        env:
+          RELEASE_VERSION: 0.0.1-alpha.1
+        run: |-
+          cd tools/ios_tools/cocoapods-lynx-extension
+          export GEM_VERSION=$(ruby -e "puts Gem::Version.new(ENV.fetch('RELEASE_VERSION')).to_s")
+          echo "Gem version: $GEM_VERSION"
+          ruby <<'RUBY'
+          path = 'cocoapods-lynx-extension.gemspec'
+          version = ENV.fetch('GEM_VERSION')
+          content = File.read(path)
+          updated = content.sub(/spec\.version\s*=\s*['"][^'"]+['"]/, "spec.version = '#{version}'")
+          abort "Unable to update #{path} version" if updated == content
+          File.write(path, updated)
+          RUBY
+          gem build cocoapods-lynx-extension.gemspec | tee gem-build.log
+          gem_file=$(awk -F': ' '/File:/ {print $2}' gem-build.log | tail -n 1)
+          ruby -rrubygems/package -e 'spec = Gem::Package.new(ARGV.fetch(0)).spec; puts "#{spec.name} #{spec.version}"; puts spec.summary' "$gem_file"
+
   tasm-linux-build:
     runs-on: lynx-ubuntu-22.04-large
     timeout-minutes: 60
