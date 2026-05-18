@@ -417,6 +417,17 @@ export interface Config {
   enableFlexBasisZeroPercent?: boolean;
 
   /**
+   * Controls whether `<frame>` data and global-props are transferred through native lepus value pointers instead of the legacy platform map path. When enabled, Android and iOS consume the native pointer to build TemplateData; when disabled, frame data and global props continue to be delivered as platform maps.
+   *
+   * Supported platform: Android, iOS
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue false
+   */
+  enableFrameNativeData?: boolean;
+
+  /**
    * Enable grid-column and grid-row CSS shorthand properties parsing.
    *
    * Supported platform: Android, iOS, HarmonyOS
