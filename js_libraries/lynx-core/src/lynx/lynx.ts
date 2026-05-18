@@ -481,6 +481,10 @@ export class Lynx {
 
   EventSource = createEventSource(this.fetch);
 
+  get ReadableStream() {
+    return this.getApp()._ReadableStreamClass;
+  }
+
   createSelectorQuery = (component?: string): SelectorQuery => {
     return SelectorQuery.newEmptyQuery(
       {

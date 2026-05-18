@@ -149,6 +149,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     JS_CALL_NATIVE_FREQUENCY_THRESHOLD_COMMON,
     JS_CALL_NATIVE_FREQUENCY_COOLDOWN_MS,
     ENABLE_FRAME_NATIVE_DATA,
+    ENABLE_READABLE_STREAM_MEM_FIX,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -313,6 +314,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION,
              "enable_animation_forward_update_preservation"},
             {Key::ENABLE_FRAME_NATIVE_DATA, "enable_frame_native_data"},
+            {Key::ENABLE_READABLE_STREAM_MEM_FIX,
+             "enable_readable_stream_mem_fix"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -479,6 +482,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixOldFixedInsertSelfUseRenderParent();
   bool EnableAnimationForwardUpdatePreservation();
   bool EnableFrameNativeData();
+  bool EnableReadableStreamMemFix();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;
