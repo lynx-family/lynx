@@ -694,13 +694,39 @@ void InspectorUIExecutor::InsertText(
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content(Json::ValueType::objectValue);
   Json::Value params = message["params"];
+  response["id"] = message["id"].asInt64();
 
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
-  devtool_platform_facade_->InsertText(params["text"].asString());
+  if (!params.isObject() || !params.isMember("text") ||
+      !params["text"].isString()) {
+    Json::Value error(Json::ValueType::objectValue);
+    error["code"] = kInvalidParams;
+    error["message"] = "Input.insertText requires a string text parameter.";
+    response["error"] = error;
+    sender->SendMessage("CDP", response);
+    return;
+  }
+
+  if (!devtool_platform_facade_) {
+    Json::Value error(Json::ValueType::objectValue);
+    error["code"] = kServerError;
+    error["message"] = "DevTool platform facade is unavailable.";
+    response["error"] = error;
+    sender->SendMessage("CDP", response);
+    return;
+  }
+
+  std::string insertion_error =
+      devtool_platform_facade_->InsertText(params["text"].asString());
+  if (!insertion_error.empty()) {
+    Json::Value error(Json::ValueType::objectValue);
+    error["code"] = kServerError;
+    error["message"] = insertion_error;
+    response["error"] = error;
+    sender->SendMessage("CDP", response);
+    return;
+  }
 
   response["result"] = content;
-  response["id"] = message["id"].asInt64();
   sender->SendMessage("CDP", response);
 }
 

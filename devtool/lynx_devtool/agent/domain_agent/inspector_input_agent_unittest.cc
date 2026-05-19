@@ -15,6 +15,7 @@
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
+#include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/jsoncpp/include/json/value.h"
@@ -65,6 +66,25 @@ TEST_F(InspectorInputAgentTest, InsertTextReturnsSuccess) {
   EXPECT_EQ(MockReceiver::GetInstance().received_message_.first, "CDP");
   EXPECT_EQ(MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 7,\n   \"result\" : {}\n}\n");
+}
+
+TEST_F(InspectorInputAgentTest, InsertTextReturnsErrorForInvalidParams) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 8;
+  message["method"] = "Input.insertText";
+  message["params"] = Json::Value(Json::ValueType::objectValue);
+
+  agent_->CallMethod(message_sender_, message);
+  WaitForUIThread();
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(MockReceiver::GetInstance().received_message_.second,
+                           response));
+  EXPECT_EQ(response["id"].asInt(), 8);
+  EXPECT_EQ(response["error"]["code"].asInt(), kInvalidParams);
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "Input.insertText requires a string text parameter.");
 }
 
 }  // namespace testing

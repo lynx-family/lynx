@@ -44,7 +44,10 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
   void GetLynxScreenShot() override;
   void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent> input) override {
   }
-  void InsertText(const std::string& text) override { inserted_text_ = text; }
+  std::string InsertText(const std::string& text) override {
+    inserted_text_ = text;
+    return insert_text_error_;
+  }
 
   std::string GetDebugInfoByUrl(const std::string& url) override {
     return devtool::DevToolStatus::NO_DEBUG_INFO_FOUND_BY_URL;
@@ -66,6 +69,7 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
 
   std::unordered_map<std::string, bool> devtools_switch_;
   std::string inserted_text_;
+  std::string insert_text_error_;
 };
 
 }  // namespace testing

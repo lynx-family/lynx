@@ -37,9 +37,18 @@
   DevToolPlatformDarwinDelegate *platform =
       [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:(LynxView *)lynxView];
 
-  [platform insertText:@"b"];
+  XCTAssertNil([platform insertText:@"b"]);
 
   XCTAssertEqualObjects(textField.text, @"abc");
+}
+
+- (void)testInsertTextReturnsErrorWithoutFirstResponder {
+  UIView *lynxView = [[UIView alloc] initWithFrame:CGRectZero];
+  DevToolPlatformDarwinDelegate *platform =
+      [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:(LynxView *)lynxView];
+
+  XCTAssertEqualObjects([platform insertText:@"b"],
+                        @"Input.insertText requires a focused UITextInput.");
 }
 
 @end

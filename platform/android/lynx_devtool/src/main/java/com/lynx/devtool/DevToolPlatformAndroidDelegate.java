@@ -372,13 +372,13 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   @CalledByNative
-  public void insertText(final String text) {
+  public String insertText(final String text) {
     if (text == null) {
-      return;
+      return "Input.insertText requires a non-null text parameter.";
     }
     LynxView lynxView = mLynxView.get();
     if (lynxView == null) {
-      return;
+      return "LynxView is unavailable.";
     }
     View focusedView = lynxView.findFocus();
     if (focusedView == null && lynxView.getRootView() != null) {
@@ -386,25 +386,26 @@ public class DevToolPlatformAndroidDelegate {
     }
     if (!(focusedView instanceof EditText)) {
       LLog.w(TAG, "Input.insertText ignored because no EditText is focused.");
-      return;
+      return "Input.insertText requires a focused EditText.";
     }
 
     EditText editText = (EditText) focusedView;
     InputConnection inputConnection = editText.onCreateInputConnection(new EditorInfo());
     if (inputConnection != null && inputConnection.commitText(text, 1)) {
-      return;
+      return null;
     }
 
     int selectionStart = editText.getSelectionStart();
     int selectionEnd = editText.getSelectionEnd();
     if (selectionStart < 0 || selectionEnd < 0) {
       editText.getText().append(text);
-      return;
+      return null;
     }
     int textLength = editText.getText().length();
     int start = Math.min(textLength, Math.max(0, Math.min(selectionStart, selectionEnd)));
     int end = Math.min(textLength, Math.max(0, Math.max(selectionStart, selectionEnd)));
     editText.getText().replace(start, end, text);
+    return null;
   }
 
   @CalledByNative

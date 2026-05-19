@@ -4,6 +4,7 @@
 package com.lynx.devtool;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,7 +44,7 @@ public class DevToolPlatformAndroidDelegateTest {
     editText.setSelection(1);
     when(mLynxView.findFocus()).thenReturn(editText);
 
-    mPlatformDelegate.insertText("b");
+    assertNull(mPlatformDelegate.insertText("b"));
 
     assertEquals("abc", editText.getText().toString());
   }
@@ -58,8 +59,17 @@ public class DevToolPlatformAndroidDelegateTest {
     when(mLynxView.findFocus()).thenReturn(null);
     when(mLynxView.getRootView()).thenReturn(rootView);
 
-    mPlatformDelegate.insertText("b");
+    assertNull(mPlatformDelegate.insertText("b"));
 
     assertEquals("abd", editText.getText().toString());
+  }
+
+  @Test
+  public void insertTextReturnsErrorWithoutFocusedEditText() {
+    when(mLynxView.findFocus()).thenReturn(null);
+    when(mLynxView.getRootView()).thenReturn(null);
+
+    assertEquals(
+        "Input.insertText requires a focused EditText.", mPlatformDelegate.insertText("b"));
   }
 }

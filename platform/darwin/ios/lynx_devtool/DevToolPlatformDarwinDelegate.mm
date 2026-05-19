@@ -230,14 +230,20 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     }
   }
 
-  void InsertText(const std::string& text) override {
+  std::string InsertText(const std::string& text) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin != nil) {
       NSString* nsText = [[NSString alloc] initWithBytes:text.data()
                                                   length:text.size()
                                                 encoding:NSUTF8StringEncoding];
-      [darwin insertText:nsText];
+      if (nsText == nil) {
+        return "Input.insertText text is not valid UTF-8.";
+      }
+      NSString* error_message = [darwin insertText:nsText];
+      const char* error = error_message != nil ? [error_message UTF8String] : nullptr;
+      return error != nullptr ? std::string(error) : "";
     }
+    return "DevTool platform delegate is unavailable.";
   }
 
   void PageReload(bool ignore_cache, const std::string& template_binary,
@@ -598,16 +604,18 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
           clickCount:input->click_count_];
 }
 
-- (void)insertText:(nullable NSString*)text {
+- (nullable NSString*)insertText:(nullable NSString*)text {
   if (text == nil) {
-    return;
+    return @"Input.insertText requires a non-null text parameter.";
   }
   __strong typeof(_lynxView) lynxView = _lynxView;
   UIView* firstResponder = [self firstResponderInView:lynxView];
   if ([firstResponder conformsToProtocol:@protocol(UITextInput)] &&
       [firstResponder respondsToSelector:@selector(insertText:)]) {
     [(id<UITextInput>)firstResponder insertText:text];
+    return nil;
   }
+  return @"Input.insertText requires a focused UITextInput.";
 }
 
 - (nullable UIView*)firstResponderInView:(nullable UIView*)view {
