@@ -192,7 +192,7 @@ void KeyframesManager::StartAnimations(const std::vector<AnimationData>& data) {
   CancelAllAnimators();
 
   for (const auto& animation : new_animations) {
-    if (animation.animator->IsRunning()) {
+    if (animation.animator->IsStarted()) {
       continue;
     }
     animation.animator->Start();

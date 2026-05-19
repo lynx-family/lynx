@@ -158,7 +158,7 @@ void ValueAnimator::SetCurrentFraction(float fraction) {
     int64_t current_time = GetAnimationHandler()->GetCurrentAnimationTime();
     // Only modify the start time when the animation is running. Seek fraction
     // will ensure non-running animations skip to the correct start time.
-    start_time_ = current_time - seekTime;
+    SetActiveStartTime(current_time - seekTime);
   } else {
     // If the animation loop hasn't started, or during start delay, the
     // startTime will be adjusted once the delay has passed based on seek
@@ -332,6 +332,7 @@ void ValueAnimator::Start(bool play_backwards) {
   last_frame_time_ = -1;
   first_frame_time_ = -1;
   start_time_ = -1;
+  timeline_start_time_ = -1;
   AddAnimationCallback(0);
 
   const bool should_apply_initial_value =
@@ -477,6 +478,7 @@ std::unique_ptr<ValueAnimator> ValueAnimator::Clone() const {
   clone->animation_name_ = animation_name_;
   clone->paused_ = paused_;
   clone->start_time_ = start_time_;
+  clone->timeline_start_time_ = timeline_start_time_;
   clone->start_time_committed_ = start_time_committed_;
   clone->seek_fraction_ = seek_fraction_;
   clone->pause_time_ = pause_time_;
@@ -755,18 +757,18 @@ bool ValueAnimator::ShouldReceiveAnimationFrame(int64_t current_time,
 
 void ValueAnimator::CommitStartTimeOnSkippedFrame(int64_t frame_time) {
   if (start_time_ < 0) {
-    start_time_ = std::max(
+    SetActiveStartTime(std::max(
         static_cast<int64_t>(0),
         reversing_ ? frame_time
-                   : frame_time + static_cast<int64_t>(start_delay_ *
-                                                       ResolveDurationScale()));
+                   : frame_time + static_cast<int64_t>(
+                                      start_delay_ * ResolveDurationScale())));
     start_time_committed_ = true;
   }
 
   if (last_frame_time_ < 0 && seek_fraction_ >= 0) {
     int64_t seekTime =
         static_cast<int64_t>(GetScaledDuration() * seek_fraction_);
-    start_time_ = frame_time - seekTime;
+    SetActiveStartTime(frame_time - seekTime);
     start_time_committed_ = true;
     seek_fraction_ = -1;
   }
@@ -807,11 +809,20 @@ bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
   if (start_time_ < 0) {
     // First frame. If there is start delay, start delay count down will happen
     // *after* this frame.
-    start_time_ = std::max(
+    SetActiveStartTime(std::max(
         static_cast<int64_t>(0),
         reversing_ ? frame_time
-                   : frame_time + static_cast<int64_t>(start_delay_ *
-                                                       ResolveDurationScale()));
+                   : frame_time + static_cast<int64_t>(
+                                      start_delay_ * ResolveDurationScale())));
+  }
+
+  if (end_listeners_called_ && HasFinishedAt(frame_time)) {
+    if (fill_mode_ & kForwards) {
+      SkipToEndValue(reversing_);
+      return true;
+    }
+    RemoveAnimationCallback();
+    return true;
   }
 
   RestartAnimationIfNeeded(frame_time);
@@ -854,7 +865,7 @@ bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
     if (seek_fraction_ >= 0) {
       int64_t seekTime =
           static_cast<int64_t>(GetScaledDuration() * seek_fraction_);
-      start_time_ = frame_time - seekTime;
+      SetActiveStartTime(frame_time - seekTime);
       seek_fraction_ = -1;
     }
     start_time_committed_ =
@@ -960,7 +971,11 @@ void ValueAnimator::SetAnimationData(AnimationData animation_data) {
   fill_mode_ = FromClayAnimationFillModeType(animation_data.fill_mode);
   repeat_count_ = animation_data.iteration_count;
   start_delay_ = animation_data.delay;
-  start_time_ += start_delay_;
+  if (timeline_start_time_ >= 0) {
+    start_time_ = timeline_start_time_ + GetScaledStartDelay();
+    started_ = true;
+    animation_end_requested_ = false;
+  }
   std::unique_ptr<Interpolator> value =
       Interpolator::Create(animation_data.timing_func);
   if (value) {
@@ -970,15 +985,40 @@ void ValueAnimator::SetAnimationData(AnimationData animation_data) {
   }
 }
 
+void ValueAnimator::SetActiveStartTime(int64_t start_time) {
+  start_time_ = start_time;
+  if (timeline_start_time_ < 0) {
+    timeline_start_time_ = start_time_ - GetScaledStartDelay();
+  }
+}
+
+int64_t ValueAnimator::GetScaledStartDelay() const {
+  return static_cast<int64_t>(start_delay_ * ResolveDurationScale());
+}
+
+bool ValueAnimator::HasFinishedAt(int64_t frame_time) const {
+  if (start_time_ < 0 || repeat_count_ == kInfinite) {
+    return false;
+  }
+  const int64_t scaled_duration = GetScaledDuration();
+  if (scaled_duration <= 0) {
+    return true;
+  }
+  return frame_time >= start_time_ + scaled_duration * (repeat_count_ + 1);
+}
+
 void ValueAnimator::RestartAnimationIfNeeded(int64_t current_time) {
   auto fill_forwards = fill_mode_ & kForwards;
+  bool has_reached_start = start_time_ <= current_time;
+  bool has_finished = HasFinishedAt(current_time);
   // when animation fillmode change forwards from backwards ,"running_" needs to
   // be set to true
-  if (fill_forwards) {
+  if (fill_forwards && has_reached_start && !has_finished) {
     running_ = true;
   }
 
-  if (start_time_ + duration_ > current_time && end_listeners_called_) {
+  if (has_reached_start && !has_finished && end_listeners_called_) {
+    running_ = true;
     start_listeners_called_ = false;
     end_listeners_called_ = false;
     // When the fillmode changes from forwards to non-forwards we need to

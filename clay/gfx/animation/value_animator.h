@@ -381,6 +381,9 @@ class ValueAnimator : public Animator,
   bool AnimateBasedOnTime(int64_t current_time);
   bool AnimateBasedOnTime(int64_t current_time, bool update_values);
   void CommitStartTimeOnSkippedFrame(int64_t frame_time);
+  void SetActiveStartTime(int64_t start_time);
+  int64_t GetScaledStartDelay() const;
+  bool HasFinishedAt(int64_t frame_time) const;
 
   void AnimateValue(float fraction);
 
@@ -405,6 +408,12 @@ class ValueAnimator : public Animator,
    * Whenever start_time_ is set, you must also update start_time_committed_.
    */
   int64_t start_time_ = -1;
+
+  // The time when this CSS animation was first applied, excluding delay.
+  // Same-name animation updates reuse this timeline, matching the legacy and
+  // new animator behavior where timing changes are evaluated from the original
+  // animation start instead of restarting from the update time.
+  int64_t timeline_start_time_ = -1;
 
   /**
    * When true, the start time has been firmly committed as a chosen reference

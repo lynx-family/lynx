@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "clay/gfx/animation/animation_event_handler.h"
+#include "clay/gfx/animation/animation_properties_util.h"
 #include "clay/gfx/animation/animator_listener_adapter.h"
 #include "clay/gfx/animation/animator_target.h"
 #include "clay/gfx/animation/transition_data.h"
@@ -122,7 +123,7 @@ bool TransitionManager::TransitionWithTiming(
   // End current transition animation if there is one
   CancelAnimator(type);
   for (auto& transition : data_) {
-    if (static_cast<int>(transition.property) & static_cast<int>(timing_type)) {
+    if (AnimationPropertyTest(transition.property, timing_type)) {
       T old_value;
       target_->GetProperty(type, old_value);
       active_transitions_[type].second =

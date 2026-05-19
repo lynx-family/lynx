@@ -20,9 +20,17 @@ constexpr inline AnimationPropertyUnderlyingType ToUnderlying(
   return static_cast<AnimationPropertyUnderlyingType>(value);
 }
 
+constexpr inline AnimationPropertyUnderlyingType
+BitmaskAnimationPropertyMask() {
+  return ToUnderlying(ClayAnimationPropertyType::kAll) - 1;
+}
+
 constexpr inline AnimationPropertyUnderlyingType MakeValid(
     AnimationPropertyUnderlyingType value) {
-  return value & ToUnderlying(ClayAnimationPropertyType::kAll);
+  if (value == ToUnderlying(ClayAnimationPropertyType::kAll)) {
+    return value;
+  }
+  return value & BitmaskAnimationPropertyMask();
 }
 
 constexpr inline ClayAnimationPropertyType ToAnimationProperty(
@@ -30,9 +38,33 @@ constexpr inline ClayAnimationPropertyType ToAnimationProperty(
   return static_cast<ClayAnimationPropertyType>(MakeValid(value));
 }
 
+constexpr inline bool IsSingleBitAnimationPropertyValue(
+    AnimationPropertyUnderlyingType value) {
+  return value != 0 && (value & (value - 1)) == 0 &&
+         value < ToUnderlying(ClayAnimationPropertyType::kAll);
+}
+
+constexpr inline bool IsSequentialAnimationProperty(
+    ClayAnimationPropertyType value) {
+  const AnimationPropertyUnderlyingType raw_value = ToUnderlying(value);
+  return raw_value >= ToUnderlying(ClayAnimationPropertyType::kPaddingLeft) &&
+         raw_value < ToUnderlying(ClayAnimationPropertyType::kAll);
+}
+
 constexpr inline bool AnimationPropertyTest(ClayAnimationPropertyType value,
                                             ClayAnimationPropertyType to_test) {
-  return ToUnderlying(value) & ToUnderlying(to_test);
+  if (value == ClayAnimationPropertyType::kAll) {
+    return to_test != ClayAnimationPropertyType::kNone &&
+           to_test != ClayAnimationPropertyType::kAll;  // kAll is not a real
+                                                        // animation property.
+  }
+  const AnimationPropertyUnderlyingType raw_value = ToUnderlying(value);
+  const AnimationPropertyUnderlyingType raw_to_test = ToUnderlying(to_test);
+  if (IsSequentialAnimationProperty(value) ||
+      !IsSingleBitAnimationPropertyValue(raw_to_test)) {
+    return value == to_test;
+  }
+  return raw_value & raw_to_test;
 }
 
 constexpr inline void AnimationPropertySet(ClayAnimationPropertyType& value,

@@ -542,4 +542,52 @@ TEST_F_UI(KeyFrameTest, AnimationEndEvent) {
   animator->RemoveListener(&mock_listener);
 }
 
+TEST_F_UI(KeyFrameTest, ShorterSameNameUpdateAfterEndDoesNotRestart) {
+  AnimationData start_data{"opacity_test",
+                           1000,
+                           0,
+                           TimingFunctionData(),
+                           0,
+                           ClayAnimationFillModeType::kNone,
+                           ClayAnimationDirectionType::kNormal,
+                           ClayAnimationPlayStateType::kRunning};
+  AnimationData update_data{"opacity_test",
+                            500,
+                            0,
+                            TimingFunctionData(),
+                            0,
+                            ClayAnimationFillModeType::kBoth,
+                            ClayAnimationDirectionType::kNormal,
+                            ClayAnimationPlayStateType::kRunning};
+
+  page_->SetKeyframesData(CreateKeyFrameData3());
+  animator_view_->SetBound(0, 0, 100, 100);
+  animation_data_.push_back(start_data);
+  animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
+
+  ValueAnimator* animator =
+      animator_view_->KeyframesMgr()->animations().front().animator.get();
+  animator->DoAnimationFrame(10000);
+  animator->DoAnimationFrame(11000);
+
+  ASSERT_FALSE(animator->IsStarted());
+
+  MockAnimatorListener mock_listener;
+  EXPECT_CALL(mock_listener, OnAnimationStart(::testing::_)).Times(0);
+  EXPECT_CALL(mock_listener, OnAnimationEnd(::testing::_)).Times(0);
+  animator->AddListener(&mock_listener);
+
+  animation_data_.clear();
+  animation_data_.push_back(update_data);
+  animator_view_->SetAnimation(animation_data_);
+  animator_view_->OnNodeReady();
+
+  ASSERT_EQ(animator_view_->KeyframesMgr()->animations().front().animator.get(),
+            animator);
+  animator->DoAnimationFrame(11500);
+
+  animator->RemoveListener(&mock_listener);
+}
+
 }  // namespace clay

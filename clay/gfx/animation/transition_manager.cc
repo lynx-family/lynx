@@ -29,7 +29,7 @@ void TransitionManager::UpdateData(const std::vector<TransitionData>& data) {
 
 bool TransitionManager::Enabled(ClayAnimationPropertyType type) const {
   for (auto& transition : data_) {
-    if (static_cast<int>(transition.property) & static_cast<int>(type)) {
+    if (AnimationPropertyTest(transition.property, type)) {
       return true;
     }
   }

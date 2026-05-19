@@ -52,6 +52,99 @@ std::string AnimationPropertyTypeToString(ClayAnimationPropertyType type) {
     case ClayAnimationPropertyType::kColor:
       ret = "color";
       break;
+    case ClayAnimationPropertyType::kMaxWidth:
+      ret = "max-width";
+      break;
+    case ClayAnimationPropertyType::kMinWidth:
+      ret = "min-width";
+      break;
+    case ClayAnimationPropertyType::kMaxHeight:
+      ret = "max-height";
+      break;
+    case ClayAnimationPropertyType::kMinHeight:
+      ret = "min-height";
+      break;
+    case ClayAnimationPropertyType::kPaddingLeft:
+      ret = "padding-left";
+      break;
+    case ClayAnimationPropertyType::kPaddingRight:
+      ret = "padding-right";
+      break;
+    case ClayAnimationPropertyType::kPaddingTop:
+      ret = "padding-top";
+      break;
+    case ClayAnimationPropertyType::kPaddingBottom:
+      ret = "padding-bottom";
+      break;
+    case ClayAnimationPropertyType::kMarginLeft:
+      ret = "margin-left";
+      break;
+    case ClayAnimationPropertyType::kMarginRight:
+      ret = "margin-right";
+      break;
+    case ClayAnimationPropertyType::kMarginTop:
+      ret = "margin-top";
+      break;
+    case ClayAnimationPropertyType::kMarginBottom:
+      ret = "margin-bottom";
+      break;
+    case ClayAnimationPropertyType::kBorderLeftWidth:
+      ret = "border-left-width";
+      break;
+    case ClayAnimationPropertyType::kBorderRightWidth:
+      ret = "border-right-width";
+      break;
+    case ClayAnimationPropertyType::kBorderTopWidth:
+      ret = "border-top-width";
+      break;
+    case ClayAnimationPropertyType::kBorderBottomWidth:
+      ret = "border-bottom-width";
+      break;
+    case ClayAnimationPropertyType::kBorderTopColor:
+      ret = "border-top-color";
+      break;
+    case ClayAnimationPropertyType::kBorderLeftColor:
+      ret = "border-left-color";
+      break;
+    case ClayAnimationPropertyType::kBorderRightColor:
+      ret = "border-right-color";
+      break;
+    case ClayAnimationPropertyType::kBorderBottomColor:
+      ret = "border-bottom-color";
+      break;
+    case ClayAnimationPropertyType::kFlexBasis:
+      ret = "flex-basis";
+      break;
+    case ClayAnimationPropertyType::kFlexGrow:
+      ret = "flex-grow";
+      break;
+    case ClayAnimationPropertyType::kBorderWidth:
+      ret = "border-width";
+      break;
+    case ClayAnimationPropertyType::kBorderColor:
+      ret = "border-color";
+      break;
+    case ClayAnimationPropertyType::kMargin:
+      ret = "margin";
+      break;
+    case ClayAnimationPropertyType::kPadding:
+      ret = "padding";
+      break;
+    case ClayAnimationPropertyType::kFilter:
+      ret = "filter";
+      break;
+    case ClayAnimationPropertyType::kBoxShadow:
+      ret = "box-shadow";
+      break;
+    case ClayAnimationPropertyType::kOffsetDistance:
+      ret = "offset-distance";
+      break;
+    case ClayAnimationPropertyType::kBackgroundPosition:
+      ret = "background-position";
+      break;
+    case ClayAnimationPropertyType::kTransformOrigin:
+      ret = "transform-origin";
+      break;
     case ClayAnimationPropertyType::kVisibility:
       ret = "visibility";
       break;
@@ -241,6 +334,11 @@ void LynxEventDispatcher::OnAnimationEvent(const std::string& event_name,
   clay::Value::Map rk_dict;
   rk_dict["animation_type"] = clay::Value("keyframe-animation");
   rk_dict["animation_name"] = clay::Value(animation_name);
+#if OS_IOS
+  if (event_name == "animationend") {
+    rk_dict["finished"] = clay::Value(1);
+  }
+#endif
 
   auto params = lynx::ClayValue(clay::Value(std::move(rk_dict)));
   engine_proxy_->SendCustomEvent(event_name, view_id, params, "params");
@@ -257,6 +355,11 @@ void LynxEventDispatcher::OnTransitionEvent(const std::string& event_name,
   clay::Value::Map rk_dict;
   rk_dict["animation_type"] = clay::Value(apt.c_str());
   rk_dict["animation_name"] = clay::Value(animation_name);
+#if OS_IOS
+  if (event_name == "transitionend") {
+    rk_dict["finished"] = clay::Value(1);
+  }
+#endif
 
   auto params = lynx::ClayValue(clay::Value(std::move(rk_dict)));
   engine_proxy_->SendCustomEvent(event_name, view_id, params, "params");
