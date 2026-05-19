@@ -1598,4 +1598,45 @@ extern NSString* const kDefaultComponentID;
          0;
 }
 
+- (void)setEnableSyncXelementRegistry {
+  // Adapt to legacy names for XElement
+  LynxComponentScopeRegistry* componentRegistry = self.componentRegistry;
+  [@{
+    @"x-viewpager-ng" : @"viewpager",
+    @"x-webview" : @"webview",
+    @"x-overlay-ng" : @"overlay",
+    @"x-refresh-view" : @"refresh",
+    @"x-refresh-header" : @"refresh-header",
+    @"x-blur-view" : @"blur-view",
+    @"x-foldview-ng" : @"scroll-coordinator",
+    @"x-foldview-header-ng" : @"scroll-coordinator-header",
+    @"x-foldview-slot-ng" : @"scroll-coordinator-slot",
+    @"x-foldview-slot-drag-ng" : @"scroll-coordinator-slot-drag",
+    @"x-foldview-slot-toolbar-ng" : @"scroll-coordinator-toolbar",
+  } enumerateKeysAndObjectsUsingBlock:^(NSString* _Nonnull key, NSString* _Nonnull obj,
+                                        BOOL* _Nonnull stop) {
+    BOOL supported = YES;
+    Class cls = [componentRegistry uiClassWithName:key accessible:&supported];
+    if (supported && cls) {
+      [componentRegistry registerUI:cls withName:obj];
+    }
+  }];
+
+  [@{
+    @"x-input-ng" : @"input",
+    @"x-textarea-ng" : @"textarea",
+  } enumerateKeysAndObjectsUsingBlock:^(NSString* _Nonnull key, NSString* _Nonnull obj,
+                                        BOOL* _Nonnull stop) {
+    BOOL supported = YES;
+    Class cls = [componentRegistry uiClassWithName:key accessible:&supported];
+    BOOL shadowSupported = YES;
+    Class shadowCls = [componentRegistry shadowNodeClassWithName:key accessible:&shadowSupported];
+
+    if (supported && cls && shadowSupported && shadowCls) {
+      [componentRegistry registerUI:cls withName:obj];
+      [componentRegistry registerShadowNode:shadowCls withName:obj];
+    }
+  }];
+}
+
 @end

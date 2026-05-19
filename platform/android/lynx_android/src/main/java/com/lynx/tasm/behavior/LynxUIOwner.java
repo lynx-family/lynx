@@ -22,6 +22,7 @@ import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
+import com.lynx.tasm.BehaviorClassWarmer;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.LynxError;
@@ -33,10 +34,12 @@ import com.lynx.tasm.animation.transition.TransitionAnimationManager;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
@@ -66,6 +69,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1827,6 +1831,86 @@ public class LynxUIOwner {
       return behavior.needProcessDirection();
     } else {
       return false;
+    }
+  }
+
+  void setEnableSyncXElementRegistry() {
+    Map<String, String> tagMap = new LinkedHashMap<>();
+    tagMap.put("x-viewpager-ng", "viewpager");
+    tagMap.put("x-webview", "webview");
+    tagMap.put("x-overlay-ng", "overlay");
+    tagMap.put("x-refresh-view", "refresh");
+    tagMap.put("x-refresh-header", "refresh-header");
+    tagMap.put("x-blur-view", "blur-view");
+    tagMap.put("x-foldview-ng", "scroll-coordinator");
+    tagMap.put("x-foldview-header-ng", "scroll-coordinator-header");
+    tagMap.put("x-foldview-slot-ng", "scroll-coordinator-slot");
+    tagMap.put("x-foldview-slot-drag-ng", "scroll-coordinator-slot-drag");
+    tagMap.put("x-foldview-slot-toolbar-ng", "scroll-coordinator-toolbar");
+    tagMap.put("x-foldview-toolbar-ng", "scroll-coordinator-toolbar");
+    tagMap.put("x-input-ng", "input");
+    tagMap.put("x-textarea-ng", "textarea");
+    for (Map.Entry<String, String> entry : tagMap.entrySet()) {
+      try {
+        Behavior behavior = mBehaviorRegistry.get(entry.getKey());
+        mBehaviorRegistry.addBehavior(new DelegateBehavior(entry.getValue(), behavior));
+      } catch (RuntimeException ignored) {
+      }
+    }
+  }
+
+  private static final class DelegateBehavior extends Behavior {
+    private final Behavior mBehavior;
+
+    DelegateBehavior(String tagName, Behavior behavior) {
+      super(tagName, behavior.supportUIFlatten(), behavior.supportCreateAsync(),
+          behavior.needProcessDirection(), behavior.supportFragmentLayerRenderer());
+      mBehavior = behavior;
+    }
+
+    @Override
+    public LynxUI createUIWithParams(LynxContext context, Object params) {
+      return mBehavior.createUIWithParams(context, params);
+    }
+
+    @Override
+    public LynxFlattenUI createFlattenUIWithParams(LynxContext context, Object params) {
+      return mBehavior.createFlattenUIWithParams(context, params);
+    }
+
+    @Override
+    public LynxUI createUI(LynxContext context) {
+      return mBehavior.createUI(context);
+    }
+
+    @Override
+    public LynxUI createUIFiber(LynxContext context) {
+      return mBehavior.createUIFiber(context);
+    }
+
+    @Override
+    public LynxFlattenUI createFlattenUI(LynxContext context) {
+      return mBehavior.createFlattenUI(context);
+    }
+
+    @Override
+    public LynxFlattenUI createFlattenUIFiber(LynxContext context) {
+      return mBehavior.createFlattenUIFiber(context);
+    }
+
+    @Override
+    public ShadowNode createShadowNode() {
+      return mBehavior.createShadowNode();
+    }
+
+    @Override
+    public BehaviorClassWarmer createClassWarmer() {
+      return mBehavior.createClassWarmer();
+    }
+
+    @Override
+    public IRendererHost createPlatformRendererHost(LynxContext context) {
+      return mBehavior.createPlatformRendererHost(context);
     }
   }
 

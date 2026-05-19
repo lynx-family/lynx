@@ -287,6 +287,9 @@ void UIDelegateHarmony::OnPageConfigDecoded(
     if (config->GetEnableNewGesture() && ui_owner_) {
       ui_owner_->InitGestureArenaManager(lynx_context.get());
     }
+    if (config->GetSyncXElementRegistry() && ui_owner_) {
+      ui_owner_->SetEnableSyncXElementRegistry();
+    }
     lynx_context->SetEnableEventThrough(config->GetEnableEventThrough());
     lynx_context->SetEnableHarmonyVisibleAreaChangeForExposure(
         config->GetEnableHarmonyVisibleAreaChangeForExposure());

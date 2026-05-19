@@ -8358,6 +8358,7 @@ public class com::lynx::tasm::PageConfig :  {
   public double com.lynx.tasm.PageConfig.getEnableLynxScrollFluency();
   public boolean com.lynx.tasm.PageConfig.getEnableTransformedTouchPosition();
   public boolean com.lynx.tasm.PageConfig.getEnableDispatchCustomEventForUI();
+  public boolean com.lynx.tasm.PageConfig.getSyncXElementRegistry();
   public String com.lynx.tasm.PageConfig.toString();
   public static void com.lynx.tasm.PageConfig.attachPageConfig(PageConfig config, LynxContext lynxContext, ILynxUIRenderer uiRenderer);
 }
