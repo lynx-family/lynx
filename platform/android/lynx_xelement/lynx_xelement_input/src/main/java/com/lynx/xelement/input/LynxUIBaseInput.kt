@@ -805,6 +805,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
       if (mView.requestFocus()) {
         if (mUseCustomKeyboard) {
           hideSoftInput()
+          callback?.invoke(LynxUIMethodConstants.SUCCESS)
         } else if (showSoftInput()){
           callback?.invoke(LynxUIMethodConstants.SUCCESS)
         } else {
@@ -936,4 +937,3 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     }
   }
 }
-
