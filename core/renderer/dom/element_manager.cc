@@ -213,6 +213,38 @@ void ElementManager::OnDocumentUpdated() {
   });
 }
 
+void ElementManager::PutCachedTemplateElementTree(
+    const base::String &bundle_url, const base::String &template_key,
+    CachedTemplateElementTree cached_tree) {
+  if (template_key.empty() || cached_tree.generated_.result_ == nullptr) {
+    return;
+  }
+  cached_tree.bundle_url_ = bundle_url;
+  cached_tree.template_key_ = template_key;
+  cached_template_element_trees_.push_back(std::move(cached_tree));
+}
+
+bool ElementManager::TakeCachedTemplateElementTree(
+    const base::String &bundle_url, const base::String &template_key,
+    CachedTemplateElementTree *cached_tree) {
+  if (template_key.empty() || cached_tree == nullptr) {
+    return false;
+  }
+  for (size_t index = cached_template_element_trees_.size(); index > 0;
+       --index) {
+    auto &candidate = cached_template_element_trees_[index - 1];
+    if (!candidate.template_key_.IsEqual(template_key) ||
+        !candidate.bundle_url_.IsEqual(bundle_url)) {
+      continue;
+    }
+    *cached_tree = std::move(candidate);
+    cached_template_element_trees_.erase(
+        cached_template_element_trees_.begin() + index - 1);
+    return true;
+  }
+  return false;
+}
+
 void ElementManager::OnElementManagerWillDestroy() {
   EXEC_EXPR_FOR_INSPECTOR({
     if (inspector_element_observer_ && IsDomTreeEnabled()) {

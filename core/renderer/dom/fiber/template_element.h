@@ -106,6 +106,9 @@ class TemplateElement : public FiberElement {
   void MarkInTemplateTreeAndPrepare();
   void MarkInTemplateTreeAndPrepareRecursively();
   void MarkTemplateChildrenInElementSlotsInTree();
+  bool CanUseStaticCachedTree() const;
+  bool ConsumeStaticCachedTreeIfNeeded();
+  bool MoveStaticElementTreeToCacheIfNeeded();
   void ApplyRootAttributes(const lepus::Value& previous_root_attributes);
   void ApplyInitialElementSlots();
   void ApplyPendingOperations();

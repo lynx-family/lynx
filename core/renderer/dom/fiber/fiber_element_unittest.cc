@@ -10284,6 +10284,45 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsUpdateMaterializedTargets) {
   EXPECT_EQ(slot_parent->children()[1].get(), sentinel.get());
 }
 
+TEST_P(FiberElementTest, ElementTemplateStaticCacheReusesCompiledTree) {
+  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  parent->SetTemplateKey(base::String("parent_template"));
+  parent->result_ = manager->CreateFiberView();
+
+  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child->SetTemplateKey(base::String("item_template"));
+  child->SetBundleUrl(base::String("item_bundle.js"));
+  auto child_root = manager->CreateFiberView();
+  child->result_ = child_root;
+
+  auto slot_parent = manager->CreateFiberView();
+  auto slot_sentinel = manager->CreateFiberView();
+  slot_parent->InsertNode(child_root);
+  slot_parent->InsertNode(slot_sentinel);
+  parent->element_slot_targets_.push_back(
+      ElementSlotMountPoint{slot_parent, slot_sentinel});
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(child));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+  parent->SetElementSlots(lepus::Value(element_slots));
+
+  parent->RemoveElementSlotChild(0, child);
+
+  EXPECT_EQ(child->result_, nullptr);
+  ASSERT_EQ(slot_parent->children().size(), 1u);
+  EXPECT_EQ(slot_parent->children()[0].get(), slot_sentinel.get());
+
+  auto fresh_child =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  fresh_child->SetTemplateKey(base::String("item_template"));
+  fresh_child->SetBundleUrl(base::String("item_bundle.js"));
+
+  EXPECT_EQ(fresh_child->GetRoot().get(), child_root.get());
+  EXPECT_TRUE(manager->cached_template_element_trees_.empty());
+}
+
 TEST_P(FiberElementTest, ElementTemplateInsertElementSlotChildKeepsOtherSlots) {
   auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   root->SetTemplateKey(base::String("root_template"));

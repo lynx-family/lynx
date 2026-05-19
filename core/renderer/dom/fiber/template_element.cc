@@ -269,6 +269,10 @@ void TemplateElement::ResolveGeneratedElements() {
     return;
   }
 
+  if (ConsumeStaticCachedTreeIfNeeded()) {
+    return;
+  }
+
   if (async_create_task_ == nullptr) {
     PrepareAsyncCreateElementTree();
     if (async_create_task_ == nullptr) {
@@ -330,6 +334,69 @@ void TemplateElement::InitTypedRoot() {
 
 bool TemplateElement::IsPageTemplate() const {
   return IsTypedTemplate() && typed_tag_.IsEqual(kElementPageTag);
+}
+
+bool TemplateElement::CanUseStaticCachedTree() const {
+  return !IsTypedTemplate() && attribute_slots_.IsEmpty() &&
+         element_slots_.IsEmpty() && pending_operations_.empty();
+}
+
+bool TemplateElement::ConsumeStaticCachedTreeIfNeeded() {
+  if (!CanUseStaticCachedTree()) {
+    return false;
+  }
+  auto* manager = element_manager();
+  if (manager == nullptr) {
+    return false;
+  }
+  CachedTemplateElementTree cached_tree;
+  if (!manager->TakeCachedTemplateElementTree(bundle_url_, template_key_,
+                                              &cached_tree)) {
+    return false;
+  }
+
+  result_ = std::move(cached_tree.generated_.result_);
+  attribute_slot_targets_ =
+      std::move(cached_tree.generated_.attribute_slot_targets_);
+  static_event_targets_ =
+      std::move(cached_tree.generated_.static_event_targets_);
+  element_slot_targets_ =
+      std::move(cached_tree.generated_.element_slot_targets_);
+  return true;
+}
+
+bool TemplateElement::MoveStaticElementTreeToCacheIfNeeded() {
+  if (!CanUseStaticCachedTree()) {
+    return false;
+  }
+  auto* manager = element_manager();
+  if (manager == nullptr || result_ == nullptr) {
+    return false;
+  }
+
+  if (result_->parent() != nullptr) {
+    static_cast<FiberElement*>(result_->parent())->RemoveNode(result_);
+  }
+
+  CachedTemplateElementTree cached_tree;
+  cached_tree.generated_.result_ = std::move(result_);
+  cached_tree.generated_.attribute_slot_targets_ =
+      std::move(attribute_slot_targets_);
+  cached_tree.generated_.static_event_targets_ =
+      std::move(static_event_targets_);
+  cached_tree.generated_.element_slot_targets_ =
+      std::move(element_slot_targets_);
+
+  result_ = nullptr;
+  attribute_slot_targets_.clear();
+  static_event_targets_.clear();
+  element_slot_targets_.clear();
+  prepared_element_slot_insertions_.clear();
+  async_create_task_ = nullptr;
+
+  manager->PutCachedTemplateElementTree(bundle_url_, template_key_,
+                                        std::move(cached_tree));
+  return true;
 }
 
 void TemplateElement::MarkInTemplateTreeAndPrepare() {
@@ -743,7 +810,14 @@ void TemplateElement::RemoveElementSlotChild(
 
   RemoveElementSlotChildFromSlot(slot_index, child.get());
   if (slot_index < element_slot_targets_.size()) {
+    if (child->is_template() && static_cast<TemplateElement*>(child.get())
+                                    ->MoveStaticElementTreeToCacheIfNeeded()) {
+      return;
+    }
     UnmountElementSlotChild(element_slot_targets_[slot_index], child);
+  } else if (child->is_template()) {
+    static_cast<TemplateElement*>(child.get())
+        ->MoveStaticElementTreeToCacheIfNeeded();
   }
 }
 
