@@ -82,5 +82,11 @@ void Catalyzer::Invoke(
   return painting_context_->Invoke(id, method, params, callback);
 }
 
+void Catalyzer::EnqueueInvoke(
+    int64_t id, const std::string& method, const pub::Value& params,
+    const std::function<void(int32_t code, const pub::Value& data)>& callback) {
+  return painting_context_->EnqueueInvoke(id, method, params, callback);
+}
+
 }  // namespace tasm
 }  // namespace lynx

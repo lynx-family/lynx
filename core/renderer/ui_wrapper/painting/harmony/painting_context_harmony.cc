@@ -334,6 +334,12 @@ void PaintingContextHarmony::Invoke(
   });
 }
 
+void PaintingContextHarmony::EnqueueInvoke(
+    int64_t id, const std::string& method, const pub::Value& params,
+    const std::function<void(int32_t code, const pub::Value& data)>& callback) {
+  Invoke(id, method, params, callback);
+}
+
 int32_t PaintingContextHarmony::GetTagInfo(const std::string& tag_name) {
   return GetUIOwner()->GetTagInfo(tag_name);
 }

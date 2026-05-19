@@ -41,20 +41,26 @@ bool RegisterJNIForPaintingContext(JNIEnv* env) {
 }  // namespace jni
 }  // namespace lynx
 
+struct InvokeCallbackContext {
+  std::function<void(int32_t code, const lynx::pub::Value& data)> callback;
+};
+
 void InvokeCallback(JNIEnv* env, jobject jcaller, jlong context, jint callback,
                     jobject array) {
-  if (!context) {
+  std::unique_ptr<InvokeCallbackContext> callback_context(
+      reinterpret_cast<InvokeCallbackContext*>(context));
+  if (!callback_context || !callback_context->callback) {
     return;
   }
+
   const auto& para =
       lynx::tasm::android::ValueConverterAndroid::ConvertJavaOnlyArrayToLepus(
           env, array);
   constexpr const static int32_t sErrCodeIndex = 0;
   constexpr const static int32_t sDataIndex = 1;
-  reinterpret_cast<lynx::tasm::PaintingContextAndroid*>(context)
-      ->InvokeUIMethodCallback(callback,
-                               para.Array()->get(sErrCodeIndex).Int32(),
-                               para.Array()->get(sDataIndex));
+  callback_context->callback(
+      para.Array()->get(sErrCodeIndex).Int32(),
+      lynx::pub::ValueImplLepus(para.Array()->get(sDataIndex)));
 }
 
 jlong CreatePaintingContext(JNIEnv* env, jobject jcaller,
@@ -998,36 +1004,44 @@ bool PaintingContextAndroid::IsFlatten(base::MoveOnlyClosure<bool, bool> func) {
   return false;
 }
 
+shell::UIOperation PaintingContextAndroid::CreateInvokeUIMethodOperation(
+    int64_t id, std::string method, lepus::Value lepus_params,
+    std::function<void(int32_t code, const pub::Value& data)> callback) {
+  auto impl = impl_;
+  return [impl, id, method = std::move(method),
+          lepus_params = std::move(lepus_params),
+          callback = std::move(callback)]() mutable {
+    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
+    if (local_ref.IsNull()) {
+      return;
+    }
+
+    JNIEnv* env = base::android::AttachCurrentThread();
+    const auto& j_method =
+        base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, method);
+    auto j_map =
+        tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
+            lepus_params);
+    auto* callback_context = new InvokeCallbackContext{std::move(callback)};
+    Java_PaintingContext_invoke(env, local_ref.Get(), id, j_method.Get(),
+                                j_map.jni_object(),
+                                reinterpret_cast<jlong>(callback_context), 0);
+  };
+}
+
 void PaintingContextAndroid::Invoke(
     int64_t id, const std::string& method, const pub::Value& params,
     const std::function<void(int32_t code, const pub::Value& data)>& callback) {
-  base::android::ScopedLocalJavaRef<jobject> local_ref(*impl_);
-  if (local_ref.IsNull()) {
-    return;
-  }
-
-  JNIEnv* env = base::android::AttachCurrentThread();
-  const auto& j_method =
-      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, method);
-  auto j_map = tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
-      pub::ValueUtils::ConvertValueToLepusValue(params));
-
-  static int32_t sInvokeCallBackIndex = 0;
-  invoke_callback_maps_[++sInvokeCallBackIndex] = callback;
-  Java_PaintingContext_invoke(env, local_ref.Get(), id, j_method.Get(),
-                              j_map.jni_object(), reinterpret_cast<jlong>(this),
-                              sInvokeCallBackIndex);
+  auto operation = CreateInvokeUIMethodOperation(
+      id, method, pub::ValueUtils::ConvertValueToLepusValue(params), callback);
+  operation();
 }
 
-void PaintingContextAndroid::InvokeUIMethodCallback(int32_t id, int32_t code,
-                                                    const lepus::Value params) {
-  auto iter = invoke_callback_maps_.find(id);
-  if (iter == invoke_callback_maps_.end()) {
-    LOGE("InvokeUIMethodCallback failed since can't find the callback");
-    return;
-  }
-  iter->second(code, PubLepusValue(params));
-  invoke_callback_maps_.erase(iter);
+void PaintingContextAndroid::EnqueueInvoke(
+    int64_t id, const std::string& method, const pub::Value& params,
+    const std::function<void(int32_t code, const pub::Value& data)>& callback) {
+  Enqueue(CreateInvokeUIMethodOperation(
+      id, method, pub::ValueUtils::ConvertValueToLepusValue(params), callback));
 }
 
 void PaintingContextAndroid::UpdateLayoutPatching() {

@@ -25,6 +25,7 @@
 #include "core/renderer/data/lynx_view_data_manager.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/dom/vdom/radon/base_component.h"
@@ -1858,28 +1859,39 @@ void TemplateAssembler::LepusInvokeUIMethod(
     return;
   }
   if (EnableFiberArch()) {
+    auto* element =
+        page_proxy()->element_manager()->node_manager()->Get(ui_impl_ids[0]);
+    if (element == nullptr) {
+      if (callback_closure && callback_closure->IsJSFunction()) {
+        context->CallClosure(
+            *callback_closure,
+            LynxGetUIResult(std::move(ui_impl_ids), LynxGetUIResult::UNKNOWN,
+                            "No node matches the input parameter")
+                .StatusAsLepusValue());
+      }
+      return;
+    }
     auto callback = context->GetCallbackManager()->CacheTask(
         context, std::move(callback_closure));
-    auto invoke_ui_method = [this, ui_impl_id = ui_impl_ids[0], method,
-                             invoke_params = pub::ValueImplLepus(params),
-                             callback, context]() mutable {
-      page_proxy()->element_manager()->catalyzer()->Invoke(
-          ui_impl_id, method, invoke_params,
-          fml::MakeCopyable(
-              [callback, context](const int32_t code,
-                                  const pub::Value& data) mutable {
-                const auto result_dict = lepus::Dictionary::Create();
-                BASE_STATIC_STRING_DECL(kCode, "code");
-                BASE_STATIC_STRING_DECL(kData, "data");
-                result_dict->SetValue(kCode, code);
-                result_dict->SetValue(
-                    kData, pub::ValueUtils::ConvertValueToLepusValue(data));
-                context->GetCallbackManager()->InvokeTask(
-                    callback, lepus::Value(std::move(result_dict)));
-              }));
-    };
-    InvokeOrDefer(std::move(invoke_ui_method));
-    return;
+    element->AppendPendingInvokeTask(
+        [this, ui_impl_id = ui_impl_ids[0], method,
+         invoke_params = pub::ValueImplLepus(params), callback,
+         context]() mutable {
+          page_proxy()->element_manager()->catalyzer()->EnqueueInvoke(
+              ui_impl_id, method, invoke_params,
+              fml::MakeCopyable(
+                  [callback, context](const int32_t code,
+                                      const pub::Value& data) mutable {
+                    const auto result_dict = lepus::Dictionary::Create();
+                    BASE_STATIC_STRING_DECL(kCode, "code");
+                    BASE_STATIC_STRING_DECL(kData, "data");
+                    result_dict->SetValue(kCode, code);
+                    result_dict->SetValue(
+                        kData, pub::ValueUtils::ConvertValueToLepusValue(data));
+                    context->GetCallbackManager()->InvokeTask(
+                        callback, lepus::Value(std::move(result_dict)));
+                  }));
+        });
   }
 }
 
@@ -3724,33 +3736,6 @@ void TemplateAssembler::RunPixelPipeline() {
   }
 }
 
-void TemplateAssembler::InvokeOrDefer(base::closure task) {
-  if (!task) {
-    return;
-  }
-
-  if (IsInPipelineExecution()) {
-    deferred_tasks_.emplace_back(std::move(task));
-    return;
-  }
-
-  task();
-}
-
-bool TemplateAssembler::IsInPipelineExecution() {
-  auto* current_pipeline_context = GetCurrentPipelineContext();
-  if (current_pipeline_context != nullptr) {
-    const auto& options = current_pipeline_context->GetOptions();
-    if (options != nullptr && options->enable_unified_pixel_pipeline &&
-        (current_pipeline_context->IsResolveRequested() ||
-         current_pipeline_context->IsLayoutRequested() ||
-         current_pipeline_context->IsFlushUIOperationRequested())) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void TemplateAssembler::ExecuteOnLayoutReadyHooks() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               TEMPLATE_ASSEMBLER_EXECUTE_ON_LAYOUT_READY_HOOKS);
@@ -3796,18 +3781,6 @@ void TemplateAssembler::EnsureOnLayoutReadyHooksFinish() {
   execute_on_layout_ready_hooks_ = nullptr;
 
   RunPixelPipeline();
-}
-
-void TemplateAssembler::DrainDeferredTasks() {
-  if (deferred_tasks_.empty()) {
-    return;
-  }
-
-  auto tasks = std::move(deferred_tasks_);
-  deferred_tasks_.clear();
-  for (auto& task : tasks) {
-    task();
-  }
 }
 
 void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
@@ -3881,8 +3854,6 @@ void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
                                                 LifecycleState::kStopped);
   pipeline_context_manager_->RemovePipelineContextByVersion(
       current_pipeline_context->GetVersion());
-
-  DrainDeferredTasks();
 }
 
 }  // namespace tasm

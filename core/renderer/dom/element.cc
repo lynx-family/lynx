@@ -333,6 +333,32 @@ void Element::Invoke(
   return catalyzer_->Invoke(impl_id(), method, params, callback);
 }
 
+void Element::AppendPendingInvokeTask(base::closure task) {
+  if (!task) {
+    return;
+  }
+  pending_invoke_tasks_.emplace_back(std::move(task));
+  MarkDirty(kDirtyInvoke);
+}
+
+void Element::EnqueueInvoke(
+    const std::string& method, const pub::Value& params,
+    const std::function<void(int32_t code, const pub::Value& data)>& callback) {
+  return catalyzer_->EnqueueInvoke(impl_id(), method, params, callback);
+}
+
+void Element::FlushPendingInvokeTasks() {
+  if (!(dirty_ & kDirtyInvoke)) {
+    return;
+  }
+  for (auto& task : pending_invoke_tasks_) {
+    task();
+  }
+  pending_invoke_tasks_.clear();
+  dirty_ &= ~kDirtyInvoke;
+  element_container_->FlushImmediately();
+}
+
 const EventMap& Element::event_map() const {
   if (data_model()) {
     return data_model()->static_events();
