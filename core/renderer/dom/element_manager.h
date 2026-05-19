@@ -91,6 +91,7 @@ struct CachedTemplateElementTree {
   base::String bundle_url_;
   base::String template_key_;
   GeneratedElementsResult generated_;
+  lepus::Value applied_attribute_slots_;
 };
 
 class HierarchyObserver {

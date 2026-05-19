@@ -216,7 +216,11 @@ void TemplateElement::PrepareAsyncCreateElementTree() {
   if (IsTypedTemplate()) {
     return;
   }
-  if (result_ != nullptr || async_create_task_ != nullptr) {
+  if (result_ != nullptr || async_create_task_ != nullptr ||
+      prepared_cached_tree_.has_value()) {
+    return;
+  }
+  if (TryPrepareFromCache()) {
     return;
   }
   auto* manager = element_manager();
@@ -269,7 +273,8 @@ void TemplateElement::ResolveGeneratedElements() {
     return;
   }
 
-  if (ConsumeStaticCachedTreeIfNeeded()) {
+  if (prepared_cached_tree_.has_value() || TryPrepareFromCache()) {
+    ConsumePreparedCachedTree();
     return;
   }
 
@@ -336,14 +341,9 @@ bool TemplateElement::IsPageTemplate() const {
   return IsTypedTemplate() && typed_tag_.IsEqual(kElementPageTag);
 }
 
-bool TemplateElement::CanUseStaticCachedTree() const {
-  return !IsTypedTemplate() && attribute_slots_.IsEmpty() &&
-         element_slots_.IsEmpty() && pending_operations_.empty();
-}
-
-bool TemplateElement::ConsumeStaticCachedTreeIfNeeded() {
-  if (!CanUseStaticCachedTree()) {
-    return false;
+bool TemplateElement::TryPrepareFromCache() {
+  if (prepared_cached_tree_.has_value()) {
+    return true;
   }
   auto* manager = element_manager();
   if (manager == nullptr) {
@@ -355,23 +355,57 @@ bool TemplateElement::ConsumeStaticCachedTreeIfNeeded() {
     return false;
   }
 
-  result_ = std::move(cached_tree.generated_.result_);
-  attribute_slot_targets_ =
-      std::move(cached_tree.generated_.attribute_slot_targets_);
-  static_event_targets_ =
-      std::move(cached_tree.generated_.static_event_targets_);
-  element_slot_targets_ =
-      std::move(cached_tree.generated_.element_slot_targets_);
+  prepared_cached_tree_.emplace(PreparedCachedTemplateElementTree{
+      std::move(cached_tree.generated_),
+      std::move(cached_tree.applied_attribute_slots_)});
   return true;
 }
 
-bool TemplateElement::MoveStaticElementTreeToCacheIfNeeded() {
-  if (!CanUseStaticCachedTree()) {
+void TemplateElement::ConsumePreparedCachedTree() {
+  auto prepared_tree = std::move(*prepared_cached_tree_);
+  prepared_cached_tree_.reset();
+
+  result_ = std::move(prepared_tree.generated_.result_);
+  attribute_slot_targets_ =
+      std::move(prepared_tree.generated_.attribute_slot_targets_);
+  static_event_targets_ =
+      std::move(prepared_tree.generated_.static_event_targets_);
+  element_slot_targets_ =
+      std::move(prepared_tree.generated_.element_slot_targets_);
+
+  GeneratedElementsResult generated;
+  PrepareGeneratedElementsResult(&generated, element_slots_);
+  prepared_element_slot_insertions_ =
+      std::move(generated.prepared_element_slot_insertions_);
+
+  ApplyAttributeSlotsFromPrevious(prepared_tree.applied_attribute_slots_);
+  ApplyRootAttributes(lepus::Value());
+  ApplyInitialElementSlots();
+  ApplyPendingOperations();
+}
+
+bool TemplateElement::MoveElementTreeToCacheIfNeeded() {
+  if (IsTypedTemplate()) {
     return false;
   }
   auto* manager = element_manager();
-  if (manager == nullptr || result_ == nullptr) {
+  if (manager == nullptr) {
     return false;
+  }
+
+  if (result_ == nullptr) {
+    if (!prepared_cached_tree_.has_value()) {
+      return false;
+    }
+    CachedTemplateElementTree cached_tree;
+    cached_tree.generated_ = std::move(prepared_cached_tree_->generated_);
+    cached_tree.applied_attribute_slots_ =
+        std::move(prepared_cached_tree_->applied_attribute_slots_);
+    prepared_cached_tree_.reset();
+    async_create_task_ = nullptr;
+    manager->PutCachedTemplateElementTree(bundle_url_, template_key_,
+                                          std::move(cached_tree));
+    return true;
   }
 
   if (result_->parent() != nullptr) {
@@ -386,12 +420,16 @@ bool TemplateElement::MoveStaticElementTreeToCacheIfNeeded() {
       std::move(static_event_targets_);
   cached_tree.generated_.element_slot_targets_ =
       std::move(element_slot_targets_);
+  cached_tree.applied_attribute_slots_ =
+      attribute_slots_.IsEmpty() ? lepus::Value()
+                                 : lepus::Value::Clone(attribute_slots_);
 
   result_ = nullptr;
   attribute_slot_targets_.clear();
   static_event_targets_.clear();
   element_slot_targets_.clear();
   prepared_element_slot_insertions_.clear();
+  prepared_cached_tree_.reset();
   async_create_task_ = nullptr;
 
   manager->PutCachedTemplateElementTree(bundle_url_, template_key_,
@@ -440,6 +478,68 @@ void TemplateElement::MarkTemplateChildrenInElementSlotsInTree() {
       static_cast<TemplateElement*>(child.get())
           ->MarkInTemplateTreeAndPrepareRecursively();
     }
+  }
+}
+
+void TemplateElement::DetachElementSlotChildrenForCacheRecursively() {
+  if (!element_slots_.IsArrayOrJSArray()) {
+    return;
+  }
+
+  for (size_t slot_index = 0;
+       slot_index < static_cast<size_t>(element_slots_.GetLength());
+       ++slot_index) {
+    auto slot_children =
+        element_slots_.GetProperty(static_cast<uint32_t>(slot_index));
+    if (!slot_children.IsArrayOrJSArray()) {
+      continue;
+    }
+
+    ElementSlotMountPoint mount_point;
+    if (slot_index < element_slot_targets_.size()) {
+      mount_point = element_slot_targets_[slot_index];
+    }
+    for (size_t child_index = 0;
+         child_index < static_cast<size_t>(slot_children.GetLength());
+         ++child_index) {
+      auto child = ResolveInitialElementSlotChild(
+          slot_children.GetProperty(static_cast<uint32_t>(child_index)));
+      DetachAndMaybeCacheElementSlotChild(mount_point, child);
+    }
+  }
+}
+
+void TemplateElement::DetachAndMaybeCacheElementSlotChild(
+    const ElementSlotMountPoint& mount_point,
+    const fml::RefPtr<FiberElement>& child) {
+  if (child == nullptr) {
+    return;
+  }
+
+  TemplateElement* template_child = nullptr;
+  if (child->is_template()) {
+    template_child = static_cast<TemplateElement*>(child.get());
+    template_child->DetachElementSlotChildrenForCacheRecursively();
+  }
+
+  UnmountElementSlotChild(mount_point, child);
+
+  if (template_child != nullptr) {
+    template_child->MoveElementTreeToCacheIfNeeded();
+  }
+}
+
+void TemplateElement::ApplyAttributeSlotsFromPrevious(
+    const lepus::Value& previous_attribute_slots) {
+  FiberElement* previous_element = nullptr;
+  for (const auto& target : attribute_slot_targets_) {
+    auto* element = target.get();
+    if (element == nullptr || element == previous_element) {
+      continue;
+    }
+    TreeResolver::ApplyTemplateAttributesToElement(
+        element, previous_attribute_slots, attribute_slots_);
+    previous_element = element;
   }
 }
 
@@ -810,14 +910,12 @@ void TemplateElement::RemoveElementSlotChild(
 
   RemoveElementSlotChildFromSlot(slot_index, child.get());
   if (slot_index < element_slot_targets_.size()) {
-    if (child->is_template() && static_cast<TemplateElement*>(child.get())
-                                    ->MoveStaticElementTreeToCacheIfNeeded()) {
-      return;
-    }
-    UnmountElementSlotChild(element_slot_targets_[slot_index], child);
+    DetachAndMaybeCacheElementSlotChild(element_slot_targets_[slot_index],
+                                        child);
   } else if (child->is_template()) {
-    static_cast<TemplateElement*>(child.get())
-        ->MoveStaticElementTreeToCacheIfNeeded();
+    auto* template_child = static_cast<TemplateElement*>(child.get());
+    template_child->DetachElementSlotChildrenForCacheRecursively();
+    template_child->MoveElementTreeToCacheIfNeeded();
   }
 }
 

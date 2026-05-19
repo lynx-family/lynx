@@ -5,6 +5,7 @@
 #define CORE_RENDERER_DOM_FIBER_TEMPLATE_ELEMENT_H_
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "core/base/thread/once_task.h"
@@ -80,6 +81,11 @@ class TemplateElement : public FiberElement {
     fml::RefPtr<FiberElement> ref_node_;
   };
 
+  struct PreparedCachedTemplateElementTree {
+    GeneratedElementsResult generated_;
+    lepus::Value applied_attribute_slots_;
+  };
+
   TemplateElement(const TemplateElement& element, bool clone_resolved_props)
       : FiberElement(element, clone_resolved_props),
         tasm_(element.tasm_),
@@ -106,9 +112,15 @@ class TemplateElement : public FiberElement {
   void MarkInTemplateTreeAndPrepare();
   void MarkInTemplateTreeAndPrepareRecursively();
   void MarkTemplateChildrenInElementSlotsInTree();
-  bool CanUseStaticCachedTree() const;
-  bool ConsumeStaticCachedTreeIfNeeded();
-  bool MoveStaticElementTreeToCacheIfNeeded();
+  bool TryPrepareFromCache();
+  void ConsumePreparedCachedTree();
+  bool MoveElementTreeToCacheIfNeeded();
+  void DetachElementSlotChildrenForCacheRecursively();
+  void DetachAndMaybeCacheElementSlotChild(
+      const ElementSlotMountPoint& mount_point,
+      const fml::RefPtr<FiberElement>& child);
+  void ApplyAttributeSlotsFromPrevious(
+      const lepus::Value& previous_attribute_slots);
   void ApplyRootAttributes(const lepus::Value& previous_root_attributes);
   void ApplyInitialElementSlots();
   void ApplyPendingOperations();
@@ -144,6 +156,7 @@ class TemplateElement : public FiberElement {
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
   base::Vector<PendingOperation> pending_operations_;
+  std::optional<PreparedCachedTemplateElementTree> prepared_cached_tree_;
   base::OnceTaskRefptr<GeneratedElementsResult> async_create_task_{nullptr};
   bool is_in_template_tree_{false};
 };
