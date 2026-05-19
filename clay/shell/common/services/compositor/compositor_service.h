@@ -47,6 +47,7 @@ class CompositorService
   void RecycleSurfaces();
 
   clay::Puppet<clay::Owner::kRaster, PresenterService> presenter_service_;
+  fml::RefPtr<fml::TaskRunner> platform_task_runner_;
   fml::RefPtr<fml::TaskRunner> raster_task_runner_;
   bool had_hybrid_composited_ = false;
 
