@@ -5,6 +5,7 @@
 #define CORE_RENDERER_DOM_FIBER_TEMPLATE_ELEMENT_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "core/base/thread/once_task.h"
@@ -106,6 +107,15 @@ class TemplateElement : public FiberElement {
   void MarkInTemplateTreeAndPrepare();
   void MarkInTemplateTreeAndPrepareRecursively();
   void MarkTemplateChildrenInElementSlotsInTree();
+  std::string TemplateElementCacheKey() const;
+  bool ConsumeCachedTreeIfNeeded();
+  bool MoveElementTreeToCacheIfNeeded();
+  void DetachElementSlotChildrenForCacheRecursively();
+  void DetachAndMaybeCacheElementSlotChild(
+      const ElementSlotMountPoint& mount_point,
+      const fml::RefPtr<FiberElement>& child);
+  void ApplyAttributeSlotsFromPrevious(
+      const lepus::Value& previous_attribute_slots);
   void ApplyRootAttributes(const lepus::Value& previous_root_attributes);
   void ApplyInitialElementSlots();
   void ApplyPendingOperations();

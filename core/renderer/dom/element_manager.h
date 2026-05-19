@@ -38,6 +38,7 @@
 #include "core/renderer/dom/element_context_delegate.h"
 #include "core/renderer/dom/element_context_task_queue.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
+#include "core/renderer/dom/fiber/generated_elements_result.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/vdom/radon/radon_types.h"
 #include "core/renderer/layout_scheduler/layout_scheduler.h"
@@ -85,6 +86,11 @@ class LynxEnvConfig;
 class TemplateAssembler;
 class ElementLayoutNodeManager;
 class ElementManagerDelegate;
+
+struct CachedTemplateElementTree {
+  GeneratedElementsResult generated_;
+  lepus::Value applied_attribute_slots_;
+};
 
 class HierarchyObserver {
  public:
@@ -597,6 +603,11 @@ class ElementManager : public ElementContextDelegate,
   }
 
   bool GetEnableNativeListFromShell() const { return enable_native_list_; }
+
+  void PutCachedTemplateElementTree(const std::string &key,
+                                    CachedTemplateElementTree cached_tree);
+  std::optional<CachedTemplateElementTree> TakeCachedTemplateElementTree(
+      const std::string &key);
 
   bool GetEnableNativeListFromPageConfig() const {
     return config_ && config_->GetEnableNativeList() == TernaryBool::TRUE_VALUE;
@@ -1423,6 +1434,8 @@ class ElementManager : public ElementContextDelegate,
       std::make_shared<lynx::tasm::PropBundleCreatorDefault>();
 
   base::InlineLinearFlatSet<BaseElementContainer *, 4> dirty_stacking_contexts_;
+  std::unordered_map<std::string, base::Vector<CachedTemplateElementTree>>
+      cached_template_element_trees_;
 
   // TODO(yuyang), check this
   // This set holds the unique_id of the already flushed keyframes to ensure
