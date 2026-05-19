@@ -10324,6 +10324,184 @@ TEST_P(FiberElementTest, ElementTemplateStaticCacheReusesCompiledTree) {
 }
 
 TEST_P(FiberElementTest,
+       AttributeSlotsCopyOnlyWhenConstForMaterializedUpdates) {
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTemplateKey(base::String("root_template"));
+  root->result_ = manager->CreateFiberView();
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("old_value"));
+  root->SetAttributeSlots(lepus::Value(attribute_slots));
+  auto* original_attribute_slots = root->attribute_slots_.Array().get();
+  ASSERT_NE(original_attribute_slots, nullptr);
+  ASSERT_FALSE(root->attribute_slots_.Array()->IsConst());
+
+  auto target = manager->CreateFiberView();
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+  target->AddDataset("test", lepus::Value("old_value"));
+  root->attribute_slot_targets_.push_back(target);
+
+  EXPECT_EQ(root->Serialize()
+                .GetProperty("attributeSlots")
+                .GetProperty(0)
+                .StdString(),
+            "old_value");
+
+  lepus::Value set_attribute_args[] = {lepus::Value(root), lepus::Value(0),
+                                       lepus::Value("new_value")};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
+                                                        set_attribute_args, 3);
+
+  auto* test_data = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "new_value");
+  EXPECT_EQ(root->attribute_slots_.Array().get(), original_attribute_slots);
+  EXPECT_FALSE(root->attribute_slots_.Array()->IsConst());
+
+  ASSERT_TRUE(root->attribute_slots_.MarkConst());
+  auto* const_attribute_slots = root->attribute_slots_.Array().get();
+  lepus::Value set_const_attribute_args[] = {
+      lepus::Value(root), lepus::Value(0), lepus::Value("const_new_value")};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(
+      nullptr, set_const_attribute_args, 3);
+
+  test_data = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "const_new_value");
+  EXPECT_NE(root->attribute_slots_.Array().get(), const_attribute_slots);
+  EXPECT_FALSE(root->attribute_slots_.Array()->IsConst());
+  EXPECT_EQ(root->Serialize()
+                .GetProperty("attributeSlots")
+                .GetProperty(0)
+                .StdString(),
+            "const_new_value");
+}
+
+TEST_P(FiberElementTest, SerializeCompiledTemplateDoesNotFreezeAttributeSlots) {
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTemplateKey(base::String("root_template"));
+  root->result_ = manager->CreateFiberView();
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("old_value"));
+  root->SetAttributeSlots(lepus::Value(attribute_slots));
+
+  auto target = manager->CreateFiberView();
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+  target->AddDataset("test", lepus::Value("old_value"));
+  root->attribute_slot_targets_.push_back(target);
+
+  auto serialized = root->Serialize();
+  auto serialized_copy = lepus::Value::ShallowCopy(serialized);
+  EXPECT_EQ(
+      serialized_copy.GetProperty("attributeSlots").GetProperty(0).StdString(),
+      "old_value");
+  EXPECT_TRUE(root->attribute_slots_.Array()->IsConst());
+
+  lepus::Value set_attribute_args[] = {lepus::Value(root), lepus::Value(0),
+                                       lepus::Value("new_value")};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
+                                                        set_attribute_args, 3);
+
+  auto* test_data = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "new_value");
+  EXPECT_FALSE(root->attribute_slots_.Array()->IsConst());
+  EXPECT_EQ(root->Serialize()
+                .GetProperty("attributeSlots")
+                .GetProperty(0)
+                .StdString(),
+            "new_value");
+}
+
+TEST_P(FiberElementTest, ConstElementSlotsRemainMutableForMaterializedUpdates) {
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTemplateKey(base::String("root_template"));
+  root->result_ = manager->CreateFiberView();
+
+  auto first = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  first->SetTemplateKey(base::String("first_template"));
+  auto second = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  second->SetTemplateKey(base::String("second_template"));
+  auto third = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  third->SetTemplateKey(base::String("third_template"));
+
+  auto slot_parent = manager->CreateFiberView();
+  auto sentinel = manager->CreateFiberView();
+  slot_parent->InsertNode(first);
+  slot_parent->InsertNode(sentinel);
+  root->element_slot_targets_.push_back(
+      ElementSlotMountPoint{slot_parent, sentinel});
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(first));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+  auto* original_element_slots = element_slots.get();
+  auto* original_slot_children = slot_children.get();
+  root->SetElementSlots(lepus::Value(element_slots));
+
+  lepus::Value insert_args[] = {lepus::Value(root), lepus::Value(0),
+                                lepus::Value(second)};
+  RendererFunctions::FiberInsertNodeToElementTemplate(nullptr, insert_args, 3);
+  EXPECT_EQ(root->element_slots_.Array().get(), original_element_slots);
+  EXPECT_EQ(root->element_slots_.GetProperty(0).Array().get(),
+            original_slot_children);
+
+  auto serialized_slot_children =
+      root->Serialize().GetProperty("elementSlots").GetProperty(0);
+  ASSERT_TRUE(serialized_slot_children.IsArrayOrJSArray());
+  ASSERT_EQ(serialized_slot_children.GetLength(), 2);
+  EXPECT_EQ(serialized_slot_children.GetProperty(0)
+                .GetProperty("templateKey")
+                .StdString(),
+            "first_template");
+  EXPECT_EQ(serialized_slot_children.GetProperty(1)
+                .GetProperty("templateKey")
+                .StdString(),
+            "second_template");
+
+  ASSERT_TRUE(root->element_slots_.MarkConst());
+  auto* const_element_slots = root->element_slots_.Array().get();
+  auto* const_slot_children = root->element_slots_.GetProperty(0).Array().get();
+  lepus::Value insert_const_args[] = {lepus::Value(root), lepus::Value(0),
+                                      lepus::Value(third)};
+  RendererFunctions::FiberInsertNodeToElementTemplate(nullptr,
+                                                      insert_const_args, 3);
+  EXPECT_NE(root->element_slots_.Array().get(), const_element_slots);
+  EXPECT_NE(root->element_slots_.GetProperty(0).Array().get(),
+            const_slot_children);
+  EXPECT_FALSE(root->element_slots_.Array()->IsConst());
+  EXPECT_FALSE(root->element_slots_.GetProperty(0).Array()->IsConst());
+
+  lepus::Value remove_args[] = {lepus::Value(root), lepus::Value(0),
+                                lepus::Value(first)};
+  RendererFunctions::FiberRemoveNodeFromElementTemplate(nullptr, remove_args,
+                                                        3);
+
+  serialized_slot_children =
+      root->Serialize().GetProperty("elementSlots").GetProperty(0);
+  ASSERT_TRUE(serialized_slot_children.IsArrayOrJSArray());
+  ASSERT_EQ(serialized_slot_children.GetLength(), 2);
+  EXPECT_EQ(serialized_slot_children.GetProperty(0)
+                .GetProperty("templateKey")
+                .StdString(),
+            "second_template");
+  EXPECT_EQ(serialized_slot_children.GetProperty(1)
+                .GetProperty("templateKey")
+                .StdString(),
+            "third_template");
+}
+
+TEST_P(FiberElementTest,
        ElementTemplateCacheReusesCompiledTreeAndReplaysState) {
   auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   parent->SetTemplateKey(base::String("parent_template"));

@@ -84,6 +84,29 @@ size_t FindSlotChildIndex(const lepus::Value& slot_children,
   return static_cast<size_t>(slot_children.GetLength());
 }
 
+void EnsureMutableArrayForWrite(lepus::Value* value) {
+  if (value == nullptr || !value->IsArray()) {
+    return;
+  }
+  auto array = value->Array();
+  if (array != nullptr && array->IsConst()) {
+    *value = lepus::Value::ShallowCopy(*value);
+  }
+}
+
+lepus::Value CopyArrayHeader(const lepus::Value& value) {
+  if (!value.IsArrayOrJSArray()) {
+    return value;
+  }
+
+  auto array = lepus::CArray::Create();
+  array->reserve(value.GetLength());
+  for (size_t i = 0; i < static_cast<size_t>(value.GetLength()); ++i) {
+    array->emplace_back(value.GetProperty(static_cast<uint32_t>(i)));
+  }
+  return lepus::Value(std::move(array));
+}
+
 lepus::Value CreateRootAttributeSlots(const lepus::Value& root_attributes) {
   auto attribute_slots = lepus::CArray::Create();
   attribute_slots->emplace_back(root_attributes.IsObject()
@@ -680,12 +703,16 @@ void TemplateElement::UnmountElementSlotChild(
 
 lepus::Value TemplateElement::GetOrCreateElementSlotChildren(
     uint32_t slot_index) {
-  if (element_slots_.IsEmpty()) {
+  if (!element_slots_.IsArrayOrJSArray()) {
     element_slots_ = lepus::Value(lepus::CArray::Create());
+  } else {
+    EnsureMutableArrayForWrite(&element_slots_);
   }
   auto slot_children = element_slots_.GetProperty(slot_index);
-  if (slot_children.IsEmpty()) {
+  if (!slot_children.IsArrayOrJSArray()) {
     slot_children = lepus::Value(lepus::CArray::Create());
+  } else {
+    EnsureMutableArrayForWrite(&slot_children);
   }
   element_slots_.SetProperty(slot_index, slot_children);
   return slot_children;
@@ -693,14 +720,16 @@ lepus::Value TemplateElement::GetOrCreateElementSlotChildren(
 
 void TemplateElement::RemoveElementSlotChildFromSlot(uint32_t slot_index,
                                                      FiberElement* child) {
-  if (child == nullptr || !element_slots_.IsArray() ||
+  if (child == nullptr || !element_slots_.IsArrayOrJSArray() ||
       slot_index >= static_cast<uint32_t>(element_slots_.GetLength())) {
     return;
   }
+  EnsureMutableArrayForWrite(&element_slots_);
   auto slot_children = element_slots_.GetProperty(slot_index);
-  if (!slot_children.IsArray()) {
+  if (!slot_children.IsArrayOrJSArray()) {
     return;
   }
+  EnsureMutableArrayForWrite(&slot_children);
   RemoveElementFromSlotChildren(&slot_children, child);
   element_slots_.SetProperty(slot_index, slot_children);
 }
@@ -846,9 +875,11 @@ void TemplateElement::SetAttributeSlot(uint32_t slot_index,
     return;
   }
 
-  auto previous_attribute_slots = attribute_slots_;
-  if (attribute_slots_.IsEmpty()) {
+  auto previous_attribute_slots = CopyArrayHeader(attribute_slots_);
+  if (!attribute_slots_.IsArrayOrJSArray()) {
     attribute_slots_ = lepus::Value(lepus::CArray::Create());
+  } else {
+    EnsureMutableArrayForWrite(&attribute_slots_);
   }
   attribute_slots_.SetProperty(slot_index, value);
 
