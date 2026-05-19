@@ -244,6 +244,10 @@ static id<LynxServiceTextProtocol> getTextService() {
   LynxUIContext *uiContext = _uiOwner.uiContext;
   LUIConfigAdapter *configAdapter = [[LUIConfigAdapter alloc] initWithConfig:pageConfig.get()];
   [uiContext setUIConfig:configAdapter];
+
+  if (pageConfig->GetSyncXElementRegistry()) {
+    [_uiOwner setEnableSyncXelementRegistry];
+  }
 }
 
 - (void)setFluencyTracerEnabled:(LynxBooleanOption)enabled {

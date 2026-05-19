@@ -1926,3 +1926,14 @@ enableFrameNativeData:
   supportPlatform:
     - Android
     - iOS
+syncXElementRegistry:
+  description: Controls whether runtime synchronizes the XElement registry during page setup. When enabled, XElement registrations can be synced into the page behavior registry; when disabled, that registry sync is skipped.
+  defaultValue: 'true'
+  valueType: bool
+  author: moonface
+  since: '4.0'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+  export: false

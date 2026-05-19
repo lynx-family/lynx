@@ -83,6 +83,7 @@ public class PageConfig {
       "enableTransformedTouchPosition";
   private static final String KEY_ENABLE_DISPATCH_CUSTOM_EVENT_FOR_UI =
       "enableDispatchCustomEventForUI";
+  private static final String KEY_SYNC_X_ELEMENT_REGISTRY = "syncXElementRegistry";
 
   private boolean autoExpose = true;
   private boolean enableEventThrough;
@@ -142,6 +143,7 @@ public class PageConfig {
   private boolean mEnableTextLayoutCache = true;
   private boolean mEnableTransformedTouchPosition = false;
   private boolean mEnableDispatchCustomEventForUI = false;
+  private boolean mSyncXElementRegistry = true;
 
   public PageConfig(ReadableMap map) {
     autoExpose = true;
@@ -374,6 +376,10 @@ public class PageConfig {
 
       if (map.hasKey(KEY_ENABLE_DISPATCH_CUSTOM_EVENT_FOR_UI)) {
         mEnableDispatchCustomEventForUI = map.getBoolean(KEY_ENABLE_DISPATCH_CUSTOM_EVENT_FOR_UI);
+      }
+
+      if (map.hasKey(KEY_SYNC_X_ELEMENT_REGISTRY)) {
+        mSyncXElementRegistry = map.getBoolean(KEY_SYNC_X_ELEMENT_REGISTRY);
       }
     }
   }
@@ -608,6 +614,10 @@ public class PageConfig {
 
   public boolean getEnableDispatchCustomEventForUI() {
     return mEnableDispatchCustomEventForUI;
+  }
+
+  public boolean getSyncXElementRegistry() {
+    return mSyncXElementRegistry;
   }
 
   @Override

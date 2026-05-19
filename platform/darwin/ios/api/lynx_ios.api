@@ -5046,6 +5046,7 @@ public class LynxUIOwner : NSObject {
   public void LynxUIOwner::removeListComponent:componentSign:(NSInteger listSign,[componentSign] NSInteger componentSign);
   public void LynxUIOwner::updateContentOffsetForListContainer:contentSize:deltaX:deltaY:(NSInteger containerID,[contentSize] float contentSize,[deltaX] float deltaX,[deltaY] float deltaY);
   public void LynxUIOwner::initNewGestureInUIThread:(BOOL enableNewGesture);
+  public void LynxUIOwner::setEnableSyncXelementRegistry();
   public NSInteger LynxUIOwner::getRootSign();
   public void LynxUIOwner::detachAllUIViews();
   public void LynxUIOwner::rebuildAllUIViewsAndHierarchy();
