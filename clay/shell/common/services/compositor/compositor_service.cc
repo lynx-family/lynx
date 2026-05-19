@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/include/fml/synchronization/waitable_event.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/flow/surface.h"
 #include "clay/flow/view_slicer.h"
@@ -18,6 +19,10 @@
 #include "clay/shell/common/services/compositor/platform_overlay_service.h"
 
 namespace clay {
+
+namespace {
+constexpr int64_t kPlatformPresentWaitTimeoutMs = 3000;
+}  // namespace
 
 bool CompositorService::SubmitFrame(
     clay::GrContext* context, std::unique_ptr<SurfaceFrame> background_frame,
@@ -120,14 +125,35 @@ bool CompositorService::SubmitFrame(
       .submit_infos = std::move(submit_infos),
   };
 
-  presenter_service_.Act([did_encode, present_frame = std::move(present_frame)](
-                             auto& impl) mutable {
+#if OS_IOS
+  const bool needs_platform_present_sync =
+      !present_frame.composite_order.empty();
+#else
+  const bool needs_platform_present_sync = false;
+#endif
+
+  std::shared_ptr<fml::AutoResetWaitableEvent> present_latch;
+  if (needs_platform_present_sync && platform_task_runner_ &&
+      !platform_task_runner_->RunsTasksOnCurrentThread()) {
+    present_latch = std::make_shared<fml::AutoResetWaitableEvent>();
+  }
+
+  presenter_service_.Act([did_encode, present_frame = std::move(present_frame),
+                          present_latch](auto& impl) mutable {
     // We do `did_encode` check here because present_frame needs to be
     // destructed in Platform thread
     if (did_encode) {
       impl.Present(present_frame);
     }
+    if (present_latch) {
+      present_latch->Signal();
+    }
   });
+
+  if (present_latch) {
+    present_latch->WaitWithTimeout(
+        fml::TimeDelta::FromMilliseconds(kPlatformPresentWaitTimeoutMs));
+  }
 
   return did_encode;
 }
@@ -137,6 +163,8 @@ void CompositorService::OnInit(clay::ServiceManager& service_manager,
                                const clay::RasterServiceContext& ctx) {
   presenter_service_ = service_manager.GetService<PresenterService>();
   overlay_service_ = service_manager.GetService<PlatformOverlayService>();
+  platform_task_runner_ = service_manager.GetTaskRunners()
+                              ->SelectTaskRunner<clay::Owner::kPlatform>();
   raster_task_runner_ = service_manager.GetTaskRunners()
                             ->SelectTaskRunner<clay::Owner::kRaster>();
 }
@@ -144,6 +172,7 @@ void CompositorService::OnInit(clay::ServiceManager& service_manager,
 void CompositorService::OnDestroy() {
   presenter_service_ = nullptr;
   overlay_service_ = nullptr;
+  platform_task_runner_ = nullptr;
   raster_task_runner_ = nullptr;
   compositor_surfaces_.clear();
 }
