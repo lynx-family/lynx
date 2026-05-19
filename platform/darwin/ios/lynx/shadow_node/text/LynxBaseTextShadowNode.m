@@ -29,7 +29,12 @@ NSAttributedStringKey const LynxVerticalAlignKey = @"LynxVerticalAlignKey";
 - (nullable UIImage*)imageForBounds:(CGRect)imageBounds
                       textContainer:(nullable NSTextContainer*)textContainer
                      characterIndex:(NSUInteger)charIndex {
-  return nil;
+  static UIImage* emptyImage = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    emptyImage = [[UIImage alloc] init];
+  });
+  return emptyImage;
 }
 
 @end
