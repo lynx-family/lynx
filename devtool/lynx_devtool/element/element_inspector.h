@@ -6,9 +6,12 @@
 #define DEVTOOL_LYNX_DEVTOOL_ELEMENT_ELEMENT_INSPECTOR_H_
 
 #include <tuple>
+#include <vector>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/vector.h"
 #include "core/base/utils/any.h"
+#include "core/renderer/css/css_property_id.h"
 #include "core/renderer/dom/element.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 
@@ -353,6 +356,8 @@ class ElementInspector {
   static bool IsEnableCSSInheritance(Element* element);
 
   static std::unordered_map<std::string, std::string> GetDefaultCss();
+  static base::InlineVector<lynx::tasm::CSSPropertyID, 16>
+  GetOrderedInspectorResetStyleNames();
   static std::vector<double> GetOverlayNGBoxModel(Element* element);
   static std::vector<float> GetRectToWindow(Element* element);
 

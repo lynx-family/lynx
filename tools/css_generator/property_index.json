@@ -1,6 +1,6 @@
 [
     {
-        "count": 229
+        "count": 233
     },
     {
         "id": 1,
@@ -917,5 +917,21 @@
     {
         "id": 229,
         "name": "mask-composite"
+    },
+    {
+        "id": 230,
+        "name": "caret-gradient"
+    },
+    {
+        "id": 231,
+        "name": "caret-width"
+    },
+    {
+        "id": 232,
+        "name": "caret-height"
+    },
+    {
+        "id": 233,
+        "name": "caret-radius"
     }
 ]

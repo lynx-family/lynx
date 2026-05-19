@@ -820,6 +820,38 @@ export interface Properties {
   XPlaceholderFontWeight?: (number & {}) | (string & {}) | undefined;
   XPlaceholderFontStyle?: (number & {}) | (string & {}) | undefined;
   /**
+   * The `caret-gradient` property specifies a gradient brush for the editable caret.
+   *
+   * **Syntax**: `none | <gradient>`
+   *
+   * @see https://lynxjs.org/api/css/properties/caret-gradient
+   */
+  caretGradient?: (number & {}) | (string & {}) | undefined;
+  /**
+   * The `caret-width` property specifies the editable caret width.
+   *
+   * **Syntax**: `<length>`
+   *
+   * @see https://lynxjs.org/api/css/properties/caret-width
+   */
+  caretWidth?: (number & {}) | (string & {}) | undefined;
+  /**
+   * The `caret-height` property specifies the editable caret paint height.
+   *
+   * **Syntax**: `<length>`
+   *
+   * @see https://lynxjs.org/api/css/properties/caret-height
+   */
+  caretHeight?: (number & {}) | (string & {}) | undefined;
+  /**
+   * The `caret-radius` property specifies the editable caret corner radius.
+   *
+   * **Syntax**: `<length>`
+   *
+   * @see https://lynxjs.org/api/css/properties/caret-radius
+   */
+  caretRadius?: (number & {}) | (string & {}) | undefined;
+  /**
    * Specify whether the node can be the best responder for touch testing.
    *
    * **Syntax**: `auto | none`

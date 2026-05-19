@@ -34,6 +34,7 @@
 #include "clay/ui/component/text/text_paragraph_builder.h"
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/lynx_module/type_utils.h"
+#include "clay/ui/painter/gradient.h"
 #include "clay/ui/platform/keyboard_types.h"
 #include "clay/ui/rendering/editable/render_editable.h"
 #include "clay/ui/resource/font_collection.h"
@@ -438,9 +439,55 @@ void EditableView::SetAttribute(const char* attr_c, const clay::Value& value) {
       SetFontFamily(attribute_utils::GetCString(value));
       break;
     case KeywordID::kCaretColor: {
+      if (value.IsUint()) {
+        GetRenderEditable()->SetCaretColor(
+            Color(attribute_utils::GetUint(value)));
+        break;
+      }
       Color color;
-      if (Color::Parse(attribute_utils::GetCString(value), &color)) {
+      const auto caret_color = lynx::base::TrimString(
+          attribute_utils::GetCString(value), " \t\n\r\f\v",
+          lynx::base::TrimPositions::TRIM_ALL);
+      if (Color::Parse(caret_color, &color)) {
         GetRenderEditable()->SetCaretColor(color);
+      } else {
+        GetRenderEditable()->SetCaretColor(std::nullopt);
+      }
+    } break;
+    case KeywordID::kCaretGradient: {
+      auto gradient_value = lynx::base::TrimString(
+          attribute_utils::GetCString(value), " \t\n\r\f\v",
+          lynx::base::TrimPositions::TRIM_ALL);
+      if (gradient_value.empty() || gradient_value == "none") {
+        GetRenderEditable()->SetCaretGradient(std::nullopt);
+      } else if (auto gradient = Gradient::Create(gradient_value)) {
+        GetRenderEditable()->SetCaretGradient(std::move(gradient));
+      } else {
+        GetRenderEditable()->SetCaretGradient(std::nullopt);
+      }
+    } break;
+    case KeywordID::kCaretWidth: {
+      double caret_width = 0.0;
+      if (attribute_utils::TryGetNum(value, caret_width)) {
+        GetRenderEditable()->SetCaretWidth(static_cast<float>(caret_width));
+      } else {
+        GetRenderEditable()->SetCaretWidth(0.0f);
+      }
+    } break;
+    case KeywordID::kCaretHeight: {
+      double caret_height = 0.0;
+      if (attribute_utils::TryGetNum(value, caret_height)) {
+        GetRenderEditable()->SetCaretHeight(static_cast<float>(caret_height));
+      } else {
+        GetRenderEditable()->SetCaretHeight(0.0f);
+      }
+    } break;
+    case KeywordID::kCaretRadius: {
+      double caret_radius = 0.0;
+      if (attribute_utils::TryGetNum(value, caret_radius)) {
+        GetRenderEditable()->SetCaretRadius(static_cast<float>(caret_radius));
+      } else {
+        GetRenderEditable()->SetCaretRadius(0.0f);
       }
     } break;
     case KeywordID::kMaxlength: {
@@ -1150,6 +1197,7 @@ void EditableView::SetContent(const std::string& content) {
 }
 
 void EditableView::SetFontColor(const Color& color) {
+  GetRenderEditable()->SetCaretFallbackColor(color);
   if (text_style_.text_color != color) {
     text_style_.text_color = color;
     MarkNeedsLayout();
@@ -1561,9 +1609,14 @@ bool EditableView::MatchAttrSettings(KeywordID attr) {
     case KeywordID::kConfirmType:
     case KeywordID::kColor:
     case KeywordID::kFontSize:
+    case KeywordID::kLineHeight:
     case KeywordID::kTextAlign:
     case KeywordID::kFontFamily:
     case KeywordID::kCaretColor:
+    case KeywordID::kCaretGradient:
+    case KeywordID::kCaretWidth:
+    case KeywordID::kCaretHeight:
+    case KeywordID::kCaretRadius:
     case KeywordID::kMaxlength:
     case KeywordID::kReadonly:
     case KeywordID::kMaxlines:
@@ -1590,6 +1643,10 @@ bool EditableView::MatchNGAttrSettings(KeywordID attr) {
     case KeywordID::kTextAlign:
     case KeywordID::kFontFamily:
     case KeywordID::kCaretColor:
+    case KeywordID::kCaretGradient:
+    case KeywordID::kCaretWidth:
+    case KeywordID::kCaretHeight:
+    case KeywordID::kCaretRadius:
     case KeywordID::kMaxlength:
     case KeywordID::kReadonly:
     case KeywordID::kMaxlines:

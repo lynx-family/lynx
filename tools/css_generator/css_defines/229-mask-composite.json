@@ -3,7 +3,7 @@
   "id": 229,
   "type": "complex",
   "default_value": "add",
-  "version": "2.20",
+  "version": "4.0",
   "author": "fanjinsong",
   "consumption_status": "skip",
   "desc": "Defines how mask layers are composited together.",

@@ -203,6 +203,10 @@ focus
 ignore-focus
 edit-on-focus
 caret-color
+caret-gradient
+caret-width
+caret-height
+caret-radius
 tint-color
 enable-report-info
 richtype

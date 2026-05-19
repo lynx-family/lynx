@@ -707,6 +707,30 @@ void PropBundleStyleWriter::WriteCaretColor(
                        style->GetCaretColor().c_str());
 }
 
+void PropBundleStyleWriter::WriteCaretGradient(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  bundle->SetPropsByID(CSSPropertyID::kPropertyIDCaretGradient,
+                       style->GetCaretGradient().c_str());
+}
+
+void PropBundleStyleWriter::WriteCaretWidth(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  bundle->SetPropsByID(CSSPropertyID::kPropertyIDCaretWidth,
+                       static_cast<double>(style->GetCaretWidth()));
+}
+
+void PropBundleStyleWriter::WriteCaretRadius(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  bundle->SetPropsByID(CSSPropertyID::kPropertyIDCaretRadius,
+                       static_cast<double>(style->GetCaretRadius()));
+}
+
+void PropBundleStyleWriter::WriteCaretHeight(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  bundle->SetPropsByID(CSSPropertyID::kPropertyIDCaretHeight,
+                       static_cast<double>(style->GetCaretHeight()));
+}
+
 void PropBundleStyleWriter::WriteDirection(PropBundle* bundle,
                                            starlight::ComputedCSSStyle* style) {
   auto layout_computed_style = style->GetLayoutComputedStyle();

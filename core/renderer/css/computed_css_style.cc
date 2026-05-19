@@ -25,6 +25,16 @@ using base::FloatsEqual;
 
 namespace starlight {
 
+namespace {
+
+static constexpr char kDefaultCaretGradient[] = "none";
+
+base::String DefaultCaretGradient() {
+  return BASE_STATIC_STRING(kDefaultCaretGradient);
+}
+
+}  // namespace
+
 using CSSValuePattern = tasm::CSSValuePattern;
 
 const base::InlineOrderedFlatSet<tasm::CSSPropertyID, 3>&
@@ -589,11 +599,16 @@ ComputedCSSStyle::ComputedCSSStyle(float layouts_unit_per_px,
       length_context_(0.f, layouts_unit_per_px, physical_pixels_per_layout_unit,
                       layouts_unit_per_px * DEFAULT_FONT_SIZE_DP,
                       layouts_unit_per_px * DEFAULT_FONT_SIZE_DP, LayoutUnit(),
-                      LayoutUnit()) {}
+                      LayoutUnit()),
+      caret_gradient_(DefaultCaretGradient()) {}
 
 ComputedCSSStyle::ComputedCSSStyle(const ComputedCSSStyle& o)
     : layout_computed_style_(o.layout_computed_style_),
-      length_context_(o.length_context_) {}
+      length_context_(o.length_context_),
+      caret_gradient_(o.caret_gradient_),
+      caret_width_(o.caret_width_),
+      caret_radius_(o.caret_radius_),
+      caret_height_(o.caret_height_) {}
 
 void ComputedCSSStyle::CopyFrom(const ComputedCSSStyle& o) {
   auto copy_flex_optional = [](auto& dst, const auto& src) {
@@ -635,6 +650,10 @@ void ComputedCSSStyle::CopyFrom(const ComputedCSSStyle& o) {
   has_z_index_ = o.has_z_index_;
   handle_color_ = o.handle_color_;
   handle_size_ = o.handle_size_;
+  caret_gradient_ = o.caret_gradient_;
+  caret_width_ = o.caret_width_;
+  caret_radius_ = o.caret_radius_;
+  caret_height_ = o.caret_height_;
   origin_has_opacity_ = o.origin_has_opacity_;
   opacity_ = o.opacity_;
   offset_distance_ = o.offset_distance_;
@@ -676,6 +695,10 @@ void ComputedCSSStyle::Reset() {
   pointer_events_ = PointerEventsType::kAuto;
 
   caret_color_ = base::String();
+  caret_gradient_ = DefaultCaretGradient();
+  caret_width_ = DefaultComputedStyle::DEFAULT_FLOAT;
+  caret_radius_ = DefaultComputedStyle::DEFAULT_FLOAT;
+  caret_height_ = DefaultComputedStyle::DEFAULT_FLOAT;
   adapt_font_size_ = base::String();
   content_ = base::String();
   enter_transition_data_.reset();
@@ -711,9 +734,6 @@ void ComputedCSSStyle::Reset() {
   const float default_font_size =
       length_context_.layouts_unit_per_px_ * DEFAULT_FONT_SIZE_DP;
   SetFontSize(default_font_size, default_font_size);
-  raw_custom_properties_.reset();
-  resolved_custom_properties_.reset();
-  resolved_values_.reset();
 }
 
 bool ComputedCSSStyle::SetValue(tasm::CSSPropertyID id,
@@ -2803,6 +2823,49 @@ bool ComputedCSSStyle::SetCaretColor(const lynx::tasm::CSSValue& value,
       "caret-color must be a string!", parser_configs_);
 }
 
+bool ComputedCSSStyle::SetCaretGradient(const lynx::tasm::CSSValue& value,
+                                        bool reset) {
+  return CSSStyleUtils::ComputeStringStyle(
+      value, reset, caret_gradient_, DefaultCaretGradient(),
+      "caret-gradient must be a string!", parser_configs_);
+}
+
+bool ComputedCSSStyle::SetCaretWidth(const tasm::CSSValue& value,
+                                     const bool reset) {
+  float old_value = caret_width_;
+  if (reset) {
+    caret_width_ = DefaultComputedStyle::DEFAULT_FLOAT;
+  } else if (UNLIKELY(!CalculateCSSValueToFloat(
+                 value, caret_width_, length_context_, parser_configs_))) {
+    return false;
+  }
+  return base::FloatsNotEqual(old_value, caret_width_);
+}
+
+bool ComputedCSSStyle::SetCaretRadius(const tasm::CSSValue& value,
+                                      const bool reset) {
+  float old_value = caret_radius_;
+  if (reset) {
+    caret_radius_ = DefaultComputedStyle::DEFAULT_FLOAT;
+  } else if (UNLIKELY(!CalculateCSSValueToFloat(
+                 value, caret_radius_, length_context_, parser_configs_))) {
+    return false;
+  }
+  return base::FloatsNotEqual(old_value, caret_radius_);
+}
+
+bool ComputedCSSStyle::SetCaretHeight(const tasm::CSSValue& value,
+                                      const bool reset) {
+  float old_value = caret_height_;
+  if (reset) {
+    caret_height_ = DefaultComputedStyle::DEFAULT_FLOAT;
+  } else if (UNLIKELY(!CalculateCSSValueToFloat(
+                 value, caret_height_, length_context_, parser_configs_))) {
+    return false;
+  }
+  return base::FloatsNotEqual(old_value, caret_height_);
+}
+
 bool ComputedCSSStyle::SetTextShadow(const tasm::CSSValue& value,
                                      const bool reset) {
   PrepareOptionalForTextAttributes();
@@ -4073,6 +4136,22 @@ lepus_value ComputedCSSStyle::XPlaceholderFontFamilyToLepus() {
 
 lepus_value ComputedCSSStyle::CaretColorToLepus() {
   return lepus::Value(caret_color_);
+}
+
+lepus_value ComputedCSSStyle::CaretGradientToLepus() {
+  return lepus::Value(caret_gradient_);
+}
+
+lepus_value ComputedCSSStyle::CaretWidthToLepus() {
+  return lepus_value(caret_width_);
+}
+
+lepus_value ComputedCSSStyle::CaretRadiusToLepus() {
+  return lepus_value(caret_radius_);
+}
+
+lepus_value ComputedCSSStyle::CaretHeightToLepus() {
+  return lepus_value(caret_height_);
 }
 
 lepus_value ComputedCSSStyle::DirectionToLepus() {

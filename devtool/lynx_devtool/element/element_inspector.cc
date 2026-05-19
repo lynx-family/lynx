@@ -462,16 +462,7 @@ void ElementInspector::Flush(Element* element) {
                             Value(inspector_attribute->attr_map_.at(name)));
     }
 
-    base::InlineVector<lynx::tasm::CSSPropertyID, 16> reset_names;
-    const auto& compute_style_map = CSSProperty::GetComputeStyleMap();
-    for (const auto& pair : compute_style_map) {
-      if (!pair.first.empty()) {
-        auto id = CSSProperty::GetPropertyID(pair.first);
-        if (!CSSProperty::IsInspectorFilteredProperty(id)) {
-          reset_names.push_back(id);
-        }
-      }
-    }
+    auto reset_names = GetOrderedInspectorResetStyleNames();
     element->ResetStyle(reset_names);
     auto* element_manager = element->element_manager();
     if (element->GetTag() == "page" && element_manager) {
@@ -1258,6 +1249,19 @@ bool ElementInspector::IsEnableCSSInheritance(Element* element) {
 
 std::unordered_map<std::string, std::string> ElementInspector::GetDefaultCss() {
   return CSSProperty::GetComputeStyleMap();
+}
+
+base::InlineVector<lynx::tasm::CSSPropertyID, 16>
+ElementInspector::GetOrderedInspectorResetStyleNames() {
+  base::InlineVector<lynx::tasm::CSSPropertyID, 16> reset_names;
+  for (int id = lynx::tasm::CSSPropertyID::kPropertyStart + 1;
+       id < lynx::tasm::CSSPropertyID::kPropertyEnd; ++id) {
+    auto css_id = static_cast<lynx::tasm::CSSPropertyID>(id);
+    if (!CSSProperty::IsInspectorFilteredProperty(css_id)) {
+      reset_names.push_back(css_id);
+    }
+  }
+  return reset_names;
 }
 
 std::vector<double> ElementInspector::GetOverlayNGBoxModel(Element* element) {

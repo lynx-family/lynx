@@ -7,6 +7,8 @@
 
 #include "devtool/lynx_devtool/element/element_helper.h"
 
+#include <algorithm>
+
 #include "base/include/auto_reset.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/css_decoder.h"
@@ -1159,6 +1161,37 @@ TEST_F(ElementHelperTest, GetBackGroundColorsOfNodeTest) {
   content2["computedFontSize"] = "medium";
   content2["computedFontWeight"] = "normal";
   EXPECT_EQ(res2, content2);
+}
+
+TEST_F(ElementHelperTest, GetOrderedInspectorResetStyleNamesTest) {
+  auto reset_names =
+      lynx::devtool::ElementInspector::GetOrderedInspectorResetStyleNames();
+  ASSERT_FALSE(reset_names.empty());
+
+  for (size_t i = 1; i < reset_names.size(); ++i) {
+    EXPECT_LT(static_cast<int>(reset_names[i - 1]),
+              static_cast<int>(reset_names[i]));
+  }
+
+  auto find_style = [&reset_names](lynx::tasm::CSSPropertyID id) {
+    return std::find(reset_names.begin(), reset_names.end(), id);
+  };
+  auto caret_gradient =
+      find_style(lynx::tasm::CSSPropertyID::kPropertyIDCaretGradient);
+  auto caret_width =
+      find_style(lynx::tasm::CSSPropertyID::kPropertyIDCaretWidth);
+  auto caret_height =
+      find_style(lynx::tasm::CSSPropertyID::kPropertyIDCaretHeight);
+  auto caret_radius =
+      find_style(lynx::tasm::CSSPropertyID::kPropertyIDCaretRadius);
+
+  ASSERT_NE(caret_gradient, reset_names.end());
+  ASSERT_NE(caret_width, reset_names.end());
+  ASSERT_NE(caret_height, reset_names.end());
+  ASSERT_NE(caret_radius, reset_names.end());
+  EXPECT_LT(caret_gradient, caret_width);
+  EXPECT_LT(caret_width, caret_height);
+  EXPECT_LT(caret_height, caret_radius);
 }
 
 TEST_F(ElementHelperTest, CreateStyleSheetTest) {

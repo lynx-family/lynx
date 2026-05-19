@@ -17,6 +17,7 @@
 #include "clay/ui/common/utils/floating_comparison.h"
 #include "clay/ui/component/editable/text_utils.h"
 #include "clay/ui/component/text/text_style.h"
+#include "clay/ui/painter/gradient_factory.h"
 #include "clay/ui/painter/painting_context.h"
 #include "clay/ui/painter/text_painter.h"
 
@@ -30,7 +31,6 @@ constexpr float kCaretWidth = 1.f;
 constexpr float kCaretWidth = 2.f;
 #endif
 constexpr float kCaretVerticalPreserveSpace = 2.f;
-constexpr uint32_t kCaretColor = 0xff000000;
 constexpr uint32_t kSelectionColor = 0xff90caf9;  // material blue[200]
 
 }  // namespace
@@ -64,9 +64,10 @@ void RenderEditable::Paint(PaintingContext& context, const FloatPoint& offset) {
 
   auto content_rect = GetFrameRect();
   content_rect.SetLocation({0, 0});
-  content_rect.SetWidth(content_rect.width() - HorizontalThickness() -
-                        CaretWidth());
-  content_rect.SetHeight(content_rect.height() - VerticalThickness());
+  content_rect.SetWidth(std::max(
+      0.f, content_rect.width() - HorizontalThickness() - CaretWidth()));
+  content_rect.SetHeight(
+      std::max(0.f, content_rect.height() - VerticalThickness()));
 
   // caret_rect's offset is relative to text.
   FloatRect caret_rect = ComputeCaretRect();
@@ -77,20 +78,13 @@ void RenderEditable::Paint(PaintingContext& context, const FloatPoint& offset) {
   EnsureCaretCenterInVertical(content_rect, caret_rect);
   EnsureCaretInVisibleArea(content_rect, &caret_rect);
   ClampContent(content_rect, caret_rect);
+
   bool show_selection = !text_editing_value.selection().collapsed();
-
-  if (painter_->CanPaint() || display_caret_ || show_selection) {
-    GraphicsContext* graphics_context = context.GetGraphicsContext();
-    GraphicsContext::AutoRestore auto_canvas(graphics_context, true);
-    paint_offset_ = offset + PaintOffset();
-    // Translate to the start of content region.
-    graphics_context->Translate(paint_offset_.x(), paint_offset_.y());
-    graphics_context->ClipRect(
-        skity::Rect::MakeWH(static_cast<int>(content_rect.width()),
-                            static_cast<int>(content_rect.height())),
-        GrClipOp::kIntersect, false);
-
-    // We implement textalign by manipulating the drawing position
+  const bool paint_caret = display_caret_ && !show_selection;
+  paint_offset_ = offset + PaintOffset();
+  if (content_rect.width() > 0.f && content_rect.height() > 0.f &&
+      (painter_->CanPaint() || paint_caret || show_selection)) {
+    // We implement textalign by manipulating the drawing position.
     float x_offset = 0;
     if (!is_multiline_) {
       if (text_align_ == TextAlignment::kCenter) {
@@ -106,44 +100,57 @@ void RenderEditable::Paint(PaintingContext& context, const FloatPoint& offset) {
       }
     }
 
-    if (text_editing_value.empty() && need_paint_placeholder_) {
-      {
-        GraphicsContext::AutoRestore saver(graphics_context, true);
-        graphics_context->Translate(
-            offset_for_placeholder_visible_.x() + x_offset,
-            offset_for_placeholder_visible_.y());
+    auto paint_content = [this, content_rect, caret_rect, x_offset,
+                          show_selection,
+                          paint_caret](PaintingContext& clip_context,
+                                       const FloatPoint& clip_offset) {
+      GraphicsContext* graphics_context = clip_context.GetGraphicsContext();
+      GraphicsContext::AutoRestore auto_canvas(graphics_context, true);
+      graphics_context->Translate(clip_offset.x(), clip_offset.y());
+
+      if (GetTextEditingValue().empty() && need_paint_placeholder_) {
+        {
+          GraphicsContext::AutoRestore saver(graphics_context, true);
+          graphics_context->Translate(
+              offset_for_placeholder_visible_.x() + x_offset,
+              offset_for_placeholder_visible_.y());
+          if (painter_->CanPaint()) {
+            painter_->SetWidth(content_rect.width());
+            painter_->SetHeight(content_rect.height());
+            painter_->Paint(graphics_context);
+          }
+        }
+        graphics_context->Translate(offset_for_caret_visible_.x(),
+                                    offset_for_caret_visible_.y());
+        if (paint_caret) {
+          PaintCaret(graphics_context, caret_rect);
+          clip_context.SetWillChangeHint();
+        }
+      } else {
+        graphics_context->Translate(offset_for_caret_visible_.x() + x_offset,
+                                    offset_for_caret_visible_.y());
+        if (show_selection) {
+          auto boxes = painter_->GetRectsForRange(
+              GetTextEditingValue().selection().start(),
+              GetTextEditingValue().selection().end(),
+              txt::Paragraph::RectHeightStyle::kMax,
+              txt::Paragraph::RectWidthStyle::kMax);
+          PaintSelection(graphics_context, boxes);
+        } else if (paint_caret) {
+          PaintCaret(graphics_context, caret_rect);
+          clip_context.SetWillChangeHint();
+        }
         if (painter_->CanPaint()) {
           painter_->SetWidth(content_rect.width());
           painter_->SetHeight(content_rect.height());
           painter_->Paint(graphics_context);
         }
       }
-      graphics_context->Translate(offset_for_caret_visible_.x(),
-                                  offset_for_caret_visible_.y());
-      if (display_caret_) {
-        PaintCaret(graphics_context, caret_rect);
-        context.SetWillChangeHint();
-      }
-    } else {
-      graphics_context->Translate(offset_for_caret_visible_.x() + x_offset,
-                                  offset_for_caret_visible_.y());
-      if (show_selection) {
-        auto boxes =
-            painter_->GetRectsForRange(text_editing_value.selection().start(),
-                                       text_editing_value.selection().end(),
-                                       txt::Paragraph::RectHeightStyle::kMax,
-                                       txt::Paragraph::RectWidthStyle::kMax);
-        PaintSelection(graphics_context, boxes);
-      } else if (display_caret_) {
-        PaintCaret(graphics_context, caret_rect);
-        context.SetWillChangeHint();
-      }
-      if (painter_->CanPaint()) {
-        painter_->SetWidth(content_rect.width());
-        painter_->SetHeight(content_rect.height());
-        painter_->Paint(graphics_context);
-      }
-    }
+    };
+
+    context.PushClipRect(
+        FloatRect(0, 0, content_rect.width(), content_rect.height()),
+        paint_offset_, paint_content);
   }
 
   RenderBox::PaintChildren(context, offset);
@@ -155,9 +162,40 @@ void RenderEditable::Paint(PaintingContext& context, const FloatPoint& offset) {
 
 void RenderEditable::PaintCaret(GraphicsContext* context,
                                 const FloatRect& caret_rect) {
+  FloatRect paint_rect = caret_rect;
+  if (caret_height_ && *caret_height_ > 0.f) {
+    const float height = *caret_height_;
+    paint_rect.SetY(caret_rect.y() + (caret_rect.height() - height) * 0.5f);
+    paint_rect.SetHeight(height);
+  }
+  if (paint_rect.width() <= 0.f || paint_rect.height() <= 0.f) {
+    return;
+  }
+
   class Paint paint;
-  paint.setColor(caret_color_ ? caret_color_->Value() : kCaretColor);
-  context->DrawRect(caret_rect, paint);
+  const auto fallback_color =
+      caret_color_.value_or(caret_fallback_color_).Value();
+  if (caret_gradient_) {
+    auto shader = GradientFactory::CreateShader(*caret_gradient_, paint_rect);
+    if (shader) {
+      paint.setColorSource(shader);
+    } else {
+      paint.setColor(fallback_color);
+    }
+  } else {
+    paint.setColor(fallback_color);
+  }
+
+  if (caret_radius_ && *caret_radius_ > 0.f) {
+    const float radius =
+        std::min(*caret_radius_,
+                 std::min(paint_rect.width(), paint_rect.height()) * 0.5f);
+    paint.setAntiAlias(true);
+    context->DrawRRect(skity::RRect::MakeRectXY(paint_rect, radius, radius),
+                       paint);
+  } else {
+    context->DrawRect(paint_rect, paint);
+  }
 }
 
 // Input: boxes - list of bounding boxes for each glyph
@@ -477,6 +515,9 @@ float RenderEditable::GetPlaceholderLineHeight() {
 void RenderEditable::SetMaxLines(uint32_t max_lines) { max_lines_ = max_lines; }
 
 float RenderEditable::CaretWidth() const {
+  if (caret_width_ && *caret_width_ > 0.f) {
+    return *caret_width_;
+  }
   return renderer_->ConvertFrom<kPixelTypeLogical>(kCaretWidth);
 }
 
@@ -605,9 +646,54 @@ void RenderEditable::SetDisabled(bool disabled) {
   }
 }
 
-void RenderEditable::SetCaretColor(const Color& color) {
-  caret_color_ = color;
-  MarkNeedsPaint();
+void RenderEditable::SetCaretColor(std::optional<Color> color) {
+  if (caret_color_ != color) {
+    caret_color_ = color;
+    MarkNeedsPaint();
+  }
+}
+
+void RenderEditable::SetCaretFallbackColor(const Color& color) {
+  if (caret_fallback_color_ != color) {
+    caret_fallback_color_ = color;
+    if (!caret_color_) {
+      MarkNeedsPaint();
+    }
+  }
+}
+
+void RenderEditable::SetCaretGradient(std::optional<Gradient> gradient) {
+  if (caret_gradient_ != gradient) {
+    caret_gradient_ = std::move(gradient);
+    MarkNeedsPaint();
+  }
+}
+
+void RenderEditable::SetCaretWidth(float width) {
+  std::optional<float> next_width =
+      width > 0.f ? std::make_optional(width) : std::nullopt;
+  if (caret_width_ != next_width) {
+    caret_width_ = std::move(next_width);
+    MarkNeedsPaint();
+  }
+}
+
+void RenderEditable::SetCaretHeight(float height) {
+  std::optional<float> next_height =
+      height > 0.f ? std::make_optional(height) : std::nullopt;
+  if (caret_height_ != next_height) {
+    caret_height_ = std::move(next_height);
+    MarkNeedsPaint();
+  }
+}
+
+void RenderEditable::SetCaretRadius(float radius) {
+  std::optional<float> next_radius =
+      radius > 0.f ? std::make_optional(radius) : std::nullopt;
+  if (caret_radius_ != next_radius) {
+    caret_radius_ = std::move(next_radius);
+    MarkNeedsPaint();
+  }
 }
 
 void RenderEditable::UpdateCaretRectBesideBox(FloatRect& caret_rect,

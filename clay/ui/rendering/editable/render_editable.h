@@ -19,6 +19,7 @@
 #include "clay/ui/common/text_input_type_traits.h"
 #include "clay/ui/component/editable/text_editing_controller.h"
 #include "clay/ui/component/text/text_style.h"
+#include "clay/ui/painter/gradient.h"
 #include "clay/ui/painter/text_painter.h"
 #include "clay/ui/rendering/render_box.h"
 
@@ -106,7 +107,12 @@ class RenderEditable : public RenderBox {
 
   float GetPlaceholderLineHeight();
 
-  void SetCaretColor(const Color& color);
+  void SetCaretColor(std::optional<Color> color);
+  void SetCaretFallbackColor(const Color& color);
+  void SetCaretGradient(std::optional<Gradient> gradient);
+  void SetCaretWidth(float width);
+  void SetCaretHeight(float height);
+  void SetCaretRadius(float radius);
 
   float CaretWidth() const;
 
@@ -148,6 +154,11 @@ class RenderEditable : public RenderBox {
 
   // TODO(yulitao): Decoupling caret painting logic from editable.
   std::optional<Color> caret_color_;
+  Color caret_fallback_color_ = Color::kBlack();
+  std::optional<Gradient> caret_gradient_;
+  std::optional<float> caret_width_;
+  std::optional<float> caret_height_;
+  std::optional<float> caret_radius_;
   float rough_text_height_ = 0.f;
   float placeholder_line_height_ = 0.f;
   bool display_caret_ = false;

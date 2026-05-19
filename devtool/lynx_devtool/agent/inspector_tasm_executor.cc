@@ -4,8 +4,12 @@
 
 #include "devtool/lynx_devtool/agent/inspector_tasm_executor.h"
 
+#include <algorithm>
+#include <vector>
+
 #include "base/include/log/logging.h"
 #include "core/renderer/css/css_decoder.h"
+#include "core/renderer/css/css_property.h"
 #include "core/services/replay/replay_controller.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
@@ -1957,7 +1961,6 @@ Json::Value InspectorTasmExecutor::GetDocumentBodyFromNodeWithBoxModel(
 
 Json::Value InspectorTasmExecutor::GetComputedStyleOfNode(tasm::Element* ptr) {
   Json::Value res = Json::Value(Json::ValueType::arrayValue);
-  Json::Value temp = Json::Value(Json::ValueType::objectValue);
   if (ptr != nullptr && ElementInspector::HasDataModel(ptr)) {
     auto dict = ElementInspector::GetDefaultCss();
 
@@ -2090,19 +2093,45 @@ Json::Value InspectorTasmExecutor::GetComputedStyleOfNode(tasm::Element* ptr) {
           ptr->GetFontSize() / layouts_unit_per_px);
     }
 
-    for (const auto& pair : dict) {
-      if (pair.first != "") {
-        temp["name"] = pair.first;
-        if (pair.first.find("color") != std::string::npos &&
-            pair.first != "-x-animation-color-interpolation" &&
-            pair.first != "border-color") {
-          temp["value"] =
-              lynx::tasm::CSSDecoder::ToRgbaFromColorValue(pair.second);
-        } else {
-          temp["value"] = pair.second;
-        }
-        res.append(temp);
+    auto append_computed_style = [&res](const std::string& name,
+                                        const std::string& value) {
+      Json::Value temp = Json::Value(Json::ValueType::objectValue);
+      temp["name"] = name;
+      if (name.find("color") != std::string::npos &&
+          name != "-x-animation-color-interpolation" &&
+          name != "border-color") {
+        temp["value"] = lynx::tasm::CSSDecoder::ToRgbaFromColorValue(value);
+      } else {
+        temp["value"] = value;
       }
+      res.append(temp);
+    };
+
+    // The results returned by CSSProperty::GetComputeStyleMap are stored in an
+    // unordered_map. However, the traversal order of unordered_map does not
+    // match the insertion order, as it is affected by factors such as hash,
+    // bucket layout and rehash.
+    for (int id = lynx::tasm::CSSPropertyID::kPropertyStart + 1;
+         id < lynx::tasm::CSSPropertyID::kPropertyEnd; ++id) {
+      const char* property_name = lynx::tasm::CSSProperty::GetPropertyNameCStr(
+          static_cast<lynx::tasm::CSSPropertyID>(id));
+      auto it = dict.find(property_name);
+      if (it != dict.end()) {
+        append_computed_style(it->first, it->second);
+        dict.erase(it);
+      }
+    }
+
+    std::vector<std::string> remaining_names;
+    remaining_names.reserve(dict.size());
+    for (const auto& pair : dict) {
+      if (!pair.first.empty()) {
+        remaining_names.push_back(pair.first);
+      }
+    }
+    std::sort(remaining_names.begin(), remaining_names.end());
+    for (const auto& name : remaining_names) {
+      append_computed_style(name, dict.at(name));
     }
   }
   return res;

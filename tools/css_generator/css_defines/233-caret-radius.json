@@ -1,0 +1,11 @@
+{
+  "name": "caret-radius",
+  "id": 233,
+  "type": "length",
+  "default_value": "0px",
+  "version": "4.0",
+  "author": "fanjinsong",
+  "consumption_status": "skip",
+  "desc": "Sets the editable caret corner radius.",
+  "is_shorthand": false
+}

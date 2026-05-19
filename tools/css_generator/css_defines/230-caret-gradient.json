@@ -1,0 +1,12 @@
+{
+  "name": "caret-gradient",
+  "id": 230,
+  "type": "string",
+  "default_value": "none",
+  "version": "4.0",
+  "author": "fanjinsong",
+  "consumption_status": "skip",
+  "desc": "Sets a gradient brush for the editable caret.",
+  "is_shorthand": false,
+  "formal_syntax": "none | <gradient>"
+}

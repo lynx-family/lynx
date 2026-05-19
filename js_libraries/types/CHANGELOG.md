@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.10.2
+- Add `caret-gradient`, `caret-width`, `caret-height` and `caret-radius` CSS typings.
+
 ## 3.10.1
 - Introduce `<webview>`.
 

@@ -12,9 +12,11 @@
 #include <cstddef>
 #include <future>
 #include <memory>
+#include <string>
 
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
@@ -116,6 +118,41 @@ TEST_F(InspectorTasmExecutorTest, LayerTreeDisableCase) {
   EXPECT_TRUE(is_valid_json);
   EXPECT_EQ(res["id"], 6);
   EXPECT_FALSE(element_executor_->layer_tree_enabled_);
+}
+
+TEST_F(InspectorTasmExecutorTest, GetComputedStyleOfNodeStyleOrderCase) {
+  auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  auto element = manager_->CreateFiberElement("view");
+  element->SetAttributeHolder(comp.get()->attribute_holder());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+
+  Json::Value computed_style =
+      element_executor_->GetComputedStyleOfNode(element.get());
+  ASSERT_TRUE(computed_style.isArray());
+
+  auto find_style_index = [&computed_style](const std::string& name) {
+    for (Json::ArrayIndex i = 0; i < computed_style.size(); ++i) {
+      if (computed_style[i]["name"].asString() == name) {
+        return static_cast<int>(i);
+      }
+    }
+    return -1;
+  };
+
+  int caret_gradient = find_style_index("caret-gradient");
+  int caret_width = find_style_index("caret-width");
+  int caret_height = find_style_index("caret-height");
+  int caret_radius = find_style_index("caret-radius");
+
+  ASSERT_GE(caret_gradient, 0);
+  ASSERT_GE(caret_width, 0);
+  ASSERT_GE(caret_height, 0);
+  ASSERT_GE(caret_radius, 0);
+  EXPECT_LT(caret_gradient, caret_width);
+  EXPECT_LT(caret_width, caret_height);
+  EXPECT_LT(caret_height, caret_radius);
 }
 
 TEST_F(InspectorTasmExecutorTest, SendLayerTreeDidChangeEventCase) {

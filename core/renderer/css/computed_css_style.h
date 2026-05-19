@@ -356,6 +356,7 @@ class ComputedCSSStyle {
   auto& GetBoxShadowData() { return box_shadow_; }
 
   base::String& GetCaretColor() { return caret_color_; }
+  base::String& GetCaretGradient() { return caret_gradient_; }
 
   base::flex_optional<PerspectiveData>& GetPerspectiveData() {
     return perspective_data_;
@@ -370,6 +371,12 @@ class ComputedCSSStyle {
   float GetHandleSize() { return handle_size_; }
 
   uint32_t GetHandleColor() { return handle_color_; }
+
+  float GetCaretWidth() { return caret_width_; }
+
+  float GetCaretRadius() { return caret_radius_; }
+
+  float GetCaretHeight() { return caret_height_; }
 
   bool HasOpacity() const;
 
@@ -504,6 +511,10 @@ class ComputedCSSStyle {
 
   unsigned int handle_color_{0};
   float handle_size_{0.f};
+  base::String caret_gradient_;
+  float caret_width_{DefaultComputedStyle::DEFAULT_FLOAT};
+  float caret_radius_{DefaultComputedStyle::DEFAULT_FLOAT};
+  float caret_height_{DefaultComputedStyle::DEFAULT_FLOAT};
 
   bool origin_has_opacity_{false};
   float opacity_{DefaultComputedStyle::DEFAULT_OPACITY};
@@ -633,6 +644,10 @@ class ComputedCSSStyle {
   V(BorderColor)                         \
   V(FontFamily)                          \
   V(CaretColor)                          \
+  V(CaretGradient)                       \
+  V(CaretWidth)                          \
+  V(CaretRadius)                         \
+  V(CaretHeight)                         \
   V(TextShadow)                          \
   V(Direction)                           \
   V(WhiteSpace)                          \
