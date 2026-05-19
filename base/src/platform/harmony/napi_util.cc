@@ -189,12 +189,14 @@ bool NapiUtil::ConvertToArrayBuffer(napi_env env, napi_value arg,
   size_t length;
   void* data;
   napi_status status = napi_get_arraybuffer_info(env, arg, &data, &length);
-  if (status != napi_ok || data == nullptr) {
+  if (status != napi_ok) {
     LOGE("Fail to get array buffer " << NapiGetLastError(env, status));
     return false;
   }
   buffer.resize(length);
-  memcpy(buffer.data(), data, length);
+  if (data != nullptr && length != 0) {
+    memcpy(buffer.data(), data, length);
+  }
   return true;
 }
 
@@ -204,7 +206,7 @@ bool NapiUtil::ConvertToArrayBuffer(napi_env env, napi_value arg,
   DCHECK(IsArrayBuffer(env, arg));
   void* data;
   napi_status status = napi_get_arraybuffer_info(env, arg, &data, &length);
-  if (status != napi_ok || data == nullptr) {
+  if (status != napi_ok) {
     LOGE("Fail to get array buffer " << NapiGetLastError(env, status));
     return false;
   }
@@ -215,7 +217,9 @@ bool NapiUtil::ConvertToArrayBuffer(napi_env env, napi_value arg,
     return false;
   }
 
-  memcpy(buffer.get(), data, length);
+  if (data != nullptr && length != 0) {
+    memcpy(buffer.get(), data, length);
+  }
   return true;
 }
 
