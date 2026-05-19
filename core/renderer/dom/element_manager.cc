@@ -213,6 +213,28 @@ void ElementManager::OnDocumentUpdated() {
   });
 }
 
+void ElementManager::PutCachedTemplateElementTree(
+    const std::string &key, CachedTemplateElementTree cached_tree) {
+  if (key.empty() || cached_tree.generated_.result_ == nullptr) {
+    return;
+  }
+  cached_template_element_trees_[key].push_back(std::move(cached_tree));
+}
+
+std::optional<CachedTemplateElementTree>
+ElementManager::TakeCachedTemplateElementTree(const std::string &key) {
+  auto it = cached_template_element_trees_.find(key);
+  if (it == cached_template_element_trees_.end() || it->second.empty()) {
+    return std::nullopt;
+  }
+  auto cached_tree = std::move(it->second.back());
+  it->second.pop_back();
+  if (it->second.empty()) {
+    cached_template_element_trees_.erase(it);
+  }
+  return cached_tree;
+}
+
 void ElementManager::OnElementManagerWillDestroy() {
   EXEC_EXPR_FOR_INSPECTOR({
     if (inspector_element_observer_ && IsDomTreeEnabled()) {
