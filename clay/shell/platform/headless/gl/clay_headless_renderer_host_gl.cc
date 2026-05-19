@@ -260,7 +260,15 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
     auto image_info = SkImageInfo::Make(
         SkISize::Make(backing->GetSize().x, backing->GetSize().y),
         kBGRA_8888_SkColorType, kPremul_SkAlphaType);
-    bitmap.allocPixels(image_info, 0);
+    if (!bitmap.tryAllocPixels(image_info, 0)) {
+      FML_LOG(ERROR) << "Failed to allocate bitmap pixels";
+      return;
+    }
+    SkPixmap pixmap;
+    if (!bitmap.peekPixels(&pixmap)) {
+      FML_LOG(ERROR) << "Failed to peek bitmap pixels";
+      return;
+    }
 
     if (std::unique_ptr<clay::FenceSync> fence_sync = backing->GetFenceSync()) {
       if (!fence_sync->ClientWait()) {
@@ -275,7 +283,7 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
       // temp trace
       fml::TimePoint start = fml::TimePoint::Now();
 
-      if (!backing->ReadbackToMemory(&bitmap.pixmap(), 1)) {
+      if (!backing->ReadbackToMemory(&pixmap, 1)) {
         FML_LOG(ERROR) << "Failed to ReadbackToMemory";
         return;
       }

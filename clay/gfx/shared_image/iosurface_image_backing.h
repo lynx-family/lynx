@@ -30,11 +30,11 @@ class API_AVAILABLE(macos(10.6), ios(11.0), tvos(11.0)) IOSurfaceImageBacking
   fml::RefPtr<SharedImageRepresentation> CreateRepresentation(
       const ClaySharedImageRepresentationConfig* config) override;
 
+  bool ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
+                        uint32_t planes) override;
 #ifndef ENABLE_SKITY
   fml::RefPtr<SkiaImageRepresentation> CreateSkiaRepresentation(
       GrContext* gr_context) override;
-
-  bool ReadbackToMemory(const SkPixmap* pixmaps, uint32_t planes) override;
 #else
   fml::RefPtr<SkityImageRepresentation> CreateSkityRepresentation(
       GrContext* skity_context) override;

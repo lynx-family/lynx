@@ -41,11 +41,12 @@ class D3DTextureImageBacking final : public SharedImageBacking {
 
   fml::RefPtr<SharedImageRepresentation> CreateRepresentation(
       const ClaySharedImageRepresentationConfig* config) override;
+  bool ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
+                        uint32_t planes) override;
 #ifdef ENABLE_SKITY
   virtual fml::RefPtr<SkityImageRepresentation> CreateSkityRepresentation(
       skity::GPUContext* skity_context) override;
 #else
-  bool ReadbackToMemory(const SkPixmap* pixmaps, uint32_t planes) override;
   virtual fml::RefPtr<SkiaImageRepresentation> CreateSkiaRepresentation(
       GrDirectContext* gr_context) override;
 #endif  // ENABLE_SKITY
