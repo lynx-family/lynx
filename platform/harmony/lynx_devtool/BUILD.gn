@@ -56,6 +56,9 @@ target(lynx_devtool_type, "lynx_devtool") {
   ]
 
   lib_dirs = [ primjs_native_lib_dir ]
+  if (defined(enable_rts_runtime) && enable_rts_runtime) {
+    lib_dirs += [ "../../../third_party/rts/harmony" ]
+  }
   libs = [
     "ace_napi.z",
     "quick",
@@ -63,4 +66,10 @@ target(lynx_devtool_type, "lynx_devtool") {
     "native_vsync",
     "ohpreferences",
   ]
+  if (defined(enable_rts_runtime) && enable_rts_runtime) {
+    libs += [
+      "rvm",
+      "rvm_devtool",
+    ]
+  }
 }
