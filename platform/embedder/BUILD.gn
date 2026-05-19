@@ -37,6 +37,14 @@ lynx_core_source_set("lynx_runtime_lifecycle_observer") {
   public_configs = [ "../../third_party/weak-node-api:weak_node_api_config" ]
 }
 
+lynx_core_source_set("devtool_settings_embedder") {
+  sources = [
+    "devtool_settings_embedder.cc",
+    "devtool_settings_embedder.h",
+  ]
+  deps = [ "../../core/renderer/utils:renderer_utils" ]
+}
+
 lynx_core_source_set("embedder") {
   sources = [
     "frame_timing_listener_impl.cc",

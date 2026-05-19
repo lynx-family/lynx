@@ -7,7 +7,6 @@
 
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 namespace lynx {
 namespace embedder {
@@ -34,12 +33,7 @@ class DevToolEnvEmbedder {
   void SetAppInfo(const std::unordered_map<std::string, std::string>& app_info);
 
  private:
-  bool NeedPersist(std::string key);
-
- private:
   std::unordered_map<std::string, std::string> app_infos_;
-  std::unordered_map<std::string, std::vector<bool> >
-      switch_persistent_default_;
 };
 
 }  // namespace embedder

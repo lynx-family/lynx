@@ -25,6 +25,7 @@ devtool_source_set("lynx_devtool") {
   }
 
   deps = [
+    "../:devtool_settings_embedder",
     "../../../devtool/base_devtool/common:base_devtool_common_sources",
     "../../../devtool/embedder/common:lynx_devtool_embedder_common",
     "../../../devtool/embedder/core:lynx_devtool_embedder_core",
