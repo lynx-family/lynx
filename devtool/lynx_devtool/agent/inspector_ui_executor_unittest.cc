@@ -14,6 +14,7 @@
 
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
+#include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
 #include "devtool/testing/mock/lynx_devtool_ng_mock.h"
@@ -167,6 +168,30 @@ TEST_F(InspectorUIExecutorTest, InsertTextTest) {
   EXPECT_EQ(facade->inserted_text_, "hello");
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 41,\n   \"result\" : {}\n}\n");
+}
+
+TEST_F(InspectorUIExecutorTest, InsertTextReturnsErrorWhenPlatformFails) {
+  std::shared_ptr<testing::DevToolPlatformFacadeMock> facade =
+      std::make_shared<testing::DevToolPlatformFacadeMock>();
+  facade->insert_text_error_ = "No focused editable element found.";
+  ui_executor_->SetDevToolPlatformFacade(facade);
+
+  Json::Value message;
+  message["id"] = 42;
+  Json::Value params;
+  params["text"] = "hello";
+  message["params"] = params;
+
+  ui_executor_->InsertText(message_sender_, message);
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"].asInt(), 42);
+  EXPECT_EQ(response["error"]["code"].asInt(), devtool::kServerError);
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "No focused editable element found.");
 }
 
 }  // namespace testing

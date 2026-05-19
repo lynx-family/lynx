@@ -23,6 +23,10 @@
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
 #include "devtool/lynx_devtool/element/element_inspector.h"
 
+@interface DevToolPlatformDarwinDelegate ()
+- (nullable UIView*)firstResponderInView:(nullable UIView*)view;
+@end
+
 #pragma mark - DevToolPlatformDarwin
 namespace lynx {
 namespace devtool {
@@ -224,6 +228,22 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     if (darwin != nil) {
       [darwin emulateTouch:input];
     }
+  }
+
+  std::string InsertText(const std::string& text) override {
+    __strong typeof(_darwin) darwin = _darwin;
+    if (darwin != nil) {
+      NSString* nsText = [[NSString alloc] initWithBytes:text.data()
+                                                  length:text.size()
+                                                encoding:NSUTF8StringEncoding];
+      if (nsText == nil) {
+        return "Input.insertText text is not valid UTF-8.";
+      }
+      NSString* error_message = [darwin insertText:nsText];
+      const char* error = error_message != nil ? [error_message UTF8String] : nullptr;
+      return error != nullptr ? std::string(error) : "";
+    }
+    return "DevTool platform delegate is unavailable.";
   }
 
   void PageReload(bool ignore_cache, const std::string& template_binary,
@@ -582,6 +602,36 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
               deltaY:input->delta_y_
            modifiers:input->modifiers_
           clickCount:input->click_count_];
+}
+
+- (nullable NSString*)insertText:(nullable NSString*)text {
+  if (text == nil) {
+    return @"Input.insertText requires a non-null text parameter.";
+  }
+  __strong typeof(_lynxView) lynxView = _lynxView;
+  UIView* firstResponder = [self firstResponderInView:lynxView];
+  if ([firstResponder conformsToProtocol:@protocol(UITextInput)] &&
+      [firstResponder respondsToSelector:@selector(insertText:)]) {
+    [(id<UITextInput>)firstResponder insertText:text];
+    return nil;
+  }
+  return @"Input.insertText requires a focused UITextInput.";
+}
+
+- (nullable UIView*)firstResponderInView:(nullable UIView*)view {
+  if (view == nil) {
+    return nil;
+  }
+  if (view.isFirstResponder) {
+    return view;
+  }
+  for (UIView* subview in view.subviews) {
+    UIView* firstResponder = [self firstResponderInView:subview];
+    if (firstResponder != nil) {
+      return firstResponder;
+    }
+  }
+  return nil;
 }
 
 - (void)emulateTouch:(nonnull NSString*)type

@@ -234,6 +234,20 @@ void DevToolPlatformAndroid::Focus(int node_id) {
   Java_DevToolPlatformAndroidDelegate_focus(env, ref.Get(), node_id);
 }
 
+std::string DevToolPlatformAndroid::InsertText(const std::string& text) {
+  JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return "DevTool platform delegate is unavailable.";
+  }
+  lynx::base::android::ScopedLocalJavaRef<jstring> jni_text =
+      lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, text);
+  auto error_message = Java_DevToolPlatformAndroidDelegate_insertText(
+      env, ref.Get(), jni_text.Get());
+  return lynx::base::android::JNIConvertHelper::ConvertToString(
+      env, error_message.Get());
+}
+
 void DevToolPlatformAndroid::OnConsoleMessage(const std::string& message) {
   std::lock_guard<std::mutex> lock(mutex_);
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
