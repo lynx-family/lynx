@@ -212,6 +212,7 @@ class Element : public lepus::RefCounted,
   static const uint32_t kDirtyStyleObjects;
   static constexpr uint32_t kDirtyCloned = 0x01 << 14;
   static constexpr uint32_t kDirtyDynamicStyleObjects = 0x01 << 15;
+  static constexpr uint32_t kDirtyInvoke = 0x01 << 16;
 
   enum class AsyncResolveStatus : uint8_t {
     kCreated = 0,
@@ -266,6 +267,12 @@ class Element : public lepus::RefCounted,
   void Invoke(const std::string& method, const pub::Value& params,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback);
+  void AppendPendingInvokeTask(base::closure task);
+  void EnqueueInvoke(
+      const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>&
+          callback);
+  void FlushPendingInvokeTasks();
 
   SLNode* GetLayoutObject() const { return sl_node_.get(); }
 
@@ -1631,6 +1638,7 @@ class Element : public lepus::RefCounted,
 
   uint32_t dirty_{0};
   uint32_t wrapper_element_count_{0};
+  base::Vector<base::closure> pending_invoke_tasks_;
 
   int32_t css_id_{kInvalidCssId};
 

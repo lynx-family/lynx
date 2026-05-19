@@ -77,6 +77,10 @@ class PaintingContextPlatformImpl : public PaintingCtxPlatformImpl {
       int64_t id, const std::string& method, const pub::Value& params,
       const std::function<void(int32_t code, const pub::Value& data)>& callback)
       override {}
+  virtual void EnqueueInvoke(
+      int64_t id, const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>& callback)
+      override {}
   virtual int32_t GetTagInfo(const std::string& tag_name) override { return 0; }
   virtual bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override {
     return false;

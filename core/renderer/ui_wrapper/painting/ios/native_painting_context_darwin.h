@@ -76,6 +76,9 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
   void Invoke(int64_t id, const std::string &method, const pub::Value &params,
               const std::function<void(int32_t, const pub::Value &)> &callback) override;
 
+  void EnqueueInvoke(int64_t id, const std::string &method, const pub::Value &params,
+                     const std::function<void(int32_t, const pub::Value &)> &callback) override;
+
   void StopExposure(const pub::Value &options) override;
   void ResumeExposure() override;
 

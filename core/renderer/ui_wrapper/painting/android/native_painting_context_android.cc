@@ -340,6 +340,7 @@ std::vector<float> NativePaintingCtxAndroid::ScrollBy(int64_t id, float width,
   return std::vector<float>();
 }
 
+// For BTS
 void NativePaintingCtxAndroid::Invoke(
     int64_t id, const std::string &method, const pub::Value &params,
     const std::function<void(int32_t, const pub::Value &)> &callback) {
@@ -358,6 +359,25 @@ void NativePaintingCtxAndroid::Invoke(
   runner->PostTask([ref = platform_ref_, id, method,
                     params = lepus_params.ToLepusValue(),
                     cb = std::move(cb)]() mutable {
+    auto android_ref =
+        std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);
+    if (android_ref) {
+      android_ref->InvokeUIMethod(id, method, params, std::move(cb));
+    }
+  });
+}
+
+// For MTS
+void NativePaintingCtxAndroid::EnqueueInvoke(
+    int64_t id, const std::string &method, const pub::Value &params,
+    const std::function<void(int32_t, const pub::Value &)> &callback) {
+  const auto &lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
+  base::MoveOnlyClosure<void, int32_t, const pub::Value &> cb =
+      [callback](int32_t code, const pub::Value &data) {
+        callback(code, data);
+      };
+  Enqueue([ref = platform_ref_, id, method,
+           params = lepus_params.ToLepusValue(), cb = std::move(cb)]() mutable {
     auto android_ref =
         std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);
     if (android_ref) {

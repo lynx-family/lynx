@@ -333,6 +333,27 @@ void PaintingContextClay::Invoke(
       });
 }
 
+void PaintingContextClay::EnqueueInvoke(
+    int64_t id, const std::string& method, const pub::Value& params,
+    const std::function<void(int32_t code, const pub::Value& data)>& callback) {
+  clay::LynxModuleValues values;
+  auto map = ValueConverter::CreateClayValue(params);
+  if (map.IsMap()) {
+    for (auto& [key, val] : map.GetMap()) {
+      values.names.push_back(key);
+      values.values.push_back(std::move(val));
+    }
+  }
+  Enqueue([view_context = view_context_, id, method, values = std::move(values),
+           callback]() mutable {
+    view_context->InvokeUIMethod(
+        id, method, values,
+        [callback](clay::LynxUIMethodResult code, clay::Value data) {
+          callback(static_cast<int>(code), ClayValue(std::move(data)));
+        });
+  });
+}
+
 void PaintingContextClay::getAbsolutePosition(int id, float* position) {
   view_context_->GetAbsolutePosition(id, position[0], position[1]);
 }

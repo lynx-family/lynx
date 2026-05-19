@@ -143,6 +143,13 @@ class PaintingContext {
     platform_impl_->ConsumeGesture(id, gesture_id, params);
   }
 
+  inline void EnqueueInvoke(
+      int64_t id, const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>&
+          callback) {
+    platform_impl_->EnqueueInvoke(id, method, params, callback);
+  }
+
   inline int32_t GetTagInfo(const std::string& tag_name) {
     return platform_impl_->GetTagInfo(tag_name);
   }

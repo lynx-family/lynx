@@ -98,6 +98,7 @@ bool NativePaintingCtxDarwin::IsFlatten(base::MoveOnlyClosure<bool, bool> func) 
 
 bool NativePaintingCtxDarwin::NeedAnimationProps() { return false; }
 
+// For BTS
 void NativePaintingCtxDarwin::Invoke(
     int64_t id, const std::string &method, const pub::Value &params,
     const std::function<void(int32_t, const pub::Value &)> &callback) {
@@ -110,6 +111,22 @@ void NativePaintingCtxDarwin::Invoke(
       [callback](int32_t code, const pub::Value &data) { callback(code, data); };
   runner->PostTask([ref = platform_ref_, id, method, params = lepus_params.ToLepusValue(),
                     cb = std::move(cb)]() mutable {
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
+    if (darwin_ref) {
+      darwin_ref->InvokeUIMethod(static_cast<int32_t>(id), method, params, std::move(cb));
+    }
+  });
+}
+
+// For MTS
+void NativePaintingCtxDarwin::EnqueueInvoke(
+    int64_t id, const std::string &method, const pub::Value &params,
+    const std::function<void(int32_t, const pub::Value &)> &callback) {
+  const auto &lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
+  base::MoveOnlyClosure<void, int32_t, const pub::Value &> cb =
+      [callback](int32_t code, const pub::Value &data) { callback(code, data); };
+  Enqueue([ref = platform_ref_, id, method, params = lepus_params.ToLepusValue(),
+           cb = std::move(cb)]() mutable {
     auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
     if (darwin_ref) {
       darwin_ref->InvokeUIMethod(static_cast<int32_t>(id), method, params, std::move(cb));
@@ -253,7 +270,7 @@ void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width,
 
 template <typename F>
 void NativePaintingCtxDarwin::Enqueue(F &&func) {
-  queue_->EnqueueUIOperation([func = std::move(func)]() {
+  queue_->EnqueueUIOperation([func = std::move(func)]() mutable {
     @autoreleasepool {
       PaintingContextDarwinUtils::ExecuteSafely(func);
     }
