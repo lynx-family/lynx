@@ -26,11 +26,12 @@ class CVPixelBufferImageBacking : public SharedImageBacking {
 
   fml::RefPtr<SharedImageRepresentation> CreateRepresentation(
       const ClaySharedImageRepresentationConfig* config) override;
+  bool ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
+                        uint32_t planes) override;
 
 #ifndef ENABLE_SKITY
   fml::RefPtr<SkiaImageRepresentation> CreateSkiaRepresentation(
       GrDirectContext* gr_context) override;
-  bool ReadbackToMemory(const SkPixmap* pixmaps, uint32_t planes) override;
 #else
   fml::RefPtr<SkityImageRepresentation> CreateSkityRepresentation(
       skity::GPUContext* skity_context) override;

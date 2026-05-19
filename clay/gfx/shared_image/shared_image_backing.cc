@@ -4,11 +4,18 @@
 
 #include "clay/gfx/shared_image/shared_image_backing.h"
 
+#include <limits>
 #include <utility>
+#include <vector>
 
 #include "build/build_config.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/fence_sync.h"
+
+#ifndef NDEBUG
+#include "clay/fml/file.h"
+#include "clay/fml/mapping.h"
+#endif  // NDEBUG
 
 #if OS_MACOSX || OS_IOS
 #include "clay/gfx/shared_image/cv_pixelbuffer_image_backing.h"
@@ -30,6 +37,33 @@
 #endif
 
 namespace clay {
+#ifndef NDEBUG
+namespace {
+
+bool WriteDataToFile(const std::string& file_name, const void* data,
+                     size_t size) {
+  const size_t separator = file_name.find_last_of("/\\");
+  const std::string directory =
+      separator == std::string::npos ? "." : file_name.substr(0, separator);
+  const std::string basename = separator == std::string::npos
+                                   ? file_name
+                                   : file_name.substr(separator + 1);
+  if (basename.empty()) {
+    return false;
+  }
+
+  fml::UniqueFD directory_fd = fml::OpenDirectory(
+      directory.c_str(), false, fml::FilePermission::kReadWrite);
+  if (!directory_fd.is_valid()) {
+    return false;
+  }
+
+  fml::NonOwnedMapping mapping(static_cast<const uint8_t*>(data), size);
+  return fml::WriteAtomically(directory_fd, basename.c_str(), mapping);
+}
+
+}  // namespace
+#endif  // NDEBUG
 
 SharedImageBacking::SharedImageBacking(PixelFormat pixel_format,
                                        skity::Vec2 size)
@@ -113,8 +147,7 @@ fml::RefPtr<SharedImageBacking> SharedImageBacking::Create(
   return nullptr;
 }
 
-#ifndef ENABLE_SKITY
-bool SharedImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
+bool SharedImageBacking::ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
                                           uint32_t planes) {
   FML_UNIMPLEMENTED()
   return false;
@@ -122,23 +155,38 @@ bool SharedImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
 
 #ifndef NDEBUG
 void SharedImageBacking::DumpToPng(const std::string& file_name) {
+#ifndef ENABLE_SKITY
   SkBitmap bitmap;
   auto image_info =
       SkImageInfo::Make(SkISize::Make(size_.x, size_.y), kBGRA_8888_SkColorType,
                         kPremul_SkAlphaType);
-  bitmap.allocPixels(image_info, 0);
-  bool success = ReadbackToMemory(&bitmap.pixmap(), 1);
+  const size_t byte_size = image_info.computeMinByteSize();
+  FML_DCHECK(byte_size != std::numeric_limits<size_t>::max());
+  std::vector<uint8_t> pixels(byte_size);
+  SkPixmap pixmap(image_info, pixels.data(), image_info.minRowBytes());
+  bool success = ReadbackToMemory(&pixmap, 1);
+  FML_DCHECK(success);
+  success = bitmap.installPixels(pixmap);
   FML_DCHECK(success);
   SkDynamicMemoryWStream buf;
   success = SkPngEncoder::Encode(&buf, bitmap.pixmap(), {});
   FML_DCHECK(success);
   sk_sp<SkData> data = buf.detachAsData();
-  // cspell:disable-next-line
-  success = SkFILEWStream(file_name.c_str()).write(data->data(), data->size());
+  success = WriteDataToFile(file_name, data->data(), data->size());
   FML_DCHECK(success);
+#else
+  skity::Pixmap pixmap(size_.x, size_.y);
+  bool success = ReadbackToMemory(&pixmap, 1);
+  FML_DCHECK(success);
+  auto codec = skity::Codec::MakePngCodec();
+  FML_DCHECK(codec);
+  auto data = codec->Encode(&pixmap);
+  FML_DCHECK(data);
+  success = WriteDataToFile(file_name, data->RawData(), data->Size());
+  FML_DCHECK(success);
+#endif  // ENABLE_SKITY
 }
 #endif  // NDEBUG
-#endif  // ENABLE_SKITY
 
 SharedImageBackingUnmanaged::SharedImageBackingUnmanaged(
     PixelFormat pixel_format, skity::Vec2 size)

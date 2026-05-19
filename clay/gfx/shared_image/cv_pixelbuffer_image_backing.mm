@@ -152,8 +152,8 @@ fml::RefPtr<SkityImageRepresentation> CVPixelBufferImageBacking::CreateSkityRepr
 }
 #endif  // ENABLE_SKITY
 
-#ifndef ENABLE_SKITY
-bool CVPixelBufferImageBacking::ReadbackToMemory(const SkPixmap* pixmaps, uint32_t planes) {
+bool CVPixelBufferImageBacking::ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
+                                                 uint32_t planes) {
   CVReturn lockStatus = CVPixelBufferLockBaseAddress(pixel_buffer_, 0);
   if (lockStatus != kCVReturnSuccess) {
     FML_LOG(ERROR) << "Failed to lock CVPixelBuffer";
@@ -173,19 +173,18 @@ bool CVPixelBufferImageBacking::ReadbackToMemory(const SkPixmap* pixmaps, uint32
   size_t source_offset = 0;
   for (uint32_t plane = 0; plane < planes; ++plane) {
     auto& pixmap = pixmaps[plane];
-    uint8_t* dest_memory = static_cast<uint8_t*>(pixmap.writable_addr());
-    const size_t dest_stride = pixmap.rowBytes();
+    uint8_t* dest_memory = SharedImagePixmapWritableAddr(pixmap);
+    const size_t dest_stride = SharedImagePixmapRowBytes(pixmap);
     const uint8_t* source_memory = static_cast<uint8_t*>(baseAddress) + source_offset;
     const size_t source_stride = stride;
 
-    CopyPlane(source_memory, source_stride, dest_memory, dest_stride, pixmap.info().minRowBytes(),
-              size_.y);
+    CopyPlane(source_memory, source_stride, dest_memory, dest_stride,
+              SharedImagePixmapMinRowBytes(pixmap), size_.y);
 
     source_offset += stride * size_.y;
   }
   CVPixelBufferUnlockBaseAddress(pixel_buffer_, kCVPixelBufferLock_ReadOnly);
   return true;
 }
-#endif  // ENABLE_SKITY
 
 }  // namespace clay

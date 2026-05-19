@@ -411,9 +411,10 @@ D3DTextureImageBacking::CreateSkiaRepresentation(GrDirectContext* gr_context) {
       << static_cast<uint32_t>(gr_context->backend());
   return nullptr;
 }
+#endif  // ENABLE_SKITY
 
-bool D3DTextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
-                                              uint32_t planes) {
+bool D3DTextureImageBacking::ReadbackToMemory(
+    SharedImageReadbackPixmap* pixmaps, uint32_t planes) {
   D3DTextureFactory::ScopedDevice scoped_device =
       D3DTextureFactory::Instance().GetDeviceScoped();
   ID3D11Device* d3d11_device = scoped_device.GetDevice();
@@ -446,8 +447,8 @@ bool D3DTextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
       return false;
     }
 
-    uint8_t* dest_memory = static_cast<uint8_t*>(pixmaps[0].writable_addr());
-    const size_t dest_stride = pixmaps[0].rowBytes();
+    uint8_t* dest_memory = SharedImagePixmapWritableAddr(pixmaps[0]);
+    const size_t dest_stride = SharedImagePixmapRowBytes(pixmaps[0]);
     device3->ReadFromSubresource(dest_memory, dest_stride, 0,
                                  d3d11_texture_.Get(), 0, nullptr);
     device_context->Unmap(d3d11_texture_.Get(), 0);
@@ -486,14 +487,14 @@ bool D3DTextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
 
     for (int plane = 0; plane < planes; ++plane) {
       auto& pixmap = pixmaps[plane];
-      uint8_t* dest_memory = static_cast<uint8_t*>(pixmap.writable_addr());
-      const size_t dest_stride = pixmap.rowBytes();
+      uint8_t* dest_memory = SharedImagePixmapWritableAddr(pixmap);
+      const size_t dest_stride = SharedImagePixmapRowBytes(pixmap);
       const uint8_t* source_memory =
           static_cast<uint8_t*>(mapped_resource.pData) + source_offset;
       const size_t source_stride = mapped_resource.RowPitch;
 
       CopyPlane(source_memory, source_stride, dest_memory, dest_stride,
-                pixmap.info().minRowBytes(), size_.y);
+                SharedImagePixmapMinRowBytes(pixmap), size_.y);
 
       source_offset += mapped_resource.RowPitch * size_.y;
     }
@@ -502,7 +503,6 @@ bool D3DTextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
   }
   return true;
 }
-#endif  // ENABLE_SKITY
 
 ID3D11Texture2D* D3DTextureImageBacking::GetOrCreateStagingTexture(
     ID3D11Device* device) {

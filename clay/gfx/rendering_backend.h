@@ -86,6 +86,7 @@
 #include "skity/graphic/path_op.hpp"
 #include "skity/graphic/sampling_options.hpp"
 #include "skity/include/skity/io/data.hpp"
+#include "skity/include/skity/io/pixmap.hpp"
 #include "skity/include/skity/text/font_manager.hpp"
 #include "skity/recorder/picture_recorder.hpp"
 #include "skity/render/canvas.hpp"

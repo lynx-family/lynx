@@ -5,6 +5,8 @@
 #ifndef CLAY_GFX_SHARED_IMAGE_SHARED_IMAGE_BACKING_H_
 #define CLAY_GFX_SHARED_IMAGE_SHARED_IMAGE_BACKING_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -17,8 +19,6 @@
 #include "clay/public/clay.h"
 #include "skity/geometry/matrix.hpp"
 
-class GrDirectContext;
-
 namespace clay {
 /// IOSurfaceRef for kIOSurface
 /// CVPixelBufferRef for kCVPixelBuffer
@@ -30,6 +30,40 @@ namespace clay {
 using GraphicsMemoryHandle = void*;
 
 class FenceSync;
+
+#ifndef ENABLE_SKITY
+using SharedImageReadbackPixmap = SkPixmap;
+#else
+using SharedImageReadbackPixmap = skity::Pixmap;
+#endif  // ENABLE_SKITY
+
+inline uint8_t* SharedImagePixmapWritableAddr(
+    SharedImageReadbackPixmap& pixmap) {
+#ifndef ENABLE_SKITY
+  return static_cast<uint8_t*>(pixmap.writable_addr());
+#else
+  return static_cast<uint8_t*>(pixmap.WritableAddr());
+#endif  // ENABLE_SKITY
+}
+
+inline size_t SharedImagePixmapRowBytes(
+    const SharedImageReadbackPixmap& pixmap) {
+#ifndef ENABLE_SKITY
+  return pixmap.rowBytes();
+#else
+  return pixmap.RowBytes();
+#endif  // ENABLE_SKITY
+}
+
+inline size_t SharedImagePixmapMinRowBytes(
+    const SharedImageReadbackPixmap& pixmap) {
+#ifndef ENABLE_SKITY
+  return pixmap.info().minRowBytes();
+#else
+  // SharedImage readback currently supports 32-bit RGBA/BGRA formats only.
+  return pixmap.Width() * 4;
+#endif  // ENABLE_SKITY
+}
 
 class SharedImageBacking
     : public fml::RefCountedThreadSafe<SharedImageBacking> {
@@ -60,9 +94,10 @@ class SharedImageBacking
 
   virtual fml::RefPtr<SharedImageRepresentation> CreateRepresentation(
       const ClaySharedImageRepresentationConfig* config) = 0;
+  // User MUST client wait fence before readback.
+  virtual bool ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
+                                uint32_t planes);
 #ifndef ENABLE_SKITY
-  // User MUST client wait fence before readback
-  virtual bool ReadbackToMemory(const SkPixmap* pixmaps, uint32_t planes);
   virtual fml::RefPtr<SkiaImageRepresentation> CreateSkiaRepresentation(
       GrContext* gr_context) = 0;
 #else

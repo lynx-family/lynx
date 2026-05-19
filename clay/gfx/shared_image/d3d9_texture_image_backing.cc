@@ -279,9 +279,10 @@ D3D9TextureImageBacking::CreateSkiaRepresentation(GrDirectContext* gr_context) {
                  << static_cast<uint32_t>(gr_context->backend());
   return nullptr;
 }
+#endif  // ENABLE_SKITY
 
-bool D3D9TextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
-                                               uint32_t planes) {
+bool D3D9TextureImageBacking::ReadbackToMemory(
+    SharedImageReadbackPixmap* pixmaps, uint32_t planes) {
   IDirect3DTexture9* staging_texture = GetOrCreateStagingTexture();
   if (!staging_texture) {
     return false;
@@ -311,13 +312,13 @@ bool D3D9TextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
     }
 
     auto& pixmap = pixmaps[plane];
-    uint8_t* dest_memory = static_cast<uint8_t*>(pixmap.writable_addr());
-    const size_t dest_stride = pixmap.rowBytes();
+    uint8_t* dest_memory = SharedImagePixmapWritableAddr(pixmap);
+    const size_t dest_stride = SharedImagePixmapRowBytes(pixmap);
     const uint8_t* source_memory = static_cast<uint8_t*>(locked_rect.pBits);
     const size_t source_stride = locked_rect.Pitch;
 
     CopyPlane(source_memory, source_stride, dest_memory, dest_stride,
-              pixmap.info().minRowBytes(), size_.y);
+              SharedImagePixmapMinRowBytes(pixmap), size_.y);
 
     hr = staging_texture->UnlockRect(plane);
     if (FAILED(hr)) {
@@ -328,7 +329,6 @@ bool D3D9TextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
 
   return true;
 }
-#endif  // ENABLE_SKITY
 
 IDirect3DTexture9* D3D9TextureImageBacking::GetOrCreateStagingTexture() {
   if (!staging_texture_) {
