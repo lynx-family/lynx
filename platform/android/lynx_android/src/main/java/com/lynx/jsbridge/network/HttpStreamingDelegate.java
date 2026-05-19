@@ -96,8 +96,18 @@ public class HttpStreamingDelegate {
     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
     int prev = -1;
     int curr;
+    boolean sawCR = false;
     while ((curr = in.read()) != -1) {
       buffer.write(curr);
+      if (curr == '\r') {
+        if (!sawCR) {
+          sawCR = true;
+        } else {
+          prev = -1;
+        }
+        continue;
+      }
+      sawCR = false;
       if (prev == '\n' && curr == '\n') {
         onData(buffer.toByteArray());
         buffer.reset();
