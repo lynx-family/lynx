@@ -11,6 +11,7 @@ builder({
             "enable_napi_binding=true",
             "enable_coverage=true",
             "enable_inspector=true",
+            "use_flutter_cxx=false",
         ],
         "output": "out/Default",
         "type": "gn",

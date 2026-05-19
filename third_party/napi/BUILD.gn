@@ -33,6 +33,8 @@ config("private_config") {
   ]
   if (is_win) {
     defines = [ "OS_WIN" ]
+  }
+  if (is_win || is_mac) {
     cflags += [ "-Wno-c99-designator" ]
   }
   include_dirs = [

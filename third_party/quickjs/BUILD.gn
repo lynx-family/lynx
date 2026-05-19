@@ -30,7 +30,7 @@ config("quickjs_private_config") {
     "-Wno-unknown-warning-option",
     "-Wno-newline-eof",
     "-Wno-sign-compare",
-    "-Oz"
+    "-Oz",
   ]
 
   # FIXME(): definition controlled by the args
@@ -56,7 +56,7 @@ config("quickjs_public_config") {
     "./src/src/interpreter",
   ]
   cflags = []
-  if (is_win) {
+  if (is_win || is_mac) {
     cflags += [ "-Wno-c99-designator" ]
   }
 }
@@ -93,6 +93,8 @@ source_set("quickjs_source") {
     #    "src/src/inspector/heapprofiler/take-snapshot.cc",
     "src/src/gc/collector.cc",
     "src/src/gc/collector_ms.cc",
+    "src/src/gc/gc_marking.cc",
+    "src/src/gc/gc_tracer.cc",
     "src/src/gc/global-handles.cc",
     "src/src/gc/logger.cc",
     "src/src/gc/mem_map.cc",
@@ -102,8 +104,6 @@ source_set("quickjs_source") {
     "src/src/gc/qjsvaluevalue-space.cc",
     "src/src/gc/ros_allocator.cc",
     "src/src/gc/space.cc",
-    "src/src/gc/gc_marking.cc",
-    "src/src/gc/gc_tracer.cc",
     "src/src/gc/thread_pool.cc",
     "src/src/inspector/cpuprofiler/cpu_profiler.cc",
     "src/src/inspector/cpuprofiler/cpu_profiler.h",
