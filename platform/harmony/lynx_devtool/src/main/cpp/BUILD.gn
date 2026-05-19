@@ -29,6 +29,11 @@ devtool_source_set("cpp") {
     "message_handler_harmony.cc",
     "message_handler_harmony.h",
   ]
+  if (defined(enable_rts_runtime) && enable_rts_runtime && is_debug) {
+    deps = [ "../../../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory" ]
+  } else {
+    deps = [ "../../../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory_stub" ]
+  }
 
   include_dirs = [ "../../../../../../third_party/debug_router/src/" ]
 }
