@@ -168,7 +168,7 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
       width,
       Int.MAX_VALUE)
 
-    lynxContext.findShadowNodeBySign(sign)?.let {
+    lynxContext.findShadowNodeAndRunTask(sign) { it ->
       if (it is LynxUIBaseInputShadowNode) {
         it.updateHeightIfNeeded(placeholderTextLayout.height.coerceAtLeast(updatedHeight))
       }
