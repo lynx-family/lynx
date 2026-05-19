@@ -203,6 +203,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)initNewGestureInUIThread:(BOOL)enableNewGesture;
 
+- (void)setEnableSyncXelementRegistry;
+
 - (NSInteger)getRootSign;
 
 #pragma mark - View Hierarchy Management

@@ -923,6 +923,55 @@ void UIOwner::InitGestureArenaManager(LynxContext* context) {
   gesture_arena_manager_ = std::make_shared<GestureArenaManager>(true, context);
 }
 
+void UIOwner::SetEnableSyncXElementRegistry() {
+  if (context_) {
+    std::unordered_map<std::string, std::string> tag_map = {
+        {"x-viewpager-ng", "viewpager"},
+        {"x-viewpager-item-ng", "viewpager-item"},
+        {"x-overlay-ng", "overlay"},
+        {"x-refresh-view", "refresh"},
+        {"x-refresh-header", "refresh-header"},
+        {"x-blur-view", "blur-view"},
+        {"x-foldview-ng", "scroll-coordinator"},
+        {"x-foldview-header-ng", "scroll-coordinator-header"},
+        {"x-foldview-slot-ng", "scroll-coordinator-slot"},
+        {"x-foldview-slot-drag-ng", "scroll-coordinator-slot-drag"},
+        {"x-foldview-toolbar-ng", "scroll-coordinator-toolbar"},
+        {"x-input-ng", "input"},
+        {"x-textarea-ng", "textarea"},
+    };
+    for (const auto& [legacy_tag_name, tag_name] : tag_map) {
+      if (const auto* node_info = context_->GetNodeInfo(legacy_tag_name)) {
+        context_->RegisterNodeInfo(tag_name, *node_info);
+      }
+    }
+  }
+
+  if (!js_this_) {
+    return;
+  }
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
+  if (!js_recv) {
+    return;
+  }
+
+  napi_value sync_xelement_registry;
+  if (napi_get_named_property(env_, js_recv, "setEnableSyncXElementRegistry",
+                              &sync_xelement_registry) != napi_ok) {
+    return;
+  }
+  napi_valuetype type;
+  if (napi_typeof(env_, sync_xelement_registry, &type) != napi_ok ||
+      type != napi_function) {
+    return;
+  }
+
+  napi_value result;
+  napi_call_function(env_, js_recv, sync_xelement_registry, 0, nullptr,
+                     &result);
+}
+
 void UIOwner::PostTaskOnUIThread(base::closure task) const {
   context_->PostTaskOnUIThread(std::move(task));
 }

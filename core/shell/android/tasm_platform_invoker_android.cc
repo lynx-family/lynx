@@ -126,6 +126,7 @@ constexpr const char* kEnableFlattenTranslateZ = "enableFlattenTranslateZ";
 constexpr const char* kEnableTextLayoutCache = "enableTextLayoutCache";
 constexpr const char* kEnableTransformedTouchPosition =
     "enableTransformedTouchPosition";
+constexpr const char* kSyncXElementRegistry = "syncXElementRegistry";
 
 }  // namespace
 
@@ -246,6 +247,8 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
   }
   java_config.PushBoolean(kEnableTransformedTouchPosition,
                           config->GetEnableTransformedTouchPosition());
+  java_config.PushBoolean(kSyncXElementRegistry,
+                          config->GetSyncXElementRegistry());
   return java_config;
 }
 
