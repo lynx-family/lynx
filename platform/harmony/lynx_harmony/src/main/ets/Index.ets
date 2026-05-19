@@ -15,6 +15,8 @@ export { LynxHttpRequest } from './jsbridge/network/LynxHttpRequest'
 
 export { LynxHttpResponse } from './jsbridge/network/LynxHttpResponse'
 
+export { HttpStreamingDelegate } from './jsbridge/network/HttpStreamingDelegate'
+
 export { LynxUIMethodConstants } from './tasm/behavior/util/LynxUIMethodConstants'
 
 export { LynxEnv } from './tasm/LynxEnv'

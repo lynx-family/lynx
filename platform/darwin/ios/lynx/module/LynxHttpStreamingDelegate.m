@@ -95,10 +95,20 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
 - (BOOL)sendSseChunkIfComplete:(NSMutableData *)buffer {
   uint8_t prev = '\0';
   uint8_t curr;
+  bool sawCR = false;
   size_t byteLength = buffer.length;
   const uint8_t *bufferBytes = [buffer bytes];
   for (size_t i = 0; i < byteLength; ++i) {
     curr = bufferBytes[i];
+    if (curr == '\r') {
+      if (!sawCR) {
+        sawCR = true;
+      } else {
+        prev = 0;
+      }
+      continue;
+    }
+    sawCR = false;
     if (prev == '\n' && curr == '\n') {
       [self onData:[buffer subdataWithRange:NSMakeRange(0, i + 1)]];
       [buffer setData:[buffer subdataWithRange:NSMakeRange(i + 1, byteLength - i - 1)]];

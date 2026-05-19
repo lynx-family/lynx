@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { ILynxHttpService, LynxHttpRequest, LynxHttpResponse } from '@lynx/lynx';
+import { HttpStreamingDelegate, ILynxHttpService, LynxHttpRequest, LynxHttpResponse } from '@lynx/lynx';
 import http from '@ohos.net.http';
 import { BusinessError } from '@kit.BasicServicesKit';
 
@@ -51,4 +51,71 @@ export class LynxHttpService implements ILynxHttpService {
       httpRequest.destroy();
     });
   }
+
+  requestStreaming(request: LynxHttpRequest, callback: (resp: LynxHttpResponse) => void,
+    delegate: HttpStreamingDelegate): void {
+    let httpRequest = http.createHttp();
+    let responseHeaders: Record<string, string> = {};
+    let enableSSEStreaming = false;
+    let hasReceivedHeaders = false;
+    httpRequest.on('dataReceive', (data: ArrayBuffer) => {
+      if (enableSSEStreaming) {
+        delegate.onDataSSE(data);
+      } else if (!hasReceivedHeaders) {
+        delegate.onDataPending(data);
+      } else {
+        delegate.onData(data);
+      }
+    });
+    httpRequest.once('headersReceive', (headers: Object) => {
+      responseHeaders = headers as Record<string, string>;
+      enableSSEStreaming = this.isServerSentEvent(responseHeaders);
+      hasReceivedHeaders = true;
+
+      const httpResponse = new LynxHttpResponse();
+      httpResponse.url = request.url;
+      httpResponse.httpHeaders = responseHeaders;
+      httpResponse.statusCode = 200;
+      callback(httpResponse);
+
+      delegate.flushPendingData(enableSSEStreaming);
+    });
+    httpRequest.requestInStream(request.url, {
+      method: this.methodFromName(request.httpMethod.toUpperCase()),
+      header: request.httpHeaders,
+      extraData: request.httpBody,
+      expectDataType: http.HttpDataType.ARRAY_BUFFER,
+    }, (err: BusinessError, statusCode: number) => {
+      if (!err) {
+        if (enableSSEStreaming) {
+          delegate.flushSSEBuffer();
+        }
+        delegate.flushPendingData(enableSSEStreaming);
+        delegate.onEnd();
+      } else {
+        if (!hasReceivedHeaders) {
+          const httpResponse = new LynxHttpResponse();
+          httpResponse.url = request.url;
+          httpResponse.httpHeaders = responseHeaders;
+          httpResponse.statusCode = LynxHttpService.SDK_ERROR_STATUS_CODE;
+          httpResponse.statusText = err.message;
+          callback(httpResponse);
+        }
+        delegate.onError(err.message);
+      }
+
+      httpRequest.off('dataReceive');
+      httpRequest.destroy();
+    });
+  }
+
+  private isServerSentEvent(headers: Record<string, string>): boolean {
+    for (const key of Object.keys(headers)) {
+      if (key.toLowerCase() == 'content-type') {
+        return headers[key].toLowerCase().indexOf('text/event-stream') >= 0;
+      }
+    }
+    return false;
+  }
+
 }
