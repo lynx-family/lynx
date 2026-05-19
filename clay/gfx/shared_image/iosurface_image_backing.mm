@@ -139,7 +139,9 @@ fml::RefPtr<SkiaImageRepresentation> IOSurfaceImageBacking::CreateSkiaRepresenta
   return nullptr;
 }
 
-bool IOSurfaceImageBacking::ReadbackToMemory(const SkPixmap* pixmaps, uint32_t planes) {
+#endif  // !ENABLE_SKITY
+
+bool IOSurfaceImageBacking::ReadbackToMemory(SharedImageReadbackPixmap* pixmaps, uint32_t planes) {
   ScopedIOSurfaceLock io_surface_lock(io_surface_, kIOSurfaceLockReadOnly);
 
   for (uint32_t plane_index = 0; plane_index < planes; plane_index++) {
@@ -149,12 +151,12 @@ bool IOSurfaceImageBacking::ReadbackToMemory(const SkPixmap* pixmaps, uint32_t p
                static_cast<int32_t>(IOSurfaceGetHeightOfPlane(io_surface_, plane_index)));
 
     size_t io_surface_row_bytes = IOSurfaceGetBytesPerRowOfPlane(io_surface_, plane_index);
-    size_t dst_bytes_per_row = pixmaps[plane_index].rowBytes();
+    size_t dst_bytes_per_row = SharedImagePixmapRowBytes(pixmaps[plane_index]);
 
     const uint8_t* src_ptr = static_cast<const uint8_t*>(io_surface_base_address);
-    uint8_t* dst_ptr = static_cast<uint8_t*>(pixmaps[plane_index].writable_addr());
+    uint8_t* dst_ptr = SharedImagePixmapWritableAddr(pixmaps[plane_index]);
 
-    size_t copy_bytes = pixmaps[plane_index].info().minRowBytes();
+    size_t copy_bytes = SharedImagePixmapMinRowBytes(pixmaps[plane_index]);
     FML_DCHECK(copy_bytes <= io_surface_row_bytes);
     FML_DCHECK(copy_bytes <= dst_bytes_per_row);
 
@@ -163,7 +165,8 @@ bool IOSurfaceImageBacking::ReadbackToMemory(const SkPixmap* pixmaps, uint32_t p
 
   return true;
 }
-#else
+
+#ifdef ENABLE_SKITY
 fml::RefPtr<SkityImageRepresentation> IOSurfaceImageBacking::CreateSkityRepresentation(
     skity::GPUContext* skity_context) {
   switch (skity_context->GetBackendType()) {
