@@ -4,8 +4,11 @@
 
 import { LynxHttpRequest } from '../../jsbridge/network/LynxHttpRequest';
 import { LynxHttpResponse } from '../../jsbridge/network/LynxHttpResponse';
+import { HttpStreamingDelegate } from '../../jsbridge/network/HttpStreamingDelegate';
 import { IServiceProvider } from './IServiceProvider';
 
 export interface ILynxHttpService extends IServiceProvider {
   request(request: LynxHttpRequest, callback: (resp: LynxHttpResponse) => void): void;
+  requestStreaming(request: LynxHttpRequest, callback: (resp: LynxHttpResponse) => void,
+    delegate: HttpStreamingDelegate): void;
 }
