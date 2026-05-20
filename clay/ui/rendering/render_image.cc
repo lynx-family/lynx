@@ -455,6 +455,12 @@ void RenderImage::WillPaint() {
   // smaller than the original size. And this will lead to some memory
   // waste. Maybe need further research.
   bool force_use_original_size = !down_sampling_ || HasTransformExpansion();
+  Renderer* renderer = GetRenderer();
+  if (!renderer) {
+    return;
+  }
+  float pixel_ratio =
+      renderer->GetPixelRatio<kPixelTypeClay, kPixelTypePhysical>();
   for (auto* resource : {image_resource_.get(), pending_image_resource_.get(),
                          placeholder_resource_.get()}) {
     if (resource && resource->GetImage()) {
@@ -464,10 +470,7 @@ void RenderImage::WillPaint() {
       if (!resource->GetImage()->IsSVG()) {
         resource->GetImage()->SetExpectSizeCalculator(
             [has_cap_insets = has_cap_insets_, mode = mode_, output_size,
-             pixel_ratio =
-                 GetRenderer()
-                     ->GetPixelRatio<kPixelTypeClay, kPixelTypePhysical>()](
-                skity::Vec2 size) {
+             pixel_ratio](skity::Vec2 size) {
               if (has_cap_insets) {
                 return size;
               }
@@ -481,11 +484,7 @@ void RenderImage::WillPaint() {
             force_use_original_size);
       } else {
         resource->GetImage()->SetExpectSizeCalculator(
-            [output_size,
-             pixel_ratio =
-                 GetRenderer()
-                     ->GetPixelRatio<kPixelTypeClay, kPixelTypePhysical>()](
-                skity::Vec2 size) {
+            [output_size, pixel_ratio](skity::Vec2 size) {
               // There is no `mode` or `cap_insets` provided for SVG image.
               // Just consider the output_size as render_size.
               skity::Vec2 render_size = output_size;
