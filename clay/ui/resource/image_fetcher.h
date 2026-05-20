@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "clay/common/task_runners.h"
 #include "clay/gfx/gpu_object.h"
@@ -36,7 +37,7 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
                fml::RefPtr<GPUUnrefQueue> unref_queue,
                std::shared_ptr<ServiceManager> service_manager);
   uint64_t FetchImage(const std::string& original_url, bool is_svg,
-                      const ImageCallback& callback);
+                      const ImageCallback& callback, bool need_redirect = true);
   uint64_t FetchSVGImageWithContent(const std::string& content,
                                     const ImageCallback& callback);
 
@@ -46,13 +47,16 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
 
   void OnImageHasNoAccessor(BaseImage* image);
 
+  void ClearCache();
+
  protected:
   fml::WeakPtr<ImageFetcher> GetWeakPtr() const {
     return weak_factory_.GetWeakPtr();
   }
   virtual void FetchImage(
       const std::string& trimmed_url,
-      const std::function<void(std::shared_ptr<PlatformImage>)>& callback) = 0;
+      const std::function<void(std::shared_ptr<PlatformImage>)>& callback,
+      bool need_redirect) = 0;
 
   void OnFetchFinish(const std::string& trimmed_url,
                      std::shared_ptr<BaseImage> image);
@@ -73,7 +77,8 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
   std::shared_ptr<ImageCache<BaseImage>> inactive_image_cache_;
   std::unordered_map<std::string, std::shared_ptr<ResourceLoader>>
       url_loader_map_;
-  std::multimap<std::string, ImageCallback> image_callback_map_;
+  std::multimap<std::string, std::pair<uint64_t, ImageCallback>>
+      image_callback_map_;
 };
 
 }  // namespace clay
