@@ -8,16 +8,17 @@
 #include <memory>
 
 #include "base/include/fml/thread.h"
-#ifdef ENABLE_SKITY
-#include "clay/shell/gpu/gpu_surface_gl_skity.h"
-#else
+#ifndef ENABLE_SKITY
 #include "clay/shell/gpu/gpu_surface_gl_skia.h"
 #endif
 #include "clay/shell/platform/headless/gl/clay_headless_renderer_gl.h"
 
 namespace clay {
 class SharedImageSink;
-}
+#ifdef ENABLE_SKITY
+class HostGLRenderer;
+#endif
+}  // namespace clay
 
 namespace clay {
 
@@ -96,7 +97,7 @@ class ClayHeadlessRendererSharedImageHostGL final
 
   fml::Thread host_gl_thread_;
 #ifdef ENABLE_SKITY
-  std::unique_ptr<GPUSurfaceGLSkity> host_gl_surface_;
+  std::unique_ptr<HostGLRenderer> host_gl_renderer_;
 #else
   std::unique_ptr<GPUSurfaceGLSkia> host_gl_surface_;
 #endif
