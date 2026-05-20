@@ -13,6 +13,7 @@
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/vector.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
@@ -59,7 +60,9 @@ enum class LynxPseudoStatus {
   kAll = ~0,
 };
 
-class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
+class PlatformEventTarget
+    : public fml::RefCountedThreadSafeStorage,
+      public fml::EnableWeakFromThis<PlatformEventTarget> {
   using ChildrenTargetVec =
       base::InlineVector<fml::RefPtr<PlatformEventTarget>, 4>;
 
@@ -128,9 +131,12 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   void GetExposureTargetRect(float rect[4]) const;
   void GetExposureWindowRect(float rect[4]) const;
 
-  fml::RefPtr<PlatformEventTarget> ParentTarget() { return parent_; }
+  fml::RefPtr<PlatformEventTarget> ParentTarget() {
+    return parent_ ? fml::RefPtr<PlatformEventTarget>(parent_.get()) : nullptr;
+  }
   void SetParentTarget(fml::RefPtr<PlatformEventTarget> parent) {
-    parent_ = parent;
+    parent_ =
+        parent ? parent->WeakFromThis() : fml::WeakPtr<PlatformEventTarget>();
   }
   ChildrenTargetVec& ChildrenTargets() { return children_; }
   void AddChildTarget(fml::RefPtr<PlatformEventTarget> child) {
@@ -250,7 +256,7 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   lepus::Value dataset_;
 
   // event/expose target tree
-  fml::RefPtr<PlatformEventTarget> parent_{nullptr};
+  fml::WeakPtr<PlatformEventTarget> parent_;
   ChildrenTargetVec children_;
   PlatformEventTargetHelper* target_helper_{nullptr};
 };
