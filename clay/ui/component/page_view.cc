@@ -1695,11 +1695,9 @@ bool PageView::HasIntersectionObserverManager() {
 void PageView::NotifyLowMemory() {
   Isolate::Instance().GetResourceCache()->ClearCache();
   ImageDataCache::GetInstance().ClearCache();
-#ifndef ENABLE_SKITY
   if (image_resource_fetcher_) {
     image_resource_fetcher_->ClearCache();
   }
-#endif  // ENABLE_SKITY
   render_delegate_->ClearTextCache();
 }
 
