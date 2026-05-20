@@ -635,10 +635,7 @@ TasmRuntimeBundle TemplateEntry::CreateTasmRuntimeBundle() {
 }
 
 bool TemplateEntry::DecodeCSSFragmentById(int32_t fragmentId) {
-  if (reader_) {
-    return reader_->DecodeCSSFragmentByIdInRender(fragmentId);
-  }
-  return false;
+  return template_bundle_.DecodeCSSFragmentById(fragmentId);
 }
 
 bool TemplateEntry::LoadLepusChunk(const std::string& entry_path,

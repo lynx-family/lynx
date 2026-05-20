@@ -219,5 +219,10 @@ LynxTemplateBundle::GetLepusChunk(const std::string &chunk_key) {
   return chunk;
 }
 
+bool LynxTemplateBundle::DecodeCSSFragmentById(int32_t fragment_id) {
+  return lazy_reader_ &&
+         lazy_reader_->DecodeCSSFragmentByIdInRender(fragment_id);
+}
+
 }  // namespace tasm
 }  // namespace lynx
