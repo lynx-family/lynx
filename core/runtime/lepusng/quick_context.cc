@@ -1091,12 +1091,31 @@ bool QuickContext::DeSerialize(const runtime::ContextBundle& bundle,
                                bool reuse_context, Value* ret,
                                const char* file_name) {
   const auto& quick_bundle = static_cast<const QuickContextBundle&>(bundle);
+
+  if (quick_bundle.IsSourceMode()) {
+    const auto& source = quick_bundle.GetSourceCode();
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_EVAL_SCRIPT,
+                "sourceSize", source.size());
+    if (reuse_context) {
+      return EvalBuf(source.c_str(), source.size(), *ret, file_name);
+    }
+    LEPUSValue val =
+        LEPUS_Eval(context(), source.data(), source.size(), file_name,
+                   LEPUS_EVAL_FLAG_COMPILE_ONLY | LEPUS_EVAL_TYPE_GLOBAL);
+    if (LEPUS_IsException(val)) {
+      std::string msg = GetExceptionMessage();
+      LOGE("QuickContext source compile error: " << msg);
+      return false;
+    }
+    SetTopLevelFunction(val);
+    PrepareInspector(file_name);
+    return true;
+  }
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_DO_SERIALIZE,
               "bytecodeSize", quick_bundle.lepusng_code_len_);
 
   if (reuse_context) {
-    // file_name is only used for dynamic-components,
-    // file_name of page is `lepus.js` by default.
     return EvalBinary(quick_bundle.lepusng_code_.data(),
                       quick_bundle.lepusng_code_.size(), *ret, file_name);
   }

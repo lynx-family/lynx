@@ -10085,6 +10085,7 @@ public class com::lynx::tasm::TemplateBundle : com.lynx.tasm.service.security.IL
   public PageConfig com.lynx.tasm.TemplateBundle.getPageConfig();
   public boolean com.lynx.tasm.TemplateBundle.constructContext();
   public static TemplateBundle com.lynx.tasm.TemplateBundle.fromTemplate(byte[] template);
+  public static TemplateBundle com.lynx.tasm.TemplateBundle.fromJSON(String json);
   public static TemplateBundle com.lynx.tasm.TemplateBundle.fromTemplate(ByteBuffer buffer, TemplateBundleOption option);
   public static TemplateBundle com.lynx.tasm.TemplateBundle.fromTemplate(byte[] template, TemplateBundleOption option);
 }

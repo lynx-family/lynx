@@ -108,6 +108,30 @@ jlong ParseTemplateFromByteBuffer(JNIEnv* env, jclass jcaller,
                                skip_css, devToolPoolPtr);
 }
 
+jlong ParseTemplateFromJSON(JNIEnv* env, jclass jcaller, jstring json,
+                            jobjectArray options) {
+  std::string json_str =
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, json);
+
+  lynx::tasm::LynxTemplateBundle bundle;
+  std::string error = bundle.FromJSON(json_str);
+  if (error.empty()) {
+    auto* native_bundle = new lynx::tasm::LynxTemplateBundle(std::move(bundle));
+    native_bundle->PrepareVMByConfigs();
+    auto page_config = GetPageConfigMap(env, native_bundle);
+    env->SetObjectArrayElement(
+        options, 1, page_config ? page_config->jni_object() : nullptr);
+    return reinterpret_cast<int64_t>(native_bundle);
+  } else {
+    LOGE("ParseTemplateFromJSON failed. error_msg is : " << error);
+    auto j_err_str =
+        lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env,
+                                                                     error);
+    env->SetObjectArrayElement(options, 0, j_err_str.Get());
+    return 0;
+  }
+}
+
 jobject GetExtraInfo(JNIEnv* env, jclass jcaller, jlong ptr) {
   auto bundle = reinterpret_cast<lynx::tasm::LynxTemplateBundle*>(ptr);
   if (bundle) {

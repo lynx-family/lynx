@@ -152,6 +152,18 @@ public final class TemplateBundle implements ILynxSecurityTarget {
     return internalBuildTemplate(new TemplateBundle(), template, null, null, null);
   }
 
+  public static TemplateBundle fromJSON(String json) {
+    TemplateBundle result = new TemplateBundle();
+    if (!checkIfEnvPrepared()) {
+      result.initialize(0, 0, null, "Lynx Env is not prepared", null);
+      return result;
+    }
+    Object[] options = new Object[2];
+    long ptr = nativeParseTemplateFromJSON(json != null ? json : "", options);
+    result.initialize(ptr, 0, null, (String) options[0], (ReadableMap) options[1]);
+    return result;
+  }
+
   /**
    * @apidoc
    * @brief Input ByteBuffer that represents Lynx Bundle content and return the parsed
@@ -434,4 +446,6 @@ public final class TemplateBundle implements ILynxSecurityTarget {
 
   private static native void nativeInitWithOption(
       long ptr, int contextPoolSize, boolean enableContextAutoRefill);
+
+  private static native long nativeParseTemplateFromJSON(String json, Object[] options);
 }

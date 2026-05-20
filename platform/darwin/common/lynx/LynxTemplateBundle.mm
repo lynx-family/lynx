@@ -79,13 +79,16 @@
   return [[self alloc] initWithTemplate:tem option:option];
 }
 
-- (instancetype _Nullable)initWithTemplate:(nonnull NSData*)tem
-                                    option:(nullable LynxTemplateBundleOption*)option {
-  BOOL debuggable = option ? [option debuggable] : NO;
-  BOOL skipCSS = option ? [option skipCSS] : NO;
+- (instancetype _Nullable)initWithJSON:(NSString*)json {
   if (self = [super init]) {
-    [self decodeTemplate:tem url:[option url] debuggable:debuggable skipCSS:skipCSS];
-    [self initWithOption:option];
+    auto template_bundle = std::make_shared<lynx::tasm::LynxTemplateBundle>();
+    std::string error = template_bundle->FromJSON([json UTF8String]);
+    if (error.empty()) {
+      template_bundle_ = std::move(template_bundle);
+      template_bundle_->PrepareVMByConfigs();
+    } else {
+      _error = [NSString stringWithUTF8String:error.c_str()];
+    }
   }
   return self;
 }

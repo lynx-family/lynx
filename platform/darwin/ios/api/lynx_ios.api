@@ -3685,6 +3685,7 @@ public class LynxTapGestureHandler : LynxBaseGestureHandler {
 
 public class LynxTemplateBundle : NSObject, <LynxSecurityTarget> {
   public NSString* LynxTemplateBundle::url url;
+  public instancetype _Nullable LynxTemplateBundle::initWithJSON:(init(json:) NS_SWIFT_NAME);
   public instancetype _Nullable LynxTemplateBundle::initWithTemplate:(init(_:) NS_SWIFT_NAME);
   public instancetype _Nullable LynxTemplateBundle::initWithTemplate:option:(nonnull NSData *tem,[option] init(_:option:) NS_SWIFT_NAME);
   public instancetype _Nullable LynxTemplateBundle::_swiftInitWithData:(initWith(_:) NS_SWIFT_NAME);

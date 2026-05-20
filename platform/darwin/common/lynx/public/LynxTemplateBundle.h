@@ -21,6 +21,16 @@
 
 /**
  * @apidoc
+ * @brief Input Lynx template JSON content and return the parsed `TemplateBundle` object.
+ * @param json Template JSON content containing "css", "lepus.js", "app-service.js".
+ * @return The `TemplateBundle` object.
+ * @note When the input `json` is not a correct `Lynx` template data, or is `nil`, an invalid
+ * `TemplateBundle` is returned
+ */
+- (instancetype _Nullable)initWithJSON:(nonnull NSString*)json NS_SWIFT_NAME(init(json:));
+
+/**
+ * @apidoc
  * @brief Input Lynx template binary content and return the parsed `TemplateBundle` object.
  * @param tem Template binary content.
  * @return The `TemplateBundle` object.
