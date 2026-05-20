@@ -96,6 +96,10 @@
   NSMutableDictionary* dict = [[NSMutableDictionary alloc] init];
   [dict setValue:NSStringFromClass([ui class]) forKey:@"name"];
   [dict setValue:@(ui.sign) forKey:@"id"];
+  [dict setValue:ui.tagName forKey:@"tagName"];
+  [dict setValue:@(ui.nodeIndex) forKey:@"nodeIndex"];
+  [dict setValue:ui.lynxProps forKey:@"props"];
+  [dict setValue:ui.view.accessibilityLabel forKey:@"label"];
   [dict setValue:@[
     @(ui.frame.origin.x), @(ui.frame.origin.y), @(ui.frame.size.width), @(ui.frame.size.height)
   ]

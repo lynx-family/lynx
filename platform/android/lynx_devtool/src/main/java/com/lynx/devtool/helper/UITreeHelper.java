@@ -113,6 +113,10 @@ public class UITreeHelper {
     HashMap<String, Object> map = new HashMap<>();
     map.put("name", ui.getClass().getName());
     map.put("id", ui.getSign());
+    map.put("tagName", ui.getTagName());
+    map.put("nodeIndex", ui.getNodeIndex());
+    map.put("props", ui.getProps().toJSONObject());
+    map.put("label", ui.getAccessibilityLabel());
     map.put("frame",
         new JSONArray(
             Arrays.asList(ui.getOriginLeft(), ui.getOriginTop(), ui.getWidth(), ui.getHeight())));
