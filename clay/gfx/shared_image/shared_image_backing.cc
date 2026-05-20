@@ -4,9 +4,7 @@
 
 #include "clay/gfx/shared_image/shared_image_backing.h"
 
-#include <limits>
 #include <utility>
-#include <vector>
 
 #include "build/build_config.h"
 #include "clay/fml/logging.h"
@@ -160,13 +158,12 @@ void SharedImageBacking::DumpToPng(const std::string& file_name) {
   auto image_info =
       SkImageInfo::Make(SkISize::Make(size_.x, size_.y), kBGRA_8888_SkColorType,
                         kPremul_SkAlphaType);
-  const size_t byte_size = image_info.computeMinByteSize();
-  FML_DCHECK(byte_size != std::numeric_limits<size_t>::max());
-  std::vector<uint8_t> pixels(byte_size);
-  SkPixmap pixmap(image_info, pixels.data(), image_info.minRowBytes());
-  bool success = ReadbackToMemory(&pixmap, 1);
+  bool success = bitmap.tryAllocPixels(image_info, 0);
   FML_DCHECK(success);
-  success = bitmap.installPixels(pixmap);
+  SkPixmap pixmap;
+  success = bitmap.peekPixels(&pixmap);
+  FML_DCHECK(success);
+  success = ReadbackToMemory(&pixmap, 1);
   FML_DCHECK(success);
   SkDynamicMemoryWStream buf;
   success = SkPngEncoder::Encode(&buf, bitmap.pixmap(), {});
