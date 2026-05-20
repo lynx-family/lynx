@@ -25,6 +25,7 @@ constexpr base::Version kAbsoluteAndFixedBoxInfoFixedVersion(2, 16);
 constexpr base::Version kGridNewVersion(3, 1);
 constexpr base::Version kFixedNodeWithDisplayNoneFixedVersion(3, 5);
 constexpr base::Version kLinearLayoutCrossAxisMarginAutoFixedVersion(3, 8);
+constexpr base::Version kNegativePaddingFixedVersion(4, 0);
 
 namespace starlight {
 
@@ -54,6 +55,8 @@ struct LayoutConfigs {
         !IsVersionHigherOrEqual(kFixedNodeWithDisplayNoneFixedVersion);
     is_linear_layout_cross_axis_margin_auto_fixed_quirks_mode_ =
         !IsVersionHigherOrEqual(kLinearLayoutCrossAxisMarginAutoFixedVersion);
+    is_negative_padding_quirks_mode_ =
+        !IsVersionHigherOrEqual(kNegativePaddingFixedVersion);
   }
   const base::Version& GetQuirksMode() const { return quirks_mode_; }
   void SetTargetSDKVersion(const std::string& target_sdk_version) {
@@ -150,6 +153,11 @@ struct LayoutConfigs {
   bool IsLinearLayoutCrossAxisMarginAutoQuirksMode() const {
     return is_linear_layout_cross_axis_margin_auto_fixed_quirks_mode_;
   }
+  // CSS padding should not be negative. Fix this issue when
+  // is_negative_padding_quirks_mode_ is false.
+  bool IsNegativePaddingQuirksMode() const {
+    return is_negative_padding_quirks_mode_;
+  }
 
   bool is_absolute_in_content_bound_ = false;
   bool css_align_with_legacy_w3c_ = false;
@@ -177,6 +185,7 @@ struct LayoutConfigs {
   bool is_grid_new_quirks_mode_ = true;
   bool is_fixed_node_with_display_none_quirks_mode_ = true;
   bool is_linear_layout_cross_axis_margin_auto_fixed_quirks_mode_ = true;
+  bool is_negative_padding_quirks_mode_ = true;
 };
 
 }  // namespace starlight

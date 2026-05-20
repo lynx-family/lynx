@@ -48,8 +48,6 @@ class BoxInfo {
                      const LayoutConfigs& layout_config);
 
  private:
-  void InitializeMarginPadding(const NLength& length,
-                               const LayoutUnit& available_size, float& value);
   void ResolveMinMax(const NLength& width, const NLength& height,
                      const LayoutUnit& available_width,
                      const LayoutUnit& available_height,
@@ -57,9 +55,15 @@ class BoxInfo {
                      const LayoutComputedStyle& style, float default_value,
                      DimensionValue<float>& value);
   void UpdateHorizontalBoxData(const LayoutUnit& available_width,
-                               const LayoutComputedStyle& style, bool& dirty);
+                               const LayoutComputedStyle& style,
+                               const LayoutConfigs& layout_config, bool& dirty);
   float CalculateLengthValue(const NLength& length,
                              const LayoutUnit& available_width);
+  float CalculateMarginValue(const NLength& length,
+                             const LayoutUnit& available_width);
+  float CalculatePaddingValue(const NLength& length,
+                              const LayoutUnit& available_width,
+                              const LayoutConfigs& layout_config);
 
   bool values_of_width_modify_;
   bool values_of_height_modify_;

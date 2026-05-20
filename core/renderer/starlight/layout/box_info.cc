@@ -57,12 +57,6 @@ void BoxInfo::SetBoxInfoPropsModified() {
   std::fill(margin_should_modify_.begin(), margin_should_modify_.end(), true);
 }
 
-void BoxInfo::InitializeMarginPadding(const NLength& length,
-                                      const LayoutUnit& available_size,
-                                      float& value) {
-  value = CalculateLengthValue(length, available_size);
-}
-
 void BoxInfo::ResolveMinMax(const NLength& width, const NLength& height,
                             const LayoutUnit& available_width,
                             const LayoutUnit& available_height,
@@ -100,10 +94,11 @@ void BoxInfo::ResolveBoxInfoForAbsoluteAndFixed(
     const NLength& padding =
         logic_direction_utils::GetPadding(&style, direction);
     if (margin.ContainsPercentage()) {
-      InitializeMarginPadding(margin, available_width, margin_[direction]);
+      margin_[direction] = CalculateMarginValue(margin, available_width);
     }
     if (padding.ContainsPercentage()) {
-      InitializeMarginPadding(padding, available_width, padding_[direction]);
+      padding_[direction] =
+          CalculatePaddingValue(padding, available_width, layout_config);
     }
   }
   if (style.GetMinWidth().ContainsPercentage() ||
@@ -136,14 +131,14 @@ void BoxInfo::InitializeBoxInfo(const Constraints& constraints,
 
   for (int32_t dir_index = 0; dir_index < kDirectionCount; ++dir_index) {
     Direction direction = static_cast<Direction>(dir_index);
-    InitializeMarginPadding(logic_direction_utils::GetMargin(&style, direction),
-                            available_width, margin_[direction]);
+    margin_[direction] = CalculateMarginValue(
+        logic_direction_utils::GetMargin(&style, direction), available_width);
     margin_should_modify_[direction] =
         MarkShouldModify(logic_direction_utils::GetMargin(&style, direction));
     float padding_new_value = 0;
-    InitializeMarginPadding(
+    padding_new_value = CalculatePaddingValue(
         logic_direction_utils::GetPadding(&style, direction), available_width,
-        padding_new_value);
+        layout_config);
 
     padding_should_modify_[direction] =
         MarkShouldModify(logic_direction_utils::GetPadding(&style, direction));
@@ -202,8 +197,22 @@ float BoxInfo::CalculateLengthValue(const NLength& length,
       .ToFloat();
 }
 
+float BoxInfo::CalculateMarginValue(const NLength& length,
+                                    const LayoutUnit& available_width) {
+  return CalculateLengthValue(length, available_width);
+}
+
+float BoxInfo::CalculatePaddingValue(const NLength& length,
+                                     const LayoutUnit& available_width,
+                                     const LayoutConfigs& layout_config) {
+  const float value = CalculateLengthValue(length, available_width);
+  return layout_config.IsNegativePaddingQuirksMode() ? value
+                                                     : std::fmax(value, 0.0f);
+}
+
 void BoxInfo::UpdateHorizontalBoxData(const LayoutUnit& available_width,
                                       const LayoutComputedStyle& style,
+                                      const LayoutConfigs& layout_config,
                                       bool& dirty) {
   if (!values_of_width_modify_) {
     return;
@@ -212,14 +221,14 @@ void BoxInfo::UpdateHorizontalBoxData(const LayoutUnit& available_width,
   for (int32_t dir_index = 0; dir_index < kDirectionCount; ++dir_index) {
     Direction direction = static_cast<Direction>(dir_index);
     if (padding_should_modify_[direction]) {
-      const float new_value = CalculateLengthValue(
-          logic_direction_utils::GetPadding(&style, direction),
-          available_width);
+      const float new_value = CalculatePaddingValue(
+          logic_direction_utils::GetPadding(&style, direction), available_width,
+          layout_config);
       SetIfChanged(dirty, padding_[direction], new_value);
     }
 
     if (margin_should_modify_[direction]) {
-      margin_[direction] = CalculateLengthValue(
+      margin_[direction] = CalculateMarginValue(
           logic_direction_utils::GetMargin(&style, direction), available_width);
     }
   }
@@ -231,7 +240,7 @@ void BoxInfo::UpdateBoxData(const Constraints& constraints, LayoutObject& obj,
   const LayoutUnit& available_height = constraints[kVertical].ToPercentBase();
   const auto& style = *(obj.GetCSSStyle());
   bool dirty = false;
-  UpdateHorizontalBoxData(available_width, style, dirty);
+  UpdateHorizontalBoxData(available_width, style, layout_config, dirty);
   // rely on padding size.
   if (min_should_modify_[kHorizontal] || min_should_modify_[kVertical]) {
     DimensionValue<float> result;
