@@ -189,8 +189,7 @@ bool LynxBinaryBaseCSSReader::DecodeCSSFragment(SharedCSSFragment* fragment,
 bool LynxBinaryBaseCSSReader::DecodeCSSParseToken(CSSParseToken* token) {
   ERROR_UNLESS(DecodeCSSAttributes(token));
 
-  if (Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
-                              FEATURE_CSS_IMPORTANT)) {
+  if (compile_options_.enable_css_important_) {
     ERROR_UNLESS(DecodeCSSAttributes(token->important_attributes(),
                                      token->raw_important_attributes(),
                                      token->GetCSSParserConfigs()));

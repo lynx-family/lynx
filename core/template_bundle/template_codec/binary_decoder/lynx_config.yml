@@ -1585,6 +1585,21 @@ enableCSSInheritance:
     - Android
     - HarmonyOS
     - iOS
+enableCSSImportant:
+  description: Controls whether CSS encode and decode preserve !important declarations in the binary template. When enabled, the encoder writes important attributes and the decoder reads them back, allowing runtime style resolution to honor !important specificity. When disabled, !important annotations are stripped during encode and ignored during decode. This config takes priority over the legacy version-gated check.
+  defaultValue: 'false'
+  valueType: bool
+  codeGen:
+    - MEMBER
+    - SETTER
+    - GETTER
+    - DECODE
+  author: your_name
+  since: '4.0'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 CSSAlignWithLegacyW3C:
   description:
     When set to true, for compatibility, some layout behaviors are consistent

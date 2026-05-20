@@ -56,6 +56,7 @@ const configKeys = [
   'enableComponentAsyncDecode',
   'enableComponentNullProp',
   'enableCreateViewAsync',
+  'enableCSSImportant',
   'enableCSSInheritance',
   'enableCSSInlineVariables',
   'enableCSSLazyImport',

@@ -260,6 +260,42 @@ TEST_F(LynxBinaryConfigDecoderTest, CompileOptionsPropagatesDerivedCSSFlags) {
   EXPECT_TRUE(options.enable_grid_placement_shorthands_);
 }
 
+TEST_F(LynxBinaryConfigDecoderTest,
+       EnableCSSImportantDefaultsToFalseWhenVersionBelowGate) {
+  tasm::CompileOptions options;
+  auto decoder =
+      std::make_unique<LynxBinaryConfigDecoder>(options, "3.2", true, false);
+  decoder->DecodePageConfig("{}", page_config_);
+  EXPECT_FALSE(page_config_->GetEnableCSSImportant());
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       EnableCSSImportantDefaultsToTrueWhenVersionAboveGate) {
+  tasm::CompileOptions options;
+  auto decoder =
+      std::make_unique<LynxBinaryConfigDecoder>(options, "4.0", true, false);
+  decoder->DecodePageConfig("{}", page_config_);
+  EXPECT_TRUE(page_config_->GetEnableCSSImportant());
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       EnableCSSImportantExplicitFalseOverridesVersionGate) {
+  tasm::CompileOptions options;
+  auto decoder =
+      std::make_unique<LynxBinaryConfigDecoder>(options, "4.0", true, false);
+  decoder->DecodePageConfig("{\"enableCSSImportant\": false}", page_config_);
+  EXPECT_FALSE(page_config_->GetEnableCSSImportant());
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       EnableCSSImportantExplicitTrueOverridesVersionGate) {
+  tasm::CompileOptions options;
+  auto decoder =
+      std::make_unique<LynxBinaryConfigDecoder>(options, "3.2", true, false);
+  decoder->DecodePageConfig("{\"enableCSSImportant\": true}", page_config_);
+  EXPECT_TRUE(page_config_->GetEnableCSSImportant());
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

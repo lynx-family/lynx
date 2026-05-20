@@ -728,6 +728,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableCSSInheritance].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableCSSImportant) &&
+        doc[config::kEnableCSSImportant].IsBool()) {
+      page_config->SetEnableCSSImportant(
+          doc[config::kEnableCSSImportant].GetBool());
+    }
+
     if (doc.HasMember(config::kCSSAlignWithLegacyW3C) &&
         doc[config::kCSSAlignWithLegacyW3C].IsBool()) {
       page_config->SetCSSAlignWithLegacyW3C(
