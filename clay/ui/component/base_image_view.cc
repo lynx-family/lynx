@@ -450,13 +450,15 @@ void BaseImageView::FetchPlaceholder() {
           page_view_->ImageDecodeWithPriority(), should_redirect_url_,
           GetRenderImage() && GetRenderImage()->EnableLowQuality());
 #else
-  source_fetch_id_ = page_view_->GetImageResourceFetcher()->FetchImage(
+  placeholder_fetch_id_ = page_view_->GetImageResourceFetcher()->FetchImage(
       placeholder_, IsSVG(),
       [self = weak_factory_.GetWeakPtr()](
           std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
         if (!self) {
           return;
         }
+        self->placeholder_fetch_id_ = kDefaultImageFetchID;
+
         if (!image_instance) {
           return;
         }
@@ -476,7 +478,8 @@ void BaseImageView::FetchPlaceholder() {
         });
         auto render_image = self->GetRenderImage();
         render_image->SetPlaceholderImage(std::move(image_instance));
-      });
+      },
+      should_redirect_url_);
 #endif  // ENABLE_SKITY
 }
 
@@ -573,6 +576,8 @@ void BaseImageView::FetchSource() {
         if (!self) {
           return;
         }
+        self->source_fetch_id_ = kDefaultImageFetchID;
+
         if (!image_instance) {
           FML_LOG(ERROR) << "image is null";
           self->NotifyLoadError("resource fetch fail");
@@ -600,7 +605,8 @@ void BaseImageView::FetchSource() {
         auto render_image = self->GetRenderImage();
         render_image->SetImage(std::move(image_instance));
         self->ReportImageLoadInfo();
-      });
+      },
+      should_redirect_url_);
 #endif  // ENABLE_SKITY
 }
 
