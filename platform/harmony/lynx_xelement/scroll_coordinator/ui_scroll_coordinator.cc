@@ -130,9 +130,8 @@ UIScrollCoordinator::UIScrollCoordinator(LynxContext* context, int sign,
       static_cast<int32_t>(ARKUI_SCROLL_DIRECTION_VERTICAL));
 
   NodeManager::Instance().SetAttributeWithNumberValue(
-      foldview_, NODE_SCROLL_NESTED_SCROLL,
-      static_cast<int32_t>(ARKUI_SCROLL_NESTED_MODE_SELF_ONLY),
-      static_cast<int32_t>(ARKUI_SCROLL_NESTED_MODE_SELF_ONLY));
+      foldview_, NODE_SCROLL_NESTED_SCROLL, nested_scroll_forward_,
+      nested_scroll_backward_);
   NodeManager::Instance().SetAttributeWithNumberValue(
       foldview_, NODE_SCROLL_BAR_DISPLAY_MODE,
       static_cast<int32_t>(ARKUI_SCROLL_BAR_DISPLAY_MODE_OFF));
@@ -232,6 +231,16 @@ void UIScrollCoordinator::OnPropUpdate(const std::string& name,
                                           : ARKUI_SCROLL_BAR_DISPLAY_MODE_OFF));
   } else if (name == "header-over-slot") {
     header_over_slot_ = value.Bool();
+  } else if (name == "forwards-nested-scroll") {
+    nested_scroll_forward_ = static_cast<int32_t>(value.Number());
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        foldview_, NODE_SCROLL_NESTED_SCROLL, nested_scroll_forward_,
+        nested_scroll_backward_);
+  } else if (name == "backwards-nested-scroll") {
+    nested_scroll_backward_ = static_cast<int32_t>(value.Number());
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        foldview_, NODE_SCROLL_NESTED_SCROLL, nested_scroll_forward_,
+        nested_scroll_backward_);
   }
 }
 
