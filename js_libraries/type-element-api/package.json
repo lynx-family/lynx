@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/type-element-api",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Type definitions for all Element PAPI provided by the Lynx team, used to improve Element PAPI support in your framework.",
   "keywords": ["element-api" , "types"],
   "repository": {

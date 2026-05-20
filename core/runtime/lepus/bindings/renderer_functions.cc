@@ -3535,6 +3535,7 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
   // [2] Array | Null | Undefined -> attributeSlots
   // [3] Array | Null | Undefined -> elementSlots
   // [4] any -> uid
+  // [5] Object | Null | Undefined -> options
   CHECK_ARGC_GE(FiberCreateElementTemplate, 1);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, String,
                                         FiberCreateElementTemplate);
@@ -3543,6 +3544,7 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
   lepus::Value attribute_slots;
   lepus::Value element_slots;
   lepus::Value uid;
+  lepus::Value options;
 
   if (argc >= 2) {
     CONVERT_ARG(arg1, 1);
@@ -3585,6 +3587,18 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
     uid = *arg4;
   }
 
+  if (argc >= 6) {
+    CONVERT_ARG(arg5, 5);
+    if (arg5->IsObject()) {
+      options = arg5->ToLepusValue();
+    } else if (!arg5->IsNil() && !arg5->IsUndefined()) {
+      ElementAPIError(
+          "FiberCreateElementTemplate param 5 should be Object or "
+          "Null or Undefined");
+      RETURN_UNDEFINED();
+    }
+  }
+
   auto* manager = self->page_proxy()->element_manager().get();
   auto element = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   element->SetTASM(self);
@@ -3592,6 +3606,7 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
   element->SetBundleUrl(base::String(entry_name));
   element->SetAttributeSlots(attribute_slots);
   element->SetElementSlots(element_slots);
+  element->SetOptions(options);
   element->SetUid(uid);
 
   ON_NODE_CREATE(element);
@@ -3610,6 +3625,7 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
   // [1] Object | Null | Undefined -> attributes
   // [2] Array | Null | Undefined -> elementSlots
   // [3] any -> uid
+  // [4] Object | Null | Undefined -> options
   CHECK_ARGC_GE(FiberCreateTypedElementTemplate, 4);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, String,
                                         FiberCreateTypedElementTemplate);
@@ -3637,12 +3653,26 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
     RETURN_UNDEFINED();
   }
 
+  lepus::Value options;
+  if (argc >= 5) {
+    CONVERT_ARG(arg4, 4);
+    if (arg4->IsObject()) {
+      options = arg4->ToLepusValue();
+    } else if (!arg4->IsNil() && !arg4->IsUndefined()) {
+      ElementAPIError(
+          "FiberCreateTypedElementTemplate param 4 should be Object or "
+          "Null or Undefined");
+      RETURN_UNDEFINED();
+    }
+  }
+
   auto* manager = self->page_proxy()->element_manager().get();
   auto element = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   element->SetTASM(self);
   element->SetTypedTag(arg0->String());
   element->SetRootAttributes(attributes);
   element->SetElementSlots(element_slots);
+  element->SetOptions(options);
   element->SetUid(*arg3);
 
   ON_NODE_CREATE(element);

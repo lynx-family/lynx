@@ -126,6 +126,7 @@ export interface SerializedCompiledTemplateInstance {
   bundleUrl?: string;
   attributeSlots?: SerializableValue[] | null;
   elementSlots?: SerializedTemplateInstance[][] | null;
+  options?: Record<string, any> | null;
   uid: number | string;
 }
 
@@ -133,6 +134,7 @@ export interface SerializedTypedTemplateInstance {
   tag: string;
   attributes?: Record<string, SerializableValue> | null;
   elementSlots?: SerializedTemplateInstance[][] | null;
+  options?: Record<string, any> | null;
   uid: number | string;
 }
 
@@ -313,6 +315,7 @@ declare global {
     attributeSlots: any[] | null | undefined,
     elementSlots: ElementRef[][] | null | undefined,
     uid: number | string,
+    options?: Record<string, any> | null | undefined,
   ): ElementRef;
 
   /**
@@ -323,6 +326,7 @@ declare global {
     attributes: Record<string, SerializableValue> | null | undefined,
     elementSlots: ElementRef[][] | null | undefined,
     uid: number | string,
+    options?: Record<string, any> | null | undefined,
   ): ElementRef;
 
   /**

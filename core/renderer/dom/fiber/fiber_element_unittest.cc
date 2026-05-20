@@ -9808,6 +9808,183 @@ TEST_P(FiberElementTest, SerializeTypedTemplateElement) {
   EXPECT_EQ(serialized_child.GetProperty("uid").StdString(), "child_uid");
 }
 
+TEST_P(FiberElementTest, CreateElementTemplateSerializesOptionTemplateArrays) {
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto compiled_child =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  compiled_child->SetTemplateKey(base::String("child_template"));
+  compiled_child->SetBundleUrl(base::String("child_bundle.js"));
+  compiled_child->SetUid(lepus::Value("child_uid"));
+
+  auto template_array = lepus::CArray::Create();
+  template_array->emplace_back(lepus::Value(compiled_child));
+  template_array->emplace_back(lepus::Value(42));
+  template_array->emplace_back(lepus::Value("plain"));
+
+  auto options = lepus::Dictionary::Create();
+  options->SetValue(base::String("enabled"), lepus::Value(true));
+  options->SetValue(base::String("templateArray"),
+                    lepus::Value(template_array));
+
+  lepus::Value args[] = {lepus::Value("root_template"),
+                         lepus::Value(),
+                         lepus::Value(),
+                         lepus::Value(),
+                         lepus::Value("root_uid"),
+                         lepus::Value(options)};
+  auto created_value =
+      RendererFunctions::FiberCreateElementTemplate(mts_ctx, args, 6);
+
+  ASSERT_TRUE(created_value.IsRefCounted());
+  auto created_element =
+      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+          .strongify();
+  ASSERT_NE(created_element, nullptr);
+  ASSERT_TRUE(created_element->is_template());
+
+  auto serialized =
+      static_cast<TemplateElement*>(created_element.get())->Serialize();
+  auto serialized_options = serialized.GetProperty("options");
+  ASSERT_TRUE(serialized_options.IsObject());
+  EXPECT_TRUE(serialized_options.GetProperty("enabled").Bool());
+  auto serialized_template_array =
+      serialized_options.GetProperty("templateArray");
+  ASSERT_EQ(serialized_template_array.GetLength(), 3);
+  EXPECT_EQ(
+      serialized_template_array.GetProperty(0).GetProperty("uid").StdString(),
+      "child_uid");
+  EXPECT_EQ(serialized_template_array.GetProperty(1).Number(), 42);
+  EXPECT_EQ(serialized_template_array.GetProperty(2).StdString(), "plain");
+}
+
+TEST_P(FiberElementTest, CreateElementTemplateSkipsEmptyOptions) {
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  lepus::Value args[] = {lepus::Value("root_template"),
+                         lepus::Value(),
+                         lepus::Value(),
+                         lepus::Value(),
+                         lepus::Value("root_uid"),
+                         lepus::Value(lepus::Dictionary::Create())};
+  auto created_value =
+      RendererFunctions::FiberCreateElementTemplate(mts_ctx, args, 6);
+
+  ASSERT_TRUE(created_value.IsRefCounted());
+  auto created_element =
+      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+          .strongify();
+  ASSERT_NE(created_element, nullptr);
+  ASSERT_TRUE(created_element->is_template());
+  auto serialized =
+      static_cast<TemplateElement*>(created_element.get())->Serialize();
+  EXPECT_TRUE(serialized.GetProperty("options").IsEmpty());
+
+  lepus::Value typed_args[] = {lepus::Value("view"), lepus::Value(),
+                               lepus::Value(), lepus::Value("typed_uid"),
+                               lepus::Value(lepus::Dictionary::Create())};
+  auto created_typed_value = RendererFunctions::FiberCreateTypedElementTemplate(
+      mts_ctx, typed_args, 5);
+  ASSERT_TRUE(created_typed_value.IsRefCounted());
+  auto created_typed_element =
+      fml::static_ref_ptr_cast<FiberElement>(created_typed_value.RefCounted())
+          .strongify();
+  ASSERT_NE(created_typed_element, nullptr);
+  ASSERT_TRUE(created_typed_element->is_template());
+  auto serialized_typed =
+      static_cast<TemplateElement*>(created_typed_element.get())->Serialize();
+  EXPECT_TRUE(serialized_typed.GetProperty("options").IsEmpty());
+}
+
+TEST_P(FiberElementTest, CreateElementTemplateRejectsArrayOptions) {
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  lepus::Value args[] = {lepus::Value("root_template"),
+                         lepus::Value(),
+                         lepus::Value(),
+                         lepus::Value(),
+                         lepus::Value("root_uid"),
+                         lepus::Value(lepus::CArray::Create())};
+  auto created_value =
+      RendererFunctions::FiberCreateElementTemplate(mts_ctx, args, 6);
+  EXPECT_TRUE(created_value.IsEmpty());
+
+  lepus::Value typed_args[] = {lepus::Value("view"), lepus::Value(),
+                               lepus::Value(), lepus::Value("typed_uid"),
+                               lepus::Value(lepus::CArray::Create())};
+  auto created_typed_value = RendererFunctions::FiberCreateTypedElementTemplate(
+      mts_ctx, typed_args, 5);
+  EXPECT_TRUE(created_typed_value.IsEmpty());
+}
+
+TEST_P(FiberElementTest, CreateTypedElementTemplateSerializesOptions) {
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child->SetTemplateKey(base::String("child_template"));
+  child->SetUid(lepus::Value("child_uid"));
+
+  auto children = lepus::CArray::Create();
+  children->emplace_back(lepus::Value(child));
+
+  auto options = lepus::Dictionary::Create();
+  options->SetValue(base::String("reusePool"), lepus::Value(children));
+
+  lepus::Value args[] = {lepus::Value("list"), lepus::Value(), lepus::Value(),
+                         lepus::Value("typed_uid"), lepus::Value(options)};
+  auto created_value =
+      RendererFunctions::FiberCreateTypedElementTemplate(mts_ctx, args, 5);
+
+  ASSERT_TRUE(created_value.IsRefCounted());
+  auto created_element =
+      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+          .strongify();
+  ASSERT_NE(created_element, nullptr);
+  ASSERT_TRUE(created_element->is_template());
+
+  auto serialized =
+      static_cast<TemplateElement*>(created_element.get())->Serialize();
+  auto serialized_options = serialized.GetProperty("options");
+  ASSERT_TRUE(serialized_options.IsObject());
+  EXPECT_EQ(serialized_options.GetProperty("reusePool")
+                .GetProperty(0)
+                .GetProperty("templateKey")
+                .StdString(),
+            "child_template");
+}
+
 TEST_P(FiberElementTest, CreateElementTemplateDoesNotPrepareBeforeTree) {
   auto lepus_ctx = runtime::MTSRuntime::CreateContext(
       runtime::ContextType::LepusNGContextType);

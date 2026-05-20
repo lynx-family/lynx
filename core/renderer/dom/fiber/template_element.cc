@@ -34,6 +34,7 @@ static constexpr const char kTemplateAttributes[] = "attributes";
 static constexpr const char kTemplateBundleUrl[] = "bundleUrl";
 static constexpr const char kTemplateAttributeSlots[] = "attributeSlots";
 static constexpr const char kTemplateElementSlots[] = "elementSlots";
+static constexpr const char kTemplateOptions[] = "options";
 static constexpr const char kTemplateUid[] = "uid";
 static constexpr const char kTemplateRootAttributeSpread[] = "rootAttributes";
 static constexpr uint32_t kTypedTemplateRootSlotIndex = 0;
@@ -233,6 +234,10 @@ void TemplateElement::SetElementSlots(const lepus::Value& element_slots) {
   if (is_in_template_tree_) {
     MarkTemplateChildrenInElementSlotsInTree();
   }
+}
+
+void TemplateElement::SetOptions(const lepus::Value& options) {
+  options_ = options.IsObject() ? options.ToLepusValue() : lepus::Value();
 }
 
 void TemplateElement::PrepareAsyncCreateElementTree() {
@@ -751,6 +756,11 @@ lepus::Value TemplateElement::SerializeTypedTemplate() const {
   }
   serialized->SetValue(BASE_STATIC_STRING(kTemplateElementSlots),
                        SerializeElementSlots());
+  auto options = SerializeOptions();
+  if (!options.IsEmpty()) {
+    serialized->SetValue(BASE_STATIC_STRING(kTemplateOptions),
+                         std::move(options));
+  }
   serialized->SetValue(BASE_STATIC_STRING(kTemplateUid), uid_);
   return lepus::Value(std::move(serialized));
 }
@@ -770,6 +780,11 @@ lepus::Value TemplateElement::SerializeCompiledTemplate() const {
                        attribute_slots_);
   serialized->SetValue(BASE_STATIC_STRING(kTemplateElementSlots),
                        SerializeElementSlots());
+  auto options = SerializeOptions();
+  if (!options.IsEmpty()) {
+    serialized->SetValue(BASE_STATIC_STRING(kTemplateOptions),
+                         std::move(options));
+  }
   serialized->SetValue(BASE_STATIC_STRING(kTemplateUid), uid_);
   return lepus::Value(std::move(serialized));
 }
@@ -788,6 +803,57 @@ lepus::Value TemplateElement::SerializeElementSlots() const {
         element_slots_.GetProperty(static_cast<uint32_t>(slot_index))));
   }
   return lepus::Value(std::move(serialized_slots));
+}
+
+lepus::Value TemplateElement::SerializeOptions() const {
+  if (!options_.IsObject() || options_.GetLength() == 0) {
+    return lepus::Value();
+  }
+  auto serialized_options = lepus::Dictionary::Create();
+  serialized_options->reserve(options_.GetLength());
+  lepus::Value::ForEachLepusValue(
+      options_, [this, &serialized_options](const lepus::Value& key,
+                                            const lepus::Value& option_value) {
+        if (!key.IsString()) {
+          return;
+        }
+        serialized_options->SetValue(
+            key.String(), option_value.IsArrayOrJSArray()
+                              ? SerializeTemplateOptionArray(option_value)
+                              : option_value);
+      });
+  return lepus::Value(std::move(serialized_options));
+}
+
+lepus::Value TemplateElement::SerializeTemplateOptionArray(
+    const lepus::Value& value) const {
+  auto serialized_array = lepus::CArray::Create();
+  serialized_array->reserve(value.GetLength());
+  for (size_t index = 0; index < static_cast<size_t>(value.GetLength());
+       ++index) {
+    auto option_value = value.GetProperty(static_cast<uint32_t>(index));
+    if (!option_value.IsRefCounted()) {
+      serialized_array->emplace_back(std::move(option_value));
+      continue;
+    }
+
+    auto ref_counted = option_value.RefCounted();
+    if (ref_counted->GetRefType() != lepus::RefType::kElement) {
+      serialized_array->emplace_back(std::move(option_value));
+      continue;
+    }
+
+    auto element =
+        fml::static_ref_ptr_cast<FiberElement>(ref_counted).strongify();
+    if (element == nullptr || !element->is_template()) {
+      serialized_array->emplace_back(std::move(option_value));
+      continue;
+    }
+
+    auto template_element = fml::static_ref_ptr_cast<TemplateElement>(element);
+    serialized_array->emplace_back(template_element->Serialize());
+  }
+  return lepus::Value(std::move(serialized_array));
 }
 
 lepus::Value TemplateElement::SerializeElementSlotChildren(

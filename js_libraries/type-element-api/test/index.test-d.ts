@@ -1,5 +1,5 @@
 import { assertType, describe, expectTypeOf, it } from 'vitest';
-import {
+import type {
   AnimationOperation,
   AnimationTimingOptions,
   Keyframe,
@@ -9,8 +9,9 @@ import {
   ListElementRef,
   ViewElementRef,
   SerializedTemplateInstance,
+  SerializableValue,
+  SerializedTypedTemplateInstance,
 } from '../types/index';
-import type { SerializableValue, SerializedTypedTemplateInstance } from '../types/index';
 
 describe('Test Animation Types', () => {
   it('should have correct AnimationOperation type', () => {
@@ -62,32 +63,36 @@ describe('Test Element API Types', () => {
   });
 
   it('should test __ElementAnimate function signature', () => {
-    const element = __CreateView(0);
+    const element = {} as ElementRef;
 
     // Test that __ElementAnimate is a function
     expectTypeOf<typeof __ElementAnimate>().toBeFunction();
 
     // Test that it accepts ElementRef as first parameter
     expectTypeOf<typeof __ElementAnimate>().toBeCallableWith(element, [
-      AnimationOperation.START,
+      0 as AnimationOperation.START,
       'test-animation',
       [{ opacity: 0 }, { opacity: 1 }],
       { duration: 1000, timingFunction: 'ease-in-out' },
     ]);
 
     // Test that it accepts pause operation overload
-    expectTypeOf<typeof __ElementAnimate>().toBeCallableWith(element, [AnimationOperation.PAUSE, 'test-animation']);
+    expectTypeOf<typeof __ElementAnimate>().toBeCallableWith(element, [2 as AnimationOperation.PAUSE, 'test-animation']);
 
     // Test that it accepts play operation overload
-    expectTypeOf<typeof __ElementAnimate>().toBeCallableWith(element, [AnimationOperation.PLAY, 'test-animation']);
+    expectTypeOf<typeof __ElementAnimate>().toBeCallableWith(element, [1 as AnimationOperation.PLAY, 'test-animation']);
 
     // Test that it accepts cancel operation overload
-    expectTypeOf<typeof __ElementAnimate>().toBeCallableWith(element, [AnimationOperation.CANCEL, 'test-animation']);
+    expectTypeOf<typeof __ElementAnimate>().toBeCallableWith(element, [3 as AnimationOperation.CANCEL, 'test-animation']);
   });
 
   it('should test element template api signatures', () => {
-    const child = __CreateView(0);
-    const template = __CreateElementTemplate('todo_card', 'path/to/bundle.js', ['width: 320px;', { completed: false }], [[child]], 'template-uid');
+    const child = {} as ElementRef;
+    expectTypeOf<typeof __CreateElementTemplate>().toBeCallableWith('todo_card', 'path/to/bundle.js', ['width: 320px;', { completed: false }], [[child]], 'template-uid', {
+      cachedItems: [child],
+      enabled: true,
+    });
+    const template = {} as ElementRef;
 
     expectTypeOf<typeof __CreateElementTemplate>().returns.toEqualTypeOf<ElementRef>();
     expectTypeOf<typeof __SetAttributeOfElementTemplate>().toBeCallableWith(template, 0, { completed: true });
@@ -95,19 +100,23 @@ describe('Test Element API Types', () => {
     expectTypeOf<typeof __RemoveNodeFromElementTemplate>().toBeCallableWith(template, 1, child);
     expectTypeOf<typeof __SerializeElementTemplate>().returns.toEqualTypeOf<SerializedTemplateInstance>();
 
-    const serialized = __SerializeElementTemplate(template);
+    const serialized = {} as SerializedTemplateInstance;
     assertType<SerializedTemplateInstance>(serialized);
     assertType<SerializedTemplateInstance[][] | null | undefined>(serialized.elementSlots);
+    assertType<Record<string, any> | null | undefined>(serialized.options);
     assertType<number | string>(serialized.uid);
 
-    const typed = __CreateTypedElementTemplate('list', { 'enable-layout': true }, [[child]], 1001);
+    expectTypeOf<typeof __CreateTypedElementTemplate>().toBeCallableWith('list', { 'enable-layout': true }, [[child]], 1001, { recycled: [child] });
+    const typed = {} as ElementRef;
     expectTypeOf<typeof __CreateTypedElementTemplate>().returns.toEqualTypeOf<ElementRef>();
     expectTypeOf<typeof __CreateTypedElementTemplate>().toBeCallableWith('raw-text', null, null, 'typed-uid');
+    expectTypeOf<typeof __SerializeElementTemplate>().toBeCallableWith(typed);
 
-    const serializedTyped = __SerializeElementTemplate(typed);
+    const serializedTyped = {} as SerializedTemplateInstance;
     assertType<SerializedTemplateInstance>(serializedTyped);
     expectTypeOf<SerializedTypedTemplateInstance['attributes']>().toEqualTypeOf<Record<string, SerializableValue> | null | undefined>();
     assertType<SerializedTemplateInstance[][] | null | undefined>(serializedTyped.elementSlots);
+    assertType<Record<string, any> | null | undefined>(serializedTyped.options);
     assertType<number | string>(serializedTyped.uid);
   });
 });

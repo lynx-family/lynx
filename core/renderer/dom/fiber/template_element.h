@@ -44,6 +44,7 @@ class TemplateElement : public FiberElement {
     attribute_slots_ = attribute_slots;
   }
   void SetElementSlots(const lepus::Value& element_slots);
+  void SetOptions(const lepus::Value& options);
   void SetUid(const lepus::Value& uid) { uid_ = uid; }
 
   void PrepareAsyncCreateElementTree();
@@ -96,6 +97,7 @@ class TemplateElement : public FiberElement {
         root_attributes_(element.root_attributes_),
         attribute_slots_(element.attribute_slots_),
         element_slots_(element.element_slots_),
+        options_(element.options_),
         uid_(element.uid_) {}
 
   // Builds a once task that may run either on the concurrent loop or on the
@@ -134,6 +136,8 @@ class TemplateElement : public FiberElement {
   lepus::Value GetOrCreateElementSlotChildren(uint32_t slot_index);
   void RemoveElementSlotChildFromSlot(uint32_t slot_index, FiberElement* child);
   lepus::Value SerializeElementSlots() const;
+  lepus::Value SerializeOptions() const;
+  lepus::Value SerializeTemplateOptionArray(const lepus::Value& value) const;
   lepus::Value SerializeRootAttributes() const;
   lepus::Value SerializeTypedTemplate() const;
   lepus::Value SerializeCompiledTemplate() const;
@@ -149,6 +153,7 @@ class TemplateElement : public FiberElement {
   lepus::Value root_attributes_;
   lepus::Value attribute_slots_;
   lepus::Value element_slots_;
+  lepus::Value options_;
   lepus::Value uid_;
   fml::RefPtr<FiberElement> result_{nullptr};
   base::Vector<fml::RefPtr<FiberElement>> attribute_slot_targets_;
