@@ -4,9 +4,7 @@
 
 #include "clay/shell/platform/headless/gl/clay_headless_renderer_host_gl.h"
 
-#include <limits>
 #include <string>
-#include <vector>
 
 #include "base/trace/native/trace_event.h"
 #include "build/build_config.h"
@@ -232,7 +230,6 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
 
   SkMatrix transformation;
   SkBitmap bitmap;
-  std::vector<uint8_t> pixels;
   {
     fml::RefPtr<clay::SharedImageBacking> backing =
         shared_image_sink_->UpdateFront(nullptr);
@@ -263,10 +260,15 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
     auto image_info = SkImageInfo::Make(
         SkISize::Make(backing->GetSize().x, backing->GetSize().y),
         kBGRA_8888_SkColorType, kPremul_SkAlphaType);
-    const size_t byte_size = image_info.computeMinByteSize();
-    FML_DCHECK(byte_size != std::numeric_limits<size_t>::max());
-    pixels.resize(byte_size);
-    SkPixmap pixmap(image_info, pixels.data(), image_info.minRowBytes());
+    if (!bitmap.tryAllocPixels(image_info, 0)) {
+      FML_LOG(ERROR) << "Failed to allocate bitmap pixels";
+      return;
+    }
+    SkPixmap pixmap;
+    if (!bitmap.peekPixels(&pixmap)) {
+      FML_LOG(ERROR) << "Failed to peek bitmap pixels";
+      return;
+    }
 
     if (std::unique_ptr<clay::FenceSync> fence_sync = backing->GetFenceSync()) {
       if (!fence_sync->ClientWait()) {
@@ -283,10 +285,6 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
 
       if (!backing->ReadbackToMemory(&pixmap, 1)) {
         FML_LOG(ERROR) << "Failed to ReadbackToMemory";
-        return;
-      }
-      if (!bitmap.installPixels(pixmap)) {
-        FML_LOG(ERROR) << "Failed to install pixmap to bitmap";
         return;
       }
 
