@@ -614,8 +614,12 @@ void FiberElement::AttachToElementManager(
 
 void FiberElement::OnNodeAdded(FiberElement *child) {
   if (child != nullptr) {
-    child->MarkAsDirectChildOfCompatibleComponent(!is_page() && !is_view() &&
-                                                  !is_text() && !is_image());
+    bool is_compatible_parent =
+        !is_page() && !is_view() && !is_text() && !is_image();
+    if (is_wrapper() || is_component()) {
+      is_compatible_parent = is_direct_child_of_compatible_component();
+    }
+    child->MarkAsDirectChildOfCompatibleComponent(is_compatible_parent);
   }
   if (IsRadonArch()) {
     if (element_manager_ && element_manager_->FixRadonInlineConvertBug()) {
