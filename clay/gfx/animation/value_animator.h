@@ -384,6 +384,8 @@ class ValueAnimator : public Animator,
   void SetActiveStartTime(int64_t start_time);
   int64_t GetScaledStartDelay() const;
   bool HasFinishedAt(int64_t frame_time) const;
+  bool HasNoIterations() const { return repeat_count_ == kNoIterations; }
+  void SetIterationCount(int iteration_count);
 
   void AnimateValue(float fraction);
 
@@ -519,6 +521,9 @@ class ValueAnimator : public Animator,
   // The number of times the animation will repeat. The default is 0, which
   // means the animation will play only once
   int repeat_count_ = 0;
+
+  // Internal repeat count for CSS animation-iteration-count: 0.
+  static constexpr int kNoIterations = -99;
 
   /**
    * The type of repetition that will occur when repeatMode is nonzero. kNormal

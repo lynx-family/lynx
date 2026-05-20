@@ -81,10 +81,6 @@ static ValueAnimator::FillMode FromClayAnimationFillModeType(
   return mode;
 }
 
-// NOTE: There is a known issue: When `animation-iteration-count` is set to 0,
-// `iteration_count` will be `-1`, which will cause the animation to play
-// infinitely. This problem should be solved in Lynx, and then we may need to
-// update the related logic.
 ValueAnimator::ValueAnimator(const AnimationData& animation_data) {
   Animator::SetAnimationName(animation_data.name);
   SetAnimationData(animation_data);
@@ -105,6 +101,9 @@ void ValueAnimator::InitAnimation() {
 }
 
 int64_t ValueAnimator::GetTotalDuration() {
+  if (HasNoIterations()) {
+    return start_delay_;
+  }
   if (repeat_count_ == kInfinite) {
     return kDurationInfinite;
   } else {
@@ -212,6 +211,9 @@ float ValueAnimator::GetCurrentIterationFraction(float fraction,
  * @return fraction clamped into the range of [0, repeat_count_ + 1]
  */
 float ValueAnimator::ClampFraction(float fraction) {
+  if (HasNoIterations()) {
+    return 0.f;
+  }
   if (fraction < 0) {
     fraction = 0;
   } else if (repeat_count_ != kInfinite) {
@@ -411,7 +413,11 @@ void ValueAnimator::End() {
   } else if (!initialized_) {
     InitAnimation();
   }
-  AnimateValue(ShouldPlayBackward(repeat_count_, reversing_) ? 0.f : 1.f);
+  if (HasNoIterations()) {
+    AnimateValue(0.f);
+  } else {
+    AnimateValue(ShouldPlayBackward(repeat_count_, reversing_) ? 0.f : 1.f);
+  }
   EndAnimation();
 }
 
@@ -609,7 +615,9 @@ bool ValueAnimator::AnimateBasedOnTime(int64_t current_time,
         static_cast<int>(fraction) > static_cast<int>(lastFraction);
     bool lastIterationFinished =
         (fraction >= repeat_count_ + 1) && (repeat_count_ != kInfinite);
-    if (scaledDuration == 0) {
+    if (HasNoIterations()) {
+      done = true;
+    } else if (scaledDuration == 0) {
       // 0 duration animator, ignore the repeat count and skip to the end
       done = true;
     } else if (newIteration && !lastIterationFinished) {
@@ -648,6 +656,11 @@ void ValueAnimator::AnimateBasedOnPlayTime(int64_t current_play_time,
   }
 
   InitAnimation();
+  if (HasNoIterations()) {
+    AnimateValue(0.f);
+    return;
+  }
+
   // Check whether repeat callback is needed only when repeat count is non-zero
   if (repeat_count_ > 0) {
     int iteration = static_cast<int>(current_play_time / duration_);
@@ -686,6 +699,10 @@ void ValueAnimator::AnimateBasedOnPlayTime(int64_t current_play_time,
  */
 void ValueAnimator::SkipToEndValue(bool in_reverse) {
   InitAnimation();
+  if (HasNoIterations()) {
+    AnimateValue(0.f);
+    return;
+  }
   float endFraction = in_reverse ? 0.f : 1.f;
   if (repeat_count_ % 2 == 1 &&
       (repeat_mode_ == kAlternate || repeat_mode_ == kAlternateReverse)) {
@@ -727,7 +744,7 @@ bool ValueAnimator::ShouldReceiveAnimationFrame(int64_t current_time,
   }
 
   int64_t scaled_duration = GetScaledDuration();
-  if (scaled_duration <= 0) {
+  if (HasNoIterations() || scaled_duration <= 0) {
     *next_lifecycle_time = current_time;
     return false;
   }
@@ -937,6 +954,9 @@ void ValueAnimator::AnimateValue(float fraction) {
  * fraction used in the most recent frame update on the animation.
  */
 float ValueAnimator::GetAnimatedFraction() {
+  if (HasNoIterations()) {
+    return current_fraction_;
+  }
   // For the following reverse modes, we just return a different elapsed
   // fraction, apart from this, these modes are handled just like their
   // non-reverse counterparts.
@@ -969,7 +989,7 @@ void ValueAnimator::SetAnimationData(AnimationData animation_data) {
   duration_ = animation_data.duration;
   repeat_mode_ = FromClayAnimationDirectionType(animation_data.direction);
   fill_mode_ = FromClayAnimationFillModeType(animation_data.fill_mode);
-  repeat_count_ = animation_data.iteration_count;
+  SetIterationCount(animation_data.iteration_count);
   start_delay_ = animation_data.delay;
   if (timeline_start_time_ >= 0) {
     start_time_ = timeline_start_time_ + GetScaledStartDelay();
@@ -983,6 +1003,10 @@ void ValueAnimator::SetAnimationData(AnimationData animation_data) {
   } else {
     interpolator_ = Interpolator::CreateDefaultInterpolator();
   }
+}
+
+void ValueAnimator::SetIterationCount(int iteration_count) {
+  repeat_count_ = iteration_count > 0 ? iteration_count - 1 : kNoIterations;
 }
 
 void ValueAnimator::SetActiveStartTime(int64_t start_time) {
@@ -999,6 +1023,9 @@ int64_t ValueAnimator::GetScaledStartDelay() const {
 bool ValueAnimator::HasFinishedAt(int64_t frame_time) const {
   if (start_time_ < 0 || repeat_count_ == kInfinite) {
     return false;
+  }
+  if (HasNoIterations()) {
+    return frame_time >= start_time_;
   }
   const int64_t scaled_duration = GetScaledDuration();
   if (scaled_duration <= 0) {

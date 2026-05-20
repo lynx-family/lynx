@@ -354,7 +354,9 @@ void LynxEventDispatcher::OnTransitionEvent(const std::string& event_name,
   auto apt = AnimationPropertyTypeToString(type);
   clay::Value::Map rk_dict;
   rk_dict["animation_type"] = clay::Value(apt.c_str());
-  rk_dict["animation_name"] = clay::Value(animation_name);
+  if (animation_name != nullptr && animation_name[0] != '\0') {
+    rk_dict["animation_name"] = clay::Value(animation_name);
+  }
 #if OS_IOS
   if (event_name == "transitionend") {
     rk_dict["finished"] = clay::Value(1);

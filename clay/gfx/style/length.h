@@ -7,7 +7,7 @@
 
 namespace clay {
 
-enum class LengthUnit { kNum, kPercent };
+enum class LengthUnit { kNum, kPercent, kCalc };
 
 class Length {
  public:
@@ -15,19 +15,49 @@ class Length {
   explicit Length(float v) : value_(v), unit_(LengthUnit::kNum) {}
   Length(float v, LengthUnit u) : value_(v), unit_(u) {}
   Length(float v, int u) : value_(v), unit_(static_cast<LengthUnit>(u)) {}
+  static Length Calc(float fixed, float percent) {
+    Length length(fixed, LengthUnit::kCalc);
+    length.percent_ = percent;
+    return length;
+  }
   bool IsPercent() const { return LengthUnit::kPercent == unit_; }
-  float GetValue(float v) const { return IsPercent() ? value_ * v : value_; }
+  bool IsCalc() const { return LengthUnit::kCalc == unit_; }
+  bool IsRelative() const {
+    return IsPercent() || (IsCalc() && percent_ != 0.f);
+  }
+  float GetValue(float v) const {
+    if (IsPercent()) {
+      return value_ * v;
+    }
+    if (IsCalc()) {
+      return value_ + percent_ * v;
+    }
+    return value_;
+  }
   float GetRawValue() const { return value_; }
-  void SetValue(float v) { value_ = v; }
-  void SetUnit(LengthUnit unit) { unit_ = unit; }
+  float GetPercentValue() const { return percent_; }
+  void SetValue(float v) {
+    value_ = v;
+    if (!IsCalc()) {
+      percent_ = 0.f;
+    }
+  }
+  void SetUnit(LengthUnit unit) {
+    unit_ = unit;
+    if (!IsCalc()) {
+      percent_ = 0.f;
+    }
+  }
   bool operator==(const Length& other) const {
-    return value_ == other.value_ && unit_ == other.unit_;
+    return value_ == other.value_ && percent_ == other.percent_ &&
+           unit_ == other.unit_;
   }
   bool operator!=(const Length& other) const { return !(*this == other); }
 
  private:
   float value_;
   LengthUnit unit_;
+  float percent_{0.f};
 };
 
 }  // namespace clay

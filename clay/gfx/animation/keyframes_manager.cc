@@ -155,7 +155,13 @@ void KeyframesManager::UpdateAnimator(ValueAnimator* animator,
 void KeyframesManager::StartAnimations(const std::vector<AnimationData>& data) {
   std::vector<KeyframeAnimation> new_animations;
 
-  for (const auto& item : data) {
+  for (auto item : data) {
+    if (item.iteration_count < 0) {
+      continue;
+    }
+    if (item.duration < 0) {
+      item.duration = 0;
+    }
     bool add_new_animation = true;
     auto it = animations_.begin();
     // For new animations and old animations of the same name we will only

@@ -12,17 +12,12 @@
 #include "clay/gfx/style/length.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/background_data.h"
+#include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/page_view.h"
 
 namespace clay {
 namespace utils = attribute_utils;
-
-static Length GetLength(const clay::Value& value, const clay::Value& type) {
-  double length_value = utils::GetDouble(value);
-  LengthUnit length_type = static_cast<LengthUnit>(utils::GetInt(type));
-  return Length(length_value, length_type);
-}
 
 static std::vector<Length> GetBorderRadius(const clay::Value::Array& array) {
   std::vector<Length> values;
@@ -32,7 +27,7 @@ static std::vector<Length> GetBorderRadius(const clay::Value::Array& array) {
   }
 
   for (size_t i = 0; i < array.size() / 2; i++) {
-    values.emplace_back(GetLength(array[i * 2], array[i * 2 + 1]));
+    values.emplace_back(ParseLengthValue(array[i * 2], array[i * 2 + 1]));
   }
   return values;
 }
@@ -295,38 +290,7 @@ bool CSSProperty::SetAttribute(BaseView* view, KeywordID property_id,
     } break;
 
     case KeywordID::kTransform: {
-      const auto& array = utils::GetArray(value);
-      std::vector<TransformRaw> transform_raws;
-      for (size_t i = 0; i < array.size(); i++) {
-        const auto& values_arr = utils::GetArray(array[i]);
-        if (values_arr.size() < 7) {
-          continue;
-        }
-        TransformRaw transform_raw;
-        transform_raw.type = utils::GetInt(values_arr[0]);
-        if (transform_raw.type ==
-                static_cast<int>(ClayTransformType::kMatrix) ||
-            transform_raw.type ==
-                static_cast<int>(ClayTransformType::kMatrix3d)) {
-          if (values_arr.size() < 17) {
-            continue;
-          }
-          for (uint32_t j = 0; j < 16; j++) {
-            transform_raw.matrix[j] = utils::GetDouble(values_arr[j + 1]);
-          }
-          // append op
-          transform_raws.emplace_back(std::move(transform_raw));
-        } else {
-          // x
-          transform_raw.values[0] = GetLength(values_arr[1], values_arr[2]);
-          // y
-          transform_raw.values[1] = GetLength(values_arr[3], values_arr[4]);
-          // z
-          transform_raw.values[2] = GetLength(values_arr[5], values_arr[6]);
-          // append op
-          transform_raws.emplace_back(std::move(transform_raw));
-        }
-      }
+      auto transform_raws = ParseTransformRawValues(value);
       view->SetTransform(std::move(transform_raws));
     } break;
 
@@ -336,9 +300,11 @@ bool CSSProperty::SetAttribute(BaseView* view, KeywordID property_id,
       if (array.size() == 0 || array.size() == 2 || array.size() == 4) {
         std::vector<Length> transform_origin_values;
         if (array.size() >= 2) {
-          transform_origin_values.emplace_back(GetLength(array[0], array[1]));
+          transform_origin_values.emplace_back(
+              ParseLengthValue(array[0], array[1]));
           if (array.size() == 4) {
-            transform_origin_values.emplace_back(GetLength(array[2], array[3]));
+            transform_origin_values.emplace_back(
+                ParseLengthValue(array[2], array[3]));
           }
         }
         view->SetTransformOrigin(std::move(transform_origin_values));

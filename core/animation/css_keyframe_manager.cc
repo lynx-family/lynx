@@ -214,6 +214,10 @@ void CSSKeyframeManager::SetAnimationDataAndPlay(
     if (data.name.empty()) {
       continue;
     }
+    // negative duration is invalid, set it to 0.
+    if (data.duration < 0) {
+      data.duration = 0;
+    }
     // 1. Update data to the existing animation or create a new one, and
     // temporarily save them to temp_active_animations_map_.
     auto animation = animations_map_.find(data.name);

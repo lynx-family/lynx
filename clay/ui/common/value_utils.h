@@ -16,6 +16,11 @@
 
 namespace clay {
 
+class Length;
+struct BoxShadowValue;
+struct FilterValue;
+struct TransformRaw;
+
 const clay::Value& GetNullClayValue();
 
 clay::Value CloneClayValue(const clay::Value& value);
@@ -50,6 +55,11 @@ int SafeGetInt(const clay::Value* value, int default_value = 0);
 bool SafeGetBool(const clay::Value* value, bool default_value = false);
 std::string SafeGetString(const clay::Value* value,
                           std::string default_value = "");
+
+Length ParseLengthValue(const clay::Value& value, const clay::Value& type);
+std::vector<TransformRaw> ParseTransformRawValues(const clay::Value& value);
+std::vector<FilterValue> ParseFilterValues(const clay::Value& value);
+std::vector<BoxShadowValue> ParseBoxShadowValues(const clay::Value& value);
 
 }  // namespace clay
 

@@ -246,25 +246,20 @@ RawTransformKeyframeSet::RawTransformKeyframeSet()
 void RawTransformKeyframeSet::AddKeyframe(
     std::unique_ptr<RawTransformKeyframe> keyframe) {
   for (const auto& op : keyframe->Operations()) {
-    switch (op.type) {
+    switch (static_cast<ClayTransformType>(op.type)) {
       case ClayTransformType::kTranslateX:
-        has_percentage_values_ |=
-            op.unit[0] == ClayPlatformLengthUnit::kPercentage;
+        has_percentage_values_ |= op.values[0].IsRelative();
         break;
       case ClayTransformType::kTranslateY:
-        has_percentage_values_ |=
-            op.unit[0] == ClayPlatformLengthUnit::kPercentage;
+        has_percentage_values_ |= op.values[0].IsRelative();
         break;
       case ClayTransformType::kTranslate:
       case ClayTransformType::kTranslate3d:
-        has_percentage_values_ |=
-            op.unit[0] == ClayPlatformLengthUnit::kPercentage;
-        has_percentage_values_ |=
-            op.unit[1] == ClayPlatformLengthUnit::kPercentage;
+        has_percentage_values_ |= op.values[0].IsRelative();
+        has_percentage_values_ |= op.values[1].IsRelative();
         break;
       default:
-        FML_LOG(ERROR) << "Unsupported transform type "
-                       << static_cast<int>(op.type);
+        FML_LOG(ERROR) << "Unsupported transform type " << op.type;
         break;
     }
   }
@@ -278,13 +273,13 @@ std::unique_ptr<KeyframeSet> RawTransformKeyframeSet::Clone(
       TransformKeyframeSet::Create(Type());
   to_return->SetKeyframesManager(manager);
   for (const auto& keyframe : keyframes_) {
-    ClayTransform transform;
-    transform.op = const_cast<ClayTransformOP*>(keyframe->Operations().data());
-    transform.size = keyframe->Operations().size();
+    auto percentage_resolution_size =
+        manager->GetTarget()->PercentageResolutionSize();
     to_return->AddKeyframe(TransformKeyframe::Create(
         keyframe->GetFraction(),
-        TransformOperations(transform,
-                            manager->GetTarget()->PercentageResolutionSize()),
+        TransformOperations(keyframe->Operations(),
+                            percentage_resolution_size.width(),
+                            percentage_resolution_size.height()),
         keyframe->GetInterpolator()->Clone()));
   }
 

@@ -288,6 +288,25 @@ TEST_F(CSSKeyframeManagerTest, DurationZero) {
       animation::Animation::State::kStop);
 }
 
+TEST_F(CSSKeyframeManagerTest, DurationLessThanZero) {
+  auto test_element = InitElement();
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  base::Vector<starlight::AnimationData> animation_data;
+  animation_data.emplace_back(InitAnimationData(
+      base::String("test"), -1000, 0, starlight::TimingFunctionData(), 1,
+      starlight::AnimationFillModeType::kBoth,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning));
+
+  test_manager->SetAnimationDataAndPlay(animation_data);
+  ASSERT_EQ(1U, test_manager->animation_data_.size());
+  EXPECT_EQ(0, test_manager->animation_data_[0].duration);
+  ASSERT_TRUE(test_manager->animations_map().count(base::String("test")));
+  EXPECT_EQ(0, test_manager->animations_map()[base::String("test")]
+                   ->get_animation_data()
+                   .duration);
+}
+
 TEST_F(CSSKeyframeManagerTest, UpdateAndFlushAnimatedStyle) {
   auto test_element = InitElement();
   auto test_manager = InitTestKeyframeManager(test_element.get());

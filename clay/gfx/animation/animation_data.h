@@ -25,7 +25,7 @@ struct AnimationData {
   int duration = 0;
   int delay = 0;
   TimingFunctionData timing_func;
-  int iteration_count = 0;
+  int iteration_count = 1;
   ClayAnimationFillModeType fill_mode = ClayAnimationFillModeType::kNone;
   ClayAnimationDirectionType direction = ClayAnimationDirectionType::kNormal;
   ClayAnimationPlayStateType play_state = ClayAnimationPlayStateType::kRunning;

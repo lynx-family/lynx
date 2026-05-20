@@ -25,9 +25,7 @@
 #include "clay/gfx/animation/keyframe.h"
 #include "clay/gfx/animation/keyframe_set.h"
 #include "clay/gfx/geometry/box_shadow_operations.h"
-#include "clay/gfx/geometry/box_shadow_value.h"
 #include "clay/gfx/geometry/filter_operations.h"
-#include "clay/gfx/geometry/filter_value.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/graphics_context.h"
 #include "clay/gfx/image/image_data_cache.h"
@@ -42,7 +40,6 @@
 #include "clay/shell/common/services/instrumentation_service.h"
 #include "clay/shell/common/services/raster_frame_service.h"
 #include "clay/shell/common/services/vsync_waiter_service.h"
-#include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/overlay_manager.h"
 #include "clay/ui/common/utils/watch_dog.h"
 #include "clay/ui/component/base_view.h"
@@ -94,16 +91,6 @@ clay::Value CreateExposeArray(
 
 static constexpr int64_t kEventStateUpdateDelayTime = 1000;
 static constexpr int64_t kEventStateUpdateIntervalTime = 100;
-
-struct TransformRawDataIndex {
-  static constexpr int INDEX_FUNC = 0;
-  static constexpr int INDEX_TRANSLATE_0 = 1;
-  static constexpr int INDEX_TRANSLATE_0_UNIT = 2;
-  static constexpr int INDEX_TRANSLATE_1 = 3;
-  static constexpr int INDEX_TRANSLATE_1_UNIT = 4;
-  static constexpr int INDEX_TRANSLATE_2 = 5;
-  static constexpr int INDEX_TRANSLATE_2_UNIT = 6;
-};
 }  // namespace
 
 #define DEBUG_KEYFRAMES 0
@@ -1405,89 +1392,6 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
   }
 
   const auto& rules_map = keyframes_value.GetMap();
-  auto parse_filter_values = [](const clay::Value& value) {
-    std::vector<FilterValue> values;
-    if (!value.IsArray()) {
-      return values;
-    }
-    const auto& ary = value.GetArray();
-    for (const auto& item : ary) {
-      if (!item.IsArray()) {
-        continue;
-      }
-      const auto& ary1 = item.GetArray();
-      if (ary1.size() != 2) {
-        continue;
-      }
-      FilterValue v;
-      v.type = static_cast<int>(ary1[0].GetUint());
-      v.value = ary1[1].GetDouble();
-      values.push_back(v);
-    }
-    return values;
-  };
-
-  auto parse_box_shadow_values = [](const clay::Value& value) {
-    std::vector<BoxShadowValue> values;
-    if (!value.IsArray()) {
-      return values;
-    }
-    const auto& shadows = value.GetArray();
-    for (const auto& shadow : shadows) {
-      if (!shadow.IsArray()) {
-        continue;
-      }
-      const auto& shadow_ary = shadow.GetArray();
-      if (shadow_ary.size() < 6) {
-        continue;
-      }
-      BoxShadowValue v;
-      v.h_offset = shadow_ary[0].GetFloat();
-      v.v_offset = shadow_ary[1].GetFloat();
-      v.blur = shadow_ary[2].GetFloat();
-      v.spread = shadow_ary[3].GetFloat();
-      v.option = shadow_ary[4].GetDouble();
-      v.color = shadow_ary[5].GetDouble();
-      values.push_back(v);
-    }
-    return values;
-  };
-
-  auto parse_raw_transform_ops = [](const clay::Value& value) {
-    std::vector<ClayTransformOP> ops;
-    if (!value.IsArray()) {
-      return ops;
-    }
-    const auto& items = value.GetArray();
-    ops.reserve(items.size());
-    for (const auto& item : items) {
-      if (!item.IsArray()) {
-        continue;
-      }
-      const auto& arr = item.GetArray();
-      if (arr.size() != 7u) {
-        continue;
-      }
-      ClayTransformOP op{};
-      op.type = static_cast<ClayTransformType>(
-          arr[TransformRawDataIndex::INDEX_FUNC].GetInt());
-      op.value[0] = static_cast<float>(
-          arr[TransformRawDataIndex::INDEX_TRANSLATE_0].GetDouble());
-      op.value[1] = static_cast<float>(
-          arr[TransformRawDataIndex::INDEX_TRANSLATE_1].GetDouble());
-      op.value[2] = static_cast<float>(
-          arr[TransformRawDataIndex::INDEX_TRANSLATE_2].GetDouble());
-      op.unit[0] = static_cast<ClayPlatformLengthUnit>(
-          arr[TransformRawDataIndex::INDEX_TRANSLATE_0_UNIT].GetInt());
-      op.unit[1] = static_cast<ClayPlatformLengthUnit>(
-          arr[TransformRawDataIndex::INDEX_TRANSLATE_1_UNIT].GetInt());
-      op.unit[2] = static_cast<ClayPlatformLengthUnit>(
-          arr[TransformRawDataIndex::INDEX_TRANSLATE_2_UNIT].GetInt());
-      ops.emplace_back(op);
-    }
-    return ops;
-  };
-
   for (const auto& rule : rules_map) {
     const std::string& anim_name = rule.first;
     const auto& keyframes_val = rule.second;
@@ -1570,7 +1474,7 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
             }
             auto* transform_set =
                 static_cast<RawTransformKeyframeSet*>(it->second.get());
-            auto ops = parse_raw_transform_ops(prop_value);
+            auto ops = ParseTransformRawValues(prop_value);
             transform_set->AddKeyframe(RawTransformKeyframe::Create(
                 fraction, ops, Interpolator::CreateDefaultInterpolator()));
             break;
@@ -1585,7 +1489,7 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
             }
             auto* filter_set =
                 static_cast<FilterKeyframeSet*>(it->second.get());
-            auto values = parse_filter_values(prop_value);
+            auto values = ParseFilterValues(prop_value);
             filter_set->AddKeyframe(FilterKeyframe::Create(
                 fraction, FilterOperations(values),
                 Interpolator::CreateDefaultInterpolator()));
@@ -1601,7 +1505,7 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
             }
             auto* shadow_set =
                 static_cast<BoxShadowKeyframeSet*>(it->second.get());
-            auto values = parse_box_shadow_values(prop_value);
+            auto values = ParseBoxShadowValues(prop_value);
             shadow_set->AddKeyframe(BoxShadowKeyframe::Create(
                 fraction, BoxShadowOperations(values),
                 Interpolator::CreateDefaultInterpolator()));

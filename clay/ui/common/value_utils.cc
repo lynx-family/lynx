@@ -8,9 +8,27 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "clay/gfx/geometry/box_shadow_value.h"
+#include "clay/gfx/geometry/filter_value.h"
+#include "clay/gfx/geometry/transform_raw.h"
+#include "clay/gfx/style/length.h"
+#include "clay/public/style_types.h"
 #include "clay/ui/common/attribute_utils.h"
 
 namespace clay {
+namespace {
+
+struct TransformRawDataIndex {
+  static constexpr int INDEX_FUNC = 0;
+  static constexpr int INDEX_TRANSLATE_0 = 1;
+  static constexpr int INDEX_TRANSLATE_0_UNIT = 2;
+  static constexpr int INDEX_TRANSLATE_1 = 3;
+  static constexpr int INDEX_TRANSLATE_1_UNIT = 4;
+  static constexpr int INDEX_TRANSLATE_2 = 5;
+  static constexpr int INDEX_TRANSLATE_2_UNIT = 6;
+};
+
+}  // namespace
 
 const clay::Value& GetNullClayValue() {
   static clay::Value value{
@@ -204,6 +222,132 @@ std::string SafeGetString(const clay::Value* value, std::string default_value) {
   std::string result = default_value;
   attribute_utils::TryGetString(*value, result, default_value);
   return result;
+}
+
+Length ParseLengthValue(const clay::Value& value, const clay::Value& type) {
+  LengthUnit length_type =
+      static_cast<LengthUnit>(attribute_utils::GetInt(type));
+  if (length_type == LengthUnit::kCalc && value.IsArray()) {
+    float fixed = 0.f;
+    float percent = 0.f;
+    const auto& calc_values = value.GetArray();
+    if (calc_values.size() % 2 != 0) {
+      FML_DLOG(ERROR) << "Invalid calc length array size: "
+                      << calc_values.size();
+    }
+    for (size_t i = 0; i + 1 < calc_values.size(); i += 2) {
+      if (!calc_values[i].IsNumber() || !calc_values[i + 1].IsNumber()) {
+        FML_DLOG(ERROR) << "Invalid calc length component.";
+        continue;
+      }
+      int raw_unit = attribute_utils::GetInt(calc_values[i + 1]);
+      auto unit = static_cast<LengthUnit>(raw_unit);
+      if (unit != LengthUnit::kNum && unit != LengthUnit::kPercent) {
+        FML_DLOG(ERROR) << "Unsupported calc length unit: " << raw_unit;
+        continue;
+      }
+      auto component =
+          static_cast<float>(attribute_utils::GetDouble(calc_values[i]));
+      if (unit == LengthUnit::kPercent) {
+        percent += component;
+      } else {
+        fixed += component;
+      }
+    }
+    return Length::Calc(fixed, percent);
+  }
+  return Length(static_cast<float>(attribute_utils::GetDouble(value)),
+                length_type);
+}
+
+std::vector<TransformRaw> ParseTransformRawValues(const clay::Value& value) {
+  std::vector<TransformRaw> ops;
+  if (!value.IsArray()) {
+    return ops;
+  }
+  const auto& items = value.GetArray();
+  ops.reserve(items.size());
+  for (const auto& item : items) {
+    if (!item.IsArray()) {
+      continue;
+    }
+    const auto& arr = item.GetArray();
+    if (arr.size() < 7u) {
+      continue;
+    }
+    TransformRaw op{};
+    op.type = attribute_utils::GetInt(arr[TransformRawDataIndex::INDEX_FUNC]);
+    if (static_cast<ClayTransformType>(op.type) == ClayTransformType::kMatrix ||
+        static_cast<ClayTransformType>(op.type) ==
+            ClayTransformType::kMatrix3d) {
+      if (arr.size() < 17u) {
+        continue;
+      }
+      for (int i = 0; i < 16; ++i) {
+        op.matrix[i] = attribute_utils::GetDouble(arr[i + 1]);
+      }
+    } else {
+      op.values[0] =
+          ParseLengthValue(arr[TransformRawDataIndex::INDEX_TRANSLATE_0],
+                           arr[TransformRawDataIndex::INDEX_TRANSLATE_0_UNIT]);
+      op.values[1] =
+          ParseLengthValue(arr[TransformRawDataIndex::INDEX_TRANSLATE_1],
+                           arr[TransformRawDataIndex::INDEX_TRANSLATE_1_UNIT]);
+      op.values[2] =
+          ParseLengthValue(arr[TransformRawDataIndex::INDEX_TRANSLATE_2],
+                           arr[TransformRawDataIndex::INDEX_TRANSLATE_2_UNIT]);
+    }
+    ops.emplace_back(op);
+  }
+  return ops;
+}
+
+std::vector<FilterValue> ParseFilterValues(const clay::Value& value) {
+  std::vector<FilterValue> values;
+  if (!value.IsArray()) {
+    return values;
+  }
+  const auto& ary = value.GetArray();
+  for (const auto& item : ary) {
+    if (!item.IsArray()) {
+      continue;
+    }
+    const auto& ary1 = item.GetArray();
+    if (ary1.size() != 2) {
+      continue;
+    }
+    FilterValue v;
+    v.type = attribute_utils::GetInt(ary1[0]);
+    v.value = attribute_utils::GetDouble(ary1[1]);
+    values.push_back(v);
+  }
+  return values;
+}
+
+std::vector<BoxShadowValue> ParseBoxShadowValues(const clay::Value& value) {
+  std::vector<BoxShadowValue> values;
+  if (!value.IsArray()) {
+    return values;
+  }
+  const auto& shadows = value.GetArray();
+  for (const auto& shadow : shadows) {
+    if (!shadow.IsArray()) {
+      continue;
+    }
+    const auto& shadow_ary = shadow.GetArray();
+    if (shadow_ary.size() < 6) {
+      continue;
+    }
+    BoxShadowValue v;
+    v.h_offset = static_cast<float>(attribute_utils::GetDouble(shadow_ary[0]));
+    v.v_offset = static_cast<float>(attribute_utils::GetDouble(shadow_ary[1]));
+    v.blur = static_cast<float>(attribute_utils::GetDouble(shadow_ary[2]));
+    v.spread = static_cast<float>(attribute_utils::GetDouble(shadow_ary[3]));
+    v.option = attribute_utils::GetDouble(shadow_ary[4]);
+    v.color = attribute_utils::GetDouble(shadow_ary[5]);
+    values.push_back(v);
+  }
+  return values;
 }
 
 }  // namespace clay

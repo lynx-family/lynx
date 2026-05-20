@@ -6,9 +6,12 @@
 #include <vector>
 
 #include "clay/gfx/animation/animation_data.h"
+#include "clay/gfx/animation/animator_target.h"
 #include "clay/gfx/animation/keyframe.h"
 #include "clay/gfx/animation/keyframes_manager.h"
 #include "clay/gfx/animation/value_animator.h"
+#include "clay/gfx/geometry/transform_raw.h"
+#include "clay/gfx/style/length.h"
 #include "clay/public/value.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/rendering/render_container.h"
@@ -39,7 +42,7 @@ class KeyFrameTest : public UITest {
                             160,
                             0,
                             TimingFunctionData(),
-                            0,
+                            1,
                             ClayAnimationFillModeType::kBoth,
                             ClayAnimationDirectionType::kNormal,
                             ClayAnimationPlayStateType::kRunning};
@@ -57,6 +60,43 @@ class MockAnimatorListener : public AnimatorListener {
   // NOLINTNEXTLINE
   MOCK_METHOD(void, OnAnimationRepeat, (Animator & animation), (override));
 };
+
+class FixedSizeAnimatorTarget : public AnimatorTarget {
+ public:
+  explicit FixedSizeAnimatorTarget(FloatSize percentage_resolution_size)
+      : percentage_resolution_size_(percentage_resolution_size) {}
+
+  FloatSize PercentageResolutionSize() override {
+    return percentage_resolution_size_;
+  }
+
+ private:
+  FloatSize percentage_resolution_size_;
+};
+
+Value MakeCalcLengthValue(double percent, double fixed) {
+  Value::Array calc;
+  calc.emplace_back(percent);
+  calc.emplace_back(static_cast<int32_t>(LengthUnit::kPercent));
+  calc.emplace_back(fixed);
+  calc.emplace_back(static_cast<int32_t>(LengthUnit::kNum));
+  return Value(std::move(calc));
+}
+
+Value MakeTranslateXCalcValue(double percent, double fixed) {
+  Value::Array op;
+  op.emplace_back(static_cast<int32_t>(ClayTransformType::kTranslateX));
+  op.emplace_back(MakeCalcLengthValue(percent, fixed));
+  op.emplace_back(static_cast<int32_t>(LengthUnit::kCalc));
+  op.emplace_back(0.0);
+  op.emplace_back(static_cast<int32_t>(LengthUnit::kNum));
+  op.emplace_back(0.0);
+  op.emplace_back(static_cast<int32_t>(LengthUnit::kNum));
+
+  Value::Array transform;
+  transform.emplace_back(Value(std::move(op)));
+  return Value(std::move(transform));
+}
 }  // namespace
 
 TEST(TransformOperationsTest, TranslateYPercentageDetectionUsesFirstSlot) {
@@ -71,6 +111,45 @@ TEST(TransformOperationsTest, TranslateYPercentageDetectionUsesFirstSlot) {
                                    Interpolator::CreateDefaultInterpolator()));
 
   EXPECT_TRUE(keyframe_set->HasPercentageValues());
+}
+
+TEST_F_UI(KeyFrameTest, TransformKeyframeCalcResolvesOnClone) {
+  Value::Map start_properties;
+  start_properties.emplace("transform", MakeTranslateXCalcValue(0.5, 10.0));
+  Value::Map end_properties;
+  end_properties.emplace("transform", MakeTranslateXCalcValue(0.5, 30.0));
+
+  Value::Map keyframes;
+  keyframes.emplace("0.000000", Value(std::move(start_properties)));
+  keyframes.emplace("1.000000", Value(std::move(end_properties)));
+
+  Value::Map keyframes_data;
+  keyframes_data.emplace("transform_test", Value(std::move(keyframes)));
+  page_->SetKeyframesData(Value(std::move(keyframes_data)));
+
+  const KeyframesMap* keyframes_map = page_->GetKeyframesMap("transform_test");
+  ASSERT_NE(keyframes_map, nullptr);
+  auto it = keyframes_map->find(ClayAnimationPropertyType::kTransform);
+  ASSERT_NE(it, keyframes_map->end());
+  EXPECT_TRUE(it->second->HasPercentageValues());
+
+  FixedSizeAnimatorTarget target(FloatSize(200.f, 100.f));
+  KeyframesManager manager(&target);
+  auto cloned_keyframe_set = it->second->Clone(&manager);
+  auto* transform_set =
+      static_cast<TransformKeyframeSet*>(cloned_keyframe_set.get());
+
+  auto start_value = transform_set->GetValue(0.f);
+  ASSERT_EQ(start_value.size(), 1u);
+  EXPECT_FLOAT_EQ(start_value.at(0).translate.x, 110.f);
+
+  auto mid_value = transform_set->GetValue(0.5f);
+  ASSERT_EQ(mid_value.size(), 1u);
+  EXPECT_FLOAT_EQ(mid_value.at(0).translate.x, 120.f);
+
+  auto end_value = transform_set->GetValue(1.f);
+  ASSERT_EQ(end_value.size(), 1u);
+  EXPECT_FLOAT_EQ(end_value.at(0).translate.x, 130.f);
 }
 
 TEST_F_UI(KeyFrameTest, TransitionStartsAfterNodeReady) {
@@ -211,7 +290,7 @@ TEST_F_UI(KeyFrameTest, UpdateAnimation) {
                             240,
                             0,
                             TimingFunctionData(),
-                            0,
+                            1,
                             ClayAnimationFillModeType::kBoth,
                             ClayAnimationDirectionType::kNormal,
                             ClayAnimationPlayStateType::kRunning};
@@ -251,7 +330,7 @@ TEST_F_UI(KeyFrameTest, ChangeFillmode) {
                             240,
                             0,
                             TimingFunctionData(),
-                            0,
+                            1,
                             ClayAnimationFillModeType::kBackwards,
                             ClayAnimationDirectionType::kNormal,
                             ClayAnimationPlayStateType::kRunning};
@@ -299,7 +378,7 @@ TEST_F_UI(KeyFrameTest, AnimationDelay) {
                            240,
                            -120,
                            TimingFunctionData(),
-                           0,
+                           1,
                            ClayAnimationFillModeType::kForwards,
                            ClayAnimationDirectionType::kNormal,
                            ClayAnimationPlayStateType::kPaused};
@@ -330,7 +409,7 @@ TEST_F_UI(KeyFrameTest, AnimationDelayCombineForwards) {
                            240,
                            120,
                            TimingFunctionData(),
-                           0,
+                           1,
                            ClayAnimationFillModeType::kForwards,
                            ClayAnimationDirectionType::kNormal,
                            ClayAnimationPlayStateType::kPaused};
@@ -365,7 +444,7 @@ TEST_F_UI(KeyFrameTest, AnimationDelayCombineBackwards) {
                            240,
                            120,
                            TimingFunctionData(),
-                           0,
+                           1,
                            ClayAnimationFillModeType::kBackwards,
                            ClayAnimationDirectionType::kNormal,
                            ClayAnimationPlayStateType::kPaused};
@@ -400,7 +479,7 @@ TEST_F_UI(KeyFrameTest, AnimationStartEvent) {
                              240,
                              0,
                              TimingFunctionData(),
-                             0,
+                             1,
                              ClayAnimationFillModeType::kBoth,
                              ClayAnimationDirectionType::kNormal,
                              ClayAnimationPlayStateType::kRunning};
@@ -409,7 +488,7 @@ TEST_F_UI(KeyFrameTest, AnimationStartEvent) {
                              480,
                              0,
                              TimingFunctionData(),
-                             0,
+                             1,
                              ClayAnimationFillModeType::kBoth,
                              ClayAnimationDirectionType::kNormal,
                              ClayAnimationPlayStateType::kRunning};
@@ -474,7 +553,7 @@ TEST_F_UI(KeyFrameTest, AnimationEndEvent) {
                              240,
                              0,
                              TimingFunctionData(),
-                             0,
+                             1,
                              ClayAnimationFillModeType::kBoth,
                              ClayAnimationDirectionType::kNormal,
                              ClayAnimationPlayStateType::kRunning};
@@ -483,7 +562,7 @@ TEST_F_UI(KeyFrameTest, AnimationEndEvent) {
                              480,
                              0,
                              TimingFunctionData(),
-                             0,
+                             1,
                              ClayAnimationFillModeType::kBoth,
                              ClayAnimationDirectionType::kNormal,
                              ClayAnimationPlayStateType::kRunning};
@@ -547,7 +626,7 @@ TEST_F_UI(KeyFrameTest, ShorterSameNameUpdateAfterEndDoesNotRestart) {
                            1000,
                            0,
                            TimingFunctionData(),
-                           0,
+                           1,
                            ClayAnimationFillModeType::kNone,
                            ClayAnimationDirectionType::kNormal,
                            ClayAnimationPlayStateType::kRunning};
@@ -555,7 +634,7 @@ TEST_F_UI(KeyFrameTest, ShorterSameNameUpdateAfterEndDoesNotRestart) {
                             500,
                             0,
                             TimingFunctionData(),
-                            0,
+                            1,
                             ClayAnimationFillModeType::kBoth,
                             ClayAnimationDirectionType::kNormal,
                             ClayAnimationPlayStateType::kRunning};

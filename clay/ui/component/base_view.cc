@@ -2095,7 +2095,8 @@ void BaseView::OnTransitionAnimationReady() {
 }
 
 void BaseView::SetAnimation(const clay::Value::Array& array) {
-  std::vector<AnimationData> animations(array.size());
+  std::vector<AnimationData> animations;
+  animations.reserve(array.size());
   for (size_t i = 0; i < array.size(); i++) {
     const auto& arr = utils::GetArray(array[i]);
     if (arr.size() == 0) {
@@ -2103,24 +2104,33 @@ void BaseView::SetAnimation(const clay::Value::Array& array) {
     }
     FML_DCHECK(arr.size() == 13);
     int idx = 0;
-    animations[i].name = utils::GetCString(arr[idx++]);
-    animations[i].duration = utils::GetDouble(arr[idx++]);
-    animations[i].timing_func.timing_func =
+    AnimationData animation;
+    animation.name = utils::GetCString(arr[idx++]);
+    animation.duration = utils::GetDouble(arr[idx++]);
+    animation.timing_func.timing_func =
         static_cast<ClayTimingFunctionType>(utils::GetInt(arr[idx++]));
-    animations[i].timing_func.steps_type =
+    animation.timing_func.steps_type =
         static_cast<ClayStepsType>(utils::GetInt(arr[idx++]));
-    animations[i].timing_func.x1 = utils::GetDouble(arr[idx++]);
-    animations[i].timing_func.y1 = utils::GetDouble(arr[idx++]);
-    animations[i].timing_func.x2 = utils::GetDouble(arr[idx++]);
-    animations[i].timing_func.y2 = utils::GetDouble(arr[idx++]);
-    animations[i].delay = utils::GetDouble(arr[idx++]);
-    animations[i].iteration_count = utils::GetInt(arr[idx++]) - 1;
-    animations[i].direction =
+    animation.timing_func.x1 = utils::GetDouble(arr[idx++]);
+    animation.timing_func.y1 = utils::GetDouble(arr[idx++]);
+    animation.timing_func.x2 = utils::GetDouble(arr[idx++]);
+    animation.timing_func.y2 = utils::GetDouble(arr[idx++]);
+    animation.delay = utils::GetDouble(arr[idx++]);
+    int iteration_count = utils::GetInt(arr[idx++]);
+    animation.direction =
         static_cast<ClayAnimationDirectionType>(utils::GetInt(arr[idx++]));
-    animations[i].fill_mode =
+    animation.fill_mode =
         static_cast<ClayAnimationFillModeType>(utils::GetInt(arr[idx++]));
-    animations[i].play_state =
+    animation.play_state =
         static_cast<ClayAnimationPlayStateType>(utils::GetInt(arr[idx++]));
+    if (iteration_count < 0) {
+      continue;
+    }
+    if (animation.duration < 0) {
+      animation.duration = 0;
+    }
+    animation.iteration_count = iteration_count;
+    animations.push_back(animation);
   }
   SetAnimation(animations);
 }

@@ -15,6 +15,7 @@
 #include "clay/gfx/geometry/box_shadow_operations.h"
 #include "clay/gfx/geometry/filter_operations.h"
 #include "clay/gfx/geometry/transform_operations.h"
+#include "clay/gfx/geometry/transform_raw.h"
 #include "clay/gfx/style/color.h"
 
 namespace clay {
@@ -131,12 +132,15 @@ class RawTransformKeyframe : public Keyframe {
   static std::unique_ptr<RawTransformKeyframe> Create(
       float fraction, const std::vector<ClayTransformOP>& transform,
       std::unique_ptr<Interpolator> interpolator);
+  static std::unique_ptr<RawTransformKeyframe> Create(
+      float fraction, const std::vector<TransformRaw>& transform,
+      std::unique_ptr<Interpolator> interpolator);
 
 #ifndef NDEBUG
   std::string ToString() const override;
 #endif
 
-  const std::vector<ClayTransformOP>& Operations() const { return operations_; }
+  const std::vector<TransformRaw>& Operations() const { return operations_; }
 
  private:
   RawTransformKeyframe(float fraction, const ClayTransform& transform,
@@ -144,8 +148,11 @@ class RawTransformKeyframe : public Keyframe {
   RawTransformKeyframe(float fraction,
                        const std::vector<ClayTransformOP>& transform,
                        std::unique_ptr<Interpolator> interpolator);
+  RawTransformKeyframe(float fraction,
+                       const std::vector<TransformRaw>& transform,
+                       std::unique_ptr<Interpolator> interpolator);
 
-  std::vector<ClayTransformOP> operations_;
+  std::vector<TransformRaw> operations_;
 };
 
 class TransformKeyframe : public Keyframe {
