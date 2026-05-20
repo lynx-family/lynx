@@ -25,6 +25,11 @@ LYNX_CAPI_EXPORT lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                                                void* user_data);
 LYNX_CAPI_EXPORT void* lynx_view_get_user_data(lynx_view_t*);
 
+// Get the fixed WebView2 runtime path configured by the builder. Returns an
+// empty string if no fixed runtime path was configured.
+LYNX_CAPI_EXPORT const char* lynx_view_get_webview2_fixed_runtime_path(
+    lynx_view_t*);
+
 // Register lifecycle event observer for LynxView. The client passed in is the
 // structure implemented by user and registered to the LynxView instance is used
 // to obtain the callbacks of each process in the LynxView lifecycle.

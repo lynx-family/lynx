@@ -62,6 +62,13 @@ class LynxView {
       return *this;
     }
 
+    Builder& SetWebView2FixedRuntimePath(
+        const std::string& webview2_fixed_runtime_path) {
+      lynx_view_builder_set_webview2_fixed_runtime_path(
+          builder_, webview2_fixed_runtime_path.c_str());
+      return *this;
+    }
+
     Builder& SetLynxGroup(std::shared_ptr<LynxGroup> group) {
       group_ = std::move(group);
       lynx_view_builder_set_lynx_group(builder_, group_->Impl());
