@@ -54,6 +54,12 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_font_scale(lynx_view_builder_t*,
 LYNX_CAPI_EXPORT void lynx_view_builder_set_icu_data_path(
     lynx_view_builder_t*, const char* icu_data_path);
 
+// Sets the fixed WebView2 runtime path for the LynxView being built. Windows
+// WebView native views first try the system WebView2 runtime, then retry with
+// this fixed runtime path if the system runtime is unavailable or fails.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_webview2_fixed_runtime_path(
+    lynx_view_builder_t*, const char* webview2_fixed_runtime_path);
+
 // Associates a Lynx group with the LynxView being built. This function allows
 // you to assign a specific Lynx group to the LynxView that is currently under
 // construction using the provided builder. The Lynx group can contain shared

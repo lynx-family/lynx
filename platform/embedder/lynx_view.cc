@@ -24,6 +24,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                                             void* user_data) {
   lynx_view_t* view = new lynx_view_t;
   view->user_data = user_data;
+  view->webview2_fixed_runtime_path = builder->GetWebView2FixedRuntimePath();
   // Construct ui renderer with builder.
 #if defined(ENABLE_WINDOWLESS)
   if (builder->windowless_renderer) {
@@ -137,6 +138,11 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
 
 LYNX_EXTERN_C void* lynx_view_get_user_data(lynx_view_t* view) {
   return view->user_data;
+}
+
+LYNX_EXTERN_C const char* lynx_view_get_webview2_fixed_runtime_path(
+    lynx_view_t* view) {
+  return view->webview2_fixed_runtime_path.c_str();
 }
 
 LYNX_EXTERN_C void lynx_view_add_client(lynx_view_t* view,
