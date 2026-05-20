@@ -93,6 +93,9 @@ text-shadow
 text-selection
 custom-context-menu
 custom-text-selection
+selection-background-color
+selection-handle-color
+selection-handle-size
 text-stroke-color
 text-stroke-width
 text-indent
