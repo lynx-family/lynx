@@ -55,6 +55,9 @@ class CSSParser {
     return css_diagnostics_;
   }
 
+  static void ExtractLoc(const rapidjson::Value &obj, const char *loc_key,
+                         int &line, int &column);
+
  private:
   // Parse ttss file
   bool ParseOtherTTSS(const rapidjson::Value &value);
@@ -85,9 +88,6 @@ class CSSParser {
   void CollectStyleDiagnostics(const rapidjson::Value &value);
   void CollectSelectorDiagnostics(const rapidjson::Value &value,
                                   const std::string &selector_text);
-
-  static void ExtractLoc(const rapidjson::Value &obj, const char *loc_key,
-                         int &line, int &column);
 
   std::vector<std::unique_ptr<encoder::SharedCSSFragment>>
       shared_css_fragments_;

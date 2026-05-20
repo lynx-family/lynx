@@ -111,6 +111,7 @@ struct CompileOptions {
   bool enable_parse_int_flex_{false};
   bool enable_flex_basis_zero_percent_{false};
   bool enable_grid_placement_shorthands_{false};
+  bool enable_css_rule_{false};
 };
 
 #define FOREACH_FIXED_LENGTH_FIELD(V)             \

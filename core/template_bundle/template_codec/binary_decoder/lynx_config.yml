@@ -1698,6 +1698,16 @@ includeFontPadding:
   since: '2.4'
   supportPlatform:
     - Android
+enableCSSRule:
+  description: When enabled, CSS supports unified rules.
+  defaultValue: 'false'
+  valueType: bool
+  author: baiqiang
+  since: '4.0'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 removeDescendantSelectorScope:
   description: Controls whether descendant selectors are allowed to cross component scope boundaries during style resolution. When enabled, `AttributeHolder` and `StyleResolver` stop constraining descendant selectors to the current component scope; when disabled, descendant selectors only match inside the component scope. In Fiber, manual decode keeps the default off unless explicitly set.
   defaultValue: 'true'

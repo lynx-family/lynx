@@ -59,6 +59,7 @@ const configKeys = [
   'enableCSSInheritance',
   'enableCSSInlineVariables',
   'enableCSSLazyImport',
+  'enableCSSRule',
   'enableDisexposureWhenBackground',
   'enableDisexposureWhenLynxHidden',
   'enableDispatchCustomEventForUI',

@@ -296,6 +296,17 @@ export interface Config {
   enableCSSLazyImport?: boolean;
 
   /**
+   * When enabled, CSS supports unified rules.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 4.0
+   *
+   * @defaultValue false
+   */
+  enableCSSRule?: boolean;
+
+  /**
    * Controls whether iOS sends `disexposure` events when the Lynx view enters the background. When enabled, `LynxUIExposure` emits `disexposure` during background transitions; when disabled, backgrounding does not trigger that extra event.
    *
    * Supported platform: iOS

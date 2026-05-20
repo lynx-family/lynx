@@ -13,6 +13,7 @@
 #include "core/runtime/lepus/vm_context.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_keyframes_token.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parse_token_group.h"
+#include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_rule_parser.h"
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/rapidjson/writer.h"
 
@@ -51,6 +52,15 @@ bool CSSParser::ParseCSSForFiber(const rapidjson::Value &css_map,
 
 std::unique_ptr<encoder::SharedCSSFragment> CSSParser::ParseExternalFragment(
     const rapidjson::Value &rule_list, const std::string &path) {
+  if (compile_options_.enable_css_rule_) {
+    CSSRuleParser impl(compile_options_);
+    auto parse_result = impl.ParseCSSRules(rule_list, path, {}, 0);
+    for (const auto &d : impl.diagnostics()) {
+      css_diagnostics_.emplace_back(
+          Diagnostic{d.type, d.name, d.line, d.column});
+    }
+    return parse_result;
+  }
   CSSParserTokenMap css;
   encoder::CSSKeyframesTokenMapForEncode keyframes;
   encoder::CSSFontFaceTokenMapForEncode fontfaces;
@@ -153,6 +163,19 @@ void CSSParser::MergeCSSParseToken(fml::RefPtr<CSSParseToken> &originToken,
 void CSSParser::ParseCSS(const rapidjson::Value &ttss, const std::string &path,
                          const std::vector<int32_t> &dependent_css_list,
                          int32_t fragment_id) {
+  if (compile_options_.enable_css_rule_) {
+    CSSRuleParser impl(compile_options_);
+    auto parse_result =
+        impl.ParseCSSRules(ttss, path, dependent_css_list, fragment_id);
+    for (const auto &d : impl.diagnostics()) {
+      css_diagnostics_.emplace_back(
+          Diagnostic{d.type, d.name, d.line, d.column});
+    }
+    auto *raw_ptr = parse_result.get();
+    shared_css_fragments_.push_back(std::move(parse_result));
+    fragments_.insert({path, raw_ptr});
+    return;
+  }
   CSSParserTokenMap css;
   encoder::CSSKeyframesTokenMapForEncode keyframes;
   encoder::CSSFontFaceTokenMapForEncode fontfaces;

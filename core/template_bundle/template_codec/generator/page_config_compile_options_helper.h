@@ -30,6 +30,16 @@ inline void ApplyPageConfigDerivedCompileOptions(
     compile_options.enable_parse_int_flex_ =
         doc[config::kEnableParseIntFlex].GetBool();
   }
+
+  if (doc.HasMember(config::kEnableCSSRule) &&
+      doc[config::kEnableCSSRule].IsBool()) {
+    bool v = doc[config::kEnableCSSRule].GetBool();
+    compile_options.enable_css_rule_ = v;
+    if (v) {
+      compile_options.enable_css_selector_ = v;
+      compile_options.enable_css_invalidation_ = v;
+    }
+  }
 }
 
 }  // namespace tasm

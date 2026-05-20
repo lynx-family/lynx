@@ -17,6 +17,8 @@ lynx_core_source_set("css_encoder") {
     "css_parser.h",
     "css_parser_token.cc",
     "css_parser_token.h",
+    "css_rule_parser.cc",
+    "css_rule_parser.h",
     "shared_css_fragment.cc",
     "shared_css_fragment.h",
   ]

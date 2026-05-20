@@ -784,6 +784,11 @@ class LynxConfigDecoder final {
           doc[config::kIncludeFontPadding].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableCSSRule) &&
+        doc[config::kEnableCSSRule].IsBool()) {
+      page_config->SetEnableCSSRule(doc[config::kEnableCSSRule].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableMultiTouch) &&
         doc[config::kEnableMultiTouch].IsBool()) {
       page_config->SetEnableMultiTouch(

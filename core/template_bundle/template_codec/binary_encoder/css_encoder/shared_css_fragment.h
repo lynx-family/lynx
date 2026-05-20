@@ -26,12 +26,78 @@ using CSSFontFaceTokenMapForEncode =
                        std::vector<std::shared_ptr<tasm::CSSFontFaceToken>>>;
 
 struct LynxCSSSelectorTuple {
-  LynxCSSSelectorTuple()
-      : selector_key(), flattened_size(0), selector_arr(), parse_token() {}
+  size_t flattened_size{0};
   std::string selector_key;
-  size_t flattened_size;
-  std::unique_ptr<css::LynxCSSSelector[]> selector_arr;
-  fml::RefPtr<tasm::CSSParseToken> parse_token;
+  std::unique_ptr<css::LynxCSSSelector[]> selector_arr{nullptr};
+  fml::RefPtr<tasm::CSSParseToken> parse_token{nullptr};
+};
+
+struct LynxStyleRuleBase {
+  enum RuleType {
+    kUnknown,
+    kCharset,
+    kStyle,
+    kImport,
+    kMedia,
+    kFontFace,
+    kFontFeature,
+    kProperty,
+    kKeyframes,
+    kNestedDeclarations,
+    kFunctionDeclarations,
+    kNamespace,
+    kContainer,
+    kScope,
+    kSupports,
+    kFunction,
+    kMixin,
+    kApplyMixin,
+    kContents,
+    kPositionTry,
+    kCustomMedia,
+  };
+
+  explicit LynxStyleRuleBase(RuleType t) : type(t) {}
+  virtual ~LynxStyleRuleBase() = default;
+  RuleType type = kUnknown;
+};
+
+struct LynxStyleRule : LynxStyleRuleBase {
+  LynxStyleRule(size_t size, size_t pos,
+                std::unique_ptr<css::LynxCSSSelector[]> arr,
+                fml::RefPtr<tasm::CSSParseToken> properties)
+      : LynxStyleRuleBase(kStyle),
+        flattened_size(size),
+        position(pos),
+        selector_arr(std::move(arr)),
+        properties(std::move(properties)) {}
+  ~LynxStyleRule() override = default;
+  size_t flattened_size = 0;
+  size_t position = 0;
+  std::unique_ptr<css::LynxCSSSelector[]> selector_arr{nullptr};
+  fml::RefPtr<tasm::CSSParseToken> properties{nullptr};
+};
+
+struct LynxStyleRuleGroup : LynxStyleRuleBase {
+  std::vector<std::unique_ptr<LynxStyleRuleBase>> child_rules;
+  explicit LynxStyleRuleGroup(RuleType t) : LynxStyleRuleBase(t) {}
+};
+
+struct LynxStyleRuleCondition : LynxStyleRuleGroup {
+  explicit LynxStyleRuleCondition(RuleType t) : LynxStyleRuleGroup(t) {}
+  std::string condition;
+};
+
+struct LynxStyleRuleFontFace : LynxStyleRuleBase {
+  explicit LynxStyleRuleFontFace() : LynxStyleRuleBase(kFontFace) {}
+  std::string family;
+  std::vector<std::shared_ptr<tasm::CSSFontFaceToken>> properties;
+};
+
+struct LynxStyleRuleKeyframes : LynxStyleRuleBase {
+  explicit LynxStyleRuleKeyframes() : LynxStyleRuleBase(kKeyframes) {}
+  std::string name;
+  fml::RefPtr<CSSKeyframesToken> properties;
 };
 
 // TODO(songshourui.null): Subsequently, `encoder::SharedCSSFragment` will be
@@ -47,12 +113,17 @@ class SharedCSSFragment : public tasm::SharedCSSFragment {
         keyframes_for_encode_(std::move(keyframes)),
         fontfaces_for_encode_(std::move(fontfaces)) {}
 
+  SharedCSSFragment(int32_t id, const std::vector<int32_t>& dependent_ids,
+                    std::vector<std::unique_ptr<LynxStyleRuleBase>> rules)
+      : tasm::SharedCSSFragment(id, dependent_ids, {}, {}, {}, nullptr),
+        rules_(std::move(rules)) {}
+
   explicit SharedCSSFragment(int32_t id)
       : SharedCSSFragment(id, {}, {}, {}, {}) {}
 
   SharedCSSFragment() : SharedCSSFragment(-1) {}
 
-  ~SharedCSSFragment() override{};
+  ~SharedCSSFragment() override = default;
 
   void SetSelectorTuple(std::vector<LynxCSSSelectorTuple> selector_tuple) {
     selector_tuple_ = std::move(selector_tuple);
@@ -70,8 +141,13 @@ class SharedCSSFragment : public tasm::SharedCSSFragment {
     return fontfaces_for_encode_;
   }
 
+  const std::vector<std::unique_ptr<LynxStyleRuleBase>>& rules() const {
+    return rules_;
+  }
+
  private:
   std::vector<LynxCSSSelectorTuple> selector_tuple_;
+  std::vector<std::unique_ptr<LynxStyleRuleBase>> rules_;
 
   CSSKeyframesTokenMapForEncode keyframes_for_encode_;
   CSSFontFaceTokenMapForEncode fontfaces_for_encode_;

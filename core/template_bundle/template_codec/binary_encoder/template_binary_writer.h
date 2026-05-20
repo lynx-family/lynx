@@ -133,6 +133,11 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
   bool EncodeLynxCSSSelectorTuple(
       const encoder::LynxCSSSelectorTuple& selector_tuple);
   bool EncodeCSSSelector(const css::LynxCSSSelector* selector);
+  void EncodeCSSRules(encoder::SharedCSSFragment* fragment);
+  void EncodeCSSStyleRule(const encoder::LynxStyleRule& rule);
+  void EncodeCSSConditionRule(const encoder::LynxStyleRuleCondition& rule);
+  void EncodeCSSKeyframesRule(const encoder::LynxStyleRuleKeyframes& rule);
+  void EncodeCSSFontFaceRule(const encoder::LynxStyleRuleFontFace& rule);
 
   // JS section
   void SerializeJSSource();

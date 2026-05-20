@@ -21,6 +21,9 @@
 #include <utility>
 
 #include "base/include/sorted_for_each.h"
+#include "base/include/value/array.h"
+#include "core/renderer/css/ng/media_query/media_query_set.h"
+#include "core/renderer/css/ng/parser/media_query_parser.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/value_utils.h"
@@ -323,6 +326,12 @@ void TemplateBinaryWriter::EncodeCSSFragment(
   for (auto id : fragment->dependent_ids()) {
     WriteCompactS32(id);
   }
+
+  if (compile_options_.enable_css_rule_) {
+    EncodeCSSRules(fragment);
+    return;
+  }
+
   // SelectorList
   if (compile_options_.enable_css_selector_) {
     size_t selector_size = fragment->selector_tuple().size();
@@ -427,6 +436,88 @@ bool TemplateBinaryWriter::EncodeCSSSelector(
     current++;
   }
   return true;
+}
+
+void TemplateBinaryWriter::EncodeCSSRules(
+    encoder::SharedCSSFragment* fragment) {
+  const auto& rules = fragment->rules();
+  WriteCompactU32(rules.size());
+  for (const auto& rule : rules) {
+    WriteU8(static_cast<uint8_t>(rule->type));
+    switch (rule->type) {
+      case encoder::LynxStyleRuleBase::kStyle:
+        EncodeCSSStyleRule(
+            *static_cast<const encoder::LynxStyleRule*>(rule.get()));
+        break;
+      case encoder::LynxStyleRuleBase::kMedia:
+      case encoder::LynxStyleRuleBase::kSupports:
+        EncodeCSSConditionRule(
+            *static_cast<const encoder::LynxStyleRuleCondition*>(rule.get()));
+        break;
+      case encoder::LynxStyleRuleBase::kKeyframes:
+        EncodeCSSKeyframesRule(
+            *static_cast<const encoder::LynxStyleRuleKeyframes*>(rule.get()));
+        break;
+      case encoder::LynxStyleRuleBase::kFontFace:
+        EncodeCSSFontFaceRule(
+            *static_cast<const encoder::LynxStyleRuleFontFace*>(rule.get()));
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+void TemplateBinaryWriter::EncodeCSSStyleRule(
+    const encoder::LynxStyleRule& rule) {
+  WriteCompactU32(static_cast<uint32_t>(rule.position));
+  WriteCompactU32(rule.flattened_size);
+  EncodeCSSSelector(rule.selector_arr.get());
+  EncodeCSSParseToken(rule.properties.get());
+}
+
+void TemplateBinaryWriter::EncodeCSSConditionRule(
+    const encoder::LynxStyleRuleCondition& rule) {
+  if (rule.type == encoder::LynxStyleRuleBase::kMedia) {
+    auto media_queries =
+        css::MediaQueryParser::ParseMediaQuerySet(rule.condition);
+    // `MediaQueryParser::ParseMediaQuerySet` never returns null, but guard
+    // anyway so future refactors cannot silently write a non-array payload.
+    auto media_value = media_queries ? media_queries->ToLepus()
+                                     : lepus_value(lepus::CArray::Create());
+    EncodeValue(&media_value);
+  } else {
+    EncodeUtf8Str(rule.condition.c_str(), rule.condition.length());
+  }
+  WriteCompactU32(rule.child_rules.size());
+  for (const auto& child : rule.child_rules) {
+    WriteU8(static_cast<uint8_t>(child->type));
+    switch (child->type) {
+      case encoder::LynxStyleRuleBase::kStyle:
+        EncodeCSSStyleRule(
+            *static_cast<const encoder::LynxStyleRule*>(child.get()));
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+void TemplateBinaryWriter::EncodeCSSKeyframesRule(
+    const encoder::LynxStyleRuleKeyframes& rule) {
+  EncodeUtf8Str(rule.name.c_str(), rule.name.length());
+  EncodeCSSKeyframesToken(rule.properties.get());
+}
+
+void TemplateBinaryWriter::EncodeCSSFontFaceRule(
+    const encoder::LynxStyleRuleFontFace& rule) {
+  EncodeUtf8Str(rule.family.c_str(), rule.family.length());
+  if (lynx::tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
+                                          FEATURE_CSS_FONT_FACE_EXTENSION)) {
+    EncodeCSSFontFaceTokenList(rule.properties);
+  } else {
+    EncodeCSSFontFaceToken(rule.properties[0].get());
+  }
 }
 
 void TemplateBinaryWriter::EncodeSimpleStyleObjects() {
