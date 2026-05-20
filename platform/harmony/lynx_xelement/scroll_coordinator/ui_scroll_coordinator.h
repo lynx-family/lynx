@@ -65,6 +65,8 @@ class UIScrollCoordinator : public UIView {
   float fold_distance_{0.0};
   float granularity_{0.01};
   float pre_offset_{0.0};
+  int32_t nested_scroll_forward_ = static_cast<int32_t>(ARKUI_SCROLL_NESTED_MODE_SELF_ONLY);
+  int32_t nested_scroll_backward_ = static_cast<int32_t>(ARKUI_SCROLL_NESTED_MODE_SELF_ONLY);
   using UIMethod = void (UIScrollCoordinator::*)(
       const lepus::Value& args, base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   static std::unordered_map<std::string, UIMethod> foldview_ui_method_map_;
