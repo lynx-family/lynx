@@ -39,6 +39,17 @@ ComputedCSSStyle::GetPlatformInheritableProperty() {
   return *kPlatformInheritableProperty;
 }
 
+bool ComputedCSSStyle::IsPlatformProperty(tasm::CSSPropertyID id) {
+  switch (id) {
+#define PLATFORM_PROPERTY_CASE(name) case tasm::kPropertyID##name:
+    FOREACH_PLATFORM_PROPERTY(PLATFORM_PROPERTY_CASE)
+#undef PLATFORM_PROPERTY_CASE
+    return true;
+    default:
+      return false;
+  }
+}
+
 const ComputedCSSStyle::StyleFunc* ComputedCSSStyle::FuncMap() {
   static const StyleFunc* func_map_ = []() {
     static StyleFunc style_funcs[tasm::CSSPropertyID::kPropertyEnd] = {nullptr};
@@ -652,22 +663,51 @@ void ComputedCSSStyle::Reset() {
 
   opacity_ = DefaultComputedStyle::DEFAULT_OPACITY;
   z_index_ = DefaultComputedStyle::DEFAULT_LONG;
+  has_z_index_ = false;
+  origin_has_opacity_ = false;
+  handle_color_ = 0;
+  handle_size_ = 0.f;
+  offset_distance_ = DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE;
+  offset_rotate_ = DefaultComputedStyle::DEFAULT_OFFSET_ROTATE;
+  image_rendering_ = ImageRenderingType::kAuto;
+  app_region_ = XAppRegionType::kNone;
+  new_animator_interpolation_ = XAnimationColorInterpolationType::kAuto;
+  visibility_ = DefaultComputedStyle::DEFAULT_VISIBILITY;
+  pointer_events_ = PointerEventsType::kAuto;
 
-  ResetOverflow();
-
-  text_attributes_.reset();
-  transform_raw_.reset();
-  transform_origin_.reset();
-  animation_data_.reset();
-  transition_data_.reset();
-  layout_animation_data_.reset();
+  caret_color_ = base::String();
+  adapt_font_size_ = base::String();
+  content_ = base::String();
   enter_transition_data_.reset();
   exit_transition_data_.reset();
   pause_transition_data_.reset();
   resume_transition_data_.reset();
+  background_data_.reset();
+  mask_data_.reset();
+  layout_animation_data_.reset();
+  outline_.reset();
+  animation_data_.reset();
+  transform_raw_.reset();
+  transition_data_.reset();
+  box_shadow_.reset();
+  text_attributes_.reset();
+  placeholder_text_attributes_.reset();
+  transform_origin_.reset();
   filter_.reset();
-  visibility_ = DefaultComputedStyle::DEFAULT_VISIBILITY;
-  caret_color_ = base::String();
+  perspective_data_.reset();
+  cursor_.reset();
+  clip_path_ = nullptr;
+  offset_path_ = nullptr;
+
+  raw_custom_properties_.reset();
+  resolved_custom_properties_.reset();
+  resolved_values_.reset();
+
+  ResetOverflow();
+
+  ClearChanged();
+  ClearReset();
+
   const float default_font_size =
       length_context_.layouts_unit_per_px_ * DEFAULT_FONT_SIZE_DP;
   SetFontSize(default_font_size, default_font_size);
@@ -682,16 +722,16 @@ bool ComputedCSSStyle::SetValue(tasm::CSSPropertyID id,
   if (id > tasm::CSSPropertyID::kPropertyStart &&
       id < tasm::CSSPropertyID::kPropertyEnd) {
     if (StyleFunc func = funcMap[id]) {
+      const auto changed = (this->*func)(value, reset);
       if (reset) {
         RemoveResolvedValue(id);
       } else {
         SetResolvedValue(id, value);
       }
-      if (auto changed = (this->*func)(value, reset); changed) {
+      if (changed) {
         MarkChanged(id);
         return true;
       }
-
       return false;
     }
   }
@@ -709,12 +749,13 @@ bool ComputedCSSStyle::AppendAnimatedAnimationValue(tasm::StyleMap animate_data,
     animation_data_.emplace();
   }
 
-  auto iter = std::find_if(animation_data_->begin(), animation_data_->end(),
+  auto& anim_data_vec = *animation_data_;
+  auto iter = std::find_if(anim_data_vec.begin(), anim_data_vec.end(),
                            [&](const AnimationData& animation_data) {
                              return animation_data.name == name;
                            });
 
-  bool new_animation_data = (iter == animation_data_->end());
+  bool new_animation_data = (iter == anim_data_vec.end());
   AnimationData* target_animation_data =
       new_animation_data ? &temp_animate_data : &(*iter);
 
@@ -755,7 +796,7 @@ bool ComputedCSSStyle::AppendAnimatedAnimationValue(tasm::StyleMap animate_data,
   }
 
   if (new_animation_data) {
-    animation_data_->emplace_back(temp_animate_data);
+    anim_data_vec.emplace_back(temp_animate_data);
   }
 
   return true;
@@ -770,7 +811,6 @@ bool ComputedCSSStyle::ResetValue(tasm::CSSPropertyID id) {
         MarkReset(id);
         return true;
       }
-
       return false;
     }
   }
@@ -3493,6 +3533,10 @@ lepus_value ComputedCSSStyle::XAutoFontSizeLineRangesToLepus() {
 }
 
 lepus_value ComputedCSSStyle::PerspectiveToLepus() {
+  DCHECK(perspective_data_);
+  if (!perspective_data_) {
+    return lepus_value();
+  }
   auto array = lepus::CArray::Create();
   NLength& length = perspective_data_->length_;
   tasm::CSSValuePattern pattern = perspective_data_->pattern_;
@@ -3674,6 +3718,10 @@ lepus_value ComputedCSSStyle::TransformToLepus() {
 }
 
 lepus_value ComputedCSSStyle::TransformOriginToLepus() {
+  DCHECK(transform_origin_);
+  if (!transform_origin_) {
+    return lepus_value();
+  }
   auto array = lepus::CArray::Create();
   CSSStyleUtils::AddLengthToArray(array, transform_origin_->x);
   CSSStyleUtils::AddLengthToArray(array, transform_origin_->y);
@@ -3681,7 +3729,7 @@ lepus_value ComputedCSSStyle::TransformOriginToLepus() {
 }
 
 lepus_value ComputedCSSStyle::AnimationToLepus() {
-  if (!animation_data_) {
+  if (!animation_data_ || animation_data_->empty()) {
     return lepus::Value();
   }
   auto array_wrap = lepus::CArray::Create();
@@ -3694,7 +3742,7 @@ lepus_value ComputedCSSStyle::AnimationToLepus() {
 }
 
 lepus_value ComputedCSSStyle::AnimationNameToLepus() {
-  if (!animation_data_) {
+  if (!animation_data_ || animation_data_->empty()) {
     return lepus::Value();
   }
   auto array_wrap = lepus::CArray::Create();
@@ -3707,11 +3755,17 @@ lepus_value ComputedCSSStyle::AnimationNameToLepus() {
 
 lepus_value ComputedCSSStyle::AnimationDurationToLepus() {
   DCHECK(animation_data_ && !animation_data_->empty());
+  if (!animation_data_ || animation_data_->empty()) {
+    return lepus_value();
+  }
   return lepus_value(static_cast<double>(animation_data_->front().duration));
 }
 
 lepus_value ComputedCSSStyle::AnimationTimingFunctionToLepus() {
   DCHECK(animation_data_ && !animation_data_->empty());
+  if (!animation_data_ || animation_data_->empty()) {
+    return lepus_value();
+  }
   auto array = lepus::CArray::Create();
   array->emplace_back(
       static_cast<int>(animation_data_->front().timing_func.timing_func));
@@ -3726,71 +3780,130 @@ lepus_value ComputedCSSStyle::AnimationTimingFunctionToLepus() {
 
 lepus_value ComputedCSSStyle::AnimationDelayToLepus() {
   DCHECK(animation_data_ && !animation_data_->empty());
+  if (!animation_data_ || animation_data_->empty()) {
+    return lepus_value();
+  }
   return lepus_value(static_cast<double>(animation_data_->front().delay));
 }
 
 lepus_value ComputedCSSStyle::AnimationIterationCountToLepus() {
   DCHECK(animation_data_ && !animation_data_->empty());
+  if (!animation_data_ || animation_data_->empty()) {
+    return lepus_value();
+  }
   return lepus_value(animation_data_->front().iteration_count);
 }
 
 lepus_value ComputedCSSStyle::AnimationDirectionToLepus() {
   DCHECK(animation_data_ && !animation_data_->empty());
+  if (!animation_data_ || animation_data_->empty()) {
+    return lepus_value();
+  }
   return lepus_value(static_cast<int>(animation_data_->front().direction));
 }
 
 lepus_value ComputedCSSStyle::AnimationFillModeToLepus() {
   DCHECK(animation_data_ && !animation_data_->empty());
+  if (!animation_data_ || animation_data_->empty()) {
+    return lepus_value();
+  }
   return lepus_value(static_cast<int>(animation_data_->front().fill_mode));
 }
 
 lepus_value ComputedCSSStyle::AnimationPlayStateToLepus() {
   DCHECK(animation_data_ && !animation_data_->empty());
+  if (!animation_data_ || animation_data_->empty()) {
+    return lepus_value();
+  }
   return lepus_value(static_cast<int>(animation_data_->front().play_state));
 }
 
 lepus_value ComputedCSSStyle::LayoutAnimationCreateDurationToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return lepus_value(
       static_cast<double>(layout_animation_data_->create_ani.duration));
 }
 
 lepus_value ComputedCSSStyle::LayoutAnimationCreateTimingFunctionToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return LayoutAnimationTimingFunctionToLepusHelper(
       layout_animation_data_->create_ani.timing_function);
 }
 lepus_value ComputedCSSStyle::LayoutAnimationCreateDelayToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return lepus_value(
       static_cast<double>(layout_animation_data_->create_ani.delay));
 }
 lepus_value ComputedCSSStyle::LayoutAnimationCreatePropertyToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return lepus_value(
       static_cast<int>(layout_animation_data_->create_ani.property));
 }
 lepus_value ComputedCSSStyle::LayoutAnimationDeleteDurationToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return lepus_value(
       static_cast<double>(layout_animation_data_->delete_ani.duration));
 }
 lepus_value ComputedCSSStyle::LayoutAnimationDeleteTimingFunctionToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return LayoutAnimationTimingFunctionToLepusHelper(
       layout_animation_data_->delete_ani.timing_function);
 }
 lepus_value ComputedCSSStyle::LayoutAnimationDeleteDelayToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return lepus_value(
       static_cast<double>(layout_animation_data_->delete_ani.delay));
 }
 lepus_value ComputedCSSStyle::LayoutAnimationDeletePropertyToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return lepus_value(
       static_cast<int>(layout_animation_data_->delete_ani.property));
 }
 lepus_value ComputedCSSStyle::LayoutAnimationUpdateDurationToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return lepus_value(
       static_cast<double>(layout_animation_data_->update_ani.duration));
 }
 lepus_value ComputedCSSStyle::LayoutAnimationUpdateTimingFunctionToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return LayoutAnimationTimingFunctionToLepusHelper(
       layout_animation_data_->update_ani.timing_function);
 }
 lepus_value ComputedCSSStyle::LayoutAnimationUpdateDelayToLepus() {
+  DCHECK(layout_animation_data_);
+  if (!layout_animation_data_) {
+    return lepus_value();
+  }
   return lepus_value(
       static_cast<double>(layout_animation_data_->update_ani.delay));
 }
@@ -3847,17 +3960,33 @@ lepus_value ComputedCSSStyle::TransitionTimingFunctionToLepus() {
 }
 
 lepus_value ComputedCSSStyle::EnterTransitionNameToLepus() {
+  DCHECK(enter_transition_data_);
+  if (!enter_transition_data_) {
+    return lepus_value();
+  }
   return CSSStyleUtils::AnimationDataToLepus(*enter_transition_data_);
 }
 
 lepus_value ComputedCSSStyle::ExitTransitionNameToLepus() {
+  DCHECK(exit_transition_data_);
+  if (!exit_transition_data_) {
+    return lepus_value();
+  }
   return CSSStyleUtils::AnimationDataToLepus(*exit_transition_data_);
 }
 lepus_value ComputedCSSStyle::PauseTransitionNameToLepus() {
+  DCHECK(pause_transition_data_);
+  if (!pause_transition_data_) {
+    return lepus_value();
+  }
   return CSSStyleUtils::AnimationDataToLepus(*pause_transition_data_);
 }
 
 lepus_value ComputedCSSStyle::ResumeTransitionNameToLepus() {
+  DCHECK(resume_transition_data_);
+  if (!resume_transition_data_) {
+    return lepus_value();
+  }
   return CSSStyleUtils::AnimationDataToLepus(*resume_transition_data_);
 }
 
@@ -3902,12 +4031,25 @@ lepus_value ComputedCSSStyle::BorderLeftStyleToLepus() {
 }
 
 lepus_value ComputedCSSStyle::OutlineColorToLepus() {
+  DCHECK(outline_);
+  if (!outline_) {
+    return lepus_value();
+  }
   return lepus_value(outline_->color);
 }
+
 lepus_value ComputedCSSStyle::OutlineStyleToLepus() {
+  DCHECK(outline_);
+  if (!outline_) {
+    return lepus_value();
+  }
   return lepus_value(static_cast<int>(outline_->style));
 }
 lepus_value ComputedCSSStyle::OutlineWidthToLepus() {
+  DCHECK(outline_);
+  if (!outline_) {
+    return lepus_value();
+  }
   return lepus_value(static_cast<int>(outline_->width));
 }
 

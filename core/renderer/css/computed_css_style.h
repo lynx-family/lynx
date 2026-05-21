@@ -10,6 +10,7 @@
 
 #include "base/include/auto_create_optional.h"
 #include "base/include/flex_optional.h"
+#include "base/include/no_destructor.h"
 #include "base/include/vector.h"
 #include "core/base/lynx_export.h"
 #include "core/renderer/css/css_property.h"
@@ -336,6 +337,13 @@ class ComputedCSSStyle {
   base::flex_optional<AnimationData>& GetPauseTransitionData() {
     return pause_transition_data_;
   }
+  const TransitionData& transition_data() const {
+    static const base::NoDestructor<TransitionData> kEmptyTransitionData;
+    if (!transition_data_.has_value()) {
+      return *kEmptyTransitionData;
+    }
+    return *transition_data_;
+  }
 
   base::flex_optional<AnimationData>& GetResumeTransitionData() {
     return resume_transition_data_;
@@ -411,6 +419,7 @@ class ComputedCSSStyle {
   static bool IsPlatformInheritableProperty(const tasm::CSSPropertyID id) {
     return GetPlatformInheritableProperty().contains(id);
   }
+  static bool IsPlatformProperty(tasm::CSSPropertyID id);
 
   static float SAFE_AREA_INSET_TOP_;
   static float SAFE_AREA_INSET_BOTTOM_;
@@ -500,7 +509,7 @@ class ComputedCSSStyle {
   float opacity_{DefaultComputedStyle::DEFAULT_OPACITY};
 
   float offset_distance_{DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE};
-  float offset_rotate_ = {DefaultComputedStyle::DEFAULT_OFFSET_ROTATE};
+  float offset_rotate_{DefaultComputedStyle::DEFAULT_OFFSET_ROTATE};
 
   ImageRenderingType image_rendering_ = ImageRenderingType::kAuto;
   XAppRegionType app_region_ = XAppRegionType::kNone;

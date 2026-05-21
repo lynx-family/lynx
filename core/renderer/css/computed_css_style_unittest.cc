@@ -43,6 +43,39 @@ TEST(ComputedCSSStyleTest, TracksResolvedValuesOnSetAndReset) {
       style.GetResolvedValues().contains(CSSPropertyID::kPropertyIDFontSize));
 }
 
+TEST(ComputedCSSStyleTest, ResetClearsOptionalStateAndDirtyBits) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+
+  style.SetValue(
+      CSSPropertyID::kPropertyIDBackgroundColor,
+      CSSValue(static_cast<uint32_t>(0xFFFF0000), CSSValuePattern::NUMBER),
+      false);
+  style.MarkReset(CSSPropertyID::kPropertyIDHeight);
+
+  ASSERT_FALSE(style.BackgroundColorToLepus().IsEmpty());
+  ASSERT_FALSE(style.GetResolvedValues().empty());
+  ASSERT_FALSE(style.IsClean());
+
+  style.Reset();
+
+  EXPECT_TRUE(style.BackgroundColorToLepus().IsEmpty());
+  EXPECT_TRUE(style.GetResolvedValues().empty());
+  EXPECT_TRUE(style.IsClean());
+}
+
+TEST(ComputedCSSStyleTest, IsPlatformPropertyMatchesGetterSurface) {
+  EXPECT_TRUE(starlight::ComputedCSSStyle::IsPlatformProperty(
+      CSSPropertyID::kPropertyIDOpacity));
+  EXPECT_TRUE(starlight::ComputedCSSStyle::IsPlatformProperty(
+      CSSPropertyID::kPropertyIDBackgroundColor));
+  EXPECT_TRUE(starlight::ComputedCSSStyle::IsPlatformProperty(
+      CSSPropertyID::kPropertyIDFontSize));
+  EXPECT_FALSE(starlight::ComputedCSSStyle::IsPlatformProperty(
+      CSSPropertyID::kPropertyIDWidth));
+  EXPECT_FALSE(starlight::ComputedCSSStyle::IsPlatformProperty(
+      CSSPropertyID::kPropertyIDHeight));
+}
+
 TEST(ComputedCSSStyleTest, IteratesChangedAndResetProperties) {
   starlight::ComputedCSSStyle style{1.f, 1.f};
 

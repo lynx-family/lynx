@@ -124,6 +124,7 @@ class StyleResolver {
    * @brief Resolves pseudo-element styles for the new styling pipeline.
    */
   void ResolvePseudoElementsForNewPipeline(CSSFragment* fragment);
+
   /**
    * @brief Resolves differences between an old and new list of style objects,
    *        applying changes to a target node.

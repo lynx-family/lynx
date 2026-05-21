@@ -1500,9 +1500,8 @@ TEST_F(CSSPatchingTest, HandlePseudoElement_AdoptedStylesheetHasPseudoRules) {
   auto page = manager->CreateFiberPage("11", 20);
   manager->SetRoot(page.get());
 
-  auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
-  fiber_element->data_model()->set_tag("view");
+  auto fiber_element = manager->CreateFiberView();
+  fiber_element->has_placeholder_ = true;
   page->InsertNode(fiber_element);
 
   // Base fragment: enable CSS selector but NO pseudo rules.
@@ -1510,23 +1509,13 @@ TEST_F(CSSPatchingTest, HandlePseudoElement_AdoptedStylesheetHasPseudoRules) {
   base_fragment->SetEnableCSSSelector(true);
   // rule_set() exists but pseudo_rules() is empty.
 
-  // Adopted fragment: enable CSS selector WITH a pseudo rule (::placeholder).
-  auto adopted_fragment = std::make_unique<MockCSSFragment>();
-  adopted_fragment->SetEnableCSSSelector(true);
-
   CSSParserConfigs configs;
   auto pseudo_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
   pseudo_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-      CSSValue(lepus::Value(static_cast<int32_t>(0xFFFF0000)),
-               CSSValuePattern::NUMBER);
+      CSSValue::MakePlainString("blue");
 
-  auto pseudo_selector = std::make_unique<LynxCSSSelector[]>(1);
-  pseudo_selector[0].SetMatch(LynxCSSSelector::kPseudoElement);
-  pseudo_selector[0].SetPseudoType(LynxCSSSelector::kPseudoPlaceholder);
-  pseudo_selector[0].SetValue("placeholder");
-  pseudo_selector[0].SetLastInTagHistory(true);
-  pseudo_selector[0].SetLastInSelectorList(true);
-  adopted_fragment->AddStyleRule(std::move(pseudo_selector), pseudo_tokens);
+  auto adopted_fragment =
+      MakeSelectorFragmentWithToken("view::placeholder", pseudo_tokens);
 
   // Sanity: adopted fragment now has pseudo rules, base has none.
   ASSERT_TRUE(base_fragment->rule_set()->pseudo_rules().empty());
@@ -1537,12 +1526,15 @@ TEST_F(CSSPatchingTest, HandlePseudoElement_AdoptedStylesheetHasPseudoRules) {
   wrapper->fragment_ = std::move(adopted_fragment);
   manager->AdoptStyleSheet(wrapper);
 
-  // HandlePseudoElement should NOT early-return; it should detect the adopted
-  // sheet has pseudo rules and proceed.
-  // We cannot easily verify final output (needs full layout pipeline), but
-  // the lack of crash and no early return is the key verification.
-  fiber_element->style_resolver_.HandlePseudoElement(base_fragment.get());
-  SUCCEED();
+  CSSFragmentDecorator decorator(base_fragment.get(), manager.get());
+  ASSERT_TRUE(decorator.HasPseudoRules());
+  fiber_element->style_resolver_.HandlePseudoElement(&decorator);
+
+  ASSERT_TRUE(fiber_element->pseudo_elements_.has_value());
+  auto placeholder_it =
+      fiber_element->pseudo_elements_->find(kPseudoStatePlaceHolder);
+  ASSERT_TRUE(placeholder_it != fiber_element->pseudo_elements_->end());
+  EXPECT_TRUE(placeholder_it->second->style_map_.contains(kPropertyIDColor));
 }
 
 TEST_F(CSSPatchingTest,
@@ -2150,6 +2142,24 @@ TEST_F(CSSPatchingTest,
   ASSERT_TRUE(style.GetTextAttributes().has_value());
   EXPECT_EQ(style.GetTextAttributes()->text_align,
             starlight::TextAlignType::kRight);
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingApplyResolvedStyleMapMarksDefaultPlatformInputDirty) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  StyleMap style_map;
+  style_map.insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                             CSSValue(1.0, CSSValuePattern::NUMBER));
+
+  element->style_resolver_.ApplyResolvedStyleMap(style, style_map);
+
+  EXPECT_TRUE(style.GetChangedBitset().Has(CSSPropertyID::kPropertyIDOpacity));
+  ExpectNumberStyle(style.GetResolvedValues(),
+                    CSSPropertyID::kPropertyIDOpacity, 1.0);
 }
 
 TEST_F(CSSPatchingTest,

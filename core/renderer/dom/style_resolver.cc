@@ -20,6 +20,7 @@
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/dynamic_direction_styles_manager.h"
+#include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element.h"
@@ -121,6 +122,30 @@ void ReplayInheritedStyleSideEffects(Element* element,
 
     style.SetValue(id, value);
     if (is_first_render) {
+      style.MarkChanged(id);
+    }
+  }
+}
+
+bool ShouldMaterializePlatformStyle(Element* element, CSSPropertyID id) {
+  if (!element->ShouldWritePropertyToComputedStyle(id)) {
+    return false;
+  }
+  if (LayoutProperty::IsLayoutOnly(id) || CSSProperty::IsTransitionProps(id) ||
+      CSSProperty::IsKeyframeProps(id)) {
+    return false;
+  }
+  return starlight::ComputedCSSStyle::IsPlatformProperty(id);
+}
+
+void MarkResolvedInputDirtyForPlatformMaterialization(
+    Element* element, starlight::ComputedCSSStyle& style,
+    const StyleMap& resolved_style_map) {
+  if (element == nullptr || !element->IsNewlyCreated()) {
+    return;
+  }
+  for (const auto& [id, _] : resolved_style_map) {
+    if (ShouldMaterializePlatformStyle(element, id)) {
       style.MarkChanged(id);
     }
   }
@@ -573,7 +598,6 @@ void StyleResolver::HandlePseudoElement(CSSFragment* fragment) {
   if (!fragment) {
     return;
   }
-
   if (fragment->enable_css_selector()) {
     if (!HasPseudoRulesInStyleSheets(fragment)) {
       return;
@@ -581,7 +605,6 @@ void StyleResolver::HandlePseudoElement(CSSFragment* fragment) {
   } else if (fragment->pseudo_map().empty()) {
     return;
   }
-
   auto fiber_element = static_cast<FiberElement*>(element_);
   if (fiber_element->HasTextSelection() &&
       !fiber_element->is_inline_element()) {
@@ -624,7 +647,6 @@ void StyleResolver::ResolvePseudoElementsForNewPipeline(CSSFragment* fragment) {
           {kPseudoStatePlaceHolder, kCSSSelectorPlaceholder,
            [](FiberElement* fe) { return fe->HasPlaceHolder(); }},
       }};
-
   for (const auto& descriptor : kPseudoElementRegistry) {
     if (descriptor.predicate && descriptor.predicate(fiber_element)) {
       ResolvePseudoElement(descriptor.state, fragment, fiber_element,
@@ -2004,6 +2026,8 @@ void StyleResolver::ApplyResolvedStyleMap(
   ReplayInheritedStyleSideEffects(current_element, style, style_map);
   ApplyHighPriorityProperties(style, style_map);
   ApplyStandardProperties(style, style_map);
+  MarkResolvedInputDirtyForPlatformMaterialization(current_element, style,
+                                                   style_map);
 }
 
 namespace {
