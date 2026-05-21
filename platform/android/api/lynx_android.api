@@ -2442,6 +2442,10 @@ public interface com::lynx::tasm::IListNodeInfoFetcher {
   public void com.lynx.tasm.IListNodeInfoFetcher.scrollStopped(int containerSign);
 }
 
+public interface com::lynx::tasm::service::ILynxClayService {
+  public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxClayService.getServiceClass();
+}
+
 public interface com::lynx::tasm::service::ILynxDevToolService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxDevToolService.getServiceClass();
   public LynxBaseInspectorController com.lynx.tasm.service.ILynxDevToolService.createInspectorOwner(@Nullable LynxView view, boolean debuggable);
@@ -6577,6 +6581,7 @@ public class com::lynx::tasm::event::LynxScrollEvent : com.lynx.tasm.event.LynxD
 
 public class com::lynx::tasm::service::LynxServiceCenter :  {
   public static LynxServiceCenter com.lynx.tasm.service.LynxServiceCenter.inst();
+  public boolean com.lynx.tasm.service.LynxServiceCenter.hasService(Class<? extends IServiceProvider > clazz);
   public void com.lynx.tasm.service.LynxServiceCenter.unregisterService(Class<? extends IServiceProvider > clazz);
   public void com.lynx.tasm.service.LynxServiceCenter.unregisterAllService();
   public void com.lynx.tasm.service.LynxServiceCenter.initialize(Application context);
