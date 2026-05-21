@@ -149,7 +149,6 @@ bool DirectCompositionSurface::Resize(int width, int height) {
     return false;
   }
   is_valid_ = true;
-  draw_texture_.Reset();
   // This will release indirect references to swap chain (|real_surface_|) by
   // binding |default_surface_| as the default framebuffer.
   if (!ReleaseDrawTexture(true /* will_discard */)) return false;
@@ -196,17 +195,22 @@ void DirectCompositionSurface::SetDamageRegion(const clay::Rect& region) {
 bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard) {
   EGLSurface egl_surface = real_surface_;
   real_surface_ = nullptr;
-  if (egl_surface) {
-    eglDestroySurface(display_, egl_surface);
-    egl_surface = nullptr;
-  }
 
   // If MakeCurrent fails (probably lost device), we'll want to return failure,
   // but we still want to reset the rest of the state for consistency.
   if (::eglMakeCurrent(display_, GetHandle(), GetHandle(), context_) !=
       EGL_TRUE) {
     LogEGLError("Failed to make current in ReleaseDrawTexture");
+    if (egl_surface) {
+      eglDestroySurface(display_, egl_surface);
+      egl_surface = nullptr;
+    }
     return false;
+  }
+
+  if (egl_surface) {
+    eglDestroySurface(display_, egl_surface);
+    egl_surface = nullptr;
   }
 
   HRESULT hr, device_removed_reason;
