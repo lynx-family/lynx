@@ -1363,6 +1363,210 @@ TEST(CSSStringParser, RGBColor) {
     EXPECT_TRUE(result.IsEmpty());
   }
 }
+
+TEST(CSSStringParser, RGBAColor) {
+  CSSParserConfigs configs;
+
+  // Test legacy syntax: rgba(R, G, B, A)
+  {
+    std::string rgba = "rgba(255, 128, 0, 0.5)";
+    CSSStringParser parser{rgba.c_str(), static_cast<uint32_t>(rgba.size()),
+                           configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_EQ(result.GetPattern(), CSSValuePattern::NUMBER);
+
+    uint32_t color = result.GetValue().UInt32();
+    EXPECT_EQ((color >> 16) & 0xFF, 255);  // R
+    EXPECT_EQ((color >> 8) & 0xFF, 128);   // G
+    EXPECT_EQ(color & 0xFF, 0);            // B
+    EXPECT_EQ((color >> 24) & 0xFF, 127);  // A (0.5 * 255)
+  }
+
+  // Test legacy syntax without alpha: rgba(R, G, B)
+  {
+    std::string rgba = "rgba(0, 128, 0)";
+    CSSStringParser parser{rgba.c_str(), static_cast<uint32_t>(rgba.size()),
+                           configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_EQ(result.GetPattern(), CSSValuePattern::NUMBER);
+
+    uint32_t color = result.GetValue().UInt32();
+    EXPECT_EQ((color >> 16) & 0xFF, 0);    // R
+    EXPECT_EQ((color >> 8) & 0xFF, 128);   // G
+    EXPECT_EQ(color & 0xFF, 0);            // B
+    EXPECT_EQ((color >> 24) & 0xFF, 255);  // A (default 1.0)
+  }
+
+  // Test modern syntax: rgba(R G B)
+  {
+    std::string rgba = "rgba(0 128 0)";
+    CSSStringParser parser{rgba.c_str(), static_cast<uint32_t>(rgba.size()),
+                           configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_EQ(result.GetPattern(), CSSValuePattern::NUMBER);
+
+    uint32_t color = result.GetValue().UInt32();
+    EXPECT_EQ((color >> 16) & 0xFF, 0);    // R
+    EXPECT_EQ((color >> 8) & 0xFF, 128);   // G
+    EXPECT_EQ(color & 0xFF, 0);            // B
+    EXPECT_EQ((color >> 24) & 0xFF, 255);  // A (default 1.0)
+  }
+
+  // Test modern syntax with alpha: rgba(R G B / A)
+  {
+    std::string rgba = "rgba(0 128 0 / 1)";
+    CSSStringParser parser{rgba.c_str(), static_cast<uint32_t>(rgba.size()),
+                           configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_EQ(result.GetPattern(), CSSValuePattern::NUMBER);
+
+    uint32_t color = result.GetValue().UInt32();
+    EXPECT_EQ((color >> 16) & 0xFF, 0);    // R
+    EXPECT_EQ((color >> 8) & 0xFF, 128);   // G
+    EXPECT_EQ(color & 0xFF, 0);            // B
+    EXPECT_EQ((color >> 24) & 0xFF, 255);  // A (1.0)
+  }
+
+  // Test modern syntax with percentage alpha: rgba(R% G% B% / A%)
+  {
+    std::string rgba = "rgba(0% 50% 0% / 100%)";
+    CSSStringParser parser{rgba.c_str(), static_cast<uint32_t>(rgba.size()),
+                           configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_EQ(result.GetPattern(), CSSValuePattern::NUMBER);
+
+    uint32_t color = result.GetValue().UInt32();
+    EXPECT_EQ((color >> 16) & 0xFF, 0);    // 0% of 255
+    EXPECT_EQ((color >> 8) & 0xFF, 128);   // 50% of 255
+    EXPECT_EQ(color & 0xFF, 0);            // 0% of 255
+    EXPECT_EQ((color >> 24) & 0xFF, 255);  // 100%
+  }
+
+  // Test modern syntax with fractional alpha: rgba(R G B / 0.5)
+  {
+    std::string rgba = "rgba(255 128 0 / 0.5)";
+    CSSStringParser parser{rgba.c_str(), static_cast<uint32_t>(rgba.size()),
+                           configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_EQ(result.GetPattern(), CSSValuePattern::NUMBER);
+
+    uint32_t color = result.GetValue().UInt32();
+    EXPECT_EQ((color >> 16) & 0xFF, 255);
+    EXPECT_EQ((color >> 8) & 0xFF, 128);
+    EXPECT_EQ(color & 0xFF, 0);
+    EXPECT_EQ((color >> 24) & 0xFF, 127);  // 0.5 * 255
+  }
+
+  // Test 'none' values (modern syntax only)
+  {
+    std::string rgba = "rgba(none 128 none / 0.5)";
+    CSSStringParser parser{rgba.c_str(), static_cast<uint32_t>(rgba.size()),
+                           configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_EQ(result.GetPattern(), CSSValuePattern::NUMBER);
+
+    uint32_t color = result.GetValue().UInt32();
+    EXPECT_EQ((color >> 16) & 0xFF, 0);  // none -> 0
+    EXPECT_EQ((color >> 8) & 0xFF, 128);
+    EXPECT_EQ(color & 0xFF, 0);            // none -> 0
+    EXPECT_EQ((color >> 24) & 0xFF, 127);  // alpha 0.5
+  }
+
+  // Test invalid: missing comma in legacy syntax
+  {
+    std::string invalid = "rgba(255, 128 0, 0.5)";
+    CSSStringParser parser{invalid.c_str(),
+                           static_cast<uint32_t>(invalid.size()), configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_TRUE(result.IsEmpty());
+  }
+
+  // Test invalid: mixed syntax (modern space with legacy comma)
+  {
+    std::string invalid = "rgba(255, 128, 0 / 0.5)";
+    CSSStringParser parser{invalid.c_str(),
+                           static_cast<uint32_t>(invalid.size()), configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_TRUE(result.IsEmpty());
+  }
+
+  // Test invalid: mixed syntax (modern space with legacy comma alpha)
+  {
+    std::string invalid = "rgba(255 128 0, 0.5)";
+    CSSStringParser parser{invalid.c_str(),
+                           static_cast<uint32_t>(invalid.size()), configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_TRUE(result.IsEmpty());
+  }
+
+  // Test invalid: incomplete modern syntax (only one value)
+  {
+    std::string invalid = "rgba(255)";
+    CSSStringParser parser{invalid.c_str(),
+                           static_cast<uint32_t>(invalid.size()), configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_TRUE(result.IsEmpty());
+  }
+
+  // Test invalid: incomplete modern syntax (only two values)
+  {
+    std::string invalid = "rgba(255 128)";
+    CSSStringParser parser{invalid.c_str(),
+                           static_cast<uint32_t>(invalid.size()), configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_TRUE(result.IsEmpty());
+  }
+
+  // Test invalid: incomplete modern syntax (slash without alpha)
+  {
+    std::string invalid = "rgba(255 128 0 /)";
+    CSSStringParser parser{invalid.c_str(),
+                           static_cast<uint32_t>(invalid.size()), configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_TRUE(result.IsEmpty());
+  }
+
+  // Test invalid: empty args
+  {
+    std::string invalid = "rgba()";
+    CSSStringParser parser{invalid.c_str(),
+                           static_cast<uint32_t>(invalid.size()), configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_TRUE(result.IsEmpty());
+  }
+
+  // Test invalid: 'none' in legacy syntax
+  {
+    std::string invalid = "rgba(none, 128, 0, 1)";
+    CSSStringParser parser{invalid.c_str(),
+                           static_cast<uint32_t>(invalid.size()), configs};
+    CSSValue result;
+    parser.ParseCSSColorTo(result);
+    EXPECT_TRUE(result.IsEmpty());
+  }
+}
+
 TEST(CSSStringParser, open_type_tag) {
   EXPECT_TRUE(CSSStringParser::IsValidOpenTypeTag("aBcD"));
   EXPECT_TRUE(CSSStringParser::IsValidOpenTypeTag("1234"));
