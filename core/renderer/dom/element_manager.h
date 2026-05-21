@@ -1193,6 +1193,9 @@ class ElementManager : public ElementContextDelegate,
   bool FixOldFixedInsertSelfUseRenderParent() const {
     return fix_old_fixed_insert_self_use_render_parent_;
   }
+  bool FixFiberReinsertDetachFromOldRenderParent() const {
+    return fix_fiber_reinsert_detach_from_old_render_parent_;
+  }
   bool EnableAnimationForwardUpdatePreservation() const {
     return enable_animation_forward_update_preservation_;
   }
@@ -1391,6 +1394,7 @@ class ElementManager : public ElementContextDelegate,
   bool fix_fiber_dynamic_update_transition_consume_bug_{true};
   bool fix_new_fixed_removal_bug_{true};
   bool fix_old_fixed_insert_self_use_render_parent_{false};
+  bool fix_fiber_reinsert_detach_from_old_render_parent_{true};
   bool enable_animation_forward_update_preservation_{false};
   bool enable_new_styling_pipeline_{false};
   bool css_fragment_parsing_tasm_worker_thread_{false};

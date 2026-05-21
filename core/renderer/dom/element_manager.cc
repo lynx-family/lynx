@@ -121,6 +121,8 @@ ElementManager::ElementManager(
   fix_new_fixed_removal_bug_ = LynxEnv::GetInstance().FixNewFixedRemovalBug();
   fix_old_fixed_insert_self_use_render_parent_ =
       LynxEnv::GetInstance().FixOldFixedInsertSelfUseRenderParent();
+  fix_fiber_reinsert_detach_from_old_render_parent_ =
+      LynxEnv::GetInstance().FixFiberReinsertDetachFromOldRenderParent();
   disable_list_callback_if_detached_ =
       LynxEnv::GetInstance().DisableListCallbackIfDetached();
   if (platform_layout_context_) {
