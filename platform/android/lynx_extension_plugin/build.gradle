@@ -16,6 +16,11 @@ dependencies {
 }
 
 gradlePlugin {
+    // Keep the release artifact owned by ../publish.gradle and avoid
+    // java-gradle-plugin's pluginMaven / *PluginMarkerMaven publications.
+    // This also means the plugin is not published with Gradle plugin markers
+    // for Maven-based `plugins { id(...) version ... }` resolution.
+    automatedPublishing = false
     plugins {
         lynxExtensionSettings {
             id = 'org.lynxsdk.extension-settings'
