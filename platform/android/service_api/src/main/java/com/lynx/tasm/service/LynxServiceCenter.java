@@ -58,6 +58,10 @@ public class LynxServiceCenter {
     return result;
   }
 
+  public boolean hasService(Class<? extends IServiceProvider> clazz) {
+    return serviceMap.containsKey(clazz);
+  }
+
   /**
    * use `void registerService(@NonNull IServiceProvider instance)` instead
    */
