@@ -2,12 +2,20 @@ name: publish-release
 on:
   workflow_dispatch:
     inputs:
+      releaseType:
+        description: 'release type (release: publish by tag; nightly: generate nightly version and ignore tag)'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - nightly
       tag:
-        description: 'release tag'
+        description: 'release tag (required when releaseType=release)'
         required: false
         type: string
       commitId:
-        description: 'specific commit ID to build'
+        description: 'specific commit SHA to build (optional; used for checkout and nightly suffix)'
         required: false
         type: string
 
@@ -24,45 +32,108 @@ jobs:
   get-version:
     runs-on: lynx-ubuntu-22.04-medium
     timeout-minutes: 60
+    env:
+      EVENT_NAME: ${{ github.event_name }}
+      REF: ${{ github.ref }}
+      REF_NAME: ${{ github.ref_name }}
+      INPUT_RELEASE_TYPE: ${{ github.event.inputs.releaseType || '' }}
+      INPUT_TAG: ${{ github.event.inputs.tag || '' }}
+      INPUT_COMMIT_ID: ${{ github.event.inputs.commitId || '' }}
     outputs:
-      version: ${{ steps.get_version.outputs.VERSION }}
-      ios_source_type: ${{ steps.get_version.outputs.IOS_SOURCE_TYPE }}
-      checkout_ref: ${{ steps.get_version.outputs.CHECKOUT_REF }}
+      version: ${{ steps.resolve_version.outputs.VERSION }}
+      ios_source_type: ${{ steps.resolve_version.outputs.IOS_SOURCE_TYPE }}
+      checkout_ref: ${{ steps.resolve_checkout_ref.outputs.CHECKOUT_REF }}
     steps:
-      - name: Get Version
-        id: get_version
+      - name: Validate manual inputs
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |-
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            version="${{ github.event.inputs.tag }}"
-          elif [ "${{ github.event_name }}" = "schedule" ]; then
-            commit_short="${GITHUB_SHA:0:8}"
-            version="${NIGHTLY_BASE_VERSION}-nightly.$(TZ=Asia/Shanghai date +'%Y%m%d%H%M').${GITHUB_RUN_NUMBER}.g${commit_short}"
-          else
-            version=$(echo "${{ github.ref }}" | awk -F "/" '{print $3}')
+          if [ -n "$INPUT_COMMIT_ID" ] && ! [[ "$INPUT_COMMIT_ID" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
+            echo "commitId must be a git SHA (7-40 hex chars)."
+            exit 1
           fi
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.commitId }}" ]; then
-            checkout_ref="${{ github.event.inputs.commitId }}"
-          elif [ "${{ github.event_name }}" = "schedule" ]; then
-            checkout_ref="${{ github.sha }}"
-          else
-            checkout_ref="${{ github.ref }}"
+
+          if [ "$INPUT_RELEASE_TYPE" != "nightly" ] && [ -z "$INPUT_TAG" ]; then
+            echo "tag is required when releaseType=release."
+            exit 1
           fi
-          if [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || \
-                $version =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ || \
-                $version =~ ^[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+$ || \
-                $version =~ ^[0-9]+\.[0-9]+\.[0-9]+-nightly\.[0-9]{12}\.[0-9]+\.g[0-9a-f]+$ ]]; then
-            echo "Version is valid"
-            echo "VERSION=$version" >> "$GITHUB_OUTPUT"
-            echo "CHECKOUT_REF=$checkout_ref" >> "$GITHUB_OUTPUT"
-            if [[ $version =~ -nightly\. ]]; then
-              echo "IOS_SOURCE_TYPE=git" >> "$GITHUB_OUTPUT"
-            else
-              echo "IOS_SOURCE_TYPE=zip" >> "$GITHUB_OUTPUT"
-            fi
-          else
+
+      - name: Resolve release mode
+        id: resolve_release_mode
+        run: |-
+          release_mode="tag_release"
+
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            release_mode="nightly"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_RELEASE_TYPE" = "nightly" ]; then
+            release_mode="nightly"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            release_mode="manual_release"
+          fi
+
+          echo "RELEASE_MODE=$release_mode" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve checkout ref
+        id: resolve_checkout_ref
+        env:
+          RELEASE_MODE: ${{ steps.resolve_release_mode.outputs.RELEASE_MODE }}
+        run: |-
+          case "$RELEASE_MODE" in
+            nightly)
+              checkout_ref="${INPUT_COMMIT_ID:-$GITHUB_SHA}"
+              commit_short="${INPUT_COMMIT_ID:-$GITHUB_SHA}"
+              ;;
+            manual_release)
+              checkout_ref="${INPUT_COMMIT_ID:-$REF}"
+              commit_short="${INPUT_COMMIT_ID:-$GITHUB_SHA}"
+              ;;
+            tag_release)
+              checkout_ref="$REF"
+              commit_short="$GITHUB_SHA"
+              ;;
+            *)
+              echo "Unsupported release mode: $RELEASE_MODE"
+              exit 1
+              ;;
+          esac
+
+          commit_short="$(printf '%s' "$commit_short" | tr '[:upper:]' '[:lower:]')"
+          echo "CHECKOUT_REF=$checkout_ref" >> "$GITHUB_OUTPUT"
+          echo "COMMIT_SHORT=${commit_short:0:8}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve version
+        id: resolve_version
+        env:
+          RELEASE_MODE: ${{ steps.resolve_release_mode.outputs.RELEASE_MODE }}
+          COMMIT_SHORT: ${{ steps.resolve_checkout_ref.outputs.COMMIT_SHORT }}
+        run: |-
+          case "$RELEASE_MODE" in
+            nightly)
+              version="${NIGHTLY_BASE_VERSION}-nightly.$(TZ=Asia/Shanghai date +'%Y%m%d%H%M').${GITHUB_RUN_NUMBER}.g${COMMIT_SHORT}"
+              source_type="git"
+              ;;
+            manual_release)
+              version="$INPUT_TAG"
+              source_type="zip"
+              ;;
+            tag_release)
+              version="$REF_NAME"
+              source_type="zip"
+              ;;
+            *)
+              echo "Unsupported release mode: $RELEASE_MODE"
+              exit 1
+              ;;
+          esac
+
+          version_regex='^[0-9]+\.[0-9]+\.[0-9]+(-((rc|alpha)\.[0-9]+|nightly\.[0-9]{12}\.[0-9]+\.g[0-9a-f]+))?$'
+          if ! [[ "$version" =~ $version_regex ]]; then
             echo "Version is invalid"
             exit 1
           fi
+
+          echo "Version is valid"
+          echo "VERSION=$version" >> "$GITHUB_OUTPUT"
+          echo "IOS_SOURCE_TYPE=$source_type" >> "$GITHUB_OUTPUT"
 
   android-explorer-build:
     timeout-minutes: 60
