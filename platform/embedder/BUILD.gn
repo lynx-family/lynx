@@ -98,7 +98,7 @@ lynx_core_source_set("embedder") {
     ":config",
   ]
 
-  if (!enable_unittests && !is_android) {
+  if (!enable_unittests && !is_android && !is_harmony) {
     sources += [
       "sysinfo_embedder.cc",
       "vsync_monitor_fallback.cc",
