@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "core/runtime/lepus/function.h"
+#include "core/runtime/lepus/ir/analysis/analysis.h"
 #include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/func_op.h"
 #include "core/runtime/lepus/ir/module_op.h"
@@ -169,6 +170,30 @@ void IRContext::UpdateSpecialAttribute(Instruction* old_val, Value* new_val) {
       llvh::isa<Instruction>(new_val)) {
     UpdateToplevelVar(old_val, llvh::cast<Instruction>(new_val));
   }
+}
+
+const std::set<uint32_t>& IRContext::GetNeverWrittenToplevelClosureRegs() {
+  if (!toplevel_closure_write_info_computed_) {
+    toplevel_closure_write_info_computed_ = true;
+    auto info = ComputeToplevelClosureWriteInfo(GetMainMod());
+    cached_never_written_toplevel_closure_regs_ =
+        std::move(info.never_written_regs);
+    cached_written_toplevel_closure_regs_ = std::move(info.written_regs);
+  }
+  return cached_never_written_toplevel_closure_regs_;
+}
+
+const std::set<uint32_t>& IRContext::GetWrittenToplevelClosureRegs() {
+  GetNeverWrittenToplevelClosureRegs();  // ensure computed
+  return cached_written_toplevel_closure_regs_;
+}
+
+const std::set<std::string>& IRContext::GetWrittenUpvalueNames() {
+  if (!written_upvalue_names_computed_) {
+    written_upvalue_names_computed_ = true;
+    cached_written_upvalue_names_ = ComputeWrittenUpvalueNames(GetMainMod());
+  }
+  return cached_written_upvalue_names_;
 }
 
 }  // namespace ir

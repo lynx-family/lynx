@@ -1,4 +1,7 @@
 # CHANGELOG
+# 0.0.44
+* enhance lepus ir passes with module-level immutability analysis to eliminate more redundant loads, branches, and movs
+
 # 0.0.43
 * fix incorrect assignment elimination under optional chaining when IR optimization is enabled 
 

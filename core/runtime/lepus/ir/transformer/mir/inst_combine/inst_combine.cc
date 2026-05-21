@@ -742,10 +742,27 @@ static Value* CombineAddEmptyStringToToString(OpBuilder* builder,
   return ts;
 }
 
+// Returns true when `inst` is consumed exclusively in a boolean context:
+// directly by a CondBranch, or by a chain of BinaryOr/BinaryAnd instructions
+// that ultimately feed a CondBranch.
+static bool IsInBooleanContext(Instruction* inst, int depth) {
+  constexpr int kMaxDepth = 4;
+  if (depth > kMaxDepth) return false;
+  if (!inst->HasOneUser()) return false;
+  auto* user = llvh::dyn_cast<Instruction>(*inst->UsersBegin());
+  if (!user) return false;
+  if (llvh::isa<CondBranchInst>(user)) return true;
+  if (auto* binary_op = llvh::dyn_cast<BinaryOperatorInst>(user)) {
+    if (binary_op->GetKind() == ValueKind::BinaryOrInstKind ||
+        binary_op->GetKind() == ValueKind::BinaryAndInstKind) {
+      return IsInBooleanContext(binary_op, depth + 1);
+    }
+  }
+  return false;
+}
+
 Instruction* CombineCompareAndJmp(OpBuilder* builder, Instruction* inst) {
   if (auto cond_branch_inst = llvh::dyn_cast<CondBranchInst>(inst)) {
-    if (!cond_branch_inst->IsSmallJmp()) return nullptr;
-
     auto cond_val = cond_branch_inst->GetCondition();
     if (auto* binary_inst = llvh::dyn_cast<BinaryOperatorInst>(cond_val)) {
       // Safety: only combine when the comparison result is used exclusively by
@@ -1039,12 +1056,9 @@ static Value* FoldUnaryOperatorInst(OpBuilder* builder, Instruction* inst) {
           return inner_src;
         }
 
-        // !!x in boolean context of a cond branch.
-        if (unary_inst->HasOneUser()) {
-          auto* user = llvh::dyn_cast<Instruction>(*unary_inst->UsersBegin());
-          if (llvh::isa<CondBranchInst>(user)) {
-            return inner_src;
-          }
+        // !!x in boolean context (CondBranch, or Or/And chain to CondBranch).
+        if (IsInBooleanContext(unary_inst, 0)) {
+          return inner_src;
         }
       }
     }

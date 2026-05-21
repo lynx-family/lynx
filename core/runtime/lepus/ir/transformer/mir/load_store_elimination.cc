@@ -5,6 +5,7 @@
 #include "core/runtime/lepus/ir/transformer/mir/load_store_elimination.h"
 
 #include <string>
+#include <utility>
 
 #include "base/include/value/base_string.h"
 #include "core/runtime/lepus/ir/analysis/cfg.h"
@@ -18,6 +19,95 @@
 namespace lynx {
 namespace lepus {
 namespace ir {
+
+// Maximum number of values to visit when tracing a Value back through
+// GetTable/Phi chains to determine if it originates from a Parameter.
+
+// Flags controlling which intermediate nodes to trace through.
+enum TraceFollowFlags : uint8_t {
+  kFollowPhi = 1 << 0,
+  kFollowGetTable = 1 << 1,
+  kFollowAll = kFollowPhi | kFollowGetTable,
+};
+
+// Terminal-condition predicates for TraceOrigin.
+static bool IsParameterKind(Value* v) {
+  return v->GetKind() == ValueKind::ParameterKind;
+}
+static bool IsClosureLoadInst(Value* v) {
+  return llvh::isa<GetUpvalueInst>(v) || llvh::isa<GetContextSlotInst>(v) ||
+         llvh::isa<GetContextSlotMovInst>(v) ||
+         llvh::isa<GetToplevelClosureVarInst>(v);
+}
+
+// Tri-state result for BFS origin tracing.
+enum class TraceResult : uint8_t { kNotFound, kFound, kBudgetExhausted };
+
+// Unified BFS origin trace. Follows intermediate nodes per |flags|, returns
+// kFound if any reachable node satisfies |pred|, kBudgetExhausted if the visit
+// budget is exceeded before a definitive answer, kNotFound otherwise.
+using OriginPredicate = bool (*)(Value*);
+static TraceResult TraceOriginImpl(Value* v, TraceFollowFlags flags,
+                                   OriginPredicate pred) {
+  if (!v) return TraceResult::kNotFound;
+  llvh::SmallVector<Value*, 8> work_list;
+  llvh::SmallPtrSet<Value*, 16> visited;
+  work_list.push_back(v);
+  while (!work_list.empty()) {
+    if (visited.size() >= constants::kMaxParamTraceVisits)
+      return TraceResult::kBudgetExhausted;
+    Value* cur = work_list.pop_back_val();
+    if (!cur || !visited.insert(cur).second) continue;
+    if (pred(cur)) return TraceResult::kFound;
+    if (flags & kFollowGetTable) {
+      if (auto* gt = llvh::dyn_cast<GetTableInst>(cur)) {
+        work_list.push_back(gt->GetObject());
+        continue;
+      }
+      if (auto* gtc = llvh::dyn_cast<GetTableConstStringKeyInst>(cur)) {
+        work_list.push_back(gtc->GetObject());
+        continue;
+      }
+    }
+    if (flags & kFollowPhi) {
+      if (auto* phi = llvh::dyn_cast<PhiInst>(cur)) {
+        for (unsigned i = 0, e = phi->GetNumEntries(); i < e; ++i) {
+          work_list.push_back(phi->GetEntry(i).first);
+        }
+      }
+    }
+  }
+  return TraceResult::kNotFound;
+}
+
+// Strict wrappers: return true only on definitive kFound.
+// Safe for "preserve if confirmed" decisions (false on budget = erase = sound).
+static bool IsParamDerived(Value* v) {
+  return TraceOriginImpl(v, kFollowAll, IsParameterKind) == TraceResult::kFound;
+}
+
+static bool IsParamOrPhiOfParam(Value* v) {
+  return TraceOriginImpl(v, static_cast<TraceFollowFlags>(kFollowPhi),
+                         IsParameterKind) == TraceResult::kFound;
+}
+
+// Conservative wrappers: return true on kFound OR kBudgetExhausted.
+// Safe for "detect potential writes" decisions (true on budget = assume
+// write exists = sound).
+static bool MayBeParamDerived(Value* v) {
+  return TraceOriginImpl(v, kFollowAll, IsParameterKind) !=
+         TraceResult::kNotFound;
+}
+
+static bool MayBeClosureVarDerived(Value* v) {
+  return TraceOriginImpl(v, kFollowAll, IsClosureLoadInst) !=
+         TraceResult::kNotFound;
+}
+
+static bool MayBeParamOrPhiOfParam(Value* v) {
+  return TraceOriginImpl(v, static_cast<TraceFollowFlags>(kFollowPhi),
+                         IsParameterKind) != TraceResult::kNotFound;
+}
 
 bool LoadStoreElimination::TableKey::ExtractInt32(Value* v, int32_t* out) {
   if (!v || !out) return false;
@@ -146,6 +236,26 @@ static llvh::SmallVector<Block*, 32> CollectBlocksInRPO(FuncOp* func) {
   return order;
 }
 
+// Check whether a string could be the ToString representation of some number.
+// E.g., "42", "3.14", "1e10", "NaN", "Infinity" → true
+// E.g., "img_info", "type", "height", "" → false
+//
+// This is sound and conservative: Number.prototype.toString() can only produce
+// strings composed of [0-9.eE+-] (plus "NaN"/"Infinity"/"-Infinity").
+// We check character membership rather than parsing, avoiding locale-dependent
+// strtod behavior.
+static bool CouldBeNumberString(const std::string& s) {
+  if (s.empty()) return false;
+  if (s == "NaN" || s == "Infinity" || s == "-Infinity") return true;
+  for (char c : s) {
+    if (!((c >= '0' && c <= '9') || c == '.' || c == '-' || c == '+' ||
+          c == 'e' || c == 'E')) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Convert a constant lepus::Value number into its property-key string form.
 //
 // NOTE: LSE only uses this for *constant* keys to decide whether two constant
@@ -210,10 +320,363 @@ Value* LoadStoreElimination::ResolveReplacement(Value* v) {
   return cur;
 }
 
+void LoadStoreElimination::ComputeNeverWrittenUpvalues() {
+  never_written_upvalue_indices_.clear();
+  auto& written_upvalue_names = ir_ctx_->GetWrittenUpvalueNames();
+
+  // Cheap per-function computation using cached names.
+  never_written_upvalue_indices_ =
+      ComputeNeverWrittenUpvalueIndices(written_upvalue_names, func_);
+}
+
+void LoadStoreElimination::ComputeNeverWrittenToplevelClosures() {
+  if (toplevel_closure_computed_) return;
+  toplevel_closure_computed_ = true;
+
+  never_written_toplevel_closure_regs_ =
+      ir_ctx_->GetNeverWrittenToplevelClosureRegs();
+  written_toplevel_closure_regs_ = ir_ctx_->GetWrittenToplevelClosureRegs();
+}
+
+void LoadStoreElimination::ComputeParamWriteProperties() {
+  // Module-level analysis: only compute once across all functions.
+  if (param_properties_computed_) return;
+  param_properties_computed_ = true;
+
+  param_properties_never_written_ = true;
+  param_gettable_properties_never_written_ = true;
+
+  auto* mod = ir_ctx_->GetMainMod();
+  if (!mod) return;
+
+  // Scan all functions in the module for SetTable/SetTableConstStringKey
+  // instructions whose receiver traces back to a Parameter.
+  for (auto it = mod->begin(); it != mod->end(); ++it) {
+    FuncOp* fn = *it;
+    if (!fn) continue;
+    for (auto& bb : *fn) {
+      for (auto& inst : bb) {
+        Value* receiver = nullptr;
+        if (auto* st = llvh::dyn_cast<SetTableInst>(&inst)) {
+          receiver = st->GetObject();
+        } else if (auto* stc =
+                       llvh::dyn_cast<SetTableConstStringKeyInst>(&inst)) {
+          receiver = stc->GetObject();
+        } else {
+          continue;
+        }
+
+        if (!receiver) continue;
+
+        // Check if receiver is directly a Parameter (or Phi of params).
+        // Use conservative wrapper: budget exhaustion → assume match.
+        if (MayBeParamOrPhiOfParam(receiver)) {
+          param_properties_never_written_ = false;
+          // Direct param write doesn't imply GetTable-chain write.
+          if (!param_gettable_properties_never_written_) return;
+          continue;
+        }
+
+        // Check if receiver traces to a Parameter through GetTable/Phi chains.
+        // Use conservative wrapper: budget exhaustion → assume match.
+        if (MayBeParamDerived(receiver)) {
+          param_gettable_properties_never_written_ = false;
+          if (!param_properties_never_written_) return;
+          continue;
+        }
+
+        // Upvalue/context/closure-loaded receivers may alias with a Parameter
+        // at runtime (the same object can be passed as argument and captured
+        // in a closure). Conservatively treat as a potential param write.
+        //
+        // NOTE: GetToplevelVarInst is intentionally NOT listed here.
+        // GetToplevelVarInst only appears in the root/toplevel function, which
+        // has no Parameter IR values (it is the module entry, not a called
+        // function). Any child function that accesses the same toplevel
+        // storage uses GetToplevelClosureVarInst (which IS checked here).
+        // Therefore, GetToplevelVarInst cannot participate in cross-function
+        // param aliasing and does not need to set
+        // param_properties_never_written_.
+        if (llvh::isa<GetUpvalueInst>(receiver) ||
+            llvh::isa<GetContextSlotInst>(receiver) ||
+            llvh::isa<GetContextSlotMovInst>(receiver) ||
+            llvh::isa<GetToplevelClosureVarInst>(receiver)) {
+          param_properties_never_written_ = false;
+          if (!param_gettable_properties_never_written_) return;
+          continue;
+        }
+
+        // A receiver that traces through GetTable/Phi chains to a
+        // closure-loaded value (e.g., GetTable(GetUpvalue(idx), key)) can
+        // alias a getTable-derived parameter path at runtime. Treat as a
+        // potential param-gettable write.
+        // Use conservative wrapper: budget exhaustion → assume match.
+        if (MayBeClosureVarDerived(receiver)) {
+          param_gettable_properties_never_written_ = false;
+          if (!param_properties_never_written_) return;
+          continue;
+        }
+
+        // A CallInst receiver: if it's a known builtin returning a fresh
+        // allocation (or a primitive), the write cannot alias a parameter.
+        // Otherwise, conservatively assume the returned object may alias.
+        if (auto* call = llvh::dyn_cast<CallInst>(receiver)) {
+          const std::string& builtin_name = call->GetBuiltinFuncName();
+          if (!builtin_name.empty()) {
+            // Builtins that return their input argument (NOT a fresh
+            // allocation). Writing to their result may alias a parameter.
+            static const char* kNonFreshBuiltins[] = {
+                constants::kObjectFreezeFull,
+                constants::kObjectAssignFull,
+            };
+            // Builtins known to return fresh allocations or primitives.
+            // Writing to their result cannot alias a parameter.
+            // NOTE: Renderer C++ functions (__SetStyleObject, etc.) are
+            // also safe — they return undefined/fresh and never return an
+            // existing param reference. They start with "__" prefix.
+            static const char* kFreshBuiltins[] = {
+                constants::kGetElementUniqueID,
+                constants::kCreateElement,
+                constants::kCreateView,
+                constants::kCreateImage,
+                constants::kCreateText,
+                constants::kCreatePage,
+                constants::kCreateComponent,
+                constants::kGetDiffData,
+                constants::kGetSystemInfo,
+                constants::kGetTextInfo,
+                constants::kIsArray,
+                constants::kParseInt,
+                constants::kParseFloat,
+                constants::kIsNaN,
+                constants::kEncodeURIComponent,
+                constants::kDecodeURIComponent,
+                constants::kJSONParseFull,
+            };
+            bool is_non_fresh = false;
+            for (const char* name : kNonFreshBuiltins) {
+              if (builtin_name == name) {
+                is_non_fresh = true;
+                break;
+              }
+            }
+            if (is_non_fresh) {
+              param_properties_never_written_ = false;
+              if (!param_gettable_properties_never_written_) return;
+              continue;
+            }
+            // Verify the builtin is in the known-fresh list. If a new
+            // builtin is added to type_specification.cc and its result is
+            // used as a SetTable receiver here, this assertion fires to
+            // force the developer to classify it explicitly.
+            bool is_known_fresh = false;
+            for (const char* name : kFreshBuiltins) {
+              if (builtin_name == name) {
+                is_known_fresh = true;
+                break;
+              }
+            }
+            if (!is_known_fresh) {
+              // Method-style builtins (e.g., "Math.abs", "Array.map",
+              // "Object.keys", "String.substr") are dynamically named.
+              // They virtually always return primitives or fresh
+              // allocations. If one somehow appears as a SetTable
+              // receiver, treat it conservatively as non-fresh rather
+              // than asserting.
+              if (builtin_name.find('.') != std::string::npos) {
+                param_properties_never_written_ = false;
+                if (!param_gettable_properties_never_written_) return;
+                continue;
+              }
+              // Renderer C++ functions start with "__" prefix (e.g.,
+              // "__SetStyleObject", "__AppendElement"). They are native
+              // functions that return undefined or fresh allocations,
+              // never an existing parameter reference.
+              if (builtin_name.size() > 2 && builtin_name[0] == '_' &&
+                  builtin_name[1] == '_') {
+                continue;  // Native renderer function — safe.
+              }
+              // Unknown non-method, non-renderer builtin used as SetTable
+              // receiver — conservatively assume it may return an existing
+              // object that aliases a parameter.
+              param_properties_never_written_ = false;
+              if (!param_gettable_properties_never_written_) return;
+              continue;
+            }
+            continue;  // Fresh allocation or primitive — safe.
+          }
+          param_properties_never_written_ = false;
+          if (!param_gettable_properties_never_written_) return;
+          continue;
+        }
+      }
+    }
+  }
+}
+
+LoadStoreElimination::ResolvedCallee LoadStoreElimination::ResolveCallee(
+    CallInst* call) {
+  ResolvedCallee result;
+  Value* callee = call->GetFunction();
+
+  if (auto* get_uv = llvh::dyn_cast<GetUpvalueInst>(callee)) {
+    auto* idx_lit = llvh::dyn_cast<LiteralUint8>(get_uv->GetIndex());
+    FuncOp* owner = get_uv->GetFunc();
+    if (!idx_lit || !owner || !owner->GetLepusFunction()) return result;
+    int idx = static_cast<int>(idx_lit->GetValue());
+    if (idx < 0 ||
+        static_cast<size_t>(idx) >= owner->GetLepusFunction()->UpvaluesSize())
+      return result;
+    auto* info = owner->GetLepusFunction()->GetUpvalue(idx);
+    if (!info) return result;
+    // Reject if the upvalue's register is known to be written.
+    if (info->register_ >= 0 &&
+        written_toplevel_closure_regs_.count(
+            static_cast<uint32_t>(info->register_)) > 0) {
+      return result;
+    }
+    result.name = info->name_.str();
+    return result;
+  }
+
+  if (auto* get_tc = llvh::dyn_cast<GetToplevelClosureVarInst>(callee)) {
+    auto* mod = ir_ctx_->GetMainMod();
+    auto* root_func = mod ? mod->GetRootFunction() : nullptr;
+    if (!root_func) return result;
+    auto* reg_lit = llvh::dyn_cast<LiteralUint32>(get_tc->GetClosureReg());
+    if (!reg_lit ||
+        written_toplevel_closure_regs_.count(reg_lit->GetValue()) > 0)
+      return result;
+    Value* original = root_func->GetClosureVarGivenReg(reg_lit->GetValue());
+    if (!original) return result;
+    auto* create_closure = llvh::dyn_cast<CreateClosureInst>(original);
+    if (!create_closure) return result;
+    auto child_idx = create_closure->GetChildrenIndex();
+    auto root_lepus = root_func->GetLepusFunction();
+    if (!root_lepus || child_idx >= root_lepus->GetChildFunction().size())
+      return result;
+    auto child_func = root_lepus->GetChildFunction()[child_idx];
+    result.func_op = ir_ctx_->GetFuncOp(child_func);
+    return result;
+  }
+
+  return result;
+}
+
+void LoadStoreElimination::ComputeTableSafeFunctions() {
+  if (table_safe_computed_) return;
+  table_safe_computed_ = true;
+
+  auto* mod = ir_ctx_->GetMainMod();
+  if (!mod) return;
+
+  // Phase 1: Find functions with no SetTable/SetTableConstStringKey.
+  // These are candidates for table-safety.
+  std::set<FuncOp*> candidates;
+  for (auto it = mod->begin(); it != mod->end(); ++it) {
+    FuncOp* fn = *it;
+    if (!fn) continue;
+    bool has_set_table = false;
+    for (auto& bb : *fn) {
+      for (auto& inst : bb) {
+        if (llvh::isa<SetTableInst>(&inst) ||
+            llvh::isa<SetTableConstStringKeyInst>(&inst)) {
+          has_set_table = true;
+          break;
+        }
+      }
+      if (has_set_table) break;
+    }
+    if (!has_set_table) candidates.insert(fn);
+  }
+
+  // Build name→FuncOp map for callee resolution.
+  // Safety: FuncOp names are guaranteed unique within a module — named
+  // functions use their source-level name (unique per scope), and anonymous
+  // closures are assigned unique "closure_N" names via ModuleOp's monotonic
+  // counter (see IRContext::CollectChildFuncs).
+  std::unordered_map<std::string, FuncOp*> name_to_func;
+  for (auto it = mod->begin(); it != mod->end(); ++it) {
+    FuncOp* fn = *it;
+    if (!fn) continue;
+    auto name = fn->GetName();
+    if (!name.empty()) name_to_func[name] = fn;
+  }
+
+  // Phase 2: Fixpoint — remove candidates that call potentially unsafe
+  // functions. A candidate is safe only if all its calls are to:
+  //   - known-safe calls (readonly/idempotent/table-preserving)
+  //   - recognized builtins (array.push, string.split, etc.)
+  //   - other candidate functions
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (auto it = candidates.begin(); it != candidates.end();) {
+      FuncOp* fn = *it;
+      bool safe = true;
+      for (auto& bb : *fn) {
+        if (!safe) break;
+        for (auto& inst : bb) {
+          auto* call = llvh::dyn_cast<CallInst>(&inst);
+          if (!call) continue;
+          if (call->IsReadonlyCall() || call->IsIdempotentCall() ||
+              call->IsLocalTableSafeCall()) {
+            continue;
+          }
+          // Try to resolve callee to a candidate function.
+          auto resolved = ResolveCallee(call);
+          if (!resolved.name.empty()) {
+            auto fname_it = name_to_func.find(resolved.name);
+            if (fname_it != name_to_func.end() &&
+                candidates.count(fname_it->second)) {
+              continue;  // callee is a candidate
+            }
+          } else if (resolved.func_op && candidates.count(resolved.func_op)) {
+            continue;  // callee is a candidate
+          }
+
+          // Unresolved call to potentially unsafe function.
+          safe = false;
+          break;
+        }
+      }
+      if (!safe) {
+        it = candidates.erase(it);
+        changed = true;
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  // Store result as set of function names for quick lookup during LSE.
+  for (auto* fn : candidates) {
+    auto name = fn->GetName();
+    if (!name.empty()) table_safe_func_names_.insert(name);
+  }
+}
+
+bool LoadStoreElimination::IsCallToTableSafeFunction(CallInst* call) {
+  if (table_safe_func_names_.empty()) return false;
+
+  auto resolved = ResolveCallee(call);
+  if (!resolved.name.empty()) {
+    return table_safe_func_names_.count(resolved.name) > 0;
+  }
+  if (resolved.func_op) {
+    return table_safe_func_names_.count(resolved.func_op->GetName()) > 0;
+  }
+  return false;
+}
+
 bool LoadStoreElimination::RunOnFunction(FuncOp* f) {
   if (f->GetBlockSize() == 0) return false;
 
   Reset(f);
+  ComputeNeverWrittenUpvalues();
+  ComputeNeverWrittenToplevelClosures();
+  ComputeParamWriteProperties();
+  ComputeTableSafeFunctions();
 
   // ============================================================
   // Phase 0: block order
@@ -489,6 +952,11 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
                                         bool enable_elimination) {
   bool changed = false;
 
+  // Dead store tracking: maps a TableKey to the last store instruction in this
+  // block that hasn't been read yet. If a new store to the same key appears,
+  // the previous one is dead and can be eliminated.
+  std::unordered_map<TableKey, Instruction*, TableKeyHash> pending_stores;
+
   for (auto* inst : bb->InstRange()) {
     // is_special_inst means the instruction should not be deleted in this pass
     // should only appear in SetToplevelVarInst or SetToplevelClosureVarInst
@@ -523,15 +991,43 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
     };
 
     if (auto* get_table_inst = llvh::dyn_cast<GetTableInst>(inst)) {
-      ProcessLoad(
-          get_table_inst, available.tables,
-          TableKey{get_table_inst->GetObject(), get_table_inst->GetProp(),
-                   /*key_is_const_string_index*/ false});
+      // Erase all pending stores that may alias this read.
+      // Cannot use exact-match erase because a dynamic-key read (key_is_const=
+      // false) may alias a const-string-key store (key_is_const=true).
+      Value* read_obj = get_table_inst->GetObject();
+      Value* read_prop = get_table_inst->GetProp();
+      for (auto ps_it = pending_stores.begin();
+           ps_it != pending_stores.end();) {
+        if (!ObjectsMustNotAlias(ps_it->first.object, read_obj) &&
+            KeysMayAlias(ps_it->first.key,
+                         ps_it->first.key_is_const_string_index, read_prop,
+                         false)) {
+          ps_it = pending_stores.erase(ps_it);
+        } else {
+          ++ps_it;
+        }
+      }
+      ProcessLoad(get_table_inst, available.tables,
+                  TableKey{read_obj, read_prop,
+                           /*key_is_const_string_index*/ false});
     } else if (auto* get_table_const_key =
                    llvh::dyn_cast<GetTableConstStringKeyInst>(inst)) {
+      // Same alias-aware erasure for const-string-key reads.
+      Value* read_obj = get_table_const_key->GetObject();
+      Value* read_key_val = get_table_const_key->GetConstIndex();
+      for (auto ps_it = pending_stores.begin();
+           ps_it != pending_stores.end();) {
+        if (!ObjectsMustNotAlias(ps_it->first.object, read_obj) &&
+            KeysMayAlias(ps_it->first.key,
+                         ps_it->first.key_is_const_string_index, read_key_val,
+                         /*k2_is_const_index*/ true)) {
+          ps_it = pending_stores.erase(ps_it);
+        } else {
+          ++ps_it;
+        }
+      }
       ProcessLoad(get_table_const_key, available.tables,
-                  TableKey{get_table_const_key->GetObject(),
-                           get_table_const_key->GetConstIndex(),
+                  TableKey{read_obj, read_key_val,
                            /*key_is_const_string_index*/ true});
     } else if (auto* set_table_inst = llvh::dyn_cast<SetTableInst>(inst)) {
       if (LEPUS_UNLIKELY(is_special_inst)) {
@@ -545,6 +1041,7 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
         InvalidateTables(available, set_table_inst->GetObject(),
                          set_table_inst->GetProp(),
                          /*written_key_is_const_index*/ false);
+        pending_stores.clear();
         continue;
       }
       TableKey key{set_table_inst->GetObject(), set_table_inst->GetProp(),
@@ -552,15 +1049,39 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
       Value* val = set_table_inst->GetStoreVal();
       auto it = available.tables.find(key);
       if (it != available.tables.end() && it->second == val) {
+        // Redundant store: the value being stored is already in the cache.
+        // Remove this store instruction.
+        //
+        // NOTE: We intentionally do NOT update pending_stores[key] here.
+        // pending_stores tracks "the last actually-executed store to this key
+        // that has not yet been observed by a load". Since this redundant store
+        // is being deleted (never executes), the previous pending store (if
+        // any) remains the correct "last executed" candidate for DSE. If a
+        // later store overwrites the same key with no intervening read, DSE
+        // will correctly identify the earlier pending store as dead.
+        // Correctness is guaranteed because:
+        //   - GetTable handlers clear pending_stores entries on alias match
+        //   - Call instructions always execute pending_stores.clear()
         if (enable_elimination) {
           to_remove_.push_back(set_table_inst);
           changed = true;
         }
       } else {
+        // Dead store elimination: if there's a pending store to the same key
+        // that hasn't been read, the old store is dead.
+        if (enable_elimination) {
+          auto ps_it = pending_stores.find(key);
+          if (ps_it != pending_stores.end() && ps_it->second &&
+              ps_it->second->GetNumUsers() == 0) {
+            to_remove_.push_back(ps_it->second);
+            changed = true;
+          }
+        }
         InvalidateTables(available, set_table_inst->GetObject(),
                          set_table_inst->GetProp(),
                          /*written_key_is_const_index*/ false);
         available.tables[key] = val;
+        pending_stores[key] = set_table_inst;
       }
     } else if (auto* set_table_const_key =
                    llvh::dyn_cast<SetTableConstStringKeyInst>(inst)) {
@@ -575,6 +1096,7 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
         InvalidateTables(available, set_table_const_key->GetObject(),
                          set_table_const_key->GetConstIndex(),
                          /*written_key_is_const_index*/ true);
+        pending_stores.clear();
         continue;
       }
       // const_index is a const-table index (uint32) for a string key.
@@ -585,15 +1107,28 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
       Value* val = set_table_const_key->GetStoreVal();
       auto it = available.tables.find(key);
       if (it != available.tables.end() && it->second == val) {
+        // Redundant store (same rationale as the SetTableInst path above):
+        // intentionally not updating pending_stores[key] — see comment there.
         if (enable_elimination) {
           to_remove_.push_back(set_table_const_key);
           changed = true;
         }
       } else {
+        // Dead store elimination: if there's a pending store to the same key
+        // that hasn't been read, the old store is dead.
+        if (enable_elimination) {
+          auto ps_it = pending_stores.find(key);
+          if (ps_it != pending_stores.end() && ps_it->second &&
+              ps_it->second->GetNumUsers() == 0) {
+            to_remove_.push_back(ps_it->second);
+            changed = true;
+          }
+        }
         InvalidateTables(available, set_table_const_key->GetObject(),
                          set_table_const_key->GetConstIndex(),
                          /*written_key_is_const_index*/ true);
         available.tables[key] = val;
+        pending_stores[key] = set_table_const_key;
       }
     } else if (auto* get_global = llvh::dyn_cast<GetGlobalInst>(inst)) {
       ProcessLoad(get_global, available.globals, get_global->GetGlobalIndex());
@@ -713,10 +1248,85 @@ bool LoadStoreElimination::ProcessBlock(Block* bb, AvailableValues& available,
         // clear LSE's mutable caches.
         if (auto* call = llvh::dyn_cast<CallInst>(inst)) {
           if (IsReadonlyCall(call)) {
+            // Readonly calls don't write, but they CAN read table values.
+            // We must clear pending_stores so that DSE doesn't incorrectly
+            // eliminate a store whose value was observed by this call.
+            pending_stores.clear();
+            continue;
+          }
+          // Idempotent calls are pure (no side effects), skip invalidation.
+          if (call->IsIdempotentCall()) {
+            pending_stores.clear();
+            continue;
+          }
+          // LocalTableSafe calls: known native C++ renderer functions that
+          // cannot access or modify JS closure/upvalue/context state.
+          // Selectively preserve non-table caches for never-written slots.
+          if (call->IsLocalTableSafeCall()) {
+            available.InvalidateForNativeRendererCall(
+                never_written_upvalue_indices_);
+            pending_stores.clear();
+            continue;
+          }
+          // Interprocedural table-safety: if the callee is a resolved
+          // function that transitively never writes to any table, treat
+          // the call like a LocalTableSafeCall.
+          if (IsCallToTableSafeFunction(call)) {
+            available.InvalidateForLocalTableSafeCall(
+                never_written_upvalue_indices_,
+                never_written_toplevel_closure_regs_);
+            pending_stores.clear();
             continue;
           }
         }
-        available.InvalidateMutableCaches();
+        // Selective invalidation: preserve param-derived table entries when
+        // no function writes to param-derived receivers.  Upvalue and toplevel
+        // closure caches are always cleared because C functions may modify
+        // toplevel closure variables at runtime via UpdateTopLevelVariable,
+        // bypassing any IR-visible SetUpvalueInst/SetToplevelClosureVarInst.
+        pending_stores.clear();
+        if (param_properties_never_written_ ||
+            param_gettable_properties_never_written_) {
+          // Determine whether param-derived table entries are safe to
+          // preserve. We rely on:
+          // - param_properties_never_written_: no function does param.x = v
+          // - param_gettable_properties_never_written_: no function does
+          //   getTable(param, k).x = v
+          bool preserve_param_entries = param_properties_never_written_;
+          bool preserve_gettable_param_entries =
+              param_gettable_properties_never_written_;
+
+          // Apply selective table invalidation.
+          if (preserve_param_entries && preserve_gettable_param_entries) {
+            for (auto it = available.tables.begin();
+                 it != available.tables.end();) {
+              Value* receiver = it->first.object;
+              if (receiver && IsParamDerived(receiver)) {
+                ++it;  // preserve
+              } else {
+                it = available.tables.erase(it);
+              }
+            }
+          } else if (preserve_param_entries) {
+            for (auto it = available.tables.begin();
+                 it != available.tables.end();) {
+              Value* receiver = it->first.object;
+              if (receiver && IsParamOrPhiOfParam(receiver)) {
+                ++it;
+              } else {
+                it = available.tables.erase(it);
+              }
+            }
+          } else {
+            available.tables.clear();
+          }
+          available.toplevel_vars.clear();
+          available.context_slots.clear();
+          available.toplevel_closures.clear();
+          available.SelectivelyPreserveUpvalues(never_written_upvalue_indices_);
+        } else {
+          available.InvalidateMutableCaches();
+        }
       }
     }
   }
@@ -976,6 +1586,20 @@ bool LoadStoreElimination::KeysMayAlias(Value* k1, bool k1_is_const_index,
   TypeOp* t1 = k1->GetType();
   TypeOp* t2 = k2->GetType();
 
+  // Mixed case: one key resolved to a constant value but the other didn't.
+  // Use the resolved constant + the other's type info to refine aliasing.
+  // This commonly occurs when a const-string-key (from GetTableConstStringKey)
+  // is checked against a typed runtime number key (e.g., from
+  // __GetElementUniqueID).
+  if (!v1.IsNil() && v1.IsString() && t2 &&
+      (t2->IsNumberType() || t2->GetTypeKind() == TypeOp::Number)) {
+    if (!CouldBeNumberString(v1.StdString())) return false;
+  }
+  if (!v2.IsNil() && v2.IsString() && t1 &&
+      (t1->IsNumberType() || t1->GetTypeKind() == TypeOp::Number)) {
+    if (!CouldBeNumberString(v2.StdString())) return false;
+  }
+
   // At least one is not a constant.
   if (t1 && t2) {
     if (t1->IsAnyType() || t2->IsAnyType()) return true;
@@ -985,14 +1609,28 @@ bool LoadStoreElimination::KeysMayAlias(Value* k1, bool k1_is_const_index,
     bool is_str1 = t1->IsStringType();
     bool is_str2 = t2->IsStringType();
 
-    if (t1->GetTypeKind() == t2->GetTypeKind() && !is_num1 && !is_str1)
-      return true;
+    // If either type is unclassified (not number, not string, not any), it
+    // could be anything at runtime — conservatively report may-alias.
+    if ((!is_num1 && !is_str1) || (!is_num2 && !is_str2)) return true;
 
     if (is_num1 && is_num2) return true;
     if (is_str1 && is_str2) return true;
 
-    if (is_num1 && is_str2) return true;
-    if (is_str1 && is_num2) return true;
+    // A number key can alias a string key only if that string could be the
+    // ToString representation of some number. For constant string keys like
+    // "img_info", "type", "height", we can prove they never alias any number.
+    if (is_num1 && is_str2) {
+      if (!v2.IsNil() && v2.IsString()) {
+        if (!CouldBeNumberString(v2.StdString())) return false;
+      }
+      return true;
+    }
+    if (is_str1 && is_num2) {
+      if (!v1.IsNil() && v1.IsString()) {
+        if (!CouldBeNumberString(v1.StdString())) return false;
+      }
+      return true;
+    }
 
     return false;
   }

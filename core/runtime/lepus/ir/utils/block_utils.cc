@@ -50,30 +50,6 @@ void InsertAfterPhi(OpBuilder* builder, Block* block) {
   builder->SetInsertionPointAfter(insert_after_inst);
 }
 
-/// Process the deletion of the basic block, and erase it.
-static void DeleteBlock(Block* b) {
-  // Remove all uses of this basic block.
-
-  // Copy the uses of the block aside because removing the users invalidates the
-  // iterator.
-  Value::UseListTy users(b->GetUsers().begin(), b->GetUsers().end());
-
-  // Remove the block from all Phi instructions referring to it. Note that
-  // reachable blocks could end up with Phi instructions referring to
-  // unreachable blocks.
-  for (auto* user : users) {
-    if (auto* phi = llvh::dyn_cast<PhiInst>(user)) {
-      phi->RemoveEntry(b);
-      continue;
-    }
-  }
-
-  // There may still be uses of the block from other unreachable blocks.
-  b->ReplaceAllUsesWith(nullptr);
-  // Erase this basic block.
-  b->EraseFromParent();
-}
-
 static Instruction* FindOtherValueWithSameToplevelVarReg(
     FuncOp* f, llvh::SmallPtrSet<Block*, 16>& visited,
     unsigned toplevel_var_reg) {
@@ -117,8 +93,6 @@ static void ProcessBBWithToplevelVarReg(FuncOp* f,
 }
 
 bool DeleteUnreachableBlocks(FuncOp* f) {
-  bool changed = false;
-
   // Visit all reachable blocks.
   llvh::SmallPtrSet<Block*, 16> visited;
   llvh::SmallVector<Block*, 32> work_list;
@@ -140,17 +114,41 @@ bool DeleteUnreachableBlocks(FuncOp* f) {
     for (auto* succ : Successors(bb)) work_list.push_back(succ);
   }
 
-  // Delete all blocks that weren't visited.
-  for (auto it = f->begin(), e = f->end(); it != e;) {
-    auto* bb = &*it++;
+  // Collect unreachable blocks.
+  llvh::SmallVector<Block*, 16> unreachable;
+  for (auto it = f->begin(), e = f->end(); it != e; ++it) {
+    Block* bb = &*it;
     if (!visited.count(bb)) {
-      ProcessBBWithToplevelVarReg(f, visited, bb);
-      DeleteBlock(bb);
-      changed = true;
+      unreachable.push_back(bb);
     }
   }
 
-  return changed;
+  if (unreachable.empty()) return false;
+
+  // Phase 1: Remove all phi entries that reference unreachable blocks (as the
+  // incoming-block component). This must happen before any block is erased,
+  // because EraseFromParent RAUW's each instruction to nullptr — if a value
+  // defined in unreachable block B is used in a phi entry associated with a
+  // different unreachable block C, erasing B first would null-out that phi
+  // value, and a subsequent RemoveEntry(C) would crash in
+  // RecalculateResultType.
+  for (auto* bb : unreachable) {
+    Value::UseListTy users(bb->GetUsers().begin(), bb->GetUsers().end());
+    for (auto* user : users) {
+      if (auto* phi = llvh::dyn_cast<PhiInst>(user)) {
+        phi->RemoveEntry(bb);
+      }
+    }
+  }
+
+  // Phase 2: Process toplevel var bookkeeping and erase.
+  for (auto* bb : unreachable) {
+    ProcessBBWithToplevelVarReg(f, visited, bb);
+    bb->ReplaceAllUsesWith(nullptr);
+    bb->EraseFromParent();
+  }
+
+  return true;
 }
 
 }  // namespace ir

@@ -360,8 +360,7 @@ class BinaryOperatorInst : public Instruction {
   static bool HasOutput() { return true; }
 
   [[nodiscard]] SideEffect GetSideEffectImpl() const {
-    return GetBinarySideEffect(GetLeftHandSide()->GetType(),
-                               GetRightHandSide()->GetType(), GetKind());
+    return GetBinarySideEffect(GetKind());
   }
 
   void SelectType(TypeOp* left_ty, TypeOp* right_ty, ValueKind kind);
@@ -370,10 +369,8 @@ class BinaryOperatorInst : public Instruction {
     return LEPUS_IR_KIND_IN_CLASS(v->GetKind(), BinaryOperatorInst);
   }
 
-  /// Calculate the side effect of a binary operator, given inferred types of
-  /// its arguments.
-  static SideEffect GetBinarySideEffect(TypeOp* left_ty, TypeOp* right_ty,
-                                        ValueKind op);
+  /// Calculate the side effect of a binary operator given its opcode.
+  static SideEffect GetBinarySideEffect(ValueKind op);
 };
 
 class GetTableInst : public Instruction {
@@ -618,6 +615,10 @@ class CallInst : public Instruction {
                  Attributes::GetBoolAttr(BoolAttrEntry, false));
     RegisterAttr(SpecificAttr::SA_ReadonlyCall,
                  Attributes::GetBoolAttr(BoolAttrEntry, false));
+    RegisterAttr(SpecificAttr::SA_IdempotentCall,
+                 Attributes::GetBoolAttr(BoolAttrEntry, false));
+    RegisterAttr(SpecificAttr::SA_LocalTableSafeCall,
+                 Attributes::GetBoolAttr(BoolAttrEntry, false));
     RegisterAttr(SpecificAttr::SA_BuiltinFuncName,
                  Attributes::GetStringAttr(StringAttrEntry, ""));
     SetType(TypeOp::CreateAnyType(builder));
@@ -736,7 +737,9 @@ class UnaryOperatorInst : public SingleOperandInst {
 
   static bool HasOutput() { return true; }
 
-  [[nodiscard]] SideEffect GetSideEffectImpl() const { return {}; };
+  [[nodiscard]] SideEffect GetSideEffectImpl() const {
+    return SideEffect{}.SetIdempotent();
+  };
 
   void SelectType(TypeOp* value, ValueKind kind);
 
@@ -1215,7 +1218,9 @@ class LoadNullOrUndefinedInst : public SingleOperandInst {
 
   static bool HasOutput() { return true; }
 
-  [[nodiscard]] SideEffect GetSideEffectImpl() const { return SideEffect{}; }
+  [[nodiscard]] SideEffect GetSideEffectImpl() const {
+    return SideEffect{}.SetIdempotent();
+  }
 
   static bool classof(const Value* v) {
     ValueKind kind = v->GetKind();

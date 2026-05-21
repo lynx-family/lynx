@@ -47,6 +47,70 @@ static bool IsReadonlyDateMethodName(const std::string& name) {
   return name == constants::kDateNow;
 }
 
+// C++ renderer functions that are LocalTableSafe: they only modify the native
+// rendering tree and cannot callback into Lepus or modify JS tables.
+static const char* const kLocalTableSafeRendererFuncs[] = {
+    constants::kCreateElement,
+    constants::kCreateView,
+    constants::kCreateImage,
+    constants::kCreateText,
+    constants::kCreatePage,
+    constants::kCreateComponent,
+    tasm::kCFunctionSetStyleObject,
+    tasm::kCFunctionSetAttribute,
+    tasm::kCFunctionAppendElement,
+    tasm::kCFunctionUpdateIfNodeIndex,
+    tasm::kCFunctionCreateIf,
+    tasm::kCFunctionCreateFor,
+    tasm::kCFunctionUpdateForChildCount,
+    tasm::kCFunctionCreateWrapperElement,
+    tasm::kCFunctionCreateRawText,
+    tasm::kCFunctionSetID,
+    tasm::kCFunctionAddEvent,
+    tasm::kCFunctionSetClasses,
+    tasm::kCFunctionAddDataset,
+    tasm::kCFunctionFlushElementTree,
+    tasm::kCFunctionAddEventListener,
+};
+
+static bool IsLocalTableSafeRendererFunc(const std::string& name) {
+  for (const char* func_name : kLocalTableSafeRendererFuncs) {
+    if (name == func_name) return true;
+  }
+  return false;
+}
+
+// Try to annotate a CallInst as a known renderer function.
+// Returns true if the function was recognized and attributes were set.
+static bool TryAnnotateRendererCall(CallInst* call_inst,
+                                    const std::string& func_name,
+                                    OpBuilder* builder) {
+  if (func_name == constants::kGetElementUniqueID) {
+    call_inst->SetType(TypeOp::CreateInt64(builder));
+    call_inst->SetBuiltinFuncName(func_name);
+    call_inst->SetReadonlyCall(true);
+    return true;
+  }
+  if (func_name == tasm::kCFunctionGetElementByUniqueID) {
+    call_inst->SetBuiltinFuncName(func_name);
+    call_inst->SetReadonlyCall(true);
+    return true;
+  }
+  if (func_name == tasm::kCFuncGetLength) {
+    call_inst->SetType(TypeOp::CreateInt32(builder));
+    call_inst->SetBuiltinFuncName(func_name);
+    call_inst->SetReadonlyCall(true);
+    return true;
+  }
+  if (IsLocalTableSafeRendererFunc(func_name)) {
+    call_inst->SetType(TypeOp::CreateAnyType(builder));
+    call_inst->SetBuiltinFuncName(func_name);
+    call_inst->SetLocalTableSafeCall(true);
+    return true;
+  }
+  return false;
+}
+
 static bool IsReadonlyObjectMethodName(const std::string& name) {
   // `keys` creates a new array but does not mutate input objects.
   // NOTE: `assign`/`freeze` are mutating and must not be treated as read-only.
@@ -357,7 +421,7 @@ static void SetPrototypeCallType(IRContext* ir_ctx, FuncOp* func) {
           if (name == constants::kArrayPush || name == constants::kArrayPop) {
             type = TypeOp::CreateUint64(builder);
           } else if (name == constants::kArrayFindIndex) {
-            type = TypeOp::CreateInt64(builder);
+            type = TypeOp::CreateInt32(builder);
           } else if (name == constants::kArrayMap ||
                      name == constants::kArrayFilter ||
                      name == constants::kArrayConcat ||
@@ -391,7 +455,7 @@ static void SetPrototypeCallType(IRContext* ir_ctx, FuncOp* func) {
   }
 }
 
-static void SetBuiltinCallType(IRContext* ir_ctx, FuncOp* func) {
+static void SetBuiltinCallTypeAndAttr(IRContext* ir_ctx, FuncOp* func) {
   auto* vm_ctx = ir_ctx->GetVMContext();
   if (!vm_ctx) return;
   auto* global = vm_ctx->global();
@@ -422,8 +486,8 @@ static void SetBuiltinCallType(IRContext* ir_ctx, FuncOp* func) {
     return builtin && idx == builtin->Search(name);
   };
 
-  for (auto& bb : *func) {
-    for (auto& inst : bb) {
+  for (auto& bb : *func)
+    for (auto& inst : bb)
       if (auto* call_inst = llvh::dyn_cast<CallInst>(&inst)) {
         auto* callee = call_inst->GetFunction();
         if (auto* get_global = llvh::dyn_cast<GetGlobalInst>(callee)) {
@@ -431,28 +495,7 @@ static void SetBuiltinCallType(IRContext* ir_ctx, FuncOp* func) {
               llvh::dyn_cast<LiteralUint32>(get_global->GetGlobalIndex());
           if (index_lit) {
             int idx = static_cast<int>(index_lit->GetValue());
-            if (is_global_func(idx, constants::kGetElementUniqueID)) {
-              call_inst->SetType(TypeOp::CreateInt64(builder));
-              call_inst->SetBuiltinFuncName(constants::kGetElementUniqueID);
-            } else if (is_global_func(idx, constants::kCreateElement)) {
-              call_inst->SetType(TypeOp::CreateAnyType(builder));
-              call_inst->SetBuiltinFuncName(constants::kCreateElement);
-            } else if (is_global_func(idx, constants::kCreateView)) {
-              call_inst->SetType(TypeOp::CreateAnyType(builder));
-              call_inst->SetBuiltinFuncName(constants::kCreateView);
-            } else if (is_global_func(idx, constants::kCreateImage)) {
-              call_inst->SetType(TypeOp::CreateAnyType(builder));
-              call_inst->SetBuiltinFuncName(constants::kCreateImage);
-            } else if (is_global_func(idx, constants::kCreateText)) {
-              call_inst->SetType(TypeOp::CreateAnyType(builder));
-              call_inst->SetBuiltinFuncName(constants::kCreateText);
-            } else if (is_global_func(idx, constants::kCreatePage)) {
-              call_inst->SetType(TypeOp::CreateAnyType(builder));
-              call_inst->SetBuiltinFuncName(constants::kCreatePage);
-            } else if (is_global_func(idx, constants::kCreateComponent)) {
-              call_inst->SetType(TypeOp::CreateAnyType(builder));
-              call_inst->SetBuiltinFuncName(constants::kCreateComponent);
-            } else if (is_global_func(idx, constants::kGetDiffData)) {
+            if (is_global_func(idx, constants::kGetDiffData)) {
               call_inst->SetType(TypeOp::CreateTable(builder));
               call_inst->SetBuiltinFuncName(constants::kGetDiffData);
             } else if (is_global_func(idx, constants::kGetSystemInfo)) {
@@ -464,9 +507,29 @@ static void SetBuiltinCallType(IRContext* ir_ctx, FuncOp* func) {
             } else if (is_global_func(idx, constants::kIsArray)) {
               call_inst->SetType(TypeOp::CreateBoolean(builder));
               call_inst->SetBuiltinFuncName(constants::kIsArray);
-            } else if (is_global_func(idx, tasm::kCFunctionSetStyleObject)) {
-              call_inst->SetType(TypeOp::CreateAnyType(builder));
-              call_inst->SetBuiltinFuncName(tasm::kCFunctionSetStyleObject);
+            } else {
+              // Try known renderer functions (readonly + table-safe).
+              bool matched = false;
+              for (const char* name : kLocalTableSafeRendererFuncs) {
+                if (is_global_func(idx, name)) {
+                  TryAnnotateRendererCall(call_inst, name, builder);
+                  matched = true;
+                  break;
+                }
+              }
+              if (!matched) {
+                if (is_global_func(idx, constants::kGetElementUniqueID)) {
+                  TryAnnotateRendererCall(
+                      call_inst, constants::kGetElementUniqueID, builder);
+                } else if (is_global_func(
+                               idx, tasm::kCFunctionGetElementByUniqueID)) {
+                  TryAnnotateRendererCall(
+                      call_inst, tasm::kCFunctionGetElementByUniqueID, builder);
+                } else if (is_global_func(idx, tasm::kCFuncGetLength)) {
+                  TryAnnotateRendererCall(call_inst, tasm::kCFuncGetLength,
+                                          builder);
+                }
+              }
             }
           }
         } else if (auto* get_builtin = llvh::dyn_cast<GetBuiltinInst>(callee)) {
@@ -478,12 +541,15 @@ static void SetBuiltinCallType(IRContext* ir_ctx, FuncOp* func) {
             if (is_builtin_func(idx, constants::kParseInt)) {
               call_inst->SetType(TypeOp::CreateNumber(builder));
               call_inst->SetBuiltinFuncName(constants::kParseInt);
+              call_inst->SetIdempotentCall(true);
             } else if (is_builtin_func(idx, constants::kParseFloat)) {
               call_inst->SetType(TypeOp::CreateNumber(builder));
               call_inst->SetBuiltinFuncName(constants::kParseFloat);
+              call_inst->SetIdempotentCall(true);
             } else if (is_builtin_func(idx, constants::kIsNaN)) {
               call_inst->SetType(TypeOp::CreateBoolean(builder));
               call_inst->SetBuiltinFuncName(constants::kIsNaN);
+              call_inst->SetIdempotentCall(true);
             } else if (is_builtin_func(idx, constants::kEncodeURIComponent)) {
               call_inst->SetType(TypeOp::CreateString(builder));
               call_inst->SetBuiltinFuncName(constants::kEncodeURIComponent);
@@ -556,10 +622,23 @@ static void SetBuiltinCallType(IRContext* ir_ctx, FuncOp* func) {
                   std::string(constants::kBuiltinObject) + "." + name);
             }
           }
+        } else if (auto* get_upvalue = llvh::dyn_cast<GetUpvalueInst>(callee)) {
+          // Upvalue-based callee: resolve the upvalue name to identify
+          // renderer functions accessed via closure capture.
+          auto* idx_lit = llvh::dyn_cast<LiteralUint8>(get_upvalue->GetIndex());
+          FuncOp* owner = get_upvalue->GetFunc();
+          if (idx_lit && owner && owner->GetLepusFunction()) {
+            int idx = static_cast<int>(idx_lit->GetValue());
+            if (idx >= 0 && static_cast<size_t>(idx) <
+                                owner->GetLepusFunction()->UpvaluesSize()) {
+              auto* info = owner->GetLepusFunction()->GetUpvalue(idx);
+              if (info) {
+                TryAnnotateRendererCall(call_inst, info->name_.str(), builder);
+              }
+            }
+          }
         }
       }
-    }
-  }
 }
 
 const std::string& TypeSpecification::GetConstString(
@@ -704,7 +783,7 @@ void TypeSpecification::SpecifyGetTableForStringProtoType() {
 
           TypeOp* type =
               llvh::StringSwitch<TypeOp*>(str)
-                  .Case(constants::kStringLength, TypeOp::CreateInt64(builder))
+                  .Case(constants::kStringLength, TypeOp::CreateUint32(builder))
                   .Case(constants::kStringSplit, TypeOp::CreateArray(builder))
                   .Case(constants::kStringTrim, TypeOp::CreateString(builder))
                   .Case(constants::kStringCharAt, TypeOp::CreateString(builder))
@@ -736,7 +815,7 @@ bool TypeSpecification::RunOnFunction(FuncOp* func) {
   SpecifyGetTableForStringProtoType();
 
   // set type for callInst
-  SetBuiltinCallType(ir_ctx_, func);
+  SetBuiltinCallTypeAndAttr(ir_ctx_, func);
   SetPrototypeCallType(ir_ctx_, func);
 
   // set readonly attribute for callInst

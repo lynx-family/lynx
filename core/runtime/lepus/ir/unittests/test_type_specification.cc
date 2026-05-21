@@ -50,11 +50,22 @@ static void RegisterBuiltinForTest(lepus::VMContext* context) {
                                  &EmptyFunc);
 
   lepus::RegisterCFunction(context, tasm::kCFunctionSetStyleObject, &EmptyFunc);
+  lepus::RegisterCFunction(context, tasm::kCFunctionSetAttribute, &EmptyFunc);
+  lepus::RegisterCFunction(context, tasm::kCFunctionAppendElement, &EmptyFunc);
+  lepus::RegisterCFunction(context, tasm::kCFunctionUpdateIfNodeIndex,
+                           &EmptyFunc);
+  lepus::RegisterCFunction(context, tasm::kCFunctionCreateIf, &EmptyFunc);
+  lepus::RegisterCFunction(context, tasm::kCFunctionCreateFor, &EmptyFunc);
+  lepus::RegisterCFunction(context, tasm::kCFunctionUpdateForChildCount,
+                           &EmptyFunc);
 
   // Register RegExp to prevent crash
   lepus::RegisterCFunction(context, "RegExp", &EmptyFunc);
   lepus::RegisterCFunction(context, "Array", &EmptyFunc);
   lepus::RegisterCFunction(context, "Function", &EmptyFunc);
+
+  // Register renderer builtins
+  lepus::RegisterCFunction(context, tasm::kCFuncGetLength, &EmptyFunc);
 }
 
 // Helper function to compile JavaScript and get IR with optimization
@@ -189,9 +200,9 @@ static bool HasGetGlobalInstWithType(FuncOp* func,
 
 // Test that String.length is optimized to GetStringLengthInst
 TEST(LEPUSIRTypeSpecificationIR, StringLengthOptimization) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -199,8 +210,9 @@ TEST(LEPUSIRTypeSpecificationIR, StringLengthOptimization) {
     let len = str.length;
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   // Find the main function
@@ -221,8 +233,6 @@ TEST(LEPUSIRTypeSpecificationIR, StringLengthOptimization) {
     EXPECT_EQ(inst->GetType()->GetTypeKind(), TypeOp::TypeKind::Int64)
         << "GetStringLengthInst should return Int64";
   }
-
-  delete context;
 }
 
 TEST(LEPUSIRTypeSpecificationMIR,
@@ -412,9 +422,9 @@ TEST(LEPUSIRTypeSpecificationMIR,
 
 // Test that String.split CallInst has Array return type
 TEST(LEPUSIRTypeSpecificationIR, StringSplitReturnType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -422,8 +432,9 @@ TEST(LEPUSIRTypeSpecificationIR, StringSplitReturnType) {
     let arr = str.split(",");
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -436,14 +447,12 @@ TEST(LEPUSIRTypeSpecificationIR, StringSplitReturnType) {
   // Check that there's a CallInst with Array return type
   bool found = HasCallInstWithType(main_func, TypeOp::TypeKind::Array);
   EXPECT_TRUE(found) << "Expected CallInst with Array return type for split";
-
-  delete context;
 }
 
 TEST(LEPUSIRTypeSpecificationIR, SetStyleObjectBuiltinNameAnnotation) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -452,8 +461,9 @@ TEST(LEPUSIRTypeSpecificationIR, SetStyleObjectBuiltinNameAnnotation) {
     }
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* target_func = nullptr;
@@ -477,14 +487,13 @@ TEST(LEPUSIRTypeSpecificationIR, SetStyleObjectBuiltinNameAnnotation) {
   }
 
   EXPECT_TRUE(found);
-  delete context;
 }
 
 // Test that String.charAt CallInst has String return type
 TEST(LEPUSIRTypeSpecificationIR, StringCharAtReturnType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -492,8 +501,9 @@ TEST(LEPUSIRTypeSpecificationIR, StringCharAtReturnType) {
     let ch = str.charAt(0);
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -506,15 +516,13 @@ TEST(LEPUSIRTypeSpecificationIR, StringCharAtReturnType) {
   // Check that there's a CallInst with String return type
   bool found = HasCallInstWithType(main_func, TypeOp::TypeKind::String);
   EXPECT_TRUE(found) << "Expected CallInst with String return type for charAt";
-
-  delete context;
 }
 
 // Test that GetTableInst for String method has StringProtoAPI type
 TEST(LEPUSIRTypeSpecificationIR, StringMethodGetTableType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -522,8 +530,9 @@ TEST(LEPUSIRTypeSpecificationIR, StringMethodGetTableType) {
     let method = str.charAt;
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -549,15 +558,13 @@ TEST(LEPUSIRTypeSpecificationIR, StringMethodGetTableType) {
 
   EXPECT_TRUE(found_string_proto_api)
       << "Expected GetTableInst with StringProtoAPI type";
-
-  delete context;
 }
 
 // Test complex String operations
 TEST(LEPUSIRTypeSpecificationIR, ComplexStringOperations) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -565,8 +572,9 @@ TEST(LEPUSIRTypeSpecificationIR, ComplexStringOperations) {
     let ch = str.charAt(0);
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -580,15 +588,13 @@ TEST(LEPUSIRTypeSpecificationIR, ComplexStringOperations) {
   bool has_string_call =
       HasCallInstWithType(main_func, TypeOp::TypeKind::String);
   EXPECT_TRUE(has_string_call) << "Expected String return type for charAt";
-
-  delete context;
 }
 
 // Test that all supported String methods have correct types
 TEST(LEPUSIRTypeSpecificationIR, AllStringMethodTypes) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   // Test multiple String methods in one source
@@ -602,8 +608,9 @@ TEST(LEPUSIRTypeSpecificationIR, AllStringMethodTypes) {
     let replaced = str.replace("hello", "hi");
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -637,15 +644,13 @@ TEST(LEPUSIRTypeSpecificationIR, AllStringMethodTypes) {
   EXPECT_GT(array_calls, 0) << "Should have Array return type (split)";
   EXPECT_GT(string_calls, 0)
       << "Should have String return types (charAt, substring, slice, replace)";
-
-  delete context;
 }
 
 // Test String.substring returns String type
 TEST(LEPUSIRTypeSpecificationIR, StringSubstringReturnType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -653,8 +658,9 @@ TEST(LEPUSIRTypeSpecificationIR, StringSubstringReturnType) {
     let sub = str.substring(1, 3);
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -667,15 +673,13 @@ TEST(LEPUSIRTypeSpecificationIR, StringSubstringReturnType) {
   bool found = HasCallInstWithType(main_func, TypeOp::TypeKind::String);
   EXPECT_TRUE(found)
       << "Expected CallInst with String return type for substring";
-
-  delete context;
 }
 
 // Test String.slice returns String type
 TEST(LEPUSIRTypeSpecificationIR, StringSliceReturnType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -683,8 +687,9 @@ TEST(LEPUSIRTypeSpecificationIR, StringSliceReturnType) {
     let sliced = str.slice(1, 3);
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -696,15 +701,13 @@ TEST(LEPUSIRTypeSpecificationIR, StringSliceReturnType) {
 
   bool found = HasCallInstWithType(main_func, TypeOp::TypeKind::String);
   EXPECT_TRUE(found) << "Expected CallInst with String return type for slice";
-
-  delete context;
 }
 
 // Test String.replace returns String type
 TEST(LEPUSIRTypeSpecificationIR, StringReplaceReturnType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -712,8 +715,9 @@ TEST(LEPUSIRTypeSpecificationIR, StringReplaceReturnType) {
     let replaced = str.replace("l", "x");
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -725,15 +729,13 @@ TEST(LEPUSIRTypeSpecificationIR, StringReplaceReturnType) {
 
   bool found = HasCallInstWithType(main_func, TypeOp::TypeKind::String);
   EXPECT_TRUE(found) << "Expected CallInst with String return type for replace";
-
-  delete context;
 }
 
 // Test String.trim returns String type
 TEST(LEPUSIRTypeSpecificationIR, StringTrimReturnType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -741,8 +743,9 @@ TEST(LEPUSIRTypeSpecificationIR, StringTrimReturnType) {
     let trimmed = str.trim();
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -754,15 +757,13 @@ TEST(LEPUSIRTypeSpecificationIR, StringTrimReturnType) {
 
   bool found = HasCallInstWithType(main_func, TypeOp::TypeKind::String);
   EXPECT_TRUE(found) << "Expected CallInst with String return type for trim";
-
-  delete context;
 }
 
 // Test String.match returns Array type
 TEST(LEPUSIRTypeSpecificationIR, StringMatchReturnType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -770,8 +771,9 @@ TEST(LEPUSIRTypeSpecificationIR, StringMatchReturnType) {
     let matched = str.match("h");
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -783,15 +785,13 @@ TEST(LEPUSIRTypeSpecificationIR, StringMatchReturnType) {
 
   bool found = HasCallInstWithType(main_func, TypeOp::TypeKind::Array);
   EXPECT_TRUE(found) << "Expected CallInst with Array return type for match";
-
-  delete context;
 }
 
 // Test String.search returns Int64 type
 TEST(LEPUSIRTypeSpecificationIR, StringSearchReturnType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -799,8 +799,9 @@ TEST(LEPUSIRTypeSpecificationIR, StringSearchReturnType) {
     let pos = str.search("e");
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -812,15 +813,13 @@ TEST(LEPUSIRTypeSpecificationIR, StringSearchReturnType) {
 
   bool found = HasCallInstWithType(main_func, TypeOp::TypeKind::Int64);
   EXPECT_TRUE(found) << "Expected CallInst with Int64 return type for search";
-
-  delete context;
 }
 
 // Test BuiltinFunc Type
 TEST(LEPUSIRTypeSpecificationIR, SpecifyBuiltinFuncType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -830,8 +829,9 @@ TEST(LEPUSIRTypeSpecificationIR, SpecifyBuiltinFuncType) {
   console.log(index);
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -845,15 +845,13 @@ TEST(LEPUSIRTypeSpecificationIR, SpecifyBuiltinFuncType) {
       HasGetGlobalInstWithType(main_func, TypeOp::TypeKind::BuiltinFuncTable);
   EXPECT_TRUE(found)
       << "Expected GetGlobalInst with BuiltinFuncTable return type for indexOf";
-
-  delete context;
 }
 
 // Test Built-in Function Return Type (e.g. __CreateView -> Any)
 TEST(LEPUSIRTypeSpecificationIR, BuiltinReturnTypeAny) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
 
   // Register __CreateView for test purpose
   context->SetGlobalData(constants::kCreateView,
@@ -863,8 +861,9 @@ TEST(LEPUSIRTypeSpecificationIR, BuiltinReturnTypeAny) {
     let view = __CreateView("view");
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -886,23 +885,22 @@ TEST(LEPUSIRTypeSpecificationIR, BuiltinReturnTypeAny) {
   }
   EXPECT_TRUE(found_any_type_call)
       << "Expected CallInst with Any return type for __CreateView";
-
-  delete context;
 }
 
 // Test parseInt and isNaN return type
 TEST(LEPUSIRTypeSpecificationIR, StandardBuiltinReturnType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   std::string source = R"(
     let n = parseInt("123");
     let b = isNaN(n);
     let s = encodeURIComponent("abc");
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -936,15 +934,13 @@ TEST(LEPUSIRTypeSpecificationIR, StandardBuiltinReturnType) {
       << "Expected CallInst with Boolean return type for isNaN";
   EXPECT_TRUE(found_string_type)
       << "Expected CallInst with String return type for encodeURIComponent";
-
-  delete context;
 }
 
 // Test Readonly Call Identification
 TEST(LEPUSIRTypeSpecificationIR, ReadonlyCallIdentification) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
 
   std::string source = R"(
     let n = parseInt("123"); // readonly
@@ -953,8 +949,9 @@ TEST(LEPUSIRTypeSpecificationIR, ReadonlyCallIdentification) {
     let j = JSON.parse("{}"); // readonly
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -977,14 +974,12 @@ TEST(LEPUSIRTypeSpecificationIR, ReadonlyCallIdentification) {
 
   EXPECT_EQ(readonly_calls, 4)
       << "Expected 4 readonly calls (parseInt, Math.abs, substr, JSON.parse)";
-
-  delete context;
 }
 
 TEST(LEPUSIRTypeSpecificationIR, DetailedReadonlyAttributeCheck) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
 
   std::string source = R"(
     // 1. Builtins (8 calls)
@@ -1055,8 +1050,9 @@ TEST(LEPUSIRTypeSpecificationIR, DetailedReadonlyAttributeCheck) {
     str_mut.replace("a", "b");
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -1080,20 +1076,20 @@ TEST(LEPUSIRTypeSpecificationIR, DetailedReadonlyAttributeCheck) {
     }
   }
 
-  // There are 4 non-readonly calls in source: assign, log, push, replace.
-  // We use literal /abc/, which does not produce a CallInst.
-  // So total calls = 45 (base).
+  // Readonly marking: 8 builtins + 16 Math + 2 JSON + 1 Date + 1 Object.keys
+  // + 8 String prototype + 4 Array prototype + 1 Number prototype = 41
+  // readonly. Non-readonly: assign, log, push, replace = 4. Total = 45.
+  // However, 3 idempotent builtins (parseFloat, parseInt, isNaN) have unused
+  // results and are removed by DCE, so actual counts are 41-3=38 and 45-3=42.
 
-  EXPECT_EQ(readonly_calls, 41) << "Expected 41 readonly calls";
-  EXPECT_EQ(total_calls, 45) << "Expected 45 total calls";
-
-  delete context;
+  EXPECT_EQ(readonly_calls, 38) << "Expected 38 readonly calls";
+  EXPECT_EQ(total_calls, 42) << "Expected 42 total calls";
 }
 
 TEST(LEPUSIRTypeSpecificationIR, PrototypeCallTypeInference) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -1124,8 +1120,9 @@ TEST(LEPUSIRTypeSpecificationIR, PrototypeCallTypeInference) {
     Assert(tested);
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -1202,14 +1199,12 @@ TEST(LEPUSIRTypeSpecificationIR, PrototypeCallTypeInference) {
   EXPECT_TRUE(found_array_push) << "Array.push should return Uint64";
   EXPECT_TRUE(found_num_tofixed) << "Number.toFixed should return String";
   EXPECT_TRUE(found_reg_test) << "RegExp.test should return Boolean";
-
-  delete context;
 }
 
 TEST(LEPUSIRTypeSpecificationIR, GlobalObjectCallType) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   std::string source = R"(
@@ -1223,8 +1218,9 @@ TEST(LEPUSIRTypeSpecificationIR, GlobalObjectCallType) {
     let strSubstr = String.substr("abc", 1);
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -1264,14 +1260,12 @@ TEST(LEPUSIRTypeSpecificationIR, GlobalObjectCallType) {
   EXPECT_EQ(arr_count, 1) << "Expected 1 Array call";
   // JSON.parse => 1 Any call
   EXPECT_EQ(any_count, 1) << "Expected 1 Any call";
-
-  delete context;
 }
 
 TEST(LEPUSIRTypeSpecificationIR, AllGlobalBuiltinCallTypes) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   // Register Global Functions
@@ -1376,8 +1370,9 @@ TEST(LEPUSIRTypeSpecificationIR, AllGlobalBuiltinCallTypes) {
     Object.freeze({});
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -1485,15 +1480,13 @@ TEST(LEPUSIRTypeSpecificationIR, AllGlobalBuiltinCallTypes) {
   // Uint32:
   //   Total = 0
   EXPECT_EQ(uint32_count, 0) << "Expected 0 Uint32 calls";
-
-  delete context;
 }
 
 // Test iterative type propagation
 TEST(LEPUSIRTypeSpecificationIR, IterativePropagation) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
   context->SetClosureFix(true);
 
   // Source where types propagate:
@@ -1507,8 +1500,9 @@ TEST(LEPUSIRTypeSpecificationIR, IterativePropagation) {
     let res = neg + 1;    // BinaryOperatorInst: Int64
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -1549,16 +1543,14 @@ TEST(LEPUSIRTypeSpecificationIR, IterativePropagation) {
       << "String.length should be GetStringLengthInst with Int64 type";
   EXPECT_TRUE(found_unary_int64) << "UnaryNeg of Int64 should return Int64";
   EXPECT_TRUE(found_binary_int64) << "BinaryAdd of Int64 should return Int64";
-
-  delete context;
 }
 
 // Test propagation of generic Number type to avoid infinite loops (e.g. in
 // BinaryMod)
 TEST(LEPUSIRTypeSpecificationIR, PropagateNumberTypeThroughMod) {
-  lepus::VMContext* context = new lepus::VMContext();
+  auto context = std::make_unique<lepus::VMContext>();
   context->Initialize();
-  RegisterBuiltinForTest(context);
+  RegisterBuiltinForTest(context.get());
 
   // Register Math in global for Math.max
   context->SetGlobalData(constants::kGlobalMath,
@@ -1576,8 +1568,9 @@ TEST(LEPUSIRTypeSpecificationIR, PropagateNumberTypeThroughMod) {
     opaque(m);
   )";
 
-  auto ir_ctx = std::make_unique<IRContext>(context);
-  ModuleOp* mod = CompileToIRWithOptimization(context, source, ir_ctx.get());
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
   ASSERT_NE(nullptr, mod);
 
   FuncOp* main_func = nullptr;
@@ -1602,8 +1595,232 @@ TEST(LEPUSIRTypeSpecificationIR, PropagateNumberTypeThroughMod) {
 
   EXPECT_TRUE(found_mod_number)
       << "BinaryMod should return generic Number type and stabilize";
+}
 
-  delete context;
+// Test that __SetAttribute is marked as LocalTableSafeCall
+TEST(LEPUSIRTypeSpecificationIR, SetAttributeLocalTableSafeCall) {
+  auto context = std::make_unique<lepus::VMContext>();
+  context->Initialize();
+  RegisterBuiltinForTest(context.get());
+  context->SetClosureFix(true);
+
+  std::string source = R"(
+    function test(el) {
+      __SetAttribute(el, "src", "url");
+    }
+  )";
+
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
+  ASSERT_NE(nullptr, mod);
+
+  FuncOp* target_func = nullptr;
+  for (auto* func : *mod) {
+    if (FindFirstInstruction<CallInst>(func) != nullptr) {
+      target_func = func;
+      break;
+    }
+  }
+  ASSERT_NE(nullptr, target_func);
+
+  bool found = false;
+  for (auto& block : *target_func) {
+    for (auto& inst : block) {
+      auto* call_inst = llvh::dyn_cast<CallInst>(&inst);
+      if (!call_inst) continue;
+      if (call_inst->GetBuiltinFuncName() == tasm::kCFunctionSetAttribute) {
+        EXPECT_TRUE(call_inst->IsLocalTableSafeCall())
+            << "__SetAttribute should be LocalTableSafeCall";
+        found = true;
+      }
+    }
+  }
+
+  EXPECT_TRUE(found) << "Should find __SetAttribute call";
+}
+
+// Test that __GetElementUniqueID is marked as ReadonlyCall
+TEST(LEPUSIRTypeSpecificationIR, GetElementUniqueIDReadonlyCall) {
+  auto context = std::make_unique<lepus::VMContext>();
+  context->Initialize();
+  RegisterBuiltinForTest(context.get());
+  context->SetClosureFix(true);
+
+  context->SetGlobalData(constants::kGetElementUniqueID,
+                         lepus::Value((void*)&EmptyFunc));
+
+  std::string source = R"(
+    function test(el) {
+      let id = __GetElementUniqueID(el);
+      return id;
+    }
+  )";
+
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
+  ASSERT_NE(nullptr, mod);
+
+  FuncOp* target_func = nullptr;
+  for (auto* func : *mod) {
+    if (FindFirstInstruction<CallInst>(func) != nullptr) {
+      target_func = func;
+      break;
+    }
+  }
+  ASSERT_NE(nullptr, target_func);
+
+  bool found = false;
+  for (auto& block : *target_func) {
+    for (auto& inst : block) {
+      auto* call_inst = llvh::dyn_cast<CallInst>(&inst);
+      if (!call_inst) continue;
+      if (call_inst->GetBuiltinFuncName() == constants::kGetElementUniqueID) {
+        EXPECT_TRUE(call_inst->IsReadonlyCall())
+            << "__GetElementUniqueID should be ReadonlyCall";
+        found = true;
+      }
+    }
+  }
+
+  EXPECT_TRUE(found) << "Should find __GetElementUniqueID call";
+}
+
+// Test that __AppendElement is marked as LocalTableSafeCall
+TEST(LEPUSIRTypeSpecificationIR, AppendElementLocalTableSafeCall) {
+  auto context = std::make_unique<lepus::VMContext>();
+  context->Initialize();
+  RegisterBuiltinForTest(context.get());
+  context->SetClosureFix(true);
+
+  std::string source = R"(
+    function test(parent, child) {
+      __AppendElement(parent, child);
+    }
+  )";
+
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
+  ASSERT_NE(nullptr, mod);
+
+  FuncOp* target_func = nullptr;
+  for (auto* func : *mod) {
+    if (FindFirstInstruction<CallInst>(func) != nullptr) {
+      target_func = func;
+      break;
+    }
+  }
+  ASSERT_NE(nullptr, target_func);
+
+  bool found = false;
+  for (auto& block : *target_func) {
+    for (auto& inst : block) {
+      auto* call_inst = llvh::dyn_cast<CallInst>(&inst);
+      if (!call_inst) continue;
+      if (call_inst->GetBuiltinFuncName() == tasm::kCFunctionAppendElement) {
+        EXPECT_TRUE(call_inst->IsLocalTableSafeCall())
+            << "__AppendElement should be LocalTableSafeCall";
+        found = true;
+      }
+    }
+  }
+
+  EXPECT_TRUE(found) << "Should find __AppendElement call";
+}
+
+// Regression: _GetLength returns int32_t at runtime (lepus::Value(int)).
+// If the optimizer annotates it as Int64, the generated TypeOp_GetArrayInt64
+// opcode reads val_int64 from a Value_Int32, causing UB or crash.
+TEST(LEPUSIRTypeSpecificationIR, GetLengthReturnsInt32) {
+  auto context = std::make_unique<lepus::VMContext>();
+  context->Initialize();
+  RegisterBuiltinForTest(context.get());
+  context->SetClosureFix(true);
+
+  std::string source = R"(
+    function test(arr) {
+      let len = _GetLength(arr);
+      return len;
+    }
+  )";
+
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
+  ASSERT_NE(nullptr, mod);
+
+  FuncOp* target_func = nullptr;
+  for (auto* func : *mod) {
+    if (FindFirstInstruction<CallInst>(func) != nullptr) {
+      target_func = func;
+      break;
+    }
+  }
+  ASSERT_NE(nullptr, target_func);
+
+  bool found = false;
+  for (auto& block : *target_func) {
+    for (auto& inst : block) {
+      auto* call_inst = llvh::dyn_cast<CallInst>(&inst);
+      if (!call_inst) continue;
+      if (call_inst->GetBuiltinFuncName() == tasm::kCFuncGetLength) {
+        EXPECT_EQ(call_inst->GetType()->GetTypeKind(), TypeOp::TypeKind::Int32)
+            << "_GetLength should return Int32";
+        EXPECT_TRUE(call_inst->IsReadonlyCall())
+            << "_GetLength should be ReadonlyCall";
+        found = true;
+      }
+    }
+  }
+  EXPECT_TRUE(found) << "Should find _GetLength call";
+}
+
+// Regression: Array.findIndex returns int (int32_t) at runtime.
+// Previously annotated as Int64, which could trigger TypeOp_GetArrayInt64
+// specialization on a Value_Int32.
+TEST(LEPUSIRTypeSpecificationIR, ArrayFindIndexReturnsInt32) {
+  auto context = std::make_unique<lepus::VMContext>();
+  context->Initialize();
+  RegisterBuiltinForTest(context.get());
+  context->SetClosureFix(true);
+
+  std::string source = R"(
+    let t = Date.now();
+    let arr = [1, 2, 3];
+    let idx = arr.findIndex(print);
+    Assert(idx);
+  )";
+
+  auto ir_ctx = std::make_unique<IRContext>(context.get());
+  ModuleOp* mod =
+      CompileToIRWithOptimization(context.get(), source, ir_ctx.get());
+  ASSERT_NE(nullptr, mod);
+
+  FuncOp* main_func = nullptr;
+  for (auto* func : *mod) {
+    main_func = func;
+    break;
+  }
+  ASSERT_NE(nullptr, main_func);
+
+  bool found = false;
+  for (auto& block : *main_func) {
+    for (auto& inst : block) {
+      if (auto* call_inst = llvh::dyn_cast<CallInst>(&inst)) {
+        auto builtin_name = call_inst->GetBuiltinFuncName();
+        if (builtin_name.find(constants::kArrayFindIndex) !=
+            std::string::npos) {
+          EXPECT_EQ(call_inst->GetType()->GetTypeKind(),
+                    TypeOp::TypeKind::Int32)
+              << "Array.findIndex should return Int32";
+          found = true;
+        }
+      }
+    }
+  }
+  EXPECT_TRUE(found) << "Should find Array.findIndex call";
 }
 
 }  // namespace ir

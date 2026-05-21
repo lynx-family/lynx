@@ -7,6 +7,8 @@
 
 #include <map>
 #include <memory>
+#include <set>
+#include <string>
 #include <unordered_map>
 
 #include "base/include/fml/memory/ref_ptr.h"
@@ -66,6 +68,11 @@ class IRContext {
 
   void UpdateSpecialAttribute(Instruction* old_val, Value* new_val);
 
+  // Cached module-level write analyses (lazy-computed, shared across passes).
+  const std::set<uint32_t>& GetNeverWrittenToplevelClosureRegs();
+  const std::set<uint32_t>& GetWrittenToplevelClosureRegs();
+  const std::set<std::string>& GetWrittenUpvalueNames();
+
  private:
   VMContext* context_ = nullptr;
   std::unique_ptr<OpBuilder> builder_;
@@ -75,6 +82,13 @@ class IRContext {
   std::unique_ptr<TargetContext> target_context_;
   // key: toplevel reg idx, value: toplevel vars in this reg
   std::map<unsigned, Instruction*> top_level_variables_{};
+
+  // Cached module-level write analyses.
+  bool toplevel_closure_write_info_computed_ = false;
+  std::set<uint32_t> cached_never_written_toplevel_closure_regs_;
+  std::set<uint32_t> cached_written_toplevel_closure_regs_;
+  bool written_upvalue_names_computed_ = false;
+  std::set<std::string> cached_written_upvalue_names_;
 };
 }  // namespace ir
 }  // namespace lepus

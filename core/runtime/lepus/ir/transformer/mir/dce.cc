@@ -23,10 +23,19 @@ bool DCE::DeleteUselessInst(Instruction* inst) {
   if (!llvh::isa<NewTableInst>(inst) && !llvh::isa<NewArrayInst>(inst))
     return false;
 
+  // Check that ALL users of this table/array are SetTable stores INTO it
+  // (object == inst) and none of them store it as a VALUE into something else
+  // (storeVal != inst).  If true, the allocation is write-only (never read,
+  // returned, or escaped) and can be deleted along with all its stores.
   bool matched = llvh::all_of(inst->GetUsers(), [&](Value* val) {
-    auto set_table = llvh::dyn_cast<SetTableInst>(val);
-    if (!set_table) return false;
-    return set_table->GetStoreVal() != inst && set_table->GetObject() == inst;
+    if (auto set_table = llvh::dyn_cast<SetTableInst>(val)) {
+      return set_table->GetStoreVal() != inst && set_table->GetObject() == inst;
+    }
+    if (auto set_table_csk = llvh::dyn_cast<SetTableConstStringKeyInst>(val)) {
+      return set_table_csk->GetStoreVal() != inst &&
+             set_table_csk->GetObject() == inst;
+    }
+    return false;
   });
 
   if (LEPUS_LIKELY(!matched)) return false;
@@ -83,7 +92,17 @@ bool DCE::PerformFunctionDCE(FuncOp* func) {
         if (llvh::isa<TerminatorInst>(inst)) continue;
 
         if (inst->GetSideEffect().HasSideEffect()) {
-          if (!DeleteUselessInst(inst)) continue;
+          // Idempotent calls have no real side effects — they are pure
+          // functions. Allow DCE to remove them if result is unused.
+          // Note: if an idempotent call still has users, it falls through to
+          // the GetNumUsers()==0 check and is kept alive. The outer fixpoint
+          // loop and reverse-order traversal ensure that cascaded dead chains
+          // (where all users are themselves dead) are cleaned up correctly.
+          bool is_idempotent = false;
+          if (auto* call = llvh::dyn_cast<CallInst>(inst)) {
+            is_idempotent = call->IsIdempotentCall();
+          }
+          if (!is_idempotent && !DeleteUselessInst(inst)) continue;
         }
 
         if (inst->GetNumUsers() == 0) {

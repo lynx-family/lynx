@@ -22,7 +22,7 @@ class LEPUSIRTestAttributes : public IRTestBase {
 };
 
 TEST_F(LEPUSIRTestAttributes, test_inst_attr_default_constructor) {
-  ASSERT_EQ(10, static_cast<uint32_t>(SpecificAttr::SA_CNT));
+  ASSERT_EQ(12, static_cast<uint32_t>(SpecificAttr::SA_CNT));
 
   // 2. check the field
   Attributes attr;

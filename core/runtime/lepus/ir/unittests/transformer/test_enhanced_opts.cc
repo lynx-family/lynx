@@ -371,18 +371,19 @@ TEST_F(LEPUSIRTestEnhancedOpts,
   EXPECT_EQ(type1_count, 1);
 }
 
-TEST_F(LEPUSIRTestEnhancedOpts, LoadNullEliminationPreservesTrampolineBlocks) {
+TEST_F(LEPUSIRTestEnhancedOpts, LoadNullEliminationMergesTrampolineBlocks) {
   OpBuilder builder;
   builder.SetModuleOp(mod);
   builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
 
-  std::string name = "test_load_null_preserves_trampolines";
+  std::string name = "test_load_null_merges_trampolines";
   auto* func = builder.Create<FuncOp>(0, name);
   func->Init(lepus_func);
 
   // CFG: entry -> {nil_bb, get_bb} -> merge
-  // nil_bb is a trampoline (sole LoadNull + Branch). The pass must NOT merge
-  // its LoadNull away, because later passes rely on the block structure.
+  // nil_bb is a trampoline (sole LoadNull + Branch). Since
+  // LoadNullEliminationPass now runs after InstCombine has consumed all
+  // optional-chaining patterns, it is free to merge the trampoline's load.
   Block* entry =
       builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST, {});
   Block* nil_bb =
@@ -402,7 +403,7 @@ TEST_F(LEPUSIRTestEnhancedOpts, LoadNullEliminationPreservesTrampolineBlocks) {
   auto* nil_load = builder.Create<LoadNullOrUndefinedInst>(0, t);
   builder.Create<BranchInst>(0, merge);
 
-  // get_bb: has other instructions besides LoadNull.
+  // get_bb: also has a LoadNull (same type) so merging is possible.
   builder.SetInsertionPointToStart(get_bb);
   auto* ln_other = builder.Create<LoadNullOrUndefinedInst>(0, t);
   builder.Create<BinaryOperatorInst>(0, ln_other, builder.GetLiteralInt32(0),
@@ -410,7 +411,7 @@ TEST_F(LEPUSIRTestEnhancedOpts, LoadNullEliminationPreservesTrampolineBlocks) {
                                      TypeOp::CreateAnyType(&builder));
   builder.Create<BranchInst>(0, merge);
 
-  // merge: Phi uses nil_load from nil_bb (mirrors real optional-chaining CFG).
+  // merge: Phi uses nil_load from nil_bb.
   builder.SetInsertionPointToStart(merge);
   PhiInst::ValueListType phi_vals{nil_load, ln_other};
   PhiInst::BlockListType phi_blocks{nil_bb, get_bb};
@@ -418,16 +419,19 @@ TEST_F(LEPUSIRTestEnhancedOpts, LoadNullEliminationPreservesTrampolineBlocks) {
   builder.Create<ReturnInst>(0, builder.GetLiteralInt32(0));
 
   LoadNullEliminationPass pass(ir_ctx.get());
-  // The pass should NOT merge (only one eligible load in get_bb; the
-  // trampoline load in nil_bb is skipped).
-  EXPECT_FALSE(pass.RunOnFunction(func));
+  // The pass should merge both LoadNull instructions (trampoline is no longer
+  // protected since the pass runs after InstCombine in the pipeline).
+  EXPECT_TRUE(pass.RunOnFunction(func));
 
-  // Verify the trampoline's LoadNull is still in nil_bb.
-  int nil_bb_count = 0;
-  for (auto* inst : nil_bb->InstRange()) {
-    if (llvh::isa<LoadNullOrUndefinedInst>(inst)) nil_bb_count++;
+  // Verify that both original loads were replaced (neither should have users
+  // pointing to them as the canonical instruction is now in entry).
+  bool found_canonical_in_entry = false;
+  for (auto* inst : entry->InstRange()) {
+    if (llvh::isa<LoadNullOrUndefinedInst>(inst)) {
+      found_canonical_in_entry = true;
+    }
   }
-  EXPECT_EQ(nil_bb_count, 1);
+  EXPECT_TRUE(found_canonical_in_entry);
 }
 
 }  // namespace ir
