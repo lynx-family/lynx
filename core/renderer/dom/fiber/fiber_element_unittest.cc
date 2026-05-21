@@ -11774,6 +11774,54 @@ TEST_P(FiberElementTest, ReInsertNodeTest) {
   EXPECT_TRUE(parent1_painting_node->children_[0] == element_painting_node);
 }
 
+TEST_P(FiberElementTest, ReInsertNodeDetachesFromOldRenderParentBeforeInsert) {
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto wrapper = manager->CreateFiberWrapperElement();
+  page->InsertNode(wrapper);
+
+  auto old_parent = manager->CreateFiberText("text");
+  wrapper->InsertNode(old_parent);
+
+  auto moved_raw_text = manager->CreateFiberRawText();
+  old_parent->InsertNode(moved_raw_text);
+
+  page->FlushActionsAsRoot();
+  ASSERT_EQ(moved_raw_text->parent(), old_parent.get());
+  ASSERT_EQ(moved_raw_text->render_parent(), old_parent.get());
+  ASSERT_EQ(old_parent->first_render_child_, moved_raw_text.get());
+  ASSERT_EQ(old_parent->last_render_child_, moved_raw_text.get());
+
+  // Regression scenario:
+  // 1. `moved_raw_text` is rendered under `old_parent`.
+  // 2. It is moved from that deeper old parent to `wrapper`, a shallower
+  //    parent.
+  // 3. During action flush, the new parent's insert can run before the old
+  //    parent's queued remove. Without detaching from the old `render_parent_`
+  //    before storing the new layout node, `old_parent` keeps stale
+  //    first_render_child_/last_render_child_ pointers.
+  wrapper->InsertNodeBefore(moved_raw_text, nullptr);
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(moved_raw_text->parent(), wrapper.get());
+  EXPECT_EQ(moved_raw_text->render_parent(), wrapper.get());
+  EXPECT_EQ(old_parent->first_render_child_, nullptr);
+  EXPECT_EQ(old_parent->last_render_child_, nullptr);
+
+  // A later insertion under `old_parent` must not link through the moved node.
+  auto new_raw_text = manager->CreateFiberRawText();
+  old_parent->InsertNode(new_raw_text);
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(new_raw_text->render_parent(), old_parent.get());
+  EXPECT_EQ(new_raw_text->previous_render_sibling_, nullptr);
+  EXPECT_EQ(new_raw_text->next_render_sibling_, nullptr);
+  EXPECT_EQ(old_parent->first_render_child_, new_raw_text.get());
+  EXPECT_EQ(old_parent->last_render_child_, new_raw_text.get());
+  EXPECT_EQ(moved_raw_text->render_parent(), wrapper.get());
+  EXPECT_EQ(moved_raw_text->next_render_sibling_, nullptr);
+}
+
 TEST_P(FiberElementTest, ListItemTest0_0) {
   auto page = manager->CreateFiberPage("page", 11);
 

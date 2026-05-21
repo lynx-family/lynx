@@ -646,6 +646,11 @@ bool LynxEnv::FixOldFixedInsertSelfUseRenderParent() {
   return GetBoolEnv(Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT, false);
 }
 
+bool LynxEnv::FixFiberReinsertDetachFromOldRenderParent() {
+  return GetBoolEnv(Key::FIX_FIBER_REINSERT_DETACH_FROM_OLD_RENDER_PARENT,
+                    true);
+}
+
 bool LynxEnv::EnableAnimationForwardUpdatePreservation() {
   return GetBoolEnv(Key::ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION, false);
 }

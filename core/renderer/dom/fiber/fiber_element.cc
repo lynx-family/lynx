@@ -2812,6 +2812,14 @@ void FiberElement::HandleInsertChildAction(FiberElement *child, int to_index,
     LOGE("FiberElement do re-insert child action");
     this->LogNodeInfo();
     child->LogNodeInfo();
+    if (element_manager()->FixFiberReinsertDetachFromOldRenderParent()) {
+      // A moved child may still be attached to its old render parent when the
+      // new parent's insert action flushes before the old parent's queued
+      // remove action. Detach it first so render sibling links stay local to
+      // one parent.
+      static_cast<FiberElement *>(child->render_parent_)
+          ->HandleRemoveChildAction(child);
+    }
   }
 
   if (!IsFixedNewOrUnifiedEnabled()) {
