@@ -295,6 +295,35 @@ public class LynxUIScrollViewInternal
     callback.invoke(LynxUIMethodConstants.SUCCESS, result);
   }
 
+  public void takeContentScreenshot(ReadableMap params, Callback callback) {
+    final LynxBaseScrollView scrollView = mView;
+    int contentWidth = 0;
+    int contentHeight = 0;
+    if (scrollView != null) {
+      contentWidth = scrollView.getScrollRangeHorizontally()[1] + scrollView.getWidth();
+      contentHeight = scrollView.getScrollRangeVertically()[1] + scrollView.getHeight();
+    }
+    ScrollContentScreenshotHelper.takeContentScreenshot(scrollView, contentWidth, contentHeight,
+        mContext, params, callback, new ScrollContentScreenshotController() {
+          @Override
+          public int getScrollX() {
+            return scrollView == null ? 0 : scrollView.getScrollOffsetHorizontally();
+          }
+
+          @Override
+          public int getScrollY() {
+            return scrollView == null ? 0 : scrollView.getScrollOffsetVertically();
+          }
+
+          @Override
+          public void scrollTo(int x, int y) {
+            if (scrollView != null) {
+              scrollView.scrollTo(new int[] {x, y});
+            }
+          }
+        });
+  }
+
   @Override
   public void onNodeReady() {
     super.onNodeReady();

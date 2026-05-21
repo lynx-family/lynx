@@ -31,6 +31,7 @@
 #import <Lynx/UIScrollView+LynxFadingEdge.h>
 #import <Lynx/UIScrollView+LynxGesture.h>
 #import <Lynx/UIScrollView+Nested.h>
+#import "LynxScrollViewContentScreenshotHelper.h"
 #import "LynxTraceEventDef.h"
 #import "LynxUI+Gesture.h"
 
@@ -1262,6 +1263,13 @@ LYNX_UI_METHOD(getScrollInfo) {
           @"scrollRange" : @(contentSize),
         });
   }
+}
+
+LYNX_UI_METHOD(takeContentScreenshot) {
+  [LynxScrollViewContentScreenshotHelper takeContentScreenshotForScrollView:self.view
+                                                                   children:self.children
+                                                                     params:params
+                                                                   callback:callback];
 }
 
 LYNX_UI_METHOD(autoScroll) {

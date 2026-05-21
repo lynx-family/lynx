@@ -241,6 +241,8 @@ lynx_core_source_set("cpp") {
     "ui/utils/lynx_offset_calculator.h",
     "ui/utils/lynx_ui_helper.cc",
     "ui/utils/lynx_ui_helper.h",
+    "ui/utils/lynx_ui_screenshot_helper.cc",
+    "ui/utils/lynx_ui_screenshot_helper.h",
     "ui/utils/lynx_unit_utils.cc",
     "ui/utils/lynx_unit_utils.h",
     "ui/utils/platform_length.cc",

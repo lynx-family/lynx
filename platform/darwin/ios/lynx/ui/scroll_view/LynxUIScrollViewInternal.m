@@ -12,6 +12,8 @@
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/UIScrollView+Lynx.h>
 
+#import "LynxScrollViewContentScreenshotHelper.h"
+
 @interface LynxUIScrollViewEventHelper : NSObject <LynxBaseScrollViewDelegate>
 
 @property(nonatomic, assign) CGFloat upperThreshold;
@@ -323,6 +325,14 @@ LYNX_PROP_DEFINE("scroll-event-throttle", setScrollEventThrottle, NSNumber *) {
       @"scrollHeight" : @(scrollView.contentSize.height),
     });
   }
+}
+
+- (void)takeContentScreenshot:(NSDictionary *)params
+                   withResult:(LynxUIMethodCallbackBlock)callback {
+  [LynxScrollViewContentScreenshotHelper takeContentScreenshotForScrollView:self.view
+                                                                   children:self.children
+                                                                     params:params
+                                                                   callback:callback];
 }
 
 - (LynxBaseScrollView *)createView {

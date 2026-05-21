@@ -56,6 +56,8 @@ class LynxUIScrollView : public LynxUIScrollViewInternal {
       {"scrollBy", &LynxUIScrollViewInternal::UIScrollBy},
       {"autoScroll", &LynxUIScrollViewInternal::UIAutoScroll},
       {"getScrollInfo", &LynxUIScrollViewInternal::UIGetScrollInfo},
+      {"takeContentScreenshot",
+       &LynxUIScrollViewInternal::UITakeContentScreenshot},
   };
 
  protected:

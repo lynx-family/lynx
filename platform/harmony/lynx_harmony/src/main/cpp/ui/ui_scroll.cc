@@ -17,6 +17,7 @@
 #include "core/renderer/utils/value_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_bounce.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_screenshot_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 
 namespace lynx {
@@ -123,6 +124,9 @@ void UIScroll::InvokeMethod(
     InvokeAutoScroll(rate, start, auto_stop, std::move(callback));
   } else if (method == "getScrollInfo") {
     InvokeGetScrollInfo(std::move(callback));
+  } else if (method == "takeContentScreenshot") {
+    LynxUIScreenshotHelper::TakeContentScreenshotForNode(
+        context_->GetNapiEnv(), container_layout_, args, std::move(callback));
   } else if (method == "scrollBy") {
     if (!args.IsTable()) {
       callback(LynxGetUIResult::PARAM_INVALID,

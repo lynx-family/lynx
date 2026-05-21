@@ -376,6 +376,8 @@ subspec_target("lynx") {
     "ui/scroll_view/LynxBounceView.m",
     "ui/scroll_view/LynxImpressionView.m",
     "ui/scroll_view/LynxScrollView.m",
+    "ui/scroll_view/LynxScrollViewContentScreenshotHelper.h",
+    "ui/scroll_view/LynxScrollViewContentScreenshotHelper.m",
     "ui/scroll_view/LynxUIScrollView.m",
     "ui/scroll_view/LynxUIScrollViewInternal.m",
     "ui/scroll_view/LynxUIScroller.m",

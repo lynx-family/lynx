@@ -7314,6 +7314,7 @@ public class com::lynx::tasm::behavior::ui::scroll::LynxUIScrollView : com.lynx.
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.scrollBy(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.autoScroll(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.getScrollInfo(ReadableMap params, Callback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.takeContentScreenshot(ReadableMap params, Callback callback);
 }
 
 public class com::lynx::tasm::behavior::ui::scroll::LynxUIScrollViewInternal : com::lynx::tasm::behavior::ui::view::UISimpleView< LynxBaseScrollView >, LynxBaseScrollView.ScrollDelegate {
@@ -7335,6 +7336,7 @@ public class com::lynx::tasm::behavior::ui::scroll::LynxUIScrollViewInternal : c
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.scrollBy(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.autoScroll(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.getScrollInfo(ReadableMap params, Callback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.takeContentScreenshot(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.onNodeReady();
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.onLayoutUpdated();
   public boolean com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.isScrollable();
@@ -9561,6 +9563,12 @@ public class com::lynx::tasm::behavior::ui::list::ScrollContainerDrawHelper :  {
   public Path com.lynx.tasm.behavior.ui.list.ScrollContainerDrawHelper.getClipPath(@NonNull final View scroller);
 }
 
+public interface com::lynx::tasm::behavior::ui::scroll::ScrollContentScreenshotController {
+  public int com.lynx.tasm.behavior.ui.scroll.ScrollContentScreenshotController.getScrollX();
+  public int com.lynx.tasm.behavior.ui.scroll.ScrollContentScreenshotController.getScrollY();
+  public void com.lynx.tasm.behavior.ui.scroll.ScrollContentScreenshotController.scrollTo(int x, int y);
+}
+
 public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewScrolling::ScrollDelegate {
   public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.ScrollDelegate.onScrollStateChanged(int from, int to);
   public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.ScrollDelegate.scrollViewDidScroll(LynxBaseScrollViewScrolling scrollView);
@@ -11305,6 +11313,7 @@ public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm
   public int com.lynx.tasm.behavior.ui.scroll.UIScrollView.getScrollY();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onInvalidate();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.getScrollInfo(Callback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.takeContentScreenshot(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.scrollBy(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.scrollTo(ReadableMap params, Callback callback);
   public boolean com.lynx.tasm.behavior.ui.scroll.UIScrollView.canScroll(int direction);

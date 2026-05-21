@@ -859,6 +859,33 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   }
 
   @LynxUIMethod
+  public void takeContentScreenshot(ReadableMap params, Callback callback) {
+    final AndroidScrollView scrollView = mView;
+    ScrollContentScreenshotHelper.takeContentScreenshot(scrollView,
+        scrollView == null ? null : scrollView.getLinearLayout(),
+        scrollView == null ? 0 : scrollView.getContentWidth(),
+        scrollView == null ? 0 : scrollView.getContentHeight(), mContext, params, callback,
+        new ScrollContentScreenshotController() {
+          @Override
+          public int getScrollX() {
+            return scrollView == null ? 0 : scrollView.getRealScrollX();
+          }
+
+          @Override
+          public int getScrollY() {
+            return scrollView == null ? 0 : scrollView.getRealScrollY();
+          }
+
+          @Override
+          public void scrollTo(int x, int y) {
+            if (scrollView != null) {
+              scrollView.setScrollTo(x, y, false);
+            }
+          }
+        });
+  }
+
+  @LynxUIMethod
   public void scrollBy(ReadableMap params, Callback callback) {
     if (callback == null) {
       return;

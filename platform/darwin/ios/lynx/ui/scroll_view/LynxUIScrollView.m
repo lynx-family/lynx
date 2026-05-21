@@ -42,4 +42,6 @@ LYNX_UI_METHOD_CALL_SUPER(scrollBy)
 LYNX_UI_METHOD_CALL_SUPER(autoScroll)
 
 LYNX_UI_METHOD_CALL_SUPER(getScrollInfo)
+
+LYNX_UI_METHOD_CALL_SUPER(takeContentScreenshot)
 @end

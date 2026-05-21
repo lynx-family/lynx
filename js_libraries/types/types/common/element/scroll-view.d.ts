@@ -278,4 +278,60 @@ export interface ScrollViewGetScrollInfoMethod extends BaseMethod {
   }>;
 }
 
-export type ScrollViewUIMethods = ScrollViewScrollToMethod | ScrollViewScrollByMethod | ScrollViewAutoScrollMethod | ScrollViewGetScrollInfoMethod;
+/**
+ * Take a screenshot of the full scrollable content.
+ * @Android
+ * @iOS
+ * @Harmony
+ */
+export interface ScrollViewTakeContentScreenshotMethod extends BaseMethod {
+  method: 'takeContentScreenshot';
+  params?: {
+    /**
+     * Specify the image format.
+     * @defaultValue 'jpeg'
+     * @Android
+     * @iOS
+     * @Harmony
+     */
+    format?: 'jpeg' | 'png';
+    /**
+     * Specify the output scale.
+     * @defaultValue 1
+     * @Android
+     * @iOS
+     * @Harmony
+     */
+    scale?: number;
+  };
+  success?: Callback<{
+    /**
+     * The base64-encoded string of the screenshot image.
+     * @Android
+     * @iOS
+     * @Harmony
+     */
+    data: string;
+    /**
+     * Width of the screenshot image.
+     * @Android
+     * @iOS
+     * @Harmony
+     */
+    width: number;
+    /**
+     * Height of the screenshot image.
+     * @Android
+     * @iOS
+     * @Harmony
+     */
+    height: number;
+  }>;
+}
+
+export type ScrollViewUIMethods =
+  | ScrollViewScrollToMethod
+  | ScrollViewScrollByMethod
+  | ScrollViewAutoScrollMethod
+  | ScrollViewGetScrollInfoMethod
+  | ScrollViewTakeContentScreenshotMethod;

@@ -76,4 +76,8 @@ public class LynxUIScrollView extends LynxUIScrollViewInternal {
   public void getScrollInfo(ReadableMap params, Callback callback) {
     super.getScrollInfo(params, callback);
   }
+  @LynxUIMethod
+  public void takeContentScreenshot(ReadableMap params, Callback callback) {
+    super.takeContentScreenshot(params, callback);
+  }
 }

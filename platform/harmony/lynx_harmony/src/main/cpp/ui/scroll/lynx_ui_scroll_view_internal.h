@@ -38,6 +38,8 @@ class LynxUIScrollViewInternal : public UIView, LynxBaseScrollViewDelegate {
                     base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   void UIGetScrollInfo(const lepus::Value& args,
                        base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void UITakeContentScreenshot(const lepus::Value& args,
+                               base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   LynxBaseScrollView* scroll_view_{nullptr};
 
  protected:

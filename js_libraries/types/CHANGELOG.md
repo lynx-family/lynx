@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.10.3
+- Add `takeContentScreenshot` method typings for `<scroll-view>`.
+
 ## 3.10.2
 - Add `caret-gradient`, `caret-width`, `caret-height` and `caret-radius` CSS typings.
 

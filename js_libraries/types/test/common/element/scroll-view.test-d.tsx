@@ -115,7 +115,21 @@ function noop() {}
       },
     });
   }
+  {
+    invoke<'scroll-view'>({
+      method: 'takeContentScreenshot',
+      params: {
+        format: 'png',
+        scale: 1,
+      },
+      success: (payload) => {
+        assertType<string>(payload.data);
+        assertType<number>(payload.width);
+        assertType<number>(payload.height);
+      },
+    });
+  }
 
   let a: unknown;
-  expectType<'scrollTo' | 'autoScroll' | 'scrollBy' | 'getScrollInfo'>(a as UIMethods['scroll-view']['method']);
+  expectType<'scrollTo' | 'autoScroll' | 'scrollBy' | 'getScrollInfo' | 'takeContentScreenshot'>(a as UIMethods['scroll-view']['method']);
 }

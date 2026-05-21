@@ -4,9 +4,13 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/lynx_ui_scroll_view_internal.h"
 
+#include <algorithm>
+#include <utility>
+
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_scroll.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_screenshot_helper.h"
 
 namespace lynx {
 namespace tasm {
@@ -406,6 +410,14 @@ void LynxUIScrollViewInternal::UIGetScrollInfo(
   info->SetValue("scrollWidth", scroll_range[1]);
   info->SetValue("scrollHeight", scroll_range[3]);
   callback(LynxGetUIResult::SUCCESS, lepus_value(info));
+}
+
+void LynxUIScrollViewInternal::UITakeContentScreenshot(
+    const lepus::Value& args,
+    base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) {
+  LynxUIScreenshotHelper::TakeContentScreenshotForNode(
+      context_->GetNapiEnv(), scroll_view_->scroll_content_, args,
+      std::move(callback));
 }
 
 void LynxUIScrollViewInternal::ScrollIntoView(bool smooth, const UIBase* target,
