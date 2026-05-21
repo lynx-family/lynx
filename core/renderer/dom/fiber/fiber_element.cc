@@ -4088,9 +4088,19 @@ void FiberElement::OnPseudoStatusChanged(PseudoState prev_status,
     CSSFragment::CollectPseudoChangedInvalidation(
         css_fragment, invalidation_lists, prev_status, current_status);
     data_model_->SetPseudoState(current_status);
+    bool inheritance_invalidated = false;
     for (auto *invalidation_set : invalidation_lists.descendants) {
       if (invalidation_set->InvalidatesSelf()) {
         MarkStyleDirty(false);
+        if (!inheritance_invalidated && IsCSSInheritanceEnabled()) {
+          inheritance_invalidated = true;
+          // Self-mark ensures the element re-inherits from ancestors when
+          // pseudo-dependent inherited properties (e.g. color) are removed
+          // from parsed_styles_map_, avoiding missing inherited values.
+          // Cf. self-mark in PrepareForCreateOrUpdate().
+          MarkDirtyLite(kDirtyPropagateInherited);
+          InvalidateChildrenInheritedStylesRecursively();
+        }
       }
       InvalidateChildren(invalidation_set);
       element_manager_->RequestResolve(pipeline_options);
@@ -4105,6 +4115,9 @@ void FiberElement::OnPseudoStatusChanged(PseudoState prev_status,
 
   bool cascade_pseudo_enabled = element_manager_->GetEnableCascadePseudo();
   MarkStyleDirty(cascade_pseudo_enabled);
+  if (IsCSSInheritanceEnabled()) {
+    MarkDirtyLite(kDirtyPropagateInherited);
+  }
 
   has_extreme_parsed_styles_ = false;
 
