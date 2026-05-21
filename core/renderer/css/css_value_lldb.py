@@ -22,8 +22,9 @@ class LynxValueType(IntEnum):
     ARRAY_BUFFER = 12
     OBJECT = 13
     FUNCTION = 14
-    EXTERNAL = 15
-    EXTENDED = 16
+    FUNCTION_TABLE = 15
+    EXTERNAL = 16
+    EXTENDED = 17
 
 class CSSValueSyntheticProvider:
   def __init__(self, val_obj, internal_dict):
@@ -95,6 +96,12 @@ class CSSValueSyntheticProvider:
         return self.val_obj.GetChildMemberWithName('val_bool')
       elif self.type_value == LynxValueType.DOUBLE:
         return self.val_obj.GetChildMemberWithName('val_double')
+      elif self.type_value == LynxValueType.INT32:
+        return self.val_obj.GetChildMemberWithName('val_int32')
+      elif self.type_value == LynxValueType.UINT32:
+        return self.val_obj.GetChildMemberWithName('val_uint32')
+      elif self.type_value == LynxValueType.UINT64:
+        return self.val_obj.GetChildMemberWithName('val_uint64')
       else:
         return self.val_obj.GetChildMemberWithName('val_int64')
     except:
