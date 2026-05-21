@@ -116,6 +116,39 @@ bool LayoutBundleHasResetStyle(
   return false;
 }
 
+struct TemplateCallbackValues {
+  std::shared_ptr<runtime::MTSRuntime> runtime;
+  lepus::Value component_at_index;
+  lepus::Value enqueue_component;
+  lepus::Value component_at_indexes;
+};
+
+TemplateCallbackValues CreateTemplateCallbackValues(
+    TemplateAssembler* template_assembler) {
+  auto lepus_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  lepus_runtime->Initialize();
+  lepus_runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(
+          static_cast<runtime::MTSRuntime::Delegate*>(template_assembler)));
+
+  std::string js_source = R"(
+    let componentAtIndex = () => 1;
+    let enqueueComponent = () => {};
+    let componentAtIndexes = () => {};
+  )";
+  lepus::BytecodeGenerator::GenerateBytecode(
+      lepus_runtime->GetMTSContext(), js_source, lepus_runtime->GetSdkVersion(),
+      "");
+  lepus_runtime->Execute(nullptr);
+
+  return TemplateCallbackValues{
+      lepus_runtime, lepus_runtime->GetGlobalData("componentAtIndex"),
+      lepus_runtime->GetGlobalData("enqueueComponent"),
+      lepus_runtime->GetGlobalData("componentAtIndexes")};
+}
+
 const lepus::Value* DatasetValue(const FiberElement* element,
                                  const base::String& key) {
   auto it = element->data_model_->dataset().find(key);
@@ -10129,6 +10162,91 @@ TEST_P(FiberElementTest, PageTemplateElementSlotsPrepareChildrenRecursively) {
   EXPECT_NE(compiled_child->async_create_task_, nullptr);
 }
 
+TEST_P(FiberElementTest, CreateTypedPageTemplateMaterializesRoot) {
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child->SetTypedTag(base::String("view"));
+  child->SetUid(lepus::Value("child_uid"));
+
+  auto slot_children = lepus::CArray::Create();
+  slot_children->emplace_back(lepus::Value(child));
+  auto element_slots = lepus::CArray::Create();
+  element_slots->emplace_back(lepus::Value(slot_children));
+
+  lepus::Value create_args[] = {lepus::Value("page"), lepus::Value(),
+                                lepus::Value(element_slots), lepus::Value("0")};
+  auto created_value = RendererFunctions::FiberCreateTypedElementTemplate(
+      mts_ctx, create_args, 4);
+
+  ASSERT_TRUE(created_value.IsRefCounted());
+  auto created_element =
+      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+          .strongify();
+  ASSERT_NE(created_element, nullptr);
+  ASSERT_TRUE(created_element->is_template());
+  auto* page_template = static_cast<TemplateElement*>(created_element.get());
+  ASSERT_NE(manager->root(), nullptr);
+  ASSERT_NE(page_template->result_, nullptr);
+  EXPECT_EQ(manager->root(), page_template->result_.get());
+  EXPECT_TRUE(page_template->result_->is_page());
+  auto* page_root = static_cast<PageElement*>(page_template->result_.get());
+  EXPECT_EQ(page_root->component_id().str(), "0");
+  EXPECT_EQ(page_root->GetComponentCSSID(), 0);
+  EXPECT_EQ(page_root->style_sheet_manager(),
+            tasm->style_sheet_manager(DEFAULT_ENTRY_NAME));
+  ASSERT_EQ(page_template->result_->children().size(), 1u);
+  EXPECT_EQ(page_template->result_->children()[0].get(), child.get());
+}
+
+TEST_P(FiberElementTest, InsertTypedPageTemplateChildBeforeAutomaticFlush) {
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  lepus::Value create_args[] = {lepus::Value("page"), lepus::Value(),
+                                lepus::Value(), lepus::Value("0")};
+  auto created_value = RendererFunctions::FiberCreateTypedElementTemplate(
+      mts_ctx, create_args, 4);
+  ASSERT_TRUE(created_value.IsRefCounted());
+  auto page_template =
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
+          .strongify();
+  ASSERT_NE(page_template, nullptr);
+  ASSERT_NE(manager->root(), nullptr);
+
+  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child->SetTypedTag(base::String("view"));
+  child->SetUid(lepus::Value("child_uid"));
+
+  lepus::Value insert_args[] = {lepus::Value(page_template), lepus::Value(0),
+                                lepus::Value(child), lepus::Value()};
+  RendererFunctions::FiberInsertNodeToElementTemplate(mts_ctx, insert_args, 4);
+
+  ASSERT_EQ(page_template->result_->children().size(), 1u);
+  EXPECT_EQ(page_template->result_->children()[0].get(), child.get());
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options);
+  ASSERT_EQ(page_template->result_->children().size(), 1u);
+  EXPECT_FALSE(
+      static_cast<FiberElement*>(page_template->result_->children()[0].get())
+          ->is_template());
+}
+
 TEST_P(FiberElementTest, NonPageTemplateElementSlotsDoNotPrepareBeforeTree) {
   auto compiled_child =
       fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
@@ -10264,6 +10382,65 @@ TEST_P(FiberElementTest, TypedTemplateElementResolvesListRootAndSlotChildren) {
   ASSERT_EQ(resolved->children().size(), 1u);
   EXPECT_EQ(resolved->children()[0].get(), slot_child.get());
   EXPECT_TRUE(slot_child->is_list_item());
+}
+
+TEST_P(FiberElementTest, TypedTemplateElementListRootAppliesCallbacks) {
+  auto callbacks = CreateTemplateCallbackValues(tasm.get());
+  ASSERT_TRUE(callbacks.component_at_index.IsCallable());
+  ASSERT_TRUE(callbacks.enqueue_component.IsCallable());
+  ASSERT_TRUE(callbacks.component_at_indexes.IsCallable());
+
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue(base::String("component-at-index"),
+                       callbacks.component_at_index);
+  attributes->SetValue(base::String("enqueue-component"),
+                       callbacks.enqueue_component);
+  attributes->SetValue(base::String("component-at-indexes"),
+                       callbacks.component_at_indexes);
+  auto snapshot_payload = lepus::Dictionary::Create();
+  snapshot_payload->SetValue(base::String("value"), lepus::Value("before"));
+  attributes->SetValue(base::String("data-payload"),
+                       lepus::Value(snapshot_payload));
+  auto converted_attributes = lepus::Value(attributes).ToLepusValue();
+  ASSERT_TRUE(
+      converted_attributes.GetProperty("component-at-index").IsCallable());
+
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTASM(tasm.get());
+  root->SetTypedTag(base::String("list"));
+  root->SetRootAttributes(converted_attributes);
+  snapshot_payload->SetValue(base::String("value"), lepus::Value("after"));
+
+  EXPECT_EQ(root->Serialize()
+                .GetProperty("attributes")
+                .GetProperty("data-payload")
+                .GetProperty("value")
+                .StdString(),
+            "before");
+
+  auto resolved = root->GetRoot();
+  ASSERT_NE(resolved, nullptr);
+  ASSERT_TRUE(resolved->is_list());
+  auto* list = static_cast<ListElement*>(resolved.get());
+  EXPECT_EQ(list->tasm_, tasm.get());
+  EXPECT_TRUE(list->component_at_index_.IsCallable());
+  EXPECT_TRUE(list->enqueue_component_.IsCallable());
+  EXPECT_TRUE(list->component_at_indexes_.IsCallable());
+  EXPECT_EQ(list->data_model_->attributes().count("component-at-index"), 0u);
+  EXPECT_EQ(list->data_model_->attributes().count("enqueue-component"), 0u);
+  EXPECT_EQ(list->data_model_->attributes().count("component-at-indexes"), 0u);
+
+  auto updated_attributes = lepus::Dictionary::Create();
+  updated_attributes->SetValue(base::String("component-at-index"),
+                               callbacks.component_at_indexes);
+  root->SetRootAttributes(lepus::Value(updated_attributes));
+
+  EXPECT_TRUE(list->component_at_index_.IsCallable());
+  EXPECT_FALSE(list->enqueue_component_.IsCallable());
+  EXPECT_FALSE(list->component_at_indexes_.IsCallable());
+
+  root->SetRootAttributes(lepus::Value(lepus::Dictionary::Create()));
+  EXPECT_FALSE(list->component_at_index_.IsCallable());
 }
 
 TEST_P(FiberElementTest, TypedTemplateElementDefersSlotMountUntilResolve) {
@@ -11397,6 +11574,113 @@ TEST_P(FiberElementTest, ApplyTemplateDataAttributePreservesEmptyValue) {
   ASSERT_NE(test_data, nullptr);
   EXPECT_TRUE(test_data->IsEmpty());
   EXPECT_EQ(target->data_model_->attributes().count("data-test"), 0u);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateAttributesListCallbackKeys) {
+  auto callbacks = CreateTemplateCallbackValues(tasm.get());
+  ASSERT_TRUE(callbacks.component_at_index.IsCallable());
+  ASSERT_TRUE(callbacks.enqueue_component.IsCallable());
+  ASSERT_TRUE(callbacks.component_at_indexes.IsCallable());
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(callbacks.component_at_index);
+  attribute_slots->emplace_back(callbacks.enqueue_component);
+  attribute_slots->emplace_back(callbacks.component_at_indexes);
+
+  auto target =
+      manager->CreateFiberList(tasm.get(), base::String("list"), lepus::Value(),
+                               lepus::Value(), lepus::Value());
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("component-at-index"), lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("enqueue-component"), lepus::Value(), 1},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("component-at-indexes"), lepus::Value(), 2}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(target.get(),
+                                                 lepus::Value(attribute_slots));
+
+  EXPECT_TRUE(target->component_at_index_.IsCallable());
+  EXPECT_TRUE(target->enqueue_component_.IsCallable());
+  EXPECT_TRUE(target->component_at_indexes_.IsCallable());
+  EXPECT_EQ(target->data_model_->attributes().count("component-at-index"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("enqueue-component"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("component-at-indexes"),
+            0u);
+
+  auto empty_slots = lepus::CArray::Create();
+  empty_slots->emplace_back(lepus::Value());
+  empty_slots->emplace_back(lepus::Value());
+  empty_slots->emplace_back(lepus::Value());
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), lepus::Value(attribute_slots), lepus::Value(empty_slots));
+
+  EXPECT_FALSE(target->component_at_index_.IsCallable());
+  EXPECT_FALSE(target->enqueue_component_.IsCallable());
+  EXPECT_FALSE(target->component_at_indexes_.IsCallable());
+  EXPECT_EQ(target->ComponentAtIndex(0, 0, false), list::kInvalidIndex);
+  target->ComponentAtIndexes(lepus::CArray::Create(), lepus::CArray::Create());
+  target->EnqueueComponent(0);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateAttributesIgnoresInvalidListCallbacks) {
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("not-a-callback"));
+  attribute_slots->emplace_back(lepus::Value("not-a-callback"));
+  attribute_slots->emplace_back(lepus::Value("not-a-callback"));
+
+  auto target =
+      manager->CreateFiberList(tasm.get(), base::String("list"), lepus::Value(),
+                               lepus::Value(), lepus::Value());
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("component-at-index"), lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("enqueue-component"), lepus::Value(), 1},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("component-at-indexes"), lepus::Value(), 2}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(target.get(),
+                                                 lepus::Value(attribute_slots));
+
+  EXPECT_FALSE(target->component_at_index_.IsCallable());
+  EXPECT_FALSE(target->enqueue_component_.IsCallable());
+  EXPECT_FALSE(target->component_at_indexes_.IsCallable());
+  EXPECT_TRUE(target->component_at_index_.IsEmpty());
+  EXPECT_TRUE(target->enqueue_component_.IsEmpty());
+  EXPECT_TRUE(target->component_at_indexes_.IsEmpty());
+  EXPECT_EQ(target->ComponentAtIndex(0, 0, false), list::kInvalidIndex);
+  target->ComponentAtIndexes(lepus::CArray::Create(), lepus::CArray::Create());
+  target->EnqueueComponent(0);
+  EXPECT_EQ(target->data_model_->attributes().count("component-at-index"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("enqueue-component"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("component-at-indexes"),
+            0u);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateAttributesConsumesListCallbackKeys) {
+  auto callbacks = CreateTemplateCallbackValues(tasm.get());
+  ASSERT_TRUE(callbacks.component_at_index.IsCallable());
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(callbacks.component_at_index);
+
+  auto target = manager->CreateFiberView();
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("component-at-index"), lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(target.get(),
+                                                 lepus::Value(attribute_slots));
+
+  EXPECT_EQ(target->data_model_->attributes().count("component-at-index"), 0u);
 }
 
 TEST_P(FiberElementTest, ApplyTemplateAttributesEventKeys) {

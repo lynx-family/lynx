@@ -20,6 +20,30 @@
 
 namespace lynx {
 namespace tasm {
+namespace {
+
+static constexpr const char kComponentAtIndexAttribute[] = "component-at-index";
+static constexpr const char kEnqueueComponentAttribute[] = "enqueue-component";
+static constexpr const char kComponentAtIndexesAttribute[] =
+    "component-at-indexes";
+
+void SetTemplateCallbackAttribute(lepus::Value* target,
+                                  const lepus::Value& value) {
+  if (target == nullptr) {
+    return;
+  }
+  if (value.IsNil() || value.IsUndefined()) {
+    *target = lepus::Value();
+    return;
+  }
+  if (!value.IsCallable()) {
+    *target = lepus::Value();
+    return;
+  }
+  target->CopyWeakValue(value);
+}
+
+}  // namespace
 
 ListElement::ListElement(ElementManager* manager, const base::String& tag,
                          const lepus::Value& component_at_index,
@@ -209,6 +233,9 @@ int32_t ListElement::ComponentAtIndex(uint32_t index, int64_t operationId,
       IsDetached()) {
     return list::kInvalidIndex;
   }
+  if (!component_at_index_.IsCallable()) {
+    return list::kInvalidIndex;
+  }
   std::vector<lepus::Value> args = {
       lepus::Value(fml::RefPtr<ListElement>(this)), lepus::Value(impl_id()),
       lepus::Value(index), lepus::Value(operationId),
@@ -268,6 +295,9 @@ void ListElement::EnqueueComponent(int32_t sign) {
       IsDetached()) {
     return;
   }
+  if (!enqueue_component_.IsCallable()) {
+    return;
+  }
   std::vector<lepus::Value> args = {
       lepus::Value(fml::RefPtr<ListElement>(this)), lepus::Value(impl_id()),
       lepus::Value(sign)};
@@ -292,6 +322,29 @@ void ListElement::UpdateCallbacks(const lepus::Value& component_at_index,
   component_at_index_.CopyWeakValue(component_at_index);
   enqueue_component_.CopyWeakValue(enqueue_component);
   component_at_indexes_.CopyWeakValue(component_at_indexes);
+}
+
+bool ListElement::IsTemplateCallbackAttribute(const base::String& key) {
+  return key.IsEqual(kComponentAtIndexAttribute) ||
+         key.IsEqual(kEnqueueComponentAttribute) ||
+         key.IsEqual(kComponentAtIndexesAttribute);
+}
+
+bool ListElement::ApplyTemplateCallbackAttribute(const base::String& key,
+                                                 const lepus::Value& value) {
+  if (key.IsEqual(kComponentAtIndexAttribute)) {
+    SetTemplateCallbackAttribute(&component_at_index_, value);
+    return true;
+  }
+  if (key.IsEqual(kEnqueueComponentAttribute)) {
+    SetTemplateCallbackAttribute(&enqueue_component_, value);
+    return true;
+  }
+  if (key.IsEqual(kComponentAtIndexesAttribute)) {
+    SetTemplateCallbackAttribute(&component_at_indexes_, value);
+    return true;
+  }
+  return false;
 }
 
 void ListElement::NotifyListReuseNode(const fml::RefPtr<FiberElement>& child,

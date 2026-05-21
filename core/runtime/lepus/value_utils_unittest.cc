@@ -447,8 +447,31 @@ TEST_F(LepusValueMethods, TestLepusValueOperatorEqual) {
   lepus::Value right2;
   right2 = lepus::LEPUSValueHelper::ToLepusValue(qctx.context(), entry);
   ASSERT_TRUE(left == right2);
+  if (!LEPUS_IsGCMode(qctx.context())) LEPUS_FreeValue(qctx.context(), entry);
+}
+
+TEST_F(LepusValueMethods, ToLepusValueKeepsJSFunctionWithoutDeepConvert) {
+  lepus::QuickContext qctx;
+  std::string src = "function entry() { return 1; }";
+  lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
+  qctx.Execute();
+
+  LEPUSValue entry = qctx.SearchGlobalData("entry");
+  lepus::Value js_function = MK_JS_LEPUS_VALUE(qctx.context(), entry);
+  ASSERT_TRUE(js_function.IsJSFunction());
+  ASSERT_TRUE(js_function.IsCallable());
+
+  auto converted = js_function.ToLepusValue();
+  EXPECT_TRUE(converted.IsJSFunction());
+  EXPECT_TRUE(converted.IsCallable());
+
+  auto deep_converted = converted.ToLepusValue(true);
+  EXPECT_FALSE(deep_converted.IsCallable());
+  EXPECT_TRUE(deep_converted.IsEmpty());
+
   if (!LEPUS_IsGCMode(ctx_.context())) LEPUS_FreeValue(qctx.context(), entry);
 }
+
 TEST_F(LepusValueMethods, TestToLepusValueRC) {
   if (LEPUS_IsGCMode(ctx_.context())) return;
   lepus::QuickContext qctx;

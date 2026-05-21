@@ -13,6 +13,7 @@
 #include "base/include/value/base_value.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/template_entry.h"
@@ -37,6 +38,8 @@ static constexpr const char kTemplateElementSlots[] = "elementSlots";
 static constexpr const char kTemplateOptions[] = "options";
 static constexpr const char kTemplateUid[] = "uid";
 static constexpr const char kTemplateRootAttributeSpread[] = "rootAttributes";
+static constexpr const char kDefaultPageComponentId[] = "0";
+static constexpr int32_t kDefaultPageCSSId = 0;
 static constexpr uint32_t kTypedTemplateRootSlotIndex = 0;
 
 fml::RefPtr<FiberElement> ResolveInitialElementSlotChild(
@@ -108,11 +111,33 @@ lepus::Value CopyArrayHeader(const lepus::Value& value) {
   return lepus::Value(std::move(array));
 }
 
+lepus::Value CopyTemplateValueForStorage(const lepus::Value& value) {
+  // Clone would deep-convert JS functions to empty values. Keep callables by
+  // reference, while preserving snapshot semantics for ordinary attributes.
+  return value.IsCallable() ? value : lepus::Value::Clone(value);
+}
+
+lepus::Value CopyTemplateObjectForStorage(const lepus::Value& value) {
+  if (!value.IsObject()) {
+    return lepus::Value();
+  }
+
+  auto object = lepus::Dictionary::Create();
+  lepus::Value::ForEachLepusValue(
+      value, [&object](const lepus::Value& key, const lepus::Value& item) {
+        if (!key.IsString()) {
+          return;
+        }
+        object->SetValue(key.String(), CopyTemplateValueForStorage(item));
+      });
+  return lepus::Value(std::move(object));
+}
+
 lepus::Value CreateRootAttributeSlots(const lepus::Value& root_attributes) {
   auto attribute_slots = lepus::CArray::Create();
-  attribute_slots->emplace_back(root_attributes.IsObject()
-                                    ? lepus::Value::Clone(root_attributes)
-                                    : lepus::Value());
+  attribute_slots->emplace_back(
+      root_attributes.IsObject() ? CopyTemplateObjectForStorage(root_attributes)
+                                 : lepus::Value());
   return lepus::Value(std::move(attribute_slots));
 }
 
@@ -121,6 +146,25 @@ SharedTemplateAttributes CreateRootSpreadTemplateAttributes() {
       Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD,
                 BASE_STATIC_STRING(kTemplateRootAttributeSpread),
                 lepus::Value(), kTypedTemplateRootSlotIndex}});
+}
+
+fml::RefPtr<FiberElement> CreateTypedRootElement(ElementManager* manager,
+                                                 TemplateAssembler* tasm,
+                                                 const base::String& tag) {
+  if (tag.IsEqual(kElementPageTag)) {
+    auto page = manager->CreateFiberPage(
+        BASE_STATIC_STRING(kDefaultPageComponentId), kDefaultPageCSSId);
+    if (tasm != nullptr) {
+      page->set_style_sheet_manager(
+          tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME));
+    }
+    return page;
+  }
+  if (tag.IsEqual(kElementListTag)) {
+    return manager->CreateFiberList(tasm, tag, lepus::Value(), lepus::Value(),
+                                    lepus::Value());
+  }
+  return manager->CreateFiberElement(tag);
 }
 
 void ApplyInitialAttributeSlots(
@@ -221,7 +265,7 @@ void TemplateElement::SetRootAttributes(const lepus::Value& attributes) {
   }
   auto previous_root_attributes = root_attributes_;
   root_attributes_ = attributes.IsObject()
-                         ? lepus::Value::Clone(attributes.ToLepusValue())
+                         ? CopyTemplateObjectForStorage(attributes)
                          : lepus::Value();
   ApplyRootAttributes(previous_root_attributes);
 }
@@ -355,7 +399,7 @@ void TemplateElement::InitTypedRoot() {
     return;
   }
 
-  result_ = manager->CreateFiberElement(typed_tag_);
+  result_ = CreateTypedRootElement(manager, tasm_, typed_tag_);
   if (result_ == nullptr) {
     return;
   }

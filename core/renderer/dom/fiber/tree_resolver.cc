@@ -236,6 +236,19 @@ bool ApplyTemplateEventAttribute(FiberElement* element, const base::String& key,
   return true;
 }
 
+bool ApplyTemplateListCallbackAttribute(FiberElement* element,
+                                        const base::String& key,
+                                        const lepus::Value& value) {
+  if (!ListElement::IsTemplateCallbackAttribute(key)) {
+    return false;
+  }
+  if (element != nullptr && element->is_list()) {
+    static_cast<ListElement*>(element)->ApplyTemplateCallbackAttribute(key,
+                                                                       value);
+  }
+  return true;
+}
+
 bool ApplyTemplateDataAttribute(FiberElement* element, const base::String& key,
                                 const lepus::Value& value) {
   base::String data_name;
@@ -266,6 +279,9 @@ void ApplyTemplateAttributeValue(FiberElement* element, const base::String& key,
     return;
   }
   if (ApplyTemplateEventAttribute(element, key, value)) {
+    return;
+  }
+  if (ApplyTemplateListCallbackAttribute(element, key, value)) {
     return;
   }
   if (ApplyTemplateDataAttribute(element, key, value)) {

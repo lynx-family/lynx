@@ -3674,6 +3674,13 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
   element->SetElementSlots(element_slots);
   element->SetOptions(options);
   element->SetUid(*arg3);
+  if (arg0->String().IsEqual(kElementPageTag)) {
+    // Page templates are root templates, so materialize the root eagerly while
+    // still returning the TemplateElement shell for template APIs.
+    if (element->GetRoot() == nullptr) {
+      RETURN_UNDEFINED();
+    }
+  }
 
   ON_NODE_CREATE(element);
 
@@ -4923,6 +4930,14 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
     if (arg0->IsRefCounted()) {
       element =
           fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted()).get();
+    }
+  }
+  fml::RefPtr<FiberElement> materialized_template_root;
+  if (element != nullptr && element->is_template()) {
+    materialized_template_root =
+        static_cast<TemplateElement*>(element)->GetRoot();
+    if (materialized_template_root != nullptr) {
+      element = materialized_template_root.get();
     }
   }
 
