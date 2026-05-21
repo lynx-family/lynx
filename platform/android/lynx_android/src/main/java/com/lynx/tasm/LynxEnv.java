@@ -112,7 +112,7 @@ public class LynxEnv {
 
   protected volatile boolean mIsNativeLibraryLoaded = false;
   protected boolean mIsDevLibraryLoaded = false;
-  protected boolean mIsNativeUIThreadInited = false;
+  protected volatile boolean mIsNativeUIThreadInited = false;
   /**
    * Only use to cache LynxModule Class
    */
@@ -1056,6 +1056,10 @@ public class LynxEnv {
   public boolean isNativeLibraryLoaded() {
     lazyInitIfNeeded();
     return mIsNativeLibraryLoaded;
+  }
+
+  public boolean isNativeUIThreadInited() {
+    return mIsNativeUIThreadInited;
   }
 
   public void setNativeLibraryLoaded(boolean status) {

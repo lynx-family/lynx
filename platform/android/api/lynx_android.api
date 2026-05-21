@@ -5206,6 +5206,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public boolean com.lynx.tasm.LynxEnv.isRadonCompatibleEnabled();
   public void com.lynx.tasm.LynxEnv.enableRadonCompatible(boolean enableRadonCompatible);
   public boolean com.lynx.tasm.LynxEnv.isNativeLibraryLoaded();
+  public boolean com.lynx.tasm.LynxEnv.isNativeUIThreadInited();
   public void com.lynx.tasm.LynxEnv.setNativeLibraryLoaded(boolean status);
   public Context com.lynx.tasm.LynxEnv.getAppContext();
   public void com.lynx.tasm.LynxEnv.setNetworkingModuleProvider(AbsNetworkingModuleProvider netProvider);

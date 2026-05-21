@@ -95,7 +95,7 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
       @NonNull Context context, @NonNull LynxBackgroundRuntimeOptions options, boolean debuggable) {
     mRuntimeClients = new CopyOnWriteArrayList<>();
     mPlatformCallBackMap = new HashMap<>();
-    if (!LynxEnv.inst().isNativeLibraryLoaded()) {
+    if (!LynxEnv.inst().isNativeLibraryLoaded() || !LynxEnv.inst().isNativeUIThreadInited()) {
       LLog.e(TAG, "LynxBackgroundRuntime constructor called before LynxEnv init");
       mState = STATE_INVALID;
       return;
