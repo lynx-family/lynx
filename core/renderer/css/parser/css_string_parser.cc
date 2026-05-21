@@ -1988,27 +1988,16 @@ bool CSSStringParser::Color() {
 }
 
 bool CSSStringParser::RGBAColor() {
-  // save RGBA prefix
-  Token rgba[5] = {[0] = previous_token_};
-  if (Consume(TokenType::LEFT_PAREN)      // (
-      && NumberOrPercentValue(rgba[1])    // Number 1
-      && Consume(TokenType::COMMA)        // ,
-      && NumberOrPercentValue(rgba[2])    // Number 2
-      && Consume(TokenType::COMMA)        // ,
-      && NumberOrPercentValue(rgba[3])    // Number 3
-      && Consume(TokenType::COMMA)        // ,
-      && NumberOrPercentValue(rgba[4])    // Alpha
-      && Consume(TokenType::RIGHT_PAREN)  // )
-  ) {
-    PushValue(MakeColorValue(rgba));
-    return true;
-  } else {
-    return false;
-  }
+  // Per CSS Color Level 4, rgba() is a pure alias of rgb().
+  return ParseRGBLikeColor();
 }
 
 bool CSSStringParser::RGBColor() {
   // 'rgb(' has been consumed, and previous_token_ is 'rgb'.
+  return ParseRGBLikeColor();
+}
+
+bool CSSStringParser::ParseRGBLikeColor() {
   if (!Consume(TokenType::LEFT_PAREN)) {
     return false;
   }
@@ -2018,8 +2007,6 @@ bool CSSStringParser::RGBColor() {
        a_is_none = false;
   bool has_alpha = false;
 
-  // We need to decide if it's legacy or modern syntax.
-  // A simple way is to parse the first value, and then check for a comma.
   if (Consume(TokenType::NONE)) {
     r_is_none = true;
   } else if (!NumberOrPercentValue(r_token)) {
@@ -2029,18 +2016,18 @@ bool CSSStringParser::RGBColor() {
   bool is_legacy = Check(TokenType::COMMA);
 
   if (is_legacy) {
-    if (r_is_none) return false;  // 'none' not allowed in legacy rgb
-    Consume(TokenType::COMMA);
+    if (r_is_none) return false;
+    if (!Consume(TokenType::COMMA)) return false;
     if (!NumberOrPercentValue(g_token)) return false;
-    Consume(TokenType::COMMA);
+    if (!Consume(TokenType::COMMA)) return false;
     if (!NumberOrPercentValue(b_token)) return false;
 
     if (Check(TokenType::COMMA)) {
-      Consume(TokenType::COMMA);
+      if (!Consume(TokenType::COMMA)) return false;
       has_alpha = true;
       if (!NumberOrPercentValue(a_token)) return false;
     }
-  } else {  // Modern syntax
+  } else {
     if (Consume(TokenType::NONE)) {
       g_is_none = true;
     } else if (!NumberOrPercentValue(g_token)) {
@@ -2456,27 +2443,10 @@ int CSSStringParser::TokenTypeToShadowOption(TokenType token_type) {
   return static_cast<int>(starlight::ShadowOption::kNone);
 }
 
-double CSSStringParser::GetColorValue(const Token &token, double max_value) {
-  if (token.type == TokenType::PERCENTAGE) {
-    return TokenToDouble(token) / 100.0 * max_value;
-  }
-  return CSSStringParser::TokenToDouble(token);
-}
-
 CSSStringParser::StackValue CSSStringParser::MakeColorValue(
     const Token token_list[]) {
   CSSColor color;
   switch (token_list[0].type) {
-    case TokenType::RGBA:
-      color = CSSColor::CreateFromRGBA(
-          GetColorValue(token_list[1]), GetColorValue(token_list[2]),
-          GetColorValue(token_list[3]), GetColorValue(token_list[4], 1));
-      break;
-    case TokenType::RGB:
-      color = CSSColor::CreateFromRGBA(GetColorValue(token_list[1]),
-                                       GetColorValue(token_list[2]),
-                                       GetColorValue(token_list[3]), 1.f);
-      break;
     case TokenType::HSLA:
       color = CSSColor::CreateFromHSLA(
           static_cast<float>(TokenToDouble(token_list[1])),

@@ -376,6 +376,9 @@ class CSSStringParser final {
   bool RGBAColor();
   /// <rgb()> = rgb(<number> , <number> , <number>)
   bool RGBColor();
+  /// Shared implementation for rgb() and rgba() (per CSS Color Level 4, rgba is
+  /// an alias of rgb)
+  bool ParseRGBLikeColor();
   /// <hsla()> = hsla( <number> | <angle>, <percentage>, <percentage>
   bool HSLAColor();
   bool HSLColor();
@@ -430,7 +433,6 @@ class CSSStringParser final {
   static uint32_t TokenTypeToENUM(TokenType token_type);
   static uint32_t TokenTypeToBorderWidth(TokenType token_type);
   static int TokenTypeToShadowOption(TokenType token_type);
-  static double GetColorValue(const Token& token, double max_value = 255);
   static StackValue MakeColorValue(const Token token_list[]);
   static int64_t TokenToInt(const Token& token);
   static double TokenToDouble(const Token& token);
