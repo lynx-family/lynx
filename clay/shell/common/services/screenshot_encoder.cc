@@ -238,23 +238,38 @@ ScreenshotEncodeResult ScreenshotEncoder::Encode(
         std::chrono::steady_clock::now().time_since_epoch().count();
     return {data, metadata};
   }
-  if (request.type_ != clay::ScreenshotType::JPEG) {
-    FML_DLOG(ERROR) << "Skity can only encode JPEG image for now!";
-    return {};
+
+  switch (request.type_) {
+    case clay::ScreenshotType::JPEG:
+    case clay::ScreenshotType::PNG:
+      break;
+    case clay::ScreenshotType::WEBP:
+      // WEBP encoding is intentionally not supported for Skity yet.
+      FML_LOG(ERROR) << "Skity screenshot encoder: WEBP is not implemented.";
+      FML_DCHECK(false);
+      return {};
+    default:
+      FML_LOG(ERROR)
+          << "Skity screenshot encoder: unsupported screenshot type: "
+          << static_cast<int>(request.type_);
+      FML_DCHECK(false);
+      return {};
   }
 
   // Encode image.
-  auto codec = skity::Codec::MakeJPEGCodec();
+  auto codec = request.type_ == clay::ScreenshotType::JPEG
+                   ? skity::Codec::MakeJPEGCodec()
+                   : skity::Codec::MakePngCodec();
   if (!codec) {
     return {};
   }
-  auto jpeg_data = codec->Encode(pixmap.get());
-  if (!jpeg_data) {
+  auto encoded_data = codec->Encode(pixmap.get());
+  if (!encoded_data) {
     FML_DLOG(ERROR) << "TakeSnapshot, Skity encode failed!";
     return {};
   }
   std::shared_ptr<skity::Data> image_data =
-      skity::Data::MakeWithCopy(jpeg_data->RawData(), jpeg_data->Size());
+      skity::Data::MakeWithCopy(encoded_data->RawData(), encoded_data->Size());
   if (!image_data) {
     return {};
   }
