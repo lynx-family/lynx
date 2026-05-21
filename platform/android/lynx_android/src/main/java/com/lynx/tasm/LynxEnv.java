@@ -1503,7 +1503,7 @@ public class LynxEnv {
     if (mIsNativeUIThreadInited) {
       return;
     }
-    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+    UIThreadUtils.runOnUiThreadSync(new Runnable() {
       @Override
       public void run() {
         if (!mIsNativeLibraryLoaded) {

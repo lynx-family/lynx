@@ -15,6 +15,7 @@ import android.os.Handler;
 import android.os.Looper;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.base.Assertions;
+import java.util.concurrent.CountDownLatch;
 
 public class UIThreadUtils {
   @Nullable private static volatile Handler sMainHandler;
@@ -64,6 +65,32 @@ public class UIThreadUtils {
       runnable.run();
     } else {
       postAtFrontOfQueueOnUiThread(runnable);
+    }
+  }
+
+  /**
+   * Runs the given runnable on the UI thread synchronously.
+   *
+   * If called from the UI thread, executes immediately.
+   * If called from a background thread, posts to the UI thread and blocks until completed.
+   */
+  public static void runOnUiThreadSync(Runnable runnable) {
+    if (isOnUiThread()) {
+      runnable.run();
+    } else {
+      final CountDownLatch latch = new CountDownLatch(1);
+      postAtFrontOfQueueOnUiThread(new Runnable() {
+        @Override
+        public void run() {
+          runnable.run();
+          latch.countDown();
+        }
+      });
+      try {
+        latch.await();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 

@@ -41,7 +41,7 @@ void LynxEnvDarwin::initNativeUIThread() {
   if (NSThread.isMainThread) {
     base::UIThread::Init();
   } else {
-    dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_sync(dispatch_get_main_queue(), ^{
       base::UIThread::Init();
     });
   }
