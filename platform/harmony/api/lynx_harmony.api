@@ -76,19 +76,26 @@ export class LynxWebSocketModule extends LynxModule {
   public sendEvent(name: string, data: Object): void;
 }
 
+export class LogBoxNotificationOwner {
+  static getInstance(): LogBoxNotificationOwner;
+  static registerLogBox(logBox: ILogBox, uiContext: UIContext): void;
+  static unregisterLogBox(logBox: ILogBox): void;
+  static reportError(logBox: LogBox, error: LynxError): void;
+  static clearLogBox(logBox: LogBox): void;
+  static cleanupUnusedManagers(): void;
+}
+
 export class LogBox implements ILogBox {
   constructor(onError: OnErrorCallback, getJsSource: GetJSSourceCallback);
   public reportError(err: LynxError): void;
   public cleanError(): void;
+  public getErrors(): LynxError[];
+  public clearErrorsForNotificationLevel(level: string): void;
   public onLoaded(url: string): void;
+  public detach(): void;
   onError: (msg: string) => void;
   getJsSource: () => Record<string, string>;
   nativeBridge: NativeBridge; = new NativeBridge()
-}
-
-export class LogBoxNodeController extends NodeController {
-  constructor(logBox: ILogBox, title: string);
-  makeNode(uiContext: UIContext): FrameNode | null;
 }
 
 export class LynxDevToolService implements ILynxDevToolService {
@@ -101,7 +108,8 @@ export class LynxDevToolService implements ILynxDevToolService {
   public devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
   public createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null;
   public createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
-  public createLogBoxComponent(logBox: ILogBox, title: string): NodeController | null;
+  public registerLogBox(logBox: ILogBox, uiContext: UIContext): void;
+  public unregisterLogBox(logBox: ILogBox): void;
   public registerWebSocketModule(moduleManager: LynxModuleManager): void;
   public addOpenCardCallback(callback: (url: string) => void): void;
   static instance: any; = new LynxDevToolService()
@@ -219,7 +227,6 @@ export abstract class LynxNodeController extends NodeController {
   beforeLoadTemplate: (context: LynxContext) => void; = ((context: LynxContext) => {
   })
   @State rootSize: Size; = { width: 0, height: 0 }
-  @State logBoxTitle: string; = ''
   @State translateY: number; = 0
   templateLoaded: boolean; = false
   threadMode: ThreadStrategyForRendering; = ThreadStrategyForRendering.ALL_ON_UI
@@ -1392,7 +1399,8 @@ export interface ILynxDevToolService {
   devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
   createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null;
   createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
-  createLogBoxComponent(logbox: ILogBox, title: string): NodeController | null;
+  registerLogBox(logBox: ILogBox, uiContext: UIContext): void;
+  unregisterLogBox(logBox: ILogBox): void;
   registerWebSocketModule(moduleManager: LynxModuleManager): void;
   addOpenCardCallback(callback: (url: string) => void): void;
 }

@@ -185,7 +185,6 @@ export struct LynxView {
   beforeLoadTemplate: (context: LynxContext) => void = ((context: LynxContext) => {
   });
   @State rootSize: Size = { width: 0, height: 0 };
-  @State logBoxTitle: string = '';
   @State translateY: number = 0;
   templateLoaded: boolean = false;
   private measuredSize: Size = { width: 0, height: 0 };
@@ -370,14 +369,7 @@ export struct LynxView {
     LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
     this.nodeController =
       this.uiRendererCreator ? this.uiRendererCreator.createNodeController() : new CAPINodeController()
-    this.enableLogBox = LynxEnv.isLynxDebugEnabled() && LynxEnv.isLogBoxEnabled();
-    if (this.enableLogBox) {
-      this.logBox = LynxDevTool.createLogBox((msg: string) => {
-        this.logBoxTitle = msg;
-      }, (): Record<string, string> => {
-        return this.templateRenderer?.getAllJsSource() ?? {};
-      });
-    }
+    this.setupLogBox();
     this.context.setLynxView(this);
     if (this.hasLoadSource()) {
       this.reInitTemplateRenderer(true);
@@ -419,6 +411,7 @@ export struct LynxView {
     this.templateRenderer = undefined;
     this.nodeController?.dispose();
     this.nodeController = undefined;
+    this.disposeLogBox();
     try {
       this.currentWindow?.off('keyboardHeightChange', this.keyboardHeightChangeCallback);
     } catch (e) {
@@ -431,6 +424,28 @@ export struct LynxView {
       extensionService.onLynxViewDestroy(this.context);
     }
     this.context.aboutToDisappear();
+  }
+
+  private setupLogBox() {
+    this.enableLogBox = LynxEnv.isLynxDebugEnabled() && LynxEnv.isLogBoxEnabled();
+    if (!this.enableLogBox) {
+      return;
+    }
+    this.logBox = LynxDevTool.createLogBox((_msg: string) => {
+    }, (): Record<string, string> => {
+      return this.templateRenderer?.getAllJsSource() ?? {};
+    });
+    if (this.logBox) {
+      LynxDevTool.registerLogBox(this.logBox, this.getUIContext());
+    }
+  }
+
+  private disposeLogBox() {
+    if (this.logBox) {
+      LynxDevTool.unregisterLogBox(this.logBox);
+    }
+    this.logBox = null;
+    this.enableLogBox = false;
   }
 
   aboutToReuse(params: Record<string, ESObject>): void {
@@ -748,11 +763,6 @@ export struct LynxView {
   build() {
     Stack() {
       NodeContainer(this.nodeController)
-      if (this.enableLogBox && this.logBox && this.logBoxTitle) {
-        NodeContainer(
-          LynxDevTool.createLogBoxComponent(this.logBox, this.logBoxTitle.toString())
-        ).position({ bottom: 0 })
-      }
     }
     .width(this.fitContentWidth ? this.rootSize.width : '100%')
     .height(this.fitContentHeight
