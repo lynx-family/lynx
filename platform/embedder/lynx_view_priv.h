@@ -5,6 +5,7 @@
 #define PLATFORM_EMBEDDER_LYNX_VIEW_PRIV_H_
 
 #include <memory>
+#include <string>
 
 #include "platform/embedder/core/lynx_template_renderer.h"
 #include "platform/embedder/fetcher/lynx_resource_fetcher_holder.h"
@@ -34,6 +35,7 @@ struct lynx_view_t {
   lynx_vsync_monitor_t* custom_vsync_monitor = nullptr;
   std::shared_ptr<lynx::tasm::TemplateData> global_props = nullptr;
   void* user_data = nullptr;
+  std::string webview2_fixed_runtime_path;
 };
 
 #endif  // PLATFORM_EMBEDDER_LYNX_VIEW_PRIV_H_
