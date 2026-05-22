@@ -29,6 +29,7 @@ import { LynxExplorerInput } from '../component/LynxExplorerInput';
 import { ConfigurationConstant } from '@kit.AbilityKit';
 import { UISVG } from '@lynx/xelement_svg';
 import { UIWebView } from '@lynx/xelement_webview';
+import { UIVideo } from '@lynx/xelement_video';
 
 
 @Entry
@@ -45,7 +46,8 @@ struct Index {
     new Behavior(UIClickView, ClickShadowNode, "this is a test custom data")],
     ['explorer-input', new Behavior(LynxExplorerInput, undefined)],
     ['svg',  new Behavior(UISVG, undefined)],
-    ['webview', new Behavior(UIWebView, undefined)]]);
+    ['webview', new Behavior(UIWebView, undefined)],
+    ['video', new Behavior(UIVideo, undefined)]]);
   private metaData = new MetaData(
     new TemplateData('{"text":"TD"}'),
     new TemplateData({ "theme": "Light" }));
