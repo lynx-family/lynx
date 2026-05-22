@@ -534,6 +534,13 @@ std::vector<double> InspectorUIExecutor::GetBoxModel(tasm::Element* element) {
   return devtool_platform_facade_->GetBoxModel(element);
 }
 
+std::vector<double> InspectorUIExecutor::GetBoxModel(
+    const InspectorBoxModelQuery& query) {
+  CHECK_NULL_AND_LOG_RETURN_VALUE(devtool_platform_facade_,
+                                  "devtool_platform_facade_ is null", {});
+  return devtool_platform_facade_->GetBoxModel(query);
+}
+
 void InspectorUIExecutor::LynxSendEventToVM(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

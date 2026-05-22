@@ -36,6 +36,22 @@ std::vector<float> DevToolPlatformFacadeMock::GetRectToWindow() const {
   return {1, 1, 1, 1};
 }
 
+std::vector<double> DevToolPlatformFacadeMock::GetBoxModel(
+    const devtool::InspectorBoxModelQuery& query) {
+  box_model_queries_.push_back(query);
+  if (!box_model_response_.empty()) {
+    return box_model_response_;
+  }
+  return DevToolPlatformFacade::GetBoxModel(query);
+}
+
+std::vector<float> DevToolPlatformFacadeMock::GetTransformValue(
+    int identifier, const std::vector<float>& pad_border_margin_layout) {
+  transform_value_ids_.push_back(identifier);
+  transform_value_inputs_.push_back(pad_border_margin_layout);
+  return transform_value_response_;
+}
+
 void DevToolPlatformFacadeMock::StartScreenCast(
     devtool::ScreenshotRequest request) {}
 void DevToolPlatformFacadeMock::StopScreenCast() {}

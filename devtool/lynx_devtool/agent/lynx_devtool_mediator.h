@@ -235,6 +235,7 @@ class LynxDevToolMediator
  public:
   std::vector<double> GetBoxModel(tasm::Element* element);
   SLNode* GetLayoutObjectForElement(lynx::tasm::Element* element);
+  SLNode* GetLayoutObjectById(int32_t id);
   void SendLayoutTree();
   void SendCDPEvent(const Json::Value& msg);
   void SendCDPEvent(const std::string& msg);

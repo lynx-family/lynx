@@ -5,6 +5,7 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DEVTOOL_PLATFORM_FACADE_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DEVTOOL_PLATFORM_FACADE_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -22,6 +23,49 @@ class InspectorUIExecutor;
 class InspectorTasmExecutor;
 class InspectorJavaScriptDebuggerImpl;
 class InspectorLepusDebuggerImpl;
+
+struct InspectorLayoutObjectInfo {
+  // Element/layout object id used to resolve layout data across threads.
+  int32_t id = 0;
+  // Whether this object already carries a full layout snapshot.
+  bool has_snapshot = false;
+  double border_bound_width = 0;
+  double border_bound_height = 0;
+  double layout_padding_left = 0;
+  double layout_padding_top = 0;
+  double layout_padding_right = 0;
+  double layout_padding_bottom = 0;
+  double layout_border_left_width = 0;
+  double layout_border_top_width = 0;
+  double layout_border_right_width = 0;
+  double layout_border_bottom_width = 0;
+  double layout_margin_left = 0;
+  double layout_margin_top = 0;
+  double layout_margin_right = 0;
+  double layout_margin_bottom = 0;
+  double border_bound_left_from_parent_padding_bound = 0;
+  double border_bound_top_from_parent_padding_bound = 0;
+};
+
+InspectorLayoutObjectInfo BuildLayoutObjectInfo(int32_t id, SLNode* layout_obj);
+
+struct InspectorBoxModelQuery {
+  // Layout info for the inspected element.
+  InspectorLayoutObjectInfo layout_object;
+  // The nearest node used as the transform anchor when the inspected element is
+  // layout-only; otherwise it is usually the same as layout_object.
+  InspectorLayoutObjectInfo transform_node;
+  // Layout-only node chain from the inspected element up to the transform node,
+  // used to accumulate offsets for elements without a UI primitive.
+  std::vector<InspectorLayoutObjectInfo> layout_only_nodes;
+  // Precomputed box model for overlay elements whose layout is handled
+  // specially.
+  std::vector<double> overlay_box_model;
+  // Whether the inspected element owns a native UI primitive.
+  bool has_ui_primitive = true;
+  // Whether the inspected element is an overlay element.
+  bool is_overlay = false;
+};
 
 class DevToolPlatformFacade
     : public std::enable_shared_from_this<DevToolPlatformFacade> {
@@ -75,6 +119,7 @@ class DevToolPlatformFacade
   virtual std::vector<double> GetBoxModel(tasm::Element* element) {
     return std::vector<double>();
   }
+  virtual std::vector<double> GetBoxModel(const InspectorBoxModelQuery& query);
   virtual std::vector<float> GetTransformValue(
       int identifier, const std::vector<float>& pad_border_margin_layout) {
     return std::vector<float>();
@@ -108,6 +153,10 @@ class DevToolPlatformFacade
   // and will be called in the GetBoxModel method of subclasses.
   // It is used to retrieve the box model information for an element.
   std::vector<double> GetBoxModelInGeneralPlatform(tasm::Element* element);
+  // This function is shared across multiple platforms and retrieves box model
+  // information from a TASM-thread snapshot plus UI-thread transform.
+  std::vector<double> GetBoxModelInGeneralPlatform(
+      const InspectorBoxModelQuery& query);
 
  private:
   std::weak_ptr<InspectorUIExecutor> inspector_ui_executor_wp_;
