@@ -250,7 +250,7 @@ class LynxDevToolMediator
 
   // implemented by ui executor
   void ScrollIntoView(int node_id);
-  void Focus(int node_id);
+  void Focus(int node_id, DevToolPlatformFocusCallback callback);
   void PageReload(bool ignore_cache);
 
   void InitWhiteBoardInspector(

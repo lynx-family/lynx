@@ -9,6 +9,7 @@
 
 #include <future>
 #include <memory>
+#include <string>
 
 #include "base/include/fml/thread.h"
 #include "core/renderer/dom/element.h"
@@ -37,9 +38,18 @@ static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
 class FocusRecordingPlatformFacade
     : public lynx::testing::DevToolPlatformFacadeMock {
  public:
-  void Focus(int node_id) override { focused_node_id_ = node_id; }
+  void Focus(int node_id, DevToolPlatformFocusCallback callback) override {
+    focused_node_id_ = node_id;
+    if (fail_focus_) {
+      callback(false, focus_error_message_);
+      return;
+    }
+    callback(true, "");
+  }
 
   int focused_node_id_ = -1;
+  bool fail_focus_ = false;
+  std::string focus_error_message_;
 };
 
 class InspectorDOMAgentNGTest : public ::testing::Test {
@@ -131,6 +141,32 @@ TEST_F(InspectorDOMAgentNGTest, FocusReturnsSuccessAndFocusesNode) {
   EXPECT_EQ(response["id"], 11);
   EXPECT_TRUE(response["error"].isNull());
   EXPECT_TRUE(response["result"].isObject());
+  EXPECT_EQ(facade_->focused_node_id_, node_id);
+}
+
+TEST_F(InspectorDOMAgentNGTest, FocusReturnsErrorWhenPlatformFocusFails) {
+  auto input = manager_->CreateFiberElement("input");
+  ElementInspector::InitForInspector(std::make_tuple(input.get()));
+  input->MarkCanBeLayoutOnly(false);
+  element_executor_->element_root_ = input.get();
+  int node_id = ElementInspector::NodeId(input.get());
+  facade_->fail_focus_ = true;
+  facade_->focus_error_message_ = "code: 8, data: input is disabled.";
+
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 14;
+  message["method"] = "DOM.focus";
+  message["params"]["nodeId"] = node_id;
+
+  agent_->CallMethod(message_sender_, message);
+  FlushTasmTasks();
+  FlushUITasks();
+
+  Json::Value response = ParseLastResponse();
+  EXPECT_EQ(response["id"], 14);
+  EXPECT_EQ(response["error"]["code"], -32000);
+  EXPECT_EQ(response["error"]["message"], "code: 8, data: input is disabled.");
+  EXPECT_TRUE(response["result"].isNull());
   EXPECT_EQ(facade_->focused_node_id_, node_id);
 }
 

@@ -990,10 +990,21 @@ void InspectorTasmExecutor::DOM_Focus(
   auto devtool_mediator = devtool_mediator_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
 
-  devtool_mediator->Focus(ElementInspector::NodeId(current_element));
-
-  response["result"] = content;
-  sender->SendMessage("CDP", response);
+  devtool_mediator->Focus(
+      ElementInspector::NodeId(current_element),
+      [sender, response, content](bool success,
+                                  const std::string& error_message) mutable {
+        if (success) {
+          response["result"] = content;
+        } else {
+          Json::Value error(Json::ValueType::objectValue);
+          error["code"] = kServerError;
+          error["message"] =
+              error_message.empty() ? "DOM.focus failed." : error_message;
+          response["error"] = error;
+        }
+        sender->SendMessage("CDP", response);
+      });
 }
 
 void InspectorTasmExecutor::WhiteBoardEnable(

@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #import <LynxDevtool/DevToolPlatformDarwinDelegate.h>
+#include <memory>
+#include <utility>
 #include <vector>
 
 #import <BaseDevTool/DevToolToast.h>
@@ -64,10 +66,21 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     }
   }
 
-  void Focus(int node_index) override {
+  void Focus(int node_index, DevToolPlatformFocusCallback callback) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin) {
-      [darwin focus:node_index];
+      auto callback_ptr = std::make_shared<DevToolPlatformFocusCallback>(std::move(callback));
+      [darwin focus:node_index
+          completion:^(BOOL success, NSString* _Nullable errorMessage) {
+            if (*callback_ptr) {
+              const char* message = errorMessage != nil ? [errorMessage UTF8String] : "";
+              (*callback_ptr)(success, message != nullptr ? message : "");
+            }
+          }];
+      return;
+    }
+    if (callback) {
+      callback(true, "");
     }
   }
 
@@ -372,10 +385,13 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   }
 }
 
-- (void)focus:(int)node_index {
+- (void)focus:(int)node_index
+    completion:(void (^)(BOOL success, NSString* _Nullable errorMessage))completion {
   if (_uiTreeHelper) {
-    [_uiTreeHelper focus:node_index];
+    [_uiTreeHelper focus:node_index completion:completion];
+    return;
   }
+  completion(YES, nil);
 }
 
 - (int)findNodeIdForLocationWithX:(float)x withY:(float)y mode:(NSString*)mode {
