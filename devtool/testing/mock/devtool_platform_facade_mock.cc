@@ -42,7 +42,7 @@ std::vector<double> DevToolPlatformFacadeMock::GetBoxModel(
   if (!box_model_response_.empty()) {
     return box_model_response_;
   }
-  return DevToolPlatformFacade::GetBoxModel(query);
+  return devtool::DevToolPlatformFacade::GetBoxModel(query);
 }
 
 std::vector<float> DevToolPlatformFacadeMock::GetTransformValue(
