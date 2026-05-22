@@ -114,6 +114,21 @@ LYNX_NATIVE_RENDERER_CAPI_EXPORT lynx_fiber_element_t* lynx_create_fiber_element
     lynx_shell_t* shell,
     lynx_element_tag_e tag);
 
+// Create a fiber element by string tag name. Lets embedders allocate
+// custom Lynx elements (any tag registered against Lynx's behaviour
+// registry — e.g. `"x-input"`, `"x-refresh"`, third-party-registered
+// elements) without going through the closed `lynx_element_tag_e`
+// enum. Returns NULL if the tag isn't registered or `tag_name` is
+// NULL / empty.
+//
+// Must be called from within a callback dispatched via
+// lynx_shell_run_on_tasm_thread, same as the enum-tag variant. The
+// returned handle has the same ownership semantics as
+// `lynx_create_fiber_element`'s — caller releases via
+// `lynx_element_release`.
+LYNX_NATIVE_RENDERER_CAPI_EXPORT lynx_fiber_element_t*
+lynx_create_fiber_element_by_name(lynx_shell_t* shell, const char* tag_name);
+
 LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_release(lynx_fiber_element_t* element);
 
 // Return the stable per-element id (Lynx calls this `impl_id`).
