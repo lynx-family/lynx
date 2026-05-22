@@ -63,7 +63,7 @@ jobs:
 
   darwin-native-unittests-check:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -119,7 +119,7 @@ jobs:
 
   ios-unittests-check:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -216,7 +216,7 @@ jobs:
 
   tasm-darwin-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -239,7 +239,7 @@ jobs:
 
   tasm-wasm-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -644,7 +644,7 @@ jobs:
 
   ios-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     strategy:
       matrix:
         arch: [arm64, x86_64]
@@ -667,7 +667,7 @@ jobs:
 
   ios-integration-test:
     timeout-minutes: 15
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     env:
       LOCAL_POD_NAME: 'local_pod'
       POD_VERSION: '0.0.1-alpha.1'
@@ -721,7 +721,7 @@ jobs:
     env:
       APPIUM_TEST_SERVER_PORT: 4723
       APPIUM_TEST_SERVER_HOST: 127.0.0.1
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -892,7 +892,7 @@ jobs:
 
   clay-macos-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -908,7 +908,7 @@ jobs:
 
   macos-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     strategy:
       matrix:
         arch: [arm64, x64]
