@@ -1,0 +1,16 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+gfx_vulkan_sources = [
+  "vulkan_buffer.cc",
+  "vulkan_buffer.h",
+  "vulkan_command_pool_helper.cc",
+  "vulkan_command_pool_helper.h",
+  "vulkan_fence_helper.cc",
+  "vulkan_fence_helper.h",
+  "vulkan_helper.cc",
+  "vulkan_helper.h",
+  "vulkan_image.cc",
+  "vulkan_image.h",
+]

@@ -1,0 +1,179 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../config.gni")
+
+declare_args() {
+  # Whether to build with Clay rendering enabled
+  enable_clay = false
+
+  # Whether enable clay lite
+  enable_clay_lite = false
+
+  # The runtime mode ("debug", "profile", "release", or "jit_release")
+  clay_engine_mode = "release"
+
+  # Include net lib compile
+  use_net_loader = true
+
+  use_accessbility = false
+
+  # Currently is used for benchmark tests on host platform.
+  force_enable_trim_skia_for_test = false
+
+  # Whether enable svg.
+  enable_svg = true
+
+  # Whether enable antialias
+  enable_antialias = true
+
+  # Whether use default typeface
+  use_default_typeface = false
+
+  clay_force_d3d9 = false
+
+  enable_clay_standalone = false
+
+  enable_software_rendering = false
+
+  enable_screenshot_service = enable_inspector
+}
+
+declare_args() {
+  # Whether to use skity backend
+  enable_skity = is_android || is_ios || enable_clay_lite
+
+  # Whether freetype lite enables capability of font variant. Clay will enable this
+  # by default. If canvas also wants to enable this config, just change this value to `true`.
+  freetype2_lite_enable_font_variant = enable_clay
+
+  # Whether to link the Minikin text module into the engine
+  clay_enable_minikin = false
+
+  # Whether to link the Skia text shaper module into the engine
+  clay_enable_skshaper = true
+
+  # enable tttext
+  clay_enable_tttext = false
+
+  use_platform_decode = false
+
+  enable_trim = enable_clay
+
+  # Whether use own binary icudtl.
+  use_binary_icudtl = false
+}
+
+if (enable_skity) {
+  clay_enable_tttext = true
+  use_platform_decode = true
+} else {
+  use_binary_icudtl = is_android || is_harmony || is_linux
+}
+
+if (clay_enable_tttext) {
+  clay_enable_skshaper = false
+}
+
+# feature_defines_list ---------------------------------------------------------
+
+feature_defines_list = [
+  "CLAY_ENGINE_MODE_DEBUG=1",
+  "CLAY_ENGINE_MODE_PROFILE=2",
+  "CLAY_ENGINE_MODE_RELEASE=3",
+  "CLAY_ENGINE_MODE_JIT_RELEASE=4",
+
+  # clay matrix translation use fraction to promote animation fluency.
+  "SUPPORT_FRACTIONAL_TRANSLATION",
+  "ENABLE_RASTER_CACHE_SCALE",
+]
+
+feature_defines_list += [
+  "CLAY_ENGINE_MODE=3",
+  "FLUTTER_RELEASE=1",
+]
+
+if (enable_trace == "perfetto") {
+  feature_defines_list += [ "ENABLE_TRACE_PERFETTO" ]
+} else if (enable_trace == "systrace") {
+  feature_defines_list += [ "ENABLE_TRACE_SYSTRACE" ]
+}
+
+# A combo of host os name and cpu is used in several locations to
+# generate the names of the archived artifacts.
+platform_name = host_os
+if (platform_name == "mac") {
+  platform_name = "darwin"
+} else if (platform_name == "win") {
+  platform_name = "windows"
+}
+
+full_platform_name = "$platform_name-$host_cpu"
+
+target_platform_name = target_os
+if (target_platform_name == "mac") {
+  platform_target_name = "darwin"
+} else if (target_platform_name == "win") {
+  target_platform_name = "windows"
+}
+
+full_target_platform_name = "$target_platform_name-$target_cpu"
+
+if (use_platform_decode) {
+  feature_defines_list += [ "ENABLE_PLATFORM_DECODE" ]
+}
+
+if (use_net_loader) {
+  feature_defines_list += [ "ENABLE_NET_LOADER" ]
+}
+
+if (use_accessbility) {
+  feature_defines_list += [ "ENABLE_ACCESSIBILITY" ]
+}
+
+if (is_headless) {
+  feature_defines_list += [ "ENABLE_HEADLESS" ]
+}
+
+if (enable_svg) {
+  feature_defines_list += [ "ENABLE_SVG" ]
+}
+
+if (clay_enable_tttext) {
+  feature_defines_list += [
+    "CLAY_ENABLE_TTTEXT",
+    "MINSIZE",
+  ]
+}
+
+if (enable_antialias) {
+  feature_defines_list += [ "ENABLE_ANTIALIAS" ]
+}
+
+if (!is_android) {
+  feature_defines_list -= [ "ENABLE_RASTER_CACHE_SCALE" ]
+}
+
+if (enable_software_rendering) {
+  feature_defines_list += [ "ENABLE_SOFTWARE_RENDERING" ]
+}
+
+if (enable_clay_lite) {
+  feature_defines_list += [ "ENABLE_CLAY_LITE=1" ]
+}
+
+if (enable_skity) {
+  feature_defines_list += [ "ENABLE_SKITY" ]
+}
+
+if (enable_screenshot_service) {
+  feature_defines_list += [ "ENABLE_SCREENSHOT_SERVICE=1" ]
+}
+
+if (use_binary_icudtl) {
+  feature_defines_list += [ "ENABLE_BINARY_ICUDTL=1" ]
+}

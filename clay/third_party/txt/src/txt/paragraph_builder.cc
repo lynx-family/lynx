@@ -1,0 +1,61 @@
+/*
+ * Copyright 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "paragraph_builder.h"
+#include "paragraph_style.h"
+// #include "third_party/icu/source/common/unicode/unistr.h"
+
+#if CLAY_ENABLE_MINIKIN
+#include "paragraph_builder_txt.h"
+#endif
+
+#if CLAY_ENABLE_SKSHAPER
+#include "clay/third_party/txt/src/skia/paragraph_builder_skia.h"
+#endif
+
+#if CLAY_ENABLE_TTTEXT
+#include "clay/third_party/txt/src/tttext/paragraph_builder_tt_text.h"
+#endif
+
+namespace txt {
+
+#if CLAY_ENABLE_MINIKIN
+std::unique_ptr<ParagraphBuilder> ParagraphBuilder::CreateTxtBuilder(
+    const ParagraphStyle& style,
+    std::shared_ptr<FontCollection> font_collection) {
+  return std::make_unique<ParagraphBuilderTxt>(style, font_collection);
+}
+#endif // CLAY_ENABLE_MINIKIN
+
+#if CLAY_ENABLE_SKSHAPER
+
+std::unique_ptr<ParagraphBuilder> ParagraphBuilder::CreateSkiaBuilder(
+    const ParagraphStyle& style,
+    std::shared_ptr<FontCollection> font_collection) {
+  return std::make_unique<ParagraphBuilderSkia>(style, font_collection);
+}
+
+#endif  // CLAY_ENABLE_SKSHAPER
+
+#if CLAY_ENABLE_TTTEXT
+std::unique_ptr<ParagraphBuilder> ParagraphBuilder::CreateTTTextBuilder(
+    const ParagraphStyle& style,
+    std::shared_ptr<FontCollection> font_collection) {
+  return std::make_unique<ParagraphBuilderTTText>(style, font_collection);
+}
+#endif // CLAY_ENABLE_MINIKIN
+
+}  // namespace txt

@@ -1,0 +1,52 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("config.gni")
+
+source_set("common") {
+  sources = [
+    "constants.h",
+    "element_id.cc",
+    "element_id.h",
+    "recyclable.h",
+    "settings.cc",
+    "settings.h",
+    "sha1.cc",
+    "sha1.h",
+    "sys_info.h",
+    "task_runners.cc",
+    "task_runners.h",
+    "thread_host.cc",
+    "thread_host.h",
+    "thread_host_holder.cc",
+    "thread_host_holder.h",
+  ]
+
+  if (!is_android) {
+    sources += [ "sys_info.cc" ]
+  }
+
+  deps = [ "../fml:fml" ]
+
+  include_dirs = [ "//third_party/boringssl/src/include" ]
+
+  if (is_win || is_linux || is_mac) {
+    deps += [ "//third_party/boringssl" ]
+  } else if (is_android) {
+    deps += [ "//third_party/boringssl:boringssl_asm" ]
+    sources += [
+      "//third_party/boringssl/src/crypto/cpu-aarch64-linux.c",
+      "//third_party/boringssl/src/crypto/cpu-arm-linux.c",
+      "//third_party/boringssl/src/crypto/cpu-arm.c",
+      "//third_party/boringssl/src/crypto/cpu-intel.c",
+      "//third_party/boringssl/src/crypto/crypto.c",
+      "//third_party/boringssl/src/crypto/fipsmodule/sha/sha1.c",
+    ]
+  }
+
+  public_configs = [ "../:config" ]
+}

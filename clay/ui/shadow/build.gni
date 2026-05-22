@@ -1,0 +1,55 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("../../common/config.gni")
+
+ui_shadow_sources = [
+  "base_text_shadow_node.cc",
+  "base_text_shadow_node.h",
+  "icu_substitute.h",
+  "image_shadow_node.cc",
+  "image_shadow_node.h",
+  "inline_image_shadow_node.cc",
+  "inline_image_shadow_node.h",
+  "inline_text_shadow_node.cc",
+  "inline_text_shadow_node.h",
+  "inline_truncation_shadow_node.cc",
+  "inline_truncation_shadow_node.h",
+  "inline_view_shadow_node.cc",
+  "inline_view_shadow_node.h",
+  "inner_inline_text_shadow_node.cc",
+  "inner_inline_text_shadow_node.h",
+  "inner_text_shadow_node.cc",
+  "inner_text_shadow_node.h",
+  "measure_utils.h",
+  "native_view_shadow_node.cc",
+  "native_view_shadow_node.h",
+  "raw_text_shadow_node.cc",
+  "raw_text_shadow_node.h",
+  "shadow_layout_context.cc",
+  "shadow_layout_context.h",
+  "shadow_node.cc",
+  "shadow_node.h",
+  "shadow_node_owner.cc",
+  "shadow_node_owner.h",
+  "text_render.cc",
+  "text_render.h",
+  "text_shadow_node.cc",
+  "text_shadow_node.h",
+  "text_update_bundle.cc",
+  "text_update_bundle.h",
+  "vertical_align_style.h",
+]
+
+if (enable_skity && is_ios) {
+  ui_shadow_sources += [ "icu_substitute.cc" ]
+} else {
+  ui_shadow_sources += [ "icu_no_substitute.cc" ]
+}
+
+ui_extended_shadow_sources = [
+  "editable_ng_shadow_node.cc",
+  "editable_ng_shadow_node.h",
+  "editable_shadow_node.cc",
+  "editable_shadow_node.h",
+]

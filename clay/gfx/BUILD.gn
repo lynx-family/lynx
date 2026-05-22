@@ -1,0 +1,138 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../shell/config.gni")
+import("../testing/testing.gni")
+import("animation/build.gni")
+import("geometry/build.gni")
+import("image/build.gni")
+import("skia/build.gni")
+import("style/build.gni")
+import("vulkan/build.gni")
+
+source_set("gfx") {
+  sources = [
+    "attributes.h",
+    "comparable.h",
+    "gfx_rendering_backend.h",
+    "gfx_utils.cc",
+    "gfx_utils.h",
+    "gpu_object.h",
+    "gpu_ref_object.h",
+    "graphics_canvas.cc",
+    "graphics_canvas.h",
+    "graphics_context.cc",
+    "graphics_context.h",
+    "graphics_isolate.cc",
+    "graphics_isolate.h",
+    "paint.cc",
+    "paint.h",
+    "paint_decoding_image.h",
+    "paint_image.cc",
+    "paint_image.h",
+    "paint_recorder.h",
+    "picture.cc",
+    "picture.h",
+    "pixel_helper.h",
+    "rendering_backend.h",
+    "scroll_direction.h",
+    "skity_to_skia_utils.h",
+    "svg/svg_dom.h",
+    "text_blob.cc",
+    "text_blob.h",
+  ]
+
+  sources += rebase_path(gfx_animation_sources, "", "animation")
+  sources += rebase_path(gfx_geometry_sources, "", "geometry")
+  sources += rebase_path(gfx_image_sources, "", "image")
+  sources += rebase_path(gfx_style_sources, "", "style")
+
+  deps = [
+    "../common",
+    "../fml:fml",
+  ]
+
+  configs += [ "../:config" ]
+
+  if (enable_skity) {
+    sources += [
+      "paint_image_skity.cc",
+      "paint_image_skity.h",
+      "paint_recorder_skity.cc",
+      "text_blob_skity.cc",
+      "text_blob_skity.h",
+    ]
+  } else {
+    sources += [
+      "paint_image_skia.cc",
+      "paint_image_skia.h",
+      "paint_image_skia_lazy.cc",
+      "paint_image_skia_lazy.h",
+      "paint_recorder_skia.cc",
+      "text_blob_skia.cc",
+      "text_blob_skia.h",
+    ]
+    sources += rebase_path(gfx_skia_sources, "", "skia")
+    deps += [
+      "../third_party/skity_geometry:skity_geometry",
+      "//third_party/skia",
+    ]
+  }
+
+  if (enable_svg && !enable_skity) {
+    deps += [ "//third_party/skia/modules/svg" ]
+  }
+
+  if (is_win) {
+    # Required for M_PI and others.
+    defines = [ "_USE_MATH_DEFINES" ]
+
+    # For wstring_conversion. See issue #50053.
+    defines += [ "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING" ]
+  }
+
+  if (is_android) {
+    sources += rebase_path(gfx_vulkan_sources, "", "vulkan")
+  }
+}
+
+if (enable_unittests) {
+  test_fixtures("gfx_fixtures") {
+    fixtures = []
+  }
+
+  executable("gfx_unittests") {
+    testonly = true
+
+    sources = [
+      "animation/animation_handler_unittests.cc",
+      "animation/cubic_bezier_interpolator_unittests.cc",
+      "animation/value_animator_unittests.cc",
+      "atrributes_testing.h",
+      "gpu_object_unittests.cc",
+      "image/image_data_cache_unittests.cc",
+      "paint_unittests.cc",
+      "style/color_filter_unittests.cc",
+      "style/color_source_unittests.cc",
+      "style/color_unittests.cc",
+      "style/color_unittests_helper.h",
+      "style/enum_unittests.cc",
+      "style/image_filter_unittests.cc",
+      "style/mask_filter_unittests.cc",
+      "style/path_effect_unittests.cc",
+      "style/vertices_unittests.cc",
+      "testing_utils.h",
+    ]
+
+    deps = [
+      ":gfx",
+      ":gfx_fixtures",
+      "../../base/src:base_static",
+      "../gfx",
+      "../testing",
+      "../testing:skia",
+      "../testing:testing_lib",
+    ]
+  }
+}

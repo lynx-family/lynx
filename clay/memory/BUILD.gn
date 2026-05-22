@@ -1,0 +1,83 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../common/config.gni")
+import("../testing/testing.gni")
+
+source_set("memory") {
+  sources = [
+    "discardable_memory.h",
+    "discardable_memory_allocator.h",
+    "discardable_memory_allocator_impl.cc",
+    "discardable_memory_allocator_impl.h",
+    "memory_pressure_listener.cc",
+    "memory_pressure_listener.h",
+  ]
+  if (is_win || is_mac || is_android) {
+    sources += [ "discardable_memory_impl.h" ]
+  } else {
+    sources += [ "heap_discardable_memory.h" ]
+  }
+  if (is_win || is_mac) {
+    sources += [
+      "memory_pressure_monitor.cc",
+      "memory_pressure_monitor.h",
+      "system_memory_pressure_evaluator.cc",
+      "system_memory_pressure_evaluator.h",
+    ]
+    if (is_win) {
+      sources += [
+        "discardable_memory_impl_win.cc",
+        "system_memory_pressure_evaluator_win.cc",
+        "system_memory_pressure_evaluator_win.h",
+      ]
+    }
+    if (is_mac) {
+      sources += [
+        "system_memory_pressure_evaluator_mac.cc",
+        "system_memory_pressure_evaluator_mac.h",
+      ]
+    }
+  }
+  if (is_android || is_mac) {
+    sources += [ "discardable_memory_impl_posix.cc" ]
+  }
+  public_deps = [ "../fml:fml" ]
+  public_configs = [ "../:config" ]
+}
+
+if (enable_unittests) {
+  test_fixtures("memory_fixtures") {
+    fixtures = []
+  }
+
+  executable("memory_unittests") {
+    testonly = true
+    sources = [
+      "discardable_memory_allocator_unittests.cc",
+      "memory_pressure_listener_unittests.cc",
+    ]
+
+    if (is_win || is_mac || is_android) {
+      sources += [ "discardable_memory_unittests.cc" ]
+    } else {
+      sources += [ "heap_discardable_memory_unittests.cc" ]
+    }
+
+    if (is_mac) {
+      sources += [ "system_memory_pressure_evaluator_mac_unittests.cc" ]
+    }
+
+    if (is_win) {
+      sources += [ "system_memory_pressure_evaluator_win_unittests.cc" ]
+    }
+
+    deps = [
+      ":memory",
+      ":memory_fixtures",
+      "../../base/src:base_static",
+      "../testing",
+    ]
+  }
+}
