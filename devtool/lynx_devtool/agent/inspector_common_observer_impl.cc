@@ -4,6 +4,8 @@
 
 #include "devtool/lynx_devtool/agent/inspector_common_observer_impl.h"
 
+#include <utility>
+
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
@@ -20,6 +22,19 @@ void InspectorCommonObserverImpl::SendLayoutTree() {
   auto devtool_mediator = mediator_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
   devtool_mediator->SendLayoutTree();
+}
+
+void InspectorCommonObserverImpl::FlushLayoutTreeForReplayEnd(
+    std::function<void()> callback) {
+  auto devtool_mediator = mediator_wp_.lock();
+  if (!devtool_mediator) {
+    LOGE("devtool_mediator is null");
+    if (callback) {
+      callback();
+    }
+    return;
+  }
+  devtool_mediator->FlushLayoutTreeForReplayEnd(std::move(callback));
 }
 
 }  // namespace devtool

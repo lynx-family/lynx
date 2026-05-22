@@ -38,6 +38,9 @@ class TestBenchTestReplay {
   bool IsStart() { return is_start_; }
 
  private:
+  void FinishEndTest(
+      const std::string& file_path,
+      const std::shared_ptr<lynx::tasm::InspectorCommonObserver>& observer);
   void SaveDumpFile(const std::string& filename);
   friend base::NoDestructor<TestBenchTestReplay>;
   TestBenchTestReplay() = default;

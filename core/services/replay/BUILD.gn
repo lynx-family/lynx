@@ -53,6 +53,7 @@ unittest_set("replay_testset") {
     "layout_tree_testbench_unittest.cc",
     "lynx_module_testbench_unittest.cc",
     "lynx_replay_helper_unittest.cc",
+    "testbench_test_replay_unittest.cc",
   ]
   public_deps = [
     ":replay",
