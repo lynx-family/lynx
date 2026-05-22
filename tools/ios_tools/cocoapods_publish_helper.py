@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import json
 import shlex
+import time
+import re
 from skip_pod_lint import skip_pod_lint
 
 SOURCE_TYPE_ZIP = 'zip'
@@ -186,11 +188,58 @@ def pod_lint_component(component, local_pod_source_name):
     # podspec.json will write the current directory path into itself
     run_command(f'bundle exec pod spec lint {component}.podspec.json --sources=trunk,{local_pod_source_name} --verbose --skip-import-validation --allow-warnings --skip-tests')
 
+def check_version_published(component):
+    try:
+        with open(f"{component}.podspec.json", 'r', encoding='utf8') as f:
+            content = json.load(f)
+        version = content.get("version")
+        print("11111")
+        print(version)
+        if not version:
+            return False
+        
+        print(f"Checking if {component} version {version} is already published...")
+        res = subprocess.run(
+            ['bash', '-c', f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk info {component}'],
+            stderr=subprocess.STDOUT, stdout=subprocess.PIPE, text=True
+        )
+        print("33333")
+        print(res.returncode)
+        print(res.stdout)
+        if res.returncode == 0:
+            print(22222)
+            print(r'^\s*-\s*' + re.escape(version) + r'\s*\(')
+            print(res.stdout)
+            print(re.search(r'^\s*-\s*' + re.escape(version) + r'\s*\(', res.stdout, re.MULTILINE))
+            if re.search(r'^\s*-\s*' + re.escape(version) + r'\s*\(', res.stdout, re.MULTILINE):
+                print(f"Version {version} of {component} is already published. Skipping.")
+                return True
+
+        return False
+    except Exception as e:
+        print(f"Failed to check if {component} is published: {e}")
+        return False
+
 def publish_component(component, sources):
+    command = f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests'
     if sources != None:
-        run_command(f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests --sources={sources}')
-    else:
-        run_command(f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests')
+        command += f' --sources={sources}'
+
+    max_retries = 10
+    for attempt in range(max_retries):
+        if check_version_published(component):
+            return
+            
+        try:
+            print(f"Attempt {attempt + 1} to publish {component}")
+            run_command(command)
+            break
+        except subprocess.CalledProcessError as e:
+            if attempt < max_retries - 1:
+                print(f"Publish failed, retrying in 5 seconds... (Error: {e})")
+                time.sleep(10)
+            else:
+                raise
 
 
 def publish_to_cocoapods(component, sources):
