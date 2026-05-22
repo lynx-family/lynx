@@ -9,6 +9,6 @@
   "dependencies": {
     "@lynx/lynx_base": "@param:dependencies.lynx_version",
     "@lynx/lynx": "@param:dependencies.lynx_version",
-    "@lynx/servalsvg": "0.0.2",
+    "@lynx/servalsvg": "0.0.3",
   }
 }

@@ -129,6 +129,7 @@ export class LynxLogService implements ILynxBaseLogService {
 export class UISVG extends UIBase {
   layout(x: number, y: number, width: number, height: number, paddingLeft: number, paddingTop: number, paddingRight: number, paddingBottom: number, marginLeft: number, marginTop: number, marginRight: number, marginBottom: number, sticky: number[] | undefined): void;
   override onCreate(): void;
+  override dispose(): void;
   update(prop: Record<string, Object>, events: EventHandlerArray[]): void;
   onNodeReady(): void;
 }
