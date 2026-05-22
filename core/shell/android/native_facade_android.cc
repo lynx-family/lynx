@@ -157,10 +157,17 @@ void NativeFacadeAndroid::OnModuleMethodInvoked(const std::string& module,
                                                 const std::string& method,
                                                 int32_t code) {
   JNIEnv* env = AttachCurrentThread();
+
+  jobject jni_obj = jni_object_.Get();
+  if (!jni_obj) {
+    return;
+  }
+
   auto j_module = JNIConvertHelper::ConvertToJNIStringUTF(env, module);
   auto j_method = JNIConvertHelper::ConvertToJNIStringUTF(env, method);
-  Java_NativeFacade_onModuleFunctionInvoked(
-      env, jni_object_.Get(), j_module.Get(), j_method.Get(), code);
+
+  Java_NativeFacade_onModuleFunctionInvoked(env, jni_obj, j_module.Get(),
+                                            j_method.Get(), code);
 }
 
 void NativeFacadeAndroid::OnTimingSetup(const lepus::Value& timing_info) {
