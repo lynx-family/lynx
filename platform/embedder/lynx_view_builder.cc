@@ -48,6 +48,12 @@ LYNX_EXTERN_C void lynx_view_builder_set_icu_data_path(
   builder->icu_data_path = icu_data_path ? icu_data_path : "";
 }
 
+LYNX_EXTERN_C void lynx_view_builder_set_webview2_fixed_runtime_path(
+    lynx_view_builder_t* builder, const char* webview2_fixed_runtime_path) {
+  builder->webview2_fixed_runtime_path =
+      webview2_fixed_runtime_path ? webview2_fixed_runtime_path : "";
+}
+
 LYNX_EXTERN_C void lynx_view_builder_set_lynx_group(
     lynx_view_builder_t* builder, lynx_group_t* group) {
   builder->group = group;

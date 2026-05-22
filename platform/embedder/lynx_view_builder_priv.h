@@ -31,6 +31,7 @@ struct lynx_view_builder_t {
   } frame;
   float font_scale = 1.0;
   std::string icu_data_path;
+  std::string webview2_fixed_runtime_path;
   lynx_group_t* group = nullptr;
   NativeWindow parent = nullptr;
 #if defined(ENABLE_WINDOWLESS)
@@ -50,6 +51,12 @@ struct lynx_view_builder_t {
   const char* GetICUDataPath() const {
     return !icu_data_path.empty() ? icu_data_path.c_str()
                                   : lynx_env_get_icu_data_path();
+  }
+
+  const char* GetWebView2FixedRuntimePath() const {
+    return !webview2_fixed_runtime_path.empty()
+               ? webview2_fixed_runtime_path.c_str()
+               : nullptr;
   }
 };
 
