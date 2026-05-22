@@ -1730,6 +1730,13 @@ void FiberElement::ResolveCSSStyles(
         for (auto &pair : *(inherited_property.inherited_styles_)) {
           auto it = parsed_styles_map_.find(pair.first);
           if (it == parsed_styles_map_.end()) {
+            if (EnableLayoutInElementMode()) {
+              auto inherited_it = inherited_styles_->find(pair.first);
+              if (inherited_it != inherited_styles_->end() &&
+                  inherited_it->second == pair.second) {
+                continue;
+              }
+            }
             updated_inherited_styles_->insert_or_assign(pair.first,
                                                         pair.second);
             need_update = true;
