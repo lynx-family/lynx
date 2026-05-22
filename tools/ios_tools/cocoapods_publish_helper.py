@@ -7,13 +7,20 @@ import argparse
 import os
 import shutil
 import subprocess
+import time
 import json
 import shlex
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import urlopen
 from skip_pod_lint import skip_pod_lint
 
 SOURCE_TYPE_ZIP = 'zip'
 SOURCE_TYPE_GIT = 'git'
 GIT_SOURCE_REF_TYPES = ('commit', 'tag', 'branch')
+COCOAPODS_TRUNK_API = 'https://trunk.cocoapods.org/api/v1'
+PUBLISH_RETRY_ATTEMPTS = 3
+PUBLISH_RETRY_INITIAL_DELAY_SECONDS = 30
 
 def run_command(command, check=True):
     # When the "command" is a multi-line command, only the status of the last line of the command is checked.
@@ -23,6 +30,45 @@ def run_command(command, check=True):
     print(f'run command: {command}')
     res = subprocess.run(['bash', '-c', command], stderr=subprocess.STDOUT, check=check, text=True)
 
+def get_podspec_version(component):
+    with open(f"{component}.podspec.json", 'r', encoding='utf8') as f:
+        content = json.load(f)
+    return content['version']
+
+def is_pod_version_published(component, version):
+    component_path = quote(component, safe='')
+    version_path = quote(version, safe='')
+    url = f'{COCOAPODS_TRUNK_API}/pods/{component_path}/versions/{version_path}'
+
+    try:
+        with urlopen(url, timeout=15) as response:
+            content = json.load(response)
+            return bool(content.get('data_url'))
+    except HTTPError as e:
+        if e.code != 404:
+            print(f'Unable to check CocoaPods trunk for {component} {version}: HTTP {e.code}')
+        return False
+    except (URLError, TimeoutError) as e:
+        print(f'Unable to check CocoaPods trunk for {component} {version}: {e}')
+        return False
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        print(f'Unable to parse CocoaPods trunk response for {component} {version}: {e}')
+        return False
+
+def build_publish_command(component, sources):
+    podspec_json = shlex.quote(f'{component}.podspec.json')
+    command = f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {podspec_json} --verbose --skip-import-validation --allow-warnings --skip-tests'
+    if sources is not None:
+        command += f' --sources={shlex.quote(sources)}'
+    return command
+
+def wait_before_publish_retry(component, version, attempt, delay_seconds):
+    print(
+        f'Failed to publish {component} {version} '
+        f'(attempt {attempt}/{PUBLISH_RETRY_ATTEMPTS}); '
+        f'retrying in {delay_seconds} seconds.'
+    )
+    time.sleep(delay_seconds)
 
 def replace_lynx_version(version):
     lines = []
@@ -187,10 +233,28 @@ def pod_lint_component(component, local_pod_source_name):
     run_command(f'bundle exec pod spec lint {component}.podspec.json --sources=trunk,{local_pod_source_name} --verbose --skip-import-validation --allow-warnings --skip-tests')
 
 def publish_component(component, sources):
-    if sources != None:
-        run_command(f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests --sources={sources}')
-    else:
-        run_command(f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests')
+    version = get_podspec_version(component)
+    command = build_publish_command(component, sources)
+    delay_seconds = PUBLISH_RETRY_INITIAL_DELAY_SECONDS
+
+    for attempt in range(1, PUBLISH_RETRY_ATTEMPTS + 1):
+        if is_pod_version_published(component, version):
+            print(f'Skip {component} {version}; it is already published to CocoaPods trunk.')
+            return
+
+        try:
+            run_command(command)
+            return
+        except subprocess.CalledProcessError:
+            if is_pod_version_published(component, version):
+                print(f'Treat {component} {version} as published after CocoaPods trunk confirmed it.')
+                return
+
+            if attempt == PUBLISH_RETRY_ATTEMPTS:
+                raise
+
+            wait_before_publish_retry(component, version, attempt, delay_seconds)
+            delay_seconds *= 2
 
 
 def publish_to_cocoapods(component, sources):
