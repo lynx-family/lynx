@@ -307,9 +307,15 @@ void EditableView::OnLayout(LayoutContext* context) {
     // Layout content
     TextStyle temp_style = text_style_;
 #if defined(CLAY_ENABLE_TTTEXT) && (defined(OS_WIN) || defined(OS_MAC))
-    temp_style.line_height =
-        *temp_style.font_size *
-        text_style_.line_height.value_or(kDefaultLineHeight);
+    float line_height = *temp_style.font_size *
+                        text_style_.line_height.value_or(kDefaultLineHeight);
+    if (text_style_.strut_enabled.value_or(false) &&
+        text_style_.strut_height.has_value()) {
+      line_height =
+          text_style_.strut_font_size.value_or(*temp_style.font_size) *
+          static_cast<float>(*text_style_.strut_height);
+    }
+    temp_style.line_height = line_height;
 #endif
     auto builder = std::make_unique<TextParagraphBuilder>(true, temp_style);
     BuildTextSpan(temp_style)->Build(*builder);
