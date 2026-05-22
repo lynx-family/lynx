@@ -152,6 +152,22 @@ LYNX_NATIVE_RENDERER_CAPI_EXPORT lynx_fiber_element_t* lynx_create_fiber_element
   return new lynx_fiber_element_t{std::move(ref)};
 }
 
+LYNX_NATIVE_RENDERER_CAPI_EXPORT lynx_fiber_element_t*
+lynx_create_fiber_element_by_name(lynx_shell_t* shell, const char* tag_name) {
+  if (shell == nullptr || shell->manager == nullptr || tag_name == nullptr ||
+      tag_name[0] == '\0') {
+    return nullptr;
+  }
+  // `CreateFiberNode` is the generic factory ElementManager exposes
+  // for any registered tag — built-ins (`view` / `text` / `image` /
+  // `scroll-view`) and custom (`x-input` / `x-refresh` / …) alike.
+  // For tags Lynx's behaviour registry doesn't know, it returns
+  // nullptr and we surface that to the embedder.
+  auto ref = shell->manager->CreateFiberNode(lynx::base::String(tag_name));
+  if (!ref) return nullptr;
+  return new lynx_fiber_element_t{std::move(ref)};
+}
+
 LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_element_release(lynx_fiber_element_t* element) {
   delete element;
 }
