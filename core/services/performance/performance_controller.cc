@@ -15,7 +15,9 @@ namespace lynx {
 namespace tasm {
 namespace performance {
 
-PerformanceController::~PerformanceController() = default;
+PerformanceController::~PerformanceController() {
+  memory_monitor_.ReportZeroMemoryUsage();
+}
 
 fml::RefPtr<fml::TaskRunner> PerformanceController::GetTaskRunner() {
   return report::EventTrackerPlatformImpl::GetReportTaskRunner();
