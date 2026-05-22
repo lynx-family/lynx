@@ -17,19 +17,11 @@ CGFloat const kLynxCollectionScrollDefaultAnimationSpeed =
 
 NSInteger const LynxCollectionScrollInitialSrollInvalidIndex = -1;
 
-typedef NS_ENUM(NSInteger, LynxUICollectionInitialScrollIndexState) {
-  LynxUICollectionInitialScrollIndexStateInvalid,
-  LynxUICollectionInitialScrollIndexStateUnset,
-  LynxUICollectionInitialScrollIndexStateSet,
-  LynxUICollectionInitialScrollIndexStateDidScroll
-};
-
 @interface LynxCollectionScroll () <LynxCollectionScrollerHolderDelegate>
 @property(nonatomic, nullable) NSIndexPath* lastIndexPathWithValidLayoutAttributes;
 @property(nonatomic) BOOL hasEstimatedHeights;
 @property(nonatomic) CGFloat animationSpeed;
 @property(nonatomic) CGFloat safeDisappearOffset;
-@property(nonatomic) LynxUICollectionInitialScrollIndexState initialScrollIndexState;
 @property(nonatomic, strong) LynxCollectionScroller* scroller;
 @end
 
@@ -521,7 +513,7 @@ BOOL LynxCollectionScrollShouldApplyOffset(CGFloat offset,
   // Otherwise, while changing the height of the list from 0 to a valid length, the contentOffset of
   // the list will be reset as 0.
   if (_initialScrollIndexState == LynxUICollectionInitialScrollIndexStateSet &&
-      _initialScrollIndex > 0 && layout.collectionView.frame.size.height > 0) {
+      _initialScrollIndex >= 0 && layout.collectionView.frame.size.height > 0) {
     __weak typeof(self) weakSelf = self;
     __weak typeof(layout) weakLayout = layout;
     dispatch_async(dispatch_get_main_queue(), ^{

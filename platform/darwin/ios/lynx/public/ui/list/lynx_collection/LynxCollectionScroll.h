@@ -13,7 +13,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxCollectionScroll : NSObject
 @property(nonatomic) NSInteger initialScrollIndex;
+@property(nonatomic) NSInteger initialScrollIndexState;
 @property(nonatomic) BOOL horizontalLayout;
+
+typedef NS_ENUM(NSInteger, LynxUICollectionInitialScrollIndexState) {
+  LynxUICollectionInitialScrollIndexStateInvalid,
+  LynxUICollectionInitialScrollIndexStateUnset,
+  LynxUICollectionInitialScrollIndexStateSet,
+  LynxUICollectionInitialScrollIndexStateDidScroll
+};
 
 - (instancetype)init;
 - (void)scrollCollectionView:(UICollectionView *)collectionView

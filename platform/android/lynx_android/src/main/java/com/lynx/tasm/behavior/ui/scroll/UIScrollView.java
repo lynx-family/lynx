@@ -89,6 +89,9 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   int mPendingScrollToIndex = INVALID_INDEX;
   private int mPendingInitialScrollToIndex = INVALID_INDEX;
 
+  private int mKeepInitialScrollToIndex = INVALID_INDEX;
+  private int mKeepInitialScrollToOffset = 0;
+
   // support bounceView
   private UIBounceView mBounceView;
   private UIBounceView mStartUIBounce;
@@ -385,7 +388,21 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
     if (mLynxDirection == DIRECTION_RTL) {
       getView().setScrollTo(getScrollRange(), 0, false);
     } else {
-      getView().setScrollTo(0, 0, false);
+      if (mKeepInitialScrollToIndex > INVALID_INDEX) {
+        mView.setScrollToIndex(mKeepInitialScrollToIndex);
+      } else if (mKeepInitialScrollToOffset > 0) {
+        if (mEnableScrollY
+            && mKeepInitialScrollToOffset + getHeight() <= getView().getContentHeight()) {
+          int originScrollX = getView().getRealScrollX();
+          getView().setScrollTo(originScrollX, mKeepInitialScrollToOffset, false);
+        } else if (!mEnableScrollY
+            && mKeepInitialScrollToOffset + getWidth() <= getView().getContentWidth()) {
+          int originScrollY = getView().getRealScrollY();
+          getView().setScrollTo(mKeepInitialScrollToOffset, originScrollY, false);
+        }
+      } else {
+        getView().setScrollTo(0, 0, false);
+      }
     }
   }
 
@@ -627,8 +644,10 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   @LynxProp(name = "initial-scroll-to-index")
   public void setInitialScrollToIndex(@Nullable Integer value) {
     if (value == null) {
+      mKeepInitialScrollToIndex = INVALID_INDEX;
       mPropMap.remove(LynxScrollViewInitialScrollIndex);
     } else {
+      mKeepInitialScrollToIndex = value.intValue();
       mPropMap.put(LynxScrollViewInitialScrollIndex, value);
       scrollToIndexInner(value, true);
     }
@@ -637,8 +656,10 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   @LynxProp(name = "initial-scroll-offset")
   public void setInitialScrollOffset(@Nullable Integer value) {
     if (value == null) {
+      mKeepInitialScrollToOffset = 0;
       mPropMap.remove(LynxScrollViewInitialScrollOffset);
     } else {
+      mKeepInitialScrollToOffset = value;
       mPropMap.put(LynxScrollViewInitialScrollOffset, (int) PixelUtils.dipToPx(value));
       if (mEnableScrollY) {
         setScrollTopInner(value, true, true);

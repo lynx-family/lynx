@@ -308,8 +308,12 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
   }
 }
 
+- (void)onNodeReload {
+  self.scroll.initialScrollIndexState = LynxUICollectionInitialScrollIndexStateUnset;
+}
+
 - (void)setInitialScrollIndexIfNeeded {
-  if (self.numberOfColumns == 1 && self.initialScrollIndex > 0) {
+  if (self.numberOfColumns == 1 && self.initialScrollIndex >= 0) {
     self.scroll.initialScrollIndex = self.initialScrollIndex;
 
     // check if initialScrollIndex is set
@@ -318,7 +322,7 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
           [[LynxCollectionInvalidationContext alloc] initWithInitialScrollIndexSet];
       [self.view.collectionViewLayout invalidateLayoutWithContext:context];
     }
-    self.initialScrollIndex = 0;
+    self.initialScrollIndex = -1;
   }
 }
 
