@@ -243,6 +243,18 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
   @LynxProp(name = "text-selection", defaultBoolean = false)
   public void setEnableTextSelection(boolean enable) {
     mView.setEnableTextSelection(enable);
+    alignOverflowForTextSelection(enable);
+  }
+
+  private void alignOverflowForTextSelection(boolean enableTextSelection) {
+    if (!enableTextSelection || !mContext.isTextOverflowEnabled()
+        || !mContext.isLayoutInElementModeOn()) {
+      return;
+    }
+    if (getOverflow() == OVERFLOW_XY) {
+      return;
+    }
+    setOverflow(StyleConstants.OVERFLOW_VISIBLE);
   }
 
   @LynxProp(name = "custom-context-menu", defaultBoolean = false)
