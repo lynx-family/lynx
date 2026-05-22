@@ -34,8 +34,6 @@ class ListContainerAnimationManager : public ItemHolder::AnimationDelegate {
 
   void SetUpdateAnimation(bool update_animation);
 
-  void OnLayoutChildren();
-
   void EndAnimation();
 
   void InitializeAnimator();
