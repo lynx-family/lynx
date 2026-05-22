@@ -4,6 +4,7 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_INSPECTOR_COMMON_OBSERVER_IMPL_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_INSPECTOR_COMMON_OBSERVER_IMPL_H_
 
+#include <functional>
 #include <memory>
 
 #include "core/inspector/observer/inspector_common_observer.h"
@@ -25,6 +26,7 @@ class InspectorCommonObserverImpl
   ~InspectorCommonObserverImpl() noexcept override = default;
   void EndReplayTest(const std::string& file_path) override;
   void SendLayoutTree() override;
+  void FlushLayoutTreeForReplayEnd(std::function<void()> callback) override;
 
  private:
   std::weak_ptr<MessageSender> sender_;

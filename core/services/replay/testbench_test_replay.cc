@@ -30,12 +30,26 @@ void TestBenchTestReplay::EndTest(const std::string& file_path) {
   if (!is_start_) {
     return;
   }
-  if (observer_ != nullptr) {
-    observer_->SendLayoutTree();
+  auto observer = observer_;
+  if (observer != nullptr) {
+    observer->FlushLayoutTreeForReplayEnd(
+        [this, file_path, observer]() { FinishEndTest(file_path, observer); });
+    return;
+  }
+  FinishEndTest(file_path, observer);
+}
+
+void TestBenchTestReplay::FinishEndTest(
+    const std::string& file_path,
+    const std::shared_ptr<lynx::tasm::InspectorCommonObserver>& observer) {
+  if (!is_start_) {
+    return;
+  }
+  if (observer != nullptr) {
     SaveDumpFile(file_path);
 
     // send end protocol
-    observer_->EndReplayTest(file_path);
+    observer->EndReplayTest(file_path);
   }
 
   dump_file_.clear();

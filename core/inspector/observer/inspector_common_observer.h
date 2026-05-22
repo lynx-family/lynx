@@ -5,6 +5,7 @@
 #ifndef CORE_INSPECTOR_OBSERVER_INSPECTOR_COMMON_OBSERVER_H_
 #define CORE_INSPECTOR_OBSERVER_INSPECTOR_COMMON_OBSERVER_H_
 
+#include <functional>
 #include <string>
 
 namespace lynx {
@@ -16,6 +17,7 @@ class InspectorCommonObserver {
 
   virtual void EndReplayTest(const std::string& file_path) = 0;
   virtual void SendLayoutTree() = 0;
+  virtual void FlushLayoutTreeForReplayEnd(std::function<void()> callback) = 0;
 };
 
 }  // namespace tasm
