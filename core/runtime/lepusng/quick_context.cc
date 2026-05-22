@@ -32,6 +32,9 @@
 #else
 #include "quickjs/include/trace-gc.h"
 #endif
+#if ENABLE_TRACE_PERFETTO
+#include "base/trace/native/trace_event_export_symbol.h"
+#endif
 
 namespace lynx {
 namespace lepus {
@@ -520,6 +523,9 @@ LEPUSContext* QuickContextEnvWrapper::GetJsContextFromEnv(lynx_api_env env) {
 }
 
 LEPUSRuntimeData::LEPUSRuntimeData(bool disable_tracing_gc, int runtime_mode) {
+#if ENABLE_TRACE_PERFETTO
+  InitLynxTraceEnv(::TraceEventBeginEx, ::TraceEventEndEx);
+#endif
   runtime_ = LEPUS_NewRuntimeWithMode(runtime_mode);
   if (disable_tracing_gc || tasm::LynxEnv::GetInstance().IsDisableTracingGC()) {
     LEPUS_SetRuntimeInfo(runtime_, "Lynx_LepusNG_RC");

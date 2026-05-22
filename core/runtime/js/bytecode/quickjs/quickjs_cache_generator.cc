@@ -16,6 +16,9 @@
 #else
 #include "quickjs/include/trace-gc.h"
 #endif
+#if ENABLE_TRACE_PERFETTO
+#include "base/trace/native/trace_event_export_symbol.h"
+#endif
 
 namespace lynx {
 namespace runtime {
@@ -67,6 +70,9 @@ bool QuickjsCacheGenerator::GenerateCacheImpl(
     const std::string &source_url, const std::shared_ptr<const Buffer> &buffer,
     std::string &contents) {
   bool ret;
+#if ENABLE_TRACE_PERFETTO
+  InitLynxTraceEnv(::TraceEventBeginEx, ::TraceEventEndEx);
+#endif
   LEPUSRuntime *rt = LEPUS_NewRuntimeWithMode(0);
   if (!rt) {
     LOGE("makeCache init quickjs runtime failed!");

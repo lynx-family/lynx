@@ -18,6 +18,9 @@ extern "C" {
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_host_function.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_host_object.h"
+#if ENABLE_TRACE_PERFETTO
+#include "base/trace/native/trace_event_export_symbol.h"
+#endif
 
 namespace lynx {
 namespace runtime {
@@ -53,6 +56,9 @@ LepusIdContainer& QuickjsRuntimeInstance::GetFunctionIdContainer() {
 
 void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
                                                 uint32_t runtime_mode) {
+#if ENABLE_TRACE_PERFETTO
+  InitLynxTraceEnv(::TraceEventBeginEx, ::TraceEventEndEx);
+#endif
   LEPUSRuntime* rt;
   rt = LEPUS_NewRuntimeWithMode(runtime_mode);
   if (!rt) {
