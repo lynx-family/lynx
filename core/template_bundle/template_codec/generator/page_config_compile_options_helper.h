@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include "core/renderer/tasm/config.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_config_constant_auto_gen.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "third_party/rapidjson/document.h"
@@ -39,6 +40,15 @@ inline void ApplyPageConfigDerivedCompileOptions(
       compile_options.enable_css_selector_ = v;
       compile_options.enable_css_invalidation_ = v;
     }
+  }
+
+  if (doc.HasMember(config::kEnableCSSImportant) &&
+      doc[config::kEnableCSSImportant].IsBool()) {
+    compile_options.enable_css_important_ =
+        doc[config::kEnableCSSImportant].GetBool();
+  } else {
+    compile_options.enable_css_important_ = Config::IsHigherOrEqual(
+        compile_options.target_sdk_version_, FEATURE_CSS_IMPORTANT);
   }
 }
 

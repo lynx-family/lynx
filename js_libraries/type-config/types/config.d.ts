@@ -263,6 +263,17 @@ export interface Config {
   enableCreateViewAsync?: boolean;
 
   /**
+   * Controls whether CSS encode and decode preserve !important declarations in the binary template. When enabled, the encoder writes important attributes and the decoder reads them back, allowing runtime style resolution to honor !important specificity. When disabled, !important annotations are stripped during encode and ignored during decode. This config takes priority over the legacy version-gated check.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 4.0
+   *
+   * @defaultValue false
+   */
+  enableCSSImportant?: boolean;
+
+  /**
    * Controls whether the style system applies the CSS inheritance path during style propagation. When enabled, Fiber style propagation and inherited-property updates respect CSS inheritance; when disabled, inherited style propagation stays off.
    *
    * Supported platform: Android, HarmonyOS, iOS

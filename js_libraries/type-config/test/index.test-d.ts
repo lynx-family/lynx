@@ -34,6 +34,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableComponentAsyncDecode').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableComponentNullProp').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableCreateViewAsync').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableCSSImportant').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableCSSInheritance').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableCSSInlineVariables').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableCSSLazyImport').toEqualTypeOf<boolean | undefined>();

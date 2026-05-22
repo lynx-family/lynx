@@ -382,8 +382,7 @@ void TemplateBinaryWriter::EncodeCSSFragment(
 bool TemplateBinaryWriter::EncodeCSSParseToken(CSSParseToken* token) {
   DCHECK(token != nullptr);
   EncodeCSSAttributes(token->GetAttributes());
-  if (lynx::tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
-                                          FEATURE_CSS_IMPORTANT)) {
+  if (compile_options_.enable_css_important_) {
     EncodeCSSAttributes(token->GetImportantAttributes());
   }
   if (lynx::tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,

@@ -45,6 +45,13 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
   // generated page_config decode method is called first.
   LynxConfigDecoder::DecodePageConfig(page_config, doc, target_sdk_version_);
 
+  // If enableCSSImportant is not explicitly set, fall back to the legacy
+  // target SDK version gate.
+  if (!doc.HasMember(config::kEnableCSSImportant)) {
+    page_config->SetEnableCSSImportant(
+        Config::IsHigherOrEqual(target_sdk_version_, FEATURE_CSS_IMPORTANT));
+  }
+
   if (doc.HasMember(TEMPLATE_BUNDLE_MODULE_MODE) &&
       doc[TEMPLATE_BUNDLE_MODULE_MODE].IsInt()) {
     int bundleModuleModeInt = doc[TEMPLATE_BUNDLE_MODULE_MODE].GetInt();
@@ -221,6 +228,7 @@ void LynxBinaryConfigDecoder::UpdateCSSConfigs(
   compile_options_.enable_grid_placement_shorthands_ =
       page_config->GetEnableGridPlacementShorthands();
   compile_options_.enable_css_rule_ = page_config->GetEnableCSSRule();
+  compile_options_.enable_css_important_ = page_config->GetEnableCSSImportant();
   auto configs =
       CSSParserConfigs::GetCSSParserConfigsByComplierOptions(compile_options_);
   page_config->SetCSSParserConfigs(configs);
