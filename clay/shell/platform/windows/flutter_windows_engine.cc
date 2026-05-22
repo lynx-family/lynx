@@ -67,9 +67,6 @@ FlutterWindowsEngine::FlutterWindowsEngine(const FlutterProjectBundle& project)
             }
           });
 
-  if (!project_->use_software_rendering()) {
-    egl_manager_ = egl::Manager::Create();
-  }
   window_proc_delegate_manager_ = std::make_unique<WindowProcDelegateManager>();
   window_proc_delegate_manager_->RegisterTopLevelWindowProcDelegate(
       [](HWND hwnd, UINT msg, WPARAM wpar, LPARAM lpar, void* user_data,
@@ -230,7 +227,7 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
         }
       };
 
-  if (egl_manager()) {
+  if (!project_->use_software_rendering()) {
     engine_ = clay::EmbedderEngine::CreateEngine(
         settings, &custom_task_runners, (GPUSurfaceGLDelegate*)this,
         platform_dispatch_table, this, this);
@@ -244,6 +241,10 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     FML_LOG(ERROR) << "Failed to start Flutter engine";
     return false;
   }
+
+  FML_DCHECK(view_);
+  view_->CreateRenderSurface();
+
   // Step 1: Launch the shell.
   if (!engine_->LaunchShell()) {
     FML_LOG(ERROR) << "Could not launch the engine using supplied "

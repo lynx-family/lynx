@@ -45,7 +45,7 @@ TaskRunnerWin32Window::~TaskRunnerWin32Window() {
 
 std::shared_ptr<TaskRunnerWin32Window>
 TaskRunnerWin32Window::GetSharedInstance() {
-  static std::weak_ptr<TaskRunnerWin32Window> instance;
+  static thread_local std::weak_ptr<TaskRunnerWin32Window> instance;
   auto res = instance.lock();
   if (!res) {
     // can't use make_shared with private contructor

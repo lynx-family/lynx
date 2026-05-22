@@ -442,11 +442,7 @@ bool EmbedderEngine::ReloadSystemFonts() {
 }
 
 bool EmbedderEngine::PostRenderThreadTask(lynx::base::closure task) {
-  if (!IsValid()) {
-    return false;
-  }
-
-  shell_->GetTaskRunners().GetRasterTaskRunner()->PostTask(std::move(task));
+  task_runners_.GetRasterTaskRunner()->PostTask(std::move(task));
   return true;
 }
 

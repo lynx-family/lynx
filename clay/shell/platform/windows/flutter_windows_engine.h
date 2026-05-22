@@ -16,6 +16,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/closure.h"
@@ -121,6 +122,10 @@ class FlutterWindowsEngine : public PlatformViewEmbedderDelegate,
   // The EGL manager object. If this is nullptr, then we are
   // rendering using software instead of OpenGL.
   egl::Manager* egl_manager() const { return egl_manager_.get(); }
+
+  void egl_manager(std::unique_ptr<egl::Manager> manager) {
+    egl_manager_ = std::move(manager);
+  }
 
   WindowProcDelegateManager* window_proc_delegate_manager() {
     return window_proc_delegate_manager_.get();
