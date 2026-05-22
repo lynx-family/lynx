@@ -1,0 +1,11 @@
+{
+  "module": {
+    "name": "xelement_video",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet",
+      "2in1"
+    ]
+  }
+}
