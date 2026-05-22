@@ -5,7 +5,7 @@
 import { ILynxDevToolService, LLog, LynxEnv, LynxModuleManager } from '@lynx/lynx';
 import { GetJSSourceCallback, ILogBox, OnErrorCallback } from '@lynx/lynx/src/main/ets/devtool_wrapper/ILogBox';
 import { LynxBaseInspectorController } from '@lynx/lynx/src/main/ets/devtool_wrapper/LynxBaseInspectorController';
-import { NodeController } from '@kit.ArkUI';
+import { UIContext } from '@kit.ArkUI';
 
 export class LynxDevToolService implements ILynxDevToolService {
   private static TAG = 'LynxDevToolService';
@@ -107,13 +107,21 @@ export class LynxDevToolService implements ILynxDevToolService {
     }
   }
 
-  public createLogBoxComponent(logBox: ILogBox, title: string): NodeController | null {
-    let LogBoxController: ESObject = LynxDevToolService.devtoolModule?.LogBoxNodeController;
-    if (LogBoxController) {
-      return new LogBoxController(logBox, title);
+  public registerLogBox(logBox: ILogBox, uiContext: UIContext): void {
+    let LogBoxNotificationOwner: ESObject = LynxDevToolService.devtoolModule?.LogBoxNotificationOwner;
+    if (LogBoxNotificationOwner) {
+      LogBoxNotificationOwner.registerLogBox(logBox, uiContext);
     } else {
-      LLog.i(LynxDevToolService.TAG, "createLogBoxComponent logbox is null");
-      return null;
+      LLog.i(LynxDevToolService.TAG, "registerLogBox logbox notification owner is null");
+    }
+  }
+
+  public unregisterLogBox(logBox: ILogBox): void {
+    let LogBoxNotificationOwner: ESObject = LynxDevToolService.devtoolModule?.LogBoxNotificationOwner;
+    if (LogBoxNotificationOwner) {
+      LogBoxNotificationOwner.unregisterLogBox(logBox);
+    } else {
+      LLog.i(LynxDevToolService.TAG, "unregisterLogBox logbox notification owner is null");
     }
   }
 
