@@ -37,6 +37,7 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
   void SendEventToVM(const std::string& vm_type, const std::string& event_name,
                      const std::string& data) override;
   std::vector<float> GetRectToWindow() const override;
+
   std::vector<double> GetBoxModel(
       const devtool::InspectorBoxModelQuery& query) override;
   std::vector<float> GetTransformValue(
@@ -76,6 +77,12 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
   std::vector<int> transform_value_ids_;
   std::vector<std::vector<float>> transform_value_inputs_;
   std::vector<float> transform_value_response_;
+  bool supports_overlay_box_model_ = false;
+
+ protected:
+  bool SupportsOverlayBoxModel() const override {
+    return supports_overlay_box_model_;
+  }
 };
 
 }  // namespace testing

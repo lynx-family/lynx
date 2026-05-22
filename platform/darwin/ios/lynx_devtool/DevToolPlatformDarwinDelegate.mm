@@ -21,7 +21,6 @@
 
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
-#include "devtool/lynx_devtool/element/element_inspector.h"
 
 @interface DevToolPlatformDarwinDelegate ()
 - (nullable UIView*)firstResponderInView:(nullable UIView*)view;
@@ -269,14 +268,10 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     }
   }
 
-  std::vector<double> GetBoxModel(Element* element) override {
-    if (element->GetTag() == "x-overlay-ng" || element->GetTag() == "overlay") {
-      return ElementInspector::GetOverlayNGBoxModel(element);
-    }
-    auto box_model = GetBoxModelInGeneralPlatform(element);
-    return box_model;
-  }
+ protected:
+  bool SupportsOverlayBoxModel() const override { return true; }
 
+ public:
   std::vector<float> GetTransformValue(
       int identifier, const std::vector<float>& pad_border_margin_layout) override {
     __strong typeof(_darwin) darwin = _darwin;
