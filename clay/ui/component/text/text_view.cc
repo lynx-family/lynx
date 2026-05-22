@@ -611,8 +611,8 @@ std::vector<FloatPoint> TextView::GetAnchorPosition() {
   auto bounds_rect = BoundsRelativeTo(nullptr);
   auto start_point = FloatPoint(0 + bounds_rect.left(), 0 + bounds_rect.top());
   auto end_point =
-      FloatPoint(width_ + bounds_rect.left(),
-                 std::min(height_ + bounds_rect.top(), bounds_rect.bottom()));
+      FloatPoint(Width() + bounds_rect.left(),
+                 std::min(Height() + bounds_rect.top(), bounds_rect.bottom()));
   auto left = std::min(start_point.x(), end_point.x());
   auto top = std::min(start_point.y(), end_point.y());
   auto right = std::max(start_point.x(), end_point.x());

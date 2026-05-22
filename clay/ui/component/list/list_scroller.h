@@ -67,7 +67,7 @@ class ListScroller {
 
   BaseListView* list_view_ = nullptr;
   int position_ = ListItemViewHolder::kNoPosition;
-  std::string id_;
+  std::string id_str_;
   float offset_ = 0.f;
   AlignTo align_to_ = AlignTo::kNone;
   std::optional<FloatRect> target_rect_;  // Relative to item if has value

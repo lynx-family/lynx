@@ -192,7 +192,7 @@ void SelectionPopupView::UpdatePosWithScroll(FloatPoint scroll_offset,
                                              FloatRect bounding_rect) {
   SetY(scroll_offset.y() < 0
            ? std::max(scroll_offset.y() + origin_top_,
-                      bounding_rect.top() - height_ -
+                      bounding_rect.top() - Height() -
                           FromLogical(kPopupContentDistance))
            : std::min(scroll_offset.y() + origin_top_, bounding_rect.bottom()));
   SetX(scroll_offset.x() + origin_left_);

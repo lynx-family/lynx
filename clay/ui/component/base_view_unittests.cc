@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <memory>
+#include <variant>
 
 #include "clay/fml/logging.h"
 #include "clay/ui/component/base_view.h"
@@ -21,6 +22,40 @@ PointerEvent CreateDownPointer(float x, float y) {
 }
 
 class BaseViewTest : public UITest {};
+
+namespace {
+
+class ClipPathTestView : public View {
+ public:
+  using View::View;
+
+  const std::optional<ClipPathData>& clip_path_data() const {
+    return clip_path_data_;
+  }
+};
+
+void AppendLength(clay::Value::Array& array, double value,
+                  ClayPlatformLengthUnit unit) {
+  array.emplace_back(value);
+  array.emplace_back(static_cast<int32_t>(unit));
+}
+
+clay::Value::Array CreateInsetClipPathArray(
+    const std::vector<std::pair<double, ClayPlatformLengthUnit>>& lengths) {
+  clay::Value::Array array;
+  array.emplace_back(static_cast<int32_t>(ClayBasicShapeType::kInset));
+  for (auto [value, unit] : lengths) {
+    AppendLength(array, value, unit);
+  }
+  return array;
+}
+
+const GrPath& GetClipPathAsPath(BaseView* view) {
+  auto& clip_path = view->render_object()->ClipPath();
+  return std::get<GrPath>(clip_path);
+}
+
+}  // namespace
 
 TEST_F_UI(BaseViewTest, TreeManipulation) {
   int view_id = 0;
@@ -133,6 +168,60 @@ TEST_F_UI(BaseViewTest, HitTest) {
 
   root->DestroyAllChildren();
   root->Destroy();
+}
+
+TEST_F_UI(BaseViewTest, ClipPathInsetResolvesPercentAgainstAxes) {
+  ClipPathTestView view(1, page_.get());
+  auto clip_path =
+      CreateInsetClipPathArray({{0.1, ClayPlatformLengthUnit::kPercentage},
+                                {0.2, ClayPlatformLengthUnit::kPercentage},
+                                {0.3, ClayPlatformLengthUnit::kPercentage},
+                                {0.4, ClayPlatformLengthUnit::kPercentage}});
+
+  view.SetClipOffsetPath(clip_path, true);
+  view.SetBound(0, 0, 200, 100);
+
+  ASSERT_TRUE(view.render_object()->HasClipPath());
+  auto bounds = PATH_GET_BOUNDS(GetClipPathAsPath(&view));
+  EXPECT_FLOAT_EQ(bounds.left(), 80.f);
+  EXPECT_FLOAT_EQ(bounds.top(), 10.f);
+  EXPECT_FLOAT_EQ(bounds.right(), 160.f);
+  EXPECT_FLOAT_EQ(bounds.bottom(), 70.f);
+}
+
+TEST_F_UI(BaseViewTest, ClipPathSuperEllipseInsetUsesCorrectRadiusAndAxes) {
+  ClipPathTestView view(1, page_.get());
+  auto clip_path =
+      CreateInsetClipPathArray({{5, ClayPlatformLengthUnit::kNumber},
+                                {30, ClayPlatformLengthUnit::kNumber},
+                                {10, ClayPlatformLengthUnit::kNumber},
+                                {20, ClayPlatformLengthUnit::kNumber}});
+  clip_path.emplace_back(2.0);
+  clip_path.emplace_back(2.0);
+  AppendLength(clip_path, 11, ClayPlatformLengthUnit::kNumber);
+  AppendLength(clip_path, 12, ClayPlatformLengthUnit::kNumber);
+  AppendLength(clip_path, 21, ClayPlatformLengthUnit::kNumber);
+  AppendLength(clip_path, 22, ClayPlatformLengthUnit::kNumber);
+  AppendLength(clip_path, 31, ClayPlatformLengthUnit::kNumber);
+  AppendLength(clip_path, 32, ClayPlatformLengthUnit::kNumber);
+  AppendLength(clip_path, 41, ClayPlatformLengthUnit::kNumber);
+  AppendLength(clip_path, 42, ClayPlatformLengthUnit::kNumber);
+
+  view.SetClipOffsetPath(clip_path, true);
+  ASSERT_TRUE(view.clip_path_data().has_value());
+  ASSERT_EQ(view.clip_path_data()->radius.size(), 4u);
+  EXPECT_DOUBLE_EQ(view.clip_path_data()->radius[2].y.value, 32);
+  EXPECT_DOUBLE_EQ(view.clip_path_data()->radius[3].x.value, 41);
+  EXPECT_DOUBLE_EQ(view.clip_path_data()->radius[3].y.value, 42);
+
+  view.SetBound(0, 0, 200, 100);
+
+  ASSERT_TRUE(view.render_object()->HasClipPath());
+  auto bounds = PATH_GET_BOUNDS(GetClipPathAsPath(&view));
+  EXPECT_FLOAT_EQ(bounds.left(), 20.f);
+  EXPECT_FLOAT_EQ(bounds.top(), 5.f);
+  EXPECT_FLOAT_EQ(bounds.right(), 170.f);
+  EXPECT_FLOAT_EQ(bounds.bottom(), 90.f);
 }
 
 class BaseViewWithChildrenTest : public UITest {

@@ -544,34 +544,11 @@ class RenderObject : public AbstractNode {
 
   void UpdateOffsetTransform(const skity::Matrix& matrix);
 
-  ElementId id_{-1};
-
-  // Whether this render object repaints separately from its parent.
-  bool repaint_boundary_ = false;
-  // Whether this render object's paint information is dirty.
-  bool needs_paint_ = true;
-  // Whether this render object's paint effect is updated, if needs_paint_ is
-  // false, we only update effects and reuse the last draw recording.
-  bool needs_effect_ = false;
-
-  bool visible_ = true;
-
-  bool painting_ = false;
-
-  bool overlay_ = false;
-  bool is_overlay_ng_ = false;
-  //  1 to 4 . 4 levels totally. level 4 is the top level, and level 1 is the
-  //  bottom level.
-  int overlay_level_ = 1;
-
-  // hack for demo
-  bool has_default_focus_ring_ = false;
-
-  CacheStrategy strategy_ = CacheStrategy::None;
-
   // The width/height of the contents + borders + padding.  The left/top
   // location is relative to our container (which is not always our parent).
   BoxData box_data_;
+  ElementId id_{-1};
+
   std::optional<BackgroundData> background_data_;
   std::optional<MaskData> mask_data_;
   std::optional<BordersData> border_;
@@ -580,22 +557,13 @@ class RenderObject : public AbstractNode {
   std::optional<TransformOperations> offset_transform_;
   std::optional<TransformOperations> transform_;
   std::optional<float> perspective_;
-  FloatPoint transform_origin_;
   std::optional<float> opacity_ = std::nullopt;
-  float blur_radius_ = 0.f;
+
   std::vector<float> current_color_filter_matrix_;
+  std::vector<RenderObject*> sorted_children_;
+
   ClipPathType clip_shape_;
   MotionPath motion_path_;
-  FilterMode image_filter_mode_ = FilterMode::kLinear;
-  ClayAnimationPropertyType raster_transition_properties_;
-  ClayAnimationPropertyType raster_animation_properties_;
-  TransitionManager* transition_manager_;
-  KeyframesManager* keyframes_manager_;
-
-  RenderObject* previous_;
-  RenderObject* next_;
-
-  RenderObjectChildList children_;
 
   std::unique_ptr<BackgroundOrMaskImageClient> bg_image_client_;
   std::unique_ptr<BackgroundOrMaskImageClient> mask_image_client_;
@@ -603,15 +571,47 @@ class RenderObject : public AbstractNode {
   std::unique_ptr<PendingContainerLayer> compositor_layer_;
   // The container_layer_ is the root of the content layer and other subtree.
   std::unique_ptr<PendingContainerLayer> container_layer_;
+
+  RenderObjectChildList children_;
+
   std::array<std::unique_ptr<PendingEffectLayer>,
              static_cast<size_t>(EffectType::kLast) + 1u>
       effect_layers_;
+
+  TransitionManager* transition_manager_ = nullptr;
+  KeyframesManager* keyframes_manager_ = nullptr;
+  RenderObject* previous_ = nullptr;
+  RenderObject* next_ = nullptr;
+
+  FloatPoint transform_origin_;
+  float blur_radius_ = 0.f;
+  float translate_z_ = 0.f;
+  //  1 to 4 . 4 levels totally. level 4 is the top level, and level 1 is the
+  //  bottom level.
+  int overlay_level_ = 1;
+  int painting_order_ = 0;
+
+  CacheStrategy strategy_ = CacheStrategy::None;
+  FilterMode image_filter_mode_ = FilterMode::kLinear;
+  ClayAnimationPropertyType raster_transition_properties_ =
+      ClayAnimationPropertyType::kNone;
+  ClayAnimationPropertyType raster_animation_properties_ =
+      ClayAnimationPropertyType::kNone;
   uint8_t overflow_ = CSSProperty::OVERFLOW_XY;
 
-  float translate_z_ = 0.f;
-  int painting_order_ = 0;
-  std::vector<RenderObject*> sorted_children_;
-
+  // Whether this render object repaints separately from its parent.
+  bool repaint_boundary_ = false;
+  // Whether this render object's paint information is dirty.
+  bool needs_paint_ = true;
+  // Whether this render object's paint effect is updated, if needs_paint_ is
+  // false, we only update effects and reuse the last draw recording.
+  bool needs_effect_ = false;
+  bool visible_ = true;
+  bool painting_ = false;
+  bool overlay_ = false;
+  bool is_overlay_ng_ = false;
+  // hack for demo
+  bool has_default_focus_ring_ = false;
   bool image_decode_with_priority_ = false;
 };
 

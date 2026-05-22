@@ -72,7 +72,7 @@ LYNX_UI_METHOD_END(ListContainerWrapper);
 ListContainerWrapper::ListContainerWrapper(int32_t id, PageView* page_view)
     : WithTypeInfo(id, ScrollDirection::kVertical, kListContainerWrapperTag,
                    page_view) {
-  view_ = new ListContainerView(-1, page_view, id_);
+  view_ = new ListContainerView(-1, page_view, id);
   view_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
   view_->SetRepaintBoundary(true);
   GetListContainerView()->SetDelegate(this);
@@ -85,14 +85,14 @@ void ListContainerWrapper::OnScrollByListContainer(float offset_x,
                                                    float original_x,
                                                    float original_y) {
   if (auto delegate = page_view_->GetUIComponentDelegate()) {
-    delegate->OnScrollByListContainer(id_, offset_x, offset_y, original_x,
+    delegate->OnScrollByListContainer(id(), offset_x, offset_y, original_x,
                                       original_y);
   }
 }
 
 void ListContainerWrapper::OnScrollStopped() {
   if (auto delegate = page_view_->GetUIComponentDelegate()) {
-    delegate->OnScrollStopped(id_);
+    delegate->OnScrollStopped(id());
   }
 }
 
@@ -202,7 +202,7 @@ void ListContainerWrapper::OnNodeReady() {
 void ListContainerWrapper::OnScrollToPosition(int position, float offset,
                                               int align, bool smooth) {
   if (auto delegate = page_view_->GetUIComponentDelegate()) {
-    delegate->OnScrollToPosition(id_, position, offset, align, smooth);
+    delegate->OnScrollToPosition(id(), position, offset, align, smooth);
   }
 }
 

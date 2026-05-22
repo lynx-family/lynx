@@ -679,7 +679,7 @@ void BaseImageView::OnCurrentLoopComplete() { NotifyCurrentLoopComplete(); }
 void BaseImageView::OnFinalLoopComplete() { NotifyFinalLoopComplete(); }
 void BaseImageView::AdjustSizeIfNeeded(bool auto_size, float bitmap_width,
                                        float bitmap_height) {
-  auto* shadow_node = page_view()->GetShadowNodeById(id_);
+  auto* shadow_node = page_view()->GetShadowNodeById(id());
   if (shadow_node && shadow_node->IsImageShadowNode()) {
     static_cast<ImageShadowNode*>(shadow_node)
         ->AdjustSizeIfNeeded(auto_size, bitmap_width, bitmap_height);

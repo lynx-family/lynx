@@ -130,14 +130,12 @@ BaseView::BaseView(std::unique_ptr<RenderObject> render_object,
 BaseView::BaseView(int id, std::string tag_name,
                    std::unique_ptr<RenderObject> render_object,
                    PageView* page_view)
-    : id_(id),
-      tag_(tag_name),
+    : tag_(tag_name),
       page_view_(page_view),
       render_object_(std::move(render_object)),
-      weak_factory_(this),
-      overflow_(page_view_->DefaultOverflow()) {
-  render_object_->SetID(id_);
-  render_object_->SetOverflow(overflow_);
+      weak_factory_(this) {
+  render_object_->SetID(id);
+  render_object_->SetOverflow(page_view_->DefaultOverflow());
 #if defined(ENABLE_MOUSE_TRACKING)
   if (page_view != this) {
     auto* mouse_region_manager = page_view->mouse_region_manager();
@@ -415,6 +413,63 @@ int BaseView::GetPaintingOrder() const {
   return render_object()->GetPaintingOrder();
 }
 
+int BaseView::id() const {
+  return render_object() ? render_object()->ID() : -1;
+}
+
+int BaseView::GetOverflow() const {
+  return render_object() ? render_object()->Overflow()
+                         : CSSProperty::OVERFLOW_XY;
+}
+
+float BaseView::Left() const {
+  return render_object() ? render_object()->Left() : 0.f;
+}
+
+float BaseView::Top() const {
+  return render_object() ? render_object()->Top() : 0.f;
+}
+
+float BaseView::Width() const {
+  return render_object() ? render_object()->Width() : 0.f;
+}
+
+float BaseView::Height() const {
+  return render_object() ? render_object()->Height() : 0.f;
+}
+
+float BaseView::MarginLeft() const {
+  return render_object() ? render_object()->MarginLeft() : 0.f;
+}
+
+float BaseView::MarginTop() const {
+  return render_object() ? render_object()->MarginTop() : 0.f;
+}
+
+float BaseView::MarginRight() const {
+  return render_object() ? render_object()->MarginRight() : 0.f;
+}
+
+float BaseView::MarginBottom() const {
+  return render_object() ? render_object()->MarginBottom() : 0.f;
+}
+
+float BaseView::PaddingLeft() const {
+  return render_object() ? render_object()->PaddingLeft() : 0.f;
+}
+
+float BaseView::PaddingTop() const {
+  return render_object() ? render_object()->PaddingTop() : 0.f;
+}
+
+float BaseView::PaddingRight() const {
+  return render_object() ? render_object()->PaddingRight() : 0.f;
+}
+
+float BaseView::PaddingBottom() const {
+  return render_object() ? render_object()->PaddingBottom() : 0.f;
+}
+
 bool BaseView::IsDescendant(BaseView* a_view) const {
   BaseView* to_check = a_view;
   while (to_check != nullptr) {
@@ -438,28 +493,28 @@ void BaseView::SetRepaintBoundary(bool repaint_boundary) {
 }
 
 void BaseView::SetX(float x) {
-  if (left_ == x) {
+  if (Left() == x) {
     return;
   }
   TransitionTo(ClayAnimationPropertyType::kLeft, x);
 }
 
 void BaseView::SetY(float y) {
-  if (top_ == y) {
+  if (Top() == y) {
     return;
   }
   TransitionTo(ClayAnimationPropertyType::kTop, y);
 }
 
 void BaseView::SetWidth(float width) {
-  if (width_ == width) {
+  if (Width() == width) {
     return;
   }
   TransitionTo(ClayAnimationPropertyType::kWidth, width);
 }
 
 void BaseView::SetHeight(float height) {
-  if (height_ == height) {
+  if (Height() == height) {
     return;
   }
   TransitionTo(ClayAnimationPropertyType::kHeight, height);
@@ -476,7 +531,7 @@ void BaseView::SetBound(float left, float top, float width, float height) {
   SetWidth(width);
 
   const bool should_couple_top_with_height_transition =
-      top_ != top && height_ != height && IsTransitionAnimationReady() &&
+      Top() != top && Height() != height && IsTransitionAnimationReady() &&
       transition_mgr_ &&
       transition_mgr_->Enabled(ClayAnimationPropertyType::kHeight) &&
       !transition_mgr_->Enabled(ClayAnimationPropertyType::kTop);
@@ -531,7 +586,7 @@ float BaseView::Opacity() {
 }
 
 void BaseView::SetOverflowWithMask(uint8_t mask, int overflow) {
-  int new_val = overflow_;
+  int new_val = GetOverflow();
   if (overflow == static_cast<int>(ClayOverflowType::kVisible)) {
     new_val |= mask;
   } else {
@@ -541,11 +596,10 @@ void BaseView::SetOverflowWithMask(uint8_t mask, int overflow) {
 }
 
 void BaseView::SetOverflow(int overflow) {
-  if (overflow_ == overflow) {
+  if (GetOverflow() == overflow) {
     return;
   }
-  overflow_ = overflow;
-  render_object()->SetOverflow(overflow_);
+  render_object()->SetOverflow(overflow);
 }
 
 void BaseView::SetBorder(const BordersData& data) {
@@ -689,7 +743,7 @@ void BaseView::SetBorderRadius(const FloatSize& left_top,
   border.radius_y_bottom_right_length_.SetValue(right_bottom.height());
   border.radius_x_bottom_left_length_.SetValue(left_bottom.width());
   border.radius_y_bottom_left_length_.SetValue(left_bottom.height());
-  border.UpdateRadius(width_, height_);
+  border.UpdateRadius(Width(), Height());
   OnBorderChanged(border);
   OnLayoutChange();
 }
@@ -721,7 +775,7 @@ void BaseView::SetBorderRadius(size_t index, const std::vector<Length>& array) {
     return;
   }
 
-  border.UpdateRadius(width_, height_);
+  border.UpdateRadius(Width(), Height());
   OnBorderChanged(border);
 }
 
@@ -936,9 +990,7 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
         FML_DLOG(ERROR) << "Setting clip-path: error Circle format!";
         return;
       }
-      if (!path_data.has_value()) {
-        path_data = ClipPathData{};
-      }
+      path_data = ClipPathData{};
       path_data->params.emplace_back(radius_length);
       path_data->params.emplace_back(radius_length);
       path_data->params.emplace_back(x_pos_length);
@@ -957,9 +1009,7 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
         FML_DLOG(ERROR) << "Setting clip-path: error Ellipse format!";
         return;
       }
-      if (!path_data.has_value()) {
-        path_data = ClipPathData{};
-      }
+      path_data = ClipPathData{};
       path_data->params.emplace_back(x_length);
       path_data->params.emplace_back(y_length);
       path_data->params.emplace_back(x_pos_length);
@@ -999,9 +1049,7 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
         FML_DLOG(ERROR) << "Setting clip-path: error inset format!";
         return;
       }
-      if (!path_data.has_value()) {
-        path_data = ClipPathData{};
-      }
+      path_data = ClipPathData{};
       path_data->params.emplace_back(radius_x);
       path_data->params.emplace_back(radius_y);
       path_data->params.emplace_back(center_x);
@@ -1029,9 +1077,7 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
         FML_DLOG(ERROR) << "Setting clip-path: error inset format!";
         return;
       }
-      if (!path_data.has_value()) {
-        path_data = ClipPathData{};
-      }
+      path_data = ClipPathData{};
       path_data->params.emplace_back(top_length);
       path_data->params.emplace_back(right_length);
       path_data->params.emplace_back(bottom_length);
@@ -1041,8 +1087,7 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
       if (array.size() == 9) {
         // Rect only has first 8 params.
         path_data->corner_type = ClipPathData::CornerType::kCornerRect;
-      }
-      if (array.size() == 27) {
+      } else if (array.size() == 27) {
         // super-ellipse has two more fields for exponents before border-radius.
         // | exponent-x | exponent-y | border-radius ...|
         path_data->exponents.emplace_back(array[9].GetDouble());
@@ -1050,6 +1095,11 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
         radius_offset = 11;
         path_data->corner_type =
             ClipPathData::CornerType::kCornerSuperElliptical;
+      } else if (array.size() == 25) {
+        path_data->corner_type = ClipPathData::CornerType::kCornerRounded;
+      } else {
+        // invalid params array
+        return;
       }
       if (array.size() == 27 || array.size() == 25) {
         // clang-format off
@@ -1061,33 +1111,31 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
         // clang-format on
         ClipPathData::BorderRadius radius_top_left, radius_top_right,
             radius_bottom_right, radius_bottom_left;
-        utils::TryGetPlatformLength(array, 0 + radius_offset,
-                                    radius_top_left.x);
-        utils::TryGetPlatformLength(array, 2 + radius_offset,
-                                    radius_top_left.y);
-        utils::TryGetPlatformLength(array, 4 + radius_offset,
-                                    radius_top_right.x);
-        utils::TryGetPlatformLength(array, 6 + radius_offset,
-                                    radius_top_right.y);
-        utils::TryGetPlatformLength(array, 8 + radius_offset,
-                                    radius_bottom_right.x);
-        utils::TryGetPlatformLength(array, 12 + radius_offset,
-                                    radius_bottom_right.y);
-        utils::TryGetPlatformLength(array, 12 + radius_offset,
-                                    radius_bottom_left.x);
-        utils::TryGetPlatformLength(array, 14 + radius_offset,
-                                    radius_bottom_left.y);
+        result &= utils::TryGetPlatformLength(array, 0 + radius_offset,
+                                              radius_top_left.x);
+        result &= utils::TryGetPlatformLength(array, 2 + radius_offset,
+                                              radius_top_left.y);
+        result &= utils::TryGetPlatformLength(array, 4 + radius_offset,
+                                              radius_top_right.x);
+        result &= utils::TryGetPlatformLength(array, 6 + radius_offset,
+                                              radius_top_right.y);
+        result &= utils::TryGetPlatformLength(array, 8 + radius_offset,
+                                              radius_bottom_right.x);
+        result &= utils::TryGetPlatformLength(array, 10 + radius_offset,
+                                              radius_bottom_right.y);
+        result &= utils::TryGetPlatformLength(array, 12 + radius_offset,
+                                              radius_bottom_left.x);
+        result &= utils::TryGetPlatformLength(array, 14 + radius_offset,
+                                              radius_bottom_left.y);
+        if (!result) {
+          FML_DLOG(ERROR) << "Setting clip-path: error inset radius format!";
+          return;
+        }
 
         path_data->radius.emplace_back(radius_top_left);
         path_data->radius.emplace_back(radius_top_right);
         path_data->radius.emplace_back(radius_bottom_right);
         path_data->radius.emplace_back(radius_bottom_left);
-        if (array.size() == 25) {
-          path_data->corner_type = ClipPathData::CornerType::kCornerRounded;
-        }
-      } else {
-        // invalid params array
-        return;
       }
       path_data->clip_type = ClipPathData::ClipType::kInset;
       break;
@@ -1113,11 +1161,13 @@ void BaseView::DrawClipPath(bool is_clip_path) {
       if (path_data->params.size() != 4) {
         break;
       }
-      float x_len = utils::ResolvePlatformLength(path_data->params[0], width_);
-      float y_len = utils::ResolvePlatformLength(path_data->params[1], height_);
+      float x_len = utils::ResolvePlatformLength(path_data->params[0], Width());
+      float y_len =
+          utils::ResolvePlatformLength(path_data->params[1], Height());
       float radius = std::min(x_len, y_len);
-      float x_pos = utils::ResolvePlatformLength(path_data->params[2], width_);
-      float y_pos = utils::ResolvePlatformLength(path_data->params[3], height_);
+      float x_pos = utils::ResolvePlatformLength(path_data->params[2], Width());
+      float y_pos =
+          utils::ResolvePlatformLength(path_data->params[3], Height());
       FloatRoundedRect rrect;
       rrect.SetOval({x_pos - radius, y_pos - radius, 2 * radius, 2 * radius});
       SET_PATH(rrect);
@@ -1127,10 +1177,12 @@ void BaseView::DrawClipPath(bool is_clip_path) {
       if (path_data->params.size() != 4) {
         break;
       }
-      float x_len = utils::ResolvePlatformLength(path_data->params[0], width_);
-      float y_len = utils::ResolvePlatformLength(path_data->params[1], height_);
-      float x_pos = utils::ResolvePlatformLength(path_data->params[2], width_);
-      float y_pos = utils::ResolvePlatformLength(path_data->params[3], height_);
+      float x_len = utils::ResolvePlatformLength(path_data->params[0], Width());
+      float y_len =
+          utils::ResolvePlatformLength(path_data->params[1], Height());
+      float x_pos = utils::ResolvePlatformLength(path_data->params[2], Width());
+      float y_pos =
+          utils::ResolvePlatformLength(path_data->params[3], Height());
       FloatRoundedRect rrect;
       rrect.SetOval({x_pos - x_len, y_pos - y_len, 2 * x_len, 2 * y_len});
       SET_PATH(rrect);
@@ -1143,10 +1195,10 @@ void BaseView::DrawClipPath(bool is_clip_path) {
         break;
       }
       GrPath path;
-      float rx = utils::ResolvePlatformLength(path_data->params[0], width_);
-      float ry = utils::ResolvePlatformLength(path_data->params[1], height_);
-      float cx = utils::ResolvePlatformLength(path_data->params[2], width_);
-      float cy = utils::ResolvePlatformLength(path_data->params[3], height_);
+      float rx = utils::ResolvePlatformLength(path_data->params[0], Width());
+      float ry = utils::ResolvePlatformLength(path_data->params[1], Height());
+      float cx = utils::ResolvePlatformLength(path_data->params[2], Width());
+      float cy = utils::ResolvePlatformLength(path_data->params[3], Height());
       float ex = path_data->exponents[0];
       float ey = path_data->exponents[1];
       if (rx == 0 && ry == 0) {
@@ -1164,54 +1216,58 @@ void BaseView::DrawClipPath(bool is_clip_path) {
       if (path_data->params.size() != 4) {
         break;
       }
-      double top = utils::ResolvePlatformLength(path_data->params[0], width_);
-      double right = utils::ResolvePlatformLength(path_data->params[1], width_);
+      double top = utils::ResolvePlatformLength(path_data->params[0], Height());
+      double right =
+          utils::ResolvePlatformLength(path_data->params[1], Width());
       double bottom =
-          utils::ResolvePlatformLength(path_data->params[2], width_);
-      double left = utils::ResolvePlatformLength(path_data->params[3], width_);
+          utils::ResolvePlatformLength(path_data->params[2], Height());
+      double left = utils::ResolvePlatformLength(path_data->params[3], Width());
 
       // Adjust inset value, values are proportionally reduce the inset effect
       // to 100% if the pair of insets in either dimension add up to more than
       // the side length.
       double v_inset = top + bottom;
       double h_inset = left + right;
-      if (v_inset != 0 && (v_inset > height_)) {
-        double s = height_ / v_inset;
+      if (v_inset != 0 && (v_inset > Height())) {
+        double s = Height() / v_inset;
         top *= s;
         bottom *= s;
       }
-      if (h_inset != 0 && (h_inset > width_)) {
-        double s = width_ / h_inset;
+      if (h_inset != 0 && (h_inset > Width())) {
+        double s = Width() / h_inset;
         left *= s;
         right *= s;
       }
 
-      float radius_top_left_x =
-          utils::ResolvePlatformLength(path_data->radius[0].x, width_);
-      float radius_top_left_y =
-          utils::ResolvePlatformLength(path_data->radius[0].y, width_);
-      float radius_top_right_x =
-          utils::ResolvePlatformLength(path_data->radius[1].x, width_);
-      float radius_top_right_y =
-          utils::ResolvePlatformLength(path_data->radius[1].y, width_);
-      float radius_bottom_right_x =
-          utils::ResolvePlatformLength(path_data->radius[2].x, width_);
-      float radius_bottom_right_y =
-          utils::ResolvePlatformLength(path_data->radius[2].y, width_);
-      float radius_bottom_left_x =
-          utils::ResolvePlatformLength(path_data->radius[3].x, width_);
-      float radius_bottom_left_y =
-          utils::ResolvePlatformLength(path_data->radius[3].y, width_);
       switch (path_data->corner_type) {
         case ClipPathData::CornerType::kCornerRect: {
           GrPath path;
-          skity::Rect rect = skity::Rect::MakeLTRB(left, top, width_ - right,
-                                                   height_ - bottom);
+          skity::Rect rect = skity::Rect::MakeLTRB(left, top, Width() - right,
+                                                   Height() - bottom);
           PATH_ADD_RECT(path, rect);
           SET_PATH(path);
           break;
         }
         case ClipPathData::CornerType::kCornerRounded: {
+          if (path_data->radius.size() != 4) {
+            break;
+          }
+          float radius_top_left_x =
+              utils::ResolvePlatformLength(path_data->radius[0].x, Width());
+          float radius_top_left_y =
+              utils::ResolvePlatformLength(path_data->radius[0].y, Height());
+          float radius_top_right_x =
+              utils::ResolvePlatformLength(path_data->radius[1].x, Width());
+          float radius_top_right_y =
+              utils::ResolvePlatformLength(path_data->radius[1].y, Height());
+          float radius_bottom_right_x =
+              utils::ResolvePlatformLength(path_data->radius[2].x, Width());
+          float radius_bottom_right_y =
+              utils::ResolvePlatformLength(path_data->radius[2].y, Height());
+          float radius_bottom_left_x =
+              utils::ResolvePlatformLength(path_data->radius[3].x, Width());
+          float radius_bottom_left_y =
+              utils::ResolvePlatformLength(path_data->radius[3].y, Height());
           GrPath path;
           skity::Vec2 radii[4] = {
               {radius_top_left_x, radius_top_left_y},
@@ -1220,17 +1276,34 @@ void BaseView::DrawClipPath(bool is_clip_path) {
               {radius_bottom_left_x, radius_bottom_left_y}};
           skity::RRect rrect;
           rrect.SetRectRadii(
-              skity::Rect::MakeXYWH(left, top, width_ - left - right,
-                                    height_ - top - bottom),
+              skity::Rect::MakeXYWH(left, top, Width() - left - right,
+                                    Height() - top - bottom),
               radii);
           PATH_ADD_RRECT(path, rrect);
           SET_PATH(path);
           break;
         }
         case ClipPathData::CornerType::kCornerSuperElliptical: {
-          if (path_data->exponents.size() != 2) {
+          if (path_data->exponents.size() != 2 ||
+              path_data->radius.size() != 4) {
             break;
           }
+          float radius_top_left_x =
+              utils::ResolvePlatformLength(path_data->radius[0].x, Width());
+          float radius_top_left_y =
+              utils::ResolvePlatformLength(path_data->radius[0].y, Height());
+          float radius_top_right_x =
+              utils::ResolvePlatformLength(path_data->radius[1].x, Width());
+          float radius_top_right_y =
+              utils::ResolvePlatformLength(path_data->radius[1].y, Height());
+          float radius_bottom_right_x =
+              utils::ResolvePlatformLength(path_data->radius[2].x, Width());
+          float radius_bottom_right_y =
+              utils::ResolvePlatformLength(path_data->radius[2].y, Height());
+          float radius_bottom_left_x =
+              utils::ResolvePlatformLength(path_data->radius[3].x, Width());
+          float radius_bottom_left_y =
+              utils::ResolvePlatformLength(path_data->radius[3].y, Height());
           GrPath path;
           std::vector<float> radius = {
               radius_top_left_x,     radius_top_left_y,
@@ -1241,17 +1314,17 @@ void BaseView::DrawClipPath(bool is_clip_path) {
           // bottom-right corner
           float rx = radius[4];
           float ry = radius[5];
-          float cx = width_ - right - rx;
-          float cy = width_ - bottom - ry;
+          float cx = Width() - right - rx;
+          float cy = Height() - bottom - ry;
           float ex = path_data->exponents[0];
           float ey = path_data->exponents[1];
           AddLameCurveToPath(path, rx, ry, cx, cy, ex, ey, 1);
 
           // bottom-left corner
           rx = radius[6];
-          rx = radius[7];
+          ry = radius[7];
           cx = left + rx;
-          cy = width_ - bottom - ry;
+          cy = Height() - bottom - ry;
           AddLameCurveToPath(path, rx, ry, cx, cy, ex, ey, 2);
 
           // top-left corner
@@ -1264,7 +1337,7 @@ void BaseView::DrawClipPath(bool is_clip_path) {
           // top-right corner
           rx = radius[2];
           ry = radius[3];
-          cx = width_ - right - rx;
+          cx = Width() - right - rx;
           cy = top + ry;
           AddLameCurveToPath(path, rx, ry, cx, cy, ex, ey, 4);
           SET_PATH(path);
@@ -1348,7 +1421,6 @@ void BaseView::SetImageRendering(ClayImageRendering image_rendering) {
 }
 
 void BaseView::SetID(int id) {
-  id_ = id;
   if (render_object()) {
     render_object()->SetID(id);
   }
@@ -1826,20 +1898,16 @@ void BaseView::SetProperty(ClayAnimationPropertyType type, float value,
   FloatRect old_bounds = GetBounds();
   switch (type) {
     case ClayAnimationPropertyType::kLeft:
-      left_ = value;
       render_object()->SetLeft(value);
       break;
     case ClayAnimationPropertyType::kTop:
-      top_ = value;
       render_object()->SetTop(value);
       break;
     case ClayAnimationPropertyType::kWidth:
-      width_ = value;
       render_object()->SetWidth(value);
       UpdateRenderObjectTransformOrigin();
       break;
     case ClayAnimationPropertyType::kHeight:
-      height_ = value;
       render_object()->SetHeight(value);
       UpdateRenderObjectTransformOrigin();
       break;
@@ -1986,16 +2054,16 @@ void BaseView::SetBoxShadowOperations(const BoxShadowOperations& value) {
 void BaseView::GetProperty(ClayAnimationPropertyType type, float& value) {
   switch (type) {
     case ClayAnimationPropertyType::kLeft:
-      value = left_;
+      value = Left();
       break;
     case ClayAnimationPropertyType::kTop:
-      value = top_;
+      value = Top();
       break;
     case ClayAnimationPropertyType::kWidth:
-      value = width_;
+      value = Width();
       break;
     case ClayAnimationPropertyType::kHeight:
-      value = height_;
+      value = Height();
       break;
     case ClayAnimationPropertyType::kOpacity:
       value = render_object()->HasOpacity() ? render_object()->Opacity() : 1.0f;
@@ -2195,7 +2263,7 @@ void BaseView::SetTransform(const TransformOperations& ops,
 
 void BaseView::SetTransform(const std::vector<TransformRaw>& transform_raw) {
   transform_raw_ = transform_raw;
-  auto ops = clay::TransformOperations(*transform_raw_, width_, height_);
+  auto ops = clay::TransformOperations(*transform_raw_, Width(), Height());
   TransformOperations old_ops;
   GetProperty(ClayAnimationPropertyType::kTransform, old_ops);
   constexpr float tolerance = 0.001;
@@ -2243,8 +2311,8 @@ void BaseView::SetPerspective(const clay::Value::Array& array) {
       if (type == PLATFORM_PERSPECTIVE_UNIT_VW ||
           type == PLATFORM_PERSPECTIVE_UNIT_VH) {
         perspective = type == PLATFORM_PERSPECTIVE_UNIT_VW
-                          ? (float)(value / 100.f * width_)
-                          : (float)(value / 100.f * height_);
+                          ? (float)(value / 100.f * Width())
+                          : (float)(value / 100.f * Height());
       } else {
         perspective = (float)value;
       }
@@ -2252,7 +2320,7 @@ void BaseView::SetPerspective(const clay::Value::Array& array) {
           perspective * scale * CAMERA_DISTANCE_NORMALIZATION_MULTIPLIER;
     }
   } else {
-    int max_length = std::max(width_, height_);
+    int max_length = std::max(Width(), Height());
     perspective = max_length * scale *
                   CAMERA_DISTANCE_NORMALIZATION_MULTIPLIER *
                   DEFAULT_PERSPECTIVE_FACTOR;
@@ -2298,9 +2366,9 @@ Transform BaseView::GetTransform() const {
 
 FloatPoint BaseView::GetTransformOrigin() const {
   if (transform_origin_.has_value()) {
-    return transform_origin_->GetValue(width_, height_);
+    return transform_origin_->GetValue(Width(), Height());
   }
-  return FloatPoint(width_ / 2.0f, height_ / 2.0f);
+  return FloatPoint(Width() / 2.0f, Height() / 2.0f);
 }
 
 void BaseView::SetPaddings(float padding_left, float padding_top,
@@ -2308,24 +2376,20 @@ void BaseView::SetPaddings(float padding_left, float padding_top,
   FloatRect old_rect(PaddingLeft() + BorderLeft(), PaddingTop() + BorderTop(),
                      Width() - PaddingRight() - BorderRight(),
                      Height() - PaddingBottom() - BorderBottom());
-  if (padding_left_ != padding_left) {
-    padding_left_ = padding_left;
-    render_object()->SetPaddingLeft(padding_left_);
+  if (PaddingLeft() != padding_left) {
+    render_object()->SetPaddingLeft(padding_left);
   }
 
-  if (padding_top_ != padding_top) {
-    padding_top_ = padding_top;
-    render_object()->SetPaddingTop(padding_top_);
+  if (PaddingTop() != padding_top) {
+    render_object()->SetPaddingTop(padding_top);
   }
 
-  if (padding_right_ != padding_right) {
-    padding_right_ = padding_right;
-    render_object()->SetPaddingRight(padding_right_);
+  if (PaddingRight() != padding_right) {
+    render_object()->SetPaddingRight(padding_right);
   }
 
-  if (padding_bottom_ != padding_bottom) {
-    padding_bottom_ = padding_bottom;
-    render_object()->SetPaddingBottom(padding_bottom_);
+  if (PaddingBottom() != padding_bottom) {
+    render_object()->SetPaddingBottom(padding_bottom);
   }
   FloatRect new_rect(PaddingLeft() + BorderLeft(), PaddingTop() + BorderTop(),
                      Width() - PaddingRight() - BorderRight(),
@@ -2339,26 +2403,22 @@ void BaseView::SetPaddings(float padding_left, float padding_top,
 
 void BaseView::SetMargins(float margin_left, float margin_top,
                           float margin_right, float margin_bottom) {
-  margin_left_ = margin_left;
   render_object()->SetMarginLeft(margin_left);
-  margin_top_ = margin_top;
   render_object()->SetMarginTop(margin_top);
-  margin_right_ = margin_right;
   render_object()->SetMarginRight(margin_right);
-  margin_bottom_ = margin_bottom;
   render_object()->SetMarginBottom(margin_bottom);
 }
 
 float BaseView::LeftWithScroll() const {
   if (render_object()) {
-    return left_ - render_object()->ScrollLeft();
+    return Left() - render_object()->ScrollLeft();
   }
   return 0.f;
 }
 
 float BaseView::TopWithScroll() const {
   if (render_object()) {
-    return top_ - render_object()->ScrollTop();
+    return Top() - render_object()->ScrollTop();
   }
   return 0.f;
 }
@@ -2459,7 +2519,7 @@ void BaseView::SetHasDefaultFocusRing(bool has_focus_ring) {
 }
 
 FloatRect BaseView::CalcFocusRect() const {
-  FloatPoint point(left_, top_);
+  FloatPoint point(Left(), Top());
   BaseView* parent = Parent();
   while (parent && !parent->IsFocusScope()) {
     FloatPoint offset = parent->GetScrollOffset();
@@ -2469,7 +2529,7 @@ FloatRect BaseView::CalcFocusRect() const {
     parent = parent->Parent();
   }
 
-  return FloatRect(point.x(), point.y(), width_, height_);
+  return FloatRect(point.x(), point.y(), Width(), Height());
 }
 
 bool BaseView::DispatchKeyEventOnFocusNode(const KeyEvent* event) {
@@ -2546,7 +2606,7 @@ void BaseView::OnContentSizeChanged(const FloatRect& old_rect,
                                     const FloatRect& new_rect) {
   if (render_object()->HasBorder()) {
     auto& border = render_object()->MutableBorder();
-    border.UpdateRadius(width_, height_);
+    border.UpdateRadius(Width(), Height());
     render_object()->MarkNeedsPaint();
   }
   if (transform_raw_.has_value()) {  // update transform percent values
@@ -2554,10 +2614,10 @@ void BaseView::OnContentSizeChanged(const FloatRect& old_rect,
                                ClayAnimationPropertyType::kTransform)) {
       transition_mgr_->UpdateAnimationValue(
           ClayAnimationPropertyType::kTransform,
-          clay::TransformOperations(*transform_raw_, width_, height_));
+          clay::TransformOperations(*transform_raw_, Width(), Height()));
     } else {
       SetProperty(ClayAnimationPropertyType::kTransform,
-                  clay::TransformOperations(*transform_raw_, width_, height_),
+                  clay::TransformOperations(*transform_raw_, Width(), Height()),
                   false);
     }
   }
@@ -2614,9 +2674,9 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   //  FML_CHECK(event.position == point);
 
   bool beyond_self = point_by_self.x() <= -hit_slop_left_ ||
-                     point_by_self.x() > width_ + hit_slop_right_ ||
+                     point_by_self.x() > Width() + hit_slop_right_ ||
                      point_by_self.y() <= -hit_slop_top_ ||
-                     point_by_self.y() > height_ + hit_slop_bottom_;
+                     point_by_self.y() > Height() + hit_slop_bottom_;
   if (beyond_self && !CanChildrenEscape()) {
     return false;
   }
@@ -2625,12 +2685,12 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   bool clip_x = (GetOverflow() == CSSProperty::OVERFLOW_Y);
   bool clip_y = (GetOverflow() == CSSProperty::OVERFLOW_X);
   if (clip_x && (point_by_self.x() < -hit_slop_left_ ||
-                 point_by_self.x() > width_ + hit_slop_right_)) {
+                 point_by_self.x() > Width() + hit_slop_right_)) {
     return false;
   }
 
   if (clip_y && (point_by_self.y() < -hit_slop_top_ ||
-                 point_by_self.y() > height_ + hit_slop_bottom_)) {
+                 point_by_self.y() > Height() + hit_slop_bottom_)) {
     return false;
   }
 
@@ -2819,9 +2879,9 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
 
   FloatPoint point_by_self = GetPointBySelf(position);
   bool is_point_inside = point_by_self.x() >= -hit_slop_left_ &&
-                         point_by_self.x() <= width_ + hit_slop_right_ &&
+                         point_by_self.x() <= Width() + hit_slop_right_ &&
                          point_by_self.y() >= -hit_slop_top_ &&
-                         point_by_self.y() <= height_ + hit_slop_bottom_;
+                         point_by_self.y() <= Height() + hit_slop_bottom_;
   if (!CanChildrenEscape() && !is_point_inside) {
     return nullptr;
   }
@@ -2888,7 +2948,7 @@ FloatPoint BaseView::GetPointBySelf(const FloatPoint& point_by_page) const {
 }
 
 Transform BaseView::LocalToGlobalTransform() const {
-  FloatPoint point(left_, top_);
+  FloatPoint point(Left(), Top());
   BaseView* parent = Parent();
   if (IsIndependentSubViewTree()) {
     parent = page_view();
@@ -3143,7 +3203,7 @@ void BaseView::GestureDetectorDidSet() {
   }
   if (gesture_handler_map_.empty() && gesture_arena_member_id_ > 0) {
     gesture_handler_map_ = BaseGestureHandler::ConvertToGestureHandler(
-        id_, page_view_, GetWeakPtr(), gesture_detector_map_);
+        id(), page_view_, GetWeakPtr(), gesture_detector_map_);
   }
 }
 
@@ -3537,9 +3597,9 @@ void BaseView::EndAllTransitionsRecursively() {
 void BaseView::GetTransformValue(float left, float right, float top,
                                  float bottom, TransOffset& res) {
   GetLocationOnScreen(left, top, res.left_top);
-  GetLocationOnScreen(width_ + right, top, res.right_top);
-  GetLocationOnScreen(width_ + right, height_ + bottom, res.right_bottom);
-  GetLocationOnScreen(left, height_ + bottom, res.left_bottom);
+  GetLocationOnScreen(Width() + right, top, res.right_top);
+  GetLocationOnScreen(Width() + right, Height() + bottom, res.right_bottom);
+  GetLocationOnScreen(left, Height() + bottom, res.left_bottom);
 }
 
 void BaseView::GetLocationOnScreen(float in_out_location_x,
@@ -3623,9 +3683,9 @@ void BaseView::UpdateKeyframesRasterAnimation() {
 void BaseView::UpdateRenderObjectTransformOrigin() {
   if (transform_origin_.has_value()) {
     render_object()->SetTransformOrigin(
-        (*transform_origin_).GetValue(width_, height_));
+        (*transform_origin_).GetValue(Width(), Height()));
   } else {
-    render_object()->SetTransformOrigin({width_ / 2.0f, height_ / 2.0f});
+    render_object()->SetTransformOrigin({Width() / 2.0f, Height() / 2.0f});
   }
 }
 
@@ -3719,8 +3779,8 @@ void BaseView::UpdateSemantics(
 
 FloatRect BaseView::GetSemanticsBounds() const {
   auto semantics_bounds = GetBounds();
-  float left = left_;
-  float top = top_;
+  float left = Left();
+  float top = Top();
   auto* parent = Parent();
   while (parent) {
     left += parent->Left();

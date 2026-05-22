@@ -98,7 +98,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   bool IsAppRegionDraggable();
   // TODO(wangchen) to do better
-  bool IsInternalView() const { return id_ == -1; }
+  bool IsInternalView() const { return id() == -1; }
   // Override the destroy function to delete the custom children if they are not
   // in the view tree
   void Destroy();
@@ -121,7 +121,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   // For some internally created view events, the callback id needs to be
   // returned.
-  virtual int GetCallbackId() { return id_; }
+  virtual int GetCallbackId() { return id(); }
   // add for layoutchange event
   void OnLayoutChange();
   virtual void OnLayoutUpdated() {}
@@ -155,14 +155,14 @@ class BaseView : public TypeIdentifiable<BaseView>,
   int GetPaintingOrder() const;
 
   void SetID(int id);
-  int id() const { return id_; }
+  int id() const;
   const std::string& GetName() const { return tag_; }
   std::vector<BaseView*>& GetChildren() { return children_; }
   size_t child_count() const { return children_.size(); }
 
   // An anonymous view is a view created internally and does not have a
   // corresponding Lynx element.
-  bool IsAnonymousView() const { return id_ < 0; }
+  bool IsAnonymousView() const { return id() < 0; }
 
   const std::string& GetComponentName() const { return name_; }
   void SetComponentName(std::string name) { name_ = std::move(name); }
@@ -195,7 +195,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   float Opacity();
   void SetOverflowWithMask(uint8_t mask, int overflow);
   virtual void SetOverflow(int overflow);
-  int GetOverflow() { return overflow_; }
+  int GetOverflow() const;
   virtual void SetBorder(const BordersData& data);
   void OnBorderChanged(const BordersData& data);
 
@@ -326,7 +326,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool CanConsumeGesture(float delta_x, float delta_y) override {
     return false;
   }
-  int Sign() const override { return id_; }
+  int Sign() const override { return id(); }
   int GestureArenaMemberId() override { return gesture_arena_member_id_; }
   float ScrollX() override { return 0; }
   int8_t GetScrollContainerDirection() override { return 0; }
@@ -347,7 +347,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   // Indicate whether all children should be restricted in this view.
   virtual bool CanChildrenEscape() const {
-    return overflow_ != CSSProperty::OVERFLOW_HIDDEN;
+    return GetOverflow() != CSSProperty::OVERFLOW_HIDDEN;
   }
   bool HitTest(const PointerEvent& event, HitTestResult& result) override;
   virtual bool HitTestChildren(const PointerEvent& event,
@@ -384,10 +384,10 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool Visible() const;
   bool IsVisibleForAnimationTick();
 
-  float Left() const { return left_; }
-  float Top() const { return top_; }
-  float Width() const { return width_; }
-  float Height() const { return height_; }
+  float Left() const;
+  float Top() const;
+  float Width() const;
+  float Height() const;
 
   FloatPoint AbsoluteLocationWithScroll() const;
 
@@ -408,22 +408,22 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void SetContentHeight(float content_height) {
     SetHeight(content_height + VerticalThickness());
   }
-  float MarginLeft() const { return margin_left_; }
-  float MarginTop() const { return margin_top_; }
-  float MarginRight() const { return margin_right_; }
-  float MarginBottom() const { return margin_bottom_; }
+  float MarginLeft() const;
+  float MarginTop() const;
+  float MarginRight() const;
+  float MarginBottom() const;
 
-  float PaddingLeft() const { return padding_left_; }
-  float PaddingTop() const { return padding_top_; }
-  float PaddingRight() const { return padding_right_; }
-  float PaddingBottom() const { return padding_bottom_; }
+  float PaddingLeft() const;
+  float PaddingTop() const;
+  float PaddingRight() const;
+  float PaddingBottom() const;
 
   float BorderLeft() const;
   float BorderTop() const;
   float BorderRight() const;
   float BorderBottom() const;
   FloatRect GetBounds() const {
-    return FloatRect(left_, top_, width_, height_);
+    return FloatRect(Left(), Top(), Width(), Height());
   }
 
   float ContentInsetLeft() const;
@@ -715,27 +715,12 @@ class BaseView : public TypeIdentifiable<BaseView>,
   fml::RefPtr<SemanticsNode> semantics_ = nullptr;
 #endif
 
-  int id_ = -1;
   std::string id_selector_;
   std::string ref_id_selector_;
   std::string name_;
   std::string app_region_;
   bool can_draggable_ = false;
   PointerEvent event_draggable_;
-  // left_ and top_ are relative to the upper left
-  // corner of the parent borderbox
-  float left_ = 0.f;
-  float top_ = 0.f;
-  float width_ = 0.f;
-  float height_ = 0.f;
-  float padding_left_ = 0.f;
-  float padding_top_ = 0.f;
-  float padding_right_ = 0.f;
-  float padding_bottom_ = 0.f;
-  float margin_left_ = 0.f;
-  float margin_top_ = 0.f;
-  float margin_right_ = 0.f;
-  float margin_bottom_ = 0.f;
   clay::Value data_set_ = clay::Value(clay::Value::Map());
   std::string tag_;
   // FIXME(baiqiang): remove focus&text list then move to component
@@ -765,7 +750,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
   std::optional<std::vector<std::string>> events_;
   std::unique_ptr<MouseCursor> cursor_ = nullptr;
   bool is_mouse_hover_ = false;
-  uint8_t overflow_;
   std::function<void(BaseView*)> destruct_listener_ = nullptr;
   std::vector<std::unique_ptr<GestureRecognizer>> gesture_recognizers_;
   bool enable_layout_change_event_ = false;

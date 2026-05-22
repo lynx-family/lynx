@@ -162,12 +162,12 @@ PageView::PageView(uint32_t id, std::shared_ptr<ServiceManager> service_manager,
 }
 
 PageView::~PageView() {
-  FML_DLOG(INFO) << "PageView destruction; id = " << id_;
+  FML_DLOG(INFO) << "PageView destruction; id = " << id();
   UnRegisterUploadTask();
 }
 
 void PageView::OnDestroy() {
-  FML_DLOG(INFO) << "Page OnDestroy; id = " << id_;
+  FML_DLOG(INFO) << "Page OnDestroy; id = " << id();
   animation_handler_->ClearCallbacks();
   DestroyAllChildren();
   touch_view_map_.clear();
@@ -266,7 +266,7 @@ bool PageView::BeginFrame(
   auto target_time = recorder->GetVsyncTargetTime();
   // Ignore frame if `physical_size_` is empty. The `physical_size_` is set in
   // `SetViewportMetrics`.
-  if (physical_size_.IsEmpty() || (width_ <= 0 || height_ <= 0)) {
+  if (physical_size_.IsEmpty() || (Width() <= 0 || Height() <= 0)) {
     FML_DLOG(WARNING) << "PageView::BeginFrame has no size";
     return false;
   }
@@ -1619,20 +1619,24 @@ void PageView::FlushUIMethodTasks() {
 
 void PageView::ResetPageView(bool recycle) {
   DestroyAllChildren();
-  padding_left_ = 0.f;
-  padding_top_ = 0.f;
-  padding_right_ = 0.f;
-  padding_bottom_ = 0.f;
+  const int old_id = id();
+  const int old_overflow = GetOverflow();
+  const float old_left = Left();
+  const float old_top = Top();
+  const float old_width = Width();
+  const float old_height = Height();
   keyframes_mgr_.reset();
   transition_mgr_.reset();
 #ifdef ENABLE_ACCESSIBILITY
   semantics_owner_->Reset();
 #endif
   render_object_ = std::make_unique<RenderPage>();
-  render_object_->SetWidth(width_);
-  render_object_->SetHeight(height_);
-  render_object_->SetTop(top_);
-  render_object_->SetLeft(left_);
+  render_object_->SetID(old_id);
+  render_object_->SetOverflow(old_overflow);
+  render_object_->SetLeft(old_left);
+  render_object_->SetTop(old_top);
+  render_object_->SetWidth(old_width);
+  render_object_->SetHeight(old_height);
   static_cast<RenderPage*>(render_object_.get())
       ->SetScaleRatio(GetPixelRatio<kPixelTypeClay, kPixelTypePhysical>());
   renderer_ = std::make_unique<Renderer>(this, unref_queue_);

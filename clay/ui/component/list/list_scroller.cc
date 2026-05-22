@@ -58,7 +58,7 @@ void ListScroller::ScrollToPosition(
     const std::string& id, const std::optional<FloatRect> target_rect,
     std::function<void(uint32_t, const std::string&)> callback) {
   position_ = position;
-  id_ = id;
+  id_str_ = id;
   offset_ = offset;
   align_to_ = align_to;
   target_rect_ = target_rect;
@@ -289,9 +289,9 @@ float ListScroller::DistanceToTarget(ListItemViewHolder* target_item) {
   FML_DCHECK(target_item);
 
   BaseView* target_view = nullptr;
-  if (!id_.empty()) {
+  if (!id_str_.empty()) {
     target_view =
-        ViewContext::FindViewByIdSelector(id_, target_item->GetView());
+        ViewContext::FindViewByIdSelector(id_str_, target_item->GetView());
   }
 
   ListLayoutManager* layout_manager = GetLayoutManager();
