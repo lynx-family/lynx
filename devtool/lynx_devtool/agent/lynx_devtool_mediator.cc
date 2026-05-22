@@ -1209,6 +1209,16 @@ SLNode* LynxDevToolMediator::GetLayoutObjectForElement(
   return ui_executor_->GetLayoutObjectForElement(element);
 }
 
+SLNode* LynxDevToolMediator::GetLayoutObjectById(int32_t id) {
+  if (!ui_task_runner_->RunsTasksOnCurrentThread()) {
+    LOGE(
+        "LynxDevToolMediator::GetLayoutObjectById must be called on the UI "
+        "thread");
+    return nullptr;
+  }
+  return ui_executor_->GetLayoutObjectById(id);
+}
+
 void LynxDevToolMediator::SendLayoutTree() {
   // Execute in UI thread since GetLayoutObjectForElement has assertion for
   // UI thread

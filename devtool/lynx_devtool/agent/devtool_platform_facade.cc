@@ -12,6 +12,55 @@
 namespace lynx {
 namespace devtool {
 
+InspectorLayoutObjectInfo BuildLayoutObjectInfo(int32_t id,
+                                                SLNode* layout_obj) {
+  InspectorLayoutObjectInfo info;
+  info.id = id;
+  if (layout_obj == nullptr) {
+    return info;
+  }
+  info.has_snapshot = true;
+  info.border_bound_width = layout_obj->GetBorderBoundWidth();
+  info.border_bound_height = layout_obj->GetBorderBoundHeight();
+  info.layout_padding_left = layout_obj->GetLayoutPaddingLeft();
+  info.layout_padding_top = layout_obj->GetLayoutPaddingTop();
+  info.layout_padding_right = layout_obj->GetLayoutPaddingRight();
+  info.layout_padding_bottom = layout_obj->GetLayoutPaddingBottom();
+  info.layout_border_left_width = layout_obj->GetLayoutBorderLeftWidth();
+  info.layout_border_top_width = layout_obj->GetLayoutBorderTopWidth();
+  info.layout_border_right_width = layout_obj->GetLayoutBorderRightWidth();
+  info.layout_border_bottom_width = layout_obj->GetLayoutBorderBottomWidth();
+  info.layout_margin_left = layout_obj->GetLayoutMarginLeft();
+  info.layout_margin_top = layout_obj->GetLayoutMarginTop();
+  info.layout_margin_right = layout_obj->GetLayoutMarginRight();
+  info.layout_margin_bottom = layout_obj->GetLayoutMarginBottom();
+  info.border_bound_left_from_parent_padding_bound =
+      layout_obj->GetBorderBoundLeftFromParentPaddingBound();
+  info.border_bound_top_from_parent_padding_bound =
+      layout_obj->GetBorderBoundTopFromParentPaddingBound();
+  return info;
+}
+
+namespace {
+
+bool ResolveLayoutObjectInfo(
+    const std::shared_ptr<LynxDevToolMediator>& devtool_mediator,
+    const InspectorLayoutObjectInfo& source,
+    InspectorLayoutObjectInfo& target) {
+  if (source.has_snapshot) {
+    target = source;
+    return true;
+  }
+  auto* layout_obj = devtool_mediator->GetLayoutObjectById(source.id);
+  if (layout_obj == nullptr) {
+    return false;
+  }
+  target = BuildLayoutObjectInfo(source.id, layout_obj);
+  return true;
+}
+
+}  // namespace
+
 void DevToolPlatformFacade::InitWithDevToolMediator(
     std::shared_ptr<LynxDevToolMediator> devtool_mediator) {
   devtool_mediator_wp_ = devtool_mediator;
@@ -62,6 +111,16 @@ void DevToolPlatformFacade::SendCDPEvent(const std::string& message) {
   auto devtool_mediator_ = devtool_mediator_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(devtool_mediator_, "devtool_mediator_ is null");
   devtool_mediator_->SendCDPEvent(message);
+}
+
+std::vector<double> DevToolPlatformFacade::GetBoxModel(
+    const InspectorBoxModelQuery& query) {
+  if (query.is_overlay) {
+    if (query.overlay_box_model.size() == 34) {
+      return query.overlay_box_model;
+    }
+  }
+  return GetBoxModelInGeneralPlatform(query);
 }
 
 std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
@@ -159,6 +218,91 @@ std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
       res.push_back(t);
     }
     return res;
+  }
+  return res;
+}
+
+std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
+    const InspectorBoxModelQuery& query) {
+  std::vector<double> res;
+
+  auto devtool_mediator_ = devtool_mediator_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN_VALUE(devtool_mediator_,
+                                  "devtool_mediator_ is null", res);
+
+  InspectorLayoutObjectInfo layout_obj;
+  if (!ResolveLayoutObjectInfo(devtool_mediator_, query.layout_object,
+                               layout_obj)) {
+    return res;
+  }
+
+  res.push_back(layout_obj.border_bound_width - layout_obj.layout_padding_left -
+                layout_obj.layout_padding_right -
+                layout_obj.layout_border_left_width -
+                layout_obj.layout_border_right_width);
+  res.push_back(layout_obj.border_bound_height - layout_obj.layout_padding_top -
+                layout_obj.layout_padding_bottom -
+                layout_obj.layout_border_top_width -
+                layout_obj.layout_border_bottom_width);
+
+  std::vector<float> pad_border_margin_layout = {
+      static_cast<float>(layout_obj.layout_padding_left),
+      static_cast<float>(layout_obj.layout_padding_top),
+      static_cast<float>(layout_obj.layout_padding_right),
+      static_cast<float>(layout_obj.layout_padding_bottom),
+      static_cast<float>(layout_obj.layout_border_left_width),
+      static_cast<float>(layout_obj.layout_border_top_width),
+      static_cast<float>(layout_obj.layout_border_right_width),
+      static_cast<float>(layout_obj.layout_border_bottom_width),
+      static_cast<float>(layout_obj.layout_margin_left),
+      static_cast<float>(layout_obj.layout_margin_top),
+      static_cast<float>(layout_obj.layout_margin_right),
+      static_cast<float>(layout_obj.layout_margin_bottom),
+      0,
+      0,
+      0,
+      0};
+  std::vector<float> trans;
+  if (!query.has_ui_primitive) {
+    float layout_only_x = 0;
+    float layout_only_y = 0;
+    // Layout-only nodes do not have their own UI primitive, so their offsets
+    // need to be accumulated before applying the transform of the nearest UI
+    // node.
+    for (const auto& info : query.layout_only_nodes) {
+      InspectorLayoutObjectInfo current_layout_obj;
+      if (ResolveLayoutObjectInfo(devtool_mediator_, info,
+                                  current_layout_obj)) {
+        layout_only_x += static_cast<float>(
+            current_layout_obj.border_bound_left_from_parent_padding_bound);
+        layout_only_y += static_cast<float>(
+            current_layout_obj.border_bound_top_from_parent_padding_bound);
+      }
+    }
+    InspectorLayoutObjectInfo transform_layout_obj;
+    if (ResolveLayoutObjectInfo(devtool_mediator_, query.transform_node,
+                                transform_layout_obj)) {
+      layout_only_x +=
+          static_cast<float>(transform_layout_obj.layout_border_left_width);
+      layout_only_y +=
+          static_cast<float>(transform_layout_obj.layout_border_top_width);
+      pad_border_margin_layout[12] = layout_only_x;
+      pad_border_margin_layout[13] = layout_only_y;
+      pad_border_margin_layout[14] =
+          static_cast<float>(transform_layout_obj.border_bound_width) -
+          layout_only_x - static_cast<float>(layout_obj.border_bound_width);
+      pad_border_margin_layout[15] =
+          static_cast<float>(transform_layout_obj.border_bound_height) -
+          layout_only_y - static_cast<float>(layout_obj.border_bound_height);
+      trans =
+          GetTransformValue(query.transform_node.id, pad_border_margin_layout);
+    }
+  } else {
+    trans =
+        GetTransformValue(query.transform_node.id, pad_border_margin_layout);
+  }
+  for (float t : trans) {
+    res.push_back(t);
   }
   return res;
 }
