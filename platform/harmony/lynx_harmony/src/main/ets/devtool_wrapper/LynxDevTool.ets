@@ -9,7 +9,7 @@ import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceC
 import { ILynxDevToolService } from '../tasm/service/ILynxDevToolService';
 import { LynxView } from '../tasm/LynxView';
 import { GetJSSourceCallback, ILogBox, OnErrorCallback } from './ILogBox';
-import { NodeController } from '@kit.ArkUI';
+import { UIContext } from '@kit.ArkUI';
 
 export class LynxDevTool {
   private owner: LynxBaseInspectorController | null = null;
@@ -63,11 +63,17 @@ export class LynxDevTool {
     return null;
   }
 
-  public static createLogBoxComponent(logbox: ILogBox, title: string): NodeController | null {
+  public static registerLogBox(logBox: ILogBox, uiContext: UIContext): void {
     const devToolService = LynxServiceCenter.getService<ILynxDevToolService>(LynxServiceType.DevTool);
     if (devToolService?.isDevToolModuleLoaded()) {
-      return devToolService.createLogBoxComponent(logbox, title) ?? null;
+      devToolService.registerLogBox(logBox, uiContext);
     }
-    return null;
+  }
+
+  public static unregisterLogBox(logBox: ILogBox): void {
+    const devToolService = LynxServiceCenter.getService<ILynxDevToolService>(LynxServiceType.DevTool);
+    if (devToolService?.isDevToolModuleLoaded()) {
+      devToolService.unregisterLogBox(logBox);
+    }
   }
 }
