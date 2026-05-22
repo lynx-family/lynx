@@ -4,9 +4,11 @@
 
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_INSPECTOR_TASM_EXECUTOR_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_INSPECTOR_TASM_EXECUTOR_H_
+#include <functional>
 #include <memory>
 #include <set>
 #include <unordered_map>
+#include <vector>
 
 #include "core/inspector/style_sheet.h"
 #include "core/renderer/template_assembler.h"
@@ -174,10 +176,9 @@ class InspectorTasmExecutor
   void SendLayerPaintedEvent();
 
   Json::Value GetLayerContentFromElement(lynx::tasm::Element* element);
-  Json::Value GetLayoutInfoFromElement(lynx::tasm::Element* element);
-  Json::Value BuildLayerTreeFromElement(lynx::tasm::Element* root_element);
 
-  std::vector<double> GetBoxModel(tasm::Element* element);
+  bool BuildBoxModelQuery(tasm::Element* element,
+                          InspectorBoxModelQuery& query);
 
  public:
   lynx::tasm::Element* GetElementById(int node_id);
@@ -188,12 +189,11 @@ class InspectorTasmExecutor
   void CollectDomTreeCssUsage(Json::Value& rule_usage_array,
                               const std::string& stylesheet_id,
                               const std::string& content);
-  std::string GetLayoutTree(tasm::Element* element);
   void SendLayoutTree();
-  Json::Value GetBoxModelOfNode(tasm::Element* ptr, double screen_scale_factor,
-                                std::string mode, tasm::Element* root);
-  Json::Value GetDocumentBodyFromNodeWithBoxModel(tasm::Element* ptr);
-  Json::Value GetComputedStyleOfNode(tasm::Element* ptr);
+  Json::Value GetDocumentBodyFromNodeWithBoxModel(
+      tasm::Element* ptr, std::vector<InspectorBoxModelQuery>& queries,
+      std::vector<std::vector<Json::ArrayIndex>>& box_model_paths,
+      const std::vector<Json::ArrayIndex>& node_path);
   void RestoreOriginNodeInlineStyle();
   const std::map<DevToolFunction, std::function<void(const lynx::base::any&)>>&
   GetFunctionForElementMap();
