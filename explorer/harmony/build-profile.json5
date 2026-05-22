@@ -160,6 +160,18 @@
           ]
         }
       ]
+    },
+    {
+      "name": "xelement_video",
+      "srcPath": "../../platform/harmony/lynx_xelement/video",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
     }
   ]
 }
