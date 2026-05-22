@@ -105,6 +105,423 @@ void SyncCachedMediaInfo(lynx::tasm::Element* style_root,
   }
 }
 
+constexpr size_t kBoxModelSize = 34;
+constexpr size_t kInvalidBoxModelIndex = static_cast<size_t>(-1);
+
+using ComputedStyleMap = std::unordered_map<std::string, std::string>;
+using BoxModelNodePath = std::vector<Json::ArrayIndex>;
+
+struct LayerBoxModelInfo {
+  Json::ArrayIndex layer_index = 0;
+  size_t box_model_index = kInvalidBoxModelIndex;
+  size_t parent_box_model_index = kInvalidBoxModelIndex;
+};
+
+InspectorLayoutObjectInfo BuildLayoutObjectInfo(tasm::Element* element) {
+  if (element == nullptr) {
+    return {};
+  }
+  return lynx::devtool::BuildLayoutObjectInfo(element->impl_id(),
+                                              element->GetLayoutObject());
+}
+
+bool IsVirtualOrWrapper(tasm::Element* element) {
+  return element != nullptr && (element->is_virtual() || element->is_wrapper());
+}
+
+Json::Value ConvertBoxModelToJson(const std::vector<double>& box_model,
+                                  double screen_scale_factor,
+                                  float layouts_unit_per_px) {
+  if (box_model.size() != kBoxModelSize) {
+    return Json::Value();
+  }
+  Json::Value model(Json::ValueType::objectValue);
+  model["width"] = box_model[0] / layouts_unit_per_px * screen_scale_factor;
+  model["height"] = box_model[1] / layouts_unit_per_px * screen_scale_factor;
+  model["content"] = Json::Value(Json::ValueType::arrayValue);
+  for (int i = 2; i <= 9; ++i) {
+    model["content"].append(box_model[i] / layouts_unit_per_px *
+                            screen_scale_factor);
+  }
+  model["padding"] = Json::Value(Json::ValueType::arrayValue);
+  for (int i = 10; i <= 17; ++i) {
+    model["padding"].append(box_model[i] / layouts_unit_per_px *
+                            screen_scale_factor);
+  }
+  model["border"] = Json::Value(Json::ValueType::arrayValue);
+  for (int i = 18; i <= 25; ++i) {
+    model["border"].append(box_model[i] / layouts_unit_per_px *
+                           screen_scale_factor);
+  }
+  model["margin"] = Json::Value(Json::ValueType::arrayValue);
+  for (int i = 26; i <= 33; ++i) {
+    model["margin"].append(box_model[i] / layouts_unit_per_px *
+                           screen_scale_factor);
+  }
+  return model;
+}
+
+Json::Value BuildBoxModelError() {
+  Json::Value res(Json::ValueType::objectValue);
+  Json::Value error = Json::Value(Json::ValueType::objectValue);
+  error["code"] = Json::Value(-32000);
+  error["message"] = Json::Value("Could not compute box model.");
+  res["error"] = error;
+  return res;
+}
+
+void ApplyRootBoxModelOffset(std::vector<double>& box_model,
+                             const std::vector<double>& root_box_model) {
+  if (box_model.size() != kBoxModelSize ||
+      root_box_model.size() != kBoxModelSize) {
+    return;
+  }
+  double origin_x = root_box_model[18];
+  double origin_y = root_box_model[19];
+  for (int i = 1; i <= 16; i++) {
+    box_model[2 * i] -= origin_x;
+    box_model[2 * i + 1] -= origin_y;
+  }
+}
+
+Json::Value BuildBoxModelResult(std::vector<double> box_model,
+                                double screen_scale_factor,
+                                float layouts_unit_per_px,
+                                const std::vector<double>& root_box_model) {
+  if (box_model.size() != kBoxModelSize) {
+    return BuildBoxModelError();
+  }
+  ApplyRootBoxModelOffset(box_model, root_box_model);
+
+  Json::Value content(Json::ValueType::objectValue);
+  content["model"] = ConvertBoxModelToJson(box_model, screen_scale_factor,
+                                           layouts_unit_per_px);
+  return content;
+}
+
+// When an already-built subtree is wrapped by an extra document/component node,
+// its recorded box model paths need to descend through the wrapper's child
+// slot.
+void InsertChildIndexInPaths(std::vector<BoxModelNodePath>& paths, size_t begin,
+                             size_t end, size_t parent_path_size,
+                             Json::ArrayIndex child_index) {
+  end = std::min(end, paths.size());
+  for (size_t i = begin; i < end; ++i) {
+    if (paths[i].size() >= parent_path_size) {
+      paths[i].insert(paths[i].begin() + parent_path_size, child_index);
+    }
+  }
+}
+
+Json::Value* GetNodeByPath(Json::Value& root, const BoxModelNodePath& path) {
+  Json::Value* node = &root;
+  for (Json::ArrayIndex child_index : path) {
+    if (!node->isObject() || !node->isMember("children") ||
+        !(*node)["children"].isArray() ||
+        child_index >= (*node)["children"].size()) {
+      return nullptr;
+    }
+    node = &(*node)["children"][child_index];
+  }
+  return node;
+}
+
+void ApplyBoxModelsToDocument(
+    Json::Value& root, const std::vector<BoxModelNodePath>& box_model_paths,
+    const std::vector<std::vector<double>>& box_models,
+    double screen_scale_factor, float layouts_unit_per_px,
+    const std::vector<double>& root_box_model) {
+  for (size_t i = 0; i < box_model_paths.size(); ++i) {
+    Json::Value* node = GetNodeByPath(root, box_model_paths[i]);
+    if (node == nullptr) {
+      continue;
+    }
+    if (i < box_models.size() && box_models[i].size() == kBoxModelSize) {
+      std::vector<double> box_model = box_models[i];
+      ApplyRootBoxModelOffset(box_model, root_box_model);
+      (*node)["box_model"] = ConvertBoxModelToJson(
+          box_model, screen_scale_factor, layouts_unit_per_px);
+    } else {
+      (*node)["box_model"] = Json::Value();
+    }
+  }
+}
+
+bool IsValidBoxModelIndex(size_t index,
+                          const std::vector<std::vector<double>>& box_models) {
+  return index < box_models.size() && box_models[index].size() == kBoxModelSize;
+}
+
+void ApplyBoxModelsToLayers(
+    Json::Value& layers, const std::vector<LayerBoxModelInfo>& box_model_infos,
+    const std::vector<std::vector<double>>& box_models) {
+  if (!layers.isArray()) {
+    return;
+  }
+  for (const auto& info : box_model_infos) {
+    if (info.layer_index >= layers.size() ||
+        !IsValidBoxModelIndex(info.box_model_index, box_models)) {
+      continue;
+    }
+    const std::vector<double>& box_model = box_models[info.box_model_index];
+    Json::Value& layer = layers[info.layer_index];
+    layer["width"] = box_model[28] - box_model[26];
+    layer["height"] = box_model[31] - box_model[29];
+    if (IsValidBoxModelIndex(info.parent_box_model_index, box_models)) {
+      const std::vector<double>& parent_box_model =
+          box_models[info.parent_box_model_index];
+      layer["offsetX"] = box_model[26] - parent_box_model[26];
+      layer["offsetY"] = box_model[27] - parent_box_model[27];
+    } else {
+      layer["offsetX"] = box_model[26];
+      layer["offsetY"] = box_model[27];
+    }
+  }
+}
+
+void ApplyBoxModelToComputedStyle(ComputedStyleMap& dict,
+                                  const std::vector<double>& box_info,
+                                  float layouts_unit_per_px) {
+  if (box_info.size() != kBoxModelSize) {
+    return;
+  }
+  dict["width"] =
+      lynx::tasm::CSSDecoder::ToPxValue(box_info[0] / layouts_unit_per_px);
+  dict["height"] =
+      lynx::tasm::CSSDecoder::ToPxValue(box_info[1] / layouts_unit_per_px);
+
+  // margin 26-33 border 18-25 padding 10-17 content 2-9
+  dict["margin-left"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[18] - box_info[26]) / layouts_unit_per_px);
+  dict["margin-top"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[19] - box_info[27]) / layouts_unit_per_px);
+  dict["margin-right"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[28] - box_info[20]) / layouts_unit_per_px);
+  dict["margin-bottom"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[33] - box_info[25]) / layouts_unit_per_px);
+  if (dict["margin-left"] == dict["margin-right"] &&
+      dict["margin-left"] == dict["margin-top"] &&
+      dict["margin-left"] == dict["margin-bottom"]) {
+    dict["margin"] = dict["margin-left"];
+  } else {
+    std::ostringstream margin_str;
+    margin_str << dict["margin-top"] << " " << dict["margin-right"] << " "
+               << dict["margin-bottom"] << " " << dict["margin-left"];
+    dict["margin"] = margin_str.str();
+  }
+
+  dict["border-left-width"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[10] - box_info[18]) / layouts_unit_per_px);
+  dict["border-right-width"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[20] - box_info[12]) / layouts_unit_per_px);
+  dict["border-top-width"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[11] - box_info[19]) / layouts_unit_per_px);
+  dict["border-bottom-width"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[25] - box_info[17]) / layouts_unit_per_px);
+
+  if (dict["border-left-width"] == dict["border-right-width"] &&
+      dict["border-left-width"] == dict["border-top-width"] &&
+      dict["border-left-width"] == dict["border-bottom-width"]) {
+    dict["border"] = dict["border-left-width"];
+  } else {
+    std::ostringstream border_str;
+    border_str << dict["border-top-width"] << " " << dict["border-right-width"]
+               << " " << dict["border-bottom-width"] << " "
+               << dict["border-left-width"];
+    dict["border"] = border_str.str();
+  }
+
+  dict["padding-left"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[2] - box_info[10]) / layouts_unit_per_px);
+  dict["padding-top"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[3] - box_info[11]) / layouts_unit_per_px);
+  dict["padding-right"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[12] - box_info[4]) / layouts_unit_per_px);
+  dict["padding-bottom"] = lynx::tasm::CSSDecoder::ToPxValue(
+      (box_info[17] - box_info[9]) / layouts_unit_per_px);
+
+  if (dict["padding-left"] == dict["padding-right"] &&
+      dict["padding-left"] == dict["padding-top"] &&
+      dict["padding-left"] == dict["padding-bottom"]) {
+    dict["padding"] = dict["padding-left"];
+  } else {
+    std::ostringstream padding_str;
+    padding_str << dict["padding-top"] << " " << dict["padding-right"] << " "
+                << dict["padding-bottom"] << " " << dict["padding-left"];
+    dict["padding"] = padding_str.str();
+  }
+}
+
+Json::Value ConvertComputedStyleToJson(const ComputedStyleMap& dict) {
+  Json::Value res = Json::Value(Json::ValueType::arrayValue);
+  ComputedStyleMap remaining = dict;
+  auto append_style = [&res](const std::string& name,
+                             const std::string& value) {
+    if (name.empty()) {
+      return;
+    }
+    Json::Value temp = Json::Value(Json::ValueType::objectValue);
+    temp["name"] = name;
+    if (name.find("color") != std::string::npos &&
+        name != "-x-animation-color-interpolation" && name != "border-color") {
+      temp["value"] = lynx::tasm::CSSDecoder::ToRgbaFromColorValue(value);
+    } else {
+      temp["value"] = value;
+    }
+    res.append(temp);
+  };
+
+  for (int id = lynx::tasm::CSSPropertyID::kPropertyStart + 1;
+       id < lynx::tasm::CSSPropertyID::kPropertyEnd; ++id) {
+    const char* property_name = lynx::tasm::CSSProperty::GetPropertyNameCStr(
+        static_cast<lynx::tasm::CSSPropertyID>(id));
+    auto it = remaining.find(property_name);
+    if (it != remaining.end()) {
+      append_style(it->first, it->second);
+      remaining.erase(it);
+    }
+  }
+
+  std::vector<std::string> remaining_names;
+  remaining_names.reserve(remaining.size());
+  for (const auto& pair : remaining) {
+    if (!pair.first.empty()) {
+      remaining_names.push_back(pair.first);
+    }
+  }
+  std::sort(remaining_names.begin(), remaining_names.end());
+  for (const auto& name : remaining_names) {
+    append_style(name, remaining.at(name));
+  }
+  return res;
+}
+
+ComputedStyleMap BuildComputedStyleMap(tasm::Element* ptr) {
+  ComputedStyleMap dict;
+  if (ptr == nullptr || !ElementInspector::HasDataModel(ptr)) {
+    return dict;
+  }
+  dict = ElementInspector::GetDefaultCss();
+  if (ElementInspector::IsEnableCSSSelector(ptr)) {
+    const std::vector<InspectorStyleSheet>& match_rules =
+        ElementInspector::GetMatchedStyleSheet(ptr);
+    for (const InspectorStyleSheet& match : match_rules) {
+      ReplaceDefaultComputedStyle(dict, match.css_properties_);
+    }
+  } else {
+    ReplaceDefaultComputedStyle(
+        dict, ElementInspector::GetStyleSheetByName(ptr, "*").css_properties_);
+    ReplaceDefaultComputedStyle(
+        dict,
+        ElementInspector::GetStyleSheetByName(ptr, "body *").css_properties_);
+    for (size_t i = 0; i < ElementInspector::ClassOrder(ptr).size(); ++i) {
+      ReplaceDefaultComputedStyle(dict,
+                                  ElementInspector::GetStyleSheetByName(
+                                      ptr, ElementInspector::ClassOrder(ptr)[i])
+                                      .css_properties_);
+    }
+    ReplaceDefaultComputedStyle(dict,
+                                ElementInspector::GetStyleSheetByName(
+                                    ptr, ElementInspector::SelectorId(ptr))
+                                    .css_properties_);
+    ReplaceDefaultComputedStyle(dict,
+                                ElementInspector::GetStyleSheetByName(
+                                    ptr, ElementInspector::SelectorTag(ptr))
+                                    .css_properties_);
+  }
+  ReplaceDefaultComputedStyle(
+      dict, ElementInspector::GetInlineStyleSheet(ptr).css_properties_);
+  return dict;
+}
+
+Json::Value BuildLayerContentJson(lynx::tasm::Element* element) {
+  Json::Value layer(Json::ValueType::objectValue);
+  if (element == nullptr) {
+    return layer;
+  }
+  layer["layerId"] = std::to_string(ElementInspector::NodeId(element));
+  layer["backendNodeId"] = ElementInspector::NodeId(element);
+  if (element->parent() != nullptr) {
+    layer["parentLayerId"] =
+        std::to_string(ElementInspector::NodeId(element->parent()));
+  }
+  layer["paintCount"] = 1;
+  layer["drawsContent"] = true;
+  layer["invisible"] = true;
+  layer["name"] = ElementInspector::LocalName(element);
+  layer["offsetX"] = Json::Value();
+  layer["offsetY"] = Json::Value();
+  layer["width"] = Json::Value();
+  layer["height"] = Json::Value();
+  return layer;
+}
+
+bool GetOrAppendBoxModelQuery(
+    InspectorTasmExecutor* executor, lynx::tasm::Element* element,
+    std::vector<InspectorBoxModelQuery>& queries,
+    std::unordered_map<int32_t, size_t>& box_model_query_indexes,
+    size_t& index) {
+  if (executor == nullptr || element == nullptr) {
+    return false;
+  }
+  InspectorBoxModelQuery query;
+  if (!executor->BuildBoxModelQuery(element, query)) {
+    return false;
+  }
+  auto iter = box_model_query_indexes.find(query.layout_object.id);
+  if (iter != box_model_query_indexes.end()) {
+    index = iter->second;
+    return true;
+  }
+  index = queries.size();
+  box_model_query_indexes[query.layout_object.id] = index;
+  queries.push_back(std::move(query));
+  return true;
+}
+
+void AppendLayerBoxModelInfo(
+    InspectorTasmExecutor* executor, lynx::tasm::Element* element,
+    Json::ArrayIndex layer_index, std::vector<InspectorBoxModelQuery>& queries,
+    std::unordered_map<int32_t, size_t>& box_model_query_indexes,
+    std::vector<LayerBoxModelInfo>& box_model_infos) {
+  LayerBoxModelInfo info;
+  info.layer_index = layer_index;
+  if (!GetOrAppendBoxModelQuery(executor, element, queries,
+                                box_model_query_indexes,
+                                info.box_model_index)) {
+    return;
+  }
+  // Parent box model is used to convert the layer's absolute position into a
+  // parent-relative offset.
+  GetOrAppendBoxModelQuery(executor, element->parent(), queries,
+                           box_model_query_indexes,
+                           info.parent_box_model_index);
+  box_model_infos.push_back(info);
+}
+
+Json::Value BuildLayerTreeJson(
+    InspectorTasmExecutor* executor, lynx::tasm::Element* root_element,
+    std::vector<InspectorBoxModelQuery>& queries,
+    std::vector<LayerBoxModelInfo>& box_model_infos) {
+  Json::Value layers(Json::ValueType::arrayValue);
+  CHECK_NULL_AND_LOG_RETURN_VALUE(root_element, "root_element is null", layers);
+  std::unordered_map<int32_t, size_t> box_model_query_indexes;
+  std::queue<lynx::tasm::Element*> element_queue;
+  element_queue.push(root_element);
+  while (!element_queue.empty()) {
+    lynx::tasm::Element* element = element_queue.front();
+    element_queue.pop();
+    Json::ArrayIndex layer_index = layers.size();
+    layers.append(BuildLayerContentJson(element));
+    AppendLayerBoxModelInfo(executor, element, layer_index, queries,
+                            box_model_query_indexes, box_model_infos);
+    for (auto& child : element->GetChildren()) {
+      element_queue.push(child);
+    }
+  }
+  return layers;
+}
+
 }  // namespace
 
 InspectorTasmExecutor::InspectorTasmExecutor(
@@ -710,26 +1127,72 @@ void InspectorTasmExecutor::GetDocumentWithBoxModel(
   tasm::Element* root = GetElementRoot();
   CHECK_NULL_AND_LOG_RETURN(root, "root is null");
 
-  content["root"] = GetDocumentBodyFromNodeWithBoxModel(root);
   content["compress"] = false;
-
-  response["result"] = content;
   response["id"] = message["id"].asInt64();
+
+  auto send_response = [sender, response, self = shared_from_this()](
+                           Json::Value content) mutable {
+    auto devtool_mediator = self->devtool_mediator_wp_.lock();
+    CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
+    devtool_mediator->RunOnDevToolThread(
+        [sender, self, content = std::move(content), response]() mutable {
+          std::string root_str = content["root"].toStyledString();
+          if (self->dom_use_compression_ &&
+              root_str.size() >
+                  static_cast<size_t>(self->dom_compression_threshold_)) {
+            InspectorUtil::CompressData("getDocumentWithBoxModel", root_str,
+                                        content, "root");
+          }
+          response["result"] = content;
+          sender->SendMessage("CDP", response);
+        },
+        true);
+  };
+
+  float layouts_unit_per_px = 1.0f;
+  auto* element_manager = root->element_manager();
+  if (element_manager != nullptr) {
+    layouts_unit_per_px =
+        element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
+  }
+  const double screen_scale_factor = 1.0f;
+
+  std::vector<InspectorBoxModelQuery> queries;
+  std::vector<BoxModelNodePath> box_model_paths;
+  content["root"] =
+      GetDocumentBodyFromNodeWithBoxModel(root, queries, box_model_paths, {});
+
+  size_t root_box_model_index = queries.size();
+  std::string screen_shot_mode = DevToolStatus::GetInstance().GetStatus(
+      DevToolStatus::kDevToolStatusKeyScreenShotMode,
+      DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
+  if (screen_shot_mode == DevToolStatus::SCREENSHOT_MODE_LYNXVIEW) {
+    InspectorBoxModelQuery root_query;
+    if (BuildBoxModelQuery(root, root_query)) {
+      queries.push_back(std::move(root_query));
+    }
+  }
 
   auto devtool_mediator = devtool_mediator_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
-  devtool_mediator->RunOnDevToolThread(
-      [this, sender, content, response, message]() mutable {
-        std::string root_str = content["root"].toStyledString();
-        if (dom_use_compression_ &&
-            root_str.size() > static_cast<size_t>(dom_compression_threshold_)) {
-          InspectorUtil::CompressData("getDocumentWithBoxModel", root_str,
-                                      content, "root");
+  if (queries.empty()) {
+    send_response(std::move(content));
+    return;
+  }
+  devtool_mediator->GetBoxModels(
+      queries, [content = std::move(content), send_response,
+                box_model_paths = std::move(box_model_paths),
+                root_box_model_index, screen_scale_factor, layouts_unit_per_px](
+                   std::vector<std::vector<double>> box_models) mutable {
+        std::vector<double> root_box_model;
+        if (root_box_model_index < box_models.size()) {
+          root_box_model = box_models[root_box_model_index];
         }
-        response["result"] = content;
-        sender->SendMessage("CDP", response);
-      },
-      true);
+        ApplyBoxModelsToDocument(content["root"], box_model_paths, box_models,
+                                 screen_scale_factor, layouts_unit_per_px,
+                                 root_box_model);
+        send_response(std::move(content));
+      });
 }
 
 void InspectorTasmExecutor::RequestChildNodes(
@@ -776,35 +1239,119 @@ void InspectorTasmExecutor::DOM_GetBoxModel(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
   Json::Value response(Json::ValueType::objectValue);
-  Json::Value content = Json::Value(Json::ValueType::objectValue);
   Json::Value params = message["params"];
   int index = params["nodeId"].asInt();
   tasm::Element* ptr = GetElementById(index);
   double screen_scale_factor = 1.0f;
-  if (ptr != nullptr) {
-    std::string screen_shot_mode = DevToolStatus::GetInstance().GetStatus(
-        DevToolStatus::kDevToolStatusKeyScreenShotMode);
-    content = GetBoxModelOfNode(ptr, screen_scale_factor, screen_shot_mode,
-                                GetElementRoot());
+  response["id"] = message["id"].asInt64();
+
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
+
+  auto send_response = [sender, response, self = shared_from_this(),
+                        devtool_mediator](Json::Value content) mutable {
+    if (content.empty()) {
+      content = BuildBoxModelError();
+    }
+    devtool_mediator->RunOnDevToolThread(
+        [sender, self, content = std::move(content), response]() mutable {
+          Json::Value result_response = response;
+          result_response["result"] = content;
+          sender->SendMessage("CDP", result_response);
+        },
+        true);
+  };
+
+  if (ptr == nullptr) {
+    send_response(BuildBoxModelError());
+    return;
   }
 
-  if (content.empty()) {
-    Json::Value error = Json::Value(Json::ValueType::objectValue);
-    error["code"] = Json::Value(-32000);
-    error["message"] = Json::Value("Could not compute box model");
-    content["error"] = error;
+  if (ptr->IsDetached() || !ElementInspector::HasDataModel(ptr)) {
+    send_response(BuildBoxModelError());
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+
+  auto* element_manager = ptr->element_manager();
+  if (element_manager == nullptr) {
+    send_response(BuildBoxModelError());
+    return;
+  }
+  const float layouts_unit_per_px =
+      element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
+  std::string screen_shot_mode = DevToolStatus::GetInstance().GetStatus(
+      DevToolStatus::kDevToolStatusKeyScreenShotMode);
+  InspectorBoxModelQuery query;
+  if (!BuildBoxModelQuery(ptr, query)) {
+    send_response(BuildBoxModelError());
+    return;
+  }
+
+  bool need_root_box_model =
+      screen_shot_mode == DevToolStatus::SCREENSHOT_MODE_LYNXVIEW &&
+      GetElementRoot() != nullptr;
+  InspectorBoxModelQuery root_query;
+  if (need_root_box_model) {
+    need_root_box_model = BuildBoxModelQuery(GetElementRoot(), root_query);
+  }
+
+  std::vector<InspectorBoxModelQuery> queries;
+  queries.push_back(std::move(query));
+  size_t root_box_model_index = queries.size();
+  if (need_root_box_model) {
+    queries.push_back(std::move(root_query));
+  }
+  devtool_mediator->GetBoxModels(
+      queries, [send_response, screen_scale_factor, layouts_unit_per_px,
+                root_box_model_index](
+                   std::vector<std::vector<double>> box_models) mutable {
+        std::vector<double> root_box_model;
+        if (root_box_model_index < box_models.size()) {
+          root_box_model = box_models[root_box_model_index];
+        }
+        if (box_models.empty()) {
+          send_response(BuildBoxModelError());
+          return;
+        }
+        send_response(BuildBoxModelResult(box_models[0], screen_scale_factor,
+                                          layouts_unit_per_px, root_box_model));
+      });
 }
 
-std::vector<double> InspectorTasmExecutor::GetBoxModel(tasm::Element* element) {
-  std::vector<double> box_model;
-  auto devtool_mediator = devtool_mediator_wp_.lock();
-  CHECK_NULL_AND_LOG_RETURN_VALUE(devtool_mediator, "devtool_mediator is null",
-                                  {});
-  return devtool_mediator->GetBoxModel(element);
+bool InspectorTasmExecutor::BuildBoxModelQuery(tasm::Element* element,
+                                               InspectorBoxModelQuery& query) {
+  CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", false);
+  tasm::Element* target = element;
+  while (IsVirtualOrWrapper(target)) {
+    target = target->parent();
+  }
+  CHECK_NULL_AND_LOG_RETURN_VALUE(target, "target is null", false);
+
+  query = InspectorBoxModelQuery();
+  query.layout_object = BuildLayoutObjectInfo(target);
+  query.transform_node = query.layout_object;
+  std::string tag = target->GetTag().str();
+  query.is_overlay = tag == "x-overlay-ng" || tag == "overlay";
+  if (query.is_overlay) {
+    query.overlay_box_model = ElementInspector::GetOverlayNGBoxModel(target);
+  }
+  query.has_ui_primitive = target->HasUIPrimitive();
+
+  if (!query.has_ui_primitive) {
+    tasm::Element* current = target;
+    while (current != nullptr && !current->HasUIPrimitive()) {
+      query.layout_only_nodes.push_back(BuildLayoutObjectInfo(current));
+      do {
+        current = current->parent();
+      } while (current != nullptr && current->is_wrapper());
+    }
+    if (current != nullptr) {
+      query.transform_node = BuildLayoutObjectInfo(current);
+    } else {
+      query.transform_node = InspectorLayoutObjectInfo();
+    }
+  }
+  return query.layout_object.id != 0 && query.transform_node.id != 0;
 }
 
 void InspectorTasmExecutor::SetAttributesAsText(
@@ -1314,7 +1861,41 @@ void InspectorTasmExecutor::GetComputedStyleForNode(
   size_t index = static_cast<size_t>(params["nodeId"].asInt64());
   Element* ptr = GetElementById(static_cast<int>(index));
   if (ptr != nullptr && !ptr->IsDetached()) {
-    content["computedStyle"] = GetComputedStyleOfNode(ptr);
+    ComputedStyleMap dict = BuildComputedStyleMap(ptr);
+    if (ElementInspector::HasDataModel(ptr)) {
+      auto* element_manager = ptr->element_manager();
+      if (element_manager != nullptr) {
+        const float layouts_unit_per_px =
+            element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
+        dict["font-size"] = lynx::tasm::CSSDecoder::ToPxValue(
+            ptr->GetFontSize() / layouts_unit_per_px);
+        InspectorBoxModelQuery query;
+        if (BuildBoxModelQuery(ptr, query)) {
+          response["id"] = message["id"].asInt64();
+          auto devtool_mediator = devtool_mediator_wp_.lock();
+          if (devtool_mediator) {
+            devtool_mediator->GetBoxModel(
+                query, [sender, self = shared_from_this(), devtool_mediator,
+                        response, dict = std::move(dict), layouts_unit_per_px](
+                           std::vector<double> box_info) mutable {
+                  Json::Value content(Json::ValueType::objectValue);
+                  ApplyBoxModelToComputedStyle(dict, box_info,
+                                               layouts_unit_per_px);
+                  content["computedStyle"] = ConvertComputedStyleToJson(dict);
+                  devtool_mediator->RunOnDevToolThread(
+                      [sender, self = std::move(self), response,
+                       content = std::move(content)]() mutable {
+                        response["result"] = content;
+                        sender->SendMessage("CDP", response);
+                      },
+                      true);
+                });
+            return;
+          }
+        }
+      }
+    }
+    content["computedStyle"] = ConvertComputedStyleToJson(dict);
   }
   response["result"] = content;
   response["id"] = message["id"].asInt64();
@@ -1944,20 +2525,34 @@ void InspectorTasmExecutor::SendLayerTreeDidChangeEvent() {
     Json::Value response(Json::ValueType::objectValue);
     response["method"] = "LayerTree.layerTreeDidChange";
     Json::Value layers(Json::ValueType::arrayValue);
+    std::vector<InspectorBoxModelQuery> queries;
+    std::vector<LayerBoxModelInfo> box_model_infos;
     lynx::tasm::Element* element = GetElementRoot();
 
     if (element != nullptr) {
-      layers = BuildLayerTreeFromElement(element);
+      layers = BuildLayerTreeJson(this, element, queries, box_model_infos);
     }
-    response["params"]["layers"] = layers;
     auto devtool_mediator = devtool_mediator_wp_.lock();
     CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
-    devtool_mediator->SendCDPEvent(response);
+    if (queries.empty()) {
+      response["params"]["layers"] = layers;
+      devtool_mediator->SendCDPEvent(response);
+      return;
+    }
+    devtool_mediator->GetBoxModels(
+        queries, [devtool_mediator, response, layers = std::move(layers),
+                  box_model_infos = std::move(box_model_infos)](
+                     std::vector<std::vector<double>> box_models) mutable {
+          ApplyBoxModelsToLayers(layers, box_model_infos, box_models);
+          response["params"]["layers"] = layers;
+          devtool_mediator->SendCDPEvent(response);
+        });
   }
 }
 
 void InspectorTasmExecutor::SendLayerPaintedEvent() {
   Json::Value response(Json::ValueType::objectValue);
+  response["method"] = "LayerTree.layerPainted";
   Json::Value layerId(Json::ValueType::stringValue);
   Json::Value clip(Json::ValueType::objectValue);
   auto devtool_mediator = devtool_mediator_wp_.lock();
@@ -1965,15 +2560,40 @@ void InspectorTasmExecutor::SendLayerPaintedEvent() {
 
   lynx::tasm::Element* element = GetElementRoot();
   if (element != nullptr) {
-    Json::Value rootLayer = GetLayerContentFromElement(element);
-
-    clip["x"] = rootLayer["offsetX"];
-    clip["y"] = rootLayer["offsetY"];
-    clip["width"] = rootLayer["width"];
-    clip["height"] = rootLayer["height"];
-    layerId = rootLayer["layerId"].asString();
+    Json::Value root_layer = GetLayerContentFromElement(element);
+    layerId = root_layer["layerId"].asString();
+    std::vector<InspectorBoxModelQuery> queries;
+    std::vector<LayerBoxModelInfo> box_model_infos;
+    std::unordered_map<int32_t, size_t> box_model_query_indexes;
+    AppendLayerBoxModelInfo(this, element, 0, queries, box_model_query_indexes,
+                            box_model_infos);
+    if (!queries.empty()) {
+      Json::Value layers(Json::ValueType::arrayValue);
+      layers.append(root_layer);
+      devtool_mediator->GetBoxModels(
+          queries, [devtool_mediator, response, layerId,
+                    box_model_infos = std::move(box_model_infos),
+                    layers = std::move(layers)](
+                       std::vector<std::vector<double>> box_models) mutable {
+            Json::Value clip(Json::ValueType::objectValue);
+            ApplyBoxModelsToLayers(layers, box_model_infos, box_models);
+            Json::Value& root_layer = layers[0];
+            clip["x"] = root_layer["offsetX"];
+            clip["y"] = root_layer["offsetY"];
+            clip["width"] = root_layer["width"];
+            clip["height"] = root_layer["height"];
+            response["params"]["layerId"] = layerId;
+            response["params"]["clip"] = clip;
+            devtool_mediator->SendCDPEvent(response);
+          });
+      return;
+    }
+    clip["x"] = root_layer["offsetX"];
+    clip["y"] = root_layer["offsetY"];
+    clip["width"] = root_layer["width"];
+    clip["height"] = root_layer["height"];
+    layerId = root_layer["layerId"].asString();
   }
-  response["method"] = "LayerTree.layerPainted";
   response["params"]["layerId"] = layerId;
   response["params"]["clip"] = clip;
   devtool_mediator->SendCDPEvent(response);
@@ -2005,88 +2625,22 @@ void InspectorTasmExecutor::CompositingReasons(
 
 Json::Value InspectorTasmExecutor::GetLayerContentFromElement(
     lynx::tasm::Element* element) {
-  Json::Value layer(Json::ValueType::objectValue);
-  if (element) {
-    layer["layerId"] = std::to_string(ElementInspector::NodeId(element));
-    layer["backendNodeId"] = ElementInspector::NodeId(element);
-    if (element->parent()) {
-      layer["parentLayerId"] =
-          std::to_string(ElementInspector::NodeId(element->parent()));
-    }
-    layer["paintCount"] = 1;
-    layer["drawsContent"] = true;
-    layer["invisible"] = true;
-    layer["name"] = ElementInspector::LocalName(element);
-    Json::Value layout = GetLayoutInfoFromElement(element);
-    layer["offsetX"] = layout["offsetX"];
-    layer["offsetY"] = layout["offsetY"];
-    layer["width"] = layout["width"];
-    layer["height"] = layout["height"];
-  }
-  return layer;
-}
-
-Json::Value InspectorTasmExecutor::GetLayoutInfoFromElement(
-    lynx::tasm::Element* element) {
-  Json::Value layout(Json::ValueType::objectValue);
-  CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", layout);
-  auto devtool_mediator = devtool_mediator_wp_.lock();
-  CHECK_NULL_AND_LOG_RETURN_VALUE(devtool_mediator, "devtool_mediator is null",
-                                  layout);
-  std::vector<double> box_model = GetBoxModel(element);
-  if (!box_model.empty()) {
-    layout["width"] = box_model[28] - box_model[26];
-    layout["height"] = box_model[31] - box_model[29];
-    if (element->parent() == nullptr) {
-      layout["offsetX"] = box_model[26];
-      layout["offsetY"] = box_model[27];
-    } else {
-      std::vector<double> parent_box_model = GetBoxModel(element->parent());
-      if (parent_box_model.empty()) {
-        layout["offsetX"] = box_model[26];
-        layout["offsetY"] = box_model[27];
-      } else {
-        layout["offsetX"] = box_model[26] - parent_box_model[26];
-        layout["offsetY"] = box_model[27] - parent_box_model[27];
-      }
-    }
-  }
-  return layout;
-}
-
-Json::Value InspectorTasmExecutor::BuildLayerTreeFromElement(
-    lynx::tasm::Element* root_element) {
-  Json::Value layers(Json::ValueType::arrayValue);
-  CHECK_NULL_AND_LOG_RETURN_VALUE(root_element, "root_element is null", layers);
-  std::queue<lynx::tasm::Element*> element_queue;
-  element_queue.push(root_element);
-  while (!element_queue.empty()) {
-    lynx::tasm::Element* element = element_queue.front();
-    element_queue.pop();
-    Json::Value layer = GetLayerContentFromElement(element);
-    layers.append(layer);
-    for (auto& child : element->GetChildren()) {
-      element_queue.push(child);
-    }
-  }
-  return layers;
-}
-
-std::string InspectorTasmExecutor::GetLayoutTree(tasm::Element* element) {
-  auto devtool_mediator = devtool_mediator_wp_.lock();
-  CHECK_NULL_AND_LOG_RETURN_VALUE(devtool_mediator, "devtool_mediator is null",
-                                  "");
-  auto* layout_node = devtool_mediator->GetLayoutObjectForElement(element);
-  CHECK_NULL_AND_LOG_RETURN_VALUE(layout_node, "layout_node is null", "");
-  return lynx::tasm::replay::ReplayController::GetLayoutTree(layout_node);
+  return BuildLayerContentJson(element);
 }
 
 void InspectorTasmExecutor::SendLayoutTree() {
   auto root = GetElementRoot();
-  if (root) {
-    lynx::tasm::replay::ReplayController::SendFileByAgent("Layout",
-                                                          GetLayoutTree(root));
+  if (root == nullptr) {
+    return;
   }
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
+  devtool_mediator->GetLayoutTree(root->impl_id(), [](std::string layout_tree) {
+    if (!layout_tree.empty()) {
+      lynx::tasm::replay::ReplayController::SendFileByAgent("Layout",
+                                                            layout_tree);
+    }
+  });
 }
 
 void InspectorTasmExecutor::PageGetResourceContent(
@@ -2105,314 +2659,54 @@ void InspectorTasmExecutor::PageGetResourceContent(
   sender->SendMessage("CDP", response);
 }
 
-Json::Value InspectorTasmExecutor::GetBoxModelOfNode(tasm::Element* ptr,
-                                                     double screen_scale_factor,
-                                                     std::string mode,
-                                                     tasm::Element* root) {
-  Json::Value res(Json::ValueType::objectValue);
-  if (ElementInspector::IsNeedEraseId(ptr)) {
-    ptr = ElementInspector::GetChildElementForComponentRemoveView(ptr);
-  }
-  if (ptr != nullptr && !ptr->IsDetached() &&
-      ElementInspector::HasDataModel(ptr) && GetBoxModel(ptr).size() == 34) {
-    Json::Value model(Json::ValueType::objectValue);
-    std::vector<double> box_model = GetBoxModel(ptr);
-    if (mode == DevToolStatus::SCREENSHOT_MODE_LYNXVIEW && root != nullptr) {
-      std::vector<double> root_box_model = GetBoxModel(root);
-      if (root_box_model.size() == 34) {
-        // use lynxview's left top point of border box as origin x y of lynxview
-        // point_to_lynxview = point_to_screen - lynxview_to_screen
-        double origin_x = root_box_model[18];
-        double origin_y = root_box_model[19];
-        for (int i = 1; i <= 16; i++) {
-          box_model[2 * i] -= origin_x;
-          box_model[2 * i + 1] -= origin_y;
-        }
-      }
-    }
-
-    auto* element_manager = ptr->element_manager();
-    CHECK_NULL_AND_LOG_RETURN_VALUE(element_manager, "element_manager is null",
-                                    res);
-    const float layouts_unit_per_px =
-        element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
-    model["width"] = box_model[0] / layouts_unit_per_px * screen_scale_factor;
-    model["height"] = box_model[1] / layouts_unit_per_px * screen_scale_factor;
-    // content
-    model["content"] = Json::Value(Json::ValueType::arrayValue);
-    for (int i = 2; i <= 9; ++i) {
-      model["content"].append(box_model[i] / layouts_unit_per_px *
-                              screen_scale_factor);
-    }
-    // padding
-    model["padding"] = Json::Value(Json::ValueType::arrayValue);
-    for (int i = 10; i <= 17; ++i) {
-      model["padding"].append(box_model[i] / layouts_unit_per_px *
-                              screen_scale_factor);
-    }
-    // border
-    model["border"] = Json::Value(Json::ValueType::arrayValue);
-    for (int i = 18; i <= 25; ++i) {
-      model["border"].append(box_model[i] / layouts_unit_per_px *
-                             screen_scale_factor);
-    }
-    // margin
-    model["margin"] = Json::Value(Json::ValueType::arrayValue);
-    for (int i = 26; i <= 33; ++i) {
-      model["margin"].append(box_model[i] / layouts_unit_per_px *
-                             screen_scale_factor);
-    }
-    res["model"] = model;
-  } else {
-    Json::Value error = Json::Value(Json::ValueType::objectValue);
-    error["code"] = Json::Value(-32000);
-    error["message"] = Json::Value("Could not compute box model.");
-    res["error"] = error;
-  }
-  return res;
-}
-
 Json::Value InspectorTasmExecutor::GetDocumentBodyFromNodeWithBoxModel(
-    tasm::Element* ptr) {
+    tasm::Element* ptr, std::vector<InspectorBoxModelQuery>& queries,
+    std::vector<std::vector<Json::ArrayIndex>>& box_model_paths,
+    const std::vector<Json::ArrayIndex>& node_path) {
   Json::Value res = Json::Value(Json::ValueType::objectValue);
 
   CHECK_NULL_AND_LOG_RETURN_VALUE(ptr, "ptr is null", res);
 
-  auto set_node_func = [this](Json::Value& res, Element* ptr) {
+  auto set_node_func = [this, &queries, &box_model_paths, &node_path](
+                           Json::Value& res, Element* ptr) {
     ElementHelper::SetJsonValueOfNode(ptr, res);
-    double screen_scale_factor = 1.0f;
-    std::string screen_shot_mode = DevToolStatus::GetInstance().GetStatus(
-        DevToolStatus::kDevToolStatusKeyScreenShotMode,
-        DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
-    Json::Value box_model = GetBoxModelOfNode(
-        ptr, screen_scale_factor, screen_shot_mode, GetElementRoot());
-    res["box_model"] = box_model["model"];
+    res["box_model"] = Json::Value();
+    if (!ptr->IsDetached() && ElementInspector::HasDataModel(ptr)) {
+      InspectorBoxModelQuery query;
+      if (BuildBoxModelQuery(ptr, query)) {
+        box_model_paths.push_back(node_path);
+        queries.push_back(std::move(query));
+      }
+    }
 
     res["childNodeCount"] = static_cast<int>(ptr->GetChildren().size());
     res["children"] = Json::Value(Json::ValueType::arrayValue);
+    Json::ArrayIndex child_index = 0;
     for (Element* child : ptr->GetChildren()) {
-      res["children"].append(GetDocumentBodyFromNodeWithBoxModel(child));
+      std::vector<Json::ArrayIndex> child_path = node_path;
+      child_path.push_back(child_index);
+      res["children"].append(GetDocumentBodyFromNodeWithBoxModel(
+          child, queries, box_model_paths, child_path));
+      ++child_index;
     }
   };
 
-  Element* comp_ptr =
-      ElementInspector::GetParentComponentElementFromDataModel(ptr);
-
-  if (comp_ptr && ElementInspector::IsNeedEraseId(comp_ptr)) {
-    // when the element tree is nested component tree like as below
-    // fake component
-    //    --> fake component
-    //          -->fake component
-    //               -->  true element
-    // Then after we have finished constructing the subtree with the child
-    // element of the bottom-most component as the root node, we need to
-    // continuously loop upwards until we find a node that is not a
-    // fake component element
-    set_node_func(res, ptr);
-
-    Json::Value current_res = res;
-    while (1) {
-      Json::Value comp = Json::Value(Json::ValueType::objectValue);
-      set_node_func(comp, comp_ptr);
-      comp["childNodeCount"] = 1;
-      comp["children"].append(current_res);
-
-      comp_ptr =
-          ElementInspector::GetParentComponentElementFromDataModel(comp_ptr);
-      if (!comp_ptr || !ElementInspector::IsNeedEraseId(comp_ptr)) {
-        return comp;
-      }
-      current_res = std::move(comp);
-    }
-  } else if (ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
+  if (ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
+    size_t res_paths_begin = box_model_paths.size();
     set_node_func(res, ptr);
     if (ElementInspector::SelectorTag(ptr) == "page") {
+      size_t doc_paths_begin = box_model_paths.size();
       Json::Value doc = Json::Value(Json::ValueType::objectValue);
       set_node_func(doc, ElementInspector::DocElement(ptr));
       doc["childNodeCount"] = 1;
+      Json::ArrayIndex child_index = doc["children"].size();
+      InsertChildIndexInPaths(box_model_paths, res_paths_begin, doc_paths_begin,
+                              node_path.size(), child_index);
       doc["children"].append(res);
       return doc;
     }
   } else {
     set_node_func(res, ptr);
-  }
-  return res;
-}
-
-Json::Value InspectorTasmExecutor::GetComputedStyleOfNode(tasm::Element* ptr) {
-  Json::Value res = Json::Value(Json::ValueType::arrayValue);
-  if (ptr != nullptr && ElementInspector::HasDataModel(ptr)) {
-    auto dict = ElementInspector::GetDefaultCss();
-
-    if (ElementInspector::IsEnableCSSSelector(ptr)) {
-      const std::vector<InspectorStyleSheet>& match_rules =
-          ElementInspector::GetMatchedStyleSheet(ptr);
-      for (const InspectorStyleSheet& match : match_rules) {
-        ReplaceDefaultComputedStyle(dict, match.css_properties_);
-      }
-    } else {
-      ReplaceDefaultComputedStyle(
-          dict,
-          ElementInspector::GetStyleSheetByName(ptr, "*").css_properties_);
-      ReplaceDefaultComputedStyle(
-          dict,
-          ElementInspector::GetStyleSheetByName(ptr, "body *").css_properties_);
-      for (size_t i = 0; i < ElementInspector::ClassOrder(ptr).size(); ++i) {
-        ReplaceDefaultComputedStyle(
-            dict, ElementInspector::GetStyleSheetByName(
-                      ptr, ElementInspector::ClassOrder(ptr)[i])
-                      .css_properties_);
-      }
-      ReplaceDefaultComputedStyle(dict,
-                                  ElementInspector::GetStyleSheetByName(
-                                      ptr, ElementInspector::SelectorId(ptr))
-                                      .css_properties_);
-      ReplaceDefaultComputedStyle(dict,
-                                  ElementInspector::GetStyleSheetByName(
-                                      ptr, ElementInspector::SelectorTag(ptr))
-                                      .css_properties_);
-    }
-
-    ReplaceDefaultComputedStyle(
-        dict, ElementInspector::GetInlineStyleSheet(ptr).css_properties_);
-
-    auto* element_manager = ptr->element_manager();
-
-    if (element_manager) {
-      const float layouts_unit_per_px =
-          element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
-      std::vector<double> box_info = GetBoxModel(ptr);
-      if (box_info.size() == 34) {
-        dict["width"] = lynx::tasm::CSSDecoder::ToPxValue(box_info[0] /
-                                                          layouts_unit_per_px);
-        dict["height"] = lynx::tasm::CSSDecoder::ToPxValue(box_info[1] /
-                                                           layouts_unit_per_px);
-
-        // clang-format off
-        //margin 26-33 border 18-25 padding 10-17 content 2-9
-        /*
-
-          (26,27)---------------------------------------------------(28,29)
-              |   (18,19) ------------------------------------(20,21)   |
-              |      |    (10,11)--------------------(12,13)     |      |
-              |      |       |       (2,3) ------(4,5)  |        |      |
-              |      |       |         |           |    |        |      |
-              |      |       |         |           |    |        |      |
-              |      |       |       (8,9)-------(6,7)  |        |      |
-              |      |    (16,17)--------------------(14,15)     |      |
-              |   (24,25)-------------------------------------(22,23)   |
-          (32,33)---------------------------------------------------(30,31)
-
-        */
-        // clang-format on
-        // margin
-        dict["margin-left"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[18] - box_info[26]) / layouts_unit_per_px);
-        dict["margin-top"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[19] - box_info[27]) / layouts_unit_per_px);
-        dict["margin-right"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[28] - box_info[20]) / layouts_unit_per_px);
-        dict["margin-bottom"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[33] - box_info[25]) / layouts_unit_per_px);
-        if (dict["margin-left"] == dict["margin-right"] &&
-            dict["margin-left"] == dict["margin-top"] &&
-            dict["margin-left"] == dict["margin-bottom"]) {
-          dict["margin"] = dict["margin-left"];
-        } else {
-          std::ostringstream margin_str;
-          margin_str << dict["margin-top"] << " " << dict["margin-right"] << " "
-                     << dict["margin-bottom"] << " " << dict["margin-left"];
-          dict["margin"] = margin_str.str();
-        }
-
-        // border
-        dict["border-left-width"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[10] - box_info[18]) / layouts_unit_per_px);
-        dict["border-right-width"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[20] - box_info[12]) / layouts_unit_per_px);
-        dict["border-top-width"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[11] - box_info[19]) / layouts_unit_per_px);
-        dict["border-bottom-width"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[25] - box_info[17]) / layouts_unit_per_px);
-
-        if (dict["border-left"] == dict["border-right"] &&
-            dict["border-left"] == dict["border-top"] &&
-            dict["border-left"] == dict["border-bottom"]) {
-          dict["border"] = dict["border-left"];
-        } else {
-          std::ostringstream margin_str;
-          margin_str << dict["border-top"] << " " << dict["border-right"] << " "
-                     << dict["border-bottom"] << " " << dict["border-left"];
-          dict["border"] = margin_str.str();
-        }
-
-        // padding
-        dict["padding-left"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[2] - box_info[10]) / layouts_unit_per_px);
-        dict["padding-top"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[3] - box_info[11]) / layouts_unit_per_px);
-        dict["padding-right"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[12] - box_info[4]) / layouts_unit_per_px);
-        dict["padding-bottom"] = lynx::tasm::CSSDecoder::ToPxValue(
-            (box_info[17] - box_info[9]) / layouts_unit_per_px);
-
-        if (dict["padding-left"] == dict["padding-right"] &&
-            dict["padding-left"] == dict["padding-top"] &&
-            dict["padding-left"] == dict["padding-bottom"]) {
-          dict["padding"] = dict["padding-left"];
-        } else {
-          std::ostringstream margin_str;
-          margin_str << dict["padding-top"] << " " << dict["padding-right"]
-                     << " " << dict["padding-bottom"] << " "
-                     << dict["padding-left"];
-          dict["border"] = margin_str.str();
-        }
-      }
-
-      dict["font-size"] = lynx::tasm::CSSDecoder::ToPxValue(
-          ptr->GetFontSize() / layouts_unit_per_px);
-    }
-
-    auto append_computed_style = [&res](const std::string& name,
-                                        const std::string& value) {
-      Json::Value temp = Json::Value(Json::ValueType::objectValue);
-      temp["name"] = name;
-      if (name.find("color") != std::string::npos &&
-          name != "-x-animation-color-interpolation" &&
-          name != "border-color") {
-        temp["value"] = lynx::tasm::CSSDecoder::ToRgbaFromColorValue(value);
-      } else {
-        temp["value"] = value;
-      }
-      res.append(temp);
-    };
-
-    // The results returned by CSSProperty::GetComputeStyleMap are stored in an
-    // unordered_map. However, the traversal order of unordered_map does not
-    // match the insertion order, as it is affected by factors such as hash,
-    // bucket layout and rehash.
-    for (int id = lynx::tasm::CSSPropertyID::kPropertyStart + 1;
-         id < lynx::tasm::CSSPropertyID::kPropertyEnd; ++id) {
-      const char* property_name = lynx::tasm::CSSProperty::GetPropertyNameCStr(
-          static_cast<lynx::tasm::CSSPropertyID>(id));
-      auto it = dict.find(property_name);
-      if (it != dict.end()) {
-        append_computed_style(it->first, it->second);
-        dict.erase(it);
-      }
-    }
-
-    std::vector<std::string> remaining_names;
-    remaining_names.reserve(dict.size());
-    for (const auto& pair : dict) {
-      if (!pair.first.empty()) {
-        remaining_names.push_back(pair.first);
-      }
-    }
-    std::sort(remaining_names.begin(), remaining_names.end());
-    for (const auto& name : remaining_names) {
-      append_computed_style(name, dict.at(name));
-    }
   }
   return res;
 }

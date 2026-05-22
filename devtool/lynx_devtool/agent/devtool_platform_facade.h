@@ -116,9 +116,6 @@ class DevToolPlatformFacade
   void SendLayerTreeDidChangeEvent();
   void SendCDPEvent(const std::string& message);
 
-  virtual std::vector<double> GetBoxModel(tasm::Element* element) {
-    return std::vector<double>();
-  }
   virtual std::vector<double> GetBoxModel(const InspectorBoxModelQuery& query);
   virtual std::vector<float> GetTransformValue(
       int identifier, const std::vector<float>& pad_border_margin_layout) {
@@ -149,10 +146,8 @@ class DevToolPlatformFacade
   std::string GetLepusDebugInfoUrl(const std::string& file_name);
 
  protected:
-  // This function is shared across multiple platforms
-  // and will be called in the GetBoxModel method of subclasses.
-  // It is used to retrieve the box model information for an element.
-  std::vector<double> GetBoxModelInGeneralPlatform(tasm::Element* element);
+  virtual bool SupportsOverlayBoxModel() const { return false; }
+
   // This function is shared across multiple platforms and retrieves box model
   // information from a TASM-thread snapshot plus UI-thread transform.
   std::vector<double> GetBoxModelInGeneralPlatform(
