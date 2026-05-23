@@ -68,6 +68,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   }
 
   // client callback
+  // Invoked on the UI thread.
   onErrorOccurred(level: string, errorCode: number, message: string, suggestion: string,
     customInfo: Record<string, string>, logboxOnly: boolean) {
     let err = new LynxError(LynxErrorLevel[level], errorCode, message, suggestion, LynxError.NATIVE_ERROR, customInfo);
@@ -82,12 +83,14 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
     });
   }
 
+  // Invoked on the UI thread.
   onModuleMethodInvoked(module: string, method: string, error_code: number) {
     this.clients.forEach(client => {
       client.onModuleMethodInvoked(module, method, error_code);
     });
   }
 
+  // Invoked on the UI thread.
   onEvaluateJavaScriptEnd(url: string) {
     this.clients.forEach(client => {
       client.onEvaluateJavaScriptEnd(url);

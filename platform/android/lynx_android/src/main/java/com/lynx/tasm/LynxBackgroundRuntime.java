@@ -23,6 +23,7 @@ import com.lynx.tasm.base.CleanupReference;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.core.JSProxy;
 import com.lynx.tasm.core.resource.LynxResourceLoader;
+import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -353,27 +354,36 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     }
   }
 
+  // Invoked on the JS thread, dispatched to the UI thread before notifying clients.
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   @Override
   @CalledByNative
   public void onErrorOccurred(LynxError error) {
-    for (LynxBackgroundRuntimeClient client : mRuntimeClients) {
-      client.onReceivedError(error);
-    }
+    UIThreadUtils.runOnUiThread(() -> {
+      for (LynxBackgroundRuntimeClient client : mRuntimeClients) {
+        client.onReceivedError(error);
+      }
+    });
   }
 
+  // Invoked on the JS thread, dispatched to the UI thread before notifying clients.
   @CalledByNative
   public void onModuleMethodInvoked(String module, String method, int error_code) {
-    for (LynxBackgroundRuntimeClient client : mRuntimeClients) {
-      client.onModuleMethodInvoked(module, method, error_code);
-    }
+    UIThreadUtils.runOnUiThread(() -> {
+      for (LynxBackgroundRuntimeClient client : mRuntimeClients) {
+        client.onModuleMethodInvoked(module, method, error_code);
+      }
+    });
   }
 
+  // Invoked on the JS thread, dispatched to the UI thread before notifying clients.
   @CalledByNative
   public void onEvaluateJavaScriptEnd(String url) {
-    for (LynxBackgroundRuntimeClient client : mRuntimeClients) {
-      client.onEvaluateJavaScriptEnd(url);
-    }
+    UIThreadUtils.runOnUiThread(() -> {
+      for (LynxBackgroundRuntimeClient client : mRuntimeClients) {
+        client.onEvaluateJavaScriptEnd(url);
+      }
+    });
   }
 
   public boolean attachToLynxView() {

@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
@@ -42,7 +43,15 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
       lynx::base::TaskRunnerManufactor::GetJSRunner(group_name);
   auto native_runtime_facade =
       std::make_shared<lynx::shell::LynxActor<lynx::shell::NativeFacade>>(
-          std::move(native_facade_runtime), js_task_runner, instance_id, true);
+          std::move(native_facade_runtime),
+#if OS_HARMONY
+          // Harmony only exposes a single UI thread for native callbacks,
+          // so the NativeFacade actor must be bound to the UI runner.
+          base::UIThread::GetRunner(),
+#else
+          js_task_runner,
+#endif
+          instance_id, true);
   std::shared_ptr<base::VSyncMonitor> vsync_monitor =
       base::VSyncMonitor::Create();
 
