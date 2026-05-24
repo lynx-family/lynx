@@ -143,5 +143,82 @@ TEST(ContainerNodeTests, ContainerNodeRemoveOnlyNode) {
   EXPECT_EQ(nullptr, parent.LastChild());
 }
 
+TEST(ContainerNodeTests, ContainerNodeFindIndexAndDefensiveBranches) {
+  starlight::ContainerNode parent, child0, child1, child2, outsider;
+  parent.AppendChild(&child0);
+  parent.AppendChild(&child1);
+  parent.AppendChild(&child2);
+
+  EXPECT_EQ(&child0, parent.Find(0));
+  EXPECT_EQ(&child1, parent.Find(1));
+  EXPECT_EQ(&child2, parent.Find(2));
+  EXPECT_EQ(nullptr, parent.Find(3));
+  EXPECT_EQ(nullptr, parent.Find(-1));
+
+  EXPECT_EQ(0, parent.IndexOf(&child0));
+  EXPECT_EQ(1, parent.IndexOf(&child1));
+  EXPECT_EQ(2, parent.IndexOf(&child2));
+  EXPECT_EQ(-1, parent.IndexOf(&outsider));
+
+  parent.RemoveChild(nullptr);
+  EXPECT_EQ(3, parent.GetChildCount());
+
+  starlight::ContainerNode empty_parent;
+  empty_parent.RemoveChild(&outsider);
+  EXPECT_EQ(0, empty_parent.GetChildCount());
+
+  EXPECT_EQ(nullptr, outsider.parent());
+}
+
+TEST(ContainerNodeTests,
+     ContainerNodeFindPastEndAndInsertBeforeOwnedReference) {
+  starlight::ContainerNode empty_parent;
+  EXPECT_EQ(nullptr, empty_parent.Find(1));
+
+  starlight::ContainerNode parent, child0, child1, inserted;
+  parent.AppendChild(&child0);
+  parent.AppendChild(&child1);
+
+  parent.InsertChildBefore(&inserted, &child1);
+  EXPECT_EQ(&child0, parent.FirstChild());
+  EXPECT_EQ(&child1, parent.LastChild());
+  EXPECT_EQ(&child0, inserted.Previous());
+  EXPECT_EQ(&child1, inserted.Next());
+  EXPECT_EQ(&inserted, child1.Previous());
+  EXPECT_EQ(3, parent.GetChildCount());
+}
+
+TEST(ContainerNodeTests, ContainerNodeDestructorDetachesChildren) {
+  starlight::ContainerNode child0, child1, child2;
+  {
+    starlight::ContainerNode parent;
+    parent.AppendChild(&child0);
+    parent.AppendChild(&child1);
+    parent.AppendChild(&child2);
+    EXPECT_EQ(3, parent.GetChildCount());
+    EXPECT_EQ(&parent, child0.parent());
+    EXPECT_EQ(&parent, child1.parent());
+    EXPECT_EQ(&parent, child2.parent());
+  }
+
+  EXPECT_EQ(nullptr, child0.parent());
+  EXPECT_EQ(nullptr, child0.Next());
+  EXPECT_EQ(nullptr, child0.Previous());
+  EXPECT_EQ(nullptr, child1.parent());
+  EXPECT_EQ(nullptr, child1.Next());
+  EXPECT_EQ(nullptr, child1.Previous());
+  EXPECT_EQ(nullptr, child2.parent());
+  EXPECT_EQ(nullptr, child2.Next());
+  EXPECT_EQ(nullptr, child2.Previous());
+}
+
+TEST(ContainerNodeTests, ContainerNodeInsertWithForeignReferenceDeath) {
+  starlight::ContainerNode parent, other_parent, child, foreign_reference;
+  other_parent.AppendChild(&foreign_reference);
+
+  EXPECT_DEATH_IF_SUPPORTED(
+      parent.InsertChildBefore(&child, &foreign_reference), "");
+}
+
 }  // namespace tasm
 }  // namespace lynx
