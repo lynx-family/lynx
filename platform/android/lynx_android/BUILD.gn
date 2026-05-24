@@ -47,6 +47,7 @@ group("lynx_android_lib") {
     "../../../core/base:base",
     "../../../core/build:build",
     "../../../core/event",
+    "../../../core/native_renderer_capi:native_renderer_capi",
     "../../../core/renderer:tasm",
     "../../../core/renderer/css:css",
     "../../../core/renderer/data:data",
@@ -143,6 +144,11 @@ config("lynx_android_public_config") {
   cflags += [
     "-fno-short-enums",
     "-fno-strict-aliasing",
+    # Default hidden visibility. Whisker's native renderer C API
+    # (core/native_renderer_capi/) tags its individual functions
+    # with LYNX_CAPI_EXPORT (= __attribute__((visibility("default"))))
+    # so only those land in liblynx.so's .dynsym. Lynx's internal
+    # C++ classes stay hidden, which is what upstream wants.
     "-fvisibility=hidden",
     "-fvisibility-inlines-hidden",
     "-Wno-unused-parameter",
@@ -238,7 +244,11 @@ config("lynx_android_public_config") {
 # This config is only used in lynx_android target.
 config("lynx_android_private_config") {
   ldflags = [
-    "-Wl,--exclude-libs,ALL,--gc-sections",
+    # Whisker patch: keep --gc-sections but drop --exclude-libs,ALL so the
+    # symbols we made visible via -fvisibility=default (disable_visibility_hidden)
+    # actually land in liblynx.so's .dynsym. Without this, the linker
+    # re-hides every symbol coming from input static archives.
+    "-Wl,--gc-sections",
     "-Wl,--build-id=sha1",
     "-fuse-ld=lld",
     "-Xlinker",

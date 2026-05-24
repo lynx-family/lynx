@@ -1,0 +1,24 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+# Native renderer C ABI for embedders that build Lynx's element tree
+# from a host language (Whisker / Rust). See public/lynx_native_renderer_capi.h
+# for the API surface. This target gets linked into liblynx.so via
+# lynx_android_lib's public_deps (and the corresponding iOS aggregate
+# target), so the LYNX_CAPI_EXPORT-tagged functions in this directory
+# end up in the resulting .so / framework's .dynsym.
+
+import("../Lynx.gni")
+
+lynx_core_source_set("native_renderer_capi") {
+  sources = [
+    "lynx_native_renderer.cc",
+    "public/lynx_native_renderer_capi.h",
+  ]
+  deps = [
+    "../renderer:tasm",
+    "../renderer/dom:dom",
+    "../shell:shell",
+  ]
+}

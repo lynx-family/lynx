@@ -1,0 +1,275 @@
+name: build-whisker-tarballs
+
+# Produces the `whisker-lynx-android-<version>.tar.gz` (and later
+# `whisker-lynx-ios-<version>.tar.gz`) release assets that
+# `whisker-build::lynx::ensure_lynx_*` downloads. Triggered on
+# `v*-whisker.*` tag push; the tag name without leading `v` becomes
+# the `<version>` segment in tarball filenames.
+#
+# Companion: `whiskerrs/whisker` repo pins `LYNX_VERSION` /
+# `LYNX_FORK_TAG` / `LYNX_*_SHA256` constants in
+# `crates/whisker-build/src/lynx.rs`. After a successful release,
+# the SHA-256 sidecars uploaded here go into those constants.
+
+on:
+  push:
+    tags:
+      - 'v*-whisker.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Override tag (omit to use HEAD as v0.0.0-whisker.dev)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write   # for softprops/action-gh-release
+
+jobs:
+  android:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4
+        with:
+          path: lynx
+          submodules: recursive
+
+      - name: Set up JDK 11 (Lynx gradle 6.7.1)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 11
+
+      - name: Python Setup (for hab + py_deps)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Lynx Python deps + run habitat sync
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          cache-backend: github
+
+      - name: Install Android NDK 21.1.6352462 + platforms/build-tools
+        # Lynx pins ndk 21.1.6352462 inside `gradle.properties` and
+        # reads it via `ndk.dir = $ANDROID_HOME/ndk/<version>`, so
+        # we install into that canonical location rather than relying
+        # on the runner's pre-installed NDKs (which don't include r21).
+        # Lynx ships its own installer that uses the sdkmanager
+        # buildtools the prior step's `tools/hab sync . -f --target
+        # dev` already staged.
+        working-directory: lynx
+        run: |
+          set -e
+          tools/hab sync . -f --target dev --target-only
+          python3 tools/android_tools/prepare_android_build.py
+
+      - name: Build Android AARs
+        working-directory: lynx
+        # NDK env vars point at the sdkmanager-installed NDK rather
+        # than the pre-installed-but-stale GHA runner one. Lynx's
+        # build expects exactly 21.1.6352462; mismatching paths cause
+        # `local.properties`'s ndk.dir to resolve to an empty dir
+        # ("Location specified by ndk.dir did not contain a valid NDK").
+        run: |
+          set -e
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/21.1.6352462"
+          export ANDROID_NDK="$ANDROID_NDK_HOME"
+          source tools/envsetup.sh
+          cd platform/android
+          ./gradlew --no-daemon \
+            :LynxBase:assembleNoasanRelease \
+            :LynxTrace:assembleNoasanRelease \
+            :LynxAndroid:assembleNoasanRelease \
+            :ServiceAPI:assembleNoasanRelease
+
+      - name: Resolve release version
+        id: ver
+        env:
+          # `github.event.inputs.tag` is the universally-available form
+          # — `inputs.*` is only valid on workflow_dispatch / call /
+          # run events, so referencing it on a tag push fails workflow
+          # validation. `event.inputs` evaluates to an empty string on
+          # push events and we cope with that below.
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VER="${GITHUB_REF_NAME#v}"
+          else
+            VER="${INPUT_TAG#v}"
+            if [ -z "$VER" ]; then VER="0.0.0-whisker.dev"; fi
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Stage tarball contents
+        working-directory: lynx
+        run: |
+          set -e
+          VER="${{ steps.ver.outputs.version }}"
+          STAGE="$GITHUB_WORKSPACE/whisker-lynx-android-$VER"
+          mkdir -p "$STAGE/unpacked/jni" "$STAGE/headers"
+
+          declare -A AAR_PAIRS=(
+            [base/platform/android/build/outputs/aar/LynxBase-noasan-release.aar]=LynxBase.aar
+            [base/trace/android/build/outputs/aar/LynxTrace-noasan-release.aar]=LynxTrace.aar
+            [platform/android/lynx_android/build/outputs/aar/LynxAndroid-noasan-release.aar]=LynxAndroid.aar
+            [platform/android/service_api/build/outputs/aar/ServiceAPI-noasan-release.aar]=ServiceAPI.aar
+          )
+          for SRC in "${!AAR_PAIRS[@]}"; do
+            DST="${AAR_PAIRS[$SRC]}"
+            if [ ! -f "$SRC" ]; then
+              echo "::error::AAR not produced: $SRC"; exit 1
+            fi
+            cp "$SRC" "$STAGE/$DST"
+            # Extract jni/<abi>/*.so from the AAR (AAR is a zip).
+            unzip -oq "$SRC" 'jni/*' -d "$STAGE/unpacked/" || true
+          done
+
+          # C++ headers used by whisker-driver-sys/build.rs's cc-rs
+          # compilation. The bridge code includes paths like
+          # `"core/shell/lynx_shell.h"` and is compiled with
+          # `-I <staged>/Lynx`, so the file must end up at
+          # `<staged>/Lynx/core/shell/lynx_shell.h`. That is — the
+          # `core/` (or `base/`, `service_api/`) directory name is
+          # preserved INSIDE the namespace dir. Tarring from `find
+          # "$src" …` (not from inside $src) keeps the wrapping
+          # component.
+          stage_headers() {
+            local src="$1"; local dst="$STAGE/headers/$2"
+            mkdir -p "$dst"
+            find "$src" -name '*.h' -print0 | \
+              tar -cf - --null --files-from=- | \
+              (cd "$dst" && tar -xf -)
+          }
+          stage_headers core            Lynx
+          stage_headers base            LynxBase
+          stage_headers service_api     LynxServiceAPI
+          # Lynx code does `#include "third_party/rapidjson/document.h"`
+          # etc. from within `core/...` headers. We stage third_party
+          # under the Lynx namespace so `-I <staged>/Lynx` covers
+          # those resolves. Mirrors the iOS xtask staging layout
+          # (CocoaPods source pods bundle third_party inside the pod).
+          # PrimJS itself is excluded — it has its own namespace.
+          stage_third_party() {
+            local dst="$STAGE/headers/Lynx/third_party"
+            mkdir -p "$dst"
+            find third_party -name '*.h' -not -path 'third_party/primjs/*' -print0 | \
+              tar -cf - --null --files-from=- | \
+              (cd "$STAGE/headers/Lynx" && tar -xf -)
+          }
+          stage_third_party
+          # PrimJS lives under third_party/primjs/. The bridge
+          # references `<staged>/PrimJS/src/...` directly, so strip
+          # the `third_party/primjs/` wrapping but keep `src/` etc.
+          if [ -d third_party/primjs ]; then
+            mkdir -p "$STAGE/headers/PrimJS"
+            (cd third_party/primjs && find . -name '*.h' -print0) | \
+              tar -cf - --null --files-from=- -C third_party/primjs | \
+              (cd "$STAGE/headers/PrimJS" && tar -xf -)
+          fi
+
+      - name: Pack tarball + checksum
+        run: |
+          set -e
+          VER="${{ steps.ver.outputs.version }}"
+          NAME="whisker-lynx-android-$VER.tar.gz"
+          tar czf "$NAME" -C "$GITHUB_WORKSPACE" "whisker-lynx-android-$VER"
+          sha256sum "$NAME" | tee "$NAME.sha256"
+          ls -lh "$NAME"
+
+      - name: Upload artifact (workflow_dispatch)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisker-lynx-android
+          path: |
+            whisker-lynx-android-*.tar.gz
+            whisker-lynx-android-*.tar.gz.sha256
+
+      - name: Upload to release (tag push)
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            whisker-lynx-android-*.tar.gz
+            whisker-lynx-android-*.tar.gz.sha256
+
+  ios:
+    runs-on: macos-14
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        # macos-14 runners ship multiple Xcode installs. Need 16+
+        # because xcodegen (and our Whisker pbxproj template) produce
+        # `objectVersion = 77`, which Xcode 15.x rejects with "future
+        # Xcode project file format". Pick the highest 16.x present
+        # so the choice doesn't drift as the runner image updates.
+        run: |
+          set -e
+          CHOSEN=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort | tail -1)
+          if [ -z "$CHOSEN" ]; then
+            echo "::error::no Xcode 16.x found in /Applications. Available:"
+            ls -d /Applications/Xcode*.app 2>&1 || true
+            exit 1
+          fi
+          echo "Selecting $CHOSEN"
+          sudo xcode-select -s "$CHOSEN"
+          xcodebuild -version
+
+      - name: Install xcodegen + CocoaPods
+        run: |
+          set -e
+          brew install xcodegen
+          gem install cocoapods -v 1.15.2 --no-document
+
+      - name: Resolve release version
+        id: ver
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VER="${GITHUB_REF_NAME#v}"
+          else
+            VER="${INPUT_TAG#v}"
+            if [ -z "$VER" ]; then VER="0.0.0-whisker.dev"; fi
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Build Lynx + PrimJS xcframeworks
+        # See .whisker/ios/build-xcframeworks.sh — sets up a carrier
+        # Xcode project, pod-installs the upstream Lynx 3.7.0 +
+        # PrimJS 3.7.0 source pods, xcodebuilds for iOS device +
+        # simulator with `use_frameworks!` (dynamic), then assembles
+        # 4 xcframeworks. Lynx's category-method registration relies
+        # on dynamic linkage (see the comment in build-xcframeworks.sh).
+        run: .whisker/ios/build-xcframeworks.sh
+        env:
+          BUILD_DIR: ${{ github.workspace }}/lynx-build
+          OUT_DIR: ${{ github.workspace }}/lynx-ios
+
+      - name: Stage + pack tarball
+        run: .whisker/ios/stage-tarball.sh
+        env:
+          LYNX_BUILD_OUT: ${{ github.workspace }}/lynx-ios
+          VERSION: ${{ steps.ver.outputs.version }}
+
+      - name: Upload artifact (workflow_dispatch)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisker-lynx-ios
+          path: |
+            whisker-lynx-ios-*.tar.gz
+            whisker-lynx-ios-*.tar.gz.sha256
+
+      - name: Upload to release (tag push)
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            whisker-lynx-ios-*.tar.gz
+            whisker-lynx-ios-*.tar.gz.sha256
