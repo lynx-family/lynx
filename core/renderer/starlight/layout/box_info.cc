@@ -27,6 +27,28 @@ void SetIfChanged(bool& dirty_flag, float& target, float new_value) {
 bool MarkShouldModify(const NLength& length) {
   return length.IsPercent() ? true : false;
 }
+
+bool IsUnitValue(const NLength& length, float value) {
+  return length.IsUnit() && length.GetRawValue() == value;
+}
+
+bool HasDefaultBoxInfoValues(const LayoutComputedStyle& style) {
+  return IsUnitValue(style.GetMarginLeft(), 0.f) &&
+         IsUnitValue(style.GetMarginRight(), 0.f) &&
+         IsUnitValue(style.GetMarginTop(), 0.f) &&
+         IsUnitValue(style.GetMarginBottom(), 0.f) &&
+         IsUnitValue(style.GetPaddingLeft(), 0.f) &&
+         IsUnitValue(style.GetPaddingRight(), 0.f) &&
+         IsUnitValue(style.GetPaddingTop(), 0.f) &&
+         IsUnitValue(style.GetPaddingBottom(), 0.f) &&
+         IsUnitValue(style.GetMinWidth(),
+                     DefaultLayoutStyle::kDefaultMinSize) &&
+         IsUnitValue(style.GetMinHeight(),
+                     DefaultLayoutStyle::kDefaultMinSize) &&
+         IsUnitValue(style.GetMaxWidth(),
+                     DefaultLayoutStyle::kDefaultMaxSize) &&
+         IsUnitValue(style.GetMaxHeight(), DefaultLayoutStyle::kDefaultMaxSize);
+}
 }  // namespace
 
 BoxInfo::BoxInfo() { ResetBoxInfo(); }
@@ -121,6 +143,38 @@ void BoxInfo::InitializeBoxInfo(const Constraints& constraints,
   // The changes of Minimum size and padding in box info will be treated as
   // changing the CSS. Cache will be cleaned if any of this changed
   const auto& style = *(obj.GetCSSStyle());
+
+  if (HasDefaultBoxInfoValues(style) &&
+      (style.IsBorderBox(layout_config) ||
+       (style.GetBorderFinalWidthHorizontal() == 0.f &&
+        style.GetBorderFinalWidthVertical() == 0.f))) {
+    values_of_width_modify_ = false;
+    values_of_height_modify_ = false;
+
+    bool dirty = false;
+    for (int32_t dir_index = 0; dir_index < kDirectionCount; ++dir_index) {
+      Direction direction = static_cast<Direction>(dir_index);
+      margin_[direction] = 0.f;
+      SetIfChanged(dirty, padding_[direction], 0.f);
+      padding_should_modify_[direction] = false;
+      margin_should_modify_[direction] = false;
+    }
+    min_should_modify_[kHorizontal] = false;
+    min_should_modify_[kVertical] = false;
+    max_should_modify_[kHorizontal] = false;
+    max_should_modify_[kVertical] = false;
+    SetIfChanged(dirty, min_size_[kHorizontal],
+                 DefaultLayoutStyle::kDefaultMinSize);
+    SetIfChanged(dirty, min_size_[kVertical],
+                 DefaultLayoutStyle::kDefaultMinSize);
+    max_size_[kHorizontal] = DefaultLayoutStyle::kDefaultMaxSize;
+    max_size_[kVertical] = DefaultLayoutStyle::kDefaultMaxSize;
+    if (dirty) {
+      obj.ClearCache();
+    }
+    box_info_props_modified = 0;
+    return;
+  }
 
   values_of_width_modify_ = false;
   values_of_height_modify_ = false;
