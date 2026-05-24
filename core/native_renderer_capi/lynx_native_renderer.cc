@@ -22,6 +22,8 @@
 #include <utility>
 
 #include "base/include/value/base_string.h"
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/public/pipeline_option.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -33,8 +35,10 @@
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/utils/base/tasm_constants.h"
+#include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/shell/lynx_shell.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 
 // ----- Internal handle structures ------------------------------------------
 //
@@ -239,6 +243,70 @@ LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_shell_flush(lynx_shell_t* shell) {
   shell->root_page->FlushActionsAsRoot();
   auto options = std::make_shared<lynx::tasm::PipelineOptions>();
   shell->manager->OnPatchFinish(options, shell->root_page.get());
+}
+
+// ----- UI method dispatch ---------------------------------------------------
+
+LYNX_NATIVE_RENDERER_CAPI_EXPORT int32_t lynx_ui_invoke_method(
+    lynx_shell_t* shell,
+    int32_t sign,
+    const char* method_name,
+    const lynx_ui_method_value_t* args,
+    size_t arg_count) {
+  if (shell == nullptr || shell->manager == nullptr ||
+      method_name == nullptr) {
+    return -1;
+  }
+  auto* catalyzer = shell->manager->catalyzer();
+  if (catalyzer == nullptr) {
+    return -2;
+  }
+
+  // Package the args as `{"args": [arg0, arg1, ...]}` — the
+  // convention Whisker's `WhiskerValue.fromNSDictionary` (iOS) /
+  // `WhiskerValue.fromReadableMap` (Android) decoders expect from
+  // their `@WhiskerUIMethod`-emitted forwarders.
+  auto args_array = lynx::lepus::CArray::Create();
+  for (size_t i = 0; args != nullptr && i < arg_count; i++) {
+    const lynx_ui_method_value_t& v = args[i];
+    switch (v.type) {
+      case LYNX_UI_METHOD_VALUE_NULL:
+        args_array->emplace_back(lynx::lepus::Value());
+        break;
+      case LYNX_UI_METHOD_VALUE_BOOL:
+        args_array->emplace_back(lynx::lepus::Value(v.v.b));
+        break;
+      case LYNX_UI_METHOD_VALUE_INT:
+        args_array->emplace_back(lynx::lepus::Value(v.v.i));
+        break;
+      case LYNX_UI_METHOD_VALUE_DOUBLE:
+        args_array->emplace_back(lynx::lepus::Value(v.v.f));
+        break;
+      case LYNX_UI_METHOD_VALUE_STRING:
+        args_array->emplace_back(lynx::lepus::Value(
+            lynx::base::String(v.v.s != nullptr ? v.v.s : "")));
+        break;
+    }
+  }
+  auto params_dict = lynx::lepus::Dictionary::Create();
+  BASE_STATIC_STRING_DECL(kArgs, "args");
+  params_dict->SetValue(kArgs, lynx::lepus::Value(std::move(args_array)));
+  lynx::lepus::Value params_lepus(std::move(params_dict));
+
+  // Fire-and-forget: the platform Invoke routes the actual UI
+  // method call to the main / UI thread via `dispatch_async` (iOS)
+  // / a posted runnable (Android). The callback fires after the
+  // method completes — typically synchronously inside the platform
+  // method, but the Whisker C wrapper has no useful way to surface
+  // an async result without growing an async API. v1 contract is
+  // sync-only / discard-result.
+  auto noop_callback = [](int32_t /*code*/, const lynx::pub::Value& /*data*/) {};
+
+  catalyzer->Invoke(static_cast<int64_t>(sign),
+                    std::string(method_name),
+                    lynx::pub::ValueImplLepus(params_lepus),
+                    noop_callback);
+  return 0;
 }
 
 // ----- subsecond ASLR anchor ------------------------------------------------

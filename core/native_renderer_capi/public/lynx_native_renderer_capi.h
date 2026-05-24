@@ -29,6 +29,7 @@
 #define CORE_NATIVE_RENDERER_CAPI_PUBLIC_LYNX_NATIVE_RENDERER_CAPI_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 // Self-contained export macros. The rest of Lynx uses
@@ -172,6 +173,66 @@ LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_shell_set_root_element(
 // finalization, schedule layout + paint. Must be called from inside
 // the TASM thread callback.
 LYNX_NATIVE_RENDERER_CAPI_EXPORT void lynx_shell_flush(lynx_shell_t* shell);
+
+// ----- UI method dispatch ---------------------------------------------------
+//
+// Invoke a Lynx UI method on a mounted element by sign. Wraps
+// `Catalyzer::Invoke` so the call routes through the platform's
+// `LynxUIMethodProcessor.invokeMethod:forUI:` (iOS) /
+// `LynxUIMethodsExecutor.invokeMethod(...)` (Android) machinery —
+// which then dispatches to whichever method is registered on the
+// mounted `LynxUI` / `LynxBaseUI` for `sign`.
+//
+// `sign` is the value returned by `lynx_element_id` for a fiber
+// element that has been flushed at least once (so the platform UI
+// counterpart actually exists).
+//
+// Args are encoded as a flat `lynx_ui_method_value_t` array. The
+// implementation packages them into the lepus::Value tree
+// `{"args": [arg0, arg1, ...]}` that the platform-side
+// LynxUIMethodProcessor / LynxUIMethodsExecutor forwarders see
+// (matching Whisker's `WhiskerValue.fromNSDictionary` /
+// `WhiskerValue.fromReadableMap` decoding convention — Phase
+// 7-Φ.H.2 on the embedder side).
+//
+// Currently fire-and-forget — the underlying platform Invoke
+// dispatches the call asynchronously on the main / UI thread, so
+// the C wrapper returns immediately. A return value of `0` means
+// "dispatch was scheduled successfully"; non-zero indicates the
+// preconditions failed (NULL shell, NULL method, manager not
+// initialised). Method-side failures (no UI for sign, no such
+// method on the UI) surface as JS-side callback errors but are
+// invisible to this caller — for v1 the embedder's typed wrappers
+// discard return values anyway. An async-result variant can land
+// later if a real use case demands it.
+
+typedef enum lynx_ui_method_value_type_e {
+  LYNX_UI_METHOD_VALUE_NULL = 0,
+  LYNX_UI_METHOD_VALUE_BOOL = 1,
+  LYNX_UI_METHOD_VALUE_INT = 2,
+  LYNX_UI_METHOD_VALUE_DOUBLE = 3,
+  LYNX_UI_METHOD_VALUE_STRING = 4,
+} lynx_ui_method_value_type_e;
+
+typedef struct lynx_ui_method_value_t {
+  lynx_ui_method_value_type_e type;
+  union {
+    bool b;
+    int64_t i;
+    double f;
+    // String: caller-owned UTF-8, NUL-terminated. Borrowed for the
+    // duration of `lynx_ui_invoke_method` only — the implementation
+    // copies the contents into a `base::String` before returning.
+    const char* s;
+  } v;
+} lynx_ui_method_value_t;
+
+LYNX_NATIVE_RENDERER_CAPI_EXPORT int32_t lynx_ui_invoke_method(
+    lynx_shell_t* shell,
+    int32_t sign,
+    const char* method_name,
+    const lynx_ui_method_value_t* args,
+    size_t arg_count);
 
 // ----- subsecond ASLR anchor ------------------------------------------------
 
