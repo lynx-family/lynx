@@ -320,18 +320,21 @@ void CSSFragmentDecorator::ForEachKeyframesMap(
   }
 }
 
-void CSSFragmentDecorator::ForEachFontFaceMap(ForEachFontFaceMapVisitor visitor,
-                                              void* cb_data) {
+void CSSFragmentDecorator::ForEachUnresolvedFontFaceMap(
+    ForEachFontFaceMapVisitor visitor, void* cb_data) {
   struct Ctx {
     ForEachFontFaceMapVisitor visitor;
     void* cb_data;
   };
   Ctx ctx{visitor, cb_data};
   ForEachAdoptedFragment([&ctx](CSSFragment& fragment) {
-    ctx.visitor(fragment.GetFontFaceRuleMap(), ctx.cb_data);
+    if (!fragment.HasFontFacesResolved()) {
+      ctx.visitor(fragment.GetFontFaceRuleMap(), ctx.cb_data);
+    }
     return true;
   });
-  if (intrinsic_style_sheets_) {
+  if (intrinsic_style_sheets_ &&
+      !intrinsic_style_sheets_->HasFontFacesResolved()) {
     visitor(intrinsic_style_sheets_->GetFontFaceRuleMap(), cb_data);
   }
 }

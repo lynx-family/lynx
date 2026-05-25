@@ -206,7 +206,7 @@ void TextElement::ConvertToInlineElement() {
 void TextElement::ResolveAndFlushFontFaces(const base::String& font_family) {
   auto* fragment = GetRelatedCSSFragment();
   if (fragment) {
-    fragment->ForEachFontFaceMap(
+    fragment->ForEachUnresolvedFontFaceMap(
         [](const CSSFontFaceRuleMap& font_face_map, void* cb_data) {
           auto* self = static_cast<TextElement*>(cb_data);
           if (!font_face_map.empty()) {

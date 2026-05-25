@@ -127,9 +127,14 @@ class CSSFragment {
   // Iterate all font-face maps that contribute to this stylesheet.
   // For CSSFragmentDecorator, this includes adopted stylesheets.
   using ForEachFontFaceMapVisitor = void (*)(const CSSFontFaceRuleMap&, void*);
-  virtual void ForEachFontFaceMap(ForEachFontFaceMapVisitor visitor,
-                                  void* cb_data) {
-    visitor(GetFontFaceRuleMap(), cb_data);
+
+  // Iterates only font-face maps that have not yet been resolved.
+  // Skips fragments that have already been processed to avoid redundant work.
+  virtual void ForEachUnresolvedFontFaceMap(ForEachFontFaceMapVisitor visitor,
+                                            void* cb_data) {
+    if (!has_font_faces_resolved_) {
+      visitor(GetFontFaceRuleMap(), cb_data);
+    }
   }
 
   // Iterate all rule sets that contribute to this stylesheet.

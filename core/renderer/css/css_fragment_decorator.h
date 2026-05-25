@@ -63,8 +63,8 @@ class CSSFragmentDecorator : public CSSFragment {
 
   void ForEachKeyframesMap(ForEachKeyframesMapVisitor visitor,
                            void* cb_data) override;
-  void ForEachFontFaceMap(ForEachFontFaceMapVisitor visitor,
-                          void* cb_data) override;
+  void ForEachUnresolvedFontFaceMap(ForEachFontFaceMapVisitor visitor,
+                                    void* cb_data) override;
   void ForEachRuleSet(ForEachRuleSetVisitor visitor, void* cb_data) override;
 
   void CollectInvalidationSetsForId(css::InvalidationLists& lists,
