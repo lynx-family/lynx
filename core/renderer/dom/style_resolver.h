@@ -23,6 +23,9 @@
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 
 namespace lynx {
+namespace css {
+class MediaQueryEvaluator;
+}  // namespace css
 namespace style {
 class SimpleStyleNode;
 class StyleObject;
@@ -39,7 +42,10 @@ class StyleResolver {
   using MatchedVector = base::InlineVector<T, kDefaultMatchedSize>;
 
   LYNX_EXPORT_FOR_DEVTOOL static MatchedVector<css::MatchedRule>
-  GetCSSMatchedRule(AttributeHolder* node, CSSFragment* style_sheet);
+  GetCSSMatchedRule(AttributeHolder* node, CSSFragment* style_sheet,
+                    const css::MediaQueryEvaluator* evaluator);
+
+  static bool FragmentsHasMediaQueries(CSSFragment* style_sheet);
 
   void ResolveStyle(StyleMap& result, CSSFragment* fragment,
                     CSSVariableMap* changed_css_vars = nullptr);

@@ -2378,6 +2378,180 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle9) {
       14);
 }
 
+// Verify Plan A: when viewport/screen_metrics changes, nodes whose fragment
+// contains @media rules get MarkStyleDirty, while nodes without @media are not.
+TEST_P(FiberElementTest, TestUpdateDynamicElementStyleMediaQuery) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+
+  // Build a SharedCSSFragment that contains @media rules
+  CSSParserTokenMap token_map;
+  std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto fragment_with_media = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment_with_media->SetEnableCSSSelector();
+
+  // Add a ConditionRule with a non-empty MediaQuerySet to the RuleSet
+  {
+    auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(
+        "(min-width: 600px)", fragment_with_media.get());
+    std::vector<fml::RefPtr<const css::MediaQuery>> queries;
+    queries.push_back(fml::MakeRefCounted<css::MediaQuery>(
+        css::MediaQueryRestrictor::kNone, css::MediaQuery::kTypeAll, nullptr));
+    auto mq_set = fml::MakeRefCounted<css::MediaQuerySet>(std::move(queries));
+    condition_rule->SetMediaQueries(std::move(mq_set));
+    fragment_with_media->AddConditionRule(std::move(condition_rule));
+  }
+  ASSERT_TRUE(fragment_with_media->rule_set()->HasMediaQueryRules());
+
+  // Build a SharedCSSFragment without @media rules
+  auto fragment_without_media = std::make_shared<SharedCSSFragment>(
+      2, dependent_ids, token_map, keyframes, font_faces);
+  fragment_without_media->SetEnableCSSSelector();
+  ASSERT_FALSE(fragment_without_media->rule_set()->HasMediaQueryRules());
+
+  // Create page and assign the @media-containing fragment
+  auto page = manager->CreateFiberPage("page", 0);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(fragment_with_media.get());
+
+  auto child_with_media = manager->CreateFiberNode("view");
+  child_with_media->parent_component_element_ = page.get();
+  // Set a static style (no vw/vh dynamic units)
+  child_with_media->SetStyle(CSSPropertyID::kPropertyIDColor,
+                             lepus::Value("red"));
+  page->InsertNode(child_with_media);
+
+  // child_without_media uses the fragment without @media rules
+  auto child_without_media = manager->CreateFiberNode("view");
+  child_without_media->parent_component_element_ = page.get();
+  // Set css_id_ so GetRelatedCSSFragment takes the style_sheet_ branch
+  child_without_media->css_id_ = 99;
+  child_without_media->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(fragment_without_media.get());
+  child_without_media->SetStyle(CSSPropertyID::kPropertyIDColor,
+                                lepus::Value("blue"));
+  page->InsertNode(child_without_media);
+
+  page->FlushActionsAsRoot();
+
+  // After flush, both children should not be dirty
+  EXPECT_FALSE(child_with_media->StyleDirty());
+  EXPECT_FALSE(child_without_media->StyleDirty());
+  // Ensure child_with_media has no dynamic_style_flags_ (it uses no vw/vh)
+  EXPECT_EQ(child_with_media->dynamic_style_flags_, 0u);
+
+  // Simulate viewport change
+  auto& env_config = manager->GetLynxEnvConfig();
+  env_config.UpdateViewport(800, SLMeasureModeDefinite, 600,
+                            SLMeasureModeDefinite);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
+                                  false);
+
+  // child_with_media should be marked kDirtyStyle
+  EXPECT_TRUE(child_with_media->StyleDirty());
+  // child_without_media should not be marked
+  EXPECT_FALSE(child_without_media->StyleDirty());
+}
+
+// Verify that kUpdateScreenMetrics also triggers @media re-match
+TEST_P(FiberElementTest, TestUpdateDynamicElementStyleMediaQueryScreenMetrics) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+
+  CSSParserTokenMap token_map;
+  std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto fragment_with_media = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment_with_media->SetEnableCSSSelector();
+  {
+    auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(
+        "(min-width: 600px)", fragment_with_media.get());
+    std::vector<fml::RefPtr<const css::MediaQuery>> queries;
+    queries.push_back(fml::MakeRefCounted<css::MediaQuery>(
+        css::MediaQueryRestrictor::kNone, css::MediaQuery::kTypeAll, nullptr));
+    condition_rule->SetMediaQueries(
+        fml::MakeRefCounted<css::MediaQuerySet>(std::move(queries)));
+    fragment_with_media->AddConditionRule(std::move(condition_rule));
+  }
+
+  auto page = manager->CreateFiberPage("page", 0);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(fragment_with_media.get());
+
+  auto child = manager->CreateFiberNode("view");
+  child->parent_component_element_ = page.get();
+  child->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("green"));
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(child->StyleDirty());
+
+  // Simulate screen metrics change
+  auto& env_config = manager->GetLynxEnvConfig();
+  env_config.UpdateScreenSize(1080, 1920);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateScreenMetrics,
+                                  false);
+
+  EXPECT_TRUE(child->StyleDirty());
+}
+
+// Verify that style flags without viewport/screen_metrics do not trigger
+// @media dirty
+TEST_P(FiberElementTest,
+       TestUpdateDynamicElementStyleMediaQueryNotTriggeredByFontScale) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+
+  CSSParserTokenMap token_map;
+  std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto fragment_with_media = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment_with_media->SetEnableCSSSelector();
+  {
+    auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(
+        "(min-width: 600px)", fragment_with_media.get());
+    std::vector<fml::RefPtr<const css::MediaQuery>> queries;
+    queries.push_back(fml::MakeRefCounted<css::MediaQuery>(
+        css::MediaQueryRestrictor::kNone, css::MediaQuery::kTypeAll, nullptr));
+    condition_rule->SetMediaQueries(
+        fml::MakeRefCounted<css::MediaQuerySet>(std::move(queries)));
+    fragment_with_media->AddConditionRule(std::move(condition_rule));
+  }
+
+  auto page = manager->CreateFiberPage("page", 0);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(fragment_with_media.get());
+
+  auto child = manager->CreateFiberNode("view");
+  child->parent_component_element_ = page.get();
+  child->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("green"));
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(child->StyleDirty());
+
+  // Only change font scale — should NOT trigger @media dirty
+  auto& env_config = manager->GetLynxEnvConfig();
+  env_config.SetFontScale(2.0f);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
+                                  false);
+
+  EXPECT_FALSE(child->StyleDirty());
+}
+
 TEST_P(FiberElementTest, TestComponentElement) {
   base::String component_id("21");
   int32_t css_id = 100;
@@ -19205,6 +19379,84 @@ TEST_P(FiberElementTest,
   manager->SetEnableParallelElement(false);
   manager->SetEnableLevelOrderTraversing(false);
   EXPECT_FALSE(page->ShouldFallbackToSerialForNewStylingPipeline());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingMediaQueryReResolveOnViewportChangeNoDynamicUnits) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewStylingPipeline(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+  manager->GetLynxEnvConfig().UpdateViewport(300, SLMeasureModeDefinite, 600,
+                                             SLMeasureModeDefinite);
+
+  CSSParserTokenMap token_map;
+  std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+
+  auto media_feature = css::MediaFeature(
+      css::MediaFeatureId::kMinWidth, "min-width",
+      css::MediaFeatureOperator::kNone,
+      css::MediaFeatureValue::Dimension(500, css::MediaFeatureUnit::kPixels));
+  auto feature_node =
+      fml::MakeRefCounted<css::MediaQueryFeatureExpNode>(media_feature);
+  auto media_query = fml::MakeRefCounted<css::MediaQuery>(
+      css::MediaQueryRestrictor::kNone, css::MediaQuery::kTypeAll,
+      feature_node);
+  std::vector<fml::RefPtr<const css::MediaQuery>> queries;
+  queries.push_back(std::move(media_query));
+  auto mq_set = fml::MakeRefCounted<css::MediaQuerySet>(std::move(queries));
+
+  auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(
+      "(min-width: 500px)", fragment.get());
+  condition_rule->SetMediaQueries(std::move(mq_set));
+
+  auto selector_array = std::make_unique<css::LynxCSSSelector[]>(1);
+  selector_array[0].SetValue("foo");
+  selector_array[0].SetMatch(css::LynxCSSSelector::MatchType::kClass);
+  selector_array[0].SetLastInTagHistory(true);
+  selector_array[0].SetLastInSelectorList(true);
+  CSSParserConfigs configs;
+  auto parse_token = fml::MakeRefCounted<CSSParseToken>(configs);
+  parse_token->SetAttribute(kPropertyIDWidth,
+                            CSSValue(100, CSSValuePattern::PX));
+  parse_token->MarkParsed();
+  condition_rule->AddStyleRule(fml::MakeRefCounted<css::StyleRule>(
+      std::move(selector_array), std::move(parse_token)));
+  fragment->AddConditionRule(std::move(condition_rule));
+
+  ASSERT_TRUE(fragment->rule_set()->HasMediaQueryRules());
+
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  page->MarkAttached();
+
+  auto child = manager->CreateFiberNode("view");
+  child->parent_component_element_ = page.get();
+  child->SetClasses(ClassList{base::String("foo")});
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(child->dynamic_style_flags_, 0u);
+  EXPECT_FALSE(StyleMapHasValue(
+      child->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDWidth, CSSValue(100, CSSValuePattern::PX)));
+
+  manager->GetLynxEnvConfig().UpdateViewport(800, SLMeasureModeDefinite, 600,
+                                             SLMeasureModeDefinite);
+  child->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
+                                   false);
+
+  EXPECT_TRUE(StyleMapHasValue(child->computed_css_style()->GetResolvedValues(),
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(100, CSSValuePattern::PX)));
 }
 
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,

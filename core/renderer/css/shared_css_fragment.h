@@ -12,6 +12,7 @@
 
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/ng/invalidation/rule_invalidation_set.h"
+#include "core/renderer/css/ng/style/condition_rule.h"
 
 namespace lynx {
 namespace tasm {
@@ -107,6 +108,8 @@ class SharedCSSFragment : public CSSFragment {
                              const fml::RefPtr<CSSParseToken>& parse_token);
   void AddStyleRule(std::unique_ptr<css::LynxCSSSelector[]> selector_arr,
                     fml::RefPtr<CSSParseToken> parse_token);
+  void AddStyleRule(fml::RefPtr<css::StyleRule> rule);
+  void AddConditionRule(fml::RefPtr<css::ConditionRule> condition_rule);
   bool HasIdSelector() override { return !id_map_.empty(); }
 
  protected:

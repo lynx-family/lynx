@@ -71,6 +71,19 @@ class LynxBinaryBaseCSSReader : public lepus::BaseBinaryReader,
   bool DecodeCSSFontFaceToken(CSSFontFaceRule* token);
   bool DecodeCSSSelector(css::LynxCSSSelector* selector);
 
+  bool DecodeCSSRules(SharedCSSFragment* fragment);
+  bool DecodeCSSStyleRule(SharedCSSFragment* fragment,
+                          const CSSParserConfigs& parser_config);
+  bool DecodeStyleRuleData(SharedCSSFragment* fragment,
+                           const CSSParserConfigs& parser_config,
+                           fml::RefPtr<css::StyleRule>* out_rule);
+  bool DecodeCSSConditionRule(SharedCSSFragment* fragment,
+                              const CSSParserConfigs& parser_config,
+                              uint8_t rule_type);
+  bool DecodeCSSKeyframesRule(SharedCSSFragment* fragment,
+                              const CSSParserConfigs& parser_config);
+  bool DecodeCSSFontFaceRule(SharedCSSFragment* fragment);
+
   bool DecodeCSSValue(tasm::CSSValue*);
   bool DecodeCSSValue(tasm::CSSValue* result, bool enable_css_parser,
                       bool enable_css_variable,

@@ -54,9 +54,7 @@ double ToPixels(const MediaFeatureValue& v, const MediaValues& values) {
   return v.Numeric();
 }
 
-// Converts a resolution feature value into dppx. px/cm-based units follow
-// the CSS Values Level 4 definitions.
-double ToDppx(const MediaFeatureValue& v) {
+double ToDppx(const MediaFeatureValue& v, const MediaValues&) {
   if (v.IsNumber()) return v.Numeric();
   if (!v.IsResolution()) return v.Numeric();
   switch (v.Unit()) {
@@ -65,11 +63,14 @@ double ToDppx(const MediaFeatureValue& v) {
     case MediaFeatureUnit::kDpi:
       return v.Numeric() / 96.0;
     case MediaFeatureUnit::kDpcm:
-      // 1 dpcm == 2.54/96 dppx.
       return v.Numeric() / 37.795275591;
     default:
       break;
   }
+  return v.Numeric();
+}
+
+double ToNumber(const MediaFeatureValue& v, const MediaValues&) {
   return v.Numeric();
 }
 
@@ -235,30 +236,39 @@ bool MediaQueryEvaluator::EvalFeature(const MediaFeature& feature) const {
   switch (feature.Id()) {
     case MediaFeatureId::kWidth:
     case MediaFeatureId::kDeviceWidth:
-      return EvalWidthFeature(feature, MediaFeatureOperator::kNone);
+      return EvalNumericFeature(values_.ViewportWidth(), feature,
+                                MediaFeatureOperator::kNone, &ToPixels);
     case MediaFeatureId::kMinWidth:
     case MediaFeatureId::kMinDeviceWidth:
-      return EvalWidthFeature(feature, MediaFeatureOperator::kGe);
+      return EvalNumericFeature(values_.ViewportWidth(), feature,
+                                MediaFeatureOperator::kGe, &ToPixels);
     case MediaFeatureId::kMaxWidth:
     case MediaFeatureId::kMaxDeviceWidth:
-      return EvalWidthFeature(feature, MediaFeatureOperator::kLe);
+      return EvalNumericFeature(values_.ViewportWidth(), feature,
+                                MediaFeatureOperator::kLe, &ToPixels);
     case MediaFeatureId::kHeight:
     case MediaFeatureId::kDeviceHeight:
-      return EvalHeightFeature(feature, MediaFeatureOperator::kNone);
+      return EvalNumericFeature(values_.ViewportHeight(), feature,
+                                MediaFeatureOperator::kNone, &ToPixels);
     case MediaFeatureId::kMinHeight:
     case MediaFeatureId::kMinDeviceHeight:
-      return EvalHeightFeature(feature, MediaFeatureOperator::kGe);
+      return EvalNumericFeature(values_.ViewportHeight(), feature,
+                                MediaFeatureOperator::kGe, &ToPixels);
     case MediaFeatureId::kMaxHeight:
     case MediaFeatureId::kMaxDeviceHeight:
-      return EvalHeightFeature(feature, MediaFeatureOperator::kLe);
+      return EvalNumericFeature(values_.ViewportHeight(), feature,
+                                MediaFeatureOperator::kLe, &ToPixels);
     case MediaFeatureId::kOrientation:
       return EvalOrientationFeature(feature);
     case MediaFeatureId::kResolution:
-      return EvalResolutionFeature(feature, MediaFeatureOperator::kNone);
+      return EvalNumericFeature(values_.DevicePixelRatio(), feature,
+                                MediaFeatureOperator::kNone, &ToDppx);
     case MediaFeatureId::kMinResolution:
-      return EvalResolutionFeature(feature, MediaFeatureOperator::kGe);
+      return EvalNumericFeature(values_.DevicePixelRatio(), feature,
+                                MediaFeatureOperator::kGe, &ToDppx);
     case MediaFeatureId::kMaxResolution:
-      return EvalResolutionFeature(feature, MediaFeatureOperator::kLe);
+      return EvalNumericFeature(values_.DevicePixelRatio(), feature,
+                                MediaFeatureOperator::kLe, &ToDppx);
     case MediaFeatureId::kAspectRatio:
     case MediaFeatureId::kDeviceAspectRatio:
       return EvalAspectRatioFeature(feature, MediaFeatureOperator::kNone);
@@ -275,17 +285,26 @@ bool MediaQueryEvaluator::EvalFeature(const MediaFeature& feature) const {
     case MediaFeatureId::kPrefersColorScheme:
       return EvalColorSchemeFeature(feature);
     case MediaFeatureId::kColor:
-      return EvalColorFeature(feature, MediaFeatureOperator::kNone);
+      return EvalNumericFeature(
+          static_cast<double>(values_.ColorBitsPerComponent()), feature,
+          MediaFeatureOperator::kNone, &ToNumber);
     case MediaFeatureId::kMinColor:
-      return EvalColorFeature(feature, MediaFeatureOperator::kGe);
+      return EvalNumericFeature(
+          static_cast<double>(values_.ColorBitsPerComponent()), feature,
+          MediaFeatureOperator::kGe, &ToNumber);
     case MediaFeatureId::kMaxColor:
-      return EvalColorFeature(feature, MediaFeatureOperator::kLe);
+      return EvalNumericFeature(
+          static_cast<double>(values_.ColorBitsPerComponent()), feature,
+          MediaFeatureOperator::kLe, &ToNumber);
     case MediaFeatureId::kDevicePixelRatio:
-      return EvalDevicePixelRatioFeature(feature, MediaFeatureOperator::kNone);
+      return EvalNumericFeature(values_.DevicePixelRatio(), feature,
+                                MediaFeatureOperator::kNone, &ToNumber);
     case MediaFeatureId::kMinDevicePixelRatio:
-      return EvalDevicePixelRatioFeature(feature, MediaFeatureOperator::kGe);
+      return EvalNumericFeature(values_.DevicePixelRatio(), feature,
+                                MediaFeatureOperator::kGe, &ToNumber);
     case MediaFeatureId::kMaxDevicePixelRatio:
-      return EvalDevicePixelRatioFeature(feature, MediaFeatureOperator::kLe);
+      return EvalNumericFeature(values_.DevicePixelRatio(), feature,
+                                MediaFeatureOperator::kLe, &ToNumber);
     case MediaFeatureId::kUnknown:
       return EvalCustomFeature(feature);
   }
@@ -294,30 +313,18 @@ bool MediaQueryEvaluator::EvalFeature(const MediaFeature& feature) const {
 
 // ---- feature families ------------------------------------------------------
 
-bool MediaQueryEvaluator::EvalWidthFeature(
-    const MediaFeature& feature, MediaFeatureOperator implicit_op) const {
-  double actual = values_.ViewportWidth();
+bool MediaQueryEvaluator::EvalNumericFeature(double actual,
+                                             const MediaFeature& feature,
+                                             MediaFeatureOperator implicit_op,
+                                             ValueConverter converter) const {
   if (feature.IsBoolean()) return actual > 0.0;
   if (implicit_op == MediaFeatureOperator::kNone) {
-    return CompareRange(actual, feature, &ToPixels, values_);
+    return CompareRange(actual, feature, converter, values_);
   }
   if (feature.LeftOperator() != MediaFeatureOperator::kNone) return false;
   MediaFeature resolved(feature.Id(), feature.Name(), implicit_op,
                         feature.LeftValue());
-  return CompareRange(actual, resolved, &ToPixels, values_);
-}
-
-bool MediaQueryEvaluator::EvalHeightFeature(
-    const MediaFeature& feature, MediaFeatureOperator implicit_op) const {
-  double actual = values_.ViewportHeight();
-  if (feature.IsBoolean()) return actual > 0.0;
-  if (implicit_op == MediaFeatureOperator::kNone) {
-    return CompareRange(actual, feature, &ToPixels, values_);
-  }
-  if (feature.LeftOperator() != MediaFeatureOperator::kNone) return false;
-  MediaFeature resolved(feature.Id(), feature.Name(), implicit_op,
-                        feature.LeftValue());
-  return CompareRange(actual, resolved, &ToPixels, values_);
+  return CompareRange(actual, resolved, converter, values_);
 }
 
 bool MediaQueryEvaluator::EvalOrientationFeature(
@@ -338,29 +345,6 @@ bool MediaQueryEvaluator::EvalOrientationFeature(
     return false;
   }
   return want == given;
-}
-
-bool MediaQueryEvaluator::EvalResolutionFeature(
-    const MediaFeature& feature, MediaFeatureOperator implicit_op) const {
-  const double actual = values_.DevicePixelRatio();
-  if (feature.IsBoolean()) return actual > 0.0;
-  if (implicit_op == MediaFeatureOperator::kNone) {
-    return CompareRange(
-        actual, feature,
-        [](const MediaFeatureValue& v, const MediaValues&) -> double {
-          return ToDppx(v);
-        },
-        values_);
-  }
-  if (feature.LeftOperator() != MediaFeatureOperator::kNone) return false;
-  MediaFeature resolved(feature.Id(), feature.Name(), implicit_op,
-                        feature.LeftValue());
-  return CompareRange(
-      actual, resolved,
-      [](const MediaFeatureValue& v, const MediaValues&) -> double {
-        return ToDppx(v);
-      },
-      values_);
 }
 
 bool MediaQueryEvaluator::EvalAspectRatioFeature(
@@ -417,36 +401,6 @@ bool MediaQueryEvaluator::EvalColorSchemeFeature(
   if (v.Text() == "light") return want == MediaPreferredColorScheme::kLight;
   if (v.Text() == "dark") return want == MediaPreferredColorScheme::kDark;
   return false;
-}
-
-bool MediaQueryEvaluator::EvalColorFeature(
-    const MediaFeature& feature, MediaFeatureOperator implicit_op) const {
-  const double actual = static_cast<double>(values_.ColorBitsPerComponent());
-  if (feature.IsBoolean()) return actual > 0.0;
-  auto to_number = [](const MediaFeatureValue& v,
-                      const MediaValues&) -> double { return v.Numeric(); };
-  if (implicit_op == MediaFeatureOperator::kNone) {
-    return CompareRange(actual, feature, to_number, values_);
-  }
-  if (feature.LeftOperator() != MediaFeatureOperator::kNone) return false;
-  MediaFeature resolved(feature.Id(), feature.Name(), implicit_op,
-                        feature.LeftValue());
-  return CompareRange(actual, resolved, to_number, values_);
-}
-
-bool MediaQueryEvaluator::EvalDevicePixelRatioFeature(
-    const MediaFeature& feature, MediaFeatureOperator implicit_op) const {
-  const double actual = values_.DevicePixelRatio();
-  if (feature.IsBoolean()) return actual > 0.0;
-  auto to_number = [](const MediaFeatureValue& v,
-                      const MediaValues&) -> double { return v.Numeric(); };
-  if (implicit_op == MediaFeatureOperator::kNone) {
-    return CompareRange(actual, feature, to_number, values_);
-  }
-  if (feature.LeftOperator() != MediaFeatureOperator::kNone) return false;
-  MediaFeature resolved(feature.Id(), feature.Name(), implicit_op,
-                        feature.LeftValue());
-  return CompareRange(actual, resolved, to_number, values_);
 }
 
 bool MediaQueryEvaluator::EvalCustomFeature(const MediaFeature& feature) const {

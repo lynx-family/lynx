@@ -21,6 +21,9 @@
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/dynamic_direction_styles_manager.h"
 #include "core/renderer/css/layout_property.h"
+#include "core/renderer/css/ng/matcher/selector_matcher.h"
+#include "core/renderer/css/ng/media_query/media_query_evaluator.h"
+#include "core/renderer/css/ng/media_query/media_values.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element.h"
@@ -832,8 +835,43 @@ static bool CompareRules(const css::MatchedRule& matched_rule1,
   return matched_rule1.Position() < matched_rule2.Position();
 }
 
+namespace {
+
+std::unique_ptr<css::MediaQueryEvaluator> BuildMediaQueryEvaluator(
+    ElementManager* element_manager, Element* owning_element) {
+  css::MediaValues values;
+  if (element_manager) {
+    const auto& env_config = element_manager->GetLynxEnvConfig();
+    float width = env_config.ViewportWidth().IsDefinite()
+                      ? env_config.ViewportWidth().ToFloat()
+                      : env_config.ScreenWidth();
+    float height = env_config.ViewportHeight().IsDefinite()
+                       ? env_config.ViewportHeight().ToFloat()
+                       : env_config.ScreenHeight();
+    values = css::MediaValues::WithViewport(width, height,
+                                            env_config.DevicePixelRatio());
+    if (Element* root = element_manager->root()) {
+      values.SetRootFontSize(root->GetFontSize());
+    }
+  }
+  if (owning_element) {
+    values.SetFontSize(owning_element->GetFontSize());
+  }
+  return std::make_unique<css::MediaQueryEvaluator>(values);
+}
+
+}  // namespace
+
+bool StyleResolver::FragmentsHasMediaQueries(CSSFragment* style_sheet) {
+  if (style_sheet && style_sheet->HasMediaQueryRules()) {
+    return true;
+  }
+  return false;
+}
+
 StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
-    AttributeHolder* node, CSSFragment* style_sheet) {
+    AttributeHolder* node, CSSFragment* style_sheet,
+    const css::MediaQueryEvaluator* evaluator) {
   MatchedVector<css::MatchedRule> matched_rules;
   unsigned level = 0;
   if (style_sheet) {
@@ -841,12 +879,14 @@ StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
       AttributeHolder* node;
       unsigned* level;
       MatchedVector<css::MatchedRule>* matched_rules;
+      const css::MediaQueryEvaluator* evaluator;
     };
-    Ctx ctx{node, &level, &matched_rules};
+    Ctx ctx{node, &level, &matched_rules, evaluator};
     style_sheet->ForEachRuleSet(
         [](css::RuleSet* rule_set, void* cb_data) {
           auto* c = static_cast<Ctx*>(cb_data);
-          rule_set->MatchStyles(c->node, *c->level, *c->matched_rules);
+          rule_set->MatchStyles(c->node, *c->level, *c->matched_rules,
+                                c->evaluator);
         },
         &ctx);
   }
@@ -857,7 +897,11 @@ StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
 
 void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
                                    CSSFragment* style_sheet) {
-  auto matched_rules = GetCSSMatchedRule(node, style_sheet);
+  std::unique_ptr<css::MediaQueryEvaluator> evaluator;
+  if (FragmentsHasMediaQueries(style_sheet)) {
+    evaluator = BuildMediaQueryEvaluator(manager(), element());
+  }
+  auto matched_rules = GetCSSMatchedRule(node, style_sheet, evaluator.get());
 
   for (const auto& matched : matched_rules) {
     if (matched.Data()->Rule()->Token() != nullptr) {

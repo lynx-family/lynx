@@ -111,6 +111,13 @@ class CSSFragment {
     return rs && rs->HasAdjacentSiblingRules();
   }
 
+  // Check if this stylesheet (including adopted sheets for decorators)
+  // contains condition rules with parsed media queries.
+  virtual bool HasMediaQueryRules() {
+    auto* rs = rule_set();
+    return rs && rs->HasMediaQueryRules();
+  }
+
   bool HasPseudoStyle() { return !pseudo_map().empty(); }
 
   bool HasCascadeStyle() { return !cascade_map().empty(); }
