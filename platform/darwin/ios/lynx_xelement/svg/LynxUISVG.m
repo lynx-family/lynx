@@ -81,10 +81,17 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
     [self.imageHolder setObject:[NSNull null] forKey:href];
 
     [self fetchSVGImage:href
+               withSize:devSize
                complete:^(UIImage *_Nullable uiImage, NSError *_Nullable error) {
                  if (uiImage) {
                    [weakSelf.imageHolder setObject:uiImage forKey:href];
-                   [weakSelf.view invalidate];
+                   if ([NSThread isMainThread]) {
+                     [weakSelf.view invalidate];
+                   } else {
+                     dispatch_async(dispatch_get_main_queue(), ^{
+                       [weakSelf.view invalidate];
+                     });
+                   }
                  }
                }];
   }
@@ -192,7 +199,9 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
 }
 
 - (void)fetchSVGImage:(NSString *_Nonnull)url
+             withSize:(CGSize)devSize
              complete:(LynxMediaResourceCompletionBlock _Nonnull)callback {
+  (void)devSize;
   [self.context.mediaResourceFetcher fetchUIImage:[[LynxResourceRequest alloc] initWithUrl:url]
                                        onComplete:callback];
 }

@@ -19,7 +19,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (UIImage *)loadImageFromHref:(NSString *)href withSize:(CGSize)devSize;
 - (void)fetchSVGResource:(NSString *)src
                 complete:(LynxGenericResourceCompletionBlock _Nonnull)callback;
+/// devSize must be computed by the caller on the main thread in device pixels.
+/// Do not read UIView size or screen scale inside implementations because this
+/// method may run on the async SVG rendering queue.
 - (void)fetchSVGImage:(NSString *_Nonnull)url
+             withSize:(CGSize)devSize
              complete:(LynxMediaResourceCompletionBlock _Nonnull)callback;
 
 @end
