@@ -921,11 +921,14 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 }
 
 - (void)initResourceLoaderInformation {
-  if (!self.resLoaderInfo) {
-    self.resLoaderInfo = [NSMutableDictionary dictionary];
+  if (_resLoaderInfo[@"res_loader_name"] && _resLoaderInfo[@"res_loader_version"]) {
+    return;
   }
-  self.resLoaderInfo[@"res_loader_name"] = @"Lynx";
-  self.resLoaderInfo[@"res_loader_version"] = [LynxVersion versionString] ?: @"";
+  NSMutableDictionary* loaderInfo =
+      [_resLoaderInfo mutableCopy] ?: [NSMutableDictionary dictionary];
+  loaderInfo[@"res_loader_name"] = @"Lynx";
+  loaderInfo[@"res_loader_version"] = [LynxVersion versionString] ?: @"";
+  self.resLoaderInfo = loaderInfo;
 }
 
 #pragma mark monitor
@@ -1021,7 +1024,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   }
 
   data[@"res_info"] = currentUrl.resourceInfo;
-  data[@"res_loader_info"] = _resLoaderInfo;
+  data[@"res_loader_info"] = [_resLoaderInfo copy] ?: @{};
 
   [LynxService(LynxServiceMonitorProtocol) reportResourceStatus:(LynxView*)self.context.rootView
                                                            data:data
