@@ -38,6 +38,7 @@ class ScrollCoordinatorLayout(
   private val childHelper = NestedScrollingChildHelper(this)
   private var velocityTracker: VelocityTracker? = null
   private val scroller = OverScroller(context)
+  private var flingGeneration = 0
   private var lastTouchY = 0
   private val scrollOffset = IntArray(2)
   private val scrollConsumed = IntArray(2)
@@ -99,6 +100,18 @@ class ScrollCoordinatorLayout(
     velocityTracker = null
   }
 
+  private fun stopOwnFling() {
+    flingGeneration++
+    if (!scroller.isFinished) {
+      scroller.forceFinished(true)
+    }
+  }
+
+  fun stopFling() {
+    stopOwnFling()
+    appBarLayoutView.stopFling()
+  }
+
   private fun shouldSkipGestureConsumption(event: MotionEvent?): Boolean {
     return coordinatorHost.isEnableNewGesture &&
       (consumeGesture != null && !consumeGesture!!) &&
@@ -154,9 +167,7 @@ class ScrollCoordinatorLayout(
     val y = (motionEvent.y + 0.5f).toInt()
     when (motionEvent.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
-        if (!scroller.isFinished) {
-          scroller.forceFinished(true)
-        }
+        stopOwnFling()
         lastTouchY = y
         isScrolling = false
         nestedOffsets[0] = 0
@@ -213,6 +224,7 @@ class ScrollCoordinatorLayout(
           if (abs(velocityY) > minimumVelocity) {
             val currentOffset = appBarLayoutView.topAndBottomOffset
             val totalScrollRange = appBarLayoutView.totalScrollRange
+            flingGeneration++
             scroller.fling(0, currentOffset, 0, velocityY.toInt(), 0, 0, -totalScrollRange, 0)
             ViewCompat.postInvalidateOnAnimation(this)
           }
@@ -272,9 +284,7 @@ class ScrollCoordinatorLayout(
       MotionEvent.ACTION_DOWN -> {
         lastXIntercept = event.x
         lastYIntercept = event.y
-        if (!scroller.isFinished) {
-          scroller.forceFinished(true)
-        }
+        stopOwnFling()
         if (nestedScrollAsChild) {
           lastTouchY = (event.y + 0.5f).toInt()
           startNestedScroll(ViewCompat.SCROLL_AXIS_VERTICAL, ViewCompat.TYPE_TOUCH)
@@ -524,9 +534,12 @@ class ScrollCoordinatorLayout(
 
   override fun computeScroll() {
     if (nestedScrollAsChild && scroller.computeScrollOffset()) {
+      val generation = flingGeneration
       val dy = scroller.currY - appBarLayoutView.topAndBottomOffset
       ViewCompat.postOnAnimation(this) {
-        scrollSelf(-dy)
+        if (generation == flingGeneration) {
+          scrollSelf(-dy)
+        }
       }
       ViewCompat.postInvalidateOnAnimation(this)
     }
