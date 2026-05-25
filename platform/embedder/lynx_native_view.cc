@@ -110,10 +110,13 @@ class LynxNativeViewPrivate : public clay::NativePlatformView {
   }
   void Release() override {
     if (release_fn) {
-      release_fn(reinterpret_cast<lynx_native_view_t*>(this), user_data_);
-    } else {
-      delete this;
+      auto release = release_fn;
+      auto* user_data = user_data_;
+      release_fn = nullptr;
+      user_data_ = nullptr;
+      release(reinterpret_cast<lynx_native_view_t*>(this), user_data);
     }
+    delete this;
   }
 
   void (*release_fn)(lynx_native_view_t*, void*) = nullptr;
