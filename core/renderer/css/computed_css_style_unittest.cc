@@ -8,6 +8,8 @@
 #include "core/renderer/css/computed_css_style.h"
 
 #include <unordered_set>
+#include <utility>
+#include <variant>
 
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -23,6 +25,24 @@ CSSValue ParseVariableValue(const char* raw_value) {
   lepus::Value value(raw_value);
   CSSStringParser parser = CSSStringParser::FromLepusString(value, configs);
   return parser.ParseVariable();
+}
+
+lepus::Value MakeTextGradientValue(int marker) {
+  auto gradient = lepus::CArray::Create();
+  gradient->emplace_back(marker);
+  return lepus::Value(std::move(gradient));
+}
+
+CSSValue MakeBackgroundPositionValue(float x, float y) {
+  auto layer = lepus::CArray::Create();
+  layer->emplace_back(static_cast<uint32_t>(CSSValuePattern::PERCENT));
+  layer->emplace_back(x);
+  layer->emplace_back(static_cast<uint32_t>(CSSValuePattern::PERCENT));
+  layer->emplace_back(y);
+
+  auto position = lepus::CArray::Create();
+  position->emplace_back(std::move(layer));
+  return CSSValue(std::move(position));
 }
 
 }  // namespace
@@ -99,6 +119,312 @@ TEST(ComputedCSSStyleTest, IteratesChangedAndResetProperties) {
   EXPECT_EQ(reset_properties.size(), 1U);
   EXPECT_TRUE(reset_properties.find(CSSPropertyID::kPropertyIDHeight) !=
               reset_properties.end());
+}
+
+TEST(ComputedCSSStyleTest, CanonicalComputedValueComparesByKindAndStorage) {
+  using CanonicalComputedValue = starlight::CanonicalComputedValue;
+  using Kind = CanonicalComputedValue::Kind;
+
+  EXPECT_EQ(CanonicalComputedValue::Number(1.0f),
+            CanonicalComputedValue::Number(1.0f));
+  EXPECT_NE(CanonicalComputedValue::Number(1.0f),
+            CanonicalComputedValue::Number(0.995f));
+  EXPECT_EQ(CanonicalComputedValue::ResolvedLength(2.0f),
+            CanonicalComputedValue::ResolvedLength(2.0f));
+  EXPECT_NE(CanonicalComputedValue::ResolvedLength(2.0f),
+            CanonicalComputedValue::ResolvedLength(2.005f));
+  EXPECT_NE(CanonicalComputedValue::Number(1.0f),
+            CanonicalComputedValue::ResolvedLength(1.0f));
+
+  EXPECT_EQ(CanonicalComputedValue::Color(0xFF000000),
+            CanonicalComputedValue::Color(0xFF000000));
+  EXPECT_NE(CanonicalComputedValue::Color(0xFF000000),
+            CanonicalComputedValue::Color(0xFFFFFFFF));
+
+  const auto text_gradient_a = MakeTextGradientValue(1);
+  const auto text_gradient_a_same = MakeTextGradientValue(1);
+  const auto text_gradient_b = MakeTextGradientValue(2);
+  EXPECT_EQ(CanonicalComputedValue::TextGradient(text_gradient_a),
+            CanonicalComputedValue::TextGradient(text_gradient_a_same));
+  EXPECT_NE(CanonicalComputedValue::TextGradient(text_gradient_a),
+            CanonicalComputedValue::TextGradient(text_gradient_b));
+  EXPECT_NE(CanonicalComputedValue::TextGradient(text_gradient_a),
+            CanonicalComputedValue::Color(
+                starlight::DefaultColor::DEFAULT_TEXT_COLOR));
+
+  EXPECT_EQ(
+      CanonicalComputedValue::Length(starlight::NLength::MakeUnitNLength(10.f)),
+      CanonicalComputedValue::Length(
+          starlight::NLength::MakeUnitNLength(10.f)));
+  EXPECT_NE(
+      CanonicalComputedValue::Length(starlight::NLength::MakeUnitNLength(10.f)),
+      CanonicalComputedValue::Length(
+          starlight::NLength::MakePercentageNLength(10.f)));
+
+  CanonicalComputedValue::TransformValue transform_a;
+  transform_a.emplace_back();
+  CanonicalComputedValue::TransformValue transform_b;
+  transform_b.emplace_back();
+  transform_b.front().p0 = starlight::NLength::MakeUnitNLength(1.f);
+  EXPECT_EQ(CanonicalComputedValue::Transform(transform_a),
+            CanonicalComputedValue::Transform(transform_a));
+  EXPECT_NE(CanonicalComputedValue::Transform(transform_a),
+            CanonicalComputedValue::Transform(transform_b));
+
+  starlight::FilterData filter_a;
+  starlight::FilterData filter_b;
+  filter_b.type = starlight::FilterType::kBlur;
+  EXPECT_EQ(CanonicalComputedValue::Filter(filter_a),
+            CanonicalComputedValue::Filter(filter_a));
+  EXPECT_NE(CanonicalComputedValue::Filter(filter_a),
+            CanonicalComputedValue::Filter(filter_b));
+
+  CanonicalComputedValue::BackgroundPositionValue position_a;
+  position_a.emplace_back(starlight::NLength::MakePercentageNLength(0.f));
+  position_a.emplace_back(starlight::NLength::MakePercentageNLength(0.f));
+  CanonicalComputedValue::BackgroundPositionValue position_b;
+  position_b.emplace_back(starlight::NLength::MakePercentageNLength(50.f));
+  position_b.emplace_back(starlight::NLength::MakePercentageNLength(0.f));
+  EXPECT_EQ(CanonicalComputedValue::BackgroundPosition(position_a),
+            CanonicalComputedValue::BackgroundPosition(position_a));
+  EXPECT_NE(CanonicalComputedValue::BackgroundPosition(position_a),
+            CanonicalComputedValue::BackgroundPosition(position_b));
+
+  EXPECT_EQ(
+      CanonicalComputedValue::TransformOrigin(starlight::TransformOriginData()),
+      CanonicalComputedValue::TransformOrigin(
+          starlight::TransformOriginData()));
+
+  auto enum_value = CanonicalComputedValue::Enum(
+      static_cast<int32_t>(starlight::VisibilityType::kHidden));
+  EXPECT_EQ(enum_value.kind(), Kind::kEnum);
+  const auto* stored_enum =
+      std::get_if<CanonicalComputedValue::kEnumIndex>(&enum_value.storage());
+  ASSERT_NE(stored_enum, nullptr);
+  EXPECT_EQ(*stored_enum,
+            static_cast<int32_t>(starlight::VisibilityType::kHidden));
+  EXPECT_NE(enum_value, CanonicalComputedValue::Enum(static_cast<int32_t>(
+                            starlight::VisibilityType::kVisible)));
+}
+
+TEST(ComputedCSSStyleTest, CanonicalComputedValueSupportsTransitionProperties) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  const std::unordered_set<CSSPropertyID> supported = {
+      ALL_ANIMATABLE_PROPERTY_ID};
+
+  for (const auto id : supported) {
+    EXPECT_TRUE(starlight::ComputedCSSStyle::SupportsCanonicalComputedValue(id))
+        << static_cast<int>(id);
+    EXPECT_TRUE(style.ExtractCanonicalComputedValue(id).has_value())
+        << static_cast<int>(id);
+  }
+
+  EXPECT_FALSE(starlight::ComputedCSSStyle::SupportsCanonicalComputedValue(
+      CSSPropertyID::kPropertyIDFontSize));
+  EXPECT_FALSE(
+      style.ExtractCanonicalComputedValue(CSSPropertyID::kPropertyIDFontSize)
+          .has_value());
+}
+
+TEST(ComputedCSSStyleTest, CanonicalTransformUsesLegacyTransitionDefault) {
+  using CanonicalComputedValue = starlight::CanonicalComputedValue;
+
+  starlight::ComputedCSSStyle unset_style{1.f, 1.f};
+  auto unset_transform = unset_style.ExtractCanonicalComputedValue(
+      CSSPropertyID::kPropertyIDTransform);
+  ASSERT_TRUE(unset_transform.has_value());
+  const auto* unset_transform_value =
+      std::get_if<CanonicalComputedValue::kTransformIndex>(
+          &unset_transform->storage());
+  ASSERT_NE(unset_transform_value, nullptr);
+  ASSERT_EQ(unset_transform_value->size(), 1U);
+  EXPECT_EQ(unset_transform_value->front().type,
+            starlight::TransformType::kRotateZ);
+  EXPECT_EQ(unset_transform_value->front().p0,
+            starlight::NLength::MakeUnitNLength(0.f));
+
+  auto transform_array = lepus::CArray::Create();
+  auto rotate_z = lepus::CArray::Create();
+  rotate_z->emplace_back(static_cast<int>(starlight::TransformType::kRotateZ));
+  rotate_z->emplace_back(0.0f);
+  transform_array->emplace_back(std::move(rotate_z));
+
+  starlight::ComputedCSSStyle rotate_zero_style{1.f, 1.f};
+  rotate_zero_style.SetValue(CSSPropertyID::kPropertyIDTransform,
+                             CSSValue(std::move(transform_array)));
+  auto rotate_zero_transform = rotate_zero_style.ExtractCanonicalComputedValue(
+      CSSPropertyID::kPropertyIDTransform);
+  ASSERT_TRUE(rotate_zero_transform.has_value());
+  EXPECT_EQ(*unset_transform, *rotate_zero_transform);
+}
+
+TEST(ComputedCSSStyleTest, ExtractsTextGradientAsCanonicalColorState) {
+  using CanonicalComputedValue = starlight::CanonicalComputedValue;
+  using Kind = CanonicalComputedValue::Kind;
+
+  const auto text_gradient = MakeTextGradientValue(1);
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  style.SetValue(
+      CSSPropertyID::kPropertyIDColor,
+      CSSValue(lepus::Value::Clone(text_gradient), CSSValuePattern::ARRAY));
+
+  auto color =
+      style.ExtractCanonicalComputedValue(CSSPropertyID::kPropertyIDColor);
+  ASSERT_TRUE(color.has_value());
+  EXPECT_EQ(color->kind(), Kind::kTextGradient);
+  const auto* text_gradient_value =
+      std::get_if<CanonicalComputedValue::kTextGradientIndex>(
+          &color->storage());
+  ASSERT_NE(text_gradient_value, nullptr);
+  EXPECT_EQ(*text_gradient_value, text_gradient);
+  EXPECT_NE(*color, CanonicalComputedValue::Color(
+                        starlight::DefaultColor::DEFAULT_TEXT_COLOR));
+}
+
+TEST(ComputedCSSStyleTest, CanonicalBackgroundPositionUsesDefaultPosition) {
+  using CanonicalComputedValue = starlight::CanonicalComputedValue;
+
+  starlight::ComputedCSSStyle unset_style{1.f, 1.f};
+  auto unset_position = unset_style.ExtractCanonicalComputedValue(
+      CSSPropertyID::kPropertyIDBackgroundPosition);
+  ASSERT_TRUE(unset_position.has_value());
+  const auto* unset_position_value =
+      std::get_if<CanonicalComputedValue::kBackgroundPositionIndex>(
+          &unset_position->storage());
+  ASSERT_NE(unset_position_value, nullptr);
+  ASSERT_EQ(unset_position_value->size(), 2U);
+  EXPECT_EQ((*unset_position_value)[0],
+            starlight::NLength::MakePercentageNLength(0.f));
+  EXPECT_EQ((*unset_position_value)[1],
+            starlight::NLength::MakePercentageNLength(0.f));
+
+  starlight::ComputedCSSStyle explicit_default_style{1.f, 1.f};
+  explicit_default_style.SetValue(CSSPropertyID::kPropertyIDBackgroundPosition,
+                                  MakeBackgroundPositionValue(0.f, 0.f));
+  auto explicit_position = explicit_default_style.ExtractCanonicalComputedValue(
+      CSSPropertyID::kPropertyIDBackgroundPosition);
+  ASSERT_TRUE(explicit_position.has_value());
+  EXPECT_EQ(*unset_position, *explicit_position);
+}
+
+TEST(ComputedCSSStyleTest, ExtractsCanonicalValuesByPropertyKind) {
+  using CanonicalComputedValue = starlight::CanonicalComputedValue;
+  using Kind = CanonicalComputedValue::Kind;
+
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  style.SetValue(CSSPropertyID::kPropertyIDWidth,
+                 CSSValue(20.0, CSSValuePattern::PX));
+  style.SetValue(CSSPropertyID::kPropertyIDOpacity,
+                 CSSValue(0.3, CSSValuePattern::NUMBER));
+  style.SetValue(CSSPropertyID::kPropertyIDColor,
+                 CSSValue(0xFF0000FFU, CSSValuePattern::NUMBER));
+  style.SetValue(CSSPropertyID::kPropertyIDBorderLeftWidth,
+                 CSSValue(2.0, CSSValuePattern::PX));
+  style.SetValue(CSSPropertyID::kPropertyIDVisibility,
+                 CSSValue(starlight::VisibilityType::kHidden));
+
+  starlight::CSSStyleUtils::PrepareOptional(style.filter_);
+  style.filter_->type = starlight::FilterType::kBlur;
+  style.filter_->amount = starlight::NLength::MakeUnitNLength(5.f);
+
+  starlight::CSSStyleUtils::PrepareOptional(style.transform_raw_);
+  style.transform_raw_->emplace_back();
+
+  starlight::CSSStyleUtils::PrepareOptional(style.background_data_);
+  style.background_data_->image_data.emplace();
+  style.background_data_->image_data->position.emplace_back(
+      starlight::NLength::MakePercentageNLength(25.f));
+  style.background_data_->image_data->position.emplace_back(
+      starlight::NLength::MakePercentageNLength(75.f));
+
+  auto width =
+      style.ExtractCanonicalComputedValue(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(width.has_value());
+  EXPECT_EQ(width->kind(), Kind::kLength);
+  const auto* width_value =
+      std::get_if<CanonicalComputedValue::kLengthIndex>(&width->storage());
+  ASSERT_NE(width_value, nullptr);
+  EXPECT_EQ(*width_value, starlight::NLength::MakeUnitNLength(20.f));
+
+  auto opacity =
+      style.ExtractCanonicalComputedValue(CSSPropertyID::kPropertyIDOpacity);
+  ASSERT_TRUE(opacity.has_value());
+  EXPECT_EQ(opacity->kind(), Kind::kNumber);
+  const auto* opacity_value =
+      std::get_if<CanonicalComputedValue::kFloatIndex>(&opacity->storage());
+  ASSERT_NE(opacity_value, nullptr);
+  EXPECT_FLOAT_EQ(*opacity_value, 0.3f);
+
+  auto color =
+      style.ExtractCanonicalComputedValue(CSSPropertyID::kPropertyIDColor);
+  ASSERT_TRUE(color.has_value());
+  EXPECT_EQ(color->kind(), Kind::kColor);
+  const auto* color_value =
+      std::get_if<CanonicalComputedValue::kColorIndex>(&color->storage());
+  ASSERT_NE(color_value, nullptr);
+  EXPECT_EQ(*color_value, 0xFF0000FFU);
+
+  auto border_width = style.ExtractCanonicalComputedValue(
+      CSSPropertyID::kPropertyIDBorderLeftWidth);
+  ASSERT_TRUE(border_width.has_value());
+  EXPECT_EQ(border_width->kind(), Kind::kResolvedLength);
+  const auto* border_width_value =
+      std::get_if<CanonicalComputedValue::kFloatIndex>(
+          &border_width->storage());
+  ASSERT_NE(border_width_value, nullptr);
+  EXPECT_FLOAT_EQ(*border_width_value, 2.f);
+
+  auto filter =
+      style.ExtractCanonicalComputedValue(CSSPropertyID::kPropertyIDFilter);
+  ASSERT_TRUE(filter.has_value());
+  EXPECT_EQ(filter->kind(), Kind::kFilter);
+  const auto* filter_value =
+      std::get_if<CanonicalComputedValue::kFilterIndex>(&filter->storage());
+  ASSERT_NE(filter_value, nullptr);
+  EXPECT_EQ(filter_value->type, starlight::FilterType::kBlur);
+
+  auto transform =
+      style.ExtractCanonicalComputedValue(CSSPropertyID::kPropertyIDTransform);
+  ASSERT_TRUE(transform.has_value());
+  EXPECT_EQ(transform->kind(), Kind::kTransform);
+  const auto* transform_value =
+      std::get_if<CanonicalComputedValue::kTransformIndex>(
+          &transform->storage());
+  ASSERT_NE(transform_value, nullptr);
+  EXPECT_EQ(transform_value->size(), 1U);
+
+  auto background_position = style.ExtractCanonicalComputedValue(
+      CSSPropertyID::kPropertyIDBackgroundPosition);
+  ASSERT_TRUE(background_position.has_value());
+  EXPECT_EQ(background_position->kind(), Kind::kBackgroundPosition);
+  const auto* position_value =
+      std::get_if<CanonicalComputedValue::kBackgroundPositionIndex>(
+          &background_position->storage());
+  ASSERT_NE(position_value, nullptr);
+  ASSERT_EQ(position_value->size(), 2U);
+  EXPECT_EQ((*position_value)[0],
+            starlight::NLength::MakePercentageNLength(25.f));
+
+  auto transform_origin = style.ExtractCanonicalComputedValue(
+      CSSPropertyID::kPropertyIDTransformOrigin);
+  ASSERT_TRUE(transform_origin.has_value());
+  EXPECT_EQ(transform_origin->kind(), Kind::kTransformOrigin);
+  const auto* transform_origin_value =
+      std::get_if<CanonicalComputedValue::kTransformOriginIndex>(
+          &transform_origin->storage());
+  ASSERT_NE(transform_origin_value, nullptr);
+  EXPECT_EQ(transform_origin_value->x,
+            starlight::NLength::MakePercentageNLength(50.f));
+
+  auto visibility =
+      style.ExtractCanonicalComputedValue(CSSPropertyID::kPropertyIDVisibility);
+  ASSERT_TRUE(visibility.has_value());
+  EXPECT_EQ(visibility->kind(), Kind::kEnum);
+  const auto* visibility_value =
+      std::get_if<CanonicalComputedValue::kEnumIndex>(&visibility->storage());
+  ASSERT_NE(visibility_value, nullptr);
+  EXPECT_EQ(*visibility_value,
+            static_cast<int32_t>(starlight::VisibilityType::kHidden));
 }
 
 TEST(ComputedCSSStyleTest, FinalizeCustomPropertiesResolvesVariables) {

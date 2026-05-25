@@ -10,6 +10,7 @@
 #include "base/include/algorithm.h"
 #include "base/include/compiler_specific.h"
 #include "base/include/debug/lynx_assert.h"
+#include "base/include/float_comparison.h"
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
@@ -20,8 +21,6 @@
 #include "core/style/color.h"
 
 namespace lynx {
-
-using base::FloatsEqual;
 
 namespace starlight {
 
@@ -36,6 +35,88 @@ base::String DefaultCaretGradient() {
 }  // namespace
 
 using CSSValuePattern = tasm::CSSValuePattern;
+
+namespace {
+
+CanonicalComputedValue::TransformValue LegacyTransitionDefaultTransformValue() {
+  CanonicalComputedValue::TransformValue value;
+  TransformRawData item;
+  item.type = TransformType::kRotateZ;
+  item.p0 = NLength::MakeUnitNLength(0.f);
+  value.emplace_back(std::move(item));
+  return value;
+}
+
+CanonicalComputedValue::BackgroundPositionValue
+DefaultBackgroundPositionValue() {
+  CanonicalComputedValue::BackgroundPositionValue value;
+  value.emplace_back(NLength::MakePercentageNLength(0.f));
+  value.emplace_back(NLength::MakePercentageNLength(0.f));
+  return value;
+}
+
+}  // namespace
+
+bool CanonicalComputedValue::operator==(
+    const CanonicalComputedValue& rhs) const {
+  if (kind_ != rhs.kind_) {
+    return false;
+  }
+
+  switch (kind_) {
+    case Kind::kNumber:
+    case Kind::kResolvedLength: {
+      const auto* lhs = std::get_if<kFloatIndex>(&storage_);
+      const auto* rhs_value = std::get_if<kFloatIndex>(&rhs.storage_);
+      return lhs != nullptr && rhs_value != nullptr &&
+             base::DoublesEqual(static_cast<double>(*lhs),
+                                static_cast<double>(*rhs_value));
+    }
+    case Kind::kColor: {
+      const auto* lhs = std::get_if<kColorIndex>(&storage_);
+      const auto* rhs_value = std::get_if<kColorIndex>(&rhs.storage_);
+      return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
+    }
+    case Kind::kEnum: {
+      const auto* lhs = std::get_if<kEnumIndex>(&storage_);
+      const auto* rhs_value = std::get_if<kEnumIndex>(&rhs.storage_);
+      return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
+    }
+    case Kind::kLength: {
+      const auto* lhs = std::get_if<kLengthIndex>(&storage_);
+      const auto* rhs_value = std::get_if<kLengthIndex>(&rhs.storage_);
+      return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
+    }
+    case Kind::kTransform: {
+      const auto* lhs = std::get_if<kTransformIndex>(&storage_);
+      const auto* rhs_value = std::get_if<kTransformIndex>(&rhs.storage_);
+      return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
+    }
+    case Kind::kFilter: {
+      const auto* lhs = std::get_if<kFilterIndex>(&storage_);
+      const auto* rhs_value = std::get_if<kFilterIndex>(&rhs.storage_);
+      return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
+    }
+    case Kind::kBackgroundPosition: {
+      const auto* lhs = std::get_if<kBackgroundPositionIndex>(&storage_);
+      const auto* rhs_value =
+          std::get_if<kBackgroundPositionIndex>(&rhs.storage_);
+      return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
+    }
+    case Kind::kTransformOrigin: {
+      const auto* lhs = std::get_if<kTransformOriginIndex>(&storage_);
+      const auto* rhs_value = std::get_if<kTransformOriginIndex>(&rhs.storage_);
+      return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
+    }
+    case Kind::kTextGradient: {
+      const auto* lhs = std::get_if<kTextGradientIndex>(&storage_);
+      const auto* rhs_value = std::get_if<kTextGradientIndex>(&rhs.storage_);
+      return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
+    }
+  }
+
+  return false;
+}
 
 const base::InlineOrderedFlatSet<tasm::CSSPropertyID, 3>&
 ComputedCSSStyle::GetPlatformInheritableProperty() {
@@ -4954,6 +5035,188 @@ const tasm::CustomPropertiesMap* ComputedCSSStyle::GetCustomProperties() const {
   return resolved_custom_properties_ && resolved_custom_properties_.get()->Get()
              ? &resolved_custom_properties_.get()->Get()->Value()
              : nullptr;
+}
+
+bool ComputedCSSStyle::SupportsCanonicalComputedValue(tasm::CSSPropertyID id) {
+  switch (id) {
+    case tasm::kPropertyIDLeft:
+    case tasm::kPropertyIDTop:
+    case tasm::kPropertyIDRight:
+    case tasm::kPropertyIDBottom:
+    case tasm::kPropertyIDWidth:
+    case tasm::kPropertyIDHeight:
+    case tasm::kPropertyIDOpacity:
+    case tasm::kPropertyIDBackgroundColor:
+    case tasm::kPropertyIDColor:
+    case tasm::kPropertyIDMaxWidth:
+    case tasm::kPropertyIDMinWidth:
+    case tasm::kPropertyIDMaxHeight:
+    case tasm::kPropertyIDMinHeight:
+    case tasm::kPropertyIDMarginLeft:
+    case tasm::kPropertyIDMarginRight:
+    case tasm::kPropertyIDMarginTop:
+    case tasm::kPropertyIDMarginBottom:
+    case tasm::kPropertyIDPaddingLeft:
+    case tasm::kPropertyIDPaddingRight:
+    case tasm::kPropertyIDPaddingTop:
+    case tasm::kPropertyIDPaddingBottom:
+    case tasm::kPropertyIDBorderLeftWidth:
+    case tasm::kPropertyIDBorderRightWidth:
+    case tasm::kPropertyIDBorderTopWidth:
+    case tasm::kPropertyIDBorderBottomWidth:
+    case tasm::kPropertyIDBorderLeftColor:
+    case tasm::kPropertyIDBorderRightColor:
+    case tasm::kPropertyIDBorderTopColor:
+    case tasm::kPropertyIDBorderBottomColor:
+    case tasm::kPropertyIDFlexGrow:
+    case tasm::kPropertyIDFlexBasis:
+    case tasm::kPropertyIDFilter:
+    case tasm::kPropertyIDTransform:
+    case tasm::kPropertyIDTransformOrigin:
+    case tasm::kPropertyIDOffsetDistance:
+    case tasm::kPropertyIDBackgroundPosition:
+    case tasm::kPropertyIDVisibility:
+      return true;
+    default:
+      return false;
+  }
+}
+
+base::flex_optional<CanonicalComputedValue>
+ComputedCSSStyle::ExtractCanonicalComputedValue(tasm::CSSPropertyID id) const {
+  if (!SupportsCanonicalComputedValue(id)) {
+    return {};
+  }
+
+  switch (id) {
+    case tasm::kPropertyIDLeft:
+      return CanonicalComputedValue::Length(layout_computed_style_.GetLeft());
+    case tasm::kPropertyIDTop:
+      return CanonicalComputedValue::Length(layout_computed_style_.GetTop());
+    case tasm::kPropertyIDRight:
+      return CanonicalComputedValue::Length(layout_computed_style_.GetRight());
+    case tasm::kPropertyIDBottom:
+      return CanonicalComputedValue::Length(layout_computed_style_.GetBottom());
+    case tasm::kPropertyIDWidth:
+      return CanonicalComputedValue::Length(layout_computed_style_.GetWidth());
+    case tasm::kPropertyIDHeight:
+      return CanonicalComputedValue::Length(layout_computed_style_.GetHeight());
+    case tasm::kPropertyIDOpacity:
+      return CanonicalComputedValue::Number(GetOpacity());
+    case tasm::kPropertyIDBackgroundColor:
+      return CanonicalComputedValue::Color(background_data_
+                                               ? background_data_->color
+                                               : DefaultColor::DEFAULT_COLOR);
+    case tasm::kPropertyIDColor:
+      if (text_attributes_ && text_attributes_->text_gradient &&
+          text_attributes_->text_gradient->IsArray()) {
+        return CanonicalComputedValue::TextGradient(
+            *text_attributes_->text_gradient);
+      }
+      return CanonicalComputedValue::Color(
+          text_attributes_ && text_attributes_->color
+              ? *text_attributes_->color
+              : DefaultColor::DEFAULT_TEXT_COLOR);
+    case tasm::kPropertyIDMaxWidth:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetMaxWidth());
+    case tasm::kPropertyIDMinWidth:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetMinWidth());
+    case tasm::kPropertyIDMaxHeight:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetMaxHeight());
+    case tasm::kPropertyIDMinHeight:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetMinHeight());
+    case tasm::kPropertyIDMarginLeft:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetMarginLeft());
+    case tasm::kPropertyIDMarginRight:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetMarginRight());
+    case tasm::kPropertyIDMarginTop:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetMarginTop());
+    case tasm::kPropertyIDMarginBottom:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetMarginBottom());
+    case tasm::kPropertyIDPaddingLeft:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetPaddingLeft());
+    case tasm::kPropertyIDPaddingRight:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetPaddingRight());
+    case tasm::kPropertyIDPaddingTop:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetPaddingTop());
+    case tasm::kPropertyIDPaddingBottom:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetPaddingBottom());
+    case tasm::kPropertyIDBorderLeftWidth:
+      return CanonicalComputedValue::ResolvedLength(
+          layout_computed_style_.GetBorderLeftWidth());
+    case tasm::kPropertyIDBorderRightWidth:
+      return CanonicalComputedValue::ResolvedLength(
+          layout_computed_style_.GetBorderRightWidth());
+    case tasm::kPropertyIDBorderTopWidth:
+      return CanonicalComputedValue::ResolvedLength(
+          layout_computed_style_.GetBorderTopWidth());
+    case tasm::kPropertyIDBorderBottomWidth:
+      return CanonicalComputedValue::ResolvedLength(
+          layout_computed_style_.GetBorderBottomWidth());
+    case tasm::kPropertyIDBorderLeftColor:
+      return CanonicalComputedValue::Color(
+          layout_computed_style_.surround_data_.border_data_
+              ? layout_computed_style_.surround_data_.border_data_->color_left
+              : DefaultColor::DEFAULT_BORDER_COLOR);
+    case tasm::kPropertyIDBorderRightColor:
+      return CanonicalComputedValue::Color(
+          layout_computed_style_.surround_data_.border_data_
+              ? layout_computed_style_.surround_data_.border_data_->color_right
+              : DefaultColor::DEFAULT_BORDER_COLOR);
+    case tasm::kPropertyIDBorderTopColor:
+      return CanonicalComputedValue::Color(
+          layout_computed_style_.surround_data_.border_data_
+              ? layout_computed_style_.surround_data_.border_data_->color_top
+              : DefaultColor::DEFAULT_BORDER_COLOR);
+    case tasm::kPropertyIDBorderBottomColor:
+      return CanonicalComputedValue::Color(
+          layout_computed_style_.surround_data_.border_data_
+              ? layout_computed_style_.surround_data_.border_data_->color_bottom
+              : DefaultColor::DEFAULT_BORDER_COLOR);
+    case tasm::kPropertyIDFlexGrow:
+      return CanonicalComputedValue::Number(
+          layout_computed_style_.GetFlexGrow());
+    case tasm::kPropertyIDFlexBasis:
+      return CanonicalComputedValue::Length(
+          layout_computed_style_.GetFlexBasis());
+    case tasm::kPropertyIDFilter:
+      return CanonicalComputedValue::Filter(filter_ ? *filter_ : FilterData());
+    case tasm::kPropertyIDTransform:
+      if (transform_raw_) {
+        return CanonicalComputedValue::Transform(*transform_raw_);
+      }
+      return CanonicalComputedValue::Transform(
+          LegacyTransitionDefaultTransformValue());
+    case tasm::kPropertyIDTransformOrigin:
+      return CanonicalComputedValue::TransformOrigin(
+          transform_origin_ ? *transform_origin_ : TransformOriginData());
+    case tasm::kPropertyIDOffsetDistance:
+      return CanonicalComputedValue::Number(offset_distance_);
+    case tasm::kPropertyIDBackgroundPosition: {
+      const bool has_background_position =
+          background_data_ && background_data_->image_data &&
+          !background_data_->image_data->position.empty();
+      return CanonicalComputedValue::BackgroundPosition(
+          has_background_position ? background_data_->image_data->position
+                                  : DefaultBackgroundPositionValue());
+    }
+    case tasm::kPropertyIDVisibility:
+      return CanonicalComputedValue::Enum(static_cast<int32_t>(visibility_));
+    default:
+      return {};
+  }
 }
 
 }  // namespace starlight

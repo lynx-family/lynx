@@ -5,8 +5,11 @@
 #ifndef CORE_RENDERER_CSS_COMPUTED_CSS_STYLE_H_
 #define CORE_RENDERER_CSS_COMPUTED_CSS_STYLE_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 
 #include "base/include/auto_create_optional.h"
 #include "base/include/flex_optional.h"
@@ -72,6 +75,95 @@ class ComputedCSSStyleUtilsMethod {
       const base::flex_optional<BackgroundData>& data);
   static lepus::Value BackgroundOrMaskCompositeToLepus(
       const base::flex_optional<BackgroundData>& data);
+};
+
+struct CanonicalComputedValue {
+  enum class Kind : uint8_t {
+    kNumber,
+    kColor,
+    kEnum,
+    kLength,
+    kResolvedLength,
+    kTransform,
+    kFilter,
+    kBackgroundPosition,
+    kTransformOrigin,
+    kTextGradient,
+  };
+
+  using TransformValue = base::InlineVector<TransformRawData, 1>;
+  using BackgroundPositionValue = base::InlineVector<NLength, 1>;
+  using Storage = std::variant<float, uint32_t, NLength, TransformValue,
+                               FilterData, BackgroundPositionValue,
+                               TransformOriginData, int32_t, lepus::Value>;
+
+  static constexpr std::size_t kFloatIndex = 0;
+  static constexpr std::size_t kColorIndex = 1;
+  static constexpr std::size_t kLengthIndex = 2;
+  static constexpr std::size_t kTransformIndex = 3;
+  static constexpr std::size_t kFilterIndex = 4;
+  static constexpr std::size_t kBackgroundPositionIndex = 5;
+  static constexpr std::size_t kTransformOriginIndex = 6;
+  static constexpr std::size_t kEnumIndex = 7;
+  static constexpr std::size_t kTextGradientIndex = 8;
+
+  static CanonicalComputedValue Number(float value) {
+    return CanonicalComputedValue(Kind::kNumber, value);
+  }
+
+  static CanonicalComputedValue Color(uint32_t value) {
+    return CanonicalComputedValue(Kind::kColor, value);
+  }
+
+  static CanonicalComputedValue Enum(int32_t value) {
+    return CanonicalComputedValue(Kind::kEnum, value);
+  }
+
+  static CanonicalComputedValue Length(const NLength& value) {
+    return CanonicalComputedValue(Kind::kLength, value);
+  }
+
+  static CanonicalComputedValue ResolvedLength(float value) {
+    return CanonicalComputedValue(Kind::kResolvedLength, value);
+  }
+
+  static CanonicalComputedValue Transform(const TransformValue& value) {
+    return CanonicalComputedValue(Kind::kTransform, value);
+  }
+
+  static CanonicalComputedValue Filter(const FilterData& value) {
+    return CanonicalComputedValue(Kind::kFilter, value);
+  }
+
+  static CanonicalComputedValue BackgroundPosition(
+      const BackgroundPositionValue& value) {
+    return CanonicalComputedValue(Kind::kBackgroundPosition, value);
+  }
+
+  static CanonicalComputedValue TransformOrigin(
+      const TransformOriginData& value) {
+    return CanonicalComputedValue(Kind::kTransformOrigin, value);
+  }
+
+  static CanonicalComputedValue TextGradient(const lepus::Value& value) {
+    return CanonicalComputedValue(Kind::kTextGradient,
+                                  Storage(lepus::Value::Clone(value)));
+  }
+
+  Kind kind() const { return kind_; }
+  const Storage& storage() const { return storage_; }
+
+  bool operator==(const CanonicalComputedValue& rhs) const;
+  bool operator!=(const CanonicalComputedValue& rhs) const {
+    return !(*this == rhs);
+  }
+
+ private:
+  CanonicalComputedValue(Kind kind, const Storage& storage)
+      : kind_(kind), storage_(storage) {}
+
+  Kind kind_;
+  Storage storage_;
 };
 
 class ComputedCSSStyle {
@@ -168,6 +260,12 @@ class ComputedCSSStyle {
       const base::String& key) const;
 
   bool HasAnimation() const { return animation_data_.has_value(); }
+  // Coverage intentionally matches the legacy transition trigger path's
+  // effective CSSPropertyID set. Do not broaden this from parser-only
+  // transition-property names without corresponding runtime support.
+  static bool SupportsCanonicalComputedValue(tasm::CSSPropertyID id);
+  base::flex_optional<CanonicalComputedValue> ExtractCanonicalComputedValue(
+      tasm::CSSPropertyID id) const;
 
   base::Vector<AnimationData>& animation_data() {
     CSSStyleUtils::PrepareOptional(animation_data_);
