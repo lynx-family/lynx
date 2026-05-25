@@ -71,8 +71,10 @@ TEST_F(PipelineContextTest, TestPipelineContextResolve) {
   EXPECT_FALSE(context->IsResolveRequested());
   context->RequestResolve();
   EXPECT_TRUE(context->IsResolveRequested());
+  options_->target_node = 42;
   context->ResetResolveRequested();
   EXPECT_FALSE(context->IsResolveRequested());
+  EXPECT_EQ(options_->target_node, PipelineOptions::kInvalidTargetNodeId);
 }
 
 TEST_F(PipelineContextTest, TestPipelineContextLayout) {
