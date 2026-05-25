@@ -5,7 +5,6 @@
 #include "clay/ui/component/editable/textarea_ng_view.h"
 
 #include <algorithm>
-#include <cstring>
 #include <limits>
 #include <memory>
 #include <string>
@@ -20,12 +19,6 @@
 
 namespace clay {
 namespace {
-constexpr char kEnableScrollBar[] = "enable-scroll-bar";
-
-bool IsEnableScrollBarAttribute(const char* attr_c, KeywordID kw) {
-  return std::strcmp(attr_c, kEnableScrollBar) == 0;
-}
-
 class TextAreaNGScrollWrapper : public ScrollWrapper {
  public:
   TextAreaNGScrollWrapper(int id, ScrollDirection direction,
@@ -81,7 +74,7 @@ void TextAreaNGView::SetAttribute(const char* attr_c,
   auto kw = GetKeywordID(attr_c);
   if (kw == KeywordID::kLineSpacing) {
     editable_view_->SetLineSpacing(attribute_utils::GetDouble(value));
-  } else if (IsEnableScrollBarAttribute(attr_c, kw)) {
+  } else if (kw == KeywordID::kEnableScrollBar) {
     editable_scroll_wrapper_->SetScrollbarEnabled(
         attribute_utils::GetBool(value));
   } else if (editable_view_->MatchNGAttrSettings(kw)) {

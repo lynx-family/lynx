@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "clay/ui/common/attribute_utils.h"
+#include "clay/ui/component/keywords.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/rendering/render_container.h"
 
@@ -41,8 +42,8 @@ void TitleBarView::SetMoveable(const std::string& moveable) {
 }
 
 void TitleBarView::SetAttribute(const char* attr_c, const clay::Value& value) {
-  std::string attr = attr_c;
-  if (attr == "moveable") {
+  auto kw = GetKeywordID(attr_c);
+  if (kw == KeywordID::kMoveable) {
     SetMoveable(attribute_utils::GetCString(value));
   } else {
     BaseView::SetAttribute(attr_c, value);

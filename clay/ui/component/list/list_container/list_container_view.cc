@@ -383,11 +383,10 @@ void ListContainerView::UpdateStickyEnds(float offset_x, float offset_y) {
   if (sticky_end_item != nullptr) {
     if (prev_sticky_bottom_item_ != sticky_end_item) {
       if (is_vertical) {
-        page_view_->SendEvent(GetCallbackId(),
-                              event_attr::kEventListStickyBottom, {"bottom"},
-                              sticky_end_item->ItemKey());
+        page_view_->SendEvent(GetCallbackId(), event_attr::kEventStickyBottom,
+                              {"bottom"}, sticky_end_item->ItemKey());
       }
-      page_view_->SendEvent(GetCallbackId(), event_attr::kEventListStickyEnd,
+      page_view_->SendEvent(GetCallbackId(), event_attr::kEventStickyEnd,
                             {"end"}, sticky_end_item->ItemKey());
       prev_sticky_bottom_item_ = sticky_end_item;
     }
@@ -493,11 +492,11 @@ void ListContainerView::UpdateStickyStarts(float offset_x, float offset_y) {
   if (sticky_start_item != nullptr) {
     if (prev_sticky_top_item_ != sticky_start_item) {
       if (is_vertical) {
-        page_view_->SendEvent(GetCallbackId(), event_attr::kEventListStickyTop,
+        page_view_->SendEvent(GetCallbackId(), event_attr::kEventStickyTop,
                               {"top"}, sticky_start_item->ItemKey());
       }
 
-      page_view_->SendEvent(GetCallbackId(), event_attr::kEventListStickyStart,
+      page_view_->SendEvent(GetCallbackId(), event_attr::kEventStickyStart,
                             {"start"}, sticky_start_item->ItemKey());
 
       prev_sticky_top_item_ = sticky_start_item;

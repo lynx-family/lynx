@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/list/list_container/list_container_view.h"
 #include "clay/ui/component/page_view.h"
 

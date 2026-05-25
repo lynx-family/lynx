@@ -18,6 +18,7 @@
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/text_input_type_traits.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/keywords.h"
 #include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/page_view.h"
@@ -355,8 +356,8 @@ void TextView::OnSelectionChanged(int selection_start, int selection_end) {
     direction = "forward";
   }
   page_view()->SendEvent(
-      id(), event_attr::kEventEditSelectionChange,
-      {"start", "end", "direction"}, std::min(selection_start, selection_end),
+      id(), event_attr::kEventSelectionChange, {"start", "end", "direction"},
+      std::min(selection_start, selection_end),
       std::max(selection_start, selection_end), direction.c_str());
 }
 

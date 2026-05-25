@@ -8,6 +8,7 @@
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/overlay_manager.h"
 #include "clay/ui/component/component_constants.h"
+#include "clay/ui/component/keywords.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/gesture/gesture_manager.h"
 #include "clay/ui/rendering/render_container.h"
@@ -59,16 +60,16 @@ void OverlayView::SetFullScreen(bool full_screen) {
 }
 
 void OverlayView::SetAttribute(const char* attr_c, const clay::Value& value) {
-  std::string attr(attr_c);
-  if (attr.compare("visible") == 0) {
+  auto kw = GetKeywordID(attr_c);
+  if (kw == KeywordID::kVisible) {
     bool visible = attribute_utils::GetBool(value);
     visible ? Show() : Hide();
-  } else if (attr.compare("events-pass-through") == 0) {
+  } else if (kw == KeywordID::kEventsPassThrough) {
     SetPassEventsThrough(attribute_utils::GetBool(value));
-  } else if (attr.compare("overlay-id") == 0) {
+  } else if (kw == KeywordID::kOverlayId) {
     std::string new_overlay_id = attribute_utils::GetCString(value);
     overlay_id_ = new_overlay_id;
-  } else if (attr.compare("full-screen") == 0) {
+  } else if (kw == KeywordID::kFullScreen) {
     SetFullScreen(attribute_utils::GetBool(value));
   } else {
     BaseView::SetAttribute(attr_c, value);

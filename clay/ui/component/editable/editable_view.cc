@@ -623,7 +623,7 @@ void EditableView::OnSelectionChanged(const TextEditingValue& value,
                                       const TextEditingController*) {
   TwinkleCaretPeriodically();
   UpdateCaretPosition();
-  page_view()->SendEvent(callback_id_, event_attr::kEventEditSelectionChange,
+  page_view()->SendEvent(callback_id_, event_attr::kEventSelectionChange,
                          {"start", "end"},
                          static_cast<int>(value.selection().start()),
                          static_cast<int>(value.selection().end()));
@@ -635,7 +635,7 @@ void EditableView::OnUserInput(const TextEditingValue& value,
   // Keep string alive to transfer c_str.
   auto text_editing_str = text_editing_value.GetText();
   page_view()->SendEvent(
-      callback_id_, event_attr::kEventEditInput,
+      callback_id_, event_attr::kEventInput,
       {"value", "selectionStart", "selectionEnd", "isComposing"},
       text_editing_str.c_str(),
       static_cast<int>(text_editing_value.selection().start()),
@@ -711,8 +711,8 @@ void EditableView::OnPerformAction(KeyboardAction action) {
     case KeyboardAction::kSearch:
     case KeyboardAction::kSend:
     case KeyboardAction::kDone:
-      page_view()->SendEvent(callback_id_, event_attr::kEventEditConfirm,
-                             {"value"}, text_editing_str.c_str());
+      page_view()->SendEvent(callback_id_, event_attr::kEventConfirm, {"value"},
+                             text_editing_str.c_str());
     case KeyboardAction::kPrevious:
       ClearFocus();
   }

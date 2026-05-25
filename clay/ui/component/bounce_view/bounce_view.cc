@@ -8,6 +8,7 @@
 #include <string>
 
 #include "clay/ui/common/attribute_utils.h"
+#include "clay/ui/component/keywords.h"
 #include "clay/ui/rendering/render_bounce.h"
 #include "clay/ui/rendering/render_container.h"
 
@@ -18,8 +19,8 @@ BounceView::BounceView(int id, PageView* page_view)
                    page_view) {}
 
 void BounceView::SetAttribute(const char* attr, const clay::Value& value) {
-  std::string attribute(attr);
-  if (attribute.compare("direction") == 0) {
+  auto kw = GetKeywordID(attr);
+  if (kw == KeywordID::kDirection) {
     std::string direction;
     attribute_utils::TryGetString(value, direction, "direction");
     if (direction.compare("right") == 0) {

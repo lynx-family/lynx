@@ -3074,12 +3074,10 @@ template <typename... Args>
 void BaseView::NotifyBgImageLoadStatus(bool success,
                                        const std::vector<std::string>& keys,
                                        Args&&... args) {
-  if (success && HasEvent(event_attr::kEventBgImageLoadSuccess)) {
-    page_view()->SendEvent(id(), event_attr::kEventBgImageLoadSuccess, keys,
-                           args...);
-  } else if (!success && HasEvent(event_attr::kEventBgImageLoadError)) {
-    page_view()->SendEvent(id(), event_attr::kEventBgImageLoadError, keys,
-                           args...);
+  if (success && HasEvent(event_attr::kEventBgLoad)) {
+    page_view()->SendEvent(id(), event_attr::kEventBgLoad, keys, args...);
+  } else if (!success && HasEvent(event_attr::kEventBgError)) {
+    page_view()->SendEvent(id(), event_attr::kEventBgError, keys, args...);
   }
 }
 

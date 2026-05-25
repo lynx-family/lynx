@@ -4,7 +4,6 @@
 
 #include "clay/ui/component/view_context.h"
 
-#include <cstring>
 #include <list>
 #include <map>
 #include <memory>
@@ -20,6 +19,7 @@
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component.h"
 #include "clay/ui/component/intersection_observer_manager.h"
+#include "clay/ui/component/keywords.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
@@ -585,7 +585,7 @@ void ViewContext::SetAttribute(int id, const char* attr,
   FIND_VIEW_WITH_ID_OR_RET;
   view->SetAttribute(attr, value);
 
-  if (view->Is<Component>() && strcmp(attr, "ComponentID") == 0) {
+  if (view->Is<Component>() && GetKeywordID(attr) == KeywordID::kComponentid) {
     std::string component_id;
     if (value.IsString()) {
       component_id = value.GetString();

@@ -373,8 +373,8 @@ void BaseImageView::SetAutoSize(bool auto_size) {
 }
 
 void BaseImageView::NotifyLoadError(const std::string& error_msg) {
-  if (HasEvent(event_attr::kEventImageLoadError)) {
-    page_view()->SendEvent(id(), event_attr::kEventImageLoadError, {"errMsg"},
+  if (HasEvent(event_attr::kEventError)) {
+    page_view()->SendEvent(id(), event_attr::kEventError, {"errMsg"},
                            error_msg.c_str());
   }
   if (listener_) {
@@ -384,10 +384,9 @@ void BaseImageView::NotifyLoadError(const std::string& error_msg) {
 
 void BaseImageView::NotifyLoadSuccess(int width, int height) {
   // Only send once if enable_report_info or extra_load_info is true.
-  if (HasEvent(event_attr::kEventImageLoadSuccess) &&
-      !report_info_.enable_report_info) {
-    page_view()->SendEvent(id(), event_attr::kEventImageLoadSuccess,
-                           {"width", "height"}, width, height);
+  if (HasEvent(event_attr::kEventLoad) && !report_info_.enable_report_info) {
+    page_view()->SendEvent(id(), event_attr::kEventLoad, {"width", "height"},
+                           width, height);
   }
   if (listener_) {
     listener_->OnImageLoadSuccess(this, width, height);
@@ -401,19 +400,18 @@ void BaseImageView::NotifyDecodedSuccess() {
 }
 
 void BaseImageView::NotifyStartPlay() {
-  if (HasEvent(event_attr::kEventImageStartPlay)) {
-    page_view()->SendEvent(id(), event_attr::kEventImageStartPlay, {});
+  if (HasEvent(event_attr::kEventStartPlay)) {
+    page_view()->SendEvent(id(), event_attr::kEventStartPlay, {});
   }
 }
 void BaseImageView::NotifyCurrentLoopComplete() {
-  if (HasEvent(event_attr::kEventImageCurrentLoopComplete)) {
-    page_view()->SendEvent(id(), event_attr::kEventImageCurrentLoopComplete,
-                           {});
+  if (HasEvent(event_attr::kEventCurrentLoopComplete)) {
+    page_view()->SendEvent(id(), event_attr::kEventCurrentLoopComplete, {});
   }
 }
 void BaseImageView::NotifyFinalLoopComplete() {
-  if (HasEvent(event_attr::kEventImageFinalLoopComplete)) {
-    page_view()->SendEvent(id(), event_attr::kEventImageFinalLoopComplete, {});
+  if (HasEvent(event_attr::kEventFinalLoopComplete)) {
+    page_view()->SendEvent(id(), event_attr::kEventFinalLoopComplete, {});
   }
 }
 
@@ -710,8 +708,7 @@ std::string BaseImageView::ToString() const {
 #endif
 
 void BaseImageView::ReportImageLoadInfo() {
-  if (!HasEvent(event_attr::kEventImageLoadSuccess) ||
-      !report_info_.enable_report_info) {
+  if (!HasEvent(event_attr::kEventLoad) || !report_info_.enable_report_info) {
     return;
   }
 
@@ -728,7 +725,7 @@ void BaseImageView::ReportImageLoadInfo() {
   float view_height = Height();
 
   page_view()->SendEvent(
-      id(), event_attr::kEventImageLoadSuccess,
+      id(), event_attr::kEventLoad,
       {"load_start", "load_finish", "cost", "src", "width", "height",
        "memory_cost", "downsampled", "view_width", "view_height", "origin"},
       std::to_string(report_info_.download_start_time),

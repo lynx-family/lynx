@@ -5,7 +5,6 @@
 #include "clay/ui/component/list/list_view.h"
 
 #include <memory>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,6 +13,7 @@
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/list/list_children_helper.h"
 #include "clay/ui/component/list/list_item_view_holder.h"
 #include "clay/ui/component/list/list_layout_manager.h"
@@ -113,17 +113,16 @@ void ListView::ProcessAdapterUpdates() {
 }
 
 void ListView::OnLayoutComplete() {
-  if (!HasEvent(event_attr::kEventListLayoutComplete)) {
+  if (!HasEvent(event_attr::kEventLayoutComplete)) {
     return;
   }
   Value::Array cells;
   for (int i = 0; i < lynx_adapter_->GetItemCount(); i++) {
     cells.emplace_back(lynx_adapter_->GetItemTypeName(i));
   }
-  page_view_->SendEvent(callback_id_, event_attr::kEventListLayoutComplete,
-                        {"timestamp", "cells"},
-                        fml::TimePoint::Now().ToEpochDelta().ToMilliseconds(),
-                        cells);
+  page_view_->SendEvent(
+      callback_id_, event_attr::kEventLayoutComplete, {"timestamp", "cells"},
+      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds(), cells);
 }
 
 void ListView::InitAdapter() {

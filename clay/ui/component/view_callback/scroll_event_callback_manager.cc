@@ -5,6 +5,7 @@
 #include "clay/ui/component/view_callback/scroll_event_callback_manager.h"
 
 #include "clay/fml/logging.h"
+#include "clay/ui/component/component_constants.h"
 
 namespace clay {
 
