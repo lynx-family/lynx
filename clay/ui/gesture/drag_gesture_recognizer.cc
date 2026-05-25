@@ -173,7 +173,7 @@ bool DragGestureRecognizer::IsFlingGesture(const VelocityEstimate& velocity) {
 }
 
 void DragGestureRecognizer::OnGestureAccepted(int pointer_id) {
-  GestureRecognizer::OnGestureAccepted(pointer_id);
+  super::OnGestureAccepted(pointer_id);
   accepted_active_pointers_.emplace(pointer_id);
   // Maybe called by multiple pointers.
   if (state_ != DragState::kAccepted) {

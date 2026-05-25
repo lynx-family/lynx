@@ -10,9 +10,42 @@
 #include "clay/ui/gesture/macros.h"
 
 namespace clay {
+namespace {
+
+void RemoveInvalidMembers(Arena* arena) {
+  for (auto iter = arena->members.begin(); iter != arena->members.end();) {
+    if (!*iter) {
+      iter = arena->members.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+
+  if (!arena->eager_winner) {
+    arena->eager_winner.reset();
+  }
+}
+
+}  // namespace
 
 std::unique_ptr<ArenaEntry> ArenaManager::Add(
     int pointer_id, fml::WeakPtr<ArenaMember> member) {
+  auto iter = arenas_.find(pointer_id);
+  if (iter != arenas_.end()) {
+    RemoveInvalidMembers(iter->second.get());
+    if (iter->second->members.empty()) {
+      GESTURE_LOG << "drop stale arena before add, pointer: " << pointer_id
+                  << ", is_open: " << iter->second->is_open
+                  << ", is_held: " << iter->second->is_held;
+      arenas_.erase(iter);
+      recording_events_.erase(pointer_id);
+    } else {
+      FML_DCHECK(iter->second->is_open)
+          << "Unexpected non-empty closed arena before add, pointer: "
+          << pointer_id << ", members: " << iter->second->members.size();
+    }
+  }
+
   auto& arena = arenas_[pointer_id];
   if (!arena) {
     arena = std::make_unique<Arena>();
@@ -31,15 +64,21 @@ void ArenaEntry::Resolve(GestureDisposition disposition) {
 
 void ArenaManager::Close(const PointerEvent& event) {
   int pointer_id = event.pointer_id;
-  recording_events_.emplace(pointer_id, event);
   auto iter = arenas_.find(pointer_id);
   if (iter == arenas_.end()) {
+    recording_events_.erase(pointer_id);
     OnPointerNotCared(event);
     return;
   }
 
+  recording_events_.insert_or_assign(pointer_id, event);
   Arena* arena = iter->second.get();
-  FML_DCHECK(arena->is_open);
+  RemoveInvalidMembers(arena);
+  if (!arena->is_open) {
+    TryResolve(event, arena);
+    return;
+  }
+
   arena->is_open = false;
   TryResolve(event, arena);
 }
@@ -48,6 +87,7 @@ void ArenaManager::Sweep(int pointer_id) {
   auto iter = arenas_.find(pointer_id);
   if (iter == arenas_.end()) {
     // `OnPointerNotCared` has already been notified when `Close`
+    recording_events_.erase(pointer_id);
     return;
   }
 
@@ -76,6 +116,21 @@ void ArenaManager::Sweep(int pointer_id) {
     } else {
       GESTURE_LOG << "[sweep] reject other members: " << member.get()
                   << member->GetMemberTag();
+      member->OnGestureRejected(pointer_id);
+    }
+  }
+}
+
+void ArenaManager::Cancel(int pointer_id) {
+  auto iter = arenas_.find(pointer_id);
+  if (iter == arenas_.end()) {
+    recording_events_.erase(pointer_id);
+    return;
+  }
+
+  std::unique_ptr<Arena> holder = TakeArenaOwnership(pointer_id);
+  for (auto& member : holder->members) {
+    if (member) {
       member->OnGestureRejected(pointer_id);
     }
   }
@@ -219,6 +274,7 @@ std::unique_ptr<Arena> ArenaManager::TakeArenaOwnership(int pointer_id) {
   }
   owner.swap(iter->second);
   arenas_.erase(iter);
+  recording_events_.erase(pointer_id);
   return owner;
 }
 
