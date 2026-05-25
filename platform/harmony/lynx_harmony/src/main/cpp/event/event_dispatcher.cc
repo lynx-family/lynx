@@ -237,6 +237,44 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
       root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_);
 }
 
+void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
+  if (!root || !root->RootNode()) {
+    return;
+  }
+  auto* root_node = root->RootNode();
+  NodeManager::Instance().SetGestureInterrupterToNode(root_node, nullptr);
+  if (long_press_gesture_) {
+    NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                  long_press_gesture_);
+  }
+  if (tap_gesture_) {
+    NodeManager::Instance().RemoveGestureFromNode(root_node, tap_gesture_);
+  }
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                block_outer_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(
+      root_node, consume_horizontal_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_vertical_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_up_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_right_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_down_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_left_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                consume_all_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                native_gesture_pan_gesture_);
+  NodeManager::Instance().RemoveGestureFromNode(root_node,
+                                                velocity_tracker_pan_gesture_);
+  if (root_target_.lock().get() == root) {
+    root_target_.reset();
+  }
+}
+
 void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
   size_t num = OH_ArkUI_PointerEvent_GetPointerCount(event);
   for (size_t i = 0; i < num; ++i) {

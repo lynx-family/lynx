@@ -818,6 +818,10 @@ void UIOwner::AttachGesturesToRoot(UIBase* root) {
   event_dispatcher_->AttachGesturesToRoot(root);
 }
 
+void UIOwner::DetachGesturesFromRoot(UIBase* root) {
+  event_dispatcher_->DetachGesturesFromRoot(root);
+}
+
 void UIOwner::OnGestureRecognized(UIBase* ui) {
   event_dispatcher_->OnGestureRecognized(ui);
 }
