@@ -9,24 +9,28 @@
 #import <UIKit/UIKit.h>
 
 @protocol LUIBodyView;
+@class LynxUIOwner;
 
 namespace lynx {
 namespace tasm {
 
 class PlatformRendererContextDarwin {
  public:
-  PlatformRendererContextDarwin(UIView<LUIBodyView>* container_view);
+  PlatformRendererContextDarwin(UIView<LUIBodyView>* container_view, LynxUIOwner* ui_owner = nil);
   ~PlatformRendererContextDarwin();
 
   UIView<LUIBodyView>* GetContainerView() { return _renderer_context.bodyView; }
 
   LynxRendererContext* GetRendererContext() { return _renderer_context; }
 
+  LynxUIOwner* GetUIOwner() { return _ui_owner; }
+
   CGPoint GetRootViewLocationOnScreen();
   CGSize GetScreenSize();
 
  private:
   LynxRendererContext* _renderer_context;
+  LynxUIOwner* _ui_owner;
 };
 
 }  // namespace tasm

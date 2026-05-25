@@ -145,6 +145,10 @@ public class Renderer {
     mRepaintType = REPAINT_TYPE_DRAW_ONLY;
   }
 
+  public void beforeDrawHost(Canvas canvas) {
+    mDisplayListApplier.drawTillNextView(canvas);
+  }
+
   public void beforeDrawChild(Canvas canvas, View child) {
     mDisplayListApplier.drawTillNextView(canvas);
     canvas.save();
