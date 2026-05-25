@@ -23,8 +23,9 @@ else {
     $HABITAT_DOWNLOAD_URL = "${HABITAT_RELEASE_BASE_URL}/download/$HABITAT_VERSION/hab.exe"
 }
 
-$HABITAT_CACHE_DIR = "${HOME}\.habitat_cache\hab"
-$HABITAT_BIN = "${HABITAT_CACHE_DIR}\hab-${HABITAT_VERSION}.exe"
+$HABITAT_HOME = python -c "import os; import tempfile; print(os.path.join(os.environ.get('HOME', tempfile.gettempdir()), '.habitat_cache'))"
+$HABITAT_CACHE_DIR = Join-Path $HABITAT_HOME "hab"
+$HABITAT_BIN = Join-Path $HABITAT_CACHE_DIR "hab-${HABITAT_VERSION}.exe"
 
 function install() {
     if (-Not (Test-Path -Path $HABITAT_CACHE_DIR)) {

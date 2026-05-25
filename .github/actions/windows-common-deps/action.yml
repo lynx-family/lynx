@@ -113,9 +113,9 @@ runs:
       working-directory: lynx
       run: |
         if ([string]::IsNullOrEmpty("${{ inputs.target }}")) {
-            powershell.exe -Command "& .\tools\hab.ps1 sync ."
+            .\tools\hab.ps1 sync .
         } else {
-            powershell.exe -Command "& .\tools\hab.ps1 sync . --target ${{ inputs.target }}"
+            .\tools\hab.ps1 sync . --target ${{ inputs.target }}
         }
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       env:
