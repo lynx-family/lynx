@@ -11,6 +11,8 @@
 #import <Lynx/LynxRendererHost.h>
 #import <UIKit/UIKit.h>
 
+@class LynxUIOwner;
+
 namespace lynx {
 
 namespace tasm {
@@ -23,11 +25,20 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                   PlatformRendererType type);
   explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
+                                  PlatformRendererType type,
+                                  const fml::RefPtr<PropBundle>& init_data);
+  explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                   const base::String& tag_name);
   explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
+                                  const base::String& tag_name,
+                                  const fml::RefPtr<PropBundle>& init_data);
+  explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                   PlatformRendererType type, const base::String& tag_name);
+  explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
+                                  PlatformRendererType type, const base::String& tag_name,
+                                  const fml::RefPtr<PropBundle>& init_data);
 
-  ~PlatformRendererDarwin() override = default;
+  ~PlatformRendererDarwin() override;
 
   // PlatformRendererImpl interface
   void OnUpdateDisplayList(DisplayList display_list) override;
@@ -39,13 +50,23 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   void UpdatePlatformExtraBundle(id platform_extra_bundle);
 
   void InitializeUIView();
+  void InitializeUIView(const fml::RefPtr<PropBundle>& init_data);
 
   UIView<LynxRendererHost>* GetUIView() { return _view; }
 
  private:
+  bool ShouldCreatePlatformExtendedRenderer(const fml::RefPtr<PropBundle>& init_data) const;
+  bool InitializeUIOwnerRenderer(const base::String& tag_name,
+                                 const fml::RefPtr<PropBundle>& init_data);
+  void InitializeRendererForView(UIView<LynxRendererHost>* view, NSDictionary* initial_props = nil);
+  void UpdateUIOwnerLayout(CGRect frame);
+  bool HasUIOwnerNode(int sign) const;
+  void CleanupUIView();
+
   UIView<LynxRendererHost>* _view = nil;
 
   PlatformRendererContextDarwin* context_ = nullptr;
+  LynxUIOwner* ui_owner_ = nil;
 };
 
 }  // namespace tasm

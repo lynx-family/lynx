@@ -20,6 +20,7 @@ import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
@@ -70,6 +71,7 @@ public class DisplayListApplier implements Drawable.Callback {
   private int mContentOpIndex;
   private int mContentIntIndex;
   private int mContentFloatIndex;
+  private int mFragmentDepth;
 
   private WeakReference<View> mHostLayer;
 
@@ -97,6 +99,7 @@ public class DisplayListApplier implements Drawable.Callback {
     mContentOpIndex = 0;
     mContentIntIndex = 0;
     mContentFloatIndex = 0;
+    mFragmentDepth = 0;
     mRoundedRectangleArray.clear();
   }
 
@@ -107,6 +110,126 @@ public class DisplayListApplier implements Drawable.Callback {
 
     // Process content operations
     processContentOperations(canvas);
+  }
+
+  private static final class BorderBoxes {
+    final RoundedRectangle outBox;
+    final RoundedRectangle innerBox;
+
+    BorderBoxes(RoundedRectangle outBox, RoundedRectangle innerBox) {
+      this.outBox = outBox;
+      this.innerBox = innerBox;
+    }
+  }
+
+  private View getHostLayer() {
+    return mHostLayer.get();
+  }
+
+  private boolean shouldNormalizeRootGeometry() {
+    View hostLayer = getHostLayer();
+    return mFragmentDepth == 1 && hostLayer != null && hostLayer.getWidth() > 0
+        && hostLayer.getHeight() > 0;
+  }
+
+  private RectF getHostBoundsRectF(boolean includeScrollOffset) {
+    View hostLayer = getHostLayer();
+    if (hostLayer == null) {
+      return new RectF();
+    }
+
+    float left = 0.f;
+    float top = 0.f;
+    if (includeScrollOffset && hostLayer instanceof AndroidScrollView) {
+      left = hostLayer.getScrollX();
+      top = hostLayer.getScrollY();
+    }
+    return new RectF(left, top, left + hostLayer.getWidth(), top + hostLayer.getHeight());
+  }
+
+  private float[] cloneBorderRadii(float[] borderRadii) {
+    return borderRadii == null ? null : borderRadii.clone();
+  }
+
+  private RoundedRectangle createRoundedRectangle(RectF rect, RoundedRectangle source) {
+    return new RoundedRectangle(new RectF(rect), cloneBorderRadii(source.getBorderRadii()));
+  }
+
+  private RoundedRectangle getRoundedRectangle(int index) {
+    if (index < 0 || index >= mRoundedRectangleArray.size()) {
+      return null;
+    }
+    return mRoundedRectangleArray.get(index);
+  }
+
+  private RoundedRectangle getNormalizedRoundedRectangle(int index) {
+    RoundedRectangle roundedRectangle = getRoundedRectangle(index);
+    if (roundedRectangle == null || !shouldNormalizeRootGeometry()) {
+      return roundedRectangle;
+    }
+
+    RectF normalizedRect = new RectF(roundedRectangle.getRectF());
+    if (!normalizedRect.intersect(getHostBoundsRectF(false))) {
+      normalizedRect.setEmpty();
+    }
+    if (normalizedRect.equals(roundedRectangle.getRectF())) {
+      return roundedRectangle;
+    }
+    return createRoundedRectangle(normalizedRect, roundedRectangle);
+  }
+
+  private BorderBoxes getNormalizedBorderBoxes(int outBoxIndex, int innerBoxIndex) {
+    RoundedRectangle outBox = getRoundedRectangle(outBoxIndex);
+    RoundedRectangle innerBox = getRoundedRectangle(innerBoxIndex);
+    if (outBox == null || innerBox == null || !shouldNormalizeRootGeometry()) {
+      return new BorderBoxes(outBox, innerBox);
+    }
+
+    RectF rawOutRect = outBox.getRectF();
+    RectF rawInnerRect = innerBox.getRectF();
+    RectF hostBounds = getHostBoundsRectF(false);
+    RectF normalizedOutRect = new RectF(rawOutRect);
+    if (!normalizedOutRect.intersect(hostBounds)) {
+      normalizedOutRect.setEmpty();
+    }
+
+    if (normalizedOutRect.equals(rawOutRect)) {
+      return new BorderBoxes(outBox, innerBox);
+    }
+
+    float borderLeftWidth = Math.max(rawInnerRect.left - rawOutRect.left, 0.f);
+    float borderTopWidth = Math.max(rawInnerRect.top - rawOutRect.top, 0.f);
+    float borderRightWidth = Math.max(rawOutRect.right - rawInnerRect.right, 0.f);
+    float borderBottomWidth = Math.max(rawOutRect.bottom - rawInnerRect.bottom, 0.f);
+
+    RectF normalizedInnerRect =
+        new RectF(Math.min(normalizedOutRect.left + borderLeftWidth, normalizedOutRect.right),
+            Math.min(normalizedOutRect.top + borderTopWidth, normalizedOutRect.bottom),
+            Math.max(normalizedOutRect.right - borderRightWidth, normalizedOutRect.left),
+            Math.max(normalizedOutRect.bottom - borderBottomWidth, normalizedOutRect.top));
+
+    if (normalizedInnerRect.right < normalizedInnerRect.left) {
+      normalizedInnerRect.right = normalizedInnerRect.left;
+    }
+    if (normalizedInnerRect.bottom < normalizedInnerRect.top) {
+      normalizedInnerRect.bottom = normalizedInnerRect.top;
+    }
+
+    return new BorderBoxes(createRoundedRectangle(normalizedOutRect, outBox),
+        createRoundedRectangle(normalizedInnerRect, innerBox));
+  }
+
+  private void normalizeClipRect(RectF rect) {
+    View hostLayer = getHostLayer();
+    if (hostLayer instanceof AndroidScrollView) {
+      rect.offset(hostLayer.getScrollX(), hostLayer.getScrollY());
+    }
+    if (!shouldNormalizeRootGeometry()) {
+      return;
+    }
+    if (!rect.intersect(getHostBoundsRectF(true))) {
+      rect.setEmpty();
+    }
   }
 
   private void drawImage(Canvas canvas, int id, int boxIndex) {
@@ -219,6 +342,7 @@ public class DisplayListApplier implements Drawable.Callback {
             nextContentFloat(); // unused height
             canvas.save();
             canvas.translate(x, y);
+            mFragmentDepth++;
           }
           break;
         }
@@ -226,6 +350,9 @@ public class DisplayListApplier implements Drawable.Callback {
         case OP_END: {
           // End fragment - no parameters
           canvas.restore();
+          if (mFragmentDepth > 0) {
+            mFragmentDepth--;
+          }
           break; // End of this sub view's content
         }
 
@@ -236,8 +363,8 @@ public class DisplayListApplier implements Drawable.Callback {
           int clipIndex = nextContentInt();
           mPaint.setColor(color);
 
-          if (clipIndex >= 0 && clipIndex < mRoundedRectangleArray.size()) {
-            RoundedRectangle roundedRectangle = mRoundedRectangleArray.get(clipIndex);
+          RoundedRectangle roundedRectangle = getNormalizedRoundedRectangle(clipIndex);
+          if (roundedRectangle != null) {
             if (roundedRectangle.hasBorderRadius()) {
               mReusablePath.reset();
               mReusablePath.addRoundRect(roundedRectangle.getRectF(),
@@ -295,8 +422,8 @@ public class DisplayListApplier implements Drawable.Callback {
             mReusableBorderStyles[Spacing.BOTTOM] = BorderStyle.parse(nextContentInt());
             mReusableBorderStyles[Spacing.LEFT] = BorderStyle.parse(nextContentInt());
 
-            // Use the member function to draw borders (verifiable in tests)
-            drawRectangularBorders(canvas, mPaint, outBoxIndex, innerBoxIndex,
+            BorderBoxes borderBoxes = getNormalizedBorderBoxes(outBoxIndex, innerBoxIndex);
+            drawRectangularBorders(canvas, mPaint, borderBoxes.outBox, borderBoxes.innerBox,
                 mReusableBorderColors, mReusableBorderStyles);
           }
           break;
@@ -308,6 +435,7 @@ public class DisplayListApplier implements Drawable.Callback {
           float height = nextContentFloat();
 
           mReusableRectF.set(left, top, left + width, top + height);
+          normalizeClipRect(mReusableRectF);
           if (floatParamCount >= 12) { // 4 + 8 radii
             System.arraycopy(fArgv, mContentFloatIndex, mReusableBorderRadii, 0, 8);
             mContentFloatIndex += 8;
@@ -382,18 +510,12 @@ public class DisplayListApplier implements Drawable.Callback {
       return;
     }
 
-    RoundedRectangle tilingBox = null;
-    if (tilingIndex >= 0 && tilingIndex < mRoundedRectangleArray.size()) {
-      tilingBox = mRoundedRectangleArray.get(tilingIndex);
-    }
+    RoundedRectangle tilingBox = getNormalizedRoundedRectangle(tilingIndex);
     if (tilingBox == null) {
       return;
     }
 
-    RoundedRectangle clipBox = null;
-    if (clipIndex >= 0 && clipIndex < mRoundedRectangleArray.size()) {
-      clipBox = mRoundedRectangleArray.get(clipIndex);
-    }
+    RoundedRectangle clipBox = getNormalizedRoundedRectangle(clipIndex);
     if (clipBox == null) {
       return;
     }
@@ -533,24 +655,21 @@ public class DisplayListApplier implements Drawable.Callback {
    * @param borderColors Array of border colors for [left, top, right, bottom]
    * @param borderStyles Array of border styles for [left, top, right, bottom]
    */
-  void drawRectangularBorders(Canvas canvas, Paint paint, int outBoxIndex, int innerBoxIndex,
-      int[] borderColors, BorderStyle[] borderStyles) {
-    RoundedRectangle outBox = null;
-    if (outBoxIndex >= 0 && outBoxIndex < mRoundedRectangleArray.size()) {
-      outBox = mRoundedRectangleArray.get(outBoxIndex);
-    }
-
-    RoundedRectangle innerBox = null;
-    if (innerBoxIndex >= 0 && innerBoxIndex < mRoundedRectangleArray.size()) {
-      innerBox = mRoundedRectangleArray.get(innerBoxIndex);
-    }
-
+  void drawRectangularBorders(Canvas canvas, Paint paint, RoundedRectangle outBox,
+      RoundedRectangle innerBox, int[] borderColors, BorderStyle[] borderStyles) {
     if (outBox == null || innerBox == null) {
       LLog.e(TAG, "drawRectangularBorders failed since outBox or innerBox is null.");
       return;
     }
 
     BorderDrawingUtil.drawBorders(canvas, paint, outBox, innerBox, borderColors, borderStyles);
+  }
+
+  void drawRectangularBorders(Canvas canvas, Paint paint, int outBoxIndex, int innerBoxIndex,
+      int[] borderColors, BorderStyle[] borderStyles) {
+    BorderBoxes borderBoxes = getNormalizedBorderBoxes(outBoxIndex, innerBoxIndex);
+    drawRectangularBorders(
+        canvas, paint, borderBoxes.outBox, borderBoxes.innerBox, borderColors, borderStyles);
   }
 
   // Helper methods for reading content data

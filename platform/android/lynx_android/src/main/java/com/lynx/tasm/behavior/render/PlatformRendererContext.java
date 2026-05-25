@@ -319,6 +319,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         renderer.updateAttributes(initData);
         return;
       }
+      owner.cleanupCreatedView(sign, tagName, initialProps);
     }
 
     // For extended platform renderers, we need to create a custom view based on the tag name
@@ -335,19 +336,22 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   @CalledByNative
   public void destroyPlatformRenderer(int sign) {
     LynxUIOwner owner = mContext.getLynxUIOwner();
+    boolean shouldRemoveFromNativeParent = false;
     if (owner != null && owner.getNode(sign) != null) {
       LynxBaseUI child = owner.getNode(sign);
-      if (child.getParent() instanceof LynxBaseUI) {
-        LynxBaseUI parent = (LynxBaseUI) child.getParent();
-        if (parent != null) {
-          owner.destroy(parent.getSign(), child.getSign());
-        }
-      }
+      shouldRemoveFromNativeParent = !(child.getParent() instanceof LynxBaseUI);
+      owner.destroy(-1, child.getSign());
     }
 
     IRendererHost host = mViewHolder.get(sign);
     try {
       if (host != null) {
+        if (shouldRemoveFromNativeParent) {
+          View parent = (View) host.getView().getParent();
+          if (parent instanceof ViewGroup) {
+            ((ViewGroup) parent).removeView(host.getView());
+          }
+        }
         Renderer renderer = host.getRenderer();
         if (renderer != null) {
           renderer.onDestroy();
@@ -600,8 +604,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
           return;
         }
         owner.remove(parent.getSign(), child.getSign());
+        return;
       }
-      return;
     }
 
     IRendererHost host = mViewHolder.get(sign);
