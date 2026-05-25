@@ -338,9 +338,9 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperArrayToPubValue(
         }
         result->PushValueToArray(std::move(sub_arr_result));
       } else if (o.isArrayBuffer(rt)) {
-        size_t length;
-        result->PushArrayBufferToArray(ConvertPiperToArrayBuffer(rt, o, length),
-                                       length);
+        size_t length = 0;
+        auto array_buffer = ConvertPiperToArrayBuffer(rt, o, length);
+        result->PushArrayBufferToArray(std::move(array_buffer), length);
       } else if (o.isFunction(rt)) {
         LOGW("not support function");
         result->PushNullToArray();
@@ -421,9 +421,9 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperObjectToPubValue(
         }
         result->PushValueToMap(key, std::move(sub_arr_result));
       } else if (o.isArrayBuffer(rt)) {
-        size_t length;
-        result->PushArrayBufferToMap(
-            key, ConvertPiperToArrayBuffer(rt, o, length), length);
+        size_t length = 0;
+        auto array_buffer = ConvertPiperToArrayBuffer(rt, o, length);
+        result->PushArrayBufferToMap(key, std::move(array_buffer), length);
       } else if (o.isFunction(rt)) {
         LOGW("not support function");
         result->PushNullToMap(key);
