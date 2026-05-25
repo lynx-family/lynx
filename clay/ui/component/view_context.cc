@@ -580,6 +580,10 @@ void ViewContext::SetKeyframes(const clay::Value& keyframes_value) {
   page_view_->SetKeyframesData(keyframes_value);
 }
 
+void ViewContext::RemoveKeyframe(const std::string& animation_name) {
+  page_view_->RemoveKeyframe(animation_name);
+}
+
 void ViewContext::SetAttribute(int id, const char* attr,
                                const clay::Value& value) {
   FIND_VIEW_WITH_ID_OR_RET;

@@ -286,6 +286,12 @@ void UIDelegateClay::OnPageConfigDecoded(
     page_view->SetPageEnableAccessibilityElement(
         config->GetEnableAccessibilityElement());
 #endif
+
+    // TODO: Consider whether clay should set DefaultOverflowVisible from page
+    // config. In clay, this value has been true since the beginning. But before
+    // lynx sdk version 2.0, it was false in page config. If clay sets this
+    // value from page config, old templates will break their overflow
+    // behaviors.
   }
 }
 

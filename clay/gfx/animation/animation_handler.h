@@ -80,12 +80,18 @@ class AnimationHandler {
   }
 
  private:
+  struct CallbackSchedule {
+    int64_t delay = 0;
+    int64_t start_time = -1;
+  };
+
   bool IsCallbackDue(AnimationFrameCallback* callback, int64_t current_time);
   void ScheduleLifecycleCallbackAt(int64_t next_lifecycle_time,
                                    int64_t current_time);
   int GetCallbackSize() { return callback_delay_time_map_.size(); }
 
-  std::unordered_map<AnimationFrameCallback*, int64_t> callback_delay_time_map_;
+  std::unordered_map<AnimationFrameCallback*, CallbackSchedule>
+      callback_delay_time_map_;
   std::forward_list<AnimationFrameCallback*> animation_callbacks_;
   std::function<void(int64_t)> animation_callback_;
   bool callback_list_dirty_ = false;

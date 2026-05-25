@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <memory>
+#include <vector>
 
 #include "clay/gfx/animation/animation_handler.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
@@ -18,9 +19,35 @@ class MockAnimationFrameCallback
   MOCK_METHOD(bool, DoAnimationFrame, (int64_t frame_time, bool update_values),
               (override));
 };
+
+class LifecycleAnimationFrameCallback
+    : public AnimationHandler::AnimationFrameCallback {
+ public:
+  explicit LifecycleAnimationFrameCallback(int64_t next_lifecycle_time)
+      : next_lifecycle_time_(next_lifecycle_time) {}
+
+  MOCK_METHOD(bool, DoAnimationFrame, (int64_t frame_time, bool update_values),
+              (override));
+
+  bool ShouldReceiveAnimationFrame(int64_t current_time,
+                                   int64_t* next_lifecycle_time) override {
+    last_current_time_ = current_time;
+    if (next_lifecycle_time) {
+      *next_lifecycle_time = next_lifecycle_time_;
+    }
+    return false;
+  }
+
+  int64_t last_current_time() const { return last_current_time_; }
+
+ private:
+  int64_t next_lifecycle_time_;
+  int64_t last_current_time_ = -1;
+};
 }  // namespace
 
 using ::testing::InSequence;
+using ::testing::Return;
 
 TEST(AnimationHandlerTest, NoActiveAnimation) {
   std::unique_ptr<AnimationHandler> handler =
@@ -84,6 +111,43 @@ TEST(AnimationHandlerTest, AnimationFrameCallback) {
   handler->RemoveCallback(&anim1);
   handler->RemoveCallback(&anim2);
   EXPECT_EQ(handler->GetAnimationCount(), 0);
+}
+
+TEST(AnimationHandlerTest, DelayIsAnchoredOnFirstFrameTime) {
+  MockAnimationFrameCallback anim;
+  std::unique_ptr<AnimationHandler> handler =
+      std::make_unique<AnimationHandler>();
+
+  handler->AddAnimationFrameCallback(&anim, 1000);
+
+  EXPECT_CALL(anim, DoAnimationFrame(::testing::_, ::testing::_)).Times(0);
+  handler->DoAnimationFrame(10000);
+  handler->DoAnimationFrame(10999);
+  ::testing::Mock::VerifyAndClearExpectations(&anim);
+
+  EXPECT_CALL(anim, DoAnimationFrame(11000, true)).WillOnce(Return(false));
+  handler->DoAnimationFrame(11000);
+}
+
+TEST(AnimationHandlerTest, LifecycleCallbackUsesFrameTime) {
+  LifecycleAnimationFrameCallback anim(100);
+  std::vector<int64_t> scheduled_delays;
+  std::unique_ptr<AnimationHandler> handler =
+      std::make_unique<AnimationHandler>();
+  handler->SetAnimationCallback([&scheduled_delays](int64_t delay) {
+    scheduled_delays.push_back(delay);
+  });
+  handler->AddAnimationFrameCallback(&anim, 0);
+
+  EXPECT_CALL(anim, DoAnimationFrame(::testing::_, ::testing::_)).Times(0);
+  handler->DoAnimationFrame(90);
+  ASSERT_FALSE(scheduled_delays.empty());
+  EXPECT_EQ(scheduled_delays.back(), 10);
+  EXPECT_EQ(anim.last_current_time(), 90);
+  ::testing::Mock::VerifyAndClearExpectations(&anim);
+
+  EXPECT_CALL(anim, DoAnimationFrame(110, false)).WillOnce(Return(false));
+  handler->DoAnimationFrame(110);
 }
 
 }  // namespace testing

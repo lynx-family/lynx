@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include "clay/gfx/animation/animator_listener_adapter.h"
 #include "clay/gfx/animation/value_animator.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -16,6 +17,23 @@ class MockAnimatorUpdateListener : public AnimatorUpdateListener {
  public:
   // NOLINTNEXTLINE
   MOCK_METHOD(void, OnAnimationUpdate, (ValueAnimator & animation), (override));
+};
+
+class ReentrantEndListener : public AnimatorListenerAdapter {
+ public:
+  explicit ReentrantEndListener(ValueAnimator* animator)
+      : animator_(animator) {}
+
+  void OnAnimationEnd(Animator& animation) override {
+    end_count_++;
+    animator_->End();
+  }
+
+  int end_count() const { return end_count_; }
+
+ private:
+  ValueAnimator* animator_;
+  int end_count_ = 0;
 };
 }  // namespace
 
@@ -68,6 +86,23 @@ TEST(ValueAnimatorTest, ForwardsFillDoesNotRequestFrameAfterVisibleEnd) {
   EXPECT_EQ(handler->GetAnimationCount(), 1);
   EXPECT_FALSE(handler->DoAnimationFrame(32));
   EXPECT_EQ(handler->GetAnimationCount(), 1);
+}
+
+TEST(ValueAnimatorTest, EndListenerFlagIsSetBeforeCallback) {
+  std::unique_ptr<AnimationHandler> handler =
+      std::make_unique<AnimationHandler>();
+
+  ValueAnimator animator;
+  animator.SetAnimationHandler(handler.get());
+  animator.SetDuration(16);
+  ReentrantEndListener listener(&animator);
+  animator.AddListener(&listener);
+
+  animator.Start();
+  handler->DoAnimationFrame(0);
+  handler->DoAnimationFrame(16);
+
+  EXPECT_EQ(listener.end_count(), 1);
 }
 
 }  // namespace testing

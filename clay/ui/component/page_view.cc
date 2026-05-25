@@ -1328,10 +1328,7 @@ void PageView::SetupAnimationCallback() {
             return;
           }
           auto* page_view = static_cast<PageView*>(weak.get());
-          int64_t now = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
-          if (page_view->animation_handler_->DoAnimationFrame(now, true)) {
-            page_view->RequestNewFrame();
-          }
+          page_view->RequestNewFrame();
         },
         fml::TimeDelta::FromMilliseconds(delay));
   });
@@ -1542,6 +1539,13 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
     }
   }
 #endif
+}
+
+void PageView::RemoveKeyframe(const std::string& animation_name) {
+  if (animation_name.empty()) {
+    return;
+  }
+  keyframes_data_.erase(animation_name);
 }
 
 const KeyframesMap* PageView::GetKeyframesMap(

@@ -302,6 +302,12 @@ class ValueAnimator : public Animator,
   void SetAnimationHandler(AnimationHandler* animation_handler);
   void SetAnimationTarget(AnimatorTarget* target) { target_ = target; }
 
+  // CSS keyframe animations keep ended forwards/both animators for fill mode.
+  // Do not let a later rolled-back frame timestamp restart their lifecycle.
+  void SetUseMonotonicFrameTime(bool use_monotonic_frame_time) {
+    use_monotonic_frame_time_ = use_monotonic_frame_time;
+  }
+
   /**
    * Overrides the global duration scale by a custom value.
    *
@@ -383,6 +389,7 @@ class ValueAnimator : public Animator,
   void CommitStartTimeOnSkippedFrame(int64_t frame_time);
   void SetActiveStartTime(int64_t start_time);
   int64_t GetScaledStartDelay() const;
+  int64_t ClampFrameTime(int64_t frame_time) const;
   bool HasFinishedAt(int64_t frame_time) const;
   bool HasNoIterations() const { return repeat_count_ == kNoIterations; }
   void SetIterationCount(int iteration_count);
@@ -549,6 +556,8 @@ class ValueAnimator : public Animator,
    * This flag gets set in startWithoutPulsing(), and reset in start().
    */
   bool suppress_self_pulse_requested_ = false;
+
+  bool use_monotonic_frame_time_ = false;
 
   /**
    * The time interpolator to be used. The elapsed fraction of the animation

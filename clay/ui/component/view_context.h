@@ -229,6 +229,7 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   void SetAnimation(int id, const std::vector<AnimationData>& animation_data);
 
   void SetKeyframes(const clay::Value& keyframes_value);
+  void RemoveKeyframe(const std::string& animation_name);
 
   void SetRepaintBoundary(int id, bool repaint_boundary);
 

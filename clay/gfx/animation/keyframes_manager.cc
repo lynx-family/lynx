@@ -4,6 +4,8 @@
 
 #include "clay/gfx/animation/keyframes_manager.h"
 
+#include <algorithm>
+#include <unordered_set>
 #include <utility>
 
 #include "clay/gfx/animation/animation_properties_util.h"
@@ -39,6 +41,27 @@ bool IsMixedAnimation(const KeyframesManager::KeyframeAnimation& animation) {
   return false;
 }
 
+std::vector<AnimationData> NormalizeAnimationData(
+    const std::vector<AnimationData>& data) {
+  std::vector<AnimationData> normalized;
+  std::unordered_set<std::string> seen_names;
+  for (auto it = data.rbegin(); it != data.rend(); ++it) {
+    AnimationData item = *it;
+    if (item.iteration_count < 0) {
+      continue;
+    }
+    if (item.duration < 0) {
+      item.duration = 0;
+    }
+    if (!seen_names.insert(item.name).second) {
+      continue;
+    }
+    normalized.push_back(std::move(item));
+  }
+  std::reverse(normalized.begin(), normalized.end());
+  return normalized;
+}
+
 }  // namespace
 
 KeyframesManager::KeyframesManager(AnimatorTarget* target) : target_(target) {}
@@ -47,32 +70,35 @@ KeyframesManager::~KeyframesManager() { CancelAllAnimators(); }
 
 KeyframesManager::UpdateDataResult KeyframesManager::UpdateData(
     const std::vector<AnimationData>& data) {
-  bool data_has_changed = data.size() != animations_.size();
-  for (size_t i = 0; i < data.size(); ++i) {
+  std::vector<AnimationData> normalized_data = NormalizeAnimationData(data);
+  bool data_has_changed = normalized_data.size() != animations_.size();
+  for (size_t i = 0; i < normalized_data.size(); ++i) {
     if (data_has_changed) {
       break;
     }
-    data_has_changed = !IsSame(data[i], animations_[i].data);
+    data_has_changed = !IsSame(normalized_data[i], animations_[i].data);
   }
   if (!data_has_changed) {
     // Check if play_state has changed.
     bool play_state_has_changed = false;
-    for (size_t i = 0; i < data.size(); ++i) {
-      if (data[i].play_state == animations_[i].data.play_state) {
+    for (size_t i = 0; i < normalized_data.size(); ++i) {
+      if (normalized_data[i].play_state == animations_[i].data.play_state) {
         continue;
       }
-      if (data[i].play_state == ClayAnimationPlayStateType::kPaused) {
+      if (normalized_data[i].play_state ==
+          ClayAnimationPlayStateType::kPaused) {
         animations_[i].animator->Pause();
-      } else if (data[i].play_state == ClayAnimationPlayStateType::kRunning) {
+      } else if (normalized_data[i].play_state ==
+                 ClayAnimationPlayStateType::kRunning) {
         animations_[i].animator->Resume();
       }
-      animations_[i].data.play_state = data[i].play_state;
+      animations_[i].data.play_state = normalized_data[i].play_state;
       play_state_has_changed = true;
     }
     return {false, play_state_has_changed};
   }
 
-  StartAnimations(data);
+  StartAnimations(normalized_data);
   return {true, true};
 }
 
@@ -153,27 +179,22 @@ void KeyframesManager::UpdateAnimator(ValueAnimator* animator,
 }
 
 void KeyframesManager::StartAnimations(const std::vector<AnimationData>& data) {
+  std::vector<KeyframeAnimation> old_animations = std::move(animations_);
   std::vector<KeyframeAnimation> new_animations;
 
   for (auto item : data) {
-    if (item.iteration_count < 0) {
-      continue;
-    }
-    if (item.duration < 0) {
-      item.duration = 0;
-    }
     bool add_new_animation = true;
-    auto it = animations_.begin();
+    auto it = old_animations.begin();
     // For new animations and old animations of the same name we will only
     // update instead of reset,  for animations with different names we will
     // cancel the old animation and start the new one.
-    while (it != animations_.end()) {
+    while (it != old_animations.end()) {
       if (it->data.name == item.name) {
         it->SetAnimationData(item);
         UpdateAnimator(it->animator.get(), item);
         add_new_animation = false;
         new_animations.push_back(std::move(*it));
-        it = animations_.erase(it);
+        it = old_animations.erase(it);
         break;
       } else {
         it++;
@@ -195,9 +216,15 @@ void KeyframesManager::StartAnimations(const std::vector<AnimationData>& data) {
     }
   }
 
-  CancelAllAnimators();
+  animations_ = std::move(new_animations);
 
-  for (const auto& animation : new_animations) {
+  for (const auto& animation : old_animations) {
+    if (animation.animator->IsStarted()) {
+      animation.animator->Cancel();
+    }
+  }
+
+  for (const auto& animation : animations_) {
     if (animation.animator->IsStarted()) {
       continue;
     }
@@ -206,7 +233,6 @@ void KeyframesManager::StartAnimations(const std::vector<AnimationData>& data) {
       animation.animator->Pause();
     }
   }
-  animations_ = std::move(new_animations);
 }
 
 std::unique_ptr<ValueAnimator> KeyframesManager::CreateAnimator(
@@ -215,6 +241,7 @@ std::unique_ptr<ValueAnimator> KeyframesManager::CreateAnimator(
       std::make_unique<ValueAnimator>(data);
   animator->SetAnimationHandler(target_->GetAnimationHandler());
   animator->SetAnimationTarget(target_);
+  animator->SetUseMonotonicFrameTime(true);
   return animator;
 }
 

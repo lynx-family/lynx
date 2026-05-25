@@ -84,6 +84,36 @@ TEST(PageViewTest, KeyframesData) {
   check_keyframes_map("anim_1");
 }
 
+TEST(PageViewTest, RemoveKeyframe) {
+  std::unique_ptr<PageView> page_view =
+      std::make_unique<PageView>(0, nullptr, nullptr);
+
+  Value keyframes_data = Value{
+      {"anim_1",
+       Value{
+           {"0", Value{{"background-color", Value{0xFFFF0000u}}}},
+           {"1", Value{{"background-color", Value{0xFF0000FFu}}}},
+       }},
+      {"anim_2",
+       Value{
+           {"0", Value{{"opacity", Value{0.0}}}},
+           {"1", Value{{"opacity", Value{1.0}}}},
+       }},
+  };
+
+  page_view->SetKeyframesData(keyframes_data);
+  EXPECT_NE(page_view->GetKeyframesMap("anim_1"), nullptr);
+  EXPECT_NE(page_view->GetKeyframesMap("anim_2"), nullptr);
+
+  page_view->RemoveKeyframe("anim_1");
+  EXPECT_EQ(page_view->GetKeyframesMap("anim_1"), nullptr);
+  EXPECT_NE(page_view->GetKeyframesMap("anim_2"), nullptr);
+
+  page_view->RemoveKeyframe("");
+  page_view->RemoveKeyframe("missing_anim");
+  EXPECT_NE(page_view->GetKeyframesMap("anim_2"), nullptr);
+}
+
 TEST(PageViewTest, IgnoreFocusInheritance) {
   std::unique_ptr<PageView> page_view =
       std::make_unique<PageView>(0, nullptr, nullptr);

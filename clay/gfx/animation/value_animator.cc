@@ -25,7 +25,6 @@
 #include <optional>
 #include <utility>
 
-#include "base/include/fml/time/time_point.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animation_handler.h"
@@ -287,12 +286,12 @@ void ValueAnimator::SetInterpolator(std::unique_ptr<Interpolator> value) {
 
 void ValueAnimator::NotifyStartListeners() {
   if (!start_listeners_called_) {
+    start_listeners_called_ = true;
     std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
     for (AnimatorListener* listener : tmp_listeners) {
       listener->OnAnimationStart(*this);
     }
   }
-  start_listeners_called_ = true;
 }
 
 /**
@@ -357,11 +356,13 @@ void ValueAnimator::Start(bool play_backwards) {
   }
 
   if (self_pulse_ && !should_apply_initial_value) {
-    // Hidden self-pulsing animations do not request an initial frame. Commit
-    // after the SetCurrentPlayTime(0) path above so the first visible frame
-    // uses elapsed real time instead of restarting from zero.
-    const int64_t current_time =
-        fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+    // Hidden self-pulsing animations do not request an initial value update.
+    // Keep lifecycle scheduling in the animation frame time domain.
+    int64_t current_time = GetAnimationHandler()->GetCurrentAnimationTime();
+    if (current_time < 0) {
+      const int64_t scaled_start_delay = GetScaledStartDelay();
+      current_time = scaled_start_delay < 0 ? -scaled_start_delay : 0;
+    }
     CommitStartTimeOnSkippedFrame(current_time);
     GetAnimationHandler()->ScheduleLifecycleCallback(current_time);
   }
@@ -428,8 +429,14 @@ void ValueAnimator::Resume() {
     return;
   }
 
-  const int64_t current_time =
-      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+  int64_t current_time = GetAnimationHandler()->GetCurrentAnimationTime();
+  if (current_time < 0) {
+    current_time = last_frame_time_ >= 0 ? last_frame_time_ : start_time_;
+  }
+  if (current_time < 0) {
+    const int64_t scaled_start_delay = GetScaledStartDelay();
+    current_time = scaled_start_delay < 0 ? -scaled_start_delay : 0;
+  }
   if (pause_time_ > 0 && start_time_ >= 0) {
     start_time_ += current_time - pause_time_;
   }
@@ -449,7 +456,14 @@ void ValueAnimator::Pause() {
   bool previouslyPaused = paused_;
   Animator::Pause();
   if (!previouslyPaused && paused_) {
-    pause_time_ = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+    pause_time_ = GetAnimationHandler()->GetCurrentAnimationTime();
+    if (pause_time_ < 0) {
+      pause_time_ = last_frame_time_ >= 0 ? last_frame_time_ : start_time_;
+    }
+    if (pause_time_ < 0) {
+      const int64_t scaled_start_delay = GetScaledStartDelay();
+      pause_time_ = scaled_start_delay < 0 ? -scaled_start_delay : 0;
+    }
     if (!target_ || target_->IsVisibleForAnimationTick()) {
       DoAnimationFrame(pause_time_);
     }
@@ -505,6 +519,7 @@ std::unique_ptr<ValueAnimator> ValueAnimator::Clone() const {
   clone->fill_mode_ = fill_mode_;
   clone->self_pulse_ = self_pulse_;
   clone->suppress_self_pulse_requested_ = suppress_self_pulse_requested_;
+  clone->use_monotonic_frame_time_ = use_monotonic_frame_time_;
   clone->interpolator_ = interpolator_->Clone();
   clone->duration_scale_ = duration_scale_;
   return clone;
@@ -544,12 +559,14 @@ void ValueAnimator::EndAnimation(bool remove) {
   // should not notify end event duplicated.
   // end_listeners_called_ will be set false when animator restart.
   if ((started_ || running_) && !end_listeners_called_) {
+    end_listeners_called_ = true;
     std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
     for (AnimatorListener* l : tmp_listeners) {
       l->OnAnimationEnd(*this);
     }
+  } else {
+    end_listeners_called_ = true;
   }
-  end_listeners_called_ = true;
   if (!remove) {
     return;
   }
@@ -714,6 +731,7 @@ void ValueAnimator::SkipToEndValue(bool in_reverse) {
 
 bool ValueAnimator::ShouldReceiveAnimationFrame(int64_t current_time,
                                                 int64_t* next_lifecycle_time) {
+  current_time = ClampFrameTime(current_time);
   if (next_lifecycle_time) {
     *next_lifecycle_time = -1;
   }
@@ -799,6 +817,7 @@ void ValueAnimator::CommitStartTimeOnSkippedFrame(int64_t frame_time) {
  * @hide
  */
 bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
+  frame_time = ClampFrameTime(frame_time);
   if (!update_values) {
     if (started_ && !animation_end_requested_ && !end_listeners_called_) {
       CommitStartTimeOnSkippedFrame(frame_time);
@@ -1018,6 +1037,14 @@ void ValueAnimator::SetActiveStartTime(int64_t start_time) {
 
 int64_t ValueAnimator::GetScaledStartDelay() const {
   return static_cast<int64_t>(start_delay_ * ResolveDurationScale());
+}
+
+int64_t ValueAnimator::ClampFrameTime(int64_t frame_time) const {
+  if (use_monotonic_frame_time_ && last_frame_time_ >= 0 &&
+      frame_time < last_frame_time_) {
+    return last_frame_time_;
+  }
+  return frame_time;
 }
 
 bool ValueAnimator::HasFinishedAt(int64_t frame_time) const {

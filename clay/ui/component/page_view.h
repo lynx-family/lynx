@@ -232,6 +232,7 @@ class PageView : public BaseView,
   }
 
   void SetKeyframesData(const Value& keyframes_value);
+  void RemoveKeyframe(const std::string& animation_name);
   const KeyframesMap* GetKeyframesMap(const std::string& animation_name);
 
   LayoutController* GetLayoutController() const {

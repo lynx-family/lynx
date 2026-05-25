@@ -6,8 +6,6 @@
 
 #include <algorithm>
 
-#include "base/include/fml/time/time_point.h"
-
 namespace clay {
 
 /**
@@ -17,12 +15,7 @@ void AnimationHandler::AddAnimationFrameCallback(
     AnimationFrameCallback* callback, int64_t delay) {
   if (callback_delay_time_map_.find(callback) ==
       callback_delay_time_map_.end()) {
-    if (delay > 0) {
-      fml::TimePoint delayed_start_time =
-          fml::TimePoint::Now() + fml::TimeDelta::FromMilliseconds(delay);
-      delay = delayed_start_time.ToEpochDelta().ToMilliseconds();
-    }
-    callback_delay_time_map_[callback] = delay;
+    callback_delay_time_map_[callback] = CallbackSchedule{delay, -1};
     animation_callbacks_.push_front(callback);
     const bool should_receive_frame =
         callback->ShouldReceiveAnimationFrame(0, nullptr);
@@ -57,8 +50,7 @@ bool AnimationHandler::DoAnimationFrame(int64_t frame_time,
   if (lifecycle_only) {
     scheduled_lifecycle_time_ = -1;
   }
-  const int64_t current_time =
-      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+  const int64_t current_time = frame_time;
   last_frame_time_ = frame_time;
   bool has_visible_callback = false;
   int64_t next_lifecycle_time_to_schedule = -1;
@@ -101,7 +93,7 @@ bool AnimationHandler::DoAnimationFrame(int64_t frame_time,
       }
       continue;
     }
-    current_callback->DoAnimationFrame(next_lifecycle_time, false);
+    current_callback->DoAnimationFrame(frame_time, false);
     if (callback) {
       int64_t next_time = -1;
       if (!current_callback->ShouldReceiveAnimationFrame(current_time,
@@ -181,11 +173,14 @@ bool AnimationHandler::IsCallbackDue(AnimationFrameCallback* callback,
   if (it == callback_delay_time_map_.end()) {
     return false;
   }
-  int64_t start_time = it->second;
-  if (start_time <= 0) {
+  CallbackSchedule& schedule = it->second;
+  if (schedule.delay <= 0) {
     return true;
   }
-  return start_time < current_time;
+  if (schedule.start_time < 0) {
+    schedule.start_time = current_time + schedule.delay;
+  }
+  return current_time >= schedule.start_time;
 }
 
 }  // namespace clay

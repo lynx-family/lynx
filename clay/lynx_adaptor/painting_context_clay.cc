@@ -244,14 +244,24 @@ void PaintingContextClay::SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) {
   auto task = [view_context = view_context_,
                keyframes_data = std::move(keyframes_data)]() mutable {
     auto pdr = static_cast<PropBundleImpl*>(keyframes_data.get());
-    auto keyframes_iter = pdr->map().find("keyframes");
-    if (keyframes_iter == pdr->map().end()) {
-      FML_DLOG(ERROR) << "SetKeyframes 'keyframes' not found";
-      return;
+    const auto& map = pdr->map();
+    bool handled = false;
+
+    auto remove_iter = map.find("removeKeyframe");
+    if (remove_iter != map.end() && remove_iter->second.IsString()) {
+      view_context->RemoveKeyframe(remove_iter->second.GetString());
+      handled = true;
     }
 
-    const auto& prop_keyframes_value = keyframes_iter->second;
-    view_context->SetKeyframes(prop_keyframes_value);
+    auto keyframes_iter = map.find("keyframes");
+    if (keyframes_iter != map.end()) {
+      view_context->SetKeyframes(keyframes_iter->second);
+      handled = true;
+    }
+
+    if (!handled) {
+      FML_DLOG(ERROR) << "SetKeyframes data not found";
+    }
   };
   if (ui_operation_queue_ref_) {
     Enqueue(std::move(task));
