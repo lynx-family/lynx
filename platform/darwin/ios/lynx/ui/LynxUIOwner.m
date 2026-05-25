@@ -4,6 +4,7 @@
 #import <Lynx/LUIErrorHandling.h>
 #import <Lynx/LynxBaseInspectorOwner.h>
 #import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxEventReporter.h>
@@ -11,6 +12,7 @@
 #import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxGlobalObserver.h>
 #import <Lynx/LynxMeaningfulContentSnapshot.h>
+#import <Lynx/LynxMemoryRecord.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxService.h>
@@ -19,8 +21,10 @@
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUICollection.h>
 #import <Lynx/LynxUIComponent.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIExposure.h>
 #import <Lynx/LynxUIFrame.h>
@@ -33,13 +37,9 @@
 #import <Lynx/LynxUIUnitUtils.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <Lynx/UIView+Lynx.h>
-#import "LynxEnv+Internal.h"
 #import "LynxFeatureCounter.h"
 #import "LynxGestureArenaManager.h"
-#import "LynxMemoryRecord.h"
 #import "LynxTraceEventDef.h"
-#import "LynxUI+Private.h"
-#import "LynxUIContext+Internal.h"
 #import "LynxUIIntersectionObserver.h"
 #import "LynxUIOwner+Accessibility.h"
 #import "LynxUIOwner+Private.h"
@@ -879,6 +879,14 @@ extern NSString* const kDefaultComponentID;
 
   [_textRenderManager releaseTextRender:node.sign];
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
+}
+
+- (void)cleanupCreatedUIWithSign:(NSInteger)sign {
+  LynxUI* ui = _uiHolder[[NSNumber numberWithInteger:sign]];
+  if (ui == nil) {
+    return;
+  }
+  [self removeUIFromHolder:ui];
 }
 
 - (void)recycleNode:(NSInteger)sign {

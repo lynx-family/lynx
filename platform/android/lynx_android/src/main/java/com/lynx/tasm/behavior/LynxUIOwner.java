@@ -542,6 +542,15 @@ public class LynxUIOwner {
     createViewInternal(sign, tagName, styles, listeners, isFlatten, nodeIndex, detectors);
   }
 
+  public void cleanupCreatedView(
+      int sign, @Nullable String tagName, @Nullable ReadableMap initialProps) {
+    LynxBaseUI ui = getNode(sign);
+    if (ui == null) {
+      return;
+    }
+    destroy(-1, sign);
+  }
+
   // TODO(ZHOUZHITAO): REFACTOR CODE TO REUSE SHARED NODE SNIPPET
   public Runnable createViewAsyncRunnable(final int sign, final String tagName,
       final ReadableMap initialProps, final ReadableMapBuffer initialStyles,

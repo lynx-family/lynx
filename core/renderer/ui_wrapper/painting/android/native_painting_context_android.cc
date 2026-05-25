@@ -296,7 +296,11 @@ void NativePaintingCtxAndroid::FinishTasmOperation(
 
 void NativePaintingCtxAndroid::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions> &options) {
-  if (view_manager_ && has_first_screen_) {
+  if (!has_first_screen_) {
+    return;
+  }
+
+  if (view_manager_) {
     Enqueue([view_manager = view_manager_.get(), options]() {
       view_manager->FinishLayoutOperation(options->list_comp_id_,
                                           options->operation_id,

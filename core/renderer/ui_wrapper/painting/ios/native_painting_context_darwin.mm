@@ -26,7 +26,8 @@ namespace lynx {
 namespace tasm {
 
 NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner, void *textra)
-    : context_(std::make_unique<PlatformRendererContextDarwin>([owner tryGetContainerView])) {
+    : context_(
+          std::make_unique<PlatformRendererContextDarwin>([owner tryGetContainerView], owner)) {
   platform_ref_ = std::make_shared<NativePaintingCtxPlatformDarwinRef>(
       std::make_unique<PlatformRendererDarwinFactory>(context_.get()));
 
@@ -174,17 +175,41 @@ void NativePaintingCtxDarwin::UpdatePlatformExtraBundle(int32_t id, PlatformExtr
 }
 
 void NativePaintingCtxDarwin::FinishTasmOperation(const std::shared_ptr<PipelineOptions> &options) {
-  // TODO: impl this function later.
+  if (queue_ != nullptr &&
+      options->native_update_data_order_ == queue_->GetNativeUpdateDataOrder()) {
+    queue_->UpdateStatus(shell::UIOperationStatus::TASM_FINISH);
+  }
 }
 
 void NativePaintingCtxDarwin::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions> &options) {
-  // TODO: impl this function later.
+  if (!has_first_screen_) {
+    return;
+  }
+
+  __weak LynxUIOwner *ui_owner = context_ != nullptr ? context_->GetUIOwner() : nil;
+  Enqueue(
+      [ui_owner, weak_queue = std::weak_ptr<shell::DynamicUIOperationQueue>(queue_), options]() {
+        if (auto queue = weak_queue.lock()) {
+          [ui_owner finishLayoutOperation:options->operation_id componentID:options->list_comp_id_];
+          if (options->has_layout) {
+            [ui_owner layoutDidFinish];
+          }
+          if (options->native_update_data_order_ == queue->GetNativeUpdateDataOrder()) {
+            queue->UpdateStatus(shell::UIOperationStatus::ALL_FINISH);
+          }
+        }
+      });
+
+  if (queue_ != nullptr &&
+      options->native_update_data_order_ == queue_->GetNativeUpdateDataOrder()) {
+    queue_->UpdateStatus(shell::UIOperationStatus::LAYOUT_FINISH);
+  }
 }
 
 void NativePaintingCtxDarwin::Flush() { queue_->Flush(); }
 
-void NativePaintingCtxDarwin::OnFirstScreen() {}
+void NativePaintingCtxDarwin::OnFirstScreen() { has_first_screen_ = true; }
 
 void NativePaintingCtxDarwin::CreatePlatformRenderer(int id, PlatformRendererType type,
                                                      const fml::RefPtr<PropBundle> &init_data) {

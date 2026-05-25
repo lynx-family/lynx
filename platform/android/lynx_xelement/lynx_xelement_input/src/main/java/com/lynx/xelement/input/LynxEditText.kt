@@ -159,6 +159,7 @@ open class LynxEditText: androidx.appcompat.widget.AppCompatEditText, IRendererH
     override fun onDraw(canvas: Canvas) {
         mRenderer?.let {
             it.onDraw(canvas)
+            it.beforeDrawHost(canvas)
         }
         super.onDraw(canvas)
         mHasDrawn = true

@@ -5068,6 +5068,7 @@ public class LynxUIOwner : NSObject {
   public void LynxUIOwner(Private)::createUISyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign, [tagName] NSString *tagName, [clazz] Class clazz, [supportedState] TagSupportedState state, [eventSet] NSSet< NSString * > *eventSet, [lepusEventSet] NSSet< NSString * > *lepusEventSet, [props] NSDictionary *props, [nodeIndex] uint32_t nodeIndex, [gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
   public LynxUI * LynxUIOwner(Private)::createUIAsyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign, [tagName] NSString *tagName, [clazz] Class clazz, [supportedState] TagSupportedState state, [eventSet] NSSet< NSString * > *eventSet, [lepusEventSet] NSSet< NSString * > *lepusEventSet, [props] NSDictionary *props, [nodeIndex] uint32_t nodeIndex, [gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
   public void LynxUIOwner(Private)::processUIOnMainThread:withSign:tagName:props:(LynxUI *ui, [withSign] NSInteger sign, [tagName] NSString *tagName, [props] NSDictionary *props);
+  public void LynxUIOwner(Private)::cleanupCreatedUIWithSign:(NSInteger sign);
   public LynxThreadStrategyForRender LynxUIOwner(Private)::getThreadStrategyForRender();
   public void LynxUIOwner(Private)::setFrameAppBundle:withTag:(LynxTemplateBundle *bundle, [withTag] NSInteger sign);
 }
@@ -5090,6 +5091,7 @@ public interface LynxUIOwner(Private) {
   public void LynxUIOwner(Private)::createUISyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign,[tagName] NSString *tagName,[clazz] Class clazz,[supportedState] TagSupportedState state,[eventSet] NSSet< NSString * > *eventSet,[lepusEventSet] NSSet< NSString * > *lepusEventSet,[props] NSDictionary *props,[nodeIndex] uint32_t nodeIndex,[gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
   public LynxUI * LynxUIOwner(Private)::createUIAsyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign,[tagName] NSString *tagName,[clazz] Class clazz,[supportedState] TagSupportedState state,[eventSet] NSSet< NSString * > *eventSet,[lepusEventSet] NSSet< NSString * > *lepusEventSet,[props] NSDictionary *props,[nodeIndex] uint32_t nodeIndex,[gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
   public void LynxUIOwner(Private)::processUIOnMainThread:withSign:tagName:props:(LynxUI *ui,[withSign] NSInteger sign,[tagName] NSString *tagName,[props] NSDictionary *props);
+  public void LynxUIOwner(Private)::cleanupCreatedUIWithSign:(NSInteger sign);
   public LynxThreadStrategyForRender LynxUIOwner(Private)::getThreadStrategyForRender();
   public void LynxUIOwner(Private)::setFrameAppBundle:withTag:(LynxTemplateBundle *bundle,[withTag] NSInteger sign);
 }

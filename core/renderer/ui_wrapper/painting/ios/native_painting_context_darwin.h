@@ -132,6 +132,7 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
   template <typename F>
   void Enqueue(F &&func);
 
+  bool has_first_screen_ = false;
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
 
   std::unique_ptr<PlatformRendererContextDarwin> context_;

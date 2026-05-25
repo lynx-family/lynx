@@ -7172,6 +7172,7 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public void com.lynx.tasm.behavior.LynxUIOwner.onNodeRemoved(int tag);
   public synchronized void com.lynx.tasm.behavior.LynxUIOwner.createViewInternal(int sign, String tagName, @Nullable StylesDiffMap initialProps, @Nullable Map< String, EventsListener > eventsListenerMap, boolean flatten, int nodeIndex, @Nullable Map< Integer, GestureDetector > gestureDetectors);
   public void com.lynx.tasm.behavior.LynxUIOwner.createView(int sign, String tagName, ReadableMap initialProps, ReadableMapBuffer initialStyles, ReadableArray eventListeners, boolean isFlatten, int nodeIndex, ReadableArray gestureDetectors);
+  public void com.lynx.tasm.behavior.LynxUIOwner.cleanupCreatedView(int sign, @Nullable String tagName, @Nullable ReadableMap initialProps);
   public Runnable com.lynx.tasm.behavior.LynxUIOwner.createViewAsyncRunnable(final int sign, final String tagName, final ReadableMap initialProps, final ReadableMapBuffer initialStyles, final ReadableArray eventListeners, final boolean isFlatten, int nodeIndex, final ReadableArray gestureDetectors);
   public Future< Runnable > com.lynx.tasm.behavior.LynxUIOwner.createViewAsync(final int sign, final String tagName, @Nullable final StylesDiffMap initialProps, @Nullable final Map< String, EventsListener > eventsListenerMap, final boolean flatten, int nodeIndex, @Nullable final Map< Integer, GestureDetector > gestureDetectors);
   public void com.lynx.tasm.behavior.LynxUIOwner.updateFlatten(int tag, boolean flatten);
@@ -9392,6 +9393,7 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public void com.lynx.tasm.behavior.render.Renderer.onMeasure(int widthMeasureSpec, int heightMeasureSpec);
   public void com.lynx.tasm.behavior.render.Renderer.onLayout(boolean changed, int l, int t, int r, int b);
   public void com.lynx.tasm.behavior.render.Renderer.onDraw(Canvas canvas);
+  public void com.lynx.tasm.behavior.render.Renderer.beforeDrawHost(Canvas canvas);
   public void com.lynx.tasm.behavior.render.Renderer.beforeDrawChild(Canvas canvas, View child);
   public void com.lynx.tasm.behavior.render.Renderer.afterDrawChild(Canvas canvas, View child);
   public void com.lynx.tasm.behavior.render.Renderer.afterDispatchDraw(Canvas canvas);

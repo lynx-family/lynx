@@ -15,14 +15,12 @@ PlatformRendererDarwinFactory::PlatformRendererDarwinFactory(PlatformRendererCon
 
 fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateRenderer(
     int id, PlatformRendererType type, const fml::RefPtr<PropBundle>& init_data) {
-  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, type);
+  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, type, init_data);
 }
 
 fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateExtendedRenderer(
     int id, const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data) {
-  auto renderer = fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, tag_name);
-  renderer->UpdateAttributes(init_data, false);
-  return renderer;
+  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, tag_name, init_data);
 }
 
 }  // namespace tasm
