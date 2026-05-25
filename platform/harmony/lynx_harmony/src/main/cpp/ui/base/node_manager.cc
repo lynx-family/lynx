@@ -187,6 +187,11 @@ void NodeManager::AddGestureToNode(ArkUI_NodeHandle node,
   native_gesture_api_->addGestureToNode(node, recognizer, mode, mask);
 }
 
+void NodeManager::RemoveGestureFromNode(ArkUI_NodeHandle node,
+                                        ArkUI_GestureRecognizer* recognizer) {
+  native_gesture_api_->removeGestureFromNode(node, recognizer);
+}
+
 void NodeManager::DisposeGesture(ArkUI_GestureRecognizer* recognizer) {
   native_gesture_api_->dispose(recognizer);
 }

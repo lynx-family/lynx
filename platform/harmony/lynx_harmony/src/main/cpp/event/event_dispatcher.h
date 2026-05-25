@@ -107,6 +107,7 @@ class EventDispatcher {
   ConsumeSlideDirection ShouldConsumeSlideEvent();
 
   void AttachGesturesToRoot(UIBase* root);
+  void DetachGesturesFromRoot(UIBase* root);
 
   bool CanConsumeTouchEvent(float point[2]);
 

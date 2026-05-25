@@ -271,6 +271,10 @@ export class UIBase {
   setChildrenManagementFuncs(insertChild: Function, removeChild: Function): void;
 
   attachGestureToNode(node: NativeContent): void;
+
+  reuseNativeContent(node: NativeContent): void;
+
+  detachGestureFromNode(node: NativeContent): void;
 }
 
 export class NativeContent {
