@@ -485,6 +485,13 @@ void LynxContext::AttachGesturesToRoot(UIBase* root) {
   ui_owner_->AttachGesturesToRoot(root);
 }
 
+void LynxContext::DetachGesturesFromRoot(UIBase* root) {
+  if (!ui_owner_) {
+    return;
+  }
+  ui_owner_->DetachGesturesFromRoot(root);
+}
+
 void LynxContext::OnGestureRecognized(UIBase* ui) {
   if (!ui_owner_) {
     return;
