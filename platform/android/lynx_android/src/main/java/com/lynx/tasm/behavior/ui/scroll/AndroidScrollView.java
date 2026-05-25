@@ -593,6 +593,12 @@ public class AndroidScrollView
 
   @Override
   protected void dispatchDraw(final Canvas canvas) {
+    if (mRenderer != null) {
+      super.dispatchDraw(canvas);
+      mRenderer.afterDispatchDraw(canvas);
+      return;
+    }
+
     Drawable drawable = getBackground();
     if (drawable instanceof BackgroundDrawable) {
       BackgroundDrawable backgroundDrawable = (BackgroundDrawable) drawable;
@@ -632,10 +638,6 @@ public class AndroidScrollView
         }
       }
       super.dispatchDraw(canvas);
-    }
-
-    if (mRenderer != null) {
-      mRenderer.afterDispatchDraw(canvas);
     }
   }
 

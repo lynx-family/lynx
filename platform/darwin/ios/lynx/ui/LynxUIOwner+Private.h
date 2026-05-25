@@ -71,6 +71,8 @@ typedef enum : NSInteger {
                       tagName:(NSString*)tagName
                         props:(NSDictionary*)props;
 
+- (void)cleanupCreatedUIWithSign:(NSInteger)sign;
+
 - (LynxThreadStrategyForRender)getThreadStrategyForRender;
 
 - (void)setFrameAppBundle:(LynxTemplateBundle*)bundle withTag:(NSInteger)sign;

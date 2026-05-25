@@ -41,6 +41,9 @@ PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, PlatformRendererType type,
     const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data)
     : PlatformRendererImpl(id, type, tag_name), context_(context) {
+  if (ShouldCreatePlatformExtendedRenderer(init_data)) {
+    is_platform_extended_renderer_ = true;
+  }
   InitializeAndroidView(init_data);
   // Register this renderer with the context
   if (context_) {
@@ -85,8 +88,7 @@ void PlatformRendererAndroid::InitializeAndroidView(
   if (!context_) {
     return;
   }
-  if (ShouldCreatePlatformExtendedRenderer(init_data)) {
-    is_platform_extended_renderer_ = true;
+  if (IsPlatformExtendedRenderer()) {
     const base::String extended_renderer_tag_name =
         GetExtendedRendererTagName();
     NativePropBundle* native_bundle =
@@ -120,10 +122,8 @@ bool PlatformRendererAndroid::ShouldCreatePlatformExtendedRenderer(
   }
   if (type_ == PlatformRendererType::kText ||
       type_ == PlatformRendererType::kImage ||
-      type_ == PlatformRendererType::kView) {
-    return false;
-  }
-  if (type_ == PlatformRendererType::kPage) {
+      type_ == PlatformRendererType::kView ||
+      type_ == PlatformRendererType::kPage) {
     return false;
   }
   if (type_ != PlatformRendererType::kUnknown) {

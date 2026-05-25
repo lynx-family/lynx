@@ -1425,6 +1425,7 @@ void ElementManager::OnPatchFinishForFiber(
 
   if (root() && root()->EnableFragmentLayerRender()) {
     root()->element_container()->FinishTasmOperation(options);
+    root()->element_container()->Flush();
   } else {
     catalyzer_->painting_context()->FinishTasmOperation(options);
   }
@@ -1450,6 +1451,7 @@ void ElementManager::OnPatchFinishForFiber(
     }
     if (root() && root()->EnableFragmentLayerRender()) {
       root()->element_container()->FinishLayoutOperation(options);
+      root()->element_container()->Flush();
     } else {
       catalyzer_->painting_context()->FinishLayoutOperation(options);
     }
