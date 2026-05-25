@@ -49,6 +49,10 @@ void OneSequenceGestureRecognizer::StopTrackingPointer(int pointer_id) {
   }
 }
 
+void OneSequenceGestureRecognizer::RemoveArenaEntry(int pointer_id) {
+  arena_entries_.erase(pointer_id);
+}
+
 OneSequenceGestureRecognizer::~OneSequenceGestureRecognizer() {
   for (int pointer_id : tracking_pointers_) {
     gesture_manager_->pointer_router().RemoveRoute(pointer_id, route_id_);
@@ -72,6 +76,16 @@ void OneSequenceGestureRecognizer::ResolveOne(int pointer_id,
     arena_entries_.erase(iter);
     entry->Resolve(disposition);
   }
+}
+
+void OneSequenceGestureRecognizer::OnGestureAccepted(int pointer_id) {
+  RemoveArenaEntry(pointer_id);
+  GestureRecognizer::OnGestureAccepted(pointer_id);
+}
+
+void OneSequenceGestureRecognizer::OnGestureRejected(int pointer_id) {
+  RemoveArenaEntry(pointer_id);
+  GestureRecognizer::OnGestureRejected(pointer_id);
 }
 
 void PrimaryPointerGestureRecognizer::AddAllowedPointer(
@@ -138,13 +152,14 @@ void PrimaryPointerGestureRecognizer::DidStopTrackingLastPointer(
 }
 
 void PrimaryPointerGestureRecognizer::OnGestureAccepted(int pointer_id) {
-  GestureRecognizer::OnGestureAccepted(pointer_id);
+  super::OnGestureAccepted(pointer_id);
   if (pointer_id == primary_pointer_ && timer_) {
     timer_.reset();
   }
 }
 
 void PrimaryPointerGestureRecognizer::OnGestureRejected(int pointer_id) {
+  super::OnGestureRejected(pointer_id);
   if (pointer_id == primary_pointer_ && timer_) {
     timer_.reset();
   }

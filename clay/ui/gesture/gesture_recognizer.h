@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_GESTURE_GESTURE_RECOGNIZER_H_
 #define CLAY_UI_GESTURE_GESTURE_RECOGNIZER_H_
 
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <optional>
@@ -109,6 +110,8 @@ class OneSequenceGestureRecognizer : public GestureRecognizer {
 
   virtual void HandleEvent(const PointerEvent&) = 0;
 
+  size_t ArenaEntryCountForTest() const { return arena_entries_.size(); }
+
  protected:
   void AddAllowedPointer(const PointerEvent& pointer) override {
     StartTrackingPointer(pointer.pointer_id);
@@ -116,6 +119,7 @@ class OneSequenceGestureRecognizer : public GestureRecognizer {
 
   void StartTrackingPointer(int pointer_id);
   void StopTrackingPointer(int pointer_id);
+  void RemoveArenaEntry(int pointer_id);
   virtual void DidStopTrackingLastPointer(int pointer_id) {}
 
   // Resolve and destroy related entries.
@@ -128,6 +132,9 @@ class OneSequenceGestureRecognizer : public GestureRecognizer {
   // So provides this callbacks for listening.
   virtual void OnResolveAll(GestureDisposition disposition) {}
   virtual void OnResolveOne(int pointer_id, GestureDisposition disposition) {}
+
+  void OnGestureAccepted(int pointer_id) override;
+  void OnGestureRejected(int pointer_id) override;
 
   std::set<int> tracking_pointers_;
   std::map<int, std::unique_ptr<ArenaEntry>> arena_entries_;

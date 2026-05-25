@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_GESTURE_ARENA_MANAGER_H_
 #define CLAY_UI_GESTURE_ARENA_MANAGER_H_
 
+#include <cstddef>
 #include <functional>
 #include <map>
 #include <memory>
@@ -51,6 +52,7 @@ class ArenaManager final {
                                   fml::WeakPtr<ArenaMember> member);
   void Close(const PointerEvent& event);
   void Sweep(int pointer_id);
+  void Cancel(int pointer_id);
   void Hold(int pointer_id);
   void Release(int pointer_id);
 
@@ -60,6 +62,8 @@ class ArenaManager final {
   }
 
   void SetHasOuterGestures(bool value) { has_outer_gestures_ = value; }
+
+  size_t RecordingEventCountForTest() const { return recording_events_.size(); }
 
  private:
   friend class ArenaEntry;

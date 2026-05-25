@@ -48,6 +48,7 @@ void LongPressGestureRecognizer::HandlePrimaryPointerEvent(
 }
 
 void LongPressGestureRecognizer::OnGestureAccepted(int pointer_id) {
+  RemoveArenaEntry(pointer_id);
   // Ignore winning. We care about long press timeout.
 }
 
