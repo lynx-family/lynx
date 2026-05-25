@@ -21,7 +21,14 @@
 #include "core/renderer/utils/lynx_env.h"  // nogncheck
 
 #ifdef OS_ANDROID
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "core/base/android/device_utils_android.h"
+#endif
+
+#if defined(OS_IOS) || defined(OS_OSX)
+#include <pthread.h>
 #endif
 
 #ifdef OS_WIN
@@ -65,6 +72,27 @@ inline std::condition_variable& GetUIInitCV() {
 inline std::mutex& GetUIThreadMutex() {
   static base::NoDestructor<std::mutex> ui_thread_init_mutex;
   return *ui_thread_init_mutex;
+}
+
+// Detects whether the current thread is the OS main thread.
+// On platforms where Lynx UIThread is conventionally the OS main thread
+// (iOS / macOS / Android), this is used by `UIThread::GetRunner` to
+// safely self-init when `UIThread::Init` has not been called yet, avoiding
+// a self-deadlock on the condition variable.
+inline bool IsOSMainThread() {
+#if defined(ENABLE_HEADLESS)
+  return false;
+#elif defined(OS_IOS) || defined(OS_OSX)
+  return pthread_main_np() != 0;
+#elif defined(OS_ANDROID)
+  return ::getpid() == ::gettid();
+#else
+  // OS_HARMONY and other platforms: the rendering / UI thread is not
+  // necessarily the OS main thread (e.g. Harmony injects an external
+  // loop via UIThread::Init(loop), embedder uses InitTaskRunner with
+  // a delegate). Be conservative here and keep the wait-for-init path.
+  return false;
+#endif
 }
 #endif
 
@@ -193,9 +221,19 @@ fml::RefPtr<fml::TaskRunner>& UIThread::GetRunner(
     bool enable_vsync_aligned_msg_loop) {
 #if !defined(OS_WIN)
   if (!HasInit()) {
-    LOGI("Waiting for UIThread to initialize.");
-    std::unique_lock<std::mutex> local_lock(GetUIThreadMutex());
-    GetUIInitCV().wait(local_lock);
+    if (IsOSMainThread()) {
+      // Self-init fallback for OS main thread to avoid self-deadlock when
+      // `GetRunner` is called before `UIThread::Init`. This only applies on
+      // platforms where the UI thread == OS main thread; embedder /
+      // delegate-driven setups must complete `InitTaskRunner` (or `Init`)
+      // before this point and will not reach here.
+      LOGI("UIThread::GetRunner self-init on OS main thread.");
+      UIThread::Init();
+    } else {
+      LOGI("Waiting for UIThread to initialize.");
+      std::unique_lock<std::mutex> local_lock(GetUIThreadMutex());
+      GetUIInitCV().wait(local_lock);
+    }
   }
 #endif
   return enable_vsync_aligned_msg_loop ? GetUIVSyncTaskRunner()

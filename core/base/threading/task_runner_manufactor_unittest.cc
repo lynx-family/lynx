@@ -144,5 +144,17 @@ TEST_F(TaskRunnerManufactorTest, IsOnConcurrentLoopWorker) {
   normal_priority_latch.Wait();
 }
 
+TEST_F(TaskRunnerManufactorTest, GetRunnerIsIdempotent) {
+  auto& a = UIThread::GetRunner(false);
+  auto& b = UIThread::GetRunner(false);
+  ASSERT_TRUE(a);
+  ASSERT_TRUE(b);
+  EXPECT_EQ(a.get(), b.get());
+
+  UIThread::Init();
+  auto& c = UIThread::GetRunner(false);
+  EXPECT_EQ(a.get(), c.get());
+}
+
 }  // namespace base
 }  // namespace lynx
