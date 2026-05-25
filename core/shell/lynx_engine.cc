@@ -243,9 +243,9 @@ void LynxEngine::UpdateViewport(float width, int32_t width_mode, float height,
 
 void LynxEngine::SyncFetchLayoutResult() {
   auto& element_manager = tasm_->page_proxy()->element_manager();
-  LayoutMediator::HandleLayoutVoluntarily(operation_queue_.get(),
-                                          element_manager->catalyzer(),
-                                          element_manager->GetPageOptions());
+  LayoutMediator::HandleLayoutVoluntarily(
+      operation_queue_.get(), element_manager->catalyzer(),
+      element_manager->node_manager(), element_manager->GetPageOptions());
 }
 
 void LynxEngine::SendEvent(int32_t target_id, fml::RefPtr<event::Event> event) {

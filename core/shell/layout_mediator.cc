@@ -97,7 +97,9 @@ void LayoutMediator::OnLayoutAfter(
 
   if (layout_result_manager_ == nullptr) {
     if (!engine_actor_->CanRunNow()) {
-      operation_queue_->AppendPendingTask();
+      operation_queue_->AppendPendingTask(
+          tasm::LynxEnv::GetInstance().FixListWithSyncFlush() ? options
+                                                              : nullptr);
 
       // FIXME(heshan):when renderTemplate has no patch, is_first_screen
       // will be false forever.
@@ -131,7 +133,7 @@ void LayoutMediator::OnLayoutAfter(
 
       // TODO(nihao.royal): pipeline ends here, Considering Timing Info for list
       // first screen.
-      HandleListOrComponentUpdated(node_manager, options);
+      HandleListOrComponentUpdated(node_manager, options, queue);
 
       // In EmbeddedMode, we're still exploring new client callback approaches.
       // For performance considerations, we'll temporarily disable triggering
@@ -157,7 +159,7 @@ void LayoutMediator::OnLayoutAfter(
           options->has_layout = has_layout;
           HandlePendingLayoutTask(nullptr, catalyzer, options, page_options,
                                   &operations);
-          HandleListOrComponentUpdated(node_manager, options);
+          HandleListOrComponentUpdated(node_manager, options, nullptr);
 
           // In EmbeddedMode, we're still exploring new client callback
           // approaches. For performance considerations, we'll temporarily
@@ -305,9 +307,16 @@ void LayoutMediator::HandlePendingLayoutTask(
 // finished rendering.
 void LayoutMediator::HandleListOrComponentUpdated(
     tasm::NodeManager *node_manager,
-    const std::shared_ptr<tasm::PipelineOptions> &options) {
+    const std::shared_ptr<tasm::PipelineOptions> &options,
+    TASMOperationQueue *queue) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               LAYOUT_MEDIATOR_HANDLE_LIST_OR_COMPONENT_UPDATED);
+  if (tasm::LynxEnv::GetInstance().FixListWithSyncFlush() && queue) {
+    const auto &update_list_elements = queue->GetReadyUpdatedListElements();
+    if (!update_list_elements.empty()) {
+      options->updated_list_elements_ = update_list_elements;
+    }
+  }
   if (node_manager) {
     static bool enable_native_list_nested =
         tasm::LynxEnv::GetInstance().EnableNativeListNested();
@@ -358,7 +367,7 @@ void LayoutMediator::HandleListOrComponentUpdated(
 // notifying safepoint.
 void LayoutMediator::HandleLayoutVoluntarily(
     TASMOperationQueue *queue, tasm::Catalyzer *catalyzer,
-    const tasm::PageOptions &page_options) {
+    tasm::NodeManager *node_manager, const tasm::PageOptions &page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LAYOUT_MEDIATOR_HANDLE_LAYOUT_VOLUNTARILY,
               "has_first_screen_", queue->has_first_screen_.load());
   // when part on layout, usually, layout is faster than create ui.
@@ -380,7 +389,10 @@ void LayoutMediator::HandleLayoutVoluntarily(
     }
   }
 
-  HandlePendingLayoutTask(queue, catalyzer, std::move(options), page_options);
+  HandlePendingLayoutTask(queue, catalyzer, options, page_options);
+  if (tasm::LynxEnv::GetInstance().FixListWithSyncFlush()) {
+    HandleListOrComponentUpdated(node_manager, options, queue);
+  }
 }
 
 void LayoutMediator::OnFirstMeaningfulLayout() {

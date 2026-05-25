@@ -3,7 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/shell/tasm_operation_queue_async.h"
 
+#include <memory>
+#include <utility>
+#include <vector>
+
 #include "base/include/fml/synchronization/waitable_event.h"
+#include "core/public/pipeline_option.h"
 #include "core/shell/testing/mock_runner_manufactor.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -26,6 +31,13 @@ class TASMOperationQueueAsyncTest : public ::testing::Test {
   int32_t actual_ = 0;
   int32_t expect_ = 0;
   constexpr static int32_t kOpsCounts = 20;
+
+  static std::shared_ptr<tasm::PipelineOptions> MakeOptionsWithUpdatedLists(
+      std::vector<int32_t> updated_list_elements) {
+    auto options = std::make_shared<tasm::PipelineOptions>();
+    options->updated_list_elements_ = std::move(updated_list_elements);
+    return options;
+  }
 };
 
 TEST_F(TASMOperationQueueAsyncTest, FlushNonTrivialOperationsOnceOnTASM) {
@@ -472,6 +484,55 @@ TEST_F(TASMOperationQueueAsyncTest,
 
   arwe_.Wait();
   ASSERT_EQ(expect_, actual_);
+}
+
+TEST_F(TASMOperationQueueAsyncTest,
+       AppendPendingTaskCopiesUpdatedListElementsToReadyQueue) {
+  auto options = MakeOptionsWithUpdatedLists({101, 202});
+
+  operation_queue_->AppendPendingTask(options);
+
+  EXPECT_EQ((std::vector<int32_t>{101, 202}), options->updated_list_elements_);
+  EXPECT_EQ((std::vector<int32_t>{101, 202}),
+            operation_queue_->GetReadyUpdatedListElements());
+  EXPECT_TRUE(operation_queue_->GetReadyUpdatedListElements().empty());
+}
+
+TEST_F(TASMOperationQueueAsyncTest,
+       AppendPendingTaskAppendsUpdatedListElementsInOrder) {
+  auto first_options = MakeOptionsWithUpdatedLists({1, 2});
+  auto second_options = MakeOptionsWithUpdatedLists({3, 4});
+
+  operation_queue_->AppendPendingTask(first_options);
+  operation_queue_->AppendPendingTask(second_options);
+
+  EXPECT_EQ((std::vector<int32_t>{1, 2}),
+            first_options->updated_list_elements_);
+  EXPECT_EQ((std::vector<int32_t>{3, 4}),
+            second_options->updated_list_elements_);
+  EXPECT_EQ((std::vector<int32_t>{1, 2, 3, 4}),
+            operation_queue_->GetReadyUpdatedListElements());
+  EXPECT_TRUE(operation_queue_->GetReadyUpdatedListElements().empty());
+}
+
+TEST_F(TASMOperationQueueAsyncTest,
+       AppendPendingTaskWithoutOptionsKeepsReadyUpdatedListElements) {
+  auto options = MakeOptionsWithUpdatedLists({7, 8});
+
+  operation_queue_->AppendPendingTask(options);
+  operation_queue_->AppendPendingTask();
+
+  EXPECT_EQ((std::vector<int32_t>{7, 8}), options->updated_list_elements_);
+  EXPECT_EQ((std::vector<int32_t>{7, 8}),
+            operation_queue_->GetReadyUpdatedListElements());
+  EXPECT_TRUE(operation_queue_->GetReadyUpdatedListElements().empty());
+}
+
+TEST_F(TASMOperationQueueAsyncTest,
+       AppendPendingTaskWithoutOptionsDoesNotCreateReadyUpdatedListElements) {
+  operation_queue_->AppendPendingTask();
+
+  EXPECT_TRUE(operation_queue_->GetReadyUpdatedListElements().empty());
 }
 
 }  // namespace testing

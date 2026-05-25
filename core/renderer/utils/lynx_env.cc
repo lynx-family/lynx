@@ -642,6 +642,10 @@ bool LynxEnv::FixNewFixedRemovalBug() {
   return GetBoolEnv(Key::FIX_NEW_FIXED_REMOVAL_BUG, true);
 }
 
+bool LynxEnv::FixListWithSyncFlush() {
+  return GetBoolEnv(Key::FIX_LIST_WITH_SYNC_FLUSH, false);
+}
+
 bool LynxEnv::FixOldFixedInsertSelfUseRenderParent() {
   return GetBoolEnv(Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT, false);
 }

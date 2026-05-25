@@ -72,6 +72,7 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
 
   static void HandleLayoutVoluntarily(TASMOperationQueue *queue,
                                       tasm::Catalyzer *catalyzer,
+                                      tasm::NodeManager *node_manager,
                                       const tasm::PageOptions &page_options);
 
  private:
@@ -84,7 +85,8 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
       tasm::PipelineContext *current_pipeline_context = nullptr);
   static void HandleListOrComponentUpdated(
       tasm::NodeManager *node_manager,
-      const std::shared_ptr<tasm::PipelineOptions> &options);
+      const std::shared_ptr<tasm::PipelineOptions> &options,
+      TASMOperationQueue *queue);
 
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;
   std::shared_ptr<LynxActor<NativeFacade>> facade_actor_;

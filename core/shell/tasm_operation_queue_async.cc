@@ -3,10 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/shell/tasm_operation_queue_async.h"
 
+#include <iterator>
 #include <utility>
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
+#include "core/public/pipeline_option.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/shell/common/shell_trace_event_def.h"
 
 namespace lynx {
@@ -22,10 +25,14 @@ void TASMOperationQueueAsync::EnqueueTrivialOperation(TASMOperation operation) {
 }
 
 // @note: run on layout thread
-void TASMOperationQueueAsync::AppendPendingTask() {
+void TASMOperationQueueAsync::AppendPendingTask(
+    const std::shared_ptr<tasm::PipelineOptions>& options /* =nullptr */) {
   std::unique_lock<std::mutex> local_lock(mutex_);
 
   AppendPendingTaskLocked();
+  if (options) {
+    AppendPendingUpdatedListLocked(options);
+  }
 }
 
 // @note: run on tasm thread
@@ -54,6 +61,15 @@ bool TASMOperationQueueAsync::Flush() {
   return result;
 }
 
+std::vector<int32_t> TASMOperationQueueAsync::GetReadyUpdatedListElements() {
+  std::vector<int32_t> ready_updated_list_elements;
+  {
+    std::unique_lock<std::mutex> local_lock(mutex_);
+    std::swap(ready_updated_list_elements, ready_updated_list_elements_);
+  }
+  return ready_updated_list_elements;
+}
+
 void TASMOperationQueueAsync::SetAppendPendingTaskNeededDuringFlush(
     bool needed) {
   is_append_pending_task_needed_during_flush_ = needed;
@@ -72,6 +88,27 @@ void TASMOperationQueueAsync::AppendPendingTaskLocked() {
     // ready_operations_ is empty, just swap. pending_operations_ will use
     // ready_operations_'s buffer and no need to reallocate.
     std::swap(ready_operations_, pending_operations_);
+  }
+}
+
+void TASMOperationQueueAsync::AppendPendingUpdatedListLocked(
+    const std::shared_ptr<tasm::PipelineOptions>& options) {
+  if (!options->updated_list_elements_.empty()) {
+    pending_updated_list_elements_.insert(
+        pending_updated_list_elements_.end(),
+        options->updated_list_elements_.begin(),
+        options->updated_list_elements_.end());
+  }
+  if (!ready_updated_list_elements_.empty()) {
+    if (!pending_updated_list_elements_.empty()) {
+      ready_updated_list_elements_.insert(
+          ready_updated_list_elements_.end(),
+          std::make_move_iterator(pending_updated_list_elements_.begin()),
+          std::make_move_iterator(pending_updated_list_elements_.end()));
+      pending_updated_list_elements_.clear();
+    }
+  } else {
+    std::swap(ready_updated_list_elements_, pending_updated_list_elements_);
   }
 }
 

@@ -12,7 +12,10 @@ namespace lynx {
 namespace shell {
 
 // Calling this method is impossible; therefore, NOTREACHED() is used.
-void LayoutResultManager::AppendPendingTask() { NOTREACHED(); }
+void LayoutResultManager::AppendPendingTask(
+    const std::shared_ptr<tasm::PipelineOptions>& options /* =nullptr */) {
+  NOTREACHED();
+}
 
 // Calling this method is impossible; therefore, NOTREACHED() is used.
 bool LayoutResultManager::Flush() {

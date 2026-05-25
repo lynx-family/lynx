@@ -5,6 +5,7 @@
 #ifndef CORE_SHELL_LAYOUT_RESULT_MANAGER_H_
 #define CORE_SHELL_LAYOUT_RESULT_MANAGER_H_
 
+#include <memory>
 #include <mutex>
 #include <vector>
 
@@ -31,7 +32,9 @@ class LayoutResultManager final : public TASMOperationQueue {
 
   // begin override
   bool Flush() override;
-  void AppendPendingTask() override;
+
+  void AppendPendingTask(
+      const std::shared_ptr<tasm::PipelineOptions>& options = nullptr) override;
 
   void SetAppendPendingTaskNeededDuringFlush(bool needed) override;
   // end

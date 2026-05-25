@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -14,6 +15,10 @@
 #include "base/include/closure.h"
 
 namespace lynx {
+namespace tasm {
+struct PipelineOptions;
+}  // namespace tasm
+
 namespace shell {
 
 // type foy sync
@@ -50,7 +55,11 @@ class TASMOperationQueue {
   virtual void EnqueueTrivialOperation(TASMOperation operation);
 
   virtual bool Flush();
-  virtual void AppendPendingTask() {}
+
+  virtual void AppendPendingTask(
+      const std::shared_ptr<tasm::PipelineOptions>& options = nullptr) {}
+
+  virtual std::vector<int32_t> GetReadyUpdatedListElements() { return {}; }
 
   virtual void SetAppendPendingTaskNeededDuringFlush(bool needed) {}
 

@@ -3,7 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/shell/tasm_operation_queue.h"
 
+#include <memory>
+#include <vector>
+
 #include "base/include/fml/synchronization/waitable_event.h"
+#include "core/public/pipeline_option.h"
 #include "core/shell/testing/mock_runner_manufactor.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -81,6 +85,18 @@ TEST_F(TASMOperationQueueTest, FlushTrivialAndNonTrivialOperations) {
   ASSERT_EQ(ret, kOperationCounts + kOperationCounts);
 
   ASSERT_FALSE(queue.Flush());
+}
+
+TEST_F(TASMOperationQueueTest,
+       AppendPendingTaskWithOptionsDoesNotConsumeUpdatedListElements) {
+  TASMOperationQueue queue;
+  auto options = std::make_shared<tasm::PipelineOptions>();
+  options->updated_list_elements_ = {1, 2, 3};
+
+  queue.AppendPendingTask(options);
+
+  EXPECT_EQ((std::vector<int32_t>{1, 2, 3}), options->updated_list_elements_);
+  EXPECT_TRUE(queue.GetReadyUpdatedListElements().empty());
 }
 
 }  // namespace testing
