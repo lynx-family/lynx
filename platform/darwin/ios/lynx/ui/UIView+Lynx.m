@@ -3,9 +3,51 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/UIView+Lynx.h>
+
+#import <Lynx/LynxRenderer.h>
+#import <Lynx/LynxRendererHost.h>
+
 #import <objc/runtime.h>
 
+@interface UIView (LynxRendererHostInternal) <LynxRendererHost>
+@end
+
 @implementation UIView (Lynx)
+
+- (void)setRenderer:(LynxRenderer *)renderer {
+  objc_setAssociatedObject(self, @selector(renderer), renderer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (LynxRenderer *)renderer {
+  return objc_getAssociatedObject(self, _cmd);
+}
+
+- (void)setRendererContext:(LynxRendererContext *)rendererContext {
+  objc_setAssociatedObject(self, @selector(rendererContext), rendererContext,
+                           OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (LynxRendererContext *)rendererContext {
+  return objc_getAssociatedObject(self, _cmd);
+}
+
+- (instancetype)initWithRendererContext:(LynxRendererContext *)context {
+  self = [self init];
+  if (self) {
+    self.rendererContext = context;
+  }
+  return self;
+}
+
+- (LynxRenderer *)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext *)context {
+  return [[LynxRenderer alloc] initWithRenderHost:(UIView<LynxRendererHost> *)self
+                                          andSign:sign
+                                       andContext:context];
+}
+
+- (UIView *)view {
+  return self;
+}
 
 - (void)setLynxBackgroundLayer:(LynxBackgroundSubLayer *)lynxBackgroundLayer {
   objc_setAssociatedObject(self, @selector(lynxBackgroundLayer), lynxBackgroundLayer,

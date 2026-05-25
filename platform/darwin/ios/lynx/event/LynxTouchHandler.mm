@@ -71,6 +71,7 @@
   BOOL _enableMultiTouch;
   BOOL _panGestureRecognized;
   NSMutableSet<UITouch*>* _touches;
+  NSMutableSet<UITouch*>* _platformUITouches;
   // In single-finger mode, when multiple fingers are raised at the same time, touches need to be
   // tracked in touchesBegan to ensure that touches received by touchesEnded are not missed.
   NSSet<UITouch*>* _other_touches;
@@ -107,6 +108,7 @@
     _tapSlop = 45;
     _touchEndOrCancel = NO;
     _touches = [NSMutableSet set];
+    _platformUITouches = [NSMutableSet set];
     _event = nil;
     _target = nil;
     _preTarget = nil;
@@ -168,6 +170,7 @@
   _hasMultiTouch = NO;
   touches_map_.clear();
   [active_target_map_ removeAllObjects];
+  [_platformUITouches removeAllObjects];
   reuse_id_pool_.clear();
   reuse_touches_id_.clear();
   [_touchesIDMap removeAllObjects];
@@ -221,6 +224,7 @@
   _touchEndOrCancel = YES;
   _gestureRecognized = NO;
   [_touches removeAllObjects];
+  [_platformUITouches removeAllObjects];
   _event = nil;
   _preTarget = _target;
   _target = nil;
@@ -362,6 +366,42 @@
   LynxContext* lynxContext = _eventHandler.uiOwner.uiContext.lynxContext;
   if (!lynxContext.isFragmentLayerRenderOn) {
     return NO;
+  }
+
+  switch (actionType) {
+    case 0:
+      [_platformUITouches unionSet:touches];
+      [super touchesBegan:touches withEvent:event];
+      if (self.state == UIGestureRecognizerStatePossible) {
+        self.state = UIGestureRecognizerStateBegan;
+      } else {
+        self.state = UIGestureRecognizerStateChanged;
+      }
+      break;
+    case 1:
+      [super touchesEnded:touches withEvent:event];
+      if ([self isAllTouchesAreCancelledOrEnded:_platformUITouches]) {
+        self.state = UIGestureRecognizerStateEnded;
+      } else {
+        self.state = UIGestureRecognizerStateChanged;
+      }
+      [_platformUITouches minusSet:touches];
+      break;
+    case 2:
+      [super touchesMoved:touches withEvent:event];
+      self.state = UIGestureRecognizerStateChanged;
+      break;
+    case 3:
+      [super touchesCancelled:touches withEvent:event];
+      if ([self isAllTouchesAreCancelledOrEnded:_platformUITouches]) {
+        self.state = UIGestureRecognizerStateCancelled;
+      } else {
+        self.state = UIGestureRecognizerStateChanged;
+      }
+      [_platformUITouches minusSet:touches];
+      break;
+    default:
+      break;
   }
 
   LynxTemplateRender* templateRender =

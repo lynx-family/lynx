@@ -99,6 +99,8 @@ public class DisplayListApplierTest {
   private ArgumentCaptor<int[]> borderWidthsCaptor;
   private ArgumentCaptor<int[]> borderColorsCaptor;
   private ArgumentCaptor<BorderStyle[]> borderStylesCaptor;
+  private ArgumentCaptor<RoundedRectangle> outBoxCaptor;
+  private ArgumentCaptor<RoundedRectangle> innerBoxCaptor;
 
   @Before
   public void setUp() {
@@ -114,6 +116,8 @@ public class DisplayListApplierTest {
     borderWidthsCaptor = forClass(int[].class);
     borderColorsCaptor = forClass(int[].class);
     borderStylesCaptor = forClass(BorderStyle[].class);
+    outBoxCaptor = forClass(RoundedRectangle.class);
+    innerBoxCaptor = forClass(RoundedRectangle.class);
   }
 
   /**
@@ -596,8 +600,10 @@ public class DisplayListApplierTest {
 
     // Verify drawRectangularBorders is called with correct parameters
     verify(spyDisplayListApplier)
-        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), eq(0), eq(1),
-            borderColorsCaptor.capture(), borderStylesCaptor.capture());
+        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), outBoxCaptor.capture(),
+            innerBoxCaptor.capture(), borderColorsCaptor.capture(), borderStylesCaptor.capture());
+    assertEquals(new RoundedRectangle(new RectF(0, 0, 100, 50), null), outBoxCaptor.getValue());
+    assertEquals(new RoundedRectangle(new RectF(5, 5, 95, 45), null), innerBoxCaptor.getValue());
 
     // Verify border colors
     int[] capturedColors = borderColorsCaptor.getValue();
@@ -644,8 +650,10 @@ public class DisplayListApplierTest {
 
     // Verify drawRectangularBorders is called with correct parameters
     verify(spyDisplayListApplier)
-        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), eq(0), eq(1),
-            borderColorsCaptor.capture(), borderStylesCaptor.capture());
+        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), outBoxCaptor.capture(),
+            innerBoxCaptor.capture(), borderColorsCaptor.capture(), borderStylesCaptor.capture());
+    assertEquals(new RoundedRectangle(new RectF(0, 0, 100, 100), null), outBoxCaptor.getValue());
+    assertEquals(new RoundedRectangle(new RectF(5, 5, 95, 95), null), innerBoxCaptor.getValue());
 
     // Verify border colors
     int[] capturedColors = borderColorsCaptor.getValue();
@@ -692,8 +700,10 @@ public class DisplayListApplierTest {
 
     // Verify drawRectangularBorders is called with correct parameters
     verify(spyDisplayListApplier)
-        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), eq(0), eq(1),
-            borderColorsCaptor.capture(), borderStylesCaptor.capture());
+        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), outBoxCaptor.capture(),
+            innerBoxCaptor.capture(), borderColorsCaptor.capture(), borderStylesCaptor.capture());
+    assertEquals(new RoundedRectangle(new RectF(0, 0, 100, 50), null), outBoxCaptor.getValue());
+    assertEquals(new RoundedRectangle(new RectF(5, 5, 95, 45), null), innerBoxCaptor.getValue());
 
     // Verify border colors
     int[] capturedColors = borderColorsCaptor.getValue();
