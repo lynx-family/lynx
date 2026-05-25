@@ -7,6 +7,7 @@
 
 #include <sys/types.h>
 
+#include <cstdint>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -75,6 +76,7 @@ struct PipelineOptions {
   static const int32_t kRecycleTemplateBundle = 0x01 << 2;
   static const int32_t kProcessLayoutWithoutUIFlush = 0x01 << 3;
   static const int32_t kRenderForRecreateEngine = 0x01 << 4;
+  static constexpr int32_t kInvalidTargetNodeId = 0;
 
   // TODO(kechenglong): impl ToLepusValue here.
   // Default constructor that generates a unique PipelineID
@@ -179,7 +181,7 @@ struct PipelineOptions {
   bool resolve_requested{false};
   bool layout_requested{false};
   bool flush_ui_requested{false};
-  Element* target_node{nullptr};
+  int32_t target_node{kInvalidTargetNodeId};
   // Whether the current template has been reloaded.
   bool reload{false};
   const PipelineVersion* version{nullptr};
