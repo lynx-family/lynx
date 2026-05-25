@@ -118,13 +118,19 @@ typedef _Nullable _NSResponderPtr (^NextResponderProvider)();
     _viewDelegate = viewDelegate;
 
     _primaryResponders = [[NSMutableArray alloc] init];
+    __weak id<FlutterKeyboardViewDelegate> weakViewDelegate = viewDelegate;
     [self
         addPrimaryResponder:[[FlutterEmbedderKeyResponder alloc]
                                 initWithSendEvent:^(const ClayKeyEvent& event,
                                                     ClayKeyEventCallback callback, void* userData) {
-                                  [_viewDelegate sendKeyEvent:event
-                                                     callback:callback
-                                                     userData:userData];
+                                  id<FlutterKeyboardViewDelegate> viewDelegate = weakViewDelegate;
+                                  if (viewDelegate) {
+                                    [viewDelegate sendKeyEvent:event
+                                                      callback:callback
+                                                      userData:userData];
+                                  } else if (callback) {
+                                    callback(false, userData);
+                                  }
                                 }]];
     _pendingEvents = [[NSMutableArray alloc] init];
     _layoutMap = [NSMutableDictionary<NSNumber*, NSNumber*> dictionary];
