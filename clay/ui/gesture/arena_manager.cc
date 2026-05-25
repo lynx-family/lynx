@@ -10,9 +10,45 @@
 #include "clay/ui/gesture/macros.h"
 
 namespace clay {
+namespace {
+
+void RemoveInvalidMembers(Arena* arena) {
+  for (auto iter = arena->members.begin(); iter != arena->members.end();) {
+    if (!*iter) {
+      iter = arena->members.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+
+  if (!arena->eager_winner) {
+    arena->eager_winner.reset();
+  }
+}
+
+}  // namespace
 
 std::unique_ptr<ArenaEntry> ArenaManager::Add(
     int pointer_id, fml::WeakPtr<ArenaMember> member) {
+  auto iter = arenas_.find(pointer_id);
+  if (iter != arenas_.end()) {
+    RemoveInvalidMembers(iter->second.get());
+    // Only drop stale arena when it has no remaining valid members.
+    // Dropping a closed arena that still has members can cause unresolved
+    // callbacks (TryResolve / OnGesture*) and state pollution if `pointer_id`
+    // is reused before the previous members finish resolving.
+    if (iter->second->members.empty()) {
+      GESTURE_LOG << "drop stale arena before add, pointer: " << pointer_id
+                  << ", is_open: " << iter->second->is_open
+                  << ", is_held: " << iter->second->is_held;
+      arenas_.erase(iter);
+    } else {
+      FML_DCHECK(iter->second->is_open)
+          << "Unexpected non-empty closed arena before add, pointer: "
+          << pointer_id << ", members: " << iter->second->members.size();
+    }
+  }
+
   auto& arena = arenas_[pointer_id];
   if (!arena) {
     arena = std::make_unique<Arena>();
@@ -37,7 +73,12 @@ void ArenaManager::Close(const PointerEvent& event) {
   }
 
   Arena* arena = iter->second.get();
-  FML_DCHECK(arena->is_open);
+  RemoveInvalidMembers(arena);
+  if (!arena->is_open) {
+    TryResolve(pointer_id, arena);
+    return;
+  }
+
   arena->is_open = false;
   TryResolve(pointer_id, arena);
 }

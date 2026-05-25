@@ -9,6 +9,7 @@
 #include "base/include/fml/thread.h"
 #include "clay/gfx/scroll_direction.h"
 #include "clay/ui/event/gesture_event.h"
+#include "clay/ui/gesture/arena_manager.h"
 #include "clay/ui/gesture/drag_gesture_recognizer.h"
 #include "clay/ui/gesture/gesture_manager.h"
 #include "clay/ui/gesture/long_press_gesture_recognizer.h"
@@ -88,6 +89,20 @@ class MultiRecognizerHitTestTarget : public MockHitTestTargetBase {
   }
 
   std::list<std::unique_ptr<GestureRecognizer>> recognizers_;
+};
+
+class TestArenaMember : public ArenaMember {
+ public:
+  fml::WeakPtr<ArenaMember> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
+
+  void OnGestureAccepted(int pointer_id) override { ++accepted_count; }
+
+  void OnGestureRejected(int pointer_id) override { ++rejected_count; }
+
+  const char* GetMemberTag() const override { return "TestArenaMember"; }
+
+  int accepted_count = 0;
+  int rejected_count = 0;
 };
 
 class MockHitTestable : public HitTestable {
@@ -170,6 +185,28 @@ TEST_F(GestureManagerTest, Exception_Test) {
   gesture_manager()->HandlePointerEvents(root(), pointers4);
   auto pointers5 = CreatePointer(pointer_id, PointerEvent::EventType::kUpEvent);
   gesture_manager()->HandlePointerEvents(root(), pointers5);
+}
+
+TEST(ArenaManagerTest, AddDropsStaleClosedArenaBeforeReusingPointer) {
+  ArenaManager arena_manager;
+  int pointer_id = ID();
+  auto down_event =
+      CreateSinglePointer(pointer_id, PointerEvent::EventType::kDownEvent);
+
+  arena_manager.SetHasOuterGestures(true);
+  {
+    TestArenaMember member;
+    arena_manager.Add(pointer_id, member.GetWeakPtr());
+    arena_manager.Close(down_event);
+  }
+
+  arena_manager.SetHasOuterGestures(false);
+  TestArenaMember new_member;
+  arena_manager.Add(pointer_id, new_member.GetWeakPtr());
+  arena_manager.Close(down_event);
+
+  EXPECT_EQ(new_member.accepted_count, 1);
+  EXPECT_EQ(new_member.rejected_count, 0);
 }
 
 TEST_F(GestureManagerTest, NoConflict_Tap_Test) {
