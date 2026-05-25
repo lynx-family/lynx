@@ -3055,8 +3055,8 @@ void UIBase::TakeScreenshot(
   if (args.IsTable() || args.IsJSTable()) {
     tasm::ForEachLepusValue(
         args, [&format, &scale](const auto& key, const auto& val) {
-          if (key.StdString() == "format") {
-            format = val.StdString();
+          if (key.StdString() == "format" && val.StdString() == "png") {
+            format = "png";
           }
           if (key.StdString() == "scale") {
             scale = val.Number();
