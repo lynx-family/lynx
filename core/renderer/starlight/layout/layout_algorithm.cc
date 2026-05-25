@@ -49,8 +49,15 @@ void LayoutAlgorithm::InitializeChildren(const SLNodeSet* fixed_node_set) {
   if (container_->GetEnableFixedNew()) {
     InitializeFixedNode(fixed_node_set);
   }
-  for (int i = 0; i < container_->GetChildCount(); ++i) {
-    LayoutObject* child = static_cast<LayoutObject*>(container_->Find(i));
+  const int child_count = container_->GetChildCount();
+  if (child_count > 0) {
+    inflow_items_.reserve(child_count);
+    absolute_or_fixed_items_.reserve(child_count);
+    sticky_items.reserve(child_count);
+  }
+  for (Node* node = container_->FirstChild(); node != nullptr;
+       node = node->Next()) {
+    LayoutObject* child = static_cast<LayoutObject*>(node);
     const LayoutComputedStyle* child_style = child->GetCSSStyle();
     if (child->IsNewFixed()) {
       continue;
