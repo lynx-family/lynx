@@ -10,6 +10,30 @@
 #import <UIKit/UIKit.h>
 
 #pragma mark LynxGradient
+extern const CFStringRef kCGGradientInterpolatesPremultiplied;
+CGGradientRef CGGradientCreateWithColorsAndOptions(CGColorSpaceRef, CFArrayRef, const CGFloat*,
+                                                   CFDictionaryRef);
+
+BOOL LynxSameLynxGradient(LynxGradient* _Nullable left, LynxGradient* _Nullable right) {
+  if (left == nil && right == nil) {
+    return YES;
+  }
+  if (left == nil || right == nil) {
+    return NO;
+  }
+  return [left isEqualTo:right];
+}
+
+static CFDictionaryRef gradientInterpolatesPremultipliedOptionsDictionary(void) {
+  static CFDictionaryRef options = NULL;
+  if (options == NULL) {
+    CFTypeRef keys[] = {kCGGradientInterpolatesPremultiplied};
+    CFTypeRef values[] = {kCFBooleanTrue};
+    options = CFDictionaryCreate(kCFAllocatorDefault, keys, values, sizeof(keys) / sizeof(keys[0]),
+                                 &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+  }
+  return options;
+}
 
 @implementation LynxGradient {
 }
@@ -21,7 +45,7 @@
     self.positionCount = [stops count];
     self.colors = [NSMutableArray array];
     if (self.positionCount == count) {
-      self.positions = malloc(count * sizeof(CGFloat));
+      self.positions = (CGFloat*)malloc(count * sizeof(CGFloat));
     } else {
       self.positions = nil;
     }
@@ -42,18 +66,18 @@
 
 - (BOOL)isEqualTo:(LynxGradient*)rhs {
   if (![_colors isEqual:rhs.colors]) {
-    return false;
+    return NO;
   }
 
-  bool hasPosition = _positions != nil;
-  bool rhsHasPositon = rhs.positions != nil;
+  BOOL hasPosition = _positions != nil;
+  BOOL rhsHasPosition = rhs.positions != nil;
 
-  if (hasPosition != rhsHasPositon) {
-    return false;
+  if (hasPosition != rhsHasPosition) {
+    return NO;
   }
   // both position is empty
   if (!hasPosition) {
-    return true;
+    return YES;
   }
 
   return memcmp(_positions, rhs.positions, [_colors count] * sizeof(CGFloat)) == 0;
@@ -151,7 +175,8 @@
     // [angle, color, stop, side-or-corner]
     // The parsed value from old css style from binary code (e.g CSSParser) don't have the last
     // field. All values should be treated as <angle>.
-    self.directionType = arr.count == 4 ? [arr[3] intValue] : LynxLinearGradientDirectionAngle;
+    self.directionType = arr.count == 4 ? (LynxLinearGradientDirection)[arr[3] intValue]
+                                        : LynxLinearGradientDirectionAngle;
     self.angle = [arr[0] doubleValue] * M_PI / 180.0;
   }
   return self;
@@ -163,7 +188,9 @@
     [ar addObject:(id)c.CGColor];
   }
   CGColorSpaceRef colorSpace = CGColorGetColorSpace([[self.colors lastObject] CGColor]);
-  CGGradientRef gradient = CGGradientCreateWithColors(colorSpace, (CFArrayRef)ar, self.positions);
+  CGGradientRef gradient =
+      CGGradientCreateWithColorsAndOptions(colorSpace, (__bridge CFArrayRef)ar, self.positions,
+                                           gradientInterpolatesPremultipliedOptionsDictionary());
   CGPoint start, end;
   [self computeStartPoint:&start andEndPoint:&end withSize:&pathRect.size];
   CGContextDrawLinearGradient(
@@ -181,7 +208,7 @@
 
 - (BOOL)isEqualTo:(LynxGradient*)object {
   if (![object isKindOfClass:[LynxLinearGradient class]]) {
-    return false;
+    return NO;
   }
   LynxLinearGradient* rhs = (LynxLinearGradient*)object;
   return [super isEqualTo:rhs] && self.angle == rhs.angle;
@@ -197,21 +224,21 @@
   self = [super initWithColors:arr[1] stops:arr[2]];
   if (self) {
     NSArray* shapeSize = arr[0];
-    _shape = [shapeSize[0] unsignedIntValue];
-    _shapeSize = [shapeSize[1] unsignedIntValue];
+    _shape = (LynxRadialGradientShapeType)[shapeSize[0] unsignedIntValue];
+    _shapeSize = (LynxRadialGradientSizeType)[shapeSize[1] unsignedIntValue];
 
     _at = CGPointMake(0.5, 0.5);
     // [x-position-type, x-position, y-position-type y-position]
-    self.centerX = [shapeSize[2] integerValue];
+    self.centerX = (LynxRadialCenterType)[shapeSize[2] integerValue];
     self.centerXValue = [shapeSize[3] floatValue];
-    self.centerY = [shapeSize[4] integerValue];
+    self.centerY = (LynxRadialCenterType)[shapeSize[4] integerValue];
     self.centerYValue = [shapeSize[5] floatValue];
 
     if (_shapeSize == LynxRadialGradientSizeLength) {
       self.shapeSizeXValue = [shapeSize[10] floatValue];
-      self.shapeSizeXUnit = [shapeSize[11] integerValue];
+      self.shapeSizeXUnit = (LynxPlatformLengthUnit)[shapeSize[11] integerValue];
       self.shapeSizeYValue = [shapeSize[12] floatValue];
-      self.shapeSizeYUnit = [shapeSize[13] integerValue];
+      self.shapeSizeYUnit = (LynxPlatformLengthUnit)[shapeSize[13] integerValue];
     }
   }
   return self;
@@ -246,12 +273,14 @@
     [ar addObject:(id)c.CGColor];
   }
   CGColorSpaceRef colorSpace = CGColorGetColorSpace([[self.colors lastObject] CGColor]);
-  CGGradientRef gradient = CGGradientCreateWithColors(colorSpace, (CFArrayRef)ar, self.positions);
+  CGGradientRef gradient =
+      CGGradientCreateWithColorsAndOptions(colorSpace, (__bridge CFArrayRef)ar, self.positions,
+                                           gradientInterpolatesPremultipliedOptionsDictionary());
   int w = pathRect.size.width, h = pathRect.size.height;
 
   CGPoint center = [self calculateCenterWithWidth:w andHeight:h];
   CGPoint radius = [self calculateRadiusWithCenter:&center sizeX:w sizeY:h];
-  bool hasZero = !radius.x || !radius.y;
+  BOOL hasZero = !radius.x || !radius.y;
   float aspectRatio = hasZero ? 1 : radius.x / radius.y;
 
   if (aspectRatio != 1) {
@@ -279,7 +308,7 @@
 
 - (BOOL)isEqualTo:(LynxGradient*)object {
   if (![object isKindOfClass:[LynxRadialGradient class]]) {
-    return false;
+    return NO;
   }
   LynxRadialGradient* rhs = (LynxRadialGradient*)object;
   return [super isEqualTo:rhs] && CGPointEqualToPoint(self.at, rhs.at);
@@ -354,7 +383,9 @@
     [ar addObject:(id)c.CGColor];
   }
   CGColorSpaceRef colorSpace = CGColorGetColorSpace([[self.colors lastObject] CGColor]);
-  CGGradientRef gradient = CGGradientCreateWithColors(colorSpace, (CFArrayRef)ar, self.positions);
+  CGGradientRef gradient =
+      CGGradientCreateWithColorsAndOptions(colorSpace, (__bridge CFArrayRef)ar, self.positions,
+                                           gradientInterpolatesPremultipliedOptionsDictionary());
 
   int w = pathRect.size.width, h = pathRect.size.height;
   float startX = [self.centerX valueWithParentValue:w];
@@ -377,13 +408,3 @@
 }
 
 @end
-
-BOOL LynxSameLynxGradient(LynxGradient* _Nullable left, LynxGradient* _Nullable right) {
-  if (left == nil && right == nil) {
-    return YES;
-  }
-  if (left == nil || right == nil) {
-    return NO;
-  }
-  return [left isEqualTo:right];
-}
