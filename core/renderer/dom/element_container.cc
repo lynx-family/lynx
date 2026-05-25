@@ -330,12 +330,8 @@ void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
   }
 }
 
-// Calculate position for element and update it to impl layer.
-void ElementContainer::UpdateLayout(float left, float top,
-                                    bool transition_view) {
-  // Self is updated or self position is changed because of parent's frame
-  // changing.
-
+ElementContainer::PlatformLayout ElementContainer::CalculatePlatformLayout(
+    float left, float top) const {
   if (element()->IsFixedNewOrUnified()) {
     // new fixed node's parent should always be root node. And layout params are
     // calculated by starlight.
@@ -354,6 +350,47 @@ void ElementContainer::UpdateLayout(float left, float top,
       parent = parent->parent();
     }
   }
+
+  PlatformLayout layout;
+  layout.left = left;
+  layout.top = top;
+  layout.child_offset_left = left;
+  layout.child_offset_top = top;
+  if (!element()->IsLayoutOnly()) {
+    layout.child_offset_left = 0;
+    layout.child_offset_top = 0;
+  }
+  return layout;
+}
+
+ElementContainer::PlatformLayout
+ElementContainer::CalculateCurrentPlatformLayout() const {
+  float left = element()->left();
+  float top = element()->top();
+  if (!element()->IsFixedNewOrUnified() && element()->ZIndex() == 0) {
+    auto* ui_parent = parent();
+    auto* render_parent = element()->render_parent();
+    while (render_parent && ui_parent &&
+           ui_parent->element() != render_parent) {
+      if (render_parent->IsLayoutOnly()) {
+        left += render_parent->left();
+        top += render_parent->top();
+      }
+      render_parent = render_parent->parent();
+    }
+  }
+  return CalculatePlatformLayout(left, top);
+}
+
+// Calculate position for element and update it to impl layer.
+void ElementContainer::UpdateLayout(float left, float top,
+                                    bool transition_view) {
+  // Self is updated or self position is changed because of parent's frame
+  // changing.
+  auto layout = CalculatePlatformLayout(left, top);
+  left = layout.left;
+  top = layout.top;
+
   bool need_update_impl =
       (!transition_view || is_layouted_) &&
       (element()->frame_changed() || left != last_left_ || top != last_top_);
@@ -361,13 +398,7 @@ void ElementContainer::UpdateLayout(float left, float top,
   last_left_ = left;
   last_top_ = top;
 
-  // The offset of child's position in its real parent's coordinator.
-  float dx = left, dy = top;
-
   if (!element()->IsLayoutOnly()) {
-    dx = 0;
-    dy = 0;
-
     if (need_update_impl) {  // Update to impl layer
       painting_context()->UpdateLayout(
           element()->impl_id(), left, top, element()->width(),
@@ -392,7 +423,8 @@ void ElementContainer::UpdateLayout(float left, float top,
     while (child) {
       if (child->element_container_impl()) {
         child->element_container_impl()->UpdateLayout(
-            child->left() + dx, child->top() + dy, transition_view);
+            child->left() + layout.child_offset_left,
+            child->top() + layout.child_offset_top, transition_view);
       }
       child = child->next_render_sibling();
     }

@@ -95,6 +95,11 @@ class PaintingContext {
                                  node_index);
   }
 
+  inline void RecordInitialLynxUITreeForReplay(
+      std::vector<InitialLynxUITreeNodeForReplay> nodes) {
+    platform_impl_->RecordInitialLynxUITreeForReplay(std::move(nodes));
+  }
+
   void SetFrameAppBundle(int tag,
                          const std::shared_ptr<LynxTemplateBundle>& bundle) {
     platform_impl_->SetFrameAppBundle(tag, bundle);

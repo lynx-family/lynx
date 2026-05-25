@@ -258,6 +258,41 @@ TEST_P(FiberElementTest, TestResetFontSizeDirectlyToComputedStyle) {
       view->computed_css_style()->GetChangedBitset().Has(kPropertyIDFontSize));
 }
 
+TEST_P(FiberElementTest, GetPropBundleForRecordingBuildsCurrentSnapshot) {
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  view->SetAttribute("data-recording", lepus::Value("enabled"));
+  view->AddDataset("scene", lepus::Value("initial"));
+  view->SetJSEventHandler("tap", "bindEvent", "onTap");
+  view->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
+
+  page->FlushActionsAsRoot();
+  ASSERT_FALSE(view->prop_bundle_);
+
+  auto bundle = view->GetPropBundleForRecording();
+  auto* prop_bundle = static_cast<PropBundleMock*>(bundle.get());
+  ASSERT_NE(prop_bundle, nullptr);
+
+  const auto& props = prop_bundle->GetPropsMap();
+  auto attr = props.find("data-recording");
+  ASSERT_NE(attr, props.end());
+  EXPECT_EQ(attr->second.StdString(), "enabled");
+
+  auto dataset = props.find("dataset");
+  ASSERT_NE(dataset, props.end());
+  EXPECT_EQ(dataset->second.GetProperty("scene").StdString(), "initial");
+
+  auto opacity = props.find("opacity");
+  ASSERT_NE(opacity, props.end());
+  EXPECT_DOUBLE_EQ(opacity->second.Number(), 0.5);
+
+  const auto& events = prop_bundle->GetEventHandlers();
+  EXPECT_NE(events.find("tap"), events.end());
+}
+
 TEST_P(FiberElementTest, ElementInitTest0) {
   manager->GetLynxEnvConfig().font_scale_ = 1.3f;
   manager->GetLynxEnvConfig().font_scale_sp_only_ = false;

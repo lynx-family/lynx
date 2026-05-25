@@ -6,6 +6,7 @@
 
 #include <array>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "base/include/debug/lynx_assert.h"
@@ -65,6 +66,54 @@ void PostTaskBatchToConcurrentLoop(
         }
       },
       base::ConcurrentTaskType::HIGH_PRIORITY);
+}
+
+void CollectElementContainerForReplay(
+    ElementContainer *container, ElementContainer *ui_parent, int &ui_index,
+    std::vector<InitialLynxUITreeNodeForReplay> &nodes) {
+  if (container == nullptr || container->element() == nullptr) {
+    return;
+  }
+
+  Element *element = container->element();
+  bool is_layout_only = element->IsLayoutOnly();
+  ElementContainer *next_ui_parent = ui_parent;
+  int child_ui_index = 0;
+  if (!is_layout_only) {
+    InitialLynxUITreeNodeForReplay node;
+    node.id = element->impl_id();
+    node.tag = element->GetPlatformNodeTag().str();
+    node.painting_data = element->GetPropBundleForRecording();
+    node.flatten = element->TendToFlatten();
+    node.node_index = element->NodeIndex();
+    const auto layout = container->CalculateCurrentPlatformLayout();
+    if (ui_parent != nullptr) {
+      node.has_parent = true;
+      node.parent = ui_parent->element()->impl_id();
+      node.index = ui_index;
+      ++ui_index;
+    }
+    node.x = layout.left;
+    node.y = layout.top;
+    node.width = element->width();
+    node.height = element->height();
+    node.paddings = element->paddings();
+    node.margins = element->margins();
+    node.borders = element->borders();
+    node.has_sticky = element->is_sticky();
+    if (node.has_sticky) {
+      node.sticky = element->sticky_positions();
+    }
+    node.max_height = element->max_height();
+    nodes.emplace_back(std::move(node));
+    next_ui_parent = container;
+  }
+
+  int &next_ui_index = is_layout_only ? ui_index : child_ui_index;
+  for (auto *child : container->children()) {
+    CollectElementContainerForReplay(child, next_ui_parent, next_ui_index,
+                                     nodes);
+  }
 }
 
 }  // namespace
@@ -714,6 +763,35 @@ void ElementManager::PatchEventRelatedInfo() {
 
 PaintingContext *ElementManager::painting_context() {
   return catalyzer_->painting_context();
+}
+
+void ElementManager::RecordCurrentLynxUITree() {
+  auto finish_without_initial_tree = [this]() {
+    painting_context()->RecordInitialLynxUITreeForReplay({});
+    painting_context()->FlushImmediately();
+  };
+  if (root_ == nullptr || root_->element_container() == nullptr) {
+    finish_without_initial_tree();
+    return;
+  }
+  if (root_->EnableFragmentLayerRender()) {
+    finish_without_initial_tree();
+    return;
+  }
+  auto *root_container = root_->element_container()->CastToElementContainer();
+  if (root_container == nullptr) {
+    finish_without_initial_tree();
+    return;
+  }
+  int root_index = 0;
+  std::vector<InitialLynxUITreeNodeForReplay> nodes;
+  CollectElementContainerForReplay(root_container, nullptr, root_index, nodes);
+  if (nodes.empty()) {
+    finish_without_initial_tree();
+    return;
+  }
+  painting_context()->RecordInitialLynxUITreeForReplay(std::move(nodes));
+  painting_context()->FlushImmediately();
 }
 
 void ElementManager::UpdateViewport(float width, SLMeasureMode width_mode,

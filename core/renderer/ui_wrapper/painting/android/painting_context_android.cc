@@ -4,8 +4,10 @@
 
 #include "core/renderer/ui_wrapper/painting/android/painting_context_android.h"
 
+#include <array>
 #include <cmath>
 #include <future>
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -74,6 +76,20 @@ jlong CreatePaintingContext(JNIEnv* env, jobject jcaller,
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+constexpr size_t kInitialTreeLayoutStride = 25;
+constexpr size_t kInitialTreeXIndex = 0;
+constexpr size_t kInitialTreeYIndex = 1;
+constexpr size_t kInitialTreeWidthIndex = 2;
+constexpr size_t kInitialTreeHeightIndex = 3;
+constexpr size_t kInitialTreePaddingIndex = 4;
+constexpr size_t kInitialTreeMarginIndex = 8;
+constexpr size_t kInitialTreeBorderIndex = 12;
+constexpr size_t kInitialTreeBoundsIndex = 16;
+constexpr size_t kInitialTreeStickyIndex = 20;
+constexpr size_t kInitialTreeMaxHeightIndex = 24;
+}  // namespace
 
 PaintingContextAndroidRef::PaintingContextAndroidRef(JNIEnv* env, jobject impl)
     : java_ref_(base::android::ScopedWeakGlobalJavaRef<jobject>(env, impl)) {}
@@ -701,6 +717,134 @@ void PaintingContextAndroid::UpdateLayout(
           static_cast<int>(borders[0]), static_cast<int>(borders[1]),
           static_cast<int>(borders[2]), static_cast<int>(borders[3]),
           bounds != nullptr, sticky != nullptr, static_cast<int>(max_height)});
+}
+
+void PaintingContextAndroid::RecordInitialLynxUITreeForReplay(
+    std::vector<InitialLynxUITreeNodeForReplay> nodes) {
+  Enqueue([impl = impl_, nodes = std::move(nodes)]() {
+    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
+    if (local_ref.IsNull()) {
+      return;
+    }
+    JNIEnv* env = base::android::AttachCurrentThread();
+    const size_t size = nodes.size();
+    if (size > static_cast<size_t>(std::numeric_limits<jsize>::max()) ||
+        size > static_cast<size_t>(std::numeric_limits<jsize>::max()) /
+                   kInitialTreeLayoutStride) {
+      return;
+    }
+    const jsize java_size = static_cast<jsize>(size);
+    const size_t layout_size = size * kInitialTreeLayoutStride;
+    const jsize java_layout_size = static_cast<jsize>(layout_size);
+
+    std::vector<jint> signs(size);
+    std::vector<jint> parent_signs(size);
+    std::vector<jint> child_indexes(size);
+    std::vector<jint> node_indexes(size);
+    std::vector<jboolean> flattens(size);
+    std::vector<jboolean> has_bounds(size);
+    std::vector<jboolean> has_sticky(size);
+    std::vector<jfloat> layouts(layout_size);
+
+    auto put_quad = [](std::vector<jfloat>& values, size_t offset,
+                       const std::array<float, 4>& quad) {
+      values[offset] = quad[0];
+      values[offset + 1] = quad[1];
+      values[offset + 2] = quad[2];
+      values[offset + 3] = quad[3];
+    };
+
+    base::android::ScopedLocalJavaRef<jclass> string_class(
+        env, env->FindClass("java/lang/String"));
+    base::android::ScopedLocalJavaRef<jclass> object_class(
+        env, env->FindClass("java/lang/Object"));
+    base::android::ScopedLocalJavaRef<jobjectArray> tag_names(
+        env, env->NewObjectArray(java_size, string_class.Get(), nullptr));
+    base::android::ScopedLocalJavaRef<jobjectArray> bundles(
+        env, env->NewObjectArray(java_size, object_class.Get(), nullptr));
+    base::android::ScopedLocalJavaRef<jobjectArray> styles(
+        env, env->NewObjectArray(java_size, object_class.Get(), nullptr));
+
+    for (size_t index = 0; index < size; ++index) {
+      const auto& node = nodes[index];
+      const jsize java_index = static_cast<jsize>(index);
+      signs[index] = node.id;
+      parent_signs[index] = node.has_parent ? node.parent : -1;
+      child_indexes[index] = node.has_parent ? node.index : -1;
+      node_indexes[index] = static_cast<jint>(node.node_index);
+      flattens[index] = static_cast<jboolean>(node.flatten);
+      has_bounds[index] = static_cast<jboolean>(node.has_bounds);
+      has_sticky[index] = static_cast<jboolean>(node.has_sticky);
+
+      const size_t layout_offset = index * kInitialTreeLayoutStride;
+      layouts[layout_offset + kInitialTreeXIndex] = node.x;
+      layouts[layout_offset + kInitialTreeYIndex] = node.y;
+      layouts[layout_offset + kInitialTreeWidthIndex] = node.width;
+      layouts[layout_offset + kInitialTreeHeightIndex] = node.height;
+      put_quad(layouts, layout_offset + kInitialTreePaddingIndex,
+               node.paddings);
+      put_quad(layouts, layout_offset + kInitialTreeMarginIndex, node.margins);
+      put_quad(layouts, layout_offset + kInitialTreeBorderIndex, node.borders);
+      put_quad(layouts, layout_offset + kInitialTreeBoundsIndex, node.bounds);
+      put_quad(layouts, layout_offset + kInitialTreeStickyIndex, node.sticky);
+      layouts[layout_offset + kInitialTreeMaxHeightIndex] = node.max_height;
+
+      auto tag_ref = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+          env, node.tag.c_str());
+      env->SetObjectArrayElement(tag_names.Get(), java_index, tag_ref.Get());
+
+      PropBundleAndroid* pda =
+          static_cast<PropBundleAndroid*>(node.painting_data.get());
+      if (pda != nullptr) {
+        env->SetObjectArrayElement(bundles.Get(), java_index,
+                                   pda->jni_object());
+        auto styles_ref = pda->GetStyleMapBuffer();
+        env->SetObjectArrayElement(styles.Get(), java_index, styles_ref.Get());
+      }
+    }
+
+    base::android::ScopedLocalJavaRef<jintArray> signs_ref(
+        env, env->NewIntArray(java_size));
+    base::android::ScopedLocalJavaRef<jintArray> parent_signs_ref(
+        env, env->NewIntArray(java_size));
+    base::android::ScopedLocalJavaRef<jintArray> child_indexes_ref(
+        env, env->NewIntArray(java_size));
+    base::android::ScopedLocalJavaRef<jintArray> node_indexes_ref(
+        env, env->NewIntArray(java_size));
+
+    base::android::ScopedLocalJavaRef<jbooleanArray> flattens_ref(
+        env, env->NewBooleanArray(java_size));
+    base::android::ScopedLocalJavaRef<jbooleanArray> has_bounds_ref(
+        env, env->NewBooleanArray(java_size));
+    base::android::ScopedLocalJavaRef<jbooleanArray> has_sticky_ref(
+        env, env->NewBooleanArray(java_size));
+
+    base::android::ScopedLocalJavaRef<jfloatArray> layouts_ref(
+        env, env->NewFloatArray(java_layout_size));
+    if (java_size > 0) {
+      env->SetIntArrayRegion(signs_ref.Get(), 0, java_size, signs.data());
+      env->SetIntArrayRegion(parent_signs_ref.Get(), 0, java_size,
+                             parent_signs.data());
+      env->SetIntArrayRegion(child_indexes_ref.Get(), 0, java_size,
+                             child_indexes.data());
+      env->SetIntArrayRegion(node_indexes_ref.Get(), 0, java_size,
+                             node_indexes.data());
+      env->SetBooleanArrayRegion(flattens_ref.Get(), 0, java_size,
+                                 flattens.data());
+      env->SetBooleanArrayRegion(has_bounds_ref.Get(), 0, java_size,
+                                 has_bounds.data());
+      env->SetBooleanArrayRegion(has_sticky_ref.Get(), 0, java_size,
+                                 has_sticky.data());
+      env->SetFloatArrayRegion(layouts_ref.Get(), 0, java_layout_size,
+                               layouts.data());
+    }
+
+    Java_PaintingContext_recordInitialTreeForReplay(
+        env, local_ref.Get(), signs_ref.Get(), tag_names.Get(), bundles.Get(),
+        styles.Get(), flattens_ref.Get(), node_indexes_ref.Get(),
+        parent_signs_ref.Get(), child_indexes_ref.Get(), layouts_ref.Get(),
+        has_bounds_ref.Get(), has_sticky_ref.Get());
+  });
 }
 
 void PaintingContextAndroid::UpdatePaintingNode(
