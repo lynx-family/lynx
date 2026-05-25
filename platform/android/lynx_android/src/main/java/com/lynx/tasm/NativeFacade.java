@@ -32,6 +32,7 @@ import com.lynx.tasm.provider.LynxResourceCallback;
 import com.lynx.tasm.provider.LynxResourceProvider;
 import com.lynx.tasm.provider.LynxResourceRequest;
 import com.lynx.tasm.provider.LynxResourceResponse;
+import com.lynx.tasm.recording.LynxFrameRecorder;
 import com.lynx.tasm.theme.LynxTheme;
 import com.lynx.tasm.utils.CallStackUtil;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -564,10 +565,22 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
   }
 
   @CalledByNative
-  private void startRecording(ReadableMap params) {}
+  private void startRecording(ReadableMap params) {
+    int instanceId = getInstanceId();
+    if (instanceId == LynxContext.INSTANCE_ID_DEFAULT) {
+      return;
+    }
+    LynxFrameRecorder.inst().startRecording(instanceId);
+  }
 
   @CalledByNative
-  private void stopRecording(ReadableMap params) {}
+  private void stopRecording(ReadableMap params) {
+    int instanceId = getInstanceId();
+    if (instanceId == LynxContext.INSTANCE_ID_DEFAULT) {
+      return;
+    }
+    LynxFrameRecorder.inst().stopRecording(instanceId);
+  }
 
   @CalledByNative
   private void onTemplateBundleReady(TemplateBundle bundle) {

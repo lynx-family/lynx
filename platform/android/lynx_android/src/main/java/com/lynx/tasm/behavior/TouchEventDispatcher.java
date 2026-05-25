@@ -44,12 +44,14 @@ import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.event.LynxTouchEvent.Point;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.handler.GestureConstants;
+import com.lynx.tasm.recording.LynxFrameRecorder;
 import com.lynx.tasm.utils.PixelUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -166,6 +168,40 @@ public class TouchEventDispatcher {
     mActiveUIMap = new HashMap<>();
     mActiveTargetMap = new HashMap<>();
     mGestureArenaManager = owner.getGestureArenaManager();
+  }
+
+  private int getInstanceId() {
+    LynxContext context = mUIOwner != null ? mUIOwner.getContext() : null;
+    return context != null ? context.getInstanceId() : LynxContext.INSTANCE_ID_DEFAULT;
+  }
+
+  private void recordTouchFrame(String eventName, MotionEvent ev) {
+    int instanceId = getInstanceId();
+    if (!LynxFrameRecorder.inst().isRecordingEnabled(instanceId)) {
+      return;
+    }
+    int eventType;
+    if (EVENT_TOUCH_START.equals(eventName)) {
+      eventType = LynxFrameRecorder.EVENT_LYNX_TOUCH_START;
+    } else if (EVENT_TOUCH_MOVE.equals(eventName)) {
+      eventType = LynxFrameRecorder.EVENT_LYNX_TOUCH_MOVE;
+    } else if (EVENT_TOUCH_END.equals(eventName)) {
+      eventType = LynxFrameRecorder.EVENT_LYNX_TOUCH_END;
+    } else if (EVENT_TOUCH_CANCEL.equals(eventName)) {
+      eventType = LynxFrameRecorder.EVENT_LYNX_TOUCH_CANCEL;
+    } else {
+      return;
+    }
+
+    List<LynxFrameRecorder.TouchPointPayload> points = new ArrayList<>(ev.getPointerCount());
+    for (int i = 0; i < ev.getPointerCount(); i++) {
+      EventTargetDetail detail = mActiveUIMap.get(ev.getPointerId(i));
+      EventTarget target = detail != null ? detail.getUI() : mActiveUI;
+      Integer targetId = target != null ? target.getSign() : null;
+      points.add(new LynxFrameRecorder.TouchPointPayload(
+          ev.getX(i), ev.getY(i), ev.getPointerId(i), targetId));
+    }
+    LynxFrameRecorder.inst().recordTouch(instanceId, eventType, points, ev.getEventTime());
   }
 
   /**
@@ -710,6 +746,7 @@ public class TouchEventDispatcher {
   // dispatch event for touch* .
   // TODO(hexionghui): Merge two dispatchEvent interfaces into one.
   private void dispatchEvent(String eventName, MotionEvent ev, JavaOnlyMap map) {
+    recordTouchFrame(eventName, ev);
     mFirstLynxTouchEvent = initialFirstLynxTouchEvent(mActiveUI, eventName, ev);
     mFirstLynxTouchEvent.setMotionEvent(ev);
     LynxTouchEvent event = new LynxTouchEvent(eventName, map);
@@ -725,6 +762,7 @@ public class TouchEventDispatcher {
 
   // dispatch event for tap, click, longpress.
   private void dispatchEvent(EventTarget target, String eventName, MotionEvent ev) {
+    recordTouchFrame(eventName, ev);
     mTargetPoint = convertToViewPoint(mActiveUI, new Point(ev.getX(0), ev.getY(0)));
     LynxTouchEvent.Point pagePoint = new LynxTouchEvent.Point(ev.getX(0), ev.getY(0));
     PointF point = LynxUIHelper.convertPointFromUIToScreen(

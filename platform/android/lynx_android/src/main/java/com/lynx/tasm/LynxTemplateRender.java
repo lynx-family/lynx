@@ -80,6 +80,7 @@ import com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.performance.timing.TimingConstants;
 import com.lynx.tasm.provider.*;
+import com.lynx.tasm.recording.LynxFrameRecorder;
 import com.lynx.tasm.resourceprovider.LynxResourceCallback;
 import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.resourceprovider.LynxResourceResponse;
@@ -2362,6 +2363,9 @@ public class LynxTemplateRender
     // the front end can receive events.
     if (mLynxContext != null) {
       mLynxContext.clearExposure();
+      int instanceId = mLynxContext.getInstanceId();
+      LynxFrameRecorder.inst().stopRecording(instanceId);
+      LynxFrameRecorder.inst().clearFrameCallback(instanceId);
     }
     recycleUpdatedDataList();
     recycleGlobalPropsSafely();

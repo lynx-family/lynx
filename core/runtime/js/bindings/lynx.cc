@@ -555,6 +555,8 @@ std::vector<PropNameID> LynxProxy::getPropertyNames(Runtime &rt) {
                                  "createElement",
                                  "fetchDynamicComponent",
                                  "reload",
+                                 "startRecording",
+                                 "stopRecording",
                                  "QueryComponent",
                                  "addFont",
                                  tasm::kGetTextInfo,

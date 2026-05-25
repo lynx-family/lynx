@@ -49,6 +49,7 @@ import com.lynx.tasm.image.model.LynxImageFetcher;
 import com.lynx.tasm.loader.LynxFontFaceLoader;
 import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.provider.LynxProviderRegistry;
+import com.lynx.tasm.recording.LynxFrameRecorder;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
@@ -171,6 +172,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private String tapSlop = TouchEventDispatcher.mTapSlopDefault;
 
   private LynxFrameViewProvider mLynxFrameViewProvider;
+  private final LynxFrameRecorder.FrameCallback mFrameCallback = new ContextFrameCallback(this);
 
   public LynxContext(Context base, DisplayMetrics screenMetrics) {
     super(base);
@@ -606,6 +608,22 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
         LynxViewClientV2 lynxViewClientV2 = weakLynxViewClientV2.get();
         if (lynxViewClientV2 != null) {
           lynxViewClientV2.onResourceLoaded(info);
+        }
+      }
+    });
+  }
+
+  private void notifyLynxFrame(@NonNull JSONObject frame) {
+    final WeakReference<LynxViewClientV2> weakLynxViewClientV2 = mLynxViewClientV2;
+    if (weakLynxViewClientV2 == null) {
+      return;
+    }
+    LynxEventReporter.runOnReportThread(new Runnable() {
+      @Override
+      public void run() {
+        LynxViewClientV2 lynxViewClientV2 = weakLynxViewClientV2.get();
+        if (lynxViewClientV2 != null) {
+          lynxViewClientV2.onLynxFrame(frame);
         }
       }
     });
@@ -1483,7 +1501,35 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public void setInstanceId(int instanceId) {
+    if (mInstanceId != INSTANCE_ID_DEFAULT && mInstanceId != instanceId) {
+      LynxFrameRecorder.inst().stopRecording(mInstanceId);
+      LynxFrameRecorder.inst().clearFrameCallback(mInstanceId);
+    }
     this.mInstanceId = instanceId;
+    syncFrameRecorderCallback();
+  }
+
+  private void syncFrameRecorderCallback() {
+    if (mInstanceId == INSTANCE_ID_DEFAULT) {
+      return;
+    }
+    LynxFrameRecorder.inst().setFrameCallback(mInstanceId, mFrameCallback);
+  }
+
+  private static final class ContextFrameCallback implements LynxFrameRecorder.FrameCallback {
+    private final WeakReference<LynxContext> mContextRef;
+
+    private ContextFrameCallback(LynxContext context) {
+      mContextRef = new WeakReference<>(context);
+    }
+
+    @Override
+    public void onLynxFrame(JSONObject frame) {
+      LynxContext context = mContextRef.get();
+      if (context != null) {
+        context.notifyLynxFrame(frame);
+      }
+    }
   }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)

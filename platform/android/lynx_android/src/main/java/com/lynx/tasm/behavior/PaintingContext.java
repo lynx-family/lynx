@@ -34,6 +34,7 @@ import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.performance.PerformanceController;
+import com.lynx.tasm.recording.LynxFrameRecorder;
 import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.util.Iterator;
@@ -115,6 +116,65 @@ public final class PaintingContext implements IPaintingContext {
         this, mTextLayout, mTextra, threadStrategy, mUIOwner.isContextFree());
   }
 
+  private int getInstanceId() {
+    LynxContext context = mUIOwner != null ? mUIOwner.getContext() : null;
+    return context != null ? context.getInstanceId() : LynxContext.INSTANCE_ID_DEFAULT;
+  }
+
+  private boolean isRecordingEnabled() {
+    return LynxFrameRecorder.inst().isRecordingEnabled(getInstanceId());
+  }
+
+  private void recordCreateNode(int sign, String tagName, PropBundle bundle,
+      ReadableMapBuffer initialStyles, boolean isFlatten, int nodeIndex) {
+    if (!isRecordingEnabled()) {
+      return;
+    }
+    LynxFrameRecorder.inst().recordCreateNode(
+        getInstanceId(), sign, tagName, bundle, initialStyles, isFlatten, nodeIndex);
+  }
+
+  private void recordNodeRelation(int eventType, int parentSign, int childSign, Integer index) {
+    if (!isRecordingEnabled()) {
+      return;
+    }
+    LynxFrameRecorder.inst().recordNodeRelation(
+        getInstanceId(), eventType, parentSign, childSign, index);
+  }
+
+  private void recordUpdateProps(
+      int sign, boolean tendToFlatten, PropBundle bundle, ReadableMapBuffer styles) {
+    if (!isRecordingEnabled()) {
+      return;
+    }
+    LynxFrameRecorder.inst().recordUpdateProps(
+        getInstanceId(), sign, tendToFlatten, bundle, styles);
+  }
+
+  private void recordUpdateLayout(int sign, float x, float y, float width, float height,
+      float paddingLeft, float paddingTop, float paddingRight, float paddingBottom,
+      float marginLeft, float marginTop, float marginRight, float marginBottom,
+      float borderLeftWidth, float borderTopWidth, float borderRightWidth, float borderBottomWidth,
+      Rect bounds, float[] sticky, float maxHeight, int nodeIndex) {
+    if (!isRecordingEnabled()) {
+      return;
+    }
+    LynxFrameRecorder.inst().recordUpdateLayout(getInstanceId(), sign, x, y, width, height,
+        new float[] {paddingLeft, paddingTop, paddingRight, paddingBottom},
+        new float[] {marginLeft, marginTop, marginRight, marginBottom},
+        new float[] {borderLeftWidth, borderTopWidth, borderRightWidth, borderBottomWidth},
+        bounds != null ? new float[] {bounds.left, bounds.top, bounds.right, bounds.bottom} : null,
+        sticky, maxHeight, nodeIndex);
+  }
+
+  private void recordInvoke(
+      int sign, String method, ReadableMap params, long context, int callback) {
+    if (!isRecordingEnabled()) {
+      return;
+    }
+    LynxFrameRecorder.inst().recordInvoke(getInstanceId(), sign, method, params, context, callback);
+  }
+
   // this func will be execed on main thread.
   @Override
   public void destroy() {
@@ -192,7 +252,7 @@ public final class PaintingContext implements IPaintingContext {
       float marginRight, float marginBottom, float borderLeftWidth, float borderTopWidth,
       float borderRightWidth, float borderBottomWidth, float[] bounds, float[] sticky,
       float maxHeight, int nodeIndex) {
-    mUIOwner.updateLayout(sign, (int) x, (int) y, (int) width, (int) height, (int) paddingLeft,
+    setLayoutData(sign, (int) x, (int) y, (int) width, (int) height, (int) paddingLeft,
         (int) paddingTop, (int) paddingRight, (int) paddingBottom, (int) marginLeft,
         (int) marginTop, (int) marginRight, (int) marginBottom, (int) borderLeftWidth,
         (int) borderTopWidth, (int) borderRightWidth, (int) borderBottomWidth,
@@ -213,6 +273,7 @@ public final class PaintingContext implements IPaintingContext {
   @CalledByNative
   public void updateProps(
       int sign, boolean tendToFlatten, PropBundle bundle, ReadableMapBuffer styles) {
+    recordUpdateProps(sign, tendToFlatten, bundle, styles);
     // Convert event listeners and gesture detectors to appropriate data structures.
     ReadableMap props = bundle != null ? bundle.getProps() : null;
     Map<String, EventsListener> listeners =
@@ -235,6 +296,7 @@ public final class PaintingContext implements IPaintingContext {
       ReadableMap initialProps = bundle != null ? bundle.getProps() : null;
       ReadableArray eventListeners = bundle != null ? bundle.getEventHandlers() : null;
       ReadableArray gestureDetectors = bundle != null ? bundle.getGestures() : null;
+      recordCreateNode(sign, finalTagName, bundle, initialStyles, isFlatten, nodeIndex);
       final Future<Runnable> future = createNodeAsync(sign, finalTagName, initialProps,
           initialStyles, eventListeners, isFlatten, nodeIndex, gestureDetectors);
       return new Runnable() {
@@ -290,6 +352,7 @@ public final class PaintingContext implements IPaintingContext {
   @CalledByNative
   public void createPaintingNodeSync(int sign, String tagName, PropBundle bundle,
       ReadableMapBuffer initialStyles, boolean isFlatten, int nodeIndex) {
+    recordCreateNode(sign, tagName, bundle, initialStyles, isFlatten, nodeIndex);
     ReadableMap initialProps = bundle != null ? bundle.getProps() : null;
     ReadableArray eventListeners = bundle != null ? bundle.getEventHandlers() : null;
     ReadableArray gestureDetectors = bundle != null ? bundle.getGestures() : null;
@@ -318,6 +381,7 @@ public final class PaintingContext implements IPaintingContext {
   @CalledByNative
   public Object createPaintingNodeAsync(int sign, String tagName, PropBundle bundle,
       ReadableMapBuffer initialStyles, boolean isFlatten, int nodeIndex) {
+    recordCreateNode(sign, tagName, bundle, initialStyles, isFlatten, nodeIndex);
     ReadableMap initialProps = bundle != null ? bundle.getProps() : null;
     ReadableArray eventListeners = bundle != null ? bundle.getEventHandlers() : null;
     ReadableArray gestureDetectors = bundle != null ? bundle.getGestures() : null;
@@ -384,16 +448,19 @@ public final class PaintingContext implements IPaintingContext {
 
   @CalledByNative
   public void insertNode(int parentSign, int childSign, int index) {
+    recordNodeRelation(LynxFrameRecorder.EVENT_LYNX_UI_INSERT_NODE, parentSign, childSign, index);
     mUIOwner.insert(parentSign, childSign, index);
   }
 
   @CalledByNative
   public void removeNode(int parentSign, int childSign) {
+    recordNodeRelation(LynxFrameRecorder.EVENT_LYNX_UI_REMOVE_NODE, parentSign, childSign, null);
     mUIOwner.remove(parentSign, childSign);
   }
 
   @CalledByNative
   public void destroyNode(int parentSign, int childSign) {
+    recordNodeRelation(LynxFrameRecorder.EVENT_LYNX_UI_DESTROY_NODE, parentSign, childSign, null);
     mUIOwner.destroy(parentSign, childSign);
   }
 
@@ -697,6 +764,7 @@ public final class PaintingContext implements IPaintingContext {
   @CalledByNative
   public void invoke(
       int sign, String method, ReadableMap params, final long context, final int callback) {
+    recordInvoke(sign, method, params, context, callback);
     UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
       private void cb(Object... args) {
         if (mDestroyed || mUIOwner.getContext() == null) {
@@ -723,8 +791,11 @@ public final class PaintingContext implements IPaintingContext {
   private void setLayoutData(int sign, int x, int y, int width, int height, int paddingLeft,
       int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop,
       int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth,
-      int borderRightWidth, int borderBottomWidth, Rect bounds, float[] sticky, int maxHeight,
+      int borderRightWidth, int borderBottomWidth, Rect bounds, float[] sticky, float maxHeight,
       int nodeIndex) {
+    recordUpdateLayout(sign, x, y, width, height, paddingLeft, paddingTop, paddingRight,
+        paddingBottom, marginLeft, marginTop, marginRight, marginBottom, borderLeftWidth,
+        borderTopWidth, borderRightWidth, borderBottomWidth, bounds, sticky, maxHeight, nodeIndex);
     mUIOwner.updateLayout(sign, x, y, width, height, paddingLeft, paddingTop, paddingRight,
         paddingBottom, marginLeft, marginTop, marginRight, marginBottom, borderLeftWidth,
         borderTopWidth, borderRightWidth, borderBottomWidth, bounds, sticky, maxHeight, nodeIndex);
