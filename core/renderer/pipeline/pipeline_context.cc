@@ -116,7 +116,7 @@ void PipelineContext::ResetResolveRequested() {
     return;
   }
   options_->resolve_requested = false;
-  options_->target_node = nullptr;
+  options_->target_node = PipelineOptions::kInvalidTargetNodeId;
 }
 
 void PipelineContext::ResetLayoutRequested() {

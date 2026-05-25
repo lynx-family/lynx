@@ -5040,7 +5040,8 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   // redundant logic here.
   if (current_option->enable_unified_pixel_pipeline) {
     current_option->resolve_requested = true;
-    current_option->target_node = element;
+    current_option->target_node =
+        element ? element->impl_id() : PipelineOptions::kInvalidTargetNodeId;
     current_option->need_trigger_data_updated_ = trigger_data_updated;
   } else {
     self->page_proxy()->element_manager()->OnPatchFinish(current_option,
