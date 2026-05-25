@@ -10496,6 +10496,7 @@ public class com::lynx::tasm::behavior::TouchEventDispatcher :  {
   public void com.lynx.tasm.behavior.TouchEventDispatcher.handleOtherTouchUp(MotionEvent ev);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.handleFirstTouchUp(MotionEvent ev);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.handleTouchCancel(MotionEvent ev);
+  public void com.lynx.tasm.behavior.TouchEventDispatcher.dispatchActiveUITouch(MotionEvent ev);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.onPlatformGestureStatusChanged(int status);
   public boolean com.lynx.tasm.behavior.TouchEventDispatcher.onInterceptTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.TouchEventDispatcher.onTouchEvent(MotionEvent ev, UIGroup rootUi);
