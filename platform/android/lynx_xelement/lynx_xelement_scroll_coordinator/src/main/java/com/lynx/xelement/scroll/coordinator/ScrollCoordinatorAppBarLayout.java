@@ -66,6 +66,12 @@ public class ScrollCoordinatorAppBarLayout
     enableTouchStopFling = enabled;
   }
 
+  public void stopFling() {
+    Behavior behavior = (Behavior) getBehavior();
+    behavior.stopAppBarLayoutFling(this);
+    behavior.resetFlingStatus();
+  }
+
   class Behavior extends AppBarLayout.Behavior {
     private static final int TYPE_FLING = 1;
     private boolean isFlinging;
@@ -288,11 +294,15 @@ public class ScrollCoordinatorAppBarLayout
     public void onStopNestedScroll(
         CoordinatorLayout coordinatorLayout, AppBarLayout appBarLayout, View target, int type) {
       super.onStopNestedScroll(coordinatorLayout, appBarLayout, target, type);
-      isFlinging = false;
-      shouldBlockNestedScroll = false;
+      resetFlingStatus();
       if (scrollListener != null) {
         scrollListener.onScrollStop();
       }
+    }
+
+    private void resetFlingStatus() {
+      isFlinging = false;
+      shouldBlockNestedScroll = false;
     }
   }
 }
