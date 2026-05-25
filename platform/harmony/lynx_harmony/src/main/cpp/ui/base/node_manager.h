@@ -150,6 +150,9 @@ class BASE_EXPORT NodeManager {
                                     ArkUI_GesturePriority mode,
                                     ArkUI_GestureMask mask);
 
+  LYNX_EXPORT void RemoveGestureFromNode(ArkUI_NodeHandle node,
+                                         ArkUI_GestureRecognizer* recognizer);
+
   LYNX_EXPORT void DisposeGesture(ArkUI_GestureRecognizer* recognizer);
 
   void SetEventDispatcher(EventDispatcher* dispatcher) {
