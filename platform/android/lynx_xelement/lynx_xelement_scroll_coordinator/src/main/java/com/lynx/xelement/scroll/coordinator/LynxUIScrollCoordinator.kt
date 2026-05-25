@@ -444,6 +444,7 @@ open class LynxUIScrollCoordinator(
       if (params.hasKey("smooth")) {
         enableAnimation = params.getBoolean("smooth")
       }
+      coordinatorLayout.stopFling()
       if (enableAnimation) {
         animateToOffset(offsetPx = offset)
       } else {
