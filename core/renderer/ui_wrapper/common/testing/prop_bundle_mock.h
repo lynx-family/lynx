@@ -78,6 +78,7 @@ class PropBundleMock : public PropBundle {
   static fml::RefPtr<PropBundle> CreateForMock();
 
   const std::map<std::string, lepus::Value>& GetPropsMap() const;
+  const std::unordered_set<std::string>& GetEventHandlers() const;
 
  private:
   std::unordered_set<std::string> event_handler_;

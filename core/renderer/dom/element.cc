@@ -1421,6 +1421,78 @@ void Element::PreparePropBundleIfNeed() {
   }
 }
 
+fml::RefPtr<PropBundle> Element::GetPropBundleForRecording() {
+  auto bundle = element_manager()->GetPropBundleCreator()->CreatePropBundle(
+      element_manager_->GetEnableUseMapBuffer(), EnableFragmentLayerRender());
+  PushCurrentPropsToBundleForRecording(bundle.get());
+  return bundle;
+}
+
+void Element::PushCurrentPropsToBundleForRecording(PropBundle* bundle) {
+  if (bundle == nullptr) {
+    return;
+  }
+
+  if (data_model_) {
+    for (const auto& [key, value] : data_model_->attributes()) {
+      bundle->SetProps(key.c_str(), pub::ValueImplLepus(value));
+    }
+    for (const auto& [key, value] : updated_attr_map_) {
+      bundle->SetProps(key.c_str(), pub::ValueImplLepus(value));
+    }
+
+    const auto& dataset = data_model_->dataset();
+    if (!dataset.empty()) {
+      lepus::Value dataset_val(lepus::Dictionary::Create());
+      for (const auto& [key, value] : dataset) {
+        dataset_val.SetProperty(key, value);
+      }
+      bundle->SetProps("dataset", pub::ValueImplLepus(dataset_val));
+    }
+
+    auto push_events = [bundle](const EventMap& events) {
+      for (const auto& event : events) {
+        if (event.second) {
+          bundle->SetEventHandler(event.second->ToPubLepusValue());
+        }
+      }
+    };
+    push_events(data_model_->static_events());
+    push_events(data_model_->lepus_events());
+    push_events(data_model_->global_bind_events());
+
+    for (const auto& gesture : data_model_->gesture_detectors()) {
+      if (gesture.second) {
+        bundle->SetGestureDetector(*gesture.second);
+      }
+    }
+  }
+
+  if (pseudo_elements_.has_value()) {
+    for (const auto& pseudo_element : *pseudo_elements_) {
+      pseudo_element.second->PushCurrentPropertiesToBundle(bundle);
+    }
+  }
+
+  if (EnableFragmentLayerRender() && !IsShadowNodeCustom()) {
+    return;
+  }
+
+  auto* style = computed_css_style();
+  if (style == nullptr) {
+    return;
+  }
+  for (const auto& style_prop : style->GetResolvedValues()) {
+    const auto id = style_prop.first;
+    if (CSSProperty::IsTransitionProps(id) ||
+        CSSProperty::IsKeyframeProps(id) || LayoutProperty::IsLayoutOnly(id) ||
+        !starlight::ComputedCSSStyle::IsPlatformProperty(id)) {
+      continue;
+    }
+    PropBundleStyleWriter::PushStyleToBundle(bundle, id, style);
+  }
+}
+
 void Element::ResetPropBundle() {
   if (prop_bundle_) {
     // TODO(songshourui.null): Consider removing dependency on pre_prop_bundle_

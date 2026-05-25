@@ -13,12 +13,14 @@
 namespace lynx {
 namespace tasm {
 class FiberElement;
+class PropBundle;
 
 class PseudoElement {
  public:
   PseudoElement(PseudoState state, FiberElement* holder_element);
 
   void UpdateStyleMap(const StyleMap& new_style_map);
+  void PushCurrentPropertiesToBundle(PropBundle* bundle);
 
   starlight::ComputedCSSStyle* ComputedCSSStyle() {
     return platform_css_style_.get();
@@ -29,6 +31,9 @@ class PseudoElement {
   void SetHolderElementProperty(CSSPropertyID id);
   void SetPseudoStylesInternal(
       CSSPropertyID id,
+      const std::unordered_map<CSSPropertyID, const char*>& map);
+  void PushPseudoStylesToBundle(
+      PropBundle* bundle,
       const std::unordered_map<CSSPropertyID, const char*>& map);
   void UpdatePropertyFromStyleMap(const StyleMap& style_map);
 

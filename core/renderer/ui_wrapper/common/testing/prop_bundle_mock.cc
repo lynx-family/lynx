@@ -60,7 +60,12 @@ bool PropBundleMock::Contains(const char* key) const {
   return props_.find(key) != props_.end();
 }
 
-void PropBundleMock::SetEventHandler(const pub::Value& event) {}
+void PropBundleMock::SetEventHandler(const pub::Value& event) {
+  auto event_value = lynx::pub::ValueUtils::ConvertValueToLepusValue(event);
+  if (event_value.IsArray() && event_value.Array()->size() > 0) {
+    event_handler_.insert(event_value.Array()->get(0).StdString());
+  }
+}
 
 void PropBundleMock::SetGestureDetector(const GestureDetector& detector) {}
 
@@ -88,6 +93,11 @@ void PropBundleMock::SetPropsByID(CSSPropertyID id, const uint32_t* data,
 
 const std::map<std::string, lepus::Value>& PropBundleMock::GetPropsMap() const {
   return props_;
+}
+
+const std::unordered_set<std::string>& PropBundleMock::GetEventHandlers()
+    const {
+  return event_handler_;
 }
 
 fml::RefPtr<PropBundle> PropBundleCreatorDefault::CreatePropBundle() {

@@ -287,6 +287,8 @@ class ElementManager : public ElementContextDelegate,
   inline Catalyzer *catalyzer() { return catalyzer_.get(); }
   inline NodeManager *node_manager() { return node_manager_.get(); }
 
+  void RecordCurrentLynxUITree();
+
   inline void SetRoot(Element *node) { root_ = node; }
   Element *root() { return root_; }
 
@@ -1081,8 +1083,8 @@ class ElementManager : public ElementContextDelegate,
     return parallel_task_queue_;
   }
 
-  std::list<base::OnceTaskRefptr<ParallelFlushReturn>> &
-  ParallelResolveTreeTasks() {
+  auto ParallelResolveTreeTasks()
+      -> std::list<base::OnceTaskRefptr<ParallelFlushReturn>> & {
     return parallel_resolve_tree_tasks_queue_;
   }
 

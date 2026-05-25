@@ -5,6 +5,7 @@
 #ifndef CORE_PUBLIC_PAINTING_CTX_PLATFORM_IMPL_H_
 #define CORE_PUBLIC_PAINTING_CTX_PLATFORM_IMPL_H_
 
+#include <array>
 #include <atomic>
 #include <memory>
 #include <string>
@@ -80,6 +81,31 @@ struct PaintingCtxPlatformImplConfig {
   bool enable_native_schedule_create_view_async;
 };
 
+struct InitialLynxUITreeNodeForReplay {
+  int id = 0;
+  std::string tag;
+  fml::RefPtr<PropBundle> painting_data;
+  bool flatten = false;
+  uint32_t node_index = 0;
+
+  bool has_parent = false;
+  int parent = 0;
+  int index = 0;
+
+  float x = 0.0f;
+  float y = 0.0f;
+  float width = 0.0f;
+  float height = 0.0f;
+  std::array<float, 4> paddings = {};
+  std::array<float, 4> margins = {};
+  std::array<float, 4> borders = {};
+  std::array<float, 4> bounds = {};
+  bool has_bounds = false;
+  std::array<float, 4> sticky = {};
+  bool has_sticky = false;
+  float max_height = 0.0f;
+};
+
 class PaintingCtxPlatformImpl {
  public:
   virtual ~PaintingCtxPlatformImpl() {}
@@ -117,6 +143,8 @@ class PaintingCtxPlatformImpl {
                             const float* margins, const float* borders,
                             const float* bounds, const float* sticky,
                             float max_height, uint32_t node_index) = 0;
+  virtual void RecordInitialLynxUITreeForReplay(
+      std::vector<InitialLynxUITreeNodeForReplay> nodes) {}
   virtual void UpdatePlatformExtraBundle(int32_t id,
                                          PlatformExtraBundle* bundle) {}
 

@@ -464,9 +464,9 @@ void BTSRuntimeMediator::StartRecording(const lepus::Value& value) {
         "StartRecording not supported on runtime standalone mode");
     return;
   }
-  facade_actor_->ActAsync(
-      [value = lepus::Value::ShallowCopy(value)](auto& facade) mutable {
-        facade->StartRecording(value);
+  engine_actor_->ActAsync(
+      [value = lepus::Value::ShallowCopy(value)](auto& engine) mutable {
+        engine->StartRecording(value);
       });
 }
 
@@ -476,9 +476,9 @@ void BTSRuntimeMediator::StopRecording(const lepus::Value& value) {
         "StopRecording not supported on runtime standalone mode");
     return;
   }
-  facade_actor_->ActAsync(
-      [value = lepus::Value::ShallowCopy(value)](auto& facade) mutable {
-        facade->StopRecording(value);
+  engine_actor_->ActAsync(
+      [value = lepus::Value::ShallowCopy(value)](auto& engine) mutable {
+        engine->StopRecording(value);
       });
 }
 

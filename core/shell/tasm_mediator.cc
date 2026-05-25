@@ -52,6 +52,20 @@ void TasmMediator::OnDataUpdated() {
   facade_actor_->Act([](auto& facade) { facade->OnDataUpdated(); });
 }
 
+void TasmMediator::StartRecording(const lepus::Value& value) {
+  facade_actor_->ActSync(
+      [value = lepus::Value::ShallowCopy(value)](auto& facade) mutable {
+        facade->StartRecording(value);
+      });
+}
+
+void TasmMediator::StopRecording(const lepus::Value& value) {
+  facade_actor_->ActSync(
+      [value = lepus::Value::ShallowCopy(value)](auto& facade) mutable {
+        facade->StopRecording(value);
+      });
+}
+
 void TasmMediator::OnPageUpdated(bool is_first_screen) {
   facade_actor_->Act([is_first_screen](auto& facade) {
     facade->OnPageChanged(is_first_screen);

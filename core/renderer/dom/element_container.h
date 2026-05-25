@@ -21,6 +21,13 @@ namespace tasm {
 
 class ElementContainer : public BaseElementContainer {
  public:
+  struct PlatformLayout {
+    float left = 0.f;
+    float top = 0.f;
+    float child_offset_left = 0.f;
+    float child_offset_top = 0.f;
+  };
+
   explicit ElementContainer(Element* element);
   ~ElementContainer() override;
 
@@ -46,6 +53,8 @@ class ElementContainer : public BaseElementContainer {
 
   void UpdateLayout(float left, float top,
                     bool transition_view = false) override;
+  PlatformLayout CalculatePlatformLayout(float left, float top) const;
+  PlatformLayout CalculateCurrentPlatformLayout() const;
   void UpdateLayoutWithoutChange() override;
 
   void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle) override;

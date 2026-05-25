@@ -223,6 +223,23 @@ void LynxEngine::SetAnimationsPending(bool need_pending_ui_op) {
   }
 }
 
+void LynxEngine::StartRecording(const lepus::Value& value) {
+  if (delegate_ != nullptr) {
+    delegate_->StartRecording(value);
+  }
+  if (tasm_ == nullptr || tasm_->page_proxy() == nullptr ||
+      tasm_->page_proxy()->element_manager() == nullptr) {
+    return;
+  }
+  tasm_->page_proxy()->element_manager()->RecordCurrentLynxUITree();
+}
+
+void LynxEngine::StopRecording(const lepus::Value& value) {
+  if (delegate_ != nullptr) {
+    delegate_->StopRecording(value);
+  }
+}
+
 void LynxEngine::UpdateScreenMetrics(float width, float height,
                                      float device_pixel_ratio) {
   tasm_->OnScreenMetricsSet(width, height, device_pixel_ratio);

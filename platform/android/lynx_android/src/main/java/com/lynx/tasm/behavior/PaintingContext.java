@@ -175,6 +175,18 @@ public final class PaintingContext implements IPaintingContext {
     LynxFrameRecorder.inst().recordInvoke(getInstanceId(), sign, method, params, context, callback);
   }
 
+  @CalledByNative
+  private void recordInitialTreeForReplay(int[] signs, String[] tagNames, Object[] bundles,
+      Object[] initialStyles, boolean[] isFlattens, int[] nodeIndexes, int[] parentSigns,
+      int[] childIndexes, float[] layouts, boolean[] hasBounds, boolean[] hasSticky) {
+    if (!isRecordingEnabled()) {
+      return;
+    }
+    LynxFrameRecorder.inst().recordInitialTree(getInstanceId(), signs, tagNames, bundles,
+        initialStyles, isFlattens, nodeIndexes, parentSigns, childIndexes, layouts, hasBounds,
+        hasSticky);
+  }
+
   // this func will be execed on main thread.
   @Override
   public void destroy() {

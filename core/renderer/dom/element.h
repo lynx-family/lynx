@@ -814,6 +814,7 @@ class Element : public lepus::RefCounted,
   bool EnableTriggerGlobalEvent() const { return trigger_global_event_; }
 
   void PreparePropBundleIfNeed();
+  fml::RefPtr<PropBundle> GetPropBundleForRecording();
 
   bool GetEnableZIndex();
 
@@ -1430,6 +1431,7 @@ class Element : public lepus::RefCounted,
       bool keep_element_id);
 
   virtual void PushStyleToBundle();
+  void PushCurrentPropsToBundleForRecording(PropBundle* bundle);
 
   void RequireFlush();
 

@@ -7,6 +7,9 @@
 
 #include "core/renderer/dom/element_manager.h"
 
+#include <utility>
+#include <vector>
+
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_property.h"
@@ -14,6 +17,7 @@
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
+#include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/shell/tasm_operation_queue.h"
@@ -27,21 +31,46 @@ static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
+
+class RecordingMockPaintingContext : public MockPaintingContext {
+ public:
+  void RecordInitialLynxUITreeForReplay(
+      std::vector<InitialLynxUITreeNodeForReplay> nodes) override {
+    initial_tree_nodes_ = std::move(nodes);
+  }
+
+  std::vector<InitialLynxUITreeNodeForReplay> initial_tree_nodes_;
+};
+
+const InitialLynxUITreeNodeForReplay* FindInitialTreeNode(
+    const std::vector<InitialLynxUITreeNodeForReplay>& nodes, int id) {
+  for (const auto& node : nodes) {
+    if (node.id == id) {
+      return &node;
+    }
+  }
+  return nullptr;
+}
+
 class ElementManagerTest : public ::testing::Test {
  public:
   ElementManagerTest() {}
   ~ElementManagerTest() override {}
   std::unique_ptr<lynx::tasm::ElementManager> manager;
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
+  RecordingMockPaintingContext* painting_context = nullptr;
 
   void SetUp() override {
     LynxEnvConfig lynx_env_config(kWidth, kHeight, kDefaultLayoutsUnitPerPx,
                                   kDefaultPhysicalPixelsPerLayoutUnit);
     tasm_mediator = std::make_shared<
         ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
+    auto painting_context_impl =
+        std::make_unique<RecordingMockPaintingContext>();
+    painting_context = painting_context_impl.get();
     manager = std::make_unique<lynx::tasm::ElementManager>(
-        std::make_unique<MockPaintingContext>(), tasm_mediator.get(),
-        lynx_env_config, tasm::PageOptions());
+        std::move(painting_context_impl), tasm_mediator.get(), lynx_env_config,
+        tasm::PageOptions());
     auto config = std::make_shared<PageConfig>();
     config->SetEnableZIndex(true);
     manager->SetConfig(config);
@@ -59,6 +88,93 @@ TEST_F(ElementManagerTest, CreateFiberPage) {
   EXPECT_EQ(page->component_id().c_str(), component_id.c_str());
   EXPECT_TRUE(page->is_page());
   EXPECT_EQ(manager->GetComponent(component_id.str()), page.get());
+}
+
+TEST_F(ElementManagerTest,
+       InitialTreeReplayUsesLayoutOnlyAncestorPlatformLayout) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto layout_only_parent = manager->CreateFiberView();
+  layout_only_parent->computed_css_style()->SetOverflowDefaultVisible(true);
+  layout_only_parent->has_layout_only_props_ = true;
+
+  auto child = manager->CreateFiberView();
+  child->MarkCanBeLayoutOnly(false);
+
+  page->InsertNode(layout_only_parent);
+  layout_only_parent->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(layout_only_parent->IsLayoutOnly());
+  ASSERT_FALSE(child->IsLayoutOnly());
+
+  page->UpdateLayout(0, 0, kWidth, kHeight, {0}, {0}, {0}, nullptr, 0);
+  layout_only_parent->UpdateLayout(10, 20, 100, 100, {0}, {0}, {0}, nullptr, 0);
+  child->UpdateLayout(3, 4, 30, 40, {0}, {0}, {0}, nullptr, 0);
+  page->element_container_impl()->UpdateLayout(page->left(), page->top());
+
+  auto* child_painting_node =
+      painting_context->node_map_.at(child->impl_id()).get();
+  ASSERT_NE(child_painting_node, nullptr);
+  EXPECT_FLOAT_EQ(child_painting_node->frame_.left_, 13);
+  EXPECT_FLOAT_EQ(child_painting_node->frame_.top_, 24);
+
+  manager->RecordCurrentLynxUITree();
+
+  const auto* child_node = FindInitialTreeNode(
+      painting_context->initial_tree_nodes_, child->impl_id());
+  ASSERT_NE(child_node, nullptr);
+  EXPECT_TRUE(child_node->has_parent);
+  EXPECT_EQ(child_node->parent, page->impl_id());
+  EXPECT_EQ(child_node->index, 0);
+  EXPECT_FLOAT_EQ(child_node->x, child_painting_node->frame_.left_);
+  EXPECT_FLOAT_EQ(child_node->y, child_painting_node->frame_.top_);
+}
+
+TEST_F(ElementManagerTest, InitialTreeReplayUsesZIndexHoistPlatformLayout) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+
+  auto z_child = manager->CreateFiberView();
+  z_child->MarkCanBeLayoutOnly(false);
+  z_child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+
+  page->InsertNode(parent);
+  parent->InsertNode(z_child);
+  page->FlushActionsAsRoot();
+
+  ASSERT_EQ(z_child->element_container_impl()->parent(),
+            page->element_container_impl());
+
+  page->UpdateLayout(0, 0, kWidth, kHeight, {0}, {0}, {0}, nullptr, 0);
+  parent->UpdateLayout(50, 60, 100, 100, {0}, {0}, {0}, nullptr, 0);
+  z_child->UpdateLayout(7, 8, 30, 40, {0}, {0}, {0}, nullptr, 0);
+  page->element_container_impl()->UpdateLayout(page->left(), page->top());
+
+  auto* z_child_painting_node =
+      painting_context->node_map_.at(z_child->impl_id()).get();
+  ASSERT_NE(z_child_painting_node, nullptr);
+  EXPECT_FLOAT_EQ(z_child_painting_node->frame_.left_, 57);
+  EXPECT_FLOAT_EQ(z_child_painting_node->frame_.top_, 68);
+
+  manager->RecordCurrentLynxUITree();
+
+  const auto* z_child_node = FindInitialTreeNode(
+      painting_context->initial_tree_nodes_, z_child->impl_id());
+  ASSERT_NE(z_child_node, nullptr);
+  EXPECT_TRUE(z_child_node->has_parent);
+  EXPECT_EQ(z_child_node->parent, page->impl_id());
+  EXPECT_FLOAT_EQ(z_child_node->x, z_child_painting_node->frame_.left_);
+  EXPECT_FLOAT_EQ(z_child_node->y, z_child_painting_node->frame_.top_);
 }
 
 TEST_F(ElementManagerTest, CreateFiberNode) {

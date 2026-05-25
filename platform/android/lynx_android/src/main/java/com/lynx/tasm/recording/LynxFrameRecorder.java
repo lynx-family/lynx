@@ -57,6 +57,17 @@ public final class LynxFrameRecorder {
   public static final int EVENT_LYNX_TOUCH_CANCEL = 204;
 
   private static final int MAX_CACHED_FRAMES_PER_INSTANCE = 1024;
+  private static final int INITIAL_TREE_LAYOUT_STRIDE = 25;
+  private static final int INITIAL_TREE_X_INDEX = 0;
+  private static final int INITIAL_TREE_Y_INDEX = 1;
+  private static final int INITIAL_TREE_WIDTH_INDEX = 2;
+  private static final int INITIAL_TREE_HEIGHT_INDEX = 3;
+  private static final int INITIAL_TREE_PADDING_INDEX = 4;
+  private static final int INITIAL_TREE_MARGIN_INDEX = 8;
+  private static final int INITIAL_TREE_BORDER_INDEX = 12;
+  private static final int INITIAL_TREE_BOUNDS_INDEX = 16;
+  private static final int INITIAL_TREE_STICKY_INDEX = 20;
+  private static final int INITIAL_TREE_MAX_HEIGHT_INDEX = 24;
   private static final long NANOS_PER_MILLIS = 1000000L;
 
   private static final LynxFrameRecorder sInstance = new LynxFrameRecorder();
@@ -65,6 +76,8 @@ public final class LynxFrameRecorder {
       Executors.newSingleThreadExecutor(new RecorderThreadFactory());
   private final ConcurrentHashMap<Integer, Integer> mRecordingSessions = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<Integer, Integer> mStoppingSessions = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<Integer, Integer> mInitialTreePendingSessions =
+      new ConcurrentHashMap<>();
   private final ConcurrentHashMap<Integer, FrameCache> mFrames = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<Integer, FrameCallback> mFrameCallbacks =
       new ConcurrentHashMap<>();
@@ -98,6 +111,7 @@ public final class LynxFrameRecorder {
       return;
     }
     int sessionId = mNextSessionId.getAndIncrement();
+    mInitialTreePendingSessions.put(instanceId, sessionId);
     mRecordingSessions.put(instanceId, sessionId);
     mStoppingSessions.remove(instanceId);
     mFrames.put(instanceId, new FrameCache(MAX_CACHED_FRAMES_PER_INSTANCE));
@@ -123,6 +137,7 @@ public final class LynxFrameRecorder {
       flushPendingUIFrameOnExecutor(instanceId, sessionId, SystemClock.uptimeMillis());
       mRecordingSessions.remove(instanceId, sessionId);
       mStoppingSessions.remove(instanceId, sessionId);
+      mInitialTreePendingSessions.remove(instanceId, sessionId);
       if (!mRecordingSessions.containsKey(instanceId)) {
         mFrames.remove(instanceId);
       }
@@ -175,6 +190,72 @@ public final class LynxFrameRecorder {
         new InvokePayload(sign, method, paramsSnapshot, context, callback), opTimeMillis);
   }
 
+  public void recordInitialTree(int instanceId, int[] signs, String[] tagNames, Object[] bundles,
+      Object[] initialStyles, boolean[] isFlattens, int[] nodeIndexes, int[] parentSigns,
+      int[] childIndexes, float[] layouts, boolean[] hasBounds, boolean[] hasSticky) {
+    Integer sessionId = mRecordingSessions.get(instanceId);
+    if (sessionId == null) {
+      return;
+    }
+    if (!isValidInitialTree(signs, tagNames, bundles, initialStyles, isFlattens, nodeIndexes,
+            parentSigns, childIndexes, layouts, hasBounds, hasSticky)) {
+      finishInitialTreeRecording(instanceId, sessionId);
+      return;
+    }
+
+    int count = signs.length;
+    long opTimeMillis = SystemClock.uptimeMillis();
+    List<UIOperationRecord> operations = new ArrayList<>(count * 4);
+    for (int index = 0; index < count; index++) {
+      PropBundle bundle = bundles[index] instanceof PropBundle ? (PropBundle) bundles[index] : null;
+      ReadableMapBuffer initialStyle = initialStyles[index] instanceof ReadableMapBuffer
+          ? (ReadableMapBuffer) initialStyles[index]
+          : null;
+      Map<String, Object> bundleSnapshot = snapshotPropBundle(bundle);
+      Map<String, Object> initialStyleSnapshot = snapshotStyleMapBuffer(initialStyle);
+      operations.add(new UIOperationRecord(EVENT_LYNX_UI_CREATE_NODE,
+          new CreateNodePayload(signs[index], tagNames[index], bundleSnapshot, initialStyleSnapshot,
+              isFlattens[index], nodeIndexes[index]),
+          opTimeMillis));
+      if (parentSigns[index] >= 0) {
+        operations.add(new UIOperationRecord(EVENT_LYNX_UI_INSERT_NODE,
+            new NodeRelationPayload(parentSigns[index], signs[index], childIndexes[index]),
+            opTimeMillis));
+      }
+      operations.add(new UIOperationRecord(EVENT_LYNX_UI_UPDATE_PROPS,
+          new UpdatePropsPayload(
+              signs[index], isFlattens[index], bundleSnapshot, initialStyleSnapshot),
+          opTimeMillis));
+
+      int layoutOffset = index * INITIAL_TREE_LAYOUT_STRIDE;
+      operations.add(new UIOperationRecord(EVENT_LYNX_UI_UPDATE_LAYOUT,
+          new UpdateLayoutPayload(signs[index], layouts[layoutOffset + INITIAL_TREE_X_INDEX],
+              layouts[layoutOffset + INITIAL_TREE_Y_INDEX],
+              layouts[layoutOffset + INITIAL_TREE_WIDTH_INDEX],
+              layouts[layoutOffset + INITIAL_TREE_HEIGHT_INDEX],
+              copyFourFloats(layouts, layoutOffset + INITIAL_TREE_PADDING_INDEX),
+              copyFourFloats(layouts, layoutOffset + INITIAL_TREE_MARGIN_INDEX),
+              copyFourFloats(layouts, layoutOffset + INITIAL_TREE_BORDER_INDEX),
+              hasBounds[index] ? copyFourFloats(layouts, layoutOffset + INITIAL_TREE_BOUNDS_INDEX)
+                               : null,
+              hasSticky[index] ? copyFourFloats(layouts, layoutOffset + INITIAL_TREE_STICKY_INDEX)
+                               : null,
+              layouts[layoutOffset + INITIAL_TREE_MAX_HEIGHT_INDEX], nodeIndexes[index]),
+          opTimeMillis));
+    }
+    final List<UIOperationRecord> initialTreeOperations = Collections.unmodifiableList(operations);
+    mExecutor.execute(() -> {
+      if (!isRecordingSession(instanceId, sessionId)) {
+        return;
+      }
+      if (!initialTreeOperations.isEmpty()) {
+        emitFrame(instanceId, TRACK_TYPE_LYNX_UI_OP, EVENT_LYNX_UI_FRAME,
+            new UIFramePayload(initialTreeOperations), opTimeMillis);
+      }
+      mInitialTreePendingSessions.remove(instanceId, sessionId);
+    });
+  }
+
   public void recordTouch(
       int instanceId, int eventType, List<TouchPointPayload> points, long timestampMillis) {
     List<TouchPointPayload> pointSnapshot =
@@ -189,7 +270,8 @@ public final class LynxFrameRecorder {
       return;
     }
     mExecutor.execute(() -> {
-      if (!isRecordingSession(instanceId, sessionId)) {
+      if (!isRecordingSession(instanceId, sessionId)
+          || isInitialTreeRecordingPending(instanceId, sessionId)) {
         return;
       }
       PendingUIFrame pendingFrame = mPendingUIFrames.get(instanceId);
@@ -499,6 +581,25 @@ public final class LynxFrameRecorder {
     return values == null ? null : values.clone();
   }
 
+  private static float[] copyFourFloats(float[] values, int offset) {
+    return new float[] {values[offset], values[offset + 1], values[offset + 2], values[offset + 3]};
+  }
+
+  private static boolean isValidInitialTree(int[] signs, String[] tagNames, Object[] bundles,
+      Object[] initialStyles, boolean[] isFlattens, int[] nodeIndexes, int[] parentSigns,
+      int[] childIndexes, float[] layouts, boolean[] hasBounds, boolean[] hasSticky) {
+    if (signs == null || tagNames == null || bundles == null || initialStyles == null
+        || isFlattens == null || nodeIndexes == null || parentSigns == null || childIndexes == null
+        || layouts == null || hasBounds == null || hasSticky == null) {
+      return false;
+    }
+    int count = signs.length;
+    return tagNames.length == count && bundles.length == count && initialStyles.length == count
+        && isFlattens.length == count && nodeIndexes.length == count && parentSigns.length == count
+        && childIndexes.length == count && hasBounds.length == count && hasSticky.length == count
+        && layouts.length >= count * INITIAL_TREE_LAYOUT_STRIDE;
+  }
+
   public static void put(JSONObject target, String key, Object value) {
     try {
       target.put(key, toJsonValue(value));
@@ -691,6 +792,19 @@ public final class LynxFrameRecorder {
   private boolean isRecordingSession(int instanceId, int sessionId) {
     Integer currentSessionId = mRecordingSessions.get(instanceId);
     return currentSessionId != null && currentSessionId == sessionId;
+  }
+
+  private boolean isInitialTreeRecordingPending(int instanceId, int sessionId) {
+    Integer pendingSessionId = mInitialTreePendingSessions.get(instanceId);
+    return pendingSessionId != null && pendingSessionId == sessionId;
+  }
+
+  private void finishInitialTreeRecording(int instanceId, int sessionId) {
+    mExecutor.execute(() -> {
+      if (isRecordingSession(instanceId, sessionId)) {
+        mInitialTreePendingSessions.remove(instanceId, sessionId);
+      }
+    });
   }
 
   private void clearPendingUIFrameOnExecutor(int instanceId, Integer sessionId) {

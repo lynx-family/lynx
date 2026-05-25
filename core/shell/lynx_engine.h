@@ -56,6 +56,9 @@ class LynxEngine {
                                 const std::string& method,
                                 const pub::Value& params,
                                 runtime::js::ApiCallBack callback) = 0;
+
+    virtual void StartRecording(const lepus::Value& value) = 0;
+    virtual void StopRecording(const lepus::Value& value) = 0;
   };
 
   explicit LynxEngine(
@@ -257,6 +260,9 @@ class LynxEngine {
                       std::shared_ptr<tasm::PipelineOptions> pipeline_options);
 
   void ReloadFromJS(runtime::UpdateDataTask task);
+
+  void StartRecording(const lepus::Value& value);
+  void StopRecording(const lepus::Value& value);
 
   void AddFont(const lepus::Value& font, runtime::js::ApiCallBack callback);
 

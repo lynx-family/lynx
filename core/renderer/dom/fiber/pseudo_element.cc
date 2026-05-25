@@ -4,9 +4,11 @@
 
 #include "core/renderer/dom/fiber/pseudo_element.h"
 
+#include "core/public/prop_bundle.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
 namespace tasm {
@@ -94,6 +96,19 @@ void PseudoElement::UpdatePropertyFromStyleMap(const StyleMap& style_map) {
   }
 }
 
+void PseudoElement::PushCurrentPropertiesToBundle(PropBundle* bundle) {
+  switch (state_) {
+    case kPseudoStateSelection:
+      PushPseudoStylesToBundle(bundle, SelectionPseudoElementStyleNames());
+      break;
+    case kPseudoStatePlaceHolder:
+      PushPseudoStylesToBundle(bundle, PlaceHolderPseudoElementStyleNames());
+      break;
+    default:
+      break;
+  }
+}
+
 void PseudoElement::SetHolderElementProperty(CSSPropertyID id) {
   switch (state_) {
     case kPseudoStateSelection:
@@ -104,6 +119,64 @@ void PseudoElement::SetHolderElementProperty(CSSPropertyID id) {
       break;
     default:
       break;
+  }
+}
+
+void PseudoElement::PushPseudoStylesToBundle(
+    PropBundle* bundle,
+    const std::unordered_map<CSSPropertyID, const char*>& map) {
+  if (bundle == nullptr) {
+    return;
+  }
+  for (const auto& style : style_map_) {
+    auto style_name = map.find(style.first);
+    if (style_name == map.end()) {
+      continue;
+    }
+    switch (style.first) {
+      case kPropertyIDBackgroundColor:
+        bundle->SetProps(
+            style_name->second,
+            pub::ValueImplLepus(platform_css_style_->BackgroundColorToLepus()));
+        break;
+      case kPropertyIDXHandleColor:
+        bundle->SetProps(
+            style_name->second,
+            pub::ValueImplLepus(platform_css_style_->XHandleColorToLepus()));
+        break;
+      case kPropertyIDXHandleSize:
+        bundle->SetProps(
+            style_name->second,
+            pub::ValueImplLepus(platform_css_style_->XHandleSizeToLepus()));
+        break;
+      case kPropertyIDColor:
+        bundle->SetProps(
+            style_name->second,
+            pub::ValueImplLepus(platform_css_style_->ColorToLepus()));
+        break;
+      case kPropertyIDFontSize:
+        bundle->SetProps(
+            style_name->second,
+            pub::ValueImplLepus(platform_css_style_->FontSizeToLepus()));
+        break;
+      case kPropertyIDFontFamily:
+        bundle->SetProps(
+            style_name->second,
+            pub::ValueImplLepus(platform_css_style_->FontFamilyToLepus()));
+        break;
+      case kPropertyIDFontWeight:
+        bundle->SetProps(
+            style_name->second,
+            pub::ValueImplLepus(platform_css_style_->FontWeightToLepus()));
+        break;
+      case kPropertyIDFontStyle:
+        bundle->SetProps(
+            style_name->second,
+            pub::ValueImplLepus(platform_css_style_->FontStyleToLepus()));
+        break;
+      default:
+        break;
+    }
   }
 }
 
@@ -143,7 +216,7 @@ void PseudoElement::SetPseudoStylesInternal(
         break;
       case kPropertyIDFontStyle:
         holder_element_->UpdateAttrMap(style_name->second,
-                                       platform_css_style_->FontSizeToLepus());
+                                       platform_css_style_->FontStyleToLepus());
         break;
       default:
         break;

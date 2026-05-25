@@ -75,6 +75,10 @@ class TasmMediator : public LynxEngine::Delegate {
 
   void OnDataUpdated() override;
 
+  void StartRecording(const lepus::Value& value) override;
+
+  void StopRecording(const lepus::Value& value) override;
+
   void OnTasmFinishByNative() override;
 
   void OnRunPipelineFinished() override;
