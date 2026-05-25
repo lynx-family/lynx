@@ -3319,7 +3319,7 @@ void FiberElement::SetNativeProps(
     // redundant logic here.
     if (pipeline_options->enable_unified_pixel_pipeline) {
       pipeline_options->resolve_requested = true;
-      pipeline_options->target_node = this;
+      pipeline_options->target_node = impl_id();
     } else {
       element_manager()->OnPatchFinish(pipeline_options, this);
     }
@@ -3706,7 +3706,7 @@ void FiberElement::UpdateCSSVariable(
   // redundant logic here.
   if (pipeline_option->enable_unified_pixel_pipeline) {
     pipeline_option->resolve_requested = true;
-    pipeline_option->target_node = this;
+    pipeline_option->target_node = impl_id();
   } else {
     element_manager()->OnPatchFinish(pipeline_option, this);
   }

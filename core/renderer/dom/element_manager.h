@@ -981,8 +981,9 @@ class ElementManager : public ElementContextDelegate,
    * Used By RunPixelPipeline Process.
    *
    */
-  void ResolveStyle(std::shared_ptr<PipelineOptions> &option,
-                    Element *root = nullptr);
+  void ResolveStyle(
+      std::shared_ptr<PipelineOptions> &option,
+      int32_t target_node = PipelineOptions::kInvalidTargetNodeId);
 
   /**
    * Generate ID for element

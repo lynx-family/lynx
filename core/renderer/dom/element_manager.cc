@@ -698,7 +698,8 @@ void ElementManager::OnFinishUpdateProps(
   // redundant logic here.
   if (options->enable_unified_pixel_pipeline) {
     options->resolve_requested = true;
-    options->target_node = target_node;
+    options->target_node = target_node ? target_node->impl_id()
+                                       : PipelineOptions::kInvalidTargetNodeId;
   } else {
     OnPatchFinish(options, target_node);
   }
@@ -1364,9 +1365,17 @@ void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
 }
 
 void ElementManager::ResolveStyle(std::shared_ptr<PipelineOptions> &option,
-                                  Element *element) {
-  if (element == nullptr) {
+                                  int32_t target_node) {
+  Element *element = nullptr;
+  if (target_node == PipelineOptions::kInvalidTargetNodeId) {
     element = static_cast<Element *>(root());
+  } else {
+    element = node_manager()->Get(target_node);
+    if (element == nullptr) {
+      LOGE("ElementManager::ResolveStyle failed since target node is gone, id:"
+           << target_node);
+      return;
+    }
   }
   if (!element) {
     LOGE("ElementManager::OnPatchFinish failed since element is nullptr.");
