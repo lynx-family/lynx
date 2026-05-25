@@ -520,9 +520,12 @@ public class TouchEventDispatcher {
             String.valueOf(System.identityHashCode(mActiveUI)));
         if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
             && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-          e.setLocation(mFirstLynxTouchEvent.getViewPoint().getX(),
-              mFirstLynxTouchEvent.getViewPoint().getY());
-          childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireClick(e);
+          PointF originalLocation = moveEventToChildLynxPage(e);
+          try {
+            childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireClick(e);
+          } finally {
+            restoreEventLocation(e, originalLocation);
+          }
         }
       }
     }
@@ -545,9 +548,12 @@ public class TouchEventDispatcher {
             String.valueOf(System.identityHashCode(mActiveUI)));
         if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
             && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-          e.setLocation(mFirstLynxTouchEvent.getViewPoint().getX(),
-              mFirstLynxTouchEvent.getViewPoint().getY());
-          childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireTap(e);
+          PointF originalLocation = moveEventToChildLynxPage(e);
+          try {
+            childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireTap(e);
+          } finally {
+            restoreEventLocation(e, originalLocation);
+          }
         }
       }
     } else {
@@ -575,9 +581,12 @@ public class TouchEventDispatcher {
             String.valueOf(System.identityHashCode(mActiveUI)));
         if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
             && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-          e.setLocation(mFirstLynxTouchEvent.getViewPoint().getX(),
-              mFirstLynxTouchEvent.getViewPoint().getY());
-          childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireLongpress(e);
+          PointF originalLocation = moveEventToChildLynxPage(e);
+          try {
+            childLynxPageUI.getLynxContext().getTouchEventDispatcher().fireLongpress(e);
+          } finally {
+            restoreEventLocation(e, originalLocation);
+          }
         }
       }
     }
@@ -601,6 +610,18 @@ public class TouchEventDispatcher {
   }
 
   public void destroy() {}
+
+  private PointF moveEventToChildLynxPage(MotionEvent ev) {
+    PointF originalLocation = new PointF(ev.getX(), ev.getY());
+    ev.setLocation(
+        mFirstLynxTouchEvent.getViewPoint().getX(), mFirstLynxTouchEvent.getViewPoint().getY());
+    return originalLocation;
+  }
+
+  private void restoreEventLocation(MotionEvent ev, PointF originalLocation) {
+    ev.setLocation(originalLocation.x, originalLocation.y);
+  }
+
   // When ActionDown, generate event target response chain. And traversed the event target response
   // chain to make the target's touch state pseudo-class take effect.
   private void onActionDown(MotionEvent ev) {
@@ -890,10 +911,13 @@ public class TouchEventDispatcher {
           String.valueOf(System.identityHashCode(mActiveUI)));
       if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
           && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-        ev.setLocation(
-            mFirstLynxTouchEvent.getViewPoint().getX(), mFirstLynxTouchEvent.getViewPoint().getY());
-        childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleFirstTouchDown(
-            ev, childLynxPageUI);
+        PointF originalLocation = moveEventToChildLynxPage(ev);
+        try {
+          childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleFirstTouchDown(
+              ev, childLynxPageUI);
+        } finally {
+          restoreEventLocation(ev, originalLocation);
+        }
       }
     }
     return true;
@@ -919,10 +943,13 @@ public class TouchEventDispatcher {
           String.valueOf(System.identityHashCode(mActiveUI)));
       if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
           && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-        ev.setLocation(
-            mFirstLynxTouchEvent.getViewPoint().getX(), mFirstLynxTouchEvent.getViewPoint().getY());
-        childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleOtherTouchDown(
-            ev, childLynxPageUI);
+        PointF originalLocation = moveEventToChildLynxPage(ev);
+        try {
+          childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleOtherTouchDown(
+              ev, childLynxPageUI);
+        } finally {
+          restoreEventLocation(ev, originalLocation);
+        }
       }
     }
   }
@@ -950,9 +977,12 @@ public class TouchEventDispatcher {
           String.valueOf(System.identityHashCode(mActiveUI)));
       if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
           && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-        ev.setLocation(
-            mFirstLynxTouchEvent.getViewPoint().getX(), mFirstLynxTouchEvent.getViewPoint().getY());
-        childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleTouchMove(ev);
+        PointF originalLocation = moveEventToChildLynxPage(ev);
+        try {
+          childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleTouchMove(ev);
+        } finally {
+          restoreEventLocation(ev, originalLocation);
+        }
       }
     }
   }
@@ -974,9 +1004,12 @@ public class TouchEventDispatcher {
           String.valueOf(System.identityHashCode(mActiveUI)));
       if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
           && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-        ev.setLocation(
-            mFirstLynxTouchEvent.getViewPoint().getX(), mFirstLynxTouchEvent.getViewPoint().getY());
-        childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleOtherTouchUp(ev);
+        PointF originalLocation = moveEventToChildLynxPage(ev);
+        try {
+          childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleOtherTouchUp(ev);
+        } finally {
+          restoreEventLocation(ev, originalLocation);
+        }
       }
     }
   }
@@ -1010,9 +1043,12 @@ public class TouchEventDispatcher {
           String.valueOf(System.identityHashCode(mActiveUI)));
       if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
           && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-        ev.setLocation(
-            mFirstLynxTouchEvent.getViewPoint().getX(), mFirstLynxTouchEvent.getViewPoint().getY());
-        childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleFirstTouchUp(ev);
+        PointF originalLocation = moveEventToChildLynxPage(ev);
+        try {
+          childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleFirstTouchUp(ev);
+        } finally {
+          restoreEventLocation(ev, originalLocation);
+        }
       }
     }
   }
@@ -1036,9 +1072,32 @@ public class TouchEventDispatcher {
           String.valueOf(System.identityHashCode(mActiveUI)));
       if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
           && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
-        ev.setLocation(
-            mFirstLynxTouchEvent.getViewPoint().getX(), mFirstLynxTouchEvent.getViewPoint().getY());
-        childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleTouchCancel(ev);
+        PointF originalLocation = moveEventToChildLynxPage(ev);
+        try {
+          childLynxPageUI.getLynxContext().getTouchEventDispatcher().handleTouchCancel(ev);
+        } finally {
+          restoreEventLocation(ev, originalLocation);
+        }
+      }
+    }
+  }
+
+  public void dispatchActiveUITouch(MotionEvent ev) {
+    if (mActiveUI != null) {
+      mActiveUI.dispatchTouch(ev);
+    }
+
+    if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
+      UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
+          String.valueOf(System.identityHashCode(mActiveUI)));
+      if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
+          && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
+        PointF originalLocation = moveEventToChildLynxPage(ev);
+        try {
+          childLynxPageUI.getLynxContext().getTouchEventDispatcher().dispatchActiveUITouch(ev);
+        } finally {
+          restoreEventLocation(ev, originalLocation);
+        }
       }
     }
   }
@@ -1103,9 +1162,7 @@ public class TouchEventDispatcher {
       return false;
     }
 
-    if (mActiveUI != null) {
-      mActiveUI.dispatchTouch(ev);
-    }
+    dispatchActiveUITouch(ev);
     mDetector.onTouchEvent(ev);
 
     // dispatch touch event to gesture arena
