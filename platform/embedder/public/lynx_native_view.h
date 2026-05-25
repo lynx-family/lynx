@@ -148,6 +148,10 @@ class LynxNativeView {
    * @brief Acquire the latest back buffer
    * @param width The width of surface
    * @param height The height of surface
+   * @return Platform native graphics handle. On Darwin this is IOSurfaceRef.
+   *         On Windows this is a D3D shared HANDLE for the back buffer,
+   *         not a texture/device pointer. Import it with the graphics
+   * API/device that matches the active Windows backend.
    */
   inline lynx_surface_handle_t* AcquireSurface(int width, int height) {
     return lynx_native_view_acquire_surface(native_view_, width, height);

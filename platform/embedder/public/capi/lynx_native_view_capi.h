@@ -10,6 +10,9 @@
 LYNX_EXTERN_C_BEGIN
 
 typedef struct lynx_native_view_ lynx_native_view_t;
+// Opaque platform native graphics handle. On Darwin this is IOSurfaceRef.
+// On Windows this is a D3D shared HANDLE for the active graphics backend,
+// not a texture/device pointer.
 typedef struct lynx_surface_ lynx_surface_handle_t;
 
 typedef enum lynx_native_event_type {
@@ -138,6 +141,9 @@ LYNX_CAPI_EXPORT void lynx_native_view_bind_surface_buffer_mode(
 LYNX_CAPI_EXPORT bool lynx_native_view_present_surface(
     lynx_native_view_t*, int width, int height, const float* transform,
     lynx_surface_handle_t* handle);
+// Returns a platform native graphics handle for the latest back buffer.
+// Windows callers should import the returned D3D shared HANDLE with the
+// graphics API/device that matches the active Windows backend.
 LYNX_CAPI_EXPORT lynx_surface_handle_t* lynx_native_view_acquire_surface(
     lynx_native_view_t*, int width, int height);
 LYNX_CAPI_EXPORT bool lynx_native_view_swap_back(lynx_native_view_t*);
