@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <memory>
 #include <thread>
 
 #include "base/include/fml/message_loop_task_queues.h"
@@ -467,6 +468,100 @@ TEST(MessageLoopTaskQueue, RegisterTaskWakesUpOwnerQueue) {
   ASSERT_EQ(3UL, wakes.size());
   ASSERT_EQ(time1, wakes[1]);
   ASSERT_EQ(time1, wakes[2]);
+}
+
+TEST(MessageLoopTaskQueue, DisposeTasksDoesNotHoldLockWhileDestroyingTasks) {
+  class ReentrantTaskDestructor {
+   public:
+    ReentrantTaskDestructor(MessageLoopTaskQueues* task_queues,
+                            TaskQueueId target_queue_id,
+                            fml::AutoResetWaitableEvent* event)
+        : task_queues_(task_queues),
+          target_queue_id_(target_queue_id),
+          event_(event) {}
+
+    ~ReentrantTaskDestructor() {
+      task_queues_->RegisterTask(
+          target_queue_id_, [] {}, fml::TimePoint::Now());
+      event_->Signal();
+    }
+
+   private:
+    MessageLoopTaskQueues* task_queues_;
+    TaskQueueId target_queue_id_;
+    fml::AutoResetWaitableEvent* event_;
+  };
+
+  auto* task_queues = fml::MessageLoopTaskQueues::GetInstance();
+  auto disposing_queue = task_queues->CreateTaskQueue();
+  auto target_queue = task_queues->CreateTaskQueue();
+  fml::AutoResetWaitableEvent destructor_finished;
+
+  task_queues->RegisterTask(
+      disposing_queue,
+      [guard = std::make_unique<ReentrantTaskDestructor>(
+           task_queues, target_queue, &destructor_finished)] {},
+      fml::TimePoint::Now());
+
+  task_queues->DisposeTasks(disposing_queue);
+
+  ASSERT_FALSE(destructor_finished.WaitWithTimeout(
+      fml::TimeDelta::FromMilliseconds(1000)));
+  ASSERT_EQ(task_queues->GetNumPendingTasks(target_queue), 1u);
+}
+
+TEST(MessageLoopTaskQueue, DisposeDoesNotHoldLockWhileDestroyingEntries) {
+  class ReentrantObserverDestructor {
+   public:
+    ReentrantObserverDestructor(MessageLoopTaskQueues* task_queues,
+                                TaskQueueId target_queue_id, int* count,
+                                fml::ManualResetWaitableEvent* event)
+        : task_queues_(task_queues),
+          target_queue_id_(target_queue_id),
+          count_(count),
+          event_(event) {}
+
+    ~ReentrantObserverDestructor() {
+      task_queues_->RegisterTask(
+          target_queue_id_, [] {}, fml::TimePoint::Now());
+      if (++(*count_) == 2) {
+        event_->Signal();
+      }
+    }
+
+   private:
+    MessageLoopTaskQueues* task_queues_;
+    TaskQueueId target_queue_id_;
+    int* count_;
+    fml::ManualResetWaitableEvent* event_;
+  };
+
+  auto* task_queues = fml::MessageLoopTaskQueues::GetInstance();
+  auto disposing_queue = task_queues->CreateTaskQueue();
+  auto subsumed_queue = task_queues->CreateTaskQueue();
+  auto target_queue = task_queues->CreateTaskQueue();
+  ASSERT_TRUE(task_queues->Merge(disposing_queue, subsumed_queue));
+
+  int destruction_count = 0;
+  fml::ManualResetWaitableEvent destructor_finished;
+  task_queues->AddTaskObserver(
+      disposing_queue, 1,
+      [guard = std::make_unique<ReentrantObserverDestructor>(
+           task_queues, target_queue, &destruction_count,
+           &destructor_finished)] {});
+  task_queues->AddTaskObserver(
+      subsumed_queue, 2,
+      [guard = std::make_unique<ReentrantObserverDestructor>(
+           task_queues, target_queue, &destruction_count,
+           &destructor_finished)] {});
+
+  task_queues->Dispose(disposing_queue);
+
+  // WaitWithTimeout returns true on timeout, false when signaled.
+  ASSERT_FALSE(destructor_finished.WaitWithTimeout(
+      fml::TimeDelta::FromMilliseconds(1000)));
+  ASSERT_EQ(destruction_count, 2);
+  ASSERT_EQ(task_queues->GetNumPendingTasks(target_queue), 2u);
 }
 
 }  // namespace testing
