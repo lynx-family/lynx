@@ -98,6 +98,7 @@ class UIIntersectionObserver {
   float ui_margin_bottom_{0.f};
   float ui_margin_left_{0.f};
   int ref_id_{10};
+  bool should_send_global_event_{false};
   float ref_rect_[4]{0.f};
   std::vector<UIIntersectionObserverTarget> intersection_observe_targets_;
 };
@@ -121,6 +122,9 @@ class UIIntersectionObserverManager
   void ExecIntersectionCheck();
   void CallJSIntersectionObserver(int32_t observer_id, int32_t callback_id,
                                   lepus::Value params) const;
+  void SendIntersectionObserverGlobalEvent(int32_t observer_id,
+                                           int32_t callback_id,
+                                           lepus::Value params) const;
   void ScreenSize(float size[2]);
 
  private:

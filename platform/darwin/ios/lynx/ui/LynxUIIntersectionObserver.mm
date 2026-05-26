@@ -5,13 +5,14 @@
 #import "LynxUIIntersectionObserver.h"
 #import "LynxUIIntersectionObserver+Internal.h"
 
+#import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUnitUtils.h>
+#import <Lynx/LynxView.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <objc/runtime.h>
-#import "LynxContext+Internal.h"
 #include "base/include/value/base_value.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 
@@ -21,6 +22,10 @@ using namespace lynx;
 
 @property(nonatomic, weak) LynxContext* context;
 @property(nonatomic) CADisplayLink* displayLink;
+
+- (void)sendIntersectionObserverGlobalEventWithObserverId:(NSInteger)observerId
+                                               callbackId:(NSInteger)callbackId
+                                                  payload:(NSDictionary*)payload;
 
 @end
 
@@ -64,6 +69,9 @@ using namespace lynx;
 @implementation LynxUIObservationTarget
 @end
 
+static NSString* const kIntersectionObserverEventName = @"onIntersectionObserver";
+static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGlobalEvent";
+
 @interface LynxUIIntersectionObserver ()
 
 // set from js
@@ -83,6 +91,7 @@ using namespace lynx;
 
 // default is false
 @property(nonatomic, assign) BOOL observeAll;  // TODO: not support now
+@property(nonatomic, assign) BOOL shouldSendGlobalEvent;
 
 @property(nonatomic, assign) BOOL isCustomEventObserver;
 
@@ -120,6 +129,8 @@ using namespace lynx;
 
     NSNumber* observeAll = [options objectForKey:@"observeAll"];
     _observeAll = observeAll ? observeAll.boolValue : NO;
+    NSNumber* enableGlobalEvent = [options objectForKey:kIntersectionObserverGlobalEventFlagKey];
+    _shouldSendGlobalEvent = enableGlobalEvent ? enableGlobalEvent.boolValue : NO;
     _relativeToScreen = NO;
 
     if ([componentId isEqualToString:kDefaultComponentID]) {
@@ -294,6 +305,10 @@ using namespace lynx;
                                                           targetSign:target.ui.sign
                                                               params:[entry toDictionary]];
       [target.ui.context.eventEmitter sendCustomEvent:event];
+    } else if (_shouldSendGlobalEvent) {
+      [_manager sendIntersectionObserverGlobalEventWithObserverId:_observerId
+                                                       callbackId:target.jsCallbackId
+                                                          payload:[entry toDictionary]];
     } else {
       // notify js the intersection rect
       if (_manager.context) {
@@ -508,6 +523,22 @@ using namespace lynx;
   [observers_ enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
     [((LynxUIIntersectionObserver*)obj) checkForIntersections];
   }];
+}
+
+- (void)sendIntersectionObserverGlobalEventWithObserverId:(NSInteger)observerId
+                                               callbackId:(NSInteger)callbackId
+                                                  payload:(NSDictionary*)payload {
+  if (!_context) {
+    return;
+  }
+  LynxView* lynxView = [_context getLynxView];
+  if (!lynxView) {
+    return;
+  }
+
+  NSDictionary* event =
+      @{@"observerId" : @(observerId), @"callbackId" : @(callbackId), @"payload" : payload ?: @{}};
+  [lynxView sendGlobalEvent:kIntersectionObserverEventName withParams:@[ event ]];
 }
 
 // below functions are for new intersection observer

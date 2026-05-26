@@ -3,8 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior;
 
+import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.EventEmitter;
+import com.lynx.tasm.LynxView;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
@@ -19,6 +21,8 @@ import java.util.ArrayList;
 
 public class LynxIntersectionObserverManager
     extends LynxObserverManager implements EventEmitter.LynxEventObserver {
+  private static final String INTERSECTION_OBSERVER_EVENT_NAME = "onIntersectionObserver";
+
   private final ArrayList<LynxIntersectionObserver> mObservers;
   private final WeakReference<LynxContext> mContext;
   private final WeakReference<JSProxy> mJSProxy;
@@ -55,6 +59,31 @@ public class LynxIntersectionObserverManager
             eventEmitter.sendCustomEvent(event);
           }
         }
+      }
+    };
+    UIThreadUtils.runOnUiThreadImmediately(runnable);
+  }
+
+  void sendIntersectionObserverGlobalEvent(
+      final int observerId, final int callbackId, final JavaOnlyMap args) {
+    Runnable runnable = new Runnable() {
+      @Override
+      public void run() {
+        LynxContext lynxContext = mContext.get();
+        if (lynxContext == null) {
+          return;
+        }
+        LynxView lynxView = lynxContext.getLynxView();
+        if (lynxView == null) {
+          return;
+        }
+        JavaOnlyArray params = new JavaOnlyArray();
+        JavaOnlyMap event = new JavaOnlyMap();
+        event.putInt("observerId", observerId);
+        event.putInt("callbackId", callbackId);
+        event.putMap("payload", args);
+        params.pushMap(event);
+        lynxView.sendGlobalEvent(INTERSECTION_OBSERVER_EVENT_NAME, params);
       }
     };
     UIThreadUtils.runOnUiThreadImmediately(runnable);
