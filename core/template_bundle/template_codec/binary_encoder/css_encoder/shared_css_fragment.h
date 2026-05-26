@@ -14,6 +14,7 @@
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_font_face_token.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_keyframes_token.h"
+#include "core/template_bundle/template_codec/template_binary.h"
 
 namespace lynx {
 namespace encoder {
@@ -33,40 +34,18 @@ struct LynxCSSSelectorTuple {
 };
 
 struct LynxStyleRuleBase {
-  enum RuleType {
-    kUnknown,
-    kCharset,
-    kStyle,
-    kImport,
-    kMedia,
-    kFontFace,
-    kFontFeature,
-    kProperty,
-    kKeyframes,
-    kNestedDeclarations,
-    kFunctionDeclarations,
-    kNamespace,
-    kContainer,
-    kScope,
-    kSupports,
-    kFunction,
-    kMixin,
-    kApplyMixin,
-    kContents,
-    kPositionTry,
-    kCustomMedia,
-  };
+  using RuleType = tasm::CSSRuleType;
 
   explicit LynxStyleRuleBase(RuleType t) : type(t) {}
   virtual ~LynxStyleRuleBase() = default;
-  RuleType type = kUnknown;
+  RuleType type = RuleType::kUnknown;
 };
 
 struct LynxStyleRule : LynxStyleRuleBase {
   LynxStyleRule(size_t size, size_t pos,
                 std::unique_ptr<css::LynxCSSSelector[]> arr,
                 fml::RefPtr<tasm::CSSParseToken> properties)
-      : LynxStyleRuleBase(kStyle),
+      : LynxStyleRuleBase(RuleType::kStyle),
         flattened_size(size),
         position(pos),
         selector_arr(std::move(arr)),
@@ -89,13 +68,13 @@ struct LynxStyleRuleCondition : LynxStyleRuleGroup {
 };
 
 struct LynxStyleRuleFontFace : LynxStyleRuleBase {
-  explicit LynxStyleRuleFontFace() : LynxStyleRuleBase(kFontFace) {}
+  explicit LynxStyleRuleFontFace() : LynxStyleRuleBase(RuleType::kFontFace) {}
   std::string family;
   std::vector<std::shared_ptr<tasm::CSSFontFaceToken>> properties;
 };
 
 struct LynxStyleRuleKeyframes : LynxStyleRuleBase {
-  explicit LynxStyleRuleKeyframes() : LynxStyleRuleBase(kKeyframes) {}
+  explicit LynxStyleRuleKeyframes() : LynxStyleRuleBase(RuleType::kKeyframes) {}
   std::string name;
   fml::RefPtr<CSSKeyframesToken> properties;
 };

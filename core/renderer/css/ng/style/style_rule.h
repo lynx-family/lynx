@@ -6,6 +6,7 @@
 #define CORE_RENDERER_CSS_NG_STYLE_STYLE_RULE_H_
 
 #include <limits.h>
+#include <stdint.h>
 
 #include <memory>
 #include <string>
@@ -28,6 +29,12 @@ class StyleRule : public fml::RefCountedThreadSafeStorage {
             fml::RefPtr<tasm::CSSParseToken> token)
       : selector_array_(std::move(selector_array)), token_(std::move(token)) {}
 
+  StyleRule(std::unique_ptr<LynxCSSSelector[]> selector_array,
+            fml::RefPtr<tasm::CSSParseToken> token, uint32_t position)
+      : selector_array_(std::move(selector_array)),
+        token_(std::move(token)),
+        position_(position) {}
+
   void ReleaseSelf() const override { delete this; }
 
   unsigned IndexOfNextSelectorAfter(size_t index) const {
@@ -47,9 +54,12 @@ class StyleRule : public fml::RefCountedThreadSafeStorage {
 
   const auto& Token() { return token_; }
 
+  uint32_t Position() const { return position_; }
+
  private:
   std::unique_ptr<LynxCSSSelector[]> selector_array_;
   fml::RefPtr<tasm::CSSParseToken> token_;
+  uint32_t position_ = 0;
 };
 
 }  // namespace css

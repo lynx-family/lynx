@@ -4346,7 +4346,22 @@ void FiberElement::VisitChildren(
 
 void FiberElement::UpdateDynamicElementStyleForNewPipeline(
     uint32_t &style, bool &inner_force_update) {
-  if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {
+  constexpr uint32_t kMediaQueryEnvMask =
+      DynamicCSSStylesManager::kUpdateViewport |
+      DynamicCSSStylesManager::kUpdateScreenMetrics |
+      DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm;
+  bool media_query_env_changed = false;
+  if (!is_wrapper() &&
+      ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
+    auto *fragment = GetRelatedCSSFragment();
+    if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
+      media_query_env_changed = true;
+    }
+  }
+
+  if ((dynamic_style_flags_ > 0 || inner_force_update ||
+       media_query_env_changed) &&
+      !is_wrapper()) {
     NotifyUnitValuesUpdatedToAnimation(style);
     const auto &env_config = element_manager()->GetLynxEnvConfig();
 
@@ -4383,7 +4398,8 @@ void FiberElement::UpdateDynamicElementStyleForNewPipeline(
     }
 
     if (inner_force_update || font_scale_changed || viewport_changed ||
-        screen_matrix_changed || rem_changed || em_changed) {
+        screen_matrix_changed || rem_changed || em_changed ||
+        media_query_env_changed) {
       UpdateLengthContextValueForAllElement(env_config);
 
       NewPipelineResolveRequest request;
@@ -4434,6 +4450,18 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
     UpdateDynamicElementStyleForNewPipeline(style, inner_force_update);
     UpdateDynamicChildrenStyleRecursively(style, inner_force_update);
     return;
+  }
+
+  constexpr uint32_t kMediaQueryEnvMask =
+      DynamicCSSStylesManager::kUpdateViewport |
+      DynamicCSSStylesManager::kUpdateScreenMetrics |
+      DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm;
+  if (!is_wrapper() &&
+      ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
+    auto *fragment = GetRelatedCSSFragment();
+    if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
+      MarkStyleDirty(false);
+    }
   }
 
   if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {

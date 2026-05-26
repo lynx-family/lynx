@@ -24,6 +24,8 @@ class SharedCSSFragment;
 
 namespace css {
 
+class ConditionRule;
+class MediaQueryEvaluator;
 class RuleInvalidationSet;
 
 struct MatchedRule {
@@ -46,17 +48,24 @@ using CompactRuleDataVector = base::InlineVector<RuleData, 2>;
 
 class RuleSet {
  public:
-  explicit RuleSet(tasm::SharedCSSFragment* fragment) : fragment_(fragment) {}
+  explicit RuleSet(tasm::SharedCSSFragment* fragment);
+  ~RuleSet();
 
   void MatchStyles(StyleNode* node, unsigned& level,
-                   base::Vector<MatchedRule>& output) const;
+                   base::Vector<MatchedRule>& output,
+                   const MediaQueryEvaluator* evaluator) const;
+
+  void MatchOwnStyles(StyleNode* node, unsigned level,
+                      base::Vector<MatchedRule>& output) const;
 
   void AddToRuleSet(const std::string& text,
                     const fml::RefPtr<tasm::CSSParseToken>& token);
 
-  void Merge(const RuleSet& rule_set) { deps_.push_back(rule_set); }
+  void Merge(const RuleSet& rule_set);
 
-  void AddStyleRule(const fml::RefPtr<StyleRule>& r);
+  void AddStyleRule(fml::RefPtr<StyleRule> rule);
+
+  void AddConditionRule(fml::RefPtr<ConditionRule> rule);
 
   fml::RefPtr<tasm::CSSParseToken> GetRootToken();
 
@@ -74,8 +83,20 @@ class RuleSet {
 
   bool HasAdjacentSiblingRules() const {
     if (has_adjacent_sibling_rules_) return true;
-    for (const auto& dep : deps_) {
-      if (dep.HasAdjacentSiblingRules()) return true;
+    for (const auto* dep : deps_) {
+      if (dep->HasAdjacentSiblingRules()) return true;
+    }
+    return false;
+  }
+
+  // True when this rule set (or any merged dep) contains at least one
+  // ConditionRule carrying a parsed @media query set. Callers can use this
+  // as an O(1) gate to decide whether constructing a MediaQueryEvaluator is
+  // worthwhile before invoking MatchStyles.
+  bool HasMediaQueryRules() const {
+    if (has_media_query_rules_) return true;
+    for (const auto* dep : deps_) {
+      if (dep->HasMediaQueryRules()) return true;
     }
     return false;
   }
@@ -96,10 +117,12 @@ class RuleSet {
   CompactRuleDataVector pseudo_rules_;
   CompactRuleDataVector universal_rules_;
 
-  std::vector<RuleSet> deps_;
+  std::vector<const RuleSet*> deps_;
+  base::Vector<fml::RefPtr<ConditionRule>> condition_rules_;
   tasm::SharedCSSFragment* fragment_ = nullptr;
   unsigned rule_count_ = 0;
   bool has_adjacent_sibling_rules_ = false;
+  bool has_media_query_rules_ = false;
 };
 
 }  // namespace css
