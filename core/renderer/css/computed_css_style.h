@@ -812,6 +812,8 @@ class ComputedCSSStyle {
 #undef INHERIT_CSS_VALUE
 
  private:
+  bool HasNonDefaultInheritedResolvedValue(tasm::CSSPropertyID id) const;
+
   float GetBorderFinalWidth(float width, BorderStyleType style) const {
     return (style != BorderStyleType::kNone && style != BorderStyleType::kHide)
                ? width

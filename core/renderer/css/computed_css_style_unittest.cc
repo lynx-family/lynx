@@ -492,6 +492,7 @@ TEST(ComputedCSSStyleTest, InheritHelpersCopyOnlyRequestedState) {
   starlight::ComputedCSSStyle parent{1.f, 1.f};
   starlight::ComputedCSSStyle child{1.f, 1.f};
 
+  parent.SetFontSize(20.0, DEFAULT_FONT_SIZE_DP);
   parent.SetValue(CSSPropertyID::kPropertyIDFontSize,
                   CSSValue(20.0, CSSValuePattern::PX), false);
   parent.SetValue(CSSPropertyID::kPropertyIDDirection,
@@ -535,6 +536,85 @@ TEST(ComputedCSSStyleTest, InheritHelpersCopyOnlyRequestedState) {
   auto inherited_custom = child.ResolveVariable(base::String("--accent"));
   ASSERT_TRUE(inherited_custom.has_value());
   EXPECT_EQ(inherited_custom.value().AsStdString(), "blue");
+}
+
+TEST(ComputedCSSStyleTest,
+     HasNonDefaultInheritedResolvedValueRequiresResolvedEntryAndState) {
+  starlight::ComputedCSSStyle font_size_style{1.f, 1.f};
+  font_size_style.SetFontSize(20.0, DEFAULT_FONT_SIZE_DP);
+  font_size_style.SetValue(CSSPropertyID::kPropertyIDFontSize,
+                           CSSValue(20.0, CSSValuePattern::PX), false);
+  EXPECT_TRUE(font_size_style.HasNonDefaultInheritedResolvedValue(
+      CSSPropertyID::kPropertyIDFontSize));
+
+  font_size_style.RemoveResolvedValue(CSSPropertyID::kPropertyIDFontSize);
+  EXPECT_FALSE(font_size_style.HasNonDefaultInheritedResolvedValue(
+      CSSPropertyID::kPropertyIDFontSize));
+
+  starlight::ComputedCSSStyle resolved_only_style{1.f, 1.f};
+  resolved_only_style.SetResolvedValue(CSSPropertyID::kPropertyIDFontSize,
+                                       CSSValue(20.0, CSSValuePattern::PX));
+  EXPECT_FALSE(resolved_only_style.HasNonDefaultInheritedResolvedValue(
+      CSSPropertyID::kPropertyIDFontSize));
+
+  starlight::ComputedCSSStyle direction_style{1.f, 1.f};
+  direction_style.SetValue(CSSPropertyID::kPropertyIDDirection,
+                           CSSValue(starlight::DirectionType::kRtl), false);
+  EXPECT_TRUE(direction_style.HasNonDefaultInheritedResolvedValue(
+      CSSPropertyID::kPropertyIDDirection));
+
+  direction_style.SetValue(CSSPropertyID::kPropertyIDDirection,
+                           CSSValue(starlight::DirectionType::kNormal), false);
+  EXPECT_FALSE(direction_style.HasNonDefaultInheritedResolvedValue(
+      CSSPropertyID::kPropertyIDDirection));
+}
+
+TEST(ComputedCSSStyleTest,
+     InheritNormalPropertiesSkipsDefaultResolvedInheritedValues) {
+  starlight::ComputedCSSStyle parent{1.f, 1.f};
+  starlight::ComputedCSSStyle child{1.f, 1.f};
+
+  parent.SetValue(CSSPropertyID::kPropertyIDFontSize,
+                  CSSValue(DEFAULT_FONT_SIZE_DP, CSSValuePattern::PX), false);
+  parent.SetValue(CSSPropertyID::kPropertyIDDirection,
+                  CSSValue(starlight::DirectionType::kNormal), false);
+
+  const std::unordered_set<CSSPropertyID> inheritable_props = {
+      CSSPropertyID::kPropertyIDFontSize,
+      CSSPropertyID::kPropertyIDDirection,
+  };
+  child.InheritNormalPropertiesFrom(parent, inheritable_props);
+
+  EXPECT_FALSE(child.text_attributes_.has_value());
+  EXPECT_EQ(child.GetDirection(), starlight::DirectionType::kNormal);
+  EXPECT_TRUE(child.GetResolvedValues().empty());
+}
+
+TEST(ComputedCSSStyleTest,
+     InheritNormalPropertiesCopiesOnlyNonDefaultResolvedState) {
+  starlight::ComputedCSSStyle parent{1.f, 1.f};
+  starlight::ComputedCSSStyle child{1.f, 1.f};
+
+  parent.SetFontSize(24.0, DEFAULT_FONT_SIZE_DP);
+  parent.SetValue(CSSPropertyID::kPropertyIDFontSize,
+                  CSSValue(24.0, CSSValuePattern::PX), false);
+  parent.SetValue(CSSPropertyID::kPropertyIDDirection,
+                  CSSValue(starlight::DirectionType::kRtl), false);
+  parent.SetResolvedValue(
+      CSSPropertyID::kPropertyIDColor,
+      CSSValue(static_cast<uint32_t>(0xffff0000), CSSValuePattern::NUMBER));
+
+  const std::unordered_set<CSSPropertyID> inheritable_props = {
+      CSSPropertyID::kPropertyIDFontSize,
+      CSSPropertyID::kPropertyIDDirection,
+      CSSPropertyID::kPropertyIDColor,
+  };
+  child.InheritNormalPropertiesFrom(parent, inheritable_props);
+
+  ASSERT_TRUE(child.text_attributes_.has_value());
+  EXPECT_EQ(child.text_attributes_->font_size, 24.0);
+  EXPECT_FALSE(child.text_attributes_->color.has_value());
+  EXPECT_EQ(child.GetDirection(), starlight::DirectionType::kRtl);
 }
 
 TEST(ComputedCSSStyleTest, InheritHelpersNoOpForEmptyInputs) {

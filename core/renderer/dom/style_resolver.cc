@@ -2736,5 +2736,20 @@ bool StyleResolver::HasPropertyDiff(const starlight::ComputedCSSStyle& style,
                                     CSSPropertyID id) const {
   return style.changed_bitset_.Has(id) || style.reset_bitset_.Has(id);
 }
+
+bool StyleResolver::HasInheritedPropertyDiff(
+    const starlight::ComputedCSSStyle& style,
+    const DynamicCSSConfigs& configs) const {
+  const auto& inheritable_props =
+      !configs.custom_inherit_list_.empty()
+          ? configs.custom_inherit_list_
+          : DynamicCSSStylesManager::GetInheritableProps();
+  for (const auto id : inheritable_props) {
+    if (HasPropertyDiff(style, id)) {
+      return true;
+    }
+  }
+  return false;
+}
 }  // namespace tasm
 }  // namespace lynx

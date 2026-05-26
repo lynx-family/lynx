@@ -4879,6 +4879,10 @@ void ComputedCSSStyle::InheritNormalPropertiesFrom(
   // property in GetDefaultInheritableProps here. If needed, append extra
   // property inheritance.
   for (const auto& id : inheritable_props) {
+    if (!from.HasNonDefaultInheritedResolvedValue(id)) {
+      continue;
+    }
+
     switch (id) {
       case tasm::kPropertyIDColor:
         if (from.text_attributes_.has_value()) {
@@ -5219,5 +5223,177 @@ ComputedCSSStyle::ExtractCanonicalComputedValue(tasm::CSSPropertyID id) const {
   }
 }
 
+bool ComputedCSSStyle::HasNonDefaultInheritedResolvedValue(
+    tasm::CSSPropertyID id) const {
+  if (!resolved_values_ ||
+      resolved_values_->find(id) == resolved_values_->end()) {
+    return false;
+  }
+
+  const float default_font_size =
+      DEFAULT_FONT_SIZE_DP * length_context_.layouts_unit_per_px_;
+
+  switch (id) {
+    case tasm::kPropertyIDColor:
+      return text_attributes_.has_value() &&
+             (text_attributes_->text_gradient.has_value() ||
+              text_attributes_->color.value_or(
+                  DefaultColor::DEFAULT_TEXT_COLOR) !=
+                  DefaultColor::DEFAULT_TEXT_COLOR);
+    case tasm::kPropertyIDFontSize:
+      return text_attributes_.has_value() &&
+             base::FloatsNotEqual(text_attributes_->font_size,
+                                  default_font_size);
+    case tasm::kPropertyIDFontFamily:
+      return text_attributes_.has_value() &&
+             !text_attributes_->font_family.empty();
+    case tasm::kPropertyIDFontStyle:
+      return text_attributes_.has_value() &&
+             text_attributes_->font_style !=
+                 DefaultComputedStyle::DEFAULT_FONT_STYLE;
+    case tasm::kPropertyIDFontWeight:
+      return text_attributes_.has_value() &&
+             text_attributes_->font_weight !=
+                 DefaultComputedStyle::DEFAULT_FONT_WEIGHT;
+    case tasm::kPropertyIDTextAlign:
+      return text_attributes_.has_value() &&
+             text_attributes_->text_align !=
+                 DefaultComputedStyle::DEFAULT_TEXT_ALIGN;
+    case tasm::kPropertyIDLineHeight:
+      return text_attributes_.has_value() &&
+             (base::FloatsNotEqual(text_attributes_->computed_line_height,
+                                   DefaultComputedStyle::DEFAULT_LINE_HEIGHT) ||
+              base::FloatsNotEqual(
+                  text_attributes_->line_height_factor,
+                  DefaultComputedStyle::DEFAULT_LINE_HEIGHT_FACTOR));
+    case tasm::kPropertyIDLetterSpacing:
+      return text_attributes_.has_value() &&
+             base::FloatsNotEqual(text_attributes_->letter_spacing,
+                                  DefaultComputedStyle::DEFAULT_LETTER_SPACING);
+    case tasm::kPropertyIDLineSpacing:
+      return text_attributes_.has_value() &&
+             base::FloatsNotEqual(text_attributes_->line_spacing,
+                                  DefaultComputedStyle::DEFAULT_LINE_SPACING);
+    case tasm::kPropertyIDTextDecoration:
+      return text_attributes_.has_value() &&
+             (text_attributes_->underline_decoration ||
+              text_attributes_->line_through_decoration ||
+              text_attributes_->text_decoration_style !=
+                  DefaultComputedStyle::DEFAULT_TEXT_DECORATION_STYLE ||
+              text_attributes_->text_decoration_color.value_or(
+                  DefaultColor::DEFAULT_COLOR) != DefaultColor::DEFAULT_COLOR);
+    case tasm::kPropertyIDTextShadow:
+      return text_attributes_.has_value() &&
+             text_attributes_->text_shadow.has_value() &&
+             !text_attributes_->text_shadow->empty();
+    case tasm::kPropertyIDDirection:
+      return layout_computed_style_.GetDirection() != DirectionType::kNormal;
+    case tasm::kPropertyIDCursor:
+      return cursor_.has_value();
+    case tasm::kPropertyIDWhiteSpace:
+      return text_attributes_.has_value() &&
+             text_attributes_->white_space !=
+                 DefaultComputedStyle::DEFAULT_WHITE_SPACE;
+    case tasm::kPropertyIDWordBreak:
+      return text_attributes_.has_value() &&
+             text_attributes_->word_break !=
+                 DefaultComputedStyle::DEFAULT_WORD_BREAK;
+    case tasm::kPropertyIDTextOverflow:
+      return text_attributes_.has_value() &&
+             text_attributes_->text_overflow !=
+                 DefaultComputedStyle::DEFAULT_TEXT_OVERFLOW;
+    case tasm::kPropertyIDVerticalAlign:
+      return text_attributes_.has_value() &&
+             (text_attributes_->vertical_align !=
+                  DefaultComputedStyle::DEFAULT_VERTICAL_ALIGN ||
+              base::FloatsNotEqual(text_attributes_->vertical_align_length,
+                                   DefaultComputedStyle::DEFAULT_FLOAT));
+    case tasm::kPropertyIDTextDecorationColor:
+      return text_attributes_.has_value() &&
+             text_attributes_->decoration_color.value_or(
+                 DefaultColor::DEFAULT_COLOR) != DefaultColor::DEFAULT_COLOR;
+    case tasm::kPropertyIDCaretColor:
+      return !caret_color_.empty();
+    case tasm::kPropertyIDTextIndent:
+      return text_attributes_.has_value() &&
+             text_attributes_->text_indent !=
+                 DefaultLayoutStyle::SL_DEFAULT_ZEROLENGTH();
+    case tasm::kPropertyIDTextStroke:
+    case tasm::kPropertyIDTextStrokeWidth:
+    case tasm::kPropertyIDTextStrokeColor:
+      return text_attributes_.has_value() &&
+             (base::FloatsNotEqual(text_attributes_->text_stroke_width,
+                                   DefaultComputedStyle::DEFAULT_FLOAT) ||
+              text_attributes_->text_stroke_color.value_or(
+                  DefaultColor::DEFAULT_COLOR) != DefaultColor::DEFAULT_COLOR);
+    case tasm::kPropertyIDHyphens:
+      return text_attributes_.has_value() &&
+             text_attributes_->hyphens != DefaultComputedStyle::DEFAULT_HYPHENS;
+    case tasm::kPropertyIDFontVariationSettings:
+      return text_attributes_.has_value() &&
+             text_attributes_->font_variation_settings != nullptr;
+    case tasm::kPropertyIDFontFeatureSettings:
+      return text_attributes_.has_value() &&
+             text_attributes_->font_feature_settings != nullptr;
+    case tasm::kPropertyIDFontOpticalSizing:
+      return text_attributes_.has_value() &&
+             text_attributes_->font_optical_sizing !=
+                 DefaultComputedStyle::DEFAULT_FONT_OPTICAL_SIZING;
+    case tasm::kPropertyIDXPlaceholderColor:
+      return placeholder_text_attributes_.has_value() &&
+             (placeholder_text_attributes_->text_gradient.has_value() ||
+              placeholder_text_attributes_->color.value_or(
+                  DefaultColor::DEFAULT_TEXT_COLOR) !=
+                  DefaultColor::DEFAULT_TEXT_COLOR);
+    case tasm::kPropertyIDXPlaceholderFontFamily:
+      return placeholder_text_attributes_.has_value() &&
+             !placeholder_text_attributes_->font_family.empty();
+    case tasm::kPropertyIDXPlaceholderFontSize:
+      return placeholder_text_attributes_.has_value() &&
+             base::FloatsNotEqual(placeholder_text_attributes_->font_size,
+                                  default_font_size);
+    case tasm::kPropertyIDXPlaceholderFontWeight:
+      return placeholder_text_attributes_.has_value() &&
+             placeholder_text_attributes_->font_weight !=
+                 DefaultComputedStyle::DEFAULT_FONT_WEIGHT;
+    case tasm::kPropertyIDXPlaceholderFontStyle:
+      return placeholder_text_attributes_.has_value() &&
+             placeholder_text_attributes_->font_style !=
+                 DefaultComputedStyle::DEFAULT_FONT_STYLE;
+    case tasm::kPropertyIDVisibility:
+      return visibility_ != DefaultComputedStyle::DEFAULT_VISIBILITY;
+    case tasm::kPropertyIDImageRendering:
+      return image_rendering_ != ImageRenderingType::kAuto;
+    case tasm::kPropertyIDXAppRegion:
+      return app_region_ != XAppRegionType::kNone;
+    case tasm::kPropertyIDXHandleSize:
+      return base::FloatsNotEqual(handle_size_,
+                                  DefaultComputedStyle::DEFAULT_FLOAT);
+    case tasm::kPropertyIDXHandleColor:
+      return handle_color_ != DefaultComputedStyle::DEFAULT_LONG;
+    case tasm::kPropertyIDPointerEvents:
+      return pointer_events_ != PointerEventsType::kAuto;
+    case tasm::kPropertyIDAdaptFontSize:
+      return !adapt_font_size_.empty();
+    case tasm::kPropertyIDXAutoFontSize:
+    case tasm::kPropertyIDXAutoFontSizePresetSizes:
+      return text_attributes_.has_value() &&
+             (text_attributes_->is_auto_font_size ||
+              base::FloatsNotEqual(text_attributes_->auto_font_size_min_size,
+                                   DefaultComputedStyle::DEFAULT_FLOAT) ||
+              base::FloatsNotEqual(text_attributes_->auto_font_size_max_size,
+                                   DefaultComputedStyle::DEFAULT_FLOAT) ||
+              base::FloatsNotEqual(
+                  text_attributes_->auto_font_size_step_granularity,
+                  DefaultComputedStyle::
+                      DEFAULT_AUTO_FONT_SIZE_STEP_GRANULARITY) ||
+              (text_attributes_->auto_font_size_preset_sizes.has_value() &&
+               !text_attributes_->auto_font_size_preset_sizes->empty()) ||
+              text_attributes_->enable_font_scaling ||
+              text_attributes_->text_gradient.has_value());
+    default:
+      return true;
+  }
+}
 }  // namespace starlight
 }  // namespace lynx
