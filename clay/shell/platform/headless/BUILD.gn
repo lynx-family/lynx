@@ -29,6 +29,10 @@ source_set("headless") {
     "../embedder:embedder",
   ]
 
+  if (is_win || is_linux || is_mac) {
+    deps += [ "../../../../gfx:gfx" ]
+  }
+
   if (shell_enable_gl) {
     sources += [
       "gl/clay_headless_renderer_gl.cc",

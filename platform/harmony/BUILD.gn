@@ -9,6 +9,7 @@ assert(is_harmony)
 group("harmony") {
   deps = [
     "../../base/platform/harmony:lynx_base",
+    "../../gfx/platform/harmony:lynx_gfx",
     "lynx_devtool",
     "lynx_harmony",
     "lynx_services/lynx_image_service",

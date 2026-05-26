@@ -66,6 +66,18 @@
       ]
     },
     {
+      "name": "lynx_gfx",
+      "srcPath": "../../gfx/platform/harmony",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
       "name": "lynx_devtool",
       "srcPath": "../../platform/harmony/lynx_devtool",
       "targets": [

@@ -176,6 +176,7 @@ source_set("flutter_windows_source") {
     ":chromium_cursor_resources",
     ":flutter_windows_overlay_plugins",
     ":flutter_windows_utils",
+    "../../../../gfx:gfx",
     "../../../../third_party/rapidjson",
     "../../../common/graphics:gl_scoped_binder",
     "../../../fml:fml",

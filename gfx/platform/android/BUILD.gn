@@ -1,0 +1,43 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/toolchain/clang.gni")
+import("//build/util/cmake_target_template.gni")
+import("../../../config.gni")
+
+assert(is_android)
+
+config("gfx_android_private_config") {
+  ldflags = [
+    "-Wl,--exclude-libs,ALL,--gc-sections",
+    "-fuse-ld=lld",
+    "-Xlinker",
+    "-Map=output.map",
+  ]
+  if (!is_debug) {
+    ldflags += [
+      "-O2",
+      "-Wl,--icf=all",
+    ]
+    if (enable_lto) {
+      ldflags += [ "-flto" ]
+    }
+  }
+}
+
+cmake_target("LynxGfx") {
+  cmake_version = "3.4.1"
+  target_type = "shared_library"
+  output_name = "lynxgfx"
+
+  deps = [
+    "../../:gfx_sources",
+    "//${lynx_dir}/base/platform/android:LynxBase",
+  ]
+
+  configs = [
+    ":gfx_android_private_config",
+    "../../../platform/android:16kb_page",
+  ]
+}

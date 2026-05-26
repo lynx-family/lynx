@@ -63,10 +63,24 @@ podspec_target("lynx_podspec") {
     # Remove it once those host-side dependencies are fully gone.
     ":Air",
     ":Framework",
+    ":Gfx",
     ":ReleaseResource",
     ":UnitTestResource",
     ":UnitTests",
   ]
+}
+
+subspec_target("Gfx") {
+  deps = [ "../../../../gfx:gfx_sources" ]
+  header_mappings_dir = "."
+  dependency = [ "LynxBase/Framework" ]
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [
+      "../../../../",
+      "//PODS_ROOT/LynxBase/lynx",
+      "//PODS_ROOT/LynxBase",
+    ]
+  }
 }
 
 subspec_target("Framework") {
@@ -701,6 +715,7 @@ subspec_target("Native") {
     }
     HEADER_SEARCH_PATHS = Native_includes
   }
+  dependency = [ "Lynx/Gfx" ]
   if (enable_recorder) {
     condition_deps = [
       [
@@ -718,7 +733,7 @@ subspec_target("Native") {
   } else {
     header_mappings_dir = "."
     deps = native_podspec_deps
-    dependency = [
+    dependency += [
       "Lynx/Trace",
       "LynxBase/Framework",
     ]
@@ -760,7 +775,7 @@ subspec_target("animation") {
 }
 
 subspec_target("animation_utils") {
-  deps = [ "../../../../gfx:gfx_animation" ]
+  dependency = [ "Lynx/Gfx" ]
 }
 
 subspec_target("base") {

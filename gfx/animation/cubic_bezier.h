@@ -9,12 +9,14 @@
 #ifndef GFX_ANIMATION_CUBIC_BEZIER_H_
 #define GFX_ANIMATION_CUBIC_BEZIER_H_
 
+#include "gfx/gfx_export.h"
+
 namespace lynx {
 namespace gfx {
 
 // Cubic bezier implementation for CSS timing functions.
 #define CUBIC_BEZIER_SPLINE_SAMPLES 11
-class CubicBezier {
+class GFX_EXPORT CubicBezier {
  public:
   CubicBezier(double p1x, double p1y, double p2x, double p2y);
   CubicBezier(const CubicBezier& other);

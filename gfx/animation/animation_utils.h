@@ -16,6 +16,7 @@
 
 #include "gfx/animation/animation_keyframe.h"
 #include "gfx/animation/timing_function.h"
+#include "gfx/gfx_export.h"
 
 namespace lynx {
 namespace gfx {
@@ -38,7 +39,7 @@ struct KeyframedProgress {
   double progress{0.0};
 };
 
-KeyframedProgress ComputeKeyframedProgress(
+GFX_EXPORT KeyframedProgress ComputeKeyframedProgress(
     const std::vector<std::unique_ptr<Keyframe>>& keyframes,
     const TimingFunction* curve_timing_function, double scaled_duration,
     fml::TimeDelta time);
@@ -62,17 +63,19 @@ inline constexpr FilterValue MakeFilter(uint32_t function, double v,
 
 using ColorARGB32 = uint32_t;
 
-double InterpolateNumber(double start, double end, double progress);
+GFX_EXPORT double InterpolateNumber(double start, double end, double progress);
 
-ColorARGB32 InterpolateColorARGB32(ColorARGB32 start, ColorARGB32 end,
-                                   double progress,
-                                   ColorInterpolation color_interp);
+GFX_EXPORT ColorARGB32 InterpolateColorARGB32(ColorARGB32 start,
+                                              ColorARGB32 end, double progress,
+                                              ColorInterpolation color_interp);
 
-FilterValue InterpolateFilterValue(FilterValue start, FilterValue end,
-                                   double progress, DiscreteFallback fallback);
+GFX_EXPORT FilterValue InterpolateFilterValue(FilterValue start,
+                                              FilterValue end, double progress,
+                                              DiscreteFallback fallback);
 
-Vec2Tagged InterpolateVec2Tagged(Vec2Tagged start, Vec2Tagged end,
-                                 double progress, DiscreteFallback fallback);
+GFX_EXPORT Vec2Tagged InterpolateVec2Tagged(Vec2Tagged start, Vec2Tagged end,
+                                            double progress,
+                                            DiscreteFallback fallback);
 
 }  // namespace gfx
 }  // namespace lynx

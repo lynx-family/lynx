@@ -14,11 +14,12 @@
 
 #include "gfx/animation/animation_types.h"
 #include "gfx/animation/cubic_bezier.h"
+#include "gfx/gfx_export.h"
 
 namespace lynx {
 namespace gfx {
 
-class TimingFunction {
+class GFX_EXPORT TimingFunction {
  public:
   enum class Type { LINEAR, CUBIC_BEZIER, STEPS };
   enum class LimitDirection { LEFT, RIGHT };
@@ -36,7 +37,7 @@ class TimingFunction {
   TimingFunction() = default;
 };
 
-class CubicBezierTimingFunction : public TimingFunction {
+class GFX_EXPORT CubicBezierTimingFunction : public TimingFunction {
  public:
   enum class EaseType { EASE, EASE_IN, EASE_OUT, EASE_IN_OUT, CUSTOM };
 
@@ -69,7 +70,7 @@ class CubicBezierTimingFunction : public TimingFunction {
   EaseType ease_type_;
 };
 
-class StepsTimingFunction : public TimingFunction {
+class GFX_EXPORT StepsTimingFunction : public TimingFunction {
  public:
   static std::unique_ptr<StepsTimingFunction> Create(int steps,
                                                      StepsType step_position);
@@ -96,7 +97,7 @@ class StepsTimingFunction : public TimingFunction {
   StepsType step_position_;
 };
 
-class LinearTimingFunction : public TimingFunction {
+class GFX_EXPORT LinearTimingFunction : public TimingFunction {
  public:
   static std::unique_ptr<LinearTimingFunction> Create();
   LinearTimingFunction();
@@ -108,7 +109,7 @@ class LinearTimingFunction : public TimingFunction {
   double Velocity(double time) const override;
 };
 
-std::unique_ptr<TimingFunction> CreateTimingFunction(
+GFX_EXPORT std::unique_ptr<TimingFunction> CreateTimingFunction(
     const TimingFunctionData& timing_function_data);
 
 }  // namespace gfx

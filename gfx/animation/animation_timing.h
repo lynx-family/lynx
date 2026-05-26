@@ -7,6 +7,7 @@
 
 #include "base/include/fml/time/time_point.h"
 #include "gfx/animation/animation_types.h"
+#include "gfx/gfx_export.h"
 
 namespace lynx {
 namespace gfx {
@@ -42,25 +43,25 @@ struct TrimmedAnimationTime {
   int current_iteration_count{0};
 };
 
-fml::TimeDelta GetRepeatDuration(const AnimationData* data,
-                                 fml::TimeDelta duration);
-fml::TimeDelta ConvertMonotonicTimeToLocalTime(
+GFX_EXPORT fml::TimeDelta GetRepeatDuration(const AnimationData* data,
+                                            fml::TimeDelta duration);
+GFX_EXPORT fml::TimeDelta ConvertMonotonicTimeToLocalTime(
     const AnimationTimingInput& input, fml::TimePoint monotonic_time);
-TimingPhase CalculatePhase(const AnimationTimingInput& input,
-                           fml::TimeDelta local_time);
-TimingPhase CalculatePhase(const AnimationTimingInput& input,
+GFX_EXPORT TimingPhase CalculatePhase(const AnimationTimingInput& input,
+                                      fml::TimeDelta local_time);
+GFX_EXPORT TimingPhase CalculatePhase(const AnimationTimingInput& input,
+                                      fml::TimePoint monotonic_time);
+GFX_EXPORT fml::TimeDelta CalculateActiveTime(const AnimationTimingInput& input,
+                                              fml::TimePoint monotonic_time);
+GFX_EXPORT AnimationTimingStateUpdate UpdateTimingState(
+    const AnimationTimingInput& input, fml::TimePoint monotonic_time);
+GFX_EXPORT bool IsInEffect(const AnimationTimingInput& input,
                            fml::TimePoint monotonic_time);
-fml::TimeDelta CalculateActiveTime(const AnimationTimingInput& input,
-                                   fml::TimePoint monotonic_time);
-AnimationTimingStateUpdate UpdateTimingState(const AnimationTimingInput& input,
-                                             fml::TimePoint monotonic_time);
-bool IsInEffect(const AnimationTimingInput& input,
-                fml::TimePoint monotonic_time);
-TrimmedAnimationTime TrimTimeToCurrentIteration(
+GFX_EXPORT TrimmedAnimationTime TrimTimeToCurrentIteration(
     const AnimationTimingInput& input, fml::TimePoint monotonic_time,
     int current_iteration_count = 0);
-int CountIterationEventsDue(int old_iteration_count,
-                            int current_iteration_count);
+GFX_EXPORT int CountIterationEventsDue(int old_iteration_count,
+                                       int current_iteration_count);
 
 }  // namespace gfx
 }  // namespace lynx
