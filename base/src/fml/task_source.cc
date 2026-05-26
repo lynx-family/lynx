@@ -29,11 +29,19 @@ TaskSource::TaskSource(TaskQueueId task_queue_id)
 
 TaskSource::~TaskSource() { ShutDown(); }
 
-void TaskSource::ShutDown() {
+void TaskSource::ShutDown() { TakePendingTasks(); }
+
+TaskSource::PendingTasks TaskSource::TakePendingTasks() {
+  PendingTasks pending_tasks;
+  pending_tasks.primary = std::move(primary_task_queue_);
+  pending_tasks.emergency = std::move(emergency_task_queue_);
+  pending_tasks.idle = std::move(idle_task_queue_);
+  pending_tasks.micro = std::move(micro_task_queue_);
   primary_task_queue_ = {};
   emergency_task_queue_ = {};
   idle_task_queue_ = {};
   micro_task_queue_ = {};
+  return pending_tasks;
 }
 
 void TaskSource::RegisterTask(DelayedTask task) {
