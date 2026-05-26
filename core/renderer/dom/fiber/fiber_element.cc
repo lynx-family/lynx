@@ -68,12 +68,15 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/renderer/worklet/lepus_raf_handler.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/java_script_element.h"
 #include "core/runtime/js/runtime_constant.h"
-#include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
 #include "core/runtime/mts_context.h"
+
+#if ENABLE_LEPUSNG_WORKLET
+#include "core/renderer/worklet/lepus_raf_handler.h"
+#include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
+#endif
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
