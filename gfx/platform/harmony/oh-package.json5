@@ -1,0 +1,12 @@
+{
+  "name": "@lynx/gfx",
+  "license": "Apache-2.0",
+  "version": "@param:dependencies.lynx_version",
+  "main": "Index.ets",
+  "dependencies": {
+    "@lynx/lynx_base": "@param:dependencies.lynx_version",
+  },
+  "repository": "https://github.com/lynx-family/lynx",
+  "author": "lynx",
+  "description": "Lynx Gfx"
+}

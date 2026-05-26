@@ -1,0 +1,165 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+apply plugin: 'com.android.library'
+if (file('../../../platform/android/publish.gradle').exists()) {
+    apply from: '../../../platform/android/publish.gradle'
+}
+
+import groovy.json.JsonOutput
+
+android {
+    publishNonDefault true
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    ndkVersion rootProject.ext.ndkVersion
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 22
+
+        packagingOptions {
+            exclude 'lib/*/libc++_shared.so'
+            exclude 'lib/*/liblynxbase.so'
+        }
+    }
+
+    flavorDimensions "lynx"
+    productFlavors {
+        debugMode {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_STL='+getCppLib(),
+                              '-DFLAVOR_NAME=debugMode'
+                }
+            }
+        }
+        asan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-fsanitize=address',
+                            '-fsanitize-address-use-after-scope',
+                            '-fPIE',
+                            '-Wl,-ldl',
+                            '-Wl,-llog',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_ARM_MODE=arm',
+                              '-DANDROID_STL='+getCppLib(),
+                              '-DFLAVOR_NAME=asan'
+                    abiFilters(*rootProject.ext.abiList)
+                }
+            }
+        }
+        noasan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-Wl,-ldl',
+                             '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_STL='+getCppLib(),
+                              '-DFLAVOR_NAME=noasan'
+                }
+            }
+
+            getIsDefault().set(true)
+        }
+        dev {
+            dimension "lynx"
+            matchingFallbacks = ["noasan"]
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-Wl,-ldl',
+                             '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_STL='+getCppLib(),
+                              '-DFLAVOR_NAME=dev'
+                }
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PLATFORM=android-14',
+                              '-DANDROID_TOOLCHAIN=clang',
+                              '-DANDROID_STL='+getCppLib(),
+                              '-DCMAKE_BUILD_TYPE=Release',
+                              '-DLOCAL_ARM_NEON=true',
+                              '-DBUILD_TYPE=release',
+                              '-LH'
+                    cppFlags '-Wl,-ldl',
+                             '-Wno-unused-command-line-argument'
+                }
+            }
+            ndk {
+                abiFilters(*rootProject.ext.abiList)
+            }
+            minifyEnabled false
+        }
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PLATFORM=android-14',
+                              '-DANDROID_TOOLCHAIN=clang',
+                              '-DANDROID_STL='+getCppLib(),
+                              '-DLOCAL_ARM_NEON=true',
+                              '-DBUILD_TYPE=debug',
+                              '-LH'
+                    cppFlags '-g',
+                             '-Wl,-ldl',
+                             '-Wno-unused-command-line-argument'
+                }
+            }
+            ndk {
+                abiFilters(*rootProject.ext.abiList)
+            }
+            debuggable true
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+            version CMAKE_VERSION
+        }
+    }
+}
+
+task configGnCompileParas {
+    def buildVariantList = getFlavorNamesAndBuildTypes(project)
+    def flavorNames = buildVariantList[0]
+    def buildTypes = buildVariantList[1]
+    def gnBuildArgsMap = [:]
+    flavorNames.each {
+        def gnBuildArgsList = [:]
+        String flavorName = it
+        if (flavorName == "asan") {
+            gnBuildArgsList.put("is_asan", "true")
+        } else {
+            gnBuildArgsList.put("is_asan", "false")
+        }
+
+        buildTypes.each {
+            def gnBuildArgs = new LinkedHashMap(gnBuildArgsList)
+            String buildType = it
+            if (buildType == "release") {
+                gnBuildArgs.put("is_debug", "false")
+            } else if (buildType == "debug") {
+                gnBuildArgs.put("is_debug", "true")
+            }
+            rootProject.ext.abiList.each { abi ->
+                gnBuildArgsMap.put(flavorName + buildType + abi, gnBuildArgs)
+            }
+        }
+    }
+    writeGnArgs(JsonOutput.toJson(gnBuildArgsMap))
+}
+
+dependencies {
+    implementation project(':LynxBase')
+}

@@ -7,6 +7,7 @@ import("../../../../config.gni")
 lynx_podspec = get_path_info([
                                ":Air",
                                ":Framework",
+                               ":Gfx",
                                ":JSRuntime",
                                "../../common/lazy_load:LazyLoad",
                                ":LepusNG",

@@ -23,6 +23,8 @@ project(":LynxExplorer").projectDir = new File(rootProject.projectDir, './lynx_e
 
 include ':LynxBase'
 project(":LynxBase").projectDir = new File(rootProject.projectDir, '../../base/platform/android')
+include ':LynxGfx'
+project(":LynxGfx").projectDir = new File(rootProject.projectDir, '../../gfx/platform/android')
 include ':LynxTrace'
 project(":LynxTrace").projectDir = new File(rootProject.projectDir, '../../base/trace/android')
 include ':LynxAndroid'

@@ -26,6 +26,8 @@ cmake_target("lynx_android") {
     "../../../base/trace/android:LynxTrace",
     "../../../core/build:build",
     "../../../core/shell:shell",
+    "../../../gfx:gfx",
+    "../../../gfx/platform/android:LynxGfx",
     "../service_api:lynx_service_api_native",
   ]
   configs = [
@@ -83,6 +85,7 @@ group("lynx_android_lib") {
     "../../../core/services/watch_dog:watch_dog",
     "../../../core/shared_data:shared_data",
     "../../../core/value_wrapper:value_wrapper",
+    "../../../gfx:gfx_headers",
     "../../../third_party/rapidjson:rapidjson",
   ]
   if (enable_testbench_recorder) {

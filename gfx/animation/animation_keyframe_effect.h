@@ -17,6 +17,7 @@
 
 #include "base/include/fml/time/time_point.h"
 #include "gfx/animation/animation_keyframe_model.h"
+#include "gfx/gfx_export.h"
 
 namespace lynx {
 namespace animation {
@@ -24,7 +25,7 @@ class KeyframeEffect;
 }
 namespace gfx {
 
-class KeyframeEffect {
+class GFX_EXPORT KeyframeEffect {
  public:
   struct Sample {
     AnimationCurve* curve{nullptr};

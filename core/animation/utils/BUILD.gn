@@ -8,7 +8,7 @@ import("../../Lynx.gni")
 unittest_set("animation_utils_testset") {
   testonly = true
 
-  public_deps = [ "../../../gfx:gfx_animation" ]
+  public_deps = [ "../../../gfx:gfx" ]
 
   deps = [
     "../../renderer:tasm",
@@ -28,7 +28,7 @@ unittest_exec("animation_utils_unittests_exec") {
   sources = []
   deps = [
     ":animation_utils_testset",
-    "../../../gfx:gfx_animation",
+    "../../../gfx:gfx",
     "../../renderer/dom:dom",
   ]
 }

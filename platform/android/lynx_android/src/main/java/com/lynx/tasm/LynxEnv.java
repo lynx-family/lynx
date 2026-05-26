@@ -560,6 +560,7 @@ public class LynxEnv {
       if (!LynxBaseEnv.inst().isNativeLibraryLoaded()) {
         initBase(mLibraryLoader);
       }
+      mLibraryLoader.loadLibrary("lynxgfx");
       mLibraryLoader.loadLibrary("lynx");
       if (!LynxTraceEnv.inst().isNativeLibraryLoaded()) {
         mLibraryLoader.loadLibrary("lynxtrace");

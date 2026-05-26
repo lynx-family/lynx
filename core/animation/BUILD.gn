@@ -31,7 +31,7 @@ lynx_core_source_set("animation") {
   sources = animation_shared_sources
 
   public_deps = [
-    "../../gfx:gfx_animation",
+    "../../gfx:gfx",
     "../../third_party/rapidjson",
     "../base",
     "../runtime/lepus:lepus",

@@ -70,6 +70,7 @@ source_set("flutter_framework_source") {
 
   deps = [
     ":macos_gpu_configuration",
+    "../../../../../gfx:gfx",
     "../../../../flow:flow",
     "../../../../fml:fml",
     "../../../../fml:icu_util",

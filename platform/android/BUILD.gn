@@ -24,6 +24,7 @@ group("Android") {
   deps = [
     "../../base/platform/android:LynxBase",
     "../../base/trace/android:LynxTrace",
+    "../../gfx/platform/android:LynxGfx",
     "lynx_android",
     "lynx_devtool:LynxDevtool",
   ]

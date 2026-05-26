@@ -18,11 +18,12 @@
 #include "gfx/animation/animation_keyframe_curve.h"
 #include "gfx/animation/animation_timing.h"
 #include "gfx/animation/animation_types.h"
+#include "gfx/gfx_export.h"
 
 namespace lynx {
 namespace gfx {
 
-class KeyframeModel {
+class GFX_EXPORT KeyframeModel {
  public:
   enum RunState {
     STARTING = 0,
