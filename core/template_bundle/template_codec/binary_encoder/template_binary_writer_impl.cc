@@ -373,20 +373,20 @@ void TemplateBinaryWriter::EncodeCSSRules(
   for (const auto& rule : rules) {
     WriteU8(static_cast<uint8_t>(rule->type));
     switch (rule->type) {
-      case encoder::LynxStyleRuleBase::kStyle:
+      case CSSRuleType::kStyle:
         EncodeCSSStyleRule(
             *static_cast<const encoder::LynxStyleRule*>(rule.get()));
         break;
-      case encoder::LynxStyleRuleBase::kMedia:
-      case encoder::LynxStyleRuleBase::kSupports:
+      case CSSRuleType::kMedia:
+      case CSSRuleType::kSupports:
         EncodeCSSConditionRule(
             *static_cast<const encoder::LynxStyleRuleCondition*>(rule.get()));
         break;
-      case encoder::LynxStyleRuleBase::kKeyframes:
+      case CSSRuleType::kKeyframes:
         EncodeCSSKeyframesRule(
             *static_cast<const encoder::LynxStyleRuleKeyframes*>(rule.get()));
         break;
-      case encoder::LynxStyleRuleBase::kFontFace:
+      case CSSRuleType::kFontFace:
         EncodeCSSFontFaceRule(
             *static_cast<const encoder::LynxStyleRuleFontFace*>(rule.get()));
         break;
@@ -406,7 +406,7 @@ void TemplateBinaryWriter::EncodeCSSStyleRule(
 
 void TemplateBinaryWriter::EncodeCSSConditionRule(
     const encoder::LynxStyleRuleCondition& rule) {
-  if (rule.type == encoder::LynxStyleRuleBase::kMedia) {
+  if (rule.type == CSSRuleType::kMedia) {
     auto media_queries =
         css::MediaQueryParser::ParseMediaQuerySet(rule.condition);
     // `MediaQueryParser::ParseMediaQuerySet` never returns null, but guard
@@ -421,7 +421,7 @@ void TemplateBinaryWriter::EncodeCSSConditionRule(
   for (const auto& child : rule.child_rules) {
     WriteU8(static_cast<uint8_t>(child->type));
     switch (child->type) {
-      case encoder::LynxStyleRuleBase::kStyle:
+      case CSSRuleType::kStyle:
         EncodeCSSStyleRule(
             *static_cast<const encoder::LynxStyleRule*>(child.get()));
         break;

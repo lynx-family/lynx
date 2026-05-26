@@ -290,6 +290,15 @@ void SharedCSSFragment::AddStyleRule(
       std::move(selector_arr), std::move(parse_token)));
 }
 
+void SharedCSSFragment::AddStyleRule(fml::RefPtr<css::StyleRule> rule) {
+  rule_set_->AddStyleRule(std::move(rule));
+}
+
+void SharedCSSFragment::AddConditionRule(
+    fml::RefPtr<css::ConditionRule> condition_rule) {
+  rule_set_->AddConditionRule(std::move(condition_rule));
+}
+
 void SharedCSSFragment::CollectInvalidationSetsForId(
     css::InvalidationLists& lists, const std::string& id) {
   if (rule_invalidation_set_) {
