@@ -1,0 +1,24 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("../../../../config.gni")
+import("../../../../testing/test.gni")
+
+unittest_set("lepusng_debugger_testset") {
+  public_configs = [ "../../../../core:lynx_public_config" ]
+  sources = [ "lepusng_debugger_unittest.cc" ]
+
+  # NOTE: lepusng_debugger.h is included for inline functions only
+  # (MTSDebugInfoError::GetFormattedErrorMessage, DebugInfoDetail).
+  # DO NOT add //lynx/devtool/js_inspect/lepus:lepus_debug here — its
+  # transitive deps (QuickJS, MTSRuntime) are not linkable without a
+  # full LepusNG host.
+  public_deps = [ "../../../../third_party/rapidjson" ]
+  include_dirs = [ "../../../../../third_party/googletest/googletest/include" ]
+  public_configs += [ "../../../../third_party/quickjs:quickjs_public_config" ]
+}
+
+unittest_exec("lepusng_debugger_unittest_exec") {
+  sources = []
+  deps = [ ":lepusng_debugger_testset" ]
+}
