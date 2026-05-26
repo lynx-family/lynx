@@ -14,10 +14,21 @@
 #include "core/style/transition_data.h"
 
 namespace lynx {
+namespace tasm {
+class CssMeasureContext;
+}  // namespace tasm
+
+namespace starlight {
+struct CanonicalComputedValue;
+}  // namespace starlight
 namespace animation {
 
 const char* ConvertAnimationPropertyTypeToString(
     lynx::starlight::AnimationPropertyType type);
+
+base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
+    tasm::CSSPropertyID css_id, const starlight::CanonicalComputedValue& value,
+    const tasm::CssMeasureContext& context);
 
 class CSSTransitionManager : public CSSKeyframeManager {
  public:

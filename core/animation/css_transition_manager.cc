@@ -8,11 +8,231 @@
 
 #include "core/animation/animation_trace_event_def.h"
 #include "core/animation/keyframed_animation_curve.h"
+#include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 
 namespace lynx {
 namespace animation {
+namespace {
+
+base::flex_optional<tasm::CSSValue> ConvertLengthToTransitionCSSValue(
+    const starlight::NLength& length) {
+  switch (length.GetType()) {
+    case starlight::NLengthType::kNLengthAuto:
+      return tasm::CSSValue(starlight::LengthValueType::kAuto);
+    case starlight::NLengthType::kNLengthUnit:
+      return tasm::CSSValue(length.GetRawValue(),
+                            tasm::CSSValuePattern::NUMBER);
+    case starlight::NLengthType::kNLengthPercentage:
+      return tasm::CSSValue(length.NumericLength().GetPercentagePart(),
+                            tasm::CSSValuePattern::PERCENT);
+    case starlight::NLengthType::kNLengthCalc:
+      // Temporary transition-only compromise: freeze pure fixed / percentage
+      // calc values and defer mixed calc fidelity to a follow-up.
+      if (!length.NumericLength().ContainsPercentage()) {
+        return tasm::CSSValue(length.NumericLength().GetFixedPart(),
+                              tasm::CSSValuePattern::NUMBER);
+      }
+      if (!length.NumericLength().ContainsFixedValue()) {
+        return tasm::CSSValue(length.NumericLength().GetPercentagePart(),
+                              tasm::CSSValuePattern::PERCENT);
+      }
+      return {};
+    case starlight::NLengthType::kNLengthMaxContent:
+    case starlight::NLengthType::kNLengthFitContent:
+    case starlight::NLengthType::kNLengthFr:
+      return {};
+  }
+  return {};
+}
+
+struct TransitionArrayLengthComponent {
+  lepus::Value value;
+  tasm::CSSValuePattern pattern;
+};
+
+base::flex_optional<TransitionArrayLengthComponent>
+ConvertLengthToTransitionArrayComponent(const starlight::NLength& length) {
+  auto css_value = ConvertLengthToTransitionCSSValue(length);
+  if (!css_value) {
+    return {};
+  }
+
+  switch (css_value->GetPattern()) {
+    case tasm::CSSValuePattern::NUMBER:
+    case tasm::CSSValuePattern::PERCENT:
+      return TransitionArrayLengthComponent{css_value->GetValue(),
+                                            css_value->GetPattern()};
+    default:
+      return {};
+  }
+}
+
+base::flex_optional<TransitionArrayLengthComponent>
+ConvertComputedTransformLengthToRawComponent(const starlight::NLength& length) {
+  switch (length.GetType()) {
+    case starlight::NLengthType::kNLengthUnit:
+      return TransitionArrayLengthComponent{lepus::Value(length.GetRawValue()),
+                                            tasm::CSSValuePattern::NUMBER};
+    case starlight::NLengthType::kNLengthPercentage:
+      return TransitionArrayLengthComponent{
+          lepus::Value(length.NumericLength().GetPercentagePart()),
+          tasm::CSSValuePattern::PERCENT};
+    case starlight::NLengthType::kNLengthCalc:
+      if (length.NumericLength().ContainsFixedValue() &&
+          !length.NumericLength().ContainsPercentage()) {
+        return TransitionArrayLengthComponent{
+            lepus::Value(length.NumericLength().GetFixedPart()),
+            tasm::CSSValuePattern::NUMBER};
+      }
+      if (!length.NumericLength().ContainsFixedValue() &&
+          length.NumericLength().ContainsPercentage()) {
+        return TransitionArrayLengthComponent{
+            lepus::Value(length.NumericLength().GetPercentagePart()),
+            tasm::CSSValuePattern::PERCENT};
+      }
+      return {};
+    case starlight::NLengthType::kNLengthAuto:
+    case starlight::NLengthType::kNLengthMaxContent:
+    case starlight::NLengthType::kNLengthFitContent:
+    case starlight::NLengthType::kNLengthFr:
+      return {};
+  }
+  return {};
+}
+
+bool AppendComputedTransformLength(const fml::RefPtr<lepus::CArray>& item,
+                                   const starlight::NLength& length) {
+  auto component = ConvertComputedTransformLengthToRawComponent(length);
+  if (!component) {
+    return false;
+  }
+  item->emplace_back(std::move(component->value));
+  item->emplace_back(static_cast<int>(component->pattern));
+  return true;
+}
+
+base::flex_optional<tasm::CSSValue> ConvertComputedTransformForTransition(
+    const starlight::CanonicalComputedValue::TransformValue& transform_value,
+    const tasm::CssMeasureContext& context) {
+  auto items = lepus::CArray::Create();
+  items->reserve(transform_value.size());
+
+  const auto layouts_unit_per_px = context.layouts_unit_per_px_;
+  for (const auto& transform : transform_value) {
+    auto item = lepus::CArray::Create();
+    item->emplace_back(static_cast<int>(transform.type));
+    switch (transform.type) {
+      case starlight::TransformType::kTranslate:
+        if (!AppendComputedTransformLength(item, transform.p0) ||
+            !AppendComputedTransformLength(item, transform.p1)) {
+          return {};
+        }
+        break;
+      case starlight::TransformType::kTranslateX:
+      case starlight::TransformType::kTranslateY:
+      case starlight::TransformType::kTranslateZ:
+        if (!AppendComputedTransformLength(item, transform.p0)) {
+          return {};
+        }
+        break;
+      case starlight::TransformType::kTranslate3d:
+        if (!AppendComputedTransformLength(item, transform.p0) ||
+            !AppendComputedTransformLength(item, transform.p1) ||
+            !AppendComputedTransformLength(item, transform.p2)) {
+          return {};
+        }
+        break;
+      case starlight::TransformType::kRotate:
+      case starlight::TransformType::kRotateX:
+      case starlight::TransformType::kRotateY:
+      case starlight::TransformType::kRotateZ:
+        item->emplace_back(transform.p0.GetRawValue());
+        break;
+      case starlight::TransformType::kScale:
+        item->emplace_back(transform.p0.GetRawValue());
+        item->emplace_back(transform.p1.GetRawValue());
+        break;
+      case starlight::TransformType::kScaleX:
+      case starlight::TransformType::kScaleY:
+        item->emplace_back(transform.p0.GetRawValue());
+        break;
+      case starlight::TransformType::kSkew:
+        item->emplace_back(transform.p0.GetRawValue());
+        item->emplace_back(transform.p1.GetRawValue());
+        break;
+      case starlight::TransformType::kSkewX:
+      case starlight::TransformType::kSkewY:
+        item->emplace_back(transform.p0.GetRawValue());
+        break;
+      case starlight::TransformType::kMatrix:
+        for (int i = 0; i < 6; ++i) {
+          const auto value =
+              transform.matrix
+                  [starlight::TransformRawData::INDEX_2D_TO_3D_MATRIX_ID[i]];
+          item->emplace_back((i >= 4 && layouts_unit_per_px > 0.0f)
+                                 ? value / layouts_unit_per_px
+                                 : value);
+        }
+        break;
+      case starlight::TransformType::kMatrix3d:
+        for (int i = 0; i < 16; ++i) {
+          const auto value = transform.matrix[i];
+          item->emplace_back(
+              ((i == 12 || i == 13 || i == 14) && layouts_unit_per_px > 0.0f)
+                  ? value / layouts_unit_per_px
+                  : value);
+        }
+        break;
+      case starlight::TransformType::kNone:
+        break;
+    }
+    items->emplace_back(std::move(item));
+  }
+  return tasm::CSSValue(std::move(items));
+}
+
+tasm::CSSValue MakeTransitionBackgroundPositionDefaultValue() {
+  auto inner_array = lepus::CArray::Create();
+  inner_array->emplace_back(static_cast<int>(tasm::CSSValuePattern::PERCENT));
+  inner_array->emplace_back(0.0);
+  inner_array->emplace_back(static_cast<int>(tasm::CSSValuePattern::PERCENT));
+  inner_array->emplace_back(0.0);
+
+  auto outer_array = lepus::CArray::Create();
+  outer_array->emplace_back(std::move(inner_array));
+  return tasm::CSSValue(std::move(outer_array));
+}
+
+base::flex_optional<tasm::CSSValue> ConvertComputedFilterForTransition(
+    const starlight::FilterData& filter) {
+  switch (filter.type) {
+    case starlight::FilterType::kNone:
+      return tasm::CSSValue();
+    case starlight::FilterType::kBlur:
+    case starlight::FilterType::kGrayscale:
+    case starlight::FilterType::kBrightness:
+    case starlight::FilterType::kContrast:
+    case starlight::FilterType::kSaturate:
+      break;
+    default:
+      return {};
+  }
+
+  auto amount = ConvertLengthToTransitionArrayComponent(filter.amount);
+  if (!amount) {
+    return {};
+  }
+
+  auto array = lepus::CArray::Create();
+  array->emplace_back(static_cast<int>(filter.type));
+  array->emplace_back(std::move(amount->value));
+  array->emplace_back(static_cast<int>(amount->pattern));
+  return tasm::CSSValue(std::move(array));
+}
+
+}  // namespace
 
 const char* ConvertAnimationPropertyTypeToString(
     lynx::starlight::AnimationPropertyType type) {
@@ -116,6 +336,183 @@ const char* ConvertAnimationPropertyTypeToString(
       return "transform-origin";
     default:
       return "";
+  }
+}
+
+base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
+    tasm::CSSPropertyID css_id, const starlight::CanonicalComputedValue& value,
+    const tasm::CssMeasureContext& context) {
+  using Kind = starlight::CanonicalComputedValue::Kind;
+  switch (css_id) {
+    case tasm::kPropertyIDLeft:
+    case tasm::kPropertyIDTop:
+    case tasm::kPropertyIDRight:
+    case tasm::kPropertyIDBottom:
+    case tasm::kPropertyIDWidth:
+    case tasm::kPropertyIDHeight:
+    case tasm::kPropertyIDMaxWidth:
+    case tasm::kPropertyIDMinWidth:
+    case tasm::kPropertyIDMaxHeight:
+    case tasm::kPropertyIDMinHeight:
+    case tasm::kPropertyIDMarginLeft:
+    case tasm::kPropertyIDMarginRight:
+    case tasm::kPropertyIDMarginTop:
+    case tasm::kPropertyIDMarginBottom:
+    case tasm::kPropertyIDPaddingLeft:
+    case tasm::kPropertyIDPaddingRight:
+    case tasm::kPropertyIDPaddingTop:
+    case tasm::kPropertyIDPaddingBottom:
+    case tasm::kPropertyIDFlexBasis:
+      if (value.kind() != Kind::kLength) {
+        return {};
+      }
+      if (const auto* length =
+              std::get_if<starlight::CanonicalComputedValue::kLengthIndex>(
+                  &value.storage())) {
+        return ConvertLengthToTransitionCSSValue(*length);
+      }
+      return {};
+    case tasm::kPropertyIDBorderLeftWidth:
+    case tasm::kPropertyIDBorderRightWidth:
+    case tasm::kPropertyIDBorderTopWidth:
+    case tasm::kPropertyIDBorderBottomWidth:
+      if (value.kind() != Kind::kResolvedLength) {
+        return {};
+      }
+      if (const auto* resolved_length =
+              std::get_if<starlight::CanonicalComputedValue::kFloatIndex>(
+                  &value.storage())) {
+        return tasm::CSSValue(*resolved_length, tasm::CSSValuePattern::NUMBER);
+      }
+      return {};
+    case tasm::kPropertyIDOpacity:
+    case tasm::kPropertyIDFlexGrow:
+    case tasm::kPropertyIDOffsetDistance:
+      if (value.kind() != Kind::kNumber) {
+        return {};
+      }
+      if (const auto* number =
+              std::get_if<starlight::CanonicalComputedValue::kFloatIndex>(
+                  &value.storage())) {
+        return tasm::CSSValue(*number, tasm::CSSValuePattern::NUMBER);
+      }
+      return {};
+    case tasm::kPropertyIDBackgroundColor:
+    case tasm::kPropertyIDColor:
+    case tasm::kPropertyIDBorderLeftColor:
+    case tasm::kPropertyIDBorderRightColor:
+    case tasm::kPropertyIDBorderTopColor:
+    case tasm::kPropertyIDBorderBottomColor:
+      if (value.kind() != Kind::kColor) {
+        return {};
+      }
+      if (const auto* color =
+              std::get_if<starlight::CanonicalComputedValue::kColorIndex>(
+                  &value.storage())) {
+        return tasm::CSSValue(*color, tasm::CSSValuePattern::NUMBER);
+      }
+      return {};
+    case tasm::kPropertyIDTransform:
+      if (value.kind() != Kind::kTransform) {
+        return {};
+      }
+      {
+        const auto* transform_value =
+            std::get_if<starlight::CanonicalComputedValue::kTransformIndex>(
+                &value.storage());
+        if (transform_value == nullptr) {
+          return {};
+        }
+        if (transform_value->empty()) {
+          return CSSKeyframeManager::GetDefaultValue(
+              starlight::AnimationPropertyType::kTransform);
+        }
+        return ConvertComputedTransformForTransition(*transform_value, context);
+      }
+    case tasm::kPropertyIDFilter: {
+      if (value.kind() != Kind::kFilter) {
+        return {};
+      }
+      const auto* filter =
+          std::get_if<starlight::CanonicalComputedValue::kFilterIndex>(
+              &value.storage());
+      if (filter == nullptr) {
+        return {};
+      }
+      if (filter->type == starlight::FilterType::kNone) {
+        return tasm::CSSValue();
+      }
+      return ConvertComputedFilterForTransition(*filter);
+    }
+    case tasm::kPropertyIDBackgroundPosition: {
+      if (value.kind() != Kind::kBackgroundPosition) {
+        return {};
+      }
+      const auto* positions = std::get_if<
+          starlight::CanonicalComputedValue::kBackgroundPositionIndex>(
+          &value.storage());
+      if (positions == nullptr) {
+        return {};
+      }
+      if (positions->empty()) {
+        return MakeTransitionBackgroundPositionDefaultValue();
+      }
+      if ((positions->size() % 2) != 0) {
+        return {};
+      }
+      auto outer_array = lepus::CArray::Create();
+      for (size_t index = 0; index < positions->size(); index += 2) {
+        auto x = ConvertLengthToTransitionArrayComponent((*positions)[index]);
+        auto y =
+            ConvertLengthToTransitionArrayComponent((*positions)[index + 1]);
+        if (!x || !y) {
+          return {};
+        }
+        auto inner_array = lepus::CArray::Create();
+        inner_array->emplace_back(static_cast<int>(x->pattern));
+        inner_array->emplace_back(x->value);
+        inner_array->emplace_back(static_cast<int>(y->pattern));
+        inner_array->emplace_back(y->value);
+        outer_array->emplace_back(std::move(inner_array));
+      }
+      return tasm::CSSValue(std::move(outer_array));
+    }
+    case tasm::kPropertyIDTransformOrigin: {
+      if (value.kind() != Kind::kTransformOrigin) {
+        return {};
+      }
+      const auto* transform_origin =
+          std::get_if<starlight::CanonicalComputedValue::kTransformOriginIndex>(
+              &value.storage());
+      if (transform_origin == nullptr) {
+        return {};
+      }
+      auto x = ConvertLengthToTransitionArrayComponent(transform_origin->x);
+      auto y = ConvertLengthToTransitionArrayComponent(transform_origin->y);
+      if (!x || !y) {
+        return {};
+      }
+      auto array = lepus::CArray::Create();
+      array->emplace_back(x->value);
+      array->emplace_back(static_cast<int>(x->pattern));
+      array->emplace_back(y->value);
+      array->emplace_back(static_cast<int>(y->pattern));
+      return tasm::CSSValue(std::move(array));
+    }
+    case tasm::kPropertyIDVisibility: {
+      if (value.kind() != Kind::kEnum) {
+        return {};
+      }
+      const auto* enum_value =
+          std::get_if<starlight::CanonicalComputedValue::kEnumIndex>(
+              &value.storage());
+      if (enum_value == nullptr) {
+        return {};
+      }
+      return tasm::CSSValue(*enum_value, tasm::CSSValuePattern::ENUM);
+    }
+    default:
+      return {};
   }
 }
 
