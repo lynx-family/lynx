@@ -47,6 +47,13 @@ class TaskSource {
     const DelayedTask& task;
   };
 
+  struct PendingTasks {
+    fml::DelayedTaskQueue primary;
+    fml::DelayedTaskQueue emergency;
+    fml::DelayedTaskQueue micro;
+    std::queue<DelayedTask, std::list<DelayedTask>> idle;
+  };
+
   /// Construts a TaskSource with the given `task_queue_id`.
   explicit TaskSource(TaskQueueId task_queue_id);
 
@@ -54,6 +61,13 @@ class TaskSource {
 
   /// Drops the pending tasks from both primary and secondary task heaps.
   void ShutDown();
+
+  /// Moves all pending tasks out of this source and returns them.
+  ///
+  /// Tasks are destroyed when the returned PendingTasks is destroyed. Callers
+  /// must keep the returned object alive until it is safe for task destructors
+  /// to run, for example after releasing any related locks.
+  PendingTasks TakePendingTasks();
 
   /// Adds a task to the corresponding task heap as dictated by the
   /// `TaskSourceGrade` of the `DelayedTask`.
