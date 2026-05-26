@@ -2453,6 +2453,76 @@ TEST_F(CSSPatchingTest,
 }
 
 TEST_F(CSSPatchingTest,
+       NewStylingHasInheritedPropertyDiffUsesDefaultInheritList) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  const auto& configs = manager->GetDynamicCSSConfigs();
+
+  starlight::ComputedCSSStyle layout_only_style(
+      *manager->platform_computed_css());
+  layout_only_style.MarkChanged(CSSPropertyID::kPropertyIDWidth);
+  EXPECT_FALSE(element->style_resolver_.HasInheritedPropertyDiff(
+      layout_only_style, configs));
+
+  starlight::ComputedCSSStyle inherited_changed_style(
+      *manager->platform_computed_css());
+  inherited_changed_style.MarkChanged(CSSPropertyID::kPropertyIDColor);
+  EXPECT_TRUE(element->style_resolver_.HasInheritedPropertyDiff(
+      inherited_changed_style, configs));
+
+  starlight::ComputedCSSStyle inherited_reset_style(
+      *manager->platform_computed_css());
+  inherited_reset_style.MarkReset(CSSPropertyID::kPropertyIDFontSize);
+  EXPECT_TRUE(element->style_resolver_.HasInheritedPropertyDiff(
+      inherited_reset_style, configs));
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingHasInheritedPropertyDiffUsesCustomInheritList) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  DynamicCSSConfigs custom_configs;
+  custom_configs.custom_inherit_list_.insert(CSSPropertyID::kPropertyIDWidth);
+
+  starlight::ComputedCSSStyle default_inherited_style(
+      *manager->platform_computed_css());
+  default_inherited_style.MarkChanged(CSSPropertyID::kPropertyIDColor);
+  EXPECT_FALSE(element->style_resolver_.HasInheritedPropertyDiff(
+      default_inherited_style, custom_configs));
+
+  starlight::ComputedCSSStyle custom_inherited_style(
+      *manager->platform_computed_css());
+  custom_inherited_style.MarkChanged(CSSPropertyID::kPropertyIDWidth);
+  EXPECT_TRUE(element->style_resolver_.HasInheritedPropertyDiff(
+      custom_inherited_style, custom_configs));
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingHasInheritedPropertyDiffCatchesDefaultResetDiff) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle old_style(*manager->platform_computed_css());
+  old_style.SetValue(
+      CSSPropertyID::kPropertyIDColor,
+      CSSValue(static_cast<uint32_t>(0xffff0000), CSSValuePattern::NUMBER),
+      false);
+  old_style.ClearChanged();
+  old_style.ClearReset();
+
+  starlight::ComputedCSSStyle new_style(*manager->platform_computed_css());
+  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(new_style, old_style));
+  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDColor));
+  EXPECT_TRUE(element->style_resolver_.HasInheritedPropertyDiff(
+      new_style, manager->GetDynamicCSSConfigs()));
+}
+
+TEST_F(CSSPatchingTest,
        NewStylingBuildFinalStyleFromBaseFastPathAppliesSampledOverrides) {
   auto page = CreatePageRoot(16.0);
   auto element = manager->CreateFiberView();

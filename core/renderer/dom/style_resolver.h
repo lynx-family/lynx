@@ -116,6 +116,9 @@ class StyleResolver {
   bool HasPropertyDiff(const starlight::ComputedCSSStyle& style,
                        CSSPropertyID id) const;
 
+  bool HasInheritedPropertyDiff(const starlight::ComputedCSSStyle& style,
+                                const DynamicCSSConfigs& configs) const;
+
   void HandleCSSVariables(StyleMap& styles);
 
   void HandlePseudoElement(CSSFragment* fragment);
