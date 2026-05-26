@@ -14,6 +14,7 @@ import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,7 +30,7 @@ public class LynxBackgroundRuntimeOptions {
   // Pending lynx_core.js load
   private static int RUNTIME_FLAG_PENDING_JS_TASK = 1 << 5;
 
-  private boolean mEnableUserBytecode;
+  private @Nullable Boolean mEnableUserBytecode;
   private String mBytecodeSourceUrl;
   private @Nullable LynxGroup mLynxGroup;
   private final List<ParamWrapper> mWrappers;
@@ -41,7 +42,7 @@ public class LynxBackgroundRuntimeOptions {
   LynxTemplateResourceFetcher templateResourceFetcher;
   LynxBooleanOption enableGenericResourceFetcher = LynxBooleanOption.UNSET;
   // Pending lynx_core.js load
-  private boolean mPendingCoreJsLoad;
+  private @Nullable Boolean mPendingCoreJsLoad;
   private LynxModule.AuthValidator mAuthValidator;
 
   public LynxBackgroundRuntimeOptions() {
@@ -86,7 +87,7 @@ public class LynxBackgroundRuntimeOptions {
   }
 
   public boolean isEnableUserBytecode() {
-    return mEnableUserBytecode;
+    return Boolean.TRUE.equals(mEnableUserBytecode);
   }
 
   public void setEnableUserBytecode(boolean mEnableUserBytecode) {
@@ -108,7 +109,7 @@ public class LynxBackgroundRuntimeOptions {
 
   // if pending lynx_core.js load
   public boolean isPendingCoreJsLoad() {
-    return mPendingCoreJsLoad;
+    return Boolean.TRUE.equals(mPendingCoreJsLoad);
   }
 
   @Nullable
@@ -195,6 +196,62 @@ public class LynxBackgroundRuntimeOptions {
     return this.enableGenericResourceFetcher;
   }
 
+  // Inherit unset options from `other` while keeping options set on `this`.
+  // Collection options are merged: module wrappers with the same name are de-duplicated and
+  // `this` wins, while resource providers in `other` only fill missing keys on `this`.
+  void inheritRuntimeOptionsFromGroup(LynxBackgroundRuntimeOptions other) {
+    if (other == null || other == this) {
+      return;
+    }
+
+    LinkedHashMap<String, ParamWrapper> mergedWrappers = new LinkedHashMap<>();
+    for (ParamWrapper wrapper : other.mWrappers) {
+      mergedWrappers.put(wrapper.getName(), wrapper);
+    }
+    for (ParamWrapper wrapper : mWrappers) {
+      mergedWrappers.put(wrapper.getName(), wrapper);
+    }
+    mWrappers.clear();
+    mWrappers.addAll(mergedWrappers.values());
+
+    for (Map.Entry<String, LynxResourceProvider> entry : other.mResourceProviders.entrySet()) {
+      if (!mResourceProviders.containsKey(entry.getKey())) {
+        mResourceProviders.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    if (mLynxGroup == null) {
+      mLynxGroup = other.mLynxGroup;
+    }
+    if (mEnableUserBytecode == null && other.mEnableUserBytecode != null) {
+      mEnableUserBytecode = other.mEnableUserBytecode;
+    }
+    if (mBytecodeSourceUrl == null) {
+      mBytecodeSourceUrl = other.mBytecodeSourceUrl;
+    }
+    if (mPendingCoreJsLoad == null && other.mPendingCoreJsLoad != null) {
+      mPendingCoreJsLoad = other.mPendingCoreJsLoad;
+    }
+    if (mPresetData == null) {
+      mPresetData = other.mPresetData;
+    }
+    if (mGlobalProps == null) {
+      mGlobalProps = other.mGlobalProps;
+    }
+    if (mAuthValidator == null) {
+      mAuthValidator = other.mAuthValidator;
+    }
+    if (enableGenericResourceFetcher == LynxBooleanOption.UNSET) {
+      enableGenericResourceFetcher = other.enableGenericResourceFetcher;
+    }
+    genericResourceFetcher =
+        genericResourceFetcher != null ? genericResourceFetcher : other.genericResourceFetcher;
+    mediaResourceFetcher =
+        mediaResourceFetcher != null ? mediaResourceFetcher : other.mediaResourceFetcher;
+    templateResourceFetcher =
+        templateResourceFetcher != null ? templateResourceFetcher : other.templateResourceFetcher;
+  }
+
   // There are 2 ways to use this method:
   // 1. merge LynxBackgroundRuntimeOptions as `other` into LynxBackgroundRuntime as `this`
   // 2. merge LynxBackgroundRuntimeOptions as `other` into LynxViewBuilder as `this`
@@ -213,7 +270,7 @@ public class LynxBackgroundRuntimeOptions {
     this.mEnableUserBytecode = other.mEnableUserBytecode;
     this.mBytecodeSourceUrl = other.mBytecodeSourceUrl;
     // LynxView doesn't pending core js load.
-    this.mPendingCoreJsLoad = false;
+    this.mPendingCoreJsLoad = Boolean.FALSE;
     this.mWrappers.addAll(other.mWrappers);
 
     // Merge these Fetchers only if they are unset:
