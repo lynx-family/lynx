@@ -11,6 +11,7 @@
 #include "base/include/value/path_parser.h"
 #include "base/include/value/ref_type.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/builtin.h"
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepus/json_parser.h"
@@ -36,6 +37,18 @@ namespace {
 lepus::Value TestRenderBindingFunction(runtime::MTSContext*, lepus::Value*,
                                        int) {
   return lepus::Value();
+}
+
+lepus::RestrictedValue TestVMRawBindingFunction(lepus::VMContext*) {
+  return lepus::RestrictedValue(lepus::RestrictedValue::kCreateAsUndefinedTag);
+}
+
+LEPUSValue TestQuickRawBindingFunction(LEPUSContext* ctx,
+                                       LEPUSValueConst this_val, int argc,
+                                       LEPUSValueConst* argv) {
+  (void)this_val;
+  (void)argv;
+  return LEPUS_NewInt32(ctx, argc);
 }
 
 void FreeLEPUSValueIfNeeded(LEPUSContext* ctx, LEPUSValue value) {
@@ -167,6 +180,92 @@ TEST(RenderBindingFunctionRegistration, QuickContextFiltersEachEntry) {
       ctx, js_obj, "quick_skipped_tail");
   EXPECT_TRUE(LEPUS_IsUndefined(skipped_tail));
   FreeLEPUSValueIfNeeded(ctx, skipped_tail);
+}
+
+TEST(RenderBindingFunctionRegistration, VMContextRegistersRawBindingFunction) {
+  static const runtime::RenderBindingFunction legacy_funcs[] = {
+      {"vm_raw_registered", &TestRenderBindingFunction, true, false},
+  };
+  static const lepus::VMContextRawBindingFunction funcs[] = {
+      {"vm_raw_registered", &TestVMRawBindingFunction},
+  };
+
+  lepus::VMContext vm;
+  vm.Initialize();
+
+  vm.RegisterGlobalFunction(legacy_funcs,
+                            sizeof(legacy_funcs) / sizeof(legacy_funcs[0]));
+  const int legacy_index = vm.global()->Search("vm_raw_registered");
+  const size_t legacy_global_size = vm.global()->size();
+  ASSERT_GE(legacy_index, 0);
+  auto legacy_global = vm.GetGlobalData("vm_raw_registered");
+  EXPECT_TRUE(legacy_global.IsCFunction());
+  EXPECT_EQ(lepus::CFunctionType_Default, legacy_global.GetCFunctionType());
+
+  vm.RegisterGlobalFunction(funcs, sizeof(funcs) / sizeof(funcs[0]));
+  EXPECT_EQ(legacy_index, vm.global()->Search("vm_raw_registered"));
+  EXPECT_EQ(legacy_global_size, vm.global()->size());
+  auto global = vm.GetGlobalData("vm_raw_registered");
+  EXPECT_TRUE(global.IsCFunction());
+  EXPECT_EQ(lepus::CFunctionType_Builtin, global.GetCFunctionType());
+  EXPECT_EQ(&TestVMRawBindingFunction, global.FunctionBuiltin());
+}
+
+TEST(RenderBindingFunctionRegistration,
+     QuickContextRegistersRawBindingFunction) {
+  static const lepus::QuickContextRawBindingFunction funcs[] = {
+      {"quick_raw_registered", &TestQuickRawBindingFunction, 2},
+  };
+
+  lepus::QuickContext qctx;
+  qctx.Initialize();
+  LEPUSContext* ctx = qctx.context();
+
+  qctx.RegisterGlobalFunction(funcs, sizeof(funcs) / sizeof(funcs[0]));
+  LEPUSValue global = qctx.SearchGlobalData("quick_raw_registered");
+  ASSERT_TRUE(LEPUS_IsFunction(ctx, global));
+  LEPUSValue global_args[] = {LEPUS_NewInt32(ctx, 1), LEPUS_NewInt32(ctx, 2)};
+  LEPUSValue global_result =
+      LEPUS_Call(ctx, global, LEPUS_UNDEFINED, 2, global_args);
+  ASSERT_FALSE(LEPUS_IsException(global_result));
+  EXPECT_EQ(2, LEPUS_VALUE_GET_INT(global_result));
+  FreeLEPUSValueIfNeeded(ctx, global_result);
+  FreeLEPUSValueIfNeeded(ctx, global_args[0]);
+  FreeLEPUSValueIfNeeded(ctx, global_args[1]);
+  FreeLEPUSValueIfNeeded(ctx, global);
+}
+
+TEST(RenderBindingFunctionRegistration,
+     FiberBuiltinRegistrationKeepsVMLegacyBindingByDefault) {
+  auto context =
+      runtime::MTSRuntime::CreateContext(runtime::ContextType::VMContextType);
+  context->Initialize();
+
+  tasm::Renderer::RegisterBuiltin(context.get(), tasm::ArchOption::FIBER_ARCH);
+  auto* vm = runtime::MTSRuntime::ToVMContext(context.get());
+  auto function = vm->GetGlobalData(tasm::kCFunctionSetAttribute);
+
+  ASSERT_TRUE(function.IsCFunction());
+  EXPECT_EQ(lepus::CFunctionType_Default, function.GetCFunctionType());
+}
+
+TEST(RenderBindingFunctionRegistration,
+     FiberBuiltinRegistrationKeepsQuickLegacyBindingByDefault) {
+  auto context = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  context->Initialize();
+
+  tasm::Renderer::RegisterBuiltin(context.get(), tasm::ArchOption::FIBER_ARCH);
+  auto* qctx = runtime::MTSRuntime::ToQuickContext(context.get());
+  LEPUSContext* ctx = qctx->context();
+  LEPUSValue function = qctx->SearchGlobalData(tasm::kCFunctionSetAttribute);
+  ASSERT_TRUE(LEPUS_IsFunction(ctx, function));
+
+  LEPUSValue length = LEPUS_GetPropertyStr(ctx, function, "length");
+  ASSERT_FALSE(LEPUS_IsException(length));
+  EXPECT_EQ(0, LEPUS_VALUE_GET_INT(length));
+  FreeLEPUSValueIfNeeded(ctx, length);
+  FreeLEPUSValueIfNeeded(ctx, function);
 }
 
 TEST(LepusShadowEqualTest, SameStringTable) {

@@ -20,6 +20,15 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+
+void RegisterFiberFastPathFunctions(runtime::MTSRuntime* context) {
+  // TODO(yangguangzhao): Register more fiber fast path functions.
+  (void)context;
+}
+
+}  // namespace
+
 lepus::Value Utils::CreateLynx(runtime::MTSRuntime* context,
                                const std::string& version) {
   // clang-format off
@@ -173,8 +182,8 @@ lepus::Value Renderer::SlotFunction(runtime::MTSContext* context, lepus::Value*,
   return lepus::Value();
 }
 
-void Renderer::RegisterBuiltin(runtime::MTSRuntime* context,
-                               ArchOption option) {
+void Renderer::RegisterBuiltin(runtime::MTSRuntime* context, ArchOption option,
+                               bool enable_element_api_new_registration) {
   int32_t size = 0;
   const runtime::RenderBindingFunction* funcs = nullptr;
   switch (option) {
@@ -185,6 +194,9 @@ void Renderer::RegisterBuiltin(runtime::MTSRuntime* context,
       funcs = GetBuiltinFunctionsForRadon(size);
   }
   context->RegisterGlobalFunction(funcs, size);
+  if (option == ArchOption::FIBER_ARCH && enable_element_api_new_registration) {
+    RegisterFiberFastPathFunctions(context);
+  }
 }
 
 const runtime::RenderBindingFunction* Renderer::GetBuiltinFunctionsForRadon(

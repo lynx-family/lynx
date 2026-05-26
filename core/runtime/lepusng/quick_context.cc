@@ -1078,6 +1078,13 @@ void QuickContext::RegisterObjectFunction(
   return;
 }
 
+void QuickContext::RegisterGlobalFunction(
+    const QuickContextRawBindingFunction* funcs, size_t size) {
+  for (size_t i = 0; i < size; ++i) {
+    RegisterGlobalFunction(funcs[i].name, funcs[i].function, funcs[i].argc);
+  }
+}
+
 LEPUSValue QuickContext::SearchGlobalData(const std::string& name) {
   HandleScope func_scope(context());
   LEPUSAtom name_atom = LEPUS_NewAtom(context(), name.c_str());

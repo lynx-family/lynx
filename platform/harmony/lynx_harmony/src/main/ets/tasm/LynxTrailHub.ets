@@ -78,6 +78,7 @@ export enum LynxTrailKey {
   FIX_FIBER_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG = 'fix_fiber_dynamic_update_transition_consume_bug',
   FIX_FIBER_REINSERT_DETACH_FROM_OLD_RENDER_PARENT = 'fix_fiber_reinsert_detach_from_old_render_parent',
   ENABLE_NEW_STYLING_PIPELINE = 'enable_new_styling_pipeline',
+  ENABLE_ELEMENT_API_NEW_REGISTRATION = 'enable_element_api_new_registration',
 }
 
 /**

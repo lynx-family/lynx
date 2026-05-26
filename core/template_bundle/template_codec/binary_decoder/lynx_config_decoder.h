@@ -936,6 +936,15 @@ class LynxConfigDecoder final {
       page_config->SetSyncXElementRegistry(
           doc[config::kSyncXElementRegistry].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableElementApiNewRegistration) &&
+        doc[config::kEnableElementApiNewRegistration].IsBool()) {
+      page_config->SetEnableElementApiNewRegistration(
+          doc[config::kEnableElementApiNewRegistration].GetBool());
+    } else {
+      page_config->SetEnableElementApiNewRegistration(
+          LynxEnv::GetInstance().EnableElementApiNewRegistration());
+    }
   };
 };
 }  // namespace tasm

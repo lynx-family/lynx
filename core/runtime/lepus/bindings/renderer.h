@@ -327,7 +327,8 @@ class Utils {
 class Renderer {
  public:
   static void RegisterBuiltin(runtime::MTSRuntime* mts_runtime,
-                              ArchOption option);
+                              ArchOption option,
+                              bool enable_element_api_new_registration = false);
 
  private:
   static lepus::Value SlotFunction(runtime::MTSContext* context,

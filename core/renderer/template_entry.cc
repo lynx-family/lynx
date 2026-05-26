@@ -408,8 +408,10 @@ TemplateEntry::~TemplateEntry() {
 
 void TemplateEntry::RegisterBuiltin() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_REGISTER_BUILD_IN);
-  tasm::Renderer::RegisterBuiltin(vm_context_.get(),
-                                  compile_options().arch_option_);
+  tasm::Renderer::RegisterBuiltin(
+      vm_context_.get(), compile_options().arch_option_,
+      template_bundle_.page_configs_ &&
+          template_bundle_.page_configs_->GetEnableElementApiNewRegistration());
 }
 
 void TemplateEntry::SetTemplateAssembler(TemplateAssembler* assembler) {

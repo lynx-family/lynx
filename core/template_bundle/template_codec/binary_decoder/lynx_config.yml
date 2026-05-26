@@ -1947,3 +1947,15 @@ syncXElementRegistry:
     - HarmonyOS
     - iOS
   export: false
+enableElementApiNewRegistration:
+  description: Controls whether Fiber Element API functions are registered through the new runtime-specific raw binding path. When enabled, Fiber registration installs the Element API raw fast path for Lepus and LepusNG; when disabled, registration keeps the existing RenderBindingFunction path.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  author: yangguangzhao
+  since: '4.0'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+  export: false

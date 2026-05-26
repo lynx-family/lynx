@@ -399,6 +399,21 @@ void VMContext::RegisterObjectFunction(
   }
 }
 
+void VMContext::RegisterGlobalFunction(const VMContextRawBindingFunction* funcs,
+                                       size_t size) {
+  for (size_t i = 0; i < size; ++i) {
+    const int index = global_.Search(funcs[i].name);
+    DCHECK(index >= 0);
+    if (index < 0) {
+      continue;
+    }
+    if (!global_.Update(static_cast<size_t>(index),
+                        lepus::Value(funcs[i].function))) {
+      DCHECK(false);
+    }
+  }
+}
+
 // check target's first level variable.
 // 1. if update key is not path, simply add new k-v pair for the first level
 // 2. if update key is value path, clone the first level k-v pair and update

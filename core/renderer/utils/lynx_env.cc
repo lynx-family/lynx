@@ -666,5 +666,9 @@ bool LynxEnv::EnableFrameNativeData() {
 bool LynxEnv::EnableReadableStreamMemFix() {
   return GetBoolEnv(Key::ENABLE_READABLE_STREAM_MEM_FIX, true);
 }
+
+bool LynxEnv::EnableElementApiNewRegistration() {
+  return GetBoolEnv(Key::ENABLE_ELEMENT_API_NEW_REGISTRATION, false);
+}
 }  // namespace tasm
 }  // namespace lynx

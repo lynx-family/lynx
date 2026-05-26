@@ -42,6 +42,12 @@ namespace lepus {
 class QuickContext;
 class ContextBinaryWriter;
 
+struct QuickContextRawBindingFunction {
+  const char* name;
+  LEPUSCFunction* function;
+  int argc = 0;
+};
+
 // QuickContextEnvWrapper always leaks, ensuring that the internal env
 // pointer is always valid. This env pointer is accessed by base::Value. When
 // the lifecycle of base::Value is inconsistent with QuickContext, you can check
@@ -135,6 +141,8 @@ class QuickContext : private LEPUSRuntimeData,
   void RegisterObjectFunction(lepus::Value& obj,
                               const runtime::RenderBindingFunction* funcs,
                               size_t size) override;
+  void RegisterGlobalFunction(const QuickContextRawBindingFunction* funcs,
+                              size_t size);
 
   virtual Value CallArgs(const base::String& name, const Value* args[],
                          size_t args_count,

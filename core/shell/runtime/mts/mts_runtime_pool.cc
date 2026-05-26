@@ -71,7 +71,8 @@ void MTSRuntimePool::AddMTSRuntimeSafely(int32_t count) {
         mts_runtime->SetGlobalData(BASE_STATIC_STRING(tasm::kTemplateAssembler),
                                    lepus::Value());
       }
-      tasm::Renderer::RegisterBuiltin(mts_runtime.get(), arch_option_);
+      tasm::Renderer::RegisterBuiltin(mts_runtime.get(), arch_option_,
+                                      enable_element_api_new_registration_);
       mts_runtime->RegisterLynx(enable_signal_api_);
 
       if (devtool_pool_ != nullptr &&

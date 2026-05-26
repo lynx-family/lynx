@@ -79,6 +79,9 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
         arch_option_(compile_options.arch_option_),
         enable_mts_pre_execute_(
             page_configs ? page_configs->GetEnableMTSPreExecute() : false),
+        enable_element_api_new_registration_(
+            page_configs ? page_configs->GetEnableElementApiNewRegistration()
+                         : false),
         debug_info_url_(compile_options.template_debug_url_) {}
 
   void AddMTSRuntimeSafely(int32_t count);
@@ -93,6 +96,7 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
   const std::shared_ptr<runtime::ContextBundle> context_bundle_{nullptr};
   const tasm::ArchOption arch_option_{tasm::RADON_ARCH};
   const bool enable_mts_pre_execute_{false};
+  const bool enable_element_api_new_registration_{false};
 
   std::atomic<bool> is_destroying_{false};
   std::mutex mtx_;

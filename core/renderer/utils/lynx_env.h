@@ -158,6 +158,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_NEW_STYLING_PIPELINE,
     ENABLE_FRAME_NATIVE_DATA,
     ENABLE_READABLE_STREAM_MEM_FIX,
+    ENABLE_ELEMENT_API_NEW_REGISTRATION,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -333,6 +334,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_FRAME_NATIVE_DATA, "enable_frame_native_data"},
             {Key::ENABLE_READABLE_STREAM_MEM_FIX,
              "enable_readable_stream_mem_fix"},
+            {Key::ENABLE_ELEMENT_API_NEW_REGISTRATION,
+             "enable_element_api_new_registration"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -505,6 +508,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableNewStylingPipeline();
   bool EnableFrameNativeData();
   bool EnableReadableStreamMemFix();
+  bool EnableElementApiNewRegistration();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

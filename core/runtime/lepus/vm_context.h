@@ -32,6 +32,12 @@ class TemplateBinaryReader;
 namespace lepus {
 class OutputStream;
 class VMContextBundle;
+
+struct VMContextRawBindingFunction {
+  const char* name;
+  CFunctionBuiltin function;
+};
+
 class VMContext : public runtime::MTSContext {
  public:
   explicit VMContext(runtime::MTSRuntime* runtime_private)
@@ -58,6 +64,8 @@ class VMContext : public runtime::MTSContext {
   void RegisterObjectFunction(lepus::Value& obj,
                               const runtime::RenderBindingFunction* funcs,
                               size_t size) override;
+  void RegisterGlobalFunction(const VMContextRawBindingFunction* funcs,
+                              size_t size);
 
   virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
                                             const Value& value) override;
