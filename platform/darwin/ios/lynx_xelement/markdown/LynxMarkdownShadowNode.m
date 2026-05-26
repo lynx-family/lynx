@@ -4,7 +4,10 @@
 
 #import <XElement/LynxMarkdownShadowNode.h>
 
+#import <UIKit/UIKit.h>
+
 #import <Lynx/LynxEvent.h>
+#import <Lynx/LynxNativeLayoutNode.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <ServalMarkdown/ServalMarkdownConstants.h>
@@ -35,6 +38,36 @@ static ServalMarkdownAnimationType LynxMarkdownToServalAnimationType(NSString *t
     return kServalMarkdownAnimationTypeTypewriter;
   }
   return kServalMarkdownAnimationTypeNone;
+}
+
+static uint32_t LynxMarkdownColorComponentToByte(CGFloat value) {
+  if (value < 0.f) {
+    value = 0.f;
+  } else if (value > 1.f) {
+    value = 1.f;
+  }
+  return (uint32_t)(value * 255.f + 0.5f);
+}
+
+static uint32_t LynxMarkdownUIColorToARGB(UIColor *color) {
+  if (color == nil) {
+    return 0;
+  }
+  CGFloat red = 0.f;
+  CGFloat green = 0.f;
+  CGFloat blue = 0.f;
+  CGFloat alpha = 0.f;
+  if (![color getRed:&red green:&green blue:&blue alpha:&alpha]) {
+    CGFloat white = 0.f;
+    if ([color getWhite:&white alpha:&alpha]) {
+      red = white;
+      green = white;
+      blue = white;
+    }
+  }
+  return (LynxMarkdownColorComponentToByte(alpha) << 24) |
+         (LynxMarkdownColorComponentToByte(red) << 16) |
+         (LynxMarkdownColorComponentToByte(green) << 8) | LynxMarkdownColorComponentToByte(blue);
 }
 
 @implementation LynxMarkdownShadowNodeV2 {
@@ -82,12 +115,27 @@ static ServalMarkdownAnimationType LynxMarkdownToServalAnimationType(NSString *t
   return _markdownView;
 }
 
+- (BOOL)isChildDirty {
+  for (LynxShadowNode *child in self.children) {
+    if (![child isKindOfClass:LynxNativeLayoutNode.class]) {
+      continue;
+    }
+    if ([child needsLayout]) {
+      return YES;
+    }
+  }
+  return NO;
+}
+
 - (MeasureResult)measureWithMeasureParam:(MeasureParam *)param
                           MeasureContext:(MeasureContext *)context {
   _measureContext = context;
   LynxServalMarkdownViewWrapper *markdownView = [self ensureMarkdownView];
   if (markdownView == nil) {
     return (MeasureResult){CGSizeZero, 0.f};
+  }
+  if ([self isChildDirty]) {
+    [markdownView markDirty];
   }
   ServalMarkdownMeasureResult result =
       [markdownView measureByWidth:param.width
@@ -113,6 +161,50 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
   }
   _content = value;
   [[self ensureMarkdownView] setContent:value];
+}
+
+LYNX_PROP_SETTER("text-selection", setEnableTextSelection, BOOL) {
+  if (requestReset) {
+    value = NO;
+  }
+  [[self ensureMarkdownView] setBooleanProp:kServalMarkdownPropsEnableTextSelection Value:value];
+}
+
+LYNX_PROP_SETTER("selection-background-color", setSelectionBackgroundColor, UIColor *) {
+  if (requestReset) {
+    value = nil;
+  }
+  [[self ensureMarkdownView] setColorProp:kServalMarkdownPropsSelectionHighlightColor
+                                    Value:LynxMarkdownUIColorToARGB(value)];
+}
+
+LYNX_PROP_SETTER("selection-handle-color", setSelectionHandleColor, UIColor *) {
+  if (requestReset) {
+    value = nil;
+  }
+  [[self ensureMarkdownView] setColorProp:kServalMarkdownPropsSelectionHandleColor
+                                    Value:LynxMarkdownUIColorToARGB(value)];
+}
+
+LYNX_PROP_SETTER("selection-handle-size", setSelectionHandleSize, CGFloat) {
+  if (requestReset || value < 0.f) {
+    value = 0.f;
+  }
+  [[self ensureMarkdownView] setNumberProp:kServalMarkdownPropsSelectionHandleSize Value:value];
+}
+
+LYNX_PROP_SETTER("markdown-effect", setMarkdownEffect, NSDictionary *) {
+  if (requestReset) {
+    value = nil;
+  }
+  [[self ensureMarkdownView] setMapProp:kServalMarkdownPropsMarkdownEffect Value:value];
+}
+
+LYNX_PROP_SETTER("text-mark-attachments", setTextMarkAttachments, NSArray *) {
+  if (requestReset) {
+    value = nil;
+  }
+  [[self ensureMarkdownView] setArrayProp:kServalMarkdownPropsTextMarkAttachments Value:value];
 }
 
 LYNX_PROP_SETTER("content-id", setContentID, NSString *) {
@@ -193,6 +285,53 @@ LYNX_PROP_SETTER("typewriter-height-transition-prefetch", setHeightPrefetch, BOO
     value = NO;
   }
   [[self ensureMarkdownView] setBooleanProp:kServalMarkdownPropsTypewriterHeightTransitionPrefetch
+                                      Value:value];
+}
+
+LYNX_PROP_SETTER("markdown-max-height", setMarkdownMaxHeight, CGFloat) {
+  if (requestReset) {
+    value = 0.f;
+  }
+  LynxServalMarkdownViewWrapper *markdownView = [self ensureMarkdownView];
+  [markdownView setNumberProp:kServalMarkdownPropsMarkdownMaxHeight Value:value];
+  [markdownView markDirty];
+}
+
+LYNX_PROP_SETTER("content-range", setMarkdownContentRange, NSArray *) {
+  if (requestReset || ![value isKindOfClass:NSArray.class]) {
+    return;
+  }
+  LynxServalMarkdownViewWrapper *markdownView = [self ensureMarkdownView];
+  if (value.count > 0 && [value[0] isKindOfClass:NSNumber.class]) {
+    [markdownView setNumberProp:kServalMarkdownPropsContentRangeStart
+                          Value:((NSNumber *)value[0]).intValue];
+  }
+  if (value.count > 1 && [value[1] isKindOfClass:NSNumber.class]) {
+    [markdownView setNumberProp:kServalMarkdownPropsContentRangeEnd
+                          Value:((NSNumber *)value[1]).intValue];
+  }
+  [markdownView markDirty];
+}
+
+LYNX_PROP_SETTER("exposure-tags", setExposureTags, NSArray *) {
+  if (requestReset) {
+    value = nil;
+  }
+  [[self ensureMarkdownView] setArrayProp:kServalMarkdownPropsExposureTags Value:value];
+}
+
+LYNX_PROP_SETTER("animation-frame-rate", setAnimationFrameRate, CGFloat) {
+  if (requestReset || value < 0.f) {
+    value = 0.f;
+  }
+  [[self ensureMarkdownView] setNumberProp:kServalMarkdownPropsAnimationFrameRate Value:value];
+}
+
+LYNX_PROP_SETTER("allow-break-around-punctuation", setAllowBreakAroundPunctuation, BOOL) {
+  if (requestReset) {
+    value = NO;
+  }
+  [[self ensureMarkdownView] setBooleanProp:kServalMarkdownPropsAllowBreakAroundPunctuation
                                       Value:value];
 }
 

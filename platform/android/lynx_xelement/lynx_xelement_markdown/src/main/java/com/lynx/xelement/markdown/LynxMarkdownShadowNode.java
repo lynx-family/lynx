@@ -22,6 +22,7 @@ import com.lynx.tasm.behavior.shadow.CustomMeasureFunc;
 import com.lynx.tasm.behavior.shadow.MeasureContext;
 import com.lynx.tasm.behavior.shadow.MeasureParam;
 import com.lynx.tasm.behavior.shadow.MeasureResult;
+import com.lynx.tasm.behavior.shadow.NativeLayoutNodeRef;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.xelement.markdown.adaptor.LynxMarkdownBundle;
@@ -74,12 +75,29 @@ public class LynxMarkdownShadowNode
     }
     return mMarkdown;
   }
+  private boolean isChildDirty() {
+    boolean isChildDirty = false;
+    for (int i = 0; i < getChildCount(); i++) {
+      ShadowNode child = getChildAt(i);
+      if (!(child instanceof NativeLayoutNodeRef)) {
+        continue;
+      }
+      if (child.isDirty()) {
+        isChildDirty = true;
+        child.resetIsDirty();
+      }
+    }
+    return isChildDirty;
+  }
   @Override
   public MeasureResult measure(MeasureParam param, MeasureContext context) {
     mMeasureContext = context;
     LynxServalViewWrapper markdown = ensureMarkdownView();
     if (markdown == null) {
       return new MeasureResult(0, 0, 0);
+    }
+    if (isChildDirty()) {
+      markdown.markDirty();
     }
     long result = markdown.measure((int) param.mWidth, param.mWidthMode.intValue(),
         (int) param.mHeight, param.mHeightMode.intValue());
