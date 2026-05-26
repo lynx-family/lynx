@@ -1,0 +1,6 @@
+{
+  "name": "liblynx_xelement_markdown.so",
+  "types": "./index.d.ts",
+  "version": "",
+  "description": "Lynx XElement Markdown native library"
+}

@@ -38,12 +38,7 @@ lynx_core_source_set("lynx_xelement") {
   deps = [ "../lynx_harmony:native" ]
 
   sources += [
-    "markdown/src/main/cpp/impl/markdown_view_bundle.h",
-    "markdown/src/main/cpp/impl/shadow_node/markdown_shadow_node.cc",
-    "markdown/src/main/cpp/impl/shadow_node/markdown_shadow_node.h",
-    "markdown/src/main/cpp/impl/ui/ui_markdown.cc",
-    "markdown/src/main/cpp/impl/ui/ui_markdown.h",
-    "markdown/src/main/cpp/impl/utils/markdown_lepus_value.h",
+    "markdown/src/main/cpp/registry/markdown_registry.cc",
+    "markdown/src/main/cpp/registry/markdown_registry.h",
   ]
-  deps += [ "markdown:serval_markdown" ]
 }

@@ -8,6 +8,7 @@
   "author": "lynx",
   "dependencies": {
     "@lynx/lynx": "@param:dependencies.lynx_version",
+    "liblynx_xelement_markdown.so": "file:./src/main/cpp/types/liblynx_xelement_markdown",
     "@lynx/serval_markdown": "0.0.34",
     "@lynx/lynxtextra": "0.1.2",
   }

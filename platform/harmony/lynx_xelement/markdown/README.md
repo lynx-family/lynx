@@ -6,8 +6,9 @@ Lynx XElement Markdown for the Harmony platform.
 ## Overview
 
 Lynx XElement Markdown provides `<markdown>` on Harmony by registering a native
-C++ XElement. Registration happens from the `liblynx.so` native XElement
-registry; layout and rendering stay on the C UI/native side.
+C++ XElement. Registration resolves the implementation from
+`liblynx_xelement_markdown.so`; layout and rendering stay on the C UI/native
+side.
 
 ## Installation
 
@@ -35,18 +36,17 @@ import { XElementMarkdown } from '@lynx/xelement_markdown';
 XElementMarkdown.initialize();
 ```
 
-`initialize()` is kept as a compatibility no-op for callers that already import
-this package. The native registration is performed by `@lynx/lynx` module
-initialization.
+`initialize()` loads the package native module and registers the markdown
+creators. Call it once before creating Lynx views that may use markdown.
 
 ## Native dependency
 
 The native implementation links against the C++ view-layer symbols exported by
-`@lynx/serval_markdown`. Harmony arm64 and x86_64 builds register `<markdown>`
-inside `liblynx.so` and link to the package-provided
-`libserval_markdown.so`; there is no separate `liblynx_markdown.so` in this
-path. The build guard matches the native ABIs currently shipped by
-`@lynx/serval_markdown` and `@lynx/lynxtextra`.
+`@lynx/serval_markdown`. Harmony arm64 and x86_64 builds package the
+implementation in `liblynx_xelement_markdown.so`, which links to the
+package-provided `libserval_markdown.so` and lynxtextra native library. The core
+`@lynx/lynx` package does not depend on these markdown packages directly. This
+path does not use the internal `liblynx_markdown.so`.
 
 ## Platform gaps
 

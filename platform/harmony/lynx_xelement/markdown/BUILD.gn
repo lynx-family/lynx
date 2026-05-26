@@ -11,13 +11,14 @@ assert(is_harmony)
 
 declare_args() {
   # Path to the @lynx/serval_markdown package. Markdown native code is linked
-  # into liblynx.so, so use the dependencies installed for @lynx/lynx.
-  serval_markdown_package_root =
-      "../../lynx_harmony/oh_modules/@lynx/serval_markdown"
+  # into liblynx_xelement_markdown.so, so use the dependencies installed for
+  # @lynx/xelement_markdown.
+  serval_markdown_package_root = "oh_modules/@lynx/serval_markdown"
 
   # Path to the @lynx/lynxtextra package. @lynx/serval_markdown depends on it,
-  # and liblynx.so links tttext symbols through the serval markdown C++ API.
-  lynxtextra_root = "../../lynx_harmony/oh_modules/@lynx/lynxtextra"
+  # and the markdown shared library links tttext symbols through the serval
+  # markdown C++ API.
+  lynxtextra_root = "oh_modules/@lynx/lynxtextra"
 }
 
 config("serval_markdown_public_config") {
@@ -52,6 +53,25 @@ lynx_core_source_set("serval_markdown") {
   public_configs = [ ":serval_markdown_public_config" ]
 }
 
+shared_library("lynx_xelement_markdown") {
+  output_name = "lynx_xelement_markdown"
+
+  sources = [
+    "src/main/cpp/entry.cc",
+    "src/main/cpp/impl/markdown_view_bundle.h",
+    "src/main/cpp/impl/shadow_node/markdown_shadow_node.cc",
+    "src/main/cpp/impl/shadow_node/markdown_shadow_node.h",
+    "src/main/cpp/impl/ui/ui_markdown.cc",
+    "src/main/cpp/impl/ui/ui_markdown.h",
+    "src/main/cpp/impl/utils/markdown_lepus_value.h",
+  ]
+
+  deps = [
+    ":serval_markdown",
+    "../../lynx_harmony",
+  ]
+}
+
 group("xelement_markdown") {
-  deps = [ ":serval_markdown" ]
+  deps = [ ":lynx_xelement_markdown" ]
 }

@@ -8,8 +8,6 @@
   "dependencies": {
     "liblynx.so": "file:./src/main/ets/tasm/types/liblynx",
     "@lynx/lynx_base": "@param:dependencies.lynx_version",
-    "@lynx/serval_markdown": "0.0.34",
-    "@lynx/lynxtextra": "0.1.2",
   },
   "repository": "https://github.com/lynx-family/lynx",
   "author": "lynx",

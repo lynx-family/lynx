@@ -9,6 +9,7 @@ import { LynxDevToolService } from '@lynx/lynx_devtool_service';
 import { LynxLogService } from '@lynx/lynx_log_service';
 import { LynxHttpService } from '@lynx/lynx_http_service';
 import { LynxImageService } from '@lynx/lynx_image_service';
+import { XElementMarkdown } from '@lynx/xelement_markdown';
 
 export class LynxInitProcessor {
   private context: common.UIAbilityContext;
@@ -24,6 +25,7 @@ export class LynxInitProcessor {
     options.set('App', 'LynxExplorer');
     options.set('AppVersion', '0.0.1');
     LynxEnv.setAppInfo(options);
+    this.initXElement();
   }
 
   public initLynxService(): void {
@@ -48,4 +50,8 @@ export class LynxInitProcessor {
   private initImageService() {
       LynxServiceCenter.registerService(LynxServiceType.Image, LynxImageService.instance);
     }
+
+  private initXElement(): void {
+    XElementMarkdown.initialize();
+  }
 }
