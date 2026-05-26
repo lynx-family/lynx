@@ -38,6 +38,7 @@ class JSUIBase : public UIBase {
   void RemoveChild(UIBase* child) override;
   bool Focusable() override;
   void OnFocusChange(bool has_focus, bool is_focus_transition) override;
+  bool ShouldHitTest() override;
   JSUIBase(LynxContext* context, ArkUI_NodeHandle node, int sign,
            const std::string& tag, bool has_customized_layout,
            const bool need_window_state_change_event)
@@ -71,6 +72,7 @@ class JSUIBase : public UIBase {
   static napi_value SetChildrenManagementFuncs(napi_env env,
                                                napi_callback_info);
   static napi_value AttachGestureToNode(napi_env env, napi_callback_info info);
+  static napi_value ReuseNativeContent(napi_env env, napi_callback_info info);
   static napi_value DetachGestureFromNode(napi_env env,
                                           napi_callback_info info);
 
@@ -96,6 +98,7 @@ class JSUIBase : public UIBase {
   napi_ref js_on_enter_background_{nullptr};
   ArkUI_NodeHandle frame_node_{nullptr};
   const bool need_window_state_change_event_{false};
+  bool is_reused_by_client_{false};
 };
 
 }  // namespace harmony

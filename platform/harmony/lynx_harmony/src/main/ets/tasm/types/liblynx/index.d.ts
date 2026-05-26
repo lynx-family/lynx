@@ -294,6 +294,8 @@ export class UIBase {
 
   attachGestureToNode(node: NativeContent): void;
 
+  reuseNativeContent(node: NativeContent): void;
+
   detachGestureFromNode(node: NativeContent): void;
 }
 
