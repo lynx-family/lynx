@@ -12,7 +12,7 @@
 static char kLynxAutolinkGeneratedConfigSetupKey;
 
 static Class LynxAutolinkGeneratedRegistryClass(void) {
-  Class registryClass = objc_getClass("LynxGeneratedExtensionRegistry");
+  Class registryClass = objc_getClass("LynxGeneratedLibraryRegistry");
   SEL setupSelector = NSSelectorFromString(@"setup:");
   if (registryClass == Nil || class_getInstanceMethod(registryClass, setupSelector) == NULL) {
     return Nil;

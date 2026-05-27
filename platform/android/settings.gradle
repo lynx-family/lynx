@@ -14,8 +14,8 @@ include ':LynxJSSDK'
 project(":LynxJSSDK").projectDir = new File(rootProject.projectDir, './lynx_js_sdk')
 include ':LynxProcessor'
 project(":LynxProcessor").projectDir = new File(rootProject.projectDir, './lynx_processor')
-include ':LynxExtensionPlugin'
-project(":LynxExtensionPlugin").projectDir = new File(rootProject.projectDir, './lynx_extension_plugin')
+include ':LynxLibraryPlugin'
+project(":LynxLibraryPlugin").projectDir = new File(rootProject.projectDir, './lynx_library_plugin')
 include ':TestingBase'
 project(":TestingBase").projectDir = new File(rootProject.projectDir, './testing_base')
 
