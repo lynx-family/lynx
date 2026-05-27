@@ -35,38 +35,50 @@ public class ExplorerApplication extends Application {
   }
 
   private void initSparkling() {
-    // Use reflection so this compiles when only the public Sparkling AAR is available
-    // (which lacks HybridKit/SparklingLynxConfig). The private SDK distribution provides
-    // these classes; without it we skip initialization gracefully.
+    // Use reflection so this compiles when only the public Sparkling AAR is available.
+    // The classes below live under .hybridkit.* (not the top-level package) and HybridKit
+    // is a Kotlin object whose methods must be invoked on its INSTANCE field, not statically.
+    // If any lookup fails we log and skip Sparkling integration gracefully.
     try {
-      Class<?> hybridKit = Class.forName("com.tiktok.sparkling.HybridKit");
-      hybridKit.getMethod("init", Application.class).invoke(null, this);
+      Class<?> hybridKitClass = Class.forName("com.tiktok.sparkling.hybridkit.HybridKit");
+      Object hybridKit = hybridKitClass.getField("INSTANCE").get(null);
+      hybridKitClass.getMethod("init", Application.class).invoke(hybridKit, this);
 
-      Class<?> baseInfoConfigClass = Class.forName("com.tiktok.sparkling.config.BaseInfoConfig");
+      Class<?> baseInfoConfigClass =
+          Class.forName("com.tiktok.sparkling.hybridkit.config.BaseInfoConfig");
+      // BaseInfoConfig(isDebug: Boolean) — primary Kotlin constructor.
       Object baseInfoConfig =
           baseInfoConfigClass.getConstructor(boolean.class).newInstance(BuildConfig.DEBUG);
 
-      Class<?> lynxConfigClass = Class.forName("com.tiktok.sparkling.config.SparklingLynxConfig");
+      // SparklingLynxConfig.Builder(Application) — takes Application, not Context.
       Class<?> lynxBuilderClass =
-          Class.forName("com.tiktok.sparkling.config.SparklingLynxConfig$Builder");
-      Object lynxConfig = lynxBuilderClass.getConstructor(Context.class).newInstance(this);
+          Class.forName("com.tiktok.sparkling.hybridkit.config.SparklingLynxConfig$Builder");
+      Object lynxConfig = lynxBuilderClass.getConstructor(Application.class).newInstance(this);
       lynxConfig = lynxBuilderClass.getMethod("build").invoke(lynxConfig);
 
+      // SparklingHybridConfig.Builder.setLynxConfig(ILynxConfig) — takes the interface,
+      // SparklingLynxConfig implements it.
+      Class<?> lynxConfigInterfaceClass =
+          Class.forName("com.tiktok.sparkling.hybridkit.config.ILynxConfig");
       Class<?> hybridConfigClass =
-          Class.forName("com.tiktok.sparkling.config.SparklingHybridConfig");
+          Class.forName("com.tiktok.sparkling.hybridkit.config.SparklingHybridConfig");
       Class<?> hybridBuilderClass =
-          Class.forName("com.tiktok.sparkling.config.SparklingHybridConfig$Builder");
+          Class.forName("com.tiktok.sparkling.hybridkit.config.SparklingHybridConfig$Builder");
       Object hybridBuilder =
           hybridBuilderClass.getConstructor(baseInfoConfigClass).newInstance(baseInfoConfig);
-      hybridBuilder = hybridBuilderClass.getMethod("setLynxConfig", lynxConfigClass)
-                          .invoke(hybridBuilder, lynxConfig);
+      // setLynxConfig returns void in this Kotlin builder — don't reassign hybridBuilder.
+      hybridBuilderClass.getMethod("setLynxConfig", lynxConfigInterfaceClass)
+          .invoke(hybridBuilder, lynxConfig);
       Object hybridConfig = hybridBuilderClass.getMethod("build").invoke(hybridBuilder);
 
-      hybridKit.getMethod("setHybridConfig", hybridConfigClass, Application.class)
-          .invoke(null, hybridConfig, this);
-      hybridKit.getMethod("initLynxKit").invoke(null);
-    } catch (Exception ignored) {
-      // Sparkling SDK not available in this build — skipping Sparkling integration.
+      hybridKitClass.getMethod("setHybridConfig", hybridConfigClass, Application.class)
+          .invoke(hybridKit, hybridConfig, this);
+      hybridKitClass.getMethod("initLynxKit").invoke(hybridKit);
+      android.util.Log.i("ExplorerApplication", "Sparkling HybridKit initialized");
+    } catch (ClassNotFoundException e) {
+      android.util.Log.w("ExplorerApplication", "Sparkling SDK not on classpath, skipping init", e);
+    } catch (Exception e) {
+      android.util.Log.e("ExplorerApplication", "Sparkling init failed", e);
     }
   }
 
