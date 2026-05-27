@@ -15,6 +15,7 @@ interface SvgLoadEvent {
 
 export class UISVG extends UIBase {
   private content: string = '';
+  private color?: string = undefined;
   private needUpdateContent = false;
   private needRequestSrc = false;
   private svgNodeController: SvgRenderNodeController = new SvgRenderNodeController();
@@ -53,6 +54,14 @@ export class UISVG extends UIBase {
       this.src = prop.src as string;
       this.needRequestSrc = true;
     }
+    const propColor = prop['current-color'];
+    if (propColor !== undefined) {
+      const nextColor = typeof propColor === 'string' && propColor.length > 0 ? propColor : undefined;
+      if (nextColor !== this.color) {
+        this.color = nextColor;
+        this.needUpdateContent = true;
+      }
+    }
     if (prop['allow-edge-antialiasing'] !== undefined) {
       this.allowAntiAlias = prop['allow-edge-antialiasing'] as boolean;
     }
@@ -68,7 +77,7 @@ export class UISVG extends UIBase {
       content: this.content,
       antiAlias: this.allowAntiAlias,
     }
-    this.svgNodeController.updateData(data);
+    this.svgNodeController.updateData(data, this.color);
     if (shouldEmitLoad) {
       this.sendCustomEvent('load', { width: roundWidth, height: roundHeight } as SvgLoadEvent, 'detail');
     }

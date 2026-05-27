@@ -21,12 +21,21 @@ export interface SVGProps extends StandardProps {
    */
   'content'?: string;
 
-    /**
-     * SVG Loaded
-     * @Android
-     * @iOS
-     * @Harmony
-     * @PC
-     */
-    bindload?: (e: BaseEvent) => void;
+  /**
+   * Host-injected default color used to resolve `currentColor` in SVG content.
+   * This does not override explicit `fill` or `stroke` values.
+   * @iOS
+   * @Android
+   * @Harmony
+   */
+  'current-color'?: string;
+
+  /**
+   * SVG Loaded
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
+   */
+  bindload?: (e: BaseEvent) => void;
 }

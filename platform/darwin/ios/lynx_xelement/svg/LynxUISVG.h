@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, copy) NSString *src;
 @property(nonatomic, copy) NSString *content;
+@property(nonatomic, copy, nullable) NSString *color;
 @property(atomic, strong) LynxThreadSafeDictionary *imageHolder;
 
 - (void)updateLayoutIfNeed;

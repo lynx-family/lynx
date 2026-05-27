@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.10.5
+- Add `current-color` prop typings for `<svg>`.
+
 ## 3.10.4
 - Introduce `<markdown>` element types.
 
