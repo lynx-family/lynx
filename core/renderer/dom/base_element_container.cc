@@ -166,6 +166,19 @@ BaseElementContainer* BaseElementContainer::EnclosingStackingContextNode() {
   return this;
 }
 
+BaseElementContainer* BaseElementContainer::EnclosingScrollContainerNode() {
+  // Finds the nearest scroll-view ancestor on the logical parent chain
+  // including the current element itself. Returns nullptr if no such ancestor
+  // exists.
+  Element* current = element();
+  for (; current != nullptr; current = current->parent()) {
+    if (current->is_scroll_view()) {
+      return current->element_container();
+    }
+  }
+  return nullptr;
+}
+
 void BaseElementContainer::MarkDirtyState(DirtyState state) {
   if (dirty_state_ & state) {
     return;
