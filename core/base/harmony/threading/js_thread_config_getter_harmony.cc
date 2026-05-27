@@ -4,6 +4,9 @@
 #include <napi/native_api.h>
 #include <uv.h>
 
+#include <memory>
+#include <string>
+
 #include "base/include/closure.h"
 #include "base/include/fml/message_loop.h"
 #include "base/include/fml/thread.h"
@@ -16,6 +19,15 @@
 namespace lynx {
 namespace base {
 namespace {
+
+bool ShouldSetupArkTSRuntime(const std::string& worker_name) {
+  // Only setup arkts runtime for js thread.
+  constexpr char kJSThreadName[] = "Lynx_JS";
+  constexpr size_t kPrefixLength = sizeof(kJSThreadName) - 1;
+
+  return worker_name.compare(0, kPrefixLength, kJSThreadName) == 0;
+}
+
 void SetupArkTSRuntime() {
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, SETUP_ARK_TS_RUNTIME);
   LOGI("Start setup arkts runtime.")
@@ -37,6 +49,10 @@ void SetupArkTSRuntime() {
 }  // namespace
 
 fml::Thread::ThreadConfig GetJSThreadConfig(const std::string& worker_name) {
+  if (!ShouldSetupArkTSRuntime(worker_name)) {
+    return fml::Thread::ThreadConfig{
+        worker_name, fml::Thread::ThreadPriority::HIGH, nullptr};
+  }
   return fml::Thread::ThreadConfig{
       worker_name, fml::Thread::ThreadPriority::HIGH,
       std::make_shared<base::closure>(
