@@ -11,6 +11,7 @@
 #include "core/renderer/starlight/layout/grid_layout_algorithm.h"
 #include "core/renderer/starlight/layout/layout_algorithm.h"
 #include "core/renderer/starlight/layout/linear_layout_algorithm.h"
+#include "core/renderer/starlight/layout/position_layout_utils.h"
 #include "core/renderer/starlight/layout/property_resolving_utils.h"
 #include "core/renderer/starlight/layout/relative_layout_algorithm.h"
 #include "core/renderer/starlight/layout/staggered_grid_layout_algorithm.h"
@@ -1014,6 +1015,13 @@ void LayoutObject::Reset(LayoutObject* node) {
   RemoveAlgorithm();
   css_style_->Reset();
   is_dirty_ = false;
+}
+
+bool LayoutObject::HasValidStickyPosInfo() const {
+  return base::FloatsNotEqual(pos_left_, kInvalidPosValue) ||
+         base::FloatsNotEqual(pos_top_, kInvalidPosValue) ||
+         base::FloatsNotEqual(pos_right_, kInvalidPosValue) ||
+         base::FloatsNotEqual(pos_bottom_, kInvalidPosValue);
 }
 
 float LayoutObject::GetLayoutPaddingLeft() const {

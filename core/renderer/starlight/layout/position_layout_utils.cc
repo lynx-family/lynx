@@ -30,7 +30,7 @@ float CalcLengthValue(const NLength& length, const Constraints& constraints,
                       Dimension dimension) {
   const auto offset =
       NLengthToLayoutUnit(length, constraints[dimension].ToPercentBase());
-  return offset.IsIndefinite() ? -1e+10 : offset.ToFloat();
+  return offset.IsIndefinite() ? kInvalidPosValue : offset.ToFloat();
 }
 }  // namespace
 namespace position_utils {

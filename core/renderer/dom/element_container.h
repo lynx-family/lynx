@@ -72,6 +72,7 @@ class ElementContainer : public BaseElementContainer {
 
   void ZIndexChanged();
   void PositionFixedChanged();
+  void StickyChanged();
 
   void AttachChildToTargetContainerRecursive(ElementContainer* parent,
                                              Element* child, int& index);
@@ -110,7 +111,6 @@ class ElementContainer : public BaseElementContainer {
   int32_t none_layout_only_children_size_{0};
 
   bool need_update_{true};
-
   // indicate the ElementContainer has finished first layout
   bool is_layouted_{false};
   // true if the Element's props has changed during this patch
@@ -120,6 +120,8 @@ class ElementContainer : public BaseElementContainer {
   void CalcUIIndexForFixed(ElementContainer* child, int& index);
   void CalcUIIndexForFixedNew(ElementContainer* child, int& index);
   void CalcUIIndexForFixedUnified(ElementContainer* child, int& index);
+  bool ShouldUpdateStickyRange();
+  const float* GetStickyPositionIfNeeded();
 };
 
 }  // namespace tasm

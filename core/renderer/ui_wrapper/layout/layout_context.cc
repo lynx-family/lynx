@@ -931,11 +931,16 @@ void LayoutContext::UpdateLayoutInfo(LayoutNode* node) {
   std::array<float, 4>* sticky_positions = nullptr;
   std::array<float, 4> sticky_pos_array;
   if (sl_node->IsSticky()) {
-    sticky_pos_array[0] = layout_result.sticky_pos_[starlight::kLeft];
-    sticky_pos_array[1] = layout_result.sticky_pos_[starlight::kTop];
-    sticky_pos_array[2] = layout_result.sticky_pos_[starlight::kRight];
-    sticky_pos_array[3] = layout_result.sticky_pos_[starlight::kBottom];
-    sticky_positions = &sticky_pos_array;
+    bool enable_new_sticky = page_config_ && page_config_->GetEnableNewSticky();
+    // New sticky ignores nodes without left/top/right/bottom offsets.
+    if (!enable_new_sticky ||
+        (enable_new_sticky && sl_node->HasValidStickyPosInfo())) {
+      sticky_pos_array[0] = layout_result.sticky_pos_[starlight::kLeft];
+      sticky_pos_array[1] = layout_result.sticky_pos_[starlight::kTop];
+      sticky_pos_array[2] = layout_result.sticky_pos_[starlight::kRight];
+      sticky_pos_array[3] = layout_result.sticky_pos_[starlight::kBottom];
+      sticky_positions = &sticky_pos_array;
+    }
   }
 
   delegate_->OnLayoutUpdate(

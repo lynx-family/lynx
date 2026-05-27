@@ -278,6 +278,7 @@ class LayoutObject : public ContainerNode {
   bool IsSticky() const {
     return css_style_->GetPosition() == PositionType::kSticky;
   }
+  bool HasValidStickyPosInfo() const;
   void UpdatePositions(float left, float top, float right, float bottom);
 
   float GetPaddingAndBorderHorizontal() const;
