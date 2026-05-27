@@ -172,6 +172,21 @@ std::optional<Elements> LynxTemplateBundle::TryGetElements(
   return task_schedular_->TryGetElements(key, element_template_infos_[key]);
 }
 
+const std::shared_ptr<ParsedStyles> &LynxTemplateBundle::GetParsedStyles(
+    const std::string &key) {
+  auto iter = parsed_styles_map_.find(key);
+  if (iter != parsed_styles_map_.end()) {
+    return iter->second;
+  }
+  if (lazy_reader_) {
+    auto res = parsed_styles_map_.emplace(
+        key, lazy_reader_->GetParsedStylesInRender(key));
+    return res.first->second;
+  }
+  auto res = parsed_styles_map_.emplace(key, std::make_shared<ParsedStyles>());
+  return res.first->second;
+}
+
 static void StyleObjectArrayDeleter(style::StyleObject **obj) {
   for (auto **p = obj; *p != nullptr; p++) {
     (*p)->Release();

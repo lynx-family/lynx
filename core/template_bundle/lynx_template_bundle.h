@@ -198,6 +198,13 @@ class LynxTemplateBundle final {
 
   std::optional<Elements> TryGetElements(const std::string& key);
 
+  // Returns parsed styles for the given key from the bundle cache first. On a
+  // cache miss, decodes through the bundle-owned lazy reader when available and
+  // stores the result back into the bundle cache. Without a lazy reader,
+  // creates and caches an empty ParsedStyles entry so callers always receive a
+  // stable non-null reference.
+  const std::shared_ptr<ParsedStyles>& GetParsedStyles(const std::string& key);
+
   const std::shared_ptr<lynx::tasm::PageConfig>& GetPageConfig() {
     return page_configs_;
   };

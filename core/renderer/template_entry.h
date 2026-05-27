@@ -233,7 +233,8 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   }
 
   void SetLazyReader(std::shared_ptr<LynxBinaryLazyReaderDelegate> reader) {
-    reader_ = std::move(reader);
+    reader_ = reader;
+    template_bundle_.lazy_reader_ = std::move(reader);
   }
 
   LynxBinaryLazyReaderDelegate* GetReader() { return reader_.get(); }

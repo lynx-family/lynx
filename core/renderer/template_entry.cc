@@ -490,16 +490,7 @@ const std::shared_ptr<ParsedStyles>& TemplateEntry::GetParsedStyles(
     const std::string& key) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_GET_PARSED_STYLES, "key",
               key);
-  if (reader_) {
-    return reader_->GetParsedStylesInRender(key);
-  }
-  auto iter = template_bundle_.parsed_styles_map_.find(key);
-  if (iter == template_bundle_.parsed_styles_map_.end()) {
-    auto res = template_bundle_.parsed_styles_map_.emplace(
-        key, std::make_shared<ParsedStyles>());
-    return res.first->second;
-  }
-  return iter->second;
+  return template_bundle_.GetParsedStyles(key);
 }
 
 const AirCompStylesMap& TemplateEntry::GetComponentParsedStyles(
