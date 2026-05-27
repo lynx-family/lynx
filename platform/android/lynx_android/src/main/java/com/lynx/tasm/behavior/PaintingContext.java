@@ -87,6 +87,7 @@ class CreateViewAsyncStatus {
 
 public final class PaintingContext implements IPaintingContext {
   private static final String TAG = "lynx_PaintingContext";
+  private static final int STICKY_INFO_COUNT = 10;
 
   private final LynxUIOwner mUIOwner;
   private TextLayout mTextLayout;
@@ -836,8 +837,8 @@ public final class PaintingContext implements IPaintingContext {
       float[] sticky = null;
       if (ints[i * size + IntValueIndex.HAS_STICKY] != 0) {
         // sticky != null, get value from stickies
-        sticky = new float[] {stickies[sIndex * 4], stickies[sIndex * 4 + 1],
-            stickies[sIndex * 4 + 2], stickies[sIndex * 4 + 3]};
+        sticky = new float[STICKY_INFO_COUNT];
+        System.arraycopy(stickies, sIndex * STICKY_INFO_COUNT, sticky, 0, STICKY_INFO_COUNT);
         sIndex++;
       }
       setLayoutData(signs[i], ints[i * size + IntValueIndex.LEFT],

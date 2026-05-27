@@ -703,8 +703,9 @@ void PaintingContextAndroid::UpdateLayout(
         std::array<float, 4>{bounds[0], bounds[1], bounds[2], bounds[3]});
   }
   if (sticky != nullptr) {
-    patching_stickies_.emplace_back(
-        std::array<float, 4>{sticky[0], sticky[1], sticky[2], sticky[3]});
+    patching_stickies_.emplace_back(std::array<float, 10>{
+        sticky[0], sticky[1], sticky[2], sticky[3], sticky[4], sticky[5],
+        sticky[6], sticky[7], sticky[8], sticky[9]});
   }
   patching_ints_.emplace_back(
       std::array<int, static_cast<size_t>(IntValueIndex::SIZE)>{
@@ -1218,7 +1219,8 @@ void PaintingContextAndroid::UpdateLayoutPatching() {
       patching_bounds_.clear();
 
       // patching stickies
-      ui_operation_batch_builder_->putInt(4 * patching_stickies_.size());
+      ui_operation_batch_builder_->putInt(
+          static_cast<int>(10 * patching_stickies_.size()));
       for (auto& e : patching_stickies_) {
         for (float i : e) {
           ui_operation_batch_builder_->putDouble(i);
@@ -1272,10 +1274,10 @@ void PaintingContextAndroid::UpdateLayoutPatching() {
         jni_bounds = j_bounds.Get();
       }
       base::android::ScopedLocalJavaRef<jfloatArray> j_stickies(
-          env, env->NewFloatArray(4 * patching_stickies.size()));
+          env, env->NewFloatArray(10 * patching_stickies.size()));
       if (!patching_stickies.empty()) {
         env->SetFloatArrayRegion(j_stickies.Get(), 0,
-                                 4 * patching_stickies.size(),
+                                 10 * patching_stickies.size(),
                                  &patching_stickies[0][0]);
         jni_stickies = j_stickies.Get();
       }

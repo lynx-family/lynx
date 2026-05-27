@@ -16,6 +16,7 @@
 namespace lynx {
 namespace starlight {
 class LayoutObject;
+static constexpr float kInvalidPosValue = -1e+10;
 
 namespace position_utils {
 

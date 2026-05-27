@@ -399,9 +399,7 @@ void Element::UpdateLayout(float left, float top, float width, float height,
   paddings_ = paddings;
   margins_ = margins;
   borders_ = borders;
-  if (sticky_positions != nullptr) {
-    *sticky_positions_ = *sticky_positions;
-  }
+  UpdateStickyPosition(sticky_positions);
   MarkSubtreeNeedUpdate();
   NotifyElementSizeUpdated();
 }
@@ -409,6 +407,17 @@ void Element::UpdateLayout(float left, float top, float width, float height,
 void Element::UpdateLayout(float left, float top) {
   top_ = top;
   left_ = left;
+}
+
+void Element::UpdateStickyPosition(
+    const std::array<float, 4>* sticky_positions) {
+  if (sticky_positions != nullptr) {
+    for (size_t i = 0; i < sticky_positions->size(); ++i) {
+      (*sticky_positions_)[i] = (*sticky_positions)[i];
+    }
+  } else if (element_manager()->GetEnableNewSticky()) {
+    sticky_positions_.reset();
+  }
 }
 
 bool Element::ConsumeTransitionStylesInAdvance(const StyleMap& styles,
@@ -1566,7 +1575,9 @@ bool Element::TendToFlatten() {
   return config_flatten_ && !has_event_listener_ && !has_non_flatten_attrs_ &&
          !DisableFlattenWithOpacity() &&
          !(has_z_props() && !is_image() && !is_text()) && !is_inline_element_ &&
-         !ShouldAvoidFlattenForView()
+         !ShouldAvoidFlattenForView() &&
+         // Note: sticky item should not be flatten on Android platform.
+         (!element_manager_->GetEnableNewSticky() || !is_sticky_)
 #if OS_IOS
          // On iOS, the current CUI platform-rendering flatten path does not
          // preserve clip/overflow scope the same way as Android's platform
@@ -1857,9 +1868,14 @@ void Element::CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value) {
     is_fixed_ = type == starlight::PositionType::kFixed;
     is_sticky_ = type == starlight::PositionType::kSticky;
     fixed_changed_ |= (is_fixed_before != is_fixed_);
-    if (this->IsNewFixed()) {
-      // fixed node should not be layout only. We need it to locate the entire
-      // subtree.
+    bool is_new_fixed = IsNewFixed();
+    // Legacy sticky only handled direct scroll-view children, which are native
+    // views. New sticky can target any descendant, so sticky nodes must stay
+    // non-layout-only to keep their subtree positioned by platform.
+    bool is_new_sticky = is_sticky_ && element_manager_->GetEnableNewSticky();
+    if (is_new_fixed || is_new_sticky) {
+      // Fixed or sticky nodes should not be layout-only. We need them to locate
+      // the entire subtree.
       has_layout_only_props_ = false;
     }
   }

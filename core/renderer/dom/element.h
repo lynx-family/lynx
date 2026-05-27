@@ -912,8 +912,10 @@ class Element : public lepus::RefCounted,
   // APIs related to Sticky
   inline bool is_sticky() { return is_sticky_; }
   inline void set_is_sticky(bool is_sticky) { is_sticky_ = is_sticky; }
-  inline const std::array<float, 4>& sticky_positions() const {
-    return *sticky_positions_;
+
+  inline const base::auto_create_optional<std::array<float, 10>>&
+  sticky_positions() const {
+    return sticky_positions_;
   }
 
   // Check has_value() before usage to avoid unintentional construction.
@@ -1584,11 +1586,15 @@ class Element : public lepus::RefCounted,
   float height_{0};
   float top_{0};
   float left_{0};
-  // left, top, right, bottom
   std::array<float, 4> borders_{};
   std::array<float, 4> margins_{};
   std::array<float, 4> paddings_{};
-  base::auto_create_optional<std::array<float, 4>> sticky_positions_;
+  // Sticky payload:
+  // info[0-3]: left, top, right, bottom
+  // info[4-5]: parent width, parent height
+  // info[6-7]: self left/top relative to scroller
+  // info[8-9]: parent left/top relative to scroller.
+  base::auto_create_optional<std::array<float, 10>> sticky_positions_;
   float max_height_{starlight::DefaultLayoutStyle::kDefaultMaxSize};
 
   float record_parent_font_size_ = -1;
@@ -1754,6 +1760,8 @@ class Element : public lepus::RefCounted,
   bool WriteRenderStyleToBundle(tasm::CSSPropertyID id,
                                 const tasm::CSSValue& value);
   void DispatchBundleToPaintingNode(fml::RefPtr<PropBundle> bundle);
+
+  void UpdateStickyPosition(const std::array<float, 4>* sticky_positions);
 
   CSSKeyframesToken* GetSimpleStyleKeyframesToken(
       const base::String& animation_name);

@@ -101,8 +101,10 @@ void CollectElementContainerForReplay(
     node.margins = element->margins();
     node.borders = element->borders();
     node.has_sticky = element->is_sticky();
-    if (node.has_sticky) {
-      node.sticky = element->sticky_positions();
+    if (node.has_sticky && element->sticky_positions().has_value()) {
+      const auto &sticky_positions = *element->sticky_positions();
+      node.sticky = {sticky_positions[0], sticky_positions[1],
+                     sticky_positions[2], sticky_positions[3]};
     }
     node.max_height = element->max_height();
     nodes.emplace_back(std::move(node));

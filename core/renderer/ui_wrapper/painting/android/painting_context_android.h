@@ -4,6 +4,8 @@
 
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PAINTING_CONTEXT_ANDROID_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PAINTING_CONTEXT_ANDROID_H_
+
+#include <array>
 #include <memory>
 #include <queue>
 #include <string>
@@ -224,7 +226,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   std::vector<std::array<int, static_cast<size_t>(IntValueIndex::SIZE)>>
       patching_ints_;
   std::vector<std::array<float, 4>> patching_bounds_;
-  std::vector<std::array<float, 4>> patching_stickies_;
+  std::vector<std::array<float, 10>> patching_stickies_;
   std::shared_ptr<base::android::ScopedWeakGlobalJavaRef<jobject>> impl_;
   PaintingContextAndroid(const PaintingContextAndroid&) = delete;
   PaintingContextAndroid& operator=(const PaintingContextAndroid&) = delete;

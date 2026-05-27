@@ -675,6 +675,13 @@ class ElementManager : public ElementContextDelegate,
     return false;
   }
 
+  bool GetEnableNewSticky() {
+    if (config_) {
+      return config_->GetEnableNewSticky();
+    }
+    return false;
+  }
+
   bool GetDefaultOverflowVisible() {
     if (painting_context()->DefaultOverflowAlwaysVisible()) {
       return true;

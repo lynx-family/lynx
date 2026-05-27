@@ -155,12 +155,12 @@ void ElementContainer::RemoveChild(ElementContainer* child) {
       none_layout_only_children_size_--;
     }
   }
-
   child->set_parent(nullptr);
   if (!need_update_) {
     return;
   }
-  if (child->ZIndex() != 0) {
+  if (child->ZIndex() != 0 ||
+      (element_manager()->GetEnableNewSticky() && child->IsSticky())) {
     // The stacking context need update
     MarkDirtyState(kNeedSortZChild);
   }
@@ -270,6 +270,15 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
     ui_parent->AddChild(child->element_container_impl(), -1);
     return;
   }
+  if (element_manager()->GetEnableNewSticky() && child->is_sticky() && parent) {
+    BaseElementContainer* scroll_container =
+        parent->EnclosingScrollContainerNode();
+    if (scroll_container) {
+      scroll_container->CastToElementContainer()->AddChild(
+          child->element_container_impl(), -1);
+      return;
+    }
+  }
   // In the case that a scroll-view has a child, which is a wrapper element and
   // has a layout-only child view. If add wrapper element to scroll-view,
   // wrapper element should not create native view, but if add the layout-only
@@ -322,6 +331,14 @@ void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
     enclosing_stacking_node->AddChild(child->element_container_impl(), -1);
     return;
   }
+  if (element_manager()->GetEnableNewSticky() && child->is_sticky()) {
+    BaseElementContainer* scroll_container = EnclosingScrollContainerNode();
+    if (scroll_container) {
+      scroll_container->CastToElementContainer()->AddChild(
+          child->element_container_impl(), -1);
+      return;
+    }
+  }
   std::pair<ElementContainer*, int> result;
   result = FindParentAndIndexForChildForFiber(element(), child, ref);
   if (result.first) {
@@ -337,8 +354,9 @@ ElementContainer::PlatformLayout ElementContainer::CalculatePlatformLayout(
     // calculated by starlight.
     left = element()->left();
     top = element()->top();
-  } else if (element()->ZIndex() != 0) {
-    // The z-index child's parent may be different from ui parent,
+  } else if (element()->ZIndex() != 0 ||
+             (element_manager()->GetEnableNewSticky() && IsSticky())) {
+    // The z-index or sticky child's parent may be different from ui parent,
     // and need to add the offset of the position
     left = element()->left();
     top = element()->top();
@@ -350,7 +368,6 @@ ElementContainer::PlatformLayout ElementContainer::CalculatePlatformLayout(
       parent = parent->parent();
     }
   }
-
   PlatformLayout layout;
   layout.left = left;
   layout.top = top;
@@ -390,23 +407,19 @@ void ElementContainer::UpdateLayout(float left, float top,
   auto layout = CalculatePlatformLayout(left, top);
   left = layout.left;
   top = layout.top;
-
-  bool need_update_impl =
-      (!transition_view || is_layouted_) &&
-      (element()->frame_changed() || left != last_left_ || top != last_top_);
-
+  bool need_update_impl = (!transition_view || is_layouted_) &&
+                          (element()->frame_changed() || left != last_left_ ||
+                           top != last_top_ || ShouldUpdateStickyRange());
   last_left_ = left;
   last_top_ = top;
-
   if (!element()->IsLayoutOnly()) {
     if (need_update_impl) {  // Update to impl layer
       painting_context()->UpdateLayout(
           element()->impl_id(), left, top, element()->width(),
           element()->height(), element()->paddings().data(),
           element()->margins().data(), element()->borders().data(), nullptr,
-          element()->is_sticky() ? element()->sticky_positions().data()
-                                 : nullptr,
-          element()->max_height(), element()->NodeIndex());
+          GetStickyPositionIfNeeded(), element()->max_height(),
+          element()->NodeIndex());
     }
     if (need_update_impl || props_changed_) {
       painting_context()->OnNodeReady(element()->impl_id());
@@ -432,6 +445,155 @@ void ElementContainer::UpdateLayout(float left, float top,
   element()->MarkUpdated();
 
   is_layouted_ = true;
+}
+
+const float* ElementContainer::GetStickyPositionIfNeeded() {
+  bool is_sticky = IsSticky();
+  if (!is_sticky) {
+    return nullptr;
+  }
+  if (!element_manager()->GetEnableNewSticky()) {
+    return element()->sticky_positions()->data();
+  }
+  // For the new sticky path, position: sticky without left/top/right/bottom
+  // should not flush sticky info to platform.
+  if (is_sticky && element()->sticky_positions().has_value()) {
+    /*
+     * The Element render tree describes the logical parent-child relationship,
+     * while the ElementContainer tree describes how native platform views are
+     * actually mounted. These two trees can differ.
+     * Therefore, the sticky range cannot be calculated only from the render
+     * parent chain. We need to skip wrapper elements to find the real parent
+     * element, then accumulate positions through the ElementContainer chain for
+     * both the sticky node and its real parent.
+     *
+     * case 1: the sticky node is a direct child of the scroll element. The
+     * Element tree and ElementContainer tree have the same visible hierarchy.
+     *
+     *   Element tree:
+     *     ScrollElement A (is stacking context)
+     *       ViewElement B
+     *       ViewElement C
+     *       StickyElement D
+     *
+     *   ElementContainer tree:
+     *     ScrollContainer A
+     *       ViewContainer B
+     *       ViewContainer C
+     *       StickyContainer D
+     *
+     * case 2: wrappers are skipped and StickyElement E's real parent is
+     * ViewElement B, but StickyContainer E is mounted under ScrollContainer A.
+     *
+     *   Element tree:
+     *     ScrollElement A (is stacking context)
+     *       ViewElement B
+     *         WrapperElement C
+     *           WrapperElement D
+     *             StickyElement E
+     *
+     *   ElementContainer tree:
+     *     ScrollContainer A
+     *       ViewContainer B
+     *       StickyContainer E
+     *
+     * case 3: wrappers are also skipped, but ViewElement B is a stacking
+     * context, so StickyContainer E stays under ViewContainer B.
+     *
+     *   Element tree:
+     *     ScrollElement A (is stacking context)
+     *       ViewElement B (is stacking context)
+     *         WrapperElement C
+     *           WrapperElement D
+     *             StickyElement E
+     *
+     *   ElementContainer tree:
+     *     ScrollContainer A
+     *       ViewContainer B
+     *         StickyContainer E
+     */
+    float self_relative_left = 0.f;
+    float self_relative_top = 0.f;
+    float parent_relative_left = 0.f;
+    float parent_relative_top = 0.f;
+    bool valid_self_position = false;
+    bool valid_parent_position = false;
+    // Find the sticky scroller from the ElementContainer tree, because the
+    // sticky range is calculated in native mounting coordinates. The Element
+    // tree may still have a scroll-view ancestor after the sticky node is
+    // reparented, for example by fixed or stacking-context behavior.
+    BaseElementContainer* parent_container = parent();
+    BaseElementContainer* sticky_scroller_container = nullptr;
+    while (parent_container && parent_container->element()) {
+      if (parent_container->element()->is_scroll_view()) {
+        sticky_scroller_container = parent_container;
+        break;
+      }
+      parent_container = parent_container->parent();
+    }
+    // Find the first non-wrapper render parent from the Element tree.
+    Element* real_parent_element = nullptr;
+    if (element()->render_parent()) {
+      real_parent_element =
+          element()->render_parent()->FindFirstNonWrapperRenderAncestor();
+    }
+    if (sticky_scroller_container && real_parent_element) {
+      BaseElementContainer* current_container = this;
+      while (current_container &&
+             current_container != sticky_scroller_container) {
+        self_relative_left +=
+            current_container->CastToElementContainer()->last_left_;
+        self_relative_top +=
+            current_container->CastToElementContainer()->last_top_;
+        current_container = current_container->parent();
+      }
+      valid_self_position = current_container == sticky_scroller_container;
+      if (real_parent_element &&
+          (current_container = real_parent_element->element_container_impl())) {
+        while (current_container &&
+               current_container != sticky_scroller_container) {
+          parent_relative_left +=
+              current_container->CastToElementContainer()->last_left_;
+          parent_relative_top +=
+              current_container->CastToElementContainer()->last_top_;
+          current_container = current_container->parent();
+        }
+        valid_parent_position = current_container == sticky_scroller_container;
+      }
+    }
+    if (!valid_self_position || !valid_parent_position) {
+      // New sticky needs reliable self and parent positions relative to the
+      // sticky scroller. If either position cannot be resolved, do not flush
+      // stale range data; platform will clear the sticky state.
+      return nullptr;
+    }
+    if (real_parent_element != sticky_scroller_container->element()) {
+      (*element()->sticky_positions())[4] = real_parent_element->width();
+      (*element()->sticky_positions())[5] = real_parent_element->height();
+    } else {
+      (*element()->sticky_positions())[4] = -1.f;
+      (*element()->sticky_positions())[5] = -1.f;
+    }
+    (*element()->sticky_positions())[6] = self_relative_left;
+    (*element()->sticky_positions())[7] = self_relative_top;
+    (*element()->sticky_positions())[8] = parent_relative_left;
+    (*element()->sticky_positions())[9] = parent_relative_top;
+    return element()->sticky_positions()->data();
+  }
+  return nullptr;
+}
+
+bool ElementContainer::ShouldUpdateStickyRange() {
+  // A sticky node needs to refresh its platform range when the render parent's
+  // frame changes. The range should use render_parent size regardless of
+  // whether render_parent is layout-only.
+  if (element_manager()->GetEnableNewSticky() && IsSticky() &&
+      element()->render_parent()) {
+    Element* real_parent =
+        element()->render_parent()->FindFirstNonWrapperRenderAncestor();
+    return real_parent && real_parent->frame_changed();
+  }
+  return false;
 }
 
 void ElementContainer::UpdateLayoutWithoutChange() {
@@ -529,6 +691,9 @@ void ElementContainer::StyleChanged() {
   if (element()->GetEnableFixedNew() || element()->IsFixedUnifiedEnabled()) {
     PositionFixedChanged();
   }
+  if (element_manager()->GetEnableNewSticky()) {
+    StickyChanged();
+  }
 }
 
 void ElementContainer::ZIndexChanged() {
@@ -616,6 +781,7 @@ void ElementContainer::CreatePaintingNode(
   set_was_stacking_context(IsStackingContextNode());
   set_was_position_fixed(element()->IsFixedNewOrUnified());
   set_old_z_index(ZIndex());
+  was_sticky_ = IsSticky();
   if (element()->IsLayoutOnly()) {
     return;
   }
@@ -649,7 +815,28 @@ void ElementContainer::UpdateContentOffsetForListContainer(
       is_init_scroll_offset, from_layout);
 }
 
-bool ElementContainer::IsSticky() { return element()->is_sticky(); }
+bool ElementContainer::IsSticky() const { return element()->is_sticky(); }
+
+void ElementContainer::StickyChanged() {
+  if (!parent() || !element()->parent()) {
+    return;
+  }
+  bool is_sticky = IsSticky();
+  if (was_sticky_ != is_sticky) {
+    RemoveFromParent(true);
+    element()
+        ->parent()
+        ->element_container_impl()
+        ->InsertElementContainerAccordingToElement(
+            element(), element()->next_render_sibling());
+    BaseElementContainer* scroll_container =
+        element_container_parent()->EnclosingScrollContainerNode();
+    if (scroll_container) {
+      scroll_container->MarkDirtyState(kNeedSortZChild);
+    }
+  }
+  was_sticky_ = is_sticky;
+}
 
 //========helper function for get index for fiber ========
 // static
