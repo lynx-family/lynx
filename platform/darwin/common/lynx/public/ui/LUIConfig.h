@@ -32,5 +32,6 @@
 - (bool)enableTextLayoutCache;
 - (bool)enableTextGradientOpt;
 - (bool)enableExposureWhenReload;
+- (bool)enableNewSticky;
 - (bool)enableiOSAnimationLayerForExposure;
 @end

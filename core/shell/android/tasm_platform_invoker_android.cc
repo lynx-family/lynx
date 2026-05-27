@@ -124,9 +124,9 @@ constexpr const char* kEnableFiber = "enableFiber";
 constexpr const char* kEnableMultiTouch = "enableMultiTouch";
 constexpr const char* kEnableFlattenTranslateZ = "enableFlattenTranslateZ";
 constexpr const char* kEnableTextLayoutCache = "enableTextLayoutCache";
+constexpr const char* kEnableNewSticky = "enableNewSticky";
 constexpr const char* kEnableTransformedTouchPosition =
     "enableTransformedTouchPosition";
-
 }  // namespace
 
 base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
@@ -244,6 +244,7 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
         kEnableTextLayoutCache,
         config->GetEnableTextLayoutCache() == tasm::TernaryBool::TRUE_VALUE);
   }
+  java_config.PushBoolean(kEnableNewSticky, config->GetEnableNewSticky());
   java_config.PushBoolean(kEnableTransformedTouchPosition,
                           config->GetEnableTransformedTouchPosition());
   return java_config;

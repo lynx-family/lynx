@@ -692,6 +692,17 @@ export interface Config {
   enableNewListContainer?: boolean;
 
   /**
+   * Controls whether sticky elements are rendered on the new path. When enabled, sticky elements use the new path; when disabled, they keep the legacy path.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue false
+   */
+  enableNewSticky?: boolean;
+
+  /**
    * If this flag is true, new transform origin algorithm will apply.
    *
    * Supported platform: Android, HarmonyOS, iOS
