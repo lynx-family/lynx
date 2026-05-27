@@ -17,6 +17,16 @@
 
 @implementation LynxUISVG
 
+- (void)invalidateViewOnMainThread {
+  if ([NSThread isMainThread]) {
+    [self.view invalidate];
+  } else {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self.view invalidate];
+    });
+  }
+}
+
 - (LynxSVGView *)createView {
   LynxSVGView *view = [[LynxSVGView alloc] initWithFrame:CGRectZero ui:self];
   self.srSvg = [[SrSVG alloc] init];
@@ -43,6 +53,20 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
       [self.view invalidate];
     }
   }
+}
+
+LYNX_PROP_SETTER("current-color", setColor, NSString *) {
+  NSString *nextColor = nil;
+  if ([value isKindOfClass:[NSString class]]) {
+    NSString *trimmedColor = [(NSString *)value
+        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    nextColor = trimmedColor.length != 0 ? trimmedColor : nil;
+  }
+  if ((nextColor == nil && _color == nil) || [nextColor isEqualToString:_color]) {
+    return;
+  }
+  _color = [nextColor copy];
+  [self invalidateViewOnMainThread];
 }
 
 // Call on main thread;
@@ -109,6 +133,7 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
 
   return [self.srSvg getSrSvgDrawImageWithData:data
                                        andSize:devSize
+                                      andColor:self.color
                                    andCallback:^UIImage *_Nullable(NSString *_Nullable href) {
                                      return [weakSelf loadImageFromHref:href withSize:devSize];
                                    }];
@@ -208,13 +233,7 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
 
 - (void)layoutDidFinished {
   [super layoutDidFinished];
-  if ([NSThread isMainThread]) {
-    [self.view invalidate];
-  } else {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [self.view invalidate];
-    });
-  }
+  [self invalidateViewOnMainThread];
 }
 
 @end

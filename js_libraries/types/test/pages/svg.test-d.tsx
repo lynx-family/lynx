@@ -14,6 +14,8 @@ let a: unknown;
   `}
   />;
   expectType<string | undefined>(a as IntrinsicElements['svg']['content']);
+  <svg current-color="#ff0000" />;
+  expectType<string | undefined>(a as IntrinsicElements['svg']['current-color']);
 }
 
 // Events types check

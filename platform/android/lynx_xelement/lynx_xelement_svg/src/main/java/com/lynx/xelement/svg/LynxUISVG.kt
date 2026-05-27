@@ -41,12 +41,15 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
     const val TAG: String = "LynxUISVG";
     private const val sSvgBase64Scheme: String = "data:image/svg+xml;base64";
     const val SVG_LOAD_EVENT: String = "load";
+    private const val SVG_CURRENT_COLOR_PROP: String = "current-color";
    }
 
   private var mSrc: String? = null
 
   @Volatile
   private var mContent: String? = null
+  @Volatile
+  private var mColor: String? = null
   private var mSvgResourceManager: SvgDefaultResourceManager? = null
 
   @Volatile
@@ -80,6 +83,16 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
       @LynxProp(name = "content")
       fun setContent(content: String?) {
         mContent = content
+        mNeedRender = true
+      }
+
+      @LynxProp(name = SVG_CURRENT_COLOR_PROP)
+      fun setColor(color: String?) {
+        val normalizedColor = color?.trim()?.takeIf { it.isNotEmpty() }
+        if (normalizedColor == mColor) {
+          return
+        }
+        mColor = normalizedColor
         mNeedRender = true
       }
 
@@ -193,6 +206,7 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
           override fun run() {
             try {
               mSVGRender?.let {
+                mSVGRender!!.setColor(mColor)
                 val picture: Picture? = mSVGRender!!.renderPicture(
                   content,
                   Rect(0, 0, getWidth(), getHeight())
