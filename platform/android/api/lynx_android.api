@@ -4895,6 +4895,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableFlattenTranslateZ();
   public boolean com.lynx.tasm.behavior.LynxContext.enableEventThrough();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableNewIntersectionObserver();
+  public boolean com.lynx.tasm.behavior.LynxContext.getEnableNewSticky();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableCreateViewAsync();
   public boolean com.lynx.tasm.behavior.LynxContext.isUseNewSwiper();
   public int com.lynx.tasm.behavior.LynxContext.getObserverFrameRate();
@@ -8330,6 +8331,7 @@ public class com::lynx::tasm::PageConfig :  {
   public boolean com.lynx.tasm.PageConfig.getEnableMultiTouch();
   public double com.lynx.tasm.PageConfig.getEnableLynxScrollFluency();
   public boolean com.lynx.tasm.PageConfig.getEnableTransformedTouchPosition();
+  public boolean com.lynx.tasm.PageConfig.getEnableNewSticky();
   public boolean com.lynx.tasm.PageConfig.getEnableDispatchCustomEventForUI();
   public String com.lynx.tasm.PageConfig.toString();
   public static void com.lynx.tasm.PageConfig.attachPageConfig(PageConfig config, LynxContext lynxContext, ILynxUIRenderer uiRenderer);
