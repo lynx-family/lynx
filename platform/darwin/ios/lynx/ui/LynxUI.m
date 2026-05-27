@@ -2389,16 +2389,19 @@ LYNX_PROP_SETTER("accessibility-elements-hidden", setAccessibilityElementsHidden
 LYNX_PROP_SETTER("accessibility-actions", setAccessibilityActions, NSArray*) {
   if (@available(iOS 14.0, *)) {
     NSMutableArray* customActions = [NSMutableArray array];
+    __weak __typeof(self) weakSelf = self;
 
     for (NSString* obj in value) {
       [customActions
           addObject:[[UIAccessibilityCustomAction alloc]
                          initWithName:obj
                         actionHandler:^BOOL(UIAccessibilityCustomAction* _Nonnull customAction) {
-                          [self.context.eventEmitter
+                          __strong __typeof(weakSelf) strongSelf = weakSelf;
+                          if (!strongSelf) return NO;
+                          [strongSelf.context.eventEmitter
                               sendCustomEvent:[[LynxDetailEvent alloc]
                                                   initWithName:@"accessibilityaction"
-                                                    targetSign:[self sign]
+                                                    targetSign:[strongSelf sign]
                                                         detail:@{@"name" : obj}]];
                           return YES;
                         }]];
