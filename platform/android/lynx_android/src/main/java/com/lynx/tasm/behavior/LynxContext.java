@@ -1406,6 +1406,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return false;
   }
 
+  public boolean getEnableNewSticky() {
+    if (null != mPageConfig) {
+      return mPageConfig.getEnableNewSticky();
+    }
+    return false;
+  }
+
   /**
    * @brief switch for enable CreateViewAsync
    */

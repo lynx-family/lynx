@@ -278,6 +278,7 @@ void UIDelegateHarmony::OnPageConfigDecoded(
     lynx_context->GetFluencyTraceHelper().SetPageConfigProbability(
         config->GetEnableScrollFluencyMonitor());
     lynx_context->SetEnableTextOverflow(config->GetEnableTextOverflow());
+    lynx_context->SetEnableNewSticky(config->GetEnableNewSticky());
     lynx_context->SetTapSlop(config->GetTapSlop());
     lynx_context->SetHasTouchPseudo(config->GetEnableFiberArch());
     lynx_context->SetLongPressDuration(config->GetLongPressDuration());
