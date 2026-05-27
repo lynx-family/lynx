@@ -111,6 +111,7 @@ public class LynxUIOwner {
   private boolean mIsRootLayoutAnimationRunning;
   private boolean mIsContextFree = false;
   private static final String TAG = "LynxUIOwner";
+  private static final int LEGACY_STICKY_INFO_COUNT = 4;
   private WeakReference<NativeFacade> mNativeFacade;
   private Boolean mSettingsEnableNewImage = null;
   // Manages the gesture arenas for handling touch events
@@ -414,12 +415,28 @@ public class LynxUIOwner {
           borderRightWidth, borderBottomWidth, bound);
     }
 
-    ui.updateSticky(sticky);
+    ui.updateSticky(normalizeStickyInfo(sticky));
     ui.updateMaxHeight(maxHeight);
     insertA11yMutationEvent(MUTATION_ACTION_UPDATE, ui);
     if (TraceEvent.isTracingStarted()) {
       TraceEvent.endSection(traceEvent);
     }
+  }
+
+  private float[] normalizeStickyInfo(float[] sticky) {
+    // Non-sticky nodes keep the existing null payload.
+    // Or legacy callers, such as the UIProxy path, already pass four fields.
+    if (sticky == null || sticky.length <= LEGACY_STICKY_INFO_COUNT) {
+      return sticky;
+    }
+    // New sticky is explicitly enabled, so custom components may receive the full payload.
+    if (mContext != null && mContext.getEnableNewSticky()) {
+      return sticky;
+    }
+    // New sticky is disabled, so expose only the legacy payload to custom components.
+    float[] legacySticky = new float[LEGACY_STICKY_INFO_COUNT];
+    System.arraycopy(sticky, 0, legacySticky, 0, LEGACY_STICKY_INFO_COUNT);
+    return legacySticky;
   }
 
   // checkTranslateZ checks ui has updated translateZ prop and mark its parent need sort children by
