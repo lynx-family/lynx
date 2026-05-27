@@ -748,6 +748,10 @@ bool ValueAnimator::ShouldReceiveAnimationFrame(int64_t current_time,
     return false;
   }
 
+  if (running_ && start_time_ < 0) {
+    CommitStartTimeOnSkippedFrame(current_time);
+  }
+
   int64_t lifecycle_start_time = start_time_;
   if (lifecycle_start_time < 0) {
     lifecycle_start_time =
