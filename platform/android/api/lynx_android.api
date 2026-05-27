@@ -5570,21 +5570,6 @@ public class abstract com::lynx::jsbridge::LynxExtensionModule :  {
   public abstract void com.lynx.jsbridge.LynxExtensionModule.destroy();
 }
 
-public interface com::lynx::tasm::extension::LynxExtensionProvider {
-  public void com.lynx.tasm.extension.LynxExtensionProvider.register(@NonNull LynxExtensionRegistry registry);
-}
-
-public class com::lynx::tasm::extension::LynxExtensionRegistry :  {
-  public static void com.lynx.tasm.extension.LynxExtensionRegistry.setupGlobal(@NonNull Context context, @NonNull String[] providerClassNames);
-  public static void com.lynx.tasm.extension.LynxExtensionRegistry.setup(@NonNull LynxViewBuilder builder, @NonNull String[] providerClassNames);
-  public void com.lynx.tasm.extension.LynxExtensionRegistry.addBehaviors(@Nullable List< Behavior > behaviors);
-  public void com.lynx.tasm.extension.LynxExtensionRegistry.registerModule( @NonNull String name, @NonNull Class<? extends LynxModule > moduleClass);
-  public void com.lynx.tasm.extension.LynxExtensionRegistry.registerModule(@NonNull String name, @NonNull Class<? extends LynxModule > moduleClass, @Nullable Object param);
-  public void com.lynx.tasm.extension.LynxExtensionRegistry.registerService(@NonNull Class<? extends IServiceProvider > serviceClass);
-  public void com.lynx.tasm.extension.LynxExtensionRegistry.registerService(@NonNull IServiceProvider service);
-  public Context com.lynx.tasm.extension.LynxExtensionRegistry.getContextOrThrow();
-}
-
 public class com::lynx::tasm::provider::LynxExternalResourceFetcherWrapper :  {
   public com.lynx.tasm.provider.LynxExternalResourceFetcherWrapper.LynxExternalResourceFetcherWrapper(DynamicComponentFetcher fetcher);
   public boolean com.lynx.tasm.provider.LynxExternalResourceFetcherWrapper.fetchResourceWithDynamicComponentFetcher(final String url, @NonNull LoadedHandler handler);
@@ -6018,6 +6003,21 @@ public class abstract com::lynx::tasm::service::LynxLazyInitializer :  {
 public class com::lynx::lepus::LynxLepusModule :  {
   public static void com.lynx.lepus.LynxLepusModule.triggerLepusBridgeAsync(String methodName, Object args, final LynxEngineProxy actor, final LynxModuleFactory mModuleFactory);
   public static Object com.lynx.lepus.LynxLepusModule.triggerLepusBridge(String methodName, Object args, final LynxModuleFactory mModuleFactory);
+}
+
+public interface com::lynx::tasm::library::LynxLibraryProvider {
+  public void com.lynx.tasm.library.LynxLibraryProvider.register(@NonNull LynxLibraryRegistry registry);
+}
+
+public class com::lynx::tasm::library::LynxLibraryRegistry :  {
+  public static void com.lynx.tasm.library.LynxLibraryRegistry.setupGlobal(@NonNull Context context, @NonNull String[] providerClassNames);
+  public static void com.lynx.tasm.library.LynxLibraryRegistry.setup(@NonNull LynxViewBuilder builder, @NonNull String[] providerClassNames);
+  public void com.lynx.tasm.library.LynxLibraryRegistry.addBehaviors(@Nullable List< Behavior > behaviors);
+  public void com.lynx.tasm.library.LynxLibraryRegistry.registerModule( @NonNull String name, @NonNull Class<? extends LynxModule > moduleClass);
+  public void com.lynx.tasm.library.LynxLibraryRegistry.registerModule(@NonNull String name, @NonNull Class<? extends LynxModule > moduleClass, @Nullable Object param);
+  public void com.lynx.tasm.library.LynxLibraryRegistry.registerService(@NonNull Class<? extends IServiceProvider > serviceClass);
+  public void com.lynx.tasm.library.LynxLibraryRegistry.registerService(@NonNull IServiceProvider service);
+  public Context com.lynx.tasm.library.LynxLibraryRegistry.getContextOrThrow();
 }
 
 public class com::lynx::tasm::event::LynxListEvent : com.lynx.tasm.event.LynxDetailEvent {
