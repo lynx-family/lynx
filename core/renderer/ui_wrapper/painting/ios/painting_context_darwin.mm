@@ -423,10 +423,14 @@ void PaintingContextDarwin::UpdateLayout(int sign, float x, float y, float width
   // top left bottom right for UIEdgeInset
 #define UI_EDGE_INSETS(array) \
   array != nullptr ? UIEdgeInsetsMake(array[1], array[0], array[3], array[2]) : UIEdgeInsetsZero
-  NSMutableArray* stickyArr;
+  NSMutableArray* stickyArr = nil;
   if (sticky != nil) {
     stickyArr = [[NSMutableArray alloc] init];
-    for (int i = 0; i < 4; i++) {
+    constexpr int kLegacyStickyInfoCount = 4;
+    constexpr int kNewStickyInfoCount = 10;
+    const int stickyInfoCount =
+        uiOwner_.uiContext.enableNewSticky ? kNewStickyInfoCount : kLegacyStickyInfoCount;
+    for (int i = 0; i < stickyInfoCount; i++) {
       [stickyArr addObject:[NSNumber numberWithFloat:sticky[i]]];
     }
   }
