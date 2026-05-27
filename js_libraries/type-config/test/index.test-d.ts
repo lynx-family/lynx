@@ -74,6 +74,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableNewImage').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewIntersectionObserver').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewListContainer').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableNewSticky').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewStylingPipeline').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewTransformOrigin').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableParseIntFlex').toEqualTypeOf<boolean | undefined>();

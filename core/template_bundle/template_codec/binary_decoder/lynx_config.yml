@@ -997,6 +997,16 @@ enableListMoveOperation:
     - Android
     - HarmonyOS
     - iOS
+enableNewSticky:
+  description: Controls whether sticky elements are rendered on the new path. When enabled, sticky elements use the new path; when disabled, they keep the legacy path.
+  defaultValue: 'false'
+  valueType: bool
+  author: dingwang.wxx
+  since: '4.0'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 enableCreateViewAsync:
   description: Create Android platform UIs in lynx built-in thread-pool to optimize UI Operation Execution
   defaultValue: 'true'
