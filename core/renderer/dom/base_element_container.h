@@ -187,6 +187,8 @@ class BaseElementContainer {
 
   BaseElementContainer* EnclosingStackingContextNode();
 
+  BaseElementContainer* EnclosingScrollContainerNode();
+
   static Element const* FindCommonAncestor(Element const** left_mark,
                                            Element const** right_mark);
   static int CompareElementOrder(Element* left, Element* right);
@@ -194,6 +196,7 @@ class BaseElementContainer {
   int32_t old_z_index_{0};
   bool was_stacking_context_{false};
   bool was_position_fixed_{false};
+  bool was_sticky_{false};
   bool is_root_{false};
 
   bool has_z_child_{false};

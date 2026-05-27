@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <algorithm>
 #include <iterator>
 
 #define private public
@@ -10,6 +11,7 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/element_container.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
@@ -619,6 +621,526 @@ TEST_F(ElementContainerTest, FiberElementUpdateLayoutForFixed) {
   EXPECT_TRUE(element_fixed_painting_node->frame_.height_ == 200);
 }
 
+TEST_F(ElementContainerTest,
+       LegacyStickyInitialRenderKeepsNormalContainerTree) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewSticky(false);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  auto sticky = manager->CreateFiberView();
+  sticky->MarkCanBeLayoutOnly(false);
+  sticky->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+
+  page->InsertNode(scroll);
+  scroll->InsertNode(parent);
+  parent->InsertNode(sticky);
+  page->FlushActionsAsRoot();
+
+  // The initial Element tree remains scroll -> parent -> sticky.
+  ASSERT_TRUE(sticky->is_sticky());
+  EXPECT_EQ(sticky->parent(), parent.get());
+  EXPECT_EQ(sticky->render_parent(), parent.get());
+
+  auto* scroll_container = scroll->element_container_impl();
+  auto* parent_container = parent->element_container_impl();
+  auto* sticky_container = sticky->element_container_impl();
+  // The ElementContainer tree also keeps the normal structure:
+  // scroll_container -> parent_container -> sticky_container.
+  ASSERT_EQ(parent_container->parent(), scroll_container);
+  EXPECT_EQ(sticky_container->parent(), parent_container);
+  const auto& scroll_children = scroll_container->children();
+  EXPECT_EQ(std::find(scroll_children.begin(), scroll_children.end(),
+                      sticky_container),
+            scroll_children.end());
+  const auto& parent_children = parent_container->children();
+  EXPECT_NE(std::find(parent_children.begin(), parent_children.end(),
+                      sticky_container),
+            parent_children.end());
+
+  const std::array<float, 4> paddings = {0.f, 0.f, 0.f, 0.f};
+  const std::array<float, 4> margins = {0.f, 0.f, 0.f, 0.f};
+  const std::array<float, 4> borders = {0.f, 0.f, 0.f, 0.f};
+  const std::array<float, 4> sticky_positions = {3.f, 4.f, 5.f, 6.f};
+  page->UpdateLayout(0.f, 0.f, kWidth, kHeight, paddings, margins, borders,
+                     nullptr, 0.f);
+  scroll->UpdateLayout(10.f, 20.f, 300.f, 400.f, paddings, margins, borders,
+                       nullptr, 0.f);
+  parent->UpdateLayout(30.f, 40.f, 200.f, 100.f, paddings, margins, borders,
+                       nullptr, 0.f);
+  sticky->UpdateLayout(7.f, 8.f, 50.f, 60.f, paddings, margins, borders,
+                       &sticky_positions, 0.f);
+  page->element_container_impl()->UpdateLayout(page->left(), page->top());
+  // Expected sticky info:
+  // [0..3] = 3, 4, 5, 6 from the legacy 4 layout values.
+  // [4..9] = 0 because new sticky range fields are not populated.
+  ASSERT_TRUE(sticky->sticky_positions().has_value());
+  const float* sticky_info = sticky_container->GetStickyPositionIfNeeded();
+  ASSERT_NE(sticky_info, nullptr);
+  EXPECT_EQ(sticky_info[0], 3.f);
+  EXPECT_EQ(sticky_info[1], 4.f);
+  EXPECT_EQ(sticky_info[2], 5.f);
+  EXPECT_EQ(sticky_info[3], 6.f);
+  EXPECT_EQ(sticky_info[4], 0.f);
+  EXPECT_EQ(sticky_info[5], 0.f);
+  EXPECT_EQ(sticky_info[6], 0.f);
+  EXPECT_EQ(sticky_info[7], 0.f);
+  EXPECT_EQ(sticky_info[8], 0.f);
+  EXPECT_EQ(sticky_info[9], 0.f);
+}
+
+TEST_F(ElementContainerTest, NewStickyStyleChangeRemountsUnderScrollContainer) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewSticky(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  auto child = manager->CreateFiberView();
+  child->MarkCanBeLayoutOnly(false);
+
+  page->InsertNode(scroll);
+  scroll->InsertNode(parent);
+  parent->InsertNode(child);
+  page->FlushActionsAsRoot();
+  auto* scroll_container = scroll->element_container_impl();
+  auto* parent_container = parent->element_container_impl();
+  auto* child_container = child->element_container_impl();
+  ASSERT_EQ(parent_container->parent(), scroll_container);
+  ASSERT_EQ(child_container->parent(), parent_container);
+
+  // When enableNewSticky is true, changing a normal node from relative to
+  // sticky should remount it from its original parent container to the scroll
+  // container through StyleChanged() / StickyChanged().
+  child->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(child->is_sticky());
+  EXPECT_EQ(child_container->parent(), scroll_container);
+
+  // Changing it back from sticky to relative should remount it to the original
+  // parent container.
+  child->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("relative"));
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(child->is_sticky());
+  EXPECT_EQ(child_container->parent(), parent_container);
+}
+
+TEST_F(ElementContainerTest,
+       NewStickyStyleChangeWithoutScrollAncestorKeepsOriginalParent) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewSticky(true);
+  manager->SetConfig(config);
+
+  // page
+  //   -> parent
+  //     -> normal_before
+  //     -> sticky_a
+  //     -> normal_b
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  auto normal_before = manager->CreateFiberView();
+  normal_before->MarkCanBeLayoutOnly(false);
+  auto sticky_a = manager->CreateFiberView();
+  sticky_a->MarkCanBeLayoutOnly(false);
+  sticky_a->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                     lepus::Value("sticky"));
+  auto normal_b = manager->CreateFiberView();
+  normal_b->MarkCanBeLayoutOnly(false);
+
+  page->InsertNode(parent);
+  parent->InsertNode(normal_before);
+  parent->InsertNode(sticky_a);
+  parent->InsertNode(normal_b);
+  page->FlushActionsAsRoot();
+
+  auto painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  auto* page_container = page->element_container_impl();
+  auto* parent_container = parent->element_container_impl();
+  auto* sticky_a_container = sticky_a->element_container_impl();
+  auto* normal_b_container = normal_b->element_container_impl();
+  auto* parent_painting_node =
+      painting_context->node_map_.at(parent->impl_id()).get();
+  ASSERT_TRUE(sticky_a->is_sticky());
+  ASSERT_FALSE(normal_b->is_sticky());
+  ASSERT_EQ(parent_container->parent(), page_container);
+  ASSERT_EQ(sticky_a_container->parent(), parent_container);
+  ASSERT_EQ(normal_b_container->parent(), parent_container);
+  ASSERT_EQ(parent_painting_node->children_.size(), 3U);
+  EXPECT_EQ(parent_painting_node->children_[0]->id_, normal_before->impl_id());
+  EXPECT_EQ(parent_painting_node->children_[1]->id_, sticky_a->impl_id());
+  EXPECT_EQ(parent_painting_node->children_[2]->id_, normal_b->impl_id());
+
+  sticky_a->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                     lepus::Value("relative"));
+  normal_b->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                     lepus::Value("sticky"));
+  page->FlushActionsAsRoot();
+
+  // Without a scroll-view ancestor, neither sticky state change can remount
+  // the node under a scroll container. Both nodes should stay under their
+  // original parent.
+  EXPECT_FALSE(sticky_a->is_sticky());
+  EXPECT_TRUE(normal_b->is_sticky());
+  EXPECT_EQ(sticky_a_container->parent(), parent_container);
+  EXPECT_EQ(normal_b_container->parent(), parent_container);
+  ASSERT_EQ(parent_painting_node->children_.size(), 3U);
+  EXPECT_EQ(parent_painting_node->children_[0]->id_, normal_before->impl_id());
+  EXPECT_EQ(parent_painting_node->children_[1]->id_, sticky_a->impl_id());
+  EXPECT_EQ(parent_painting_node->children_[2]->id_, normal_b->impl_id());
+}
+
+TEST_F(ElementContainerTest,
+       NewStickyCurrentBehaviorChangingNormalToStickyAppendsToScroll) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewSticky(true);
+  manager->SetConfig(config);
+
+  // page
+  //   -> scroll-view
+  //     -> parent
+  //       -> before
+  //       -> target
+  //       -> after
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto before = manager->CreateFiberView();
+  before->MarkCanBeLayoutOnly(false);
+  auto target = manager->CreateFiberView();
+  target->MarkCanBeLayoutOnly(false);
+  auto after = manager->CreateFiberView();
+  after->MarkCanBeLayoutOnly(false);
+  page->InsertNode(scroll);
+  scroll->InsertNode(before);
+  scroll->InsertNode(target);
+  scroll->InsertNode(after);
+  page->FlushActionsAsRoot();
+
+  auto painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  auto* scroll_painting_node =
+      painting_context->node_map_.at(scroll->impl_id()).get();
+  ASSERT_EQ(scroll_painting_node->children_.size(), 3U);
+  EXPECT_EQ(scroll_painting_node->children_[0]->id_, before->impl_id());
+  EXPECT_EQ(scroll_painting_node->children_[1]->id_, target->impl_id());
+  EXPECT_EQ(scroll_painting_node->children_[2]->id_, after->impl_id());
+
+  target->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+  page->FlushActionsAsRoot();
+
+  // The target is appended to the scroll container after switching to sticky.
+  EXPECT_TRUE(target->is_sticky());
+  EXPECT_EQ(target->element_container_impl()->parent(),
+            scroll->element_container_impl());
+  ASSERT_EQ(scroll_painting_node->children_.size(), 3U);
+  // The order of children in the scroll container is:
+  // before -> after -> target
+  EXPECT_EQ(scroll_painting_node->children_[0]->id_, before->impl_id());
+  EXPECT_EQ(scroll_painting_node->children_[1]->id_, after->impl_id());
+  EXPECT_EQ(scroll_painting_node->children_[2]->id_, target->impl_id());
+}
+
+TEST_F(ElementContainerTest,
+       NewStickyCurrentBehaviorChangingStickyToRelativeRestoresSiblingOrder) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewSticky(true);
+  manager->SetConfig(config);
+
+  // page
+  //   -> scroll-view
+  //     -> parent
+  //       -> before
+  //       -> target(sticky)
+  //       -> after
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  auto before = manager->CreateFiberView();
+  before->MarkCanBeLayoutOnly(false);
+  auto target = manager->CreateFiberView();
+  target->MarkCanBeLayoutOnly(false);
+  target->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+  auto after = manager->CreateFiberView();
+  after->MarkCanBeLayoutOnly(false);
+  page->InsertNode(scroll);
+  scroll->InsertNode(parent);
+  parent->InsertNode(before);
+  parent->InsertNode(target);
+  parent->InsertNode(after);
+  page->FlushActionsAsRoot();
+
+  auto painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  auto* scroll_container = scroll->element_container_impl();
+  auto* parent_container = parent->element_container_impl();
+  auto* target_container = target->element_container_impl();
+  auto* scroll_painting_node =
+      painting_context->node_map_.at(scroll->impl_id()).get();
+  auto* parent_painting_node =
+      painting_context->node_map_.at(parent->impl_id()).get();
+  ASSERT_EQ(parent_container->parent(), scroll_container);
+  ASSERT_EQ(target_container->parent(), scroll_container);
+  ASSERT_EQ(scroll_painting_node->children_.size(), 2U);
+  EXPECT_EQ(scroll_painting_node->children_[0]->id_, parent->impl_id());
+  EXPECT_EQ(scroll_painting_node->children_[1]->id_, target->impl_id());
+  ASSERT_EQ(parent_painting_node->children_.size(), 2U);
+  EXPECT_EQ(parent_painting_node->children_[0]->id_, before->impl_id());
+  EXPECT_EQ(parent_painting_node->children_[1]->id_, after->impl_id());
+
+  target->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                   lepus::Value("relative"));
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(target->is_sticky());
+  EXPECT_EQ(target_container->parent(), parent_container);
+  ASSERT_EQ(scroll_painting_node->children_.size(), 1U);
+  EXPECT_EQ(scroll_painting_node->children_[0]->id_, parent->impl_id());
+  ASSERT_EQ(parent_painting_node->children_.size(), 3U);
+  // The order of children in the parent container is:
+  // before -> target -> after
+  EXPECT_EQ(parent_painting_node->children_[0]->id_, before->impl_id());
+  EXPECT_EQ(parent_painting_node->children_[1]->id_, target->impl_id());
+  EXPECT_EQ(parent_painting_node->children_[2]->id_, after->impl_id());
+}
+
+TEST_F(ElementContainerTest, NewStickyInitialRenderMountsUnderScrollContainer) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewSticky(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  auto sticky = manager->CreateFiberView();
+  sticky->MarkCanBeLayoutOnly(false);
+  sticky->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+
+  page->InsertNode(scroll);
+  scroll->InsertNode(parent);
+  parent->InsertNode(sticky);
+  page->FlushActionsAsRoot();
+
+  // On initial render, the Element tree remains scroll -> parent -> sticky,
+  // but the ElementContainer tree mounts sticky_container directly under
+  // scroll_container instead of parent_container.
+  ASSERT_TRUE(sticky->is_sticky());
+  EXPECT_EQ(sticky->parent(), parent.get());
+  EXPECT_EQ(sticky->render_parent(), parent.get());
+
+  auto* page_container = page->element_container_impl();
+  auto* scroll_container = scroll->element_container_impl();
+  auto* parent_container = parent->element_container_impl();
+  auto* sticky_container = sticky->element_container_impl();
+  ASSERT_EQ(scroll_container->parent(), page_container);
+  ASSERT_EQ(parent_container->parent(), scroll_container);
+  EXPECT_EQ(sticky_container->parent(), scroll_container);
+
+  // Both parent_container and sticky_container should be mounted under
+  // scroll_container.
+  const auto& scroll_children = scroll_container->children();
+  EXPECT_NE(std::find(scroll_children.begin(), scroll_children.end(),
+                      parent_container),
+            scroll_children.end());
+  EXPECT_NE(std::find(scroll_children.begin(), scroll_children.end(),
+                      sticky_container),
+            scroll_children.end());
+
+  // sticky_container should not be mounted under parent_container.
+  const auto& parent_children = parent_container->children();
+  EXPECT_EQ(std::find(parent_children.begin(), parent_children.end(),
+                      sticky_container),
+            parent_children.end());
+}
+
+TEST_F(ElementContainerTest, NewStickyUnderLayoutOnlyWrapperMountsToScroll) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewSticky(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  auto wrapper = manager->CreateFiberWrapperElement();
+  auto sticky = manager->CreateFiberView();
+  sticky->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+
+  // A sticky node under layout-only wrappers should mount to the nearest
+  // scroll container instead of its wrapper or normal render parent.
+  page->InsertNode(scroll);
+  scroll->InsertNode(parent);
+  parent->InsertNode(wrapper);
+  wrapper->InsertNode(sticky);
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+  ASSERT_TRUE(sticky->is_sticky());
+  ASSERT_FALSE(sticky->IsLayoutOnly());
+
+  auto* scroll_container = scroll->element_container_impl();
+  auto* parent_container = parent->element_container_impl();
+  auto* sticky_container = sticky->element_container_impl();
+  EXPECT_EQ(parent_container->parent(), scroll_container);
+  EXPECT_EQ(sticky_container->parent(), scroll_container);
+}
+
+TEST_F(ElementContainerTest, NewStickyWithZIndexMountsUnderStackingContext) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(true);
+  config->SetEnableNewSticky(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto stacking_parent = manager->CreateFiberView();
+  // Build a stacking context parent.
+  stacking_parent->MarkCanBeLayoutOnly(false);
+  stacking_parent->SetStyle(CSSPropertyID::kPropertyIDOpacity,
+                            lepus::Value(0.9));
+  auto sticky = manager->CreateFiberView();
+  sticky->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+  // Sticky also has z-index: 1.
+  sticky->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+
+  page->InsertNode(scroll);
+  scroll->InsertNode(stacking_parent);
+  stacking_parent->InsertNode(sticky);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(stacking_parent->IsStackingContextNode());
+  ASSERT_TRUE(sticky->is_sticky());
+  EXPECT_EQ(sticky->ZIndex(), 1);
+  EXPECT_EQ(sticky->parent(), stacking_parent.get());
+  EXPECT_EQ(sticky->render_parent(), stacking_parent.get());
+
+  auto* scroll_container = scroll->element_container_impl();
+  auto* stacking_parent_container = stacking_parent->element_container_impl();
+  auto* sticky_container = sticky->element_container_impl();
+
+  // If a stacking context parent exists, sticky with z-index is mounted by
+  // z-index / stacking-context rules first.
+  ASSERT_EQ(stacking_parent_container->parent(), scroll_container);
+  EXPECT_EQ(sticky_container->parent(), stacking_parent_container);
+
+  const auto& scroll_children = scroll_container->children();
+  EXPECT_EQ(std::find(scroll_children.begin(), scroll_children.end(),
+                      sticky_container),
+            scroll_children.end());
+
+  const auto& stacking_parent_children = stacking_parent_container->children();
+  EXPECT_NE(std::find(stacking_parent_children.begin(),
+                      stacking_parent_children.end(), sticky_container),
+            stacking_parent_children.end());
+
+  const std::array<float, 4> paddings = {0.f, 0.f, 0.f, 0.f};
+  const std::array<float, 4> margins = {0.f, 0.f, 0.f, 0.f};
+  const std::array<float, 4> borders = {0.f, 0.f, 0.f, 0.f};
+  const std::array<float, 4> sticky_positions = {1.f, 2.f, -1.f, -1.f};
+  page->UpdateLayout(0.f, 0.f, kWidth, kHeight, paddings, margins, borders,
+                     nullptr, 0.f);
+  scroll->UpdateLayout(10.f, 20.f, 300.f, 400.f, paddings, margins, borders,
+                       nullptr, 0.f);
+  stacking_parent->UpdateLayout(30.f, 40.f, 200.f, 100.f, paddings, margins,
+                                borders, nullptr, 0.f);
+  sticky->UpdateLayout(7.f, 8.f, 50.f, 60.f, paddings, margins, borders,
+                       &sticky_positions, 0.f);
+  page->element_container_impl()->UpdateLayout(page->left(), page->top());
+  ASSERT_TRUE(sticky->sticky_positions().has_value());
+  const auto& sticky_info = *sticky->sticky_positions();
+  // The 10-value sticky info is still calculated because the container
+  // ancestor chain can still find the scroll container.
+  EXPECT_EQ(sticky_info[0], 1.f);
+  EXPECT_EQ(sticky_info[1], 2.f);
+  EXPECT_EQ(sticky_info[2], -1.f);
+  EXPECT_EQ(sticky_info[3], -1.f);
+  EXPECT_EQ(sticky_info[4], 200.f);
+  EXPECT_EQ(sticky_info[5], 100.f);
+  EXPECT_EQ(sticky_info[6], 37.f);
+  EXPECT_EQ(sticky_info[7], 48.f);
+  EXPECT_EQ(sticky_info[8], 30.f);
+  EXPECT_EQ(sticky_info[9], 40.f);
+}
+
+TEST_F(ElementContainerTest, NewStickyRangeUsesElementContainerTree) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewSticky(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  auto wrapper = manager->CreateFiberWrapperElement();
+  auto sticky = manager->CreateFiberView();
+  sticky->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+
+  page->InsertNode(scroll);
+  scroll->InsertNode(parent);
+  parent->InsertNode(wrapper);
+  wrapper->InsertNode(sticky);
+  page->FlushActionsAsRoot();
+
+  const std::array<float, 4> paddings = {0.f, 0.f, 0.f, 0.f};
+  const std::array<float, 4> margins = {0.f, 0.f, 0.f, 0.f};
+  const std::array<float, 4> borders = {0.f, 0.f, 0.f, 0.f};
+  const std::array<float, 4> sticky_positions = {1.f, 2.f, -1.f, -1.f};
+
+  page->UpdateLayout(0.f, 0.f, kWidth, kHeight, paddings, margins, borders,
+                     nullptr, 0.f);
+  scroll->UpdateLayout(10.f, 20.f, 300.f, 400.f, paddings, margins, borders,
+                       nullptr, 0.f);
+  parent->UpdateLayout(30.f, 40.f, 200.f, 100.f, paddings, margins, borders,
+                       nullptr, 0.f);
+  wrapper->UpdateLayout(5.f, 6.f, 120.f, 80.f, paddings, margins, borders,
+                        nullptr, 0.f);
+  sticky->UpdateLayout(7.f, 8.f, 50.f, 60.f, paddings, margins, borders,
+                       &sticky_positions, 0.f);
+
+  page->element_container_impl()->UpdateLayout(page->left(), page->top());
+
+  ASSERT_TRUE(sticky->sticky_positions().has_value());
+  const auto& sticky_info = *sticky->sticky_positions();
+  EXPECT_EQ(sticky_info[0], 1.f);
+  EXPECT_EQ(sticky_info[1], 2.f);
+  EXPECT_EQ(sticky_info[2], -1.f);
+  EXPECT_EQ(sticky_info[3], -1.f);
+  // Width and height of the real parent after skipping wrappers.
+  EXPECT_EQ(sticky_info[4], 200.f);
+  EXPECT_EQ(sticky_info[5], 100.f);
+
+  // Sticky position relative to the scroll container.
+  EXPECT_EQ(sticky_info[6], 42.f);  // 30 + 5 + 7.
+  EXPECT_EQ(sticky_info[7], 54.f);  // 40 + 6 + 8.
+
+  // Real parent position relative to the scroll container.
+  EXPECT_EQ(sticky_info[8], 30.f);
+  EXPECT_EQ(sticky_info[9], 40.f);
+
+  // Remount sticky_container under page to simulate a tree where the Element
+  // tree can still find a scroll-view but the ElementContainer tree cannot.
+  // GetStickyPositionIfNeeded() should return nullptr in this case.
+  auto* sticky_container = sticky->element_container_impl();
+  sticky_container->RemoveFromParent(true);
+  page->element_container_impl()->AddChild(sticky_container, -1);
+  ASSERT_EQ(sticky_container->parent(), page->element_container_impl());
+  EXPECT_EQ(sticky_container->GetStickyPositionIfNeeded(), nullptr);
+}
+
 TEST_F(ElementContainerTest, FiberElementUpdateLayoutWithException) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
@@ -823,7 +1345,6 @@ TEST_F(ElementContainerTest, ReplaceNegativeZIndexChildren) {
   EXPECT_TRUE(page_painting_children[0]->id_ == parent0_element->impl_id());
   EXPECT_TRUE(page_painting_children[1]->id_ == parent1_element->impl_id());
   EXPECT_TRUE(page_painting_children[2]->id_ == parent2_element->impl_id());
-
   EXPECT_TRUE(page_painting_children[3]->id_ == parent3_element->impl_id());
   EXPECT_TRUE(page_painting_children[4]->id_ == parent4_element->impl_id());
 }
