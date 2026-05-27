@@ -41,8 +41,6 @@ def git_root_dir():
 
 def build():
     env = get_pnpm_env()
-    env['COREPACK_HOME'] = os.path.join(git_root_dir(), 'buildtools', 'corepack')
-    env['COREPACK_ENABLE_NETWORK'] = '0'
     # Change to the root directory
     os.chdir(root_path)
 
