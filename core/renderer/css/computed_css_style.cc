@@ -2904,15 +2904,15 @@ bool ComputedCSSStyle::SetCaretColor(const lynx::tasm::CSSValue& value,
       "caret-color must be a string!", parser_configs_);
 }
 
-bool ComputedCSSStyle::SetCaretGradient(const lynx::tasm::CSSValue& value,
-                                        bool reset) {
+bool ComputedCSSStyle::SetXCaretGradient(const lynx::tasm::CSSValue& value,
+                                         bool reset) {
   return CSSStyleUtils::ComputeStringStyle(
       value, reset, caret_gradient_, DefaultCaretGradient(),
-      "caret-gradient must be a string!", parser_configs_);
+      "-x-caret-gradient must be a string!", parser_configs_);
 }
 
-bool ComputedCSSStyle::SetCaretWidth(const tasm::CSSValue& value,
-                                     const bool reset) {
+bool ComputedCSSStyle::SetXCaretWidth(const tasm::CSSValue& value,
+                                      const bool reset) {
   float old_value = caret_width_;
   if (reset) {
     caret_width_ = DefaultComputedStyle::DEFAULT_FLOAT;
@@ -2923,8 +2923,8 @@ bool ComputedCSSStyle::SetCaretWidth(const tasm::CSSValue& value,
   return base::FloatsNotEqual(old_value, caret_width_);
 }
 
-bool ComputedCSSStyle::SetCaretRadius(const tasm::CSSValue& value,
-                                      const bool reset) {
+bool ComputedCSSStyle::SetXCaretRadius(const tasm::CSSValue& value,
+                                       const bool reset) {
   float old_value = caret_radius_;
   if (reset) {
     caret_radius_ = DefaultComputedStyle::DEFAULT_FLOAT;
@@ -2935,8 +2935,8 @@ bool ComputedCSSStyle::SetCaretRadius(const tasm::CSSValue& value,
   return base::FloatsNotEqual(old_value, caret_radius_);
 }
 
-bool ComputedCSSStyle::SetCaretHeight(const tasm::CSSValue& value,
-                                      const bool reset) {
+bool ComputedCSSStyle::SetXCaretHeight(const tasm::CSSValue& value,
+                                       const bool reset) {
   float old_value = caret_height_;
   if (reset) {
     caret_height_ = DefaultComputedStyle::DEFAULT_FLOAT;
@@ -4219,19 +4219,19 @@ lepus_value ComputedCSSStyle::CaretColorToLepus() {
   return lepus::Value(caret_color_);
 }
 
-lepus_value ComputedCSSStyle::CaretGradientToLepus() {
+lepus_value ComputedCSSStyle::XCaretGradientToLepus() {
   return lepus::Value(caret_gradient_);
 }
 
-lepus_value ComputedCSSStyle::CaretWidthToLepus() {
+lepus_value ComputedCSSStyle::XCaretWidthToLepus() {
   return lepus_value(caret_width_);
 }
 
-lepus_value ComputedCSSStyle::CaretRadiusToLepus() {
+lepus_value ComputedCSSStyle::XCaretRadiusToLepus() {
   return lepus_value(caret_radius_);
 }
 
-lepus_value ComputedCSSStyle::CaretHeightToLepus() {
+lepus_value ComputedCSSStyle::XCaretHeightToLepus() {
   return lepus_value(caret_height_);
 }
 

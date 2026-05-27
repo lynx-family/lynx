@@ -141,10 +141,10 @@ TEST_F(InspectorTasmExecutorTest, GetComputedStyleOfNodeStyleOrderCase) {
     return -1;
   };
 
-  int caret_gradient = find_style_index("caret-gradient");
-  int caret_width = find_style_index("caret-width");
-  int caret_height = find_style_index("caret-height");
-  int caret_radius = find_style_index("caret-radius");
+  int caret_gradient = find_style_index("-x-caret-gradient");
+  int caret_width = find_style_index("-x-caret-width");
+  int caret_height = find_style_index("-x-caret-height");
+  int caret_radius = find_style_index("-x-caret-radius");
 
   ASSERT_GE(caret_gradient, 0);
   ASSERT_GE(caret_width, 0);

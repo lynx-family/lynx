@@ -707,27 +707,27 @@ void PropBundleStyleWriter::WriteCaretColor(
                        style->GetCaretColor().c_str());
 }
 
-void PropBundleStyleWriter::WriteCaretGradient(
+void PropBundleStyleWriter::WriteXCaretGradient(
     PropBundle* bundle, starlight::ComputedCSSStyle* style) {
-  bundle->SetPropsByID(CSSPropertyID::kPropertyIDCaretGradient,
+  bundle->SetPropsByID(CSSPropertyID::kPropertyIDXCaretGradient,
                        style->GetCaretGradient().c_str());
 }
 
-void PropBundleStyleWriter::WriteCaretWidth(
+void PropBundleStyleWriter::WriteXCaretWidth(
     PropBundle* bundle, starlight::ComputedCSSStyle* style) {
-  bundle->SetPropsByID(CSSPropertyID::kPropertyIDCaretWidth,
+  bundle->SetPropsByID(CSSPropertyID::kPropertyIDXCaretWidth,
                        static_cast<double>(style->GetCaretWidth()));
 }
 
-void PropBundleStyleWriter::WriteCaretRadius(
+void PropBundleStyleWriter::WriteXCaretRadius(
     PropBundle* bundle, starlight::ComputedCSSStyle* style) {
-  bundle->SetPropsByID(CSSPropertyID::kPropertyIDCaretRadius,
+  bundle->SetPropsByID(CSSPropertyID::kPropertyIDXCaretRadius,
                        static_cast<double>(style->GetCaretRadius()));
 }
 
-void PropBundleStyleWriter::WriteCaretHeight(
+void PropBundleStyleWriter::WriteXCaretHeight(
     PropBundle* bundle, starlight::ComputedCSSStyle* style) {
-  bundle->SetPropsByID(CSSPropertyID::kPropertyIDCaretHeight,
+  bundle->SetPropsByID(CSSPropertyID::kPropertyIDXCaretHeight,
                        static_cast<double>(style->GetCaretHeight()));
 }
 

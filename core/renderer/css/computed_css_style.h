@@ -742,10 +742,10 @@ class ComputedCSSStyle {
   V(BorderColor)                         \
   V(FontFamily)                          \
   V(CaretColor)                          \
-  V(CaretGradient)                       \
-  V(CaretWidth)                          \
-  V(CaretRadius)                         \
-  V(CaretHeight)                         \
+  V(XCaretGradient)                      \
+  V(XCaretWidth)                         \
+  V(XCaretHeight)                        \
+  V(XCaretRadius)                        \
   V(TextShadow)                          \
   V(Direction)                           \
   V(WhiteSpace)                          \

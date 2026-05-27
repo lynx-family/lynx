@@ -1177,13 +1177,13 @@ TEST_F(ElementHelperTest, GetOrderedInspectorResetStyleNamesTest) {
     return std::find(reset_names.begin(), reset_names.end(), id);
   };
   auto caret_gradient =
-      find_style(lynx::tasm::CSSPropertyID::kPropertyIDCaretGradient);
+      find_style(lynx::tasm::CSSPropertyID::kPropertyIDXCaretGradient);
   auto caret_width =
-      find_style(lynx::tasm::CSSPropertyID::kPropertyIDCaretWidth);
+      find_style(lynx::tasm::CSSPropertyID::kPropertyIDXCaretWidth);
   auto caret_height =
-      find_style(lynx::tasm::CSSPropertyID::kPropertyIDCaretHeight);
+      find_style(lynx::tasm::CSSPropertyID::kPropertyIDXCaretHeight);
   auto caret_radius =
-      find_style(lynx::tasm::CSSPropertyID::kPropertyIDCaretRadius);
+      find_style(lynx::tasm::CSSPropertyID::kPropertyIDXCaretRadius);
 
   ASSERT_NE(caret_gradient, reset_names.end());
   ASSERT_NE(caret_width, reset_names.end());

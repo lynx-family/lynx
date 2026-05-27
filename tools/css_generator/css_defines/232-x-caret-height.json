@@ -1,5 +1,5 @@
 {
-  "name": "caret-height",
+  "name": "-x-caret-height",
   "id": 232,
   "type": "length",
   "default_value": "0px",

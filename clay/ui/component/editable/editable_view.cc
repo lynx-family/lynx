@@ -460,7 +460,7 @@ void EditableView::SetAttribute(const char* attr_c, const clay::Value& value) {
         GetRenderEditable()->SetCaretColor(std::nullopt);
       }
     } break;
-    case KeywordID::kCaretGradient: {
+    case KeywordID::kXCaretGradient: {
       auto gradient_value = lynx::base::TrimString(
           attribute_utils::GetCString(value), " \t\n\r\f\v",
           lynx::base::TrimPositions::TRIM_ALL);
@@ -472,7 +472,7 @@ void EditableView::SetAttribute(const char* attr_c, const clay::Value& value) {
         GetRenderEditable()->SetCaretGradient(std::nullopt);
       }
     } break;
-    case KeywordID::kCaretWidth: {
+    case KeywordID::kXCaretWidth: {
       double caret_width = 0.0;
       if (attribute_utils::TryGetNum(value, caret_width)) {
         GetRenderEditable()->SetCaretWidth(static_cast<float>(caret_width));
@@ -480,7 +480,7 @@ void EditableView::SetAttribute(const char* attr_c, const clay::Value& value) {
         GetRenderEditable()->SetCaretWidth(0.0f);
       }
     } break;
-    case KeywordID::kCaretHeight: {
+    case KeywordID::kXCaretHeight: {
       double caret_height = 0.0;
       if (attribute_utils::TryGetNum(value, caret_height)) {
         GetRenderEditable()->SetCaretHeight(static_cast<float>(caret_height));
@@ -488,7 +488,7 @@ void EditableView::SetAttribute(const char* attr_c, const clay::Value& value) {
         GetRenderEditable()->SetCaretHeight(0.0f);
       }
     } break;
-    case KeywordID::kCaretRadius: {
+    case KeywordID::kXCaretRadius: {
       double caret_radius = 0.0;
       if (attribute_utils::TryGetNum(value, caret_radius)) {
         GetRenderEditable()->SetCaretRadius(static_cast<float>(caret_radius));
@@ -1619,10 +1619,10 @@ bool EditableView::MatchAttrSettings(KeywordID attr) {
     case KeywordID::kTextAlign:
     case KeywordID::kFontFamily:
     case KeywordID::kCaretColor:
-    case KeywordID::kCaretGradient:
-    case KeywordID::kCaretWidth:
-    case KeywordID::kCaretHeight:
-    case KeywordID::kCaretRadius:
+    case KeywordID::kXCaretGradient:
+    case KeywordID::kXCaretWidth:
+    case KeywordID::kXCaretHeight:
+    case KeywordID::kXCaretRadius:
     case KeywordID::kMaxlength:
     case KeywordID::kReadonly:
     case KeywordID::kMaxlines:
@@ -1649,10 +1649,10 @@ bool EditableView::MatchNGAttrSettings(KeywordID attr) {
     case KeywordID::kTextAlign:
     case KeywordID::kFontFamily:
     case KeywordID::kCaretColor:
-    case KeywordID::kCaretGradient:
-    case KeywordID::kCaretWidth:
-    case KeywordID::kCaretHeight:
-    case KeywordID::kCaretRadius:
+    case KeywordID::kXCaretGradient:
+    case KeywordID::kXCaretWidth:
+    case KeywordID::kXCaretHeight:
+    case KeywordID::kXCaretRadius:
     case KeywordID::kMaxlength:
     case KeywordID::kReadonly:
     case KeywordID::kMaxlines:

@@ -920,18 +920,18 @@
     },
     {
         "id": 230,
-        "name": "caret-gradient"
+        "name": "-x-caret-gradient"
     },
     {
         "id": 231,
-        "name": "caret-width"
+        "name": "-x-caret-width"
     },
     {
         "id": 232,
-        "name": "caret-height"
+        "name": "-x-caret-height"
     },
     {
         "id": 233,
-        "name": "caret-radius"
+        "name": "-x-caret-radius"
     }
 ]

@@ -194,10 +194,10 @@ focus
 ignore-focus
 edit-on-focus
 caret-color
-caret-gradient
-caret-width
-caret-height
-caret-radius
+-x-caret-gradient
+-x-caret-width
+-x-caret-height
+-x-caret-radius
 tint-color
 enable-report-info
 richtype
