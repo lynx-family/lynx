@@ -83,7 +83,7 @@ public class LynxEnv {
   protected static final String TAG = "LynxEnv";
   public static final String SP_NAME = "lynx_env_config";
   private static final String AUTOLINK_GENERATED_CLASS_NAME =
-      "com.lynx.tasm.extension.LynxAutolinkGenerated";
+      "com.lynx.tasm.library.LynxAutolinkGenerated";
   private static final String AUTOLINK_SETUP_GLOBAL_METHOD = "setupGlobal";
 
   protected static volatile LynxEnv sInstance;
