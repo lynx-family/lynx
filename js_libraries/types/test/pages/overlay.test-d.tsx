@@ -15,6 +15,7 @@ let a;
   <overlay visible={true} />;
   <overlay level={1} />;
   <overlay mode="window" />;
+  <overlay mode="page" />;
   <overlay visible={false} level={2} mode="top" />;
 
   assertType<boolean | undefined>(a as IntrinsicElements['overlay']['visible']);
