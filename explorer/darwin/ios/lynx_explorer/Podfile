@@ -2,9 +2,9 @@ source 'https://cdn.cocoapods.org/'
 project './LynxExplorer.xcodeproj'
 
 lynx_root = File.expand_path('../../../..', __dir__)
-lynx_extension_plugin_dir = File.join(lynx_root, 'tools/ios_tools/cocoapods-lynx-extension/lib')
-$LOAD_PATH.unshift lynx_extension_plugin_dir
-load File.join(lynx_extension_plugin_dir, 'cocoapods_plugin.rb')
+lynx_library_plugin_dir = File.join(lynx_root, 'tools/ios_tools/cocoapods-lynx-library/lib')
+$LOAD_PATH.unshift lynx_library_plugin_dir
+load File.join(lynx_library_plugin_dir, 'cocoapods_plugin.rb')
 
 platform :ios, '12.0'
 
@@ -49,9 +49,9 @@ target 'LynxExplorer' do
     'Core'
   ]
 
-  use_lynx_extension!(
+  use_lynx_library!(
     :root => __dir__,
-    :output_dir => File.join(__dir__, 'generated/lynx-extension')
+    :output_dir => File.join(__dir__, 'generated/lynx-library')
   )
 
   pod 'XElement', :path => '../../../..', :subspecs => [
