@@ -139,6 +139,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         mFontSize = UnitUtils.toPxWithDisplayMetrics("14px", 0f, 0f, 0f, 0f, mContext?.screenMetrics)
         val editText = LynxEditTextView(context!!).apply {
             onFocusChangeListener =  View.OnFocusChangeListener { _: View?, hasFocus ->
+                mWasFocused = !hasFocus
                 // Make sure keyboard is displayed while being focused
                 if (hasFocus && !mUseCustomKeyboard) {
                     showSoftInput()
@@ -912,6 +913,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
 
   override fun keyboardWillShow(keyboardHeight: Int) {
     if (mView.isFocused) {
+      mWasFocused = false
       mKeyboardHeight = keyboardHeight
       mAvoidKeyboardDist = handleAvoidKeyboard(true)
       lynxContext.eventEmitter.sendCustomEvent(
@@ -925,15 +927,18 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
   }
 
   override fun keyboardWillHide() {
-    if (mWasFocused) {
-      mAvoidKeyboardDist = handleAvoidKeyboard(false)
-      lynxContext.eventEmitter.sendCustomEvent(
-        LynxDetailEvent(
-          sign,
-          "keyboardheightchange"
-        ).apply {
-          addDetail("height", 0)
-        })
+    mView.post {
+      // Match the hide callback with the input that owned the previous keyboard state during focus handoff.
+      if (mWasFocused) {
+        mAvoidKeyboardDist = handleAvoidKeyboard(false)
+        lynxContext.eventEmitter.sendCustomEvent(
+          LynxDetailEvent(
+            sign,
+            "keyboardheightchange"
+          ).apply {
+            addDetail("height", 0)
+          })
+      }
     }
   }
 }

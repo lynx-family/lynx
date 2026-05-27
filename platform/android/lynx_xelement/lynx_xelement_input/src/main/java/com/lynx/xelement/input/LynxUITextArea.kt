@@ -56,10 +56,18 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
         return editText
     }
 
-    @LynxProp(name = "maxlines", defaultInt = 0)
+    @LynxProp(name = "maxlines", defaultInt = Int.MAX_VALUE)
     fun setMaxLines(maxLines: Int) {
-        mView.maxLines = maxLines
-        maxHeightInputFilter = InputFilter { source, start, end, dest, dstart, dend -> maxLinesFilter(source,start,end,dest,dstart,dend, maxLines) }
+        val normalizedMaxLines = if (maxLines <= 0) Int.MAX_VALUE else maxLines
+        mMaxLinesReached = false
+        mView.maxLines = normalizedMaxLines
+        maxHeightInputFilter = if (normalizedMaxLines == Int.MAX_VALUE) {
+            null
+        } else {
+            InputFilter { source, start, end, dest, dstart, dend ->
+                maxLinesFilter(source, start, end, dest, dstart, dend, normalizedMaxLines)
+            }
+        }
     }
   
     @LynxProp(name = "enable-scroll-bar", defaultBoolean = false )
@@ -86,9 +94,9 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
     override fun afterPropsUpdated(props: StylesDiffMap?) {
         super.afterPropsUpdated(props)
         maxHeightInputFilter?.let {
-            mView.filters = arrayOf(readonlyInputFilter, confirmEnterFilter, maxLengthInputFilter, maxHeightInputFilter, inputValueRegexFilter)
+            mView.filters = arrayOf(confirmEnterFilter, inputValueRegexFilter, maxLengthInputFilter, maxHeightInputFilter, readonlyInputFilter)
         } ?:run{
-            mView.filters = arrayOf(readonlyInputFilter, confirmEnterFilter, maxLengthInputFilter, inputValueRegexFilter)
+            mView.filters = arrayOf(confirmEnterFilter, inputValueRegexFilter, maxLengthInputFilter, readonlyInputFilter)
         }
     }
 
@@ -105,41 +113,43 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
 
     private fun maxLinesFilter(
     source: CharSequence, start: Int, end: Int, dest: Spanned,
-    dstart: Int, dend: Int, maxLines: Int): CharSequence {
-        if (maxLines != Int.MAX_VALUE) {
-            val inputUtils = LynxInputUtils()
-            var textLayout: Layout
-            var l = start
-            var r = end
-            val sourceBuilder = SpannableStringBuilder(source).subSequence(start, end)
-            while(l < r) {
-                val mid = (l + r) / 2
-                val destBuilder = SpannableStringBuilder(dest)
-                destBuilder.replace(dstart, dend,  sourceBuilder.subSequence(0, mid + 1))
-                textLayout = inputUtils.getLayoutInEditText(destBuilder,
-                    mView,
-                    width,
-                    Int.MAX_VALUE)
-                if (textLayout.lineCount <= maxLines) {
-                    l = mid + 1
-                } else {
-                    r = mid
-                }
-            }
-
-            mMaxLinesReached = r < end
-            if (mMaxLinesReached) {
-              lynxContext.eventEmitter.sendCustomEvent(
-                LynxDetailEvent(
-                  sign,
-                  "line"
-                ).apply {
-                  addDetail("line", -1)
-                })
-            }
-            return source.subSequence(0, r)
+    dstart: Int, dend: Int, maxLines: Int): CharSequence? {
+        mMaxLinesReached = false
+        if (maxLines == Int.MAX_VALUE || maxLines <= 0 || start >= end) {
+            return null
         }
-        return source
+
+        val inputUtils = LynxInputUtils()
+        val replacement = source.subSequence(start, end)
+        var left = 0
+        var right = replacement.length
+        while (left < right) {
+            val mid = (left + right + 1) / 2
+            val destBuilder = SpannableStringBuilder(dest)
+            destBuilder.replace(dstart, dend, replacement.subSequence(0, mid))
+            val textLayout: Layout = inputUtils.getLayoutInEditText(destBuilder,
+                mView,
+                width,
+                Int.MAX_VALUE)
+            if (textLayout.lineCount <= maxLines) {
+                left = mid
+            } else {
+                right = mid - 1
+            }
+        }
+
+        mMaxLinesReached = left < replacement.length
+        if (mMaxLinesReached) {
+          lynxContext.eventEmitter.sendCustomEvent(
+            LynxDetailEvent(
+              sign,
+              "line"
+            ).apply {
+              addDetail("line", -1)
+            })
+          return replacement.subSequence(0, left)
+        }
+        return null
     }
 
     override fun afterTextDidChanged(s: Editable?) {
@@ -148,18 +158,21 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
             width,
             Int.MAX_VALUE)
 
-        if (textLayout.height != mPreHeight && !mMaxLinesReached) {
+        if (textLayout.height != mPreHeight) {
             triggerUpdateLayout(textLayout.height)
             mPreHeight = textLayout.height
 
-            lynxContext.eventEmitter.sendCustomEvent(
+            if (!mMaxLinesReached) {
+              lynxContext.eventEmitter.sendCustomEvent(
                 LynxDetailEvent(
                     sign,
                     "line"
                 ).apply {
                     addDetail("line", textLayout.lineCount)
                 })
+            }
         }
+        mMaxLinesReached = false
     }
 
   override fun triggerUpdateLayout(updatedHeight: Int) {
