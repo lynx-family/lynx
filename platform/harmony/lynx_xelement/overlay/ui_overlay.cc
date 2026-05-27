@@ -6,6 +6,7 @@
 
 #include <arkui/native_node.h>
 #include <arkui/native_type.h>
+#include <deviceinfo.h>
 
 #include <vector>
 
@@ -25,6 +26,7 @@ namespace harmony {
 static std::vector<UIOverlay*>
     global_dialogs;  // Due to API restrictions, only global dialogs can be used
                      // for OnDismiss event
+static constexpr int kDialogLevelModeSupportVersion = 15;
 
 UIBase* UIOverlay::Make(LynxContext* context, int sign,
                         const std::string& tag) {
@@ -38,12 +40,35 @@ void UIOverlay::OnPropUpdate(const std::string& name,
     is_visible_props_ = value.Bool();
   } else if (name == "events-pass-through") {
     is_event_pass_through_ = value.Bool();
+  } else if (name == "mode") {
+    harmony_level_mode_ = ARKUI_LEVEL_MODE_OVERLAY;
+    if (value.IsString()) {
+      auto mode = value.StdString();
+      if (mode == "page") {
+        harmony_level_mode_ = ARKUI_LEVEL_MODE_EMBEDDED;
+      }
+    }
   }
+}
+
+void UIOverlay::ApplyLevelMode() {
+  if (!native_dialog_) {
+    return;
+  }
+  if (OH_GetSdkApiVersion() < kDialogLevelModeSupportVersion) {
+    return;
+  }
+  auto* dialog_api = NodeManager::DialogInstance2();
+  if (!dialog_api) {
+    return;
+  }
+  dialog_api->setLevelMode(native_dialog_, harmony_level_mode_);
 }
 
 void UIOverlay::ShowDialog(bool show_dialog) {
   if (show_dialog) {
     if (!is_show_ && native_dialog_) {
+      ApplyLevelMode();
       NodeManager::DialogInstance()->setContent(native_dialog_, stack_);
       NodeManager::DialogInstance()->show(native_dialog_, false);
       CustomEvent event{Sign(), "showoverlay", "detail", lepus_value()};
@@ -141,6 +166,7 @@ UIOverlay::UIOverlay(LynxContext* context, int sign, const std::string& tag)
   NodeManager::DialogInstance()->setMask(native_dialog_, 0x00000000, nullptr);
   NodeManager::DialogInstance()->setContentAlignment(
       native_dialog_, ARKUI_ALIGNMENT_TOP_START, 0.f, 0.f);
+  ApplyLevelMode();
   // register onWillDismiss event
   NodeManager::DialogInstance()->registerOnWillDismiss(
       native_dialog_, [](int32_t reason) -> bool {

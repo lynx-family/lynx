@@ -43,6 +43,11 @@ class BASE_EXPORT NodeManager {
     return dialog;
   }
 
+  static ArkUI_NativeDialogAPI_2* DialogInstance2() {
+    static ArkUI_NativeDialogAPI_2* dialog = GetDialog2();
+    return dialog;
+  }
+
   static NativeDisplayManager_Orientation GetOrientation() {
     NativeDisplayManager_Orientation orientation = DISPLAY_MANAGER_UNKNOWN;
     OH_NativeDisplayManager_GetDefaultDisplayOrientation(&orientation);
@@ -266,6 +271,13 @@ class BASE_EXPORT NodeManager {
   static ArkUI_NativeDialogAPI_1* GetDialog() {
     ArkUI_NativeDialogAPI_1* dialog = nullptr;
     OH_ArkUI_GetModuleInterface(ARKUI_NATIVE_DIALOG, ArkUI_NativeDialogAPI_1,
+                                dialog);
+    return dialog;
+  }
+
+  static ArkUI_NativeDialogAPI_2* GetDialog2() {
+    ArkUI_NativeDialogAPI_2* dialog = nullptr;
+    OH_ArkUI_GetModuleInterface(ARKUI_NATIVE_DIALOG, ArkUI_NativeDialogAPI_2,
                                 dialog);
     return dialog;
   }

@@ -80,8 +80,9 @@ export interface OverlayProps extends Omit<StandardProps, 'binderror'> {
   'ios-enable-swipe-back'?: boolean;
 
   /**
-   * Specifies the level at which the overlay content resides on iOS. window: Mounted on the window, the top level of the app; top: Mounted on the topViewController; page: Mounted on UINavigationController; others: customize the name of class in the client.
+   * Specifies the level at which overlay content resides. On iOS, window mounts on the app window, top mounts on the topViewController, page mounts on UINavigationController, and other strings customize the client class name. On Harmony native overlay, page embeds in the current page; window, top, missing, and other strings use the default window-like overlay level.
    * @iOS
+   * @Harmony
    * @defaultValue 'window'
    */
   mode?: 'window' | 'top' | 'page' | string;
