@@ -286,6 +286,7 @@ def build(system, debug, root_path, show_log, type, is_wasm, need_clean, is_loca
         # Copy to oliver/{type}/build/{system}/{type}.node
         # Without the machine folder
         copy_target(system, '', debug, root_path, type)
+        copy_target(system, machine, debug, root_path, type)
         return 0
       # Copy to oliver/{type}/build/{system}/{machine}/{type}.node
       # For merging with other targets
