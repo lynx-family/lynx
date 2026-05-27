@@ -52,7 +52,7 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   void InitializeUIView();
   void InitializeUIView(const fml::RefPtr<PropBundle>& init_data);
 
-  UIView<LynxRendererHost>* GetUIView() { return _view; }
+  virtual UIView<LynxRendererHost>* GetUIView() { return _view; }
 
  private:
   bool ShouldCreatePlatformExtendedRenderer(const fml::RefPtr<PropBundle>& init_data) const;
@@ -63,8 +63,8 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   bool HasUIOwnerNode(int sign) const;
   void CleanupUIView();
 
+ protected:
   UIView<LynxRendererHost>* _view = nil;
-
   PlatformRendererContextDarwin* context_ = nullptr;
   LynxUIOwner* ui_owner_ = nil;
 };

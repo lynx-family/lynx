@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_root_darwin.h"
 
 #import <Lynx/LynxComponentRegistry.h>
 
@@ -15,7 +16,10 @@ PlatformRendererDarwinFactory::PlatformRendererDarwinFactory(PlatformRendererCon
 
 fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateRenderer(
     int id, PlatformRendererType type, const fml::RefPtr<PropBundle>& init_data) {
-  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, type, init_data);
+  if (type == PlatformRendererType::kPage) {
+    return fml::MakeRefCounted<PlatformRendererRootDarwin>(context_, id, type);
+  }
+  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, type);
 }
 
 fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateExtendedRenderer(
