@@ -281,6 +281,15 @@ bool CSSFragmentDecorator::HasAdjacentSiblingRules() {
   });
 }
 
+bool CSSFragmentDecorator::HasMediaQueryRules() {
+  if (CSSFragment::HasMediaQueryRules()) {
+    return true;
+  }
+  return HasInAdopted([](CSSFragment& f) {
+    return f.rule_set() && f.rule_set()->HasMediaQueryRules();
+  });
+}
+
 CSSKeyframesToken* CSSFragmentDecorator::GetKeyframesRule(
     const base::String& key) {
   CSSKeyframesToken* result = nullptr;

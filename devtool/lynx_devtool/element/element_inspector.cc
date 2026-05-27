@@ -636,7 +636,7 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
 
   auto* style_root = inspector_attribute->style_root_;
   auto matched_rules = lynx::tasm::StyleResolver::GetCSSMatchedRule(
-      attribute_holder, style_sheet);
+      attribute_holder, style_sheet, nullptr);
   for (const auto& matched : matched_rules) {
     auto matched_token = matched.Data()->Rule()->Token();
     if (matched_token != nullptr) {

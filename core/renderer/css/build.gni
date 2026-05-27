@@ -66,6 +66,7 @@ lynx_css_core_sources = [
   "ng/selector/lynx_css_selector_extra_data.h",
   "ng/selector/lynx_css_selector_list.cc",
   "ng/selector/lynx_css_selector_list.h",
+  "ng/style/condition_rule.h",
   "ng/style/rule_data.h",
   "ng/style/rule_set.cc",
   "ng/style/rule_set.h",
