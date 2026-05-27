@@ -4,6 +4,7 @@
 #include "core/base/threading/task_runner_manufactor.h"
 
 #include "base/include/fml/synchronization/count_down_latch.h"
+#include "core/base/threading/js_thread_config_getter.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -16,6 +17,30 @@ class TaskRunnerManufactorTest : public ::testing::Test {
 
   void SetUp() override { UIThread::Init(); }
 };
+
+TEST_F(TaskRunnerManufactorTest, JSThreadConfigArkTSRuntimeSetupScope) {
+  auto single_js_thread_config = GetJSThreadConfig("Lynx_JS");
+  auto grouped_js_thread_config = GetJSThreadConfig("Lynx_JS0");
+  auto grouped_js_thread_config_with_large_index =
+      GetJSThreadConfig("Lynx_JS12");
+  auto worker_thread_config = GetJSThreadConfig("Lynx_JS_Worker-test");
+  auto unrelated_thread_config = GetJSThreadConfig("Lynx_TASM");
+
+#if defined(OS_HARMONY)
+  EXPECT_TRUE(single_js_thread_config.additional_setup_closure);
+  EXPECT_TRUE(grouped_js_thread_config.additional_setup_closure);
+  EXPECT_TRUE(
+      grouped_js_thread_config_with_large_index.additional_setup_closure);
+  EXPECT_TRUE(worker_thread_config.additional_setup_closure);
+#else
+  EXPECT_FALSE(single_js_thread_config.additional_setup_closure);
+  EXPECT_FALSE(grouped_js_thread_config.additional_setup_closure);
+  EXPECT_FALSE(
+      grouped_js_thread_config_with_large_index.additional_setup_closure);
+  EXPECT_FALSE(worker_thread_config.additional_setup_closure);
+#endif
+  EXPECT_FALSE(unrelated_thread_config.additional_setup_closure);
+}
 
 TEST_F(TaskRunnerManufactorTest, AllOnUIThreadMode) {
   TaskRunnerManufactor ui_mode_manufactor =
