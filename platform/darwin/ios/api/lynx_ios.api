@@ -201,6 +201,7 @@ public protocol LUIConfig-p : <NSObject> {
   public bool LUIConfig-p::enableTextLayoutCache();
   public bool LUIConfig-p::enableTextGradientOpt();
   public bool LUIConfig-p::enableExposureWhenReload();
+  public bool LUIConfig-p::enableNewSticky();
   public bool LUIConfig-p::enableiOSAnimationLayerForExposure();
 }
 
@@ -4618,6 +4619,7 @@ public class LynxUIContext : NSObject {
   public BOOL LynxUIContext::trailUseNewImage trailUseNewImage;
   public NSInteger LynxUIContext::logBoxImageSizeWarningThreshold logBoxImageSizeWarningThreshold;
   public BOOL LynxUIContext::enableTextLayoutCache enableTextLayoutCache;
+  public BOOL LynxUIContext::enableNewSticky enableNewSticky;
   public BOOL LynxUIContext::enableExposureWhenReload enableExposureWhenReload;
   public BOOL LynxUIContext()::imageMonitorEnabled imageMonitorEnabled;
   public BOOL LynxUIContext()::devtoolEnabled devtoolEnabled;

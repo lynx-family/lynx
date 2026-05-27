@@ -110,6 +110,10 @@
   return _config->GetEnableTextRefactor();
 }
 
+- (bool)enableNewSticky {
+  return _config->GetEnableNewSticky();
+}
+
 - (bool)enableXTextLayoutReused {
   return _config->GetEnableXTextLayoutReused();
 }

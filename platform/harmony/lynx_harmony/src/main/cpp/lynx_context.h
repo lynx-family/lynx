@@ -310,6 +310,8 @@ class LynxContext {
 
   void SetEnableTextOverflow(bool enable) { enable_text_overflow_ = enable; }
   bool IsEnableTextOverflow() const { return enable_text_overflow_; }
+  void SetEnableNewSticky(bool enable) { enable_new_sticky_ = enable; }
+  bool GetEnableNewSticky() const { return enable_new_sticky_; }
   LYNX_EXPORT static std::unordered_map<std::string, NodeInfo>&
   GetCAPINodeInfoMap();
 
@@ -329,6 +331,7 @@ class LynxContext {
   ArkUI_ContextHandle ark_ui_context_{nullptr};
   std::unordered_map<std::string, NodeInfo> dynamic_node_info_map_;
   bool enable_text_overflow_{false};
+  bool enable_new_sticky_{false};
   bool enable_harmony_new_overlay_{false};
 
   std::shared_ptr<shell::ListEngineProxy> list_engine_proxy_{nullptr};

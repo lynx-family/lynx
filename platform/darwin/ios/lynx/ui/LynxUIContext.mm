@@ -300,6 +300,7 @@
   [self setEnableTextLayoutCache:config.enableTextLayoutCache];
   [self setEnableTextGradientOpt:config.enableTextGradientOpt];
   [self setEnableExposureWhenReload:config.enableExposureWhenReload];
+  [self setEnableNewSticky:config.enableNewSticky];
   [self setEnableiOSAnimationLayerForExposure:config.enableiOSAnimationLayerForExposure];
 }
 
@@ -401,6 +402,10 @@
 
 - (void)setEnableExposureWhenReload:(BOOL)enable {
   _enableExposureWhenReload = enable;
+}
+
+- (void)setEnableNewSticky:(BOOL)enable {
+  _enableNewSticky = enable;
 }
 
 - (void)setEnableiOSAnimationLayerForExposure:(BOOL)enable {

@@ -372,6 +372,11 @@ class LynxConfigDecoder final {
           doc[config::kEnableListMoveOperation].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableNewSticky) &&
+        doc[config::kEnableNewSticky].IsBool()) {
+      page_config->SetEnableNewSticky(doc[config::kEnableNewSticky].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableCreateViewAsync) &&
         doc[config::kEnableCreateViewAsync].IsBool()) {
       page_config->SetEnableCreateViewAsync(
