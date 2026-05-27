@@ -180,6 +180,8 @@ lynx_oss_env_setup_common() {
   export LYNX_ROOT_DIR="${LYNX_ROOT_DIR:-$LYNX_DIR}"
   export BUILDTOOLS_DIR="${BUILDTOOLS_DIR:-${LYNX_DIR}/buildtools}"
   export COREPACK_HOME="${COREPACK_HOME:-${BUILDTOOLS_DIR}/corepack}"
+  # create pnpm shim in $COREPACK_HOME/pnpm (configured in dependencies/DEPS, "prepare_pnpm_shim")
+  lynx_oss_env_prepend_path "$COREPACK_HOME/pnpm"
 
   lynx_oss_env_prepend_lynx_paths
   export PATH

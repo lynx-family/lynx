@@ -17,6 +17,43 @@ def unzip_webview2():
   os.remove('webview2.nupkg')
 
 
+def symlink_file(source, target):
+    source = os.path.relpath(source.strip(), os.path.dirname(target))
+    if os.path.islink(target) and os.readlink(target) == source:
+        return
+    if os.path.exists(target) or os.path.islink(target):
+        os.remove(target)
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    os.symlink(source, target)
+
+
+# ========= variables and script for pnpm setup =========
+BUILDTOOLS_PATH = os.path.join(root_dir, "buildtools")
+NODE_PATH = os.path.join(BUILDTOOLS_PATH, "node", "bin", "node")
+PNPM_PATH = os.path.join(BUILDTOOLS_PATH, "corepack", "pnpm")
+if system == "windows":
+    NODE_PATH = os.path.join(BUILDTOOLS_PATH, "node", "node.exe")
+
+def prepare_pnpm_shim():
+    pnpm_script_path = os.path.join(PNPM_PATH, "7.33.6", "bin", "pnpm.cjs")
+    pnpx_script_path = os.path.join(PNPM_PATH, "7.33.6", "bin", "pnpx.cjs")
+    if system == "windows":
+        pnpm_shim_path = os.path.join(PNPM_PATH, "pnpm.cmd")
+        pnpx_shim_path = os.path.join(PNPM_PATH, "pnpx.cmd")
+        with open(pnpm_shim_path, "w", encoding="utf-8") as f:
+            f.write("@echo off\n")
+            f.write(f"\"{NODE_PATH}\" \"{pnpm_script_path}\" %*\n")
+        with open(pnpx_shim_path, "w", encoding="utf-8") as f:
+            f.write("@echo off\n")
+            f.write(f"\"{NODE_PATH}\" \"{pnpx_script_path}\" %*\n")
+    else:
+        pnpm_shim_path = os.path.join(PNPM_PATH, "pnpm")
+        pnpx_shim_path = os.path.join(PNPM_PATH, "pnpx")
+        symlink_file(pnpm_script_path, pnpm_shim_path)
+        symlink_file(pnpx_script_path, pnpx_shim_path)
+# =======================================================
+
+
 deps = {
     'platform/android/gradle/wrapper/gradle-6.7.1-all.zip': {
         "type": "http",
@@ -275,27 +312,31 @@ deps = {
         "sha256": "f0c52b41f8128da92160f6826b53a105aad31c6c7cdc00b907fde507c5ca09b5",
         "ignore_in_git": True
     },
+    # prepare pnpm / pnpx shim
+    "prepare_pnpm_shim": {
+        "type": "action",
+        "cwd": root_dir,
+        "function": prepare_pnpm_shim,
+        "require": [
+            "buildtools/node",
+            "buildtools/corepack/pnpm/7.33.6",
+        ],
+    },
     # setup corepack and pnpm
     'setup_corepack_pnpm': {
         "type": "action",
         "cwd": root_dir,
         "env": {
-            'NODE_CHANNEL_FD': '1' if not system == 'windows' else '',
-            'COREPACK_HOME': os.path.join(root_dir, 'buildtools', 'corepack'),
+            "NODE_CHANNEL_FD": "1" if not system == "windows" else "",
             # Windows does not have `node/bin` dir
             # And it also use `;` as seperator of PATH
-            'PATH': f"{os.path.join(root_dir, 'buildtools', 'node')};{os.environ.get('PATH')}"
-               if system == "windows"
-               else f"{os.path.join(root_dir, 'buildtools', 'node', 'bin')}:{os.environ.get('PATH')}"
+            "PATH": os.pathsep.join([PNPM_PATH, os.path.dirname(NODE_PATH), os.environ["PATH"]])
         },
         "commands": [
-            "corepack prepare pnpm@7.33.6 --activate",
-            "corepack enable",
             "pnpm install --frozen-lockfile"
         ],
         "require": [
-            "buildtools/node",
-            "buildtools/corepack/pnpm/7.33.6",
+            "prepare_pnpm_shim"
         ],
         "condition": system in ['linux', 'darwin', 'windows']
     },

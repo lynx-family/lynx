@@ -157,6 +157,8 @@ function Set-LynxOssCommonEnvironment {
   if (-not $env:COREPACK_HOME) {
     $env:COREPACK_HOME = Join-Path $env:BUILDTOOLS_DIR "corepack"
   }
+  # create pnpm shim in $COREPACK_HOME/pnpm (configured in dependencies/DEPS, "prepare_pnpm_shim")
+  Add-LynxOssPathEntry (Join-Path $env:COREPACK_HOME "pnpm")
 
   foreach ($pathSuffix in $LynxOssEnvBuildtoolsPathSuffixes) {
     Add-LynxOssPathEntry (Join-Path $env:BUILDTOOLS_DIR $pathSuffix)
