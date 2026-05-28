@@ -15,7 +15,7 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/UIScrollView+Lynx.h>
 
-#import "LynxUIContext+Internal.h"
+#import <Lynx/LynxUIContext+Internal.h>
 
 #import "core/public/list_container_proxy.h"
 #import "core/public/list_engine_proxy.h"
@@ -1336,6 +1336,7 @@ LYNX_UI_METHOD(getVisibleCells) {
       ![self.view respondToScrollViewDidScroll:self.view.gestureConsumer]) {
     return;
   }
+  [self updateLayerMaskOnFrameChanged];
 
   auto listNodeInfoFetcher = self.context.fetcher;
   // If if the contentOffset was updated by targetContentOffset, which means now the contentOffset
