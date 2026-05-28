@@ -96,6 +96,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) BOOL trailUseNewImage;
 @property(nonatomic, readonly) NSInteger logBoxImageSizeWarningThreshold;
 @property(nonatomic, readonly) BOOL enableTextLayoutCache;
+@property(nonatomic, readonly) BOOL enableNewSticky;
 @property(nonatomic, readonly) BOOL enableExposureWhenReload;
 
 - (instancetype)initWithScreenMetrics:(LynxScreenMetrics*)screenMetrics;
