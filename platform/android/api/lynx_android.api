@@ -2635,6 +2635,7 @@ public interface com::lynx::tasm::service::ILynxTextService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxTextService.getServiceClass();
   public long com.lynx.tasm.service.ILynxTextService.createTextLayoutAPI(Object context);
   public void com.lynx.tasm.service.ILynxTextService.destroyTextLayoutAPI(long api);
+  public LynxTextInfo com.lynx.tasm.service.ILynxTextService.getTextInfo(String text, String fontSize, @Nullable String fontFamily, @Nullable String maxWidth, int maxLine);
   public Page com.lynx.tasm.service.ILynxTextService.createPage(long page);
 }
 
@@ -6742,6 +6743,16 @@ public class com::lynx::tasm::behavior::shadow::text::LynxTextGradientSpan : Met
   public void com.lynx.tasm.behavior.shadow.text.LynxTextGradientSpan.updateBounds(Rect bounds);
   public void com.lynx.tasm.behavior.shadow.text.LynxTextGradientSpan.updateMeasureState(@NonNull TextPaint textPaint);
   public void com.lynx.tasm.behavior.shadow.text.LynxTextGradientSpan.updateDrawState(TextPaint tp);
+}
+
+public class com::lynx::tasm::service::ILynxTextService::LynxTextInfo :  {
+  public com.lynx.tasm.service.ILynxTextService.LynxTextInfo.LynxTextInfo(double width);
+  public com.lynx.tasm.service.ILynxTextService.LynxTextInfo.LynxTextInfo(double width, @Nullable String[] content);
+  public com.lynx.tasm.service.ILynxTextService.LynxTextInfo.LynxTextInfo(double width, double height);
+  public com.lynx.tasm.service.ILynxTextService.LynxTextInfo.LynxTextInfo(double width, double height, @Nullable String[] content);
+  public double com.lynx.tasm.service.ILynxTextService.LynxTextInfo.getWidth();
+  public double com.lynx.tasm.service.ILynxTextService.LynxTextInfo.getHeight();
+  public String[] com.lynx.tasm.service.ILynxTextService.LynxTextInfo.getContent();
 }
 
 public class com::lynx::jsbridge::LynxTextInfoModule : com.lynx.jsbridge.LynxContextModule {

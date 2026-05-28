@@ -6,6 +6,9 @@
 #define CORE_RENDERER_UI_WRAPPER_LAYOUT_TEXTRA_TEXT_LAYOUT_API_H_
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/fiber/text_props.h"
@@ -27,10 +30,15 @@ struct MeasureParams {
   float height;
   LayoutMode height_mode;
 };
+struct TextInfo {
+  float width{0};
+  float height{0};
+  std::vector<std::string> lines;
+};
 class InlineView {
  public:
   virtual ~InlineView() = default;
-  virtual MeasureResult Measure(const MeasureParams &params) = 0;
+  virtual MeasureResult Measure(const MeasureParams& params) = 0;
   virtual void Align(float x, float y) = 0;
   virtual void HideView() = 0;
 };
@@ -97,34 +105,37 @@ class ParagraphListener {
 class ParagraphBuilder {
  public:
   virtual ~ParagraphBuilder() = default;
-  virtual void SetParagraphListener(ParagraphListener *listener) = 0;
-  virtual void SetParagraphStyle(TextPropertyKeyID key, void *value,
+  virtual void SetParagraphListener(ParagraphListener* listener) = 0;
+  virtual void SetParagraphStyle(TextPropertyKeyID key, void* value,
                                  size_t length) = 0;
   virtual void PushTextStyle() = 0;
   virtual void PopTextStyle() = 0;
-  virtual void PushEventTarget(const EventTargetInfo &event_target) = 0;
+  virtual void PushEventTarget(const EventTargetInfo& event_target) = 0;
   virtual void PopEventTarget() = 0;
-  virtual void SetTextStyle(TextPropertyKeyID key, void *value,
+  virtual void SetTextStyle(TextPropertyKeyID key, void* value,
                             size_t length) = 0;
-  virtual void AddText(const char *text, size_t length) = 0;
+  virtual void AddText(const char* text, size_t length) = 0;
   virtual void AddInlineView(std::unique_ptr<InlineView> inline_view) = 0;
-  virtual void AddImage(const char *src, size_t length) = 0;
-  virtual void SetPlaceHolderStyle(TextPropertyKeyID key, void *value,
+  virtual void AddImage(const char* src, size_t length) = 0;
+  virtual void SetPlaceHolderStyle(TextPropertyKeyID key, void* value,
                                    size_t length) = 0;
-  virtual Paragraph *BuildParagraph() = 0;
+  virtual Paragraph* BuildParagraph() = 0;
 };
 
 class TextLayoutAPI {
  public:
   virtual ~TextLayoutAPI() = default;
-  virtual ParagraphBuilder *CreateParagraphBuilder() = 0;
-  virtual void DestroyParagraphBuilder(ParagraphBuilder *builder) = 0;
-  virtual MeasureResult MeasureParagraph(Paragraph *paragraph,
+  virtual ParagraphBuilder* CreateParagraphBuilder() = 0;
+  virtual void DestroyParagraphBuilder(ParagraphBuilder* builder) = 0;
+  virtual MeasureResult MeasureParagraph(Paragraph* paragraph,
                                          MeasureParams params) = 0;
-  virtual void AlignParagraph(Paragraph *paragraph, float x, float y) = 0;
-  virtual Page *GetPage(Paragraph *paragraph) = 0;
-  virtual void DestroyPage(Page *page) = 0;
-  virtual void DestroyParagraph(Paragraph *paragraph) = 0;
+  virtual void AlignParagraph(Paragraph* paragraph, float x, float y) = 0;
+  virtual Page* GetPage(Paragraph* paragraph) = 0;
+  virtual void DestroyPage(Page* page) = 0;
+  virtual void DestroyParagraph(Paragraph* paragraph) = 0;
+  virtual TextInfo GetTextInfo(std::string_view text, float font_size,
+                               std::string_view font_family, float max_width,
+                               int max_line) = 0;
 };
 }  // namespace text
 }  // namespace tasm
