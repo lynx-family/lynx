@@ -3620,6 +3620,7 @@ public protocol LynxServiceTextProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceTextProtocol-p::destroyTextLayoutAPI:(void *api);
   public void LynxServiceTextProtocol-p::destroyPage:(void *page);
   public void LynxServiceTextProtocol-p::drawPage:OnContext:(void *page,[OnContext] CGContextRef context);
+  public nullable LynxTextInfo * LynxServiceTextProtocol-p::getTextInfo:fontSize:fontFamily:maxWidth:maxLine:(NSString *text,[fontSize] NSString *fontSize,[fontFamily] nullable NSString *fontFamily,[maxWidth] nullable NSString *maxWidth,[maxLine] NSInteger maxLine);
   public int LynxServiceTextProtocol-p::getSelectionCharIndexOfPage:ByTouchPosition:(void *page,[ByTouchPosition] CGPoint point);
   public NSArray * LynxServiceTextProtocol-p::getSelectionRectsOfPage:ByCharRange:(void *page,[ByCharRange] NSRange range);
 }
@@ -4024,6 +4025,16 @@ public class LynxTextAttachmentInfo : NSObject {
   public CGRect LynxTextAttachmentInfo::frame frame;
   public BOOL LynxTextAttachmentInfo::nativeAttachment nativeAttachment;
   public instancetype LynxTextAttachmentInfo::initWithSign:andFrame:(NSInteger sign,[andFrame] CGRect frame);
+}
+
+public class LynxTextInfo : NSObject {
+  public CGFloat LynxTextInfo::width width;
+  public CGFloat LynxTextInfo::height height;
+  public NSArray<NSString *>* LynxTextInfo::content content;
+  public instancetype LynxTextInfo::initWithWidth:(CGFloat width);
+  public instancetype LynxTextInfo::initWithWidth:content:(CGFloat width,[content] nullable NSArray< NSString * > *content);
+  public instancetype LynxTextInfo::initWithWidth:height:(CGFloat width,[height] CGFloat height);
+  public instancetype LynxTextInfo::initWithWidth:height:content:(CGFloat width,[height] CGFloat height,[content] nullable NSArray< NSString * > *content);
 }
 
 public class LynxTextInfoModule : NSObject, <LynxContextModule> {
