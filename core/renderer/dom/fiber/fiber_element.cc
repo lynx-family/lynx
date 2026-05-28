@@ -4349,6 +4349,7 @@ void FiberElement::VisitChildren(
 
 void FiberElement::UpdateDynamicElementStyleForNewPipeline(
     uint32_t &style, bool &inner_force_update) {
+  // TODO media-query mark style dirty
   if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {
     NotifyUnitValuesUpdatedToAnimation(style);
     const auto &env_config = element_manager()->GetLynxEnvConfig();
@@ -4439,6 +4440,7 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
     return;
   }
 
+  // TODO media-query mark style dirty
   if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {
     // Style could never be "all" here.
     NotifyUnitValuesUpdatedToAnimation(style);

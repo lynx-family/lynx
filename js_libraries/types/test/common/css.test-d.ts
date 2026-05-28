@@ -18,10 +18,10 @@ describe('CSSProperty Type Test', () => {
       outline: '1px solid red',
       textDecoration: '1px',
       XAutoFontSizeLineRanges: 'line-range(1 to infinity, 12px, 18px)',
-      caretGradient: 'linear-gradient(180deg, #ffffff 0%, #7dd3fc 100%)',
-      caretWidth: '2px',
-      caretHeight: 16,
-      caretRadius: 4,
+      XCaretGradient: 'linear-gradient(180deg, #ffffff 0%, #7dd3fc 100%)',
+      XCaretWidth: '2px',
+      XCaretHeight: 16,
+      XCaretRadius: 4,
       // visual
       border: '1px',
       borderRight: '1px',
@@ -64,10 +64,10 @@ describe('CSSProperty Type Test', () => {
       // typography
       outlineColor: 'red',
       XAutoFontSizeLineRanges: 'line-range(1 to infinity, 12px, 18px)',
-      caretGradient: 'linear-gradient(180deg, #ffffff 0%, #7dd3fc 100%)',
-      caretWidth: 2,
-      caretHeight: '16px',
-      caretRadius: '4px',
+      XCaretGradient: 'linear-gradient(180deg, #ffffff 0%, #7dd3fc 100%)',
+      XCaretWidth: 2,
+      XCaretHeight: '16px',
+      XCaretRadius: '4px',
       // visual
       borderBottomLeftRadius: '1px',
       // animation

@@ -820,37 +820,37 @@ export interface Properties {
   XPlaceholderFontWeight?: (number & {}) | (string & {}) | undefined;
   XPlaceholderFontStyle?: (number & {}) | (string & {}) | undefined;
   /**
-   * The `caret-gradient` property specifies a gradient brush for the editable caret.
+   * The `-x-caret-gradient` property specifies a gradient brush for the editable caret.
    *
    * **Syntax**: `none | <gradient>`
    *
-   * @see https://lynxjs.org/api/css/properties/caret-gradient
+   * @see https://lynxjs.org/api/css/properties/-x-caret-gradient
    */
-  caretGradient?: (number & {}) | (string & {}) | undefined;
+  XCaretGradient?: (number & {}) | (string & {}) | undefined;
   /**
-   * The `caret-width` property specifies the editable caret width.
+   * The `-x-caret-width` property specifies the editable caret width.
    *
    * **Syntax**: `<length>`
    *
-   * @see https://lynxjs.org/api/css/properties/caret-width
+   * @see https://lynxjs.org/api/css/properties/-x-caret-width
    */
-  caretWidth?: (number & {}) | (string & {}) | undefined;
+  XCaretWidth?: (number & {}) | (string & {}) | undefined;
   /**
-   * The `caret-height` property specifies the editable caret paint height.
+   * The `-x-caret-height` property specifies the editable caret paint height.
    *
    * **Syntax**: `<length>`
    *
-   * @see https://lynxjs.org/api/css/properties/caret-height
+   * @see https://lynxjs.org/api/css/properties/-x-caret-height
    */
-  caretHeight?: (number & {}) | (string & {}) | undefined;
+  XCaretHeight?: (number & {}) | (string & {}) | undefined;
   /**
-   * The `caret-radius` property specifies the editable caret corner radius.
+   * The `-x-caret-radius` property specifies the editable caret corner radius.
    *
    * **Syntax**: `<length>`
    *
-   * @see https://lynxjs.org/api/css/properties/caret-radius
+   * @see https://lynxjs.org/api/css/properties/-x-caret-radius
    */
-  caretRadius?: (number & {}) | (string & {}) | undefined;
+  XCaretRadius?: (number & {}) | (string & {}) | undefined;
   /**
    * Specify whether the node can be the best responder for touch testing.
    *

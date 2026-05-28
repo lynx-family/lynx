@@ -4,7 +4,6 @@
 
 #include "core/renderer/css/ng/style/rule_set.h"
 
-#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -15,10 +14,19 @@
 #include "core/renderer/css/ng/css_ng_utils.h"
 #include "core/renderer/css/ng/invalidation/rule_invalidation_set.h"
 #include "core/renderer/css/ng/matcher/selector_matcher.h"
+#include "core/renderer/css/ng/media_query/media_query_evaluator.h"
+#include "core/renderer/css/ng/media_query/media_query_set.h"
+#include "core/renderer/css/ng/style/condition_rule.h"
 #include "core/renderer/css/shared_css_fragment.h"
 
 namespace lynx {
 namespace css {
+
+RuleSet::RuleSet(tasm::SharedCSSFragment* fragment) : fragment_(fragment) {}
+
+RuleSet::~RuleSet() = default;
+
+void RuleSet::Merge(const RuleSet& rule_set) { deps_.push_back(&rule_set); }
 
 static void MatchKey(StyleNode* node, const CompactRuleDataVector& list,
                      unsigned level, base::Vector<MatchedRule>& matched) {
@@ -58,11 +66,29 @@ void RuleSet::AddToRuleSet(const std::string& text,
 }
 
 void RuleSet::MatchStyles(StyleNode* node, unsigned& level,
-                          base::Vector<MatchedRule>& output) const {
-  for (const auto& dep : deps_) {
-    dep.MatchStyles(node, level, output);
+                          base::Vector<MatchedRule>& output,
+                          const MediaQueryEvaluator* evaluator) const {
+  for (const auto* dep : deps_) {
+    dep->MatchStyles(node, level, output, evaluator);
   }
   ++level;
+  MatchOwnStyles(node, level, output);
+  for (const auto& condition_rule : condition_rules_) {
+    // When no evaluator is provided, preserve the legacy "always match"
+    // behavior so call sites that have not opted into media evaluation keep
+    // working. When an evaluator is provided, skip condition rules whose
+    // MediaQuerySet does not match the current environment; rules without a
+    // structured MediaQuerySet still fall through to MatchOwnStyles.
+    if (evaluator && condition_rule->HasStructuredMediaQuery() &&
+        !evaluator->Eval(condition_rule->MediaQueries().get())) {
+      continue;
+    }
+    condition_rule->GetRuleSet().MatchOwnStyles(node, level, output);
+  }
+}
+
+void RuleSet::MatchOwnStyles(StyleNode* node, unsigned level,
+                             base::Vector<MatchedRule>& output) const {
   MatchKey(node, universal_rules_, level, output);
   if (node->GetPseudoState() != tasm::kPseudoStateNone) {
     MatchKey(node, pseudo_rules_, level, output);
@@ -74,12 +100,17 @@ void RuleSet::MatchStyles(StyleNode* node, unsigned& level,
   MatchKey(node, node->idSelector().str(), id_rules_, level, output);
 }
 
-void RuleSet::AddStyleRule(const fml::RefPtr<StyleRule>& rule) {
+void RuleSet::AddStyleRule(fml::RefPtr<StyleRule> rule) {
   if (rule == nullptr) return;
+
+  uint32_t position = rule_count_;
+  if (rule->Position() > 0) {
+    position = rule->Position();
+  }
 
   for (unsigned selector_index = 0; selector_index != UINT_MAX;
        selector_index = rule->IndexOfNextSelectorAfter(selector_index)) {
-    RuleData rule_data(rule, selector_index, rule_count_);
+    RuleData rule_data(rule, selector_index, position);
     ++rule_count_;
     AddToRuleSetInternal(rule->SelectorAt(selector_index), rule_data);
     if (!fragment_) continue;
@@ -87,6 +118,14 @@ void RuleSet::AddStyleRule(const fml::RefPtr<StyleRule>& rule) {
     if (!set) continue;
     set->AddSelector(rule->SelectorAt(selector_index));
   }
+}
+
+void RuleSet::AddConditionRule(fml::RefPtr<ConditionRule> rule) {
+  if (rule == nullptr) return;
+  if (rule->HasStructuredMediaQuery()) {
+    has_media_query_rules_ = true;
+  }
+  condition_rules_.emplace_back(std::move(rule));
 }
 
 void RuleSet::AddToRuleSet(

@@ -78,6 +78,26 @@ TEST_F(TouchEventHandlerTest, TestGetCustomEventParamName) {
   EXPECT_EQ(res2.Table().get()->Contains("params"), true);
 }
 
+TEST_F(TouchEventHandlerTest, TestGetTargetInfoNodeIndex) {
+  auto holder = fml::MakeRefCounted<AttributeHolder>();
+  holder->SetIdSelector(base::String("target"));
+
+  lepus::Value target_info_without_element =
+      TouchEventHandler::GetTargetInfo(11, holder.get());
+  ASSERT_TRUE(target_info_without_element.IsObject());
+  EXPECT_FALSE(target_info_without_element.Table()->Contains("nodeIndex"));
+
+  base::String tag("view");
+  auto element =
+      tasm_->page_proxy()->element_manager()->CreateFiberElement(tag);
+  element->SetNodeIndex(42);
+  lepus::Value target_info_with_element = TouchEventHandler::GetTargetInfo(
+      element->impl_id(), element->data_model(), element.get());
+  ASSERT_TRUE(target_info_with_element.IsObject());
+  EXPECT_EQ(target_info_with_element.Table()->GetValue("nodeIndex").Number(),
+            42);
+}
+
 TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent0) {
   touch_event_handler_->HandleTriggerComponentEvent(nullptr, "xxxx",
                                                     lepus::Value());
@@ -114,8 +134,10 @@ TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent2) {
   touch_event_handler_->HandleTriggerComponentEvent(tasm_.get(), "xxxx", obj);
   EXPECT_EQ(delegate_->DumpDelegate(),
             "SendPageEvent  onXXXX "
-            "{\"currentTarget\":{\"dataset\":{},\"id\":\"\"},\"detail\":null,"
-            "\"target\":{\"dataset\":{},\"id\":\"\"},\"type\":\"xxxx\"}\n");
+            "{\"currentTarget\":{\"dataset\":{},\"id\":\"\",\"nodeIndex\":1},"
+            "\"detail\":null,"
+            "\"target\":{\"dataset\":{},\"id\":\"\",\"nodeIndex\":1},\"type\":"
+            "\"xxxx\"}\n");
 }
 
 TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent3) {

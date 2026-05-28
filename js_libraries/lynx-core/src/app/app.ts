@@ -273,9 +273,42 @@ export abstract class BaseApp<
   destroy() {
     this.__removeInternalEventListeners();
     this._nativeApp = null;
+    this.nativeAppId = null;
     this._params = null;
+    if (this.lynx) {
+      this.lynx.destroy();
+    }
+    this.lynx = null;
+    this.modules = null;
+    this.sharedConsole = null;
+    this.dynamicComponentExports = null;
+    this.loadedDynamicComponentsSet = null;
+    this.resolvedPromise = null;
+    this.Reporter = null;
     this._lazyCallableModules = null;
     this.GlobalEventEmitter = null;
+    this.NativeModules = null;
+    this.LynxUIMethodModule = null;
+    this.LynxTestModule = null;
+    this.LynxResourceModule = null;
+    this.LynxAccessibilityModule = null;
+    this.LynxSetModule = null;
+    this._apiList = null;
+    this._intersectionObserverManager = null;
+    this._exposureManager = null;
+    this._textInfoManager = null;
+    this._aopManager = null;
+    this.beforePublishEvent = null;
+    this.performance = null;
+    this.setTimeout = null;
+    this.setInterval = null;
+    this.clearInterval = null;
+    this.clearTimeout = null;
+    this._createReadableStreamClass = null;
+    this._ReadableStreamClass = null;
+    this.dataTypeSet = null;
+    this.contextProxyTypeToMethod = null;
+    this.removeInternalEventListenersCallbacks = [];
   }
 
   registerModule(name: string, module: object): void {
