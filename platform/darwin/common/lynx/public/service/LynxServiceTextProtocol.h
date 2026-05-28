@@ -7,9 +7,11 @@
 
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
-#import <Lynx/LynxUIOwner.h>
 #import <LynxServiceAPI/ServiceAPI.h>
 NS_ASSUME_NONNULL_BEGIN
+
+@class LynxUIOwner;
+@class LynxTextInfo;
 
 @protocol LynxServiceTextProtocol <LynxServiceProtocol>
 /**
@@ -35,6 +37,20 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)drawPage:(void *)page OnContext:(CGContextRef)context;
 /**
+ * get text layout info
+ * @param text text content
+ * @param fontSize font size with unit
+ * @param fontFamily font family
+ * @param maxWidth max measure width with unit
+ * @param maxLine max measure line count
+ * @return platform text info object
+ */
+- (nullable LynxTextInfo *)getTextInfo:(NSString *)text
+                              fontSize:(NSString *)fontSize
+                            fontFamily:(nullable NSString *)fontFamily
+                              maxWidth:(nullable NSString *)maxWidth
+                               maxLine:(NSInteger)maxLine;
+/**
  * get char index by a position relative to page origin
  * @param page cpp Page object pointer
  * @param point position relative to page origin
@@ -47,6 +63,21 @@ NS_ASSUME_NONNULL_BEGIN
  * @return rect array for each line, filled by CGRect
  */
 - (NSArray *)getSelectionRectsOfPage:(void *)page ByCharRange:(NSRange)range;
+@end
+
+@interface LynxTextInfo : NSObject
+
+@property(nonatomic, readonly) CGFloat width;
+@property(nonatomic, readonly) CGFloat height;
+@property(nonatomic, copy, readonly, nullable) NSArray<NSString *> *content;
+
+- (instancetype)initWithWidth:(CGFloat)width;
+- (instancetype)initWithWidth:(CGFloat)width content:(nullable NSArray<NSString *> *)content;
+- (instancetype)initWithWidth:(CGFloat)width height:(CGFloat)height;
+- (instancetype)initWithWidth:(CGFloat)width
+                       height:(CGFloat)height
+                      content:(nullable NSArray<NSString *> *)content;
+
 @end
 
 NS_ASSUME_NONNULL_END
