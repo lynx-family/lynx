@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 @Keep
 public interface ILynxTextService extends IServiceProvider {
@@ -30,6 +31,58 @@ public interface ILynxTextService extends IServiceProvider {
    * @param api native object pointer of TextLayoutAPI
    */
   void destroyTextLayoutAPI(long api);
+
+  /**
+   * Get text layout info.
+   *
+   * @param text text content
+   * @param fontSize font size with unit
+   * @param fontFamily font family
+   * @param maxWidth max measure width with unit
+   * @param maxLine max measure line count
+   * @return platform text info object
+   */
+  @Nullable
+  LynxTextInfo getTextInfo(String text, String fontSize, @Nullable String fontFamily,
+      @Nullable String maxWidth, int maxLine);
+
+  @Keep
+  class LynxTextInfo {
+    private final double width;
+    private final double height;
+    @Nullable private final String[] content;
+
+    public LynxTextInfo(double width) {
+      this(width, 0, null);
+    }
+
+    public LynxTextInfo(double width, @Nullable String[] content) {
+      this(width, 0, content);
+    }
+
+    public LynxTextInfo(double width, double height) {
+      this(width, height, null);
+    }
+
+    public LynxTextInfo(double width, double height, @Nullable String[] content) {
+      this.width = width;
+      this.height = height;
+      this.content = content == null ? null : content.clone();
+    }
+
+    public double getWidth() {
+      return width;
+    }
+
+    public double getHeight() {
+      return height;
+    }
+
+    @Nullable
+    public String[] getContent() {
+      return content == null ? null : content.clone();
+    }
+  }
 
   /**
    * create a page object from native Page
