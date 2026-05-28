@@ -8262,6 +8262,7 @@ public interface com::lynx::devtoolwrapper::OverlayService {
 public interface com::lynx::tasm::service::ILynxTextService::Page {
   public void com.lynx.tasm.service.ILynxTextService.Page.drawPageCanvas(Canvas canvas, Drawable.Callback callback);
   public int com.lynx.tasm.service.ILynxTextService.Page.getSelectionCharIndex(float touchX, float touchY);
+  public default int[] com.lynx.tasm.service.ILynxTextService.Page.getHitTestEventTargets(float touchX, float touchY);
   public float[] com.lynx.tasm.service.ILynxTextService.Page.getSelectionRects(int start, int end);
   public int com.lynx.tasm.service.ILynxTextService.Page.getTextLength();
   public String com.lynx.tasm.service.ILynxTextService.Page.getSelectedText(int start, int end);
@@ -11410,7 +11411,7 @@ public class com::lynx::tasm::behavior::ui::text::UIText : com::lynx::tasm::beha
 public class com::lynx::tasm::behavior::ui::text::UITextUtils :  {
   public static Spanned com.lynx.tasm.behavior.ui.text.UITextUtils.getSpanned(AndroidText view);
   public static Spanned com.lynx.tasm.behavior.ui.text.UITextUtils.getSpanned(Layout layout);
-  public static EventTarget com.lynx.tasm.behavior.ui.text.UITextUtils.hitTest(LynxBaseUI ui, float x, float y, EventTarget parent, Layout layout, Spanned spanned, PointF textTranslateOffset, boolean ignoreUserInteraction);
+  public static EventTarget com.lynx.tasm.behavior.ui.text.UITextUtils.hitTest(LynxBaseUI ui, float x, float y, EventTarget parent, Layout layout, Spanned spanned, PointF textTranslateOffset, Page textServicePage, boolean ignoreUserInteraction);
   public static void com.lynx.tasm.behavior.ui.text.UITextUtils.HandleInlineViewTruncated(TextUpdateBundle bundle, LynxBaseUI textUI);
 }
 
