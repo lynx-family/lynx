@@ -21,6 +21,7 @@
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/runtime/mts_context_factory.h"
+#include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_config_constant_auto_gen.h"
 
 namespace lynx {
@@ -397,6 +398,10 @@ lepus::Value MTSRuntime::GetGlobalData(const base::String& name) {
 
 void MTSRuntime::SetGCThreshold(int64_t threshold) {
   mts_context_->SetGCThreshold(threshold);
+}
+
+int64_t MTSRuntime::GetCurrentHeapSizeBytes() {
+  return mts_context_ ? mts_context_->GetCurrentHeapSizeBytes() : 0;
 }
 
 inline constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";

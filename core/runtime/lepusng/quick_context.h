@@ -110,6 +110,7 @@ class QuickContext : private LEPUSRuntimeData,
 
   virtual void TriggerVmGC() override;
   virtual void UpdateGCTiming(bool is_start) override;
+  virtual int64_t GetCurrentHeapSizeBytes() override;
 
   virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
                                             const lepus::Value& val) override;

@@ -40,6 +40,7 @@
 #include "core/shell/lynx_engine.h"
 #include "core/shell/lynx_engine_wrapper.h"
 #include "core/shell/native_facade.h"
+#include "core/shell/performance/native_memory_usage_query.h"
 #include "core/shell/runtime/bts/bts_runtime.h"
 #include "core/shell/tasm_mediator.h"
 #include "core/shell/tasm_operation_queue.h"
@@ -332,6 +333,12 @@ class LynxShell {
   GetPerfControllerActor() {
     return perf_controller_actor_;
   }
+
+  // Asynchronously queries Element, MTS runtime, and BTS runtime memory. The
+  // callback is always posted back to the report thread with one merged
+  // snapshot.
+  void QueryNativeMemoryUsageAsync(
+      tasm::performance::NativeMemoryUsageCallback callback);
 
   base::TaskRunnerManufactor* GetRunners() { return &runners_; }
 

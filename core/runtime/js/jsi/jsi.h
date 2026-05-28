@@ -442,6 +442,10 @@ class LYNX_EXPORT Runtime {
     external_params_ = std::move(external_params);
   }
 
+  // Reads the runtime's current heap statistics without triggering GC. Runtimes
+  // that cannot expose a cheap no-GC snapshot should keep the default 0 result.
+  virtual int64_t GetCurrentHeapSizeBytes() { return 0; }
+
   // Post a GC request.
   // In QuickJS and V8 engine, `RequestGC` will trigger a synchronized full
   // GC, which will block the current thread until the GC is finished. In

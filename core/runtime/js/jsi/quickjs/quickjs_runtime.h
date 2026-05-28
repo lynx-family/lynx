@@ -84,6 +84,7 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
   void DestroyInspector() override;
 
   void RequestGC() override;
+  int64_t GetCurrentHeapSizeBytes() override;
 
  protected:
   PointerValue *cloneSymbol(const Runtime::PointerValue *pv) override;

@@ -4,6 +4,7 @@
 #ifndef CORE_RUNTIME_MTS_CONTEXT_H_
 #define CORE_RUNTIME_MTS_CONTEXT_H_
 
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -85,6 +86,7 @@ class MTSContext {
 
   virtual void UpdateGCTiming(bool is_start) {}
   virtual void TriggerVmGC() {}
+  virtual int64_t GetCurrentHeapSizeBytes() { return 0; }
 
   virtual bool EnableSendEventToMainThread() const { return false; }
 

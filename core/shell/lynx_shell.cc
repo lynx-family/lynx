@@ -27,6 +27,7 @@
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/list_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
+#include "core/shell/performance/native_memory_usage_query.h"
 #include "core/shell/runtime/bts/bts_runtime_mediator.h"
 #include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
 #include "core/shell/tasm_operation_queue_async.h"
@@ -1330,6 +1331,22 @@ void LynxShell::UpdateI18nResource(const std::string& key,
 std::unordered_map<std::string, std::string> LynxShell::GetAllJsSource() {
   return engine_actor_->ActSync(
       [](auto& engine) { return engine->GetAllJsSource(); });
+}
+
+void LynxShell::QueryNativeMemoryUsageAsync(
+    tasm::performance::NativeMemoryUsageCallback callback) {
+  if (!callback) {
+    return;
+  }
+  // Keep LynxShell as a thin boundary. The stateless query command receives
+  // actors only for immediate task dispatch; ActAsync owns actor lifetime for
+  // the posted tasks, so no raw shell pointer is carried into async closures.
+  tasm::performance::NativeMemoryUsageQuery query;
+  if (IsDestroyed()) {
+    query.CollectAsync(nullptr, nullptr, std::move(callback));
+    return;
+  }
+  query.CollectAsync(engine_actor_, runtime_actor_, std::move(callback));
 }
 
 tasm::TemplateAssembler* LynxShell::GetTasm() {

@@ -854,6 +854,14 @@ void QuickjsRuntime::RequestGC() {
   }
 }
 
+int64_t QuickjsRuntime::GetCurrentHeapSizeBytes() {
+  LEPUSRuntime *quickjs = getJSRuntime();
+  // LEPUS_GetHeapSize only reads the current QuickJS heap stats. Keep this path
+  // no-GC so active memory queries observe the current state instead of
+  // changing it.
+  return quickjs ? static_cast<int64_t>(LEPUS_GetHeapSize(quickjs)) : 0;
+}
+
 std::shared_ptr<Buffer> QuickjsRuntime::GetBytecode(
     const std::shared_ptr<const Buffer> &buffer,
     const std::string &source_url) const {
