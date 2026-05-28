@@ -109,7 +109,7 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
     y -= mPaddingTop + mBorderTopWidth;
 
     return UITextUtils.hitTest(this, x, y, this, mView.mTextLayout, UITextUtils.getSpanned(mView),
-        getView().mTextTranslateOffset, ignoreUserInteraction);
+        getView().mTextTranslateOffset, mView.mTextraPage, ignoreUserInteraction);
   }
 
   @Override
