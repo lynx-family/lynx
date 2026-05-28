@@ -24,7 +24,7 @@ _lynx_free*
 _lynx_malloc*
 _lynx_strdup*
 _lynx_trace_*
-_lynx_log_write_detailed*
+_lynx_log_*
 _lynx_windowless_*
 # weak-node-api symbols
 _napi*_weak
