@@ -15,6 +15,23 @@
 #endif
 
 namespace clay {
+namespace {
+
+DrawableImage::FitMode ResolveExternalTextureFitMode(
+    DrawableImage::FitMode fit_mode, const skity::Rect& bounds,
+    float image_width, float image_height) {
+  if (fit_mode == DrawableImage::FitMode::kClipToBounds &&
+      (image_width < bounds.Width() || image_height < bounds.Height())) {
+    // Resize can make the current layout bounds larger than the last produced
+    // NativeView frame. Fill the bounds with the stale frame until the producer
+    // presents a frame for the new size, otherwise newly exposed areas flicker
+    // black.
+    return DrawableImage::FitMode::kScaleToFill;
+  }
+  return fit_mode;
+}
+
+}  // namespace
 
 SharedImageExternalTexture::SharedImageExternalTexture(
     fml::RefPtr<SharedImageSink> image_sink)
@@ -55,7 +72,10 @@ void SharedImageExternalTexture::Paint(PaintContext& context,
     custom_painter_->Paint(context, sk_image_.get(), transform_, bounds,
                            sampling);
   } else {
-    DrawSkiaImage(sk_image_, context, bounds, sampling, fit_mode);
+    DrawSkiaImage(
+        sk_image_, context, bounds, sampling,
+        ResolveExternalTextureFitMode(fit_mode, bounds, sk_image_->width(),
+                                      sk_image_->height()));
   }
 #else
   if (!skity_image_) {
@@ -63,13 +83,18 @@ void SharedImageExternalTexture::Paint(PaintContext& context,
   }
 
   std::shared_ptr<skity::Image> skity_image = skity_image_->gr_image();
-  FML_DCHECK(skity_image);
+  if (!skity_image) {
+    return;
+  }
   if (custom_painter_) {
     // FIXME(youfeng) alpha video paint maybe broken now.
     custom_painter_->Paint(context, skity_image.get(), transform_, bounds,
                            sampling);
   } else {
-    DrawSkityImage(skity_image, context, bounds, sampling, fit_mode);
+    DrawSkityImage(
+        skity_image, context, bounds, sampling,
+        ResolveExternalTextureFitMode(fit_mode, bounds, skity_image->Width(),
+                                      skity_image->Height()));
   }
 #endif  // ENABLE_SKITY
   FlushAndReleaseFrontForSingleBuffer();

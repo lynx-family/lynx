@@ -255,6 +255,7 @@ void NativeView::ApplyUpdateChanged() {
           plugin.LayoutChanged(bounds.x(), bounds.y(), bounds.width(),
                                bounds.height());
         });
+    MarkDirty();
   }
 }
 

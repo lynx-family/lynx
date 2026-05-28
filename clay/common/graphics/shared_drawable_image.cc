@@ -5,7 +5,9 @@
 #include "clay/common/graphics/shared_drawable_image.h"
 
 #include <algorithm>
+#include <utility>
 
+#include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #include "clay/gfx/shared_image/shared_image_sink_accessor.h"
 
@@ -92,18 +94,29 @@ bool SharedDrawableImage::Update() {
   }
 
 #ifndef ENABLE_SKITY
-  FML_DCHECK(repr->GetType() == ImageRepresentationType::kSkia);
-  sk_image_ = static_cast<SkiaImageRepresentation*>(repr.get())->GetSkImage();
-  if (!sk_image_) {
+  if (repr->GetType() != ImageRepresentationType::kSkia) {
+    FML_LOG(ERROR) << "Unexpected shared image representation type: "
+                   << static_cast<int>(repr->GetType());
     return false;
   }
+  sk_sp<SkImage> sk_image =
+      static_cast<SkiaImageRepresentation*>(repr.get())->GetSkImage();
+  if (!sk_image) {
+    return false;
+  }
+  sk_image_ = std::move(sk_image);
 #else
-  FML_DCHECK(repr->GetType() == ImageRepresentationType::kSkity);
-  skity_image_ =
-      static_cast<SkityImageRepresentation*>(repr.get())->GetSkityImage();
-  if (!skity_image_) {
+  if (repr->GetType() != ImageRepresentationType::kSkity) {
+    FML_LOG(ERROR) << "Unexpected shared image representation type: "
+                   << static_cast<int>(repr->GetType());
     return false;
   }
+  std::shared_ptr<SkityImage> skity_image =
+      static_cast<SkityImageRepresentation*>(repr.get())->GetSkityImage();
+  if (!skity_image) {
+    return false;
+  }
+  skity_image_ = std::move(skity_image);
 #endif  // ENABLE_SKITY
   transform_ = repr->GetBacking()->GetTransformation();
 

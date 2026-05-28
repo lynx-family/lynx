@@ -5,6 +5,7 @@
 #include "clay/lynx_adaptor/native_platform_view.h"
 
 #include <memory>
+#include <utility>
 
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/fence_sync.h"
@@ -99,10 +100,20 @@ bool NativePlatformView::PresentSurface(
   if (!sink_ref_) {
     return false;
   }
-  FML_DCHECK(gfx_handle);
+  if (!gfx_handle) {
+    return false;
+  }
   SharedImageSink* sink = reinterpret_cast<SharedImageSink*>(sink_ref_);
   auto [backing, buffer_age, status] =
       sink->TryAcquireBack({width, height}, gfx_handle);
+  (void)buffer_age;
+  if (!backing && status == SharedImageSink::AcquireBackStatus::kFullAttach &&
+      sink->Capacity() != SharedImageSink::kSingleBuffer) {
+    auto [forced_backing, forced_buffer_age] =
+        sink->AcquireBackForced({width, height}, gfx_handle);
+    (void)forced_buffer_age;
+    backing = std::move(forced_backing);
+  }
   if (!backing) {
     return false;
   }
