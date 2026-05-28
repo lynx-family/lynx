@@ -32,6 +32,7 @@ import com.lynx.tasm.LynxError;
 import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.LynxUIMethod;
@@ -321,8 +322,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
   @Override
   public void removeView(LynxBaseUI child) {
-    super.removeView(child);
+    doRemoveView(child);
     if (child instanceof UIComponent) {
+      // Keep sticky cleanup synchronous.
       UIComponent component = (UIComponent) child;
       if (mEnableListSticky) {
         if (mUpdateStickyForDiff) {
@@ -353,7 +355,33 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
   }
 
+  private void doRemoveView(LynxBaseUI child) {
+    if (mView.isDeferChildMutationInDrawEnabled() && mView.shouldRunAfterDraw()) {
+      mView.runInEndDrawTraversal(new Runnable() {
+        @Override
+        public void run() {
+          UIListContainer.super.removeView(child);
+        }
+      });
+    } else {
+      super.removeView(child);
+    }
+  }
+
   private void insertListItemNodeInternal(@Nullable UIComponent component) {
+    if (mView.isDeferChildMutationInDrawEnabled() && mView.shouldRunAfterDraw()) {
+      mView.runInEndDrawTraversal(new Runnable() {
+        @Override
+        public void run() {
+          doInsertView(component);
+        }
+      });
+    } else {
+      doInsertView(component);
+    }
+  }
+
+  private void doInsertView(@Nullable UIComponent component) {
     View childView = component.getView();
     if (childView != null && childView.getParent() == null) {
       mView.addView(childView);
@@ -401,10 +429,21 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
   @Override
   public void onNodeReady() {
+    String traceEvent = null;
+    if (TraceEvent.isTracingStarted()) {
+      traceEvent = TAG + ".onNodeReady";
+      TraceEvent.beginSection(traceEvent);
+    }
     super.onNodeReady();
     initListContainerProxy();
+    if (mView.isDeferChildMutationInDrawEnabled() && !mView.shouldRunAfterDraw()) {
+      mView.forceRunEndDrawTraversalRunnableIfNeeded();
+    }
     updateStickyStarts();
     updateStickyEnds();
+    if (TraceEvent.isTracingStarted()) {
+      TraceEvent.endSection(traceEvent);
+    }
   }
 
   private void initListContainerProxy() {
@@ -713,6 +752,15 @@ public class UIListContainer extends UISimpleView<ListContainerView>
       for (int i = 0; i < itemCount; ++i) {
         mItemKeyMap.put(mItemKeys.getString(i), i);
       }
+    }
+  }
+
+  @LynxProp(name = "experimental-android-defer-child-mutation-in-draw", defaultBoolean = false)
+  public void setDeferChildMutationInDraw(boolean value) {
+    // This experimental flag is init-only. Only the first value written before the
+    // first props update completes is accepted; later writes are ignored.
+    if (mView.mDeferChildMutationInDraw == null) {
+      mView.mDeferChildMutationInDraw = value;
     }
   }
 
@@ -1407,6 +1455,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
       // Generate sticky top/bottom item key set.
       generateStickyItemKeySet(mStickyTopItemKeySet, mStickyTopIndexes, mStickyTopItemMap);
       generateStickyItemKeySet(mStickyBottomItemKeySet, mStickyBottomIndexes, mStickyBottomItemMap);
+    }
+    if (mView.mDeferChildMutationInDraw == null) {
+      // If the flag is absent from the first props update, lock it to the default
+      // disabled state so later dynamic updates cannot enable it.
+      mView.mDeferChildMutationInDraw = false;
     }
   }
 

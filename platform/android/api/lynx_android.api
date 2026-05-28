@@ -3582,6 +3582,7 @@ public class com::lynx::tasm::behavior::ui::list::container::ListContainerView :
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setRenderer(Renderer renderer);
   public Renderer com.lynx.tasm.behavior.ui.list.container.ListContainerView.getRenderer();
   public View com.lynx.tasm.behavior.ui.list.container.ListContainerView.getView();
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.onInterceptTouchEvent(MotionEvent e);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.dispatchTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.onTouchEvent(MotionEvent ev);
@@ -11199,6 +11200,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableNestedScroll(boolean nestedScroll);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setBatchRenderStrategy(int batchRenderStrategy);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setDiffInfo(ReadableMap listContainerInfo);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setDeferChildMutationInDraw(boolean value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableListSticky(boolean value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setStickyOffset(float value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableFadeInAnimation(boolean value);
