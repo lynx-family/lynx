@@ -75,6 +75,26 @@ struct AutoFontSizeLineRange {
   float max_size;
 };
 
+enum TextEventTargetMask : uint32_t {
+  kTextEventTargetTap = 1u << 0,
+  kTextEventTargetClick = 1u << 1,
+  kTextEventTargetLongPress = 1u << 2,
+  kTextEventTargetTouchStart = 1u << 3,
+  kTextEventTargetTouchMove = 1u << 4,
+  kTextEventTargetTouchEnd = 1u << 5,
+  kTextEventTargetTouchCancel = 1u << 6,
+};
+
+struct EventTargetInfo {
+  int32_t sign{0};
+  uint32_t event_mask{0};
+  bool is_inline_view{false};
+
+  bool IsValid() const {
+    return sign != 0 && (event_mask != 0 || is_inline_view);
+  }
+};
+
 class ParagraphListener {
  public:
   virtual ~ParagraphListener() = default;
@@ -89,6 +109,8 @@ class ParagraphBuilder {
                                  size_t length) = 0;
   virtual void PushTextStyle() = 0;
   virtual void PopTextStyle() = 0;
+  virtual void PushEventTarget(const EventTargetInfo &event_target) = 0;
+  virtual void PopEventTarget() = 0;
   virtual void SetTextStyle(TextPropertyKeyID key, void *value,
                             size_t length) = 0;
   virtual void AddText(const char *text, size_t length) = 0;
