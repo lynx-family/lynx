@@ -6,6 +6,7 @@ package com.lynx.tasm;
 import android.content.Context;
 import android.text.TextUtils;
 import androidx.annotation.AnyThread;
+import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
@@ -44,7 +45,7 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
   private static final String TAG = "LynxBackgroundRuntime";
   private LynxBackgroundRuntimeOptions mOptions;
   private LynxModuleFactory mModuleFactory;
-  private LynxResourceLoader mResourceLoader;
+  @Keep private LynxResourceLoader mResourceLoader;
   private JSProxy mJSProxy;
   private CopyOnWriteArrayList<LynxBackgroundRuntimeClient> mRuntimeClients;
   private Map<Double, PlatformCallBack> mPlatformCallBackMap;
