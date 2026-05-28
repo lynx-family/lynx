@@ -10,6 +10,7 @@ import android.graphics.Rect;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.core.view.ViewCompat;
@@ -23,6 +24,8 @@ import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.utils.FloatUtils;
+import java.lang.ref.WeakReference;
+import java.util.ArrayDeque;
 
 public class ListContainerView extends NestedScrollContainerView
     implements IDrawChildHook.IDrawChildHookBinding, IRendererHost {
@@ -54,6 +57,12 @@ public class ListContainerView extends NestedScrollContainerView
   int mPaddingRight = 0;
   int mPaddingTop = 0;
   int mPaddingBottom = 0;
+  Boolean mDeferChildMutationInDraw = null;
+  private boolean mIsInDraw = false;
+  private OnPreDrawListener mOnPreDrawListener = null;
+  private EndDrawTraversalRunnable mEndDrawTraversalRunnable = null;
+  private boolean mHasPendingEndDrawTraversalWork = false;
+  private final ArrayDeque<Runnable> mPendingDrawTasks = new ArrayDeque<>();
   private boolean mShouldBlockScrollByListContainer = false;
   private int mPreviousOffsetX;
   private int mPreviousOffsetY;
@@ -61,6 +70,7 @@ public class ListContainerView extends NestedScrollContainerView
   private boolean mPanInterceptSelf = false;
   private boolean mPanInterceptAncestors = false;
   private boolean mPanInterceptDescendants = false;
+  private boolean mInNonTouchNestedScroll = false;
   private float mMaxFlingDistanceRatio = -1;
   private Renderer mRenderer;
 
@@ -92,10 +102,179 @@ public class ListContainerView extends NestedScrollContainerView
     return this;
   }
 
+  @Override
+  protected void onAttachedToWindow() {
+    LLog.i(
+        TAG, "onAttachedToWindow: this.hashCode=" + this.hashCode() + ", ui = " + mUiListContainer);
+    super.onAttachedToWindow();
+    if (isDeferChildMutationInDrawEnabled()) {
+      addOnPreDrawListenerIfNeeded();
+    }
+  }
+
+  private void addOnPreDrawListenerIfNeeded() {
+    ViewTreeObserver viewTreeObserver = getViewTreeObserver();
+    if (mOnPreDrawListener == null && viewTreeObserver != null && viewTreeObserver.isAlive()) {
+      mOnPreDrawListener = new OnPreDrawListener(this);
+      viewTreeObserver.addOnPreDrawListener(mOnPreDrawListener);
+    }
+  }
+
+  @Override
+  protected void onDetachedFromWindow() {
+    LLog.i(TAG,
+        "onDetachedFromWindow: this.hashCode=" + this.hashCode() + ", ui = " + mUiListContainer);
+    if (isDeferChildMutationInDrawEnabled()) {
+      removeOnPreDrawListenerIfNeeded();
+    }
+    super.onDetachedFromWindow();
+  }
+
+  private void removeOnPreDrawListenerIfNeeded() {
+    ViewTreeObserver viewTreeObserver = getViewTreeObserver();
+    if (mOnPreDrawListener != null && viewTreeObserver != null && viewTreeObserver.isAlive()) {
+      viewTreeObserver.removeOnPreDrawListener(mOnPreDrawListener);
+      mOnPreDrawListener = null;
+    }
+  }
+
+  private void scheduleEndDrawTraversalRunnable() {
+    if (mEndDrawTraversalRunnable == null) {
+      mEndDrawTraversalRunnable = new EndDrawTraversalRunnable(this);
+    }
+    if (!mHasPendingEndDrawTraversalWork) {
+      // Mark that the current pre-draw pass has scheduled end-draw work.
+      mHasPendingEndDrawTraversalWork = true;
+      LLog.d(TAG, "post EndDrawTraversalRunnable, this.hashCode=" + this.hashCode());
+      post(mEndDrawTraversalRunnable);
+    }
+  }
+
+  private void doWorkEndDrawTraversal() {
+    LLog.d(TAG, "doWorkEndDrawTraversal, this.hashCode=" + this.hashCode());
+    // Note: clear this first because pending mutations may re-enter this method via
+    // runEndDrawTraversalRunnableImmediately(); the scheduled end-draw task should
+    // be consumed only once.
+    mHasPendingEndDrawTraversalWork = false;
+    mIsInDraw = false;
+    // Exec child view mutation.
+    runPendingDrawTasks();
+  }
+
+  void forceRunEndDrawTraversalRunnableIfNeeded() {
+    if (!mHasPendingEndDrawTraversalWork) {
+      // No scheduled end-draw work needs to be consumed.
+      return;
+    }
+    LLog.d(TAG, "force doWorkEndDrawTraversal, this.hashCode=" + this.hashCode());
+    if (mEndDrawTraversalRunnable != null) {
+      removeCallbacks(mEndDrawTraversalRunnable);
+    }
+    doWorkEndDrawTraversal();
+  }
+
+  private void cancelEndDrawTraversalRunnable() {
+    if (mEndDrawTraversalRunnable != null) {
+      removeCallbacks(mEndDrawTraversalRunnable);
+      mEndDrawTraversalRunnable = null;
+    }
+    mHasPendingEndDrawTraversalWork = false;
+  }
+
+  boolean shouldRunAfterDraw() {
+    // Only defer the known crash path:
+    // ViewGroup.dispatchGetDisplayList -> NestedScrollView.computeScroll
+    // -> NestedScrollContainerView.onNestedScroll(TYPE_NON_TOUCH)
+    // -> ListContainerView.onScrollChanged -> PaintingContext.removeListItemNode
+    // -> UIListContainer.removeView -> ViewGroup.removeView.
+    return mIsInDraw && mInNonTouchNestedScroll;
+  }
+
+  void runInEndDrawTraversal(Runnable task) {
+    if (task != null) {
+      mPendingDrawTasks.add(task);
+    }
+  }
+
+  private void runPendingDrawTasks() {
+    if (mPendingDrawTasks.isEmpty()) {
+      return;
+    }
+    // Drain only the tasks collected during the finished draw traversal. A task may
+    // enqueue more mutations while running; those new tasks should wait for the next
+    // drain instead of extending this batch indefinitely.
+    ArrayDeque<Runnable> pendingTasks = new ArrayDeque<>(mPendingDrawTasks);
+    mPendingDrawTasks.clear();
+    while (!pendingTasks.isEmpty()) {
+      Runnable task = pendingTasks.poll();
+      if (task != null) {
+        try {
+          task.run();
+        } catch (Exception e) {
+          LLog.e(TAG, "Exception occurred while running pending draw task: " + e);
+        }
+      }
+    }
+  }
+
+  boolean isDeferChildMutationInDrawEnabled() {
+    return Boolean.TRUE.equals(mDeferChildMutationInDraw);
+  }
+
+  private static class EndDrawTraversalRunnable implements Runnable {
+    private final WeakReference<ListContainerView> mRef;
+
+    EndDrawTraversalRunnable(ListContainerView listContainerView) {
+      mRef = new WeakReference<>(listContainerView);
+    }
+
+    @Override
+    public void run() {
+      ListContainerView listContainerView = mRef.get();
+      if (listContainerView != null) {
+        listContainerView.doWorkEndDrawTraversal();
+      }
+    }
+  }
+
+  // Use pre-draw instead of on-draw because this callback may consume pending
+  // child mutations. Android documents that views cannot be modified from
+  // OnDrawListener, while OnPreDrawListener runs before draw/display-list traversal.
+  private static class OnPreDrawListener implements ViewTreeObserver.OnPreDrawListener {
+    private final WeakReference<ListContainerView> mRef;
+
+    OnPreDrawListener(ListContainerView listContainerView) {
+      mRef = new WeakReference<>(listContainerView);
+    }
+
+    @Override
+    public boolean onPreDraw() {
+      ListContainerView listContainerView = mRef.get();
+      if (listContainerView != null) {
+        // If the previous end-draw runnable has not run yet, consume it before
+        // entering the current draw/display-list traversal.
+        listContainerView.forceRunEndDrawTraversalRunnableIfNeeded();
+        listContainerView.mIsInDraw = true;
+        listContainerView.scheduleEndDrawTraversalRunnable();
+      }
+      return true;
+    }
+  }
+
+  @Override
+  public void onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed,
+      int dyUnconsumed, int type) {
+    mInNonTouchNestedScroll = (type == ViewCompat.TYPE_NON_TOUCH);
+    super.onNestedScroll(target, dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, type);
+    mInNonTouchNestedScroll = false;
+  }
+
   private void createCustomLinearLayoutIfNeeded() {
     if (mCustomLinearLayout == null) {
       mCustomLinearLayout = new CustomLinearLayout(this.getContext());
-      LLog.i(TAG, "Create CustomLinearLayout: " + mCustomLinearLayout + ", " + this);
+      LLog.i(TAG,
+          "Create CustomLinearLayout: " + mCustomLinearLayout
+              + ", this.hashCode=" + this.hashCode());
     }
     mCustomLinearLayout.setOrientation(LinearLayout.VERTICAL);
     mCustomLinearLayout.setWillNotDraw(true);
@@ -399,12 +578,21 @@ public class ListContainerView extends NestedScrollContainerView
     TraceEvent.beginSection(TraceEventDef.LIST_CONTAINER_VIEW_DESTORY);
     // Stop any ongoing scroll animations from the parent class.
     stopFling();
+    clearDrawTraversalState();
     mDrawChildHook = null;
     mUiListContainer = null;
     mCustomLinearLayout = null;
     clearOnScrollListeners();
     clearOnScrollStateChangeListeners();
     TraceEvent.endSection(TraceEventDef.LIST_CONTAINER_VIEW_DESTORY);
+  }
+
+  private void clearDrawTraversalState() {
+    removeOnPreDrawListenerIfNeeded();
+    cancelEndDrawTraversalRunnable();
+    mIsInDraw = false;
+    mInNonTouchNestedScroll = false;
+    mPendingDrawTasks.clear();
   }
 
   LinearLayout getLinearLayout() {
@@ -497,12 +685,6 @@ public class ListContainerView extends NestedScrollContainerView
     if (mCustomLinearLayout != null) {
       mCustomLinearLayout.removeAllViews();
     }
-  }
-
-  @Override
-  protected void onDetachedFromWindow() {
-    LLog.e(TAG, "onDetachedFromWindow: " + this + ", ui = " + mUiListContainer);
-    super.onDetachedFromWindow();
   }
 
   public void setPanInterceptSelf(boolean panInterceptSelf) {
