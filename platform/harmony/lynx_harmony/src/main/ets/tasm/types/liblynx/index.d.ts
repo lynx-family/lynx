@@ -185,6 +185,10 @@ export class LynxTemplateRenderer {
   nativeUnsubscribeSessionStorage(key: string, listenerId: number): void;
 
   invokeLepusCallback(id: number, entryName: string, args: Object): void;
+
+  nativeSyncFlush(): void;
+
+  nativeMarkDirty(): void;
 }
 
 export type JSMeasureFunc = (width: number, widthMode: number, height: number, heightMode: number) => [number, number, number];
