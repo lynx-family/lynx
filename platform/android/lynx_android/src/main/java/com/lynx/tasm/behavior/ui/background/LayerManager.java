@@ -233,7 +233,11 @@ public abstract class LayerManager implements Drawable.Callback {
         repeatYType = mImageRepeatList.get(usedRepeatIndex * 2 + 1);
       }
       bgLayerDrawable.setEnableBitmapGradient(mEnableBitmapGradient);
-      bgLayerDrawable.setBounds(new Rect(0, 0, Math.round(width), Math.round(height)));
+      // LayerManager draws in Android physical pixels. Keep repeated tile offsets in sync with
+      // the integer drawable bounds to avoid subpixel seams between bitmap tiles.
+      final int pixelAlignedWidth = Math.round(width);
+      final int pixelAlignedHeight = Math.round(height);
+      bgLayerDrawable.setBounds(new Rect(0, 0, pixelAlignedWidth, pixelAlignedHeight));
 
       if (outerDrawPath != null && isGradient && !hasBorder) {
         bgLayerDrawable.setPathEffect(outerDrawPath);
@@ -262,17 +266,21 @@ public abstract class LayerManager implements Drawable.Callback {
         float startX = offsetX, startY = offsetY;
 
         if (repeatXType == BackgroundRepeat.REPEAT || repeatXType == BackgroundRepeat.REPEAT_X) {
-          startX = startX - ((int) Math.ceil((double) startX / width)) * width;
+          startX =
+              startX - ((int) Math.ceil((double) startX / pixelAlignedWidth)) * pixelAlignedWidth;
         }
 
         if (repeatYType == BackgroundRepeat.REPEAT || repeatYType == BackgroundRepeat.REPEAT_Y) {
-          startY = startY - ((int) Math.ceil((double) startY / height)) * height;
+          startY =
+              startY - ((int) Math.ceil((double) startY / pixelAlignedHeight)) * pixelAlignedHeight;
         }
 
         canvas.save();
         canvas.clipRect(clipBox);
-        for (float x = startX; x < endX; x += width) {
-          for (float y = startY; y < endY; y += height) {
+        final float pixelAlignedStartX = Math.round(startX);
+        final float pixelAlignedStartY = Math.round(startY);
+        for (float x = pixelAlignedStartX; x < endX; x += pixelAlignedWidth) {
+          for (float y = pixelAlignedStartY; y < endY; y += pixelAlignedHeight) {
             canvas.save();
             canvas.translate(x, y);
             bgLayerDrawable.draw(canvas);
