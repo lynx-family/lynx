@@ -77,6 +77,7 @@ class UIFlattenImage : public UIBase,
   float shadow_offset_x_{0.f};
   float shadow_offset_y_{0.f};
   float shadow_radius_{0.f};
+  float blur_radius_{0.f};
   float image_padding_left_{0.f};
   float image_padding_top_{0.f};
   float image_padding_right_{0.f};
@@ -90,12 +91,11 @@ class UIFlattenImage : public UIBase,
   static std::unordered_map<std::string,
                             void (UIFlattenImage::*)(const lepus::Value& value)>
       prop_setters_;
-  LynxImageEffectProcessor::ImageEffect effect_type_{
-      LynxImageEffectProcessor::ImageEffect::kNone};
   uint64_t load_start_{0};
   uint64_t load_finish_{0};
   bool enable_image_load_callback_{false};
   bool enable_redirect_url_{false};
+  uint8_t effect_flags_{0};
 
   ImageDrawable::ImageMode ConvertMode(const std::string& mode);
   void UpdateImageMode(const lepus::Value& value);
@@ -133,8 +133,7 @@ class UIFlattenImage : public UIBase,
   LynxImageEffectProcessor::CommonViewParams GenerateCommonViewParams();
   void HandleImageWithProcessor(
       const std::string& url, bool is_base64,
-      LynxImageEffectProcessor::ImageEffect effect_type,
-      const LynxImageEffectProcessor::EffectParams& params, bool is_src);
+      std::vector<LynxImageEffectProcessor> processors, bool is_src);
   void LoadImageFromURL(bool is_src);
   bool hasAnimationEvent();
   void Render(OH_Drawing_Canvas* canvas) const;

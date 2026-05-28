@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/closure.h"
 #include "core/base/lynx_export.h"
@@ -38,17 +39,17 @@ class LynxImageHelper {
     ImageResponse response{};
     napi_async_work work;
     base::MoveOnlyClosure<void, ImageResponse&> callback;
-    LynxImageEffectProcessor params;
+    std::vector<LynxImageEffectProcessor> processors;
   };
 
   LYNX_EXPORT static void DecodeImageAsync(
       napi_env env, const std::string& url, bool is_base64,
       base::MoveOnlyClosure<void, ImageResponse&> callback,
-      LynxImageEffectProcessor params = {});
+      std::vector<LynxImageEffectProcessor> processors = {});
 
   LYNX_EXPORT static ImageResponse DecodeImageSync(
       const std::string& url, bool is_base64,
-      const LynxImageEffectProcessor& params);
+      const std::vector<LynxImageEffectProcessor>& processors);
 
   LYNX_EXPORT static std::string GetRedirectUrl(
       const std::string& url,
@@ -57,7 +58,7 @@ class LynxImageHelper {
  private:
   static void DecodeImageFromImageSource(
       OH_ImageSourceNative* image_source, ImageResponse& response,
-      const LynxImageEffectProcessor& params);
+      const std::vector<LynxImageEffectProcessor>& processors);
   static void ReleasePixelmap(OH_PixelmapNative* pixel_map) {
     OH_PixelmapNative_Release(pixel_map);
   }

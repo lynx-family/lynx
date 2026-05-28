@@ -250,12 +250,20 @@ void UIImage::UpdateAutoSize(const lepus::Value& value) {
 }
 
 void UIImage::UpdateBlurRadius(const lepus::Value& value) {
+  dirty_flags_ |= image::kFlagBlurRadiusChanged;
   CSSStringParser parser = CSSStringParser::FromLepusString(value, {});
   CSSValue radius;
   parser.ParseLengthTo(radius);
-  if (!radius.IsEmpty()) {
-    NodeManager::Instance().SetAttributeWithNumberValue(
-        Node(), NODE_BLUR, radius.AsNumber() * context_->ScaledDensity());
+  if (radius.IsEmpty()) {
+    blur_radius_ = 0.f;
+    effect_flags_ &= ~image::kFlagEffectBlur;
+    return;
+  }
+  blur_radius_ = radius.AsNumber() * context_->ScaledDensity();
+  if (blur_radius_ > 0.f) {
+    effect_flags_ |= image::kFlagEffectBlur;
+  } else {
+    effect_flags_ &= ~image::kFlagEffectBlur;
   }
 }
 
@@ -355,8 +363,9 @@ void UIImage::OnNodeReady() {
   if ((dirty_flags_ & image::kFlagPlaceholderChanged) != 0) {
     LoadImageFromURL(true);
   }
-  if ((dirty_flags_ & (image::kFlagSrcChanged | image::kFlagDropShadowChanged |
-                       image::kFlagCapInsetsChanged)) != 0) {
+  if ((dirty_flags_ &
+       (image::kFlagSrcChanged | image::kFlagDropShadowChanged |
+        image::kFlagCapInsetsChanged | image::kFlagBlurRadiusChanged)) != 0) {
     if (!defer_src_invalidation_) {
       NodeManager::Instance().ResetAttribute(Node(), NODE_IMAGE_SRC);
     }
@@ -384,7 +393,8 @@ void UIImage::OnNodeReady() {
                                          &item);
   }
   if ((dirty_flags_ & image::kFlagPaddingChanged) != 0) {
-    if (effect_type_ == LynxImageEffectProcessor::ImageEffect::kNone) {
+    if ((effect_flags_ &
+         (image::kFlagEffectCapInsets | image::kFlagEffectDropShadow)) == 0) {
       NodeManager::Instance().SetAttributeWithNumberValue(
           Node(), NODE_PADDING, padding_top_, padding_right_, padding_bottom_,
           padding_left_);
@@ -405,22 +415,30 @@ void UIImage::UpdatePlaceholder(const lepus::Value& value) {
 }
 
 void UIImage::SetImageSrcAttribute(const std::string& value, bool is_base64) {
-  if (effect_type_ != LynxImageEffectProcessor::ImageEffect::kNone) {
-    if (effect_type_ == LynxImageEffectProcessor::ImageEffect::kCapInsets) {
-      LynxImageEffectProcessor::CapInsetParams cap_insets_params{
-          cap_insets_[3], cap_insets_[0],   cap_insets_[1],
-          cap_insets_[2], cap_inset_scale_, GenerateCommonViewParams(),
-      };
-      HandleImageWithProcessor(value, is_base64, effect_type_,
-                               cap_insets_params);
-    } else if (effect_type_ ==
-               LynxImageEffectProcessor::ImageEffect::kDropShadow) {
-      LynxImageEffectProcessor::DropShadowParams shadow_params{
-          shadow_radius_, shadow_color_, shadow_offset_x_, shadow_offset_y_,
-          GenerateCommonViewParams()};
-      HandleImageWithProcessor(value, is_base64, effect_type_, shadow_params);
-    }
-  } else {
+  std::vector<LynxImageEffectProcessor> processors;
+  if ((effect_flags_ & image::kFlagEffectCapInsets) &&
+      cap_insets_.size() == 4) {
+    LynxImageEffectProcessor::CapInsetParams cap_insets_params{
+        cap_insets_[3], cap_insets_[0],   cap_insets_[1],
+        cap_insets_[2], cap_inset_scale_, GenerateCommonViewParams(),
+    };
+    processors.emplace_back(LynxImageEffectProcessor::ImageEffect::kCapInsets,
+                            cap_insets_params);
+  }
+  if (effect_flags_ & image::kFlagEffectDropShadow) {
+    LynxImageEffectProcessor::DropShadowParams shadow_params{
+        shadow_radius_, shadow_color_, shadow_offset_x_, shadow_offset_y_,
+        GenerateCommonViewParams()};
+    processors.emplace_back(LynxImageEffectProcessor::ImageEffect::kDropShadow,
+                            shadow_params);
+  }
+  if ((effect_flags_ & image::kFlagEffectBlur) && blur_radius_ > 0) {
+    LynxImageEffectProcessor::BlurParams blur_params{
+        blur_radius_, GenerateCommonViewParams()};
+    processors.emplace_back(LynxImageEffectProcessor::ImageEffect::kBlur,
+                            blur_params);
+  }
+  if (processors.empty()) {
     has_src_ = true;
     if (is_base64) {
       ArkUI_AttributeItem item{.string = value.data()};
@@ -428,7 +446,9 @@ void UIImage::SetImageSrcAttribute(const std::string& value, bool is_base64) {
     } else {
       SetImageSrcFromPath(value);
     }
+    return;
   }
+  HandleImageWithProcessor(value, is_base64, std::move(processors));
 }
 
 void UIImage::SetEvents(const std::vector<lepus::Value>& events) {
@@ -506,9 +526,9 @@ void UIImage::UpdateCapInsets(const lepus::Value& value) {
     }
   }
   if (cap_insets_.size() == 4) {
-    effect_type_ = LynxImageEffectProcessor::ImageEffect::kCapInsets;
+    effect_flags_ |= image::kFlagEffectCapInsets;
   } else {
-    effect_type_ = LynxImageEffectProcessor::ImageEffect::kNone;
+    effect_flags_ &= ~image::kFlagEffectCapInsets;
   }
 }
 
@@ -563,11 +583,11 @@ void UIImage::UpdateDropShadow(const lepus::Value& value) {
       CSSColor hex_color;
       CSSColor::Parse(drop_shadow_str[3], hex_color);
       shadow_color_ = hex_color.Cast();
-      effect_type_ = LynxImageEffectProcessor::ImageEffect::kDropShadow;
+      effect_flags_ |= image::kFlagEffectDropShadow;
       return;
     }
   }
-  effect_type_ = LynxImageEffectProcessor::ImageEffect::kNone;
+  effect_flags_ &= ~image::kFlagEffectDropShadow;
 }
 
 LynxImageEffectProcessor::CommonViewParams UIImage::GenerateCommonViewParams() {
@@ -582,8 +602,7 @@ LynxImageEffectProcessor::CommonViewParams UIImage::GenerateCommonViewParams() {
 
 void UIImage::HandleImageWithProcessor(
     const std::string& url, bool is_base64,
-    LynxImageEffectProcessor::ImageEffect effect_type,
-    const LynxImageEffectProcessor::EffectParams& params) {
+    std::vector<LynxImageEffectProcessor> processors) {
   LynxImageHelper::DecodeImageAsync(
       context_->GetNapiEnv(), url, is_base64,
       [weak_self = weak_from_this()](LynxImageHelper::ImageResponse& response) {
@@ -610,7 +629,7 @@ void UIImage::HandleImageWithProcessor(
                                                &item);
         }
       },
-      LynxImageEffectProcessor(effect_type, params));
+      std::move(processors));
 }
 
 void UIImage::CreateImageLoadInfo(int32_t error_code,

@@ -28,6 +28,7 @@ class LYNX_EXPORT LynxImageEffectProcessor : public ImageProcessor {
     kNone = 0,
     kDropShadow,
     kCapInsets,
+    kBlur,
   };
 
   struct CommonViewParams {
@@ -88,8 +89,19 @@ class LYNX_EXPORT LynxImageEffectProcessor : public ImageProcessor {
     }
   };
 
-  using EffectParams =
-      std::variant<std::monostate, DropShadowParams, CapInsetParams>;
+  struct BlurParams {
+    float radius;
+    CommonViewParams common_params;
+    std::string ToString() const {
+      std::ostringstream oss;
+      oss << std::fixed << std::setprecision(2);
+      oss << "blur:{radius:" << radius << ",";
+      return oss.str() + common_params.ToString() + "}";
+    }
+  };
+
+  using EffectParams = std::variant<std::monostate, DropShadowParams,
+                                    CapInsetParams, BlurParams>;
   LynxImageEffectProcessor()
       : effect_(ImageEffect::kNone), params_(std::monostate{}) {}
 
@@ -115,6 +127,9 @@ class LYNX_EXPORT LynxImageEffectProcessor : public ImageProcessor {
 
   OH_PixelmapNative* ApplyCapInsetsToBitmap(const CapInsetParams& params,
                                             OH_PixelmapNative* pixel_map) const;
+
+  OH_PixelmapNative* ApplyBlurToBitmap(const BlurParams& params,
+                                       OH_PixelmapNative* pixel_map) const;
 };
 
 }  // namespace harmony
