@@ -10,7 +10,7 @@ import { UIOwner } from './behavior/UIOwner';
 import { TraceCategory, TraceEvent } from '../base/TraceEvent';
 import { TraceEventDef } from '../base/TraceEventDef';
 import { LynxExtraTiming } from './performance/timing/LynxExtraTiming';
-import { LynxView } from './LynxView';
+import { LynxView, ThreadStrategyForRendering } from './LynxView';
 import { LynxReportEventPropValue } from './eventreport/ILynxEventReportObserver';
 import { LynxEventReporter } from './eventreport/LynxEventReporter';
 import {
@@ -194,6 +194,10 @@ export class LynxContext implements IContext {
         return;
       }
 
+      if (this.lynxView?.enableSyncFlush &&
+        this.lynxView.threadMode !== ThreadStrategyForRendering.ALL_ON_UI) {
+        this.renderer?.markDirty();
+      }
       this.renderer?.updateMetaData(data.templateData?.processor, data.templateData?.data, data.templateData?.readOnly,
         data.globalProps?.data, updateMode);
     } else {
