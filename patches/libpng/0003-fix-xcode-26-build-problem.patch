@@ -1,0 +1,25 @@
+From 46d741a46f7412762a1db4e687829c26ca16c8c6 Mon Sep 17 00:00:00 2001
+From: zsy-jason <186247581+zsy-jason@users.noreply.github.com>
+Date: Mon, 25 May 2026 23:24:26 +0800
+Subject: [PATCH] fix xcode 26 build problem.
+
+---
+ pngpriv.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/pngpriv.h b/pngpriv.h
+index 2f4b1a5fa..eb1e33fb5 100644
+--- a/pngpriv.h
++++ b/pngpriv.h
+@@ -519,7 +519,7 @@
+ #  include <float.h>
+ 
+ #  if (defined(__MWERKS__) && defined(macintosh)) || defined(applec) || \
+-    defined(THINK_C) || defined(__SC__) || defined(TARGET_OS_MAC)
++    defined(THINK_C) || defined(__SC__)
+    /* We need to check that <math.h> hasn't already been included earlier
+     * as it seems it doesn't agree with <fp.h>, yet we should really use
+     * <fp.h> if possible.
+-- 
+2.49.0
+
