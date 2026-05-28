@@ -550,12 +550,6 @@ bool LynxEnv::FixRadonTransitionPropertyRemoveBug() {
   return fix_radon_transition_property_remove_bug;
 }
 
-bool LynxEnv::EnableGlobalFontCollection() {
-  static bool enable_global_font_collection =
-      GetBoolEnv(Key::ENABLE_GLOBAL_FONT_COLLECTION, true);
-  return enable_global_font_collection;
-}
-
 uint32_t LynxEnv::EnableGCOnceOnIdle() {
   static uint32_t cached_enable_gc_once_on_idle =
       static_cast<uint32_t>(GetLongEnv(Key::ENABLE_GC_ONCE_ON_IDLE, 0));

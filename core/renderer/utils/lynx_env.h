@@ -122,7 +122,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT,
     FIX_FIBER_REINSERT_DETACH_FROM_OLD_RENDER_PARENT,
     FIX_FILTER_DYNAMIC_UPDATE_BUG,
-    ENABLE_GLOBAL_FONT_COLLECTION,
     ENABLE_GC_ONCE_ON_IDLE,
     ENABLE_CSS_INLINE_VARIABLES,
     ENABLE_OPTIMIZE_HAS_OPACITY,
@@ -292,8 +291,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "disable_list_callback_if_detached"},
             {Key::FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
              "fix_radon_transition_property_remove_bug"},
-            {Key::ENABLE_GLOBAL_FONT_COLLECTION,
-             "enable_global_font_collection"},
             {Key::ENABLE_GC_ONCE_ON_IDLE, "enable_gc_once_on_idle"},
             {Key::ENABLE_CSS_INLINE_VARIABLES, "enable_css_inline_variables"},
             {Key::ENABLE_OPTIMIZE_HAS_OPACITY, "enable_optimize_has_opacity"},
@@ -483,7 +480,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableDecoupledList();
   bool DisableListCallbackIfDetached();
   bool FixRadonTransitionPropertyRemoveBug();
-  bool EnableGlobalFontCollection();
   uint32_t EnableGCOnceOnIdle();
   bool EnableCSSInlineVariables();
   bool EnableOptimizeHasOpacity();

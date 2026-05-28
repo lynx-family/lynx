@@ -79,8 +79,7 @@ using FontResourceCallback =
 using FontPrefetchCallback = base::MoveOnlyClosure<void, int32_t, std::string>;
 class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
  public:
-  explicit FontFaceManager(ShadowNodeOwner* node_owner,
-                           bool enable_global_font_collection = false)
+  explicit FontFaceManager(ShadowNodeOwner* node_owner)
       : node_owner_(node_owner),
         font_collection_(
             FontCollectionHarmony::MakeSharedFontCollectionHarmony()) {}

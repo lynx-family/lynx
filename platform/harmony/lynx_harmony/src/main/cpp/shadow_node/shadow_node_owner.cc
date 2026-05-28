@@ -43,8 +43,7 @@ void LayoutVSyncProxy::SetLayoutTriggerCallback(base::closure callback) {
 
 ShadowNodeOwner::ShadowNodeOwner()
     : text_measure_cache_(new TextMeasureCache),
-      font_face_manager_(new FontFaceManager(
-          this, LynxEnv::GetInstance().EnableGlobalFontCollection())) {}
+      font_face_manager_(new FontFaceManager(this)) {}
 
 // delete the reference to release the object in js.
 ShadowNodeOwner::~ShadowNodeOwner() = default;
@@ -81,11 +80,6 @@ void ShadowNodeOwner::SetContext(const std::shared_ptr<LynxContext>& context) {
   context_ = context;
 
   font_face_manager_->SetLayoutTaskRunner(context->GetLayoutTaskRunner());
-  if (!LynxEnv::GetInstance().EnableGlobalFontCollection()) {
-    // ty to load system font when Init ShadowNodeOwner
-    // FIXME(linxs): need to fetch system font when system font updated later
-    font_face_manager_->TryFetchSystemFont(env_);
-  }
 }
 
 void ShadowNodeOwner::SetLayoutNodeManager(

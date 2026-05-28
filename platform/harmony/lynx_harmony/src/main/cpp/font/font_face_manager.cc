@@ -62,12 +62,8 @@ void FontFace::ParseAndAddSrc(const std::string& src) {
       }
 
       std::string url = item.substr(start_pos, end_pos - start_pos + 1);
-      // if enable global font collection,we need to use font_family+ur.hash to
-      // make a unique key!
       std::string unique_key =
-          LynxEnv::GetInstance().EnableGlobalFontCollection()
-              ? (font_family_ + std::to_string(std::hash<std::string>{}(url)))
-              : font_family_;
+          font_family_ + std::to_string(std::hash<std::string>{}(url));
       src_data_.emplace_back(
           FontSrcData{type, std::move(url), std::move(unique_key)});
     }

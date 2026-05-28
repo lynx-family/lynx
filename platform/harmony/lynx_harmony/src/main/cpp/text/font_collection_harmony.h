@@ -19,7 +19,6 @@
 #include "base/include/log/logging.h"
 #include "core/base/harmony/harmony_function_loader.h"
 #include "core/base/threading/task_runner_manufactor.h"
-#include "core/renderer/utils/lynx_env.h"
 
 namespace lynx {
 namespace tasm {
@@ -53,16 +52,10 @@ class FontCollectionHarmony
 
   static std::shared_ptr<FontCollectionHarmony>
   MakeSharedFontCollectionHarmony() {
-    bool enable_global_font_collection =
-        LynxEnv::GetInstance().EnableGlobalFontCollection();
-    if (enable_global_font_collection) {
-      static std::shared_ptr<FontCollectionHarmony>
-          gGlobalFontCollectionHarmony_ =
-              std::make_shared<FontCollectionHarmony>(true);
-      return gGlobalFontCollectionHarmony_;
-    } else {
-      return std::make_shared<FontCollectionHarmony>(false);
-    }
+    static std::shared_ptr<FontCollectionHarmony>
+        gGlobalFontCollectionHarmony_ =
+            std::make_shared<FontCollectionHarmony>(true);
+    return gGlobalFontCollectionHarmony_;
   }
 
   static OH_Drawing_FontCollection* GetGlobalFontCollection() {

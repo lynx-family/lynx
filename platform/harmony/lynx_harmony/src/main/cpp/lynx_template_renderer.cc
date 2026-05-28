@@ -35,7 +35,6 @@
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/base/base_trace_backend.h"
-#include "platform/harmony/lynx_harmony/src/main/cpp/font/system_font_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
 
@@ -693,13 +692,6 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
         OH_ResourceManager_InitNativeResourceManager(env, args[0]);
   });
 
-  // try to load system font
-  if (!tasm::LynxEnv::GetInstance().EnableGlobalFontCollection()) {
-    tasm::harmony::SystemFontManager::GetInstance().GetSystemFont(
-        env, [](std::string font_family, std::string font_path) {
-          LOGI("GetSystemFont when InitGlobalEnv!")
-        });
-  }
   return nullptr;
 }
 

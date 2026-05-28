@@ -117,10 +117,15 @@ void BaseTextShadowNode::OnPropsUpdate(const std::string& name,
 
 void BaseTextShadowNode::SetCustomFontFamiliesToStyle() {
   if (!raw_font_families_.empty() && style_.GetCustomFontFamilies().empty()) {
-    std::vector<std::string> new_custom_families =
-        context_->GetFontFaceManager()->GetCustomFamiliesFromRawVector(
-            raw_font_families_);
-    style_.SetCustomFontFamilyVector(std::move(new_custom_families));
+    const auto font_manager =
+        context_ ? context_->GetFontFaceManager() : nullptr;
+    if (font_manager) {
+      std::vector<std::string> new_custom_families =
+          font_manager->GetCustomFamiliesFromRawVector(raw_font_families_);
+      style_.SetCustomFontFamilyVector(std::move(new_custom_families));
+    } else {
+      style_.SetCustomFontFamilyVector(raw_font_families_);
+    }
   }
 }
 
@@ -141,8 +146,6 @@ void BaseTextShadowNode::UpdateInheritedTextStyle(
     } else {
       style_.SetCustomFontFamilyVector({});
     }
-  } else if (!LynxEnv::GetInstance().EnableGlobalFontCollection()) {
-    style_.SetCustomFontFamilyVector(effective_raw_font_families);
   } else {
     const auto font_manager =
         context_ ? context_->GetFontFaceManager() : nullptr;
@@ -201,13 +204,7 @@ void BaseTextShadowNode::AppendToParagraph(ParagraphBuilderHarmony& builder,
   style_.UpdateTextPaint(width, height, context_->ScaledDensity());
 
   // we need to set font families before PushTextStyle!
-  if (!LynxEnv::GetInstance().EnableGlobalFontCollection()) {
-    if (!raw_font_families_.empty()) {
-      style_.SetCustomFontFamilyVector(raw_font_families_);
-    }
-  } else {
-    SetCustomFontFamiliesToStyle();
-  }
+  SetCustomFontFamiliesToStyle();
 
   builder.PushTextStyle(style_);
   OnAppendToParagraph(builder, width, height);
