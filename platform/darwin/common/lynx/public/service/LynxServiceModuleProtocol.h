@@ -12,8 +12,10 @@ NS_ASSUME_NONNULL_BEGIN
 // TODO(@nihao.royal): remove LynxServiceModuleProtocol;
 @protocol LynxServiceModuleProtocol <LynxServiceProtocol>
 
+@optional
 - (void)initLynxViewGroup:(LynxViewGroup *)lynxViewGroup;
 
+@required
 /**
  * @depreacted: No need to initialize global props by LynxService.
  */
