@@ -28,6 +28,63 @@ namespace {
 // ParagraphBuilder/Paragraph state must be released before the API goes away.
 void DestroyTextLayoutAPI(text::TextLayoutAPI* api) { delete api; }
 
+uint32_t GetTextEventTargetMask(const base::String& event_name) {
+  const auto& name = event_name.str();
+  if (name == "tap") {
+    return text::kTextEventTargetTap;
+  }
+  if (name == "click") {
+    return text::kTextEventTargetClick;
+  }
+  if (name == "longpress") {
+    return text::kTextEventTargetLongPress;
+  }
+  if (name == "touchstart") {
+    return text::kTextEventTargetTouchStart;
+  }
+  if (name == "touchmove") {
+    return text::kTextEventTargetTouchMove;
+  }
+  if (name == "touchend") {
+    return text::kTextEventTargetTouchEnd;
+  }
+  if (name == "touchcancel") {
+    return text::kTextEventTargetTouchCancel;
+  }
+  return 0;
+}
+
+void AppendTextEventTargetMask(const EventMap& event_map, uint32_t& mask) {
+  for (const auto& event : event_map) {
+    mask |= GetTextEventTargetMask(event.first);
+  }
+}
+
+text::EventTargetInfo BuildTextEventTargetInfo(Element* element,
+                                               bool is_inline_view) {
+  text::EventTargetInfo target;
+  if (!element) {
+    return target;
+  }
+  target.sign = element->impl_id();
+  target.is_inline_view = is_inline_view;
+  AppendTextEventTargetMask(element->event_map(), target.event_mask);
+  AppendTextEventTargetMask(element->lepus_event_map(), target.event_mask);
+  AppendTextEventTargetMask(element->global_bind_event_map(),
+                            target.event_mask);
+  return target;
+}
+
+bool PushEventTargetIfNeeded(text::ParagraphBuilder* paragraph_builder,
+                             Element* element) {
+  auto event_target = BuildTextEventTargetInfo(element, false);
+  if (!event_target.IsValid()) {
+    return false;
+  }
+  paragraph_builder->PushEventTarget(event_target);
+  return true;
+}
+
 class TextraInlineView : public text::InlineView {
  public:
   explicit TextraInlineView(Element* child)
@@ -372,16 +429,28 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
   } else if (child->is_text()) {
     // inline text
     paragraph_builder_->PushTextStyle();
+    bool pushed_event_target =
+        PushEventTargetIfNeeded(paragraph_builder_, child);
     BuildParagraphRecursively(child, has_inline_view);
+    if (pushed_event_target) {
+      paragraph_builder_->PopEventTarget();
+    }
     paragraph_builder_->PopTextStyle();
 
   } else if (child->is_image()) {
     paragraph_builder_->PushTextStyle();
+    bool pushed_event_target =
+        PushEventTargetIfNeeded(paragraph_builder_, child);
     HandleInlineImageProps(child);
+    if (pushed_event_target) {
+      paragraph_builder_->PopEventTarget();
+    }
     paragraph_builder_->PopTextStyle();
   } else if (child->is_view()) {
     paragraph_builder_->PushTextStyle();
+    paragraph_builder_->PushEventTarget(BuildTextEventTargetInfo(child, true));
     HandleInlineViewProps(child);
+    paragraph_builder_->PopEventTarget();
     paragraph_builder_->PopTextStyle();
     has_inline_view = true;
   } else if (child->is_wrapper()) {
@@ -466,8 +535,13 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
 
   // Apply inline element's styles
   paragraph_builder_->PushTextStyle();
+  bool pushed_event_target =
+      PushEventTargetIfNeeded(paragraph_builder_, text_element);
   bool has_inline_view = false;
   BuildParagraphRecursively(text_element, has_inline_view);
+  if (pushed_event_target) {
+    paragraph_builder_->PopEventTarget();
+  }
   paragraph_builder_->PopTextStyle();
   text_element->set_need_layout_children(has_inline_view);
 

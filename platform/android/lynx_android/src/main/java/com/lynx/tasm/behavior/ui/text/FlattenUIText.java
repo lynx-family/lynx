@@ -296,7 +296,7 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
     y -= mPaddingTop + mBorderTopWidth;
 
     return UITextUtils.hitTest(this, x, y, this, mTextLayout, UITextUtils.getSpanned(mTextLayout),
-        mTextTranslateOffset, ignoreUserInteraction);
+        mTextTranslateOffset, mTextraPage, ignoreUserInteraction);
   }
 
   static class DrawableCallback implements Drawable.Callback {
