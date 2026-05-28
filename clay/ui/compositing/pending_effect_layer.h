@@ -74,6 +74,9 @@ class PendingEffectLayer : public PendingContainerLayer {
     clip_rect_ = clip_rect;
     MarkNeedsAddToFrame();
   }
+  const std::optional<FloatRect>& GetClipRectForTesting() const {
+    return clip_rect_;
+  }
 
   void SetClipRRect(const FloatRoundedRect& clip_rrect) {
     clip_rrect_ = clip_rrect;

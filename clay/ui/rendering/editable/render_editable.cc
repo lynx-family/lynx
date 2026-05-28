@@ -148,9 +148,9 @@ void RenderEditable::Paint(PaintingContext& context, const FloatPoint& offset) {
       }
     };
 
-    context.PushClipRect(
-        FloatRect(0, 0, content_rect.width(), content_rect.height()),
-        paint_offset_, paint_content);
+    FloatRect clip_rect(paint_offset_.x(), paint_offset_.y(),
+                        content_rect.width(), content_rect.height());
+    context.PushClipRect(clip_rect, paint_offset_, paint_content);
   }
 
   RenderBox::PaintChildren(context, offset);
