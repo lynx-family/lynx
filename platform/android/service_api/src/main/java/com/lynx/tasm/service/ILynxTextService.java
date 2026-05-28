@@ -54,6 +54,19 @@ public interface ILynxTextService extends IServiceProvider {
      * @return index of char on the touch position
      */
     int getSelectionCharIndex(float touchX, float touchY);
+
+    /**
+     * Get the TextService inline event target at the touch position.
+     *
+     * @param touchX touch position x
+     * @param touchY touch position y
+     * @return packed event target info, every three int values represent [sign, eventMask,
+     *         isInlineView].
+     */
+    default int[] getHitTestEventTargets(float touchX, float touchY) {
+      return null;
+    }
+
     /**
      * Get selection rects by char range
      *
