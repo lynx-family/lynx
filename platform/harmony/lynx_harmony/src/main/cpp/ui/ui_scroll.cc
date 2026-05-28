@@ -696,15 +696,14 @@ void UIScroll::InvokeScrollTo(
   }
 
   if (offset < 0 || offset > can_scroll_distance) {
-    callback(LynxGetUIResult::PARAM_INVALID, lepus_value(""));
+    callback(LynxGetUIResult::PARAM_INVALID,
+             lepus_value(base::FormatString(
+                 "Target scroll position %.2f is beyond threshold. [0, %.2f]",
+                 offset, can_scroll_distance)));
   } else {
     ScrollTo((is_horizontal ? offset : 0), (is_horizontal ? 0 : offset),
              smooth);
-    callback(
-        LynxGetUIResult::SUCCESS,
-        lepus_value(base::FormatString("Target scroll position %d is beyond "
-                                       "threshold.  [0,  %d ]",
-                                       offset, can_scroll_distance)));
+    callback(LynxGetUIResult::SUCCESS, lepus_value(""));
   }
 }
 

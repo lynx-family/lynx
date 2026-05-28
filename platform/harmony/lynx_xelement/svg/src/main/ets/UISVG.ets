@@ -56,7 +56,9 @@ export class UISVG extends UIBase {
     }
     const propColor = prop['current-color'];
     if (propColor !== undefined) {
-      const nextColor = typeof propColor === 'string' && propColor.length > 0 ? propColor : undefined;
+      const normalizedColor = typeof propColor === 'string' ? propColor.trim() : undefined;
+      const nextColor =
+        normalizedColor !== undefined && normalizedColor.length > 0 ? normalizedColor : undefined;
       if (nextColor !== this.color) {
         this.color = nextColor;
         this.needUpdateContent = true;

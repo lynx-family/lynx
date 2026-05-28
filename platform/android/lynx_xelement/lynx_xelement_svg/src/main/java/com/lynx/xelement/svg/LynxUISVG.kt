@@ -205,9 +205,9 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
         LynxThreadPool.getSvgRenderExecutor().execute(object : java.lang.Runnable {
           override fun run() {
             try {
-              mSVGRender?.let {
-                mSVGRender!!.setColor(mColor)
-                val picture: Picture? = mSVGRender!!.renderPicture(
+              mSVGRender?.let { svgRender ->
+                svgRender.setColor(mColor)
+                val picture: Picture? = svgRender.renderPicture(
                   content,
                   Rect(0, 0, getWidth(), getHeight())
                 )
