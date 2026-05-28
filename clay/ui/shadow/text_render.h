@@ -95,6 +95,10 @@ class TextRender {
                           std::vector<std::string>* measured_content);
 
  private:
+  bool CanSkipInitialEmptyTextLayout() const;
+  void SkipInitialEmptyTextLayout(float layout_width,
+                                  ShadowLayoutContextMeasure* context_measure);
+
   TextShadowNode* measure_node_;
   float prev_layout_width_ = std::numeric_limits<float>::quiet_NaN();
   TextUpdateFlag update_flag_ = TextUpdateFlag::kUpdateFlagNone;
@@ -102,6 +106,8 @@ class TextRender {
   int measured_height_;
   std::unique_ptr<txt::Paragraph> cache_paragraph_;
   size_t end_glyph_position_ = 0;
+  bool has_seen_non_empty_content_ = false;
+  bool last_layout_skipped_empty_text_ = false;
   TextDirection truncation_direction_ = TextDirection::kLtr;
   // Override ellipsis count for inline truncation because line metrics are
   // based on the rebuilt truncated paragraph.

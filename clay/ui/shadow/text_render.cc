@@ -21,6 +21,7 @@
 #include "clay/public/value.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/isolate.h"
+#include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/inline_image_view.h"
 #include "clay/ui/component/text/layout_context.h"
 #include "clay/ui/component/text/text_paragraph_builder.h"
@@ -295,7 +296,8 @@ void TextRender::Measure(const MeasureConstraint& constraint,
   inline_truncation_hidden_count_ = -1;
   BuildTextLayout(constraint, context);
 
-  if (constraint.width_mode == TextMeasureMode::kIndefinite &&
+  if (!last_layout_skipped_empty_text_ &&
+      constraint.width_mode == TextMeasureMode::kIndefinite &&
       measure_node_->text_style_) {
     // Do second layout if the width mode is indefinite and the
     // alignment is not left. Because in this case, the paragraph_
@@ -305,7 +307,8 @@ void TextRender::Measure(const MeasureConstraint& constraint,
     }
   }
 
-  if (constraint.width_mode == TextMeasureMode::kAtMost &&
+  if (!last_layout_skipped_empty_text_ &&
+      constraint.width_mode == TextMeasureMode::kAtMost &&
       context->measured_width_ + kLayoutTolerance < context->layout_width_) {
     // Do second layout if actual text width is less than constraints.
     // For example, given at most 200px width and actually 100px is needed,
@@ -375,6 +378,11 @@ std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
   context_text.SetTextIndent(
       measure_node_->text_style_->text_indent.value_or(0));
   measure_node_->TextLayout(&context_text);
+  const size_t layout_text_size = context_text.TextSizeIncludingPlaceholders();
+  has_seen_non_empty_content_ =
+      has_seen_non_empty_content_ || !raw_text.empty() ||
+      !measure_node_->GetChildren().empty() || layout_text_size > 0;
+  last_layout_skipped_empty_text_ = false;
   measure_node_->SetInlineEmojiInfo(context_text.TakeInlineEmojiInfo());
   auto paragraph = Build(std::move(builder));
   TRACE_EVENT("clay", "TextRender::Layout");
@@ -383,8 +391,29 @@ std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
   impl->SetNeedTrimSpace(true);
 #endif
   paragraph->Layout(layout_width);
-  end_glyph_position_ = context_text.TextSizeIncludingPlaceholders();
+  end_glyph_position_ = layout_text_size;
   return paragraph;
+}
+
+bool TextRender::CanSkipInitialEmptyTextLayout() const {
+  return !has_seen_non_empty_content_ && measure_node_->GetChildren().empty() &&
+         !measure_node_->HasEvent(event_attr::kEventLayout);
+}
+
+void TextRender::SkipInitialEmptyTextLayout(
+    float layout_width, ShadowLayoutContextMeasure* context_measure) {
+  last_layout_skipped_empty_text_ = true;
+  cache_paragraph_.reset();
+  measured_width_ = 0;
+  measured_height_ = 0;
+  end_glyph_position_ = 0;
+
+  if (context_measure) {
+    context_measure->measured_width_ = measured_width_;
+    context_measure->measured_height_ = measured_height_;
+  }
+  update_flag_ = TextUpdateFlag::kUpdateFlagNone;
+  prev_layout_width_ = layout_width;
 }
 
 void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
@@ -394,12 +423,22 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
   auto layout_width = context_measure->layout_width_;
 
   const bool force_rebuild = update_flag_ != TextUpdateFlag::kUpdateFlagNone;
-  const bool should_layout =
-      force_rebuild || prev_layout_width_ != layout_width;
 
   if (force_rebuild) {
     measure_node_->PreLayout(nullptr);
   }
+
+  const bool can_skip_initial_empty_text_layout =
+      CanSkipInitialEmptyTextLayout();
+  if (can_skip_initial_empty_text_layout) {
+    SkipInitialEmptyTextLayout(layout_width, context_measure);
+    return;
+  }
+
+  const bool should_layout = force_rebuild ||
+                             prev_layout_width_ != layout_width ||
+                             last_layout_skipped_empty_text_;
+  last_layout_skipped_empty_text_ = false;
 
   std::unique_ptr<txt::Paragraph> paragraph;
   if (should_layout) {
