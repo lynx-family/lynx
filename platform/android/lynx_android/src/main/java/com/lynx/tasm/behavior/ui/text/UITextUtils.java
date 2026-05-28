@@ -4,19 +4,41 @@
 
 package com.lynx.tasm.behavior.ui.text;
 
+import static com.lynx.tasm.event.LynxTouchEvent.EVENT_CLICK;
+import static com.lynx.tasm.event.LynxTouchEvent.EVENT_LONG_PRESS;
+import static com.lynx.tasm.event.LynxTouchEvent.EVENT_TAP;
+import static com.lynx.tasm.event.LynxTouchEvent.EVENT_TOUCH_CANCEL;
+import static com.lynx.tasm.event.LynxTouchEvent.EVENT_TOUCH_END;
+import static com.lynx.tasm.event.LynxTouchEvent.EVENT_TOUCH_MOVE;
+import static com.lynx.tasm.event.LynxTouchEvent.EVENT_TOUCH_START;
+
 import android.graphics.PointF;
 import android.text.Layout;
 import android.text.Spanned;
 import android.view.View;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.shadow.NativeLayoutNodeRef.InlineViewEventSpan;
 import com.lynx.tasm.behavior.shadow.text.EventTargetSpan;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
+import com.lynx.tasm.event.EventsListener;
+import com.lynx.tasm.service.ILynxTextService.Page;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 public class UITextUtils {
+  private static final int TEXT_EVENT_TARGET_TAP = 1 << 0;
+  private static final int TEXT_EVENT_TARGET_CLICK = 1 << 1;
+  private static final int TEXT_EVENT_TARGET_LONG_PRESS = 1 << 2;
+  private static final int TEXT_EVENT_TARGET_TOUCH_START = 1 << 3;
+  private static final int TEXT_EVENT_TARGET_TOUCH_MOVE = 1 << 4;
+  private static final int TEXT_EVENT_TARGET_TOUCH_END = 1 << 5;
+  private static final int TEXT_EVENT_TARGET_TOUCH_CANCEL = 1 << 6;
+  private static final int TEXT_SERVICE_EVENT_TARGET_INFO_SIZE = 3;
+
   public static Spanned getSpanned(AndroidText view) {
     if (view == null) {
       return null;
@@ -40,7 +62,11 @@ public class UITextUtils {
   }
 
   public static EventTarget hitTest(LynxBaseUI ui, float x, float y, EventTarget parent,
-      Layout layout, Spanned spanned, PointF textTranslateOffset, boolean ignoreUserInteraction) {
+      Layout layout, Spanned spanned, PointF textTranslateOffset, Page textServicePage,
+      boolean ignoreUserInteraction) {
+    if (textServicePage != null) {
+      return hitTestTextServicePage(ui, x, y, parent, textServicePage, ignoreUserInteraction);
+    }
     if (layout == null || x > layout.getWidth() || y > layout.getHeight()) {
       return parent;
     }
@@ -98,19 +124,68 @@ public class UITextUtils {
       preend = end;
     }
 
-    // If target's type is InlineViewEventSpan, it is an inline view.
-    // Try to find the eventTarget from inline children.
+    return hitTestInlineView(ui, originX, originY, target, ignoreUserInteraction);
+  }
+
+  private static EventTarget hitTestTextServicePage(LynxBaseUI ui, float x, float y,
+      EventTarget parent, Page textServicePage, boolean ignoreUserInteraction) {
+    int[] targets = textServicePage.getHitTestEventTargets(x, y);
+    if (targets == null || targets.length < TEXT_SERVICE_EVENT_TARGET_INFO_SIZE) {
+      return parent;
+    }
+    int sign = targets[0];
+    int eventMask = targets[1];
+    boolean isInlineView = targets[2] != 0;
+    if (!isInlineView && sign == parent.getSign()) {
+      return parent;
+    }
+
+    Map<String, EventsListener> events = buildEventListeners(eventMask);
+    EventTargetSpan target = isInlineView
+        ? new InlineViewEventSpan(sign, events, EventTarget.EnableStatus.Undefined, true,
+            EventTarget.EnableStatus.Undefined, EventTarget.PointerEventsValue.Unset,
+            new JavaOnlyMap())
+        : new EventTargetSpan(sign, events, EventTarget.EnableStatus.Undefined, true,
+            EventTarget.EnableStatus.Undefined, EventTarget.PointerEventsValue.Unset,
+            new JavaOnlyMap());
+    target.setParent(parent);
+    return hitTestInlineView(ui, x, y, target, ignoreUserInteraction);
+  }
+
+  private static EventTarget hitTestInlineView(
+      LynxBaseUI ui, float x, float y, EventTarget target, boolean ignoreUserInteraction) {
     if (target instanceof InlineViewEventSpan) {
       for (LynxBaseUI childUI : ui.getChildren()) {
         if (childUI.getSign() == target.getSign()) {
-          // input position relative to inline view
-          return childUI.hitTest(originX - childUI.getOriginLeft(),
-              originY - childUI.getOriginTop(), ignoreUserInteraction);
+          return childUI.hitTest(
+              x - childUI.getOriginLeft(), y - childUI.getOriginTop(), ignoreUserInteraction);
         }
       }
     }
-
     return target;
+  }
+
+  private static Map<String, EventsListener> buildEventListeners(int eventMask) {
+    if (eventMask == 0) {
+      return null;
+    }
+    Map<String, EventsListener> events = new HashMap<>();
+    addEventListener(events, eventMask, TEXT_EVENT_TARGET_TAP, EVENT_TAP);
+    addEventListener(events, eventMask, TEXT_EVENT_TARGET_CLICK, EVENT_CLICK);
+    addEventListener(events, eventMask, TEXT_EVENT_TARGET_LONG_PRESS, EVENT_LONG_PRESS);
+    addEventListener(events, eventMask, TEXT_EVENT_TARGET_TOUCH_START, EVENT_TOUCH_START);
+    addEventListener(events, eventMask, TEXT_EVENT_TARGET_TOUCH_MOVE, EVENT_TOUCH_MOVE);
+    addEventListener(events, eventMask, TEXT_EVENT_TARGET_TOUCH_END, EVENT_TOUCH_END);
+    addEventListener(events, eventMask, TEXT_EVENT_TARGET_TOUCH_CANCEL, EVENT_TOUCH_CANCEL);
+    return events.isEmpty() ? null : events;
+  }
+
+  private static void addEventListener(
+      Map<String, EventsListener> events, int eventMask, int event, String eventName) {
+    if ((eventMask & event) == 0) {
+      return;
+    }
+    events.put(eventName, null);
   }
 
   public static void HandleInlineViewTruncated(TextUpdateBundle bundle, LynxBaseUI textUI) {
