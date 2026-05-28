@@ -24,8 +24,11 @@ namespace tasm {
 
 UIDelegateClay::UIDelegateClay(
     clay::ViewContext* view_context,
-    std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory)
-    : view_context_(view_context), module_factory_(std::move(module_factory)) {
+    std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory,
+    std::function<void()> request_platform_layout)
+    : view_context_(view_context),
+      module_factory_(std::move(module_factory)),
+      request_platform_layout_(std::move(request_platform_layout)) {
   event_dispatcher_ = std::make_unique<clay::LynxEventDispatcher>();
   view_context->SetEventDelegate(event_dispatcher_.get());
 }
@@ -40,7 +43,8 @@ UIDelegateClay::~UIDelegateClay() {
 
 std::unique_ptr<PaintingCtxPlatformImpl>
 UIDelegateClay::CreatePaintingContext() {
-  auto painting_context = std::make_unique<PaintingContextClay>(view_context_);
+  auto painting_context = std::make_unique<PaintingContextClay>(
+      view_context_, request_platform_layout_);
   painting_context_ = painting_context.get();
   return painting_context;
 }

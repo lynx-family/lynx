@@ -5,6 +5,7 @@
 #ifndef CLAY_LYNX_ADAPTOR_UI_DELEGATE_CLAY_H_
 #define CLAY_LYNX_ADAPTOR_UI_DELEGATE_CLAY_H_
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -28,7 +29,8 @@ class UIDelegateClay : public UIDelegate {
  public:
   UIDelegateClay(
       clay::ViewContext* view_context,
-      std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory);
+      std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory,
+      std::function<void()> request_platform_layout = nullptr);
   ~UIDelegateClay() override;
 
   std::unique_ptr<PaintingCtxPlatformImpl> CreatePaintingContext() override;
@@ -80,6 +82,7 @@ class UIDelegateClay : public UIDelegate {
  private:
   clay::ViewContext* view_context_;
   std::unique_ptr<runtime::NativeModuleFactory> module_factory_;
+  std::function<void()> request_platform_layout_;
   std::unique_ptr<clay::LynxEventDispatcher> event_dispatcher_;
   // Save a PaintingContextClay raw pointer to set the LynxEngineProxy and
   // LynxRuntimeProxy objects after the Lynx instance is created.

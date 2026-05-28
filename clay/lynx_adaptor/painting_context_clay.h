@@ -5,6 +5,7 @@
 #ifndef CLAY_LYNX_ADAPTOR_PAINTING_CONTEXT_CLAY_H_
 #define CLAY_LYNX_ADAPTOR_PAINTING_CONTEXT_CLAY_H_
 
+#include <functional>
 #include <list>
 #include <memory>
 #include <string>
@@ -61,7 +62,9 @@ class PaintingContextClayRef : public PaintingCtxPlatformRef {
 class PaintingContextClay : public PaintingCtxPlatformImpl,
                             public clay::UIComponentDelegate {
  public:
-  explicit PaintingContextClay(clay::ViewContext* view_context);
+  explicit PaintingContextClay(
+      clay::ViewContext* view_context,
+      std::function<void()> request_platform_layout = nullptr);
   ~PaintingContextClay() override;
 
   void SetUIOperationQueue(
@@ -92,6 +95,7 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
       const std::shared_ptr<PipelineOptions>& options) override;
   void FinishLayoutOperation(
       const std::shared_ptr<PipelineOptions>& options) override;
+  void RequestPlatformLayout();
 
   std::vector<float> getBoundingClientOrigin(int id) override;
   void InvokeUIMethod(int32_t view_id, const std::string& method,
@@ -169,6 +173,7 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   std::list<int32_t> GetAncestorElements(int32_t tag) override;
 
   clay::ViewContext* view_context_ = nullptr;
+  std::function<void()> request_platform_layout_;
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_ = nullptr;
   std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy_ = nullptr;
 

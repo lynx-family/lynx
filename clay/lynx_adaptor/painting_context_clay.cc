@@ -135,8 +135,11 @@ void PaintingContextClayRef::SetGestureDetectorState(int64_t id,
   view_context_->SetGestureDetectorState(id, gesture_id, state);
 }
 
-PaintingContextClay::PaintingContextClay(clay::ViewContext* view_context)
-    : view_context_(view_context) {
+PaintingContextClay::PaintingContextClay(
+    clay::ViewContext* view_context,
+    std::function<void()> request_platform_layout)
+    : view_context_(view_context),
+      request_platform_layout_(std::move(request_platform_layout)) {
   FML_DCHECK(view_context);
   platform_ref_ = std::make_shared<PaintingContextClayRef>(view_context);
   view_context_->SetUIComponentDelegate(this);
@@ -158,13 +161,23 @@ void PaintingContextClay::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions>& options) {
   const int32_t child_view_id = options ? options->list_comp_id_ : 0;
   const int32_t parent_view_id = options ? options->list_id_ : 0;
-  auto task = [view_context = view_context_, child_view_id, parent_view_id]() {
+  auto task = [view_context = view_context_, child_view_id, parent_view_id,
+               request_platform_layout = request_platform_layout_]() {
     view_context->FinishLayoutOperation(child_view_id, parent_view_id);
+    if (request_platform_layout) {
+      request_platform_layout();
+    }
   };
   if (ui_operation_queue_ref_) {
     Enqueue(std::move(task));
   } else {
     task();
+  }
+}
+
+void PaintingContextClay::RequestPlatformLayout() {
+  if (request_platform_layout_) {
+    request_platform_layout_();
   }
 }
 
