@@ -75,7 +75,7 @@ jobs:
         run: |
           set -e
           source tools/envsetup.sh
-          tools/rtf/rtf native-ut run --names lynx
+          tools/rtf/rtf native-ut run --names lynx --enable-flutter-cxx
 
   linux-native-unittests-check:
     runs-on: lynx-ubuntu-22.04-large
@@ -95,7 +95,7 @@ jobs:
         run: |
           set -e
           source tools/envsetup.sh
-          tools/rtf/rtf native-ut run --names lynx
+          tools/rtf/rtf native-ut run --names lynx --enable-flutter-cxx
 
   linux-native-devtool-unittests-check:
     runs-on: lynx-ubuntu-22.04-large
@@ -115,7 +115,7 @@ jobs:
         run: |
           set -e
           source tools/envsetup.sh
-          tools/rtf/rtf native-ut run --names devtool
+          tools/rtf/rtf native-ut run --names devtool --enable-flutter-cxx
 
   ios-unittests-check:
     timeout-minutes: 60

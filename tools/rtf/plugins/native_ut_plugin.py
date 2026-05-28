@@ -11,7 +11,7 @@ from core.env.env import RTFEnv
 from core.env.trait_template import TraitTemplate
 from core.options.options import Options
 from core.utils.log import Log
-from core.utils.gn_args_helper import inject_flutter_cxx
+from core.utils.gn_args_helper import inject_flutter_cxx, inject_use_xcode
 from core.base.result import Ok, Err
 from core.base.summary import Summary, SummaryConsumer
 from plugins.plugin import Plugin
@@ -23,7 +23,8 @@ class NativeUTListener(Options.OptionsListener):
         super().__init__()
 
     def did_include(self, options, builders, targets, coverage):
-        inject_flutter_cxx(builders, options.get_bool("disable_flutter_cxx", False))
+        inject_flutter_cxx(builders, options.get_bool("enable_flutter_cxx", False))
+        inject_use_xcode(builders, options.get_bool("enable_use_xcode", False))
 
         builder_map = {}
         label = self.generate_label(options.workspace)
@@ -96,17 +97,24 @@ class NativeUTPlugin(Plugin):
             with open(template, "r") as template_file:
                 context = RTFContext(RTFEnv.get_project_root_path())
                 context.options = Options(context, args.args)
-                disable_flutter_cxx = getattr(args, "disable_flutter_cxx", False)
+                enable_flutter_cxx = getattr(args, "enable_flutter_cxx", False)
+                enable_use_xcode = getattr(args, "enable_use_xcode", False)
                 context.insert_variable(
-                    "disable_flutter_cxx", "true" if disable_flutter_cxx else "false"
+                    "enable_flutter_cxx", "true" if enable_flutter_cxx else "false"
+                )
+                context.insert_variable(
+                    "enable_use_xcode", "true" if enable_use_xcode else "false"
                 )
                 context.options.register_listener(NativeUTListener())
                 exec(template_file.read(), context.export())
                 # did_include only fires when the template calls include().
                 # For templates that define builder/targets directly, we must
-                # inject use_flutter_cxx here so --disable-flutter-cxx works.
+                # inject use_flutter_cxx here so --enable-flutter-cxx works.
                 inject_flutter_cxx(
-                    context.find_variable("builder") or {}, disable_flutter_cxx
+                    context.find_variable("builder") or {}, enable_flutter_cxx
+                )
+                inject_use_xcode(
+                    context.find_variable("builder") or {}, enable_use_xcode
                 )
                 template = TraitTemplate.trait_from_context(context)
             if args.command == "run":
@@ -206,11 +214,19 @@ class NativeUTPlugin(Plugin):
         )
 
         subparser_subparser.add_argument(
-            "--disable-flutter-cxx",
-            dest="disable_flutter_cxx",
+            "--enable-flutter-cxx",
+            dest="enable_flutter_cxx",
             action="store_true",
             default=False,
-            help="Disable use_flutter_cxx in GN args. Default: enabled (true)",
+            help="Enable use_flutter_cxx in GN args. Default: disabled (false)",
+        )
+
+        subparser_subparser.add_argument(
+            "--enable-use-xcode",
+            dest="enable_use_xcode",
+            action="store_true",
+            default=False,
+            help="Enable use_xcode in GN args. Default: disabled (false)",
         )
 
         subparser_subparser = subparser_subparsers.add_parser(
