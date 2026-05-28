@@ -6,6 +6,9 @@
 #define CORE_RENDERER_UI_WRAPPER_LAYOUT_TEXTRA_TEXT_LAYOUT_API_H_
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/fiber/text_props.h"
@@ -26,6 +29,11 @@ struct MeasureParams {
   LayoutMode width_mode;
   float height;
   LayoutMode height_mode;
+};
+struct TextInfo {
+  float width{0};
+  float height{0};
+  std::vector<std::string> lines;
 };
 class InlineView {
  public:
@@ -132,6 +140,9 @@ class TextLayoutAPI {
   virtual Page *GetPage(Paragraph *paragraph) = 0;
   virtual void DestroyPage(Page *page) = 0;
   virtual void DestroyParagraph(Paragraph *paragraph) = 0;
+  virtual TextInfo GetTextInfo(std::string_view text, float font_size,
+                               std::string_view font_family, float max_width,
+                               int max_line) = 0;
 };
 }  // namespace text
 }  // namespace tasm
