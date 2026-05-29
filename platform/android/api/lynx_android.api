@@ -5718,6 +5718,28 @@ public class com::lynx::tasm::LynxGetUIResult :  {
   public String com.lynx.tasm.LynxGetUIResult.getErrMsg();
 }
 
+public class abstract com::lynx::tasm::LynxGlobalMemoryUsageCallback :  {
+  public void com.lynx.tasm.LynxGlobalMemoryUsageCallback.onResult(@NonNull LynxGlobalMemoryUsageResult result);
+}
+
+public class com::lynx::tasm::LynxGlobalMemoryUsageResult :  {
+  public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionStartMs();
+  public LynxMemoryCollectionStatus com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionStatus();
+  public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionDurationMs();
+  public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionTimeoutMs();
+  public int com.lynx.tasm.LynxGlobalMemoryUsageResult.getExpectedInstanceCount();
+  public int com.lynx.tasm.LynxGlobalMemoryUsageResult.getCompletedInstanceCount();
+  public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getTotalBytes();
+  public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getAppBytes();
+  public double com.lynx.tasm.LynxGlobalMemoryUsageResult.getRatioToApp();
+  public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getElementBytes();
+  public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getElementNodeCount();
+  public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getViewBytes();
+  public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getMainThreadRuntimeBytes();
+  public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getBackgroundThreadRuntimeBytes();
+  public List< LynxInstanceMemoryUsage > com.lynx.tasm.LynxGlobalMemoryUsageResult.getInstances();
+}
+
 public class com::lynx::tasm::LynxGroup :  {
   public String com.lynx.tasm.LynxGroup.SINGNLE_GROUP SINGNLE_GROUP;
   public String com.lynx.tasm.LynxGroup.getID();
@@ -5905,6 +5927,20 @@ public class com::lynx::tasm::LynxInfoReportHelper :  {
 
 public interface com::lynx::devtoolwrapper::LynxInspectorConsoleDelegate {
   public void com.lynx.devtoolwrapper.LynxInspectorConsoleDelegate.onConsoleMessage(String msg);
+}
+
+public class com::lynx::tasm::LynxInstanceMemoryUsage :  {
+  public int com.lynx.tasm.LynxInstanceMemoryUsage.getInstanceId();
+  public String com.lynx.tasm.LynxInstanceMemoryUsage.getPageId();
+  public String com.lynx.tasm.LynxInstanceMemoryUsage.getUrl();
+  public long com.lynx.tasm.LynxInstanceMemoryUsage.getTotalBytes();
+  public long com.lynx.tasm.LynxInstanceMemoryUsage.getElementBytes();
+  public long com.lynx.tasm.LynxInstanceMemoryUsage.getElementNodeCount();
+  public long com.lynx.tasm.LynxInstanceMemoryUsage.getViewBytes();
+  public Map< String, Long > com.lynx.tasm.LynxInstanceMemoryUsage.getViewDetail();
+  public long com.lynx.tasm.LynxInstanceMemoryUsage.getMainThreadRuntimeBytes();
+  public long com.lynx.tasm.LynxInstanceMemoryUsage.getBackgroundThreadRuntimeBytes();
+  public String com.lynx.tasm.LynxInstanceMemoryUsage.getBtsRuntimeGroupId();
 }
 
 public class com::lynx::tasm::event::LynxInternalEvent :  {
@@ -6104,6 +6140,11 @@ public class abstract com::lynx::tasm::resourceprovider::media::LynxMediaResourc
   public void com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher.fetchImage(LynxResourceRequest request, LynxResourceCallback< Closeable > callback);
 }
 
+public enum com::lynx::tasm::LynxMemoryCollectionStatus {
+  public com.lynx.tasm.LynxMemoryCollectionStatus.COMPLETED COMPLETED;
+  public com.lynx.tasm.LynxMemoryCollectionStatus.TIMEOUT TIMEOUT;
+}
+
 public class com::lynx::tasm::service::LynxMemoryInfo :  {
   public final String com.lynx.tasm.service.LynxMemoryInfo.TYPE_IMAGE TYPE_IMAGE;
   public long com.lynx.tasm.service.LynxMemoryInfo.getFetchDuration();
@@ -6128,6 +6169,11 @@ public class com::lynx::tasm::service::LynxMemoryInfo :  {
 }
 
 public interface com::lynx::tasm::service::LynxMemoryInfo::LynxMemoryType {
+}
+
+public class com::lynx::tasm::LynxMemoryUsageQuery :  {
+  public static LynxMemoryUsageQuery com.lynx.tasm.LynxMemoryUsageQuery.inst();
+  public void com.lynx.tasm.LynxMemoryUsageQuery.queryLynxGlobalMemoryUsageAsync(@Nullable LynxGlobalMemoryUsageCallback callback);
 }
 
 public interface com::lynx::jsbridge::LynxMethod {
