@@ -48,6 +48,12 @@ class TaskSource {
   };
 
   struct PendingTasks {
+    PendingTasks() = default;
+    PendingTasks(const PendingTasks&) = delete;
+    PendingTasks& operator=(const PendingTasks&) = delete;
+    PendingTasks(PendingTasks&&) = default;
+    PendingTasks& operator=(PendingTasks&&) = default;
+
     fml::DelayedTaskQueue primary;
     fml::DelayedTaskQueue emergency;
     fml::DelayedTaskQueue micro;
