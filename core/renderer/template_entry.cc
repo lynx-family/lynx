@@ -653,7 +653,7 @@ bool TemplateEntry::LoadLepusChunk(const std::string& entry_path,
 
 std::unique_ptr<LynxBinaryRecyclerDelegate>
 TemplateEntry::GetTemplateBundleRecycler() {
-  return reader_ ? reader_->CreateRecycler() : nullptr;
+  return template_bundle_.CreateRecycler();
 }
 
 fml::RefPtr<FiberElement> TemplateEntry::TryToGetElementCache() {

@@ -40,6 +40,7 @@ class DevToolPool;
 
 namespace tasm {
 class LynxBinaryLazyReaderDelegate;
+class LynxBinaryRecyclerDelegate;
 
 class LepusChunkManager {
  public:
@@ -107,6 +108,8 @@ class LynxTemplateBundle final {
       const std::string& chunk_key);
 
   bool DecodeCSSFragmentById(int32_t fragment_id);
+
+  std::unique_ptr<LynxBinaryRecyclerDelegate> CreateRecycler();
 
   bool IsCard() const { return app_type_ == APP_TYPE_CARD; }
   bool GetContainsElementTree() const { return element_bundle_.IsValid(); };
