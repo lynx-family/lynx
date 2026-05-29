@@ -6,18 +6,15 @@ package com.lynx.tasm.core.resource;
 
 import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.LLog;
-import java.lang.ref.WeakReference;
 
 /**
- * Provide unified external script loading callback
+ * Provide unified generic resource loading callback.
  */
 class GenericResourceCallback extends GuardedResourceCallback {
   private final long mResponseHandler;
-  private WeakReference<LynxResourceLoader> weakLoader;
 
-  GenericResourceCallback(LynxResourceLoader loader, String url, long responseHandler) {
+  GenericResourceCallback(String url, long responseHandler) {
     super(url);
-    this.weakLoader = new WeakReference<>(loader);
     this.mResponseHandler = responseHandler;
   }
 
