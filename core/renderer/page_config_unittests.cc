@@ -97,6 +97,16 @@ TEST(PageConfigTest, EnableElementApiNewRegistration) {
       LynxEnv::Key::ENABLE_ELEMENT_API_NEW_REGISTRATION);
 }
 
+TEST(PageConfigTest, EnableEventTargetInfoNodeIndex) {
+  std::shared_ptr<PageConfig> page_config = std::make_shared<PageConfig>();
+  EXPECT_FALSE(page_config->GetEnableEventTargetInfoNodeIndex());
+
+  rapidjson::Document doc;
+  doc.Parse("{\n  \"enableEventTargetInfoNodeIndex\" : true\n}");
+  LynxConfigDecoder::DecodePageConfig(page_config, doc, "");
+  EXPECT_TRUE(page_config->GetEnableEventTargetInfoNodeIndex());
+}
+
 TEST(PageConfigTest, EnableComponentAsyncDecode) {
   CHECK_CONFIG_VALUE(EnableComponentAsyncDecode, false, true, false);
 }

@@ -788,6 +788,10 @@ class ElementManager : public ElementContextDelegate,
     return config_ ? config_->GetEnableMultiTouchParamsCompatible() : false;
   }
 
+  bool GetEnableEventTargetInfoNodeIndex() const {
+    return config_ ? config_->GetEnableEventTargetInfoNodeIndex() : false;
+  }
+
   std::shared_ptr<base::VSyncMonitor> &vsync_monitor() {
     return vsync_monitor_;
   }

@@ -803,6 +803,12 @@ class LynxConfigDecoder final {
           LynxEnv::GetInstance().EnableMultiTouch());
     }
 
+    if (doc.HasMember(config::kEnableEventTargetInfoNodeIndex) &&
+        doc[config::kEnableEventTargetInfoNodeIndex].IsBool()) {
+      page_config->SetEnableEventTargetInfoNodeIndex(
+          doc[config::kEnableEventTargetInfoNodeIndex].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableHarmonyVisibleAreaChangeForExposure) &&
         doc[config::kEnableHarmonyVisibleAreaChangeForExposure].IsBool()) {
       page_config->SetEnableHarmonyVisibleAreaChangeForExposure(

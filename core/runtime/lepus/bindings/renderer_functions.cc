@@ -2659,7 +2659,7 @@ RENDERER_FUNCTION_CC(FiberCreateComponent) {
   // [4] String -> component name
   // [5] String -> component path
   // [6] Object -> component config, not used now
-  // [7] Object|Undefined -> optional info, not used now
+  // [7] Object|Undefined -> optional element info
   CHECK_ARGC_GE(FiberCreateComponent, 6);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, Number, FiberCreateComponent);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, String, FiberCreateComponent);
@@ -2667,8 +2667,6 @@ RENDERER_FUNCTION_CC(FiberCreateComponent) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg3, 3, String, FiberCreateComponent);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg4, 4, String, FiberCreateComponent);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg5, 5, String, FiberCreateComponent);
-  CONVERT_ARG(arg6, 6);
-
   auto* self = GET_TASM_POINTER();
   auto& manager = self->page_proxy()->element_manager();
   const auto& parent_component_unique_id = static_cast<int64_t>(arg0->Number());
@@ -2688,21 +2686,35 @@ RENDERER_FUNCTION_CC(FiberCreateComponent) {
   component_element->set_style_sheet_manager(
       self->style_sheet_manager(entry_name_str));
 
-  if (argc >= 7 && arg6->IsObject()) {
-    if (arg6->GetProperty(BASE_STATIC_STRING(kRemoveComponentElement))
-            .IsTrue()) {
-      component_element->MarkAsWrapperComponent();
+  if (argc >= 7) {
+    CONVERT_ARG(arg6, 6);
+    if (arg6->IsObject()) {
+      if (arg6->GetProperty(BASE_STATIC_STRING(kRemoveComponentElement))
+              .IsTrue()) {
+        component_element->MarkAsWrapperComponent();
+      }
+      // TODO(zhouzhitao): Currently, the Component Element is non-standard, and
+      // in fact, TTML is given a non-standard behavior based on this
+      // non-standard Component Element. In the future, the Component Element is
+      // expected to be gradually deprecated, and TTML should also migrate to
+      // the standard API. Therefore, for now, this logic will not be added to
+      // SetConfig; the standard behavior should be a combination of the two
+      // PAPIs.
+      if (arg6->GetProperty(BASE_STATIC_STRING(kIsAsyncFlushRoot)).IsTrue()) {
+        component_element->MarkAsyncFlushRoot(true);
+      }
+      component_element->SetConfig(arg6->ToLepusValue());
     }
-    // TODO(zhouzhitao): Currently, the Component Element is non-standard, and
-    // in fact, TTML is given a non-standard behavior based on this non-standard
-    // Component Element. In the future, the Component Element is expected to be
-    // gradually deprecated, and TTML should also migrate to the standard API.
-    // Therefore, for now, this logic will not be added to SetConfig; the
-    // standard behavior should be a combination of the two PAPIs.
-    if (arg6->GetProperty(BASE_STATIC_STRING(kIsAsyncFlushRoot)).IsTrue()) {
-      component_element->MarkAsyncFlushRoot(true);
+  }
+
+  if (argc >= 8) {
+    CONVERT_ARG(arg7, 7);
+    if (arg7->IsObject()) {
+      const auto& nid = arg7->GetProperty(BASE_STATIC_STRING(kNodeIndex));
+      if (nid.IsNumber()) {
+        component_element->SetNodeIndex(nid.Number());
+      }
     }
-    component_element->SetConfig(arg6->ToLepusValue());
   }
 
   ON_NODE_CREATE(component_element);

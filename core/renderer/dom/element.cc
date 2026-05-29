@@ -2417,6 +2417,7 @@ lepus::Value Element::GetEventTargetInfo(bool is_core_event) {
     BASE_STATIC_STRING_DECL(kId, "id");
     BASE_STATIC_STRING_DECL(kDataset, "dataset");
     BASE_STATIC_STRING_DECL(kUid, "uid");
+    BASE_STATIC_STRING_DECL(kNodeIndex, "nodeIndex");
 
     dict.get()->SetValue(kId, data_model_->idSelector());
     auto dataset = lepus::Dictionary::Create();
@@ -2425,6 +2426,10 @@ lepus::Value Element::GetEventTargetInfo(bool is_core_event) {
     }
     dict.get()->SetValue(kDataset, std::move(dataset));
     dict.get()->SetValue(kUid, id_);
+    if (element_manager_ &&
+        element_manager_->GetEnableEventTargetInfoNodeIndex()) {
+      dict.get()->SetValue(kNodeIndex, node_index_);
+    }
   }
 
   // element ref needed in fiber element worklet

@@ -148,7 +148,8 @@ declare global {
     entryName: string,
     name: string,
     path: string,
-    config?: Record<string, unknown>
+    config?: Record<string, unknown>,
+    info?: ElementInfo,
   ): ComponentElementRef;
 
   function __CreateView(parentComponentUniId: number, info?: ElementInfo): ViewElementRef;
