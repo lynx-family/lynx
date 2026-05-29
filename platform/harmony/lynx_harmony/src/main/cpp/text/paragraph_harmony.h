@@ -26,6 +26,15 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+class UIBase;
+
+struct InlineEmojiInfo {
+  std::string name;
+  size_t placeholder_index{0};
+  float width{0.f};
+  float height{0.f};
+};
+
 class TextBoxHarmony {
  public:
   explicit TextBoxHarmony(OH_Drawing_TextBox* text_box) : text_box_(text_box) {}
@@ -78,11 +87,13 @@ class ParagraphHarmony : public fml::RefCountedThreadSafeStorage {
       std::shared_ptr<FontCollectionHarmony>& font_collection,
       std::list<std::shared_ptr<TextEventTarget>>&& event_target_roots,
       std::vector<int32_t>&& placeholder_signs,
+      std::vector<InlineEmojiInfo>&& inline_emojis,
       std::optional<std::list<fml::RefPtr<ShaderEffect>>>&& effects)
       : paragraph_(para),
         font_collection_(font_collection),
         event_target_roots_(std::move(event_target_roots)),
         placeholder_signs_(std::move(placeholder_signs)),
+        inline_emojis_(std::move(inline_emojis)),
         effects_(std::move(effects)) {}
 
   ~ParagraphHarmony() override {
@@ -102,6 +113,10 @@ class ParagraphHarmony : public fml::RefCountedThreadSafeStorage {
   }
 
   void Draw(OH_Drawing_Canvas* canvas, double x, double y) const;
+
+  void SetEmojiInvalidateTarget(std::weak_ptr<UIBase> target) {
+    emoji_invalidate_target_ = std::move(target);
+  }
 
   float GetMaxWidth() const {
     return static_cast<float>(OH_Drawing_TypographyGetMaxWidth(paragraph_));
@@ -270,9 +285,11 @@ class ParagraphHarmony : public fml::RefCountedThreadSafeStorage {
   float translate_left_offset_{0.f};
   std::list<std::shared_ptr<TextEventTarget>> event_target_roots_;
   std::vector<int32_t> placeholder_signs_;
+  std::vector<InlineEmojiInfo> inline_emojis_;
   bool has_generate_event_rects_{false};
   std::optional<std::list<fml::RefPtr<ShaderEffect>>> effects_;
   std::string text_;
+  std::weak_ptr<UIBase> emoji_invalidate_target_;
 };
 
 class PlaceholderHarmony {

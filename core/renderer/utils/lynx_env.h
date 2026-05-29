@@ -159,6 +159,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_FRAME_NATIVE_DATA,
     ENABLE_READABLE_STREAM_MEM_FIX,
     ENABLE_ELEMENT_API_NEW_REGISTRATION,
+    ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -335,6 +336,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_readable_stream_mem_fix"},
             {Key::ENABLE_ELEMENT_API_NEW_REGISTRATION,
              "enable_element_api_new_registration"},
+            {Key::ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
+             "enable_harmony_text_custom_emoji"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -507,6 +510,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableNewStylingPipeline();
   bool EnableFrameNativeData();
   bool EnableReadableStreamMemFix();
+  bool EnableHarmonyTextCustomEmoji();
   bool EnableElementApiNewRegistration();
 
   LynxEnv(const LynxEnv&) = delete;

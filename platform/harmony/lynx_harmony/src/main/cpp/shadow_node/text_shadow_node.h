@@ -85,6 +85,7 @@ class TextShadowNode final : public BaseTextShadowNode,
   InlineTruncationShadowNode* inline_truncation_shadow_node_;
   int32_t origin_char_count_{0};
   int32_t ellipsis_count_{0};
+  std::string rich_type_;
 };
 
 }  // namespace harmony
