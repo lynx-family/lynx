@@ -22,6 +22,7 @@ std::vector<std::u16string> ConvertFromUtf8Vector(
 
 void SemanticsUpdateBuilder::UpdateNode(
     int32_t id, int32_t actions, int32_t flags, int32_t scroll_children,
+    float scroll_position, float scroll_extent_max, float scroll_extent_min,
     const FloatRect& rect, const std::u16string& label,
     const std::string& id_selector,
     const std::vector<std::string>& accessibility_elements,
@@ -32,6 +33,9 @@ void SemanticsUpdateBuilder::UpdateNode(
   node.actions = actions;
   node.flags = flags;
   node.scroll_children = scroll_children;
+  node.scroll_position = scroll_position;
+  node.scroll_extent_max = scroll_extent_max;
+  node.scroll_extent_min = scroll_extent_min;
   node.rect = rect;
   node.label = label;
   node.id_selector = lynx::base::U8StringToU16(id_selector);

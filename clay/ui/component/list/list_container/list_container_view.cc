@@ -58,6 +58,9 @@ void ListContainerView::SetAttribute(const char* attr_c,
         item_keys_.push_back(s);
         item_key_map_[s] = i;
       }
+#ifdef ENABLE_ACCESSIBILITY
+      MarkRebuildSemanticsTree();
+#endif
     }
     if (auto it = info.find(details::kDataSourceStickyStart);
         it != info.end()) {
@@ -206,6 +209,9 @@ void ListContainerView::InsertListItemPaintingNode(BaseView* view) {
   if (delegate_) {
     delegate_->OnListViewDidLayout();
   }
+#ifdef ENABLE_ACCESSIBILITY
+  MarkRebuildSemanticsTree();
+#endif
 }
 
 void ListContainerView::InsertListItemPaintingNodeInternal(BaseView* view) {
@@ -261,6 +267,71 @@ void ListContainerView::UpdateScrollInfo(bool smooth, float estimated_offset,
       SetScrollStatus(Scrollable::ScrollStatus::kAnimating);
     }
   }
+}
+
+#ifdef ENABLE_ACCESSIBILITY
+void ListContainerView::PrepareSemantics(
+    fml::RefPtr<SemanticsNode> parent_node,
+    std::vector<fml::RefPtr<SemanticsNode>>& result,
+    const std::vector<std::string>& ancestor_a11y_elements) {
+  FML_DCHECK(GetSemanticsOwner() &&
+             GetSemanticsOwner()->NeedRebuildSemanticsTree());
+  FML_DCHECK(Parent());
+
+  std::vector<BaseView*> ordered_children = children_;
+  std::stable_sort(
+      ordered_children.begin(), ordered_children.end(),
+      [this](BaseView* lhs, BaseView* rhs) {
+        const int lhs_index = lhs ? GetIndexFromItemKey(lhs->ItemKey()) : -1;
+        const int rhs_index = rhs ? GetIndexFromItemKey(rhs->ItemKey()) : -1;
+        const bool lhs_has_index = lhs_index >= 0;
+        const bool rhs_has_index = rhs_index >= 0;
+        if (lhs_has_index && rhs_has_index && lhs_index != rhs_index) {
+          return lhs_index < rhs_index;
+        }
+        if (lhs_has_index != rhs_has_index) {
+          return lhs_has_index;
+        }
+        return false;
+      });
+
+  PrepareSemanticsWithChildren(ordered_children, parent_node, result,
+                               ancestor_a11y_elements);
+}
+#endif
+
+bool ListContainerView::OnScrollToMiddle(BaseView* target_view) {
+  if (!target_view) {
+    FML_DLOG(ERROR) << "OnScrollToMiddle but view is nullptr";
+    return false;
+  }
+
+  BaseView* item_view = nullptr;
+  for (BaseView* current = target_view; current && current != this;
+       current = current->Parent()) {
+    if (!current->ItemKey().empty()) {
+      item_view = current;
+    }
+    if (current->Parent() == this) {
+      if (!item_view) {
+        item_view = current;
+      }
+      break;
+    }
+  }
+
+  if (!item_view) {
+    return ScrollView::OnScrollToMiddle(target_view);
+  }
+
+  int index = GetIndexFromItemKey(item_view->ItemKey());
+  if (index < 0) {
+    return ScrollView::OnScrollToMiddle(target_view);
+  }
+
+  ScrollToPosition(false, index, 0.f, AlignTo::kMiddle,
+                   target_view->GetIdSelector(), nullptr);
+  return true;
 }
 
 void ListContainerView::AddChild(BaseView* child, int position) {

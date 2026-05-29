@@ -225,34 +225,4 @@ void ListWrapper::OnScrollbarScrolled(float old_position, float new_position,
   }
 }
 
-#ifdef ENABLE_ACCESSIBILITY
-int32_t ListWrapper::GetSemanticsActions() const {
-  return GetListView()->GetSemanticsActions();
-}
-
-int32_t ListWrapper::GetSemanticsFlags() const {
-  return GetListView()->GetSemanticsFlags();
-}
-
-int32_t ListWrapper::GetA11yScrollChildren() const {
-  return GetListView()->GetA11yScrollChildren();
-}
-
-bool ListWrapper::IsAccessibilityElement() const {
-  bool result = BaseView::IsAccessibilityElement();
-  if (!result) {
-    for (auto child : GetListView()->GetChildren()) {
-      if (child->IsAccessibilityElement()) {
-        result = true;
-        break;
-      }
-    }
-  }
-  return result;
-}
-
-FloatRect ListWrapper::GetSemanticsBounds() const {
-  return GetListView()->GetSemanticsBounds();
-}
-#endif
 }  // namespace clay
