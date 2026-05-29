@@ -12,9 +12,11 @@
 #include "core/event/event_dispatcher.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/element_tree_serializer.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
+#include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/jsi_object_wrapper.h"
@@ -439,6 +441,25 @@ std::unordered_map<std::string, std::string> LynxEngine::GetAllJsSource() {
   tasm_->GetDecodedJSSource(source);
   source.emplace("core.js", GetCoreJS());
   return source;
+}
+
+int32_t LynxEngine::GetLynxElementRootSign() {
+  if (tasm_ == nullptr || tasm_->page_proxy() == nullptr) {
+    return tasm::kInvalidImplId;
+  }
+  auto* root = tasm_->page_proxy()->GetPageElement();
+  return root != nullptr ? root->impl_id() : tasm::kInvalidImplId;
+}
+
+std::string LynxEngine::GetLynxElementTreeAsJSONString(int32_t sign) {
+  if (sign == tasm::kInvalidImplId || tasm_ == nullptr ||
+      tasm_->page_proxy() == nullptr ||
+      tasm_->page_proxy()->element_manager() == nullptr) {
+    return "";
+  }
+  auto* node_manager = tasm_->page_proxy()->element_manager()->node_manager();
+  auto* element = node_manager != nullptr ? node_manager->Get(sign) : nullptr;
+  return tasm::ElementTreeSerializer::ToJSONString(element);
 }
 
 void LynxEngine::UpdateDataByJS(runtime::UpdateDataTask task) {
