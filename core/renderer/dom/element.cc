@@ -1139,6 +1139,8 @@ void Element::Animate(const lepus::Value& args,
           args.GetProperty(0).Int32());
   StyleMap styles;
   auto& parser_configs = element_manager()->GetCSSParserConfigs();
+  const bool track_imperative_animations =
+      ShouldTrackImperativeAnimationsForNewPipeline();
   switch (op) {
     case runtime::js::JavaScriptElement::AnimationOperation::START: {
       if (args.GetLength() != 4) {
@@ -1147,10 +1149,10 @@ void Element::Animate(const lepus::Value& args,
       }
       lepus::Value lepus_name;
       base::String animate_name;
+      base::String js_name = args.GetProperty(1).String();
       const auto& table = args.GetProperty(3).Table();
-      // Since autoincrement keys causes the keyframes_map to overflow, we
-      // remove them from keyframes_map when the last animation was overwritten.
-      if (!will_removed_keyframe_name_.empty()) {
+      if (!track_imperative_animations &&
+          !will_removed_keyframe_name_.empty()) {
         if (enable_new_animator()) {
           if (keyframes_map_.has_value()) {
             keyframes_map_->erase(will_removed_keyframe_name_);
@@ -1166,12 +1168,15 @@ void Element::Animate(const lepus::Value& args,
       }
       BASE_STATIC_STRING_DECL(kName, "name");
       auto iter = table->find(kName);
+      bool owns_generated_keyframe = iter == table->end();
       if (iter == table->end()) {
         // If the user has not set animation_name, the system-generated
         // autoincrement key animation_name is used, and it is logged and
         // removed when overridden.
-        animate_name = args.GetProperty(1).String();
-        will_removed_keyframe_name_ = animate_name;
+        animate_name = js_name;
+        if (!track_imperative_animations) {
+          will_removed_keyframe_name_ = animate_name;
+        }
       } else {
         // If the user has set animation_name, it is used.
         animate_name = iter->second.String();
@@ -1179,7 +1184,7 @@ void Element::Animate(const lepus::Value& args,
 
       starlight::CSSStyleUtils::UpdateCSSKeyframes(
           *keyframes_map_, animate_name, args.GetProperty(2), parser_configs);
-      lepus_name = lepus::Value(std::move(animate_name));
+      lepus_name = lepus::Value(animate_name);
       if (!enable_new_animator()) {
         // the unique_id may be the same but the keyframes content is different
         // when Animate trigger each time.
@@ -1202,21 +1207,40 @@ void Element::Animate(const lepus::Value& args,
         }
         UnitHandler::Process(id, value, styles, parser_configs);
       }
+      if (track_imperative_animations) {
+        RecordImperativeAnimationStart(
+            ImperativeAnimationState::Source::kAnimate, js_name, animate_name,
+            owns_generated_keyframe, styles);
+      }
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::PAUSE: {
       BASE_STATIC_STRING_DECL(kPaused, "paused");
       UnitHandler::Process(kPropertyIDAnimationPlayState, lepus::Value(kPaused),
                            styles, parser_configs);
+      if (track_imperative_animations) {
+        UpdateImperativeAnimationPlayState(
+            ImperativeAnimationState::Source::kAnimate,
+            args.GetProperty(1).String(), styles, true);
+      }
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::PLAY: {
       BASE_STATIC_STRING_DECL(kRunning, "running");
       UnitHandler::Process(kPropertyIDAnimationPlayState,
                            lepus::Value(kRunning), styles, parser_configs);
+      if (track_imperative_animations) {
+        UpdateImperativeAnimationPlayState(
+            ImperativeAnimationState::Source::kAnimate,
+            args.GetProperty(1).String(), styles, false);
+      }
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::CANCEL: {
+      if (track_imperative_animations) {
+        CancelImperativeAnimation(ImperativeAnimationState::Source::kAnimate,
+                                  args.GetProperty(1).String());
+      }
       BASE_STATIC_STRING_DECL(kRunning, "running");
       UnitHandler::Process(kPropertyIDAnimationPlayState,
                            lepus::Value(kRunning), styles, parser_configs);
@@ -1228,6 +1252,13 @@ void Element::Animate(const lepus::Value& args,
       };
       DCHECK(reset_names.is_static_buffer());
       ResetStyle(reset_names);
+      break;
+    }
+    case runtime::js::JavaScriptElement::AnimationOperation::FINISH: {
+      if (track_imperative_animations) {
+        FinishImperativeAnimation(ImperativeAnimationState::Source::kAnimate,
+                                  args.GetProperty(1).String());
+      }
       break;
     }
     default:
@@ -1257,6 +1288,8 @@ void Element::AnimateV2(const lepus::Value& args,
           args.GetProperty(0).Int32());
   StyleMap styles;
   auto& parser_configs = element_manager()->GetCSSParserConfigs();
+  const bool track_imperative_animations =
+      ShouldTrackImperativeAnimationsForNewPipeline();
   switch (op) {
     case runtime::js::JavaScriptElement::AnimationOperation::START: {
       if (args.GetLength() != 4) {
@@ -1265,14 +1298,16 @@ void Element::AnimateV2(const lepus::Value& args,
       }
       lepus::Value lepus_name;
       base::String animate_name;
+      base::String js_name = args.GetProperty(1).String();
       const auto& table = args.GetProperty(3).Table();
       BASE_STATIC_STRING_DECL(kName, "name");
       auto iter = table->find(kName);
+      bool owns_generated_keyframe = iter == table->end();
       if (iter == table->end()) {
         // If the user has not set animation_name, the system-generated
         // autoincrement key animation_name is used, and it is logged and
         // removed when overridden.
-        animate_name = args.GetProperty(1).String();
+        animate_name = js_name;
       } else {
         // If the user has set animation_name, it is used.
         animate_name = iter->second.String();
@@ -1280,7 +1315,7 @@ void Element::AnimateV2(const lepus::Value& args,
 
       starlight::CSSStyleUtils::UpdateCSSKeyframes(
           *keyframes_map_, animate_name, args.GetProperty(2), parser_configs);
-      lepus_name = lepus::Value(std::move(animate_name));
+      lepus_name = lepus::Value(animate_name);
       UnitHandler::Process(kPropertyIDAnimationName, lepus_name, styles,
                            parser_configs);
       for (auto& [key, value] : *table) {
@@ -1298,6 +1333,11 @@ void Element::AnimateV2(const lepus::Value& args,
         }
         UnitHandler::Process(id, value, styles, parser_configs);
       }
+      if (track_imperative_animations) {
+        RecordImperativeAnimationStart(
+            ImperativeAnimationState::Source::kAnimateV2, js_name, animate_name,
+            owns_generated_keyframe, styles);
+      }
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::PAUSE: {
@@ -1311,6 +1351,11 @@ void Element::AnimateV2(const lepus::Value& args,
       UnitHandler::Process(kPropertyIDAnimationName,
                            lepus::Value(args.GetProperty(1).StdString()),
                            styles, parser_configs);
+      if (track_imperative_animations) {
+        UpdateImperativeAnimationPlayState(
+            ImperativeAnimationState::Source::kAnimateV2,
+            args.GetProperty(1).String(), styles, true);
+      }
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::PLAY: {
@@ -1324,10 +1369,18 @@ void Element::AnimateV2(const lepus::Value& args,
       UnitHandler::Process(kPropertyIDAnimationName,
                            lepus::Value(args.GetProperty(1).StdString()),
                            styles, parser_configs);
-      break;
+      if (track_imperative_animations) {
+        UpdateImperativeAnimationPlayState(
+            ImperativeAnimationState::Source::kAnimateV2,
+            args.GetProperty(1).String(), styles, false);
+      }
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::CANCEL: {
+      if (track_imperative_animations) {
+        CancelImperativeAnimation(ImperativeAnimationState::Source::kAnimateV2,
+                                  args.GetProperty(1).String());
+      }
       BASE_STATIC_STRING_DECL(kRunning, "running");
       UnitHandler::Process(kPropertyIDAnimationPlayState,
                            lepus::Value(kRunning), styles, parser_configs);
@@ -1341,10 +1394,19 @@ void Element::AnimateV2(const lepus::Value& args,
       ResetStyle(reset_names);
       break;
     }
+    case runtime::js::JavaScriptElement::AnimationOperation::FINISH: {
+      if (track_imperative_animations) {
+        FinishImperativeAnimation(ImperativeAnimationState::Source::kAnimateV2,
+                                  args.GetProperty(1).String());
+      }
+      break;
+    }
     default:
       break;
   }
-  if (!styles.empty()) {
+  if (!styles.empty() &&
+      (!track_imperative_animations ||
+       styles.find(kPropertyIDAnimationName) != styles.end())) {
     computed_css_style()->AppendAnimatedAnimationValue(styles);
     has_keyframe_props_changed_ = true;
   }
@@ -2093,6 +2155,15 @@ CSSKeyframesToken* Element::GetSimpleStyleKeyframesToken(
 
 CSSKeyframesToken* Element::GetCSSKeyframesToken(
     const base::String& animation_name) {
+  if (ShouldTrackImperativeAnimationsForNewPipeline() &&
+      keyframes_map_.has_value() &&
+      imperative_animation_state_.HasAnimationName(animation_name)) {
+    if (auto it = keyframes_map_->find(animation_name);
+        it != keyframes_map_->end()) {
+      return it->second.get();
+    }
+  }
+
   auto* manager = element_manager();
   if (manager && manager->EnableSimpleStyle()) {
     return GetSimpleStyleKeyframesToken(animation_name);
@@ -2723,6 +2794,9 @@ void Element::SetDefaultOverflow(bool visible) {
 }
 
 void Element::DestroyPlatformNode() {
+  if (ShouldTrackImperativeAnimationsForNewPipeline()) {
+    ClearImperativeAnimationState();
+  }
   if (element_container() && has_painting_node_) {
     element_container()->Destroy();
   }
