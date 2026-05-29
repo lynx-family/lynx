@@ -192,11 +192,10 @@ void BaseTextShadowNode::UpdateInheritedTextStyle(
 
 void BaseTextShadowNode::AppendToParagraph(ParagraphBuilderHarmony& builder,
                                            float width, float height) {
+  double font_size = style_.GetFontSize();
+  style_.SetFontHeight(0);
   if (text_props_.has_value() &&
       static_cast<int64_t>(text_props_->line_height) != kLineHeightNormal) {
-    double font_size = text_props_->font_size != -1
-                           ? text_props_->font_size
-                           : context_->DefaultFontSize() * ScaleDensity();
     style_.SetFontHeight(font_size ? text_props_->line_height / font_size : 0);
   }
 

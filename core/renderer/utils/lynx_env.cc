@@ -596,6 +596,10 @@ bool LynxEnv::EnableHarmonyGestureInterrupterUserData() {
   return GetBoolEnv(Key::ENABLE_HARMONY_GESTURE_INTERRUPTER_USER_DATA, false);
 }
 
+bool LynxEnv::EnableHarmonyTextCustomEmoji() {
+  return GetBoolEnv(Key::ENABLE_HARMONY_TEXT_CUSTOM_EMOJI, true);
+}
+
 bool LynxEnv::EnableUnifyFixedBehavior() {
   return GetBoolEnv(Key::ENABLE_UNIFY_FIXED_BEHAVIOR, false);
 }

@@ -19,7 +19,7 @@ export { HttpStreamingDelegate } from './jsbridge/network/HttpStreamingDelegate'
 
 export { LynxUIMethodConstants } from './tasm/behavior/util/LynxUIMethodConstants'
 
-export { LynxEnv } from './tasm/LynxEnv'
+export { LynxEnv, LynxEmojiResource, LynxEmojiResourceFetcher } from './tasm/LynxEnv'
 
 export {
   LynxResourceProvider

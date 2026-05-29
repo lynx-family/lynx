@@ -389,6 +389,15 @@ export class LynxUIMethodConstants {
   public static OPERATION_ERROR: any; = 8
 }
 
+export interface LynxEmojiResource {
+  name: string;
+  uri: string | number;
+}
+
+export interface LynxEmojiResourceFetcher {
+  getEmojiResources(): Array<LynxEmojiResource>;
+}
+
 export const LynxEnv: LynxEnvironment {
   public initialize(context: common.Context): void;
   setAppInfo(appInfo: Map<string, string>): void;
@@ -402,6 +411,7 @@ export const LynxEnv: LynxEnvironment {
   public setQuickjsDebugEnabled(enabled: boolean): void;
   public setTracingDirPath(tracingDirPath: string): void;
   public getTracingDirPath(): string;
+  public setEmojiResourceFetcher(fetcher: LynxEmojiResourceFetcher): void;
   public static setCacheDirPath(cacheDirPath: string): void;
   public isDebugModeEnabled(): boolean;
   public setLogBoxEnabled(enabled: boolean): void;

@@ -126,7 +126,11 @@ void UIText::UpdateExtraData(
     const fml::RefPtr<fml::RefCountedThreadSafeStorage>& bundle) {
   auto* paragraph = reinterpret_cast<ParagraphHarmony*>(bundle.get());
   paragraph_ = fml::RefPtr<ParagraphHarmony>(paragraph);
+  if (!paragraph_) {
+    return;
+  }
   paragraph_->SetEventTargetParent(weak_from_this());
+  paragraph_->SetEmojiInvalidateTarget(weak_from_this());
 
   ClearSelection();
   Invalidate();

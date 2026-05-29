@@ -40,6 +40,7 @@
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/base/base_trace_backend.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/text/emoji_resource_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
 
 #if ENABLE_TESTBENCH_REPLAY
@@ -628,6 +629,10 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   NAPI_CREATE_FUNCTION(env, exports, "initGlobalEnv", InitGlobalEnv);
   NAPI_CREATE_FUNCTION(env, exports, "registerImageService",
                        RegisterImageService);
+  NAPI_CREATE_FUNCTION(env, exports, "setEmojiResourceFetcher",
+                       SetEmojiResourceFetcher);
+  NAPI_CREATE_FUNCTION(env, exports, "preloadCommonEmojiResources",
+                       PreloadCommonEmojiResources);
   NAPI_CREATE_FUNCTION(env, exports, "getBaseTraceBackend",
                        GetBaseTraceBackend);
   NAPI_CREATE_FUNCTION(env, exports, "setTracingDirPath", SetTracingDirPath);
@@ -716,6 +721,25 @@ napi_value LynxTemplateRenderer::RegisterImageService(napi_env env,
   auto service_num = base::NapiUtil::ConvertToPtr(env, args[0]);
   tasm::harmony::UIOwner::image_service =
       reinterpret_cast<tasm::harmony::ImageService*>(service_num);
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::SetEmojiResourceFetcher(
+    napi_env env, napi_callback_info info) {
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  if (argc >= 1 && args[0]) {
+    tasm::harmony::EmojiResourceManager::GetInstance().SetEmojiResourceFetcher(
+        env, args[0]);
+  }
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::PreloadCommonEmojiResources(
+    napi_env env, napi_callback_info info) {
+  tasm::harmony::EmojiResourceManager::GetInstance()
+      .EnsureEmojiResourcesLoaded();
   return nullptr;
 }
 

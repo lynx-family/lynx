@@ -190,7 +190,14 @@ class TextStyleHarmony {
   }
 
   void SetFontSize(double size) {
+    font_size_ = size;
     OH_Drawing_SetTextStyleFontSize(text_style_, size);
+  }
+
+  double GetFontSize() const { return font_size_; }
+
+  double GetEmojiPlaceholderSize() const {
+    return font_height_ > 0 ? font_size_ * font_height_ : font_size_;
   }
 
   void SetFontWeight(OH_Drawing_FontWeight weight) const {
@@ -201,7 +208,8 @@ class TextStyleHarmony {
     OH_Drawing_SetTextStyleBaseLine(text_style_, baseline);
   }
 
-  void SetFontHeight(double height) const {
+  void SetFontHeight(double height) {
+    font_height_ = height;
     OH_Drawing_SetTextStyleFontHeight(text_style_, height);
   }
 
@@ -430,6 +438,8 @@ class TextStyleHarmony {
   OH_Drawing_Brush* foreground_brush_{nullptr};
   std::unique_ptr<ShadowLayerHarmony> shadow_layer_{nullptr};
   std::optional<uint32_t> color_;
+  double font_size_{0};
+  double font_height_{0};
   std::optional<uint32_t> stroke_color_;
   float stroke_width_{-1};
   std::shared_ptr<BackgroundGradientLayer> gradient_color_ = nullptr;
