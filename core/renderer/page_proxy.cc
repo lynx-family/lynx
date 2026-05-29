@@ -1204,16 +1204,16 @@ void PageProxy::HydrateOnFirstScreenIfPossible(
       list_ids->emplace_back(element->impl_id());
     }
 
-    // Apply css sheet manager. Make
-    auto css_manager =
-        tasm->FindEntry(DEFAULT_ENTRY_NAME)->GetStyleSheetManager();
-    if (element_manager()->GetPageElement()) {
-      element_manager()->GetPageElement()->ResetSheetRecursively(css_manager);
-    }
-
     // Call the function to hydrate in lepus.
     // Bind fiber elements with lepus by custom_hydrate_info_.
     if (!HydrateByRootPage()) {
+      // Apply css sheet manager. Make
+      auto css_manager =
+          tasm->FindEntry(DEFAULT_ENTRY_NAME)->GetStyleSheetManager();
+      if (element_manager()->GetPageElement()) {
+        element_manager()->GetPageElement()->ResetSheetRecursively(css_manager);
+      }
+
       BASE_STATIC_STRING_DECL(kSsrHydrate, "ssrHydrate");
       tasm->FindEntry(DEFAULT_ENTRY_NAME)
           ->GetVm()

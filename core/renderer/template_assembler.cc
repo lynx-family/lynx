@@ -745,6 +745,12 @@ void TemplateAssembler::RenderTemplateForFiber(
     // hydrated.
     page_proxy()->element_manager()->ClearExtremeParsedStyles();
     if (page_proxy()->HydrateByRootPage()) {
+      auto css_manager = FindEntry(DEFAULT_ENTRY_NAME)->GetStyleSheetManager();
+      auto* page_element = page_proxy()->element_manager()->GetPageElement();
+      if (page_element) {
+        page_element->ResetSheetRecursively(css_manager);
+      }
+
       auto& context = card->GetVm();
 
       auto page_ref = page_proxy()->element_manager()->GetPageElementRef();
