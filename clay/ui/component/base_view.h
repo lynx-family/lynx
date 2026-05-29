@@ -449,18 +449,13 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void FocusHasChanged(bool focus, bool is_leaf) override;
   // Return true if need to propagate scrolling, or false to stop propagate.
   virtual bool OnScrollToVisible() { return true; }
-  virtual bool OnScrollToMiddle(BaseView* target_view) { return true; }
   // Make a view visible in scrollable container.
   void ScrollToVisible() {
     if (OnScrollToVisible() && Parent()) {
       Parent()->ScrollToVisible();
     }
   }
-  void ScrollToMiddle(BaseView* target_view) {
-    if (OnScrollToMiddle(target_view) && Parent()) {
-      Parent()->ScrollToMiddle(target_view);
-    }
-  }
+  void ScrollToMiddle(BaseView* target_view);
   void SetHasDefaultFocusRing(bool has_focus_ring) override;
   FloatRect CalcFocusRect() const override;
   bool DispatchKeyEventOnFocusNode(const KeyEvent* event) override;
@@ -629,7 +624,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void DecodeImagesRecursively();
 
 #ifdef ENABLE_ACCESSIBILITY
-  virtual FloatRect GetSemanticsBounds() const;
+  FloatRect GetSemanticsBounds() const;
   // Whether enables a11y for this view.
   void SetAccessibilityElement(bool value);
   virtual bool IsAccessibilityElement() const;
@@ -700,9 +695,13 @@ class BaseView : public TypeIdentifiable<BaseView>,
 #ifdef ENABLE_ACCESSIBILITY
   // Some views can update its specific semantics data.
   void UpdateSemanticsData(BaseView* parent_node_view);
-  virtual int32_t GetA11yScrollChildren() const;
-  virtual int32_t GetSemanticsActions() const;
-  virtual int32_t GetSemanticsFlags() const;
+  void PrepareSemanticsWithChildren(
+      const std::vector<BaseView*>& children,
+      fml::RefPtr<SemanticsNode> parent_node,
+      std::vector<fml::RefPtr<SemanticsNode>>& result,
+      const std::vector<std::string>& ancestor_a11y_elements);
+  int32_t GetSemanticsActions() const;
+  int32_t GetSemanticsFlags() const;
 
   SemanticsOwner* GetSemanticsOwner() const;
 

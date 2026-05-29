@@ -48,6 +48,13 @@
 #include "clay/ui/component/inline_image_view.h"
 #include "clay/ui/component/intersection_observer.h"
 #include "clay/ui/component/keywords.h"
+#ifdef ENABLE_ACCESSIBILITY
+#include "clay/ui/component/list/base_list_view.h"
+#include "clay/ui/component/list/list_container/list_container_wrapper.h"
+#include "clay/ui/component/list/list_wrapper.h"
+#include "clay/ui/component/scroll_view.h"
+#include "clay/ui/component/scroll_wrapper.h"
+#endif
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/nested_scroll/nested_scroll_manager.h"
 #include "clay/ui/component/view_context.h"
@@ -91,6 +98,65 @@ clay::Value CreateExposeArray(
 
 static constexpr int64_t kEventStateUpdateDelayTime = 1000;
 static constexpr int64_t kEventStateUpdateIntervalTime = 100;
+
+#ifdef ENABLE_ACCESSIBILITY
+constexpr float kA11yScrollPageRatio = 0.8f;
+
+BaseView* FindA11yScrollTarget(BaseView* view) {
+  for (BaseView* current = view; current; current = current->Parent()) {
+    if (current->Is<ScrollWrapper>()) {
+      return static_cast<ScrollWrapper*>(current)->GetScrollView();
+    }
+    if (current->Is<ListWrapper>()) {
+      return static_cast<ListWrapper*>(current)->GetListView();
+    }
+    if (current->Is<ListContainerWrapper>()) {
+      return static_cast<ListContainerWrapper*>(current)
+          ->GetListContainerView();
+    }
+    if (current->Is<ScrollView>() || current->Is<BaseListView>()) {
+      return current;
+    }
+  }
+  return nullptr;
+}
+
+bool DispatchA11yScrollAction(BaseView* view,
+                              SemanticsNode::SemanticsAction action) {
+  BaseView* scroll_target = FindA11yScrollTarget(view);
+  if (!scroll_target) {
+    FML_DLOG(ERROR) << "A11y scroll action has no scrollable target: "
+                    << static_cast<int32_t>(action);
+    return false;
+  }
+
+  const float page_delta_x =
+      std::max(1.f, scroll_target->Width() * kA11yScrollPageRatio);
+  const float page_delta_y =
+      std::max(1.f, scroll_target->Height() * kA11yScrollPageRatio);
+  float delta_x = 0.f;
+  float delta_y = 0.f;
+  switch (action) {
+    case SemanticsNode::SemanticsAction::kScrollLeft:
+      delta_x = -page_delta_x;
+      break;
+    case SemanticsNode::SemanticsAction::kScrollRight:
+      delta_x = page_delta_x;
+      break;
+    case SemanticsNode::SemanticsAction::kScrollUp:
+      delta_y = -page_delta_y;
+      break;
+    case SemanticsNode::SemanticsAction::kScrollDown:
+      delta_y = page_delta_y;
+      break;
+    default:
+      return false;
+  }
+
+  scroll_target->ScrollBy(delta_x, delta_y);
+  return true;
+}
+#endif
 }  // namespace
 
 #define DEBUG_KEYFRAMES 0
@@ -760,6 +826,13 @@ void PageView::DispatchSemanticsAction(int virtual_view_id, int action) {
     }
     case SemanticsNode::SemanticsAction::kShowOnScreen: {
       view->ScrollToMiddle(view);
+      break;
+    }
+    case SemanticsNode::SemanticsAction::kScrollLeft:
+    case SemanticsNode::SemanticsAction::kScrollRight:
+    case SemanticsNode::SemanticsAction::kScrollUp:
+    case SemanticsNode::SemanticsAction::kScrollDown: {
+      DispatchA11yScrollAction(view, semantics_action);
       break;
     }
     default:

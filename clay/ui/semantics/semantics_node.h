@@ -47,6 +47,9 @@ class SemanticsNode : public AbstractNode,
     int32_t actions;
     int32_t flags;
     int32_t scroll_children;
+    float scroll_position = 0.f;
+    float scroll_extent_max = 0.f;
+    float scroll_extent_min = 0.f;
     std::string id_selector;
     std::u16string label;
     FloatRect semantics_bounds;
@@ -56,6 +59,9 @@ class SemanticsNode : public AbstractNode,
     bool operator==(const SemanticsData& other) {
       return actions == other.actions && flags == other.flags &&
              scroll_children == other.scroll_children &&
+             scroll_position == other.scroll_position &&
+             scroll_extent_max == other.scroll_extent_max &&
+             scroll_extent_min == other.scroll_extent_min &&
              id_selector == other.id_selector && label == other.label &&
              semantics_bounds == other.semantics_bounds &&
              transform == other.transform &&

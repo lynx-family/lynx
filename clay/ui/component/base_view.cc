@@ -32,6 +32,13 @@
 #include "clay/ui/component/expose_manager/expose_observer.h"
 #include "clay/ui/component/inline_image_view.h"
 #include "clay/ui/component/intersection_observer.h"
+#ifdef ENABLE_ACCESSIBILITY
+#include "clay/ui/component/list/base_list_view.h"
+#include "clay/ui/component/list/list_container/list_container_view.h"
+#include "clay/ui/component/list/list_container/list_container_wrapper.h"
+#include "clay/ui/component/list/list_wrapper.h"
+#include "clay/ui/component/scroll_wrapper.h"
+#endif
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
@@ -79,6 +86,117 @@ bool ShouldPassEventToNativeInherited(BaseView* view) {
     return ShouldPassEventToNativeInherited(view->Parent());
   }
 }
+
+#ifdef ENABLE_ACCESSIBILITY
+BaseView* A11yScrollTargetForSemantics(BaseView* view) {
+  if (!view) {
+    return nullptr;
+  }
+  if (view->Is<ListWrapper>()) {
+    return static_cast<ListWrapper*>(view)->GetListView();
+  }
+  if (view->Is<ListContainerWrapper>()) {
+    return static_cast<ListContainerWrapper*>(view)->GetListContainerView();
+  }
+  if (view->Is<ScrollWrapper>()) {
+    return static_cast<ScrollWrapper*>(view)->GetScrollView();
+  }
+  if (view->Is<ScrollView>()) {
+    return view;
+  }
+  if (view->Is<BaseListView>()) {
+    return view;
+  }
+  return nullptr;
+}
+
+int32_t CountAccessibleDescendants(BaseView* view) {
+  if (!view) {
+    return 0;
+  }
+  int32_t count = 0;
+  for (auto* child : view->GetChildren()) {
+    if (!child) {
+      continue;
+    }
+    if (child->IsAccessibilityElement()) {
+      ++count;
+    } else {
+      count += CountAccessibleDescendants(child);
+    }
+  }
+  return count;
+}
+
+int32_t A11yScrollTargetActions(BaseView* target) {
+  if (!target) {
+    return 0;
+  }
+  if (target->Is<ScrollView>()) {
+    return static_cast<ScrollView*>(target)->GetSemanticsActions();
+  }
+#ifndef ENABLE_NATIVE_LIST
+  if (target->Is<BaseListView>()) {
+    return static_cast<BaseListView*>(target)->GetSemanticsActions();
+  }
+#endif
+  return 0;
+}
+
+int32_t A11yScrollTargetFlags(BaseView* target) {
+  if (!target) {
+    return 0;
+  }
+  if (target->Is<ScrollView>()) {
+    return static_cast<ScrollView*>(target)->GetSemanticsFlags();
+  }
+#ifndef ENABLE_NATIVE_LIST
+  if (target->Is<BaseListView>()) {
+    return static_cast<BaseListView*>(target)->GetSemanticsFlags();
+  }
+#endif
+  return 0;
+}
+
+float A11yScrollPosition(BaseView* target) {
+  if (!target) {
+    return 0.f;
+  }
+  if (target->Is<ScrollView>()) {
+    auto* scroll_view = static_cast<ScrollView*>(target);
+    return scroll_view->CanScrollY() ? scroll_view->GetScrollOffset().y()
+                                     : scroll_view->GetScrollOffset().x();
+  }
+#ifndef ENABLE_NATIVE_LIST
+  if (target->Is<BaseListView>()) {
+    return static_cast<BaseListView*>(target)->GetScrollbarScrollOffset();
+  }
+#endif
+  return 0.f;
+}
+
+float A11yScrollExtentMax(BaseView* target) {
+  if (!target) {
+    return 0.f;
+  }
+  if (target->Is<ScrollView>()) {
+    auto* scroll_view = static_cast<ScrollView*>(target);
+    return scroll_view->CanScrollY()
+               ? scroll_view->GetRenderScroll()->MaxScrollHeight()
+               : scroll_view->GetRenderScroll()->MaxScrollWidth();
+  }
+#ifndef ENABLE_NATIVE_LIST
+  if (target->Is<BaseListView>()) {
+    auto* list_view = static_cast<BaseListView*>(target);
+    const float viewport_length = list_view->CanDragScrollOnY()
+                                      ? list_view->Height()
+                                      : list_view->Width();
+    return std::max(0.f, list_view->GetTotalScrollLength() - viewport_length);
+  }
+#endif
+  return 0.f;
+}
+#endif
 
 #if OS_IOS
 bool IsBoundsTransitionProperty(ClayAnimationPropertyType type) {
@@ -368,6 +486,32 @@ Scrollable* BaseView::FindAncestorScrollableView(BaseView* child) {
     parent = parent->Parent();
   }
   return nullptr;
+}
+
+void BaseView::ScrollToMiddle(BaseView* target_view) {
+#ifdef ENABLE_ACCESSIBILITY
+  bool should_propagate = true;
+  if (Is<ListContainerView>()) {
+    should_propagate =
+        static_cast<ListContainerView*>(this)->OnScrollToMiddle(target_view);
+  }
+#ifndef ENABLE_NATIVE_LIST
+  else if (Is<BaseListView>()) {
+    should_propagate =
+        static_cast<BaseListView*>(this)->OnScrollToMiddle(target_view);
+  }
+#endif
+  else if (Is<ScrollView>()) {
+    should_propagate =
+        static_cast<ScrollView*>(this)->OnScrollToMiddle(target_view);
+  }
+  if (!should_propagate) {
+    return;
+  }
+#endif
+  if (Parent()) {
+    Parent()->ScrollToMiddle(target_view);
+  }
 }
 
 void BaseView::AddGestureRecognizer(
@@ -3741,11 +3885,24 @@ void BaseView::UpdateSemanticsData(BaseView* parent_node_view) {
   // SemanticsData has changed.
   semantics_->TransferCurrentData();
 
-  semantics_->GetSemanticsData().actions = GetSemanticsActions();
-  semantics_->GetSemanticsData().flags = GetSemanticsFlags();
-  semantics_->GetSemanticsData().scroll_children = GetA11yScrollChildren();
+  BaseView* a11y_scroll_target = A11yScrollTargetForSemantics(this);
+  semantics_->GetSemanticsData().actions =
+      a11y_scroll_target ? A11yScrollTargetActions(a11y_scroll_target)
+                         : GetSemanticsActions();
+  semantics_->GetSemanticsData().flags =
+      a11y_scroll_target ? A11yScrollTargetFlags(a11y_scroll_target)
+                         : GetSemanticsFlags();
+  semantics_->GetSemanticsData().scroll_children =
+      CountAccessibleDescendants(a11y_scroll_target);
+  semantics_->GetSemanticsData().scroll_position =
+      A11yScrollPosition(a11y_scroll_target);
+  semantics_->GetSemanticsData().scroll_extent_max =
+      A11yScrollExtentMax(a11y_scroll_target);
+  semantics_->GetSemanticsData().scroll_extent_min = 0.f;
   // CAUTION: SemanticsBounds need to be the global bounds to PageView.
-  semantics_->GetSemanticsData().semantics_bounds = GetSemanticsBounds();
+  semantics_->GetSemanticsData().semantics_bounds =
+      a11y_scroll_target ? a11y_scroll_target->GetSemanticsBounds()
+                         : GetSemanticsBounds();
   semantics_->GetSemanticsData().transform =
       AccumulateTransformFromView(parent_node_view);
 
@@ -3757,8 +3914,6 @@ void BaseView::UpdateSemanticsData(BaseView* parent_node_view) {
   semantics_->GetSemanticsData().label = GetAccessibilityLabel();
 }
 
-int32_t BaseView::GetA11yScrollChildren() const { return 0; }
-
 int32_t BaseView::GetSemanticsActions() const {
   int32_t actions = 0;
   if (HasTapEvent() || HasTapGestureRecognizer()) {
@@ -3767,25 +3922,60 @@ int32_t BaseView::GetSemanticsActions() const {
   if (HasLongPressEvent() || HasLongPressGestureRecognizer()) {
     actions |= static_cast<int32_t>(SemanticsNode::SemanticsAction::kLongPress);
   }
-  if (Parent() && Parent()->Is<ScrollView>()) {
-    if (static_cast<ScrollView*>(Parent())->CanScrollX()) {
-      actions |=
-          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollLeft) |
-          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollRight);
-    } else if (static_cast<ScrollView*>(Parent())->CanScrollY()) {
-      actions |=
-          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollUp) |
-          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollDown);
+  auto add_scroll_actions = [&actions](ScrollableDirection direction,
+                                       bool can_scroll_x, bool can_scroll_y) {
+    if (can_scroll_x) {
+      if ((direction & ScrollableDirection::kLeftwards) !=
+          ScrollableDirection::kNone) {
+        actions |=
+            static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollLeft);
+      }
+      if ((direction & ScrollableDirection::kRightwards) !=
+          ScrollableDirection::kNone) {
+        actions |=
+            static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollRight);
+      }
+    } else if (can_scroll_y) {
+      if ((direction & ScrollableDirection::kUpwards) !=
+          ScrollableDirection::kNone) {
+        actions |=
+            static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollUp);
+      }
+      if ((direction & ScrollableDirection::kDownwards) !=
+          ScrollableDirection::kNone) {
+        actions |=
+            static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollDown);
+      }
     }
+  };
+  for (BaseView* parent = Parent(); parent; parent = parent->Parent()) {
+    if (parent->Is<ScrollView>()) {
+      auto* scroll_view = static_cast<ScrollView*>(parent);
+      add_scroll_actions(scroll_view->GetScrollableDirection(),
+                         scroll_view->CanScrollX(), scroll_view->CanScrollY());
+      break;
+    }
+#ifndef ENABLE_NATIVE_LIST
+    if (parent->Is<BaseListView>()) {
+      auto* list_view = static_cast<BaseListView*>(parent);
+      add_scroll_actions(list_view->GetScrollableDirection(),
+                         list_view->CanDragScrollOnX(),
+                         list_view->CanDragScrollOnY());
+      break;
+    }
+#endif
   }
   return actions;
 }
 
 int32_t BaseView::GetSemanticsFlags() const {
   int32_t flags = 0;
-  if (Parent() && Parent()->Is<ScrollView>()) {
-    flags |= static_cast<int32_t>(
-        SemanticsNode::SemanticsFlag::kHasImplicitScrolling);
+  for (BaseView* parent = Parent(); parent; parent = parent->Parent()) {
+    if (parent->Is<ScrollView>() || parent->Is<BaseListView>()) {
+      flags |= static_cast<int32_t>(
+          SemanticsNode::SemanticsFlag::kHasImplicitScrolling);
+      break;
+    }
   }
   return flags;
 }
@@ -3811,6 +4001,15 @@ void BaseView::PrepareSemantics(
   FML_DCHECK(GetSemanticsOwner() &&
              GetSemanticsOwner()->NeedRebuildSemanticsTree());
   FML_DCHECK(Parent());
+  PrepareSemanticsWithChildren(children_, parent_node, result,
+                               ancestor_a11y_elements);
+}
+
+void BaseView::PrepareSemanticsWithChildren(
+    const std::vector<BaseView*>& children,
+    fml::RefPtr<SemanticsNode> parent_node,
+    std::vector<fml::RefPtr<SemanticsNode>>& result,
+    const std::vector<std::string>& ancestor_a11y_elements) {
   // This view is not a11y visible when its ancestors have specified
   // accessibility-elements and its id_selector is not inside it.
   if (!IsAccessibilityElement() ||
@@ -3818,7 +4017,7 @@ void BaseView::PrepareSemantics(
        (id_selector_.empty() ||
         std::find(ancestor_a11y_elements.begin(), ancestor_a11y_elements.end(),
                   id_selector_) == ancestor_a11y_elements.end()))) {
-    for (auto* view : children_) {
+    for (auto* view : children) {
       view->PrepareSemantics(parent_node, result, ancestor_a11y_elements);
     }
     return;
@@ -3834,7 +4033,7 @@ void BaseView::PrepareSemantics(
   std::vector<fml::RefPtr<SemanticsNode>> new_children;
   std::vector<std::string> a11y_elements =
       accessibility_elements_.value_or(ancestor_a11y_elements);
-  for (auto* view : children_) {
+  for (auto* view : children) {
     view->PrepareSemantics(semantics_, new_children, a11y_elements);
   }
   UpdateSemantics(new_children, parent_node->OwnerView(), true, true);
@@ -3853,6 +4052,12 @@ bool BaseView::IsAccessibilityElement() const {
   if (Is<BaseImageView>() || Is<BaseTextView>() || Is<EditableView>() ||
       Is<TextAreaView>() || Is<TextAreaNGView>()) {
     return accessibility_element_.value_or(true);
+  }
+  BaseView* a11y_scroll_target =
+      A11yScrollTargetForSemantics(const_cast<BaseView*>(this));
+  if (!IsInternalView() && a11y_scroll_target &&
+      CountAccessibleDescendants(a11y_scroll_target) > 0) {
+    return true;
   }
   // Only views created from lynx should be visible to a11y system.
   // RawTextView is also internal view but id is not -1.

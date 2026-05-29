@@ -23,6 +23,9 @@ struct SemanticsUpdateNode {
   int32_t actions;
   int32_t flags;
   int32_t scroll_children;
+  float scroll_position = 0.f;
+  float scroll_extent_max = 0.f;
+  float scroll_extent_min = 0.f;
   std::u16string label;
   std::u16string id_selector;
   std::vector<std::u16string> accessibility_elements;

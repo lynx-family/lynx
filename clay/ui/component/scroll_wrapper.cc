@@ -85,37 +85,6 @@ void ScrollWrapper::OnDestroy() {
   GetScrollView()->RemoveScrollListener(this);
 }
 
-#ifdef ENABLE_ACCESSIBILITY
-int32_t ScrollWrapper::GetSemanticsActions() const {
-  return GetScrollView()->GetSemanticsActions();
-}
-
-int32_t ScrollWrapper::GetSemanticsFlags() const {
-  return GetScrollView()->GetSemanticsFlags();
-}
-
-int32_t ScrollWrapper::GetA11yScrollChildren() const {
-  return GetScrollView()->GetA11yScrollChildren();
-}
-
-bool ScrollWrapper::IsAccessibilityElement() const {
-  bool result = BaseView::IsAccessibilityElement();
-  if (!result) {
-    for (auto child : GetScrollView()->children_) {
-      if (child->IsAccessibilityElement()) {
-        result = true;
-        break;
-      }
-    }
-  }
-  return result;
-}
-
-FloatRect ScrollWrapper::GetSemanticsBounds() const {
-  return GetScrollView()->GetSemanticsBounds();
-}
-#endif
-
 BaseView* ScrollWrapper::GetTopViewToAcceptEvent(const FloatPoint& position,
                                                  FloatPoint* relative_position,
                                                  int platform_try_hit_id) {

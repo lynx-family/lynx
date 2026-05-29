@@ -213,26 +213,31 @@ void ScrollView::OnLayoutUpdated() {
 }
 
 #ifdef ENABLE_ACCESSIBILITY
-int32_t ScrollView::GetA11yScrollChildren() const {
-  int32_t valid_count = 0;
-  for (auto child : children_) {
-    if (child->IsAccessibilityElement()) {
-      ++valid_count;
-    }
-  }
-  return valid_count;
-}
-
 int32_t ScrollView::GetSemanticsActions() const {
   int32_t actions = BaseView::GetSemanticsActions();
+  const ScrollableDirection direction = GetScrollableDirection();
   if (CanScrollY()) {
-    actions |=
-        static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollUp) |
-        static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollDown);
+    if ((direction & ScrollableDirection::kUpwards) !=
+        ScrollableDirection::kNone) {
+      actions |=
+          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollUp);
+    }
+    if ((direction & ScrollableDirection::kDownwards) !=
+        ScrollableDirection::kNone) {
+      actions |=
+          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollDown);
+    }
   } else if (CanScrollX()) {
-    actions |=
-        static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollLeft) |
-        static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollRight);
+    if ((direction & ScrollableDirection::kLeftwards) !=
+        ScrollableDirection::kNone) {
+      actions |=
+          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollLeft);
+    }
+    if ((direction & ScrollableDirection::kRightwards) !=
+        ScrollableDirection::kNone) {
+      actions |=
+          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollRight);
+    }
   } else {
     FML_DLOG(ERROR) << "scrollview cannot scroll, direction: "
                     << static_cast<int32_t>(scroll_direction_);
@@ -253,8 +258,8 @@ bool ScrollView::OnScrollToMiddle(BaseView* target_view) {
     FML_DLOG(ERROR) << "DispatchA11yShowOnScreenEvent but view is nullptr";
     return false;
   }
-  FloatRect rect = target_view->GetBounds();
-  rect.Move(PaddingLeft(), PaddingTop());
+  FloatRect rect = target_view->BoundsRelativeTo(this);
+  rect.MoveBy(GetScrollOffset());
   ScrollChildViewToMiddle(rect);
   return true;
 }

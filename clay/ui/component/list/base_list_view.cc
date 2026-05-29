@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
@@ -1335,14 +1336,29 @@ void BaseListView::SetStickyEnabled(bool enabled) {
 #ifdef ENABLE_ACCESSIBILITY
 int32_t BaseListView::GetSemanticsActions() const {
   int32_t actions = BaseView::GetSemanticsActions();
+  const ScrollableDirection direction = GetScrollableDirection();
   if (CanDragScrollOnY()) {
-    actions |=
-        static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollUp) |
-        static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollDown);
+    if ((direction & ScrollableDirection::kUpwards) !=
+        ScrollableDirection::kNone) {
+      actions |=
+          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollUp);
+    }
+    if ((direction & ScrollableDirection::kDownwards) !=
+        ScrollableDirection::kNone) {
+      actions |=
+          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollDown);
+    }
   } else if (CanDragScrollOnX()) {
-    actions |=
-        static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollLeft) |
-        static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollRight);
+    if ((direction & ScrollableDirection::kLeftwards) !=
+        ScrollableDirection::kNone) {
+      actions |=
+          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollLeft);
+    }
+    if ((direction & ScrollableDirection::kRightwards) !=
+        ScrollableDirection::kNone) {
+      actions |=
+          static_cast<int32_t>(SemanticsNode::SemanticsAction::kScrollRight);
+    }
   } else {
     FML_DLOG(ERROR) << "BaseListView cannot draw scroll both on X and Y axis";
   }
@@ -1356,15 +1372,6 @@ int32_t BaseListView::GetSemanticsFlags() const {
   return flags;
 }
 
-int32_t BaseListView::GetA11yScrollChildren() const {
-  int32_t valid_count = 0;
-  for (auto child : children_) {
-    if (child->IsAccessibilityElement()) {
-      ++valid_count;
-    }
-  }
-  return valid_count;
-}
 #endif
 
 bool BaseListView::OnScrollToMiddle(BaseView* target_view) {

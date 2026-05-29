@@ -214,12 +214,11 @@ class BaseListView : public WithTypeInfo<BaseListView, NestedScrollable>,
   void PrintChildren();
 
 #ifdef ENABLE_ACCESSIBILITY
-  int32_t GetSemanticsActions() const override;
-  int32_t GetSemanticsFlags() const override;
-  int32_t GetA11yScrollChildren() const override;
+  int32_t GetSemanticsActions() const;
+  int32_t GetSemanticsFlags() const;
 #endif
 
-  bool OnScrollToMiddle(BaseView* target_view) override;
+  bool OnScrollToMiddle(BaseView* target_view);
 
   ScrollableDirection GetScrollableDirection() const override;
 

@@ -40,14 +40,6 @@ class ListWrapper : public WithTypeInfo<ListWrapper, ScrollbarWrapper>,
     return view_->GetFocusBehavior();
   }
 
-#ifdef ENABLE_ACCESSIBILITY
-  int32_t GetSemanticsActions() const override;
-  int32_t GetSemanticsFlags() const override;
-  int32_t GetA11yScrollChildren() const override;
-  bool IsAccessibilityElement() const override;
-  FloatRect GetSemanticsBounds() const override;
-#endif
-
   BaseListView* GetListView() const {
     return static_cast<BaseListView*>(view_);
   }
