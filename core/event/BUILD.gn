@@ -31,6 +31,7 @@ lynx_core_source_set("event") {
 
 unittest_set("event_testset") {
   sources = [
+    "event_dispatcher_test.cc",
     "event_listener_map_test.cc",
     "event_listener_map_test.h",
     "event_listener_test.cc",
