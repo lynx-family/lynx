@@ -1760,6 +1760,16 @@ enableMultiTouchParamsCompatible:
     - Android
     - HarmonyOS
     - iOS
+enableEventTargetInfoNodeIndex:
+  description: Include the element nodeIndex field in event target and currentTarget parameters.
+  defaultValue: 'false'
+  valueType: bool
+  author: hexionghui
+  since: '3.8'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 enableHarmonyVisibleAreaChangeForExposure:
   description: Enable Harmony to detect exposure with visible area change event.
   defaultValue: 'false'

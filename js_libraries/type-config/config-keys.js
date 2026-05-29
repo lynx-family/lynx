@@ -63,6 +63,7 @@ const configKeys = [
   'enableDisexposureWhenLynxHidden',
   'enableEndGestureAtLastFingerUp',
   'enableEventHandleRefactor',
+  'enableEventTargetInfoNodeIndex',
   'enableEventThrough',
   'enableExposureUIMargin',
   'enableExposureWhenLayout',
