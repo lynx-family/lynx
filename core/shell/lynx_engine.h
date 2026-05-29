@@ -194,6 +194,10 @@ class LynxEngine {
 
   std::unordered_map<std::string, std::string> GetAllJsSource();
 
+  int32_t GetLynxElementRootSign();
+
+  std::string GetLynxElementTreeAsJSONString(int32_t sign);
+
   void UpdateDataByJS(runtime::UpdateDataTask task);
 
   void UpdateBatchedDataByJS(std::vector<runtime::UpdateDataTask> tasks,
