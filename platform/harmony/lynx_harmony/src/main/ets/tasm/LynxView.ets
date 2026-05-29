@@ -81,6 +81,7 @@ export interface LynxViewBuilder {
   enableAirStrictMode?: boolean;
   lynxImageConfig?: LynxImageConfig;
   fontScale?: number;
+  enableSyncFlush?: boolean;
 }
 
 @Builder
@@ -194,6 +195,7 @@ export struct LynxView {
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions = new LynxBackgroundRuntimeOptions();
   enableAirStrictMode? = false;
   lynxImageConfig?: LynxImageConfig;
+  enableSyncFlush: boolean = false;
 
   initWithBuilder(builder: LynxViewBuilder) {
     this.genericResourceFetcher = builder.genericResourceFetcher;
@@ -217,6 +219,7 @@ export struct LynxView {
     this.enableAirStrictMode = builder.enableAirStrictMode ?? false;
     this.lynxImageConfig = builder.lynxImageConfig;
     this.fontScale = builder.fontScale ?? 1.0;
+    this.enableSyncFlush = builder.enableSyncFlush ?? false;
     if (this.hasAppeared) {
       LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
       this.reInitTemplateRenderer(this.hasLoadSource());
@@ -518,6 +521,9 @@ export struct LynxView {
       this.fontScale = params.fontScale;
       couldReuse = false;
     }
+    if (params.enableSyncFlush !== undefined && this.enableSyncFlush !== params.enableSyncFlush) {
+      this.enableSyncFlush = params.enableSyncFlush;
+    }
     if (!couldReuse) {
       LLog.d(TAG, 'can not reuse, so we recreate LynxTemplateRenderer');
       this.reInitTemplateRenderer(this.hasLoadSource());
@@ -569,6 +575,10 @@ export struct LynxView {
     }
     // trigger native layout here, and rootSize will updated.
     this.updateViewport(result.width, result.height);
+    // syncFlush: block UI thread until TASM and Layout threads finish, avoiding flicker
+    if (this.shouldSyncFlush()) {
+      this.templateRenderer?.syncFlush();
+    }
     if (this.fitContentWidth) {
       result.width = this.rootSize.width;
     }
@@ -591,6 +601,7 @@ export struct LynxView {
       return;
     }
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_RELOAD);
+    this.markDirtyForSyncFlush();
     let timingOption: TimingOption = new TimingOption(TimingConstants.RELOAD_BUNDLE_FROM_NATIVE);
     let nowStartTimestamp = Date.now();
     timingOption.setTiming(TimingConstants.PIPELINE_START, nowStartTimestamp);
@@ -714,6 +725,7 @@ export struct LynxView {
       return;
     }
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_LOAD);
+    this.markDirtyForSyncFlush();
     this.onPageStarted(LynxPipelineOrigin.LynxFirstScreen);
     if (this.metaData.globalProps !== undefined) {
       this.templateRenderer.updateGlobalProps(this.metaData.globalProps?.data);
@@ -745,6 +757,16 @@ export struct LynxView {
     }
   }
 
+  private shouldSyncFlush(): boolean {
+    return this.enableSyncFlush && this.threadMode !== ThreadStrategyForRendering.ALL_ON_UI;
+  }
+
+  private markDirtyForSyncFlush() {
+    if (this.shouldSyncFlush()) {
+      this.templateRenderer?.markDirty();
+    }
+  }
+
   build() {
     Stack() {
       NodeContainer(this.nodeController)
@@ -761,7 +783,7 @@ export struct LynxView {
     // Add 'key' property to locate LynxView during UI automation.
     .key('lynxview')
     .translate({ y: this.translateY })
-    .onAreaChange((oldValue: Area, newValue: Area) => {
+    .onSizeChange((oldValue: SizeOptions, newValue: SizeOptions) => {
       this.measuredSize.width = newValue.width as number;
       this.measuredSize.height = newValue.height as number;
       this.uiRenderer?.requestLayout();

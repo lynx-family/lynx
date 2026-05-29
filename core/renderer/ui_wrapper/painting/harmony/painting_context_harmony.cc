@@ -241,14 +241,31 @@ void PaintingContextHarmony::SetKeyframes(
 void PaintingContextHarmony::Flush() { queue_->Flush(); }
 void PaintingContextHarmony::HandleValidate(int tag) {}
 void PaintingContextHarmony::FinishTasmOperation(
-    const std::shared_ptr<PipelineOptions>& options) {}
+    const std::shared_ptr<PipelineOptions>& options) {
+  if (options->native_update_data_order_ ==
+      queue_->GetNativeUpdateDataOrder()) {
+    queue_->UpdateStatus(shell::UIOperationStatus::TASM_FINISH);
+  }
+}
 void PaintingContextHarmony::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions>& options) {
-  Enqueue([platform_ref = platform_ref_, options]() {
+  Enqueue([platform_ref = platform_ref_,
+           weak_queue = std::weak_ptr<shell::DynamicUIOperationQueue>(queue_),
+           options]() {
     auto harmony_ref =
         std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
     harmony_ref->OnLayoutFinish(options->list_comp_id_, options->operation_id);
+    if (auto queue = weak_queue.lock()) {
+      if (options->native_update_data_order_ ==
+          queue->GetNativeUpdateDataOrder()) {
+        queue->UpdateStatus(shell::UIOperationStatus::ALL_FINISH);
+      }
+    }
   });
+  if (options->native_update_data_order_ ==
+      queue_->GetNativeUpdateDataOrder()) {
+    queue_->UpdateStatus(shell::UIOperationStatus::LAYOUT_FINISH);
+  }
 }
 
 std::vector<float> PaintingContextHarmony::getBoundingClientOrigin(int id) {

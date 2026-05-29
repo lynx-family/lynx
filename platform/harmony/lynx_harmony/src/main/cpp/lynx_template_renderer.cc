@@ -255,6 +255,20 @@ void LynxTemplateRenderer::OnEnterBackground() {
   shell_->OnEnterBackground();
 }
 
+void LynxTemplateRenderer::SyncFlush() {
+  if (shell_->IsDestroyed()) {
+    return;
+  }
+  shell_->Flush();
+}
+
+void LynxTemplateRenderer::MarkDirty() {
+  if (shell_->IsDestroyed()) {
+    return;
+  }
+  shell_->MarkDirty();
+}
+
 void LynxTemplateRenderer::UpdateScreenMetrics(float width, float height,
                                                float display_density) {
   if (shell_->IsDestroyed()) {
@@ -596,6 +610,8 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
                           UnsubscribeSessionStorage),
       DECLARE_NAPI_METHOD("nativeGetAllJsSource", GetAllJsSource),
       DECLARE_NAPI_METHOD("invokeLepusCallback", InvokeLepusCallback),
+      DECLARE_NAPI_METHOD("nativeSyncFlush", NativeSyncFlush),
+      DECLARE_NAPI_METHOD("nativeMarkDirty", NativeMarkDirty),
   };
 
   napi_value cons;
@@ -1614,6 +1630,40 @@ napi_value LynxTemplateRenderer::OnEnterBackground(napi_env env,
     return nullptr;
   }
   obj->OnEnterBackground();
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::NativeSyncFlush(napi_env env,
+                                                 napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 0;
+  napi_value args[0];
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "NativeSyncFlush failed")) {
+    return nullptr;
+  }
+  obj->SyncFlush();
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::NativeMarkDirty(napi_env env,
+                                                 napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 0;
+  napi_value args[0];
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "NativeMarkDirty failed")) {
+    return nullptr;
+  }
+  obj->MarkDirty();
   return nullptr;
 }
 
