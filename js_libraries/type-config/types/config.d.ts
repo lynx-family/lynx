@@ -340,6 +340,17 @@ export interface Config {
   enableEventHandleRefactor?: boolean;
 
   /**
+   * Include the element nodeIndex field in event target and currentTarget parameters.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue false
+   */
+  enableEventTargetInfoNodeIndex?: boolean;
+
+  /**
    * Enable the client-slide touch event penetrate Lynx when touching the root node area of the Lynx page.
    *
    * Supported platform: Android, HarmonyOS, iOS
