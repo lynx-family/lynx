@@ -8,8 +8,10 @@
 #include <limits>
 #include <list>
 #include <memory>
+#include <optional>
 #include <stack>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -43,13 +45,15 @@ class ParagraphBuilderHarmony {
 
   void AddText(const char* text);
 
-  void AddPlaceholder(PlaceholderHarmony& placeholder, int32_t sign) {
+  bool AddPlaceholder(PlaceholderHarmony& placeholder, int32_t sign) {
     if (!text_no_wrap_and_after_break_ && char16_count_ < max_char16_count_) {
       OH_Drawing_TypographyHandlerAddPlaceholder(builder_,
                                                  placeholder.GetRawStruct());
       placeholder_signs_.emplace_back(sign);
       char16_count_++;
+      return true;
     }
+    return false;
   }
 
   void PopTextStyle();
@@ -64,7 +68,7 @@ class ParagraphBuilderHarmony {
     auto paragraph = fml::MakeRefCounted<ParagraphHarmony>(
         OH_Drawing_CreateTypography(builder_), font_collection,
         std::move(event_roots_), std::move(placeholder_signs_),
-        std::move(effects_));
+        std::move(inline_emojis_), std::move(effects_));
     if (paragraph_style_->GetTextIndent()) {
       float indent = paragraph_style_->GetTextIndent()->GetValue(width);
       paragraph->SetIndent(indent);
@@ -84,8 +88,24 @@ class ParagraphBuilderHarmony {
 
   const std::string& GetText() const { return text_; }
 
+  void SetRichType(std::string_view rich_type);
+
  private:
-  void AddTextToBuilder(const std::string& text);
+  struct EmojiParseRule {
+    char left_delimiter{0};
+    char right_delimiter{0};
+  };
+
+  bool HasRichTypeParser() const { return emoji_parse_rule_.has_value(); }
+  float CurrentEmojiPlaceholderSize() const {
+    return emoji_placeholder_size_stack_.empty()
+               ? 0.f
+               : emoji_placeholder_size_stack_.back();
+  }
+  void AddRichTypeText(std::string_view text);
+  void AddPlainText(std::string_view text);
+  void AddTextToTypographyBuilder(std::string_view text);
+  bool TryAddEmojiPlaceholder(std::string_view name);
 
   OH_Drawing_TypographyCreate* builder_;
   ParagraphStyleHarmony* paragraph_style_;
@@ -112,9 +132,12 @@ class ParagraphBuilderHarmony {
   int32_t char16_count_{0};
   int32_t max_char16_count_{std::numeric_limits<int32_t>::max()};
   std::vector<int32_t> placeholder_signs_;
+  std::vector<InlineEmojiInfo> inline_emojis_;
   std::optional<std::list<fml::RefPtr<ShaderEffect>>> effects_;
+  std::vector<float> emoji_placeholder_size_stack_;
 
   std::string text_;
+  std::optional<EmojiParseRule> emoji_parse_rule_;
 };
 
 }  // namespace harmony
