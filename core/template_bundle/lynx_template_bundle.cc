@@ -239,5 +239,10 @@ bool LynxTemplateBundle::DecodeCSSFragmentById(int32_t fragment_id) {
          lazy_reader_->DecodeCSSFragmentByIdInRender(fragment_id);
 }
 
+std::unique_ptr<LynxBinaryRecyclerDelegate>
+LynxTemplateBundle::CreateRecycler() {
+  return lazy_reader_ ? lazy_reader_->CreateRecycler() : nullptr;
+}
+
 }  // namespace tasm
 }  // namespace lynx
