@@ -39,7 +39,7 @@ class ExternalScriptResourceCallback extends GuardedResourceCallback {
     } else {
       errCode = LynxSubErrorCode.E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED;
       errMsg = "Error when fetch script";
-      rootCause = errMsg;
+      rootCause = errorMsg;
       LynxResourceLoader.InvokeNativeCallbackWithBytes(
           mResponseHandler, null, errCode, errMsg + ": " + rootCause);
     }
