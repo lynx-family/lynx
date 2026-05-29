@@ -6,6 +6,7 @@
 #import <Lynx/LynxBackgroundRuntime+Internal.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxDebugger+Internal.h>
+#import <Lynx/LynxElement.h>
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxEventReporter.h>
@@ -52,11 +53,12 @@
 #import "LynxUIIntersectionObserver+Internal.h"
 #import "LynxUILayoutTick.h"
 #import "LynxUIMethodModule.h"
-#import "LynxUIRendererProtocol.h"
 #import "LynxViewGroup+Internal.h"
 #import "PaintingContextProxy.h"
 
 #include <functional>
+#include <memory>
+#include <utility>
 
 #include "base/include/debug/backtrace.h"
 #include "core/base/darwin/lynx_env_darwin.h"
@@ -69,12 +71,14 @@
 #include "core/renderer/ui_wrapper/layout/ios/layout_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
+#include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/darwin/event_converter_darwin.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/services/performance/darwin/performance_controller_darwin.h"
 #include "core/services/timing_handler/timing_constants.h"
+#include "core/shell/common/platform_call_back.h"
 #include "core/shell/ios/data_utils.h"
 #include "core/shell/ios/lynx_layout_proxy_darwin.h"
 #include "core/shell/ios/native_facade_darwin.h"
@@ -82,6 +86,30 @@
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
+
+@interface LynxElement ()
+
+- (instancetype)initWithTemplateRender:(LynxTemplateRender*)templateRender
+                                  sign:(int32_t)sign NS_DESIGNATED_INITIALIZER;
+
+@end
+
+namespace {
+
+void InvokeLynxElementJSONStringCallback(void (^_Nonnull callback)(NSString* _Nullable),
+                                         std::string json) {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    NSString* result = nil;
+    if (!json.empty()) {
+      result = [[NSString alloc] initWithBytes:json.data()
+                                        length:json.size()
+                                      encoding:NSUTF8StringEncoding];
+    }
+    callback(result);
+  });
+}
+
+}  // namespace
 
 @implementation LynxTemplateRender
 
@@ -1567,6 +1595,56 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 - (nullable UIView*)viewWithName:(nonnull NSString*)name {
   return [_lynxUIRenderer viewWithName:name];
+}
+
+- (void)getLynxElementRoot:(void (^_Nonnull)(LynxElement* _Nullable element))callback {
+  if (callback == nil) {
+    return;
+  }
+  void (^callbackCopy)(LynxElement* _Nullable) = [callback copy];
+  if (shell_ == nullptr || shell_->IsDestroyed()) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      callbackCopy(nil);
+    });
+    return;
+  }
+  __weak LynxTemplateRender* weakSelf = self;
+  shell_->GetLynxElementRootSignAsync(std::make_unique<lynx::shell::PlatformCallBack>(
+      [weakSelf, callbackCopy](const lynx::lepus::Value& value) mutable {
+        int32_t sign = lynx::tasm::kInvalidImplId;
+        if (value.IsNumber()) {
+          sign = static_cast<int32_t>(value.Number());
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+          LynxTemplateRender* templateRender = weakSelf;
+          LynxElement* element = templateRender != nil && sign != lynx::tasm::kInvalidImplId
+                                     ? [[LynxElement alloc] initWithTemplateRender:templateRender
+                                                                              sign:sign]
+                                     : nil;
+          callbackCopy(element);
+        });
+      }));
+}
+
+- (void)lynxElementToJSONStringWithSign:(int32_t)sign
+                               callback:(void (^_Nonnull)(NSString* _Nullable json))callback {
+  if (callback == nil) {
+    return;
+  }
+  void (^callbackCopy)(NSString* _Nullable) = [callback copy];
+  if (shell_ == nullptr || shell_->IsDestroyed() || sign == lynx::tasm::kInvalidImplId) {
+    InvokeLynxElementJSONStringCallback(callbackCopy, "");
+    return;
+  }
+  shell_->GetLynxElementTreeAsJSONStringAsync(
+      sign, std::make_unique<lynx::shell::PlatformCallBack>(
+                [callbackCopy](const lynx::lepus::Value& value) mutable {
+                  std::string json;
+                  if (value.IsString()) {
+                    json = value.StdString();
+                  }
+                  InvokeLynxElementJSONStringCallback(callbackCopy, std::move(json));
+                }));
 }
 
 #pragma mark - Module

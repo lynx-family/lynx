@@ -1389,6 +1389,12 @@ public protocol LynxDynamicComponentFetcher-p : <NSObject> {
   public void LynxDynamicComponentFetcher-p::loadDynamicComponent:withLoadedBlock:(NSString *url,[withLoadedBlock] onComponentLoaded block);
 }
 
+public class LynxElement : NSObject {
+  public instancetype LynxElement::NS_UNAVAILABLE();
+  public void LynxElement::toJSONString:(void(^_Nonnull callback)(NSString *_Nullable json));
+  public instancetype LynxElement::NS_UNAVAILABLE();
+}
+
 public class LynxEmbeddedModule : NSObject, <LynxContextModule> {
   public instancetype LynxEmbeddedModule::initWithLynxContext:(LynxContext *context);
   public instancetype LynxEmbeddedModule::initWithLynxContext:WithParam:(LynxContext *context,[WithParam] id param);
@@ -5423,6 +5429,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public nullable LynxUI * LynxView::uiWithName:(nonnull NSString *name);
   public nullable LynxUI * LynxView::uiWithIdSelector:(nonnull NSString *idSelector);
   public nullable UIView * LynxView::viewWithIdSelector:(nonnull NSString *idSelector);
+  public void LynxView::getLynxElementRoot:(void(^_Nonnull callback)(LynxElement *_Nullable element));
   public void LynxView::addLifecycleClient:(nonnull id< LynxViewBaseLifecycle > lifecycleClient);
   public void LynxView::removeLifecycleClient:(nonnull id< LynxViewBaseLifecycle > lifecycleClient);
   public void LynxView::updateViewportWithPreferredLayoutWidth:preferredLayoutHeight:(CGFloat preferredLayoutWidth,[preferredLayoutHeight] CGFloat preferredLayoutHeight);

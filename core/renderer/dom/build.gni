@@ -47,6 +47,8 @@ lynx_element_shared_sources = [
   "element.cc",
   "element_imperative_animation.cc",
   "element_property.cc",
+  "element_tree_serializer.cc",
+  "element_tree_serializer.h",
   "imperative_animation_state.cc",
   "imperative_animation_state.h",
 ]

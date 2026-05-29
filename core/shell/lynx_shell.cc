@@ -12,6 +12,7 @@
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/tasm/config.h"
+#include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/runtime/common/bindings/event/message_event.h"
@@ -90,6 +91,19 @@ void DecrementAsyncDestroyCounter(std::atomic<int>& counter) {
   int current = counter.load();
   while (current > 0 && !counter.compare_exchange_weak(current, current - 1)) {
   }
+}
+
+void InvokePlatformCallbackAndRemove(
+    const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,
+    std::shared_ptr<PlatformCallBackHolder> callback, lepus::Value value) {
+  if (facade_actor == nullptr || callback == nullptr) {
+    return;
+  }
+  facade_actor->Act([callback = std::move(callback),
+                     value = std::move(value)](auto& facade) mutable {
+    facade->InvokePlatformCallBackWithValue(callback, value);
+    facade->RemovePlatformCallBack(callback);
+  });
 }
 
 }  // namespace
@@ -1331,6 +1345,56 @@ void LynxShell::UpdateI18nResource(const std::string& key,
 std::unordered_map<std::string, std::string> LynxShell::GetAllJsSource() {
   return engine_actor_->ActSync(
       [](auto& engine) { return engine->GetAllJsSource(); });
+}
+
+void LynxShell::GetLynxElementRootSignAsync(
+    std::unique_ptr<shell::PlatformCallBack> callback) {
+  if (!callback) {
+    return;
+  }
+  auto callback_holder = facade_actor_->ActSync(
+      [callback = std::move(callback)](auto& facade) mutable {
+        return facade->CreatePlatformCallBackHolder(std::move(callback));
+      });
+  if (IsDestroyed() || engine_actor_ == nullptr) {
+    InvokePlatformCallbackAndRemove(
+        facade_actor_, std::move(callback_holder),
+        lepus::Value(static_cast<int32_t>(tasm::kInvalidImplId)));
+    return;
+  }
+  auto facade_actor = facade_actor_;
+  engine_actor_->Act([facade_actor,
+                      callback_holder =
+                          std::move(callback_holder)](auto& engine) mutable {
+    InvokePlatformCallbackAndRemove(
+        facade_actor, std::move(callback_holder),
+        lepus::Value(static_cast<int32_t>(engine->GetLynxElementRootSign())));
+  });
+}
+
+void LynxShell::GetLynxElementTreeAsJSONStringAsync(
+    int32_t sign, std::unique_ptr<shell::PlatformCallBack> callback) {
+  if (!callback) {
+    return;
+  }
+  auto callback_holder = facade_actor_->ActSync(
+      [callback = std::move(callback)](auto& facade) mutable {
+        return facade->CreatePlatformCallBackHolder(std::move(callback));
+      });
+  if (IsDestroyed() || engine_actor_ == nullptr ||
+      sign == tasm::kInvalidImplId) {
+    InvokePlatformCallbackAndRemove(facade_actor_, std::move(callback_holder),
+                                    lepus::Value(""));
+    return;
+  }
+  auto facade_actor = facade_actor_;
+  engine_actor_->Act(
+      [facade_actor, sign,
+       callback_holder = std::move(callback_holder)](auto& engine) mutable {
+        InvokePlatformCallbackAndRemove(
+            facade_actor, std::move(callback_holder),
+            lepus::Value(engine->GetLynxElementTreeAsJSONString(sign)));
+      });
 }
 
 void LynxShell::QueryNativeMemoryUsageAsync(

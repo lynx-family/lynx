@@ -90,6 +90,7 @@ unittest_set("dom_testset") {
     "element_container_unittest.cc",
     "element_context_delegate_unittest.cc",
     "element_manager_unittest.cc",
+    "element_tree_serializer_unittest.cc",
     "element_unittest.cc",
     "element_vsync_proxy_unittest.cc",
     "fiber/block_element_unittest.cc",
