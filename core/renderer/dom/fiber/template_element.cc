@@ -404,6 +404,13 @@ void TemplateElement::InitTypedRoot() {
     return;
   }
   result_->MarkTemplateElement();
+  // Element Template is currently only used by RL3 in page scope. Typed roots
+  // are created outside the normal FiberCreate* APIs, so seed their component
+  // scope from the page root before class style resolution.
+  auto* root = manager->root();
+  if (root != nullptr) {
+    result_->SetParentComponentUniqueIdRecursively(root->impl_id());
+  }
 
   element_slot_targets_.clear();
   element_slot_targets_.push_back(ElementSlotMountPoint{result_, nullptr});

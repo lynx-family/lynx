@@ -10384,6 +10384,28 @@ TEST_P(FiberElementTest, TypedTemplateElementResolvesListRootAndSlotChildren) {
   EXPECT_TRUE(slot_child->is_list_item());
 }
 
+TEST_P(FiberElementTest, TypedTemplateElementListRootUsesPageComponentScope) {
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->SetTASM(tasm.get());
+  root->SetTypedTag(base::String("list"));
+
+  auto resolved = root->GetRoot();
+  ASSERT_NE(resolved, nullptr);
+  EXPECT_TRUE(resolved->is_list());
+  EXPECT_EQ(resolved->GetParentComponentUniqueIdForFiber(), page->impl_id());
+
+  page->InsertNode(root);
+  page->PrepareChildren();
+
+  ASSERT_EQ(page->children().size(), 1u);
+  EXPECT_EQ(page->children()[0].get(), resolved.get());
+  EXPECT_EQ(resolved->parent(), page.get());
+  EXPECT_EQ(resolved->GetParentComponentElement(), page.get());
+  EXPECT_EQ(resolved->GetCSSID(), 11);
+}
+
 TEST_P(FiberElementTest, TypedTemplateElementListRootAppliesCallbacks) {
   auto callbacks = CreateTemplateCallbackValues(tasm.get());
   ASSERT_TRUE(callbacks.component_at_index.IsCallable());
