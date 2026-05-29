@@ -31,6 +31,7 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 static constexpr float TEXT_MAX_LAYOUT_WIDTH = INT16_MAX;
+static constexpr const char* kRichType = "richtype";
 
 TextShadowNode::TextShadowNode(int sign, const std::string& tag)
     : BaseTextShadowNode(sign, tag) {
@@ -403,6 +404,8 @@ void TextShadowNode::OnPropsUpdate(const std::string& name,
           static_cast<starlight::PlatformLengthUnit>(arr->get(1).Number());
     }
     paragraph_style_->SetTextIndent(text_props_->text_indent);
+  } else if (base::StringEqual(attr, kRichType)) {
+    rich_type_ = value.IsString() ? value.StdString() : std::string();
   } else {
     BaseTextShadowNode::OnPropsUpdate(name, value);
   }
@@ -417,6 +420,7 @@ fml::RefPtr<ParagraphHarmony> TextShadowNode::LayoutNode(
   // operation takes too much time.
   fml::RefPtr<ParagraphHarmony> paragraph = nullptr;
   builder->Reset();
+  builder->SetRichType(rich_type_);
   shadow_node->AppendToParagraph(*builder, 0, 0);
   paragraph = builder->CreateParagraph(font_collection_, width);
   if (origin_char_count_ == 0) {
@@ -431,6 +435,7 @@ fml::RefPtr<ParagraphHarmony> TextShadowNode::LayoutNode(
   paragraph->SetMeasuredSize(result.width_, result.height_, result.baseline_);
   if (builder->NeedsRebuilding()) {
     builder->Reset();
+    builder->SetRichType(rich_type_);
     shadow_node->AppendToParagraph(*builder, result.width_ * ScaleDensity(),
                                    result.height_ * ScaleDensity());
     paragraph = ReBuildParagraph(builder, result, layout_max_width,

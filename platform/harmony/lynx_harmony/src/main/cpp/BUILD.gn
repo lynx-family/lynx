@@ -123,6 +123,8 @@ lynx_core_source_set("cpp") {
     "shadow_node/text/text_measure_cache_key.h",
     "shadow_node/text_shadow_node.cc",
     "shadow_node/text_shadow_node.h",
+    "text/emoji_resource_manager.cc",
+    "text/emoji_resource_manager.h",
     "text/font_collection_harmony.h",
     "text/font_metrics_harmony.h",
     "text/line_harmony.h",
