@@ -46,6 +46,8 @@ lynx_dom_core_sources_path = get_path_info(lynx_dom_core_sources, "abspath")
 lynx_element_shared_sources = [
   "element.cc",
   "element_property.cc",
+  "element_tree_serializer.cc",
+  "element_tree_serializer.h",
 ]
 
 lynx_element_shared_sources_path =
