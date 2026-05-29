@@ -86,7 +86,8 @@ namespace shell {
 
 void LynxResourceLoaderDarwin::FetchExternalResourceComplete(
     NSData* data, NSError* error, NSString* nsUrl,
-    __weak id<LynxErrorReceiverProtocol> weakErrorReceiver, CopyableClosure callback) {
+    __weak id<LynxErrorReceiverProtocol> weakErrorReceiver, CopyableClosure callback,
+    bool reportError) {
   NSInteger errCode = 0;
   NSString* errMsg = @"";
   NSString* rootCause = nil;
@@ -99,7 +100,7 @@ void LynxResourceLoaderDarwin::FetchExternalResourceComplete(
     errCode = ECLynxResourceExternalResourceRequestFailed;
   }
 
-  if (errCode != 0) {
+  if (errCode != 0 && reportError) {
     // Report only when loading script, the lazy bundle error will be reported in C++
     // TODO(zhoupeng.z): Also Report script error in C++
     ReportError(weakErrorReceiver, kLoadScriptMethodName, nsUrl, errCode, errMsg, rootCause);
@@ -373,7 +374,7 @@ void LynxResourceLoaderDarwin::LoadBytecode(
             fetchBytecode:resourceRequest
                onComplete:^(NSData* _Nullable data, NSError* _Nullable error) {
                  FetchExternalResourceComplete(data, error, nsUrl, weakErrorReceiver,
-                                               std::move(copyable_callback));
+                                               std::move(copyable_callback), false);
                }];
         return;
       }
