@@ -204,7 +204,8 @@ void ImageServiceNode::UpdateAutoPlay(bool autoplay) {
 }
 
 void ImageServiceNode::UpdateLoopCount(int count) {
-  image_knife_animator_option_->iterations = count;
+  // Lynx uses 0 for infinite loop, while the underlying image library uses -1.
+  image_knife_animator_option_->iterations = (count == 0) ? -1 : count;
   image_knife_node_->UpdateAnimatorOption(image_knife_animator_option_);
 }
 
