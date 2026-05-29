@@ -157,7 +157,7 @@ public class LynxResourceLoader {
         mGenericResourceFetcher.fetchBytecode(
             request, new com.lynx.tasm.resourceprovider.LynxResourceCallback<byte[]>() {
               private final GenericResourceCallback callback =
-                  new GenericResourceCallback(LynxResourceLoader.this, url, responseHandler);
+                  new GenericResourceCallback(url, responseHandler);
 
               @Override
               public void onResponse(
@@ -405,7 +405,7 @@ public class LynxResourceLoader {
     mGenericResourceFetcher.fetchResource(
         request, new com.lynx.tasm.resourceprovider.LynxResourceCallback<byte[]>() {
           private final GenericResourceCallback callback =
-              new GenericResourceCallback(LynxResourceLoader.this, url, responseHandler);
+              new GenericResourceCallback(url, responseHandler);
 
           @Override
           public void onResponse(

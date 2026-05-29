@@ -84,7 +84,7 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
 
   static void FetchExternalResourceComplete(NSData* data, NSError* error, NSString* nsUrl,
                                             id<LynxErrorReceiverProtocol> weakErrorReceiver,
-                                            CopyableClosure callback);
+                                            CopyableClosure callback, bool reportError = true);
 
   LynxProviderRegistry* _providerRegistry;
   LynxExternalResourceFetcherWrapper* _fetcher_wrapper;
