@@ -2,14 +2,16 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("../../../clay/common/config.gni")
 import("../../../testing/test.gni")
 import("../../Lynx.gni")
 import("build.gni")
 
 need_default_lynx_trail_hub_impl =
-    is_oliver_ssr || enable_unittests || (is_linux || is_win) ||
-    is_oliver_node_lynx || (is_mac && desktop_enable_embedder_layer) ||
-    (is_android && is_headless)
+    !use_clay_lynx_trail_hub_impl &&
+    (is_oliver_ssr || enable_unittests || is_linux || is_win ||
+     is_oliver_node_lynx || (is_mac && desktop_enable_embedder_layer) ||
+     (is_android && is_headless))
 
 # TODO(zhoupeng): move LynxTraiHub to an independent source set after decoupled from LynxEnv
 lynx_core_source_set("lynx_env") {

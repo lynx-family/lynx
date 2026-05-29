@@ -7,6 +7,7 @@
 #include <service_api/service_api_utils.h>
 #include <service_api/service_lazy_load.h>
 
+#include <atomic>
 #include <functional>
 #include <mutex>
 #include <string>
