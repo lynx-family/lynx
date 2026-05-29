@@ -6,6 +6,7 @@
 #define CORE_RENDERER_DOM_ELEMENT_H_
 
 #include <array>
+#include <cstdint>
 #include <list>
 #include <map>
 #include <memory>
@@ -38,6 +39,7 @@
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/element_property.h"
+#include "core/renderer/dom/imperative_animation_state.h"
 #include "core/renderer/dom/selector/selector_item.h"
 #include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/events/events.h"
@@ -1434,6 +1436,30 @@ class Element : public lepus::RefCounted,
   // Mark flush_required without recursively mark parent element
   inline void MarkRequireFlush() { flush_required_ = true; }
 
+  bool ShouldTrackImperativeAnimationsForNewPipeline() const;
+  void RecordImperativeAnimationStart(ImperativeAnimationState::Source source,
+                                      const base::String& js_name,
+                                      const base::String& animation_name,
+                                      bool owns_generated_keyframe,
+                                      const StyleMap& timing_styles);
+  void UpdateImperativeAnimationPlayState(
+      ImperativeAnimationState::Source source, const base::String& name,
+      const StyleMap& timing_styles, bool paused);
+  void CancelImperativeAnimation(ImperativeAnimationState::Source source,
+                                 const base::String& name);
+  void FinishImperativeAnimation(ImperativeAnimationState::Source source,
+                                 const base::String& name);
+  void ClearImperativeAnimationsForStyleAnimationUpdate();
+  void ReplayImperativeAnimationsToStyle(
+      starlight::ComputedCSSStyle& computed_style) const;
+  CSSIDBitset TakePendingImperativeAnimationCleanupProperties();
+  bool HasImperativeAnimations() const;
+  void ApplyImperativeAnimationMutation(
+      const ImperativeAnimationState::Mutation& mutation);
+  void RemoveOwnedImperativeAnimationKeyframe(
+      const base::String& animation_name);
+  void ClearImperativeAnimationState();
+
   virtual void CacheCommittedStyleFromAttributes(CSSPropertyID id,
                                                  const CSSValue& value) {}
   virtual void CacheCommittedStyleFromAttributes(CSSPropertyID id,
@@ -1595,6 +1621,7 @@ class Element : public lepus::RefCounted,
   base::auto_create_optional<CSSKeyframesTokenMap> keyframes_map_;
   // Save increase key of the Animate API.
   base::String will_removed_keyframe_name_;
+  ImperativeAnimationState imperative_animation_state_;
   // for global-bind event
   base::auto_create_optional<base::LinearFlatSet<std::string>>
       global_bind_target_set_;
