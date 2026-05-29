@@ -772,8 +772,15 @@ export struct LynxView {
     .key('lynxview')
     .translate({ y: this.translateY })
     .onAreaChange((oldValue: Area, newValue: Area) => {
-      this.measuredSize.width = newValue.width as number;
-      this.measuredSize.height = newValue.height as number;
+      const width = newValue.width as number;
+      const height = newValue.height as number;
+      if (this.measuredSize.width === width && this.measuredSize.height === height) {
+        // onAreaChange can be triggered by both size and position changes.
+        // If the measured size hasn't changed, skip the update to avoid unnecessary layout calculations.
+        return;
+      }
+      this.measuredSize.width = width;
+      this.measuredSize.height = height;
       this.uiRenderer?.requestLayout();
     })
   }
