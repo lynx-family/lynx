@@ -93,6 +93,8 @@ common_lynx_shared_sources = [
   "performance/fsp/LynxFSPTracer.mm",
   "performance/fsp/LynxMeaningfulContentSnapshot.mm",
   "performance/memory/LynxMemoryRecord.m",
+  "performance/memory/LynxMemoryUsageQuery.mm",
+  "performance/memory/LynxMemoryUsageResult.mm",
   "performance/timing/LynxEmbeddedTimingCollector.h",
   "performance/timing/LynxEmbeddedTimingCollector.mm",
   "performance/timing/LynxExtraTiming.m",
