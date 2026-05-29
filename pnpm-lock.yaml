@@ -256,9 +256,11 @@ importers:
   js_libraries/type-element-api:
     specifiers:
       tsd: 0.30.4
+      typescript: 5.8.3
       vitest: 2.1.9
     devDependencies:
       tsd: 0.30.4
+      typescript: 5.8.3
       vitest: 2.1.9
 
   js_libraries/types:
