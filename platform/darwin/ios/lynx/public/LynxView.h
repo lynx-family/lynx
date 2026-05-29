@@ -31,6 +31,7 @@
 
 @class LynxTemplateRender;
 @class LynxContext;
+@class LynxElement;
 @protocol LynxBaseInspectorOwner;
 
 /**
@@ -303,6 +304,14 @@
  * @return The `UIView` node corresponding to the idSelector attribute.
  */
 - (nullable UIView*)viewWithIdSelector:(nonnull NSString*)idSelector;
+
+/**
+ * @apidoc
+ * @brief Asynchronously obtains the root LynxElement for this LynxView.
+ * @param callback Receives the root LynxElement, or nil if no root is available. The callback is
+ * always invoked asynchronously on the main thread.
+ */
+- (void)getLynxElementRoot:(void (^_Nonnull)(LynxElement* _Nullable element))callback;
 
 /**
  * @apidoc
