@@ -81,10 +81,11 @@ void SemanticsNode::AddToUpdate(SemanticsUpdateBuilder* builder) {
     }
   }
 
-  builder->UpdateNode(id_, data_.actions, data_.flags, data_.scroll_children,
-                      data_.semantics_bounds, data_.label, data_.id_selector,
-                      data_.accessibility_elements, data_.transform,
-                      children_in_hittest_order);
+  builder->UpdateNode(
+      id_, data_.actions, data_.flags, data_.scroll_children,
+      data_.scroll_position, data_.scroll_extent_max, data_.scroll_extent_min,
+      data_.semantics_bounds, data_.label, data_.id_selector,
+      data_.accessibility_elements, data_.transform, children_in_hittest_order);
 
   dirty_ = false;
 }

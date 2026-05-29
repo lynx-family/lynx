@@ -38,14 +38,6 @@ class ScrollWrapper : public WithTypeInfo<ScrollWrapper, ScrollbarWrapper>,
 
   void SetOverflow(int overflow) override;
 
-#ifdef ENABLE_ACCESSIBILITY
-  int32_t GetSemanticsActions() const override;
-  int32_t GetSemanticsFlags() const override;
-  int32_t GetA11yScrollChildren() const override;
-  bool IsAccessibilityElement() const override;
-  FloatRect GetSemanticsBounds() const override;
-#endif
-
   ScrollView* GetScrollView() const { return static_cast<ScrollView*>(view_); }
 
  private:

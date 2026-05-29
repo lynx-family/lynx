@@ -24,6 +24,8 @@ namespace clay {
 class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
                           public Component::NodeReadyListener {
  public:
+  friend class BaseView;
+
   class Delegate {
    public:
     virtual void OnListViewDidLayout() = 0;
@@ -73,6 +75,13 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
  protected:
   void CalculateOverFlow() override;
   void OnOverscroll(FloatPoint prev_overscroll_offset) override;
+#ifdef ENABLE_ACCESSIBILITY
+  void PrepareSemantics(
+      fml::RefPtr<SemanticsNode> parent_node,
+      std::vector<fml::RefPtr<SemanticsNode>>& result,
+      const std::vector<std::string>& ancestor_a11y_elements) override;
+#endif
+  bool OnScrollToMiddle(BaseView* target_view);
 
  private:
   void DidScroll() override;

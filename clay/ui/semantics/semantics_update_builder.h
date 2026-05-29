@@ -22,8 +22,10 @@ class SemanticsUpdateBuilder {
   // TODO(feiyue.1998): Determine more attributes that need update to platform
   // side.
   void UpdateNode(int32_t id, int32_t actions, int32_t flags,
-                  int32_t scroll_children, const FloatRect& rect,
-                  const std::u16string& label, const std::string& id_selector,
+                  int32_t scroll_children, float scroll_position,
+                  float scroll_extent_max, float scroll_extent_min,
+                  const FloatRect& rect, const std::u16string& label,
+                  const std::string& id_selector,
                   const std::vector<std::string>& accessibility_elements,
                   const Transform& transform,
                   const std::vector<int>& children_in_hittest_order);
