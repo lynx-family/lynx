@@ -280,6 +280,12 @@ class LynxShell {
   // TODO(heshan):will be deleted, pass when ReportError
   std::unordered_map<std::string, std::string> GetAllJsSource();
 
+  void GetLynxElementRootSignAsync(
+      std::unique_ptr<shell::PlatformCallBack> callback);
+
+  void GetLynxElementTreeAsJSONStringAsync(
+      int32_t sign, std::unique_ptr<shell::PlatformCallBack> callback);
+
   // TODO(huangweiwu): Delete this after adding a delegate for the devtool.
   LYNX_EXPORT_FOR_DEVTOOL tasm::TemplateAssembler* GetTasm();
 
