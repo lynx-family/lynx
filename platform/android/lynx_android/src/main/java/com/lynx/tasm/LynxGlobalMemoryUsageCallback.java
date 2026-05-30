@@ -17,8 +17,10 @@ public abstract class LynxGlobalMemoryUsageCallback {
    * <p>The result is always non-null. Missing or not-yet-implemented data is represented by
    * {@link LynxMemoryCollectionStatus} and zero-valued or empty payload fields.
    *
-   * <p>Threading: this method may be called on any thread. Dispatch to the main thread before
-   * touching platform View objects.
+   * <p>Threading: when the Lynx native library is available, this method is called on the Lynx
+   * report thread. Before the native report thread is available, it is called asynchronously on a
+   * background executor with an empty completed result. Dispatch to the main thread before touching
+   * platform View objects.
    */
   @AnyThread
   public void onResult(@NonNull LynxGlobalMemoryUsageResult result) {}

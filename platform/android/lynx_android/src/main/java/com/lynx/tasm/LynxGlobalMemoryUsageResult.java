@@ -7,6 +7,7 @@ package com.lynx.tasm;
 import androidx.annotation.NonNull;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -16,6 +17,8 @@ import java.util.List;
  * are exposed through an unmodifiable list from {@link #getInstances()}.
  */
 public final class LynxGlobalMemoryUsageResult {
+  private static final String UNGROUPED_BACKGROUND_RUNTIME_GROUP_ID = "-1";
+
   private final long mCollectionStartMs;
   @NonNull private final LynxMemoryCollectionStatus mCollectionStatus;
   private final long mCollectionDurationMs;
@@ -32,7 +35,7 @@ public final class LynxGlobalMemoryUsageResult {
   private final long mBackgroundThreadRuntimeBytes;
   @NonNull private final List<LynxInstanceMemoryUsage> mInstances;
 
-  LynxGlobalMemoryUsageResult(long collectionStartMs,
+  private LynxGlobalMemoryUsageResult(long collectionStartMs,
       @NonNull LynxMemoryCollectionStatus collectionStatus, long collectionDurationMs,
       long collectionTimeoutMs, int expectedInstanceCount, int completedInstanceCount,
       long totalBytes, long appBytes, double ratioToApp, long elementBytes, long elementNodeCount,
@@ -55,6 +58,53 @@ public final class LynxGlobalMemoryUsageResult {
     ArrayList<LynxInstanceMemoryUsage> instancesCopy = new ArrayList<>(instances);
     Collections.sort(instancesCopy, (a, b) -> Long.compare(b.getTotalBytes(), a.getTotalBytes()));
     mInstances = Collections.unmodifiableList(instancesCopy);
+  }
+
+  @NonNull
+  static LynxGlobalMemoryUsageResult build(long collectionStartMs,
+      @NonNull LynxMemoryCollectionStatus collectionStatus, long collectionDurationMs,
+      long collectionTimeoutMs, int expectedInstanceCount, long appBytes,
+      @NonNull List<LynxInstanceMemoryUsage> instances) {
+    long elementBytes = 0;
+    long elementNodeCount = 0;
+    long viewBytes = 0;
+    long mainThreadRuntimeBytes = 0;
+    long nonSharedBackgroundRuntimeBytes = 0;
+    HashMap<String, Long> backgroundRuntimeBytesByGroup = new HashMap<>();
+
+    for (LynxInstanceMemoryUsage instance : instances) {
+      elementBytes += instance.getElementBytes();
+      elementNodeCount += instance.getElementNodeCount();
+      viewBytes += instance.getViewBytes();
+      mainThreadRuntimeBytes += instance.getMainThreadRuntimeBytes();
+
+      String groupId = instance.getBtsRuntimeGroupId();
+      if (groupId != null && !groupId.isEmpty()
+          && !UNGROUPED_BACKGROUND_RUNTIME_GROUP_ID.equals(groupId)) {
+        // Background runtimes can be shared by multiple Lynx instances in the same runtime group.
+        // Counting the largest snapshot once avoids inflating global memory with duplicate owners.
+        long currentBytes = backgroundRuntimeBytesByGroup.containsKey(groupId)
+            ? backgroundRuntimeBytesByGroup.get(groupId)
+            : 0L;
+        backgroundRuntimeBytesByGroup.put(
+            groupId, Math.max(currentBytes, instance.getBackgroundThreadRuntimeBytes()));
+      } else {
+        nonSharedBackgroundRuntimeBytes += instance.getBackgroundThreadRuntimeBytes();
+      }
+    }
+
+    long backgroundThreadRuntimeBytes = nonSharedBackgroundRuntimeBytes;
+    for (Long bytes : backgroundRuntimeBytesByGroup.values()) {
+      backgroundThreadRuntimeBytes += bytes;
+    }
+
+    long totalBytes =
+        elementBytes + viewBytes + mainThreadRuntimeBytes + backgroundThreadRuntimeBytes;
+    double ratioToApp = appBytes > 0 ? (double) totalBytes / (double) appBytes : 0;
+    return new LynxGlobalMemoryUsageResult(collectionStartMs, collectionStatus,
+        collectionDurationMs, collectionTimeoutMs, expectedInstanceCount, instances.size(),
+        totalBytes, appBytes, ratioToApp, elementBytes, elementNodeCount, viewBytes,
+        mainThreadRuntimeBytes, backgroundThreadRuntimeBytes, instances);
   }
 
   /** Wall-clock collection start time in milliseconds. */
