@@ -24,6 +24,8 @@ class LynxEnv {
   void SetDevtoolEnabled(bool enable);
   bool IsDevtoolEnabled();
   bool ConnectDevtool(const char* url);
+  void SetOpenCardCallback(lynx_env_open_card_callback callback,
+                           void* user_data);
   void SetLogboxEnabled(bool enable);
   bool IsLogboxEnabled();
   void RegisterNativeModule(const std::string& module_name,
@@ -69,6 +71,11 @@ inline bool LynxEnv::IsDevtoolEnabled() {
 
 inline bool LynxEnv::ConnectDevtool(const char* url) {
   return lynx_env_connect_devtool(url);
+}
+
+inline void LynxEnv::SetOpenCardCallback(lynx_env_open_card_callback callback,
+                                         void* user_data) {
+  lynx_env_set_open_card_callback(callback, user_data);
 }
 
 inline void LynxEnv::SetLogboxEnabled(bool enable) {

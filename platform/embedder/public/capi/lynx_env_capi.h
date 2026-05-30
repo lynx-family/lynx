@@ -20,11 +20,15 @@ LYNX_CAPI_EXPORT void lynx_env_set_icu_data_path(const char* icu_data_path);
 LYNX_CAPI_EXPORT const char* lynx_env_get_icu_data_path();
 
 // Lynx devtools
+typedef void (*lynx_env_open_card_callback)(void* user_data, const char* url);
+
 LYNX_CAPI_EXPORT void lynx_env_set_devtool_app_info(const char* name,
                                                     const char* value);
 LYNX_CAPI_EXPORT void lynx_env_enable_devtool(int enable);
 LYNX_CAPI_EXPORT int lynx_env_is_devtool_enabled();
 LYNX_CAPI_EXPORT int lynx_env_connect_devtool(const char* url);
+LYNX_CAPI_EXPORT void lynx_env_set_open_card_callback(
+    lynx_env_open_card_callback callback, void* user_data);
 // logbox
 LYNX_CAPI_EXPORT void lynx_env_enable_logbox(int enable);
 LYNX_CAPI_EXPORT int lynx_env_is_logbox_enabled();

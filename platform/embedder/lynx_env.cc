@@ -58,6 +58,20 @@ LYNX_EXTERN_C int lynx_env_connect_devtool(const char* url) {
 #endif
 }
 
+LYNX_EXTERN_C void lynx_env_set_open_card_callback(
+    lynx_env_open_card_callback callback, void* user_data) {
+#if ENABLE_INSPECTOR
+  if (!callback) {
+    lynx::devtool::DebuggerEmbedder::SetOpenCardCallback(nullptr);
+    return;
+  }
+  lynx::devtool::DebuggerEmbedder::SetOpenCardCallback(
+      [callback, user_data](const std::string& url) {
+        callback(user_data, url.c_str());
+      });
+#endif
+}
+
 LYNX_EXTERN_C void lynx_env_enable_logbox(int enable) {
 #if ENABLE_INSPECTOR
   lynx::embedder::DevToolEnvEmbedder::GetInstance().SetDevToolSwitch(
