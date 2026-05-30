@@ -149,6 +149,12 @@ static const char* const TEMPLATE_RENDER_PROCESS_RENDER = "LynxTemplateRender::p
 static const char* const TEMPLATE_RENDER_PROCESS_LAYOUT = "LynxTemplateRender::processLayout";
 static const char* const TEMPLATE_RENDER_PROCESS_LAYOUT_WITH_TEMPLATE_BUNDLE =
     "LynxTemplateRender::processLayoutWithTemplateBundle";
+static const char* const GLOBAL_MEMORY_USAGE_COLLECTOR_QUERY =
+    "LynxGlobalMemoryUsageCollector.query";
+static const char* const GLOBAL_MEMORY_USAGE_COLLECTOR_FINISH =
+    "LynxGlobalMemoryUsageCollector.finish";
+static const char* const MEMORY_USAGE_QUERY_PUBLIC_API =
+    "LynxMemoryUsageQuery.queryLynxGlobalMemoryUsageAsync";
 static const char* const LYNX_VIEW_INIT_WITH_BUILDER_BLOCK = "LynxView::initWithBuilderBlock";
 static const char* const LYNX_VIEW_INIT_WITHOUT_RENDER = "LynxView::initWithoutRender";
 static const char* const LYNX_VIEW_INIT_LIFECYCLE_DISPATCHER = "LynxView::initLifecycleDispatcher";
