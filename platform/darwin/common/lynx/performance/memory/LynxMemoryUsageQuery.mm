@@ -4,8 +4,17 @@
 
 #import <Lynx/LynxMemoryUsageQuery.h>
 
-#import <Lynx/LynxEventReporter.h>
-#import <Lynx/LynxMemoryUsageResult.h>
+#import "LynxTraceEventDef.h"
+
+#include "base/trace/native/trace_event.h"
+#include "core/base/lynx_trace_categories.h"
+
+@interface LynxMemoryUsageCollector : NSObject
+
++ (instancetype)sharedCollector;
+- (void)queryGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback;
+
+@end
 
 @implementation LynxMemoryUsageQuery
 
@@ -18,22 +27,11 @@
   return query;
 }
 
-- (void)queryLynxGlobalMemoryUsageAsync:(LynxGlobalMemoryUsageCallback)callback {
-  if (!callback) {
-    return;
-  }
-  int64_t collectionStartMs = static_cast<int64_t>([[NSDate date] timeIntervalSince1970] * 1000);
-  // This MR only introduces the public API facade. Keep the observable behavior
-  // asynchronous and report-thread based, but return an empty completed result
-  // until the native collector is wired in by the follow-up implementation.
-  [LynxEventReporter
-      delayRunOnReportThread:^{
-        LynxGlobalMemoryUsageResult *result = [[LynxGlobalMemoryUsageResult alloc] init];
-        result.collectionStartMs = collectionStartMs;
-        result.collectionStatus = LynxMemoryCollectionStatusCompleted;
-        callback(result);
-      }
-                     delayMs:0];
+- (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback {
+  // Keep this singleton as the public facade only. The internal collector logic owns weak fetcher
+  // storage, report-thread serialization, timeout, and aggregation details.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, MEMORY_USAGE_QUERY_PUBLIC_API);
+  [[LynxMemoryUsageCollector sharedCollector] queryGlobalMemoryUsageAsync:callback];
 }
 
 @end

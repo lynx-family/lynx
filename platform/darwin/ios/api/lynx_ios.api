@@ -2067,6 +2067,20 @@ public class LynxGestureVelocityTracker : NSObject {
   public CGPoint LynxGestureVelocityTracker::velocityInView:(nullable UIView *view);
 }
 
+public class LynxGlobalMemoryUsageCollectionContext : NSObject {
+  public uint64_t LynxGlobalMemoryUsageCollectionContext::collectionId collectionId;
+  public int64_t LynxGlobalMemoryUsageCollectionContext::collectionStartMs collectionStartMs;
+  public NSInteger LynxGlobalMemoryUsageCollectionContext::expectedInstanceCount expectedInstanceCount;
+  public NSInteger LynxGlobalMemoryUsageCollectionContext::receivedFetchResultCount receivedFetchResultCount;
+  public NSMutableArray<LynxInstanceMemoryUsage *>* LynxGlobalMemoryUsageCollectionContext::instances instances;
+  public instancetype LynxGlobalMemoryUsageCollectionContext::initWithCollectionId:collectionStartMs:expectedInstanceCount:callback:(uint64_t collectionId,[collectionStartMs] int64_t collectionStartMs,[expectedInstanceCount] NSInteger expectedInstanceCount,[callback] LynxGlobalMemoryUsageCallback callback);
+  public BOOL LynxGlobalMemoryUsageCollectionContext::matchesCollectionId:(uint64_t collectionId);
+  public void LynxGlobalMemoryUsageCollectionContext::addCallback:(LynxGlobalMemoryUsageCallback callback);
+  public void LynxGlobalMemoryUsageCollectionContext::recordInstanceResult:(LynxInstanceMemoryUsage *_Nullable result);
+  public BOOL LynxGlobalMemoryUsageCollectionContext::hasReceivedAllFetchResults();
+  public NSArray< id > * LynxGlobalMemoryUsageCollectionContext::copyCallbacksForCompletion();
+}
+
 public class LynxGlobalMemoryUsageResult : NSObject {
   public int64_t LynxGlobalMemoryUsageResult::collectionStartMs collectionStartMs;
   public LynxMemoryCollectionStatus LynxGlobalMemoryUsageResult::collectionStatus collectionStatus;
@@ -2974,6 +2988,16 @@ public class LynxMemoryUsageEntry : LynxPerformanceEntry {
   public NSNumber* LynxMemoryUsageEntry::sizeBytes sizeBytes;
   public NSDictionary<NSString*, LynxMemoryUsageItem*>* LynxMemoryUsageEntry::detail detail;
   public instancetype LynxMemoryUsageEntry::initWithDictionary:(NSDictionary *dictionary);
+}
+
+public protocol LynxMemoryUsageFetcher-p : <NSObject> {
+  public void LynxMemoryUsageFetcher-p::queryMemoryUsageAsync:(LynxMemoryUsageFetcherCallback callback);
+}
+
+public class LynxMemoryUsageFetchers : NSObject {
+  public BOOL LynxMemoryUsageFetchers::registerFetcher:(nullable id< LynxMemoryUsageFetcher > fetcher);
+  public BOOL LynxMemoryUsageFetchers::unregisterFetcher:(nullable id< LynxMemoryUsageFetcher > fetcher);
+  public NSArray< id< LynxMemoryUsageFetcher > > * LynxMemoryUsageFetchers::fetchersForCurrentQuery();
 }
 
 public class LynxMemoryUsageItem : NSObject {
@@ -5822,6 +5846,8 @@ public enum LynxFeature {
     lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>
 
   typedef LynxMemoryRecord *_Nonnull(^ LynxMemoryRecordBuilder) (void)
+
+  public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxMemoryUsageFetcherCallback) (LynxInstanceMemoryUsage *_Nullable result) LynxMemoryUsageFetcherCallback;
 
   public FOUNDATION_EXTERN NSString* const kTimingEventPropSSRMetrics kTimingEventPropSSRMetrics;
   public FOUNDATION_EXTERN NSString* const kTimingEventPropSSRRenderPage kTimingEventPropSSRRenderPage;

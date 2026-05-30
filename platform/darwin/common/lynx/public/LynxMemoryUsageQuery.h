@@ -17,10 +17,6 @@ typedef void (^LynxGlobalMemoryUsageCallback)(LynxGlobalMemoryUsageResult *resul
  * Hosts use this singleton when they want a one-shot snapshot of the current
  * Lynx-attributed memory usage. Instance registration, timeout handling, and
  * aggregation stay inside the internal collector.
- *
- * The current API-only rollout is a no-op facade. It preserves the final
- * asynchronous callback shape but always returns an empty COMPLETED result until
- * the collector-backed implementation is wired in.
  */
 @interface LynxMemoryUsageQuery : NSObject
 
@@ -32,10 +28,12 @@ typedef void (^LynxGlobalMemoryUsageCallback)(LynxGlobalMemoryUsageResult *resul
  * The callback is invoked asynchronously on the report thread. Callers that
  * update UIKit must dispatch back to the main thread.
  *
- * The current implementation accepts nil as a no-op. When a callback is provided,
- * it receives an empty result with zero instance counts and byte fields, and
- * collectionStatus set to LynxMemoryCollectionStatusCompleted. A later collector
- * implementation will populate the instance list and aggregate memory fields.
+ * The current implementation accepts nil as a no-op. When a callback is
+ * provided, the collector snapshots the live Lynx instance fetchers at request
+ * start, queries them asynchronously, and returns either a completed result or a
+ * timeout result containing the partial instance list collected before the
+ * timeout fired. If no live instance fetchers exist, the callback still receives
+ * an asynchronous completed result with zero Lynx-attributed bytes.
  */
 - (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback;
 
