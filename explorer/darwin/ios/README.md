@@ -12,6 +12,7 @@ This document provides instructions for building the Lynx Explorer iOS app from 
 The following dependencies are needed:
 
 - Xcode(>=15.0)
+- Cocoapods(>=1.11.3)
 - Python library
 
 We recommend using [Homebrew](https://brew.sh/) to install the dependencies.
