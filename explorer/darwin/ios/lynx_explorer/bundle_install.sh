@@ -74,7 +74,7 @@ build_card_resources
 pushd $root_dir
 gn_root_dir=$(readlink -f $root_dir)
 echo "gn_root_dir: $gn_root_dir"
-generate_ios_podspec_cmd="python3 tools/ios_tools/generate_podspec_scripts_by_gn.py --root $gn_root_dir $enable_trace_param"
+generate_ios_podspec_cmd="python3 tools/ios_tools/generate_podspec_scripts_by_gn.py --root $gn_root_dir $enable_trace_param --enable-autosync-version"
 echo $generate_ios_podspec_cmd
 eval "$generate_ios_podspec_cmd"
 popd
