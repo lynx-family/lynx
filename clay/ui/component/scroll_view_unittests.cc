@@ -161,6 +161,44 @@ TEST_F_UI(ScrollViewTest, AppendChild) {
   EXPECT_EQ(inner->GetChildren()[2], view2.get());
 }
 
+TEST_F_UI(ScrollViewTest, SkipCorrectScrollOffsetWhenDetached) {
+  auto scroll_view =
+      std::make_unique<ScrollView>(-1, ScrollDirection::kVertical, page_.get());
+  scroll_view->SetBound(0, 0, 100, 100);
+  auto existing_child = std::make_unique<View>(-1, page_.get());
+  existing_child->SetBound(0, 0, 100, 200);
+  scroll_view->AddChild(existing_child.get(), 0);
+  scroll_view->OnLayoutUpdated();
+  scroll_view->GetRenderScroll()->ScrollTo(0, 50);
+
+  auto child = std::make_unique<View>(-1, page_.get());
+  child->SetBound(0, 200, 100, 100);
+
+  scroll_view->GetRenderScroll()->SetRenderer(nullptr);
+  ASSERT_EQ(scroll_view->GetRenderScroll()->GetRenderer(), nullptr);
+  scroll_view->AddChild(child.get(), 1);
+
+  EXPECT_EQ(scroll_view->GetRenderScroll()->ScrollTop(), 50);
+}
+
+TEST_F_UI(ScrollViewTest, SkipChildAddedDelegateCorrectionWhenDetached) {
+  auto scroll_wrapper = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  ScrollView* scroll_view = scroll_wrapper->GetScrollView();
+  scroll_view->SetBound(0, 0, 100, 100);
+  auto existing_child = std::make_unique<View>(-1, page_.get());
+  existing_child->SetBound(0, 0, 100, 200);
+  scroll_wrapper->AddChild(existing_child.get(), 0);
+  scroll_view->OnLayoutUpdated();
+  scroll_view->GetRenderScroll()->ScrollTo(0, 50);
+
+  auto child = std::make_unique<View>(-1, page_.get());
+  child->SetBound(0, 200, 100, 100);
+  scroll_wrapper->AddChild(child.get(), 1);
+
+  EXPECT_EQ(scroll_view->GetRenderScroll()->ScrollTop(), 50);
+}
+
 TEST_F_UI(ScrollViewTest, ScrollTop) {
   auto scroll_view = std::make_unique<ScrollView>(
       -1, ScrollDirection::kHorizontal, page_.get());

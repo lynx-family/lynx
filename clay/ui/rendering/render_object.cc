@@ -1094,6 +1094,9 @@ void RenderObject::Destroy() {
 }
 
 void RenderObject::ValidateForPaint(bool parent_visibility) {
+  if (!renderer_) {
+    return;
+  }
   bool visible = parent_visibility && visible_;
   if (!visible && (needs_paint_ || needs_effect_)) {
     renderer_->RemoveDirtyNode(this);
@@ -1102,8 +1105,11 @@ void RenderObject::ValidateForPaint(bool parent_visibility) {
   }
   RenderObject* child = VirtualChildren().FirstChild();
   while (child) {
-    child->ValidateForPaint(visible);
-    child = child->NextSibling();
+    RenderObject* next = child->NextSibling();
+    if (child->GetRenderer() == renderer_) {
+      child->ValidateForPaint(visible);
+    }
+    child = next;
   }
 }
 
@@ -1355,10 +1361,16 @@ void RenderObject::SetCacheStrategyRecursively(CacheStrategy strategy,
 }
 
 void RenderObject::WillPaint() {
+  if (!renderer_) {
+    return;
+  }
   RenderObject* child = VirtualChildren().FirstChild();
   while (child) {
-    child->WillPaint();
-    child = child->NextSibling();
+    RenderObject* next = child->NextSibling();
+    if (child->GetRenderer() == renderer_) {
+      child->WillPaint();
+    }
+    child = next;
   }
 }
 

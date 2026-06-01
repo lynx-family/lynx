@@ -8,6 +8,7 @@
 #include "clay/ui/rendering/render_box.h"
 #include "clay/ui/rendering/render_image.h"
 #include "clay/ui/rendering/render_object.h"
+#include "clay/ui/rendering/renderer.h"
 #include "clay/ui/rendering/text/render_text.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -30,6 +31,25 @@ class MockRenderObject : public RenderObject {
     RebuildSortedChildrenIfNeeded();
     return sorted_children_;
   }
+};
+
+class TestRendererClient : public RendererClient {
+ public:
+  MOCK_METHOD(void, RequestNewFrame, (), (override));
+
+  RenderPhase GetRenderPhase() const override { return RenderPhase::kIdle; }
+
+  fml::RefPtr<PaintImage> MakeRasterSnapshot(GrPicturePtr,
+                                             skity::Vec2) override {
+    return nullptr;
+  }
+
+  void RegisterUploadTask(OneShotCallback<>&&, int) override {}
+};
+
+class MockWillPaintRenderObject : public MockRenderObject {
+ public:
+  MOCK_METHOD(void, WillPaint, (), (override));
 };
 
 class RenderObjectTest : public ::testing::Test {
@@ -211,6 +231,24 @@ TEST_F(RenderObjectTest, PaintOrder) {
   auto* root = nodeList[0].get();
   root->SetTransformOperations(transform8);
   root->SetPaintingOrder(1);
+}
+
+TEST(RenderObjectStandaloneTest, SkipDetachedChildDuringPrePaintTraversal) {
+  TestRendererClient client;
+  EXPECT_CALL(client, RequestNewFrame()).Times(::testing::AnyNumber());
+
+  Renderer renderer(&client, nullptr);
+  auto root = std::make_unique<MockRenderObject>();
+  auto child = std::make_unique<MockWillPaintRenderObject>();
+  root->AddChild(child.get());
+  renderer.SetRoot(root.get());
+
+  child->SetRenderer(nullptr);
+  child->SetVisible(false);
+
+  root->ValidateForPaint(true);
+  EXPECT_CALL(*child, WillPaint()).Times(0);
+  root->WillPaint();
 }
 
 }  // namespace clay
