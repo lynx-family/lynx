@@ -5,6 +5,7 @@
 #include "platform/embedder/windowless/lynx_ui_renderer_windowless.h"
 
 #include <cassert>
+#include <cstdio>
 #include <memory>
 #include <utility>
 
@@ -15,6 +16,8 @@
 #include "clay/net/loader/resource_loader_creator_service.h"
 #include "clay/ui/component/view_context.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
+#include "platform/embedder/public/capi/lynx_memory_capi.h"
 
 namespace lynx {
 namespace embedder {
@@ -96,6 +99,23 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
   if (builder->generic_fetcher) {
     auto fetcher_holder =
         std::make_shared<LynxResourceFetcherHolder>(builder->generic_fetcher);
+    auto intercept = headless_engine_->GetResourceLoaderIntercept();
+    if (intercept) {
+      intercept->BindShouldInterceptUrlCallback(
+          [fetcher_holder](const char* origin_url, bool should_decode,
+                           char* intercept_url, int max_path_length) {
+            char* redirected = lynx_generic_resource_fetcher_intercept(
+                fetcher_holder->GenericFetcher(), origin_url, should_decode);
+            if (!redirected || !intercept_url || max_path_length <= 0) {
+              if (redirected) {
+                lynx_free(redirected);
+              }
+              return;
+            }
+            std::snprintf(intercept_url, max_path_length, "%s", redirected);
+            lynx_free(redirected);
+          });
+    }
     headless_engine_->GetServiceManager()
         ->RegisterService<clay::ResourceLoaderCreatorService>(
             std::make_shared<clay::ResourceLoaderCreatorService>(
