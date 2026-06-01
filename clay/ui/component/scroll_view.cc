@@ -871,6 +871,12 @@ void ScrollView::CorrectScrollOffset() {
   if (!scroll) {
     return;
   }
+  // Moving a scroll-view can temporarily detach its render object while child
+  // insertions are still being replayed. Skip paint-offset correction until the
+  // scroll render object is attached to a renderer again.
+  if (!scroll->GetRenderer()) {
+    return;
+  }
   // Use the paint offset to correct the scroll offset. If we correct it using
   // scroll_offset_, the corrected scroll offset can get out of sync with the
   // paint offset, causing flickering.
