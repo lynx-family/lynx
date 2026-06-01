@@ -99,11 +99,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -277,6 +280,25 @@ public class LynxTemplateRender
   private LynxLayoutProxy mLayoutProxy;
 
   private Map<Double, PlatformCallBack> platformCallBackMap = new HashMap<>();
+  private final Set<PlatformCallBack> mLynxElementCallbacks =
+      Collections.newSetFromMap(new ConcurrentHashMap<PlatformCallBack, Boolean>());
+
+  private abstract class LynxElementPlatformCallBack extends PlatformCallBack {
+    LynxElementPlatformCallBack() {
+      mLynxElementCallbacks.add(this);
+    }
+
+    @Override
+    public final void onSuccess(Object data) {
+      try {
+        onLynxElementResult(data);
+      } finally {
+        mLynxElementCallbacks.remove(this);
+      }
+    }
+
+    abstract void onLynxElementResult(Object data);
+  }
 
   private AtomicBoolean mIsDestroyed = new AtomicBoolean(true);
   private long mNativeLifecycle;
@@ -733,6 +755,59 @@ public class LynxTemplateRender
 
   public UIGroup<UIBodyView> getLynxRootUI() {
     return (mLynxUIRender != null) ? mLynxUIRender.getLynxRootUI() : null;
+  }
+
+  void getLynxElementRoot(@NonNull final LynxElement.Callback<LynxElement> callback) {
+    if (callback == null) {
+      return;
+    }
+    final LynxTemplateRender templateRender = this;
+    UIThreadUtils.runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        if (mNativePtr == 0 || mNativeLifecycle == 0) {
+          LLog.w(TAG, "getLynxElementRoot failed since native render is null.");
+          LynxElement.dispatchOnUiThread(callback, null);
+          return;
+        }
+        nativeGetLynxElementRoot(mNativePtr, mNativeLifecycle, new LynxElementPlatformCallBack() {
+          @Override
+          void onLynxElementResult(Object data) {
+            int sign = 0;
+            if (data instanceof Number) {
+              sign = ((Number) data).intValue();
+            }
+            LynxElement.dispatchOnUiThread(
+                callback, sign != 0 ? new LynxElement(templateRender, sign) : null);
+          }
+        });
+      }
+    });
+  }
+
+  void lynxElementToJSONString(
+      final int sign, @NonNull final LynxElement.Callback<String> callback) {
+    if (callback == null) {
+      return;
+    }
+    UIThreadUtils.runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        if (mNativePtr == 0 || mNativeLifecycle == 0 || sign == 0) {
+          LLog.w(TAG, "lynxElementToJSONString failed since native render or sign is null.");
+          LynxElement.dispatchOnUiThread(callback, null);
+          return;
+        }
+        nativeLynxElementToJSONString(
+            mNativePtr, mNativeLifecycle, sign, new LynxElementPlatformCallBack() {
+              @Override
+              void onLynxElementResult(Object data) {
+                String json = data instanceof String ? (String) data : null;
+                LynxElement.dispatchOnUiThread(callback, TextUtils.isEmpty(json) ? null : json);
+              }
+            });
+      }
+    });
   }
 
   public LynxDevtool getDevTool() {
@@ -4499,6 +4574,11 @@ public class LynxTemplateRender
   private static native void nativeMarkDirty(long ptr, long lifecycle);
 
   private static native void nativeFlush(long ptr, long lifecycle);
+
+  static native void nativeGetLynxElementRoot(long ptr, long lifecycle, PlatformCallBack callback);
+
+  static native void nativeLynxElementToJSONString(
+      long ptr, long lifecycle, int sign, PlatformCallBack callback);
 
   private static native void nativeSyncPackageExternalPath(long ptr, String path);
 
