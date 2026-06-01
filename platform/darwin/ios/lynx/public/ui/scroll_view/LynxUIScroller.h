@@ -53,6 +53,9 @@ typedef NS_ENUM(NSInteger, HoverPosition) {
 - (float)scrollRightLimit;
 - (float)scrollUpLimit;
 - (float)scrollDownLimit;
+- (void)addStickyChildSign:(NSInteger)sign;
+- (void)removeStickyChildSign:(NSInteger)sign;
+- (void)refreshStickyChildren;
 - (void)updateContentSize;
 
 @end
