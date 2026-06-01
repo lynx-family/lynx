@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxEventReporter.h>
+#import <Lynx/LynxMemoryRecord.h>
 #import <Lynx/LynxMemoryUsageQuery.h>
 #import <Lynx/LynxMemoryUsageResult.h>
 #import <XCTest/XCTest.h>
@@ -59,7 +60,10 @@ static LynxInstanceMemoryUsage *LynxCreateMemoryUsageTestInstance(
   instance.backgroundThreadRuntimeBytes = backgroundThreadRuntimeBytes;
   instance.totalBytes =
       elementBytes + viewBytes + mainThreadRuntimeBytes + backgroundThreadRuntimeBytes;
-  instance.viewDetail = @{@"view" : @(viewBytes)};
+  LynxMemoryRecord *viewRecord = [[LynxMemoryRecord alloc] initWithCategory:@"view"
+                                                                  sizeBytes:viewBytes
+                                                                     detail:nil];
+  instance.viewDetail = @{@"view" : viewRecord};
   instance.btsRuntimeGroupId = btsRuntimeGroupId ?: @"";
   return instance;
 }

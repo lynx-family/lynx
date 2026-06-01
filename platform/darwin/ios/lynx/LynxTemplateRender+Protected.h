@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxPerformanceController.h>
 #import <Lynx/LynxRuntimeLifecycleListener.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxTemplateRenderDelegate.h>
 #import <Lynx/LynxViewEnum.h>
 #import <Lynx/TemplateRenderCallbackProtocol.h>
-#import "LynxPerformanceController.h"
 
 #include <memory>
 
@@ -35,6 +35,7 @@
 @class LynxViewBuilder;
 @class LynxLifecycleDispatcher;
 @class LynxViewGroup;
+@class LynxTemplateRenderMemoryUsageFetcher;
 typedef NS_ENUM(NSInteger, LynxBooleanOption);
 
 @protocol LynxDynamicComponentFetcher;
@@ -82,6 +83,7 @@ NS_ASSUME_NONNULL_BEGIN
   PaintingContextProxy* _paintingContextProxy;
   LynxSSRHelper* _lynxSSRHelper;
   LynxPerformanceController* _performanceController;
+  LynxTemplateRenderMemoryUsageFetcher* _memoryUsageFetcher;
   LynxEngine* _lynxEngine;
   LynxViewGroup* _lynxViewGroup;
   CGFloat _fontScale;

@@ -13,6 +13,8 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
   LynxMemoryCollectionStatusTimeout = 1,
 };
 
+@class LynxMemoryRecord;
+
 /**
  * Memory attribution for one completed Lynx instance query.
  *
@@ -37,8 +39,8 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 @property(nonatomic, assign) int32_t elementNodeCount;
 // iOS UI memory reported by LynxUIOwner.
 @property(nonatomic, assign) int64_t viewBytes;
-// Per-view-class or per-view-key memory details reported by LynxUIOwner.
-@property(nonatomic, copy) NSDictionary<NSString *, NSNumber *> *viewDetail;
+// Per-view-class or per-view-key memory records reported by LynxUIOwner.
+@property(nonatomic, copy) NSDictionary<NSString *, LynxMemoryRecord *> *viewDetail;
 // Main-thread runtime heap snapshot bytes. The query reads current heap stats without GC.
 @property(nonatomic, assign) int64_t mainThreadRuntimeBytes;
 // Background-thread runtime heap snapshot bytes. The query reads current heap stats without GC.

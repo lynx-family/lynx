@@ -2385,7 +2385,7 @@ public class LynxInstanceMemoryUsage : NSObject {
   public int64_t LynxInstanceMemoryUsage::elementBytes elementBytes;
   public int32_t LynxInstanceMemoryUsage::elementNodeCount elementNodeCount;
   public int64_t LynxInstanceMemoryUsage::viewBytes viewBytes;
-  public NSDictionary<NSString *, NSNumber *>* LynxInstanceMemoryUsage::viewDetail viewDetail;
+  public NSDictionary<NSString *, LynxMemoryRecord *>* LynxInstanceMemoryUsage::viewDetail viewDetail;
   public int64_t LynxInstanceMemoryUsage::mainThreadRuntimeBytes mainThreadRuntimeBytes;
   public int64_t LynxInstanceMemoryUsage::backgroundThreadRuntimeBytes backgroundThreadRuntimeBytes;
   public NSString* LynxInstanceMemoryUsage::btsRuntimeGroupId btsRuntimeGroupId;
