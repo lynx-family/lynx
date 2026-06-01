@@ -14,8 +14,10 @@
 #include "core/public/ui_delegate.h"
 #include "core/renderer/data/android/platform_data_android.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
+#include "core/renderer/template_assembler.h"
 #include "core/renderer/utils/android/event_converter_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
+#include "core/renderer/utils/base/base_def.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_android.h"
 #include "core/runtime/js/bindings/modules/android/module_factory_android.h"
@@ -26,6 +28,7 @@
 #include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/android/tasm_platform_invoker_android.h"
 #include "core/shell/event_tracker_proxy_impl.h"
+#include "core/shell/lynx_engine.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
@@ -46,11 +49,9 @@ bool RegisterJNIForLynxTemplateRender(JNIEnv* env) {
 }  // namespace lynx
 
 using lynx::base::AtomicLifecycle;
-using lynx::base::android::AttachCurrentThread;
 using lynx::base::android::JavaOnlyArray;
 using lynx::base::android::JavaOnlyMap;
 using lynx::base::android::JNIConvertHelper;
-using lynx::base::android::ScopedGlobalJavaRef;
 using lynx::lepus::Value;
 using lynx::shell::LynxShell;
 
@@ -1332,6 +1333,60 @@ void Flush(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->Flush();
+  AtomicLifecycle::TryFree(lifecycle_ptr);
+}
+
+void GetLynxElementRoot(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
+                        jobject callback) {
+  if (callback == nullptr) {
+    return;
+  }
+  auto platform_callback =
+      std::make_unique<lynx::shell::PlatformCallBackAndroid>(env, callback);
+  if (ptr == 0 || lifecycle == 0) {
+    LOGW("GetLynxElementRoot failed since native render is null.");
+    platform_callback->InvokeWithValue(
+        Value(static_cast<int32_t>(lynx::tasm::kInvalidImplId)));
+    return;
+  }
+
+  auto* lifecycle_ptr = reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    LOGW("GetLynxElementRoot failed since native lifecycle is terminated.");
+    platform_callback->InvokeWithValue(
+        Value(static_cast<int32_t>(lynx::tasm::kInvalidImplId)));
+    return;
+  }
+
+  reinterpret_cast<LynxShell*>(ptr)->GetLynxElementRootSignAsync(
+      std::move(platform_callback));
+  AtomicLifecycle::TryFree(lifecycle_ptr);
+}
+
+void LynxElementToJSONString(JNIEnv* env, jclass jcaller, jlong ptr,
+                             jlong lifecycle, jint sign, jobject callback) {
+  if (callback == nullptr) {
+    return;
+  }
+  auto platform_callback =
+      std::make_unique<lynx::shell::PlatformCallBackAndroid>(env, callback);
+  if (ptr == 0 || lifecycle == 0 ||
+      sign == static_cast<jint>(lynx::tasm::kInvalidImplId)) {
+    LOGW("LynxElementToJSONString failed since native render or sign is null.");
+    platform_callback->InvokeWithValue(Value(std::string()));
+    return;
+  }
+
+  auto* lifecycle_ptr = reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    LOGW(
+        "LynxElementToJSONString failed since native lifecycle is terminated.");
+    platform_callback->InvokeWithValue(Value(std::string()));
+    return;
+  }
+
+  reinterpret_cast<LynxShell*>(ptr)->GetLynxElementTreeAsJSONStringAsync(
+      sign, std::move(platform_callback));
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 
