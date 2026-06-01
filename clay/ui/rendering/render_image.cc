@@ -455,12 +455,8 @@ void RenderImage::WillPaint() {
   // smaller than the original size. And this will lead to some memory
   // waste. Maybe need further research.
   bool force_use_original_size = !down_sampling_ || HasTransformExpansion();
-  Renderer* renderer = GetRenderer();
-  if (!renderer) {
-    return;
-  }
   float pixel_ratio =
-      renderer->GetPixelRatio<kPixelTypeClay, kPixelTypePhysical>();
+      GetRenderer()->GetPixelRatio<kPixelTypeClay, kPixelTypePhysical>();
   for (auto* resource : {image_resource_.get(), pending_image_resource_.get(),
                          placeholder_resource_.get()}) {
     if (resource && resource->GetImage()) {
