@@ -7,6 +7,8 @@
 #include <ark_runtime/jsvm.h>
 #include <ark_runtime/jsvm_types.h>
 
+#include <string>
+
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
@@ -17,7 +19,8 @@ class JSVMRuntimeInstance : public VMInstance {
   JSVMRuntimeInstance() = default;
   ~JSVMRuntimeInstance() override;
 
-  JSRuntimeType GetRuntimeType() override { return JSRuntimeType::jsvm; };
+  JSRuntimeType GetRuntimeType() const override { return JSRuntimeType::jsvm; };
+  std::string GetDebugDescription() const override { return "jsvm"; }
 
   void InitInstance();
   JSVM_VM GetVM() const { return vm_; }

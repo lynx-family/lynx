@@ -4,6 +4,7 @@
 #ifndef CORE_RUNTIME_JS_JSI_V8_V8_ISOLATE_WRAPPER_H_
 #define CORE_RUNTIME_JS_JSI_V8_V8_ISOLATE_WRAPPER_H_
 
+#include <string>
 #include <unordered_map>
 
 #include "core/base/observer/observer_list.h"
@@ -25,7 +26,8 @@ class V8IsolateInstance : public VMInstance {
   // observers_.RemoveObserver(obs);
   // }
   virtual v8::Isolate* Isolate() const = 0;
-  JSRuntimeType GetRuntimeType() { return JSRuntimeType::v8; }
+  JSRuntimeType GetRuntimeType() const override { return JSRuntimeType::v8; }
+  std::string GetDebugDescription() const override { return "v8"; }
 };
 
 }  // namespace js

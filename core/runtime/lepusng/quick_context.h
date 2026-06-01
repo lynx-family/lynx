@@ -108,6 +108,8 @@ class QuickContext : private LEPUSRuntimeData,
     return runtime::ContextType::LepusNGContextType;
   }
 
+  virtual std::string GetDebugDescription() const override;
+
   virtual void TriggerVmGC() override;
   virtual void UpdateGCTiming(bool is_start) override;
   virtual int64_t GetCurrentHeapSizeBytes() override;

@@ -158,7 +158,11 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
 }
 
 LynxShell::~LynxShell() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_DESTRUCTOR);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_DESTRUCTOR,
+              [instance_id = instance_id_](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                                   std::to_string(instance_id));
+              });
   LOGI("LynxShell release, this:" << this);
   Destroy();
 }

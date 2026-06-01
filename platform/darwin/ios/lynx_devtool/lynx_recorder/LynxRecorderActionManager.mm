@@ -835,7 +835,10 @@ static const int kVirtual = 1 << 2;
 
 - (void)loadTemplate:(NSDictionary*)params {
   [self avoidLynxViewBeingNull];
-  NSString* url = [[LynxRecorderEnv sharedInstance] lynxRecorderUrlPrefix];
+  NSString* url = [params objectForKey:@"url"];
+  if (!url) {
+    url = [[LynxRecorderEnv sharedInstance] lynxRecorderUrlPrefix];
+  }
   if (_globalPropsCache) {
     [_lynxView updateGlobalPropsWithTemplateData:[[LynxTemplateData alloc]
                                                      initWithDictionary:_globalPropsCache]];
@@ -919,7 +922,10 @@ static const int kVirtual = 1 << 2;
 
 - (void)loadTemplateBundle:(NSDictionary*)params {
   [self avoidLynxViewBeingNull];
-  NSString* url = [[LynxRecorderEnv sharedInstance] lynxRecorderUrlPrefix];
+  NSString* url = [params objectForKey:@"url"];
+  if (!url) {
+    url = [[LynxRecorderEnv sharedInstance] lynxRecorderUrlPrefix];
+  }
   if (_globalPropsCache) {
     [_lynxView updateGlobalPropsWithTemplateData:[[LynxTemplateData alloc]
                                                      initWithDictionary:_globalPropsCache]];

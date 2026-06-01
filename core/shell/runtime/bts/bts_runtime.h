@@ -194,6 +194,12 @@ class BTSRuntime final {
     }
   }
 
+  const std::string& GetGroupId() const { return group_id_; }
+
+  lynx::runtime::js::JSExecutor* GetJSExecutor() const {
+    return js_executor_.get();
+  }
+
 #if ENABLE_NAPI_BINDING
   void NotifyRuntimeReady(void* env, void* lynx);
 #endif

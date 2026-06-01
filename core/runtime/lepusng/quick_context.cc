@@ -683,6 +683,10 @@ bool QuickContext::ExecuteBinaryInternal(Value* ret_val) {
   return true;
 }
 
+std::string QuickContext::GetDebugDescription() const {
+  return std::string("quickjs(") + (LEPUS_IsGCModeRT(runtime_) ? "gc)" : "rc)");
+}
+
 void QuickContext::TriggerVmGC() {
   if (!gc_flag_) return;
   LEPUS_TrigGC(runtime_);

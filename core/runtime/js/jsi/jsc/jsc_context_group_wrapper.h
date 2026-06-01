@@ -6,6 +6,7 @@
 
 #include <JavaScriptCore/JavaScript.h>
 
+#include <string>
 #include <unordered_map>
 
 #include "core/runtime/js/jsi/jsi.h"
@@ -17,7 +18,8 @@ class JSCContextGroupWrapper : public VMInstance {
  public:
   JSCContextGroupWrapper() = default;
   ~JSCContextGroupWrapper() override;
-  JSRuntimeType GetRuntimeType() override { return JSRuntimeType::jsc; }
+  JSRuntimeType GetRuntimeType() const override { return JSRuntimeType::jsc; }
+  std::string GetDebugDescription() const override { return "jsc"; }
 
   void InitContextGroup();
   inline JSContextGroupRef GetContextGroup() { return group_; }

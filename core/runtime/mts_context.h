@@ -70,6 +70,7 @@ class MTSContext {
   virtual void Initialize() = 0;
 
   virtual ContextType Type() const = 0;
+  virtual std::string GetDebugDescription() const = 0;
 
   bool IsVMContext() const { return Type() == ContextType::VMContextType; }
   bool IsLepusNGContext() const {

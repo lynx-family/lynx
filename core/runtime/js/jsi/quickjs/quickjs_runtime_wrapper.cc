@@ -138,6 +138,14 @@ void QuickjsRuntimeInstance::RemoveObserver(JSIObserver* obs) {
   obs_set_ptr_.erase(obs);
 }
 
+std::string QuickjsRuntimeInstance::GetDebugDescription() const {
+  if (rt_) {
+    return std::string("quickjs(") + (LEPUS_IsGCModeRT(rt_) ? "gc)" : "rc)");
+  } else {
+    return "";
+  }
+}
+
 void QuickjsRuntimeInstance::AddToIdContainer() {
   GetFunctionIdContainer().insert({rt_, s_function_id_});
   GetObjectIdContainer().insert({rt_, s_object_id_});

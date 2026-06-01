@@ -86,7 +86,10 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   void AddObserver(JSIObserver* obs);
   void RemoveObserver(JSIObserver* obs);
 
-  JSRuntimeType GetRuntimeType() override { return JSRuntimeType::quickjs; }
+  JSRuntimeType GetRuntimeType() const override {
+    return JSRuntimeType::quickjs;
+  }
+  std::string GetDebugDescription() const override;
 
   // Must exec in use thread.
   void AddToIdContainer();

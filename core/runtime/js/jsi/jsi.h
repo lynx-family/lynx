@@ -1734,7 +1734,8 @@ class VMInstance {
   // static VMInstance createVM();
  public:
   virtual ~VMInstance() = default;
-  virtual JSRuntimeType GetRuntimeType() = 0;
+  virtual JSRuntimeType GetRuntimeType() const = 0;
+  virtual std::string GetDebugDescription() const = 0;
 };
 
 class HostGlobal {

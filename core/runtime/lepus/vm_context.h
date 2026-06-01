@@ -58,6 +58,7 @@ class VMContext : public runtime::MTSContext {
   virtual runtime::ContextType Type() const override {
     return runtime::ContextType::VMContextType;
   }
+  virtual std::string GetDebugDescription() const override { return "lepus"; }
 
   void RegisterGlobalFunction(const runtime::RenderBindingFunction* funcs,
                               size_t size) override;
