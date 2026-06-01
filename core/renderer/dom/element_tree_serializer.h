@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_DOM_ELEMENT_TREE_SERIALIZER_H_
 #define CORE_RENDERER_DOM_ELEMENT_TREE_SERIALIZER_H_
 
+#include <cstdint>
 #include <string>
 
 #include "base/include/value/base_value.h"
@@ -13,6 +14,11 @@ namespace lynx {
 namespace tasm {
 
 class Element;
+
+enum class LynxElementRequestType : int32_t {
+  kRootSign = 0,
+  kTreeJson = 1,
+};
 
 class ElementTreeSerializer {
  public:

@@ -277,6 +277,7 @@ public class LynxTemplateRender
   private LynxLayoutProxy mLayoutProxy;
 
   private Map<Double, PlatformCallBack> platformCallBackMap = new HashMap<>();
+  private final List<LynxElement.NativeCallback> mLynxElementCallbacks = new ArrayList<>();
 
   private AtomicBoolean mIsDestroyed = new AtomicBoolean(true);
   private long mNativeLifecycle;
@@ -733,6 +734,36 @@ public class LynxTemplateRender
 
   public UIGroup<UIBodyView> getLynxRootUI() {
     return (mLynxUIRender != null) ? mLynxUIRender.getLynxRootUI() : null;
+  }
+
+  void getLynxElementRoot(@NonNull final LynxElement.Callback<LynxElement> callback) {
+    if (callback == null) {
+      return;
+    }
+    requestLynxElement(LynxElement.REQUEST_ROOT_SIGN, 0, callback);
+  }
+
+  void lynxElementToJSONString(
+      final int sign, @NonNull final LynxElement.Callback<String> callback) {
+    if (callback == null) {
+      return;
+    }
+    requestLynxElement(LynxElement.REQUEST_TREE_JSON, sign, callback);
+  }
+
+  private void requestLynxElement(
+      final int requestType, final int sign, @NonNull final LynxElement.Callback callback) {
+    UIThreadUtils.runOnUiThread(() -> {
+      if (mNativePtr == 0 || mNativeLifecycle == 0 || mDestroying || mHasDestroy
+          || (requestType == LynxElement.REQUEST_TREE_JSON && sign == 0)) {
+        callback.onResult(null);
+        return;
+      }
+      LynxElement.NativeCallback nativeCallback =
+          new LynxElement.NativeCallback(requestType, this, callback, mLynxElementCallbacks);
+      mLynxElementCallbacks.add(nativeCallback);
+      nativeGetLynxElement(mNativePtr, mNativeLifecycle, requestType, sign, nativeCallback);
+    });
   }
 
   public LynxDevtool getDevTool() {
@@ -2410,6 +2441,7 @@ public class LynxTemplateRender
 
   private void destroyNative() {
     mDestroying = true;
+    cancelLynxElementCallbacks();
     LLog.i(TAG, "destroyNative url " + getTemplateUrl() + " in " + this.toString());
     if (mDevTool != null) {
       mDevTool.destroy();
@@ -2425,6 +2457,15 @@ public class LynxTemplateRender
 
     mHasDestroy = true;
     mDestroying = false;
+  }
+
+  private void cancelLynxElementCallbacks() {
+    UIThreadUtils.runOnUiThreadImmediately(() -> {
+      for (LynxElement.NativeCallback callback : new ArrayList<>(mLynxElementCallbacks)) {
+        callback.cancel();
+      }
+      mLynxElementCallbacks.clear();
+    });
   }
 
   public final ThreadStrategyForRendering getThreadStrategyForRendering() {
@@ -4499,6 +4540,9 @@ public class LynxTemplateRender
   private static native void nativeMarkDirty(long ptr, long lifecycle);
 
   private static native void nativeFlush(long ptr, long lifecycle);
+
+  static native void nativeGetLynxElement(
+      long ptr, long lifecycle, int requestType, int sign, PlatformCallBack callback);
 
   private static native void nativeSyncPackageExternalPath(long ptr, String path);
 

@@ -15,8 +15,10 @@
 #include "core/public/ui_delegate.h"
 #include "core/renderer/data/android/platform_data_android.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
+#include "core/renderer/dom/element_tree_serializer.h"
 #include "core/renderer/utils/android/event_converter_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
+#include "core/renderer/utils/base/base_def.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_android.h"
 #include "core/runtime/js/bindings/modules/android/module_factory_android.h"
@@ -55,8 +57,15 @@ using lynx::base::android::JNIConvertHelper;
 using lynx::base::android::ScopedGlobalJavaRef;
 using lynx::lepus::Value;
 using lynx::shell::LynxShell;
+using lynx::tasm::LynxElementRequestType;
 
 namespace {
+
+Value GetUnavailableLynxElementResult(LynxElementRequestType request_type) {
+  return request_type == LynxElementRequestType::kRootSign
+             ? Value(static_cast<int32_t>(lynx::tasm::kInvalidImplId))
+             : Value();
+}
 
 Value ConvertJavaData(JNIEnv* env, jobject j_data, jint length) {
   if (j_data == nullptr || length <= 0) {
@@ -1395,6 +1404,43 @@ void Flush(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->Flush();
+  AtomicLifecycle::TryFree(lifecycle_ptr);
+}
+
+void GetLynxElement(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
+                    jint request_type_value, jint sign, jobject callback) {
+  if (callback == nullptr) {
+    return;
+  }
+  auto request_type = static_cast<LynxElementRequestType>(request_type_value);
+  auto platform_callback =
+      std::make_unique<lynx::shell::PlatformCallBackAndroid>(env, callback);
+  if (ptr == 0 || lifecycle == 0) {
+    platform_callback->InvokeWithValue(
+        GetUnavailableLynxElementResult(request_type));
+    return;
+  }
+
+  auto* lifecycle_ptr = reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    platform_callback->InvokeWithValue(
+        GetUnavailableLynxElementResult(request_type));
+    return;
+  }
+
+  auto* shell = reinterpret_cast<LynxShell*>(ptr);
+  switch (request_type) {
+    case LynxElementRequestType::kRootSign:
+      shell->GetLynxElementRootSignAsync(std::move(platform_callback));
+      break;
+    case LynxElementRequestType::kTreeJson:
+      shell->GetLynxElementTreeAsJSONStringAsync(sign,
+                                                 std::move(platform_callback));
+      break;
+    default:
+      platform_callback->InvokeWithValue(Value());
+      break;
+  }
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 
