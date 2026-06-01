@@ -1909,6 +1909,175 @@ CaptureResult(f());
   delete ctx;
 }
 
+// Test: Multiple closures capture the same toplevel variable that is reassigned
+// between CreateClosure sites. This verifies RecordClosureVarRegAndValue
+// handles conflicting SSA values for the same register without crashing.
+TEST(LEPUSIRTestToplevelClosureVariable,
+     multiple_closures_with_reassigned_var_no_init) {
+  g_test_result = "";
+  lepus::VMContext* context = new lepus::VMContext();
+  context->Initialize();
+  RegisterBuiltinForTest(context);
+  context->SetClosureFix(true);
+
+  // `let x;` produces Value_A (undefined), foo's CreateClosure records it.
+  // `x = 42` produces Value_B, bar's CreateClosure records it for the same reg.
+  // Both closures must see the final runtime value (42).
+  std::string source = R"(
+    let x;
+    function foo() {
+      return x;
+    }
+    x = 42;
+    let bar = function() {
+      return x;
+    };
+    CaptureResult(foo());
+  )";
+
+  auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(context, source,
+                                                                "3.8", "");
+  EXPECT_TRUE(error.empty()) << "Compilation error: " << error;
+
+  context->Execute();
+  EXPECT_EQ(g_test_result, "42");
+
+  delete context;
+}
+
+TEST(LEPUSIRTestToplevelClosureVariable,
+     multiple_closures_with_reassigned_var_with_init) {
+  g_test_result = "";
+  lepus::VMContext* context = new lepus::VMContext();
+  context->Initialize();
+  RegisterBuiltinForTest(context);
+  context->SetClosureFix(true);
+
+  // Same pattern but with an explicit initializer (`let x = 1`).
+  std::string source = R"(
+    let x = 1;
+    function foo() {
+      return x;
+    }
+    x = 42;
+    let bar = function() {
+      return x;
+    };
+    CaptureResult(bar());
+  )";
+
+  auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(context, source,
+                                                                "3.8", "");
+  EXPECT_TRUE(error.empty()) << "Compilation error: " << error;
+
+  context->Execute();
+  EXPECT_EQ(g_test_result, "42");
+
+  delete context;
+}
+
+TEST(LEPUSIRTestToplevelClosureVariable,
+     multiple_closures_multiple_reassignments) {
+  g_test_result = "";
+  lepus::VMContext* context = new lepus::VMContext();
+  context->Initialize();
+  RegisterBuiltinForTest(context);
+  context->SetClosureFix(true);
+
+  // Three closures created at different reassignment points.
+  // All must resolve to the same physical register and see the final value.
+  std::string source = R"(
+    let a;
+    function getA1() { return a; }
+    a = 10;
+    let getA2 = function() { return a; };
+    a = 20;
+    let getA3 = function() { return a; };
+    a = 30;
+    CaptureResult(getA1() == 30 && getA2() == 30 && getA3() == 30);
+  )";
+
+  auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(context, source,
+                                                                "3.8", "");
+  EXPECT_TRUE(error.empty()) << "Compilation error: " << error;
+
+  context->Execute();
+  EXPECT_EQ(g_test_result, "true");
+
+  delete context;
+}
+
+// Regression test: when the reassigned value has multiple users (preventing
+// ToplevelStoreOptimization coalescing), closures must still resolve to the
+// correct pinned physical register.
+TEST(LEPUSIRTestToplevelClosureVariable,
+     multiple_closures_multi_user_reassignment) {
+  g_test_result = "";
+  lepus::VMContext* context = new lepus::VMContext();
+  context->Initialize();
+  RegisterBuiltinForTest(context);
+  context->SetClosureFix(true);
+
+  // `x` is reassigned multiple times.  The reassigned value is used in an
+  // expression (multi-user) which can prevent the post-RA coalescing
+  // optimization from moving the producer into the pinned register.
+  // All closures must still see the final value of `x`.
+  std::string source = R"(
+    let x = 1;
+    function foo() { return x; }
+    let y = x + 1;
+    x = 42;
+    let bar = function() { return x; };
+    let z = x + y;
+    x = 100;
+    CaptureResult(foo() == 100 && bar() == 100 && z == 44);
+  )";
+
+  auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(context, source,
+                                                                "3.8", "");
+  EXPECT_TRUE(error.empty()) << "Compilation error: " << error;
+
+  context->Execute();
+  EXPECT_EQ(g_test_result, "true");
+
+  delete context;
+}
+
+// Regression test: reassigned variable used across many expressions to create
+// register pressure, ensuring the closure-captured variable still resolves to
+// the correct pinned register even when live ranges are dense.
+TEST(LEPUSIRTestToplevelClosureVariable, multiple_closures_register_pressure) {
+  g_test_result = "";
+  lepus::VMContext* context = new lepus::VMContext();
+  context->Initialize();
+  RegisterBuiltinForTest(context);
+  context->SetClosureFix(true);
+
+  std::string source = R"(
+    let x = 1;
+    let a = x + 2;
+    let b = x + 3;
+    function getX1() { return x; }
+    x = a + b;
+    let c = x + a;
+    let d = x + b;
+    let getX2 = function() { return x; };
+    x = c + d;
+    let getX3 = function() { return x; };
+    x = 999;
+    CaptureResult(getX1() == 999 && getX2() == 999 && getX3() == 999);
+  )";
+
+  auto error = lynx::lepus::BytecodeGenerator::GenerateBytecode(context, source,
+                                                                "3.8", "");
+  EXPECT_TRUE(error.empty()) << "Compilation error: " << error;
+
+  context->Execute();
+  EXPECT_EQ(g_test_result, "true");
+
+  delete context;
+}
+
 }  // namespace ir
 }  // namespace lepus
 }  // namespace lynx

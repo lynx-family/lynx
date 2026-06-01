@@ -101,12 +101,15 @@ void FuncOp::Dump(StageMode mode, std::ostream& os) const {
 }
 
 void FuncOp::RecordClosureVarRegAndValue(uint32_t closure_reg, Value* value) {
+  // Multiple closures may capture the same register whose SSA value
+  // differs because the variable was written between CreateClosure sites.
+  // Keep the *first* recorded value (the anchor).  This value flows into
+  // IRContext::top_level_variables_ and gets a pinned physical register via
+  // Preallocate().  Downstream passes (UpdateToplevelClosureVarPass,
+  // ToplevelStoreOptimizationPass) resolve closure upvalue registers through
+  // this map, so it must stay in sync with the anchor that the register
+  // allocator pins.
   if (closure_reg_to_value_.find(closure_reg) != closure_reg_to_value_.end()) {
-    if (LEPUS_UNLIKELY(closure_reg_to_value_[closure_reg] != value)) {
-      throw ::lynx::lepus::CompileException(
-          "Lepus IR error: FuncOp::RecordClosureVarRegAndValue found "
-          "conflicting value for the same old register");
-    }
     return;
   }
   closure_reg_to_value_[closure_reg] = value;

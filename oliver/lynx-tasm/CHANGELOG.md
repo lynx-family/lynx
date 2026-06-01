@@ -1,4 +1,7 @@
 # CHANGELOG
+# 0.0.42
+* fix lepus crash when multiple closures capture a reassigned toplevel variable
+
 # 0.0.41
 * fix lepus bytecode optimization register overflow and add debug prints when Lepus bytecode optimization flag is set
 
