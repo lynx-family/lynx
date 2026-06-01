@@ -79,8 +79,8 @@ public class BackgroundManager extends LynxBackground {
     updateViewTranslation();
   }
 
-  public void setPostTranlate(PointF tranlate) {
-    mPostTranslate = tranlate;
+  public void setPostTranslate(PointF translate) {
+    mPostTranslate = translate;
     updateViewTranslation();
   }
 
