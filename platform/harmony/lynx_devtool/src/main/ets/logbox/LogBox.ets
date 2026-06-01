@@ -13,7 +13,7 @@ import { ComponentContent, UIContext } from '@kit.ArkUI';
 
 interface Event {
   event: string;
-  data?: LogBoxData | LogBoxViewInfoData;
+  data?: LogBoxData | LogBoxViewInfoData | LogBoxFileData;
 }
 
 interface LogBoxData {
@@ -26,6 +26,11 @@ interface LogBoxViewInfoData {
   viewsCount: number;
   level: string;
   templateUrl: string;
+}
+
+interface LogBoxFileData {
+  type: string;
+  data: string;
 }
 
 interface Result {
@@ -48,6 +53,8 @@ const TAG = 'LogBox';
 const LOGBOX_LEVEL_ERROR = 'error';
 const LOGBOX_LEVEL_WARN = 'warn';
 const LOGBOX_BRIEF_MAX_LENGTH = 50;
+const LOGBOX_MAPPINGS_WASM = 'logbox/mappings.wasm';
+const LOGBOX_MAPPINGS_WASM_TYPE = 'mappings.wasm';
 
 interface LogBoxNotificationData {
   level: string;
@@ -157,8 +164,12 @@ class NativeBridge {
   private templateUrl: string = '';
   private manager?: LogBoxNotificationManager;
   private level: string = LOGBOX_LEVEL_ERROR;
+  private isWasmLoaded: boolean = false;
 
   setWebController(controller: web_webview.WebviewController | undefined) {
+    if (this.webController !== controller) {
+      this.isWasmLoaded = false;
+    }
     this.webController = controller;
   }
 
@@ -210,6 +221,23 @@ class NativeBridge {
   }
 
   getExceptionStack() {
+    if (!this.webController) {
+      return;
+    }
+    if (this.isWasmLoaded) {
+      this.sendExceptionStack();
+      return;
+    }
+    this.isWasmLoaded = true;
+    this.loadMappingsWasm((loaded: boolean) => {
+      if (!loaded) {
+        this.isWasmLoaded = false;
+      }
+      this.sendExceptionStack();
+    });
+  }
+
+  private sendExceptionStack() {
     if (this.manager) {
       this.manager.requestLogsOfCurrentView(this.level, this);
       return;
@@ -246,12 +274,25 @@ class NativeBridge {
     if (processName.includes("lynx_core.js")) {
       processName = "core.js";
     }
+    let value = "";
+    let matchLength = 0;
     for (let entry of Object.entries(this.jsSource as Record<string, string>)) {
-      if (entry[0].includes(processName)) {
-        return entry[1];
+      let key = entry[0];
+      if (processName.endsWith(key) && key.length > matchLength) {
+        value = entry[1];
+        matchLength = key.length;
       }
     }
-    return "";
+    if (!value) {
+      for (let entry of Object.entries(this.jsSource as Record<string, string>)) {
+        let key = entry[0];
+        if (key.includes(processName) && key.length > matchLength) {
+          value = entry[1];
+          matchLength = key.length;
+        }
+      }
+    }
+    return value;
   }
 
   postMessage(msg: Message) {
@@ -368,8 +409,44 @@ class NativeBridge {
     return content;
   }
 
-  private sendEvent(event: Event) {
-    this.webController?.runJavaScript(`window.logbox.sendEvent(${JSON.stringify(event)});`);
+  private loadMappingsWasm(callback: (loaded: boolean) => void) {
+    try {
+      let context: common.UIAbilityContext =
+        this.context ?? (getContext(this) as common.UIAbilityContext);
+      let resourceManager = context.resourceManager;
+      resourceManager.getRawFileContent(LOGBOX_MAPPINGS_WASM).then(value => {
+        let base64Helper = new util.Base64Helper();
+        let base64Data = base64Helper.encodeToStringSync(value);
+        let loadFileResult = this.sendEvent({
+          event: 'loadFile',
+          data: {
+            type: LOGBOX_MAPPINGS_WASM_TYPE,
+            data: base64Data,
+          },
+        });
+        if (!loadFileResult) {
+          LLog.e(TAG, 'send mappings.wasm skipped, webController is undefined');
+          callback(false);
+          return;
+        }
+        loadFileResult.then(() => {
+          callback(true);
+        }).catch(() => {
+          LLog.e(TAG, 'send mappings.wasm failed.');
+          callback(false);
+        })
+      }).catch(() => {
+        LLog.e(TAG, 'failed to load mappings.wasm.');
+        callback(false);
+      })
+    } catch (error) {
+      LLog.e(TAG, `load mappings.wasm failed. ${error}`);
+      callback(false);
+    }
+  }
+
+  private sendEvent(event: Event): Promise<string> | undefined {
+    return this.webController?.runJavaScript(`window.logbox.sendEvent(${JSON.stringify(event)});`);
   }
 
   private sendResult(callbackId: number, data: string | Object[] | boolean) {
