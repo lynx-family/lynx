@@ -154,9 +154,17 @@ void ComponentElement::PrepareForFontFaceIfNeeded() {
   // To prevent business logic breaks and maintain alignment with
   // the behavior of the Radon architecture.
   // in the Radon-Fiber architecture, FontFace is flushed for each style_sheet.
-  if (style_sheet_ && !style_sheet_->GetFontFaceRuleMap().empty() &&
-      !style_sheet_->HasFontFacesResolved()) {
-    SetFontFaces(style_sheet_->GetFontFaceRuleMap());
+  if (style_sheet_) {
+    style_sheet_->ForEachUnresolvedFontFaceMap(
+        [](const CSSFontFaceRuleMap& font_face_map, void* cb_data) {
+          auto* self = static_cast<ComponentElement*>(cb_data);
+          if (!font_face_map.empty()) {
+            // FIXME(linxs): parse the font face according to font_family,
+            // instead of flushing all font faces
+            self->SetFontFaces(font_face_map);
+          }
+        },
+        this);
     style_sheet_->MarkFontFacesResolved(true);
   }
 }
