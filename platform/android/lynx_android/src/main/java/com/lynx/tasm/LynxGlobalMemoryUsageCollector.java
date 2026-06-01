@@ -10,6 +10,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxConsumer;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import java.lang.ref.WeakReference;
@@ -50,6 +52,7 @@ class LynxGlobalMemoryUsageCollector {
     if (callback == null) {
       return;
     }
+    TraceEvent.beginSection(TraceEventDef.MEMORY_USAGE_GLOBAL_QUERY);
     long collectionStartMs = nowMs();
     boolean isNativeLibraryLoaded = LynxEnv.inst().isNativeLibraryLoaded();
     if (!isNativeLibraryLoaded) {
@@ -62,10 +65,12 @@ class LynxGlobalMemoryUsageCollector {
                 LynxMemoryCollectionStatus.COMPLETED, nowMs() - collectionStartMs,
                 GLOBAL_MEMORY_USAGE_TIMEOUT_MS, 0, sampleAppBytes(), Collections.emptyList()));
       });
+      TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_GLOBAL_QUERY);
       return;
     }
 
     runOnReportThread(() -> queryMemoryUsageOnReportThread(callback, collectionStartMs));
+    TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_GLOBAL_QUERY);
   }
 
   @AnyThread
@@ -80,11 +85,13 @@ class LynxGlobalMemoryUsageCollector {
 
   private void queryMemoryUsageOnReportThread(
       @NonNull LynxGlobalMemoryUsageCallback callback, long collectionStartMs) {
+    TraceEvent.beginSection(TraceEventDef.MEMORY_USAGE_GLOBAL_REPORT_THREAD_QUERY);
     LynxGlobalMemoryUsageCollectionContext pendingContext = mPendingContext;
     if (pendingContext != null) {
       // A query is already collecting. Keep the expensive per-instance fetch work shared, and fan
       // out the same final result to every coalesced API callback.
       pendingContext.addCallback(callback);
+      TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_GLOBAL_REPORT_THREAD_QUERY);
       return;
     }
 
@@ -102,9 +109,10 @@ class LynxGlobalMemoryUsageCollector {
     mPendingContext = context;
 
     if (fetchers.isEmpty()) {
-      // The public API has a real collector now, but there may be no live Lynx instances. Complete
-      // asynchronously with an empty successful result instead of waiting for the timeout.
+      // The public API has a real collector now, but there may be no live Lynx instances.
+      // Complete asynchronously with an empty successful result instead of waiting for the timeout.
       context.finishWithStatus(LynxMemoryCollectionStatus.COMPLETED);
+      TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_GLOBAL_REPORT_THREAD_QUERY);
       return;
     }
 
@@ -112,6 +120,7 @@ class LynxGlobalMemoryUsageCollector {
                                -> context.finishWithStatus(LynxMemoryCollectionStatus.TIMEOUT),
         GLOBAL_MEMORY_USAGE_TIMEOUT_MS);
 
+    TraceEvent.beginSection(TraceEventDef.MEMORY_USAGE_GLOBAL_FETCHER_FAN_OUT);
     for (LynxMemoryUsageFetcher fetcher : fetchers) {
       LynxConsumer<LynxInstanceMemoryUsage> singleShotCallback =
           createSingleShotCallback(result -> didReceiveFetcherResult(context, result));
@@ -124,6 +133,8 @@ class LynxGlobalMemoryUsageCollector {
         singleShotCallback.accept(null);
       }
     }
+    TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_GLOBAL_FETCHER_FAN_OUT);
+    TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_GLOBAL_REPORT_THREAD_QUERY);
   }
 
   private void didReceiveFetcherResult(@NonNull LynxGlobalMemoryUsageCollectionContext context,

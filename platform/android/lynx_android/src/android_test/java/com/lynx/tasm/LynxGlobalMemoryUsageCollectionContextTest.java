@@ -126,4 +126,45 @@ public class LynxGlobalMemoryUsageCollectionContextTest {
     assertEquals(1, result.getCompletedInstanceCount());
     assertEquals(187L, result.getTotalBytes());
   }
+
+  @Test
+  public void ignoresNullAndLateCallbacksAfterFinish() {
+    AtomicInteger callbackCount = new AtomicInteger();
+    AtomicInteger finishCount = new AtomicInteger();
+    AtomicReference<LynxGlobalMemoryUsageResult> resultRef = new AtomicReference<>();
+
+    LynxGlobalMemoryUsageCollectionContext context = new LynxGlobalMemoryUsageCollectionContext(
+        100L, 2000L, 3, new LynxGlobalMemoryUsageCallback() {
+          @Override
+          public void onResult(@NonNull LynxGlobalMemoryUsageResult result) {
+            callbackCount.incrementAndGet();
+            resultRef.set(result);
+          }
+        });
+    context.addCallback(null);
+    context.setFinishHandler(finishedContext -> finishCount.incrementAndGet());
+
+    assertEquals(3, context.getExpectedInstanceCount());
+    assertEquals(1, context.getCallbackCount());
+
+    context.finishWithStatus(LynxMemoryCollectionStatus.COMPLETED);
+    context.addCallback(new LynxGlobalMemoryUsageCallback() {
+      @Override
+      public void onResult(@NonNull LynxGlobalMemoryUsageResult result) {
+        callbackCount.incrementAndGet();
+      }
+    });
+    context.didReceiveInstanceResult(createInstance(1, 1L, 1L, 1L, 1L, 1L, 1L, null));
+    context.finishWithStatus(LynxMemoryCollectionStatus.TIMEOUT);
+
+    assertEquals(1, callbackCount.get());
+    assertEquals(1, finishCount.get());
+    assertEquals(0, context.getCallbackCount());
+    assertEquals(0, context.getReceivedFetchResultCount());
+    LynxGlobalMemoryUsageResult result = resultRef.get();
+    assertNotNull(result);
+    assertEquals(LynxMemoryCollectionStatus.COMPLETED, result.getCollectionStatus());
+    assertEquals(3, result.getExpectedInstanceCount());
+    assertEquals(0, result.getCompletedInstanceCount());
+  }
 }

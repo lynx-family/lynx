@@ -5939,7 +5939,7 @@ public class com::lynx::tasm::LynxInstanceMemoryUsage :  {
   public long com.lynx.tasm.LynxInstanceMemoryUsage.getElementBytes();
   public long com.lynx.tasm.LynxInstanceMemoryUsage.getElementNodeCount();
   public long com.lynx.tasm.LynxInstanceMemoryUsage.getViewBytes();
-  public Map< String, Long > com.lynx.tasm.LynxInstanceMemoryUsage.getViewDetail();
+  public Map< String, MemoryRecord > com.lynx.tasm.LynxInstanceMemoryUsage.getViewDetail();
   public long com.lynx.tasm.LynxInstanceMemoryUsage.getMainThreadRuntimeBytes();
   public long com.lynx.tasm.LynxInstanceMemoryUsage.getBackgroundThreadRuntimeBytes();
   public String com.lynx.tasm.LynxInstanceMemoryUsage.getBtsRuntimeGroupId();
@@ -7946,6 +7946,7 @@ public class com::lynx::tasm::performance::memory::MemoryRecord :  {
   public Map<String, String> com.lynx.tasm.performance.memory.MemoryRecord.mDetail mDetail;
   public com.lynx.tasm.performance.memory.MemoryRecord.MemoryRecord(String category, long sizeBytes, int instanceCount, Map< String, String > detail);
   public String com.lynx.tasm.performance.memory.MemoryRecord.getCategory();
+  public MemoryRecord com.lynx.tasm.performance.memory.MemoryRecord.copy();
 }
 
 public interface com::lynx::devtoolwrapper::MemoryListener::MemoryReporter {
@@ -10624,6 +10625,19 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.DESTORY_LYNXVIEW DESTORY_LYNXVIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNXVIEW_BUILDER_BUILD LYNXVIEW_BUILDER_BUILD;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_ENV_TRIM_MEMORY LYNX_ENV_TRIM_MEMORY;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_GLOBAL_QUERY MEMORY_USAGE_GLOBAL_QUERY;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_GLOBAL_REPORT_THREAD_QUERY MEMORY_USAGE_GLOBAL_REPORT_THREAD_QUERY;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_GLOBAL_FETCHER_FAN_OUT MEMORY_USAGE_GLOBAL_FETCHER_FAN_OUT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_GLOBAL_FINISH MEMORY_USAGE_GLOBAL_FINISH;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_GLOBAL_TOTAL MEMORY_USAGE_GLOBAL_TOTAL;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_QUERY MEMORY_USAGE_TEMPLATE_RENDER_QUERY;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_DISPATCH_NATIVE MEMORY_USAGE_TEMPLATE_RENDER_DISPATCH_NATIVE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_NATIVE_CALLBACK MEMORY_USAGE_TEMPLATE_RENDER_NATIVE_CALLBACK;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_NATIVE_COMPLETE MEMORY_USAGE_TEMPLATE_RENDER_NATIVE_COMPLETE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_VIEW_SAMPLE MEMORY_USAGE_TEMPLATE_RENDER_VIEW_SAMPLE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_VIEW_COMPLETE MEMORY_USAGE_TEMPLATE_RENDER_VIEW_COMPLETE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_FINISH MEMORY_USAGE_TEMPLATE_RENDER_FINISH;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_TOTAL MEMORY_USAGE_TEMPLATE_RENDER_TOTAL;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TRIGGER_EMBEDDED_MODE_LIFECYCLE TRIGGER_EMBEDDED_MODE_LIFECYCLE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LOGIC_EXECUTOR_INIT LOGIC_EXECUTOR_INIT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LOGIC_EXECUTOR_EVENT LOGIC_EXECUTOR_EVENT;

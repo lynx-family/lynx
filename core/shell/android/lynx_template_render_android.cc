@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/string/string_utils.h"
 #include "core/base/android/jni_helper.h"
 #include "core/base/thread/atomic_lifecycle.h"
 #include "core/public/lynx_extension_delegate.h"
@@ -32,6 +33,7 @@
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/perf_controller_proxy_impl.h"
+#include "core/shell/performance/native_memory_usage_query.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxTemplateRender_jni.h"
@@ -111,6 +113,38 @@ std::unique_ptr<JavaOnlyArray> ConvertToJavaArray(
 template <typename T>
 void AddToJavaMap(JavaOnlyMap& map, const std::string& key, const T& vec) {
   map.PushArray(key, ConvertToJavaArray(vec).get());
+}
+
+void DispatchNativeMemoryUsageResult(
+    ScopedGlobalJavaRef<jobject> receiver,
+    lynx::tasm::performance::NativeMemoryUsageSnapshot snapshot) {
+  if (receiver.IsNull()) {
+    return;
+  }
+  JNIEnv* env = AttachCurrentThread();
+  jobject receiver_object = receiver.Get();
+  jclass receiver_class = env->GetObjectClass(receiver_object);
+  if (receiver_class == nullptr) {
+    lynx::base::android::CheckException(env);
+    return;
+  }
+  jmethodID on_result_method = env->GetMethodID(
+      receiver_class, "onNativeMemoryUsageResult", "(JJJJLjava/lang/String;)V");
+  env->DeleteLocalRef(receiver_class);
+  if (on_result_method == nullptr) {
+    lynx::base::android::CheckException(env);
+    return;
+  }
+  auto j_group_id = JNIConvertHelper::U16StringToJNIString(
+      env, lynx::base::U8StringToU16(snapshot.bts_runtime_group_id_));
+  env->CallVoidMethod(
+      receiver_object, on_result_method,
+      static_cast<jlong>(snapshot.element_bytes_),
+      static_cast<jlong>(snapshot.element_node_count_),
+      static_cast<jlong>(snapshot.main_thread_runtime_bytes_),
+      static_cast<jlong>(snapshot.background_thread_runtime_bytes_),
+      j_group_id.Get());
+  lynx::base::android::CheckException(env);
 }
 
 std::shared_ptr<lynx::tasm::PipelineOptions> ProcessLoadTemplateTimingOption(
@@ -1123,6 +1157,35 @@ jobject GetAllJsSource(JNIEnv* env, jclass jcaller, jlong ptr,
   }
   AtomicLifecycle::TryFree(lifecycle_ptr);
   return env->NewLocalRef(jni_map.jni_object());  // NOLINT
+}
+
+void QueryNativeMemoryUsageAsync(JNIEnv* env, jclass jcaller, jlong ptr,
+                                 jlong lifecycle, jobject receiver) {
+  ScopedGlobalJavaRef<jobject> global_receiver(env, receiver);
+  if (global_receiver.IsNull()) {
+    return;
+  }
+  if (ptr == 0 || lifecycle == 0) {
+    DispatchNativeMemoryUsageResult(
+        std::move(global_receiver),
+        lynx::tasm::performance::NativeMemoryUsageSnapshot());
+    return;
+  }
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    DispatchNativeMemoryUsageResult(
+        std::move(global_receiver),
+        lynx::tasm::performance::NativeMemoryUsageSnapshot());
+    return;
+  }
+  reinterpret_cast<LynxShell*>(ptr)->QueryNativeMemoryUsageAsync(
+      [receiver = std::move(global_receiver)](
+          lynx::tasm::performance::NativeMemoryUsageSnapshot snapshot) mutable {
+        DispatchNativeMemoryUsageResult(std::move(receiver),
+                                        std::move(snapshot));
+      });
+  AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 
 void RenderChild(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,

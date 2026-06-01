@@ -8,7 +8,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxConsumer;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -71,11 +74,23 @@ class LynxGlobalMemoryUsageCollectionContext {
     if (mFinished) {
       return;
     }
+    TraceEvent.beginSection(TraceEventDef.MEMORY_USAGE_GLOBAL_FINISH);
     mFinished = true;
 
+    long durationMs = LynxGlobalMemoryUsageCollector.nowMs() - mCollectionStartMs;
     LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.build(mCollectionStartMs,
-        status, LynxGlobalMemoryUsageCollector.nowMs() - mCollectionStartMs, mCollectionTimeoutMs,
-        mExpectedInstanceCount, LynxGlobalMemoryUsageCollector.sampleAppBytes(), mInstances);
+        status, durationMs, mCollectionTimeoutMs, mExpectedInstanceCount,
+        LynxGlobalMemoryUsageCollector.sampleAppBytes(), mInstances);
+    if (TraceEvent.isTracingStarted()) {
+      HashMap<String, String> traceProps = new HashMap<>();
+      traceProps.put("status", status.name());
+      traceProps.put("duration_ms", String.valueOf(durationMs));
+      traceProps.put("expected_instances", String.valueOf(mExpectedInstanceCount));
+      traceProps.put("completed_fetchers", String.valueOf(mReceivedFetchResultCount));
+      TraceEvent.instant(
+          TraceEvent.CATEGORY_DEFAULT, TraceEventDef.MEMORY_USAGE_GLOBAL_TOTAL, traceProps);
+    }
+
     // Copy and clear callbacks before invoking app code so reentrant queries cannot mutate the
     // callback list being delivered.
     List<LynxGlobalMemoryUsageCallback> callbacks = new ArrayList<>(mCallbacks);
@@ -88,6 +103,7 @@ class LynxGlobalMemoryUsageCollectionContext {
     for (LynxGlobalMemoryUsageCallback callback : callbacks) {
       invokeCallbackSafely(callback, result);
     }
+    TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_GLOBAL_FINISH);
   }
 
   static void invokeCallbackSafely(@NonNull LynxGlobalMemoryUsageCallback callback,

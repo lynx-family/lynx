@@ -6,6 +6,7 @@ package com.lynx.tasm;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.tasm.performance.memory.MemoryRecord;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,14 +22,14 @@ public final class LynxInstanceMemoryUsage {
   private final long mElementBytes;
   private final long mElementNodeCount;
   private final long mViewBytes;
-  @NonNull private final Map<String, Long> mViewDetail;
+  @NonNull private final Map<String, MemoryRecord> mViewDetail;
   private final long mMainThreadRuntimeBytes;
   private final long mBackgroundThreadRuntimeBytes;
   @Nullable private final String mBtsRuntimeGroupId;
 
   LynxInstanceMemoryUsage(int instanceId, @Nullable String pageId, @Nullable String url,
       long totalBytes, long elementBytes, long elementNodeCount, long viewBytes,
-      @Nullable Map<String, Long> viewDetail, long mainThreadRuntimeBytes,
+      @Nullable Map<String, MemoryRecord> viewDetail, long mainThreadRuntimeBytes,
       long backgroundThreadRuntimeBytes, @Nullable String btsRuntimeGroupId) {
     mInstanceId = instanceId;
     mPageId = pageId;
@@ -84,9 +85,20 @@ public final class LynxInstanceMemoryUsage {
     return mViewBytes;
   }
 
-  /** Per-view-category memory details reported by LynxUIOwner. */
+  /**
+   * Per-view-category memory details reported by LynxUIOwner.
+   *
+   * <p>The map key is the view category/tag. Each {@link MemoryRecord} value is a detached snapshot
+   * containing category, sizeBytes, instanceCount, and optional category-specific detail. This
+   * keeps the Android API aligned with the "lynxsdk_memory_usage" detail shape, for example:
+   * {@code {"x-viewpager-ng": {"category": "x-viewpager-ng", "sizeBytes": 0,
+   * "instanceCount": 2}}}.
+   *
+   * <p>The returned map is immutable. Its {@link MemoryRecord} values are detached snapshots copied
+   * from LynxUIOwner on the UI thread.
+   */
   @NonNull
-  public Map<String, Long> getViewDetail() {
+  public Map<String, MemoryRecord> getViewDetail() {
     return mViewDetail;
   }
 
