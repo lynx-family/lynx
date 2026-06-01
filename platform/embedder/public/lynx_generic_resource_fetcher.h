@@ -5,8 +5,10 @@
 #define PLATFORM_EMBEDDER_PUBLIC_LYNX_GENERIC_RESOURCE_FETCHER_H_
 
 #include <memory>
+#include <string>
 
 #include "capi/lynx_generic_resource_fetcher_capi.h"
+#include "capi/lynx_memory_capi.h"
 #include "lynx_resource_request.h"
 #include "lynx_resource_response.h"
 
@@ -86,6 +88,27 @@ class LynxGenericResourceFetcher
             shared_fetcher->Cancel(request_id);
           }
         });
+    lynx_generic_resource_fetcher_bind_intercept_func(
+        fetcher_,
+        [](const char* url, bool should_decode, void* user_data) -> char* {
+          if (!url) {
+            return nullptr;
+          }
+          std::weak_ptr<LynxGenericResourceFetcher>* weak_ptr =
+              reinterpret_cast<std::weak_ptr<LynxGenericResourceFetcher>*>(
+                  user_data);
+          std::shared_ptr<LynxGenericResourceFetcher> shared_fetcher =
+              weak_ptr ? weak_ptr->lock() : nullptr;
+          if (!shared_fetcher) {
+            return nullptr;
+          }
+          std::string intercepted_url =
+              shared_fetcher->InterceptUrl(url, should_decode);
+          if (intercepted_url.empty()) {
+            return nullptr;
+          }
+          return lynx_strdup(intercepted_url.c_str());
+        });
   }
 
   virtual ~LynxGenericResourceFetcher() {
@@ -128,6 +151,20 @@ class LynxGenericResourceFetcher
    * @param request_id The ID of the resource request to be canceled.
    */
   virtual void Cancel(lynx_resource_request_id request_id) {}
+
+  /**
+   * @apidoc
+   * @brief Intercepts the input resource URL before it is fetched.
+   * Derived classes can override this method to rewrite the original URL.
+   * @param origin_url The original resource URL.
+   * @param should_decode Whether the returned URL should be decoded.
+   * @return The intercepted URL. The default implementation returns the
+   * original URL unchanged.
+   */
+  virtual std::string InterceptUrl(const std::string& origin_url,
+                                   bool should_decode) {
+    return origin_url;
+  }
 
   lynx_generic_resource_fetcher_t* Impl() { return fetcher_; }
 
