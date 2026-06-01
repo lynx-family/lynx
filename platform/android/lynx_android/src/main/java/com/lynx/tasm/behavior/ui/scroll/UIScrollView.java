@@ -52,6 +52,7 @@ import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.tasm.utils.PixelUtils;
 import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.tasm.utils.UnitUtils;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -74,6 +75,8 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   private boolean mEnableScrollTap;
   private boolean mEnableContentSizeChangedEvent;
   private boolean mEnableSticky = false;
+  private boolean mStickyDirty = false;
+  private ArrayList<Integer> mStickyChildSigns = null;
 
   protected boolean mPreferenceConsumeGesture = false;
   // scroll-top/scroll-left is props set by FE before scroll-view layout do not take effect, should
@@ -142,7 +145,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
       public void onScrollStart() {
         getLynxContext().getFluencyTraceHelper().start(getSign(), "scroll", getScrollMonitorTag());
         if (mEnableSticky) {
-          onScrollSticky();
+          updateStickyOnScroll();
         }
         if (mEnableScrollStartEvent) {
           sendCustomEvent(getScrollX(), getScrollY(), getScrollX(), getScrollY(),
@@ -170,7 +173,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
       @Override
       public void onScrollChanged(int l, int t, int oldl, int oldt) {
         if (mEnableSticky) {
-          onScrollSticky();
+          updateStickyOnScroll();
         }
 
         if (mEnableScrollEvent) {
@@ -247,6 +250,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
     int paddingTop = mPaddingTop + mBorderTopWidth;
     int paddingBottom = mPaddingBottom + mBorderBottomWidth;
     mView.setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom);
+    mStickyDirty = true;
   }
 
   @Override
@@ -265,6 +269,9 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
       }
     }
     mFirstRender = false;
+    // Sticky dirty here comes from node updates, child insertions/removals, or scroll-view
+    // frame/prop changes in the current node-ready cycle.
+    refreshStickyChildrenIfNeeded();
   }
 
   @Override
@@ -285,6 +292,68 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
         }
       } else {
         mBounceView = uiBounceView;
+      }
+    }
+  }
+
+  private void updateStickyOnScroll() {
+    if (mContext != null && mContext.getEnableNewSticky()) {
+      refreshStickyChildren();
+    } else {
+      onScrollSticky();
+    }
+  }
+
+  @Override
+  public void setEnableSticky() {
+    mEnableSticky = true;
+    onScrollSticky();
+  }
+
+  @Override
+  public void addStickyChildSign(int sign) {
+    if (mStickyChildSigns == null) {
+      mStickyChildSigns = new ArrayList<>();
+    }
+    if (!mStickyChildSigns.contains(sign)) {
+      mStickyChildSigns.add(sign);
+    }
+    mEnableSticky = !mStickyChildSigns.isEmpty();
+  }
+
+  @Override
+  public void removeStickyChildSign(int sign) {
+    if (mStickyChildSigns == null) {
+      mEnableSticky = false;
+      return;
+    }
+    mStickyChildSigns.remove(Integer.valueOf(sign));
+    mEnableSticky = !mStickyChildSigns.isEmpty();
+  }
+
+  @Override
+  public void refreshStickyChildren() {
+    if (!mEnableSticky || mStickyChildSigns == null || mContext == null) {
+      return;
+    }
+    // Note: Here need to use getRealScrollY() and getRealScrollX() to get the real scroll offset
+    int offset = mEnableScrollY ? mView.getRealScrollY() : mView.getRealScrollX();
+    int scrollerSize = mEnableScrollY ? getHeight() : getWidth();
+    int contentSize = mEnableScrollY ? getView().getContentHeight() : getView().getContentWidth();
+    int maxOffset = Math.max(contentSize - scrollerSize, 0);
+    for (int index = 0; index < mStickyChildSigns.size(); index++) {
+      LynxBaseUI ui = mContext.findLynxUIBySign(mStickyChildSigns.get(index));
+      if (ui != null) {
+        ui.calculateStickyTranslateWithOffset(offset, mEnableScrollY, scrollerSize, maxOffset);
+      }
+    }
+  }
+
+  private void refreshStickyChildrenIfNeeded() {
+    if (mStickyDirty) {
+      mStickyDirty = false;
+      if (mContext != null && mContext.getEnableNewSticky()) {
+        refreshStickyChildren();
       }
     }
   }
@@ -330,6 +399,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
       onContentSizeChanged(contentWidth, contentHeight);
       mView.setMeasuredSize(contentWidth, contentHeight);
       mView.sendScrollToEdgeEvent(mView.getScrollX(), mView.getScrollY());
+      mStickyDirty = true;
     }
     super.measure();
   }
@@ -368,6 +438,9 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
         mPendingScrollOffset = 0;
       }
     }
+    // Sticky dirty here comes from measure(), where Android recalculates content size after child
+    // layout info is updated.
+    refreshStickyChildrenIfNeeded();
   }
 
   @Override
@@ -400,12 +473,14 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
 
   @Override
   public void setScrollY(boolean enable) {
+    mStickyDirty = mStickyDirty || (mEnableScrollY != enable);
     mEnableScrollY = enable;
     handleScrollDirection();
   }
 
   @Override
   public void setScrollX(boolean enable) {
+    mStickyDirty = mStickyDirty || (mEnableScrollY == enable);
     mEnableScrollY = !enable;
     handleScrollDirection();
   }
@@ -417,11 +492,6 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
     } catch (Exception e) {
       LLog.e("UIScrollView", e.getMessage());
     }
-  }
-
-  public void setEnableSticky() {
-    mEnableSticky = true;
-    onScrollSticky();
   }
 
   @Override
@@ -594,6 +664,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
 
   @LynxProp(name = "scroll-orientation", customType = "vertical")
   public void setScrollOrientation(String scrollOrientation) {
+    boolean lastEnableScrollY = mEnableScrollY;
     if (TextUtils.equals(scrollOrientation, "vertical")) {
       mEnableScrollY = true;
     } else if (TextUtils.equals(scrollOrientation, "horizontal")) {
@@ -601,6 +672,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
     } else {
       mEnableScrollY = true;
     }
+    mStickyDirty = mStickyDirty || (lastEnableScrollY != mEnableScrollY);
     handleScrollDirection();
   }
 

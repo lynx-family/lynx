@@ -12,6 +12,7 @@ import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PointF;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -470,6 +471,22 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
       invalidate();
     }
     return ret;
+  }
+
+  @Override
+  public boolean calculateStickyTranslateWithOffset(
+      int offset, boolean isVertical, int scrollerSize, int maxOffset) {
+    boolean ret =
+        mChild.calculateStickyTranslateWithOffset(offset, isVertical, scrollerSize, maxOffset);
+    if (ret) {
+      invalidate();
+    }
+    return ret;
+  }
+
+  @Override
+  public void setStickyTranslate(PointF trans) {
+    mChild.setStickyTranslate(trans);
   }
 
   private Rect getChildFrameRect() {

@@ -65,6 +65,7 @@ static const short OVERFLOW_X_VAL = 0x01;
 static const short OVERFLOW_Y_VAL = 0x02;
 short const OVERFLOW_XY_VAL = 0x03;
 short const OVERFLOW_HIDDEN_VAL = 0x00;
+static const NSInteger INVALID_STICKY_SIGN = -1;
 static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 
 #define IS_ZERO(num) (fabs(num) < 0.0000000001)
@@ -76,6 +77,24 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 @property(nonatomic, readwrite) CATransform3D offsetEffectTransform;
 @property(nonatomic, readwrite) CGFloat lastOffsetX;
 @property(nonatomic, readwrite) CGFloat lastOffsetY;
+@end
+
+@interface StickyRange : NSObject
+@property(nonatomic, assign) BOOL valid;
+@property(nonatomic, assign) CGFloat start;
+@property(nonatomic, assign) CGFloat end;
+@end
+
+@implementation StickyRange
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _valid = NO;
+    _start = 0.f;
+    _end = CGFLOAT_MAX;
+  }
+  return self;
+}
 @end
 
 @interface LynxUI () <NSCopying>
@@ -96,7 +115,12 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 @property(nonatomic, strong) NSString* lynxAccessibilityLabel;
 
 @property(nonatomic, nullable, strong) LynxUILastInfo* lastInfo;
+@property(nonatomic, assign) NSInteger stickyScrollerSign;
 
+- (void)updateNewSticky:(NSArray*)info;
+- (LynxUI*)getStickyScroller;
+- (void)removeSelfFromStickyScrollerIfNeeded;
+- (void)bindStickyScrollerIfNeeded:(LynxUIScroller*)scroller;
 - (void)prepareKeyframeManager;
 - (void)prepareLayoutAnimationManager;
 - (void)prepareTransitionAnimationManager;
@@ -201,6 +225,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   _updatedFrame = CGRectZero;
   _lastUpdatedFrame = CGRectZero;
   _overflow = OVERFLOW_HIDDEN_VAL;
+  _stickyScrollerSign = INVALID_STICKY_SIGN;
   _autoResumeAnimation = YES;
   _enableNewTransformOrigin = YES;
   _enableReuseAnimationState = YES;
@@ -392,19 +417,200 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 }
 
 - (void)updateSticky:(NSArray*)info {
-  if (info == nil || [info count] < 4) {
+  if (self.context.enableNewSticky) {
+    [self updateNewSticky:info];
+  } else {
+    if (info == nil || [info count] < 4) {
+      _sticky = nil;
+      return;
+    }
+    LynxUI* uiParent = (LynxUI*)self.parent;
+    if ([uiParent isKindOfClass:[LynxUIScroller class]] ||
+        [uiParent isKindOfClass:LynxUIScrollView.class]) {
+      LynxUIScroller* parent = (LynxUIScroller*)uiParent;
+      parent.enableSticky = YES;
+      _sticky = info;
+    }
+  }
+}
+
+- (void)updateNewSticky:(NSArray*)info {
+  if (info == nil || [info count] < 10) {
+    if (_sticky) {
+      // sticky item is not sticky item or has illegal, need to reset sticky translate.
+      [self removeSelfFromStickyScrollerIfNeeded];
+      [self.backgroundManager setPostTranslate:CGPointZero];
+    }
     _sticky = nil;
     return;
   }
-  LynxUI* uiParent = (LynxUI*)self.parent;
-  if ([uiParent isKindOfClass:[LynxUIScroller class]] ||
-      [uiParent isKindOfClass:LynxUIScrollView.class]) {
-    LynxUIScroller* parent = (LynxUIScroller*)uiParent;
-    parent.enableSticky = YES;
-    _sticky = info;
+
+  // If has no sticky scroller currently, still need to save sticky info.
+  // stickyParent: scroller
+  // info[0]: sticky left
+  // info[1]: sticky top
+  // info[2]: sticky right
+  // info[3]: sticky bottom
+  // info[4]: sticky item's direct parent's width
+  // info[5]: sticky item's direct parent's height
+  // info[6]: sticky item's relative left to scroller
+  // info[7]: sticky item's relative top to scroller
+  // info[8]: sticky item's parent relative left to scroller
+  // info[9]: sticky item's parent relative top to scroller
+  _sticky = info;
+  LynxUI* uiScroller = [self getStickyScroller];
+  if (uiScroller != nil) {
+    LynxUIScroller* lynxUIScroller = (LynxUIScroller*)uiScroller;
+    [self bindStickyScrollerIfNeeded:lynxUIScroller];
+    [lynxUIScroller refreshStickyChildren];
   } else {
+    // TODO: compact for scroll-view new arch.
+    // Has no valid sticky scroller, need to reset sticky translate.
+    // But we no need to clear sticky info.
+    [self removeSelfFromStickyScrollerIfNeeded];
+    [self.backgroundManager setPostTranslate:CGPointZero];
+  }
+}
+
+- (LynxUI*)getStickyScroller {
+  LynxUI* uiParent = (LynxUI*)self.parent;
+  while (uiParent != nil) {
+    if ([uiParent isKindOfClass:[LynxUIScroller class]] &&
+        ![uiParent isKindOfClass:[LynxUIListContainer class]]) {
+      return uiParent;
+    }
+    uiParent = uiParent.parent;
+  }
+  return nil;
+}
+
+- (void)bindStickyScrollerIfNeeded:(LynxUIScroller*)uiScroller {
+  if (uiScroller != nil) {
+    if (self.stickyScrollerSign != INVALID_STICKY_SIGN &&
+        self.stickyScrollerSign != uiScroller.sign) {
+      // If current sticky scroller is not uiScroller, remove from current sticky scroller.
+      [self removeSelfFromStickyScrollerIfNeeded];
+    }
+    self.stickyScrollerSign = uiScroller.sign;
+    [uiScroller addStickyChildSign:self.sign];
+  }
+}
+
+- (void)removeSelfFromStickyScrollerIfNeeded {
+  if (self.stickyScrollerSign == INVALID_STICKY_SIGN) {
     return;
   }
+  LynxUI* stickyScroller = [self.context.uiOwner findUIBySign:self.stickyScrollerSign];
+  if ([stickyScroller isKindOfClass:[LynxUIScroller class]]) {
+    [(LynxUIScroller*)stickyScroller removeStickyChildSign:self.sign];
+  } else if ([stickyScroller isKindOfClass:[LynxUIScrollView class]]) {
+    // TODO: compact for scroll-view new arch.
+  }
+  self.stickyScrollerSign = INVALID_STICKY_SIGN;
+}
+
+- (void)onNodeRemoved {
+  [super onNodeRemoved];
+  if (self.context.enableNewSticky) {
+    [self removeSelfFromStickyScrollerIfNeeded];
+    [self.backgroundManager setPostTranslate:CGPointZero];
+  }
+}
+
+- (void)calculateStickyTranslateWithOffset:(CGFloat)offset
+                                isVertical:(BOOL)isVertical
+                              scrollerSize:(CGFloat)scrollerSize
+                                 maxOffset:(CGFloat)maxOffset {
+  if (self.sticky == nil || self.sticky.count < 10) {
+    return;
+  }
+  CGFloat leadingInset = 0.f;      // sticky left or top
+  CGFloat trailingInset = 0.f;     // sticky right or bottom
+  CGFloat relativePosition = 0.f;  // sticky item position in scroller content coordinates.
+  CGFloat parentRelativePosition =
+      0.f;                   // direct parent's position in scroller content coordinates.
+  CGFloat itemSize = 0.f;    // sticky item's size on the scrolling axis.
+  CGFloat parentSize = 0.f;  // direct parent's size on the scrolling axis.
+  if (isVertical) {
+    leadingInset = [self.sticky[1] floatValue];
+    trailingInset = [self.sticky[3] floatValue];
+    parentSize = [self.sticky[5] floatValue];
+    relativePosition = [self.sticky[7] floatValue];
+    // If sticky item's parent is scroll-view, parentRelativePosition should be 0.f.
+    parentRelativePosition = [self.sticky[9] floatValue];
+    itemSize = CGRectGetHeight(self.frame);
+  } else {
+    leadingInset = [self.sticky[0] floatValue];
+    trailingInset = [self.sticky[2] floatValue];
+    parentSize = [self.sticky[4] floatValue];
+    relativePosition = [self.sticky[6] floatValue];
+    // If sticky item's parent is scroll-view, parentRelativePosition should be 0.f.
+    parentRelativePosition = [self.sticky[8] floatValue];
+    itemSize = CGRectGetWidth(self.frame);
+  }
+
+  // 1. calculate sticky range.
+  StickyRange* leadingRange = [StickyRange new];
+  StickyRange* trailingRange = [StickyRange new];
+  // When item scrolling into the distance which <= sticky top, the item should be into sticky top
+  // status. relativePosition - offset <= leadingInset
+  leadingRange.start = relativePosition - leadingInset;
+  // When item scrolling into the distance <= sticky bottom, the item should be into sticky bottom
+  // status. offset + scrollerSize - trailingInset <= relativeBottom
+  CGFloat relativeBottom = relativePosition + itemSize;
+  trailingRange.end = relativeBottom + trailingInset - scrollerSize;
+  leadingRange.valid = leadingRange.start < maxOffset;
+  trailingRange.valid = trailingRange.end > 0.f;
+  if (!leadingRange.valid && !trailingRange.valid) {
+    // If neither the leading range nor the trailing range is valid, keep the original position.
+    [self.backgroundManager setPostTranslate:CGPointZero];
+    return;
+  }
+
+  BOOL isDirectChild = parentSize < 0.f;
+  leadingRange.end = maxOffset;
+  if (leadingRange.valid && !isDirectChild) {
+    // In the grandchild case, the leading range end is also constrained by the direct parent's end
+    // edge. leadingInset + itemSize <= parentRelativeBottom - offset
+    CGFloat parentRelativeBottom = parentRelativePosition + parentSize;
+    leadingRange.end = MIN(parentRelativeBottom - leadingInset - itemSize, maxOffset);
+    leadingRange.valid = leadingRange.end > leadingRange.start;
+  }
+  trailingRange.start = 0.f;
+  if (trailingRange.valid && !isDirectChild) {
+    // In the grandchild case, the trailing range start is also constrained by the direct parent's
+    // start edge. scrollerSize - trailingInset - itemSize >= parentRelativePosition - offset
+    trailingRange.start =
+        MAX(parentRelativePosition + itemSize + trailingInset - scrollerSize, 0.f);
+    trailingRange.valid = trailingRange.start < trailingRange.end;
+  }
+
+  // 2. Handle conflict with leadingRange and trailingRange.
+  // When both sticky top and sticky bottom are set, there are three ranges:
+  // trailing sticky range: [trailingRange.start, trailingRange.end]
+  // normal scrolling range: [trailingRange.end, leadingRange.start]
+  // leading sticky range: [leadingRange.start, leadingRange.end]
+  if (leadingRange.valid && trailingRange.valid) {
+    // If there is no normal scrolling range, let the leading range win.
+    trailingRange.end = MIN(trailingRange.end, leadingRange.start);
+  }
+
+  // 3. calculate translate according to leadingRange and trailingRange.
+  CGFloat translation = 0.f;
+  if (trailingRange.valid && offset < trailingRange.end) {
+    // if offset < trailingRange.start, use trailingRange.start to calculate translate.
+    translation = MAX(offset, trailingRange.start) - trailingRange.end;
+  } else if (leadingRange.valid && offset > leadingRange.start) {
+    // If offset exceeds the leading range end, clamp the maximum translation with leadingRange.end.
+    translation = MIN(offset, leadingRange.end) - leadingRange.start;
+  }
+  CGPoint trans = CGPointZero;
+  if (isVertical) {
+    trans.y = translation;
+  } else {
+    trans.x = translation;
+  }
+  [self.backgroundManager setPostTranslate:trans];
 }
 
 - (void)checkStickyOnParentScroll:(CGFloat)offsetX withOffsetY:(CGFloat)offsetY {
