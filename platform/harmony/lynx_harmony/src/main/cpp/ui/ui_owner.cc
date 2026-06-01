@@ -27,6 +27,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/js_ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_flatten_image.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_frame.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
@@ -283,6 +284,27 @@ void UIOwner::CreateNodeContent(UIBase* ui) const {
   ui->AttachToNodeContent(node);
 }
 
+napi_value UIOwner::CreateFrameHost(napi_value native_frame, int sign) const {
+  if (!env_ || !js_create_frame_host_ || destroyed_) {
+    return nullptr;
+  }
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
+  napi_value create_frame_host =
+      base::NapiUtil::GetReferenceNapiValue(env_, js_create_frame_host_);
+  if (!js_recv || !create_frame_host) {
+    return nullptr;
+  }
+  napi_value argv[2];
+  argv[0] = native_frame;
+  napi_create_int32(env_, sign, &argv[1]);
+  napi_value js_host;
+  if (napi_call_function(env_, js_recv, create_frame_host, 2, argv, &js_host) !=
+      napi_ok) {
+    return nullptr;
+  }
+  return js_host;
+}
+
 void UIOwner::UpdateLayout(int sign, float left, float top, float width,
                            float height, const float* paddings,
                            const float* margins, const float* sticky,
@@ -474,6 +496,18 @@ void UIOwner::UpdateExtraData(
     int sign, const fml::RefPtr<fml::RefCountedThreadSafeStorage>& extra_data) {
   if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
     it->second->UpdateExtraData(extra_data);
+  }
+}
+
+void UIOwner::SetFrameAppBundle(
+    int sign, std::shared_ptr<tasm::LynxTemplateBundle> bundle) {
+  if (!bundle) {
+    return;
+  }
+  if (auto it = ui_holder_.find(sign);
+      it != ui_holder_.end() && it->second->Tag() == "frame") {
+    static_cast<UIFrame*>(it->second.get())
+        ->SetFrameAppBundle(std::move(bundle));
   }
 }
 
@@ -701,9 +735,10 @@ napi_value UIOwner::Constructor(napi_env env, napi_callback_info info) {
    * 7 - postDrawEndTimingFrameCallback function ref
    * 8 - onAvoidKeyboardCallback function ref
    * 9 - OnResourceLoadCallback function ref
+   * 10 - createFrameHost function ref
    */
-  size_t argc = 10;
-  napi_value argv[argc];
+  size_t argc = 11;
+  napi_value argv[11] = {nullptr};
   owner->env_ = env;
   napi_get_cb_info(env, info, &argc, argv, &js_object, nullptr);
   napi_create_reference(env, argv[0], 0, &owner->js_this_);
@@ -717,6 +752,13 @@ napi_value UIOwner::Constructor(napi_env env, napi_callback_info info) {
                         &owner->post_draw_end_timing_frame_callback_);
   napi_create_reference(env, argv[8], 0, &owner->on_avoid_keyboard_callback_);
   napi_create_reference(env, argv[9], 0, &owner->on_resource_load_callback_);
+  if (argc > 10 && argv[10]) {
+    napi_valuetype create_frame_host_type;
+    napi_typeof(env, argv[10], &create_frame_host_type);
+    if (create_frame_host_type == napi_function) {
+      napi_create_reference(env, argv[10], 1, &owner->js_create_frame_host_);
+    }
+  }
   napi_wrap(
       env, js_object, owner,
       [](napi_env env, void* data, void* hint) -> void {}, nullptr, nullptr);
@@ -784,6 +826,9 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   napi_delete_reference(env, obj->post_draw_end_timing_frame_callback_);
   napi_delete_reference(env, obj->on_avoid_keyboard_callback_);
   napi_delete_reference(env, obj->on_resource_load_callback_);
+  if (obj->js_create_frame_host_) {
+    napi_delete_reference(env, obj->js_create_frame_host_);
+  }
   napi_delete_reference(env, obj->js_this_);
   obj->js_create_ = nullptr;
   obj->js_create_node_content_ = nullptr;
@@ -791,6 +836,7 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->post_draw_end_timing_frame_callback_ = nullptr;
   obj->on_avoid_keyboard_callback_ = nullptr;
   obj->on_resource_load_callback_ = nullptr;
+  obj->js_create_frame_host_ = nullptr;
   obj->js_this_ = nullptr;
   obj->env_ = nullptr;
   obj->destroyed_ = true;

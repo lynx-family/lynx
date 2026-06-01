@@ -119,6 +119,10 @@ export class LynxContext implements IContext {
     this.lynxView?.initWithBuilder(builder);
   }
 
+  public createChildLynxViewBuilder(overrides: LynxViewBuilder): LynxViewBuilder {
+    return this.lynxView?.createChildLynxViewBuilder(overrides) ?? overrides;
+  }
+
   /**
    * Set a value to session storage.
    * @apidoc

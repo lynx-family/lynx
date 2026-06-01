@@ -160,6 +160,11 @@ void PaintingContextHarmonyRef::UpdateExtraData(
   ui_owner_->UpdateExtraData(id, platform_bundle);
 }
 
+void PaintingContextHarmonyRef::SetFrameAppBundle(
+    int32_t id, std::shared_ptr<LynxTemplateBundle> bundle) {
+  ui_owner_->SetFrameAppBundle(id, std::move(bundle));
+}
+
 void PaintingContextHarmonyRef::InvokeUIMethod(int32_t id,
                                                const std::string& method,
                                                tasm::PropBundleHarmony* args,
@@ -433,6 +438,15 @@ void PaintingContextHarmony::UpdatePlatformExtraBundle(
             std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
         harmony_ref->UpdateExtraData(id, platform_bundle);
       });
+}
+
+void PaintingContextHarmony::SetFrameAppBundle(
+    int32_t id, const std::shared_ptr<LynxTemplateBundle>& bundle) {
+  Enqueue([platform_ref = platform_ref_, id, bundle]() {
+    auto harmony_ref =
+        std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
+    harmony_ref->SetFrameAppBundle(id, bundle);
+  });
 }
 
 bool PaintingContextHarmony::NeedAnimationProps() { return false; }

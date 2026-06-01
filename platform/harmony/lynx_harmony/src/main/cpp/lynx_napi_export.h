@@ -24,6 +24,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/js_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/js_ui_base.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_frame.h"
 
 #if __has_include(                                                                 \
     "core/runtime/rts/binding/napi/harmony_napi.h") &&                             \
@@ -51,6 +52,7 @@ void LynxNapiInit(napi_env env, napi_value exports) {
   lynx::shell::EmbedderPlatformHarmony::Init(env, exports);
   lynx::tasm::harmony::JSShadowNode::Init(env, exports);
   lynx::tasm::harmony::JSUIBase::Init(env, exports);
+  lynx::tasm::harmony::UIFrame::Init(env, exports);
   lynx::tasm::harmony::NativeNodeContent::Init(env, exports);
   lynx::tasm::harmony::LynxTrailHubImplHarmony::Init(env, exports);
   lynx::trace::TraceControllerHarmony::Init(env, exports);

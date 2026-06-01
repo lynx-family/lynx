@@ -25,6 +25,8 @@ class LynxTemplateBundleHarmony {
   void SetBundle(tasm::LynxTemplateBundle bundle);
 
   static napi_value Init(napi_env env, napi_value exports);
+  static napi_value CreateFromNative(napi_env env,
+                                     const tasm::LynxTemplateBundle& bundle);
   static napi_value New(napi_env env, napi_callback_info info);
   static napi_value ParseTemplate(napi_env env, napi_callback_info info);
   static napi_value AsyncParseTemplate(napi_env env, napi_callback_info info);

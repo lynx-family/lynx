@@ -23,6 +23,21 @@
 namespace lynx {
 
 namespace harmony {
+namespace {
+
+napi_finalize GetTemplateBundleFinalizeCallback() {
+  static napi_finalize finalize_cb = [](napi_env env, void* finalize_data,
+                                        void* finalize_hint) {
+    if (finalize_data != nullptr) {
+      auto* bundle = static_cast<LynxTemplateBundleHarmony*>(finalize_data);
+      delete bundle;
+    }
+  };
+  return finalize_cb;
+}
+
+}  // namespace
+
 struct AsyncParseTemplateContext {
   fml::WeakPtr<LynxTemplateBundleHarmony> weak_bundle;
   std::string error_msg{};
@@ -35,6 +50,28 @@ struct AsyncParseTemplateContext {
 
 void LynxTemplateBundleHarmony::SetBundle(tasm::LynxTemplateBundle bundle) {
   bundle_ = std::make_unique<tasm::LynxTemplateBundle>(std::move(bundle));
+}
+
+napi_value LynxTemplateBundleHarmony::CreateFromNative(
+    napi_env env, const tasm::LynxTemplateBundle& bundle) {
+  napi_value js_bundle = nullptr;
+  auto status = napi_create_object(env, &js_bundle);
+  if (status != napi_ok || js_bundle == nullptr) {
+    LOGE("create native TemplateBundle object failed " << status);
+    return nullptr;
+  }
+
+  auto* bundle_harmony = new LynxTemplateBundleHarmony();
+  bundle_harmony->SetBundle(bundle);
+  status = napi_wrap(env, js_bundle, static_cast<void*>(bundle_harmony),
+                     GetTemplateBundleFinalizeCallback(), nullptr, nullptr);
+  if (status != napi_ok) {
+    LOGE("wrap native TemplateBundle object failed " << status);
+    delete bundle_harmony;
+    return nullptr;
+  }
+
+  return js_bundle;
 }
 
 napi_value LynxTemplateBundleHarmony::Init(napi_env env, napi_value exports) {
@@ -74,14 +111,6 @@ napi_value LynxTemplateBundleHarmony::Init(napi_env env, napi_value exports) {
 
 napi_value LynxTemplateBundleHarmony::New(napi_env env,
                                           napi_callback_info info) {
-  static napi_finalize finalize_cb = [](napi_env env, void* finalize_data,
-                                        void* finalize_hint) {
-    if (finalize_data != nullptr) {
-      auto* bundle = static_cast<LynxTemplateBundleHarmony*>(finalize_data);
-      delete bundle;
-    }
-  };
-
   napi_value js_this;
   auto status =
       napi_get_cb_info(env, info, nullptr, nullptr, &js_this, nullptr);
@@ -91,9 +120,10 @@ napi_value LynxTemplateBundleHarmony::New(napi_env env,
   }
 
   auto* bundle = new LynxTemplateBundleHarmony();
-  status = napi_wrap(env, js_this, static_cast<void*>(bundle), finalize_cb,
-                     nullptr, nullptr);
+  status = napi_wrap(env, js_this, static_cast<void*>(bundle),
+                     GetTemplateBundleFinalizeCallback(), nullptr, nullptr);
   if (status != napi_ok) {
+    delete bundle;
     LOGE("fail to wrap bundle to js_this " << status);
     return nullptr;
   }

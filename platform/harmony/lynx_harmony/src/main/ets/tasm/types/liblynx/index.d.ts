@@ -259,6 +259,11 @@ export class UIOwner {
     startFluencyTrace: Function, stopFluencyTrace: Function, getNodeType: (string) => number,
     postDrawEndTimingFrameCallback: Function, onAvoidKeyboardCallback: Function, onResourceLoaded: Function);
 
+  constructor(ref: Object, create: Function, uiContext: UIContext, createNodeContent: Function,
+    startFluencyTrace: Function, stopFluencyTrace: Function, getNodeType: (string) => number,
+    postDrawEndTimingFrameCallback: Function, onAvoidKeyboardCallback: Function, onResourceLoaded: Function,
+    createFrameHost: (nativeFrame: UIFrame, sign: number) => Object);
+
   attachPageRoot(content: NativeContent): void;
 
   getId(): string;
@@ -280,6 +285,12 @@ export class UIOwner {
   onEnterForeground(): void;
 
   onEnterBackground(): void;
+}
+
+export class UIFrame {
+  onHostReady(): void;
+
+  onIntrinsicSizeChanged(width: number, height: number): void;
 }
 
 export class UIBase {

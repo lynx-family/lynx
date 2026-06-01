@@ -87,6 +87,8 @@ export interface LynxViewBuilder {
   fitContentWidth?: boolean;
   fitContentHeight?: boolean;
   experimentalFixFitContent?: boolean;
+  onCreate?: (context: LynxContext) => void;
+  onReuse?: (context: LynxContext) => boolean;
   beforeLoadTemplate?: (context: LynxContext) => void;
   threadMode?: ThreadStrategyForRendering;
   backgroundRuntimeOptions?: LynxBackgroundRuntimeOptions;
@@ -231,6 +233,12 @@ export struct LynxView {
     this.fitContentWidth = builder.fitContentWidth ?? false;
     this.fitContentHeight = builder.fitContentHeight ?? false;
     this.experimentalFixFitContent = builder.experimentalFixFitContent ?? false;
+    if (builder.onCreate !== undefined) {
+      this.onCreate = builder.onCreate;
+    }
+    if (builder.onReuse !== undefined) {
+      this.onReuse = builder.onReuse;
+    }
     this.beforeLoadTemplate = builder.beforeLoadTemplate ?? ((context: LynxContext) => {
     });
     this.threadMode = builder.threadMode ?? ThreadStrategyForRendering.ALL_ON_UI;
@@ -243,6 +251,104 @@ export struct LynxView {
       LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
       this.reInitTemplateRenderer(this.hasLoadSource());
     }
+  }
+
+  createChildLynxViewBuilder(overrides: LynxViewBuilder): LynxViewBuilder {
+    let builder: LynxViewBuilder = {
+      genericResourceFetcher: this.genericResourceFetcher,
+      mediaResourceFetcher: this.mediaResourceFetcher,
+      templateResourceFetcher: this.templateResourceFetcher,
+      modules: this.modules,
+      sendableModules: this.sendableModules,
+      behaviors: this.behaviors,
+      screenSize: this.screenSize,
+      uiRendererCreator: this.uiRendererCreator,
+      backgroundRuntime: this.backgroundRuntime,
+      platformConfig: this.platformConfig,
+      clients: this.clients,
+      fitContentWidth: this.fitContentWidth,
+      fitContentHeight: this.fitContentHeight,
+      experimentalFixFitContent: this.experimentalFixFitContent,
+      onCreate: this.onCreate,
+      onReuse: this.onReuse,
+      beforeLoadTemplate: this.beforeLoadTemplate,
+      threadMode: this.threadMode,
+      backgroundRuntimeOptions: this.backgroundRuntimeOptions,
+      enableAirStrictMode: this.enableAirStrictMode,
+      lynxImageConfig: this.lynxImageConfig,
+      fontScale: this.fontScale,
+      colorScheme: this.colorScheme,
+    };
+    if (overrides.genericResourceFetcher !== undefined) {
+      builder.genericResourceFetcher = overrides.genericResourceFetcher;
+    }
+    if (overrides.mediaResourceFetcher !== undefined) {
+      builder.mediaResourceFetcher = overrides.mediaResourceFetcher;
+    }
+    if (overrides.templateResourceFetcher !== undefined) {
+      builder.templateResourceFetcher = overrides.templateResourceFetcher;
+    }
+    if (overrides.modules !== undefined) {
+      builder.modules = overrides.modules;
+    }
+    if (overrides.sendableModules !== undefined) {
+      builder.sendableModules = overrides.sendableModules;
+    }
+    if (overrides.behaviors !== undefined) {
+      builder.behaviors = overrides.behaviors;
+    }
+    if (overrides.screenSize !== undefined) {
+      builder.screenSize = overrides.screenSize;
+    }
+    if (overrides.uiRendererCreator !== undefined) {
+      builder.uiRendererCreator = overrides.uiRendererCreator;
+    }
+    if (overrides.backgroundRuntime !== undefined) {
+      builder.backgroundRuntime = overrides.backgroundRuntime;
+    }
+    if (overrides.platformConfig !== undefined) {
+      builder.platformConfig = overrides.platformConfig;
+    }
+    if (overrides.clients !== undefined) {
+      builder.clients = overrides.clients;
+    }
+    if (overrides.fitContentWidth !== undefined) {
+      builder.fitContentWidth = overrides.fitContentWidth;
+    }
+    if (overrides.fitContentHeight !== undefined) {
+      builder.fitContentHeight = overrides.fitContentHeight;
+    }
+    if (overrides.experimentalFixFitContent !== undefined) {
+      builder.experimentalFixFitContent = overrides.experimentalFixFitContent;
+    }
+    if (overrides.onCreate !== undefined) {
+      builder.onCreate = overrides.onCreate;
+    }
+    if (overrides.onReuse !== undefined) {
+      builder.onReuse = overrides.onReuse;
+    }
+    if (overrides.beforeLoadTemplate !== undefined) {
+      builder.beforeLoadTemplate = overrides.beforeLoadTemplate;
+    }
+    if (overrides.threadMode !== undefined) {
+      builder.threadMode = overrides.threadMode;
+    }
+    if (overrides.backgroundRuntimeOptions !== undefined) {
+      builder.backgroundRuntimeOptions = overrides.backgroundRuntimeOptions;
+    }
+    if (overrides.enableAirStrictMode !== undefined) {
+      builder.enableAirStrictMode = overrides.enableAirStrictMode;
+    }
+    if (overrides.lynxImageConfig !== undefined) {
+      builder.lynxImageConfig = overrides.lynxImageConfig;
+    }
+    if (overrides.fontScale !== undefined) {
+      builder.fontScale = overrides.fontScale;
+    }
+    if (overrides.colorScheme !== undefined) {
+      builder.colorScheme = overrides.colorScheme;
+    }
+    return builder;
   }
 
   private hasLoadSource(): boolean {
