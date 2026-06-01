@@ -14,6 +14,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Point;
+import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
@@ -104,7 +105,7 @@ public abstract class LynxBaseUI
   };
 
   private final static int[] sDefaultOffsetToLynxView = {Integer.MIN_VALUE, Integer.MIN_VALUE};
-
+  private static final int INVALID_STICKY_SIGN = -1;
   protected static final int DEFAULT_PERSPECTIVE_FACTOR = 100;
   protected static final float CAMERA_DISTANCE_NORMALIZATION_MULTIPLIER = (float) Math.sqrt(5);
 
@@ -146,8 +147,17 @@ public abstract class LynxBaseUI
   // clang-format off
   public class Sticky extends RectF {
     float x, y;
+    float parentWidth, parentHeight;
+    float relativeLeft, relativeTop;
+    float parentRelativeLeft, parentRelativeTop;
   };
   // clang-format on
+
+  private static class StickyRange {
+    boolean valid = false;
+    float start = 0;
+    float end = Float.MAX_VALUE;
+  }
 
   public class TransOffset {
     public float[] left_top;
@@ -235,6 +245,7 @@ public abstract class LynxBaseUI
   protected boolean userInteractionEnabled = true;
   protected boolean nativeInteractionEnabled = false;
   protected Sticky mSticky = null;
+  private int mStickyScrollerSign = INVALID_STICKY_SIGN;
   protected float mMaxHeight = -1;
   protected int mBackgroundColor = Color.TRANSPARENT;
   private String mExposureID;
@@ -2808,7 +2819,12 @@ public abstract class LynxBaseUI
   public void onNodeReload() {}
 
   @CallSuper
-  public void onNodeRemoved() {}
+  public void onNodeRemoved() {
+    if (mContext != null && mContext.getEnableNewSticky()) {
+      removeSelfFromStickyScrollerIfNeeded();
+      setStickyTranslate(null);
+    }
+  }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public boolean isFirstAnimatedReady() {
@@ -2918,22 +2934,204 @@ public abstract class LynxBaseUI
   }
 
   public void updateSticky(float[] sticky) {
-    if (sticky == null || sticky.length < 4) {
+    if (mContext != null && mContext.getEnableNewSticky()) {
+      updateNewSticky(sticky);
+    } else {
+      if (sticky == null || sticky.length < 4) {
+        mSticky = null;
+        return;
+      }
+      mSticky = new Sticky();
+      mSticky.left = sticky[0];
+      mSticky.top = sticky[1];
+      mSticky.right = sticky[2];
+      mSticky.bottom = sticky[3];
+      mSticky.x = mSticky.y = 0;
+
+      LynxBaseUI parentBaseUI = getParentBaseUI();
+      if (parentBaseUI instanceof IScrollSticky) {
+        ((IScrollSticky) parentBaseUI).setEnableSticky();
+      }
+    }
+  }
+
+  private void updateNewSticky(float[] sticky) {
+    if (sticky == null || sticky.length < 10) {
+      // sticky item is not sticky item or has illegal, need to reset sticky translate in LynxUI.
+      removeSelfFromStickyScrollerIfNeeded();
+      setStickyTranslate(null);
       mSticky = null;
       return;
     }
 
+    // If has no sticky scroller currently, still need to save sticky info.
+    // stickyParent: scroller
+    // info[0]: sticky left
+    // info[1]: sticky top
+    // info[2]: sticky right
+    // info[3]: sticky bottom
+    // info[4]: sticky item's direct parent's width
+    // info[5]: sticky item's direct parent's height
+    // info[6]: sticky item's relative left to scroller
+    // info[7]: sticky item's relative top to scroller
+    // info[8]: sticky item's parent relative left to scroller
+    // info[9]: sticky item's parent relative top to scroller
     mSticky = new Sticky();
     mSticky.left = sticky[0];
     mSticky.top = sticky[1];
     mSticky.right = sticky[2];
     mSticky.bottom = sticky[3];
+    mSticky.parentWidth = sticky[4];
+    mSticky.parentHeight = sticky[5];
+    mSticky.relativeLeft = sticky[6];
+    mSticky.relativeTop = sticky[7];
+    mSticky.parentRelativeLeft = sticky[8];
+    mSticky.parentRelativeTop = sticky[9];
     mSticky.x = mSticky.y = 0;
 
-    LynxBaseUI parentBaseUI = getParentBaseUI();
-    if (parentBaseUI instanceof IScrollSticky) {
-      ((IScrollSticky) parentBaseUI).setEnableSticky();
+    IScrollSticky stickyScroller = getStickyScroller();
+    if (stickyScroller != null) {
+      bindStickyScrollerIfNeeded(stickyScroller);
+      stickyScroller.refreshStickyChildren();
+    } else {
+      // Has no valid sticky scroller, need to reset sticky translate.
+      // But we no need to clear sticky info.
+      removeSelfFromStickyScrollerIfNeeded();
+      setStickyTranslate(null);
     }
+  }
+
+  private IScrollSticky getStickyScroller() {
+    LynxBaseUI parentBaseUI = getParentBaseUI();
+    while (parentBaseUI != null) {
+      if (parentBaseUI instanceof IScrollSticky) {
+        return (IScrollSticky) parentBaseUI;
+      }
+      parentBaseUI = parentBaseUI.getParentBaseUI();
+    }
+    return null;
+  }
+
+  private void bindStickyScrollerIfNeeded(IScrollSticky stickyScroller) {
+    if (stickyScroller instanceof LynxBaseUI) {
+      LynxBaseUI scroller = (LynxBaseUI) stickyScroller;
+      int stickyScrollerSign = scroller.getSign();
+      if (mStickyScrollerSign != INVALID_STICKY_SIGN && mStickyScrollerSign != stickyScrollerSign) {
+        // If current sticky scroller is not stickyScroller, remove from current sticky scroller.
+        removeSelfFromStickyScrollerIfNeeded();
+      }
+      mStickyScrollerSign = stickyScrollerSign;
+      stickyScroller.addStickyChildSign(getSign());
+    }
+  }
+
+  private void removeSelfFromStickyScrollerIfNeeded() {
+    if (mStickyScrollerSign == INVALID_STICKY_SIGN) {
+      return;
+    }
+    LynxBaseUI stickyScroller =
+        mContext != null ? mContext.findLynxUIBySign(mStickyScrollerSign) : null;
+    if (stickyScroller instanceof IScrollSticky) {
+      ((IScrollSticky) stickyScroller).removeStickyChildSign(getSign());
+    }
+    mStickyScrollerSign = INVALID_STICKY_SIGN;
+  }
+
+  public void setStickyTranslate(PointF trans) {}
+
+  public boolean calculateStickyTranslateWithOffset(
+      int offset, boolean isVertical, int scrollerSize, int maxOffset) {
+    if (mSticky == null) {
+      return false;
+    }
+    float leadingInset = 0.f; // sticky left or top
+    float trailingInset = 0.f; // sticky right or bottom
+    float relativePosition = 0.f; // sticky item position in scroller content coordinates.
+    float parentRelativePosition = 0.f; // direct parent's position in scroller content coordinates.
+    float itemSize = 0.f; // sticky item's size on the scrolling axis.
+    float parentSize = 0.f; // direct parent's size on the scrolling axis.
+    if (isVertical) {
+      leadingInset = mSticky.top;
+      trailingInset = mSticky.bottom;
+      parentSize = mSticky.parentHeight;
+      relativePosition = mSticky.relativeTop;
+      itemSize = getHeight();
+      // If sticky item's parent is scroll-view, parentRelativePosition should be 0.
+      parentRelativePosition = mSticky.parentRelativeTop;
+    } else {
+      leadingInset = mSticky.left;
+      trailingInset = mSticky.right;
+      parentSize = mSticky.parentWidth;
+      relativePosition = mSticky.relativeLeft;
+      itemSize = getWidth();
+      // If sticky item's parent is scroll-view, parentRelativePosition should be 0.
+      parentRelativePosition = mSticky.parentRelativeLeft;
+    }
+    boolean isDirectChild = parentSize < 0.f;
+
+    // 1. calculate sticky range.
+    StickyRange leadingRange = new StickyRange();
+    StickyRange trailingRange = new StickyRange();
+    // When item scrolling into the distance which <= sticky top, the item should be into sticky top
+    // status. relativePosition - offset <= leadingInset
+    leadingRange.start = relativePosition - leadingInset;
+    // When item scrolling into the distance <= sticky bottom, the item should be into sticky bottom
+    // status. offset + scrollerSize - trailingInset <= relativeBottom
+    float relativeBottom = relativePosition + itemSize;
+    trailingRange.end = relativeBottom + trailingInset - scrollerSize;
+    leadingRange.valid = leadingRange.start < maxOffset;
+    trailingRange.valid = trailingRange.end > 0;
+    if (!leadingRange.valid && !trailingRange.valid) {
+      // If neither the leading range nor the trailing range is valid, keep the original position.
+      mSticky.x = 0.f;
+      mSticky.y = 0.f;
+      return true;
+    }
+    leadingRange.end = maxOffset;
+    if (leadingRange.valid && !isDirectChild) {
+      // In the grandchild case, the leading range end is also constrained by the direct parent's
+      // end edge. leadingInset + itemSize <= parentRelativeBottom - offset
+      float parentRelativeBottom = parentRelativePosition + parentSize;
+      leadingRange.end = Math.min(parentRelativeBottom - leadingInset - itemSize, maxOffset);
+      leadingRange.valid = leadingRange.end > leadingRange.start;
+    }
+    trailingRange.start = 0.f;
+    if (trailingRange.valid && !isDirectChild) {
+      // In the grandchild case, the trailing range start is also constrained by the direct parent's
+      // start edge. scrollerSize - trailingInset - itemSize >= parentRelativePosition - offset
+      trailingRange.start =
+          Math.max(parentRelativePosition + itemSize + trailingInset - scrollerSize, 0.f);
+      trailingRange.valid = trailingRange.start < trailingRange.end;
+    }
+
+    // 2. Handle conflict with leadingRange and trailingRange.
+    // When both sticky top and sticky bottom are set, there are three ranges:
+    // trailing sticky range: [trailingRange.start, trailingRange.end]
+    // normal scrolling range: [trailingRange.end, leadingRange.start]
+    // leading sticky range: [leadingRange.start, leadingRange.end]
+    if (leadingRange.valid && trailingRange.valid) {
+      // If there is no normal scrolling range, let the leading range win.
+      trailingRange.end = Math.min(trailingRange.end, leadingRange.start);
+    }
+
+    // 3. calculate translate according to leadingRange and trailingRange.
+    float translation = 0.f;
+    if (trailingRange.valid && offset < trailingRange.end) {
+      // if offset < trailingRange.start, use trailingRange.start to calculate translate.
+      translation = Math.max(offset, trailingRange.start) - trailingRange.end;
+    } else if (leadingRange.valid && offset > leadingRange.start) {
+      // If offset exceeds the leading range end, clamp the maximum translation with
+      // leadingRange.end.
+      translation = Math.min(offset, leadingRange.end) - leadingRange.start;
+    }
+    if (isVertical) {
+      mSticky.x = 0.f;
+      mSticky.y = translation;
+    } else {
+      mSticky.x = translation;
+      mSticky.y = 0.f;
+    }
+    return true;
   }
 
   public void updateMaxHeight(float maxHeight) {

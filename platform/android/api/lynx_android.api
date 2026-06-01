@@ -761,7 +761,7 @@ public class com::lynx::tasm::behavior::ui::background::BackgroundLinearGradient
 
 public class com::lynx::tasm::behavior::ui::utils::BackgroundManager : com.lynx.tasm.behavior.ui.utils.LynxBackground {
   public com.lynx.tasm.behavior.ui.utils.BackgroundManager.BackgroundManager(LynxUI ui, LynxContext lynxContext);
-  public void com.lynx.tasm.behavior.ui.utils.BackgroundManager.setPostTranlate(PointF tranlate);
+  public void com.lynx.tasm.behavior.ui.utils.BackgroundManager.setPostTranslate(PointF translate);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundManager.setTransformOrigin(TransformOrigin transformOrigin);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundManager.appendTransform(@Nullable List< TransformRaw > styleProperty);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundManager.setTransform(@Nullable List< TransformRaw > styleProperty);
@@ -3157,6 +3157,9 @@ public interface com::lynx::tasm::behavior::render::IRendererHost {
 
 public interface com::lynx::tasm::behavior::ui::scroll::IScrollSticky {
   public void com.lynx.tasm.behavior.ui.scroll.IScrollSticky.setEnableSticky();
+  public default void com.lynx.tasm.behavior.ui.scroll.IScrollSticky.addStickyChildSign(int sign);
+  public default void com.lynx.tasm.behavior.ui.scroll.IScrollSticky.removeStickyChildSign(int sign);
+  public default void com.lynx.tasm.behavior.ui.scroll.IScrollSticky.refreshStickyChildren();
 }
 
 public interface com::lynx::tasm::service::IServiceExtension {
@@ -4414,6 +4417,8 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.removeChildrenExposureUI();
   public String com.lynx.tasm.behavior.ui.LynxBaseUI.getExposeUniqueID();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.updateSticky(float[] sticky);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setStickyTranslate(PointF trans);
+  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.calculateStickyTranslateWithOffset(int offset, boolean isVertical, int scrollerSize, int maxOffset);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.updateMaxHeight(float maxHeight);
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.checkStickyOnParentScroll(int l, int t);
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getSign();
@@ -7141,7 +7146,9 @@ public class abstract com::lynx::tasm::behavior::ui::LynxUI : com.lynx.tasm.beha
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setLayoutAnimationDeleteProperty(@Nullable int property);
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setLayoutAnimationDeleteTimingFunc(@Nullable ReadableArray timingFunc);
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setLayoutAnimationDeleteDelay(@Nullable double delay);
+  public boolean com.lynx.tasm.behavior.ui.LynxUI< T extends View >.calculateStickyTranslateWithOffset(int offset, boolean isVertical, int scrollerSize, int maxOffset);
   public boolean com.lynx.tasm.behavior.ui.LynxUI< T extends View >.checkStickyOnParentScroll(int l, int t);
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setStickyTranslate(PointF trans);
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setFilter(@Nullable ReadableArray filter);
   public boolean com.lynx.tasm.behavior.ui.LynxUI< T extends View >.hasAnimationRunning();
   public boolean com.lynx.tasm.behavior.ui.LynxUI< T extends View >.hasTranslateDiff(@Nullable ReadableArray transform);
@@ -11357,6 +11364,10 @@ public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onLayoutUpdated();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onNodeReady();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.insertChild(LynxBaseUI child, int index);
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setEnableSticky();
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.addStickyChildSign(int sign);
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.removeStickyChildSign(int sign);
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.refreshStickyChildren();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setLynxDirection(int direction);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.measure();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.layout();
@@ -11366,7 +11377,6 @@ public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setScrollY(boolean enable);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setScrollX(boolean enable);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setScrollBarEnable(boolean value);
-  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setEnableSticky();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setUpperThreshole(int value);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setLowerThreshole(int value);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setScrollTop(int value);
@@ -11474,6 +11484,8 @@ public class com::lynx::tasm::behavior::ui::UIShadowProxy : com.lynx.tasm.behavi
   public void com.lynx.tasm.behavior.ui.UIShadowProxy.notifyAnimating();
   public void com.lynx.tasm.behavior.ui.UIShadowProxy.onPropsUpdated();
   public boolean com.lynx.tasm.behavior.ui.UIShadowProxy.checkStickyOnParentScroll(int l, int t);
+  public boolean com.lynx.tasm.behavior.ui.UIShadowProxy.calculateStickyTranslateWithOffset(int offset, boolean isVertical, int scrollerSize, int maxOffset);
+  public void com.lynx.tasm.behavior.ui.UIShadowProxy.setStickyTranslate(PointF trans);
   public boolean com.lynx.tasm.behavior.ui.UIShadowProxy.enableLayoutAnimation();
   public LayoutAnimationManager com.lynx.tasm.behavior.ui.UIShadowProxy.getLayoutAnimator();
   public TransitionAnimationManager com.lynx.tasm.behavior.ui.UIShadowProxy.getTransitionAnimator();

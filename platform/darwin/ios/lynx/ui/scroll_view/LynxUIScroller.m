@@ -11,6 +11,7 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUIScroller.h>
 #import <Lynx/LynxWeakProxy.h>
+#import <LynxUI+Private.h>
 #import <objc/runtime.h>
 
 #import <Lynx/LynxBounceView.h>
@@ -114,7 +115,10 @@ static NSString *const kScrollReadyScrollToIndexKey = @"scroll-to-index";
 @end
 
 @interface UIScrollView (Impression) <LynxImpressionParentView>
+@end
 
+@interface LynxUIScroller ()
+@property(nonatomic, strong) NSMutableArray<NSNumber *> *stickyChildSignArray;
 @end
 
 @implementation UIScrollView (Impression)
@@ -148,6 +152,7 @@ static NSString *const kScrollReadyScrollToIndexKey = @"scroll-to-index";
   CGFloat _triggerBounceEventDistance;
   CGFloat _fadingEdge;
   BOOL _nestedUpdated;
+  BOOL _stickyDirty;
   LynxUIScrollToCallBack _scrollToCallBack;
 
   // For list native storage
@@ -190,6 +195,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
     _forceImpression = NO;
     _lastScrollPoint = CGPointMake(INFINITY, INFINITY);
     _nestedUpdated = NO;
+    _stickyDirty = NO;
     self.firstRender = YES;
     [self ensureUpdateContentSize];
     _propMap = [[LynxPropertyDiffMap alloc] init];
@@ -268,7 +274,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 
 - (void)layoutDidFinished {
   [self updateContentSize];
-  if (_enableSticky) {
+  if (_enableSticky && !self.context.enableNewSticky) {
     [self onScrollSticky:self.view.contentOffset.x withOffsetY:self.view.contentOffset.y];
   }
   _lastScrollPoint = CGPointMake(INFINITY, INFINITY);
@@ -318,6 +324,14 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 
   [self ensureUpdateContentSize];
   self.firstRender = NO;
+
+  if (_stickyDirty) {
+    _stickyDirty = NO;
+    if (self.context.enableNewSticky) {
+      [self refreshStickyChildrenWithOffsetX:self.view.contentOffset.x
+                                     OffsetY:self.view.contentOffset.y];
+    }
+  }
 }
 
 - (void)insertChild:(LynxUI *)child atIndex:(NSInteger)index {
@@ -368,6 +382,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
     [self view].contentSize = CGSizeMake(contentWidth, contentHeight);
     [self adjustContentOffsetForRTL:MAX(prevXOffset, -self.view.contentInset.right)];
     [self contentSizeDidChanged];
+    _stickyDirty = YES;
   }
 }
 
@@ -400,8 +415,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
   if (requestReset) {
     value = NO;
   }
-  _enableScrollY = value;
-  self.view.scrollY = value;
+  [self setEnableScrollY:value];
   [self updateContentSize];
 }
 
@@ -409,8 +423,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
   if (requestReset) {
     value = NO;
   }
-  _enableScrollY = !value;
-  self.view.scrollY = !value;
+  [self setEnableScrollY:!value];
   [self updateContentSize];
 }
 
@@ -432,6 +445,8 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 }
 
 - (void)setEnableScrollY:(BOOL)enableScrollY {
+  // Preserve pending sticky refreshes from child/content changes.
+  _stickyDirty = _stickyDirty || (_enableScrollY != enableScrollY);
   _enableScrollY = enableScrollY;
   self.view.scrollY = _enableScrollY;
 }
@@ -708,10 +723,55 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
   }
 }
 
+- (void)addStickyChildSign:(NSInteger)sign {
+  if (self.stickyChildSignArray == nil) {
+    self.stickyChildSignArray = [NSMutableArray new];
+  }
+  if (![[self stickyChildSignArray] containsObject:@(sign)]) {
+    [[self stickyChildSignArray] addObject:@(sign)];
+  }
+  self.enableSticky = self.stickyChildSignArray.count != 0;
+}
+
+- (void)removeStickyChildSign:(NSInteger)sign {
+  if (self.stickyChildSignArray == nil) {
+    return;
+  }
+  [self.stickyChildSignArray removeObject:@(sign)];
+  self.enableSticky = self.stickyChildSignArray.count != 0;
+}
+
+- (void)refreshStickyChildren {
+  [self refreshStickyChildrenWithOffsetX:self.view.contentOffset.x
+                                 OffsetY:self.view.contentOffset.y];
+}
+
+- (void)refreshStickyChildrenWithOffsetX:(CGFloat)offsetX OffsetY:(CGFloat)offsetY {
+  if (self.enableSticky) {
+    CGFloat offset = self.enableScrollY ? offsetY : offsetX;
+    CGFloat scrollerSize =
+        self.enableScrollY ? CGRectGetHeight(self.frame) : CGRectGetWidth(self.frame);
+    CGFloat contentSize =
+        self.enableScrollY ? self.view.contentSize.height : self.view.contentSize.width;
+    CGFloat maxOffset = MAX(contentSize - scrollerSize, 0.f);
+    for (NSNumber *sign in self.stickyChildSignArray) {
+      LynxUI *ui = [self.context.uiOwner findUIBySign:sign.integerValue];
+      if (ui) {
+        [ui calculateStickyTranslateWithOffset:offset
+                                    isVertical:self.enableScrollY
+                                  scrollerSize:scrollerSize
+                                     maxOffset:maxOffset];
+      }
+    }
+  }
+}
+
 - (void)onScrollSticky:(CGFloat)offsetX withOffsetY:(CGFloat)offsetY {
-  for (NSUInteger index = 0; index < self.children.count; index++) {
-    LynxUI *ui = self.children[index];
-    [ui checkStickyOnParentScroll:offsetX withOffsetY:offsetY];
+  if (self.enableSticky) {
+    for (NSUInteger index = 0; index < self.children.count; index++) {
+      LynxUI *ui = self.children[index];
+      [ui checkStickyOnParentScroll:offsetX withOffsetY:offsetY];
+    }
   }
 }
 
@@ -860,7 +920,9 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
   [scrollView triggerNestedScrollView:_enableScrollY];
   CGFloat scrollTop = scrollView.contentOffset.y;
   CGFloat scrollLeft = scrollView.contentOffset.x;
-  if (_enableSticky) {
+  if (self.context.enableNewSticky) {
+    [self refreshStickyChildrenWithOffsetX:scrollLeft OffsetY:scrollTop];
+  } else {
     [self onScrollSticky:scrollLeft withOffsetY:scrollTop];
   }
 
@@ -1321,6 +1383,7 @@ LYNX_UI_METHOD(autoScroll) {
                                                                              : contentOffset.x
                                                  callback:nil
                                                  isSmooth:NO]];
+  _stickyDirty = YES;
 }
 
 - (float)scrollLeftLimit {

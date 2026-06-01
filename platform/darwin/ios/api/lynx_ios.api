@@ -4522,6 +4522,7 @@ public class LynxUI : <__covariant V UIView> {
   public void LynxUI()::initProperties();
   public void LynxUI()::onNodeReadyForUIOwner();
   public void LynxUI()::propsDidUpdateForUIOwner();
+  public void LynxUI()::calculateStickyTranslateWithOffset:isVertical:scrollerSize:maxOffset:(CGFloat offset, [isVertical] BOOL isVertical, [scrollerSize] CGFloat scrollerSize, [maxOffset] CGFloat maxOffset);
   public void LynxUI(Accessibility)::handleAccessibility:autoScroll:(UIView *accessibilityAttachedCell, [autoScroll] BOOL accessibilityAutoScroll);
   public NSString * LynxUI(Accessibility)::accessibilityText();
   public NSArray * LynxUI(Accessibility)::setExclusiveAccessibilityElements:subTree:previousNodes:(BOOL exclusive, [subTree] LynxUI *subTree, [previousNodes] NSArray *previousNodes);
@@ -5256,6 +5257,9 @@ public class LynxUIScroller : AbsLynxUIScroller, <LynxScrollView> {
   public float LynxUIScroller::scrollRightLimit();
   public float LynxUIScroller::scrollUpLimit();
   public float LynxUIScroller::scrollDownLimit();
+  public void LynxUIScroller::addStickyChildSign:(NSInteger sign);
+  public void LynxUIScroller::removeStickyChildSign:(NSInteger sign);
+  public void LynxUIScroller::refreshStickyChildren();
   public void LynxUIScroller::updateContentSize();
 }
 
