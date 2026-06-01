@@ -277,6 +277,64 @@ public class LynxTemplateRender
   private LynxLayoutProxy mLayoutProxy;
 
   private Map<Double, PlatformCallBack> platformCallBackMap = new HashMap<>();
+  private final List<PlatformCallBack> mLynxElementCallbacks = new CopyOnWriteArrayList<>();
+
+  private final class LynxElementOperation extends PlatformCallBack implements Runnable {
+    private final LynxElement.Callback mCallback;
+    private final int mSign;
+    private final boolean mSerializeTree;
+    private Object mData;
+    private volatile boolean mDone;
+
+    LynxElementOperation(int sign, boolean serializeTree, LynxElement.Callback callback) {
+      mSign = sign;
+      mSerializeTree = serializeTree;
+      mCallback = callback;
+      mLynxElementCallbacks.add(this);
+    }
+
+    @Override
+    public void run() {
+      if (mDone) {
+        try {
+          mCallback.onResult(getResult());
+        } finally {
+          mLynxElementCallbacks.remove(this);
+        }
+        return;
+      }
+
+      if (mNativePtr == 0 || mNativeLifecycle == 0 || (mSerializeTree && mSign == 0)) {
+        onSuccess(null);
+        return;
+      }
+
+      nativeGetLynxElement(mNativePtr, mNativeLifecycle, mSign, mSerializeTree, this);
+    }
+
+    @Override
+    public void onSuccess(Object data) {
+      if (mDone) {
+        return;
+      }
+      synchronized (this) {
+        if (mDone) {
+          return;
+        }
+        mData = data;
+        mDone = true;
+      }
+      UIThreadUtils.runOnUiThread(this);
+    }
+
+    private Object getResult() {
+      if (mSerializeTree) {
+        return mData instanceof String ? mData : null;
+      }
+      int sign = mData instanceof Number ? ((Number) mData).intValue() : 0;
+      return sign != 0 ? new LynxElement(LynxTemplateRender.this, sign) : null;
+    }
+  }
 
   private AtomicBoolean mIsDestroyed = new AtomicBoolean(true);
   private long mNativeLifecycle;
@@ -733,6 +791,21 @@ public class LynxTemplateRender
 
   public UIGroup<UIBodyView> getLynxRootUI() {
     return (mLynxUIRender != null) ? mLynxUIRender.getLynxRootUI() : null;
+  }
+
+  void getLynxElementRoot(@NonNull final LynxElement.Callback<LynxElement> callback) {
+    if (callback == null) {
+      return;
+    }
+    UIThreadUtils.runOnUiThread(() -> new LynxElementOperation(0, false, callback).run());
+  }
+
+  void lynxElementToJSONString(
+      final int sign, @NonNull final LynxElement.Callback<String> callback) {
+    if (callback == null) {
+      return;
+    }
+    UIThreadUtils.runOnUiThread(() -> new LynxElementOperation(sign, true, callback).run());
   }
 
   public LynxDevtool getDevTool() {
@@ -4499,6 +4572,9 @@ public class LynxTemplateRender
   private static native void nativeMarkDirty(long ptr, long lifecycle);
 
   private static native void nativeFlush(long ptr, long lifecycle);
+
+  static native void nativeGetLynxElement(
+      long ptr, long lifecycle, int sign, boolean serializeTree, PlatformCallBack callback);
 
   private static native void nativeSyncPackageExternalPath(long ptr, String path);
 

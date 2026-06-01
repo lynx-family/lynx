@@ -17,6 +17,7 @@
 #include "core/renderer/dom/android/lepus_message_consumer.h"
 #include "core/renderer/utils/android/event_converter_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
+#include "core/renderer/utils/base/base_def.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_android.h"
 #include "core/runtime/js/bindings/modules/android/module_factory_android.h"
@@ -1395,6 +1396,38 @@ void Flush(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->Flush();
+  AtomicLifecycle::TryFree(lifecycle_ptr);
+}
+
+void GetLynxElement(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
+                    jint sign, jboolean should_serialize_tree,
+                    jobject callback) {
+  if (callback == nullptr) {
+    return;
+  }
+  bool serialize_tree = should_serialize_tree;
+  auto platform_callback =
+      std::make_unique<lynx::shell::PlatformCallBackAndroid>(env, callback);
+  if (ptr == 0 || lifecycle == 0) {
+    platform_callback->InvokeWithValue(
+        serialize_tree
+            ? Value()
+            : Value(static_cast<int32_t>(lynx::tasm::kInvalidImplId)));
+    return;
+  }
+
+  auto* lifecycle_ptr = reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    platform_callback->InvokeWithValue(
+        serialize_tree
+            ? Value()
+            : Value(static_cast<int32_t>(lynx::tasm::kInvalidImplId)));
+    return;
+  }
+
+  auto* shell = reinterpret_cast<LynxShell*>(ptr);
+  shell->GetLynxElementAsync(sign, serialize_tree,
+                             std::move(platform_callback));
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 

@@ -1351,7 +1351,8 @@ std::unordered_map<std::string, std::string> LynxShell::GetAllJsSource() {
       [](auto& engine) { return engine->GetAllJsSource(); });
 }
 
-void LynxShell::GetLynxElementRootSignAsync(
+__attribute__((noinline)) void LynxShell::GetLynxElementAsync(
+    int32_t sign, bool serialize_tree,
     std::unique_ptr<shell::PlatformCallBack> callback) {
   if (!callback) {
     return;
@@ -1360,44 +1361,25 @@ void LynxShell::GetLynxElementRootSignAsync(
       [callback = std::move(callback)](auto& facade) mutable {
         return facade->CreatePlatformCallBackHolder(std::move(callback));
       });
-  if (IsDestroyed() || engine_actor_ == nullptr) {
+  if (IsDestroyed() || engine_actor_ == nullptr ||
+      (serialize_tree && sign == tasm::kInvalidImplId)) {
     InvokePlatformCallbackAndRemove(
         facade_actor_, std::move(callback_holder),
-        lepus::Value(static_cast<int32_t>(tasm::kInvalidImplId)));
-    return;
-  }
-  auto facade_actor = facade_actor_;
-  engine_actor_->Act([facade_actor,
-                      callback_holder =
-                          std::move(callback_holder)](auto& engine) mutable {
-    InvokePlatformCallbackAndRemove(
-        facade_actor, std::move(callback_holder),
-        lepus::Value(static_cast<int32_t>(engine->GetLynxElementRootSign())));
-  });
-}
-
-void LynxShell::GetLynxElementTreeAsJSONStringAsync(
-    int32_t sign, std::unique_ptr<shell::PlatformCallBack> callback) {
-  if (!callback) {
-    return;
-  }
-  auto callback_holder = facade_actor_->ActSync(
-      [callback = std::move(callback)](auto& facade) mutable {
-        return facade->CreatePlatformCallBackHolder(std::move(callback));
-      });
-  if (IsDestroyed() || engine_actor_ == nullptr ||
-      sign == tasm::kInvalidImplId) {
-    InvokePlatformCallbackAndRemove(facade_actor_, std::move(callback_holder),
-                                    lepus::Value(""));
+        serialize_tree
+            ? lepus::Value()
+            : lepus::Value(static_cast<int32_t>(tasm::kInvalidImplId)));
     return;
   }
   auto facade_actor = facade_actor_;
   engine_actor_->Act(
-      [facade_actor, sign,
+      [facade_actor, sign, serialize_tree,
        callback_holder = std::move(callback_holder)](auto& engine) mutable {
         InvokePlatformCallbackAndRemove(
             facade_actor, std::move(callback_holder),
-            lepus::Value(engine->GetLynxElementTreeAsJSONString(sign)));
+            serialize_tree
+                ? lepus::Value(engine->GetLynxElementTreeAsJSONString(sign))
+                : lepus::Value(
+                      static_cast<int32_t>(engine->GetLynxElementRootSign())));
       });
 }
 
