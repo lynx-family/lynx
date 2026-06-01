@@ -51,6 +51,13 @@ NS_ASSUME_NONNULL_BEGIN
                               maxWidth:(nullable NSString *)maxWidth
                                maxLine:(NSInteger)maxLine;
 /**
+ * get hit test event targets by a position relative to page origin
+ * @param page cpp Page object pointer
+ * @param point position relative to page origin
+ * @return flattened event target array, every target contains sign, event mask and inline-view flag
+ */
+- (NSArray<NSNumber *> *)getHitTestEventTargetsOfPage:(void *)page ByTouchPosition:(CGPoint)point;
+/**
  * get char index by a position relative to page origin
  * @param page cpp Page object pointer
  * @param point position relative to page origin

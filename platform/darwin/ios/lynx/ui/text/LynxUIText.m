@@ -5,7 +5,12 @@
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxRendererContext.h>
+#import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/LynxTouchEvent.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIText.h>
 #import <Lynx/LynxUIUnitUtils.h>
@@ -33,6 +38,235 @@
 
 @end
 
+static const NSUInteger kLynxTextServiceEventTargetInfoSize = 3;
+static const NSUInteger kLynxTextServiceEventTargetSignIndex = 0;
+static const NSUInteger kLynxTextServiceEventTargetMaskIndex = 1;
+static const NSUInteger kLynxTextServiceEventTargetInlineViewIndex = 2;
+
+typedef NS_OPTIONS(NSUInteger, LynxTextServiceEventTargetMask) {
+  LynxTextServiceEventTargetTap = 1u << 0,
+  LynxTextServiceEventTargetClick = 1u << 1,
+  LynxTextServiceEventTargetLongPress = 1u << 2,
+  LynxTextServiceEventTargetTouchStart = 1u << 3,
+  LynxTextServiceEventTargetTouchMove = 1u << 4,
+  LynxTextServiceEventTargetTouchEnd = 1u << 5,
+  LynxTextServiceEventTargetTouchCancel = 1u << 6,
+};
+
+static void LynxTextServiceAddEventSpec(NSMutableDictionary<NSString *, LynxEventSpec *> *eventSet,
+                                        NSUInteger eventMask,
+                                        LynxTextServiceEventTargetMask targetMask,
+                                        NSString *eventName) {
+  if ((eventMask & targetMask) == 0) {
+    return;
+  }
+  NSString *rawEvent = [eventName stringByAppendingString:@"(bindEvent)"];
+  eventSet[eventName] = [[LynxEventSpec alloc] initWithRawEvent:rawEvent withJSEvent:YES];
+}
+
+static NSDictionary<NSString *, LynxEventSpec *> *LynxTextServiceBuildEventSet(
+    NSUInteger eventMask) {
+  if (eventMask == 0) {
+    return nil;
+  }
+  NSMutableDictionary<NSString *, LynxEventSpec *> *eventSet = [NSMutableDictionary new];
+  LynxTextServiceAddEventSpec(eventSet, eventMask, LynxTextServiceEventTargetTap, LynxEventTap);
+  LynxTextServiceAddEventSpec(eventSet, eventMask, LynxTextServiceEventTargetClick, LynxEventClick);
+  LynxTextServiceAddEventSpec(eventSet, eventMask, LynxTextServiceEventTargetLongPress,
+                              LynxEventLongPress);
+  LynxTextServiceAddEventSpec(eventSet, eventMask, LynxTextServiceEventTargetTouchStart,
+                              LynxEventTouchStart);
+  LynxTextServiceAddEventSpec(eventSet, eventMask, LynxTextServiceEventTargetTouchMove,
+                              LynxEventTouchMove);
+  LynxTextServiceAddEventSpec(eventSet, eventMask, LynxTextServiceEventTargetTouchEnd,
+                              LynxEventTouchEnd);
+  LynxTextServiceAddEventSpec(eventSet, eventMask, LynxTextServiceEventTargetTouchCancel,
+                              LynxEventTouchCancel);
+  return eventSet.count > 0 ? eventSet : nil;
+}
+
+@interface LynxTextServiceEventTarget : NSObject <LynxEventTarget>
+
+- (instancetype)initWithSign:(NSInteger)sign eventMask:(NSUInteger)eventMask;
+- (void)setParentEventTarget:(id<LynxEventTarget>)parent;
+
+@end
+
+@implementation LynxTextServiceEventTarget {
+  NSInteger _sign;
+  __weak id<LynxEventTarget> _parent;
+  NSDictionary *_dataset;
+  NSDictionary<NSString *, LynxEventSpec *> *_eventSet;
+  int32_t _pseudoStatus;
+}
+
+- (instancetype)initWithSign:(NSInteger)sign eventMask:(NSUInteger)eventMask {
+  self = [super init];
+  if (self) {
+    _sign = sign;
+    _dataset = @{};
+    _eventSet = LynxTextServiceBuildEventSet(eventMask);
+  }
+  return self;
+}
+
+- (NSInteger)signature {
+  return _sign;
+}
+
+- (int32_t)pseudoStatus {
+  return _pseudoStatus;
+}
+
+- (void)setParentEventTarget:(id<LynxEventTarget>)parent {
+  _parent = parent;
+}
+
+- (nullable id<LynxEventTarget>)parentTarget {
+  __strong id<LynxEventTarget> parent = _parent;
+  return parent;
+}
+
+- (nullable id<LynxEventTargetBase>)parentResponder {
+  id<LynxEventTarget> parent = [self parentTarget];
+  if ([parent conformsToProtocol:@protocol(LynxEventTargetBase)]) {
+    return (id<LynxEventTargetBase>)parent;
+  }
+  return nil;
+}
+
+- (nullable NSDictionary *)getDataset {
+  return _dataset;
+}
+
+- (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+  return self;
+}
+
+- (BOOL)containsPoint:(CGPoint)point {
+  return YES;
+}
+
+- (nullable NSDictionary<NSString *, LynxEventSpec *> *)eventSet {
+  return _eventSet;
+}
+
+- (nullable NSDictionary<NSNumber *, LynxGestureDetectorDarwin *> *)gestureMap {
+  return nil;
+}
+
+- (BOOL)shouldHitTest:(CGPoint)point withEvent:(nullable UIEvent *)event {
+  return YES;
+}
+
+- (BOOL)ignoreFocus {
+  id<LynxEventTarget> parent = [self parentTarget];
+  return parent != nil ? [parent ignoreFocus] : NO;
+}
+
+- (BOOL)consumeSlideEvent:(CGFloat)angle {
+  return NO;
+}
+
+- (BOOL)blockNativeEvent:(UIGestureRecognizer *)gestureRecognizer {
+  return NO;
+}
+
+- (BOOL)eventThrough:(CGPoint)point {
+  id<LynxEventTarget> parent = [self parentTarget];
+  return parent != nil ? [parent eventThrough:point] : NO;
+}
+
+- (enum LynxPointerEventsValue)pointerEvents {
+  id<LynxEventTarget> parent = [self parentTarget];
+  return parent != nil ? [parent pointerEvents] : kLynxPointerEventsValueAuto;
+}
+
+- (enum LynxPanInterceptDirection)panInterceptDirection {
+  return kLynxPanInterceptDirectionNone;
+}
+
+- (enum LynxPanInterceptScope)panInterceptScope {
+  return kLynxPanInterceptScopeNone;
+}
+
+- (BOOL)enableTouchPseudoPropagation {
+  return YES;
+}
+
+- (void)onPseudoStatusFrom:(int32_t)preStatus changedTo:(int32_t)currentStatus {
+  _pseudoStatus = currentStatus;
+}
+
+- (BOOL)dispatchTouch:(NSString *const)touchType
+              touches:(NSSet<UITouch *> *)touches
+            withEvent:(UIEvent *)event {
+  return NO;
+}
+
+- (BOOL)dispatchEvent:(LynxEventDetail *)event {
+  return NO;
+}
+
+- (void)onResponseChain {
+}
+
+- (void)offResponseChain {
+}
+
+- (BOOL)isOnResponseChain {
+  return NO;
+}
+
+- (NSInteger)getGestureArenaMemberId {
+  return -1;
+}
+
+- (id<LynxEventTarget>)parentLynxPageUI {
+  return nil;
+}
+
+- (void)setParentLynxPageUI:(id<LynxEventTarget>)ui {
+}
+
+- (NSMutableDictionary *)childrenLynxPageUI {
+  return nil;
+}
+
+- (void)setChildrenLynxPageUI:(NSMutableDictionary *)dict {
+}
+
+- (id<LynxEventTarget>)rootLynxPageUI {
+  return nil;
+}
+
+- (void)setEventID:(int64_t)eventID {
+}
+
+- (void)startEventCapture:(int64_t)eventID {
+}
+
+- (void)onEventCapture:(BOOL)isCatch withEventID:(int64_t)eventID {
+}
+
+- (void)startEventBubble:(int64_t)eventID {
+}
+
+- (void)onEventBubble:(BOOL)isCatch withEventID:(int64_t)eventID {
+}
+
+- (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID {
+}
+
+- (void)onEventFire:(BOOL)isStop withEventID:(int64_t)eventID {
+}
+
+- (UIView *)view {
+  return nil;
+}
+
+@end
+
 @implementation LynxUITextDrawParameter
 
 @end
@@ -46,6 +280,7 @@
   BOOL _isDirty;
   BOOL _textGradientOptExperiment;
   BOOL _didDispatchLayoutEvent;
+  NSMutableDictionary<NSString *, LynxTextServiceEventTarget *> *_textServiceEventTargetCache;
 }
 
 #if LYNX_LAZY_LOAD
@@ -178,6 +413,7 @@ LYNX_PROPS_GROUP_DECLARE(
     LynxTextRenderer *renderer = (LynxTextRenderer *)value;
     if (renderer != _renderer) {
       _didDispatchLayoutEvent = NO;
+      [_textServiceEventTargetCache removeAllObjects];
     }
     _isHasSubSpan = false;
     _isDirty = true;
@@ -295,7 +531,105 @@ LYNX_PROPS_GROUP_DECLARE(
   [renderer drawRect:bounds padding:padding border:border];
 }
 
+- (nullable LynxRendererContext *)textServiceRendererContext {
+  UIView *view = self.view;
+  while (view != nil) {
+    if ([view respondsToSelector:@selector(rendererContext)]) {
+      LynxRendererContext *context = [(id<LynxRendererHost>)view rendererContext];
+      if (context != nil) {
+        return context;
+      }
+    }
+    view = view.superview;
+  }
+
+  UIView *rootView = self.context.rootView;
+  if ([rootView respondsToSelector:@selector(rendererContext)]) {
+    return [(id<LynxRendererHost>)rootView rendererContext];
+  }
+  return nil;
+}
+
+- (nullable LynxUI *)textServiceInlineViewWithSign:(NSInteger)sign {
+  for (LynxUI *child in self.children) {
+    if (child.sign == sign) {
+      return child;
+    }
+  }
+  return nil;
+}
+
+- (nullable id<LynxEventTarget>)hitTestTextServiceInlineViewWithSign:(NSInteger)sign
+                                                               point:(CGPoint)point
+                                                           withEvent:(UIEvent *)event {
+  LynxUI *child = [self textServiceInlineViewWithSign:sign];
+  if (child == nil || ![child shouldHitTest:point withEvent:event] || child.view.isHidden) {
+    return nil;
+  }
+  CALayer *parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+  CALayer *childLayer = child.view.layer.presentationLayer ?: child.view.layer.modelLayer;
+  CGPoint targetPoint = [parentLayer convertPoint:point toLayer:childLayer];
+  return [child hitTest:targetPoint withEvent:event];
+}
+
+- (LynxTextServiceEventTarget *)textServiceEventTargetWithSign:(NSInteger)sign
+                                                     eventMask:(NSUInteger)eventMask {
+  if (_textServiceEventTargetCache == nil) {
+    _textServiceEventTargetCache = [NSMutableDictionary new];
+  }
+  NSString *cacheKey = [NSString stringWithFormat:@"%ld:%lu", (long)sign, (unsigned long)eventMask];
+  LynxTextServiceEventTarget *target = _textServiceEventTargetCache[cacheKey];
+  if (target == nil) {
+    target = [[LynxTextServiceEventTarget alloc] initWithSign:sign eventMask:eventMask];
+    _textServiceEventTargetCache[cacheKey] = target;
+  }
+  [target setParentEventTarget:self];
+  return target;
+}
+
+- (nullable id<LynxEventTarget>)hitTestTextServicePage:(CGPoint)point withEvent:(UIEvent *)event {
+  LynxRendererContext *rendererContext = [self textServiceRendererContext];
+  void *page = [rendererContext getTextBundle:(int32_t)self.sign];
+  if (page == NULL) {
+    return nil;
+  }
+
+  id<LynxServiceTextProtocol> textService = LynxService(LynxServiceTextProtocol);
+  if (textService == nil) {
+    return nil;
+  }
+
+  CGPoint pointInTextRect = CGPointMake(point.x - self.padding.left - self.border.left,
+                                        point.y - self.padding.top - self.border.top);
+  NSArray<NSNumber *> *targets = [textService getHitTestEventTargetsOfPage:page
+                                                           ByTouchPosition:pointInTextRect];
+  if (targets.count < kLynxTextServiceEventTargetInfoSize) {
+    return nil;
+  }
+
+  NSInteger sign = [targets[kLynxTextServiceEventTargetSignIndex] integerValue];
+  NSUInteger eventMask = [targets[kLynxTextServiceEventTargetMaskIndex] unsignedIntegerValue];
+  BOOL isInlineView = [targets[kLynxTextServiceEventTargetInlineViewIndex] boolValue];
+
+  if (isInlineView) {
+    id<LynxEventTarget> inlineViewTarget =
+        [self hitTestTextServiceInlineViewWithSign:sign point:pointInTextRect withEvent:event];
+    if (inlineViewTarget != nil) {
+      return inlineViewTarget;
+    }
+  } else if (sign == self.sign) {
+    return self;
+  }
+
+  return [self textServiceEventTargetWithSign:sign eventMask:eventMask];
+}
+
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+  id<LynxEventTarget> textServiceTarget = [self hitTestTextServicePage:point withEvent:event];
+  if (textServiceTarget != nil) {
+    return textServiceTarget;
+  }
+
   if (!_isHasSubSpan) {
     [self.renderer genSubSpan];
     _isHasSubSpan = true;
