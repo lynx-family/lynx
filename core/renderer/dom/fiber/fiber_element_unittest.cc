@@ -8,9 +8,12 @@
 #include "core/renderer/dom/fiber/fiber_element.h"
 
 #include <cmath>
+#include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <tuple>
+#include <vector>
 
 #include "base/include/auto_reset.h"
 #include "core/animation/css_transition_manager.h"
@@ -102,6 +105,39 @@ bool LayoutBundleHasStyle(const std::unique_ptr<LayoutBundle>& layout_bundle,
   }
   return false;
 }
+
+class RecordingInspectorElementObserver final
+    : public InspectorElementObserver {
+ public:
+  void OnDocumentUpdated() override {}
+  void OnElementNodeAdded(Element* ptr) override { added_nodes.push_back(ptr); }
+  void OnElementNodeRemoved(Element* ptr) override {}
+  void OnCharacterDataModified(Element* ptr) override {}
+  void OnElementDataModelSet(Element* ptr) override {}
+  void OnElementManagerWillDestroy() override {}
+  void OnCSSStyleSheetAdded(Element* ptr) override {}
+  void OnComponentUselessUpdate(const std::string& component_name,
+                                const lepus::Value& properties) override {}
+  void OnSetNativeProps(Element* ptr, const std::string& name,
+                        const std::string& value, bool is_style) override {}
+
+  std::map<lynx::devtool::DevToolFunction,
+           std::function<void(const base::any&)>>
+  GetDevToolFunction() override {
+    auto noop = [](const base::any&) {};
+    return {
+        {lynx::devtool::DevToolFunction::InitForInspector, noop},
+        {lynx::devtool::DevToolFunction::InitPlugForInspector, noop},
+        {lynx::devtool::DevToolFunction::InitStyleValueElement, noop},
+        {lynx::devtool::DevToolFunction::InitStyleRoot, noop},
+        {lynx::devtool::DevToolFunction::SetDocElement, noop},
+        {lynx::devtool::DevToolFunction::SetStyleValueElement, noop},
+        {lynx::devtool::DevToolFunction::SetStyleRoot, noop},
+    };
+  }
+
+  std::vector<Element*> added_nodes;
+};
 
 bool LayoutBundleHasResetStyle(
     const std::unique_ptr<LayoutBundle>& layout_bundle, CSSPropertyID id) {
@@ -10205,6 +10241,38 @@ TEST_P(FiberElementTest, CreateTypedPageTemplateMaterializesRoot) {
             tasm->style_sheet_manager(DEFAULT_ENTRY_NAME));
   ASSERT_EQ(page_template->result_->children().size(), 1u);
   EXPECT_EQ(page_template->result_->children()[0].get(), child.get());
+}
+
+TEST_P(FiberElementTest, CreateTypedPageTemplateNotifiesInspectorRoot) {
+  auto observer = std::make_shared<RecordingInspectorElementObserver>();
+  manager->SetInspectorElementObserver(observer);
+  manager->dom_tree_enabled_ = true;
+
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  lepus::Value create_args[] = {lepus::Value("page"), lepus::Value(),
+                                lepus::Value(), lepus::Value("0")};
+  auto created_value = RendererFunctions::FiberCreateTypedElementTemplate(
+      mts_ctx, create_args, 4);
+
+  ASSERT_TRUE(created_value.IsRefCounted());
+  auto page_template =
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
+          .strongify();
+  ASSERT_NE(page_template, nullptr);
+  ASSERT_NE(manager->root(), nullptr);
+  ASSERT_EQ(observer->added_nodes.size(), 1u);
+  EXPECT_EQ(observer->added_nodes[0], manager->root());
+  EXPECT_NE(observer->added_nodes[0], page_template.get());
+  EXPECT_TRUE(observer->added_nodes[0]->is_page());
 }
 
 TEST_P(FiberElementTest, InsertTypedPageTemplateChildBeforeAutomaticFlush) {

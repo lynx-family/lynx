@@ -3674,15 +3674,20 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
   element->SetElementSlots(element_slots);
   element->SetOptions(options);
   element->SetUid(*arg3);
+  fml::RefPtr<FiberElement> typed_page_root = nullptr;
   if (arg0->String().IsEqual(kElementPageTag)) {
     // Page templates are root templates, so materialize the root eagerly while
     // still returning the TemplateElement shell for template APIs.
-    if (element->GetRoot() == nullptr) {
+    typed_page_root = element->GetRoot();
+    if (typed_page_root == nullptr) {
       RETURN_UNDEFINED();
     }
   }
 
   ON_NODE_CREATE(element);
+  if (typed_page_root != nullptr) {
+    ON_NODE_ADDED(typed_page_root);
+  }
 
   RETURN(lepus::Value(element));
 }
