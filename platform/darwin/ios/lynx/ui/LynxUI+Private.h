@@ -47,5 +47,10 @@ typedef void (^LynxPropsDidUpdateBlockReadyBlock)(LynxUI*);
 // broken.
 - (void)propsDidUpdateForUIOwner;
 
+- (void)calculateStickyTranslateWithOffset:(CGFloat)offset
+                                isVertical:(BOOL)isVertical
+                              scrollerSize:(CGFloat)scrollerSize
+                                 maxOffset:(CGFloat)maxOffset;
+
 @end
 NS_ASSUME_NONNULL_END

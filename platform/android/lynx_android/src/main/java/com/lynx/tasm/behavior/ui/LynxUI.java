@@ -1306,15 +1306,39 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   }
 
   @Override
+  public boolean calculateStickyTranslateWithOffset(
+      int offset, boolean isVertical, int scrollerSize, int maxOffset) {
+    boolean res =
+        super.calculateStickyTranslateWithOffset(offset, isVertical, scrollerSize, maxOffset);
+    PointF trans = null;
+    if (res && mSticky != null) {
+      trans = new PointF(mSticky.x, mSticky.y);
+    }
+    if (mBackgroundManager != null) {
+      mBackgroundManager.setPostTranslate(trans);
+    }
+    return res;
+  }
+
+  @Override
   public boolean checkStickyOnParentScroll(int l, int t) {
     boolean ret = super.checkStickyOnParentScroll(l, t);
     PointF trans = null;
     if (mSticky != null) {
       trans = new PointF(mSticky.x, mSticky.y);
     }
-    mBackgroundManager.setPostTranlate(trans);
-
+    if (mBackgroundManager != null) {
+      mBackgroundManager.setPostTranslate(trans);
+    }
     return ret;
+  }
+
+  @Override
+  public void setStickyTranslate(PointF trans) {
+    super.setStickyTranslate(trans);
+    if (mBackgroundManager != null) {
+      mBackgroundManager.setPostTranslate(trans);
+    }
   }
 
   @LynxProp(name = PropsConstants.FILTER)
