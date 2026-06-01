@@ -41,7 +41,7 @@ class PerformanceController : public PerformanceEventSender {
         memory_monitor_(this, instance_id),
         timing_handler_(
             timing::TimingHandler(std::move(timing_delegate), this)) {}
-  ~PerformanceController() override;
+  ~PerformanceController() override = default;
 
   static fml::RefPtr<fml::TaskRunner> GetTaskRunner();
 

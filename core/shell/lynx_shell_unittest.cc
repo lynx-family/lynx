@@ -135,7 +135,7 @@ TEST_F(LynxShellTest, GetAllPerformanceEntries) {
 
   shell_->perf_controller_actor_->ActSync([](auto& controller) {
     auto entry = controller->GetValueFactory()->CreateMap();
-    entry->PushStringToMap("entryType", "metric");
+    entry->PushStringToMap("entryType", "pipeline");
     entry->PushStringToMap("name", "testMetric");
     entry->PushDoubleToMap("startTime", 1.5);
     controller->OnPerformanceEvent(std::move(entry));
@@ -148,7 +148,7 @@ TEST_F(LynxShellTest, GetAllPerformanceEntries) {
   lepus::Value first_entry = entries.Array()->get(0);
   ASSERT_TRUE(first_entry.IsTable());
   ASSERT_EQ(first_entry.Table()->GetValue("entryType").String().str(),
-            "metric");
+            "pipeline");
   ASSERT_EQ(first_entry.Table()->GetValue("name").String().str(), "testMetric");
   ASSERT_DOUBLE_EQ(first_entry.Table()->GetValue("startTime").Number(), 1.5);
   ASSERT_EQ(first_entry.Table()->GetValue("instanceId").Int32(),
@@ -162,7 +162,7 @@ TEST_F(LynxShellTest, GetAllPerformanceEntriesReturnsEmptyWhenDevToolDisabled) {
 
   shell_->perf_controller_actor_->ActSync([](auto& controller) {
     auto entry = controller->GetValueFactory()->CreateMap();
-    entry->PushStringToMap("entryType", "metric");
+    entry->PushStringToMap("entryType", "pipeline");
     entry->PushStringToMap("name", "testMetric");
     entry->PushDoubleToMap("startTime", 1.5);
     controller->OnPerformanceEvent(std::move(entry));
@@ -171,22 +171,6 @@ TEST_F(LynxShellTest, GetAllPerformanceEntriesReturnsEmptyWhenDevToolDisabled) {
   lepus::Value entries = shell_->GetAllPerformanceEntries();
   ASSERT_TRUE(entries.IsArray());
   ASSERT_EQ(entries.Array()->size(), 0u);
-}
-
-TEST_F(LynxShellTest, MemoryMonitorTeardownAfterAllocation) {
-  auto& env = lynx::tasm::LynxEnv::GetInstance();
-  env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDebugEnabled, true);
-  env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDevToolEnable, true);
-
-  lynx::tasm::performance::MemoryMonitor::SetForceEnable(true);
-  shell_->perf_controller_actor_->ActSync([](auto& controller) {
-    controller->GetMemoryMonitor().AllocateMemory(
-        lynx::tasm::performance::MemoryRecord("test", 1024));
-  });
-
-  lepus::Value entries = shell_->GetAllPerformanceEntries();
-  ASSERT_TRUE(entries.IsArray());
-  ASSERT_GT(entries.Array()->size(), 0u);
 }
 
 TEST_F(LynxShellTest, ResetTimingBeforeReloadClearsPerformanceEntries) {

@@ -4,6 +4,7 @@
 
 #include "core/services/performance/performance_controller.h"
 
+#include <string>
 #include <utility>
 
 #include "core/public/performance_controller_platform_impl.h"
@@ -15,7 +16,11 @@ namespace lynx {
 namespace tasm {
 namespace performance {
 
-PerformanceController::~PerformanceController() = default;
+namespace {
+bool IsDevtoolRecordedPerformanceEntry(const std::string& entry) {
+  return entry == timing::kEntryTypePipeline;
+}
+}  // namespace
 
 fml::RefPtr<fml::TaskRunner> PerformanceController::GetTaskRunner() {
   return report::EventTrackerPlatformImpl::GetReportTaskRunner();
@@ -29,7 +34,10 @@ void PerformanceController::SetPlatformImpl(
 void PerformanceController::OnPerformanceEvent(
     std::unique_ptr<pub::Value> entry, EventType type) {
   entry->PushInt32ToMap("instanceId", instance_id_);
-  if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+  auto entry_type = entry->GetValueForKey(kPerformanceEventType);
+  if (entry_type && entry_type->IsString() &&
+      IsDevtoolRecordedPerformanceEntry(entry_type->str()) &&
+      tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
     performance_entries_.emplace_back(
         pub::ValueUtils::ConvertValueToLepusValue(*entry));
   }
