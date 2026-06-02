@@ -23,17 +23,6 @@ ABI_LIST = [
     'x86_64',
 ]
 
-DEFAULT_MODULES = [
-    'lynx',
-    'lynx_base',
-    'lynx_devtool',
-    'lynx_devtool_service',
-    'lynx_log_service',
-    'lynx_http_service',
-    'lynx_image_service',
-    'xelement_markdown',
-]
-
 
 def add_node_home_env():
     if 'COMMANDLINE_TOOL_DIR' not in os.environ:
@@ -168,9 +157,29 @@ def collect_module_config_list(args):
         build_profile = json5.load(f)
 
     module_config_list = build_profile['modules']
+    publish_module_config_list = []
+    for module_config in module_config_list:
+        module_name = module_config.get('name')
+        module_src_path = module_config.get('srcPath')
+        if not module_name or not module_src_path:
+            raise Exception(f'invalid module config: {module_config}')
+
+        module_json_path = os.path.join(
+            HARMONY_DIR, module_src_path, 'src', 'main', 'module.json5')
+        if not os.path.isfile(module_json_path):
+            raise Exception(f'module.json5 not found: {module_json_path}')
+
+        with open(module_json_path, 'r') as f:
+            module_json = json5.load(f)
+
+        module_info = module_json.get('module', {})
+        module_type = module_info.get('type')
+        if isinstance(module_type, str) and module_type.lower() == 'har':
+            publish_module_config_list.append(module_config)
+
     if args.verbose:
-        print('module_config_list is' + str(module_config_list))
-    return module_config_list
+        print('module_config_list is' + str(publish_module_config_list))
+    return publish_module_config_list
 
 
 def run_package_hap(args):
@@ -208,16 +217,6 @@ def main(argv):
     print(f'start build with args {args}')
     print(f'env info: {env_info}')
 
-    if args.modules:
-        if len(args.modules) == 1 and args.modules[0].lower() == "default":
-            if args.verbose:
-                print("Using default module list as '--modules default' was specified.")
-            modules = DEFAULT_MODULES
-        else:
-            modules = args.modules
-    else:
-        modules = []
-
     if args.build_lynx_core:
         run_build_lynx_core(args.verbose, args.override_version if args.override_version else '0.0.1')
         run_copy_devtool_resources(args.verbose)
@@ -229,6 +228,20 @@ def main(argv):
         run_gn(args, gn_out_dir, abi)
         run_build_so(gn_out_dir, args)
         run_cp_so(gn_out_dir, args, abi)
+
+    if args.build_har:
+        module_config_list = collect_module_config_list(args)
+        default_modules = [module_config['name'] for module_config in module_config_list]
+
+        if args.modules:
+            if len(args.modules) == 1 and args.modules[0].lower() == "default":
+                if args.verbose:
+                    print("Using publishable module list as '--modules default' was specified.")
+                modules = default_modules
+            else:
+                modules = args.modules
+        else:
+            modules = default_modules
 
     if args.build_har and len(modules) > 0:
         commit_hash = os.popen('git rev-parse HEAD').read().strip()
@@ -250,14 +263,13 @@ def main(argv):
 
         module_paths = {}
         for module in modules:
-            module_config_list = collect_module_config_list(args)
             for module_config in module_config_list:
                 if module_config['name'] == module:
                     module_path = module_config['srcPath']
                     module_paths[module] = module_path
                     break
             else:
-                raise Exception(f'module {module} not found in build-profile.json5')
+                raise Exception(f'module {module} not found in build-profile.json5 or not type har')
             module_full_path = os.path.join(HARMONY_DIR, module_path)
             patch_lynx_version(publish_version, commit_hash, module_full_path)
             run_package_har(module, module_full_path, args.verbose)
