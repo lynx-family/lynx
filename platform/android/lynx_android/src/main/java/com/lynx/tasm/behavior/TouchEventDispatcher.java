@@ -651,6 +651,18 @@ public class TouchEventDispatcher {
     mPreTarget = mActiveUI;
   }
 
+  private void resetEnvForTouchSequence() {
+    if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
+      UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
+          String.valueOf(System.identityHashCode(mActiveUI)));
+      if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
+          && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
+        childLynxPageUI.getLynxContext().getTouchEventDispatcher().resetEnvForTouchSequence();
+      }
+    }
+    resetEnv();
+  }
+
   public void destroy() {}
 
   private PointF moveEventToChildLynxPage(MotionEvent ev) {
@@ -1083,6 +1095,9 @@ public class TouchEventDispatcher {
     } else {
       dispatchEvent(mActiveUI, EVENT_TOUCH_END, ev);
     }
+    // TODO(hexionghui): Fix the problem: In single-finger mode, only when the last finger
+    // is lifted, :active will be disabled.
+    onActionUpOrCancel(ev);
 
     if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
       UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
@@ -1111,7 +1126,6 @@ public class TouchEventDispatcher {
     }
 
     onActionUpOrCancel(ev);
-    resetEnv();
 
     if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
       UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
@@ -1141,6 +1155,28 @@ public class TouchEventDispatcher {
         PointF originalLocation = moveEventToChildLynxPage(ev);
         try {
           childLynxPageUI.getLynxContext().getTouchEventDispatcher().dispatchActiveUITouch(ev);
+        } finally {
+          restoreEventLocation(ev, originalLocation);
+        }
+      }
+    }
+  }
+
+  private void dispatchTouchEventToGestureArena(MotionEvent ev) {
+    if (mGestureArenaManager != null) {
+      mGestureArenaManager.dispatchTouchEventToArena(ev, mFirstLynxTouchEvent);
+    }
+
+    if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
+      UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
+          String.valueOf(System.identityHashCode(mActiveUI)));
+      if (childLynxPageUI != null && childLynxPageUI.getLynxContext() != null
+          && childLynxPageUI.getLynxContext().getTouchEventDispatcher() != null) {
+        PointF originalLocation = moveEventToChildLynxPage(ev);
+        try {
+          childLynxPageUI.getLynxContext()
+              .getTouchEventDispatcher()
+              .dispatchTouchEventToGestureArena(ev);
         } finally {
           restoreEventLocation(ev, originalLocation);
         }
@@ -1184,6 +1220,7 @@ public class TouchEventDispatcher {
     }
 
     mTimestamp = System.currentTimeMillis();
+    boolean shouldResetEnv = false;
     if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
       mActiveEventRootUI = resolveEventRootUI(rootUi);
       mDispatchInCurrentLynxPageOnly = shouldDispatchInCurrentLynxPageOnly(rootUi);
@@ -1211,17 +1248,15 @@ public class TouchEventDispatcher {
             break;
           case MotionEvent.ACTION_UP:
             handleFirstTouchUp(ev);
-            // TODO(hexionghui): Fix the problem: In single-finger mode, only when the last finger
-            // is lifted, :active will be disabled.
-            onActionUpOrCancel(ev);
             fireClick(ev);
             // TODO(hexionghui): The tap event should be triggered by the first finger being lifted,
             // not the last finger being lifted.
             fireTap(ev);
-            resetEnv();
+            shouldResetEnv = true;
             break;
           case MotionEvent.ACTION_CANCEL:
             handleTouchCancel(ev);
+            shouldResetEnv = true;
             break;
           default:
             break;
@@ -1232,6 +1267,9 @@ public class TouchEventDispatcher {
     if (mActiveUI != null
         && mActiveUI.eventThrough(mFirstFingerDownPoint.getX(), mFirstFingerDownPoint.getY())) {
       LLog.i(TAG, "hit event through");
+      if (shouldResetEnv) {
+        resetEnvForTouchSequence();
+      }
       return false;
     }
 
@@ -1239,8 +1277,10 @@ public class TouchEventDispatcher {
     mDetector.onTouchEvent(ev);
 
     // dispatch touch event to gesture arena
-    if (mGestureArenaManager != null) {
-      mGestureArenaManager.dispatchTouchEventToArena(ev, mFirstLynxTouchEvent);
+    dispatchTouchEventToGestureArena(ev);
+
+    if (shouldResetEnv) {
+      resetEnvForTouchSequence();
     }
 
     return true;

@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "core/base/lynx_export.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
@@ -88,6 +89,8 @@ class EventDispatcher {
   void OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                     bool from_overlay = false);
 
+  LYNX_EXPORT void GetEventPointOffset(float point_offset[2]) const;
+
   void OnLongPressEvent(const ArkUI_UIInputEvent* event);
 
   void OnTapEvent(const ArkUI_UIInputEvent* event);
@@ -122,6 +125,8 @@ class EventDispatcher {
   void UpdateRootTarget(UIBase* root);
 
  private:
+  enum class ChildLynxPageEventType { kTouch, kClick, kTap, kLongPress };
+
   void InitTouchEnv(const ArkUI_UIInputEvent* event);
 
   void ResetTouchEnv(const ArkUI_UIInputEvent* event);
@@ -152,6 +157,8 @@ class EventDispatcher {
   void AddTargetTouchMap(lepus::Value& target_touch_map,
                          const ArkUI_UIInputEvent* event);
 
+  void MarkDispatchInCurrentLynxPageOnly(TouchEvent& touch_event) const;
+
   void UpdateFocusedTarget();
 
   void HandleTouchDown(const ArkUI_UIInputEvent* event);
@@ -171,6 +178,37 @@ class EventDispatcher {
   bool IsActiveFinger(const ArkUI_UIInputEvent* event, size_t index);
 
   bool IsPrimaryInput(const ArkUI_UIInputEvent* event, int pointer_id);
+
+  bool ShouldDispatchInCurrentLynxPageOnly(UIBase* root) const;
+
+  UIBase* GetChildLynxPageUI(EventTarget* active_target);
+
+  void PrepareChildEventPointOffset(const ArkUI_UIInputEvent* event,
+                                    EventTarget* active_target,
+                                    float point_offset[2], float scale = 1.f);
+
+  void DispatchTouchEventToChildLynxPage(const ArkUI_UIInputEvent* event);
+
+  void DispatchClickEventToChildLynxPage(const ArkUI_UIInputEvent* event);
+
+  void DispatchTapEventToChildLynxPage(const ArkUI_UIInputEvent* event);
+
+  void DispatchLongPressEventToChildLynxPage(const ArkUI_UIInputEvent* event);
+
+  void DispatchEventToChildLynxPage(const ArkUI_UIInputEvent* event,
+                                    ChildLynxPageEventType event_type,
+                                    float scale = 1.f);
+
+  void DispatchActiveTargetTouchEvent(const ArkUI_UIInputEvent* event);
+
+  void DispatchActiveTargetTouchEventToChildLynxPage(
+      const ArkUI_UIInputEvent* event);
+
+  void DispatchTouchEventToChildGestureArena(const std::string& event_name,
+                                             const ArkUI_UIInputEvent* event);
+
+  void DispatchTouchEventToGestureArena(const std::string& event_name,
+                                        const ArkUI_UIInputEvent* event);
 
   void TraverseAndUpdateHitTestBehavior(UIBase* node,
                                         bool has_disabled_ancestor);
@@ -205,6 +243,9 @@ class EventDispatcher {
   bool enable_multi_touch_{false};
   unsigned int tap_slop_{5};
   bool has_touch_pseudo_{false};
+  bool dispatch_touch_event_in_current_lynx_page_only_{false};
+  bool has_event_point_offset_{false};
+  float event_point_offset_[2]{0.f, 0.f};
   int32_t long_press_duration_{500};
   float first_finger_down_point_[2]{0.f};
   ArkUI_GestureRecognizer* long_press_gesture_{nullptr};

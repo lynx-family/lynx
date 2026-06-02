@@ -598,6 +598,45 @@ void LynxTemplateRenderer::OnTemplateBundleReady(
                                  "onTemplateBundleReady", 2, param, nullptr);
 }
 
+void LynxTemplateRenderer::OnEventCapture(long target_id, bool is_catch,
+                                          int64_t event_id) {
+  if (!ui_delegate_) {
+    return;
+  }
+  auto lynx_context =
+      static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+          ->GetLynxContext();
+  if (lynx_context) {
+    lynx_context->OnEventCapture(target_id, is_catch, event_id);
+  }
+}
+
+void LynxTemplateRenderer::OnEventBubble(long target_id, bool is_catch,
+                                         int64_t event_id) {
+  if (!ui_delegate_) {
+    return;
+  }
+  auto lynx_context =
+      static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+          ->GetLynxContext();
+  if (lynx_context) {
+    lynx_context->OnEventBubble(target_id, is_catch, event_id);
+  }
+}
+
+void LynxTemplateRenderer::OnEventFire(long target_id, bool is_stop,
+                                       int64_t event_id) {
+  if (!ui_delegate_) {
+    return;
+  }
+  auto lynx_context =
+      static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+          ->GetLynxContext();
+  if (lynx_context) {
+    lynx_context->OnEventFire(target_id, is_stop, event_id);
+  }
+}
+
 #define DECLARE_NAPI_METHOD(name, func) \
   { name, 0, func, 0, 0, 0, napi_default, 0 }
 

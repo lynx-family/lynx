@@ -2792,6 +2792,142 @@ void UIBase::OnPseudoStatusChanged(PseudoStatus pre_status,
 
 PseudoStatus UIBase::GetPseudoStatus() { return pseudo_status_; }
 
+std::weak_ptr<EventTarget> UIBase::ParentLynxPageUI() {
+  auto* root = context_ ? context_->Root() : nullptr;
+  return root ? root->ParentLynxPageUI() : std::weak_ptr<EventTarget>();
+}
+
+void UIBase::SetParentLynxPageUI(std::weak_ptr<EventTarget> parent) {
+  auto* root = context_ ? context_->Root() : nullptr;
+  if (!root) {
+    return;
+  }
+  root->SetParentLynxPageUI(std::move(parent));
+}
+
+EventTarget::LynxPageUIMap* UIBase::ChildrenLynxPageUI() {
+  auto* root = context_ ? context_->Root() : nullptr;
+  return root ? root->ChildrenLynxPageUI() : nullptr;
+}
+
+void UIBase::SetChildrenLynxPageUI(EventTarget::LynxPageUIMap children) {
+  auto* root = context_ ? context_->Root() : nullptr;
+  if (!root) {
+    return;
+  }
+  root->SetChildrenLynxPageUI(std::move(children));
+}
+
+std::weak_ptr<EventTarget> UIBase::RootLynxPageUI() {
+  EventTarget* current = this;
+  while (current && !current->ParentLynxPageUI().expired()) {
+    current = current->ParentLynxPageUI().lock().get();
+  }
+  return current ? current->WeakTarget() : std::weak_ptr<EventTarget>();
+}
+
+void UIBase::SetEventID(int64_t event_id) {
+  auto* children_lynx_page_ui = ChildrenLynxPageUI();
+  if (!children_lynx_page_ui) {
+    return;
+  }
+  auto child_it = children_lynx_page_ui->find(this);
+  if (child_it == children_lynx_page_ui->end()) {
+    return;
+  }
+  auto child_lynx_page_ui = child_it->second.lock();
+  if (!child_lynx_page_ui) {
+    return;
+  }
+  auto* child_ui = static_cast<UIBase*>(child_lynx_page_ui->FirstUITarget());
+  if (!child_ui || !child_ui->GetContext() ||
+      !child_ui->GetContext()->GetUIOwner()) {
+    return;
+  }
+  child_ui->GetContext()->GetUIOwner()->SetEventID(event_id);
+}
+
+void UIBase::StartEventCapture(int64_t event_id) {
+  if (!context_ || !context_->GetUIOwner()) {
+    return;
+  }
+  context_->GetUIOwner()->StartEventCapture(event_id);
+}
+
+void UIBase::OnEventCapture(bool is_catch, int64_t event_id) {
+  if (is_catch) {
+    auto root_lynx_page_ui = RootLynxPageUI().lock();
+    if (root_lynx_page_ui) {
+      root_lynx_page_ui->StartEventFire(false, event_id);
+    }
+    return;
+  }
+
+  auto* children_lynx_page_ui = ChildrenLynxPageUI();
+  if (children_lynx_page_ui) {
+    auto child_it = children_lynx_page_ui->find(this);
+    if (child_it == children_lynx_page_ui->end()) {
+      StartEventBubble(event_id);
+      return;
+    }
+    auto child_lynx_page_ui = child_it->second.lock();
+    if (!child_lynx_page_ui) {
+      StartEventBubble(event_id);
+      return;
+    }
+    child_lynx_page_ui->StartEventCapture(event_id);
+    return;
+  }
+  StartEventBubble(event_id);
+}
+
+void UIBase::StartEventBubble(int64_t event_id) {
+  if (!context_ || !context_->GetUIOwner()) {
+    return;
+  }
+  context_->GetUIOwner()->StartEventBubble(event_id);
+}
+
+void UIBase::OnEventBubble(bool is_catch, int64_t event_id) {
+  if (is_catch) {
+    auto root_lynx_page_ui = RootLynxPageUI().lock();
+    if (root_lynx_page_ui) {
+      root_lynx_page_ui->StartEventFire(false, event_id);
+    }
+    return;
+  }
+
+  auto parent_lynx_page_ui = ParentLynxPageUI().lock();
+  if (parent_lynx_page_ui) {
+    parent_lynx_page_ui->StartEventBubble(event_id);
+  } else {
+    StartEventFire(false, event_id);
+  }
+}
+
+void UIBase::StartEventFire(bool is_stop, int64_t event_id) {
+  if (!context_ || !context_->GetUIOwner()) {
+    return;
+  }
+  context_->GetUIOwner()->StartEventFire(is_stop, event_id);
+}
+
+void UIBase::OnEventFire(bool is_stop, int64_t event_id) {
+  auto* children_lynx_page_ui = ChildrenLynxPageUI();
+  if (!children_lynx_page_ui) {
+    return;
+  }
+  auto child_it = children_lynx_page_ui->find(this);
+  if (child_it == children_lynx_page_ui->end()) {
+    return;
+  }
+  auto child_lynx_page_ui = child_it->second.lock();
+  if (!child_lynx_page_ui) {
+    return;
+  }
+  child_lynx_page_ui->StartEventFire(is_stop, event_id);
+}
+
 std::vector<float> UIBase::ScrollBy(float delta_x, float delta_y) {
   return std::vector<float>{0, 0, delta_x, delta_y};
 }

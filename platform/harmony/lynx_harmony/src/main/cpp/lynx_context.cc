@@ -133,6 +133,32 @@ void LynxContext::SendEvent(const LynxEvent& event) const {
   ui_owner_->SendEvent(event);
 }
 
+bool LynxContext::StartEventGenerate(const TouchEvent& touch_event) const {
+  if (!engine_proxy_) {
+    return false;
+  }
+  engine_proxy_->StartEventGenerate(PubLepusValue(touch_event.EventParams()));
+  return true;
+}
+
+void LynxContext::StartEventCapture(int64_t event_id) const {
+  if (engine_proxy_) {
+    engine_proxy_->StartEventCapture(event_id);
+  }
+}
+
+void LynxContext::StartEventBubble(int64_t event_id) const {
+  if (engine_proxy_) {
+    engine_proxy_->StartEventBubble(event_id);
+  }
+}
+
+void LynxContext::StartEventFire(bool is_stop, int64_t event_id) const {
+  if (engine_proxy_) {
+    engine_proxy_->StartEventFire(is_stop, event_id);
+  }
+}
+
 void LynxContext::HandleTouchEvent(const TouchEvent& touch_event) const {
   float target_point[2] = {0}, page_point[2] = {0}, client_point[2] = {0};
   touch_event.GetTargetPoint(target_point);
@@ -504,6 +530,38 @@ void LynxContext::OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
     return;
   }
   ui_owner_->OnTouchEvent(event, root, from_overlay);
+}
+
+void LynxContext::OnEventCapture(long target_id, bool is_catch,
+                                 int64_t event_id) {
+  if (!ui_owner_) {
+    return;
+  }
+  auto* target = ui_owner_->FindUIBySign(static_cast<int>(target_id));
+  if (target) {
+    target->OnEventCapture(is_catch, event_id);
+  }
+}
+
+void LynxContext::OnEventBubble(long target_id, bool is_catch,
+                                int64_t event_id) {
+  if (!ui_owner_) {
+    return;
+  }
+  auto* target = ui_owner_->FindUIBySign(static_cast<int>(target_id));
+  if (target) {
+    target->OnEventBubble(is_catch, event_id);
+  }
+}
+
+void LynxContext::OnEventFire(long target_id, bool is_stop, int64_t event_id) {
+  if (!ui_owner_) {
+    return;
+  }
+  auto* target = ui_owner_->FindUIBySign(static_cast<int>(target_id));
+  if (target) {
+    target->OnEventFire(is_stop, event_id);
+  }
 }
 
 bool LynxContext::EventThrough() {

@@ -5,6 +5,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 
 #include <memory>
+#include <utility>
 
 #include "base/include/float_comparison.h"
 #include "base/trace/native/trace_event.h"
@@ -104,22 +105,25 @@ void UIRoot::UpdateLayout(float left, float top, float width, float height,
 }
 
 void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
-  if (OH_ArkUI_NodeEvent_GetEventType(event) ==
-      NODE_EVENT_ON_VISIBLE_AREA_CHANGE) {
+  auto event_type = OH_ArkUI_NodeEvent_GetEventType(event);
+  if (is_child_lynx_page_ui_ && (event_type == NODE_ON_TOUCH_INTERCEPT ||
+                                 event_type == NODE_TOUCH_EVENT)) {
+    return;
+  }
+  if (event_type == NODE_EVENT_ON_VISIBLE_AREA_CHANGE) {
     ArkUI_NodeComponentEvent* visible_event =
         OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
     is_root_visible_ = visible_event->data[0].i32;
     context_->NotifyUIScroll();
-  } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_ATTACH) {
+  } else if (event_type == NODE_EVENT_ON_ATTACH) {
     is_root_attached_ = true;
     context_->ResumeExposure();
-  } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_DETACH) {
+  } else if (event_type == NODE_EVENT_ON_DETACH) {
     is_root_attached_ = false;
     auto dict = lepus::Dictionary::Create();
     dict->SetValue("sendEvent", false);
     context_->StopExposure(lepus::Value(dict));
-  } else if (OH_ArkUI_NodeEvent_GetEventType(event) ==
-             NODE_ON_TOUCH_INTERCEPT) {
+  } else if (event_type == NODE_ON_TOUCH_INTERCEPT) {
     context_->OnTouchEvent(OH_ArkUI_NodeEvent_GetInputEvent(event),
                            context_->Root());
     if (context_->EventThrough()) {
@@ -128,7 +132,7 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
           static_cast<int32_t>(ARKUI_HIT_TEST_MODE_DEFAULT));
     }
     context_->UpdateNativeInteractionEnabledForTree(context_->Root());
-  } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_TOUCH_EVENT) {
+  } else if (event_type == NODE_TOUCH_EVENT) {
     ArkUI_UIInputEvent* touch_event = OH_ArkUI_NodeEvent_GetInputEvent(event);
     if (OH_ArkUI_NodeEvent_GetNodeHandle(event) == normal_sibling_ &&
         context_->ShouldBlockNativeEvent()) {
@@ -171,7 +175,7 @@ bool UIRoot::IsVisible() {
 
 void UIRoot::OnNodeReady() {
   UIBase::OnNodeReady();
-  if (!are_gestures_attached_) {
+  if (!is_child_lynx_page_ui_ && !are_gestures_attached_) {
     context_->AttachGesturesToRoot(this);
     are_gestures_attached_ = true;
   }
@@ -204,6 +208,28 @@ bool UIRoot::EventThrough(float point[2]) {
   }
   return is_hit_event_through_active_regions ? is_event_through
                                              : !is_event_through;
+}
+
+std::weak_ptr<EventTarget> UIRoot::ParentLynxPageUI() {
+  return parent_lynx_page_ui_;
+}
+
+void UIRoot::SetParentLynxPageUI(std::weak_ptr<EventTarget> parent) {
+  is_child_lynx_page_ui_ = !parent.expired();
+  parent_lynx_page_ui_ = std::move(parent);
+  if (is_child_lynx_page_ui_ && are_gestures_attached_) {
+    context_->DetachGesturesFromRoot(this);
+    are_gestures_attached_ = false;
+  }
+}
+
+EventTarget::LynxPageUIMap* UIRoot::ChildrenLynxPageUI() {
+  return children_lynx_page_ui_map_.get();
+}
+
+void UIRoot::SetChildrenLynxPageUI(EventTarget::LynxPageUIMap children) {
+  children_lynx_page_ui_map_ =
+      std::make_unique<EventTarget::LynxPageUIMap>(std::move(children));
 }
 
 void UIRoot::GetOffsetToScreen(float offset_screen[2]) {

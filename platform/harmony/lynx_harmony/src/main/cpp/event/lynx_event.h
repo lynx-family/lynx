@@ -5,6 +5,8 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_EVENT_LYNX_EVENT_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_EVENT_LYNX_EVENT_H_
 
+#include <chrono>
+#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -31,11 +33,16 @@ class LynxEvent {
 
   void SetTimeStamp(long long time_stamp) { time_stamp_ = time_stamp; }
 
+  int64_t EventID() const { return event_id_; }
+
+  void SetEventID(int64_t event_id) { event_id_ = event_id; }
+
  private:
   int id_{-1};
   std::string name_;
   LynxEventType type_{LynxEventType::kNone};
   long long time_stamp_{0};
+  int64_t event_id_{0};
 };
 
 }  // namespace harmony

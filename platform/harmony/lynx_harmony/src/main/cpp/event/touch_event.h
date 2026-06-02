@@ -5,12 +5,14 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_EVENT_TOUCH_EVENT_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_EVENT_TOUCH_EVENT_H_
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/lynx_event.h"
 
 namespace lynx {
@@ -55,6 +57,14 @@ class TouchEvent : public LynxEvent {
 
   const lepus::Value& UITouchMap() const { return target_touch_map_; }
 
+  lepus::Value EventParams() const;
+
+  void SetTarget(std::weak_ptr<EventTarget> target) {
+    target_ = std::move(target);
+  }
+
+  std::weak_ptr<EventTarget> Target() const { return target_; }
+
  private:
   float target_point_[2] = {0};
   float page_point_[2] = {0};
@@ -62,6 +72,7 @@ class TouchEvent : public LynxEvent {
   int64_t time_stamp_{0};
   bool is_multi_touch_{false};
   lepus::Value target_touch_map_;
+  std::weak_ptr<EventTarget> target_;
 };
 
 }  // namespace harmony

@@ -130,6 +130,14 @@ class LynxContext {
 
   LYNX_EXPORT void SendEvent(const LynxEvent& event) const;
 
+  bool StartEventGenerate(const TouchEvent& touch_event) const;
+
+  void StartEventCapture(int64_t event_id) const;
+
+  void StartEventBubble(int64_t event_id) const;
+
+  void StartEventFire(bool is_stop, int64_t event_id) const;
+
   void HandleTouchEvent(const TouchEvent& touch_event) const;
 
   void HandleMultiTouchEvent(const TouchEvent& touch_event) const;
@@ -242,6 +250,12 @@ class LynxContext {
 
   void OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                     bool from_overlay = false);
+
+  void OnEventCapture(long target_id, bool is_catch, int64_t event_id);
+
+  void OnEventBubble(long target_id, bool is_catch, int64_t event_id);
+
+  void OnEventFire(long target_id, bool is_stop, int64_t event_id);
 
   void SetFocusedTarget(const std::weak_ptr<EventTarget>& focused_target);
 
