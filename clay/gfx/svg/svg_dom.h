@@ -10,7 +10,7 @@
 
 #include "clay/gfx/gpu_object.h"
 #include "clay/gfx/rendering_backend.h"
-#include "skity/include/skity/io/data.hpp"
+#include "skity/io/data.hpp"
 
 namespace clay {
 class SVGDom : public std::enable_shared_from_this<SVGDom> {

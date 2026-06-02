@@ -9,7 +9,7 @@
 #include "skity/geometry/rect.hpp"
 #include "skity/graphic/alpha_type.hpp"
 #include "skity/graphic/image.hpp"
-#include "skity/include/skity/geometry/vector.hpp"
+#include "skity/geometry/vector.hpp"
 
 namespace clay {
 

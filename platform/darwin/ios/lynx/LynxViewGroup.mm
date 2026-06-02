@@ -217,10 +217,7 @@
 
 - (void)setConfig:(LynxConfig *)config {
   [super setConfig:config];
-  id<LynxServiceModuleProtocol> moduleService = LynxService(LynxServiceModuleProtocol);
-  if ([moduleService respondsToSelector:@selector(initLynxViewGroup:)]) {
-    [moduleService initLynxViewGroup:self];
-  }
+  [LynxService(LynxServiceModuleProtocol) initLynxViewGroup:self];
 }
 
 - (void)registerModule:(nonnull Class<LynxModule>)module {

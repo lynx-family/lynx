@@ -23,11 +23,16 @@ source_set("skity") {
 
   deps = [ "../../gfx" ]
 
-  public_deps = [ "../../fml:fml" ]
+  public_deps = [ "../../fml" ]
 
   public_configs = [ "../../:config" ]
 
-  if (!enable_skity) {
+  if (enable_skity) {
+    public_deps += [
+      "//third_party/skity",
+      "//third_party/skity:skity_codec",
+    ]
+  } else {
     public_deps += [ "//third_party/skia" ]
   }
 }
