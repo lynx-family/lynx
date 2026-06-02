@@ -10,7 +10,7 @@ Lynx XElement SVG provide `<svg>` on harmony.
 ## Installation
 
 ```bash
-ohpm install @lynx/xelement-svg
+ohpm install @lynx/xelement_svg
 ```
 
 ## How to use
