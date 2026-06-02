@@ -50,11 +50,9 @@ GPUSurfaceGLSkity::GPUSurfaceGLSkity(
   }
 
   valid_ = gpu_context_ != nullptr;
-#if defined(OS_WIN)
   if (valid_) {
     gpu_context_->SetEnableSimpleShapePipeline(true);
   }
-#endif
 }
 
 GPUSurfaceGLSkity::~GPUSurfaceGLSkity() {
