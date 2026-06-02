@@ -7,9 +7,8 @@ package com.lynx.xelement
 import com.lynx.tasm.behavior.LynxBehavior
 import com.lynx.tasm.behavior.LynxContext
 import com.lynx.tasm.behavior.LynxGeneratorName
-import com.lynx.xelement.markdown.LynxMarkdownUI
+import com.lynx.xelement.markdown.LynxUIMarkdown
 
 @LynxGeneratorName(packageName = "com.lynx.xelement")
-@LynxBehavior(tagName = ["x-markdown"], isCreateAsync = true)
-open class LynxMarkdownUIAutoRegistry(context: LynxContext) : LynxMarkdownUI(context)
-
+@LynxBehavior(tagName = ["markdown"], isCreateAsync = true)
+open class LynxUIMarkdownAutoRegistry(context: LynxContext) : LynxUIMarkdown(context)

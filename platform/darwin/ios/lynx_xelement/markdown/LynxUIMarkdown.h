@@ -3,17 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import <Lynx/LynxUI.h>
-#import <XElement/LynxMarkdownShadowNode.h>
-#import <XElement/LynxMarkdownUI.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <XElement/LynxMarkdownView.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxMarkdownShadowNodeAutoRegistry : LynxMarkdownShadowNodeV2
-
-@end
-
-@interface LynxMarkdownUIAutoRegistry : LynxMarkdownUIV2
+@interface LynxUIMarkdownV2 : LynxUI <LynxMarkdownViewV2 *>
 
 @end
 

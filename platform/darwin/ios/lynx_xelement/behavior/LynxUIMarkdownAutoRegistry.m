@@ -4,16 +4,16 @@
 
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxUIOwner.h>
-#import <XElement/LynxMarkdownUIAutoRegistry.h>
+#import <XElement/LynxUIMarkdownAutoRegistry.h>
 
-@implementation LynxMarkdownShadowNodeAutoRegistry
+@implementation LynxUIMarkdownShadowNodeAutoRegistry
 
-LYNX_LAZY_REGISTER_SHADOW_NODE("x-markdown")
+LYNX_LAZY_REGISTER_SHADOW_NODE("markdown")
 
 @end
 
-@implementation LynxMarkdownUIAutoRegistry
+@implementation LynxUIMarkdownAutoRegistry
 
-LYNX_LAZY_REGISTER_UI("x-markdown")
+LYNX_LAZY_REGISTER_UI("markdown")
 
 @end

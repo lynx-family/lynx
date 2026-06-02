@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <XElement/LynxMarkdownUI.h>
+#import <XElement/LynxUIMarkdown.h>
 
 #import <stdint.h>
 
@@ -10,11 +10,11 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <ServalMarkdown/ServalMarkdownConstants.h>
 
-#import <XElement/LynxMarkdownShadowNode.h>
+#import <XElement/LynxUIMarkdownShadowNode.h>
 #import "adaptor/LynxMarkdownBundle.h"
 #import "adaptor/LynxServalMarkdownViewWrapper.h"
 
-@implementation LynxMarkdownUIV2 {
+@implementation LynxUIMarkdownV2 {
   LynxMarkdownBundleV2 *_bundle;
 }
 
@@ -314,8 +314,8 @@ LYNX_UI_METHOD(getParseResult) {
   NSString *contentID = [markdown getContentID];
   if (contentID.length == 0) {
     LynxShadowNode *node = [self.context.nodeOwner nodeWithSign:self.sign];
-    if ([node isKindOfClass:[LynxMarkdownShadowNodeV2 class]]) {
-      contentID = [(LynxMarkdownShadowNodeV2 *)node currentContentID];
+    if ([node isKindOfClass:[LynxUIMarkdownShadowNodeV2 class]]) {
+      contentID = [(LynxUIMarkdownShadowNodeV2 *)node currentContentID];
     }
   }
 

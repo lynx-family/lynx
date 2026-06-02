@@ -5,8 +5,7 @@
 package com.lynx.xelement
 
 import com.lynx.tasm.behavior.LynxShadowNode
-import com.lynx.xelement.markdown.LynxMarkdownShadowNode
+import com.lynx.xelement.markdown.LynxUIMarkdownShadowNode
 
-@LynxShadowNode(tagName = "x-markdown")
-open class LynxMarkdownShadowNodeAutoRegistry : LynxMarkdownShadowNode()
-
+@LynxShadowNode(tagName = "markdown")
+open class LynxUIMarkdownShadowNodeAutoRegistry : LynxUIMarkdownShadowNode()

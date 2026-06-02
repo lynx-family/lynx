@@ -21,7 +21,7 @@ namespace {
 constexpr const char* kMarkdownSoName = "liblynx_xelement_markdown.so";
 constexpr const char* kMarkdownUICreatorSymbol = "UILynxMarkdownCreateFunc";
 constexpr const char* kMarkdownShadowCreatorSymbol =
-    "UILynxMarkdownShadowNodeCreateFunc";
+    "LynxUIMarkdownShadowNodeCreateFunc";
 
 LynxContext::UICreatorFunc g_ui_creator = nullptr;
 LynxContext::LayoutNodeCreatorFuc g_shadow_creator = nullptr;
