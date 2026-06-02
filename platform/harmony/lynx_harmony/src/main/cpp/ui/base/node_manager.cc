@@ -43,6 +43,25 @@ const ArkUI_AttributeItem* NodeManager::GetAttribute(
   return native_node_api_->getAttribute(node, type);
 }
 
+void NodeManager::GetTranslateValues(ArkUI_NodeHandle node, float* translate_x,
+                                     float* translate_y, float* translate_z) {
+  const auto* item = native_node_api_->getAttribute(node, NODE_TRANSLATE);
+  if (!item || !item->value) {
+    return;
+  }
+  // Earlier Harmony versions(< 6.1.0) report NODE_TRANSLATE size as 1 while the
+  // value buffer still contains the full x/y/z translate components.
+  if (translate_x) {
+    *translate_x = item->value[0].f32;
+  }
+  if (translate_y) {
+    *translate_y = item->value[1].f32;
+  }
+  if (translate_z) {
+    *translate_z = item->value[2].f32;
+  }
+}
+
 bool NodeManager::ResetAttribute(ArkUI_NodeHandle node,
                                  ArkUI_NodeAttributeType type) {
   return native_node_api_->resetAttribute(node, type) == 0;

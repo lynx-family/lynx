@@ -12,6 +12,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/auto_scroller.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/base_scroll_container.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/ui_sticky_scroller.h"
 
 namespace lynx {
 namespace tasm {
@@ -63,7 +64,7 @@ static constexpr int kInvalidIndex = -1;
 static constexpr float kInvalidScrollOffset = -1.f;
 }  // namespace scroll
 
-class UIScroll : public BaseScrollContainer {
+class UIScroll : public BaseScrollContainer, public UIStickyScroller {
  public:
   static UIBase* Make(LynxContext* context, int sign, const std::string& tag) {
     return new UIScroll(context, sign, tag);
@@ -93,8 +94,20 @@ class UIScroll : public BaseScrollContainer {
                       const std::string& block,
                       const std::string& inline_value) override;
 
+  void EnableSticky() override;
+
+  void RefreshStickyChildren() override;
+
+  void AddStickyChildSign(int sign) override;
+
+  void RemoveStickyChildSign(int sign) override;
+
+  int GetSignFromImplUI() override { return Sign(); }
+
  protected:
   UIScroll(LynxContext* context, int sign, const std::string& tag);
+
+  UIStickyScroller* AsUIStickyScroller() override { return this; }
 
   void HandleScrollStartEvent();
 
@@ -111,9 +124,11 @@ class UIScroll : public BaseScrollContainer {
                              float deltaY);
   void UpdateContentSize(float width, float height) override;
   void FrameDidChanged() override;
-  void EnableSticky() override;
+  void SetHorizontal(bool horizontal) override;
 
  private:
+  void UpdateStickyOnScroll();
+  void RefreshStickyChildrenIfNeeded();
   void OnScrollSticky(float x_offset, float y_offset);
 
   int UpdateBorderStatus(float x_offset, float y_offset);
@@ -161,6 +176,8 @@ class UIScroll : public BaseScrollContainer {
   bool should_consume_initial_scroll_target_{true};
   bool layout_changed_{false};
   bool enable_sticky_{false};
+  bool sticky_dirty_{false};
+  std::vector<int> sticky_child_signs_;
   int scroll_to_index_{scroll::kInvalidIndex};
   float scroll_left_{scroll::kInvalidScrollOffset};
   float scroll_top_{scroll::kInvalidScrollOffset};

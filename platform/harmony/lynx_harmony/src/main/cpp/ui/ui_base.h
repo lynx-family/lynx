@@ -45,12 +45,38 @@ class PropBundleHarmony;
 namespace harmony {
 class LynxContext;
 class GestureArenaManager;
+class UIStickyScroller;
 
 static constexpr const char* const kFluencyScrollEvent = "scroll";
 
 struct OverflowValue {
   bool overflow_x;
   bool overflow_y;
+};
+
+struct StickyRange {
+  bool valid{false};
+  float start{0.f};
+  float end{0.f};
+};
+
+struct StickyInfo {
+  float left{0.f};
+  float top{0.f};
+  float right{0.f};
+  float bottom{0.f};
+  // Sticky translate already applied to NODE_TRANSLATE.
+  float translate_x{0.f};
+  float translate_y{0.f};
+  float parent_width{0.f};
+  float parent_height{0.f};
+  float relative_left{0.f};
+  float relative_top{0.f};
+  float parent_relative_left{0.f};
+  float parent_relative_top{0.f};
+  // Sticky translate calculated from the current scroll/layout state.
+  float new_translate_x{0.f};
+  float new_translate_y{0.f};
 };
 
 class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
@@ -106,6 +132,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual void OnEnterForeground() {}
   virtual void OnEnterBackground() {}
   virtual bool NeedWindowStateChangeEvent() const { return false; }
+  void OnNodeRemoved();
   bool CheckStickyOnParentScroll(float scroll_left, float scroll_top);
   void RemoveFromParent();
   void RequestLayout();
@@ -193,6 +220,11 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   bool IsInterceptGesture() override;
   virtual float OffsetXForCalcPosition();
   virtual float OffsetYForCalcPosition();
+  void CalculateStickyTranslateWithOffset(float offset, bool is_vertical,
+                                          float scroller_size,
+                                          float max_offset);
+  void ApplyStickyTranslate();
+  void ResetStickyTranslate();
   virtual bool IsVisible();
   virtual bool IsScrollable();
   virtual bool IsList() const { return false; }
@@ -262,7 +294,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   float margin_top_{0};
   float margin_right_{0};
   float margin_bottom_{0};
-  std::vector<float> sticky_value_;
+  std::optional<StickyInfo> sticky_info_{std::nullopt};
   float opacity_{1.f};
   bool render_group_{false};
   void GetTransformValue(float left, float right, float top, float bottom,
@@ -296,7 +328,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual void ScrollIntoView(bool smooth, const UIBase* target,
                               const std::string& block,
                               const std::string& inline_value) {}
-  virtual void EnableSticky() {}
+  virtual UIStickyScroller* AsUIStickyScroller() { return nullptr; }
   virtual void SetImageRendering(const lepus::Value& value);
   bool NeedDrawNode();
   bool NeedDraw(ArkUI_NodeHandle node);
@@ -413,6 +445,10 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void TakeScreenshot(
       const lepus::Value& args,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void UpdateNewSticky(const float* sticky);
+  UIStickyScroller* GetParentUIStickyScroller();
+  void BindUIStickyScrollerIfNeeded(UIStickyScroller* ui_sticky_scroller);
+  void RemoveSelfFromStickyScrollerIfNeeded();
 
   void SetPointerEvents(const lepus::Value& value);
   void SetUserInteractionEnabled(const lepus::Value& value);
@@ -528,6 +564,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   GestureHandlerMap gesture_handlers_;
   std::unique_ptr<BasicShape> basic_shape_{nullptr};
   static constexpr float kOffsetRotateAuto = -1024.0f;
+  static constexpr int kInvalidStickySign = -1;
   std::unique_ptr<BasicShape> offset_basic_shape_{nullptr};
   std::unique_ptr<LynxOffsetCalculator> lynx_offset_calculator_{nullptr};
   float offset_distance_{0.f};
@@ -544,6 +581,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   };
   LynxAccessibilityStatus accessibility_status_{
       LynxAccessibilityStatus::kDefault};
+  int sticky_scroller_sign_{kInvalidStickySign};
 
   struct EncodeAsyncContexts {
     napi_async_work async_work = nullptr;

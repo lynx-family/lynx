@@ -111,10 +111,10 @@ void LynxUIScrollViewInternal::UpdateStickyItems() {
   for (const auto child : children_) {
     if (child) {
       child->CheckStickyOnParentScroll(scroll_offset[0], scroll_offset[1]);
-      if (!(child->sticky_value_.empty())) {
+      if (child->sticky_info_) {
         NodeManager::Instance().SetAttributeWithNumberValue(
-            child->DrawNode(), NODE_TRANSLATE, child->sticky_value_[4],
-            child->sticky_value_[5], 0);
+            child->DrawNode(), NODE_TRANSLATE, child->sticky_info_->translate_x,
+            child->sticky_info_->translate_y, 0);
         NodeManager::Instance().SetAttributeWithNumberValue(child->DrawNode(),
                                                             NODE_Z_INDEX, 1);
       }

@@ -78,7 +78,8 @@ class PaintingCtxPlatformRef {
 };
 
 struct PaintingCtxPlatformImplConfig {
-  bool enable_native_schedule_create_view_async;
+  bool enable_native_schedule_create_view_async{false};
+  bool enable_new_sticky{false};
 };
 
 struct InitialLynxUITreeNodeForReplay {

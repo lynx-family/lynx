@@ -44,6 +44,7 @@ class UIOwner {
   void UpdateUI(int sign, PropBundleHarmony* props);
   void DestroyUI(int parent, int child, int index);
   void OnNodeReady(int sign);
+  void OnNodeRemoved(int sign);
 
   void UpdateLayout(int sign, float left, float top, float width, float height,
                     const float* paddings, const float* margins,
@@ -208,6 +209,7 @@ class UIOwner {
   static napi_value SetLynxImageConfig(napi_env env, napi_callback_info info);
 
   void DestroySubTree(UIBase* root);
+  void OnNodeRemovedRecursively(UIBase* root);
   void MarkHasUIOperations(UIBase* ui);
   void MarkHasUIOperationsBottomUp(UIBase* ui);
   void RequestLayout();

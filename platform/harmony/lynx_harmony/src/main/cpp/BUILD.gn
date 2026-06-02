@@ -253,6 +253,7 @@ lynx_core_source_set("cpp") {
     "ui/utils/transform.cc",
     "ui/utils/transform.h",
     "ui/utils/ui_observer_callback.h",
+    "ui/utils/ui_sticky_scroller.h",
   ]
 
   deps = [

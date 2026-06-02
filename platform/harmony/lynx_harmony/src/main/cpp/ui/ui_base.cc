@@ -34,6 +34,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/base_gesture_handler.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
@@ -41,6 +42,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/svg_path_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/transform.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/ui_sticky_scroller.h"
 #include "third_party/modp_b64/modp_b64.h"
 
 namespace lynx {
@@ -480,47 +482,304 @@ void UIBase::UpdateProps(PropBundleHarmony* props) {
   }
 }
 
+void UIBase::OnNodeRemoved() {
+  if (context_ && context_->GetEnableNewSticky()) {
+    RemoveSelfFromStickyScrollerIfNeeded();
+    ResetStickyTranslate();
+  }
+}
+
 void UIBase::UpdateSticky(const float* sticky) {
+  if (context_ && context_->GetEnableNewSticky()) {
+    UpdateNewSticky(sticky);
+    return;
+  }
   if (sticky) {
-    sticky_value_ = {sticky[0], sticky[1], sticky[2], sticky[3], 0, 0};
-    if (parent_) {
-      parent_->EnableSticky();
+    sticky_info_ = StickyInfo{.left = sticky[0],
+                              .top = sticky[1],
+                              .right = sticky[2],
+                              .bottom = sticky[3],
+                              .translate_x = 0.f,
+                              .translate_y = 0.f};
+    if (parent_ && parent_->AsUIStickyScroller()) {
+      parent_->AsUIStickyScroller()->EnableSticky();
     }
   }
 }
 
+void UIBase::UpdateNewSticky(const float* sticky) {
+  if (!sticky) {
+    // Current sticky item is not sticky anymore.
+    RemoveSelfFromStickyScrollerIfNeeded();
+    ResetStickyTranslate();
+    sticky_info_.reset();
+    return;
+  }
+  // If has no sticky scroller currently, still need to save sticky info.
+  // stickyParent: scroller
+  // info[0]: sticky left
+  // info[1]: sticky top
+  // info[2]: sticky right
+  // info[3]: sticky bottom
+  // info[4]: sticky item's direct parent's width
+  // info[5]: sticky item's direct parent's height
+  // info[6]: sticky item's relative left to scroller
+  // info[7]: sticky item's relative top to scroller
+  // info[8]: sticky item's parent relative left to scroller
+  // info[9]: sticky item's parent relative top to scroller
+  // Preserve the sticky translate already applied to NODE_TRANSLATE so
+  // ApplyStickyTranslate() can replace it with the newly calculated value.
+  float last_translate_x = sticky_info_ ? sticky_info_->translate_x : 0.f;
+  float last_translate_y = sticky_info_ ? sticky_info_->translate_y : 0.f;
+  sticky_info_ = StickyInfo{.left = sticky[0],
+                            .top = sticky[1],
+                            .right = sticky[2],
+                            .bottom = sticky[3],
+                            .translate_x = last_translate_x,
+                            .translate_y = last_translate_y,
+                            .parent_width = sticky[4],
+                            .parent_height = sticky[5],
+                            .relative_left = sticky[6],
+                            .relative_top = sticky[7],
+                            .parent_relative_left = sticky[8],
+                            .parent_relative_top = sticky[9]};
+  UIStickyScroller* ui_sticky_scroller = GetParentUIStickyScroller();
+  if (ui_sticky_scroller) {
+    BindUIStickyScrollerIfNeeded(ui_sticky_scroller);
+    ui_sticky_scroller->RefreshStickyChildren();
+  } else {
+    // Has no valid sticky scroller, need to reset sticky translate.
+    // But we no need to clear sticky info.
+    RemoveSelfFromStickyScrollerIfNeeded();
+    ResetStickyTranslate();
+  }
+}
+
+UIStickyScroller* UIBase::GetParentUIStickyScroller() {
+  UIBase* current = parent_;
+  while (current) {
+    if (current && current->AsUIStickyScroller()) {
+      return current->AsUIStickyScroller();
+    }
+    current = current->Parent();
+  }
+  return nullptr;
+}
+
+void UIBase::BindUIStickyScrollerIfNeeded(
+    UIStickyScroller* ui_sticky_scroller) {
+  if (!ui_sticky_scroller) {
+    return;
+  }
+  const int sticky_scroller_sign = ui_sticky_scroller->GetSignFromImplUI();
+  if (sticky_scroller_sign_ != kInvalidStickySign &&
+      sticky_scroller_sign_ != sticky_scroller_sign) {
+    // If current sticky scroller is not stickyScroller, remove from current
+    // sticky scroller.
+    RemoveSelfFromStickyScrollerIfNeeded();
+  }
+  sticky_scroller_sign_ = sticky_scroller_sign;
+  ui_sticky_scroller->AddStickyChildSign(Sign());
+}
+
+void UIBase::RemoveSelfFromStickyScrollerIfNeeded() {
+  if (sticky_scroller_sign_ == kInvalidStickySign) {
+    return;
+  }
+  UIBase* ui_sticky_scroller =
+      context_ ? context_->FindUIBySign(sticky_scroller_sign_) : nullptr;
+  if (ui_sticky_scroller && ui_sticky_scroller->AsUIStickyScroller()) {
+    ui_sticky_scroller->AsUIStickyScroller()->RemoveStickyChildSign(Sign());
+  }
+  sticky_scroller_sign_ = kInvalidStickySign;
+}
+
+void UIBase::CalculateStickyTranslateWithOffset(float offset, bool is_vertical,
+                                                float scroller_size,
+                                                float max_offset) {
+  if (!sticky_info_) {
+    return;
+  }
+  float leading_inset = 0.f;   // sticky left or top
+  float trailing_inset = 0.f;  // sticky right or bottom
+  float relative_position =
+      0.f;  // sticky item position in scroller content coordinates.
+  float parent_relative_position =
+      0.f;  // direct parent's position in scroller content coordinates.
+  float item_size = 0.f;    // sticky item's size on the scrolling axis.
+  float parent_size = 0.f;  // direct parent's size on the scrolling axis.
+  if (is_vertical) {
+    leading_inset = sticky_info_->top;
+    trailing_inset = sticky_info_->bottom;
+    parent_size = sticky_info_->parent_height;
+    relative_position = sticky_info_->relative_top;
+    item_size = height_;
+    // If sticky item's parent is scroll-view, parentRelativePosition should be
+    // 0.
+    parent_relative_position = sticky_info_->parent_relative_top;
+  } else {
+    leading_inset = sticky_info_->left;
+    trailing_inset = sticky_info_->right;
+    parent_size = sticky_info_->parent_width;
+    relative_position = sticky_info_->relative_left;
+    item_size = width_;
+    // If sticky item's parent is scroll-view, parentRelativePosition should be
+    // 0.
+    parent_relative_position = sticky_info_->parent_relative_left;
+  }
+  bool is_direct_child = parent_size < 0.f;
+
+  // 1. calculate sticky range.
+  StickyRange leading_range;
+  StickyRange trailing_range;
+  // When item scrolling into the distance which <= sticky top, the item should
+  // be into sticky top status. relativePosition - offset <= leadingInset
+  leading_range.start = relative_position - leading_inset;
+  // When item scrolling into the distance <= sticky bottom, the item should be
+  // into sticky bottom status. offset + scrollerSize - trailingInset <=
+  // relativeBottom
+  float relative_bottom = relative_position + item_size;
+  trailing_range.end = relative_bottom + trailing_inset - scroller_size;
+  leading_range.valid = leading_range.start < max_offset;
+  trailing_range.valid = trailing_range.end > 0.f;
+  if (!leading_range.valid && !trailing_range.valid) {
+    // If neither the leading range nor the trailing range is valid, keep the
+    // original position.
+    sticky_info_->new_translate_x = 0.f;
+    sticky_info_->new_translate_y = 0.f;
+    return;
+  }
+
+  leading_range.end = max_offset;
+  if (leading_range.valid && !is_direct_child) {
+    // In the grandchild case, the leading range end is also constrained by the
+    // direct parent's end edge. leadingInset + itemSize <= parentRelativeBottom
+    // - offset
+    float parent_relative_bottom = parent_relative_position + parent_size;
+    leading_range.end = std::min(
+        parent_relative_bottom - leading_inset - item_size, max_offset);
+    leading_range.valid = leading_range.end > leading_range.start;
+  }
+  trailing_range.start = 0.f;
+  if (trailing_range.valid && !is_direct_child) {
+    // In the grandchild case, the trailing range start is also constrained by
+    // the direct parent's start edge. scrollerSize - trailingInset - itemSize
+    // >= parentRelativePosition - offset
+    trailing_range.start = std::max(
+        parent_relative_position + item_size + trailing_inset - scroller_size,
+        0.f);
+    trailing_range.valid = trailing_range.start < trailing_range.end;
+  }
+
+  // 2. Handle conflict with leadingRange and trailingRange.
+  // When both sticky top and sticky bottom are set, there are three ranges:
+  // trailing sticky range: [trailingRange.start, trailingRange.end]
+  // normal scrolling range: [trailingRange.end, leadingRange.start]
+  // leading sticky range: [leadingRange.start, leadingRange.end]
+  if (leading_range.valid && trailing_range.valid) {
+    // If there is no normal scrolling range, let the leading range win.
+    trailing_range.end = std::min(trailing_range.end, leading_range.start);
+  }
+
+  // 3. calculate translate according to leadingRange and trailingRange.
+  float translation = 0.f;
+  if (trailing_range.valid && offset < trailing_range.end) {
+    // if offset < trailingRange.start, use trailingRange.start to calculate
+    // translate.
+    translation = std::max(offset, trailing_range.start) - trailing_range.end;
+  } else if (leading_range.valid && offset > leading_range.start) {
+    // If offset exceeds the leading range end, clamp the maximum translation
+    // with leadingRange.end.
+    translation = std::min(offset, leading_range.end) - leading_range.start;
+  }
+  if (is_vertical) {
+    sticky_info_->new_translate_y = translation;
+    sticky_info_->new_translate_x = 0.f;
+  } else {
+    sticky_info_->new_translate_x = translation;
+    sticky_info_->new_translate_y = 0.f;
+  }
+}
+
+void UIBase::ApplyStickyTranslate() {
+  if (!DrawNode() || !sticky_info_) {
+    return;
+  }
+  // Keep sticky translate as an extra post translate on top of the node's
+  // current translate, instead of overwriting the node's own translate.
+  float current_translate[3] = {0.f, 0.f, 0.f};
+  NodeManager::Instance().GetTranslateValues(DrawNode(), &current_translate[0],
+                                             &current_translate[1],
+                                             &current_translate[2]);
+  const float sticky_translate_x = current_translate[0] -
+                                   sticky_info_->translate_x +
+                                   sticky_info_->new_translate_x;
+  const float sticky_translate_y = current_translate[1] -
+                                   sticky_info_->translate_y +
+                                   sticky_info_->new_translate_y;
+  NodeManager::Instance().SetAttributeWithNumberValue(
+      DrawNode(), NODE_TRANSLATE, sticky_translate_x, sticky_translate_y,
+      current_translate[2]);
+  sticky_info_->translate_x = sticky_info_->new_translate_x;
+  sticky_info_->translate_y = sticky_info_->new_translate_y;
+  sticky_info_->new_translate_x = 0.f;
+  sticky_info_->new_translate_y = 0.f;
+}
+
+void UIBase::ResetStickyTranslate() {
+  if (!sticky_info_) {
+    return;
+  }
+  if (!DrawNode()) {
+    sticky_info_->new_translate_x = 0.f;
+    sticky_info_->new_translate_y = 0.f;
+    sticky_info_->translate_x = 0.f;
+    sticky_info_->translate_y = 0.f;
+    return;
+  }
+  float current_translate[3] = {0.f, 0.f, 0.f};
+  NodeManager::Instance().GetTranslateValues(DrawNode(), &current_translate[0],
+                                             &current_translate[1],
+                                             &current_translate[2]);
+  NodeManager::Instance().SetAttributeWithNumberValue(
+      DrawNode(), NODE_TRANSLATE,
+      current_translate[0] - sticky_info_->translate_x,
+      current_translate[1] - sticky_info_->translate_y, current_translate[2]);
+  sticky_info_->new_translate_x = 0.f;
+  sticky_info_->new_translate_y = 0.f;
+  sticky_info_->translate_x = 0.f;
+  sticky_info_->translate_y = 0.f;
+}
+
 bool UIBase::CheckStickyOnParentScroll(float scroll_left, float scroll_top) {
-  if (sticky_value_.size() != 6) {
+  if (!sticky_info_) {
     return false;
   }
-  float sticky_left = sticky_value_[0];
-  float sticky_top = sticky_value_[1];
-  float sticky_right = sticky_value_[2];
-  float sticky_bottom = sticky_value_[3];
-
+  float sticky_left = sticky_info_->left;
+  float sticky_top = sticky_info_->top;
+  float sticky_right = sticky_info_->right;
+  float sticky_bottom = sticky_info_->bottom;
   float current_left = left_ - scroll_left;
   float current_top = top_ - scroll_top;
   if (base::FloatsLarger(sticky_left, current_left)) {
     // modify x
-    sticky_value_[4] = sticky_left - current_left;
+    sticky_info_->translate_x = sticky_left - current_left;
   } else {
     if (parent_ == nullptr) {
       return false;
     }
-
     float parent_width = parent_->width_;
     float cur_r = current_left + width_;
     if (base::FloatsLarger(cur_r + sticky_right, parent_width)) {
-      sticky_value_[4] = std::max(parent_width - cur_r - sticky_right,
-                                  sticky_left - current_left);
+      sticky_info_->translate_x = std::max(parent_width - cur_r - sticky_right,
+                                           sticky_left - current_left);
     } else {
-      sticky_value_[4] = 0;
+      sticky_info_->translate_x = 0;
     }
   }
-
   if (base::FloatsLarger(sticky_top, current_top)) {
     // modify y
-    sticky_value_[5] = sticky_top - current_top;
+    sticky_info_->translate_y = sticky_top - current_top;
   } else {
     if (parent_ == nullptr) {
       return false;
@@ -528,11 +787,11 @@ bool UIBase::CheckStickyOnParentScroll(float scroll_left, float scroll_top) {
     float parent_height = parent_->height_;
     float current_bottom = current_top + height_;
     if (base::FloatsLarger(current_bottom + sticky_bottom, parent_height)) {
-      sticky_value_[5] =
+      sticky_info_->translate_y =
           std::max(parent_height - current_bottom - sticky_bottom,
                    sticky_top - current_top);
     } else {
-      sticky_value_[5] = 0;
+      sticky_info_->translate_y = 0;
     }
   }
   return true;
@@ -2102,17 +2361,17 @@ EventTarget* UIBase::HitTest(float point[2]) {
 }
 
 float UIBase::OffsetXForCalcPosition() {
-  if (sticky_value_.empty()) {
-    return 0;
+  if (!sticky_info_.has_value()) {
+    return 0.f;
   }
-  return -sticky_value_[4];
+  return -sticky_info_->translate_x;
 }
 
 float UIBase::OffsetYForCalcPosition() {
-  if (sticky_value_.empty()) {
+  if (!sticky_info_.has_value()) {
     return 0;
   }
-  return -sticky_value_[5];
+  return -sticky_info_->translate_y;
 }
 
 bool UIBase::IsVisible() {

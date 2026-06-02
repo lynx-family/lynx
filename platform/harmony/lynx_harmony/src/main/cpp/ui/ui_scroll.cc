@@ -15,6 +15,7 @@
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/utils/value_utils.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_bounce.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_screenshot_helper.h"
@@ -277,6 +278,9 @@ void UIScroll::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
     ScrollToOffset(pending_scroll_offset_);
     pending_scroll_offset_ = scroll::kInvalidScrollOffset;
   }
+  // Sticky dirty here comes from OnMeasure(), where Harmony recalculates
+  // content size after child layout info is updated.
+  RefreshStickyChildrenIfNeeded();
 }
 
 void UIScroll::OnNodeReady() {
@@ -303,6 +307,9 @@ void UIScroll::OnNodeReady() {
   if (IsValidScrollOffset(scroll_offset)) {
     ScrollToOffset(scroll_offset);
   }
+  // Sticky dirty here comes from node updates, child insertions/removals, or
+  // scroll-view frame/prop changes in the current node-ready cycle.
+  RefreshStickyChildrenIfNeeded();
 }
 
 void UIScroll::ScrollToOffset(const float scroll_offset) {
@@ -363,6 +370,12 @@ void UIScroll::OnPropUpdate(const std::string& name,
   } else {
     BaseScrollContainer::OnPropUpdate(name, value);
   }
+}
+
+void UIScroll::SetHorizontal(bool horizontal) {
+  bool last_horizontal = IsHorizontal();
+  BaseScrollContainer::SetHorizontal(horizontal);
+  sticky_dirty_ = sticky_dirty_ || (last_horizontal != is_horizontal_);
 }
 
 void UIScroll::SetEvents(const std::vector<lepus::Value>& events) {
@@ -440,6 +453,7 @@ void UIScroll::RemoveChild(lynx::tasm::harmony::UIBase* child) {
 void UIScroll::FrameDidChanged() {
   UIBase::FrameDidChanged();
   layout_changed_ = true;
+  sticky_dirty_ = true;
 }
 
 void UIScroll::UpdateContentSize(float width, float height) {
@@ -450,6 +464,7 @@ void UIScroll::UpdateContentSize(float width, float height) {
                                           context_->ScaledDensity() * height);
   HandleContentSizeChangedEvent(width, height);
   HandleScrollEdgeEvent();
+  sticky_dirty_ = true;
 }
 
 void UIScroll::OnNodeEvent(ArkUI_NodeEvent* event) {
@@ -480,9 +495,10 @@ void UIScroll::OnNodeEvent(ArkUI_NodeEvent* event) {
     // to handle translation for sticky child nodes here. At the same time,
     // considering if the NODE_SCROLL_EVENT_ON_SCROLL is triggered, the
     // NODE_SCROLL_EVENT_ON_DID_SCROLL will definitely be triggered as well, so
-    // we uniformly call OnScrollSticky here.
-    const auto& scroll_offset = GetScrollOffset();
-    OnScrollSticky(scroll_offset.first, scroll_offset.second);
+    // we uniformly update sticky here.
+    if (enable_sticky_) {
+      UpdateStickyOnScroll();
+    }
   } else {
     UIBase::OnNodeEvent(event);
   }
@@ -649,10 +665,67 @@ void UIScroll::SendCustomScrollEvent(const std::string name,
 void UIScroll::EnableSticky() {
   // Note: EnableSticky() is invoked from UIBase::UpdateSticky() which means
   // that the child node's sticky info has updated, so we need to invoke
-  // OnScrollSticky() here to handle only sticky info changing' case.
+  // OnScrollSticky() here to handle the case where only sticky info changes.
   enable_sticky_ = true;
   const auto& offset = GetScrollOffset();
   OnScrollSticky(offset.first, offset.second);
+}
+
+void UIScroll::UpdateStickyOnScroll() {
+  if (context_ && context_->GetEnableNewSticky()) {
+    RefreshStickyChildren();
+  } else {
+    const auto& offset = GetScrollOffset();
+    OnScrollSticky(offset.first, offset.second);
+  }
+}
+
+void UIScroll::RefreshStickyChildrenIfNeeded() {
+  if (sticky_dirty_) {
+    sticky_dirty_ = false;
+    if (context_ && context_->GetEnableNewSticky()) {
+      RefreshStickyChildren();
+    }
+  }
+}
+
+void UIScroll::RefreshStickyChildren() {
+  if (!enable_sticky_ || sticky_child_signs_.empty()) {
+    return;
+  }
+  const auto& scroll_offset = GetScrollOffset();
+  bool is_vertical = !IsHorizontal();
+  float offset = is_vertical ? scroll_offset.second : scroll_offset.first;
+  float scroller_size = is_vertical ? height_ : width_;
+  float content_size = is_vertical ? content_height_ : content_width_;
+  float max_offset = std::max(content_size - scroller_size, 0.f);
+  for (const int sticky_child_sign : sticky_child_signs_) {
+    UIBase* ui = context_->FindUIBySign(sticky_child_sign);
+    if (ui) {
+      ui->CalculateStickyTranslateWithOffset(offset, is_vertical, scroller_size,
+                                             max_offset);
+      ui->ApplyStickyTranslate();
+    }
+  }
+}
+
+void UIScroll::AddStickyChildSign(int sign) {
+  if (std::find(sticky_child_signs_.begin(), sticky_child_signs_.end(), sign) ==
+      sticky_child_signs_.end()) {
+    sticky_child_signs_.emplace_back(sign);
+  }
+  enable_sticky_ = !sticky_child_signs_.empty();
+}
+
+void UIScroll::RemoveStickyChildSign(int sign) {
+  if (sticky_child_signs_.empty()) {
+    enable_sticky_ = false;
+    return;
+  }
+  sticky_child_signs_.erase(
+      std::remove(sticky_child_signs_.begin(), sticky_child_signs_.end(), sign),
+      sticky_child_signs_.end());
+  enable_sticky_ = !sticky_child_signs_.empty();
 }
 
 void UIScroll::OnScrollSticky(float x_offset, float y_offset) {
@@ -662,9 +735,10 @@ void UIScroll::OnScrollSticky(float x_offset, float y_offset) {
   for (const auto child : children_) {
     if (child) {
       child->CheckStickyOnParentScroll(x_offset, y_offset);
-      if (!child->sticky_value_.empty()) {
+      if (child->sticky_info_) {
         NodeManager::Instance().SetAttributeWithNumberValue(
-            child->DrawNode(), NODE_TRANSLATE, 0, child->sticky_value_[5], 0);
+            child->DrawNode(), NODE_TRANSLATE, 0,
+            child->sticky_info_->translate_y, 0);
         NodeManager::Instance().SetAttributeWithNumberValue(child->DrawNode(),
                                                             NODE_Z_INDEX, 1);
       }

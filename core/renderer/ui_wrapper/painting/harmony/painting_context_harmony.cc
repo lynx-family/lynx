@@ -104,6 +104,9 @@ void PaintingContextHarmonyRef::UpdateNodeReadyPatching(
   for (int node_ready_id : ready_ids) {
     ui_owner_->OnNodeReady(node_ready_id);
   }
+  for (int node_remove_id : remove_ids) {
+    ui_owner_->OnNodeRemoved(node_remove_id);
+  }
 }
 
 void PaintingContextHarmonyRef::SetNeedMarkPaintEndTiming(
@@ -230,7 +233,11 @@ void PaintingContextHarmony::UpdateLayout(
   MAKE_UNIQUE_COPY(paddings, 4)
   MAKE_UNIQUE_COPY(margins, 4)
   MAKE_UNIQUE_COPY(borders, 4)
-  MAKE_UNIQUE_COPY(sticky, 4)
+  constexpr size_t kLegacyStickyInfoCount = 4;
+  constexpr size_t kNewStickyInfoCount = 10;
+  const size_t sticky_info_count =
+      config_.enable_new_sticky ? kNewStickyInfoCount : kLegacyStickyInfoCount;
+  MAKE_UNIQUE_COPY(sticky, sticky_info_count)
 #undef MAKE_UNIQUE_COPY
   Enqueue([platform_ref = platform_ref_, tag, x, y, width, height,
            paddings = std::move(paddings_copy),

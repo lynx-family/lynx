@@ -216,6 +216,22 @@ void UIOwner::OnNodeReady(int sign) {
   }
 }
 
+void UIOwner::OnNodeRemoved(int sign) {
+  if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
+    OnNodeRemovedRecursively(it->second.get());
+  }
+}
+
+void UIOwner::OnNodeRemovedRecursively(UIBase* root) {
+  if (!root) {
+    return;
+  }
+  root->OnNodeRemoved();
+  for (auto* child : root->Children()) {
+    OnNodeRemovedRecursively(child);
+  }
+}
+
 void UIOwner::DestroySubTree(UIBase* root) {
   for (auto* child : root->Children()) {
     DestroySubTree(child);

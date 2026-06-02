@@ -47,7 +47,7 @@ class BaseScrollContainer : public UIView {
   void SetNestedScroll(bool enable_nested_scroll);
   void SetEnableScrollInteraction(bool enable_scroll_interaction);
   void SetScrollbar(bool enable_scroll_bar);
-  void SetHorizontal(bool horizontal);
+  virtual void SetHorizontal(bool horizontal);
   void SetBounces(bool bounces, bool always_enabled);
   virtual void UpdateContentSize(float width, float height) {
     content_width_ = width;

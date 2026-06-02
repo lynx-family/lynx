@@ -498,7 +498,11 @@ void JSUIBase::UpdateLayout(float left, float top, float width, float height,
   napi_create_double(env_, margins[3], &argv[11]);
 
   napi_value sticky_value;
-  size_t sticky_count = 4;
+  constexpr size_t kLegacyStickyInfoCount = 4;
+  constexpr size_t kNewStickyInfoCount = 10;
+  const size_t sticky_count = context_ && context_->GetEnableNewSticky()
+                                  ? kNewStickyInfoCount
+                                  : kLegacyStickyInfoCount;
   if (sticky) {
     napi_create_array_with_length(env_, sticky_count, &sticky_value);
     for (size_t i = 0; i < sticky_count; i++) {

@@ -547,9 +547,9 @@ int UIDelegateHarmony::SetUIStyle(int id, const std::string& name,
                          ui->padding_right_, ui->padding_bottom_};
     float margins[4] = {ui->margin_left_, ui->margin_top_, ui->margin_right_,
                         ui->margin_bottom_};
-    float sticky[4] = {0, 0, 0, 0};
+    std::vector<float> sticky(lynx_context->GetEnableNewSticky() ? 10 : 4, 0.f);
     ui->UpdateLayout(vals[0], vals[1], vals[2], vals[3], paddings, margins,
-                     sticky, vals[3], 0);
+                     sticky.data(), vals[3], 0);
     return 0;
   }
   if (name == "margin") {
@@ -560,11 +560,11 @@ int UIDelegateHarmony::SetUIStyle(int id, const std::string& name,
     float paddings[4] = {ui->padding_left_, ui->padding_top_,
                          ui->padding_right_, ui->padding_bottom_};
     float margins[4] = {vals[3], vals[0], vals[1], vals[2]};
-    float sticky[4] = {0, 0, 0, 0};
+    std::vector<float> sticky(lynx_context->GetEnableNewSticky() ? 10 : 4, 0.f);
     float new_left = ui->left_ - ui->margin_left_ + vals[3];
     float new_top = ui->top_ - ui->margin_top_ + vals[0];
     ui->UpdateLayout(new_left, new_top, ui->width_, ui->height_, paddings,
-                     margins, sticky, ui->height_, 0);
+                     margins, sticky.data(), ui->height_, 0);
     return 0;
   }
   if (name == "border") {

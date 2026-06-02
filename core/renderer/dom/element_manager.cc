@@ -1057,7 +1057,8 @@ void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
     if (catalyzer() && catalyzer()->painting_context()) {
       catalyzer()->painting_context()->SetConfig(
           {.enable_native_schedule_create_view_async =
-               config_->GetEnableNativeScheduleCreateViewAsyncAsBool()});
+               config_->GetEnableNativeScheduleCreateViewAsyncAsBool(),
+           .enable_new_sticky = config_->GetEnableNewSticky()});
     }
     enable_property_based_simple_style_ =
         config_->GetEnablePropertyBasedSimpleStyle();

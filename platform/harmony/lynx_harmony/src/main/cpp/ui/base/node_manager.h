@@ -73,6 +73,8 @@ class BASE_EXPORT NodeManager {
                                 const ArkUI_AttributeItem* item);
   LYNX_EXPORT const ArkUI_AttributeItem* GetAttribute(
       ArkUI_NodeHandle node, ArkUI_NodeAttributeType type);
+  LYNX_EXPORT void GetTranslateValues(ArkUI_NodeHandle node, float* translate_x,
+                                      float* translate_y, float* translate_z);
 
   LYNX_EXPORT bool ResetAttribute(ArkUI_NodeHandle node,
                                   ArkUI_NodeAttributeType type);
