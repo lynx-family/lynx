@@ -18,8 +18,20 @@
 #include "core/services/recorder/testbench_base_recorder.h"
 #endif
 
+#define FAIL_IF_STANDALONE_MODE(...)        \
+  if (UNLIKELY(runtime_standalone_mode_)) { \
+    ReportNativeException(__FUNCTION__);    \
+    return __VA_ARGS__;                     \
+  }
+
 namespace lynx {
 namespace shell {
+
+static void ReportNativeException(const char* fn) {
+  std::string msg =
+      std::string(fn) + " not supported on runtime standalone mode";
+  REPORT_JSI_NATIVE_EXCEPTION(msg);
+}
 
 void BTSRuntimeMediator::AttachToLynxShell(
     const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,
@@ -59,11 +71,7 @@ void BTSRuntimeMediator::OnRuntimeGC(
 }
 
 void BTSRuntimeMediator::UpdateDataByJS(runtime::UpdateDataTask task) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "UpdateDataByJS not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   card_cached_data_mgr_->IncrementTaskCount();
   engine_actor_->ActAsync([task = std::move(task)](auto& engine) mutable {
     engine->UpdateDataByJS(std::move(task));
@@ -72,11 +80,7 @@ void BTSRuntimeMediator::UpdateDataByJS(runtime::UpdateDataTask task) {
 
 void BTSRuntimeMediator::UpdateBatchedDataByJS(
     std::vector<runtime::UpdateDataTask> tasks, uint64_t update_task_id) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "UpdateBatchedDataByJS not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   card_cached_data_mgr_->IncrementTaskCount();
   engine_actor_->ActAsync(
       [tasks = std::move(tasks),
@@ -125,12 +129,7 @@ runtime::js::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
 void BTSRuntimeMediator::GetComponentContextDataAsync(
     const std::string& component_id, const std::string& key,
     runtime::js::ApiCallBack callback) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "GetComponentContextDataAsync not supported on runtime standalone "
-        "mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([component_id, key, callback](auto& engine) {
     engine->GetComponentContextDataAsync(component_id, key, callback);
   });
@@ -139,11 +138,7 @@ void BTSRuntimeMediator::GetComponentContextDataAsync(
 bool BTSRuntimeMediator::LoadDynamicComponentFromJS(
     const std::string& url, const runtime::js::ApiCallBack& callback,
     const std::vector<std::string>& ids) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "LoadDynamicComponentFromJS not supported on runtime standalone mode");
-    return true;
-  }
+  FAIL_IF_STANDALONE_MODE(true)
   external_resource_loader_->LoadLazyBundle(url, callback.id(), ids);
   return false;
 }
@@ -155,11 +150,7 @@ void BTSRuntimeMediator::LoadScriptAsync(const std::string& url,
 
 void BTSRuntimeMediator::AddFont(const lepus::Value& font,
                                  const runtime::js::ApiCallBack& callback) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "AddFont not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync(
       [font, callback](const std::unique_ptr<LynxEngine>& engine) {
         engine->AddFont(font, std::move(callback));
@@ -221,11 +212,7 @@ void BTSRuntimeMediator::OnEvaluateJavaScriptEnd(const std::string& url) {
 }
 
 void BTSRuntimeMediator::UpdateComponentData(runtime::UpdateDataTask task) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "UpdateComponentData not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([task = std::move(task)](auto& engine) mutable {
     engine->UpdateComponentData(std::move(task));
   });
@@ -235,11 +222,7 @@ void BTSRuntimeMediator::SelectComponent(const std::string& component_id,
                                          const std::string& id_selector,
                                          const bool single,
                                          runtime::js::ApiCallBack callBack) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "SelectComponent not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync(
       [component_id, id_selector, single, callBack](auto& engine) {
         engine->SelectComponent(component_id, id_selector, single, callBack);
@@ -251,11 +234,7 @@ void BTSRuntimeMediator::InvokeUIMethod(tasm::NodeSelectRoot root,
                                         std::string method,
                                         fml::RefPtr<tasm::PropBundle> params,
                                         runtime::js::ApiCallBack callback) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "InvokeUIMethod not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([root = std::move(root), options = std::move(options),
                            method = std::move(method),
                            params = std::move(params),
@@ -269,11 +248,7 @@ void BTSRuntimeMediator::InvokeUIMethod(tasm::NodeSelectRoot root,
                                         std::string method,
                                         const pub::ValueImplLepus& params,
                                         runtime::js::ApiCallBack callback) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "InvokeUIMethod not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([root = std::move(root), options = std::move(options),
                            method = std::move(method),
                            invoke_params = std::move(params),
@@ -285,11 +260,7 @@ void BTSRuntimeMediator::InvokeUIMethod(tasm::NodeSelectRoot root,
 void BTSRuntimeMediator::GetPathInfo(tasm::NodeSelectRoot root,
                                      tasm::NodeSelectOptions options,
                                      runtime::js::ApiCallBack call_back) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "GetPathInfo not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([root = std::move(root), options = std::move(options),
                            call_back](auto& engine) {
     engine->GetPathInfo(root, options, call_back);
@@ -300,11 +271,7 @@ void BTSRuntimeMediator::GetFields(tasm::NodeSelectRoot root,
                                    tasm::NodeSelectOptions options,
                                    std::vector<std::string> fields,
                                    runtime::js::ApiCallBack call_back) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "GetFields not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([root = std::move(root), options = std::move(options),
                            fields = std::move(fields),
                            call_back](auto& engine) {
@@ -315,11 +282,7 @@ void BTSRuntimeMediator::GetFields(tasm::NodeSelectRoot root,
 void BTSRuntimeMediator::ElementAnimate(const std::string& component_id,
                                         const std::string& id_selector,
                                         const lepus::Value& args) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "ElementAnimate not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([component_id, id_selector, args](auto& engine) {
     engine->ElementAnimate(component_id, id_selector, args);
   });
@@ -328,11 +291,7 @@ void BTSRuntimeMediator::ElementAnimate(const std::string& component_id,
 void BTSRuntimeMediator::ElementAnimateV2(const std::string& component_id,
                                           const std::string& id_selector,
                                           const lepus::Value& args) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "ElementAnimate not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([component_id, id_selector, args](auto& engine) {
     engine->ElementAnimateV2(component_id, id_selector, args);
   });
@@ -350,11 +309,7 @@ void BTSRuntimeMediator::OnCoreJSUpdated(std::string core_js) {
 
 void BTSRuntimeMediator::TriggerComponentEvent(const std::string& event_name,
                                                const lepus::Value& msg) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "TriggerComponentEvent not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([event_name, msg](auto& engine) {
     engine->TriggerComponentEvent(event_name, msg);
   });
@@ -362,11 +317,7 @@ void BTSRuntimeMediator::TriggerComponentEvent(const std::string& event_name,
 
 void BTSRuntimeMediator::TriggerLepusGlobalEvent(const std::string& event_name,
                                                  const lepus::Value& msg) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "TriggerLepusGlobalEvent not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([event_name, msg](auto& engine) {
     engine->TriggerLepusGlobalEvent(event_name, msg);
   });
@@ -385,11 +336,7 @@ void BTSRuntimeMediator::TriggerWorkletFunction(
     std::string component_id, std::string worklet_module_name,
     std::string method_name, lepus::Value args,
     runtime::js::ApiCallBack callback) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "TriggerWorkletFunction not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync(
       [component_id = std::move(component_id),
        worklet_module_name = std::move(worklet_module_name),
@@ -417,11 +364,7 @@ void BTSRuntimeMediator::SetCSSVariables(
     const std::string& component_id, const std::string& id_selector,
     const lepus::Value& properties,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "SetCSSVariables not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync(
       [component_id, id_selector, properties,
        pipeline_options = std::move(pipeline_options)](auto& engine) {
@@ -434,11 +377,7 @@ void BTSRuntimeMediator::SetNativeProps(
     tasm::NodeSelectRoot root, const tasm::NodeSelectOptions& options,
     const lepus::Value& native_props,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "SetNativeProps not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync(
       [root = std::move(root), options, native_props,
        pipeline_options = std::move(pipeline_options)](auto& engine) {
@@ -448,22 +387,14 @@ void BTSRuntimeMediator::SetNativeProps(
 }
 
 void BTSRuntimeMediator::ReloadFromJS(runtime::UpdateDataTask task) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "ReloadFromJS not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync([task = std::move(task)](auto& engine) mutable {
     engine->ReloadFromJS(std::move(task));
   });
 }
 
 void BTSRuntimeMediator::StartRecording(const lepus::Value& value) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "StartRecording not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   facade_actor_->ActAsync(
       [value = lepus::Value::ShallowCopy(value)](auto& facade) mutable {
         facade->StartRecording(value);
@@ -471,11 +402,7 @@ void BTSRuntimeMediator::StartRecording(const lepus::Value& value) {
 }
 
 void BTSRuntimeMediator::StopRecording(const lepus::Value& value) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "StopRecording not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   facade_actor_->ActAsync(
       [value = lepus::Value::ShallowCopy(value)](auto& facade) mutable {
         facade->StopRecording(value);
@@ -597,11 +524,7 @@ void BTSRuntimeMediator::AddJSBlockingTime(uint64_t enqueue_time) {
 void BTSRuntimeMediator::CallLepusMethod(
     const std::string& method_name, lepus::Value args,
     const runtime::js::ApiCallBack& callback) {
-  if (runtime_standalone_mode_) {
-    REPORT_JSI_NATIVE_EXCEPTION(
-        "CallLepusMethod not supported on runtime standalone mode");
-    return;
-  }
+  FAIL_IF_STANDALONE_MODE()
   engine_actor_->ActAsync(
       [method_name, args = std::move(args), callback](auto& engine) mutable {
         engine->CallLepusMethod(method_name, std::move(args), callback);

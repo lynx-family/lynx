@@ -220,15 +220,15 @@ constexpr int kCSSPropertyCount = kPropertyEnd;
  */
 constexpr size_t kCSSStyleMapFuzzyAllocationSize = 6;
 
-class LYNX_EXPORT_FOR_DEVTOOL CSSProperty {
+class CSSProperty {
  public:
   // base::String, const char* and std::string could be implicitly converted
   // to base::static_string::GenericCacheKey very cheaply.
-  static CSSPropertyID GetPropertyID(
+  LYNX_EXPORT_FOR_DEVTOOL static CSSPropertyID GetPropertyID(
       const base::static_string::GenericCacheKey& key);
 
-  static const base::static_string::GenericCache& GetPropertyName(
-      CSSPropertyID id);
+  LYNX_EXPORT_FOR_DEVTOOL static const base::static_string::GenericCache&
+  GetPropertyName(CSSPropertyID id);
 
   static const char* GetPropertyNameCStr(CSSPropertyID id) {
     return GetPropertyName(id).c_str();
@@ -320,9 +320,11 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSProperty {
   CSSProperty() = delete;
 
  public:
-  static const std::unordered_map<std::string, std::string>&
+  LYNX_EXPORT_FOR_DEVTOOL static const std::unordered_map<std::string,
+                                                          std::string>&
   GetComputeStyleMap();
-  static bool IsInspectorFilteredProperty(CSSPropertyID id);
+  LYNX_EXPORT_FOR_DEVTOOL static bool IsInspectorFilteredProperty(
+      CSSPropertyID id);
 };
 
 }  // namespace tasm

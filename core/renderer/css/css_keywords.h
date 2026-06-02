@@ -389,7 +389,7 @@ enum class TokenType {
 };
 
 struct TokenValue {
-  const char* name;
+  int name;
   TokenType type;
 };
 

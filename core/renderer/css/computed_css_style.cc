@@ -1006,23 +1006,21 @@ bool ComputedCSSStyle::SetFlexGrow(const tasm::CSSValue& value,
                                    const bool reset) {
   return CSSStyleUtils::ComputeFloatStyle(
       value, reset, layout_computed_style_.flex_data_.Access()->flex_grow_,
-      DefaultLayoutStyle::SL_DEFAULT_FLEX_GROW, "flex-grow must be a number!",
-      parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_FLEX_GROW, "flex-grow", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetFlexShrink(const tasm::CSSValue& value,
                                      const bool reset) {
   return CSSStyleUtils::ComputeFloatStyle(
       value, reset, layout_computed_style_.flex_data_.Access()->flex_shrink_,
-      DefaultLayoutStyle::SL_DEFAULT_FLEX_SHRINK,
-      "flex-shrink must be a number!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_FLEX_SHRINK, "flex-shrink",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetOrder(const tasm::CSSValue& value, const bool reset) {
   return CSSStyleUtils::ComputeFloatStyle(
       value, reset, layout_computed_style_.flex_data_.Access()->order_,
-      DefaultLayoutStyle::SL_DEFAULT_ORDER, "order must be a number!",
-      parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_ORDER, "order", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLinearWeightSum(const tasm::CSSValue& value,
@@ -1030,8 +1028,8 @@ bool ComputedCSSStyle::SetLinearWeightSum(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeFloatStyle(
       value, reset,
       layout_computed_style_.linear_data_.Access()->linear_weight_sum_,
-      DefaultLayoutStyle::SL_DEFAULT_LINEAR_WEIGHT_SUM,
-      "linear-weight-sum must be a number!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_LINEAR_WEIGHT_SUM, "linear-weight-sum",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLinearWeight(const tasm::CSSValue& value,
@@ -1039,16 +1037,16 @@ bool ComputedCSSStyle::SetLinearWeight(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeFloatStyle(
       value, reset,
       layout_computed_style_.linear_data_.Access()->linear_weight_,
-      DefaultLayoutStyle::SL_DEFAULT_LINEAR_WEIGHT,
-      "linear-weight must be a number!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_LINEAR_WEIGHT, "linear-weight",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetAspectRatio(const tasm::CSSValue& value,
                                       const bool reset) {
   return CSSStyleUtils::ComputeFloatStyle(
       value, reset, layout_computed_style_.box_data_.Access()->aspect_ratio_,
-      DefaultLayoutStyle::SL_DEFAULT_ASPECT_RATIO,
-      "aspect-ratio must be a number!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_ASPECT_RATIO, "aspect-ratio",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetBorderLeftWidth(const tasm::CSSValue& value,
@@ -1303,8 +1301,8 @@ bool ComputedCSSStyle::SetFlexDirection(const tasm::CSSValue& value,
                                         const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<FlexDirectionType>(
       value, reset, layout_computed_style_.flex_data_.Access()->flex_direction_,
-      DefaultLayoutStyle::SL_DEFAULT_FLEX_DIRECTION,
-      "flex-direction must be a enum!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_FLEX_DIRECTION, "flex-direction",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetJustifyContent(const tasm::CSSValue& value,
@@ -1312,23 +1310,22 @@ bool ComputedCSSStyle::SetJustifyContent(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeEnumStyle<JustifyContentType>(
       value, reset,
       layout_computed_style_.flex_data_.Access()->justify_content_,
-      DefaultLayoutStyle::SL_DEFAULT_JUSTIFY_CONTENT,
-      "justify-content must be a enum!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_JUSTIFY_CONTENT, "justify-content",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetFlexWrap(const tasm::CSSValue& value,
                                    const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<FlexWrapType>(
       value, reset, layout_computed_style_.flex_data_.Access()->flex_wrap_,
-      DefaultLayoutStyle::SL_DEFAULT_FLEX_WRAP, "flex-warp must be a enum!",
-      parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_FLEX_WRAP, "flex-warp", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetAlignItems(const tasm::CSSValue& value,
                                      const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<FlexAlignType>(
       value, reset, layout_computed_style_.flex_data_.Access()->align_items_,
-      DefaultLayoutStyle::SL_DEFAULT_ALIGN_ITEMS, "align-items must be a enum!",
+      DefaultLayoutStyle::SL_DEFAULT_ALIGN_ITEMS, "align-items",
       parser_configs_);
 }
 
@@ -1336,32 +1333,29 @@ bool ComputedCSSStyle::SetAlignSelf(const tasm::CSSValue& value,
                                     const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<FlexAlignType>(
       value, reset, layout_computed_style_.flex_data_.Access()->align_self_,
-      DefaultLayoutStyle::SL_DEFAULT_ALIGN_SELF, "align-self must be a enum!",
-      parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_ALIGN_SELF, "align-self", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetAlignContent(const tasm::CSSValue& value,
                                        const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<AlignContentType>(
       value, reset, layout_computed_style_.flex_data_.Access()->align_content_,
-      DefaultLayoutStyle::SL_DEFAULT_ALIGN_CONTENT,
-      "align-content must be a enum!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_ALIGN_CONTENT, "align-content",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetPosition(const tasm::CSSValue& value,
                                    const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<PositionType>(
       value, reset, layout_computed_style_.position_,
-      DefaultLayoutStyle::SL_DEFAULT_POSITION, "position must be a enum!",
-      parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_POSITION, "position", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetDirection(const tasm::CSSValue& value,
                                     const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<DirectionType>(
       value, reset, layout_computed_style_.direction_,
-      DefaultLayoutStyle::SL_DEFAULT_DIRECTION, "direction must be a enum!",
-      parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_DIRECTION, "direction", parser_configs_);
 }
 
 void ComputedCSSStyle::SetOriginOverflowMask(tasm::CSSPropertyID id) {
@@ -1390,8 +1384,8 @@ void ComputedCSSStyle::SetOriginOverflowMask(tasm::CSSPropertyID id) {
 bool ComputedCSSStyle::SetOverflow(const tasm::CSSValue& value,
                                    const bool reset) {
   bool result = CSSStyleUtils::ComputeEnumStyle<OverflowType>(
-      value, reset, overflow_, GetDefaultOverflowType(),
-      "overflow must be a enum!", parser_configs_);
+      value, reset, overflow_, GetDefaultOverflowType(), "overflow",
+      parser_configs_);
 
   SetOriginOverflowMask(tasm::CSSPropertyID::kPropertyIDOverflow);
   return result;
@@ -1401,8 +1395,7 @@ bool ComputedCSSStyle::SetDisplay(const tasm::CSSValue& value,
                                   const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<DisplayType>(
       value, reset, layout_computed_style_.display_,
-      DefaultLayoutStyle::SL_DEFAULT_DISPLAY, "display must be a enum!",
-      parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_DISPLAY, "display", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLinearOrientation(const tasm::CSSValue& value,
@@ -1410,8 +1403,8 @@ bool ComputedCSSStyle::SetLinearOrientation(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeEnumStyle<LinearOrientationType>(
       value, reset,
       layout_computed_style_.linear_data_.Access()->linear_orientation_,
-      DefaultLayoutStyle::SL_DEFAULT_LINEAR_ORIENTATION,
-      "linear-orientation must be an enum!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_LINEAR_ORIENTATION, "linear-orientation",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLinearDirection(const tasm::CSSValue& value,
@@ -1419,8 +1412,8 @@ bool ComputedCSSStyle::SetLinearDirection(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeEnumStyle<LinearOrientationType>(
       value, reset,
       layout_computed_style_.linear_data_.Access()->linear_orientation_,
-      DefaultLayoutStyle::SL_DEFAULT_LINEAR_ORIENTATION,
-      "linear-direction must be an enum!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_LINEAR_ORIENTATION, "linear-direction",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLinearLayoutGravity(const tasm::CSSValue& value,
@@ -1429,7 +1422,7 @@ bool ComputedCSSStyle::SetLinearLayoutGravity(const tasm::CSSValue& value,
       value, reset,
       layout_computed_style_.linear_data_.Access()->linear_layout_gravity_,
       DefaultLayoutStyle::SL_DEFAULT_LINEAR_LAYOUT_GRAVITY,
-      "linear-layout-gravity must be a enum!", parser_configs_);
+      "linear-layout-gravity", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLinearGravity(const tasm::CSSValue& value,
@@ -1437,8 +1430,8 @@ bool ComputedCSSStyle::SetLinearGravity(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeEnumStyle<LinearGravityType>(
       value, reset,
       layout_computed_style_.linear_data_.Access()->linear_gravity_,
-      DefaultLayoutStyle::SL_DEFAULT_LINEAR_GRAVITY,
-      "linear-gravity must be a enum!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_LINEAR_GRAVITY, "linear-gravity",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLinearCrossGravity(const tasm::CSSValue& value,
@@ -1447,7 +1440,7 @@ bool ComputedCSSStyle::SetLinearCrossGravity(const tasm::CSSValue& value,
       value, reset,
       layout_computed_style_.linear_data_.Access()->linear_cross_gravity_,
       DefaultLayoutStyle::SL_DEFAULT_LINEAR_CROSS_GRAVITY,
-      "linear-cross-gravity must be a enum!", parser_configs_);
+      "linear-cross-gravity", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetBoxSizing(const tasm::CSSValue& value,
@@ -1472,7 +1465,7 @@ bool ComputedCSSStyle::SetRelativeId(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeIntStyle(
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_id_,
-      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_ID, "relative-id must be a int!",
+      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_ID, "relative-id",
       parser_configs_);
 }
 
@@ -1481,8 +1474,8 @@ bool ComputedCSSStyle::SetRelativeAlignTop(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeIntStyle(
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_align_top_,
-      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_ALIGN_TOP,
-      "relative-align-top must be a int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_ALIGN_TOP, "relative-align-top",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetRelativeAlignRight(const tasm::CSSValue& value,
@@ -1491,7 +1484,7 @@ bool ComputedCSSStyle::SetRelativeAlignRight(const tasm::CSSValue& value,
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_align_right_,
       DefaultLayoutStyle::SL_DEFAULT_RELATIVE_ALIGN_RIGHT,
-      "relative-align-right must be a int!", parser_configs_);
+      "relative-align-right", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetRelativeAlignBottom(const tasm::CSSValue& value,
@@ -1500,7 +1493,7 @@ bool ComputedCSSStyle::SetRelativeAlignBottom(const tasm::CSSValue& value,
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_align_bottom_,
       DefaultLayoutStyle::SL_DEFAULT_RELATIVE_ALIGN_BOTTOM,
-      "relative-align-bottom must be a int!", parser_configs_);
+      "relative-align-bottom", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetRelativeAlignLeft(const tasm::CSSValue& value,
@@ -1508,8 +1501,8 @@ bool ComputedCSSStyle::SetRelativeAlignLeft(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeIntStyle(
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_align_left_,
-      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_ALIGN_LEFT,
-      "relative-align-left must be a int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_ALIGN_LEFT, "relative-align-left",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetRelativeTopOf(const tasm::CSSValue& value,
@@ -1517,8 +1510,8 @@ bool ComputedCSSStyle::SetRelativeTopOf(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeIntStyle(
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_top_of_,
-      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_TOP_OF,
-      "relative-top-of must be a int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_TOP_OF, "relative-top-of",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetRelativeRightOf(const tasm::CSSValue& value,
@@ -1526,8 +1519,8 @@ bool ComputedCSSStyle::SetRelativeRightOf(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeIntStyle(
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_right_of_,
-      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_RIGHT_OF,
-      "relative-right-of must be a int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_RIGHT_OF, "relative-right-of",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetRelativeBottomOf(const tasm::CSSValue& value,
@@ -1535,8 +1528,8 @@ bool ComputedCSSStyle::SetRelativeBottomOf(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeIntStyle(
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_bottom_of_,
-      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_BOTTOM_OF,
-      "relative-bottom-of must be a int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_BOTTOM_OF, "relative-bottom-of",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetRelativeLeftOf(const tasm::CSSValue& value,
@@ -1544,8 +1537,8 @@ bool ComputedCSSStyle::SetRelativeLeftOf(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeIntStyle(
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_left_of_,
-      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_LEFT_OF,
-      "relative-left-of must be a int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_LEFT_OF, "relative-left-of",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetRelativeLayoutOnce(const tasm::CSSValue& value,
@@ -1554,7 +1547,7 @@ bool ComputedCSSStyle::SetRelativeLayoutOnce(const tasm::CSSValue& value,
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_layout_once_,
       DefaultLayoutStyle::SL_DEFAULT_RELATIVE_LAYOUT_ONCE,
-      "relative-layout-once must be a bool!", parser_configs_);
+      "relative-layout-once", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetRelativeCenter(const tasm::CSSValue& value,
@@ -1562,8 +1555,8 @@ bool ComputedCSSStyle::SetRelativeCenter(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeEnumStyle<RelativeCenterType>(
       value, reset,
       layout_computed_style_.relative_data_.Access()->relative_center_,
-      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_CENTER,
-      "relative-center must be an enum!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_RELATIVE_CENTER, "relative-center",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridTemplateColumns(const tasm::CSSValue& value,
@@ -1574,8 +1567,8 @@ bool ComputedCSSStyle::SetGridTemplateColumns(const tasm::CSSValue& value,
           ->grid_template_columns_min_track_sizing_function_,
       layout_computed_style_.grid_data_.Access()
           ->grid_template_columns_max_track_sizing_function_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_TRACK(),
-      "grid-template-columns must be an array!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_GRID_TRACK(), "grid-template-columns",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridTemplateRows(const tasm::CSSValue& value,
@@ -1586,8 +1579,8 @@ bool ComputedCSSStyle::SetGridTemplateRows(const tasm::CSSValue& value,
           ->grid_template_rows_min_track_sizing_function_,
       layout_computed_style_.grid_data_.Access()
           ->grid_template_rows_max_track_sizing_function_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_TRACK(),
-      "grid-template-rows must be an array!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_GRID_TRACK(), "grid-template-rows",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridAutoColumns(const tasm::CSSValue& value,
@@ -1598,8 +1591,8 @@ bool ComputedCSSStyle::SetGridAutoColumns(const tasm::CSSValue& value,
           ->grid_auto_columns_min_track_sizing_function_,
       layout_computed_style_.grid_data_.Access()
           ->grid_auto_columns_max_track_sizing_function_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_TRACK(),
-      "grid-auto-columns must be an array!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_GRID_TRACK(), "grid-auto-columns",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridAutoRows(const tasm::CSSValue& value,
@@ -1610,8 +1603,8 @@ bool ComputedCSSStyle::SetGridAutoRows(const tasm::CSSValue& value,
           ->grid_auto_rows_min_track_sizing_function_,
       layout_computed_style_.grid_data_.Access()
           ->grid_auto_rows_max_track_sizing_function_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_TRACK(),
-      "grid-auto-rows must be an array!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_GRID_TRACK(), "grid-auto-rows",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridColumnSpan(const tasm::CSSValue& value,
@@ -1619,15 +1612,15 @@ bool ComputedCSSStyle::SetGridColumnSpan(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeIntStyle(
       value, reset,
       layout_computed_style_.grid_data_.Access()->grid_column_span_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_SPAN,
-      "grid-column-span must be an int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_GRID_SPAN, "grid-column-span",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridRowSpan(const tasm::CSSValue& value,
                                       const bool reset) {
   return CSSStyleUtils::ComputeIntStyle(
       value, reset, layout_computed_style_.grid_data_.Access()->grid_row_span_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_SPAN, "grid-row-span must be an int!",
+      DefaultLayoutStyle::SL_DEFAULT_GRID_SPAN, "grid-row-span",
       parser_configs_);
 }
 
@@ -1635,16 +1628,16 @@ bool ComputedCSSStyle::SetGridRowStart(const tasm::CSSValue& value,
                                        const bool reset) {
   return CSSStyleUtils::ComputeIntStyle(
       value, reset, layout_computed_style_.grid_data_.Access()->grid_row_start_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_ITEM_POSITION,
-      "grid-row-start must be an int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_GRID_ITEM_POSITION, "grid-row-start",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridRowEnd(const tasm::CSSValue& value,
                                      const bool reset) {
   return CSSStyleUtils::ComputeIntStyle(
       value, reset, layout_computed_style_.grid_data_.Access()->grid_row_end_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_ITEM_POSITION,
-      "grid-row-end must be an int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_GRID_ITEM_POSITION, "grid-row-end",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridColumnStart(const tasm::CSSValue& value,
@@ -1652,8 +1645,8 @@ bool ComputedCSSStyle::SetGridColumnStart(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeIntStyle(
       value, reset,
       layout_computed_style_.grid_data_.Access()->grid_column_start_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_ITEM_POSITION,
-      "grid-column-start must be an int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_GRID_ITEM_POSITION, "grid-column-start",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridColumnEnd(const tasm::CSSValue& value,
@@ -1661,8 +1654,8 @@ bool ComputedCSSStyle::SetGridColumnEnd(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeIntStyle(
       value, reset,
       layout_computed_style_.grid_data_.Access()->grid_column_end_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_ITEM_POSITION,
-      "grid-column-end must be an int!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_GRID_ITEM_POSITION, "grid-column-end",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridColumn(const tasm::CSSValue& value,
@@ -1714,24 +1707,24 @@ bool ComputedCSSStyle::SetJustifyItems(const tasm::CSSValue& value,
                                        const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<JustifyType>(
       value, reset, layout_computed_style_.grid_data_.Access()->justify_items_,
-      DefaultLayoutStyle::SL_DEFAULT_JUSTIFY_ITEMS,
-      "justify-items must be a enum!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_JUSTIFY_ITEMS, "justify-items",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetJustifySelf(const tasm::CSSValue& value,
                                       const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<JustifyType>(
       value, reset, layout_computed_style_.grid_data_.Access()->justify_self_,
-      DefaultLayoutStyle::SL_DEFAULT_JUSTIFY_SELF,
-      "justify-self must be a enum!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_JUSTIFY_SELF, "justify-self",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetGridAutoFlow(const tasm::CSSValue& value,
                                        const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<GridAutoFlowType>(
       value, reset, layout_computed_style_.grid_data_.Access()->grid_auto_flow_,
-      DefaultLayoutStyle::SL_DEFAULT_GRID_AUTO_FLOW,
-      "grid-auto-flow must be a enum!", parser_configs_);
+      DefaultLayoutStyle::SL_DEFAULT_GRID_AUTO_FLOW, "grid-auto-flow",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetFlex(const tasm::CSSValue& value, const bool reset) {
@@ -1798,8 +1791,8 @@ bool ComputedCSSStyle::HasOpacity() const {
 bool ComputedCSSStyle::SetOpacity(const tasm::CSSValue& value,
                                   const bool reset) {
   bool result = CSSStyleUtils::ComputeFloatStyle(
-      value, reset, opacity_, DefaultComputedStyle::DEFAULT_OPACITY,
-      "opacity must be a float!", parser_configs_);
+      value, reset, opacity_, DefaultComputedStyle::DEFAULT_OPACITY, "opacity",
+      parser_configs_);
 
   origin_has_opacity_ = !reset;
   return result;
@@ -1808,8 +1801,8 @@ bool ComputedCSSStyle::SetOpacity(const tasm::CSSValue& value,
 bool ComputedCSSStyle::SetOverflowX(const tasm::CSSValue& value,
                                     const bool reset) {
   bool result = CSSStyleUtils::ComputeEnumStyle<OverflowType>(
-      value, reset, overflow_x_, GetDefaultOverflowType(),
-      "overflow-x must be an enum!", parser_configs_);
+      value, reset, overflow_x_, GetDefaultOverflowType(), "overflow-x",
+      parser_configs_);
 
   SetOriginOverflowMask(tasm::CSSPropertyID::kPropertyIDOverflowX);
 
@@ -1819,8 +1812,8 @@ bool ComputedCSSStyle::SetOverflowX(const tasm::CSSValue& value,
 bool ComputedCSSStyle::SetOverflowY(const tasm::CSSValue& value,
                                     const bool reset) {
   bool result = CSSStyleUtils::ComputeEnumStyle<OverflowType>(
-      value, reset, overflow_y_, GetDefaultOverflowType(),
-      "overflow-y must be an enum!", parser_configs_);
+      value, reset, overflow_y_, GetDefaultOverflowType(), "overflow-y",
+      parser_configs_);
 
   SetOriginOverflowMask(tasm::CSSPropertyID::kPropertyIDOverflowY);
 
@@ -2214,14 +2207,14 @@ bool ComputedCSSStyle::SetAnimation(const tasm::CSSValue& value,
           animation_data_->push_back(AnimationData());
         }
         CSSStyleUtils::ComputeAnimation(group->get(i), animation_data_->at(i),
-                                        "animation must is invalid.",
+                                        "animation is invalid.",
                                         parser_configs_);
       }
     } else {
       animation_data_->push_back(AnimationData());
-      CSSStyleUtils::ComputeAnimation(
-          value.GetValue(), animation_data_->front(),
-          "animation must is invalid.", parser_configs_);
+      CSSStyleUtils::ComputeAnimation(value.GetValue(),
+                                      animation_data_->front(),
+                                      "animation is invalid.", parser_configs_);
     }
   }
   return old_value != animation_data_;
@@ -2234,8 +2227,7 @@ bool ComputedCSSStyle::SetAnimationName(const tasm::CSSValue& value,
                              bool reset) -> bool {
     return CSSStyleUtils::ComputeStringStyle(
         tasm::CSSValue(value, CSSValuePattern::STRING), reset, anim.name,
-        base::String(), "animation-name must be a string!",
-        this->parser_configs_);
+        base::String(), "animation-name", this->parser_configs_);
   };
   return CSSStyleUtils::SetAnimationProperty(
       animation_data_, value, reset_func, compute_func, reset, parser_configs_);
@@ -2260,7 +2252,7 @@ bool ComputedCSSStyle::SetAnimationIterationCount(const tasm::CSSValue& value,
                              bool reset) -> bool {
     return CSSStyleUtils::ComputeIntStyle(
         tasm::CSSValue(value, CSSValuePattern::NUMBER), reset,
-        anim.iteration_count, 0, "animation-iteration-count must be a number!",
+        anim.iteration_count, 0, "animation-iteration-count",
         this->parser_configs_);
   };
   return CSSStyleUtils::SetAnimationProperty(
@@ -2276,8 +2268,8 @@ bool ComputedCSSStyle::SetAnimationDuration(const tasm::CSSValue& value,
                              bool reset) -> bool {
     return CSSStyleUtils::ComputeLongStyle(
         tasm::CSSValue(value, CSSValuePattern::NUMBER), reset, anim.duration,
-        DefaultComputedStyle::DEFAULT_LONG,
-        "animation-duration must be a long!", this->parser_configs_);
+        DefaultComputedStyle::DEFAULT_LONG, "animation-duration",
+        this->parser_configs_);
   };
   return CSSStyleUtils::SetAnimationProperty(
       animation_data_, value, reset_func, compute_func, reset, parser_configs_);
@@ -2292,7 +2284,7 @@ bool ComputedCSSStyle::SetAnimationFillMode(const tasm::CSSValue& value,
                              bool reset) -> bool {
     return CSSStyleUtils::ComputeEnumStyle<AnimationFillModeType>(
         tasm::CSSValue(value, CSSValuePattern::ENUM), reset, anim.fill_mode,
-        AnimationFillModeType::kNone, "animation-fill-mode must be a string!",
+        AnimationFillModeType::kNone, "animation-fill-mode",
         this->parser_configs_);
   };
   return CSSStyleUtils::SetAnimationProperty(
@@ -2308,7 +2300,7 @@ bool ComputedCSSStyle::SetAnimationDelay(const tasm::CSSValue& value,
                              bool reset) -> bool {
     return CSSStyleUtils::ComputeLongStyle(
         tasm::CSSValue(value, CSSValuePattern::NUMBER), reset, anim.delay,
-        DefaultComputedStyle::DEFAULT_LONG, "animation-delay must be a float!",
+        DefaultComputedStyle::DEFAULT_LONG, "animation-delay",
         this->parser_configs_);
   };
   return CSSStyleUtils::SetAnimationProperty(
@@ -2324,7 +2316,7 @@ bool ComputedCSSStyle::SetAnimationDirection(const tasm::CSSValue& value,
                              bool reset) -> bool {
     return CSSStyleUtils::ComputeEnumStyle<AnimationDirectionType>(
         tasm::CSSValue(value, CSSValuePattern::ENUM), reset, anim.direction,
-        AnimationDirectionType::kNormal, "animation-direction must be a !",
+        AnimationDirectionType::kNormal, "animation-direction",
         this->parser_configs_);
   };
   return CSSStyleUtils::SetAnimationProperty(
@@ -2340,8 +2332,8 @@ bool ComputedCSSStyle::SetAnimationPlayState(const tasm::CSSValue& value,
                              bool reset) -> bool {
     return CSSStyleUtils::ComputeEnumStyle<AnimationPlayStateType>(
         tasm::CSSValue(value, CSSValuePattern::ENUM), reset, anim.play_state,
-        AnimationPlayStateType::kRunning,
-        "animation-play-state must be a enum!", this->parser_configs_);
+        AnimationPlayStateType::kRunning, "animation-play-state",
+        this->parser_configs_);
   };
   return CSSStyleUtils::SetAnimationProperty(
       animation_data_, value, reset_func, compute_func, reset, parser_configs_);
@@ -2354,8 +2346,8 @@ bool ComputedCSSStyle::SetLayoutAnimationCreateDelay(
   CSSStyleUtils::PrepareOptional(layout_animation_data_);
   return CSSStyleUtils::ComputeLongStyle(
       value, reset, layout_animation_data_->create_ani.delay,
-      DefaultComputedStyle::DEFAULT_LONG,
-      "layout-animation-create-delay must be a number!", parser_configs_);
+      DefaultComputedStyle::DEFAULT_LONG, "layout-animation-create-delay",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLayoutAnimationCreateDuration(
@@ -2363,8 +2355,8 @@ bool ComputedCSSStyle::SetLayoutAnimationCreateDuration(
   CSSStyleUtils::PrepareOptional(layout_animation_data_);
   return CSSStyleUtils::ComputeLongStyle(
       value, reset, layout_animation_data_->create_ani.duration,
-      DefaultComputedStyle::DEFAULT_LONG,
-      "layout-animation-create-duration must be a number!", parser_configs_);
+      DefaultComputedStyle::DEFAULT_LONG, "layout-animation-create-duration",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLayoutAnimationCreateProperty(
@@ -2373,7 +2365,7 @@ bool ComputedCSSStyle::SetLayoutAnimationCreateProperty(
   return CSSStyleUtils::ComputeEnumStyle<starlight::AnimationPropertyType>(
       value, reset, layout_animation_data_->create_ani.property,
       starlight::AnimationPropertyType::kOpacity,
-      "layout-animation-create-property must be an enum!", parser_configs_);
+      "layout-animation-create-property", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLayoutAnimationCreateTimingFunction(
@@ -2389,8 +2381,8 @@ bool ComputedCSSStyle::SetLayoutAnimationUpdateDelay(
   CSSStyleUtils::PrepareOptional(layout_animation_data_);
   return CSSStyleUtils::ComputeLongStyle(
       value, reset, layout_animation_data_->update_ani.delay,
-      DefaultComputedStyle::DEFAULT_LONG,
-      "layout-animation-update-delay must be a number!", parser_configs_);
+      DefaultComputedStyle::DEFAULT_LONG, "layout-animation-update-delay",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLayoutAnimationUpdateDuration(
@@ -2398,8 +2390,8 @@ bool ComputedCSSStyle::SetLayoutAnimationUpdateDuration(
   CSSStyleUtils::PrepareOptional(layout_animation_data_);
   return CSSStyleUtils::ComputeLongStyle(
       value, reset, layout_animation_data_->update_ani.duration,
-      DefaultComputedStyle::DEFAULT_LONG,
-      "layout-animation-update-duration must be a number!", parser_configs_);
+      DefaultComputedStyle::DEFAULT_LONG, "layout-animation-update-duration",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLayoutAnimationUpdateTimingFunction(
@@ -2415,8 +2407,8 @@ bool ComputedCSSStyle::SetLayoutAnimationDeleteDuration(
   CSSStyleUtils::PrepareOptional(layout_animation_data_);
   return CSSStyleUtils::ComputeLongStyle(
       value, reset, layout_animation_data_->delete_ani.duration,
-      DefaultComputedStyle::DEFAULT_LONG,
-      "layout-animation-delete-duration must be a number!", parser_configs_);
+      DefaultComputedStyle::DEFAULT_LONG, "layout-animation-delete-duration",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLayoutAnimationDeleteDelay(
@@ -2424,8 +2416,8 @@ bool ComputedCSSStyle::SetLayoutAnimationDeleteDelay(
   CSSStyleUtils::PrepareOptional(layout_animation_data_);
   return CSSStyleUtils::ComputeLongStyle(
       value, reset, layout_animation_data_->delete_ani.delay,
-      DefaultComputedStyle::DEFAULT_LONG,
-      "layout-animation-delete-delay must be a number!", parser_configs_);
+      DefaultComputedStyle::DEFAULT_LONG, "layout-animation-delete-delay",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLayoutAnimationDeleteProperty(
@@ -2434,7 +2426,7 @@ bool ComputedCSSStyle::SetLayoutAnimationDeleteProperty(
   return CSSStyleUtils::ComputeEnumStyle<starlight::AnimationPropertyType>(
       value, reset, layout_animation_data_->delete_ani.property,
       starlight::AnimationPropertyType::kOpacity,
-      "layout-animation-delete-property must be an enum!", parser_configs_);
+      "layout-animation-delete-property", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLayoutAnimationDeleteTimingFunction(
@@ -2576,29 +2568,29 @@ bool ComputedCSSStyle::SetTransitionDelay(const tasm::CSSValue& value,
 bool ComputedCSSStyle::SetEnterTransitionName(const lynx::tasm::CSSValue& value,
                                               bool reset) {
   return CSSStyleUtils::ComputeHeroAnimation(
-      value, reset, enter_transition_data_,
-      "enter-transition-name must is invalid.", parser_configs_);
+      value, reset, enter_transition_data_, "enter-transition-name is invalid.",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetExitTransitionName(lynx::tasm::CSSValue const& value,
                                              bool reset) {
   return CSSStyleUtils::ComputeHeroAnimation(
-      value, reset, exit_transition_data_,
-      "exit-transition-name must is invalid.", parser_configs_);
+      value, reset, exit_transition_data_, "exit-transition-name is invalid.",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetPauseTransitionName(lynx::tasm::CSSValue const& value,
                                               bool reset) {
   return CSSStyleUtils::ComputeHeroAnimation(
-      value, reset, pause_transition_data_,
-      "pause-transition-name must is invalid.", parser_configs_);
+      value, reset, pause_transition_data_, "pause-transition-name is invalid.",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetResumeTransitionName(
     lynx::tasm::CSSValue const& value, bool reset) {
   return CSSStyleUtils::ComputeHeroAnimation(
       value, reset, resume_transition_data_,
-      "resume-transition-name must is invalid.", parser_configs_);
+      "resume-transition-name is invalid.", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetLineSpacing(const tasm::CSSValue& value,
@@ -2680,9 +2672,9 @@ bool ComputedCSSStyle::SetBackground(const tasm::CSSValue& value,
 bool ComputedCSSStyle::SetBackgroundColor(const tasm::CSSValue& value,
                                           const bool reset) {
   CSSStyleUtils::PrepareOptional(background_data_);
-  return CSSStyleUtils::ComputeUIntStyle(
-      value, reset, background_data_->color, DefaultColor::DEFAULT_COLOR,
-      "background-color must be a number!", parser_configs_);
+  return CSSStyleUtils::ComputeUIntStyle(value, reset, background_data_->color,
+                                         DefaultColor::DEFAULT_COLOR,
+                                         "background-color", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetBackgroundImage(const tasm::CSSValue& value,
@@ -2744,8 +2736,7 @@ bool ComputedCSSStyle::SetBorderTopColor(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeUIntStyle(
       value, reset,
       layout_computed_style_.surround_data_.border_data_->color_top,
-      DefaultColor::DEFAULT_BORDER_COLOR, "border-top-color must be a number",
-      parser_configs_);
+      DefaultColor::DEFAULT_BORDER_COLOR, "border-top-color", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetBorderRightColor(const tasm::CSSValue& value,
@@ -2755,7 +2746,7 @@ bool ComputedCSSStyle::SetBorderRightColor(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeUIntStyle(
       value, reset,
       layout_computed_style_.surround_data_.border_data_->color_right,
-      DefaultColor::DEFAULT_BORDER_COLOR, "border-right-color must be a number",
+      DefaultColor::DEFAULT_BORDER_COLOR, "border-right-color",
       parser_configs_);
 }
 
@@ -2766,8 +2757,8 @@ bool ComputedCSSStyle::SetBorderBottomColor(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeUIntStyle(
       value, reset,
       layout_computed_style_.surround_data_.border_data_->color_bottom,
-      DefaultColor::DEFAULT_BORDER_COLOR,
-      "border-bottom-color must be a number", parser_configs_);
+      DefaultColor::DEFAULT_BORDER_COLOR, "border-bottom-color",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetBorderLeftColor(const tasm::CSSValue& value,
@@ -2777,8 +2768,7 @@ bool ComputedCSSStyle::SetBorderLeftColor(const tasm::CSSValue& value,
   return CSSStyleUtils::ComputeUIntStyle(
       value, reset,
       layout_computed_style_.surround_data_.border_data_->color_left,
-      DefaultColor::DEFAULT_BORDER_COLOR, "border-left-color must be a number",
-      parser_configs_);
+      DefaultColor::DEFAULT_BORDER_COLOR, "border-left-color", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetBorderTopStyle(const tasm::CSSValue& value,
@@ -2790,7 +2780,7 @@ bool ComputedCSSStyle::SetBorderTopStyle(const tasm::CSSValue& value,
       value, reset,
       layout_computed_style_.surround_data_.border_data_->style_top,
       DEFAULT_CSS_VALUE(css_align_with_legacy_w3c_, BORDER_STYLE),
-      "border-top-style must be an enum!", parser_configs_);
+      "border-top-style", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetBorderRightStyle(const tasm::CSSValue& value,
@@ -2802,7 +2792,7 @@ bool ComputedCSSStyle::SetBorderRightStyle(const tasm::CSSValue& value,
       value, reset,
       layout_computed_style_.surround_data_.border_data_->style_right,
       DEFAULT_CSS_VALUE(css_align_with_legacy_w3c_, BORDER_STYLE),
-      "border-right-style must be an enum!", parser_configs_);
+      "border-right-style", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetBorderBottomStyle(const tasm::CSSValue& value,
@@ -2814,7 +2804,7 @@ bool ComputedCSSStyle::SetBorderBottomStyle(const tasm::CSSValue& value,
       value, reset,
       layout_computed_style_.surround_data_.border_data_->style_bottom,
       DEFAULT_CSS_VALUE(css_align_with_legacy_w3c_, BORDER_STYLE),
-      "border-bottom-style must be an enum!", parser_configs_);
+      "border-bottom-style", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetBorderLeftStyle(const tasm::CSSValue& value,
@@ -2826,15 +2816,15 @@ bool ComputedCSSStyle::SetBorderLeftStyle(const tasm::CSSValue& value,
       value, reset,
       layout_computed_style_.surround_data_.border_data_->style_left,
       DEFAULT_CSS_VALUE(css_align_with_legacy_w3c_, BORDER_STYLE),
-      "border-left-style must be an enum!", parser_configs_);
+      "border-left-style", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetOutlineColor(const lynx::tasm::CSSValue& value,
                                        bool reset) {
   CSSStyleUtils::PrepareOptional(outline_);
-  return CSSStyleUtils::ComputeUIntStyle(
-      value, reset, outline_->color, DefaultColor::DEFAULT_OUTLINE_COLOR,
-      "outline-color must be an enum!", parser_configs_);
+  return CSSStyleUtils::ComputeUIntStyle(value, reset, outline_->color,
+                                         DefaultColor::DEFAULT_OUTLINE_COLOR,
+                                         "outline-color", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetOutlineStyle(const lynx::tasm::CSSValue& value,
@@ -2843,7 +2833,7 @@ bool ComputedCSSStyle::SetOutlineStyle(const lynx::tasm::CSSValue& value,
   return CSSStyleUtils::ComputeEnumStyle(
       value, reset, outline_->style,
       DEFAULT_CSS_VALUE(css_align_with_legacy_w3c_, BORDER_STYLE),
-      "outline-style must be an enum!", parser_configs_);
+      "outline-style", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetOutlineWidth(const lynx::tasm::CSSValue& value,
@@ -2865,7 +2855,7 @@ bool ComputedCSSStyle::SetVisibility(const tasm::CSSValue& value,
                                      const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<VisibilityType>(
       value, reset, visibility_, DefaultComputedStyle::DEFAULT_VISIBILITY,
-      "visibility must be an enum!", parser_configs_);
+      "visibility", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetBoxShadow(const tasm::CSSValue& value,
@@ -2886,7 +2876,7 @@ bool ComputedCSSStyle::SetFontFamily(const tasm::CSSValue& value,
   PrepareOptionalForTextAttributes();
   return CSSStyleUtils::ComputeStringStyle(
       value, reset, text_attributes_->font_family, base::String(),
-      "font family must be a string!", parser_configs_);
+      "font family", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetXPlaceholderFontFamily(const tasm::CSSValue& value,
@@ -2894,14 +2884,14 @@ bool ComputedCSSStyle::SetXPlaceholderFontFamily(const tasm::CSSValue& value,
   PrepareOptionalForPlaceholderTextAttributes();
   return CSSStyleUtils::ComputeStringStyle(
       value, reset, placeholder_text_attributes_->font_family, base::String(),
-      "font family must be a string!", parser_configs_);
+      "font family", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetCaretColor(const lynx::tasm::CSSValue& value,
                                      bool reset) {
-  return CSSStyleUtils::ComputeStringStyle(
-      value, reset, caret_color_, base::String(),
-      "caret-color must be a string!", parser_configs_);
+  return CSSStyleUtils::ComputeStringStyle(value, reset, caret_color_,
+                                           base::String(), "caret-color",
+                                           parser_configs_);
 }
 
 bool ComputedCSSStyle::SetXCaretGradient(const lynx::tasm::CSSValue& value,
@@ -2960,7 +2950,7 @@ bool ComputedCSSStyle::SetWhiteSpace(const tasm::CSSValue& value,
   PrepareOptionalForTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<WhiteSpaceType>(
       value, reset, text_attributes_->white_space,
-      DefaultComputedStyle::DEFAULT_WHITE_SPACE, "white-space must be an enum!",
+      DefaultComputedStyle::DEFAULT_WHITE_SPACE, "white-space",
       parser_configs_);
 }
 
@@ -2969,7 +2959,7 @@ bool ComputedCSSStyle::SetFontWeight(const tasm::CSSValue& value,
   PrepareOptionalForTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<starlight::FontWeightType>(
       value, reset, text_attributes_->font_weight,
-      DefaultComputedStyle::DEFAULT_FONT_WEIGHT, "font weight must be an enum!",
+      DefaultComputedStyle::DEFAULT_FONT_WEIGHT, "font weight",
       parser_configs_);
 }
 
@@ -2978,7 +2968,7 @@ bool ComputedCSSStyle::SetXPlaceholderFontWeight(const tasm::CSSValue& value,
   PrepareOptionalForPlaceholderTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<starlight::FontWeightType>(
       value, reset, placeholder_text_attributes_->font_weight,
-      DefaultComputedStyle::DEFAULT_FONT_WEIGHT, "font weight must be an enum!",
+      DefaultComputedStyle::DEFAULT_FONT_WEIGHT, "font weight",
       parser_configs_);
 }
 
@@ -2987,8 +2977,7 @@ bool ComputedCSSStyle::SetWordBreak(const tasm::CSSValue& value,
   PrepareOptionalForTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<WordBreakType>(
       value, reset, text_attributes_->word_break,
-      DefaultComputedStyle::DEFAULT_WORD_BREAK, "word-break must be an enum!",
-      parser_configs_);
+      DefaultComputedStyle::DEFAULT_WORD_BREAK, "word-break", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetFontStyle(const tasm::CSSValue& value,
@@ -2996,8 +2985,7 @@ bool ComputedCSSStyle::SetFontStyle(const tasm::CSSValue& value,
   PrepareOptionalForTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<starlight::FontStyleType>(
       value, reset, text_attributes_->font_style,
-      DefaultComputedStyle::DEFAULT_FONT_STYLE, "font style must be an enum!",
-      parser_configs_);
+      DefaultComputedStyle::DEFAULT_FONT_STYLE, "font style", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetXPlaceholderFontStyle(const tasm::CSSValue& value,
@@ -3005,8 +2993,7 @@ bool ComputedCSSStyle::SetXPlaceholderFontStyle(const tasm::CSSValue& value,
   PrepareOptionalForPlaceholderTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<starlight::FontStyleType>(
       value, reset, placeholder_text_attributes_->font_style,
-      DefaultComputedStyle::DEFAULT_FONT_STYLE, "font style must be an enum!",
-      parser_configs_);
+      DefaultComputedStyle::DEFAULT_FONT_STYLE, "font style", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetTextAlign(const tasm::CSSValue& value,
@@ -3014,8 +3001,7 @@ bool ComputedCSSStyle::SetTextAlign(const tasm::CSSValue& value,
   PrepareOptionalForTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<starlight::TextAlignType>(
       value, reset, text_attributes_->text_align,
-      DefaultComputedStyle::DEFAULT_TEXT_ALIGN, "text align must be an enum!",
-      parser_configs_);
+      DefaultComputedStyle::DEFAULT_TEXT_ALIGN, "text align", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetTextOverflow(const tasm::CSSValue& value,
@@ -3023,8 +3009,8 @@ bool ComputedCSSStyle::SetTextOverflow(const tasm::CSSValue& value,
   PrepareOptionalForTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<starlight::TextOverflowType>(
       value, reset, text_attributes_->text_overflow,
-      DefaultComputedStyle::DEFAULT_TEXT_OVERFLOW,
-      "text overflow must be an enum!", parser_configs_);
+      DefaultComputedStyle::DEFAULT_TEXT_OVERFLOW, "text overflow",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetTextDecoration(const tasm::CSSValue& value,
@@ -3127,7 +3113,7 @@ bool ComputedCSSStyle::SetZIndex(const tasm::CSSValue& value,
   // not set. This change would also require modifications at the platform
   // layer.
   bool value_changed = CSSStyleUtils::ComputeIntStyle(
-      value, reset, z_index_, 0, "z-index must be a number!", parser_configs_);
+      value, reset, z_index_, 0, "z-index", parser_configs_);
 
   // Return true if either the numeric value changed OR the "has z-index"
   // semantic state changed (e.g. unset → z-index:0 or z-index:0 → unset).
@@ -3334,9 +3320,9 @@ bool ComputedCSSStyle::SetBorderStyle(const tasm::CSSValue& value,
 
 bool ComputedCSSStyle::SetAdaptFontSize(const tasm::CSSValue& value,
                                         const bool reset) {
-  return CSSStyleUtils::ComputeStringStyle(
-      value, reset, adapt_font_size_, base::String(),
-      "adapt-font-size must be a string!", parser_configs_);
+  return CSSStyleUtils::ComputeStringStyle(value, reset, adapt_font_size_,
+                                           base::String(), "adapt-font-size",
+                                           parser_configs_);
 }
 
 bool ComputedCSSStyle::SetOutline(const tasm::CSSValue& value,
@@ -3412,8 +3398,7 @@ bool ComputedCSSStyle::SetVerticalAlign(const tasm::CSSValue& value,
 bool ComputedCSSStyle::SetContent(const tasm::CSSValue& value,
                                   const bool reset) {
   return CSSStyleUtils::ComputeStringStyle(
-      value, reset, content_, base::String(), "content must be a string!",
-      parser_configs_);
+      value, reset, content_, base::String(), "content", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetListMainAxisGap(const tasm::CSSValue& value,
@@ -3506,15 +3491,15 @@ bool ComputedCSSStyle::SetOffsetDistance(const tasm::CSSValue& value,
                                          const bool reset) {
   return CSSStyleUtils::ComputeFloatStyle(
       value, reset, offset_distance_,
-      DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE,
-      "offset_distance must be a float!", parser_configs_);
+      DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE, "offset_distance",
+      parser_configs_);
 }
 
 bool ComputedCSSStyle::SetOffsetRotate(const tasm::CSSValue& value,
                                        const bool reset) {
   return CSSStyleUtils::ComputeFloatStyle(
       value, reset, offset_rotate_, DefaultComputedStyle::DEFAULT_OFFSET_ROTATE,
-      "offset_rotate must be a float!", parser_configs_);
+      "offset_rotate", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetOffsetPath(const tasm::CSSValue& value,
@@ -4683,7 +4668,7 @@ bool ComputedCSSStyle::SetImageRendering(const tasm::CSSValue& value,
                                          const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<ImageRenderingType>(
       value, reset, image_rendering_, ImageRenderingType::kAuto,
-      "image-rendering must be a number!", parser_configs_);
+      "image-rendering", parser_configs_);
 }
 
 lepus_value ComputedCSSStyle::ImageRenderingToLepus() {
@@ -4695,8 +4680,7 @@ bool ComputedCSSStyle::SetHyphens(const tasm::CSSValue& value,
   PrepareOptionalForTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<HyphensType>(
       value, reset, text_attributes_->hyphens,
-      DefaultComputedStyle::DEFAULT_HYPHENS, "hyphens must be an enum!",
-      parser_configs_);
+      DefaultComputedStyle::DEFAULT_HYPHENS, "hyphens", parser_configs_);
 }
 
 lepus_value ComputedCSSStyle::HyphensToLepus() {
@@ -4710,8 +4694,8 @@ lepus_value ComputedCSSStyle::HyphensToLepus() {
 bool ComputedCSSStyle::SetXAppRegion(const tasm::CSSValue& value,
                                      const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<XAppRegionType>(
-      value, reset, app_region_, XAppRegionType::kNone,
-      "app region must be an enum!", parser_configs_);
+      value, reset, app_region_, XAppRegionType::kNone, "app region",
+      parser_configs_);
 }
 
 lepus_value ComputedCSSStyle::XAppRegionToLepus() {
@@ -4723,14 +4707,14 @@ bool ComputedCSSStyle::SetXAnimationColorInterpolation(
   return CSSStyleUtils::ComputeEnumStyle<XAnimationColorInterpolationType>(
       value, reset, new_animator_interpolation_,
       XAnimationColorInterpolationType::kAuto,
-      "-x-animation-color-interpolation must be an enum", parser_configs_);
+      "-x-animation-color-interpolation", parser_configs_);
 }
 
 bool ComputedCSSStyle::SetXHandleColor(const tasm::CSSValue& value,
                                        const bool reset) {
-  return CSSStyleUtils::ComputeUIntStyle(
-      value, reset, handle_color_, DefaultColor::DEFAULT_COLOR,
-      "-x-handle-color must be a number!", parser_configs_);
+  return CSSStyleUtils::ComputeUIntStyle(value, reset, handle_color_,
+                                         DefaultColor::DEFAULT_COLOR,
+                                         "-x-handle-color", parser_configs_);
 }
 
 lepus_value ComputedCSSStyle::XHandleColorToLepus() {
@@ -4824,8 +4808,8 @@ bool ComputedCSSStyle::SetFontOpticalSizing(const tasm::CSSValue& value,
   PrepareOptionalForTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<FontOpticalSizingType>(
       value, reset, text_attributes_->font_optical_sizing,
-      DefaultComputedStyle::DEFAULT_FONT_OPTICAL_SIZING,
-      "font-optical-sizing must be an enum!", parser_configs_);
+      DefaultComputedStyle::DEFAULT_FONT_OPTICAL_SIZING, "font-optical-sizing",
+      parser_configs_);
 }
 
 lepus_value ComputedCSSStyle::FontOpticalSizingToLepus() {
@@ -4839,8 +4823,8 @@ lepus_value ComputedCSSStyle::FontOpticalSizingToLepus() {
 bool ComputedCSSStyle::SetPointerEvents(const tasm::CSSValue& value,
                                         const bool reset) {
   bool flush = CSSStyleUtils::ComputeEnumStyle<PointerEventsType>(
-      value, reset, pointer_events_, PointerEventsType::kAuto,
-      "pointer-events must be an enum!", parser_configs_);
+      value, reset, pointer_events_, PointerEventsType::kAuto, "pointer-events",
+      parser_configs_);
   return pointer_events_ == PointerEventsType::kAuto ? true : flush;
 }
 

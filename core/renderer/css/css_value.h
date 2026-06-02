@@ -76,15 +76,15 @@ using CustomPropertiesMap = base::LinearFlatMap<base::String, CSSValue>;
 using CustomPropertiesMapRef =
     starlight::DataRef<starlight::Copyable<CustomPropertiesMap>>;
 
-class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
+class CSSValue {
  public:
   CSSValue() {}  // __attr__ initialized to zero.
   ~CSSValue() { FreeValueStorage(); }
 
   CSSValue(const CSSValue& other);
   CSSValue& operator=(const CSSValue& other);
-  CSSValue(CSSValue&& other) noexcept;
-  CSSValue& operator=(CSSValue&& other) noexcept;
+  LYNX_EXPORT_FOR_DEVTOOL CSSValue(CSSValue&& other) noexcept;
+  LYNX_EXPORT_FOR_DEVTOOL CSSValue& operator=(CSSValue&& other) noexcept;
 
   CSSValue(const base::String& value, CSSValuePattern pattern,
            CSSValueType value_type);
@@ -144,18 +144,20 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
 
   // It is not recommended to construct CSSValue from opaque lepus::Value,
   // prefer other constructors.
-  CSSValue(const lepus::Value& value, CSSValuePattern pattern,
-           CSSValueType value_type = CSSValueType::DEFAULT);
-  CSSValue(lepus::Value&& value, CSSValuePattern pattern,
-           CSSValueType value_type = CSSValueType::DEFAULT);
+  LYNX_EXPORT_FOR_DEVTOOL CSSValue(
+      const lepus::Value& value, CSSValuePattern pattern,
+      CSSValueType value_type = CSSValueType::DEFAULT);
+  LYNX_EXPORT_FOR_DEVTOOL CSSValue(
+      lepus::Value&& value, CSSValuePattern pattern,
+      CSSValueType value_type = CSSValueType::DEFAULT);
 
-  lepus::Value GetValue() const;
+  LYNX_EXPORT_FOR_DEVTOOL lepus::Value GetValue() const;
   CSSValuePattern GetPattern() const { return pattern_; }
   CSSValueType GetValueType() const {
     return is_variable_ ? CSSValueType::VARIABLE : CSSValueType::DEFAULT;
   }
-  base::String GetDefaultValue() const;
-  lepus::Value GetDefaultValueMapOpt() const;
+  LYNX_EXPORT_FOR_DEVTOOL base::String GetDefaultValue() const;
+  LYNX_EXPORT_FOR_DEVTOOL lepus::Value GetDefaultValueMapOpt() const;
 
   void SetPattern(CSSValuePattern pattern) { pattern_ = pattern; }
   void SetValueAndPattern(const lepus::Value& value, CSSValuePattern pattern);
@@ -170,17 +172,17 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     return (T)AsNumber();
   }
 
-  fml::WeakRefPtr<lepus::CArray> GetArray() const&;
+  LYNX_EXPORT_FOR_DEVTOOL fml::WeakRefPtr<lepus::CArray> GetArray() const&;
   fml::RefPtr<lepus::CArray> GetArray() &&;
 
-  double GetNumber() const;
+  LYNX_EXPORT_FOR_DEVTOOL double GetNumber() const;
   double AsNumber() const { return GetNumber(); }
-  bool GetBool() const;
+  LYNX_EXPORT_FOR_DEVTOOL bool GetBool() const;
   bool AsBool() const { return GetBool(); }
 
   base::String AsString() const&;
   base::String AsString() &&;
-  const std::string& AsStdString() const;
+  LYNX_EXPORT_FOR_DEVTOOL const std::string& AsStdString() const;
 
   void SetArray(fml::RefPtr<lepus::CArray>&& array);
 
@@ -227,7 +229,8 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   bool IsIntrinsic() const { return pattern_ == CSSValuePattern::INTRINSIC; }
   bool IsSp() const { return pattern_ == CSSValuePattern::SP; }
 
-  std::string AsJsonString(bool map_key_ordered = false) const;
+  LYNX_EXPORT_FOR_DEVTOOL std::string AsJsonString(
+      bool map_key_ordered = false) const;
 
   friend bool operator==(const CSSValue& left, const CSSValue& right);
   friend bool operator!=(const CSSValue& left, const CSSValue& right) {
@@ -243,7 +246,7 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
       const CSSValue& css_value, const CustomPropertiesMap& variable_map,
       int max_depth = 10,
       const HandleCustomPropertyFunc& handle_func = nullptr);
-  static std::string SubstitutionResolved(
+  LYNX_EXPORT_FOR_DEVTOOL static std::string SubstitutionResolved(
       const CSSValue& css_value, const CustomPropertiesMap& variable_map,
       const HandleCustomPropertyFunc& handle_func = nullptr);
 
