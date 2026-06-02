@@ -32,11 +32,21 @@ using VSyncCallback = std::function<void(fml::TimePoint, fml::TimePoint)>;
 }
 
 - (void)destroy {
-  // The host may call CADisplayLink invalidate, so we should avoid calling it here.
+  CADisplayLink *displayLink = _displayLink;
+  _displayLink = nil;
+  callback_ = nullptr;
+  [displayLink invalidate];
+}
+
+- (void)dealloc {
+  [_displayLink invalidate];
 }
 
 - (void)onDisplayLink:(CADisplayLink *)link {
   _displayLink.paused = YES;
+  if (!callback_) {
+    return;
+  }
 
   CFTimeInterval delay = CACurrentMediaTime() - link.timestamp;
   fml::TimePoint frame_start_time = fml::TimePoint::Now() - fml::TimeDelta::FromSecondsF(delay);
@@ -85,6 +95,7 @@ VSyncMonitorMacOS::~VSyncMonitorMacOS() {
   destroying_.store(true);
 
   auto impl = impl_;
+  impl_ = nil;
   if (!runner_) {
     if (impl) {
       [impl destroy];
