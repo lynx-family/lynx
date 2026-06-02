@@ -503,13 +503,13 @@ lepus::Value CSSStyleUtils::ResolveCSSKeyframesStyle(
         key == tasm::kPropertyIDColor) {
       unsigned int color = 0;
       ComputeUIntStyle(value, false, color, DefaultColor::DEFAULT_COLOR,
-                       "background-color must be a number!", configs);
+                       "background-color", configs);
       dict->SetValue(tasm::CSSProperty::GetPropertyName(key), color);
     } else if (key == tasm::kPropertyIDOpacity) {
       float opacity = 1.0f;
       ComputeFloatStyle(value, false, opacity,
-                        DefaultComputedStyle::DEFAULT_FLOAT,
-                        "opacity must be a float!", configs);
+                        DefaultComputedStyle::DEFAULT_FLOAT, "opacity",
+                        configs);
       dict->SetValue(tasm::CSSProperty::GetPropertyName(key), opacity);
     } else if (key == tasm::kPropertyIDTransform) {
       // transform
@@ -562,7 +562,7 @@ bool CSSStyleUtils::ComputeBoolStyle(const tasm::CSSValue& value,
     dest = default_value;
   } else {
     CSS_HANDLER_FAIL_IF_NOT(value.IsBoolean(), configs.enable_css_strict_mode,
-                            msg)
+                            tasm::TYPE_MUST_BE, msg, tasm::BOOL_TYPE)
     dest = value.GetBool();
   }
   return old_value != dest;
@@ -579,7 +579,7 @@ inline bool ComputeNumberStyle(const tasm::CSSValue& value, const bool reset,
     dest = default_value;
   } else {
     CSS_HANDLER_FAIL_IF_NOT(value.IsNumber(), configs.enable_css_strict_mode,
-                            msg)
+                            tasm::TYPE_MUST_BE, msg, tasm::NUMBER_TYPE)
     dest = static_cast<T>(value.GetNumber());
   }
   // Use double for comparison to avoid precision issue.
@@ -600,7 +600,7 @@ inline bool ComputeNumberStyle(const tasm::CSSValue& value, const bool reset,
     dest = default_value;
   } else {
     CSS_HANDLER_FAIL_IF_NOT(value.IsNumber(), configs.enable_css_strict_mode,
-                            msg)
+                            tasm::TYPE_MUST_BE, msg, tasm::NUMBER_TYPE)
     dest = static_cast<uint32_t>(value.GetNumber());
   }
   return old_value != dest;
@@ -646,7 +646,7 @@ bool CSSStyleUtils::ComputeGridTrackSizing(
     max_dest = default_value;
   } else {
     CSS_HANDLER_FAIL_IF_NOT(value.IsArray(), configs.enable_css_strict_mode,
-                            msg)
+                            tasm::TYPE_MUST_BE, msg, tasm::ARRAY_TYPE)
     auto length_array = value.GetArray();
     std::vector<NLength> length_arr_min_result;
     std::vector<NLength> length_arr_max_result;
@@ -1050,7 +1050,7 @@ bool CSSStyleUtils::ComputeStringStyle(const tasm::CSSValue& value,
     dest = default_value;
   } else {
     CSS_HANDLER_FAIL_IF_NOT(value.IsString(), configs.enable_css_strict_mode,
-                            msg)
+                            tasm::TYPE_MUST_BE, msg, tasm::STRING_TYPE)
     dest = value.AsString();
   }
   return !old_value.IsEqual(dest);

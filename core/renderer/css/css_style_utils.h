@@ -127,7 +127,7 @@ class CSSStyleUtils {
       dest = default_value;
     } else {
       CSS_HANDLER_FAIL_IF_NOT(value.IsEnum(), configs.enable_css_strict_mode,
-                              msg)
+                              tasm::TYPE_MUST_BE, msg, tasm::ENUM_TYPE)
       dest = static_cast<T>(value.GetNumber());
     }
     return old_value != dest;

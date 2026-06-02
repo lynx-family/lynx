@@ -4,6 +4,8 @@
 %define lookup-function-name GetTokenValue
 %enum
 %readonly-tables
+%pic
+%global-table
 %{
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
@@ -12,7 +14,6 @@
 
 #include <cstring>
 
-#define size_t unsigned
 // NOLINTBEGIN(modernize-use-nullptr)
 namespace lynx{
 namespace tasm{

@@ -177,29 +177,29 @@ TemplateElement* GetTemplateElementFromValue(const lepus::Value& value) {
 
 #define CONVERT_ARG(name, index) lepus::Value* name = argv + index;
 
-#define CHECK_ARGC_EQ(name, count)                               \
-  do {                                                           \
-    if (argc != (count)) {                                       \
-      return RenderFatal(LEPUS_CONTEXT(),                        \
-                         #name " param size should be " #count); \
-    }                                                            \
+#define CHECK_ARGC_EQ(name, count)                                             \
+  do {                                                                         \
+    if (UNLIKELY(argc != (count))) {                                           \
+      return RenderFatal(LEPUS_CONTEXT(), "%s param size should be %d", #name, \
+                         count);                                               \
+    }                                                                          \
   } while (0)
 
-#define CONVERT_ARG_AND_CHECK(name, index, Type, FunName)                \
-  lepus::Value* name = argv + (index);                                   \
-  do {                                                                   \
-    if (!name->Is##Type()) {                                             \
-      return RenderFatal(LEPUS_CONTEXT(),                                \
-                         #FunName " param " #index " should be " #Type); \
-    }                                                                    \
+#define CONVERT_ARG_AND_CHECK(name, index, Type, FunName)             \
+  lepus::Value* name = argv + (index);                                \
+  do {                                                                \
+    if (UNLIKELY(!name->Is##Type())) {                                \
+      return RenderFatal(LEPUS_CONTEXT(), "%s param %d should be %s", \
+                         #FunName, index, #Type);                     \
+    }                                                                 \
   } while (0)
 
-#define CHECK_ARGC_GE(name, now_argc)                               \
-  do {                                                              \
-    if (argc < (now_argc)) {                                        \
-      return RenderFatal(LEPUS_CONTEXT(),                           \
-                         #name " param size should >= " #now_argc); \
-    }                                                               \
+#define CHECK_ARGC_GE(name, now_argc)                                          \
+  do {                                                                         \
+    if (UNLIKELY(argc < (now_argc))) {                                         \
+      return RenderFatal(LEPUS_CONTEXT(), "%s param size should >= %d", #name, \
+                         now_argc);                                            \
+    }                                                                          \
   } while (0)
 
 #define ARGC() argc
@@ -214,20 +214,20 @@ TemplateElement* GetTemplateElementFromValue(const lepus::Value& value) {
 #define GET_TASM_POINTER() \
   static_cast<TemplateAssembler*>(LEPUS_CONTEXT()->GetDelegate())
 
-#define CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(name, index, Type, FunName) \
-  CONVERT_ARG(name, index);                                               \
-  do {                                                                    \
-    if (!name->Is##Type()) {                                              \
-      ElementAPIError(#FunName " param " #index " should be " #Type);     \
-      RETURN_UNDEFINED();                                                 \
-    }                                                                     \
+#define CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(name, index, Type, FunName)  \
+  CONVERT_ARG(name, index);                                                \
+  do {                                                                     \
+    if (UNLIKELY(!name->Is##Type())) {                                     \
+      ElementAPIError("%s param %d should be %s", #FunName, index, #Type); \
+      RETURN_UNDEFINED();                                                  \
+    }                                                                      \
   } while (0);
 
-#define CHECK_ILLEGAL_ATTRIBUTE_CONFIG(name, FunName)                 \
-  if (name->IsAsyncResolveInvoked()) {                                \
-    ElementAPIError(#name " already trigger async resolve, " #FunName \
-                          " will be aborted");                        \
-    RETURN_UNDEFINED();                                               \
+#define CHECK_ILLEGAL_ATTRIBUTE_CONFIG(name, FunName)                       \
+  if (UNLIKELY(name->IsAsyncResolveInvoked())) {                            \
+    ElementAPIError("%s already trigger async resolve, %s will be aborted", \
+                    #name, #FunName);                                       \
+    RETURN_UNDEFINED();                                                     \
   }
 
 #define GET_IMPL_ID_AND_KEY(id, index_id, key, index_key, FuncName) \

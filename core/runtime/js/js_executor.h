@@ -35,7 +35,7 @@ class RuntimeManagerDelegate;
 namespace runtime {
 
 namespace js {
-class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
+class JSExecutor {
  public:
   JSExecutor(
       const std::string& group_id,
@@ -76,7 +76,8 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
   std::shared_ptr<ConsoleMessagePostMan> CreateConsoleMessagePostMan();
 
-  static runtime::RuntimeManager* GetCurrentRuntimeManagerInstance();
+  LYNX_EXPORT_FOR_DEVTOOL static runtime::RuntimeManager*
+  GetCurrentRuntimeManagerInstance();
 
   const std::shared_ptr<InspectorRuntimeObserverNG> GetRuntimeObserver() {
     return runtime_observer_ng_;

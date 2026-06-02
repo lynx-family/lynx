@@ -18,7 +18,7 @@ namespace lynx {
 namespace runtime {
 namespace profile {
 
-struct LYNX_EXPORT RuntimeProfile {
+struct RuntimeProfile {
   std::string runtime_profile_;
   uint64_t track_id_;
 

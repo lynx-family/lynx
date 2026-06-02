@@ -519,7 +519,7 @@ Value LynxProxy::FetchBundle(Runtime &rt) {
         if (!args[0].isString()) {
           return base::unexpected(
               BUILD_JSI_NATIVE_EXCEPTION(std::string(tasm::kFetchBundle) +
-                                         "'s first param must be a string."));
+                                         "'s first param must be string."));
         }
 
         auto bundle_url = args[0].getString(rt).utf8(rt);

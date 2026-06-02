@@ -8,33 +8,33 @@
 namespace lynx {
 namespace tasm {
 // css attr and style type
-constexpr char ANIMATION_PROPERTY[] = "animation-property";
-constexpr char BOOL_TYPE[] = "bool-type";
-constexpr char CUBIC_BEZIER[] = "cubic-bezier";
-constexpr char FLOAT_TYPE[] = "float-type";
-constexpr char SQUARE_BEZIER[] = "square-bezier";
-constexpr char STEP_VALUE[] = "step-value";
-constexpr char TIMING_FUNCTION[] = "timing-function";
-constexpr char TIME_VALUE[] = "time-value";
+static const char *ANIMATION_PROPERTY = "animation-property";
+static const char *BOOL_TYPE = "bool-type";
+static const char *CUBIC_BEZIER = "cubic-bezier";
+static const char *FLOAT_TYPE = "float-type";
+static const char *SQUARE_BEZIER = "square-bezier";
+static const char *STEP_VALUE = "step-value";
+static const char *TIMING_FUNCTION = "timing-function";
+static const char *TIME_VALUE = "time-value";
 
 // css warning info
-constexpr char TYPE_UNSUPPORTED[] = "%s don't support type:%s";
-constexpr char TYPE_MUST_BE[] = "%s must be %s";
-constexpr char STRING_TYPE[] = "a string!";
-constexpr char NUMBER_TYPE[] = "a number!";
-constexpr char ARRAY_TYPE[] = "an array!";
-constexpr char ARRAY_OR_MAP_TYPE[] = "an array or a map!";
-constexpr char ARRAY_OR_NUMBER_TYPE[] = "an array or a number!";
-constexpr char ENUM_TYPE[] = "an enum!";
-constexpr char INT_TYPE[] = "an int!";
-constexpr char STRING_OR_NUMBER_TYPE[] = "a string or number!";
-constexpr char STRING_OR_BOOL_TYPE[] = "a string or bool!";
-constexpr char FORMAT_ERROR[] = "%s format error:%s";
-constexpr char EMPTY_ERROR[] = "%s is empty!";
-constexpr char SIZE_ERROR[] = "%s size error:%d";
-constexpr char TYPE_ERROR[] = "%s type error";
-constexpr char CANNOT_REACH_METHOD[] = "method unreachable.";
-constexpr char SET_PROPERTY_ERROR[] = "set %s error.";
+static const char *TYPE_UNSUPPORTED = "%s don't support type:%s";
+static const char *TYPE_MUST_BE = "%s must be %s";
+static const char *STRING_TYPE = "a string!";
+static const char *NUMBER_TYPE = "a number!";
+static const char *ARRAY_TYPE = "an array!";
+static const char *ARRAY_OR_MAP_TYPE = "an array or a map!";
+static const char *ARRAY_OR_NUMBER_TYPE = "an array or a number!";
+static const char *ENUM_TYPE = "an enum!";
+static const char *INT_TYPE = "an int!";
+static const char *STRING_OR_NUMBER_TYPE = "a string or number!";
+static const char *STRING_OR_BOOL_TYPE = "a string or bool!";
+static const char *FORMAT_ERROR = "%s format error:%s";
+static const char *EMPTY_ERROR = "%s is empty!";
+static const char *SIZE_ERROR = "%s size error:%d";
+static const char *TYPE_ERROR = "%s type error";
+static const char *CANNOT_REACH_METHOD = "method unreachable.";
+static const char *SET_PROPERTY_ERROR = "set %s error.";
 }  // namespace tasm
 
 }  // namespace lynx
