@@ -126,6 +126,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   std::vector<float> getWindowSize(int id) override;
   std::vector<float> GetRectToWindow(int id) override;
   std::vector<float> GetRectToLynxView(int64_t id) override;
+  void getAbsolutePosition(int id, float* position) override;
   std::vector<float> ScrollBy(int64_t id, float width, float height) override;
   void Invoke(int64_t id, const std::string& method, const pub::Value& params,
               const std::function<void(int32_t code, const pub::Value& data)>&

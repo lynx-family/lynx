@@ -547,6 +547,20 @@ std::vector<float> PaintingContextDarwin::GetRectToLynxView(int64_t id) {
   return res;
 }
 
+void PaintingContextDarwin::getAbsolutePosition(int id, float* position) {
+  if (position == nullptr) {
+    return;
+  }
+  LynxUI* ui = [uiOwner_ findUIBySign:id];
+  if (ui != NULL) {
+    CGRect rect = [ui getBoundingClientRectToScreen];
+    position[0] = rect.origin.x;
+    position[1] = rect.origin.y;
+    position[2] = rect.size.width;
+    position[3] = rect.size.height;
+  }
+}
+
 std::vector<float> PaintingContextDarwin::ScrollBy(int64_t id, float width, float height) {
   auto runnable = ^{
     LynxUI* ui = [uiOwner_ findUIBySign:(int)id];

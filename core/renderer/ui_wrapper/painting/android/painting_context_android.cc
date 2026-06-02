@@ -1045,7 +1045,8 @@ std::vector<float> PaintingContextAndroid::getBoundingClientOrigin(int id) {
   for (auto i = 0; i < size; i++) {
     res.push_back(arr[i]);
   }
-  env->ReleaseFloatArrayElements(result.Get(), arr, 0);
+  // `arr` is read-only here; avoid copying it back to the Java heap.
+  env->ReleaseFloatArrayElements(result.Get(), arr, JNI_ABORT);
   return res;
 }
 
@@ -1107,6 +1108,34 @@ std::vector<float> PaintingContextAndroid::GetRectToLynxView(int64_t id) {
   }
   env->ReleaseFloatArrayElements(result.Get(), arr, 0);
   return res;
+}
+
+void PaintingContextAndroid::getAbsolutePosition(int id, float* position) {
+  if (position == nullptr) {
+    return;
+  }
+  base::android::ScopedLocalJavaRef<jobject> local_ref(*impl_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jfloatArray> result =
+      Java_PaintingContext_getRectToScreen(env, local_ref.Get(), id);
+  if (result.IsNull()) {
+    return;
+  }
+
+  jsize size = env->GetArrayLength(result.Get());
+  jfloat* arr = env->GetFloatArrayElements(result.Get(), nullptr);
+  if (arr == nullptr) {
+    return;
+  }
+
+  for (auto i = 0; i < size && i < 4; i++) {
+    position[i] = arr[i];
+  }
+  env->ReleaseFloatArrayElements(result.Get(), arr, JNI_ABORT);
 }
 
 std::vector<float> PaintingContextAndroid::ScrollBy(int64_t id, float width,

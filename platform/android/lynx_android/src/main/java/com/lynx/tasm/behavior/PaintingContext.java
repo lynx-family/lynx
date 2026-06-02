@@ -745,6 +745,28 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @CalledByNative
+  private float[] getRectToScreen(int sign) {
+    float[] res = new float[] {0, 0, 0, 0};
+    LynxBaseUI ui = mUIOwner.getNode(sign);
+    if (ui != null) {
+      // TODO(songshourui.null): Align this with transform-aware AABB semantics
+      // by reusing LynxUIHelper.convertRectFromUIToScreen / four-corner mapping.
+      float[] point = new float[] {0, 0};
+      ui.getLocationOnScreen(point);
+      float left = point[0];
+      float top = point[1];
+      point[0] = ui.getWidth();
+      point[1] = ui.getHeight();
+      ui.getLocationOnScreen(point);
+      res[0] = left;
+      res[1] = top;
+      res[2] = point[0] - left;
+      res[3] = point[1] - top;
+    }
+    return res;
+  }
+
+  @CalledByNative
   public float[] scrollBy(int sign, float width, float height) {
     if (UIThreadUtils.isOnUiThread()) {
       LynxBaseUI ui = mUIOwner.getNode(sign);

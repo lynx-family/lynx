@@ -303,6 +303,32 @@ std::vector<float> PaintingContextHarmony::GetRectToLynxView(int64_t id) {
   return std::vector<float>(result, result + 4);
 }
 
+void PaintingContextHarmony::getAbsolutePosition(int id, float* position) {
+  if (position == nullptr) {
+    return;
+  }
+  float result[4] = {0, 0, 0, 0};
+  bool found_ui = false;
+  auto task = base::MoveOnlyClosure<void>(
+      [platform_ref = platform_ref_, &result, &found_ui, id]() mutable {
+        auto harmony_ref =
+            std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
+        auto ui = harmony_ref->GetUIOwner()->FindUIBySign(id);
+        if (ui) {
+          found_ui = true;
+          ui->GetBoundingClientRect(result, true);
+        }
+      });
+  GetUIOwner()->GetUITaskRunner()->PostSyncTask(std::move(task));
+  if (!found_ui) {
+    return;
+  }
+  position[0] = result[0];
+  position[1] = result[1];
+  position[2] = result[2] - result[0];
+  position[3] = result[3] - result[1];
+}
+
 std::vector<float> PaintingContextHarmony::ScrollBy(int64_t id, float width,
                                                     float height) {
   auto* ui = GetUIOwner()->FindUIBySign(id);
