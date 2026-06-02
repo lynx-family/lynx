@@ -15,6 +15,7 @@ import { TemplateBundle } from './TemplateBundle';
 import { TemplateData } from './MetaData';
 import { SessionStorageCallback } from './SessionStorage';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
+import { LynxElement, createLynxElement } from './LynxElement';
 import { PerformanceController } from './performance/PerformanceController';
 import { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
 import { LynxLepusModule } from '../lepus/LynxLepusModule';
@@ -216,6 +217,29 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
 
   getAllJsSource(): Record<string, string> {
     return this.nativeGetAllJsSource();
+  }
+
+  isLynxElementRendererDestroyed(): boolean {
+    return this.destroyed;
+  }
+
+  /**
+   * Asynchronously obtains the root LynxElement for this renderer.
+   * The callback is always invoked asynchronously on the UI thread.
+   */
+  getLynxElementRoot(callback: (result: LynxElement | null) => void): void {
+    if (typeof callback !== 'function') {
+      return;
+    }
+    if (this.destroyed) {
+      setTimeout(() => {
+        callback(null);
+      }, 0);
+      return;
+    }
+    this.nativeGetLynxElementRoot((sign: number) => {
+      callback(sign !== 0 ? createLynxElement(this, sign) : null);
+    });
   }
 
   setPlatformConfig(config: string) {

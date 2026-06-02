@@ -4,6 +4,7 @@
 
 import { BusinessError } from '@ohos.base';
 import { LLog } from '../base/LLog';
+import { LynxElement } from './LynxElement';
 import { LynxTemplateRenderer } from './LynxTemplateRenderer';
 import { LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
 import { HarmonyUIRenderer } from './behavior/HarmonyUIRenderer';
@@ -553,6 +554,24 @@ export struct LynxView {
     } else {
       this.templateRenderer.callJSFunction('GlobalEventEmitter', 'emit', [name, params]);
     }
+  }
+
+  /**
+   * @apidoc
+   * @brief Asynchronously obtains the root LynxElement for this LynxView.
+   * @param callback Receives the root LynxElement, or null if no root is available. The callback is always invoked asynchronously on the UI thread.
+   */
+  getLynxElementRoot(callback: (result: LynxElement | null) => void): void {
+    if (typeof callback !== 'function') {
+      return;
+    }
+    if (!this.templateRenderer || this.templateRenderer.isLynxElementRendererDestroyed()) {
+      setTimeout(() => {
+        callback(null);
+      }, 0);
+      return;
+    }
+    this.templateRenderer.getLynxElementRoot(callback);
   }
 
   private reportLynxError(error: LynxError) {

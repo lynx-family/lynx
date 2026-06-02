@@ -205,6 +205,17 @@ export class LynxTemplateRenderer {
 
   nativeUnsubscribeSessionStorage(key: string, listenerId: number): void;
 
+  /**
+   * Asynchronously obtains the root LynxElement.
+   * The callback is always invoked asynchronously on the UI thread.
+   */
+  nativeGetLynxElementRoot(callback: (result: number) => void): void;
+
+  nativeLynxElementToJSONString(
+    sign: number,
+    callback: (result: string | null) => void
+  ): void;
+
   invokeLepusCallback(id: number, entryName: string, args: Object): void;
 }
 

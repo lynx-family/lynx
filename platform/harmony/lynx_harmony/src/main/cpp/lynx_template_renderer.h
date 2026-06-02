@@ -213,6 +213,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                                             napi_callback_info info);
   static napi_value UnsubscribeSessionStorage(napi_env env,
                                               napi_callback_info info);
+  static napi_value GetLynxElementRoot(napi_env env, napi_callback_info info);
+  static napi_value LynxElementToJSONString(napi_env env,
+                                            napi_callback_info info);
 
   static napi_value GetAllJsSource(napi_env env, napi_callback_info info);
   static napi_value InvokeLepusCallback(napi_env env, napi_callback_info info);

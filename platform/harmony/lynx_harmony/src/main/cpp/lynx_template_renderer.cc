@@ -16,9 +16,11 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/base/memory/memory_pressure_callback.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
+#include "core/renderer/utils/base/base_def.h"
 #include "core/runtime/js/bytecode/harmony/js_cache_manager_harmony.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
@@ -60,6 +62,55 @@ bool CheckNapiUnwrapObject(napi_status status, void* obj, const char* message) {
     return false;
   }
   return true;
+}
+
+bool IsNapiFunction(napi_env env, napi_value value) {
+  napi_valuetype type = napi_undefined;
+  napi_typeof(env, value, &type);
+  return type == napi_function;
+}
+
+void InvokeLynxElementRootCallback(napi_env env, napi_ref callback_ref,
+                                   int32_t sign) {
+  base::UIThread::GetRunner()->PostTask([env, callback_ref, sign]() {
+    base::NapiHandleScope scope(env);
+    napi_value callback = nullptr;
+    napi_get_reference_value(env, callback_ref, &callback);
+    if (callback == nullptr) {
+      napi_delete_reference(env, callback_ref);
+      return;
+    }
+    napi_value js_this = nullptr;
+    napi_get_undefined(env, &js_this);
+    napi_value arg = nullptr;
+    napi_create_int32(env, sign, &arg);
+    napi_call_function(env, js_this, callback, 1, &arg, nullptr);
+    napi_delete_reference(env, callback_ref);
+  });
+}
+
+void InvokeLynxElementJSONStringCallback(napi_env env, napi_ref callback_ref,
+                                         std::string json) {
+  base::UIThread::GetRunner()->PostTask(
+      [env, callback_ref, json = std::move(json)]() mutable {
+        base::NapiHandleScope scope(env);
+        napi_value callback = nullptr;
+        napi_get_reference_value(env, callback_ref, &callback);
+        if (callback == nullptr) {
+          napi_delete_reference(env, callback_ref);
+          return;
+        }
+        napi_value js_this = nullptr;
+        napi_get_undefined(env, &js_this);
+        napi_value arg = nullptr;
+        if (json.empty()) {
+          napi_get_null(env, &arg);
+        } else {
+          napi_create_string_utf8(env, json.c_str(), json.length(), &arg);
+        }
+        napi_call_function(env, js_this, callback, 1, &arg, nullptr);
+        napi_delete_reference(env, callback_ref);
+      });
 }
 
 void PrepareEnvWidthScreenSize(int width, int height, float density,
@@ -601,6 +652,9 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
                           SubscribeSessionStorage),
       DECLARE_NAPI_METHOD("nativeUnsubscribeSessionStorage",
                           UnsubscribeSessionStorage),
+      DECLARE_NAPI_METHOD("nativeGetLynxElementRoot", GetLynxElementRoot),
+      DECLARE_NAPI_METHOD("nativeLynxElementToJSONString",
+                          LynxElementToJSONString),
       DECLARE_NAPI_METHOD("nativeGetAllJsSource", GetAllJsSource),
       DECLARE_NAPI_METHOD("invokeLepusCallback", InvokeLepusCallback),
   };
@@ -1796,6 +1850,89 @@ napi_value LynxTemplateRenderer::UnsubscribeSessionStorage(
     napi_delete_reference(env, it->second);
     obj->session_storage_callback_refs_.erase(it);
   }
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::GetLynxElementRoot(napi_env env,
+                                                    napi_callback_info info) {
+  napi_value js_this = nullptr;
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  if (argc < 1 || !IsNapiFunction(env, args[0])) {
+    return nullptr;
+  }
+
+  napi_ref callback_ref = nullptr;
+  napi_create_reference(env, args[0], 1, &callback_ref);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "GetLynxElementRoot failed")) {
+    InvokeLynxElementRootCallback(env, callback_ref, tasm::kInvalidImplId);
+    return nullptr;
+  }
+
+  if (!obj->shell_ || obj->shell_->IsDestroyed()) {
+    InvokeLynxElementRootCallback(env, callback_ref, tasm::kInvalidImplId);
+    return nullptr;
+  }
+
+  obj->shell_->GetLynxElementRootSignAsync(
+      std::make_unique<shell::PlatformCallBack>(
+          [env, callback_ref](const lepus::Value& value) mutable {
+            int32_t sign = tasm::kInvalidImplId;
+            if (value.IsNumber()) {
+              sign = static_cast<int32_t>(value.Number());
+            }
+            InvokeLynxElementRootCallback(env, callback_ref, sign);
+          }));
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::LynxElementToJSONString(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this = nullptr;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  if (argc < 2 || !IsNapiFunction(env, args[1])) {
+    return nullptr;
+  }
+
+  int32_t sign = tasm::kInvalidImplId;
+  napi_get_value_int32(env, args[0], &sign);
+
+  napi_ref callback_ref = nullptr;
+  napi_create_reference(env, args[1], 1, &callback_ref);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "LynxElementToJSONString failed")) {
+    InvokeLynxElementJSONStringCallback(env, callback_ref, "");
+    return nullptr;
+  }
+
+  if (sign == tasm::kInvalidImplId || !obj->shell_ ||
+      obj->shell_->IsDestroyed()) {
+    InvokeLynxElementJSONStringCallback(env, callback_ref, "");
+    return nullptr;
+  }
+
+  obj->shell_->GetLynxElementTreeAsJSONStringAsync(
+      sign, std::make_unique<shell::PlatformCallBack>(
+                [env, callback_ref](const lepus::Value& value) mutable {
+                  std::string json;
+                  if (value.IsString()) {
+                    json = value.StdString();
+                  }
+                  InvokeLynxElementJSONStringCallback(env, callback_ref,
+                                                      std::move(json));
+                }));
   return nullptr;
 }
 
