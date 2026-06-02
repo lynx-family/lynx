@@ -39,8 +39,8 @@
 #if CLAY_ENABLE_SKSHAPER
 #include "third_party/skia/modules/skparagraph/include/FontCollection.h"  // nogncheck
 #elif defined(CLAY_ENABLE_TTTEXT)
-#include "third_party/textlayout/textra/public/textra/fontmgr_collection.h"  // nogncheck
-#include "third_party/textlayout/textra/public/textra/platform/skia/skia_font_manager.h"
+#include "third_party/textlayout/public/textra/fontmgr_collection.h"  // nogncheck
+#include "third_party/textlayout/public/textra/platform/skia/skia_font_manager.h"
 #endif
 
 namespace txt {

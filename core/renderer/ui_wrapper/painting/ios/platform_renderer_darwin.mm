@@ -100,8 +100,7 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
   if (display_list.HasContent()) {
     display_list_ = std::move(display_list);
 
-    UIView<LynxRendererHost>* view = GetUIView();
-    if (view != nil) {
+    if (_view != nil) {
       constexpr int kFrameValueCount = 4;
       if (display_list_.GetContentFloatData() &&
           display_list_.GetContentFloatDataSize() >= kFrameValueCount) {
@@ -114,22 +113,22 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
             CGRectMake(frame[0] + display_list_.GetRenderOffset()[0],
                        frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3]);
         UpdateUIOwnerLayout(CGRectMake(frame[0], frame[1], frame[2], frame[3]));
-        LynxCUIApplyLayoutFrame(view, layout_frame);
+        LynxCUIApplyLayoutFrame(_view, layout_frame);
 
-        if ([view conformsToProtocol:@protocol(LUIBodyView)]) {
-          ((UIView<LUIBodyView>*)view).intrinsicContentSize = CGSizeMake(frame[2], frame[3]);
+        if ([_view conformsToProtocol:@protocol(LUIBodyView)]) {
+          ((UIView<LUIBodyView>*)_view).intrinsicContentSize = CGSizeMake(frame[2], frame[3]);
         }
       }
 
-      [[view renderer] updateDisplayList:&display_list_];
-      [view setNeedsDisplay];
+      [[_view renderer] updateDisplayList:&display_list_];
+      [_view setNeedsDisplay];
     }
   }
 }
 
 void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                                                 bool tends_to_flatten) {
-  if (GetUIView() != nil && attributes && attributes->IsNative()) {
+  if (_view != nil && attributes && attributes->IsNative()) {
     // Convert NativePropBundle to PropBundleDarwin
     // The attributes should be a NativePropBundle from the pipeline
     auto prop_bundle_darwin = CreateDarwinPropBundle(attributes);
@@ -142,8 +141,7 @@ void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& a
                 lepusEventSet:prop_bundle_darwin->lepus_event_set()
            gestureDetectorSet:prop_bundle_darwin->gesture_detector_set()];
     }
-    UIView<LynxRendererHost>* update_view = GetUIView();
-    [[update_view renderer] updateAttributes:props];
+    [_view.renderer updateAttributes:props];
   }
 }
 
@@ -161,15 +159,14 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child) {
     return;
   }
 
-  UIView<LynxRendererHost>* view = GetUIView();
-  if (view == nil) {
+  if (_view == nil) {
     return;
   }
 
   if (child_view == nil) {
     return;
   }
-  [view addSubview:child_view];
+  [_view addSubview:child_view];
   [[child_view renderer] reattachHostDecorationLayers];
 }
 
@@ -177,33 +174,31 @@ void PlatformRendererDarwin::OnRemoveFromParent() {
   LynxUIOwner* owner = ui_owner_;
   if (ShouldDetachThroughUIOwner(owner, GetId())) {
     [owner detachNode:GetId()];
-    UIView<LynxRendererHost>* detach_view = GetUIView();
-    [[detach_view renderer] detachHostDecorationLayers];
+    [[_view renderer] detachHostDecorationLayers];
     return;
   }
 
-  UIView<LynxRendererHost>* view = GetUIView();
-  if (view == nil) {
+  if (_view == nil) {
     return;
   }
 
-  [[view renderer] detachHostDecorationLayers];
-  [view removeFromSuperview];
+  [[_view renderer] detachHostDecorationLayers];
+  [_view removeFromSuperview];
 }
 
 void PlatformRendererDarwin::OnUpdateSubtreeProperties(const DisplayList& subtree_properties) {
   size_t count = subtree_properties.GetSubtreePropertiesSize();
-  if (count == 0) {
-    return;
-  }
-
-  LynxRenderer* renderer = GetUIView().renderer;
-  if (renderer == nil) {
+  if (count == 0 || _view == nil) {
     return;
   }
 
   const SubtreeProperty* props = subtree_properties.GetSubtreePropertiesData();
   if (props == nullptr) {
+    return;
+  }
+
+  LynxRenderer* renderer = _view.renderer;
+  if (renderer == nil) {
     return;
   }
 
@@ -230,7 +225,7 @@ void PlatformRendererDarwin::InitializeUIView(const fml::RefPtr<PropBundle>& ini
       if (customHost && [customHost isKindOfClass:[UIView class]]) {
         // Safe to cast after confirming it's a UIView
         _view = (UIView<LynxRendererHost>*)customHost;
-        InitializeRendererForView(GetUIView(), initial_props);
+        InitializeRendererForView(_view, initial_props);
         return;
       }
     }
@@ -240,7 +235,7 @@ void PlatformRendererDarwin::InitializeUIView(const fml::RefPtr<PropBundle>& ini
     }
 
     _view = [[LynxContainerView alloc] init];
-    InitializeRendererForView(GetUIView(), initial_props);
+    InitializeRendererForView(_view, initial_props);
     return;
   } else {
     switch (GetPlatformRendererType()) {
@@ -266,7 +261,7 @@ void PlatformRendererDarwin::InitializeUIView(const fml::RefPtr<PropBundle>& ini
     }
   }
 
-  InitializeRendererForView(GetUIView());
+  InitializeRendererForView(_view);
 }
 
 bool PlatformRendererDarwin::ShouldCreatePlatformExtendedRenderer(
@@ -332,7 +327,7 @@ bool PlatformRendererDarwin::InitializeUIOwnerRenderer(const base::String& tag_n
   }
 
   _view = (UIView<LynxRendererHost>*)ui_view;
-  InitializeRendererForView(GetUIView(), props);
+  InitializeRendererForView(_view, props);
   return true;
 }
 
@@ -379,21 +374,21 @@ void PlatformRendererDarwin::CleanupUIView() {
     [owner recycleNode:GetId()];
   }
 
-  UIView<LynxRendererHost>* view = GetUIView();
-  if (view != nil) {
-    [[view renderer] detachHostDecorationLayers];
+  if (_view != nil) {
+    [[_view renderer] detachHostDecorationLayers];
     if (should_remove_from_native_parent) {
-      [view removeFromSuperview];
+      [_view removeFromSuperview];
     }
   }
 }
 
 void PlatformRendererDarwin::UpdatePlatformExtraBundle(id platform_extra_bundle) {
-  UIView<LynxRendererHost>* view = GetUIView();
-  if (view == nil) {
-    return;
+  if (_view != nil) {
+    LynxRenderer* renderer = _view.renderer;
+    if (renderer != nil) {
+      [renderer updatePlatformExtraBundle:platform_extra_bundle];
+    }
   }
-  [view.renderer updatePlatformExtraBundle:platform_extra_bundle];
 }
 
 }  // namespace tasm

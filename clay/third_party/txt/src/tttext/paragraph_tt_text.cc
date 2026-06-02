@@ -14,8 +14,8 @@
 #include "clay/third_party/txt/src/txt/font_collection_skity.h"
 #else
 #include "clay/third_party/txt/src/txt/font_collection_skia.h"
-#include "third_party/textlayout/textra/public/textra/platform/skia/skia_canvas_helper.h"
-#include "third_party/textlayout/textra/public/textra/run_delegate.h"
+#include "third_party/textlayout/public/textra/platform/skia/skia_canvas_helper.h"
+#include "third_party/textlayout/public/textra/run_delegate.h"
 #endif
 
 namespace txt {

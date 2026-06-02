@@ -212,7 +212,7 @@ public class LynxTemplateRender
   private boolean mAsyncRender;
   private LynxTheme mTheme;
   private TemplateData globalProps;
-  @Keep private LynxResourceLoader mResourceLoader;
+  private LynxResourceLoader mResourceLoader;
   private long mFirstMeasureTime = -1;
   private List<TemplateData> updatedDataList = new CopyOnWriteArrayList<>();
 
@@ -286,7 +286,7 @@ public class LynxTemplateRender
   private volatile NativeFacade mNativeFacade;
   private long mNativePtr = 0;
 
-  @Keep @Nullable private LynxResourceLoader mLoader;
+  @Nullable private LynxResourceLoader mLoader;
 
   private AtomicInteger mLynxGetDataCounter = new AtomicInteger(0);
   private SparseArray<LynxGetDataCallback> mCallbackSparseArray = new SparseArray<>();

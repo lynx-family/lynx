@@ -4,7 +4,7 @@
 
 #include "clay/gfx/image/graphics_image_skity_lazy.h"
 
-#include "skity/include/skity/geometry/vector.hpp"
+#include "skity/geometry/vector.hpp"
 
 namespace clay {
 

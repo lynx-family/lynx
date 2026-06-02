@@ -33,16 +33,16 @@ config("config") {
       "//third_party/skity",
       "//third_party/skity/third_party/glm",
       "//third_party/skity/include",
-      "//third_party/skity/skity/module/codec/include",
+      "//third_party/skity/module/codec/include",
 
       # textlayout
-      "//third_party/textlayout/textra/public",
+      "//third_party/textlayout/public",
 
       "//third_party/icu/source/common",
     ]
 
     if (is_win || is_mac) {
-      include_dirs += [ "//third_party/skity/skity/include" ]
+      include_dirs += [ "//third_party/skity/include" ]
       defines += [ "TTTEXT_OS_WIN" ]
     }
 
@@ -53,7 +53,7 @@ config("config") {
   } else {
     include_dirs += [
       # textlayout
-      "//third_party/textlayout/textra/public",
+      "//third_party/textlayout/public",
       "//third_party/skia/include",
 
       # use the independent skity geometry.

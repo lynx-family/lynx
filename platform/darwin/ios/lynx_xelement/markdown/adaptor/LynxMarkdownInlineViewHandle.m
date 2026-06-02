@@ -114,8 +114,7 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   void (^updateUI)(void) = ^{
     CGRect frame = ui.frame;
     frame.size = CGSizeMake(width, height);
-    [ui setFrame:frame];
-    [ui frameDidChange];
+    ui.frame = frame;
   };
   if ([NSThread isMainThread]) {
     updateUI();
@@ -135,8 +134,7 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   void (^updateUI)(void) = ^{
     CGRect frame = ui.frame;
     frame.origin = CGPointMake(left, top);
-    [ui setFrame:frame];
-    [ui frameDidChange];
+    ui.frame = frame;
   };
   if ([NSThread isMainThread]) {
     updateUI();

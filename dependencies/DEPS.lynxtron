@@ -198,6 +198,20 @@ deps = {
         'commit': 'f91b6b42b1b9854772a90ae9501464a161707d1e',
         "ignore_in_git": True,
     },
+    '../third_party/skity': {
+        'type': 'solution',
+        'url': 'https://github.com/lynx-family/skity.git',
+        'commit': '6a273d7f6ba9b39eb082c34eea1df3f4c3ccfd1f',
+        'deps_file': 'hab/DEPS',
+        'ignore_in_git': True,
+    },
+    '../third_party/textlayout': {
+        'type': 'git',
+        'url': 'https://github.com/lynx-family/lynx-textra.git',
+        'commit': '98b2713ea374702272b95791469b57820c98415b',
+        'enable_lfs': False,
+        'ignore_in_git': True,
+    },
     'clay/shell/platform/windows/resources/chromium_cursors': {
       "type": "http",
       "url": f"https://lf-lynx.tiktok-cdns.com/obj/lynx-artifacts-oss-sg/clay/chromium_cursors.zip",
