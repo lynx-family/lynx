@@ -233,12 +233,12 @@ subspec_target("Refresh") {
 
 subspec_target("Markdown") {
   sources = [
-    "markdown/LynxMarkdownShadowNode.h",
-    "markdown/LynxMarkdownShadowNode.m",
-    "markdown/LynxMarkdownUI.h",
-    "markdown/LynxMarkdownUI.m",
     "markdown/LynxMarkdownView.h",
     "markdown/LynxMarkdownView.m",
+    "markdown/LynxUIMarkdown.h",
+    "markdown/LynxUIMarkdown.m",
+    "markdown/LynxUIMarkdownShadowNode.h",
+    "markdown/LynxUIMarkdownShadowNode.m",
     "markdown/adaptor/LynxMarkdownBundle.h",
     "markdown/adaptor/LynxMarkdownBundle.m",
     "markdown/adaptor/LynxMarkdownEventDispatcher.h",
@@ -251,8 +251,8 @@ subspec_target("Markdown") {
     "markdown/adaptor/LynxServalMarkdownViewWrapper.m",
   ]
   public_header_files = [
-    "markdown/LynxMarkdownShadowNode.h",
-    "markdown/LynxMarkdownUI.h",
+    "markdown/LynxUIMarkdownShadowNode.h",
+    "markdown/LynxUIMarkdown.h",
     "markdown/LynxMarkdownView.h",
   ]
 
@@ -266,12 +266,12 @@ subspec_target("Markdown") {
 
 subspec_target("Behavior") {
   sources = [
-    "behavior/LynxMarkdownUIAutoRegistry.h",
-    "behavior/LynxMarkdownUIAutoRegistry.m",
     "behavior/LynxUIBlurViewAutoRegistry.h",
     "behavior/LynxUIBlurViewAutoRegistry.m",
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIInputAutoRegistry.m",
+    "behavior/LynxUIMarkdownAutoRegistry.h",
+    "behavior/LynxUIMarkdownAutoRegistry.m",
     "behavior/LynxUIOverlayAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.m",
     "behavior/LynxUIRefreshAutoRegistry.h",
@@ -289,7 +289,7 @@ subspec_target("Behavior") {
   ]
   public_header_files = [
     "behavior/LynxUIBlurViewAutoRegistry.h",
-    "behavior/LynxMarkdownUIAutoRegistry.h",
+    "behavior/LynxUIMarkdownAutoRegistry.h",
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.h",
     "behavior/LynxUIRefreshAutoRegistry.h",

@@ -8,7 +8,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxMarkdownShadowNodeV2 : LynxShadowNode <LynxCustomMeasureDelegate>
+@interface LynxUIMarkdownShadowNodeV2 : LynxShadowNode <LynxCustomMeasureDelegate>
 
 - (NSString *)currentContentID;
 

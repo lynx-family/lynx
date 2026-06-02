@@ -7,13 +7,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class LynxMarkdownShadowNodeV2;
+@class LynxUIMarkdownShadowNodeV2;
 
 @interface LynxServalMarkdownViewWrapper : ServalMarkdownView
 
-@property(nonatomic, weak, readonly, nullable) LynxMarkdownShadowNodeV2 *shadowNode;
+@property(nonatomic, weak, readonly, nullable) LynxUIMarkdownShadowNodeV2 *shadowNode;
 
-- (instancetype)initWithShadowNode:(nullable LynxMarkdownShadowNodeV2 *)shadowNode;
+- (instancetype)initWithShadowNode:(nullable LynxUIMarkdownShadowNodeV2 *)shadowNode;
 
 @end
 

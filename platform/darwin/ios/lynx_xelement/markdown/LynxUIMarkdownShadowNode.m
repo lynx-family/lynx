@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <XElement/LynxMarkdownShadowNode.h>
+#import <XElement/LynxUIMarkdownShadowNode.h>
 
 #import <UIKit/UIKit.h>
 
@@ -17,8 +17,8 @@
 #import "adaptor/LynxMarkdownResourceLoader.h"
 #import "adaptor/LynxServalMarkdownViewWrapper.h"
 
-@interface LynxMarkdownShadowNodeV2 () <LynxMarkdownResourceLoaderHost,
-                                        LynxMarkdownEventDispatcherHost>
+@interface LynxUIMarkdownShadowNodeV2 () <LynxMarkdownResourceLoaderHost,
+                                          LynxMarkdownEventDispatcherHost>
 @end
 
 static ServalMarkdownLayoutMode LynxMarkdownToServalLayoutMode(LynxMeasureMode mode) {
@@ -49,7 +49,7 @@ static uint32_t LynxMarkdownColorComponentToByte(CGFloat value) {
   return (uint32_t)(value * 255.f + 0.5f);
 }
 
-static uint32_t LynxMarkdownUIColorToARGB(UIColor *color) {
+static uint32_t LynxUIMarkdownColorToARGB(UIColor *color) {
   if (color == nil) {
     return 0;
   }
@@ -70,7 +70,7 @@ static uint32_t LynxMarkdownUIColorToARGB(UIColor *color) {
          (LynxMarkdownColorComponentToByte(green) << 8) | LynxMarkdownColorComponentToByte(blue);
 }
 
-@implementation LynxMarkdownShadowNodeV2 {
+@implementation LynxUIMarkdownShadowNodeV2 {
   LynxMarkdownBundleV2 *_bundle;
   LynxServalMarkdownViewWrapper *_markdownView;
   LynxMarkdownResourceLoader *_resourceLoader;
@@ -175,7 +175,7 @@ LYNX_PROP_SETTER("selection-background-color", setSelectionBackgroundColor, UICo
     value = nil;
   }
   [[self ensureMarkdownView] setColorProp:kServalMarkdownPropsSelectionHighlightColor
-                                    Value:LynxMarkdownUIColorToARGB(value)];
+                                    Value:LynxUIMarkdownColorToARGB(value)];
 }
 
 LYNX_PROP_SETTER("selection-handle-color", setSelectionHandleColor, UIColor *) {
@@ -183,7 +183,7 @@ LYNX_PROP_SETTER("selection-handle-color", setSelectionHandleColor, UIColor *) {
     value = nil;
   }
   [[self ensureMarkdownView] setColorProp:kServalMarkdownPropsSelectionHandleColor
-                                    Value:LynxMarkdownUIColorToARGB(value)];
+                                    Value:LynxUIMarkdownColorToARGB(value)];
 }
 
 LYNX_PROP_SETTER("selection-handle-size", setSelectionHandleSize, CGFloat) {

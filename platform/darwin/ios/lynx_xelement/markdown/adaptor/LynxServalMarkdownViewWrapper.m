@@ -4,7 +4,7 @@
 
 #import "LynxServalMarkdownViewWrapper.h"
 
-#import <XElement/LynxMarkdownShadowNode.h>
+#import <XElement/LynxUIMarkdownShadowNode.h>
 
 @implementation LynxServalMarkdownViewWrapper
 
@@ -12,7 +12,7 @@
   return [self initWithShadowNode:nil];
 }
 
-- (instancetype)initWithShadowNode:(LynxMarkdownShadowNodeV2 *_Nullable)shadowNode {
+- (instancetype)initWithShadowNode:(LynxUIMarkdownShadowNodeV2 *_Nullable)shadowNode {
   self = [super init];
   if (self != nil) {
     _shadowNode = shadowNode;

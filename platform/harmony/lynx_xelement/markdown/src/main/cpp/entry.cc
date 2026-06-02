@@ -50,7 +50,7 @@ LYNX_EXPORT UIBase* UILynxMarkdownCreateFunc(LynxContext* context, int sign,
   return CreateMarkdownUI(context, sign, tag);
 }
 
-LYNX_EXPORT ShadowNode* UILynxMarkdownShadowNodeCreateFunc(
+LYNX_EXPORT ShadowNode* LynxUIMarkdownShadowNodeCreateFunc(
     int sign, const std::string& tag) {
   return CreateMarkdownShadowNode(sign, tag);
 }

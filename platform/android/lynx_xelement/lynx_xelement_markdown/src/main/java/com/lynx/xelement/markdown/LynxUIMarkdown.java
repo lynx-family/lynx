@@ -26,15 +26,15 @@ import com.lynx.xelement.markdown.adaptor.LynxMarkdownView;
 import com.lynx.xelement.markdown.adaptor.LynxServalViewWrapper;
 import java.util.ArrayList;
 
-public class LynxMarkdownUI extends UIGroup<LynxMarkdownView> {
+public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
   private LynxMarkdownBundle mBundle;
   private LynxServalViewWrapper mMarkdown;
 
-  public LynxMarkdownUI(LynxContext context) {
+  public LynxUIMarkdown(LynxContext context) {
     this(context, null);
   }
 
-  public LynxMarkdownUI(LynxContext context, Object param) {
+  public LynxUIMarkdown(LynxContext context, Object param) {
     super(context, param);
   }
 

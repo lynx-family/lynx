@@ -35,7 +35,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class LynxMarkdownShadowNode
+public class LynxUIMarkdownShadowNode
     extends ShadowNode implements CustomMeasureFunc, MarkdownResourceContext, MarkdownEventContext {
   private LynxServalViewWrapper mMarkdown;
   private final LynxMarkdownBundle mBundle = new LynxMarkdownBundle();
@@ -48,7 +48,7 @@ public class LynxMarkdownShadowNode
   private final Looper mLayoutLooper;
   private Handler mLayoutHandler;
   private Choreographer.FrameCallback mFrameCallback;
-  public LynxMarkdownShadowNode() {
+  public LynxUIMarkdownShadowNode() {
     Markdown.ensureInitialized();
     setCustomMeasureFunc(this);
     mLayoutLooper = Looper.myLooper();
