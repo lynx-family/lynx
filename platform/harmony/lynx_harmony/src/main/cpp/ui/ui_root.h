@@ -5,7 +5,9 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_UI_ROOT_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_UI_ROOT_H_
 
+#include <memory>
 #include <string>
+
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_view.h"
 
 namespace lynx {
@@ -32,17 +34,25 @@ class UIRoot : public UIView {
   bool IsVisible() override;
   void OnNodeReady() override;
   bool EventThrough(float point[2]) override;
+  std::weak_ptr<EventTarget> ParentLynxPageUI() override;
+  void SetParentLynxPageUI(std::weak_ptr<EventTarget> parent) override;
+  EventTarget::LynxPageUIMap* ChildrenLynxPageUI() override;
+  void SetChildrenLynxPageUI(EventTarget::LynxPageUIMap children) override;
+  bool IsChildLynxPageUI() const { return is_child_lynx_page_ui_; }
 
  protected:
   UIRoot(LynxContext* context, int sign, const std::string& tag);
 
  private:
   bool are_gestures_attached_{false};
+  bool is_child_lynx_page_ui_{false};
   bool is_root_attached_{false};
   bool is_root_visible_{false};
   ArkUI_NodeHandle root_proxy_{nullptr};
   ArkUI_NodeHandle normal_sibling_{nullptr};
   ArkUI_NodeHandle transparent_sibling_{nullptr};
+  std::weak_ptr<EventTarget> parent_lynx_page_ui_;
+  std::unique_ptr<EventTarget::LynxPageUIMap> children_lynx_page_ui_map_;
 };
 
 }  // namespace harmony

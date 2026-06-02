@@ -104,13 +104,19 @@ void NativeFacadeHarmony::OnTemplateBundleReady(
 }
 
 void NativeFacadeHarmony::OnEventCapture(long target_id, bool is_catch,
-                                         int64_t event_id) {}
+                                         int64_t event_id) {
+  renderer_->OnEventCapture(target_id, is_catch, event_id);
+}
 
 void NativeFacadeHarmony::OnEventBubble(long target_id, bool is_catch,
-                                        int64_t event_id) {}
+                                        int64_t event_id) {
+  renderer_->OnEventBubble(target_id, is_catch, event_id);
+}
 
 void NativeFacadeHarmony::OnEventFire(long target_id, bool is_stop,
-                                      int64_t event_id) {}
+                                      int64_t event_id) {
+  renderer_->OnEventFire(target_id, is_stop, event_id);
+}
 
 void NativeFacadeHarmony::OnLynxEvent(const lepus::Value& event_detail) {}
 

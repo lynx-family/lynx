@@ -8,8 +8,10 @@
 #include <arkui/native_type.h>
 #include <arkui/ui_input_event.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace lynx {
@@ -53,6 +55,9 @@ enum class PseudoStatus {
 
 class EventTarget {
  public:
+  using LynxPageUIMap =
+      std::unordered_map<EventTarget*, std::weak_ptr<EventTarget>>;
+
   virtual EventTarget* ParentTarget() = 0;
 
   virtual EventTarget* HitTest(float point[2]) = 0;
@@ -106,6 +111,36 @@ class EventTarget {
   virtual int GestureArenaMemberId() { return 0; }
 
   virtual bool DispatchTouch(const ArkUI_UIInputEvent* event) { return false; }
+
+  virtual std::weak_ptr<EventTarget> ParentLynxPageUI() { return {}; }
+
+  virtual void SetParentLynxPageUI(std::weak_ptr<EventTarget> parent) {}
+
+  virtual LynxPageUIMap* ChildrenLynxPageUI() { return nullptr; }
+
+  virtual void SetChildrenLynxPageUI(LynxPageUIMap children) {}
+
+  virtual std::weak_ptr<EventTarget> RootLynxPageUI() {
+    EventTarget* current = this;
+    while (current && !current->ParentLynxPageUI().expired()) {
+      current = current->ParentLynxPageUI().lock().get();
+    }
+    return current ? current->WeakTarget() : std::weak_ptr<EventTarget>();
+  }
+
+  virtual void SetEventID(int64_t event_id) {}
+
+  virtual void StartEventCapture(int64_t event_id) {}
+
+  virtual void OnEventCapture(bool is_catch, int64_t event_id) {}
+
+  virtual void StartEventBubble(int64_t event_id) {}
+
+  virtual void OnEventBubble(bool is_catch, int64_t event_id) {}
+
+  virtual void StartEventFire(bool is_stop, int64_t event_id) {}
+
+  virtual void OnEventFire(bool is_stop, int64_t event_id) {}
 
   EventTarget* FirstUITarget() {
     EventTarget* current_target = this;

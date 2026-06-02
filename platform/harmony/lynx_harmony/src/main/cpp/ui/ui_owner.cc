@@ -128,9 +128,13 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
     ui = UIView::Make(context_.get(), sign, tag);
   }
 
-  ui_holder_[sign] = ui->IsRoot() ? root_ : std::shared_ptr<UIBase>(ui);
+  bool is_root_ui = ui->IsRoot();
+  ui_holder_[sign] = is_root_ui ? root_ : std::shared_ptr<UIBase>(ui);
   if (ui->NeedWindowStateChangeEvent()) {
     window_state_listeners_.insert(ui);
+  }
+  if (is_root_ui && attach_lynx_page_ui_callback_) {
+    attach_lynx_page_ui_callback_(ui);
   }
   UpdateComponentIdMap(ui, painting_data);
   ui->UpdateProps(painting_data);
@@ -458,6 +462,10 @@ void UIOwner::AttachPageRoot(NativeNodeContent* content) {
   Root()->AttachToNodeContent(content);
 }
 
+void UIOwner::SetAttachLynxPageUICallback(AttachLynxPageUICallback callback) {
+  attach_lynx_page_ui_callback_ = std::move(callback);
+}
+
 void UIOwner::UpdateExtraData(
     int sign, const fml::RefPtr<fml::RefCountedThreadSafeStorage>& extra_data) {
   if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
@@ -764,6 +772,7 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->current_avoid_distance_ = 0.f;
   obj->last_intrinsic_content_width_ = 0.f;
   obj->last_intrinsic_content_height_ = 0.f;
+  obj->attach_lynx_page_ui_callback_ = nullptr;
   obj->root_ = nullptr;
   napi_delete_reference(env, obj->js_create_);
   napi_delete_reference(env, obj->js_create_node_content_);
@@ -1093,6 +1102,38 @@ void UIOwner::SetLongPressDuration(int32_t long_press_duration) {
 
 void UIOwner::SendEvent(const LynxEvent& event) const {
   event_emitter_->SendEvent(event);
+}
+
+bool UIOwner::StartEventGenerate(const TouchEvent& touch_event) const {
+  if (!context_) {
+    return false;
+  }
+  return context_->StartEventGenerate(touch_event);
+}
+
+void UIOwner::SetEventID(int64_t event_id) {
+  event_emitter_->SetEventID(event_id);
+}
+
+void UIOwner::StartEventCapture(int64_t event_id) const {
+  if (!context_) {
+    return;
+  }
+  context_->StartEventCapture(event_id);
+}
+
+void UIOwner::StartEventBubble(int64_t event_id) const {
+  if (!context_) {
+    return;
+  }
+  context_->StartEventBubble(event_id);
+}
+
+void UIOwner::StartEventFire(bool is_stop, int64_t event_id) const {
+  if (!context_) {
+    return;
+  }
+  context_->StartEventFire(is_stop, event_id);
 }
 
 void UIOwner::HandleTouchEvent(const TouchEvent& touch_event) const {

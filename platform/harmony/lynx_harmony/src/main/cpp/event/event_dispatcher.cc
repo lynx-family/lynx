@@ -8,6 +8,7 @@
 #include <dlfcn.h>
 
 #include <atomic>
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -38,6 +39,8 @@ namespace {
 
 constexpr const char* kHitTargetStyle =
     "background-color:#9CC4E6;border-width:2px;border-color:red;";
+constexpr int64_t kCurrentLynxPageOnlyEventID =
+    std::numeric_limits<int64_t>::min();
 
 uint64_t NextRequestId(std::atomic<uint64_t>& request_id) {
   return request_id.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -614,8 +617,6 @@ void EventDispatcher::OnTouchUp(const ArkUI_UIInputEvent* event) {
       if (!enable_multi_touch_) {
         DispatchSingleTouchEvent(TouchEvent::UP, event);
       }
-      OnClickEvent(event);
-      ResetClickEnv();
       UpdateFocusedTarget();
       DeactivatePseudoStatus(PseudoStatus::kAll);
       break;
@@ -692,18 +693,26 @@ void EventDispatcher::GetTargetPoint(EventTarget* active_target,
 }
 
 void EventDispatcher::GetPagePoint(float page_point[2], float node_point[2]) {
-  if (!from_overlay_ || ui_owner_->Destroyed()) {
-    return;
-  }
-  auto root = ui_owner_->Root();
+  if (from_overlay_ && !ui_owner_->Destroyed()) {
+    auto root = ui_owner_->Root();
 
-  ArkUI_IntOffset page_offset;
-  OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root->GetProxyNode(),
-                                                      &page_offset);
-  float node_point_x = node_point[0], node_point_y = node_point[1];
-  float scaled_density = root->GetContext()->ScaledDensity();
-  page_point[0] = node_point_x - page_offset.x / scaled_density;
-  page_point[1] = node_point_y - page_offset.y / scaled_density;
+    ArkUI_IntOffset page_offset;
+    OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root->GetProxyNode(),
+                                                        &page_offset);
+    float node_point_x = node_point[0], node_point_y = node_point[1];
+    float scaled_density = root->GetContext()->ScaledDensity();
+    page_point[0] = node_point_x - page_offset.x / scaled_density;
+    page_point[1] = node_point_y - page_offset.y / scaled_density;
+  }
+  if (has_event_point_offset_) {
+    page_point[0] += event_point_offset_[0];
+    page_point[1] += event_point_offset_[1];
+  }
+}
+
+void EventDispatcher::GetEventPointOffset(float point_offset[2]) const {
+  point_offset[0] = has_event_point_offset_ ? event_point_offset_[0] : 0.f;
+  point_offset[1] = has_event_point_offset_ ? event_point_offset_[1] : 0.f;
 }
 
 void EventDispatcher::AddTargetTouchMap(lepus::Value& target_touch_map,
@@ -749,6 +758,13 @@ void EventDispatcher::AddTargetTouchMap(lepus::Value& target_touch_map,
         dict->SetValue(target_sign, std::move(array));
       }
     }
+  }
+}
+
+void EventDispatcher::MarkDispatchInCurrentLynxPageOnly(
+    TouchEvent& touch_event) const {
+  if (dispatch_touch_event_in_current_lynx_page_only_) {
+    touch_event.SetEventID(kCurrentLynxPageOnlyEventID);
   }
 }
 
@@ -820,20 +836,21 @@ void EventDispatcher::HandleTouchDown(const ArkUI_UIInputEvent* event) {
     DispatchMultiTouchEvent(TouchEvent::START, target_touch_map, event);
   }
   OnTouchDown(event);
+  DispatchTouchEventToChildLynxPage(event);
 }
 
 void EventDispatcher::HandleTouchMove(const ArkUI_UIInputEvent* event) {
   OnTouchMove(event);
-  if (!has_touch_moved_) {
-    return;
+  if (has_touch_moved_) {
+    auto target_touch_map = lepus::Value(lepus::Dictionary::Create());
+    AddTargetTouchMap(target_touch_map, event);
+    if (enable_multi_touch_) {
+      DispatchMultiTouchEvent(TouchEvent::MOVE, target_touch_map, event);
+    } else {
+      DispatchSingleTouchEvent(TouchEvent::MOVE, event);
+    }
   }
-  auto target_touch_map = lepus::Value(lepus::Dictionary::Create());
-  AddTargetTouchMap(target_touch_map, event);
-  if (enable_multi_touch_) {
-    DispatchMultiTouchEvent(TouchEvent::MOVE, target_touch_map, event);
-  } else {
-    DispatchSingleTouchEvent(TouchEvent::MOVE, event);
-  }
+  DispatchTouchEventToChildLynxPage(event);
 }
 
 void EventDispatcher::HandleTouchUp(const ArkUI_UIInputEvent* event) {
@@ -844,6 +861,7 @@ void EventDispatcher::HandleTouchUp(const ArkUI_UIInputEvent* event) {
   }
   OnTouchUp(event);
   ResetTouchEnv(event);
+  DispatchTouchEventToChildLynxPage(event);
 }
 
 void EventDispatcher::HandleTouchCancel(const ArkUI_UIInputEvent* event) {
@@ -856,6 +874,7 @@ void EventDispatcher::HandleTouchCancel(const ArkUI_UIInputEvent* event) {
   }
   OnTouchCancel(event);
   ResetTouchEnv(event);
+  DispatchTouchEventToChildLynxPage(event);
 }
 
 void EventDispatcher::ActivePseudoStatus() {
@@ -951,8 +970,190 @@ bool EventDispatcher::IsPrimaryInput(const ArkUI_UIInputEvent* event,
              UI_INPUT_EVENT_TOOL_TYPE_PEN;
 }
 
-void EventDispatcher::EventDispatcher::OnTouchEvent(
-    const ArkUI_UIInputEvent* event, UIBase* root, bool from_overlay) {
+bool EventDispatcher::ShouldDispatchInCurrentLynxPageOnly(UIBase* root) const {
+  return root != ui_owner_->Root();
+}
+
+UIBase* EventDispatcher::GetChildLynxPageUI(EventTarget* active_target) {
+  auto* children_lynx_page_ui = active_target->ChildrenLynxPageUI();
+  if (!children_lynx_page_ui) {
+    return nullptr;
+  }
+  auto child_it = children_lynx_page_ui->find(active_target);
+  if (child_it == children_lynx_page_ui->end()) {
+    return nullptr;
+  }
+  return static_cast<UIBase*>(child_it->second.lock().get());
+}
+
+void EventDispatcher::PrepareChildEventPointOffset(
+    const ArkUI_UIInputEvent* event, EventTarget* active_target,
+    float point_offset[2], float scale) {
+  float raw_page_point[2] = {
+      OH_ArkUI_PointerEvent_GetXByIndex(event, 0) / scale,
+      OH_ArkUI_PointerEvent_GetYByIndex(event, 0) / scale};
+  float page_point[2] = {raw_page_point[0], raw_page_point[1]};
+  GetPagePoint(page_point, page_point);
+  float target_point[2] = {page_point[0], page_point[1]};
+  GetTargetPoint(active_target, target_point, page_point);
+  point_offset[0] = target_point[0] - raw_page_point[0];
+  point_offset[1] = target_point[1] - raw_page_point[1];
+}
+
+void EventDispatcher::DispatchEventToChildLynxPage(
+    const ArkUI_UIInputEvent* event, ChildLynxPageEventType event_type,
+    float scale) {
+  auto active_target = first_active_target_.lock();
+  if (!active_target) {
+    return;
+  }
+  UIBase* child_lynx_page_ui = GetChildLynxPageUI(active_target.get());
+  if (!child_lynx_page_ui) {
+    return;
+  }
+  auto* child_event_dispatcher =
+      child_lynx_page_ui->GetContext()->GetUIOwner()->GetEventDispatcher();
+
+  float point_offset[2] = {0.f, 0.f};
+  PrepareChildEventPointOffset(event, active_target.get(), point_offset, scale);
+
+  child_event_dispatcher->has_event_point_offset_ = true;
+  child_event_dispatcher->event_point_offset_[0] = point_offset[0];
+  child_event_dispatcher->event_point_offset_[1] = point_offset[1];
+
+  switch (event_type) {
+    case ChildLynxPageEventType::kTouch: {
+      child_event_dispatcher->time_stamp_ = time_stamp_;
+      NodeManager::Instance().SetEventDispatcher(child_event_dispatcher);
+      auto action = OH_ArkUI_UIInputEvent_GetAction(event);
+      if (action == UI_TOUCH_EVENT_ACTION_DOWN) {
+        child_event_dispatcher->from_overlay_ = false;
+        child_event_dispatcher->root_target_ =
+            child_lynx_page_ui->weak_from_this();
+        child_event_dispatcher
+            ->dispatch_touch_event_in_current_lynx_page_only_ =
+            child_event_dispatcher->ShouldDispatchInCurrentLynxPageOnly(
+                child_lynx_page_ui);
+        child_event_dispatcher->HandleTouchDown(event);
+      } else if (!child_event_dispatcher->first_active_target_.expired() &&
+                 !child_event_dispatcher->active_target_finger_map_.empty()) {
+        if (child_event_dispatcher->EventThrough()) {
+          break;
+        }
+        switch (action) {
+          case UI_TOUCH_EVENT_ACTION_MOVE:
+            child_event_dispatcher->HandleTouchMove(event);
+            break;
+          case UI_TOUCH_EVENT_ACTION_UP:
+            child_event_dispatcher->HandleTouchUp(event);
+            break;
+          case UI_TOUCH_EVENT_ACTION_CANCEL:
+            child_event_dispatcher->HandleTouchCancel(event);
+            break;
+          default:
+            break;
+        }
+      }
+      break;
+    }
+    case ChildLynxPageEventType::kClick:
+      child_event_dispatcher->OnClickEvent(event);
+      child_event_dispatcher->ResetClickEnv();
+      break;
+    case ChildLynxPageEventType::kTap:
+      child_event_dispatcher->OnTapEvent(event);
+      break;
+    case ChildLynxPageEventType::kLongPress:
+      child_event_dispatcher->OnLongPressEvent(event);
+      break;
+  }
+
+  NodeManager::Instance().SetEventDispatcher(this);
+}
+
+void EventDispatcher::DispatchTouchEventToChildLynxPage(
+    const ArkUI_UIInputEvent* event) {
+  DispatchEventToChildLynxPage(event, ChildLynxPageEventType::kTouch);
+}
+
+void EventDispatcher::DispatchClickEventToChildLynxPage(
+    const ArkUI_UIInputEvent* event) {
+  DispatchEventToChildLynxPage(event, ChildLynxPageEventType::kClick);
+}
+
+void EventDispatcher::DispatchTapEventToChildLynxPage(
+    const ArkUI_UIInputEvent* event) {
+  float scale = ui_owner_->Context()->ScaledDensity();
+  DispatchEventToChildLynxPage(event, ChildLynxPageEventType::kTap, scale);
+}
+
+void EventDispatcher::DispatchLongPressEventToChildLynxPage(
+    const ArkUI_UIInputEvent* event) {
+  float scale = ui_owner_->Context()->ScaledDensity();
+  DispatchEventToChildLynxPage(event, ChildLynxPageEventType::kLongPress,
+                               scale);
+}
+
+void EventDispatcher::DispatchActiveTargetTouchEvent(
+    const ArkUI_UIInputEvent* event) {
+  auto active_target = first_active_target_.lock();
+  if (!active_target) {
+    return;
+  }
+  active_target->DispatchTouch(event);
+  DispatchActiveTargetTouchEventToChildLynxPage(event);
+}
+
+void EventDispatcher::DispatchActiveTargetTouchEventToChildLynxPage(
+    const ArkUI_UIInputEvent* event) {
+  auto active_target = first_active_target_.lock();
+  if (!active_target) {
+    return;
+  }
+  UIBase* child_lynx_page_ui = GetChildLynxPageUI(active_target.get());
+  if (!child_lynx_page_ui) {
+    return;
+  }
+  auto* child_event_dispatcher =
+      child_lynx_page_ui->GetContext()->GetUIOwner()->GetEventDispatcher();
+  child_event_dispatcher->DispatchActiveTargetTouchEvent(event);
+  NodeManager::Instance().SetEventDispatcher(this);
+}
+
+void EventDispatcher::DispatchTouchEventToChildGestureArena(
+    const std::string& event_name, const ArkUI_UIInputEvent* event) {
+  auto active_target = first_active_target_.lock();
+  if (!active_target) {
+    return;
+  }
+  UIBase* child_lynx_page_ui = GetChildLynxPageUI(active_target.get());
+  if (!child_lynx_page_ui) {
+    return;
+  }
+  auto* child_event_dispatcher =
+      child_lynx_page_ui->GetContext()->GetUIOwner()->GetEventDispatcher();
+  child_event_dispatcher->DispatchTouchEventToGestureArena(event_name, event);
+  NodeManager::Instance().SetEventDispatcher(this);
+}
+
+void EventDispatcher::DispatchTouchEventToGestureArena(
+    const std::string& event_name, const ArkUI_UIInputEvent* event) {
+  if (!first_active_target_.expired() && ui_owner_->GetGestureArenaManager()) {
+    if (event_name == TouchEvent::START) {
+      ui_owner_->SetActiveUIToGestureArenaAtDownEvent(first_active_target_);
+    }
+    if (last_touch_event_ != nullptr &&
+        (event_name == TouchEvent::START || event_name == TouchEvent::MOVE ||
+         event_name == TouchEvent::UP || event_name == TouchEvent::CANCEL)) {
+      ui_owner_->DispatchTouchEventToGestureArena(event_name, last_touch_event_,
+                                                  event);
+    }
+  }
+  DispatchTouchEventToChildGestureArena(event_name, event);
+}
+
+void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
+                                   UIBase* root, bool from_overlay) {
   if (ui_owner_->Destroyed()) {
     return;
   }
@@ -960,8 +1161,9 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
                     std::chrono::system_clock::now().time_since_epoch())
                     .count();
   NodeManager::Instance().SetEventDispatcher(this);
+  auto action = OH_ArkUI_UIInputEvent_GetAction(event);
   std::string event_name;
-  if (OH_ArkUI_UIInputEvent_GetAction(event) == UI_TOUCH_EVENT_ACTION_DOWN) {
+  if (action == UI_TOUCH_EVENT_ACTION_DOWN) {
     event_name = TouchEvent::START;
     float active_x = OH_ArkUI_PointerEvent_GetX(event);
     float active_y = OH_ArkUI_PointerEvent_GetY(event);
@@ -974,13 +1176,15 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
         runtime::CONSOLE_LOG_INFO);
     from_overlay_ = from_overlay;
     root_target_ = root->weak_from_this();
+    dispatch_touch_event_in_current_lynx_page_only_ =
+        ShouldDispatchInCurrentLynxPageOnly(root);
     HandleTouchDown(event);
   } else if (!first_active_target_.expired() &&
              !active_target_finger_map_.empty()) {
     if (EventThrough()) {
       return;
     }
-    switch (OH_ArkUI_UIInputEvent_GetAction(event)) {
+    switch (action) {
       case UI_TOUCH_EVENT_ACTION_MOVE: {
         event_name = TouchEvent::MOVE;
         HandleTouchMove(event);
@@ -997,6 +1201,8 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
                 " y: " + std::to_string(active_y),
             runtime::CONSOLE_LOG_INFO);
         HandleTouchUp(event);
+        OnClickEvent(event);
+        ResetClickEnv();
         break;
       }
       case UI_TOUCH_EVENT_ACTION_CANCEL: {
@@ -1016,25 +1222,12 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
   }
 
   if (EventThrough() ||
-      (OH_ArkUI_UIInputEvent_GetAction(event) == UI_TOUCH_EVENT_ACTION_MOVE &&
-       !has_touch_moved_)) {
+      (action == UI_TOUCH_EVENT_ACTION_MOVE && !has_touch_moved_)) {
     return;
   }
 
-  if (!first_active_target_.expired()) {
-    first_active_target_.lock()->DispatchTouch(event);
-  }
-  if (!first_active_target_.expired() && ui_owner_->GetGestureArenaManager()) {
-    if (event_name == TouchEvent::START) {
-      ui_owner_->SetActiveUIToGestureArenaAtDownEvent(first_active_target_);
-    }
-    if (last_touch_event_ != nullptr &&
-        (event_name == TouchEvent::START || event_name == TouchEvent::MOVE ||
-         event_name == TouchEvent::UP || event_name == TouchEvent::CANCEL)) {
-      ui_owner_->DispatchTouchEventToGestureArena(event_name, last_touch_event_,
-                                                  event);
-    }
-  }
+  DispatchActiveTargetTouchEvent(event);
+  DispatchTouchEventToGestureArena(event_name, event);
 }
 
 void EventDispatcher::DispatchSingleTouchEvent(
@@ -1066,6 +1259,8 @@ void EventDispatcher::DispatchSingleTouchEvent(
   touch_event.SetPagePoint(page_point);
   touch_event.SetClientPoint(client_point);
   touch_event.SetTimeStamp(OH_ArkUI_UIInputEvent_GetEventTime(event));
+  touch_event.SetTarget(first_active_target_);
+  MarkDispatchInCurrentLynxPageOnly(touch_event);
   ui_owner_->SendEvent(touch_event);
   last_touch_event_ = std::make_shared<TouchEvent>(touch_event);
 }
@@ -1075,6 +1270,8 @@ void EventDispatcher::DispatchMultiTouchEvent(
     const ArkUI_UIInputEvent* event) {
   TouchEvent touch_event(name, target_touch_map);
   touch_event.SetTimeStamp(time_stamp_);
+  touch_event.SetTarget(first_active_target_);
+  MarkDispatchInCurrentLynxPageOnly(touch_event);
   ui_owner_->SendEvent(touch_event);
   last_touch_event_ = std::make_shared<TouchEvent>(touch_event);
 }
@@ -1084,6 +1281,7 @@ void EventDispatcher::OnLongPressEvent(const ArkUI_UIInputEvent* event) {
     return;
   }
   DispatchSingleTouchEvent(TouchEvent::LONGPRESS, event);
+  DispatchLongPressEventToChildLynxPage(event);
 }
 
 void EventDispatcher::OnTapEvent(const ArkUI_UIInputEvent* event) {
@@ -1106,6 +1304,7 @@ void EventDispatcher::OnTapEvent(const ArkUI_UIInputEvent* event) {
                            std::to_string(first_active_target_.lock()->Sign()),
                        runtime::CONSOLE_LOG_INFO);
   DispatchSingleTouchEvent(TouchEvent::TAP, event);
+  DispatchTapEventToChildLynxPage(event);
 }
 
 void EventDispatcher::OnClickEvent(const ArkUI_UIInputEvent* event) {
@@ -1124,6 +1323,7 @@ void EventDispatcher::OnClickEvent(const ArkUI_UIInputEvent* event) {
     return;
   }
   DispatchSingleTouchEvent(TouchEvent::CLICK, event);
+  DispatchClickEventToChildLynxPage(event);
 }
 
 bool EventDispatcher::EventThrough() {

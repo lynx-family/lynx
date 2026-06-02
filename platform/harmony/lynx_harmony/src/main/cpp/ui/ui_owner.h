@@ -7,6 +7,7 @@
 
 #include <node_api.h>
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -35,6 +36,7 @@ class UIOwner {
   static ImageService* image_service;
   UIOwner();
   using UICreatorFunc = UIBase* (*)(LynxContext*, int, const std::string&);
+  using AttachLynxPageUICallback = std::function<void(UIBase*)>;
   static napi_value Init(napi_env env, napi_value exports);
   void CreateUI(int sign, const std::string& tag,
                 PropBundleHarmony* painting_data, uint32_t node_index);
@@ -130,6 +132,14 @@ class UIOwner {
   void SetHasTouchPseudo(bool has_touch_pseudo);
   void SetLongPressDuration(int32_t long_press_duration);
   void SendEvent(const LynxEvent& event) const;
+  bool StartEventGenerate(const TouchEvent& touch_event) const;
+  void SetEventID(int64_t event_id);
+  void StartEventCapture(int64_t event_id) const;
+  void StartEventBubble(int64_t event_id) const;
+  void StartEventFire(bool is_stop, int64_t event_id) const;
+  EventDispatcher* GetEventDispatcher() const {
+    return event_dispatcher_.get();
+  }
   void HandleTouchEvent(const TouchEvent& touch_event) const;
   void HandleMultiTouchEvent(const TouchEvent& touch_event) const;
   void HandleCustomEvent(const CustomEvent& custom_event) const;
@@ -193,6 +203,7 @@ class UIOwner {
 
   const std::string& Id() { return id_; }
   void AttachPageRoot(NativeNodeContent* native_node_content);
+  void SetAttachLynxPageUICallback(AttachLynxPageUICallback callback);
   bool HasAccessibilityExclusiveUI() {
     return !accessibility_exclusive_.empty();
   }
@@ -265,6 +276,7 @@ class UIOwner {
   // ark_ui_context into the lynxContext.
   ArkUI_ContextHandle ark_ui_context_{nullptr};
   std::shared_ptr<UIBase> root_{nullptr};
+  AttachLynxPageUICallback attach_lynx_page_ui_callback_;
 
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
   std::string id_;

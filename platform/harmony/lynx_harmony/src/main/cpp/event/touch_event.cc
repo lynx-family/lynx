@@ -38,6 +38,30 @@ void TouchEvent::GetClientPoint(float client_point[2]) const {
   client_point[1] = client_point_[1];
 }
 
+lepus::Value TouchEvent::EventParams() const {
+  auto event_params = lepus::CArray::Create();
+  event_params->emplace_back(Name());
+  event_params->emplace_back(static_cast<int>(EventType()));
+  event_params->emplace_back(ID());
+  event_params->emplace_back(TimeStamp());
+  event_params->emplace_back(EventID());
+
+  auto event_detail = lepus::CArray::Create();
+  event_detail->emplace_back(IsMultiTouch());
+  if (IsMultiTouch()) {
+    event_detail->emplace_back(lepus::Value::Clone(UITouchMap()));
+  } else {
+    event_detail->emplace_back(client_point_[0]);
+    event_detail->emplace_back(client_point_[1]);
+    event_detail->emplace_back(page_point_[0]);
+    event_detail->emplace_back(page_point_[1]);
+    event_detail->emplace_back(target_point_[0]);
+    event_detail->emplace_back(target_point_[1]);
+  }
+  event_params->emplace_back(std::move(event_detail));
+  return lepus::Value(event_params);
+}
+
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

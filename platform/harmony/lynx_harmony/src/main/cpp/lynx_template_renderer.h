@@ -8,6 +8,7 @@
 #include <node_api.h>
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -113,6 +114,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                         const std::vector<uint8_t>& source,
                         const std::shared_ptr<tasm::TemplateData>& data);
   void OnTemplateBundleReady(const tasm::LynxTemplateBundle& bundle);
+  void OnEventCapture(long target_id, bool is_catch, int64_t event_id);
+  void OnEventBubble(long target_id, bool is_catch, int64_t event_id);
+  void OnEventFire(long target_id, bool is_stop, int64_t event_id);
   void OnPageConfigDecoded(const std::shared_ptr<tasm::PageConfig>& config);
   lepus::Value TriggerLepusMethod(const std::string& method_name,
                                   const lepus::Value& args);

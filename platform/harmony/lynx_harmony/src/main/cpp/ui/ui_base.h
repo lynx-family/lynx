@@ -272,6 +272,18 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
                              PseudoStatus current_status) override;
   PseudoStatus GetPseudoStatus() override;
   bool HasUI() override { return true; };
+  std::weak_ptr<EventTarget> ParentLynxPageUI() override;
+  void SetParentLynxPageUI(std::weak_ptr<EventTarget> parent) override;
+  EventTarget::LynxPageUIMap* ChildrenLynxPageUI() override;
+  void SetChildrenLynxPageUI(EventTarget::LynxPageUIMap children) override;
+  std::weak_ptr<EventTarget> RootLynxPageUI() override;
+  void SetEventID(int64_t event_id) override;
+  void StartEventCapture(int64_t event_id) override;
+  void OnEventCapture(bool is_catch, int64_t event_id) override;
+  void StartEventBubble(int64_t event_id) override;
+  void OnEventBubble(bool is_catch, int64_t event_id) override;
+  void StartEventFire(bool is_stop, int64_t event_id) override;
+  void OnEventFire(bool is_stop, int64_t event_id) override;
   std::vector<std::string> EventSet() override { return events_; };
   void OnResponseChain() override { is_on_response_chain_ = true; };
   void OffResponseChain() override { is_on_response_chain_ = false; };
