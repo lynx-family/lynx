@@ -9,7 +9,7 @@ import os
 import sys
 from subprocess import check_call
 
-from build import DEFAULT_MODULES, LYNX_DIR, collect_module_config_list
+from build import LYNX_DIR, collect_module_config_list
 
 PLATFORM_HARMONY_DIR = os.path.normpath(os.path.join(LYNX_DIR, 'platform', 'harmony'))
 
@@ -34,22 +34,23 @@ def main():
 
     args = parser.parse_args()
 
+    module_config_list = collect_module_config_list(args)
+    default_modules = [module_config['name'] for module_config in module_config_list]
     if args.modules:
         if len(args.modules) == 1 and args.modules[0].lower() == "default":
-            modules = DEFAULT_MODULES
+            modules = default_modules
         else:
             modules = args.modules
     else:
-        modules = []
+        modules = default_modules
 
     for module in modules:
-        module_config_list = collect_module_config_list(args)
         for module_config in module_config_list:
             if module_config['name'] == module:
                 module_path = module_config['srcPath']
                 break
         else:
-            raise Exception(f'module {module} not found in build-profile.json5')
+            raise Exception(f'module {module} not found in build-profile.json5 or not type har')
         print(f'module {module} path: {module_path}')
         module_full_path = os.path.join(PLATFORM_HARMONY_DIR, module_path)
         publish(module_full_path, module)
