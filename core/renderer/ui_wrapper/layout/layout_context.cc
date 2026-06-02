@@ -368,11 +368,10 @@ void LayoutContext::ResetLayoutNodeStyle(int32_t id, CSSPropertyID css_id) {
 
 void LayoutContext::ResetLayoutNodeStyleInner(
     LayoutNode* node, lynx::tasm::CSSPropertyID css_id) {
-  if (node->slnode()->IsNewFixed()) {
-    UpdateFixedNodeSet(node, false);
-    node->slnode()->SetIsFixedBefore(false);
-  }
   node->ConsumeStyle(css_id, CSSValue(), true);
+  if (node->slnode()->GetEnableFixedNew()) {
+    CheckFixed(node);
+  }
 }
 
 void LayoutContext::UpdateLayoutNodeAttribute(int32_t id,
