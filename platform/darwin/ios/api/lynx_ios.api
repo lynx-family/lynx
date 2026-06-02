@@ -4431,7 +4431,7 @@ public class LynxUI : <__covariant V UIView> {
   public nullable V LynxUI::createView();
   public void LynxUI::updateFrame:withPadding:border:margin:withLayoutAnimation:(CGRect frame,[withPadding] UIEdgeInsets padding,[border] UIEdgeInsets border,[margin] UIEdgeInsets margin,[withLayoutAnimation] BOOL with);
   public void LynxUI::updateFrame:withPadding:border:withLayoutAnimation:(CGRect frame,[withPadding] UIEdgeInsets padding,[border] UIEdgeInsets border,[withLayoutAnimation] BOOL with);
-  public void LynxUI::updateSticky:(NSArray *info);
+  public void LynxUI::updateSticky:(nullable NSArray *info);
   public void LynxUI::checkStickyOnParentScroll:withOffsetY:(CGFloat offsetX,[withOffsetY] CGFloat offsetY);
   public void LynxUI::layoutDidFinished();
   public void LynxUI::finishLayoutOperation();

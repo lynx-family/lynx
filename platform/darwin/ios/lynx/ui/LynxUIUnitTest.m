@@ -5,6 +5,7 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
+#import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIView.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
@@ -12,11 +13,16 @@
 #include <objc/runtime.h>
 #import "LynxUI+Gesture.h"
 #import "LynxUI+Private.h"
+#import "LynxUIUnitTestUtils.h"
 
 @implementation LynxUI (Test)
 - (UIView *)createView {
   return nil;
 }
+@end
+
+@interface LynxUIContext (NewStickyUnitTest)
+- (void)setEnableNewSticky:(BOOL)enable;
 @end
 
 @interface LynxUIUnitTest : XCTestCase
@@ -141,6 +147,55 @@ void printAllIvarDetails(Class cls) {
     XCTFail("LynxUI size is beyond bar causing memory padding, wasting memory usage. Please check "
             "its ivar to reduce it size under bar.");
   }
+}
+
+- (void)testNewStickyCalculateTranslateClampsToParentRange {
+  LynxUIView *sticky = [[LynxUIView alloc] init];
+  LynxUIMockContext *mockContext = [LynxUIUnitTestUtils initUIMockContextWithUI:sticky];
+  [mockContext.mockUIContext setEnableNewSticky:YES];
+  [sticky updateFrame:CGRectMake(0, 100, 50, 40)
+              withPadding:UIEdgeInsetsZero
+                   border:UIEdgeInsetsZero
+      withLayoutAnimation:NO];
+
+  [sticky updateSticky:@[ @0, @10, @0, @0, @100, @200, @0, @100, @0, @50 ]];
+  // The 10-field payload includes parent size and relative offsets to the scroller.
+  // Parent bottom clamps the translation to 110 instead of using the larger self-only range.
+  [sticky calculateStickyTranslateWithOffset:250 isVertical:YES scrollerSize:200 maxOffset:300];
+
+  XCTAssertEqualWithAccuracy(sticky.backgroundManager.postTranslate.y, 110.f, 0.001f);
+}
+
+- (void)testNewStickyInvalidPayloadClearsStickyStateAndTranslate {
+  LynxUIView *sticky = [[LynxUIView alloc] init];
+  LynxUIMockContext *mockContext = [LynxUIUnitTestUtils initUIMockContextWithUI:sticky];
+  [mockContext.mockUIContext setEnableNewSticky:YES];
+  [sticky updateFrame:CGRectMake(0, 100, 50, 40)
+              withPadding:UIEdgeInsetsZero
+                   border:UIEdgeInsetsZero
+      withLayoutAnimation:NO];
+
+  // 1. First apply a valid 10-field payload, then pass 4-field sticky info.
+  // The new sticky path should clear stale sticky state and postTranslate.
+  [sticky updateSticky:@[ @0, @10, @0, @0, @(-1), @(-1), @0, @100, @0, @0 ]];
+  [sticky calculateStickyTranslateWithOffset:150 isVertical:YES scrollerSize:200 maxOffset:300];
+  XCTAssertEqualWithAccuracy(sticky.backgroundManager.postTranslate.y, 60.f, 0.001f);
+
+  [sticky updateSticky:@[ @0, @10, @0, @0 ]];
+
+  XCTAssertNil(sticky.sticky);
+  XCTAssertTrue(CGPointEqualToPoint(sticky.backgroundManager.postTranslate, CGPointZero));
+
+  // 2. Apply a valid 10-field payload, then pass nil sticky info.
+  // The new sticky path should clear stale sticky state and postTranslate.
+  [sticky updateSticky:@[ @0, @10, @0, @0, @(-1), @(-1), @0, @100, @0, @0 ]];
+  [sticky calculateStickyTranslateWithOffset:150 isVertical:YES scrollerSize:200 maxOffset:300];
+  XCTAssertEqualWithAccuracy(sticky.backgroundManager.postTranslate.y, 60.f, 0.001f);
+
+  [sticky updateSticky:nil];
+
+  XCTAssertNil(sticky.sticky);
+  XCTAssertTrue(CGPointEqualToPoint(sticky.backgroundManager.postTranslate, CGPointZero));
 }
 
 @end

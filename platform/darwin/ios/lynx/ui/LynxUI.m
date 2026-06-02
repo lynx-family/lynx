@@ -416,7 +416,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   // override by subclasses
 }
 
-- (void)updateSticky:(NSArray*)info {
+- (void)updateSticky:(nullable NSArray*)info {
   if (self.context.enableNewSticky) {
     [self updateNewSticky:info];
   } else {

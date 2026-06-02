@@ -8,10 +8,10 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Fluency.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUIScroller.h>
 #import <Lynx/LynxWeakProxy.h>
-#import <LynxUI+Private.h>
 #import <objc/runtime.h>
 
 #import <Lynx/LynxBounceView.h>

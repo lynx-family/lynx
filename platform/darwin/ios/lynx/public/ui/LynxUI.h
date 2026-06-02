@@ -160,7 +160,7 @@ typedef void (^LynxNodeReadyBlock)(LynxUI*);
                  border:(UIEdgeInsets)border
     withLayoutAnimation:(BOOL)with;
 
-- (void)updateSticky:(NSArray*)info;
+- (void)updateSticky:(nullable NSArray*)info;
 - (void)checkStickyOnParentScroll:(CGFloat)offsetX withOffsetY:(CGFloat)offsetY;
 
 // layoutDidFinish is called only LayoutRecursively is actually executed
