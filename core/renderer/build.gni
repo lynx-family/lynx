@@ -18,6 +18,7 @@ lynx_tasm_shared_sources = [
                              "lynx_env_config.h",
                              "lynx_global_pool.cc",
                              "lynx_global_pool.h",
+                             "node_info.h",
                              "page_proxy.cc",
                              "page_proxy.h",
                              "tasm/config.cc",
