@@ -61,13 +61,21 @@ TransformKeyframe::GetTransformKeyframeValueInElement(tasm::Element* element) {
 bool TransformKeyframe::SetValue(tasm::CSSPropertyID id,
                                  const tasm::CSSValue& value,
                                  tasm::Element* element) {
-  auto keyframe_transform_value =
-      HandleCSSVariableValueIfNeed(id, value, element);
+  css_value_ = value;
+  auto keyframe_transform_value = value;
+  if (element != nullptr) {
+    keyframe_transform_value = HandleCSSVariableValueIfNeed(id, value, element);
+  }
   if (!keyframe_transform_value.IsArray()) {
+    value_.reset();
     return false;
   }
-  css_value_ = value;
-  value_.reset();
+  if (element != nullptr) {
+    value_ = std::make_unique<transforms::TransformOperations>(
+        element, keyframe_transform_value);
+  } else {
+    value_.reset();
+  }
   MarkNonEmpty();
   return true;
 }

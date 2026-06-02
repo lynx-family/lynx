@@ -6,6 +6,7 @@
 
 #include "core/animation/css_transition_manager.h"
 
+#include <initializer_list>
 #include <memory>
 
 #include "core/animation/animation.h"
@@ -91,6 +92,35 @@ class CSSTransitionManagerTest : public ::testing::Test {
     manager->SetEnableNewAnimatorRadon(true);
     auto test_element = manager->CreateFiberElement("view");
     return test_element;
+  }
+
+  void SetTransitionProperties(
+      starlight::ComputedCSSStyle& style,
+      std::initializer_list<starlight::AnimationPropertyType> properties) {
+    auto& transition_data = style.transition_data();
+    transition_data.clear();
+    for (const auto property : properties) {
+      transition_data.properties.push_back(property);
+    }
+    transition_data.durations.push_back(2000);
+    transition_data.delays.push_back(0);
+    transition_data.timing_funcs.emplace_back();
+  }
+
+  const tasm::CSSValue* FindTransitionKeyframeValue(
+      animation::MockCSSTransitionManager* manager,
+      const base::String& transition_name, float offset,
+      tasm::CSSPropertyID id) {
+    auto token_it = manager->keyframe_tokens().find(transition_name);
+    if (token_it == manager->keyframe_tokens().end()) {
+      return nullptr;
+    }
+    auto offset_it = token_it->second.find(offset);
+    if (offset_it == token_it->second.end() || offset_it->second == nullptr) {
+      return nullptr;
+    }
+    auto style_it = offset_it->second->find(id);
+    return style_it == offset_it->second->end() ? nullptr : &style_it->second;
   }
 };
 
@@ -506,6 +536,108 @@ TEST_F(CSSTransitionManagerTest, ClearEffect) {
     // animation does not require applying the end effect.
     EXPECT_TRUE(test_manager->GetClearEffectAnimationName() == "left");
   }
+}
+
+TEST_F(CSSTransitionManagerTest,
+       NewPipelineUpdatesLayoutOnlyAndCanonicalTransitionsInOnePass) {
+  auto test_element = InitElement();
+  auto test_manager = InitTestTransitionManager(test_element.get());
+
+  starlight::ComputedCSSStyle previous_base_style{1.f, 1.f};
+  starlight::ComputedCSSStyle previous_final_style{1.f, 1.f};
+  starlight::ComputedCSSStyle new_base_style{1.f, 1.f};
+  SetTransitionProperties(new_base_style,
+                          {starlight::AnimationPropertyType::kWidth,
+                           starlight::AnimationPropertyType::kOpacity});
+
+  previous_base_style.SetValue(tasm::kPropertyIDOpacity,
+                               tasm::CSSValue(0.2, CSSValuePattern::NUMBER));
+  previous_final_style.SetValue(tasm::kPropertyIDOpacity,
+                                tasm::CSSValue(0.4, CSSValuePattern::NUMBER));
+  new_base_style.SetValue(tasm::kPropertyIDOpacity,
+                          tasm::CSSValue(0.8, CSSValuePattern::NUMBER));
+  previous_final_style.SetValue(tasm::kPropertyIDWidth,
+                                tasm::CSSValue(30, CSSValuePattern::PX));
+
+  tasm::StyleMap previous_underlying_layout_only_styles;
+  previous_underlying_layout_only_styles.insert_or_assign(
+      tasm::kPropertyIDWidth, tasm::CSSValue(10, CSSValuePattern::PX));
+  tasm::StyleMap new_underlying_layout_only_styles;
+  new_underlying_layout_only_styles.insert_or_assign(
+      tasm::kPropertyIDWidth, tasm::CSSValue(50, CSSValuePattern::PX));
+
+  test_manager->UpdateTransitionsForNewPipeline(
+      previous_base_style, previous_final_style, new_base_style,
+      previous_underlying_layout_only_styles,
+      new_underlying_layout_only_styles);
+
+  EXPECT_TRUE(test_manager->animations_map().count(base::String("width")));
+  EXPECT_TRUE(test_manager->animations_map().count(base::String("opacity")));
+
+  const auto* width_start = FindTransitionKeyframeValue(
+      test_manager.get(), base::String("width"), 0.f, tasm::kPropertyIDWidth);
+  ASSERT_NE(nullptr, width_start);
+  EXPECT_EQ(*width_start, tasm::CSSValue(30, CSSValuePattern::PX));
+  const auto* width_end = FindTransitionKeyframeValue(
+      test_manager.get(), base::String("width"), 1.f, tasm::kPropertyIDWidth);
+  ASSERT_NE(nullptr, width_end);
+  EXPECT_EQ(*width_end, tasm::CSSValue(50, CSSValuePattern::PX));
+
+  const auto* opacity_start =
+      FindTransitionKeyframeValue(test_manager.get(), base::String("opacity"),
+                                  0.f, tasm::kPropertyIDOpacity);
+  ASSERT_NE(nullptr, opacity_start);
+  EXPECT_EQ(*opacity_start, tasm::CSSValue(0.4, CSSValuePattern::NUMBER));
+  const auto* opacity_end =
+      FindTransitionKeyframeValue(test_manager.get(), base::String("opacity"),
+                                  1.f, tasm::kPropertyIDOpacity);
+  ASSERT_NE(nullptr, opacity_end);
+  EXPECT_EQ(*opacity_end, tasm::CSSValue(0.8, CSSValuePattern::NUMBER));
+}
+
+TEST_F(CSSTransitionManagerTest,
+       NewPipelineStopsCanonicalTransitionWithPendingCancelEvent) {
+  auto test_element = InitElement();
+  auto test_manager = InitTestTransitionManager(test_element.get());
+
+  starlight::ComputedCSSStyle previous_base_style{1.f, 1.f};
+  starlight::ComputedCSSStyle previous_final_style{1.f, 1.f};
+  starlight::ComputedCSSStyle new_base_style{1.f, 1.f};
+  SetTransitionProperties(new_base_style,
+                          {starlight::AnimationPropertyType::kOpacity});
+  previous_base_style.SetValue(tasm::kPropertyIDOpacity,
+                               tasm::CSSValue(0.2, CSSValuePattern::NUMBER));
+  previous_final_style.SetValue(tasm::kPropertyIDOpacity,
+                                tasm::CSSValue(0.2, CSSValuePattern::NUMBER));
+  new_base_style.SetValue(tasm::kPropertyIDOpacity,
+                          tasm::CSSValue(0.8, CSSValuePattern::NUMBER));
+
+  tasm::StyleMap empty_layout_only_styles;
+  test_manager->UpdateTransitionsForNewPipeline(
+      previous_base_style, previous_final_style, new_base_style,
+      empty_layout_only_styles, empty_layout_only_styles);
+  ASSERT_TRUE(test_manager->animations_map().count(base::String("opacity")));
+
+  starlight::ComputedCSSStyle stop_previous_base_style{1.f, 1.f};
+  starlight::ComputedCSSStyle stop_previous_final_style{1.f, 1.f};
+  starlight::ComputedCSSStyle stop_new_base_style{1.f, 1.f};
+  SetTransitionProperties(stop_new_base_style,
+                          {starlight::AnimationPropertyType::kOpacity});
+  stop_previous_base_style.SetValue(
+      tasm::kPropertyIDOpacity, tasm::CSSValue(0.2, CSSValuePattern::NUMBER));
+  stop_previous_final_style.SetValue(
+      tasm::kPropertyIDOpacity, tasm::CSSValue(0.8, CSSValuePattern::NUMBER));
+  stop_new_base_style.SetValue(tasm::kPropertyIDOpacity,
+                               tasm::CSSValue(0.8, CSSValuePattern::NUMBER));
+
+  test_manager->UpdateTransitionsForNewPipeline(
+      stop_previous_base_style, stop_previous_final_style, stop_new_base_style,
+      empty_layout_only_styles, empty_layout_only_styles);
+
+  EXPECT_FALSE(test_manager->animations_map().count(base::String("opacity")));
+  auto cancel_events = test_manager->TakePendingAnimationEventsForNewPipeline();
+  ASSERT_EQ(1U, cancel_events.size());
+  EXPECT_TRUE(cancel_events[0].send_cancel_event);
 }
 
 }  // namespace testing

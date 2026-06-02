@@ -227,6 +227,40 @@ TEST_F(AnimationTest, CheckStartTime) {
   EXPECT_TRUE(test_animation->start_time() == tick_time);
 }
 
+TEST_F(AnimationTest, PlayFromStoppedStateClearsPauseTimingForReuse) {
+  auto test_animation = InitTestAnimation();
+  auto test_animation_data =
+      InitAnimationData(lynx::base::String("test_animation"), 4000, 0,
+                        starlight::TimingFunctionData(), 1,
+                        starlight::AnimationFillModeType::kBoth,
+                        starlight::AnimationDirectionType::kNormal,
+                        starlight::AnimationPlayStateType::kRunning);
+  test_animation->UpdateAnimationData(test_animation_data);
+
+  test_animation->Play(false);
+  auto start_time =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1000));
+  test_animation->SampleAt(start_time);
+
+  test_animation->Pause();
+  auto pause_time =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1500));
+  test_animation->SampleAt(pause_time);
+  EXPECT_EQ(test_animation->pause_time(), pause_time);
+
+  test_animation->Play(false);
+  auto resume_time =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(2500));
+  test_animation->SampleAt(resume_time);
+  EXPECT_EQ(test_animation->total_paused_duration(),
+            fml::TimeDelta::FromMilliseconds(1000));
+
+  test_animation->Stop();
+  test_animation->Play(false);
+  EXPECT_EQ(test_animation->pause_time(), fml::TimePoint::Min());
+  EXPECT_EQ(test_animation->total_paused_duration(), fml::TimeDelta::Zero());
+}
+
 TEST_F(AnimationTest, SendStartEvent) {
   auto test_animation = InitTestAnimation();
   auto test_animation_data = starlight::AnimationData();

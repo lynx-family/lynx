@@ -266,7 +266,7 @@ TEST_F(TransformAnimationCurveTest, GetTransformKeyframeValueInElement) {
       TransformKeyframe::GetTransformKeyframeValueInElement(element1.get());
   transforms::TransformOperations operations(element1.get(), raw_value);
   EXPECT_EQ(operations.size(), static_cast<size_t>(3));
-  EXPECT_EQ(transform_in_element_1.size(), static_cast<size_t>(0));
+  EXPECT_EQ(transform_in_element_1.size(), operations.size());
 }
 
 TEST_F(TransformAnimationCurveTest, SetValue) {
@@ -295,6 +295,33 @@ TEST_F(TransformAnimationCurveTest, SetValue) {
   bool set_success2 = test_frame->SetValue(id, raw_value2, test_element);
   EXPECT_EQ(set_success2, true);
   EXPECT_EQ(test_frame->IsEmpty(), false);
+}
+
+TEST_F(TransformAnimationCurveTest, SetValueWithoutElementDefersResolve) {
+  auto test_element_ptr = InitTestElement();
+  auto test_element = test_element_ptr.get();
+  auto test_frame = TransformKeyframe::Create(fml::TimeDelta(), nullptr);
+  auto id = lynx::tasm::CSSPropertyID::kPropertyIDTransform;
+  lynx::tasm::CSSParserConfigs configs;
+
+  lynx::tasm::StyleMap output1;
+  auto impl1 = lepus::Value("scale(0.1)");
+  EXPECT_TRUE(lynx::tasm::UnitHandler::Process(id, impl1, output1, configs));
+  ASSERT_TRUE(output1[id].IsArray());
+  EXPECT_TRUE(test_frame->SetValue(id, output1[id], test_element));
+  EXPECT_NE(test_frame->Value(), nullptr);
+
+  lynx::tasm::StyleMap output2;
+  auto impl2 = lepus::Value("scale(1.1)");
+  EXPECT_TRUE(lynx::tasm::UnitHandler::Process(id, impl2, output2, configs));
+  ASSERT_TRUE(output2[id].IsArray());
+  EXPECT_TRUE(test_frame->SetValue(id, output2[id], nullptr));
+  EXPECT_FALSE(test_frame->IsEmpty());
+  EXPECT_EQ(test_frame->Value(), nullptr);
+
+  EXPECT_TRUE(test_frame->EnsureResolvedValue(id, test_element));
+  ASSERT_NE(test_frame->Value(), nullptr);
+  EXPECT_EQ(test_frame->Value()->size(), static_cast<size_t>(1));
 }
 
 TEST_F(TransformAnimationCurveTest, CreateTransformAnimationCurve) {

@@ -2,10 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <limits>
 #include <memory>
 
 #include "core/animation/keyframed_animation_curve.h"
 #include "gfx/animation/animation_keyframe_model.h"
+#include "gfx/animation/animation_timing.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -25,6 +27,212 @@ std::unique_ptr<gfx::KeyframeModel> InitTestModel() {
   test_frame2->SetOpacity(0.0f);
   test_curve->AddKeyframe(std::move(test_frame2));
   return gfx::KeyframeModel::Create(std::move(test_curve));
+}
+
+fml::TimePoint TimePointFromMs(int64_t milliseconds) {
+  return fml::TimePoint::FromEpochDelta(
+      fml::TimeDelta::FromMilliseconds(milliseconds));
+}
+
+gfx::AnimationData MakeTimingData(
+    int iteration_count = 1,
+    gfx::AnimationFillModeType fill_mode = gfx::AnimationFillModeType::kNone,
+    gfx::AnimationDirectionType direction =
+        gfx::AnimationDirectionType::kNormal,
+    long delay = 0) {
+  gfx::AnimationData data;
+  data.duration = 1000;
+  data.delay = delay;
+  data.iteration_count = iteration_count;
+  data.fill_mode = fill_mode;
+  data.direction = direction;
+  return data;
+}
+
+gfx::AnimationTimingInput MakeTimingInput(
+    const gfx::AnimationData* data,
+    fml::TimeDelta duration = fml::TimeDelta::FromMilliseconds(1000)) {
+  gfx::AnimationTimingInput input;
+  input.animation_data = data;
+  input.duration = duration;
+  input.start_time = TimePointFromMs(0);
+  return input;
+}
+
+TEST(AnimationTimingTest, RepeatDurationHandlesZeroInfiniteAndOverflow) {
+  EXPECT_EQ(
+      fml::TimeDelta::Zero(),
+      gfx::GetRepeatDuration(nullptr, fml::TimeDelta::FromMilliseconds(1000)));
+
+  gfx::AnimationData data = MakeTimingData(0);
+  EXPECT_EQ(
+      fml::TimeDelta::Zero(),
+      gfx::GetRepeatDuration(&data, fml::TimeDelta::FromMilliseconds(1000)));
+
+  data.iteration_count = 3;
+  EXPECT_EQ(
+      fml::TimeDelta::FromMilliseconds(1500),
+      gfx::GetRepeatDuration(&data, fml::TimeDelta::FromMilliseconds(500)));
+
+  data.iteration_count = -1;
+  EXPECT_EQ(
+      fml::TimeDelta::Max(),
+      gfx::GetRepeatDuration(&data, fml::TimeDelta::FromMilliseconds(500)));
+
+  data.iteration_count = 2;
+  EXPECT_EQ(fml::TimeDelta::Max(),
+            gfx::GetRepeatDuration(
+                &data, fml::TimeDelta::FromNanoseconds(
+                           std::numeric_limits<int64_t>::max() / 2)));
+}
+
+TEST(AnimationTimingTest, LocalTimeAndPhaseRespectPauseDelayAndPlayback) {
+  gfx::AnimationData data =
+      MakeTimingData(2, gfx::AnimationFillModeType::kNone,
+                     gfx::AnimationDirectionType::kNormal, 500);
+  auto input = MakeTimingInput(&data);
+  input.start_time = TimePointFromMs(1000);
+  input.total_paused_duration = fml::TimeDelta::FromMilliseconds(200);
+
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(1300),
+            gfx::ConvertMonotonicTimeToLocalTime(input, TimePointFromMs(2500)));
+
+  input.is_paused = true;
+  input.pause_time = TimePointFromMs(1800);
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(600),
+            gfx::ConvertMonotonicTimeToLocalTime(input, TimePointFromMs(2500)));
+
+  input.is_paused = false;
+  EXPECT_EQ(gfx::TimingPhase::BEFORE,
+            gfx::CalculatePhase(input, fml::TimeDelta::FromMilliseconds(499)));
+  EXPECT_EQ(gfx::TimingPhase::ACTIVE,
+            gfx::CalculatePhase(input, fml::TimeDelta::FromMilliseconds(500)));
+  EXPECT_EQ(gfx::TimingPhase::AFTER,
+            gfx::CalculatePhase(input, fml::TimeDelta::FromMilliseconds(2500)));
+  EXPECT_EQ(gfx::TimingPhase::ACTIVE,
+            gfx::CalculatePhase(input, TimePointFromMs(1700)));
+
+  input.playback_rate = -1.0;
+  EXPECT_EQ(gfx::TimingPhase::BEFORE,
+            gfx::CalculatePhase(input, fml::TimeDelta::FromMilliseconds(500)));
+  EXPECT_EQ(gfx::TimingPhase::ACTIVE,
+            gfx::CalculatePhase(input, fml::TimeDelta::FromMilliseconds(2500)));
+}
+
+TEST(AnimationTimingTest, ActiveTimeAndInEffectRespectFillModes) {
+  gfx::AnimationData data =
+      MakeTimingData(1, gfx::AnimationFillModeType::kNone,
+                     gfx::AnimationDirectionType::kNormal, 500);
+  auto input = MakeTimingInput(&data);
+
+  EXPECT_EQ(fml::TimeDelta::Min(),
+            gfx::CalculateActiveTime(input, TimePointFromMs(200)));
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(100),
+            gfx::CalculateActiveTime(input, TimePointFromMs(600)));
+  EXPECT_EQ(fml::TimeDelta::Min(),
+            gfx::CalculateActiveTime(input, TimePointFromMs(1600)));
+  EXPECT_FALSE(gfx::IsInEffect(input, TimePointFromMs(200)));
+
+  data.fill_mode = gfx::AnimationFillModeType::kBackwards;
+  EXPECT_EQ(fml::TimeDelta::Zero(),
+            gfx::CalculateActiveTime(input, TimePointFromMs(200)));
+  EXPECT_EQ(fml::TimeDelta::Min(),
+            gfx::CalculateActiveTime(input, TimePointFromMs(1600)));
+
+  data.fill_mode = gfx::AnimationFillModeType::kForwards;
+  EXPECT_EQ(fml::TimeDelta::Min(),
+            gfx::CalculateActiveTime(input, TimePointFromMs(200)));
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(1000),
+            gfx::CalculateActiveTime(input, TimePointFromMs(1600)));
+
+  data.fill_mode = gfx::AnimationFillModeType::kBoth;
+  EXPECT_TRUE(gfx::IsInEffect(input, TimePointFromMs(200)));
+  EXPECT_TRUE(gfx::IsInEffect(input, TimePointFromMs(1600)));
+}
+
+TEST(AnimationTimingTest, UpdateTimingStateCoversRunStateTransitions) {
+  gfx::AnimationData data =
+      MakeTimingData(1, gfx::AnimationFillModeType::kNone,
+                     gfx::AnimationDirectionType::kNormal, 500);
+  auto input = MakeTimingInput(&data);
+
+  input.run_state = gfx::TimingRunState::STARTING;
+  auto update = gfx::UpdateTimingState(input, TimePointFromMs(600));
+  EXPECT_EQ(gfx::TimingRunState::RUNNING, update.run_state);
+  EXPECT_TRUE(update.start_event_due);
+  EXPECT_FALSE(update.end_event_due);
+
+  update = gfx::UpdateTimingState(input, TimePointFromMs(1600));
+  EXPECT_EQ(gfx::TimingRunState::FINISHED, update.run_state);
+  EXPECT_TRUE(update.start_event_due);
+  EXPECT_TRUE(update.end_event_due);
+
+  input.run_state = gfx::TimingRunState::RUNNING;
+  update = gfx::UpdateTimingState(input, TimePointFromMs(200));
+  EXPECT_EQ(gfx::TimingRunState::STARTING, update.run_state);
+  EXPECT_FALSE(update.start_event_due);
+  EXPECT_TRUE(update.end_event_due);
+
+  update = gfx::UpdateTimingState(input, TimePointFromMs(1600));
+  EXPECT_EQ(gfx::TimingRunState::FINISHED, update.run_state);
+  EXPECT_FALSE(update.start_event_due);
+  EXPECT_TRUE(update.end_event_due);
+
+  input.run_state = gfx::TimingRunState::PAUSED;
+  EXPECT_EQ(gfx::TimingRunState::STARTING,
+            gfx::UpdateTimingState(input, TimePointFromMs(200)).run_state);
+  EXPECT_EQ(gfx::TimingRunState::RUNNING,
+            gfx::UpdateTimingState(input, TimePointFromMs(600)).run_state);
+  EXPECT_EQ(gfx::TimingRunState::FINISHED,
+            gfx::UpdateTimingState(input, TimePointFromMs(1600)).run_state);
+
+  input.run_state = gfx::TimingRunState::FINISHED;
+  update = gfx::UpdateTimingState(input, TimePointFromMs(200));
+  EXPECT_EQ(gfx::TimingRunState::STARTING, update.run_state);
+  EXPECT_FALSE(update.start_event_due);
+  EXPECT_FALSE(update.end_event_due);
+
+  update = gfx::UpdateTimingState(input, TimePointFromMs(600));
+  EXPECT_EQ(gfx::TimingRunState::RUNNING, update.run_state);
+  EXPECT_TRUE(update.start_event_due);
+  EXPECT_FALSE(update.end_event_due);
+}
+
+TEST(AnimationTimingTest, TrimTimeHandlesDirectionPlaybackAndInvalidInput) {
+  gfx::AnimationData data =
+      MakeTimingData(3, gfx::AnimationFillModeType::kBoth);
+  auto input = MakeTimingInput(&data);
+
+  auto trimmed =
+      gfx::TrimTimeToCurrentIteration(input, TimePointFromMs(2200), 0);
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(200), trimmed.time);
+  EXPECT_EQ(2, trimmed.current_iteration_count);
+
+  data.direction = gfx::AnimationDirectionType::kReverse;
+  trimmed = gfx::TrimTimeToCurrentIteration(input, TimePointFromMs(2200), 0);
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(800), trimmed.time);
+  EXPECT_EQ(2, trimmed.current_iteration_count);
+
+  data.direction = gfx::AnimationDirectionType::kAlternate;
+  trimmed = gfx::TrimTimeToCurrentIteration(input, TimePointFromMs(1200), 0);
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(800), trimmed.time);
+  EXPECT_EQ(1, trimmed.current_iteration_count);
+
+  data.direction = gfx::AnimationDirectionType::kAlternateReverse;
+  trimmed = gfx::TrimTimeToCurrentIteration(input, TimePointFromMs(200), 0);
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(800), trimmed.time);
+  EXPECT_EQ(0, trimmed.current_iteration_count);
+
+  input.playback_rate = -1.0;
+  data.direction = gfx::AnimationDirectionType::kNormal;
+  trimmed = gfx::TrimTimeToCurrentIteration(input, TimePointFromMs(1000), 0);
+  EXPECT_EQ(fml::TimeDelta::Zero(), trimmed.time);
+  EXPECT_EQ(2, trimmed.current_iteration_count);
+
+  input.animation_data = nullptr;
+  trimmed = gfx::TrimTimeToCurrentIteration(input, TimePointFromMs(1000), 2);
+  EXPECT_EQ(fml::TimeDelta::Zero(), trimmed.time);
+  EXPECT_EQ(0, trimmed.current_iteration_count);
 }
 
 TEST(KeyframeModelTest, GetRepeatDuration) {
@@ -197,6 +405,12 @@ TEST(KeyframeModelTest, TrimTimeToCurrentIteration) {
   EXPECT_EQ(iteration_count, 2);
 }
 
+TEST(KeyframeModelTest, CountIterationEventsDueOnlyForForwardProgress) {
+  EXPECT_EQ(gfx::CountIterationEventsDue(1, 3), 2);
+  EXPECT_EQ(gfx::CountIterationEventsDue(2, 2), 0);
+  EXPECT_EQ(gfx::CountIterationEventsDue(3, 1), 0);
+}
+
 TEST(KeyframeModelTest, InEffect) {
   auto test_model = InitTestModel();
   gfx::AnimationData default_data = gfx::AnimationData();
@@ -308,6 +522,61 @@ TEST(KeyframeModelTest, SetAnimationData) {
   default_data.duration = 2000;
   test_model->SetAnimationData(&default_data);
   EXPECT_EQ(2.0, test_model->curve()->scaled_duration());
+}
+
+TEST(KeyframeModelTest, NullCurveUsesDefaultTimingSafely) {
+  std::unique_ptr<gfx::AnimationCurve> empty_curve;
+  auto test_model = gfx::KeyframeModel::Create(std::move(empty_curve));
+  EXPECT_EQ(nullptr, test_model->curve());
+
+  gfx::AnimationData data = MakeTimingData(2);
+  test_model->SetAnimationData(&data);
+  EXPECT_EQ(fml::TimeDelta::Zero(), test_model->GetRepeatDuration());
+
+  fml::TimePoint start_time = TimePointFromMs(1000);
+  test_model->set_start_time(start_time);
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(500),
+            test_model->ConvertMonotonicTimeToLocalTime(TimePointFromMs(1500)));
+
+  int iteration_count = 3;
+  EXPECT_EQ(fml::TimeDelta::Zero(),
+            test_model->TrimTimeToCurrentIteration(TimePointFromMs(1500),
+                                                   iteration_count));
+  EXPECT_EQ(0, iteration_count);
+
+  test_model->SetAnimationData(nullptr);
+  EXPECT_EQ(fml::TimeDelta::Zero(), test_model->GetRepeatDuration());
+  test_model->EnsureFromAndToKeyframe();
+}
+
+TEST(KeyframeModelTest, TimingInputUsesPauseAndPlaybackState) {
+  auto test_model = InitTestModel();
+  gfx::AnimationData data =
+      MakeTimingData(3, gfx::AnimationFillModeType::kBoth);
+  test_model->SetAnimationData(&data);
+
+  fml::TimePoint start_time = TimePointFromMs(1000);
+  test_model->set_start_time(start_time);
+  test_model->SetRunState(gfx::KeyframeModel::STARTING, start_time);
+
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(1200),
+            test_model->ConvertMonotonicTimeToLocalTime(TimePointFromMs(2200)));
+
+  fml::TimePoint pause_time = TimePointFromMs(1800);
+  test_model->SetRunState(gfx::KeyframeModel::PAUSED, pause_time);
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(800),
+            test_model->ConvertMonotonicTimeToLocalTime(TimePointFromMs(3000)));
+
+  test_model->SetRunState(gfx::KeyframeModel::RUNNING, TimePointFromMs(2300));
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(1500),
+            test_model->ConvertMonotonicTimeToLocalTime(TimePointFromMs(3000)));
+
+  test_model->set_playback_rate(-1.0);
+  int iteration_count = 0;
+  EXPECT_EQ(fml::TimeDelta::Zero(),
+            test_model->TrimTimeToCurrentIteration(TimePointFromMs(2500),
+                                                   iteration_count));
+  EXPECT_EQ(2, iteration_count);
 }
 
 TEST(KeyframeModelTest, EnsureFromAndToKeyframe) {

@@ -416,6 +416,23 @@ tasm::CSSValue InterpolateVec2CSSValue(
 
 tasm::CSSValue GetStyleInElement(tasm::CSSPropertyID id,
                                  tasm::Element* element) {
+  if (element == nullptr) {
+    return tasm::CSSValue();
+  }
+  if (const auto* base_style = element->base_css_style()) {
+    const auto& base_resolved_values = base_style->GetResolvedValues();
+    if (auto iter = base_resolved_values.find(id);
+        iter != base_resolved_values.end()) {
+      return iter->second;
+    }
+  }
+  if (const auto* computed_style = element->computed_css_style()) {
+    const auto& computed_resolved_values = computed_style->GetResolvedValues();
+    if (auto iter = computed_resolved_values.find(id);
+        iter != computed_resolved_values.end()) {
+      return iter->second;
+    }
+  }
   std::optional<tasm::CSSValue> value_opt = element->GetElementStyle(id);
   if (!value_opt) {
     return tasm::CSSValue();

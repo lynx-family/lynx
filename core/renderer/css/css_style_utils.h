@@ -243,6 +243,16 @@ class CSSStyleUtils {
 
   static std::shared_ptr<tasm::StyleMap> ProcessCSSAttrsMap(
       const lepus::Value& value, const tasm::CSSParserConfigs& configs);
+  static std::shared_ptr<tasm::CustomPropertiesMap>
+  ProcessCSSCustomPropertyAttrsMap(const lepus::Value& value,
+                                   const tasm::CSSParserConfigs& configs);
+  static bool HasNonEmptyCSSKeyframesCustomPropertyContent(
+      const tasm::CSSKeyframesCustomPropertyContent& content);
+  static tasm::CSSValue ResolveCSSKeyframeValueWithCustomProperties(
+      tasm::CSSPropertyID id, const tasm::CSSValue& value,
+      const tasm::CustomPropertiesMap* custom_properties,
+      const tasm::CSSParserConfigs& configs,
+      const tasm::CustomPropertiesMap* inherited_custom_properties = nullptr);
   static void UpdateCSSKeyframes(tasm::CSSKeyframesTokenMap& keyframes_map,
                                  const base::String& name,
                                  const lepus::Value& keyframes,

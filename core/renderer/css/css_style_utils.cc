@@ -530,13 +530,47 @@ lepus::Value CSSStyleUtils::ResolveCSSKeyframesStyle(
   return lepus::Value(std::move(dict));
 }
 
+namespace {
+
+tasm::StyleMap ResolveKeyframeStyleWithCustomProperties(
+    const tasm::StyleMap& source,
+    const tasm::CustomPropertiesMap* custom_properties,
+    const tasm::CSSParserConfigs& configs) {
+  if (custom_properties == nullptr || custom_properties->empty()) {
+    return source;
+  }
+
+  tasm::StyleMap resolved_styles;
+  resolved_styles.reserve(source.size());
+
+  for (const auto& [id, value] : source) {
+    resolved_styles.insert_or_assign(
+        id, CSSStyleUtils::ResolveCSSKeyframeValueWithCustomProperties(
+                id, value, custom_properties, configs));
+  }
+
+  return resolved_styles;
+}
+
+}  // namespace
+
 lepus::Value CSSStyleUtils::ResolveCSSKeyframesToken(
     tasm::CSSKeyframesToken* token, const tasm::CssMeasureContext& context,
     const tasm::CSSParserConfigs& configs) {
   auto dict = lepus::Dictionary::Create();
+  auto& custom_property_content = token->GetKeyframesCustomPropertyContent();
   for (const auto& [key, value] : token->GetKeyframesContent()) {
-    dict->SetValue(std::to_string(key),
-                   ResolveCSSKeyframesStyle(value.get(), context, configs));
+    const auto custom_property_iter = custom_property_content.find(key);
+    const auto* custom_properties =
+        custom_property_iter != custom_property_content.end() &&
+                custom_property_iter->second != nullptr
+            ? custom_property_iter->second.get()
+            : nullptr;
+    auto resolved_styles = ResolveKeyframeStyleWithCustomProperties(
+        *value, custom_properties, configs);
+    dict->SetValue(
+        std::to_string(key),
+        ResolveCSSKeyframesStyle(&resolved_styles, context, configs));
   }
   return lepus::Value(std::move(dict));
 }
@@ -1284,9 +1318,114 @@ std::shared_ptr<tasm::StyleMap> CSSStyleUtils::ProcessCSSAttrsMap(
     if (!tasm::CSSProperty::IsPropertyValid(id)) {
       continue;
     }
+    if (value.IsString()) {
+      tasm::CSSStringParser parser{
+          value.String().c_str(),
+          static_cast<uint32_t>(value.String().length()), configs};
+      auto css_value = parser.ParseVariable();
+      if (parser.HasMetVarToken()) {
+        tasm::UnitHandler::ProcessCSSValue(id, css_value, *(map.get()),
+                                           configs);
+        continue;
+      }
+    }
     tasm::UnitHandler::Process(id, value, *(map.get()), configs);
   }
   return map;
+}
+
+std::shared_ptr<tasm::CustomPropertiesMap>
+CSSStyleUtils::ProcessCSSCustomPropertyAttrsMap(
+    const lepus::Value& value, const tasm::CSSParserConfigs& configs) {
+  auto infer_pattern = [](const lepus::Value& input) {
+    if (input.IsArray()) {
+      return tasm::CSSValuePattern::ARRAY;
+    }
+    if (input.IsTable()) {
+      return tasm::CSSValuePattern::MAP;
+    }
+    if (input.IsBool()) {
+      return tasm::CSSValuePattern::BOOLEAN;
+    }
+    if (input.IsNumber()) {
+      return tasm::CSSValuePattern::NUMBER;
+    }
+    return tasm::CSSValuePattern::STRING;
+  };
+
+  auto map = std::make_shared<tasm::CustomPropertiesMap>();
+  if (!value.IsObject()) {
+    return map;
+  }
+
+  const auto& table = value.Table();
+  map->reserve(table->size());
+  for (const auto& [key, property_value] : *table) {
+    if (!tasm::CSSProperty::IsCustomProperty(
+            key.c_str(), static_cast<uint32_t>(key.length()))) {
+      continue;
+    }
+
+    if (property_value.IsString()) {
+      tasm::CSSStringParser parser{
+          property_value.String().c_str(),
+          static_cast<uint32_t>(property_value.String().length()), configs};
+      map->insert_or_assign(key, parser.ParseVariable());
+      continue;
+    }
+
+    map->insert_or_assign(
+        key, tasm::CSSValue(property_value, infer_pattern(property_value)));
+  }
+  return map;
+}
+
+bool CSSStyleUtils::HasNonEmptyCSSKeyframesCustomPropertyContent(
+    const tasm::CSSKeyframesCustomPropertyContent& content) {
+  for (const auto& [_, custom_properties] : content) {
+    if (custom_properties != nullptr && !custom_properties->empty()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+tasm::CSSValue CSSStyleUtils::ResolveCSSKeyframeValueWithCustomProperties(
+    tasm::CSSPropertyID id, const tasm::CSSValue& value,
+    const tasm::CustomPropertiesMap* custom_properties,
+    const tasm::CSSParserConfigs& configs,
+    const tasm::CustomPropertiesMap* inherited_custom_properties) {
+  if (!value.IsVariable()) {
+    return value;
+  }
+
+  const bool has_keyframe_custom_properties =
+      custom_properties != nullptr && !custom_properties->empty();
+  const bool has_inherited_custom_properties =
+      inherited_custom_properties != nullptr &&
+      !inherited_custom_properties->empty();
+  if (!has_keyframe_custom_properties && !has_inherited_custom_properties) {
+    return value;
+  }
+
+  tasm::CustomPropertiesMap resolved_custom_properties;
+  if (has_inherited_custom_properties) {
+    resolved_custom_properties = *inherited_custom_properties;
+  }
+  if (has_keyframe_custom_properties) {
+    for (const auto& [key, property_value] : *custom_properties) {
+      resolved_custom_properties.insert_or_assign(key, property_value);
+    }
+  }
+  tasm::CSSValue::SubstituteAll(resolved_custom_properties);
+  auto resolved_value = tasm::CSSValue::SubstitutionResolved(
+      value, resolved_custom_properties, nullptr);
+
+  tasm::StyleMap parsed_styles;
+  tasm::UnitHandler::Process(id, lepus::Value(std::move(resolved_value)),
+                             parsed_styles, configs);
+  auto it = parsed_styles.find(id);
+  return it != parsed_styles.end() ? it->second : value;
 }
 
 void CSSStyleUtils::UpdateCSSKeyframes(
@@ -1302,6 +1441,12 @@ void CSSStyleUtils::UpdateCSSKeyframes(
     for (size_t i = 0; i < ary->size(); ++i) {
       keyframes_map[name]->GetKeyframesContent().insert(std::make_pair(
           i * interval, ProcessCSSAttrsMap(ary->get(i), configs)));
+      auto custom_properties =
+          ProcessCSSCustomPropertyAttrsMap(ary->get(i), configs);
+      if (!custom_properties->empty()) {
+        keyframes_map[name]->GetKeyframesCustomPropertyContent().insert(
+            std::make_pair(i * interval, std::move(custom_properties)));
+      }
     }
     return;
   }
@@ -1320,6 +1465,13 @@ void CSSStyleUtils::UpdateCSSKeyframes(
     keyframes_map[name]->GetKeyframesContent().insert(std::make_pair(
         interval,
         starlight::CSSStyleUtils::ProcessCSSAttrsMap(iter.second, configs)));
+    auto custom_properties =
+        starlight::CSSStyleUtils::ProcessCSSCustomPropertyAttrsMap(iter.second,
+                                                                   configs);
+    if (!custom_properties->empty()) {
+      keyframes_map[name]->GetKeyframesCustomPropertyContent().insert(
+          std::make_pair(interval, std::move(custom_properties)));
+    }
   }
 }
 

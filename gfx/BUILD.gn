@@ -12,6 +12,8 @@ lynx_core_source_set("gfx_animation") {
     "animation/animation_keyframe_effect.h",
     "animation/animation_keyframe_model.cc",
     "animation/animation_keyframe_model.h",
+    "animation/animation_timing.cc",
+    "animation/animation_timing.h",
     "animation/animation_types.h",
     "animation/animation_utils.cc",
     "animation/animation_utils.h",

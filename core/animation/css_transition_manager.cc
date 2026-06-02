@@ -6,9 +6,11 @@
 
 #include <utility>
 
+#include "base/include/float_comparison.h"
 #include "core/animation/animation_trace_event_def.h"
 #include "core/animation/keyframed_animation_curve.h"
 #include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/layout_property.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 
@@ -230,6 +232,36 @@ base::flex_optional<tasm::CSSValue> ConvertComputedFilterForTransition(
   array->emplace_back(std::move(amount->value));
   array->emplace_back(static_cast<int>(amount->pattern));
   return tasm::CSSValue(std::move(array));
+}
+
+bool ShouldUseLayoutOnlyTransitionSource(tasm::Element* element,
+                                         tasm::CSSPropertyID id) {
+  return element != nullptr && !element->EnableLayoutInElementMode() &&
+         tasm::LayoutProperty::IsLayoutOnly(id) &&
+         starlight::ComputedCSSStyle::SupportsCanonicalComputedValue(id);
+}
+
+tasm::CSSValue GetStyleValueOrDefaultForTransition(
+    const tasm::StyleMap& style_map, tasm::CSSPropertyID css_id,
+    starlight::AnimationPropertyType property_type) {
+  auto it = style_map.find(css_id);
+  if (it != style_map.end()) {
+    return it->second;
+  }
+  return CSSKeyframeManager::GetDefaultValue(property_type);
+}
+
+tasm::CSSValue GetResolvedLayoutOnlyStyleValueOrDefaultForTransition(
+    const starlight::ComputedCSSStyle& style, tasm::CSSPropertyID css_id,
+    starlight::AnimationPropertyType property_type) {
+  if (tasm::LayoutProperty::IsLayoutOnly(css_id)) {
+    const auto& resolved_values = style.GetResolvedValues();
+    auto it = resolved_values.find(css_id);
+    if (it != resolved_values.end()) {
+      return it->second;
+    }
+  }
+  return CSSKeyframeManager::GetDefaultValue(property_type);
 }
 
 }  // namespace
@@ -518,6 +550,12 @@ base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
 
 void CSSTransitionManager::setTransitionData(
     const starlight::TransitionData& transition_data) {
+  SyncTransitionData(transition_data, true);
+}
+
+void CSSTransitionManager::SyncTransitionData(
+    const starlight::TransitionData& transition_data,
+    bool use_legacy_destroy_path) {
   transition_data_.clear();
   property_types_.clear();
   base::LinearFlatMap<base::String, std::shared_ptr<Animation>>
@@ -556,7 +594,11 @@ void CSSTransitionManager::setTransitionData(
   }
 
   for (auto& animation_iterator : animations_map_) {
-    animation_iterator.second->Destroy();
+    if (use_legacy_destroy_path) {
+      animation_iterator.second->Destroy();
+    } else if (animation_iterator.second != nullptr) {
+      PrepareTransitionRemovalCleanup(animation_iterator.second);
+    }
   }
   animations_map_.swap(active_animations_map);
 }
@@ -615,50 +657,98 @@ bool CSSTransitionManager::ConsumeCSSProperty(tasm::CSSPropertyID css_id,
     } else {
       end_value_internal = end_value;
     }
-    const auto& configs = element()->element_manager()->GetCSSParserConfigs();
-    if (!IsValueValid(property_type, start_value_internal, configs) ||
-        !IsValueValid(property_type, end_value_internal, configs) ||
-        start_value_internal == end_value_internal ||
-        (previous_end_values_.contains(css_id) &&
-         end_value_internal == previous_end_values_[css_id])) {
-      TryToStopTransitionAnimator(property_type);
-      return false;
-    }
-    previous_end_values_[css_id] = end_value_internal;
-
-    // 2. construct keyframes Map
-    auto start_shared_style_map = std::make_shared<tasm::StyleMap>();
-    start_shared_style_map->insert_or_assign(css_id,
-                                             std::move(start_value_internal));
-
-    auto end_shared_style_map = std::make_shared<tasm::StyleMap>();
-    end_shared_style_map->insert_or_assign(css_id,
-                                           std::move(end_value_internal));
-
-    keyframe_tokens_[ConvertAnimationPropertyTypeToString(property_type)] =
-        tasm::CSSKeyframesContent{{0.f, std::move(start_shared_style_map)},
-                                  {1.f, std::move(end_shared_style_map)}};
-
-    // 3. create transition animation and play
-    const auto& data =
-        transition_data_.find(static_cast<unsigned int>(property_type));
-    if (data != transition_data_.end()) {
-      if (animations_map_.count(data->second.name)) {
-        // If a transition animation is replaced by another identical transition
-        // animation (both animate the same properties), then this transition
-        // animation does not require clearing effect and applying the end
-        // effect.
-        animations_map_[data->second.name]->Destroy(false);
-      }
-      std::shared_ptr<Animation> animation = CreateAnimation(data->second);
-      animation->BindDelegate(this);
-      animation->SetTransitionFlag();
-      animation->Play();
-      animations_map_[data->second.name] = std::move(animation);
-      return true;
-    }
+    return UpdateTransitionAnimator(css_id, property_type,
+                                    std::move(start_value_internal),
+                                    std::move(end_value_internal), true);
   }
   return false;
+}
+
+void CSSTransitionManager::UpdateTransitionsForNewPipeline(
+    const starlight::ComputedCSSStyle& previous_base_style,
+    const starlight::ComputedCSSStyle& previous_final_style,
+    const starlight::ComputedCSSStyle& new_base_style,
+    const tasm::StyleMap& previous_underlying_layout_only_styles,
+    const tasm::StyleMap& new_underlying_layout_only_styles) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              TRANSITION_MANAGER_UPDATE_TRANSITIONS_FOR_NEW_PIPELINE);
+  if (new_base_style.HasTransition()) {
+    SyncTransitionData(new_base_style.transition_data(), false);
+  } else {
+    starlight::TransitionData empty_transition_data;
+    SyncTransitionData(empty_transition_data, false);
+  }
+
+  const auto& transition_props_map = GetPropertyIDToAnimationPropertyTypeMap();
+  for (const auto& [css_id, property_type] : transition_props_map) {
+    if (!IsShouldTransitionType(property_type)) {
+      continue;
+    }
+
+    if (ShouldUseLayoutOnlyTransitionSource(element(), css_id)) {
+      const auto previous_underlying = GetStyleValueOrDefaultForTransition(
+          previous_underlying_layout_only_styles, css_id, property_type);
+      const auto displayed_start =
+          GetResolvedLayoutOnlyStyleValueOrDefaultForTransition(
+              previous_final_style, css_id, property_type);
+      const auto new_underlying = GetStyleValueOrDefaultForTransition(
+          new_underlying_layout_only_styles, css_id, property_type);
+
+      if (previous_underlying == new_underlying) {
+        continue;
+      }
+      if (displayed_start == new_underlying) {
+        TryToStopTransitionAnimatorWithPendingCleanup(property_type);
+        continue;
+      }
+
+      UpdateTransitionAnimator(css_id, property_type, displayed_start,
+                               new_underlying, false);
+      continue;
+    }
+
+    if (!starlight::ComputedCSSStyle::SupportsCanonicalComputedValue(css_id)) {
+      continue;
+    }
+
+    const auto previous_underlying =
+        previous_base_style.ExtractCanonicalComputedValue(css_id);
+    const auto displayed_start =
+        previous_final_style.ExtractCanonicalComputedValue(css_id);
+    const auto new_underlying =
+        new_base_style.ExtractCanonicalComputedValue(css_id);
+    if (!previous_underlying || !displayed_start || !new_underlying) {
+      continue;
+    }
+
+    if (*previous_underlying == *new_underlying) {
+      continue;
+    }
+    if (*displayed_start == *new_underlying) {
+      TryToStopTransitionAnimatorWithPendingCleanup(property_type);
+      continue;
+    }
+
+    auto start_value = ConvertCanonicalComputedValueForTransition(
+        css_id, *displayed_start, previous_final_style.GetMeasureContext());
+    auto end_value = ConvertCanonicalComputedValueForTransition(
+        css_id, *new_underlying, new_base_style.GetMeasureContext());
+    if (!start_value || !end_value) {
+      TryToStopTransitionAnimatorWithPendingCleanup(property_type);
+      continue;
+    }
+
+    UpdateTransitionAnimator(css_id, property_type, std::move(*start_value),
+                             std::move(*end_value), false);
+  }
+}
+
+AnimationSampleForNewPipeline
+CSSTransitionManager::CollectTransitionUpdatesForNewPipeline(
+    fml::TimePoint& frame_time) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              TRANSITION_MANAGER_COLLECT_TRANSITION_UPDATES_FOR_NEW_PIPELINE);
+  return CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(frame_time);
 }
 
 void CSSTransitionManager::TickAllAnimation(fml::TimePoint& frame_time) {
@@ -690,6 +780,89 @@ void CSSTransitionManager::TryToStopTransitionAnimator(
   }
   animation_iterator->second->Destroy();
   animations_map_.erase(animation_iterator);
+}
+
+void CSSTransitionManager::TryToStopTransitionAnimatorWithPendingCleanup(
+    starlight::AnimationPropertyType property_type) {
+  const auto& data =
+      transition_data_.find(static_cast<unsigned int>(property_type));
+  if (data == transition_data_.end()) {
+    return;
+  }
+  const auto& animation_iterator = animations_map_.find(data->second.name);
+  if (animation_iterator == animations_map_.end()) {
+    return;
+  }
+  PrepareTransitionRemovalCleanup(animation_iterator->second);
+  animations_map_.erase(animation_iterator);
+}
+
+void CSSTransitionManager::PrepareTransitionRemovalCleanup(
+    const std::shared_ptr<Animation>& animation) {
+  if (animation == nullptr) {
+    return;
+  }
+  animation->ClearTransitionPreviousEndValue();
+  QueueCancelEvent(animation);
+}
+
+bool CSSTransitionManager::UpdateTransitionAnimator(
+    tasm::CSSPropertyID css_id, starlight::AnimationPropertyType property_type,
+    tasm::CSSValue start_value, tasm::CSSValue end_value,
+    bool play_handles_initial_frame) {
+  const auto& configs = element()->element_manager()->GetCSSParserConfigs();
+  if (!IsValueValid(property_type, start_value, configs) ||
+      !IsValueValid(property_type, end_value, configs) ||
+      start_value == end_value ||
+      (previous_end_values_.contains(css_id) &&
+       end_value == previous_end_values_[css_id])) {
+    if (play_handles_initial_frame) {
+      TryToStopTransitionAnimator(property_type);
+    } else {
+      TryToStopTransitionAnimatorWithPendingCleanup(property_type);
+    }
+    return false;
+  }
+
+  const auto& data =
+      transition_data_.find(static_cast<unsigned int>(property_type));
+  if (data == transition_data_.end()) {
+    return false;
+  }
+
+  previous_end_values_[css_id] = end_value;
+
+  auto start_shared_style_map = std::make_shared<tasm::StyleMap>();
+  start_shared_style_map->insert_or_assign(css_id, std::move(start_value));
+
+  auto end_shared_style_map = std::make_shared<tasm::StyleMap>();
+  end_shared_style_map->insert_or_assign(css_id, std::move(end_value));
+
+  keyframe_tokens_[ConvertAnimationPropertyTypeToString(property_type)] =
+      tasm::CSSKeyframesContent{{0.f, std::move(start_shared_style_map)},
+                                {1.f, std::move(end_shared_style_map)}};
+
+  if (animations_map_.count(data->second.name)) {
+    // If a transition animation is replaced by another identical transition
+    // animation (both animate the same properties), then this transition
+    // animation does not require clearing effect and applying the end effect.
+    if (play_handles_initial_frame) {
+      animations_map_[data->second.name]->Destroy(false);
+    } else {
+      auto existing_animation = animations_map_[data->second.name];
+      PrepareTransitionRemovalCleanup(existing_animation);
+      animations_map_.erase(data->second.name);
+    }
+  }
+  std::shared_ptr<Animation> animation = CreateAnimation(data->second);
+  if (animation == nullptr) {
+    return false;
+  }
+  animation->BindDelegate(this);
+  animation->SetTransitionFlag();
+  animation->Play(play_handles_initial_frame);
+  animations_map_[data->second.name] = std::move(animation);
+  return true;
 }
 
 bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,

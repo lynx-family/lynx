@@ -16,6 +16,7 @@
 
 #include "base/include/fml/time/time_point.h"
 #include "gfx/animation/animation_keyframe_curve.h"
+#include "gfx/animation/animation_timing.h"
 #include "gfx/animation/animation_types.h"
 
 namespace lynx {
@@ -80,6 +81,8 @@ class KeyframeModel {
   void EnsureFromAndToKeyframe();
 
  private:
+  AnimationTimingInput CreateTimingInput() const;
+
   RunState run_state_;
   const AnimationData* animation_data_{nullptr};
   fml::TimePoint start_time_;

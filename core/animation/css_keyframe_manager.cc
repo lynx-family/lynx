@@ -5,10 +5,12 @@
 #include "core/animation/css_keyframe_manager.h"
 
 #include <algorithm>
+#include <optional>
 #include <queue>
 #include <utility>
 #include <vector>
 
+#include "base/include/flex_optional.h"
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
 #include "core/animation/animation.h"
@@ -20,6 +22,7 @@
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/layout_property.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/starlight/style/css_type.h"
@@ -27,6 +30,37 @@
 
 namespace lynx {
 namespace animation {
+
+namespace {
+
+bool HasNoSampleableKeyframes(const std::shared_ptr<Animation>& animation,
+                              bool has_custom_property_keyframes) {
+  if (animation == nullptr || animation->keyframe_effect() == nullptr) {
+    return true;
+  }
+  return animation->keyframe_effect()->keyframe_models().empty() &&
+         !has_custom_property_keyframes;
+}
+
+void SyncAnimationRawCustomPropertySet(
+    Animation* animation,
+    const tasm::CSSKeyframesCustomPropertyContent& custom_property_content) {
+  if (animation == nullptr) {
+    return;
+  }
+  animation->ClearRawCustomProperties();
+  for (const auto& keyframe_custom_property : custom_property_content) {
+    const auto& custom_properties = keyframe_custom_property.second;
+    if (custom_properties == nullptr) {
+      continue;
+    }
+    for (const auto& custom_property : *custom_properties) {
+      animation->SetRawCustomProperty(custom_property.first);
+    }
+  }
+}
+
+}  // namespace
 
 const std::unordered_set<starlight::AnimationPropertyType>&
 GetLayoutPropertyTypeSet() {
@@ -205,8 +239,18 @@ void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
 
 void CSSKeyframeManager::SetAnimationDataAndPlay(
     base::Vector<starlight::AnimationData>& anim_data) {
+  SetAnimationDataAndPlayInternal(anim_data, false, true, false);
+}
+
+void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
+    base::Vector<starlight::AnimationData>& anim_data, bool force_rebuild,
+    bool play_handles_initial_frame, bool use_new_pipeline_cleanup,
+    const tasm::StyleMap* new_base_resolved_styles,
+    const tasm::StyleMap* new_underlying_layout_only_styles,
+    const tasm::CustomPropertiesMap* new_base_custom_properties) {
   if (anim_data.size() == animation_data_.size() &&
-      std::equal(anim_data.begin(), anim_data.end(), animation_data_.begin())) {
+      std::equal(anim_data.begin(), anim_data.end(), animation_data_.begin()) &&
+      !force_rebuild) {
     return;
   }
   animation_data_ = anim_data;
@@ -218,12 +262,46 @@ void CSSKeyframeManager::SetAnimationDataAndPlay(
     if (data.duration < 0) {
       data.duration = 0;
     }
+    const bool has_custom_property_keyframes =
+        starlight::CSSStyleUtils::HasNonEmptyCSSKeyframesCustomPropertyContent(
+            GetKeyframesCustomPropertyMap(data.name));
     // 1. Update data to the existing animation or create a new one, and
     // temporarily save them to temp_active_animations_map_.
     auto animation = animations_map_.find(data.name);
     if (animation != animations_map_.end()) {
       // Update an existing animation, add it to temp_active_animations_map_ and
       // delete it from animations_map_;
+      if (force_rebuild) {
+        if (use_new_pipeline_cleanup) {
+          PrepareAnimationRemoval(animation->second, new_base_resolved_styles,
+                                  new_underlying_layout_only_styles);
+        } else {
+          animation->second->Destroy();
+        }
+        auto recreated_animation =
+            CreateAnimation(data, new_base_custom_properties);
+        if (recreated_animation != nullptr) {
+          temp_active_animations_map_[data.name] = recreated_animation;
+        }
+        animations_map_.erase(animation);
+        continue;
+      }
+      animation->second->keyframe_effect()->SetHasCustomPropertyKeyframes(
+          has_custom_property_keyframes);
+      SyncAnimationRawCustomPropertySet(
+          animation->second.get(), GetKeyframesCustomPropertyMap(data.name));
+      if (animation->second->GetState() == Animation::State::kStop &&
+          HasNoSampleableKeyframes(animation->second,
+                                   has_custom_property_keyframes)) {
+        animation->second->Destroy();
+        auto recreated_animation =
+            CreateAnimation(data, new_base_custom_properties);
+        if (recreated_animation != nullptr) {
+          temp_active_animations_map_[data.name] = recreated_animation;
+        }
+        animations_map_.erase(animation);
+        continue;
+      }
       if (animation->second->get_animation_data() != data) {
         animation->second->UpdateAnimationData(data);
         temp_active_animations_map_[data.name] = animation->second;
@@ -233,13 +311,20 @@ void CSSKeyframeManager::SetAnimationDataAndPlay(
       animations_map_.erase(animation);
     } else {
       // Create a new animation, add it to temp_active_animations_map_;
-      auto new_animation = CreateAnimation(data);
-      temp_active_animations_map_[data.name] = new_animation;
+      auto new_animation = CreateAnimation(data, new_base_custom_properties);
+      if (new_animation != nullptr) {
+        temp_active_animations_map_[data.name] = new_animation;
+      }
     }
   }
   //   2. All animations remaining in animations_map_ need to be destroyed.
   for (auto& ani_iter : animations_map_) {
-    ani_iter.second->Destroy();
+    if (use_new_pipeline_cleanup) {
+      PrepareAnimationRemoval(ani_iter.second, new_base_resolved_styles,
+                              new_underlying_layout_only_styles);
+    } else {
+      ani_iter.second->Destroy();
+    }
   }
 
   for (auto& active_ani_iter : temp_active_animations_map_) {
@@ -247,7 +332,7 @@ void CSSKeyframeManager::SetAnimationDataAndPlay(
         starlight::AnimationPlayStateType::kPaused) {
       active_ani_iter.second->Pause();
     } else {
-      active_ani_iter.second->Play();
+      active_ani_iter.second->Play(play_handles_initial_frame);
     }
   }
   // 3. Swap active animations to animations_map_.
@@ -257,8 +342,265 @@ void CSSKeyframeManager::SetAnimationDataAndPlay(
   temp_active_animations_map_.clear();
 }
 
+void CSSKeyframeManager::SyncAnimationDataForNewPipeline(
+    base::Vector<starlight::AnimationData>& anim_data, bool force_rebuild,
+    const tasm::StyleMap* new_base_resolved_styles,
+    const tasm::StyleMap* new_underlying_layout_only_styles,
+    const tasm::CustomPropertiesMap* new_base_custom_properties) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              KEYFRAME_MANAGER_SYNC_ANIMATION_DATA_FOR_NEW_PIPELINE);
+  SetAnimationDataAndPlayInternal(
+      anim_data, force_rebuild, false, true, new_base_resolved_styles,
+      new_underlying_layout_only_styles, new_base_custom_properties);
+}
+
+AnimationSampleForNewPipeline
+CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
+    fml::TimePoint& frame_time) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              KEYFRAME_MANAGER_COLLECT_ANIMATION_UPDATES_FOR_NEW_PIPELINE);
+  if (animations_map_.empty() && pending_property_overrides_.empty() &&
+      pending_property_resets_.empty() &&
+      pending_custom_property_resets_.empty() &&
+      persisted_custom_property_fill_styles_.empty()) {
+    return {};
+  }
+
+  base::flex_optional<AnimationSampleForNewPipeline> sample;
+  auto ensure_sample = [&sample]() -> AnimationSampleForNewPipeline& {
+    if (!sample.has_value()) {
+      sample.emplace();
+    }
+    return *sample;
+  };
+  {
+    // DrainPendingAnimationCleanup
+    if (!pending_property_overrides_.empty()) {
+      ensure_sample().property_overrides =
+          std::move(pending_property_overrides_);
+      pending_property_overrides_.clear();
+    }
+    if (!pending_property_resets_.empty()) {
+      auto& sample_ref = ensure_sample();
+      sample_ref.property_resets = std::move(pending_property_resets_);
+      sample_ref.requires_base_style_rebuild = true;
+      pending_property_resets_.clear();
+    }
+    if (!pending_custom_property_resets_.empty()) {
+      auto& sample_ref = ensure_sample();
+      sample_ref.custom_property_resets =
+          std::move(pending_custom_property_resets_);
+      sample_ref.requires_base_style_rebuild = true;
+      pending_custom_property_resets_.clear();
+    }
+    if (!persisted_custom_property_fill_styles_.empty()) {
+      auto& sample_ref = ensure_sample();
+      for (const auto& [key, value] : persisted_custom_property_fill_styles_) {
+        sample_ref.custom_property_overrides.insert_or_assign(key, value);
+      }
+      sample_ref.requires_base_style_rebuild = true;
+    }
+  }
+
+  {
+    // SampleRunningAnimations
+    for (auto& item : animations_map_) {
+      auto& animation = item.second;
+      if (animation == nullptr || animation->keyframe_effect() == nullptr) {
+        continue;
+      }
+      // SampleAt samples normal CSS property curves into styles and advances
+      // timeline side effects. For custom-property-only keyframes it still
+      // synthesizes start/end/iteration events even though styles stays empty.
+      auto sample_result = animation->SampleAt(frame_time);
+      if (!sample_result.styles.empty()) {
+        auto& sample_ref = ensure_sample();
+        for (const auto& [key, value] : sample_result.styles) {
+          sample_ref.property_overrides.insert_or_assign(key, value);
+          sample_ref.property_resets.erase(
+              std::remove(sample_ref.property_resets.begin(),
+                          sample_ref.property_resets.end(), key),
+              sample_ref.property_resets.end());
+        }
+      }
+      const bool has_custom_property_keyframes =
+          animation->keyframe_effect()->HasCustomPropertyKeyframes();
+      tasm::CustomPropertiesMap custom_property_overrides;
+      if (has_custom_property_keyframes) {
+        // Custom property declarations such as `--box-padding: 16px` are
+        // sampled separately because they are keyed by custom property name,
+        // not CSSPropertyID. Normal properties that reference them, for example
+        // `padding: var(--box-padding)`, are rebuilt by style resolution after
+        // these overrides are applied.
+        animation->keyframe_effect()->SampleCustomPropertyKeyframes(
+            frame_time, GetKeyframesCustomPropertyMap(item.first),
+            custom_property_overrides);
+        if (!custom_property_overrides.empty()) {
+          auto& sample_ref = ensure_sample();
+          for (const auto& [key, value] : custom_property_overrides) {
+            sample_ref.custom_property_overrides.insert_or_assign(key, value);
+            sample_ref.custom_property_resets.erase(
+                std::remove(sample_ref.custom_property_resets.begin(),
+                            sample_ref.custom_property_resets.end(), key),
+                sample_ref.custom_property_resets.end());
+          }
+          sample_ref.requires_base_style_rebuild = true;
+        }
+      }
+      // Event records come from SampleAt because animation events are tied to
+      // timeline progress, not to whether this frame produced normal property
+      // styles or custom property overrides.
+      if (sample_result.should_send_start_event ||
+          sample_result.should_send_end_event ||
+          sample_result.iteration_events_due > 0) {
+        AnimationSampleForNewPipeline::EventRecord event_record;
+        event_record.animation = animation;
+        event_record.send_start_event = sample_result.should_send_start_event;
+        event_record.send_end_event = sample_result.should_send_end_event;
+        event_record.iteration_events_due = sample_result.iteration_events_due;
+        pending_event_records_.push_back(std::move(event_record));
+      }
+      if (sample_result.should_persist_fill_styles && element_ != nullptr &&
+          !sample_result.styles.empty()) {
+        element_->PersistAnimationFillStyles(sample_result.styles);
+      }
+      if (sample_result.should_persist_fill_styles &&
+          !custom_property_overrides.empty()) {
+        for (const auto& [key, value] : custom_property_overrides) {
+          persisted_custom_property_fill_styles_.insert_or_assign(key, value);
+        }
+      }
+      if (sample_result.should_clear_fill_styles) {
+        for (const auto& key : animation->GetRawStyleSet()) {
+          if (element_ != nullptr) {
+            element_->ClearPersistedAnimationFillStyle(key);
+          }
+          auto& sample_ref = ensure_sample();
+          sample_ref.property_overrides.erase(key);
+          if (std::find(sample_ref.property_resets.begin(),
+                        sample_ref.property_resets.end(),
+                        key) == sample_ref.property_resets.end()) {
+            sample_ref.property_resets.push_back(key);
+          }
+          sample_ref.requires_base_style_rebuild = true;
+        }
+        if (has_custom_property_keyframes) {
+          for (const auto& key : animation->GetRawCustomPropertySet()) {
+            persisted_custom_property_fill_styles_.erase(key);
+            auto& sample_ref = ensure_sample();
+            sample_ref.custom_property_overrides.erase(key);
+            if (std::find(sample_ref.custom_property_resets.begin(),
+                          sample_ref.custom_property_resets.end(),
+                          key) == sample_ref.custom_property_resets.end()) {
+              sample_ref.custom_property_resets.push_back(key);
+            }
+            sample_ref.requires_base_style_rebuild = true;
+          }
+        }
+      }
+    }
+  }
+
+  return sample.has_value() ? std::move(*sample)
+                            : AnimationSampleForNewPipeline{};
+}
+
+AnimationEventRecordsForNewPipeline
+CSSKeyframeManager::TakePendingAnimationEventsForNewPipeline() {
+  auto pending_event_records = std::move(pending_event_records_);
+  pending_event_records_.clear();
+  return pending_event_records;
+}
+
+void CSSKeyframeManager::QueueCancelEvent(
+    const std::shared_ptr<Animation>& animation) {
+  if (animation == nullptr) {
+    return;
+  }
+  if (animation->GetState() != Animation::State::kPlay &&
+      animation->GetState() != Animation::State::kPause) {
+    return;
+  }
+  AnimationSampleForNewPipeline::EventRecord event_record;
+  event_record.animation = animation;
+  event_record.send_cancel_event = true;
+  pending_event_records_.push_back(std::move(event_record));
+}
+
+void CSSKeyframeManager::PrepareAnimationRemoval(
+    const std::shared_ptr<Animation>& animation,
+    const tasm::StyleMap* new_base_resolved_styles,
+    const tasm::StyleMap* new_underlying_layout_only_styles) {
+  if (animation == nullptr || element_ == nullptr) {
+    return;
+  }
+
+  for (const auto& key : animation->GetRawStyleSet()) {
+    element_->ClearPersistedAnimationFillStyle(key);
+    std::optional<tasm::CSSValue> value_opt;
+    if (tasm::LayoutProperty::IsLayoutOnly(key) &&
+        new_underlying_layout_only_styles != nullptr) {
+      auto iter = new_underlying_layout_only_styles->find(key);
+      if (iter != new_underlying_layout_only_styles->end()) {
+        value_opt = iter->second;
+      }
+    }
+    if (!value_opt && new_base_resolved_styles != nullptr) {
+      auto iter = new_base_resolved_styles->find(key);
+      if (iter != new_base_resolved_styles->end()) {
+        value_opt = iter->second;
+      }
+    }
+    if (!value_opt && new_base_resolved_styles == nullptr &&
+        new_underlying_layout_only_styles == nullptr) {
+      value_opt = element_->GetElementStyle(key);
+    }
+    if (value_opt) {
+      pending_property_overrides_.insert_or_assign(key, std::move(*value_opt));
+      pending_property_resets_.erase(
+          std::remove(pending_property_resets_.begin(),
+                      pending_property_resets_.end(), key),
+          pending_property_resets_.end());
+    } else {
+      pending_property_overrides_.erase(key);
+      if (std::find(pending_property_resets_.begin(),
+                    pending_property_resets_.end(),
+                    key) == pending_property_resets_.end()) {
+        pending_property_resets_.push_back(key);
+      }
+    }
+  }
+
+  for (const auto& key : animation->GetRawCustomPropertySet()) {
+    persisted_custom_property_fill_styles_.erase(key);
+    if (std::find(pending_custom_property_resets_.begin(),
+                  pending_custom_property_resets_.end(),
+                  key) == pending_custom_property_resets_.end()) {
+      pending_custom_property_resets_.push_back(key);
+    }
+  }
+
+  QueueCancelEvent(animation);
+}
+
+bool CSSKeyframeManager::NeedsFutureTickForNewPipeline() const {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              KEYFRAME_MANAGER_NEEDS_FUTURE_TICK_FOR_NEW_PIPELINE);
+  auto has_running_animation = [](const auto& animation_map) {
+    return std::any_of(
+        animation_map.begin(), animation_map.end(), [](const auto& item) {
+          return item.second != nullptr &&
+                 item.second->GetState() == Animation::State::kPlay;
+        });
+  };
+  return has_running_animation(animations_map_) ||
+         has_running_animation(temp_active_animations_map_) ||
+         has_running_animation(temp_keep_animations_map_);
+}
+
 std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
-    starlight::AnimationData& data) {
+    starlight::AnimationData& data,
+    const tasm::CustomPropertiesMap* base_custom_properties) {
   // 1. create animation & keyframe_effect according to animation data
   auto animation = std::make_shared<Animation>(data.name);
   animation->set_animation_data(data);
@@ -266,12 +608,23 @@ std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
   std::unique_ptr<KeyframeEffect> keyframe_effect = KeyframeEffect::Create();
   keyframe_effect->BindAnimationDelegate(this);
   keyframe_effect->BindElement(this->element());
+  const bool has_custom_property_keyframes =
+      starlight::CSSStyleUtils::HasNonEmptyCSSKeyframesCustomPropertyContent(
+          GetKeyframesCustomPropertyMap(data.name));
+  keyframe_effect->SetHasCustomPropertyKeyframes(has_custom_property_keyframes);
   animation->SetKeyframeEffect(std::move(keyframe_effect));
   animation->BindDelegate(this);
   animation->BindElement(this->element());
   // 2. create keyframe Models& animation Curves according to CSS keyframe
   // tokens
-  MakeKeyframeModel(animation.get(), data.name);
+  MakeKeyframeModel(animation.get(), data.name, base_custom_properties);
+  if (HasNoSampleableKeyframes(animation, has_custom_property_keyframes)) {
+    LOGE(
+        "[animation] skip creating invalid animation without sampleable "
+        "keyframes, name:"
+        << data.name.str());
+    return nullptr;
+  }
   return animation;
 }
 
@@ -293,9 +646,39 @@ const tasm::CSSKeyframesContent& CSSKeyframeManager::GetKeyframesStyleMap(
   return GetEmptyKeyframeMap();
 }
 
-void CSSKeyframeManager::MakeKeyframeModel(Animation* animation,
-                                           const base::String& animation_name) {
+const tasm::CSSKeyframesCustomPropertyContent&
+CSSKeyframeManager::GetKeyframesCustomPropertyMap(
+    const base::String& animation_name) {
+  DCHECK(element() != nullptr);
+  const auto& keyframes_map = element()->keyframes_map();
+  if (keyframes_map.has_value()) {
+    auto iter = keyframes_map->find(animation_name);
+    if (iter != keyframes_map->end()) {
+      return iter->second->GetKeyframesCustomPropertyContent();
+    }
+  }
+  tasm::CSSKeyframesToken* tokens =
+      element()->GetCSSKeyframesToken(animation_name);
+  if (tokens) {
+    return tokens->GetKeyframesCustomPropertyContent();
+  }
+  return GetEmptyCustomPropertyKeyframeMap();
+}
+
+void CSSKeyframeManager::MakeKeyframeModel(
+    Animation* animation, const base::String& animation_name,
+    const tasm::CustomPropertiesMap* base_custom_properties) {
   const auto& keyframes_map = GetKeyframesStyleMap(animation_name);
+  const auto& keyframe_custom_properties =
+      GetKeyframesCustomPropertyMap(animation_name);
+  SyncAnimationRawCustomPropertySet(animation, keyframe_custom_properties);
+  const auto& configs = element_->element_manager()->GetCSSParserConfigs();
+  const auto* effective_base_custom_properties = base_custom_properties;
+  if (effective_base_custom_properties == nullptr &&
+      element_->computed_css_style() != nullptr) {
+    effective_base_custom_properties =
+        element_->computed_css_style()->GetCustomProperties();
+  }
   for (const auto& keyframe_info : keyframes_map) {
     double offset = keyframe_info.first;
     tasm::StyleMap* style_map = keyframe_info.second.get();
@@ -312,6 +695,13 @@ void CSSKeyframeManager::MakeKeyframeModel(Animation* animation,
           timing_function_value, false, timing_function_for_keyframe,
           element_->element_manager()->GetCSSParserConfigs());
     }
+    const auto custom_property_iter =
+        keyframe_custom_properties.find(keyframe_info.first);
+    const auto* custom_properties =
+        custom_property_iter != keyframe_custom_properties.end() &&
+                custom_property_iter->second != nullptr
+            ? custom_property_iter->second.get()
+            : nullptr;
     for (const auto& css_value_pair : *style_map) {
       if (css_value_pair.first == tasm::kPropertyIDAnimationTimingFunction) {
         continue;
@@ -327,9 +717,13 @@ void CSSKeyframeManager::MakeKeyframeModel(Animation* animation,
              << css_value_pair.first);
         continue;
       }
+      auto resolved_value =
+          starlight::CSSStyleUtils::ResolveCSSKeyframeValueWithCustomProperties(
+              css_value_pair.first, css_value_pair.second, custom_properties,
+              configs, effective_base_custom_properties);
       bool init_status = InitCurveAndModelAndKeyframe(
           curve_type, animation, offset, std::move(timing_function),
-          css_value_pair.first, css_value_pair.second);
+          css_value_pair.first, resolved_value);
       if (!init_status) {
         continue;
       }
@@ -451,6 +845,13 @@ const tasm::CssMeasureContext& CSSKeyframeManager::GetLengthContext(
 const tasm::CSSKeyframesContent& CSSKeyframeManager::GetEmptyKeyframeMap() {
   static base::NoDestructor<tasm::CSSKeyframesContent> kEmptyKeyframeMap;
   return *kEmptyKeyframeMap.get();
+}
+
+const tasm::CSSKeyframesCustomPropertyContent&
+CSSKeyframeManager::GetEmptyCustomPropertyKeyframeMap() {
+  static base::NoDestructor<tasm::CSSKeyframesCustomPropertyContent>
+      kEmptyCustomPropertyKeyframeMap;
+  return *kEmptyCustomPropertyKeyframeMap.get();
 }
 
 tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
