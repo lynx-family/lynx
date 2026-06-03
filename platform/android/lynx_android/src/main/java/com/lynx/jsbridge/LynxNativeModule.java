@@ -12,6 +12,6 @@ import java.lang.annotation.Target;
 
 @Retention(RUNTIME)
 @Target(ElementType.TYPE)
-public @interface LynxAutolinkNativeModule {
+public @interface LynxNativeModule {
   String name();
 }

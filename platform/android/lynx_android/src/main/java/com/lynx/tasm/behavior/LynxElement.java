@@ -2,20 +2,21 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-package com.lynx.jsbridge;
+package com.lynx.tasm.behavior;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import com.lynx.tasm.behavior.render.IRendererHost;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-/**
- * Compile-time mirror used by LynxProcessor. Keep this in sync with the public
- * LynxAutolinkNativeModule annotation.
- */
 @Retention(RUNTIME)
 @Target(ElementType.TYPE)
-public @interface LynxAutolinkNativeModule {
+public @interface LynxElement {
   String name();
+  boolean isCreateAsync() default false;
+  boolean needProcessDirection() default false;
+  boolean supportFragmentLayerRender() default false;
+  Class<? extends IRendererHost> fragmentLayerRendererHost() default IRendererHost.class;
 }

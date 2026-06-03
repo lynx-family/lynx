@@ -109,13 +109,13 @@ public class LynxBehaviorProcessorTest {
   }
 
   @Test
-  public void testLynxAutolinkElementAnnotation() throws IOException {
+  public void testLynxElementAnnotation() throws IOException {
     JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestElement",
         "package com.test;\n"
-            + "import com.lynx.tasm.behavior.LynxAutolinkElement;\n"
+            + "import com.lynx.tasm.behavior.LynxElement;\n"
             + "import com.lynx.tasm.behavior.LynxContext;\n"
             + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
-            + "@LynxAutolinkElement(name = \"test-element\", isCreateAsync = true)\n"
+            + "@LynxElement(name = \"test-element\", isCreateAsync = true)\n"
             + "public class TestElement extends LynxUI {\n"
             + "  public TestElement(LynxContext context) { super(context); }\n"
             + "}\n");
@@ -127,7 +127,7 @@ public class LynxBehaviorProcessorTest {
     assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
 
     String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
-    assertTrue("Should use LynxAutolinkElement name",
+    assertTrue("Should use LynxElement name",
         source.contains("new Behavior(\"test-element\", false, true, false)"));
   }
 
@@ -218,14 +218,14 @@ public class LynxBehaviorProcessorTest {
   }
 
   @Test
-  public void testAutolinkElementWithDefaultRendererHostSentinel() throws IOException {
+  public void testLynxElementWithDefaultRendererHostSentinel() throws IOException {
     JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestElement",
         "package com.test;\n"
-            + "import com.lynx.tasm.behavior.LynxAutolinkElement;\n"
+            + "import com.lynx.tasm.behavior.LynxElement;\n"
             + "import com.lynx.tasm.behavior.LynxContext;\n"
             + "import com.lynx.tasm.behavior.render.IRendererHost;\n"
             + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
-            + "@LynxAutolinkElement(name = \"test\", supportFragmentLayerRender = true, "
+            + "@LynxElement(name = \"test\", supportFragmentLayerRender = true, "
             + "fragmentLayerRendererHost = IRendererHost.class)\n"
             + "public class TestElement extends LynxUI {\n"
             + "  public TestElement(LynxContext context) { super(context); }\n"

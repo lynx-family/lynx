@@ -175,19 +175,15 @@ module Lynx
               components << ComponentInfo.new(:renderer_host, name.first, class_name)
             end
           end
-          content.scan(/@?LynxAutolinkUI\(\s*@?"([^"]+)"\s*\)\s*@implementation\s+([A-Za-z_][A-Za-z0-9_]*)/) do
+          content.scan(/@LynxUIRegister\(\s*@?"([^"]+)"\s*\)\s*@implementation\s+([A-Za-z_][A-Za-z0-9_]*)/) do
             |name, class_name|
             components << ComponentInfo.new(:ui, name, class_name)
           end
-          content.scan(/@?LynxAutolinkNativeModule\(\s*@?"([^"]+)"\s*\)\s*@(implementation|interface)\s+([A-Za-z_][A-Za-z0-9_]*)/) do
+          content.scan(/@LynxNativeModuleRegister\(\s*@?"([^"]+)"\s*\)\s*@(implementation|interface)\s+([A-Za-z_][A-Za-z0-9_]*)/) do
             |name, _declaration, class_name|
             components << ComponentInfo.new(:native_module, name, class_name)
           end
-          content.scan(/@?LynxAutolinkService\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/) do
-            |class_name, protocol_name|
-            components << ComponentInfo.new(:service, protocol_name, class_name)
-          end
-          content.scan(/@?LynxServiceRegister\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/) do
+          content.scan(/@LynxServiceRegister\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/) do
             |class_name, protocol_name|
             components << ComponentInfo.new(:service, protocol_name, class_name)
           end

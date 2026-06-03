@@ -25,7 +25,7 @@ class LynxLibraryAutolinkTest < Minitest::Test
       package_dir = write_library(dir, '@scope/demo-lib', 'DemoLib')
       File.write(File.join(package_dir, 'ios/DemoModule.m'), <<~OBJC)
         #import <Lynx/LynxModule.h>
-        @LynxAutolinkNativeModule("NativeLocalStorage")
+        @LynxNativeModuleRegister("NativeLocalStorage")
         @interface DemoModule : NSObject <LynxModule>
         @end
         @implementation DemoModule
@@ -34,8 +34,8 @@ class LynxLibraryAutolinkTest < Minitest::Test
       OBJC
       File.write(File.join(package_dir, 'ios/DemoUI.m'), <<~OBJC)
         #import <Lynx/LynxUI.h>
-        @LynxAutolinkUI("autolink-ui")
-        @implementation DemoAutolinkUI
+        @LynxUIRegister("marked-ui")
+        @implementation DemoMarkedUI
         @end
 
         @implementation DemoUI
@@ -49,7 +49,7 @@ class LynxLibraryAutolinkTest < Minitest::Test
       OBJC
       File.write(File.join(package_dir, 'ios/DemoService.m'), <<~OBJC)
         #import <LynxServiceAPI/ServiceAPI.h>
-        @LynxAutolinkService(DemoService, LynxDemoServiceProtocol)
+        @LynxServiceRegister(DemoService, LynxDemoServiceProtocol)
         @implementation DemoService
         @end
 
@@ -82,7 +82,7 @@ class LynxLibraryAutolinkTest < Minitest::Test
       assert_includes implementation,
                       '[config registerModule:NSClassFromString(@"DemoModule") withName:@"NativeLocalStorage"]'
       assert_includes implementation,
-                      '[config registerUI:NSClassFromString(@"DemoAutolinkUI") withName:@"autolink-ui"]'
+                      '[config registerUI:NSClassFromString(@"DemoMarkedUI") withName:@"marked-ui"]'
       assert_includes implementation,
                       '[config registerUI:NSClassFromString(@"DemoUI") withName:@"demo-ui"]'
       assert_includes implementation,
@@ -96,7 +96,7 @@ class LynxLibraryAutolinkTest < Minitest::Test
       package_dir = write_library(dir, 'demo-lib', 'DemoLib')
       File.write(File.join(package_dir, 'ios/OldModule.m'), <<~OBJC)
         #import <Lynx/LynxModule.h>
-        LynxNativeModule("OldModule")
+        LynxNativeModuleRegister("OldModule")
         @interface OldModule : NSObject <LynxModule>
         @end
       OBJC

@@ -66,10 +66,6 @@ typedef struct {
   @end
 #endif
 
-#ifndef LynxAutolinkService
-#define LynxAutolinkService(clsName, protocolName) LynxServiceRegister(clsName, protocolName)
-#endif
-
 /**
  * Bind protocol and class, e.g., LYNX_SERVICE_BIND (LynxMonitorService,
  * LynxMonitorProtocol)
