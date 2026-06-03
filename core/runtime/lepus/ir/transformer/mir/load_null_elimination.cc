@@ -51,6 +51,21 @@ bool LoadNullEliminationPass::RunOnFunction(FuncOp* f) {
           load_nil->GetToplevelVarReg() != constants::kInvalidSignedValue) {
         continue;
       }
+      // Don't merge a LoadNull that is the sole non-terminator instruction in
+      // its block. These are in nil-trampoline blocks used by optional-chaining
+      // pattern matching in InstCombine. Removing them would make the block
+      // trivial, disrupting CFG structural invariants relied upon by later
+      // passes (CanonicalizeNullishGuardedGetTableMergeRecompute, SimplifyCFG).
+      {
+        bool sole_non_terminator = true;
+        for (auto* other : bb.InstRange()) {
+          if (other == load_nil) continue;
+          if (llvh::isa<TerminatorInst>(other)) continue;
+          sole_non_terminator = false;
+          break;
+        }
+        if (sole_non_terminator) continue;
+      }
       int8_t t = load_nil->GetLoadNilType()->GetValue();
       load_nils[t].push_back(load_nil);
     }

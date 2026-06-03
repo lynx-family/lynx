@@ -1,4 +1,7 @@
 # CHANGELOG
+# 0.0.43
+* fix incorrect assignment elimination under optional chaining when IR optimization is enabled 
+
 # 0.0.42
 * fix lepus crash when multiple closures capture a reassigned toplevel variable
 
