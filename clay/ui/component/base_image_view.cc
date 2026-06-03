@@ -30,7 +30,7 @@
 #include "clay/ui/painter/image_painter.h"
 #include "clay/ui/shadow/image_shadow_node.h"
 
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
 #include "clay/ui/component/list/base_list_view.h"
 #endif
 
@@ -529,7 +529,7 @@ void BaseImageView::FetchSource() {
         self->NotifyLoadSuccess(resource->GetWidth(), resource->GetHeight());
 
         if (self->prevent_loading_on_list_scroll_) {
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
           auto parent_list = self->Parent();
           while (parent_list && !parent_list->Is<BaseListView>()) {
             parent_list = parent_list->Parent();

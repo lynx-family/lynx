@@ -231,6 +231,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
   base::String platform_node_tag_{BASE_STATIC_STRING(kListNodeTag)};
   std::optional<ListElementSSRHelper> ssr_helper_;
   bool batch_render_strategy_flushed_{false};
+  bool enable_native_list_only_from_env_{false};
   std::unique_ptr<ListMediator> list_mediator_{nullptr};
   std::unique_ptr<ListContainerDelegateInternal>
       list_container_delegate_internal_{nullptr};

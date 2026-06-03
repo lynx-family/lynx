@@ -62,6 +62,7 @@ export enum LynxTrailKey {
   ENABLE_NEW_ANIMATOR_FIBER = 'enable_new_animator_fiber',
   POST_DATA_BEFORE_UPDATE = 'post_data_before_update',
   ENABLE_REPORT_LIST_ITEM_LIFE_STATISTIC = 'enable_report_list_item_life_statistic',
+  ENABLE_NATIVE_LIST = 'enable_native_list',
   ENABLE_ASYNC_DESTROY_ENGINE = 'enable_async_destroy_engine',
   CONCURRENT_LOOP_HIGH_PRIORITY_WORKER_COUNT_PERCENT = 'concurrent_loop_high_priority_worker_count_percent',
   ENABLE_DECOUPLED_LIST = 'enable_decoupled_list',

@@ -195,5 +195,5 @@ if (is_win && use_discrete_gpu) {
 }
 
 if (enable_native_list) {
-  feature_defines_list += [ "ENABLE_NATIVE_LIST=1" ]
+  feature_defines_list += [ "LYNX_ENABLE_CLAY_NATIVE_LIST=1" ]
 }

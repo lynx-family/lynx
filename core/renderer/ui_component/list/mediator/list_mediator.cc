@@ -137,6 +137,13 @@ void ListMediator::SetEnableBatchRender(bool enable_batch_render) {
   }
 }
 
+void ListMediator::SetEnableScrollToThresholdEventOnDiffLayout(bool enable) {
+  if (list_container_delegate_) {
+    list_container_delegate_->SetEnableScrollToThresholdEventOnDiffLayout(
+        enable);
+  }
+}
+
 int32_t ListMediator::GetImplId() const { return list_element_->impl_id(); }
 
 float ListMediator::GetPhysicalPixelsPerLayoutUnit() const {

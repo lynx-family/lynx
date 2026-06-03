@@ -46,6 +46,7 @@ class ContainerDelegate {
   virtual void EnableInsertPlatformView() = 0;
   virtual void OnNextFrame() = 0;
   virtual void SetEnableBatchRender(bool enable_batch_render) = 0;
+  virtual void SetEnableScrollToThresholdEventOnDiffLayout(bool enable) = 0;
 };
 
 std::unique_ptr<ContainerDelegate> CreateListContainerDelegate(

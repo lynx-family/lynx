@@ -15,7 +15,7 @@
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
 
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
 #include "clay/ui/component/list/base_list_view.h"
 #endif
 
@@ -91,7 +91,7 @@ FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
     } else {
       if (parent->GetOverflow() == CSSProperty::OVERFLOW_HIDDEN ||
           parent->Is<ScrollView>() ||
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
           parent->Is<BaseListView>() ||
 #endif
           ui_clip_enabled) {

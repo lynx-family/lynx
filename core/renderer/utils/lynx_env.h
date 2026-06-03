@@ -84,6 +84,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_NEW_ANIMATOR_FIBER,
     POST_DATA_BEFORE_UPDATE,
     ENABLE_REPORT_LIST_ITEM_LIFE_STATISTIC,
+    ENABLE_NATIVE_LIST,
     ENABLE_NATIVE_LIST_NESTED,
     ASYNC_DESTROY_ENGINE_COUNT,
     CONCURRENT_LOOP_HIGH_PRIORITY_WORKER_COUNT_PERCENT,
@@ -253,6 +254,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::POST_DATA_BEFORE_UPDATE, "post_data_before_update"},
             {Key::ENABLE_REPORT_LIST_ITEM_LIFE_STATISTIC,
              "enable_report_list_item_life_statistic"},
+            {Key::ENABLE_NATIVE_LIST, "enable_native_list"},
             {Key::ENABLE_NATIVE_LIST_NESTED, "enable_native_list_nested"},
             {Key::ASYNC_DESTROY_ENGINE_COUNT, "async_destroy_engine_count"},
             {Key::CONCURRENT_LOOP_HIGH_PRIORITY_WORKER_COUNT_PERCENT,
@@ -458,6 +460,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableUseMapBufferForUIProps();
   bool EnablePostDataBeforeUpdateTemplate();
   bool EnableReportListItemLifeStatistic();
+  bool EnableNativeList();
   bool EnableNativeListNested();
   int32_t EnableAsyncDestroyEngine();
   bool EnableComponentAsyncDecode();

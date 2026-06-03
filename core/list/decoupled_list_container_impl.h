@@ -58,6 +58,9 @@ class ListContainerImpl : public ContainerDelegate {
   void SetEnableBatchRender(bool enable_batch_render) override {
     enable_batch_render_ = enable_batch_render;
   }
+  void SetEnableScrollToThresholdEventOnDiffLayout(bool enable) override {
+    list_event_manager_->SetEnableScrollToThresholdEventOnDiffLayout(enable);
+  }
 
   int GetDataCount() const;
   ItemHolder* GetItemHolderForIndex(int index);

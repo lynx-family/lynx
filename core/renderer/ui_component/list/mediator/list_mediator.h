@@ -55,6 +55,8 @@ class ListMediator : public lynx::list::ElementDelegate {
 
   void SetEnableBatchRender(bool enable_batch_render);
 
+  void SetEnableScrollToThresholdEventOnDiffLayout(bool enable);
+
   // Implement all interfaces for list::ElementDelegate
   int32_t GetImplId() const override;
 

@@ -360,7 +360,8 @@ void ListElement::NotifyListReuseNode(const fml::RefPtr<FiberElement>& child,
 }
 
 void ListElement::ResolveEnableNativeList() {
-  // The priority is: shell(Case1) > property(Case2) > page config(Case3).
+  // The priority is: shell(Case1) > property(Case2) > config(Case3) >
+  // env(Case4).
   if (element_manager_->GetEnableNativeListFromShell()) {
     // Case 1. Resolve enable native list from shell.
     disable_list_platform_implementation_ = true;
@@ -375,14 +376,30 @@ void ListElement::ResolveEnableNativeList() {
     return;
   }
   // Case 3: Not set "custom-list-name" property, we get enable native list from
-  // page config.
-  disable_list_platform_implementation_ =
-      element_manager_->GetEnableNativeListFromPageConfig();
+  // PageConfig. PageConfig may already contain the native config fallback and
+  // still preserves the undefined state.
+  const auto& config = element_manager_->GetConfig();
+  const auto enable_native_list_from_config =
+      config ? config->GetEnableNativeList() : TernaryBool::UNDEFINE_VALUE;
+  if (enable_native_list_from_config != TernaryBool::UNDEFINE_VALUE) {
+    disable_list_platform_implementation_ =
+        enable_native_list_from_config == TernaryBool::TRUE_VALUE;
+    return;
+  }
+  // Case 4: If use FiberArch and get true from env, we use native list.
+  bool enable_native_list_from_env =
+      element_manager_->GetEnableNativeListFromEnv();
+  if (IsFiberArch() && enable_native_list_from_env) {
+    disable_list_platform_implementation_ = true;
+    enable_native_list_only_from_env_ = true;
+  } else {
+    disable_list_platform_implementation_ = false;
+  }
 }
 
 void ListElement::ResolvePlatformNodeTag() {
   // When resolve platform node tag, we no need to consider whether enable
-  // native list except the case that using page config.
+  // native list except the case that using config or env fallback.
 
   // Case 1: Resolve "custom-list-name" property.
   const auto& attr_map = updated_attr_map();
@@ -391,9 +408,13 @@ void ListElement::ResolvePlatformNodeTag() {
     platform_node_tag_ = it->second.String();
     return;
   }
-  // Case 2: If get enable native list from page config, we modify
+  // Case 2: If get enable native list from config or env fallback, we modify
   // platform_node_tag_ to "list-container".
-  if (element_manager_->GetEnableNativeListFromPageConfig()) {
+  const auto& config = element_manager_->GetConfig();
+  const auto enable_native_list_from_config =
+      config ? config->GetEnableNativeList() : TernaryBool::UNDEFINE_VALUE;
+  if (enable_native_list_from_config == TernaryBool::TRUE_VALUE ||
+      enable_native_list_only_from_env_) {
     platform_node_tag_ = BASE_STATIC_STRING(list::kListContainer);
   }
 }
@@ -426,11 +447,18 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
     // Report feature count.
     HandleDelayTask([platform_node_tag = platform_node_tag_,
                      disable_list_platform_implementation =
-                         *disable_list_platform_implementation_]() {
+                         *disable_list_platform_implementation_,
+                     enable_native_list_only_from_env =
+                         enable_native_list_only_from_env_]() {
       // add feature count for cpp list
       if (disable_list_platform_implementation) {
         tasm::report::FeatureCounter::Instance()->Count(
             tasm::report::LynxFeature::CPP_ENABLE_NATIVE_LIST);
+      }
+      // add feature count for native list enabled by env fallback
+      if (enable_native_list_only_from_env) {
+        tasm::report::FeatureCounter::Instance()->Count(
+            tasm::report::LynxFeature::CPP_ENABLE_NATIVE_LIST_FROM_ENV);
       }
       // add feature count for custom-list-name
       if (platform_node_tag.IsEqual(BASE_STATIC_STRING(list::kListContainer))) {
@@ -455,6 +483,10 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
       // constructor can get PhysicalPixelsPerLayoutUnit from element manager.
       if (*enable_decoupled_list_) {
         list_mediator_ = std::make_unique<ListMediator>(this);
+        // Note: if enable native list only from env, we should not send scroll
+        // to threshold event on diff layout to avoid breaking change.
+        list_mediator_->SetEnableScrollToThresholdEventOnDiffLayout(
+            !enable_native_list_only_from_env_);
       } else {
         list_container_delegate_internal_ =
             list::CreateListContainerDelegateInternal(this);

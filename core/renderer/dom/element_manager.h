@@ -619,6 +619,10 @@ class ElementManager : public ElementContextDelegate,
     return config_ && config_->GetEnableNativeList() == TernaryBool::TRUE_VALUE;
   }
 
+  bool GetEnableNativeListFromEnv() const {
+    return LynxEnv::GetInstance().EnableNativeList();
+  }
+
   bool GetEnableNewGesture() {
     if (config_) {
       return config_->GetEnableNewGesture();

@@ -44,6 +44,7 @@ cpp:
   - disable_css_variables
   - enable_standard_css_selector
   - disable_standard_css_selector
+  - enable_native_list_from_env
 typescript:
   - bundle_support_load_script
 objc:

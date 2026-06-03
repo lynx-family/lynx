@@ -13,9 +13,9 @@
 #include "clay/ui/shadow/editable_shadow_node.h"
 #endif  // ENABLE_CLAY_LITE
 
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
 #include "clay/ui/component/list/list_wrapper.h"
-#endif  // ENABLE_NATIVE_LIST
+#endif  // LYNX_ENABLE_CLAY_NATIVE_LIST
 
 #include "clay/ui/component/image_view.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
@@ -55,7 +55,7 @@ REGISTER_CLAY_ELEMENT("scroll-view", ScrollWrapper, void);
 REGISTER_CLAY_ELEMENT("x-scroll-view", ScrollWrapper, void);
 REGISTER_CLAY_ELEMENT("component", Component, void);
 REGISTER_CLAY_ELEMENT("list-item", ListItemView, void);
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
 REGISTER_CLAY_ELEMENT("list", ListWrapper, void);
 #else
 REGISTER_CLAY_ELEMENT("list", ListContainerWrapper, void);

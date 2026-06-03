@@ -33,7 +33,7 @@
 #include "clay/ui/component/inline_image_view.h"
 #include "clay/ui/component/intersection_observer.h"
 #ifdef ENABLE_ACCESSIBILITY
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
 #include "clay/ui/component/list/base_list_view.h"
 #include "clay/ui/component/list/list_wrapper.h"
 #endif
@@ -103,7 +103,7 @@ BaseView* A11yScrollTargetForSemantics(BaseView* view) {
   if (view->Is<ScrollView>()) {
     return view;
   }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
   if (view->Is<ListWrapper>()) {
     return static_cast<ListWrapper*>(view)->GetListView();
   }
@@ -142,7 +142,7 @@ int32_t A11yScrollTargetActions(BaseView* target) {
   if (target->Is<ScrollView>()) {
     return static_cast<ScrollView*>(target)->GetSemanticsActions();
   }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
   if (target->Is<BaseListView>()) {
     return static_cast<BaseListView*>(target)->GetSemanticsActions();
   }
@@ -157,7 +157,7 @@ int32_t A11yScrollTargetFlags(BaseView* target) {
   if (target->Is<ScrollView>()) {
     return static_cast<ScrollView*>(target)->GetSemanticsFlags();
   }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
   if (target->Is<BaseListView>()) {
     return static_cast<BaseListView*>(target)->GetSemanticsFlags();
   }
@@ -174,7 +174,7 @@ float A11yScrollPosition(BaseView* target) {
     return scroll_view->CanScrollY() ? scroll_view->GetScrollOffset().y()
                                      : scroll_view->GetScrollOffset().x();
   }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
   if (target->Is<BaseListView>()) {
     return static_cast<BaseListView*>(target)->GetScrollbarScrollOffset();
   }
@@ -192,7 +192,7 @@ float A11yScrollExtentMax(BaseView* target) {
                ? scroll_view->GetRenderScroll()->MaxScrollHeight()
                : scroll_view->GetRenderScroll()->MaxScrollWidth();
   }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
   if (target->Is<BaseListView>()) {
     auto* list_view = static_cast<BaseListView*>(target);
     const float viewport_length = list_view->CanDragScrollOnY()
@@ -502,7 +502,7 @@ void BaseView::ScrollToMiddle(BaseView* target_view) {
     should_propagate =
         static_cast<ListContainerView*>(this)->OnScrollToMiddle(target_view);
   }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
   else if (Is<BaseListView>()) {
     should_propagate =
         static_cast<BaseListView*>(this)->OnScrollToMiddle(target_view);
@@ -3962,7 +3962,7 @@ int32_t BaseView::GetSemanticsActions() const {
                          scroll_view->CanScrollX(), scroll_view->CanScrollY());
       break;
     }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
     if (parent->Is<BaseListView>()) {
       auto* list_view = static_cast<BaseListView*>(parent);
       add_scroll_actions(list_view->GetScrollableDirection(),
@@ -3983,7 +3983,7 @@ int32_t BaseView::GetSemanticsFlags() const {
           SemanticsNode::SemanticsFlag::kHasImplicitScrolling);
       break;
     }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
     if (parent->Is<BaseListView>()) {
       flags |= static_cast<int32_t>(
           SemanticsNode::SemanticsFlag::kHasImplicitScrolling);

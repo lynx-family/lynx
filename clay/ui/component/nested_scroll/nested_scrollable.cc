@@ -22,7 +22,7 @@
 #include "clay/ui/event/gesture_event.h"
 #include "clay/ui/gesture/scrollable_direction.h"
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
 #include "clay/ui/component/list/list_wrapper.h"
 #endif
 
@@ -480,7 +480,7 @@ NestedScrollable* NestedScrollable::GetScrollable(BaseView* view) {
     // TODO(liuguoliang): common method to find scrollable view
     return static_cast<ScrollWrapper*>(view)->GetScrollView();
   }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
   else if (view->Is<ListWrapper>()) {
     return static_cast<ListWrapper*>(view)->GetListView();
   }

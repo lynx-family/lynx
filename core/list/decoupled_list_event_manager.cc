@@ -169,10 +169,10 @@ void ListEventManager::DetectScrollToThresholdAndSend(
   if (event_source == EventSource::kDiff ||
       event_source == EventSource::kLayout) {
     // 1. Force sending lower/upper event after diff or layout
-    if (is_upper) {
+    if (is_upper && enable_scroll_to_threshold_event_on_diff_layout_) {
       SendCustomScrollEvent(kEventScrollToUpper, distance, event_source);
     }
-    if (is_lower) {
+    if (is_lower && enable_scroll_to_threshold_event_on_diff_layout_) {
       SendCustomScrollEvent(kEventScrollToLower, distance, event_source);
     }
   } else if (event_source == EventSource::kScroll) {

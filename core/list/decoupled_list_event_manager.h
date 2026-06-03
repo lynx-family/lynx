@@ -42,6 +42,10 @@ class ListEventManager {
     debug_info_level_ = debug_info_level;
   }
 
+  void SetEnableScrollToThresholdEventOnDiffLayout(bool enable) {
+    enable_scroll_to_threshold_event_on_diff_layout_ = enable;
+  }
+
   void SendLayoutCompleteEvent();
 
   void SendScrollEvent(float distance, EventSource event_source);
@@ -92,6 +96,7 @@ class ListEventManager {
   std::unique_ptr<pub::Value> layout_complete_info_;
   bool need_visible_cell_{false};
   bool need_layout_complete_info_{false};
+  bool enable_scroll_to_threshold_event_on_diff_layout_{true};
   int scroll_event_throttle_ms_{200};
   int lower_threshold_item_count_{0};
   int upper_threshold_item_count_{0};

@@ -49,7 +49,7 @@
 #include "clay/ui/component/intersection_observer.h"
 #include "clay/ui/component/keywords.h"
 #ifdef ENABLE_ACCESSIBILITY
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
 #include "clay/ui/component/list/base_list_view.h"
 #include "clay/ui/component/list/list_wrapper.h"
 #endif
@@ -116,7 +116,7 @@ BaseView* FindA11yScrollTarget(BaseView* view) {
     if (current->Is<ScrollView>()) {
       return current;
     }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
     if (current->Is<ListWrapper>()) {
       return static_cast<ListWrapper*>(current)->GetListView();
     }
@@ -137,7 +137,7 @@ float A11yScrollPosition(BaseView* target) {
     return scroll_view->CanScrollY() ? scroll_view->GetScrollOffset().y()
                                      : scroll_view->GetScrollOffset().x();
   }
-#ifndef ENABLE_NATIVE_LIST
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
   if (target->Is<BaseListView>()) {
     return static_cast<BaseListView*>(target)->GetScrollbarScrollOffset();
   }

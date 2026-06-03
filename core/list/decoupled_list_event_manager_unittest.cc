@@ -654,5 +654,32 @@ TEST_F(ListEventManagerTest, DetectScrollToThresholdAndSend1) {
               ScrollPositionState::kLower);
 }
 
+TEST_F(ListEventManagerTest, DetectScrollToThresholdAndSend2) {
+  // Disabling the switch suppresses scrolltoupper/scrolltolower for diff/layout
+  // sources when the list reaches the corresponding threshold.
+  int layout_id = 1;
+  mock_list_element_->events_ = {kEventScrollToUpper, kEventScrollToLower};
+  InitFiberDataSourceAndLayout(layout_id, true, false);
+  list_event_manager_->SetEnableScrollToThresholdEventOnDiffLayout(false);
+
+  // Only scrolltoupper/scrolltolower are bound in this test. Any custom event
+  // means the switch failed to suppress threshold events.
+  EXPECT_CALL(*mock_list_element_, SendCustomEvent(_, _, _)).Times(0);
+
+  // At the top edge, diff should not send scrolltoupper.
+  mock_list_element_->height_ = 500.f;
+  list_layout_manager_->content_offset_ = 0.f;
+  list_event_manager_->DetectScrollToThresholdAndSend(0.f, 0.f,
+                                                      EventSource::kDiff);
+
+  // At the bottom edge, layout should not send scrolltolower.
+  list_layout_manager_->content_offset_ = 500.f;
+  list_event_manager_->DetectScrollToThresholdAndSend(0.f, 500.f,
+                                                      EventSource::kLayout);
+  // Diff/layout threshold checks should not update the scroll-state machine.
+  EXPECT_TRUE(list_event_manager_->previous_scroll_pos_state_ ==
+              ScrollPositionState::kMiddle);
+}
+
 }  // namespace list
 }  // namespace lynx

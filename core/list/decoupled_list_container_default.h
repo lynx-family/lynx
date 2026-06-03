@@ -63,6 +63,8 @@ class ListContainerDefault : public ContainerDelegate {
   void OnNextFrame() override {}
 
   void SetEnableBatchRender(bool enable_batch_render) override {}
+
+  void SetEnableScrollToThresholdEventOnDiffLayout(bool enable) override {}
 };
 
 }  // namespace list
