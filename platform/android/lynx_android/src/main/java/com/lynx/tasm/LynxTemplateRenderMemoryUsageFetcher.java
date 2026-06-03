@@ -56,12 +56,7 @@ final class LynxTemplateRenderMemoryUsageFetcher extends LynxMemoryUsageFetcher 
     InstanceMemoryUsageQuery query = new InstanceMemoryUsageQuery(instanceId, url, callback);
 
     TraceEvent.beginSection(TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_DISPATCH_NATIVE);
-    boolean nativeQueryStarted = render.queryNativeMemoryUsageForGlobalCollectorAsync(query);
-    if (!nativeQueryStarted) {
-      // The render may be between teardown phases. Complete the native half with zeros on the
-      // report thread so the per-instance query can still finish once the view snapshot returns.
-      LynxEventReporter.runOnReportThread(() -> query.completeNativeSnapshot(0L, 0L, 0L, 0L, null));
-    }
+    render.queryNativeMemoryUsageForGlobalCollectorAsync(query);
     TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_DISPATCH_NATIVE);
 
     queryViewMemoryUsageAsync(uiOwner, query);
@@ -131,7 +126,7 @@ final class LynxTemplateRenderMemoryUsageFetcher extends LynxMemoryUsageFetcher 
     private long mElementNodeCount;
     private long mMainThreadRuntimeBytes;
     private long mBackgroundThreadRuntimeBytes;
-    @Nullable private String mBtsRuntimeGroupId;
+    @NonNull private String mBtsRuntimeGroupId = "";
     private long mViewBytes;
     private Map<String, MemoryRecord> mViewDetail = Collections.emptyMap();
 
@@ -144,7 +139,7 @@ final class LynxTemplateRenderMemoryUsageFetcher extends LynxMemoryUsageFetcher 
 
     void completeNativeSnapshot(long elementBytes, long elementNodeCount,
         long mainThreadRuntimeBytes, long backgroundThreadRuntimeBytes,
-        @Nullable String btsRuntimeGroupId) {
+        @NonNull String btsRuntimeGroupId) {
       mElementBytes = elementBytes;
       mElementNodeCount = elementNodeCount;
       mMainThreadRuntimeBytes = mainThreadRuntimeBytes;
@@ -197,18 +192,20 @@ final class LynxTemplateRenderMemoryUsageFetcher extends LynxMemoryUsageFetcher 
     /**
      * JNI callback target for native TemplateRender memory snapshots.
      *
-     * <p>The callback can arrive from the native report path. It is immediately marshalled to the
-     * Java report thread before touching query state, keeping native and view completion serialized
-     * with the global collector timeout.
+     * <p>The callback can arrive from either a native query completion path or an early-return
+     * JNI path. Post every native completion to the Lynx report thread so native and view
+     * completion mutate query state on the same thread as the global collector timeout.
      */
     @CalledByNative
     private void onNativeMemoryUsageResult(long elementBytes, long elementNodeCount,
-        long mainThreadRuntimeBytes, long backgroundThreadRuntimeBytes, String btsRuntimeGroupId) {
+        long mainThreadRuntimeBytes, long backgroundThreadRuntimeBytes,
+        @Nullable String btsRuntimeGroupId) {
+      final String safeGroupId = btsRuntimeGroupId == null ? "" : btsRuntimeGroupId;
       TraceEvent.beginSection(TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_NATIVE_CALLBACK);
       LynxEventReporter.runOnReportThread(() -> {
         TraceEvent.beginSection(TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_NATIVE_COMPLETE);
         completeNativeSnapshot(elementBytes, elementNodeCount, mainThreadRuntimeBytes,
-            backgroundThreadRuntimeBytes, btsRuntimeGroupId);
+            backgroundThreadRuntimeBytes, safeGroupId);
         TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_NATIVE_COMPLETE);
       });
       TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_TEMPLATE_RENDER_NATIVE_CALLBACK);

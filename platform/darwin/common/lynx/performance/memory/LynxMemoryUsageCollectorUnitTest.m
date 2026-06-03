@@ -14,6 +14,8 @@
 
 + (instancetype)sharedCollector;
 - (void)queryGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback;
+- (void)queryGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback
+                          timeoutMs:(int64_t)timeoutMs;
 
 @end
 
@@ -423,6 +425,40 @@ static LynxInstanceMemoryUsage *LynxCreateMemoryUsageTestInstance(
 
   [self waitForExpectations:@[ expectation ] timeout:5.0];
   XCTAssertTrue([LynxMemoryUsageFetchers unregisterFetcher:fetcher]);
+}
+
+- (void)testCollectorUsesInjectedTimeout {
+  LynxMemoryUsageTestFetcher *fetcher = [[LynxMemoryUsageTestFetcher alloc]
+      initWithHandler:^(LynxMemoryUsageFetcherCallback callback){
+          // Intentionally keep the fetcher callback pending so the injected timeout wins.
+      }];
+  XCTAssertTrue([LynxMemoryUsageFetchers registerFetcher:fetcher]);
+
+  XCTestExpectation *expectation = [self expectationWithDescription:@"custom memory usage timeout"];
+  [[LynxMemoryUsageCollector sharedCollector]
+      queryGlobalMemoryUsageAsync:^(LynxGlobalMemoryUsageResult *result) {
+        XCTAssertEqual(result.collectionStatus, LynxMemoryCollectionStatusTimeout);
+        XCTAssertEqual(result.collectionTimeoutMs, 20);
+        [expectation fulfill];
+      }
+                        timeoutMs:20];
+
+  [self waitForExpectations:@[ expectation ] timeout:1.0];
+  XCTAssertTrue([LynxMemoryUsageFetchers unregisterFetcher:fetcher]);
+}
+
+- (void)testCollectorUsesDefaultTimeoutForInvalidInjectedTimeout {
+  XCTestExpectation *expectation =
+      [self expectationWithDescription:@"default memory usage timeout"];
+  [[LynxMemoryUsageCollector sharedCollector]
+      queryGlobalMemoryUsageAsync:^(LynxGlobalMemoryUsageResult *result) {
+        XCTAssertEqual(result.collectionStatus, LynxMemoryCollectionStatusCompleted);
+        XCTAssertEqual(result.collectionTimeoutMs, 2000);
+        [expectation fulfill];
+      }
+                        timeoutMs:0];
+
+  [self waitForExpectations:@[ expectation ] timeout:1.0];
 }
 
 @end

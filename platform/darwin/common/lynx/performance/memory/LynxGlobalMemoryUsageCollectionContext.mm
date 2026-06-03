@@ -14,12 +14,14 @@
 
 - (instancetype)initWithCollectionId:(uint64_t)collectionId
                    collectionStartMs:(int64_t)collectionStartMs
+                 collectionTimeoutMs:(int64_t)collectionTimeoutMs
                expectedInstanceCount:(NSInteger)expectedInstanceCount
                             callback:(LynxGlobalMemoryUsageCallback)callback {
   self = [super init];
   if (self) {
     _collectionId = collectionId;
     _collectionStartMs = collectionStartMs;
+    _collectionTimeoutMs = collectionTimeoutMs;
     _expectedInstanceCount = expectedInstanceCount;
     _callbacks = [NSMutableArray array];
     _instances = [NSMutableArray array];

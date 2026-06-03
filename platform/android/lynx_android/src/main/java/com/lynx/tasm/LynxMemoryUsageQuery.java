@@ -31,4 +31,20 @@ public final class LynxMemoryUsageQuery {
   public void queryLynxGlobalMemoryUsageAsync(@Nullable LynxGlobalMemoryUsageCallback callback) {
     LynxGlobalMemoryUsageCollector.getInstance().queryMemoryUsageAsync(callback);
   }
+
+  /**
+   * Queries current global Lynx memory usage asynchronously with a custom collection timeout.
+   *
+   * <p>When {@code timeoutMs <= 0}, the collector uses the default timeout of 2000ms.
+   *
+   * <p>Threading: when the Lynx native library is available, the callback is invoked on the Lynx
+   * report thread. Before the native report thread is available, the callback is invoked
+   * asynchronously on a background executor with an empty completed result. Callers must dispatch
+   * to the main thread before touching platform View objects.
+   */
+  @AnyThread
+  public void queryLynxGlobalMemoryUsageAsync(
+      @Nullable LynxGlobalMemoryUsageCallback callback, long timeoutMs) {
+    LynxGlobalMemoryUsageCollector.getInstance().queryMemoryUsageAsync(callback, timeoutMs);
+  }
 }

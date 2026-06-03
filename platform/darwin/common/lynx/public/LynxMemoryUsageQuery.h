@@ -37,6 +37,14 @@ typedef void (^LynxGlobalMemoryUsageCallback)(LynxGlobalMemoryUsageResult *resul
  */
 - (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback;
 
+/**
+ * Queries the current Lynx-attributed memory usage with a custom collection timeout.
+ *
+ * When timeoutMs is less than or equal to 0, the collector uses the default timeout of 2000ms.
+ */
+- (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback
+                              timeoutMs:(int64_t)timeoutMs;
+
 @end
 
 NS_ASSUME_NONNULL_END

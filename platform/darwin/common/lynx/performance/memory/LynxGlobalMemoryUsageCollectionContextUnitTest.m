@@ -18,6 +18,7 @@
   LynxGlobalMemoryUsageCollectionContext *context = [[LynxGlobalMemoryUsageCollectionContext alloc]
        initWithCollectionId:7
           collectionStartMs:100
+        collectionTimeoutMs:2000
       expectedInstanceCount:2
                    callback:^(LynxGlobalMemoryUsageResult *result) {
                      callbackCount++;
@@ -28,6 +29,7 @@
   XCTAssertFalse([context matchesCollectionId:8]);
   XCTAssertEqual(context.collectionId, 7);
   XCTAssertEqual(context.collectionStartMs, 100);
+  XCTAssertEqual(context.collectionTimeoutMs, 2000);
   XCTAssertEqual(context.expectedInstanceCount, 2);
   XCTAssertEqual(context.receivedFetchResultCount, 0);
   XCTAssertEqual(context.instances.count, 0);
@@ -58,6 +60,7 @@
   LynxGlobalMemoryUsageCollectionContext *context = [[LynxGlobalMemoryUsageCollectionContext alloc]
        initWithCollectionId:1
           collectionStartMs:10
+        collectionTimeoutMs:2000
       expectedInstanceCount:1
                    callback:^(LynxGlobalMemoryUsageResult *result) {
                      firstCallbackCount++;

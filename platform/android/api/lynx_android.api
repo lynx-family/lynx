@@ -6181,6 +6181,7 @@ public interface com::lynx::tasm::service::LynxMemoryInfo::LynxMemoryType {
 public class com::lynx::tasm::LynxMemoryUsageQuery :  {
   public static LynxMemoryUsageQuery com.lynx.tasm.LynxMemoryUsageQuery.inst();
   public void com.lynx.tasm.LynxMemoryUsageQuery.queryLynxGlobalMemoryUsageAsync(@Nullable LynxGlobalMemoryUsageCallback callback);
+  public void com.lynx.tasm.LynxMemoryUsageQuery.queryLynxGlobalMemoryUsageAsync( @Nullable LynxGlobalMemoryUsageCallback callback, long timeoutMs);
 }
 
 public interface com::lynx::jsbridge::LynxMethod {

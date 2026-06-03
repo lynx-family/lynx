@@ -60,5 +60,62 @@ public class LynxMemoryUsageQueryTest {
   @Test
   public void queryGlobalMemoryUsageIgnoresNullCallback() {
     LynxMemoryUsageQuery.inst().queryLynxGlobalMemoryUsageAsync(null);
+    LynxMemoryUsageQuery.inst().queryLynxGlobalMemoryUsageAsync(null, 20L);
+  }
+
+  @Test
+  public void queryGlobalMemoryUsageUsesInjectedTimeoutInFallbackResult() throws Exception {
+    LynxEnv env = LynxEnv.inst();
+    boolean wasNativeLibraryLoaded = env.mIsNativeLibraryLoaded;
+    env.setNativeLibraryLoaded(false);
+    CountDownLatch latch = new CountDownLatch(1);
+    AtomicReference<LynxGlobalMemoryUsageResult> resultRef = new AtomicReference<>();
+
+    try {
+      LynxMemoryUsageQuery.inst().queryLynxGlobalMemoryUsageAsync(
+          new LynxGlobalMemoryUsageCallback() {
+            @Override
+            public void onResult(@NonNull LynxGlobalMemoryUsageResult result) {
+              resultRef.set(result);
+              latch.countDown();
+            }
+          },
+          20L);
+
+      assertTrue(latch.await(1, TimeUnit.SECONDS));
+    } finally {
+      env.setNativeLibraryLoaded(wasNativeLibraryLoaded);
+    }
+    LynxGlobalMemoryUsageResult result = resultRef.get();
+    assertNotNull(result);
+    assertEquals(20L, result.getCollectionTimeoutMs());
+  }
+
+  @Test
+  public void queryGlobalMemoryUsageUsesDefaultTimeoutForInvalidInjectedTimeout() throws Exception {
+    LynxEnv env = LynxEnv.inst();
+    boolean wasNativeLibraryLoaded = env.mIsNativeLibraryLoaded;
+    env.setNativeLibraryLoaded(false);
+    CountDownLatch latch = new CountDownLatch(1);
+    AtomicReference<LynxGlobalMemoryUsageResult> resultRef = new AtomicReference<>();
+
+    try {
+      LynxMemoryUsageQuery.inst().queryLynxGlobalMemoryUsageAsync(
+          new LynxGlobalMemoryUsageCallback() {
+            @Override
+            public void onResult(@NonNull LynxGlobalMemoryUsageResult result) {
+              resultRef.set(result);
+              latch.countDown();
+            }
+          },
+          0L);
+
+      assertTrue(latch.await(1, TimeUnit.SECONDS));
+    } finally {
+      env.setNativeLibraryLoaded(wasNativeLibraryLoaded);
+    }
+    LynxGlobalMemoryUsageResult result = resultRef.get();
+    assertNotNull(result);
+    assertEquals(2000L, result.getCollectionTimeoutMs());
   }
 }

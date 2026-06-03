@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 class LynxGlobalMemoryUsageCollector {
   private static final String TAG = "LynxMemoryCollector";
-  private static final long GLOBAL_MEMORY_USAGE_TIMEOUT_MS = 2000;
+  private static final long DEFAULT_GLOBAL_MEMORY_USAGE_TIMEOUT_MS = 2000;
   private static final LynxGlobalMemoryUsageCollector INSTANCE =
       new LynxGlobalMemoryUsageCollector();
 
@@ -49,11 +49,17 @@ class LynxGlobalMemoryUsageCollector {
 
   @AnyThread
   void queryMemoryUsageAsync(@Nullable LynxGlobalMemoryUsageCallback callback) {
+    queryMemoryUsageAsync(callback, DEFAULT_GLOBAL_MEMORY_USAGE_TIMEOUT_MS);
+  }
+
+  @AnyThread
+  void queryMemoryUsageAsync(@Nullable LynxGlobalMemoryUsageCallback callback, long timeoutMs) {
     if (callback == null) {
       return;
     }
     TraceEvent.beginSection(TraceEventDef.MEMORY_USAGE_GLOBAL_QUERY);
     long collectionStartMs = nowMs();
+    long collectionTimeoutMs = normalizeTimeoutMs(timeoutMs);
     boolean isNativeLibraryLoaded = LynxEnv.inst().isNativeLibraryLoaded();
     if (!isNativeLibraryLoaded) {
       // The report thread is created by native initialization. Before that point there can be no
@@ -63,13 +69,14 @@ class LynxGlobalMemoryUsageCollector {
         LynxGlobalMemoryUsageCollectionContext.invokeCallbackSafely(callback,
             LynxGlobalMemoryUsageResult.build(collectionStartMs,
                 LynxMemoryCollectionStatus.COMPLETED, nowMs() - collectionStartMs,
-                GLOBAL_MEMORY_USAGE_TIMEOUT_MS, 0, sampleAppBytes(), Collections.emptyList()));
+                collectionTimeoutMs, 0, sampleAppBytes(), Collections.emptyList()));
       });
       TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_GLOBAL_QUERY);
       return;
     }
 
-    runOnReportThread(() -> queryMemoryUsageOnReportThread(callback, collectionStartMs));
+    runOnReportThread(
+        () -> queryMemoryUsageOnReportThread(callback, collectionStartMs, collectionTimeoutMs));
     TraceEvent.endSection(TraceEventDef.MEMORY_USAGE_GLOBAL_QUERY);
   }
 
@@ -83,8 +90,8 @@ class LynxGlobalMemoryUsageCollector {
     return mFetcherRefs.remove(new WeakFetcherRef(fetcher));
   }
 
-  private void queryMemoryUsageOnReportThread(
-      @NonNull LynxGlobalMemoryUsageCallback callback, long collectionStartMs) {
+  private void queryMemoryUsageOnReportThread(@NonNull LynxGlobalMemoryUsageCallback callback,
+      long collectionStartMs, long collectionTimeoutMs) {
     TraceEvent.beginSection(TraceEventDef.MEMORY_USAGE_GLOBAL_REPORT_THREAD_QUERY);
     LynxGlobalMemoryUsageCollectionContext pendingContext = mPendingContext;
     if (pendingContext != null) {
@@ -100,7 +107,7 @@ class LynxGlobalMemoryUsageCollector {
     List<LynxMemoryUsageFetcher> fetchers = fetchersForCurrentQuery();
 
     LynxGlobalMemoryUsageCollectionContext context = new LynxGlobalMemoryUsageCollectionContext(
-        collectionStartMs, GLOBAL_MEMORY_USAGE_TIMEOUT_MS, fetchers.size(), callback);
+        collectionStartMs, collectionTimeoutMs, fetchers.size(), callback);
     context.setFinishHandler(finishedContext -> {
       if (mPendingContext == finishedContext) {
         mPendingContext = null;
@@ -116,9 +123,8 @@ class LynxGlobalMemoryUsageCollector {
       return;
     }
 
-    delayRunOnReportThread(()
-                               -> context.finishWithStatus(LynxMemoryCollectionStatus.TIMEOUT),
-        GLOBAL_MEMORY_USAGE_TIMEOUT_MS);
+    delayRunOnReportThread(
+        () -> context.finishWithStatus(LynxMemoryCollectionStatus.TIMEOUT), collectionTimeoutMs);
 
     TraceEvent.beginSection(TraceEventDef.MEMORY_USAGE_GLOBAL_FETCHER_FAN_OUT);
     for (LynxMemoryUsageFetcher fetcher : fetchers) {
@@ -205,6 +211,10 @@ class LynxGlobalMemoryUsageCollector {
 
   static long nowMs() {
     return System.currentTimeMillis();
+  }
+
+  private static long normalizeTimeoutMs(long timeoutMs) {
+    return timeoutMs > 0 ? timeoutMs : DEFAULT_GLOBAL_MEMORY_USAGE_TIMEOUT_MS;
   }
 
   static long sampleAppBytes() {

@@ -13,12 +13,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, assign, readonly) uint64_t collectionId;
 @property(nonatomic, assign, readonly) int64_t collectionStartMs;
+@property(nonatomic, assign, readonly) int64_t collectionTimeoutMs;
 @property(nonatomic, assign, readonly) NSInteger expectedInstanceCount;
 @property(nonatomic, assign, readonly) NSInteger receivedFetchResultCount;
 @property(nonatomic, strong, readonly) NSMutableArray<LynxInstanceMemoryUsage *> *instances;
 
 - (instancetype)initWithCollectionId:(uint64_t)collectionId
                    collectionStartMs:(int64_t)collectionStartMs
+                 collectionTimeoutMs:(int64_t)collectionTimeoutMs
                expectedInstanceCount:(NSInteger)expectedInstanceCount
                             callback:(LynxGlobalMemoryUsageCallback)callback;
 - (BOOL)matchesCollectionId:(uint64_t)collectionId;

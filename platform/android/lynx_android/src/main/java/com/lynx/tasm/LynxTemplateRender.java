@@ -3959,17 +3959,20 @@ public class LynxTemplateRender
     LynxGlobalMemoryUsageCollector.getInstance().unregisterMemoryUsageFetcher(mMemoryUsageFetcher);
   }
 
-  boolean queryNativeMemoryUsageForGlobalCollectorAsync(@NonNull Object receiver) {
-    // Keep native pointer/lifecycle access inside TemplateRender. The fetcher owns orchestration,
-    // but this class owns the private native bridge and can cheaply reject teardown windows here.
-    long nativePtr = mNativePtr;
-    long nativeLifecycle = mNativeLifecycle;
-    if (nativePtr == 0 || nativeLifecycle == 0 || mIsDestroyed.get() || mHasDestroy
-        || mDestroying) {
-      return false;
-    }
-    nativeQueryNativeMemoryUsageAsync(nativePtr, nativeLifecycle, receiver);
-    return true;
+  void queryNativeMemoryUsageForGlobalCollectorAsync(
+      @NonNull LynxTemplateRenderMemoryUsageFetcher.InstanceMemoryUsageQuery receiver) {
+    UIThreadUtils.runOnUiThread(() -> {
+      // Keep native pointer/lifecycle access inside TemplateRender. The fetcher owns orchestration,
+      // but this class owns the private native bridge and reads these UI-thread-owned fields here.
+      long nativePtr = mNativePtr;
+      long nativeLifecycle = mNativeLifecycle;
+      if (nativePtr == 0 || nativeLifecycle == 0 || mIsDestroyed.get() || mHasDestroy
+          || mDestroying) {
+        nativeQueryNativeMemoryUsageAsync(0L, 0L, receiver);
+        return;
+      }
+      nativeQueryNativeMemoryUsageAsync(nativePtr, nativeLifecycle, receiver);
+    });
   }
 
   private void destroyLynxEngine() {

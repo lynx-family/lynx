@@ -15,4 +15,9 @@
   XCTAssertNoThrow([[LynxMemoryUsageQuery sharedInstance] queryLynxGlobalMemoryUsageAsync:nil]);
 }
 
+- (void)testQueryAcceptsNilCallbackWithInjectedTimeout {
+  XCTAssertNoThrow([[LynxMemoryUsageQuery sharedInstance] queryLynxGlobalMemoryUsageAsync:nil
+                                                                                timeoutMs:20]);
+}
+
 @end

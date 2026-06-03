@@ -21,7 +21,7 @@
 
 namespace {
 
-constexpr int64_t kLynxGlobalMemoryUsageTimeoutMs = 2000;
+constexpr int64_t kLynxGlobalMemoryUsageDefaultTimeoutMs = 2000;
 
 // LynxGroup uses "-1" for a single, non-shared background runtime. Such
 // runtimes are charged per instance and must not be deduplicated as shared BTS
@@ -43,6 +43,10 @@ int64_t LynxMemoryUsageAppBytes() {
     return 0;
   }
   return static_cast<int64_t>(info.phys_footprint);
+}
+
+int64_t LynxNormalizeGlobalMemoryUsageTimeoutMs(int64_t timeoutMs) {
+  return timeoutMs > 0 ? timeoutMs : kLynxGlobalMemoryUsageDefaultTimeoutMs;
 }
 
 LynxMemoryUsageFetcherCallback LynxCreateSingleShotMemoryUsageFetcherCallback(
@@ -80,6 +84,8 @@ void LynxInvokeGlobalMemoryUsageCallbackSafely(LynxGlobalMemoryUsageCallback cal
 
 + (instancetype)sharedCollector;
 - (void)queryGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback;
+- (void)queryGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback
+                          timeoutMs:(int64_t)timeoutMs;
 - (void)finishCollection:(uint64_t)collectionId status:(LynxMemoryCollectionStatus)status;
 - (void)receiveInstanceResult:(LynxInstanceMemoryUsage *_Nullable)result
                  collectionId:(uint64_t)collectionId;
@@ -98,9 +104,15 @@ void LynxInvokeGlobalMemoryUsageCallbackSafely(LynxGlobalMemoryUsageCallback cal
 }
 
 - (void)queryGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback {
+  [self queryGlobalMemoryUsageAsync:callback timeoutMs:kLynxGlobalMemoryUsageDefaultTimeoutMs];
+}
+
+- (void)queryGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback
+                          timeoutMs:(int64_t)timeoutMs {
   if (!callback) {
     return;
   }
+  int64_t collectionTimeoutMs = LynxNormalizeGlobalMemoryUsageTimeoutMs(timeoutMs);
   // The block crosses an async report-thread hop, so copy it before the caller's stack frame exits.
   LynxGlobalMemoryUsageCallback callbackCopy = [callback copy];
   // Public callers may arrive from any thread. The collector logic posts the entire request setup
@@ -128,6 +140,7 @@ void LynxInvokeGlobalMemoryUsageCallbackSafely(LynxGlobalMemoryUsageCallback cal
         collectionContext =
             [[LynxGlobalMemoryUsageCollectionContext alloc] initWithCollectionId:collectionId
                                                                collectionStartMs:collectionStartMs
+                                                             collectionTimeoutMs:collectionTimeoutMs
                                                            expectedInstanceCount:fetchers.count
                                                                         callback:callbackCopy];
         self.activeCollectionContext = collectionContext;
@@ -144,7 +157,7 @@ void LynxInvokeGlobalMemoryUsageCallbackSafely(LynxGlobalMemoryUsageCallback cal
             delayRunOnReportThread:^{
               [self finishCollection:collectionId status:LynxMemoryCollectionStatusTimeout];
             }
-                           delayMs:kLynxGlobalMemoryUsageTimeoutMs];
+                           delayMs:collectionTimeoutMs];
 
         for (id<LynxMemoryUsageFetcher> fetcher in fetchers) {
           // Fetchers may complete on arbitrary platform/native threads. Normalize every result back
@@ -231,7 +244,7 @@ void LynxInvokeGlobalMemoryUsageCallbackSafely(LynxGlobalMemoryUsageCallback cal
   result.collectionStartMs = collectionContext.collectionStartMs;
   result.collectionStatus = status;
   result.collectionDurationMs = LynxMemoryUsageNowMs() - collectionContext.collectionStartMs;
-  result.collectionTimeoutMs = kLynxGlobalMemoryUsageTimeoutMs;
+  result.collectionTimeoutMs = collectionContext.collectionTimeoutMs;
   result.expectedInstanceCount = collectionContext.expectedInstanceCount;
   result.completedInstanceCount = sortedInstances.count;
   result.elementBytes = elementBytes;

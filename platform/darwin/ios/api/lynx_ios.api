@@ -2070,10 +2070,11 @@ public class LynxGestureVelocityTracker : NSObject {
 public class LynxGlobalMemoryUsageCollectionContext : NSObject {
   public uint64_t LynxGlobalMemoryUsageCollectionContext::collectionId collectionId;
   public int64_t LynxGlobalMemoryUsageCollectionContext::collectionStartMs collectionStartMs;
+  public int64_t LynxGlobalMemoryUsageCollectionContext::collectionTimeoutMs collectionTimeoutMs;
   public NSInteger LynxGlobalMemoryUsageCollectionContext::expectedInstanceCount expectedInstanceCount;
   public NSInteger LynxGlobalMemoryUsageCollectionContext::receivedFetchResultCount receivedFetchResultCount;
   public NSMutableArray<LynxInstanceMemoryUsage *>* LynxGlobalMemoryUsageCollectionContext::instances instances;
-  public instancetype LynxGlobalMemoryUsageCollectionContext::initWithCollectionId:collectionStartMs:expectedInstanceCount:callback:(uint64_t collectionId,[collectionStartMs] int64_t collectionStartMs,[expectedInstanceCount] NSInteger expectedInstanceCount,[callback] LynxGlobalMemoryUsageCallback callback);
+  public instancetype LynxGlobalMemoryUsageCollectionContext::initWithCollectionId:collectionStartMs:collectionTimeoutMs:expectedInstanceCount:callback:(uint64_t collectionId,[collectionStartMs] int64_t collectionStartMs,[collectionTimeoutMs] int64_t collectionTimeoutMs,[expectedInstanceCount] NSInteger expectedInstanceCount,[callback] LynxGlobalMemoryUsageCallback callback);
   public BOOL LynxGlobalMemoryUsageCollectionContext::matchesCollectionId:(uint64_t collectionId);
   public void LynxGlobalMemoryUsageCollectionContext::addCallback:(LynxGlobalMemoryUsageCallback callback);
   public void LynxGlobalMemoryUsageCollectionContext::recordInstanceResult:(LynxInstanceMemoryUsage *_Nullable result);
@@ -3010,6 +3011,7 @@ public class LynxMemoryUsageItem : NSObject {
 public class LynxMemoryUsageQuery : NSObject {
   public instancetype LynxMemoryUsageQuery::sharedInstance();
   public void LynxMemoryUsageQuery::queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback callback);
+  public void LynxMemoryUsageQuery::queryLynxGlobalMemoryUsageAsync:timeoutMs:(nullable LynxGlobalMemoryUsageCallback callback,[timeoutMs] int64_t timeoutMs);
 }
 
 public class LynxMetricFspEntry : LynxPerformanceEntry {

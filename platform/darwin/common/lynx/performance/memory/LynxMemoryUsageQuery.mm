@@ -13,6 +13,8 @@
 
 + (instancetype)sharedCollector;
 - (void)queryGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback;
+- (void)queryGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback
+                          timeoutMs:(int64_t)timeoutMs;
 
 @end
 
@@ -28,10 +30,16 @@
 }
 
 - (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback {
+  [self queryLynxGlobalMemoryUsageAsync:callback timeoutMs:0];
+}
+
+- (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback
+                              timeoutMs:(int64_t)timeoutMs {
   // Keep this singleton as the public facade only. The internal collector logic owns weak fetcher
   // storage, report-thread serialization, timeout, and aggregation details.
   TRACE_EVENT(LYNX_TRACE_CATEGORY, MEMORY_USAGE_QUERY_PUBLIC_API);
-  [[LynxMemoryUsageCollector sharedCollector] queryGlobalMemoryUsageAsync:callback];
+  [[LynxMemoryUsageCollector sharedCollector] queryGlobalMemoryUsageAsync:callback
+                                                                timeoutMs:timeoutMs];
 }
 
 @end
