@@ -129,6 +129,10 @@ class LynxNativeView {
   }
   virtual void Release() { delete this; }
 
+  inline void RetainNativeView() { lynx_native_view_ref(native_view_); }
+
+  inline void ReleaseNativeView() { lynx_native_view_unref(native_view_); }
+
   /**
    * @apidoc
    * @brief Create and present surface with external graphics buffer
