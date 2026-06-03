@@ -550,12 +550,6 @@ bool LynxEnv::FixRadonTransitionPropertyRemoveBug() {
   return fix_radon_transition_property_remove_bug;
 }
 
-uint32_t LynxEnv::EnableGCOnceOnIdle() {
-  static uint32_t cached_enable_gc_once_on_idle =
-      static_cast<uint32_t>(GetLongEnv(Key::ENABLE_GC_ONCE_ON_IDLE, 0));
-  return cached_enable_gc_once_on_idle;
-}
-
 bool LynxEnv::EnableCSSInlineVariables() {
   static bool enable_css_inline_variables =
       GetBoolEnv(Key::ENABLE_CSS_INLINE_VARIABLES, false);

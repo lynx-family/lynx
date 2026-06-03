@@ -404,18 +404,6 @@ void TasmMediator::OnJSSourcePrepared(
                                 bundle_module_mode, url, pipeline_options,
                                 trace_flow_id);
   });
-
-  if ((tasm::LynxEnv::GetInstance().EnableGCOnceOnIdle() & (1u << 1)) > 0) {
-    // mask value 1 << 1 for bts
-    // TODO(yuyang.1024), remove settings after online experiment
-    WatchDog::TaskConfig gc_task =
-        WatchDog::TaskConfig{.idle_task = [runtime = runtime_actor_]() {
-          if (auto impl = runtime->Impl(); impl != nullptr) {
-            impl->TriggerVmGC();
-          }
-        }};
-    WatchDog::RunOnActorThreadIdle(std::move(gc_task), runtime_actor_);
-  }
 }
 
 void TasmMediator::CallJSApiCallback(runtime::js::ApiCallBack callback) {

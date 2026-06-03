@@ -698,18 +698,6 @@ void LynxShell::LoadTemplate(
     }
   });
 
-  if ((tasm::LynxEnv::GetInstance().EnableGCOnceOnIdle() & (1u << 0)) > 0) {
-    // mask value 1 << 0 for mts
-    // TODO(yuyang.1024), remove settings after online experiment
-    WatchDog::TaskConfig gc_task =
-        WatchDog::TaskConfig{.idle_task = [engine = engine_actor_]() {
-          if (auto impl = engine->Impl(); impl != nullptr) {
-            impl->TriggerVmGC();
-          }
-        }};
-    WatchDog::RunOnActorThreadIdle(std::move(gc_task), engine_actor_);
-  }
-
   if (!memory_pressure_callback_) {
     memory_pressure_callback_ = std::make_unique<base::MemoryPressureCallback>(
         [engine_actor = engine_actor_](base::MemoryPressureLevel level) {
