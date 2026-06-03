@@ -411,5 +411,48 @@ TEST_F(FragmentTest, LinearGradientGeneratesLinearGradientOp) {
   EXPECT_FLOAT_EQ(floats[10], 1.0f);
 }
 
+TEST_F(FragmentTest, BackgroundColorUsesBottomImageLayerClip) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+
+  starlight::LayoutResultForRendering layout;
+  layout.border_ = starlight::DirectionValue<float>({3.f, 5.f, 7.f, 11.f});
+  layout.padding_ = starlight::DirectionValue<float>({13.f, 17.f, 19.f, 23.f});
+  layout.size_ = FloatSize(100.f, 80.f);
+  fragment.UpdateLayout(layout);
+
+  auto* style = element->computed_css_style();
+  style->background_data_ = starlight::BackgroundData();
+  style->background_data_->color = 0xFF00FF00;
+  style->background_data_->image_data =
+      starlight::BackgroundData::BackgroundImageData();
+  auto& image_data = *style->background_data_->image_data;
+  image_data.image_count = 2;
+  image_data.clip.push_back(starlight::BackgroundClipType::kBorderBox);
+  image_data.clip.push_back(starlight::BackgroundClipType::kContentBox);
+  image_data.clip.push_back(starlight::BackgroundClipType::kBorderBox);
+
+  DisplayListBuilder builder;
+  fragment.DrawBackground(builder);
+
+  DisplayList list = builder.Build();
+  const int32_t* ops = list.GetContentOpTypesData();
+  const int32_t* ints = list.GetContentIntData();
+  const float* floats = list.GetContentFloatData();
+
+  ASSERT_NE(ops, nullptr);
+  ASSERT_NE(ints, nullptr);
+  ASSERT_NE(floats, nullptr);
+
+  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
+  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kFill));
+  EXPECT_FLOAT_EQ(floats[0], 16.f);
+  EXPECT_FLOAT_EQ(floats[1], 26.f);
+  EXPECT_FLOAT_EQ(floats[2], 62.f);
+  EXPECT_FLOAT_EQ(floats[3], 20.f);
+  EXPECT_EQ(static_cast<uint32_t>(ints[4]), 0xFF00FF00);
+  EXPECT_EQ(ints[5], 0);
+}
+
 }  // namespace tasm
 }  // namespace lynx

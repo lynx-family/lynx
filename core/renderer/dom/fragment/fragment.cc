@@ -482,7 +482,14 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
       starlight::BackgroundClipType::kBorderBox;
   if (background_data->image_data &&
       !background_data->image_data->clip.empty()) {
-    clip_type = background_data->image_data->clip.back();
+    const auto& image_data = *background_data->image_data;
+    if (image_data.image_count == 0) {
+      // background-image defaults to one implicit none layer.
+      clip_type = image_data.clip.front();
+    } else {
+      size_t bottom_layer_index = image_data.image_count - 1;
+      clip_type = image_data.clip[bottom_layer_index % image_data.clip.size()];
+    }
   }
   switch (clip_type) {
     case starlight::BackgroundClipType::kPaddingBox:

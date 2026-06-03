@@ -50,6 +50,37 @@ public class LayerManagerTest {
     assertEquals(0f, yValues.get(2), 0.01f);
   }
 
+  @Test
+  public void backgroundColorClipUsesBottomImageLayerClip() {
+    TestLayerManager layerManager = new TestLayerManager();
+    layerManager.addLayer(new TestBackgroundLayerDrawable());
+    layerManager.addLayer(new TestBackgroundLayerDrawable());
+    layerManager.setLayerClips(StyleConstants.BACKGROUND_CLIP_BORDER_BOX,
+        StyleConstants.BACKGROUND_CLIP_CONTENT_BOX, StyleConstants.BACKGROUND_CLIP_BORDER_BOX);
+
+    assertEquals(StyleConstants.BACKGROUND_CLIP_CONTENT_BOX, layerManager.getLayerClip());
+  }
+
+  @Test
+  public void backgroundColorClipCountsNoneImageLayers() {
+    TestLayerManager layerManager = new TestLayerManager();
+    layerManager.setLayerImages(
+        StyleConstants.BACKGROUND_IMAGE_NONE, StyleConstants.BACKGROUND_IMAGE_NONE);
+    layerManager.setLayerClips(StyleConstants.BACKGROUND_CLIP_BORDER_BOX,
+        StyleConstants.BACKGROUND_CLIP_CONTENT_BOX, StyleConstants.BACKGROUND_CLIP_BORDER_BOX);
+
+    assertEquals(StyleConstants.BACKGROUND_CLIP_CONTENT_BOX, layerManager.getLayerClip());
+  }
+
+  @Test
+  public void backgroundColorClipUsesFirstClipForImplicitNoneLayer() {
+    TestLayerManager layerManager = new TestLayerManager();
+    layerManager.setLayerClips(
+        StyleConstants.BACKGROUND_CLIP_PADDING_BOX, StyleConstants.BACKGROUND_CLIP_CONTENT_BOX);
+
+    assertEquals(StyleConstants.BACKGROUND_CLIP_PADDING_BOX, layerManager.getLayerClip());
+  }
+
   private static class TestLayerManager extends LayerManager {
     TestLayerManager() {
       super(null, new ColorDrawable(), 14f);
@@ -60,6 +91,26 @@ public class LayerManagerTest {
       mImageLayerDrawableList.add(drawable);
       mImageRepeatList.add(repeatX);
       mImageRepeatList.add(repeatY);
+    }
+
+    void addLayer(BackgroundLayerDrawable drawable) {
+      mImageLayerDrawableList.add(drawable);
+    }
+
+    void setLayerClips(int... clips) {
+      JavaOnlyArray values = new JavaOnlyArray();
+      for (int clip : clips) {
+        values.pushInt(clip);
+      }
+      setLayerClip(values);
+    }
+
+    void setLayerImages(int... images) {
+      JavaOnlyArray values = new JavaOnlyArray();
+      for (int image : images) {
+        values.pushInt(image);
+      }
+      setLayerImage(values, null);
     }
 
     void setBackgroundSize(float width, float height) {

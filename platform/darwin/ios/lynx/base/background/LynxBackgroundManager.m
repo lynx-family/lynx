@@ -99,6 +99,7 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
 
 @interface LynxBackgroundManager ()
 @property(nonatomic, nullable) LynxBackgroundBorderInfo* borderInfo;
+- (LynxBackgroundClipType)backgroundClipForBackgroundColor;
 @end
 
 #pragma mark LynxBackgroundSubLayer
@@ -978,10 +979,7 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
   }
   _backgroundLayer.allowsEdgeAntialiasing = _allowsEdgeAntialiasing;
   _backgroundLayer.enableAsyncDisplay = self.ui.enableAsyncDisplay;
-  _backgroundLayer.backgroundColorClip =
-      ![self hasBackgroundClip]
-          ? LynxBackgroundClipBorderBox
-          : (LynxBackgroundClipType)[[self.backgroundClip lastObject] integerValue];
+  _backgroundLayer.backgroundColorClip = [self backgroundClipForBackgroundColor];
   _backgroundLayer.paddingWidth = _backgroundInfo.paddingWidth;
 
   _ui.view.layer.backgroundColor = [UIColor clearColor].CGColor;
@@ -1666,6 +1664,21 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
 
 - (BOOL)hasBackgroundClip {
   return _backgroundClip != nil && [_backgroundClip count] != 0;
+}
+
+- (LynxBackgroundClipType)backgroundClipForBackgroundColor {
+  if (![self hasBackgroundClip]) {
+    return LynxBackgroundClipBorderBox;
+  }
+
+  if ([_backgroundDrawable count] == 0) {
+    // background-image defaults to one implicit `none` layer.
+    return (LynxBackgroundClipType)[[_backgroundClip firstObject] integerValue];
+  }
+
+  NSUInteger bottomLayerIndex = [_backgroundDrawable count] - 1;
+  NSUInteger clipIndex = bottomLayerIndex % [_backgroundClip count];
+  return (LynxBackgroundClipType)[[_backgroundClip objectAtIndex:clipIndex] integerValue];
 }
 
 - (NSMutableArray*)backgroundImageSize {

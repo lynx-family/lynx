@@ -368,7 +368,6 @@ public abstract class LayerManager implements Drawable.Callback {
         i++;
         mImageLayerDrawableList.add(new BackgroundConicGradientLayer(bgImage.getArray(i)));
       } else if (type == StyleConstants.BACKGROUND_IMAGE_NONE) {
-        i++;
         mImageLayerDrawableList.add(new BackgroundNoneLayer());
       }
       if (!bounds.isEmpty()) {
@@ -441,9 +440,13 @@ public abstract class LayerManager implements Drawable.Callback {
   public int getLayerClip() {
     if (mImageClipList.isEmpty()) {
       return StyleConstants.BACKGROUND_CLIP_BORDER_BOX;
-    } else {
-      return mImageClipList.get(mImageClipList.size() - 1);
     }
+    if (mImageLayerDrawableList.isEmpty()) {
+      // background-image defaults to one implicit none layer.
+      return mImageClipList.get(0);
+    }
+    int bottomLayerIndex = mImageLayerDrawableList.size() - 1;
+    return mImageClipList.get(bottomLayerIndex % mImageClipList.size());
   }
 
   public void setLayerSize(ReadableArray bgSize) {

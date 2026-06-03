@@ -319,7 +319,15 @@ void LayerManager::SetLayerImage(const lepus::Value& data) {
   for (size_t i = 0; i < length; ++i) {
     auto type =
         static_cast<starlight::BackgroundImageType>(items->get(i).Number());
-    i++;
+    if (type == starlight::BackgroundImageType::kNone) {
+      image_layer_list_.emplace_back(std::make_unique<BackgroundNoneLayer>());
+      continue;
+    }
+
+    ++i;
+    if (i >= length) {
+      break;
+    }
     if (type == starlight::BackgroundImageType::kUrl) {
       auto layer =
           std::make_shared<BackgroundImageLayer>(items->get(i), ui_base_);
@@ -333,8 +341,6 @@ void LayerManager::SetLayerImage(const lepus::Value& data) {
     } else if (type == starlight::BackgroundImageType::kConicGradient) {
       image_layer_list_.emplace_back(
           std::make_unique<BackgroundConicGradientLayer>(items->get(i)));
-    } else if (type == starlight::BackgroundImageType::kNone) {
-      image_layer_list_.emplace_back(std::make_unique<BackgroundNoneLayer>());
     }
   }
 }
@@ -391,7 +397,12 @@ starlight::BackgroundClipType LayerManager::GetLayerClip() {
   if (image_clip_list_.empty()) {
     return starlight::BackgroundClipType::kBorderBox;
   }
-  return image_clip_list_.back();
+  if (image_layer_list_.empty()) {
+    // background-image defaults to one implicit none layer.
+    return image_clip_list_.front();
+  }
+  size_t bottom_layer_index = image_layer_list_.size() - 1;
+  return image_clip_list_.at(bottom_layer_index % image_clip_list_.size());
 }
 
 void LayerManager::SetLayerSize(const lepus::Value& data) {

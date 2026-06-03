@@ -204,6 +204,35 @@
   XCTAssertTrue(colorLayer.fillColor == NULL);
 }
 
+- (void)testBackgroundColorClipUsesBottomImageLayerClip {
+  [LynxPropsProcessor updateProp:@[
+    @((NSUInteger)LynxBackgroundImageNone),
+    @((NSUInteger)LynxBackgroundImageNone),
+  ]
+                         withKey:@"background-image"
+                           forUI:_view];
+  [LynxPropsProcessor updateProp:@[
+    @((NSInteger)LynxBackgroundClipBorderBox),
+    @((NSInteger)LynxBackgroundClipContentBox),
+    @((NSInteger)LynxBackgroundClipBorderBox),
+  ]
+                         withKey:@"background-clip"
+                           forUI:_view];
+  [LynxPropsProcessor updateProp:@0xFF00FF00 withKey:@"background-color" forUI:_view];
+
+  [_view propsDidUpdate];
+  [_view updateFrameWithoutLayoutAnimation:CGRectMake(0, 0, 200.0f, 100.f)
+                               withPadding:UIEdgeInsetsZero
+                                    border:UIEdgeInsetsZero
+                                    margin:UIEdgeInsetsZero];
+  [_view frameDidChange];
+  [_view onNodeReadyForUIOwner];
+
+  XCTAssertNotNil(_view.backgroundManager.backgroundLayer);
+  XCTAssertEqual(_view.backgroundManager.backgroundLayer.backgroundColorClip,
+                 LynxBackgroundClipContentBox);
+}
+
 // Tests that shadow layers are positioned correctly in the layer hierarchy
 // Verifies shadow layers are above background color and gradient layers
 - (void)testShadowLayerStackingOrder {
