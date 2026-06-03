@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -11,6 +12,8 @@
 
 class LynxNativeViewPrivate : public clay::NativePlatformView {
  public:
+  void Retain() { ref_count_.fetch_add(1, std::memory_order_relaxed); }
+
   bool OnCreate() override {
     if (on_create_fn) {
       return on_create_fn(reinterpret_cast<lynx_native_view_t*>(this),
@@ -109,6 +112,9 @@ class LynxNativeViewPrivate : public clay::NativePlatformView {
     return kClaySharedImageSinkBufferModeDoubleBuffer;
   }
   void Release() override {
+    if (ref_count_.fetch_sub(1, std::memory_order_acq_rel) != 1) {
+      return;
+    }
     if (release_fn) {
       auto release = release_fn;
       auto* user_data = user_data_;
@@ -145,6 +151,7 @@ class LynxNativeViewPrivate : public clay::NativePlatformView {
   std::unordered_map<int64_t, std::function<void(int code, lynx_value data)>>
       callbacks_;
   int64_t next_callback_id_ = 1;
+  std::atomic<uint32_t> ref_count_{1};
 };
 
 LYNX_EXTERN_C lynx_native_view_t* lynx_native_view_create(void* user_data) {
@@ -222,6 +229,18 @@ LYNX_CAPI_EXPORT void lynx_native_view_bind_surface_buffer_mode(
                                            void* user_data)) {
   reinterpret_cast<LynxNativeViewPrivate*>(view)->surface_buffer_mode_fn =
       callback;
+}
+
+LYNX_EXTERN_C void lynx_native_view_ref(lynx_native_view_t* view) {
+  if (view) {
+    reinterpret_cast<LynxNativeViewPrivate*>(view)->Retain();
+  }
+}
+
+LYNX_EXTERN_C void lynx_native_view_unref(lynx_native_view_t* view) {
+  if (view) {
+    reinterpret_cast<LynxNativeViewPrivate*>(view)->Release();
+  }
 }
 
 LYNX_EXTERN_C bool lynx_native_view_present_surface(

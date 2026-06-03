@@ -138,6 +138,9 @@ LYNX_CAPI_EXPORT void lynx_native_view_bind_surface_buffer_mode(
     lynx_native_view_t*,
     lynx_surface_buffer_mode_t (*)(lynx_native_view_t*, void* user_data));
 
+LYNX_CAPI_EXPORT void lynx_native_view_ref(lynx_native_view_t*);
+LYNX_CAPI_EXPORT void lynx_native_view_unref(lynx_native_view_t*);
+
 LYNX_CAPI_EXPORT bool lynx_native_view_present_surface(
     lynx_native_view_t*, int width, int height, const float* transform,
     lynx_surface_handle_t* handle);
