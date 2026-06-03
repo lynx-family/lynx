@@ -45,6 +45,8 @@ class CubicBezierTimingFunction : public TimingFunction {
   static std::unique_ptr<CubicBezierTimingFunction> Create(double x1, double y1,
                                                            double x2,
                                                            double y2);
+  static std::unique_ptr<CubicBezierTimingFunction> CreateSquareBezier(
+      double x, double y);
 
   ~CubicBezierTimingFunction() override;
 

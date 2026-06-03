@@ -39,6 +39,14 @@ std::unique_ptr<CubicBezierTimingFunction> CubicBezierTimingFunction::Create(
       new CubicBezierTimingFunction(EaseType::CUSTOM, x1, y1, x2, y2));
 }
 
+std::unique_ptr<CubicBezierTimingFunction>
+CubicBezierTimingFunction::CreateSquareBezier(double x, double y) {
+  constexpr double kScaleFactor = 2.0 / 3.0;
+  return CubicBezierTimingFunction::Create(x * kScaleFactor, y * kScaleFactor,
+                                           1.0 + (x - 1.0) * kScaleFactor,
+                                           1.0 + (y - 1.0) * kScaleFactor);
+}
+
 CubicBezierTimingFunction::CubicBezierTimingFunction(EaseType ease_type,
                                                      double x1, double y1,
                                                      double x2, double y2)
@@ -170,11 +178,13 @@ std::unique_ptr<TimingFunction> CreateTimingFunction(
       return CubicBezierTimingFunction::Create(
           timing_function_data.x1, timing_function_data.y1,
           timing_function_data.x2, timing_function_data.y2);
+    case TFType::kSquareBezier:
+      return CubicBezierTimingFunction::CreateSquareBezier(
+          timing_function_data.x1, timing_function_data.y1);
     case TFType::kSteps:
       return StepsTimingFunction::Create(
           static_cast<int>(timing_function_data.x1),
           timing_function_data.steps_type);
-    case TFType::kSquareBezier:
     default:
       return LinearTimingFunction::Create();
   }

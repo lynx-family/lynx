@@ -58,11 +58,17 @@ TEST_F(TimingFunctionTest, MakeTimingFunction1) {
   auto type4 = timing_function_4->GetType();
   EXPECT_EQ(type4, TimingFunction::Type::CUBIC_BEZIER);
 
-  auto test_func_type_5 = TimingFunctionType::kSteps;
+  auto test_func_type_5 = TimingFunctionType::kSquareBezier;
   test_timing_function_data.timing_func = test_func_type_5;
   auto timing_function_5 = CreateTimingFunction(test_timing_function_data);
   auto type5 = timing_function_5->GetType();
-  EXPECT_EQ(type5, TimingFunction::Type::STEPS);
+  EXPECT_EQ(type5, TimingFunction::Type::CUBIC_BEZIER);
+
+  auto test_func_type_6 = TimingFunctionType::kSteps;
+  test_timing_function_data.timing_func = test_func_type_6;
+  auto timing_function_6 = CreateTimingFunction(test_timing_function_data);
+  auto type6 = timing_function_6->GetType();
+  EXPECT_EQ(type6, TimingFunction::Type::STEPS);
 }
 
 TEST_F(TimingFunctionTest, MakeTimingFunction2) {
@@ -112,6 +118,14 @@ TEST_F(TimingFunctionTest, MakeTimingFunction2) {
       CreateTimingFunction(test_animation_data.timing_func);
   auto type5 = timing_function_5->GetType();
   EXPECT_EQ(type5, TimingFunction::Type::STEPS);
+
+  auto test_func_type_6 = TimingFunctionType::kSquareBezier;
+  test_timing_function_data.timing_func = test_func_type_6;
+  test_animation_data = InitAnimationData(test_timing_function_data);
+  auto timing_function_6 =
+      CreateTimingFunction(test_animation_data.timing_func);
+  auto type6 = timing_function_6->GetType();
+  EXPECT_EQ(type6, TimingFunction::Type::CUBIC_BEZIER);
 }
 
 TEST_F(TimingFunctionTest, CreatePreset) {
@@ -168,6 +182,37 @@ TEST_F(TimingFunctionTest, CubicBezierTimingFunctionCreate) {
             CubicBezierTimingFunction::EaseType::CUSTOM);
   EXPECT_TRUE(test_cubic_timing_function->GetType() ==
               TimingFunction::Type::CUBIC_BEZIER);
+}
+
+TEST_F(TimingFunctionTest, SquareBezierTimingFunctionCreate) {
+  auto test_square_timing_function =
+      CubicBezierTimingFunction::CreateSquareBezier(1.0, 0.5);
+  auto bezier = test_square_timing_function->bezier();
+  EXPECT_NEAR(bezier.GetX1(), 2.0 / 3.0, kEpsilon);
+  EXPECT_NEAR(bezier.GetY1(), 1.0 / 3.0, kEpsilon);
+  EXPECT_NEAR(bezier.GetX2(), 1.0, kEpsilon);
+  EXPECT_NEAR(bezier.GetY2(), 2.0 / 3.0, kEpsilon);
+  EXPECT_EQ(test_square_timing_function->ease_type(),
+            CubicBezierTimingFunction::EaseType::CUSTOM);
+  EXPECT_EQ(test_square_timing_function->GetType(),
+            TimingFunction::Type::CUBIC_BEZIER);
+}
+
+TEST_F(TimingFunctionTest, SquareBezierTimingFunctionDataCreate) {
+  TimingFunctionData timing_function_data;
+  timing_function_data.timing_func = TimingFunctionType::kSquareBezier;
+  timing_function_data.x1 = 0.3;
+  timing_function_data.y1 = 0.6;
+  auto timing_function = CreateTimingFunction(timing_function_data);
+  ASSERT_EQ(timing_function->GetType(), TimingFunction::Type::CUBIC_BEZIER);
+
+  auto* cubic_timing_function =
+      static_cast<CubicBezierTimingFunction*>(timing_function.get());
+  auto bezier = cubic_timing_function->bezier();
+  EXPECT_NEAR(bezier.GetX1(), 0.2, kEpsilon);
+  EXPECT_NEAR(bezier.GetY1(), 0.4, kEpsilon);
+  EXPECT_NEAR(bezier.GetX2(), 0.5333333333333333, kEpsilon);
+  EXPECT_NEAR(bezier.GetY2(), 0.7333333333333334, kEpsilon);
 }
 
 TEST_F(TimingFunctionTest, LinearTimingFunctionCreate) {
