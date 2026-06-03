@@ -679,7 +679,12 @@ public class LynxTemplateRender
     mLynxEngineRef.updateLynxEngineState(LynxEngine.LynxEngineState.ON_REUSING);
     mLynxEngineRef.detachFromLynxView();
     mLynxUIRender = mLynxEngineRef.getLynxUIRenderer();
-    mLynxUIRender.attachBodyView(mBodyView, mLynxContext, mContext);
+    if (mBodyView != null) {
+      mBodyView.setLynxUIRendererInternal(mLynxUIRender);
+    }
+    if (mLynxContext != null) {
+      mLynxUIRender.attachBodyView(mBodyView, mLynxContext, mContext);
+    }
     mLynxEngineRef.attachCurrentTemplateRender(this);
     mTasmPlatformInvoker = new WeakReference<>(mLynxEngineRef.getTasmPlatformInvoker());
     if (mTasmPlatformInvoker.get() != null) {
@@ -689,7 +694,7 @@ public class LynxTemplateRender
   }
 
   private void setupReusedEngineConfig() {
-    if (!mEnableReuseEngine) {
+    if (!mEnableReuseEngine && !mEnableCacheEngine) {
       return;
     }
     if (mLynxEngineRef != null) {
@@ -720,7 +725,7 @@ public class LynxTemplateRender
   }
 
   boolean isEnableReuseEngine() {
-    return mEnableReuseEngine;
+    return mEnableReuseEngine || mEnableCacheEngine;
   }
 
   public LynxContext getLynxContext() {
@@ -1556,7 +1561,7 @@ public class LynxTemplateRender
       return;
     }
 
-    if (mEnableReuseEngine) {
+    if (mEnableReuseEngine || mEnableCacheEngine) {
       if (tryRenderByReuseLynxRender(templateData)) {
         return;
       }
@@ -3264,7 +3269,7 @@ public class LynxTemplateRender
 
     @Override
     public void onPageConfigDecoded(PageConfig config) {
-      if (mEnableReuseEngine && mLynxEngineRef != null) {
+      if ((mEnableReuseEngine || mEnableCacheEngine) && mLynxEngineRef != null) {
         mLynxEngineRef.setPageConfig(config);
       }
       PageConfig.attachPageConfig(config, mLynxContext, mLynxUIRender);
@@ -3326,9 +3331,9 @@ public class LynxTemplateRender
       if (mClient != null) {
         onTraceEventBegin(TraceEventDef.CLIENT_ON_TASM_FINISHED_BY_NATIVE);
         mClient.onTASMFinishedByNative();
-        tryRegisterLynxEngineReused();
         onTraceEventEnd(TraceEventDef.CLIENT_ON_TASM_FINISHED_BY_NATIVE);
       }
+      tryRegisterLynxEngineReused();
     }
 
     @Override
@@ -4187,6 +4192,13 @@ public class LynxTemplateRender
   }
 
   private void tryRegisterLynxEngineReused() {
+    if (mEnableCacheEngine) {
+      if (mLynxEngineRef != null) {
+        mLynxEngineRef.markLoadedForCache();
+      }
+      return;
+    }
+
     if (!mEnableReuseEngine) {
       return;
     }
@@ -4238,7 +4250,7 @@ public class LynxTemplateRender
   }
 
   void detachLynxEngineWrapper() {
-    if (!mEnableReuseEngine) {
+    if (!mEnableReuseEngine && !mEnableCacheEngine) {
       return;
     }
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_DETACH_LYNX_ENGINE);
