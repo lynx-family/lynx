@@ -70,6 +70,8 @@
   BOOL _enableTouchPseudo;
   BOOL _enableMultiTouch;
   BOOL _panGestureRecognized;
+  UITouch* _primaryGestureTouch;
+  __weak id<LynxEventTarget> _primaryGestureTarget;
   NSMutableSet<UITouch*>* _touches;
   NSMutableSet<UITouch*>* _platformUITouches;
   // In single-finger mode, when multiple fingers are raised at the same time, touches need to be
@@ -115,6 +117,8 @@
     _enableTouchPseudo = NO;
     _enableTouchRefactor = NO;
     _enableEndGestureAtLastFingerUp = NO;
+    _primaryGestureTouch = nil;
+    _primaryGestureTarget = nil;
     touches_map_ = std::map<UITouch*, EventTargetDetail*>();
     active_target_map_ = [NSMutableDictionary new];
     reuse_id_pool_ = std::set<uint32_t>();
@@ -168,6 +172,8 @@
   [_eventHandler resetEventEnv];
   [_touchDeque removeAllObjects];
   _hasMultiTouch = NO;
+  _primaryGestureTouch = nil;
+  _primaryGestureTarget = nil;
   touches_map_.clear();
   [active_target_map_ removeAllObjects];
   [_platformUITouches removeAllObjects];
@@ -229,6 +235,8 @@
   _preTarget = _target;
   _target = nil;
   _hasMultiTouch = NO;
+  _primaryGestureTouch = nil;
+  _primaryGestureTarget = nil;
   touches_map_.clear();
   [active_target_map_ removeAllObjects];
   reuse_id_pool_.clear();
@@ -295,8 +303,8 @@
   CGPoint clientPoint = [touch locationInView:nil];
   CGPoint pagePoint = [touch locationInView:_eventHandler.rootView];
   CGPoint targetViewPoint = pagePoint;
-  if ([_target isKindOfClass:[LynxUI class]]) {
-    LynxUI* ui = (LynxUI*)_target;
+  if ([target isKindOfClass:[LynxUI class]]) {
+    LynxUI* ui = (LynxUI*)target;
     targetViewPoint = [touch locationInView:ui.view];
   }
 
@@ -590,6 +598,36 @@
   return touch;
 }
 
+- (UITouch*)findFirstTouchByTimestamp:(NSSet<UITouch*>*)touches {
+  __block UITouch* touch = nil;
+  [touches enumerateObjectsUsingBlock:^(UITouch* _Nonnull obj, BOOL* _Nonnull stop) {
+    if (touch == nil || obj.timestamp < touch.timestamp ||
+        (obj.timestamp == touch.timestamp && obj.hash < touch.hash)) {
+      touch = obj;
+    }
+  }];
+  return touch;
+}
+
+- (BOOL)shouldDispatchGestureForTouch:(UITouch*)touch firstTouch:(UITouch*)firstTouch {
+  if (!_enableMultiTouch) {
+    return touch == firstTouch;
+  }
+  return _primaryGestureTouch != nil && touch == _primaryGestureTouch;
+}
+
+- (NSSet<UITouch*>*)gestureTouchesWithTouch:(UITouch*)touch
+                            fallbackTouches:(NSSet<UITouch*>*)touches {
+  if (!_enableMultiTouch) {
+    return touches;
+  }
+  return touch ? [NSSet setWithObject:touch] : [NSSet set];
+}
+
+- (id<LynxEventTarget>)gestureTarget {
+  return _enableMultiTouch && _primaryGestureTarget ? _primaryGestureTarget : _target;
+}
+
 - (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
   _LogI(@"LynxTouchHandler: touchesBegan %p: ", _eventHandler.rootView);
   for (UITouch* touch in touches) {
@@ -628,12 +666,16 @@
     return;
   }
 
-  if ([_touches count] == 0) {
+  BOOL isFirstTouchSequence = [_touches count] == 0;
+  if (isFirstTouchSequence) {
     [self initTouchEnv];
     [self initClickEnv];
     [_eventHandler resetEventEnv];
     _target = _eventHandler.touchTarget;
     _event = event;
+    if (_enableMultiTouch) {
+      _primaryGestureTouch = [self findFirstTouchByTimestamp:touches];
+    }
   }
 
   if (!_enableMultiTouch && [_touches count] != 0) {
@@ -647,7 +689,9 @@
     return;
   }
 
-  [self.gestureArenaManager setActiveUIToArena:_eventHandler.touchTarget];
+  if (!_enableMultiTouch) {
+    [self.gestureArenaManager setActiveUIToArena:_eventHandler.touchTarget];
+  }
 
   UITouch* firstTouch = touches.allObjects.firstObject;
 
@@ -673,23 +717,32 @@
     [active_target_map_ setObject:target forKey:[@([target signature]) stringValue]];
     [self addMap:dict touch:touch];
 
+    BOOL shouldDispatchGesture = [self shouldDispatchGestureForTouch:touch firstTouch:firstTouch];
+    if (_enableMultiTouch && shouldDispatchGesture) {
+      _primaryGestureTarget = target;
+    }
+
     LynxTouchEvent* touchEvent = nil;
 
     if (!_enableMultiTouch) {
       // TODO(hexionghui): Fix the problem: Multiple touchstart events are triggered when
       // multiple fingers touch at the same time.
       touchEvent = [self dispatchEvent:LynxEventTouchStart toTarget:target touch:touch];
-    } else {
+    } else if (shouldDispatchGesture) {
       touchEvent = [self initialTouchEvent:LynxEventTouchStart toTarget:target touch:touch];
     }
 
     [_touches addObject:touch];
 
-    if (touch == firstTouch) {
+    if (shouldDispatchGesture) {
+      if (_enableMultiTouch) {
+        [self.gestureArenaManager setActiveUIToArena:target];
+      }
       // Dispatch TouchStart
       [self.gestureArenaManager dispatchBubble:LynxEventTouchStart touchEvent:touchEvent];
       [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchStart
-                                             touches:touches
+                                             touches:[self gestureTouchesWithTouch:touch
+                                                                   fallbackTouches:touches]
                                                event:event
                                           touchEvent:touchEvent];
       _panGestureRecognized = NO;
@@ -815,24 +868,28 @@
       _LogE(@"LynxTouchHandler: touche miss: %f %f", point.x, point.y);
     }
     EventTargetDetail* detail = touches_map_[touch];
-    if (point.x != detail.preTouchPoint.x || point.y != detail.preTouchPoint.y) {
+    BOOL pointChanged = point.x != detail.preTouchPoint.x || point.y != detail.preTouchPoint.y;
+    if (pointChanged) {
       [self addMap:dict touch:touch];
     }
     detail.preTouchPoint = point;
 
-    if (point.x != _preTouchPoint.x || point.y != _preTouchPoint.y) {
+    if (pointChanged) {
       LynxTouchEvent* touchEvent = nil;
       if (!_enableMultiTouch) {
         touchEvent = [self dispatchEvent:LynxEventTouchMove toTarget:_target touch:touch];
-      } else {
-        touchEvent = [self initialTouchEvent:LynxEventTouchMove toTarget:_target touch:touch];
+      } else if ([self shouldDispatchGestureForTouch:touch firstTouch:firstTouch]) {
+        touchEvent = [self initialTouchEvent:LynxEventTouchMove
+                                    toTarget:[self gestureTarget]
+                                       touch:touch];
       }
 
-      if (touch == firstTouch) {
+      if ([self shouldDispatchGestureForTouch:touch firstTouch:firstTouch]) {
         // Dispatch TouchMove
         [self.gestureArenaManager dispatchBubble:LynxEventTouchMove touchEvent:touchEvent];
         [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchMove
-                                               touches:touches
+                                               touches:[self gestureTouchesWithTouch:touch
+                                                                     fallbackTouches:touches]
                                                  event:event
                                             touchEvent:touchEvent];
 
@@ -974,17 +1031,26 @@
       // multiple fingers touch at the same time.
       // For the click event, it only support single finger.
       [self sendClickEvent:touch];
-    } else {
-      touchEvent = [self initialTouchEvent:LynxEventTouchEnd toTarget:_target touch:touch];
     }
 
-    if (firstTouch == touch) {
+    BOOL shouldDispatchGesture = [self shouldDispatchGestureForTouch:touch firstTouch:firstTouch];
+    if (_enableMultiTouch && shouldDispatchGesture) {
+      touchEvent = [self initialTouchEvent:LynxEventTouchEnd
+                                  toTarget:[self gestureTarget]
+                                     touch:touch];
+    }
+    if (shouldDispatchGesture) {
       // Dispatch TouchEnd
       [self.gestureArenaManager dispatchBubble:LynxEventTouchEnd touchEvent:touchEvent];
       [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchEnd
-                                             touches:touches
+                                             touches:[self gestureTouchesWithTouch:touch
+                                                                   fallbackTouches:touches]
                                                event:event
                                           touchEvent:touchEvent];
+    }
+    if (_enableMultiTouch && touch == _primaryGestureTouch) {
+      _primaryGestureTouch = nil;
+      _primaryGestureTarget = nil;
     }
 
     [_touches removeObject:touch];
@@ -1078,17 +1144,26 @@
 
     if (!_enableMultiTouch && _target) {
       touchEvent = [self dispatchEvent:LynxEventTouchCancel toTarget:_target touch:touch];
-    } else {
-      touchEvent = [self initialTouchEvent:LynxEventTouchCancel toTarget:_target touch:touch];
     }
 
-    if (touch == firstTouch) {
+    BOOL shouldDispatchGesture = [self shouldDispatchGestureForTouch:touch firstTouch:firstTouch];
+    if (_enableMultiTouch && shouldDispatchGesture) {
+      touchEvent = [self initialTouchEvent:LynxEventTouchCancel
+                                  toTarget:[self gestureTarget]
+                                     touch:touch];
+    }
+    if (shouldDispatchGesture) {
       // Dispatch TouchCancel
       [self.gestureArenaManager dispatchBubble:LynxEventTouchCancel touchEvent:touchEvent];
       [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchCancel
-                                             touches:touches
+                                             touches:[self gestureTouchesWithTouch:touch
+                                                                   fallbackTouches:touches]
                                                event:event
                                           touchEvent:touchEvent];
+    }
+    if (_enableMultiTouch && touch == _primaryGestureTouch) {
+      _primaryGestureTouch = nil;
+      _primaryGestureTarget = nil;
     }
 
     [_touches removeObject:touch];
