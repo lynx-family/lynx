@@ -19,6 +19,7 @@ namespace harmony {
 std::unordered_map<std::string, ShadowNode::PropSetter>
     ShadowNode::prop_setters_ = {
         {"ignore-focus", &ShadowNode::SetIgnoreFocus},
+        {"idSelector", &ShadowNode::SetIdSelector},
         {"event-through", &ShadowNode::SetEventThrough},
         {"pointer-events", &ShadowNode::SetPointerEvents}};
 
@@ -202,6 +203,16 @@ void ShadowNode::SetEventThrough(const lepus::Value& value) {
     } else if (bool_str == "false") {
       event_through_ = LynxEventPropStatus::kDisable;
     }
+  }
+}
+
+void ShadowNode::SetIdSelector(const lepus::Value& value) {
+  if (value.IsNil() || value.IsUndefined()) {
+    id_selector_.clear();
+    return;
+  }
+  if (value.IsString()) {
+    id_selector_ = value.StdString();
   }
 }
 

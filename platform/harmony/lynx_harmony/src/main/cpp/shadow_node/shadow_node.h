@@ -72,6 +72,7 @@ class LYNX_EXPORT ShadowNode : public fml::RefCountedThreadSafeStorage {
     parent_sign_ = parent ? parent->Signature() : -1;
   }
   const std::vector<ShadowNode*>& GetChildren() const { return children_; }
+  const std::string& GetIdSelector() const { return id_selector_; }
   float ScaleDensity() const;
   virtual bool IsVirtual() const { return false; }
   const char* Tag() const { return tag_.data(); }
@@ -131,6 +132,7 @@ class LYNX_EXPORT ShadowNode : public fml::RefCountedThreadSafeStorage {
   void SetPointerEvents(const lepus::Value& value);
   void SetIgnoreFocus(const lepus::Value& value);
   void SetEventThrough(const lepus::Value& value);
+  void SetIdSelector(const lepus::Value& value);
 
   const ShadowNode* FindNonVirtualNode() const;
   void SetEvent(const std::vector<lepus::Value>& events);
@@ -138,6 +140,7 @@ class LYNX_EXPORT ShadowNode : public fml::RefCountedThreadSafeStorage {
   static std::unordered_map<std::string, PropSetter> prop_setters_;
   int32_t sign_;
   std::string tag_;
+  std::string id_selector_;
   std::vector<ShadowNode*> children_;
   int32_t parent_sign_{-1};
   CustomMeasureFunc* custom_measure_func_ = nullptr;

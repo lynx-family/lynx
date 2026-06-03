@@ -59,6 +59,8 @@ shared_library("lynx_xelement_markdown") {
   sources = [
     "src/main/cpp/entry.cc",
     "src/main/cpp/impl/markdown_view_bundle.h",
+    "src/main/cpp/impl/resource/markdown_resource_loader_harmony.cc",
+    "src/main/cpp/impl/resource/markdown_resource_loader_harmony.h",
     "src/main/cpp/impl/shadow_node/markdown_shadow_node.cc",
     "src/main/cpp/impl/shadow_node/markdown_shadow_node.h",
     "src/main/cpp/impl/ui/ui_markdown.cc",
